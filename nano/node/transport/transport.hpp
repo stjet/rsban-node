@@ -1,7 +1,6 @@
 #pragma once
 
 #include <nano/lib/locks.hpp>
-#include <nano/lib/rate_limiting.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/socket.hpp>
@@ -15,11 +14,12 @@ class bandwidth_limiter final
 public:
 	// initialize with limit 0 = unbounded
 	bandwidth_limiter (const double, const size_t);
+	~bandwidth_limiter();
 	bool should_drop (const size_t &);
 	void reset (const double, const size_t);
 
 private:
-	nano::rate::token_bucket bucket;
+	void* handle;
 };
 
 namespace transport

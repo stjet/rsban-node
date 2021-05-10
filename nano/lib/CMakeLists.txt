@@ -86,6 +86,7 @@ target_link_libraries(
   crypto_lib
   blake2
   ipc_flatbuffers_lib
+  rsnano
   ${CRYPTOPP_LIBRARY}
   ${CMAKE_DL_LIBS}
   Boost::boost)

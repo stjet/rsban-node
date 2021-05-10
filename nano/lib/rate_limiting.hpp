@@ -1,8 +1,6 @@
 #pragma once
 
-#include <algorithm>
-#include <chrono>
-#include <mutex>
+#include <cstddef>
 
 namespace nano
 {
@@ -30,6 +28,8 @@ namespace rate
 		 */
 		token_bucket (size_t max_token_count_a, size_t refill_rate_a);
 
+		~token_bucket ();
+
 		/**
 		 * Determine if an operation of cost \p tokens_required_a is possible, and deduct from the
 		 * bucket if that's the case.
@@ -45,14 +45,7 @@ namespace rate
 		void reset (size_t max_token_count_a, size_t refill_rate_a);
 
 	private:
-		void refill ();
-		size_t max_token_count;
-		size_t refill_rate;
-		size_t current_size{ 0 };
-		/** The minimum observed bucket size, from which the largest burst can be derived */
-		size_t smallest_size{ 0 };
-		std::chrono::steady_clock::time_point last_refill;
-		mutable nano::mutex bucket_mutex;
+		void* bucket_handle;
 	};
 }
 }

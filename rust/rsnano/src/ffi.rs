@@ -1,5 +1,4 @@
 use crate::bandwidth_limiter::BandwidthLimiter;
-use crate::token_bucket::TokenBucket;
 use std::sync::Mutex;
 
 #[no_mangle]

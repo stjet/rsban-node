@@ -53,7 +53,6 @@ void nano::election::confirm_once (nano::unique_lock<nano::mutex> & lock_a, nano
 		status.type = type_a;
 		auto const status_l = status;
 		lock_a.unlock ();
-		node.active.add_recently_confirmed (status_l.winner->qualified_root (), status_l.winner->hash ());
 		node.process_confirmed (status_l);
 		node.background ([node_l = node.shared (), status_l, confirmation_action_l = confirmation_action] () {
 			if (confirmation_action_l)
@@ -436,22 +435,6 @@ bool nano::election::publish (std::shared_ptr<nano::block> const & block_a)
 	3) given block in already in election & election contains less than 10 blocks (replacing block content with new)
 	*/
 	return result;
-}
-
-nano::election_cleanup_info nano::election::cleanup_info () const
-{
-	nano::lock_guard<nano::mutex> guard (mutex);
-	return cleanup_info_impl ();
-}
-
-nano::election_cleanup_info nano::election::cleanup_info_impl () const
-{
-	return nano::election_cleanup_info{
-		confirmed (),
-		status.winner->qualified_root (),
-		status.winner->hash (),
-		last_blocks
-	};
 }
 
 size_t nano::election::insert_inactive_votes_cache (nano::inactive_cache_information const & cache_a)

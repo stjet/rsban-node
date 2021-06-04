@@ -6,6 +6,7 @@
 #include <nano/node/xorshift.hpp>
 
 #include <future>
+#include <thread>
 
 std::string nano::to_string (nano::work_version const version_a)
 {

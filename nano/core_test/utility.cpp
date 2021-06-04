@@ -9,6 +9,7 @@
 #include <boost/filesystem.hpp>
 
 #include <future>
+#include <thread>
 
 using namespace std::chrono_literals;
 

@@ -17,7 +17,7 @@ nano::bulk_push_client::~bulk_push_client ()
 
 void nano::bulk_push_client::start ()
 {
-	nano::bulk_push message;
+	nano::bulk_push message{ connection->node->network_params.network };
 	auto this_l (shared_from_this ());
 	connection->channel->send (
 	message, [this_l] (boost::system::error_code const & ec, size_t size_a) {
@@ -232,7 +232,7 @@ void nano::bulk_push_server::received_block (boost::system::error_code const & e
 	{
 		nano::bufferstream stream (receive_buffer->data (), size_a);
 		auto block (nano::deserialize_block (stream, type_a));
-		if (block != nullptr && !nano::work_validate_entry (*block))
+		if (block != nullptr && !connection->node->network_params.work.validate_entry (*block))
 		{
 			connection->node->process_active (std::move (block));
 			throttled_receive ();

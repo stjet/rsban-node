@@ -58,7 +58,7 @@ void nano::bulk_pull_client::request ()
 {
 	debug_assert (!pull.head.is_zero () || pull.retry_limit <= connection->node->network_params.bootstrap.lazy_retry_limit);
 	expected = pull.head;
-	nano::bulk_pull req;
+	nano::bulk_pull req{ connection->node->network_params.network };
 	if (pull.head == pull.head_original && pull.attempts % 4 < 3)
 	{
 		// Account for new pulls
@@ -187,7 +187,7 @@ void nano::bulk_pull_client::received_type ()
 			// Avoid re-using slow peers, or peers that sent the wrong blocks.
 			if (!connection->pending_stop && (expected == pull.end || (pull.count != 0 && pull.count == pull_blocks)))
 			{
-				connection->connections->pool_connection (connection);
+				connection->connections.pool_connection (connection);
 			}
 			break;
 		}
@@ -208,7 +208,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 	{
 		nano::bufferstream stream (connection->receive_buffer->data (), size_a);
 		auto block (nano::deserialize_block (stream, type_a));
-		if (block != nullptr && !nano::work_validate_entry (*block))
+		if (block != nullptr && !connection->node->network_params.work.validate_entry (*block))
 		{
 			auto hash (block->hash ());
 			if (connection->node->config.logging.bulk_pull_logging ())
@@ -253,7 +253,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 			}
 			else if (stop_pull && block_expected)
 			{
-				connection->connections->pool_connection (connection);
+				connection->connections.pool_connection (connection);
 			}
 		}
 		else if (block == nullptr)
@@ -300,7 +300,7 @@ nano::bulk_pull_account_client::~bulk_pull_account_client ()
 
 void nano::bulk_pull_account_client::request ()
 {
-	nano::bulk_pull_account req;
+	nano::bulk_pull_account req{ connection->node->network_params.network };
 	req.account = account;
 	req.minimum_amount = connection->node->config.receive_minimum;
 	req.flags = nano::bulk_pull_account_flags::pending_hash_and_amount;
@@ -376,7 +376,7 @@ void nano::bulk_pull_account_client::receive_pending ()
 				}
 				else
 				{
-					this_l->connection->connections->pool_connection (this_l->connection);
+					this_l->connection->connections.pool_connection (this_l->connection);
 				}
 			}
 			else
@@ -419,7 +419,7 @@ void nano::bulk_pull_server::set_current_end ()
 	include_start = false;
 	debug_assert (request != nullptr);
 	auto transaction (connection->node->store.tx_begin_read ());
-	if (!connection->node->store.block_exists (transaction, request->end))
+	if (!connection->node->store.block.exists (transaction, request->end))
 	{
 		if (connection->node->config.logging.bulk_pull_logging ())
 		{
@@ -428,7 +428,7 @@ void nano::bulk_pull_server::set_current_end ()
 		request->end.clear ();
 	}
 
-	if (connection->node->store.block_exists (transaction, request->start.as_block_hash ()))
+	if (connection->node->store.block.exists (transaction, request->start.as_block_hash ()))
 	{
 		if (connection->node->config.logging.bulk_pull_logging ())
 		{

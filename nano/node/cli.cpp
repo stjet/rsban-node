@@ -9,7 +9,7 @@
 
 namespace
 {
-void reset_confirmation_heights (nano::write_transaction const & transaction, nano::block_store & store);
+void reset_confirmation_heights (nano::write_transaction const & transaction, nano::ledger_constants & constants, nano::store & store);
 bool is_using_rocksdb (boost::filesystem::path const & data_path, boost::program_options::variables_map const & vm, std::error_code & ec);
 }
 
@@ -44,6 +44,7 @@ void nano::add_node_options (boost::program_options::options_description & descr
 {
 	// clang-format off
 	description_a.add_options ()
+	("initialize", "Initialize the data folder, if it is not already initialised. This command is meant to be run when the data folder is empty, to populate it with the genesis block.")
 	("account_create", "Insert next deterministic key in to <wallet>")
 	("account_get", "Get account number for the <key>")
 	("account_key", "Get the public key for <account>")
@@ -90,10 +91,14 @@ void nano::add_node_flag_options (boost::program_options::options_description & 
 {
 	// clang-format off
 	description_a.add_options()
+		("disable_add_initial_peers", "Disable contacting the peer in the peers table at startup")
 		("disable_backup", "Disable wallet automatic backups")
 		("disable_lazy_bootstrap", "Disables lazy bootstrap")
 		("disable_legacy_bootstrap", "Disables legacy bootstrap")
 		("disable_wallet_bootstrap", "Disables wallet lazy bootstrap")
+		("disable_ongoing_bootstrap", "Disable ongoing bootstrap")
+		("disable_rep_crawler", "Disable rep crawler")
+		("disable_request_loop", "Disable request loop")
 		("disable_bootstrap_listener", "Disables bootstrap processing for TCP listener (not including realtime network TCP connections)")
 		("disable_tcp_realtime", "Disables TCP realtime network")
 		("disable_udp", "(Deprecated) UDP is disabled by default")
@@ -117,10 +122,14 @@ void nano::add_node_flag_options (boost::program_options::options_description & 
 std::error_code nano::update_flags (nano::node_flags & flags_a, boost::program_options::variables_map const & vm)
 {
 	std::error_code ec;
+	flags_a.disable_add_initial_peers = (vm.count ("disable_add_initial_peers") > 0);
 	flags_a.disable_backup = (vm.count ("disable_backup") > 0);
 	flags_a.disable_lazy_bootstrap = (vm.count ("disable_lazy_bootstrap") > 0);
 	flags_a.disable_legacy_bootstrap = (vm.count ("disable_legacy_bootstrap") > 0);
 	flags_a.disable_wallet_bootstrap = (vm.count ("disable_wallet_bootstrap") > 0);
+	flags_a.disable_ongoing_bootstrap = (vm.count ("disable_ongoing_bootstrap") > 0);
+	flags_a.disable_rep_crawler = (vm.count ("disable_rep_crawler") > 0);
+	flags_a.disable_request_loop = (vm.count ("disable_request_loop") > 0);
 	if (!flags_a.inactive_node)
 	{
 		flags_a.disable_bootstrap_listener = (vm.count ("disable_bootstrap_listener") > 0);
@@ -220,7 +229,7 @@ bool copy_database (boost::filesystem::path const & data_path, boost::program_op
 		auto & store (node.node->store);
 		if (vm.count ("unchecked_clear"))
 		{
-			node.node->store.unchecked_clear (store.tx_begin_write ());
+			node.node->store.unchecked.clear (store.tx_begin_write ());
 		}
 		if (vm.count ("clear_send_ids"))
 		{
@@ -232,11 +241,11 @@ bool copy_database (boost::filesystem::path const & data_path, boost::program_op
 		}
 		if (vm.count ("peer_clear"))
 		{
-			node.node->store.peer_clear (store.tx_begin_write ());
+			node.node->store.peer.clear (store.tx_begin_write ());
 		}
 		if (vm.count ("confirmation_height_clear"))
 		{
-			reset_confirmation_heights (store.tx_begin_write (), store);
+			reset_confirmation_heights (store.tx_begin_write (), node.node->network_params.ledger, store);
 		}
 		if (vm.count ("final_vote_clear"))
 		{
@@ -262,7 +271,14 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	std::error_code ec;
 	boost::filesystem::path data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : nano::working_path ();
 
-	if (vm.count ("account_create"))
+	if (vm.count ("initialize"))
+	{
+		auto node_flags = nano::inactive_node_flag_defaults ();
+		node_flags.read_only = false;
+		nano::update_flags (node_flags, vm);
+		nano::inactive_node node (data_path, node_flags);
+	}
+	else if (vm.count ("account_create"))
 	{
 		if (vm.count ("wallet") == 1)
 		{
@@ -491,7 +507,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
-			node.node->store.unchecked_clear (transaction);
+			node.node->store.unchecked.clear (transaction);
 			std::cout << "Unchecked blocks deleted" << std::endl;
 		}
 		else
@@ -528,7 +544,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		{
 			auto transaction (node.node->store.tx_begin_write ());
 			node.node->store.online_weight.clear (transaction);
-			std::cout << "Onine weight records are removed" << std::endl;
+			std::cout << "Online weight records are removed" << std::endl;
 		}
 		else
 		{
@@ -545,7 +561,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
-			node.node->store.peer_clear (transaction);
+			node.node->store.peer.clear (transaction);
 			std::cout << "Database peers are removed" << std::endl;
 		}
 		else
@@ -574,10 +590,10 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					{
 						auto transaction (node.node->store.tx_begin_write ());
 						auto conf_height_reset_num = 0;
-						if (account == node.node->network_params.ledger.genesis_account)
+						if (account == node.node->network_params.ledger.genesis->account ())
 						{
 							conf_height_reset_num = 1;
-							node.node->store.confirmation_height.put (transaction, account, { confirmation_height_info.height, node.node->network_params.ledger.genesis_block });
+							node.node->store.confirmation_height.put (transaction, account, { confirmation_height_info.height, node.node->network_params.ledger.genesis->hash () });
 						}
 						else
 						{
@@ -601,7 +617,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			else
 			{
 				auto transaction (node.node->store.tx_begin_write ());
-				reset_confirmation_heights (transaction, node.node->store);
+				reset_confirmation_heights (transaction, node.node->network_params.ledger, node.node->store);
 				std::cout << "Confirmation heights of all accounts (except genesis which is set to 1) are set to 0" << std::endl;
 			}
 		}
@@ -658,13 +674,14 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (type == "node")
 		{
 			valid_type = true;
-			nano::daemon_config config (data_path);
+			nano::network_params network_params{ nano::network_constants::active_network };
+			nano::daemon_config config{ data_path, network_params };
 			config.serialize_toml (toml);
 		}
 		else if (type == "rpc")
 		{
 			valid_type = true;
-			nano::rpc_config config;
+			nano::rpc_config config{ nano::dev::network_params.network };
 			config.serialize_toml (toml);
 		}
 		else
@@ -702,7 +719,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		nano::raw_key junk1;
 		junk1.clear ();
 		nano::uint256_union junk2 (0);
-		nano::kdf kdf;
+		nano::kdf kdf{ inactive_node->node->config.network_params.kdf_work };
 		kdf.phs (junk1, "", junk2);
 		std::cout << "Testing time retrieval latency... " << std::flush;
 		nano::timer<std::chrono::nanoseconds> timer (nano::timer_state::started);
@@ -1300,19 +1317,19 @@ std::unique_ptr<nano::inactive_node> nano::default_inactive_node (boost::filesys
 
 namespace
 {
-void reset_confirmation_heights (nano::write_transaction const & transaction, nano::block_store & store)
+void reset_confirmation_heights (nano::write_transaction const & transaction, nano::ledger_constants & constants, nano::store & store)
 {
 	// First do a clean sweep
 	store.confirmation_height.clear (transaction);
 
 	// Then make sure the confirmation height of the genesis account open block is 1
-	nano::network_params network_params;
-	store.confirmation_height.put (transaction, network_params.ledger.genesis_account, { 1, network_params.ledger.genesis_hash });
+	store.confirmation_height.put (transaction, constants.genesis->account (), { 1, constants.genesis->hash () });
 }
 
 bool is_using_rocksdb (boost::filesystem::path const & data_path, boost::program_options::variables_map const & vm, std::error_code & ec)
 {
-	nano::daemon_config config (data_path);
+	nano::network_params network_params{ nano::network_constants::active_network };
+	nano::daemon_config config{ data_path, network_params };
 
 	// Config overriding
 	auto config_arg (vm.find ("config"));

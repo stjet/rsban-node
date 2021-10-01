@@ -5,7 +5,7 @@
 #include <nano/node/election.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/repcrawler.hpp>
-#include <nano/secure/blockstore.hpp>
+#include <nano/secure/store.hpp>
 
 #include <boost/format.hpp>
 #include <boost/variant/get.hpp>
@@ -82,7 +82,7 @@ nano::frontiers_confirmation_info nano::active_transactions::get_frontiers_confi
 	// Limit maximum count of elections to start
 	auto rep_counts (node.wallets.reps ());
 	bool representative (node.config.enable_voting && rep_counts.voting > 0);
-	bool half_princpal_representative (representative && rep_counts.half_principal > 0);
+	bool half_princpal_representative (representative && rep_counts.have_half_rep ());
 	/* Check less frequently for regular nodes in auto mode */
 	bool agressive_mode (half_princpal_representative || node.config.frontiers_confirmation == nano::frontiers_confirmation_mode::always);
 	auto is_dev_network = node.network_params.network.is_dev_network ();
@@ -142,7 +142,7 @@ void nano::active_transactions::confirm_prioritized_frontiers (nano::transaction
 
 						if (info.block_count > confirmation_height_info.height)
 						{
-							auto block (this->node.store.block_get (transaction_a, info.head));
+							auto block (this->node.store.block.get (transaction_a, info.head));
 							auto previous_balance (this->node.ledger.balance (transaction_a, block->previous ()));
 							auto inserted_election = this->insert_election_from_frontiers_confirmation (block, cementable_account.account, previous_balance, nano::election_behavior::optimistic);
 							if (inserted_election)
@@ -183,9 +183,10 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 			nano::account account (0);
 			nano::uint128_t amount (0);
 			bool is_state_send (false);
+			bool is_state_epoch (false);
 			nano::account pending_account (0);
-			node.process_confirmed_data (transaction, block_a, block_a->hash (), account, amount, is_state_send, pending_account);
-			node.observers.blocks.notify (nano::election_status{ block_a, 0, 0, std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()), std::chrono::duration_values<std::chrono::milliseconds>::zero (), 0, 1, 0, nano::election_status_type::inactive_confirmation_height }, {}, account, amount, is_state_send);
+			node.process_confirmed_data (transaction, block_a, block_a->hash (), account, amount, is_state_send, is_state_epoch, pending_account);
+			node.observers.blocks.notify (nano::election_status{ block_a, 0, 0, std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()), std::chrono::duration_values<std::chrono::milliseconds>::zero (), 0, 1, 0, nano::election_status_type::inactive_confirmation_height }, {}, account, amount, is_state_send, is_state_epoch);
 		}
 		else
 		{
@@ -208,15 +209,16 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 					nano::account account (0);
 					nano::uint128_t amount (0);
 					bool is_state_send (false);
+					bool is_state_epoch (false);
 					nano::account pending_account (0);
-					node.process_confirmed_data (transaction, block_a, hash, account, amount, is_state_send, pending_account);
+					node.process_confirmed_data (transaction, block_a, hash, account, amount, is_state_send, is_state_epoch, pending_account);
 					election_lk.lock ();
 					election->status.type = *election_status_type;
 					election->status.confirmation_request_count = election->confirmation_request_count;
 					status_l = election->status;
 					election_lk.unlock ();
 					auto votes (election->votes_with_weight ());
-					node.observers.blocks.notify (status_l, votes, account, amount, is_state_send);
+					node.observers.blocks.notify (status_l, votes, account, amount, is_state_send, is_state_epoch);
 					if (amount > 0)
 					{
 						node.observers.account_balance.notify (account, false);
@@ -500,12 +502,12 @@ void nano::active_transactions::confirm_expired_frontiers_pessimistically (nano:
 				std::shared_ptr<nano::block> block;
 				if (confirmation_height_info.height == 0)
 				{
-					block = node.store.block_get (transaction_a, account_info.open_block);
+					block = node.store.block.get (transaction_a, account_info.open_block);
 				}
 				else
 				{
-					previous_block = node.store.block_get (transaction_a, confirmation_height_info.frontier);
-					block = node.store.block_get (transaction_a, previous_block->sideband ().successor);
+					previous_block = node.store.block.get (transaction_a, confirmation_height_info.frontier);
+					block = node.store.block.get (transaction_a, previous_block->sideband ().successor);
 				}
 
 				if (block && !node.confirmation_height_processor.is_processing_block (block->hash ()) && node.ledger.dependents_confirmed (transaction_a, *block))
@@ -812,7 +814,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::un
 				if (!previous_balance_a.is_initialized () && !block_a->previous ().is_zero ())
 				{
 					auto transaction (node.store.tx_begin_read ());
-					if (node.store.block_exists (transaction, block_a->previous ()))
+					if (node.store.block.exists (transaction, block_a->previous ()))
 					{
 						previous_balance = node.ledger.balance (transaction, block_a->previous ());
 					}
@@ -965,34 +967,6 @@ std::shared_ptr<nano::block> nano::active_transactions::winner (nano::block_hash
 		result = election->winner ();
 	}
 	return result;
-}
-
-void nano::active_transactions::restart (nano::transaction const & transaction_a, std::shared_ptr<nano::block> const & block_a)
-{
-	auto hash (block_a->hash ());
-	auto ledger_block (node.store.block_get (transaction_a, hash));
-	if (ledger_block != nullptr && ledger_block->block_work () != block_a->block_work () && !node.block_confirmed_or_being_confirmed (transaction_a, hash))
-	{
-		if (block_a->difficulty () > ledger_block->difficulty ())
-		{
-			// Re-writing the block is necessary to avoid the same work being received later to force restarting the election
-			// The existing block is re-written, not the arriving block, as that one might not have gone through a full signature check
-			ledger_block->block_work_set (block_a->block_work ());
-
-			// Deferred write
-			node.block_processor.update (ledger_block);
-
-			// Restart election for the upgraded block, previously dropped from elections
-			if (node.ledger.dependents_confirmed (transaction_a, *ledger_block))
-			{
-				node.stats.inc (nano::stat::type::election, nano::stat::detail::election_restart);
-				auto previous_balance = node.ledger.balance (transaction_a, ledger_block->previous ());
-				auto block_has_account = ledger_block->type () == nano::block_type::state || ledger_block->type () == nano::block_type::open;
-				auto account = block_has_account ? ledger_block->account () : ledger_block->sideband ().account;
-				scheduler.activate (account, transaction_a);
-			}
-		}
-	}
 }
 
 std::deque<nano::election_status> nano::active_transactions::list_recently_cemented ()
@@ -1285,7 +1259,8 @@ nano::inactive_cache_status nano::active_transactions::inactive_votes_bootstrap_
 {
 	debug_assert (!lock_a.owns_lock ());
 	nano::inactive_cache_status status (previously_a);
-	const unsigned election_start_voters_min = node.network_params.network.is_dev_network () ? 2 : node.network_params.network.is_beta_network () ? 5 : 15;
+	const unsigned election_start_voters_min = node.network_params.network.is_dev_network () ? 2 : node.network_params.network.is_beta_network () ? 5
+																																				  : 15;
 	status.tally = tally_a;
 	if (!previously_a.confirmed && tally_a >= node.online_reps.delta ())
 	{
@@ -1304,7 +1279,7 @@ nano::inactive_cache_status nano::active_transactions::inactive_votes_bootstrap_
 	if ((status.election_started && !previously_a.election_started) || (status.bootstrap_started && !previously_a.bootstrap_started))
 	{
 		auto transaction (node.store.tx_begin_read ());
-		auto block = node.store.block_get (transaction, hash_a);
+		auto block = node.store.block.get (transaction, hash_a);
 		if (block && status.election_started && !previously_a.election_started && !node.block_confirmed_or_being_confirmed (transaction, hash_a))
 		{
 			lock_a.lock ();

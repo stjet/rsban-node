@@ -61,9 +61,10 @@ std::string nano::transport::channel_udp::to_string () const
 	return boost::str (boost::format ("%1%") % endpoint);
 }
 
-nano::transport::udp_channels::udp_channels (nano::node & node_a, uint16_t port_a) :
-	node (node_a),
-	strand (node_a.io_ctx.get_executor ())
+nano::transport::udp_channels::udp_channels (nano::node & node_a, uint16_t port_a, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
+	node{ node_a },
+	strand{ node_a.io_ctx.get_executor () },
+	sink{ sink }
 {
 	if (!node.flags.disable_udp)
 	{
@@ -202,12 +203,12 @@ bool nano::transport::udp_channels::store_all (bool clear_peers)
 		auto transaction (node.store.tx_begin_write ({ tables::peers }));
 		if (clear_peers)
 		{
-			node.store.peer_clear (transaction);
+			node.store.peer.clear (transaction);
 		}
 		for (auto endpoint : endpoints)
 		{
 			nano::endpoint_key endpoint_key (endpoint.address ().to_v6 ().to_bytes (), endpoint.port ());
-			node.store.peer_put (transaction, std::move (endpoint_key));
+			node.store.peer.put (transaction, std::move (endpoint_key));
 		}
 		result = true;
 	}
@@ -364,9 +365,10 @@ namespace
 class udp_message_visitor : public nano::message_visitor
 {
 public:
-	udp_message_visitor (nano::node & node_a, nano::endpoint const & endpoint_a) :
-		node (node_a),
-		endpoint (endpoint_a)
+	udp_message_visitor (nano::node & node_a, nano::endpoint const & endpoint_a, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
+		node{ node_a },
+		endpoint{ endpoint_a },
+		sink{ sink }
 	{
 	}
 	void keepalive (nano::keepalive const & message_a) override
@@ -386,7 +388,7 @@ public:
 				else if (!node.network.tcp_channels.find_channel (nano::transport::map_endpoint_to_tcp (endpoint)))
 				{
 					// Don't start connection if TCP channel to same IP:port exists
-					find_channel = std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint, node.network_params.protocol.protocol_version);
+					find_channel = std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint, node.network_params.network.protocol_version);
 					node.network.send_node_id_handshake (find_channel, *cookie, boost::none);
 				}
 			}
@@ -498,7 +500,7 @@ public:
 			auto find_channel (node.network.udp_channels.channel (endpoint));
 			if (!find_channel)
 			{
-				find_channel = std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint, node.network_params.protocol.protocol_version);
+				find_channel = std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint, node.network_params.network.protocol_version);
 			}
 			node.network.send_node_id_handshake (find_channel, out_query, out_respond_to);
 		}
@@ -512,11 +514,12 @@ public:
 			node.network.udp_channels.modify (find_channel, [] (std::shared_ptr<nano::transport::channel_udp> const & channel_a) {
 				channel_a->set_last_packet_received (std::chrono::steady_clock::now ());
 			});
-			node.network.process_message (message_a, find_channel);
+			sink (message_a, find_channel);
 		}
 	}
 	nano::node & node;
 	nano::endpoint endpoint;
+	std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;
 };
 }
 
@@ -537,8 +540,8 @@ void nano::transport::udp_channels::receive_action (nano::message_buffer * data_
 	}
 	if (allowed_sender)
 	{
-		udp_message_visitor visitor (node, data_a->endpoint);
-		nano::message_parser parser (node.network.publish_filter, node.block_uniquer, node.vote_uniquer, visitor, node.work);
+		udp_message_visitor visitor (node, data_a->endpoint, sink);
+		nano::message_parser parser (node.network.publish_filter, node.block_uniquer, node.vote_uniquer, visitor, node.work, node.network_params.network);
 		parser.deserialize_buffer (data_a->buffer, data_a->size);
 		if (parser.status == nano::message_parser::parse_status::success)
 		{
@@ -622,7 +625,7 @@ void nano::transport::udp_channels::process_packets ()
 
 std::shared_ptr<nano::transport::channel> nano::transport::udp_channels::create (nano::endpoint const & endpoint_a)
 {
-	return std::make_shared<nano::transport::channel_udp> (*this, endpoint_a, node.network_params.protocol.protocol_version);
+	return std::make_shared<nano::transport::channel_udp> (*this, endpoint_a, node.network_params.network.protocol_version);
 }
 
 bool nano::transport::udp_channels::max_ip_connections (nano::endpoint const & endpoint_a)
@@ -633,7 +636,7 @@ bool nano::transport::udp_channels::max_ip_connections (nano::endpoint const & e
 		auto const address (nano::transport::ipv4_address_or_ipv6_subnet (endpoint_a.address ()));
 		auto const subnet (nano::transport::map_address_to_subnetwork (endpoint_a.address ()));
 		nano::unique_lock<nano::mutex> lock (mutex);
-		result = channels.get<ip_address_tag> ().count (address) >= node.network_params.node.max_peers_per_ip || channels.get<subnetwork_tag> ().count (subnet) >= node.network_params.node.max_peers_per_subnetwork;
+		result = channels.get<ip_address_tag> ().count (address) >= node.network_params.network.max_peers_per_ip || channels.get<subnetwork_tag> ().count (subnet) >= node.network_params.network.max_peers_per_subnetwork;
 	}
 	return result;
 }
@@ -683,11 +686,11 @@ void nano::transport::udp_channels::purge (std::chrono::steady_clock::time_point
 
 void nano::transport::udp_channels::ongoing_keepalive ()
 {
-	nano::keepalive message;
+	nano::keepalive message{ node.network_params.network };
 	node.network.random_fill (message.peers);
 	std::vector<std::shared_ptr<nano::transport::channel_udp>> send_list;
 	nano::unique_lock<nano::mutex> lock (mutex);
-	auto keepalive_cutoff (channels.get<last_packet_received_tag> ().lower_bound (std::chrono::steady_clock::now () - node.network_params.node.period));
+	auto keepalive_cutoff (channels.get<last_packet_received_tag> ().lower_bound (std::chrono::steady_clock::now () - node.network_params.network.cleanup_period));
 	for (auto i (channels.get<last_packet_received_tag> ().begin ()); i != keepalive_cutoff; ++i)
 	{
 		send_list.push_back (i->channel);
@@ -698,7 +701,7 @@ void nano::transport::udp_channels::ongoing_keepalive ()
 		channel->send (message);
 	}
 	std::weak_ptr<nano::node> node_w (node.shared ());
-	node.workers.add_timed_task (std::chrono::steady_clock::now () + node.network_params.node.period, [node_w] () {
+	node.workers.add_timed_task (std::chrono::steady_clock::now () + node.network_params.network.cleanup_period, [node_w] () {
 		if (auto node_l = node_w.lock ())
 		{
 			node_l->network.udp_channels.ongoing_keepalive ();

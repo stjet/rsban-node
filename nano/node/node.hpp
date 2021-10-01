@@ -100,7 +100,7 @@ public:
 	std::shared_ptr<nano::node> shared ();
 	int store_version ();
 	void receive_confirmed (nano::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a);
-	void process_confirmed_data (nano::transaction const &, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account &, nano::uint128_t &, bool &, nano::account &);
+	void process_confirmed_data (nano::transaction const &, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account &, nano::uint128_t &, bool &, bool &, nano::account &);
 	void process_confirmed (nano::election_status const &, uint64_t = 0);
 	void process_active (std::shared_ptr<nano::block> const &);
 	nano::process_return process (nano::block &);
@@ -154,8 +154,8 @@ public:
 	nano::write_database_queue write_database_queue;
 	boost::asio::io_context & io_ctx;
 	boost::latch node_initialized_latch;
-	nano::network_params network_params;
 	nano::node_config config;
+	nano::network_params & network_params;
 	nano::stat stats;
 	nano::thread_pool workers;
 	std::shared_ptr<nano::websocket::listener> websocket_server;
@@ -163,8 +163,8 @@ public:
 	nano::work_pool & work;
 	nano::distributed_work_factory distributed_work;
 	nano::logger_mt logger;
-	std::unique_ptr<nano::block_store> store_impl;
-	nano::block_store & store;
+	std::unique_ptr<nano::store> store_impl;
+	nano::store & store;
 	std::unique_ptr<nano::wallets_store> wallets_store_impl;
 	nano::wallets_store & wallets_store;
 	nano::gap_cache gap_cache;
@@ -223,6 +223,7 @@ public:
 	node_wrapper (boost::filesystem::path const & path_a, boost::filesystem::path const & config_path_a, nano::node_flags const & node_flags_a);
 	~node_wrapper ();
 
+	nano::network_params network_params;
 	std::shared_ptr<boost::asio::io_context> io_context;
 	nano::work_pool work;
 	std::shared_ptr<nano::node> node;

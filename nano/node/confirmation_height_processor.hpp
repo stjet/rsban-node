@@ -4,8 +4,8 @@
 #include <nano/lib/timer.hpp>
 #include <nano/node/confirmation_height_bounded.hpp>
 #include <nano/node/confirmation_height_unbounded.hpp>
-#include <nano/secure/blockstore.hpp>
 #include <nano/secure/common.hpp>
+#include <nano/secure/store.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
@@ -91,7 +91,6 @@ private:
 	nano::write_database_queue & write_database_queue;
 	/** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
 	uint64_t batch_write_size{ 16384 };
-	nano::network_params network_params;
 
 	confirmation_height_unbounded unbounded_processor;
 	confirmation_height_bounded bounded_processor;

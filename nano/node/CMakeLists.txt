@@ -76,6 +76,8 @@ add_library(
   ipc/ipc_server.cpp
   json_handler.hpp
   json_handler.cpp
+  ledger_walker.hpp
+  ledger_walker.cpp
   lmdb/lmdb.hpp
   lmdb/lmdb.cpp
   lmdb/lmdb_env.hpp
@@ -128,8 +130,6 @@ add_library(
   state_block_signature_verification.cpp
   telemetry.hpp
   telemetry.cpp
-  testing.hpp
-  testing.cpp
   transport/tcp.hpp
   transport/tcp.cpp
   transport/transport.hpp
@@ -150,6 +150,10 @@ add_library(
   write_database_queue.cpp
   xorshift.hpp)
 
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set(DISKHASH diskhash)
+endif()
+
 target_link_libraries(
   node
   rpc
@@ -166,6 +170,7 @@ target_link_libraries(
   Boost::thread
   Boost::boost
   rocksdb
+  ${DISKHASH}
   ${CMAKE_DL_LIBS}
   ${psapi_lib})
 

@@ -6,8 +6,8 @@
 #include <nano/node/lmdb/lmdb.hpp>
 #include <nano/node/lmdb/wallet_value.hpp>
 #include <nano/node/openclwork.hpp>
-#include <nano/secure/blockstore.hpp>
 #include <nano/secure/common.hpp>
+#include <nano/secure/store.hpp>
 
 #include <atomic>
 #include <mutex>
@@ -34,8 +34,13 @@ private:
 class kdf final
 {
 public:
+	kdf (unsigned & kdf_work) :
+		kdf_work{ kdf_work }
+	{
+	}
 	void phs (nano::raw_key &, std::string const &, nano::uint256_union const &);
 	nano::mutex mutex;
+	unsigned & kdf_work;
 };
 enum class key_type
 {
@@ -152,7 +157,6 @@ public:
 	nano::public_key change_seed (nano::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count = 0);
 	void deterministic_restore (nano::transaction const & transaction_a);
 	bool live ();
-	nano::network_params network_params;
 	std::unordered_set<nano::account> free_accounts;
 	std::function<void (bool, bool)> lock_observer;
 	nano::wallet_store store;
@@ -165,11 +169,11 @@ class wallet_representatives
 {
 public:
 	uint64_t voting{ 0 }; // Number of representatives with at least the configured minimum voting weight
-	uint64_t half_principal{ 0 }; // Number of representatives with at least 50% of principal representative requirements
+	bool half_principal{ false }; // has representatives with at least 50% of principal representative requirements
 	std::unordered_set<nano::account> accounts; // Representatives with at least the configured minimum voting weight
 	bool have_half_rep () const
 	{
-		return half_principal > 0;
+		return half_principal;
 	}
 	bool exists (nano::account const & rep_a) const
 	{
@@ -178,7 +182,7 @@ public:
 	void clear ()
 	{
 		voting = 0;
-		half_principal = 0;
+		half_principal = false;
 		accounts.clear ();
 	}
 };
@@ -208,10 +212,10 @@ public:
 	bool check_rep (nano::account const &, nano::uint128_t const &, const bool = true);
 	void compute_reps ();
 	void ongoing_compute_reps ();
-	void split_if_needed (nano::transaction &, nano::block_store &);
+	void split_if_needed (nano::transaction &, nano::store &);
 	void move_table (std::string const &, MDB_txn *, MDB_txn *);
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> get_wallets ();
-	nano::network_params network_params;
+	nano::network_params & network_params;
 	std::function<void (bool)> observer;
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> items;
 	std::multimap<nano::uint128_t, std::pair<std::shared_ptr<nano::wallet>, std::function<void (nano::wallet &)>>, std::greater<nano::uint128_t>> actions;

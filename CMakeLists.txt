@@ -35,6 +35,15 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 option(CI_BUILD false)
+
+set(COVERAGE
+    OFF
+    CACHE BOOL "Code Coverage Targets")
+if(COVERAGE)
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
+  include(CoverageTest)
+endif()
+
 set(CI_TEST
     0
     CACHE STRING "")
@@ -43,10 +52,10 @@ if(MSVC)
   add_definitions(/MP)
 endif()
 
-set(CPACK_PACKAGE_VERSION_MAJOR "22")
+set(CPACK_PACKAGE_VERSION_MAJOR "23")
 set(CPACK_PACKAGE_VERSION_MINOR "0")
 set(CPACK_PACKAGE_VERSION_PATCH "0")
-set(CPACK_PACKAGE_VERSION_PRE_RELEASE "0")
+set(CPACK_PACKAGE_VERSION_PRE_RELEASE "99")
 set(CPACK_PACKAGE_VENDOR "Nano Currency")
 
 if(CI_BUILD)
@@ -384,6 +393,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 find_package(Boost 1.70.0 REQUIRED COMPONENTS filesystem log log_setup thread
                                               program_options system)
 
+# diskhash
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_library(diskhash STATIC ${CMAKE_SOURCE_DIR}/diskhash/src/diskhash.c)
+  include_directories(diskhash/src)
+endif()
+
 # RocksDB
 include_directories(rocksdb/include)
 set(USE_RTTI
@@ -470,6 +485,7 @@ set(CRYPTOPP_LIBRARY cryptopp)
 add_library(
   cryptopp
   crypto/cryptopp/algparam.cpp
+  crypto/cryptopp/allocate.cpp
   crypto/cryptopp/asn.cpp
   crypto/cryptopp/basecode.cpp
   crypto/cryptopp/cpu.cpp
@@ -585,6 +601,8 @@ if(NANO_TEST OR RAIBLOCKS_TEST)
 
   add_subdirectory(nano/load_test)
 
+  # FIXME: This fixes googletest GOOGLETEST_VERSION requirement
+  set(GOOGLETEST_VERSION 1.11.0)
   add_subdirectory(gtest/googletest)
   # FIXME: This fixes gtest include directories without modifying gtest's
   # CMakeLists.txt. Ideally we should use GTest::GTest and GTest::Main as
@@ -597,6 +615,17 @@ if(NANO_TEST OR RAIBLOCKS_TEST)
   add_subdirectory(nano/core_test)
   add_subdirectory(nano/rpc_test)
   add_subdirectory(nano/slow_test)
+  add_custom_target(
+    build_tests
+    COMMAND echo "BATCH BUILDING TESTS"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    DEPENDS core_test load_test rpc_test nano_node nano_rpc)
+
+  add_custom_target(
+    run_tests
+    COMMAND ${PROJECT_SOURCE_DIR}/ci/test.sh ${CMAKE_BINARY_DIR}
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    DEPENDS build_tests)
 endif()
 if(NANO_GUI OR RAIBLOCKS_GUI)
   install(FILES ${PROJECT_BINARY_DIR}/config-node.toml.sample DESTINATION .)
@@ -662,13 +691,9 @@ if(NANO_GUI OR RAIBLOCKS_GUI)
                  SUFFIX ".com")
   endif()
 
-  add_executable(qt_system nano/qt_system/entry.cpp)
-
-  target_link_libraries(qt_system qt node Qt5::Gui Qt5::Widgets)
-
   set_target_properties(
-    qt nano_wallet qt_system
-    PROPERTIES COMPILE_FLAGS "-DQT_NO_KEYWORDS -DBOOST_ASIO_HAS_STD_ARRAY=1")
+    qt nano_wallet PROPERTIES COMPILE_FLAGS
+                              "-DQT_NO_KEYWORDS -DBOOST_ASIO_HAS_STD_ARRAY=1")
 
   if(NANO_TEST OR RAIBLOCKS_TEST)
     add_executable(qt_test nano/qt_test/entry.cpp nano/qt_test/qt.cpp)
@@ -686,6 +711,7 @@ if(NANO_GUI OR RAIBLOCKS_GUI)
     set_target_properties(
       qt_test PROPERTIES COMPILE_FLAGS
                          "-DQT_NO_KEYWORDS -DBOOST_ASIO_HAS_STD_ARRAY=1")
+    add_dependencies(build_tests qt_test)
   endif()
 
   if(APPLE)
@@ -833,6 +859,10 @@ if(NANO_GUI OR RAIBLOCKS_GUI)
         "${CMAKE_CURRENT_BINARY_DIR}/debian-control/postinst;${CMAKE_CURRENT_BINARY_DIR}/debian-control/postrm"
     )
   endif()
+endif()
+
+if(COVERAGE)
+  add_subdirectory(coverage)
 endif()
 
 set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/LICENSE)

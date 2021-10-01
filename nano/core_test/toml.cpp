@@ -69,7 +69,7 @@ TEST (toml, daemon_config_update_array)
 {
 	nano::tomlconfig t;
 	boost::filesystem::path data_path (".");
-	nano::daemon_config c (data_path);
+	nano::daemon_config c{ data_path, nano::dev::network_params };
 	c.node.preconfigured_peers.push_back ("dev-peer.org");
 	c.serialize_toml (t);
 	c.deserialize_toml (t);
@@ -88,8 +88,8 @@ TEST (toml, rpc_config_deserialize_defaults)
 
 	nano::tomlconfig t;
 	t.read (ss);
-	nano::rpc_config conf;
-	nano::rpc_config defaults;
+	nano::rpc_config conf{ nano::dev::network_params.network };
+	nano::rpc_config defaults{ nano::dev::network_params.network };
 	conf.deserialize_toml (t);
 
 	ASSERT_FALSE (t.get_error ()) << t.get_error ().get_message ();
@@ -163,7 +163,6 @@ TEST (toml, daemon_config_deserialize_defaults)
 	ASSERT_EQ (conf.node.external_address, defaults.node.external_address);
 	ASSERT_EQ (conf.node.external_port, defaults.node.external_port);
 	ASSERT_EQ (conf.node.io_threads, defaults.node.io_threads);
-	ASSERT_EQ (conf.node.deprecated_lmdb_max_dbs, defaults.node.deprecated_lmdb_max_dbs);
 	ASSERT_EQ (conf.node.max_work_generate_multiplier, defaults.node.max_work_generate_multiplier);
 	ASSERT_EQ (conf.node.network_threads, defaults.node.network_threads);
 	ASSERT_EQ (conf.node.secondary_work_peers, defaults.node.secondary_work_peers);
@@ -564,7 +563,6 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	ASSERT_NE (conf.node.external_address, defaults.node.external_address);
 	ASSERT_NE (conf.node.external_port, defaults.node.external_port);
 	ASSERT_NE (conf.node.io_threads, defaults.node.io_threads);
-	ASSERT_NE (conf.node.deprecated_lmdb_max_dbs, defaults.node.deprecated_lmdb_max_dbs);
 	ASSERT_NE (conf.node.max_work_generate_multiplier, defaults.node.max_work_generate_multiplier);
 	ASSERT_NE (conf.node.frontiers_confirmation, defaults.node.frontiers_confirmation);
 	ASSERT_NE (conf.node.network_threads, defaults.node.network_threads);
@@ -659,7 +657,8 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	ASSERT_NE (conf.node.lmdb_config.max_databases, defaults.node.lmdb_config.max_databases);
 	ASSERT_NE (conf.node.lmdb_config.map_size, defaults.node.lmdb_config.map_size);
 
-	ASSERT_NE (conf.node.rocksdb_config.enable, defaults.node.rocksdb_config.enable);
+	ASSERT_TRUE (conf.node.rocksdb_config.enable);
+	ASSERT_EQ (nano::rocksdb_config::using_rocksdb_in_tests (), defaults.node.rocksdb_config.enable);
 	ASSERT_NE (conf.node.rocksdb_config.memory_multiplier, defaults.node.rocksdb_config.memory_multiplier);
 	ASSERT_NE (conf.node.rocksdb_config.io_threads, defaults.node.rocksdb_config.io_threads);
 }
@@ -718,8 +717,8 @@ TEST (toml, rpc_config_deserialize_no_defaults)
 
 	nano::tomlconfig toml;
 	toml.read (ss);
-	nano::rpc_config conf;
-	nano::rpc_config defaults;
+	nano::rpc_config conf{ nano::dev::network_params.network };
+	nano::rpc_config defaults{ nano::dev::network_params.network };
 	conf.deserialize_toml (toml);
 
 	ASSERT_FALSE (toml.get_error ()) << toml.get_error ().get_message ();
@@ -753,8 +752,8 @@ TEST (toml, rpc_config_no_required)
 
 	nano::tomlconfig toml;
 	toml.read (ss);
-	nano::rpc_config conf;
-	nano::rpc_config defaults;
+	nano::rpc_config conf{ nano::dev::network_params.network };
+	nano::rpc_config defaults{ nano::dev::network_params.network };
 	conf.deserialize_toml (toml);
 
 	ASSERT_FALSE (toml.get_error ()) << toml.get_error ().get_message ();

@@ -120,21 +120,12 @@ class network final
 public:
 	network (nano::node &, uint16_t);
 	~network ();
+	nano::networks id;
 	void start ();
 	void stop ();
-	void flood_message (nano::message const &, nano::buffer_drop_policy const = nano::buffer_drop_policy::limiter, float const = 1.0f);
-	void flood_keepalive (float const scale_a = 1.0f)
-	{
-		nano::keepalive message;
-		random_fill (message.peers);
-		flood_message (message, nano::buffer_drop_policy::limiter, scale_a);
-	}
-	void flood_keepalive_self (float const scale_a = 0.5f)
-	{
-		nano::keepalive message;
-		fill_keepalive_self (message.peers);
-		flood_message (message, nano::buffer_drop_policy::limiter, scale_a);
-	}
+	void flood_message (nano::message &, nano::buffer_drop_policy const = nano::buffer_drop_policy::limiter, float const = 1.0f);
+	void flood_keepalive (float const scale_a = 1.0f);
+	void flood_keepalive_self (float const scale_a = 0.5f);
 	void flood_vote (std::shared_ptr<nano::vote> const &, float scale);
 	void flood_vote_pr (std::shared_ptr<nano::vote> const &);
 	// Flood block to all PRs and a random selection of non-PRs
@@ -154,7 +145,6 @@ public:
 	void broadcast_confirm_req_many (std::deque<std::pair<std::shared_ptr<nano::block>, std::shared_ptr<std::vector<std::shared_ptr<nano::transport::channel>>>>>, std::function<void ()> = nullptr, unsigned = broadcast_interval_ms);
 	std::shared_ptr<nano::transport::channel> find_node_id (nano::account const &);
 	std::shared_ptr<nano::transport::channel> find_channel (nano::endpoint const &);
-	void process_message (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
 	bool not_a_peer (nano::endpoint const &, bool);
 	// Should we reach out to this endpoint with a keepalive message
 	bool reachout (nano::endpoint const &, bool = false);
@@ -180,6 +170,12 @@ public:
 	bool empty () const;
 	void erase (nano::transport::channel const &);
 	void set_bandwidth_params (double, size_t);
+
+private:
+	void process_message (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
+
+public:
+	std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> inbound;
 	nano::message_buffer_manager buffer_container;
 	boost::asio::ip::udp::resolver resolver;
 	std::vector<boost::thread> packet_processing_threads;

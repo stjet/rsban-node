@@ -8,12 +8,13 @@
 #include <nano/node/transport/udp.hpp>
 #include <nano/node/voting.hpp>
 #include <nano/node/wallet.hpp>
-#include <nano/secure/blockstore.hpp>
 #include <nano/secure/ledger.hpp>
+#include <nano/secure/store.hpp>
 
-nano::request_aggregator::request_aggregator (nano::network_constants const & network_constants_a, nano::node_config const & config_a, nano::stat & stats_a, nano::vote_generator & generator_a, nano::vote_generator & final_generator_a, nano::local_vote_history & history_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::active_transactions & active_a) :
-	max_delay (network_constants_a.is_dev_network () ? 50 : 300),
-	small_delay (network_constants_a.is_dev_network () ? 10 : 50),
+nano::request_aggregator::request_aggregator (nano::node_config const & config_a, nano::stat & stats_a, nano::vote_generator & generator_a, nano::vote_generator & final_generator_a, nano::local_vote_history & history_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::active_transactions & active_a) :
+	config{ config_a },
+	max_delay (config_a.network_params.network.is_dev_network () ? 50 : 300),
+	small_delay (config_a.network_params.network.is_dev_network () ? 10 : 50),
 	max_channel_requests (config_a.max_queued_requests),
 	stats (stats_a),
 	local_votes (history_a),
@@ -150,7 +151,7 @@ bool nano::request_aggregator::empty ()
 
 void nano::request_aggregator::reply_action (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a) const
 {
-	nano::confirm_ack confirm (vote_a);
+	nano::confirm_ack confirm{ config.network_params.network, vote_a };
 	channel_a->send (confirm);
 }
 
@@ -192,12 +193,12 @@ std::pair<std::vector<std::shared_ptr<nano::block>>, std::vector<std::shared_ptr
 			if (!final_vote_hashes.empty ())
 			{
 				generate_final_vote = true;
-				block = ledger.store.block_get (transaction, final_vote_hashes[0]);
+				block = ledger.store.block.get (transaction, final_vote_hashes[0]);
 				// Allow same root vote
 				if (block != nullptr && final_vote_hashes.size () > 1)
 				{
 					to_generate_final.push_back (block);
-					block = ledger.store.block_get (transaction, final_vote_hashes[1]);
+					block = ledger.store.block.get (transaction, final_vote_hashes[1]);
 					debug_assert (final_vote_hashes.size () == 2);
 				}
 			}
@@ -211,7 +212,7 @@ std::pair<std::vector<std::shared_ptr<nano::block>>, std::vector<std::shared_ptr
 			// 4. Ledger by hash
 			if (block == nullptr)
 			{
-				block = ledger.store.block_get (transaction, hash);
+				block = ledger.store.block.get (transaction, hash);
 				// Confirmation status. Generate final votes for confirmed
 				if (block != nullptr)
 				{
@@ -225,7 +226,7 @@ std::pair<std::vector<std::shared_ptr<nano::block>>, std::vector<std::shared_ptr
 			if (block == nullptr && !root.is_zero ())
 			{
 				// Search for block root
-				auto successor (ledger.store.block_successor (transaction, root.as_block_hash ()));
+				auto successor (ledger.store.block.successor (transaction, root.as_block_hash ()));
 
 				// Search for account root
 				if (successor.is_zero ())
@@ -239,7 +240,7 @@ std::pair<std::vector<std::shared_ptr<nano::block>>, std::vector<std::shared_ptr
 				}
 				if (!successor.is_zero ())
 				{
-					auto successor_block = ledger.store.block_get (transaction, successor);
+					auto successor_block = ledger.store.block.get (transaction, successor);
 					debug_assert (successor_block != nullptr);
 					block = std::move (successor_block);
 					// 5. Votes in cache for successor
@@ -277,7 +278,7 @@ std::pair<std::vector<std::shared_ptr<nano::block>>, std::vector<std::shared_ptr
 				// Let the node know about the alternative block
 				if (block->hash () != hash)
 				{
-					nano::publish publish (block);
+					nano::publish publish (config.network_params.network, block);
 					channel_a->send (publish);
 				}
 			}

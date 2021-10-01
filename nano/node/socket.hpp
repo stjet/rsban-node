@@ -33,6 +33,13 @@ class socket : public std::enable_shared_from_this<nano::socket>
 	friend class server_socket;
 
 public:
+	enum class type_t
+	{
+		undefined,
+		bootstrap,
+		realtime,
+		realtime_response_server // special type for tcp channel response server
+	};
 	/**
 	 * Constructor
 	 * @param node Owning node
@@ -60,6 +67,14 @@ public:
 	bool full () const
 	{
 		return queue_size >= queue_size_max * 2;
+	}
+	type_t type () const
+	{
+		return type_m;
+	};
+	void type_set (type_t type_a)
+	{
+		type_m = type_a;
 	}
 
 protected:
@@ -91,6 +106,9 @@ protected:
 	void start_timer ();
 	void stop_timer ();
 	void checkup ();
+
+private:
+	type_t type_m{ type_t::undefined };
 
 public:
 	static size_t constexpr queue_size_max = 128;

@@ -34,13 +34,6 @@ private:
 std::unique_ptr<container_info_component> collect_container_info (bootstrap_listener & bootstrap_listener, std::string const & name);
 
 class message;
-enum class bootstrap_server_type
-{
-	undefined,
-	bootstrap,
-	realtime,
-	realtime_response_server // special type for tcp channel response server
-};
 class bootstrap_server final : public std::enable_shared_from_this<nano::bootstrap_server>
 {
 public:
@@ -66,12 +59,11 @@ public:
 	bool is_bootstrap_connection ();
 	bool is_realtime_connection ();
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
-	std::shared_ptr<nano::socket> socket;
+	std::shared_ptr<nano::socket> const socket;
 	std::shared_ptr<nano::node> node;
 	nano::mutex mutex;
 	std::queue<std::unique_ptr<nano::message>> requests;
 	std::atomic<bool> stopped{ false };
-	std::atomic<nano::bootstrap_server_type> type{ nano::bootstrap_server_type::undefined };
 	// Remote enpoint used to remove response channel even after socket closing
 	nano::tcp_endpoint remote_endpoint{ boost::asio::ip::address_v6::any (), 0 };
 	nano::account remote_node_id{ 0 };

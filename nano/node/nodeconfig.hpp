@@ -34,15 +34,15 @@ enum class frontiers_confirmation_mode : uint8_t
 class node_config
 {
 public:
-	node_config ();
-	node_config (uint16_t, nano::logging const &);
+	node_config (nano::network_params & network_params = nano::dev::network_params);
+	node_config (uint16_t, nano::logging const &, nano::network_params & network_params = nano::dev::network_params);
 	nano::error serialize_json (nano::jsonconfig &) const;
 	nano::error deserialize_json (bool &, nano::jsonconfig &);
 	nano::error serialize_toml (nano::tomlconfig &) const;
 	nano::error deserialize_toml (nano::tomlconfig &);
 	bool upgrade_json (unsigned, nano::jsonconfig &);
 	nano::account random_representative () const;
-	nano::network_params network_params;
+	nano::network_params & network_params;
 	uint16_t peering_port{ 0 };
 	nano::logging logging;
 	std::vector<std::pair<std::string, uint16_t>> work_peers;
@@ -73,7 +73,6 @@ public:
 	std::string callback_address;
 	uint16_t callback_port{ 0 };
 	std::string callback_target;
-	[[deprecated]] int deprecated_lmdb_max_dbs{ 128 };
 	bool allow_local_peers{ !(network_params.network.is_live_network () || network_params.network.is_test_network ()) }; // disable by default for live network
 	nano::stat_config stat_config;
 	nano::ipc::ipc_config ipc_config;
@@ -122,6 +121,7 @@ class node_flags final
 public:
 	std::vector<std::string> config_overrides;
 	std::vector<std::string> rpc_config_overrides;
+	bool disable_add_initial_peers{ false }; // For testing only
 	bool disable_backup{ false };
 	bool disable_lazy_bootstrap{ false };
 	bool disable_legacy_bootstrap{ false };
@@ -148,6 +148,7 @@ public:
 	bool enable_pruning{ false };
 	bool fast_bootstrap{ false };
 	bool read_only{ false };
+	bool disable_connection_cleanup{ false };
 	nano::confirmation_height_mode confirmation_height_processor_mode{ nano::confirmation_height_mode::automatic };
 	nano::generate_cache generate_cache;
 	bool inactive_node{ false };

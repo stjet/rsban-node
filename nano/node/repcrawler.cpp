@@ -91,7 +91,8 @@ void nano::rep_crawler::ongoing_crawl ()
 		node.keepalive_preconfigured (node.config.preconfigured_peers);
 	}
 	// Reduce crawl frequency when there's enough total peer weight
-	unsigned next_run_ms = node.network_params.network.is_dev_network () ? 100 : sufficient_weight ? 7000 : 3000;
+	unsigned next_run_ms = node.network_params.network.is_dev_network () ? 100 : sufficient_weight ? 7000
+																								   : 3000;
 	std::weak_ptr<nano::node> node_w (node.shared ());
 	node.workers.add_timed_task (now + std::chrono::milliseconds (next_run_ms), [node_w, this] () {
 		if (auto node_l = node_w.lock ())
@@ -324,9 +325,9 @@ void nano::rep_crawler::update_weights ()
 	}
 }
 
-std::vector<nano::representative> nano::rep_crawler::representatives (size_t count_a, nano::uint128_t const weight_a, boost::optional<decltype (nano::protocol_constants::protocol_version)> const & opt_version_min_a)
+std::vector<nano::representative> nano::rep_crawler::representatives (size_t count_a, nano::uint128_t const weight_a, boost::optional<decltype (nano::network_constants::protocol_version)> const & opt_version_min_a)
 {
-	auto version_min (opt_version_min_a.value_or (node.network_params.protocol.protocol_version_min ()));
+	auto version_min (opt_version_min_a.value_or (node.network_params.network.protocol_version_min));
 	std::vector<representative> result;
 	nano::lock_guard<nano::mutex> lock (probable_reps_mutex);
 	for (auto i (probable_reps.get<tag_weight> ().begin ()), n (probable_reps.get<tag_weight> ().end ()); i != n && result.size () < count_a; ++i)
@@ -339,7 +340,7 @@ std::vector<nano::representative> nano::rep_crawler::representatives (size_t cou
 	return result;
 }
 
-std::vector<nano::representative> nano::rep_crawler::principal_representatives (size_t count_a, boost::optional<decltype (nano::protocol_constants::protocol_version)> const & opt_version_min_a)
+std::vector<nano::representative> nano::rep_crawler::principal_representatives (size_t count_a, boost::optional<decltype (nano::network_constants::protocol_version)> const & opt_version_min_a)
 {
 	return representatives (count_a, node.minimum_principal_weight (), opt_version_min_a);
 }

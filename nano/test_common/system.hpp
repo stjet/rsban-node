@@ -19,6 +19,7 @@ public:
 	system ();
 	system (uint16_t, nano::transport::transport_type = nano::transport::transport_type::tcp, nano::node_flags = nano::node_flags ());
 	~system ();
+	void ledger_initialization_set (std::vector<nano::keypair> const & reps, nano::amount const & reserve = 0);
 	void generate_activity (nano::node &, std::vector<nano::account> &);
 	void generate_mass_activity (uint32_t, nano::node &);
 	void generate_usage_traffic (uint32_t, uint32_t, size_t);
@@ -49,16 +50,17 @@ public:
 	boost::asio::io_context io_ctx;
 	std::vector<std::shared_ptr<nano::node>> nodes;
 	nano::logging logging;
-	nano::work_pool work{ std::max (std::thread::hardware_concurrency (), 1u) };
+	nano::work_pool work{ nano::dev::network_params.network, std::max (std::thread::hardware_concurrency (), 1u) };
 	std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> deadline{ std::chrono::steady_clock::time_point::max () };
 	double deadline_scaling_factor{ 1.0 };
 	unsigned node_sequence{ 0 };
+
+private:
+	std::vector<std::shared_ptr<nano::block>> initialization_blocks;
 };
 std::unique_ptr<nano::state_block> upgrade_epoch (nano::work_pool &, nano::ledger &, nano::epoch);
 void blocks_confirm (nano::node &, std::vector<std::shared_ptr<nano::block>> const &, bool const = false);
 uint16_t get_available_port ();
 void cleanup_dev_directories_on_exit ();
-/** To use RocksDB in tests make sure the environment variable TEST_USE_ROCKSDB=1 is set */
-bool using_rocksdb_in_tests ();
 }
 REGISTER_ERROR_CODES (nano, error_system);

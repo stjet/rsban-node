@@ -38,6 +38,7 @@ TEST (block_store, construction)
 	ASSERT_TRUE (!store->init_error ());
 }
 
+// already ported to rust
 TEST (block_store, block_details)
 {
 	nano::block_details details_send (nano::epoch::epoch_0, true, false, false);

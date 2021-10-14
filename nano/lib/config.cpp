@@ -93,10 +93,10 @@ uint64_t nano::work_thresholds::threshold (nano::block_details const & details_a
 	static_assert (nano::epoch::max == nano::epoch::epoch_2, "work_v1::threshold is ill-defined");
 
 	uint64_t result{ std::numeric_limits<uint64_t>::max () };
-	switch (details_a.epoch)
+	switch (details_a.epoch ())
 	{
 		case nano::epoch::epoch_2:
-			result = (details_a.is_receive || details_a.is_epoch) ? epoch_2_receive : epoch_2;
+			result = (details_a.is_receive () || details_a.is_epoch ()) ? epoch_2_receive : epoch_2;
 			break;
 		case nano::epoch::epoch_1:
 		case nano::epoch::epoch_0:

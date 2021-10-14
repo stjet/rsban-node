@@ -831,8 +831,7 @@ void nano::wallet_store::destroy (nano::transaction const & transaction_a)
 std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash const & send_hash_a, nano::account const & representative_a, nano::uint128_union const & amount_a, nano::account const & account_a, uint64_t work_a, bool generate_work_a)
 {
 	std::shared_ptr<nano::block> block;
-	nano::block_details details;
-	details.is_receive = true;
+	nano::epoch epoch = nano::epoch::epoch_0;
 	if (wallets.node.config.receive_minimum.number () <= amount_a.number ())
 	{
 		auto block_transaction (wallets.node.ledger.store.tx_begin_read ());
@@ -854,12 +853,12 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 					if (!new_account)
 					{
 						block = std::make_shared<nano::state_block> (account_a, info.head, info.representative, info.balance.number () + pending_info.amount.number (), send_hash_a, prv, account_a, work_a);
-						details.epoch = std::max (info.epoch (), pending_info.epoch);
+						epoch = std::max (info.epoch (), pending_info.epoch);
 					}
 					else
 					{
 						block = std::make_shared<nano::state_block> (account_a, 0, representative_a, pending_info.amount, reinterpret_cast<nano::link const &> (send_hash_a), prv, account_a, work_a);
-						details.epoch = pending_info.epoch;
+						epoch = pending_info.epoch;
 					}
 				}
 				else
@@ -884,6 +883,7 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 	}
 	if (block != nullptr)
 	{
+		auto details = nano::block_details(epoch, false, true, false);
 		if (action_complete (block, account_a, generate_work_a, details))
 		{
 			// Return null block after work generation or ledger process error
@@ -895,8 +895,8 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 
 std::shared_ptr<nano::block> nano::wallet::change_action (nano::account const & source_a, nano::account const & representative_a, uint64_t work_a, bool generate_work_a)
 {
+	auto epoch = nano::epoch::epoch_0;
 	std::shared_ptr<nano::block> block;
-	nano::block_details details;
 	{
 		auto transaction (wallets.tx_begin_read ());
 		auto block_transaction (wallets.node.store.tx_begin_read ());
@@ -918,12 +918,13 @@ std::shared_ptr<nano::block> nano::wallet::change_action (nano::account const & 
 					store.work_get (transaction, source_a, work_a);
 				}
 				block = std::make_shared<nano::state_block> (source_a, info.head, representative_a, info.balance, 0, prv, source_a, work_a);
-				details.epoch = info.epoch ();
+				epoch = info.epoch ();
 			}
 		}
 	}
 	if (block != nullptr)
 	{
+		auto details = nano::block_details(epoch, false, false, false);
 		if (action_complete (block, source_a, generate_work_a, details))
 		{
 			// Return null block after work generation or ledger process error
@@ -946,8 +947,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 		auto error (false);
 		auto cached_block (false);
 		std::shared_ptr<nano::block> block;
-		nano::block_details details;
-		details.is_send = true;
+		nano::block_details details = nano::block_details(nano::epoch::epoch_0, true, false, false);
 		if (id_mdb_val)
 		{
 			nano::mdb_val result;
@@ -990,7 +990,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 							store.work_get (transaction, source_a, work_a);
 						}
 						block = std::make_shared<nano::state_block> (source_a, info.head, info.representative, balance - amount_a, account_a, prv, source_a, work_a);
-						details.epoch = info.epoch ();
+						details = nano::block_details(info.epoch (), details.is_send (), details.is_receive (), details.is_epoch ());
 						if (id_mdb_val && block != nullptr)
 						{
 							auto status (mdb_put (wallets.env.tx (transaction), wallets.node.wallets.send_action_ids, *id_mdb_val, nano::mdb_val (block->hash ()), 0));

@@ -1,6 +1,7 @@
 #include <nano/node/common.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/transport/transport.hpp>
+#include <nano/lib/rsnano.hpp>
 
 #include <boost/format.hpp>
 
@@ -268,28 +269,21 @@ bool nano::transport::reserved_address (nano::endpoint const & endpoint_a, bool 
 
 using namespace std::chrono_literals;
 
-extern "C"{
-	void* rsn_bandwidth_limiter_create(double limit_burst_ratio, size_t limit);
-	void rsn_bandwidth_limiter_destroy(void* handle);
-	void rsn_bandwidth_limiter_reset(void* handle, double limit_burst_ratio, size_t limit);
-	bool rsn_bandwidth_limiter_should_drop(void* handle, size_t message_size);
-}
-
 nano::bandwidth_limiter::bandwidth_limiter (const double limit_burst_ratio_a, const size_t limit_a)
 {
-	handle = rsn_bandwidth_limiter_create(limit_burst_ratio_a, limit_a);
+	handle = rsnano::rsn_bandwidth_limiter_create(limit_burst_ratio_a, limit_a);
 }
 
 nano::bandwidth_limiter::~bandwidth_limiter(){
-	rsn_bandwidth_limiter_destroy(handle);
+	rsnano::rsn_bandwidth_limiter_destroy(handle);
 }
 
 bool nano::bandwidth_limiter::should_drop (const size_t & message_size_a)
 {
-	return rsn_bandwidth_limiter_should_drop(handle, message_size_a);
+	return rsnano::rsn_bandwidth_limiter_should_drop(handle, message_size_a);
 }
 
 void nano::bandwidth_limiter::reset (const double limit_burst_ratio_a, const size_t limit_a)
 {
-	rsn_bandwidth_limiter_reset(handle, limit_burst_ratio_a, limit_a);
+	rsnano::rsn_bandwidth_limiter_reset(handle, limit_burst_ratio_a, limit_a);
 }

@@ -8,6 +8,7 @@
 #include <nano/lib/stream.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/lib/work.hpp>
+#include <nano/lib/rsnano.hpp>
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
@@ -33,7 +34,7 @@ class block_details
 	static_assert (static_cast<uint8_t> (nano::epoch::max) < (1 << 5), "Epoch max is too large for the sideband");
 
 public:
-	block_details () = default;
+	block_details ();
 	block_details (nano::epoch const epoch_a, bool const is_send_a, bool const is_receive_a, bool const is_epoch_a);
 	static constexpr size_t size ()
 	{
@@ -42,12 +43,13 @@ public:
 	bool operator== (block_details const & other_a) const;
 	void serialize (nano::stream &) const;
 	bool deserialize (nano::stream &);
-	nano::epoch epoch{ nano::epoch::epoch_0 };
-	bool is_send{ false };
-	bool is_receive{ false };
-	bool is_epoch{ false };
+	nano::epoch epoch () const;
+	bool is_send () const;
+	bool is_receive () const;
+	bool is_epoch () const;
 
 private:
+	rsnano::BlockDetailsDto dto;
 	uint8_t packed () const;
 	void unpack (uint8_t);
 };
@@ -111,6 +113,7 @@ public:
 	virtual void signature_set (nano::signature const &) = 0;
 	virtual ~block () = default;
 	virtual bool valid_predecessor (nano::block const &) const = 0;
+	// Serialized size
 	static size_t size (nano::block_type);
 	virtual nano::work_version work_version () const;
 	// If there are any changes to the hashables, call this to update the cached hash

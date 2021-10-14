@@ -808,7 +808,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::un
 			{
 				result.inserted = true;
 				auto hash (block_a->hash ());
-				auto epoch (block_a->sideband ().details.epoch);
+				auto epoch (block_a->sideband ().details.epoch ());
 				nano::uint128_t previous_balance (previous_balance_a.value_or (0));
 				debug_assert (!(previous_balance_a.value_or (0) > 0 && block_a->previous ().is_zero ()));
 				if (!previous_balance_a.is_initialized () && !block_a->previous ().is_zero ())

@@ -218,7 +218,7 @@ public:
 		auto block = get (transaction_a, hash_a);
 		if (block && block->type () == nano::block_type::state)
 		{
-			return block->sideband ().details.epoch;
+			return block->sideband ().details.epoch ();
 		}
 
 		return nano::epoch::epoch_0;

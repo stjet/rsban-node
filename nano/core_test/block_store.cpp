@@ -42,37 +42,33 @@ TEST (block_store, construction)
 TEST (block_store, block_details)
 {
 	nano::block_details details_send (nano::epoch::epoch_0, true, false, false);
-	ASSERT_TRUE (details_send.is_send);
-	ASSERT_FALSE (details_send.is_receive);
-	ASSERT_FALSE (details_send.is_epoch);
-	ASSERT_EQ (nano::epoch::epoch_0, details_send.epoch);
+	ASSERT_TRUE (details_send.is_send ());
+	ASSERT_FALSE (details_send.is_receive ());
+	ASSERT_FALSE (details_send.is_epoch ());
+	ASSERT_EQ (nano::epoch::epoch_0, details_send.epoch ());
 
 	nano::block_details details_receive (nano::epoch::epoch_1, false, true, false);
-	ASSERT_FALSE (details_receive.is_send);
-	ASSERT_TRUE (details_receive.is_receive);
-	ASSERT_FALSE (details_receive.is_epoch);
-	ASSERT_EQ (nano::epoch::epoch_1, details_receive.epoch);
+	ASSERT_FALSE (details_receive.is_send ());
+	ASSERT_TRUE (details_receive.is_receive ());
+	ASSERT_FALSE (details_receive.is_epoch ());
+	ASSERT_EQ (nano::epoch::epoch_1, details_receive.epoch ());
 
 	nano::block_details details_epoch (nano::epoch::epoch_2, false, false, true);
-	ASSERT_FALSE (details_epoch.is_send);
-	ASSERT_FALSE (details_epoch.is_receive);
-	ASSERT_TRUE (details_epoch.is_epoch);
-	ASSERT_EQ (nano::epoch::epoch_2, details_epoch.epoch);
+	ASSERT_FALSE (details_epoch.is_send ());
+	ASSERT_FALSE (details_epoch.is_receive ());
+	ASSERT_TRUE (details_epoch.is_epoch ());
+	ASSERT_EQ (nano::epoch::epoch_2, details_epoch.epoch ());
 
 	nano::block_details details_none (nano::epoch::unspecified, false, false, false);
-	ASSERT_FALSE (details_none.is_send);
-	ASSERT_FALSE (details_none.is_receive);
-	ASSERT_FALSE (details_none.is_epoch);
-	ASSERT_EQ (nano::epoch::unspecified, details_none.epoch);
+	ASSERT_FALSE (details_none.is_send ());
+	ASSERT_FALSE (details_none.is_receive ());
+	ASSERT_FALSE (details_none.is_epoch ());
+	ASSERT_EQ (nano::epoch::unspecified, details_none.epoch ());
 }
 
 TEST (block_store, block_details_serialization)
 {
-	nano::block_details details1;
-	details1.epoch = nano::epoch::epoch_2;
-	details1.is_epoch = false;
-	details1.is_receive = true;
-	details1.is_send = false;
+	nano::block_details details1(nano::epoch::epoch_2, false, true, false);
 	std::vector<uint8_t> vector;
 	{
 		nano::vectorstream stream1 (vector);
@@ -1350,10 +1346,10 @@ TEST (mdb_block_store, upgrade_v14_v15)
 	// Check that the epochs are set correctly for the sideband, accounts and pending entries
 	auto block = store.block.get (transaction, state_send.hash ());
 	ASSERT_NE (block, nullptr);
-	ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_1);
+	ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_1);
 	block = store.block.get (transaction, send.hash ());
 	ASSERT_NE (block, nullptr);
-	ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_0);
+	ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_0);
 	ASSERT_EQ (info.epoch (), nano::epoch::epoch_1);
 	nano::pending_info pending_info;
 	store.pending.get (transaction, nano::pending_key (nano::dev::genesis_key.pub, send.hash ()), pending_info);
@@ -1566,109 +1562,109 @@ TEST (mdb_block_store, upgrade_v17_v18)
 		auto block = store.block.get (transaction, send_zero.hash ());
 		ASSERT_NE (block, nullptr);
 		// All defaults
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_0);
-		ASSERT_FALSE (block->sideband ().details.is_epoch);
-		ASSERT_FALSE (block->sideband ().details.is_send);
-		ASSERT_FALSE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_0);
+		ASSERT_FALSE (block->sideband ().details.is_epoch ());
+		ASSERT_FALSE (block->sideband ().details.is_send ());
+		ASSERT_FALSE (block->sideband ().details.is_receive ());
 	}
 	{
 		// State receive from old zero send
 		auto block = store.block.get (transaction, state_receive_zero.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_0);
-		ASSERT_FALSE (block->sideband ().details.is_epoch);
-		ASSERT_FALSE (block->sideband ().details.is_send);
-		ASSERT_TRUE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_0);
+		ASSERT_FALSE (block->sideband ().details.is_epoch ());
+		ASSERT_FALSE (block->sideband ().details.is_send ());
+		ASSERT_TRUE (block->sideband ().details.is_receive ());
 	}
 	{
 		// Epoch
 		auto block = store.block.get (transaction, epoch.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_1);
-		ASSERT_TRUE (block->sideband ().details.is_epoch);
-		ASSERT_FALSE (block->sideband ().details.is_send);
-		ASSERT_FALSE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_1);
+		ASSERT_TRUE (block->sideband ().details.is_epoch ());
+		ASSERT_FALSE (block->sideband ().details.is_send ());
+		ASSERT_FALSE (block->sideband ().details.is_receive ());
 	}
 	{
 		// State send
 		auto block = store.block.get (transaction, state_send.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_1);
-		ASSERT_FALSE (block->sideband ().details.is_epoch);
-		ASSERT_TRUE (block->sideband ().details.is_send);
-		ASSERT_FALSE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_1);
+		ASSERT_FALSE (block->sideband ().details.is_epoch ());
+		ASSERT_TRUE (block->sideband ().details.is_send ());
+		ASSERT_FALSE (block->sideband ().details.is_receive ());
 	}
 	{
 		// State receive
 		auto block = store.block.get (transaction, state_receive.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_1);
-		ASSERT_FALSE (block->sideband ().details.is_epoch);
-		ASSERT_FALSE (block->sideband ().details.is_send);
-		ASSERT_TRUE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_1);
+		ASSERT_FALSE (block->sideband ().details.is_epoch ());
+		ASSERT_FALSE (block->sideband ().details.is_send ());
+		ASSERT_TRUE (block->sideband ().details.is_receive ());
 	}
 	{
 		// State change
 		auto block = store.block.get (transaction, state_change.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_1);
-		ASSERT_FALSE (block->sideband ().details.is_epoch);
-		ASSERT_FALSE (block->sideband ().details.is_send);
-		ASSERT_FALSE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_1);
+		ASSERT_FALSE (block->sideband ().details.is_epoch ());
+		ASSERT_FALSE (block->sideband ().details.is_send ());
+		ASSERT_FALSE (block->sideband ().details.is_receive ());
 	}
 	{
 		// State send + change
 		auto block = store.block.get (transaction, state_send_change.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_1);
-		ASSERT_FALSE (block->sideband ().details.is_epoch);
-		ASSERT_TRUE (block->sideband ().details.is_send);
-		ASSERT_FALSE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_1);
+		ASSERT_FALSE (block->sideband ().details.is_epoch ());
+		ASSERT_TRUE (block->sideband ().details.is_send ());
+		ASSERT_FALSE (block->sideband ().details.is_receive ());
 	}
 	{
 		// Epoch on unopened account
 		auto block = store.block.get (transaction, epoch_first.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_2);
-		ASSERT_TRUE (block->sideband ().details.is_epoch);
-		ASSERT_FALSE (block->sideband ().details.is_send);
-		ASSERT_FALSE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_2);
+		ASSERT_TRUE (block->sideband ().details.is_epoch ());
+		ASSERT_FALSE (block->sideband ().details.is_send ());
+		ASSERT_FALSE (block->sideband ().details.is_receive ());
 	}
 	{
 		// State open following epoch
 		auto block = store.block.get (transaction, state_receive2.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_2);
-		ASSERT_FALSE (block->sideband ().details.is_epoch);
-		ASSERT_FALSE (block->sideband ().details.is_send);
-		ASSERT_TRUE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_2);
+		ASSERT_FALSE (block->sideband ().details.is_epoch ());
+		ASSERT_FALSE (block->sideband ().details.is_send ());
+		ASSERT_TRUE (block->sideband ().details.is_receive ());
 	}
 	{
 		// Another state send
 		auto block = store.block.get (transaction, state_send2.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_1);
-		ASSERT_FALSE (block->sideband ().details.is_epoch);
-		ASSERT_TRUE (block->sideband ().details.is_send);
-		ASSERT_FALSE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_1);
+		ASSERT_FALSE (block->sideband ().details.is_epoch ());
+		ASSERT_TRUE (block->sideband ().details.is_send ());
+		ASSERT_FALSE (block->sideband ().details.is_receive ());
 	}
 	{
 		// State open
 		auto block = store.block.get (transaction, state_open.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_1);
-		ASSERT_FALSE (block->sideband ().details.is_epoch);
-		ASSERT_FALSE (block->sideband ().details.is_send);
-		ASSERT_TRUE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_1);
+		ASSERT_FALSE (block->sideband ().details.is_epoch ());
+		ASSERT_FALSE (block->sideband ().details.is_send ());
+		ASSERT_TRUE (block->sideband ().details.is_receive ());
 	}
 	{
 		// State send to an epoch link
 		auto block = store.block.get (transaction, state_send_epoch_link.hash ());
 		ASSERT_NE (block, nullptr);
-		ASSERT_EQ (block->sideband ().details.epoch, nano::epoch::epoch_1);
-		ASSERT_FALSE (block->sideband ().details.is_epoch);
-		ASSERT_TRUE (block->sideband ().details.is_send);
-		ASSERT_FALSE (block->sideband ().details.is_receive);
+		ASSERT_EQ (block->sideband ().details.epoch (), nano::epoch::epoch_1);
+		ASSERT_FALSE (block->sideband ().details.is_epoch ());
+		ASSERT_TRUE (block->sideband ().details.is_send ());
+		ASSERT_FALSE (block->sideband ().details.is_receive ());
 	}
 	// Version should be correct
 	ASSERT_LT (17, store.version.get (transaction));
@@ -1746,17 +1742,17 @@ TEST (mdb_block_store, upgrade_v18_v19)
 	ASSERT_TRUE (store.block.get (transaction, nano::dev::genesis->hash ()));
 	auto state_epoch_disk (store.block.get (transaction, state_epoch.hash ()));
 	ASSERT_NE (nullptr, state_epoch_disk);
-	ASSERT_EQ (nano::epoch::epoch_1, state_epoch_disk->sideband ().details.epoch);
+	ASSERT_EQ (nano::epoch::epoch_1, state_epoch_disk->sideband ().details.epoch ());
 	ASSERT_EQ (nano::epoch::epoch_0, state_epoch_disk->sideband ().source_epoch); // Not used for epoch state blocks
 	ASSERT_TRUE (store.block.get (transaction, state_send.hash ()));
 	auto state_send_disk (store.block.get (transaction, state_send.hash ()));
 	ASSERT_NE (nullptr, state_send_disk);
-	ASSERT_EQ (nano::epoch::epoch_1, state_send_disk->sideband ().details.epoch);
+	ASSERT_EQ (nano::epoch::epoch_1, state_send_disk->sideband ().details.epoch ());
 	ASSERT_EQ (nano::epoch::epoch_0, state_send_disk->sideband ().source_epoch); // Not used for send state blocks
 	ASSERT_TRUE (store.block.get (transaction, state_open.hash ()));
 	auto state_open_disk (store.block.get (transaction, state_open.hash ()));
 	ASSERT_NE (nullptr, state_open_disk);
-	ASSERT_EQ (nano::epoch::epoch_1, state_open_disk->sideband ().details.epoch);
+	ASSERT_EQ (nano::epoch::epoch_1, state_open_disk->sideband ().details.epoch ());
 	ASSERT_EQ (nano::epoch::epoch_1, state_open_disk->sideband ().source_epoch);
 
 	ASSERT_EQ (7, store.count (transaction, store.blocks_handle));
@@ -2052,7 +2048,7 @@ void write_sideband_v14 (nano::mdb_store & store_a, nano::transaction & transact
 	}
 
 	MDB_val val{ data.size (), data.data () };
-	ASSERT_FALSE (mdb_put (store_a.env.tx (transaction_a), block->sideband ().details.epoch == nano::epoch::epoch_0 ? store_a.state_blocks_v0_handle : store_a.state_blocks_v1_handle, nano::mdb_val (block_a.hash ()), &val, 0));
+	ASSERT_FALSE (mdb_put (store_a.env.tx (transaction_a), block->sideband ().details.epoch () == nano::epoch::epoch_0 ? store_a.state_blocks_v0_handle : store_a.state_blocks_v1_handle, nano::mdb_val (block_a.hash ()), &val, 0));
 }
 
 void write_sideband_v15 (nano::mdb_store & store_a, nano::transaction & transaction_a, nano::block const & block_a)
@@ -2060,9 +2056,9 @@ void write_sideband_v15 (nano::mdb_store & store_a, nano::transaction & transact
 	auto block = store_a.block.get (transaction_a, block_a.hash ());
 	ASSERT_NE (block, nullptr);
 
-	ASSERT_LE (block->sideband ().details.epoch, nano::epoch::max);
+	ASSERT_LE (block->sideband ().details.epoch (), nano::epoch::max);
 	// Simulated by writing 0 on every of the most significant bits, leaving out epoch only, as if pre-upgrade
-	nano::block_sideband_v18 sideband_v15 (block->sideband ().account, block->sideband ().successor, block->sideband ().balance, block->sideband ().timestamp, block->sideband ().height, block->sideband ().details.epoch, false, false, false);
+	nano::block_sideband_v18 sideband_v15 (block->sideband ().account, block->sideband ().successor, block->sideband ().balance, block->sideband ().timestamp, block->sideband ().height, block->sideband ().details.epoch (), false, false, false);
 	std::vector<uint8_t> data;
 	{
 		nano::vectorstream stream (data);
@@ -2079,7 +2075,7 @@ void write_block_w_sideband_v18 (nano::mdb_store & store_a, MDB_dbi database, na
 	auto block = store_a.block.get (transaction_a, block_a.hash ());
 	ASSERT_NE (block, nullptr);
 	auto new_sideband (block->sideband ());
-	nano::block_sideband_v18 sideband_v18 (new_sideband.account, new_sideband.successor, new_sideband.balance, new_sideband.height, new_sideband.timestamp, new_sideband.details.epoch, new_sideband.details.is_send, new_sideband.details.is_receive, new_sideband.details.is_epoch);
+	nano::block_sideband_v18 sideband_v18 (new_sideband.account, new_sideband.successor, new_sideband.balance, new_sideband.height, new_sideband.timestamp, new_sideband.details.epoch (), new_sideband.details.is_send (), new_sideband.details.is_receive (), new_sideband.details.is_epoch ());
 
 	std::vector<uint8_t> data;
 	{

@@ -395,22 +395,24 @@ uint64_t nano::json_handler::difficulty_ledger (nano::block const & block_a)
 	// Send check
 	if (block_previous != nullptr)
 	{
-		details.is_send = node.store.block.balance (transaction, previous) > block_a.balance ().number ();
+		auto is_send = node.store.block.balance (transaction, previous) > block_a.balance ().number ();
+		details = nano::block_details(nano::epoch::epoch_0, is_send, false, false);
 		details_found = true;
 	}
 	// Epoch check
 	if (block_previous != nullptr)
 	{
-		details.epoch = block_previous->sideband ().details.epoch;
+		auto epoch = block_previous->sideband ().details.epoch ();
+		details = nano::block_details(epoch, details.is_send (), details.is_receive (), details.is_epoch ());
 	}
 	auto link (block_a.link ());
-	if (!link.is_zero () && !details.is_send)
+	if (!link.is_zero () && !details.is_send ())
 	{
 		auto block_link (node.store.block.get (transaction, link.as_block_hash ()));
 		if (block_link != nullptr && node.store.pending.exists (transaction, nano::pending_key (block_a.account (), link.as_block_hash ())))
 		{
-			details.epoch = std::max (details.epoch, block_link->sideband ().details.epoch);
-			details.is_receive = true;
+			auto epoch = std::max (details.epoch (), block_link->sideband ().details.epoch ());
+			details = nano::block_details(epoch, details.is_send (), true, details.is_epoch ());
 			details_found = true;
 		}
 	}

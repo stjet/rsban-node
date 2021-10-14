@@ -1672,33 +1672,46 @@ void nano::receive_hashables::hash (blake2b_state & hash_a) const
 	blake2b_update (&hash_a, source.bytes.data (), sizeof (source.bytes));
 }
 
-nano::block_details::block_details (nano::epoch const epoch_a, bool const is_send_a, bool const is_receive_a, bool const is_epoch_a) :
-	epoch (epoch_a), is_send (is_send_a), is_receive (is_receive_a), is_epoch (is_epoch_a)
+nano::block_details::block_details()
 {
+	rsnano::block_details_create(static_cast<uint8_t> (nano::epoch::epoch_0), false, false, false, &dto);
+}
+
+nano::block_details::block_details (nano::epoch const epoch_a, bool const is_send_a, bool const is_receive_a, bool const is_epoch_a)
+{
+	rsnano::block_details_create(static_cast<uint8_t> (epoch_a), is_send_a, is_receive_a, is_epoch_a, &dto);
 }
 
 bool nano::block_details::operator== (nano::block_details const & other_a) const
 {
-	return epoch == other_a.epoch && is_send == other_a.is_send && is_receive == other_a.is_receive && is_epoch == other_a.is_epoch;
+	return dto.epoch == other_a.dto.epoch && dto.is_send == other_a.dto.is_send && dto.is_receive == other_a.dto.is_receive && dto.is_epoch == other_a.dto.is_epoch;
+}
+
+nano::epoch nano::block_details::epoch () const
+{
+	return static_cast<nano::epoch> (dto.epoch);
+}
+
+bool nano::block_details::is_send () const {
+	return dto.is_send;
+}
+
+bool nano::block_details::is_receive () const {
+	return dto.is_receive;
+}
+
+bool nano::block_details::is_epoch () const {
+	return dto.is_epoch;
 }
 
 uint8_t nano::block_details::packed () const
 {
-	std::bitset<8> result (static_cast<uint8_t> (epoch));
-	result.set (7, is_send);
-	result.set (6, is_receive);
-	result.set (5, is_epoch);
-	return static_cast<uint8_t> (result.to_ulong ());
+	return rsnano::block_details_packed(&dto);
 }
 
 void nano::block_details::unpack (uint8_t details_a)
 {
-	constexpr std::bitset<8> epoch_mask{ 0b00011111 };
-	auto as_bitset = static_cast<std::bitset<8>> (details_a);
-	is_send = as_bitset.test (7);
-	is_receive = as_bitset.test (6);
-	is_epoch = as_bitset.test (5);
-	epoch = static_cast<nano::epoch> ((as_bitset & epoch_mask).to_ulong ());
+	rsnano::block_details_unpack(details_a, &dto);
 }
 
 void nano::block_details::serialize (nano::stream & stream_a) const
@@ -1726,15 +1739,15 @@ bool nano::block_details::deserialize (nano::stream & stream_a)
 std::string nano::state_subtype (nano::block_details const details_a)
 {
 	debug_assert (details_a.is_epoch + details_a.is_receive + details_a.is_send <= 1);
-	if (details_a.is_send)
+	if (details_a.is_send ())
 	{
 		return "send";
 	}
-	else if (details_a.is_receive)
+	else if (details_a.is_receive ())
 	{
 		return "receive";
 	}
-	else if (details_a.is_epoch)
+	else if (details_a.is_epoch ())
 	{
 		return "epoch";
 	}

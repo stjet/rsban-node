@@ -1017,7 +1017,7 @@ TEST (wallet, epoch_2_validation)
 	{
 		auto send = wallet.send_action (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, amount, 1);
 		ASSERT_NE (nullptr, send);
-		ASSERT_EQ (nano::epoch::epoch_2, send->sideband ().details.epoch);
+		ASSERT_EQ (nano::epoch::epoch_2, send->sideband ().details.epoch ());
 		ASSERT_EQ (nano::epoch::epoch_0, send->sideband ().source_epoch); // Not used for send state blocks
 
 		auto receive = wallet.receive_action (send->hash (), nano::dev::genesis_key.pub, amount, send->link ().as_account (), 1);
@@ -1025,7 +1025,7 @@ TEST (wallet, epoch_2_validation)
 		if (nano::dev::network_params.work.difficulty (*receive) < node.network_params.work.base)
 		{
 			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive), node.network_params.work.epoch_2_receive);
-			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().details.epoch);
+			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().details.epoch ());
 			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().source_epoch);
 			break;
 		}

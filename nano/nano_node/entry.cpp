@@ -1513,7 +1513,7 @@ int main (int argc, char * const * argv)
 							}
 							if (node->ledger.is_epoch_link (state_block.hashables.link))
 							{
-								if ((state_block.hashables.balance == prev_balance && !error_or_pruned) || (node->ledger.pruning && error_or_pruned && block->sideband ().details.is_epoch))
+								if ((state_block.hashables.balance == prev_balance && !error_or_pruned) || (node->ledger.pruning && error_or_pruned && block->sideband ().details.is_epoch ()))
 								{
 									invalid = validate_message (node->ledger.epoch_signer (block->link ()), hash, block->block_signature ());
 								}
@@ -1529,7 +1529,7 @@ int main (int argc, char * const * argv)
 					if (block->type () != nano::block_type::state)
 					{
 						// Not state
-						block_details_error = sideband.details.is_send || sideband.details.is_receive || sideband.details.is_epoch;
+						block_details_error = sideband.details.is_send () || sideband.details.is_receive () || sideband.details.is_epoch ();
 					}
 					else
 					{
@@ -1540,24 +1540,24 @@ int main (int argc, char * const * argv)
 							if (block->balance () < prev_balance)
 							{
 								// State send
-								block_details_error = !sideband.details.is_send || sideband.details.is_receive || sideband.details.is_epoch;
+								block_details_error = !sideband.details.is_send () || sideband.details.is_receive () || sideband.details.is_epoch ();
 							}
 							else
 							{
 								if (block->link ().is_zero ())
 								{
 									// State change
-									block_details_error = sideband.details.is_send || sideband.details.is_receive || sideband.details.is_epoch;
+									block_details_error = sideband.details.is_send () || sideband.details.is_receive () || sideband.details.is_epoch ();
 								}
 								else if (block->balance () == prev_balance && node->ledger.is_epoch_link (block->link ()))
 								{
 									// State epoch
-									block_details_error = !sideband.details.is_epoch || sideband.details.is_send || sideband.details.is_receive;
+									block_details_error = !sideband.details.is_epoch () || sideband.details.is_send () || sideband.details.is_receive ();
 								}
 								else
 								{
 									// State receive
-									block_details_error = !sideband.details.is_receive || sideband.details.is_send || sideband.details.is_epoch;
+									block_details_error = !sideband.details.is_receive () || sideband.details.is_send () || sideband.details.is_epoch ();
 									block_details_error |= !node->ledger.block_or_pruned_exists (transaction, block->link ().as_block_hash ());
 								}
 							}
@@ -1572,7 +1572,7 @@ int main (int argc, char * const * argv)
 						print_error_message (boost::str (boost::format ("Incorrect sideband block details for block %1%\n") % hash.to_string ()));
 					}
 					// Check link epoch version
-					if (sideband.details.is_receive && (!node->ledger.pruning || !node->store.pruned.exists (transaction, block->link ().as_block_hash ())))
+					if (sideband.details.is_receive () && (!node->ledger.pruning || !node->store.pruned.exists (transaction, block->link ().as_block_hash ())))
 					{
 						if (sideband.source_epoch != node->store.block.version (transaction, block->link ().as_block_hash ()))
 						{

@@ -4370,8 +4370,8 @@ TEST (rpc, block_create_state_open)
 	rpc_ctx->io_scope->reset ();
 	auto process_result (node->process (*state_block));
 	ASSERT_EQ (nano::process_result::progress, process_result.code);
-	ASSERT_EQ (state_block->sideband ().details.epoch, nano::epoch::epoch_0);
-	ASSERT_TRUE (state_block->sideband ().details.is_receive);
+	ASSERT_EQ (state_block->sideband ().details.epoch (), nano::epoch::epoch_0);
+	ASSERT_TRUE (state_block->sideband ().details.is_receive ());
 	ASSERT_FALSE (node->latest (key.pub).is_zero ());
 }
 
@@ -4450,8 +4450,8 @@ TEST (rpc, block_create_open_epoch_v2)
 	rpc_ctx->io_scope->reset ();
 	auto process_result (node->process (*state_block));
 	ASSERT_EQ (nano::process_result::progress, process_result.code);
-	ASSERT_EQ (state_block->sideband ().details.epoch, nano::epoch::epoch_2);
-	ASSERT_TRUE (state_block->sideband ().details.is_receive);
+	ASSERT_EQ (state_block->sideband ().details.epoch (), nano::epoch::epoch_2);
+	ASSERT_TRUE (state_block->sideband ().details.is_receive ());
 	ASSERT_FALSE (node->latest (key.pub).is_zero ());
 }
 
@@ -4493,8 +4493,8 @@ TEST (rpc, block_create_receive_epoch_v2)
 	rpc_ctx->io_scope->reset ();
 	auto process_result (node->process (*state_block));
 	ASSERT_EQ (nano::process_result::progress, process_result.code);
-	ASSERT_EQ (state_block->sideband ().details.epoch, nano::epoch::epoch_2);
-	ASSERT_TRUE (state_block->sideband ().details.is_receive);
+	ASSERT_EQ (state_block->sideband ().details.epoch (), nano::epoch::epoch_2);
+	ASSERT_TRUE (state_block->sideband ().details.is_receive ());
 	ASSERT_FALSE (node->latest (key.pub).is_zero ());
 }
 
@@ -4535,8 +4535,8 @@ TEST (rpc, block_create_send_epoch_v2)
 	rpc_ctx->io_scope->reset ();
 	auto process_result (node->process (*state_block));
 	ASSERT_EQ (nano::process_result::progress, process_result.code);
-	ASSERT_EQ (state_block->sideband ().details.epoch, nano::epoch::epoch_2);
-	ASSERT_TRUE (state_block->sideband ().details.is_send);
+	ASSERT_EQ (state_block->sideband ().details.epoch (), nano::epoch::epoch_2);
+	ASSERT_TRUE (state_block->sideband ().details.is_send ());
 	ASSERT_FALSE (node->latest (key.pub).is_zero ());
 }
 

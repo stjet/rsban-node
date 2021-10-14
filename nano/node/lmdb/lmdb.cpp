@@ -561,7 +561,7 @@ void nano::mdb_store::upgrade_v17_to_v18 (nano::write_transaction const & transa
 			is_receive = true;
 		}
 
-		nano::block_sideband_v18 new_sideband (sideband.account, sideband.successor, sideband.balance, sideband.height, sideband.timestamp, sideband.details.epoch, is_send, is_receive, is_epoch);
+		nano::block_sideband_v18 new_sideband (sideband.account, sideband.successor, sideband.balance, sideband.height, sideband.timestamp, sideband.details.epoch (), is_send, is_receive, is_epoch);
 		// Write these out
 		std::vector<uint8_t> data;
 		{
@@ -705,7 +705,7 @@ void nano::mdb_store::upgrade_v18_to_v19 (nano::write_transaction const & transa
 			nano::block_sideband_v18 const & old_sideband (block_w_sideband_v18.sideband);
 			nano::epoch source_epoch (nano::epoch::epoch_0);
 			// Source block v18 epoch
-			if (old_sideband.details.is_receive)
+			if (old_sideband.details.is_receive ())
 			{
 				auto db_val (block_raw_get_by_type_v18 (transaction_a, block_w_sideband_v18.block->link ().as_block_hash (), type_state));
 				if (db_val.is_initialized ())
@@ -716,10 +716,10 @@ void nano::mdb_store::upgrade_v18_to_v19 (nano::write_transaction const & transa
 					nano::block_sideband_v18 source_sideband;
 					auto error (source_sideband.deserialize (stream, type_state));
 					release_assert (!error);
-					source_epoch = source_sideband.details.epoch;
+					source_epoch = source_sideband.details.epoch ();
 				}
 			}
-			nano::block_sideband new_sideband (old_sideband.account, old_sideband.successor, old_sideband.balance, old_sideband.height, old_sideband.timestamp, old_sideband.details.epoch, old_sideband.details.is_send, old_sideband.details.is_receive, old_sideband.details.is_epoch, source_epoch);
+			nano::block_sideband new_sideband (old_sideband.account, old_sideband.successor, old_sideband.balance, old_sideband.height, old_sideband.timestamp, old_sideband.details.epoch (), old_sideband.details.is_send (), old_sideband.details.is_receive (), old_sideband.details.is_epoch (), source_epoch);
 
 			std::vector<uint8_t> data;
 			{
@@ -996,7 +996,7 @@ std::shared_ptr<nano::block> nano::mdb_store::block_get_v18 (nano::transaction c
 		nano::block_sideband_v18 sideband;
 		auto error = (sideband.deserialize (stream, type));
 		release_assert (!error);
-		result->sideband_set (nano::block_sideband (sideband.account, sideband.successor, sideband.balance, sideband.height, sideband.timestamp, sideband.details.epoch, sideband.details.is_send, sideband.details.is_receive, sideband.details.is_epoch, nano::epoch::epoch_0));
+		result->sideband_set (nano::block_sideband (sideband.account, sideband.successor, sideband.balance, sideband.height, sideband.timestamp, sideband.details.epoch (), sideband.details.is_send (), sideband.details.is_receive (), sideband.details.is_epoch (), nano::epoch::epoch_0));
 	}
 	return result;
 }

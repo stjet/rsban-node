@@ -7,6 +7,10 @@
 
 #include <boost/asio/ip/network_v6.hpp>
 
+namespace rsnano
+{
+	class BandwidthLimiterHandle;
+}
 namespace nano
 {
 class bandwidth_limiter final
@@ -19,7 +23,7 @@ public:
 	void reset (const double, const size_t);
 
 private:
-	void* handle;
+	rsnano::BandwidthLimiterHandle* handle;
 };
 
 namespace transport

@@ -1,7 +1,7 @@
+#include <nano/lib/rsnano.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/transport/transport.hpp>
-#include <nano/lib/rsnano.hpp>
 
 #include <boost/format.hpp>
 
@@ -271,19 +271,20 @@ using namespace std::chrono_literals;
 
 nano::bandwidth_limiter::bandwidth_limiter (const double limit_burst_ratio_a, const size_t limit_a)
 {
-	handle = rsnano::rsn_bandwidth_limiter_create(limit_burst_ratio_a, limit_a);
+	handle = rsnano::rsn_bandwidth_limiter_create (limit_burst_ratio_a, limit_a);
 }
 
-nano::bandwidth_limiter::~bandwidth_limiter(){
-	rsnano::rsn_bandwidth_limiter_destroy(handle);
+nano::bandwidth_limiter::~bandwidth_limiter ()
+{
+	rsnano::rsn_bandwidth_limiter_destroy (handle);
 }
 
 bool nano::bandwidth_limiter::should_drop (const size_t & message_size_a)
 {
-	return rsnano::rsn_bandwidth_limiter_should_drop(handle, message_size_a);
+	return rsnano::rsn_bandwidth_limiter_should_drop (handle, message_size_a);
 }
 
 void nano::bandwidth_limiter::reset (const double limit_burst_ratio_a, const size_t limit_a)
 {
-	rsnano::rsn_bandwidth_limiter_reset(handle, limit_burst_ratio_a, limit_a);
+	rsnano::rsn_bandwidth_limiter_reset (handle, limit_burst_ratio_a, limit_a);
 }

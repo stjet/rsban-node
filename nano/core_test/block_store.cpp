@@ -68,7 +68,7 @@ TEST (block_store, block_details)
 
 TEST (block_store, block_details_serialization)
 {
-	nano::block_details details1(nano::epoch::epoch_2, false, true, false);
+	nano::block_details details1 (nano::epoch::epoch_2, false, true, false);
 	std::vector<uint8_t> vector;
 	{
 		nano::vectorstream stream1 (vector);

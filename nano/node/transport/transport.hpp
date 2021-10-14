@@ -9,7 +9,7 @@
 
 namespace rsnano
 {
-	class BandwidthLimiterHandle;
+class BandwidthLimiterHandle;
 }
 namespace nano
 {
@@ -18,12 +18,12 @@ class bandwidth_limiter final
 public:
 	// initialize with limit 0 = unbounded
 	bandwidth_limiter (const double, const size_t);
-	~bandwidth_limiter();
+	~bandwidth_limiter ();
 	bool should_drop (const size_t &);
 	void reset (const double, const size_t);
 
 private:
-	rsnano::BandwidthLimiterHandle* handle;
+	rsnano::BandwidthLimiterHandle * handle;
 };
 
 namespace transport

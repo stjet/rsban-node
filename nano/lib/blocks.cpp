@@ -1672,14 +1672,14 @@ void nano::receive_hashables::hash (blake2b_state & hash_a) const
 	blake2b_update (&hash_a, source.bytes.data (), sizeof (source.bytes));
 }
 
-nano::block_details::block_details()
+nano::block_details::block_details ()
 {
-	rsnano::block_details_create(static_cast<uint8_t> (nano::epoch::epoch_0), false, false, false, &dto);
+	rsnano::block_details_create (static_cast<uint8_t> (nano::epoch::epoch_0), false, false, false, &dto);
 }
 
 nano::block_details::block_details (nano::epoch const epoch_a, bool const is_send_a, bool const is_receive_a, bool const is_epoch_a)
 {
-	rsnano::block_details_create(static_cast<uint8_t> (epoch_a), is_send_a, is_receive_a, is_epoch_a, &dto);
+	rsnano::block_details_create (static_cast<uint8_t> (epoch_a), is_send_a, is_receive_a, is_epoch_a, &dto);
 }
 
 bool nano::block_details::operator== (nano::block_details const & other_a) const
@@ -1692,26 +1692,29 @@ nano::epoch nano::block_details::epoch () const
 	return static_cast<nano::epoch> (dto.epoch);
 }
 
-bool nano::block_details::is_send () const {
+bool nano::block_details::is_send () const
+{
 	return dto.is_send;
 }
 
-bool nano::block_details::is_receive () const {
+bool nano::block_details::is_receive () const
+{
 	return dto.is_receive;
 }
 
-bool nano::block_details::is_epoch () const {
+bool nano::block_details::is_epoch () const
+{
 	return dto.is_epoch;
 }
 
 uint8_t nano::block_details::packed () const
 {
-	return rsnano::block_details_packed(&dto);
+	return rsnano::block_details_packed (&dto);
 }
 
 void nano::block_details::unpack (uint8_t details_a)
 {
-	rsnano::block_details_unpack(details_a, &dto);
+	rsnano::block_details_unpack (details_a, &dto);
 }
 
 void nano::block_details::serialize (nano::stream & stream_a) const

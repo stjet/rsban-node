@@ -7,7 +7,9 @@ build-essential \
 g++ \
 wget \
 python \
-zlib1g-dev
+zlib1g-dev \
+curl \
+git
 
 RUN wget -O cmake_install.sh https://github.com/Kitware/CMake/releases/download/v3.15.4/cmake-3.15.4-Linux-x86_64.sh && \
 chmod +x cmake_install.sh && \
@@ -18,6 +20,11 @@ qt5-default \
 valgrind \
 xorg xvfb xauth xfonts-100dpi xfonts-75dpi xfonts-scalable xfonts-cyrillic
 
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y \
+    && git clone https://github.com/AndrewGaspar/corrosion.git \
+    && cmake -Scorrosion -Bbuild -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build --config Release \
+    && cmake --install build --config Release 
 
 ARG REPOSITORY=simpago/nano-node
 LABEL org.opencontainers.image.source https://github.com/$REPOSITORY

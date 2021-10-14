@@ -1,4 +1,4 @@
-FROM nanocurrency/nano-env:base
+FROM simpago/nano-env:base
 
 RUN apt update -qq && apt-get install -yqq git
 

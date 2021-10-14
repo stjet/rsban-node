@@ -21,7 +21,7 @@ jobs:
           password: ${{ secrets.GHCR_PAT }}
       - name: Deploy Docker (ghcr.io)
         run: ci/actions/linux/ghcr_push.sh
-      - name: Deploy Docker (nanocurrency/nano-env)
+      - name: Deploy Docker (simpago/nano-env)
         run: ci/actions/linux/deploy-docker.sh
         env:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

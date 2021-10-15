@@ -1741,7 +1741,7 @@ bool nano::block_details::deserialize (nano::stream & stream_a)
 
 std::string nano::state_subtype (nano::block_details const details_a)
 {
-	debug_assert (details_a.is_epoch + details_a.is_receive + details_a.is_send <= 1);
+	debug_assert (details_a.is_epoch() + details_a.is_receive() + details_a.is_send() <= 1);
 	if (details_a.is_send ())
 	{
 		return "send";

@@ -2228,9 +2228,7 @@ void nano_qt::block_creation::create_send ()
 						(void)error;
 						debug_assert (!error);
 						nano::state_block send (account_l, info.head, info.representative, balance - amount_l.number (), destination_l, key, account_l, 0);
-						nano::block_details details;
-						details.is_send = true;
-						details.epoch = info.epoch ();
+						nano::block_details details(info.epoch (), true, false, false);
 						auto const required_difficulty{ wallet.node.network_params.work.threshold (send.work_version (), details) };
 						if (wallet.node.work_generate_blocking (send, required_difficulty).is_initialized ())
 						{
@@ -2312,9 +2310,7 @@ void nano_qt::block_creation::create_receive ()
 						if (!error)
 						{
 							nano::state_block receive (pending_key.account, info.head, info.representative, info.balance.number () + pending.amount.number (), source_l, key, pending_key.account, 0);
-							nano::block_details details;
-							details.is_receive = true;
-							details.epoch = std::max (info.epoch (), pending.epoch);
+							nano::block_details details(std::max (info.epoch (), pending.epoch), false, true, false);
 							auto required_difficulty{ wallet.node.network_params.work.threshold (receive.work_version (), details) };
 							if (wallet.node.work_generate_blocking (receive, required_difficulty).is_initialized ())
 							{
@@ -2396,8 +2392,7 @@ void nano_qt::block_creation::create_change ()
 				if (!error)
 				{
 					nano::state_block change (account_l, info.head, representative_l, info.balance, 0, key, account_l, 0);
-					nano::block_details details;
-					details.epoch = info.epoch ();
+					nano::block_details details(info.epoch (), false, false, false);
 					auto const required_difficulty{ wallet.node.network_params.work.threshold (change.work_version (), details) };
 					if (wallet.node.work_generate_blocking (change, required_difficulty).is_initialized ())
 					{
@@ -2477,9 +2472,7 @@ void nano_qt::block_creation::create_open ()
 							if (!error)
 							{
 								nano::state_block open (pending_key.account, 0, representative_l, pending.amount, source_l, key, pending_key.account, 0);
-								nano::block_details details;
-								details.is_receive = true;
-								details.epoch = pending.epoch;
+								nano::block_details details(pending.epoch, false, true, false);
 								auto const required_difficulty{ wallet.node.network_params.work.threshold (open.work_version (), details) };
 								if (wallet.node.work_generate_blocking (open, required_difficulty).is_initialized ())
 								{

@@ -23,6 +23,7 @@ public:
 	void reset (const double, const size_t);
 
 private:
+	bandwidth_limiter (const bandwidth_limiter &);
 	rsnano::BandwidthLimiterHandle * handle;
 };
 

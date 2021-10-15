@@ -149,7 +149,7 @@ public:
 			// Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
 			[[maybe_unused]] bool is_pruned (false);
 			auto source_account (ledger.account_safe (transaction, block_a.hashables.link.as_block_hash (), is_pruned));
-			nano::pending_info pending_info (source_account, block_a.hashables.balance.number () - balance, block_a.sideband ().source_epoch);
+			nano::pending_info pending_info (source_account, block_a.hashables.balance.number () - balance, block_a.sideband ().source_epoch ());
 			ledger.store.pending.put (transaction, nano::pending_key (block_a.hashables.account, block_a.hashables.link.as_block_hash ()), pending_info);
 			ledger.stats.inc (nano::stat::type::rollback, nano::stat::detail::receive);
 		}
@@ -1334,7 +1334,7 @@ bool nano::ledger::block_confirmed (nano::transaction const & transaction_a, nan
 	{
 		nano::confirmation_height_info confirmation_height_info;
 		store.confirmation_height.get (transaction_a, block->account ().is_zero () ? block->sideband ().account : block->account (), confirmation_height_info);
-		auto confirmed (confirmation_height_info.height >= block->sideband ().height);
+		auto confirmed (confirmation_height_info.height >= block->sideband ().height ());
 		return confirmed;
 	}
 	return false;

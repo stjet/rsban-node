@@ -1080,8 +1080,8 @@ void nano::json_handler::block_info ()
 			}
 			auto balance (node.ledger.balance (transaction, hash));
 			response_l.put ("balance", balance.convert_to<std::string> ());
-			response_l.put ("height", std::to_string (block->sideband ().height));
-			response_l.put ("local_timestamp", std::to_string (block->sideband ().timestamp));
+			response_l.put ("height", std::to_string (block->sideband ().height ()));
+			response_l.put ("local_timestamp", std::to_string (block->sideband ().timestamp ()));
 			response_l.put ("successor", block->sideband ().successor.to_string ());
 			auto confirmed (node.ledger.block_confirmed (transaction, hash));
 			response_l.put ("confirmed", confirmed);
@@ -1238,8 +1238,8 @@ void nano::json_handler::blocks_info ()
 					}
 					auto balance (node.ledger.balance (transaction, hash));
 					entry.put ("balance", balance.convert_to<std::string> ());
-					entry.put ("height", std::to_string (block->sideband ().height));
-					entry.put ("local_timestamp", std::to_string (block->sideband ().timestamp));
+					entry.put ("height", std::to_string (block->sideband ().height ()));
+					entry.put ("local_timestamp", std::to_string (block->sideband ().timestamp ()));
 					entry.put ("successor", block->sideband ().successor.to_string ());
 					auto confirmed (node.ledger.block_confirmed (transaction, hash));
 					entry.put ("confirmed", confirmed);
@@ -2546,8 +2546,8 @@ void nano::json_handler::account_history ()
 				block->visit (visitor);
 				if (!entry.empty ())
 				{
-					entry.put ("local_timestamp", std::to_string (block->sideband ().timestamp));
-					entry.put ("height", std::to_string (block->sideband ().height));
+					entry.put ("local_timestamp", std::to_string (block->sideband ().timestamp ()));
+					entry.put ("height", std::to_string (block->sideband ().height ()));
 					entry.put ("hash", hash.to_string ());
 					entry.put ("confirmed", node.ledger.block_confirmed (transaction, hash));
 					if (output_raw)
@@ -4530,7 +4530,7 @@ void nano::json_handler::wallet_history ()
 				while (timestamp >= modified_since && !hash.is_zero ())
 				{
 					auto block (node.store.block.get (block_transaction, hash));
-					timestamp = block->sideband ().timestamp;
+					timestamp = block->sideband ().timestamp ();
 					if (block != nullptr && timestamp >= modified_since)
 					{
 						boost::property_tree::ptree entry;

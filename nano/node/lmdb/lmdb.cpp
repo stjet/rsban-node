@@ -487,14 +487,14 @@ void nano::mdb_store::upgrade_v16_to_v17 (nano::write_transaction const & transa
 					++height;
 				}
 
-				debug_assert (block->sideband ().height == confirmation_height);
+				debug_assert (block->sideband ().height () == confirmation_height);
 				confirmation_height_infos.emplace_back (account, confirmation_height_info{ confirmation_height, block->hash () });
 			}
 			else
 			{
 				// The confirmation height of the account is closer to the top of the chain so start there and work down
 				auto block = block_get_v18 (transaction_a, account_info.head);
-				auto height = block->sideband ().height;
+				auto height = block->sideband ().height ();
 				while (height != confirmation_height)
 				{
 					block = block_get_v18 (transaction_a, block->previous ());

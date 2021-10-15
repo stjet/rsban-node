@@ -213,7 +213,7 @@ TEST (wallets, search_pending)
 		auto receive_hash = node.ledger.latest (node.store.tx_begin_read (), nano::dev::genesis->account ());
 		auto receive = node.block (receive_hash);
 		ASSERT_NE (nullptr, receive);
-		ASSERT_EQ (receive->sideband ().height, 3);
+		ASSERT_EQ (receive->sideband ().height (), 3);
 		ASSERT_EQ (send->hash (), receive->link ().as_block_hash ());
 	}
 }

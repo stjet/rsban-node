@@ -1018,7 +1018,7 @@ TEST (wallet, epoch_2_validation)
 		auto send = wallet.send_action (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, amount, 1);
 		ASSERT_NE (nullptr, send);
 		ASSERT_EQ (nano::epoch::epoch_2, send->sideband ().details.epoch ());
-		ASSERT_EQ (nano::epoch::epoch_0, send->sideband ().source_epoch); // Not used for send state blocks
+		ASSERT_EQ (nano::epoch::epoch_0, send->sideband ().source_epoch ()); // Not used for send state blocks
 
 		auto receive = wallet.receive_action (send->hash (), nano::dev::genesis_key.pub, amount, send->link ().as_account (), 1);
 		ASSERT_NE (nullptr, receive);
@@ -1026,7 +1026,7 @@ TEST (wallet, epoch_2_validation)
 		{
 			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive), node.network_params.work.epoch_2_receive);
 			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().details.epoch ());
-			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().source_epoch);
+			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().source_epoch ());
 			break;
 		}
 	}
@@ -1078,7 +1078,7 @@ TEST (wallet, epoch_2_receive_propagation)
 		{
 			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive2), node.network_params.work.epoch_2_receive);
 			ASSERT_EQ (nano::epoch::epoch_2, node.store.block.version (node.store.tx_begin_read (), receive2->hash ()));
-			ASSERT_EQ (nano::epoch::epoch_2, receive2->sideband ().source_epoch);
+			ASSERT_EQ (nano::epoch::epoch_2, receive2->sideband ().source_epoch ());
 			break;
 		}
 	}
@@ -1123,7 +1123,7 @@ TEST (wallet, epoch_2_receive_unopened)
 		{
 			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive1), node.network_params.work.epoch_2_receive);
 			ASSERT_EQ (nano::epoch::epoch_2, node.store.block.version (node.store.tx_begin_read (), receive1->hash ()));
-			ASSERT_EQ (nano::epoch::epoch_1, receive1->sideband ().source_epoch);
+			ASSERT_EQ (nano::epoch::epoch_1, receive1->sideband ().source_epoch ());
 			break;
 		}
 	}
@@ -1197,7 +1197,7 @@ TEST (wallet, search_pending)
 	auto receive_hash = node.ledger.latest (node.store.tx_begin_read (), nano::dev::genesis->account ());
 	auto receive = node.block (receive_hash);
 	ASSERT_NE (nullptr, receive);
-	ASSERT_EQ (receive->sideband ().height, 3);
+	ASSERT_EQ (receive->sideband ().height (), 3);
 	ASSERT_EQ (send->hash (), receive->link ().as_block_hash ());
 }
 

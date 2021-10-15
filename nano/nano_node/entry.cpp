@@ -1452,7 +1452,7 @@ int main (int argc, char * const * argv)
 						}
 					}
 					calculated_hash = block->previous ();
-					height = block->sideband ().height - 1;
+					height = block->sideband ().height () - 1;
 					if (!node->ledger.block_or_pruned_exists (transaction, info.open_block))
 					{
 						print_error_message (boost::str (boost::format ("Open block does not exist %1%\n") % info.open_block.to_string ()));
@@ -1574,7 +1574,7 @@ int main (int argc, char * const * argv)
 					// Check link epoch version
 					if (sideband.details.is_receive () && (!node->ledger.pruning || !node->store.pruned.exists (transaction, block->link ().as_block_hash ())))
 					{
-						if (sideband.source_epoch != node->store.block.version (transaction, block->link ().as_block_hash ()))
+						if (sideband.source_epoch () != node->store.block.version (transaction, block->link ().as_block_hash ()))
 						{
 							print_error_message (boost::str (boost::format ("Incorrect source epoch for block %1%\n") % hash.to_string ()));
 						}
@@ -1586,16 +1586,16 @@ int main (int argc, char * const * argv)
 					}
 					// Check if sideband height is correct
 					++height;
-					if (sideband.height != height)
+					if (sideband.height () != height)
 					{
-						print_error_message (boost::str (boost::format ("Incorrect sideband height for block %1%. Sideband: %2%. Expected: %3%\n") % hash.to_string () % sideband.height % height));
+						print_error_message (boost::str (boost::format ("Incorrect sideband height for block %1%. Sideband: %2%. Expected: %3%\n") % hash.to_string () % sideband.height () % height));
 					}
 					// Check if sideband timestamp is after previous timestamp
-					if (sideband.timestamp < previous_timestamp)
+					if (sideband.timestamp () < previous_timestamp)
 					{
 						print_error_message (boost::str (boost::format ("Incorrect sideband timestamp for block %1%\n") % hash.to_string ()));
 					}
-					previous_timestamp = sideband.timestamp;
+					previous_timestamp = sideband.timestamp ();
 					// Calculate representative block
 					if (block->type () == nano::block_type::open || block->type () == nano::block_type::change || block->type () == nano::block_type::state)
 					{

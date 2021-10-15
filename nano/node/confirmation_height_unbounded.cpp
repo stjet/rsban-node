@@ -85,7 +85,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 			account = block->sideband ().account;
 		}
 
-		auto block_height = block->sideband ().height;
+		auto block_height = block->sideband ().height ();
 		uint64_t confirmation_height = 0;
 		auto account_it = confirmed_iterated_pairs.find (account);
 		if (account_it != confirmed_iterated_pairs.cend ())

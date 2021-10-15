@@ -12,3 +12,4 @@ pub mod ffi;
 mod token_bucket;
 mod epoch;
 mod block_details;
+mod block_sideband;

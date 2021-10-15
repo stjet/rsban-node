@@ -985,7 +985,7 @@ bool nano::node::collect_ledger_pruning_targets (std::deque<nano::block_hash> & 
 			auto block (store.block.get (transaction, hash));
 			if (block != nullptr)
 			{
-				if (block->sideband ().timestamp > cutoff_time_a || depth == 0)
+				if (block->sideband ().timestamp () > cutoff_time_a || depth == 0)
 				{
 					hash = block->previous ();
 				}

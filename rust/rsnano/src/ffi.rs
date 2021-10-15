@@ -1,6 +1,6 @@
 use num::FromPrimitive;
 
-use crate::{bandwidth_limiter::BandwidthLimiter, block_details::BlockDetails};
+use crate::{bandwidth_limiter::BandwidthLimiter, block_details::BlockDetails, block_sideband::BlockSideband, epoch::Epoch};
 use std::sync::Mutex;
 
 pub struct BandwidthLimiterHandle {
@@ -43,6 +43,7 @@ pub unsafe extern "C" fn rsn_bandwidth_limiter_reset(
         .reset(limit_burst_ration, limit)
 }
 
+
 #[repr(C)]
 pub struct BlockDetailsDto {
     pub epoch: u8,
@@ -52,21 +53,21 @@ pub struct BlockDetailsDto {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn block_details_create(epoch: u8, is_send: bool, is_receive: bool,  is_epoch: bool, result: *mut BlockDetailsDto) {
+pub unsafe extern "C" fn rsn_block_details_create(epoch: u8, is_send: bool, is_receive: bool,  is_epoch: bool, result: *mut BlockDetailsDto) {
     let epoch = FromPrimitive::from_u8(epoch).unwrap();
     let details = BlockDetails::new(epoch, is_send, is_receive, is_epoch);
     set_block_details_dto(details, result);
 }
 
 #[no_mangle]
-pub extern "C" fn block_details_packed(details: &BlockDetailsDto) -> u8{
+pub extern "C" fn rsn_block_details_packed(details: &BlockDetailsDto) -> u8{
     let epoch = FromPrimitive::from_u8(details.epoch).unwrap();
     let details = BlockDetails::new(epoch, details.is_send, details.is_receive, details.is_epoch);
     details.packed()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn block_details_unpack(data: u8, result: *mut BlockDetailsDto){
+pub unsafe extern "C" fn rsn_block_details_unpack(data: u8, result: *mut BlockDetailsDto){
     let details = BlockDetails::unpack(data);
     set_block_details_dto(details, result);
 }
@@ -76,4 +77,16 @@ unsafe fn set_block_details_dto(details: BlockDetails, result: *mut BlockDetails
     (*result).is_send = details.is_send;
     (*result).is_receive = details.is_receive;
     (*result).is_epoch = details.is_epoch;
+}
+
+#[repr(C)]
+pub struct BlockSidebandDto {
+    pub source_epoch: u8,
+    pub height: u64,
+    pub timestamp: u64,
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_sideband_foo(dto: &BlockSidebandDto){
+
 }

@@ -186,7 +186,7 @@ TEST (ledger_walker, ladder_geometry)
 	nano::ledger_walker ledger_walker{ node->ledger };
 	ledger_walker.walk_backward (last_destination_info.head,
 	[&] (const auto & block) {
-		if (block->sideband ().details.is_receive ())
+		if (block->sideband ().details ().is_receive ())
 		{
 			nano::amount previous_balance{};
 			if (!block->previous ().is_zero ())
@@ -205,7 +205,7 @@ TEST (ledger_walker, ladder_geometry)
 
 	ledger_walker.walk (last_destination_info.head,
 	[&] (const auto & block) {
-		if (block->sideband ().details.is_receive ())
+		if (block->sideband ().details ().is_receive ())
 		{
 			nano::amount previous_balance{};
 			if (!block->previous ().is_zero ())

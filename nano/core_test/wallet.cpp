@@ -822,7 +822,7 @@ TEST (wallet, no_work)
 	auto block (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, std::numeric_limits<nano::uint128_t>::max (), false));
 	ASSERT_NE (nullptr, block);
 	ASSERT_NE (0, block->block_work ());
-	ASSERT_GE (nano::dev::network_params.work.difficulty (*block), nano::dev::network_params.work.threshold (block->work_version (), block->sideband ().details));
+	ASSERT_GE (nano::dev::network_params.work.difficulty (*block), nano::dev::network_params.work.threshold (block->work_version (), block->sideband ().details ()));
 	auto transaction (system.wallet (0)->wallets.tx_begin_read ());
 	uint64_t cached_work (0);
 	system.wallet (0)->store.work_get (transaction, nano::dev::genesis_key.pub, cached_work);
@@ -1017,7 +1017,7 @@ TEST (wallet, epoch_2_validation)
 	{
 		auto send = wallet.send_action (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, amount, 1);
 		ASSERT_NE (nullptr, send);
-		ASSERT_EQ (nano::epoch::epoch_2, send->sideband ().details.epoch ());
+		ASSERT_EQ (nano::epoch::epoch_2, send->sideband ().details ().epoch ());
 		ASSERT_EQ (nano::epoch::epoch_0, send->sideband ().source_epoch ()); // Not used for send state blocks
 
 		auto receive = wallet.receive_action (send->hash (), nano::dev::genesis_key.pub, amount, send->link ().as_account (), 1);
@@ -1025,7 +1025,7 @@ TEST (wallet, epoch_2_validation)
 		if (nano::dev::network_params.work.difficulty (*receive) < node.network_params.work.base)
 		{
 			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive), node.network_params.work.epoch_2_receive);
-			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().details.epoch ());
+			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().details ().epoch ());
 			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().source_epoch ());
 			break;
 		}

@@ -402,7 +402,7 @@ uint64_t nano::json_handler::difficulty_ledger (nano::block const & block_a)
 	// Epoch check
 	if (block_previous != nullptr)
 	{
-		auto epoch = block_previous->sideband ().details.epoch ();
+		auto epoch = block_previous->sideband ().details ().epoch ();
 		details = nano::block_details (epoch, details.is_send (), details.is_receive (), details.is_epoch ());
 	}
 	auto link (block_a.link ());
@@ -411,7 +411,7 @@ uint64_t nano::json_handler::difficulty_ledger (nano::block const & block_a)
 		auto block_link (node.store.block.get (transaction, link.as_block_hash ()));
 		if (block_link != nullptr && node.store.pending.exists (transaction, nano::pending_key (block_a.account (), link.as_block_hash ())))
 		{
-			auto epoch = std::max (details.epoch (), block_link->sideband ().details.epoch ());
+			auto epoch = std::max (details.epoch (), block_link->sideband ().details ().epoch ());
 			details = nano::block_details (epoch, details.is_send (), true, details.is_epoch ());
 			details_found = true;
 		}
@@ -1101,7 +1101,7 @@ void nano::json_handler::block_info ()
 			}
 			if (block->type () == nano::block_type::state)
 			{
-				auto subtype (nano::state_subtype (block->sideband ().details));
+				auto subtype (nano::state_subtype (block->sideband ().details ()));
 				response_l.put ("subtype", subtype);
 			}
 		}
@@ -1258,7 +1258,7 @@ void nano::json_handler::blocks_info ()
 					}
 					if (block->type () == nano::block_type::state)
 					{
-						auto subtype (nano::state_subtype (block->sideband ().details));
+						auto subtype (nano::state_subtype (block->sideband ().details ()));
 						entry.put ("subtype", subtype);
 					}
 					if (pending)

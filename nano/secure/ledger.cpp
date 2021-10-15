@@ -930,7 +930,7 @@ bool nano::ledger::is_send (nano::transaction const & transaction_a, nano::state
 	bool result (false);
 	if (block_a.has_sideband ())
 	{
-		result = block_a.sideband ().details.is_send ();
+		result = block_a.sideband ().details ().is_send ();
 	}
 	else
 	{

@@ -382,7 +382,7 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 			{
 				auto block = ledger.store.block.get (transaction, pending.hash);
 				debug_assert (ledger.pruning || block != nullptr);
-				debug_assert (ledger.pruning || block->sideband ().height == pending.height);
+				debug_assert (ledger.pruning || block->sideband ().height () == pending.height);
 
 				if (!block)
 				{

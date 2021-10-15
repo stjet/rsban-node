@@ -1765,7 +1765,7 @@ nano::block_sideband::block_sideband () :
 	account{},
 	balance{ 0 }
 {
-	details = nano::block_details (epoch::epoch_0, false, false, false);
+	m_details = nano::block_details (epoch::epoch_0, false, false, false);
 	dto.source_epoch = static_cast<uint8_t> (epoch::epoch_0);
 	dto.height = 0;
 	dto.timestamp = 0;
@@ -1775,7 +1775,7 @@ nano::block_sideband::block_sideband (nano::account const & account_a, nano::blo
 	successor (successor_a),
 	account (account_a),
 	balance (balance_a),
-	details (details_a)
+	m_details (details_a)
 {
 	dto.source_epoch = static_cast<uint8_t> (source_epoch_a);
 	dto.height = height_a;
@@ -1786,7 +1786,7 @@ nano::block_sideband::block_sideband (nano::account const & account_a, nano::blo
 	successor (successor_a),
 	account (account_a),
 	balance (balance_a),
-	details (epoch_a, is_send, is_receive, is_epoch)
+	m_details (epoch_a, is_send, is_receive, is_epoch)
 {
 	dto.source_epoch = static_cast<uint8_t> (source_epoch_a);
 	dto.height = height_a;
@@ -1836,7 +1836,7 @@ void nano::block_sideband::serialize (nano::stream & stream_a, nano::block_type 
 	nano::write (stream_a, boost::endian::native_to_big (timestamp ()));
 	if (type_a == nano::block_type::state)
 	{
-		details.serialize (stream_a);
+		m_details.serialize (stream_a);
 		nano::write (stream_a, static_cast<uint8_t> (source_epoch ()));
 	}
 }
@@ -1872,7 +1872,7 @@ bool nano::block_sideband::deserialize (nano::stream & stream_a, nano::block_typ
 		set_timestamp (tmp_timestamp);
 		if (type_a == nano::block_type::state)
 		{
-			result = details.deserialize (stream_a);
+			result = m_details.deserialize (stream_a);
 			uint8_t source_epoch_uint8_t{ 0 };
 			nano::read (stream_a, source_epoch_uint8_t);
 			set_source_epoch (static_cast<nano::epoch> (source_epoch_uint8_t));
@@ -1914,6 +1914,11 @@ uint64_t nano::block_sideband::timestamp () const
 void nano::block_sideband::set_timestamp (uint64_t ts)
 {
 	dto.timestamp = ts;
+}
+
+nano::block_details const & nano::block_sideband::details () const
+{
+	return m_details;
 }
 
 std::shared_ptr<nano::block> nano::block_uniquer::unique (std::shared_ptr<nano::block> const & block_a)

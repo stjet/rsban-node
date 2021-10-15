@@ -72,16 +72,17 @@ public:
 	void set_height (uint64_t h);
 	uint64_t timestamp () const;
 	void set_timestamp (uint64_t ts);
+	nano::block_details const & details () const;
 
 	static size_t size (nano::block_type);
 
 	nano::block_hash successor{ 0 };
 	nano::account account{};
 	nano::amount balance{ 0 };
-	nano::block_details details;
 
 private:
 	rsnano::BlockSidebandDto dto;
+	nano::block_details m_details;
 };
 
 class block

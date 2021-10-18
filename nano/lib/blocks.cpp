@@ -1720,22 +1720,6 @@ bool nano::block_details::is_epoch () const
 	return dto.is_epoch;
 }
 
-uint8_t nano::block_details::packed () const
-{
-	int result;
-	auto packed = rsnano::rsn_block_details_packed (&dto, &result);
-	if (result < 0)
-	{
-		throw std::runtime_error ("could not pack block_details");
-	}
-	return packed;
-}
-
-void nano::block_details::unpack (uint8_t details_a)
-{
-	rsnano::rsn_block_details_unpack (details_a, &dto);
-}
-
 void nano::block_details::serialize (nano::stream & stream_a) const
 {
 	auto result = rsnano::rsn_block_details_serialize (&dto, &stream_a);
@@ -1747,19 +1731,8 @@ void nano::block_details::serialize (nano::stream & stream_a) const
 
 bool nano::block_details::deserialize (nano::stream & stream_a)
 {
-	bool result (false);
-	try
-	{
-		uint8_t packed{ 0 };
-		nano::read (stream_a, packed);
-		unpack (packed);
-	}
-	catch (std::runtime_error &)
-	{
-		result = true;
-	}
-
-	return result;
+	auto result = rsnano::rsn_block_details_deserialize (&dto, &stream_a);
+	return result != 0;
 }
 
 std::string nano::state_subtype (nano::block_details const details_a)

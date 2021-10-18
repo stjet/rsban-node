@@ -27,7 +27,7 @@ mod tests {
     use std::time::Duration;
 
     #[test]
-    fn test_limit(){
+    fn test_limit() {
         let mut limiter = BandwidthLimiter::new(1.5, 10);
         assert_eq!(limiter.should_drop(15), false);
         assert_eq!(limiter.should_drop(1), true);

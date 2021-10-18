@@ -50,10 +50,6 @@ public:
 	bool is_epoch () const;
 
 	rsnano::BlockDetailsDto dto;
-
-private:
-	uint8_t packed () const;
-	void unpack (uint8_t);
 };
 
 std::string state_subtype (nano::block_details const);

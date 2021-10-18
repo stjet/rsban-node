@@ -8,8 +8,8 @@ extern crate static_assertions;
 extern crate num_derive;
 
 mod bandwidth_limiter;
-pub mod ffi;
-mod token_bucket;
-mod epoch;
 mod block_details;
 mod block_sideband;
+mod epoch;
+pub mod ffi;
+mod token_bucket;

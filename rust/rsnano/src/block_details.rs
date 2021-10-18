@@ -37,15 +37,19 @@ impl BlockDetails {
         result
     }
 
-    pub fn unpack(value: u8) -> Self {
+    pub fn unpack(value: u8) -> Option<Self> {
         let epoch_mask = 0b0001_1111u8;
-        let epoch = FromPrimitive::from_u8(value & epoch_mask).expect("invalid epoch value");
-        BlockDetails {
+        let epoch = match FromPrimitive::from_u8(value & epoch_mask) {
+            Some(e) => e,
+            None => return None,
+        };
+
+        Some(BlockDetails {
             epoch,
             is_send: (0b1000_0000 & value) != 0,
             is_receive: (0b0100_0000 & value) != 0,
             is_epoch: (0b0010_0000 & value) != 0,
-        }
+        })
     }
 }
 
@@ -84,21 +88,30 @@ mod test {
     fn test_pack_and_unpack() {
         let details_send = BlockDetails::new(Epoch::Epoch0, true, false, false);
         assert_eq!(details_send.packed(), 0b1000_0010);
-        assert_eq!(BlockDetails::unpack(details_send.packed()), details_send);
+        assert_eq!(
+            BlockDetails::unpack(details_send.packed()).unwrap(),
+            details_send
+        );
 
         let details_receive = BlockDetails::new(Epoch::Epoch1, false, true, false);
         assert_eq!(details_receive.packed(), 0b0100_0011);
         assert_eq!(
-            BlockDetails::unpack(details_receive.packed()),
+            BlockDetails::unpack(details_receive.packed()).unwrap(),
             details_receive
         );
 
         let details_epoch = BlockDetails::new(Epoch::Epoch2, false, false, true);
         assert_eq!(details_epoch.packed(), 0b0010_0100);
-        assert_eq!(BlockDetails::unpack(details_epoch.packed()), details_epoch);
+        assert_eq!(
+            BlockDetails::unpack(details_epoch.packed()).unwrap(),
+            details_epoch
+        );
 
         let details_none = BlockDetails::new(Epoch::Unspecified, false, false, false);
         assert_eq!(details_none.packed(), 0b0000_0001);
-        assert_eq!(BlockDetails::unpack(details_none.packed()), details_none);
+        assert_eq!(
+            BlockDetails::unpack(details_none.packed()).unwrap(),
+            details_none
+        );
     }
 }

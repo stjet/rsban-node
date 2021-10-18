@@ -1,15 +1,26 @@
 use num::FromPrimitive;
 
-use crate::{bandwidth_limiter::BandwidthLimiter, block_details::BlockDetails, block_sideband::BlockSideband, epoch::Epoch};
-use std::{ffi::c_void, sync::Mutex};
+use crate::{
+    bandwidth_limiter::BandwidthLimiter, block_details::BlockDetails,
+    block_sideband::BlockSideband, epoch::Epoch,
+};
+use std::{convert::TryFrom, ffi::c_void, sync::Mutex};
+
+type WriteU8Callback = unsafe extern "C" fn(*mut c_void, *const u8) -> i32;
+type ReadU8Callback = unsafe extern "C" fn(*mut c_void, *mut u8) -> i32;
+
+static mut WRITE_U8_CALLBACK: Option<WriteU8Callback> = None;
+static mut READ_U8_CALLBACK: Option<ReadU8Callback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_write_u8(f: WriteU8Callback){
+pub unsafe extern "C" fn rsn_callback_write_u8(f: WriteU8Callback) {
     WRITE_U8_CALLBACK = Some(f);
 }
 
-type WriteU8Callback = unsafe extern "C" fn(*mut c_void, *const u8) -> i32;
-static mut WRITE_U8_CALLBACK: Option<WriteU8Callback> = None;
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_read_u8(f: ReadU8Callback) {
+    READ_U8_CALLBACK = Some(f);
+}
 
 pub struct BandwidthLimiterHandle {
     limiter: Mutex<BandwidthLimiter>,
@@ -36,19 +47,19 @@ pub unsafe extern "C" fn rsn_bandwidth_limiter_should_drop(
     message_size: usize,
     result: *mut i32,
 ) -> bool {
-    match limiter.limiter.lock(){
+    match limiter.limiter.lock() {
         Ok(mut lock) => {
-            if !result.is_null(){
+            if !result.is_null() {
                 *result = 0;
             }
             lock.should_drop(message_size)
         }
         Err(_) => {
-            if !result.is_null(){
+            if !result.is_null() {
                 *result = -1;
             }
             false
-        },
+        }
     }
 }
 
@@ -58,17 +69,14 @@ pub unsafe extern "C" fn rsn_bandwidth_limiter_reset(
     limit_burst_ratio: f64,
     limit: usize,
 ) -> i32 {
-    match limiter
-        .limiter
-        .lock(){
-            Ok(mut lock) => {
-                lock.reset(limit_burst_ratio, limit);
-                0
-            }
-            Err(_) => -1,
+    match limiter.limiter.lock() {
+        Ok(mut lock) => {
+            lock.reset(limit_burst_ratio, limit);
+            0
         }
+        Err(_) => -1,
+    }
 }
-
 
 #[repr(C)]
 pub struct BlockDetailsDto {
@@ -79,8 +87,14 @@ pub struct BlockDetailsDto {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_details_create(epoch: u8, is_send: bool, is_receive: bool,  is_epoch: bool, result: *mut BlockDetailsDto) -> i32 {
-    let epoch = match FromPrimitive::from_u8(epoch){
+pub unsafe extern "C" fn rsn_block_details_create(
+    epoch: u8,
+    is_send: bool,
+    is_receive: bool,
+    is_epoch: bool,
+    result: *mut BlockDetailsDto,
+) -> i32 {
+    let epoch = match FromPrimitive::from_u8(epoch) {
         Some(e) => e,
         None => return -1,
     };
@@ -91,44 +105,41 @@ pub unsafe extern "C" fn rsn_block_details_create(epoch: u8, is_send: bool, is_r
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_details_packed(details: &BlockDetailsDto, result: *mut i32) -> u8{
-    let epoch = match FromPrimitive::from_u8(details.epoch){
-        Some(e) => e,
-        None => {
-            if !result.is_null(){
-                *result = -1;
+pub unsafe extern "C" fn rsn_block_details_serialize(
+    dto: &BlockDetailsDto,
+    stream: *mut c_void,
+) -> i32 {
+    match WRITE_U8_CALLBACK {
+        Some(f) => match BlockDetails::try_from(dto) {
+            Ok(details) => {
+                let packed = details.packed();
+                f(stream, &packed)
             }
-            return 0;
+            Err(_) => -1,
         },
-    };
-    let details = BlockDetails::new(epoch, details.is_send, details.is_receive, details.is_epoch);
-    if !result.is_null() {
-        *result = 0;
+        None => -1,
     }
-    details.packed()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_details_unpack(data: u8, result: *mut BlockDetailsDto){
-    let details = BlockDetails::unpack(data);
-    set_block_details_dto(details, result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_details_serialize(dto: &BlockDetailsDto, stream: *mut c_void) -> i32{
-    match WRITE_U8_CALLBACK{
+pub unsafe extern "C" fn rsn_block_details_deserialize(
+    dto: *mut BlockDetailsDto,
+    stream: *mut c_void,
+) -> i32 {
+    match READ_U8_CALLBACK {
         Some(f) => {
-            let epoch = match FromPrimitive::from_u8(dto.epoch){
-                Some(e) => e,
-                None => return -1,
-            };
-            let details = BlockDetails::new(epoch, dto.is_send, dto.is_receive, dto.is_epoch);
-            let packed =details.packed(); 
-            f(stream, &packed)
-        },
-        None => {
+            let mut value = 0u8;
+            let raw_value = &mut value as *mut u8;
+            if f(stream, raw_value) == 0 {
+                if let Some(details) = BlockDetails::unpack(value) {
+                    set_block_details_dto(details, dto);
+                    return 0;
+                }
+            }
+
             -1
         }
+        None => -1,
     }
 }
 
@@ -144,10 +155,21 @@ pub struct BlockSidebandDto {
     pub source_epoch: u8,
     pub height: u64,
     pub timestamp: u64,
-    pub details: BlockDetailsDto
+    pub details: BlockDetailsDto,
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_sideband_foo(dto: &BlockSidebandDto){
-}
+pub extern "C" fn rsn_block_sideband_foo(dto: &BlockSidebandDto) {}
 
+impl TryFrom<&BlockDetailsDto> for BlockDetails {
+    type Error = ();
+
+    fn try_from(value: &BlockDetailsDto) -> Result<Self, Self::Error> {
+        let epoch = match FromPrimitive::from_u8(value.epoch) {
+            Some(e) => e,
+            None => return Err(()),
+        };
+        let details = BlockDetails::new(epoch, value.is_send, value.is_receive, value.is_epoch);
+        Ok(details)
+    }
+}

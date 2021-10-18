@@ -36,7 +36,8 @@ class block_details
 public:
 	block_details ();
 	block_details (nano::epoch const epoch_a, bool const is_send_a, bool const is_receive_a, bool const is_epoch_a);
-	static constexpr size_t size ()
+	block_details (rsnano::BlockDetailsDto dto_a);
+	constexpr static size_t size ()
 	{
 		return 1;
 	}
@@ -48,8 +49,9 @@ public:
 	bool is_receive () const;
 	bool is_epoch () const;
 
-private:
 	rsnano::BlockDetailsDto dto;
+
+private:
 	uint8_t packed () const;
 	void unpack (uint8_t);
 };
@@ -72,7 +74,7 @@ public:
 	void set_height (uint64_t h);
 	uint64_t timestamp () const;
 	void set_timestamp (uint64_t ts);
-	nano::block_details const & details () const;
+	nano::block_details details () const;
 
 	static size_t size (nano::block_type);
 
@@ -82,7 +84,6 @@ public:
 
 private:
 	rsnano::BlockSidebandDto dto;
-	nano::block_details m_details;
 };
 
 class block

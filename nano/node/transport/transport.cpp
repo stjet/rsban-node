@@ -281,7 +281,14 @@ nano::bandwidth_limiter::~bandwidth_limiter ()
 
 bool nano::bandwidth_limiter::should_drop (const size_t & message_size_a)
 {
-	return rsnano::rsn_bandwidth_limiter_should_drop (handle, message_size_a);
+	int32_t result;
+	auto should = rsnano::rsn_bandwidth_limiter_should_drop (handle, message_size_a, &result);
+	if (result < 0)
+	{
+		throw std::runtime_error ("should_drop failed");
+	}
+
+	return should;
 }
 
 void nano::bandwidth_limiter::reset (const double limit_burst_ratio_a, const size_t limit_a)

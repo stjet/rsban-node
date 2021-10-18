@@ -1,4 +1,5 @@
 #include <nano/lib/memory.hpp>
+#include <nano/lib/rsnano_callbacks.hpp>
 #include <nano/node/common.hpp>
 
 #include <gtest/gtest.h>
@@ -10,6 +11,7 @@ void force_nano_dev_network ();
 
 int main (int argc, char ** argv)
 {
+	rsnano::set_rsnano_callbacks ();
 	nano::force_nano_dev_network ();
 	nano::set_use_memory_pools (false);
 	nano::node_singleton_memory_pool_purge_guard cleanup_guard;

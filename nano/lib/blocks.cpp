@@ -1674,12 +1674,25 @@ void nano::receive_hashables::hash (blake2b_state & hash_a) const
 
 nano::block_details::block_details ()
 {
-	rsnano::rsn_block_details_create (static_cast<uint8_t> (nano::epoch::epoch_0), false, false, false, &dto);
+	auto result = rsnano::rsn_block_details_create (static_cast<uint8_t> (nano::epoch::epoch_0), false, false, false, &dto);
+	if (result < 0)
+	{
+		throw std::runtime_error("could not create block details"); 
+	}
 }
 
 nano::block_details::block_details (nano::epoch const epoch_a, bool const is_send_a, bool const is_receive_a, bool const is_epoch_a)
 {
-	rsnano::rsn_block_details_create (static_cast<uint8_t> (epoch_a), is_send_a, is_receive_a, is_epoch_a, &dto);
+	auto result = rsnano::rsn_block_details_create (static_cast<uint8_t> (epoch_a), is_send_a, is_receive_a, is_epoch_a, &dto);
+	if (result < 0)
+	{
+		throw std::runtime_error("could not create block details"); 
+	}
+}
+
+nano::block_details::block_details (rsnano::BlockDetailsDto dto_a)
+{
+	dto = dto_a;
 }
 
 bool nano::block_details::operator== (nano::block_details const & other_a) const
@@ -1709,7 +1722,12 @@ bool nano::block_details::is_epoch () const
 
 uint8_t nano::block_details::packed () const
 {
-	return rsnano::rsn_block_details_packed (&dto);
+	int result;
+	auto packed = rsnano::rsn_block_details_packed (&dto, &result);
+	if (result < 0){
+		throw std::runtime_error("could not pack block_details");
+	}
+	return packed;
 }
 
 void nano::block_details::unpack (uint8_t details_a)
@@ -1719,6 +1737,11 @@ void nano::block_details::unpack (uint8_t details_a)
 
 void nano::block_details::serialize (nano::stream & stream_a) const
 {
+	// auto result = rsnano::rsn_block_details_serialize(&dto, &stream_a);
+	// if (result < 0)
+	// {
+	// 	throw new std::runtime_error("could not serialize block details");
+	// }
 	nano::write (stream_a, packed ());
 }
 
@@ -1765,32 +1788,32 @@ nano::block_sideband::block_sideband () :
 	account{},
 	balance{ 0 }
 {
-	m_details = nano::block_details (epoch::epoch_0, false, false, false);
 	dto.source_epoch = static_cast<uint8_t> (epoch::epoch_0);
 	dto.height = 0;
 	dto.timestamp = 0;
+	rsnano::rsn_block_details_create (static_cast<uint8_t> (epoch::epoch_0), false, false, false, &dto.details);
 }
 
 nano::block_sideband::block_sideband (nano::account const & account_a, nano::block_hash const & successor_a, nano::amount const & balance_a, uint64_t const height_a, uint64_t const timestamp_a, nano::block_details const & details_a, nano::epoch const source_epoch_a) :
 	successor (successor_a),
 	account (account_a),
-	balance (balance_a),
-	m_details (details_a)
+	balance (balance_a)
 {
 	dto.source_epoch = static_cast<uint8_t> (source_epoch_a);
 	dto.height = height_a;
 	dto.timestamp = timestamp_a;
+	dto.details = details_a.dto;
 }
 
 nano::block_sideband::block_sideband (nano::account const & account_a, nano::block_hash const & successor_a, nano::amount const & balance_a, uint64_t const height_a, uint64_t const timestamp_a, nano::epoch const epoch_a, bool const is_send, bool const is_receive, bool const is_epoch, nano::epoch const source_epoch_a) :
 	successor (successor_a),
 	account (account_a),
-	balance (balance_a),
-	m_details (epoch_a, is_send, is_receive, is_epoch)
+	balance (balance_a)
 {
 	dto.source_epoch = static_cast<uint8_t> (source_epoch_a);
 	dto.height = height_a;
 	dto.timestamp = timestamp_a;
+	rsnano::rsn_block_details_create (static_cast<uint8_t> (epoch_a), is_send, is_receive, is_epoch, &dto.details);
 }
 
 size_t nano::block_sideband::size (nano::block_type type_a)
@@ -1836,7 +1859,7 @@ void nano::block_sideband::serialize (nano::stream & stream_a, nano::block_type 
 	nano::write (stream_a, boost::endian::native_to_big (timestamp ()));
 	if (type_a == nano::block_type::state)
 	{
-		m_details.serialize (stream_a);
+		details ().serialize (stream_a);
 		nano::write (stream_a, static_cast<uint8_t> (source_epoch ()));
 	}
 }
@@ -1872,7 +1895,10 @@ bool nano::block_sideband::deserialize (nano::stream & stream_a, nano::block_typ
 		set_timestamp (tmp_timestamp);
 		if (type_a == nano::block_type::state)
 		{
-			result = m_details.deserialize (stream_a);
+			auto details_copy = details ();
+			result = details_copy.deserialize (stream_a);
+			dto.details = details_copy.dto;
+
 			uint8_t source_epoch_uint8_t{ 0 };
 			nano::read (stream_a, source_epoch_uint8_t);
 			set_source_epoch (static_cast<nano::epoch> (source_epoch_uint8_t));
@@ -1916,9 +1942,9 @@ void nano::block_sideband::set_timestamp (uint64_t ts)
 	dto.timestamp = ts;
 }
 
-nano::block_details const & nano::block_sideband::details () const
+nano::block_details nano::block_sideband::details () const
 {
-	return m_details;
+	return nano::block_details(dto.details);
 }
 
 std::shared_ptr<nano::block> nano::block_uniquer::unique (std::shared_ptr<nano::block> const & block_a)

@@ -1,5 +1,6 @@
 #include <nano/lib/cli.hpp>
 #include <nano/lib/errors.hpp>
+#include <nano/lib/rsnano_callbacks.hpp>
 #include <nano/lib/signal_manager.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/utility.hpp>
@@ -85,6 +86,7 @@ void run (boost::filesystem::path const & data_path, std::vector<std::string> co
 
 int main (int argc, char * const * argv)
 {
+	rsnano::set_rsnano_callbacks ();
 	nano::set_umask ();
 
 	boost::program_options::options_description description ("Command line options");

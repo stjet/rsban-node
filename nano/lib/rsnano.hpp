@@ -4,58 +4,60 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdlib>
-#include <ostream>
 #include <new>
+#include <ostream>
 
-namespace rsnano {
-
+namespace rsnano
+{
 struct BandwidthLimiterHandle;
 
-using WriteU8Callback = int32_t(*)(void*, const uint8_t*);
+using WriteU8Callback = int32_t (*) (void *, const uint8_t *);
 
-struct BlockDetailsDto {
-  uint8_t epoch;
-  bool is_send;
-  bool is_receive;
-  bool is_epoch;
+struct BlockDetailsDto
+{
+	uint8_t epoch;
+	bool is_send;
+	bool is_receive;
+	bool is_epoch;
 };
 
-struct BlockSidebandDto {
-  uint8_t source_epoch;
-  uint64_t height;
-  uint64_t timestamp;
-  BlockDetailsDto details;
+struct BlockSidebandDto
+{
+	uint8_t source_epoch;
+	uint64_t height;
+	uint64_t timestamp;
+	BlockDetailsDto details;
 };
 
 extern "C" {
 
-void rsn_callback_write_u8(WriteU8Callback f);
+void rsn_callback_write_u8 (WriteU8Callback f);
 
-BandwidthLimiterHandle *rsn_bandwidth_limiter_create(double limit_burst_ratio, uintptr_t limit);
+BandwidthLimiterHandle * rsn_bandwidth_limiter_create (double limit_burst_ratio, uintptr_t limit);
 
-void rsn_bandwidth_limiter_destroy(BandwidthLimiterHandle *limiter);
+void rsn_bandwidth_limiter_destroy (BandwidthLimiterHandle * limiter);
 
-bool rsn_bandwidth_limiter_should_drop(const BandwidthLimiterHandle *limiter,
-                                       uintptr_t message_size,
-                                       int32_t *result);
+bool rsn_bandwidth_limiter_should_drop (const BandwidthLimiterHandle * limiter,
+uintptr_t message_size,
+int32_t * result);
 
-int32_t rsn_bandwidth_limiter_reset(const BandwidthLimiterHandle *limiter,
-                                    double limit_burst_ratio,
-                                    uintptr_t limit);
+int32_t rsn_bandwidth_limiter_reset (const BandwidthLimiterHandle * limiter,
+double limit_burst_ratio,
+uintptr_t limit);
 
-int32_t rsn_block_details_create(uint8_t epoch,
-                                 bool is_send,
-                                 bool is_receive,
-                                 bool is_epoch,
-                                 BlockDetailsDto *result);
+int32_t rsn_block_details_create (uint8_t epoch,
+bool is_send,
+bool is_receive,
+bool is_epoch,
+BlockDetailsDto * result);
 
-uint8_t rsn_block_details_packed(const BlockDetailsDto *details, int32_t *result);
+uint8_t rsn_block_details_packed (const BlockDetailsDto * details, int32_t * result);
 
-void rsn_block_details_unpack(uint8_t data, BlockDetailsDto *result);
+void rsn_block_details_unpack (uint8_t data, BlockDetailsDto * result);
 
-int32_t rsn_block_details_serialize(const BlockDetailsDto *dto, void *stream);
+int32_t rsn_block_details_serialize (const BlockDetailsDto * dto, void * stream);
 
-void rsn_block_sideband_foo(const BlockSidebandDto *dto);
+void rsn_block_sideband_foo (const BlockSidebandDto * dto);
 
 } // extern "C"
 

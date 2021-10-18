@@ -1677,7 +1677,7 @@ nano::block_details::block_details ()
 	auto result = rsnano::rsn_block_details_create (static_cast<uint8_t> (nano::epoch::epoch_0), false, false, false, &dto);
 	if (result < 0)
 	{
-		throw std::runtime_error("could not create block details"); 
+		throw std::runtime_error ("could not create block details");
 	}
 }
 
@@ -1686,7 +1686,7 @@ nano::block_details::block_details (nano::epoch const epoch_a, bool const is_sen
 	auto result = rsnano::rsn_block_details_create (static_cast<uint8_t> (epoch_a), is_send_a, is_receive_a, is_epoch_a, &dto);
 	if (result < 0)
 	{
-		throw std::runtime_error("could not create block details"); 
+		throw std::runtime_error ("could not create block details");
 	}
 }
 
@@ -1724,8 +1724,9 @@ uint8_t nano::block_details::packed () const
 {
 	int result;
 	auto packed = rsnano::rsn_block_details_packed (&dto, &result);
-	if (result < 0){
-		throw std::runtime_error("could not pack block_details");
+	if (result < 0)
+	{
+		throw std::runtime_error ("could not pack block_details");
 	}
 	return packed;
 }
@@ -1737,12 +1738,11 @@ void nano::block_details::unpack (uint8_t details_a)
 
 void nano::block_details::serialize (nano::stream & stream_a) const
 {
-	// auto result = rsnano::rsn_block_details_serialize(&dto, &stream_a);
-	// if (result < 0)
-	// {
-	// 	throw new std::runtime_error("could not serialize block details");
-	// }
-	nano::write (stream_a, packed ());
+	auto result = rsnano::rsn_block_details_serialize (&dto, &stream_a);
+	if (result < 0)
+	{
+		throw new std::runtime_error ("could not serialize block details");
+	}
 }
 
 bool nano::block_details::deserialize (nano::stream & stream_a)
@@ -1944,7 +1944,7 @@ void nano::block_sideband::set_timestamp (uint64_t ts)
 
 nano::block_details nano::block_sideband::details () const
 {
-	return nano::block_details(dto.details);
+	return nano::block_details (dto.details);
 }
 
 std::shared_ptr<nano::block> nano::block_uniquer::unique (std::shared_ptr<nano::block> const & block_a)

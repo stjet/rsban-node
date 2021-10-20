@@ -1931,7 +1931,7 @@ nano::block_hash nano::block_sideband::successor () const
 
 void nano::block_sideband::set_successor (nano::block_hash successor_a)
 {
-	std::copy(std::begin(dto.successor), std::end(dto.successor), std::begin(successor_a.bytes));
+	std::copy(std::begin(successor_a.bytes), std::end(successor_a.bytes), std::begin(dto.successor));
 }
 
 std::shared_ptr<nano::block> nano::block_uniquer::unique (std::shared_ptr<nano::block> const & block_a)

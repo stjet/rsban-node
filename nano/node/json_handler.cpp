@@ -1070,7 +1070,7 @@ void nano::json_handler::block_info ()
 		auto block (node.store.block.get (transaction, hash));
 		if (block != nullptr)
 		{
-			nano::account account (block->account ().is_zero () ? block->sideband ().account : block->account ());
+			nano::account account (block->account ().is_zero () ? block->sideband ().account () : block->account ());
 			response_l.put ("block_account", account.to_account ());
 			bool error_or_pruned (false);
 			auto amount (node.ledger.amount_safe (transaction, hash, error_or_pruned));
@@ -1228,7 +1228,7 @@ void nano::json_handler::blocks_info ()
 				if (block != nullptr)
 				{
 					boost::property_tree::ptree entry;
-					nano::account account (block->account ().is_zero () ? block->sideband ().account : block->account ());
+					nano::account account (block->account ().is_zero () ? block->sideband ().account () : block->account ());
 					entry.put ("block_account", account.to_account ());
 					bool error_or_pruned (false);
 					auto amount (node.ledger.amount_safe (transaction, hash, error_or_pruned));

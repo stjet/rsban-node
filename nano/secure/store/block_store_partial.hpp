@@ -160,7 +160,7 @@ public:
 		nano::account result (block_a.account ());
 		if (result.is_zero ())
 		{
-			result = block_a.sideband ().account;
+			result = block_a.sideband ().account ();
 		}
 		debug_assert (!result.is_zero ());
 		return result;
@@ -197,7 +197,7 @@ public:
 			case nano::block_type::open:
 			case nano::block_type::receive:
 			case nano::block_type::change:
-				result = block_a->sideband ().balance.number ();
+				result = block_a->sideband ().balance ().number ();
 				break;
 			case nano::block_type::send:
 				result = boost::polymorphic_downcast<nano::send_block *> (block_a.get ())->hashables.balance.number ();

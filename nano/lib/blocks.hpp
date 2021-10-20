@@ -73,11 +73,10 @@ public:
 	nano::block_details details () const;
 	nano::block_hash successor () const;
 	void set_successor (nano::block_hash successor_a);
+	nano::account account () const;
+	nano::amount balance () const;
 
 	static size_t size (nano::block_type);
-
-	nano::account account{};
-	nano::amount balance{ 0 };
 
 private:
 	rsnano::BlockSidebandDto dto;

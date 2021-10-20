@@ -82,7 +82,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		nano::account account (block->account ());
 		if (account.is_zero ())
 		{
-			account = block->sideband ().account;
+			account = block->sideband ().account ();
 		}
 
 		auto block_height = block->sideband ().height ();

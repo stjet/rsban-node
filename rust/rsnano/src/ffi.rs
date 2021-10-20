@@ -191,7 +191,9 @@ pub struct BlockSidebandDto {
     pub height: u64,
     pub timestamp: u64,
     pub details: BlockDetailsDto,
-    pub successor: [u8;32]
+    pub successor: [u8;32],
+    pub account: [u8;32],
+    pub balance: [u8;16],
 }
 
 #[no_mangle]

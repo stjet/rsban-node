@@ -231,7 +231,7 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 			}
 		}
 
-		auto const & account (!block_a->account ().is_zero () ? block_a->account () : block_a->sideband ().account);
+		auto const & account (!block_a->account ().is_zero () ? block_a->account () : block_a->sideband ().account ());
 		debug_assert (!account.is_zero ());
 		if (!node.ledger.cache.final_votes_confirmation_canary.load () && account == node.network_params.ledger.final_votes_canary_account && block_a->sideband ().height () >= node.network_params.ledger.final_votes_canary_height)
 		{
@@ -415,7 +415,7 @@ void nano::active_transactions::add_expired_optimistic_election (nano::election 
 	auto account = election_a.status.winner->account ();
 	if (account.is_zero ())
 	{
-		account = election_a.status.winner->sideband ().account;
+		account = election_a.status.winner->sideband ().account ();
 	}
 
 	auto it = expired_optimistic_election_infos.get<tag_account> ().find (account);
@@ -515,7 +515,7 @@ void nano::active_transactions::confirm_expired_frontiers_pessimistically (nano:
 					nano::uint128_t previous_balance{ 0 };
 					if (previous_block && previous_block->balance ().is_zero ())
 					{
-						previous_balance = previous_block->sideband ().balance.number ();
+						previous_balance = previous_block->sideband ().balance ().number ();
 					}
 
 					auto inserted_election = insert_election_from_frontiers_confirmation (block, account, previous_balance, nano::election_behavior::normal);

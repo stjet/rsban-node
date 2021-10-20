@@ -1333,7 +1333,7 @@ bool nano::ledger::block_confirmed (nano::transaction const & transaction_a, nan
 	if (block)
 	{
 		nano::confirmation_height_info confirmation_height_info;
-		store.confirmation_height.get (transaction_a, block->account ().is_zero () ? block->sideband ().account : block->account (), confirmation_height_info);
+		store.confirmation_height.get (transaction_a, block->account ().is_zero () ? block->sideband ().account () : block->account (), confirmation_height_info);
 		auto confirmed (confirmation_height_info.height >= block->sideband ().height ());
 		return confirmed;
 	}
@@ -1528,7 +1528,7 @@ bool nano::ledger::migrate_lmdb_to_rocksdb (boost::filesystem::path const & data
 		auto random_block (store.block.random (lmdb_transaction));
 		error |= rocksdb_store->block.get (rocksdb_transaction, random_block->hash ()) == nullptr;
 
-		auto account = random_block->account ().is_zero () ? random_block->sideband ().account : random_block->account ();
+		auto account = random_block->account ().is_zero () ? random_block->sideband ().account () : random_block->account ();
 		nano::account_info account_info;
 		error |= rocksdb_store->account.get (rocksdb_transaction, account, account_info);
 

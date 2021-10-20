@@ -108,7 +108,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 		nano::account account (block->account ());
 		if (account.is_zero ())
 		{
-			account = block->sideband ().account;
+			account = block->sideband ().account ();
 		}
 
 		// Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height

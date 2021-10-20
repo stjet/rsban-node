@@ -1475,7 +1475,7 @@ int main (int argc, char * const * argv)
 						}
 					}
 					// Check if sideband account is correct
-					else if (sideband.account != account)
+					else if (sideband.account () != account)
 					{
 						print_error_message (boost::str (boost::format ("Incorrect sideband account for block %1%\n") % hash.to_string ()));
 					}

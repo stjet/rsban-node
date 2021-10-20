@@ -30,6 +30,8 @@ struct BlockSidebandDto
 	uint64_t timestamp;
 	BlockDetailsDto details;
 	uint8_t successor[32];
+	uint8_t account[32];
+	uint8_t balance[16];
 };
 
 extern "C" {

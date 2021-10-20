@@ -1,6 +1,7 @@
+use anyhow::Result;
 use num::FromPrimitive;
 
-use crate::epoch::Epoch;
+use crate::{epoch::Epoch, utils::Stream};
 
 // Epoch is bit packed in BlockDetails. That's why it's max is limited to 4 bits
 const_assert!((Epoch::MAX as u8) < (1 << 5));
@@ -22,6 +23,15 @@ impl BlockDetails {
             is_epoch,
         }
     }
+
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+        stream.write_u8(self.packed())
+    }
+
+    pub fn deserialize(stream: &mut impl Stream) -> Result<BlockDetails> {
+        BlockDetails::unpack(stream.read_u8()?)
+    }
+
     pub fn packed(&self) -> u8 {
         let mut result = self.epoch as u8;
         if self.is_send {
@@ -37,14 +47,15 @@ impl BlockDetails {
         result
     }
 
-    pub fn unpack(value: u8) -> Option<Self> {
+    pub fn unpack(value: u8) -> Result<Self> {
         let epoch_mask = 0b0001_1111u8;
-        let epoch = match FromPrimitive::from_u8(value & epoch_mask) {
+        let epoch_value = value & epoch_mask;
+        let epoch = match FromPrimitive::from_u8(epoch_value) {
             Some(e) => e,
-            None => return None,
+            None => return Err(anyhow!("unknown epoch value: {}", epoch_value)),
         };
 
-        Some(BlockDetails {
+        Ok(BlockDetails {
             epoch,
             is_send: (0b1000_0000 & value) != 0,
             is_receive: (0b0100_0000 & value) != 0,

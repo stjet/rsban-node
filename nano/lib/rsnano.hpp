@@ -55,10 +55,6 @@ bool is_receive,
 bool is_epoch,
 BlockDetailsDto * result);
 
-uint8_t rsn_block_details_packed (const BlockDetailsDto * details, int32_t * result);
-
-int32_t rsn_block_details_unpack (uint8_t data, BlockDetailsDto * result);
-
 int32_t rsn_block_details_serialize (const BlockDetailsDto * dto, void * stream);
 
 int32_t rsn_block_details_deserialize (BlockDetailsDto * dto, void * stream);

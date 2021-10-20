@@ -13,6 +13,7 @@ crate-type = ["staticlib"]
 mock_instant = "0.2.1"
 
 [dependencies]
+anyhow = "1.0.40"
 num = "0.4.0"
 num-derive = "0.3.3"
 num-traits = "0.2.14"

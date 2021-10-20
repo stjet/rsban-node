@@ -2,7 +2,7 @@ use num::FromPrimitive;
 
 use crate::{
     bandwidth_limiter::BandwidthLimiter, block_details::BlockDetails,
-    block_sideband::BlockSideband, epoch::Epoch,
+    block_sideband::BlockSideband, epoch::Epoch, utils::Stream,
 };
 use std::{convert::TryFrom, ffi::c_void, sync::Mutex};
 
@@ -104,21 +104,64 @@ pub unsafe extern "C" fn rsn_block_details_create(
     return 0;
 }
 
+struct FfiStream {
+    stream_handle: *mut c_void,
+}
+
+impl FfiStream {
+    fn new(stream_handle: *mut c_void) -> Self {
+        Self { stream_handle }
+    }
+}
+
+impl Stream for FfiStream {
+    fn write_u8(&mut self, value: u8) -> anyhow::Result<()> {
+        unsafe {
+            match WRITE_U8_CALLBACK {
+                Some(f) => {
+                    let result = f(self.stream_handle, &value);
+
+                    if result == 0 {
+                        Ok(())
+                    } else {
+                        Err(anyhow!("callback returned error"))
+                    }
+                }
+                None => Err(anyhow!("WRITE_U8_CALLBACK missing")),
+            }
+        }
+    }
+
+    fn read_u8(&mut self) -> anyhow::Result<u8> {
+        unsafe {
+            match READ_U8_CALLBACK {
+                Some(f) => {
+                    let mut value = 0u8;
+                    let raw_value = &mut value as *mut u8;
+                    if f(self.stream_handle, raw_value) == 0 {
+                        Ok(value)
+                    } else {
+                        Err(anyhow!("callback returned error"))
+                    }
+                }
+                None => Err(anyhow!("READ_U8_CALLBACK missing")),
+            }
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_details_serialize(
     dto: &BlockDetailsDto,
     stream: *mut c_void,
 ) -> i32 {
-    match WRITE_U8_CALLBACK {
-        Some(f) => match BlockDetails::try_from(dto) {
-            Ok(details) => {
-                let packed = details.packed();
-                f(stream, &packed)
-            }
-            Err(_) => -1,
-        },
-        None => -1,
+    if let Ok(details) = BlockDetails::try_from(dto) {
+        let mut stream = FfiStream::new(stream);
+        if details.serialize(&mut stream).is_ok() {
+            return 0;
+        }
     }
+    -1
 }
 
 #[no_mangle]
@@ -126,21 +169,13 @@ pub unsafe extern "C" fn rsn_block_details_deserialize(
     dto: *mut BlockDetailsDto,
     stream: *mut c_void,
 ) -> i32 {
-    match READ_U8_CALLBACK {
-        Some(f) => {
-            let mut value = 0u8;
-            let raw_value = &mut value as *mut u8;
-            if f(stream, raw_value) == 0 {
-                if let Some(details) = BlockDetails::unpack(value) {
-                    set_block_details_dto(details, dto);
-                    return 0;
-                }
-            }
-
-            -1
-        }
-        None => -1,
+    let mut stream = FfiStream::new(stream);
+    if let Ok(details) = BlockDetails::deserialize(&mut stream) {
+        set_block_details_dto(details, dto);
+        return 0;
     }
+
+    return -1;
 }
 
 unsafe fn set_block_details_dto(details: BlockDetails, result: *mut BlockDetailsDto) {

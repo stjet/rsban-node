@@ -1757,7 +1757,6 @@ std::string nano::state_subtype (nano::block_details const details_a)
 }
 
 nano::block_sideband::block_sideband () :
-	successor{ 0 },
 	account{},
 	balance{ 0 }
 {
@@ -1765,10 +1764,10 @@ nano::block_sideband::block_sideband () :
 	dto.height = 0;
 	dto.timestamp = 0;
 	rsnano::rsn_block_details_create (static_cast<uint8_t> (epoch::epoch_0), false, false, false, &dto.details);
+	std::fill (std::begin (dto.successor), std::end (dto.successor), 0);
 }
 
 nano::block_sideband::block_sideband (nano::account const & account_a, nano::block_hash const & successor_a, nano::amount const & balance_a, uint64_t const height_a, uint64_t const timestamp_a, nano::block_details const & details_a, nano::epoch const source_epoch_a) :
-	successor (successor_a),
 	account (account_a),
 	balance (balance_a)
 {
@@ -1776,10 +1775,10 @@ nano::block_sideband::block_sideband (nano::account const & account_a, nano::blo
 	dto.height = height_a;
 	dto.timestamp = timestamp_a;
 	dto.details = details_a.dto;
+	std::copy (std::begin (successor_a.bytes), std::end (successor_a.bytes), std::begin (dto.successor));
 }
 
 nano::block_sideband::block_sideband (nano::account const & account_a, nano::block_hash const & successor_a, nano::amount const & balance_a, uint64_t const height_a, uint64_t const timestamp_a, nano::epoch const epoch_a, bool const is_send, bool const is_receive, bool const is_epoch, nano::epoch const source_epoch_a) :
-	successor (successor_a),
 	account (account_a),
 	balance (balance_a)
 {
@@ -1787,12 +1786,13 @@ nano::block_sideband::block_sideband (nano::account const & account_a, nano::blo
 	dto.height = height_a;
 	dto.timestamp = timestamp_a;
 	rsnano::rsn_block_details_create (static_cast<uint8_t> (epoch_a), is_send, is_receive, is_epoch, &dto.details);
+	std::copy (std::begin (successor_a.bytes), std::end (successor_a.bytes), std::begin (dto.successor));
 }
 
 size_t nano::block_sideband::size (nano::block_type type_a)
 {
 	size_t result (0);
-	result += sizeof (successor);
+	result += sizeof (dto.successor);
 	if (type_a != nano::block_type::state && type_a != nano::block_type::open)
 	{
 		result += sizeof (account);
@@ -1816,7 +1816,7 @@ size_t nano::block_sideband::size (nano::block_type type_a)
 
 void nano::block_sideband::serialize (nano::stream & stream_a, nano::block_type type_a) const
 {
-	nano::write (stream_a, successor.bytes);
+	nano::write (stream_a, successor ().bytes);
 	if (type_a != nano::block_type::state && type_a != nano::block_type::open)
 	{
 		nano::write (stream_a, account.bytes);
@@ -1842,7 +1842,9 @@ bool nano::block_sideband::deserialize (nano::stream & stream_a, nano::block_typ
 	bool result (false);
 	try
 	{
-		nano::read (stream_a, successor.bytes);
+		std::array<uint8_t, 32> successor_bytes;
+		nano::read (stream_a, successor_bytes);
+		std::copy(begin(successor_bytes), std::end(successor_bytes), std::begin(dto.successor));
 		if (type_a != nano::block_type::state && type_a != nano::block_type::open)
 		{
 			nano::read (stream_a, account.bytes);
@@ -1918,6 +1920,18 @@ void nano::block_sideband::set_timestamp (uint64_t ts)
 nano::block_details nano::block_sideband::details () const
 {
 	return nano::block_details (dto.details);
+}
+
+nano::block_hash nano::block_sideband::successor () const
+{
+	nano::block_hash result;
+	std::copy(std::begin(dto.successor), std::end(dto.successor), std::begin(result.bytes));
+	return result;
+}
+
+void nano::block_sideband::set_successor (nano::block_hash successor_a)
+{
+	std::copy(std::begin(dto.successor), std::end(dto.successor), std::begin(successor_a.bytes));
 }
 
 std::shared_ptr<nano::block> nano::block_uniquer::unique (std::shared_ptr<nano::block> const & block_a)

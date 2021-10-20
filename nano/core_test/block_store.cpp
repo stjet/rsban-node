@@ -86,7 +86,7 @@ TEST (block_store, sideband_serialization)
 	sideband1.account = 1;
 	sideband1.balance = 2;
 	sideband1.set_height (3);
-	sideband1.successor = 4;
+	sideband1.set_successor (4);
 	sideband1.set_timestamp (5);
 	std::vector<uint8_t> vector;
 	{
@@ -99,7 +99,7 @@ TEST (block_store, sideband_serialization)
 	ASSERT_EQ (sideband1.account, sideband2.account);
 	ASSERT_EQ (sideband1.balance, sideband2.balance);
 	ASSERT_EQ (sideband1.height (), sideband2.height ());
-	ASSERT_EQ (sideband1.successor, sideband2.successor);
+	ASSERT_EQ (sideband1.successor (), sideband2.successor ());
 	ASSERT_EQ (sideband1.timestamp (), sideband2.timestamp ());
 }
 
@@ -140,21 +140,21 @@ TEST (block_store, clear_successor)
 	store->block.put (transaction, block2.hash (), block2);
 	auto block2_store (store->block.get (transaction, block1.hash ()));
 	ASSERT_NE (nullptr, block2_store);
-	ASSERT_EQ (0, block2_store->sideband ().successor.number ());
+	ASSERT_EQ (0, block2_store->sideband ().successor ().number ());
 	auto modified_sideband = block2_store->sideband ();
-	modified_sideband.successor = block2.hash ();
+	modified_sideband.set_successor (block2.hash ());
 	block1.sideband_set (modified_sideband);
 	store->block.put (transaction, block1.hash (), block1);
 	{
 		auto block1_store (store->block.get (transaction, block1.hash ()));
 		ASSERT_NE (nullptr, block1_store);
-		ASSERT_EQ (block2.hash (), block1_store->sideband ().successor);
+		ASSERT_EQ (block2.hash (), block1_store->sideband ().successor ());
 	}
 	store->block.successor_clear (transaction, block1.hash ());
 	{
 		auto block1_store (store->block.get (transaction, block1.hash ()));
 		ASSERT_NE (nullptr, block1_store);
-		ASSERT_EQ (0, block1_store->sideband ().successor.number ());
+		ASSERT_EQ (0, block1_store->sideband ().successor ().number ());
 	}
 }
 
@@ -2039,7 +2039,7 @@ void write_sideband_v14 (nano::mdb_store & store_a, nano::transaction & transact
 	auto block = store_a.block.get (transaction_a, block_a.hash ());
 	ASSERT_NE (block, nullptr);
 
-	nano::block_sideband_v14 sideband_v14 (block->type (), block->sideband ().account, block->sideband ().successor, block->sideband ().balance, block->sideband ().timestamp (), block->sideband ().height ());
+	nano::block_sideband_v14 sideband_v14 (block->type (), block->sideband ().account, block->sideband ().successor (), block->sideband ().balance, block->sideband ().timestamp (), block->sideband ().height ());
 	std::vector<uint8_t> data;
 	{
 		nano::vectorstream stream (data);
@@ -2058,7 +2058,7 @@ void write_sideband_v15 (nano::mdb_store & store_a, nano::transaction & transact
 
 	ASSERT_LE (block->sideband ().details ().epoch (), nano::epoch::max);
 	// Simulated by writing 0 on every of the most significant bits, leaving out epoch only, as if pre-upgrade
-	nano::block_sideband_v18 sideband_v15 (block->sideband ().account, block->sideband ().successor, block->sideband ().balance, block->sideband ().timestamp (), block->sideband ().height (), block->sideband ().details ().epoch (), false, false, false);
+	nano::block_sideband_v18 sideband_v15 (block->sideband ().account, block->sideband ().successor (), block->sideband ().balance, block->sideband ().timestamp (), block->sideband ().height (), block->sideband ().details ().epoch (), false, false, false);
 	std::vector<uint8_t> data;
 	{
 		nano::vectorstream stream (data);
@@ -2075,7 +2075,7 @@ void write_block_w_sideband_v18 (nano::mdb_store & store_a, MDB_dbi database, na
 	auto block = store_a.block.get (transaction_a, block_a.hash ());
 	ASSERT_NE (block, nullptr);
 	auto new_sideband (block->sideband ());
-	nano::block_sideband_v18 sideband_v18 (new_sideband.account, new_sideband.successor, new_sideband.balance, new_sideband.height (), new_sideband.timestamp (), new_sideband.details ().epoch (), new_sideband.details ().is_send (), new_sideband.details ().is_receive (), new_sideband.details ().is_epoch ());
+	nano::block_sideband_v18 sideband_v18 (new_sideband.account, new_sideband.successor (), new_sideband.balance, new_sideband.height (), new_sideband.timestamp (), new_sideband.details ().epoch (), new_sideband.details ().is_send (), new_sideband.details ().is_receive (), new_sideband.details ().is_epoch ());
 
 	std::vector<uint8_t> data;
 	{

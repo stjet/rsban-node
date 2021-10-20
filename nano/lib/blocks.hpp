@@ -71,10 +71,11 @@ public:
 	uint64_t timestamp () const;
 	void set_timestamp (uint64_t ts);
 	nano::block_details details () const;
+	nano::block_hash successor () const;
+	void set_successor (nano::block_hash successor_a);
 
 	static size_t size (nano::block_type);
 
-	nano::block_hash successor{ 0 };
 	nano::account account{};
 	nano::amount balance{ 0 };
 

@@ -482,7 +482,7 @@ void nano::mdb_store::upgrade_v16_to_v17 (nano::write_transaction const & transa
 
 				while (height != confirmation_height)
 				{
-					block = block_get_v18 (transaction_a, block->sideband ().successor);
+					block = block_get_v18 (transaction_a, block->sideband ().successor ());
 					debug_assert (block);
 					++height;
 				}

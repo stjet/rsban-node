@@ -29,6 +29,7 @@ struct BlockSidebandDto
 	uint64_t height;
 	uint64_t timestamp;
 	BlockDetailsDto details;
+	uint8_t successor[32];
 };
 
 extern "C" {

@@ -507,7 +507,7 @@ void nano::active_transactions::confirm_expired_frontiers_pessimistically (nano:
 				else
 				{
 					previous_block = node.store.block.get (transaction_a, confirmation_height_info.frontier);
-					block = node.store.block.get (transaction_a, previous_block->sideband ().successor);
+					block = node.store.block.get (transaction_a, previous_block->sideband ().successor ());
 				}
 
 				if (block && !node.confirmation_height_processor.is_processing_block (block->hash ()) && node.ledger.dependents_confirmed (transaction_a, *block))

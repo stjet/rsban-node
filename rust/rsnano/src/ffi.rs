@@ -1,15 +1,21 @@
 use num::FromPrimitive;
+use primitive_types::U256;
 
 use crate::{
-    bandwidth_limiter::BandwidthLimiter, block_details::BlockDetails,
-    block_sideband::BlockSideband, epoch::Epoch, utils::Stream,
+    bandwidth_limiter::BandwidthLimiter,
+    block_details::BlockDetails,
+    block_sideband::{Account, Amount, BlockHash, BlockSideband, BlockType, PublicKey},
+    epoch::Epoch,
+    utils::Stream,
 };
 use std::{convert::TryFrom, ffi::c_void, sync::Mutex};
 
-type WriteU8Callback = unsafe extern "C" fn(*mut c_void, *const u8) -> i32;
+type WriteU8Callback = unsafe extern "C" fn(*mut c_void, u8) -> i32;
+type WriteBytesCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> i32;
 type ReadU8Callback = unsafe extern "C" fn(*mut c_void, *mut u8) -> i32;
 
 static mut WRITE_U8_CALLBACK: Option<WriteU8Callback> = None;
+static mut WRITE_BYTES_CALLBACK: Option<WriteBytesCallback> = None;
 static mut READ_U8_CALLBACK: Option<ReadU8Callback> = None;
 
 #[no_mangle]
@@ -18,8 +24,78 @@ pub unsafe extern "C" fn rsn_callback_write_u8(f: WriteU8Callback) {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_callback_write_bytes(f: WriteBytesCallback) {
+    WRITE_BYTES_CALLBACK = Some(f);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_callback_read_u8(f: ReadU8Callback) {
     READ_U8_CALLBACK = Some(f);
+}
+
+struct FfiStream {
+    stream_handle: *mut c_void,
+}
+
+impl FfiStream {
+    fn new(stream_handle: *mut c_void) -> Self {
+        Self { stream_handle }
+    }
+}
+
+impl Stream for FfiStream {
+    fn write_u8(&mut self, value: u8) -> anyhow::Result<()> {
+        unsafe {
+            match WRITE_U8_CALLBACK {
+                Some(f) => {
+                    let result = f(self.stream_handle, value);
+
+                    if result == 0 {
+                        Ok(())
+                    } else {
+                        Err(anyhow!("callback returned error"))
+                    }
+                }
+                None => Err(anyhow!("WRITE_U8_CALLBACK missing")),
+            }
+        }
+    }
+
+    fn write_bytes(&mut self, bytes: &[u8]) -> anyhow::Result<()> {
+        if bytes.len() != 32 {
+            bail!("not implemented yet")
+        }
+
+        unsafe {
+            match WRITE_BYTES_CALLBACK {
+                Some(f) => {
+                    if f(self.stream_handle, bytes.as_ptr(), bytes.len()) == 0 {
+                        Ok(())
+                    } else {
+                        Err(anyhow!("callback returned error"))
+                    }
+                }
+                None => Err(anyhow!("WRITE_32_BYTES_CALLBACK missing")),
+            }
+        }
+    }
+
+    fn read_u8(&mut self) -> anyhow::Result<u8> {
+        unsafe {
+            match READ_U8_CALLBACK {
+                Some(f) => {
+                    let mut value = 0u8;
+                    let raw_value = &mut value as *mut u8;
+                    if f(self.stream_handle, raw_value) == 0 {
+                        Ok(value)
+                    } else {
+                        Err(anyhow!("callback returned error"))
+                    }
+                }
+                None => Err(anyhow!("READ_U8_CALLBACK missing")),
+            }
+        }
+    }
 }
 
 pub struct BandwidthLimiterHandle {
@@ -104,52 +180,6 @@ pub unsafe extern "C" fn rsn_block_details_create(
     return 0;
 }
 
-struct FfiStream {
-    stream_handle: *mut c_void,
-}
-
-impl FfiStream {
-    fn new(stream_handle: *mut c_void) -> Self {
-        Self { stream_handle }
-    }
-}
-
-impl Stream for FfiStream {
-    fn write_u8(&mut self, value: u8) -> anyhow::Result<()> {
-        unsafe {
-            match WRITE_U8_CALLBACK {
-                Some(f) => {
-                    let result = f(self.stream_handle, &value);
-
-                    if result == 0 {
-                        Ok(())
-                    } else {
-                        Err(anyhow!("callback returned error"))
-                    }
-                }
-                None => Err(anyhow!("WRITE_U8_CALLBACK missing")),
-            }
-        }
-    }
-
-    fn read_u8(&mut self) -> anyhow::Result<u8> {
-        unsafe {
-            match READ_U8_CALLBACK {
-                Some(f) => {
-                    let mut value = 0u8;
-                    let raw_value = &mut value as *mut u8;
-                    if f(self.stream_handle, raw_value) == 0 {
-                        Ok(value)
-                    } else {
-                        Err(anyhow!("callback returned error"))
-                    }
-                }
-                None => Err(anyhow!("READ_U8_CALLBACK missing")),
-            }
-        }
-    }
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_details_serialize(
     dto: &BlockDetailsDto,
@@ -187,27 +217,84 @@ unsafe fn set_block_details_dto(details: BlockDetails, result: *mut BlockDetails
 
 #[repr(C)]
 pub struct BlockSidebandDto {
-    pub source_epoch: u8,
     pub height: u64,
     pub timestamp: u64,
+    pub successor: [u8; 32],
+    pub account: [u8; 32],
+    pub balance: [u8; 16],
     pub details: BlockDetailsDto,
-    pub successor: [u8;32],
-    pub account: [u8;32],
-    pub balance: [u8;16],
+    pub source_epoch: u8,
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_sideband_foo(dto: &BlockSidebandDto) {}
+pub extern "C" fn rsn_block_sideband_size(block_type: u8, result: *mut i32) -> usize {
+    let mut result_code = 0;
+    let mut size = 0;
+    if let Ok(block_type) = BlockType::try_from(block_type) {
+        size = BlockSideband::serialized_size(block_type);
+    } else {
+        result_code = -1;
+    }
+
+    if !result.is_null() {
+        unsafe {
+            *result = result_code;
+        }
+    }
+
+    size
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_sideband_serialize(_dto: &BlockSidebandDto, _stream: *mut c_void) -> i32 {
+    0
+}
+
+impl TryFrom<&BlockSidebandDto> for BlockSideband {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &BlockSidebandDto) -> Result<Self, Self::Error> {
+        let pub_key = PublicKey::new(U256::from_big_endian(&value.account));
+        let account = Account::new(pub_key);
+        let successor = BlockHash::new(U256::from_big_endian(&value.successor));
+        let balance = Amount::new(u128::from_be_bytes(value.balance));
+        let details = BlockDetails::try_from(&value.details)?;
+        let source_epoch = Epoch::try_from(value.source_epoch)?;
+        let sideband = BlockSideband::new(
+            account,
+            successor,
+            balance,
+            value.height,
+            value.height,
+            details,
+            source_epoch,
+        );
+        Ok(sideband)
+    }
+}
 
 impl TryFrom<&BlockDetailsDto> for BlockDetails {
-    type Error = ();
+    type Error = anyhow::Error;
 
     fn try_from(value: &BlockDetailsDto) -> Result<Self, Self::Error> {
-        let epoch = match FromPrimitive::from_u8(value.epoch) {
-            Some(e) => e,
-            None => return Err(()),
-        };
+        let epoch = Epoch::try_from(value.epoch)?;
         let details = BlockDetails::new(epoch, value.is_send, value.is_receive, value.is_epoch);
         Ok(details)
+    }
+}
+
+impl TryFrom<u8> for Epoch {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        FromPrimitive::from_u8(value).ok_or_else(|| anyhow!("invalid epoch value"))
+    }
+}
+
+impl TryFrom<u8> for BlockType {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        FromPrimitive::from_u8(value).ok_or_else(|| anyhow!("invalid block type value"))
     }
 }

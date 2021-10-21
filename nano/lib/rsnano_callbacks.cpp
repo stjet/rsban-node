@@ -2,12 +2,27 @@
 #include <nano/lib/rsnano_callbacks.hpp>
 #include <nano/lib/stream.hpp>
 
-int32_t write_u8 (void * stream, const uint8_t * value)
+int32_t write_u8 (void * stream, const uint8_t value)
 {
 	auto s = static_cast<nano::stream *> (stream);
 	try
 	{
-		nano::write<uint8_t> (*s, *value);
+		nano::write<uint8_t> (*s, value);
+	}
+	catch (...)
+	{
+		return -1;
+	}
+
+	return 0;
+}
+
+int32_t write_bytes (void * stream, const uint8_t * value, size_t len)
+{
+	auto s = static_cast<nano::stream *> (stream);
+	try
+	{
+		nano::write_bytes_raw (*s, value, len);
 	}
 	catch (...)
 	{
@@ -35,5 +50,6 @@ int32_t read_u8 (void * stream, uint8_t * value)
 void rsnano::set_rsnano_callbacks ()
 {
 	rsnano::rsn_callback_write_u8 (write_u8);
+	rsnano::rsn_callback_write_bytes (write_bytes);
 	rsnano::rsn_callback_read_u8 (read_u8);
 }

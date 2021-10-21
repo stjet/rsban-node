@@ -68,6 +68,7 @@ add_library(
   stats.hpp
   stats.cpp
   stream.hpp
+  stream.cpp
   threading.hpp
   threading.cpp
   timer.hpp

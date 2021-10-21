@@ -4,7 +4,7 @@
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
-pub(crate) enum Epoch {
+pub enum Epoch {
     Invalid = 0,
     Unspecified = 1,
     Epoch0 = 2,

@@ -11,7 +11,9 @@ namespace rsnano
 {
 struct BandwidthLimiterHandle;
 
-using WriteU8Callback = int32_t (*) (void *, const uint8_t *);
+using WriteU8Callback = int32_t (*) (void *, uint8_t);
+
+using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
@@ -25,18 +27,20 @@ struct BlockDetailsDto
 
 struct BlockSidebandDto
 {
-	uint8_t source_epoch;
 	uint64_t height;
 	uint64_t timestamp;
-	BlockDetailsDto details;
 	uint8_t successor[32];
 	uint8_t account[32];
 	uint8_t balance[16];
+	BlockDetailsDto details;
+	uint8_t source_epoch;
 };
 
 extern "C" {
 
 void rsn_callback_write_u8 (WriteU8Callback f);
+
+void rsn_callback_write_bytes (WriteBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
 
@@ -62,7 +66,9 @@ int32_t rsn_block_details_serialize (const BlockDetailsDto * dto, void * stream)
 
 int32_t rsn_block_details_deserialize (BlockDetailsDto * dto, void * stream);
 
-void rsn_block_sideband_foo (const BlockSidebandDto * dto);
+uintptr_t rsn_block_sideband_size (uint8_t block_type, int32_t * result);
+
+int32_t rsn_block_sideband_serialize (const BlockSidebandDto * _dto, void * _stream);
 
 } // extern "C"
 

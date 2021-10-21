@@ -45,6 +45,8 @@ void write (nano::stream & stream_a, T const & value_a)
 	debug_assert (amount_written == sizeof (value_a));
 }
 
+void write_bytes_raw (nano::stream & stream_a, uint8_t const * bytes_a, size_t len_a);
+
 inline void write (nano::stream & stream_a, std::vector<uint8_t> const & value_a)
 {
 	auto amount_written (stream_a.sputn (value_a.data (), value_a.size ()));

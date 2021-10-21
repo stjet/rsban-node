@@ -1791,26 +1791,11 @@ nano::block_sideband::block_sideband (nano::account const & account_a, nano::blo
 
 size_t nano::block_sideband::size (nano::block_type type_a)
 {
-	size_t result (0);
-	result += sizeof (dto.successor);
-	if (type_a != nano::block_type::state && type_a != nano::block_type::open)
-	{
-		result += sizeof (dto.account);
-	}
-	if (type_a != nano::block_type::open)
-	{
-		result += sizeof (dto.height);
-	}
-	if (type_a == nano::block_type::receive || type_a == nano::block_type::change || type_a == nano::block_type::open)
-	{
-		result += sizeof (dto.balance);
-	}
-	result += sizeof (dto.timestamp);
-	if (type_a == nano::block_type::state)
-	{
-		static_assert (sizeof (nano::epoch) == nano::block_details::size (), "block_details is larger than the epoch enum");
-		result += nano::block_details::size () + sizeof (nano::epoch);
-	}
+	int32_t res{ 0 };
+	size_t result{ rsnano::rsn_block_sideband_size (static_cast<uint8_t> (type_a), &res) };
+	if (res != 0)
+		throw std::runtime_error ("rsn_block_sideband_size failed");
+
 	return result;
 }
 

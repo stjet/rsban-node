@@ -7,7 +7,7 @@ use crate::{epoch::Epoch, utils::Stream};
 const_assert!((Epoch::MAX as u8) < (1 << 5));
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct BlockDetails {
+pub struct BlockDetails {
     pub epoch: Epoch,
     pub is_send: bool,
     pub is_receive: bool,
@@ -22,6 +22,10 @@ impl BlockDetails {
             is_receive,
             is_epoch,
         }
+    }
+
+    pub const fn serialized_size() -> usize {
+        1
     }
 
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {

@@ -16,6 +16,9 @@ bool try_read (nano::stream & stream_a, T & value_a)
 	auto amount_read (stream_a.sgetn (reinterpret_cast<uint8_t *> (&value_a), sizeof (value_a)));
 	return amount_read != sizeof (value_a);
 }
+
+bool try_read_raw (nano::stream & stream_a, uint8_t * bytes_a, size_t len_a);
+
 // A wrapper of try_read which throws if there is an error
 template <typename T>
 void read (nano::stream & stream_a, T & value)

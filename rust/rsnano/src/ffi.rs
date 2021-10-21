@@ -12,10 +12,12 @@ use std::{convert::TryFrom, ffi::c_void, sync::Mutex};
 type WriteU8Callback = unsafe extern "C" fn(*mut c_void, u8) -> i32;
 type WriteBytesCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> i32;
 type ReadU8Callback = unsafe extern "C" fn(*mut c_void, *mut u8) -> i32;
+type ReadBytesCallback = unsafe extern "C" fn(*mut c_void, *mut u8, usize) -> i32;
 
 static mut WRITE_U8_CALLBACK: Option<WriteU8Callback> = None;
 static mut WRITE_BYTES_CALLBACK: Option<WriteBytesCallback> = None;
 static mut READ_U8_CALLBACK: Option<ReadU8Callback> = None;
+static mut READ_BYTES_CALLBACK: Option<ReadBytesCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_write_u8(f: WriteU8Callback) {
@@ -30,6 +32,11 @@ pub unsafe extern "C" fn rsn_callback_write_bytes(f: WriteBytesCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_read_u8(f: ReadU8Callback) {
     READ_U8_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_read_bytes(f: ReadBytesCallback) {
+    READ_BYTES_CALLBACK = Some(f);
 }
 
 struct FfiStream {
@@ -88,6 +95,21 @@ impl Stream for FfiStream {
                     }
                 }
                 None => Err(anyhow!("READ_U8_CALLBACK missing")),
+            }
+        }
+    }
+
+    fn read_bytes(&mut self, buffer: &mut [u8], len: usize) -> anyhow::Result<()> {
+        unsafe {
+            match READ_BYTES_CALLBACK {
+                Some(f) => {
+                    if f(self.stream_handle, buffer.as_mut_ptr(), len) == 0 {
+                        Ok(())
+                    } else {
+                        Err(anyhow!("callback returned error"))
+                    }
+                },
+                None => Err(anyhow!("READ_BYTES_CALLBACK missing")),
             }
         }
     }
@@ -171,7 +193,7 @@ pub unsafe extern "C" fn rsn_block_details_create(
     };
 
     let details = BlockDetails::new(epoch, is_send, is_receive, is_epoch);
-    set_block_details_dto(details, result);
+    set_block_details_dto(&details, result);
     0
 }
 
@@ -196,14 +218,14 @@ pub unsafe extern "C" fn rsn_block_details_deserialize(
 ) -> i32 {
     let mut stream = FfiStream::new(stream);
     if let Ok(details) = BlockDetails::deserialize(&mut stream) {
-        set_block_details_dto(details, dto);
+        set_block_details_dto(&details, dto);
         return 0;
     }
 
     -1
 }
 
-unsafe fn set_block_details_dto(details: BlockDetails, result: *mut BlockDetailsDto) {
+unsafe fn set_block_details_dto(details: &BlockDetails, result: *mut BlockDetailsDto) {
     (*result).epoch = details.epoch as u8;
     (*result).is_send = details.is_send;
     (*result).is_receive = details.is_receive;
@@ -220,6 +242,18 @@ pub struct BlockSidebandDto {
     pub details: BlockDetailsDto,
     pub source_epoch: u8,
 }
+
+unsafe fn set_block_sideband_dto(sideband: &BlockSideband, result: *mut BlockSidebandDto) {
+    (*result).height = sideband.height;
+    (*result).timestamp = sideband.timestamp;
+    (*result).successor = sideband.successor.to_be_bytes();
+    (*result).account = sideband.account.to_be_bytes();
+    (*result).balance = sideband.balance.to_be_bytes();
+    let details_ptr: *mut BlockDetailsDto = &mut(*result).details;
+    set_block_details_dto(&sideband.details, details_ptr);
+    (*result).source_epoch = sideband.source_epoch as u8;
+}
+
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_sideband_size(block_type: u8, result: *mut i32) -> usize {
@@ -248,6 +282,21 @@ pub extern "C" fn rsn_block_sideband_serialize(
         if let Ok(sideband) = BlockSideband::try_from(dto) {
             let mut stream = FfiStream::new(stream);
             if sideband.serialize(&mut stream, block_type).is_ok() {
+                return 0;
+            }
+        }
+    }
+
+    -1
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_sideband_deserialize(dto: *mut BlockSidebandDto, stream: *mut c_void, block_type: u8) -> i32{
+    if let Ok(block_type) = BlockType::try_from(block_type) {
+        if let Ok(mut sideband) = BlockSideband::try_from(dto.as_ref().unwrap()) {
+            let mut stream = FfiStream::new(stream);
+            if sideband.deserialize(&mut stream, block_type).is_ok() {
+                set_block_sideband_dto(&sideband, dto);
                 return 0;
             }
         }

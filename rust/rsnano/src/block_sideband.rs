@@ -18,6 +18,10 @@ impl PublicKey {
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         stream.write_bytes(&self.value)
     }
+
+    pub fn to_be_bytes(&self) -> [u8;32]{
+        self.value
+    }
 }
 
 pub struct Account {
@@ -35,6 +39,10 @@ impl Account {
 
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         self.public_key.serialize(stream)
+    }
+
+    pub fn to_be_bytes(&self) -> [u8;32]{
+        self.public_key.to_be_bytes()
     }
 }
 
@@ -54,6 +62,15 @@ impl BlockHash {
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         stream.write_bytes(&self.value)
     }
+
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()>{
+        let len = self.value.len();
+        stream.read_bytes(&mut self.value, len)
+    }
+
+    pub fn to_be_bytes(&self) -> [u8; 32]{
+        self.value
+    }
 }
 
 pub struct Amount {
@@ -72,6 +89,10 @@ impl Amount {
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         stream.write_bytes(&self.value.to_be_bytes())
     }
+
+    pub fn to_be_bytes(&self) -> [u8;16] {
+        self.value.to_be_bytes()
+    }
 }
 
 #[repr(u8)]
@@ -87,13 +108,13 @@ pub enum BlockType {
 }
 
 pub struct BlockSideband {
-    height: u64,
-    timestamp: u64,
-    successor: BlockHash,
-    account: Account,
-    balance: Amount,
-    details: BlockDetails,
-    source_epoch: Epoch,
+    pub height: u64,
+    pub timestamp: u64,
+    pub successor: BlockHash,
+    pub account: Account,
+    pub balance: Amount,
+    pub details: BlockDetails,
+    pub source_epoch: Epoch,
 }
 
 impl BlockSideband {
@@ -171,6 +192,11 @@ impl BlockSideband {
             stream.write_u8(self.source_epoch as u8)?;
         }
 
+        Ok(())
+    }
+
+    pub fn deserialize(&mut self, stream: &mut impl Stream, block_type: BlockType) -> Result<()> {
+        //self.successor.deserialize(stream)?;
         Ok(())
     }
 }

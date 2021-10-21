@@ -1810,6 +1810,11 @@ void nano::block_sideband::serialize (nano::stream & stream_a, nano::block_type 
 
 bool nano::block_sideband::deserialize (nano::stream & stream_a, nano::block_type type_a)
 {
+	if (rsnano::rsn_block_sideband_deserialize (&dto, &stream_a, static_cast<uint8_t> (type_a)) != 0)
+	{
+		return true;
+	}
+
 	bool result (false);
 	try
 	{

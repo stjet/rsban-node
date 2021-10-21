@@ -17,6 +17,8 @@ using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
+using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
+
 struct BlockDetailsDto
 {
 	uint8_t epoch;
@@ -44,6 +46,8 @@ void rsn_callback_write_bytes (WriteBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
 
+void rsn_callback_read_bytes (ReadBytesCallback f);
+
 BandwidthLimiterHandle * rsn_bandwidth_limiter_create (double limit_burst_ratio, uintptr_t limit);
 
 void rsn_bandwidth_limiter_destroy (BandwidthLimiterHandle * limiter);
@@ -69,6 +73,8 @@ int32_t rsn_block_details_deserialize (BlockDetailsDto * dto, void * stream);
 uintptr_t rsn_block_sideband_size (uint8_t block_type, int32_t * result);
 
 int32_t rsn_block_sideband_serialize (const BlockSidebandDto * dto, void * stream, uint8_t block_type);
+
+int32_t rsn_block_sideband_deserialize (BlockSidebandDto * dto, void * stream, uint8_t block_type);
 
 } // extern "C"
 

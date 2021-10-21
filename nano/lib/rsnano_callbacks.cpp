@@ -4,7 +4,7 @@
 
 int32_t write_u8 (void * stream, const uint8_t value)
 {
-	auto s = static_cast<nano::stream *> (stream);
+	auto s{ static_cast<nano::stream *> (stream) };
 	try
 	{
 		nano::write<uint8_t> (*s, value);
@@ -19,7 +19,7 @@ int32_t write_u8 (void * stream, const uint8_t value)
 
 int32_t write_bytes (void * stream, const uint8_t * value, size_t len)
 {
-	auto s = static_cast<nano::stream *> (stream);
+	auto s{ static_cast<nano::stream *> (stream) };
 	try
 	{
 		nano::write_bytes_raw (*s, value, len);
@@ -34,10 +34,28 @@ int32_t write_bytes (void * stream, const uint8_t * value, size_t len)
 
 int32_t read_u8 (void * stream, uint8_t * value)
 {
-	auto s = static_cast<nano::stream *> (stream);
+	auto s{ static_cast<nano::stream *> (stream) };
 	try
 	{
 		nano::read<uint8_t> (*s, *value);
+	}
+	catch (...)
+	{
+		return -1;
+	}
+
+	return 0;
+}
+
+int32_t read_bytes (void * stream, uint8_t * buffer, size_t len)
+{
+	auto s{ static_cast<nano::stream *> (stream) };
+	try
+	{
+		if (nano::try_read_raw (*s, buffer, len) != 0)
+		{
+			return -1;
+		}
 	}
 	catch (...)
 	{
@@ -52,4 +70,5 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_write_u8 (write_u8);
 	rsnano::rsn_callback_write_bytes (write_bytes);
 	rsnano::rsn_callback_read_u8 (read_u8);
+	rsnano::rsn_callback_read_bytes (read_bytes);
 }

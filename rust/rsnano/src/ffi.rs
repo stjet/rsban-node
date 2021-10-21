@@ -1,5 +1,4 @@
 use num::FromPrimitive;
-use primitive_types::U256;
 
 use crate::{
     bandwidth_limiter::BandwidthLimiter,
@@ -62,10 +61,6 @@ impl Stream for FfiStream {
     }
 
     fn write_bytes(&mut self, bytes: &[u8]) -> anyhow::Result<()> {
-        if bytes.len() != 32 {
-            bail!("not implemented yet")
-        }
-
         unsafe {
             match WRITE_BYTES_CALLBACK {
                 Some(f) => {
@@ -177,7 +172,7 @@ pub unsafe extern "C" fn rsn_block_details_create(
 
     let details = BlockDetails::new(epoch, is_send, is_receive, is_epoch);
     set_block_details_dto(details, result);
-    return 0;
+    0
 }
 
 #[no_mangle]
@@ -205,7 +200,7 @@ pub unsafe extern "C" fn rsn_block_details_deserialize(
         return 0;
     }
 
-    return -1;
+    -1
 }
 
 unsafe fn set_block_details_dto(details: BlockDetails, result: *mut BlockDetailsDto) {
@@ -227,7 +222,7 @@ pub struct BlockSidebandDto {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_sideband_size(block_type: u8, result: *mut i32) -> usize {
+pub unsafe extern "C" fn rsn_block_sideband_size(block_type: u8, result: *mut i32) -> usize {
     let mut result_code = 0;
     let mut size = 0;
     if let Ok(block_type) = BlockType::try_from(block_type) {
@@ -237,26 +232,37 @@ pub extern "C" fn rsn_block_sideband_size(block_type: u8, result: *mut i32) -> u
     }
 
     if !result.is_null() {
-        unsafe {
-            *result = result_code;
-        }
+        *result = result_code;
     }
 
     size
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_sideband_serialize(_dto: &BlockSidebandDto, _stream: *mut c_void) -> i32 {
-    0
+pub extern "C" fn rsn_block_sideband_serialize(
+    dto: &BlockSidebandDto,
+    stream: *mut c_void,
+    block_type: u8,
+) -> i32 {
+    if let Ok(block_type) = BlockType::try_from(block_type) {
+        if let Ok(sideband) = BlockSideband::try_from(dto) {
+            let mut stream = FfiStream::new(stream);
+            if sideband.serialize(&mut stream, block_type).is_ok() {
+                return 0;
+            }
+        }
+    }
+
+    -1
 }
 
 impl TryFrom<&BlockSidebandDto> for BlockSideband {
     type Error = anyhow::Error;
 
     fn try_from(value: &BlockSidebandDto) -> Result<Self, Self::Error> {
-        let pub_key = PublicKey::new(U256::from_big_endian(&value.account));
+        let pub_key = PublicKey::new(value.account);
         let account = Account::new(pub_key);
-        let successor = BlockHash::new(U256::from_big_endian(&value.successor));
+        let successor = BlockHash::new(value.successor);
         let balance = Amount::new(u128::from_be_bytes(value.balance));
         let details = BlockDetails::try_from(&value.details)?;
         let source_epoch = Epoch::try_from(value.source_epoch)?;
@@ -265,7 +271,7 @@ impl TryFrom<&BlockSidebandDto> for BlockSideband {
             successor,
             balance,
             value.height,
-            value.height,
+            value.timestamp,
             details,
             source_epoch,
         );

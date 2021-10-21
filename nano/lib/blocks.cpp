@@ -1801,24 +1801,10 @@ size_t nano::block_sideband::size (nano::block_type type_a)
 
 void nano::block_sideband::serialize (nano::stream & stream_a, nano::block_type type_a) const
 {
-	nano::write (stream_a, successor ().bytes);
-	if (type_a != nano::block_type::state && type_a != nano::block_type::open)
+	auto result{ rsnano::rsn_block_sideband_serialize (&dto, &stream_a, static_cast<uint8_t> (type_a)) };
+	if (result != 0)
 	{
-		nano::write (stream_a, account ().bytes);
-	}
-	if (type_a != nano::block_type::open)
-	{
-		nano::write (stream_a, boost::endian::native_to_big (height ()));
-	}
-	if (type_a == nano::block_type::receive || type_a == nano::block_type::change || type_a == nano::block_type::open)
-	{
-		nano::write (stream_a, balance ().bytes);
-	}
-	nano::write (stream_a, boost::endian::native_to_big (timestamp ()));
-	if (type_a == nano::block_type::state)
-	{
-		details ().serialize (stream_a);
-		nano::write (stream_a, static_cast<uint8_t> (source_epoch ()));
+		throw std::runtime_error ("block_sideband serialization failed");
 	}
 }
 

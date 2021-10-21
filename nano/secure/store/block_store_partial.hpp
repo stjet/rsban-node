@@ -33,7 +33,7 @@ public:
 
 	void put (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a, nano::block const & block_a) override
 	{
-		debug_assert (block_a.sideband ().successor ().is_zero () || exists (transaction_a, block_a.sideband ().successor()));
+		debug_assert (block_a.sideband ().successor ().is_zero () || exists (transaction_a, block_a.sideband ().successor ()));
 		std::vector<uint8_t> vector;
 		{
 			nano::vectorstream stream (vector);

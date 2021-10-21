@@ -68,7 +68,7 @@ int32_t rsn_block_details_deserialize (BlockDetailsDto * dto, void * stream);
 
 uintptr_t rsn_block_sideband_size (uint8_t block_type, int32_t * result);
 
-int32_t rsn_block_sideband_serialize (const BlockSidebandDto * _dto, void * _stream);
+int32_t rsn_block_sideband_serialize (const BlockSidebandDto * dto, void * stream, uint8_t block_type);
 
 } // extern "C"
 

@@ -1,18 +1,22 @@
-use primitive_types::U256;
+use anyhow::Result;
 
-use crate::{block_details::BlockDetails, epoch::Epoch};
+use crate::{block_details::BlockDetails, epoch::Epoch, utils::Stream};
 
 pub struct PublicKey {
-    value: U256,
+    value: [u8; 32], // big endian
 }
 
 impl PublicKey {
-    pub fn new(value: U256) -> Self {
+    pub fn new(value: [u8; 32]) -> Self {
         Self { value }
     }
 
-    pub fn serialized_size() -> usize {
+    pub const fn serialized_size() -> usize {
         32
+    }
+
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+        stream.write_bytes(&self.value)
     }
 }
 
@@ -28,24 +32,32 @@ impl Account {
     pub fn serialized_size() -> usize {
         PublicKey::serialized_size()
     }
+
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+        self.public_key.serialize(stream)
+    }
 }
 
 pub struct BlockHash {
-    value: U256,
+    value: [u8; 32], //big endian
 }
 
 impl BlockHash {
-    pub fn new(value: U256) -> Self {
+    pub fn new(value: [u8; 32]) -> Self {
         Self { value }
     }
 
-    pub fn serialized_size() -> usize{
-       32 
+    pub fn serialized_size() -> usize {
+        32
+    }
+
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+        stream.write_bytes(&self.value)
     }
 }
 
 pub struct Amount {
-    value: u128,
+    value: u128, // native endian!
 }
 
 impl Amount {
@@ -55,6 +67,10 @@ impl Amount {
 
     pub fn serialized_size() -> usize {
         std::mem::size_of::<u128>()
+    }
+
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+        stream.write_bytes(&self.value.to_be_bytes())
     }
 }
 
@@ -112,7 +128,10 @@ impl BlockSideband {
             size += std::mem::size_of::<u64>(); // height
         }
 
-        if block_type == BlockType::Receive || block_type == BlockType::Change || block_type == BlockType::Open {
+        if block_type == BlockType::Receive
+            || block_type == BlockType::Change
+            || block_type == BlockType::Open
+        {
             size += Amount::serialized_size(); // balance
         }
 
@@ -125,5 +144,33 @@ impl BlockSideband {
         }
 
         size
+    }
+
+    pub fn serialize(&self, stream: &mut impl Stream, block_type: BlockType) -> Result<()> {
+        self.successor.serialize(stream)?;
+
+        if block_type != BlockType::State && block_type != BlockType::Open {
+            self.account.serialize(stream)?;
+        }
+
+        if block_type != BlockType::Open {
+            stream.write_bytes(&self.height.to_be_bytes())?;
+        }
+
+        if block_type == BlockType::Receive
+            || block_type == BlockType::Change
+            || block_type == BlockType::Open
+        {
+            self.balance.serialize(stream)?;
+        }
+
+        stream.write_bytes(&self.timestamp.to_be_bytes())?;
+
+        if block_type == BlockType::State {
+            self.details.serialize(stream)?;
+            stream.write_u8(self.source_epoch as u8)?;
+        }
+
+        Ok(())
     }
 }

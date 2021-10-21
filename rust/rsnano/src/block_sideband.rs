@@ -19,6 +19,11 @@ impl PublicKey {
         stream.write_bytes(&self.value)
     }
 
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
+        let len = self.value.len();
+        stream.read_bytes(&mut self.value, len)
+    }
+
     pub fn to_be_bytes(&self) -> [u8;32]{
         self.value
     }
@@ -39,6 +44,10 @@ impl Account {
 
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         self.public_key.serialize(stream)
+    }
+
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
+        self.public_key.deserialize(stream)
     }
 
     pub fn to_be_bytes(&self) -> [u8;32]{
@@ -88,6 +97,14 @@ impl Amount {
 
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         stream.write_bytes(&self.value.to_be_bytes())
+    }
+
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()>{
+        let mut buffer = [0u8;16];
+        let len = buffer.len();
+        stream.read_bytes(&mut buffer, len)?;
+        self.value = u128::from_be_bytes(buffer);
+        Ok(())
     }
 
     pub fn to_be_bytes(&self) -> [u8;16] {
@@ -196,7 +213,24 @@ impl BlockSideband {
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream, block_type: BlockType) -> Result<()> {
-        //self.successor.deserialize(stream)?;
+        self.successor.deserialize(stream)?;
+
+        if block_type != BlockType::State && block_type != BlockType::Open {
+            self.account.deserialize(stream)?;
+		}
+
+        if block_type != BlockType::Open {
+            let mut buffer = [0u8;8];
+            stream.read_bytes(&mut buffer, 8)?;
+            self.height = u64::from_be_bytes(buffer);
+		} else {
+            self.height = 1;
+		}
+
+        if block_type == BlockType::Receive || block_type == BlockType::Change || block_type == BlockType::Open {
+            self.balance.deserialize(stream)?;
+		}
+
         Ok(())
     }
 }

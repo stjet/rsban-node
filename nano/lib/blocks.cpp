@@ -1818,32 +1818,6 @@ bool nano::block_sideband::deserialize (nano::stream & stream_a, nano::block_typ
 	bool result (false);
 	try
 	{
-		std::array<uint8_t, 32> successor_bytes;
-		nano::read (stream_a, successor_bytes);
-		std::copy (std::begin (successor_bytes), std::end (successor_bytes), std::begin (dto.successor));
-		if (type_a != nano::block_type::state && type_a != nano::block_type::open)
-		{
-			std::array<uint8_t, 32> account_bytes;
-			nano::read (stream_a, account_bytes);
-			std::copy (std::begin (account_bytes), std::end (account_bytes), std::begin (dto.account));
-		}
-		if (type_a != nano::block_type::open)
-		{
-			uint64_t tmp_height;
-			nano::read (stream_a, tmp_height);
-			boost::endian::big_to_native_inplace (tmp_height);
-			set_height (tmp_height);
-		}
-		else
-		{
-			set_height (1);
-		}
-		if (type_a == nano::block_type::receive || type_a == nano::block_type::change || type_a == nano::block_type::open)
-		{
-			std::array<uint8_t, 16> balance_bytes;
-			nano::read (stream_a, balance_bytes);
-			std::copy (std::begin (balance_bytes), std::end (balance_bytes), std::begin (dto.balance));
-		}
 		uint64_t tmp_timestamp;
 		nano::read (stream_a, tmp_timestamp);
 		boost::endian::big_to_native_inplace (tmp_timestamp);

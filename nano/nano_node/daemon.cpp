@@ -19,6 +19,11 @@ namespace
 {
 void nano_abort_signal_handler (int signum)
 {
+	// remove `signum` from signal handling when under Windows
+#ifdef _WIN32
+	std::signal (signum, SIG_DFL);
+#endif
+
 	// create some debugging log files
 	nano::dump_crash_stacktrace ();
 	nano::create_load_memory_address_files ();
@@ -29,9 +34,12 @@ void nano_abort_signal_handler (int signum)
 
 void install_abort_signal_handler ()
 {
-#ifndef _WIN32
 	// We catch signal SIGSEGV and SIGABRT not via the signal manager because we want these signal handlers
 	// to be executed in the stack of the code that caused the signal, so we can dump the stacktrace.
+#ifdef _WIN32
+	std::signal (SIGSEGV, nano_abort_signal_handler);
+	std::signal (SIGABRT, nano_abort_signal_handler);
+#else
 	struct sigaction sa = {};
 	sa.sa_handler = nano_abort_signal_handler;
 	sigemptyset (&sa.sa_mask);
@@ -95,7 +103,7 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 			logger.always_log (initialization_text);
 
 			nano::set_file_descriptor_limit (OPEN_FILE_DESCRIPTORS_LIMIT);
-			const auto file_descriptor_limit = nano::get_file_descriptor_limit ();
+			auto const file_descriptor_limit = nano::get_file_descriptor_limit ();
 			if (file_descriptor_limit < OPEN_FILE_DESCRIPTORS_LIMIT)
 			{
 				logger.always_log (boost::format ("WARNING: open file descriptors limit is %1%, lower than the %2% recommended. Node was unable to change it.") % file_descriptor_limit % OPEN_FILE_DESCRIPTORS_LIMIT);
@@ -215,7 +223,7 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 				std::cerr << "Error initializing node\n";
 			}
 		}
-		catch (const std::runtime_error & e)
+		catch (std::runtime_error const & e)
 		{
 			std::cerr << "Error while running node (" << e.what () << ")\n";
 		}

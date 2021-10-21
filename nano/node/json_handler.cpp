@@ -529,6 +529,7 @@ void nano::json_handler::account_balance ()
 		auto balance (node.balance_pending (account, include_only_confirmed));
 		response_l.put ("balance", balance.first.convert_to<std::string> ());
 		response_l.put ("pending", balance.second.convert_to<std::string> ());
+		response_l.put ("receivable", balance.second.convert_to<std::string> ());
 	}
 	response_errors ();
 }
@@ -695,6 +696,7 @@ void nano::json_handler::account_info ()
 			{
 				auto account_pending (node.ledger.account_pending (transaction, account));
 				response_l.put ("pending", account_pending.convert_to<std::string> ());
+				response_l.put ("receivable", account_pending.convert_to<std::string> ());
 
 				if (include_confirmed)
 				{
@@ -898,6 +900,7 @@ void nano::json_handler::accounts_balances ()
 			auto balance (node.balance_pending (account, false));
 			entry.put ("balance", balance.first.convert_to<std::string> ());
 			entry.put ("pending", balance.second.convert_to<std::string> ());
+			entry.put ("receivable", balance.second.convert_to<std::string> ());
 			balances.push_back (std::make_pair (account.to_account (), entry));
 		}
 	}
@@ -2662,6 +2665,7 @@ void nano::json_handler::ledger ()
 							continue;
 						}
 						response_a.put ("pending", account_pending.convert_to<std::string> ());
+						response_a.put ("receivable", account_pending.convert_to<std::string> ());
 					}
 					response_a.put ("frontier", info.head.to_string ());
 					response_a.put ("open_block", info.open_block.to_string ());
@@ -2714,6 +2718,7 @@ void nano::json_handler::ledger ()
 							continue;
 						}
 						response_a.put ("pending", account_pending.convert_to<std::string> ());
+						response_a.put ("receivable", account_pending.convert_to<std::string> ());
 					}
 					response_a.put ("frontier", info.head.to_string ());
 					response_a.put ("open_block", info.open_block.to_string ());
@@ -3828,7 +3833,6 @@ void nano::json_handler::stop ()
 	response_errors ();
 	if (!ec)
 	{
-		node.stop ();
 		stop_callback ();
 	}
 }
@@ -4318,6 +4322,7 @@ void nano::json_handler::wallet_info ()
 		uint32_t deterministic_index (wallet->store.deterministic_index_get (transaction));
 		response_l.put ("balance", balance.convert_to<std::string> ());
 		response_l.put ("pending", pending.convert_to<std::string> ());
+		response_l.put ("receivable", pending.convert_to<std::string> ());
 		response_l.put ("accounts_count", std::to_string (count));
 		response_l.put ("accounts_block_count", std::to_string (block_count));
 		response_l.put ("accounts_cemented_block_count", std::to_string (cemented_block_count));
@@ -4348,6 +4353,7 @@ void nano::json_handler::wallet_balances ()
 				nano::uint128_t pending = node.ledger.account_pending (block_transaction, account);
 				entry.put ("balance", balance.convert_to<std::string> ());
 				entry.put ("pending", pending.convert_to<std::string> ());
+				entry.put ("receivable", pending.convert_to<std::string> ());
 				balances.push_back (std::make_pair (account.to_account (), entry));
 			}
 		}
@@ -4622,6 +4628,7 @@ void nano::json_handler::wallet_ledger ()
 					{
 						auto account_pending (node.ledger.account_pending (block_transaction, account));
 						entry.put ("pending", account_pending.convert_to<std::string> ());
+						entry.put ("receivable", account_pending.convert_to<std::string> ());
 					}
 					accounts.push_back (std::make_pair (account.to_account (), entry));
 				}
@@ -5204,6 +5211,8 @@ ipc_json_handler_no_arg_func_map create_ipc_json_handler_no_arg_func_map ()
 	no_arg_funcs.emplace ("peers", &nano::json_handler::peers);
 	no_arg_funcs.emplace ("pending", &nano::json_handler::pending);
 	no_arg_funcs.emplace ("pending_exists", &nano::json_handler::pending_exists);
+	no_arg_funcs.emplace ("receivable", &nano::json_handler::pending);
+	no_arg_funcs.emplace ("receivable_exists", &nano::json_handler::pending_exists);
 	no_arg_funcs.emplace ("process", &nano::json_handler::process);
 	no_arg_funcs.emplace ("pruned_exists", &nano::json_handler::pruned_exists);
 	no_arg_funcs.emplace ("receive", &nano::json_handler::receive);

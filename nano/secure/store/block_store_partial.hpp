@@ -200,10 +200,10 @@ public:
 				result = block_a->sideband ().balance ().number ();
 				break;
 			case nano::block_type::send:
-				result = boost::polymorphic_downcast<nano::send_block *> (block_a.get ())->hashables.balance.number ();
+				result = boost::polymorphic_downcast<nano::send_block *> (block_a.get ())->balance ().number ();
 				break;
 			case nano::block_type::state:
-				result = boost::polymorphic_downcast<nano::state_block *> (block_a.get ())->hashables.balance.number ();
+				result = boost::polymorphic_downcast<nano::state_block *> (block_a.get ())->balance ().number ();
 				break;
 			case nano::block_type::invalid:
 			case nano::block_type::not_a_block:

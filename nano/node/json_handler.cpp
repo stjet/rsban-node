@@ -2280,12 +2280,12 @@ public:
 	virtual ~history_visitor () = default;
 	void send_block (nano::send_block const & block_a)
 	{
-		if (should_ignore_account (block_a.hashables.destination))
+		if (should_ignore_account (block_a.destination ()))
 		{
 			return;
 		}
 		tree.put ("type", "send");
-		auto account (block_a.hashables.destination.to_account ());
+		auto account (block_a.destination ().to_account ());
 		tree.put ("account", account);
 		bool error_or_pruned (false);
 		auto amount (handler.node.ledger.amount_safe (transaction, hash, error_or_pruned).convert_to<std::string> ());
@@ -2296,8 +2296,8 @@ public:
 		if (raw)
 		{
 			tree.put ("destination", account);
-			tree.put ("balance", block_a.hashables.balance.to_string_dec ());
-			tree.put ("previous", block_a.hashables.previous.to_string ());
+			tree.put ("balance", block_a.balance ().to_string_dec ());
+			tree.put ("previous", block_a.previous ().to_string ());
 		}
 	}
 	void receive_block (nano::receive_block const & block_a)

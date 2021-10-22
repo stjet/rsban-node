@@ -3182,7 +3182,7 @@ TEST (node, fork_invalid_block_signature)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	auto send2_corrupt (std::make_shared<nano::send_block> (*send2));
-	send2_corrupt->signature = nano::signature (123);
+	send2_corrupt->signature_set (nano::signature (123));
 	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, send2));
 	auto vote_corrupt (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, send2_corrupt));
 

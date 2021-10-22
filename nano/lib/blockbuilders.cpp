@@ -12,7 +12,7 @@ void previous_hex_impl (std::string const & previous_hex, std::error_code & ec, 
 	nano::block_hash previous;
 	if (!previous.decode_hex (previous_hex))
 	{
-		block->hashables.previous = previous;
+		block->set_previous (previous);
 	}
 	else
 	{
@@ -82,7 +82,7 @@ void destination_hex_impl (std::string const & account_hex, std::error_code & ec
 	nano::account account;
 	if (!account.decode_hex (account_hex))
 	{
-		block->hashables.destination = account;
+		block->set_destination (account);
 	}
 	else
 	{
@@ -96,7 +96,7 @@ void destination_address_impl (std::string const & address, std::error_code & ec
 	nano::account account;
 	if (!account.decode_account (address))
 	{
-		block->hashables.destination = account;
+		block->set_destination (account);
 	}
 	else
 	{
@@ -124,7 +124,7 @@ void balance_dec_impl (std::string const & balance_decimal, std::error_code & ec
 	nano::amount balance;
 	if (!balance.decode_dec (balance_decimal))
 	{
-		block->hashables.balance = balance;
+		block->set_balance (balance);
 	}
 	else
 	{
@@ -138,7 +138,7 @@ void balance_hex_impl (std::string const & balance_hex, std::error_code & ec, BL
 	nano::amount balance;
 	if (!balance.decode_hex (balance_hex))
 	{
-		block->hashables.balance = balance;
+		block->set_balance (balance);
 	}
 	else
 	{
@@ -529,18 +529,14 @@ void nano::send_block_builder::validate ()
 
 nano::send_block_builder & nano::send_block_builder::zero ()
 {
-	block->work = uint64_t (0);
-	block->signature.clear ();
-	block->hashables.previous.clear ();
-	block->hashables.destination.clear ();
-	block->hashables.balance.clear ();
+	block->zero ();
 	build_state = required_fields;
 	return *this;
 }
 
 nano::send_block_builder & nano::send_block_builder::destination (nano::account account)
 {
-	block->hashables.destination = account;
+	block->set_destination (account);
 	build_state |= build_flags::link_present;
 	return *this;
 }
@@ -561,7 +557,7 @@ nano::send_block_builder & nano::send_block_builder::destination_address (std::s
 
 nano::send_block_builder & nano::send_block_builder::previous (nano::block_hash previous)
 {
-	block->hashables.previous = previous;
+	block->set_previous (previous);
 	build_state |= build_flags::previous_present;
 	return *this;
 }
@@ -575,7 +571,7 @@ nano::send_block_builder & nano::send_block_builder::previous_hex (std::string p
 
 nano::send_block_builder & nano::send_block_builder::balance (nano::amount balance)
 {
-	block->hashables.balance = balance;
+	block->set_balance (balance);
 	build_state |= build_flags::balance_present;
 	return *this;
 }
@@ -688,7 +684,7 @@ std::shared_ptr<BLOCKTYPE> nano::abstract_builder<BLOCKTYPE, BUILDER>::build_sha
 template <typename BLOCKTYPE, typename BUILDER>
 nano::abstract_builder<BLOCKTYPE, BUILDER> & nano::abstract_builder<BLOCKTYPE, BUILDER>::work (uint64_t work)
 {
-	block->work = work;
+	block->block_work_set (work);
 	build_state |= build_flags::work_present;
 	return *this;
 }
@@ -696,7 +692,7 @@ nano::abstract_builder<BLOCKTYPE, BUILDER> & nano::abstract_builder<BLOCKTYPE, B
 template <typename BLOCKTYPE, typename BUILDER>
 nano::abstract_builder<BLOCKTYPE, BUILDER> & nano::abstract_builder<BLOCKTYPE, BUILDER>::sign (nano::raw_key const & private_key, nano::public_key const & public_key)
 {
-	block->signature = nano::sign_message (private_key, public_key, block->hash ());
+	block->signature_set (nano::sign_message (private_key, public_key, block->hash ()));
 	build_state |= build_flags::signature_present;
 	return *this;
 }
@@ -704,7 +700,7 @@ nano::abstract_builder<BLOCKTYPE, BUILDER> & nano::abstract_builder<BLOCKTYPE, B
 template <typename BLOCKTYPE, typename BUILDER>
 nano::abstract_builder<BLOCKTYPE, BUILDER> & nano::abstract_builder<BLOCKTYPE, BUILDER>::sign_zero ()
 {
-	block->signature.clear ();
+	block->sign_zero ();
 	build_state |= build_flags::signature_present;
 	return *this;
 }

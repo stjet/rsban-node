@@ -188,10 +188,18 @@ public:
 	bool valid_predecessor (nano::block const &) const override;
 	rsnano::SendBlockDto to_dto () const;
 	void load_dto (rsnano::SendBlockDto & dto);
+	void zero ();
+	void set_destination (nano::account account_a);
+	void set_previous (nano::block_hash previous_a);
+	void set_balance (nano::amount balance_a);
+	void sign_zero ();
+	static std::size_t constexpr size = nano::send_hashables::size + sizeof (nano::signature) + sizeof (uint64_t);
+
+private:
+	rsnano::SendBlockHandle * handle;
 	send_hashables hashables;
 	nano::signature signature;
 	uint64_t work;
-	static std::size_t constexpr size = nano::send_hashables::size + sizeof (signature) + sizeof (work);
 };
 class receive_hashables
 {
@@ -233,6 +241,8 @@ public:
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::receive_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
+	void set_previous (nano::block_hash previous_a);
+	void sign_zero ();
 	receive_hashables hashables;
 	nano::signature signature;
 	uint64_t work;
@@ -282,6 +292,7 @@ public:
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::open_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
+	void sign_zero ();
 	nano::open_hashables hashables;
 	nano::signature signature;
 	uint64_t work;
@@ -327,6 +338,8 @@ public:
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::change_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
+	void set_previous (nano::block_hash previous_a);
+	void sign_zero ();
 	nano::change_hashables hashables;
 	nano::signature signature;
 	uint64_t work;
@@ -388,6 +401,9 @@ public:
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::state_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
+	void set_previous (nano::block_hash previous_a);
+	void set_balance (nano::amount balance_a);
+	void sign_zero ();
 	nano::state_hashables hashables;
 	nano::signature signature;
 	uint64_t work;

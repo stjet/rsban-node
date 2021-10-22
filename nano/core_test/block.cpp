@@ -27,9 +27,11 @@ TEST (transaction_block, empty)
 	nano::keypair key1;
 	nano::send_block block (0, 1, 13, key1.prv, key1.pub, 2);
 	auto hash (block.hash ());
-	ASSERT_FALSE (nano::validate_message (key1.pub, hash, block.signature));
-	block.signature.bytes[32] ^= 0x1;
-	ASSERT_TRUE (nano::validate_message (key1.pub, hash, block.signature));
+	ASSERT_FALSE (nano::validate_message (key1.pub, hash, block.block_signature ()));
+	nano::signature signature{ block.block_signature () };
+	signature.bytes[32] ^= 0x1;
+	block.signature_set (signature);
+	ASSERT_TRUE (nano::validate_message (key1.pub, hash, block.block_signature ()));
 }
 
 TEST (block, send_serialize)
@@ -735,7 +737,7 @@ TEST (block_builder, send_equality)
 
 	ASSERT_NO_ERROR (ec);
 	ASSERT_EQ (block1.hash (), block2->hash ());
-	ASSERT_EQ (block1.work, block2->work);
+	ASSERT_EQ (block1.block_work (), block2->block_work ());
 }
 
 TEST (block_builder, receive_equality)

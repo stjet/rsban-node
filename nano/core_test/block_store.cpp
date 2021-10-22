@@ -724,11 +724,11 @@ TEST (block_store, roots)
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::send_block send_block (0, 1, 2, nano::keypair ().prv, 4, 5);
-	ASSERT_EQ (send_block.hashables.previous, send_block.root ());
+	ASSERT_EQ (send_block.previous (), send_block.root ());
 	nano::change_block change_block (0, 1, nano::keypair ().prv, 3, 4);
-	ASSERT_EQ (change_block.hashables.previous, change_block.root ());
+	ASSERT_EQ (change_block.previous (), change_block.root ());
 	nano::receive_block receive_block (0, 1, nano::keypair ().prv, 3, 4);
-	ASSERT_EQ (receive_block.hashables.previous, receive_block.root ());
+	ASSERT_EQ (receive_block.previous (), receive_block.root ());
 	nano::open_block open_block (0, 1, 2, nano::keypair ().prv, 4, 5);
 	ASSERT_EQ (open_block.hashables.account, open_block.root ());
 }

@@ -21,7 +21,9 @@ TEST (processor_service, bad_send_signature)
 	ASSERT_FALSE (store->account.get (transaction, nano::dev::genesis_key.pub, info1));
 	nano::keypair key2;
 	nano::send_block send (info1.head, nano::dev::genesis_key.pub, 50, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *pool.generate (info1.head));
-	send.signature.bytes[32] ^= 0x1;
+	nano::signature sig{ send.block_signature () };
+	sig.bytes[32] ^= 0x1;
+	send.signature_set (sig);
 	ASSERT_EQ (nano::process_result::bad_signature, ledger.process (transaction, send).code);
 }
 

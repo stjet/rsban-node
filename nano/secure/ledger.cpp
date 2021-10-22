@@ -27,10 +27,10 @@ public:
 	{
 		auto hash (block_a.hash ());
 		nano::pending_info pending;
-		nano::pending_key key (block_a.hashables.destination, hash);
+		nano::pending_key key (block_a.destination (), hash);
 		while (!error && ledger.store.pending.get (transaction, key, pending))
 		{
-			error = ledger.rollback (transaction, ledger.latest (transaction, block_a.hashables.destination), list);
+			error = ledger.rollback (transaction, ledger.latest (transaction, block_a.destination ()), list);
 		}
 		if (!error)
 		{
@@ -39,12 +39,12 @@ public:
 			debug_assert (!error);
 			ledger.store.pending.del (transaction, key);
 			ledger.cache.rep_weights.representation_add (info.representative, pending.amount.number ());
-			nano::account_info new_info (block_a.hashables.previous, info.representative, info.open_block, ledger.balance (transaction, block_a.hashables.previous), nano::seconds_since_epoch (), info.block_count - 1, nano::epoch::epoch_0);
+			nano::account_info new_info (block_a.previous (), info.representative, info.open_block, ledger.balance (transaction, block_a.previous ()), nano::seconds_since_epoch (), info.block_count - 1, nano::epoch::epoch_0);
 			ledger.update_account (transaction, pending.source, info, new_info);
 			ledger.store.block.del (transaction, hash);
 			ledger.store.frontier.del (transaction, hash);
-			ledger.store.frontier.put (transaction, block_a.hashables.previous, pending.source);
-			ledger.store.block.successor_clear (transaction, block_a.hashables.previous);
+			ledger.store.frontier.put (transaction, block_a.previous (), pending.source);
+			ledger.store.block.successor_clear (transaction, block_a.previous ());
 			ledger.stats.inc (nano::stat::type::rollback, nano::stat::detail::send);
 		}
 	}
@@ -528,21 +528,21 @@ void ledger_processor::send_block (nano::send_block & block_a)
 	result.code = existing ? nano::process_result::old : nano::process_result::progress; // Have we seen this block before? (Harmless)
 	if (result.code == nano::process_result::progress)
 	{
-		auto previous (ledger.store.block.get (transaction, block_a.hashables.previous));
+		auto previous (ledger.store.block.get (transaction, block_a.previous ()));
 		result.code = previous != nullptr ? nano::process_result::progress : nano::process_result::gap_previous; // Have we seen the previous block already? (Harmless)
 		if (result.code == nano::process_result::progress)
 		{
 			result.code = block_a.valid_predecessor (*previous) ? nano::process_result::progress : nano::process_result::block_position;
 			if (result.code == nano::process_result::progress)
 			{
-				auto account (ledger.store.frontier.get (transaction, block_a.hashables.previous));
+				auto account (ledger.store.frontier.get (transaction, block_a.previous ()));
 				result.code = account.is_zero () ? nano::process_result::fork : nano::process_result::progress;
 				if (result.code == nano::process_result::progress)
 				{
 					// Validate block if not verified outside of ledger
 					if (result.verified != nano::signature_verification::valid)
 					{
-						result.code = validate_message (account, hash, block_a.signature) ? nano::process_result::bad_signature : nano::process_result::progress; // Is this block signed correctly (Malformed)
+						result.code = validate_message (account, hash, block_a.block_signature ()) ? nano::process_result::bad_signature : nano::process_result::progress; // Is this block signed correctly (Malformed)
 					}
 					if (result.code == nano::process_result::progress)
 					{
@@ -557,17 +557,17 @@ void ledger_processor::send_block (nano::send_block & block_a)
 							(void)latest_error;
 							debug_assert (!latest_error);
 							debug_assert (info.head == block_a.hashables.previous);
-							result.code = info.balance.number () >= block_a.hashables.balance.number () ? nano::process_result::progress : nano::process_result::negative_spend; // Is this trying to spend a negative amount (Malicious)
+							result.code = info.balance.number () >= block_a.balance ().number () ? nano::process_result::progress : nano::process_result::negative_spend; // Is this trying to spend a negative amount (Malicious)
 							if (result.code == nano::process_result::progress)
 							{
-								auto amount (info.balance.number () - block_a.hashables.balance.number ());
+								auto amount (info.balance.number () - block_a.balance ().number ());
 								ledger.cache.rep_weights.representation_add (info.representative, 0 - amount);
-								block_a.sideband_set (nano::block_sideband (account, 0, block_a.hashables.balance /* unused */, info.block_count + 1, nano::seconds_since_epoch (), block_details, nano::epoch::epoch_0 /* unused */));
+								block_a.sideband_set (nano::block_sideband (account, 0, block_a.balance () /* unused */, info.block_count + 1, nano::seconds_since_epoch (), block_details, nano::epoch::epoch_0 /* unused */));
 								ledger.store.block.put (transaction, hash, block_a);
-								nano::account_info new_info (hash, info.representative, info.open_block, block_a.hashables.balance, nano::seconds_since_epoch (), info.block_count + 1, nano::epoch::epoch_0);
+								nano::account_info new_info (hash, info.representative, info.open_block, block_a.balance (), nano::seconds_since_epoch (), info.block_count + 1, nano::epoch::epoch_0);
 								ledger.update_account (transaction, account, info, new_info);
-								ledger.store.pending.put (transaction, nano::pending_key (block_a.hashables.destination, hash), { account, amount, nano::epoch::epoch_0 });
-								ledger.store.frontier.del (transaction, block_a.hashables.previous);
+								ledger.store.pending.put (transaction, nano::pending_key (block_a.destination (), hash), { account, amount, nano::epoch::epoch_0 });
+								ledger.store.frontier.del (transaction, block_a.previous ());
 								ledger.store.frontier.put (transaction, hash, account);
 								result.previous_balance = info.balance;
 								ledger.stats.inc (nano::stat::type::ledger, nano::stat::detail::send);
@@ -952,7 +952,7 @@ nano::account const & nano::ledger::block_destination (nano::transaction const &
 	nano::state_block const * state_block (dynamic_cast<nano::state_block const *> (&block_a));
 	if (send_block != nullptr)
 	{
-		return send_block->hashables.destination;
+		return send_block->destination ();
 	}
 	else if (state_block != nullptr && is_send (transaction_a, *state_block))
 	{

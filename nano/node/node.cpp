@@ -1340,7 +1340,7 @@ void nano::node::process_confirmed_data (nano::transaction const & transaction_a
 	}
 	if (auto send = dynamic_cast<nano::send_block *> (block_a.get ()))
 	{
-		pending_account_a = send->hashables.destination;
+		pending_account_a = send->destination ();
 	}
 }
 

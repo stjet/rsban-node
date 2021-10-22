@@ -11,6 +11,8 @@ namespace rsnano
 {
 struct BandwidthLimiterHandle;
 
+struct SendBlockHandle;
+
 using WriteU8Callback = int32_t (*) (void *, uint8_t);
 
 using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
@@ -92,7 +94,15 @@ int32_t rsn_block_sideband_deserialize (BlockSidebandDto * dto, void * stream, u
 
 int32_t rsn_send_hashables_deserialize (SendHashablesDto * dto, void * stream);
 
+SendBlockHandle * rsn_send_block_create (const SendBlockDto * dto);
+
+void rsn_send_block_destroy (SendBlockHandle * handle);
+
+SendBlockHandle * rsn_send_block_clone (const SendBlockHandle * handle);
+
 int32_t rsn_send_block_serialize (const SendBlockDto * dto, void * stream);
+
+int32_t rsn_send_block_deserialize (SendBlockDto * dto, void * stream);
 
 } // extern "C"
 

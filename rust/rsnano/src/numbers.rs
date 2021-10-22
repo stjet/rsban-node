@@ -1,6 +1,7 @@
 use crate::utils::Stream;
 use anyhow::Result;
 
+#[derive(Clone)]
 pub struct PublicKey {
     value: [u8; 32], // big endian
 }
@@ -28,6 +29,7 @@ impl PublicKey {
     }
 }
 
+#[derive(Clone)]
 pub struct Account {
     public_key: PublicKey,
 }
@@ -54,6 +56,7 @@ impl Account {
     }
 }
 
+#[derive(Clone)]
 pub struct BlockHash {
     value: [u8; 32], //big endian
 }
@@ -81,6 +84,7 @@ impl BlockHash {
     }
 }
 
+#[derive(Clone)]
 pub struct Amount {
     value: u128, // native endian!
 }
@@ -111,6 +115,7 @@ impl Amount {
     }
 }
 
+#[derive(Clone)]
 pub struct Signature {
     bytes: [u8; 64],
 }
@@ -120,7 +125,18 @@ impl Signature {
         Self { bytes }
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()>{
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         stream.write_bytes(&self.bytes)
+    }
+
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Signature> {
+        let mut result = Signature { bytes: [0; 64] };
+
+        stream.read_bytes(&mut result.bytes, 64)?;
+        Ok(result)
+    }
+
+    pub fn to_be_bytes(&self) -> [u8; 64] {
+        self.bytes
     }
 }

@@ -1,7 +1,12 @@
 use anyhow::Result;
 use num::FromPrimitive;
 
-use crate::{block_details::BlockDetails, epoch::Epoch, numbers::{Account, Amount, BlockHash, PublicKey, Signature}, utils::Stream};
+use crate::{
+    block_details::BlockDetails,
+    epoch::Epoch,
+    numbers::{Account, Amount, BlockHash, PublicKey, Signature},
+    utils::Stream,
+};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -138,6 +143,7 @@ impl BlockSideband {
     }
 }
 
+#[derive(Clone)]
 pub struct SendHashables {
     pub previous: BlockHash,
     pub destination: Account,
@@ -145,7 +151,7 @@ pub struct SendHashables {
 }
 
 impl SendHashables {
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()>{
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         self.previous.serialize(stream)?;
         self.destination.serialize(stream)?;
         self.balance.serialize(stream)?;
@@ -173,16 +179,33 @@ impl SendHashables {
     }
 }
 
-pub struct SendBlock{
+
+#[derive(Clone)]
+pub struct SendBlock {
     pub hashables: SendHashables,
     pub signature: Signature,
-    pub work: u64
+    pub work: u64,
 }
 
-impl SendBlock{
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()>{
+impl SendBlock {
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         self.hashables.serialize(stream)?;
         self.signature.serialize(stream)?;
         stream.write_bytes(&self.work.to_ne_bytes())
+    }
+
+    pub fn deserialize(stream: &mut impl Stream) -> Result<SendBlock> {
+        let hashables = SendHashables::deserialize(stream)?;
+        let signature = Signature::deserialize(stream)?;
+
+        let mut buffer = [0u8; 8];
+        stream.read_bytes(&mut buffer, 8)?;
+        let work = u64::from_ne_bytes(buffer);
+
+        Ok(SendBlock {
+            hashables,
+            signature,
+            work,
+        })
     }
 }

@@ -153,15 +153,18 @@ public:
 	nano::amount balance;
 	static std::size_t constexpr size = sizeof (previous) + sizeof (destination) + sizeof (balance);
 	rsnano::SendHashablesDto to_dto () const;
+	void load_dto (rsnano::SendHashablesDto & dto);
 };
-class send_block : public nano::block
+class send_block final : public nano::block
 {
 public:
-	send_block () = default;
+	send_block ();
 	send_block (nano::block_hash const &, nano::account const &, nano::amount const &, nano::raw_key const &, nano::public_key const &, uint64_t);
 	send_block (bool &, nano::stream &);
 	send_block (bool &, boost::property_tree::ptree const &);
-	virtual ~send_block () = default;
+	send_block (const send_block &);
+	send_block (send_block && other);
+	virtual ~send_block ();
 	using nano::block::hash;
 	void hash (blake2b_state &) const override;
 	uint64_t block_work () const override;
@@ -183,7 +186,8 @@ public:
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::send_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
-	rsnano::SendBlockDto to_dto() const;
+	rsnano::SendBlockDto to_dto () const;
+	void load_dto (rsnano::SendBlockDto & dto);
 	send_hashables hashables;
 	nano::signature signature;
 	uint64_t work;

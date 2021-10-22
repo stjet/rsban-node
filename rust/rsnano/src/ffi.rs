@@ -341,19 +341,58 @@ unsafe fn set_send_hashables_dto(hashables: &SendHashables, dto: *mut SendHashab
 #[repr(C)]
 pub struct SendBlockDto {
     pub hashables: SendHashablesDto,
-    pub signature: [u8;64],
+    pub signature: [u8; 64],
     pub work: u64,
+}
+
+pub struct SendBlockHandle {
+    block: SendBlock,
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_send_block_create(dto: &SendBlockDto) -> *mut SendBlockHandle {
+    Box::into_raw(Box::new(SendBlockHandle{block: SendBlock::from(dto)}))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_send_block_destroy(handle: *mut SendBlockHandle) {
+    drop(Box::from_raw(handle));
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_send_block_clone(handle: &SendBlockHandle) -> *mut SendBlockHandle {
+    Box::into_raw(Box::new(SendBlockHandle{block: handle.block.clone()}))
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_send_block_serialize(dto: &SendBlockDto, stream: *mut c_void) -> i32 {
     let block = SendBlock::from(dto);
     let mut stream = FfiStream::new(stream);
-    if block.serialize(&mut stream).is_ok(){
+    if block.serialize(&mut stream).is_ok() {
         0
     } else {
         -1
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_send_block_deserialize(
+    dto: *mut SendBlockDto,
+    stream: *mut c_void,
+) -> i32 {
+    let mut stream = FfiStream::new(stream);
+    if let Ok(block) = SendBlock::deserialize(&mut stream) {
+        set_send_block_dto(&block, dto);
+        0
+    } else {
+        -1
+    }
+}
+
+unsafe fn set_send_block_dto(block: &SendBlock, dto: *mut SendBlockDto) {
+    set_send_hashables_dto(&block.hashables, &mut (*dto).hashables);
+    (*dto).signature = block.signature.to_be_bytes();
+    (*dto).work = block.work;
 }
 
 impl TryFrom<&BlockSidebandDto> for BlockSideband {
@@ -405,9 +444,9 @@ impl TryFrom<u8> for BlockType {
     }
 }
 
-impl From<&SendBlockDto> for SendBlock{
+impl From<&SendBlockDto> for SendBlock {
     fn from(value: &SendBlockDto) -> Self {
-        SendBlock{
+        SendBlock {
             hashables: SendHashables::from(&value.hashables),
             signature: Signature::new(value.signature),
             work: value.work,
@@ -415,7 +454,7 @@ impl From<&SendBlockDto> for SendBlock{
     }
 }
 
-impl From<&SendHashablesDto> for SendHashables{
+impl From<&SendHashablesDto> for SendHashables {
     fn from(value: &SendHashablesDto) -> Self {
         SendHashables {
             previous: BlockHash::new(value.previous),

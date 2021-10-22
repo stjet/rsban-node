@@ -108,7 +108,7 @@ impl Stream for FfiStream {
                     } else {
                         Err(anyhow!("callback returned error"))
                     }
-                },
+                }
                 None => Err(anyhow!("READ_BYTES_CALLBACK missing")),
             }
         }
@@ -249,11 +249,10 @@ unsafe fn set_block_sideband_dto(sideband: &BlockSideband, result: *mut BlockSid
     (*result).successor = sideband.successor.to_be_bytes();
     (*result).account = sideband.account.to_be_bytes();
     (*result).balance = sideband.balance.to_be_bytes();
-    let details_ptr: *mut BlockDetailsDto = &mut(*result).details;
+    let details_ptr: *mut BlockDetailsDto = &mut (*result).details;
     set_block_details_dto(&sideband.details, details_ptr);
     (*result).source_epoch = sideband.source_epoch as u8;
 }
-
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_sideband_size(block_type: u8, result: *mut i32) -> usize {
@@ -291,7 +290,11 @@ pub extern "C" fn rsn_block_sideband_serialize(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_sideband_deserialize(dto: *mut BlockSidebandDto, stream: *mut c_void, block_type: u8) -> i32{
+pub unsafe extern "C" fn rsn_block_sideband_deserialize(
+    dto: *mut BlockSidebandDto,
+    stream: *mut c_void,
+    block_type: u8,
+) -> i32 {
     if let Ok(block_type) = BlockType::try_from(block_type) {
         if let Ok(mut sideband) = BlockSideband::try_from(dto.as_ref().unwrap()) {
             let mut stream = FfiStream::new(stream);

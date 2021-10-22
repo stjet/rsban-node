@@ -1,4 +1,5 @@
 use anyhow::Result;
+use num::FromPrimitive;
 
 use crate::{block_details::BlockDetails, epoch::Epoch, utils::Stream};
 
@@ -24,7 +25,7 @@ impl PublicKey {
         stream.read_bytes(&mut self.value, len)
     }
 
-    pub fn to_be_bytes(&self) -> [u8;32]{
+    pub fn to_be_bytes(&self) -> [u8; 32] {
         self.value
     }
 }
@@ -50,7 +51,7 @@ impl Account {
         self.public_key.deserialize(stream)
     }
 
-    pub fn to_be_bytes(&self) -> [u8;32]{
+    pub fn to_be_bytes(&self) -> [u8; 32] {
         self.public_key.to_be_bytes()
     }
 }
@@ -72,12 +73,12 @@ impl BlockHash {
         stream.write_bytes(&self.value)
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()>{
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
         let len = self.value.len();
         stream.read_bytes(&mut self.value, len)
     }
 
-    pub fn to_be_bytes(&self) -> [u8; 32]{
+    pub fn to_be_bytes(&self) -> [u8; 32] {
         self.value
     }
 }
@@ -99,15 +100,15 @@ impl Amount {
         stream.write_bytes(&self.value.to_be_bytes())
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()>{
-        let mut buffer = [0u8;16];
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
+        let mut buffer = [0u8; 16];
         let len = buffer.len();
         stream.read_bytes(&mut buffer, len)?;
         self.value = u128::from_be_bytes(buffer);
         Ok(())
     }
 
-    pub fn to_be_bytes(&self) -> [u8;16] {
+    pub fn to_be_bytes(&self) -> [u8; 16] {
         self.value.to_be_bytes()
     }
 }
@@ -217,19 +218,31 @@ impl BlockSideband {
 
         if block_type != BlockType::State && block_type != BlockType::Open {
             self.account.deserialize(stream)?;
-		}
+        }
 
+        let mut buffer = [0u8; 8];
         if block_type != BlockType::Open {
-            let mut buffer = [0u8;8];
             stream.read_bytes(&mut buffer, 8)?;
             self.height = u64::from_be_bytes(buffer);
-		} else {
+        } else {
             self.height = 1;
-		}
+        }
 
-        if block_type == BlockType::Receive || block_type == BlockType::Change || block_type == BlockType::Open {
+        if block_type == BlockType::Receive
+            || block_type == BlockType::Change
+            || block_type == BlockType::Open
+        {
             self.balance.deserialize(stream)?;
-		}
+        }
+
+        stream.read_bytes(&mut buffer, 8)?;
+        self.timestamp = u64::from_be_bytes(buffer);
+
+        if block_type == BlockType::State {
+            self.details = BlockDetails::deserialize(stream)?;
+            self.source_epoch = FromPrimitive::from_u8(stream.read_u8()?)
+                .ok_or_else(|| anyhow!("invalid epoch value"))?;
+        }
 
         Ok(())
     }

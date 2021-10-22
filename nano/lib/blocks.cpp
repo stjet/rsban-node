@@ -1810,35 +1810,7 @@ void nano::block_sideband::serialize (nano::stream & stream_a, nano::block_type 
 
 bool nano::block_sideband::deserialize (nano::stream & stream_a, nano::block_type type_a)
 {
-	if (rsnano::rsn_block_sideband_deserialize (&dto, &stream_a, static_cast<uint8_t> (type_a)) != 0)
-	{
-		return true;
-	}
-
-	bool result (false);
-	try
-	{
-		uint64_t tmp_timestamp;
-		nano::read (stream_a, tmp_timestamp);
-		boost::endian::big_to_native_inplace (tmp_timestamp);
-		set_timestamp (tmp_timestamp);
-		if (type_a == nano::block_type::state)
-		{
-			auto details_copy = details ();
-			result = details_copy.deserialize (stream_a);
-			dto.details = details_copy.dto;
-
-			uint8_t source_epoch_uint8_t{ 0 };
-			nano::read (stream_a, source_epoch_uint8_t);
-			set_source_epoch (static_cast<nano::epoch> (source_epoch_uint8_t));
-		}
-	}
-	catch (std::runtime_error &)
-	{
-		result = true;
-	}
-
-	return result;
+	return rsnano::rsn_block_sideband_deserialize (&dto, &stream_a, static_cast<uint8_t> (type_a)) != 0;
 }
 
 nano::epoch nano::block_sideband::source_epoch () const

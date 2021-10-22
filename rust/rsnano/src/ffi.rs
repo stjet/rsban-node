@@ -1,10 +1,13 @@
 use num::FromPrimitive;
 
+use crate::blocks::{BlockSideband, BlockType, SendBlock};
+use crate::numbers::Signature;
 use crate::{
     bandwidth_limiter::BandwidthLimiter,
     block_details::BlockDetails,
-    block_sideband::{Account, Amount, BlockHash, BlockSideband, BlockType, PublicKey},
+    blocks::SendHashables,
     epoch::Epoch,
+    numbers::{Account, Amount, BlockHash, PublicKey},
     utils::Stream,
 };
 use std::{convert::TryFrom, ffi::c_void, sync::Mutex};
@@ -308,6 +311,51 @@ pub unsafe extern "C" fn rsn_block_sideband_deserialize(
     -1
 }
 
+#[repr(C)]
+pub struct SendHashablesDto {
+    pub previous: [u8; 32],
+    pub destination: [u8; 32],
+    pub balance: [u8; 16],
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_send_hashables_deserialize(
+    dto: *mut SendHashablesDto,
+    stream: *mut c_void,
+) -> i32 {
+    let mut stream = FfiStream::new(stream);
+    if let Ok(hashables) = SendHashables::deserialize(&mut stream) {
+        set_send_hashables_dto(&hashables, dto);
+        0
+    } else {
+        -1
+    }
+}
+
+unsafe fn set_send_hashables_dto(hashables: &SendHashables, dto: *mut SendHashablesDto) {
+    (*dto).previous = hashables.previous.to_be_bytes();
+    (*dto).destination = hashables.destination.to_be_bytes();
+    (*dto).balance = hashables.balance.to_be_bytes();
+}
+
+#[repr(C)]
+pub struct SendBlockDto {
+    pub hashables: SendHashablesDto,
+    pub signature: [u8;64],
+    pub work: u64,
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_send_block_serialize(dto: &SendBlockDto, stream: *mut c_void) -> i32 {
+    let block = SendBlock::from(dto);
+    let mut stream = FfiStream::new(stream);
+    if block.serialize(&mut stream).is_ok(){
+        0
+    } else {
+        -1
+    }
+}
+
 impl TryFrom<&BlockSidebandDto> for BlockSideband {
     type Error = anyhow::Error;
 
@@ -354,5 +402,25 @@ impl TryFrom<u8> for BlockType {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         FromPrimitive::from_u8(value).ok_or_else(|| anyhow!("invalid block type value"))
+    }
+}
+
+impl From<&SendBlockDto> for SendBlock{
+    fn from(value: &SendBlockDto) -> Self {
+        SendBlock{
+            hashables: SendHashables::from(&value.hashables),
+            signature: Signature::new(value.signature),
+            work: value.work,
+        }
+    }
+}
+
+impl From<&SendHashablesDto> for SendHashables{
+    fn from(value: &SendHashablesDto) -> Self {
+        SendHashables {
+            previous: BlockHash::new(value.previous),
+            destination: Account::new(PublicKey::new(value.destination)),
+            balance: Amount::new(u128::from_be_bytes(value.balance)),
+        }
     }
 }

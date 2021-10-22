@@ -12,8 +12,9 @@ extern crate anyhow;
 
 mod bandwidth_limiter;
 mod block_details;
-mod block_sideband;
+mod blocks;
 mod epoch;
 pub mod ffi;
+mod numbers;
 mod token_bucket;
 mod utils;

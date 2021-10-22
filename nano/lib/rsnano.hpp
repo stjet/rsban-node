@@ -38,6 +38,20 @@ struct BlockSidebandDto
 	uint8_t source_epoch;
 };
 
+struct SendHashablesDto
+{
+	uint8_t previous[32];
+	uint8_t destination[32];
+	uint8_t balance[16];
+};
+
+struct SendBlockDto
+{
+	SendHashablesDto hashables;
+	uint8_t signature[64];
+	uint64_t work;
+};
+
 extern "C" {
 
 void rsn_callback_write_u8 (WriteU8Callback f);
@@ -75,6 +89,10 @@ uintptr_t rsn_block_sideband_size (uint8_t block_type, int32_t * result);
 int32_t rsn_block_sideband_serialize (const BlockSidebandDto * dto, void * stream, uint8_t block_type);
 
 int32_t rsn_block_sideband_deserialize (BlockSidebandDto * dto, void * stream, uint8_t block_type);
+
+int32_t rsn_send_hashables_deserialize (SendHashablesDto * dto, void * stream);
+
+int32_t rsn_send_block_serialize (const SendBlockDto * dto, void * stream);
 
 } // extern "C"
 

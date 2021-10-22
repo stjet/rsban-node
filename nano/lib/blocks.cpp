@@ -225,16 +225,12 @@ nano::send_hashables::send_hashables (nano::block_hash const & previous_a, nano:
 
 nano::send_hashables::send_hashables (bool & error_a, nano::stream & stream_a)
 {
-	try
-	{
-		nano::read (stream_a, previous.bytes);
-		nano::read (stream_a, destination.bytes);
-		nano::read (stream_a, balance.bytes);
-	}
-	catch (std::runtime_error const &)
-	{
-		error_a = true;
-	}
+	rsnano::SendHashablesDto dto;
+	auto result{ rsnano::rsn_send_hashables_deserialize (&dto, &stream_a) };
+	error_a = result != 0;
+	std::copy (std::begin (dto.previous), std::end (dto.previous), std::begin (previous.bytes));
+	std::copy (std::begin (dto.destination), std::end (dto.destination), std::begin (destination.bytes));
+	std::copy (std::begin (dto.balance), std::end (dto.balance), std::begin (balance.bytes));
 }
 
 nano::send_hashables::send_hashables (bool & error_a, boost::property_tree::ptree const & tree_a)

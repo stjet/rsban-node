@@ -1,117 +1,7 @@
 use anyhow::Result;
 use num::FromPrimitive;
 
-use crate::{block_details::BlockDetails, epoch::Epoch, utils::Stream};
-
-pub struct PublicKey {
-    value: [u8; 32], // big endian
-}
-
-impl PublicKey {
-    pub fn new(value: [u8; 32]) -> Self {
-        Self { value }
-    }
-
-    pub const fn serialized_size() -> usize {
-        32
-    }
-
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        stream.write_bytes(&self.value)
-    }
-
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        let len = self.value.len();
-        stream.read_bytes(&mut self.value, len)
-    }
-
-    pub fn to_be_bytes(&self) -> [u8; 32] {
-        self.value
-    }
-}
-
-pub struct Account {
-    public_key: PublicKey,
-}
-
-impl Account {
-    pub fn new(public_key: PublicKey) -> Self {
-        Self { public_key }
-    }
-
-    pub fn serialized_size() -> usize {
-        PublicKey::serialized_size()
-    }
-
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.public_key.serialize(stream)
-    }
-
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        self.public_key.deserialize(stream)
-    }
-
-    pub fn to_be_bytes(&self) -> [u8; 32] {
-        self.public_key.to_be_bytes()
-    }
-}
-
-pub struct BlockHash {
-    value: [u8; 32], //big endian
-}
-
-impl BlockHash {
-    pub fn new(value: [u8; 32]) -> Self {
-        Self { value }
-    }
-
-    pub fn serialized_size() -> usize {
-        32
-    }
-
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        stream.write_bytes(&self.value)
-    }
-
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        let len = self.value.len();
-        stream.read_bytes(&mut self.value, len)
-    }
-
-    pub fn to_be_bytes(&self) -> [u8; 32] {
-        self.value
-    }
-}
-
-pub struct Amount {
-    value: u128, // native endian!
-}
-
-impl Amount {
-    pub fn new(value: u128) -> Self {
-        Self { value }
-    }
-
-    pub fn serialized_size() -> usize {
-        std::mem::size_of::<u128>()
-    }
-
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        stream.write_bytes(&self.value.to_be_bytes())
-    }
-
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        let mut buffer = [0u8; 16];
-        let len = buffer.len();
-        stream.read_bytes(&mut buffer, len)?;
-        self.value = u128::from_be_bytes(buffer);
-        Ok(())
-    }
-
-    pub fn to_be_bytes(&self) -> [u8; 16] {
-        self.value.to_be_bytes()
-    }
-}
+use crate::{block_details::BlockDetails, epoch::Epoch, numbers::{Account, Amount, BlockHash, PublicKey, Signature}, utils::Stream};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -244,6 +134,46 @@ impl BlockSideband {
                 .ok_or_else(|| anyhow!("invalid epoch value"))?;
         }
 
+        Ok(())
+    }
+}
+
+pub struct SendHashables {
+    pub previous: BlockHash,
+    pub destination: Account,
+    pub balance: Amount,
+}
+
+impl SendHashables {
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+        let mut buffer_32 = [0u8; 32];
+        let mut buffer_16 = [0u8; 16];
+
+        stream.read_bytes(&mut buffer_32, 32)?;
+        let previous = BlockHash::new(buffer_32);
+
+        stream.read_bytes(&mut buffer_32, 32)?;
+        let destination = Account::new(PublicKey::new(buffer_32));
+
+        stream.read_bytes(&mut buffer_16, 16)?;
+        let balance = Amount::new(u128::from_be_bytes(buffer_16));
+
+        Ok(Self {
+            previous,
+            destination,
+            balance,
+        })
+    }
+}
+
+pub struct SendBlock{
+    pub hashables: SendHashables,
+    pub signature: Signature,
+    pub work: u64
+}
+
+impl SendBlock{
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()>{
         Ok(())
     }
 }

@@ -145,6 +145,13 @@ pub struct SendHashables {
 }
 
 impl SendHashables {
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()>{
+        self.previous.serialize(stream)?;
+        self.destination.serialize(stream)?;
+        self.balance.serialize(stream)?;
+        Ok(())
+    }
+
     pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
         let mut buffer_32 = [0u8; 32];
         let mut buffer_16 = [0u8; 16];
@@ -174,6 +181,8 @@ pub struct SendBlock{
 
 impl SendBlock{
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()>{
-        Ok(())
+        self.hashables.serialize(stream)?;
+        self.signature.serialize(stream)?;
+        stream.write_bytes(&self.work.to_ne_bytes())
     }
 }

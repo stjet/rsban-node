@@ -152,6 +152,7 @@ public:
 	nano::account destination;
 	nano::amount balance;
 	static std::size_t constexpr size = sizeof (previous) + sizeof (destination) + sizeof (balance);
+	rsnano::SendHashablesDto to_dto () const;
 };
 class send_block : public nano::block
 {
@@ -182,6 +183,7 @@ public:
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::send_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
+	rsnano::SendBlockDto to_dto() const;
 	send_hashables hashables;
 	nano::signature signature;
 	uint64_t work;

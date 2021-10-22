@@ -119,4 +119,8 @@ impl Signature {
     pub fn new(bytes: [u8; 64]) -> Self {
         Self { bytes }
     }
+
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()>{
+        stream.write_bytes(&self.bytes)
+    }
 }

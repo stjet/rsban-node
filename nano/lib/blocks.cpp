@@ -266,13 +266,32 @@ void nano::send_hashables::hash (blake2b_state & hash_a) const
 	debug_assert (status == 0);
 }
 
+rsnano::SendHashablesDto nano::send_hashables::to_dto () const
+{
+	rsnano::SendHashablesDto dto;
+	std::copy (std::begin (previous.bytes), std::end (previous.bytes), std::begin (dto.previous));
+	std::copy (std::begin (destination.bytes), std::end (destination.bytes), std::begin (dto.destination));
+	std::copy (std::begin (balance.bytes), std::end (balance.bytes), std::begin (dto.balance));
+	return dto;
+}
+
+rsnano::SendBlockDto nano::send_block::to_dto() const
+{
+	rsnano::SendBlockDto dto;
+	dto.hashables = hashables.to_dto ();
+	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (dto.signature));
+	dto.work = work;
+	return dto;
+}
+
 void nano::send_block::serialize (nano::stream & stream_a) const
 {
-	write (stream_a, hashables.previous.bytes);
-	write (stream_a, hashables.destination.bytes);
-	write (stream_a, hashables.balance.bytes);
-	write (stream_a, signature.bytes);
-	write (stream_a, work);
+	auto dto { to_dto () };
+
+	if (rsnano::rsn_send_block_serialize (&dto, &stream_a) != 0)
+	{
+		throw std::runtime_error ("could not serialize send_block");
+	}
 }
 
 bool nano::send_block::deserialize (nano::stream & stream_a)

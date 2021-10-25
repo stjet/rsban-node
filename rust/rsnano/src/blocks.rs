@@ -5,7 +5,7 @@ use crate::{
     block_details::BlockDetails,
     epoch::Epoch,
     numbers::{Account, Amount, BlockHash, Signature},
-    utils::Stream,
+    utils::{Blake2b, Stream},
 };
 
 #[repr(u8)]
@@ -163,10 +163,10 @@ impl SendHashables {
         let mut buffer_16 = [0u8; 16];
 
         stream.read_bytes(&mut buffer_32, 32)?;
-        let previous = BlockHash::from_be_bytes(&buffer_32);
+        let previous = BlockHash::from_be_bytes(buffer_32);
 
         stream.read_bytes(&mut buffer_32, 32)?;
-        let destination = Account::from_be_bytes(&buffer_32);
+        let destination = Account::from_be_bytes(buffer_32);
 
         stream.read_bytes(&mut buffer_16, 16)?;
         let balance = Amount::new(u128::from_be_bytes(buffer_16));
@@ -219,5 +219,12 @@ impl SendBlock {
 
     pub fn set_balance(&mut self, balance: Amount) {
         self.hashables.balance = balance;
+    }
+
+    pub fn hash(&self, blake2b: &mut impl Blake2b) -> Result<()> {
+        blake2b.update(&self.hashables.previous.to_be_bytes())?;
+        blake2b.update(&self.hashables.destination.to_be_bytes())?;
+        blake2b.update(&self.hashables.balance.to_be_bytes())?;
+        Ok(())
     }
 }

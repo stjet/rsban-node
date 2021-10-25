@@ -203,7 +203,7 @@ void nano::send_block::visit (nano::mutable_block_visitor & visitor_a)
 
 void nano::send_block::hash (blake2b_state & hash_a) const
 {
-	hashables.hash (hash_a);
+	rsnano::rsn_send_block_hash (handle, &hash_a);
 }
 
 uint64_t nano::send_block::block_work () const
@@ -335,7 +335,7 @@ bool nano::send_block::deserialize (nano::stream & stream_a)
 	auto result = rsnano::rsn_send_block_deserialize (handle, &dto, &stream_a);
 	if (result == 0)
 	{
-		load_dto (dto);
+		hashables.load_dto (dto.hashables);
 	}
 	return result != 0;
 }
@@ -414,18 +414,20 @@ bool nano::send_block::deserialize_json (boost::property_tree::ptree const & tre
 }
 
 nano::send_block::send_block (nano::block_hash const & previous_a, nano::account const & destination_a, nano::amount const & balance_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a) :
-	hashables (previous_a, destination_a, balance_a),
-	handle (nullptr)
+	hashables (previous_a, destination_a, balance_a)
 {
 	debug_assert (destination_a != nullptr);
 	debug_assert (pub_a != nullptr);
-	auto sig{ nano::sign_message (prv_a, pub_a, hash ()) };
-
 	rsnano::SendBlockDto dto;
-	dto.hashables = hashables.to_dto ();
-	std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (dto.signature));
 	dto.work = work_a;
+	dto.hashables = hashables.to_dto ();
+	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
 	handle = rsnano::rsn_send_block_create (&dto);
+	auto hash_l{ hash () };
+	auto sig{ nano::sign_message (prv_a, pub_a, hash_l) };
+	uint8_t sig_bytes[64];
+	std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (sig_bytes));
+	rsnano::rsn_send_block_signature_set (handle, &sig_bytes);
 }
 
 nano::send_block::send_block (bool & error_a, nano::stream & stream_a) :
@@ -436,7 +438,7 @@ nano::send_block::send_block (bool & error_a, nano::stream & stream_a) :
 	error_a = result != 0;
 	if (result == 0)
 	{
-		load_dto (dto);
+		hashables.load_dto (dto.hashables);
 	}
 }
 
@@ -471,7 +473,7 @@ nano::send_block::send_block (bool & error_a, boost::property_tree::ptree const 
 	}
 }
 
-nano::send_block::send_block ()
+rsnano::SendBlockDto empty_send_block_dto ()
 {
 	rsnano::SendBlockDto dto;
 	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
@@ -479,6 +481,12 @@ nano::send_block::send_block ()
 	std::fill (std::begin (dto.hashables.destination), std::end (dto.hashables.destination), 0);
 	std::fill (std::begin (dto.hashables.balance), std::end (dto.hashables.balance), 0);
 	dto.work = 0;
+	return dto;
+}
+
+nano::send_block::send_block ()
+{
+	auto dto{ empty_send_block_dto () };
 	handle = rsnano::rsn_send_block_create (&dto);
 }
 
@@ -536,11 +544,6 @@ bool nano::send_block::valid_predecessor (nano::block const & block_a) const
 			break;
 	}
 	return result;
-}
-
-void nano::send_block::load_dto (rsnano::SendBlockDto & dto)
-{
-	hashables.load_dto (dto.hashables);
 }
 
 nano::block_type nano::send_block::type () const

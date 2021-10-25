@@ -186,7 +186,6 @@ public:
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::send_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
-	void load_dto (rsnano::SendBlockDto & dto);
 	void zero ();
 	void set_destination (nano::account account_a);
 	void set_previous (nano::block_hash previous_a);

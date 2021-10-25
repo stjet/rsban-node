@@ -11,8 +11,8 @@ impl PublicKey {
         Self { value: [8; 32] }
     }
 
-    pub fn from_be_bytes(value: &[u8; 32]) -> Self {
-        Self { value: *value }
+    pub fn from_be_bytes(value: [u8; 32]) -> Self {
+        Self { value }
     }
 
     pub const fn serialized_size() -> usize {
@@ -43,7 +43,7 @@ impl Account {
         Self { public_key }
     }
 
-    pub fn from_be_bytes(bytes: &[u8; 32]) -> Account {
+    pub fn from_be_bytes(bytes: [u8; 32]) -> Account {
         Self {
             public_key: PublicKey::from_be_bytes(bytes),
         }
@@ -72,8 +72,8 @@ pub struct BlockHash {
 }
 
 impl BlockHash {
-    pub fn from_be_bytes(value: &[u8; 32]) -> Self {
-        Self { value: *value }
+    pub fn from_be_bytes(value: [u8; 32]) -> Self {
+        Self { value }
     }
 
     pub fn serialized_size() -> usize {
@@ -104,9 +104,9 @@ impl Amount {
         Self { value }
     }
 
-    pub fn from_be_bytes(bytes: &[u8; 16]) -> Self {
+    pub fn from_be_bytes(bytes: [u8; 16]) -> Self {
         Self {
-            value: u128::from_be_bytes(*bytes),
+            value: u128::from_be_bytes(bytes),
         }
     }
 
@@ -141,8 +141,8 @@ impl Signature {
         Self { bytes: [0u8; 64] }
     }
 
-    pub fn from_be_bytes(bytes: &[u8; 64]) -> Self {
-        Self { bytes: *bytes }
+    pub fn from_be_bytes(bytes: [u8; 64]) -> Self {
+        Self { bytes }
     }
 
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {

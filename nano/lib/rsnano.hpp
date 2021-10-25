@@ -114,6 +114,14 @@ void rsn_send_block_signature_set (SendBlockHandle * handle, const uint8_t (*sig
 
 bool rsn_send_block_equals (const SendBlockHandle * a, const SendBlockHandle * b);
 
+void rsn_send_block_zero (SendBlockHandle * handle);
+
+void rsn_send_block_destination_set (SendBlockHandle * handle, const uint8_t (*destination)[32]);
+
+void rsn_send_block_previous_set (SendBlockHandle * handle, const uint8_t (*previous)[32]);
+
+void rsn_send_block_balance_set (SendBlockHandle * handle, const uint8_t (*balance)[16]);
+
 } // extern "C"
 
 } // namespace rsnano

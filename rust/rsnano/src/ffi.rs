@@ -418,12 +418,44 @@ pub unsafe extern "C" fn rsn_send_block_signature_set(
     handle: *mut SendBlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::new(*signature);
+    (*handle).block.signature = Signature::from_be_bytes(signature);
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_send_block_equals(a: &SendBlockHandle, b: &SendBlockHandle) -> bool {
     a.block.work.eq(&b.block.work) && a.block.signature.eq(&b.block.signature)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_send_block_zero(handle: *mut SendBlockHandle) {
+    (*handle).block.zero();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_send_block_destination_set(
+    handle: *mut SendBlockHandle,
+    destination: &[u8; 32],
+) {
+    let destination = Account::from_be_bytes(destination);
+    (*handle).block.set_destination(destination);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_send_block_previous_set(
+    handle: *mut SendBlockHandle,
+    previous: &[u8; 32],
+) {
+    let previous = BlockHash::from_be_bytes(previous);
+    (*handle).block.set_previous(previous);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_send_block_balance_set(
+    handle: *mut SendBlockHandle,
+    balance: &[u8; 16],
+) {
+    let balance = Amount::from_be_bytes(balance);
+    (*handle).block.set_balance(balance);
 }
 
 unsafe fn set_send_block_dto(block: &SendBlock, dto: *mut SendBlockDto) {
@@ -436,9 +468,9 @@ impl TryFrom<&BlockSidebandDto> for BlockSideband {
     type Error = anyhow::Error;
 
     fn try_from(value: &BlockSidebandDto) -> Result<Self, Self::Error> {
-        let pub_key = PublicKey::new(value.account);
+        let pub_key = PublicKey::from_be_bytes(&value.account);
         let account = Account::new(pub_key);
-        let successor = BlockHash::new(value.successor);
+        let successor = BlockHash::from_be_bytes(&value.successor);
         let balance = Amount::new(u128::from_be_bytes(value.balance));
         let details = BlockDetails::try_from(&value.details)?;
         let source_epoch = Epoch::try_from(value.source_epoch)?;
@@ -485,7 +517,7 @@ impl From<&SendBlockDto> for SendBlock {
     fn from(value: &SendBlockDto) -> Self {
         SendBlock {
             hashables: SendHashables::from(&value.hashables),
-            signature: Signature::new(value.signature),
+            signature: Signature::from_be_bytes(&value.signature),
             work: value.work,
         }
     }
@@ -494,8 +526,8 @@ impl From<&SendBlockDto> for SendBlock {
 impl From<&SendHashablesDto> for SendHashables {
     fn from(value: &SendHashablesDto) -> Self {
         SendHashables {
-            previous: BlockHash::new(value.previous),
-            destination: Account::new(PublicKey::new(value.destination)),
+            previous: BlockHash::from_be_bytes(&value.previous),
+            destination: Account::new(PublicKey::from_be_bytes(&value.destination)),
             balance: Amount::new(u128::from_be_bytes(value.balance)),
         }
     }

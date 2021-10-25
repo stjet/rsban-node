@@ -218,8 +218,7 @@ void nano::send_block::block_work_set (uint64_t work_a)
 
 void nano::send_block::zero ()
 {
-	block_work_set (0);
-	sign_zero ();
+	rsnano::rsn_send_block_zero (handle);
 	hashables.previous.clear ();
 	hashables.destination.clear ();
 	hashables.balance.clear ();
@@ -227,22 +226,31 @@ void nano::send_block::zero ()
 
 void nano::send_block::set_destination (nano::account account_a)
 {
+	uint8_t bytes[32];
+	std::copy (std::begin (account_a.bytes), std::end (account_a.bytes), std::begin (bytes));
+	rsnano::rsn_send_block_destination_set (handle, &bytes);
 	hashables.destination = account_a;
 }
 
 void nano::send_block::set_previous (nano::block_hash previous_a)
 {
+	uint8_t bytes[32];
+	std::copy (std::begin (previous_a.bytes), std::end (previous_a.bytes), std::begin (bytes));
+	rsnano::rsn_send_block_previous_set (handle, &bytes);
 	hashables.previous = previous_a;
 }
 
 void nano::send_block::set_balance (nano::amount balance_a)
 {
+	uint8_t bytes[16];
+	std::copy (std::begin (balance_a.bytes), std::end (balance_a.bytes), std::begin (bytes));
+	rsnano::rsn_send_block_balance_set (handle, &bytes);
 	hashables.balance = balance_a;
 }
 
 void nano::send_block::sign_zero ()
 {
-	uint8_t sig[64] {0};
+	uint8_t sig[64]{ 0 };
 	rsnano::rsn_send_block_signature_set (handle, &sig);
 }
 
@@ -411,7 +419,7 @@ nano::send_block::send_block (nano::block_hash const & previous_a, nano::account
 {
 	debug_assert (destination_a != nullptr);
 	debug_assert (pub_a != nullptr);
-	auto sig {nano::sign_message (prv_a, pub_a, hash ())};
+	auto sig{ nano::sign_message (prv_a, pub_a, hash ()) };
 
 	rsnano::SendBlockDto dto;
 	dto.hashables = hashables.to_dto ();

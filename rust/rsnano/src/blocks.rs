@@ -4,7 +4,7 @@ use num::FromPrimitive;
 use crate::{
     block_details::BlockDetails,
     epoch::Epoch,
-    numbers::{Account, Amount, BlockHash, PublicKey, Signature},
+    numbers::{Account, Amount, BlockHash, Signature},
     utils::Stream,
 };
 
@@ -163,10 +163,10 @@ impl SendHashables {
         let mut buffer_16 = [0u8; 16];
 
         stream.read_bytes(&mut buffer_32, 32)?;
-        let previous = BlockHash::new(buffer_32);
+        let previous = BlockHash::from_be_bytes(&buffer_32);
 
         stream.read_bytes(&mut buffer_32, 32)?;
-        let destination = Account::new(PublicKey::new(buffer_32));
+        let destination = Account::from_be_bytes(&buffer_32);
 
         stream.read_bytes(&mut buffer_16, 16)?;
         let balance = Amount::new(u128::from_be_bytes(buffer_16));
@@ -202,5 +202,22 @@ impl SendBlock {
         self.work = u64::from_ne_bytes(buffer);
 
         Ok(())
+    }
+
+    pub fn zero(&mut self) {
+        self.work = 0;
+        self.signature = Signature::new();
+    }
+
+    pub fn set_destination(&mut self, destination: Account) {
+        self.hashables.destination = destination;
+    }
+
+    pub fn set_previous(&mut self, previous: BlockHash) {
+        self.hashables.previous = previous;
+    }
+
+    pub fn set_balance(&mut self, balance: Amount) {
+        self.hashables.balance = balance;
     }
 }

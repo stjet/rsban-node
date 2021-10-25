@@ -179,7 +179,6 @@ impl SendHashables {
     }
 }
 
-
 #[derive(Clone)]
 pub struct SendBlock {
     pub hashables: SendHashables,
@@ -194,18 +193,14 @@ impl SendBlock {
         stream.write_bytes(&self.work.to_ne_bytes())
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<SendBlock> {
-        let hashables = SendHashables::deserialize(stream)?;
-        let signature = Signature::deserialize(stream)?;
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
+        self.hashables = SendHashables::deserialize(stream)?;
+        self.signature = Signature::deserialize(stream)?;
 
         let mut buffer = [0u8; 8];
         stream.read_bytes(&mut buffer, 8)?;
-        let work = u64::from_ne_bytes(buffer);
+        self.work = u64::from_ne_bytes(buffer);
 
-        Ok(SendBlock {
-            hashables,
-            signature,
-            work,
-        })
+        Ok(())
     }
 }

@@ -313,7 +313,7 @@ void nano::send_block::serialize (nano::stream & stream_a) const
 {
 	auto dto{ to_dto () };
 
-	if (rsnano::rsn_send_block_serialize (&dto, &stream_a) != 0)
+	if (rsnano::rsn_send_block_serialize (handle, &dto, &stream_a) != 0)
 	{
 		throw std::runtime_error ("could not serialize send_block");
 	}
@@ -321,8 +321,8 @@ void nano::send_block::serialize (nano::stream & stream_a) const
 
 bool nano::send_block::deserialize (nano::stream & stream_a)
 {
-	auto dto{ to_dto () };
-	auto result = rsnano::rsn_send_block_deserialize (&dto, &stream_a);
+	rsnano::SendBlockDto dto;
+	auto result = rsnano::rsn_send_block_deserialize (handle, &dto, &stream_a);
 	if (result == 0)
 	{
 		load_dto (dto);
@@ -407,16 +407,14 @@ nano::send_block::send_block (nano::block_hash const & previous_a, nano::account
 }
 
 nano::send_block::send_block (bool & error_a, nano::stream & stream_a) :
-	handle (nullptr)
+	nano::send_block::send_block ()
 {
-	// todo GS: optimize
 	rsnano::SendBlockDto dto;
-	auto result = rsnano::rsn_send_block_deserialize (&dto, &stream_a);
+	auto result = rsnano::rsn_send_block_deserialize (handle, &dto, &stream_a);
 	error_a = result != 0;
 	if (result == 0)
 	{
 		load_dto (dto);
-		handle = rsnano::rsn_send_block_create (&dto);
 	}
 }
 

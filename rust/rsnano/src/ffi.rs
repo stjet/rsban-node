@@ -351,7 +351,9 @@ pub struct SendBlockHandle {
 
 #[no_mangle]
 pub extern "C" fn rsn_send_block_create(dto: &SendBlockDto) -> *mut SendBlockHandle {
-    Box::into_raw(Box::new(SendBlockHandle{block: SendBlock::from(dto)}))
+    Box::into_raw(Box::new(SendBlockHandle {
+        block: SendBlock::from(dto),
+    }))
 }
 
 #[no_mangle]
@@ -361,14 +363,20 @@ pub unsafe extern "C" fn rsn_send_block_destroy(handle: *mut SendBlockHandle) {
 
 #[no_mangle]
 pub extern "C" fn rsn_send_block_clone(handle: &SendBlockHandle) -> *mut SendBlockHandle {
-    Box::into_raw(Box::new(SendBlockHandle{block: handle.block.clone()}))
+    Box::into_raw(Box::new(SendBlockHandle {
+        block: handle.block.clone(),
+    }))
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_send_block_serialize(dto: &SendBlockDto, stream: *mut c_void) -> i32 {
-    let block = SendBlock::from(dto);
+pub unsafe extern "C" fn rsn_send_block_serialize(
+    handle: *mut SendBlockHandle,
+    dto: &SendBlockDto,
+    stream: *mut c_void,
+) -> i32 {
+    update_send_block(handle, dto);
     let mut stream = FfiStream::new(stream);
-    if block.serialize(&mut stream).is_ok() {
+    if (*handle).block.serialize(&mut stream).is_ok() {
         0
     } else {
         -1
@@ -377,16 +385,23 @@ pub extern "C" fn rsn_send_block_serialize(dto: &SendBlockDto, stream: *mut c_vo
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_deserialize(
+    handle: *mut SendBlockHandle,
     dto: *mut SendBlockDto,
     stream: *mut c_void,
 ) -> i32 {
     let mut stream = FfiStream::new(stream);
-    if let Ok(block) = SendBlock::deserialize(&mut stream) {
-        set_send_block_dto(&block, dto);
+    if (*handle).block.deserialize(&mut stream).is_ok() {
+        set_send_block_dto(&((*handle).block), dto);
         0
     } else {
         -1
     }
+}
+
+unsafe fn update_send_block(handle: *mut SendBlockHandle, dto: &SendBlockDto) {
+    (*handle).block.work = dto.work;
+    (*handle).block.signature = Signature::new(dto.signature);
+    (*handle).block.hashables = SendHashables::from(&dto.hashables);
 }
 
 unsafe fn set_send_block_dto(block: &SendBlock, dto: *mut SendBlockDto) {

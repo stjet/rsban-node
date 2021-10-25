@@ -100,9 +100,9 @@ void rsn_send_block_destroy (SendBlockHandle * handle);
 
 SendBlockHandle * rsn_send_block_clone (const SendBlockHandle * handle);
 
-int32_t rsn_send_block_serialize (const SendBlockDto * dto, void * stream);
+int32_t rsn_send_block_serialize (SendBlockHandle * handle, const SendBlockDto * dto, void * stream);
 
-int32_t rsn_send_block_deserialize (SendBlockDto * dto, void * stream);
+int32_t rsn_send_block_deserialize (SendBlockHandle * handle, SendBlockDto * dto, void * stream);
 
 } // extern "C"
 

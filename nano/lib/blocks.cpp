@@ -208,17 +208,17 @@ void nano::send_block::hash (blake2b_state & hash_a) const
 
 uint64_t nano::send_block::block_work () const
 {
-	return work;
+	return rsnano::rsn_send_block_get_work (handle);
 }
 
 void nano::send_block::block_work_set (uint64_t work_a)
 {
-	work = work_a;
+	rsnano::rsn_send_block_set_work (handle, work_a);
 }
 
 void nano::send_block::zero ()
 {
-	work = uint64_t (0);
+	block_work_set (0);
 	signature.clear ();
 	hashables.previous.clear ();
 	hashables.destination.clear ();
@@ -351,7 +351,7 @@ void nano::send_block::serialize_json (boost::property_tree::ptree & tree) const
 	tree.put ("balance", balance);
 	std::string signature_l;
 	signature.encode_hex (signature_l);
-	tree.put ("work", nano::to_string_hex (work));
+	tree.put ("work", nano::to_string_hex (block_work ()));
 	tree.put ("signature", signature_l);
 }
 
@@ -375,7 +375,9 @@ bool nano::send_block::deserialize_json (boost::property_tree::ptree const & tre
 				error = hashables.balance.decode_hex (balance_l);
 				if (!error)
 				{
-					error = nano::from_string_hex (work_l, work);
+					uint64_t work_tmp;
+					error = nano::from_string_hex (work_l, work_tmp);
+					block_work_set (work_tmp);
 					if (!error)
 					{
 						error = signature.decode_hex (signature_l);
@@ -394,7 +396,6 @@ bool nano::send_block::deserialize_json (boost::property_tree::ptree const & tre
 nano::send_block::send_block (nano::block_hash const & previous_a, nano::account const & destination_a, nano::amount const & balance_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a) :
 	hashables (previous_a, destination_a, balance_a),
 	signature (nano::sign_message (prv_a, pub_a, hash ())),
-	work (work_a),
 	handle (nullptr)
 {
 	debug_assert (destination_a != nullptr);
@@ -431,12 +432,13 @@ nano::send_block::send_block (bool & error_a, boost::property_tree::ptree const 
 			error_a = signature.decode_hex (signature_l);
 			if (!error_a)
 			{
-				error_a = nano::from_string_hex (work_l, work);
+				uint64_t work_tmp;
+				error_a = nano::from_string_hex (work_l, work_tmp);
 
 				rsnano::SendBlockDto dto;
 				dto.hashables = hashables.to_dto ();
 				std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (dto.signature));
-				dto.work = work;
+				dto.work = work_tmp;
 				handle = rsnano::rsn_send_block_create (&dto);
 			}
 		}
@@ -464,7 +466,6 @@ nano::send_block::send_block (const send_block & other)
 	sideband_m = other.sideband_m;
 	hashables = other.hashables;
 	signature = other.signature;
-	work = other.work;
 	if (other.handle == nullptr)
 	{
 		handle = nullptr;
@@ -481,7 +482,6 @@ nano::send_block::send_block (send_block && other)
 	sideband_m = other.sideband_m;
 	hashables = other.hashables;
 	signature = other.signature;
-	work = other.work;
 	handle = other.handle;
 	other.handle = nullptr;
 }
@@ -523,7 +523,7 @@ rsnano::SendBlockDto nano::send_block::to_dto () const
 	rsnano::SendBlockDto dto;
 	dto.hashables = hashables.to_dto ();
 	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (dto.signature));
-	dto.work = work;
+	dto.work = block_work ();
 	return dto;
 }
 
@@ -531,7 +531,6 @@ void nano::send_block::load_dto (rsnano::SendBlockDto & dto)
 {
 	hashables.load_dto (dto.hashables);
 	std::copy (std::begin (dto.signature), std::end (dto.signature), std::begin (signature.bytes));
-	work = dto.work;
 }
 
 nano::block_type nano::send_block::type () const
@@ -541,7 +540,7 @@ nano::block_type nano::send_block::type () const
 
 bool nano::send_block::operator== (nano::send_block const & other_a) const
 {
-	auto result (hashables.destination == other_a.hashables.destination && hashables.previous == other_a.hashables.previous && hashables.balance == other_a.hashables.balance && work == other_a.work && signature == other_a.signature);
+	auto result (hashables.destination == other_a.hashables.destination && hashables.previous == other_a.hashables.previous && hashables.balance == other_a.hashables.balance && signature == other_a.signature && rsnano::rsn_send_block_equals (handle, other_a.handle));
 	return result;
 }
 

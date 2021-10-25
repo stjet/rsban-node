@@ -199,7 +199,6 @@ private:
 	rsnano::SendBlockHandle * handle;
 	send_hashables hashables;
 	nano::signature signature;
-	uint64_t work;
 };
 class receive_hashables
 {

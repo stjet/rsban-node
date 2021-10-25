@@ -1,7 +1,7 @@
 use crate::utils::Stream;
 use anyhow::Result;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PublicKey {
     value: [u8; 32], // big endian
 }
@@ -29,7 +29,7 @@ impl PublicKey {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Account {
     public_key: PublicKey,
 }
@@ -56,7 +56,7 @@ impl Account {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BlockHash {
     value: [u8; 32], //big endian
 }
@@ -84,7 +84,7 @@ impl BlockHash {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Amount {
     value: u128, // native endian!
 }
@@ -115,7 +115,7 @@ impl Amount {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Signature {
     bytes: [u8; 64],
 }

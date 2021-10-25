@@ -104,6 +104,12 @@ int32_t rsn_send_block_serialize (SendBlockHandle * handle, const SendBlockDto *
 
 int32_t rsn_send_block_deserialize (SendBlockHandle * handle, SendBlockDto * dto, void * stream);
 
+uint64_t rsn_send_block_get_work (const SendBlockHandle * handle);
+
+void rsn_send_block_set_work (SendBlockHandle * handle, uint64_t work);
+
+bool rsn_send_block_equals (const SendBlockHandle * a, const SendBlockHandle * b);
+
 } // extern "C"
 
 } // namespace rsnano

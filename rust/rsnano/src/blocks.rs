@@ -143,7 +143,7 @@ impl BlockSideband {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SendHashables {
     pub previous: BlockHash,
     pub destination: Account,
@@ -179,7 +179,7 @@ impl SendHashables {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SendBlock {
     pub hashables: SendHashables,
     pub signature: Signature,

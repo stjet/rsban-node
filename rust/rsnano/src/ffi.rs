@@ -398,6 +398,21 @@ pub unsafe extern "C" fn rsn_send_block_deserialize(
     }
 }
 
+#[no_mangle]
+pub extern "C" fn rsn_send_block_get_work(handle: &SendBlockHandle) -> u64 {
+    handle.block.work
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_send_block_set_work(handle: *mut SendBlockHandle, work: u64) {
+   (*handle).block.work = work;
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_send_block_equals(a: &SendBlockHandle, b: &SendBlockHandle) -> bool {
+    a.block.work.eq(&b.block.work)
+}
+
 unsafe fn update_send_block(handle: *mut SendBlockHandle, dto: &SendBlockDto) {
     (*handle).block.work = dto.work;
     (*handle).block.signature = Signature::new(dto.signature);

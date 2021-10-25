@@ -104,9 +104,13 @@ int32_t rsn_send_block_serialize (SendBlockHandle * handle, const SendBlockDto *
 
 int32_t rsn_send_block_deserialize (SendBlockHandle * handle, SendBlockDto * dto, void * stream);
 
-uint64_t rsn_send_block_get_work (const SendBlockHandle * handle);
+uint64_t rsn_send_block_work (const SendBlockHandle * handle);
 
-void rsn_send_block_set_work (SendBlockHandle * handle, uint64_t work);
+void rsn_send_block_work_set (SendBlockHandle * handle, uint64_t work);
+
+void rsn_send_block_signature (const SendBlockHandle * handle, uint8_t (*result)[64]);
+
+void rsn_send_block_signature_set (SendBlockHandle * handle, const uint8_t (*signature)[64]);
 
 bool rsn_send_block_equals (const SendBlockHandle * a, const SendBlockHandle * b);
 

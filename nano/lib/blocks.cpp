@@ -208,18 +208,18 @@ void nano::send_block::hash (blake2b_state & hash_a) const
 
 uint64_t nano::send_block::block_work () const
 {
-	return rsnano::rsn_send_block_get_work (handle);
+	return rsnano::rsn_send_block_work (handle);
 }
 
 void nano::send_block::block_work_set (uint64_t work_a)
 {
-	rsnano::rsn_send_block_set_work (handle, work_a);
+	rsnano::rsn_send_block_work_set (handle, work_a);
 }
 
 void nano::send_block::zero ()
 {
 	block_work_set (0);
-	signature.clear ();
+	sign_zero ();
 	hashables.previous.clear ();
 	hashables.destination.clear ();
 	hashables.balance.clear ();
@@ -242,6 +242,8 @@ void nano::send_block::set_balance (nano::amount balance_a)
 
 void nano::send_block::sign_zero ()
 {
+	uint8_t sig[64] {0};
+	rsnano::rsn_send_block_signature_set (handle, &sig);
 	signature.clear ();
 }
 
@@ -349,8 +351,14 @@ void nano::send_block::serialize_json (boost::property_tree::ptree & tree) const
 	std::string balance;
 	hashables.balance.encode_hex (balance);
 	tree.put ("balance", balance);
+
 	std::string signature_l;
-	signature.encode_hex (signature_l);
+	uint8_t signature_bytes[64];
+	rsnano::rsn_send_block_signature (handle, &signature_bytes);
+	nano::signature sig;
+	std::copy (std::begin (signature_bytes), std::end (signature_bytes), std::begin (sig.bytes));
+	sig.encode_hex (signature_l);
+
 	tree.put ("work", nano::to_string_hex (block_work ()));
 	tree.put ("signature", signature_l);
 }
@@ -380,7 +388,12 @@ bool nano::send_block::deserialize_json (boost::property_tree::ptree const & tre
 					block_work_set (work_tmp);
 					if (!error)
 					{
-						error = signature.decode_hex (signature_l);
+						nano::signature sig;
+						error = sig.decode_hex (signature_l);
+						uint8_t sig_bytes[64];
+						std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (sig_bytes));
+						rsnano::rsn_send_block_signature_set (handle, &sig_bytes);
+						signature = sig;
 					}
 				}
 			}
@@ -395,16 +408,18 @@ bool nano::send_block::deserialize_json (boost::property_tree::ptree const & tre
 
 nano::send_block::send_block (nano::block_hash const & previous_a, nano::account const & destination_a, nano::amount const & balance_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a) :
 	hashables (previous_a, destination_a, balance_a),
-	signature (nano::sign_message (prv_a, pub_a, hash ())),
 	handle (nullptr)
 {
 	debug_assert (destination_a != nullptr);
 	debug_assert (pub_a != nullptr);
+	auto sig {nano::sign_message (prv_a, pub_a, hash ())};
+
 	rsnano::SendBlockDto dto;
 	dto.hashables = hashables.to_dto ();
 	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (dto.signature));
 	dto.work = work_a;
 	handle = rsnano::rsn_send_block_create (&dto);
+	signature = sig;
 }
 
 nano::send_block::send_block (bool & error_a, nano::stream & stream_a) :
@@ -429,7 +444,9 @@ nano::send_block::send_block (bool & error_a, boost::property_tree::ptree const 
 		{
 			auto signature_l (tree_a.get<std::string> ("signature"));
 			auto work_l (tree_a.get<std::string> ("work"));
-			error_a = signature.decode_hex (signature_l);
+			nano::signature sig;
+			error_a = sig.decode_hex (signature_l);
+			signature = sig;
 			if (!error_a)
 			{
 				uint64_t work_tmp;
@@ -437,7 +454,7 @@ nano::send_block::send_block (bool & error_a, boost::property_tree::ptree const 
 
 				rsnano::SendBlockDto dto;
 				dto.hashables = hashables.to_dto ();
-				std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (dto.signature));
+				std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (dto.signature));
 				dto.work = work_tmp;
 				handle = rsnano::rsn_send_block_create (&dto);
 			}
@@ -540,7 +557,7 @@ nano::block_type nano::send_block::type () const
 
 bool nano::send_block::operator== (nano::send_block const & other_a) const
 {
-	auto result (hashables.destination == other_a.hashables.destination && hashables.previous == other_a.hashables.previous && hashables.balance == other_a.hashables.balance && signature == other_a.signature && rsnano::rsn_send_block_equals (handle, other_a.handle));
+	auto result (hashables.destination == other_a.hashables.destination && hashables.previous == other_a.hashables.previous && hashables.balance == other_a.hashables.balance && rsnano::rsn_send_block_equals (handle, other_a.handle));
 	return result;
 }
 
@@ -572,6 +589,9 @@ nano::signature const & nano::send_block::block_signature () const
 void nano::send_block::signature_set (nano::signature const & signature_a)
 {
 	signature = signature_a;
+	uint8_t bytes[64];
+	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (bytes));
+	rsnano::rsn_send_block_signature_set (handle, &bytes);
 }
 
 nano::open_hashables::open_hashables (nano::block_hash const & source_a, nano::account const & representative_a, nano::account const & account_a) :

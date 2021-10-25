@@ -118,7 +118,7 @@ public:
 	virtual void visit (nano::mutable_block_visitor &) = 0;
 	virtual bool operator== (nano::block const &) const = 0;
 	virtual nano::block_type type () const = 0;
-	virtual nano::signature const & block_signature () const = 0;
+	virtual nano::signature block_signature () const = 0;
 	virtual void signature_set (nano::signature const &) = 0;
 	virtual ~block () = default;
 	virtual bool valid_predecessor (nano::block const &) const = 0;
@@ -181,12 +181,11 @@ public:
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
 	nano::block_type type () const override;
-	nano::signature const & block_signature () const override;
+	nano::signature block_signature () const override;
 	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::send_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
-	rsnano::SendBlockDto to_dto () const;
 	void load_dto (rsnano::SendBlockDto & dto);
 	void zero ();
 	void set_destination (nano::account account_a);
@@ -198,7 +197,6 @@ public:
 private:
 	rsnano::SendBlockHandle * handle;
 	send_hashables hashables;
-	nano::signature signature;
 };
 class receive_hashables
 {
@@ -235,7 +233,7 @@ public:
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
 	nano::block_type type () const override;
-	nano::signature const & block_signature () const override;
+	nano::signature block_signature () const override;
 	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::receive_block const &) const;
@@ -286,7 +284,7 @@ public:
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
 	nano::block_type type () const override;
-	nano::signature const & block_signature () const override;
+	nano::signature block_signature () const override;
 	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::open_block const &) const;
@@ -332,7 +330,7 @@ public:
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
 	nano::block_type type () const override;
-	nano::signature const & block_signature () const override;
+	nano::signature block_signature () const override;
 	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::change_block const &) const;
@@ -395,7 +393,7 @@ public:
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
 	nano::block_type type () const override;
-	nano::signature const & block_signature () const override;
+	nano::signature block_signature () const override;
 	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::state_block const &) const;

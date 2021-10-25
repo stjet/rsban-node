@@ -244,7 +244,6 @@ void nano::send_block::sign_zero ()
 {
 	uint8_t sig[64] {0};
 	rsnano::rsn_send_block_signature_set (handle, &sig);
-	signature.clear ();
 }
 
 nano::send_hashables::send_hashables (nano::block_hash const & previous_a, nano::account const & destination_a, nano::amount const & balance_a) :
@@ -313,7 +312,8 @@ void nano::send_hashables::load_dto (rsnano::SendHashablesDto & dto)
 
 void nano::send_block::serialize (nano::stream & stream_a) const
 {
-	auto dto{ to_dto () };
+	rsnano::SendBlockDto dto;
+	dto.hashables = hashables.to_dto ();
 
 	if (rsnano::rsn_send_block_serialize (handle, &dto, &stream_a) != 0)
 	{
@@ -393,7 +393,6 @@ bool nano::send_block::deserialize_json (boost::property_tree::ptree const & tre
 						uint8_t sig_bytes[64];
 						std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (sig_bytes));
 						rsnano::rsn_send_block_signature_set (handle, &sig_bytes);
-						signature = sig;
 					}
 				}
 			}
@@ -416,10 +415,9 @@ nano::send_block::send_block (nano::block_hash const & previous_a, nano::account
 
 	rsnano::SendBlockDto dto;
 	dto.hashables = hashables.to_dto ();
-	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (dto.signature));
+	std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (dto.signature));
 	dto.work = work_a;
 	handle = rsnano::rsn_send_block_create (&dto);
-	signature = sig;
 }
 
 nano::send_block::send_block (bool & error_a, nano::stream & stream_a) :
@@ -446,7 +444,6 @@ nano::send_block::send_block (bool & error_a, boost::property_tree::ptree const 
 			auto work_l (tree_a.get<std::string> ("work"));
 			nano::signature sig;
 			error_a = sig.decode_hex (signature_l);
-			signature = sig;
 			if (!error_a)
 			{
 				uint64_t work_tmp;
@@ -482,7 +479,6 @@ nano::send_block::send_block (const send_block & other)
 	cached_hash = other.cached_hash;
 	sideband_m = other.sideband_m;
 	hashables = other.hashables;
-	signature = other.signature;
 	if (other.handle == nullptr)
 	{
 		handle = nullptr;
@@ -498,7 +494,6 @@ nano::send_block::send_block (send_block && other)
 	cached_hash = other.cached_hash;
 	sideband_m = other.sideband_m;
 	hashables = other.hashables;
-	signature = other.signature;
 	handle = other.handle;
 	other.handle = nullptr;
 }
@@ -535,19 +530,9 @@ bool nano::send_block::valid_predecessor (nano::block const & block_a) const
 	return result;
 }
 
-rsnano::SendBlockDto nano::send_block::to_dto () const
-{
-	rsnano::SendBlockDto dto;
-	dto.hashables = hashables.to_dto ();
-	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (dto.signature));
-	dto.work = block_work ();
-	return dto;
-}
-
 void nano::send_block::load_dto (rsnano::SendBlockDto & dto)
 {
 	hashables.load_dto (dto.hashables);
-	std::copy (std::begin (dto.signature), std::end (dto.signature), std::begin (signature.bytes));
 }
 
 nano::block_type nano::send_block::type () const
@@ -581,14 +566,17 @@ nano::amount const & nano::send_block::balance () const
 	return hashables.balance;
 }
 
-nano::signature const & nano::send_block::block_signature () const
+nano::signature nano::send_block::block_signature () const
 {
-	return signature;
+	uint8_t bytes[64];
+	rsnano::rsn_send_block_signature (handle, &bytes);
+	nano::signature result;
+	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
+	return result;
 }
 
 void nano::send_block::signature_set (nano::signature const & signature_a)
 {
-	signature = signature_a;
 	uint8_t bytes[64];
 	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (bytes));
 	rsnano::rsn_send_block_signature_set (handle, &bytes);
@@ -860,7 +848,7 @@ nano::account const & nano::open_block::representative () const
 	return hashables.representative;
 }
 
-nano::signature const & nano::open_block::block_signature () const
+nano::signature nano::open_block::block_signature () const
 {
 	return signature;
 }
@@ -1116,7 +1104,7 @@ nano::account const & nano::change_block::representative () const
 	return hashables.representative;
 }
 
-nano::signature const & nano::change_block::block_signature () const
+nano::signature nano::change_block::block_signature () const
 {
 	return signature;
 }
@@ -1446,7 +1434,7 @@ nano::amount const & nano::state_block::balance () const
 	return hashables.balance;
 }
 
-nano::signature const & nano::state_block::block_signature () const
+nano::signature nano::state_block::block_signature () const
 {
 	return signature;
 }
@@ -1767,7 +1755,7 @@ nano::root const & nano::receive_block::root () const
 	return hashables.previous;
 }
 
-nano::signature const & nano::receive_block::block_signature () const
+nano::signature nano::receive_block::block_signature () const
 {
 	return signature;
 }

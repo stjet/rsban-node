@@ -374,7 +374,7 @@ pub unsafe extern "C" fn rsn_send_block_serialize(
     dto: &SendBlockDto,
     stream: *mut c_void,
 ) -> i32 {
-    update_send_block(handle, dto);
+    (*handle).block.hashables = SendHashables::from(&dto.hashables);
     let mut stream = FfiStream::new(stream);
     if (*handle).block.serialize(&mut stream).is_ok() {
         0
@@ -424,12 +424,6 @@ pub unsafe extern "C" fn rsn_send_block_signature_set(
 #[no_mangle]
 pub extern "C" fn rsn_send_block_equals(a: &SendBlockHandle, b: &SendBlockHandle) -> bool {
     a.block.work.eq(&b.block.work) && a.block.signature.eq(&b.block.signature)
-}
-
-unsafe fn update_send_block(handle: *mut SendBlockHandle, dto: &SendBlockDto) {
-    (*handle).block.work = dto.work;
-    (*handle).block.signature = Signature::new(dto.signature);
-    (*handle).block.hashables = SendHashables::from(&dto.hashables);
 }
 
 unsafe fn set_send_block_dto(block: &SendBlock, dto: *mut SendBlockDto) {

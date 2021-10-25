@@ -550,13 +550,13 @@ void ledger_processor::send_block (nano::send_block & block_a)
 						result.code = ledger.constants.work.difficulty (block_a) >= ledger.constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
 						if (result.code == nano::process_result::progress)
 						{
-							debug_assert (!validate_message (account, hash, block_a.signature));
+							debug_assert (!validate_message (account, hash, block_a.block_signature ()));
 							result.verified = nano::signature_verification::valid;
 							nano::account_info info;
 							auto latest_error (ledger.store.account.get (transaction, account, info));
 							(void)latest_error;
 							debug_assert (!latest_error);
-							debug_assert (info.head == block_a.hashables.previous);
+							debug_assert (info.head == block_a.previous ());
 							result.code = info.balance.number () >= block_a.balance ().number () ? nano::process_result::progress : nano::process_result::negative_spend; // Is this trying to spend a negative amount (Malicious)
 							if (result.code == nano::process_result::progress)
 							{

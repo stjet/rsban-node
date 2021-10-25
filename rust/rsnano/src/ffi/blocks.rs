@@ -3,7 +3,7 @@ use crate::{
     block_details::BlockDetails,
     blocks::{BlockSideband, BlockType, SendBlock, SendHashables},
     epoch::Epoch,
-    numbers::{Account, Amount, BlockHash, PublicKey, Signature},
+    numbers::{Account, Amount, BlockHash, Signature},
 };
 use num::FromPrimitive;
 use std::{convert::TryFrom, ffi::c_void};
@@ -205,10 +205,8 @@ pub extern "C" fn rsn_send_block_clone(handle: &SendBlockHandle) -> *mut SendBlo
 #[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_serialize(
     handle: *mut SendBlockHandle,
-    dto: &SendBlockDto,
     stream: *mut c_void,
 ) -> i32 {
-    (*handle).block.hashables = SendHashables::from(&dto.hashables);
     let mut stream = FfiStream::new(stream);
     if (*handle).block.serialize(&mut stream).is_ok() {
         0
@@ -220,12 +218,10 @@ pub unsafe extern "C" fn rsn_send_block_serialize(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_deserialize(
     handle: *mut SendBlockHandle,
-    dto: *mut SendBlockDto,
     stream: *mut c_void,
 ) -> i32 {
     let mut stream = FfiStream::new(stream);
     if (*handle).block.deserialize(&mut stream).is_ok() {
-        set_send_block_dto(&((*handle).block), dto);
         0
     } else {
         -1
@@ -257,12 +253,22 @@ pub unsafe extern "C" fn rsn_send_block_signature_set(
 
 #[no_mangle]
 pub extern "C" fn rsn_send_block_equals(a: &SendBlockHandle, b: &SendBlockHandle) -> bool {
-    a.block.work.eq(&b.block.work) && a.block.signature.eq(&b.block.signature)
+    a.block.work.eq(&b.block.work)
+        && a.block.signature.eq(&b.block.signature)
+        && a.block.hashables.eq(&b.block.hashables)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_zero(handle: *mut SendBlockHandle) {
     (*handle).block.zero();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_send_block_destination(
+    handle: &SendBlockHandle,
+    result: *mut [u8; 32],
+) {
+    (*result) = handle.block.hashables.destination.to_be_bytes();
 }
 
 #[no_mangle]
@@ -275,12 +281,22 @@ pub unsafe extern "C" fn rsn_send_block_destination_set(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_send_block_previous(handle: &SendBlockHandle, result: *mut [u8; 32]) {
+    (*result) = handle.block.hashables.previous.to_be_bytes();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_previous_set(
     handle: *mut SendBlockHandle,
     previous: &[u8; 32],
 ) {
     let previous = BlockHash::from_be_bytes(*previous);
     (*handle).block.set_previous(previous);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_send_block_balance(handle: &SendBlockHandle, result: *mut [u8; 16]) {
+    (*result) = handle.block.hashables.balance.to_be_bytes();
 }
 
 #[no_mangle]
@@ -302,18 +318,11 @@ pub extern "C" fn rsn_send_block_hash(handle: &SendBlockHandle, state: *mut c_vo
     }
 }
 
-unsafe fn set_send_block_dto(block: &SendBlock, dto: *mut SendBlockDto) {
-    set_send_hashables_dto(&block.hashables, &mut (*dto).hashables);
-    (*dto).signature = block.signature.to_be_bytes();
-    (*dto).work = block.work;
-}
-
 impl TryFrom<&BlockSidebandDto> for BlockSideband {
     type Error = anyhow::Error;
 
     fn try_from(value: &BlockSidebandDto) -> Result<Self, Self::Error> {
-        let pub_key = PublicKey::from_be_bytes(value.account);
-        let account = Account::new(pub_key);
+        let account = Account::from_be_bytes(value.account);
         let successor = BlockHash::from_be_bytes(value.successor);
         let balance = Amount::new(u128::from_be_bytes(value.balance));
         let details = BlockDetails::try_from(&value.details)?;
@@ -371,7 +380,7 @@ impl From<&SendHashablesDto> for SendHashables {
     fn from(value: &SendHashablesDto) -> Self {
         SendHashables {
             previous: BlockHash::from_be_bytes(value.previous),
-            destination: Account::new(PublicKey::from_be_bytes(value.destination)),
+            destination: Account::from_be_bytes(value.destination),
             balance: Amount::new(u128::from_be_bytes(value.balance)),
         }
     }

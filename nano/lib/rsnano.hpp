@@ -106,13 +106,17 @@ void rsn_callback_write_bytes (WriteBytesCallback f);
 
 void rsn_callback_write_u8 (WriteU8Callback f);
 
+void rsn_send_block_balance (const SendBlockHandle * handle, uint8_t (*result)[16]);
+
 void rsn_send_block_balance_set (SendBlockHandle * handle, const uint8_t (*balance)[16]);
 
 SendBlockHandle * rsn_send_block_clone (const SendBlockHandle * handle);
 
 SendBlockHandle * rsn_send_block_create (const SendBlockDto * dto);
 
-int32_t rsn_send_block_deserialize (SendBlockHandle * handle, SendBlockDto * dto, void * stream);
+int32_t rsn_send_block_deserialize (SendBlockHandle * handle, void * stream);
+
+void rsn_send_block_destination (const SendBlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_send_block_destination_set (SendBlockHandle * handle, const uint8_t (*destination)[32]);
 
@@ -122,9 +126,11 @@ bool rsn_send_block_equals (const SendBlockHandle * a, const SendBlockHandle * b
 
 int32_t rsn_send_block_hash (const SendBlockHandle * handle, void * state);
 
+void rsn_send_block_previous (const SendBlockHandle * handle, uint8_t (*result)[32]);
+
 void rsn_send_block_previous_set (SendBlockHandle * handle, const uint8_t (*previous)[32]);
 
-int32_t rsn_send_block_serialize (SendBlockHandle * handle, const SendBlockDto * dto, void * stream);
+int32_t rsn_send_block_serialize (SendBlockHandle * handle, void * stream);
 
 void rsn_send_block_signature (const SendBlockHandle * handle, uint8_t (*result)[64]);
 

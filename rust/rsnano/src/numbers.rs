@@ -39,7 +39,13 @@ pub struct Account {
 }
 
 impl Account {
-    pub fn new(public_key: PublicKey) -> Self {
+    pub fn new() -> Self {
+        Self {
+            public_key: PublicKey::new(),
+        }
+    }
+
+    pub fn from_public_key(public_key: PublicKey) -> Self {
         Self { public_key }
     }
 
@@ -72,6 +78,10 @@ pub struct BlockHash {
 }
 
 impl BlockHash {
+    pub fn new() -> Self {
+        Self { value: [0; 32] }
+    }
+
     pub fn from_be_bytes(value: [u8; 32]) -> Self {
         Self { value }
     }

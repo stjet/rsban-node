@@ -153,8 +153,8 @@ public:
 	nano::amount balance;
 	static std::size_t constexpr size = sizeof (previous) + sizeof (destination) + sizeof (balance);
 	rsnano::SendHashablesDto to_dto () const;
-	void load_dto (rsnano::SendHashablesDto & dto);
 };
+
 class send_block final : public nano::block
 {
 public:
@@ -195,8 +195,8 @@ public:
 
 private:
 	rsnano::SendBlockHandle * handle;
-	send_hashables hashables;
 };
+
 class receive_hashables
 {
 public:

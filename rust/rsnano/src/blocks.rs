@@ -177,6 +177,12 @@ impl SendHashables {
             balance,
         })
     }
+
+    fn clear(&mut self) {
+        self.previous = BlockHash::new();
+        self.destination = Account::new();
+        self.balance = Amount::new(0);
+    }
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -207,6 +213,7 @@ impl SendBlock {
     pub fn zero(&mut self) {
         self.work = 0;
         self.signature = Signature::new();
+        self.hashables.clear();
     }
 
     pub fn set_destination(&mut self, destination: Account) {

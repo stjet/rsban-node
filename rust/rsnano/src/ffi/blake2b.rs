@@ -64,9 +64,7 @@ impl Blake2b for FfiBlake2b {
                         Err(anyhow!("update returned {}", result))
                     }
                 }
-                None => {
-                    Err(anyhow!("UPDATE_CALLBACK not provided"))
-                }
+                None => Err(anyhow!("UPDATE_CALLBACK not provided")),
             }
         }
     }

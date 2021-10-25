@@ -1,8 +1,12 @@
-use std::{convert::TryFrom, ffi::c_void};
-use num::FromPrimitive;
-use crate::{block_details::BlockDetails, blocks::{BlockSideband, BlockType, SendBlock, SendHashables}, epoch::Epoch, numbers::{Account, Amount, BlockHash, PublicKey, Signature}};
 use super::FfiStream;
-
+use crate::{
+    block_details::BlockDetails,
+    blocks::{BlockSideband, BlockType, SendBlock, SendHashables},
+    epoch::Epoch,
+    numbers::{Account, Amount, BlockHash, PublicKey, Signature},
+};
+use num::FromPrimitive;
+use std::{convert::TryFrom, ffi::c_void};
 
 #[repr(C)]
 pub struct BlockDetailsDto {

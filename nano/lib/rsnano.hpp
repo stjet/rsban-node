@@ -13,14 +13,6 @@ struct BandwidthLimiterHandle;
 
 struct SendBlockHandle;
 
-using WriteU8Callback = int32_t (*) (void *, uint8_t);
-
-using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
-
-using ReadU8Callback = int32_t (*) (void *, uint8_t *);
-
-using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
-
 struct BlockDetailsDto
 {
 	uint8_t epoch;
@@ -54,15 +46,21 @@ struct SendBlockDto
 	uint64_t work;
 };
 
+using WriteU8Callback = int32_t (*) (void *, uint8_t);
+
+using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
+
+using ReadU8Callback = int32_t (*) (void *, uint8_t *);
+
+using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
+
+using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
+
+using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
+
+using Blake2BFinalCallback = int32_t (*) (void *, void *, uintptr_t);
+
 extern "C" {
-
-void rsn_callback_write_u8 (WriteU8Callback f);
-
-void rsn_callback_write_bytes (WriteBytesCallback f);
-
-void rsn_callback_read_u8 (ReadU8Callback f);
-
-void rsn_callback_read_bytes (ReadBytesCallback f);
 
 BandwidthLimiterHandle * rsn_bandwidth_limiter_create (double limit_burst_ratio, uintptr_t limit);
 
@@ -121,6 +119,20 @@ void rsn_send_block_destination_set (SendBlockHandle * handle, const uint8_t (*d
 void rsn_send_block_previous_set (SendBlockHandle * handle, const uint8_t (*previous)[32]);
 
 void rsn_send_block_balance_set (SendBlockHandle * handle, const uint8_t (*balance)[16]);
+
+void rsn_callback_write_u8 (WriteU8Callback f);
+
+void rsn_callback_write_bytes (WriteBytesCallback f);
+
+void rsn_callback_read_u8 (ReadU8Callback f);
+
+void rsn_callback_read_bytes (ReadBytesCallback f);
+
+void rsn_callback_blake2b_init (Blake2BInitCallback f);
+
+void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
+
+void rsn_callback_blake2b_final (Blake2BFinalCallback f);
 
 } // extern "C"
 

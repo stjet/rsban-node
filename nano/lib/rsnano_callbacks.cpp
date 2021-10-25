@@ -1,3 +1,4 @@
+#include <nano/crypto/blake2/blake2.h>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnano_callbacks.hpp>
 #include <nano/lib/stream.hpp>
@@ -71,4 +72,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_write_bytes (write_bytes);
 	rsnano::rsn_callback_read_u8 (read_u8);
 	rsnano::rsn_callback_read_bytes (read_bytes);
+	rsnano::rsn_callback_blake2b_init (reinterpret_cast<Blake2BInitCallback> (blake2b_init));
+	rsnano::rsn_callback_blake2b_update (reinterpret_cast<Blake2BUpdateCallback> (blake2b_update));
+	rsnano::rsn_callback_blake2b_final (reinterpret_cast<Blake2BFinalCallback> (blake2b_final));
 }

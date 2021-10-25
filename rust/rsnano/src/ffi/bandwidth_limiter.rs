@@ -57,4 +57,3 @@ pub unsafe extern "C" fn rsn_bandwidth_limiter_reset(
         Err(_) => -1,
     }
 }
-

@@ -946,7 +946,7 @@ bool nano::ledger::is_send (nano::transaction const & transaction_a, nano::state
 	return result;
 }
 
-nano::account const & nano::ledger::block_destination (nano::transaction const & transaction_a, nano::block const & block_a)
+nano::account nano::ledger::block_destination (nano::transaction const & transaction_a, nano::block const & block_a)
 {
 	nano::send_block const * send_block (dynamic_cast<nano::send_block const *> (&block_a));
 	nano::state_block const * state_block (dynamic_cast<nano::state_block const *> (&block_a));

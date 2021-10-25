@@ -150,31 +150,31 @@ bool nano::block::has_sideband () const
 	return sideband_m.is_initialized ();
 }
 
-nano::account const & nano::block::representative () const
+nano::account nano::block::representative () const
 {
 	static nano::account representative{};
 	return representative;
 }
 
-nano::block_hash const & nano::block::source () const
+nano::block_hash nano::block::source () const
 {
 	static nano::block_hash source{ 0 };
 	return source;
 }
 
-nano::account const & nano::block::destination () const
+nano::account nano::block::destination () const
 {
 	static nano::account destination{};
 	return destination;
 }
 
-nano::link const & nano::block::link () const
+nano::link nano::block::link () const
 {
 	static nano::link link{ 0 };
 	return link;
 }
 
-nano::account const & nano::block::account () const
+nano::account nano::block::account () const
 {
 	static nano::account account{};
 	return account;
@@ -185,7 +185,7 @@ nano::qualified_root nano::block::qualified_root () const
 	return nano::qualified_root (root (), previous ());
 }
 
-nano::amount const & nano::block::balance () const
+nano::amount nano::block::balance () const
 {
 	static nano::amount amount{ 0 };
 	return amount;
@@ -260,6 +260,14 @@ nano::send_hashables::send_hashables (bool & error_a, nano::stream & stream_a)
 	rsnano::SendHashablesDto dto;
 	auto result{ rsnano::rsn_send_hashables_deserialize (&dto, &stream_a) };
 	error_a = result != 0;
+	load_dto (dto);
+}
+
+void nano::send_hashables::load_dto (rsnano::SendHashablesDto & dto)
+{
+	std::copy (std::begin (dto.previous), std::end (dto.previous), std::begin (previous.bytes));
+	std::copy (std::begin (dto.destination), std::end (dto.destination), std::begin (destination.bytes));
+	std::copy (std::begin (dto.balance), std::end (dto.balance), std::begin (balance.bytes));
 }
 
 nano::send_hashables::send_hashables (bool & error_a, boost::property_tree::ptree const & tree_a)
@@ -517,7 +525,7 @@ bool nano::send_block::operator== (nano::send_block const & other_a) const
 	return rsnano::rsn_send_block_equals (handle, other_a.handle);
 }
 
-nano::block_hash const & nano::send_block::previous () const
+nano::block_hash nano::send_block::previous () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_send_block_previous (handle, &buffer);
@@ -526,7 +534,7 @@ nano::block_hash const & nano::send_block::previous () const
 	return result;
 }
 
-nano::account const & nano::send_block::destination () const
+nano::account nano::send_block::destination () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_send_block_destination (handle, &buffer);
@@ -535,12 +543,12 @@ nano::account const & nano::send_block::destination () const
 	return result;
 }
 
-nano::root const & nano::send_block::root () const
+nano::root nano::send_block::root () const
 {
 	return previous ();
 }
 
-nano::amount const & nano::send_block::balance () const
+nano::amount nano::send_block::balance () const
 {
 	uint8_t buffer[16];
 	rsnano::rsn_send_block_balance (handle, &buffer);
@@ -690,13 +698,13 @@ void nano::open_block::block_work_set (uint64_t work_a)
 	work = work_a;
 }
 
-nano::block_hash const & nano::open_block::previous () const
+nano::block_hash nano::open_block::previous () const
 {
 	static nano::block_hash result{ 0 };
 	return result;
 }
 
-nano::account const & nano::open_block::account () const
+nano::account nano::open_block::account () const
 {
 	return hashables.account;
 }
@@ -816,17 +824,17 @@ bool nano::open_block::valid_predecessor (nano::block const & block_a) const
 	return false;
 }
 
-nano::block_hash const & nano::open_block::source () const
+nano::block_hash nano::open_block::source () const
 {
 	return hashables.source;
 }
 
-nano::root const & nano::open_block::root () const
+nano::root nano::open_block::root () const
 {
 	return hashables.account;
 }
 
-nano::account const & nano::open_block::representative () const
+nano::account nano::open_block::representative () const
 {
 	return hashables.representative;
 }
@@ -952,7 +960,7 @@ void nano::change_block::block_work_set (uint64_t work_a)
 	work = work_a;
 }
 
-nano::block_hash const & nano::change_block::previous () const
+nano::block_hash nano::change_block::previous () const
 {
 	return hashables.previous;
 }
@@ -1077,12 +1085,12 @@ bool nano::change_block::valid_predecessor (nano::block const & block_a) const
 	return result;
 }
 
-nano::root const & nano::change_block::root () const
+nano::root nano::change_block::root () const
 {
 	return hashables.previous;
 }
 
-nano::account const & nano::change_block::representative () const
+nano::account nano::change_block::representative () const
 {
 	return hashables.representative;
 }
@@ -1247,12 +1255,12 @@ void nano::state_block::block_work_set (uint64_t work_a)
 	work = work_a;
 }
 
-nano::block_hash const & nano::state_block::previous () const
+nano::block_hash nano::state_block::previous () const
 {
 	return hashables.previous;
 }
 
-nano::account const & nano::state_block::account () const
+nano::account nano::state_block::account () const
 {
 	return hashables.account;
 }
@@ -1390,7 +1398,7 @@ bool nano::state_block::valid_predecessor (nano::block const & block_a) const
 	return true;
 }
 
-nano::root const & nano::state_block::root () const
+nano::root nano::state_block::root () const
 {
 	if (!hashables.previous.is_zero ())
 	{
@@ -1402,17 +1410,17 @@ nano::root const & nano::state_block::root () const
 	}
 }
 
-nano::link const & nano::state_block::link () const
+nano::link nano::state_block::link () const
 {
 	return hashables.link;
 }
 
-nano::account const & nano::state_block::representative () const
+nano::account nano::state_block::representative () const
 {
 	return hashables.representative;
 }
 
-nano::amount const & nano::state_block::balance () const
+nano::amount nano::state_block::balance () const
 {
 	return hashables.balance;
 }
@@ -1723,17 +1731,17 @@ bool nano::receive_block::valid_predecessor (nano::block const & block_a) const
 	return result;
 }
 
-nano::block_hash const & nano::receive_block::previous () const
+nano::block_hash nano::receive_block::previous () const
 {
 	return hashables.previous;
 }
 
-nano::block_hash const & nano::receive_block::source () const
+nano::block_hash nano::receive_block::source () const
 {
 	return hashables.source;
 }
 
-nano::root const & nano::receive_block::root () const
+nano::root nano::receive_block::root () const
 {
 	return hashables.previous;
 }

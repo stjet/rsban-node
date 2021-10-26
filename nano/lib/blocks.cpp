@@ -61,7 +61,7 @@ size_t nano::block::size (nano::block_type type_a)
 			debug_assert (false);
 			break;
 		case nano::block_type::send:
-			result = nano::send_block::size;
+			result = nano::send_block::size ();
 			break;
 		case nano::block_type::receive:
 			result = nano::receive_block::size;
@@ -536,6 +536,11 @@ void nano::send_block::signature_set (nano::signature const & signature_a)
 	uint8_t bytes[64];
 	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (bytes));
 	rsnano::rsn_send_block_signature_set (handle, &bytes);
+}
+
+std::size_t nano::send_block::size ()
+{
+	return sizeof (nano::block_hash) + sizeof (nano::account) + sizeof (nano::amount) + sizeof (nano::signature) + sizeof (uint64_t);
 }
 
 nano::open_hashables::open_hashables (nano::block_hash const & source_a, nano::account const & representative_a, nano::account const & account_a) :

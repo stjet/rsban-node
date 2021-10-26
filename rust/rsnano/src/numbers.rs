@@ -55,7 +55,7 @@ impl Account {
         }
     }
 
-    pub fn serialized_size() -> usize {
+    pub const fn serialized_size() -> usize {
         PublicKey::serialized_size()
     }
 
@@ -86,7 +86,7 @@ impl BlockHash {
         Self { value }
     }
 
-    pub fn serialized_size() -> usize {
+    pub const fn serialized_size() -> usize {
         32
     }
 
@@ -120,7 +120,7 @@ impl Amount {
         }
     }
 
-    pub fn serialized_size() -> usize {
+    pub const fn serialized_size() -> usize {
         std::mem::size_of::<u128>()
     }
 
@@ -153,6 +153,10 @@ impl Signature {
 
     pub fn from_be_bytes(bytes: [u8; 64]) -> Self {
         Self { bytes }
+    }
+
+    pub const fn serialized_size() -> usize {
+        64
     }
 
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {

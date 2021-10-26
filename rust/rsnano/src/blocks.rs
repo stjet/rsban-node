@@ -151,6 +151,10 @@ pub struct SendHashables {
 }
 
 impl SendHashables {
+    pub const fn serialized_size () -> usize {
+        BlockHash::serialized_size() + Account::serialized_size() + Amount::serialized_size()
+    }
+    
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         self.previous.serialize(stream)?;
         self.destination.serialize(stream)?;
@@ -193,6 +197,10 @@ pub struct SendBlock {
 }
 
 impl SendBlock {
+    pub const fn serialized_size() -> usize {
+        SendHashables::serialized_size() + Signature::serialized_size() + std::mem::size_of::<u64>()
+    }
+
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         self.hashables.serialize(stream)?;
         self.signature.serialize(stream)?;

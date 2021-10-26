@@ -16,7 +16,6 @@
 
 #include <crypto/ed25519-donna/ed25519.h>
 
-size_t constexpr nano::send_block::size;
 size_t constexpr nano::receive_block::size;
 size_t constexpr nano::open_block::size;
 size_t constexpr nano::change_block::size;

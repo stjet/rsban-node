@@ -177,7 +177,7 @@ public:
 	void set_previous (nano::block_hash previous_a);
 	void set_balance (nano::amount balance_a);
 	void sign_zero ();
-	static std::size_t constexpr size = sizeof (nano::block_hash) + sizeof (nano::account) + sizeof (nano::amount) + sizeof (nano::signature) + sizeof (uint64_t);
+	static std::size_t size ();
 
 private:
 	rsnano::SendBlockHandle * handle;

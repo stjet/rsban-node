@@ -205,7 +205,7 @@ TEST (send_block, deserialize)
 		nano::vectorstream stream1 (bytes);
 		block1.serialize (stream1);
 	}
-	ASSERT_EQ (nano::send_block::size, bytes.size ());
+	ASSERT_EQ (nano::send_block::size (), bytes.size ());
 	nano::bufferstream stream2 (bytes.data (), bytes.size ());
 	bool error (false);
 	nano::send_block block2 (error, stream2);

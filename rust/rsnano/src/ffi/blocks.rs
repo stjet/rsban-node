@@ -293,6 +293,11 @@ pub extern "C" fn rsn_send_block_hash(handle: &SendBlockHandle, state: *mut c_vo
     }
 }
 
+#[no_mangle]
+pub extern "C" fn rsn_send_block_size() -> usize {
+    SendBlock::serialized_size()
+}
+
 impl TryFrom<&BlockSidebandDto> for BlockSideband {
     type Error = anyhow::Error;
 

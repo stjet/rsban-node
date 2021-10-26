@@ -1,5 +1,10 @@
+mod receive_block;
+mod send_block;
+
 use anyhow::Result;
 use num::FromPrimitive;
+pub use receive_block::*;
+pub use send_block::*;
 
 use crate::{
     block_details::BlockDetails,
@@ -151,10 +156,10 @@ pub struct SendHashables {
 }
 
 impl SendHashables {
-    pub const fn serialized_size () -> usize {
+    pub const fn serialized_size() -> usize {
         BlockHash::serialized_size() + Account::serialized_size() + Amount::serialized_size()
     }
-    
+
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         self.previous.serialize(stream)?;
         self.destination.serialize(stream)?;
@@ -246,7 +251,7 @@ impl SendBlock {
     pub fn valid_predecessor(block_type: BlockType) -> bool {
         match block_type {
             BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
-            BlockType::NotABlock | BlockType::State | BlockType::Invalid => false ,
+            BlockType::NotABlock | BlockType::State | BlockType::Invalid => false,
         }
     }
 }

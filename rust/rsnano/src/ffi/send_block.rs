@@ -2,9 +2,12 @@ use std::ffi::c_void;
 
 use num::FromPrimitive;
 
-use crate::{blocks::{SendBlock, SendHashables}, numbers::{Account, Amount, BlockHash, Signature}};
+use crate::{
+    blocks::{SendBlock, SendHashables},
+    numbers::{Account, Amount, BlockHash, Signature},
+};
 
-use super::{FfiStream, blake2b::FfiBlake2b};
+use super::{blake2b::FfiBlake2b, FfiStream};
 
 #[repr(C)]
 pub struct SendBlockDto {
@@ -156,9 +159,9 @@ pub extern "C" fn rsn_send_block_hash(handle: &SendBlockHandle, state: *mut c_vo
 
 #[no_mangle]
 pub extern "C" fn rsn_send_block_valid_predecessor(block_type: u8) -> bool {
-    if let Some(block_type) = FromPrimitive::from_u8(block_type){
+    if let Some(block_type) = FromPrimitive::from_u8(block_type) {
         SendBlock::valid_predecessor(block_type)
-    } else{
+    } else {
         false
     }
 }
@@ -167,8 +170,6 @@ pub extern "C" fn rsn_send_block_valid_predecessor(block_type: u8) -> bool {
 pub extern "C" fn rsn_send_block_size() -> usize {
     SendBlock::serialized_size()
 }
-
-
 
 impl From<&SendBlockDto> for SendBlock {
     fn from(value: &SendBlockDto) -> Self {

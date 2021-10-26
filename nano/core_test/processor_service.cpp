@@ -45,7 +45,7 @@ TEST (processor_service, bad_receive_signature)
 	nano::account_info info2;
 	ASSERT_FALSE (store->account.get (transaction, nano::dev::genesis_key.pub, info2));
 	nano::receive_block receive (hash1, hash1, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *pool.generate (hash1));
-	auto new_sig {receive.block_signature ()};
+	auto new_sig{ receive.block_signature () };
 	new_sig.bytes[32] ^= 0x1;
 	receive.signature_set (new_sig);
 	ASSERT_EQ (nano::process_result::bad_signature, ledger.process (transaction, receive).code);

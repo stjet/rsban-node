@@ -13,6 +13,8 @@ namespace rsnano
 {
 struct BandwidthLimiterHandle;
 
+struct ReceiveBlockHandle;
+
 struct SendBlockHandle;
 
 struct BlockDetailsDto
@@ -47,6 +49,11 @@ using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
 
 using WriteU8Callback = int32_t (*) (void *, uint8_t);
+
+struct ReceiveBlockDto
+{
+	uint64_t work;
+};
 
 struct SendBlockDto
 {
@@ -100,6 +107,16 @@ void rsn_callback_read_u8 (ReadU8Callback f);
 void rsn_callback_write_bytes (WriteBytesCallback f);
 
 void rsn_callback_write_u8 (WriteU8Callback f);
+
+ReceiveBlockHandle * rsn_receive_block_clone (const ReceiveBlockHandle * handle);
+
+ReceiveBlockHandle * rsn_receive_block_create (const ReceiveBlockDto * dto);
+
+void rsn_receive_block_destroy (ReceiveBlockHandle * handle);
+
+uint64_t rsn_receive_block_work (const ReceiveBlockHandle * handle);
+
+void rsn_receive_block_work_set (ReceiveBlockHandle * handle, uint64_t work);
 
 void rsn_send_block_balance (const SendBlockHandle * handle, uint8_t (*result)[16]);
 

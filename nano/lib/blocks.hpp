@@ -198,11 +198,13 @@ public:
 class receive_block : public nano::block
 {
 public:
-	receive_block () = default;
+	receive_block ();
 	receive_block (nano::block_hash const &, nano::block_hash const &, nano::raw_key const &, nano::public_key const &, uint64_t);
 	receive_block (bool &, nano::stream &);
 	receive_block (bool &, boost::property_tree::ptree const &);
-	virtual ~receive_block () = default;
+	receive_block (const nano::receive_block &);
+	receive_block (nano::receive_block &&);
+	virtual ~receive_block ();
 	using nano::block::hash;
 	void hash (blake2b_state &) const override;
 	uint64_t block_work () const override;
@@ -233,7 +235,7 @@ public:
 private:
 	receive_hashables hashables_m;
 	nano::signature signature_m;
-	uint64_t work_m;
+	rsnano::ReceiveBlockHandle * handle;
 };
 class open_hashables
 {

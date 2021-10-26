@@ -1523,7 +1523,7 @@ void nano::receive_block::visit (nano::mutable_block_visitor & visitor_a)
 
 bool nano::receive_block::operator== (nano::receive_block const & other_a) const
 {
-	auto result (hashables_m.previous == other_a.hashables_m.previous && hashables_m.source == other_a.hashables_m.source && work_m == other_a.work_m && signature_m == other_a.signature_m);
+	auto result (hashables_m.previous == other_a.hashables_m.previous && hashables_m.source == other_a.hashables_m.source && block_work () == other_a.block_work () && signature_m == other_a.signature_m);
 	return result;
 }
 
@@ -1532,7 +1532,7 @@ void nano::receive_block::serialize (nano::stream & stream_a) const
 	write (stream_a, hashables_m.previous.bytes);
 	write (stream_a, hashables_m.source.bytes);
 	write (stream_a, signature_m.bytes);
-	write (stream_a, work_m);
+	write (stream_a, block_work ());
 }
 
 bool nano::receive_block::deserialize (nano::stream & stream_a)
@@ -1543,7 +1543,10 @@ bool nano::receive_block::deserialize (nano::stream & stream_a)
 		read (stream_a, hashables_m.previous.bytes);
 		read (stream_a, hashables_m.source.bytes);
 		read (stream_a, signature_m.bytes);
-		read (stream_a, work_m);
+
+		uint64_t work_l;
+		read (stream_a, work_l);
+		block_work_set (work_l);
 	}
 	catch (std::runtime_error const &)
 	{
@@ -1573,7 +1576,7 @@ void nano::receive_block::serialize_json (boost::property_tree::ptree & tree) co
 	tree.put ("source", source);
 	std::string signature_l;
 	signature_m.encode_hex (signature_l);
-	tree.put ("work", nano::to_string_hex (work_m));
+	tree.put ("work", nano::to_string_hex (block_work ()));
 	tree.put ("signature", signature_l);
 }
 
@@ -1593,7 +1596,10 @@ bool nano::receive_block::deserialize_json (boost::property_tree::ptree const & 
 			error = hashables_m.source.decode_hex (source_l);
 			if (!error)
 			{
-				error = nano::from_string_hex (work_l, work_m);
+				uint64_t work_tmp;
+				error = nano::from_string_hex (work_l, work_tmp);
+				block_work_set (work_tmp);
+
 				if (!error)
 				{
 					error = signature_m.decode_hex (signature_l);
@@ -1608,23 +1614,38 @@ bool nano::receive_block::deserialize_json (boost::property_tree::ptree const & 
 	return error;
 }
 
+nano::receive_block::receive_block ()
+{
+	rsnano::ReceiveBlockDto dto;
+	dto.work = 0;
+	handle = rsnano::rsn_receive_block_create (&dto);
+}
+
 nano::receive_block::receive_block (nano::block_hash const & previous_a, nano::block_hash const & source_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a) :
 	hashables_m (previous_a, source_a),
-	signature_m (nano::sign_message (prv_a, pub_a, hash ())),
-	work_m (work_a)
+	signature_m (nano::sign_message (prv_a, pub_a, hash ()))
 {
+	rsnano::ReceiveBlockDto dto;
+	dto.work = work_a;
+	handle = rsnano::rsn_receive_block_create (&dto);
 	debug_assert (pub_a != nullptr);
 }
 
 nano::receive_block::receive_block (bool & error_a, nano::stream & stream_a) :
-	hashables_m (error_a, stream_a)
+	hashables_m (error_a, stream_a),
+	handle (nullptr)
 {
 	if (!error_a)
 	{
 		try
 		{
 			nano::read (stream_a, signature_m);
-			nano::read (stream_a, work_m);
+			uint64_t work_l;
+			nano::read (stream_a, work_l);
+
+			rsnano::ReceiveBlockDto dto;
+			dto.work = work_l;
+			handle = rsnano::rsn_receive_block_create (&dto);
 		}
 		catch (std::runtime_error const &)
 		{
@@ -1634,7 +1655,8 @@ nano::receive_block::receive_block (bool & error_a, nano::stream & stream_a) :
 }
 
 nano::receive_block::receive_block (bool & error_a, boost::property_tree::ptree const & tree_a) :
-	hashables_m (error_a, tree_a)
+	hashables_m (error_a, tree_a),
+	handle (nullptr)
 {
 	if (!error_a)
 	{
@@ -1645,7 +1667,11 @@ nano::receive_block::receive_block (bool & error_a, boost::property_tree::ptree 
 			error_a = signature_m.decode_hex (signature_l);
 			if (!error_a)
 			{
-				error_a = nano::from_string_hex (work_l, work_m);
+				uint64_t work_tmp;
+				error_a = nano::from_string_hex (work_l, work_tmp);
+				rsnano::ReceiveBlockDto dto;
+				dto.work = work_tmp;
+				handle = rsnano::rsn_receive_block_create (&dto);
 			}
 		}
 		catch (std::runtime_error const &)
@@ -1655,6 +1681,38 @@ nano::receive_block::receive_block (bool & error_a, boost::property_tree::ptree 
 	}
 }
 
+nano::receive_block::receive_block (const nano::receive_block & other)
+{
+	cached_hash = other.cached_hash;
+	sideband_m = other.sideband_m;
+	if (other.handle == nullptr)
+	{
+		handle = nullptr;
+	}
+	else
+	{
+		handle = rsnano::rsn_receive_block_clone (other.handle);
+	}
+	hashables_m = other.hashables_m;
+	signature_m = other.signature_m;
+}
+
+nano::receive_block::receive_block (nano::receive_block && other)
+{
+	cached_hash = other.cached_hash;
+	sideband_m = other.sideband_m;
+	handle = other.handle;
+	other.handle = nullptr;
+	hashables_m = other.hashables_m;
+	signature_m = other.signature_m;
+}
+
+nano::receive_block::~receive_block ()
+{
+	if (handle != nullptr)
+		rsnano::rsn_receive_block_destroy (handle);
+}
+
 void nano::receive_block::hash (blake2b_state & hash_a) const
 {
 	hashables_m.hash (hash_a);
@@ -1662,12 +1720,12 @@ void nano::receive_block::hash (blake2b_state & hash_a) const
 
 uint64_t nano::receive_block::block_work () const
 {
-	return work_m;
+	return rsnano::rsn_receive_block_work (handle);
 }
 
 void nano::receive_block::block_work_set (uint64_t work_a)
 {
-	work_m = work_a;
+	rsnano::rsn_receive_block_work_set (handle, work_a);
 }
 
 bool nano::receive_block::operator== (nano::block const & other_a) const

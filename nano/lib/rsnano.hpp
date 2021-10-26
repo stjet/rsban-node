@@ -133,6 +133,8 @@ void rsn_send_block_signature_set (SendBlockHandle * handle, const uint8_t (*sig
 
 uintptr_t rsn_send_block_size ();
 
+bool rsn_send_block_valid_predecessor (uint8_t block_type);
+
 uint64_t rsn_send_block_work (const SendBlockHandle * handle);
 
 void rsn_send_block_work_set (SendBlockHandle * handle, uint64_t work);

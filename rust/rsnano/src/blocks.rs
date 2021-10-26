@@ -242,4 +242,11 @@ impl SendBlock {
         blake2b.update(&self.hashables.balance.to_be_bytes())?;
         Ok(())
     }
+
+    pub fn valid_predecessor(block_type: BlockType) -> bool {
+        match block_type {
+            BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
+            BlockType::NotABlock | BlockType::State | BlockType::Invalid => false ,
+        }
+    }
 }

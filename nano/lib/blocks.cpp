@@ -464,20 +464,7 @@ bool nano::send_block::operator== (nano::block const & other_a) const
 
 bool nano::send_block::valid_predecessor (nano::block const & block_a) const
 {
-	bool result;
-	switch (block_a.type ())
-	{
-		case nano::block_type::send:
-		case nano::block_type::receive:
-		case nano::block_type::open:
-		case nano::block_type::change:
-			result = true;
-			break;
-		default:
-			result = false;
-			break;
-	}
-	return result;
+	return rsnano::rsn_send_block_valid_predecessor (static_cast<uint8_t> (block_a.type ()));
 }
 
 nano::block_type nano::send_block::type () const

@@ -146,35 +146,10 @@ pub unsafe extern "C" fn rsn_block_sideband_deserialize(
 }
 
 #[repr(C)]
-pub struct SendHashablesDto {
+pub struct SendBlockDto {
     pub previous: [u8; 32],
     pub destination: [u8; 32],
     pub balance: [u8; 16],
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_send_hashables_deserialize(
-    dto: *mut SendHashablesDto,
-    stream: *mut c_void,
-) -> i32 {
-    let mut stream = FfiStream::new(stream);
-    if let Ok(hashables) = SendHashables::deserialize(&mut stream) {
-        set_send_hashables_dto(&hashables, dto);
-        0
-    } else {
-        -1
-    }
-}
-
-unsafe fn set_send_hashables_dto(hashables: &SendHashables, dto: *mut SendHashablesDto) {
-    (*dto).previous = hashables.previous.to_be_bytes();
-    (*dto).destination = hashables.destination.to_be_bytes();
-    (*dto).balance = hashables.balance.to_be_bytes();
-}
-
-#[repr(C)]
-pub struct SendBlockDto {
-    pub hashables: SendHashablesDto,
     pub signature: [u8; 64],
     pub work: u64,
 }
@@ -369,15 +344,15 @@ impl TryFrom<u8> for BlockType {
 impl From<&SendBlockDto> for SendBlock {
     fn from(value: &SendBlockDto) -> Self {
         SendBlock {
-            hashables: SendHashables::from(&value.hashables),
+            hashables: SendHashables::from(value),
             signature: Signature::from_be_bytes(value.signature),
             work: value.work,
         }
     }
 }
 
-impl From<&SendHashablesDto> for SendHashables {
-    fn from(value: &SendHashablesDto) -> Self {
+impl From<&SendBlockDto> for SendHashables {
+    fn from(value: &SendBlockDto) -> Self {
         SendHashables {
             previous: BlockHash::from_be_bytes(value.previous),
             destination: Account::from_be_bytes(value.destination),

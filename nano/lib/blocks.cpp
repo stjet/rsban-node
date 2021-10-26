@@ -248,60 +248,6 @@ void nano::send_block::sign_zero ()
 	rsnano::rsn_send_block_signature_set (handle, &sig);
 }
 
-nano::send_hashables::send_hashables (nano::block_hash const & previous_a, nano::account const & destination_a, nano::amount const & balance_a) :
-	previous (previous_a),
-	destination (destination_a),
-	balance (balance_a)
-{
-}
-
-nano::send_hashables::send_hashables (bool & error_a, nano::stream & stream_a)
-{
-	rsnano::SendHashablesDto dto;
-	auto result{ rsnano::rsn_send_hashables_deserialize (&dto, &stream_a) };
-	error_a = result != 0;
-	load_dto (dto);
-}
-
-void nano::send_hashables::load_dto (rsnano::SendHashablesDto & dto)
-{
-	std::copy (std::begin (dto.previous), std::end (dto.previous), std::begin (previous.bytes));
-	std::copy (std::begin (dto.destination), std::end (dto.destination), std::begin (destination.bytes));
-	std::copy (std::begin (dto.balance), std::end (dto.balance), std::begin (balance.bytes));
-}
-
-nano::send_hashables::send_hashables (bool & error_a, boost::property_tree::ptree const & tree_a)
-{
-	try
-	{
-		auto previous_l (tree_a.get<std::string> ("previous"));
-		auto destination_l (tree_a.get<std::string> ("destination"));
-		auto balance_l (tree_a.get<std::string> ("balance"));
-		error_a = previous.decode_hex (previous_l);
-		if (!error_a)
-		{
-			error_a = destination.decode_account (destination_l);
-			if (!error_a)
-			{
-				error_a = balance.decode_hex (balance_l);
-			}
-		}
-	}
-	catch (std::runtime_error const &)
-	{
-		error_a = true;
-	}
-}
-
-rsnano::SendHashablesDto nano::send_hashables::to_dto () const
-{
-	rsnano::SendHashablesDto dto;
-	std::copy (std::begin (previous.bytes), std::end (previous.bytes), std::begin (dto.previous));
-	std::copy (std::begin (destination.bytes), std::end (destination.bytes), std::begin (dto.destination));
-	std::copy (std::begin (balance.bytes), std::end (balance.bytes), std::begin (dto.balance));
-	return dto;
-}
-
 void nano::send_block::serialize (nano::stream & stream_a) const
 {
 	if (rsnano::rsn_send_block_serialize (handle, &stream_a) != 0)
@@ -389,15 +335,16 @@ bool nano::send_block::deserialize_json (boost::property_tree::ptree const & tre
 	return error;
 }
 
-nano::send_block::send_block (nano::block_hash const & previous_a, nano::account const & destination_a, nano::amount const & balance_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a) 
+nano::send_block::send_block (nano::block_hash const & previous_a, nano::account const & destination_a, nano::amount const & balance_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a)
 {
 	debug_assert (destination_a != nullptr);
 	debug_assert (pub_a != nullptr);
 	rsnano::SendBlockDto dto;
-	dto.work = work_a;
-	nano::send_hashables hashables(previous_a, destination_a, balance_a);
-	dto.hashables = hashables.to_dto ();
+	std::copy (std::begin (previous_a.bytes), std::end (previous_a.bytes), std::begin (dto.previous));
+	std::copy (std::begin (destination_a.bytes), std::end (destination_a.bytes), std::begin (dto.destination));
+	std::copy (std::begin (balance_a.bytes), std::end (balance_a.bytes), std::begin (dto.balance));
 	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
+	dto.work = work_a;
 	handle = rsnano::rsn_send_block_create (&dto);
 	auto hash_l{ hash () };
 	auto sig{ nano::sign_message (prv_a, pub_a, hash_l) };
@@ -416,31 +363,49 @@ nano::send_block::send_block (bool & error_a, nano::stream & stream_a) :
 nano::send_block::send_block (bool & error_a, boost::property_tree::ptree const & tree_a) :
 	handle (nullptr)
 {
-	nano::send_hashables hashables (error_a, tree_a);
-	if (!error_a)
+	try
 	{
-		try
+		auto previous_l (tree_a.get<std::string> ("previous"));
+		auto destination_l (tree_a.get<std::string> ("destination"));
+		auto balance_l (tree_a.get<std::string> ("balance"));
+		nano::block_hash previous;
+		nano::account destination;
+		nano::amount balance;
+		error_a = previous.decode_hex (previous_l);
+		if (!error_a)
 		{
-			auto signature_l (tree_a.get<std::string> ("signature"));
-			auto work_l (tree_a.get<std::string> ("work"));
-			nano::signature sig;
-			error_a = sig.decode_hex (signature_l);
+			error_a = destination.decode_account (destination_l);
 			if (!error_a)
 			{
-				uint64_t work_tmp;
-				error_a = nano::from_string_hex (work_l, work_tmp);
-
-				rsnano::SendBlockDto dto;
-				dto.hashables = hashables.to_dto ();
-				std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (dto.signature));
-				dto.work = work_tmp;
-				handle = rsnano::rsn_send_block_create (&dto);
+				error_a = balance.decode_hex (balance_l);
+				if (!error_a)
+				{
+					auto signature_l (tree_a.get<std::string> ("signature"));
+					auto work_l (tree_a.get<std::string> ("work"));
+					nano::signature sig;
+					error_a = sig.decode_hex (signature_l);
+					if (!error_a)
+					{
+						uint64_t work_tmp;
+						error_a = nano::from_string_hex (work_l, work_tmp);
+						if (!error_a)
+						{
+							rsnano::SendBlockDto dto;
+							std::copy (std::begin (previous.bytes), std::end (previous.bytes), std::begin (dto.previous));
+							std::copy (std::begin (destination.bytes), std::end (destination.bytes), std::begin (dto.destination));
+							std::copy (std::begin (balance.bytes), std::end (balance.bytes), std::begin (dto.balance));
+							std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (dto.signature));
+							dto.work = work_tmp;
+							handle = rsnano::rsn_send_block_create (&dto);
+						}
+					}
+				}
 			}
 		}
-		catch (std::runtime_error const &)
-		{
-			error_a = true;
-		}
+	}
+	catch (std::runtime_error const &)
+	{
+		error_a = true;
 	}
 }
 
@@ -448,9 +413,9 @@ rsnano::SendBlockDto empty_send_block_dto ()
 {
 	rsnano::SendBlockDto dto;
 	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
-	std::fill (std::begin (dto.hashables.previous), std::end (dto.hashables.previous), 0);
-	std::fill (std::begin (dto.hashables.destination), std::end (dto.hashables.destination), 0);
-	std::fill (std::begin (dto.hashables.balance), std::end (dto.hashables.balance), 0);
+	std::fill (std::begin (dto.previous), std::end (dto.previous), 0);
+	std::fill (std::begin (dto.destination), std::end (dto.destination), 0);
+	std::fill (std::begin (dto.balance), std::end (dto.balance), 0);
 	dto.work = 0;
 	return dto;
 }

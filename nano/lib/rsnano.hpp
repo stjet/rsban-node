@@ -48,16 +48,11 @@ using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
 
 using WriteU8Callback = int32_t (*) (void *, uint8_t);
 
-struct SendHashablesDto
+struct SendBlockDto
 {
 	uint8_t previous[32];
 	uint8_t destination[32];
 	uint8_t balance[16];
-};
-
-struct SendBlockDto
-{
-	SendHashablesDto hashables;
 	uint8_t signature[64];
 	uint64_t work;
 };
@@ -141,8 +136,6 @@ uint64_t rsn_send_block_work (const SendBlockHandle * handle);
 void rsn_send_block_work_set (SendBlockHandle * handle, uint64_t work);
 
 void rsn_send_block_zero (SendBlockHandle * handle);
-
-int32_t rsn_send_hashables_deserialize (SendHashablesDto * dto, void * stream);
 
 } // extern "C"
 

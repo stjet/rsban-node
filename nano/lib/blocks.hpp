@@ -140,21 +140,6 @@ protected:
 private:
 	nano::block_hash generate_hash () const;
 };
-class send_hashables
-{
-public:
-	send_hashables () = default;
-	send_hashables (nano::block_hash const &, nano::account const &, nano::amount const &);
-	send_hashables (bool &, nano::stream &);
-	send_hashables (bool &, boost::property_tree::ptree const &);
-	void hash (blake2b_state &) const;
-	nano::block_hash previous;
-	nano::account destination;
-	nano::amount balance;
-	static std::size_t constexpr size = sizeof (previous) + sizeof (destination) + sizeof (balance);
-	rsnano::SendHashablesDto to_dto () const;
-	void load_dto (rsnano::SendHashablesDto & dto);
-};
 
 class send_block final : public nano::block
 {
@@ -192,7 +177,7 @@ public:
 	void set_previous (nano::block_hash previous_a);
 	void set_balance (nano::amount balance_a);
 	void sign_zero ();
-	static std::size_t constexpr size = nano::send_hashables::size + sizeof (nano::signature) + sizeof (uint64_t);
+	static std::size_t constexpr size = sizeof (nano::block_hash) + sizeof (nano::account) + sizeof (nano::amount) + sizeof (nano::signature) + sizeof (uint64_t);
 
 private:
 	rsnano::SendBlockHandle * handle;

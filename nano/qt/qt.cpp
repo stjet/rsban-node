@@ -521,7 +521,7 @@ public:
 	void send_block (nano::send_block const & block_a)
 	{
 		type = "Send";
-		account = block_a.hashables.destination;
+		account = block_a.destination ();
 		bool error_or_pruned (false);
 		amount = ledger.amount_safe (transaction, block_a.hash (), error_or_pruned);
 		if (error_or_pruned)

@@ -367,11 +367,11 @@ TEST (wallet, process_block)
 	ASSERT_EQ (wallet->block_entry.window, wallet->main_stack->currentWidget ());
 	nano::send_block send (latest, key1.pub, 0, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (latest));
 	std::string previous;
-	send.hashables.previous.encode_hex (previous);
+	send.previous ().encode_hex (previous);
 	std::string balance;
-	send.hashables.balance.encode_hex (balance);
+	send.balance ().encode_hex (balance);
 	std::string signature;
-	send.signature.encode_hex (signature);
+	send.block_signature ().encode_hex (signature);
 	std::string block_json;
 	send.serialize_json (block_json);
 	block_json.erase (std::remove (block_json.begin (), block_json.end (), '\n'), block_json.end ());

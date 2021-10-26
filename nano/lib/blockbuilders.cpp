@@ -110,7 +110,7 @@ void source_hex_impl (std::string const & source_hex, std::error_code & ec, BLOC
 	nano::block_hash source;
 	if (!source.decode_hex (source_hex))
 	{
-		block->hashables.source = source;
+		block->source_set (source);
 	}
 	else
 	{
@@ -611,17 +611,14 @@ void nano::receive_block_builder::validate ()
 
 nano::receive_block_builder & nano::receive_block_builder::zero ()
 {
-	block->work = uint64_t (0);
-	block->signature.clear ();
-	block->hashables.previous.clear ();
-	block->hashables.source.clear ();
+	block->zero ();
 	build_state = required_fields;
 	return *this;
 }
 
 nano::receive_block_builder & nano::receive_block_builder::previous (nano::block_hash previous)
 {
-	block->hashables.previous = previous;
+	block->set_previous (previous);
 	build_state |= build_flags::previous_present;
 	return *this;
 }
@@ -635,7 +632,7 @@ nano::receive_block_builder & nano::receive_block_builder::previous_hex (std::st
 
 nano::receive_block_builder & nano::receive_block_builder::source (nano::block_hash source)
 {
-	block->hashables.source = source;
+	block->source_set (source);
 	build_state |= build_flags::link_present;
 	return *this;
 }

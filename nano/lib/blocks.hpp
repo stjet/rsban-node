@@ -208,7 +208,9 @@ public:
 	uint64_t block_work () const override;
 	void block_work_set (uint64_t) override;
 	nano::block_hash previous () const override;
+	void previous_set (nano::block_hash previous_a);
 	nano::block_hash source () const override;
+	void source_set (nano::block_hash source_a);
 	nano::root root () const override;
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
@@ -225,10 +227,13 @@ public:
 	bool valid_predecessor (nano::block const &) const override;
 	void set_previous (nano::block_hash previous_a);
 	void sign_zero ();
-	receive_hashables hashables;
-	nano::signature signature;
-	uint64_t work;
-	static std::size_t constexpr size = nano::receive_hashables::size + sizeof (signature) + sizeof (work);
+	void zero ();
+	static std::size_t size ();
+
+private:
+	receive_hashables hashables_m;
+	nano::signature signature_m;
+	uint64_t work_m;
 };
 class open_hashables
 {
@@ -275,6 +280,7 @@ public:
 	bool operator== (nano::open_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
 	void sign_zero ();
+	void source_set (nano::block_hash source_a);
 	nano::open_hashables hashables;
 	nano::signature signature;
 	uint64_t work;

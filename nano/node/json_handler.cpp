@@ -2307,7 +2307,7 @@ public:
 		auto amount (handler.node.ledger.amount_safe (transaction, hash, error_or_pruned).convert_to<std::string> ());
 		if (!error_or_pruned)
 		{
-			auto source_account (handler.node.ledger.account_safe (transaction, block_a.hashables.source, error_or_pruned));
+			auto source_account (handler.node.ledger.account_safe (transaction, block_a.source (), error_or_pruned));
 			if (!error_or_pruned)
 			{
 				tree.put ("account", source_account.to_account ());
@@ -2316,8 +2316,8 @@ public:
 		}
 		if (raw)
 		{
-			tree.put ("source", block_a.hashables.source.to_string ());
-			tree.put ("previous", block_a.hashables.previous.to_string ());
+			tree.put ("source", block_a.source ().to_string ());
+			tree.put ("previous", block_a.previous ().to_string ());
 		}
 	}
 	void open_block (nano::open_block const & block_a)

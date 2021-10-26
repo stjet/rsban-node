@@ -217,14 +217,14 @@ TEST (receive_block, deserialize)
 {
 	nano::receive_block block1 (0, 1, nano::keypair ().prv, 3, 4);
 	ASSERT_EQ (block1.hash (), block1.hash ());
-	block1.hashables.previous = 2;
-	block1.hashables.source = 4;
+	block1.previous_set (2);
+	block1.source_set (4);
 	std::vector<uint8_t> bytes;
 	{
 		nano::vectorstream stream1 (bytes);
 		block1.serialize (stream1);
 	}
-	ASSERT_EQ (nano::receive_block::size, bytes.size ());
+	ASSERT_EQ (nano::receive_block::size (), bytes.size ());
 	nano::bufferstream stream2 (bytes.data (), bytes.size ());
 	bool error (false);
 	nano::receive_block block2 (error, stream2);
@@ -760,7 +760,7 @@ TEST (block_builder, receive_equality)
 
 	ASSERT_NO_ERROR (ec);
 	ASSERT_EQ (block1.hash (), block2->hash ());
-	ASSERT_EQ (block1.work, block2->work);
+	ASSERT_EQ (block1.block_work (), block2->block_work ());
 }
 
 TEST (block_builder, receive)

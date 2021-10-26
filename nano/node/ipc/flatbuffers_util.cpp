@@ -53,8 +53,8 @@ std::unique_ptr<nanoapi::BlockReceiveT> nano::ipc::flatbuffers_builder::from (na
 	block->hash = block_a.hash ().to_string ();
 	block->source = block_a.source ().to_string ();
 	block->previous = block_a.previous ().to_string ();
-	block_a.signature.encode_hex (block->signature);
-	block->work = nano::to_string_hex (block_a.work);
+	block_a.block_signature ().encode_hex (block->signature);
+	block->work = nano::to_string_hex (block_a.block_work ());
 	return block;
 }
 

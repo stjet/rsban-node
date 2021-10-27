@@ -1523,7 +1523,7 @@ void nano::receive_block::visit (nano::mutable_block_visitor & visitor_a)
 
 bool nano::receive_block::operator== (nano::receive_block const & other_a) const
 {
-	auto result (hashables_m.previous == other_a.hashables_m.previous && hashables_m.source == other_a.hashables_m.source && block_work () == other_a.block_work () && signature_m == other_a.signature_m);
+	auto result (hashables_m.previous == other_a.hashables_m.previous && hashables_m.source == other_a.hashables_m.source && block_work () == other_a.block_work () && block_signature () == other_a.block_signature ());
 	return result;
 }
 
@@ -1531,7 +1531,7 @@ void nano::receive_block::serialize (nano::stream & stream_a) const
 {
 	write (stream_a, hashables_m.previous.bytes);
 	write (stream_a, hashables_m.source.bytes);
-	write (stream_a, signature_m.bytes);
+	write (stream_a, block_signature ().bytes);
 	write (stream_a, block_work ());
 }
 
@@ -1542,7 +1542,10 @@ bool nano::receive_block::deserialize (nano::stream & stream_a)
 	{
 		read (stream_a, hashables_m.previous.bytes);
 		read (stream_a, hashables_m.source.bytes);
-		read (stream_a, signature_m.bytes);
+
+		uint8_t buffer[64];
+		read (stream_a, buffer);
+		rsnano::rsn_receive_block_signature_set (handle, &buffer);
 
 		uint64_t work_l;
 		read (stream_a, work_l);
@@ -1575,7 +1578,7 @@ void nano::receive_block::serialize_json (boost::property_tree::ptree & tree) co
 	hashables_m.source.encode_hex (source);
 	tree.put ("source", source);
 	std::string signature_l;
-	signature_m.encode_hex (signature_l);
+	block_signature ().encode_hex (signature_l);
 	tree.put ("work", nano::to_string_hex (block_work ()));
 	tree.put ("signature", signature_l);
 }
@@ -1602,7 +1605,9 @@ bool nano::receive_block::deserialize_json (boost::property_tree::ptree const & 
 
 				if (!error)
 				{
-					error = signature_m.decode_hex (signature_l);
+					nano::signature sig;
+					error = sig.decode_hex (signature_l);
+					signature_set (sig);
 				}
 			}
 		}
@@ -1622,11 +1627,12 @@ nano::receive_block::receive_block ()
 }
 
 nano::receive_block::receive_block (nano::block_hash const & previous_a, nano::block_hash const & source_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a) :
-	hashables_m (previous_a, source_a),
-	signature_m (nano::sign_message (prv_a, pub_a, hash ()))
+	hashables_m (previous_a, source_a)
 {
+	nano::signature sig (nano::sign_message (prv_a, pub_a, hash ()));
 	rsnano::ReceiveBlockDto dto;
 	dto.work = work_a;
+	std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (dto.signature));
 	handle = rsnano::rsn_receive_block_create (&dto);
 	debug_assert (pub_a != nullptr);
 }
@@ -1639,12 +1645,15 @@ nano::receive_block::receive_block (bool & error_a, nano::stream & stream_a) :
 	{
 		try
 		{
-			nano::read (stream_a, signature_m);
+			uint8_t signature[64];
+			nano::read (stream_a, signature);
+
 			uint64_t work_l;
 			nano::read (stream_a, work_l);
 
 			rsnano::ReceiveBlockDto dto;
 			dto.work = work_l;
+			std::copy (std::begin (signature), std::end (signature), std::begin (dto.signature));
 			handle = rsnano::rsn_receive_block_create (&dto);
 		}
 		catch (std::runtime_error const &)
@@ -1664,13 +1673,15 @@ nano::receive_block::receive_block (bool & error_a, boost::property_tree::ptree 
 		{
 			auto signature_l (tree_a.get<std::string> ("signature"));
 			auto work_l (tree_a.get<std::string> ("work"));
-			error_a = signature_m.decode_hex (signature_l);
+			nano::signature sig;
+			error_a = sig.decode_hex (signature_l);
 			if (!error_a)
 			{
 				uint64_t work_tmp;
 				error_a = nano::from_string_hex (work_l, work_tmp);
 				rsnano::ReceiveBlockDto dto;
 				dto.work = work_tmp;
+				std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (dto.signature));
 				handle = rsnano::rsn_receive_block_create (&dto);
 			}
 		}
@@ -1694,7 +1705,6 @@ nano::receive_block::receive_block (const nano::receive_block & other)
 		handle = rsnano::rsn_receive_block_clone (other.handle);
 	}
 	hashables_m = other.hashables_m;
-	signature_m = other.signature_m;
 }
 
 nano::receive_block::receive_block (nano::receive_block && other)
@@ -1704,7 +1714,6 @@ nano::receive_block::receive_block (nano::receive_block && other)
 	handle = other.handle;
 	other.handle = nullptr;
 	hashables_m = other.hashables_m;
-	signature_m = other.signature_m;
 }
 
 nano::receive_block::~receive_block ()
@@ -1778,12 +1787,18 @@ nano::root nano::receive_block::root () const
 
 nano::signature nano::receive_block::block_signature () const
 {
-	return signature_m;
+	uint8_t buffer[64];
+	rsnano::rsn_receive_block_signature (handle, &buffer);
+	nano::signature result;
+	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
+	return result;
 }
 
 void nano::receive_block::signature_set (nano::signature const & signature_a)
 {
-	signature_m = signature_a;
+	uint8_t buffer[64];
+	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (buffer));
+	rsnano::rsn_receive_block_signature_set (handle, &buffer);
 }
 
 nano::block_type nano::receive_block::type () const
@@ -1798,13 +1813,14 @@ void nano::receive_block::set_previous (nano::block_hash previous_a)
 
 void nano::receive_block::sign_zero ()
 {
-	signature_m.clear ();
+	nano::signature sig{ 0 };
+	signature_set (sig);
 }
 
 void nano::receive_block::zero ()
 {
 	block_work_set (0);
-	signature_m.clear ();
+	sign_zero ();
 	hashables_m.previous.clear ();
 	hashables_m.source.clear ();
 }

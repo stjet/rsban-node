@@ -234,7 +234,6 @@ public:
 
 private:
 	receive_hashables hashables_m;
-	nano::signature signature_m;
 	rsnano::ReceiveBlockHandle * handle;
 };
 class open_hashables

@@ -53,6 +53,7 @@ using WriteU8Callback = int32_t (*) (void *, uint8_t);
 struct ReceiveBlockDto
 {
 	uint64_t work;
+	uint8_t signature[64];
 };
 
 struct SendBlockDto
@@ -113,6 +114,10 @@ ReceiveBlockHandle * rsn_receive_block_clone (const ReceiveBlockHandle * handle)
 ReceiveBlockHandle * rsn_receive_block_create (const ReceiveBlockDto * dto);
 
 void rsn_receive_block_destroy (ReceiveBlockHandle * handle);
+
+void rsn_receive_block_signature (const ReceiveBlockHandle * handle, uint8_t (*result)[64]);
+
+void rsn_receive_block_signature_set (ReceiveBlockHandle * handle, const uint8_t (*signature)[64]);
 
 uint64_t rsn_receive_block_work (const ReceiveBlockHandle * handle);
 

@@ -54,6 +54,8 @@ struct ReceiveBlockDto
 {
 	uint64_t work;
 	uint8_t signature[64];
+	uint8_t previous[32];
+	uint8_t source[32];
 };
 
 struct SendBlockDto
@@ -115,9 +117,23 @@ ReceiveBlockHandle * rsn_receive_block_create (const ReceiveBlockDto * dto);
 
 void rsn_receive_block_destroy (ReceiveBlockHandle * handle);
 
+bool rsn_receive_block_equals (const ReceiveBlockHandle * a, const ReceiveBlockHandle * b);
+
+int32_t rsn_receive_block_hash (const ReceiveBlockHandle * handle, void * state);
+
+void rsn_receive_block_previous (const ReceiveBlockHandle * handle, uint8_t (*result)[32]);
+
+void rsn_receive_block_previous_set (ReceiveBlockHandle * handle, const uint8_t (*previous)[32]);
+
 void rsn_receive_block_signature (const ReceiveBlockHandle * handle, uint8_t (*result)[64]);
 
 void rsn_receive_block_signature_set (ReceiveBlockHandle * handle, const uint8_t (*signature)[64]);
+
+uintptr_t rsn_receive_block_size ();
+
+void rsn_receive_block_source (const ReceiveBlockHandle * handle, uint8_t (*result)[32]);
+
+void rsn_receive_block_source_set (ReceiveBlockHandle * handle, const uint8_t (*previous)[32]);
 
 uint64_t rsn_receive_block_work (const ReceiveBlockHandle * handle);
 

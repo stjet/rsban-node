@@ -12,7 +12,7 @@ void previous_hex_impl (std::string const & previous_hex, std::error_code & ec, 
 	nano::block_hash previous;
 	if (!previous.decode_hex (previous_hex))
 	{
-		block->set_previous (previous);
+		block->previous_set (previous);
 	}
 	else
 	{
@@ -124,7 +124,7 @@ void balance_dec_impl (std::string const & balance_decimal, std::error_code & ec
 	nano::amount balance;
 	if (!balance.decode_dec (balance_decimal))
 	{
-		block->set_balance (balance);
+		block->balance_set (balance);
 	}
 	else
 	{
@@ -138,7 +138,7 @@ void balance_hex_impl (std::string const & balance_hex, std::error_code & ec, BL
 	nano::amount balance;
 	if (!balance.decode_hex (balance_hex))
 	{
-		block->set_balance (balance);
+		block->balance_set (balance);
 	}
 	else
 	{
@@ -557,7 +557,7 @@ nano::send_block_builder & nano::send_block_builder::destination_address (std::s
 
 nano::send_block_builder & nano::send_block_builder::previous (nano::block_hash previous)
 {
-	block->set_previous (previous);
+	block->previous_set (previous);
 	build_state |= build_flags::previous_present;
 	return *this;
 }
@@ -571,7 +571,7 @@ nano::send_block_builder & nano::send_block_builder::previous_hex (std::string p
 
 nano::send_block_builder & nano::send_block_builder::balance (nano::amount balance)
 {
-	block->set_balance (balance);
+	block->balance_set (balance);
 	build_state |= build_flags::balance_present;
 	return *this;
 }
@@ -618,7 +618,7 @@ nano::receive_block_builder & nano::receive_block_builder::zero ()
 
 nano::receive_block_builder & nano::receive_block_builder::previous (nano::block_hash previous)
 {
-	block->set_previous (previous);
+	block->previous_set (previous);
 	build_state |= build_flags::previous_present;
 	return *this;
 }

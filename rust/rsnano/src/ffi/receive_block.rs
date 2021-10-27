@@ -1,4 +1,11 @@
-use crate::{blocks::ReceiveBlock, numbers::Signature};
+use std::ffi::c_void;
+
+use crate::{
+    blocks::{ReceiveBlock, ReceiveHashables},
+    numbers::{BlockHash, Signature},
+};
+
+use super::blake2b::FfiBlake2b;
 
 pub struct ReceiveBlockHandle {
     block: ReceiveBlock,
@@ -8,6 +15,8 @@ pub struct ReceiveBlockHandle {
 pub struct ReceiveBlockDto {
     pub work: u64,
     pub signature: [u8; 64],
+    pub previous: [u8; 32],
+    pub source: [u8; 32],
 }
 
 #[no_mangle]
@@ -16,6 +25,10 @@ pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut Receiv
         block: ReceiveBlock {
             work: dto.work,
             signature: Signature::from_be_bytes(dto.signature),
+            hashables: ReceiveHashables {
+                previous: BlockHash::from_be_bytes(dto.previous),
+                source: BlockHash::from_be_bytes(dto.source),
+            },
         },
     }))
 }
@@ -56,4 +69,60 @@ pub unsafe extern "C" fn rsn_receive_block_signature_set(
     signature: &[u8; 64],
 ) {
     (*handle).block.signature = Signature::from_be_bytes(*signature);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_block_previous(
+    handle: &ReceiveBlockHandle,
+    result: *mut [u8; 32],
+) {
+    (*result) = handle.block.hashables.previous.to_be_bytes();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_block_previous_set(
+    handle: *mut ReceiveBlockHandle,
+    previous: &[u8; 32],
+) {
+    let previous = BlockHash::from_be_bytes(*previous);
+    (*handle).block.hashables.previous = previous;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_block_source(
+    handle: &ReceiveBlockHandle,
+    result: *mut [u8; 32],
+) {
+    (*result) = handle.block.hashables.source.to_be_bytes();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_block_source_set(
+    handle: *mut ReceiveBlockHandle,
+    previous: &[u8; 32],
+) {
+    let source = BlockHash::from_be_bytes(*previous);
+    (*handle).block.hashables.source = source;
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_receive_block_hash(handle: &ReceiveBlockHandle, state: *mut c_void) -> i32 {
+    let mut blake2b = FfiBlake2b::new(state);
+    if handle.block.hash(&mut blake2b).is_ok() {
+        0
+    } else {
+        -1
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_receive_block_equals(a: &ReceiveBlockHandle, b: &ReceiveBlockHandle) -> bool {
+    a.block.work.eq(&b.block.work)
+        && a.block.signature.eq(&b.block.signature)
+        && a.block.hashables.eq(&b.block.hashables)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_receive_block_size() -> usize {
+    ReceiveBlock::serialized_size()
 }

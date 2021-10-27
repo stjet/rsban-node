@@ -174,8 +174,8 @@ public:
 	bool valid_predecessor (nano::block const &) const override;
 	void zero ();
 	void set_destination (nano::account account_a);
-	void set_previous (nano::block_hash previous_a);
-	void set_balance (nano::amount balance_a);
+	void previous_set (nano::block_hash previous_a);
+	void balance_set (nano::amount balance_a);
 	void sign_zero ();
 	static std::size_t size ();
 
@@ -183,18 +183,6 @@ private:
 	rsnano::SendBlockHandle * handle;
 };
 
-class receive_hashables
-{
-public:
-	receive_hashables () = default;
-	receive_hashables (nano::block_hash const &, nano::block_hash const &);
-	receive_hashables (bool &, nano::stream &);
-	receive_hashables (bool &, boost::property_tree::ptree const &);
-	void hash (blake2b_state &) const;
-	nano::block_hash previous;
-	nano::block_hash source;
-	static std::size_t constexpr size = sizeof (previous) + sizeof (source);
-};
 class receive_block : public nano::block
 {
 public:
@@ -227,13 +215,11 @@ public:
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::receive_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
-	void set_previous (nano::block_hash previous_a);
 	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
 
 private:
-	receive_hashables hashables_m;
 	rsnano::ReceiveBlockHandle * handle;
 };
 class open_hashables
@@ -327,7 +313,7 @@ public:
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::change_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
-	void set_previous (nano::block_hash previous_a);
+	void previous_set (nano::block_hash previous_a);
 	void sign_zero ();
 	nano::change_hashables hashables;
 	nano::signature signature;
@@ -390,8 +376,8 @@ public:
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::state_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
-	void set_previous (nano::block_hash previous_a);
-	void set_balance (nano::amount balance_a);
+	void previous_set (nano::block_hash previous_a);
+	void balance_set (nano::amount balance_a);
 	void sign_zero ();
 	nano::state_hashables hashables;
 	nano::signature signature;

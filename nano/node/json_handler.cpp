@@ -2325,22 +2325,22 @@ public:
 		if (raw)
 		{
 			tree.put ("type", "open");
-			tree.put ("representative", block_a.hashables.representative.to_account ());
-			tree.put ("source", block_a.hashables.source.to_string ());
-			tree.put ("opened", block_a.hashables.account.to_account ());
+			tree.put ("representative", block_a.representative ().to_account ());
+			tree.put ("source", block_a.source ().to_string ());
+			tree.put ("opened", block_a.account ().to_account ());
 		}
 		else
 		{
 			// Report opens as a receive
 			tree.put ("type", "receive");
 		}
-		if (block_a.hashables.source != handler.node.ledger.constants.genesis->account ())
+		if (block_a.source () != handler.node.ledger.constants.genesis->account ())
 		{
 			bool error_or_pruned (false);
 			auto amount (handler.node.ledger.amount_safe (transaction, hash, error_or_pruned).convert_to<std::string> ());
 			if (!error_or_pruned)
 			{
-				auto source_account (handler.node.ledger.account_safe (transaction, block_a.hashables.source, error_or_pruned));
+				auto source_account (handler.node.ledger.account_safe (transaction, block_a.source (), error_or_pruned));
 				if (!error_or_pruned)
 				{
 					tree.put ("account", source_account.to_account ());

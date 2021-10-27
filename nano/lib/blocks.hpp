@@ -268,10 +268,15 @@ public:
 	bool valid_predecessor (nano::block const &) const override;
 	void sign_zero ();
 	void source_set (nano::block_hash source_a);
-	nano::open_hashables hashables;
-	nano::signature signature;
-	uint64_t work;
-	static std::size_t constexpr size = nano::open_hashables::size + sizeof (signature) + sizeof (work);
+	void account_set (nano::account account_a);
+	void representative_set (nano::account account_a);
+	void zero ();
+
+	static std::size_t constexpr size = nano::open_hashables::size + sizeof (nano::signature) + sizeof (uint64_t);
+private:
+	nano::open_hashables hashables_m;
+	nano::signature signature_m;
+	uint64_t work_m;
 };
 class change_hashables
 {
@@ -314,6 +319,7 @@ public:
 	bool operator== (nano::change_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
 	void previous_set (nano::block_hash previous_a);
+	void representative_set (nano::account account_a);
 	void sign_zero ();
 	nano::change_hashables hashables;
 	nano::signature signature;
@@ -378,6 +384,8 @@ public:
 	bool valid_predecessor (nano::block const &) const override;
 	void previous_set (nano::block_hash previous_a);
 	void balance_set (nano::amount balance_a);
+	void account_set (nano::account account_a);
+	void representative_set (nano::account account_a);
 	void sign_zero ();
 	nano::state_hashables hashables;
 	nano::signature signature;

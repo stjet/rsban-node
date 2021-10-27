@@ -65,8 +65,8 @@ std::unique_ptr<nanoapi::BlockOpenT> nano::ipc::flatbuffers_builder::from (nano:
 	block->source = block_a.source ().to_string ();
 	block->account = block_a.account ().to_account ();
 	block->representative = block_a.representative ().to_account ();
-	block_a.signature.encode_hex (block->signature);
-	block->work = nano::to_string_hex (block_a.work);
+	block_a.block_signature ().encode_hex (block->signature);
+	block->work = nano::to_string_hex (block_a.block_work ());
 	return block;
 }
 

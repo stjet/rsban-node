@@ -26,7 +26,7 @@ void account_hex_impl (std::string const & account_hex, std::error_code & ec, BL
 	nano::account account;
 	if (!account.decode_hex (account_hex))
 	{
-		block->hashables.account = account;
+		block->account_set (account);
 	}
 	else
 	{
@@ -40,7 +40,7 @@ void account_address_impl (std::string const & address, std::error_code & ec, BL
 	nano::account account;
 	if (!account.decode_account (address))
 	{
-		block->hashables.account = account;
+		block->account_set (account);
 	}
 	else
 	{
@@ -54,7 +54,7 @@ void representative_hex_impl (std::string const & account_hex, std::error_code &
 	nano::account account;
 	if (!account.decode_hex (account_hex))
 	{
-		block->hashables.representative = account;
+		block->representative_set (account);
 	}
 	else
 	{
@@ -68,7 +68,7 @@ void representative_address_impl (std::string const & address, std::error_code &
 	nano::account account;
 	if (!account.decode_account (address))
 	{
-		block->hashables.representative = account;
+		block->representative_set (account);
 	}
 	else
 	{
@@ -379,18 +379,14 @@ void nano::open_block_builder::validate ()
 
 nano::open_block_builder & nano::open_block_builder::zero ()
 {
-	block->work = uint64_t (0);
-	block->signature.clear ();
-	block->hashables.account.clear ();
-	block->hashables.representative.clear ();
-	block->hashables.source.clear ();
+	block->zero ();
 	build_state = required_fields;
 	return *this;
 }
 
 nano::open_block_builder & nano::open_block_builder::account (nano::account account)
 {
-	block->hashables.account = account;
+	block->account_set (account);
 	build_state |= build_flags::account_present;
 	return *this;
 }
@@ -411,7 +407,7 @@ nano::open_block_builder & nano::open_block_builder::account_address (std::strin
 
 nano::open_block_builder & nano::open_block_builder::representative (nano::account account)
 {
-	block->hashables.representative = account;
+	block->representative_set (account);
 	build_state |= build_flags::representative_present;
 	return *this;
 }
@@ -432,7 +428,7 @@ nano::open_block_builder & nano::open_block_builder::representative_address (std
 
 nano::open_block_builder & nano::open_block_builder::source (nano::block_hash source)
 {
-	block->hashables.source = source;
+	block->source_set (source);
 	build_state |= build_flags::link_present;
 	return *this;
 }

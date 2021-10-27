@@ -163,7 +163,7 @@ TEST (block_store, add_nonempty_block)
 	nano::open_block block (0, 1, 0, nano::keypair ().prv, 0, 0);
 	block.sideband_set ({});
 	auto hash1 (block.hash ());
-	block.signature = nano::sign_message (key1.prv, key1.pub, hash1);
+	block.signature_set (nano::sign_message (key1.prv, key1.pub, hash1));
 	auto transaction (store->tx_begin_write ());
 	auto latest1 (store->block.get (transaction, hash1));
 	ASSERT_EQ (nullptr, latest1);
@@ -182,15 +182,15 @@ TEST (block_store, add_two_items)
 	nano::open_block block (0, 1, 1, nano::keypair ().prv, 0, 0);
 	block.sideband_set ({});
 	auto hash1 (block.hash ());
-	block.signature = nano::sign_message (key1.prv, key1.pub, hash1);
+	block.signature_set (nano::sign_message (key1.prv, key1.pub, hash1));
 	auto transaction (store->tx_begin_write ());
 	auto latest1 (store->block.get (transaction, hash1));
 	ASSERT_EQ (nullptr, latest1);
 	nano::open_block block2 (0, 1, 3, nano::keypair ().prv, 0, 0);
 	block2.sideband_set ({});
-	block2.hashables.account = 3;
+	block2.account_set (3);
 	auto hash2 (block2.hash ());
-	block2.signature = nano::sign_message (key1.prv, key1.pub, hash2);
+	block2.signature_set (nano::sign_message (key1.prv, key1.pub, hash2));
 	auto latest2 (store->block.get (transaction, hash2));
 	ASSERT_EQ (nullptr, latest2);
 	store->block.put (transaction, hash1, block);
@@ -560,7 +560,7 @@ TEST (block_store, two_block)
 	ASSERT_TRUE (!store->init_error ());
 	nano::open_block block1 (0, 1, 1, nano::keypair ().prv, 0, 0);
 	block1.sideband_set ({});
-	block1.hashables.account = 1;
+	block1.account_set (1);
 	std::vector<nano::block_hash> hashes;
 	std::vector<nano::open_block> blocks;
 	hashes.push_back (block1.hash ());
@@ -730,7 +730,7 @@ TEST (block_store, roots)
 	nano::receive_block receive_block (0, 1, nano::keypair ().prv, 3, 4);
 	ASSERT_EQ (receive_block.previous (), receive_block.root ());
 	nano::open_block open_block (0, 1, 2, nano::keypair ().prv, 4, 5);
-	ASSERT_EQ (open_block.hashables.account, open_block.root ());
+	ASSERT_EQ (open_block.account (), open_block.root ());
 }
 
 TEST (block_store, pending_exists)

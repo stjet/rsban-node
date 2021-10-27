@@ -56,11 +56,11 @@ TEST (bulk_pull, end_not_owned)
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, 100));
 	nano::block_hash latest (system.nodes[0]->latest (nano::dev::genesis_key.pub));
 	nano::open_block open (0, 1, 2, nano::keypair ().prv, 4, 5);
-	open.hashables.account = key2.pub;
-	open.hashables.representative = key2.pub;
-	open.hashables.source = latest;
+	open.account_set (key2.pub);
+	open.representative_set (key2.pub);
+	open.source_set (latest);
 	open.refresh ();
-	open.signature = nano::sign_message (key2.prv, key2.pub, open.hash ());
+	open.signature_set (nano::sign_message (key2.prv, key2.pub, open.hash ()));
 	system.nodes[0]->work_generate_blocking (open);
 	ASSERT_EQ (nano::process_result::progress, system.nodes[0]->process (open).code);
 	auto connection (std::make_shared<nano::bootstrap_server> (std::make_shared<nano::socket> (*system.nodes[0]), system.nodes[0]));

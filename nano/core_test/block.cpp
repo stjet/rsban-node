@@ -659,7 +659,7 @@ TEST (block_builder, open_equality)
 
 	ASSERT_NO_ERROR (ec);
 	ASSERT_EQ (block1.hash (), block2->hash ());
-	ASSERT_EQ (block1.work, block2->work);
+	ASSERT_EQ (block1.block_work (), block2->block_work ());
 }
 
 TEST (block_builder, change)

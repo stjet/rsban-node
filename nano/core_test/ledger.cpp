@@ -1091,7 +1091,7 @@ TEST (ledger, fail_open_bad_signature)
 	nano::send_block block1 (nano::dev::genesis->hash (), key1.pub, 1, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *pool.generate (nano::dev::genesis->hash ()));
 	ASSERT_EQ (nano::process_result::progress, ledger.process (transaction, block1).code);
 	nano::open_block block2 (block1.hash (), 1, key1.pub, key1.prv, key1.pub, *pool.generate (key1.pub));
-	block2.signature.clear ();
+	block2.sign_zero ();
 	ASSERT_EQ (nano::process_result::bad_signature, ledger.process (transaction, block2).code);
 }
 
@@ -2744,7 +2744,9 @@ TEST (ledger, unchecked_open)
 	// Invalid signature for open block
 	auto open2 (std::make_shared<nano::open_block> (send1->hash (), nano::dev::genesis_key.pub, destination.pub, destination.prv, destination.pub, 0));
 	node1.work_generate_blocking (*open2);
-	open2->signature.bytes[0] ^= 1;
+	auto sig {open2->block_signature ()};
+	sig.bytes[0] ^= 1;
+	open2->signature_set(sig);
 	node1.block_processor.add (open1);
 	node1.block_processor.add (open2);
 	node1.block_processor.flush ();

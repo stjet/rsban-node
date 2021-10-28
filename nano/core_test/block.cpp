@@ -124,7 +124,9 @@ TEST (block, change_serialize_json)
 	std::stringstream istream (string1);
 	boost::property_tree::read_json (istream, tree1);
 	bool error (false);
+	std::cerr << "4" << std::endl;
 	nano::change_block block2 (error, tree1);
+	std::cerr << "5" << std::endl;
 	ASSERT_FALSE (error);
 	ASSERT_EQ (block1, block2);
 }
@@ -258,7 +260,7 @@ TEST (change_block, deserialize)
 		nano::vectorstream stream1 (bytes);
 		block1.serialize (stream1);
 	}
-	ASSERT_EQ (nano::change_block::size, bytes.size ());
+	ASSERT_EQ (nano::change_block::size (), bytes.size ());
 	auto data (bytes.data ());
 	auto size (bytes.size ());
 	ASSERT_NE (nullptr, data);
@@ -697,7 +699,7 @@ TEST (block_builder, change_equality)
 
 	ASSERT_NO_ERROR (ec);
 	ASSERT_EQ (block1.hash (), block2->hash ());
-	ASSERT_EQ (block1.work, block2->work);
+	ASSERT_EQ (block1.block_work (), block2->block_work ());
 }
 
 TEST (block_builder, send)

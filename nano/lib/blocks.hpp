@@ -265,26 +265,16 @@ public:
 private:
 	rsnano::OpenBlockHandle * handle;
 };
-class change_hashables
-{
-public:
-	change_hashables () = default;
-	change_hashables (nano::block_hash const &, nano::account const &);
-	change_hashables (bool &, nano::stream &);
-	change_hashables (bool &, boost::property_tree::ptree const &);
-	void hash (blake2b_state &) const;
-	nano::block_hash previous;
-	nano::account representative;
-	static std::size_t constexpr size = sizeof (previous) + sizeof (representative);
-};
 class change_block : public nano::block
 {
 public:
-	change_block () = default;
+	change_block ();
 	change_block (nano::block_hash const &, nano::account const &, nano::raw_key const &, nano::public_key const &, uint64_t);
 	change_block (bool &, nano::stream &);
 	change_block (bool &, boost::property_tree::ptree const &);
-	virtual ~change_block () = default;
+	change_block (const nano::change_block &);
+	change_block (nano::change_block &&);
+	virtual ~change_block ();
 	using nano::block::hash;
 	void hash (blake2b_state &) const override;
 	uint64_t block_work () const override;
@@ -308,10 +298,10 @@ public:
 	void previous_set (nano::block_hash previous_a);
 	void representative_set (nano::account account_a);
 	void sign_zero ();
-	nano::change_hashables hashables;
-	nano::signature signature;
-	uint64_t work;
-	static std::size_t constexpr size = nano::change_hashables::size + sizeof (signature) + sizeof (work);
+	void zero ();
+	static std::size_t size ();
+private:
+	rsnano::ChangeBlockHandle * handle;
 };
 class state_hashables
 {

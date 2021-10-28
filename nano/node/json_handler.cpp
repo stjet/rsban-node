@@ -2359,8 +2359,8 @@ public:
 		if (raw && accounts_filter.empty ())
 		{
 			tree.put ("type", "change");
-			tree.put ("representative", block_a.hashables.representative.to_account ());
-			tree.put ("previous", block_a.hashables.previous.to_string ());
+			tree.put ("representative", block_a.representative ().to_account ());
+			tree.put ("previous", block_a.previous ().to_string ());
 		}
 	}
 	void state_block (nano::state_block const & block_a)

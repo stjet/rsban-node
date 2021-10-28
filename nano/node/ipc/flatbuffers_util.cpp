@@ -76,8 +76,8 @@ std::unique_ptr<nanoapi::BlockChangeT> nano::ipc::flatbuffers_builder::from (nan
 	block->hash = block_a.hash ().to_string ();
 	block->previous = block_a.previous ().to_string ();
 	block->representative = block_a.representative ().to_account ();
-	block_a.signature.encode_hex (block->signature);
-	block->work = nano::to_string_hex (block_a.work);
+	block_a.block_signature ().encode_hex (block->signature);
+	block->work = nano::to_string_hex (block_a.block_work ());
 	return block;
 }
 

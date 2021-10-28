@@ -5,7 +5,7 @@ use crate::{
     numbers::{Account, BlockHash, Signature},
 };
 
-use super::{FfiStream, blake2b::FfiBlake2b};
+use super::{blake2b::FfiBlake2b, FfiStream};
 
 pub struct OpenBlockHandle {
     block: OpenBlock,

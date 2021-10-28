@@ -461,17 +461,14 @@ void nano::change_block_builder::validate ()
 
 nano::change_block_builder & nano::change_block_builder::zero ()
 {
-	block->work = uint64_t (0);
-	block->signature.clear ();
-	block->hashables.previous.clear ();
-	block->hashables.representative.clear ();
+	block->zero ();
 	build_state = required_fields;
 	return *this;
 }
 
 nano::change_block_builder & nano::change_block_builder::representative (nano::account account)
 {
-	block->hashables.representative = account;
+	block->representative_set (account);
 	build_state |= build_flags::representative_present;
 	return *this;
 }
@@ -492,7 +489,7 @@ nano::change_block_builder & nano::change_block_builder::representative_address 
 
 nano::change_block_builder & nano::change_block_builder::previous (nano::block_hash previous)
 {
-	block->hashables.previous = previous;
+	block->previous_set (previous);
 	build_state |= build_flags::previous_present;
 	return *this;
 }

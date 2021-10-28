@@ -13,6 +13,8 @@ namespace rsnano
 {
 struct BandwidthLimiterHandle;
 
+struct ChangeBlockHandle;
+
 struct OpenBlockHandle;
 
 struct ReceiveBlockHandle;
@@ -51,6 +53,14 @@ using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
 
 using WriteU8Callback = int32_t (*) (void *, uint8_t);
+
+struct ChangeBlockDto
+{
+	uint64_t work;
+	uint8_t signature[64];
+	uint8_t previous[32];
+	uint8_t representative[32];
+};
 
 struct OpenBlockDto
 {
@@ -121,6 +131,39 @@ void rsn_callback_read_u8 (ReadU8Callback f);
 void rsn_callback_write_bytes (WriteBytesCallback f);
 
 void rsn_callback_write_u8 (WriteU8Callback f);
+
+ChangeBlockHandle * rsn_change_block_clone (const ChangeBlockHandle * handle);
+
+ChangeBlockHandle * rsn_change_block_create (const ChangeBlockDto * dto);
+
+int32_t rsn_change_block_deserialize (ChangeBlockHandle * handle, void * stream);
+
+void rsn_change_block_destroy (ChangeBlockHandle * handle);
+
+bool rsn_change_block_equals (const ChangeBlockHandle * a, const ChangeBlockHandle * b);
+
+int32_t rsn_change_block_hash (const ChangeBlockHandle * handle, void * state);
+
+void rsn_change_block_previous (const ChangeBlockHandle * handle, uint8_t (*result)[32]);
+
+void rsn_change_block_previous_set (ChangeBlockHandle * handle, const uint8_t (*source)[32]);
+
+void rsn_change_block_representative (const ChangeBlockHandle * handle, uint8_t (*result)[32]);
+
+void rsn_change_block_representative_set (ChangeBlockHandle * handle,
+const uint8_t (*representative)[32]);
+
+int32_t rsn_change_block_serialize (ChangeBlockHandle * handle, void * stream);
+
+void rsn_change_block_signature (const ChangeBlockHandle * handle, uint8_t (*result)[64]);
+
+void rsn_change_block_signature_set (ChangeBlockHandle * handle, const uint8_t (*signature)[64]);
+
+uintptr_t rsn_change_block_size ();
+
+uint64_t rsn_change_block_work (const ChangeBlockHandle * handle);
+
+void rsn_change_block_work_set (ChangeBlockHandle * handle, uint64_t work);
 
 void rsn_open_block_account (const OpenBlockHandle * handle, uint8_t (*result)[32]);
 

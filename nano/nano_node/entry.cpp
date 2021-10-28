@@ -515,7 +515,9 @@ int main (int argc, char * const * argv)
 				std::cerr << boost::str (boost::format ("Starting generation profiling. Difficulty: %1$#x (%2%x from base difficulty %3$#x)\n") % difficulty % nano::to_string (nano::difficulty::to_multiplier (difficulty, nano::work_thresholds::publish_full.base), 4) % nano::work_thresholds::publish_full.base);
 				while (!result)
 				{
-					block.hashables.previous.qwords[0] += 1;
+					auto previous = block.previous ();
+					previous.qwords[0] += 1;
+					block.previous_set (previous);
 					auto begin1 (std::chrono::high_resolution_clock::now ());
 					block.block_work_set (*work.generate (nano::work_version::work_1, block.root (), difficulty));
 					auto end1 (std::chrono::high_resolution_clock::now ());
@@ -634,7 +636,9 @@ int main (int argc, char * const * argv)
 							std::cerr << boost::str (boost::format ("Starting OpenCL generation profiling. Platform: %1%. Device: %2%. Threads: %3%. Difficulty: %4$#x (%5%x from base difficulty %6$#x)\n") % platform % device % threads % difficulty % nano::to_string (nano::difficulty::to_multiplier (difficulty, nano::work_thresholds::publish_full.base), 4) % nano::work_thresholds::publish_full.base);
 							for (uint64_t i (0); true; ++i)
 							{
-								block.hashables.previous.qwords[0] += 1;
+								auto previous = block.previous ();
+								previous.qwords[0] += 1;
+								block.previous_set (previous);
 								auto begin1 (std::chrono::high_resolution_clock::now ());
 								block.block_work_set (*work_pool.generate (nano::work_version::work_1, block.root (), difficulty));
 								auto end1 (std::chrono::high_resolution_clock::now ());

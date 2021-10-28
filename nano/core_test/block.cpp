@@ -241,7 +241,7 @@ TEST (open_block, deserialize)
 		nano::vectorstream stream (bytes);
 		block1.serialize (stream);
 	}
-	ASSERT_EQ (nano::open_block::size, bytes.size ());
+	ASSERT_EQ (nano::open_block::size (), bytes.size ());
 	nano::bufferstream stream (bytes.data (), bytes.size ());
 	bool error (false);
 	nano::open_block block2 (error, stream);

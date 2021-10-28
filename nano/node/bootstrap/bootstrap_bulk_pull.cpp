@@ -163,7 +163,7 @@ void nano::bulk_pull_client::received_type ()
 		}
 		case nano::block_type::open:
 		{
-			socket_l->async_read (connection->receive_buffer, nano::open_block::size, [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
+			socket_l->async_read (connection->receive_buffer, nano::open_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
 				this_l->received_block (ec, size_a, type);
 			});
 			break;

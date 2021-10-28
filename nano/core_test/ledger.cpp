@@ -2744,9 +2744,9 @@ TEST (ledger, unchecked_open)
 	// Invalid signature for open block
 	auto open2 (std::make_shared<nano::open_block> (send1->hash (), nano::dev::genesis_key.pub, destination.pub, destination.prv, destination.pub, 0));
 	node1.work_generate_blocking (*open2);
-	auto sig {open2->block_signature ()};
+	auto sig{ open2->block_signature () };
 	sig.bytes[0] ^= 1;
-	open2->signature_set(sig);
+	open2->signature_set (sig);
 	node1.block_processor.add (open1);
 	node1.block_processor.add (open2);
 	node1.block_processor.flush ();

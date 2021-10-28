@@ -1,8 +1,10 @@
+mod open_block;
 mod receive_block;
 mod send_block;
 
 use anyhow::Result;
 use num::FromPrimitive;
+pub use open_block::*;
 pub use receive_block::*;
 pub use send_block::*;
 

@@ -70,7 +70,7 @@ size_t nano::block::size (nano::block_type type_a)
 			result = nano::change_block::size;
 			break;
 		case nano::block_type::open:
-			result = nano::open_block::size;
+			result = nano::open_block::size ();
 			break;
 		case nano::block_type::state:
 			result = nano::state_block::size;
@@ -530,20 +530,62 @@ std::size_t nano::send_block::size ()
 	return sizeof (nano::block_hash) + sizeof (nano::account) + sizeof (nano::amount) + sizeof (nano::signature) + sizeof (uint64_t);
 }
 
-nano::open_hashables::open_hashables (nano::block_hash const & source_a, nano::account const & representative_a, nano::account const & account_a) :
-	source (source_a),
-	representative (representative_a),
-	account (account_a)
+nano::open_block::open_block ()
 {
+	rsnano::OpenBlockDto dto;
+	dto.work = 0;
+	std::fill (std::begin (dto.account), std::end (dto.account), 0);
+	std::fill (std::begin (dto.source), std::end (dto.source), 0);
+	std::fill (std::begin (dto.representative), std::end (dto.representative), 0);
+	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
+	handle = rsnano::rsn_open_block_create (&dto);
 }
 
-nano::open_hashables::open_hashables (bool & error_a, nano::stream & stream_a)
+nano::open_block::open_block (nano::block_hash const & source_a, nano::account const & representative_a, nano::account const & account_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a)
 {
+	debug_assert (representative_a != nullptr);
+	debug_assert (account_a != nullptr);
+	debug_assert (pub_a != nullptr);
+
+	rsnano::OpenBlockDto dto;
+	dto.work = work_a;
+	std::copy (std::begin (source_a.bytes), std::end (source_a.bytes), std::begin (dto.source));
+	std::copy (std::begin (representative_a.bytes), std::end (representative_a.bytes), std::begin (dto.representative));
+	std::copy (std::begin (account_a.bytes), std::end (account_a.bytes), std::begin (dto.account));
+	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
+	handle = rsnano::rsn_open_block_create (&dto);
+
+	auto signature {nano::sign_message (prv_a, pub_a, hash ())};
+	uint8_t sig_bytes[64];
+	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (sig_bytes));
+	rsnano::rsn_open_block_signature_set (handle, &sig_bytes);
+}
+
+nano::open_block::open_block (nano::block_hash const & source_a, nano::account const & representative_a, nano::account const & account_a, std::nullptr_t)
+{
+	debug_assert (representative_a != nullptr);
+	debug_assert (account_a != nullptr);
+
+	rsnano::OpenBlockDto dto;
+	dto.work = 0;
+	std::copy (std::begin (source_a.bytes), std::end (source_a.bytes), std::begin (dto.source));
+	std::copy (std::begin (representative_a.bytes), std::end (representative_a.bytes), std::begin (dto.representative));
+	std::copy (std::begin (account_a.bytes), std::end (account_a.bytes), std::begin (dto.account));
+	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
+	handle = rsnano::rsn_open_block_create (&dto);
+}
+
+nano::open_block::open_block (bool & error_a, nano::stream & stream_a)
+{
+	rsnano::OpenBlockDto dto;
 	try
 	{
-		nano::read (stream_a, source.bytes);
-		nano::read (stream_a, representative.bytes);
-		nano::read (stream_a, account.bytes);
+		nano::read (stream_a, dto.source);
+		nano::read (stream_a, dto.representative);
+		nano::read (stream_a, dto.account);
+		nano::read (stream_a, dto.signature);
+		nano::read (stream_a, dto.work);
+		handle = rsnano::rsn_open_block_create(&dto);
 	}
 	catch (std::runtime_error const &)
 	{
@@ -551,20 +593,45 @@ nano::open_hashables::open_hashables (bool & error_a, nano::stream & stream_a)
 	}
 }
 
-nano::open_hashables::open_hashables (bool & error_a, boost::property_tree::ptree const & tree_a)
+nano::open_block::open_block (bool & error_a, boost::property_tree::ptree const & tree_a) :
+	handle (nullptr)
 {
 	try
 	{
 		auto source_l (tree_a.get<std::string> ("source"));
 		auto representative_l (tree_a.get<std::string> ("representative"));
 		auto account_l (tree_a.get<std::string> ("account"));
+		nano::block_hash source;
 		error_a = source.decode_hex (source_l);
 		if (!error_a)
 		{
+			nano::account representative;
 			error_a = representative.decode_account (representative_l);
 			if (!error_a)
 			{
+				nano::account account;
 				error_a = account.decode_account (account_l);
+				if (!error_a)
+				{
+					auto work_l (tree_a.get<std::string> ("work"));
+					auto signature_l (tree_a.get<std::string> ("signature"));
+					uint64_t work;
+					error_a = nano::from_string_hex (work_l, work);
+					if (!error_a)
+					{
+						nano::signature signature;
+						error_a = signature.decode_hex (signature_l);
+						if (!error_a){
+							rsnano::OpenBlockDto dto;
+							dto.work = work;
+							std::copy (std::begin (source.bytes), std::end (source.bytes), std::begin (dto.source));
+							std::copy (std::begin (representative.bytes), std::end (representative.bytes), std::begin (dto.representative));
+							std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (dto.account));
+							std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (dto.signature));
+							handle = rsnano::rsn_open_block_create (&dto);
+						}
+					}
+				}
 			}
 		}
 	}
@@ -574,85 +641,50 @@ nano::open_hashables::open_hashables (bool & error_a, boost::property_tree::ptre
 	}
 }
 
-void nano::open_hashables::hash (blake2b_state & hash_a) const
+nano::open_block::open_block (const open_block & other)
 {
-	blake2b_update (&hash_a, source.bytes.data (), sizeof (source.bytes));
-	blake2b_update (&hash_a, representative.bytes.data (), sizeof (representative.bytes));
-	blake2b_update (&hash_a, account.bytes.data (), sizeof (account.bytes));
-}
-
-nano::open_block::open_block (nano::block_hash const & source_a, nano::account const & representative_a, nano::account const & account_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a) :
-	hashables_m (source_a, representative_a, account_a),
-	signature_m (nano::sign_message (prv_a, pub_a, hash ())),
-	work_m (work_a)
-{
-	debug_assert (representative_a != nullptr);
-	debug_assert (account_a != nullptr);
-	debug_assert (pub_a != nullptr);
-}
-
-nano::open_block::open_block (nano::block_hash const & source_a, nano::account const & representative_a, nano::account const & account_a, std::nullptr_t) :
-	hashables_m (source_a, representative_a, account_a),
-	work_m (0)
-{
-	debug_assert (representative_a != nullptr);
-	debug_assert (account_a != nullptr);
-
-	signature_m.clear ();
-}
-
-nano::open_block::open_block (bool & error_a, nano::stream & stream_a) :
-	hashables_m (error_a, stream_a)
-{
-	if (!error_a)
+	cached_hash = other.cached_hash;
+	sideband_m = other.sideband_m;
+	if (other.handle == nullptr)
 	{
-		try
-		{
-			nano::read (stream_a, signature_m);
-			nano::read (stream_a, work_m);
-		}
-		catch (std::runtime_error const &)
-		{
-			error_a = true;
-		}
+		handle = nullptr;
+	}
+	else
+	{
+		handle = rsnano::rsn_open_block_clone (other.handle);
 	}
 }
 
-nano::open_block::open_block (bool & error_a, boost::property_tree::ptree const & tree_a) :
-	hashables_m (error_a, tree_a)
+nano::open_block::open_block (nano::open_block && other)
 {
-	if (!error_a)
+	cached_hash = other.cached_hash;
+	sideband_m = other.sideband_m;
+	handle = other.handle;
+	other.handle = nullptr;
+}
+
+nano::open_block::~open_block ()
+{
+	if (handle != nullptr)
 	{
-		try
-		{
-			auto work_l (tree_a.get<std::string> ("work"));
-			auto signature_l (tree_a.get<std::string> ("signature"));
-			error_a = nano::from_string_hex (work_l, work_m);
-			if (!error_a)
-			{
-				error_a = signature_m.decode_hex (signature_l);
-			}
-		}
-		catch (std::runtime_error const &)
-		{
-			error_a = true;
-		}
+		rsnano::rsn_open_block_destroy (handle);
+		handle = nullptr;
 	}
 }
 
 void nano::open_block::hash (blake2b_state & hash_a) const
 {
-	hashables_m.hash (hash_a);
+	rsnano::rsn_open_block_hash (handle, &hash_a);
 }
 
 uint64_t nano::open_block::block_work () const
 {
-	return work_m;
+	return rsnano::rsn_open_block_work (handle);
 }
 
 void nano::open_block::block_work_set (uint64_t work_a)
 {
-	work_m = work_a;
+	rsnano::rsn_open_block_work_set (handle, work_a);
 }
 
 nano::block_hash nano::open_block::previous () const
@@ -663,15 +695,19 @@ nano::block_hash nano::open_block::previous () const
 
 nano::account nano::open_block::account () const
 {
-	return hashables_m.account;
+	uint8_t buffer[32];
+	rsnano::rsn_open_block_account (handle, &buffer);
+	nano::account result;
+	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
+	return result;
 }
 
 void nano::open_block::serialize (nano::stream & stream_a) const
 {
-	write (stream_a, hashables_m.source);
-	write (stream_a, hashables_m.representative);
-	write (stream_a, hashables_m.account);
-	write (stream_a, signature_m);
+	write (stream_a, source ());
+	write (stream_a, representative ());
+	write (stream_a, account ());
+	write (stream_a, block_signature ());
 	write (stream_a, block_work ());
 }
 
@@ -680,11 +716,25 @@ bool nano::open_block::deserialize (nano::stream & stream_a)
 	auto error (false);
 	try
 	{
-		read (stream_a, hashables_m.source);
-		read (stream_a, hashables_m.representative);
-		read (stream_a, hashables_m.account);
-		read (stream_a, signature_m);
-		read (stream_a, work_m);
+		uint8_t source[32];
+		read (stream_a, source);
+		rsnano::rsn_open_block_source_set (handle, &source);
+
+		uint8_t representative[32];
+		read (stream_a, representative);
+		rsnano::rsn_open_block_representative_set (handle, &representative);
+
+		uint8_t account[32];
+		read (stream_a, account);
+		rsnano::rsn_open_block_account_set (handle, &account);
+
+		uint8_t signature[64];
+		read (stream_a, signature);
+		rsnano::rsn_open_block_signature_set (handle, &signature);
+
+		uint64_t work;
+		read (stream_a, work);
+		rsnano::rsn_open_block_work_set (handle, work);
 	}
 	catch (std::runtime_error const &)
 	{
@@ -706,12 +756,12 @@ void nano::open_block::serialize_json (std::string & string_a, bool single_line)
 void nano::open_block::serialize_json (boost::property_tree::ptree & tree) const
 {
 	tree.put ("type", "open");
-	tree.put ("source", hashables_m.source.to_string ());
+	tree.put ("source", source ().to_string ());
 	tree.put ("representative", representative ().to_account ());
-	tree.put ("account", hashables_m.account.to_account ());
+	tree.put ("account", account ().to_account ());
 	std::string signature_l;
-	signature_m.encode_hex (signature_l);
-	tree.put ("work", nano::to_string_hex (work_m));
+	block_signature ().encode_hex (signature_l);
+	tree.put ("work", nano::to_string_hex (block_work ()));
 	tree.put ("signature", signature_l);
 }
 
@@ -726,19 +776,39 @@ bool nano::open_block::deserialize_json (boost::property_tree::ptree const & tre
 		auto account_l (tree_a.get<std::string> ("account"));
 		auto work_l (tree_a.get<std::string> ("work"));
 		auto signature_l (tree_a.get<std::string> ("signature"));
-		error = hashables_m.source.decode_hex (source_l);
+		uint8_t buffer_32[32];
+		nano::block_hash source;
+		error = source.decode_hex (source_l);
 		if (!error)
 		{
-			error = hashables_m.representative.decode_hex (representative_l);
+			nano::account representative;
+			error = representative.decode_hex (representative_l);
 			if (!error)
 			{
-				error = hashables_m.account.decode_hex (account_l);
+				nano::account account;
+				error = account.decode_hex (account_l);
 				if (!error)
 				{
-					error = nano::from_string_hex (work_l, work_m);
+					uint64_t work;
+					error = nano::from_string_hex (work_l, work);
 					if (!error)
 					{
-						error = signature_m.decode_hex (signature_l);
+						nano::signature signature;
+						error = signature.decode_hex (signature_l);
+						uint8_t signature_bytes[64];
+						std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (signature_bytes));
+						rsnano::rsn_open_block_signature_set (handle, &signature_bytes);
+
+						std::copy (std::begin (source.bytes), std::end (source.bytes), std::begin (buffer_32));
+						rsnano::rsn_open_block_source_set (handle, &buffer_32);
+
+						std::copy (std::begin (representative.bytes), std::end (representative.bytes), std::begin (buffer_32));
+						rsnano::rsn_open_block_representative_set (handle, &buffer_32);
+
+						std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (buffer_32));
+						rsnano::rsn_open_block_account_set (handle, &buffer_32);
+
+						rsnano::rsn_open_block_work_set (handle, work);
 					}
 				}
 			}
@@ -773,7 +843,7 @@ bool nano::open_block::operator== (nano::block const & other_a) const
 
 bool nano::open_block::operator== (nano::open_block const & other_a) const
 {
-	return hashables_m.source == other_a.hashables_m.source && hashables_m.representative == other_a.hashables_m.representative && hashables_m.account == other_a.hashables_m.account && work_m == other_a.work_m && signature_m == other_a.signature_m;
+	return rsnano::rsn_open_block_equals (handle, other_a.handle);
 }
 
 bool nano::open_block::valid_predecessor (nano::block const & block_a) const
@@ -783,56 +853,83 @@ bool nano::open_block::valid_predecessor (nano::block const & block_a) const
 
 nano::block_hash nano::open_block::source () const
 {
-	return hashables_m.source;
+	uint8_t buffer[32];
+	rsnano::rsn_open_block_source (handle, &buffer);
+	nano::block_hash result;
+	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
+	return result;
 }
 
 nano::root nano::open_block::root () const
 {
-	return hashables_m.account;
+	return account ();
 }
 
 nano::account nano::open_block::representative () const
 {
-	return hashables_m.representative;
+	uint8_t buffer[32];
+	rsnano::rsn_open_block_representative (handle, &buffer);
+	nano::account result;
+	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
+	return result;
 }
 
 nano::signature nano::open_block::block_signature () const
 {
-	return signature_m;
+	uint8_t buffer[64];
+	rsnano::rsn_open_block_signature (handle, &buffer);
+	nano::signature result;
+	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
+	return result;
 }
 
 void nano::open_block::signature_set (nano::signature const & signature_a)
 {
-	signature_m = signature_a;
+	uint8_t buffer[64];
+	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (buffer));
+	rsnano::rsn_open_block_signature_set (handle, &buffer);
 }
 
 void nano::open_block::sign_zero ()
 {
-	signature_m.clear ();
+	uint8_t buffer[64];
+	std::fill (std::begin (buffer), std::end (buffer), 0);
+	rsnano::rsn_open_block_signature_set (handle, &buffer);
 }
 
 void nano::open_block::source_set (nano::block_hash source_a)
 {
-	hashables_m.source = source_a;
+	uint8_t buffer[32];
+	std::copy (std::begin (source_a.bytes), std::end (source_a.bytes), std::begin (buffer));
+	rsnano::rsn_open_block_source_set (handle, &buffer);
 }
 
 void nano::open_block::account_set (nano::account account_a)
 {
-	hashables_m.account = account_a;
+	uint8_t buffer[32];
+	std::copy (std::begin (account_a.bytes), std::end (account_a.bytes), std::begin (buffer));
+	rsnano::rsn_open_block_account_set (handle, &buffer);
 }
 
 void nano::open_block::representative_set (nano::account account_a)
 {
-	hashables_m.representative = account_a;
+	uint8_t buffer[32];
+	std::copy (std::begin (account_a.bytes), std::end (account_a.bytes), std::begin (buffer));
+	rsnano::rsn_open_block_representative_set (handle, &buffer);
 }
 
 void nano::open_block::zero ()
 {
-	work_m = uint64_t (0);
-	signature_m.clear ();
-	hashables_m.account.clear ();
-	hashables_m.representative.clear ();
-	hashables_m.source.clear ();
+	block_work_set (0);
+	sign_zero ();
+	account_set (0);
+	representative_set (0);
+	source_set (0);
+}
+
+std::size_t nano::open_block::size ()
+{
+	return rsnano::rsn_open_block_size ();
 }
 
 nano::change_hashables::change_hashables (nano::block_hash const & previous_a, nano::account const & representative_a) :
@@ -1755,7 +1852,6 @@ nano::receive_block::receive_block (bool & error_a, boost::property_tree::ptree 
 				}
 			}
 		}
-
 	}
 	catch (std::runtime_error const &)
 	{

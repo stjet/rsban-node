@@ -261,6 +261,7 @@ public:
 	void representative_set (nano::account account_a);
 	void zero ();
 	static std::size_t size ();
+
 private:
 	rsnano::OpenBlockHandle * handle;
 };

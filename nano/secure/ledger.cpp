@@ -605,7 +605,7 @@ void ledger_processor::receive_block (nano::receive_block & block_a)
 					}
 					if (result.code == nano::process_result::progress)
 					{
-						debug_assert (!validate_message (account, hash, block_a.signature));
+						debug_assert (!validate_message (account, hash, block_a.block_signature ()));
 						result.verified = nano::signature_verification::valid;
 						result.code = ledger.block_or_pruned_exists (transaction, block_a.source ()) ? nano::process_result::progress : nano::process_result::gap_source; // Have we seen the source block already? (Harmless)
 						if (result.code == nano::process_result::progress)
@@ -676,7 +676,7 @@ void ledger_processor::open_block (nano::open_block & block_a)
 		}
 		if (result.code == nano::process_result::progress)
 		{
-			debug_assert (!validate_message (block_a.hashables.account, hash, block_a.signature));
+			debug_assert (!validate_message (block_a.account (), hash, block_a.block_signature ()));
 			result.verified = nano::signature_verification::valid;
 			result.code = ledger.block_or_pruned_exists (transaction, block_a.source ()) ? nano::process_result::progress : nano::process_result::gap_source; // Have we seen the source block? (Harmless)
 			if (result.code == nano::process_result::progress)

@@ -5,7 +5,7 @@ use crate::{
     numbers::{Account, BlockHash, Signature},
 };
 
-use super::blake2b::FfiBlake2b;
+use super::{FfiStream, blake2b::FfiBlake2b};
 
 pub struct OpenBlockHandle {
     block: OpenBlock,
@@ -128,6 +128,32 @@ pub extern "C" fn rsn_open_block_size() -> usize {
 pub extern "C" fn rsn_open_block_hash(handle: &OpenBlockHandle, state: *mut c_void) -> i32 {
     let mut blake2b = FfiBlake2b::new(state);
     if handle.block.hash(&mut blake2b).is_ok() {
+        0
+    } else {
+        -1
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_open_block_serialize(
+    handle: *mut OpenBlockHandle,
+    stream: *mut c_void,
+) -> i32 {
+    let mut stream = FfiStream::new(stream);
+    if (*handle).block.serialize(&mut stream).is_ok() {
+        0
+    } else {
+        -1
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_open_block_deserialize(
+    handle: *mut OpenBlockHandle,
+    stream: *mut c_void,
+) -> i32 {
+    let mut stream = FfiStream::new(stream);
+    if (*handle).block.deserialize(&mut stream).is_ok() {
         0
     } else {
         -1

@@ -555,7 +555,7 @@ nano::open_block::open_block (nano::block_hash const & source_a, nano::account c
 	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
 	handle = rsnano::rsn_open_block_create (&dto);
 
-	auto signature {nano::sign_message (prv_a, pub_a, hash ())};
+	auto signature{ nano::sign_message (prv_a, pub_a, hash ()) };
 	uint8_t sig_bytes[64];
 	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (sig_bytes));
 	rsnano::rsn_open_block_signature_set (handle, &sig_bytes);
@@ -575,22 +575,10 @@ nano::open_block::open_block (nano::block_hash const & source_a, nano::account c
 	handle = rsnano::rsn_open_block_create (&dto);
 }
 
-nano::open_block::open_block (bool & error_a, nano::stream & stream_a)
+nano::open_block::open_block (bool & error_a, nano::stream & stream_a) :
+	open_block ()
 {
-	rsnano::OpenBlockDto dto;
-	try
-	{
-		nano::read (stream_a, dto.source);
-		nano::read (stream_a, dto.representative);
-		nano::read (stream_a, dto.account);
-		nano::read (stream_a, dto.signature);
-		nano::read (stream_a, dto.work);
-		handle = rsnano::rsn_open_block_create(&dto);
-	}
-	catch (std::runtime_error const &)
-	{
-		error_a = true;
-	}
+	error_a = deserialize (stream_a);
 }
 
 nano::open_block::open_block (bool & error_a, boost::property_tree::ptree const & tree_a) :
@@ -621,7 +609,8 @@ nano::open_block::open_block (bool & error_a, boost::property_tree::ptree const 
 					{
 						nano::signature signature;
 						error_a = signature.decode_hex (signature_l);
-						if (!error_a){
+						if (!error_a)
+						{
 							rsnano::OpenBlockDto dto;
 							dto.work = work;
 							std::copy (std::begin (source.bytes), std::end (source.bytes), std::begin (dto.source));
@@ -704,44 +693,16 @@ nano::account nano::open_block::account () const
 
 void nano::open_block::serialize (nano::stream & stream_a) const
 {
-	write (stream_a, source ());
-	write (stream_a, representative ());
-	write (stream_a, account ());
-	write (stream_a, block_signature ());
-	write (stream_a, block_work ());
+	if (rsnano::rsn_open_block_serialize (handle, &stream_a) != 0)
+	{
+		throw std::runtime_error ("open_block serialization failed");
+	}
 }
 
 bool nano::open_block::deserialize (nano::stream & stream_a)
 {
-	auto error (false);
-	try
-	{
-		uint8_t source[32];
-		read (stream_a, source);
-		rsnano::rsn_open_block_source_set (handle, &source);
-
-		uint8_t representative[32];
-		read (stream_a, representative);
-		rsnano::rsn_open_block_representative_set (handle, &representative);
-
-		uint8_t account[32];
-		read (stream_a, account);
-		rsnano::rsn_open_block_account_set (handle, &account);
-
-		uint8_t signature[64];
-		read (stream_a, signature);
-		rsnano::rsn_open_block_signature_set (handle, &signature);
-
-		uint64_t work;
-		read (stream_a, work);
-		rsnano::rsn_open_block_work_set (handle, work);
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-
-	return error;
+	auto result = rsnano::rsn_open_block_deserialize (handle, &stream_a);
+	return result != 0;
 }
 
 void nano::open_block::serialize_json (std::string & string_a, bool single_line) const

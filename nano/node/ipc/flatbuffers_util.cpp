@@ -13,8 +13,8 @@ std::unique_ptr<nanoapi::BlockStateT> nano::ipc::flatbuffers_builder::from (nano
 	block->balance = block_a.balance ().to_string_dec ();
 	block->link = block_a.link ().to_string ();
 	block->link_as_account = block_a.link ().to_account ();
-	block_a.signature.encode_hex (block->signature);
-	block->work = nano::to_string_hex (block_a.work);
+	block_a.block_signature ().encode_hex (block->signature);
+	block->work = nano::to_string_hex (block_a.block_work ());
 
 	if (is_state_send_a)
 	{

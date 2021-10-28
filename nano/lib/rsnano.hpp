@@ -21,6 +21,8 @@ struct ReceiveBlockHandle;
 
 struct SendBlockHandle;
 
+struct StateBlockHandle;
+
 struct BlockDetailsDto
 {
 	uint8_t epoch;
@@ -85,6 +87,17 @@ struct SendBlockDto
 	uint8_t destination[32];
 	uint8_t balance[16];
 	uint8_t signature[64];
+	uint64_t work;
+};
+
+struct StateBlockDto
+{
+	uint8_t signature[64];
+	uint8_t account[32];
+	uint8_t previous[32];
+	uint8_t representative[32];
+	uint8_t link[32];
+	uint8_t balance[16];
 	uint64_t work;
 };
 
@@ -269,6 +282,51 @@ uint64_t rsn_send_block_work (const SendBlockHandle * handle);
 void rsn_send_block_work_set (SendBlockHandle * handle, uint64_t work);
 
 void rsn_send_block_zero (SendBlockHandle * handle);
+
+void rsn_state_block_account (const StateBlockHandle * handle, uint8_t (*result)[32]);
+
+void rsn_state_block_account_set (StateBlockHandle * handle, const uint8_t (*source)[32]);
+
+void rsn_state_block_balance (const StateBlockHandle * handle, uint8_t (*result)[16]);
+
+void rsn_state_block_balance_set (StateBlockHandle * handle, const uint8_t (*representative)[16]);
+
+StateBlockHandle * rsn_state_block_clone (const StateBlockHandle * handle);
+
+StateBlockHandle * rsn_state_block_create (const StateBlockDto * dto);
+
+int32_t rsn_state_block_deserialize (StateBlockHandle * handle, void * stream);
+
+void rsn_state_block_destroy (StateBlockHandle * handle);
+
+bool rsn_state_block_equals (const StateBlockHandle * a, const StateBlockHandle * b);
+
+int32_t rsn_state_block_hash (const StateBlockHandle * handle, void * state);
+
+void rsn_state_block_link (const StateBlockHandle * handle, uint8_t (*result)[32]);
+
+void rsn_state_block_link_set (StateBlockHandle * handle, const uint8_t (*representative)[32]);
+
+void rsn_state_block_previous (const StateBlockHandle * handle, uint8_t (*result)[32]);
+
+void rsn_state_block_previous_set (StateBlockHandle * handle, const uint8_t (*source)[32]);
+
+void rsn_state_block_representative (const StateBlockHandle * handle, uint8_t (*result)[32]);
+
+void rsn_state_block_representative_set (StateBlockHandle * handle,
+const uint8_t (*representative)[32]);
+
+int32_t rsn_state_block_serialize (StateBlockHandle * handle, void * stream);
+
+void rsn_state_block_signature (const StateBlockHandle * handle, uint8_t (*result)[64]);
+
+void rsn_state_block_signature_set (StateBlockHandle * handle, const uint8_t (*signature)[64]);
+
+uintptr_t rsn_state_block_size ();
+
+uint64_t rsn_state_block_work (const StateBlockHandle * handle);
+
+void rsn_state_block_work_set (StateBlockHandle * handle, uint64_t work);
 
 } // extern "C"
 

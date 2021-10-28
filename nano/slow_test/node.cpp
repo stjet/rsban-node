@@ -1558,8 +1558,8 @@ TEST (signature_checker, mass_boundary_checks)
 				hashes.push_back (block.hash ());
 				messages.push_back (hashes.back ().bytes.data ());
 				lengths.push_back (sizeof (decltype (hashes)::value_type));
-				pub_keys.push_back (block.hashables.account.bytes.data ());
-				signatures.push_back (block.signature.bytes.data ());
+				pub_keys.push_back (block.account ().bytes.data ());
+				signatures.push_back (block.block_signature ().bytes.data ());
 			}
 			nano::signature_check_set check = { size, messages.data (), lengths.data (), pub_keys.data (), signatures.data (), verifications.data () };
 			checker.verify (check);

@@ -206,19 +206,19 @@ nano::state_block_builder & nano::state_block_builder::make_block ()
 
 nano::state_block_builder & nano::state_block_builder::from (nano::state_block const & other_block)
 {
-	block->work = other_block.work;
+	block->block_work_set (other_block.block_work ());
 	build_state |= build_flags::work_present;
-	block->signature = other_block.signature;
+	block->signature_set (other_block.block_signature ());
 	build_state |= build_flags::signature_present;
-	block->hashables.account = other_block.hashables.account;
+	block->account_set (other_block.account ());
 	build_state |= build_flags::account_present;
-	block->hashables.balance = other_block.hashables.balance;
+	block->balance_set (other_block.balance ());
 	build_state |= build_flags::balance_present;
-	block->hashables.link = other_block.hashables.link;
+	block->link_set (other_block.link ());
 	build_state |= build_flags::link_present;
-	block->hashables.previous = other_block.hashables.previous;
+	block->previous_set (other_block.previous ());
 	build_state |= build_flags::previous_present;
-	block->hashables.representative = other_block.hashables.representative;
+	block->representative_set (other_block.representative ());
 	build_state |= build_flags::representative_present;
 	return *this;
 }
@@ -233,20 +233,20 @@ void nano::state_block_builder::validate ()
 
 nano::state_block_builder & nano::state_block_builder::zero ()
 {
-	block->work = uint64_t (0);
-	block->signature.clear ();
-	block->hashables.account.clear ();
-	block->hashables.balance.clear ();
-	block->hashables.link.clear ();
-	block->hashables.previous.clear ();
-	block->hashables.representative.clear ();
+	block->block_work_set (0);
+	block->signature_set (nano::signature (0));
+	block->account_set (0);
+	block->balance_set (0);
+	block->link_set (0);
+	block->previous_set (0);
+	block->representative_set (0);
 	build_state = required_fields;
 	return *this;
 }
 
 nano::state_block_builder & nano::state_block_builder::account (nano::account const & account)
 {
-	block->hashables.account = account;
+	block->account_set (account);
 	build_state |= build_flags::account_present;
 	return *this;
 }
@@ -267,7 +267,7 @@ nano::state_block_builder & nano::state_block_builder::account_address (std::str
 
 nano::state_block_builder & nano::state_block_builder::representative (nano::account const & account)
 {
-	block->hashables.representative = account;
+	block->representative_set (account);
 	build_state |= build_flags::representative_present;
 	return *this;
 }
@@ -288,7 +288,7 @@ nano::state_block_builder & nano::state_block_builder::representative_address (s
 
 nano::state_block_builder & nano::state_block_builder::previous (nano::block_hash const & previous)
 {
-	block->hashables.previous = previous;
+	block->previous_set (previous);
 	build_state |= build_flags::previous_present;
 	return *this;
 }
@@ -302,7 +302,7 @@ nano::state_block_builder & nano::state_block_builder::previous_hex (std::string
 
 nano::state_block_builder & nano::state_block_builder::balance (nano::amount const & balance)
 {
-	block->hashables.balance = balance;
+	block->balance_set (balance);
 	build_state |= build_flags::balance_present;
 	return *this;
 }
@@ -323,7 +323,7 @@ nano::state_block_builder & nano::state_block_builder::balance_hex (std::string 
 
 nano::state_block_builder & nano::state_block_builder::link (nano::link const & link)
 {
-	block->hashables.link = link;
+	block->link_set (link);
 	build_state |= build_flags::link_present;
 	return *this;
 }
@@ -333,7 +333,7 @@ nano::state_block_builder & nano::state_block_builder::link_hex (std::string con
 	nano::link link;
 	if (!link.decode_hex (link_hex))
 	{
-		block->hashables.link = link;
+		block->link_set (link);
 		build_state |= build_flags::link_present;
 	}
 	else
@@ -348,7 +348,7 @@ nano::state_block_builder & nano::state_block_builder::link_address (std::string
 	nano::link link;
 	if (!link.decode_account (link_address))
 	{
-		block->hashables.link = link;
+		block->link_set (link);
 		build_state |= build_flags::link_present;
 	}
 	else

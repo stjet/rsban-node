@@ -333,11 +333,11 @@ TEST (state_block, serialization)
 				  .sign (key1.prv, key1.pub)
 				  .work (5)
 				  .build_shared ();
-	ASSERT_EQ (key1.pub, block1->hashables.account);
+	ASSERT_EQ (key1.pub, block1->account ());
 	ASSERT_EQ (nano::block_hash (1), block1->previous ());
-	ASSERT_EQ (key2.pub, block1->hashables.representative);
-	ASSERT_EQ (nano::amount (2), block1->hashables.balance);
-	ASSERT_EQ (nano::uint256_union (4), block1->hashables.link);
+	ASSERT_EQ (key2.pub, block1->representative ());
+	ASSERT_EQ (nano::amount (2), block1->balance ());
+	ASSERT_EQ (nano::uint256_union (4), block1->link ());
 	std::vector<uint8_t> bytes;
 	{
 		nano::vectorstream stream (bytes);
@@ -350,13 +350,7 @@ TEST (state_block, serialization)
 	nano::state_block block2 (error1, stream);
 	ASSERT_FALSE (error1);
 	ASSERT_EQ (*block1, block2);
-	block2.hashables.account.clear ();
-	block2.hashables.previous.clear ();
-	block2.hashables.representative.clear ();
-	block2.hashables.balance.clear ();
-	block2.hashables.link.clear ();
-	block2.signature.clear ();
-	block2.work = 0;
+	block2.zero ();
 	nano::bufferstream stream2 (bytes.data (), bytes.size ());
 	ASSERT_FALSE (block2.deserialize (stream2));
 	ASSERT_EQ (*block1, block2);
@@ -369,13 +363,7 @@ TEST (state_block, serialization)
 	nano::state_block block3 (error2, tree);
 	ASSERT_FALSE (error2);
 	ASSERT_EQ (*block1, block3);
-	block3.hashables.account.clear ();
-	block3.hashables.previous.clear ();
-	block3.hashables.representative.clear ();
-	block3.hashables.balance.clear ();
-	block3.hashables.link.clear ();
-	block3.signature.clear ();
-	block3.work = 0;
+	block3.zero ();
 	ASSERT_FALSE (block3.deserialize_json (tree));
 	ASSERT_EQ (*block1, block3);
 }
@@ -395,34 +383,49 @@ TEST (state_block, hashing)
 				 .build_shared ();
 	auto hash (block->hash ());
 	ASSERT_EQ (hash, block->hash ()); // check cache works
-	block->hashables.account.bytes[0] ^= 0x1;
+	auto account = block->account ();
+	account.bytes[0] ^= 0x1;
+	block->account_set (account);
 	block->refresh ();
 	ASSERT_NE (hash, block->hash ());
-	block->hashables.account.bytes[0] ^= 0x1;
+	account.bytes[0] ^= 0x1;
+	block->account_set (account);
 	block->refresh ();
 	ASSERT_EQ (hash, block->hash ());
-	block->hashables.previous.bytes[0] ^= 0x1;
+	auto previous = block->previous ();
+	previous.bytes[0] ^= 0x1;
+	block->previous_set (previous);
 	block->refresh ();
 	ASSERT_NE (hash, block->hash ());
-	block->hashables.previous.bytes[0] ^= 0x1;
+	previous.bytes[0] ^= 0x1;
+	block->previous_set (previous);
 	block->refresh ();
 	ASSERT_EQ (hash, block->hash ());
-	block->hashables.representative.bytes[0] ^= 0x1;
+	auto representative = block->representative ();
+	representative.bytes[0] ^= 0x1;
+	block->representative_set (representative);
 	block->refresh ();
 	ASSERT_NE (hash, block->hash ());
-	block->hashables.representative.bytes[0] ^= 0x1;
+	representative.bytes[0] ^= 0x1;
+	block->representative_set (representative);
 	block->refresh ();
 	ASSERT_EQ (hash, block->hash ());
-	block->hashables.balance.bytes[0] ^= 0x1;
+	auto balance = block->balance ();
+	balance.bytes[0] ^= 0x1;
+	block->balance_set (balance);
 	block->refresh ();
 	ASSERT_NE (hash, block->hash ());
-	block->hashables.balance.bytes[0] ^= 0x1;
+	balance.bytes[0] ^= 0x1;
+	block->balance_set (balance);
 	block->refresh ();
 	ASSERT_EQ (hash, block->hash ());
-	block->hashables.link.bytes[0] ^= 0x1;
+	auto link = block->link ();
+	link.bytes[0] ^= 0x1;
+	block->link_set (link);
 	block->refresh ();
 	ASSERT_NE (hash, block->hash ());
-	block->hashables.link.bytes[0] ^= 0x1;
+	link.bytes[0] ^= 0x1;
+	block->link_set (link);
 	block->refresh ();
 	ASSERT_EQ (hash, block->hash ());
 }
@@ -545,7 +548,7 @@ TEST (block_builder, zeroed_state_block)
 							 .build_shared ();
 	auto zero_block_build = builder.state ().zero ().sign (key.prv, key.pub).build ();
 	ASSERT_TRUE (zero_block_manual->hash () == zero_block_build->hash ());
-	ASSERT_FALSE (nano::validate_message (key.pub, zero_block_build->hash (), zero_block_build->signature));
+	ASSERT_FALSE (nano::validate_message (key.pub, zero_block_build->hash (), zero_block_build->block_signature ()));
 }
 
 TEST (block_builder, state)
@@ -607,7 +610,7 @@ TEST (block_builder, state_equality)
 
 	ASSERT_NO_ERROR (ec);
 	ASSERT_EQ (block1.hash (), block2->hash ());
-	ASSERT_EQ (block1.work, block2->work);
+	ASSERT_EQ (block1.block_work (), block2->block_work ());
 }
 
 TEST (block_builder, state_errors)

@@ -205,7 +205,7 @@ void nano::bulk_push_server::received_type ()
 		case nano::block_type::state:
 		{
 			connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::state_block, nano::stat::dir::in);
-			connection->socket->async_read (receive_buffer, nano::state_block::size, [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
+			connection->socket->async_read (receive_buffer, nano::state_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
 				this_l->received_block (ec, size_a, type);
 			});
 			break;

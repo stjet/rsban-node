@@ -300,42 +300,20 @@ public:
 	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
+
 private:
 	rsnano::ChangeBlockHandle * handle;
-};
-class state_hashables
-{
-public:
-	state_hashables () = default;
-	state_hashables (nano::account const &, nano::block_hash const &, nano::account const &, nano::amount const &, nano::link const &);
-	state_hashables (bool &, nano::stream &);
-	state_hashables (bool &, boost::property_tree::ptree const &);
-	void hash (blake2b_state &) const;
-	// Account# / public key that operates this account
-	// Uses:
-	// Bulk signature validation in advance of further ledger processing
-	// Arranging uncomitted transactions by account
-	nano::account account;
-	// Previous transaction in this chain
-	nano::block_hash previous;
-	// Representative of this account
-	nano::account representative;
-	// Current balance of this account
-	// Allows lookup of account balance simply by looking at the head block
-	nano::amount balance;
-	// Link field contains source block_hash if receiving, destination account if sending
-	nano::link link;
-	// Serialized size
-	static std::size_t constexpr size = sizeof (account) + sizeof (previous) + sizeof (representative) + sizeof (balance) + sizeof (link);
 };
 class state_block : public nano::block
 {
 public:
-	state_block () = default;
+	state_block ();
 	state_block (nano::account const &, nano::block_hash const &, nano::account const &, nano::amount const &, nano::link const &, nano::raw_key const &, nano::public_key const &, uint64_t);
 	state_block (bool &, nano::stream &);
 	state_block (bool &, boost::property_tree::ptree const &);
-	virtual ~state_block () = default;
+	state_block (const nano::change_block &);
+	state_block (nano::change_block &&);
+	virtual ~state_block ();
 	using nano::block::hash;
 	void hash (blake2b_state &) const override;
 	uint64_t block_work () const override;
@@ -363,11 +341,12 @@ public:
 	void balance_set (nano::amount balance_a);
 	void account_set (nano::account account_a);
 	void representative_set (nano::account account_a);
+	void link_set (nano::link link);
 	void sign_zero ();
-	nano::state_hashables hashables;
-	nano::signature signature;
-	uint64_t work;
-	static std::size_t constexpr size = nano::state_hashables::size + sizeof (signature) + sizeof (work);
+	void zero ();
+	static std::size_t size ();
+private:
+	rsnano::StateBlockHandle * handle;
 };
 class block_visitor
 {

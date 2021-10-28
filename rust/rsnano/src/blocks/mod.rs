@@ -2,6 +2,7 @@ mod change_block;
 mod open_block;
 mod receive_block;
 mod send_block;
+mod state_block;
 
 use anyhow::Result;
 pub use change_block::*;
@@ -9,6 +10,7 @@ use num::FromPrimitive;
 pub use open_block::*;
 pub use receive_block::*;
 pub use send_block::*;
+pub use state_block::*;
 
 use crate::{
     block_details::BlockDetails,

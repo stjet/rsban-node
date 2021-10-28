@@ -174,3 +174,35 @@ impl Signature {
         self.bytes
     }
 }
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct Link {
+    bytes: [u8; 32],
+}
+
+impl Link {
+    pub fn new() -> Self {
+        Self { bytes: [0u8; 32] }
+    }
+
+    pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
+        Self { bytes }
+    }
+
+    pub const fn serialized_size() -> usize {
+        32
+    }
+
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+        stream.write_bytes(&self.bytes)
+    }
+
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
+        stream.read_bytes(&mut self.bytes, 32)?;
+        Ok(())
+    }
+
+    pub fn to_be_bytes(&self) -> [u8; 32] {
+        self.bytes
+    }
+}

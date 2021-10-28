@@ -1513,13 +1513,13 @@ int main (int argc, char * const * argv)
 							auto & state_block (static_cast<nano::state_block &> (*block.get ()));
 							nano::amount prev_balance (0);
 							bool error_or_pruned (false);
-							if (!state_block.hashables.previous.is_zero ())
+							if (!state_block.previous ().is_zero ())
 							{
-								prev_balance = node->ledger.balance_safe (transaction, state_block.hashables.previous, error_or_pruned);
+								prev_balance = node->ledger.balance_safe (transaction, state_block.previous (), error_or_pruned);
 							}
-							if (node->ledger.is_epoch_link (state_block.hashables.link))
+							if (node->ledger.is_epoch_link (state_block.link ()))
 							{
-								if ((state_block.hashables.balance == prev_balance && !error_or_pruned) || (node->ledger.pruning && error_or_pruned && block->sideband ().details ().is_epoch ()))
+								if ((state_block.balance () == prev_balance && !error_or_pruned) || (node->ledger.pruning && error_or_pruned && block->sideband ().details ().is_epoch ()))
 								{
 									invalid = validate_message (node->ledger.epoch_signer (block->link ()), hash, block->block_signature ());
 								}
@@ -1720,7 +1720,7 @@ int main (int argc, char * const * argv)
 					{
 						if (node->ledger.is_send (transaction, *state))
 						{
-							destination = state->hashables.link.as_account ();
+							destination = state->link ().as_account ();
 						}
 					}
 					else if (auto send = dynamic_cast<nano::send_block *> (block.get ()))

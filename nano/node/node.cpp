@@ -1328,7 +1328,7 @@ void nano::node::process_confirmed_data (nano::transaction const & transaction_a
 	}
 	if (auto state = dynamic_cast<nano::state_block *> (block_a.get ()))
 	{
-		if (state->hashables.balance < previous_balance)
+		if (state->balance () < previous_balance)
 		{
 			is_state_send_a = true;
 		}
@@ -1336,7 +1336,7 @@ void nano::node::process_confirmed_data (nano::transaction const & transaction_a
 		{
 			is_state_epoch_a = true;
 		}
-		pending_account_a = state->hashables.link.as_account ();
+		pending_account_a = state->link ().as_account ();
 	}
 	if (auto send = dynamic_cast<nano::send_block *> (block_a.get ()))
 	{

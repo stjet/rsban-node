@@ -533,7 +533,7 @@ public:
 	{
 		type = "Receive";
 		bool error_or_pruned (false);
-		account = ledger.account_safe (transaction, block_a.hashables.source, error_or_pruned);
+		account = ledger.account_safe (transaction, block_a.source (), error_or_pruned);
 		amount = ledger.amount_safe (transaction, block_a.hash (), error_or_pruned);
 		if (error_or_pruned)
 		{
@@ -543,10 +543,10 @@ public:
 	void open_block (nano::open_block const & block_a)
 	{
 		type = "Receive";
-		if (block_a.hashables.source != ledger.constants.genesis->account ())
+		if (block_a.source () != ledger.constants.genesis->account ())
 		{
 			bool error_or_pruned (false);
-			account = ledger.account_safe (transaction, block_a.hashables.source, error_or_pruned);
+			account = ledger.account_safe (transaction, block_a.source (), error_or_pruned);
 			amount = ledger.amount_safe (transaction, block_a.hash (), error_or_pruned);
 			if (error_or_pruned)
 			{
@@ -563,41 +563,41 @@ public:
 	{
 		type = "Change";
 		amount = 0;
-		account = block_a.hashables.representative;
+		account = block_a.representative ();
 	}
 	void state_block (nano::state_block const & block_a)
 	{
-		auto balance (block_a.hashables.balance.number ());
+		auto balance (block_a.balance ().number ());
 		bool error_or_pruned (false);
-		auto previous_balance (ledger.balance_safe (transaction, block_a.hashables.previous, error_or_pruned));
+		auto previous_balance (ledger.balance_safe (transaction, block_a.previous (), error_or_pruned));
 		if (error_or_pruned)
 		{
 			type = "Unknown (pruned)";
 			amount = 0;
-			account = block_a.hashables.account;
+			account = block_a.account ();
 		}
 		else if (balance < previous_balance)
 		{
 			type = "Send";
 			amount = previous_balance - balance;
-			account = block_a.hashables.link.as_account ();
+			account = block_a.link ().as_account ();
 		}
 		else
 		{
-			if (block_a.hashables.link.is_zero ())
+			if (block_a.link ().is_zero ())
 			{
 				type = "Change";
-				account = block_a.hashables.representative;
+				account = block_a.representative ();
 			}
-			else if (balance == previous_balance && ledger.is_epoch_link (block_a.hashables.link))
+			else if (balance == previous_balance && ledger.is_epoch_link (block_a.link ()))
 			{
 				type = "Epoch";
-				account = ledger.epoch_signer (block_a.hashables.link);
+				account = ledger.epoch_signer (block_a.link ());
 			}
 			else
 			{
 				type = "Receive";
-				account = ledger.account_safe (transaction, block_a.hashables.link.as_block_hash (), error_or_pruned);
+				account = ledger.account_safe (transaction, block_a.link ().as_block_hash (), error_or_pruned);
 				if (error_or_pruned)
 				{
 					type = "Receive (pruned)";

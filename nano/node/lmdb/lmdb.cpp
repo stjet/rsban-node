@@ -544,19 +544,19 @@ void nano::mdb_store::upgrade_v17_to_v18 (nano::write_transaction const & transa
 		bool is_epoch{ false };
 
 		nano::amount prev_balance (0);
-		if (!block->hashables.previous.is_zero ())
+		if (!block->previous ().is_zero ())
 		{
-			prev_balance = block_balance_v18 (transaction_a, block->hashables.previous);
+			prev_balance = block_balance_v18 (transaction_a, block->previous ());
 		}
-		if (block->hashables.balance == prev_balance && constants.epochs.is_epoch_link (block->hashables.link))
+		if (block->balance () == prev_balance && constants.epochs.is_epoch_link (block->link ()))
 		{
 			is_epoch = true;
 		}
-		else if (block->hashables.balance < prev_balance)
+		else if (block->balance () < prev_balance)
 		{
 			is_send = true;
 		}
-		else if (!block->hashables.link.is_zero ())
+		else if (!block->link ().is_zero ())
 		{
 			is_receive = true;
 		}

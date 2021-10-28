@@ -2368,14 +2368,14 @@ public:
 		if (raw)
 		{
 			tree.put ("type", "state");
-			tree.put ("representative", block_a.hashables.representative.to_account ());
-			tree.put ("link", block_a.hashables.link.to_string ());
-			tree.put ("balance", block_a.hashables.balance.to_string_dec ());
-			tree.put ("previous", block_a.hashables.previous.to_string ());
+			tree.put ("representative", block_a.representative ().to_account ());
+			tree.put ("link", block_a.link ().to_string ());
+			tree.put ("balance", block_a.balance ().to_string_dec ());
+			tree.put ("previous", block_a.previous ().to_string ());
 		}
-		auto balance (block_a.hashables.balance.number ());
+		auto balance (block_a.balance ().number ());
 		bool error_or_pruned (false);
-		auto previous_balance (handler.node.ledger.balance_safe (transaction, block_a.hashables.previous, error_or_pruned));
+		auto previous_balance (handler.node.ledger.balance_safe (transaction, block_a.previous (), error_or_pruned));
 		if (error_or_pruned)
 		{
 			if (raw)
@@ -2389,7 +2389,7 @@ public:
 		}
 		else if (balance < previous_balance)
 		{
-			if (should_ignore_account (block_a.hashables.link.as_account ()))
+			if (should_ignore_account (block_a.link ().as_account ()))
 			{
 				tree.clear ();
 				return;
@@ -2402,19 +2402,19 @@ public:
 			{
 				tree.put ("type", "send");
 			}
-			tree.put ("account", block_a.hashables.link.to_account ());
+			tree.put ("account", block_a.link ().to_account ());
 			tree.put ("amount", (previous_balance - balance).convert_to<std::string> ());
 		}
 		else
 		{
-			if (block_a.hashables.link.is_zero ())
+			if (block_a.link ().is_zero ())
 			{
 				if (raw && accounts_filter.empty ())
 				{
 					tree.put ("subtype", "change");
 				}
 			}
-			else if (balance == previous_balance && handler.node.ledger.is_epoch_link (block_a.hashables.link))
+			else if (balance == previous_balance && handler.node.ledger.is_epoch_link (block_a.link ()))
 			{
 				if (raw && accounts_filter.empty ())
 				{
@@ -2424,7 +2424,7 @@ public:
 			}
 			else
 			{
-				auto source_account (handler.node.ledger.account_safe (transaction, block_a.hashables.link.as_block_hash (), error_or_pruned));
+				auto source_account (handler.node.ledger.account_safe (transaction, block_a.link ().as_block_hash (), error_or_pruned));
 				if (!error_or_pruned && should_ignore_account (source_account))
 				{
 					tree.clear ();
@@ -3070,16 +3070,16 @@ void nano::json_handler::process ()
 			{
 				std::shared_ptr<nano::state_block> block_state (std::static_pointer_cast<nano::state_block> (block));
 				auto transaction (rpc_l->node.store.tx_begin_read ());
-				if (!block_state->hashables.previous.is_zero () && !rpc_l->node.store.block.exists (transaction, block_state->hashables.previous))
+				if (!block_state->previous ().is_zero () && !rpc_l->node.store.block.exists (transaction, block_state->previous ()))
 				{
 					rpc_l->ec = nano::error_process::gap_previous;
 				}
 				else
 				{
-					auto balance (rpc_l->node.ledger.account_balance (transaction, block_state->hashables.account));
+					auto balance (rpc_l->node.ledger.account_balance (transaction, block_state->account ()));
 					if (subtype_text == "send")
 					{
-						if (balance <= block_state->hashables.balance.number ())
+						if (balance <= block_state->balance ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
@@ -3087,7 +3087,7 @@ void nano::json_handler::process ()
 					}
 					else if (subtype_text == "receive")
 					{
-						if (balance > block_state->hashables.balance.number ())
+						if (balance > block_state->balance ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
@@ -3095,29 +3095,29 @@ void nano::json_handler::process ()
 					}
 					else if (subtype_text == "open")
 					{
-						if (!block_state->hashables.previous.is_zero ())
+						if (!block_state->previous ().is_zero ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_previous;
 						}
 					}
 					else if (subtype_text == "change")
 					{
-						if (balance != block_state->hashables.balance.number ())
+						if (balance != block_state->balance ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
-						else if (block_state->hashables.previous.is_zero ())
+						else if (block_state->previous ().is_zero ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_previous;
 						}
 					}
 					else if (subtype_text == "epoch")
 					{
-						if (balance != block_state->hashables.balance.number ())
+						if (balance != block_state->balance ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
-						else if (!rpc_l->node.ledger.is_epoch_link (block_state->hashables.link))
+						else if (!rpc_l->node.ledger.is_epoch_link (block_state->link ()))
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_epoch_link;
 						}

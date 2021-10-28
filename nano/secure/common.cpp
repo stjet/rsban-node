@@ -16,8 +16,6 @@
 
 #include <crypto/ed25519-donna/ed25519.h>
 
-size_t constexpr nano::state_block::size;
-
 nano::networks nano::network_constants::active_network = nano::networks::ACTIVE_NETWORK;
 
 namespace

@@ -1205,6 +1205,20 @@ std::size_t nano::change_block::size ()
 	return rsnano::rsn_change_block_size ();
 }
 
+nano::state_block::state_block ()
+{
+	rsnano::StateBlockDto dto;
+	dto.work = 0;
+	std::fill (std::begin (dto.account), std::end (dto.account), 0);
+	std::fill (std::begin (dto.previous), std::end (dto.previous), 0);
+	std::fill (std::begin (dto.representative), std::end (dto.representative), 0);
+	std::fill (std::begin (dto.balance), std::end (dto.balance), 0);
+	std::fill (std::begin (dto.link), std::end (dto.link), 0);
+	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
+	handle = rsnano::rsn_state_block_create (&dto);
+
+} 
+
 nano::state_block::state_block (nano::account const & account_a, nano::block_hash const & previous_a, nano::account const & representative_a, nano::amount const & balance_a, nano::link const & link_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a)
 {
 	debug_assert (account_a != nullptr);
@@ -1233,7 +1247,8 @@ nano::state_block::state_block (bool & error_a, nano::stream & stream_a) :
 	error_a = rsnano::rsn_state_block_deserialize (handle, &stream_a) != 0;
 }
 
-nano::state_block::state_block (bool & error_a, boost::property_tree::ptree const & tree_a) 
+nano::state_block::state_block (bool & error_a, boost::property_tree::ptree const & tree_a) :
+	handle (nullptr)
 {
 	try
 	{
@@ -1300,6 +1315,37 @@ nano::state_block::state_block (bool & error_a, boost::property_tree::ptree cons
 	}
 }
 
+nano::state_block::state_block (const nano::state_block & other)
+{
+	cached_hash = other.cached_hash;
+	sideband_m = other.sideband_m;
+	if (other.handle == nullptr)
+	{
+		handle = nullptr;
+	}
+	else
+	{
+		handle = rsnano::rsn_state_block_clone (other.handle);
+	}
+}
+
+nano::state_block::state_block (nano::state_block && other)
+{
+	cached_hash = other.cached_hash;
+	sideband_m = other.sideband_m;
+	handle = other.handle;
+	other.handle = nullptr;
+}
+
+nano::state_block::~state_block ()
+{
+	if (handle != nullptr)
+	{
+		rsnano::rsn_state_block_destroy (handle);
+		handle = nullptr;
+	}
+}
+
 void nano::state_block::hash (blake2b_state & hash_a) const
 {
 	if (rsnano::rsn_state_block_hash (handle, &hash_a) != 0)
@@ -1323,7 +1369,7 @@ nano::block_hash nano::state_block::previous () const
 	uint8_t buffer[32];
 	rsnano::rsn_state_block_previous (handle, &buffer);
 	nano::block_hash result;
-	std::copy (std::begin (result.bytes), std::end (result.bytes), std::begin (buffer));
+	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
 	return result;
 }
 
@@ -1332,7 +1378,7 @@ nano::account nano::state_block::account () const
 	uint8_t buffer[32];
 	rsnano::rsn_state_block_account (handle, &buffer);
 	nano::account result;
-	std::copy (std::begin (result.bytes), std::end (result.bytes), std::begin (buffer));
+	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
 	return result;
 }
 
@@ -1458,6 +1504,21 @@ bool nano::state_block::operator== (nano::state_block const & other_a) const
 	return rsnano::rsn_state_block_equals (handle, other_a.handle);
 }
 
+nano::state_block& nano::state_block::operator=(const nano::state_block& other)
+{
+	cached_hash = other.cached_hash;
+	sideband_m = other.sideband_m;
+	if (other.handle == nullptr)
+	{
+		handle = nullptr;
+	}
+	else
+	{
+		handle = rsnano::rsn_state_block_clone (other.handle);
+	}
+	return *this;
+}
+
 bool nano::state_block::valid_predecessor (nano::block const & block_a) const
 {
 	return true;
@@ -1568,6 +1629,11 @@ void nano::state_block::zero ()
 	representative_set (0);
 	balance_set (0);
 	link_set (0);
+}
+
+std::size_t nano::state_block::size ()
+{
+	return rsnano::rsn_state_block_size ();
 }
 
 std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a, nano::block_uniquer * uniquer_a)

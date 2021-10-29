@@ -28,13 +28,19 @@ TEST (signature_checker, bulk_single_thread)
 	signatures.reserve (size);
 	std::vector<int> verifications;
 	verifications.resize (size);
+	std::vector<nano::account> accounts;
+	accounts.resize (size);
+	std::vector<nano::signature> block_signatures;
+	block_signatures.resize (size);
 	for (auto i (0); i < size; ++i)
 	{
 		hashes.push_back (block.hash ());
 		messages.push_back (hashes.back ().bytes.data ());
 		lengths.push_back (sizeof (decltype (hashes)::value_type));
-		pub_keys.push_back (block.account ().bytes.data ());
-		signatures.push_back (block.block_signature ().bytes.data ());
+		accounts.push_back (block.account ());
+		pub_keys.push_back (accounts.back ().bytes.data ());
+		block_signatures.push_back (block.block_signature ());
+		signatures.push_back (block_signatures.back ().bytes.data ());
 	}
 	nano::signature_check_set check = { size, messages.data (), lengths.data (), pub_keys.data (), signatures.data (), verifications.data () };
 	checker.verify (check);
@@ -50,12 +56,16 @@ TEST (signature_checker, many_multi_threaded)
 		nano::keypair key;
 		nano::state_block block (key.pub, 0, key.pub, 0, 0, key.prv, key.pub, 0);
 		auto block_hash = block.hash ();
+		auto block_account { block.account ()};
+		auto block_signature { block.block_signature ()};
 
 		nano::state_block invalid_block (key.pub, 0, key.pub, 0, 0, key.prv, key.pub, 0);
 		auto sig {invalid_block.block_signature ()};
 		sig.bytes[31] ^= 0x1;
 		invalid_block.signature_set (sig);
 		auto invalid_block_hash = block.hash ();
+		auto invalid_block_account {invalid_block.account ()};
+		auto invalid_block_signature {invalid_block.block_signature ()};
 
 		constexpr auto num_check_sizes = 18;
 		constexpr std::array<size_t, num_check_sizes> check_sizes{ 2048, 256, 1024, 1,
@@ -86,16 +96,12 @@ TEST (signature_checker, many_multi_threaded)
 			std::fill (lengths[i].begin (), lengths[i].end (), sizeof (decltype (block_hash)));
 
 			pub_keys[i].resize (check_size);
-			nano::account acc;
-			std::fill (pub_keys[i].begin (), pub_keys[i].end (), acc.bytes.data ());
-			block.account_set (acc);
-			pub_keys[i][last_signature_index] = invalid_block.account ().bytes.data ();
+			std::fill (pub_keys[i].begin (), pub_keys[i].end (), block_account.bytes.data ());
+			pub_keys[i][last_signature_index] = invalid_block_account.bytes.data ();
 
 			signatures[i].resize (check_size);
-			nano::signature sig;
-			std::fill (signatures[i].begin (), signatures[i].end (), sig.bytes.data ());
-			block.signature_set (sig);
-			signatures[i][last_signature_index] = invalid_block.block_signature ().bytes.data ();
+			std::fill (signatures[i].begin (), signatures[i].end (), block_signature.bytes.data ());
+			signatures[i][last_signature_index] = invalid_block_signature.bytes.data ();
 
 			verifications[i].resize (check_size);
 
@@ -129,14 +135,13 @@ TEST (signature_checker, one)
 		std::vector<int> verifications;
 		size_t size (1);
 		verifications.resize (size);
-		for (auto i (0); i < size; ++i)
-		{
-			hashes.push_back (block.hash ());
-			messages.push_back (hashes.back ().bytes.data ());
-			lengths.push_back (sizeof (decltype (hashes)::value_type));
-			pub_keys.push_back (block.account ().bytes.data ());
-			signatures.push_back (block.block_signature ().bytes.data ());
-		}
+		hashes.push_back (block.hash ());
+		messages.push_back (hashes.back ().bytes.data ());
+		lengths.push_back (sizeof (decltype (hashes)::value_type));
+		auto account {block. account ()};
+		pub_keys.push_back (account.bytes.data ());
+		auto signature {block.block_signature ()};
+		signatures.push_back (signature.bytes.data ());
 		nano::signature_check_set check = { size, messages.data (), lengths.data (), pub_keys.data (), signatures.data (), verifications.data () };
 		checker.verify (check);
 		ASSERT_EQ (verifications.front (), result);
@@ -182,6 +187,10 @@ TEST (signature_checker, boundary_checks)
 	pub_keys.reserve (max_size);
 	std::vector<unsigned char const *> signatures;
 	signatures.reserve (max_size);
+	std::vector<nano::account> accounts;
+	accounts.reserve (max_size);
+	std::vector<nano::signature> block_signatures;
+	block_signatures.reserve (max_size);
 	nano::keypair key;
 	nano::state_block block (key.pub, 0, key.pub, 0, 0, key.prv, key.pub, 0);
 
@@ -198,8 +207,10 @@ TEST (signature_checker, boundary_checks)
 			hashes.push_back (block.hash ());
 			messages.push_back (hashes.back ().bytes.data ());
 			lengths.push_back (sizeof (decltype (hashes)::value_type));
-			pub_keys.push_back (block.account ().bytes.data ());
-			signatures.push_back (block.block_signature ().bytes.data ());
+			accounts.push_back (block.account ());
+			pub_keys.push_back (accounts.back().bytes.data ());
+			block_signatures.push_back (block.block_signature ());
+			signatures.push_back (block_signatures.back ().bytes.data ());
 		}
 		nano::signature_check_set check = { size, messages.data (), lengths.data (), pub_keys.data (), signatures.data (), verifications.data () };
 		checker.verify (check);

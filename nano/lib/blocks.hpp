@@ -311,8 +311,8 @@ public:
 	state_block (nano::account const &, nano::block_hash const &, nano::account const &, nano::amount const &, nano::link const &, nano::raw_key const &, nano::public_key const &, uint64_t);
 	state_block (bool &, nano::stream &);
 	state_block (bool &, boost::property_tree::ptree const &);
-	state_block (const nano::change_block &);
-	state_block (nano::change_block &&);
+	state_block (const nano::state_block &);
+	state_block (nano::state_block &&);
 	virtual ~state_block ();
 	using nano::block::hash;
 	void hash (blake2b_state &) const override;
@@ -336,6 +336,7 @@ public:
 	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::state_block const &) const;
+	nano::state_block& operator=(const nano::state_block& other);
 	bool valid_predecessor (nano::block const &) const override;
 	void previous_set (nano::block_hash previous_a);
 	void balance_set (nano::amount balance_a);

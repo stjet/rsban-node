@@ -1550,7 +1550,7 @@ TEST (mdb_block_store, upgrade_v17_v18)
 	// Size of state block should equal that set in db (no change)
 	nano::mdb_val value;
 	ASSERT_FALSE (mdb_get (store.env.tx (transaction), store.blocks_handle, nano::mdb_val (state_send.hash ()), value));
-	ASSERT_EQ (value.size (), sizeof (nano::block_type) + nano::state_block::size + nano::block_sideband::size (nano::block_type::state));
+	ASSERT_EQ (value.size (), sizeof (nano::block_type) + nano::state_block::size () + nano::block_sideband::size (nano::block_type::state));
 
 	// Check that sidebands are correctly populated
 	{

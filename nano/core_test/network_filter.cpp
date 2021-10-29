@@ -86,11 +86,11 @@ TEST (network_filter, many)
 		ASSERT_FALSE (error);
 
 		// This validates nano::message_header::size
-		ASSERT_EQ (bytes->size (), block->size + header.size);
+		ASSERT_EQ (bytes->size (), block->size () + header.size);
 
 		// Now filter the rest of the stream
 		// All blocks should pass through
-		ASSERT_FALSE (filter.apply (bytes->data (), block->size));
+		ASSERT_FALSE (filter.apply (bytes->data (), block->size ()));
 		ASSERT_FALSE (error);
 
 		// Make sure the stream was rewinded correctly

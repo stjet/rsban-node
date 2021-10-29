@@ -130,9 +130,9 @@ pub unsafe extern "C" fn rsn_state_block_balance(handle: &StateBlockHandle, resu
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_balance_set(
     handle: *mut StateBlockHandle,
-    representative: &[u8; 16],
+    balance: &[u8; 16],
 ) {
-    (*handle).block.hashables.balance = Amount::from_be_bytes(*representative);
+    (*handle).block.hashables.balance = Amount::from_be_bytes(*balance);
 }
 
 #[no_mangle]
@@ -143,9 +143,9 @@ pub unsafe extern "C" fn rsn_state_block_link(handle: &StateBlockHandle, result:
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_link_set(
     handle: *mut StateBlockHandle,
-    representative: &[u8; 32],
+    link: &[u8; 32],
 ) {
-    (*handle).block.hashables.link = Link::from_be_bytes(*representative);
+    (*handle).block.hashables.link = Link::from_be_bytes(*link);
 }
 
 #[no_mangle]

@@ -3299,7 +3299,9 @@ TEST (node, block_processor_signatures)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node1.work_generate_blocking (send3->hash ()))
 				 .build_shared ();
-	send4->signature.bytes[32] ^= 0x1;
+	auto sig {send4->block_signature ()};
+	sig.bytes[32] ^= 0x1;
+	send4->signature_set (sig);
 	// Invalid signature bit (force)
 	auto send5 = builder.make_block ()
 				 .account (nano::dev::genesis_key.pub)
@@ -3310,7 +3312,9 @@ TEST (node, block_processor_signatures)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node1.work_generate_blocking (send3->hash ()))
 				 .build_shared ();
-	send5->signature.bytes[31] ^= 0x1;
+	sig = send5->block_signature ();
+	sig.bytes[31] ^= 0x1;
+	send5->signature_set (sig);
 	// Invalid signature to unchecked
 	{
 		auto transaction (node1.store.tx_begin_write ());
@@ -3383,7 +3387,9 @@ TEST (node, block_processor_reject_state)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
-	send1->signature.bytes[0] ^= 1;
+	auto sig {send1->block_signature ()};
+	sig.bytes[0] ^= 1;
+	send1->signature_set (sig);
 	ASSERT_FALSE (node.ledger.block_or_pruned_exists (send1->hash ()));
 	node.process_active (send1);
 	auto flushed = std::async (std::launch::async, [&node] { node.block_processor.flush (); });

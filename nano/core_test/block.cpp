@@ -124,9 +124,7 @@ TEST (block, change_serialize_json)
 	std::stringstream istream (string1);
 	boost::property_tree::read_json (istream, tree1);
 	bool error (false);
-	std::cerr << "4" << std::endl;
 	nano::change_block block2 (error, tree1);
-	std::cerr << "5" << std::endl;
 	ASSERT_FALSE (error);
 	ASSERT_EQ (block1, block2);
 }
@@ -344,7 +342,7 @@ TEST (state_block, serialization)
 		block1->serialize (stream);
 	}
 	ASSERT_EQ (0x5, bytes[215]); // Ensure work is serialized big-endian
-	ASSERT_EQ (nano::state_block::size, bytes.size ());
+	ASSERT_EQ (nano::state_block::size (), bytes.size ());
 	bool error1 (false);
 	nano::bufferstream stream (bytes.data (), bytes.size ());
 	nano::state_block block2 (error1, stream);

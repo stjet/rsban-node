@@ -4,6 +4,8 @@ use crate::{
 };
 use anyhow::Result;
 
+use super::BlockType;
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct StateHashables {
     // Account# / public key that operates this account
@@ -41,10 +43,13 @@ impl StateBlock {
             + Amount::serialized_size() // Balance
             + Link::serialized_size() // Link
             + Signature::serialized_size()
-            + std::mem::size_of::<u64>()
+            + std::mem::size_of::<u64>() // Work
     }
 
     pub fn hash(&self, blake2b: &mut impl Blake2b) -> Result<()> {
+        let mut preamble = [0u8;32];
+        preamble[31] = BlockType::State as u8;
+        blake2b.update(&preamble);
         blake2b.update(&self.hashables.account.to_be_bytes())?;
         blake2b.update(&self.hashables.previous.to_be_bytes())?;
         blake2b.update(&self.hashables.representative.to_be_bytes())?;

@@ -2270,7 +2270,7 @@ TEST (ledger, epoch_blocks_v2_general)
 	// Trying to upgrade from epoch 0 to epoch 2. It is a requirement epoch upgrades are sequential unless the account is unopened
 	ASSERT_EQ (nano::process_result::block_position, ledger.process (transaction, epoch1).code);
 	// Set it to the first epoch and it should now succeed
-	epoch1 = nano::state_block (nano::dev::genesis->account (), nano::dev::genesis->hash (), nano::dev::genesis->account (), nano::dev::constants.genesis_amount, ledger.epoch_link (nano::epoch::epoch_1), nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, epoch1.work);
+	epoch1 = nano::state_block (nano::dev::genesis->account (), nano::dev::genesis->hash (), nano::dev::genesis->account (), nano::dev::constants.genesis_amount, ledger.epoch_link (nano::epoch::epoch_1), nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, epoch1.block_work ());
 	ASSERT_EQ (nano::process_result::progress, ledger.process (transaction, epoch1).code);
 	ASSERT_EQ (nano::epoch::epoch_1, epoch1.sideband ().details ().epoch ());
 	ASSERT_EQ (nano::epoch::epoch_0, epoch1.sideband ().source_epoch ()); // Not used for epoch blocks

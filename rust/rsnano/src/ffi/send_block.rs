@@ -127,9 +127,7 @@ pub unsafe extern "C" fn rsn_send_block_signature_set(
 
 #[no_mangle]
 pub extern "C" fn rsn_send_block_equals(a: &SendBlockHandle, b: &SendBlockHandle) -> bool {
-    a.block.work.eq(&b.block.work)
-        && a.block.signature.eq(&b.block.signature)
-        && a.block.hashables.eq(&b.block.hashables)
+    a.block.eq(&b.block)
 }
 
 #[no_mangle]

@@ -350,20 +350,6 @@ nano::send_block::send_block (nano::block_hash const & previous_a, nano::account
 	handle = rsnano::rsn_send_block_create2 (&dto);
 	if (handle == nullptr)
 		throw std::runtime_error ("could not create send_block");
-	/*
-	rsnano::SendBlockDto dto;
-	std::copy (std::begin (previous_a.bytes), std::end (previous_a.bytes), std::begin (dto.previous));
-	std::copy (std::begin (destination_a.bytes), std::end (destination_a.bytes), std::begin (dto.destination));
-	std::copy (std::begin (balance_a.bytes), std::end (balance_a.bytes), std::begin (dto.balance));
-	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
-	dto.work = work_a;
-	handle = rsnano::rsn_send_block_create (&dto);
-	auto hash_l{ hash () };
-	auto sig{ nano::sign_message (prv_a, pub_a, hash_l) };
-	uint8_t sig_bytes[64];
-	std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (sig_bytes));
-	rsnano::rsn_send_block_signature_set (handle, &sig_bytes);
-*/
 }
 
 nano::send_block::send_block (bool & error_a, nano::stream & stream_a) :

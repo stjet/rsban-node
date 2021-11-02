@@ -8,7 +8,7 @@ use anyhow::Result;
 
 use super::BlockType;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct SendHashables {
     pub previous: BlockHash,
     pub destination: Account,
@@ -54,7 +54,7 @@ impl SendHashables {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Default, Debug)]
 pub struct SendBlock {
     pub hashables: SendHashables,
     pub signature: Signature,
@@ -86,6 +86,12 @@ impl SendBlock {
         block.signature = signature;
 
         Ok(block)
+    }
+
+    pub fn read_from_stream(stream: &mut impl Stream) -> Result<Self> {
+        let mut result = Self::default();
+        result.deserialize(stream)?;
+        Ok(result)
     }
 
     pub fn hash(&self) -> Ref<BlockHash> {
@@ -164,14 +170,28 @@ impl SendBlock {
     }
 }
 
+impl PartialEq for SendBlock {
+    fn eq(&self, other: &Self) -> bool {
+        self.hashables == other.hashables
+            && self.signature == other.signature
+            && self.work == other.work
+    }
+}
+
+impl Eq for SendBlock {}
+
 #[cfg(test)]
 mod tests {
-    use crate::numbers::{validate_message, KeyPair};
+    use crate::{
+        numbers::{validate_message, KeyPair},
+        utils::TestStream,
+    };
 
     use super::*;
 
+    // original test: transaction_block.empty
     #[test]
-    fn transaction_block_empty() -> Result<()> {
+    fn create_send_block() -> Result<()> {
         let key = KeyPair::new();
         let mut block = SendBlock::new(
             &BlockHash::from(0),
@@ -186,6 +206,27 @@ mod tests {
 
         block.signature.make_invalid();
         assert!(validate_message(&key.public_key(), hash.as_bytes(), &block.signature).is_err());
+        Ok(())
+    }
+
+    // original test: block.send_serialize
+    #[test]
+    fn serialize() -> Result<()> {
+        let key = KeyPair::new();
+        let block1 = SendBlock::new(
+            &BlockHash::from(0),
+            &Account::from(1),
+            &Amount::new(2),
+            &key.private_key(),
+            &key.public_key(),
+            5,
+        )?;
+        let mut stream = TestStream::new();
+        block1.serialize(&mut stream)?;
+        assert!(stream.bytes_written() > 0);
+
+        let block2 = SendBlock::read_from_stream(&mut stream)?;
+        assert_eq!(block1, block2);
         Ok(())
     }
 }

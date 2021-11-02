@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use crate::utils::Stream;
 use anyhow::Result;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct PublicKey {
     value: [u8; 32], // big endian
 }
@@ -39,7 +39,7 @@ impl PublicKey {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct Account {
     public_key: PublicKey,
 }
@@ -86,7 +86,7 @@ impl From<u64> for Account {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct BlockHash {
     value: [u8; 32], //big endian
 }
@@ -136,7 +136,7 @@ impl From<u64> for BlockHash {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct Amount {
     value: u128, // native endian!
 }
@@ -173,9 +173,15 @@ impl Amount {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Signature {
     bytes: [u8; 64],
+}
+
+impl Default for Signature {
+    fn default() -> Self {
+        Self { bytes: [0; 64] }
+    }
 }
 
 impl Signature {

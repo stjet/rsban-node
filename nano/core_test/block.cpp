@@ -50,26 +50,6 @@ TEST (sign_message, sign_in_rust_and_validate_in_cpp)
 	ASSERT_EQ (valid, false);
 }
 
-TEST (block, send_serialize)
-{
-	nano::keypair key;
-	nano::send_block block1 (0, 1, 2, key.prv, key.pub, 5);
-	std::vector<uint8_t> bytes;
-	{
-		nano::vectorstream stream1 (bytes);
-		block1.serialize (stream1);
-	}
-	auto data (bytes.data ());
-	auto size (bytes.size ());
-	ASSERT_NE (nullptr, data);
-	ASSERT_NE (0, size);
-	nano::bufferstream stream2 (data, size);
-	bool error (false);
-	nano::send_block block2 (error, stream2);
-	ASSERT_FALSE (error);
-	ASSERT_EQ (block1, block2);
-}
-
 TEST (block, send_serialize_json)
 {
 	nano::keypair key;

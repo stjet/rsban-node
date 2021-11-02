@@ -44,7 +44,8 @@ TEST (message, keepalive_deserialize)
 
 TEST (message, publish_serialization)
 {
-	nano::publish publish{ nano::dev::network_params.network, std::make_shared<nano::send_block> (0, 1, 2, nano::keypair ().prv, 4, 5) };
+	nano::keypair key1;
+	nano::publish publish{ nano::dev::network_params.network, std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5) };
 	ASSERT_EQ (nano::block_type::send, publish.header.block_type ());
 	std::vector<uint8_t> bytes;
 	{
@@ -73,7 +74,7 @@ TEST (message, publish_serialization)
 TEST (message, confirm_ack_serialization)
 {
 	nano::keypair key1;
-	auto vote (std::make_shared<nano::vote> (key1.pub, key1.prv, 0, std::make_shared<nano::send_block> (0, 1, 2, key1.prv, 4, 5)));
+	auto vote (std::make_shared<nano::vote> (key1.pub, key1.prv, 0, std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5)));
 	nano::confirm_ack con1{ nano::dev::network_params.network, vote };
 	std::vector<uint8_t> bytes;
 	{

@@ -56,16 +56,16 @@ TEST (signature_checker, many_multi_threaded)
 		nano::keypair key;
 		nano::state_block block (key.pub, 0, key.pub, 0, 0, key.prv, key.pub, 0);
 		auto block_hash = block.hash ();
-		auto block_account { block.account ()};
-		auto block_signature { block.block_signature ()};
+		auto block_account{ block.account () };
+		auto block_signature{ block.block_signature () };
 
 		nano::state_block invalid_block (key.pub, 0, key.pub, 0, 0, key.prv, key.pub, 0);
-		auto sig {invalid_block.block_signature ()};
+		auto sig{ invalid_block.block_signature () };
 		sig.bytes[31] ^= 0x1;
 		invalid_block.signature_set (sig);
 		auto invalid_block_hash = block.hash ();
-		auto invalid_block_account {invalid_block.account ()};
-		auto invalid_block_signature {invalid_block.block_signature ()};
+		auto invalid_block_account{ invalid_block.account () };
+		auto invalid_block_signature{ invalid_block.block_signature () };
 
 		constexpr auto num_check_sizes = 18;
 		constexpr std::array<size_t, num_check_sizes> check_sizes{ 2048, 256, 1024, 1,
@@ -138,9 +138,9 @@ TEST (signature_checker, one)
 		hashes.push_back (block.hash ());
 		messages.push_back (hashes.back ().bytes.data ());
 		lengths.push_back (sizeof (decltype (hashes)::value_type));
-		auto account {block. account ()};
+		auto account{ block.account () };
 		pub_keys.push_back (account.bytes.data ());
-		auto signature {block.block_signature ()};
+		auto signature{ block.block_signature () };
 		signatures.push_back (signature.bytes.data ());
 		nano::signature_check_set check = { size, messages.data (), lengths.data (), pub_keys.data (), signatures.data (), verifications.data () };
 		checker.verify (check);
@@ -151,7 +151,7 @@ TEST (signature_checker, one)
 	nano::state_block block (key.pub, 0, key.pub, 0, 0, key.prv, key.pub, 0);
 
 	// Make signaure invalid and check result is incorrect
-	auto sig { block.block_signature ()};
+	auto sig{ block.block_signature () };
 	sig.bytes[31] ^= 0x1;
 	block.signature_set (sig);
 	verify_block (block, 0);
@@ -208,7 +208,7 @@ TEST (signature_checker, boundary_checks)
 			messages.push_back (hashes.back ().bytes.data ());
 			lengths.push_back (sizeof (decltype (hashes)::value_type));
 			accounts.push_back (block.account ());
-			pub_keys.push_back (accounts.back().bytes.data ());
+			pub_keys.push_back (accounts.back ().bytes.data ());
 			block_signatures.push_back (block.block_signature ());
 			signatures.push_back (block_signatures.back ().bytes.data ());
 		}

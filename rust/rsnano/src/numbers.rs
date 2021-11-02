@@ -1,7 +1,9 @@
+use std::convert::TryFrom;
+
 use crate::utils::Stream;
 use anyhow::Result;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct PublicKey {
     value: [u8; 32], // big endian
 }
@@ -28,12 +30,16 @@ impl PublicKey {
         stream.read_bytes(&mut self.value, len)
     }
 
-    pub fn to_be_bytes(&self) -> [u8; 32] {
+    pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
+        &self.value
+    }
+
+    pub fn to_be_bytes(self) -> [u8; 32] {
         self.value
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Account {
     public_key: PublicKey,
 }
@@ -67,12 +73,20 @@ impl Account {
         self.public_key.deserialize(stream)
     }
 
-    pub fn to_be_bytes(&self) -> [u8; 32] {
+    pub fn to_be_bytes(self) -> [u8; 32] {
         self.public_key.to_be_bytes()
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+impl From<u64> for Account {
+    fn from(value: u64) -> Self {
+        let mut key = PublicKey::new();
+        key.value[24..].copy_from_slice(&value.to_be_bytes());
+        Account::from_public_key(key)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct BlockHash {
     value: [u8; 32], //big endian
 }
@@ -80,6 +94,10 @@ pub struct BlockHash {
 impl BlockHash {
     pub fn new() -> Self {
         Self { value: [0; 32] }
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.value == [0u8; 32]
     }
 
     pub fn from_be_bytes(value: [u8; 32]) -> Self {
@@ -99,12 +117,26 @@ impl BlockHash {
         stream.read_bytes(&mut self.value, len)
     }
 
-    pub fn to_be_bytes(&self) -> [u8; 32] {
+    pub fn to_be_bytes(self) -> [u8; 32] {
         self.value
+    }
+
+    pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
+        &self.value
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+impl From<u64> for BlockHash {
+    fn from(value: u64) -> Self {
+        let mut result = Self { value: [0; 32] };
+
+        result.value[24..].copy_from_slice(&value.to_be_bytes());
+
+        result
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Amount {
     value: u128, // native endian!
 }
@@ -136,7 +168,7 @@ impl Amount {
         Ok(())
     }
 
-    pub fn to_be_bytes(&self) -> [u8; 16] {
+    pub fn to_be_bytes(self) -> [u8; 16] {
         self.value.to_be_bytes()
     }
 }
@@ -151,7 +183,7 @@ impl Signature {
         Self { bytes: [0u8; 64] }
     }
 
-    pub fn from_be_bytes(bytes: [u8; 64]) -> Self {
+    pub fn from_bytes(bytes: [u8; 64]) -> Self {
         Self { bytes }
     }
 
@@ -170,8 +202,17 @@ impl Signature {
         Ok(result)
     }
 
+    pub fn as_bytes(&'_ self) -> &'_ [u8; 64] {
+        &self.bytes
+    }
+
     pub fn to_be_bytes(&self) -> [u8; 64] {
         self.bytes
+    }
+
+    #[cfg(test)]
+    pub fn make_invalid(&mut self) {
+        self.bytes[31] ^= 1;
     }
 }
 
@@ -204,5 +245,114 @@ impl Link {
 
     pub fn to_be_bytes(&self) -> [u8; 32] {
         self.bytes
+    }
+}
+
+pub struct RawKey {
+    bytes: [u8; 32],
+}
+
+impl RawKey {
+    pub fn new() -> Self {
+        Self { bytes: [0u8; 32] }
+    }
+
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self { bytes }
+    }
+
+    pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
+        &self.bytes
+    }
+}
+
+impl TryFrom<&RawKey> for PublicKey {
+    type Error = anyhow::Error;
+    fn try_from(prv: &RawKey) -> Result<Self, Self::Error> {
+        let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(prv.as_bytes())
+            .map_err(|_| anyhow!("could not extract secret key"))?;
+        let public = ed25519_dalek_blake2b::PublicKey::from(&secret);
+        Ok(PublicKey {
+            value: public.to_bytes(),
+        })
+    }
+}
+
+pub struct KeyPair {
+    keypair: ed25519_dalek_blake2b::Keypair,
+}
+
+impl KeyPair {
+    pub fn new() -> Self {
+        let mut rng = rand::thread_rng();
+        let keypair = ed25519_dalek_blake2b::Keypair::generate(&mut rng);
+        Self { keypair }
+    }
+
+    pub fn public_key(&self) -> PublicKey {
+        PublicKey::from_be_bytes(self.keypair.public.to_bytes())
+    }
+
+    pub fn private_key(&self) -> RawKey {
+        RawKey::from_bytes(self.keypair.secret.to_bytes())
+    }
+}
+
+pub fn sign_message(
+    private_key: &RawKey,
+    public_key: &PublicKey,
+    data: &[u8],
+) -> Result<Signature> {
+    let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(private_key.as_bytes())
+        .map_err(|_| anyhow!("could not extract secret key"))?;
+    let public = ed25519_dalek_blake2b::PublicKey::from_bytes(public_key.as_bytes())
+        .map_err(|_| anyhow!("could not extract public key"))?;
+    let expanded = ed25519_dalek_blake2b::ExpandedSecretKey::from(&secret);
+    let signature = expanded.sign(data, &public);
+    Ok(Signature::from_bytes(signature.to_bytes()))
+}
+
+pub fn validate_message(
+    public_key: &PublicKey,
+    message: &[u8],
+    signature: &Signature,
+) -> Result<()> {
+    let public = ed25519_dalek_blake2b::PublicKey::from_bytes(public_key.as_bytes())
+        .map_err(|_| anyhow!("could not extract public key"))?;
+    let sig = ed25519_dalek_blake2b::Signature::new(signature.to_be_bytes());
+    public
+        .verify_strict(message, &sig)
+        .map_err(|_| anyhow!("could not verify message"))?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ed25519_signing() -> Result<()> {
+        let secret_key = ed25519_dalek_blake2b::SecretKey::from_bytes(&[0u8; 32]).unwrap();
+        let public_key = ed25519_dalek_blake2b::PublicKey::from(&secret_key);
+        let message = [0u8; 32];
+        let expanded_prv_key = ed25519_dalek_blake2b::ExpandedSecretKey::from(&secret_key);
+        let signature = expanded_prv_key.sign(&message, &public_key);
+        public_key.verify_strict(&message, &signature).unwrap();
+
+        let mut sig_bytes = signature.to_bytes();
+        sig_bytes[32] ^= 0x1;
+        let signature = ed25519_dalek_blake2b::Signature::new(sig_bytes);
+        assert!(public_key.verify_strict(&message, &signature).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn sign_message_test() -> Result<()> {
+        let keypair = KeyPair::new();
+        let data = [0u8; 32];
+        let signature = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+        validate_message(&keypair.public_key(), &data, &signature)?;
+        Ok(())
     }
 }

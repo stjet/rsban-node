@@ -90,6 +90,16 @@ struct SendBlockDto
 	uint64_t work;
 };
 
+struct SendBlockDto2
+{
+	uint8_t previous[32];
+	uint8_t destination[32];
+	uint8_t balance[16];
+	uint8_t priv_key[32];
+	uint8_t pub_key[32];
+	uint64_t work;
+};
+
 struct StateBlockDto
 {
 	uint8_t signature[64];
@@ -251,6 +261,8 @@ SendBlockHandle * rsn_send_block_clone (const SendBlockHandle * handle);
 
 SendBlockHandle * rsn_send_block_create (const SendBlockDto * dto);
 
+SendBlockHandle * rsn_send_block_create2 (const SendBlockDto2 * dto);
+
 int32_t rsn_send_block_deserialize (SendBlockHandle * handle, void * stream);
 
 void rsn_send_block_destination (const SendBlockHandle * handle, uint8_t (*result)[32]);
@@ -283,13 +295,19 @@ void rsn_send_block_work_set (SendBlockHandle * handle, uint64_t work);
 
 void rsn_send_block_zero (SendBlockHandle * handle);
 
+int32_t rsn_sign_message (const uint8_t (*priv_key)[32],
+const uint8_t (*pub_key)[32],
+const uint8_t * message,
+uintptr_t len,
+uint8_t (*signature)[64]);
+
 void rsn_state_block_account (const StateBlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_state_block_account_set (StateBlockHandle * handle, const uint8_t (*source)[32]);
 
 void rsn_state_block_balance (const StateBlockHandle * handle, uint8_t (*result)[16]);
 
-void rsn_state_block_balance_set (StateBlockHandle * handle, const uint8_t (*representative)[16]);
+void rsn_state_block_balance_set (StateBlockHandle * handle, const uint8_t (*balance)[16]);
 
 StateBlockHandle * rsn_state_block_clone (const StateBlockHandle * handle);
 
@@ -305,7 +323,7 @@ int32_t rsn_state_block_hash (const StateBlockHandle * handle, void * state);
 
 void rsn_state_block_link (const StateBlockHandle * handle, uint8_t (*result)[32]);
 
-void rsn_state_block_link_set (StateBlockHandle * handle, const uint8_t (*representative)[32]);
+void rsn_state_block_link_set (StateBlockHandle * handle, const uint8_t (*link)[32]);
 
 void rsn_state_block_previous (const StateBlockHandle * handle, uint8_t (*result)[32]);
 
@@ -327,6 +345,11 @@ uintptr_t rsn_state_block_size ();
 uint64_t rsn_state_block_work (const StateBlockHandle * handle);
 
 void rsn_state_block_work_set (StateBlockHandle * handle, uint64_t work);
+
+bool rsn_valdiate_message (const uint8_t (*pub_key)[32],
+const uint8_t * message,
+uintptr_t len,
+const uint8_t (*signature)[64]);
 
 } // extern "C"
 

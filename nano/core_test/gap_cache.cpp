@@ -9,7 +9,8 @@ TEST (gap_cache, add_new)
 {
 	nano::system system (1);
 	nano::gap_cache cache (*system.nodes[0]);
-	auto block1 (std::make_shared<nano::send_block> (0, 1, 2, nano::keypair ().prv, 4, 5));
+	nano::keypair key1;
+	auto block1 (std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5));
 	cache.add (block1->hash ());
 }
 
@@ -17,7 +18,8 @@ TEST (gap_cache, add_existing)
 {
 	nano::system system (1);
 	nano::gap_cache cache (*system.nodes[0]);
-	auto block1 (std::make_shared<nano::send_block> (0, 1, 2, nano::keypair ().prv, 4, 5));
+	nano::keypair key1;
+	auto block1 (std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5));
 	cache.add (block1->hash ());
 	nano::unique_lock<nano::mutex> lock (cache.mutex);
 	auto existing1 (cache.blocks.get<1> ().find (block1->hash ()));
@@ -37,7 +39,8 @@ TEST (gap_cache, comparison)
 {
 	nano::system system (1);
 	nano::gap_cache cache (*system.nodes[0]);
-	auto block1 (std::make_shared<nano::send_block> (1, 0, 2, nano::keypair ().prv, 4, 5));
+	nano::keypair key1;
+	auto block1 (std::make_shared<nano::send_block> (1, 0, 2, key1.prv, key1.pub, 5));
 	cache.add (block1->hash ());
 	nano::unique_lock<nano::mutex> lock (cache.mutex);
 	auto existing1 (cache.blocks.get<1> ().find (block1->hash ()));
@@ -45,7 +48,8 @@ TEST (gap_cache, comparison)
 	auto arrival (existing1->arrival);
 	lock.unlock ();
 	ASSERT_TIMELY (20s, std::chrono::steady_clock::now () != arrival);
-	auto block3 (std::make_shared<nano::send_block> (0, 42, 1, nano::keypair ().prv, 3, 4));
+	nano::keypair key2;
+	auto block3 (std::make_shared<nano::send_block> (0, 42, 1, key2.prv, key2.pub, 4));
 	cache.add (block3->hash ());
 	ASSERT_EQ (2, cache.size ());
 	lock.lock ();

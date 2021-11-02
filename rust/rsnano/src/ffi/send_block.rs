@@ -1,10 +1,10 @@
-use std::ffi::c_void;
+use std::{cell::RefCell, ffi::c_void};
 
 use num::FromPrimitive;
 
 use crate::{
     blocks::{SendBlock, SendHashables},
-    numbers::{Account, Amount, BlockHash, Signature},
+    numbers::{Account, Amount, BlockHash, PublicKey, RawKey, Signature},
 };
 
 use super::{blake2b::FfiBlake2b, FfiStream};
@@ -18,6 +18,16 @@ pub struct SendBlockDto {
     pub work: u64,
 }
 
+#[repr(C)]
+pub struct SendBlockDto2 {
+    pub previous: [u8; 32],
+    pub destination: [u8; 32],
+    pub balance: [u8; 16],
+    pub priv_key: [u8; 32],
+    pub pub_key: [u8; 32],
+    pub work: u64,
+}
+
 pub struct SendBlockHandle {
     block: SendBlock,
 }
@@ -27,6 +37,31 @@ pub extern "C" fn rsn_send_block_create(dto: &SendBlockDto) -> *mut SendBlockHan
     Box::into_raw(Box::new(SendBlockHandle {
         block: SendBlock::from(dto),
     }))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_send_block_create2(dto: &SendBlockDto2) -> *mut SendBlockHandle {
+    let previous = BlockHash::from_be_bytes(dto.previous);
+    let destination = Account::from_be_bytes(dto.destination);
+    let balance = Amount::from_be_bytes(dto.balance);
+    let private_key = RawKey::from_bytes(dto.priv_key);
+    let public_key = PublicKey::from_be_bytes(dto.pub_key);
+    let block = match SendBlock::new(
+        &previous,
+        &destination,
+        &balance,
+        &private_key,
+        &public_key,
+        dto.work,
+    ) {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("could not create send block: {}", e);
+            return std::ptr::null_mut();
+        }
+    };
+
+    Box::into_raw(Box::new(SendBlockHandle { block }))
 }
 
 #[no_mangle]
@@ -87,7 +122,7 @@ pub unsafe extern "C" fn rsn_send_block_signature_set(
     handle: *mut SendBlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::from_be_bytes(*signature);
+    (*handle).block.signature = Signature::from_bytes(*signature);
 }
 
 #[no_mangle]
@@ -150,7 +185,7 @@ pub unsafe extern "C" fn rsn_send_block_balance_set(
 #[no_mangle]
 pub extern "C" fn rsn_send_block_hash(handle: &SendBlockHandle, state: *mut c_void) -> i32 {
     let mut blake2b = FfiBlake2b::new(state);
-    if handle.block.hash(&mut blake2b).is_ok() {
+    if handle.block.hash_hashables(&mut blake2b).is_ok() {
         0
     } else {
         -1
@@ -175,8 +210,9 @@ impl From<&SendBlockDto> for SendBlock {
     fn from(value: &SendBlockDto) -> Self {
         SendBlock {
             hashables: SendHashables::from(value),
-            signature: Signature::from_be_bytes(value.signature),
+            signature: Signature::from_bytes(value.signature),
             work: value.work,
+            hash: RefCell::new(BlockHash::new()),
         }
     }
 }

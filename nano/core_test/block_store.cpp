@@ -345,7 +345,8 @@ TEST (bootstrap, simple)
 	nano::logger_mt logger;
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
-	auto block1 (std::make_shared<nano::send_block> (0, 1, 2, nano::keypair ().prv, 4, 5));
+	nano::keypair key1;
+	auto block1 (std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5));
 	auto transaction (store->tx_begin_write ());
 	auto block2 (store->unchecked.get (transaction, block1->previous ()));
 	ASSERT_TRUE (block2.empty ());
@@ -368,7 +369,8 @@ TEST (unchecked, multiple)
 	nano::logger_mt logger;
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
-	auto block1 (std::make_shared<nano::send_block> (4, 1, 2, nano::keypair ().prv, 4, 5));
+	nano::keypair key1;
+	auto block1 (std::make_shared<nano::send_block> (4, 1, 2, key1.prv, key1.pub, 5));
 	auto transaction (store->tx_begin_write ());
 	auto block2 (store->unchecked.get (transaction, block1->previous ()));
 	ASSERT_TRUE (block2.empty ());
@@ -385,7 +387,8 @@ TEST (unchecked, double_put)
 	nano::logger_mt logger;
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
-	auto block1 (std::make_shared<nano::send_block> (4, 1, 2, nano::keypair ().prv, 4, 5));
+	nano::keypair key1;
+	auto block1 (std::make_shared<nano::send_block> (4, 1, 2, key1.prv, key1.pub, 5));
 	auto transaction (store->tx_begin_write ());
 	auto block2 (store->unchecked.get (transaction, block1->previous ()));
 	ASSERT_TRUE (block2.empty ());
@@ -400,9 +403,12 @@ TEST (unchecked, multiple_get)
 	nano::logger_mt logger;
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
-	auto block1 (std::make_shared<nano::send_block> (4, 1, 2, nano::keypair ().prv, 4, 5));
-	auto block2 (std::make_shared<nano::send_block> (3, 1, 2, nano::keypair ().prv, 4, 5));
-	auto block3 (std::make_shared<nano::send_block> (5, 1, 2, nano::keypair ().prv, 4, 5));
+	nano::keypair key1;
+	auto block1 (std::make_shared<nano::send_block> (4, 1, 2, key1.prv, key1.pub, 5));
+	nano::keypair key2;
+	auto block2 (std::make_shared<nano::send_block> (3, 1, 2, key2.prv, key2.pub, 5));
+	nano::keypair key3;
+	auto block3 (std::make_shared<nano::send_block> (5, 1, 2, key3.prv, key3.pub, 5));
 	{
 		auto transaction (store->tx_begin_write ());
 		store->unchecked.put (transaction, block1->previous (), block1); // unchecked1
@@ -485,7 +491,8 @@ TEST (block_store, one_bootstrap)
 	nano::logger_mt logger;
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
-	auto block1 (std::make_shared<nano::send_block> (0, 1, 2, nano::keypair ().prv, 4, 5));
+	nano::keypair key;
+	auto block1 (std::make_shared<nano::send_block> (0, 1, 2, key.prv, key.pub, 5));
 	auto transaction (store->tx_begin_write ());
 	store->unchecked.put (transaction, block1->hash (), block1);
 	auto begin (store->unchecked.begin (transaction));
@@ -723,13 +730,17 @@ TEST (block_store, roots)
 	nano::logger_mt logger;
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
-	nano::send_block send_block (0, 1, 2, nano::keypair ().prv, 4, 5);
+	nano::keypair key1;
+	nano::send_block send_block (0, 1, 2, key1.prv, key1.pub, 5);
 	ASSERT_EQ (send_block.previous (), send_block.root ());
-	nano::change_block change_block (0, 1, nano::keypair ().prv, 3, 4);
+	nano::keypair key2;
+	nano::change_block change_block (0, 1, key2.prv, key2.pub, 4);
 	ASSERT_EQ (change_block.previous (), change_block.root ());
-	nano::receive_block receive_block (0, 1, nano::keypair ().prv, 3, 4);
+	nano::keypair key3;
+	nano::receive_block receive_block (0, 1, key3.prv, key3.pub, 4);
 	ASSERT_EQ (receive_block.previous (), receive_block.root ());
-	nano::open_block open_block (0, 1, 2, nano::keypair ().prv, 4, 5);
+	nano::keypair key4;
+	nano::open_block open_block (0, 1, 2, key4.prv, key4.pub, 5);
 	ASSERT_EQ (open_block.account (), open_block.root ());
 }
 

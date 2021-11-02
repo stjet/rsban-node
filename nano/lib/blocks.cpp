@@ -339,6 +339,18 @@ nano::send_block::send_block (nano::block_hash const & previous_a, nano::account
 {
 	debug_assert (destination_a != nullptr);
 	debug_assert (pub_a != nullptr);
+
+	rsnano::SendBlockDto2 dto;
+	std::copy (std::begin (previous_a.bytes), std::end (previous_a.bytes), std::begin (dto.previous));
+	std::copy (std::begin (destination_a.bytes), std::end (destination_a.bytes), std::begin (dto.destination));
+	std::copy (std::begin (balance_a.bytes), std::end (balance_a.bytes), std::begin (dto.balance));
+	std::copy (std::begin (prv_a.bytes), std::end (prv_a.bytes), std::begin (dto.priv_key));
+	std::copy (std::begin (pub_a.bytes), std::end (pub_a.bytes), std::begin (dto.pub_key));
+	dto.work = work_a;
+	handle = rsnano::rsn_send_block_create2 (&dto);
+	if (handle == nullptr)
+		throw std::runtime_error ("could not create send_block");
+	/*
 	rsnano::SendBlockDto dto;
 	std::copy (std::begin (previous_a.bytes), std::end (previous_a.bytes), std::begin (dto.previous));
 	std::copy (std::begin (destination_a.bytes), std::end (destination_a.bytes), std::begin (dto.destination));
@@ -351,6 +363,7 @@ nano::send_block::send_block (nano::block_hash const & previous_a, nano::account
 	uint8_t sig_bytes[64];
 	std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (sig_bytes));
 	rsnano::rsn_send_block_signature_set (handle, &sig_bytes);
+*/
 }
 
 nano::send_block::send_block (bool & error_a, nano::stream & stream_a) :
@@ -1216,8 +1229,7 @@ nano::state_block::state_block ()
 	std::fill (std::begin (dto.link), std::end (dto.link), 0);
 	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
 	handle = rsnano::rsn_state_block_create (&dto);
-
-} 
+}
 
 nano::state_block::state_block (nano::account const & account_a, nano::block_hash const & previous_a, nano::account const & representative_a, nano::amount const & balance_a, nano::link const & link_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a)
 {
@@ -1504,7 +1516,7 @@ bool nano::state_block::operator== (nano::state_block const & other_a) const
 	return rsnano::rsn_state_block_equals (handle, other_a.handle);
 }
 
-nano::state_block& nano::state_block::operator=(const nano::state_block& other)
+nano::state_block & nano::state_block::operator= (const nano::state_block & other)
 {
 	cached_hash = other.cached_hash;
 	sideband_m = other.sideband_m;
@@ -1616,7 +1628,7 @@ void nano::state_block::link_set (nano::link link)
 
 void nano::state_block::sign_zero ()
 {
-	nano::signature sig(0);
+	nano::signature sig (0);
 	signature_set (sig);
 }
 

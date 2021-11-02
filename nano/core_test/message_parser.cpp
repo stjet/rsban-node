@@ -68,8 +68,10 @@ TEST (message_parser, exact_confirm_ack_size)
 	nano::block_uniquer block_uniquer;
 	nano::vote_uniquer vote_uniquer (block_uniquer);
 	nano::message_parser parser (filter, block_uniquer, vote_uniquer, visitor, system.work, nano::dev::network_params.network);
-	auto block (std::make_shared<nano::send_block> (1, 1, 2, nano::keypair ().prv, 4, *system.work.generate (nano::root (1))));
-	auto vote (std::make_shared<nano::vote> (0, nano::keypair ().prv, 0, std::move (block)));
+	nano::keypair key1;
+	auto block (std::make_shared<nano::send_block> (1, 1, 2, key1.prv, key1.pub, *system.work.generate (nano::root (1))));
+	nano::keypair key2;
+	auto vote (std::make_shared<nano::vote> (0, key2.prv, 0, std::move (block)));
 	nano::confirm_ack message{ nano::dev::network_params.network, vote };
 	std::vector<uint8_t> bytes;
 	{
@@ -102,7 +104,8 @@ TEST (message_parser, exact_confirm_req_size)
 	nano::block_uniquer block_uniquer;
 	nano::vote_uniquer vote_uniquer (block_uniquer);
 	nano::message_parser parser (filter, block_uniquer, vote_uniquer, visitor, system.work, nano::dev::network_params.network);
-	auto block (std::make_shared<nano::send_block> (1, 1, 2, nano::keypair ().prv, 4, *system.work.generate (nano::root (1))));
+	nano::keypair key1;
+	auto block (std::make_shared<nano::send_block> (1, 1, 2, key1.prv, key1.pub, *system.work.generate (nano::root (1))));
 	nano::confirm_req message{ nano::dev::network_params.network, block };
 	std::vector<uint8_t> bytes;
 	{
@@ -135,7 +138,8 @@ TEST (message_parser, exact_confirm_req_hash_size)
 	nano::block_uniquer block_uniquer;
 	nano::vote_uniquer vote_uniquer (block_uniquer);
 	nano::message_parser parser (filter, block_uniquer, vote_uniquer, visitor, system.work, nano::dev::network_params.network);
-	nano::send_block block (1, 1, 2, nano::keypair ().prv, 4, *system.work.generate (nano::root (1)));
+	nano::keypair key1;
+	nano::send_block block (1, 1, 2, key1.prv, key1.pub, *system.work.generate (nano::root (1)));
 	nano::confirm_req message{ nano::dev::network_params.network, block.hash (), block.root () };
 	std::vector<uint8_t> bytes;
 	{
@@ -168,7 +172,8 @@ TEST (message_parser, exact_publish_size)
 	nano::block_uniquer block_uniquer;
 	nano::vote_uniquer vote_uniquer (block_uniquer);
 	nano::message_parser parser (filter, block_uniquer, vote_uniquer, visitor, system.work, nano::dev::network_params.network);
-	auto block (std::make_shared<nano::send_block> (1, 1, 2, nano::keypair ().prv, 4, *system.work.generate (nano::root (1))));
+	nano::keypair key1;
+	auto block (std::make_shared<nano::send_block> (1, 1, 2, key1.prv, key1.pub, *system.work.generate (nano::root (1))));
 	nano::publish message{ nano::dev::network_params.network, block };
 	std::vector<uint8_t> bytes;
 	{

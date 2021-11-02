@@ -1,6 +1,8 @@
+use std::cell::{Ref, RefCell};
+
 use crate::{
-    numbers::{Account, Amount, BlockHash, Signature},
-    utils::{Blake2b, Stream},
+    numbers::{sign_message, Account, Amount, BlockHash, PublicKey, RawKey, Signature},
+    utils::{Blake2b, RustBlake2b, Stream},
 };
 use anyhow::Result;
 
@@ -57,9 +59,57 @@ pub struct SendBlock {
     pub hashables: SendHashables,
     pub signature: Signature,
     pub work: u64,
+    pub hash: RefCell<BlockHash>,
 }
 
 impl SendBlock {
+    pub fn new(
+        previous: &BlockHash,
+        destination: &Account,
+        balance: &Amount,
+        private_key: &RawKey,
+        public_key: &PublicKey,
+        work: u64,
+    ) -> Result<Self> {
+        let mut block = Self {
+            hashables: SendHashables {
+                previous: *previous,
+                destination: *destination,
+                balance: *balance,
+            },
+            work,
+            signature: Signature::new(),
+            hash: RefCell::new(BlockHash::new()),
+        };
+
+        let signature = sign_message(private_key, public_key, block.hash().as_bytes())?;
+        block.signature = signature;
+
+        Ok(block)
+    }
+
+    pub fn hash(&self) -> Ref<BlockHash> {
+        let mut value = self.hash.borrow();
+        if value.is_zero() {
+            drop(value);
+            let mut x = self.hash.borrow_mut();
+            *x = self.generate_hash().unwrap();
+            drop(x);
+            value = self.hash.borrow();
+        }
+
+        value
+    }
+
+    pub fn generate_hash(&self) -> Result<BlockHash> {
+        let mut blake = RustBlake2b::new();
+        blake.init(32)?;
+        self.hash_hashables(&mut blake)?;
+        let mut result = [0u8; 32];
+        blake.finalize(&mut result)?;
+        Ok(BlockHash::from_be_bytes(result))
+    }
+
     pub const fn serialized_size() -> usize {
         SendHashables::serialized_size() + Signature::serialized_size() + std::mem::size_of::<u64>()
     }
@@ -99,7 +149,7 @@ impl SendBlock {
         self.hashables.balance = balance;
     }
 
-    pub fn hash(&self, blake2b: &mut impl Blake2b) -> Result<()> {
+    pub fn hash_hashables(&self, blake2b: &mut impl Blake2b) -> Result<()> {
         blake2b.update(&self.hashables.previous.to_be_bytes())?;
         blake2b.update(&self.hashables.destination.to_be_bytes())?;
         blake2b.update(&self.hashables.balance.to_be_bytes())?;
@@ -111,5 +161,31 @@ impl SendBlock {
             BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
             BlockType::NotABlock | BlockType::State | BlockType::Invalid => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::numbers::{validate_message, KeyPair};
+
+    use super::*;
+
+    #[test]
+    fn transaction_block_empty() -> Result<()> {
+        let key = KeyPair::new();
+        let mut block = SendBlock::new(
+            &BlockHash::from(0),
+            &Account::from(1),
+            &Amount::new(13),
+            &key.private_key(),
+            &key.public_key(),
+            2,
+        )?;
+        let hash = block.hash().to_owned();
+        assert!(validate_message(&key.public_key(), hash.as_bytes(), &block.signature).is_ok());
+
+        block.signature.make_invalid();
+        assert!(validate_message(&key.public_key(), hash.as_bytes(), &block.signature).is_err());
+        Ok(())
     }
 }

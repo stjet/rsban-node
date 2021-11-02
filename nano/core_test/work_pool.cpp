@@ -32,7 +32,8 @@ TEST (work, disabled)
 TEST (work, validate)
 {
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	nano::send_block send_block (1, 1, 2, nano::keypair ().prv, 4, 6);
+	nano::keypair key1;
+	nano::send_block send_block (1, 1, 2, key1.prv, key1.pub, 6);
 	ASSERT_LT (nano::dev::network_params.work.difficulty (send_block), nano::dev::network_params.work.threshold_base (send_block.work_version ()));
 	send_block.block_work_set (*pool.generate (send_block.root ()));
 	ASSERT_LT (nano::dev::network_params.work.threshold_base (send_block.work_version ()), nano::dev::network_params.work.difficulty (send_block));

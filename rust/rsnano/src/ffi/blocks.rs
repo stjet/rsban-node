@@ -3,7 +3,9 @@ use crate::{
     block_details::BlockDetails,
     blocks::{BlockSideband, BlockType},
     epoch::Epoch,
-    numbers::{Account, Amount, BlockHash},
+    numbers::{
+        sign_message, validate_message, Account, Amount, BlockHash, PublicKey, RawKey, Signature,
+    },
 };
 use num::FromPrimitive;
 use std::{convert::TryFrom, ffi::c_void};
@@ -191,4 +193,37 @@ impl TryFrom<u8> for BlockType {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         FromPrimitive::from_u8(value).ok_or_else(|| anyhow!("invalid block type value"))
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_sign_message(
+    priv_key: &[u8; 32],
+    pub_key: &[u8; 32],
+    message: *const u8,
+    len: usize,
+    signature: *mut [u8; 64],
+) -> i32 {
+    let private_key = RawKey::from_bytes(*priv_key);
+    let public_key = PublicKey::from_be_bytes(*pub_key);
+    let data = std::slice::from_raw_parts(message, len);
+    match sign_message(&private_key, &public_key, data) {
+        Ok(sig) => {
+            *signature = sig.to_be_bytes();
+            0
+        }
+        Err(_) => -1,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_valdiate_message(
+    pub_key: &[u8; 32],
+    message: *const u8,
+    len: usize,
+    signature: &[u8; 64],
+) -> bool {
+    let public_key = PublicKey::from_be_bytes(*pub_key);
+    let message = std::slice::from_raw_parts(message, len);
+    let signature = Signature::from_bytes(*signature);
+    validate_message(&public_key, message, &signature).is_err()
 }

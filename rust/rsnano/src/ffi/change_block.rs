@@ -24,7 +24,7 @@ pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut ChangeBl
     Box::into_raw(Box::new(ChangeBlockHandle {
         block: ChangeBlock {
             work: dto.work,
-            signature: Signature::from_be_bytes(dto.signature),
+            signature: Signature::from_bytes(dto.signature),
             hashables: ChangeHashables {
                 previous: BlockHash::from_be_bytes(dto.previous),
                 representative: Account::from_be_bytes(dto.representative),
@@ -68,7 +68,7 @@ pub unsafe extern "C" fn rsn_change_block_signature_set(
     handle: *mut ChangeBlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::from_be_bytes(*signature);
+    (*handle).block.signature = Signature::from_bytes(*signature);
 }
 
 #[no_mangle]

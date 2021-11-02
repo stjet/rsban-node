@@ -204,7 +204,8 @@ TEST (network, send_discarded_publish)
 	nano::system system (2);
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
-	auto block (std::make_shared<nano::send_block> (1, 1, 2, nano::keypair ().prv, 4, *system.work.generate (nano::root (1))));
+	nano::keypair key1;
+	auto block (std::make_shared<nano::send_block> (1, 1, 2, key1.prv, key1.pub, *system.work.generate (nano::root (1))));
 	{
 		auto transaction (node1.store.tx_begin_read ());
 		node1.network.flood_block (block);

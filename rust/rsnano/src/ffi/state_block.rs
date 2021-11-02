@@ -27,7 +27,7 @@ pub extern "C" fn rsn_state_block_create(dto: &StateBlockDto) -> *mut StateBlock
     Box::into_raw(Box::new(StateBlockHandle {
         block: StateBlock {
             work: dto.work,
-            signature: Signature::from_be_bytes(dto.signature),
+            signature: Signature::from_bytes(dto.signature),
             hashables: StateHashables {
                 account: Account::from_be_bytes(dto.account),
                 previous: BlockHash::from_be_bytes(dto.previous),
@@ -74,7 +74,7 @@ pub unsafe extern "C" fn rsn_state_block_signature_set(
     handle: *mut StateBlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::from_be_bytes(*signature);
+    (*handle).block.signature = Signature::from_bytes(*signature);
 }
 
 #[no_mangle]
@@ -141,10 +141,7 @@ pub unsafe extern "C" fn rsn_state_block_link(handle: &StateBlockHandle, result:
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_link_set(
-    handle: *mut StateBlockHandle,
-    link: &[u8; 32],
-) {
+pub unsafe extern "C" fn rsn_state_block_link_set(handle: *mut StateBlockHandle, link: &[u8; 32]) {
     (*handle).block.hashables.link = Link::from_be_bytes(*link);
 }
 

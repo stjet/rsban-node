@@ -25,7 +25,7 @@ pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut OpenBlockHan
     Box::into_raw(Box::new(OpenBlockHandle {
         block: OpenBlock {
             work: dto.work,
-            signature: Signature::from_be_bytes(dto.signature),
+            signature: Signature::from_bytes(dto.signature),
             hashables: OpenHashables {
                 source: BlockHash::from_be_bytes(dto.source),
                 representative: Account::from_be_bytes(dto.representative),
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rsn_open_block_signature_set(
     handle: *mut OpenBlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::from_be_bytes(*signature);
+    (*handle).block.signature = Signature::from_bytes(*signature);
 }
 
 #[no_mangle]

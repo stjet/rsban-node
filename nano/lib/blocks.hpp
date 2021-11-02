@@ -336,7 +336,7 @@ public:
 	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::state_block const &) const;
-	nano::state_block& operator=(const nano::state_block& other);
+	nano::state_block & operator= (const nano::state_block & other);
 	bool valid_predecessor (nano::block const &) const override;
 	void previous_set (nano::block_hash previous_a);
 	void balance_set (nano::amount balance_a);
@@ -346,6 +346,7 @@ public:
 	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
+
 private:
 	rsnano::StateBlockHandle * handle;
 };

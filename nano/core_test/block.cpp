@@ -8,35 +8,52 @@
 
 #include <crypto/ed25519-donna/ed25519.h>
 
-TEST (ed25519, signing)
+TEST (sign_message, sign_in_cpp_and_validate_in_rust)
 {
-	nano::raw_key prv (0);
-	auto pub (nano::pub_key (prv));
-	nano::uint256_union message (0);
-	nano::signature signature;
-	ed25519_sign (message.bytes.data (), sizeof (message.bytes), prv.bytes.data (), pub.bytes.data (), signature.bytes.data ());
-	auto valid1 (ed25519_sign_open (message.bytes.data (), sizeof (message.bytes), pub.bytes.data (), signature.bytes.data ()));
-	ASSERT_EQ (0, valid1);
-	signature.bytes[32] ^= 0x1;
-	auto valid2 (ed25519_sign_open (message.bytes.data (), sizeof (message.bytes), pub.bytes.data (), signature.bytes.data ()));
-	ASSERT_NE (0, valid2);
+	nano::keypair key;
+	auto signature{ nano::sign_message (key.prv, key.pub, 0) };
+
+	uint8_t priv_key[32];
+	uint8_t pub_key[32];
+	uint8_t message[32]{ 0 };
+	uint8_t rsnano_sig[64]{ 0 };
+	uint8_t sig_bytes[64];
+	std::copy (std::begin (key.prv.bytes), std::end (key.prv.bytes), std::begin (priv_key));
+	std::copy (std::begin (key.pub.bytes), std::end (key.pub.bytes), std::begin (pub_key));
+	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (sig_bytes));
+
+	auto validate_result = rsnano::rsn_valdiate_message (&pub_key, message, 32, &sig_bytes);
+	ASSERT_EQ (validate_result, false);
+
+	message[31] = 1;
+	validate_result = rsnano::rsn_valdiate_message (&pub_key, message, 32, &sig_bytes);
+	ASSERT_EQ (validate_result, true);
 }
 
-TEST (transaction_block, empty)
+TEST (sign_message, sign_in_rust_and_validate_in_cpp)
 {
-	nano::keypair key1;
-	nano::send_block block (0, 1, 13, key1.prv, key1.pub, 2);
-	auto hash (block.hash ());
-	ASSERT_FALSE (nano::validate_message (key1.pub, hash, block.block_signature ()));
-	nano::signature signature{ block.block_signature () };
-	signature.bytes[32] ^= 0x1;
-	block.signature_set (signature);
-	ASSERT_TRUE (nano::validate_message (key1.pub, hash, block.block_signature ()));
+	nano::keypair key;
+
+	uint8_t priv_key[32];
+	uint8_t pub_key[32];
+	uint8_t message[32]{ 0 };
+	uint8_t rsnano_sig[64]{ 0 };
+	std::copy (std::begin (key.prv.bytes), std::end (key.prv.bytes), std::begin (priv_key));
+	std::copy (std::begin (key.pub.bytes), std::end (key.pub.bytes), std::begin (pub_key));
+
+	auto result{ rsnano::rsn_sign_message (&priv_key, &pub_key, message, 32, &rsnano_sig) };
+	ASSERT_EQ (result, 0);
+
+	nano::signature actual;
+	std::copy (std::begin (rsnano_sig), std::end (rsnano_sig), std::begin (actual.bytes));
+	auto valid{ nano::validate_message (key.pub, 0, actual) };
+	ASSERT_EQ (valid, false);
 }
 
 TEST (block, send_serialize)
 {
-	nano::send_block block1 (0, 1, 2, nano::keypair ().prv, 4, 5);
+	nano::keypair key;
+	nano::send_block block1 (0, 1, 2, key.prv, key.pub, 5);
 	std::vector<uint8_t> bytes;
 	{
 		nano::vectorstream stream1 (bytes);
@@ -55,7 +72,8 @@ TEST (block, send_serialize)
 
 TEST (block, send_serialize_json)
 {
-	nano::send_block block1 (0, 1, 2, nano::keypair ().prv, 4, 5);
+	nano::keypair key;
+	nano::send_block block1 (0, 1, 2, key.prv, key.pub, 5);
 	std::string string1;
 	block1.serialize_json (string1);
 	ASSERT_NE (0, string1.size ());
@@ -198,7 +216,8 @@ TEST (uint512_union, parse_error_overflow)
 
 TEST (send_block, deserialize)
 {
-	nano::send_block block1 (0, 1, 2, nano::keypair ().prv, 4, 5);
+	nano::keypair key;
+	nano::send_block block1 (0, 1, 2, key.prv, key.pub, 5);
 	ASSERT_EQ (block1.hash (), block1.hash ());
 	std::vector<uint8_t> bytes;
 	{
@@ -313,7 +332,8 @@ TEST (block, publish_req_serialization)
 
 TEST (block, difficulty)
 {
-	nano::send_block block (0, 1, 2, nano::keypair ().prv, 4, 5);
+	nano::keypair key;
+	nano::send_block block (0, 1, 2, key.prv, key.pub, 5);
 	ASSERT_EQ (nano::dev::network_params.work.difficulty (block), nano::dev::network_params.work.difficulty (block.work_version (), block.root (), block.block_work ()));
 }
 

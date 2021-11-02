@@ -3302,7 +3302,7 @@ TEST (node, block_processor_signatures)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node1.work_generate_blocking (send3->hash ()))
 				 .build_shared ();
-	auto sig {send4->block_signature ()};
+	auto sig{ send4->block_signature () };
 	sig.bytes[32] ^= 0x1;
 	send4->signature_set (sig);
 	// Invalid signature bit (force)
@@ -3390,7 +3390,7 @@ TEST (node, block_processor_reject_state)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
-	auto sig {send1->block_signature ()};
+	auto sig{ send1->block_signature () };
 	sig.bytes[0] ^= 1;
 	send1->signature_set (sig);
 	ASSERT_FALSE (node.ledger.block_or_pruned_exists (send1->hash ()));

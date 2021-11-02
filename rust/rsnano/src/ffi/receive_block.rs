@@ -24,7 +24,7 @@ pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut Receiv
     Box::into_raw(Box::new(ReceiveBlockHandle {
         block: ReceiveBlock {
             work: dto.work,
-            signature: Signature::from_be_bytes(dto.signature),
+            signature: Signature::from_bytes(dto.signature),
             hashables: ReceiveHashables {
                 previous: BlockHash::from_be_bytes(dto.previous),
                 source: BlockHash::from_be_bytes(dto.source),
@@ -68,7 +68,7 @@ pub unsafe extern "C" fn rsn_receive_block_signature_set(
     handle: *mut ReceiveBlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::from_be_bytes(*signature);
+    (*handle).block.signature = Signature::from_bytes(*signature);
 }
 
 #[no_mangle]

@@ -72,13 +72,12 @@ TEST (memory_pool, validate_cleanup)
 	nano::make_shared<nano::vote> ();
 
 	ASSERT_TRUE (nano::purge_shared_ptr_singleton_pool_memory<nano::open_block> ());
-	ASSERT_TRUE (nano::purge_shared_ptr_singleton_pool_memory<nano::receive_block> ());
-	ASSERT_TRUE (nano::purge_shared_ptr_singleton_pool_memory<nano::send_block> ());
-	ASSERT_TRUE (nano::purge_shared_ptr_singleton_pool_memory<nano::state_block> ());
-	ASSERT_TRUE (nano::purge_shared_ptr_singleton_pool_memory<nano::vote> ());
-
-	// Change blocks have the same size as open_block so won't deallocate any memory
+	// Blocks have the same size so won't deallocate any memory
+	ASSERT_FALSE (nano::purge_shared_ptr_singleton_pool_memory<nano::receive_block> ());
+	ASSERT_FALSE (nano::purge_shared_ptr_singleton_pool_memory<nano::send_block> ());
+	ASSERT_FALSE (nano::purge_shared_ptr_singleton_pool_memory<nano::state_block> ());
 	ASSERT_FALSE (nano::purge_shared_ptr_singleton_pool_memory<nano::change_block> ());
+	ASSERT_TRUE (nano::purge_shared_ptr_singleton_pool_memory<nano::vote> ());
 
 	ASSERT_EQ (nano::determine_shared_ptr_pool_size<nano::open_block> (), get_allocated_size<nano::open_block> () - sizeof (size_t));
 	ASSERT_EQ (nano::determine_shared_ptr_pool_size<nano::receive_block> (), get_allocated_size<nano::receive_block> () - sizeof (size_t));

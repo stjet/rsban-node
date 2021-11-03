@@ -333,6 +333,7 @@ TEST (wallet, rekey)
 	ASSERT_TRUE (wallet.rekey (transaction, "2"));
 }
 
+// ported to Rust
 TEST (account, encode_zero)
 {
 	nano::account number0{};

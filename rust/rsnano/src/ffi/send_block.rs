@@ -7,7 +7,7 @@ use crate::{
     numbers::{Account, Amount, BlockHash, PublicKey, RawKey, Signature},
 };
 
-use super::{FfiStream, blake2b::FfiBlake2b, property_tree::FfiPropertyTreeWriter};
+use super::{blake2b::FfiBlake2b, property_tree::FfiPropertyTreeWriter, FfiStream};
 
 #[repr(C)]
 pub struct SendBlockDto {
@@ -205,9 +205,12 @@ pub extern "C" fn rsn_send_block_size() -> usize {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_send_block_serialize_json(handle: &SendBlockHandle, ptree: *mut c_void) -> i32 {
+pub extern "C" fn rsn_send_block_serialize_json(
+    handle: &SendBlockHandle,
+    ptree: *mut c_void,
+) -> i32 {
     let mut writer = FfiPropertyTreeWriter::new(ptree);
-    match handle.block.serialize_json(&mut writer){
+    match handle.block.serialize_json(&mut writer) {
         Ok(_) => 0,
         Err(_) => -1,
     }

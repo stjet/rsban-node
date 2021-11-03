@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt::Write;
 
-use crate::utils::Stream;
+use crate::utils::{Blake2b, RustBlake2b, Stream};
 use anyhow::Result;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
@@ -77,6 +77,14 @@ impl Account {
     pub fn to_be_bytes(self) -> [u8; 32] {
         self.public_key.to_be_bytes()
     }
+
+    pub fn encode_account(&self) -> String {
+        todo!()
+    }
+
+    pub fn decode_account(s: &str) -> Result<Account> {
+        todo!()
+    }
 }
 
 impl From<u64> for Account {
@@ -128,7 +136,7 @@ impl BlockHash {
 
     pub fn encode_hex(&self) -> String {
         let mut result = String::with_capacity(64);
-        for &byte in self.value.iter(){
+        for &byte in self.value.iter() {
             write!(&mut result, "{:02X}", byte);
         }
         result
@@ -345,14 +353,40 @@ pub fn validate_message(
 mod tests {
     use super::*;
 
-    mod block_hash{
+    mod block_hash {
         use super::*;
 
         #[test]
-        fn block_hash_encode_hex(){
-            assert_eq!(BlockHash::new().encode_hex(), "0000000000000000000000000000000000000000000000000000000000000000");
-            assert_eq!(BlockHash::from(0x12ab).encode_hex(), "00000000000000000000000000000000000000000000000000000000000012AB");
-            assert_eq!(BlockHash::from_bytes([0xff;32]).encode_hex(), "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        fn block_hash_encode_hex() {
+            assert_eq!(
+                BlockHash::new().encode_hex(),
+                "0000000000000000000000000000000000000000000000000000000000000000"
+            );
+            assert_eq!(
+                BlockHash::from(0x12ab).encode_hex(),
+                "00000000000000000000000000000000000000000000000000000000000012AB"
+            );
+            assert_eq!(
+                BlockHash::from_bytes([0xff; 32]).encode_hex(),
+                "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+            );
+        }
+    }
+
+    mod account {
+        use super::*;
+
+        // original test: account.encode_zero
+        #[test]
+        fn encode_zero() {
+            let account = Account::new();
+            let encoded = account.encode_account();
+            assert_eq!(
+                encoded,
+                "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+            );
+            let copy = Account::decode_account(&encoded).unwrap();
+            assert_eq!(account, copy);
         }
     }
 

@@ -21,13 +21,14 @@ pub unsafe extern "C" fn rsn_callback_property_tree_get_string(f: PropertyTreeGe
     GET_STRING_CALLBACK = Some(f);
 }
 
-
 pub struct FfiPropertyTreeWriter {
     handle: *mut c_void,
 }
 
 impl FfiPropertyTreeWriter {
-    pub fn new(handle: *mut c_void) -> Self { Self { handle } }
+    pub fn new(handle: *mut c_void) -> Self {
+        Self { handle }
+    }
 }
 
 impl PropertyTreeWriter for FfiPropertyTreeWriter {
@@ -57,7 +58,9 @@ pub struct FfiPropertyTreeReader {
 }
 
 impl FfiPropertyTreeReader {
-    pub fn new(handle: *const c_void) -> Self { Self { handle } }
+    pub fn new(handle: *const c_void) -> Self {
+        Self { handle }
+    }
 }
 
 impl PropertyTreeReader for FfiPropertyTreeReader {

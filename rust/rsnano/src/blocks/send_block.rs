@@ -1,6 +1,9 @@
 use std::cell::{Ref, RefCell};
 
-use crate::{numbers::{sign_message, Account, Amount, BlockHash, PublicKey, RawKey, Signature}, utils::{Blake2b, PropertyTreeWriter, RustBlake2b, Stream}};
+use crate::{
+    numbers::{sign_message, Account, Amount, BlockHash, PublicKey, RawKey, Signature},
+    utils::{Blake2b, PropertyTreeWriter, RustBlake2b, Stream},
+};
 use anyhow::Result;
 
 use super::BlockType;

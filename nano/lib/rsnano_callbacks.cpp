@@ -73,7 +73,7 @@ void ptree_put_string (void * ptree, const char * path, uintptr_t path_len, cons
 	auto tree (static_cast<boost::property_tree::ptree *> (ptree));
 	std::string path_str (path, path_len);
 	std::string value_str (value, value_len);
-	tree->put (path_str, value);
+	tree->put (path_str, value_str);
 }
 
 int32_t ptree_get_string (const void * ptree, const char * path, uintptr_t path_len, char * result, uintptr_t result_size)

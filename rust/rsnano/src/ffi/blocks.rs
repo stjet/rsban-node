@@ -1,7 +1,7 @@
 use super::FfiStream;
 use crate::{
     block_details::BlockDetails,
-    blocks::{BlockSideband, BlockType},
+    blocks::{serialized_block_size, BlockSideband, BlockType},
     epoch::Epoch,
     numbers::{
         sign_message, validate_message, Account, Amount, BlockHash, PublicKey, RawKey, Signature,
@@ -226,4 +226,12 @@ pub unsafe extern "C" fn rsn_valdiate_message(
     let message = std::slice::from_raw_parts(message, len);
     let signature = Signature::from_bytes(*signature);
     validate_message(&public_key, message, &signature).is_err()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_serialized_size(block_type: u8) -> usize {
+    match FromPrimitive::from_u8(block_type) {
+        Some(block_type) => serialized_block_size(block_type),
+        None => 0,
+    }
 }

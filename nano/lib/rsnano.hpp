@@ -135,6 +135,8 @@ int32_t rsn_block_details_deserialize (BlockDetailsDto * dto, void * stream);
 
 int32_t rsn_block_details_serialize (const BlockDetailsDto * dto, void * stream);
 
+uintptr_t rsn_block_serialized_size (uint8_t block_type);
+
 int32_t rsn_block_sideband_deserialize (BlockSidebandDto * dto, void * stream, uint8_t block_type);
 
 int32_t rsn_block_sideband_serialize (const BlockSidebandDto * dto, void * stream, uint8_t block_type);

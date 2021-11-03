@@ -153,3 +153,14 @@ impl BlockSideband {
         Ok(())
     }
 }
+
+pub fn serialized_block_size(block_type: BlockType) -> usize {
+    match block_type {
+        BlockType::Invalid | BlockType::NotABlock => 0,
+        BlockType::Send => SendBlock::serialized_size(),
+        BlockType::Receive => ReceiveBlock::serialized_size(),
+        BlockType::Open => OpenBlock::serialized_size(),
+        BlockType::Change => ChangeBlock::serialized_size(),
+        BlockType::State => StateBlock::serialized_size(),
+    }
+}

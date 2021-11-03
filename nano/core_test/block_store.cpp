@@ -2030,7 +2030,8 @@ TEST (rocksdb_block_store, tombstone_count)
 		auto store = std::make_unique<nano::rocksdb_store> (logger, nano::unique_path (), nano::dev::constants);
 		ASSERT_TRUE (!store->init_error ());
 		auto transaction = store->tx_begin_write ();
-		auto block1 (std::make_shared<nano::send_block> (0, 1, 2, nano::keypair ().prv, 4, 5));
+		nano::keypair key1;
+		auto block1 (std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5));
 		store->unchecked.put (transaction, block1->previous (), block1);
 		ASSERT_EQ (store->tombstone_map.at (nano::tables::unchecked).num_since_last_flush.load (), 0);
 		store->unchecked.del (transaction, nano::unchecked_key (block1->previous (), block1->hash ()));

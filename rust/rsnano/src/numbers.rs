@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::fmt::Write;
 
 use crate::utils::Stream;
 use anyhow::Result;
@@ -100,7 +101,7 @@ impl BlockHash {
         self.value == [0u8; 32]
     }
 
-    pub fn from_be_bytes(value: [u8; 32]) -> Self {
+    pub fn from_bytes(value: [u8; 32]) -> Self {
         Self { value }
     }
 
@@ -123,6 +124,14 @@ impl BlockHash {
 
     pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
         &self.value
+    }
+
+    pub fn encode_hex(&self) -> String {
+        let mut result = String::with_capacity(64);
+        for &byte in self.value.iter(){
+            write!(&mut result, "{:02X}", byte);
+        }
+        result
     }
 }
 
@@ -335,6 +344,17 @@ pub fn validate_message(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    mod block_hash{
+        use super::*;
+
+        #[test]
+        fn block_hash_encode_hex(){
+            assert_eq!(BlockHash::new().encode_hex(), "0000000000000000000000000000000000000000000000000000000000000000");
+            assert_eq!(BlockHash::from(0x12ab).encode_hex(), "00000000000000000000000000000000000000000000000000000000000012AB");
+            assert_eq!(BlockHash::from_bytes([0xff;32]).encode_hex(), "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        }
+    }
 
     #[test]
     fn ed25519_signing() -> Result<()> {

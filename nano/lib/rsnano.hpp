@@ -48,6 +48,10 @@ using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
 
 using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
 
+using PropertyTreeGetStringCallback = int32_t (*) (const void *, const char *, uintptr_t, char *, uintptr_t);
+
+using PropertyTreePutStringCallback = void (*) (void *, const char *, uintptr_t, const char *, uintptr_t);
+
 using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
@@ -148,6 +152,10 @@ void rsn_callback_blake2b_final (Blake2BFinalCallback f);
 void rsn_callback_blake2b_init (Blake2BInitCallback f);
 
 void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
+
+void rsn_callback_property_tree_get_string (PropertyTreeGetStringCallback f);
+
+void rsn_callback_property_tree_put_string (PropertyTreePutStringCallback f);
 
 void rsn_callback_read_bytes (ReadBytesCallback f);
 
@@ -282,6 +290,8 @@ void rsn_send_block_previous (const SendBlockHandle * handle, uint8_t (*result)[
 void rsn_send_block_previous_set (SendBlockHandle * handle, const uint8_t (*previous)[32]);
 
 int32_t rsn_send_block_serialize (SendBlockHandle * handle, void * stream);
+
+int32_t rsn_send_block_serialize_json (const SendBlockHandle * handle, void * ptree);
 
 void rsn_send_block_signature (const SendBlockHandle * handle, uint8_t (*result)[64]);
 

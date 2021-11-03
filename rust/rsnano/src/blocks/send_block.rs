@@ -1,9 +1,6 @@
 use std::cell::{Ref, RefCell};
 
-use crate::{
-    numbers::{sign_message, Account, Amount, BlockHash, PublicKey, RawKey, Signature},
-    utils::{Blake2b, RustBlake2b, Stream},
-};
+use crate::{numbers::{sign_message, Account, Amount, BlockHash, PublicKey, RawKey, Signature}, utils::{Blake2b, PropertyTreeWriter, RustBlake2b, Stream}};
 use anyhow::Result;
 
 use super::BlockType;
@@ -32,7 +29,7 @@ impl SendHashables {
         let mut buffer_16 = [0u8; 16];
 
         stream.read_bytes(&mut buffer_32, 32)?;
-        let previous = BlockHash::from_be_bytes(buffer_32);
+        let previous = BlockHash::from_bytes(buffer_32);
 
         stream.read_bytes(&mut buffer_32, 32)?;
         let destination = Account::from_be_bytes(buffer_32);
@@ -113,7 +110,7 @@ impl SendBlock {
         self.hash_hashables(&mut blake)?;
         let mut result = [0u8; 32];
         blake.finalize(&mut result)?;
-        Ok(BlockHash::from_be_bytes(result))
+        Ok(BlockHash::from_bytes(result))
     }
 
     pub const fn serialized_size() -> usize {
@@ -167,6 +164,12 @@ impl SendBlock {
             BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
             BlockType::NotABlock | BlockType::State | BlockType::Invalid => false,
         }
+    }
+
+    pub fn serialize_json(&self, writer: &mut impl PropertyTreeWriter) -> Result<()> {
+        writer.put_string("type", "send")?;
+        writer.put_string("previous", &self.hashables.previous.encode_hex())?;
+        Ok(())
     }
 }
 

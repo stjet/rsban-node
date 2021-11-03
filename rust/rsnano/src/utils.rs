@@ -108,6 +108,14 @@ impl Blake2b for RustBlake2b {
     }
 }
 
+pub trait PropertyTreeReader {
+    fn get_string(&self, path: &str) -> Result<String>;
+}
+
+pub trait PropertyTreeWriter {
+    fn put_string(&mut self, path: &str, value: &str) -> Result<()>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

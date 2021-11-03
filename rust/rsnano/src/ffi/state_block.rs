@@ -30,7 +30,7 @@ pub extern "C" fn rsn_state_block_create(dto: &StateBlockDto) -> *mut StateBlock
             signature: Signature::from_bytes(dto.signature),
             hashables: StateHashables {
                 account: Account::from_be_bytes(dto.account),
-                previous: BlockHash::from_be_bytes(dto.previous),
+                previous: BlockHash::from_bytes(dto.previous),
                 representative: Account::from_be_bytes(dto.representative),
                 balance: Amount::from_be_bytes(dto.balance),
                 link: Link::from_be_bytes(dto.link),
@@ -103,7 +103,7 @@ pub unsafe extern "C" fn rsn_state_block_previous_set(
     handle: *mut StateBlockHandle,
     source: &[u8; 32],
 ) {
-    (*handle).block.hashables.previous = BlockHash::from_be_bytes(*source);
+    (*handle).block.hashables.previous = BlockHash::from_bytes(*source);
 }
 
 #[no_mangle]

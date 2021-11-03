@@ -7,7 +7,7 @@ use crate::{
     numbers::{Account, Amount, BlockHash, PublicKey, RawKey, Signature},
 };
 
-use super::{blake2b::FfiBlake2b, FfiStream};
+use super::{FfiStream, blake2b::FfiBlake2b, property_tree::FfiPropertyTreeWriter};
 
 #[repr(C)]
 pub struct SendBlockDto {
@@ -41,7 +41,7 @@ pub extern "C" fn rsn_send_block_create(dto: &SendBlockDto) -> *mut SendBlockHan
 
 #[no_mangle]
 pub extern "C" fn rsn_send_block_create2(dto: &SendBlockDto2) -> *mut SendBlockHandle {
-    let previous = BlockHash::from_be_bytes(dto.previous);
+    let previous = BlockHash::from_bytes(dto.previous);
     let destination = Account::from_be_bytes(dto.destination);
     let balance = Amount::from_be_bytes(dto.balance);
     let private_key = RawKey::from_bytes(dto.priv_key);
@@ -162,7 +162,7 @@ pub unsafe extern "C" fn rsn_send_block_previous_set(
     handle: *mut SendBlockHandle,
     previous: &[u8; 32],
 ) {
-    let previous = BlockHash::from_be_bytes(*previous);
+    let previous = BlockHash::from_bytes(*previous);
     (*handle).block.set_previous(previous);
 }
 
@@ -204,6 +204,15 @@ pub extern "C" fn rsn_send_block_size() -> usize {
     SendBlock::serialized_size()
 }
 
+#[no_mangle]
+pub extern "C" fn rsn_send_block_serialize_json(handle: &SendBlockHandle, ptree: *mut c_void) -> i32 {
+    let mut writer = FfiPropertyTreeWriter::new(ptree);
+    match handle.block.serialize_json(&mut writer){
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
+}
+
 impl From<&SendBlockDto> for SendBlock {
     fn from(value: &SendBlockDto) -> Self {
         SendBlock {
@@ -218,7 +227,7 @@ impl From<&SendBlockDto> for SendBlock {
 impl From<&SendBlockDto> for SendHashables {
     fn from(value: &SendBlockDto) -> Self {
         SendHashables {
-            previous: BlockHash::from_be_bytes(value.previous),
+            previous: BlockHash::from_bytes(value.previous),
             destination: Account::from_be_bytes(value.destination),
             balance: Amount::new(u128::from_be_bytes(value.balance)),
         }

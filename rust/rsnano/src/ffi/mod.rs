@@ -3,6 +3,7 @@ mod blake2b;
 mod blocks;
 mod change_block;
 mod open_block;
+mod property_tree;
 mod receive_block;
 mod send_block;
 mod state_block;

@@ -26,8 +26,8 @@ pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut Receiv
             work: dto.work,
             signature: Signature::from_bytes(dto.signature),
             hashables: ReceiveHashables {
-                previous: BlockHash::from_be_bytes(dto.previous),
-                source: BlockHash::from_be_bytes(dto.source),
+                previous: BlockHash::from_bytes(dto.previous),
+                source: BlockHash::from_bytes(dto.source),
             },
         },
     }))
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rsn_receive_block_previous_set(
     handle: *mut ReceiveBlockHandle,
     previous: &[u8; 32],
 ) {
-    let previous = BlockHash::from_be_bytes(*previous);
+    let previous = BlockHash::from_bytes(*previous);
     (*handle).block.hashables.previous = previous;
 }
 
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rsn_receive_block_source_set(
     handle: *mut ReceiveBlockHandle,
     previous: &[u8; 32],
 ) {
-    let source = BlockHash::from_be_bytes(*previous);
+    let source = BlockHash::from_bytes(*previous);
     (*handle).block.hashables.source = source;
 }
 

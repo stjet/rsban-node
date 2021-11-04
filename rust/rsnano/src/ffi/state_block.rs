@@ -5,7 +5,7 @@ use crate::{
     numbers::{Account, Amount, BlockHash, Link, Signature},
 };
 
-use super::{blake2b::FfiBlake2b, FfiStream};
+use super::{FfiStream, blake2b::FfiBlake2b, property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter}};
 
 pub struct StateBlockHandle {
     block: StateBlock,
@@ -33,7 +33,7 @@ pub extern "C" fn rsn_state_block_create(dto: &StateBlockDto) -> *mut StateBlock
                 previous: BlockHash::from_bytes(dto.previous),
                 representative: Account::from_bytes(dto.representative),
                 balance: Amount::from_be_bytes(dto.balance),
-                link: Link::from_be_bytes(dto.link),
+                link: Link::from_bytes(dto.link),
             },
         },
     }))
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rsn_state_block_link(handle: &StateBlockHandle, result:
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_link_set(handle: *mut StateBlockHandle, link: &[u8; 32]) {
-    (*handle).block.hashables.link = Link::from_be_bytes(*link);
+    (*handle).block.hashables.link = Link::from_bytes(*link);
 }
 
 #[no_mangle]
@@ -190,5 +190,26 @@ pub unsafe extern "C" fn rsn_state_block_deserialize(
         0
     } else {
         -1
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_state_block_serialize_json(
+    handle: &StateBlockHandle,
+    ptree: *mut c_void,
+) -> i32 {
+    let mut writer = FfiPropertyTreeWriter::new(ptree);
+    match handle.block.serialize_json(&mut writer) {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_state_block_deserialize_json(ptree: *const c_void) -> *mut StateBlockHandle {
+    let reader = FfiPropertyTreeReader::new(ptree);
+    match StateBlock::deserialize_json(&reader) {
+        Ok(block) => Box::into_raw(Box::new(StateBlockHandle { block })),
+        Err(_) => std::ptr::null_mut(),
     }
 }

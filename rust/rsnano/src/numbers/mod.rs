@@ -227,7 +227,7 @@ impl Link {
         Self { bytes: [0u8; 32] }
     }
 
-    pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
         Self { bytes }
     }
 
@@ -246,6 +246,24 @@ impl Link {
 
     pub fn to_be_bytes(&self) -> [u8; 32] {
         self.bytes
+    }
+
+    pub fn encode_hex(&self) -> String{
+        let mut result = String::with_capacity(64);
+        for byte in self.bytes {
+            write!(&mut result, "{:02X}", byte).unwrap();
+        }
+        result
+    }
+
+    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self>{
+        let mut bytes = [0u8;32];
+        hex::decode_to_slice(s.as_ref(), &mut bytes)?;
+        Ok(Link::from_bytes(bytes))
+    }
+
+    pub fn to_account(&self) -> Account{
+        Account::from_bytes(self.bytes)
     }
 }
 

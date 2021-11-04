@@ -361,9 +361,6 @@ TEST (state_block, serialization)
 	nano::state_block block3 (error2, tree);
 	ASSERT_FALSE (error2);
 	ASSERT_EQ (*block1, block3);
-	block3.zero ();
-	ASSERT_FALSE (block3.deserialize_json (tree));
-	ASSERT_EQ (*block1, block3);
 }
 
 TEST (state_block, hashing)

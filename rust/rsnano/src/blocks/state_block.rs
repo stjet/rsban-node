@@ -1,7 +1,4 @@
-use crate::{
-    numbers::{Account, Amount, BlockHash, Link, Signature},
-    utils::{Blake2b, Stream},
-};
+use crate::{numbers::{Account, Amount, BlockHash, Link, Signature, from_string_hex, to_string_hex}, utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, Stream}};
 use anyhow::Result;
 
 use super::BlockType;
@@ -80,5 +77,43 @@ impl StateBlock {
         stream.read_bytes(&mut work_bytes, 8)?;
         self.work = u64::from_be_bytes(work_bytes);
         Ok(())
+    }
+
+    pub fn serialize_json(&self, writer: &mut impl PropertyTreeWriter) -> Result<()> {
+        writer.put_string("type", "state");
+        writer.put_string("account", &self.hashables.account.encode_account())?;
+        writer.put_string("previous", &self.hashables.previous.encode_hex())?;
+        writer.put_string("representative", &self.hashables.representative.encode_account())?;
+        writer.put_string("balance", &self.hashables.balance.encode_hex())?;
+        writer.put_string("link", &self.hashables.link.encode_hex())?;
+        writer.put_string("link_as_account", &self.hashables.link.to_account().encode_account())?;
+        writer.put_string("signature", &self.signature.encode_hex());
+        writer.put_string("work", &to_string_hex(self.work))?;
+        Ok(())
+    }
+
+    pub fn deserialize_json(reader: &impl PropertyTreeReader) -> Result<Self> {
+        let block_type = reader.get_string("type")?;
+        if block_type != "state"{
+            bail!("invalid block type");
+        }
+        let account = Account::decode_account(reader.get_string("account")?)?;
+        let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
+        let representative = Account::decode_account(reader.get_string("representative")?)?;
+        let balance = Amount::decode_hex(reader.get_string("balance")?)?;
+        let link = Link::decode_hex(reader.get_string("link")?)?;
+        let work = from_string_hex(reader.get_string("work")?)?;
+        let signature = Signature::decode_hex(reader.get_string("signature")?)?;
+        Ok(StateBlock{
+            work,
+            signature,
+            hashables: StateHashables{
+                account,
+                previous,
+                representative,
+                balance,
+                link,
+            },
+        })
     }
 }

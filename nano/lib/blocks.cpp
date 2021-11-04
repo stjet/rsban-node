@@ -601,62 +601,6 @@ void nano::open_block::serialize_json (boost::property_tree::ptree & tree) const
 	tree.put ("signature", signature_l);
 }
 
-bool nano::open_block::deserialize_json (boost::property_tree::ptree const & tree_a)
-{
-	auto error (false);
-	try
-	{
-		debug_assert (tree_a.get<std::string> ("type") == "open");
-		auto source_l (tree_a.get<std::string> ("source"));
-		auto representative_l (tree_a.get<std::string> ("representative"));
-		auto account_l (tree_a.get<std::string> ("account"));
-		auto work_l (tree_a.get<std::string> ("work"));
-		auto signature_l (tree_a.get<std::string> ("signature"));
-		uint8_t buffer_32[32];
-		nano::block_hash source;
-		error = source.decode_hex (source_l);
-		if (!error)
-		{
-			nano::account representative;
-			error = representative.decode_hex (representative_l);
-			if (!error)
-			{
-				nano::account account;
-				error = account.decode_hex (account_l);
-				if (!error)
-				{
-					uint64_t work;
-					error = nano::from_string_hex (work_l, work);
-					if (!error)
-					{
-						nano::signature signature;
-						error = signature.decode_hex (signature_l);
-						uint8_t signature_bytes[64];
-						std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (signature_bytes));
-						rsnano::rsn_open_block_signature_set (handle, &signature_bytes);
-
-						std::copy (std::begin (source.bytes), std::end (source.bytes), std::begin (buffer_32));
-						rsnano::rsn_open_block_source_set (handle, &buffer_32);
-
-						std::copy (std::begin (representative.bytes), std::end (representative.bytes), std::begin (buffer_32));
-						rsnano::rsn_open_block_representative_set (handle, &buffer_32);
-
-						std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (buffer_32));
-						rsnano::rsn_open_block_account_set (handle, &buffer_32);
-
-						rsnano::rsn_open_block_work_set (handle, work);
-					}
-				}
-			}
-		}
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-	return error;
-}
-
 void nano::open_block::visit (nano::block_visitor & visitor_a) const
 {
 	visitor_a.open_block (*this);
@@ -934,45 +878,6 @@ void nano::change_block::serialize_json (boost::property_tree::ptree & tree) con
 	std::string signature_l;
 	block_signature ().encode_hex (signature_l);
 	tree.put ("signature", signature_l);
-}
-
-bool nano::change_block::deserialize_json (boost::property_tree::ptree const & tree_a)
-{
-	auto error (false);
-	try
-	{
-		debug_assert (tree_a.get<std::string> ("type") == "change");
-		auto previous_l (tree_a.get<std::string> ("previous"));
-		auto representative_l (tree_a.get<std::string> ("representative"));
-		auto work_l (tree_a.get<std::string> ("work"));
-		auto signature_l (tree_a.get<std::string> ("signature"));
-		nano::block_hash previous;
-		error = previous.decode_hex (previous_l);
-		previous_set (previous);
-		if (!error)
-		{
-			nano::account representative;
-			error = representative.decode_hex (representative_l);
-			representative_set (representative);
-			if (!error)
-			{
-				uint64_t work;
-				error = nano::from_string_hex (work_l, work);
-				block_work_set (work);
-				if (!error)
-				{
-					nano::signature signature;
-					error = signature.decode_hex (signature_l);
-					signature_set (signature);
-				}
-			}
-		}
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-	return error;
 }
 
 void nano::change_block::visit (nano::block_visitor & visitor_a) const
@@ -1291,66 +1196,6 @@ void nano::state_block::serialize_json (boost::property_tree::ptree & tree) cons
 	block_signature ().encode_hex (signature_l);
 	tree.put ("signature", signature_l);
 	tree.put ("work", nano::to_string_hex (block_work ()));
-}
-
-bool nano::state_block::deserialize_json (boost::property_tree::ptree const & tree_a)
-{
-	auto error (false);
-	try
-	{
-		debug_assert (tree_a.get<std::string> ("type") == "state");
-		auto account_l (tree_a.get<std::string> ("account"));
-		auto previous_l (tree_a.get<std::string> ("previous"));
-		auto representative_l (tree_a.get<std::string> ("representative"));
-		auto balance_l (tree_a.get<std::string> ("balance"));
-		auto link_l (tree_a.get<std::string> ("link"));
-		auto work_l (tree_a.get<std::string> ("work"));
-		auto signature_l (tree_a.get<std::string> ("signature"));
-		nano::account account;
-		error = account.decode_account (account_l);
-		account_set (account);
-		if (!error)
-		{
-			nano::block_hash previous;
-			error = previous.decode_hex (previous_l);
-			previous_set (previous);
-			if (!error)
-			{
-				nano::account representative;
-				error = representative.decode_account (representative_l);
-				representative_set (representative);
-				if (!error)
-				{
-					nano::amount balance;
-					error = balance.decode_dec (balance_l);
-					balance_set (balance);
-					if (!error)
-					{
-						nano::link link;
-						error = link.decode_account (link_l) && link.decode_hex (link_l);
-						link_set (link);
-						if (!error)
-						{
-							uint64_t work;
-							error = nano::from_string_hex (work_l, work);
-							block_work_set (work);
-							if (!error)
-							{
-								nano::signature signature;
-								error = signature.decode_hex (signature_l);
-								signature_set (signature);
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-	return error;
 }
 
 void nano::state_block::visit (nano::block_visitor & visitor_a) const
@@ -1688,51 +1533,6 @@ void nano::receive_block::serialize_json (boost::property_tree::ptree & tree) co
 	block_signature ().encode_hex (signature_l);
 	tree.put ("work", nano::to_string_hex (block_work ()));
 	tree.put ("signature", signature_l);
-}
-
-bool nano::receive_block::deserialize_json (boost::property_tree::ptree const & tree_a)
-{
-	auto error (false);
-	try
-	{
-		debug_assert (tree_a.get<std::string> ("type") == "receive");
-		auto previous_l (tree_a.get<std::string> ("previous"));
-		auto source_l (tree_a.get<std::string> ("source"));
-		auto work_l (tree_a.get<std::string> ("work"));
-		auto signature_l (tree_a.get<std::string> ("signature"));
-		nano::block_hash previous;
-		error = previous.decode_hex (previous_l);
-		uint8_t buffer[32];
-		std::copy (std::begin (previous.bytes), std::end (previous.bytes), std::begin (buffer));
-		rsnano::rsn_receive_block_previous_set (handle, &buffer);
-
-		if (!error)
-		{
-			nano::block_hash source;
-			error = source.decode_hex (source_l);
-			std::copy (std::begin (source.bytes), std::end (source.bytes), std::begin (buffer));
-			rsnano::rsn_receive_block_source_set (handle, &buffer);
-
-			if (!error)
-			{
-				uint64_t work_tmp;
-				error = nano::from_string_hex (work_l, work_tmp);
-				block_work_set (work_tmp);
-
-				if (!error)
-				{
-					nano::signature sig;
-					error = sig.decode_hex (signature_l);
-					signature_set (sig);
-				}
-			}
-		}
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-	return error;
 }
 
 nano::receive_block::receive_block ()

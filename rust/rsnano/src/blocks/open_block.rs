@@ -1,7 +1,4 @@
-use crate::{
-    numbers::{Account, BlockHash, Signature},
-    utils::{Blake2b, Stream},
-};
+use crate::{numbers::{Account, BlockHash, Signature, from_string_hex, to_string_hex}, utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, Stream}};
 use anyhow::Result;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -53,5 +50,32 @@ impl OpenBlock {
         stream.read_bytes(&mut work_bytes, 8)?;
         self.work = u64::from_be_bytes(work_bytes);
         Ok(())
+    }
+
+    pub fn serialize_json(&self, writer: &mut impl PropertyTreeWriter) -> Result<()> {
+        writer.put_string("type", "open")?;
+        writer.put_string("source", &self.hashables.source.encode_hex())?;
+        writer.put_string("representative", &self.hashables.representative.encode_account())?;
+        writer.put_string("account", &self.hashables.account.encode_account())?;
+        writer.put_string("work", &to_string_hex (self.work))?;
+        writer.put_string("signature", &self.signature.encode_hex())?;
+        Ok(())
+    }
+
+    pub fn deserialize_json(reader: &impl PropertyTreeReader) -> Result<Self> {
+        let source = BlockHash::decode_hex(reader.get_string("source")?)?;
+        let representative = Account::decode_account(reader.get_string("representative")?)?;
+        let account = Account::decode_account(reader.get_string("account")?)?;
+        let work = from_string_hex(reader.get_string("work")?)?;
+        let signature = Signature::decode_hex(reader.get_string("signature")?)?;
+        Ok(OpenBlock{
+            work,
+            signature,
+            hashables: OpenHashables{
+                source,
+                representative,
+                account,
+            },
+        })
     }
 }

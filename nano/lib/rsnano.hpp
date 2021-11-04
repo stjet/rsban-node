@@ -175,6 +175,8 @@ ChangeBlockHandle * rsn_change_block_create (const ChangeBlockDto * dto);
 
 int32_t rsn_change_block_deserialize (ChangeBlockHandle * handle, void * stream);
 
+ChangeBlockHandle * rsn_change_block_deserialize_json (const void * ptree);
+
 void rsn_change_block_destroy (ChangeBlockHandle * handle);
 
 bool rsn_change_block_equals (const ChangeBlockHandle * a, const ChangeBlockHandle * b);
@@ -191,6 +193,8 @@ void rsn_change_block_representative_set (ChangeBlockHandle * handle,
 const uint8_t (*representative)[32]);
 
 int32_t rsn_change_block_serialize (ChangeBlockHandle * handle, void * stream);
+
+int32_t rsn_change_block_serialize_json (const ChangeBlockHandle * handle, void * ptree);
 
 void rsn_change_block_signature (const ChangeBlockHandle * handle, uint8_t (*result)[64]);
 
@@ -212,6 +216,8 @@ OpenBlockHandle * rsn_open_block_create (const OpenBlockDto * dto);
 
 int32_t rsn_open_block_deserialize (OpenBlockHandle * handle, void * stream);
 
+OpenBlockHandle * rsn_open_block_deserialize_json (const void * ptree);
+
 void rsn_open_block_destroy (OpenBlockHandle * handle);
 
 bool rsn_open_block_equals (const OpenBlockHandle * a, const OpenBlockHandle * b);
@@ -224,6 +230,8 @@ void rsn_open_block_representative_set (OpenBlockHandle * handle,
 const uint8_t (*representative)[32]);
 
 int32_t rsn_open_block_serialize (OpenBlockHandle * handle, void * stream);
+
+int32_t rsn_open_block_serialize_json (const OpenBlockHandle * handle, void * ptree);
 
 void rsn_open_block_signature (const OpenBlockHandle * handle, uint8_t (*result)[64]);
 
@@ -243,6 +251,8 @@ ReceiveBlockHandle * rsn_receive_block_clone (const ReceiveBlockHandle * handle)
 
 ReceiveBlockHandle * rsn_receive_block_create (const ReceiveBlockDto * dto);
 
+ReceiveBlockHandle * rsn_receive_block_deserialize_json (const void * ptree);
+
 void rsn_receive_block_destroy (ReceiveBlockHandle * handle);
 
 bool rsn_receive_block_equals (const ReceiveBlockHandle * a, const ReceiveBlockHandle * b);
@@ -252,6 +262,8 @@ int32_t rsn_receive_block_hash (const ReceiveBlockHandle * handle, void * state)
 void rsn_receive_block_previous (const ReceiveBlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_receive_block_previous_set (ReceiveBlockHandle * handle, const uint8_t (*previous)[32]);
+
+int32_t rsn_receive_block_serialize_json (const ReceiveBlockHandle * handle, void * ptree);
 
 void rsn_receive_block_signature (const ReceiveBlockHandle * handle, uint8_t (*result)[64]);
 
@@ -333,6 +345,8 @@ StateBlockHandle * rsn_state_block_create (const StateBlockDto * dto);
 
 int32_t rsn_state_block_deserialize (StateBlockHandle * handle, void * stream);
 
+StateBlockHandle * rsn_state_block_deserialize_json (const void * ptree);
+
 void rsn_state_block_destroy (StateBlockHandle * handle);
 
 bool rsn_state_block_equals (const StateBlockHandle * a, const StateBlockHandle * b);
@@ -353,6 +367,8 @@ void rsn_state_block_representative_set (StateBlockHandle * handle,
 const uint8_t (*representative)[32]);
 
 int32_t rsn_state_block_serialize (StateBlockHandle * handle, void * stream);
+
+int32_t rsn_state_block_serialize_json (const StateBlockHandle * handle, void * ptree);
 
 void rsn_state_block_signature (const StateBlockHandle * handle, uint8_t (*result)[64]);
 

@@ -5,7 +5,7 @@ use crate::{
     numbers::{Account, BlockHash, Signature},
 };
 
-use super::{blake2b::FfiBlake2b, FfiStream};
+use super::{FfiStream, blake2b::FfiBlake2b, property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter}};
 
 pub struct OpenBlockHandle {
     block: OpenBlock,
@@ -157,5 +157,26 @@ pub unsafe extern "C" fn rsn_open_block_deserialize(
         0
     } else {
         -1
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_open_block_serialize_json(
+    handle: &OpenBlockHandle,
+    ptree: *mut c_void,
+) -> i32 {
+    let mut writer = FfiPropertyTreeWriter::new(ptree);
+    match handle.block.serialize_json(&mut writer) {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_open_block_deserialize_json(ptree: *const c_void) -> *mut OpenBlockHandle {
+    let reader = FfiPropertyTreeReader::new(ptree);
+    match OpenBlock::deserialize_json(&reader) {
+        Ok(block) => Box::into_raw(Box::new(OpenBlockHandle { block })),
+        Err(_) => std::ptr::null_mut(),
     }
 }

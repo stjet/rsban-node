@@ -279,6 +279,8 @@ SendBlockHandle * rsn_send_block_create2 (const SendBlockDto2 * dto);
 
 int32_t rsn_send_block_deserialize (SendBlockHandle * handle, void * stream);
 
+SendBlockHandle * rsn_send_block_deserialize_json (const void * ptree);
+
 void rsn_send_block_destination (const SendBlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_send_block_destination_set (SendBlockHandle * handle, const uint8_t (*destination)[32]);

@@ -7,7 +7,11 @@ use crate::{
     numbers::{Account, Amount, BlockHash, PublicKey, RawKey, Signature},
 };
 
-use super::{blake2b::FfiBlake2b, property_tree::FfiPropertyTreeWriter, FfiStream};
+use super::{
+    blake2b::FfiBlake2b,
+    property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
+    FfiStream,
+};
 
 #[repr(C)]
 pub struct SendBlockDto {
@@ -213,6 +217,15 @@ pub extern "C" fn rsn_send_block_serialize_json(
     match handle.block.serialize_json(&mut writer) {
         Ok(_) => 0,
         Err(_) => -1,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_send_block_deserialize_json(ptree: *const c_void) -> *mut SendBlockHandle {
+    let reader = FfiPropertyTreeReader::new(ptree);
+    match SendBlock::deserialize_json(&reader) {
+        Ok(block) => Box::into_raw(Box::new(SendBlockHandle { block })),
+        Err(_) => std::ptr::null_mut(),
     }
 }
 

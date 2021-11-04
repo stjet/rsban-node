@@ -90,6 +90,12 @@ impl BlockHash {
         }
         result
     }
+
+    pub fn decode_hex(s: impl AsRef<str>) -> Result<BlockHash> {
+        let mut bytes = [0u8; 32];
+        hex::decode_to_slice(s.as_ref(), &mut bytes)?;
+        Ok(BlockHash::from_bytes(bytes))
+    }
 }
 
 impl From<u64> for BlockHash {
@@ -140,6 +146,11 @@ impl Amount {
 
     pub fn encode_hex(&self) -> String {
         format!("{:032X}", self.value)
+    }
+
+    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
+        let value = u128::from_str_radix(s.as_ref(), 16)?;
+        Ok(Amount::new(value))
     }
 }
 
@@ -197,6 +208,12 @@ impl Signature {
             write!(&mut result, "{:02X}", byte).unwrap();
         }
         result
+    }
+
+    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
+        let mut bytes = [0u8; 64];
+        hex::decode_to_slice(s.as_ref(), &mut bytes)?;
+        Ok(Signature::from_bytes(bytes))
     }
 }
 
@@ -312,6 +329,11 @@ pub fn validate_message(
 
 pub fn to_string_hex(i: u64) -> String {
     format!("{:016X}", i)
+}
+
+pub fn from_string_hex(s: impl AsRef<str>) -> Result<u64> {
+    let result = u64::from_str_radix(s.as_ref(), 16)?;
+    Ok(result)
 }
 
 #[cfg(test)]

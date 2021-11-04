@@ -254,53 +254,6 @@ void nano::send_block::serialize_json (boost::property_tree::ptree & tree) const
 		throw std::runtime_error ("could not serialize send_block as JSON");
 }
 
-bool nano::send_block::deserialize_json (boost::property_tree::ptree const & tree_a)
-{
-	auto error (false);
-	try
-	{
-		debug_assert (tree_a.get<std::string> ("type") == "send");
-		auto previous_l (tree_a.get<std::string> ("previous"));
-		auto destination_l (tree_a.get<std::string> ("destination"));
-		auto balance_l (tree_a.get<std::string> ("balance"));
-		auto work_l (tree_a.get<std::string> ("work"));
-		auto signature_l (tree_a.get<std::string> ("signature"));
-		nano::block_hash prev;
-		error = prev.decode_hex (previous_l);
-		previous_set (prev);
-
-		if (!error)
-		{
-			nano::account dest;
-			error = dest.decode_account (destination_l);
-			set_destination (dest);
-			if (!error)
-			{
-				nano::amount bal;
-				error = bal.decode_hex (balance_l);
-				balance_set (bal);
-				if (!error)
-				{
-					uint64_t work_tmp;
-					error = nano::from_string_hex (work_l, work_tmp);
-					block_work_set (work_tmp);
-					if (!error)
-					{
-						nano::signature sig;
-						error = sig.decode_hex (signature_l);
-						signature_set (sig);
-					}
-				}
-			}
-		}
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-	return error;
-}
-
 nano::send_block::send_block (nano::block_hash const & previous_a, nano::account const & destination_a, nano::amount const & balance_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a)
 {
 	debug_assert (destination_a != nullptr);
@@ -325,53 +278,10 @@ nano::send_block::send_block (bool & error_a, nano::stream & stream_a) :
 	error_a = result != 0;
 }
 
-nano::send_block::send_block (bool & error_a, boost::property_tree::ptree const & tree_a) :
-	handle (nullptr)
+nano::send_block::send_block (bool & error_a, boost::property_tree::ptree const & tree_a)
 {
-	try
-	{
-		auto previous_l (tree_a.get<std::string> ("previous"));
-		auto destination_l (tree_a.get<std::string> ("destination"));
-		auto balance_l (tree_a.get<std::string> ("balance"));
-		nano::block_hash previous;
-		nano::account destination;
-		nano::amount balance;
-		error_a = previous.decode_hex (previous_l);
-		if (!error_a)
-		{
-			error_a = destination.decode_account (destination_l);
-			if (!error_a)
-			{
-				error_a = balance.decode_hex (balance_l);
-				if (!error_a)
-				{
-					auto signature_l (tree_a.get<std::string> ("signature"));
-					auto work_l (tree_a.get<std::string> ("work"));
-					nano::signature sig;
-					error_a = sig.decode_hex (signature_l);
-					if (!error_a)
-					{
-						uint64_t work_tmp;
-						error_a = nano::from_string_hex (work_l, work_tmp);
-						if (!error_a)
-						{
-							rsnano::SendBlockDto dto;
-							std::copy (std::begin (previous.bytes), std::end (previous.bytes), std::begin (dto.previous));
-							std::copy (std::begin (destination.bytes), std::end (destination.bytes), std::begin (dto.destination));
-							std::copy (std::begin (balance.bytes), std::end (balance.bytes), std::begin (dto.balance));
-							std::copy (std::begin (sig.bytes), std::end (sig.bytes), std::begin (dto.signature));
-							dto.work = work_tmp;
-							handle = rsnano::rsn_send_block_create (&dto);
-						}
-					}
-				}
-			}
-		}
-	}
-	catch (std::runtime_error const &)
-	{
-		error_a = true;
-	}
+	handle = rsnano::rsn_send_block_deserialize_json (&tree_a);
+	error_a = handle == nullptr;
 }
 
 rsnano::SendBlockDto empty_send_block_dto ()

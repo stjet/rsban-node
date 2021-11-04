@@ -2,9 +2,10 @@ use std::cell::{Ref, RefCell};
 
 use crate::{
     numbers::{
-        sign_message, to_string_hex, Account, Amount, BlockHash, PublicKey, RawKey, Signature,
+        from_string_hex, sign_message, to_string_hex, Account, Amount, BlockHash, PublicKey,
+        RawKey, Signature,
     },
-    utils::{Blake2b, PropertyTreeWriter, RustBlake2b, Stream},
+    utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, RustBlake2b, Stream},
 };
 use anyhow::Result;
 
@@ -179,6 +180,24 @@ impl SendBlock {
         writer.put_string("work", &to_string_hex(self.work))?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         Ok(())
+    }
+
+    pub fn deserialize_json(reader: &impl PropertyTreeReader) -> Result<Self> {
+        let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
+        let destination = Account::decode_account(reader.get_string("destination")?)?;
+        let balance = Amount::decode_hex(reader.get_string("balance")?)?;
+        let signature = Signature::decode_hex(reader.get_string("signature")?)?;
+        let work = from_string_hex(reader.get_string("work")?)?;
+        Ok(SendBlock {
+            hashables: SendHashables {
+                previous,
+                destination,
+                balance,
+            },
+            signature,
+            work,
+            hash: RefCell::new(BlockHash::new()),
+        })
     }
 }
 

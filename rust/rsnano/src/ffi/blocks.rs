@@ -254,8 +254,8 @@ pub unsafe extern "C" fn rsn_account_decode(input: *const c_char, result: *mut [
     };
 
     let account = match Account::decode_account(input_string) {
-        Some(a) => a,
-        None => return -1,
+        Ok(a) => a,
+        Err(_) => return -1,
     };
 
     (*result).copy_from_slice(account.as_bytes());

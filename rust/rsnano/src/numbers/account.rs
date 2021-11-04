@@ -71,23 +71,19 @@ impl Account {
         check
     }
 
-    pub fn decode_account(source: &str) -> Option<Account> {
-        EncodedAccountStr(source)
-            .to_u512()
-            .map(|encoded| encoded.to_account())
-            .flatten()
+    pub fn decode_account(source: impl AsRef<str>) -> Result<Account> {
+        EncodedAccountStr(source.as_ref()).to_u512()?.to_account()
     }
 
-    pub fn decode_hex(s: &str) -> Option<Self> {
+    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
+        let s = s.as_ref();
         if s.is_empty() || s.len() > 64 {
-            return None;
+            bail!("invalid length");
         }
 
         let mut bytes = [0u8; 32];
-        match hex::decode_to_slice(s, &mut bytes) {
-            Ok(_) => Some(Account::from_bytes(bytes)),
-            Err(_) => None,
-        }
+        hex::decode_to_slice(s, &mut bytes)?;
+        Ok(Account::from_bytes(bytes))
     }
 }
 
@@ -112,12 +108,12 @@ impl EncodedAccountU512 {
         ]
     }
 
-    fn to_account(&self) -> Option<Account> {
+    fn to_account(&self) -> Result<Account> {
         let account = Account::from_bytes(self.account_bytes());
         if account.account_checksum() == self.checksum_bytes() {
-            Some(account)
+            Ok(account)
         } else {
-            None
+            Err(anyhow!("invalid checksum"))
         }
     }
 }
@@ -177,9 +173,9 @@ impl<'a> EncodedAccountStr<'a> {
         self.0.chars().skip(self.prefix_len())
     }
 
-    fn to_u512(&self) -> Option<EncodedAccountU512> {
+    fn to_u512(&self) -> Result<EncodedAccountU512> {
         if !self.is_valid() {
-            return None;
+            bail!("invalid account string");
         }
 
         let mut number = U512::default();
@@ -189,10 +185,10 @@ impl<'a> EncodedAccountStr<'a> {
                     number <<= 5;
                     number = number + byte;
                 }
-                None => return None,
+                None => bail!("invalid hex string"),
             }
         }
-        Some(EncodedAccountU512(number))
+        Ok(EncodedAccountU512(number))
     }
 
     fn decode_byte(&self, character: char) -> Option<u8> {
@@ -279,7 +275,7 @@ mod tests {
         let account = Account::new();
         let mut encoded = account.encode_account();
         encoded.replace_range(16..17, "x");
-        assert!(Account::decode_account(&encoded).is_none());
+        assert!(Account::decode_account(&encoded).is_err());
     }
 
     #[test]

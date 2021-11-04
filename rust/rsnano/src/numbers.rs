@@ -57,7 +57,7 @@ impl Account {
         Self { public_key }
     }
 
-    pub fn from_be_bytes(bytes: [u8; 32]) -> Account {
+    pub fn from_bytes(bytes: [u8; 32]) -> Account {
         Self {
             public_key: PublicKey::from_be_bytes(bytes),
         }
@@ -110,72 +110,10 @@ impl Account {
     }
 
     pub fn decode_account(source: &str) -> Option<Account> {
-        if source.len() < 5 {
-            return None;
-        }
-
-        let xrb_prefix = source.starts_with("xrb_") || source.starts_with("xrb-");
-        let nano_prefix = source.starts_with("nano_") || source.starts_with("nano-");
-        let node_id_prefix = source.starts_with("node_");
-        if (xrb_prefix && source.chars().count() != 64)
-            || (nano_prefix && source.chars().count() != 65)
-        {
-            return None;
-        }
-
-        if !xrb_prefix && !nano_prefix && !node_id_prefix {
-            return None;
-        }
-
-        let prefix_len = if xrb_prefix { 4 } else { 5 };
-        match source.chars().nth(prefix_len) {
-            Some('1') | Some('3') => {}
-            _ => return None,
-        }
-
-        let mut number = U512::default();
-        for character in source.chars().skip(prefix_len) {
-            if !character.is_ascii() {
-                return None;
-            }
-            let char_byte = character as u8;
-            if !(0x30..0x80).contains(&char_byte) {
-                return None;
-            }
-            let byte: u8 = account_decode(char_byte);
-            if byte == b'~' {
-                return None;
-            }
-            number <<= 5;
-            number = number + byte;
-        }
-
-        let hash_bytes = {
-            let mut bytes_512 = [0u8; 64];
-            (number >> 40).to_big_endian(&mut bytes_512);
-            let mut bytes_256 = [0u8; 32];
-            bytes_256.copy_from_slice(&bytes_512[32..]);
-            bytes_256
-        };
-
-        let expected_checksum = [
-            number.byte(0),
-            number.byte(1),
-            number.byte(2),
-            number.byte(3),
-            number.byte(4),
-        ];
-        let mut actual_checksum = [0u8; 5];
-
-        let mut blake = RustBlake2b::new();
-        blake.init(5).unwrap();
-        blake.update(&hash_bytes).unwrap();
-        blake.finalize(&mut actual_checksum).unwrap();
-        if actual_checksum == expected_checksum {
-            Some(Account::from_be_bytes(hash_bytes))
-        } else {
-            None
-        }
+        EncodedAccountStr(source)
+            .to_u512()
+            .map(|encoded| encoded.to_account())
+            .flatten()
     }
 
     pub fn decode_hex(s: &str) -> Option<Self> {
@@ -185,9 +123,131 @@ impl Account {
 
         let mut bytes = [0u8; 32];
         match hex::decode_to_slice(s, &mut bytes) {
-            Ok(_) => Some(Account::from_be_bytes(bytes)),
+            Ok(_) => Some(Account::from_bytes(bytes)),
             Err(_) => None,
         }
+    }
+}
+
+struct EncodedAccountU512(U512);
+
+impl EncodedAccountU512 {
+    fn account_bytes(&self) -> [u8; 32] {
+        let mut bytes_512 = [0u8; 64];
+        (self.0 >> 40).to_big_endian(&mut bytes_512);
+        let mut bytes_256 = [0u8; 32];
+        bytes_256.copy_from_slice(&bytes_512[32..]);
+        bytes_256
+    }
+
+    fn checksum_bytes(&self) -> [u8; 5] {
+        [
+            self.0.byte(0),
+            self.0.byte(1),
+            self.0.byte(2),
+            self.0.byte(3),
+            self.0.byte(4),
+        ]
+    }
+
+    fn to_account(&self) -> Option<Account> {
+        let account = Account::from_bytes(self.account_bytes());
+        if account.account_checksum() == self.checksum_bytes() {
+            Some(account)
+        } else {
+            None
+        }
+    }
+}
+
+struct EncodedAccountStr<'a>(&'a str);
+impl<'a> EncodedAccountStr<'a> {
+    fn is_valid(&self) -> bool {
+        self.0.len() > 4
+            && self.has_valid_prefix()
+            && self.is_length_valid()
+            && self.is_first_digit_valid()
+    }
+
+    fn has_valid_prefix(&self) -> bool {
+        self.has_xrb_prefix() || self.has_nano_prefix() || self.has_node_id_prefix()
+    }
+
+    fn has_xrb_prefix(&self) -> bool {
+        self.0.starts_with("xrb_") || self.0.starts_with("xrb-")
+    }
+
+    fn has_nano_prefix(&self) -> bool {
+        self.0.starts_with("nano_") || self.0.starts_with("nano-")
+    }
+
+    fn has_node_id_prefix(&self) -> bool {
+        self.0.starts_with("node_")
+    }
+
+    fn is_length_valid(&self) -> bool {
+        if self.has_xrb_prefix() && self.0.chars().count() != 64 {
+            return false;
+        }
+        if self.has_nano_prefix() && self.0.chars().count() != 65 {
+            return false;
+        }
+        true
+    }
+
+    fn prefix_len(&self) -> usize {
+        if self.has_xrb_prefix() {
+            4
+        } else {
+            5
+        }
+    }
+
+    fn first_digit(&self) -> Option<char> {
+        self.0.chars().nth(self.prefix_len())
+    }
+
+    fn is_first_digit_valid(&self) -> bool {
+        match self.first_digit() {
+            Some('1') | Some('3') => true,
+            _ => false,
+        }
+    }
+
+    fn chars_after_prefix(&'_ self) -> impl Iterator<Item = char> + '_ {
+        self.0.chars().skip(self.prefix_len())
+    }
+
+    fn to_u512(&self) -> Option<EncodedAccountU512> {
+        if !self.is_valid() {
+            return None;
+        }
+
+        let mut number = U512::default();
+        for character in self.chars_after_prefix() {
+            match self.decode_byte(character) {
+                Some(byte) => {
+                    number <<= 5;
+                    number = number + byte;
+                }
+                None => return None,
+            }
+        }
+        Some(EncodedAccountU512(number))
+    }
+
+    fn decode_byte(&self, character: char) -> Option<u8> {
+        if character.is_ascii() {
+            let character = character as u8;
+            if (0x30..0x80).contains(&character) {
+                let byte: u8 = account_decode(character);
+                if byte != b'~' {
+                    return Some(byte);
+                }
+            }
+        }
+
+        None
     }
 }
 
@@ -521,7 +581,7 @@ mod tests {
         // original test: account.encode_all
         #[test]
         fn encode_all() {
-            let account = Account::from_be_bytes([0xFF; 32]);
+            let account = Account::from_bytes([0xFF; 32]);
             let encoded = account.encode_account();
             assert_eq!(
                 encoded,

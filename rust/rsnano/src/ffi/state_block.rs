@@ -29,9 +29,9 @@ pub extern "C" fn rsn_state_block_create(dto: &StateBlockDto) -> *mut StateBlock
             work: dto.work,
             signature: Signature::from_bytes(dto.signature),
             hashables: StateHashables {
-                account: Account::from_be_bytes(dto.account),
+                account: Account::from_bytes(dto.account),
                 previous: BlockHash::from_bytes(dto.previous),
-                representative: Account::from_be_bytes(dto.representative),
+                representative: Account::from_bytes(dto.representative),
                 balance: Amount::from_be_bytes(dto.balance),
                 link: Link::from_be_bytes(dto.link),
             },
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rsn_state_block_account_set(
     handle: *mut StateBlockHandle,
     source: &[u8; 32],
 ) {
-    (*handle).block.hashables.account = Account::from_be_bytes(*source);
+    (*handle).block.hashables.account = Account::from_bytes(*source);
 }
 
 #[no_mangle]
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rsn_state_block_representative_set(
     handle: *mut StateBlockHandle,
     representative: &[u8; 32],
 ) {
-    (*handle).block.hashables.representative = Account::from_be_bytes(*representative);
+    (*handle).block.hashables.representative = Account::from_bytes(*representative);
 }
 
 #[no_mangle]

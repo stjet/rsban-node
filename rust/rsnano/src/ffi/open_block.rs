@@ -28,8 +28,8 @@ pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut OpenBlockHan
             signature: Signature::from_bytes(dto.signature),
             hashables: OpenHashables {
                 source: BlockHash::from_bytes(dto.source),
-                representative: Account::from_be_bytes(dto.representative),
-                account: Account::from_be_bytes(dto.account),
+                representative: Account::from_bytes(dto.representative),
+                account: Account::from_bytes(dto.account),
             },
         },
     }))
@@ -96,7 +96,7 @@ pub unsafe extern "C" fn rsn_open_block_representative_set(
     handle: *mut OpenBlockHandle,
     representative: &[u8; 32],
 ) {
-    (*handle).block.hashables.representative = Account::from_be_bytes(*representative);
+    (*handle).block.hashables.representative = Account::from_bytes(*representative);
 }
 
 #[no_mangle]
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn rsn_open_block_account_set(
     handle: *mut OpenBlockHandle,
     account: &[u8; 32],
 ) {
-    (*handle).block.hashables.account = Account::from_be_bytes(*account);
+    (*handle).block.hashables.account = Account::from_bytes(*account);
 }
 
 #[no_mangle]

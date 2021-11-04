@@ -35,7 +35,7 @@ impl SendHashables {
         let previous = BlockHash::from_bytes(buffer_32);
 
         stream.read_bytes(&mut buffer_32, 32)?;
-        let destination = Account::from_be_bytes(buffer_32);
+        let destination = Account::from_bytes(buffer_32);
 
         stream.read_bytes(&mut buffer_16, 16)?;
         let balance = Amount::new(u128::from_be_bytes(buffer_16));

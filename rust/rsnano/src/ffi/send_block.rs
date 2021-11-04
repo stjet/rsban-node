@@ -42,7 +42,7 @@ pub extern "C" fn rsn_send_block_create(dto: &SendBlockDto) -> *mut SendBlockHan
 #[no_mangle]
 pub extern "C" fn rsn_send_block_create2(dto: &SendBlockDto2) -> *mut SendBlockHandle {
     let previous = BlockHash::from_bytes(dto.previous);
-    let destination = Account::from_be_bytes(dto.destination);
+    let destination = Account::from_bytes(dto.destination);
     let balance = Amount::from_be_bytes(dto.balance);
     let private_key = RawKey::from_bytes(dto.priv_key);
     let public_key = PublicKey::from_be_bytes(dto.pub_key);
@@ -148,7 +148,7 @@ pub unsafe extern "C" fn rsn_send_block_destination_set(
     handle: *mut SendBlockHandle,
     destination: &[u8; 32],
 ) {
-    let destination = Account::from_be_bytes(*destination);
+    let destination = Account::from_bytes(*destination);
     (*handle).block.set_destination(destination);
 }
 
@@ -231,7 +231,7 @@ impl From<&SendBlockDto> for SendHashables {
     fn from(value: &SendBlockDto) -> Self {
         SendHashables {
             previous: BlockHash::from_bytes(value.previous),
-            destination: Account::from_be_bytes(value.destination),
+            destination: Account::from_bytes(value.destination),
             balance: Amount::new(u128::from_be_bytes(value.balance)),
         }
     }

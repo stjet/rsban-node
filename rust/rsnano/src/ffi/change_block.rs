@@ -27,7 +27,7 @@ pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut ChangeBl
             signature: Signature::from_bytes(dto.signature),
             hashables: ChangeHashables {
                 previous: BlockHash::from_bytes(dto.previous),
-                representative: Account::from_be_bytes(dto.representative),
+                representative: Account::from_bytes(dto.representative),
             },
         },
     }))
@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rsn_change_block_representative_set(
     handle: *mut ChangeBlockHandle,
     representative: &[u8; 32],
 ) {
-    (*handle).block.hashables.representative = Account::from_be_bytes(*representative);
+    (*handle).block.hashables.representative = Account::from_bytes(*representative);
 }
 
 #[no_mangle]

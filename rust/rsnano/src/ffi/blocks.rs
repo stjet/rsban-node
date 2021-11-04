@@ -155,7 +155,7 @@ impl TryFrom<&BlockSidebandDto> for BlockSideband {
     type Error = anyhow::Error;
 
     fn try_from(value: &BlockSidebandDto) -> Result<Self, Self::Error> {
-        let account = Account::from_be_bytes(value.account);
+        let account = Account::from_bytes(value.account);
         let successor = BlockHash::from_bytes(value.successor);
         let balance = Amount::new(u128::from_be_bytes(value.balance));
         let details = BlockDetails::try_from(&value.details)?;
@@ -242,7 +242,7 @@ pub extern "C" fn rsn_block_serialized_size(block_type: u8) -> usize {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_account_encode(bytes: *const [u8; 32], result: *mut [u8; 65]) {
-    let encoded = Account::from_be_bytes(*bytes).encode_account();
+    let encoded = Account::from_bytes(*bytes).encode_account();
     (*result).copy_from_slice(encoded.as_bytes());
 }
 

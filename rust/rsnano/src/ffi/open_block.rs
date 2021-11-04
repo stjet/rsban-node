@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rsn_open_block_representative(
     handle: &OpenBlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = (*handle).block.hashables.representative.to_be_bytes();
+    (*result) = (*handle).block.hashables.representative.to_bytes();
 }
 
 #[no_mangle]
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rsn_open_block_representative_set(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_open_block_account(handle: &OpenBlockHandle, result: *mut [u8; 32]) {
-    (*result) = (*handle).block.hashables.account.to_be_bytes();
+    (*result) = (*handle).block.hashables.account.to_bytes();
 }
 
 #[no_mangle]

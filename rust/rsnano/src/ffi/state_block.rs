@@ -79,7 +79,7 @@ pub unsafe extern "C" fn rsn_state_block_signature_set(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_account(handle: &StateBlockHandle, result: *mut [u8; 32]) {
-    (*result) = (*handle).block.hashables.account.to_be_bytes();
+    (*result) = (*handle).block.hashables.account.to_bytes();
 }
 
 #[no_mangle]
@@ -111,7 +111,7 @@ pub unsafe extern "C" fn rsn_state_block_representative(
     handle: &StateBlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = (*handle).block.hashables.representative.to_be_bytes();
+    (*result) = (*handle).block.hashables.representative.to_bytes();
 }
 
 #[no_mangle]

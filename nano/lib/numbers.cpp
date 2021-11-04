@@ -10,49 +10,15 @@
 
 #include <crypto/ed25519-donna/ed25519.h>
 
-namespace
-{
-char const * account_lookup ("13456789abcdefghijkmnopqrstuwxyz");
-char const * account_reverse ("~0~1234567~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~89:;<=>?@AB~CDEFGHIJK~LMNO~~~~~");
-char account_encode (uint8_t value)
-{
-	debug_assert (value < 32);
-	auto result (account_lookup[value]);
-	return result;
-}
-uint8_t account_decode (char value)
-{
-	debug_assert (value >= '0');
-	debug_assert (value <= '~');
-	auto result (account_reverse[value - 0x30]);
-	if (result != '~')
-	{
-		result -= 0x30;
-	}
-	return result;
-}
-}
-
 void nano::public_key::encode_account (std::string & destination_a) const
 {
-	debug_assert (destination_a.empty ());
+	uint8_t account_bytes[32];
+	uint8_t string_bytes[65];
+
+	std::copy (std::begin (bytes), std::end (bytes), std::begin (account_bytes));
+	rsnano::rsn_account_encode (&account_bytes, &string_bytes);
 	destination_a.reserve (65);
-	uint64_t check (0);
-	blake2b_state hash;
-	blake2b_init (&hash, 5);
-	blake2b_update (&hash, bytes.data (), bytes.size ());
-	blake2b_final (&hash, reinterpret_cast<uint8_t *> (&check), 5);
-	nano::uint512_t number_l (number ());
-	number_l <<= 40;
-	number_l |= nano::uint512_t (check);
-	for (auto i (0); i < 60; ++i)
-	{
-		uint8_t r (number_l & static_cast<uint8_t> (0x1f));
-		number_l >>= 5;
-		destination_a.push_back (account_encode (r));
-	}
-	destination_a.append ("_onan"); // nano_
-	std::reverse (destination_a.begin (), destination_a.end ());
+	destination_a.append (reinterpret_cast<const char *> (string_bytes), 65);
 }
 
 std::string nano::public_key::to_account () const
@@ -84,60 +50,14 @@ bool nano::public_key::decode_node_id (std::string const & source_a)
 
 bool nano::public_key::decode_account (std::string const & source_a)
 {
-	auto error (source_a.size () < 5);
-	if (!error)
+	uint8_t result[32];
+	if (rsnano::rsn_account_decode (source_a.c_str (), &result) < 0)
 	{
-		auto xrb_prefix (source_a[0] == 'x' && source_a[1] == 'r' && source_a[2] == 'b' && (source_a[3] == '_' || source_a[3] == '-'));
-		auto nano_prefix (source_a[0] == 'n' && source_a[1] == 'a' && source_a[2] == 'n' && source_a[3] == 'o' && (source_a[4] == '_' || source_a[4] == '-'));
-		auto node_id_prefix = (source_a[0] == 'n' && source_a[1] == 'o' && source_a[2] == 'd' && source_a[3] == 'e' && source_a[4] == '_');
-		error = (xrb_prefix && source_a.size () != 64) || (nano_prefix && source_a.size () != 65);
-		if (!error)
-		{
-			if (xrb_prefix || nano_prefix || node_id_prefix)
-			{
-				auto i (source_a.begin () + (xrb_prefix ? 4 : 5));
-				if (*i == '1' || *i == '3')
-				{
-					nano::uint512_t number_l;
-					for (auto j (source_a.end ()); !error && i != j; ++i)
-					{
-						uint8_t character (*i);
-						error = character < 0x30 || character >= 0x80;
-						if (!error)
-						{
-							uint8_t byte (account_decode (character));
-							error = byte == '~';
-							if (!error)
-							{
-								number_l <<= 5;
-								number_l += byte;
-							}
-						}
-					}
-					if (!error)
-					{
-						*this = (number_l >> 40).convert_to<nano::uint256_t> ();
-						uint64_t check (number_l & static_cast<uint64_t> (0xffffffffff));
-						uint64_t validation (0);
-						blake2b_state hash;
-						blake2b_init (&hash, 5);
-						blake2b_update (&hash, bytes.data (), bytes.size ());
-						blake2b_final (&hash, reinterpret_cast<uint8_t *> (&validation), 5);
-						error = check != validation;
-					}
-				}
-				else
-				{
-					error = true;
-				}
-			}
-			else
-			{
-				error = true;
-			}
-		}
+		return true;
 	}
-	return error;
+	std::copy (std::begin (result), std::end (result), std::begin (bytes));
+
+	return false;
 }
 
 nano::uint256_union::uint256_union (nano::uint256_t const & number_a)

@@ -117,6 +117,10 @@ struct StateBlockDto
 
 extern "C" {
 
+int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
+
+void rsn_account_encode (const uint8_t (*bytes)[32], uint8_t (*result)[65]);
+
 BandwidthLimiterHandle * rsn_bandwidth_limiter_create (double limit_burst_ratio, uintptr_t limit);
 
 void rsn_bandwidth_limiter_destroy (BandwidthLimiterHandle * limiter);

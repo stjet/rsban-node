@@ -50,9 +50,9 @@ impl StateBlock {
         let mut preamble = [0u8; 32];
         preamble[31] = BlockType::State as u8;
         blake2b.update(&preamble)?;
-        blake2b.update(&self.hashables.account.to_be_bytes())?;
+        blake2b.update(&self.hashables.account.to_bytes())?;
         blake2b.update(&self.hashables.previous.to_be_bytes())?;
-        blake2b.update(&self.hashables.representative.to_be_bytes())?;
+        blake2b.update(&self.hashables.representative.to_bytes())?;
         blake2b.update(&self.hashables.balance.to_be_bytes())?;
         blake2b.update(&self.hashables.link.to_be_bytes())?;
         Ok(())

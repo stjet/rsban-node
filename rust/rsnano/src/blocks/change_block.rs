@@ -32,7 +32,7 @@ impl ChangeBlock {
 
     pub fn hash(&self, blake2b: &mut impl Blake2b) -> Result<()> {
         blake2b.update(&self.hashables.previous.to_be_bytes())?;
-        blake2b.update(&self.hashables.representative.to_be_bytes())?;
+        blake2b.update(&self.hashables.representative.to_bytes())?;
         Ok(())
     }
 

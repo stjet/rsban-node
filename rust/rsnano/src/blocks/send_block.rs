@@ -157,7 +157,7 @@ impl SendBlock {
 
     pub fn hash_hashables(&self, blake2b: &mut impl Blake2b) -> Result<()> {
         blake2b.update(&self.hashables.previous.to_be_bytes())?;
-        blake2b.update(&self.hashables.destination.to_be_bytes())?;
+        blake2b.update(&self.hashables.destination.to_bytes())?;
         blake2b.update(&self.hashables.balance.to_be_bytes())?;
         Ok(())
     }

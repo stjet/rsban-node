@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rsn_change_block_representative(
     handle: &ChangeBlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = (*handle).block.hashables.representative.to_be_bytes();
+    (*result) = (*handle).block.hashables.representative.to_bytes();
 }
 
 #[no_mangle]

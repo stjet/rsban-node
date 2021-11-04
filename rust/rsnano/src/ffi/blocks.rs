@@ -8,7 +8,11 @@ use crate::{
     },
 };
 use num::FromPrimitive;
-use std::{convert::TryFrom, ffi::c_void};
+use std::{
+    convert::TryFrom,
+    ffi::{c_void, CStr},
+    os::raw::c_char,
+};
 
 #[repr(C)]
 pub struct BlockDetailsDto {
@@ -86,7 +90,7 @@ unsafe fn set_block_sideband_dto(sideband: &BlockSideband, result: *mut BlockSid
     (*result).height = sideband.height;
     (*result).timestamp = sideband.timestamp;
     (*result).successor = sideband.successor.to_be_bytes();
-    (*result).account = sideband.account.to_be_bytes();
+    (*result).account = sideband.account.to_bytes();
     (*result).balance = sideband.balance.to_be_bytes();
     let details_ptr: *mut BlockDetailsDto = &mut (*result).details;
     set_block_details_dto(&sideband.details, details_ptr);
@@ -234,4 +238,26 @@ pub extern "C" fn rsn_block_serialized_size(block_type: u8) -> usize {
         Some(block_type) => serialized_block_size(block_type),
         None => 0,
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_account_encode(bytes: *const [u8; 32], result: *mut [u8; 65]) {
+    let encoded = Account::from_be_bytes(*bytes).encode_account();
+    (*result).copy_from_slice(encoded.as_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_account_decode(input: *const c_char, result: *mut [u8; 32]) -> i32 {
+    let input_string = match CStr::from_ptr(input).to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+
+    let account = match Account::decode_account(input_string) {
+        Some(a) => a,
+        None => return -1,
+    };
+
+    (*result).copy_from_slice(account.as_bytes());
+    0
 }

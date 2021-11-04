@@ -140,7 +140,7 @@ pub unsafe extern "C" fn rsn_send_block_destination(
     handle: &SendBlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = handle.block.hashables.destination.to_be_bytes();
+    (*result) = handle.block.hashables.destination.to_bytes();
 }
 
 #[no_mangle]

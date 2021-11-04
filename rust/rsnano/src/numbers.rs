@@ -3,6 +3,7 @@ use std::fmt::Write;
 
 use crate::utils::{Blake2b, RustBlake2b, Stream};
 use anyhow::Result;
+use primitive_types::U512;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct PublicKey {
@@ -11,7 +12,7 @@ pub struct PublicKey {
 
 impl PublicKey {
     pub fn new() -> Self {
-        Self { value: [8; 32] }
+        Self { value: [0; 32] }
     }
 
     pub fn from_be_bytes(value: [u8; 32]) -> Self {
@@ -74,17 +75,145 @@ impl Account {
         self.public_key.deserialize(stream)
     }
 
-    pub fn to_be_bytes(self) -> [u8; 32] {
+    pub fn to_bytes(self) -> [u8; 32] {
         self.public_key.to_be_bytes()
     }
 
-    pub fn encode_account(&self) -> String {
-        todo!()
+    pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
+        self.public_key.as_bytes()
     }
 
-    pub fn decode_account(s: &str) -> Result<Account> {
-        todo!()
+    pub fn encode_account(&self) -> String {
+        let mut number = U512::from_big_endian(self.public_key.as_bytes());
+        let check = U512::from_little_endian(&self.account_checksum());
+        number <<= 40;
+        number = number | check;
+
+        let mut result = String::with_capacity(65);
+
+        for _i in 0..60 {
+            let r = number.byte(0) & 0x1f_u8;
+            number >>= 5;
+            result.push(account_encode(r));
+        }
+        result.push_str("_onan"); // nano_
+        result.chars().rev().collect()
     }
+
+    fn account_checksum(&self) -> [u8; 5] {
+        let mut blake = RustBlake2b::new();
+        let mut check = [0u8; 5];
+        blake.init(5).unwrap();
+        blake.update(self.public_key.as_bytes()).unwrap();
+        blake.finalize(&mut check).unwrap();
+        check
+    }
+
+    pub fn decode_account(source: &str) -> Option<Account> {
+        if source.len() < 5 {
+            return None;
+        }
+
+        let xrb_prefix = source.starts_with("xrb_") || source.starts_with("xrb-");
+        let nano_prefix = source.starts_with("nano_") || source.starts_with("nano-");
+        let node_id_prefix = source.starts_with("node_");
+        if (xrb_prefix && source.chars().count() != 64)
+            || (nano_prefix && source.chars().count() != 65)
+        {
+            return None;
+        }
+
+        if !xrb_prefix && !nano_prefix && !node_id_prefix {
+            return None;
+        }
+
+        let prefix_len = if xrb_prefix { 4 } else { 5 };
+        match source.chars().nth(prefix_len) {
+            Some('1') | Some('3') => {}
+            _ => return None,
+        }
+
+        let mut number = U512::default();
+        for character in source.chars().skip(prefix_len) {
+            if !character.is_ascii() {
+                return None;
+            }
+            let char_byte = character as u8;
+            if !(0x30..0x80).contains(&char_byte) {
+                return None;
+            }
+            let byte: u8 = account_decode(char_byte);
+            if byte == b'~' {
+                return None;
+            }
+            number <<= 5;
+            number = number + byte;
+        }
+
+        let hash_bytes = {
+            let mut bytes_512 = [0u8; 64];
+            (number >> 40).to_big_endian(&mut bytes_512);
+            let mut bytes_256 = [0u8; 32];
+            bytes_256.copy_from_slice(&bytes_512[32..]);
+            bytes_256
+        };
+
+        let expected_checksum = [
+            number.byte(0),
+            number.byte(1),
+            number.byte(2),
+            number.byte(3),
+            number.byte(4),
+        ];
+        let mut actual_checksum = [0u8; 5];
+
+        let mut blake = RustBlake2b::new();
+        blake.init(5).unwrap();
+        blake.update(&hash_bytes).unwrap();
+        blake.finalize(&mut actual_checksum).unwrap();
+        if actual_checksum == expected_checksum {
+            Some(Account::from_be_bytes(hash_bytes))
+        } else {
+            None
+        }
+    }
+
+    pub fn decode_hex(s: &str) -> Option<Self> {
+        if s.is_empty() || s.len() > 64 {
+            return None;
+        }
+
+        let mut bytes = [0u8; 32];
+        match hex::decode_to_slice(s, &mut bytes) {
+            Ok(_) => Some(Account::from_be_bytes(bytes)),
+            Err(_) => None,
+        }
+    }
+}
+
+const ACCOUNT_LOOKUP: &[char] = &[
+    '1', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
+    'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y', 'z',
+];
+
+const ACCOUNT_REVERSE: &[char] = &[
+    '~', '0', '~', '1', '2', '3', '4', '5', '6', '7', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+    '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+    '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '~', '8', '9', ':', ';', '<', '=', '>', '?',
+    '@', 'A', 'B', '~', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', '~', 'L', 'M', 'N', 'O', '~',
+    '~', '~', '~', '~',
+];
+
+fn account_encode(value: u8) -> char {
+    ACCOUNT_LOOKUP[value as usize]
+}
+
+fn account_decode(value: u8) -> u8 {
+    let mut result = ACCOUNT_REVERSE[(value - 0x30) as usize] as u8;
+    if result != b'~' {
+        result -= 0x30;
+    }
+    result
 }
 
 impl From<u64> for Account {
@@ -137,7 +266,7 @@ impl BlockHash {
     pub fn encode_hex(&self) -> String {
         let mut result = String::with_capacity(64);
         for &byte in self.value.iter() {
-            write!(&mut result, "{:02X}", byte);
+            write!(&mut result, "{:02X}", byte).unwrap();
         }
         result
     }
@@ -385,8 +514,47 @@ mod tests {
                 encoded,
                 "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
             );
-            let copy = Account::decode_account(&encoded).unwrap();
+            let copy = Account::decode_account(&encoded).expect("decode failed");
             assert_eq!(account, copy);
+        }
+
+        // original test: account.encode_all
+        #[test]
+        fn encode_all() {
+            let account = Account::from_be_bytes([0xFF; 32]);
+            let encoded = account.encode_account();
+            assert_eq!(
+                encoded,
+                "nano_3zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzc3yoon41"
+            );
+            let copy = Account::decode_account(&encoded).expect("decode failed");
+            assert_eq!(account, copy);
+        }
+
+        // original test: account.encode_fail
+        #[test]
+        fn encode_fail() {
+            let account = Account::new();
+            let mut encoded = account.encode_account();
+            encoded.replace_range(16..17, "x");
+            assert!(Account::decode_account(&encoded).is_none());
+        }
+
+        #[test]
+        fn encode_real_account() {
+            let account = Account::decode_hex(
+                "E7F5F39D52AC32ADF978BBCF6EA50C7A5FBBDDCADE965C542808ADAE9DEF6B20",
+            )
+            .unwrap();
+            let encoded = account.encode_account();
+            assert_eq!(
+                encoded,
+                "nano_3szoyggo7d3koqwqjgyhftkirykzqhgwoqnpdjc4i47fotgyyts1j8ab3mti"
+            );
+            assert_eq!(
+                Account::decode_account(&encoded).expect("could not decode"),
+                account
+            );
         }
     }
 

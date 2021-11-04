@@ -30,8 +30,8 @@ impl OpenBlock {
 
     pub fn hash(&self, blake2b: &mut impl Blake2b) -> Result<()> {
         blake2b.update(&self.hashables.source.to_be_bytes())?;
-        blake2b.update(&self.hashables.representative.to_be_bytes())?;
-        blake2b.update(&self.hashables.account.to_be_bytes())?;
+        blake2b.update(&self.hashables.representative.to_bytes())?;
+        blake2b.update(&self.hashables.account.to_bytes())?;
         Ok(())
     }
 

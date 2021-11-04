@@ -252,16 +252,6 @@ void nano::send_block::serialize_json (boost::property_tree::ptree & tree) const
 {
 	if (rsnano::rsn_send_block_serialize_json (handle, &tree) < 0)
 		throw std::runtime_error ("could not serialize send_block as JSON");
-
-	tree.put ("destination", destination ().to_account ());
-	std::string balance_string;
-	balance ().encode_hex (balance_string);
-	tree.put ("balance", balance_string);
-	std::string signature_l;
-	block_signature ().encode_hex (signature_l);
-
-	tree.put ("work", nano::to_string_hex (block_work ()));
-	tree.put ("signature", signature_l);
 }
 
 bool nano::send_block::deserialize_json (boost::property_tree::ptree const & tree_a)

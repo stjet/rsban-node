@@ -170,10 +170,7 @@ impl<'a> EncodedAccountStr<'a> {
     }
 
     fn is_first_digit_valid(&self) -> bool {
-        match self.first_digit() {
-            Some('1') | Some('3') => true,
-            _ => false,
-        }
+        matches!(self.first_digit(), Some('1') | Some('3'))
     }
 
     fn chars_after_prefix(&'_ self) -> impl Iterator<Item = char> + '_ {

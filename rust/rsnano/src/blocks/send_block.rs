@@ -1,7 +1,9 @@
 use std::cell::{Ref, RefCell};
 
 use crate::{
-    numbers::{sign_message, Account, Amount, BlockHash, PublicKey, RawKey, Signature},
+    numbers::{
+        sign_message, to_string_hex, Account, Amount, BlockHash, PublicKey, RawKey, Signature,
+    },
     utils::{Blake2b, PropertyTreeWriter, RustBlake2b, Stream},
 };
 use anyhow::Result;
@@ -172,6 +174,10 @@ impl SendBlock {
     pub fn serialize_json(&self, writer: &mut impl PropertyTreeWriter) -> Result<()> {
         writer.put_string("type", "send")?;
         writer.put_string("previous", &self.hashables.previous.encode_hex())?;
+        writer.put_string("destination", &self.hashables.destination.encode_account())?;
+        writer.put_string("balance", &self.hashables.balance.encode_hex())?;
+        writer.put_string("work", &to_string_hex(self.work))?;
+        writer.put_string("signature", &self.signature.encode_hex())?;
         Ok(())
     }
 }

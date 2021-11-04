@@ -137,6 +137,10 @@ impl Amount {
     pub fn to_be_bytes(self) -> [u8; 16] {
         self.value.to_be_bytes()
     }
+
+    pub fn encode_hex(&self) -> String {
+        format!("{:032X}", self.value)
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -185,6 +189,14 @@ impl Signature {
     #[cfg(test)]
     pub fn make_invalid(&mut self) {
         self.bytes[31] ^= 1;
+    }
+
+    pub fn encode_hex(&self) -> String {
+        let mut result = String::with_capacity(128);
+        for byte in self.bytes {
+            write!(&mut result, "{:02X}", byte).unwrap();
+        }
+        result
     }
 }
 
@@ -296,6 +308,10 @@ pub fn validate_message(
         .verify_strict(message, &sig)
         .map_err(|_| anyhow!("could not verify message"))?;
     Ok(())
+}
+
+pub fn to_string_hex(i: u64) -> String {
+    format!("{:016X}", i)
 }
 
 #[cfg(test)]

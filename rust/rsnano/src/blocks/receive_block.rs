@@ -1,4 +1,7 @@
-use crate::{numbers::{BlockHash, Signature, from_string_hex, to_string_hex}, utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter}};
+use crate::{
+    numbers::{from_string_hex, to_string_hex, BlockHash, Signature},
+    utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter},
+};
 use anyhow::Result;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -35,7 +38,7 @@ impl ReceiveBlock {
         writer.put_string("type", "receive")?;
         writer.put_string("previous", &self.hashables.previous.encode_hex())?;
         writer.put_string("source", &self.hashables.source.encode_hex())?;
-        writer.put_string("work", &to_string_hex (self.work))?;
+        writer.put_string("work", &to_string_hex(self.work))?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         Ok(())
     }
@@ -45,13 +48,19 @@ impl ReceiveBlock {
         let source = BlockHash::decode_hex(reader.get_string("source")?)?;
         let signature = Signature::decode_hex(reader.get_string("signature")?)?;
         let work = from_string_hex(reader.get_string("work")?)?;
-        Ok(Self{
+        Ok(Self {
             work,
             signature,
-            hashables: ReceiveHashables{
-                previous,
-                source,
-            },
+            hashables: ReceiveHashables { previous, source },
         })
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // original test: block.receive_serialize_json
+    #[test]
+    fn serialize_json() {}
 }

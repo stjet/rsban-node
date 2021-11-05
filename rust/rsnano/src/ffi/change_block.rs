@@ -5,7 +5,11 @@ use crate::{
     numbers::{Account, BlockHash, Signature},
 };
 
-use super::{FfiStream, blake2b::FfiBlake2b, property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter}};
+use super::{
+    blake2b::FfiBlake2b,
+    property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
+    FfiStream,
+};
 
 pub struct ChangeBlockHandle {
     block: ChangeBlock,
@@ -164,7 +168,9 @@ pub extern "C" fn rsn_change_block_serialize_json(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_change_block_deserialize_json(ptree: *const c_void) -> *mut ChangeBlockHandle {
+pub extern "C" fn rsn_change_block_deserialize_json(
+    ptree: *const c_void,
+) -> *mut ChangeBlockHandle {
     let reader = FfiPropertyTreeReader::new(ptree);
     match ChangeBlock::deserialize_json(&reader) {
         Ok(block) => Box::into_raw(Box::new(ChangeBlockHandle { block })),

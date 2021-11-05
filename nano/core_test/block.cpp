@@ -50,22 +50,6 @@ TEST (sign_message, sign_in_rust_and_validate_in_cpp)
 	ASSERT_EQ (valid, false);
 }
 
-TEST (block, send_serialize_json)
-{
-	nano::keypair key;
-	nano::send_block block1 (0, 1, 2, key.prv, key.pub, 5);
-	std::string string1;
-	block1.serialize_json (string1);
-	ASSERT_NE (0, string1.size ());
-	boost::property_tree::ptree tree1;
-	std::stringstream istream (string1);
-	boost::property_tree::read_json (istream, tree1);
-	bool error (false);
-	nano::send_block block2 (error, tree1);
-	ASSERT_FALSE (error);
-	ASSERT_EQ (block1, block2);
-}
-
 TEST (block, receive_serialize)
 {
 	nano::receive_block block1 (0, 1, nano::keypair ().prv, 3, 4);

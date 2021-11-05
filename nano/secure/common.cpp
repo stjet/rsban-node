@@ -1,6 +1,7 @@
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/numbers.hpp>
+#include <nano/lib/rsnano_callbacks.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/store.hpp>
@@ -63,6 +64,7 @@ std::string const test_genesis_data = nano::get_env_or_default ("NANO_TEST_GENES
 
 std::shared_ptr<nano::block> parse_block_from_genesis_data (std::string const & genesis_data_a)
 {
+	rsnano::set_rsnano_callbacks (); // required because of static initialization
 	boost::property_tree::ptree tree;
 	std::stringstream istream (genesis_data_a);
 	boost::property_tree::read_json (istream, tree);

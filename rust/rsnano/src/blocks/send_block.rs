@@ -213,9 +213,11 @@ impl Eq for SendBlock {}
 
 #[cfg(test)]
 mod tests {
+    use blake2::crypto_mac::Key;
+
     use crate::{
         numbers::{validate_message, KeyPair},
-        utils::TestStream,
+        utils::{TestPropertyTree, TestStream},
     };
 
     use super::*;
@@ -257,6 +259,27 @@ mod tests {
         assert!(stream.bytes_written() > 0);
 
         let block2 = SendBlock::read_from_stream(&mut stream)?;
+        assert_eq!(block1, block2);
+        Ok(())
+    }
+
+    // originial test: block.send_serialize_json
+    #[test]
+    fn serialize_json() -> Result<()> {
+        let key = KeyPair::new();
+        let block1 = SendBlock::new(
+            &BlockHash::from(0),
+            &Account::from(1),
+            &Amount::new(2),
+            &key.private_key(),
+            &key.public_key(),
+            5,
+        )?;
+
+        let mut ptree = TestPropertyTree::new();
+        block1.serialize_json(&mut ptree)?;
+
+        let block2 = SendBlock::deserialize_json(&ptree)?;
         assert_eq!(block1, block2);
         Ok(())
     }

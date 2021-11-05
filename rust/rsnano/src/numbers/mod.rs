@@ -248,7 +248,7 @@ impl Link {
         self.bytes
     }
 
-    pub fn encode_hex(&self) -> String{
+    pub fn encode_hex(&self) -> String {
         let mut result = String::with_capacity(64);
         for byte in self.bytes {
             write!(&mut result, "{:02X}", byte).unwrap();
@@ -256,13 +256,13 @@ impl Link {
         result
     }
 
-    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self>{
-        let mut bytes = [0u8;32];
+    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
+        let mut bytes = [0u8; 32];
         hex::decode_to_slice(s.as_ref(), &mut bytes)?;
         Ok(Link::from_bytes(bytes))
     }
 
-    pub fn to_account(&self) -> Account{
+    pub fn to_account(&self) -> Account {
         Account::from_bytes(self.bytes)
     }
 }

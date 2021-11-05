@@ -5,6 +5,8 @@
 
 #include <boost/property_tree/json_parser.hpp>
 
+#include <iostream>
+
 int32_t write_u8 (void * stream, const uint8_t value)
 {
 	auto s{ static_cast<nano::stream *> (stream) };
@@ -97,8 +99,13 @@ int32_t ptree_get_string (const void * ptree, const char * path, uintptr_t path_
 	}
 }
 
+static bool callbacks_set = false;
+
 void rsnano::set_rsnano_callbacks ()
 {
+	if (callbacks_set)
+		return;
+
 	rsnano::rsn_callback_write_u8 (write_u8);
 	rsnano::rsn_callback_write_bytes (write_bytes);
 	rsnano::rsn_callback_read_u8 (read_u8);
@@ -108,4 +115,5 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_blake2b_final (reinterpret_cast<Blake2BFinalCallback> (blake2b_final));
 	rsnano::rsn_callback_property_tree_put_string (ptree_put_string);
 	rsnano::rsn_callback_property_tree_get_string (ptree_get_string);
+	callbacks_set = true;
 }

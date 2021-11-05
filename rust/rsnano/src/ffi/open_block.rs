@@ -5,7 +5,11 @@ use crate::{
     numbers::{Account, BlockHash, Signature},
 };
 
-use super::{FfiStream, blake2b::FfiBlake2b, property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter}};
+use super::{
+    blake2b::FfiBlake2b,
+    property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
+    FfiStream,
+};
 
 pub struct OpenBlockHandle {
     block: OpenBlock,

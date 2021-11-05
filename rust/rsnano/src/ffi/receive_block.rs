@@ -5,7 +5,10 @@ use crate::{
     numbers::{BlockHash, Signature},
 };
 
-use super::{blake2b::FfiBlake2b, property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter}};
+use super::{
+    blake2b::FfiBlake2b,
+    property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
+};
 
 pub struct ReceiveBlockHandle {
     block: ReceiveBlock,
@@ -140,7 +143,9 @@ pub extern "C" fn rsn_receive_block_serialize_json(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_receive_block_deserialize_json(ptree: *const c_void) -> *mut ReceiveBlockHandle {
+pub extern "C" fn rsn_receive_block_deserialize_json(
+    ptree: *const c_void,
+) -> *mut ReceiveBlockHandle {
     let reader = FfiPropertyTreeReader::new(ptree);
     match ReceiveBlock::deserialize_json(&reader) {
         Ok(block) => Box::into_raw(Box::new(ReceiveBlockHandle { block })),

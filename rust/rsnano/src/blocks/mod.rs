@@ -125,7 +125,7 @@ impl BlockSideband {
         self.successor = BlockHash::deserialize(stream)?;
 
         if block_type != BlockType::State && block_type != BlockType::Open {
-            self.account.deserialize(stream)?;
+            self.account = Account::deserialize(stream)?;
         }
 
         let mut buffer = [0u8; 8];
@@ -140,7 +140,7 @@ impl BlockSideband {
             || block_type == BlockType::Change
             || block_type == BlockType::Open
         {
-            self.balance.deserialize(stream)?;
+            self.balance = Amount::deserialize(stream)?;
         }
 
         stream.read_bytes(&mut buffer, 8)?;

@@ -30,9 +30,10 @@ impl PublicKey {
         stream.write_bytes(&self.value)
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        let len = self.value.len();
-        stream.read_bytes(&mut self.value, len)
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+        let mut result = PublicKey::new();
+        stream.read_bytes(&mut result.value, 32)?;
+        Ok(result)
     }
 
     pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
@@ -133,12 +134,11 @@ impl Amount {
         stream.write_bytes(&self.value.to_be_bytes())
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
         let mut buffer = [0u8; 16];
         let len = buffer.len();
         stream.read_bytes(&mut buffer, len)?;
-        self.value = u128::from_be_bytes(buffer);
-        Ok(())
+        Ok(Amount::new(u128::from_be_bytes(buffer)))
     }
 
     pub fn to_be_bytes(self) -> [u8; 16] {
@@ -152,6 +152,12 @@ impl Amount {
     pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
         let value = u128::from_str_radix(s.as_ref(), 16)?;
         Ok(Amount::new(value))
+    }
+}
+
+impl From<u128> for Amount {
+    fn from(value: u128) -> Self {
+        Amount::new(value)
     }
 }
 
@@ -218,7 +224,7 @@ impl Signature {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct Link {
     bytes: [u8; 32],
 }
@@ -240,9 +246,10 @@ impl Link {
         stream.write_bytes(&self.bytes)
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        stream.read_bytes(&mut self.bytes, 32)?;
-        Ok(())
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+        let mut result = Link::new();
+        stream.read_bytes(&mut result.bytes, 32)?;
+        Ok(result)
     }
 
     pub fn to_be_bytes(&self) -> [u8; 32] {
@@ -265,6 +272,14 @@ impl Link {
 
     pub fn to_account(&self) -> Account {
         Account::from_bytes(self.bytes)
+    }
+}
+
+impl From<u64> for Link {
+    fn from(value: u64) -> Self {
+        let mut link = Link::new();
+        link.bytes[24..].copy_from_slice(&value.to_be_bytes());
+        link
     }
 }
 

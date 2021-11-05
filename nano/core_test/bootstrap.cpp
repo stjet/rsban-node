@@ -55,7 +55,8 @@ TEST (bulk_pull, end_not_owned)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, 100));
 	nano::block_hash latest (system.nodes[0]->latest (nano::dev::genesis_key.pub));
-	nano::open_block open (0, 1, 2, nano::keypair ().prv, 4, 5);
+	nano::keypair key3;
+	nano::open_block open (0, 1, 2, key3.prv, key3.pub, 5);
 	open.account_set (key2.pub);
 	open.representative_set (key2.pub);
 	open.source_set (latest);

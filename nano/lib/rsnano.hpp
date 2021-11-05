@@ -13,8 +13,6 @@ namespace rsnano
 {
 struct BandwidthLimiterHandle;
 
-struct ChangeBlockDto2;
-
 struct ChangeBlockHandle;
 
 struct OpenBlockHandle;
@@ -68,6 +66,15 @@ struct ChangeBlockDto
 	uint8_t signature[64];
 	uint8_t previous[32];
 	uint8_t representative[32];
+};
+
+struct ChangeBlockDto2
+{
+	uint8_t previous[32];
+	uint8_t representative[32];
+	uint8_t priv_key[32];
+	uint8_t pub_key[32];
+	uint64_t work;
 };
 
 struct OpenBlockDto
@@ -208,7 +215,7 @@ ChangeBlockHandle * rsn_change_block_create (const ChangeBlockDto * dto);
 
 ChangeBlockHandle * rsn_change_block_create2 (const ChangeBlockDto2 * dto);
 
-int32_t rsn_change_block_deserialize (ChangeBlockHandle * handle, void * stream);
+ChangeBlockHandle * rsn_change_block_deserialize (void * stream);
 
 ChangeBlockHandle * rsn_change_block_deserialize_json (const void * ptree);
 
@@ -251,7 +258,7 @@ OpenBlockHandle * rsn_open_block_create (const OpenBlockDto * dto);
 
 OpenBlockHandle * rsn_open_block_create2 (const OpenBlockDto2 * dto);
 
-int32_t rsn_open_block_deserialize (OpenBlockHandle * handle, void * stream);
+OpenBlockHandle * rsn_open_block_deserialize (void * stream);
 
 OpenBlockHandle * rsn_open_block_deserialize_json (const void * ptree);
 
@@ -332,7 +339,7 @@ SendBlockHandle * rsn_send_block_create (const SendBlockDto * dto);
 
 SendBlockHandle * rsn_send_block_create2 (const SendBlockDto2 * dto);
 
-int32_t rsn_send_block_deserialize (SendBlockHandle * handle, void * stream);
+SendBlockHandle * rsn_send_block_deserialize (void * stream);
 
 SendBlockHandle * rsn_send_block_deserialize_json (const void * ptree);
 
@@ -388,7 +395,7 @@ StateBlockHandle * rsn_state_block_create (const StateBlockDto * dto);
 
 StateBlockHandle * rsn_state_block_create2 (const StateBlockDto2 * dto);
 
-int32_t rsn_state_block_deserialize (StateBlockHandle * handle, void * stream);
+StateBlockHandle * rsn_state_block_deserialize (void * stream);
 
 StateBlockHandle * rsn_state_block_deserialize_json (const void * ptree);
 

@@ -29,6 +29,10 @@ impl TestStream {
     pub fn bytes_written(&self) -> usize {
         self.bytes.len()
     }
+
+    pub fn byte_at(&self, i: usize) -> u8 {
+        self.bytes[i]
+    }
 }
 
 #[cfg(test)]

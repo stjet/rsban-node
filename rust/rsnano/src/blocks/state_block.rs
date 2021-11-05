@@ -7,11 +7,15 @@ use crate::{
     },
     utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, RustBlake2b, Stream},
 };
+
+#[cfg(test)]
+use crate::numbers::KeyPair;
+
 use anyhow::Result;
 
 use super::{BlockHashFactory, BlockType, LazyBlockHash};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct StateHashables {
     // Account# / public key that operates this account
     // Uses:
@@ -33,7 +37,7 @@ pub struct StateHashables {
     pub link: Link,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default, Debug)]
 pub struct StateBlock {
     pub work: u64,
     pub signature: Signature,
@@ -41,6 +45,7 @@ pub struct StateBlock {
     pub hash: LazyBlockHash,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl StateBlock {
     pub fn new(
         account: Account,
@@ -65,9 +70,14 @@ impl StateBlock {
             hash: LazyBlockHash::new(),
         };
 
-        let signature = sign_message(&prv_key, &pub_key, result.hash().as_bytes())?;
-        result.signature = signature;
+        result.sign(prv_key, pub_key)?;
         Ok(result)
+    }
+
+    fn sign(&mut self, prv_key: &RawKey, pub_key: &PublicKey) -> Result<()> {
+        let signature = sign_message(prv_key, pub_key, self.hash().as_bytes())?;
+        self.signature = signature;
+        Ok(())
     }
 
     pub const fn serialized_size() -> usize {
@@ -107,17 +117,28 @@ impl StateBlock {
         Ok(())
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        self.hashables.account.deserialize(stream)?;
-        self.hashables.previous = BlockHash::deserialize(stream)?;
-        self.hashables.representative.deserialize(stream)?;
-        self.hashables.balance.deserialize(stream)?;
-        self.hashables.link.deserialize(stream)?;
-        self.signature = Signature::deserialize(stream)?;
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+        let account = Account::deserialize(stream)?;
+        let previous = BlockHash::deserialize(stream)?;
+        let representative = Account::deserialize(stream)?;
+        let balance = Amount::deserialize(stream)?;
+        let link = Link::deserialize(stream)?;
+        let signature = Signature::deserialize(stream)?;
         let mut work_bytes = [0u8; 8];
         stream.read_bytes(&mut work_bytes, 8)?;
-        self.work = u64::from_be_bytes(work_bytes);
-        Ok(())
+        let work = u64::from_be_bytes(work_bytes);
+        Ok(Self {
+            work,
+            signature,
+            hashables: StateHashables {
+                account,
+                previous,
+                representative,
+                balance,
+                link,
+            },
+            hash: LazyBlockHash::new(),
+        })
     }
 
     pub fn serialize_json(&self, writer: &mut impl PropertyTreeWriter) -> Result<()> {
@@ -184,5 +205,129 @@ impl BlockHashFactory for StateBlock {
         let mut result = [0u8; 32];
         blake.finalize(&mut result).unwrap();
         BlockHash::from_bytes(result)
+    }
+}
+
+#[cfg(test)]
+pub struct StateBlockBuilder {
+    block: StateBlock,
+    key: KeyPair,
+}
+
+#[cfg(test)]
+impl StateBlockBuilder {
+    pub fn new() -> Self {
+        let key = KeyPair::new();
+        Self {
+            block: StateBlock::new(
+                Account::from(1),
+                BlockHash::from(2),
+                Account::from(3),
+                Amount::from(4),
+                Link::from(5),
+                &key.private_key(),
+                &key.public_key(),
+                6,
+            )
+            .unwrap(),
+            key,
+        }
+    }
+
+    pub fn account(mut self, account: impl Into<Account>) -> Self {
+        self.block.hashables.account = account.into();
+        self
+    }
+
+    pub fn previous(mut self, previous: impl Into<BlockHash>) -> Self {
+        self.block.hashables.previous = previous.into();
+        self
+    }
+
+    pub fn representative(mut self, rep: impl Into<Account>) -> Self {
+        self.block.hashables.representative = rep.into();
+        self
+    }
+
+    pub fn balance(mut self, balance: impl Into<Amount>) -> Self {
+        self.block.hashables.balance = balance.into();
+        self
+    }
+
+    pub fn link(mut self, link: impl Into<Link>) -> Self {
+        self.block.hashables.link = link.into();
+        self
+    }
+
+    pub fn sign(mut self, key: KeyPair) -> Self {
+        self.key = key;
+        self
+    }
+
+    pub fn work(mut self, work: u64) -> Self {
+        self.block.work = work;
+        self
+    }
+
+    pub fn build(mut self) -> Result<StateBlock> {
+        self.block
+            .sign(&self.key.private_key(), &self.key.public_key())?;
+        Ok(self.block)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::{TestPropertyTree, TestStream};
+
+    use super::*;
+
+    // original test: state_block.serialization
+    #[test]
+    fn builder() {
+        let block1 = StateBlockBuilder::new()
+            .account(3)
+            .previous(1)
+            .representative(6)
+            .balance(2)
+            .link(4)
+            .work(5)
+            .build()
+            .unwrap();
+
+        assert_eq!(block1.hashables.account, Account::from(3));
+        assert_eq!(block1.hashables.previous, BlockHash::from(1));
+        assert_eq!(block1.hashables.representative, Account::from(6).into());
+        assert_eq!(block1.hashables.balance, Amount::new(2));
+        assert_eq!(block1.hashables.link, Link::from(4));
+    }
+
+    // original test: state_block.serialization
+    #[test]
+    fn serialization() -> Result<()> {
+        let block1 = StateBlockBuilder::new().work(5).build()?;
+        let mut stream = TestStream::new();
+        block1.serialize(&mut stream)?;
+        assert_eq!(StateBlock::serialized_size(), stream.bytes_written());
+        assert_eq!(stream.byte_at(215), 0x5); // Ensure work is serialized big-endian
+
+        let block2 = StateBlock::deserialize(&mut stream)?;
+        assert_eq!(block1, block2);
+
+        Ok(())
+    }
+
+    // original test: state_block.serialization
+    #[test]
+    fn json_serialization() -> Result<()> {
+        let block1 = StateBlockBuilder::new().build()?;
+
+        let mut ptree = TestPropertyTree::new();
+        block1.serialize_json(&mut ptree)?;
+
+        let block2 = StateBlock::deserialize_json(&ptree)?;
+        assert_eq!(block1, block2);
+
+        Ok(())
     }
 }

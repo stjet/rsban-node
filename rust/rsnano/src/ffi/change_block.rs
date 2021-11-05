@@ -23,6 +23,7 @@ pub struct ChangeBlockDto {
     pub representative: [u8; 32],
 }
 
+#[repr(C)]
 pub struct ChangeBlockDto2 {
     pub previous: [u8; 32],
     pub representative: [u8; 32],
@@ -172,14 +173,12 @@ pub unsafe extern "C" fn rsn_change_block_serialize(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_change_block_deserialize(
-    handle: *mut ChangeBlockHandle,
     stream: *mut c_void,
-) -> i32 {
+) -> *mut ChangeBlockHandle {
     let mut stream = FfiStream::new(stream);
-    if (*handle).block.deserialize(&mut stream).is_ok() {
-        0
-    } else {
-        -1
+    match ChangeBlock::deserialize(&mut stream) {
+        Ok(block) => Box::into_raw(Box::new(ChangeBlockHandle { block })),
+        Err(_) => std::ptr::null_mut(),
     }
 }
 

@@ -11,7 +11,7 @@ use anyhow::Result;
 
 use super::{BlockHashFactory, LazyBlockHash};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct OpenHashables {
     pub source: BlockHash,
     pub representative: Account,
@@ -24,7 +24,7 @@ impl OpenHashables {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OpenBlock {
     pub work: u64,
     pub signature: Signature,
@@ -52,7 +52,7 @@ impl OpenBlock {
             hash: LazyBlockHash::new(),
         };
 
-        let signature = sign_message(&prv_key, &pub_key, result.hash().as_bytes())?;
+        let signature = sign_message(prv_key, pub_key, result.hash().as_bytes())?;
         result.signature = signature;
         Ok(result)
     }
@@ -81,15 +81,22 @@ impl OpenBlock {
         Ok(())
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        self.hashables.source = BlockHash::deserialize(stream)?;
-        self.hashables.representative.deserialize(stream)?;
-        self.hashables.account.deserialize(stream)?;
-        self.signature = Signature::deserialize(stream)?;
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+        let hashables = OpenHashables {
+            source: BlockHash::deserialize(stream)?,
+            representative: Account::deserialize(stream)?,
+            account: Account::deserialize(stream)?,
+        };
+        let signature = Signature::deserialize(stream)?;
         let mut work_bytes = [0u8; 8];
         stream.read_bytes(&mut work_bytes, 8)?;
-        self.work = u64::from_be_bytes(work_bytes);
-        Ok(())
+        let work = u64::from_be_bytes(work_bytes);
+        Ok(OpenBlock {
+            work,
+            signature,
+            hashables,
+            hash: LazyBlockHash::new(),
+        })
     }
 
     pub fn serialize_json(&self, writer: &mut impl PropertyTreeWriter) -> Result<()> {
@@ -142,5 +149,55 @@ impl BlockHashFactory for OpenBlock {
         let mut result = [0u8; 32];
         blake.finalize(&mut result).unwrap();
         BlockHash::from_bytes(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        numbers::KeyPair,
+        utils::{TestPropertyTree, TestStream},
+    };
+
+    // original test: block.open_serialize_json
+    #[test]
+    fn serialize_json() -> Result<()> {
+        let key1 = KeyPair::new();
+        let block1 = OpenBlock::new(
+            BlockHash::from(0),
+            Account::from(1),
+            Account::from(0),
+            &key1.private_key(),
+            &key1.public_key(),
+            0,
+        )?;
+        let mut ptree = TestPropertyTree::new();
+        block1.serialize_json(&mut ptree)?;
+
+        let block2 = OpenBlock::deserialize_json(&ptree)?;
+        assert_eq!(block1, block2);
+        Ok(())
+    }
+
+    // original test: open_block.deserialize
+    #[test]
+    fn serialize() -> Result<()> {
+        let key1 = KeyPair::new();
+        let block1 = OpenBlock::new(
+            BlockHash::from(0),
+            Account::from(1),
+            Account::from(0),
+            &key1.private_key(),
+            &key1.public_key(),
+            0,
+        )?;
+        let mut stream = TestStream::new();
+        block1.serialize(&mut stream)?;
+        assert_eq!(OpenBlock::serialized_size(), stream.bytes_written());
+
+        let block2 = OpenBlock::deserialize(&mut stream)?;
+        assert_eq!(block1, block2);
+        Ok(())
     }
 }

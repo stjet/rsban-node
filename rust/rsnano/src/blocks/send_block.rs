@@ -91,10 +91,19 @@ impl SendBlock {
         Ok(block)
     }
 
-    pub fn read_from_stream(stream: &mut impl Stream) -> Result<Self> {
-        let mut result = Self::default();
-        result.deserialize(stream)?;
-        Ok(result)
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+        let hashables = SendHashables::deserialize(stream)?;
+        let signature = Signature::deserialize(stream)?;
+
+        let mut buffer = [0u8; 8];
+        stream.read_bytes(&mut buffer, 8)?;
+        let work = u64::from_be_bytes(buffer);
+        Ok(SendBlock {
+            hashables,
+            signature,
+            work,
+            hash: LazyBlockHash::new(),
+        })
     }
 
     pub fn hash(&self) -> Ref<BlockHash> {
@@ -109,17 +118,6 @@ impl SendBlock {
         self.hashables.serialize(stream)?;
         self.signature.serialize(stream)?;
         stream.write_bytes(&self.work.to_be_bytes())
-    }
-
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        self.hashables = SendHashables::deserialize(stream)?;
-        self.signature = Signature::deserialize(stream)?;
-
-        let mut buffer = [0u8; 8];
-        stream.read_bytes(&mut buffer, 8)?;
-        self.work = u64::from_be_bytes(buffer);
-
-        Ok(())
     }
 
     pub fn zero(&mut self) {
@@ -234,6 +232,7 @@ mod tests {
     }
 
     // original test: block.send_serialize
+    // original test: send_block.deserialize
     #[test]
     fn serialize() -> Result<()> {
         let key = KeyPair::new();
@@ -247,9 +246,9 @@ mod tests {
         )?;
         let mut stream = TestStream::new();
         block1.serialize(&mut stream)?;
-        assert!(stream.bytes_written() > 0);
+        assert_eq!(SendBlock::serialized_size(), stream.bytes_written());
 
-        let block2 = SendBlock::read_from_stream(&mut stream)?;
+        let block2 = SendBlock::deserialize(&mut stream)?;
         assert_eq!(block1, block2);
         Ok(())
     }

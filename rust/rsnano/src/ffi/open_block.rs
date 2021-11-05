@@ -183,15 +183,11 @@ pub unsafe extern "C" fn rsn_open_block_serialize(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_deserialize(
-    handle: *mut OpenBlockHandle,
-    stream: *mut c_void,
-) -> i32 {
+pub unsafe extern "C" fn rsn_open_block_deserialize(stream: *mut c_void) -> *mut OpenBlockHandle {
     let mut stream = FfiStream::new(stream);
-    if (*handle).block.deserialize(&mut stream).is_ok() {
-        0
-    } else {
-        -1
+    match OpenBlock::deserialize(&mut stream) {
+        Ok(block) => Box::into_raw(Box::new(OpenBlockHandle { block })),
+        Err(_) => std::ptr::null_mut(),
     }
 }
 

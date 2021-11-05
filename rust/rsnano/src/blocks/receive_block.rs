@@ -143,6 +143,7 @@ mod tests {
     use super::*;
 
     // original test: block.receive_serialize
+    // original test: receive_block.deserialize
     #[test]
     fn serialize() -> Result<()> {
         let key1 = KeyPair::new();
@@ -155,9 +156,9 @@ mod tests {
         )?;
         let mut stream = TestStream::new();
         block1.serialize(&mut stream)?;
+        assert_eq!(ReceiveBlock::serialized_size(), stream.bytes_written());
 
         let block2 = ReceiveBlock::deserialize(&mut stream)?;
-
         assert_eq!(block1, block2);
         Ok(())
     }

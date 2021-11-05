@@ -15,10 +15,6 @@ impl Account {
         }
     }
 
-    pub fn from_public_key(public_key: PublicKey) -> Self {
-        Self { public_key }
-    }
-
     pub fn from_bytes(bytes: [u8; 32]) -> Account {
         Self {
             public_key: PublicKey::from_bytes(bytes),
@@ -33,8 +29,8 @@ impl Account {
         self.public_key.serialize(stream)
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        self.public_key.deserialize(stream)
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+        PublicKey::deserialize(stream).map(Self::from)
     }
 
     pub fn to_bytes(self) -> [u8; 32] {
@@ -84,6 +80,12 @@ impl Account {
         let mut bytes = [0u8; 32];
         hex::decode_to_slice(s, &mut bytes)?;
         Ok(Account::from_bytes(bytes))
+    }
+}
+
+impl From<PublicKey> for Account {
+    fn from(public_key: PublicKey) -> Self {
+        Account { public_key }
     }
 }
 
@@ -235,7 +237,7 @@ impl From<u64> for Account {
     fn from(value: u64) -> Self {
         let mut key = PublicKey::new();
         key.value[24..].copy_from_slice(&value.to_be_bytes());
-        Account::from_public_key(key)
+        Account::from(key)
     }
 }
 

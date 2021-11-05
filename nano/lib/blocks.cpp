@@ -265,11 +265,10 @@ nano::send_block::send_block (nano::block_hash const & previous_a, nano::account
 		throw std::runtime_error ("could not create send_block");
 }
 
-nano::send_block::send_block (bool & error_a, nano::stream & stream_a) :
-	nano::send_block::send_block ()
+nano::send_block::send_block (bool & error_a, nano::stream & stream_a)
 {
-	auto result = rsnano::rsn_send_block_deserialize (handle, &stream_a);
-	error_a = result != 0;
+	handle = rsnano::rsn_send_block_deserialize (&stream_a);
+	error_a = handle == nullptr;
 }
 
 nano::send_block::send_block (bool & error_a, boost::property_tree::ptree const & tree_a)
@@ -416,18 +415,16 @@ nano::open_block::open_block (nano::block_hash const & source_a, nano::account c
 	debug_assert (account_a != nullptr);
 	debug_assert (pub_a != nullptr);
 
-	rsnano::OpenBlockDto dto;
-	dto.work = work_a;
+	rsnano::OpenBlockDto2 dto;
 	std::copy (std::begin (source_a.bytes), std::end (source_a.bytes), std::begin (dto.source));
 	std::copy (std::begin (representative_a.bytes), std::end (representative_a.bytes), std::begin (dto.representative));
 	std::copy (std::begin (account_a.bytes), std::end (account_a.bytes), std::begin (dto.account));
-	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
-	handle = rsnano::rsn_open_block_create (&dto);
-
-	auto signature{ nano::sign_message (prv_a, pub_a, hash ()) };
-	uint8_t sig_bytes[64];
-	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (sig_bytes));
-	rsnano::rsn_open_block_signature_set (handle, &sig_bytes);
+	std::copy (std::begin (prv_a.bytes), std::end (prv_a.bytes), std::begin (dto.priv_key));
+	std::copy (std::begin (pub_a.bytes), std::end (pub_a.bytes), std::begin (dto.pub_key));
+	dto.work = work_a;
+	handle = rsnano::rsn_open_block_create2 (&dto);
+	if (handle == nullptr)
+		throw std::runtime_error ("could not create open_block");
 }
 
 nano::open_block::open_block (nano::block_hash const & source_a, nano::account const & representative_a, nano::account const & account_a, std::nullptr_t)
@@ -444,11 +441,10 @@ nano::open_block::open_block (nano::block_hash const & source_a, nano::account c
 	handle = rsnano::rsn_open_block_create (&dto);
 }
 
-nano::open_block::open_block (bool & error_a, nano::stream & stream_a) :
-	open_block ()
+nano::open_block::open_block (bool & error_a, nano::stream & stream_a)
 {
-	auto result = rsnano::rsn_open_block_deserialize (handle, &stream_a);
-	error_a = result != 0;
+	handle = rsnano::rsn_open_block_deserialize (&stream_a);
+	error_a = handle == nullptr;
 }
 
 nano::open_block::open_block (bool & error_a, boost::property_tree::ptree const & tree_a)
@@ -667,24 +663,22 @@ nano::change_block::change_block (nano::block_hash const & previous_a, nano::acc
 	debug_assert (representative_a != nullptr);
 	debug_assert (pub_a != nullptr);
 
-	rsnano::ChangeBlockDto dto;
+	rsnano::ChangeBlockDto2 dto;
 	std::copy (std::begin (previous_a.bytes), std::end (previous_a.bytes), std::begin (dto.previous));
 	std::copy (std::begin (representative_a.bytes), std::end (representative_a.bytes), std::begin (dto.representative));
-	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
+	std::copy (std::begin (prv_a.bytes), std::end (prv_a.bytes), std::begin (dto.priv_key));
+	std::copy (std::begin (pub_a.bytes), std::end (pub_a.bytes), std::begin (dto.pub_key));
 	dto.work = work_a;
 
-	handle = rsnano::rsn_change_block_create (&dto);
-
-	auto signature (nano::sign_message (prv_a, pub_a, hash ()));
-	uint8_t sig_bytes[64];
-	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (sig_bytes));
-	rsnano::rsn_change_block_signature_set (handle, &sig_bytes);
+	handle = rsnano::rsn_change_block_create2 (&dto);
+	if (handle == nullptr)
+		throw std::runtime_error ("could not create change_block");
 }
 
-nano::change_block::change_block (bool & error_a, nano::stream & stream_a) :
-	change_block ()
+nano::change_block::change_block (bool & error_a, nano::stream & stream_a)
 {
-	error_a = rsnano::rsn_change_block_deserialize (handle, &stream_a) != 0;
+	handle = rsnano::rsn_change_block_deserialize (&stream_a);
+	error_a = handle == nullptr;
 }
 
 nano::change_block::change_block (bool & error_a, boost::property_tree::ptree const & tree_a)
@@ -898,26 +892,25 @@ nano::state_block::state_block (nano::account const & account_a, nano::block_has
 	debug_assert (representative_a != nullptr);
 	debug_assert (link_a.as_account () != nullptr);
 	debug_assert (pub_a != nullptr);
-	rsnano::StateBlockDto dto;
-	dto.work = work_a;
+
+	rsnano::StateBlockDto2 dto;
 	std::copy (std::begin (account_a.bytes), std::end (account_a.bytes), std::begin (dto.account));
 	std::copy (std::begin (previous_a.bytes), std::end (previous_a.bytes), std::begin (dto.previous));
 	std::copy (std::begin (representative_a.bytes), std::end (representative_a.bytes), std::begin (dto.representative));
-	std::copy (std::begin (balance_a.bytes), std::end (balance_a.bytes), std::begin (dto.balance));
 	std::copy (std::begin (link_a.bytes), std::end (link_a.bytes), std::begin (dto.link));
-	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
-	handle = rsnano::rsn_state_block_create (&dto);
-
-	auto signature (nano::sign_message (prv_a, pub_a, hash ()));
-	uint8_t sig_bytes[64];
-	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (sig_bytes));
-	rsnano::rsn_state_block_signature_set (handle, &sig_bytes);
+	std::copy (std::begin (balance_a.bytes), std::end (balance_a.bytes), std::begin (dto.balance));
+	std::copy (std::begin (prv_a.bytes), std::end (prv_a.bytes), std::begin (dto.priv_key));
+	std::copy (std::begin (pub_a.bytes), std::end (pub_a.bytes), std::begin (dto.pub_key));
+	dto.work = work_a;
+	handle = rsnano::rsn_state_block_create2 (&dto);
+	if (handle == nullptr)
+		throw std::runtime_error ("could not create state_block");
 }
 
-nano::state_block::state_block (bool & error_a, nano::stream & stream_a) :
-	state_block ()
+nano::state_block::state_block (bool & error_a, nano::stream & stream_a)
 {
-	error_a = rsnano::rsn_state_block_deserialize (handle, &stream_a) != 0;
+	handle = rsnano::rsn_state_block_deserialize (&stream_a);
+	error_a = handle == nullptr;
 }
 
 nano::state_block::state_block (bool & error_a, boost::property_tree::ptree const & tree_a)

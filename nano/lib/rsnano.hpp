@@ -251,6 +251,8 @@ ReceiveBlockHandle * rsn_receive_block_clone (const ReceiveBlockHandle * handle)
 
 ReceiveBlockHandle * rsn_receive_block_create (const ReceiveBlockDto * dto);
 
+ReceiveBlockHandle * rsn_receive_block_deserialize (void * stream);
+
 ReceiveBlockHandle * rsn_receive_block_deserialize_json (const void * ptree);
 
 void rsn_receive_block_destroy (ReceiveBlockHandle * handle);

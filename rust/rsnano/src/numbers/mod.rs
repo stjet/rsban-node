@@ -70,9 +70,10 @@ impl BlockHash {
         stream.write_bytes(&self.value)
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        let len = self.value.len();
-        stream.read_bytes(&mut self.value, len)
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+        let mut result = Self::new();
+        stream.read_bytes(&mut result.value, 32)?;
+        Ok(result)
     }
 
     pub fn to_be_bytes(self) -> [u8; 32] {

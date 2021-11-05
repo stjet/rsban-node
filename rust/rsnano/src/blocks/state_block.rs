@@ -71,7 +71,7 @@ impl StateBlock {
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
         self.hashables.account.deserialize(stream)?;
-        self.hashables.previous.deserialize(stream)?;
+        self.hashables.previous = BlockHash::deserialize(stream)?;
         self.hashables.representative.deserialize(stream)?;
         self.hashables.balance.deserialize(stream)?;
         self.hashables.link.deserialize(stream)?;

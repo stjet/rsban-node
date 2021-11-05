@@ -1,6 +1,6 @@
 use crate::{
     numbers::{from_string_hex, to_string_hex, BlockHash, Signature},
-    utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter},
+    utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, Stream},
 };
 use anyhow::Result;
 
@@ -48,6 +48,20 @@ impl ReceiveBlock {
         let source = BlockHash::decode_hex(reader.get_string("source")?)?;
         let signature = Signature::decode_hex(reader.get_string("signature")?)?;
         let work = from_string_hex(reader.get_string("work")?)?;
+        Ok(Self {
+            work,
+            signature,
+            hashables: ReceiveHashables { previous, source },
+        })
+    }
+
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+        let previous = BlockHash::deserialize(stream)?;
+        let source = BlockHash::deserialize(stream)?;
+        let signature = Signature::deserialize(stream)?;
+        let mut work_bytes = [0u8; 8];
+        stream.read_bytes(&mut work_bytes, 8)?;
+        let work = u64::from_be_bytes(work_bytes);
         Ok(Self {
             work,
             signature,

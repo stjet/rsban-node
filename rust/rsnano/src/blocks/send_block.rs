@@ -213,8 +213,6 @@ impl Eq for SendBlock {}
 
 #[cfg(test)]
 mod tests {
-    use blake2::crypto_mac::Key;
-
     use crate::{
         numbers::{validate_message, KeyPair},
         utils::{TestPropertyTree, TestStream},

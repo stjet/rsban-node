@@ -233,12 +233,6 @@ void nano::send_block::serialize (nano::stream & stream_a) const
 	}
 }
 
-bool nano::send_block::deserialize (nano::stream & stream_a)
-{
-	auto result = rsnano::rsn_send_block_deserialize (handle, &stream_a);
-	return result != 0;
-}
-
 void nano::send_block::serialize_json (std::string & string_a, bool single_line) const
 {
 	boost::property_tree::ptree tree;
@@ -453,7 +447,8 @@ nano::open_block::open_block (nano::block_hash const & source_a, nano::account c
 nano::open_block::open_block (bool & error_a, nano::stream & stream_a) :
 	open_block ()
 {
-	error_a = deserialize (stream_a);
+	auto result = rsnano::rsn_open_block_deserialize (handle, &stream_a);
+	error_a = result != 0;
 }
 
 nano::open_block::open_block (bool & error_a, boost::property_tree::ptree const & tree_a)
@@ -529,12 +524,6 @@ void nano::open_block::serialize (nano::stream & stream_a) const
 	{
 		throw std::runtime_error ("open_block serialization failed");
 	}
-}
-
-bool nano::open_block::deserialize (nano::stream & stream_a)
-{
-	auto result = rsnano::rsn_open_block_deserialize (handle, &stream_a);
-	return result != 0;
 }
 
 void nano::open_block::serialize_json (std::string & string_a, bool single_line) const
@@ -768,11 +757,6 @@ void nano::change_block::serialize (nano::stream & stream_a) const
 	{
 		throw std::runtime_error ("could not serialize change_block");
 	}
-}
-
-bool nano::change_block::deserialize (nano::stream & stream_a)
-{
-	return rsnano::rsn_change_block_deserialize (handle, &stream_a) != 0;
 }
 
 void nano::change_block::serialize_json (std::string & string_a, bool single_line) const
@@ -1015,11 +999,6 @@ void nano::state_block::serialize (nano::stream & stream_a) const
 	{
 		throw std::runtime_error ("could not serialize state_block");
 	}
-}
-
-bool nano::state_block::deserialize (nano::stream & stream_a)
-{
-	return rsnano::rsn_state_block_deserialize (handle, &stream_a) != 0;
 }
 
 void nano::state_block::serialize_json (std::string & string_a, bool single_line) const
@@ -1320,34 +1299,6 @@ void nano::receive_block::serialize (nano::stream & stream_a) const
 	write (stream_a, block_work ());
 }
 
-bool nano::receive_block::deserialize (nano::stream & stream_a)
-{
-	auto error (false);
-	try
-	{
-		uint8_t hash_buffer[32];
-		read (stream_a, hash_buffer);
-		rsnano::rsn_receive_block_previous_set (handle, &hash_buffer);
-
-		read (stream_a, hash_buffer);
-		rsnano::rsn_receive_block_source_set (handle, &hash_buffer);
-
-		uint8_t sig_buffer[64];
-		read (stream_a, sig_buffer);
-		rsnano::rsn_receive_block_signature_set (handle, &sig_buffer);
-
-		uint64_t work_l;
-		read (stream_a, work_l);
-		block_work_set (work_l);
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-
-	return error;
-}
-
 void nano::receive_block::serialize_json (std::string & string_a, bool single_line) const
 {
 	boost::property_tree::ptree tree;
@@ -1384,35 +1335,10 @@ nano::receive_block::receive_block (nano::block_hash const & previous_a, nano::b
 	signature_set (sig);
 }
 
-nano::receive_block::receive_block (bool & error_a, nano::stream & stream_a) :
-	handle (nullptr)
+nano::receive_block::receive_block (bool & error_a, nano::stream & stream_a) 
 {
-	try
-	{
-		nano::block_hash previous;
-		nano::read (stream_a, previous.bytes);
-
-		nano::block_hash source;
-		nano::read (stream_a, source.bytes);
-
-		uint8_t signature[64];
-		nano::read (stream_a, signature);
-
-		uint64_t work_l;
-		nano::read (stream_a, work_l);
-
-		rsnano::ReceiveBlockDto dto;
-		dto.work = work_l;
-		std::copy (std::begin (signature), std::end (signature), std::begin (dto.signature));
-		std::copy (std::begin (previous.bytes), std::end (previous.bytes), std::begin (dto.previous));
-		std::copy (std::begin (source.bytes), std::end (source.bytes), std::begin (dto.source));
-
-		handle = rsnano::rsn_receive_block_create (&dto);
-	}
-	catch (std::runtime_error const &)
-	{
-		error_a = true;
-	}
+	handle = rsnano::rsn_receive_block_deserialize (&stream_a);
+	error_a = handle == nullptr;
 }
 
 nano::receive_block::receive_block (bool & error_a, boost::property_tree::ptree const & tree_a)

@@ -45,7 +45,7 @@ impl ChangeBlock {
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        self.hashables.previous.deserialize(stream)?;
+        self.hashables.previous = BlockHash::deserialize(stream)?;
         self.hashables.representative.deserialize(stream)?;
         self.signature = Signature::deserialize(stream)?;
         let mut work_bytes = [0u8; 8];

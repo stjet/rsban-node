@@ -45,7 +45,7 @@ impl OpenBlock {
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        self.hashables.source.deserialize(stream)?;
+        self.hashables.source = BlockHash::deserialize(stream)?;
         self.hashables.representative.deserialize(stream)?;
         self.hashables.account.deserialize(stream)?;
         self.signature = Signature::deserialize(stream)?;

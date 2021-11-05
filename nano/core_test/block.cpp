@@ -332,10 +332,6 @@ TEST (state_block, serialization)
 	nano::state_block block2 (error1, stream);
 	ASSERT_FALSE (error1);
 	ASSERT_EQ (*block1, block2);
-	block2.zero ();
-	nano::bufferstream stream2 (bytes.data (), bytes.size ());
-	ASSERT_FALSE (block2.deserialize (stream2));
-	ASSERT_EQ (*block1, block2);
 	std::string json;
 	block1->serialize_json (json);
 	std::stringstream body (json);

@@ -120,7 +120,7 @@ impl BlockSideband {
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream, block_type: BlockType) -> Result<()> {
-        self.successor.deserialize(stream)?;
+        self.successor = BlockHash::deserialize(stream)?;
 
         if block_type != BlockType::State && block_type != BlockType::Open {
             self.account.deserialize(stream)?;

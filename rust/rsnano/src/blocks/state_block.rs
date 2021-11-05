@@ -1,10 +1,15 @@
+use std::cell::Ref;
+
 use crate::{
-    numbers::{from_string_hex, to_string_hex, Account, Amount, BlockHash, Link, Signature},
-    utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, Stream},
+    numbers::{
+        from_string_hex, sign_message, to_string_hex, Account, Amount, BlockHash, Link, PublicKey,
+        RawKey, Signature,
+    },
+    utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, RustBlake2b, Stream},
 };
 use anyhow::Result;
 
-use super::BlockType;
+use super::{BlockHashFactory, BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct StateHashables {
@@ -33,9 +38,38 @@ pub struct StateBlock {
     pub work: u64,
     pub signature: Signature,
     pub hashables: StateHashables,
+    pub hash: LazyBlockHash,
 }
 
 impl StateBlock {
+    pub fn new(
+        account: Account,
+        previous: BlockHash,
+        representative: Account,
+        balance: Amount,
+        link: Link,
+        prv_key: &RawKey,
+        pub_key: &PublicKey,
+        work: u64,
+    ) -> Result<Self> {
+        let mut result = Self {
+            work,
+            signature: Signature::new(),
+            hashables: StateHashables {
+                account,
+                previous,
+                representative,
+                balance,
+                link,
+            },
+            hash: LazyBlockHash::new(),
+        };
+
+        let signature = sign_message(&prv_key, &pub_key, result.hash().as_bytes())?;
+        result.signature = signature;
+        Ok(result)
+    }
+
     pub const fn serialized_size() -> usize {
         Account::serialized_size() // Account
             + BlockHash::serialized_size() // Previous
@@ -46,12 +80,16 @@ impl StateBlock {
             + std::mem::size_of::<u64>() // Work
     }
 
-    pub fn hash(&self, blake2b: &mut impl Blake2b) -> Result<()> {
+    pub fn hash(&self) -> Ref<BlockHash> {
+        self.hash.hash(self)
+    }
+
+    pub fn hash_hashables(&self, blake2b: &mut impl Blake2b) -> Result<()> {
         let mut preamble = [0u8; 32];
         preamble[31] = BlockType::State as u8;
         blake2b.update(&preamble)?;
         blake2b.update(&self.hashables.account.to_bytes())?;
-        blake2b.update(&self.hashables.previous.to_be_bytes())?;
+        blake2b.update(&self.hashables.previous.to_bytes())?;
         blake2b.update(&self.hashables.representative.to_bytes())?;
         blake2b.update(&self.hashables.balance.to_be_bytes())?;
         blake2b.update(&self.hashables.link.to_be_bytes())?;
@@ -123,6 +161,28 @@ impl StateBlock {
                 balance,
                 link,
             },
+            hash: LazyBlockHash::new(),
         })
+    }
+}
+
+impl PartialEq for StateBlock {
+    fn eq(&self, other: &Self) -> bool {
+        self.work == other.work
+            && self.signature == other.signature
+            && self.hashables == other.hashables
+    }
+}
+
+impl Eq for StateBlock {}
+
+impl BlockHashFactory for StateBlock {
+    fn hash(&self) -> BlockHash {
+        let mut blake = RustBlake2b::new();
+        blake.init(32).unwrap();
+        self.hash_hashables(&mut blake).unwrap();
+        let mut result = [0u8; 32];
+        blake.finalize(&mut result).unwrap();
+        BlockHash::from_bytes(result)
     }
 }

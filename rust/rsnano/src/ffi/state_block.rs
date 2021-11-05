@@ -1,8 +1,8 @@
 use std::ffi::c_void;
 
 use crate::{
-    blocks::{StateBlock, StateHashables},
-    numbers::{Account, Amount, BlockHash, Link, Signature},
+    blocks::{LazyBlockHash, StateBlock, StateHashables},
+    numbers::{Account, Amount, BlockHash, Link, PublicKey, RawKey, Signature},
 };
 
 use super::{
@@ -26,6 +26,18 @@ pub struct StateBlockDto {
     pub work: u64,
 }
 
+#[repr(C)]
+pub struct StateBlockDto2 {
+    pub account: [u8; 32],
+    pub previous: [u8; 32],
+    pub representative: [u8; 32],
+    pub link: [u8; 32],
+    pub balance: [u8; 16],
+    pub priv_key: [u8; 32],
+    pub pub_key: [u8; 32],
+    pub work: u64,
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_state_block_create(dto: &StateBlockDto) -> *mut StateBlockHandle {
     Box::into_raw(Box::new(StateBlockHandle {
@@ -39,8 +51,31 @@ pub extern "C" fn rsn_state_block_create(dto: &StateBlockDto) -> *mut StateBlock
                 balance: Amount::from_be_bytes(dto.balance),
                 link: Link::from_bytes(dto.link),
             },
+            hash: LazyBlockHash::new(),
         },
     }))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_state_block_create2(dto: &StateBlockDto2) -> *mut StateBlockHandle {
+    let block = match StateBlock::new(
+        Account::from_bytes(dto.account),
+        BlockHash::from_bytes(dto.previous),
+        Account::from_bytes(dto.representative),
+        Amount::from_be_bytes(dto.balance),
+        Link::from_bytes(dto.link),
+        &RawKey::from_bytes(dto.priv_key),
+        &PublicKey::from_bytes(dto.pub_key),
+        dto.work,
+    ) {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("could not create state block: {}", e);
+            return std::ptr::null_mut();
+        }
+    };
+
+    Box::into_raw(Box::new(StateBlockHandle { block }))
 }
 
 #[no_mangle]
@@ -99,7 +134,7 @@ pub unsafe extern "C" fn rsn_state_block_previous(
     handle: &StateBlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = (*handle).block.hashables.previous.to_be_bytes();
+    (*result) = (*handle).block.hashables.previous.to_bytes();
 }
 
 #[no_mangle]
@@ -164,7 +199,7 @@ pub extern "C" fn rsn_state_block_size() -> usize {
 #[no_mangle]
 pub extern "C" fn rsn_state_block_hash(handle: &StateBlockHandle, state: *mut c_void) -> i32 {
     let mut blake2b = FfiBlake2b::new(state);
-    if handle.block.hash(&mut blake2b).is_ok() {
+    if handle.block.hash_hashables(&mut blake2b).is_ok() {
         0
     } else {
         -1

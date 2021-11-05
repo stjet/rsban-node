@@ -1,9 +1,8 @@
-use std::{cell::RefCell, ffi::c_void};
-
 use num::FromPrimitive;
+use std::ffi::c_void;
 
 use crate::{
-    blocks::{SendBlock, SendHashables},
+    blocks::{LazyBlockHash, SendBlock, SendHashables},
     numbers::{Account, Amount, BlockHash, PublicKey, RawKey, Signature},
 };
 
@@ -49,7 +48,7 @@ pub extern "C" fn rsn_send_block_create2(dto: &SendBlockDto2) -> *mut SendBlockH
     let destination = Account::from_bytes(dto.destination);
     let balance = Amount::from_be_bytes(dto.balance);
     let private_key = RawKey::from_bytes(dto.priv_key);
-    let public_key = PublicKey::from_be_bytes(dto.pub_key);
+    let public_key = PublicKey::from_bytes(dto.pub_key);
     let block = match SendBlock::new(
         &previous,
         &destination,
@@ -158,7 +157,7 @@ pub unsafe extern "C" fn rsn_send_block_destination_set(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_previous(handle: &SendBlockHandle, result: *mut [u8; 32]) {
-    (*result) = handle.block.hashables.previous.to_be_bytes();
+    (*result) = handle.block.hashables.previous.to_bytes();
 }
 
 #[no_mangle]
@@ -235,7 +234,7 @@ impl From<&SendBlockDto> for SendBlock {
             hashables: SendHashables::from(value),
             signature: Signature::from_bytes(value.signature),
             work: value.work,
-            hash: RefCell::new(BlockHash::new()),
+            hash: LazyBlockHash::new(),
         }
     }
 }

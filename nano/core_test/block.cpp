@@ -50,37 +50,6 @@ TEST (sign_message, sign_in_rust_and_validate_in_cpp)
 	ASSERT_EQ (valid, false);
 }
 
-TEST (block, receive_serialize)
-{
-	nano::receive_block block1 (0, 1, nano::keypair ().prv, 3, 4);
-	nano::keypair key1;
-	std::vector<uint8_t> bytes;
-	{
-		nano::vectorstream stream1 (bytes);
-		block1.serialize (stream1);
-	}
-	nano::bufferstream stream2 (bytes.data (), bytes.size ());
-	bool error (false);
-	nano::receive_block block2 (error, stream2);
-	ASSERT_FALSE (error);
-	ASSERT_EQ (block1, block2);
-}
-
-TEST (block, receive_serialize_json)
-{
-	nano::receive_block block1 (0, 1, nano::keypair ().prv, 3, 4);
-	std::string string1;
-	block1.serialize_json (string1);
-	ASSERT_NE (0, string1.size ());
-	boost::property_tree::ptree tree1;
-	std::stringstream istream (string1);
-	boost::property_tree::read_json (istream, tree1);
-	bool error (false);
-	nano::receive_block block2 (error, tree1);
-	ASSERT_FALSE (error);
-	ASSERT_EQ (block1, block2);
-}
-
 TEST (block, open_serialize_json)
 {
 	nano::open_block block1 (0, 1, 0, nano::keypair ().prv, 0, 0);
@@ -198,7 +167,8 @@ TEST (send_block, deserialize)
 
 TEST (receive_block, deserialize)
 {
-	nano::receive_block block1 (0, 1, nano::keypair ().prv, 3, 4);
+	nano::keypair key1;
+	nano::receive_block block1 (0, 1, key1.prv, key1.pub, 4);
 	ASSERT_EQ (block1.hash (), block1.hash ());
 	block1.previous_set (2);
 	block1.source_set (4);

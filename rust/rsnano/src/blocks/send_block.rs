@@ -1,4 +1,4 @@
-use std::cell::{Ref, RefCell};
+use std::cell::Ref;
 
 use crate::{
     numbers::{
@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::Result;
 
-use super::BlockType;
+use super::{BlockHashFactory, BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct SendHashables {
@@ -62,7 +62,7 @@ pub struct SendBlock {
     pub hashables: SendHashables,
     pub signature: Signature,
     pub work: u64,
-    pub hash: RefCell<BlockHash>,
+    pub hash: LazyBlockHash,
 }
 
 impl SendBlock {
@@ -82,7 +82,7 @@ impl SendBlock {
             },
             work,
             signature: Signature::new(),
-            hash: RefCell::new(BlockHash::new()),
+            hash: LazyBlockHash::new(),
         };
 
         let signature = sign_message(private_key, public_key, block.hash().as_bytes())?;
@@ -98,25 +98,7 @@ impl SendBlock {
     }
 
     pub fn hash(&self) -> Ref<BlockHash> {
-        let mut value = self.hash.borrow();
-        if value.is_zero() {
-            drop(value);
-            let mut x = self.hash.borrow_mut();
-            *x = self.generate_hash().unwrap();
-            drop(x);
-            value = self.hash.borrow();
-        }
-
-        value
-    }
-
-    pub fn generate_hash(&self) -> Result<BlockHash> {
-        let mut blake = RustBlake2b::new();
-        blake.init(32)?;
-        self.hash_hashables(&mut blake)?;
-        let mut result = [0u8; 32];
-        blake.finalize(&mut result)?;
-        Ok(BlockHash::from_bytes(result))
+        self.hash.hash(self)
     }
 
     pub const fn serialized_size() -> usize {
@@ -126,7 +108,7 @@ impl SendBlock {
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         self.hashables.serialize(stream)?;
         self.signature.serialize(stream)?;
-        stream.write_bytes(&self.work.to_ne_bytes())
+        stream.write_bytes(&self.work.to_be_bytes())
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
@@ -135,7 +117,7 @@ impl SendBlock {
 
         let mut buffer = [0u8; 8];
         stream.read_bytes(&mut buffer, 8)?;
-        self.work = u64::from_ne_bytes(buffer);
+        self.work = u64::from_be_bytes(buffer);
 
         Ok(())
     }
@@ -159,7 +141,7 @@ impl SendBlock {
     }
 
     pub fn hash_hashables(&self, blake2b: &mut impl Blake2b) -> Result<()> {
-        blake2b.update(&self.hashables.previous.to_be_bytes())?;
+        blake2b.update(&self.hashables.previous.to_bytes())?;
         blake2b.update(&self.hashables.destination.to_bytes())?;
         blake2b.update(&self.hashables.balance.to_be_bytes())?;
         Ok(())
@@ -196,7 +178,7 @@ impl SendBlock {
             },
             signature,
             work,
-            hash: RefCell::new(BlockHash::new()),
+            hash: LazyBlockHash::new(),
         })
     }
 }
@@ -210,6 +192,17 @@ impl PartialEq for SendBlock {
 }
 
 impl Eq for SendBlock {}
+
+impl BlockHashFactory for SendBlock {
+    fn hash(&self) -> BlockHash {
+        let mut blake = RustBlake2b::new();
+        blake.init(32).unwrap();
+        self.hash_hashables(&mut blake).unwrap();
+        let mut result = [0u8; 32];
+        blake.finalize(&mut result).unwrap();
+        BlockHash::from_bytes(result)
+    }
+}
 
 #[cfg(test)]
 mod tests {

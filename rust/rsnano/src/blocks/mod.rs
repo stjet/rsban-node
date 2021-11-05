@@ -4,6 +4,8 @@ mod receive_block;
 mod send_block;
 mod state_block;
 
+use std::cell::{Ref, RefCell};
+
 use anyhow::Result;
 pub use change_block::*;
 use num::FromPrimitive;
@@ -162,5 +164,34 @@ pub fn serialized_block_size(block_type: BlockType) -> usize {
         BlockType::Open => OpenBlock::serialized_size(),
         BlockType::Change => ChangeBlock::serialized_size(),
         BlockType::State => StateBlock::serialized_size(),
+    }
+}
+
+#[derive(Clone, Default, Debug)]
+pub struct LazyBlockHash {
+    hash: RefCell<BlockHash>,
+}
+
+pub trait BlockHashFactory {
+    fn hash(&self) -> BlockHash;
+}
+
+impl LazyBlockHash {
+    pub fn new() -> Self {
+        Self {
+            hash: RefCell::new(BlockHash::new()),
+        }
+    }
+    pub fn hash(&'_ self, factory: &impl BlockHashFactory) -> Ref<BlockHash> {
+        let mut value = self.hash.borrow();
+        if value.is_zero() {
+            drop(value);
+            let mut x = self.hash.borrow_mut();
+            *x = factory.hash();
+            drop(x);
+            value = self.hash.borrow();
+        }
+
+        value
     }
 }

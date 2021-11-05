@@ -21,7 +21,7 @@ impl Account {
 
     pub fn from_bytes(bytes: [u8; 32]) -> Account {
         Self {
-            public_key: PublicKey::from_be_bytes(bytes),
+            public_key: PublicKey::from_bytes(bytes),
         }
     }
 

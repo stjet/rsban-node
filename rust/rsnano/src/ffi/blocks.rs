@@ -89,7 +89,7 @@ pub struct BlockSidebandDto {
 unsafe fn set_block_sideband_dto(sideband: &BlockSideband, result: *mut BlockSidebandDto) {
     (*result).height = sideband.height;
     (*result).timestamp = sideband.timestamp;
-    (*result).successor = sideband.successor.to_be_bytes();
+    (*result).successor = sideband.successor.to_bytes();
     (*result).account = sideband.account.to_bytes();
     (*result).balance = sideband.balance.to_be_bytes();
     let details_ptr: *mut BlockDetailsDto = &mut (*result).details;
@@ -208,7 +208,7 @@ pub unsafe extern "C" fn rsn_sign_message(
     signature: *mut [u8; 64],
 ) -> i32 {
     let private_key = RawKey::from_bytes(*priv_key);
-    let public_key = PublicKey::from_be_bytes(*pub_key);
+    let public_key = PublicKey::from_bytes(*pub_key);
     let data = std::slice::from_raw_parts(message, len);
     match sign_message(&private_key, &public_key, data) {
         Ok(sig) => {
@@ -226,7 +226,7 @@ pub unsafe extern "C" fn rsn_valdiate_message(
     len: usize,
     signature: &[u8; 64],
 ) -> bool {
-    let public_key = PublicKey::from_be_bytes(*pub_key);
+    let public_key = PublicKey::from_bytes(*pub_key);
     let message = std::slice::from_raw_parts(message, len);
     let signature = Signature::from_bytes(*signature);
     validate_message(&public_key, message, &signature).is_err()

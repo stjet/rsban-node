@@ -1,8 +1,8 @@
 use std::ffi::c_void;
 
 use crate::{
-    blocks::{OpenBlock, OpenHashables},
-    numbers::{Account, BlockHash, Signature},
+    blocks::{LazyBlockHash, OpenBlock, OpenHashables},
+    numbers::{Account, BlockHash, PublicKey, RawKey, Signature},
 };
 
 use super::{
@@ -24,6 +24,16 @@ pub struct OpenBlockDto {
     pub account: [u8; 32],
 }
 
+#[repr(C)]
+pub struct OpenBlockDto2 {
+    pub source: [u8; 32],
+    pub representative: [u8; 32],
+    pub account: [u8; 32],
+    pub priv_key: [u8; 32],
+    pub pub_key: [u8; 32],
+    pub work: u64,
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut OpenBlockHandle {
     Box::into_raw(Box::new(OpenBlockHandle {
@@ -35,8 +45,29 @@ pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut OpenBlockHan
                 representative: Account::from_bytes(dto.representative),
                 account: Account::from_bytes(dto.account),
             },
+            hash: LazyBlockHash::new(),
         },
     }))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_open_block_create2(dto: &OpenBlockDto2) -> *mut OpenBlockHandle {
+    let block = match OpenBlock::new(
+        BlockHash::from_bytes(dto.source),
+        Account::from_bytes(dto.representative),
+        Account::from_bytes(dto.account),
+        &RawKey::from_bytes(dto.priv_key),
+        &PublicKey::from_bytes(dto.pub_key),
+        dto.work,
+    ) {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("could not create open block: {}", e);
+            return std::ptr::null_mut();
+        }
+    };
+
+    Box::into_raw(Box::new(OpenBlockHandle { block }))
 }
 
 #[no_mangle]
@@ -76,7 +107,7 @@ pub unsafe extern "C" fn rsn_open_block_signature_set(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_open_block_source(handle: &OpenBlockHandle, result: *mut [u8; 32]) {
-    (*result) = (*handle).block.hashables.source.to_be_bytes();
+    (*result) = (*handle).block.hashables.source.to_bytes();
 }
 
 #[no_mangle]
@@ -131,7 +162,7 @@ pub extern "C" fn rsn_open_block_size() -> usize {
 #[no_mangle]
 pub extern "C" fn rsn_open_block_hash(handle: &OpenBlockHandle, state: *mut c_void) -> i32 {
     let mut blake2b = FfiBlake2b::new(state);
-    if handle.block.hash(&mut blake2b).is_ok() {
+    if handle.block.hash_hashables(&mut blake2b).is_ok() {
         0
     } else {
         -1

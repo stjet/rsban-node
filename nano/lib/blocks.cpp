@@ -1289,14 +1289,8 @@ bool nano::receive_block::operator== (nano::receive_block const & other_a) const
 
 void nano::receive_block::serialize (nano::stream & stream_a) const
 {
-	uint8_t hash_buffer[32];
-	rsnano::rsn_receive_block_previous (handle, &hash_buffer);
-	write (stream_a, hash_buffer);
-
-	rsnano::rsn_receive_block_source (handle, &hash_buffer);
-	write (stream_a, hash_buffer);
-	write (stream_a, block_signature ().bytes);
-	write (stream_a, block_work ());
+	if (rsnano::rsn_receive_block_serialize (handle, &stream_a) < 0)
+		throw std::runtime_error ("could not serialize receive_block");
 }
 
 void nano::receive_block::serialize_json (std::string & string_a, bool single_line) const
@@ -1324,18 +1318,18 @@ nano::receive_block::receive_block ()
 nano::receive_block::receive_block (nano::block_hash const & previous_a, nano::block_hash const & source_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a)
 {
 	debug_assert (pub_a != nullptr);
-	rsnano::ReceiveBlockDto dto;
-	dto.work = work_a;
+	rsnano::ReceiveBlockDto2 dto;
 	std::copy (std::begin (previous_a.bytes), std::end (previous_a.bytes), std::begin (dto.previous));
 	std::copy (std::begin (source_a.bytes), std::end (source_a.bytes), std::begin (dto.source));
-	std::fill (std::begin (dto.signature), std::end (dto.signature), 0);
-	handle = rsnano::rsn_receive_block_create (&dto);
-
-	nano::signature sig (nano::sign_message (prv_a, pub_a, hash ()));
-	signature_set (sig);
+	std::copy (std::begin (prv_a.bytes), std::end (prv_a.bytes), std::begin (dto.priv_key));
+	std::copy (std::begin (pub_a.bytes), std::end (pub_a.bytes), std::begin (dto.pub_key));
+	dto.work = work_a;
+	handle = rsnano::rsn_receive_block_create2 (&dto);
+	if (handle == nullptr)
+		throw std::runtime_error ("could not create receive_block");
 }
 
-nano::receive_block::receive_block (bool & error_a, nano::stream & stream_a) 
+nano::receive_block::receive_block (bool & error_a, nano::stream & stream_a)
 {
 	handle = rsnano::rsn_receive_block_deserialize (&stream_a);
 	error_a = handle == nullptr;

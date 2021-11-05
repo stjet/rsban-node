@@ -1,11 +1,15 @@
 use std::ffi::c_void;
 
 use crate::{
-    blocks::{ReceiveBlock, ReceiveHashables},
-    numbers::{BlockHash, Signature},
+    blocks::{LazyBlockHash, ReceiveBlock, ReceiveHashables},
+    numbers::{BlockHash, PublicKey, RawKey, Signature},
 };
 
-use super::{FfiStream, blake2b::FfiBlake2b, property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter}};
+use super::{
+    blake2b::FfiBlake2b,
+    property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
+    FfiStream,
+};
 
 pub struct ReceiveBlockHandle {
     block: ReceiveBlock,
@@ -19,6 +23,15 @@ pub struct ReceiveBlockDto {
     pub source: [u8; 32],
 }
 
+#[repr(C)]
+pub struct ReceiveBlockDto2 {
+    pub previous: [u8; 32],
+    pub source: [u8; 32],
+    pub priv_key: [u8; 32],
+    pub pub_key: [u8; 32],
+    pub work: u64,
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut ReceiveBlockHandle {
     Box::into_raw(Box::new(ReceiveBlockHandle {
@@ -29,8 +42,28 @@ pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut Receiv
                 previous: BlockHash::from_bytes(dto.previous),
                 source: BlockHash::from_bytes(dto.source),
             },
+            hash: LazyBlockHash::new(),
         },
     }))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_receive_block_create2(dto: &ReceiveBlockDto2) -> *mut ReceiveBlockHandle {
+    let block = match ReceiveBlock::new(
+        BlockHash::from_bytes(dto.previous),
+        BlockHash::from_bytes(dto.source),
+        &RawKey::from_bytes(dto.priv_key),
+        &PublicKey::from_bytes(dto.pub_key),
+        dto.work,
+    ) {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("could not create receive block: {}", e);
+            return std::ptr::null_mut();
+        }
+    };
+
+    Box::into_raw(Box::new(ReceiveBlockHandle { block }))
 }
 
 #[no_mangle]
@@ -76,7 +109,7 @@ pub unsafe extern "C" fn rsn_receive_block_previous(
     handle: &ReceiveBlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = handle.block.hashables.previous.to_be_bytes();
+    (*result) = handle.block.hashables.previous.to_bytes();
 }
 
 #[no_mangle]
@@ -93,7 +126,7 @@ pub unsafe extern "C" fn rsn_receive_block_source(
     handle: &ReceiveBlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = handle.block.hashables.source.to_be_bytes();
+    (*result) = handle.block.hashables.source.to_bytes();
 }
 
 #[no_mangle]
@@ -108,7 +141,7 @@ pub unsafe extern "C" fn rsn_receive_block_source_set(
 #[no_mangle]
 pub extern "C" fn rsn_receive_block_hash(handle: &ReceiveBlockHandle, state: *mut c_void) -> i32 {
     let mut blake2b = FfiBlake2b::new(state);
-    if handle.block.hash(&mut blake2b).is_ok() {
+    if handle.block.hash_hashables(&mut blake2b).is_ok() {
         0
     } else {
         -1
@@ -155,8 +188,21 @@ pub unsafe extern "C" fn rsn_receive_block_deserialize(
     stream: *mut c_void,
 ) -> *mut ReceiveBlockHandle {
     let mut stream = FfiStream::new(stream);
-    match ReceiveBlock::deserialize(&mut stream){
-        Ok(block) => Box::into_raw(Box::new(ReceiveBlockHandle{ block})),
+    match ReceiveBlock::deserialize(&mut stream) {
+        Ok(block) => Box::into_raw(Box::new(ReceiveBlockHandle { block })),
         Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_block_serialize(
+    handle: *mut ReceiveBlockHandle,
+    stream: *mut c_void,
+) -> i32 {
+    let mut stream = FfiStream::new(stream);
+    if (*handle).block.serialize(&mut stream).is_ok() {
+        0
+    } else {
+        -1
     }
 }

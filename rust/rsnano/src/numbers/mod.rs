@@ -18,7 +18,7 @@ impl PublicKey {
         Self { value: [0; 32] }
     }
 
-    pub fn from_be_bytes(value: [u8; 32]) -> Self {
+    pub fn from_bytes(value: [u8; 32]) -> Self {
         Self { value }
     }
 
@@ -76,7 +76,7 @@ impl BlockHash {
         Ok(result)
     }
 
-    pub fn to_be_bytes(self) -> [u8; 32] {
+    pub fn to_bytes(self) -> [u8; 32] {
         self.value
     }
 
@@ -310,7 +310,7 @@ impl KeyPair {
     }
 
     pub fn public_key(&self) -> PublicKey {
-        PublicKey::from_be_bytes(self.keypair.public.to_bytes())
+        PublicKey::from_bytes(self.keypair.public.to_bytes())
     }
 
     pub fn private_key(&self) -> RawKey {

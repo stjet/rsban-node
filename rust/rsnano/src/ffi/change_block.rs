@@ -1,8 +1,8 @@
 use std::ffi::c_void;
 
 use crate::{
-    blocks::{ChangeBlock, ChangeHashables},
-    numbers::{Account, BlockHash, Signature},
+    blocks::{ChangeBlock, ChangeHashables, LazyBlockHash},
+    numbers::{Account, BlockHash, PublicKey, RawKey, Signature},
 };
 
 use super::{
@@ -23,6 +23,14 @@ pub struct ChangeBlockDto {
     pub representative: [u8; 32],
 }
 
+pub struct ChangeBlockDto2 {
+    pub previous: [u8; 32],
+    pub representative: [u8; 32],
+    pub priv_key: [u8; 32],
+    pub pub_key: [u8; 32],
+    pub work: u64,
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut ChangeBlockHandle {
     Box::into_raw(Box::new(ChangeBlockHandle {
@@ -33,8 +41,28 @@ pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut ChangeBl
                 previous: BlockHash::from_bytes(dto.previous),
                 representative: Account::from_bytes(dto.representative),
             },
+            hash: LazyBlockHash::new(),
         },
     }))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_change_block_create2(dto: &ChangeBlockDto2) -> *mut ChangeBlockHandle {
+    let block = match ChangeBlock::new(
+        BlockHash::from_bytes(dto.previous),
+        Account::from_bytes(dto.representative),
+        &RawKey::from_bytes(dto.priv_key),
+        &PublicKey::from_bytes(dto.pub_key),
+        dto.work,
+    ) {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("could not create change block: {}", e);
+            return std::ptr::null_mut();
+        }
+    };
+
+    Box::into_raw(Box::new(ChangeBlockHandle { block }))
 }
 
 #[no_mangle]
@@ -80,7 +108,7 @@ pub unsafe extern "C" fn rsn_change_block_previous(
     handle: &ChangeBlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = (*handle).block.hashables.previous.to_be_bytes();
+    (*result) = (*handle).block.hashables.previous.to_bytes();
 }
 
 #[no_mangle]
@@ -122,7 +150,7 @@ pub extern "C" fn rsn_change_block_size() -> usize {
 #[no_mangle]
 pub extern "C" fn rsn_change_block_hash(handle: &ChangeBlockHandle, state: *mut c_void) -> i32 {
     let mut blake2b = FfiBlake2b::new(state);
-    if handle.block.hash(&mut blake2b).is_ok() {
+    if handle.block.hash_hashables(&mut blake2b).is_ok() {
         0
     } else {
         -1

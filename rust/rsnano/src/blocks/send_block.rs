@@ -1,4 +1,4 @@
-use std::{cell::Ref, ops::Deref};
+use std::ops::Deref;
 
 use crate::{
     numbers::{
@@ -116,7 +116,7 @@ impl SendBlock {
         })
     }
 
-    pub fn hash(&'_ self) -> impl Deref<Target=BlockHash> + '_{
+    pub fn hash(&'_ self) -> impl Deref<Target = BlockHash> + '_ {
         self.hash.hash(&self.hashables)
     }
 

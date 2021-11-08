@@ -1,12 +1,19 @@
+#[cfg(test)]
+mod block_builder;
 mod change_block;
 mod open_block;
 mod receive_block;
 mod send_block;
 mod state_block;
 
-use std::{ops::Deref, sync::{Arc, RwLock}};
+use std::{
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 
 use anyhow::Result;
+#[cfg(test)]
+pub use block_builder::*;
 pub use change_block::*;
 use num::FromPrimitive;
 pub use open_block::*;
@@ -14,7 +21,12 @@ pub use receive_block::*;
 pub use send_block::*;
 pub use state_block::*;
 
-use crate::{block_details::BlockDetails, epoch::Epoch, numbers::{Account, Amount, BlockHash}, utils::Stream};
+use crate::{
+    block_details::BlockDetails,
+    epoch::Epoch,
+    numbers::{Account, Amount, BlockHash},
+    utils::Stream,
+};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -174,7 +186,7 @@ impl LazyBlockHash {
             hash: Arc::new(RwLock::new(BlockHash::new())),
         }
     }
-    pub fn hash(&'_ self, factory: impl Into<BlockHash>) -> impl Deref<Target=BlockHash> + '_ {
+    pub fn hash(&'_ self, factory: impl Into<BlockHash>) -> impl Deref<Target = BlockHash> + '_ {
         let mut value = self.hash.read().unwrap();
         if value.is_zero() {
             drop(value);

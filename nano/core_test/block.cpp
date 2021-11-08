@@ -165,68 +165,6 @@ TEST (block, difficulty)
 	ASSERT_EQ (nano::dev::network_params.work.difficulty (block), nano::dev::network_params.work.difficulty (block.work_version (), block.root (), block.block_work ()));
 }
 
-TEST (state_block, hashing)
-{
-	nano::keypair key;
-	nano::state_block_builder builder;
-	auto block = builder
-				 .account (key.pub)
-				 .previous (0)
-				 .representative (key.pub)
-				 .balance (0)
-				 .link (0)
-				 .sign (key.prv, key.pub)
-				 .work (0)
-				 .build_shared ();
-	auto hash (block->hash ());
-	ASSERT_EQ (hash, block->hash ()); // check cache works
-	auto account = block->account ();
-	account.bytes[0] ^= 0x1;
-	block->account_set (account);
-	block->refresh ();
-	ASSERT_NE (hash, block->hash ());
-	account.bytes[0] ^= 0x1;
-	block->account_set (account);
-	block->refresh ();
-	ASSERT_EQ (hash, block->hash ());
-	auto previous = block->previous ();
-	previous.bytes[0] ^= 0x1;
-	block->previous_set (previous);
-	block->refresh ();
-	ASSERT_NE (hash, block->hash ());
-	previous.bytes[0] ^= 0x1;
-	block->previous_set (previous);
-	block->refresh ();
-	ASSERT_EQ (hash, block->hash ());
-	auto representative = block->representative ();
-	representative.bytes[0] ^= 0x1;
-	block->representative_set (representative);
-	block->refresh ();
-	ASSERT_NE (hash, block->hash ());
-	representative.bytes[0] ^= 0x1;
-	block->representative_set (representative);
-	block->refresh ();
-	ASSERT_EQ (hash, block->hash ());
-	auto balance = block->balance ();
-	balance.bytes[0] ^= 0x1;
-	block->balance_set (balance);
-	block->refresh ();
-	ASSERT_NE (hash, block->hash ());
-	balance.bytes[0] ^= 0x1;
-	block->balance_set (balance);
-	block->refresh ();
-	ASSERT_EQ (hash, block->hash ());
-	auto link = block->link ();
-	link.bytes[0] ^= 0x1;
-	block->link_set (link);
-	block->refresh ();
-	ASSERT_NE (hash, block->hash ());
-	link.bytes[0] ^= 0x1;
-	block->link_set (link);
-	block->refresh ();
-	ASSERT_EQ (hash, block->hash ());
-}
-
 TEST (blocks, work_version)
 {
 	ASSERT_EQ (nano::work_version::work_1, nano::send_block ().work_version ());
@@ -305,66 +243,6 @@ TEST (block_uniquer, cleanup)
 		auto block5 (uniquer.unique (block1));
 		ASSERT_LT (iterations++, 200);
 	}
-}
-
-TEST (block_builder, from)
-{
-	std::error_code ec;
-	nano::block_builder builder;
-	auto block = builder
-				 .state ()
-				 .account_address ("xrb_15nhh1kzw3x8ohez6s75wy3jr6dqgq65oaede1fzk5hqxk4j8ehz7iqtb3to")
-				 .previous_hex ("FEFBCE274E75148AB31FF63EFB3082EF1126BF72BF3FA9C76A97FD5A9F0EBEC5")
-				 .balance_dec ("2251569974100400000000000000000000")
-				 .representative_address ("xrb_1stofnrxuz3cai7ze75o174bpm7scwj9jn3nxsn8ntzg784jf1gzn1jjdkou")
-				 .link_hex ("E16DD58C1EFA8B521545B0A74375AA994D9FC43828A4266D75ECF57F07A7EE86")
-				 .build (ec);
-	ASSERT_EQ (block->hash ().to_string (), "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F");
-
-	auto block2 = builder.state ().from (*block).build (ec);
-	ASSERT_EQ (block2->hash ().to_string (), "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F");
-
-	auto block3 = builder.state ().from (*block).sign_zero ().work (0).build (ec);
-	ASSERT_EQ (block3->hash ().to_string (), "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F");
-}
-
-TEST (block_builder, zeroed_state_block)
-{
-	nano::block_builder builder;
-	nano::keypair key;
-	nano::state_block_builder state_builder;
-	// Make sure manually- and builder constructed all-zero blocks have equal hashes, and check signature.
-	auto zero_block_manual = state_builder
-							 .account (0)
-							 .previous (0)
-							 .representative (0)
-							 .balance (0)
-							 .link (0)
-							 .sign (key.prv, key.pub)
-							 .work (0)
-							 .build_shared ();
-	auto zero_block_build = builder.state ().zero ().sign (key.prv, key.pub).build ();
-	ASSERT_TRUE (zero_block_manual->hash () == zero_block_build->hash ());
-	ASSERT_FALSE (nano::validate_message (key.pub, zero_block_build->hash (), zero_block_build->block_signature ()));
-}
-
-TEST (block_builder, state)
-{
-	// Test against a random hash from the live network
-	std::error_code ec;
-	nano::block_builder builder;
-	auto block = builder
-				 .state ()
-				 .account_address ("xrb_15nhh1kzw3x8ohez6s75wy3jr6dqgq65oaede1fzk5hqxk4j8ehz7iqtb3to")
-				 .previous_hex ("FEFBCE274E75148AB31FF63EFB3082EF1126BF72BF3FA9C76A97FD5A9F0EBEC5")
-				 .balance_dec ("2251569974100400000000000000000000")
-				 .representative_address ("xrb_1stofnrxuz3cai7ze75o174bpm7scwj9jn3nxsn8ntzg784jf1gzn1jjdkou")
-				 .link_hex ("E16DD58C1EFA8B521545B0A74375AA994D9FC43828A4266D75ECF57F07A7EE86")
-				 .build (ec);
-	ASSERT_EQ (block->hash ().to_string (), "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F");
-	ASSERT_TRUE (block->source ().is_zero ());
-	ASSERT_TRUE (block->destination ().is_zero ());
-	ASSERT_EQ (block->link ().to_string (), "E16DD58C1EFA8B521545B0A74375AA994D9FC43828A4266D75ECF57F07A7EE86");
 }
 
 TEST (block_builder, state_missing_rep)

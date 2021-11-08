@@ -1,4 +1,4 @@
-use std::{cell::Ref, ops::Deref};
+use std::ops::Deref;
 
 use crate::{
     numbers::{
@@ -72,7 +72,7 @@ impl OpenBlock {
         OpenHashables::serialized_size() + Signature::serialized_size() + std::mem::size_of::<u64>()
     }
 
-    pub fn hash(&'_ self) -> impl Deref<Target=BlockHash> + '_ {
+    pub fn hash(&'_ self) -> impl Deref<Target = BlockHash> + '_ {
         self.hash.hash(&self.hashables)
     }
 

@@ -1,4 +1,4 @@
-use std::{cell::Ref, ops::Deref};
+use std::ops::Deref;
 
 use crate::{
     numbers::{
@@ -7,9 +7,6 @@ use crate::{
     },
     utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
 };
-
-#[cfg(test)]
-use crate::numbers::KeyPair;
 
 use anyhow::Result;
 
@@ -91,10 +88,49 @@ impl StateBlock {
         })
     }
 
+    pub fn with_signature(
+        account: Account,
+        previous: BlockHash,
+        representative: Account,
+        balance: Amount,
+        link: Link,
+        signature: Signature,
+        work: u64,
+    ) -> Self {
+        Self {
+            work,
+            signature,
+            hashables: StateHashables {
+            account,
+            previous,
+            representative,
+            balance,
+            link,
+        },
+            hash: LazyBlockHash::new(),
+        }
+    }
+
+    pub fn source(&'_ self) -> &'_ BlockHash{
+        BlockHash::zero()
+    }
+
+    pub fn destination(&'_ self) -> &'_ Account{
+        Account::zero()
+    }
+
+    pub fn link(&'_ self) -> &'_ Link{
+        &self.hashables.link
+    }
+
     fn sign(&mut self, prv_key: &RawKey, pub_key: &PublicKey) -> Result<()> {
         let signature = sign_message(prv_key, pub_key, self.hash().as_bytes())?;
         self.signature = signature;
         Ok(())
+    }
+
+    pub fn hash(&'_ self) -> impl Deref<Target = BlockHash> + '_ {
+        self.hash.hash(&self.hashables)
     }
 
     pub const fn serialized_size() -> usize {
@@ -105,10 +141,6 @@ impl StateBlock {
             + Link::serialized_size() // Link
             + Signature::serialized_size()
             + std::mem::size_of::<u64>() // Work
-    }
-
-    pub fn hash(&'_ self) -> impl Deref<Target=BlockHash> + '_{
-        self.hash.hash(&self.hashables)
     }
 
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
@@ -203,103 +235,18 @@ impl PartialEq for StateBlock {
 impl Eq for StateBlock {}
 
 #[cfg(test)]
-pub struct StateBlockBuilder {
-    block: StateBlock,
-    key: KeyPair,
-}
-
-#[cfg(test)]
-impl StateBlockBuilder {
-    pub fn new() -> Self {
-        let key = KeyPair::new();
-        Self {
-            block: StateBlock::new(
-                Account::from(1),
-                BlockHash::from(2),
-                Account::from(3),
-                Amount::from(4),
-                Link::from(5),
-                &key.private_key(),
-                &key.public_key(),
-                6,
-            )
-            .unwrap(),
-            key,
-        }
-    }
-
-    pub fn account(mut self, account: impl Into<Account>) -> Self {
-        self.block.hashables.account = account.into();
-        self
-    }
-
-    pub fn previous(mut self, previous: impl Into<BlockHash>) -> Self {
-        self.block.hashables.previous = previous.into();
-        self
-    }
-
-    pub fn representative(mut self, rep: impl Into<Account>) -> Self {
-        self.block.hashables.representative = rep.into();
-        self
-    }
-
-    pub fn balance(mut self, balance: impl Into<Amount>) -> Self {
-        self.block.hashables.balance = balance.into();
-        self
-    }
-
-    pub fn link(mut self, link: impl Into<Link>) -> Self {
-        self.block.hashables.link = link.into();
-        self
-    }
-
-    pub fn sign(mut self, key: KeyPair) -> Self {
-        self.key = key;
-        self
-    }
-
-    pub fn work(mut self, work: u64) -> Self {
-        self.block.work = work;
-        self
-    }
-
-    pub fn build(mut self) -> Result<StateBlock> {
-        self.block
-            .sign(&self.key.private_key(), &self.key.public_key())?;
-        Ok(self.block)
-    }
-}
-
-#[cfg(test)]
 mod tests {
-    use crate::utils::{TestPropertyTree, TestStream};
+    use crate::{
+        blocks::{BlockBuilder, StateBlockBuilder},
+        utils::{TestPropertyTree, TestStream},
+    };
 
     use super::*;
 
     // original test: state_block.serialization
     #[test]
-    fn builder() {
-        let block1 = StateBlockBuilder::new()
-            .account(3)
-            .previous(1)
-            .representative(6)
-            .balance(2)
-            .link(4)
-            .work(5)
-            .build()
-            .unwrap();
-
-        assert_eq!(block1.hashables.account, Account::from(3));
-        assert_eq!(block1.hashables.previous, BlockHash::from(1));
-        assert_eq!(block1.hashables.representative, Account::from(6).into());
-        assert_eq!(block1.hashables.balance, Amount::new(2));
-        assert_eq!(block1.hashables.link, Link::from(4));
-    }
-
-    // original test: state_block.serialization
-    #[test]
     fn serialization() -> Result<()> {
-        let block1 = StateBlockBuilder::new().work(5).build()?;
+        let block1 = BlockBuilder::state().work(5).build()?;
         let mut stream = TestStream::new();
         block1.serialize(&mut stream)?;
         assert_eq!(StateBlock::serialized_size(), stream.bytes_written());
@@ -314,7 +261,7 @@ mod tests {
     // original test: state_block.serialization
     #[test]
     fn json_serialization() -> Result<()> {
-        let block1 = StateBlockBuilder::new().build()?;
+        let block1 = BlockBuilder::state().build()?;
 
         let mut ptree = TestPropertyTree::new();
         block1.serialize_json(&mut ptree)?;
@@ -323,5 +270,24 @@ mod tests {
         assert_eq!(block1, block2);
 
         Ok(())
+    }
+
+    // original test: state_block.hashing
+    #[test]
+    fn hashing() {
+        let block = BlockBuilder::state().build().unwrap();
+        let hash = block.hash().clone();
+        assert_eq!(&hash, block.hash().deref()); // check cache works
+        assert_eq!(&hash, BlockBuilder::state().build().unwrap().hash().deref());
+
+        let assert_different_hash = |b: StateBlockBuilder| {
+            assert_ne!(&hash, b.build().unwrap().hash().deref());
+        };
+
+        assert_different_hash(BlockBuilder::state().account(Account::from(1000)));
+        assert_different_hash(BlockBuilder::state().previous(BlockHash::from(1000)));
+        assert_different_hash(BlockBuilder::state().representative(Account::from(1000)));
+        assert_different_hash(BlockBuilder::state().balance(Amount::from(1000)));
+        assert_different_hash(BlockBuilder::state().link(Link::from(1000)));
     }
 }

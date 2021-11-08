@@ -1,6 +1,6 @@
 mod account;
 
-use std::convert::TryFrom;
+use std::{convert::TryFrom, fmt::Display};
 use std::fmt::Write;
 
 use crate::utils::Stream;
@@ -17,6 +17,10 @@ pub struct PublicKey {
 impl PublicKey {
     pub fn new() -> Self {
         Self { value: [0; 32] }
+    }
+
+    pub fn is_zero(&self) -> bool{
+        self.value == [0;32]
     }
 
     pub fn from_bytes(value: [u8; 32]) -> Self {
@@ -51,9 +55,15 @@ pub struct BlockHash {
     value: [u8; 32], //big endian
 }
 
+const ZERO_BLOCK_HASH: BlockHash = BlockHash{value: [0;32]};
+
 impl BlockHash {
     pub fn new() -> Self {
         Self { value: [0; 32] }
+    }
+
+    pub fn zero() -> &'static Self{
+        &ZERO_BLOCK_HASH
     }
 
     pub fn is_zero(&self) -> bool {
@@ -108,6 +118,12 @@ impl From<u64> for BlockHash {
         result.value[24..].copy_from_slice(&value.to_be_bytes());
 
         result
+    }
+}
+
+impl Display for BlockHash{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", hex::encode_upper(self.value))
     }
 }
 
@@ -250,7 +266,7 @@ impl Signature {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, Debug, Copy)]
 pub struct Link {
     bytes: [u8; 32],
 }

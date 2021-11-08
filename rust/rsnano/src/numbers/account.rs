@@ -1,6 +1,7 @@
 use super::PublicKey;
-use crate::utils::{Blake2b, RustBlake2b, Stream};
+use crate::utils::Stream;
 use anyhow::Result;
+use blake2::digest::{Update, VariableOutput};
 use primitive_types::U512;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
@@ -8,11 +9,21 @@ pub struct Account {
     public_key: PublicKey,
 }
 
+const ZERO_ACCOUNT: Account = Account {public_key: PublicKey{ value: [0;32]}};
+
 impl Account {
     pub fn new() -> Self {
         Self {
             public_key: PublicKey::new(),
         }
+    }
+
+    pub fn zero() -> &'static Account{
+        &ZERO_ACCOUNT
+    }
+
+    pub fn is_zero(&self) -> bool{
+        self.public_key.is_zero()
     }
 
     pub fn from_bytes(bytes: [u8; 32]) -> Account {
@@ -59,11 +70,13 @@ impl Account {
     }
 
     fn account_checksum(&self) -> [u8; 5] {
-        let mut blake = RustBlake2b::new();
         let mut check = [0u8; 5];
-        blake.init(5).unwrap();
-        blake.update(self.public_key.as_bytes()).unwrap();
-        blake.finalize(&mut check).unwrap();
+        let mut blake = blake2::VarBlake2b::new_keyed(&[], check.len());
+        blake.update(self.public_key.as_bytes());
+        blake.finalize_variable(|bytes| {
+            check.copy_from_slice(bytes);
+        });
+
         check
     }
 

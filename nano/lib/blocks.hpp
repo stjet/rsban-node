@@ -93,7 +93,6 @@ public:
 	void sideband_set (nano::block_sideband const &);
 	bool has_sideband () const;
 	std::string to_json () const;
-	virtual void hash (blake2b_state &) const = 0;
 	virtual uint64_t block_work () const = 0;
 	virtual void block_work_set (uint64_t) = 0;
 	virtual nano::account account () const;
@@ -137,8 +136,7 @@ protected:
 	 */
 	nano::optional_ptr<nano::block_sideband> sideband_m;
 
-private:
-	nano::block_hash generate_hash () const;
+	virtual nano::block_hash generate_hash () const = 0;
 };
 
 class send_block final : public nano::block
@@ -152,7 +150,6 @@ public:
 	send_block (send_block && other);
 	virtual ~send_block ();
 	using nano::block::hash;
-	void hash (blake2b_state &) const override;
 	uint64_t block_work () const override;
 	void block_work_set (uint64_t) override;
 	nano::block_hash previous () const override;
@@ -177,6 +174,9 @@ public:
 	void sign_zero ();
 	static std::size_t size ();
 
+protected:
+	nano::block_hash generate_hash () const override;
+
 private:
 	rsnano::SendBlockHandle * handle;
 };
@@ -192,7 +192,6 @@ public:
 	receive_block (nano::receive_block &&);
 	virtual ~receive_block ();
 	using nano::block::hash;
-	void hash (blake2b_state &) const override;
 	uint64_t block_work () const override;
 	void block_work_set (uint64_t) override;
 	nano::block_hash previous () const override;
@@ -215,6 +214,9 @@ public:
 	void zero ();
 	static std::size_t size ();
 
+protected:
+	nano::block_hash generate_hash () const override;
+
 private:
 	rsnano::ReceiveBlockHandle * handle;
 };
@@ -230,7 +232,6 @@ public:
 	open_block (nano::open_block &&);
 	virtual ~open_block ();
 	using nano::block::hash;
-	void hash (blake2b_state &) const override;
 	uint64_t block_work () const override;
 	void block_work_set (uint64_t) override;
 	nano::block_hash previous () const override;
@@ -256,6 +257,9 @@ public:
 	void zero ();
 	static std::size_t size ();
 
+protected:
+	nano::block_hash generate_hash () const override;
+
 private:
 	rsnano::OpenBlockHandle * handle;
 };
@@ -270,7 +274,6 @@ public:
 	change_block (nano::change_block &&);
 	virtual ~change_block ();
 	using nano::block::hash;
-	void hash (blake2b_state &) const override;
 	uint64_t block_work () const override;
 	void block_work_set (uint64_t) override;
 	nano::block_hash previous () const override;
@@ -293,6 +296,9 @@ public:
 	void zero ();
 	static std::size_t size ();
 
+protected:
+	nano::block_hash generate_hash () const override;
+
 private:
 	rsnano::ChangeBlockHandle * handle;
 };
@@ -307,7 +313,6 @@ public:
 	state_block (nano::state_block &&);
 	virtual ~state_block ();
 	using nano::block::hash;
-	void hash (blake2b_state &) const override;
 	uint64_t block_work () const override;
 	void block_work_set (uint64_t) override;
 	nano::block_hash previous () const override;
@@ -336,6 +341,9 @@ public:
 	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
+
+protected:
+	nano::block_hash generate_hash () const override;
 
 private:
 	rsnano::StateBlockHandle * handle;

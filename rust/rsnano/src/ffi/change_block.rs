@@ -6,7 +6,6 @@ use crate::{
 };
 
 use super::{
-    blake2b::FfiBlake2b,
     property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
     FfiStream,
 };
@@ -149,13 +148,8 @@ pub extern "C" fn rsn_change_block_size() -> usize {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_change_block_hash(handle: &ChangeBlockHandle, state: *mut c_void) -> i32 {
-    let mut blake2b = FfiBlake2b::new(state);
-    if handle.block.hash_hashables(&mut blake2b).is_ok() {
-        0
-    } else {
-        -1
-    }
+pub unsafe extern "C" fn rsn_change_block_hash(handle: &ChangeBlockHandle, hash: *mut [u8; 32]) {
+    (*hash) = handle.block.hash().to_bytes();
 }
 
 #[no_mangle]

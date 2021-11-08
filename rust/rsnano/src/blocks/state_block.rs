@@ -1,11 +1,11 @@
-use std::cell::Ref;
+use std::{cell::Ref, ops::Deref};
 
 use crate::{
     numbers::{
-        from_string_hex, sign_message, to_string_hex, Account, Amount, BlockHash, Link, PublicKey,
-        RawKey, Signature,
+        from_string_hex, sign_message, to_string_hex, Account, Amount, BlockHash, BlockHashBuilder,
+        Link, PublicKey, RawKey, Signature,
     },
-    utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, RustBlake2b, Stream},
+    utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
 };
 
 #[cfg(test)]
@@ -13,7 +13,7 @@ use crate::numbers::KeyPair;
 
 use anyhow::Result;
 
-use super::{BlockHashFactory, BlockType, LazyBlockHash};
+use super::{BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct StateHashables {
@@ -37,6 +37,21 @@ pub struct StateHashables {
     pub link: Link,
 }
 
+impl From<&StateHashables> for BlockHash {
+    fn from(hashables: &StateHashables) -> Self {
+        let mut preamble = [0u8; 32];
+        preamble[31] = BlockType::State as u8;
+        BlockHashBuilder::new()
+            .update(&preamble)
+            .update(hashables.account.as_bytes())
+            .update(hashables.previous.as_bytes())
+            .update(hashables.representative.as_bytes())
+            .update(&hashables.balance.to_be_bytes())
+            .update(&hashables.link.to_bytes())
+            .build()
+    }
+}
+
 #[derive(Clone, Default, Debug)]
 pub struct StateBlock {
     pub work: u64,
@@ -57,21 +72,23 @@ impl StateBlock {
         pub_key: &PublicKey,
         work: u64,
     ) -> Result<Self> {
-        let mut result = Self {
-            work,
-            signature: Signature::new(),
-            hashables: StateHashables {
-                account,
-                previous,
-                representative,
-                balance,
-                link,
-            },
-            hash: LazyBlockHash::new(),
+        let hashables = StateHashables {
+            account,
+            previous,
+            representative,
+            balance,
+            link,
         };
 
-        result.sign(prv_key, pub_key)?;
-        Ok(result)
+        let hash = LazyBlockHash::new();
+        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes())?;
+
+        Ok(Self {
+            work,
+            signature,
+            hashables,
+            hash,
+        })
     }
 
     fn sign(&mut self, prv_key: &RawKey, pub_key: &PublicKey) -> Result<()> {
@@ -90,20 +107,8 @@ impl StateBlock {
             + std::mem::size_of::<u64>() // Work
     }
 
-    pub fn hash(&self) -> Ref<BlockHash> {
-        self.hash.hash(self)
-    }
-
-    pub fn hash_hashables(&self, blake2b: &mut impl Blake2b) -> Result<()> {
-        let mut preamble = [0u8; 32];
-        preamble[31] = BlockType::State as u8;
-        blake2b.update(&preamble)?;
-        blake2b.update(&self.hashables.account.to_bytes())?;
-        blake2b.update(&self.hashables.previous.to_bytes())?;
-        blake2b.update(&self.hashables.representative.to_bytes())?;
-        blake2b.update(&self.hashables.balance.to_be_bytes())?;
-        blake2b.update(&self.hashables.link.to_be_bytes())?;
-        Ok(())
+    pub fn hash(&'_ self) -> impl Deref<Target=BlockHash> + '_{
+        self.hash.hash(&self.hashables)
     }
 
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
@@ -196,17 +201,6 @@ impl PartialEq for StateBlock {
 }
 
 impl Eq for StateBlock {}
-
-impl BlockHashFactory for StateBlock {
-    fn hash(&self) -> BlockHash {
-        let mut blake = RustBlake2b::new();
-        blake.init(32).unwrap();
-        self.hash_hashables(&mut blake).unwrap();
-        let mut result = [0u8; 32];
-        blake.finalize(&mut result).unwrap();
-        BlockHash::from_bytes(result)
-    }
-}
 
 #[cfg(test)]
 pub struct StateBlockBuilder {

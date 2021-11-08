@@ -1,15 +1,15 @@
-use std::cell::Ref;
+use std::{cell::Ref, ops::Deref};
 
 use crate::{
     numbers::{
-        from_string_hex, sign_message, to_string_hex, Account, Amount, BlockHash, PublicKey,
-        RawKey, Signature,
+        from_string_hex, sign_message, to_string_hex, Account, Amount, BlockHash, BlockHashBuilder,
+        PublicKey, RawKey, Signature,
     },
-    utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, RustBlake2b, Stream},
+    utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
 };
 use anyhow::Result;
 
-use super::{BlockHashFactory, BlockType, LazyBlockHash};
+use super::{BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct SendHashables {
@@ -57,6 +57,16 @@ impl SendHashables {
     }
 }
 
+impl From<&SendHashables> for BlockHash {
+    fn from(hashables: &SendHashables) -> Self {
+        BlockHashBuilder::new()
+            .update(hashables.previous.as_bytes())
+            .update(hashables.destination.as_bytes())
+            .update(&hashables.balance.to_be_bytes())
+            .build()
+    }
+}
+
 #[derive(Clone, Default, Debug)]
 pub struct SendBlock {
     pub hashables: SendHashables,
@@ -74,21 +84,21 @@ impl SendBlock {
         public_key: &PublicKey,
         work: u64,
     ) -> Result<Self> {
-        let mut block = Self {
-            hashables: SendHashables {
-                previous: *previous,
-                destination: *destination,
-                balance: *balance,
-            },
-            work,
-            signature: Signature::new(),
-            hash: LazyBlockHash::new(),
+        let hashables = SendHashables {
+            previous: *previous,
+            destination: *destination,
+            balance: *balance,
         };
 
-        let signature = sign_message(private_key, public_key, block.hash().as_bytes())?;
-        block.signature = signature;
+        let hash = LazyBlockHash::new();
+        let signature = sign_message(private_key, public_key, hash.hash(&hashables).as_bytes())?;
 
-        Ok(block)
+        Ok(Self {
+            hashables,
+            work,
+            signature,
+            hash,
+        })
     }
 
     pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
@@ -106,8 +116,8 @@ impl SendBlock {
         })
     }
 
-    pub fn hash(&self) -> Ref<BlockHash> {
-        self.hash.hash(self)
+    pub fn hash(&'_ self) -> impl Deref<Target=BlockHash> + '_{
+        self.hash.hash(&self.hashables)
     }
 
     pub const fn serialized_size() -> usize {
@@ -136,13 +146,6 @@ impl SendBlock {
 
     pub fn set_balance(&mut self, balance: Amount) {
         self.hashables.balance = balance;
-    }
-
-    pub fn hash_hashables(&self, blake2b: &mut impl Blake2b) -> Result<()> {
-        blake2b.update(&self.hashables.previous.to_bytes())?;
-        blake2b.update(&self.hashables.destination.to_bytes())?;
-        blake2b.update(&self.hashables.balance.to_be_bytes())?;
-        Ok(())
     }
 
     pub fn valid_predecessor(block_type: BlockType) -> bool {
@@ -190,17 +193,6 @@ impl PartialEq for SendBlock {
 }
 
 impl Eq for SendBlock {}
-
-impl BlockHashFactory for SendBlock {
-    fn hash(&self) -> BlockHash {
-        let mut blake = RustBlake2b::new();
-        blake.init(32).unwrap();
-        self.hash_hashables(&mut blake).unwrap();
-        let mut result = [0u8; 32];
-        blake.finalize(&mut result).unwrap();
-        BlockHash::from_bytes(result)
-    }
-}
 
 #[cfg(test)]
 mod tests {

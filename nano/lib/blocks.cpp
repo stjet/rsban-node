@@ -61,18 +61,6 @@ nano::work_version nano::block::work_version () const
 	return nano::work_version::work_1;
 }
 
-nano::block_hash nano::block::generate_hash () const
-{
-	nano::block_hash result;
-	blake2b_state hash_l;
-	auto status (blake2b_init (&hash_l, sizeof (result.bytes)));
-	debug_assert (status == 0);
-	hash (hash_l);
-	status = blake2b_final (&hash_l, result.bytes.data (), sizeof (result.bytes));
-	debug_assert (status == 0);
-	return result;
-}
-
 void nano::block::refresh ()
 {
 	if (!cached_hash.is_zero ())
@@ -176,11 +164,6 @@ void nano::send_block::visit (nano::block_visitor & visitor_a) const
 void nano::send_block::visit (nano::mutable_block_visitor & visitor_a)
 {
 	visitor_a.send_block (*this);
-}
-
-void nano::send_block::hash (blake2b_state & hash_a) const
-{
-	rsnano::rsn_send_block_hash (handle, &hash_a);
 }
 
 uint64_t nano::send_block::block_work () const
@@ -398,6 +381,15 @@ std::size_t nano::send_block::size ()
 	return sizeof (nano::block_hash) + sizeof (nano::account) + sizeof (nano::amount) + sizeof (nano::signature) + sizeof (uint64_t);
 }
 
+nano::block_hash nano::send_block::generate_hash () const
+{
+	uint8_t bytes[32];
+	rsnano::rsn_send_block_hash (handle, &bytes);
+	nano::block_hash result;
+	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
+	return result;
+}
+
 nano::open_block::open_block ()
 {
 	rsnano::OpenBlockDto dto;
@@ -482,11 +474,6 @@ nano::open_block::~open_block ()
 		rsnano::rsn_open_block_destroy (handle);
 		handle = nullptr;
 	}
-}
-
-void nano::open_block::hash (blake2b_state & hash_a) const
-{
-	rsnano::rsn_open_block_hash (handle, &hash_a);
 }
 
 uint64_t nano::open_block::block_work () const
@@ -648,6 +635,15 @@ std::size_t nano::open_block::size ()
 	return rsnano::rsn_open_block_size ();
 }
 
+nano::block_hash nano::open_block::generate_hash () const
+{
+	uint8_t bytes[32];
+	rsnano::rsn_open_block_hash (handle, &bytes);
+	nano::block_hash result;
+	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
+	return result;
+}
+
 nano::change_block::change_block ()
 {
 	rsnano::ChangeBlockDto dto;
@@ -715,14 +711,6 @@ nano::change_block::~change_block ()
 	{
 		rsnano::rsn_change_block_destroy (handle);
 		handle = nullptr;
-	}
-}
-
-void nano::change_block::hash (blake2b_state & hash_a) const
-{
-	if (rsnano::rsn_change_block_hash (handle, &hash_a) != 0)
-	{
-		throw std::runtime_error ("could not hash change_block");
 	}
 }
 
@@ -873,6 +861,15 @@ std::size_t nano::change_block::size ()
 	return rsnano::rsn_change_block_size ();
 }
 
+nano::block_hash nano::change_block::generate_hash () const
+{
+	uint8_t bytes[32];
+	rsnano::rsn_change_block_hash (handle, &bytes);
+	nano::block_hash result;
+	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
+	return result;
+}
+
 nano::state_block::state_block ()
 {
 	rsnano::StateBlockDto dto;
@@ -947,14 +944,6 @@ nano::state_block::~state_block ()
 	{
 		rsnano::rsn_state_block_destroy (handle);
 		handle = nullptr;
-	}
-}
-
-void nano::state_block::hash (blake2b_state & hash_a) const
-{
-	if (rsnano::rsn_state_block_hash (handle, &hash_a) != 0)
-	{
-		throw std::runtime_error ("could not hash state_block");
 	}
 }
 
@@ -1166,6 +1155,15 @@ std::size_t nano::state_block::size ()
 	return rsnano::rsn_state_block_size ();
 }
 
+nano::block_hash nano::state_block::generate_hash () const
+{
+	uint8_t bytes[32];
+	rsnano::rsn_state_block_hash (handle, &bytes);
+	nano::block_hash result;
+	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
+	return result;
+}
+
 std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a, nano::block_uniquer * uniquer_a)
 {
 	std::shared_ptr<nano::block> result;
@@ -1362,11 +1360,6 @@ nano::receive_block::~receive_block ()
 		rsnano::rsn_receive_block_destroy (handle);
 }
 
-void nano::receive_block::hash (blake2b_state & hash_a) const
-{
-	rsnano::rsn_receive_block_hash (handle, &hash_a);
-}
-
 uint64_t nano::receive_block::block_work () const
 {
 	return rsnano::rsn_receive_block_work (handle);
@@ -1475,6 +1468,15 @@ void nano::receive_block::zero ()
 std::size_t nano::receive_block::size ()
 {
 	return rsnano::rsn_receive_block_size ();
+}
+
+nano::block_hash nano::receive_block::generate_hash () const
+{
+	uint8_t bytes[32];
+	rsnano::rsn_receive_block_hash (handle, &bytes);
+	nano::block_hash result;
+	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
+	return result;
 }
 
 nano::block_details::block_details ()

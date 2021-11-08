@@ -7,6 +7,7 @@ use crate::utils::Stream;
 use anyhow::Result;
 
 pub use account::*;
+use blake2::digest::{Update, VariableOutput};
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct PublicKey {
@@ -107,6 +108,31 @@ impl From<u64> for BlockHash {
         result.value[24..].copy_from_slice(&value.to_be_bytes());
 
         result
+    }
+}
+
+pub struct BlockHashBuilder {
+    blake: blake2::VarBlake2b,
+}
+
+impl BlockHashBuilder {
+    pub fn new() -> Self {
+        Self {
+            blake: blake2::VarBlake2b::new_keyed(&[], 32),
+        }
+    }
+
+    pub fn update(mut self, data: impl AsRef<[u8]>) -> Self {
+        self.blake.update(data);
+        self
+    }
+
+    pub fn build(self) -> BlockHash {
+        let mut hash_bytes = [0u8; 32];
+        self.blake.finalize_variable(|result| {
+            hash_bytes.copy_from_slice(result);
+        });
+        BlockHash::from_bytes(hash_bytes)
     }
 }
 
@@ -252,7 +278,7 @@ impl Link {
         Ok(result)
     }
 
-    pub fn to_be_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(&self) -> [u8; 32] {
         self.bytes
     }
 

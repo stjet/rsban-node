@@ -6,7 +6,6 @@ use crate::{
 };
 
 use super::{
-    blake2b::FfiBlake2b,
     property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
     FfiStream,
 };
@@ -127,6 +126,7 @@ pub unsafe extern "C" fn rsn_state_block_account_set(
     source: &[u8; 32],
 ) {
     (*handle).block.hashables.account = Account::from_bytes(*source);
+    (*handle).block.hash.clear();
 }
 
 #[no_mangle]
@@ -143,6 +143,7 @@ pub unsafe extern "C" fn rsn_state_block_previous_set(
     source: &[u8; 32],
 ) {
     (*handle).block.hashables.previous = BlockHash::from_bytes(*source);
+    (*handle).block.hash.clear();
 }
 
 #[no_mangle]
@@ -159,6 +160,7 @@ pub unsafe extern "C" fn rsn_state_block_representative_set(
     representative: &[u8; 32],
 ) {
     (*handle).block.hashables.representative = Account::from_bytes(*representative);
+    (*handle).block.hash.clear();
 }
 
 #[no_mangle]
@@ -172,16 +174,18 @@ pub unsafe extern "C" fn rsn_state_block_balance_set(
     balance: &[u8; 16],
 ) {
     (*handle).block.hashables.balance = Amount::from_be_bytes(*balance);
+    (*handle).block.hash.clear();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_link(handle: &StateBlockHandle, result: *mut [u8; 32]) {
-    (*result) = (*handle).block.hashables.link.to_be_bytes();
+    (*result) = (*handle).block.hashables.link.to_bytes();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_link_set(handle: *mut StateBlockHandle, link: &[u8; 32]) {
     (*handle).block.hashables.link = Link::from_bytes(*link);
+    (*handle).block.hash.clear();
 }
 
 #[no_mangle]
@@ -197,13 +201,8 @@ pub extern "C" fn rsn_state_block_size() -> usize {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_hash(handle: &StateBlockHandle, state: *mut c_void) -> i32 {
-    let mut blake2b = FfiBlake2b::new(state);
-    if handle.block.hash_hashables(&mut blake2b).is_ok() {
-        0
-    } else {
-        -1
-    }
+pub unsafe extern "C" fn rsn_state_block_hash(handle: &StateBlockHandle, hash: *mut [u8; 32]) {
+    (*hash) = handle.block.hash().to_bytes();
 }
 
 #[no_mangle]

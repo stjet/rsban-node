@@ -4,7 +4,7 @@ mod receive_block;
 mod send_block;
 mod state_block;
 
-use std::cell::{Ref, RefCell};
+use std::{ops::Deref, sync::{Arc, RwLock}};
 
 use anyhow::Result;
 pub use change_block::*;
@@ -14,12 +14,7 @@ pub use receive_block::*;
 pub use send_block::*;
 pub use state_block::*;
 
-use crate::{
-    block_details::BlockDetails,
-    epoch::Epoch,
-    numbers::{Account, Amount, BlockHash},
-    utils::Stream,
-};
+use crate::{block_details::BlockDetails, epoch::Epoch, numbers::{Account, Amount, BlockHash}, utils::Stream};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -169,29 +164,32 @@ pub fn serialized_block_size(block_type: BlockType) -> usize {
 
 #[derive(Clone, Default, Debug)]
 pub struct LazyBlockHash {
-    hash: RefCell<BlockHash>,
-}
-
-pub trait BlockHashFactory {
-    fn hash(&self) -> BlockHash;
+    // todo: Remove Arc<RwLock>? Maybe remove lazy hash calculation?
+    hash: Arc<RwLock<BlockHash>>,
 }
 
 impl LazyBlockHash {
     pub fn new() -> Self {
         Self {
-            hash: RefCell::new(BlockHash::new()),
+            hash: Arc::new(RwLock::new(BlockHash::new())),
         }
     }
-    pub fn hash(&'_ self, factory: &impl BlockHashFactory) -> Ref<BlockHash> {
-        let mut value = self.hash.borrow();
+    pub fn hash(&'_ self, factory: impl Into<BlockHash>) -> impl Deref<Target=BlockHash> + '_ {
+        let mut value = self.hash.read().unwrap();
         if value.is_zero() {
             drop(value);
-            let mut x = self.hash.borrow_mut();
-            *x = factory.hash();
+            let mut x = self.hash.write().unwrap();
+            let block_hash: BlockHash = factory.into();
+            *x = block_hash;
             drop(x);
-            value = self.hash.borrow();
+            value = self.hash.read().unwrap();
         }
 
         value
+    }
+
+    pub(crate) fn clear(&self) {
+        let mut x = self.hash.write().unwrap();
+        *x = BlockHash::new();
     }
 }

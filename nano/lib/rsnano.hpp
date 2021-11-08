@@ -223,7 +223,7 @@ void rsn_change_block_destroy (ChangeBlockHandle * handle);
 
 bool rsn_change_block_equals (const ChangeBlockHandle * a, const ChangeBlockHandle * b);
 
-int32_t rsn_change_block_hash (const ChangeBlockHandle * handle, void * state);
+void rsn_change_block_hash (const ChangeBlockHandle * handle, uint8_t (*hash)[32]);
 
 void rsn_change_block_previous (const ChangeBlockHandle * handle, uint8_t (*result)[32]);
 
@@ -266,7 +266,7 @@ void rsn_open_block_destroy (OpenBlockHandle * handle);
 
 bool rsn_open_block_equals (const OpenBlockHandle * a, const OpenBlockHandle * b);
 
-int32_t rsn_open_block_hash (const OpenBlockHandle * handle, void * state);
+void rsn_open_block_hash (const OpenBlockHandle * handle, uint8_t (*hash)[32]);
 
 void rsn_open_block_representative (const OpenBlockHandle * handle, uint8_t (*result)[32]);
 
@@ -305,7 +305,7 @@ void rsn_receive_block_destroy (ReceiveBlockHandle * handle);
 
 bool rsn_receive_block_equals (const ReceiveBlockHandle * a, const ReceiveBlockHandle * b);
 
-int32_t rsn_receive_block_hash (const ReceiveBlockHandle * handle, void * state);
+void rsn_receive_block_hash (const ReceiveBlockHandle * handle, uint8_t (*hash)[32]);
 
 void rsn_receive_block_previous (const ReceiveBlockHandle * handle, uint8_t (*result)[32]);
 
@@ -351,7 +351,7 @@ void rsn_send_block_destroy (SendBlockHandle * handle);
 
 bool rsn_send_block_equals (const SendBlockHandle * a, const SendBlockHandle * b);
 
-int32_t rsn_send_block_hash (const SendBlockHandle * handle, void * state);
+void rsn_send_block_hash (const SendBlockHandle * handle, uint8_t (*hash)[32]);
 
 void rsn_send_block_previous (const SendBlockHandle * handle, uint8_t (*result)[32]);
 
@@ -403,7 +403,7 @@ void rsn_state_block_destroy (StateBlockHandle * handle);
 
 bool rsn_state_block_equals (const StateBlockHandle * a, const StateBlockHandle * b);
 
-int32_t rsn_state_block_hash (const StateBlockHandle * handle, void * state);
+void rsn_state_block_hash (const StateBlockHandle * handle, uint8_t (*hash)[32]);
 
 void rsn_state_block_link (const StateBlockHandle * handle, uint8_t (*result)[32]);
 

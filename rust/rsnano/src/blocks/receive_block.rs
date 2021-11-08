@@ -1,14 +1,15 @@
-use std::cell::Ref;
+use std::{cell::Ref, ops::Deref};
 
 use crate::{
     numbers::{
-        from_string_hex, sign_message, to_string_hex, BlockHash, PublicKey, RawKey, Signature,
+        from_string_hex, sign_message, to_string_hex, BlockHash, BlockHashBuilder, PublicKey,
+        RawKey, Signature,
     },
-    utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, RustBlake2b, Stream},
+    utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
 };
 use anyhow::Result;
 
-use super::{BlockHashFactory, LazyBlockHash};
+use super::LazyBlockHash;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ReceiveHashables {
@@ -21,6 +22,16 @@ impl ReceiveHashables {
         BlockHash::serialized_size() + BlockHash::serialized_size()
     }
 }
+
+impl From<&ReceiveHashables> for BlockHash {
+    fn from(hashables: &ReceiveHashables) -> Self {
+        BlockHashBuilder::new()
+            .update(hashables.previous.as_bytes())
+            .update(hashables.source.as_bytes())
+            .build()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ReceiveBlock {
     pub work: u64,
@@ -37,27 +48,20 @@ impl ReceiveBlock {
         pub_key: &PublicKey,
         work: u64,
     ) -> Result<Self> {
-        let mut result = Self {
+        let hashables = ReceiveHashables { previous, source };
+        let hash = LazyBlockHash::new();
+        let signature = sign_message(priv_key, pub_key, hash.hash(&hashables).as_bytes())?;
+
+        Ok(Self {
             work,
-            signature: Signature::new(),
-            hashables: ReceiveHashables { previous, source },
-            hash: LazyBlockHash::new(),
-        };
-
-        let signature = sign_message(priv_key, pub_key, result.hash().as_bytes())?;
-        result.signature = signature;
-
-        Ok(result)
+            signature,
+            hashables,
+            hash,
+        })
     }
 
-    pub fn hash(&self) -> Ref<BlockHash> {
-        self.hash.hash(self)
-    }
-
-    pub fn hash_hashables(&self, blake2b: &mut impl Blake2b) -> Result<()> {
-        blake2b.update(&self.hashables.previous.to_bytes())?;
-        blake2b.update(&self.hashables.source.to_bytes())?;
-        Ok(())
+    pub fn hash(&'_ self) -> impl Deref<Target=BlockHash> + '_{
+        self.hash.hash(&self.hashables)
     }
 
     pub const fn serialized_size() -> usize {
@@ -121,17 +125,6 @@ impl PartialEq for ReceiveBlock {
 }
 
 impl Eq for ReceiveBlock {}
-
-impl BlockHashFactory for ReceiveBlock {
-    fn hash(&self) -> BlockHash {
-        let mut blake = RustBlake2b::new();
-        blake.init(32).unwrap();
-        self.hash_hashables(&mut blake).unwrap();
-        let mut result = [0u8; 32];
-        blake.finalize(&mut result).unwrap();
-        BlockHash::from_bytes(result)
-    }
-}
 
 #[cfg(test)]
 mod tests {

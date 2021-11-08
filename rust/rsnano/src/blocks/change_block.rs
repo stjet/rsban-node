@@ -1,15 +1,15 @@
-use std::cell::Ref;
+use std::{cell::Ref, ops::Deref};
 
 use crate::{
     numbers::{
-        from_string_hex, sign_message, to_string_hex, Account, BlockHash, PublicKey, RawKey,
-        Signature,
+        from_string_hex, sign_message, to_string_hex, Account, BlockHash, BlockHashBuilder,
+        PublicKey, RawKey, Signature,
     },
-    utils::{Blake2b, PropertyTreeReader, PropertyTreeWriter, RustBlake2b, Stream},
+    utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
 };
 use anyhow::Result;
 
-use super::{BlockHashFactory, LazyBlockHash};
+use super::LazyBlockHash;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ChangeHashables {
@@ -20,6 +20,15 @@ pub struct ChangeHashables {
 impl ChangeHashables {
     const fn serialized_size() -> usize {
         BlockHash::serialized_size() + Account::serialized_size()
+    }
+}
+
+impl From<&ChangeHashables> for BlockHash {
+    fn from(hashables: &ChangeHashables) -> Self {
+        BlockHashBuilder::new()
+            .update(hashables.previous.as_bytes())
+            .update(hashables.representative.as_bytes())
+            .build()
     }
 }
 
@@ -39,20 +48,20 @@ impl ChangeBlock {
         pub_key: &PublicKey,
         work: u64,
     ) -> Result<Self> {
-        let mut result = Self {
-            work,
-            signature: Signature::new(),
-            hashables: ChangeHashables {
-                previous,
-                representative,
-            },
-            hash: LazyBlockHash::new(),
+        let hashables = ChangeHashables {
+            previous,
+            representative,
         };
 
-        let signature = sign_message(prv_key, pub_key, result.hash().as_bytes())?;
-        result.signature = signature;
+        let hash = LazyBlockHash::new();
+        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes())?;
 
-        Ok(result)
+        Ok(Self {
+            work,
+            signature,
+            hashables,
+            hash,
+        })
     }
 
     pub const fn serialized_size() -> usize {
@@ -61,14 +70,8 @@ impl ChangeBlock {
             + std::mem::size_of::<u64>()
     }
 
-    pub fn hash(&self) -> Ref<BlockHash> {
-        self.hash.hash(self)
-    }
-
-    pub fn hash_hashables(&self, blake2b: &mut impl Blake2b) -> Result<()> {
-        blake2b.update(&self.hashables.previous.to_bytes())?;
-        blake2b.update(&self.hashables.representative.to_bytes())?;
-        Ok(())
+    pub fn hash(&'_ self) -> impl Deref<Target=BlockHash> + '_ {
+        self.hash.hash(&self.hashables)
     }
 
     pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
@@ -135,17 +138,6 @@ impl PartialEq for ChangeBlock {
 }
 
 impl Eq for ChangeBlock {}
-
-impl BlockHashFactory for ChangeBlock {
-    fn hash(&self) -> BlockHash {
-        let mut blake = RustBlake2b::new();
-        blake.init(32).unwrap();
-        self.hash_hashables(&mut blake).unwrap();
-        let mut result = [0u8; 32];
-        blake.finalize(&mut result).unwrap();
-        BlockHash::from_bytes(result)
-    }
-}
 
 #[cfg(test)]
 mod tests {

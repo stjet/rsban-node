@@ -1,6 +1,22 @@
-use std::cmp::{max, min};
-
+use blake2::digest::{Update, VariableOutput};
 use once_cell::sync::Lazy;
+use std::{
+    cmp::{max, min},
+    convert::TryInto,
+};
+
+use crate::{
+    block_details::BlockDetails,
+    blocks::BlockType,
+    epoch::Epoch,
+    numbers::{Difficulty, Root},
+};
+
+#[derive(Clone, Copy)]
+pub enum WorkVersion {
+    Unspecified,
+    Work1,
+}
 
 pub struct WorkThresholds {
     pub epoch_1: u64,
@@ -78,5 +94,126 @@ impl WorkThresholds {
 
     pub fn publish_test() -> &'static WorkThresholds {
         &PUBLISH_TEST
+    }
+
+    pub fn threshold_entry(&self, block_type: BlockType, work_version: WorkVersion) -> u64 {
+        match block_type {
+            BlockType::State => match work_version {
+                WorkVersion::Work1 => self.entry,
+                _ => {
+                    debug_assert!(false, "Invalid version specified to work_threshold_entry");
+                    u64::MAX
+                }
+            },
+            _ => self.epoch_1,
+        }
+    }
+
+    pub fn threshold(&self, details: &BlockDetails) -> u64 {
+        match details.epoch {
+            Epoch::Epoch2 => {
+                if details.is_receive || details.is_epoch {
+                    self.epoch_2_receive
+                } else {
+                    self.epoch_2
+                }
+            }
+            Epoch::Epoch1 | Epoch::Epoch0 => self.epoch_1,
+            _ => {
+                debug_assert!(
+                    false,
+                    "Invalid epoch specified to work_v1 ledger work_threshold"
+                );
+                u64::MAX
+            }
+        }
+    }
+
+    pub fn threshold2(&self, work_version: WorkVersion, details: &BlockDetails) -> u64 {
+        match work_version {
+            WorkVersion::Work1 => self.threshold(details),
+            _ => {
+                // Invalid version specified to ledger work_threshold
+                debug_assert!(false);
+                u64::MAX
+            }
+        }
+    }
+
+    pub fn threshold_base(&self, work_version: WorkVersion) -> u64 {
+        match work_version {
+            WorkVersion::Work1 => self.base,
+            _ => {
+                debug_assert!(false, "Invalid version specified to work_threshold_base");
+                u64::MAX
+            }
+        }
+    }
+
+    pub fn value(&self, root: &Root, work: u64) -> u64 {
+        let mut blake = blake2::VarBlake2b::new_keyed(&[], 8);
+        let mut result = 0;
+        blake.update(&work.to_ne_bytes());
+        blake.update(root.as_bytes());
+        blake.finalize_variable(|bytes| {
+            result = u64::from_ne_bytes(bytes.try_into().expect("invalid hash length"))
+        });
+        result
+    }
+
+    pub fn normalized_multiplier(&self, multiplier: f64, threshold: u64) -> f64 {
+        debug_assert!(multiplier >= 1f64);
+        /* Normalization rules
+        ratio = multiplier of max work threshold (send epoch 2) from given threshold
+        i.e. max = 0xfe00000000000000, given = 0xf000000000000000, ratio = 8.0
+        normalized = (multiplier + (ratio - 1)) / ratio;
+        Epoch 1
+        multiplier	 | normalized
+        1.0 		 | 1.0
+        9.0 		 | 2.0
+        25.0 		 | 4.0
+        Epoch 2 (receive / epoch subtypes)
+        multiplier	 | normalized
+        1.0 		 | 1.0
+        65.0 		 | 2.0
+        241.0 		 | 4.0
+        */
+        if threshold == self.epoch_1 || threshold == self.epoch_2_receive {
+            let ratio = Difficulty::to_multiplier(self.epoch_2, threshold);
+            debug_assert!(ratio >= 1f64);
+            let result = (multiplier + (ratio - 1f64)) / ratio;
+            debug_assert!(result >= 1f64);
+            result
+        } else {
+            multiplier
+        }
+    }
+
+    pub fn denormalized_multiplier(&self, multiplier: f64, threshold: u64) -> f64 {
+        debug_assert!(multiplier >= 1f64);
+        if threshold == self.epoch_1 || threshold == self.epoch_2_receive {
+            let ratio = Difficulty::to_multiplier(self.epoch_2, threshold);
+            debug_assert!(ratio >= 1f64);
+            let result = multiplier * ratio + 1f64 - ratio;
+            debug_assert!(result >= 1f64);
+            result
+        } else {
+            multiplier
+        }
+    }
+
+    pub fn difficulty(&self, work_version: WorkVersion, root: &Root, work: u64) -> u64 {
+        match work_version {
+            WorkVersion::Work1 => self.value(root, work),
+            _ => {
+                debug_assert!(false, "Invalid version specified to work_difficulty");
+                0
+            }
+        }
+    }
+
+    pub fn validate_entry(&self, work_version: WorkVersion, root: &Root, work: u64) -> bool {
+        self.difficulty(work_version, root, work)
+            < self.threshold_entry(BlockType::State, work_version)
     }
 }

@@ -284,7 +284,8 @@ mod tests {
             &key1.private_key(),
             &key1.public_key(),
             5,
-        ).unwrap();
+        )
+        .unwrap();
 
         let block2 = BlockBuilder::state()
             .account(key1.public_key())

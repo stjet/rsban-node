@@ -1,6 +1,7 @@
 mod account;
 
 use std::fmt::Write;
+use std::ops::Deref;
 use std::{convert::TryFrom, fmt::Display};
 
 use crate::utils::Stream;
@@ -267,11 +268,11 @@ impl Signature {
 }
 
 #[derive(Clone, PartialEq, Eq, Default, Debug, Copy)]
-pub struct Link {
+pub struct HashOrAccount {
     bytes: [u8; 32],
 }
 
-impl Link {
+impl HashOrAccount {
     pub fn new() -> Self {
         Self { bytes: [0u8; 32] }
     }
@@ -289,13 +290,17 @@ impl Link {
     }
 
     pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
-        let mut result = Link::new();
+        let mut result = Self::new();
         stream.read_bytes(&mut result.bytes, 32)?;
         Ok(result)
     }
 
     pub fn to_bytes(self) -> [u8; 32] {
         self.bytes
+    }
+
+    pub fn as_bytes(&self) -> &[u8; 32] {
+        &self.bytes
     }
 
     pub fn encode_hex(&self) -> String {
@@ -309,7 +314,7 @@ impl Link {
     pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
         let mut bytes = [0u8; 32];
         hex::decode_to_slice(s.as_ref(), &mut bytes)?;
-        Ok(Link::from_bytes(bytes))
+        Ok(Self::from_bytes(bytes))
     }
 
     pub fn to_account(self) -> Account {
@@ -317,21 +322,99 @@ impl Link {
     }
 }
 
-impl From<u64> for Link {
-    fn from(value: u64) -> Self {
-        let mut link = Link::new();
-        link.bytes[24..].copy_from_slice(&value.to_be_bytes());
-        link
+#[derive(Clone, PartialEq, Eq, Default, Debug, Copy)]
+pub struct Link {
+    inner: HashOrAccount,
+}
+
+impl Link {
+    pub fn new() -> Self {
+        Self {
+            inner: HashOrAccount::new(),
+        }
+    }
+
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self {
+            inner: HashOrAccount::from_bytes(bytes),
+        }
+    }
+
+    pub const fn serialized_size() -> usize {
+        32
+    }
+
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+        HashOrAccount::deserialize(stream).map(|inner| Self { inner })
+    }
+
+    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
+        HashOrAccount::decode_hex(s).map(|inner| Self { inner })
     }
 }
 
+impl Deref for Link {
+    type Target = HashOrAccount;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl From<u64> for HashOrAccount {
+    fn from(value: u64) -> Self {
+        let mut result = Self::new();
+        result.bytes[24..].copy_from_slice(&value.to_be_bytes());
+        result
+    }
+}
+
+impl From<u64> for Link {
+    fn from(value: u64) -> Self {
+        Self {
+            inner: HashOrAccount::from(value),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Default, Debug, Copy)]
+pub struct Root {
+    inner: HashOrAccount,
+}
+
+impl Root {
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self {
+            inner: HashOrAccount::from_bytes(bytes),
+        }
+    }
+}
+
+impl Deref for Root {
+    type Target = HashOrAccount;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+pub struct Difficulty {}
+
+impl Difficulty {
+    pub fn to_multiplier(difficulty: u64, base_difficulty: u64) -> f64 {
+        debug_assert!(difficulty > 0);
+        base_difficulty as f64 / difficulty as f64
+    }
+}
+
+#[derive(Default)]
 pub struct RawKey {
     bytes: [u8; 32],
 }
 
 impl RawKey {
     pub fn new() -> Self {
-        Self { bytes: [0u8; 32] }
+        Default::default()
     }
 
     pub fn from_bytes(bytes: [u8; 32]) -> Self {

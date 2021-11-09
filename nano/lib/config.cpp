@@ -88,37 +88,30 @@ uint64_t nano::work_thresholds::get_epoch_1 () const
 	return dto.epoch_1;
 }
 
+uint8_t work_version_to_uint8 (nano::work_version const version_a)
+{
+	switch (version_a)
+	{
+		case nano::work_version::unspecified:
+			return 0;
+		case nano::work_version::work_1:
+			return 1;
+		default:
+			return std::numeric_limits<uint8_t>::max ();
+	}
+}
+
 uint64_t nano::work_thresholds::threshold_entry (nano::work_version const version_a, nano::block_type const type_a) const
 {
-	uint64_t result{ std::numeric_limits<uint64_t>::max () };
-	if (type_a == nano::block_type::state)
-	{
-		switch (version_a)
-		{
-			case nano::work_version::work_1:
-				result = dto.entry;
-				break;
-			default:
-				debug_assert (false && "Invalid version specified to work_threshold_entry");
-		}
-	}
-	else
-	{
-		result = dto.epoch_1;
-	}
-	return result;
+	return rsnano::rsn_work_thresholds_threshold_entry (&dto, work_version_to_uint8 (version_a), static_cast<uint8_t> (type_a));
 }
 
 #ifndef NANO_FUZZER_TEST
 uint64_t nano::work_thresholds::value (nano::root const & root_a, uint64_t work_a) const
 {
-	uint64_t result;
-	blake2b_state hash;
-	blake2b_init (&hash, sizeof (result));
-	blake2b_update (&hash, reinterpret_cast<uint8_t *> (&work_a), sizeof (work_a));
-	blake2b_update (&hash, root_a.bytes.data (), root_a.bytes.size ());
-	blake2b_final (&hash, reinterpret_cast<uint8_t *> (&result), sizeof (result));
-	return result;
+	uint8_t bytes[32];
+	std::copy (std::begin (root_a.bytes), std::end (root_a.bytes), std::begin (bytes));
+	return rsnano::rsn_work_thresholds_value (&dto, &bytes, work_a);
 }
 #else
 uint64_t nano::work_thresholds::value (nano::root const & root_a, uint64_t work_a) const
@@ -129,107 +122,34 @@ uint64_t nano::work_thresholds::value (nano::root const & root_a, uint64_t work_
 
 uint64_t nano::work_thresholds::threshold (nano::block_details const & details_a) const
 {
-	static_assert (nano::epoch::max == nano::epoch::epoch_2, "work_v1::threshold is ill-defined");
-
-	uint64_t result{ std::numeric_limits<uint64_t>::max () };
-	switch (details_a.epoch ())
-	{
-		case nano::epoch::epoch_2:
-			result = (details_a.is_receive () || details_a.is_epoch ()) ? dto.epoch_2_receive : dto.epoch_2;
-			break;
-		case nano::epoch::epoch_1:
-		case nano::epoch::epoch_0:
-			result = dto.epoch_1;
-			break;
-		default:
-			debug_assert (false && "Invalid epoch specified to work_v1 ledger work_threshold");
-	}
-	return result;
+	return rsnano::rsn_work_thresholds_threshold (&dto, &details_a.dto);
 }
 
 uint64_t nano::work_thresholds::threshold (nano::work_version const version_a, nano::block_details const details_a) const
 {
-	uint64_t result{ std::numeric_limits<uint64_t>::max () };
-	switch (version_a)
-	{
-		case nano::work_version::work_1:
-			result = threshold (details_a);
-			break;
-		default:
-			debug_assert (false && "Invalid version specified to ledger work_threshold");
-	}
-	return result;
+	return rsnano::rsn_work_thresholds_threshold2 (&dto, work_version_to_uint8 (version_a), &details_a.dto);
 }
 
 double nano::work_thresholds::normalized_multiplier (double const multiplier_a, uint64_t const threshold_a) const
 {
-	debug_assert (multiplier_a >= 1);
-	auto multiplier (multiplier_a);
-	/* Normalization rules
-	ratio = multiplier of max work threshold (send epoch 2) from given threshold
-	i.e. max = 0xfe00000000000000, given = 0xf000000000000000, ratio = 8.0
-	normalized = (multiplier + (ratio - 1)) / ratio;
-	Epoch 1
-	multiplier	 | normalized
-	1.0 		 | 1.0
-	9.0 		 | 2.0
-	25.0 		 | 4.0
-	Epoch 2 (receive / epoch subtypes)
-	multiplier	 | normalized
-	1.0 		 | 1.0
-	65.0 		 | 2.0
-	241.0 		 | 4.0
-	*/
-	if (threshold_a == dto.epoch_1 || threshold_a == dto.epoch_2_receive)
-	{
-		auto ratio (nano::difficulty::to_multiplier (dto.epoch_2, threshold_a));
-		debug_assert (ratio >= 1);
-		multiplier = (multiplier + (ratio - 1.0)) / ratio;
-		debug_assert (multiplier >= 1);
-	}
-	return multiplier;
+	return rsnano::rsn_work_thresholds_normalized_multiplier (&dto, multiplier_a, threshold_a);
 }
 
 double nano::work_thresholds::denormalized_multiplier (double const multiplier_a, uint64_t const threshold_a) const
 {
-	debug_assert (multiplier_a >= 1);
-	auto multiplier (multiplier_a);
-	if (threshold_a == dto.epoch_1 || threshold_a == dto.epoch_2_receive)
-	{
-		auto ratio (nano::difficulty::to_multiplier (dto.epoch_2, threshold_a));
-		debug_assert (ratio >= 1);
-		multiplier = multiplier * ratio + 1.0 - ratio;
-		debug_assert (multiplier >= 1);
-	}
-	return multiplier;
+	return rsnano::rsn_work_thresholds_denormalized_multiplier (&dto, multiplier_a, threshold_a);
 }
 
 uint64_t nano::work_thresholds::threshold_base (nano::work_version const version_a) const
 {
-	uint64_t result{ std::numeric_limits<uint64_t>::max () };
-	switch (version_a)
-	{
-		case nano::work_version::work_1:
-			result = dto.base;
-			break;
-		default:
-			debug_assert (false && "Invalid version specified to work_threshold_base");
-	}
-	return result;
+	return rsnano::rsn_work_thresholds_threshold_base (&dto, work_version_to_uint8 (version_a));
 }
 
 uint64_t nano::work_thresholds::difficulty (nano::work_version const version_a, nano::root const & root_a, uint64_t const work_a) const
 {
-	uint64_t result{ 0 };
-	switch (version_a)
-	{
-		case nano::work_version::work_1:
-			result = value (root_a, work_a);
-			break;
-		default:
-			debug_assert (false && "Invalid version specified to work_difficulty");
-	}
-	return result;
+	uint8_t bytes[32];
+	std::copy (std::begin (root_a.bytes), std::end (root_a.bytes), std::begin (bytes));
+	return rsnano::rsn_work_thresholds_difficulty (&dto, work_version_to_uint8 (version_a), &bytes, work_a);
 }
 
 uint64_t nano::work_thresholds::difficulty (nano::block const & block_a) const
@@ -239,7 +159,9 @@ uint64_t nano::work_thresholds::difficulty (nano::block const & block_a) const
 
 bool nano::work_thresholds::validate_entry (nano::work_version const version_a, nano::root const & root_a, uint64_t const work_a) const
 {
-	return difficulty (version_a, root_a, work_a) < threshold_entry (version_a, nano::block_type::state);
+	uint8_t bytes[32];
+	std::copy (std::begin (root_a.bytes), std::end (root_a.bytes), std::begin (bytes));
+	return rsnano::rsn_work_thresholds_validate_entry (&dto, work_version_to_uint8 (version_a), &bytes, work_a);
 }
 
 bool nano::work_thresholds::validate_entry (nano::block const & block_a) const

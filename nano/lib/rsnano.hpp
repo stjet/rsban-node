@@ -451,6 +451,19 @@ uint64_t epoch_1,
 uint64_t epoch_2,
 uint64_t epoch_2_receive);
 
+double rsn_work_thresholds_denormalized_multiplier (const WorkThresholdsDto * dto,
+double multiplier,
+uint64_t threshold);
+
+uint64_t rsn_work_thresholds_difficulty (const WorkThresholdsDto * dto,
+uint8_t work_version,
+const uint8_t (*root)[32],
+uint64_t work);
+
+double rsn_work_thresholds_normalized_multiplier (const WorkThresholdsDto * dto,
+double multiplier,
+uint64_t threshold);
+
 void rsn_work_thresholds_publish_beta (WorkThresholdsDto * dto);
 
 void rsn_work_thresholds_publish_dev (WorkThresholdsDto * dto);
@@ -458,6 +471,28 @@ void rsn_work_thresholds_publish_dev (WorkThresholdsDto * dto);
 void rsn_work_thresholds_publish_full (WorkThresholdsDto * dto);
 
 void rsn_work_thresholds_publish_test (WorkThresholdsDto * dto);
+
+uint64_t rsn_work_thresholds_threshold (const WorkThresholdsDto * dto,
+const BlockDetailsDto * details);
+
+uint64_t rsn_work_thresholds_threshold2 (const WorkThresholdsDto * dto,
+uint8_t work_version,
+const BlockDetailsDto * details);
+
+uint64_t rsn_work_thresholds_threshold_base (const WorkThresholdsDto * dto, uint8_t work_version);
+
+uint64_t rsn_work_thresholds_threshold_entry (const WorkThresholdsDto * dto,
+uint8_t work_version,
+uint8_t block_type);
+
+bool rsn_work_thresholds_validate_entry (const WorkThresholdsDto * dto,
+uint8_t work_version,
+const uint8_t (*root)[32],
+uint64_t work);
+
+uint64_t rsn_work_thresholds_value (const WorkThresholdsDto * dto,
+const uint8_t (*root)[32],
+uint64_t work);
 
 } // extern "C"
 

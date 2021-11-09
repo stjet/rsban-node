@@ -1123,7 +1123,7 @@ uint64_t nano::node::default_receive_difficulty (nano::work_version const versio
 	switch (version_a)
 	{
 		case nano::work_version::work_1:
-			result = network_params.work.epoch_2_receive;
+			result = network_params.work.get_epoch_2_receive ();
 			break;
 		default:
 			debug_assert (false && "Invalid version specified to default_receive_difficulty");

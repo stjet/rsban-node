@@ -1,3 +1,9 @@
+pub mod change_block;
+pub mod open_block;
+pub mod receive_block;
+pub mod send_block;
+pub mod state_block;
+
 use super::FfiStream;
 use crate::{
     block_details::BlockDetails,

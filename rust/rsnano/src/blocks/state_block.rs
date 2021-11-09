@@ -101,25 +101,25 @@ impl StateBlock {
             work,
             signature,
             hashables: StateHashables {
-            account,
-            previous,
-            representative,
-            balance,
-            link,
-        },
+                account,
+                previous,
+                representative,
+                balance,
+                link,
+            },
             hash: LazyBlockHash::new(),
         }
     }
 
-    pub fn source(&'_ self) -> &'_ BlockHash{
+    pub fn source(&'_ self) -> &'_ BlockHash {
         BlockHash::zero()
     }
 
-    pub fn destination(&'_ self) -> &'_ Account{
+    pub fn destination(&'_ self) -> &'_ Account {
         Account::zero()
     }
 
-    pub fn link(&'_ self) -> &'_ Link{
+    pub fn link(&'_ self) -> &'_ Link {
         &self.hashables.link
     }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <nano/lib/rsnano.hpp>
+
 #include <boost/config.hpp>
 #include <boost/version.hpp>
 
@@ -89,23 +91,14 @@ class block_details;
 class work_thresholds
 {
 public:
-	uint64_t const epoch_1;
-	uint64_t const epoch_2;
-	uint64_t const epoch_2_receive;
-
-	// Automatically calculated. The base threshold is the maximum of all thresholds and is used for all work multiplier calculations
-	uint64_t const base;
-
-	// Automatically calculated. The entry threshold is the minimum of all thresholds and defines the required work to enter the node, but does not guarantee a block is processed
-	uint64_t const entry;
-
-	constexpr work_thresholds (uint64_t epoch_1_a, uint64_t epoch_2_a, uint64_t epoch_2_receive_a) :
-		epoch_1 (epoch_1_a), epoch_2 (epoch_2_a), epoch_2_receive (epoch_2_receive_a),
-		base (std::max ({ epoch_1, epoch_2, epoch_2_receive })),
-		entry (std::min ({ epoch_1, epoch_2, epoch_2_receive }))
-	{
-	}
+	work_thresholds (uint64_t epoch_1_a, uint64_t epoch_2_a, uint64_t epoch_2_receive_a);
+	work_thresholds (rsnano::WorkThresholdsDto dto_a);
 	work_thresholds () = delete;
+	uint64_t get_base () const;
+	uint64_t get_epoch_2 () const;
+	uint64_t get_epoch_2_receive () const;
+	uint64_t get_entry () const;
+	uint64_t get_epoch_1 () const;
 	work_thresholds operator= (nano::work_thresholds const & other_a)
 	{
 		return other_a;
@@ -125,10 +118,13 @@ public:
 	bool validate_entry (nano::block const &) const;
 
 	/** Network work thresholds. Define these inline as constexpr when moving to cpp17. */
-	static nano::work_thresholds const publish_full;
-	static nano::work_thresholds const publish_beta;
-	static nano::work_thresholds const publish_dev;
-	static nano::work_thresholds const publish_test;
+	static nano::work_thresholds const publish_full ();
+	static nano::work_thresholds const publish_beta ();
+	static nano::work_thresholds const publish_dev ();
+	static nano::work_thresholds const publish_test ();
+
+private:
+	rsnano::WorkThresholdsDto dto;
 };
 
 class network_constants

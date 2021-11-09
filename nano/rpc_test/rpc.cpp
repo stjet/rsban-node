@@ -525,8 +525,8 @@ TEST (rpc, send_epoch_2)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv, false);
 
 	auto target_difficulty = nano::dev::network_params.work.threshold (nano::work_version::work_1, nano::block_details (nano::epoch::epoch_2, true, false, false));
-	ASSERT_LT (node->network_params.work.entry, target_difficulty);
-	auto min_difficulty = node->network_params.work.entry;
+	ASSERT_LT (node->network_params.work.get_entry (), target_difficulty);
+	auto min_difficulty = node->network_params.work.get_entry ();
 
 	auto [rpc, rpc_ctx] = add_rpc (system, node);
 	boost::property_tree::ptree request;
@@ -1641,10 +1641,10 @@ TEST (rpc, process_ledger_insufficient_work)
 	nano::system system;
 	auto node = add_ipc_enabled_node (system);
 	auto [rpc, rpc_ctx] = add_rpc (system, node);
-	ASSERT_LT (node->network_params.work.entry, node->network_params.work.epoch_1);
+	ASSERT_LT (node->network_params.work.get_entry (), node->network_params.work.get_epoch_1 ());
 	auto latest (node->latest (nano::dev::genesis_key.pub));
-	auto min_difficulty = node->network_params.work.entry;
-	auto max_difficulty = node->network_params.work.epoch_1;
+	auto min_difficulty = node->network_params.work.get_entry ();
+	auto max_difficulty = node->network_params.work.get_epoch_1 ();
 	nano::state_block send (nano::dev::genesis->account (), latest, nano::dev::genesis->account (), nano::dev::constants.genesis_amount - nano::Gxrb_ratio, nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, system.work_generate_limited (latest, min_difficulty, max_difficulty));
 	ASSERT_LT (nano::dev::network_params.work.difficulty (send), max_difficulty);
 	ASSERT_GE (nano::dev::network_params.work.difficulty (send), min_difficulty);
@@ -2176,8 +2176,8 @@ TEST (rpc, work_generate_block_ledger_epoch_2)
 		uint64_t response_difficulty;
 		ASSERT_FALSE (nano::from_string_hex (response_difficulty_text, response_difficulty));
 		ASSERT_EQ (result_difficulty, response_difficulty);
-		ASSERT_GE (result_difficulty, node->network_params.work.epoch_2_receive);
-		finished = result_difficulty < node->network_params.work.epoch_1;
+		ASSERT_GE (result_difficulty, node->network_params.work.get_epoch_2_receive ());
+		finished = result_difficulty < node->network_params.work.get_epoch_1 ();
 		ASSERT_LT (++iteration, 200);
 	}
 }
@@ -2195,7 +2195,7 @@ TEST (rpc, work_cancel)
 	system.deadline_set (10s);
 	while (!done)
 	{
-		system.work.generate (nano::work_version::work_1, hash1, node1->network_params.work.base, [&done] (boost::optional<uint64_t> work_a) {
+		system.work.generate (nano::work_version::work_1, hash1, node1->network_params.work.get_base (), [&done] (boost::optional<uint64_t> work_a) {
 			done = !work_a;
 		});
 		auto response1 (wait_response (system, rpc, request1));
@@ -2215,7 +2215,7 @@ TEST (rpc, work_peer_bad)
 	auto [rpc, rpc_ctx] = add_rpc (system, node1);
 	nano::block_hash hash1 (1);
 	std::atomic<uint64_t> work (0);
-	node2.work_generate (nano::work_version::work_1, hash1, node2.network_params.work.base, [&work] (boost::optional<uint64_t> work_a) {
+	node2.work_generate (nano::work_version::work_1, hash1, node2.network_params.work.get_base (), [&work] (boost::optional<uint64_t> work_a) {
 		ASSERT_TRUE (work_a.is_initialized ());
 		work = *work_a;
 	});
@@ -2231,7 +2231,7 @@ TEST (rpc, work_peer_one)
 	node2.config.work_peers.push_back (std::make_pair (node1->network.endpoint ().address ().to_string (), rpc->config.port));
 	nano::keypair key1;
 	std::atomic<uint64_t> work (0);
-	node2.work_generate (nano::work_version::work_1, key1.pub, node1->network_params.work.base, [&work] (boost::optional<uint64_t> work_a) {
+	node2.work_generate (nano::work_version::work_1, key1.pub, node1->network_params.work.get_base (), [&work] (boost::optional<uint64_t> work_a) {
 		ASSERT_TRUE (work_a.is_initialized ());
 		work = *work_a;
 	});
@@ -2259,7 +2259,7 @@ TEST (rpc, work_peer_many)
 	for (auto i (0); i < works.size (); ++i)
 	{
 		nano::keypair key1;
-		node1.work_generate (nano::work_version::work_1, key1.pub, node1.network_params.work.base, [&work = works[i]] (boost::optional<uint64_t> work_a) {
+		node1.work_generate (nano::work_version::work_1, key1.pub, node1.network_params.work.get_base (), [&work = works[i]] (boost::optional<uint64_t> work_a) {
 			work = *work_a;
 		});
 		while (nano::dev::network_params.work.difficulty (nano::work_version::work_1, key1.pub, works[i]) < nano::dev::network_params.work.threshold_base (nano::work_version::work_1))
@@ -2547,8 +2547,8 @@ TEST (rpc, account_representative_set_epoch_2)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv, false);
 
 	auto target_difficulty = nano::dev::network_params.work.threshold (nano::work_version::work_1, nano::block_details (nano::epoch::epoch_2, false, false, false));
-	ASSERT_LT (node->network_params.work.entry, target_difficulty);
-	auto min_difficulty = node->network_params.work.entry;
+	ASSERT_LT (node->network_params.work.get_entry (), target_difficulty);
+	auto min_difficulty = node->network_params.work.get_entry ();
 
 	auto [rpc, rpc_ctx] = add_rpc (system, node);
 	boost::property_tree::ptree request;
@@ -2765,7 +2765,7 @@ TEST (rpc, work_validate)
 		auto response (wait_response (system, rpc, request));
 		ASSERT_EQ (result_difficulty >= difficulty4, response.get<bool> ("valid"));
 		ASSERT_EQ (result_difficulty >= node1->default_difficulty (nano::work_version::work_1), response.get<bool> ("valid_all"));
-		ASSERT_EQ (result_difficulty >= node1->network_params.work.epoch_2_receive, response.get<bool> ("valid_all"));
+		ASSERT_EQ (result_difficulty >= node1->network_params.work.get_epoch_2_receive (), response.get<bool> ("valid_all"));
 	}
 	uint64_t work3 (*node1->work_generate_blocking (hash, difficulty4));
 	request.put ("work", nano::to_string_hex (work3));
@@ -2783,8 +2783,8 @@ TEST (rpc, work_validate_epoch_2)
 	auto node = add_ipc_enabled_node (system);
 	auto epoch1 = system.upgrade_genesis_epoch (*node, nano::epoch::epoch_1);
 	ASSERT_NE (nullptr, epoch1);
-	ASSERT_EQ (node->network_params.work.epoch_2, node->network_params.work.base);
-	auto work = system.work_generate_limited (epoch1->hash (), node->network_params.work.epoch_1, node->network_params.work.base);
+	ASSERT_EQ (node->network_params.work.get_epoch_2 (), node->network_params.work.get_base ());
+	auto work = system.work_generate_limited (epoch1->hash (), node->network_params.work.get_epoch_1 (), node->network_params.work.get_base ());
 	auto [rpc, rpc_ctx] = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "work_validate");
@@ -2799,7 +2799,7 @@ TEST (rpc, work_validate_epoch_2)
 		uint64_t difficulty{ 0 };
 		ASSERT_FALSE (nano::from_string_hex (difficulty_text, difficulty));
 		double multiplier (response.get<double> ("multiplier"));
-		ASSERT_NEAR (multiplier, nano::difficulty::to_multiplier (difficulty, node->network_params.work.epoch_2), 1e-6);
+		ASSERT_NEAR (multiplier, nano::difficulty::to_multiplier (difficulty, node->network_params.work.get_epoch_2 ()), 1e-6);
 	};
 	// After upgrading, the higher difficulty is used to validate and calculate the multiplier
 	rpc_ctx->io_scope->reset ();
@@ -5474,7 +5474,7 @@ TEST (rpc, active_difficulty)
 	nano::system system;
 	auto node = add_ipc_enabled_node (system);
 	auto [rpc, rpc_ctx] = add_rpc (system, node);
-	ASSERT_EQ (node->default_difficulty (nano::work_version::work_1), node->network_params.work.epoch_2);
+	ASSERT_EQ (node->default_difficulty (nano::work_version::work_1), node->network_params.work.get_epoch_2 ());
 	boost::property_tree::ptree request;
 	request.put ("action", "active_difficulty");
 	auto expected_multiplier{ 1.0 };

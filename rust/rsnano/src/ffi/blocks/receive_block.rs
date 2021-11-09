@@ -5,7 +5,7 @@ use crate::{
     numbers::{BlockHash, PublicKey, RawKey, Signature},
 };
 
-use super::{
+use crate::ffi::{
     property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
     FfiStream,
 };

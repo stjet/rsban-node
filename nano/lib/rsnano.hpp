@@ -155,6 +155,15 @@ struct StateBlockDto2
 	uint64_t work;
 };
 
+struct WorkThresholdsDto
+{
+	uint64_t epoch_1;
+	uint64_t epoch_2;
+	uint64_t epoch_2_receive;
+	uint64_t base;
+	uint64_t entry;
+};
+
 extern "C" {
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
@@ -436,6 +445,19 @@ bool rsn_valdiate_message (const uint8_t (*pub_key)[32],
 const uint8_t * message,
 uintptr_t len,
 const uint8_t (*signature)[64]);
+
+void rsn_work_thresholds_create (WorkThresholdsDto * dto,
+uint64_t epoch_1,
+uint64_t epoch_2,
+uint64_t epoch_2_receive);
+
+void rsn_work_thresholds_publish_beta (WorkThresholdsDto * dto);
+
+void rsn_work_thresholds_publish_dev (WorkThresholdsDto * dto);
+
+void rsn_work_thresholds_publish_full (WorkThresholdsDto * dto);
+
+void rsn_work_thresholds_publish_test (WorkThresholdsDto * dto);
 
 } // extern "C"
 

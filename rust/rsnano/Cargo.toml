@@ -20,6 +20,7 @@ hex = "0.4.3"
 num = "0.4.0"
 num-derive = "0.3.3"
 num-traits = "0.2.14"
+once_cell = "1.7.2"
 primitive-types = "0.10.1"
 rand = {version="0.8.4" }
 static_assertions = "1.1.0"

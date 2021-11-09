@@ -269,4 +269,35 @@ mod tests {
         );
         Ok(())
     }
+
+    // original test: block_builder.state_equality
+    #[test]
+    fn state_equality() {
+        let key1 = KeyPair::new();
+        let key2 = KeyPair::new();
+        let block1 = StateBlock::new(
+            Account::from(key1.public_key()),
+            BlockHash::from(1),
+            Account::from(key2.public_key()),
+            Amount::new(2),
+            Link::from(4),
+            &key1.private_key(),
+            &key1.public_key(),
+            5,
+        ).unwrap();
+
+        let block2 = BlockBuilder::state()
+            .account(key1.public_key())
+            .previous(1)
+            .representative(key2.public_key())
+            .balance(2)
+            .link(4)
+            .sign(&key1)
+            .work(5)
+            .build()
+            .unwrap();
+
+        assert_eq!(block1.hash().deref(), block2.hash().deref());
+        assert_eq!(block1.work, block2.work);
+    }
 }

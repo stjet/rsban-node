@@ -262,32 +262,6 @@ TEST (block_builder, state_missing_rep)
 	ASSERT_EQ (ec, nano::error_common::missing_representative);
 }
 
-TEST (block_builder, state_equality)
-{
-	std::error_code ec;
-	nano::block_builder builder;
-
-	// With constructor
-	nano::keypair key1, key2;
-	nano::state_block block1 (key1.pub, 1, key2.pub, 2, 4, key1.prv, key1.pub, 5);
-
-	// With builder
-	auto block2 = builder
-				  .state ()
-				  .account (key1.pub)
-				  .previous (1)
-				  .representative (key2.pub)
-				  .balance (2)
-				  .link (4)
-				  .sign (key1.prv, key1.pub)
-				  .work (5)
-				  .build (ec);
-
-	ASSERT_NO_ERROR (ec);
-	ASSERT_EQ (block1.hash (), block2->hash ());
-	ASSERT_EQ (block1.block_work (), block2->block_work ());
-}
-
 TEST (block_builder, state_errors)
 {
 	std::error_code ec;

@@ -82,9 +82,9 @@ nano::ledger_constants & nano::dev::constants{ nano::dev::network_params.ledger 
 std::shared_ptr<nano::block> & nano::dev::genesis = nano::dev::constants.genesis;
 
 nano::network_params::network_params (nano::networks network_a) :
-	work{ network_a == nano::networks::nano_live_network ? nano::work_thresholds::publish_full : network_a == nano::networks::nano_beta_network ? nano::work_thresholds::publish_beta
-		: network_a == nano::networks::nano_test_network                                                                                        ? nano::work_thresholds::publish_test
-																																				: nano::work_thresholds::publish_dev },
+	work{ network_a == nano::networks::nano_live_network ? nano::work_thresholds::publish_full () : network_a == nano::networks::nano_beta_network ? nano::work_thresholds::publish_beta ()
+		: network_a == nano::networks::nano_test_network                                                                                           ? nano::work_thresholds::publish_test ()
+																																				   : nano::work_thresholds::publish_dev () },
 	network{ work, network_a },
 	ledger{ work, network_a },
 	voting{ network },

@@ -25,29 +25,68 @@ struct HexTo
 };
 } // namespace
 
-nano::work_thresholds const nano::work_thresholds::publish_full (
-0xffffffc000000000,
-0xfffffff800000000, // 8x higher than epoch_1
-0xfffffe0000000000 // 8x lower than epoch_1
-);
+nano::work_thresholds::work_thresholds (uint64_t epoch_1_a, uint64_t epoch_2_a, uint64_t epoch_2_receive_a)
+{
+	rsnano::rsn_work_thresholds_create (&dto, epoch_1_a, epoch_2_a, epoch_2_receive_a);
+}
 
-nano::work_thresholds const nano::work_thresholds::publish_beta (
-0xfffff00000000000, // 64x lower than publish_full.epoch_1
-0xfffff00000000000, // same as epoch_1
-0xffffe00000000000 // 2x lower than epoch_1
-);
+nano::work_thresholds::work_thresholds (rsnano::WorkThresholdsDto dto_a) :
+	dto (dto_a)
+{
+}
 
-nano::work_thresholds const nano::work_thresholds::publish_dev (
-0xfe00000000000000, // Very low for tests
-0xffc0000000000000, // 8x higher than epoch_1
-0xf000000000000000 // 8x lower than epoch_1
-);
+nano::work_thresholds const nano::work_thresholds::publish_full ()
+{
+	rsnano::WorkThresholdsDto dto;
+	rsnano::rsn_work_thresholds_publish_full (&dto);
+	return nano::work_thresholds (dto);
+}
 
-nano::work_thresholds const nano::work_thresholds::publish_test ( //defaults to live network levels
-get_env_threshold_or_default ("NANO_TEST_EPOCH_1", 0xffffffc000000000),
-get_env_threshold_or_default ("NANO_TEST_EPOCH_2", 0xfffffff800000000), // 8x higher than epoch_1
-get_env_threshold_or_default ("NANO_TEST_EPOCH_2_RECV", 0xfffffe0000000000) // 8x lower than epoch_1
-);
+nano::work_thresholds const nano::work_thresholds::publish_beta ()
+{
+	rsnano::WorkThresholdsDto dto;
+	rsnano::rsn_work_thresholds_publish_beta (&dto);
+	return nano::work_thresholds (dto);
+}
+
+nano::work_thresholds const nano::work_thresholds::publish_dev ()
+{
+	rsnano::WorkThresholdsDto dto;
+	rsnano::rsn_work_thresholds_publish_dev (&dto);
+	return nano::work_thresholds (dto);
+}
+
+nano::work_thresholds const nano::work_thresholds::publish_test ()
+{
+	rsnano::WorkThresholdsDto dto;
+	rsnano::rsn_work_thresholds_publish_test (&dto);
+	return nano::work_thresholds (dto);
+}
+
+uint64_t nano::work_thresholds::get_base () const
+{
+	return dto.base;
+}
+
+uint64_t nano::work_thresholds::get_epoch_2 () const
+{
+	return dto.epoch_2;
+}
+
+uint64_t nano::work_thresholds::get_epoch_2_receive () const
+{
+	return dto.epoch_2_receive;
+}
+
+uint64_t nano::work_thresholds::get_entry () const
+{
+	return dto.entry;
+}
+
+uint64_t nano::work_thresholds::get_epoch_1 () const
+{
+	return dto.epoch_1;
+}
 
 uint64_t nano::work_thresholds::threshold_entry (nano::work_version const version_a, nano::block_type const type_a) const
 {
@@ -57,7 +96,7 @@ uint64_t nano::work_thresholds::threshold_entry (nano::work_version const versio
 		switch (version_a)
 		{
 			case nano::work_version::work_1:
-				result = entry;
+				result = dto.entry;
 				break;
 			default:
 				debug_assert (false && "Invalid version specified to work_threshold_entry");
@@ -65,7 +104,7 @@ uint64_t nano::work_thresholds::threshold_entry (nano::work_version const versio
 	}
 	else
 	{
-		result = epoch_1;
+		result = dto.epoch_1;
 	}
 	return result;
 }
@@ -84,7 +123,7 @@ uint64_t nano::work_thresholds::value (nano::root const & root_a, uint64_t work_
 #else
 uint64_t nano::work_thresholds::value (nano::root const & root_a, uint64_t work_a) const
 {
-	return base + 1;
+	return dto.base + 1;
 }
 #endif
 
@@ -96,11 +135,11 @@ uint64_t nano::work_thresholds::threshold (nano::block_details const & details_a
 	switch (details_a.epoch ())
 	{
 		case nano::epoch::epoch_2:
-			result = (details_a.is_receive () || details_a.is_epoch ()) ? epoch_2_receive : epoch_2;
+			result = (details_a.is_receive () || details_a.is_epoch ()) ? dto.epoch_2_receive : dto.epoch_2;
 			break;
 		case nano::epoch::epoch_1:
 		case nano::epoch::epoch_0:
-			result = epoch_1;
+			result = dto.epoch_1;
 			break;
 		default:
 			debug_assert (false && "Invalid epoch specified to work_v1 ledger work_threshold");
@@ -141,9 +180,9 @@ double nano::work_thresholds::normalized_multiplier (double const multiplier_a, 
 	65.0 		 | 2.0
 	241.0 		 | 4.0
 	*/
-	if (threshold_a == epoch_1 || threshold_a == epoch_2_receive)
+	if (threshold_a == dto.epoch_1 || threshold_a == dto.epoch_2_receive)
 	{
-		auto ratio (nano::difficulty::to_multiplier (epoch_2, threshold_a));
+		auto ratio (nano::difficulty::to_multiplier (dto.epoch_2, threshold_a));
 		debug_assert (ratio >= 1);
 		multiplier = (multiplier + (ratio - 1.0)) / ratio;
 		debug_assert (multiplier >= 1);
@@ -155,9 +194,9 @@ double nano::work_thresholds::denormalized_multiplier (double const multiplier_a
 {
 	debug_assert (multiplier_a >= 1);
 	auto multiplier (multiplier_a);
-	if (threshold_a == epoch_1 || threshold_a == epoch_2_receive)
+	if (threshold_a == dto.epoch_1 || threshold_a == dto.epoch_2_receive)
 	{
-		auto ratio (nano::difficulty::to_multiplier (epoch_2, threshold_a));
+		auto ratio (nano::difficulty::to_multiplier (dto.epoch_2, threshold_a));
 		debug_assert (ratio >= 1);
 		multiplier = multiplier * ratio + 1.0 - ratio;
 		debug_assert (multiplier >= 1);
@@ -171,7 +210,7 @@ uint64_t nano::work_thresholds::threshold_base (nano::work_version const version
 	switch (version_a)
 	{
 		case nano::work_version::work_1:
-			result = base;
+			result = dto.base;
 			break;
 		default:
 			debug_assert (false && "Invalid version specified to work_threshold_base");

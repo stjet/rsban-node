@@ -10,8 +10,8 @@ TEST (system, work_generate_limited)
 {
 	nano::system system;
 	nano::block_hash key (1);
-	auto min = nano::dev::network_params.work.entry;
-	auto max = nano::dev::network_params.work.base;
+	auto min = nano::dev::network_params.work.get_entry ();
+	auto max = nano::dev::network_params.work.get_base ();
 	for (int i = 0; i < 5; ++i)
 	{
 		auto work = system.work_generate_limited (key, min, max);

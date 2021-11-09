@@ -49,7 +49,7 @@ TEST (work, cancel)
 	{
 		nano::root key (1);
 		pool.generate (
-		nano::work_version::work_1, key, nano::dev::network_params.work.base, [&done] (boost::optional<uint64_t> work_a) {
+		nano::work_version::work_1, key, nano::dev::network_params.work.get_base (), [&done] (boost::optional<uint64_t> work_a) {
 			done = !work_a;
 		});
 		pool.cancel (key);
@@ -67,12 +67,12 @@ TEST (work, cancel_many)
 	nano::root key4 (1);
 	nano::root key5 (3);
 	nano::root key6 (1);
-	pool.generate (nano::work_version::work_1, key1, nano::dev::network_params.work.base, [] (boost::optional<uint64_t>) {});
-	pool.generate (nano::work_version::work_1, key2, nano::dev::network_params.work.base, [] (boost::optional<uint64_t>) {});
-	pool.generate (nano::work_version::work_1, key3, nano::dev::network_params.work.base, [] (boost::optional<uint64_t>) {});
-	pool.generate (nano::work_version::work_1, key4, nano::dev::network_params.work.base, [] (boost::optional<uint64_t>) {});
-	pool.generate (nano::work_version::work_1, key5, nano::dev::network_params.work.base, [] (boost::optional<uint64_t>) {});
-	pool.generate (nano::work_version::work_1, key6, nano::dev::network_params.work.base, [] (boost::optional<uint64_t>) {});
+	pool.generate (nano::work_version::work_1, key1, nano::dev::network_params.work.get_base (), [] (boost::optional<uint64_t>) {});
+	pool.generate (nano::work_version::work_1, key2, nano::dev::network_params.work.get_base (), [] (boost::optional<uint64_t>) {});
+	pool.generate (nano::work_version::work_1, key3, nano::dev::network_params.work.get_base (), [] (boost::optional<uint64_t>) {});
+	pool.generate (nano::work_version::work_1, key4, nano::dev::network_params.work.get_base (), [] (boost::optional<uint64_t>) {});
+	pool.generate (nano::work_version::work_1, key5, nano::dev::network_params.work.get_base (), [] (boost::optional<uint64_t>) {});
+	pool.generate (nano::work_version::work_1, key6, nano::dev::network_params.work.get_base (), [] (boost::optional<uint64_t>) {});
 	pool.cancel (key1);
 }
 

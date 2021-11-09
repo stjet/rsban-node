@@ -36,10 +36,12 @@ class node_config
 public:
 	node_config (nano::network_params & network_params = nano::dev::network_params);
 	node_config (uint16_t, nano::logging const &, nano::network_params & network_params = nano::dev::network_params);
+
 	nano::error serialize_json (nano::jsonconfig &) const;
 	nano::error deserialize_json (bool &, nano::jsonconfig &);
 	nano::error serialize_toml (nano::tomlconfig &) const;
 	nano::error deserialize_toml (nano::tomlconfig &);
+
 	bool upgrade_json (unsigned, nano::jsonconfig &);
 	nano::account random_representative () const;
 	nano::network_params & network_params;
@@ -115,6 +117,8 @@ public:
 	{
 		return 18;
 	}
+
+private:
 };
 
 class node_flags final

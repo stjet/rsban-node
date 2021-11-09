@@ -9,7 +9,9 @@ pub struct Account {
     public_key: PublicKey,
 }
 
-const ZERO_ACCOUNT: Account = Account {public_key: PublicKey{ value: [0;32]}};
+const ZERO_ACCOUNT: Account = Account {
+    public_key: PublicKey { value: [0; 32] },
+};
 
 impl Account {
     pub fn new() -> Self {
@@ -18,11 +20,11 @@ impl Account {
         }
     }
 
-    pub fn zero() -> &'static Account{
+    pub fn zero() -> &'static Account {
         &ZERO_ACCOUNT
     }
 
-    pub fn is_zero(&self) -> bool{
+    pub fn is_zero(&self) -> bool {
         self.public_key.is_zero()
     }
 

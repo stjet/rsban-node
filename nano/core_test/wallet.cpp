@@ -980,9 +980,9 @@ TEST (wallet, epoch_2_validation)
 
 		auto receive = wallet.receive_action (send->hash (), nano::dev::genesis_key.pub, amount, send->link ().as_account (), 1);
 		ASSERT_NE (nullptr, receive);
-		if (nano::dev::network_params.work.difficulty (*receive) < node.network_params.work.base)
+		if (nano::dev::network_params.work.difficulty (*receive) < node.network_params.work.get_base ())
 		{
-			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive), node.network_params.work.epoch_2_receive);
+			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive), node.network_params.work.get_epoch_2_receive ());
 			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().details ().epoch ());
 			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().source_epoch ());
 			break;
@@ -1032,9 +1032,9 @@ TEST (wallet, epoch_2_receive_propagation)
 
 		auto receive2 = wallet.receive_action (send2->hash (), key.pub, amount, send2->link ().as_account (), 1);
 		ASSERT_NE (nullptr, receive2);
-		if (nano::dev::network_params.work.difficulty (*receive2) < node.network_params.work.base)
+		if (nano::dev::network_params.work.difficulty (*receive2) < node.network_params.work.get_base ())
 		{
-			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive2), node.network_params.work.epoch_2_receive);
+			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive2), node.network_params.work.get_epoch_2_receive ());
 			ASSERT_EQ (nano::epoch::epoch_2, node.store.block.version (node.store.tx_begin_read (), receive2->hash ()));
 			ASSERT_EQ (nano::epoch::epoch_2, receive2->sideband ().source_epoch ());
 			break;
@@ -1070,16 +1070,16 @@ TEST (wallet, epoch_2_receive_unopened)
 		auto send1 = wallet.send_action (nano::dev::genesis_key.pub, key.pub, amount, 1);
 
 		// Upgrade unopened account to epoch_2
-		auto epoch2_unopened = nano::state_block (key.pub, 0, 0, 0, node.network_params.ledger.epochs.link (nano::epoch::epoch_2), nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (key.pub, node.network_params.work.epoch_2));
+		auto epoch2_unopened = nano::state_block (key.pub, 0, 0, 0, node.network_params.ledger.epochs.link (nano::epoch::epoch_2), nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (key.pub, node.network_params.work.get_epoch_2 ()));
 		ASSERT_EQ (nano::process_result::progress, node.process (epoch2_unopened).code);
 
 		wallet.insert_adhoc (key.prv, false);
 
 		auto receive1 = wallet.receive_action (send1->hash (), key.pub, amount, send1->link ().as_account (), 1);
 		ASSERT_NE (nullptr, receive1);
-		if (nano::dev::network_params.work.difficulty (*receive1) < node.network_params.work.base)
+		if (nano::dev::network_params.work.difficulty (*receive1) < node.network_params.work.get_base ())
 		{
-			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive1), node.network_params.work.epoch_2_receive);
+			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive1), node.network_params.work.get_epoch_2_receive ());
 			ASSERT_EQ (nano::epoch::epoch_2, node.store.block.version (node.store.tx_begin_read (), receive1->hash ()));
 			ASSERT_EQ (nano::epoch::epoch_1, receive1->sideband ().source_epoch ());
 			break;

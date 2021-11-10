@@ -12,7 +12,7 @@
 #include <numeric>
 
 nano::network::network (nano::node & node_a, uint16_t port_a) :
-	id (nano::network_constants::active_network),
+	id (nano::network_constants::active_network ()),
 	syn_cookies (node_a.network_params.network.max_peers_per_ip),
 	inbound{ [this] (nano::message const & message, std::shared_ptr<nano::transport::channel> const & channel) {
 		if (message.header.network == id)

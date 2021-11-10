@@ -15,13 +15,7 @@ pub use send_block::*;
 pub use state_block::*;
 
 use super::{property_tree::FfiPropertyTreeReader, FfiStream};
-use crate::{
-    blocks::{
-        serialized_block_size, BlockType, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock,
-        StateBlock,
-    },
-    utils::PropertyTreeReader,
-};
+use crate::{blocks::{Block, deserialize_block_json, serialized_block_size}};
 use num::FromPrimitive;
 
 #[no_mangle]
@@ -67,37 +61,5 @@ pub unsafe extern "C" fn rsn_deserialize_block_json(
             0
         }
         Err(_) => -1,
-    }
-}
-
-fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<Block> {
-    let block_type = ptree.get_string("type")?;
-    match block_type.as_str() {
-        "receive" => ReceiveBlock::deserialize_json(ptree).map(Block::Receive),
-        "send" => SendBlock::deserialize_json(ptree).map(Block::Send),
-        "open" => OpenBlock::deserialize_json(ptree).map(Block::Open),
-        "change" => ChangeBlock::deserialize_json(ptree).map(Block::Change),
-        "state" => StateBlock::deserialize_json(ptree).map(Block::State),
-        _ => Err(anyhow!("unsupported block type")),
-    }
-}
-
-pub enum Block {
-    Send(SendBlock),
-    Receive(ReceiveBlock),
-    Open(OpenBlock),
-    Change(ChangeBlock),
-    State(StateBlock),
-}
-
-impl Block {
-    pub fn block_type(&self) -> BlockType {
-        match self {
-            Block::Send(_) => BlockType::Send,
-            Block::Receive(_) => BlockType::Receive,
-            Block::Open(_) => BlockType::Open,
-            Block::Change(_) => BlockType::Change,
-            Block::State(_) => BlockType::State,
-        }
     }
 }

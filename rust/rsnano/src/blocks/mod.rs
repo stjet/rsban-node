@@ -23,11 +23,7 @@ pub use receive_block::*;
 pub use send_block::*;
 pub use state_block::*;
 
-use crate::{
-    epoch::Epoch,
-    numbers::{Account, Amount, BlockHash},
-    utils::Stream,
-};
+use crate::{epoch::Epoch, numbers::{Account, Amount, BlockHash}, utils::{PropertyTreeReader, Stream}};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -204,5 +200,37 @@ impl LazyBlockHash {
     pub(crate) fn clear(&self) {
         let mut x = self.hash.write().unwrap();
         *x = BlockHash::new();
+    }
+}
+
+pub enum Block {
+    Send(SendBlock),
+    Receive(ReceiveBlock),
+    Open(OpenBlock),
+    Change(ChangeBlock),
+    State(StateBlock),
+}
+
+impl Block {
+    pub fn block_type(&self) -> BlockType {
+        match self {
+            Block::Send(_) => BlockType::Send,
+            Block::Receive(_) => BlockType::Receive,
+            Block::Open(_) => BlockType::Open,
+            Block::Change(_) => BlockType::Change,
+            Block::State(_) => BlockType::State,
+        }
+    }
+}
+
+pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<Block> {
+    let block_type = ptree.get_string("type")?;
+    match block_type.as_str() {
+        "receive" => ReceiveBlock::deserialize_json(ptree).map(Block::Receive),
+        "send" => SendBlock::deserialize_json(ptree).map(Block::Send),
+        "open" => OpenBlock::deserialize_json(ptree).map(Block::Open),
+        "change" => ChangeBlock::deserialize_json(ptree).map(Block::Change),
+        "state" => StateBlock::deserialize_json(ptree).map(Block::State),
+        _ => Err(anyhow!("unsupported block type")),
     }
 }

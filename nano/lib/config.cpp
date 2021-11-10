@@ -169,6 +169,45 @@ bool nano::work_thresholds::validate_entry (nano::block const & block_a) const
 	return difficulty (block_a) < threshold_entry (block_a.work_version (), block_a.type ());
 }
 
+//todo: make configurable in builld script again!
+static nano::networks active_network_value = nano::networks::nano_dev_network;
+
+nano::networks nano::network_constants::active_network ()
+{
+	return active_network_value;
+}
+
+void nano::network_constants::set_active_network (nano::networks network_a)
+{
+	active_network_value = network_a;
+}
+
+bool nano::network_constants::set_active_network (std::string network_a)
+{
+	auto error{ false };
+	if (network_a == "live")
+	{
+		active_network_value = nano::networks::nano_live_network;
+	}
+	else if (network_a == "beta")
+	{
+		active_network_value = nano::networks::nano_beta_network;
+	}
+	else if (network_a == "dev")
+	{
+		active_network_value = nano::networks::nano_dev_network;
+	}
+	else if (network_a == "test")
+	{
+		active_network_value = nano::networks::nano_test_network;
+	}
+	else
+	{
+		error = true;
+	}
+	return error;
+}
+
 namespace nano
 {
 char const * network_constants::active_network_err_msg = "Invalid network. Valid values are live, test, beta and dev.";

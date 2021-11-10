@@ -675,7 +675,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (type == "node")
 		{
 			valid_type = true;
-			nano::network_params network_params{ nano::network_constants::active_network };
+			nano::network_params network_params{ nano::network_constants::active_network () };
 			nano::daemon_config config{ data_path, network_params };
 			config.serialize_toml (toml);
 		}
@@ -1335,7 +1335,7 @@ void reset_confirmation_heights (nano::write_transaction const & transaction, na
 
 bool is_using_rocksdb (boost::filesystem::path const & data_path, boost::program_options::variables_map const & vm, std::error_code & ec)
 {
-	nano::network_params network_params{ nano::network_constants::active_network };
+	nano::network_params network_params{ nano::network_constants::active_network () };
 	nano::daemon_config config{ data_path, network_params };
 
 	// Config overriding

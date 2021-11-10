@@ -123,7 +123,6 @@ public:
 	static nano::work_thresholds const publish_dev ();
 	static nano::work_thresholds const publish_test ();
 
-private:
 	rsnano::WorkThresholdsDto dto;
 };
 
@@ -163,8 +162,8 @@ public:
 	static char const * active_network_err_msg;
 
 	/** The network this param object represents. This may differ from the global active network; this is needed for certain --debug... commands */
-	nano::networks current_network{ nano::network_constants::active_network };
-	nano::work_thresholds & work;
+	nano::networks current_network{ nano::network_constants::active_network () };
+	nano::work_thresholds work;
 
 	unsigned principal_weight_factor;
 	uint16_t default_node_port;
@@ -203,41 +202,14 @@ public:
 	 * If not called, the compile-time option will be used.
 	 * @param network_a The new active network
 	 */
-	static void set_active_network (nano::networks network_a)
-	{
-		active_network = network_a;
-	}
+	static void set_active_network (nano::networks network_a);
 
 	/**
 	 * Optionally called on startup to override the global active network.
 	 * If not called, the compile-time option will be used.
 	 * @param network_a The new active network. Valid values are "live", "beta" and "dev"
 	 */
-	static bool set_active_network (std::string network_a)
-	{
-		auto error{ false };
-		if (network_a == "live")
-		{
-			active_network = nano::networks::nano_live_network;
-		}
-		else if (network_a == "beta")
-		{
-			active_network = nano::networks::nano_beta_network;
-		}
-		else if (network_a == "dev")
-		{
-			active_network = nano::networks::nano_dev_network;
-		}
-		else if (network_a == "test")
-		{
-			active_network = nano::networks::nano_test_network;
-		}
-		else
-		{
-			error = true;
-		}
-		return error;
-	}
+	static bool set_active_network (std::string network_a);
 
 	char const * get_current_network_as_string ()
 	{
@@ -264,7 +236,7 @@ public:
 	}
 
 	/** Initial value is ACTIVE_NETWORK compile flag, but can be overridden by a CLI flag */
-	static nano::networks active_network;
+	static nano::networks active_network ();
 	/** Current protocol version */
 	uint8_t const protocol_version = 0x12;
 	/** Minimum accepted protocol version */

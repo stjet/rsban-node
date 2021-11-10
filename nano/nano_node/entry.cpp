@@ -142,7 +142,7 @@ int main (int argc, char * const * argv)
 		}
 	}
 
-	nano::network_params network_params{ nano::network_constants::active_network };
+	nano::network_params network_params{ nano::network_constants::active_network () };
 	auto data_path_it = vm.find ("data_path");
 	boost::filesystem::path data_path ((data_path_it != vm.end ()) ? data_path_it->second.as<std::string> () : nano::working_path ());
 	auto ec = nano::handle_node_options (vm);
@@ -162,7 +162,7 @@ int main (int argc, char * const * argv)
 		}
 		else if (vm.count ("compare_rep_weights"))
 		{
-			if (nano::network_constants::active_network != nano::networks::nano_dev_network)
+			if (nano::network_constants::active_network () != nano::networks::nano_dev_network)
 			{
 				auto node_flags = nano::inactive_node_flag_defaults ();
 				nano::update_flags (node_flags, vm);

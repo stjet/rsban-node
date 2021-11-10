@@ -257,6 +257,10 @@ uint64_t rsn_change_block_work (const ChangeBlockHandle * handle);
 
 void rsn_change_block_work_set (ChangeBlockHandle * handle, uint64_t work);
 
+uint64_t rsn_difficulty_from_multiplier (double multiplier, uint64_t base_difficulty);
+
+double rsn_difficulty_to_multiplier (uint64_t difficulty, uint64_t base_difficulty);
+
 void rsn_open_block_account (const OpenBlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_open_block_account_set (OpenBlockHandle * handle, const uint8_t (*account)[32]);

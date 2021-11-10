@@ -827,38 +827,15 @@ std::string nano::to_string (double const value_a, int const precision_a)
 	return stream.str ();
 }
 
-#ifdef _WIN32
-#pragma warning(push)
-#pragma warning(disable : 4146) // warning C4146: unary minus operator applied to unsigned type, result still unsigned
-#endif
-
 uint64_t nano::difficulty::from_multiplier (double const multiplier_a, uint64_t const base_difficulty_a)
 {
-	debug_assert (multiplier_a > 0.);
-	nano::uint128_t reverse_difficulty ((-base_difficulty_a) / multiplier_a);
-	if (reverse_difficulty > std::numeric_limits<std::uint64_t>::max ())
-	{
-		return 0;
-	}
-	else if (reverse_difficulty != 0 || base_difficulty_a == 0 || multiplier_a < 1.)
-	{
-		return -(static_cast<uint64_t> (reverse_difficulty));
-	}
-	else
-	{
-		return std::numeric_limits<std::uint64_t>::max ();
-	}
+	return rsnano::rsn_difficulty_from_multiplier (multiplier_a, base_difficulty_a);
 }
 
 double nano::difficulty::to_multiplier (uint64_t const difficulty_a, uint64_t const base_difficulty_a)
 {
-	debug_assert (difficulty_a > 0);
-	return static_cast<double> (-base_difficulty_a) / (-difficulty_a);
+	return rsnano::rsn_difficulty_to_multiplier (difficulty_a, base_difficulty_a);
 }
-
-#ifdef _WIN32
-#pragma warning(pop)
-#endif
 
 nano::public_key::operator nano::link const & () const
 {

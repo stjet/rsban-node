@@ -1,4 +1,5 @@
 mod account;
+mod difficulty;
 
 use std::fmt::Write;
 use std::ops::Deref;
@@ -8,6 +9,7 @@ use crate::utils::Stream;
 use anyhow::Result;
 
 pub use account::*;
+pub use difficulty::*;
 use blake2::digest::{Update, VariableOutput};
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
@@ -395,15 +397,6 @@ impl Deref for Root {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
-    }
-}
-
-pub struct Difficulty {}
-
-impl Difficulty {
-    pub fn to_multiplier(difficulty: u64, base_difficulty: u64) -> f64 {
-        debug_assert!(difficulty > 0);
-        (base_difficulty as i64) as f64 / (difficulty as i64) as f64
     }
 }
 

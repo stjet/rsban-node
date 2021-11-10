@@ -269,6 +269,12 @@ uint64_t rsn_difficulty_from_multiplier (double multiplier, uint64_t base_diffic
 
 double rsn_difficulty_to_multiplier (uint64_t difficulty, uint64_t base_difficulty);
 
+uint16_t rsn_network_constants_active_network ();
+
+void rsn_network_constants_active_network_set (uint16_t network);
+
+int32_t rsn_network_constants_active_network_set_str (const char * network);
+
 void rsn_open_block_account (const OpenBlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_open_block_account_set (OpenBlockHandle * handle, const uint8_t (*account)[32]);

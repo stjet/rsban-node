@@ -23,7 +23,11 @@ pub use receive_block::*;
 pub use send_block::*;
 pub use state_block::*;
 
-use crate::{epoch::Epoch, numbers::{Account, Amount, BlockHash}, utils::{PropertyTreeReader, Stream}};
+use crate::{
+    epoch::Epoch,
+    numbers::{Account, Amount, BlockHash},
+    utils::{PropertyTreeReader, Stream},
+};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]

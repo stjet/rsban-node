@@ -15,7 +15,7 @@ pub use send_block::*;
 pub use state_block::*;
 
 use super::{property_tree::FfiPropertyTreeReader, FfiStream};
-use crate::{blocks::{Block, deserialize_block_json, serialized_block_size}};
+use crate::blocks::{deserialize_block_json, serialized_block_size, Block};
 use num::FromPrimitive;
 
 #[no_mangle]

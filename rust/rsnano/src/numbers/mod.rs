@@ -403,7 +403,7 @@ pub struct Difficulty {}
 impl Difficulty {
     pub fn to_multiplier(difficulty: u64, base_difficulty: u64) -> f64 {
         debug_assert!(difficulty > 0);
-        base_difficulty as f64 / difficulty as f64
+        (base_difficulty as i64 ) as f64 / (difficulty as i64 ) as f64
     }
 }
 

@@ -11,7 +11,7 @@ use crate::ffi::{
 };
 
 pub struct StateBlockHandle {
-    block: StateBlock,
+    pub block: StateBlock,
 }
 
 #[repr(C)]

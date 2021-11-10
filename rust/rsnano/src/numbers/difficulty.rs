@@ -101,46 +101,46 @@ mod tests {
 
     // original test: difficulty.overflow
     #[test]
-    fn difficulty_overflow_max(){
+    fn difficulty_overflow_max() {
         // Overflow max (attempt to overflow & receive lower difficulty)
 
         let base = u64::MAX; // Max possible difficulty
-		let difficulty = u64::MAX;
-		let multiplier = 1.001_f64; // Try to increase difficulty above max
+        let difficulty = u64::MAX;
+        let multiplier = 1.001_f64; // Try to increase difficulty above max
 
-		assert_eq! (difficulty, Difficulty::from_multiplier (multiplier, base));
+        assert_eq!(difficulty, Difficulty::from_multiplier(multiplier, base));
     }
-    
+
     // original test: difficulty.overflow
     #[test]
-    fn difficulty_overflow_min(){
+    fn difficulty_overflow_min() {
         // Overflow min (attempt to overflow & receive higher difficulty)
 
         let base = 1_u64; // Min possible difficulty before 0
-		let difficulty = 0_u64;
-		let multiplier = 0.999_f64; // Increase difficulty
+        let difficulty = 0_u64;
+        let multiplier = 0.999_f64; // Increase difficulty
 
-		assert_eq! (difficulty, Difficulty::from_multiplier (multiplier, base));
+        assert_eq!(difficulty, Difficulty::from_multiplier(multiplier, base));
     }
 
     // original test: difficulty.zero
     #[test]
-    fn difficulty_0_decrease(){
+    fn difficulty_0_decrease() {
         // Tests with base difficulty 0 should return 0 with any multiplier
-		let base = 0_u64; // Min possible difficulty
-		let difficulty = 0_u64;
-		let multiplier = 0.000000001_f64; // Decrease difficulty
+        let base = 0_u64; // Min possible difficulty
+        let difficulty = 0_u64;
+        let multiplier = 0.000000001_f64; // Decrease difficulty
 
-		assert_eq! (difficulty, Difficulty::from_multiplier (multiplier, base));
+        assert_eq!(difficulty, Difficulty::from_multiplier(multiplier, base));
     }
 
     // original test: difficulty.zero
     #[test]
-    fn difficulty_0_increase(){
-		let base = 0_u64; // Min possible difficulty
-		let difficulty = 0_u64;
+    fn difficulty_0_increase() {
+        let base = 0_u64; // Min possible difficulty
+        let difficulty = 0_u64;
         let multiplier = 1000000000.0_f64; // Increase difficulty
 
-		assert_eq! (difficulty, Difficulty::from_multiplier (multiplier, base));
+        assert_eq!(difficulty, Difficulty::from_multiplier(multiplier, base));
     }
 }

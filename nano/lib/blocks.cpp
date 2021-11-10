@@ -299,6 +299,11 @@ nano::send_block::send_block (send_block && other)
 	other.handle = nullptr;
 }
 
+nano::send_block::send_block (rsnano::SendBlockHandle * handle_a) :
+	handle (handle_a)
+{
+}
+
 nano::send_block::~send_block ()
 {
 	if (handle != nullptr)
@@ -465,6 +470,11 @@ nano::open_block::open_block (nano::open_block && other)
 	sideband_m = other.sideband_m;
 	handle = other.handle;
 	other.handle = nullptr;
+}
+
+nano::open_block::open_block (rsnano::OpenBlockHandle * handle_a) :
+	handle (handle_a)
+{
 }
 
 nano::open_block::~open_block ()
@@ -705,6 +715,11 @@ nano::change_block::change_block (nano::change_block && other_a)
 	other_a.handle = nullptr;
 }
 
+nano::change_block::change_block (rsnano::ChangeBlockHandle * handle_a) :
+	handle (handle_a)
+{
+}
+
 nano::change_block::~change_block ()
 {
 	if (handle != nullptr)
@@ -938,6 +953,11 @@ nano::state_block::state_block (nano::state_block && other)
 	other.handle = nullptr;
 }
 
+nano::state_block::state_block (rsnano::StateBlockHandle * handle_a) :
+	handle (handle_a)
+{
+}
+
 nano::state_block::~state_block ()
 {
 	if (handle != nullptr)
@@ -1167,40 +1187,33 @@ nano::block_hash nano::state_block::generate_hash () const
 std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a, nano::block_uniquer * uniquer_a)
 {
 	std::shared_ptr<nano::block> result;
-	try
-	{
-		auto type (tree_a.get<std::string> ("type"));
-		bool error (false);
-		std::unique_ptr<nano::block> obj;
-		if (type == "receive")
-		{
-			obj = std::make_unique<nano::receive_block> (error, tree_a);
-		}
-		else if (type == "send")
-		{
-			obj = std::make_unique<nano::send_block> (error, tree_a);
-		}
-		else if (type == "open")
-		{
-			obj = std::make_unique<nano::open_block> (error, tree_a);
-		}
-		else if (type == "change")
-		{
-			obj = std::make_unique<nano::change_block> (error, tree_a);
-		}
-		else if (type == "state")
-		{
-			obj = std::make_unique<nano::state_block> (error, tree_a);
-		}
+	rsnano::BlockDto dto;
+	if (rsnano::rsn_deserialize_block_json (&dto, &tree_a) < 0)
+		return result;
 
-		if (!error)
-		{
-			result = std::move (obj);
-		}
-	}
-	catch (std::runtime_error const &)
+	std::unique_ptr<nano::block> obj;
+	switch (static_cast<nano::block_type> (dto.block_type))
 	{
+		case nano::block_type::send:
+			obj = std::make_unique<nano::send_block> (static_cast<rsnano::SendBlockHandle *> (dto.handle));
+			break;
+		case nano::block_type::receive:
+			obj = std::make_unique<nano::receive_block> (static_cast<rsnano::ReceiveBlockHandle *> (dto.handle));
+			break;
+		case nano::block_type::open:
+			obj = std::make_unique<nano::open_block> (static_cast<rsnano::OpenBlockHandle *> (dto.handle));
+			break;
+		case nano::block_type::change:
+			obj = std::make_unique<nano::change_block> (static_cast<rsnano::ChangeBlockHandle *> (dto.handle));
+			break;
+		case nano::block_type::state:
+			obj = std::make_unique<nano::state_block> (static_cast<rsnano::StateBlockHandle *> (dto.handle));
+			break;
+		default:
+			break;
 	}
+
+	result = std::move (obj);
 	if (uniquer_a != nullptr)
 	{
 		result = uniquer_a->unique (result);
@@ -1352,6 +1365,11 @@ nano::receive_block::receive_block (nano::receive_block && other)
 	sideband_m = other.sideband_m;
 	handle = other.handle;
 	other.handle = nullptr;
+}
+
+nano::receive_block::receive_block (rsnano::ReceiveBlockHandle * handle_a) :
+	handle (handle_a)
+{
 }
 
 nano::receive_block::~receive_block ()

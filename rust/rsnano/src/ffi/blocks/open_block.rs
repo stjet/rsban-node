@@ -11,7 +11,7 @@ use crate::ffi::{
 };
 
 pub struct OpenBlockHandle {
-    block: OpenBlock,
+    pub block: OpenBlock,
 }
 
 #[repr(C)]

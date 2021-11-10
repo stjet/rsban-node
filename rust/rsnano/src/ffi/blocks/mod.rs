@@ -1,241 +1,28 @@
-pub mod change_block;
-pub mod open_block;
-pub mod receive_block;
-pub mod send_block;
-pub mod state_block;
+mod block_details;
+mod change_block;
+mod open_block;
+mod receive_block;
+mod send_block;
+mod state_block;
 
-use super::FfiStream;
+use std::ffi::c_void;
+
+pub use block_details::*;
+pub use change_block::*;
+pub use open_block::*;
+pub use receive_block::*;
+pub use send_block::*;
+pub use state_block::*;
+
+use super::{property_tree::FfiPropertyTreeReader, FfiStream};
 use crate::{
-    blocks::{serialized_block_size, BlockDetails, BlockSideband, BlockType},
-    epoch::Epoch,
-    numbers::{
-        sign_message, validate_message, Account, Amount, BlockHash, PublicKey, RawKey, Signature,
+    blocks::{
+        serialized_block_size, BlockType, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock,
+        StateBlock,
     },
+    utils::PropertyTreeReader,
 };
 use num::FromPrimitive;
-use std::{
-    convert::TryFrom,
-    ffi::{c_void, CStr},
-    os::raw::c_char,
-};
-
-#[repr(C)]
-pub struct BlockDetailsDto {
-    pub epoch: u8,
-    pub is_send: bool,
-    pub is_receive: bool,
-    pub is_epoch: bool,
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_details_create(
-    epoch: u8,
-    is_send: bool,
-    is_receive: bool,
-    is_epoch: bool,
-    result: *mut BlockDetailsDto,
-) -> i32 {
-    let epoch = match FromPrimitive::from_u8(epoch) {
-        Some(e) => e,
-        None => return -1,
-    };
-
-    let details = BlockDetails::new(epoch, is_send, is_receive, is_epoch);
-    set_block_details_dto(&details, result);
-    0
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_details_serialize(
-    dto: &BlockDetailsDto,
-    stream: *mut c_void,
-) -> i32 {
-    if let Ok(details) = BlockDetails::try_from(dto) {
-        let mut stream = FfiStream::new(stream);
-        if details.serialize(&mut stream).is_ok() {
-            return 0;
-        }
-    }
-    -1
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_details_deserialize(
-    dto: *mut BlockDetailsDto,
-    stream: *mut c_void,
-) -> i32 {
-    let mut stream = FfiStream::new(stream);
-    if let Ok(details) = BlockDetails::deserialize(&mut stream) {
-        set_block_details_dto(&details, dto);
-        return 0;
-    }
-
-    -1
-}
-
-unsafe fn set_block_details_dto(details: &BlockDetails, result: *mut BlockDetailsDto) {
-    (*result).epoch = details.epoch as u8;
-    (*result).is_send = details.is_send;
-    (*result).is_receive = details.is_receive;
-    (*result).is_epoch = details.is_epoch;
-}
-
-#[repr(C)]
-pub struct BlockSidebandDto {
-    pub height: u64,
-    pub timestamp: u64,
-    pub successor: [u8; 32],
-    pub account: [u8; 32],
-    pub balance: [u8; 16],
-    pub details: BlockDetailsDto,
-    pub source_epoch: u8,
-}
-
-unsafe fn set_block_sideband_dto(sideband: &BlockSideband, result: *mut BlockSidebandDto) {
-    (*result).height = sideband.height;
-    (*result).timestamp = sideband.timestamp;
-    (*result).successor = sideband.successor.to_bytes();
-    (*result).account = sideband.account.to_bytes();
-    (*result).balance = sideband.balance.to_be_bytes();
-    let details_ptr: *mut BlockDetailsDto = &mut (*result).details;
-    set_block_details_dto(&sideband.details, details_ptr);
-    (*result).source_epoch = sideband.source_epoch as u8;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_sideband_size(block_type: u8, result: *mut i32) -> usize {
-    let mut result_code = 0;
-    let mut size = 0;
-    if let Ok(block_type) = BlockType::try_from(block_type) {
-        size = BlockSideband::serialized_size(block_type);
-    } else {
-        result_code = -1;
-    }
-
-    if !result.is_null() {
-        *result = result_code;
-    }
-
-    size
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_sideband_serialize(
-    dto: &BlockSidebandDto,
-    stream: *mut c_void,
-    block_type: u8,
-) -> i32 {
-    if let Ok(block_type) = BlockType::try_from(block_type) {
-        if let Ok(sideband) = BlockSideband::try_from(dto) {
-            let mut stream = FfiStream::new(stream);
-            if sideband.serialize(&mut stream, block_type).is_ok() {
-                return 0;
-            }
-        }
-    }
-
-    -1
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_sideband_deserialize(
-    dto: *mut BlockSidebandDto,
-    stream: *mut c_void,
-    block_type: u8,
-) -> i32 {
-    if let Ok(block_type) = BlockType::try_from(block_type) {
-        if let Ok(mut sideband) = BlockSideband::try_from(dto.as_ref().unwrap()) {
-            let mut stream = FfiStream::new(stream);
-            if sideband.deserialize(&mut stream, block_type).is_ok() {
-                set_block_sideband_dto(&sideband, dto);
-                return 0;
-            }
-        }
-    }
-
-    -1
-}
-
-impl TryFrom<&BlockSidebandDto> for BlockSideband {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &BlockSidebandDto) -> Result<Self, Self::Error> {
-        let account = Account::from_bytes(value.account);
-        let successor = BlockHash::from_bytes(value.successor);
-        let balance = Amount::new(u128::from_be_bytes(value.balance));
-        let details = BlockDetails::try_from(&value.details)?;
-        let source_epoch = Epoch::try_from(value.source_epoch)?;
-        let sideband = BlockSideband::new(
-            account,
-            successor,
-            balance,
-            value.height,
-            value.timestamp,
-            details,
-            source_epoch,
-        );
-        Ok(sideband)
-    }
-}
-
-impl TryFrom<&BlockDetailsDto> for BlockDetails {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &BlockDetailsDto) -> Result<Self, Self::Error> {
-        let epoch = Epoch::try_from(value.epoch)?;
-        let details = BlockDetails::new(epoch, value.is_send, value.is_receive, value.is_epoch);
-        Ok(details)
-    }
-}
-
-impl TryFrom<u8> for Epoch {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        FromPrimitive::from_u8(value).ok_or_else(|| anyhow!("invalid epoch value"))
-    }
-}
-
-impl TryFrom<u8> for BlockType {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        FromPrimitive::from_u8(value).ok_or_else(|| anyhow!("invalid block type value"))
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_sign_message(
-    priv_key: &[u8; 32],
-    pub_key: &[u8; 32],
-    message: *const u8,
-    len: usize,
-    signature: *mut [u8; 64],
-) -> i32 {
-    let private_key = RawKey::from_bytes(*priv_key);
-    let public_key = PublicKey::from_bytes(*pub_key);
-    let data = std::slice::from_raw_parts(message, len);
-    match sign_message(&private_key, &public_key, data) {
-        Ok(sig) => {
-            *signature = sig.to_be_bytes();
-            0
-        }
-        Err(_) => -1,
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_valdiate_message(
-    pub_key: &[u8; 32],
-    message: *const u8,
-    len: usize,
-    signature: &[u8; 64],
-) -> bool {
-    let public_key = PublicKey::from_bytes(*pub_key);
-    let message = std::slice::from_raw_parts(message, len);
-    let signature = Signature::from_bytes(*signature);
-    validate_message(&public_key, message, &signature).is_err()
-}
 
 #[no_mangle]
 pub extern "C" fn rsn_block_serialized_size(block_type: u8) -> usize {
@@ -245,24 +32,72 @@ pub extern "C" fn rsn_block_serialized_size(block_type: u8) -> usize {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_account_encode(bytes: *const [u8; 32], result: *mut [u8; 65]) {
-    let encoded = Account::from_bytes(*bytes).encode_account();
-    (*result).copy_from_slice(encoded.as_bytes());
+#[repr(C)]
+pub struct BlockDto {
+    pub block_type: u8,
+    pub handle: *mut c_void,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_account_decode(input: *const c_char, result: *mut [u8; 32]) -> i32 {
-    let input_string = match CStr::from_ptr(input).to_str() {
-        Ok(s) => s,
-        Err(_) => return -1,
-    };
+pub unsafe extern "C" fn rsn_deserialize_block_json(
+    dto: *mut BlockDto,
+    ptree: *const c_void,
+) -> i32 {
+    let ptree_reader = FfiPropertyTreeReader::new(ptree);
+    match deserialize_block_json(&ptree_reader) {
+        Ok(block) => {
+            (*dto).block_type = block.block_type() as u8;
+            (*dto).handle = match block {
+                Block::Send(block) => {
+                    Box::into_raw(Box::new(SendBlockHandle { block })) as *mut c_void
+                }
+                Block::Receive(block) => {
+                    Box::into_raw(Box::new(ReceiveBlockHandle { block })) as *mut c_void
+                }
+                Block::Open(block) => {
+                    Box::into_raw(Box::new(OpenBlockHandle { block })) as *mut c_void
+                }
+                Block::Change(block) => {
+                    Box::into_raw(Box::new(ChangeBlockHandle { block })) as *mut c_void
+                }
+                Block::State(block) => {
+                    Box::into_raw(Box::new(StateBlockHandle { block })) as *mut c_void
+                }
+            };
+            0
+        }
+        Err(_) => -1,
+    }
+}
 
-    let account = match Account::decode_account(input_string) {
-        Ok(a) => a,
-        Err(_) => return -1,
-    };
+fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<Block> {
+    let block_type = ptree.get_string("type")?;
+    match block_type.as_str() {
+        "receive" => ReceiveBlock::deserialize_json(ptree).map(Block::Receive),
+        "send" => SendBlock::deserialize_json(ptree).map(Block::Send),
+        "open" => OpenBlock::deserialize_json(ptree).map(Block::Open),
+        "change" => ChangeBlock::deserialize_json(ptree).map(Block::Change),
+        "state" => StateBlock::deserialize_json(ptree).map(Block::State),
+        _ => Err(anyhow!("unsupported block type")),
+    }
+}
 
-    (*result).copy_from_slice(account.as_bytes());
-    0
+pub enum Block {
+    Send(SendBlock),
+    Receive(ReceiveBlock),
+    Open(OpenBlock),
+    Change(ChangeBlock),
+    State(StateBlock),
+}
+
+impl Block {
+    pub fn block_type(&self) -> BlockType {
+        match self {
+            Block::Send(_) => BlockType::Send,
+            Block::Receive(_) => BlockType::Receive,
+            Block::Open(_) => BlockType::Open,
+            Block::Change(_) => BlockType::Change,
+            Block::State(_) => BlockType::State,
+        }
+    }
 }

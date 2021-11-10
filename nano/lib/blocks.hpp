@@ -148,6 +148,7 @@ public:
 	send_block (bool &, boost::property_tree::ptree const &);
 	send_block (const send_block &);
 	send_block (send_block && other);
+	send_block (rsnano::SendBlockHandle * handle_a);
 	virtual ~send_block ();
 	using nano::block::hash;
 	uint64_t block_work () const override;
@@ -190,6 +191,7 @@ public:
 	receive_block (bool &, boost::property_tree::ptree const &);
 	receive_block (const nano::receive_block &);
 	receive_block (nano::receive_block &&);
+	receive_block (rsnano::ReceiveBlockHandle * handle_a);
 	virtual ~receive_block ();
 	using nano::block::hash;
 	uint64_t block_work () const override;
@@ -230,6 +232,7 @@ public:
 	open_block (bool &, boost::property_tree::ptree const &);
 	open_block (const nano::open_block &);
 	open_block (nano::open_block &&);
+	open_block (rsnano::OpenBlockHandle * handle_a);
 	virtual ~open_block ();
 	using nano::block::hash;
 	uint64_t block_work () const override;
@@ -272,6 +275,7 @@ public:
 	change_block (bool &, boost::property_tree::ptree const &);
 	change_block (const nano::change_block &);
 	change_block (nano::change_block &&);
+	change_block (rsnano::ChangeBlockHandle * handle_a);
 	virtual ~change_block ();
 	using nano::block::hash;
 	uint64_t block_work () const override;
@@ -311,6 +315,7 @@ public:
 	state_block (bool &, boost::property_tree::ptree const &);
 	state_block (const nano::state_block &);
 	state_block (nano::state_block &&);
+	state_block (rsnano::StateBlockHandle * handle_a);
 	virtual ~state_block ();
 	using nano::block::hash;
 	uint64_t block_work () const override;

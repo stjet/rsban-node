@@ -9,8 +9,8 @@ use crate::utils::Stream;
 use anyhow::Result;
 
 pub use account::*;
-pub use difficulty::*;
 use blake2::digest::{Update, VariableOutput};
+pub use difficulty::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct PublicKey {

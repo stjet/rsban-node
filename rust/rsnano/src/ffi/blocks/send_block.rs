@@ -31,7 +31,7 @@ pub struct SendBlockDto2 {
 }
 
 pub struct SendBlockHandle {
-    block: SendBlock,
+    pub block: SendBlock,
 }
 
 #[no_mangle]

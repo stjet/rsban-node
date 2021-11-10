@@ -77,6 +77,12 @@ struct ChangeBlockDto2
 	uint64_t work;
 };
 
+struct BlockDto
+{
+	uint8_t block_type;
+	void * handle;
+};
+
 struct OpenBlockDto
 {
 	uint64_t work;
@@ -256,6 +262,8 @@ uintptr_t rsn_change_block_size ();
 uint64_t rsn_change_block_work (const ChangeBlockHandle * handle);
 
 void rsn_change_block_work_set (ChangeBlockHandle * handle, uint64_t work);
+
+int32_t rsn_deserialize_block_json (BlockDto * dto, const void * ptree);
 
 uint64_t rsn_difficulty_from_multiplier (double multiplier, uint64_t base_difficulty);
 

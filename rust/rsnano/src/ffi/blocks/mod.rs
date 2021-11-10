@@ -6,8 +6,7 @@ pub mod state_block;
 
 use super::FfiStream;
 use crate::{
-    block_details::BlockDetails,
-    blocks::{serialized_block_size, BlockSideband, BlockType},
+    blocks::{serialized_block_size, BlockDetails, BlockSideband, BlockType},
     epoch::Epoch,
     numbers::{
         sign_message, validate_message, Account, Amount, BlockHash, PublicKey, RawKey, Signature,

@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod block_builder;
+mod block_details;
 mod change_block;
 mod open_block;
 mod receive_block;
@@ -14,6 +15,7 @@ use std::{
 use anyhow::Result;
 #[cfg(test)]
 pub use block_builder::*;
+pub use block_details::*;
 pub use change_block::*;
 use num::FromPrimitive;
 pub use open_block::*;
@@ -22,7 +24,6 @@ pub use send_block::*;
 pub use state_block::*;
 
 use crate::{
-    block_details::BlockDetails,
     epoch::Epoch,
     numbers::{Account, Amount, BlockHash},
     utils::Stream,

@@ -6,8 +6,7 @@ use std::{
 };
 
 use crate::{
-    block_details::BlockDetails,
-    blocks::BlockType,
+    blocks::{BlockDetails, BlockType},
     epoch::Epoch,
     numbers::{Difficulty, Root},
 };

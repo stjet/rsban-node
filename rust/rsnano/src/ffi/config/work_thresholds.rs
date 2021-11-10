@@ -1,10 +1,11 @@
 use std::convert::TryFrom;
 
 use crate::{
-    block_details::BlockDetails, blocks::BlockType, numbers::Root, WorkThresholds, WorkVersion,
+    blocks::{BlockDetails, BlockType},
+    config::{WorkThresholds, WorkVersion},
+    ffi::blocks::BlockDetailsDto,
+    numbers::Root,
 };
-
-use super::blocks::BlockDetailsDto;
 
 #[repr(C)]
 pub struct WorkThresholdsDto {

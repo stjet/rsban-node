@@ -179,9 +179,110 @@ void nano::network_constants::set_active_network (nano::networks network_a)
 	rsnano::rsn_network_constants_active_network_set (static_cast<uint16_t> (network_a));
 }
 
+rsnano::NetworkConstantsDto to_network_constants_dto (nano::network_constants const & net)
+{
+	rsnano::NetworkConstantsDto dto;
+	dto.current_network = static_cast<uint16_t> (net.current_network);
+	dto.work = net.work.dto;
+	dto.principal_weight_factor = net.principal_weight_factor;
+	dto.default_node_port = net.default_node_port;
+	dto.default_rpc_port = net.default_rpc_port;
+	dto.default_ipc_port = net.default_ipc_port;
+	dto.default_websocket_port = net.default_websocket_port;
+	dto.request_interval_ms = net.request_interval_ms;
+	dto.cleanup_period_s = net.cleanup_period.count ();
+	dto.idle_timeout_s = net.idle_timeout.count();
+	dto.sync_cookie_cutoff_s = net.syn_cookie_cutoff.count();
+	dto.bootstrap_interval_s = net.bootstrap_interval.count();
+	dto.max_peers_per_ip = net.max_peers_per_ip;
+	dto.max_peers_per_subnetwork = net.max_peers_per_subnetwork;
+	dto.peer_dump_interval_s = net.peer_dump_interval.count();
+	dto.protocol_version = net.protocol_version;
+	dto.protocol_version_min = net.protocol_version_min;
+	return dto;
+}
+
+nano::network_constants::network_constants (nano::work_thresholds & work_a, nano::networks network_a) 
+{
+	rsnano::NetworkConstantsDto dto;
+	if (rsnano::rsn_network_constants_create (&dto, &work_a.dto, static_cast<uint16_t> (network_a)) < 0)
+	{
+		throw std::runtime_error ("could not create network constants");
+	}
+
+	work = nano::work_thresholds (dto.work);
+ 	current_network = static_cast<nano::networks> (dto.current_network);
+
+	protocol_version = dto.protocol_version;
+	protocol_version_min = dto.protocol_version_min;
+	principal_weight_factor = dto.principal_weight_factor;
+	default_node_port = dto.default_node_port;
+	default_rpc_port = dto.default_rpc_port;
+	default_ipc_port = dto.default_ipc_port;
+	default_websocket_port = dto.default_websocket_port;
+	request_interval_ms = dto.request_interval_ms;
+	cleanup_period = std::chrono::seconds (dto.cleanup_period_s);
+	idle_timeout = std::chrono::seconds (dto.idle_timeout_s);
+	syn_cookie_cutoff = std::chrono::seconds (dto.sync_cookie_cutoff_s);
+	bootstrap_interval = std::chrono::seconds (dto.bootstrap_interval_s);
+	max_peers_per_ip = dto.max_peers_per_ip;
+	max_peers_per_subnetwork = dto.max_peers_per_subnetwork;
+	peer_dump_interval = std::chrono::seconds (dto.peer_dump_interval_s);
+}
+
 bool nano::network_constants::set_active_network (std::string network_a)
 {
 	return rsnano::rsn_network_constants_active_network_set_str (network_a.c_str ()) < 0;
+}
+
+std::chrono::milliseconds nano::network_constants::cleanup_period_half () const
+{
+	return std::chrono::duration_cast<std::chrono::milliseconds> (cleanup_period) / 2;
+}
+
+std::chrono::seconds nano::network_constants::cleanup_cutoff () const
+{
+	return cleanup_period * 5;
+}
+
+nano::networks nano::network_constants::network () const
+{
+	return current_network;
+}
+
+char const * nano::network_constants::get_current_network_as_string ()
+{
+	return is_live_network () ? "live" : is_beta_network () ? "beta"
+	: is_test_network ()                                    ? "test"
+															: "dev";
+}
+
+bool nano::network_constants::is_live_network () const
+{
+	// return current_network == nano::networks::nano_live_network;
+	auto dto{ to_network_constants_dto (*this) };
+	return rsnano::rsn_network_constants_is_live_network (&dto);
+}
+
+bool nano::network_constants::is_beta_network () const
+{
+	// return current_network == nano::networks::nano_beta_network;
+	auto dto{ to_network_constants_dto (*this) };
+	return rsnano::rsn_network_constants_is_beta_network (&dto);
+}
+
+bool nano::network_constants::is_dev_network () const
+{
+	// return current_network == nano::networks::nano_dev_network;
+	auto dto{ to_network_constants_dto (*this) };
+	return rsnano::rsn_network_constants_is_dev_network (&dto);
+}
+
+bool nano::network_constants::is_test_network () const
+{
+	// return current_network == nano::networks::nano_test_network;
+	auto dto{ to_network_constants_dto (*this) };
+	return rsnano::rsn_network_constants_is_test_network (&dto);
 }
 
 namespace nano
@@ -215,27 +316,6 @@ uint64_t get_env_threshold_or_default (char const * variable_name, uint64_t cons
 {
 	auto * value = getenv (variable_name);
 	return value ? boost::lexical_cast<HexTo<uint64_t>> (value) : default_value;
-}
-
-uint16_t test_node_port ()
-{
-	auto test_env = nano::get_env_or_default ("NANO_TEST_NODE_PORT", "17075");
-	return boost::lexical_cast<uint16_t> (test_env);
-}
-uint16_t test_rpc_port ()
-{
-	auto test_env = nano::get_env_or_default ("NANO_TEST_RPC_PORT", "17076");
-	return boost::lexical_cast<uint16_t> (test_env);
-}
-uint16_t test_ipc_port ()
-{
-	auto test_env = nano::get_env_or_default ("NANO_TEST_IPC_PORT", "17077");
-	return boost::lexical_cast<uint16_t> (test_env);
-}
-uint16_t test_websocket_port ()
-{
-	auto test_env = nano::get_env_or_default ("NANO_TEST_WEBSOCKET_PORT", "17078");
-	return boost::lexical_cast<uint16_t> (test_env);
 }
 
 std::array<uint8_t, 2> test_magic_number ()

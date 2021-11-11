@@ -83,6 +83,36 @@ struct BlockDto
 	void * handle;
 };
 
+struct WorkThresholdsDto
+{
+	uint64_t epoch_1;
+	uint64_t epoch_2;
+	uint64_t epoch_2_receive;
+	uint64_t base;
+	uint64_t entry;
+};
+
+struct NetworkConstantsDto
+{
+	uint16_t current_network;
+	WorkThresholdsDto work;
+	uint32_t principal_weight_factor;
+	uint16_t default_node_port;
+	uint16_t default_rpc_port;
+	uint16_t default_ipc_port;
+	uint16_t default_websocket_port;
+	uint32_t request_interval_ms;
+	int64_t cleanup_period_s;
+	int64_t idle_timeout_s;
+	int64_t sync_cookie_cutoff_s;
+	int64_t bootstrap_interval_s;
+	uintptr_t max_peers_per_ip;
+	uintptr_t max_peers_per_subnetwork;
+	int64_t peer_dump_interval_s;
+	uint8_t protocol_version;
+	uint8_t protocol_version_min;
+};
+
 struct OpenBlockDto
 {
 	uint64_t work;
@@ -159,15 +189,6 @@ struct StateBlockDto2
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
 	uint64_t work;
-};
-
-struct WorkThresholdsDto
-{
-	uint64_t epoch_1;
-	uint64_t epoch_2;
-	uint64_t epoch_2_receive;
-	uint64_t base;
-	uint64_t entry;
 };
 
 extern "C" {
@@ -274,6 +295,26 @@ uint16_t rsn_network_constants_active_network ();
 void rsn_network_constants_active_network_set (uint16_t network);
 
 int32_t rsn_network_constants_active_network_set_str (const char * network);
+
+int64_t rsn_network_constants_cleanup_cutoff_s (const NetworkConstantsDto * dto);
+
+int64_t rsn_network_constants_cleanup_period_half_ms (const NetworkConstantsDto * dto);
+
+int32_t rsn_network_constants_create (NetworkConstantsDto * dto,
+const WorkThresholdsDto * work,
+uint16_t network);
+
+const char * rsn_network_constants_current_network_as_string (const NetworkConstantsDto * dto);
+
+bool rsn_network_constants_is_beta_network (const NetworkConstantsDto * dto);
+
+bool rsn_network_constants_is_dev_network (const NetworkConstantsDto * dto);
+
+bool rsn_network_constants_is_live_network (const NetworkConstantsDto * dto);
+
+bool rsn_network_constants_is_test_network (const NetworkConstantsDto * dto);
+
+uint16_t rsn_network_constants_network (const NetworkConstantsDto * dto);
 
 void rsn_open_block_account (const OpenBlockHandle * handle, uint8_t (*result)[32]);
 

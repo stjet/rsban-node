@@ -91,18 +91,18 @@ class block_details;
 class work_thresholds
 {
 public:
+	work_thresholds () = default;
 	work_thresholds (uint64_t epoch_1_a, uint64_t epoch_2_a, uint64_t epoch_2_receive_a);
 	work_thresholds (rsnano::WorkThresholdsDto dto_a);
-	work_thresholds () = delete;
 	uint64_t get_base () const;
 	uint64_t get_epoch_2 () const;
 	uint64_t get_epoch_2_receive () const;
 	uint64_t get_entry () const;
 	uint64_t get_epoch_1 () const;
-	work_thresholds operator= (nano::work_thresholds const & other_a)
-	{
-		return other_a;
-	}
+	// work_thresholds operator= (nano::work_thresholds const & other_a)
+	// {
+	// 	return other_a;
+	// }
 
 	uint64_t threshold_entry (nano::work_version const, nano::block_type const) const;
 	uint64_t threshold (nano::block_details const &) const;
@@ -129,40 +129,14 @@ public:
 class network_constants
 {
 public:
-	network_constants (nano::work_thresholds & work, nano::networks network_a) :
-		current_network (network_a),
-		work{ work }
-	{
-		// A representative is classified as principal based on its weight and this factor
-		principal_weight_factor = 1000; // 0.1%
-
-		default_node_port = is_live_network () ? 7075 : is_beta_network () ? 54000
-		: is_test_network ()                                               ? test_node_port ()
-																		   : 44000;
-		default_rpc_port = is_live_network () ? 7076 : is_beta_network () ? 55000
-		: is_test_network ()                                              ? test_rpc_port ()
-																		  : 45000;
-		default_ipc_port = is_live_network () ? 7077 : is_beta_network () ? 56000
-		: is_test_network ()                                              ? test_ipc_port ()
-																		  : 46000;
-		default_websocket_port = is_live_network () ? 7078 : is_beta_network () ? 57000
-		: is_test_network ()                                                    ? test_websocket_port ()
-																				: 47000;
-		request_interval_ms = is_dev_network () ? 20 : 500;
-		cleanup_period = is_dev_network () ? std::chrono::seconds (1) : std::chrono::seconds (60);
-		idle_timeout = is_dev_network () ? cleanup_period * 15 : cleanup_period * 2;
-		syn_cookie_cutoff = std::chrono::seconds (5);
-		bootstrap_interval = std::chrono::seconds (15 * 60);
-		max_peers_per_ip = is_dev_network () ? 10 : 5;
-		max_peers_per_subnetwork = max_peers_per_ip * 4;
-		peer_dump_interval = is_dev_network () ? std::chrono::seconds (1) : std::chrono::seconds (5 * 60);
-	}
+	network_constants () = delete;
+	network_constants (nano::work_thresholds & work, nano::networks network_a);
 
 	/** Error message when an invalid network is specified */
 	static char const * active_network_err_msg;
 
 	/** The network this param object represents. This may differ from the global active network; this is needed for certain --debug... commands */
-	nano::networks current_network{ nano::network_constants::active_network () };
+	nano::networks current_network { nano::network_constants::active_network() };
 	nano::work_thresholds work;
 
 	unsigned principal_weight_factor;
@@ -173,14 +147,8 @@ public:
 	unsigned request_interval_ms;
 
 	std::chrono::seconds cleanup_period;
-	std::chrono::milliseconds cleanup_period_half () const
-	{
-		return std::chrono::duration_cast<std::chrono::milliseconds> (cleanup_period) / 2;
-	}
-	std::chrono::seconds cleanup_cutoff () const
-	{
-		return cleanup_period * 5;
-	}
+	std::chrono::milliseconds cleanup_period_half () const;
+	std::chrono::seconds cleanup_cutoff () const;
 	/** Default maximum idle time for a socket before it's automatically closed */
 	std::chrono::seconds idle_timeout;
 	std::chrono::seconds syn_cookie_cutoff;
@@ -192,10 +160,7 @@ public:
 	std::chrono::seconds peer_dump_interval;
 
 	/** Returns the network this object contains values for */
-	nano::networks network () const
-	{
-		return current_network;
-	}
+	nano::networks network () const;
 
 	/**
 	 * Optionally called on startup to override the global active network.
@@ -211,36 +176,19 @@ public:
 	 */
 	static bool set_active_network (std::string network_a);
 
-	char const * get_current_network_as_string ()
-	{
-		return is_live_network () ? "live" : is_beta_network () ? "beta"
-		: is_test_network ()                                    ? "test"
-																: "dev";
-	}
+	char const * get_current_network_as_string ();
 
-	bool is_live_network () const
-	{
-		return current_network == nano::networks::nano_live_network;
-	}
-	bool is_beta_network () const
-	{
-		return current_network == nano::networks::nano_beta_network;
-	}
-	bool is_dev_network () const
-	{
-		return current_network == nano::networks::nano_dev_network;
-	}
-	bool is_test_network () const
-	{
-		return current_network == nano::networks::nano_test_network;
-	}
+	bool is_live_network () const;
+	bool is_beta_network () const;
+	bool is_dev_network () const;
+	bool is_test_network () const;
 
 	/** Initial value is ACTIVE_NETWORK compile flag, but can be overridden by a CLI flag */
 	static nano::networks active_network ();
 	/** Current protocol version */
-	uint8_t const protocol_version = 0x12;
+	uint8_t protocol_version;
 	/** Minimum accepted protocol version */
-	uint8_t const protocol_version_min = 0x12;
+	uint8_t protocol_version_min;
 };
 
 std::string get_config_path (boost::filesystem::path const & data_path);

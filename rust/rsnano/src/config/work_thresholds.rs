@@ -15,7 +15,7 @@ use crate::{
  * Network variants with different genesis blocks and network parameters
  */
 #[repr(u16)]
-#[derive(Clone, Copy, FromPrimitive)]
+#[derive(Clone, Copy, FromPrimitive, PartialEq, Eq)]
 pub enum Networks {
     Invalid = 0x0,
     // Low work parameters, publicly known genesis key, dev IP ports

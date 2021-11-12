@@ -191,18 +191,18 @@ rsnano::NetworkConstantsDto to_network_constants_dto (nano::network_constants co
 	dto.default_websocket_port = net.default_websocket_port;
 	dto.request_interval_ms = net.request_interval_ms;
 	dto.cleanup_period_s = net.cleanup_period.count ();
-	dto.idle_timeout_s = net.idle_timeout.count();
-	dto.sync_cookie_cutoff_s = net.syn_cookie_cutoff.count();
-	dto.bootstrap_interval_s = net.bootstrap_interval.count();
+	dto.idle_timeout_s = net.idle_timeout.count ();
+	dto.sync_cookie_cutoff_s = net.syn_cookie_cutoff.count ();
+	dto.bootstrap_interval_s = net.bootstrap_interval.count ();
 	dto.max_peers_per_ip = net.max_peers_per_ip;
 	dto.max_peers_per_subnetwork = net.max_peers_per_subnetwork;
-	dto.peer_dump_interval_s = net.peer_dump_interval.count();
+	dto.peer_dump_interval_s = net.peer_dump_interval.count ();
 	dto.protocol_version = net.protocol_version;
 	dto.protocol_version_min = net.protocol_version_min;
 	return dto;
 }
 
-nano::network_constants::network_constants (nano::work_thresholds & work_a, nano::networks network_a) 
+nano::network_constants::network_constants (nano::work_thresholds & work_a, nano::networks network_a)
 {
 	rsnano::NetworkConstantsDto dto;
 	if (rsnano::rsn_network_constants_create (&dto, &work_a.dto, static_cast<uint16_t> (network_a)) < 0)
@@ -211,7 +211,7 @@ nano::network_constants::network_constants (nano::work_thresholds & work_a, nano
 	}
 
 	work = nano::work_thresholds (dto.work);
- 	current_network = static_cast<nano::networks> (dto.current_network);
+	current_network = static_cast<nano::networks> (dto.current_network);
 
 	protocol_version = dto.protocol_version;
 	protocol_version_min = dto.protocol_version_min;
@@ -237,12 +237,14 @@ bool nano::network_constants::set_active_network (std::string network_a)
 
 std::chrono::milliseconds nano::network_constants::cleanup_period_half () const
 {
-	return std::chrono::duration_cast<std::chrono::milliseconds> (cleanup_period) / 2;
+	auto dto{ to_network_constants_dto (*this) };
+	return std::chrono::milliseconds (rsnano::rsn_network_constants_cleanup_period_half_ms (&dto));
 }
 
 std::chrono::seconds nano::network_constants::cleanup_cutoff () const
 {
-	return cleanup_period * 5;
+	auto dto{ to_network_constants_dto (*this) };
+	return std::chrono::seconds (rsnano::rsn_network_constants_cleanup_cutoff_s (&dto));
 }
 
 nano::networks nano::network_constants::network () const

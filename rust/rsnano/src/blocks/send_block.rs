@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::Result;
 
-use super::{BlockType, LazyBlockHash};
+use super::{Block, BlockSideband, BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct SendHashables {
@@ -73,6 +73,7 @@ pub struct SendBlock {
     pub signature: Signature,
     pub work: u64,
     pub hash: LazyBlockHash,
+    pub sideband: Option<BlockSideband>,
 }
 
 impl SendBlock {
@@ -98,6 +99,7 @@ impl SendBlock {
             work,
             signature,
             hash,
+            sideband: None,
         })
     }
 
@@ -113,6 +115,7 @@ impl SendBlock {
             signature,
             work,
             hash: LazyBlockHash::new(),
+            sideband: None,
         })
     }
 
@@ -180,6 +183,7 @@ impl SendBlock {
             signature,
             work,
             hash: LazyBlockHash::new(),
+            sideband: None,
         })
     }
 }
@@ -193,6 +197,20 @@ impl PartialEq for SendBlock {
 }
 
 impl Eq for SendBlock {}
+
+impl Block for SendBlock {
+    fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
+        self.sideband.as_ref()
+    }
+
+    fn set_sideband(&mut self, sideband: BlockSideband) {
+        self.sideband = Some(sideband);
+    }
+
+    fn block_type(&self) -> BlockType {
+        BlockType::Send
+    }
+}
 
 #[cfg(test)]
 mod tests {

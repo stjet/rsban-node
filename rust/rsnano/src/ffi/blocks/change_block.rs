@@ -42,6 +42,7 @@ pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut ChangeBl
                 representative: Account::from_bytes(dto.representative),
             },
             hash: LazyBlockHash::new(),
+            sideband: None,
         },
     }))
 }

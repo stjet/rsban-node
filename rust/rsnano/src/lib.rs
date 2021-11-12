@@ -16,5 +16,6 @@ mod config;
 mod epoch;
 pub mod ffi;
 mod numbers;
+mod secure;
 mod token_bucket;
 mod utils;

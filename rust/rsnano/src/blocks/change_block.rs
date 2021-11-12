@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::Result;
 
-use super::LazyBlockHash;
+use super::{Block, BlockSideband, BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ChangeHashables {
@@ -38,6 +38,7 @@ pub struct ChangeBlock {
     pub signature: Signature,
     pub hashables: ChangeHashables,
     pub hash: LazyBlockHash,
+    pub sideband: Option<BlockSideband>,
 }
 
 impl ChangeBlock {
@@ -61,6 +62,7 @@ impl ChangeBlock {
             signature,
             hashables,
             hash,
+            sideband: None,
         })
     }
 
@@ -97,6 +99,7 @@ impl ChangeBlock {
             signature,
             hashables,
             hash: LazyBlockHash::new(),
+            sideband: None,
         })
     }
 
@@ -125,6 +128,7 @@ impl ChangeBlock {
                 representative,
             },
             hash: LazyBlockHash::new(),
+            sideband: None,
         })
     }
 }
@@ -138,6 +142,20 @@ impl PartialEq for ChangeBlock {
 }
 
 impl Eq for ChangeBlock {}
+
+impl Block for ChangeBlock {
+    fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
+        self.sideband.as_ref()
+    }
+
+    fn set_sideband(&mut self, sideband: BlockSideband) {
+        self.sideband = Some(sideband);
+    }
+
+    fn block_type(&self) -> BlockType {
+        BlockType::Change
+    }
+}
 
 #[cfg(test)]
 mod tests {

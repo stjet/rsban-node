@@ -41,6 +41,7 @@ pub enum BlockType {
     State = 6,
 }
 
+#[derive(Debug, Clone)]
 pub struct BlockSideband {
     pub height: u64,
     pub timestamp: u64,
@@ -207,7 +208,7 @@ impl LazyBlockHash {
     }
 }
 
-pub enum Block {
+pub enum BlockEnum {
     Send(SendBlock),
     Receive(ReceiveBlock),
     Open(OpenBlock),
@@ -215,26 +216,36 @@ pub enum Block {
     State(StateBlock),
 }
 
-impl Block {
+impl BlockEnum {
     pub fn block_type(&self) -> BlockType {
+        self.as_block().block_type()
+    }
+
+    pub fn as_block(&self) -> &dyn Block {
         match self {
-            Block::Send(_) => BlockType::Send,
-            Block::Receive(_) => BlockType::Receive,
-            Block::Open(_) => BlockType::Open,
-            Block::Change(_) => BlockType::Change,
-            Block::State(_) => BlockType::State,
+            BlockEnum::Send(b) => b,
+            BlockEnum::Receive(b) => b,
+            BlockEnum::Open(b) => b,
+            BlockEnum::Change(b) => b,
+            BlockEnum::State(b) => b,
         }
     }
 }
 
-pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<Block> {
+pub trait Block {
+    fn block_type(&self) -> BlockType;
+    fn sideband(&'_ self) -> Option<&'_ BlockSideband>;
+    fn set_sideband(&mut self, sideband: BlockSideband);
+}
+
+pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<BlockEnum> {
     let block_type = ptree.get_string("type")?;
     match block_type.as_str() {
-        "receive" => ReceiveBlock::deserialize_json(ptree).map(Block::Receive),
-        "send" => SendBlock::deserialize_json(ptree).map(Block::Send),
-        "open" => OpenBlock::deserialize_json(ptree).map(Block::Open),
-        "change" => ChangeBlock::deserialize_json(ptree).map(Block::Change),
-        "state" => StateBlock::deserialize_json(ptree).map(Block::State),
+        "receive" => ReceiveBlock::deserialize_json(ptree).map(BlockEnum::Receive),
+        "send" => SendBlock::deserialize_json(ptree).map(BlockEnum::Send),
+        "open" => OpenBlock::deserialize_json(ptree).map(BlockEnum::Open),
+        "change" => ChangeBlock::deserialize_json(ptree).map(BlockEnum::Change),
+        "state" => StateBlock::deserialize_json(ptree).map(BlockEnum::State),
         _ => Err(anyhow!("unsupported block type")),
     }
 }

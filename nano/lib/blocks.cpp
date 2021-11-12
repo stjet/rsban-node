@@ -44,6 +44,11 @@ void nano::block_memory_pool_purge ()
 	nano::purge_shared_ptr_singleton_pool_memory<nano::change_block> ();
 }
 
+nano::block::block ()
+{
+	block_dto.block_type = static_cast<uint8_t> (nano::block_type::invalid);
+}
+
 std::string nano::block::to_json () const
 {
 	std::string result;
@@ -99,7 +104,7 @@ nano::block_hash nano::block::full_hash () const
 	return result;
 }
 
-nano::block_sideband const & nano::block::sideband () const
+nano::block_sideband nano::block::sideband () const
 {
 	debug_assert (sideband_m.is_initialized ());
 	return *sideband_m;
@@ -154,6 +159,16 @@ nano::amount nano::block::balance () const
 {
 	static nano::amount amount{ 0 };
 	return amount;
+}
+
+rsnano::BlockDto const & nano::block::as_block_dto () const
+{
+	if (block_dto.block_type == static_cast<uint8_t> (nano::block_type::invalid))
+	{
+		block_dto = create_block_dto ();
+	}
+
+	return block_dto;
 }
 
 void nano::send_block::visit (nano::block_visitor & visitor_a) const
@@ -393,6 +408,14 @@ nano::block_hash nano::send_block::generate_hash () const
 	nano::block_hash result;
 	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
 	return result;
+}
+
+rsnano::BlockDto nano::send_block::create_block_dto () const
+{
+	rsnano::BlockDto dto;
+	dto.block_type = static_cast<uint8_t> (nano::block_type::send);
+	dto.handle = handle;
+	return dto;
 }
 
 nano::open_block::open_block ()
@@ -654,6 +677,14 @@ nano::block_hash nano::open_block::generate_hash () const
 	return result;
 }
 
+rsnano::BlockDto nano::open_block::create_block_dto () const
+{
+	rsnano::BlockDto dto;
+	dto.block_type = static_cast<uint8_t> (nano::block_type::open);
+	dto.handle = handle;
+	return dto;
+}
+
 nano::change_block::change_block ()
 {
 	rsnano::ChangeBlockDto dto;
@@ -883,6 +914,14 @@ nano::block_hash nano::change_block::generate_hash () const
 	nano::block_hash result;
 	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
 	return result;
+}
+
+rsnano::BlockDto nano::change_block::create_block_dto () const
+{
+	rsnano::BlockDto dto;
+	dto.block_type = static_cast<uint8_t> (nano::block_type::change);
+	dto.handle = handle;
+	return dto;
 }
 
 nano::state_block::state_block ()
@@ -1182,6 +1221,14 @@ nano::block_hash nano::state_block::generate_hash () const
 	nano::block_hash result;
 	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
 	return result;
+}
+
+rsnano::BlockDto nano::state_block::create_block_dto () const
+{
+	rsnano::BlockDto dto;
+	dto.block_type = static_cast<uint8_t> (nano::block_type::state);
+	dto.handle = handle;
+	return dto;
 }
 
 std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a, nano::block_uniquer * uniquer_a)
@@ -1486,6 +1533,14 @@ void nano::receive_block::zero ()
 std::size_t nano::receive_block::size ()
 {
 	return rsnano::rsn_receive_block_size ();
+}
+
+rsnano::BlockDto nano::receive_block::create_block_dto () const
+{
+	rsnano::BlockDto dto;
+	dto.block_type = static_cast<uint8_t> (nano::block_type::receive);
+	dto.handle = handle;
+	return dto;
 }
 
 nano::block_hash nano::receive_block::generate_hash () const

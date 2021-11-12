@@ -225,6 +225,7 @@ impl From<&SendBlockDto> for SendBlock {
             signature: Signature::from_bytes(value.signature),
             work: value.work,
             hash: LazyBlockHash::new(),
+            sideband: None,
         }
     }
 }

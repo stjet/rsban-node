@@ -45,6 +45,7 @@ pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut OpenBlockHan
                 account: Account::from_bytes(dto.account),
             },
             hash: LazyBlockHash::new(),
+            sideband: None,
         },
     }))
 }

@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::Result;
 
-use super::LazyBlockHash;
+use super::{Block, BlockSideband, BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ReceiveHashables {
@@ -38,6 +38,7 @@ pub struct ReceiveBlock {
     pub signature: Signature,
     pub hashables: ReceiveHashables,
     pub hash: LazyBlockHash,
+    pub sideband: Option<BlockSideband>,
 }
 
 impl ReceiveBlock {
@@ -57,6 +58,7 @@ impl ReceiveBlock {
             signature,
             hashables,
             hash,
+            sideband: None,
         })
     }
 
@@ -89,6 +91,7 @@ impl ReceiveBlock {
             signature,
             hashables: ReceiveHashables { previous, source },
             hash: LazyBlockHash::new(),
+            sideband: None,
         })
     }
 
@@ -104,6 +107,7 @@ impl ReceiveBlock {
             signature,
             hashables: ReceiveHashables { previous, source },
             hash: LazyBlockHash::new(),
+            sideband: None,
         })
     }
 
@@ -125,6 +129,20 @@ impl PartialEq for ReceiveBlock {
 }
 
 impl Eq for ReceiveBlock {}
+
+impl Block for ReceiveBlock {
+    fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
+        self.sideband.as_ref()
+    }
+
+    fn set_sideband(&mut self, sideband: BlockSideband) {
+        self.sideband = Some(sideband)
+    }
+
+    fn block_type(&self) -> BlockType {
+        BlockType::Receive
+    }
+}
 
 #[cfg(test)]
 mod tests {

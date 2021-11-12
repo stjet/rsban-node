@@ -79,7 +79,7 @@ pub struct BlockSidebandDto {
     pub source_epoch: u8,
 }
 
-unsafe fn set_block_sideband_dto(sideband: &BlockSideband, result: *mut BlockSidebandDto) {
+pub unsafe fn set_block_sideband_dto(sideband: &BlockSideband, result: *mut BlockSidebandDto) {
     (*result).height = sideband.height;
     (*result).timestamp = sideband.timestamp;
     (*result).successor = sideband.successor.to_bytes();

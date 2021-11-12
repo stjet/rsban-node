@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::Result;
 
-use super::LazyBlockHash;
+use super::{Block, BlockSideband, BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct OpenHashables {
@@ -40,6 +40,7 @@ pub struct OpenBlock {
     pub signature: Signature,
     pub hashables: OpenHashables,
     pub hash: LazyBlockHash,
+    pub sideband: Option<BlockSideband>,
 }
 
 impl OpenBlock {
@@ -65,6 +66,7 @@ impl OpenBlock {
             signature,
             hashables,
             hash,
+            sideband: None,
         })
     }
 
@@ -100,6 +102,7 @@ impl OpenBlock {
             signature,
             hashables,
             hash: LazyBlockHash::new(),
+            sideband: None,
         })
     }
 
@@ -131,6 +134,7 @@ impl OpenBlock {
                 account,
             },
             hash: LazyBlockHash::new(),
+            sideband: None,
         })
     }
 }
@@ -144,6 +148,20 @@ impl PartialEq for OpenBlock {
 }
 
 impl Eq for OpenBlock {}
+
+impl Block for OpenBlock {
+    fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
+        self.sideband.as_ref()
+    }
+
+    fn set_sideband(&mut self, sideband: BlockSideband) {
+        self.sideband = Some(sideband);
+    }
+
+    fn block_type(&self) -> BlockType {
+        BlockType::Open
+    }
+}
 
 #[cfg(test)]
 mod tests {

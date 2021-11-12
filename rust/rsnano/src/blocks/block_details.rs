@@ -6,7 +6,7 @@ use crate::{epoch::Epoch, utils::Stream};
 // Epoch is bit packed in BlockDetails. That's why it's max is limited to 4 bits
 const_assert!((Epoch::MAX as u8) < (1 << 5));
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BlockDetails {
     pub epoch: Epoch,
     pub is_send: bool,

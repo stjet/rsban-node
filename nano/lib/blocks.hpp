@@ -85,11 +85,12 @@ private:
 class block
 {
 public:
+	block ();
 	// Return a digest of the hashables in this block.
 	nano::block_hash const & hash () const;
 	// Return a digest of hashables and non-hashables in this block.
 	nano::block_hash full_hash () const;
-	nano::block_sideband const & sideband () const;
+	nano::block_sideband sideband () const;
 	void sideband_set (nano::block_sideband const &);
 	bool has_sideband () const;
 	std::string to_json () const;
@@ -126,8 +127,10 @@ public:
 	virtual nano::work_version work_version () const;
 	// If there are any changes to the hashables, call this to update the cached hash
 	void refresh ();
+	rsnano::BlockDto const & as_block_dto () const;
 
 protected:
+	virtual rsnano::BlockDto create_block_dto () const = 0;
 	mutable nano::block_hash cached_hash{ 0 };
 	/**
 	 * Contextual details about a block, some fields may or may not be set depending on block type.
@@ -137,6 +140,7 @@ protected:
 	nano::optional_ptr<nano::block_sideband> sideband_m;
 
 	virtual nano::block_hash generate_hash () const = 0;
+	mutable rsnano::BlockDto block_dto;
 };
 
 class send_block final : public nano::block
@@ -177,6 +181,7 @@ public:
 
 protected:
 	nano::block_hash generate_hash () const override;
+	rsnano::BlockDto create_block_dto () const override;
 
 private:
 	rsnano::SendBlockHandle * handle;
@@ -218,6 +223,7 @@ public:
 
 protected:
 	nano::block_hash generate_hash () const override;
+	rsnano::BlockDto create_block_dto () const override;
 
 private:
 	rsnano::ReceiveBlockHandle * handle;
@@ -262,6 +268,7 @@ public:
 
 protected:
 	nano::block_hash generate_hash () const override;
+	rsnano::BlockDto create_block_dto () const override;
 
 private:
 	rsnano::OpenBlockHandle * handle;
@@ -302,6 +309,7 @@ public:
 
 protected:
 	nano::block_hash generate_hash () const override;
+	rsnano::BlockDto create_block_dto () const override;
 
 private:
 	rsnano::ChangeBlockHandle * handle;
@@ -349,6 +357,7 @@ public:
 
 protected:
 	nano::block_hash generate_hash () const override;
+	rsnano::BlockDto create_block_dto () const override;
 
 private:
 	rsnano::StateBlockHandle * handle;

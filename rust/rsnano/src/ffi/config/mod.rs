@@ -1,10 +1,9 @@
 mod work_thresholds;
 
+use crate::config::{NetworkConstants, WorkThresholds};
 use num::FromPrimitive;
 use std::{convert::TryFrom, ffi::CStr, os::raw::c_char};
-
-use self::work_thresholds::{fill_work_thresholds_dto, WorkThresholdsDto};
-use crate::config::{NetworkConstants, WorkThresholds};
+pub use work_thresholds::*;
 
 #[repr(C)]
 pub struct NetworkConstantsDto {
@@ -65,44 +64,34 @@ fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Network
 
 #[no_mangle]
 pub extern "C" fn rsn_network_constants_cleanup_period_half_ms(dto: &NetworkConstantsDto) -> i64 {
-    NetworkConstants::try_from(dto).map(|x| x.cleanup_period_half()).unwrap_or_default()
+    NetworkConstants::try_from(dto)
+        .unwrap()
+        .cleanup_period_half_ms()
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_network_constants_cleanup_cutoff_s(dto: &NetworkConstantsDto) -> i64 {
-    todo!()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_network_constants_network(dto: &NetworkConstantsDto) -> u16 {
-    todo!()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_network_constants_current_network_as_string(
-    dto: &NetworkConstantsDto,
-) -> *const c_char {
-    todo!()
+    NetworkConstants::try_from(dto).unwrap().cleanup_cutoff_s()
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_network_constants_is_live_network(dto: &NetworkConstantsDto) -> bool {
-    NetworkConstants::try_from(dto).map(|x| x.is_live_network()).unwrap_or_default()
+    NetworkConstants::try_from(dto).unwrap().is_live_network()
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_network_constants_is_beta_network(dto: &NetworkConstantsDto) -> bool {
-    NetworkConstants::try_from(dto).map(|x| x.is_beta_network()).unwrap_or_default()
+    NetworkConstants::try_from(dto).unwrap().is_beta_network()
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_network_constants_is_dev_network(dto: &NetworkConstantsDto) -> bool {
-    NetworkConstants::try_from(dto).map(|x| x.is_dev_network()).unwrap_or_default()
+    NetworkConstants::try_from(dto).unwrap().is_dev_network()
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_network_constants_is_test_network(dto: &NetworkConstantsDto) -> bool {
-    NetworkConstants::try_from(dto).map(|x| x.is_test_network()).unwrap_or_default()
+    NetworkConstants::try_from(dto).unwrap().is_test_network()
 }
 
 #[no_mangle]

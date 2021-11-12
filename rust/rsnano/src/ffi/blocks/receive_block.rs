@@ -42,6 +42,7 @@ pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut Receiv
                 source: BlockHash::from_bytes(dto.source),
             },
             hash: LazyBlockHash::new(),
+            sideband: None,
         },
     }))
 }

@@ -348,7 +348,7 @@ class ledger_constants
 {
 public:
 	ledger_constants (nano::work_thresholds & work, nano::networks network_a);
-	nano::work_thresholds & work;
+	nano::work_thresholds work;
 	nano::keypair zero_key;
 	nano::account nano_beta_account;
 	nano::account nano_live_account;

@@ -10,7 +10,7 @@ use crate::{
 
 use anyhow::Result;
 
-use super::{BlockType, LazyBlockHash};
+use super::{Block, BlockSideband, BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct StateHashables {
@@ -55,6 +55,7 @@ pub struct StateBlock {
     pub signature: Signature,
     pub hashables: StateHashables,
     pub hash: LazyBlockHash,
+    pub sideband: Option<BlockSideband>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -85,6 +86,7 @@ impl StateBlock {
             signature,
             hashables,
             hash,
+            sideband: None,
         })
     }
 
@@ -108,6 +110,7 @@ impl StateBlock {
                 link,
             },
             hash: LazyBlockHash::new(),
+            sideband: None,
         }
     }
 
@@ -175,6 +178,7 @@ impl StateBlock {
                 link,
             },
             hash: LazyBlockHash::new(),
+            sideband: None,
         })
     }
 
@@ -220,6 +224,7 @@ impl StateBlock {
                 link,
             },
             hash: LazyBlockHash::new(),
+            sideband: None,
         })
     }
 }
@@ -233,6 +238,20 @@ impl PartialEq for StateBlock {
 }
 
 impl Eq for StateBlock {}
+
+impl Block for StateBlock {
+    fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
+        self.sideband.as_ref()
+    }
+
+    fn set_sideband(&mut self, sideband: BlockSideband) {
+        self.sideband = Some(sideband);
+    }
+
+    fn block_type(&self) -> BlockType {
+        BlockType::State
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -442,6 +442,14 @@ impl KeyPair {
         Self { keypair }
     }
 
+    pub fn zero() -> Self {
+        let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(&[0u8; 32]).unwrap();
+        let public = ed25519_dalek_blake2b::PublicKey::from(&secret);
+        Self {
+            keypair: ed25519_dalek_blake2b::Keypair { secret, public },
+        }
+    }
+
     pub fn public_key(&self) -> PublicKey {
         PublicKey::from_bytes(self.keypair.public.to_bytes())
     }

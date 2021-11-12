@@ -51,6 +51,7 @@ pub extern "C" fn rsn_state_block_create(dto: &StateBlockDto) -> *mut StateBlock
                 link: Link::from_bytes(dto.link),
             },
             hash: LazyBlockHash::new(),
+            sideband: None,
         },
     }))
 }

@@ -31,6 +31,12 @@ struct BlockDetailsDto
 	bool is_epoch;
 };
 
+struct BlockDto
+{
+	uint8_t block_type;
+	void * handle;
+};
+
 struct BlockSidebandDto
 {
 	uint64_t height;
@@ -77,12 +83,6 @@ struct ChangeBlockDto2
 	uint64_t work;
 };
 
-struct BlockDto
-{
-	uint8_t block_type;
-	void * handle;
-};
-
 struct WorkThresholdsDto
 {
 	uint64_t epoch_1;
@@ -90,6 +90,37 @@ struct WorkThresholdsDto
 	uint64_t epoch_2_receive;
 	uint64_t base;
 	uint64_t entry;
+};
+
+struct LedgerConstantsDto
+{
+	WorkThresholdsDto work;
+	uint8_t priv_key[32];
+	uint8_t pub_key[32];
+	uint8_t nano_beta_account[32];
+	uint8_t nano_live_account[32];
+	uint8_t nano_test_account[32];
+	BlockDto nano_dev_genesis;
+	BlockDto nano_beta_genesis;
+	BlockDto nano_live_genesis;
+	BlockDto nano_test_genesis;
+	BlockDto genesis;
+	uint8_t genesis_amount[16];
+	uint8_t burn_account[32];
+	uint8_t nano_dev_final_votes_canary_account[32];
+	uint8_t nano_beta_final_votes_canary_account[32];
+	uint8_t nano_live_final_votes_canary_account[32];
+	uint8_t nano_test_final_votes_canary_account[32];
+	uint8_t final_votes_canary_account[32];
+	uint64_t nano_dev_final_votes_canary_height;
+	uint64_t nano_beta_final_votes_canary_height;
+	uint64_t nano_live_final_votes_canary_height;
+	uint64_t nano_test_final_votes_canary_height;
+	uint64_t final_votes_canary_height;
+	uint8_t epoch_1_signer[32];
+	uint8_t epoch_1_link[32];
+	uint8_t epoch_2_signer[32];
+	uint8_t epoch_2_link[32];
 };
 
 struct NetworkConstantsDto
@@ -219,11 +250,17 @@ int32_t rsn_block_details_deserialize (BlockDetailsDto * dto, void * stream);
 
 int32_t rsn_block_details_serialize (const BlockDetailsDto * dto, void * stream);
 
+bool rsn_block_has_sideband (const BlockDto * block);
+
 uintptr_t rsn_block_serialized_size (uint8_t block_type);
+
+int32_t rsn_block_sideband (const BlockDto * block, BlockSidebandDto * sideband);
 
 int32_t rsn_block_sideband_deserialize (BlockSidebandDto * dto, void * stream, uint8_t block_type);
 
 int32_t rsn_block_sideband_serialize (const BlockSidebandDto * dto, void * stream, uint8_t block_type);
+
+int32_t rsn_block_sideband_set (BlockDto * block, const BlockSidebandDto * sideband);
 
 uintptr_t rsn_block_sideband_size (uint8_t block_type, int32_t * result);
 
@@ -290,6 +327,10 @@ uint64_t rsn_difficulty_from_multiplier (double multiplier, uint64_t base_diffic
 
 double rsn_difficulty_to_multiplier (uint64_t difficulty, uint64_t base_difficulty);
 
+int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
+const WorkThresholdsDto * work,
+uint16_t network);
+
 uint16_t rsn_network_constants_active_network ();
 
 void rsn_network_constants_active_network_set (uint16_t network);
@@ -304,8 +345,6 @@ int32_t rsn_network_constants_create (NetworkConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
 
-const char * rsn_network_constants_current_network_as_string (const NetworkConstantsDto * dto);
-
 bool rsn_network_constants_is_beta_network (const NetworkConstantsDto * dto);
 
 bool rsn_network_constants_is_dev_network (const NetworkConstantsDto * dto);
@@ -313,8 +352,6 @@ bool rsn_network_constants_is_dev_network (const NetworkConstantsDto * dto);
 bool rsn_network_constants_is_live_network (const NetworkConstantsDto * dto);
 
 bool rsn_network_constants_is_test_network (const NetworkConstantsDto * dto);
-
-uint16_t rsn_network_constants_network (const NetworkConstantsDto * dto);
 
 void rsn_open_block_account (const OpenBlockHandle * handle, uint8_t (*result)[32]);
 

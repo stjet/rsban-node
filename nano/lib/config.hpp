@@ -136,7 +136,7 @@ public:
 	static char const * active_network_err_msg;
 
 	/** The network this param object represents. This may differ from the global active network; this is needed for certain --debug... commands */
-	nano::networks current_network { nano::network_constants::active_network() };
+	nano::networks current_network{ nano::network_constants::active_network () };
 	nano::work_thresholds work;
 
 	unsigned principal_weight_factor;

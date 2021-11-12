@@ -37,8 +37,16 @@ pub struct NetworkConstants {
 
 impl NetworkConstants {
     pub fn new(work: WorkThresholds, network: Networks) -> Self {
-        let cleanup_period_s = if network == Networks::NanoDevNetwork {1} else{60};
-        let max_peers_per_ip = if network == Networks::NanoDevNetwork{10} else{5};
+        let cleanup_period_s = if network == Networks::NanoDevNetwork {
+            1
+        } else {
+            60
+        };
+        let max_peers_per_ip = if network == Networks::NanoDevNetwork {
+            10
+        } else {
+            5
+        };
         Self {
             work,
             current_network: network,
@@ -49,78 +57,74 @@ impl NetworkConstants {
             default_rpc_port: Self::get_default_rpc_port(network),
             default_ipc_port: Self::get_default_ipc_port(network),
             default_websocket_port: Self::get_default_websocket_port(network),
-            request_interval_ms: if network == Networks::NanoDevNetwork {20}else{500},
+            request_interval_ms: if network == Networks::NanoDevNetwork {
+                20
+            } else {
+                500
+            },
             cleanup_period_s,
-            idle_timeout_s: if network == Networks::NanoDevNetwork {cleanup_period_s*15} else{cleanup_period_s*2},
+            idle_timeout_s: if network == Networks::NanoDevNetwork {
+                cleanup_period_s * 15
+            } else {
+                cleanup_period_s * 2
+            },
             sync_cookie_cutoff_s: 5,
-            bootstrap_interval_s: 15*60,
+            bootstrap_interval_s: 15 * 60,
             max_peers_per_ip,
             max_peers_per_subnetwork: max_peers_per_ip * 4,
-            peer_dump_interval_s: if network == Networks::NanoDevNetwork {1} else{5*60},
+            peer_dump_interval_s: if network == Networks::NanoDevNetwork {
+                1
+            } else {
+                5 * 60
+            },
         }
     }
 
     fn get_default_node_port(network: Networks) -> u16 {
         if network == Networks::NanoLiveNetwork {
             7075
+        } else if network == Networks::NanoBetaNetwork {
+            54000
+        } else if network == Networks::NanoTestNetwork {
+            test_node_port()
         } else {
-            if network == Networks::NanoBetaNetwork {
-                54000
-            } else {
-                if network == Networks::NanoTestNetwork {
-                    test_node_port()
-                } else {
-                    44000
-                }
-            }
+            44000
         }
     }
 
     fn get_default_rpc_port(network: Networks) -> u16 {
         if network == Networks::NanoLiveNetwork {
             7076
+        } else if network == Networks::NanoBetaNetwork {
+            55000
+        } else if network == Networks::NanoTestNetwork {
+            test_rpc_port()
         } else {
-            if network == Networks::NanoBetaNetwork {
-                55000
-            } else {
-                if network == Networks::NanoTestNetwork {
-                    test_rpc_port()
-                } else {
-                    45000
-                }
-            }
+            45000
         }
     }
 
     fn get_default_ipc_port(network: Networks) -> u16 {
         if network == Networks::NanoLiveNetwork {
             7077
+        } else if network == Networks::NanoBetaNetwork {
+            56000
+        } else if network == Networks::NanoTestNetwork {
+            test_ipc_port()
         } else {
-            if network == Networks::NanoBetaNetwork {
-                56000
-            } else {
-                if network == Networks::NanoTestNetwork {
-                    test_ipc_port()
-                } else {
-                    46000
-                }
-            }
+            46000
         }
     }
 
     fn get_default_websocket_port(network: Networks) -> u16 {
         if network == Networks::NanoLiveNetwork {
             7078
+        } else if network == Networks::NanoBetaNetwork {
+            57000
+        } else if network == Networks::NanoTestNetwork {
+            test_websocket_port()
         } else {
-            if network == Networks::NanoBetaNetwork {
-                57000
-            } else {
-                if network == Networks::NanoTestNetwork {
-                    test_websocket_port()
-                } else {
-                    47000
-                }
-            }
+            47000
         }
     }
 
@@ -173,6 +177,10 @@ impl NetworkConstants {
 
     pub fn cleanup_period_half_ms(&self) -> i64 {
         (self.cleanup_period_s * 1000) / 2
+    }
+
+    pub fn cleanup_cutoff_s(&self) -> i64 {
+        self.cleanup_period_s * 5
     }
 }
 

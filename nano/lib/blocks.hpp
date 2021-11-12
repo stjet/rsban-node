@@ -398,4 +398,5 @@ std::shared_ptr<nano::block> deserialize_block (nano::stream &, nano::block_type
 std::shared_ptr<nano::block> deserialize_block_json (boost::property_tree::ptree const &, nano::block_uniquer * = nullptr);
 void serialize_block (nano::stream &, nano::block const &);
 void block_memory_pool_purge ();
+std::shared_ptr<nano::block> block_dto_to_block (rsnano::BlockDto const & dto);
 }

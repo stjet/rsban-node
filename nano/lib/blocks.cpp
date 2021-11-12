@@ -1213,13 +1213,9 @@ rsnano::BlockDto nano::state_block::to_block_dto () const
 	return dto;
 }
 
-std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a, nano::block_uniquer * uniquer_a)
-{
-	std::shared_ptr<nano::block> result;
-	rsnano::BlockDto dto;
-	if (rsnano::rsn_deserialize_block_json (&dto, &tree_a) < 0)
-		return result;
 
+std::shared_ptr<nano::block> nano::block_dto_to_block (rsnano::BlockDto const & dto)
+{
 	std::unique_ptr<nano::block> obj;
 	switch (static_cast<nano::block_type> (dto.block_type))
 	{
@@ -1242,7 +1238,19 @@ std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree:
 			break;
 	}
 
+	std::shared_ptr<nano::block> result;
 	result = std::move (obj);
+	return result;
+}
+
+std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a, nano::block_uniquer * uniquer_a)
+{
+	std::shared_ptr<nano::block> result;
+	rsnano::BlockDto dto;
+	if (rsnano::rsn_deserialize_block_json (&dto, &tree_a) < 0)
+		return result;
+
+	result = nano::block_dto_to_block (dto);
 	if (uniquer_a != nullptr)
 	{
 		result = uniquer_a->unique (result);

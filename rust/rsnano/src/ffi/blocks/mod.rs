@@ -142,26 +142,30 @@ pub unsafe extern "C" fn rsn_deserialize_block_json(
     let ptree_reader = FfiPropertyTreeReader::new(ptree);
     match deserialize_block_json(&ptree_reader) {
         Ok(block) => {
-            (*dto).block_type = block.block_type() as u8;
-            (*dto).handle = match block {
-                BlockEnum::Send(block) => {
-                    Box::into_raw(Box::new(SendBlockHandle { block })) as *mut c_void
-                }
-                BlockEnum::Receive(block) => {
-                    Box::into_raw(Box::new(ReceiveBlockHandle { block })) as *mut c_void
-                }
-                BlockEnum::Open(block) => {
-                    Box::into_raw(Box::new(OpenBlockHandle { block })) as *mut c_void
-                }
-                BlockEnum::Change(block) => {
-                    Box::into_raw(Box::new(ChangeBlockHandle { block })) as *mut c_void
-                }
-                BlockEnum::State(block) => {
-                    Box::into_raw(Box::new(StateBlockHandle { block })) as *mut c_void
-                }
-            };
+            set_block_dto(&mut (*dto), block);
             0
         }
         Err(_) => -1,
     }
+}
+
+pub fn set_block_dto(dto: &mut BlockDto, block: BlockEnum){
+    dto.block_type = block.block_type() as u8;
+    dto.handle = match block {
+        BlockEnum::Send(block) => {
+            Box::into_raw(Box::new(SendBlockHandle { block })) as *mut c_void
+        }
+        BlockEnum::Receive(block) => {
+            Box::into_raw(Box::new(ReceiveBlockHandle { block })) as *mut c_void
+        }
+        BlockEnum::Open(block) => {
+            Box::into_raw(Box::new(OpenBlockHandle { block })) as *mut c_void
+        }
+        BlockEnum::Change(block) => {
+            Box::into_raw(Box::new(ChangeBlockHandle { block })) as *mut c_void
+        }
+        BlockEnum::State(block) => {
+            Box::into_raw(Box::new(StateBlockHandle { block })) as *mut c_void
+        }
+    };
 }

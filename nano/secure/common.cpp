@@ -109,11 +109,12 @@ nano::ledger_constants::ledger_constants (nano::work_thresholds & work_a, nano::
 	std::copy (std::begin (nano_beta_account.bytes), std::end (nano_beta_account.bytes), std::begin (dto.nano_beta_account));
 	std::copy (std::begin (nano_live_account.bytes), std::end (nano_live_account.bytes), std::begin (dto.nano_live_account));
 	std::copy (std::begin (nano_test_account.bytes), std::end (nano_test_account.bytes), std::begin (dto.nano_test_account));
+	nano_dev_genesis = nano::block_dto_to_block (dto.nano_dev_genesis);
+	nano_beta_genesis = nano::block_dto_to_block (dto.nano_beta_genesis);
+	nano_live_genesis = nano::block_dto_to_block (dto.nano_live_genesis);
+	nano_test_genesis = nano::block_dto_to_block (dto.nano_test_genesis);
 
-	nano_dev_genesis = parse_block_from_genesis_data (dev_genesis_data);
-	nano_beta_genesis = parse_block_from_genesis_data (beta_genesis_data);
-	nano_live_genesis = parse_block_from_genesis_data (live_genesis_data);
-	nano_test_genesis = parse_block_from_genesis_data (test_genesis_data);
+
 	genesis = network_a == nano::networks::nano_dev_network 
 		? nano_dev_genesis 
 		: network_a == nano::networks::nano_beta_network 

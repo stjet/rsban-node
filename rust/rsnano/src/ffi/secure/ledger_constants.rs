@@ -1,13 +1,6 @@
 use num::FromPrimitive;
 
-use crate::{
-    config::WorkThresholds,
-    ffi::{
-        blocks::BlockDto,
-        config::{fill_work_thresholds_dto, WorkThresholdsDto},
-    },
-    secure::LedgerConstants,
-};
+use crate::{config::WorkThresholds, ffi::{blocks::{BlockDto, set_block_dto}, config::{fill_work_thresholds_dto, WorkThresholdsDto}}, secure::LedgerConstants};
 
 #[repr(C)]
 pub struct LedgerConstantsDto {
@@ -54,7 +47,9 @@ pub unsafe extern "C" fn rsn_ledger_constants_create(
     let work = WorkThresholds::from(work);
     let ledger = match LedgerConstants::new(work, network){
         Ok(l) => l,
-        Err(_) => return -1,
+        Err(e) => {
+            eprintln!("COULD NOT CREATE LEDGER_CONSTANTS: {:?}", e);
+            return -1},
     };
     fill_work_thresholds_dto(&mut (*dto).work, &ledger.work);
     (*dto).pub_key = ledger.zero_key.public_key().to_be_bytes();
@@ -62,6 +57,10 @@ pub unsafe extern "C" fn rsn_ledger_constants_create(
     (*dto).nano_beta_account = ledger.nano_beta_account.to_bytes();
     (*dto).nano_live_account = ledger.nano_live_account.to_bytes();
     (*dto).nano_test_account = ledger.nano_test_account.to_bytes();
+    set_block_dto(&mut (*dto).nano_dev_genesis, ledger.nano_dev_genesis);
+    set_block_dto(&mut (*dto).nano_beta_genesis, ledger.nano_beta_genesis);
+    set_block_dto(&mut (*dto).nano_live_genesis, ledger.nano_live_genesis);
+    set_block_dto(&mut (*dto).nano_test_genesis, ledger.nano_test_genesis);
 
     //todo fill remaining fields
 

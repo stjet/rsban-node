@@ -71,6 +71,10 @@ pub struct LedgerConstants {
     pub nano_beta_account: Account,
     pub nano_live_account: Account,
     pub nano_test_account: Account,
+    pub nano_dev_genesis: BlockEnum,
+    pub nano_beta_genesis: BlockEnum,
+    pub nano_live_genesis: BlockEnum,
+    pub nano_test_genesis: BlockEnum,
 }
 
 impl LedgerConstants {
@@ -79,8 +83,12 @@ impl LedgerConstants {
             work,
             zero_key: KeyPair::zero(),
             nano_beta_account: Account::decode_hex(BETA_PUBLIC_KEY_DATA)?,
-            nano_live_account: Account::decode_hex(LIVE_GENESIS_DATA)?,
+            nano_live_account: Account::decode_hex(LIVE_PUBLIC_KEY_DATA)?,
             nano_test_account: Account::decode_hex(TEST_PUBLIC_KEY_DATA.as_str())?,
+            nano_dev_genesis: parse_block_from_genesis_data(DEV_GENESIS_DATA)?,
+            nano_beta_genesis: parse_block_from_genesis_data(BETA_GENESIS_DATA)?,
+            nano_live_genesis: parse_block_from_genesis_data(LIVE_GENESIS_DATA)?,
+            nano_test_genesis: parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str())?,
         })
     }
 }

@@ -106,46 +106,28 @@ nano::ledger_constants::ledger_constants (nano::work_thresholds & work_a, nano::
 	std::copy (std::begin (dto.pub_key), std::end (dto.pub_key), std::begin (pub_key.bytes));
 	std::copy (std::begin (dto.priv_key), std::end (dto.priv_key), std::begin (priv_key.bytes));
 	zero_key = nano::keypair (priv_key, pub_key);
-	std::copy (std::begin (nano_beta_account.bytes), std::end (nano_beta_account.bytes), std::begin (dto.nano_beta_account));
-	std::copy (std::begin (nano_live_account.bytes), std::end (nano_live_account.bytes), std::begin (dto.nano_live_account));
-	std::copy (std::begin (nano_test_account.bytes), std::end (nano_test_account.bytes), std::begin (dto.nano_test_account));
+	std::copy (std::begin (dto.nano_beta_account), std::end (dto.nano_beta_account), std::begin (nano_beta_account.bytes));
+	std::copy (std::begin (dto.nano_live_account), std::end (dto.nano_live_account), std::begin (nano_live_account.bytes));
+	std::copy (std::begin (dto.nano_test_account), std::end (dto.nano_test_account), std::begin (nano_test_account.bytes));
 	nano_dev_genesis = nano::block_dto_to_block (dto.nano_dev_genesis);
 	nano_beta_genesis = nano::block_dto_to_block (dto.nano_beta_genesis);
 	nano_live_genesis = nano::block_dto_to_block (dto.nano_live_genesis);
 	nano_test_genesis = nano::block_dto_to_block (dto.nano_test_genesis);
-
-	nano_beta_genesis->sideband_set (nano::block_sideband (nano_beta_genesis->account (), 0, std::numeric_limits<nano::uint128_t>::max (), 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
-	nano_dev_genesis->sideband_set (nano::block_sideband (nano_dev_genesis->account (), 0, std::numeric_limits<nano::uint128_t>::max (), 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
-	nano_live_genesis->sideband_set (nano::block_sideband (nano_live_genesis->account (), 0, std::numeric_limits<nano::uint128_t>::max (), 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
-	nano_test_genesis->sideband_set (nano::block_sideband (nano_test_genesis->account (), 0, std::numeric_limits<nano::uint128_t>::max (), 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
-
 	genesis = nano::block_dto_to_block (dto.genesis);
+	boost::multiprecision::import_bits (genesis_amount, std::begin (dto.genesis_amount), std::end (dto.genesis_amount));
+	std::copy (std::begin (dto.burn_account), std::end (dto.burn_account), std::begin (burn_account.bytes));
+	std::copy (std::begin (dto.nano_dev_final_votes_canary_account), std::end (dto.nano_dev_final_votes_canary_account), std::begin (nano_dev_final_votes_canary_account.bytes));
+	std::copy (std::begin (dto.nano_beta_final_votes_canary_account), std::end (dto.nano_beta_final_votes_canary_account), std::begin (nano_beta_final_votes_canary_account.bytes));
+	std::copy (std::begin (dto.nano_live_final_votes_canary_account), std::end (dto.nano_live_final_votes_canary_account), std::begin (nano_live_final_votes_canary_account.bytes));
+	std::copy (std::begin (dto.nano_test_final_votes_canary_account), std::end (dto.nano_test_final_votes_canary_account), std::begin (nano_test_final_votes_canary_account.bytes));
+	std::copy (std::begin (dto.final_votes_canary_account), std::end (dto.final_votes_canary_account), std::begin (final_votes_canary_account.bytes));
+	nano_dev_final_votes_canary_height = dto.nano_dev_final_votes_canary_height;
+	nano_beta_final_votes_canary_height = dto.nano_beta_final_votes_canary_height;
+	nano_live_final_votes_canary_height = dto.nano_live_final_votes_canary_height;
+	nano_test_final_votes_canary_height = dto.nano_test_final_votes_canary_height;
+	final_votes_canary_height = dto.final_votes_canary_height;
 
-	genesis_amount = std::numeric_limits<nano::uint128_t>::max ();
-	burn_account = nano::account{};
-	nano_dev_final_votes_canary_account = nano::account (dev_public_key_data);
-	nano_beta_final_votes_canary_account = nano::account (beta_canary_public_key_data);
-	nano_live_final_votes_canary_account = nano::account (live_canary_public_key_data);
-	nano_test_final_votes_canary_account = nano::account (test_canary_public_key_data);
-	final_votes_canary_account = network_a == nano::networks::nano_dev_network
-	? nano_dev_final_votes_canary_account
-	: network_a == nano::networks::nano_beta_network
-	? nano_beta_final_votes_canary_account
-	: network_a == nano::networks::nano_test_network
-	? nano_test_final_votes_canary_account
-	: nano_live_final_votes_canary_account;
-
-	nano_dev_final_votes_canary_height = 1;
-	nano_beta_final_votes_canary_height = 1;
-	nano_live_final_votes_canary_height = 1;
-	nano_test_final_votes_canary_height = 1;
-	final_votes_canary_height = network_a == nano::networks::nano_dev_network
-	? nano_dev_final_votes_canary_height
-	: network_a == nano::networks::nano_beta_network
-	? nano_beta_final_votes_canary_height
-	: network_a == nano::networks::nano_test_network
-	? nano_test_final_votes_canary_height
-	: nano_live_final_votes_canary_height;
+	//todo move remaining code to Rust:
 
 	nano::link epoch_link_v1;
 	char const * epoch_message_v1 ("epoch v1 block");

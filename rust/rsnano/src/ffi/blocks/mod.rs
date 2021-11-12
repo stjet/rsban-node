@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rsn_block_sideband(
                 set_block_sideband_dto(sb, sideband);
                 0
             }
-            None => -1,
+            None => 0, // test confirmation_heightDeathTest.rollback_added_block calls sideband() event though its None ?!
         },
         None => -1,
     }

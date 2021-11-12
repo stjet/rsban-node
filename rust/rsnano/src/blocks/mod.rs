@@ -234,7 +234,14 @@ impl BlockEnum {
 
 pub trait Block {
     fn block_type(&self) -> BlockType;
+
+    /**
+     * Contextual details about a block, some fields may or may not be set depending on block type.
+     * This field is set via sideband_set in ledger processing or deserializing blocks from the database.
+     * Otherwise it may be null (for example, an old block or fork).
+     */
     fn sideband(&'_ self) -> Option<&'_ BlockSideband>;
+
     fn set_sideband(&mut self, sideband: BlockSideband);
 }
 

@@ -44,11 +44,6 @@ void nano::block_memory_pool_purge ()
 	nano::purge_shared_ptr_singleton_pool_memory<nano::change_block> ();
 }
 
-nano::block::block ()
-{
-	block_dto.block_type = static_cast<uint8_t> (nano::block_type::invalid);
-}
-
 std::string nano::block::to_json () const
 {
 	std::string result;
@@ -106,18 +101,24 @@ nano::block_hash nano::block::full_hash () const
 
 nano::block_sideband nano::block::sideband () const
 {
-	debug_assert (sideband_m.is_initialized ());
-	return *sideband_m;
+	rsnano::BlockSidebandDto dto;
+	auto block_dto {to_block_dto()};
+	if (rsnano::rsn_block_sideband (&block_dto, &dto) < 0)
+		throw std::runtime_error ("cannot get sideband");
+	return nano::block_sideband (dto);
 }
 
 void nano::block::sideband_set (nano::block_sideband const & sideband_a)
 {
-	sideband_m = sideband_a;
+	auto block_dto {to_block_dto()};
+	if (rsnano::rsn_block_sideband_set (&block_dto, &sideband_a.as_dto ()) < 0)
+		throw std::runtime_error ("cannot set sideband");
 }
 
 bool nano::block::has_sideband () const
 {
-	return sideband_m.is_initialized ();
+	auto block_dto {to_block_dto()};
+	return rsnano::rsn_block_has_sideband (&block_dto);
 }
 
 nano::account nano::block::representative () const
@@ -159,16 +160,6 @@ nano::amount nano::block::balance () const
 {
 	static nano::amount amount{ 0 };
 	return amount;
-}
-
-rsnano::BlockDto const & nano::block::as_block_dto () const
-{
-	if (block_dto.block_type == static_cast<uint8_t> (nano::block_type::invalid))
-	{
-		block_dto = create_block_dto ();
-	}
-
-	return block_dto;
 }
 
 void nano::send_block::visit (nano::block_visitor & visitor_a) const
@@ -295,7 +286,6 @@ nano::send_block::send_block ()
 nano::send_block::send_block (const send_block & other)
 {
 	cached_hash = other.cached_hash;
-	sideband_m = other.sideband_m;
 	if (other.handle == nullptr)
 	{
 		handle = nullptr;
@@ -309,7 +299,6 @@ nano::send_block::send_block (const send_block & other)
 nano::send_block::send_block (send_block && other)
 {
 	cached_hash = other.cached_hash;
-	sideband_m = other.sideband_m;
 	handle = other.handle;
 	other.handle = nullptr;
 }
@@ -410,7 +399,7 @@ nano::block_hash nano::send_block::generate_hash () const
 	return result;
 }
 
-rsnano::BlockDto nano::send_block::create_block_dto () const
+rsnano::BlockDto nano::send_block::to_block_dto () const
 {
 	rsnano::BlockDto dto;
 	dto.block_type = static_cast<uint8_t> (nano::block_type::send);
@@ -476,7 +465,6 @@ nano::open_block::open_block (bool & error_a, boost::property_tree::ptree const 
 nano::open_block::open_block (const open_block & other)
 {
 	cached_hash = other.cached_hash;
-	sideband_m = other.sideband_m;
 	if (other.handle == nullptr)
 	{
 		handle = nullptr;
@@ -490,7 +478,6 @@ nano::open_block::open_block (const open_block & other)
 nano::open_block::open_block (nano::open_block && other)
 {
 	cached_hash = other.cached_hash;
-	sideband_m = other.sideband_m;
 	handle = other.handle;
 	other.handle = nullptr;
 }
@@ -677,7 +664,7 @@ nano::block_hash nano::open_block::generate_hash () const
 	return result;
 }
 
-rsnano::BlockDto nano::open_block::create_block_dto () const
+rsnano::BlockDto nano::open_block::to_block_dto () const
 {
 	rsnano::BlockDto dto;
 	dto.block_type = static_cast<uint8_t> (nano::block_type::open);
@@ -727,7 +714,6 @@ nano::change_block::change_block (bool & error_a, boost::property_tree::ptree co
 nano::change_block::change_block (const nano::change_block & other_a)
 {
 	cached_hash = other_a.cached_hash;
-	sideband_m = other_a.sideband_m;
 	if (other_a.handle == nullptr)
 	{
 		handle = nullptr;
@@ -741,7 +727,6 @@ nano::change_block::change_block (const nano::change_block & other_a)
 nano::change_block::change_block (nano::change_block && other_a)
 {
 	cached_hash = other_a.cached_hash;
-	sideband_m = other_a.sideband_m;
 	handle = other_a.handle;
 	other_a.handle = nullptr;
 }
@@ -916,7 +901,7 @@ nano::block_hash nano::change_block::generate_hash () const
 	return result;
 }
 
-rsnano::BlockDto nano::change_block::create_block_dto () const
+rsnano::BlockDto nano::change_block::to_block_dto () const
 {
 	rsnano::BlockDto dto;
 	dto.block_type = static_cast<uint8_t> (nano::block_type::change);
@@ -973,7 +958,6 @@ nano::state_block::state_block (bool & error_a, boost::property_tree::ptree cons
 nano::state_block::state_block (const nano::state_block & other)
 {
 	cached_hash = other.cached_hash;
-	sideband_m = other.sideband_m;
 	if (other.handle == nullptr)
 	{
 		handle = nullptr;
@@ -987,7 +971,6 @@ nano::state_block::state_block (const nano::state_block & other)
 nano::state_block::state_block (nano::state_block && other)
 {
 	cached_hash = other.cached_hash;
-	sideband_m = other.sideband_m;
 	handle = other.handle;
 	other.handle = nullptr;
 }
@@ -1085,7 +1068,6 @@ bool nano::state_block::operator== (nano::state_block const & other_a) const
 nano::state_block & nano::state_block::operator= (const nano::state_block & other)
 {
 	cached_hash = other.cached_hash;
-	sideband_m = other.sideband_m;
 	if (other.handle == nullptr)
 	{
 		handle = nullptr;
@@ -1223,7 +1205,7 @@ nano::block_hash nano::state_block::generate_hash () const
 	return result;
 }
 
-rsnano::BlockDto nano::state_block::create_block_dto () const
+rsnano::BlockDto nano::state_block::to_block_dto () const
 {
 	rsnano::BlockDto dto;
 	dto.block_type = static_cast<uint8_t> (nano::block_type::state);
@@ -1395,7 +1377,6 @@ nano::receive_block::receive_block (bool & error_a, boost::property_tree::ptree 
 nano::receive_block::receive_block (const nano::receive_block & other)
 {
 	cached_hash = other.cached_hash;
-	sideband_m = other.sideband_m;
 	if (other.handle == nullptr)
 	{
 		handle = nullptr;
@@ -1409,7 +1390,6 @@ nano::receive_block::receive_block (const nano::receive_block & other)
 nano::receive_block::receive_block (nano::receive_block && other)
 {
 	cached_hash = other.cached_hash;
-	sideband_m = other.sideband_m;
 	handle = other.handle;
 	other.handle = nullptr;
 }
@@ -1535,7 +1515,7 @@ std::size_t nano::receive_block::size ()
 	return rsnano::rsn_receive_block_size ();
 }
 
-rsnano::BlockDto nano::receive_block::create_block_dto () const
+rsnano::BlockDto nano::receive_block::to_block_dto () const
 {
 	rsnano::BlockDto dto;
 	dto.block_type = static_cast<uint8_t> (nano::block_type::receive);
@@ -1647,6 +1627,11 @@ nano::block_sideband::block_sideband ()
 	std::fill (std::begin (dto.balance), std::end (dto.balance), 0);
 }
 
+nano::block_sideband::block_sideband (rsnano::BlockSidebandDto const & dto_a) :
+	dto (dto_a)
+{
+}
+
 nano::block_sideband::block_sideband (nano::account const & account_a, nano::block_hash const & successor_a, nano::amount const & balance_a, uint64_t const height_a, uint64_t const timestamp_a, nano::block_details const & details_a, nano::epoch const source_epoch_a)
 {
 	dto.source_epoch = static_cast<uint8_t> (source_epoch_a);
@@ -1667,6 +1652,11 @@ nano::block_sideband::block_sideband (nano::account const & account_a, nano::blo
 	std::copy (std::begin (successor_a.bytes), std::end (successor_a.bytes), std::begin (dto.successor));
 	std::copy (std::begin (account_a.bytes), std::end (account_a.bytes), std::begin (dto.account));
 	std::copy (std::begin (balance_a.bytes), std::end (balance_a.bytes), std::begin (dto.balance));
+}
+
+rsnano::BlockSidebandDto const & nano::block_sideband::as_dto () const
+{
+	return dto;
 }
 
 size_t nano::block_sideband::size (nano::block_type type_a)

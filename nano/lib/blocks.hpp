@@ -58,6 +58,7 @@ class block_sideband final
 {
 public:
 	block_sideband ();
+	block_sideband (rsnano::BlockSidebandDto const & dto);
 	block_sideband (nano::account const &, nano::block_hash const &, nano::amount const &, uint64_t const, uint64_t const, nano::block_details const &, nano::epoch const source_epoch_a);
 	block_sideband (nano::account const &, nano::block_hash const &, nano::amount const &, uint64_t const, uint64_t const, nano::epoch const epoch_a, bool const is_send, bool const is_receive, bool const is_epoch, nano::epoch const source_epoch_a);
 
@@ -77,6 +78,7 @@ public:
 	nano::amount balance () const;
 
 	static size_t size (nano::block_type);
+	rsnano::BlockSidebandDto const & as_dto () const;
 
 private:
 	rsnano::BlockSidebandDto dto;
@@ -85,7 +87,6 @@ private:
 class block
 {
 public:
-	block ();
 	// Return a digest of the hashables in this block.
 	nano::block_hash const & hash () const;
 	// Return a digest of hashables and non-hashables in this block.
@@ -127,20 +128,11 @@ public:
 	virtual nano::work_version work_version () const;
 	// If there are any changes to the hashables, call this to update the cached hash
 	void refresh ();
-	rsnano::BlockDto const & as_block_dto () const;
+	virtual rsnano::BlockDto to_block_dto () const = 0;
 
 protected:
-	virtual rsnano::BlockDto create_block_dto () const = 0;
-	mutable nano::block_hash cached_hash{ 0 };
-	/**
-	 * Contextual details about a block, some fields may or may not be set depending on block type.
-	 * This field is set via sideband_set in ledger processing or deserializing blocks from the database.
-	 * Otherwise it may be null (for example, an old block or fork).
-	 */
-	nano::optional_ptr<nano::block_sideband> sideband_m;
-
 	virtual nano::block_hash generate_hash () const = 0;
-	mutable rsnano::BlockDto block_dto;
+	mutable nano::block_hash cached_hash{ 0 };
 };
 
 class send_block final : public nano::block
@@ -178,10 +170,10 @@ public:
 	void balance_set (nano::amount balance_a);
 	void sign_zero ();
 	static std::size_t size ();
+	rsnano::BlockDto to_block_dto () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
-	rsnano::BlockDto create_block_dto () const override;
 
 private:
 	rsnano::SendBlockHandle * handle;
@@ -220,10 +212,10 @@ public:
 	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
+	rsnano::BlockDto to_block_dto () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
-	rsnano::BlockDto create_block_dto () const override;
 
 private:
 	rsnano::ReceiveBlockHandle * handle;
@@ -265,10 +257,10 @@ public:
 	void representative_set (nano::account account_a);
 	void zero ();
 	static std::size_t size ();
+	rsnano::BlockDto to_block_dto () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
-	rsnano::BlockDto create_block_dto () const override;
 
 private:
 	rsnano::OpenBlockHandle * handle;
@@ -306,10 +298,10 @@ public:
 	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
+	rsnano::BlockDto to_block_dto () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
-	rsnano::BlockDto create_block_dto () const override;
 
 private:
 	rsnano::ChangeBlockHandle * handle;
@@ -354,10 +346,10 @@ public:
 	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
+	rsnano::BlockDto to_block_dto () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
-	rsnano::BlockDto create_block_dto () const override;
 
 private:
 	rsnano::StateBlockHandle * handle;

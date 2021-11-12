@@ -95,40 +95,55 @@ nano::network_params::network_params (nano::networks network_a) :
 	kdf_work = network.is_dev_network () ? kdf_dev_work : kdf_full_work;
 }
 
-nano::ledger_constants::ledger_constants (nano::work_thresholds & work, nano::networks network_a) :
-	work{ work },
-	zero_key ("0"),
-	nano_beta_account (beta_public_key_data),
-	nano_live_account (live_public_key_data),
-	nano_test_account (test_public_key_data),
-	nano_dev_genesis (parse_block_from_genesis_data (dev_genesis_data)),
-	nano_beta_genesis (parse_block_from_genesis_data (beta_genesis_data)),
-	nano_live_genesis (parse_block_from_genesis_data (live_genesis_data)),
-	nano_test_genesis (parse_block_from_genesis_data (test_genesis_data)),
-	genesis (network_a == nano::networks::nano_dev_network ? nano_dev_genesis : network_a == nano::networks::nano_beta_network ? nano_beta_genesis
-	: network_a == nano::networks::nano_test_network                                                                           ? nano_test_genesis
-																															   : nano_live_genesis),
-	genesis_amount{ std::numeric_limits<nano::uint128_t>::max () },
-	burn_account{},
-	nano_dev_final_votes_canary_account (dev_public_key_data),
-	nano_beta_final_votes_canary_account (beta_canary_public_key_data),
-	nano_live_final_votes_canary_account (live_canary_public_key_data),
-	nano_test_final_votes_canary_account (test_canary_public_key_data),
-	final_votes_canary_account (network_a == nano::networks::nano_dev_network ? nano_dev_final_votes_canary_account : network_a == nano::networks::nano_beta_network ? nano_beta_final_votes_canary_account
-	: network_a == nano::networks::nano_test_network                                                                                                                 ? nano_test_final_votes_canary_account
-																																									 : nano_live_final_votes_canary_account),
-	nano_dev_final_votes_canary_height (1),
-	nano_beta_final_votes_canary_height (1),
-	nano_live_final_votes_canary_height (1),
-	nano_test_final_votes_canary_height (1),
-	final_votes_canary_height (network_a == nano::networks::nano_dev_network ? nano_dev_final_votes_canary_height : network_a == nano::networks::nano_beta_network ? nano_beta_final_votes_canary_height
-	: network_a == nano::networks::nano_test_network                                                                                                               ? nano_test_final_votes_canary_height
-																																								   : nano_live_final_votes_canary_height)
+nano::ledger_constants::ledger_constants (nano::work_thresholds & work_a, nano::networks network_a)
 {
 	rsnano::LedgerConstantsDto dto;
-	if (rsnano::rsn_ledger_constants_create (&dto, &work.dto, static_cast<uint16_t> (network_a)) < 0)
+	if (rsnano::rsn_ledger_constants_create (&dto, &work_a.dto, static_cast<uint16_t> (network_a)) < 0)
 		throw std::runtime_error ("could not create ledger_constants");
 	work = nano::work_thresholds (dto.work);
+
+	zero_key = nano::keypair ("0");
+	nano_beta_account = nano::account(beta_public_key_data);
+	nano_live_account = nano::account(live_public_key_data);
+	nano_test_account = nano::account(test_public_key_data);
+	nano_dev_genesis = parse_block_from_genesis_data (dev_genesis_data);
+	nano_beta_genesis = parse_block_from_genesis_data (beta_genesis_data);
+	nano_live_genesis = parse_block_from_genesis_data (live_genesis_data);
+	nano_test_genesis = parse_block_from_genesis_data (test_genesis_data);
+	genesis = network_a == nano::networks::nano_dev_network 
+		? nano_dev_genesis 
+		: network_a == nano::networks::nano_beta_network 
+			? nano_beta_genesis
+				: network_a == nano::networks::nano_test_network
+					? nano_test_genesis
+					: nano_live_genesis;
+
+	genesis_amount = std::numeric_limits<nano::uint128_t>::max ();
+	burn_account = nano::account{};
+	nano_dev_final_votes_canary_account = nano::account(dev_public_key_data);
+	nano_beta_final_votes_canary_account = nano::account(beta_canary_public_key_data);
+	nano_live_final_votes_canary_account = nano::account(live_canary_public_key_data);
+	nano_test_final_votes_canary_account = nano::account(test_canary_public_key_data);
+	final_votes_canary_account  = network_a == nano::networks::nano_dev_network 
+		? nano_dev_final_votes_canary_account 
+		: network_a == nano::networks::nano_beta_network 
+			? nano_beta_final_votes_canary_account
+			: network_a == nano::networks::nano_test_network
+			? nano_test_final_votes_canary_account
+			: nano_live_final_votes_canary_account;
+
+	nano_dev_final_votes_canary_height =1;
+	nano_beta_final_votes_canary_height =1;
+	nano_live_final_votes_canary_height =1;
+	nano_test_final_votes_canary_height =1;
+	final_votes_canary_height = network_a == nano::networks::nano_dev_network 
+		? nano_dev_final_votes_canary_height 
+		: network_a == nano::networks::nano_beta_network 
+			? nano_beta_final_votes_canary_height 
+			: network_a == nano::networks::nano_test_network
+											? nano_test_final_votes_canary_height
+											: nano_live_final_votes_canary_height;
+
 
 	nano_beta_genesis->sideband_set (nano::block_sideband (nano_beta_genesis->account (), 0, std::numeric_limits<nano::uint128_t>::max (), 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
 	nano_dev_genesis->sideband_set (nano::block_sideband (nano_dev_genesis->account (), 0, std::numeric_limits<nano::uint128_t>::max (), 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));

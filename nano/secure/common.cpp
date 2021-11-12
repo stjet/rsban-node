@@ -106,10 +106,10 @@ nano::ledger_constants::ledger_constants (nano::work_thresholds & work_a, nano::
 	std::copy (std::begin(dto.pub_key), std::end(dto.pub_key), std::begin(pub_key.bytes));
 	std::copy (std::begin(dto.priv_key), std::end(dto.priv_key), std::begin(priv_key.bytes));
 	zero_key = nano::keypair (priv_key, pub_key);
+	std::copy (std::begin (nano_beta_account.bytes), std::end (nano_beta_account.bytes), std::begin (dto.nano_beta_account));
+	std::copy (std::begin (nano_live_account.bytes), std::end (nano_live_account.bytes), std::begin (dto.nano_live_account));
+	std::copy (std::begin (nano_test_account.bytes), std::end (nano_test_account.bytes), std::begin (dto.nano_test_account));
 
-	nano_beta_account = nano::account(beta_public_key_data);
-	nano_live_account = nano::account(live_public_key_data);
-	nano_test_account = nano::account(test_public_key_data);
 	nano_dev_genesis = parse_block_from_genesis_data (dev_genesis_data);
 	nano_beta_genesis = parse_block_from_genesis_data (beta_genesis_data);
 	nano_live_genesis = parse_block_from_genesis_data (live_genesis_data);

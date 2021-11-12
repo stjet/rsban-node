@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use anyhow::Result;
 
-use crate::{blocks::{BlockEnum, deserialize_block_json}, config::{get_env_or_default_string, Networks, WorkThresholds}, numbers::KeyPair, utils::SerdePropertyTree};
+use crate::{blocks::{BlockEnum, deserialize_block_json}, config::{get_env_or_default_string, Networks, WorkThresholds}, numbers::{Account, KeyPair}, utils::SerdePropertyTree};
 
 static DEV_PRIVATE_KEY_DATA: &str =
     "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
@@ -68,13 +68,19 @@ fn parse_block_from_genesis_data (genesis_data: &str) -> Result<BlockEnum>
 pub struct LedgerConstants {
     pub work: WorkThresholds,
     pub zero_key: KeyPair,
+    pub nano_beta_account: Account,
+    pub nano_live_account: Account,
+    pub nano_test_account: Account,
 }
 
 impl LedgerConstants {
-    pub fn new(work: WorkThresholds, _network: Networks) -> Self {
-        Self {
+    pub fn new(work: WorkThresholds, _network: Networks) -> Result<Self> {
+        Ok(Self {
             work,
             zero_key: KeyPair::zero(),
-        }
+            nano_beta_account: Account::decode_hex(BETA_PUBLIC_KEY_DATA)?,
+            nano_live_account: Account::decode_hex(LIVE_GENESIS_DATA)?,
+            nano_test_account: Account::decode_hex(TEST_PUBLIC_KEY_DATA.as_str())?,
+        })
     }
 }

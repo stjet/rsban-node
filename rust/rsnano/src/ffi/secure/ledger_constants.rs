@@ -52,10 +52,16 @@ pub unsafe extern "C" fn rsn_ledger_constants_create(
     };
 
     let work = WorkThresholds::from(work);
-    let ledger = LedgerConstants::new(work, network);
+    let ledger = match LedgerConstants::new(work, network){
+        Ok(l) => l,
+        Err(_) => return -1,
+    };
     fill_work_thresholds_dto(&mut (*dto).work, &ledger.work);
     (*dto).pub_key = ledger.zero_key.public_key().to_be_bytes();
     (*dto).priv_key = *ledger.zero_key.private_key().as_bytes();
+    (*dto).nano_beta_account = ledger.nano_beta_account.to_bytes();
+    (*dto).nano_live_account = ledger.nano_live_account.to_bytes();
+    (*dto).nano_test_account = ledger.nano_test_account.to_bytes();
 
     //todo fill remaining fields
 

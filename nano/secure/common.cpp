@@ -101,8 +101,12 @@ nano::ledger_constants::ledger_constants (nano::work_thresholds & work_a, nano::
 	if (rsnano::rsn_ledger_constants_create (&dto, &work_a.dto, static_cast<uint16_t> (network_a)) < 0)
 		throw std::runtime_error ("could not create ledger_constants");
 	work = nano::work_thresholds (dto.work);
+	nano::public_key pub_key;
+	nano::raw_key priv_key;
+	std::copy (std::begin(dto.pub_key), std::end(dto.pub_key), std::begin(pub_key.bytes));
+	std::copy (std::begin(dto.priv_key), std::end(dto.priv_key), std::begin(priv_key.bytes));
+	zero_key = nano::keypair (priv_key, pub_key);
 
-	zero_key = nano::keypair ("0");
 	nano_beta_account = nano::account(beta_public_key_data);
 	nano_live_account = nano::account(live_public_key_data);
 	nano_test_account = nano::account(test_public_key_data);
@@ -234,6 +238,13 @@ nano::keypair::keypair (std::string const & prv_a)
 	[[maybe_unused]] auto error (prv.decode_hex (prv_a));
 	debug_assert (!error);
 	ed25519_publickey (prv.bytes.data (), pub.bytes.data ());
+}
+
+nano::keypair::keypair (nano::raw_key const & priv_key_a, nano::public_key const & pub_key_a) :
+	prv (priv_key_a),
+	pub (pub_key_a)
+{
+
 }
 
 // Serialize a block prefixed with an 8-bit typecode

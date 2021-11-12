@@ -193,6 +193,11 @@ where
         .unwrap_or(default)
 }
 
+pub fn get_env_or_default_string(variable_name: &str, default: impl Into<String>) -> String
+{
+    std::env::var(variable_name).unwrap_or_else(|_| default.into())
+}
+
 fn test_node_port() -> u16 {
     get_env_or_default("NANO_TEST_NODE_PORT", 17075)
 }

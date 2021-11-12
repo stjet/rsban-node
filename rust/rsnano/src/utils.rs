@@ -155,6 +155,32 @@ impl PropertyTreeWriter for TestPropertyTree {
     }
 }
 
+pub struct SerdePropertyTree {
+    value: serde_json::Value,
+}
+
+impl SerdePropertyTree {
+    pub fn parse(s: &str) -> Result<Self> {
+        Ok(Self {
+            value: serde_json::from_str(s)?,
+        })
+    }
+}
+
+impl PropertyTreeReader for SerdePropertyTree {
+    fn get_string(&self, path: &str) -> Result<String> {
+        match self.value.get(path){
+            Some(v) => {
+                match v{
+                    serde_json::Value::String(s) => Ok(s.to_owned()),
+                    _ => Err(anyhow!("not a string value")),
+                }
+            },
+            None => Err(anyhow!("could not find path")),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

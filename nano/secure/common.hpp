@@ -81,6 +81,7 @@ public:
 	keypair ();
 	keypair (std::string const &);
 	keypair (nano::raw_key &&);
+	keypair (nano::raw_key const & priv_key_a, nano::public_key const & pub_key_a);
 	nano::public_key pub;
 	nano::raw_key prv;
 };

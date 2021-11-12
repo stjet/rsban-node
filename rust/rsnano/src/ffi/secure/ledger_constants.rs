@@ -54,6 +54,8 @@ pub unsafe extern "C" fn rsn_ledger_constants_create(
     let work = WorkThresholds::from(work);
     let ledger = LedgerConstants::new(work, network);
     fill_work_thresholds_dto(&mut (*dto).work, &ledger.work);
+    (*dto).pub_key = ledger.zero_key.public_key().to_be_bytes();
+    (*dto).priv_key = *ledger.zero_key.private_key().as_bytes();
 
     //todo fill remaining fields
 

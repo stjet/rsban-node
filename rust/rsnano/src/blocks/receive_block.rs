@@ -2,8 +2,8 @@ use std::ops::Deref;
 
 use crate::{
     numbers::{
-        from_string_hex, sign_message, to_string_hex, BlockHash, BlockHashBuilder, PublicKey,
-        RawKey, Signature,
+        from_string_hex, sign_message, to_string_hex, Account, BlockHash, BlockHashBuilder,
+        PublicKey, RawKey, Signature,
     },
     utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
 };
@@ -141,6 +141,10 @@ impl Block for ReceiveBlock {
 
     fn block_type(&self) -> BlockType {
         BlockType::Receive
+    }
+
+    fn account(&self) -> &crate::numbers::Account {
+        Account::zero()
     }
 }
 

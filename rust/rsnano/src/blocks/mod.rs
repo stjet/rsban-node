@@ -208,6 +208,7 @@ impl LazyBlockHash {
     }
 }
 
+#[derive(Clone)]
 pub enum BlockEnum {
     Send(SendBlock),
     Receive(ReceiveBlock),
@@ -219,6 +220,16 @@ pub enum BlockEnum {
 impl BlockEnum {
     pub fn block_type(&self) -> BlockType {
         self.as_block().block_type()
+    }
+
+    pub fn as_block_mut(&mut self) -> &mut dyn Block {
+        match self {
+            BlockEnum::Send(b) => b,
+            BlockEnum::Receive(b) => b,
+            BlockEnum::Open(b) => b,
+            BlockEnum::Change(b) => b,
+            BlockEnum::State(b) => b,
+        }
     }
 
     pub fn as_block(&self) -> &dyn Block {
@@ -234,6 +245,7 @@ impl BlockEnum {
 
 pub trait Block {
     fn block_type(&self) -> BlockType;
+    fn account(&self) -> &Account;
 
     /**
      * Contextual details about a block, some fields may or may not be set depending on block type.
@@ -241,7 +253,6 @@ pub trait Block {
      * Otherwise it may be null (for example, an old block or fork).
      */
     fn sideband(&'_ self) -> Option<&'_ BlockSideband>;
-
     fn set_sideband(&mut self, sideband: BlockSideband);
 }
 

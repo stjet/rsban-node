@@ -155,6 +155,10 @@ impl Block for ChangeBlock {
     fn block_type(&self) -> BlockType {
         BlockType::Change
     }
+
+    fn account(&self) -> &Account {
+        Account::zero()
+    }
 }
 
 #[cfg(test)]

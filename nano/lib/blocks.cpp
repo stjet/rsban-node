@@ -102,7 +102,7 @@ nano::block_hash nano::block::full_hash () const
 nano::block_sideband nano::block::sideband () const
 {
 	rsnano::BlockSidebandDto dto;
-	auto block_dto {to_block_dto()};
+	auto block_dto{ to_block_dto () };
 	if (rsnano::rsn_block_sideband (&block_dto, &dto) < 0)
 		throw std::runtime_error ("cannot get sideband");
 	return nano::block_sideband (dto);
@@ -110,14 +110,14 @@ nano::block_sideband nano::block::sideband () const
 
 void nano::block::sideband_set (nano::block_sideband const & sideband_a)
 {
-	auto block_dto {to_block_dto()};
+	auto block_dto{ to_block_dto () };
 	if (rsnano::rsn_block_sideband_set (&block_dto, &sideband_a.as_dto ()) < 0)
 		throw std::runtime_error ("cannot set sideband");
 }
 
 bool nano::block::has_sideband () const
 {
-	auto block_dto {to_block_dto()};
+	auto block_dto{ to_block_dto () };
 	return rsnano::rsn_block_has_sideband (&block_dto);
 }
 
@@ -1212,7 +1212,6 @@ rsnano::BlockDto nano::state_block::to_block_dto () const
 	dto.handle = handle;
 	return dto;
 }
-
 
 std::shared_ptr<nano::block> nano::block_dto_to_block (rsnano::BlockDto const & dto)
 {

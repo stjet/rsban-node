@@ -210,6 +210,10 @@ impl Block for SendBlock {
     fn block_type(&self) -> BlockType {
         BlockType::Send
     }
+
+    fn account(&self) -> &Account {
+        Account::zero()
+    }
 }
 
 #[cfg(test)]

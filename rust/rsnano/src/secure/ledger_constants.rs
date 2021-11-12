@@ -1,7 +1,13 @@
-use once_cell::sync::Lazy;
 use anyhow::Result;
+use once_cell::sync::Lazy;
 
-use crate::{blocks::{BlockEnum, deserialize_block_json}, config::{get_env_or_default_string, Networks, WorkThresholds}, numbers::{Account, KeyPair}, utils::SerdePropertyTree};
+use crate::{
+    blocks::{deserialize_block_json, BlockDetails, BlockEnum, BlockSideband},
+    config::{get_env_or_default_string, Networks, WorkThresholds},
+    epoch::Epoch,
+    numbers::{Account, Amount, BlockHash, KeyPair},
+    utils::{seconds_since_epoch, SerdePropertyTree},
+};
 
 static DEV_PRIVATE_KEY_DATA: &str =
     "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
@@ -59,8 +65,7 @@ static TEST_GENESIS_DATA: Lazy<String> = Lazy::new(|| {
     )
 });
 
-fn parse_block_from_genesis_data (genesis_data: &str) -> Result<BlockEnum>
-{
+fn parse_block_from_genesis_data(genesis_data: &str) -> Result<BlockEnum> {
     let ptree = SerdePropertyTree::parse(genesis_data)?;
     deserialize_block_json(&ptree)
 }
@@ -75,20 +80,87 @@ pub struct LedgerConstants {
     pub nano_beta_genesis: BlockEnum,
     pub nano_live_genesis: BlockEnum,
     pub nano_test_genesis: BlockEnum,
+    pub genesis: BlockEnum,
 }
 
 impl LedgerConstants {
-    pub fn new(work: WorkThresholds, _network: Networks) -> Result<Self> {
+    pub fn new(work: WorkThresholds, network: Networks) -> Result<Self> {
+        let mut nano_dev_genesis = parse_block_from_genesis_data(DEV_GENESIS_DATA)?;
+        let mut nano_beta_genesis = parse_block_from_genesis_data(BETA_GENESIS_DATA)?;
+        let mut nano_live_genesis = parse_block_from_genesis_data(LIVE_GENESIS_DATA)?;
+        let mut nano_test_genesis = parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str())?;
+
+        let beta_genesis_account = *nano_beta_genesis.as_block().account();
+        nano_beta_genesis
+            .as_block_mut()
+            .set_sideband(BlockSideband::new(
+                beta_genesis_account,
+                BlockHash::from(0),
+                Amount::new(u128::MAX),
+                1,
+                seconds_since_epoch(),
+                BlockDetails::new(Epoch::Epoch0, false, false, false),
+                Epoch::Epoch0,
+            ));
+
+        let dev_genesis_account = *nano_dev_genesis.as_block().account();
+        nano_dev_genesis
+            .as_block_mut()
+            .set_sideband(BlockSideband::new(
+                dev_genesis_account,
+                BlockHash::from(0),
+                Amount::new(u128::MAX),
+                1,
+                seconds_since_epoch(),
+                BlockDetails::new(Epoch::Epoch0, false, false, false),
+                Epoch::Epoch0,
+            ));
+
+        let live_genesis_account = *nano_live_genesis.as_block().account();
+        nano_live_genesis
+            .as_block_mut()
+            .set_sideband(BlockSideband::new(
+                live_genesis_account,
+                BlockHash::from(0),
+                Amount::new(u128::MAX),
+                1,
+                seconds_since_epoch(),
+                BlockDetails::new(Epoch::Epoch0, false, false, false),
+                Epoch::Epoch0,
+            ));
+
+        let test_genesis_account = *nano_test_genesis.as_block().account();
+        nano_test_genesis
+            .as_block_mut()
+            .set_sideband(BlockSideband::new(
+                test_genesis_account,
+                BlockHash::from(0),
+                Amount::new(u128::MAX),
+                1,
+                seconds_since_epoch(),
+                BlockDetails::new(Epoch::Epoch0, false, false, false),
+                Epoch::Epoch0,
+            ));
+
+        let genesis = match network {
+            Networks::NanoDevNetwork => nano_dev_genesis.clone(),
+            Networks::NanoBetaNetwork => nano_beta_genesis.clone(),
+            Networks::NanoTestNetwork => nano_test_genesis.clone(),
+            Networks::NanoLiveNetwork => nano_live_genesis.clone(),
+            Networks::Invalid => bail!("invalid network"),
+        };
+
         Ok(Self {
             work,
             zero_key: KeyPair::zero(),
             nano_beta_account: Account::decode_hex(BETA_PUBLIC_KEY_DATA)?,
             nano_live_account: Account::decode_hex(LIVE_PUBLIC_KEY_DATA)?,
             nano_test_account: Account::decode_hex(TEST_PUBLIC_KEY_DATA.as_str())?,
-            nano_dev_genesis: parse_block_from_genesis_data(DEV_GENESIS_DATA)?,
-            nano_beta_genesis: parse_block_from_genesis_data(BETA_GENESIS_DATA)?,
-            nano_live_genesis: parse_block_from_genesis_data(LIVE_GENESIS_DATA)?,
-            nano_test_genesis: parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str())?,
+            nano_dev_genesis,
+            nano_beta_genesis,
+            nano_live_genesis,
+            nano_test_genesis,
+            genesis,
         })
     }
 }

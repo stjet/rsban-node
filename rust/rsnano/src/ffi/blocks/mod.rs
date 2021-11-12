@@ -149,18 +149,14 @@ pub unsafe extern "C" fn rsn_deserialize_block_json(
     }
 }
 
-pub fn set_block_dto(dto: &mut BlockDto, block: BlockEnum){
+pub fn set_block_dto(dto: &mut BlockDto, block: BlockEnum) {
     dto.block_type = block.block_type() as u8;
     dto.handle = match block {
-        BlockEnum::Send(block) => {
-            Box::into_raw(Box::new(SendBlockHandle { block })) as *mut c_void
-        }
+        BlockEnum::Send(block) => Box::into_raw(Box::new(SendBlockHandle { block })) as *mut c_void,
         BlockEnum::Receive(block) => {
             Box::into_raw(Box::new(ReceiveBlockHandle { block })) as *mut c_void
         }
-        BlockEnum::Open(block) => {
-            Box::into_raw(Box::new(OpenBlockHandle { block })) as *mut c_void
-        }
+        BlockEnum::Open(block) => Box::into_raw(Box::new(OpenBlockHandle { block })) as *mut c_void,
         BlockEnum::Change(block) => {
             Box::into_raw(Box::new(ChangeBlockHandle { block })) as *mut c_void
         }

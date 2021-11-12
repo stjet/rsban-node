@@ -169,16 +169,18 @@ impl SerdePropertyTree {
 
 impl PropertyTreeReader for SerdePropertyTree {
     fn get_string(&self, path: &str) -> Result<String> {
-        match self.value.get(path){
-            Some(v) => {
-                match v{
-                    serde_json::Value::String(s) => Ok(s.to_owned()),
-                    _ => Err(anyhow!("not a string value")),
-                }
+        match self.value.get(path) {
+            Some(v) => match v {
+                serde_json::Value::String(s) => Ok(s.to_owned()),
+                _ => Err(anyhow!("not a string value")),
             },
             None => Err(anyhow!("could not find path")),
         }
     }
+}
+
+pub fn seconds_since_epoch() -> u64 {
+    chrono::Utc::now().timestamp() as u64
 }
 
 #[cfg(test)]

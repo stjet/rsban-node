@@ -251,6 +251,10 @@ impl Block for StateBlock {
     fn block_type(&self) -> BlockType {
         BlockType::State
     }
+
+    fn account(&self) -> &Account {
+        &self.hashables.account
+    }
 }
 
 #[cfg(test)]

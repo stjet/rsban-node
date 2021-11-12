@@ -161,6 +161,10 @@ impl Block for OpenBlock {
     fn block_type(&self) -> BlockType {
         BlockType::Open
     }
+
+    fn account(&self) -> &Account {
+        &self.hashables.account
+    }
 }
 
 #[cfg(test)]

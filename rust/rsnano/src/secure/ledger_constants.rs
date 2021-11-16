@@ -1,7 +1,13 @@
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
-use crate::{blocks::{deserialize_block_json, BlockDetails, BlockEnum, BlockSideband}, config::{get_env_or_default_string, Networks, WorkThresholds}, epoch::Epoch, numbers::{Account, Amount, BlockHash, KeyPair, RawKey}, utils::{seconds_since_epoch, SerdePropertyTree}};
+use crate::{
+    blocks::{deserialize_block_json, BlockDetails, BlockEnum, BlockSideband},
+    config::{get_env_or_default_string, Networks, WorkThresholds},
+    epoch::{Epoch, Epochs},
+    numbers::{Account, Amount, BlockHash, KeyPair, Link},
+    utils::{seconds_since_epoch, SerdePropertyTree},
+};
 
 static DEV_PRIVATE_KEY_DATA: &str =
     "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
@@ -71,9 +77,8 @@ static TEST_CANARY_PUBLIC_KEY_DATA: Lazy<String> = Lazy::new(|| {
     ) // nano_1gxf7jcnomi7yqkkjyxwwygo5sckrohtgsgezp6u74g6ifgydw4cajwbk8bf
 });
 
-pub static DEV_GENESIS_KEY: Lazy<KeyPair> = Lazy::new(||{
-    KeyPair::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap()
-});
+pub static DEV_GENESIS_KEY: Lazy<KeyPair> =
+    Lazy::new(|| KeyPair::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap());
 
 fn parse_block_from_genesis_data(genesis_data: &str) -> Result<BlockEnum> {
     let ptree = SerdePropertyTree::parse(genesis_data)?;
@@ -103,6 +108,7 @@ pub struct LedgerConstants {
     pub nano_live_final_votes_canary_height: u64,
     pub nano_test_final_votes_canary_height: u64,
     pub final_votes_canary_height: u64,
+    pub epochs: Epochs,
 }
 
 impl LedgerConstants {
@@ -188,12 +194,39 @@ impl LedgerConstants {
             Networks::Invalid => bail!("invalid network"),
         };
 
+        let nano_beta_account = Account::decode_hex(BETA_PUBLIC_KEY_DATA)?;
+        let nano_test_account = Account::decode_hex(TEST_PUBLIC_KEY_DATA.as_str())?;
+
+        let mut epochs = Epochs::new();
+
+        let epoch_1_signer = genesis.as_block().account().public_key;
+        let mut link_bytes = [0u8; 32];
+        link_bytes[..14].copy_from_slice(b"epoch v1 block");
+        let epoch_link_v1 = Link::from_bytes(link_bytes);
+
+        let nano_live_epoch_v2_signer = Account::decode_account(
+            "nano_3qb6o6i1tkzr6jwr5s7eehfxwg9x6eemitdinbpi7u8bjjwsgqfj4wzser3x",
+        )
+        .unwrap();
+        let epoch_2_signer = match network {
+            Networks::NanoDevNetwork => DEV_GENESIS_KEY.public_key(),
+            Networks::NanoBetaNetwork => nano_beta_account.public_key,
+            Networks::NanoLiveNetwork => nano_live_epoch_v2_signer.public_key,
+            Networks::NanoTestNetwork => nano_test_account.public_key,
+            _ => panic!("invalid network"),
+        };
+        link_bytes[..14].copy_from_slice(b"epoch v2 block");
+        let epoch_link_v2 = Link::from_bytes(link_bytes);
+
+        epochs.add(Epoch::Epoch1, epoch_1_signer, epoch_link_v1);
+        epochs.add(Epoch::Epoch2, epoch_2_signer, epoch_link_v2);
+
         Ok(Self {
             work,
             zero_key: KeyPair::zero(),
-            nano_beta_account: Account::decode_hex(BETA_PUBLIC_KEY_DATA)?,
+            nano_beta_account,
             nano_live_account: Account::decode_hex(LIVE_PUBLIC_KEY_DATA)?,
-            nano_test_account: Account::decode_hex(TEST_PUBLIC_KEY_DATA.as_str())?,
+            nano_test_account,
             nano_dev_genesis,
             nano_beta_genesis,
             nano_live_genesis,
@@ -211,6 +244,7 @@ impl LedgerConstants {
             nano_live_final_votes_canary_height: 1,
             nano_test_final_votes_canary_height: 1,
             final_votes_canary_height: 1,
+            epochs,
         })
     }
 }

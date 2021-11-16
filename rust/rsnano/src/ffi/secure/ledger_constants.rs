@@ -1,9 +1,14 @@
 use num::FromPrimitive;
 
-use crate::{config::{Networks, WorkThresholds}, ffi::{
+use crate::{
+    config::WorkThresholds,
+    epoch::Epoch,
+    ffi::{
         blocks::{set_block_dto, BlockDto},
         config::{fill_work_thresholds_dto, WorkThresholdsDto},
-    }, numbers::{Account, Link}, secure::{DEV_GENESIS_KEY, LedgerConstants}};
+    },
+    secure::LedgerConstants,
+};
 
 #[repr(C)]
 pub struct LedgerConstantsDto {
@@ -79,28 +84,10 @@ pub unsafe extern "C" fn rsn_ledger_constants_create(
     (*dto).nano_live_final_votes_canary_height = ledger.nano_live_final_votes_canary_height;
     (*dto).nano_test_final_votes_canary_height = ledger.nano_test_final_votes_canary_height;
     (*dto).final_votes_canary_height = ledger.final_votes_canary_height;
-
-    //todo move to LedgerConstants:
-    let epoch_1_signer = ledger.genesis.as_block().account();
-    let mut link_bytes = [0u8;32];
-    link_bytes[..14].copy_from_slice(b"epoch v1 block");
-    let epoch_link_v1 = Link::from_bytes(link_bytes);
-
-    let nano_live_epoch_v2_signer = Account::decode_account("nano_3qb6o6i1tkzr6jwr5s7eehfxwg9x6eemitdinbpi7u8bjjwsgqfj4wzser3x").unwrap();
-    let epoch_2_signer = match network {
-        Networks::NanoDevNetwork => DEV_GENESIS_KEY.public_key(),
-        Networks::NanoBetaNetwork => ledger.nano_beta_account.public_key,
-        Networks::NanoLiveNetwork => nano_live_epoch_v2_signer.public_key,
-        Networks::NanoTestNetwork => ledger.nano_test_account.public_key,
-        _ => panic!("invalid network")
-    };
-    link_bytes[..14].copy_from_slice(b"epoch v2 block");
-    let epoch_link_v2 = Link::from_bytes(link_bytes);
-
-    (*dto).epoch_1_signer = *epoch_1_signer.as_bytes();
-    (*dto).epoch_1_link = epoch_link_v1.to_bytes();
-    (*dto).epoch_2_signer = epoch_2_signer.to_be_bytes();
-    (*dto).epoch_2_link = epoch_link_v2.to_bytes();
+    (*dto).epoch_1_signer = *ledger.epochs.signer(Epoch::Epoch1).unwrap().as_bytes();
+    (*dto).epoch_1_link = *ledger.epochs.link(Epoch::Epoch1).unwrap().as_bytes();
+    (*dto).epoch_2_signer = *ledger.epochs.signer(Epoch::Epoch2).unwrap().as_bytes();
+    (*dto).epoch_2_link = *ledger.epochs.link(Epoch::Epoch2).unwrap().as_bytes();
 
     0
 }

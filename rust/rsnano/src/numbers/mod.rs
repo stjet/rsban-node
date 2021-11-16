@@ -443,11 +443,21 @@ impl KeyPair {
     }
 
     pub fn zero() -> Self {
-        let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(&[0u8; 32]).unwrap();
+        Self::from_priv_key_bytes(&[0u8; 32]).unwrap()
+    }
+
+    pub fn from_priv_key_bytes(bytes: &[u8]) -> Result<Self>{
+        let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(bytes).map_err(|e| anyhow!("could not load secret key"))?;
         let public = ed25519_dalek_blake2b::PublicKey::from(&secret);
-        Self {
+        Ok(Self {
             keypair: ed25519_dalek_blake2b::Keypair { secret, public },
-        }
+        })
+    }
+
+    pub fn from_priv_key_hex(s: impl AsRef<str>) -> Result<Self> {
+        let mut bytes = [0u8; 32];
+        hex::decode_to_slice(s.as_ref(), &mut bytes)?;
+        Self::from_priv_key_bytes(&bytes)
     }
 
     pub fn public_key(&self) -> PublicKey {

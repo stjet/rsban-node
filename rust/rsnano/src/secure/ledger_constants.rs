@@ -1,13 +1,7 @@
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
-use crate::{
-    blocks::{deserialize_block_json, BlockDetails, BlockEnum, BlockSideband},
-    config::{get_env_or_default_string, Networks, WorkThresholds},
-    epoch::Epoch,
-    numbers::{Account, Amount, BlockHash, KeyPair},
-    utils::{seconds_since_epoch, SerdePropertyTree},
-};
+use crate::{blocks::{deserialize_block_json, BlockDetails, BlockEnum, BlockSideband}, config::{get_env_or_default_string, Networks, WorkThresholds}, epoch::Epoch, numbers::{Account, Amount, BlockHash, KeyPair, RawKey}, utils::{seconds_since_epoch, SerdePropertyTree}};
 
 static DEV_PRIVATE_KEY_DATA: &str =
     "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
@@ -75,6 +69,10 @@ static TEST_CANARY_PUBLIC_KEY_DATA: Lazy<String> = Lazy::new(|| {
         "NANO_TEST_CANARY_PUB",
         "3BAD2C554ACE05F5E528FBBCE79D51E552C55FA765CCFD89B289C4835DE5F04A",
     ) // nano_1gxf7jcnomi7yqkkjyxwwygo5sckrohtgsgezp6u74g6ifgydw4cajwbk8bf
+});
+
+pub static DEV_GENESIS_KEY: Lazy<KeyPair> = Lazy::new(||{
+    KeyPair::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap()
 });
 
 fn parse_block_from_genesis_data(genesis_data: &str) -> Result<BlockEnum> {

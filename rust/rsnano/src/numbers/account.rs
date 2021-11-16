@@ -6,7 +6,7 @@ use primitive_types::U512;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct Account {
-    public_key: PublicKey,
+    pub public_key: PublicKey,
 }
 
 const ZERO_ACCOUNT: Account = Account {

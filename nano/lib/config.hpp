@@ -131,6 +131,8 @@ class network_constants
 public:
 	network_constants () = delete;
 	network_constants (nano::work_thresholds & work, nano::networks network_a);
+	network_constants (rsnano::NetworkConstantsDto const & dto);
+	void read_dto (rsnano::NetworkConstantsDto const & dto);
 
 	/** Error message when an invalid network is specified */
 	static char const * active_network_err_msg;
@@ -189,6 +191,8 @@ public:
 	uint8_t protocol_version;
 	/** Minimum accepted protocol version */
 	uint8_t protocol_version_min;
+
+	rsnano::NetworkConstantsDto to_dto () const;
 };
 
 std::string get_config_path (boost::filesystem::path const & data_path);

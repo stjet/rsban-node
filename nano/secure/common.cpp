@@ -48,6 +48,16 @@ nano::ledger_constants::ledger_constants (nano::work_thresholds & work_a, nano::
 	rsnano::LedgerConstantsDto dto;
 	if (rsnano::rsn_ledger_constants_create (&dto, &work_a.dto, static_cast<uint16_t> (network_a)) < 0)
 		throw std::runtime_error ("could not create ledger_constants");
+	read_dto (dto);
+}
+
+nano::ledger_constants::ledger_constants (rsnano::LedgerConstantsDto const & dto)
+{
+	read_dto (dto);
+}
+
+void nano::ledger_constants::read_dto (rsnano::LedgerConstantsDto const & dto)
+{
 	work = nano::work_thresholds (dto.work);
 	nano::public_key pub_key;
 	nano::raw_key priv_key;
@@ -104,35 +114,83 @@ nano::hardened_constants::hardened_constants () :
 
 nano::node_constants::node_constants (nano::network_constants & network_constants)
 {
-	backup_interval = std::chrono::minutes (5);
-	search_pending_interval = network_constants.is_dev_network () ? std::chrono::seconds (1) : std::chrono::seconds (5 * 60);
-	unchecked_cleaning_interval = std::chrono::minutes (30);
-	process_confirmed_interval = network_constants.is_dev_network () ? std::chrono::milliseconds (50) : std::chrono::milliseconds (500);
-	max_weight_samples = (network_constants.is_live_network () || network_constants.is_test_network ()) ? 4032 : 288;
-	weight_period = 5 * 60; // 5 minutes
+	rsnano::NodeConstantsDto dto;
+	auto network_dto{ network_constants.to_dto () };
+	if (rsnano::rsn_node_constants_create (&network_dto, &dto) < 0)
+		throw std::runtime_error ("could not create node constants");
+	read_dto (dto);
 }
 
-nano::voting_constants::voting_constants (nano::network_constants & network_constants) :
-	max_cache{ network_constants.is_dev_network () ? 256U : 128U * 1024 },
-	delay{ network_constants.is_dev_network () ? 1 : 15 }
+nano::node_constants::node_constants (rsnano::NodeConstantsDto const & dto)
 {
+	read_dto (dto);
+}
+
+void nano::node_constants::read_dto (rsnano::NodeConstantsDto const & dto)
+{
+	backup_interval = std::chrono::minutes (dto.backup_interval_m);
+	search_pending_interval = std::chrono::seconds (dto.search_pending_interval_s);
+	unchecked_cleaning_interval = std::chrono::minutes (dto.unchecked_cleaning_interval_m);
+	process_confirmed_interval = std::chrono::milliseconds (dto.process_confirmed_interval_ms);
+	max_weight_samples = dto.max_weight_samples;
+	weight_period = dto.weight_period;
+}
+
+nano::voting_constants::voting_constants (nano::network_constants & network_constants)
+{
+	auto network_dto{ network_constants.to_dto () };
+	rsnano::VotingConstantsDto dto;
+	if (rsnano::rsn_voting_constants_create (&network_dto, &dto) < 0)
+		throw std::runtime_error ("could not create voting constants");
+	max_cache = dto.max_cache;
+	delay = std::chrono::seconds (dto.delay_s);
+}
+
+nano::voting_constants::voting_constants (rsnano::VotingConstantsDto const & dto)
+{
+	max_cache = dto.max_cache;
+	delay = std::chrono::seconds (dto.delay_s);
 }
 
 nano::portmapping_constants::portmapping_constants (nano::network_constants & network_constants)
 {
-	lease_duration = std::chrono::seconds (1787); // ~30 minutes
-	health_check_period = std::chrono::seconds (53);
+	rsnano::PortmappingConstantsDto dto;
+	auto network_dto{ network_constants.to_dto () };
+	if (rsnano::rsn_portmapping_constants_create (&network_dto, &dto) < 0)
+		throw std::runtime_error ("could not create portmapping constants");
+	lease_duration = std::chrono::seconds (dto.lease_duration_s);
+	health_check_period = std::chrono::seconds (dto.health_check_period_s);
+}
+
+nano::portmapping_constants::portmapping_constants (rsnano::PortmappingConstantsDto const & dto)
+{
+	lease_duration = std::chrono::seconds (dto.lease_duration_s);
+	health_check_period = std::chrono::seconds (dto.health_check_period_s);
 }
 
 nano::bootstrap_constants::bootstrap_constants (nano::network_constants & network_constants)
 {
-	lazy_max_pull_blocks = network_constants.is_dev_network () ? 2 : 512;
-	lazy_min_pull_blocks = network_constants.is_dev_network () ? 1 : 32;
-	frontier_retry_limit = network_constants.is_dev_network () ? 2 : 16;
-	lazy_retry_limit = network_constants.is_dev_network () ? 2 : frontier_retry_limit * 4;
-	lazy_destinations_retry_limit = network_constants.is_dev_network () ? 1 : frontier_retry_limit / 4;
-	gap_cache_bootstrap_start_interval = network_constants.is_dev_network () ? std::chrono::milliseconds (5) : std::chrono::milliseconds (30 * 1000);
-	default_frontiers_age_seconds = network_constants.is_dev_network () ? 1 : 24 * 60 * 60; // 1 second for dev network, 24 hours for live/beta
+	auto network_dto{ network_constants.to_dto () };
+	rsnano::BootstrapConstantsDto dto;
+	if (rsnano::rsn_bootstrap_constants_create (&network_dto, &dto) < 0)
+		throw std::runtime_error ("could not create bootstrap constants");
+	read_dto (dto);
+}
+
+nano::bootstrap_constants::bootstrap_constants (rsnano::BootstrapConstantsDto const & dto)
+{
+	read_dto (dto);
+}
+
+void nano::bootstrap_constants::read_dto (rsnano::BootstrapConstantsDto const & dto)
+{
+	lazy_max_pull_blocks = dto.lazy_max_pull_blocks;
+	lazy_min_pull_blocks = dto.lazy_min_pull_blocks;
+	frontier_retry_limit = dto.frontier_retry_limit;
+	lazy_retry_limit = dto.lazy_retry_limit;
+	lazy_destinations_retry_limit = dto.lazy_destinations_retry_limit;
+	gap_cache_bootstrap_start_interval = std::chrono::milliseconds (dto.gap_cache_bootstrap_start_interval_ms);
+	default_frontiers_age_seconds = dto.default_frontiers_age_seconds;
 }
 
 // Create a new random keypair

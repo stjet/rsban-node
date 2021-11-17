@@ -349,6 +349,8 @@ class ledger_constants
 {
 public:
 	ledger_constants (nano::work_thresholds & work, nano::networks network_a);
+	ledger_constants (rsnano::LedgerConstantsDto const & dto);
+	void read_dto (rsnano::LedgerConstantsDto const & dto);
 	nano::work_thresholds work;
 	nano::keypair zero_key;
 	nano::account nano_beta_account;
@@ -400,6 +402,8 @@ class node_constants
 {
 public:
 	node_constants (nano::network_constants & network_constants);
+	node_constants (rsnano::NodeConstantsDto const &);
+	void read_dto (rsnano::NodeConstantsDto const &);
 	std::chrono::minutes backup_interval;
 	std::chrono::seconds search_pending_interval;
 	std::chrono::minutes unchecked_cleaning_interval;
@@ -415,8 +419,9 @@ class voting_constants
 {
 public:
 	voting_constants (nano::network_constants & network_constants);
-	size_t const max_cache;
-	std::chrono::seconds const delay;
+	voting_constants (rsnano::VotingConstantsDto const & dto);
+	size_t max_cache;
+	std::chrono::seconds delay;
 };
 
 /** Port-mapping related constants whose value depends on the active network */
@@ -424,6 +429,7 @@ class portmapping_constants
 {
 public:
 	portmapping_constants (nano::network_constants & network_constants);
+	portmapping_constants (rsnano::PortmappingConstantsDto const & dto);
 	// Timeouts are primes so they infrequently happen at the same time
 	std::chrono::seconds lease_duration;
 	std::chrono::seconds health_check_period;
@@ -434,6 +440,8 @@ class bootstrap_constants
 {
 public:
 	bootstrap_constants (nano::network_constants & network_constants);
+	bootstrap_constants (rsnano::BootstrapConstantsDto const & dto);
+	void read_dto (rsnano::BootstrapConstantsDto const & dto);
 	uint32_t lazy_max_pull_blocks;
 	uint32_t lazy_min_pull_blocks;
 	unsigned frontier_retry_limit;

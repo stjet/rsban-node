@@ -448,7 +448,7 @@ impl KeyPair {
 
     pub fn from_priv_key_bytes(bytes: &[u8]) -> Result<Self> {
         let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(bytes)
-            .map_err(|e| anyhow!("could not load secret key"))?;
+            .map_err(|_| anyhow!("could not load secret key"))?;
         let public = ed25519_dalek_blake2b::PublicKey::from(&secret);
         Ok(Self {
             keypair: ed25519_dalek_blake2b::Keypair { secret, public },

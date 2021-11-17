@@ -48,6 +48,47 @@ struct BlockSidebandDto
 	uint8_t source_epoch;
 };
 
+struct WorkThresholdsDto
+{
+	uint64_t epoch_1;
+	uint64_t epoch_2;
+	uint64_t epoch_2_receive;
+	uint64_t base;
+	uint64_t entry;
+};
+
+struct NetworkConstantsDto
+{
+	uint16_t current_network;
+	WorkThresholdsDto work;
+	uint32_t principal_weight_factor;
+	uint16_t default_node_port;
+	uint16_t default_rpc_port;
+	uint16_t default_ipc_port;
+	uint16_t default_websocket_port;
+	uint32_t request_interval_ms;
+	int64_t cleanup_period_s;
+	int64_t idle_timeout_s;
+	int64_t sync_cookie_cutoff_s;
+	int64_t bootstrap_interval_s;
+	uintptr_t max_peers_per_ip;
+	uintptr_t max_peers_per_subnetwork;
+	int64_t peer_dump_interval_s;
+	uint8_t protocol_version;
+	uint8_t protocol_version_min;
+};
+
+struct BootstrapConstantsDto
+{
+	uint32_t lazy_max_pull_blocks;
+	uint32_t lazy_min_pull_blocks;
+	uint32_t frontier_retry_limit;
+	uint32_t lazy_retry_limit;
+	uint32_t lazy_destinations_retry_limit;
+	int64_t gap_cache_bootstrap_start_interval_ms;
+	uint32_t default_frontiers_age_seconds;
+};
+
 using Blake2BFinalCallback = int32_t (*) (void *, void *, uintptr_t);
 
 using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
@@ -83,15 +124,6 @@ struct ChangeBlockDto2
 	uint64_t work;
 };
 
-struct WorkThresholdsDto
-{
-	uint64_t epoch_1;
-	uint64_t epoch_2;
-	uint64_t epoch_2_receive;
-	uint64_t base;
-	uint64_t entry;
-};
-
 struct LedgerConstantsDto
 {
 	WorkThresholdsDto work;
@@ -123,25 +155,14 @@ struct LedgerConstantsDto
 	uint8_t epoch_2_link[32];
 };
 
-struct NetworkConstantsDto
+struct NodeConstantsDto
 {
-	uint16_t current_network;
-	WorkThresholdsDto work;
-	uint32_t principal_weight_factor;
-	uint16_t default_node_port;
-	uint16_t default_rpc_port;
-	uint16_t default_ipc_port;
-	uint16_t default_websocket_port;
-	uint32_t request_interval_ms;
-	int64_t cleanup_period_s;
-	int64_t idle_timeout_s;
-	int64_t sync_cookie_cutoff_s;
-	int64_t bootstrap_interval_s;
-	uintptr_t max_peers_per_ip;
-	uintptr_t max_peers_per_subnetwork;
-	int64_t peer_dump_interval_s;
-	uint8_t protocol_version;
-	uint8_t protocol_version_min;
+	int64_t backup_interval_m;
+	int64_t search_pending_interval_s;
+	int64_t unchecked_cleaning_interval_m;
+	int64_t process_confirmed_interval_ms;
+	uint64_t max_weight_samples;
+	uint64_t weight_period;
 };
 
 struct OpenBlockDto
@@ -161,6 +182,12 @@ struct OpenBlockDto2
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
 	uint64_t work;
+};
+
+struct PortmappingConstantsDto
+{
+	int64_t lease_duration_s;
+	int64_t health_check_period_s;
 };
 
 struct ReceiveBlockDto
@@ -222,6 +249,12 @@ struct StateBlockDto2
 	uint64_t work;
 };
 
+struct VotingConstantsDto
+{
+	uintptr_t max_cache;
+	int64_t delay_s;
+};
+
 extern "C" {
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
@@ -263,6 +296,9 @@ int32_t rsn_block_sideband_serialize (const BlockSidebandDto * dto, void * strea
 int32_t rsn_block_sideband_set (BlockDto * block, const BlockSidebandDto * sideband);
 
 uintptr_t rsn_block_sideband_size (uint8_t block_type, int32_t * result);
+
+int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
+BootstrapConstantsDto * dto);
 
 void rsn_callback_blake2b_final (Blake2BFinalCallback f);
 
@@ -353,6 +389,9 @@ bool rsn_network_constants_is_live_network (const NetworkConstantsDto * dto);
 
 bool rsn_network_constants_is_test_network (const NetworkConstantsDto * dto);
 
+int32_t rsn_node_constants_create (const NetworkConstantsDto * network_constants,
+NodeConstantsDto * dto);
+
 void rsn_open_block_account (const OpenBlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_open_block_account_set (OpenBlockHandle * handle, const uint8_t (*account)[32]);
@@ -395,6 +434,9 @@ void rsn_open_block_source_set (OpenBlockHandle * handle, const uint8_t (*source
 uint64_t rsn_open_block_work (const OpenBlockHandle * handle);
 
 void rsn_open_block_work_set (OpenBlockHandle * handle, uint64_t work);
+
+int32_t rsn_portmapping_constants_create (const NetworkConstantsDto * network_constants,
+PortmappingConstantsDto * dto);
 
 ReceiveBlockHandle * rsn_receive_block_clone (const ReceiveBlockHandle * handle);
 
@@ -541,6 +583,9 @@ bool rsn_valdiate_message (const uint8_t (*pub_key)[32],
 const uint8_t * message,
 uintptr_t len,
 const uint8_t (*signature)[64]);
+
+int32_t rsn_voting_constants_create (const NetworkConstantsDto * network_constants,
+VotingConstantsDto * dto);
 
 void rsn_work_thresholds_create (WorkThresholdsDto * dto,
 uint64_t epoch_1,

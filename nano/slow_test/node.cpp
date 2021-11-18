@@ -780,7 +780,7 @@ TEST (confirmation_height, dynamic_algorithm)
  *    of blocks uncemented is > unbounded_cutoff so that it hits the bounded processor), the main `run` loop on the conf height processor is iterated.
  *
  * This cause unbounded pending entries not to be written, and then the bounded processor would write them, causing some inconsistencies.
-*/
+ */
 TEST (confirmation_height, dynamic_algorithm_no_transition_while_pending)
 {
 	// Repeat in case of intermittent issues not replicating the issue talked about above.
@@ -1594,7 +1594,7 @@ TEST (node, mass_epoch_upgrader)
 		nano::system system;
 		nano::node_config node_config (nano::get_available_port (), system.logging);
 		node_config.work_threads = 4;
-		//node_config.work_peers = { { "192.168.1.101", 7000 } };
+		// node_config.work_peers = { { "192.168.1.101", 7000 } };
 		auto & node = *system.add_node (node_config);
 
 		auto balance = node.balance (nano::dev::genesis_key.pub);

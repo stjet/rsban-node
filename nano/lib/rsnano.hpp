@@ -11,6 +11,7 @@
 
 namespace rsnano
 {
+
 struct BandwidthLimiterHandle;
 
 struct ChangeBlockHandle;
@@ -374,6 +375,8 @@ int32_t rsn_deserialize_block_json (BlockDto * dto, const void * ptree);
 uint64_t rsn_difficulty_from_multiplier (double multiplier, uint64_t base_difficulty);
 
 double rsn_difficulty_to_multiplier (uint64_t difficulty, uint64_t base_difficulty);
+
+uintptr_t rsn_get_default_rpc_filepath (uint8_t * buffer, uintptr_t size);
 
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,

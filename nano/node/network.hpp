@@ -25,13 +25,13 @@ public:
 	nano::endpoint endpoint;
 };
 /**
-  * A circular buffer for servicing nano realtime messages.
-  * This container follows a producer/consumer model where the operating system is producing data in to
-  * buffers which are serviced by internal threads.
-  * If buffers are not serviced fast enough they're internally dropped.
-  * This container has a maximum space to hold N buffers of M size and will allocate them in round-robin order.
-  * All public methods are thread-safe
-*/
+ * A circular buffer for servicing nano realtime messages.
+ * This container follows a producer/consumer model where the operating system is producing data in to
+ * buffers which are serviced by internal threads.
+ * If buffers are not serviced fast enough they're internally dropped.
+ * This container has a maximum space to hold N buffers of M size and will allocate them in round-robin order.
+ * All public methods are thread-safe
+ */
 class message_buffer_manager final
 {
 public:
@@ -87,8 +87,8 @@ private:
 	friend class network_tcp_message_manager_Test;
 };
 /**
-  * Node ID cookies for node ID handshakes
-*/
+ * Node ID cookies for node ID handshakes
+ */
 class syn_cookies final
 {
 public:

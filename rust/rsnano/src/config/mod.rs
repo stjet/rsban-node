@@ -1,7 +1,9 @@
+mod rpc_config;
 mod work_thresholds;
 
 use anyhow::Result;
 use once_cell::sync::Lazy;
+pub use rpc_config::*;
 use std::sync::Mutex;
 pub use work_thresholds::*;
 

@@ -595,7 +595,7 @@ void ledger_processor::receive_block (nano::receive_block & block_a)
 			if (result.code == nano::process_result::progress)
 			{
 				auto account (ledger.store.frontier.get (transaction, block_a.previous ()));
-				result.code = account.is_zero () ? nano::process_result::gap_previous : nano::process_result::progress; //Have we seen the previous block? No entries for account at all (Harmless)
+				result.code = account.is_zero () ? nano::process_result::gap_previous : nano::process_result::progress; // Have we seen the previous block? No entries for account at all (Harmless)
 				if (result.code == nano::process_result::progress)
 				{
 					// Validate block if not verified outside of ledger

@@ -179,7 +179,7 @@ private:
 };
 
 /** Assumes std implementations of std::condition_variable never actually call nano::unique_lock::lock/unlock,
-    but instead use OS intrinsics with the mutex handle directly. Due to this we also do not account for any
+	but instead use OS intrinsics with the mutex handle directly. Due to this we also do not account for any
 	time the condition variable is blocked on another holder of the mutex. */
 class condition_variable final
 {

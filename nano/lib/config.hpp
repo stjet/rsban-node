@@ -22,8 +22,8 @@ namespace filesystem
 #define ver_str(a) #a
 
 /**
-* Returns build version information
-*/
+ * Returns build version information
+ */
 char const * const NANO_VERSION_STRING = xstr (TAG_VERSION_STRING);
 char const * const NANO_MAJOR_VERSION_STRING = xstr (MAJOR_VERSION_STRING);
 char const * const NANO_MINOR_VERSION_STRING = xstr (MINOR_VERSION_STRING);

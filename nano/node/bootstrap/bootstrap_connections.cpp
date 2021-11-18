@@ -169,8 +169,8 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 					case boost::system::errc::connection_refused:
 					case boost::system::errc::operation_canceled:
 					case boost::system::errc::timed_out:
-					case 995: //Windows The I/O operation has been aborted because of either a thread exit or an application request
-					case 10061: //Windows No connection could be made because the target machine actively refused it
+					case 995: // Windows The I/O operation has been aborted because of either a thread exit or an application request
+					case 10061: // Windows No connection could be made because the target machine actively refused it
 						break;
 				}
 			}

@@ -4742,7 +4742,7 @@ TEST (rpc, online_reps)
 	boost::optional<std::string> weight (item->second.get_optional<std::string> ("weight"));
 	ASSERT_FALSE (weight.is_initialized ());
 	ASSERT_TIMELY (5s, node2->block (send_block->hash ()));
-	//Test weight option
+	// Test weight option
 	request.put ("weight", "true");
 	auto response2 (wait_response (system, rpc, request));
 	auto representatives2 (response2.get_child ("representatives"));
@@ -4751,7 +4751,7 @@ TEST (rpc, online_reps)
 	ASSERT_EQ (nano::dev::genesis_key.pub.to_account (), item2->first);
 	auto weight2 (item2->second.get<std::string> ("weight"));
 	ASSERT_EQ (node2->weight (nano::dev::genesis_key.pub).convert_to<std::string> (), weight2);
-	//Test accounts filter
+	// Test accounts filter
 	rpc_ctx->io_scope->reset ();
 	auto new_rep (system.wallet (1)->deterministic_insert ());
 	auto send (system.wallet (0)->send_action (nano::dev::genesis_key.pub, new_rep, node1->config.receive_minimum.number ()));

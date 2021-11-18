@@ -279,16 +279,12 @@ nano::error read_and_update_rpc_config (boost::filesystem::path const & data_pat
 
 std::string get_default_rpc_filepath ()
 {
-	boost::system::error_code err;
-	auto running_executable_filepath = boost::dll::program_location (err);
+	uint8_t buffer[512];
+	auto len = rsnano::rsn_get_default_rpc_filepath(buffer, sizeof(buffer));
+	if (len == 0)
+		throw std::runtime_error ("could not get default rpc filepath");
 
-	// Construct the nano_rpc executable file path based on where the currently running executable is found.
-	auto rpc_filepath = running_executable_filepath.parent_path () / "nano_rpc";
-	if (running_executable_filepath.has_extension ())
-	{
-		rpc_filepath.replace_extension (running_executable_filepath.extension ());
-	}
-
-	return rpc_filepath.string ();
+	std::string result(reinterpret_cast<const char *>(buffer), len);
+	return result;
 }
 }

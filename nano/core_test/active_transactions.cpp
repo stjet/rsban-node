@@ -123,12 +123,12 @@ TEST (active_transactions, keep_local)
 	nano::system system;
 	nano::node_config node_config (nano::get_available_port (), system.logging);
 	node_config.enable_voting = false;
-	node_config.active_elections_size = 2; //bound to 2, wont drop wallet created transactions, but good to test dropping remote
+	node_config.active_elections_size = 2; // bound to 2, wont drop wallet created transactions, but good to test dropping remote
 	// Disable frontier confirmation to allow the test to finish before
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node = *system.add_node (node_config);
 	auto & wallet (*system.wallet (0));
-	//key 1/2 will be managed by the wallet
+	// key 1/2 will be managed by the wallet
 	nano::keypair key1, key2, key3, key4, key5, key6;
 	wallet.insert_adhoc (nano::dev::genesis_key.prv);
 	auto send1 (wallet.send_action (nano::dev::genesis_key.pub, key1.pub, node.config.receive_minimum.number ()));

@@ -188,7 +188,7 @@ std::pair<std::vector<std::shared_ptr<nano::block>>, std::vector<std::shared_ptr
 			bool generate_final_vote (false);
 			std::shared_ptr<nano::block> block;
 
-			//2. Final votes
+			// 2. Final votes
 			auto final_vote_hashes (ledger.store.final_vote.get (transaction, root));
 			if (!final_vote_hashes.empty ())
 			{

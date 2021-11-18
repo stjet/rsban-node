@@ -22,11 +22,15 @@ pub unsafe extern "C" fn rsn_node_constants_create(
         Err(_) => return -1,
     };
     let node = NodeConstants::new(&network_constants);
-    (*dto).backup_interval_m = node.backup_interval_m;
-    (*dto).search_pending_interval_s = node.search_pending_interval_s;
-    (*dto).unchecked_cleaning_interval_m = node.unchecked_cleaning_interval_m;
-    (*dto).process_confirmed_interval_ms = node.process_confirmed_interval_ms;
-    (*dto).max_weight_samples = node.max_weight_samples;
-    (*dto).weight_period = node.weight_period;
+    fill_node_constants_dto(&mut (*dto), &node);
     0
+}
+
+pub fn fill_node_constants_dto(dto: &mut NodeConstantsDto, node: &NodeConstants) {
+    dto.backup_interval_m = node.backup_interval_m;
+    dto.search_pending_interval_s = node.search_pending_interval_s;
+    dto.unchecked_cleaning_interval_m = node.unchecked_cleaning_interval_m;
+    dto.process_confirmed_interval_ms = node.process_confirmed_interval_ms;
+    dto.max_weight_samples = node.max_weight_samples;
+    dto.weight_period = node.weight_period;
 }

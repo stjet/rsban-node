@@ -30,7 +30,7 @@ nano::work_thresholds::work_thresholds (uint64_t epoch_1_a, uint64_t epoch_2_a, 
 	rsnano::rsn_work_thresholds_create (&dto, epoch_1_a, epoch_2_a, epoch_2_receive_a);
 }
 
-nano::work_thresholds::work_thresholds (rsnano::WorkThresholdsDto dto_a) :
+nano::work_thresholds::work_thresholds (rsnano::WorkThresholdsDto const & dto_a) :
 	dto (dto_a)
 {
 }

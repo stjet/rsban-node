@@ -155,6 +155,12 @@ struct LedgerConstantsDto
 	uint8_t epoch_2_link[32];
 };
 
+struct VotingConstantsDto
+{
+	uintptr_t max_cache;
+	int64_t delay_s;
+};
+
 struct NodeConstantsDto
 {
 	int64_t backup_interval_m;
@@ -163,6 +169,24 @@ struct NodeConstantsDto
 	int64_t process_confirmed_interval_ms;
 	uint64_t max_weight_samples;
 	uint64_t weight_period;
+};
+
+struct PortmappingConstantsDto
+{
+	int64_t lease_duration_s;
+	int64_t health_check_period_s;
+};
+
+struct NetworkParamsDto
+{
+	uint32_t kdf_work;
+	WorkThresholdsDto work;
+	NetworkConstantsDto network;
+	LedgerConstantsDto ledger;
+	VotingConstantsDto voting;
+	NodeConstantsDto node;
+	PortmappingConstantsDto portmapping;
+	BootstrapConstantsDto bootstrap;
 };
 
 struct OpenBlockDto
@@ -182,12 +206,6 @@ struct OpenBlockDto2
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
 	uint64_t work;
-};
-
-struct PortmappingConstantsDto
-{
-	int64_t lease_duration_s;
-	int64_t health_check_period_s;
 };
 
 struct ReceiveBlockDto
@@ -247,12 +265,6 @@ struct StateBlockDto2
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
 	uint64_t work;
-};
-
-struct VotingConstantsDto
-{
-	uintptr_t max_cache;
-	int64_t delay_s;
 };
 
 extern "C" {
@@ -388,6 +400,8 @@ bool rsn_network_constants_is_dev_network (const NetworkConstantsDto * dto);
 bool rsn_network_constants_is_live_network (const NetworkConstantsDto * dto);
 
 bool rsn_network_constants_is_test_network (const NetworkConstantsDto * dto);
+
+int32_t rsn_network_params_create (NetworkParamsDto * dto, uint16_t network);
 
 int32_t rsn_node_constants_create (const NetworkConstantsDto * network_constants,
 NodeConstantsDto * dto);

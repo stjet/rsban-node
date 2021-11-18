@@ -20,7 +20,15 @@ pub unsafe extern "C" fn rsn_portmapping_constants_create(
         Err(_) => return -1,
     };
     let mapping = PortmappingConstants::new(&network_constants);
-    (*dto).lease_duration_s = mapping.lease_duration_s;
-    (*dto).health_check_period_s = mapping.health_check_period_s;
+    let dto = &mut (*dto);
+    fill_portmapping_constants_dto(dto, &mapping);
     0
+}
+
+pub fn fill_portmapping_constants_dto(
+    dto: &mut PortmappingConstantsDto,
+    mapping: &PortmappingConstants,
+) {
+    dto.lease_duration_s = mapping.lease_duration_s;
+    dto.health_check_period_s = mapping.health_check_period_s;
 }

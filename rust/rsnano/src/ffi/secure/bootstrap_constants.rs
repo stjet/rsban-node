@@ -25,12 +25,20 @@ pub unsafe extern "C" fn rsn_bootstrap_constants_create(
         Err(_) => return -1,
     };
     let bootstrap = BootstrapConstants::new(&network_constants);
-    (*dto).lazy_max_pull_blocks = bootstrap.lazy_max_pull_blocks;
-    (*dto).lazy_min_pull_blocks = bootstrap.lazy_min_pull_blocks;
-    (*dto).frontier_retry_limit = bootstrap.frontier_retry_limit;
-    (*dto).lazy_retry_limit = bootstrap.lazy_retry_limit;
-    (*dto).lazy_destinations_retry_limit = bootstrap.lazy_destinations_retry_limit;
-    (*dto).gap_cache_bootstrap_start_interval_ms = bootstrap.gap_cache_bootstrap_start_interval_ms;
-    (*dto).default_frontiers_age_seconds = bootstrap.default_frontiers_age_seconds;
+    let dto = &mut (*dto);
+    fill_bootstrap_constants_dto(dto, &bootstrap);
     0
+}
+
+pub fn fill_bootstrap_constants_dto(
+    dto: &mut BootstrapConstantsDto,
+    bootstrap: &BootstrapConstants,
+) {
+    dto.lazy_max_pull_blocks = bootstrap.lazy_max_pull_blocks;
+    dto.lazy_min_pull_blocks = bootstrap.lazy_min_pull_blocks;
+    dto.frontier_retry_limit = bootstrap.frontier_retry_limit;
+    dto.lazy_retry_limit = bootstrap.lazy_retry_limit;
+    dto.lazy_destinations_retry_limit = bootstrap.lazy_destinations_retry_limit;
+    dto.gap_cache_bootstrap_start_interval_ms = bootstrap.gap_cache_bootstrap_start_interval_ms;
+    dto.default_frontiers_age_seconds = bootstrap.default_frontiers_age_seconds;
 }

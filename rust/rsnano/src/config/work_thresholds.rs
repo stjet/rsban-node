@@ -34,6 +34,7 @@ pub enum WorkVersion {
     Work1,
 }
 
+#[derive(Clone)]
 pub struct WorkThresholds {
     pub epoch_1: u64,
     pub epoch_2: u64,

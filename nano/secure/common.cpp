@@ -27,20 +27,20 @@ nano::network_params nano::dev::network_params{ nano::networks::nano_dev_network
 nano::ledger_constants & nano::dev::constants{ nano::dev::network_params.ledger };
 std::shared_ptr<nano::block> & nano::dev::genesis = nano::dev::constants.genesis;
 
-nano::network_params::network_params (nano::networks network_a) :
-	work{ network_a == nano::networks::nano_live_network ? nano::work_thresholds::publish_full () : network_a == nano::networks::nano_beta_network ? nano::work_thresholds::publish_beta ()
-		: network_a == nano::networks::nano_test_network                                                                                           ? nano::work_thresholds::publish_test ()
-																																				   : nano::work_thresholds::publish_dev () },
-	network{ work, network_a },
-	ledger{ work, network_a },
-	voting{ network },
-	node{ network },
-	portmapping{ network },
-	bootstrap{ network }
+nano::network_params::network_params (nano::networks network_a)
 {
-	unsigned constexpr kdf_full_work = 64 * 1024;
-	unsigned constexpr kdf_dev_work = 8;
-	kdf_work = network.is_dev_network () ? kdf_dev_work : kdf_full_work;
+	rsnano::NetworkParamsDto dto;
+	if (rsnano::rsn_network_params_create (&dto, static_cast<uint16_t> (network_a)) < 0)
+		throw std::runtime_error ("could not create network params");
+
+	work = nano::work_thresholds (dto.work);
+	network = nano::network_constants (dto.network);
+	ledger = nano::ledger_constants (dto.ledger);
+	voting = nano::voting_constants (dto.voting);
+	node = nano::node_constants (dto.node);
+	portmapping = nano::portmapping_constants (dto.portmapping);
+	bootstrap = nano::bootstrap_constants (dto.bootstrap);
+	kdf_work = dto.kdf_work;
 }
 
 nano::ledger_constants::ledger_constants (nano::work_thresholds & work_a, nano::networks network_a)

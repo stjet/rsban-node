@@ -348,6 +348,7 @@ class network_params;
 class ledger_constants
 {
 public:
+	ledger_constants () = default;
 	ledger_constants (nano::work_thresholds & work, nano::networks network_a);
 	ledger_constants (rsnano::LedgerConstantsDto const & dto);
 	void read_dto (rsnano::LedgerConstantsDto const & dto);
@@ -401,6 +402,7 @@ private:
 class node_constants
 {
 public:
+	node_constants () = default;
 	node_constants (nano::network_constants & network_constants);
 	node_constants (rsnano::NodeConstantsDto const &);
 	void read_dto (rsnano::NodeConstantsDto const &);
@@ -418,6 +420,7 @@ public:
 class voting_constants
 {
 public:
+	voting_constants () = default;
 	voting_constants (nano::network_constants & network_constants);
 	voting_constants (rsnano::VotingConstantsDto const & dto);
 	size_t max_cache;
@@ -428,6 +431,7 @@ public:
 class portmapping_constants
 {
 public:
+	portmapping_constants () = default;
 	portmapping_constants (nano::network_constants & network_constants);
 	portmapping_constants (rsnano::PortmappingConstantsDto const & dto);
 	// Timeouts are primes so they infrequently happen at the same time
@@ -439,6 +443,7 @@ public:
 class bootstrap_constants
 {
 public:
+	bootstrap_constants () = default;
 	bootstrap_constants (nano::network_constants & network_constants);
 	bootstrap_constants (rsnano::BootstrapConstantsDto const & dto);
 	void read_dto (rsnano::BootstrapConstantsDto const & dto);

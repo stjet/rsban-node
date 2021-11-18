@@ -43,7 +43,7 @@ pub unsafe extern "C" fn rsn_network_constants_create(
     0
 }
 
-fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &NetworkConstants) {
+pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &NetworkConstants) {
     dto.current_network = constants.current_network as u16;
     fill_work_thresholds_dto(&mut dto.work, &constants.work);
     dto.protocol_version = constants.protocol_version;

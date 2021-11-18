@@ -93,7 +93,7 @@ class work_thresholds
 public:
 	work_thresholds () = default;
 	work_thresholds (uint64_t epoch_1_a, uint64_t epoch_2_a, uint64_t epoch_2_receive_a);
-	work_thresholds (rsnano::WorkThresholdsDto dto_a);
+	work_thresholds (rsnano::WorkThresholdsDto const & dto_a);
 	uint64_t get_base () const;
 	uint64_t get_epoch_2 () const;
 	uint64_t get_epoch_2_receive () const;
@@ -129,7 +129,7 @@ public:
 class network_constants
 {
 public:
-	network_constants () = delete;
+	network_constants () = default;
 	network_constants (nano::work_thresholds & work, nano::networks network_a);
 	network_constants (rsnano::NetworkConstantsDto const & dto);
 	void read_dto (rsnano::NetworkConstantsDto const & dto);

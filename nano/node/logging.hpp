@@ -37,6 +37,7 @@ class jsonconfig;
 class logging final
 {
 public:
+	logging ();
 	nano::error serialize_json (nano::jsonconfig &) const;
 	nano::error deserialize_json (bool &, nano::jsonconfig &);
 	nano::error serialize_toml (nano::tomlconfig &) const;

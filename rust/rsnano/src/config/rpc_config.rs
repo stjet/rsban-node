@@ -11,7 +11,7 @@ fn get_default_rpc_filepath_from(node_exe_path: &Path) -> PathBuf {
     let mut result = node_exe_path.to_path_buf();
     result.pop();
     result.push("nano_rpc");
-    if let Some(ext) = node_exe_path.extension(){
+    if let Some(ext) = node_exe_path.extension() {
         result.set_extension(ext);
     }
     result

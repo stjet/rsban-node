@@ -156,6 +156,41 @@ struct LedgerConstantsDto
 	uint8_t epoch_2_link[32];
 };
 
+struct LoggingDto
+{
+	bool ledger_logging_value;
+	bool ledger_duplicate_logging_value;
+	bool ledger_rollback_logging_value;
+	bool vote_logging_value;
+	bool rep_crawler_logging_value;
+	bool election_fork_tally_logging_value;
+	bool election_expiration_tally_logging_value;
+	bool network_logging_value;
+	bool network_timeout_logging_value;
+	bool network_message_logging_value;
+	bool network_publish_logging_value;
+	bool network_packet_logging_value;
+	bool network_keepalive_logging_value;
+	bool network_node_id_handshake_logging_value;
+	bool network_telemetry_logging_value;
+	bool network_rejected_logging_value;
+	bool node_lifetime_tracing_value;
+	bool insufficient_work_logging_value;
+	bool log_ipc_value;
+	bool bulk_pull_logging_value;
+	bool work_generation_time_value;
+	bool upnp_details_logging_value;
+	bool timing_logging_value;
+	bool active_update_value;
+	bool log_to_cerr_value;
+	bool flush;
+	uintptr_t max_size;
+	uintptr_t rotation_size;
+	bool stable_log_filename;
+	int64_t min_time_between_log_output_ms;
+	bool single_line_record_value;
+};
+
 struct VotingConstantsDto
 {
 	uintptr_t max_cache;
@@ -387,6 +422,8 @@ double rsn_difficulty_to_multiplier (uint64_t difficulty, uint64_t base_difficul
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
+
+void rsn_logging_create (LoggingDto * dto);
 
 uint16_t rsn_network_constants_active_network ();
 

@@ -22,7 +22,7 @@ namespace websocket
 		nano::error deserialize_toml (nano::tomlconfig & toml_a);
 		nano::error serialize_toml (nano::tomlconfig & toml) const;
 		nano::network_constants & network_constants;
-		bool enabled{ false };
+		bool enabled;
 		uint16_t port;
 		std::string address;
 		/** Optional TLS config */

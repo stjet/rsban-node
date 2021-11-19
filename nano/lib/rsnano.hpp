@@ -311,6 +311,14 @@ struct StateBlockDto2
 	uint64_t work;
 };
 
+struct WebsocketConfigDto
+{
+	bool enabled;
+	uint16_t port;
+	uint8_t address[128];
+	uintptr_t address_len;
+};
+
 extern "C" {
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
@@ -648,6 +656,8 @@ const uint8_t (*signature)[64]);
 
 int32_t rsn_voting_constants_create (const NetworkConstantsDto * network_constants,
 VotingConstantsDto * dto);
+
+int32_t rsn_websocket_config_create (WebsocketConfigDto * dto, const NetworkConstantsDto * network);
 
 void rsn_work_thresholds_create (WorkThresholdsDto * dto,
 uint64_t epoch_1,

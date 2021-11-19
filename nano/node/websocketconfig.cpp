@@ -4,10 +4,15 @@
 #include <nano/node/websocketconfig.hpp>
 
 nano::websocket::config::config (nano::network_constants & network_constants) :
-	network_constants{ network_constants },
-	port{ network_constants.default_websocket_port },
-	address{ boost::asio::ip::address_v6::loopback ().to_string () }
+	network_constants{ network_constants }
 {
+	rsnano::WebsocketConfigDto dto;
+	auto network_dto{ network_constants.to_dto () };
+	if (rsnano::rsn_websocket_config_create (&dto, &network_dto) < 0)
+		throw std::runtime_error ("could not create websocket config");
+	enabled = dto.enabled;
+	port = dto.port;
+	address = std::string (reinterpret_cast<const char *> (dto.address), dto.address_len);
 }
 
 nano::error nano::websocket::config::serialize_toml (nano::tomlconfig & toml) const

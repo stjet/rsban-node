@@ -1,0 +1,36 @@
+use std::net::Ipv6Addr;
+
+use super::NetworkConstants;
+
+pub struct WebsocketConfig {
+    pub enabled: bool,
+    pub port: u16,
+    pub address: String,
+}
+
+impl WebsocketConfig {
+    pub fn new(network: &NetworkConstants) -> Self {
+        Self {
+            enabled: false,
+            port: network.default_websocket_port,
+            address: Ipv6Addr::LOCALHOST.to_string(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::WorkThresholds;
+
+    #[test]
+    fn websocket_config() {
+        let cfg = WebsocketConfig::new(&NetworkConstants::new(
+            WorkThresholds::publish_full().clone(),
+            crate::config::Networks::NanoLiveNetwork,
+        ));
+        assert_eq!(cfg.enabled, false);
+        assert_eq!(cfg.port, 7078);
+        assert_eq!(cfg.address, "::1");
+    }
+}

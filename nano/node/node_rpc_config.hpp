@@ -21,12 +21,13 @@ class rpc_child_process_config final
 {
 public:
 	bool enable{ false };
-	std::string rpc_path{ get_default_rpc_filepath () };
+	std::string rpc_path;
 };
 
 class node_rpc_config final
 {
 public:
+	node_rpc_config ();
 	nano::error serialize_json (nano::jsonconfig &) const;
 	nano::error deserialize_json (bool & upgraded_a, nano::jsonconfig &, boost::filesystem::path const & data_path);
 	nano::error serialize_toml (nano::tomlconfig & toml) const;

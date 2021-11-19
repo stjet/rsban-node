@@ -5,6 +5,16 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+nano::node_rpc_config::node_rpc_config ()
+{
+	rsnano::NodeRpcConfigDto dto;
+	if (rsnano::rsn_node_rpc_config_create (&dto) < 0)
+		throw std::runtime_error ("could not create node rpc config");
+	enable_sign_hash = dto.enable_sign_hash;
+	child_process.enable = dto.enable_child_process;
+	child_process.rpc_path = std::string (reinterpret_cast<const char *> (dto.rpc_path), dto.rpc_path_length);
+}
+
 nano::error nano::node_rpc_config::serialize_json (nano::jsonconfig & json) const
 {
 	json.put ("version", json_version ());

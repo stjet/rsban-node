@@ -1,6 +1,17 @@
 #include <nano/lib/diagnosticsconfig.hpp>
 #include <nano/lib/jsonconfig.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/tomlconfig.hpp>
+
+nano::txn_tracking_config::txn_tracking_config ()
+{
+	rsnano::TxnTrackingConfigDto dto;
+	rsnano::rsn_txn_tracking_config_create (&dto);
+	enable = dto.enable;
+	min_read_txn_time = std::chrono::milliseconds (dto.min_read_txn_time_ms);
+	min_write_txn_time = std::chrono::milliseconds (dto.min_write_txn_time_ms);
+	ignore_writes_below_block_processor_max_time = dto.ignore_writes_below_block_processor_max_time;
+}
 
 nano::error nano::diagnostics_config::serialize_json (nano::jsonconfig & json) const
 {

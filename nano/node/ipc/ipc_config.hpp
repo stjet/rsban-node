@@ -52,12 +52,9 @@ namespace ipc
 	class ipc_config_tcp_socket : public ipc_config_transport
 	{
 	public:
-		ipc_config_tcp_socket (nano::network_constants & network_constants) :
-			network_constants{ network_constants },
-			port{ network_constants.default_ipc_port }
-		{
-		}
-		nano::network_constants & network_constants;
+		ipc_config_tcp_socket () = default;
+		ipc_config_tcp_socket (nano::network_constants & network_constants);
+		nano::network_constants network_constants;
 		/** Listening port */
 		uint16_t port;
 	};
@@ -66,10 +63,7 @@ namespace ipc
 	class ipc_config
 	{
 	public:
-		ipc_config (nano::network_constants & network_constants) :
-			transport_tcp{ network_constants }
-		{
-		}
+		ipc_config (nano::network_constants & network_constants);
 		nano::error deserialize_json (bool & upgraded_a, nano::jsonconfig & json_a);
 		nano::error serialize_json (nano::jsonconfig & json) const;
 		nano::error deserialize_toml (nano::tomlconfig & toml_a);

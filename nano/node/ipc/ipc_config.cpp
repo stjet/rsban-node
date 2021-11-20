@@ -2,6 +2,27 @@
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/ipc/ipc_config.hpp>
 
+nano::ipc::ipc_config::ipc_config (nano::network_constants & network_constants)
+{
+	rsnano::IpcConfigDto dto;
+	auto network_dto{ network_constants.to_dto () };
+	if (rsnano::rsn_ipc_config_create (&dto, &network_dto) < 0)
+		throw std::runtime_error ("could not create ipc config");
+	transport_domain.enabled = dto.domain_transport.enabled;
+	transport_domain.allow_unsafe = dto.domain_transport.allow_unsafe;
+	transport_domain.io_timeout = dto.domain_transport.io_timeout;
+	transport_domain.io_threads = dto.domain_transport.io_threads;
+	transport_domain.path = std::string (reinterpret_cast<const char *> (dto.domain_path), dto.domain_path_len);
+	transport_tcp.enabled = dto.tcp_transport.enabled;
+	transport_tcp.allow_unsafe = dto.tcp_transport.allow_unsafe;
+	transport_tcp.io_timeout = dto.tcp_transport.io_timeout;
+	transport_tcp.io_threads = dto.tcp_transport.io_threads;
+	transport_tcp.port = dto.tcp_port;
+	transport_tcp.network_constants = nano::network_constants (dto.tcp_network_constants);
+	flatbuffers.skip_unexpected_fields_in_json = dto.flatbuffers_skip_unexpected_fields_in_json;
+	flatbuffers.verify_buffers = dto.flatbuffers_verify_buffers;
+}
+
 nano::error nano::ipc::ipc_config::serialize_toml (nano::tomlconfig & toml) const
 {
 	nano::tomlconfig tcp_l;

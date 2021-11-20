@@ -7,6 +7,7 @@ use super::{Networks, WorkThresholds};
 //todo: make configurable in builld script again!
 static ACTIVE_NETWORK: Lazy<Mutex<Networks>> = Lazy::new(|| Mutex::new(Networks::NanoDevNetwork));
 
+#[derive(Clone)]
 pub struct NetworkConstants {
     pub work: WorkThresholds,
     // A representative is classified as principal based on its weight and this factor

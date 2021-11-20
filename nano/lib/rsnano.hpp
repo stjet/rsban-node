@@ -125,6 +125,26 @@ struct ChangeBlockDto2
 	uint64_t work;
 };
 
+struct IpcConfigTransportDto
+{
+	bool enabled;
+	bool allow_unsafe;
+	uintptr_t io_timeout;
+	int64_t io_threads;
+};
+
+struct IpcConfigDto
+{
+	IpcConfigTransportDto domain_transport;
+	uint8_t domain_path[512];
+	uintptr_t domain_path_len;
+	IpcConfigTransportDto tcp_transport;
+	NetworkConstantsDto tcp_network_constants;
+	uint16_t tcp_port;
+	bool flatbuffers_skip_unexpected_fields_in_json;
+	bool flatbuffers_verify_buffers;
+};
+
 struct LedgerConstantsDto
 {
 	WorkThresholdsDto work;
@@ -288,6 +308,21 @@ struct SendBlockDto2
 	uint64_t work;
 };
 
+struct StatConfigDto
+{
+	bool sampling_enabled;
+	uintptr_t capacity;
+	uintptr_t interval;
+	uintptr_t log_interval_samples;
+	uintptr_t log_interval_counters;
+	uintptr_t log_rotation_count;
+	bool log_headers;
+	uint8_t log_counters_filename[128];
+	uintptr_t log_counters_filename_len;
+	uint8_t log_samples_filename[128];
+	uintptr_t log_samples_filename_len;
+};
+
 struct StateBlockDto
 {
 	uint8_t signature[64];
@@ -309,6 +344,14 @@ struct StateBlockDto2
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
 	uint64_t work;
+};
+
+struct TxnTrackingConfigDto
+{
+	bool enable;
+	int64_t min_read_txn_time_ms;
+	int64_t min_write_txn_time_ms;
+	bool ignore_writes_below_block_processor_max_time;
 };
 
 struct WebsocketConfigDto
@@ -426,6 +469,8 @@ int32_t rsn_deserialize_block_json (BlockDto * dto, const void * ptree);
 uint64_t rsn_difficulty_from_multiplier (double multiplier, uint64_t base_difficulty);
 
 double rsn_difficulty_to_multiplier (uint64_t difficulty, uint64_t base_difficulty);
+
+int32_t rsn_ipc_config_create (IpcConfigDto * dto, const NetworkConstantsDto * network_constants);
 
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
@@ -598,6 +643,8 @@ const uint8_t * message,
 uintptr_t len,
 uint8_t (*signature)[64]);
 
+void rsn_stat_config_create (StatConfigDto * dto);
+
 void rsn_state_block_account (const StateBlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_state_block_account_set (StateBlockHandle * handle, const uint8_t (*source)[32]);
@@ -648,6 +695,8 @@ uintptr_t rsn_state_block_size ();
 uint64_t rsn_state_block_work (const StateBlockHandle * handle);
 
 void rsn_state_block_work_set (StateBlockHandle * handle, uint64_t work);
+
+void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
 
 bool rsn_valdiate_message (const uint8_t (*pub_key)[32],
 const uint8_t * message,

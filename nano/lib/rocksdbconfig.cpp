@@ -2,6 +2,15 @@
 #include <nano/lib/rocksdbconfig.hpp>
 #include <nano/lib/tomlconfig.hpp>
 
+nano::rocksdb_config::rocksdb_config ()
+{
+	rsnano::RocksDbConfigDto dto;
+	rsnano::rsn_rocksdb_config_create (&dto);
+	enable = dto.enable;
+	memory_multiplier = dto.memory_multiplier;
+	io_threads = dto.io_threads;
+}
+
 nano::error nano::rocksdb_config::serialize_toml (nano::tomlconfig & toml) const
 {
 	toml.put ("enable", enable, "Whether to use the RocksDB backend for the ledger database.\ntype:bool");
@@ -31,6 +40,5 @@ nano::error nano::rocksdb_config::deserialize_toml (nano::tomlconfig & toml)
 
 bool nano::rocksdb_config::using_rocksdb_in_tests ()
 {
-	auto use_rocksdb_str = std::getenv ("TEST_USE_ROCKSDB");
-	return use_rocksdb_str && (boost::lexical_cast<int> (use_rocksdb_str) == 1);
+	return rsnano::rsn_using_rocksdb_in_tests ();
 }

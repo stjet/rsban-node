@@ -5,6 +5,7 @@ mod node_rpc_config;
 mod rpc_config;
 mod websocket_config;
 mod work_thresholds;
+mod rocksdb_config;
 
 pub use diagnostics_config::*;
 pub use logging::*;

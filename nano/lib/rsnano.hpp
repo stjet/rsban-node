@@ -289,6 +289,13 @@ struct ReceiveBlockDto2
 	uint64_t work;
 };
 
+struct RocksDbConfigDto
+{
+	bool enable;
+	uint8_t memory_multiplier;
+	uint32_t io_threads;
+};
+
 struct SendBlockDto
 {
 	uint8_t previous[32];
@@ -591,6 +598,8 @@ uint64_t rsn_receive_block_work (const ReceiveBlockHandle * handle);
 
 void rsn_receive_block_work_set (ReceiveBlockHandle * handle, uint64_t work);
 
+void rsn_rocksdb_config_create (RocksDbConfigDto * dto);
+
 void rsn_send_block_balance (const SendBlockHandle * handle, uint8_t (*result)[16]);
 
 void rsn_send_block_balance_set (SendBlockHandle * handle, const uint8_t (*balance)[16]);
@@ -697,6 +706,8 @@ uint64_t rsn_state_block_work (const StateBlockHandle * handle);
 void rsn_state_block_work_set (StateBlockHandle * handle, uint64_t work);
 
 void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
+
+bool rsn_using_rocksdb_in_tests ();
 
 bool rsn_valdiate_message (const uint8_t (*pub_key)[32],
 const uint8_t * message,

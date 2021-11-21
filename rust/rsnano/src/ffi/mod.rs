@@ -8,5 +8,6 @@ mod property_tree;
 pub mod secure;
 mod stats;
 mod stream;
+mod toml;
 
 pub use stream::*;

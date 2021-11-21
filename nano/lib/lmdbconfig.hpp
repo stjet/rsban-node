@@ -39,6 +39,8 @@ public:
 		nosync_unsafe_large_memory
 	};
 
+	lmdb_config ();
+
 	nano::error serialize_toml (nano::tomlconfig & toml_a) const;
 	nano::error deserialize_toml (nano::tomlconfig & toml_a);
 

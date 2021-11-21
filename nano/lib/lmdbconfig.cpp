@@ -4,6 +4,31 @@
 
 #include <iostream>
 
+nano::lmdb_config::lmdb_config ()
+{
+	rsnano::LmdbConfigDto dto;
+	rsnano::rsn_lmdb_config_create (&dto);
+	switch (dto.sync)
+	{
+		case 0:
+			sync = nano::lmdb_config::sync_strategy::always;
+			break;
+		case 1:
+			sync = nano::lmdb_config::sync_strategy::nosync_safe;
+			break;
+		case 2:
+			sync = nano::lmdb_config::sync_strategy::nosync_unsafe;
+			break;
+		case 3:
+			sync = nano::lmdb_config::sync_strategy::nosync_unsafe_large_memory;
+			break;
+		default:
+			throw std::runtime_error ("unknown sync type");
+	}
+	max_databases = dto.max_databases;
+	map_size = dto.map_size;
+}
+
 nano::error nano::lmdb_config::serialize_toml (nano::tomlconfig & toml) const
 {
 	std::string sync_string;

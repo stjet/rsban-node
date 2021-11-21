@@ -104,6 +104,8 @@ using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
+using TomlPutU16Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint16_t, const uint8_t *, uintptr_t);
+
 using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
 
 using WriteU8Callback = int32_t (*) (void *, uint8_t);
@@ -176,6 +178,13 @@ struct LedgerConstantsDto
 	uint8_t epoch_2_link[32];
 };
 
+struct LmdbConfigDto
+{
+	uint8_t sync;
+	uint32_t max_databases;
+	uintptr_t map_size;
+};
+
 struct LoggingDto
 {
 	bool ledger_logging_value;
@@ -243,6 +252,11 @@ struct NetworkParamsDto
 	NodeConstantsDto node;
 	PortmappingConstantsDto portmapping;
 	BootstrapConstantsDto bootstrap;
+};
+
+struct NodeConfigDto
+{
+	uint16_t peering_port;
 };
 
 struct NodeRpcConfigDto
@@ -428,6 +442,8 @@ void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
 
+void rsn_callback_toml_put_u16 (TomlPutU16Callback f);
+
 void rsn_callback_write_bytes (WriteBytesCallback f);
 
 void rsn_callback_write_u8 (WriteU8Callback f);
@@ -483,6 +499,8 @@ int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
 
+void rsn_lmdb_config_create (LmdbConfigDto * dto);
+
 void rsn_logging_create (LoggingDto * dto);
 
 uint16_t rsn_network_constants_active_network ();
@@ -508,6 +526,10 @@ bool rsn_network_constants_is_live_network (const NetworkConstantsDto * dto);
 bool rsn_network_constants_is_test_network (const NetworkConstantsDto * dto);
 
 int32_t rsn_network_params_create (NetworkParamsDto * dto, uint16_t network);
+
+void rsn_node_config_create (NodeConfigDto * dto, uint16_t peering_port);
+
+int32_t rsn_node_config_serialize_toml (const NodeConfigDto * dto, void * toml);
 
 int32_t rsn_node_constants_create (const NetworkConstantsDto * network_constants,
 NodeConstantsDto * dto);

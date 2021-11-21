@@ -104,7 +104,11 @@ using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
+using TomlPutStrCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t);
+
 using TomlPutU16Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint16_t, const uint8_t *, uintptr_t);
+
+using TomlPutU32Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint32_t, const uint8_t *, uintptr_t);
 
 using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
 
@@ -257,6 +261,8 @@ struct NetworkParamsDto
 struct NodeConfigDto
 {
 	uint16_t peering_port;
+	uint32_t bootstrap_fraction_numerator;
+	uint8_t receive_minimum[16];
 };
 
 struct NodeRpcConfigDto
@@ -442,7 +448,11 @@ void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
 
+void rsn_callback_toml_put_str (TomlPutStrCallback f);
+
 void rsn_callback_toml_put_u16 (TomlPutU16Callback f);
+
+void rsn_callback_toml_put_u32 (TomlPutU32Callback f);
 
 void rsn_callback_write_bytes (WriteBytesCallback f);
 

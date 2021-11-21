@@ -11,6 +11,7 @@ use anyhow::Result;
 pub use account::*;
 use blake2::digest::{Update, VariableOutput};
 pub use difficulty::*;
+use once_cell::sync::Lazy;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct PublicKey {
@@ -197,6 +198,10 @@ impl Amount {
     pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
         let value = u128::from_str_radix(s.as_ref(), 16)?;
         Ok(Amount::new(value))
+    }
+
+    pub fn to_string_dec(&self) -> String {
+        self.value.to_string()
     }
 }
 
@@ -506,6 +511,8 @@ pub fn from_string_hex(s: impl AsRef<str>) -> Result<u64> {
     let result = u64::from_str_radix(s.as_ref(), 16)?;
     Ok(result)
 }
+
+pub const XRB_RATIO: Lazy<u128> = Lazy::new(|| u128::from_str_radix("1000000000000000000000000", 10).unwrap()); // 10^24
 
 #[cfg(test)]
 mod tests {

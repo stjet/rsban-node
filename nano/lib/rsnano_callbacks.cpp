@@ -117,6 +117,40 @@ int32_t toml_put_u16 (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a,
 	return 0;
 }
 
+int32_t toml_put_u32 (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a, uint32_t value, const uint8_t * documentation_a, uintptr_t documentation_len_a)
+{
+	try
+	{
+		auto toml{ static_cast<nano::tomlconfig *> (toml_a) };
+		std::string key (reinterpret_cast<const char *> (key_a), key_len_a);
+		std::string documentation (reinterpret_cast<const char *> (documentation_a), documentation_len_a);
+		toml->put (key, value, documentation.c_str ());
+	}
+	catch (...)
+	{
+		return -1;
+	}
+
+	return 0;
+}
+
+int32_t toml_put_str (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a, const uint8_t * value_a, uintptr_t value_len_a, const uint8_t * documentation_a, uintptr_t documentation_len_a)
+{
+	try
+	{
+		auto toml{ static_cast<nano::tomlconfig *> (toml_a) };
+		std::string key (reinterpret_cast<const char *> (key_a), key_len_a);
+		std::string documentation (reinterpret_cast<const char *> (documentation_a), documentation_len_a);
+		std::string value (reinterpret_cast<const char *> (value_a), value_len_a);
+		toml->put (key, value, documentation.c_str ());
+	}
+	catch (...)
+	{
+		return -1;
+	}
+
+	return 0;
+}
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -134,5 +168,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_property_tree_put_string (ptree_put_string);
 	rsnano::rsn_callback_property_tree_get_string (ptree_get_string);
 	rsnano::rsn_callback_toml_put_u16 (toml_put_u16);
+	rsnano::rsn_callback_toml_put_u32 (toml_put_u32);
+	rsnano::rsn_callback_toml_put_str (toml_put_str);
 	callbacks_set = true;
 }

@@ -1,6 +1,5 @@
 #[cfg(test)]
 use std::collections::HashMap;
-use std::ffi::c_void;
 
 use anyhow::Result;
 use blake2::digest::{Update, VariableOutput};
@@ -184,8 +183,10 @@ pub fn seconds_since_epoch() -> u64 {
     chrono::Utc::now().timestamp() as u64
 }
 
-pub trait TomlWriter{
+pub trait TomlWriter {
     fn put_u16(&mut self, key: &str, value: u16, documentation: &str) -> Result<()>;
+    fn put_u32(&mut self, key: &str, value: u32, documentation: &str) -> Result<()>;
+    fn put_str(&mut self, key: &str, value: &str, documentation: &str) -> Result<()>;
 }
 #[cfg(test)]
 mod tests {

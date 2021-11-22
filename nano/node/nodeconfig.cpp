@@ -36,7 +36,13 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 	rsnano::rsn_node_config_create (&dto, peering_port_a);
 	peering_port = dto.peering_port;
 	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
-	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin(receive_minimum.bytes));
+	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin (receive_minimum.bytes));
+	std::copy (std::begin (dto.online_weight_minimum), std::end (dto.online_weight_minimum), std::begin (online_weight_minimum.bytes));
+	election_hint_weight_percent = dto.election_hint_weight_percent;
+	password_fanout = dto.password_fanout;
+	io_threads = dto.io_threads;
+	network_threads = dto.network_threads;
+	work_threads = dto.work_threads;
 
 	// The default constructor passes 0 to indicate we should use the default port,
 	// which is determined at node startup based on active network.
@@ -85,6 +91,13 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.peering_port = config.peering_port;
 	dto.bootstrap_fraction_numerator = config.bootstrap_fraction_numerator;
 	std::copy (std::begin (config.receive_minimum.bytes), std::end (config.receive_minimum.bytes), std::begin (dto.receive_minimum));
+	std::copy (std::begin (config.online_weight_minimum.bytes), std::end (config.online_weight_minimum.bytes), std::begin (dto.online_weight_minimum));
+	dto.election_hint_weight_percent = config.election_hint_weight_percent;
+	dto.password_fanout = config.password_fanout;
+	dto.io_threads = config.io_threads;
+	dto.network_threads = config.network_threads;
+	dto.work_threads = config.work_threads;
+	dto.signature_checker_threads = config.signature_checker_threads;
 	return dto;
 }
 
@@ -94,13 +107,6 @@ nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
 	if (rsnano::rsn_node_config_serialize_toml (&dto, &toml) < 0)
 		throw std::runtime_error ("could not TOML serialize node_config");
 
-	toml.put ("online_weight_minimum", online_weight_minimum.to_string_dec (), "When calculating online weight, the node is forced to assume at least this much voting weight is online, thus setting a floor for voting weight to confirm transactions at online_weight_minimum * \"quorum delta\".\ntype:string,amount,raw");
-	toml.put ("election_hint_weight_percent", election_hint_weight_percent, "Percentage of online weight to hint at starting an election. Defaults to 10.\ntype:uint32,[5,50]");
-	toml.put ("password_fanout", password_fanout, "Password fanout factor.\ntype:uint64");
-	toml.put ("io_threads", io_threads, "Number of threads dedicated to I/O operations. Defaults to the number of CPU threads, and at least 4.\ntype:uint64");
-	toml.put ("network_threads", network_threads, "Number of threads dedicated to processing network messages. Defaults to the number of CPU threads, and at least 4.\ntype:uint64");
-	toml.put ("work_threads", work_threads, "Number of threads dedicated to CPU generated work. Defaults to all available CPU threads.\ntype:uint64");
-	toml.put ("signature_checker_threads", signature_checker_threads, "Number of additional threads dedicated to signature verification. Defaults to number of CPU threads / 2.\ntype:uint64");
 	toml.put ("enable_voting", enable_voting, "Enable or disable voting. Enabling this option requires additional system resources, namely increased CPU, bandwidth and disk usage.\ntype:bool");
 	toml.put ("bootstrap_connections", bootstrap_connections, "Number of outbound bootstrap connections. Must be a power of 2. Defaults to 4.\nWarning: a larger amount of connections may use substantially more system memory.\ntype:uint64");
 	toml.put ("bootstrap_connections_max", bootstrap_connections_max, "Maximum number of inbound bootstrap connections. Defaults to 64.\nWarning: a larger amount of connections may use additional system memory.\ntype:uint64");

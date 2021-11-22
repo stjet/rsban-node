@@ -1,3 +1,5 @@
+use crate::utils::get_cpu_count;
+
 pub struct RocksDbConfig {
     pub enable: bool,
     pub memory_multiplier: u8,
@@ -21,14 +23,5 @@ impl RocksDbConfig {
             memory_multiplier: 2,
             io_threads: get_cpu_count() as u32,
         }
-    }
-}
-
-fn get_cpu_count() -> usize {
-    //todo: use std::thread::available_concurrency once it's in stable
-    if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
-        cpuinfo.match_indices("processor").count()
-    } else {
-        1
     }
 }

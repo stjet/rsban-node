@@ -263,6 +263,13 @@ struct NodeConfigDto
 	uint16_t peering_port;
 	uint32_t bootstrap_fraction_numerator;
 	uint8_t receive_minimum[16];
+	uint8_t online_weight_minimum[16];
+	uint32_t election_hint_weight_percent;
+	uint32_t password_fanout;
+	uint32_t io_threads;
+	uint32_t network_threads;
+	uint32_t work_threads;
+	uint32_t signature_checker_threads;
 };
 
 struct NodeRpcConfigDto

@@ -188,6 +188,15 @@ pub trait TomlWriter {
     fn put_u32(&mut self, key: &str, value: u32, documentation: &str) -> Result<()>;
     fn put_str(&mut self, key: &str, value: &str, documentation: &str) -> Result<()>;
 }
+
+pub fn get_cpu_count() -> usize {
+    //todo: use std::thread::available_concurrency once it's in stable
+    if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
+        cpuinfo.match_indices("processor").count()
+    } else {
+        1
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

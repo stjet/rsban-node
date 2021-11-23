@@ -32,3 +32,12 @@ pub fn fill_portmapping_constants_dto(
     dto.lease_duration_s = mapping.lease_duration_s;
     dto.health_check_period_s = mapping.health_check_period_s;
 }
+
+impl From<&PortmappingConstantsDto> for PortmappingConstants {
+    fn from(dto: &PortmappingConstantsDto) -> Self {
+        Self {
+            lease_duration_s: dto.lease_duration_s,
+            health_check_period_s: dto.health_check_period_s,
+        }
+    }
+}

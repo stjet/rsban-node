@@ -118,6 +118,14 @@ pub unsafe extern "C" fn rsn_network_constants_active_network_set_str(
     }
 }
 
+impl TryFrom<NetworkConstantsDto> for NetworkConstants {
+    type Error = anyhow::Error;
+
+    fn try_from(value: NetworkConstantsDto) -> Result<Self, Self::Error> {
+        NetworkConstants::try_from(&value)
+    }
+}
+
 impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
     type Error = anyhow::Error;
 

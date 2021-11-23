@@ -104,6 +104,10 @@ using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
+using TomlPutBoolCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, bool, const uint8_t *, uintptr_t);
+
+using TomlPutI64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, int64_t, const uint8_t *, uintptr_t);
+
 using TomlPutStrCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t);
 
 using TomlPutU16Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint16_t, const uint8_t *, uintptr_t);
@@ -270,6 +274,12 @@ struct NodeConfigDto
 	uint32_t network_threads;
 	uint32_t work_threads;
 	uint32_t signature_checker_threads;
+	bool enable_voting;
+	uint32_t bootstrap_connections;
+	uint32_t bootstrap_connections_max;
+	uint32_t bootstrap_initiator_threads;
+	uint32_t bootstrap_frontier_request_count;
+	int64_t block_processor_batch_max_time_ms;
 };
 
 struct NodeRpcConfigDto
@@ -455,6 +465,10 @@ void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
 
+void rsn_callback_toml_put_bool (TomlPutBoolCallback f);
+
+void rsn_callback_toml_put_i64 (TomlPutI64Callback f);
+
 void rsn_callback_toml_put_str (TomlPutStrCallback f);
 
 void rsn_callback_toml_put_u16 (TomlPutU16Callback f);
@@ -544,7 +558,9 @@ bool rsn_network_constants_is_test_network (const NetworkConstantsDto * dto);
 
 int32_t rsn_network_params_create (NetworkParamsDto * dto, uint16_t network);
 
-void rsn_node_config_create (NodeConfigDto * dto, uint16_t peering_port);
+int32_t rsn_node_config_create (NodeConfigDto * dto,
+uint16_t peering_port,
+const NetworkParamsDto * network_params);
 
 int32_t rsn_node_config_serialize_toml (const NodeConfigDto * dto, void * toml);
 

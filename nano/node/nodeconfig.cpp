@@ -33,7 +33,8 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 	external_address{ boost::asio::ip::address_v6{}.to_string () }
 {
 	rsnano::NodeConfigDto dto;
-	rsnano::rsn_node_config_create (&dto, peering_port_a);
+	auto network_params_dto{ network_params.to_dto () };
+	rsnano::rsn_node_config_create (&dto, peering_port_a, &network_params_dto);
 	peering_port = dto.peering_port;
 	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
 	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin (receive_minimum.bytes));
@@ -43,6 +44,13 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 	io_threads = dto.io_threads;
 	network_threads = dto.network_threads;
 	work_threads = dto.work_threads;
+	signature_checker_threads = dto.signature_checker_threads;
+	enable_voting = dto.enable_voting;
+	bootstrap_connections = dto.bootstrap_connections;
+	bootstrap_connections_max = dto.bootstrap_connections_max;
+	bootstrap_initiator_threads = dto.bootstrap_initiator_threads;
+	bootstrap_frontier_request_count = dto.bootstrap_frontier_request_count;
+	block_processor_batch_max_time = std::chrono::milliseconds (dto.block_processor_batch_max_time_ms);
 
 	// The default constructor passes 0 to indicate we should use the default port,
 	// which is determined at node startup based on active network.
@@ -98,6 +106,12 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.network_threads = config.network_threads;
 	dto.work_threads = config.work_threads;
 	dto.signature_checker_threads = config.signature_checker_threads;
+	dto.enable_voting = config.enable_voting;
+	dto.bootstrap_connections = config.bootstrap_connections;
+	dto.bootstrap_connections_max = config.bootstrap_connections_max;
+	dto.bootstrap_initiator_threads = config.bootstrap_initiator_threads;
+	dto.bootstrap_frontier_request_count = config.bootstrap_frontier_request_count;
+	dto.block_processor_batch_max_time_ms = config.block_processor_batch_max_time.count ();
 	return dto;
 }
 
@@ -107,12 +121,6 @@ nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
 	if (rsnano::rsn_node_config_serialize_toml (&dto, &toml) < 0)
 		throw std::runtime_error ("could not TOML serialize node_config");
 
-	toml.put ("enable_voting", enable_voting, "Enable or disable voting. Enabling this option requires additional system resources, namely increased CPU, bandwidth and disk usage.\ntype:bool");
-	toml.put ("bootstrap_connections", bootstrap_connections, "Number of outbound bootstrap connections. Must be a power of 2. Defaults to 4.\nWarning: a larger amount of connections may use substantially more system memory.\ntype:uint64");
-	toml.put ("bootstrap_connections_max", bootstrap_connections_max, "Maximum number of inbound bootstrap connections. Defaults to 64.\nWarning: a larger amount of connections may use additional system memory.\ntype:uint64");
-	toml.put ("bootstrap_initiator_threads", bootstrap_initiator_threads, "Number of threads dedicated to concurrent bootstrap attempts. Defaults to 1.\nWarning: a larger amount of attempts may use additional system memory and disk IO.\ntype:uint64");
-	toml.put ("bootstrap_frontier_request_count", bootstrap_frontier_request_count, "Number frontiers per bootstrap frontier request. Defaults to 1048576.\ntype:uint32,[1024..4294967295]");
-	toml.put ("block_processor_batch_max_time", block_processor_batch_max_time.count (), "The maximum time the block processor can continuously process blocks for.\ntype:milliseconds");
 	toml.put ("allow_local_peers", allow_local_peers, "Enable or disable local host peering.\ntype:bool");
 	toml.put ("vote_minimum", vote_minimum.to_string_dec (), "Local representatives do not vote if the delegated weight is under this threshold. Saves on system resources.\ntype:string,amount,raw");
 	toml.put ("vote_generator_delay", vote_generator_delay.count (), "Delay before votes are sent to allow for efficient bundling of hashes in votes.\ntype:milliseconds");

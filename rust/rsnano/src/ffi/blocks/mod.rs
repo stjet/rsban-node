@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rsn_block_has_sideband(block: &BlockDto) -> bool {
     }
 }
 
-unsafe fn as_block_mut(dto: Option<&mut BlockDto>) -> Option<&mut dyn Block> {
+pub unsafe fn as_block_mut(dto: Option<&mut BlockDto>) -> Option<&mut dyn Block> {
     let dto = match dto {
         Some(x) => x,
         None => return None,
@@ -102,7 +102,7 @@ unsafe fn as_block_mut(dto: Option<&mut BlockDto>) -> Option<&mut dyn Block> {
     }
 }
 
-unsafe fn as_block(dto: &BlockDto) -> Option<&dyn Block> {
+pub unsafe fn as_block(dto: &BlockDto) -> Option<&dyn Block> {
     let block_type: BlockType = match FromPrimitive::from_u8(dto.block_type) {
         Some(t) => t,
         None => return None,
@@ -164,4 +164,35 @@ pub fn set_block_dto(dto: &mut BlockDto, block: BlockEnum) {
             Box::into_raw(Box::new(StateBlockHandle { block })) as *mut c_void
         }
     };
+}
+
+impl TryFrom<&BlockDto> for BlockEnum {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &BlockDto) -> Result<Self, Self::Error> {
+        let block_type: BlockType = FromPrimitive::from_u8(value.block_type)
+            .ok_or_else(|| anyhow!("invalid block type u8"))?;
+        let result = unsafe {
+            match block_type {
+                BlockType::Send => {
+                    BlockEnum::Send((*(value.handle as *const SendBlockHandle)).block.clone())
+                }
+                BlockType::Receive => {
+                    BlockEnum::Receive((*(value.handle as *const ReceiveBlockHandle)).block.clone())
+                }
+                BlockType::Open => {
+                    BlockEnum::Open((*(value.handle as *const OpenBlockHandle)).block.clone())
+                }
+                BlockType::Change => {
+                    BlockEnum::Change((*(value.handle as *const ChangeBlockHandle)).block.clone())
+                }
+                BlockType::State => {
+                    BlockEnum::State((*(value.handle as *const StateBlockHandle)).block.clone())
+                }
+                BlockType::Invalid | BlockType::NotABlock => bail!("invalid block type"),
+            }
+        };
+
+        Ok(result)
+    }
 }

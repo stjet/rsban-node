@@ -1,12 +1,15 @@
+use std::convert::{TryFrom, TryInto};
+
 use num::FromPrimitive;
 
 use crate::{
     config::WorkThresholds,
-    epoch::Epoch,
+    epoch::{Epoch, Epochs},
     ffi::{
         blocks::{set_block_dto, BlockDto},
         config::{fill_work_thresholds_dto, WorkThresholdsDto},
     },
+    numbers::{Account, Amount, KeyPair, Link, PublicKey},
     secure::LedgerConstants,
 };
 
@@ -93,4 +96,58 @@ pub fn fill_ledger_constants_dto(dto: &mut LedgerConstantsDto, ledger: LedgerCon
     dto.epoch_1_link = *ledger.epochs.link(Epoch::Epoch1).unwrap().as_bytes();
     dto.epoch_2_signer = *ledger.epochs.signer(Epoch::Epoch2).unwrap().as_bytes();
     dto.epoch_2_link = *ledger.epochs.link(Epoch::Epoch2).unwrap().as_bytes();
+}
+
+impl TryFrom<&LedgerConstantsDto> for LedgerConstants {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &LedgerConstantsDto) -> Result<Self, Self::Error> {
+        let mut epochs = Epochs::new();
+        epochs.add(
+            Epoch::Epoch1,
+            PublicKey::from_bytes(value.epoch_1_signer),
+            Link::from_bytes(value.epoch_1_link),
+        );
+        epochs.add(
+            Epoch::Epoch2,
+            PublicKey::from_bytes(value.epoch_2_signer),
+            Link::from_bytes(value.epoch_2_link),
+        );
+
+        let ledger = LedgerConstants {
+            work: (&value.work).into(),
+            zero_key: KeyPair::from_priv_key_bytes(&value.priv_key)?,
+            nano_beta_account: Account::from_bytes(value.nano_beta_account),
+            nano_live_account: Account::from_bytes(value.nano_live_account),
+            nano_test_account: Account::from_bytes(value.nano_test_account),
+            nano_dev_genesis: (&value.nano_dev_genesis).try_into()?,
+            nano_beta_genesis: (&value.nano_beta_genesis).try_into()?,
+            nano_live_genesis: (&value.nano_live_genesis).try_into()?,
+            nano_test_genesis: (&value.nano_test_genesis).try_into()?,
+            genesis: (&value.genesis).try_into()?,
+            genesis_amount: Amount::from_be_bytes(value.genesis_amount),
+            burn_account: Account::from_bytes(value.burn_account),
+            nano_dev_final_votes_canary_account: Account::from_bytes(
+                value.nano_dev_final_votes_canary_account,
+            ),
+            nano_beta_final_votes_canary_account: Account::from_bytes(
+                value.nano_beta_final_votes_canary_account,
+            ),
+            nano_live_final_votes_canary_account: Account::from_bytes(
+                value.nano_live_final_votes_canary_account,
+            ),
+            nano_test_final_votes_canary_account: Account::from_bytes(
+                value.nano_test_final_votes_canary_account,
+            ),
+            final_votes_canary_account: Account::from_bytes(value.final_votes_canary_account),
+            nano_dev_final_votes_canary_height: value.nano_dev_final_votes_canary_height,
+            nano_beta_final_votes_canary_height: value.nano_beta_final_votes_canary_height,
+            nano_live_final_votes_canary_height: value.nano_live_final_votes_canary_height,
+            nano_test_final_votes_canary_height: value.nano_test_final_votes_canary_height,
+            final_votes_canary_height: value.final_votes_canary_height,
+            epochs,
+        };
+
+        Ok(ledger)
+    }
 }

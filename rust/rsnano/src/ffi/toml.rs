@@ -8,12 +8,20 @@ type TomlPutU16Callback =
 type TomlPutU32Callback =
     unsafe extern "C" fn(*mut c_void, *const u8, usize, u32, *const u8, usize) -> i32;
 
+type TomlPutI64Callback =
+    unsafe extern "C" fn(*mut c_void, *const u8, usize, i64, *const u8, usize) -> i32;
+
 type TomlPutStrCallback =
     unsafe extern "C" fn(*mut c_void, *const u8, usize, *const u8, usize, *const u8, usize) -> i32;
 
+type TomlPutBoolCallback =
+    unsafe extern "C" fn(*mut c_void, *const u8, usize, bool, *const u8, usize) -> i32;
+
 static mut PUT_U16_CALLBACK: Option<TomlPutU16Callback> = None;
 static mut PUT_U32_CALLBACK: Option<TomlPutU32Callback> = None;
+static mut PUT_I64_CALLBACK: Option<TomlPutI64Callback> = None;
 static mut PUT_STR_CALLBACK: Option<TomlPutStrCallback> = None;
+static mut PUT_BOOL_CALLBACK: Option<TomlPutBoolCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_toml_put_u16(f: TomlPutU16Callback) {
@@ -26,8 +34,18 @@ pub unsafe extern "C" fn rsn_callback_toml_put_u32(f: TomlPutU32Callback) {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_callback_toml_put_i64(f: TomlPutI64Callback) {
+    PUT_I64_CALLBACK = Some(f);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_callback_toml_put_str(f: TomlPutStrCallback) {
     PUT_STR_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_toml_put_bool(f: TomlPutBoolCallback) {
+    PUT_BOOL_CALLBACK = Some(f);
 }
 
 pub struct FfiToml {
@@ -87,6 +105,29 @@ impl TomlWriter for FfiToml {
         }
     }
 
+    fn put_i64(&mut self, key: &str, value: i64, documentation: &str) -> Result<()> {
+        unsafe {
+            match PUT_I64_CALLBACK {
+                Some(f) => {
+                    if f(
+                        self.handle,
+                        key.as_ptr(),
+                        key.bytes().len(),
+                        value,
+                        documentation.as_ptr(),
+                        documentation.as_bytes().len(),
+                    ) == 0
+                    {
+                        Ok(())
+                    } else {
+                        Err(anyhow!("PUT_I64_CALLBACK returned error"))
+                    }
+                }
+                None => Err(anyhow!("PUT_I64_CALLBACK not set")),
+            }
+        }
+    }
+
     fn put_str(&mut self, key: &str, value: &str, documentation: &str) -> Result<()> {
         unsafe {
             match PUT_STR_CALLBACK {
@@ -107,6 +148,29 @@ impl TomlWriter for FfiToml {
                     }
                 }
                 None => Err(anyhow!("PUT_STR_CALLBACK not set")),
+            }
+        }
+    }
+
+    fn put_bool(&mut self, key: &str, value: bool, documentation: &str) -> Result<()> {
+        unsafe {
+            match PUT_BOOL_CALLBACK {
+                Some(f) => {
+                    if f(
+                        self.handle,
+                        key.as_ptr(),
+                        key.bytes().len(),
+                        value,
+                        documentation.as_ptr(),
+                        documentation.as_bytes().len(),
+                    ) == 0
+                    {
+                        Ok(())
+                    } else {
+                        Err(anyhow!("PUT_BOOL_CALLBACK returned error"))
+                    }
+                }
+                None => Err(anyhow!("PUT_BOOL_CALLBACK not set")),
             }
         }
     }

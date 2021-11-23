@@ -1,3 +1,5 @@
+use std::convert::{TryFrom, TryInto};
+
 use super::{
     bootstrap_constants::{fill_bootstrap_constants_dto, BootstrapConstantsDto},
     ledger_constants::{fill_ledger_constants_dto, LedgerConstantsDto},
@@ -49,4 +51,23 @@ pub unsafe extern "C" fn rsn_network_params_create(
     fill_portmapping_constants_dto(&mut dto.portmapping, &params.portmapping);
     fill_bootstrap_constants_dto(&mut dto.bootstrap, &params.bootstrap);
     0
+}
+
+impl TryFrom<&NetworkParamsDto> for NetworkParams {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &NetworkParamsDto) -> Result<Self, Self::Error> {
+        let network_params = NetworkParams {
+            kdf_work: value.kdf_work,
+            work: (&value.work).into(),
+            network: (&value.network).try_into()?,
+            ledger: (&value.ledger).try_into()?,
+            voting: (&value.voting).into(),
+            node: (&value.node).into(),
+            portmapping: (&value.portmapping).into(),
+            bootstrap: (&value.bootstrap).into(),
+        };
+
+        Ok(network_params)
+    }
 }

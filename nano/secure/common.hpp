@@ -382,6 +382,7 @@ public:
 	uint64_t nano_test_final_votes_canary_height;
 	uint64_t final_votes_canary_height;
 	nano::epochs epochs;
+	rsnano::LedgerConstantsDto to_dto () const;
 };
 
 namespace dev
@@ -413,6 +414,7 @@ public:
 	node_constants (nano::network_constants & network_constants);
 	node_constants (rsnano::NodeConstantsDto const &);
 	void read_dto (rsnano::NodeConstantsDto const &);
+	rsnano::NodeConstantsDto to_dto () const;
 	std::chrono::minutes backup_interval;
 	std::chrono::seconds search_pending_interval;
 	std::chrono::minutes unchecked_cleaning_interval;
@@ -432,6 +434,7 @@ public:
 	voting_constants (rsnano::VotingConstantsDto const & dto);
 	size_t max_cache;
 	std::chrono::seconds delay;
+	rsnano::VotingConstantsDto to_dto () const;
 };
 
 /** Port-mapping related constants whose value depends on the active network */
@@ -444,6 +447,7 @@ public:
 	// Timeouts are primes so they infrequently happen at the same time
 	std::chrono::seconds lease_duration;
 	std::chrono::seconds health_check_period;
+	rsnano::PortmappingConstantsDto to_dto () const;
 };
 
 /** Bootstrap related constants whose value depends on the active network */
@@ -461,6 +465,7 @@ public:
 	unsigned lazy_destinations_retry_limit;
 	std::chrono::milliseconds gap_cache_bootstrap_start_interval;
 	uint32_t default_frontiers_age_seconds;
+	rsnano::BootstrapConstantsDto to_dto () const;
 };
 
 /** Constants whose value depends on the active network */
@@ -469,6 +474,8 @@ class network_params
 public:
 	/** Populate values based on \p network_a */
 	network_params (nano::networks network_a);
+
+	rsnano::NetworkParamsDto to_dto () const;
 
 	unsigned kdf_work;
 	nano::work_thresholds work;

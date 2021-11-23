@@ -200,7 +200,7 @@ impl Amount {
         Ok(Amount::new(value))
     }
 
-    pub fn to_string_dec(&self) -> String {
+    pub fn to_string_dec(self) -> String {
         self.value.to_string()
     }
 }
@@ -512,8 +512,9 @@ pub fn from_string_hex(s: impl AsRef<str>) -> Result<u64> {
     Ok(result)
 }
 
-pub const XRB_RATIO: Lazy<u128> = Lazy::new(|| u128::from_str_radix("1000000000000000000000000", 10).unwrap()); // 10^24
-pub const GXRB_RATIO: Lazy<u128> = Lazy::new(|| u128::from_str_radix("1000000000000000000000000000000000", 10).unwrap()); // 10^33
+pub static XRB_RATIO: Lazy<u128> = Lazy::new(|| str::parse("1000000000000000000000000").unwrap()); // 10^24
+pub static GXRB_RATIO: Lazy<u128> =
+    Lazy::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
 
 #[cfg(test)]
 mod tests {

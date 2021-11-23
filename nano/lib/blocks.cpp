@@ -407,6 +407,11 @@ rsnano::BlockDto nano::send_block::to_block_dto () const
 	return dto;
 }
 
+void * nano::send_block::get_handle () const
+{
+	return handle;
+}
+
 nano::open_block::open_block ()
 {
 	rsnano::OpenBlockDto dto;
@@ -672,6 +677,11 @@ rsnano::BlockDto nano::open_block::to_block_dto () const
 	return dto;
 }
 
+void * nano::open_block::get_handle () const
+{
+	return handle;
+}
+
 nano::change_block::change_block ()
 {
 	rsnano::ChangeBlockDto dto;
@@ -907,6 +917,11 @@ rsnano::BlockDto nano::change_block::to_block_dto () const
 	dto.block_type = static_cast<uint8_t> (nano::block_type::change);
 	dto.handle = handle;
 	return dto;
+}
+
+void * nano::change_block::get_handle () const
+{
+	return handle;
 }
 
 nano::state_block::state_block ()
@@ -1211,6 +1226,19 @@ rsnano::BlockDto nano::state_block::to_block_dto () const
 	dto.block_type = static_cast<uint8_t> (nano::block_type::state);
 	dto.handle = handle;
 	return dto;
+}
+
+void * nano::state_block::get_handle () const
+{
+	return handle;
+}
+
+rsnano::BlockDto nano::block_to_block_dto (nano::block const & source)
+{
+	rsnano::BlockDto result;
+	result.block_type = static_cast<uint8_t> (source.type ());
+	result.handle = source.get_handle ();
+	return result;
 }
 
 std::shared_ptr<nano::block> nano::block_dto_to_block (rsnano::BlockDto const & dto)
@@ -1537,6 +1565,11 @@ nano::block_hash nano::receive_block::generate_hash () const
 	nano::block_hash result;
 	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
 	return result;
+}
+
+void * nano::receive_block::get_handle () const
+{
+	return handle;
 }
 
 nano::block_details::block_details ()

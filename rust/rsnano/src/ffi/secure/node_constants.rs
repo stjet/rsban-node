@@ -34,3 +34,16 @@ pub fn fill_node_constants_dto(dto: &mut NodeConstantsDto, node: &NodeConstants)
     dto.max_weight_samples = node.max_weight_samples;
     dto.weight_period = node.weight_period;
 }
+
+impl From<&NodeConstantsDto> for NodeConstants {
+    fn from(dto: &NodeConstantsDto) -> Self {
+        Self {
+            backup_interval_m: dto.backup_interval_m,
+            search_pending_interval_s: dto.search_pending_interval_s,
+            unchecked_cleaning_interval_m: dto.unchecked_cleaning_interval_m,
+            process_confirmed_interval_ms: dto.process_confirmed_interval_ms,
+            max_weight_samples: dto.max_weight_samples,
+            weight_period: dto.weight_period,
+        }
+    }
+}

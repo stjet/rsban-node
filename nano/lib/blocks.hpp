@@ -129,6 +129,7 @@ public:
 	// If there are any changes to the hashables, call this to update the cached hash
 	void refresh ();
 	virtual rsnano::BlockDto to_block_dto () const = 0;
+	virtual void * get_handle () const = 0;
 
 protected:
 	virtual nano::block_hash generate_hash () const = 0;
@@ -171,6 +172,7 @@ public:
 	void sign_zero ();
 	static std::size_t size ();
 	rsnano::BlockDto to_block_dto () const override;
+	void * get_handle () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
@@ -213,6 +215,7 @@ public:
 	void zero ();
 	static std::size_t size ();
 	rsnano::BlockDto to_block_dto () const override;
+	void * get_handle () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
@@ -258,6 +261,7 @@ public:
 	void zero ();
 	static std::size_t size ();
 	rsnano::BlockDto to_block_dto () const override;
+	void * get_handle () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
@@ -299,6 +303,7 @@ public:
 	void zero ();
 	static std::size_t size ();
 	rsnano::BlockDto to_block_dto () const override;
+	void * get_handle () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
@@ -347,6 +352,7 @@ public:
 	void zero ();
 	static std::size_t size ();
 	rsnano::BlockDto to_block_dto () const override;
+	void * get_handle () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
@@ -399,4 +405,5 @@ std::shared_ptr<nano::block> deserialize_block_json (boost::property_tree::ptree
 void serialize_block (nano::stream &, nano::block const &);
 void block_memory_pool_purge ();
 std::shared_ptr<nano::block> block_dto_to_block (rsnano::BlockDto const & dto);
+rsnano::BlockDto block_to_block_dto (nano::block const & source);
 }

@@ -43,6 +43,20 @@ nano::network_params::network_params (nano::networks network_a)
 	kdf_work = dto.kdf_work;
 }
 
+rsnano::NetworkParamsDto nano::network_params::to_dto () const
+{
+	rsnano::NetworkParamsDto dto;
+	dto.kdf_work = kdf_work;
+	dto.work = work.dto;
+	dto.network = network.to_dto ();
+	dto.ledger = ledger.to_dto ();
+	dto.voting = voting.to_dto ();
+	dto.node = node.to_dto ();
+	dto.portmapping = portmapping.to_dto ();
+	dto.bootstrap = bootstrap.to_dto ();
+	return dto;
+}
+
 nano::ledger_constants::ledger_constants (nano::work_thresholds & work_a, nano::networks network_a)
 {
 	rsnano::LedgerConstantsDto dto;
@@ -54,6 +68,46 @@ nano::ledger_constants::ledger_constants (nano::work_thresholds & work_a, nano::
 nano::ledger_constants::ledger_constants (rsnano::LedgerConstantsDto const & dto)
 {
 	read_dto (dto);
+}
+
+rsnano::LedgerConstantsDto nano::ledger_constants::to_dto () const
+{
+	rsnano::LedgerConstantsDto dto;
+	dto.work = work.dto;
+	std::copy (std::begin (zero_key.prv.bytes), std::end (zero_key.prv.bytes), std::begin (dto.priv_key));
+	std::copy (std::begin (zero_key.pub.bytes), std::end (zero_key.pub.bytes), std::begin (dto.pub_key));
+	std::copy (std::begin (nano_beta_account.bytes), std::end (nano_beta_account.bytes), std::begin (dto.nano_beta_account));
+	std::copy (std::begin (nano_live_account.bytes), std::end (nano_live_account.bytes), std::begin (dto.nano_live_account));
+	std::copy (std::begin (nano_test_account.bytes), std::end (nano_test_account.bytes), std::begin (dto.nano_test_account));
+
+	dto.nano_dev_genesis = block_to_block_dto (*nano_dev_genesis);
+	dto.nano_beta_genesis = block_to_block_dto (*nano_beta_genesis);
+	dto.nano_live_genesis = block_to_block_dto (*nano_live_genesis);
+	dto.nano_test_genesis = block_to_block_dto (*nano_test_genesis);
+	dto.genesis = block_to_block_dto (*genesis);
+	boost::multiprecision::export_bits (genesis_amount, std::begin (dto.genesis_amount), 8);
+	std::copy (std::begin (burn_account.bytes), std::end (burn_account.bytes), std::begin (dto.burn_account));
+	std::copy (std::begin (nano_dev_final_votes_canary_account.bytes), std::end (nano_dev_final_votes_canary_account.bytes), std::begin (dto.nano_dev_final_votes_canary_account));
+	std::copy (std::begin (nano_beta_final_votes_canary_account.bytes), std::end (nano_beta_final_votes_canary_account.bytes), std::begin (dto.nano_beta_final_votes_canary_account));
+	std::copy (std::begin (nano_live_final_votes_canary_account.bytes), std::end (nano_live_final_votes_canary_account.bytes), std::begin (dto.nano_live_final_votes_canary_account));
+	std::copy (std::begin (nano_test_final_votes_canary_account.bytes), std::end (nano_test_final_votes_canary_account.bytes), std::begin (dto.nano_test_final_votes_canary_account));
+	std::copy (std::begin (final_votes_canary_account.bytes), std::end (final_votes_canary_account.bytes), std::begin (dto.final_votes_canary_account));
+	dto.nano_dev_final_votes_canary_height = nano_dev_final_votes_canary_height;
+	dto.nano_beta_final_votes_canary_height = nano_beta_final_votes_canary_height;
+	dto.nano_live_final_votes_canary_height = nano_live_final_votes_canary_height;
+	dto.nano_test_final_votes_canary_height = nano_test_final_votes_canary_height;
+	dto.final_votes_canary_height = final_votes_canary_height;
+
+	auto epoch_1_link{ epochs.link (nano::epoch::epoch_1) };
+	auto epoch_1_signer{ epochs.signer (nano::epoch::epoch_1) };
+	auto epoch_2_link{ epochs.link (nano::epoch::epoch_2) };
+	auto epoch_2_signer{ epochs.signer (nano::epoch::epoch_2) };
+
+	std::copy (std::begin (epoch_1_signer.bytes), std::end (epoch_1_signer.bytes), std::begin (dto.epoch_1_signer));
+	std::copy (std::begin (epoch_1_link.bytes), std::end (epoch_1_link.bytes), std::begin (dto.epoch_1_link));
+	std::copy (std::begin (epoch_2_signer.bytes), std::end (epoch_2_signer.bytes), std::begin (dto.epoch_2_signer));
+	std::copy (std::begin (epoch_2_link.bytes), std::end (epoch_2_link.bytes), std::begin (dto.epoch_2_link));
+	return dto;
 }
 
 void nano::ledger_constants::read_dto (rsnano::LedgerConstantsDto const & dto)
@@ -136,6 +190,18 @@ void nano::node_constants::read_dto (rsnano::NodeConstantsDto const & dto)
 	weight_period = dto.weight_period;
 }
 
+rsnano::NodeConstantsDto nano::node_constants::to_dto () const
+{
+	rsnano::NodeConstantsDto dto;
+	dto.backup_interval_m = backup_interval.count ();
+	dto.search_pending_interval_s = search_pending_interval.count ();
+	dto.unchecked_cleaning_interval_m = unchecked_cleaning_interval.count ();
+	dto.process_confirmed_interval_ms = process_confirmed_interval.count ();
+	dto.max_weight_samples = max_weight_samples;
+	dto.weight_period = weight_period;
+	return dto;
+}
+
 nano::voting_constants::voting_constants (nano::network_constants & network_constants)
 {
 	auto network_dto{ network_constants.to_dto () };
@@ -150,6 +216,14 @@ nano::voting_constants::voting_constants (rsnano::VotingConstantsDto const & dto
 {
 	max_cache = dto.max_cache;
 	delay = std::chrono::seconds (dto.delay_s);
+}
+
+rsnano::VotingConstantsDto nano::voting_constants::to_dto () const
+{
+	rsnano::VotingConstantsDto result;
+	result.max_cache = max_cache;
+	result.delay_s = delay.count ();
+	return result;
 }
 
 nano::portmapping_constants::portmapping_constants (nano::network_constants & network_constants)
@@ -168,6 +242,14 @@ nano::portmapping_constants::portmapping_constants (rsnano::PortmappingConstants
 	health_check_period = std::chrono::seconds (dto.health_check_period_s);
 }
 
+rsnano::PortmappingConstantsDto nano::portmapping_constants::to_dto () const
+{
+	rsnano::PortmappingConstantsDto dto;
+	dto.lease_duration_s = lease_duration.count ();
+	dto.health_check_period_s = health_check_period.count ();
+	return dto;
+}
+
 nano::bootstrap_constants::bootstrap_constants (nano::network_constants & network_constants)
 {
 	auto network_dto{ network_constants.to_dto () };
@@ -180,6 +262,19 @@ nano::bootstrap_constants::bootstrap_constants (nano::network_constants & networ
 nano::bootstrap_constants::bootstrap_constants (rsnano::BootstrapConstantsDto const & dto)
 {
 	read_dto (dto);
+}
+
+rsnano::BootstrapConstantsDto nano::bootstrap_constants::to_dto () const
+{
+	rsnano::BootstrapConstantsDto dto;
+	dto.lazy_max_pull_blocks = lazy_max_pull_blocks;
+	dto.lazy_min_pull_blocks = lazy_min_pull_blocks;
+	dto.frontier_retry_limit = frontier_retry_limit;
+	dto.lazy_retry_limit = lazy_retry_limit;
+	dto.lazy_destinations_retry_limit = lazy_destinations_retry_limit;
+	dto.gap_cache_bootstrap_start_interval_ms = gap_cache_bootstrap_start_interval.count ();
+	dto.default_frontiers_age_seconds = default_frontiers_age_seconds;
+	return dto;
 }
 
 void nano::bootstrap_constants::read_dto (rsnano::BootstrapConstantsDto const & dto)

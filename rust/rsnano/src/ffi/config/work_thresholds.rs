@@ -177,6 +177,12 @@ impl TryFrom<u8> for WorkVersion {
     }
 }
 
+impl From<WorkThresholdsDto> for WorkThresholds {
+    fn from(dto: WorkThresholdsDto) -> Self {
+        WorkThresholds::new(dto.epoch_1, dto.epoch_2, dto.epoch_2_receive)
+    }
+}
+
 impl From<&WorkThresholdsDto> for WorkThresholds {
     fn from(dto: &WorkThresholdsDto) -> Self {
         WorkThresholds::new(dto.epoch_1, dto.epoch_2, dto.epoch_2_receive)

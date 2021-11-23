@@ -42,3 +42,17 @@ pub fn fill_bootstrap_constants_dto(
     dto.gap_cache_bootstrap_start_interval_ms = bootstrap.gap_cache_bootstrap_start_interval_ms;
     dto.default_frontiers_age_seconds = bootstrap.default_frontiers_age_seconds;
 }
+
+impl From<&BootstrapConstantsDto> for BootstrapConstants {
+    fn from(dto: &BootstrapConstantsDto) -> Self {
+        Self {
+            lazy_max_pull_blocks: dto.lazy_max_pull_blocks,
+            lazy_min_pull_blocks: dto.lazy_min_pull_blocks,
+            frontier_retry_limit: dto.frontier_retry_limit,
+            lazy_retry_limit: dto.lazy_retry_limit,
+            lazy_destinations_retry_limit: dto.lazy_destinations_retry_limit,
+            gap_cache_bootstrap_start_interval_ms: dto.gap_cache_bootstrap_start_interval_ms,
+            default_frontiers_age_seconds: dto.default_frontiers_age_seconds,
+        }
+    }
+}

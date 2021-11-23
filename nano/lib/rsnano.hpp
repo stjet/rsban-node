@@ -77,6 +77,8 @@ struct NetworkConstantsDto
 	int64_t peer_dump_interval_s;
 	uint8_t protocol_version;
 	uint8_t protocol_version_min;
+	uintptr_t ipv6_subnetwork_prefix_for_limiting;
+	int64_t silent_connection_tolerance_time_s;
 };
 
 struct BootstrapConstantsDto

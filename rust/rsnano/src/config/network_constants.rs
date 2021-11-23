@@ -22,7 +22,7 @@ pub struct NetworkConstants {
     pub idle_timeout_s: i64,
     pub sync_cookie_cutoff_s: i64,
     pub bootstrap_interval_s: i64,
-    /** Maximum number of peers per IP */
+    /** Maximum number of peers per IP. It is also the max number of connections per IP*/
     pub max_peers_per_ip: usize,
     /** Maximum number of peers per subnetwork */
     pub max_peers_per_subnetwork: usize,
@@ -33,6 +33,8 @@ pub struct NetworkConstants {
     pub protocol_version: u8,
     /** Minimum accepted protocol version */
     pub protocol_version_min: u8,
+    pub ipv6_subnetwork_prefix_for_limiting: usize,
+    pub silent_connection_tolerance_time_s: i64,
 }
 
 impl NetworkConstants {
@@ -77,6 +79,8 @@ impl NetworkConstants {
             } else {
                 5 * 60
             },
+            ipv6_subnetwork_prefix_for_limiting: 64,
+            silent_connection_tolerance_time_s: 120,
         }
     }
 

@@ -379,7 +379,11 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 	ASSERT_EQ (0, node1->stats.count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in)); // Requeue is not increasing failed attempts
 }
 
-TEST (bootstrap_processor, push_diamond)
+// Test disabled because it's failing intermittently.
+// PR in which it got disabled: https://github.com/nanocurrency/nano-node/pull/3558
+// Issue for investigating it: https://github.com/nanocurrency/nano-node/issues/3559
+// CI run in which it failed: https://github.com/nanocurrency/nano-node/runs/4280675502?check_suite_focus=true#step:6:398
+TEST (bootstrap_processor, DISABLED_push_diamond)
 {
 	nano::system system;
 	nano::node_config config (nano::get_available_port (), system.logging);
@@ -1533,19 +1537,18 @@ TEST (frontier_req, confirmed_frontier)
 {
 	nano::system system (1);
 	auto node1 = system.nodes[0];
-	nano::raw_key priv_key;
+	nano::keypair key_before_genesis;
 	// Public key before genesis in accounts table
-	while (nano::pub_key (priv_key).number () >= nano::dev::genesis_key.pub.number ())
+	while (key_before_genesis.pub.number () >= nano::dev::genesis_key.pub.number ())
 	{
-		priv_key = nano::keypair ().prv;
+		key_before_genesis = nano::keypair ();
 	}
-	nano::keypair key_before_genesis (priv_key.to_string ());
+	nano::keypair key_after_genesis;
 	// Public key after genesis in accounts table
-	while (nano::pub_key (priv_key).number () <= nano::dev::genesis_key.pub.number ())
+	while (key_after_genesis.pub.number () <= nano::dev::genesis_key.pub.number ())
 	{
-		priv_key = nano::keypair ().prv;
+		key_after_genesis = nano::keypair ();
 	}
-	nano::keypair key_after_genesis (priv_key.to_string ());
 	nano::state_block_builder builder;
 
 	auto send1 = builder

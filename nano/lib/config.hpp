@@ -153,12 +153,14 @@ public:
 	std::chrono::seconds cleanup_cutoff () const;
 	/** Default maximum idle time for a socket before it's automatically closed */
 	std::chrono::seconds idle_timeout;
+	std::chrono::seconds silent_connection_tolerance_time;
 	std::chrono::seconds syn_cookie_cutoff;
 	std::chrono::seconds bootstrap_interval;
-	/** Maximum number of peers per IP */
+	/** Maximum number of peers per IP. It is also the max number of connections per IP */
 	size_t max_peers_per_ip;
 	/** Maximum number of peers per subnetwork */
 	size_t max_peers_per_subnetwork;
+	size_t ipv6_subnetwork_prefix_for_limiting;
 	std::chrono::seconds peer_dump_interval;
 
 	/** Returns the network this object contains values for */

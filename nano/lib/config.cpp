@@ -237,6 +237,8 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	max_peers_per_ip = dto.max_peers_per_ip;
 	max_peers_per_subnetwork = dto.max_peers_per_subnetwork;
 	peer_dump_interval = std::chrono::seconds (dto.peer_dump_interval_s);
+	ipv6_subnetwork_prefix_for_limiting = dto.ipv6_subnetwork_prefix_for_limiting;
+	silent_connection_tolerance_time = std::chrono::seconds (dto.silent_connection_tolerance_time_s);
 }
 
 bool nano::network_constants::set_active_network (std::string network_a)

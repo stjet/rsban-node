@@ -2,11 +2,14 @@ use std::net::Ipv6Addr;
 
 use crate::{
     config::Networks,
-    numbers::{Amount, GXRB_RATIO, XRB_RATIO},
+    numbers::{Account, Amount, GXRB_RATIO, XRB_RATIO},
     secure::NetworkParams,
     utils::{get_cpu_count, TomlWriter},
 };
 use anyhow::Result;
+use once_cell::sync::Lazy;
+
+use super::get_env_or_default_string;
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -59,6 +62,7 @@ pub struct NodeConfig {
     pub work_peers: Vec<Peer>,
     pub secondary_work_peers: Vec<Peer>,
     pub preconfigured_peers: Vec<String>,
+    pub preconfigured_representatives: Vec<Account>,
 }
 
 pub struct Peer {
@@ -75,6 +79,11 @@ impl Peer {
     }
 }
 
+const DEFAULT_BETA_PEER_NETWORK: &str = "peering-beta.nano.org";
+const DEFAULT_LIVE_PEER_NETWORK: &str = "peering.nano.org";
+static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
+    Lazy::new(|| get_env_or_default_string("NANO_TEST_PEER_NETWORK", "peering.nano.org"));
+
 impl NodeConfig {
     pub fn new(peering_port: u16, network_params: &NetworkParams) -> Self {
         // The default constructor passes 0 to indicate we should use the default port,
@@ -86,13 +95,78 @@ impl NodeConfig {
         };
         let mut enable_voting = false;
         let mut preconfigured_peers = Vec::new();
+        let mut preconfigured_representatives = Vec::new();
         match network_params.network.current_network {
             Networks::NanoDevNetwork => {
                 enable_voting = true;
+                preconfigured_representatives
+                    .push(*network_params.ledger.genesis.as_block().account());
             }
-            Networks::NanoBetaNetwork => {}
-            Networks::NanoLiveNetwork => {}
-            Networks::NanoTestNetwork => {}
+            Networks::NanoBetaNetwork => {
+                preconfigured_peers.push(DEFAULT_BETA_PEER_NETWORK.to_string());
+                preconfigured_representatives.push(
+                    Account::decode_account(
+                        "nano_1defau1t9off1ine9rep99999999999999999999999999999999wgmuzxxy",
+                    )
+                    .unwrap(),
+                );
+            }
+            Networks::NanoLiveNetwork => {
+                preconfigured_peers.push(DEFAULT_LIVE_PEER_NETWORK.to_string());
+                preconfigured_representatives.push(
+                    Account::decode_hex(
+                        "A30E0A32ED41C8607AA9212843392E853FCBCB4E7CB194E35C94F07F91DE59EF",
+                    )
+                    .unwrap(),
+                );
+                preconfigured_representatives.push(
+                    Account::decode_hex(
+                        "67556D31DDFC2A440BF6147501449B4CB9572278D034EE686A6BEE29851681DF",
+                    )
+                    .unwrap(),
+                );
+                preconfigured_representatives.push(
+                    Account::decode_hex(
+                        "5C2FBB148E006A8E8BA7A75DD86C9FE00C83F5FFDBFD76EAA09531071436B6AF",
+                    )
+                    .unwrap(),
+                );
+                preconfigured_representatives.push(
+                    Account::decode_hex(
+                        "AE7AC63990DAAAF2A69BF11C913B928844BF5012355456F2F164166464024B29",
+                    )
+                    .unwrap(),
+                );
+                preconfigured_representatives.push(
+                    Account::decode_hex(
+                        "BD6267D6ECD8038327D2BCC0850BDF8F56EC0414912207E81BCF90DFAC8A4AAA",
+                    )
+                    .unwrap(),
+                );
+                preconfigured_representatives.push(
+                    Account::decode_hex(
+                        "2399A083C600AA0572F5E36247D978FCFC840405F8D4B6D33161C0066A55F431",
+                    )
+                    .unwrap(),
+                );
+                preconfigured_representatives.push(
+                    Account::decode_hex(
+                        "2298FAB7C61058E77EA554CB93EDEEDA0692CBFCC540AB213B2836B29029E23A",
+                    )
+                    .unwrap(),
+                );
+                preconfigured_representatives.push(
+                    Account::decode_hex(
+                        "3FE80B4BC842E82C1C18ABFEEC47EA989E63953BC82AC411F304D13833D52A56",
+                    )
+                    .unwrap(),
+                );
+            }
+            Networks::NanoTestNetwork => {
+                preconfigured_peers.push(DEFAULT_TEST_PEER_NETWORK.clone());
+                preconfigured_representatives
+                    .push(*network_params.ledger.genesis.as_block().account());
+            }
             Networks::Invalid => panic!("invalid network"),
         }
 
@@ -157,6 +231,7 @@ impl NodeConfig {
             work_peers: Vec::new(),
             secondary_work_peers: vec![Peer::new("127.0.0.1", 8076)],
             preconfigured_peers,
+            preconfigured_representatives,
         }
     }
 
@@ -244,6 +319,11 @@ impl NodeConfig {
         }
         drop(preconfigured_peers);
 
+        let mut preconfigured_representatives = toml.create_array ("preconfigured_representatives", "A list of representative account addresses used when creating new accounts in internal wallets.")?;
+        for rep in &self.preconfigured_representatives {
+            preconfigured_representatives.push_back_str(&rep.encode_account())?;
+        }
+        drop(preconfigured_representatives);
 
         Ok(())
     }

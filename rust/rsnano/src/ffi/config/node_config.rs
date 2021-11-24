@@ -5,7 +5,7 @@ use num::FromPrimitive;
 use crate::{
     config::{NodeConfig, Peer},
     ffi::{secure::NetworkParamsDto, toml::FfiToml},
-    numbers::Amount,
+    numbers::{Account, Amount},
     secure::NetworkParams,
 };
 
@@ -56,6 +56,8 @@ pub struct NodeConfigDto {
     pub secondary_work_peers_count: usize,
     pub preconfigured_peers: [PeerDto; 5],
     pub preconfigured_peers_count: usize,
+    pub preconfigured_representatives: [[u8; 32]; 10],
+    pub preconfigured_representatives_count: usize,
 }
 
 #[repr(C)]
@@ -124,6 +126,7 @@ pub unsafe extern "C" fn rsn_node_config_create(
         dto.work_peers[i].port = peer.port;
     }
     dto.work_peers_count = cfg.work_peers.len();
+
     for (i, peer) in cfg.secondary_work_peers.iter().enumerate() {
         let bytes = peer.address.as_bytes();
         dto.secondary_work_peers[i].address[..bytes.len()].copy_from_slice(bytes);
@@ -131,12 +134,18 @@ pub unsafe extern "C" fn rsn_node_config_create(
         dto.secondary_work_peers[i].port = peer.port;
     }
     dto.secondary_work_peers_count = cfg.secondary_work_peers.len();
+
     for (i, peer) in cfg.preconfigured_peers.iter().enumerate() {
         let bytes = peer.as_bytes();
         dto.preconfigured_peers[i].address[..bytes.len()].copy_from_slice(bytes);
         dto.preconfigured_peers[i].address_len = bytes.len();
     }
     dto.preconfigured_peers_count = cfg.preconfigured_peers.len();
+
+    for (i, rep) in cfg.preconfigured_representatives.iter().enumerate() {
+        dto.preconfigured_representatives[i] = rep.to_bytes();
+    }
+    dto.preconfigured_representatives_count = cfg.preconfigured_representatives.len();
     0
 }
 
@@ -176,6 +185,12 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             let p = &value.preconfigured_peers[i];
             let address = String::from_utf8_lossy(&p.address[..p.address_len]).to_string();
             preconfigured_peers.push(address);
+        }
+
+        let mut preconfigured_representatives = Vec::new();
+        for i in 0..value.preconfigured_representatives_count {
+            preconfigured_representatives
+                .push(Account::from_bytes(value.preconfigured_representatives[i]));
         }
 
         let cfg = NodeConfig {
@@ -224,6 +239,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             work_peers,
             secondary_work_peers,
             preconfigured_peers,
+            preconfigured_representatives,
         };
 
         Ok(cfg)

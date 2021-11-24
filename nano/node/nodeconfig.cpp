@@ -15,8 +15,6 @@ namespace
 char const * preconfigured_peers_key = "preconfigured_peers";
 char const * signature_checker_threads_key = "signature_checker_threads";
 char const * pow_sleep_interval_key = "pow_sleep_interval";
-char const * default_beta_peer_network = "peering-beta.nano.org";
-char const * default_live_peer_network = "peering.nano.org";
 std::string const default_test_peer_network = nano::get_env_or_default ("NANO_TEST_PEER_NETWORK", "peering-test.nano.org");
 }
 
@@ -87,38 +85,11 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 		std::string address (reinterpret_cast<const char *> (dto.preconfigured_peers[i].address), dto.preconfigured_peers[i].address_len);
 		preconfigured_peers.push_back (address);
 	}
-
-	switch (network_params.network.network ())
+	for (auto i = 0; i < dto.preconfigured_representatives_count; i++)
 	{
-		case nano::networks::nano_dev_network:
-			preconfigured_representatives.push_back (network_params.ledger.genesis->account ());
-			break;
-		case nano::networks::nano_beta_network:
-		{
-			preconfigured_peers.push_back (default_beta_peer_network);
-			nano::account offline_representative;
-			release_assert (!offline_representative.decode_account ("nano_1defau1t9off1ine9rep99999999999999999999999999999999wgmuzxxy"));
-			preconfigured_representatives.emplace_back (offline_representative);
-			break;
-		}
-		case nano::networks::nano_live_network:
-			preconfigured_peers.push_back (default_live_peer_network);
-			preconfigured_representatives.emplace_back ("A30E0A32ED41C8607AA9212843392E853FCBCB4E7CB194E35C94F07F91DE59EF");
-			preconfigured_representatives.emplace_back ("67556D31DDFC2A440BF6147501449B4CB9572278D034EE686A6BEE29851681DF");
-			preconfigured_representatives.emplace_back ("5C2FBB148E006A8E8BA7A75DD86C9FE00C83F5FFDBFD76EAA09531071436B6AF");
-			preconfigured_representatives.emplace_back ("AE7AC63990DAAAF2A69BF11C913B928844BF5012355456F2F164166464024B29");
-			preconfigured_representatives.emplace_back ("BD6267D6ECD8038327D2BCC0850BDF8F56EC0414912207E81BCF90DFAC8A4AAA");
-			preconfigured_representatives.emplace_back ("2399A083C600AA0572F5E36247D978FCFC840405F8D4B6D33161C0066A55F431");
-			preconfigured_representatives.emplace_back ("2298FAB7C61058E77EA554CB93EDEEDA0692CBFCC540AB213B2836B29029E23A");
-			preconfigured_representatives.emplace_back ("3FE80B4BC842E82C1C18ABFEEC47EA989E63953BC82AC411F304D13833D52A56");
-			break;
-		case nano::networks::nano_test_network:
-			preconfigured_peers.push_back (default_test_peer_network);
-			preconfigured_representatives.push_back (network_params.ledger.genesis->account ());
-			break;
-		default:
-			debug_assert (false);
-			break;
+		nano::account a;
+		std::copy (std::begin (dto.preconfigured_representatives[i]), std::end (dto.preconfigured_representatives[i]), std::begin (a.bytes));
+		preconfigured_representatives.push_back (a);
 	}
 }
 
@@ -184,6 +155,12 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 		std::copy (config.preconfigured_peers[i].begin (), config.preconfigured_peers[i].end (), std::begin (dto.preconfigured_peers[i].address));
 		dto.preconfigured_peers[i].address_len = config.preconfigured_peers[i].size ();
 	}
+	for (auto i = 0; i < config.preconfigured_representatives.size (); i++)
+	{
+		std::copy (std::begin (config.preconfigured_representatives[i].bytes), std::end (config.preconfigured_representatives[i].bytes), std::begin (dto.preconfigured_representatives[i]));
+		dto.preconfigured_representatives_count = config.preconfigured_representatives.size ();
+	}
+	dto.preconfigured_representatives_count = config.preconfigured_representatives.size ();
 	return dto;
 }
 
@@ -192,12 +169,6 @@ nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
 	auto dto{ to_node_config_dto (*this) };
 	if (rsnano::rsn_node_config_serialize_toml (&dto, &toml) < 0)
 		throw std::runtime_error ("could not TOML serialize node_config");
-
-	auto preconfigured_representatives_l (toml.create_array ("preconfigured_representatives", "A list of representative account addresses used when creating new accounts in internal wallets."));
-	for (auto i (preconfigured_representatives.begin ()), n (preconfigured_representatives.end ()); i != n; ++i)
-	{
-		preconfigured_representatives_l->push_back (i->to_account ());
-	}
 
 	/** Experimental node entries */
 	nano::tomlconfig experimental_l;

@@ -324,6 +324,8 @@ struct NodeConfigDto
 	uintptr_t secondary_work_peers_count;
 	PeerDto preconfigured_peers[5];
 	uintptr_t preconfigured_peers_count;
+	uint8_t preconfigured_representatives[10][32];
+	uintptr_t preconfigured_representatives_count;
 };
 
 struct NodeRpcConfigDto

@@ -29,8 +29,7 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 	network_params{ network_params },
 	logging{ logging_a },
 	websocket_config{ network_params.network },
-	ipc_config{ network_params.network },
-	external_address{ boost::asio::ip::address_v6{}.to_string () }
+	ipc_config{ network_params.network }
 {
 	rsnano::NodeConfigDto dto;
 	auto network_params_dto{ network_params.to_dto () };
@@ -73,17 +72,25 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 	max_queued_requests = dto.max_queued_requests;
 	confirm_req_batches_max = dto.confirm_req_batches_max;
 	std::copy (std::begin (dto.rep_crawler_weight_minimum), std::end (dto.rep_crawler_weight_minimum), std::begin (rep_crawler_weight_minimum.bytes));
-
-	// The default constructor passes 0 to indicate we should use the default port,
-	// which is determined at node startup based on active network.
-	if (peering_port == 0)
+	for (auto i = 0; i < dto.work_peers_count; i++)
 	{
-		peering_port = network_params.network.default_node_port;
+		std::string address (reinterpret_cast<const char *> (dto.work_peers[i].address), dto.work_peers[i].address_len);
+		work_peers.push_back (std::make_pair (address, dto.work_peers[i].port));
 	}
+	for (auto i = 0; i < dto.secondary_work_peers_count; i++)
+	{
+		std::string address (reinterpret_cast<const char *> (dto.secondary_work_peers[i].address), dto.secondary_work_peers[i].address_len);
+		secondary_work_peers.push_back (std::make_pair (address, dto.secondary_work_peers[i].port));
+	}
+	for (auto i = 0; i < dto.preconfigured_peers_count; i++)
+	{
+		std::string address (reinterpret_cast<const char *> (dto.preconfigured_peers[i].address), dto.preconfigured_peers[i].address_len);
+		preconfigured_peers.push_back (address);
+	}
+
 	switch (network_params.network.network ())
 	{
 		case nano::networks::nano_dev_network:
-			enable_voting = true;
 			preconfigured_representatives.push_back (network_params.ledger.genesis->account ());
 			break;
 		case nano::networks::nano_beta_network:
@@ -157,6 +164,26 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.max_queued_requests = config.max_queued_requests;
 	dto.confirm_req_batches_max = config.confirm_req_batches_max;
 	std::copy (std::begin (config.rep_crawler_weight_minimum.bytes), std::end (config.rep_crawler_weight_minimum.bytes), std::begin (dto.rep_crawler_weight_minimum));
+	dto.work_peers_count = config.work_peers.size ();
+	for (auto i = 0; i < config.work_peers.size (); i++)
+	{
+		std::copy (config.work_peers[i].first.begin (), config.work_peers[i].first.end (), std::begin (dto.work_peers[i].address));
+		dto.work_peers[i].address_len = config.work_peers[i].first.size ();
+		dto.work_peers[i].port = config.work_peers[i].second;
+	}
+	dto.secondary_work_peers_count = config.secondary_work_peers.size ();
+	for (auto i = 0; i < config.secondary_work_peers.size (); i++)
+	{
+		std::copy (config.secondary_work_peers[i].first.begin (), config.secondary_work_peers[i].first.end (), std::begin (dto.secondary_work_peers[i].address));
+		dto.secondary_work_peers[i].address_len = config.secondary_work_peers[i].first.size ();
+		dto.secondary_work_peers[i].port = config.secondary_work_peers[i].second;
+	}
+	dto.preconfigured_peers_count = config.preconfigured_peers.size ();
+	for (auto i = 0; i < config.preconfigured_peers.size (); i++)
+	{
+		std::copy (config.preconfigured_peers[i].begin (), config.preconfigured_peers[i].end (), std::begin (dto.preconfigured_peers[i].address));
+		dto.preconfigured_peers[i].address_len = config.preconfigured_peers[i].size ();
+	}
 	return dto;
 }
 
@@ -165,18 +192,6 @@ nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
 	auto dto{ to_node_config_dto (*this) };
 	if (rsnano::rsn_node_config_serialize_toml (&dto, &toml) < 0)
 		throw std::runtime_error ("could not TOML serialize node_config");
-
-	auto work_peers_l (toml.create_array ("work_peers", "A list of \"address:port\" entries to identify work peers."));
-	for (auto i (work_peers.begin ()), n (work_peers.end ()); i != n; ++i)
-	{
-		work_peers_l->push_back (boost::str (boost::format ("%1%:%2%") % i->first % i->second));
-	}
-
-	auto preconfigured_peers_l (toml.create_array ("preconfigured_peers", "A list of \"address\" (hostname or ipv6 notation ip address) entries to identify preconfigured peers."));
-	for (auto i (preconfigured_peers.begin ()), n (preconfigured_peers.end ()); i != n; ++i)
-	{
-		preconfigured_peers_l->push_back (*i);
-	}
 
 	auto preconfigured_representatives_l (toml.create_array ("preconfigured_representatives", "A list of representative account addresses used when creating new accounts in internal wallets."));
 	for (auto i (preconfigured_representatives.begin ()), n (preconfigured_representatives.end ()); i != n; ++i)

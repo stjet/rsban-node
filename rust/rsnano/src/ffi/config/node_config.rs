@@ -3,7 +3,7 @@ use std::{convert::TryFrom, ffi::c_void};
 use num::FromPrimitive;
 
 use crate::{
-    config::NodeConfig,
+    config::{NodeConfig, Peer},
     ffi::{secure::NetworkParamsDto, toml::FfiToml},
     numbers::Amount,
     secure::NetworkParams,
@@ -50,6 +50,19 @@ pub struct NodeConfigDto {
     pub max_queued_requests: u32,
     pub confirm_req_batches_max: u32,
     pub rep_crawler_weight_minimum: [u8; 16],
+    pub work_peers: [PeerDto; 5],
+    pub work_peers_count: usize,
+    pub secondary_work_peers: [PeerDto; 5],
+    pub secondary_work_peers_count: usize,
+    pub preconfigured_peers: [PeerDto; 5],
+    pub preconfigured_peers_count: usize,
+}
+
+#[repr(C)]
+pub struct PeerDto {
+    pub address: [u8; 128],
+    pub address_len: usize,
+    pub port: u16,
 }
 
 #[no_mangle]
@@ -104,6 +117,26 @@ pub unsafe extern "C" fn rsn_node_config_create(
     dto.max_queued_requests = cfg.max_queued_requests;
     dto.confirm_req_batches_max = cfg.confirm_req_batches_max;
     dto.rep_crawler_weight_minimum = cfg.rep_crawler_weight_minimum.to_be_bytes();
+    for (i, peer) in cfg.work_peers.iter().enumerate() {
+        let bytes = peer.address.as_bytes();
+        dto.work_peers[i].address[..bytes.len()].copy_from_slice(bytes);
+        dto.work_peers[i].address_len = bytes.len();
+        dto.work_peers[i].port = peer.port;
+    }
+    dto.work_peers_count = cfg.work_peers.len();
+    for (i, peer) in cfg.secondary_work_peers.iter().enumerate() {
+        let bytes = peer.address.as_bytes();
+        dto.secondary_work_peers[i].address[..bytes.len()].copy_from_slice(bytes);
+        dto.secondary_work_peers[i].address_len = bytes.len();
+        dto.secondary_work_peers[i].port = peer.port;
+    }
+    dto.secondary_work_peers_count = cfg.secondary_work_peers.len();
+    for (i, peer) in cfg.preconfigured_peers.iter().enumerate() {
+        let bytes = peer.as_bytes();
+        dto.preconfigured_peers[i].address[..bytes.len()].copy_from_slice(bytes);
+        dto.preconfigured_peers[i].address_len = bytes.len();
+    }
+    dto.preconfigured_peers_count = cfg.preconfigured_peers.len();
     0
 }
 
@@ -124,6 +157,27 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
     type Error = anyhow::Error;
 
     fn try_from(value: &NodeConfigDto) -> Result<Self, Self::Error> {
+        let mut work_peers = Vec::with_capacity(value.work_peers_count);
+        for i in 0..value.work_peers_count {
+            let p = &value.work_peers[i];
+            let address = String::from_utf8_lossy(&p.address[..p.address_len]).to_string();
+            work_peers.push(Peer::new(address, p.port));
+        }
+
+        let mut secondary_work_peers = Vec::with_capacity(value.secondary_work_peers_count);
+        for i in 0..value.secondary_work_peers_count {
+            let p = &value.secondary_work_peers[i];
+            let address = String::from_utf8_lossy(&p.address[..p.address_len]).to_string();
+            secondary_work_peers.push(Peer::new(address, p.port));
+        }
+
+        let mut preconfigured_peers = Vec::with_capacity(value.preconfigured_peers_count);
+        for i in 0..value.preconfigured_peers_count {
+            let p = &value.preconfigured_peers[i];
+            let address = String::from_utf8_lossy(&p.address[..p.address_len]).to_string();
+            preconfigured_peers.push(address);
+        }
+
         let cfg = NodeConfig {
             peering_port: value.peering_port,
             bootstrap_fraction_numerator: value.bootstrap_fraction_numerator,
@@ -167,6 +221,9 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             max_queued_requests: value.max_queued_requests,
             confirm_req_batches_max: value.confirm_req_batches_max,
             rep_crawler_weight_minimum: Amount::from_be_bytes(value.rep_crawler_weight_minimum),
+            work_peers,
+            secondary_work_peers,
+            preconfigured_peers,
         };
 
         Ok(cfg)

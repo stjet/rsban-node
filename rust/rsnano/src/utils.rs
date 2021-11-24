@@ -192,6 +192,11 @@ pub trait TomlWriter {
     fn put_bool(&mut self, key: &str, value: bool, documentation: &str) -> Result<()>;
     fn put_usize(&mut self, key: &str, value: usize, documentation: &str) -> Result<()>;
     fn put_f64(&mut self, key: &str, value: f64, documentation: &str) -> Result<()>;
+    fn create_array(&mut self, key: &str, documentation: &str) -> Result<Box<dyn TomlArrayWriter>>;
+}
+
+pub trait TomlArrayWriter {
+    fn push_back_str(&mut self, value: &str) -> Result<()>;
 }
 
 pub fn get_cpu_count() -> usize {

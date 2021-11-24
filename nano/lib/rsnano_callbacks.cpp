@@ -186,6 +186,45 @@ int32_t toml_put_bool (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a
 	return 0;
 }
 
+struct TomlArrayHandle
+{
+	TomlArrayHandle (std::shared_ptr<cpptoml::array> ptr_a) :
+		ptr{ ptr_a }
+	{
+	}
+	std::shared_ptr<cpptoml::array> ptr;
+};
+
+void * toml_create_array (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a, const uint8_t * documentation_a, uintptr_t documentation_len_a)
+{
+	try
+	{
+		auto toml{ static_cast<nano::tomlconfig *> (toml_a) };
+		std::string key (reinterpret_cast<const char *> (key_a), key_len_a);
+		std::string documentation (reinterpret_cast<const char *> (documentation_a), documentation_len_a);
+		auto arr{ toml->create_array (key, documentation.c_str ()) };
+		auto result = new TomlArrayHandle (arr);
+		return result;
+	}
+	catch (...)
+	{
+		return nullptr;
+	}
+}
+
+void toml_drop_array (void * handle_a)
+{
+	auto handle = reinterpret_cast<TomlArrayHandle *> (handle_a);
+	delete handle;
+}
+
+void toml_array_put_str (void * handle_a, const uint8_t * value_a, uintptr_t value_len)
+{
+	auto handle = reinterpret_cast<TomlArrayHandle *> (handle_a);
+	std::string val (reinterpret_cast<const char *> (value_a), value_len);
+	handle->ptr->push_back (val);
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -207,5 +246,8 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_put_str (toml_put_str);
 	rsnano::rsn_callback_toml_put_bool (toml_put_bool);
 	rsnano::rsn_callback_toml_put_f64 (toml_put_f64);
+	rsnano::rsn_callback_toml_create_array (toml_create_array);
+	rsnano::rsn_callback_toml_array_put_str (toml_array_put_str);
+	rsn_callback_toml_drop_array (toml_drop_array);
 	callbacks_set = true;
 }

@@ -106,6 +106,12 @@ using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
+using TomlArrayPutStrCallback = void (*) (void *, const uint8_t *, uintptr_t);
+
+using TomlCreateArrayCallback = void * (*)(void *, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t);
+
+using TomlDropArrayCallback = void (*) (void *);
+
 using TomlPutBoolCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, bool, const uint8_t *, uintptr_t);
 
 using TomlPutF64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, double, const uint8_t *, uintptr_t);
@@ -264,6 +270,13 @@ struct NetworkParamsDto
 	BootstrapConstantsDto bootstrap;
 };
 
+struct PeerDto
+{
+	uint8_t address[128];
+	uintptr_t address_len;
+	uint16_t port;
+};
+
 struct NodeConfigDto
 {
 	uint16_t peering_port;
@@ -305,6 +318,12 @@ struct NodeConfigDto
 	uint32_t max_queued_requests;
 	uint32_t confirm_req_batches_max;
 	uint8_t rep_crawler_weight_minimum[16];
+	PeerDto work_peers[5];
+	uintptr_t work_peers_count;
+	PeerDto secondary_work_peers[5];
+	uintptr_t secondary_work_peers_count;
+	PeerDto preconfigured_peers[5];
+	uintptr_t preconfigured_peers_count;
 };
 
 struct NodeRpcConfigDto
@@ -489,6 +508,12 @@ void rsn_callback_property_tree_put_string (PropertyTreePutStringCallback f);
 void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
+
+void rsn_callback_toml_array_put_str (TomlArrayPutStrCallback f);
+
+void rsn_callback_toml_create_array (TomlCreateArrayCallback f);
+
+void rsn_callback_toml_drop_array (TomlDropArrayCallback f);
 
 void rsn_callback_toml_put_bool (TomlPutBoolCallback f);
 

@@ -1,4 +1,4 @@
-use crate::utils::TomlWriter;
+use crate::utils::{TomlArrayWriter, TomlWriter};
 use anyhow::Result;
 use std::ffi::c_void;
 
@@ -17,11 +17,21 @@ type TomlPutStrCallback =
 type TomlPutBoolCallback =
     unsafe extern "C" fn(*mut c_void, *const u8, usize, bool, *const u8, usize) -> i32;
 
+type TomlCreateArrayCallback =
+    unsafe extern "C" fn(*mut c_void, *const u8, usize, *const u8, usize) -> *mut c_void;
+
+type TomlDropArrayCallback = unsafe extern "C" fn(*mut c_void);
+
+type TomlArrayPutStrCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize);
+
 static mut PUT_U64_CALLBACK: Option<TomlPutU64Callback> = None;
 static mut PUT_I64_CALLBACK: Option<TomlPutI64Callback> = None;
 static mut PUT_F64_CALLBACK: Option<TomlPutF64Callback> = None;
 static mut PUT_STR_CALLBACK: Option<TomlPutStrCallback> = None;
 static mut PUT_BOOL_CALLBACK: Option<TomlPutBoolCallback> = None;
+static mut CREATE_ARRAY_CALLBACK: Option<TomlCreateArrayCallback> = None;
+static mut DROP_ARRAY_CALLBACK: Option<TomlDropArrayCallback> = None;
+static mut PUT_ARRAY_STR_CALLBACK: Option<TomlArrayPutStrCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_toml_put_u64(f: TomlPutU64Callback) {
@@ -46,6 +56,21 @@ pub unsafe extern "C" fn rsn_callback_toml_put_str(f: TomlPutStrCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_toml_put_bool(f: TomlPutBoolCallback) {
     PUT_BOOL_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_toml_create_array(f: TomlCreateArrayCallback) {
+    CREATE_ARRAY_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_toml_drop_array(f: TomlDropArrayCallback) {
+    DROP_ARRAY_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_toml_array_put_str(f: TomlArrayPutStrCallback) {
+    PUT_ARRAY_STR_CALLBACK = Some(f);
 }
 
 pub struct FfiToml {
@@ -183,6 +208,66 @@ impl TomlWriter for FfiToml {
                     }
                 }
                 None => Err(anyhow!("PUT_F64_CALLBACK not set")),
+            }
+        }
+    }
+
+    fn create_array(&mut self, key: &str, documentation: &str) -> Result<Box<dyn TomlArrayWriter>> {
+        unsafe {
+            match CREATE_ARRAY_CALLBACK {
+                Some(f) => {
+                    let ptr = f(
+                        self.handle,
+                        key.as_ptr(),
+                        key.bytes().len(),
+                        documentation.as_ptr(),
+                        documentation.as_bytes().len(),
+                    );
+
+                    if !ptr.is_null() {
+                        Ok(Box::new(FfiTomlArrayWriter::new(ptr)))
+                    } else {
+                        Err(anyhow!("CREATE_ARRAY_CALLBACK returned error"))
+                    }
+                }
+                None => Err(anyhow!("CREATE_ARRAY_CALLBACK not set")),
+            }
+        }
+    }
+}
+
+pub struct FfiTomlArrayWriter {
+    handle: *mut c_void,
+}
+
+impl FfiTomlArrayWriter {
+    pub fn new(handle: *mut c_void) -> Self {
+        Self { handle }
+    }
+}
+
+impl TomlArrayWriter for FfiTomlArrayWriter {
+    fn push_back_str(&mut self, value: &str) -> Result<()> {
+        unsafe {
+            match PUT_ARRAY_STR_CALLBACK {
+                Some(f) => {
+                    f(self.handle, value.as_ptr(), value.bytes().len());
+                    Ok(())
+                }
+                None => Err(anyhow!("PUT_ARRAY_STR_CALLBACK not set")),
+            }
+        }
+    }
+}
+
+impl Drop for FfiTomlArrayWriter {
+    fn drop(&mut self) {
+        unsafe {
+            match DROP_ARRAY_CALLBACK {
+                Some(f) => {
+                    f(self.handle);
+                }
+                None => panic!("ROP_ARRAY_CALLBACK not set"),
             }
         }
     }

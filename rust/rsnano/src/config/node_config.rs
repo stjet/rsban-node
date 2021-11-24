@@ -1,6 +1,7 @@
 use std::net::Ipv6Addr;
 
 use crate::{
+    config::Networks,
     numbers::{Amount, GXRB_RATIO, XRB_RATIO},
     secure::NetworkParams,
     utils::{get_cpu_count, TomlWriter},
@@ -55,10 +56,46 @@ pub struct NodeConfig {
     pub max_queued_requests: u32,
     pub confirm_req_batches_max: u32,
     pub rep_crawler_weight_minimum: Amount,
+    pub work_peers: Vec<Peer>,
+    pub secondary_work_peers: Vec<Peer>,
+    pub preconfigured_peers: Vec<String>,
+}
+
+pub struct Peer {
+    pub address: String,
+    pub port: u16,
+}
+
+impl Peer {
+    pub fn new(address: impl Into<String>, port: u16) -> Self {
+        Self {
+            address: address.into(),
+            port,
+        }
+    }
 }
 
 impl NodeConfig {
     pub fn new(peering_port: u16, network_params: &NetworkParams) -> Self {
+        // The default constructor passes 0 to indicate we should use the default port,
+        // which is determined at node startup based on active network.
+        let peering_port = if peering_port == 0 {
+            network_params.network.default_node_port
+        } else {
+            peering_port
+        };
+        let mut enable_voting = false;
+        let mut preconfigured_peers = Vec::new();
+        match network_params.network.current_network {
+            Networks::NanoDevNetwork => {
+                enable_voting = true;
+            }
+            Networks::NanoBetaNetwork => {}
+            Networks::NanoLiveNetwork => {}
+            Networks::NanoTestNetwork => {}
+            Networks::Invalid => panic!("invalid network"),
+        }
+
         Self {
             peering_port,
             bootstrap_fraction_numerator: 1,
@@ -71,7 +108,7 @@ impl NodeConfig {
             work_threads: std::cmp::max(get_cpu_count() as u32, 4),
             /* Use half available threads on the system for signature checking. The calling thread does checks as well, so these are extra worker threads */
             signature_checker_threads: get_cpu_count() as u32 / 2,
-            enable_voting: false,
+            enable_voting,
             bootstrap_connections: 4,
             bootstrap_connections_max: 64,
             bootstrap_initiator_threads: 1,
@@ -117,6 +154,9 @@ impl NodeConfig {
             },
             rep_crawler_weight_minimum: Amount::decode_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
                 .unwrap(),
+            work_peers: Vec::new(),
+            secondary_work_peers: vec![Peer::new("127.0.0.1", 8076)],
+            preconfigured_peers,
         }
     }
 
@@ -188,6 +228,22 @@ impl NodeConfig {
         toml.put_u32("max_queued_requests", self.max_queued_requests, "Limit for number of queued confirmation requests for one channel, after which new requests are dropped until the queue drops below this value.\ntype:uint32")?;
         toml.put_u32("confirm_req_batches_max", self.confirm_req_batches_max, "Limit for the number of confirmation requests for one channel per request attempt\ntype:uint32")?;
         toml.put_str("rep_crawler_weight_minimum", &self.rep_crawler_weight_minimum.to_string_dec (), "Rep crawler minimum weight, if this is less than minimum principal weight then this is taken as the minimum weight a rep must have to be tracked. If you want to track all reps set this to 0. If you do not want this to influence anything then set it to max value. This is only useful for debugging or for people who really know what they are doing.\ntype:string,amount,raw")?;
+
+        let mut work_peers = toml.create_array(
+            "work_peers",
+            "A list of \"address:port\" entries to identify work peers.",
+        )?;
+        for peer in &self.work_peers {
+            work_peers.push_back_str(&format!("{}:{}", peer.address, peer.port))?;
+        }
+        drop(work_peers);
+
+        let mut preconfigured_peers = toml.create_array ("preconfigured_peers", "A list of \"address\" (hostname or ipv6 notation ip address) entries to identify preconfigured peers.")?;
+        for peer in &self.preconfigured_peers {
+            preconfigured_peers.push_back_str(peer)?;
+        }
+        drop(preconfigured_peers);
+
 
         Ok(())
     }

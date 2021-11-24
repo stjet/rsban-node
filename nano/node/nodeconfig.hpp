@@ -52,11 +52,11 @@ public:
 	std::vector<std::string> preconfigured_peers;
 	std::vector<nano::account> preconfigured_representatives;
 	unsigned bootstrap_fraction_numerator{ 1 };
-	nano::amount receive_minimum{ nano::xrb_ratio };
-	nano::amount vote_minimum{ nano::Gxrb_ratio };
+	nano::amount receive_minimum;
+	nano::amount vote_minimum;
 	nano::amount rep_crawler_weight_minimum{ "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" };
-	std::chrono::milliseconds vote_generator_delay{ std::chrono::milliseconds (100) };
-	unsigned vote_generator_threshold{ 3 };
+	std::chrono::milliseconds vote_generator_delay;
+	unsigned vote_generator_threshold;
 	nano::amount online_weight_minimum{ 60000 * nano::Gxrb_ratio };
 	unsigned election_hint_weight_percent{ 10 };
 	unsigned password_fanout{ 1024 };
@@ -76,16 +76,16 @@ public:
 	std::string callback_address;
 	uint16_t callback_port{ 0 };
 	std::string callback_target;
-	bool allow_local_peers{ !(network_params.network.is_live_network () || network_params.network.is_test_network ()) }; // disable by default for live network
+	bool allow_local_peers;
 	nano::stat_config stat_config;
 	nano::ipc::ipc_config ipc_config;
 	std::string external_address;
-	uint16_t external_port{ 0 };
+	uint16_t external_port;
 	std::chrono::milliseconds block_processor_batch_max_time{ network_params.network.is_dev_network () ? std::chrono::milliseconds (500) : std::chrono::milliseconds (5000) };
-	std::chrono::seconds unchecked_cutoff_time{ std::chrono::seconds (4 * 60 * 60) }; // 4 hours
+	std::chrono::seconds unchecked_cutoff_time;
 	/** Timeout for initiated async operations */
-	std::chrono::seconds tcp_io_timeout{ (network_params.network.is_dev_network () && !is_sanitizer_build) ? std::chrono::seconds (5) : std::chrono::seconds (15) };
-	std::chrono::nanoseconds pow_sleep_interval{ 0 };
+	std::chrono::seconds tcp_io_timeout;
+	std::chrono::nanoseconds pow_sleep_interval;
 	std::size_t active_elections_size{ 5000 };
 	/** Default maximum incoming TCP connections, including realtime network & bootstrap */
 	unsigned tcp_incoming_connections_max{ 2048 };

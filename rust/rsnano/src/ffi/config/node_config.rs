@@ -25,6 +25,16 @@ pub struct NodeConfigDto {
     pub bootstrap_initiator_threads: u32,
     pub bootstrap_frontier_request_count: u32,
     pub block_processor_batch_max_time_ms: i64,
+    pub allow_local_peers: bool,
+    pub vote_minimum: [u8; 16],
+    pub vote_generator_delay_ms: i64,
+    pub vote_generator_threshold: u32,
+    pub unchecked_cutoff_time_s: i64,
+    pub tcp_io_timeout_s: i64,
+    pub pow_sleep_interval_ns: i64,
+    pub external_address: [u8; 128],
+    pub external_address_len: usize,
+    pub external_port: u16,
 }
 
 #[no_mangle]
@@ -55,6 +65,17 @@ pub unsafe extern "C" fn rsn_node_config_create(
     dto.bootstrap_initiator_threads = cfg.bootstrap_initiator_threads;
     dto.bootstrap_frontier_request_count = cfg.bootstrap_frontier_request_count;
     dto.block_processor_batch_max_time_ms = cfg.block_processor_batch_max_time_ms;
+    dto.allow_local_peers = cfg.allow_local_peers;
+    dto.vote_minimum = cfg.vote_minimum.to_be_bytes();
+    dto.vote_generator_delay_ms = cfg.vote_generator_delay_ms;
+    dto.vote_generator_threshold = cfg.vote_generator_threshold;
+    dto.unchecked_cutoff_time_s = cfg.unchecked_cutoff_time_s;
+    dto.tcp_io_timeout_s = cfg.tcp_io_timeout_s;
+    dto.pow_sleep_interval_ns = cfg.pow_sleep_interval_ns;
+    let bytes: &[u8] = cfg.external_address.as_bytes();
+    dto.external_address[..bytes.len()].copy_from_slice(bytes);
+    dto.external_address_len = bytes.len();
+    dto.external_port = cfg.external_port;
     0
 }
 
@@ -92,6 +113,18 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             bootstrap_initiator_threads: value.bootstrap_initiator_threads,
             bootstrap_frontier_request_count: value.bootstrap_frontier_request_count,
             block_processor_batch_max_time_ms: value.block_processor_batch_max_time_ms,
+            allow_local_peers: value.allow_local_peers,
+            vote_minimum: Amount::from_be_bytes(value.vote_minimum),
+            vote_generator_delay_ms: value.vote_generator_delay_ms,
+            vote_generator_threshold: value.vote_generator_threshold,
+            unchecked_cutoff_time_s: value.unchecked_cutoff_time_s,
+            tcp_io_timeout_s: value.tcp_io_timeout_s,
+            pow_sleep_interval_ns: value.pow_sleep_interval_ns,
+            external_address: String::from_utf8_lossy(
+                &value.external_address[..value.external_address_len],
+            )
+            .to_string(),
+            external_port: value.external_port,
         };
 
         Ok(cfg)

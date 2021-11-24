@@ -153,7 +153,7 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
             max_peers_per_ip: value.max_peers_per_ip,
             max_peers_per_subnetwork: value.max_peers_per_subnetwork,
             peer_dump_interval_s: value.peer_dump_interval_s,
-            ipv6_subnetwork_prefix_for_limiting : value.ipv6_subnetwork_prefix_for_limiting,
+            ipv6_subnetwork_prefix_for_limiting: value.ipv6_subnetwork_prefix_for_limiting,
             silent_connection_tolerance_time_s: value.silent_connection_tolerance_time_s,
         })
     }

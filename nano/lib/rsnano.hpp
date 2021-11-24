@@ -282,6 +282,16 @@ struct NodeConfigDto
 	uint32_t bootstrap_initiator_threads;
 	uint32_t bootstrap_frontier_request_count;
 	int64_t block_processor_batch_max_time_ms;
+	bool allow_local_peers;
+	uint8_t vote_minimum[16];
+	int64_t vote_generator_delay_ms;
+	uint32_t vote_generator_threshold;
+	int64_t unchecked_cutoff_time_s;
+	int64_t tcp_io_timeout_s;
+	int64_t pow_sleep_interval_ns;
+	uint8_t external_address[128];
+	uintptr_t external_address_len;
+	uint16_t external_port;
 };
 
 struct NodeRpcConfigDto

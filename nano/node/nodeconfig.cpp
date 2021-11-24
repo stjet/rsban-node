@@ -51,6 +51,15 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 	bootstrap_initiator_threads = dto.bootstrap_initiator_threads;
 	bootstrap_frontier_request_count = dto.bootstrap_frontier_request_count;
 	block_processor_batch_max_time = std::chrono::milliseconds (dto.block_processor_batch_max_time_ms);
+	allow_local_peers = dto.allow_local_peers;
+	std::copy (std::begin (dto.vote_minimum), std::end (dto.vote_minimum), std::begin (vote_minimum.bytes));
+	vote_generator_delay = std::chrono::milliseconds (dto.vote_generator_delay_ms);
+	vote_generator_threshold = dto.vote_generator_threshold;
+	unchecked_cutoff_time = std::chrono::seconds (dto.unchecked_cutoff_time_s);
+	tcp_io_timeout = std::chrono::seconds (dto.tcp_io_timeout_s);
+	pow_sleep_interval = std::chrono::nanoseconds (dto.pow_sleep_interval_ns);
+	external_address = std::string (reinterpret_cast<const char *> (dto.external_address), dto.external_address_len);
+	external_port = dto.external_port;
 
 	// The default constructor passes 0 to indicate we should use the default port,
 	// which is determined at node startup based on active network.
@@ -112,6 +121,16 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.bootstrap_initiator_threads = config.bootstrap_initiator_threads;
 	dto.bootstrap_frontier_request_count = config.bootstrap_frontier_request_count;
 	dto.block_processor_batch_max_time_ms = config.block_processor_batch_max_time.count ();
+	dto.allow_local_peers = config.allow_local_peers;
+	std::copy (std::begin (config.vote_minimum.bytes), std::end (config.vote_minimum.bytes), std::begin (dto.vote_minimum));
+	dto.vote_generator_delay_ms = config.vote_generator_delay.count ();
+	dto.vote_generator_threshold = config.vote_generator_threshold;
+	dto.unchecked_cutoff_time_s = config.unchecked_cutoff_time.count ();
+	dto.tcp_io_timeout_s = config.tcp_io_timeout.count ();
+	dto.pow_sleep_interval_ns = config.pow_sleep_interval.count ();
+	std::copy (config.external_address.begin (), config.external_address.end (), std::begin (dto.external_address));
+	dto.external_address_len = config.external_address.length ();
+	dto.external_port = config.external_port;
 	return dto;
 }
 
@@ -121,15 +140,6 @@ nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
 	if (rsnano::rsn_node_config_serialize_toml (&dto, &toml) < 0)
 		throw std::runtime_error ("could not TOML serialize node_config");
 
-	toml.put ("allow_local_peers", allow_local_peers, "Enable or disable local host peering.\ntype:bool");
-	toml.put ("vote_minimum", vote_minimum.to_string_dec (), "Local representatives do not vote if the delegated weight is under this threshold. Saves on system resources.\ntype:string,amount,raw");
-	toml.put ("vote_generator_delay", vote_generator_delay.count (), "Delay before votes are sent to allow for efficient bundling of hashes in votes.\ntype:milliseconds");
-	toml.put ("vote_generator_threshold", vote_generator_threshold, "Number of bundled hashes required for an additional generator delay.\ntype:uint64,[1..11]");
-	toml.put ("unchecked_cutoff_time", unchecked_cutoff_time.count (), "Number of seconds before deleting an unchecked entry.\nWarning: lower values (e.g., 3600 seconds, or 1 hour) may result in unsuccessful bootstraps, especially a bootstrap from scratch.\ntype:seconds");
-	toml.put ("tcp_io_timeout", tcp_io_timeout.count (), "Timeout for TCP connect-, read- and write operations.\nWarning: a low value (e.g., below 5 seconds) may result in TCP connections failing.\ntype:seconds");
-	toml.put ("pow_sleep_interval", pow_sleep_interval.count (), "Time to sleep between batch work generation attempts. Reduces max CPU usage at the expense of a longer generation time.\ntype:nanoseconds");
-	toml.put ("external_address", external_address, "The external address of this node (NAT). If not set, the node will request this information via UPnP.\ntype:string,ip");
-	toml.put ("external_port", external_port, "The external port number of this node (NAT). Only used if external_address is set.\ntype:uint16");
 	toml.put ("tcp_incoming_connections_max", tcp_incoming_connections_max, "Maximum number of incoming TCP connections.\ntype:uint64");
 	toml.put ("use_memory_pools", use_memory_pools, "If true, allocate memory from memory pools. Enabling this may improve performance. Memory is never released to the OS.\ntype:bool");
 	toml.put ("confirmation_history_size", confirmation_history_size, "Maximum confirmation history size. If tracking the rate of block confirmations, the websocket feature is recommended instead.\ntype:uint64");

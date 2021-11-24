@@ -200,6 +200,10 @@ impl Amount {
         Ok(Amount::new(value))
     }
 
+    pub fn decode_dec(s: impl AsRef<str>) -> Result<Self> {
+        Ok(Self::new(s.as_ref().parse::<u128>()?))
+    }
+
     pub fn to_string_dec(self) -> String {
         self.value.to_string()
     }

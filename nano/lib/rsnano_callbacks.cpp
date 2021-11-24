@@ -100,24 +100,7 @@ int32_t ptree_get_string (const void * ptree, const char * path, uintptr_t path_
 	}
 }
 
-int32_t toml_put_u16 (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a, uint16_t value, const uint8_t * documentation_a, uintptr_t documentation_len_a)
-{
-	try
-	{
-		auto toml{ static_cast<nano::tomlconfig *> (toml_a) };
-		std::string key (reinterpret_cast<const char *> (key_a), key_len_a);
-		std::string documentation (reinterpret_cast<const char *> (documentation_a), documentation_len_a);
-		toml->put (key, value, documentation.c_str ());
-	}
-	catch (...)
-	{
-		return -1;
-	}
-
-	return 0;
-}
-
-int32_t toml_put_u32 (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a, uint32_t value, const uint8_t * documentation_a, uintptr_t documentation_len_a)
+int32_t toml_put_u64 (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a, uint64_t value, const uint8_t * documentation_a, uintptr_t documentation_len_a)
 {
 	try
 	{
@@ -135,6 +118,23 @@ int32_t toml_put_u32 (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a,
 }
 
 int32_t toml_put_i64 (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a, int64_t value, const uint8_t * documentation_a, uintptr_t documentation_len_a)
+{
+	try
+	{
+		auto toml{ static_cast<nano::tomlconfig *> (toml_a) };
+		std::string key (reinterpret_cast<const char *> (key_a), key_len_a);
+		std::string documentation (reinterpret_cast<const char *> (documentation_a), documentation_len_a);
+		toml->put (key, value, documentation.c_str ());
+	}
+	catch (...)
+	{
+		return -1;
+	}
+
+	return 0;
+}
+
+int32_t toml_put_f64 (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a, double value, const uint8_t * documentation_a, uintptr_t documentation_len_a)
 {
 	try
 	{
@@ -202,10 +202,10 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_blake2b_final (reinterpret_cast<Blake2BFinalCallback> (blake2b_final));
 	rsnano::rsn_callback_property_tree_put_string (ptree_put_string);
 	rsnano::rsn_callback_property_tree_get_string (ptree_get_string);
-	rsnano::rsn_callback_toml_put_u16 (toml_put_u16);
-	rsnano::rsn_callback_toml_put_u32 (toml_put_u32);
+	rsnano::rsn_callback_toml_put_u64 (toml_put_u64);
 	rsnano::rsn_callback_toml_put_i64 (toml_put_i64);
 	rsnano::rsn_callback_toml_put_str (toml_put_str);
 	rsnano::rsn_callback_toml_put_bool (toml_put_bool);
+	rsnano::rsn_callback_toml_put_f64 (toml_put_f64);
 	callbacks_set = true;
 }

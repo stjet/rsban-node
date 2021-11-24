@@ -60,6 +60,19 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 	pow_sleep_interval = std::chrono::nanoseconds (dto.pow_sleep_interval_ns);
 	external_address = std::string (reinterpret_cast<const char *> (dto.external_address), dto.external_address_len);
 	external_port = dto.external_port;
+	tcp_incoming_connections_max = dto.tcp_incoming_connections_max;
+	use_memory_pools = dto.use_memory_pools;
+	confirmation_history_size = dto.confirmation_history_size;
+	active_elections_size = dto.active_elections_size;
+	bandwidth_limit = dto.bandwidth_limit;
+	bandwidth_limit_burst_ratio = dto.bandwidth_limit_burst_ratio;
+	conf_height_processor_batch_min_time = std::chrono::milliseconds (dto.conf_height_processor_batch_min_time_ms);
+	backup_before_upgrade = dto.backup_before_upgrade;
+	max_work_generate_multiplier = dto.max_work_generate_multiplier;
+	frontiers_confirmation = static_cast<nano::frontiers_confirmation_mode> (dto.frontiers_confirmation);
+	max_queued_requests = dto.max_queued_requests;
+	confirm_req_batches_max = dto.confirm_req_batches_max;
+	std::copy (std::begin (dto.rep_crawler_weight_minimum), std::end (dto.rep_crawler_weight_minimum), std::begin (rep_crawler_weight_minimum.bytes));
 
 	// The default constructor passes 0 to indicate we should use the default port,
 	// which is determined at node startup based on active network.
@@ -131,6 +144,19 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	std::copy (config.external_address.begin (), config.external_address.end (), std::begin (dto.external_address));
 	dto.external_address_len = config.external_address.length ();
 	dto.external_port = config.external_port;
+	dto.tcp_incoming_connections_max = config.tcp_incoming_connections_max;
+	dto.use_memory_pools = config.use_memory_pools;
+	dto.confirmation_history_size = config.confirmation_history_size;
+	dto.active_elections_size = config.active_elections_size;
+	dto.bandwidth_limit = config.bandwidth_limit;
+	dto.bandwidth_limit_burst_ratio = config.bandwidth_limit_burst_ratio;
+	dto.conf_height_processor_batch_min_time_ms = config.conf_height_processor_batch_min_time.count ();
+	dto.backup_before_upgrade = config.backup_before_upgrade;
+	dto.max_work_generate_multiplier = config.max_work_generate_multiplier;
+	dto.frontiers_confirmation = static_cast<uint8_t> (config.frontiers_confirmation);
+	dto.max_queued_requests = config.max_queued_requests;
+	dto.confirm_req_batches_max = config.confirm_req_batches_max;
+	std::copy (std::begin (config.rep_crawler_weight_minimum.bytes), std::end (config.rep_crawler_weight_minimum.bytes), std::begin (dto.rep_crawler_weight_minimum));
 	return dto;
 }
 
@@ -139,20 +165,6 @@ nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
 	auto dto{ to_node_config_dto (*this) };
 	if (rsnano::rsn_node_config_serialize_toml (&dto, &toml) < 0)
 		throw std::runtime_error ("could not TOML serialize node_config");
-
-	toml.put ("tcp_incoming_connections_max", tcp_incoming_connections_max, "Maximum number of incoming TCP connections.\ntype:uint64");
-	toml.put ("use_memory_pools", use_memory_pools, "If true, allocate memory from memory pools. Enabling this may improve performance. Memory is never released to the OS.\ntype:bool");
-	toml.put ("confirmation_history_size", confirmation_history_size, "Maximum confirmation history size. If tracking the rate of block confirmations, the websocket feature is recommended instead.\ntype:uint64");
-	toml.put ("active_elections_size", active_elections_size, "Number of active elections. Elections beyond this limit have limited survival time.\nWarning: modifying this value may result in a lower confirmation rate.\ntype:uint64,[250..]");
-	toml.put ("bandwidth_limit", bandwidth_limit, "Outbound traffic limit in bytes/sec after which messages will be dropped.\nNote: changing to unlimited bandwidth (0) is not recommended for limited connections.\ntype:uint64");
-	toml.put ("bandwidth_limit_burst_ratio", bandwidth_limit_burst_ratio, "Burst ratio for outbound traffic shaping.\ntype:double");
-	toml.put ("conf_height_processor_batch_min_time", conf_height_processor_batch_min_time.count (), "Minimum write batching time when there are blocks pending confirmation height.\ntype:milliseconds");
-	toml.put ("backup_before_upgrade", backup_before_upgrade, "Backup the ledger database before performing upgrades.\nWarning: uses more disk storage and increases startup time when upgrading.\ntype:bool");
-	toml.put ("max_work_generate_multiplier", max_work_generate_multiplier, "Maximum allowed difficulty multiplier for work generation.\ntype:double,[1..]");
-	toml.put ("frontiers_confirmation", serialize_frontiers_confirmation (frontiers_confirmation), "Mode controlling frontier confirmation rate.\ntype:string,{auto,always,disabled}");
-	toml.put ("max_queued_requests", max_queued_requests, "Limit for number of queued confirmation requests for one channel, after which new requests are dropped until the queue drops below this value.\ntype:uint32");
-	toml.put ("confirm_req_batches_max", confirm_req_batches_max, "Limit for the number of confirmation requests for one channel per request attempt\ntype:uint32");
-	toml.put ("rep_crawler_weight_minimum", rep_crawler_weight_minimum.to_string_dec (), "Rep crawler minimum weight, if this is less than minimum principal weight then this is taken as the minimum weight a rep must have to be tracked. If you want to track all reps set this to 0. If you do not want this to influence anything then set it to max value. This is only useful for debugging or for people who really know what they are doing.\ntype:string,amount,raw");
 
 	auto work_peers_l (toml.create_array ("work_peers", "A list of \"address:port\" entries to identify work peers."));
 	for (auto i (work_peers.begin ()), n (work_peers.end ()); i != n; ++i)
@@ -767,21 +779,6 @@ nano::error nano::node_config::deserialize_json (bool & upgraded_a, nano::jsonco
 		json.get_error ().set (ex.what ());
 	}
 	return json.get_error ();
-}
-
-std::string nano::node_config::serialize_frontiers_confirmation (nano::frontiers_confirmation_mode mode_a) const
-{
-	switch (mode_a)
-	{
-		case nano::frontiers_confirmation_mode::always:
-			return "always";
-		case nano::frontiers_confirmation_mode::automatic:
-			return "auto";
-		case nano::frontiers_confirmation_mode::disabled:
-			return "disabled";
-		default:
-			return "auto";
-	}
 }
 
 nano::frontiers_confirmation_mode nano::node_config::deserialize_frontiers_confirmation (std::string const & string_a)

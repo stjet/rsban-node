@@ -186,9 +186,12 @@ pub fn seconds_since_epoch() -> u64 {
 pub trait TomlWriter {
     fn put_u16(&mut self, key: &str, value: u16, documentation: &str) -> Result<()>;
     fn put_u32(&mut self, key: &str, value: u32, documentation: &str) -> Result<()>;
+    fn put_u64(&mut self, key: &str, value: u64, documentation: &str) -> Result<()>;
     fn put_i64(&mut self, key: &str, value: i64, documentation: &str) -> Result<()>;
     fn put_str(&mut self, key: &str, value: &str, documentation: &str) -> Result<()>;
     fn put_bool(&mut self, key: &str, value: bool, documentation: &str) -> Result<()>;
+    fn put_usize(&mut self, key: &str, value: usize, documentation: &str) -> Result<()>;
+    fn put_f64(&mut self, key: &str, value: f64, documentation: &str) -> Result<()>;
 }
 
 pub fn get_cpu_count() -> usize {

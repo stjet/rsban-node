@@ -54,7 +54,7 @@ public:
 	unsigned bootstrap_fraction_numerator{ 1 };
 	nano::amount receive_minimum;
 	nano::amount vote_minimum;
-	nano::amount rep_crawler_weight_minimum{ "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" };
+	nano::amount rep_crawler_weight_minimum;
 	std::chrono::milliseconds vote_generator_delay;
 	unsigned vote_generator_threshold;
 	nano::amount online_weight_minimum{ 60000 * nano::Gxrb_ratio };
@@ -72,7 +72,7 @@ public:
 	uint32_t bootstrap_frontier_request_count{ 1024 * 1024 };
 	nano::websocket::config websocket_config;
 	nano::diagnostics_config diagnostics_config;
-	std::size_t confirmation_history_size{ 2048 };
+	std::size_t confirmation_history_size;
 	std::string callback_address;
 	uint16_t callback_port{ 0 };
 	std::string callback_target;
@@ -86,29 +86,28 @@ public:
 	/** Timeout for initiated async operations */
 	std::chrono::seconds tcp_io_timeout;
 	std::chrono::nanoseconds pow_sleep_interval;
-	std::size_t active_elections_size{ 5000 };
+	std::size_t active_elections_size;
 	/** Default maximum incoming TCP connections, including realtime network & bootstrap */
-	unsigned tcp_incoming_connections_max{ 2048 };
-	bool use_memory_pools{ true };
+	unsigned tcp_incoming_connections_max;
+	bool use_memory_pools;
 	static std::chrono::seconds constexpr keepalive_period = std::chrono::seconds (60);
 	static std::chrono::seconds constexpr keepalive_cutoff = keepalive_period * 5;
 	static std::chrono::minutes constexpr wallet_backup_interval = std::chrono::minutes (5);
 	/** Default outbound traffic shaping is 10MB/s */
-	std::size_t bandwidth_limit{ 10 * 1024 * 1024 };
+	std::size_t bandwidth_limit;
 	/** By default, allow bursts of 15MB/s (not sustainable) */
 	double bandwidth_limit_burst_ratio{ 3. };
-	std::chrono::milliseconds conf_height_processor_batch_min_time{ 50 };
+	std::chrono::milliseconds conf_height_processor_batch_min_time;
 	bool backup_before_upgrade{ false };
-	double max_work_generate_multiplier{ 64. };
-	uint32_t max_queued_requests{ 512 };
+	double max_work_generate_multiplier;
+	uint32_t max_queued_requests;
 	/** Maximum amount of confirmation requests (batches) to be sent to each channel */
-	uint32_t confirm_req_batches_max{ network_params.network.is_dev_network () ? 1u : 2u };
+	uint32_t confirm_req_batches_max;
 	std::chrono::seconds max_pruning_age{ !network_params.network.is_beta_network () ? std::chrono::seconds (24 * 60 * 60) : std::chrono::seconds (5 * 60) }; // 1 day; 5 minutes for beta network
 	uint64_t max_pruning_depth{ 0 };
 	nano::rocksdb_config rocksdb_config;
 	nano::lmdb_config lmdb_config;
 	nano::frontiers_confirmation_mode frontiers_confirmation{ nano::frontiers_confirmation_mode::automatic };
-	std::string serialize_frontiers_confirmation (nano::frontiers_confirmation_mode) const;
 	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);
 	/** Entry is ignored if it cannot be parsed as a valid address:port */
 	void deserialize_address (std::string const &, std::vector<std::pair<std::string, uint16_t>> &) const;

@@ -7,6 +7,15 @@ use crate::{
 };
 use anyhow::Result;
 
+#[repr(u8)]
+#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
+pub enum FrontiersConfirmationMode {
+    Always,    // Always confirm frontiers
+    Automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not
+    Disabled,  // Do not confirm frontiers
+    Invalid,
+}
+
 pub struct NodeConfig {
     pub peering_port: u16,
     pub bootstrap_fraction_numerator: u32,
@@ -33,6 +42,19 @@ pub struct NodeConfig {
     pub pow_sleep_interval_ns: i64,
     pub external_address: String,
     pub external_port: u16,
+    pub tcp_incoming_connections_max: u32,
+    pub use_memory_pools: bool,
+    pub confirmation_history_size: usize,
+    pub active_elections_size: usize,
+    pub bandwidth_limit: usize,
+    pub bandwidth_limit_burst_ratio: f64,
+    pub conf_height_processor_batch_min_time_ms: i64,
+    pub backup_before_upgrade: bool,
+    pub max_work_generate_multiplier: f64,
+    pub frontiers_confirmation: FrontiersConfirmationMode,
+    pub max_queued_requests: u32,
+    pub confirm_req_batches_max: u32,
+    pub rep_crawler_weight_minimum: Amount,
 }
 
 impl NodeConfig {
@@ -73,6 +95,28 @@ impl NodeConfig {
             pow_sleep_interval_ns: 0,
             external_address: Ipv6Addr::UNSPECIFIED.to_string(),
             external_port: 0,
+            /** Default maximum incoming TCP connections, including realtime network & bootstrap */
+            tcp_incoming_connections_max: 2048,
+            use_memory_pools: true,
+            confirmation_history_size: 2048,
+            active_elections_size: 5000,
+            /** Default outbound traffic shaping is 10MB/s */
+            bandwidth_limit: 10 * 1024 * 1024,
+            /** By default, allow bursts of 15MB/s (not sustainable) */
+            bandwidth_limit_burst_ratio: 3_f64,
+            conf_height_processor_batch_min_time_ms: 50,
+            backup_before_upgrade: false,
+            max_work_generate_multiplier: 64_f64,
+            frontiers_confirmation: FrontiersConfirmationMode::Automatic,
+            max_queued_requests: 512,
+            /** Maximum amount of confirmation requests (batches) to be sent to each channel */
+            confirm_req_batches_max: if network_params.network.is_dev_network() {
+                1
+            } else {
+                2
+            },
+            rep_crawler_weight_minimum: Amount::decode_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+                .unwrap(),
         }
     }
 
@@ -114,16 +158,46 @@ impl NodeConfig {
         toml.put_i64 ("pow_sleep_interval", self.pow_sleep_interval_ns, "Time to sleep between batch work generation attempts. Reduces max CPU usage at the expense of a longer generation time.\ntype:nanoseconds")?;
         toml.put_str("external_address", &self.external_address, "The external address of this node (NAT). If not set, the node will request this information via UPnP.\ntype:string,ip")?;
         toml.put_u16("external_port", self.external_port, "The external port number of this node (NAT). Only used if external_address is set.\ntype:uint16")?;
-        // toml.put ("tcp_incoming_connections_max", tcp_incoming_connections_max, "Maximum number of incoming TCP connections.\ntype:uint64");
-        // toml.put ("use_memory_pools", use_memory_pools, "If true, allocate memory from memory pools. Enabling this may improve performance. Memory is never released to the OS.\ntype:bool");
-        // toml.put ("confirmation_history_size", confirmation_history_size, "Maximum confirmation history size. If tracking the rate of block confirmations, the websocket feature is recommended instead.\ntype:uint64");
-        // toml.put ("active_elections_size", active_elections_size, "Number of active elections. Elections beyond this limit have limited survival time.\nWarning: modifying this value may result in a lower confirmation rate.\ntype:uint64,[250..]");
-        // toml.put ("bandwidth_limit", bandwidth_limit, "Outbound traffic limit in bytes/sec after which messages will be dropped.\nNote: changing to unlimited bandwidth (0) is not recommended for limited connections.\ntype:uint64");
-        // toml.put ("bandwidth_limit_burst_ratio", bandwidth_limit_burst_ratio, "Burst ratio for outbound traffic shaping.\ntype:double");
-        // toml.put ("conf_height_processor_batch_min_time", conf_height_processor_batch_min_time.count (), "Minimum write batching time when there are blocks pending confirmation height.\ntype:milliseconds");
-        // toml.put ("backup_before_upgrade", backup_before_upgrade, "Backup the ledger database before performing upgrades.\nWarning: uses more disk storage and increases startup time when upgrading.\ntype:bool");
-        // toml.put ("max_work_generate_multiplier", max_work_generate_multiplier, "Maximum allowed difficulty multiplier for work generation.\ntype:double,[1..]");
+        toml.put_u32(
+            "tcp_incoming_connections_max",
+            self.tcp_incoming_connections_max,
+            "Maximum number of incoming TCP connections.\ntype:uint64",
+        )?;
+        toml.put_bool("use_memory_pools", self.use_memory_pools, "If true, allocate memory from memory pools. Enabling this may improve performance. Memory is never released to the OS.\ntype:bool")?;
+        toml.put_usize("confirmation_history_size", self.confirmation_history_size, "Maximum confirmation history size. If tracking the rate of block confirmations, the websocket feature is recommended instead.\ntype:uint64")?;
+        toml.put_usize("active_elections_size", self.active_elections_size, "Number of active elections. Elections beyond this limit have limited survival time.\nWarning: modifying this value may result in a lower confirmation rate.\ntype:uint64,[250..]")?;
+        toml.put_usize("bandwidth_limit", self.bandwidth_limit, "Outbound traffic limit in bytes/sec after which messages will be dropped.\nNote: changing to unlimited bandwidth (0) is not recommended for limited connections.\ntype:uint64")?;
+        toml.put_f64(
+            "bandwidth_limit_burst_ratio",
+            self.bandwidth_limit_burst_ratio,
+            "Burst ratio for outbound traffic shaping.\ntype:double",
+        )?;
+        toml.put_i64("conf_height_processor_batch_min_time", self.conf_height_processor_batch_min_time_ms, "Minimum write batching time when there are blocks pending confirmation height.\ntype:milliseconds")?;
+        toml.put_bool("backup_before_upgrade", self.backup_before_upgrade, "Backup the ledger database before performing upgrades.\nWarning: uses more disk storage and increases startup time when upgrading.\ntype:bool")?;
+        toml.put_f64(
+            "max_work_generate_multiplier",
+            self.max_work_generate_multiplier,
+            "Maximum allowed difficulty multiplier for work generation.\ntype:double,[1..]",
+        )?;
+
+        toml.put_str(
+            "frontiers_confirmation",
+            serialize_frontiers_confirmation(self.frontiers_confirmation),
+            "Mode controlling frontier confirmation rate.\ntype:string,{auto,always,disabled}",
+        )?;
+        toml.put_u32("max_queued_requests", self.max_queued_requests, "Limit for number of queued confirmation requests for one channel, after which new requests are dropped until the queue drops below this value.\ntype:uint32")?;
+        toml.put_u32("confirm_req_batches_max", self.confirm_req_batches_max, "Limit for the number of confirmation requests for one channel per request attempt\ntype:uint32")?;
+        toml.put_str("rep_crawler_weight_minimum", &self.rep_crawler_weight_minimum.to_string_dec (), "Rep crawler minimum weight, if this is less than minimum principal weight then this is taken as the minimum weight a rep must have to be tracked. If you want to track all reps set this to 0. If you do not want this to influence anything then set it to max value. This is only useful for debugging or for people who really know what they are doing.\ntype:string,amount,raw")?;
 
         Ok(())
+    }
+}
+
+fn serialize_frontiers_confirmation(mode: FrontiersConfirmationMode) -> &'static str {
+    match mode {
+        FrontiersConfirmationMode::Always => "always",
+        FrontiersConfirmationMode::Automatic => "auto",
+        FrontiersConfirmationMode::Disabled => "disabled",
+        FrontiersConfirmationMode::Invalid => "auto",
     }
 }

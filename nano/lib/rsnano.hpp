@@ -108,13 +108,13 @@ using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
 using TomlPutBoolCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, bool, const uint8_t *, uintptr_t);
 
+using TomlPutF64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, double, const uint8_t *, uintptr_t);
+
 using TomlPutI64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, int64_t, const uint8_t *, uintptr_t);
 
 using TomlPutStrCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t);
 
-using TomlPutU16Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint16_t, const uint8_t *, uintptr_t);
-
-using TomlPutU32Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint32_t, const uint8_t *, uintptr_t);
+using TomlPutU64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint64_t, const uint8_t *, uintptr_t);
 
 using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
 
@@ -292,6 +292,19 @@ struct NodeConfigDto
 	uint8_t external_address[128];
 	uintptr_t external_address_len;
 	uint16_t external_port;
+	uint32_t tcp_incoming_connections_max;
+	bool use_memory_pools;
+	uintptr_t confirmation_history_size;
+	uintptr_t active_elections_size;
+	uintptr_t bandwidth_limit;
+	double bandwidth_limit_burst_ratio;
+	int64_t conf_height_processor_batch_min_time_ms;
+	bool backup_before_upgrade;
+	double max_work_generate_multiplier;
+	uint8_t frontiers_confirmation;
+	uint32_t max_queued_requests;
+	uint32_t confirm_req_batches_max;
+	uint8_t rep_crawler_weight_minimum[16];
 };
 
 struct NodeRpcConfigDto
@@ -479,13 +492,13 @@ void rsn_callback_read_u8 (ReadU8Callback f);
 
 void rsn_callback_toml_put_bool (TomlPutBoolCallback f);
 
+void rsn_callback_toml_put_f64 (TomlPutF64Callback f);
+
 void rsn_callback_toml_put_i64 (TomlPutI64Callback f);
 
 void rsn_callback_toml_put_str (TomlPutStrCallback f);
 
-void rsn_callback_toml_put_u16 (TomlPutU16Callback f);
-
-void rsn_callback_toml_put_u32 (TomlPutU32Callback f);
+void rsn_callback_toml_put_u64 (TomlPutU64Callback f);
 
 void rsn_callback_write_bytes (WriteBytesCallback f);
 

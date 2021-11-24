@@ -1,5 +1,7 @@
 use std::{convert::TryFrom, ffi::c_void};
 
+use num::FromPrimitive;
+
 use crate::{
     config::NodeConfig,
     ffi::{secure::NetworkParamsDto, toml::FfiToml},
@@ -35,6 +37,19 @@ pub struct NodeConfigDto {
     pub external_address: [u8; 128],
     pub external_address_len: usize,
     pub external_port: u16,
+    pub tcp_incoming_connections_max: u32,
+    pub use_memory_pools: bool,
+    pub confirmation_history_size: usize,
+    pub active_elections_size: usize,
+    pub bandwidth_limit: usize,
+    pub bandwidth_limit_burst_ratio: f64,
+    pub conf_height_processor_batch_min_time_ms: i64,
+    pub backup_before_upgrade: bool,
+    pub max_work_generate_multiplier: f64,
+    pub frontiers_confirmation: u8,
+    pub max_queued_requests: u32,
+    pub confirm_req_batches_max: u32,
+    pub rep_crawler_weight_minimum: [u8; 16],
 }
 
 #[no_mangle]
@@ -76,6 +91,19 @@ pub unsafe extern "C" fn rsn_node_config_create(
     dto.external_address[..bytes.len()].copy_from_slice(bytes);
     dto.external_address_len = bytes.len();
     dto.external_port = cfg.external_port;
+    dto.tcp_incoming_connections_max = cfg.tcp_incoming_connections_max;
+    dto.use_memory_pools = cfg.use_memory_pools;
+    dto.confirmation_history_size = cfg.confirmation_history_size;
+    dto.active_elections_size = cfg.active_elections_size;
+    dto.bandwidth_limit = cfg.bandwidth_limit;
+    dto.bandwidth_limit_burst_ratio = cfg.bandwidth_limit_burst_ratio;
+    dto.conf_height_processor_batch_min_time_ms = cfg.conf_height_processor_batch_min_time_ms;
+    dto.backup_before_upgrade = cfg.backup_before_upgrade;
+    dto.max_work_generate_multiplier = cfg.max_work_generate_multiplier;
+    dto.frontiers_confirmation = cfg.frontiers_confirmation as u8;
+    dto.max_queued_requests = cfg.max_queued_requests;
+    dto.confirm_req_batches_max = cfg.confirm_req_batches_max;
+    dto.rep_crawler_weight_minimum = cfg.rep_crawler_weight_minimum.to_be_bytes();
     0
 }
 
@@ -125,6 +153,20 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             )
             .to_string(),
             external_port: value.external_port,
+            tcp_incoming_connections_max: value.tcp_incoming_connections_max,
+            use_memory_pools: value.use_memory_pools,
+            confirmation_history_size: value.confirmation_history_size,
+            active_elections_size: value.active_elections_size,
+            bandwidth_limit: value.bandwidth_limit,
+            bandwidth_limit_burst_ratio: value.bandwidth_limit_burst_ratio,
+            conf_height_processor_batch_min_time_ms: value.conf_height_processor_batch_min_time_ms,
+            backup_before_upgrade: value.backup_before_upgrade,
+            max_work_generate_multiplier: value.max_work_generate_multiplier,
+            frontiers_confirmation: FromPrimitive::from_u8(value.frontiers_confirmation)
+                .ok_or_else(|| anyhow!("invalid frontiers confirmation mode"))?,
+            max_queued_requests: value.max_queued_requests,
+            confirm_req_batches_max: value.confirm_req_batches_max,
+            rep_crawler_weight_minimum: Amount::from_be_bytes(value.rep_crawler_weight_minimum),
         };
 
         Ok(cfg)

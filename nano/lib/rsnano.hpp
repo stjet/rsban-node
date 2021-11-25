@@ -110,9 +110,15 @@ using TomlArrayPutStrCallback = void (*) (void *, const uint8_t *, uintptr_t);
 
 using TomlCreateArrayCallback = void * (*)(void *, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t);
 
+using TomlCreateConfigCallback = void * (*)();
+
 using TomlDropArrayCallback = void (*) (void *);
 
+using TomlDropConfigCallback = void (*) (void *);
+
 using TomlPutBoolCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, bool, const uint8_t *, uintptr_t);
+
+using TomlPutChildCallback = void (*) (void *, const uint8_t *, uintptr_t, void *);
 
 using TomlPutF64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, double, const uint8_t *, uintptr_t);
 
@@ -515,9 +521,15 @@ void rsn_callback_toml_array_put_str (TomlArrayPutStrCallback f);
 
 void rsn_callback_toml_create_array (TomlCreateArrayCallback f);
 
+void rsn_callback_toml_create_config (TomlCreateConfigCallback f);
+
 void rsn_callback_toml_drop_array (TomlDropArrayCallback f);
 
+void rsn_callback_toml_drop_config (TomlDropConfigCallback f);
+
 void rsn_callback_toml_put_bool (TomlPutBoolCallback f);
+
+void rsn_callback_toml_put_child (TomlPutChildCallback f);
 
 void rsn_callback_toml_put_f64 (TomlPutF64Callback f);
 

@@ -192,7 +192,19 @@ pub trait TomlWriter {
     fn put_bool(&mut self, key: &str, value: bool, documentation: &str) -> Result<()>;
     fn put_usize(&mut self, key: &str, value: usize, documentation: &str) -> Result<()>;
     fn put_f64(&mut self, key: &str, value: f64, documentation: &str) -> Result<()>;
-    fn create_array(&mut self, key: &str, documentation: &str) -> Result<Box<dyn TomlArrayWriter>>;
+
+    fn create_array(
+        &mut self,
+        key: &str,
+        documentation: &str,
+        f: &mut dyn FnMut(&mut dyn TomlArrayWriter) -> Result<()>,
+    ) -> Result<()>;
+
+    fn put_child(
+        &mut self,
+        key: &str,
+        f: &mut dyn FnMut(&mut dyn TomlWriter) -> Result<()>,
+    ) -> Result<()>;
 }
 
 pub trait TomlArrayWriter {

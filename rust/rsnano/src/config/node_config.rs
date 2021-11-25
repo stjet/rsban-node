@@ -304,26 +304,37 @@ impl NodeConfig {
         toml.put_u32("confirm_req_batches_max", self.confirm_req_batches_max, "Limit for the number of confirmation requests for one channel per request attempt\ntype:uint32")?;
         toml.put_str("rep_crawler_weight_minimum", &self.rep_crawler_weight_minimum.to_string_dec (), "Rep crawler minimum weight, if this is less than minimum principal weight then this is taken as the minimum weight a rep must have to be tracked. If you want to track all reps set this to 0. If you do not want this to influence anything then set it to max value. This is only useful for debugging or for people who really know what they are doing.\ntype:string,amount,raw")?;
 
-        let mut work_peers = toml.create_array(
+        toml.create_array(
             "work_peers",
             "A list of \"address:port\" entries to identify work peers.",
+            &mut |work_peers| {
+                for peer in &self.work_peers {
+                    work_peers.push_back_str(&format!("{}:{}", peer.address, peer.port))?;
+                }
+                Ok(())
+            },
         )?;
-        for peer in &self.work_peers {
-            work_peers.push_back_str(&format!("{}:{}", peer.address, peer.port))?;
-        }
-        drop(work_peers);
 
-        let mut preconfigured_peers = toml.create_array ("preconfigured_peers", "A list of \"address\" (hostname or ipv6 notation ip address) entries to identify preconfigured peers.")?;
-        for peer in &self.preconfigured_peers {
-            preconfigured_peers.push_back_str(peer)?;
-        }
-        drop(preconfigured_peers);
+        toml.create_array ("preconfigured_peers", "A list of \"address\" (hostname or ipv6 notation ip address) entries to identify preconfigured peers.",
+        &mut |peers| {
+            for peer in &self.preconfigured_peers {
+                peers.push_back_str(peer)?;
+            }
+            Ok(())
+        })?;
 
-        let mut preconfigured_representatives = toml.create_array ("preconfigured_representatives", "A list of representative account addresses used when creating new accounts in internal wallets.")?;
-        for rep in &self.preconfigured_representatives {
-            preconfigured_representatives.push_back_str(&rep.encode_account())?;
-        }
-        drop(preconfigured_representatives);
+        toml.create_array ("preconfigured_representatives", "A list of representative account addresses used when creating new accounts in internal wallets.",
+        &mut |reps|{
+            for rep in &self.preconfigured_representatives {
+                reps.push_back_str(&rep.encode_account())?;
+            }
+            Ok(())
+        })?;
+
+        toml.put_child("foobar", &mut|child|{
+            child.put_bool("blablabla", true, "this is a test")?;
+            Ok(())
+        })?;
 
         Ok(())
     }

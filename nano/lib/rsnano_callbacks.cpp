@@ -225,6 +225,24 @@ void toml_array_put_str (void * handle_a, const uint8_t * value_a, uintptr_t val
 	handle->ptr->push_back (val);
 }
 
+void * toml_create_config ()
+{
+	return new nano::tomlconfig ();
+}
+
+void toml_drop_config (void * handle)
+{
+	delete static_cast<nano::tomlconfig *> (handle);
+}
+
+void toml_put_child (void * handle_a, const uint8_t * key_a, uintptr_t key_len_a, void * child_a)
+{
+	auto parent = static_cast<nano::tomlconfig *> (handle_a);
+	auto child = static_cast<nano::tomlconfig *> (child_a);
+	std::string key (reinterpret_cast<const char *> (key_a), key_len_a);
+	parent->put_child (key, *child);
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -248,6 +266,9 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_put_f64 (toml_put_f64);
 	rsnano::rsn_callback_toml_create_array (toml_create_array);
 	rsnano::rsn_callback_toml_array_put_str (toml_array_put_str);
+	rsnano::rsn_callback_toml_create_config (toml_create_config);
+	rsnano::rsn_callback_toml_drop_config (toml_drop_config);
+	rsnano::rsn_callback_toml_put_child (toml_put_child);
 	rsn_callback_toml_drop_array (toml_drop_array);
 	callbacks_set = true;
 }

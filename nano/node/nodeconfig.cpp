@@ -182,10 +182,6 @@ nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
 	if (rsnano::rsn_node_config_serialize_toml (&dto, &toml) < 0)
 		throw std::runtime_error ("could not TOML serialize node_config");
 
-	nano::tomlconfig logging_l;
-	logging.serialize_toml (logging_l);
-	toml.put_child ("logging", logging_l);
-
 	nano::tomlconfig websocket_l;
 	websocket_config.serialize_toml (websocket_l);
 	toml.put_child ("websocket", websocket_l);

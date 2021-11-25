@@ -251,7 +251,7 @@ impl NodeConfig {
         }
     }
 
-    pub fn serialize_toml(&self, toml: &mut impl TomlWriter) -> Result<()> {
+    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {
         toml.put_u16(
             "peering_port",
             self.peering_port,
@@ -377,6 +377,10 @@ impl NodeConfig {
                 "Callback target path.\ntype:string,uri",
             )?;
             Ok(())
+        })?;
+
+        toml.put_child("logging", &mut |logging|{
+            self.logging.serialize_toml(logging)
         })?;
 
         Ok(())

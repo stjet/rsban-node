@@ -3,11 +3,13 @@ use std::{convert::TryFrom, ffi::c_void};
 use num::FromPrimitive;
 
 use crate::{
-    config::{NodeConfig, Peer},
+    config::{Logging, NodeConfig, Peer},
     ffi::{secure::NetworkParamsDto, toml::FfiToml},
     numbers::{Account, Amount},
     secure::NetworkParams,
 };
+
+use super::{fill_logging_dto, LoggingDto};
 
 #[repr(C)]
 pub struct NodeConfigDto {
@@ -58,6 +60,14 @@ pub struct NodeConfigDto {
     pub preconfigured_peers_count: usize,
     pub preconfigured_representatives: [[u8; 32]; 10],
     pub preconfigured_representatives_count: usize,
+    pub max_pruning_age_s: i64,
+    pub max_pruning_depth: u64,
+    pub callback_address: [u8; 128],
+    pub callback_address_len: usize,
+    pub callback_port: u16,
+    pub callback_target: [u8; 128],
+    pub callback_target_len: usize,
+    pub logging: LoggingDto,
 }
 
 #[repr(C)]
@@ -71,13 +81,15 @@ pub struct PeerDto {
 pub unsafe extern "C" fn rsn_node_config_create(
     dto: *mut NodeConfigDto,
     peering_port: u16,
+    logging: &LoggingDto,
     network_params: &NetworkParamsDto,
 ) -> i32 {
     let network_params = match NetworkParams::try_from(network_params) {
         Ok(n) => n,
         Err(_) => return -1,
     };
-    let cfg = NodeConfig::new(peering_port, &network_params);
+    let logging = Logging::from(logging);
+    let cfg = NodeConfig::new(peering_port, logging, &network_params);
     let dto = &mut (*dto);
     dto.peering_port = cfg.peering_port;
     dto.bootstrap_fraction_numerator = cfg.bootstrap_fraction_numerator;
@@ -146,6 +158,16 @@ pub unsafe extern "C" fn rsn_node_config_create(
         dto.preconfigured_representatives[i] = rep.to_bytes();
     }
     dto.preconfigured_representatives_count = cfg.preconfigured_representatives.len();
+    dto.max_pruning_age_s = cfg.max_pruning_age_s;
+    dto.max_pruning_depth = cfg.max_pruning_depth;
+    let bytes = cfg.callback_address.as_bytes();
+    dto.callback_address[..bytes.len()].copy_from_slice(bytes);
+    dto.callback_address_len = bytes.len();
+    dto.callback_port = cfg.callback_port;
+    let bytes = cfg.callback_target.as_bytes();
+    dto.callback_target[..bytes.len()].copy_from_slice(bytes);
+    dto.callback_target_len = bytes.len();
+    fill_logging_dto(&mut dto.logging, &cfg.logging);
     0
 }
 
@@ -240,6 +262,18 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             secondary_work_peers,
             preconfigured_peers,
             preconfigured_representatives,
+            max_pruning_age_s: value.max_pruning_age_s,
+            max_pruning_depth: value.max_pruning_depth,
+            callback_address: String::from_utf8_lossy(
+                &value.callback_address[..value.callback_address_len],
+            )
+            .to_string(),
+            callback_target: String::from_utf8_lossy(
+                &value.callback_target[..value.callback_target_len],
+            )
+            .to_string(),
+            callback_port: value.callback_port,
+            logging: (&value.logging).into(),
         };
 
         Ok(cfg)

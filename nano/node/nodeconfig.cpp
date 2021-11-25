@@ -31,7 +31,8 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 {
 	rsnano::NodeConfigDto dto;
 	auto network_params_dto{ network_params.to_dto () };
-	rsnano::rsn_node_config_create (&dto, peering_port_a, &network_params_dto);
+	auto logging_dto{ logging.to_dto () };
+	rsnano::rsn_node_config_create (&dto, peering_port_a, &logging_dto, &network_params_dto);
 	peering_port = dto.peering_port;
 	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
 	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin (receive_minimum.bytes));
@@ -91,6 +92,11 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 		std::copy (std::begin (dto.preconfigured_representatives[i]), std::end (dto.preconfigured_representatives[i]), std::begin (a.bytes));
 		preconfigured_representatives.push_back (a);
 	}
+	max_pruning_age = std::chrono::seconds (dto.max_pruning_age_s);
+	max_pruning_depth = dto.max_pruning_depth;
+	callback_address = std::string (reinterpret_cast<const char *> (dto.callback_address), dto.callback_address_len);
+	callback_target = std::string (reinterpret_cast<const char *> (dto.callback_target), dto.callback_target_len);
+	callback_port = dto.callback_port;
 }
 
 rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
@@ -161,6 +167,12 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 		dto.preconfigured_representatives_count = config.preconfigured_representatives.size ();
 	}
 	dto.preconfigured_representatives_count = config.preconfigured_representatives.size ();
+	dto.max_pruning_age_s = config.max_pruning_age.count ();
+	dto.max_pruning_depth = config.max_pruning_depth;
+	std::copy (config.callback_address.begin (), config.callback_address.end (), std::begin (dto.callback_address));
+	dto.callback_address_len = config.callback_address.size ();
+	std::copy (config.callback_target.begin (), config.callback_target.end (), std::begin (dto.callback_target));
+	dto.callback_target_len = config.callback_target.size ();
 	return dto;
 }
 
@@ -169,23 +181,6 @@ nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
 	auto dto{ to_node_config_dto (*this) };
 	if (rsnano::rsn_node_config_serialize_toml (&dto, &toml) < 0)
 		throw std::runtime_error ("could not TOML serialize node_config");
-
-	/** Experimental node entries */
-	nano::tomlconfig experimental_l;
-	auto secondary_work_peers_l (experimental_l.create_array ("secondary_work_peers", "A list of \"address:port\" entries to identify work peers for secondary work generation."));
-	for (auto i (secondary_work_peers.begin ()), n (secondary_work_peers.end ()); i != n; ++i)
-	{
-		secondary_work_peers_l->push_back (boost::str (boost::format ("%1%:%2%") % i->first % i->second));
-	}
-	experimental_l.put ("max_pruning_age", max_pruning_age.count (), "Time limit for blocks age after pruning.\ntype:seconds");
-	experimental_l.put ("max_pruning_depth", max_pruning_depth, "Limit for full blocks in chain after pruning.\ntype:uint64");
-	toml.put_child ("experimental", experimental_l);
-
-	nano::tomlconfig callback_l;
-	callback_l.put ("address", callback_address, "Callback address.\ntype:string,ip");
-	callback_l.put ("port", callback_port, "Callback port number.\ntype:uint16");
-	callback_l.put ("target", callback_target, "Callback target path.\ntype:string,uri");
-	toml.put_child ("httpcallback", callback_l);
 
 	nano::tomlconfig logging_l;
 	logging.serialize_toml (logging_l);

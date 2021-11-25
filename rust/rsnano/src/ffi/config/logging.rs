@@ -39,6 +39,10 @@ pub struct LoggingDto {
 pub unsafe extern "C" fn rsn_logging_create(dto: *mut LoggingDto) {
     let dto = &mut (*dto);
     let logging = Logging::new();
+    fill_logging_dto(dto, &logging);
+}
+
+pub fn fill_logging_dto(dto: &mut LoggingDto, logging: &Logging) {
     dto.ledger_logging_value = logging.ledger_logging_value;
     dto.ledger_duplicate_logging_value = logging.ledger_duplicate_logging_value;
     dto.ledger_rollback_logging_value = logging.ledger_rollback_logging_value;
@@ -70,4 +74,48 @@ pub unsafe extern "C" fn rsn_logging_create(dto: *mut LoggingDto) {
     dto.stable_log_filename = logging.stable_log_filename;
     dto.min_time_between_log_output_ms = logging.min_time_between_log_output_ms;
     dto.single_line_record_value = logging.single_line_record_value;
+}
+
+impl From<&LoggingDto> for Logging {
+    fn from(dto: &LoggingDto) -> Self {
+        Self {
+            ledger_logging_value: dto.ledger_logging_value,
+            ledger_duplicate_logging_value: dto.ledger_duplicate_logging_value,
+            ledger_rollback_logging_value: dto.ledger_rollback_logging_value,
+            vote_logging_value: dto.vote_logging_value,
+            rep_crawler_logging_value: dto.rep_crawler_logging_value,
+            election_fork_tally_logging_value: dto.election_fork_tally_logging_value,
+            election_expiration_tally_logging_value: dto.election_expiration_tally_logging_value,
+            network_logging_value: dto.network_logging_value,
+            network_timeout_logging_value: dto.network_timeout_logging_value,
+            network_message_logging_value: dto.network_message_logging_value,
+            network_publish_logging_value: dto.network_publish_logging_value,
+            network_packet_logging_value: dto.network_packet_logging_value,
+            network_keepalive_logging_value: dto.network_keepalive_logging_value,
+            network_node_id_handshake_logging_value: dto.network_node_id_handshake_logging_value,
+            network_telemetry_logging_value: dto.network_telemetry_logging_value,
+            network_rejected_logging_value: dto.network_rejected_logging_value,
+            node_lifetime_tracing_value: dto.node_lifetime_tracing_value,
+            insufficient_work_logging_value: dto.insufficient_work_logging_value,
+            log_ipc_value: dto.log_ipc_value,
+            bulk_pull_logging_value: dto.bulk_pull_logging_value,
+            work_generation_time_value: dto.work_generation_time_value,
+            upnp_details_logging_value: dto.upnp_details_logging_value,
+            timing_logging_value: dto.timing_logging_value,
+            active_update_value: dto.active_update_value,
+            log_to_cerr_value: dto.log_to_cerr_value,
+            flush: dto.flush,
+            max_size: dto.max_size,
+            rotation_size: dto.rotation_size,
+            stable_log_filename: dto.stable_log_filename,
+            min_time_between_log_output_ms: dto.min_time_between_log_output_ms,
+            single_line_record_value: dto.single_line_record_value,
+        }
+    }
+}
+
+impl From<LoggingDto> for Logging {
+    fn from(dto: LoggingDto) -> Self {
+        (&dto).into()
+    }
 }

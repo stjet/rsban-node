@@ -9,7 +9,7 @@ use crate::{
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
-use super::get_env_or_default_string;
+use super::{get_env_or_default_string, Logging};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -63,6 +63,12 @@ pub struct NodeConfig {
     pub secondary_work_peers: Vec<Peer>,
     pub preconfigured_peers: Vec<String>,
     pub preconfigured_representatives: Vec<Account>,
+    pub max_pruning_age_s: i64,
+    pub max_pruning_depth: u64,
+    pub callback_address: String,
+    pub callback_port: u16,
+    pub callback_target: String,
+    pub logging: Logging,
 }
 
 pub struct Peer {
@@ -85,7 +91,7 @@ static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
     Lazy::new(|| get_env_or_default_string("NANO_TEST_PEER_NETWORK", "peering.nano.org"));
 
 impl NodeConfig {
-    pub fn new(peering_port: u16, network_params: &NetworkParams) -> Self {
+    pub fn new(peering_port: u16, logging: Logging, network_params: &NetworkParams) -> Self {
         // The default constructor passes 0 to indicate we should use the default port,
         // which is determined at node startup based on active network.
         let peering_port = if peering_port == 0 {
@@ -232,6 +238,16 @@ impl NodeConfig {
             secondary_work_peers: vec![Peer::new("127.0.0.1", 8076)],
             preconfigured_peers,
             preconfigured_representatives,
+            max_pruning_age_s: if !network_params.network.is_beta_network() {
+                24 * 60 * 60
+            } else {
+                5 * 60
+            }, // 1 day; 5 minutes for beta network
+            max_pruning_depth: 0,
+            callback_address: String::new(),
+            callback_port: 0,
+            callback_target: String::new(),
+            logging,
         }
     }
 
@@ -331,8 +347,35 @@ impl NodeConfig {
             Ok(())
         })?;
 
-        toml.put_child("foobar", &mut|child|{
-            child.put_bool("blablabla", true, "this is a test")?;
+        toml.put_child("experimental", &mut|child|{
+            child.create_array ("secondary_work_peers", "A list of \"address:port\" entries to identify work peers for secondary work generation.",
+        &mut |peers|{
+            for p in &self.secondary_work_peers{
+                peers.push_back_str(&format!("{}:{}", p.address, p.port))?;
+            }
+            Ok(())
+        })?;
+            child.put_i64("max_pruning_age", self.max_pruning_age_s, "Time limit for blocks age after pruning.\ntype:seconds")?;
+            child.put_u64("max_pruning_depth", self.max_pruning_depth, "Limit for full blocks in chain after pruning.\ntype:uint64")?;
+            Ok(())
+        })?;
+
+        toml.put_child("httpcallback", &mut |callback| {
+            callback.put_str(
+                "address",
+                &self.callback_address,
+                "Callback address.\ntype:string,ip",
+            )?;
+            callback.put_u16(
+                "port",
+                self.callback_port,
+                "Callback port number.\ntype:uint16",
+            )?;
+            callback.put_str(
+                "target",
+                &self.callback_target,
+                "Callback target path.\ntype:string,uri",
+            )?;
             Ok(())
         })?;
 

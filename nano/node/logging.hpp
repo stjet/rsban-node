@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nano/lib/errors.hpp>
+#include <nano/lib/rsnano.hpp>
 
 #include <boost/log/detail/config.hpp>
 #include <boost/shared_ptr.hpp>
@@ -38,6 +39,7 @@ class logging final
 {
 public:
 	logging ();
+	rsnano::LoggingDto to_dto () const;
 	nano::error serialize_json (nano::jsonconfig &) const;
 	nano::error deserialize_json (bool &, nano::jsonconfig &);
 	nano::error serialize_toml (nano::tomlconfig &) const;

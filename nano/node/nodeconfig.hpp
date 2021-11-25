@@ -74,7 +74,7 @@ public:
 	nano::diagnostics_config diagnostics_config;
 	std::size_t confirmation_history_size;
 	std::string callback_address;
-	uint16_t callback_port{ 0 };
+	uint16_t callback_port;
 	std::string callback_target;
 	bool allow_local_peers;
 	nano::stat_config stat_config;
@@ -103,8 +103,8 @@ public:
 	uint32_t max_queued_requests;
 	/** Maximum amount of confirmation requests (batches) to be sent to each channel */
 	uint32_t confirm_req_batches_max;
-	std::chrono::seconds max_pruning_age{ !network_params.network.is_beta_network () ? std::chrono::seconds (24 * 60 * 60) : std::chrono::seconds (5 * 60) }; // 1 day; 5 minutes for beta network
-	uint64_t max_pruning_depth{ 0 };
+	std::chrono::seconds max_pruning_age;
+	uint64_t max_pruning_depth;
 	nano::rocksdb_config rocksdb_config;
 	nano::lmdb_config lmdb_config;
 	nano::frontiers_confirmation_mode frontiers_confirmation{ nano::frontiers_confirmation_mode::automatic };

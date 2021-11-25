@@ -332,6 +332,14 @@ struct NodeConfigDto
 	uintptr_t preconfigured_peers_count;
 	uint8_t preconfigured_representatives[10][32];
 	uintptr_t preconfigured_representatives_count;
+	int64_t max_pruning_age_s;
+	uint64_t max_pruning_depth;
+	uint8_t callback_address[128];
+	uintptr_t callback_address_len;
+	uint16_t callback_port;
+	uint8_t callback_target[128];
+	uintptr_t callback_target_len;
+	LoggingDto logging;
 };
 
 struct NodeRpcConfigDto
@@ -624,6 +632,7 @@ int32_t rsn_network_params_create (NetworkParamsDto * dto, uint16_t network);
 
 int32_t rsn_node_config_create (NodeConfigDto * dto,
 uint16_t peering_port,
+const LoggingDto * logging,
 const NetworkParamsDto * network_params);
 
 int32_t rsn_node_config_serialize_toml (const NodeConfigDto * dto, void * toml);

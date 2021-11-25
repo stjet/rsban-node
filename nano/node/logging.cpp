@@ -60,6 +60,43 @@ nano::logging::logging ()
 	single_line_record_value = dto.single_line_record_value;
 }
 
+rsnano::LoggingDto nano::logging::to_dto () const
+{
+	rsnano::LoggingDto dto;
+	dto.ledger_logging_value = ledger_logging_value;
+	dto.ledger_duplicate_logging_value = ledger_duplicate_logging_value;
+	dto.ledger_rollback_logging_value = ledger_rollback_logging_value;
+	dto.vote_logging_value = vote_logging_value;
+	dto.rep_crawler_logging_value = rep_crawler_logging_value;
+	dto.election_fork_tally_logging_value = election_fork_tally_logging_value;
+	dto.election_expiration_tally_logging_value = election_expiration_tally_logging_value;
+	dto.network_logging_value = network_logging_value;
+	dto.network_timeout_logging_value = network_timeout_logging_value;
+	dto.network_message_logging_value = network_message_logging_value;
+	dto.network_publish_logging_value = network_publish_logging_value;
+	dto.network_packet_logging_value = network_packet_logging_value;
+	dto.network_keepalive_logging_value = network_keepalive_logging_value;
+	dto.network_node_id_handshake_logging_value = network_node_id_handshake_logging_value;
+	dto.network_telemetry_logging_value = network_telemetry_logging_value;
+	dto.network_rejected_logging_value = network_rejected_logging_value;
+	dto.node_lifetime_tracing_value = node_lifetime_tracing_value;
+	dto.insufficient_work_logging_value = insufficient_work_logging_value;
+	dto.log_ipc_value = log_ipc_value;
+	dto.bulk_pull_logging_value = bulk_pull_logging_value;
+	dto.work_generation_time_value = work_generation_time_value;
+	dto.upnp_details_logging_value = upnp_details_logging_value;
+	dto.timing_logging_value = timing_logging_value;
+	dto.active_update_value = active_update_value;
+	dto.log_to_cerr_value = log_to_cerr_value;
+	dto.flush = flush;
+	dto.max_size = max_size;
+	dto.rotation_size = rotation_size;
+	dto.stable_log_filename = stable_log_filename;
+	dto.min_time_between_log_output_ms = min_time_between_log_output.count ();
+	dto.single_line_record_value = single_line_record_value;
+	return dto;
+}
+
 void nano::logging::init (boost::filesystem::path const & application_path_a)
 {
 	if (!logging_already_added.test_and_set ())

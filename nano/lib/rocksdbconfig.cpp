@@ -6,17 +6,23 @@ nano::rocksdb_config::rocksdb_config ()
 {
 	rsnano::RocksDbConfigDto dto;
 	rsnano::rsn_rocksdb_config_create (&dto);
+	load_dto (dto);
+}
+
+void nano::rocksdb_config::load_dto (rsnano::RocksDbConfigDto & dto)
+{
 	enable = dto.enable;
 	memory_multiplier = dto.memory_multiplier;
 	io_threads = dto.io_threads;
 }
 
-nano::error nano::rocksdb_config::serialize_toml (nano::tomlconfig & toml) const
+rsnano::RocksDbConfigDto nano::rocksdb_config::to_dto () const
 {
-	toml.put ("enable", enable, "Whether to use the RocksDB backend for the ledger database.\ntype:bool");
-	toml.put ("memory_multiplier", memory_multiplier, "This will modify how much memory is used represented by 1 (low), 2 (medium), 3 (high). Default is 2.\ntype:uint8");
-	toml.put ("io_threads", io_threads, "Number of threads to use with the background compaction and flushing. Number of hardware threads is recommended.\ntype:uint32");
-	return toml.get_error ();
+	rsnano::RocksDbConfigDto dto;
+	dto.enable = enable;
+	dto.memory_multiplier = memory_multiplier;
+	dto.io_threads = io_threads;
+	return dto;
 }
 
 nano::error nano::rocksdb_config::deserialize_toml (nano::tomlconfig & toml)

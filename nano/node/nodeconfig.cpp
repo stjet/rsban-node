@@ -100,6 +100,8 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 	ipc_config.load_dto (dto.ipc_config);
 	diagnostics_config.load_dto (dto.diagnostics_config);
 	stat_config.load_dto (dto.stat_config);
+	rocksdb_config.load_dto (dto.rocksdb_config);
+	lmdb_config.load_dto (dto.lmdb_config);
 }
 
 rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
@@ -181,6 +183,8 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.ipc_config = config.ipc_config.to_dto ();
 	dto.diagnostics_config = config.diagnostics_config.to_dto ();
 	dto.stat_config = config.stat_config.to_dto ();
+	dto.rocksdb_config = config.rocksdb_config.to_dto ();
+	dto.lmdb_config = config.lmdb_config.to_dto ();
 	return dto;
 }
 
@@ -188,17 +192,9 @@ nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
 {
 	auto dto{ to_node_config_dto (*this) };
 	if (rsnano::rsn_node_config_serialize_toml (&dto, &toml) < 0)
-		throw std::runtime_error ("could not TOML serialize node_config");
+		return nano::error ("could not TOML serialize node_config");
 
-	nano::tomlconfig rocksdb_l;
-	rocksdb_config.serialize_toml (rocksdb_l);
-	toml.put_child ("rocksdb", rocksdb_l);
-
-	nano::tomlconfig lmdb_l;
-	lmdb_config.serialize_toml (lmdb_l);
-	toml.put_child ("lmdb", lmdb_l);
-
-	return toml.get_error ();
+	return nano::error ();
 }
 
 nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)

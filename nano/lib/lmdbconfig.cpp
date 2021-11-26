@@ -8,6 +8,11 @@ nano::lmdb_config::lmdb_config ()
 {
 	rsnano::LmdbConfigDto dto;
 	rsnano::rsn_lmdb_config_create (&dto);
+	load_dto (dto);
+}
+
+void nano::lmdb_config::load_dto (rsnano::LmdbConfigDto & dto)
+{
 	switch (dto.sync)
 	{
 		case 0:
@@ -29,29 +34,30 @@ nano::lmdb_config::lmdb_config ()
 	map_size = dto.map_size;
 }
 
-nano::error nano::lmdb_config::serialize_toml (nano::tomlconfig & toml) const
+rsnano::LmdbConfigDto nano::lmdb_config::to_dto () const
 {
-	std::string sync_string;
+	rsnano::LmdbConfigDto dto;
 	switch (sync)
 	{
 		case nano::lmdb_config::sync_strategy::always:
-			sync_string = "always";
+			dto.sync = 0;
 			break;
 		case nano::lmdb_config::sync_strategy::nosync_safe:
-			sync_string = "nosync_safe";
+			dto.sync = 1;
 			break;
 		case nano::lmdb_config::sync_strategy::nosync_unsafe:
-			sync_string = "nosync_unsafe";
+			dto.sync = 2;
 			break;
 		case nano::lmdb_config::sync_strategy::nosync_unsafe_large_memory:
-			sync_string = "nosync_unsafe_large_memory";
+			dto.sync = 3;
+			break;
+		default:
+			dto.sync = 0;
 			break;
 	}
-
-	toml.put ("sync", sync_string, "Sync strategy for flushing commits to the ledger database. This does not affect the wallet database.\ntype:string,{always, nosync_safe, nosync_unsafe, nosync_unsafe_large_memory}");
-	toml.put ("max_databases", max_databases, "Maximum open lmdb databases. Increase default if more than 100 wallets is required.\nNote: external management is recommended when a large amounts of wallets are required (see https://docs.nano.org/integration-guides/key-management/).\ntype:uin32");
-	toml.put ("map_size", map_size, "Maximum ledger database map size in bytes.\ntype:uint64");
-	return toml.get_error ();
+	dto.max_databases = max_databases;
+	dto.map_size = map_size;
+	return dto;
 }
 
 nano::error nano::lmdb_config::deserialize_toml (nano::tomlconfig & toml)

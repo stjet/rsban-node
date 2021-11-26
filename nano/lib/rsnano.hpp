@@ -314,6 +314,13 @@ struct StatConfigDto
 	uintptr_t log_samples_filename_len;
 };
 
+struct RocksDbConfigDto
+{
+	bool enable;
+	uint8_t memory_multiplier;
+	uint32_t io_threads;
+};
+
 struct NodeConfigDto
 {
 	uint16_t peering_port;
@@ -375,6 +382,8 @@ struct NodeConfigDto
 	IpcConfigDto ipc_config;
 	TxnTrackingConfigDto diagnostics_config;
 	StatConfigDto stat_config;
+	RocksDbConfigDto rocksdb_config;
+	LmdbConfigDto lmdb_config;
 };
 
 struct NodeRpcConfigDto
@@ -419,13 +428,6 @@ struct ReceiveBlockDto2
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
 	uint64_t work;
-};
-
-struct RocksDbConfigDto
-{
-	bool enable;
-	uint8_t memory_multiplier;
-	uint32_t io_threads;
 };
 
 struct SendBlockDto

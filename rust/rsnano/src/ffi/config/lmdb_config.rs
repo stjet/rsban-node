@@ -11,6 +11,10 @@ pub struct LmdbConfigDto {
 pub unsafe extern "C" fn rsn_lmdb_config_create(dto: *mut LmdbConfigDto) {
     let config = LmdbConfig::new();
     let dto = &mut (*dto);
+    fill_lmdb_config_dto(dto, &config);
+}
+
+pub fn fill_lmdb_config_dto(dto: &mut LmdbConfigDto, config: &LmdbConfig) {
     dto.sync = match config.sync {
         SyncStrategy::Always => 0,
         SyncStrategy::NosyncSafe => 1,
@@ -19,4 +23,20 @@ pub unsafe extern "C" fn rsn_lmdb_config_create(dto: *mut LmdbConfigDto) {
     };
     dto.max_databases = config.max_databases;
     dto.map_size = config.map_size;
+}
+
+impl From<&LmdbConfigDto> for LmdbConfig {
+    fn from(dto: &LmdbConfigDto) -> Self {
+        Self {
+            sync: match dto.sync {
+                0 => SyncStrategy::Always,
+                1 => SyncStrategy::NosyncSafe,
+                2 => SyncStrategy::NosyncUnsafe,
+                3 => SyncStrategy::NosyncUnsafeLargeMemory,
+                _ => SyncStrategy::Always,
+            },
+            max_databases: dto.max_databases,
+            map_size: dto.map_size,
+        }
+    }
 }

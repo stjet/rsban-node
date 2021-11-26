@@ -11,7 +11,10 @@ use crate::{
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
-use super::{get_env_or_default_string, DiagnosticsConfig, Logging, WebsocketConfig};
+use super::{
+    get_env_or_default_string, DiagnosticsConfig, LmdbConfig, Logging, RocksDbConfig,
+    WebsocketConfig,
+};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -75,6 +78,8 @@ pub struct NodeConfig {
     pub ipc_config: IpcConfig,
     pub diagnostics_config: DiagnosticsConfig,
     pub stat_config: StatConfig,
+    pub rocksdb_config: RocksDbConfig,
+    pub lmdb_config: LmdbConfig,
 }
 
 pub struct Peer {
@@ -258,6 +263,8 @@ impl NodeConfig {
             ipc_config: IpcConfig::new(&network_params.network),
             diagnostics_config: DiagnosticsConfig::new(),
             stat_config: StatConfig::new(),
+            rocksdb_config: RocksDbConfig::new(),
+            lmdb_config: LmdbConfig::new(),
         }
     }
 
@@ -406,6 +413,12 @@ impl NodeConfig {
         toml.put_child("statistics", &mut |statistics| {
             self.stat_config.serialize_toml(statistics)
         })?;
+
+        toml.put_child("rocksdb", &mut |rocksdb| {
+            self.rocksdb_config.serialize_toml(rocksdb)
+        })?;
+
+        toml.put_child("lmdb", &mut |lmdb| self.lmdb_config.serialize_toml(lmdb))?;
 
         Ok(())
     }

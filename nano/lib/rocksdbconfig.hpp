@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nano/lib/errors.hpp>
+#include <nano/lib/rsnano.hpp>
 
 #include <thread>
 
@@ -13,7 +14,8 @@ class rocksdb_config final
 {
 public:
 	rocksdb_config ();
-	nano::error serialize_toml (nano::tomlconfig & toml_a) const;
+	void load_dto (rsnano::RocksDbConfigDto & dto);
+	rsnano::RocksDbConfigDto to_dto () const;
 	nano::error deserialize_toml (nano::tomlconfig & toml_a);
 
 	/** To use RocksDB in tests make sure the environment variable TEST_USE_ROCKSDB=1 is set */

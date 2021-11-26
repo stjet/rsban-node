@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nano/lib/errors.hpp>
+#include <nano/lib/rsnano.hpp>
 
 #include <thread>
 
@@ -40,8 +41,9 @@ public:
 	};
 
 	lmdb_config ();
+	void load_dto (rsnano::LmdbConfigDto & dto);
+	rsnano::LmdbConfigDto to_dto () const;
 
-	nano::error serialize_toml (nano::tomlconfig & toml_a) const;
 	nano::error deserialize_toml (nano::tomlconfig & toml_a);
 
 	/** Sync strategy for the ledger database */

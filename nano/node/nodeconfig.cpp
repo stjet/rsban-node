@@ -26,7 +26,6 @@ nano::node_config::node_config (nano::network_params & network_params) :
 nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & logging_a, nano::network_params & network_params) :
 	network_params{ network_params },
 	logging{ logging_a },
-	ipc_config{ network_params.network },
 	websocket_config{ network_params.network }
 {
 	rsnano::NodeConfigDto dto;
@@ -98,6 +97,7 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 	callback_target = std::string (reinterpret_cast<const char *> (dto.callback_target), dto.callback_target_len);
 	callback_port = dto.callback_port;
 	websocket_config.load_dto (dto.websocket_config);
+	ipc_config.load_dto (dto.ipc_config);
 }
 
 rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
@@ -174,6 +174,9 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.callback_address_len = config.callback_address.size ();
 	std::copy (config.callback_target.begin (), config.callback_target.end (), std::begin (dto.callback_target));
 	dto.callback_target_len = config.callback_target.size ();
+	dto.logging = config.logging.to_dto ();
+	dto.websocket_config = config.websocket_config.to_dto ();
+	dto.ipc_config = config.ipc_config.to_dto ();
 	return dto;
 }
 
@@ -182,10 +185,6 @@ nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
 	auto dto{ to_node_config_dto (*this) };
 	if (rsnano::rsn_node_config_serialize_toml (&dto, &toml) < 0)
 		throw std::runtime_error ("could not TOML serialize node_config");
-
-	nano::tomlconfig ipc_l;
-	ipc_config.serialize_toml (ipc_l);
-	toml.put_child ("ipc", ipc_l);
 
 	nano::tomlconfig diagnostics_l;
 	diagnostics_config.serialize_toml (diagnostics_l);

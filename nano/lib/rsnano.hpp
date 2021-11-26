@@ -349,6 +349,7 @@ struct NodeConfigDto
 	uintptr_t callback_target_len;
 	LoggingDto logging;
 	WebsocketConfigDto websocket_config;
+	IpcConfigDto ipc_config;
 };
 
 struct NodeRpcConfigDto

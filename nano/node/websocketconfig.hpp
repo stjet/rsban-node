@@ -18,6 +18,7 @@ namespace websocket
 	public:
 		config (nano::network_constants & network_constants);
 		void load_dto (rsnano::WebsocketConfigDto & dto);
+		rsnano::WebsocketConfigDto to_dto () const;
 		nano::error deserialize_json (nano::jsonconfig & json_a);
 		nano::error serialize_json (nano::jsonconfig & json) const;
 		nano::error deserialize_toml (nano::tomlconfig & toml_a);

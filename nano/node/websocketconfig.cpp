@@ -22,6 +22,16 @@ void nano::websocket::config::load_dto (rsnano::WebsocketConfigDto & dto)
 	address = std::string (reinterpret_cast<const char *> (dto.address), dto.address_len);
 }
 
+rsnano::WebsocketConfigDto nano::websocket::config::to_dto () const
+{
+	rsnano::WebsocketConfigDto dto;
+	dto.enabled = enabled;
+	dto.port = port;
+	std::copy (address.begin (), address.end (), std::begin (dto.address));
+	dto.address_len = address.size ();
+	return dto;
+}
+
 nano::error nano::websocket::config::deserialize_toml (nano::tomlconfig & toml)
 {
 	toml.get<bool> ("enable", enabled);

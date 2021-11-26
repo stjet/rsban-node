@@ -8,6 +8,11 @@ nano::ipc::ipc_config::ipc_config (nano::network_constants & network_constants)
 	auto network_dto{ network_constants.to_dto () };
 	if (rsnano::rsn_ipc_config_create (&dto, &network_dto) < 0)
 		throw std::runtime_error ("could not create ipc config");
+	load_dto (dto);
+}
+
+void nano::ipc::ipc_config::load_dto (rsnano::IpcConfigDto & dto)
+{
 	transport_domain.enabled = dto.domain_transport.enabled;
 	transport_domain.allow_unsafe = dto.domain_transport.allow_unsafe;
 	transport_domain.io_timeout = dto.domain_transport.io_timeout;
@@ -23,36 +28,24 @@ nano::ipc::ipc_config::ipc_config (nano::network_constants & network_constants)
 	flatbuffers.verify_buffers = dto.flatbuffers_verify_buffers;
 }
 
-nano::error nano::ipc::ipc_config::serialize_toml (nano::tomlconfig & toml) const
+rsnano::IpcConfigDto nano::ipc::ipc_config::to_dto () const
 {
-	nano::tomlconfig tcp_l;
-	tcp_l.put ("enable", transport_tcp.enabled, "Enable or disable IPC via TCP server.\ntype:bool");
-	tcp_l.put ("port", transport_tcp.port, "Server listening port.\ntype:uint16");
-	tcp_l.put ("io_timeout", transport_tcp.io_timeout, "Timeout for requests.\ntype:seconds");
-	// Only write out experimental config values if they're previously set explicitly in the config file
-	if (transport_tcp.io_threads >= 0)
-	{
-		tcp_l.put ("io_threads", transport_tcp.io_threads, "Number of threads dedicated to TCP I/O. Experimental.\ntype:uint64_t");
-	}
-	toml.put_child ("tcp", tcp_l);
-
-	nano::tomlconfig domain_l;
-	if (transport_domain.io_threads >= 0)
-	{
-		domain_l.put ("io_threads", transport_domain.io_threads);
-	}
-	domain_l.put ("enable", transport_domain.enabled, "Enable or disable IPC via local domain socket.\ntype:bool");
-	domain_l.put ("allow_unsafe", transport_domain.allow_unsafe, "If enabled, certain unsafe RPCs can be used. Not recommended for production systems.\ntype:bool");
-	domain_l.put ("path", transport_domain.path, "Path to the local domain socket.\ntype:string");
-	domain_l.put ("io_timeout", transport_domain.io_timeout, "Timeout for requests.\ntype:seconds");
-	toml.put_child ("local", domain_l);
-
-	nano::tomlconfig flatbuffers_l;
-	flatbuffers_l.put ("skip_unexpected_fields_in_json", flatbuffers.skip_unexpected_fields_in_json, "Allow client to send unknown fields in json messages. These will be ignored.\ntype:bool");
-	flatbuffers_l.put ("verify_buffers", flatbuffers.verify_buffers, "Verify that the buffer is valid before parsing. This is recommended when receiving data from untrusted sources.\ntype:bool");
-	toml.put_child ("flatbuffers", flatbuffers_l);
-
-	return toml.get_error ();
+	rsnano::IpcConfigDto dto;
+	dto.domain_transport.enabled = transport_domain.enabled;
+	dto.domain_transport.allow_unsafe = transport_domain.allow_unsafe;
+	dto.domain_transport.io_timeout = transport_domain.io_timeout;
+	dto.domain_transport.io_threads = transport_domain.io_threads;
+	std::copy (transport_domain.path.begin (), transport_domain.path.end (), std::begin (dto.domain_path));
+	dto.domain_path_len = transport_domain.path.size ();
+	dto.tcp_transport.enabled = transport_tcp.enabled;
+	dto.tcp_transport.allow_unsafe = transport_tcp.allow_unsafe;
+	dto.tcp_transport.io_timeout = transport_tcp.io_timeout;
+	dto.tcp_transport.io_threads = transport_tcp.io_threads;
+	dto.tcp_port = transport_tcp.port;
+	dto.tcp_network_constants = transport_tcp.network_constants.to_dto ();
+	dto.flatbuffers_skip_unexpected_fields_in_json = flatbuffers.skip_unexpected_fields_in_json;
+	dto.flatbuffers_verify_buffers = flatbuffers.verify_buffers;
+	return dto;
 }
 
 nano::error nano::ipc::ipc_config::deserialize_toml (nano::tomlconfig & toml)

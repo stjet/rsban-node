@@ -63,11 +63,13 @@ namespace ipc
 	class ipc_config
 	{
 	public:
+		ipc_config () = default;
 		ipc_config (nano::network_constants & network_constants);
 		nano::error deserialize_json (bool & upgraded_a, nano::jsonconfig & json_a);
 		nano::error serialize_json (nano::jsonconfig & json) const;
 		nano::error deserialize_toml (nano::tomlconfig & toml_a);
-		nano::error serialize_toml (nano::tomlconfig & toml) const;
+		void load_dto (rsnano::IpcConfigDto & dto);
+		rsnano::IpcConfigDto to_dto () const;
 		ipc_config_domain_socket transport_domain;
 		ipc_config_tcp_socket transport_tcp;
 		ipc_config_flatbuffers flatbuffers;

@@ -1,3 +1,6 @@
+use crate::utils::TomlWriter;
+use anyhow::Result;
+
 pub struct StatConfig {
     /** If true, sampling of counters is enabled */
     pub sampling_enabled: bool,
@@ -39,5 +42,37 @@ impl StatConfig {
             log_counters_filename: "counters.stat".to_string(),
             log_samples_filename: "samples.stat".to_string(),
         }
+    }
+
+    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {
+        toml.put_child("sampling", &mut |sampling| {
+            sampling.put_bool(
+                "enable",
+                self.sampling_enabled,
+                "Enable or disable sampling.\ntype:bool",
+            )?;
+            sampling.put_usize(
+                "capacity",
+                self.capacity,
+                "How many sample intervals to keep in the ring buffer.\ntype:uint64",
+            )?;
+            sampling.put_usize(
+                "interval",
+                self.interval,
+                "Sample interval.\ntype:milliseconds",
+            )?;
+            Ok(())
+        })?;
+
+        toml.put_child("log", &mut |log|{
+            log.put_bool("headers", self.log_headers, "If true, write headers on each counter or samples writeout.\nThe header contains log type and the current wall time.\ntype:bool")?;
+            log.put_usize("interval_counters", self.log_interval_counters, "How often to log counters. 0 disables logging.\ntype:milliseconds")?;
+            log.put_usize("interval_samples", self.log_interval_samples, "How often to log samples. 0 disables logging.\ntype:milliseconds")?;
+            log.put_usize("rotation_count", self.log_rotation_count, "Maximum number of log outputs before rotating the file.\ntype:uint64")?;
+            log.put_str("filename_counters", &self.log_counters_filename, "Log file name for counters.\ntype:string")?;
+            log.put_str("filename_samples", &self.log_samples_filename, "Log file name for samples.\ntype:string")?;
+            Ok(())
+        })?;
+        Ok(())
     }
 }

@@ -291,6 +291,29 @@ struct WebsocketConfigDto
 	uintptr_t address_len;
 };
 
+struct TxnTrackingConfigDto
+{
+	bool enable;
+	int64_t min_read_txn_time_ms;
+	int64_t min_write_txn_time_ms;
+	bool ignore_writes_below_block_processor_max_time;
+};
+
+struct StatConfigDto
+{
+	bool sampling_enabled;
+	uintptr_t capacity;
+	uintptr_t interval;
+	uintptr_t log_interval_samples;
+	uintptr_t log_interval_counters;
+	uintptr_t log_rotation_count;
+	bool log_headers;
+	uint8_t log_counters_filename[128];
+	uintptr_t log_counters_filename_len;
+	uint8_t log_samples_filename[128];
+	uintptr_t log_samples_filename_len;
+};
+
 struct NodeConfigDto
 {
 	uint16_t peering_port;
@@ -350,6 +373,8 @@ struct NodeConfigDto
 	LoggingDto logging;
 	WebsocketConfigDto websocket_config;
 	IpcConfigDto ipc_config;
+	TxnTrackingConfigDto diagnostics_config;
+	StatConfigDto stat_config;
 };
 
 struct NodeRpcConfigDto
@@ -422,21 +447,6 @@ struct SendBlockDto2
 	uint64_t work;
 };
 
-struct StatConfigDto
-{
-	bool sampling_enabled;
-	uintptr_t capacity;
-	uintptr_t interval;
-	uintptr_t log_interval_samples;
-	uintptr_t log_interval_counters;
-	uintptr_t log_rotation_count;
-	bool log_headers;
-	uint8_t log_counters_filename[128];
-	uintptr_t log_counters_filename_len;
-	uint8_t log_samples_filename[128];
-	uintptr_t log_samples_filename_len;
-};
-
 struct StateBlockDto
 {
 	uint8_t signature[64];
@@ -458,14 +468,6 @@ struct StateBlockDto2
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
 	uint64_t work;
-};
-
-struct TxnTrackingConfigDto
-{
-	bool enable;
-	int64_t min_read_txn_time_ms;
-	int64_t min_write_txn_time_ms;
-	bool ignore_writes_below_block_processor_max_time;
 };
 
 extern "C" {

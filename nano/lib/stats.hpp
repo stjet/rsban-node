@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nano/lib/errors.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/utility.hpp>
 
 #include <boost/circular_buffer.hpp>
@@ -25,10 +26,11 @@ class jsonconfig;
 class stat_config final
 {
 public:
+	void load_dto (rsnano::StatConfigDto & dto);
+	rsnano::StatConfigDto to_dto () const;
 	/** Reads the JSON statistics node */
 	nano::error deserialize_json (nano::jsonconfig & json);
 	nano::error deserialize_toml (nano::tomlconfig & toml);
-	nano::error serialize_toml (nano::tomlconfig & toml) const;
 
 	/** If true, sampling of counters is enabled */
 	bool sampling_enabled{ false };

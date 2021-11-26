@@ -11,13 +11,17 @@ use crate::{
         config::WebsocketConfigDto,
         ipc::{fill_ipc_config_dto, IpcConfigDto},
         secure::NetworkParamsDto,
+        stats::{fill_stat_config_dto, StatConfigDto},
         toml::FfiToml,
     },
     numbers::{Account, Amount},
     secure::NetworkParams,
 };
 
-use super::{fill_logging_dto, fill_websocket_config_dto, LoggingDto};
+use super::{
+    fill_logging_dto, fill_txn_tracking_config_dto, fill_websocket_config_dto, LoggingDto,
+    TxnTrackingConfigDto,
+};
 
 #[repr(C)]
 pub struct NodeConfigDto {
@@ -78,6 +82,8 @@ pub struct NodeConfigDto {
     pub logging: LoggingDto,
     pub websocket_config: WebsocketConfigDto,
     pub ipc_config: IpcConfigDto,
+    pub diagnostics_config: TxnTrackingConfigDto,
+    pub stat_config: StatConfigDto,
 }
 
 #[repr(C)]
@@ -180,6 +186,11 @@ pub unsafe extern "C" fn rsn_node_config_create(
     fill_logging_dto(&mut dto.logging, &cfg.logging);
     fill_websocket_config_dto(&mut dto.websocket_config, &cfg.websocket_config);
     fill_ipc_config_dto(&mut dto.ipc_config, &cfg.ipc_config);
+    fill_txn_tracking_config_dto(
+        &mut dto.diagnostics_config,
+        &cfg.diagnostics_config.txn_tracking,
+    );
+    fill_stat_config_dto(&mut dto.stat_config, &cfg.stat_config);
     0
 }
 
@@ -288,6 +299,8 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             logging: (&value.logging).into(),
             websocket_config: (&value.websocket_config).into(),
             ipc_config: (&value.ipc_config).try_into()?,
+            diagnostics_config: (&value.diagnostics_config).into(),
+            stat_config: (&value.stat_config).into(),
         };
 
         Ok(cfg)

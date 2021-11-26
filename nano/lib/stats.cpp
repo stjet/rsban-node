@@ -10,6 +10,37 @@
 #include <fstream>
 #include <sstream>
 
+void nano::stat_config::load_dto (rsnano::StatConfigDto & dto)
+{
+	sampling_enabled = dto.sampling_enabled;
+	capacity = dto.capacity;
+	interval = dto.interval;
+	log_interval_samples = dto.log_interval_samples;
+	log_interval_counters = dto.log_interval_counters;
+	log_rotation_count = dto.log_rotation_count;
+	log_headers = dto.log_headers;
+	log_counters_filename = std::string (reinterpret_cast<const char *> (dto.log_counters_filename), dto.log_counters_filename_len);
+	log_samples_filename = std::string (reinterpret_cast<const char *> (dto.log_samples_filename), dto.log_samples_filename_len);
+}
+
+rsnano::StatConfigDto nano::stat_config::to_dto () const
+{
+	rsnano::StatConfigDto dto;
+	dto.sampling_enabled = sampling_enabled;
+	dto.capacity = capacity;
+	dto.interval = interval;
+	dto.log_interval_samples = log_interval_samples;
+	dto.log_interval_counters = log_interval_counters;
+	dto.log_rotation_count = log_rotation_count;
+	dto.log_headers = log_headers;
+	std::copy (log_counters_filename.begin (), log_counters_filename.end (), std::begin (dto.log_counters_filename));
+	dto.log_counters_filename_len = log_counters_filename.size ();
+
+	std::copy (log_samples_filename.begin (), log_samples_filename.end (), std::begin (dto.log_samples_filename));
+	dto.log_samples_filename_len = log_samples_filename.size ();
+	return dto;
+}
+
 nano::error nano::stat_config::deserialize_json (nano::jsonconfig & json)
 {
 	auto sampling_l (json.get_optional_child ("sampling"));
@@ -67,25 +98,6 @@ nano::error nano::stat_config::deserialize_toml (nano::tomlconfig & toml)
 		}
 	}
 
-	return toml.get_error ();
-}
-
-nano::error nano::stat_config::serialize_toml (nano::tomlconfig & toml) const
-{
-	nano::tomlconfig sampling_l;
-	sampling_l.put ("enable", sampling_enabled, "Enable or disable sampling.\ntype:bool");
-	sampling_l.put ("capacity", capacity, "How many sample intervals to keep in the ring buffer.\ntype:uint64");
-	sampling_l.put ("interval", interval, "Sample interval.\ntype:milliseconds");
-	toml.put_child ("sampling", sampling_l);
-
-	nano::tomlconfig log_l;
-	log_l.put ("headers", log_headers, "If true, write headers on each counter or samples writeout.\nThe header contains log type and the current wall time.\ntype:bool");
-	log_l.put ("interval_counters", log_interval_counters, "How often to log counters. 0 disables logging.\ntype:milliseconds");
-	log_l.put ("interval_samples", log_interval_samples, "How often to log samples. 0 disables logging.\ntype:milliseconds");
-	log_l.put ("rotation_count", log_rotation_count, "Maximum number of log outputs before rotating the file.\ntype:uint64");
-	log_l.put ("filename_counters", log_counters_filename, "Log file name for counters.\ntype:string");
-	log_l.put ("filename_samples", log_samples_filename, "Log file name for samples.\ntype:string");
-	toml.put_child ("log", log_l);
 	return toml.get_error ();
 }
 

@@ -5,12 +5,13 @@ use crate::{
     ipc::IpcConfig,
     numbers::{Account, Amount, GXRB_RATIO, XRB_RATIO},
     secure::NetworkParams,
+    stats::StatConfig,
     utils::{get_cpu_count, TomlWriter},
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
-use super::{get_env_or_default_string, Logging, WebsocketConfig};
+use super::{get_env_or_default_string, DiagnosticsConfig, Logging, WebsocketConfig};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -72,6 +73,8 @@ pub struct NodeConfig {
     pub logging: Logging,
     pub websocket_config: WebsocketConfig,
     pub ipc_config: IpcConfig,
+    pub diagnostics_config: DiagnosticsConfig,
+    pub stat_config: StatConfig,
 }
 
 pub struct Peer {
@@ -253,6 +256,8 @@ impl NodeConfig {
             logging,
             websocket_config: WebsocketConfig::new(&network_params.network),
             ipc_config: IpcConfig::new(&network_params.network),
+            diagnostics_config: DiagnosticsConfig::new(),
+            stat_config: StatConfig::new(),
         }
     }
 
@@ -393,6 +398,14 @@ impl NodeConfig {
         })?;
 
         toml.put_child("ipc", &mut |ipc| self.ipc_config.serialize_toml(ipc))?;
+
+        toml.put_child("diagnostics", &mut |diagnostics| {
+            self.diagnostics_config.serialize_toml(diagnostics)
+        })?;
+
+        toml.put_child("statistics", &mut |statistics| {
+            self.stat_config.serialize_toml(statistics)
+        })?;
 
         Ok(())
     }

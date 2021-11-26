@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nano/lib/errors.hpp>
+#include <nano/lib/rsnano.hpp>
 
 #include <chrono>
 
@@ -12,6 +13,7 @@ class txn_tracking_config final
 {
 public:
 	txn_tracking_config ();
+	void load_dto (rsnano::TxnTrackingConfigDto & dto);
 	/** If true, enable tracking for transaction read/writes held open longer than the min time variables */
 	bool enable;
 	std::chrono::milliseconds min_read_txn_time;
@@ -23,9 +25,10 @@ public:
 class diagnostics_config final
 {
 public:
+	rsnano::TxnTrackingConfigDto to_dto () const;
+	void load_dto (rsnano::TxnTrackingConfigDto & dto);
 	nano::error serialize_json (nano::jsonconfig &) const;
 	nano::error deserialize_json (nano::jsonconfig &);
-	nano::error serialize_toml (nano::tomlconfig &) const;
 	nano::error deserialize_toml (nano::tomlconfig &);
 
 	txn_tracking_config txn_tracking;

@@ -15,12 +15,11 @@ nano::websocket::config::config (nano::network_constants & network_constants) :
 	address = std::string (reinterpret_cast<const char *> (dto.address), dto.address_len);
 }
 
-nano::error nano::websocket::config::serialize_toml (nano::tomlconfig & toml) const
+void nano::websocket::config::load_dto (rsnano::WebsocketConfigDto & dto)
 {
-	toml.put ("enable", enabled, "Enable or disable WebSocket server.\ntype:bool");
-	toml.put ("address", address, "WebSocket server bind address.\ntype:string,ip");
-	toml.put ("port", port, "WebSocket server listening port.\ntype:uint16");
-	return toml.get_error ();
+	enabled = dto.enabled;
+	port = dto.port;
+	address = std::string (reinterpret_cast<const char *> (dto.address), dto.address_len);
 }
 
 nano::error nano::websocket::config::deserialize_toml (nano::tomlconfig & toml)

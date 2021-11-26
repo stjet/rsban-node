@@ -2,14 +2,9 @@ use std::{convert::TryFrom, ffi::c_void};
 
 use num::FromPrimitive;
 
-use crate::{
-    config::{Logging, NodeConfig, Peer},
-    ffi::{secure::NetworkParamsDto, toml::FfiToml},
-    numbers::{Account, Amount},
-    secure::NetworkParams,
-};
+use crate::{config::{Logging, NodeConfig, Peer}, ffi::{config::WebsocketConfigDto, secure::NetworkParamsDto, toml::FfiToml}, numbers::{Account, Amount}, secure::NetworkParams};
 
-use super::{fill_logging_dto, LoggingDto};
+use super::{LoggingDto, fill_logging_dto, fill_websocket_config_dto};
 
 #[repr(C)]
 pub struct NodeConfigDto {
@@ -68,6 +63,7 @@ pub struct NodeConfigDto {
     pub callback_target: [u8; 128],
     pub callback_target_len: usize,
     pub logging: LoggingDto,
+    pub websocket_config: WebsocketConfigDto,
 }
 
 #[repr(C)]
@@ -168,6 +164,7 @@ pub unsafe extern "C" fn rsn_node_config_create(
     dto.callback_target[..bytes.len()].copy_from_slice(bytes);
     dto.callback_target_len = bytes.len();
     fill_logging_dto(&mut dto.logging, &cfg.logging);
+    fill_websocket_config_dto(&mut dto.websocket_config, &cfg.websocket_config);
     0
 }
 
@@ -274,6 +271,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             .to_string(),
             callback_port: value.callback_port,
             logging: (&value.logging).into(),
+            websocket_config: (&value.websocket_config).into(),
         };
 
         Ok(cfg)

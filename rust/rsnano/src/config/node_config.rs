@@ -9,7 +9,7 @@ use crate::{
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
-use super::{get_env_or_default_string, Logging};
+use super::{Logging, WebsocketConfig, get_env_or_default_string};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -69,6 +69,7 @@ pub struct NodeConfig {
     pub callback_port: u16,
     pub callback_target: String,
     pub logging: Logging,
+    pub websocket_config: WebsocketConfig,
 }
 
 pub struct Peer {
@@ -248,6 +249,7 @@ impl NodeConfig {
             callback_port: 0,
             callback_target: String::new(),
             logging,
+            websocket_config: WebsocketConfig::new(&network_params.network)
         }
     }
 
@@ -381,6 +383,10 @@ impl NodeConfig {
 
         toml.put_child("logging", &mut |logging|{
             self.logging.serialize_toml(logging)
+        })?;
+
+        toml.put_child("websocket", &mut |websocket|{
+            self.websocket_config.serialize_toml(websocket)
         })?;
 
         Ok(())

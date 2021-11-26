@@ -283,6 +283,14 @@ struct PeerDto
 	uint16_t port;
 };
 
+struct WebsocketConfigDto
+{
+	bool enabled;
+	uint16_t port;
+	uint8_t address[128];
+	uintptr_t address_len;
+};
+
 struct NodeConfigDto
 {
 	uint16_t peering_port;
@@ -340,6 +348,7 @@ struct NodeConfigDto
 	uint8_t callback_target[128];
 	uintptr_t callback_target_len;
 	LoggingDto logging;
+	WebsocketConfigDto websocket_config;
 };
 
 struct NodeRpcConfigDto
@@ -456,14 +465,6 @@ struct TxnTrackingConfigDto
 	int64_t min_read_txn_time_ms;
 	int64_t min_write_txn_time_ms;
 	bool ignore_writes_below_block_processor_max_time;
-};
-
-struct WebsocketConfigDto
-{
-	bool enabled;
-	uint16_t port;
-	uint8_t address[128];
-	uintptr_t address_len;
 };
 
 extern "C" {

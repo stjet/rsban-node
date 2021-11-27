@@ -18,92 +18,6 @@ char const * pow_sleep_interval_key = "pow_sleep_interval";
 std::string const default_test_peer_network = nano::get_env_or_default ("NANO_TEST_PEER_NETWORK", "peering-test.nano.org");
 }
 
-nano::node_config::node_config (nano::network_params & network_params) :
-	node_config (0, nano::logging (), network_params)
-{
-}
-
-nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & logging_a, nano::network_params & network_params) :
-	network_params{ network_params },
-	logging{ logging_a },
-	websocket_config{ network_params.network }
-{
-	rsnano::NodeConfigDto dto;
-	auto network_params_dto{ network_params.to_dto () };
-	auto logging_dto{ logging.to_dto () };
-	rsnano::rsn_node_config_create (&dto, peering_port_a, &logging_dto, &network_params_dto);
-	peering_port = dto.peering_port;
-	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
-	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin (receive_minimum.bytes));
-	std::copy (std::begin (dto.online_weight_minimum), std::end (dto.online_weight_minimum), std::begin (online_weight_minimum.bytes));
-	election_hint_weight_percent = dto.election_hint_weight_percent;
-	password_fanout = dto.password_fanout;
-	io_threads = dto.io_threads;
-	network_threads = dto.network_threads;
-	work_threads = dto.work_threads;
-	signature_checker_threads = dto.signature_checker_threads;
-	enable_voting = dto.enable_voting;
-	bootstrap_connections = dto.bootstrap_connections;
-	bootstrap_connections_max = dto.bootstrap_connections_max;
-	bootstrap_initiator_threads = dto.bootstrap_initiator_threads;
-	bootstrap_frontier_request_count = dto.bootstrap_frontier_request_count;
-	block_processor_batch_max_time = std::chrono::milliseconds (dto.block_processor_batch_max_time_ms);
-	allow_local_peers = dto.allow_local_peers;
-	std::copy (std::begin (dto.vote_minimum), std::end (dto.vote_minimum), std::begin (vote_minimum.bytes));
-	vote_generator_delay = std::chrono::milliseconds (dto.vote_generator_delay_ms);
-	vote_generator_threshold = dto.vote_generator_threshold;
-	unchecked_cutoff_time = std::chrono::seconds (dto.unchecked_cutoff_time_s);
-	tcp_io_timeout = std::chrono::seconds (dto.tcp_io_timeout_s);
-	pow_sleep_interval = std::chrono::nanoseconds (dto.pow_sleep_interval_ns);
-	external_address = std::string (reinterpret_cast<const char *> (dto.external_address), dto.external_address_len);
-	external_port = dto.external_port;
-	tcp_incoming_connections_max = dto.tcp_incoming_connections_max;
-	use_memory_pools = dto.use_memory_pools;
-	confirmation_history_size = dto.confirmation_history_size;
-	active_elections_size = dto.active_elections_size;
-	bandwidth_limit = dto.bandwidth_limit;
-	bandwidth_limit_burst_ratio = dto.bandwidth_limit_burst_ratio;
-	conf_height_processor_batch_min_time = std::chrono::milliseconds (dto.conf_height_processor_batch_min_time_ms);
-	backup_before_upgrade = dto.backup_before_upgrade;
-	max_work_generate_multiplier = dto.max_work_generate_multiplier;
-	frontiers_confirmation = static_cast<nano::frontiers_confirmation_mode> (dto.frontiers_confirmation);
-	max_queued_requests = dto.max_queued_requests;
-	confirm_req_batches_max = dto.confirm_req_batches_max;
-	std::copy (std::begin (dto.rep_crawler_weight_minimum), std::end (dto.rep_crawler_weight_minimum), std::begin (rep_crawler_weight_minimum.bytes));
-	for (auto i = 0; i < dto.work_peers_count; i++)
-	{
-		std::string address (reinterpret_cast<const char *> (dto.work_peers[i].address), dto.work_peers[i].address_len);
-		work_peers.push_back (std::make_pair (address, dto.work_peers[i].port));
-	}
-	for (auto i = 0; i < dto.secondary_work_peers_count; i++)
-	{
-		std::string address (reinterpret_cast<const char *> (dto.secondary_work_peers[i].address), dto.secondary_work_peers[i].address_len);
-		secondary_work_peers.push_back (std::make_pair (address, dto.secondary_work_peers[i].port));
-	}
-	for (auto i = 0; i < dto.preconfigured_peers_count; i++)
-	{
-		std::string address (reinterpret_cast<const char *> (dto.preconfigured_peers[i].address), dto.preconfigured_peers[i].address_len);
-		preconfigured_peers.push_back (address);
-	}
-	for (auto i = 0; i < dto.preconfigured_representatives_count; i++)
-	{
-		nano::account a;
-		std::copy (std::begin (dto.preconfigured_representatives[i]), std::end (dto.preconfigured_representatives[i]), std::begin (a.bytes));
-		preconfigured_representatives.push_back (a);
-	}
-	max_pruning_age = std::chrono::seconds (dto.max_pruning_age_s);
-	max_pruning_depth = dto.max_pruning_depth;
-	callback_address = std::string (reinterpret_cast<const char *> (dto.callback_address), dto.callback_address_len);
-	callback_target = std::string (reinterpret_cast<const char *> (dto.callback_target), dto.callback_target_len);
-	callback_port = dto.callback_port;
-	websocket_config.load_dto (dto.websocket_config);
-	ipc_config.load_dto (dto.ipc_config);
-	diagnostics_config.load_dto (dto.diagnostics_config);
-	stat_config.load_dto (dto.stat_config);
-	rocksdb_config.load_dto (dto.rocksdb_config);
-	lmdb_config.load_dto (dto.lmdb_config);
-}
-
 rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 {
 	rsnano::NodeConfigDto dto;
@@ -178,6 +92,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.callback_address_len = config.callback_address.size ();
 	std::copy (config.callback_target.begin (), config.callback_target.end (), std::begin (dto.callback_target));
 	dto.callback_target_len = config.callback_target.size ();
+	dto.callback_port = config.callback_port;
 	dto.logging = config.logging.to_dto ();
 	dto.websocket_config = config.websocket_config.to_dto ();
 	dto.ipc_config = config.ipc_config.to_dto ();
@@ -186,6 +101,106 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.rocksdb_config = config.rocksdb_config.to_dto ();
 	dto.lmdb_config = config.lmdb_config.to_dto ();
 	return dto;
+}
+
+nano::node_config::node_config (nano::network_params & network_params) :
+	node_config (0, nano::logging (), network_params)
+{
+}
+
+nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & logging_a, nano::network_params & network_params) :
+	network_params{ network_params },
+	logging{ logging_a },
+	websocket_config{ network_params.network }
+{
+	rsnano::NodeConfigDto dto;
+	auto network_params_dto{ network_params.to_dto () };
+	auto logging_dto{ logging.to_dto () };
+	rsnano::rsn_node_config_create (&dto, peering_port_a, &logging_dto, &network_params_dto);
+	load_dto (dto);
+}
+
+rsnano::NodeConfigDto nano::node_config::to_dto () const
+{
+	return to_node_config_dto (*this);
+}
+
+void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
+{
+	peering_port = dto.peering_port;
+	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
+	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin (receive_minimum.bytes));
+	std::copy (std::begin (dto.online_weight_minimum), std::end (dto.online_weight_minimum), std::begin (online_weight_minimum.bytes));
+	election_hint_weight_percent = dto.election_hint_weight_percent;
+	password_fanout = dto.password_fanout;
+	io_threads = dto.io_threads;
+	network_threads = dto.network_threads;
+	work_threads = dto.work_threads;
+	signature_checker_threads = dto.signature_checker_threads;
+	enable_voting = dto.enable_voting;
+	bootstrap_connections = dto.bootstrap_connections;
+	bootstrap_connections_max = dto.bootstrap_connections_max;
+	bootstrap_initiator_threads = dto.bootstrap_initiator_threads;
+	bootstrap_frontier_request_count = dto.bootstrap_frontier_request_count;
+	block_processor_batch_max_time = std::chrono::milliseconds (dto.block_processor_batch_max_time_ms);
+	allow_local_peers = dto.allow_local_peers;
+	std::copy (std::begin (dto.vote_minimum), std::end (dto.vote_minimum), std::begin (vote_minimum.bytes));
+	vote_generator_delay = std::chrono::milliseconds (dto.vote_generator_delay_ms);
+	vote_generator_threshold = dto.vote_generator_threshold;
+	unchecked_cutoff_time = std::chrono::seconds (dto.unchecked_cutoff_time_s);
+	tcp_io_timeout = std::chrono::seconds (dto.tcp_io_timeout_s);
+	pow_sleep_interval = std::chrono::nanoseconds (dto.pow_sleep_interval_ns);
+	external_address = std::string (reinterpret_cast<const char *> (dto.external_address), dto.external_address_len);
+	external_port = dto.external_port;
+	tcp_incoming_connections_max = dto.tcp_incoming_connections_max;
+	use_memory_pools = dto.use_memory_pools;
+	confirmation_history_size = dto.confirmation_history_size;
+	active_elections_size = dto.active_elections_size;
+	bandwidth_limit = dto.bandwidth_limit;
+	bandwidth_limit_burst_ratio = dto.bandwidth_limit_burst_ratio;
+	conf_height_processor_batch_min_time = std::chrono::milliseconds (dto.conf_height_processor_batch_min_time_ms);
+	backup_before_upgrade = dto.backup_before_upgrade;
+	max_work_generate_multiplier = dto.max_work_generate_multiplier;
+	frontiers_confirmation = static_cast<nano::frontiers_confirmation_mode> (dto.frontiers_confirmation);
+	max_queued_requests = dto.max_queued_requests;
+	confirm_req_batches_max = dto.confirm_req_batches_max;
+	std::copy (std::begin (dto.rep_crawler_weight_minimum), std::end (dto.rep_crawler_weight_minimum), std::begin (rep_crawler_weight_minimum.bytes));
+	work_peers.clear ();
+	for (auto i = 0; i < dto.work_peers_count; i++)
+	{
+		std::string address (reinterpret_cast<const char *> (dto.work_peers[i].address), dto.work_peers[i].address_len);
+		work_peers.push_back (std::make_pair (address, dto.work_peers[i].port));
+	}
+	secondary_work_peers.clear ();
+	for (auto i = 0; i < dto.secondary_work_peers_count; i++)
+	{
+		std::string address (reinterpret_cast<const char *> (dto.secondary_work_peers[i].address), dto.secondary_work_peers[i].address_len);
+		secondary_work_peers.push_back (std::make_pair (address, dto.secondary_work_peers[i].port));
+	}
+	preconfigured_peers.clear ();
+	for (auto i = 0; i < dto.preconfigured_peers_count; i++)
+	{
+		std::string address (reinterpret_cast<const char *> (dto.preconfigured_peers[i].address), dto.preconfigured_peers[i].address_len);
+		preconfigured_peers.push_back (address);
+	}
+	preconfigured_representatives.clear ();
+	for (auto i = 0; i < dto.preconfigured_representatives_count; i++)
+	{
+		nano::account a;
+		std::copy (std::begin (dto.preconfigured_representatives[i]), std::end (dto.preconfigured_representatives[i]), std::begin (a.bytes));
+		preconfigured_representatives.push_back (a);
+	}
+	max_pruning_age = std::chrono::seconds (dto.max_pruning_age_s);
+	max_pruning_depth = dto.max_pruning_depth;
+	callback_address = std::string (reinterpret_cast<const char *> (dto.callback_address), dto.callback_address_len);
+	callback_target = std::string (reinterpret_cast<const char *> (dto.callback_target), dto.callback_target_len);
+	callback_port = dto.callback_port;
+	websocket_config.load_dto (dto.websocket_config);
+	ipc_config.load_dto (dto.ipc_config);
+	diagnostics_config.load_dto (dto.diagnostics_config);
+	stat_config.load_dto (dto.stat_config);
+	rocksdb_config.load_dto (dto.rocksdb_config);
+	lmdb_config.load_dto (dto.lmdb_config);
 }
 
 nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const

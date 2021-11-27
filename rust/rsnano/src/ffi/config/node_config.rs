@@ -111,6 +111,11 @@ pub unsafe extern "C" fn rsn_node_config_create(
     let logging = Logging::from(logging);
     let cfg = NodeConfig::new(peering_port, logging, &network_params);
     let dto = &mut (*dto);
+    fill_node_config_dto(dto, &cfg);
+    0
+}
+
+pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.peering_port = cfg.peering_port;
     dto.bootstrap_fraction_numerator = cfg.bootstrap_fraction_numerator;
     dto.receive_minimum = cfg.receive_minimum.to_be_bytes();
@@ -158,7 +163,6 @@ pub unsafe extern "C" fn rsn_node_config_create(
         dto.work_peers[i].port = peer.port;
     }
     dto.work_peers_count = cfg.work_peers.len();
-
     for (i, peer) in cfg.secondary_work_peers.iter().enumerate() {
         let bytes = peer.address.as_bytes();
         dto.secondary_work_peers[i].address[..bytes.len()].copy_from_slice(bytes);
@@ -166,14 +170,12 @@ pub unsafe extern "C" fn rsn_node_config_create(
         dto.secondary_work_peers[i].port = peer.port;
     }
     dto.secondary_work_peers_count = cfg.secondary_work_peers.len();
-
     for (i, peer) in cfg.preconfigured_peers.iter().enumerate() {
         let bytes = peer.as_bytes();
         dto.preconfigured_peers[i].address[..bytes.len()].copy_from_slice(bytes);
         dto.preconfigured_peers[i].address_len = bytes.len();
     }
     dto.preconfigured_peers_count = cfg.preconfigured_peers.len();
-
     for (i, rep) in cfg.preconfigured_representatives.iter().enumerate() {
         dto.preconfigured_representatives[i] = rep.to_bytes();
     }
@@ -197,7 +199,6 @@ pub unsafe extern "C" fn rsn_node_config_create(
     fill_stat_config_dto(&mut dto.stat_config, &cfg.stat_config);
     fill_rocksdb_config_dto(&mut dto.rocksdb_config, &cfg.rocksdb_config);
     fill_lmdb_config_dto(&mut dto.lmdb_config, &cfg.lmdb_config);
-    0
 }
 
 #[no_mangle]

@@ -29,7 +29,8 @@ inline std::string get_default_pow_server_filepath ()
 class node_pow_server_config final
 {
 public:
-	nano::error serialize_toml (nano::tomlconfig & toml) const;
+	rsnano::NodePowServerConfigDto to_dto () const;
+	void load_dto (rsnano::NodePowServerConfigDto & dto);
 	nano::error deserialize_toml (nano::tomlconfig & toml);
 
 	bool enable{ false };

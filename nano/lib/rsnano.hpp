@@ -149,62 +149,11 @@ struct ChangeBlockDto2
 	uint64_t work;
 };
 
-struct IpcConfigTransportDto
+struct PeerDto
 {
-	bool enabled;
-	bool allow_unsafe;
-	uintptr_t io_timeout;
-	int64_t io_threads;
-};
-
-struct IpcConfigDto
-{
-	IpcConfigTransportDto domain_transport;
-	uint8_t domain_path[512];
-	uintptr_t domain_path_len;
-	IpcConfigTransportDto tcp_transport;
-	NetworkConstantsDto tcp_network_constants;
-	uint16_t tcp_port;
-	bool flatbuffers_skip_unexpected_fields_in_json;
-	bool flatbuffers_verify_buffers;
-};
-
-struct LedgerConstantsDto
-{
-	WorkThresholdsDto work;
-	uint8_t priv_key[32];
-	uint8_t pub_key[32];
-	uint8_t nano_beta_account[32];
-	uint8_t nano_live_account[32];
-	uint8_t nano_test_account[32];
-	BlockDto nano_dev_genesis;
-	BlockDto nano_beta_genesis;
-	BlockDto nano_live_genesis;
-	BlockDto nano_test_genesis;
-	BlockDto genesis;
-	uint8_t genesis_amount[16];
-	uint8_t burn_account[32];
-	uint8_t nano_dev_final_votes_canary_account[32];
-	uint8_t nano_beta_final_votes_canary_account[32];
-	uint8_t nano_live_final_votes_canary_account[32];
-	uint8_t nano_test_final_votes_canary_account[32];
-	uint8_t final_votes_canary_account[32];
-	uint64_t nano_dev_final_votes_canary_height;
-	uint64_t nano_beta_final_votes_canary_height;
-	uint64_t nano_live_final_votes_canary_height;
-	uint64_t nano_test_final_votes_canary_height;
-	uint64_t final_votes_canary_height;
-	uint8_t epoch_1_signer[32];
-	uint8_t epoch_1_link[32];
-	uint8_t epoch_2_signer[32];
-	uint8_t epoch_2_link[32];
-};
-
-struct LmdbConfigDto
-{
-	uint8_t sync;
-	uint32_t max_databases;
-	uintptr_t map_size;
+	uint8_t address[128];
+	uintptr_t address_len;
+	uint16_t port;
 };
 
 struct LoggingDto
@@ -242,53 +191,32 @@ struct LoggingDto
 	bool single_line_record_value;
 };
 
-struct VotingConstantsDto
-{
-	uintptr_t max_cache;
-	int64_t delay_s;
-};
-
-struct NodeConstantsDto
-{
-	int64_t backup_interval_m;
-	int64_t search_pending_interval_s;
-	int64_t unchecked_cleaning_interval_m;
-	int64_t process_confirmed_interval_ms;
-	uint64_t max_weight_samples;
-	uint64_t weight_period;
-};
-
-struct PortmappingConstantsDto
-{
-	int64_t lease_duration_s;
-	int64_t health_check_period_s;
-};
-
-struct NetworkParamsDto
-{
-	uint32_t kdf_work;
-	WorkThresholdsDto work;
-	NetworkConstantsDto network;
-	LedgerConstantsDto ledger;
-	VotingConstantsDto voting;
-	NodeConstantsDto node;
-	PortmappingConstantsDto portmapping;
-	BootstrapConstantsDto bootstrap;
-};
-
-struct PeerDto
-{
-	uint8_t address[128];
-	uintptr_t address_len;
-	uint16_t port;
-};
-
 struct WebsocketConfigDto
 {
 	bool enabled;
 	uint16_t port;
 	uint8_t address[128];
 	uintptr_t address_len;
+};
+
+struct IpcConfigTransportDto
+{
+	bool enabled;
+	bool allow_unsafe;
+	uintptr_t io_timeout;
+	int64_t io_threads;
+};
+
+struct IpcConfigDto
+{
+	IpcConfigTransportDto domain_transport;
+	uint8_t domain_path[512];
+	uintptr_t domain_path_len;
+	IpcConfigTransportDto tcp_transport;
+	NetworkConstantsDto tcp_network_constants;
+	uint16_t tcp_port;
+	bool flatbuffers_skip_unexpected_fields_in_json;
+	bool flatbuffers_verify_buffers;
 };
 
 struct TxnTrackingConfigDto
@@ -319,6 +247,13 @@ struct RocksDbConfigDto
 	bool enable;
 	uint8_t memory_multiplier;
 	uint32_t io_threads;
+};
+
+struct LmdbConfigDto
+{
+	uint8_t sync;
+	uint32_t max_databases;
+	uintptr_t map_size;
 };
 
 struct NodeConfigDto
@@ -384,6 +319,94 @@ struct NodeConfigDto
 	StatConfigDto stat_config;
 	RocksDbConfigDto rocksdb_config;
 	LmdbConfigDto lmdb_config;
+};
+
+struct OpenclConfigDto
+{
+	uint32_t platform;
+	uint32_t device;
+	uint32_t threads;
+};
+
+struct NodePowServerConfigDto
+{
+	bool enable;
+	uint8_t pow_server_path[128];
+	uintptr_t pow_server_path_len;
+};
+
+struct DaemonConfigDto
+{
+	bool rpc_enable;
+	NodeConfigDto node;
+	OpenclConfigDto opencl;
+	bool opencl_enable;
+	NodePowServerConfigDto pow_server;
+};
+
+struct LedgerConstantsDto
+{
+	WorkThresholdsDto work;
+	uint8_t priv_key[32];
+	uint8_t pub_key[32];
+	uint8_t nano_beta_account[32];
+	uint8_t nano_live_account[32];
+	uint8_t nano_test_account[32];
+	BlockDto nano_dev_genesis;
+	BlockDto nano_beta_genesis;
+	BlockDto nano_live_genesis;
+	BlockDto nano_test_genesis;
+	BlockDto genesis;
+	uint8_t genesis_amount[16];
+	uint8_t burn_account[32];
+	uint8_t nano_dev_final_votes_canary_account[32];
+	uint8_t nano_beta_final_votes_canary_account[32];
+	uint8_t nano_live_final_votes_canary_account[32];
+	uint8_t nano_test_final_votes_canary_account[32];
+	uint8_t final_votes_canary_account[32];
+	uint64_t nano_dev_final_votes_canary_height;
+	uint64_t nano_beta_final_votes_canary_height;
+	uint64_t nano_live_final_votes_canary_height;
+	uint64_t nano_test_final_votes_canary_height;
+	uint64_t final_votes_canary_height;
+	uint8_t epoch_1_signer[32];
+	uint8_t epoch_1_link[32];
+	uint8_t epoch_2_signer[32];
+	uint8_t epoch_2_link[32];
+};
+
+struct VotingConstantsDto
+{
+	uintptr_t max_cache;
+	int64_t delay_s;
+};
+
+struct NodeConstantsDto
+{
+	int64_t backup_interval_m;
+	int64_t search_pending_interval_s;
+	int64_t unchecked_cleaning_interval_m;
+	int64_t process_confirmed_interval_ms;
+	uint64_t max_weight_samples;
+	uint64_t weight_period;
+};
+
+struct PortmappingConstantsDto
+{
+	int64_t lease_duration_s;
+	int64_t health_check_period_s;
+};
+
+struct NetworkParamsDto
+{
+	uint32_t kdf_work;
+	WorkThresholdsDto work;
+	NetworkConstantsDto network;
+	LedgerConstantsDto ledger;
+	VotingConstantsDto voting;
+	NodeConstantsDto node;
+	PortmappingConstantsDto portmapping;
+	BootstrapConstantsDto bootstrap;
 };
 
 struct NodeRpcConfigDto
@@ -595,6 +618,10 @@ uintptr_t rsn_change_block_size ();
 uint64_t rsn_change_block_work (const ChangeBlockHandle * handle);
 
 void rsn_change_block_work_set (ChangeBlockHandle * handle, uint64_t work);
+
+int32_t rsn_daemon_config_create (DaemonConfigDto * dto, const NetworkParamsDto * network_params);
+
+int32_t rsn_daemon_config_serialize_toml (const DaemonConfigDto * dto, void * toml);
 
 int32_t rsn_deserialize_block_json (BlockDto * dto, const void * ptree);
 

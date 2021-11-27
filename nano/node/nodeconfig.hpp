@@ -36,6 +36,8 @@ class node_config
 public:
 	node_config (nano::network_params & network_params = nano::dev::network_params);
 	node_config (uint16_t, nano::logging const &, nano::network_params & network_params = nano::dev::network_params);
+	void load_dto (rsnano::NodeConfigDto & dto);
+	rsnano::NodeConfigDto to_dto () const;
 
 	nano::error serialize_json (nano::jsonconfig &) const;
 	nano::error deserialize_json (bool &, nano::jsonconfig &);

@@ -9,6 +9,22 @@ nano::opencl_config::opencl_config (unsigned platform_a, unsigned device_a, unsi
 {
 }
 
+void nano::opencl_config::load_dto (rsnano::OpenclConfigDto & dto)
+{
+	platform = dto.platform;
+	device = dto.device;
+	threads = dto.threads;
+}
+
+rsnano::OpenclConfigDto nano::opencl_config::to_dto () const
+{
+	rsnano::OpenclConfigDto dto;
+	dto.platform = platform;
+	dto.device = device;
+	dto.threads = threads;
+	return dto;
+}
+
 nano::error nano::opencl_config::serialize_json (nano::jsonconfig & json) const
 {
 	json.put ("platform", platform);
@@ -23,20 +39,6 @@ nano::error nano::opencl_config::deserialize_json (nano::jsonconfig & json)
 	json.get_optional<unsigned> ("device", device);
 	json.get_optional<unsigned> ("threads", threads);
 	return json.get_error ();
-}
-
-nano::error nano::opencl_config::serialize_toml (nano::tomlconfig & toml) const
-{
-	toml.put ("platform", platform);
-	toml.put ("device", device);
-	toml.put ("threads", threads);
-
-	// Add documentation
-	toml.doc ("platform", "OpenCL platform identifier");
-	toml.doc ("device", "OpenCL device identifier");
-	toml.doc ("threads", "OpenCL thread count");
-
-	return toml.get_error ();
 }
 
 nano::error nano::opencl_config::deserialize_toml (nano::tomlconfig & toml)

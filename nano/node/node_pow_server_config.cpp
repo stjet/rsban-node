@@ -1,11 +1,19 @@
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/node_pow_server_config.hpp>
 
-nano::error nano::node_pow_server_config::serialize_toml (nano::tomlconfig & toml) const
+rsnano::NodePowServerConfigDto nano::node_pow_server_config::to_dto () const
 {
-	toml.put ("enable", enable, "Value is currently not in use. Enable or disable starting Nano PoW Server as a child process.\ntype:bool");
-	toml.put ("nano_pow_server_path", pow_server_path, "Value is currently not in use. Path to the nano_pow_server executable.\ntype:string,path");
-	return toml.get_error ();
+	rsnano::NodePowServerConfigDto dto;
+	dto.enable = enable;
+	std::copy (pow_server_path.begin (), pow_server_path.end (), std::begin (dto.pow_server_path));
+	dto.pow_server_path_len = pow_server_path.size ();
+	return dto;
+}
+
+void nano::node_pow_server_config::load_dto (rsnano::NodePowServerConfigDto & dto)
+{
+	enable = dto.enable;
+	pow_server_path = std::string (reinterpret_cast<const char *> (dto.pow_server_path), dto.pow_server_path_len);
 }
 
 nano::error nano::node_pow_server_config::deserialize_toml (nano::tomlconfig & toml)

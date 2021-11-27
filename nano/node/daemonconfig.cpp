@@ -11,31 +11,33 @@ nano::daemon_config::daemon_config (boost::filesystem::path const & data_path_a,
 	node{ network_params },
 	data_path{ data_path_a }
 {
+	rsnano::DaemonConfigDto dto;
+	auto network_dto{ network_params.to_dto () };
+	if (rsnano::rsn_daemon_config_create (&dto, &network_dto) < 0)
+		throw std::runtime_error ("could not create daemon_config");
+	rpc_enable = dto.rpc_enable;
+	node.load_dto (dto.node);
+	opencl.load_dto (dto.opencl);
+	opencl_enable = dto.opencl_enable;
+	pow_server.load_dto (dto.pow_server);
+}
+
+rsnano::DaemonConfigDto to_daemon_config_dto (nano::daemon_config const & config)
+{
+	rsnano::DaemonConfigDto dto;
+	dto.rpc_enable = config.rpc_enable;
+	dto.opencl = config.opencl.to_dto ();
+	dto.node = config.node.to_dto ();
+	dto.opencl_enable = config.opencl_enable;
+	dto.pow_server = config.pow_server.to_dto ();
+	return dto;
 }
 
 nano::error nano::daemon_config::serialize_toml (nano::tomlconfig & toml)
 {
-	nano::tomlconfig rpc_l;
-	rpc.serialize_toml (rpc_l);
-	rpc_l.doc ("enable", "Enable or disable RPC\ntype:bool");
-	rpc_l.put ("enable", rpc_enable);
-	toml.put_child ("rpc", rpc_l);
-
-	nano::tomlconfig node_l;
-	node.serialize_toml (node_l);
-	nano::tomlconfig node (node_l);
-	toml.put_child ("node", node);
-
-	nano::tomlconfig opencl_l;
-	opencl.serialize_toml (opencl_l);
-	opencl_l.doc ("enable", "Enable or disable OpenCL work generation\ntype:bool");
-	opencl_l.put ("enable", opencl_enable);
-	toml.put_child ("opencl", opencl_l);
-
-	nano::tomlconfig pow_server_l;
-	pow_server.serialize_toml (pow_server_l);
-	nano::tomlconfig pow_server (pow_server_l);
-	toml.put_child ("nano_pow_server", pow_server);
+	auto dto{ to_daemon_config_dto (*this) };
+	if (rsnano::rsn_daemon_config_serialize_toml (&dto, &toml) < 0)
+		return nano::error ("could not TOML serialize daemon_config");
 
 	return toml.get_error ();
 }

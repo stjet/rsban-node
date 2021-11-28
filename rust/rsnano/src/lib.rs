@@ -12,12 +12,12 @@ extern crate anyhow;
 
 mod bandwidth_limiter;
 mod blocks;
-mod config;
+pub mod config;
 mod epoch;
 pub mod ffi;
 mod ipc;
 mod numbers;
-mod secure;
+pub mod secure;
 mod stats;
 mod token_bucket;
-mod utils;
+pub mod utils;

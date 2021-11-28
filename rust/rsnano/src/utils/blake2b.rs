@@ -1,5 +1,5 @@
-use blake2::digest::{Update, VariableOutput};
 use anyhow::Result;
+use blake2::digest::{Update, VariableOutput};
 
 pub trait Blake2b {
     fn init(&mut self, outlen: usize) -> Result<()>;
@@ -47,4 +47,3 @@ impl Blake2b for RustBlake2b {
         Ok(())
     }
 }
-

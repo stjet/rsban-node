@@ -1,6 +1,6 @@
+use anyhow::Result;
 #[cfg(test)]
 use std::collections::HashMap;
-use anyhow::Result;
 
 pub trait PropertyTreeReader {
     fn get_string(&self, path: &str) -> Result<String>;

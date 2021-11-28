@@ -500,7 +500,8 @@ pub fn validate_message(
 ) -> Result<()> {
     let public = ed25519_dalek_blake2b::PublicKey::from_bytes(public_key.as_bytes())
         .map_err(|_| anyhow!("could not extract public key"))?;
-    let sig = ed25519_dalek_blake2b::Signature::new(signature.to_be_bytes());
+    let sig = ed25519_dalek_blake2b::Signature::from_bytes(&signature.to_be_bytes())
+        .map_err(|_| anyhow!("invalid signature bytes"))?;
     public
         .verify_strict(message, &sig)
         .map_err(|_| anyhow!("could not verify message"))?;
@@ -555,7 +556,7 @@ mod tests {
 
         let mut sig_bytes = signature.to_bytes();
         sig_bytes[32] ^= 0x1;
-        let signature = ed25519_dalek_blake2b::Signature::new(sig_bytes);
+        let signature = ed25519_dalek_blake2b::Signature::from_bytes(&sig_bytes).unwrap();
         assert!(public_key.verify_strict(&message, &signature).is_err());
 
         Ok(())

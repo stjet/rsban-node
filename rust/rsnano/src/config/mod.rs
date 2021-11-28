@@ -12,6 +12,8 @@ mod rpc_config;
 mod websocket_config;
 mod work_thresholds;
 
+use std::path::{Path, PathBuf};
+
 pub use daemon_config::*;
 pub use diagnostics_config::*;
 pub use lmdb_config::*;
@@ -25,3 +27,10 @@ pub use rocksdb_config::*;
 pub use rpc_config::*;
 pub use websocket_config::*;
 pub use work_thresholds::*;
+
+pub fn get_node_toml_config_path(data_path: &Path) -> PathBuf {
+    let mut node_toml = data_path.to_owned();
+    node_toml.pop();
+    node_toml.push("config-node.toml");
+    node_toml
+}

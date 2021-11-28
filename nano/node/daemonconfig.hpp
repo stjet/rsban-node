@@ -22,10 +22,10 @@ public:
 	nano::error serialize_json (nano::jsonconfig &);
 	nano::error deserialize_toml (nano::tomlconfig &);
 	nano::error serialize_toml (nano::tomlconfig &);
-	bool rpc_enable {false};
+	bool rpc_enable{ false };
 	nano::node_rpc_config rpc;
 	nano::node_config node;
-	bool opencl_enable {false};
+	bool opencl_enable{ false };
 	nano::opencl_config opencl;
 	nano::node_pow_server_config pow_server;
 	boost::filesystem::path data_path;

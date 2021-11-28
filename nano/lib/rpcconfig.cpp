@@ -55,17 +55,40 @@ nano::error nano::rpc_secure_config::deserialize_toml (nano::tomlconfig & toml)
 }
 
 nano::rpc_config::rpc_config (nano::network_constants & network_constants) :
-	rpc_process{ network_constants },
-	address{ boost::asio::ip::address_v6::loopback ().to_string () }
+	rpc_process{ network_constants }
 {
+	rsnano::RpcConfigDto dto;
+	auto network_dto{ network_constants.to_dto () };
+	if (rsnano::rsn_rpc_config_create (&dto, &network_dto) < 0)
+		throw std::runtime_error ("could not create rpc_config");
+	load_dto (dto);
 }
 
 nano::rpc_config::rpc_config (nano::network_constants & network_constants, uint16_t port_a, bool enable_control_a) :
-	rpc_process{ network_constants },
-	address{ boost::asio::ip::address_v6::loopback ().to_string () },
-	port{ port_a },
-	enable_control{ enable_control_a }
+	rpc_process{ network_constants }
 {
+	rsnano::RpcConfigDto dto;
+	auto network_dto{ network_constants.to_dto () };
+	if (rsnano::rsn_rpc_config_create2 (&dto, &network_dto, port_a, enable_control_a) < 0)
+		throw std::runtime_error ("could not create rpc_config");
+	load_dto (dto);
+}
+
+void nano::rpc_config::load_dto (rsnano::RpcConfigDto & dto)
+{
+	address = std::string (reinterpret_cast<const char *> (dto.address), dto.address_len);
+	port = dto.port;
+	enable_control = dto.enable_control;
+}
+
+rsnano::RpcConfigDto nano::rpc_config::to_dto () const
+{
+	rsnano::RpcConfigDto dto;
+	std::copy (address.begin (), address.end (), std::begin (dto.address));
+	dto.address_len = address.size ();
+	dto.port = port;
+	dto.enable_control = enable_control;
+	return dto;
 }
 
 nano::error nano::rpc_config::serialize_json (nano::jsonconfig & json) const
@@ -127,9 +150,10 @@ nano::error nano::rpc_config::deserialize_json (bool & upgraded_a, nano::jsoncon
 
 nano::error nano::rpc_config::serialize_toml (nano::tomlconfig & toml) const
 {
-	toml.put ("address", address, "Bind address for the RPC server.\ntype:string,ip");
-	toml.put ("port", port, "Listening port for the RPC server.\ntype:uint16");
-	toml.put ("enable_control", enable_control, "Enable or disable control-level requests.\nWARNING: Enabling this gives anyone with RPC access the ability to stop the node and access wallet funds.\ntype:bool");
+	auto dto{ to_dto () };
+	if (rsnano::rsn_rpc_config_serialize_toml (&dto, &toml) < 0)
+		return nano::error ("could not TOML serialize rpc_config");
+
 	toml.put ("max_json_depth", max_json_depth, "Maximum number of levels in JSON requests.\ntype:uint8");
 	toml.put ("max_request_size", max_request_size, "Maximum number of bytes allowed in request bodies.\ntype:uint64");
 

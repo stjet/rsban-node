@@ -453,6 +453,14 @@ struct ReceiveBlockDto2
 	uint64_t work;
 };
 
+struct RpcConfigDto
+{
+	uint8_t address[128];
+	uintptr_t address_len;
+	uint16_t port;
+	bool enable_control;
+};
+
 struct SendBlockDto
 {
 	uint8_t previous[32];
@@ -760,6 +768,15 @@ uint64_t rsn_receive_block_work (const ReceiveBlockHandle * handle);
 void rsn_receive_block_work_set (ReceiveBlockHandle * handle, uint64_t work);
 
 void rsn_rocksdb_config_create (RocksDbConfigDto * dto);
+
+int32_t rsn_rpc_config_create (RpcConfigDto * dto, const NetworkConstantsDto * network_constants);
+
+int32_t rsn_rpc_config_create2 (RpcConfigDto * dto,
+const NetworkConstantsDto * network_constants,
+uint16_t port,
+bool enable_control);
+
+int32_t rsn_rpc_config_serialize_toml (const RpcConfigDto * dto, void * toml);
 
 void rsn_send_block_balance (const SendBlockHandle * handle, uint8_t (*result)[16]);
 

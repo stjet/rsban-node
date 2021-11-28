@@ -78,6 +78,8 @@ class rpc_config final
 public:
 	explicit rpc_config (nano::network_constants & network_constants);
 	explicit rpc_config (nano::network_constants & network_constants, uint16_t, bool);
+	void load_dto (rsnano::RpcConfigDto & dto);
+	rsnano::RpcConfigDto to_dto () const;
 	nano::error serialize_json (nano::jsonconfig &) const;
 	nano::error deserialize_json (bool & upgraded_a, nano::jsonconfig &);
 	nano::error serialize_toml (nano::tomlconfig &) const;
@@ -85,8 +87,8 @@ public:
 
 	nano::rpc_process_config rpc_process;
 	std::string address;
-	uint16_t port{ rpc_process.network_constants.default_rpc_port };
-	bool enable_control{ false };
+	uint16_t port;
+	bool enable_control;
 	rpc_secure_config secure;
 	uint8_t max_json_depth{ 20 };
 	uint64_t max_request_size{ 32 * 1024 * 1024 };

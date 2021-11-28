@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use anyhow::Result;
 use toml_edit::Document;
 
@@ -29,17 +31,24 @@ pub trait TomlArrayWriter {
     fn push_back_str(&mut self, value: &str) -> Result<()>;
 }
 
-pub struct TomlConfig{
+pub struct TomlConfig {
     doc: Document,
 }
 
 impl TomlConfig {
-    pub fn new() -> Self { Self { 
-        doc: Document::new()
-     } }
+    pub fn new() -> Self {
+        Self {
+            doc: Document::new(),
+        }
+    }
+
+    pub fn write(&self, file: impl AsRef<Path>) -> Result<()> {
+        std::fs::write(file, self.doc.to_string().as_bytes())?;
+        Ok(())
+    }
 }
 
-impl TomlWriter for TomlConfig{
+impl TomlWriter for TomlConfig {
     fn put_u16(&mut self, key: &str, value: u16, _documentation: &str) -> Result<()> {
         self.doc[key] = toml_edit::value(value as i64);
         Ok(())
@@ -99,43 +108,47 @@ impl TomlWriter for TomlConfig{
     ) -> Result<()> {
         let mut child = TomlConfig::new();
         f(&mut child)?;
-        self.doc[key] = child.doc.root;
+        self.doc[key] = toml_edit::Item::Table(child.doc.as_table().clone());
         Ok(())
     }
 }
 
-pub struct TomlConfigArray{
+pub struct TomlConfigArray {
     array: toml_edit::Array,
 }
 
 impl TomlConfigArray {
-    pub fn new() -> Self { Self { array: toml_edit::Array::default() } }
+    pub fn new() -> Self {
+        Self {
+            array: toml_edit::Array::default(),
+        }
+    }
 }
 
-impl TomlArrayWriter for TomlConfigArray{
+impl TomlArrayWriter for TomlConfigArray {
     fn push_back_str(&mut self, value: &str) -> Result<()> {
-        self.array.push(value).map_err(|_| anyhow!("could not push toml array str"))?;
+        self.array.push(value);
         Ok(())
     }
 }
 
 #[cfg(test)]
-mod tests{
+mod tests {
     use super::*;
 
     #[test]
-    fn create_toml_doc() -> Result<()>{
+    fn create_toml_doc() -> Result<()> {
         let mut toml = TomlConfig::new();
         toml.put_bool("bool_test", true, "ignored")?;
         toml.put_i64("i64_test", 123, "ignored")?;
-        toml.create_array("array_test", "ignored", &mut |a|{
+        toml.create_array("array_test", "ignored", &mut |a| {
             a.push_back_str("hello")?;
             a.push_back_str("world")?;
             Ok(())
         })?;
-        toml.put_child("child_test", &mut |c|{
+        toml.put_child("child_test", &mut |c| {
             c.put_bool("child_bool", false, "ignored")?;
-            c.put_child("sub_child", &mut |sc|{
+            c.put_child("sub_child", &mut |sc| {
                 sc.put_i64("sub_child_i64", 999, "ignored")?;
                 Ok(())
             })?;
@@ -143,15 +156,19 @@ mod tests{
         })?;
 
         let result = toml.doc.to_string();
-        assert_eq!(result, 
+        assert_eq!(
+            result,
             r#"bool_test = true
 i64_test = 123
-array_test =["hello", "world"]
+array_test = ["hello", "world"]
+
 [child_test]
 child_bool = false
+
 [child_test.sub_child]
 sub_child_i64 = 999
-"#);
+"#
+        );
         Ok(())
     }
 }

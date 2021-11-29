@@ -1,37 +1,41 @@
-use std::path::Path;
 use anyhow::Result;
+use std::path::Path;
 
-use rsnano::{config::{DaemonConfig, NetworkConstants, get_node_toml_config_path}, secure::NetworkParams, utils::TomlConfig};
+use rsnano::{config::{DaemonConfig, NetworkConstants, RpcConfig, force_nano_dev_network, get_node_toml_config_path, get_rpc_toml_config_path}, secure::NetworkParams, utils::TomlConfig};
 
 const RPC_PORT_START: u16 = 60000;
 const PEERING_PORT_START: u16 = 61000;
 const IPC_PORT_START: u16 = 62000;
 
-fn write_config_files(data_path: &Path, index: usize) -> Result<()>{
+fn write_config_files(data_path: &Path, index: usize) -> Result<()> {
     let network_params = NetworkParams::new(NetworkConstants::active_network())?;
     let mut daemon_config = DaemonConfig::new(&network_params)?;
-	daemon_config.node.peering_port = PEERING_PORT_START + index as u16;
-	daemon_config.node.ipc_config.transport_tcp.transport.enabled = true;
-	daemon_config.node.ipc_config.transport_tcp.port = IPC_PORT_START + index as u16;
+    daemon_config.node.peering_port = PEERING_PORT_START + index as u16;
+    daemon_config
+        .node
+        .ipc_config
+        .transport_tcp
+        .transport
+        .enabled = true;
+    daemon_config.node.ipc_config.transport_tcp.port = IPC_PORT_START + index as u16;
 
-	// Alternate use of memory pool
-	daemon_config.node.use_memory_pools = (index % 2) == 0;
+    // Alternate use of memory pool
+    daemon_config.node.use_memory_pools = (index % 2) == 0;
 
-	// Write daemon config
-	let mut toml = TomlConfig::new();
-	daemon_config.serialize_toml (&mut toml)?;
-	toml.write(get_node_toml_config_path (data_path))?;
+    // Write daemon config
+    let mut toml = TomlConfig::new();
+    daemon_config.serialize_toml(&mut toml)?;
+    toml.write(get_node_toml_config_path(data_path))?;
 
-    let rpc_config = RpcConfig::new();
-// 	nano::rpc_config rpc_config{ daemon_config.node.network_params.network };
-// 	rpc_config.port = rpc_port_start + index;
-// 	rpc_config.enable_control = true;
-// 	rpc_config.rpc_process.ipc_port = ipc_port_start + index;
+    let mut rpc_config = RpcConfig::new(&network_params.network);
+    rpc_config.port = RPC_PORT_START + index as u16;
+    rpc_config.enable_control = true;
+    rpc_config.rpc_process.ipc_port = IPC_PORT_START + index as u16;
 
-// 	// Write rpc config
-// 	nano::tomlconfig toml_rpc;
-// 	rpc_config.serialize_toml (toml_rpc);
-// 	toml_rpc.write (nano::get_rpc_toml_config_path (data_path));
+    // Write rpc config
+    let mut toml_rpc = TomlConfig::new();
+    rpc_config.serialize_toml(&mut toml_rpc)?;
+    toml_rpc.write(get_rpc_toml_config_path(data_path))?;
     Ok(())
 }
 
@@ -240,9 +244,8 @@ fn write_config_files(data_path: &Path, index: usize) -> Result<()>{
 // }
 
 // /** This launches a node and fires a lot of send/recieve RPC requests at it (configurable), then other nodes are tested to make sure they observe these blocks as well. */
-// int main (int argc, char * const * argv)
-// {
-// 	nano::force_nano_dev_network ();
+fn main() {
+	force_nano_dev_network();
 
 // 	boost::program_options::options_description description ("Command line options");
 
@@ -476,8 +479,4 @@ fn write_config_files(data_path: &Path, index: usize) -> Result<()>{
 // 	}
 
 // 	std::cout << "Done!" << std::endl;
-// }
-
-fn main() {
-    println!("Hello, world!");
 }

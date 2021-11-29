@@ -79,6 +79,13 @@ void nano::rpc_config::load_dto (rsnano::RpcConfigDto & dto)
 	address = std::string (reinterpret_cast<const char *> (dto.address), dto.address_len);
 	port = dto.port;
 	enable_control = dto.enable_control;
+	max_json_depth = dto.max_json_depth;
+	max_request_size = dto.max_request_size;
+	rpc_logging.log_rpc = dto.rpc_log;
+	rpc_process.io_threads = dto.rpc_process.io_threads;
+	rpc_process.ipc_address = std::string (reinterpret_cast<const char *> (dto.rpc_process.ipc_address), dto.rpc_process.ipc_address_len);
+	rpc_process.ipc_port = dto.rpc_process.ipc_port;
+	rpc_process.num_ipc_connections = dto.rpc_process.num_ipc_connections;
 }
 
 rsnano::RpcConfigDto nano::rpc_config::to_dto () const
@@ -88,6 +95,14 @@ rsnano::RpcConfigDto nano::rpc_config::to_dto () const
 	dto.address_len = address.size ();
 	dto.port = port;
 	dto.enable_control = enable_control;
+	dto.max_json_depth = max_json_depth;
+	dto.max_request_size = max_request_size;
+	dto.rpc_log = rpc_logging.log_rpc;
+	dto.rpc_process.io_threads = rpc_process.io_threads;
+	std::copy (rpc_process.ipc_address.begin (), rpc_process.ipc_address.end (), std::begin (dto.rpc_process.ipc_address));
+	dto.rpc_process.ipc_address_len = rpc_process.ipc_address.size ();
+	dto.rpc_process.ipc_port = rpc_process.ipc_port;
+	dto.rpc_process.num_ipc_connections = rpc_process.num_ipc_connections;
 	return dto;
 }
 
@@ -154,19 +169,6 @@ nano::error nano::rpc_config::serialize_toml (nano::tomlconfig & toml) const
 	if (rsnano::rsn_rpc_config_serialize_toml (&dto, &toml) < 0)
 		return nano::error ("could not TOML serialize rpc_config");
 
-	toml.put ("max_json_depth", max_json_depth, "Maximum number of levels in JSON requests.\ntype:uint8");
-	toml.put ("max_request_size", max_request_size, "Maximum number of bytes allowed in request bodies.\ntype:uint64");
-
-	nano::tomlconfig rpc_process_l;
-	rpc_process_l.put ("io_threads", rpc_process.io_threads, "Number of threads used to serve IO.\ntype:uint32");
-	rpc_process_l.put ("ipc_address", rpc_process.ipc_address, "Address of IPC server.\ntype:string,ip");
-	rpc_process_l.put ("ipc_port", rpc_process.ipc_port, "Listening port of IPC server.\ntype:uint16");
-	rpc_process_l.put ("num_ipc_connections", rpc_process.num_ipc_connections, "Number of IPC connections to establish.\ntype:uint32");
-	toml.put_child ("process", rpc_process_l);
-
-	nano::tomlconfig rpc_logging_l;
-	rpc_logging_l.put ("log_rpc", rpc_logging.log_rpc, "Whether to log RPC calls.\ntype:bool");
-	toml.put_child ("logging", rpc_logging_l);
 	return toml.get_error ();
 }
 

@@ -453,12 +453,25 @@ struct ReceiveBlockDto2
 	uint64_t work;
 };
 
+struct RpcProcessConfigDto
+{
+	uint32_t io_threads;
+	uint8_t ipc_address[128];
+	uintptr_t ipc_address_len;
+	uint16_t ipc_port;
+	uint32_t num_ipc_connections;
+};
+
 struct RpcConfigDto
 {
 	uint8_t address[128];
 	uintptr_t address_len;
 	uint16_t port;
 	bool enable_control;
+	uint8_t max_json_depth;
+	uint64_t max_request_size;
+	bool rpc_log;
+	RpcProcessConfigDto rpc_process;
 };
 
 struct SendBlockDto

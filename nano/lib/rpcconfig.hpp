@@ -90,8 +90,8 @@ public:
 	uint16_t port;
 	bool enable_control;
 	rpc_secure_config secure;
-	uint8_t max_json_depth{ 20 };
-	uint64_t max_request_size{ 32 * 1024 * 1024 };
+	uint8_t max_json_depth;
+	uint64_t max_request_size;
 	nano::rpc_logging_config rpc_logging;
 	/** Optional TLS config */
 	std::shared_ptr<nano::tls_config> tls_config;

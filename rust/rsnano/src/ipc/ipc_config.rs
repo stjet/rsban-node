@@ -10,14 +10,20 @@ pub struct IpcConfigTransport {
     pub io_threads: i64,
 }
 
-impl IpcConfigTransport {
-    pub fn new() -> Self {
+impl Default for IpcConfigTransport {
+    fn default() -> Self {
         Self {
             enabled: false,
             allow_unsafe: false,
             io_timeout: 15,
             io_threads: -1,
         }
+    }
+}
+
+impl IpcConfigTransport {
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 
@@ -29,12 +35,18 @@ pub struct IpcConfigFlatbuffers {
     pub verify_buffers: bool,
 }
 
-impl IpcConfigFlatbuffers {
-    pub fn new() -> Self {
+impl Default for IpcConfigFlatbuffers {
+    fn default() -> Self {
         Self {
             skip_unexpected_fields_in_json: true,
             verify_buffers: true,
         }
+    }
+}
+
+impl IpcConfigFlatbuffers {
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 
@@ -48,12 +60,18 @@ pub struct IpcConfigDomainSocket {
     pub path: PathBuf,
 }
 
-impl IpcConfigDomainSocket {
-    pub fn new() -> Self {
+impl Default for IpcConfigDomainSocket {
+    fn default() -> Self {
         Self {
             transport: IpcConfigTransport::new(),
             path: "/tmp/nano".into(),
         }
+    }
+}
+
+impl IpcConfigDomainSocket {
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 

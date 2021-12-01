@@ -28,13 +28,19 @@ pub struct LmdbConfig {
     pub map_size: usize,
 }
 
-impl LmdbConfig {
-    pub fn new() -> Self {
+impl Default for LmdbConfig {
+    fn default() -> Self {
         Self {
             sync: SyncStrategy::Always,
             max_databases: 128,
             map_size: 256 * 1024 * 1024 * 1024,
         }
+    }
+}
+
+impl LmdbConfig {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {

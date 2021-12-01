@@ -35,11 +35,17 @@ pub struct TomlConfig {
     doc: Document,
 }
 
+impl Default for TomlConfig {
+    fn default() -> Self {
+        Self {
+            doc: Default::default(),
+        }
+    }
+}
+
 impl TomlConfig {
     pub fn new() -> Self {
-        Self {
-            doc: Document::new(),
-        }
+        Default::default()
     }
 
     pub fn write(&self, file: impl AsRef<Path>) -> Result<()> {
@@ -119,8 +125,14 @@ pub struct TomlConfigArray {
 
 impl TomlConfigArray {
     pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl Default for TomlConfigArray {
+    fn default() -> Self {
         Self {
-            array: toml_edit::Array::default(),
+            array: Default::default(),
         }
     }
 }

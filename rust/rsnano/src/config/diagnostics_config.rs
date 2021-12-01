@@ -30,11 +30,17 @@ pub struct DiagnosticsConfig {
     pub txn_tracking: TxnTrackingConfig,
 }
 
-impl DiagnosticsConfig {
-    pub fn new() -> Self {
+impl Default for DiagnosticsConfig {
+    fn default() -> Self {
         Self {
             txn_tracking: TxnTrackingConfig::new(),
         }
+    }
+}
+
+impl DiagnosticsConfig {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {

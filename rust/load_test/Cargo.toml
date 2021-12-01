@@ -7,4 +7,5 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.40"
+clap = "2.33.3"
 rsnano = { path = "../rsnano" }

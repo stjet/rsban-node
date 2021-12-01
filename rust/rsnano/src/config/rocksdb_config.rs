@@ -7,6 +7,16 @@ pub struct RocksDbConfig {
     pub io_threads: u32,
 }
 
+impl Default for RocksDbConfig {
+    fn default() -> Self {
+        Self {
+            enable: Self::using_rocksdb_in_tests(),
+            memory_multiplier: 2,
+            io_threads: get_cpu_count() as u32,
+        }
+    }
+}
+
 impl RocksDbConfig {
     pub fn using_rocksdb_in_tests() -> bool {
         if let Ok(value) = std::env::var("TEST_USE_ROCKSDB") {
@@ -19,11 +29,7 @@ impl RocksDbConfig {
     }
 
     pub fn new() -> Self {
-        Self {
-            enable: Self::using_rocksdb_in_tests(),
-            memory_multiplier: 2,
-            io_threads: get_cpu_count() as u32,
-        }
+        Default::default()
     }
 
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {

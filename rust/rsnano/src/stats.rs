@@ -29,8 +29,9 @@ pub struct StatConfig {
     /** Filename for the sampling log */
     pub log_samples_filename: String,
 }
-impl StatConfig {
-    pub fn new() -> Self {
+
+impl Default for StatConfig {
+    fn default() -> Self {
         Self {
             sampling_enabled: false,
             capacity: 0,
@@ -42,6 +43,12 @@ impl StatConfig {
             log_counters_filename: "counters.stat".to_string(),
             log_samples_filename: "samples.stat".to_string(),
         }
+    }
+}
+
+impl StatConfig {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {

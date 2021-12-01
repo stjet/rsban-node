@@ -444,11 +444,17 @@ pub struct KeyPair {
     keypair: ed25519_dalek_blake2b::Keypair,
 }
 
-impl KeyPair {
-    pub fn new() -> Self {
+impl Default for KeyPair {
+    fn default() -> Self {
         let mut rng = rand::thread_rng();
         let keypair = ed25519_dalek_blake2b::Keypair::generate(&mut rng);
         Self { keypair }
+    }
+}
+
+impl KeyPair {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     pub fn zero() -> Self {

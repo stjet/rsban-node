@@ -13,6 +13,12 @@ pub struct RustBlake2b {
 
 impl RustBlake2b {
     pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl Default for RustBlake2b {
+    fn default() -> Self {
         Self { instance: None }
     }
 }

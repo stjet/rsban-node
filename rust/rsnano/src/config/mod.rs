@@ -43,5 +43,5 @@ pub fn get_rpc_toml_config_path(data_path: &Path) -> PathBuf {
 }
 
 pub fn force_nano_dev_network() {
-	NetworkConstants::set_active_network(Networks::NanoDevNetwork);
+    NetworkConstants::set_active_network(Networks::NanoDevNetwork);
 }

@@ -29,11 +29,17 @@ pub struct Epochs {
     epochs: HashMap<Epoch, EpochInfo>,
 }
 
-impl Epochs {
-    pub fn new() -> Self {
+impl Default for Epochs {
+    fn default() -> Self {
         Self {
             epochs: HashMap::new(),
         }
+    }
+}
+
+impl Epochs {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     pub fn add(&mut self, epoch: Epoch, signer: PublicKey, link: Link) {

@@ -1,7 +1,16 @@
+use anyhow::anyhow;
 use anyhow::Result;
+use clap::{App, Arg};
 use std::path::Path;
 
-use rsnano::{config::{DaemonConfig, NetworkConstants, RpcConfig, force_nano_dev_network, get_node_toml_config_path, get_rpc_toml_config_path}, secure::NetworkParams, utils::TomlConfig};
+use rsnano::{
+    config::{
+        force_nano_dev_network, get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig,
+        NetworkConstants, RpcConfig,
+    },
+    secure::{NetworkParams, unique_path},
+    utils::TomlConfig,
+};
 
 const RPC_PORT_START: u16 = 60000;
 const PEERING_PORT_START: u16 = 61000;
@@ -243,240 +252,243 @@ fn write_config_files(data_path: &Path, index: usize) -> Result<()> {
 // 	return account_info;
 // }
 
-// /** This launches a node and fires a lot of send/recieve RPC requests at it (configurable), then other nodes are tested to make sure they observe these blocks as well. */
-fn main() {
-	force_nano_dev_network();
+fn main() -> Result<()> {
+    force_nano_dev_network();
 
-// 	boost::program_options::options_description description ("Command line options");
+    let matches = App::new("Nano Load Test")
+        .about("This launches a node and fires a lot of send/recieve RPC requests at it (configurable), then other nodes are tested to make sure they observe these blocks as well.")
+        .arg(Arg::with_name("node_count").short("n").long("node_count").help("The number of nodes to spin up").default_value("10"))
+        .get_matches();
+    
+    // 	boost::program_options::options_description description ("Command line options");
 
-// 	// clang-format off
-// 	description.add_options ()
-// 		("help", "Print out options")
-// 		("node_count,n", boost::program_options::value<int> ()->default_value (10), "The number of nodes to spin up")
-// 		("send_count,s", boost::program_options::value<int> ()->default_value (2000), "How many send blocks to generate")
-// 		("simultaneous_process_calls", boost::program_options::value<int> ()->default_value (20), "Number of simultaneous rpc sends to do")
-// 		("destination_count", boost::program_options::value<int> ()->default_value (2), "How many destination accounts to choose between")
-// 		("node_path", boost::program_options::value<std::string> (), "The path to the nano_node to test")
-// 		("rpc_path", boost::program_options::value<std::string> (), "The path to the nano_rpc to test");
-// 	// clang-format on
+    // 	// clang-format off
+    // 	description.add_options ()
+    // 		("help", "Print out options")
+    // 		("send_count,s", boost::program_options::value<int> ()->default_value (2000), "How many send blocks to generate")
+    // 		("simultaneous_process_calls", boost::program_options::value<int> ()->default_value (20), "Number of simultaneous rpc sends to do")
+    // 		("destination_count", boost::program_options::value<int> ()->default_value (2), "How many destination accounts to choose between")
+    // 		("node_path", boost::program_options::value<std::string> (), "The path to the nano_node to test")
+    // 		("rpc_path", boost::program_options::value<std::string> (), "The path to the nano_rpc to test");
+    // 	// clang-format on
 
-// 	boost::program_options::variables_map vm;
-// 	try
-// 	{
-// 		boost::program_options::store (boost::program_options::parse_command_line (argc, argv, description), vm);
-// 	}
-// 	catch (boost::program_options::error const & err)
-// 	{
-// 		std::cerr << err.what () << std::endl;
-// 		return 1;
-// 	}
-// 	boost::program_options::notify (vm);
+    // 	boost::program_options::variables_map vm;
+    // 	try
+    // 	{
+    // 		boost::program_options::store (boost::program_options::parse_command_line (argc, argv, description), vm);
+    // 	}
+    // 	catch (boost::program_options::error const & err)
+    // 	{
+    // 		std::cerr << err.what () << std::endl;
+    // 		return 1;
+    // 	}
+    // 	boost::program_options::notify (vm);
 
-// 	auto node_count = vm.find ("node_count")->second.as<int> ();
-// 	auto destination_count = vm.find ("destination_count")->second.as<int> ();
-// 	auto send_count = vm.find ("send_count")->second.as<int> ();
-// 	auto simultaneous_process_calls = vm.find ("simultaneous_process_calls")->second.as<int> ();
+    let node_count = matches.value_of("node_count").unwrap().parse::<usize>().unwrap();
+    // 	auto destination_count = vm.find ("destination_count")->second.as<int> ();
+    // 	auto send_count = vm.find ("send_count")->second.as<int> ();
+    // 	auto simultaneous_process_calls = vm.find ("simultaneous_process_calls")->second.as<int> ();
 
-// 	boost::system::error_code err;
-// 	auto running_executable_filepath = boost::dll::program_location (err);
+    // 	boost::system::error_code err;
+    // 	auto running_executable_filepath = boost::dll::program_location (err);
 
-// 	auto node_path_it (vm.find ("node_path"));
-// 	std::string node_path;
-// 	if (node_path_it != vm.end ())
-// 	{
-// 		node_path = node_path_it->second.as<std::string> ();
-// 	}
-// 	else
-// 	{
-// 		auto node_filepath = running_executable_filepath.parent_path () / "nano_node";
-// 		if (running_executable_filepath.has_extension ())
-// 		{
-// 			node_filepath.replace_extension (running_executable_filepath.extension ());
-// 		}
-// 		node_path = node_filepath.string ();
-// 	}
-// 	if (!boost::filesystem::exists (node_path))
-// 	{
-// 		std::cerr << "nano_node executable could not be found in " << node_path << std::endl;
-// 		return 1;
-// 	}
+    // 	auto node_path_it (vm.find ("node_path"));
+    // 	std::string node_path;
+    // 	if (node_path_it != vm.end ())
+    // 	{
+    // 		node_path = node_path_it->second.as<std::string> ();
+    // 	}
+    // 	else
+    // 	{
+    // 		auto node_filepath = running_executable_filepath.parent_path () / "nano_node";
+    // 		if (running_executable_filepath.has_extension ())
+    // 		{
+    // 			node_filepath.replace_extension (running_executable_filepath.extension ());
+    // 		}
+    // 		node_path = node_filepath.string ();
+    // 	}
+    // 	if (!boost::filesystem::exists (node_path))
+    // 	{
+    // 		std::cerr << "nano_node executable could not be found in " << node_path << std::endl;
+    // 		return 1;
+    // 	}
 
-// 	auto rpc_path_it (vm.find ("rpc_path"));
-// 	std::string rpc_path;
-// 	if (rpc_path_it != vm.end ())
-// 	{
-// 		rpc_path = rpc_path_it->second.as<std::string> ();
-// 	}
-// 	else
-// 	{
-// 		auto rpc_filepath = running_executable_filepath.parent_path () / "nano_rpc";
-// 		if (running_executable_filepath.has_extension ())
-// 		{
-// 			rpc_filepath.replace_extension (running_executable_filepath.extension ());
-// 		}
-// 		rpc_path = rpc_filepath.string ();
-// 	}
-// 	if (!boost::filesystem::exists (rpc_path))
-// 	{
-// 		std::cerr << "nano_rpc executable could not be found in " << rpc_path << std::endl;
-// 		return 1;
-// 	}
+    // 	auto rpc_path_it (vm.find ("rpc_path"));
+    // 	std::string rpc_path;
+    // 	if (rpc_path_it != vm.end ())
+    // 	{
+    // 		rpc_path = rpc_path_it->second.as<std::string> ();
+    // 	}
+    // 	else
+    // 	{
+    // 		auto rpc_filepath = running_executable_filepath.parent_path () / "nano_rpc";
+    // 		if (running_executable_filepath.has_extension ())
+    // 		{
+    // 			rpc_filepath.replace_extension (running_executable_filepath.extension ());
+    // 		}
+    // 		rpc_path = rpc_filepath.string ();
+    // 	}
+    // 	if (!boost::filesystem::exists (rpc_path))
+    // 	{
+    // 		std::cerr << "nano_rpc executable could not be found in " << rpc_path << std::endl;
+    // 		return 1;
+    // 	}
 
-// 	std::vector<boost::filesystem::path> data_paths;
-// 	for (auto i = 0; i < node_count; ++i)
-// 	{
-// 		auto data_path = nano::unique_path ();
-// 		boost::filesystem::create_directory (data_path);
-// 		write_config_files (data_path, i);
-// 		data_paths.push_back (std::move (data_path));
-// 	}
+    let mut data_paths = Vec::new();
+    for i in 0..node_count {
+    		let data_path = unique_path().ok_or_else(|| anyhow!("no unique path"))?;
+            std::fs::create_dir(data_path.as_path())?;
+    		write_config_files (data_path.as_path(), i)?;
+    		data_paths.push(data_path);
+    	}
 
-// 	auto current_network = nano::dev::network_params.network.get_current_network_as_string ();
-// 	std::vector<std::unique_ptr<boost::process::child>> nodes;
-// 	std::vector<std::unique_ptr<boost::process::child>> rpc_servers;
-// 	for (auto const & data_path : data_paths)
-// 	{
-// 		nodes.emplace_back (std::make_unique<boost::process::child> (node_path, "--daemon", "--data_path", data_path.string (), "--network", current_network));
-// 		rpc_servers.emplace_back (std::make_unique<boost::process::child> (rpc_path, "--daemon", "--data_path", data_path.string (), "--network", current_network));
-// 	}
+    // 	auto current_network = nano::dev::network_params.network.get_current_network_as_string ();
+    // 	std::vector<std::unique_ptr<boost::process::child>> nodes;
+    // 	std::vector<std::unique_ptr<boost::process::child>> rpc_servers;
+    // 	for (auto const & data_path : data_paths)
+    // 	{
+    // 		nodes.emplace_back (std::make_unique<boost::process::child> (node_path, "--daemon", "--data_path", data_path.string (), "--network", current_network));
+    // 		rpc_servers.emplace_back (std::make_unique<boost::process::child> (rpc_path, "--daemon", "--data_path", data_path.string (), "--network", current_network));
+    // 	}
 
-// 	std::cout << "Waiting for nodes to spin up..." << std::endl;
-// 	std::this_thread::sleep_for (std::chrono::seconds (7));
-// 	std::cout << "Connecting nodes..." << std::endl;
+    // 	std::cout << "Waiting for nodes to spin up..." << std::endl;
+    // 	std::this_thread::sleep_for (std::chrono::seconds (7));
+    // 	std::cout << "Connecting nodes..." << std::endl;
 
-// 	boost::asio::io_context ioc;
+    // 	boost::asio::io_context ioc;
 
-// 	debug_assert (!nano::signal_handler_impl);
-// 	nano::signal_handler_impl = [&ioc] () {
-// 		ioc.stop ();
-// 	};
+    // 	debug_assert (!nano::signal_handler_impl);
+    // 	nano::signal_handler_impl = [&ioc] () {
+    // 		ioc.stop ();
+    // 	};
 
-// 	std::signal (SIGINT, &nano::signal_handler);
-// 	std::signal (SIGTERM, &nano::signal_handler);
+    // 	std::signal (SIGINT, &nano::signal_handler);
+    // 	std::signal (SIGTERM, &nano::signal_handler);
 
-// 	tcp::resolver resolver{ ioc };
-// 	auto const primary_node_results = resolver.resolve ("::1", std::to_string (rpc_port_start));
+    // 	tcp::resolver resolver{ ioc };
+    // 	auto const primary_node_results = resolver.resolve ("::1", std::to_string (rpc_port_start));
 
-// 	std::thread t ([send_count, &ioc, &primary_node_results, &resolver, &node_count, &destination_count] () {
-// 		for (int i = 0; i < node_count; ++i)
-// 		{
-// 			keepalive_rpc (ioc, primary_node_results, peering_port_start + i);
-// 		}
+    // 	std::thread t ([send_count, &ioc, &primary_node_results, &resolver, &node_count, &destination_count] () {
+    // 		for (int i = 0; i < node_count; ++i)
+    // 		{
+    // 			keepalive_rpc (ioc, primary_node_results, peering_port_start + i);
+    // 		}
 
-// 		std::cout << "Beginning tests" << std::endl;
+    // 		std::cout << "Beginning tests" << std::endl;
 
-// 		// Create keys
-// 		std::vector<account> destination_accounts;
-// 		for (int i = 0; i < destination_count; ++i)
-// 		{
-// 			destination_accounts.emplace_back (key_create_rpc (ioc, primary_node_results));
-// 		}
+    // 		// Create keys
+    // 		std::vector<account> destination_accounts;
+    // 		for (int i = 0; i < destination_count; ++i)
+    // 		{
+    // 			destination_accounts.emplace_back (key_create_rpc (ioc, primary_node_results));
+    // 		}
 
-// 		// Create wallet
-// 		std::string wallet = wallet_create_rpc (ioc, primary_node_results);
+    // 		// Create wallet
+    // 		std::string wallet = wallet_create_rpc (ioc, primary_node_results);
 
-// 		// Add genesis account to it
-// 		wallet_add_rpc (ioc, primary_node_results, wallet, nano::dev::genesis_key.prv.to_string ());
+    // 		// Add genesis account to it
+    // 		wallet_add_rpc (ioc, primary_node_results, wallet, nano::dev::genesis_key.prv.to_string ());
 
-// 		// Add destination accounts
-// 		for (auto & account : destination_accounts)
-// 		{
-// 			wallet_add_rpc (ioc, primary_node_results, wallet, account.private_key);
-// 		}
+    // 		// Add destination accounts
+    // 		for (auto & account : destination_accounts)
+    // 		{
+    // 			wallet_add_rpc (ioc, primary_node_results, wallet, account.private_key);
+    // 		}
 
-// 		std::cout << "\rPrimary node processing transactions: 00%";
+    // 		std::cout << "\rPrimary node processing transactions: 00%";
 
-// 		std::random_device rd;
-// 		std::mt19937 mt (rd ());
-// 		std::uniform_int_distribution<size_t> dist (0, destination_accounts.size () - 1);
+    // 		std::random_device rd;
+    // 		std::mt19937 mt (rd ());
+    // 		std::uniform_int_distribution<size_t> dist (0, destination_accounts.size () - 1);
 
-// 		std::atomic<int> send_calls_remaining{ send_count };
+    // 		std::atomic<int> send_calls_remaining{ send_count };
 
-// 		for (auto i = 0; i < send_count; ++i)
-// 		{
-// 			account * destination_account;
-// 			if (i < destination_accounts.size ())
-// 			{
-// 				destination_account = &destination_accounts[i];
-// 			}
-// 			else
-// 			{
-// 				auto random_account_index = dist (mt);
-// 				destination_account = &destination_accounts[random_account_index];
-// 			}
+    // 		for (auto i = 0; i < send_count; ++i)
+    // 		{
+    // 			account * destination_account;
+    // 			if (i < destination_accounts.size ())
+    // 			{
+    // 				destination_account = &destination_accounts[i];
+    // 			}
+    // 			else
+    // 			{
+    // 				auto random_account_index = dist (mt);
+    // 				destination_account = &destination_accounts[random_account_index];
+    // 			}
 
-// 			// Send from genesis account to different accounts and receive the funds
-// 			boost::asio::spawn (ioc, [&ioc, &primary_node_results, &wallet, destination_account, &send_calls_remaining] (boost::asio::yield_context yield) {
-// 				send_receive (ioc, wallet, nano::dev::genesis->account ().to_account (), destination_account->as_string, send_calls_remaining, primary_node_results, yield);
-// 			});
-// 		}
+    // 			// Send from genesis account to different accounts and receive the funds
+    // 			boost::asio::spawn (ioc, [&ioc, &primary_node_results, &wallet, destination_account, &send_calls_remaining] (boost::asio::yield_context yield) {
+    // 				send_receive (ioc, wallet, nano::dev::genesis->account ().to_account (), destination_account->as_string, send_calls_remaining, primary_node_results, yield);
+    // 			});
+    // 		}
 
-// 		while (send_calls_remaining != 0)
-// 		{
-// 			static int last_percent = 0;
-// 			auto percent = static_cast<int> (100 * ((send_count - send_calls_remaining) / static_cast<double> (send_count)));
+    // 		while (send_calls_remaining != 0)
+    // 		{
+    // 			static int last_percent = 0;
+    // 			auto percent = static_cast<int> (100 * ((send_count - send_calls_remaining) / static_cast<double> (send_count)));
 
-// 			if (last_percent != percent)
-// 			{
-// 				std::cout << "\rPrimary node processing transactions: " << std::setfill ('0') << std::setw (2) << percent << "%";
-// 				last_percent = percent;
-// 			}
-// 		}
+    // 			if (last_percent != percent)
+    // 			{
+    // 				std::cout << "\rPrimary node processing transactions: " << std::setfill ('0') << std::setw (2) << percent << "%";
+    // 				last_percent = percent;
+    // 			}
+    // 		}
 
-// 		std::cout << "\rPrimary node processed transactions                " << std::endl;
+    // 		std::cout << "\rPrimary node processed transactions                " << std::endl;
 
-// 		std::cout << "Waiting for nodes to catch up..." << std::endl;
+    // 		std::cout << "Waiting for nodes to catch up..." << std::endl;
 
-// 		std::map<std::string, account_info> known_account_info;
-// 		for (int i = 0; i < destination_accounts.size (); ++i)
-// 		{
-// 			known_account_info.emplace (destination_accounts[i].as_string, account_info_rpc (ioc, primary_node_results, destination_accounts[i].as_string));
-// 		}
+    // 		std::map<std::string, account_info> known_account_info;
+    // 		for (int i = 0; i < destination_accounts.size (); ++i)
+    // 		{
+    // 			known_account_info.emplace (destination_accounts[i].as_string, account_info_rpc (ioc, primary_node_results, destination_accounts[i].as_string));
+    // 		}
 
-// 		nano::timer<std::chrono::milliseconds> timer;
-// 		timer.start ();
+    // 		nano::timer<std::chrono::milliseconds> timer;
+    // 		timer.start ();
 
-// 		for (int i = 1; i < node_count; ++i)
-// 		{
-// 			auto const results = resolver.resolve ("::1", std::to_string (rpc_port_start + i));
-// 			for (auto & account_info : known_account_info)
-// 			{
-// 				while (true)
-// 				{
-// 					auto other_account_info = account_info_rpc (ioc, results, account_info.first);
-// 					if (!other_account_info.error && account_info.second == other_account_info)
-// 					{
-// 						// Found the account in this node
-// 						break;
-// 					}
+    // 		for (int i = 1; i < node_count; ++i)
+    // 		{
+    // 			auto const results = resolver.resolve ("::1", std::to_string (rpc_port_start + i));
+    // 			for (auto & account_info : known_account_info)
+    // 			{
+    // 				while (true)
+    // 				{
+    // 					auto other_account_info = account_info_rpc (ioc, results, account_info.first);
+    // 					if (!other_account_info.error && account_info.second == other_account_info)
+    // 					{
+    // 						// Found the account in this node
+    // 						break;
+    // 					}
 
-// 					if (timer.since_start () > std::chrono::seconds (120))
-// 					{
-// 						throw std::runtime_error ("Timed out");
-// 					}
+    // 					if (timer.since_start () > std::chrono::seconds (120))
+    // 					{
+    // 						throw std::runtime_error ("Timed out");
+    // 					}
 
-// 					std::this_thread::sleep_for (std::chrono::seconds (1));
-// 				}
-// 			}
+    // 					std::this_thread::sleep_for (std::chrono::seconds (1));
+    // 				}
+    // 			}
 
-// 			stop_rpc (ioc, results);
-// 		}
+    // 			stop_rpc (ioc, results);
+    // 		}
 
-// 		// Stop main node
-// 		stop_rpc (ioc, primary_node_results);
-// 	});
-// 	nano::thread_runner runner (ioc, simultaneous_process_calls);
-// 	t.join ();
-// 	runner.join ();
+    // 		// Stop main node
+    // 		stop_rpc (ioc, primary_node_results);
+    // 	});
+    // 	nano::thread_runner runner (ioc, simultaneous_process_calls);
+    // 	t.join ();
+    // 	runner.join ();
 
-// 	for (auto & node : nodes)
-// 	{
-// 		node->wait ();
-// 	}
-// 	for (auto & rpc_server : rpc_servers)
-// 	{
-// 		rpc_server->wait ();
-// 	}
+    // 	for (auto & node : nodes)
+    // 	{
+    // 		node->wait ();
+    // 	}
+    // 	for (auto & rpc_server : rpc_servers)
+    // 	{
+    // 		rpc_server->wait ();
+    // 	}
 
-// 	std::cout << "Done!" << std::endl;
+    // 	std::cout << "Done!" << std::endl;
+    Ok(())
 }

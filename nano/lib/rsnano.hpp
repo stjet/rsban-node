@@ -780,6 +780,8 @@ uint64_t rsn_receive_block_work (const ReceiveBlockHandle * handle);
 
 void rsn_receive_block_work_set (ReceiveBlockHandle * handle, uint64_t work);
 
+void rsn_remove_temporary_directories ();
+
 void rsn_rocksdb_config_create (RocksDbConfigDto * dto);
 
 int32_t rsn_rpc_config_create (RpcConfigDto * dto, const NetworkConstantsDto * network_constants);
@@ -898,6 +900,8 @@ void rsn_state_block_work_set (StateBlockHandle * handle, uint64_t work);
 
 void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
 
+int32_t rsn_unique_path (uint16_t network, uint8_t * result, uintptr_t size);
+
 bool rsn_using_rocksdb_in_tests ();
 
 bool rsn_valdiate_message (const uint8_t (*pub_key)[32],
@@ -957,6 +961,8 @@ uint64_t work);
 uint64_t rsn_work_thresholds_value (const WorkThresholdsDto * dto,
 const uint8_t (*root)[32],
 uint64_t work);
+
+int32_t rsn_working_path (uint16_t network, uint8_t * result, uintptr_t size);
 
 } // extern "C"
 

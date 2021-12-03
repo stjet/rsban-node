@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::config::{NetworkConstants, Networks};
 
+//todo refactor: this global state thing is not a good solution
 static ALL_UNIQUE_PATHS: Lazy<Mutex<Vec<PathBuf>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 pub fn working_path() -> Option<PathBuf> {
@@ -56,7 +57,7 @@ pub fn remove_temporary_directories() {
         let mut filename = lockfile.file_name().unwrap().to_os_string();
         filename.push("-lock");
         lockfile.set_file_name(filename);
-        
+
         if let Ok(_) = std::fs::metadata(lockfile.as_path()) {
             if let Err(e) = std::fs::remove_file(lockfile) {
                 eprintln!("Could not remove temporary lock file: {}", e);

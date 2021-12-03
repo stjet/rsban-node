@@ -1,10 +1,11 @@
 use crate::{secure::NetworkParams, utils::TomlWriter};
 use anyhow::Result;
 
-use super::{Logging, NodeConfig, NodePowServerConfig, OpenclConfig};
+use super::{Logging, NodeConfig, NodePowServerConfig, NodeRpcConfig, OpenclConfig};
 
 pub struct DaemonConfig {
     pub rpc_enable: bool,
+    pub rpc: NodeRpcConfig,
     pub node: NodeConfig,
     pub opencl: OpenclConfig,
     pub opencl_enable: bool,
@@ -19,11 +20,13 @@ impl DaemonConfig {
             opencl: OpenclConfig::new(),
             opencl_enable: false,
             pow_server: NodePowServerConfig::new()?,
+            rpc: NodeRpcConfig::new()?,
         })
     }
 
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {
         toml.put_child("rpc", &mut |rpc| {
+            self.rpc.serialize_toml(rpc)?;
             rpc.put_bool(
                 "enable",
                 self.rpc_enable,

@@ -20,6 +20,7 @@ nano::daemon_config::daemon_config (boost::filesystem::path const & data_path_a,
 	opencl.load_dto (dto.opencl);
 	opencl_enable = dto.opencl_enable;
 	pow_server.load_dto (dto.pow_server);
+	rpc.load_dto (dto.rpc);
 }
 
 rsnano::DaemonConfigDto to_daemon_config_dto (nano::daemon_config const & config)
@@ -30,6 +31,7 @@ rsnano::DaemonConfigDto to_daemon_config_dto (nano::daemon_config const & config
 	dto.node = config.node.to_dto ();
 	dto.opencl_enable = config.opencl_enable;
 	dto.pow_server = config.pow_server.to_dto ();
+	dto.rpc = config.rpc.to_dto ();
 	return dto;
 }
 

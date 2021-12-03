@@ -30,14 +30,12 @@ pub use work_thresholds::*;
 
 pub fn get_node_toml_config_path(data_path: &Path) -> PathBuf {
     let mut node_toml = data_path.to_owned();
-    node_toml.pop();
     node_toml.push("config-node.toml");
     node_toml
 }
 
 pub fn get_rpc_toml_config_path(data_path: &Path) -> PathBuf {
     let mut rpc_toml = data_path.to_owned();
-    rpc_toml.pop();
     rpc_toml.push("config-rpc.toml");
     rpc_toml
 }

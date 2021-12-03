@@ -335,6 +335,14 @@ struct NodePowServerConfigDto
 	uintptr_t pow_server_path_len;
 };
 
+struct NodeRpcConfigDto
+{
+	uint8_t rpc_path[512];
+	uintptr_t rpc_path_length;
+	bool enable_child_process;
+	bool enable_sign_hash;
+};
+
 struct DaemonConfigDto
 {
 	bool rpc_enable;
@@ -342,6 +350,7 @@ struct DaemonConfigDto
 	OpenclConfigDto opencl;
 	bool opencl_enable;
 	NodePowServerConfigDto pow_server;
+	NodeRpcConfigDto rpc;
 };
 
 struct LedgerConstantsDto
@@ -407,14 +416,6 @@ struct NetworkParamsDto
 	NodeConstantsDto node;
 	PortmappingConstantsDto portmapping;
 	BootstrapConstantsDto bootstrap;
-};
-
-struct NodeRpcConfigDto
-{
-	uint8_t rpc_path[512];
-	uintptr_t rpc_path_length;
-	bool enable_child_process;
-	bool enable_sign_hash;
 };
 
 struct OpenBlockDto

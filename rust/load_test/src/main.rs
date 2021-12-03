@@ -1,14 +1,19 @@
 use anyhow::anyhow;
 use anyhow::Result;
 use clap::{App, Arg};
+use rsnano::secure::DEV_NETWORK_PARAMS;
 use std::path::Path;
+use std::path::PathBuf;
+use std::process::Child;
+use std::process::Command;
+use std::time::Duration;
 
 use rsnano::{
     config::{
         force_nano_dev_network, get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig,
         NetworkConstants, RpcConfig,
     },
-    secure::{NetworkParams, unique_path},
+    secure::{unique_path, NetworkParams},
     utils::TomlConfig,
 };
 
@@ -258,105 +263,109 @@ fn main() -> Result<()> {
     let matches = App::new("Nano Load Test")
         .about("This launches a node and fires a lot of send/recieve RPC requests at it (configurable), then other nodes are tested to make sure they observe these blocks as well.")
         .arg(Arg::with_name("node_count").short("n").long("node_count").help("The number of nodes to spin up").default_value("10"))
+        .arg(Arg::with_name("node_path").long("node_path").takes_value(true).help( "The path to the nano_node to test"))
+        .arg(Arg::with_name("rpc_path").long("rpc_path").takes_value(true).help("The path to the nano_rpc to test"))
         .get_matches();
-    
+
     // 	boost::program_options::options_description description ("Command line options");
 
-    // 	// clang-format off
     // 	description.add_options ()
-    // 		("help", "Print out options")
     // 		("send_count,s", boost::program_options::value<int> ()->default_value (2000), "How many send blocks to generate")
     // 		("simultaneous_process_calls", boost::program_options::value<int> ()->default_value (20), "Number of simultaneous rpc sends to do")
     // 		("destination_count", boost::program_options::value<int> ()->default_value (2), "How many destination accounts to choose between")
-    // 		("node_path", boost::program_options::value<std::string> (), "The path to the nano_node to test")
-    // 		("rpc_path", boost::program_options::value<std::string> (), "The path to the nano_rpc to test");
-    // 	// clang-format on
 
-    // 	boost::program_options::variables_map vm;
-    // 	try
-    // 	{
-    // 		boost::program_options::store (boost::program_options::parse_command_line (argc, argv, description), vm);
-    // 	}
-    // 	catch (boost::program_options::error const & err)
-    // 	{
-    // 		std::cerr << err.what () << std::endl;
-    // 		return 1;
-    // 	}
-    // 	boost::program_options::notify (vm);
-
-    let node_count = matches.value_of("node_count").unwrap().parse::<usize>().unwrap();
+    let node_count = matches
+        .value_of("node_count")
+        .unwrap()
+        .parse::<usize>()
+        .unwrap();
     // 	auto destination_count = vm.find ("destination_count")->second.as<int> ();
     // 	auto send_count = vm.find ("send_count")->second.as<int> ();
     // 	auto simultaneous_process_calls = vm.find ("simultaneous_process_calls")->second.as<int> ();
 
     // 	boost::system::error_code err;
     // 	auto running_executable_filepath = boost::dll::program_location (err);
+    let running_executable_filepath = std::env::current_exe().unwrap();
 
-    // 	auto node_path_it (vm.find ("node_path"));
-    // 	std::string node_path;
-    // 	if (node_path_it != vm.end ())
-    // 	{
-    // 		node_path = node_path_it->second.as<std::string> ();
-    // 	}
-    // 	else
-    // 	{
-    // 		auto node_filepath = running_executable_filepath.parent_path () / "nano_node";
-    // 		if (running_executable_filepath.has_extension ())
-    // 		{
-    // 			node_filepath.replace_extension (running_executable_filepath.extension ());
-    // 		}
-    // 		node_path = node_filepath.string ();
-    // 	}
-    // 	if (!boost::filesystem::exists (node_path))
-    // 	{
-    // 		std::cerr << "nano_node executable could not be found in " << node_path << std::endl;
-    // 		return 1;
-    // 	}
+    let node_path: PathBuf = match matches.value_of("node_path") {
+        Some(p) => p.into(),
+        None => {
+            let mut node_filepath = running_executable_filepath.clone();
+            node_filepath.pop(); //debug
+            node_filepath.pop(); //build
+            node_filepath.pop(); //cargo
+            node_filepath.pop(); //root
+            node_filepath.push("nano_node");
+            if let Some(ext) = running_executable_filepath.extension() {
+                node_filepath.set_extension(ext);
+            }
+            node_filepath
+        }
+    };
 
-    // 	auto rpc_path_it (vm.find ("rpc_path"));
-    // 	std::string rpc_path;
-    // 	if (rpc_path_it != vm.end ())
-    // 	{
-    // 		rpc_path = rpc_path_it->second.as<std::string> ();
-    // 	}
-    // 	else
-    // 	{
-    // 		auto rpc_filepath = running_executable_filepath.parent_path () / "nano_rpc";
-    // 		if (running_executable_filepath.has_extension ())
-    // 		{
-    // 			rpc_filepath.replace_extension (running_executable_filepath.extension ());
-    // 		}
-    // 		rpc_path = rpc_filepath.string ();
-    // 	}
-    // 	if (!boost::filesystem::exists (rpc_path))
-    // 	{
-    // 		std::cerr << "nano_rpc executable could not be found in " << rpc_path << std::endl;
-    // 		return 1;
-    // 	}
+    if !node_path.exists() {
+        panic!("nano_node executable could not be found in {:?}", node_path);
+    }
+
+    let rpc_path: PathBuf = match matches.value_of("rpc_path") {
+        Some(p) => p.into(),
+        None => {
+            let mut rpc_filepath = running_executable_filepath.clone();
+            rpc_filepath.pop(); //debug
+            rpc_filepath.pop(); //build
+            rpc_filepath.pop(); //cargo
+            rpc_filepath.pop(); //root
+            rpc_filepath.push("nano_rpc");
+            if let Some(ext) = running_executable_filepath.extension() {
+                rpc_filepath.set_extension(ext);
+            }
+            rpc_filepath
+        }
+    };
+
+    if !rpc_path.exists() {
+        panic!("nano_rpc executable could not be found in {:?}", rpc_path);
+    }
 
     let mut data_paths = Vec::new();
     for i in 0..node_count {
-    		let data_path = unique_path().ok_or_else(|| anyhow!("no unique path"))?;
-            std::fs::create_dir(data_path.as_path())?;
-    		write_config_files (data_path.as_path(), i)?;
-    		data_paths.push(data_path);
-    	}
+        let data_path = unique_path().ok_or_else(|| anyhow!("no unique path"))?;
+        std::fs::create_dir(data_path.as_path())?;
+        write_config_files(data_path.as_path(), i)?;
+        data_paths.push(data_path);
+    }
 
-    // 	auto current_network = nano::dev::network_params.network.get_current_network_as_string ();
-    // 	std::vector<std::unique_ptr<boost::process::child>> nodes;
-    // 	std::vector<std::unique_ptr<boost::process::child>> rpc_servers;
-    // 	for (auto const & data_path : data_paths)
-    // 	{
-    // 		nodes.emplace_back (std::make_unique<boost::process::child> (node_path, "--daemon", "--data_path", data_path.string (), "--network", current_network));
-    // 		rpc_servers.emplace_back (std::make_unique<boost::process::child> (rpc_path, "--daemon", "--data_path", data_path.string (), "--network", current_network));
-    // 	}
+    let current_network = DEV_NETWORK_PARAMS.network.get_current_network_as_string();
+    let mut nodes: Vec<Child> = Vec::new();
+    let mut rpc_servers: Vec<Child> = Vec::new();
+    for data_path in &data_paths {
+        nodes.push(
+            Command::new(node_path.as_os_str())
+                .arg("--daemon")
+                .arg("--data_path")
+                .arg(data_path)
+                .arg("--network")
+                .arg(current_network)
+                .spawn()
+                .expect("could not spawn node"),
+        );
+        rpc_servers.push(
+            Command::new(rpc_path.as_os_str())
+                .arg("--daemon")
+                .arg("--data_path")
+                .arg(data_path)
+                .arg("--network")
+                .arg(current_network)
+                .spawn()
+                .expect("could not spawn rpc server"),
+        );
+    }
 
-    // 	std::cout << "Waiting for nodes to spin up..." << std::endl;
-    // 	std::this_thread::sleep_for (std::chrono::seconds (7));
-    // 	std::cout << "Connecting nodes..." << std::endl;
+    println!("Waiting for nodes to spin up...");
+    std::thread::sleep(Duration::from_secs(7));
+    println!("Connecting nodes...");
 
     // 	boost::asio::io_context ioc;
-
     // 	debug_assert (!nano::signal_handler_impl);
     // 	nano::signal_handler_impl = [&ioc] () {
     // 		ioc.stop ();

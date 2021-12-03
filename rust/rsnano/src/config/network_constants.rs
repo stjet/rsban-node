@@ -186,6 +186,16 @@ impl NetworkConstants {
     pub fn cleanup_cutoff_s(&self) -> i64 {
         self.cleanup_period_s * 5
     }
+
+    pub fn get_current_network_as_string(&self) -> &str {
+        match self.current_network {
+            Networks::NanoDevNetwork => "dev",
+            Networks::NanoBetaNetwork => "beta",
+            Networks::NanoLiveNetwork => "live",
+            Networks::NanoTestNetwork => "test",
+            Networks::Invalid => panic!("invalid network"),
+        }
+    }
 }
 
 fn get_env_or_default<T>(variable_name: &str, default: T) -> T

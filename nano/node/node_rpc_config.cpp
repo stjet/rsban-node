@@ -10,9 +10,24 @@ nano::node_rpc_config::node_rpc_config ()
 	rsnano::NodeRpcConfigDto dto;
 	if (rsnano::rsn_node_rpc_config_create (&dto) < 0)
 		throw std::runtime_error ("could not create node rpc config");
+	load_dto (dto);
+}
+
+void nano::node_rpc_config::load_dto (rsnano::NodeRpcConfigDto & dto)
+{
 	enable_sign_hash = dto.enable_sign_hash;
 	child_process.enable = dto.enable_child_process;
 	child_process.rpc_path = std::string (reinterpret_cast<const char *> (dto.rpc_path), dto.rpc_path_length);
+}
+
+rsnano::NodeRpcConfigDto nano::node_rpc_config::to_dto () const
+{
+	rsnano::NodeRpcConfigDto dto;
+	dto.enable_sign_hash = enable_sign_hash;
+	dto.enable_child_process = child_process.enable;
+	std::copy (child_process.rpc_path.begin (), child_process.rpc_path.end (), std::begin (dto.rpc_path));
+	dto.rpc_path_length = child_process.rpc_path.size ();
+	return dto;
 }
 
 nano::error nano::node_rpc_config::serialize_json (nano::jsonconfig & json) const
@@ -25,17 +40,6 @@ nano::error nano::node_rpc_config::serialize_json (nano::jsonconfig & json) cons
 	child_process_l.put ("rpc_path", child_process.rpc_path);
 	json.put_child ("child_process", child_process_l);
 	return json.get_error ();
-}
-
-nano::error nano::node_rpc_config::serialize_toml (nano::tomlconfig & toml) const
-{
-	toml.put ("enable_sign_hash", enable_sign_hash, "Allow or disallow signing of hashes.\ntype:bool");
-
-	nano::tomlconfig child_process_l;
-	child_process_l.put ("enable", child_process.enable, "Enable or disable RPC child process. If false, an in-process RPC server is used.\ntype:bool");
-	child_process_l.put ("rpc_path", child_process.rpc_path, "Path to the nano_rpc executable. Must be set if child process is enabled.\ntype:string,path");
-	toml.put_child ("child_process", child_process_l);
-	return toml.get_error ();
 }
 
 nano::error nano::node_rpc_config::deserialize_toml (nano::tomlconfig & toml)

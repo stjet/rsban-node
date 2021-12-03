@@ -1,9 +1,13 @@
 use crate::config::{NetworkConstants, Networks, WorkThresholds};
 use anyhow::Result;
+use once_cell::sync::Lazy;
 
 use super::{
     BootstrapConstants, LedgerConstants, NodeConstants, PortmappingConstants, VotingConstants,
 };
+
+pub static DEV_NETWORK_PARAMS: Lazy<NetworkParams> =
+    Lazy::new(|| NetworkParams::new(Networks::NanoDevNetwork).unwrap());
 
 pub struct NetworkParams {
     pub kdf_work: u32,

@@ -426,6 +426,14 @@ impl RawKey {
     pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
         &self.bytes
     }
+    
+    pub fn encode_hex(&self) -> String {
+        let mut result = String::with_capacity(64);
+        for byte in self.bytes {
+            write!(&mut result, "{:02X}", byte).unwrap();
+        }
+        result
+    }
 }
 
 impl TryFrom<&RawKey> for PublicKey {

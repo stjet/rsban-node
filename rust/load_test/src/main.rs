@@ -1,12 +1,17 @@
 use anyhow::anyhow;
 use anyhow::Result;
 use clap::{App, Arg};
+use rand::Rng;
+use rsnano::secure::DEV_GENESIS_KEY;
 use rsnano::secure::DEV_NETWORK_PARAMS;
+use serde_json::json;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Child;
 use std::process::Command;
+use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
+use tokio::time::sleep;
 
 use rsnano::{
     config::{
@@ -53,13 +58,12 @@ fn write_config_files(data_path: &Path, index: usize) -> Result<()> {
     Ok(())
 }
 
-// class account final
-// {
-// public:
-// 	std::string private_key;
-// 	std::string public_key;
-// 	std::string as_string;
-// };
+#[derive(Debug)]
+struct Account {
+    pub private_key: String,
+    pub public_key: String,
+    pub as_string: String,
+}
 
 // class account_info final
 // {
@@ -76,7 +80,7 @@ fn write_config_files(data_path: &Path, index: usize) -> Result<()> {
 // };
 
 // void send_receive (boost::asio::io_context & io_ctx, std::string const & wallet, std::string const & source, std::string const & destination, std::atomic<int> & send_calls_remaining, tcp::resolver::results_type const & results, boost::asio::yield_context yield)
-// {
+async fn send_receive(wallet: &str, source: &str, destination: &str, send_calls_remaining: &AtomicUsize) {
 // 	boost::beast::flat_buffer buffer;
 // 	http::request<http::string_body> req;
 // 	http::response<http::string_body> res;
@@ -142,90 +146,65 @@ fn write_config_files(data_path: &Path, index: usize) -> Result<()> {
 // 		socket.shutdown (tcp::socket::shutdown_both, ec);
 // 		debug_assert (!ec || ec == boost::system::errc::not_connected);
 // 	}
-// }
+}
 
-// boost::property_tree::ptree rpc_request (boost::property_tree::ptree const & request, boost::asio::io_context & ioc, tcp::resolver::results_type const & results)
-// {
-// 	debug_assert (results.size () == 1);
+async fn rpc_request(request: &serde_json::Value) -> Result<serde_json::Value> {
+    let client = reqwest::ClientBuilder::new()
+        .timeout(Duration::from_secs(5))
+        .build()?;
+    let result = client
+        .post(format!("http://[::1]:{}/", RPC_PORT_START))
+        .json(request)
+        .send()
+        .await?
+        .error_for_status()?
+        .json::<serde_json::Value>()
+        .await?;
+    Ok(result)
+}
 
-// 	std::promise<boost::optional<boost::property_tree::ptree>> promise;
-// 	boost::asio::spawn (ioc, [&ioc, &results, request, &promise] (boost::asio::yield_context yield) {
-// 		socket_type socket (ioc);
-// 		boost::beast::flat_buffer buffer;
-// 		http::request<http::string_body> req;
-// 		http::response<http::string_body> res;
+async fn keepalive_rpc(port: u16) -> Result<()> {
+    let request = json!({
+        "action": "keepalive",
+        "address": "::1",
+        "port": port
+    });
+    rpc_request(&request).await?;
+    Ok(())
+}
 
-// 		boost::asio::async_connect (socket, results.cbegin (), results.cend (), yield);
-// 		std::stringstream ostream;
-// 		boost::property_tree::write_json (ostream, request);
+async fn key_create_rpc() -> Result<Account> {
+    let request = json!({
+        "action": "key_create"
+    });
+    let json = rpc_request(&request).await?;
 
-// 		req.method (http::verb::post);
-// 		req.version (11);
-// 		req.target ("/");
-// 		req.body () = ostream.str ();
-// 		req.prepare_payload ();
+    let account = Account {
+        private_key: json["private"].to_string(),
+        public_key: json["public"].to_string(),
+        as_string: json["account"].to_string(),
+    };
 
-// 		http::async_write (socket, req, yield);
-// 		http::async_read (socket, buffer, res, yield);
+    Ok(account)
+}
 
-// 		boost::property_tree::ptree json;
-// 		std::stringstream body (res.body ());
-// 		boost::property_tree::read_json (body, json);
-// 		promise.set_value (json);
-// 	});
+async fn wallet_create_rpc() -> Result<String> {
+    let request = json!({
+        "action": "wallet_create"
+    });
+    let json = rpc_request(&request).await?;
+    Ok(json["wallet"].to_string())
+}
 
-// 	auto future = promise.get_future ();
-// 	if (future.wait_for (std::chrono::seconds (5)) != std::future_status::ready)
-// 	{
-// 		throw std::runtime_error ("RPC request timed out");
-// 	}
-// 	auto response = future.get ();
-// 	debug_assert (response.is_initialized ());
-// 	return response.value_or (decltype (response)::argument_type{});
-// }
-
-// void keepalive_rpc (boost::asio::io_context & ioc, tcp::resolver::results_type const & results, uint16_t port)
-// {
-// 	boost::property_tree::ptree request;
-// 	request.put ("action", "keepalive");
-// 	request.put ("address", "::1");
-// 	request.put ("port", port);
-
-// 	rpc_request (request, ioc, results);
-// }
-
-// account key_create_rpc (boost::asio::io_context & ioc, tcp::resolver::results_type const & results)
-// {
-// 	boost::property_tree::ptree request;
-// 	request.put ("action", "key_create");
-
-// 	auto json = rpc_request (request, ioc, results);
-
-// 	account account_l;
-// 	account_l.private_key = json.get<std::string> ("private");
-// 	account_l.public_key = json.get<std::string> ("public");
-// 	account_l.as_string = json.get<std::string> ("account");
-
-// 	return account_l;
-// }
-
-// std::string wallet_create_rpc (boost::asio::io_context & ioc, tcp::resolver::results_type const & results)
-// {
-// 	boost::property_tree::ptree request;
-// 	request.put ("action", "wallet_create");
-
-// 	auto json = rpc_request (request, ioc, results);
-// 	return json.get<std::string> ("wallet");
-// }
-
-// void wallet_add_rpc (boost::asio::io_context & ioc, tcp::resolver::results_type const & results, std::string const & wallet, std::string const & prv_key)
-// {
-// 	boost::property_tree::ptree request;
-// 	request.put ("action", "wallet_add");
-// 	request.put ("wallet", wallet);
-// 	request.put ("key", prv_key);
-// 	rpc_request (request, ioc, results);
-// }
+async fn wallet_add_rpc(wallet: &str, prv_key: &str) -> Result<()> {
+    let request = json!({
+        "action": "wallet_add",
+        "wallet": wallet,
+        "key": prv_key
+    });
+    rpc_request(&request).await?;
+    Ok(())
+}
 
 // void stop_rpc (boost::asio::io_context & ioc, tcp::resolver::results_type const & results)
 // {
@@ -257,7 +236,8 @@ fn write_config_files(data_path: &Path, index: usize) -> Result<()> {
 // 	return account_info;
 // }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     force_nano_dev_network();
 
     let matches = App::new("Nano Load Test")
@@ -265,26 +245,27 @@ fn main() -> Result<()> {
         .arg(Arg::with_name("node_count").short("n").long("node_count").help("The number of nodes to spin up").default_value("10"))
         .arg(Arg::with_name("node_path").long("node_path").takes_value(true).help( "The path to the nano_node to test"))
         .arg(Arg::with_name("rpc_path").long("rpc_path").takes_value(true).help("The path to the nano_rpc to test"))
+        .arg(Arg::with_name("destination_count").long("destination_count").takes_value(true).default_value("2").help("How many destination accounts to choose between"))
+        .arg(Arg::with_name("send_count").short("s").long("send_count").takes_value(true).default_value("2000").help("How many send blocks to generate"))
+        .arg(Arg::with_name("simultaneous_process_calls").long("simultaneous_process_calls").takes_value(true).default_value("20").help("Number of simultaneous rpc sends to do"))
         .get_matches();
-
-    // 	boost::program_options::options_description description ("Command line options");
-
-    // 	description.add_options ()
-    // 		("send_count,s", boost::program_options::value<int> ()->default_value (2000), "How many send blocks to generate")
-    // 		("simultaneous_process_calls", boost::program_options::value<int> ()->default_value (20), "Number of simultaneous rpc sends to do")
-    // 		("destination_count", boost::program_options::value<int> ()->default_value (2), "How many destination accounts to choose between")
 
     let node_count = matches
         .value_of("node_count")
         .unwrap()
         .parse::<usize>()
         .unwrap();
-    // 	auto destination_count = vm.find ("destination_count")->second.as<int> ();
-    // 	auto send_count = vm.find ("send_count")->second.as<int> ();
-    // 	auto simultaneous_process_calls = vm.find ("simultaneous_process_calls")->second.as<int> ();
 
-    // 	boost::system::error_code err;
-    // 	auto running_executable_filepath = boost::dll::program_location (err);
+    let destination_count = matches
+        .value_of("destination_count")
+        .unwrap()
+        .parse::<usize>()
+        .unwrap();
+    
+    let send_count = matches.value_of("send_count").unwrap().parse::<usize>().unwrap();
+
+    let simultaneous_process_calls  = matches.value_of("simultaneous_process_calls").unwrap().parse::<usize>().unwrap();
+    
     let running_executable_filepath = std::env::current_exe().unwrap();
 
     let node_path: PathBuf = match matches.value_of("node_path") {
@@ -362,7 +343,7 @@ fn main() -> Result<()> {
     }
 
     println!("Waiting for nodes to spin up...");
-    std::thread::sleep(Duration::from_secs(7));
+    sleep(Duration::from_secs(7)).await;
     println!("Connecting nodes...");
 
     // 	boost::asio::io_context ioc;
@@ -378,115 +359,107 @@ fn main() -> Result<()> {
     // 	auto const primary_node_results = resolver.resolve ("::1", std::to_string (rpc_port_start));
 
     // 	std::thread t ([send_count, &ioc, &primary_node_results, &resolver, &node_count, &destination_count] () {
-    // 		for (int i = 0; i < node_count; ++i)
-    // 		{
-    // 			keepalive_rpc (ioc, primary_node_results, peering_port_start + i);
-    // 		}
+    let t = tokio::spawn(async move {
+        for i in 0..node_count {
+            keepalive_rpc(PEERING_PORT_START + i as u16).await?;
+        }
 
-    // 		std::cout << "Beginning tests" << std::endl;
+        println!("Beginning tests");
 
-    // 		// Create keys
-    // 		std::vector<account> destination_accounts;
-    // 		for (int i = 0; i < destination_count; ++i)
-    // 		{
-    // 			destination_accounts.emplace_back (key_create_rpc (ioc, primary_node_results));
-    // 		}
+        // Create keys
+        let mut destination_accounts = Vec::new();
+        for i in 0..destination_count {
+            destination_accounts.push(key_create_rpc().await?);
+        }
 
-    // 		// Create wallet
-    // 		std::string wallet = wallet_create_rpc (ioc, primary_node_results);
+        // Create wallet
+        let wallet = wallet_create_rpc().await?;
 
-    // 		// Add genesis account to it
-    // 		wallet_add_rpc (ioc, primary_node_results, wallet, nano::dev::genesis_key.prv.to_string ());
+        // Add genesis account to it
+        wallet_add_rpc(&wallet, &DEV_GENESIS_KEY.private_key().encode_hex()).await?;
 
-    // 		// Add destination accounts
-    // 		for (auto & account : destination_accounts)
-    // 		{
-    // 			wallet_add_rpc (ioc, primary_node_results, wallet, account.private_key);
-    // 		}
+        // Add destination accounts
+        for account in &destination_accounts {
+        	wallet_add_rpc(&wallet, &account.private_key).await?;
+        }
 
-    // 		std::cout << "\rPrimary node processing transactions: 00%";
+        print!("\rPrimary node processing transactions: 00%");
 
-    // 		std::random_device rd;
-    // 		std::mt19937 mt (rd ());
-    // 		std::uniform_int_distribution<size_t> dist (0, destination_accounts.size () - 1);
+        // 		std::atomic<int> send_calls_remaining{ send_count };
 
-    // 		std::atomic<int> send_calls_remaining{ send_count };
+        for i in 0..send_count {
+            let destination_account = if i < destination_accounts.len() {
+                &destination_accounts[i]
+            } else {
+                let random_account_index = rand::thread_rng().gen_range(0..destination_accounts.len());
+                &destination_accounts[random_account_index]
+            };
 
-    // 		for (auto i = 0; i < send_count; ++i)
-    // 		{
-    // 			account * destination_account;
-    // 			if (i < destination_accounts.size ())
-    // 			{
-    // 				destination_account = &destination_accounts[i];
-    // 			}
-    // 			else
-    // 			{
-    // 				auto random_account_index = dist (mt);
-    // 				destination_account = &destination_accounts[random_account_index];
-    // 			}
+        // Send from genesis account to different accounts and receive the funds
 
-    // 			// Send from genesis account to different accounts and receive the funds
-    // 			boost::asio::spawn (ioc, [&ioc, &primary_node_results, &wallet, destination_account, &send_calls_remaining] (boost::asio::yield_context yield) {
-    // 				send_receive (ioc, wallet, nano::dev::genesis->account ().to_account (), destination_account->as_string, send_calls_remaining, primary_node_results, yield);
-    // 			});
-    // 		}
+        // 			boost::asio::spawn (ioc, [&ioc, &primary_node_results, &wallet, destination_account, &send_calls_remaining] (boost::asio::yield_context yield) {
+        // 				send_receive (ioc, wallet, nano::dev::genesis->account ().to_account (), destination_account->as_string, send_calls_remaining, primary_node_results, yield);
+        // 			});
+        }
 
-    // 		while (send_calls_remaining != 0)
-    // 		{
-    // 			static int last_percent = 0;
-    // 			auto percent = static_cast<int> (100 * ((send_count - send_calls_remaining) / static_cast<double> (send_count)));
+        // 		while (send_calls_remaining != 0)
+        // 		{
+        // 			static int last_percent = 0;
+        // 			auto percent = static_cast<int> (100 * ((send_count - send_calls_remaining) / static_cast<double> (send_count)));
 
-    // 			if (last_percent != percent)
-    // 			{
-    // 				std::cout << "\rPrimary node processing transactions: " << std::setfill ('0') << std::setw (2) << percent << "%";
-    // 				last_percent = percent;
-    // 			}
-    // 		}
+        // 			if (last_percent != percent)
+        // 			{
+        // 				std::cout << "\rPrimary node processing transactions: " << std::setfill ('0') << std::setw (2) << percent << "%";
+        // 				last_percent = percent;
+        // 			}
+        // 		}
 
-    // 		std::cout << "\rPrimary node processed transactions                " << std::endl;
+        // 		std::cout << "\rPrimary node processed transactions                " << std::endl;
 
-    // 		std::cout << "Waiting for nodes to catch up..." << std::endl;
+        // 		std::cout << "Waiting for nodes to catch up..." << std::endl;
 
-    // 		std::map<std::string, account_info> known_account_info;
-    // 		for (int i = 0; i < destination_accounts.size (); ++i)
-    // 		{
-    // 			known_account_info.emplace (destination_accounts[i].as_string, account_info_rpc (ioc, primary_node_results, destination_accounts[i].as_string));
-    // 		}
+        // 		std::map<std::string, account_info> known_account_info;
+        // 		for (int i = 0; i < destination_accounts.size (); ++i)
+        // 		{
+        // 			known_account_info.emplace (destination_accounts[i].as_string, account_info_rpc (ioc, primary_node_results, destination_accounts[i].as_string));
+        // 		}
 
-    // 		nano::timer<std::chrono::milliseconds> timer;
-    // 		timer.start ();
+        // 		nano::timer<std::chrono::milliseconds> timer;
+        // 		timer.start ();
 
-    // 		for (int i = 1; i < node_count; ++i)
-    // 		{
-    // 			auto const results = resolver.resolve ("::1", std::to_string (rpc_port_start + i));
-    // 			for (auto & account_info : known_account_info)
-    // 			{
-    // 				while (true)
-    // 				{
-    // 					auto other_account_info = account_info_rpc (ioc, results, account_info.first);
-    // 					if (!other_account_info.error && account_info.second == other_account_info)
-    // 					{
-    // 						// Found the account in this node
-    // 						break;
-    // 					}
+        // 		for (int i = 1; i < node_count; ++i)
+        // 		{
+        // 			auto const results = resolver.resolve ("::1", std::to_string (rpc_port_start + i));
+        // 			for (auto & account_info : known_account_info)
+        // 			{
+        // 				while (true)
+        // 				{
+        // 					auto other_account_info = account_info_rpc (ioc, results, account_info.first);
+        // 					if (!other_account_info.error && account_info.second == other_account_info)
+        // 					{
+        // 						// Found the account in this node
+        // 						break;
+        // 					}
 
-    // 					if (timer.since_start () > std::chrono::seconds (120))
-    // 					{
-    // 						throw std::runtime_error ("Timed out");
-    // 					}
+        // 					if (timer.since_start () > std::chrono::seconds (120))
+        // 					{
+        // 						throw std::runtime_error ("Timed out");
+        // 					}
 
-    // 					std::this_thread::sleep_for (std::chrono::seconds (1));
-    // 				}
-    // 			}
+        // 					std::this_thread::sleep_for (std::chrono::seconds (1));
+        // 				}
+        // 			}
 
-    // 			stop_rpc (ioc, results);
-    // 		}
+        // 			stop_rpc (ioc, results);
+        // 		}
 
-    // 		// Stop main node
-    // 		stop_rpc (ioc, primary_node_results);
+        // 		// Stop main node
+        // 		stop_rpc (ioc, primary_node_results);
+        anyhow::Result::<()>::Ok(())
+    });
     // 	});
     // 	nano::thread_runner runner (ioc, simultaneous_process_calls);
-    // 	t.join ();
+    t.await??;
     // 	runner.join ();
 
     // 	for (auto & node : nodes)

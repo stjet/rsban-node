@@ -16,7 +16,7 @@ pub mod config;
 mod epoch;
 pub mod ffi;
 mod ipc;
-mod numbers;
+pub mod numbers;
 pub mod secure;
 mod stats;
 mod token_bucket;

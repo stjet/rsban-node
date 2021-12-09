@@ -2,14 +2,18 @@ use anyhow::anyhow;
 use anyhow::Result;
 use clap::{App, Arg};
 use rand::Rng;
+use rsnano::secure::DEV_GENESIS;
 use rsnano::secure::DEV_GENESIS_KEY;
 use rsnano::secure::DEV_NETWORK_PARAMS;
 use serde_json::json;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Child;
 use std::process::Command;
 use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -79,73 +83,46 @@ struct Account {
 // 	bool error{ false };
 // };
 
-// void send_receive (boost::asio::io_context & io_ctx, std::string const & wallet, std::string const & source, std::string const & destination, std::atomic<int> & send_calls_remaining, tcp::resolver::results_type const & results, boost::asio::yield_context yield)
-async fn send_receive(wallet: &str, source: &str, destination: &str, send_calls_remaining: &AtomicUsize) {
-// 	boost::beast::flat_buffer buffer;
-// 	http::request<http::string_body> req;
-// 	http::response<http::string_body> res;
-// 	socket_type socket (io_ctx);
+async fn send_receive(
+    wallet: &str,
+    source: &str,
+    destination: &str,
+) -> Result<()> {
+    let request = json!({
+        "action": "send",
+        "wallet": wallet,
+        "source": source,
+        "destination": destination,
+        "amount": "1"
+    });
 
-// 	boost::asio::async_connect (socket, results.cbegin (), results.cend (), yield);
+    let client = reqwest::Client::new();
 
-// 	boost::property_tree::ptree request;
-// 	request.put ("action", "send");
-// 	request.put ("wallet", wallet);
-// 	request.put ("source", source);
-// 	request.put ("destination", destination);
-// 	request.put ("amount", "1");
-// 	std::stringstream ostream;
-// 	boost::property_tree::write_json (ostream, request);
+    let url = format!("http://[::1]:{}/", RPC_PORT_START);
+    let json: serde_json::Value = client
+        .post(&url)
+        .json(&request)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
 
-// 	req.method (http::verb::post);
-// 	req.version (11);
-// 	req.target ("/");
-// 	req.body () = ostream.str ();
-// 	req.prepare_payload ();
+    let block = json["block"].to_string();
 
-// 	http::async_write (socket, req, yield);
-// 	http::async_read (socket, buffer, res, yield);
-// 	boost::property_tree::ptree json;
-// 	std::stringstream body (res.body ());
-// 	boost::property_tree::read_json (body, json);
-// 	auto block = json.get<std::string> ("block");
-
-// 	// Shut down send socket
-// 	boost::system::error_code ec;
-// 	socket.shutdown (tcp::socket::shutdown_both, ec);
-// 	debug_assert (!ec || ec == boost::system::errc::not_connected);
-
-// 	{
-// 		// Start receive session
-// 		boost::beast::flat_buffer buffer;
-// 		http::request<http::string_body> req;
-// 		http::response<http::string_body> res1;
-// 		socket_type socket (io_ctx);
-
-// 		boost::asio::async_connect (socket, results.cbegin (), results.cend (), yield);
-
-// 		boost::property_tree::ptree request;
-// 		request.put ("action", "receive");
-// 		request.put ("wallet", wallet);
-// 		request.put ("account", destination);
-// 		request.put ("block", block);
-// 		std::stringstream ostream;
-// 		boost::property_tree::write_json (ostream, request);
-
-// 		req.method (http::verb::post);
-// 		req.version (11);
-// 		req.target ("/");
-// 		req.body () = ostream.str ();
-// 		req.prepare_payload ();
-
-// 		http::async_write (socket, req, yield);
-// 		http::async_read (socket, buffer, res, yield);
-// 		--send_calls_remaining;
-// 		// Gracefully close the socket
-// 		boost::system::error_code ec;
-// 		socket.shutdown (tcp::socket::shutdown_both, ec);
-// 		debug_assert (!ec || ec == boost::system::errc::not_connected);
-// 	}
+    let request = json!({
+        "action": "receive",
+        "wallet": wallet,
+        "account": destination,
+        "block": block
+    });
+    client
+        .post(url)
+        .json(&request)
+        .send()
+        .await?
+        .error_for_status()?;
+    Ok(())
 }
 
 async fn rpc_request(request: &serde_json::Value) -> Result<serde_json::Value> {
@@ -261,11 +238,19 @@ async fn main() -> Result<()> {
         .unwrap()
         .parse::<usize>()
         .unwrap();
-    
-    let send_count = matches.value_of("send_count").unwrap().parse::<usize>().unwrap();
 
-    let simultaneous_process_calls  = matches.value_of("simultaneous_process_calls").unwrap().parse::<usize>().unwrap();
-    
+    let send_count = matches
+        .value_of("send_count")
+        .unwrap()
+        .parse::<usize>()
+        .unwrap();
+
+    let simultaneous_process_calls = matches
+        .value_of("simultaneous_process_calls")
+        .unwrap()
+        .parse::<usize>()
+        .unwrap();
+
     let running_executable_filepath = std::env::current_exe().unwrap();
 
     let node_path: PathBuf = match matches.value_of("node_path") {
@@ -368,55 +353,73 @@ async fn main() -> Result<()> {
 
         // Create keys
         let mut destination_accounts = Vec::new();
-        for i in 0..destination_count {
+        for _ in 0..destination_count {
             destination_accounts.push(key_create_rpc().await?);
         }
+        let destination_accounts = Arc::new(destination_accounts);
 
         // Create wallet
-        let wallet = wallet_create_rpc().await?;
+        let wallet = Arc::new(wallet_create_rpc().await?);
 
         // Add genesis account to it
         wallet_add_rpc(&wallet, &DEV_GENESIS_KEY.private_key().encode_hex()).await?;
 
         // Add destination accounts
-        for account in &destination_accounts {
-        	wallet_add_rpc(&wallet, &account.private_key).await?;
+        for account in destination_accounts.iter() {
+            wallet_add_rpc(&wallet, &account.private_key).await?;
         }
 
         print!("\rPrimary node processing transactions: 00%");
+        std::io::stdout().flush()?;
 
-        // 		std::atomic<int> send_calls_remaining{ send_count };
+        let send_calls_remaining = Arc::new(AtomicUsize::new(send_count));
 
-        for i in 0..send_count {
-            let destination_account = if i < destination_accounts.len() {
-                &destination_accounts[i]
-            } else {
-                let random_account_index = rand::thread_rng().gen_range(0..destination_accounts.len());
-                &destination_accounts[random_account_index]
-            };
+        let join_handles = (0..send_count).map(|i| {
+            // Send from genesis account to different accounts and receive the funds
 
-        // Send from genesis account to different accounts and receive the funds
+            let destination_accounts = destination_accounts.clone();
+            let wallet = wallet.clone();
+            let send_calls_remaining = send_calls_remaining.clone();
 
-        // 			boost::asio::spawn (ioc, [&ioc, &primary_node_results, &wallet, destination_account, &send_calls_remaining] (boost::asio::yield_context yield) {
-        // 				send_receive (ioc, wallet, nano::dev::genesis->account ().to_account (), destination_account->as_string, send_calls_remaining, primary_node_results, yield);
-        // 			});
+            tokio::spawn(async move {
+                let destination_account = if i < destination_accounts.len() {
+                    &destination_accounts[i]
+                } else {
+                    let random_account_index =
+                        rand::thread_rng().gen_range(0..destination_accounts.len());
+                    &destination_accounts[random_account_index]
+                };
+
+                let genesis_account = DEV_GENESIS.as_block().account().encode_account();
+
+                let res = send_receive(
+                    &wallet,
+                    &genesis_account,
+                    &destination_account.as_string,
+                )
+                .await;
+                send_calls_remaining.fetch_sub(1, Ordering::SeqCst);
+                res
+            })
+        }).collect::<Vec<_>>();
+
+        let mut last_percent = 0;
+        while send_calls_remaining.load(Ordering::SeqCst) != 0 {
+            let percent = (100_f64 * ((send_count as f64 - send_calls_remaining.load(Ordering::SeqCst) as f64) / (send_count as f64))) as i32;
+            if last_percent != percent {
+                print!("\rPrimary node processing transactions: {:02}%. remaining: {:04}", percent, send_calls_remaining.load(Ordering::SeqCst));
+                std::io::stdout().flush()?;
+                last_percent = percent;
+                sleep(Duration::from_millis(100)).await;
+            }
         }
 
-        // 		while (send_calls_remaining != 0)
-        // 		{
-        // 			static int last_percent = 0;
-        // 			auto percent = static_cast<int> (100 * ((send_count - send_calls_remaining) / static_cast<double> (send_count)));
+        for h in join_handles{
+            h.await??;
+        }
 
-        // 			if (last_percent != percent)
-        // 			{
-        // 				std::cout << "\rPrimary node processing transactions: " << std::setfill ('0') << std::setw (2) << percent << "%";
-        // 				last_percent = percent;
-        // 			}
-        // 		}
-
-        // 		std::cout << "\rPrimary node processed transactions                " << std::endl;
-
-        // 		std::cout << "Waiting for nodes to catch up..." << std::endl;
+        println!("\rPrimary node processed transactions                ");
+        println!("Waiting for nodes to catch up...");
 
         // 		std::map<std::string, account_info> known_account_info;
         // 		for (int i = 0; i < destination_accounts.size (); ++i)

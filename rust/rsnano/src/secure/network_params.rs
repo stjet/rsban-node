@@ -1,4 +1,4 @@
-use crate::config::{NetworkConstants, Networks, WorkThresholds};
+use crate::{config::{NetworkConstants, Networks, WorkThresholds}, blocks::BlockEnum};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
@@ -8,6 +8,11 @@ use super::{
 
 pub static DEV_NETWORK_PARAMS: Lazy<NetworkParams> =
     Lazy::new(|| NetworkParams::new(Networks::NanoDevNetwork).unwrap());
+
+pub static DEV_CONSTANTS: Lazy<&LedgerConstants> = 
+    Lazy::new(|| &DEV_NETWORK_PARAMS.ledger);
+
+pub static DEV_GENESIS: Lazy<&BlockEnum> = Lazy::new(|| &DEV_CONSTANTS.genesis);
 
 pub struct NetworkParams {
     pub kdf_work: u32,

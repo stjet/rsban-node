@@ -15,7 +15,7 @@ jobs:
       matrix:
         TEST_USE_ROCKSDB: [1]
         COMPILER: [gcc, clang-6]
-        RELEASE: 
+        RELEASE:
           - ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-20.04
     env:

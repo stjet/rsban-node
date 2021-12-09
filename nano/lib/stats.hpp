@@ -305,6 +305,7 @@ public:
 		frontier_confirmation_failed,
 		frontier_confirmation_successful,
 		error_socket_close,
+		request_underflow,
 
 		// vote specific
 		vote_valid,

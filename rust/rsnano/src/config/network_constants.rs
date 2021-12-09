@@ -45,9 +45,9 @@ impl NetworkConstants {
             60
         };
         let max_peers_per_ip = if network == Networks::NanoDevNetwork {
-            10
+            20
         } else {
-            5
+            10
         };
         Self {
             work,

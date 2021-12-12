@@ -600,8 +600,6 @@ if(NANO_TEST OR RAIBLOCKS_TEST)
     set(gtest_force_shared_crt OFF)
   endif()
 
-  add_subdirectory(nano/load_test)
-
   # FIXME: This fixes googletest GOOGLETEST_VERSION requirement
   set(GOOGLETEST_VERSION 1.11.0)
   add_subdirectory(gtest/googletest)
@@ -620,7 +618,7 @@ if(NANO_TEST OR RAIBLOCKS_TEST)
     build_tests
     COMMAND echo "BATCH BUILDING TESTS"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    DEPENDS core_test load_test rpc_test nano_node nano_rpc)
+    DEPENDS core_test rpc_test nano_node nano_rpc)
 
   add_custom_target(
     run_tests

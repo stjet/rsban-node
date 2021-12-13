@@ -127,7 +127,7 @@ async fn main() -> Result<()> {
             .await?;
     }
 
-    let known_account_info = BlockFactory::create_blocks(
+    let known_account_info = create_send_and_receive_blocks(
         args.send_count,
         args.simultaneous_process_calls,
         destination_accounts.clone(),

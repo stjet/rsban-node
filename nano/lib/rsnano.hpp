@@ -899,6 +899,8 @@ uint64_t rsn_state_block_work (const StateBlockHandle * handle);
 
 void rsn_state_block_work_set (StateBlockHandle * handle, uint64_t work);
 
+uint16_t rsn_test_node_port ();
+
 void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
 
 int32_t rsn_unique_path (uint16_t network, uint8_t * result, uintptr_t size);

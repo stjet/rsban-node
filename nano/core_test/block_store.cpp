@@ -346,7 +346,7 @@ TEST (bootstrap, simple)
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::keypair key1;
-	auto block1 (std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5));
+	std::shared_ptr<nano::block> block1 = std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5);
 	auto transaction (store->tx_begin_write ());
 	auto block2 (store->unchecked.get (transaction, block1->previous ()));
 	ASSERT_TRUE (block2.empty ());
@@ -370,7 +370,7 @@ TEST (unchecked, multiple)
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::keypair key1;
-	auto block1 (std::make_shared<nano::send_block> (4, 1, 2, key1.prv, key1.pub, 5));
+	std::shared_ptr<nano::block> block1 = std::make_shared<nano::send_block> (4, 1, 2, key1.prv, key1.pub, 5);
 	auto transaction (store->tx_begin_write ());
 	auto block2 (store->unchecked.get (transaction, block1->previous ()));
 	ASSERT_TRUE (block2.empty ());
@@ -388,7 +388,7 @@ TEST (unchecked, double_put)
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::keypair key1;
-	auto block1 (std::make_shared<nano::send_block> (4, 1, 2, key1.prv, key1.pub, 5));
+	std::shared_ptr<nano::block> block1 = std::make_shared<nano::send_block> (4, 1, 2, key1.prv, key1.pub, 5);
 	auto transaction (store->tx_begin_write ());
 	auto block2 (store->unchecked.get (transaction, block1->previous ()));
 	ASSERT_TRUE (block2.empty ());
@@ -404,11 +404,11 @@ TEST (unchecked, multiple_get)
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::keypair key1;
-	auto block1 (std::make_shared<nano::send_block> (4, 1, 2, key1.prv, key1.pub, 5));
+	std::shared_ptr<nano::block> block1 = std::make_shared<nano::send_block> (4, 1, 2, key1.prv, key1.pub, 5);
 	nano::keypair key2;
-	auto block2 (std::make_shared<nano::send_block> (3, 1, 2, key2.prv, key2.pub, 5));
+	std::shared_ptr<nano::block> block2 = std::make_shared<nano::send_block> (3, 1, 2, key2.prv, key2.pub, 5);
 	nano::keypair key3;
-	auto block3 (std::make_shared<nano::send_block> (5, 1, 2, key3.prv, key3.pub, 5));
+	std::shared_ptr<nano::block> block3 = std::make_shared<nano::send_block> (5, 1, 2, key3.prv, key3.pub, 5);
 	{
 		auto transaction (store->tx_begin_write ());
 		store->unchecked.put (transaction, block1->previous (), block1); // unchecked1
@@ -481,8 +481,7 @@ TEST (block_store, empty_bootstrap)
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	auto transaction (store->tx_begin_read ());
-	auto begin (store->unchecked.begin (transaction));
-	auto end (store->unchecked.end ());
+	auto [begin, end] = store->unchecked.full_range (transaction);
 	ASSERT_EQ (end, begin);
 }
 
@@ -492,7 +491,7 @@ TEST (block_store, one_bootstrap)
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::keypair key;
-	auto block1 (std::make_shared<nano::send_block> (0, 1, 2, key.prv, key.pub, 5));
+	std::shared_ptr<nano::block> block1 = std::make_shared<nano::send_block> (0, 1, 2, key.prv, key.pub, 5);
 	auto transaction (store->tx_begin_write ());
 	store->unchecked.put (transaction, block1->hash (), block1);
 	auto begin (store->unchecked.begin (transaction));
@@ -929,8 +928,8 @@ TEST (block_store, DISABLED_change_dupsort) // Unchecked is no longer dupsort ta
 	auto transaction (store.tx_begin_write ());
 	ASSERT_EQ (0, mdb_drop (store.env.tx (transaction), store.unchecked_handle, 1));
 	ASSERT_EQ (0, mdb_dbi_open (store.env.tx (transaction), "unchecked", MDB_CREATE, &store.unchecked_handle));
-	auto send1 (std::make_shared<nano::send_block> (0, 0, 0, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, 0));
-	auto send2 (std::make_shared<nano::send_block> (1, 0, 0, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, 0));
+	std::shared_ptr<nano::block> send1 = std::make_shared<nano::send_block> (0, 0, 0, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, 0);
+	std::shared_ptr<nano::block> send2 = std::make_shared<nano::send_block> (1, 0, 0, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, 0);
 	ASSERT_NE (send1->hash (), send2->hash ());
 	store.unchecked.put (transaction, send1->hash (), send1);
 	store.unchecked.put (transaction, send1->hash (), send2);
@@ -2031,7 +2030,7 @@ TEST (rocksdb_block_store, tombstone_count)
 		ASSERT_TRUE (!store->init_error ());
 		auto transaction = store->tx_begin_write ();
 		nano::keypair key1;
-		auto block1 (std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5));
+		std::shared_ptr<nano::block> block1 = std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5);
 		store->unchecked.put (transaction, block1->previous (), block1);
 		ASSERT_EQ (store->tombstone_map.at (nano::tables::unchecked).num_since_last_flush.load (), 0);
 		store->unchecked.del (transaction, nano::unchecked_key (block1->previous (), block1->hash ()));

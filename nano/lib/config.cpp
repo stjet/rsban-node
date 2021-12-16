@@ -354,6 +354,11 @@ uint64_t get_env_threshold_or_default (char const * variable_name, uint64_t cons
 	return value ? boost::lexical_cast<HexTo<uint64_t>> (value) : default_value;
 }
 
+uint16_t test_node_port ()
+{
+	return rsnano::rsn_test_node_port ();
+}
+
 std::array<uint8_t, 2> test_magic_number ()
 {
 	auto test_env = get_env_or_default ("NANO_TEST_MAGIC_NUMBER", "RX");

@@ -2,7 +2,7 @@ use std::{convert::TryFrom, ffi::CStr, os::raw::c_char};
 
 use num::FromPrimitive;
 
-use crate::config::{NetworkConstants, WorkThresholds};
+use crate::config::{NetworkConstants, WorkThresholds, test_node_port};
 
 use super::{fill_work_thresholds_dto, WorkThresholdsDto};
 
@@ -120,6 +120,11 @@ pub unsafe extern "C" fn rsn_network_constants_active_network_set_str(
         Ok(_) => 0,
         Err(_) => -1,
     }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_test_node_port() -> u16{
+    test_node_port()
 }
 
 impl TryFrom<NetworkConstantsDto> for NetworkConstants {

@@ -103,10 +103,15 @@ static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
 
 impl NodeConfig {
     pub fn new(peering_port: u16, logging: Logging, network_params: &NetworkParams) -> Self {
-        // The default constructor passes 0 to indicate we should use the default port,
-        // which is determined at node startup based on active network.
         let peering_port = if peering_port == 0 {
-            network_params.network.default_node_port
+            // comment for posterity:
+            // - we used to consider ports being 0 a sentinel that meant to use a default port for that specific purpose
+            // - the actual default value was determined based on the active network (e.g. dev network peering port = 44000)
+            // - now, the 0 value means something different instead: user wants to let the OS pick a random port
+            // - for the specific case of the peering port, after it gets picked, it can be retrieved by client code via
+            //   node.network.endpoint ().port ()
+            // - the config value does not get back-propagated because it represents the choice of the user, and that was 0
+            0
         } else {
             peering_port
         };

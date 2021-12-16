@@ -135,11 +135,17 @@ pub struct BlockHashBuilder {
     blake: blake2::VarBlake2b,
 }
 
-impl BlockHashBuilder {
-    pub fn new() -> Self {
+impl Default for BlockHashBuilder {
+    fn default() -> Self {
         Self {
             blake: blake2::VarBlake2b::new_keyed(&[], 32),
         }
+    }
+}
+
+impl BlockHashBuilder {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     pub fn update(mut self, data: impl AsRef<[u8]>) -> Self {
@@ -426,7 +432,7 @@ impl RawKey {
     pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
         &self.bytes
     }
-    
+
     pub fn encode_hex(&self) -> String {
         let mut result = String::with_capacity(64);
         for byte in self.bytes {

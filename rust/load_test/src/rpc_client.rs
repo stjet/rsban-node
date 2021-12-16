@@ -35,7 +35,8 @@ impl RpcClient {
     }
 
     async fn rpc_request(&self, request: &serde_json::Value) -> Result<serde_json::Value> {
-        let result = self.client
+        let result = self
+            .client
             .post(self.url.clone())
             .json(request)
             .send()
@@ -62,7 +63,12 @@ impl RpcClient {
         Ok(())
     }
 
-    pub async fn send_block(&self, wallet: &str, source: &str, destination: &str) -> Result<String> {
+    pub async fn send_block(
+        &self,
+        wallet: &str,
+        source: &str,
+        destination: &str,
+    ) -> Result<String> {
         let request = json!({
             "action": "send",
             "wallet": wallet,

@@ -58,7 +58,7 @@ pub fn remove_temporary_directories() {
         filename.push("-lock");
         lockfile.set_file_name(filename);
 
-        if let Ok(_) = std::fs::metadata(lockfile.as_path()) {
+        if std::fs::metadata(lockfile.as_path()).is_ok() {
             if let Err(e) = std::fs::remove_file(lockfile) {
                 eprintln!("Could not remove temporary lock file: {}", e);
             }

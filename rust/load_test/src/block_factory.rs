@@ -16,14 +16,14 @@ use tokio::{spawn, sync::Semaphore, time::sleep};
 pub async fn create_send_and_receive_blocks(
     send_count: usize,
     simultaneous_process_calls: usize,
-    destination_accounts: Arc<Vec<Account>>,
-    wallet: Arc<String>,
+    destination_accounts: Vec<Account>,
+    wallet: String,
     node_client: Arc<RpcClient>,
 ) -> Result<HashMap<String, AccountInfo>> {
     let factory = Arc::new(BlockFactory {
         send_count,
         simultaneous_calls_semaphore: Arc::new(Semaphore::new(simultaneous_process_calls)),
-        send_calls_remaining: Arc::new(AtomicUsize::new(send_count)),
+        send_calls_remaining: AtomicUsize::new(send_count),
         destination_accounts,
         wallet,
         node_client,
@@ -32,8 +32,7 @@ pub async fn create_send_and_receive_blocks(
     let f1 = factory.clone();
     let f2 = factory.clone();
 
-    let (send_result, wait_result) =
-        tokio::join!(spawn(send_loop(f1)), spawn(show_progress(f2)));
+    let (send_result, wait_result) = tokio::join!(spawn(send_loop(f1)), spawn(show_progress(f2)));
     send_result??;
     wait_result??;
 
@@ -46,9 +45,7 @@ async fn send_loop(block_factory: Arc<BlockFactory>) -> Result<()> {
     for i in 0..block_factory.send_count {
         let block_factory = block_factory.clone();
 
-        let handle = spawn(async move {
-            block_factory.send_and_receive(i).await
-        });
+        let handle = spawn(async move { block_factory.send_and_receive(i).await });
         join_handles.push(handle);
     }
 
@@ -61,9 +58,9 @@ async fn send_loop(block_factory: Arc<BlockFactory>) -> Result<()> {
 struct BlockFactory {
     send_count: usize,
     simultaneous_calls_semaphore: Arc<Semaphore>,
-    send_calls_remaining: Arc<AtomicUsize>,
-    destination_accounts: Arc<Vec<Account>>,
-    wallet: Arc<String>,
+    send_calls_remaining: AtomicUsize,
+    destination_accounts: Vec<Account>,
+    wallet: String,
     node_client: Arc<RpcClient>,
 }
 
@@ -91,7 +88,9 @@ impl BlockFactory {
     }
 
     async fn send_and_receive(&self, send_no: usize) -> Result<()> {
-        let _permit = Arc::clone(&self.simultaneous_calls_semaphore).acquire_owned().await?;
+        let _permit = Arc::clone(&self.simultaneous_calls_semaphore)
+            .acquire_owned()
+            .await?;
         let destination_account = self.get_destination_account(send_no);
         let genesis_account = DEV_GENESIS.as_block().account().encode_account();
 

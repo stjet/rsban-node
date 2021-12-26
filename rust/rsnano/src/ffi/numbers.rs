@@ -57,7 +57,7 @@ pub unsafe extern "C" fn rsn_sign_message(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_valdiate_message(
+pub unsafe extern "C" fn rsn_validate_message(
     pub_key: &[u8; 32],
     message: *const u8,
     len: usize,

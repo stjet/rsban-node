@@ -22,11 +22,11 @@ TEST (sign_message, sign_in_cpp_and_validate_in_rust)
 	std::copy (std::begin (key.pub.bytes), std::end (key.pub.bytes), std::begin (pub_key));
 	std::copy (std::begin (signature.bytes), std::end (signature.bytes), std::begin (sig_bytes));
 
-	auto validate_result = rsnano::rsn_valdiate_message (&pub_key, message, 32, &sig_bytes);
+	auto validate_result = rsnano::rsn_validate_message (&pub_key, message, 32, &sig_bytes);
 	ASSERT_EQ (validate_result, false);
 
 	message[31] = 1;
-	validate_result = rsnano::rsn_valdiate_message (&pub_key, message, 32, &sig_bytes);
+	validate_result = rsnano::rsn_validate_message (&pub_key, message, 32, &sig_bytes);
 	ASSERT_EQ (validate_result, true);
 }
 

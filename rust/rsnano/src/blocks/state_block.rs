@@ -1,16 +1,12 @@
 use std::ops::Deref;
 
 use crate::{
-    numbers::{
-        from_string_hex, sign_message, to_string_hex, Account, Amount, BlockHash, BlockHashBuilder,
-        Link, PublicKey, RawKey, Signature,
-    },
-    utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
+    from_string_hex, sign_message, to_string_hex, Account, Amount, Block, BlockHash,
+    BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash, Link, PropertyTreeReader,
+    PropertyTreeWriter, PublicKey, RawKey, Signature, Stream,
 };
 
 use anyhow::Result;
-
-use super::{Block, BlockSideband, BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct StateHashables {

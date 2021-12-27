@@ -1,7 +1,6 @@
+use crate::{PropertyTreeReader, PropertyTreeWriter};
 use anyhow::Result;
 use std::{ffi::c_void, os::raw::c_char};
-
-use crate::utils::{PropertyTreeReader, PropertyTreeWriter};
 
 type PropertyTreePutStringCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char, usize, *const c_char, usize);

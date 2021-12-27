@@ -1,5 +1,5 @@
 use super::NetworkConstants;
-use crate::utils::TomlWriter;
+use crate::TomlWriter;
 use anyhow::Result;
 use std::net::Ipv6Addr;
 

@@ -1,7 +1,5 @@
-use crate::numbers::{Account, Amount, BlockHash, KeyPair, Link, PublicKey, RawKey, Signature};
+use crate::{Account, Amount, BlockHash, KeyPair, Link, PublicKey, RawKey, Signature, StateBlock};
 use anyhow::Result;
-
-use super::StateBlock;
 
 pub struct StateBlockBuilder {
     account: Account,

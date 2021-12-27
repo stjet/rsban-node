@@ -2,14 +2,11 @@ use num::FromPrimitive;
 use std::ffi::c_void;
 
 use crate::{
-    blocks::{LazyBlockHash, SendBlock, SendHashables},
-    numbers::{Account, Amount, BlockHash, PublicKey, RawKey, Signature},
+    Account, Amount, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock, SendHashables,
+    Signature,
 };
 
-use crate::ffi::{
-    property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
-    FfiStream,
-};
+use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
 
 #[repr(C)]
 pub struct SendBlockDto {

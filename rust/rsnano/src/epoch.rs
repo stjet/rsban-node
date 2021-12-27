@@ -1,4 +1,4 @@
-use crate::numbers::{Link, PublicKey};
+use crate::{Link, PublicKey};
 use std::collections::HashMap;
 
 /**

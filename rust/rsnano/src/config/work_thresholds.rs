@@ -5,11 +5,7 @@ use std::{
     convert::TryInto,
 };
 
-use crate::{
-    blocks::{BlockDetails, BlockType},
-    epoch::Epoch,
-    numbers::{Difficulty, Root},
-};
+use crate::{BlockDetails, BlockType, Difficulty, Epoch, Root};
 
 /**
  * Network variants with different genesis blocks and network parameters

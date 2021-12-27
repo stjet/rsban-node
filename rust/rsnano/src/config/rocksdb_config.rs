@@ -1,4 +1,4 @@
-use crate::utils::{get_cpu_count, TomlWriter};
+use crate::{get_cpu_count, TomlWriter};
 use anyhow::Result;
 
 pub struct RocksDbConfig {

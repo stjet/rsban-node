@@ -1,24 +1,17 @@
-use anyhow::anyhow;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use reqwest::Url;
-use rsnano::secure::DEV_GENESIS_KEY;
-use rsnano::secure::DEV_NETWORK_PARAMS;
-use std::collections::HashMap;
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::Child;
-use std::process::Command;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    process::{Child, Command},
+    sync::Arc,
+    time::Duration,
+};
 use tokio::time::sleep;
 
 use rsnano::{
-    config::{
-        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, NetworkConstants,
-        RpcConfig,
-    },
-    secure::{unique_path, NetworkParams},
-    utils::TomlConfig,
+    get_node_toml_config_path, get_rpc_toml_config_path, unique_path, DaemonConfig,
+    NetworkConstants, NetworkParams, RpcConfig, TomlConfig, DEV_GENESIS_KEY, DEV_NETWORK_PARAMS,
 };
 
 use crate::create_send_and_receive_blocks;

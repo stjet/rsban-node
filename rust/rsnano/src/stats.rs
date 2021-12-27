@@ -1,4 +1,4 @@
-use crate::utils::TomlWriter;
+use crate::TomlWriter;
 use anyhow::Result;
 
 pub struct StatConfig {

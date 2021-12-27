@@ -1,14 +1,11 @@
 use std::ffi::c_void;
 
 use crate::{
-    blocks::{LazyBlockHash, StateBlock, StateHashables},
-    numbers::{Account, Amount, BlockHash, Link, PublicKey, RawKey, Signature},
+    Account, Amount, BlockHash, LazyBlockHash, Link, PublicKey, RawKey, Signature, StateBlock,
+    StateHashables,
 };
 
-use crate::ffi::{
-    property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
-    FfiStream,
-};
+use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
 
 pub struct StateBlockHandle {
     pub block: StateBlock,

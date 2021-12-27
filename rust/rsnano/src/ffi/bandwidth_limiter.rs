@@ -1,6 +1,5 @@
+use crate::BandwidthLimiter;
 use std::sync::Mutex;
-
-use crate::bandwidth_limiter::BandwidthLimiter;
 
 pub struct BandwidthLimiterHandle {
     limiter: Mutex<BandwidthLimiter>,

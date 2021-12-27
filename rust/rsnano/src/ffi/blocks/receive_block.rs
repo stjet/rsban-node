@@ -1,14 +1,10 @@
 use std::ffi::c_void;
 
 use crate::{
-    blocks::{LazyBlockHash, ReceiveBlock, ReceiveHashables},
-    numbers::{BlockHash, PublicKey, RawKey, Signature},
+    BlockHash, LazyBlockHash, PublicKey, RawKey, ReceiveBlock, ReceiveHashables, Signature,
 };
 
-use crate::ffi::{
-    property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
-    FfiStream,
-};
+use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
 
 pub struct ReceiveBlockHandle {
     pub block: ReceiveBlock,

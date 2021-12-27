@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::utils::TomlWriter;
+use crate::TomlWriter;
 
 pub struct OpenclConfig {
     pub platform: u32,

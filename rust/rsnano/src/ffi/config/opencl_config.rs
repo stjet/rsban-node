@@ -1,4 +1,4 @@
-use crate::config::OpenclConfig;
+use crate::OpenclConfig;
 
 #[repr(C)]
 pub struct OpenclConfigDto {

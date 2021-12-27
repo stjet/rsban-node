@@ -8,11 +8,11 @@ use super::{
     voting_constants::{fill_voting_constants_dto, VotingConstantsDto},
 };
 use crate::{
-    ffi::config::{
+    ffi::{
         fill_network_constants_dto, fill_work_thresholds_dto, NetworkConstantsDto,
         WorkThresholdsDto,
     },
-    secure::NetworkParams,
+    NetworkParams,
 };
 use num::FromPrimitive;
 

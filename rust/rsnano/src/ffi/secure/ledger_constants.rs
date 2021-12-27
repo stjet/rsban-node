@@ -3,14 +3,11 @@ use std::convert::{TryFrom, TryInto};
 use num::FromPrimitive;
 
 use crate::{
-    config::WorkThresholds,
-    epoch::{Epoch, Epochs},
     ffi::{
         blocks::{set_block_dto, BlockDto},
         config::{fill_work_thresholds_dto, WorkThresholdsDto},
     },
-    numbers::{Account, Amount, KeyPair, Link, PublicKey},
-    secure::LedgerConstants,
+    Account, Amount, Epoch, Epochs, KeyPair, LedgerConstants, Link, PublicKey, WorkThresholds,
 };
 
 #[repr(C)]

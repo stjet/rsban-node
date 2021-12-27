@@ -1,10 +1,7 @@
 use std::convert::TryFrom;
 
 use crate::{
-    blocks::{BlockDetails, BlockType},
-    config::{WorkThresholds, WorkVersion},
-    ffi::blocks::BlockDetailsDto,
-    numbers::Root,
+    ffi::blocks::BlockDetailsDto, BlockDetails, BlockType, Root, WorkThresholds, WorkVersion,
 };
 
 #[repr(C)]

@@ -1,12 +1,11 @@
 use super::{
-    fill_node_pow_server_config_dto, fill_node_rpc_config_dto, fill_opencl_config_dto,
-    node_config::{fill_node_config_dto, NodeConfigDto},
-    NodePowServerConfigDto, NodeRpcConfigDto, OpenclConfigDto,
+    fill_node_config_dto, fill_node_pow_server_config_dto, fill_node_rpc_config_dto,
+    fill_opencl_config_dto, NodeConfigDto, NodePowServerConfigDto, NodeRpcConfigDto,
+    OpenclConfigDto,
 };
 use crate::{
-    config::DaemonConfig,
     ffi::{secure::NetworkParamsDto, toml::FfiToml},
-    secure::NetworkParams,
+    DaemonConfig, NetworkParams,
 };
 use std::{
     convert::{TryFrom, TryInto},

@@ -1,4 +1,4 @@
-use crate::stats::StatConfig;
+use crate::StatConfig;
 
 #[repr(C)]
 pub struct StatConfigDto {

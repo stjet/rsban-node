@@ -1,4 +1,4 @@
-use crate::config::NetworkConstants;
+use crate::NetworkConstants;
 
 pub struct VotingConstants {
     pub max_cache: usize,

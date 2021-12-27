@@ -528,7 +528,7 @@ pub fn validate_message(
     Ok(())
 }
 
-pub fn validate_batch(
+pub fn validate_message_batch(
     messages: &[&[u8]],
     public_keys: &[PublicKey],
     signatures: &[Signature],

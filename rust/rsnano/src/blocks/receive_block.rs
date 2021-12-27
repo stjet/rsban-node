@@ -1,15 +1,11 @@
 use std::ops::Deref;
 
 use crate::{
-    numbers::{
-        from_string_hex, sign_message, to_string_hex, Account, BlockHash, BlockHashBuilder,
-        PublicKey, RawKey, Signature,
-    },
-    utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
+    from_string_hex, sign_message, to_string_hex, Account, Block, BlockHash, BlockHashBuilder,
+    BlockSideband, BlockType, LazyBlockHash, PropertyTreeReader, PropertyTreeWriter, PublicKey,
+    RawKey, Signature, Stream,
 };
 use anyhow::Result;
-
-use super::{Block, BlockSideband, BlockType, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ReceiveHashables {

@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::{config::NetworkConstants, ffi::config::NetworkConstantsDto, secure::NodeConstants};
+use crate::{ffi::NetworkConstantsDto, NetworkConstants, NodeConstants};
 
 #[repr(C)]
 pub struct NodeConstantsDto {

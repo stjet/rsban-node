@@ -1,13 +1,9 @@
 use crate::{
-    blocks::BlockEnum,
-    config::{NetworkConstants, Networks, WorkThresholds},
+    BlockEnum, BootstrapConstants, LedgerConstants, NetworkConstants, Networks, NodeConstants,
+    PortmappingConstants, VotingConstants, WorkThresholds,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;
-
-use super::{
-    BootstrapConstants, LedgerConstants, NodeConstants, PortmappingConstants, VotingConstants,
-};
 
 pub static DEV_NETWORK_PARAMS: Lazy<NetworkParams> =
     Lazy::new(|| NetworkParams::new(Networks::NanoDevNetwork).unwrap());

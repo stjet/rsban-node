@@ -1,8 +1,6 @@
-use std::{convert::TryFrom, ffi::CStr, os::raw::c_char};
-
+use crate::{test_node_port, NetworkConstants, WorkThresholds};
 use num::FromPrimitive;
-
-use crate::config::{test_node_port, NetworkConstants, WorkThresholds};
+use std::{convert::TryFrom, ffi::CStr, os::raw::c_char};
 
 use super::{fill_work_thresholds_dto, WorkThresholdsDto};
 

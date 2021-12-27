@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::utils::TomlWriter;
+use crate::TomlWriter;
 
 pub struct Logging {
     pub ledger_logging_value: bool,

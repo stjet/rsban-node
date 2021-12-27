@@ -1,5 +1,5 @@
 use super::NetworkConstantsDto;
-use crate::config::{NetworkConstants, WebsocketConfig};
+use crate::{NetworkConstants, WebsocketConfig};
 use std::convert::TryFrom;
 
 #[repr(C)]

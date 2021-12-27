@@ -1,4 +1,4 @@
-use crate::token_bucket::TokenBucket;
+use crate::TokenBucket;
 pub struct BandwidthLimiter {
     bucket: TokenBucket,
 }

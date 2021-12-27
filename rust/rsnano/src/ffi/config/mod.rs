@@ -15,6 +15,7 @@ mod work_thresholds;
 pub use diagnostics_config::*;
 pub use logging::*;
 pub use network_constants::*;
+pub use node_config::*;
 pub use node_pow_server_config::*;
 pub use node_rpc_config::*;
 pub use opencl_config::*;

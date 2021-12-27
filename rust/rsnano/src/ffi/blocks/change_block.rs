@@ -1,14 +1,10 @@
 use std::ffi::c_void;
 
 use crate::{
-    blocks::{ChangeBlock, ChangeHashables, LazyBlockHash},
-    numbers::{Account, BlockHash, PublicKey, RawKey, Signature},
+    Account, BlockHash, ChangeBlock, ChangeHashables, LazyBlockHash, PublicKey, RawKey, Signature,
 };
 
-use crate::ffi::{
-    property_tree::{FfiPropertyTreeReader, FfiPropertyTreeWriter},
-    FfiStream,
-};
+use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
 
 pub struct ChangeBlockHandle {
     pub block: ChangeBlock,

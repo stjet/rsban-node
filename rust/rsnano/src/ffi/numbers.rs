@@ -1,7 +1,7 @@
 use std::{ffi::CStr, os::raw::c_char};
 
 use crate::numbers::{
-    sign_message, validate_batch, validate_message, Account, Difficulty, PublicKey, RawKey,
+    sign_message, validate_message, validate_message_batch, Account, Difficulty, PublicKey, RawKey,
     Signature,
 };
 
@@ -113,6 +113,6 @@ pub unsafe extern "C" fn rsn_validate_batch(
 
     let valid = std::slice::from_raw_parts_mut(valid, num);
 
-    validate_batch(&messages, &public_keys, &signatures, valid);
+    validate_message_batch(&messages, &public_keys, &signatures, valid);
     true
 }

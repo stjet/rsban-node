@@ -1,4 +1,4 @@
-use crate::config::RocksDbConfig;
+use crate::RocksDbConfig;
 
 #[repr(C)]
 pub struct RocksDbConfigDto {

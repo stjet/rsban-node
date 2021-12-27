@@ -1,6 +1,5 @@
+use crate::{ffi::NetworkConstantsDto, NetworkConstants, VotingConstants};
 use std::convert::TryFrom;
-
-use crate::{config::NetworkConstants, ffi::config::NetworkConstantsDto, secure::VotingConstants};
 
 #[repr(C)]
 pub struct VotingConstantsDto {

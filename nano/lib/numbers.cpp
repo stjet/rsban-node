@@ -352,7 +352,7 @@ nano::signature nano::sign_message (nano::raw_key const & private_key, nano::pub
 
 bool nano::validate_message (nano::public_key const & public_key, uint8_t const * data, size_t size, nano::signature const & signature)
 {
-	return 0 != ed25519_sign_open (data, size, public_key.bytes.data (), signature.bytes.data ());
+	return rsnano::rsn_validate_message ((uint8_t (*)[32])public_key.bytes.data (), data, size, (uint8_t (*)[64])signature.bytes.data ());
 }
 
 bool nano::validate_message (nano::public_key const & public_key, nano::uint256_union const & message, nano::signature const & signature)
@@ -362,11 +362,7 @@ bool nano::validate_message (nano::public_key const & public_key, nano::uint256_
 
 bool nano::validate_message_batch (const unsigned char ** m, size_t * mlen, const unsigned char ** pk, const unsigned char ** RS, size_t num, int * valid)
 {
-	for (size_t i{ 0 }; i < num; ++i)
-	{
-		valid[i] = (0 == ed25519_sign_open (m[i], mlen[i], pk[i], RS[i]));
-	}
-	return true;
+	return rsnano::rsn_validate_batch (m, mlen, pk, RS, num, valid);
 }
 
 nano::uint128_union::uint128_union (std::string const & string_a)

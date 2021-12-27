@@ -907,6 +907,13 @@ int32_t rsn_unique_path (uint16_t network, uint8_t * result, uintptr_t size);
 
 bool rsn_using_rocksdb_in_tests ();
 
+bool rsn_validate_batch (const uint8_t * const * messages,
+const uintptr_t * message_lengths,
+const uint8_t * const * public_keys,
+const uint8_t * const * signatures,
+uintptr_t num,
+int32_t * valid);
+
 bool rsn_validate_message (const uint8_t (*pub_key)[32],
 const uint8_t * message,
 uintptr_t len,

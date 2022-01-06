@@ -4,12 +4,14 @@
 #include <nano/node/signatures.hpp>
 
 nano::signature_checker::signature_checker (unsigned num_threads) :
-	thread_pool (num_threads, nano::thread_role::name::signature_checking)
+	thread_pool (num_threads, nano::thread_role::name::signature_checking),
+	handle (rsnano::rsn_signature_checker_create ())
 {
 }
 
 nano::signature_checker::~signature_checker ()
 {
+	rsnano::rsn_signature_checker_destroy (handle);
 	stop ();
 }
 
@@ -88,8 +90,14 @@ void nano::signature_checker::flush ()
 
 bool nano::signature_checker::verify_batch (nano::signature_check_set const & check_a, std::size_t start_index, std::size_t size)
 {
-	nano::validate_message_batch (check_a.messages + start_index, check_a.message_lengths + start_index, check_a.pub_keys + start_index, check_a.signatures + start_index, size, check_a.verifications + start_index);
-	return std::all_of (check_a.verifications + start_index, check_a.verifications + start_index + size, [] (int verification) { return verification == 0 || verification == 1; });
+	rsnano::SignatureCheckSetDto check_dto;
+	check_dto.messages = check_a.messages;
+	check_dto.message_lengths = check_a.message_lengths;
+	check_dto.pub_keys = check_a.pub_keys;
+	check_dto.signatures = check_a.signatures;
+	check_dto.verifications = check_a.verifications;
+	check_dto.size = check_a.size;
+	return rsnano::rsn_signature_checker_verify_batch (handle, &check_dto, start_index, size);
 }
 
 /* This operates on a number of signatures of size (num_batches * batch_size) from the beginning of the check_a pointers.

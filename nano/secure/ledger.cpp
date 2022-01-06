@@ -1266,9 +1266,9 @@ std::shared_ptr<nano::block> nano::ledger::find_receive_block_by_send_hash (nano
 		{
 			// we read the block from the database, so we expect it to have sideband
 			debug_assert (state_block->has_sideband ());
-			if (state_block->sideband ().details.is_receive)
+			if (state_block->sideband ().details ().is_receive ())
 			{
-				source = state_block->hashables.link.as_block_hash ();
+				source = state_block->link ().as_block_hash ();
 			}
 		}
 

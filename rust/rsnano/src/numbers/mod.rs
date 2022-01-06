@@ -1,6 +1,7 @@
 mod account;
 mod difficulty;
 
+use std::convert::TryInto;
 use std::fmt::Write;
 use std::ops::Deref;
 use std::{convert::TryFrom, fmt::Display};
@@ -29,6 +30,10 @@ impl PublicKey {
 
     pub fn from_bytes(value: [u8; 32]) -> Self {
         Self { value }
+    }
+
+    pub fn try_from_bytes(value: &[u8]) -> Result<Self> {
+        Ok(Self::from_bytes(value.try_into()?))
     }
 
     pub const fn serialized_size() -> usize {
@@ -239,6 +244,10 @@ impl Signature {
 
     pub fn from_bytes(bytes: [u8; 64]) -> Self {
         Self { bytes }
+    }
+
+    pub fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self::from_bytes(bytes.try_into()?))
     }
 
     pub const fn serialized_size() -> usize {
@@ -529,7 +538,7 @@ pub fn validate_message(
 }
 
 pub fn validate_message_batch(
-    messages: &[&[u8]],
+    messages: &[Vec<u8>],
     public_keys: &[PublicKey],
     signatures: &[Signature],
     valid: &mut [i32],
@@ -537,7 +546,7 @@ pub fn validate_message_batch(
     let len = messages.len();
     assert!(public_keys.len() == len && signatures.len() == len && valid.len() == len);
     for i in 0..len {
-        valid[i] = match validate_message(&public_keys[i], messages[i], &signatures[i]) {
+        valid[i] = match validate_message(&public_keys[i], &messages[i], &signatures[i]) {
             Ok(_) => 1,
             Err(_) => 0,
         }

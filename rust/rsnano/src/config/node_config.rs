@@ -88,7 +88,7 @@ impl Peer {
     }
 }
 
-static DEFAULT_LIVE_PEER_NETWORK: Lazy<String> = 
+static DEFAULT_LIVE_PEER_NETWORK: Lazy<String> =
     Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering.nano.org"));
 
 static DEFAULT_BETA_PEER_NETWORK: Lazy<String> =
@@ -98,7 +98,11 @@ static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
     Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-test.nano.org"));
 
 impl NodeConfig {
-    pub fn new(peering_port: Option<u16>, logging: Logging, network_params: &NetworkParams) -> Self {
+    pub fn new(
+        peering_port: Option<u16>,
+        logging: Logging,
+        network_params: &NetworkParams,
+    ) -> Self {
         if peering_port == Some(0) {
             // comment for posterity:
             // - we used to consider ports being 0 a sentinel that meant to use a default port for that specific purpose
@@ -268,8 +272,8 @@ impl NodeConfig {
     }
 
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {
-        if let Some(port) =  self.peering_port {
-            toml.put_u16( "peering_port", port, "Node peering port.\ntype:uint16")?;
+        if let Some(port) = self.peering_port {
+            toml.put_u16("peering_port", port, "Node peering port.\ntype:uint16")?;
         }
 
         toml.put_u32("bootstrap_fraction_numerator", self.bootstrap_fraction_numerator, "Change bootstrap threshold (online stake / 256 * bootstrap_fraction_numerator).\ntype:uint32")?;

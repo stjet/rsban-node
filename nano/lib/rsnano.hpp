@@ -22,6 +22,8 @@ struct ReceiveBlockHandle;
 
 struct SendBlockHandle;
 
+struct SignatureCheckerHandle;
+
 struct StateBlockHandle;
 
 struct BlockDetailsDto
@@ -496,6 +498,16 @@ struct SendBlockDto2
 	uint64_t work;
 };
 
+struct SignatureCheckSetDto
+{
+	uintptr_t size;
+	const uint8_t * const * messages;
+	const uintptr_t * message_lengths;
+	const uint8_t * const * pub_keys;
+	const uint8_t * const * signatures;
+	int32_t * verifications;
+};
+
 struct StateBlockDto
 {
 	uint8_t signature[64];
@@ -848,6 +860,15 @@ const uint8_t (*pub_key)[32],
 const uint8_t * message,
 uintptr_t len,
 uint8_t (*signature)[64]);
+
+SignatureCheckerHandle * rsn_signature_checker_create ();
+
+void rsn_signature_checker_destroy (SignatureCheckerHandle * handle);
+
+bool rsn_signature_checker_verify_batch (const SignatureCheckerHandle * handle,
+SignatureCheckSetDto * check_set,
+uintptr_t start_index,
+uintptr_t size);
 
 void rsn_stat_config_create (StatConfigDto * dto);
 

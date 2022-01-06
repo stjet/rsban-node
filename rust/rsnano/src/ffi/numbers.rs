@@ -70,7 +70,6 @@ pub unsafe extern "C" fn rsn_validate_message(
     validate_message(&public_key, message, &signature).is_err()
 }
 
-// bool nano::validate_message_batch (const unsigned char ** m, size_t * mlen, const unsigned char ** pk, const unsigned char ** RS, size_t num, int * valid)
 #[no_mangle]
 pub unsafe extern "C" fn rsn_validate_batch(
     messages: *const *const u8,
@@ -87,7 +86,7 @@ pub unsafe extern "C" fn rsn_validate_batch(
         .enumerate()
         .map(|(i, &m)| {
             let msg = std::slice::from_raw_parts(m, message_lengths[i]);
-            msg
+            msg.to_owned()
         })
         .collect::<Vec<_>>();
 

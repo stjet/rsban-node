@@ -18,9 +18,12 @@ pub mod ffi;
 mod ipc;
 mod numbers;
 mod secure;
+mod signatures;
 mod stats;
 mod token_bucket;
 mod utils;
+pub use signatures::*;
+
 pub use bandwidth_limiter::*;
 pub use blocks::*;
 pub use config::*;

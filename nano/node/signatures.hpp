@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/utility.hpp>
 
@@ -38,6 +39,7 @@ public:
 	static std::size_t constexpr batch_size = 256;
 
 private:
+	rsnano::SignatureCheckerHandle * handle;
 	std::atomic<int> tasks_remaining{ 0 };
 	std::atomic<bool> stopped{ false };
 	nano::thread_pool thread_pool;

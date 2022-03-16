@@ -152,6 +152,7 @@ public:
 	std::chrono::milliseconds cleanup_period_half () const;
 	std::chrono::seconds cleanup_cutoff () const;
 	/** Default maximum idle time for a socket before it's automatically closed */
+	std::chrono::seconds socket_dev_idle_timeout;
 	std::chrono::seconds idle_timeout;
 	std::chrono::seconds silent_connection_tolerance_time;
 	std::chrono::seconds syn_cookie_cutoff;

@@ -179,29 +179,6 @@ void nano::network_constants::set_active_network (nano::networks network_a)
 	rsnano::rsn_network_constants_active_network_set (static_cast<uint16_t> (network_a));
 }
 
-rsnano::NetworkConstantsDto to_network_constants_dto (nano::network_constants const & net)
-{
-	rsnano::NetworkConstantsDto dto;
-	dto.current_network = static_cast<uint16_t> (net.current_network);
-	dto.work = net.work.dto;
-	dto.principal_weight_factor = net.principal_weight_factor;
-	dto.default_node_port = net.default_node_port;
-	dto.default_rpc_port = net.default_rpc_port;
-	dto.default_ipc_port = net.default_ipc_port;
-	dto.default_websocket_port = net.default_websocket_port;
-	dto.request_interval_ms = net.request_interval_ms;
-	dto.cleanup_period_s = net.cleanup_period.count ();
-	dto.idle_timeout_s = net.idle_timeout.count ();
-	dto.sync_cookie_cutoff_s = net.syn_cookie_cutoff.count ();
-	dto.bootstrap_interval_s = net.bootstrap_interval.count ();
-	dto.max_peers_per_ip = net.max_peers_per_ip;
-	dto.max_peers_per_subnetwork = net.max_peers_per_subnetwork;
-	dto.peer_dump_interval_s = net.peer_dump_interval.count ();
-	dto.protocol_version = net.protocol_version;
-	dto.protocol_version_min = net.protocol_version_min;
-	return dto;
-}
-
 nano::network_constants::network_constants (nano::work_thresholds & work_a, nano::networks network_a)
 {
 	rsnano::NetworkConstantsDto dto;
@@ -239,6 +216,7 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	peer_dump_interval = std::chrono::seconds (dto.peer_dump_interval_s);
 	ipv6_subnetwork_prefix_for_limiting = dto.ipv6_subnetwork_prefix_for_limiting;
 	silent_connection_tolerance_time = std::chrono::seconds (dto.silent_connection_tolerance_time_s);
+	socket_dev_idle_timeout = std::chrono::seconds (dto.socket_dev_idle_timeout_s);
 }
 
 bool nano::network_constants::set_active_network (std::string network_a)
@@ -248,13 +226,13 @@ bool nano::network_constants::set_active_network (std::string network_a)
 
 std::chrono::milliseconds nano::network_constants::cleanup_period_half () const
 {
-	auto dto{ to_network_constants_dto (*this) };
+	auto dto{ to_dto() };
 	return std::chrono::milliseconds (rsnano::rsn_network_constants_cleanup_period_half_ms (&dto));
 }
 
 std::chrono::seconds nano::network_constants::cleanup_cutoff () const
 {
-	auto dto{ to_network_constants_dto (*this) };
+	auto dto{ to_dto() };
 	return std::chrono::seconds (rsnano::rsn_network_constants_cleanup_cutoff_s (&dto));
 }
 
@@ -273,42 +251,41 @@ char const * nano::network_constants::get_current_network_as_string ()
 bool nano::network_constants::is_live_network () const
 {
 	// return current_network == nano::networks::nano_live_network;
-	auto dto{ to_network_constants_dto (*this) };
+	auto dto{ to_dto() };
 	return rsnano::rsn_network_constants_is_live_network (&dto);
 }
 
 bool nano::network_constants::is_beta_network () const
 {
 	// return current_network == nano::networks::nano_beta_network;
-	auto dto{ to_network_constants_dto (*this) };
+	auto dto{ to_dto() };
 	return rsnano::rsn_network_constants_is_beta_network (&dto);
 }
 
 bool nano::network_constants::is_dev_network () const
 {
 	// return current_network == nano::networks::nano_dev_network;
-	auto dto{ to_network_constants_dto (*this) };
+	auto dto{ to_dto() };
 	return rsnano::rsn_network_constants_is_dev_network (&dto);
 }
 
 bool nano::network_constants::is_test_network () const
 {
 	// return current_network == nano::networks::nano_test_network;
-	auto dto{ to_network_constants_dto (*this) };
+	auto dto{ to_dto() };
 	return rsnano::rsn_network_constants_is_test_network (&dto);
 }
 
 rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 {
 	rsnano::NetworkConstantsDto dto;
-	dto.work = work.dto;
 	dto.current_network = static_cast<uint16_t> (current_network);
-	dto.protocol_version = protocol_version;
-	dto.protocol_version_min = protocol_version_min;
+	dto.work = work.dto;
 	dto.principal_weight_factor = principal_weight_factor;
 	dto.default_node_port = default_node_port;
 	dto.default_rpc_port = default_rpc_port;
 	dto.default_ipc_port = default_ipc_port;
+	dto.protocol_version_min = protocol_version_min;
 	dto.default_websocket_port = default_websocket_port;
 	dto.request_interval_ms = request_interval_ms;
 	dto.cleanup_period_s = cleanup_period.count ();
@@ -318,6 +295,9 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.max_peers_per_ip = max_peers_per_ip;
 	dto.max_peers_per_subnetwork = max_peers_per_subnetwork;
 	dto.peer_dump_interval_s = peer_dump_interval.count ();
+	dto.protocol_version = protocol_version;
+	dto.protocol_version_min = protocol_version_min;
+	dto.socket_dev_idle_timeout_s = socket_dev_idle_timeout.count ();
 	return dto;
 }
 

@@ -198,8 +198,6 @@ public:
 	rsnano::NetworkConstantsDto to_dto () const;
 };
 
-std::string get_config_path (boost::filesystem::path const & data_path);
-std::string get_rpc_config_path (boost::filesystem::path const & data_path);
 std::string get_node_toml_config_path (boost::filesystem::path const & data_path);
 std::string get_rpc_toml_config_path (boost::filesystem::path const & data_path);
 std::string get_access_toml_config_path (boost::filesystem::path const & data_path);

@@ -29,7 +29,6 @@ public:
 	void load_dto (rsnano::StatConfigDto & dto);
 	rsnano::StatConfigDto to_dto () const;
 	/** Reads the JSON statistics node */
-	nano::error deserialize_json (nano::jsonconfig & json);
 	nano::error deserialize_toml (nano::tomlconfig & toml);
 
 	/** If true, sampling of counters is enabled */

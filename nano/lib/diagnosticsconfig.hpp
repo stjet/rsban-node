@@ -27,8 +27,6 @@ class diagnostics_config final
 public:
 	rsnano::TxnTrackingConfigDto to_dto () const;
 	void load_dto (rsnano::TxnTrackingConfigDto & dto);
-	nano::error serialize_json (nano::jsonconfig &) const;
-	nano::error deserialize_json (nano::jsonconfig &);
 	nano::error deserialize_toml (nano::tomlconfig &);
 
 	txn_tracking_config txn_tracking;

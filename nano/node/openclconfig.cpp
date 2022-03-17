@@ -25,22 +25,6 @@ rsnano::OpenclConfigDto nano::opencl_config::to_dto () const
 	return dto;
 }
 
-nano::error nano::opencl_config::serialize_json (nano::jsonconfig & json) const
-{
-	json.put ("platform", platform);
-	json.put ("device", device);
-	json.put ("threads", threads);
-	return json.get_error ();
-}
-
-nano::error nano::opencl_config::deserialize_json (nano::jsonconfig & json)
-{
-	json.get_optional<unsigned> ("platform", platform);
-	json.get_optional<unsigned> ("device", device);
-	json.get_optional<unsigned> ("threads", threads);
-	return json.get_error ();
-}
-
 nano::error nano::opencl_config::deserialize_toml (nano::tomlconfig & toml)
 {
 	toml.get_optional<unsigned> ("platform", platform);

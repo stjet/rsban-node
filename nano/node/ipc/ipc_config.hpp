@@ -7,7 +7,6 @@
 
 namespace nano
 {
-class jsonconfig;
 class tomlconfig;
 namespace ipc
 {
@@ -41,11 +40,6 @@ namespace ipc
 		 * this value will be conditional on OS.
 		 */
 		std::string path{ "/tmp/nano" };
-
-		unsigned json_version () const
-		{
-			return 1;
-		}
 	};
 
 	/** TCP specific transport config */
@@ -65,8 +59,6 @@ namespace ipc
 	public:
 		ipc_config () = default;
 		ipc_config (nano::network_constants & network_constants);
-		nano::error deserialize_json (bool & upgraded_a, nano::jsonconfig & json_a);
-		nano::error serialize_json (nano::jsonconfig & json) const;
 		nano::error deserialize_toml (nano::tomlconfig & toml_a);
 		void load_dto (rsnano::IpcConfigDto & dto);
 		rsnano::IpcConfigDto to_dto () const;

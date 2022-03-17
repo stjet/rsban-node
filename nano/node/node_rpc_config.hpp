@@ -30,16 +30,10 @@ public:
 	node_rpc_config ();
 	void load_dto (rsnano::NodeRpcConfigDto & dto);
 	rsnano::NodeRpcConfigDto to_dto () const;
-	nano::error serialize_json (nano::jsonconfig &) const;
-	nano::error deserialize_json (bool & upgraded_a, nano::jsonconfig &, boost::filesystem::path const & data_path);
 	nano::error deserialize_toml (nano::tomlconfig & toml);
 
 	bool enable_sign_hash{ false };
 	nano::rpc_child_process_config child_process;
-	static unsigned json_version ()
-	{
-		return 1;
-	}
 
 	// Used in tests to ensure requests are modified in specific cases
 	void set_request_callback (std::function<void (boost::property_tree::ptree const &)>);

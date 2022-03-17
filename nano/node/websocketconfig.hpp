@@ -7,7 +7,6 @@
 
 namespace nano
 {
-class jsonconfig;
 class tomlconfig;
 class tls_config;
 namespace websocket
@@ -19,8 +18,6 @@ namespace websocket
 		config (nano::network_constants & network_constants);
 		void load_dto (rsnano::WebsocketConfigDto & dto);
 		rsnano::WebsocketConfigDto to_dto () const;
-		nano::error deserialize_json (nano::jsonconfig & json_a);
-		nano::error serialize_json (nano::jsonconfig & json) const;
 		nano::error deserialize_toml (nano::tomlconfig & toml_a);
 		nano::network_constants & network_constants;
 		bool enabled;

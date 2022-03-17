@@ -88,10 +88,14 @@ impl Peer {
     }
 }
 
-const DEFAULT_BETA_PEER_NETWORK: &str = "peering-beta.nano.org";
-const DEFAULT_LIVE_PEER_NETWORK: &str = "peering.nano.org";
+static DEFAULT_LIVE_PEER_NETWORK: Lazy<String> = 
+    Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering.nano.org"));
+
+static DEFAULT_BETA_PEER_NETWORK: Lazy<String> =
+    Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-beta.nano.org"));
+
 static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
-    Lazy::new(|| get_env_or_default_string("NANO_TEST_PEER_NETWORK", "peering.nano.org"));
+    Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-test.nano.org"));
 
 impl NodeConfig {
     pub fn new(peering_port: u16, logging: Logging, network_params: &NetworkParams) -> Self {
@@ -117,7 +121,7 @@ impl NodeConfig {
                     .push(*network_params.ledger.genesis.as_block().account());
             }
             Networks::NanoBetaNetwork => {
-                preconfigured_peers.push(DEFAULT_BETA_PEER_NETWORK.to_string());
+                preconfigured_peers.push(DEFAULT_BETA_PEER_NETWORK.clone());
                 preconfigured_representatives.push(
                     Account::decode_account(
                         "nano_1defau1t9off1ine9rep99999999999999999999999999999999wgmuzxxy",
@@ -126,7 +130,7 @@ impl NodeConfig {
                 );
             }
             Networks::NanoLiveNetwork => {
-                preconfigured_peers.push(DEFAULT_LIVE_PEER_NETWORK.to_string());
+                preconfigured_peers.push(DEFAULT_LIVE_PEER_NETWORK.clone());
                 preconfigured_representatives.push(
                     Account::decode_hex(
                         "A30E0A32ED41C8607AA9212843392E853FCBCB4E7CB194E35C94F07F91DE59EF",

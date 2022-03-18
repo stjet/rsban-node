@@ -260,6 +260,7 @@ struct LmdbConfigDto
 struct NodeConfigDto
 {
 	uint16_t peering_port;
+	bool peering_port_defined;
 	uint32_t bootstrap_fraction_numerator;
 	uint8_t receive_minimum[16];
 	uint8_t online_weight_minimum[16];
@@ -688,6 +689,7 @@ int32_t rsn_network_params_create (NetworkParamsDto * dto, uint16_t network);
 
 int32_t rsn_node_config_create (NodeConfigDto * dto,
 uint16_t peering_port,
+bool peering_port_defined,
 const LoggingDto * logging,
 const NetworkParamsDto * network_params);
 

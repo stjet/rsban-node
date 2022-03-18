@@ -18,7 +18,7 @@ pub enum FrontiersConfirmationMode {
 }
 
 pub struct NodeConfig {
-    pub peering_port: u16,
+    pub peering_port: Option<u16>,
     pub bootstrap_fraction_numerator: u32,
     pub receive_minimum: Amount,
     pub online_weight_minimum: Amount,
@@ -98,8 +98,8 @@ static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
     Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-test.nano.org"));
 
 impl NodeConfig {
-    pub fn new(peering_port: u16, logging: Logging, network_params: &NetworkParams) -> Self {
-        let peering_port = if peering_port == 0 {
+    pub fn new(peering_port: Option<u16>, logging: Logging, network_params: &NetworkParams) -> Self {
+        if peering_port == Some(0) {
             // comment for posterity:
             // - we used to consider ports being 0 a sentinel that meant to use a default port for that specific purpose
             // - the actual default value was determined based on the active network (e.g. dev network peering port = 44000)
@@ -107,10 +107,8 @@ impl NodeConfig {
             // - for the specific case of the peering port, after it gets picked, it can be retrieved by client code via
             //   node.network.endpoint ().port ()
             // - the config value does not get back-propagated because it represents the choice of the user, and that was 0
-            0
-        } else {
-            peering_port
-        };
+        }
+
         let mut enable_voting = false;
         let mut preconfigured_peers = Vec::new();
         let mut preconfigured_representatives = Vec::new();
@@ -270,11 +268,10 @@ impl NodeConfig {
     }
 
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {
-        toml.put_u16(
-            "peering_port",
-            self.peering_port,
-            "Node peering port.\ntype:uint16",
-        )?;
+        if let Some(port) =  self.peering_port {
+            toml.put_u16( "peering_port", port, "Node peering port.\ntype:uint16")?;
+        }
+
         toml.put_u32("bootstrap_fraction_numerator", self.bootstrap_fraction_numerator, "Change bootstrap threshold (online stake / 256 * bootstrap_fraction_numerator).\ntype:uint32")?;
         toml.put_str("receive_minimum", &self.receive_minimum.to_string_dec (), "Minimum receive amount. Only affects node wallets. A large amount is recommended to avoid automatic work generation for tiny transactions.\ntype:string,amount,raw")?;
         toml.put_str("online_weight_minimum", &self.online_weight_minimum.to_string_dec (), "When calculating online weight, the node is forced to assume at least this much voting weight is online, thus setting a floor for voting weight to confirm transactions at online_weight_minimum * \"quorum delta\".\ntype:string,amount,raw")?;

@@ -172,7 +172,7 @@ fn write_config_files(data_path: &Path, index: usize) -> Result<()> {
 
 fn write_node_config(index: usize, data_path: &Path, network_params: &NetworkParams) -> Result<()> {
     let mut daemon_config = DaemonConfig::new(network_params)?;
-    daemon_config.node.peering_port = PEERING_PORT_START + index as u16;
+    daemon_config.node.peering_port = Some(PEERING_PORT_START + index as u16);
     daemon_config
         .node
         .ipc_config

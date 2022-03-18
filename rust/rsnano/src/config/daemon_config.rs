@@ -17,7 +17,7 @@ impl DaemonConfig {
     pub fn new(network_params: &NetworkParams) -> Result<Self> {
         Ok(Self {
             rpc_enable: false,
-            node: NodeConfig::new(0, Logging::new(), network_params),
+            node: NodeConfig::new(None, Logging::new(), network_params),
             opencl: OpenclConfig::new(),
             opencl_enable: false,
             pow_server: NodePowServerConfig::new()?,

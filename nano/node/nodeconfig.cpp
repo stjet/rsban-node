@@ -20,7 +20,8 @@ char const * pow_sleep_interval_key = "pow_sleep_interval";
 rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 {
 	rsnano::NodeConfigDto dto;
-	dto.peering_port = config.peering_port;
+	dto.peering_port = config.peering_port.value_or (0);
+	dto.peering_port_defined = config.peering_port.has_value ();
 	dto.bootstrap_fraction_numerator = config.bootstrap_fraction_numerator;
 	std::copy (std::begin (config.receive_minimum.bytes), std::end (config.receive_minimum.bytes), std::begin (dto.receive_minimum));
 	std::copy (std::begin (config.online_weight_minimum.bytes), std::end (config.online_weight_minimum.bytes), std::begin (dto.online_weight_minimum));
@@ -103,11 +104,11 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 }
 
 nano::node_config::node_config (nano::network_params & network_params) :
-	node_config (0, nano::logging (), network_params)
+	node_config (std::nullopt, nano::logging (), network_params)
 {
 }
 
-nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & logging_a, nano::network_params & network_params) :
+nano::node_config::node_config (const std::optional<uint16_t> & peering_port_a, nano::logging const & logging_a, nano::network_params & network_params) :
 	network_params{ network_params },
 	logging{ logging_a },
 	websocket_config{ network_params.network }
@@ -115,7 +116,7 @@ nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & l
 	rsnano::NodeConfigDto dto;
 	auto network_params_dto{ network_params.to_dto () };
 	auto logging_dto{ logging.to_dto () };
-	rsnano::rsn_node_config_create (&dto, peering_port_a, &logging_dto, &network_params_dto);
+	rsnano::rsn_node_config_create (&dto, peering_port_a.value_or (0), peering_port_a.has_value (), &logging_dto, &network_params_dto);
 	load_dto (dto);
 }
 
@@ -126,7 +127,15 @@ rsnano::NodeConfigDto nano::node_config::to_dto () const
 
 void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 {
-	peering_port = dto.peering_port;
+	if (dto.peering_port_defined)
+	{
+		peering_port = dto.peering_port;
+	}
+	else
+	{
+		peering_port = std::nullopt;
+	}
+
 	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
 	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin (receive_minimum.bytes));
 	std::copy (std::begin (dto.online_weight_minimum), std::end (dto.online_weight_minimum), std::begin (online_weight_minimum.bytes));
@@ -341,7 +350,13 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		toml.get ("tcp_io_timeout", tcp_io_timeout_l);
 		tcp_io_timeout = std::chrono::seconds (tcp_io_timeout_l);
 
-		toml.get<uint16_t> ("peering_port", peering_port);
+		if (toml.has_key ("peering_port"))
+		{
+			std::uint16_t peering_port_l{};
+			toml.get_required<uint16_t> ("peering_port", peering_port_l);
+			peering_port = peering_port_l;
+		}
+
 		toml.get<unsigned> ("bootstrap_fraction_numerator", bootstrap_fraction_numerator);
 		toml.get<unsigned> ("election_hint_weight_percent", election_hint_weight_percent);
 		toml.get<unsigned> ("password_fanout", password_fanout);

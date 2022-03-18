@@ -226,13 +226,13 @@ bool nano::network_constants::set_active_network (std::string network_a)
 
 std::chrono::milliseconds nano::network_constants::cleanup_period_half () const
 {
-	auto dto{ to_dto() };
+	auto dto{ to_dto () };
 	return std::chrono::milliseconds (rsnano::rsn_network_constants_cleanup_period_half_ms (&dto));
 }
 
 std::chrono::seconds nano::network_constants::cleanup_cutoff () const
 {
-	auto dto{ to_dto() };
+	auto dto{ to_dto () };
 	return std::chrono::seconds (rsnano::rsn_network_constants_cleanup_cutoff_s (&dto));
 }
 
@@ -251,28 +251,28 @@ char const * nano::network_constants::get_current_network_as_string ()
 bool nano::network_constants::is_live_network () const
 {
 	// return current_network == nano::networks::nano_live_network;
-	auto dto{ to_dto() };
+	auto dto{ to_dto () };
 	return rsnano::rsn_network_constants_is_live_network (&dto);
 }
 
 bool nano::network_constants::is_beta_network () const
 {
 	// return current_network == nano::networks::nano_beta_network;
-	auto dto{ to_dto() };
+	auto dto{ to_dto () };
 	return rsnano::rsn_network_constants_is_beta_network (&dto);
 }
 
 bool nano::network_constants::is_dev_network () const
 {
 	// return current_network == nano::networks::nano_dev_network;
-	auto dto{ to_dto() };
+	auto dto{ to_dto () };
 	return rsnano::rsn_network_constants_is_dev_network (&dto);
 }
 
 bool nano::network_constants::is_test_network () const
 {
 	// return current_network == nano::networks::nano_test_network;
-	auto dto{ to_dto() };
+	auto dto{ to_dto () };
 	return rsnano::rsn_network_constants_is_test_network (&dto);
 }
 

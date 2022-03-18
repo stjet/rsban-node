@@ -13,6 +13,7 @@
 #include <nano/secure/common.hpp>
 
 #include <chrono>
+#include <optional>
 #include <vector>
 
 namespace nano
@@ -34,7 +35,7 @@ class node_config
 {
 public:
 	node_config (nano::network_params & network_params = nano::dev::network_params);
-	node_config (uint16_t, nano::logging const &, nano::network_params & network_params = nano::dev::network_params);
+	node_config (const std::optional<uint16_t> &, nano::logging const &, nano::network_params & network_params = nano::dev::network_params);
 	void load_dto (rsnano::NodeConfigDto & dto);
 	rsnano::NodeConfigDto to_dto () const;
 
@@ -44,7 +45,7 @@ public:
 	bool upgrade_json (unsigned, nano::jsonconfig &);
 	nano::account random_representative () const;
 	nano::network_params & network_params;
-	uint16_t peering_port{ 0 };
+	std::optional<uint16_t> peering_port{};
 	nano::logging logging;
 	std::vector<std::pair<std::string, uint16_t>> work_peers;
 	std::vector<std::pair<std::string, uint16_t>> secondary_work_peers;

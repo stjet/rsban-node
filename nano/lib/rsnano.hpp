@@ -190,6 +190,7 @@ struct LoggingDto
 	bool stable_log_filename;
 	int64_t min_time_between_log_output_ms;
 	bool single_line_record_value;
+	bool election_result_logging_value;
 };
 
 struct WebsocketConfigDto

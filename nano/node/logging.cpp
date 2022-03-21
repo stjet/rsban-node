@@ -58,6 +58,7 @@ nano::logging::logging ()
 	stable_log_filename = dto.stable_log_filename;
 	min_time_between_log_output = std::chrono::milliseconds (dto.min_time_between_log_output_ms);
 	single_line_record_value = dto.single_line_record_value;
+	election_result_logging_value = dto.election_result_logging_value;
 }
 
 rsnano::LoggingDto nano::logging::to_dto () const
@@ -94,6 +95,7 @@ rsnano::LoggingDto nano::logging::to_dto () const
 	dto.stable_log_filename = stable_log_filename;
 	dto.min_time_between_log_output_ms = min_time_between_log_output.count ();
 	dto.single_line_record_value = single_line_record_value;
+	dto.election_result_logging_value = election_fork_tally_logging_value;
 	return dto;
 }
 
@@ -240,6 +242,7 @@ nano::error nano::logging::deserialize_toml (nano::tomlconfig & toml)
 	toml.get<bool> ("upnp_details", upnp_details_logging_value);
 	toml.get<bool> ("timing", timing_logging_value);
 	toml.get<bool> ("active_update", active_update_value);
+	toml.get<bool> ("election_result", election_result_logging_value);
 	toml.get<bool> ("log_to_cerr", log_to_cerr_value);
 	toml.get<bool> ("flush", flush);
 	toml.get<bool> ("single_line_record", single_line_record_value);
@@ -376,6 +379,11 @@ bool nano::logging::timing_logging () const
 bool nano::logging::active_update_logging () const
 {
 	return active_update_value;
+}
+
+bool nano::logging::election_result_logging () const
+{
+	return election_result_logging_value;
 }
 
 bool nano::logging::log_to_cerr () const

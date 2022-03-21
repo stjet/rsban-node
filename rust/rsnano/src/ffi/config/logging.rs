@@ -33,6 +33,7 @@ pub struct LoggingDto {
     pub stable_log_filename: bool,
     pub min_time_between_log_output_ms: i64,
     pub single_line_record_value: bool,
+    pub election_result_logging_value: bool,
 }
 
 #[no_mangle]
@@ -74,6 +75,7 @@ pub fn fill_logging_dto(dto: &mut LoggingDto, logging: &Logging) {
     dto.stable_log_filename = logging.stable_log_filename;
     dto.min_time_between_log_output_ms = logging.min_time_between_log_output_ms;
     dto.single_line_record_value = logging.single_line_record_value;
+    dto.election_result_logging_value = logging.election_result_logging_value;
 }
 
 impl From<&LoggingDto> for Logging {
@@ -110,6 +112,7 @@ impl From<&LoggingDto> for Logging {
             stable_log_filename: dto.stable_log_filename,
             min_time_between_log_output_ms: dto.min_time_between_log_output_ms,
             single_line_record_value: dto.single_line_record_value,
+            election_result_logging_value: dto.election_result_logging_value,
         }
     }
 }

@@ -34,6 +34,7 @@ pub struct Logging {
     pub stable_log_filename: bool,
     pub min_time_between_log_output_ms: i64,
     pub single_line_record_value: bool,
+    pub election_result_logging_value: bool,
 }
 
 impl Logging {
@@ -150,6 +151,7 @@ impl Logging {
             self.active_update_value,
             "Log when a block is updated while in active transactions.\ntype:bool",
         )?;
+        toml.put_bool("election_result", self.election_result_logging_value, "Log election result when cleaning up election from active election container.\ntype:bool")?;
         toml.put_bool("log_to_cerr", self.log_to_cerr_value, "Log to standard error in addition to the log file. Not recommended for production systems.\ntype:bool")?;
         toml.put_usize(
             "max_size",
@@ -208,6 +210,7 @@ impl Default for Logging {
             stable_log_filename: false,
             min_time_between_log_output_ms: 5,
             single_line_record_value: false,
+            election_result_logging_value: false,
         }
     }
 }

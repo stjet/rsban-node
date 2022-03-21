@@ -25,7 +25,6 @@ pub struct NetworkConstantsDto {
     pub protocol_version_min: u8,
     pub ipv6_subnetwork_prefix_for_limiting: usize,
     pub silent_connection_tolerance_time_s: i64,
-    pub socket_dev_idle_timeout_s: i64,
 }
 
 #[no_mangle]
@@ -64,7 +63,6 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     dto.peer_dump_interval_s = constants.peer_dump_interval_s;
     dto.ipv6_subnetwork_prefix_for_limiting = constants.ipv6_subnetwork_prefix_for_limiting;
     dto.silent_connection_tolerance_time_s = constants.silent_connection_tolerance_time_s;
-    dto.socket_dev_idle_timeout_s = constants.socket_dev_idle_timeout_s;
 }
 
 #[no_mangle]
@@ -160,7 +158,6 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
             peer_dump_interval_s: value.peer_dump_interval_s,
             ipv6_subnetwork_prefix_for_limiting: value.ipv6_subnetwork_prefix_for_limiting,
             silent_connection_tolerance_time_s: value.silent_connection_tolerance_time_s,
-            socket_dev_idle_timeout_s: value.socket_dev_idle_timeout_s,
         })
     }
 }

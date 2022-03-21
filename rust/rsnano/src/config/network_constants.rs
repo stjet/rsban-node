@@ -35,7 +35,6 @@ pub struct NetworkConstants {
     pub protocol_version_min: u8,
     pub ipv6_subnetwork_prefix_for_limiting: usize,
     pub silent_connection_tolerance_time_s: i64,
-    pub socket_dev_idle_timeout_s: i64,
 }
 
 impl NetworkConstants {
@@ -82,7 +81,6 @@ impl NetworkConstants {
             },
             ipv6_subnetwork_prefix_for_limiting: 64,
             silent_connection_tolerance_time_s: 120,
-            socket_dev_idle_timeout_s: 2,
         }
     }
 

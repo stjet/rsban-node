@@ -200,7 +200,7 @@ class unchecked_info final
 {
 public:
 	unchecked_info () = default;
-	unchecked_info (std::shared_ptr<nano::block> const &, nano::account const &, uint64_t, nano::signature_verification = nano::signature_verification::unknown, bool = false);
+	unchecked_info (std::shared_ptr<nano::block> const &, nano::account const &, uint64_t, nano::signature_verification = nano::signature_verification::unknown);
 	unchecked_info (std::shared_ptr<nano::block> const &);
 	void serialize (nano::stream &) const;
 	bool deserialize (nano::stream &);
@@ -209,7 +209,6 @@ public:
 	/** Seconds since posix epoch */
 	uint64_t modified{ 0 };
 	nano::signature_verification verified{ nano::signature_verification::unknown };
-	bool confirmed{ false };
 };
 
 class block_info final

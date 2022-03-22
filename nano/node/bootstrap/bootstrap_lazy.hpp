@@ -23,6 +23,11 @@ public:
 	nano::uint128_t balance{ 0 };
 	unsigned retry_limit{ 0 };
 };
+
+/**
+ * Lazy bootstrap session. Started with a block hash, this will "trace down" the blocks obtained to find a connection to the ledger.
+ * This attempts to quickly bootstrap a section of the ledger given a hash that's known to be confirmed.
+ */
 class bootstrap_attempt_lazy final : public bootstrap_attempt
 {
 public:
@@ -33,7 +38,7 @@ public:
 	bool lazy_start (nano::hash_or_account const &, bool confirmed = true) override;
 	void lazy_add (nano::hash_or_account const &, unsigned);
 	void lazy_add (nano::pull_info const &) override;
-	void lazy_requeue (nano::block_hash const &, nano::block_hash const &, bool) override;
+	void lazy_requeue (nano::block_hash const &, nano::block_hash const &) override;
 	bool lazy_finished ();
 	bool lazy_has_expired () const override;
 	uint32_t lazy_batch_size () override;
@@ -60,6 +65,10 @@ public:
 	/** The maximum number of records to be read in while iterating over long lazy containers */
 	static uint64_t constexpr batch_read_size = 256;
 };
+
+/**
+ * Wallet bootstrap session. This session will trace down accounts within local wallets to try and bootstrap those blocks first.
+ */
 class bootstrap_attempt_wallet final : public bootstrap_attempt
 {
 public:

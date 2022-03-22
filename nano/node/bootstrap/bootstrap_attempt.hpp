@@ -11,6 +11,10 @@ class node;
 
 class frontier_req_client;
 class bulk_push_client;
+
+/**
+ * Polymorphic base class for bootstrap sessions.
+ */
 class bootstrap_attempt : public std::enable_shared_from_this<bootstrap_attempt>
 {
 public:
@@ -29,7 +33,7 @@ public:
 	virtual void set_start_account (nano::account const &);
 	virtual bool lazy_start (nano::hash_or_account const &, bool confirmed = true);
 	virtual void lazy_add (nano::pull_info const &);
-	virtual void lazy_requeue (nano::block_hash const &, nano::block_hash const &, bool);
+	virtual void lazy_requeue (nano::block_hash const &, nano::block_hash const &);
 	virtual uint32_t lazy_batch_size ();
 	virtual bool lazy_has_expired () const;
 	virtual bool lazy_processed_or_exists (nano::block_hash const &);

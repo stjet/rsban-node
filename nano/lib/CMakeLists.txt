@@ -93,7 +93,8 @@ target_link_libraries(
   rsnano
   ${CRYPTOPP_LIBRARY}
   ${CMAKE_DL_LIBS}
-  Boost::boost)
+  Boost::boost
+  Boost::program_options)
 
 if(NANO_STACKTRACE_BACKTRACE)
   target_link_libraries(nano_lib backtrace)

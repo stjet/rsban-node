@@ -1,4 +1,5 @@
 #include <nano/node/common.hpp>
+#include <nano/lib/rsnano_callbacks.hpp>
 
 #include <gtest/gtest.h>
 namespace nano
@@ -9,6 +10,7 @@ void force_nano_dev_network ();
 
 int main (int argc, char ** argv)
 {
+	rsnano::set_rsnano_callbacks ();
 	nano::force_nano_dev_network ();
 	nano::node_singleton_memory_pool_purge_guard memory_pool_cleanup_guard;
 	testing::InitGoogleTest (&argc, argv);

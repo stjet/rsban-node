@@ -614,6 +614,7 @@ void nano::json_handler::account_info ()
 		bool const representative = request.get<bool> ("representative", false);
 		bool const weight = request.get<bool> ("weight", false);
 		bool const pending = request.get<bool> ("pending", false);
+		bool const receivable = request.get<bool> ("receivable", pending);
 		bool const include_confirmed = request.get<bool> ("include_confirmed", false);
 		auto transaction (node.store.tx_begin_read ());
 		auto info (account_info_impl (transaction, account));
@@ -692,16 +693,17 @@ void nano::json_handler::account_info ()
 				auto account_weight (node.ledger.weight (account));
 				response_l.put ("weight", account_weight.convert_to<std::string> ());
 			}
-			if (pending)
+			if (receivable)
 			{
-				auto account_pending (node.ledger.account_pending (transaction, account));
-				response_l.put ("pending", account_pending.convert_to<std::string> ());
-				response_l.put ("receivable", account_pending.convert_to<std::string> ());
+				auto account_receivable = node.ledger.account_receivable (transaction, account);
+				response_l.put ("pending", account_receivable.convert_to<std::string> ());
+				response_l.put ("receivable", account_receivable.convert_to<std::string> ());
 
 				if (include_confirmed)
 				{
-					auto account_pending (node.ledger.account_pending (transaction, account, true));
-					response_l.put ("confirmed_pending", account_pending.convert_to<std::string> ());
+					auto account_receivable = node.ledger.account_receivable (transaction, account, true);
+					response_l.put ("confirmed_pending", account_receivable.convert_to<std::string> ());
+					response_l.put ("confirmed_receivable", account_receivable.convert_to<std::string> ());
 				}
 			}
 		}
@@ -975,6 +977,12 @@ void nano::json_handler::accounts_frontiers ()
 
 void nano::json_handler::accounts_pending ()
 {
+	response_l.put ("deprecated", "1");
+	accounts_receivable ();
+}
+
+void nano::json_handler::accounts_receivable ()
+{
 	auto count (count_optional_impl ());
 	auto threshold (threshold_optional_impl ());
 	bool const source = request.get<bool> ("source", false);
@@ -1232,6 +1240,7 @@ void nano::json_handler::blocks ()
 void nano::json_handler::blocks_info ()
 {
 	bool const pending = request.get<bool> ("pending", false);
+	bool const receivable = request.get<bool> ("receivable", pending);
 	bool const source = request.get<bool> ("source", false);
 	bool const json_block_l = request.get<bool> ("json_block", false);
 	bool const include_not_found = request.get<bool> ("include_not_found", false);
@@ -1284,7 +1293,7 @@ void nano::json_handler::blocks_info ()
 						auto subtype (nano::state_subtype (block->sideband ().details ()));
 						entry.put ("subtype", subtype);
 					}
-					if (pending)
+					if (receivable)
 					{
 						bool exists (false);
 						auto destination (node.ledger.block_destination (transaction, *block));
@@ -1293,6 +1302,7 @@ void nano::json_handler::blocks_info ()
 							exists = node.store.pending.exists (transaction, nano::pending_key (destination, hash));
 						}
 						entry.put ("pending", exists ? "1" : "0");
+						entry.put ("receivable", exists ? "1" : "0");
 					}
 					if (source)
 					{
@@ -2666,6 +2676,7 @@ void nano::json_handler::ledger ()
 		bool const representative = request.get<bool> ("representative", false);
 		bool const weight = request.get<bool> ("weight", false);
 		bool const pending = request.get<bool> ("pending", false);
+		bool const receivable = request.get<bool> ("receivable", pending);
 		boost::property_tree::ptree accounts;
 		auto transaction (node.store.tx_begin_read ());
 		if (!ec && !sorting) // Simple
@@ -2673,19 +2684,19 @@ void nano::json_handler::ledger ()
 			for (auto i (node.store.account.begin (transaction, start)), n (node.store.account.end ()); i != n && accounts.size () < count; ++i)
 			{
 				nano::account_info const & info (i->second);
-				if (info.modified >= modified_since && (pending || info.balance.number () >= threshold.number ()))
+				if (info.modified >= modified_since && (receivable || info.balance.number () >= threshold.number ()))
 				{
 					nano::account const & account (i->first);
 					boost::property_tree::ptree response_a;
-					if (pending)
+					if (receivable)
 					{
-						auto account_pending (node.ledger.account_pending (transaction, account));
-						if (info.balance.number () + account_pending < threshold.number ())
+						auto account_receivable = node.ledger.account_receivable (transaction, account);
+						if (info.balance.number () + account_receivable < threshold.number ())
 						{
 							continue;
 						}
-						response_a.put ("pending", account_pending.convert_to<std::string> ());
-						response_a.put ("receivable", account_pending.convert_to<std::string> ());
+						response_a.put ("pending", account_receivable.convert_to<std::string> ());
+						response_a.put ("receivable", account_receivable.convert_to<std::string> ());
 					}
 					response_a.put ("frontier", info.head.to_string ());
 					response_a.put ("open_block", info.open_block.to_string ());
@@ -2726,19 +2737,19 @@ void nano::json_handler::ledger ()
 			for (auto i (ledger_l.begin ()), n (ledger_l.end ()); i != n && accounts.size () < count; ++i)
 			{
 				node.store.account.get (transaction, i->second, info);
-				if (pending || info.balance.number () >= threshold.number ())
+				if (receivable || info.balance.number () >= threshold.number ())
 				{
 					nano::account const & account (i->second);
 					boost::property_tree::ptree response_a;
-					if (pending)
+					if (receivable)
 					{
-						auto account_pending (node.ledger.account_pending (transaction, account));
-						if (info.balance.number () + account_pending < threshold.number ())
+						auto account_receivable = node.ledger.account_receivable (transaction, account);
+						if (info.balance.number () + account_receivable < threshold.number ())
 						{
 							continue;
 						}
-						response_a.put ("pending", account_pending.convert_to<std::string> ());
-						response_a.put ("receivable", account_pending.convert_to<std::string> ());
+						response_a.put ("pending", account_receivable.convert_to<std::string> ());
+						response_a.put ("receivable", account_receivable.convert_to<std::string> ());
 					}
 					response_a.put ("frontier", info.head.to_string ());
 					response_a.put ("open_block", info.open_block.to_string ());
@@ -2947,6 +2958,12 @@ void nano::json_handler::peers ()
 
 void nano::json_handler::pending ()
 {
+	response_l.put ("deprecated", "1");
+	receivable ();
+}
+
+void nano::json_handler::receivable ()
+{
 	auto account (account_impl ());
 	auto count (count_optional_impl ());
 	auto offset (offset_optional_impl (0));
@@ -3055,6 +3072,12 @@ void nano::json_handler::pending ()
 }
 
 void nano::json_handler::pending_exists ()
+{
+	response_l.put ("deprecated", "1");
+	receivable_exists ();
+}
+
+void nano::json_handler::receivable_exists ()
 {
 	auto hash (hash_impl ());
 	bool const include_active = request.get<bool> ("include_active", false);
@@ -3608,10 +3631,16 @@ void nano::json_handler::republish ()
 
 void nano::json_handler::search_pending ()
 {
+	response_l.put ("deprecated", "1");
+	search_receivable ();
+}
+
+void nano::json_handler::search_receivable ()
+{
 	auto wallet (wallet_impl ());
 	if (!ec)
 	{
-		auto error (wallet->search_pending (wallet->wallets.tx_begin_read ()));
+		auto error (wallet->search_receivable (wallet->wallets.tx_begin_read ()));
 		response_l.put ("started", !error);
 	}
 	response_errors ();
@@ -3619,9 +3648,15 @@ void nano::json_handler::search_pending ()
 
 void nano::json_handler::search_pending_all ()
 {
+	response_l.put ("deprecated", "1");
+	search_receivable_all ();
+}
+
+void nano::json_handler::search_receivable_all ()
+{
 	if (!ec)
 	{
-		node.wallets.search_pending_all ();
+		node.wallets.search_receivable_all ();
 		response_l.put ("success", "");
 	}
 	response_errors ();
@@ -4304,7 +4339,7 @@ void nano::json_handler::wallet_info ()
 	if (!ec)
 	{
 		nano::uint128_t balance (0);
-		nano::uint128_t pending (0);
+		nano::uint128_t receivable (0);
 		uint64_t count (0);
 		uint64_t block_count (0);
 		uint64_t cemented_block_count (0);
@@ -4330,7 +4365,7 @@ void nano::json_handler::wallet_info ()
 			}
 
 			balance += account_info.balance.number ();
-			pending += node.ledger.account_pending (block_transaction, account);
+			receivable += node.ledger.account_receivable (block_transaction, account);
 
 			nano::key_type key_type (wallet->store.key_type (i->second));
 			if (key_type == nano::key_type::deterministic)
@@ -4347,8 +4382,8 @@ void nano::json_handler::wallet_info ()
 
 		uint32_t deterministic_index (wallet->store.deterministic_index_get (transaction));
 		response_l.put ("balance", balance.convert_to<std::string> ());
-		response_l.put ("pending", pending.convert_to<std::string> ());
-		response_l.put ("receivable", pending.convert_to<std::string> ());
+		response_l.put ("pending", receivable.convert_to<std::string> ());
+		response_l.put ("receivable", receivable.convert_to<std::string> ());
 		response_l.put ("accounts_count", std::to_string (count));
 		response_l.put ("accounts_block_count", std::to_string (block_count));
 		response_l.put ("accounts_cemented_block_count", std::to_string (cemented_block_count));
@@ -4376,10 +4411,10 @@ void nano::json_handler::wallet_balances ()
 			if (balance >= threshold.number ())
 			{
 				boost::property_tree::ptree entry;
-				nano::uint128_t pending = node.ledger.account_pending (block_transaction, account);
+				nano::uint128_t receivable = node.ledger.account_receivable (block_transaction, account);
 				entry.put ("balance", balance.convert_to<std::string> ());
-				entry.put ("pending", pending.convert_to<std::string> ());
-				entry.put ("receivable", pending.convert_to<std::string> ());
+				entry.put ("pending", receivable.convert_to<std::string> ());
+				entry.put ("receivable", receivable.convert_to<std::string> ());
 				balances.push_back (std::make_pair (account.to_account (), entry));
 			}
 		}
@@ -4612,6 +4647,7 @@ void nano::json_handler::wallet_ledger ()
 	bool const representative = request.get<bool> ("representative", false);
 	bool const weight = request.get<bool> ("weight", false);
 	bool const pending = request.get<bool> ("pending", false);
+	bool const receivable = request.get<bool> ("receivable", pending);
 	uint64_t modified_since (0);
 	boost::optional<std::string> modified_since_text (request.get_optional<std::string> ("modified_since"));
 	if (modified_since_text.is_initialized ())
@@ -4650,11 +4686,11 @@ void nano::json_handler::wallet_ledger ()
 						auto account_weight (node.ledger.weight (account));
 						entry.put ("weight", account_weight.convert_to<std::string> ());
 					}
-					if (pending)
+					if (receivable)
 					{
-						auto account_pending (node.ledger.account_pending (block_transaction, account));
-						entry.put ("pending", account_pending.convert_to<std::string> ());
-						entry.put ("receivable", account_pending.convert_to<std::string> ());
+						auto account_receivable (node.ledger.account_receivable (block_transaction, account));
+						entry.put ("pending", account_receivable.convert_to<std::string> ());
+						entry.put ("receivable", account_receivable.convert_to<std::string> ());
 					}
 					accounts.push_back (std::make_pair (account.to_account (), entry));
 				}
@@ -4680,6 +4716,12 @@ void nano::json_handler::wallet_lock ()
 }
 
 void nano::json_handler::wallet_pending ()
+{
+	response_l.put ("deprecated", "1");
+	wallet_receivable ();
+}
+
+void nano::json_handler::wallet_receivable ()
 {
 	auto wallet (wallet_impl ());
 	auto count (count_optional_impl ());
@@ -5199,6 +5241,7 @@ ipc_json_handler_no_arg_func_map create_ipc_json_handler_no_arg_func_map ()
 	no_arg_funcs.emplace ("accounts_create", &nano::json_handler::accounts_create);
 	no_arg_funcs.emplace ("accounts_frontiers", &nano::json_handler::accounts_frontiers);
 	no_arg_funcs.emplace ("accounts_pending", &nano::json_handler::accounts_pending);
+	no_arg_funcs.emplace ("accounts_receivable", &nano::json_handler::accounts_receivable);
 	no_arg_funcs.emplace ("active_difficulty", &nano::json_handler::active_difficulty);
 	no_arg_funcs.emplace ("available_supply", &nano::json_handler::available_supply);
 	no_arg_funcs.emplace ("block_info", &nano::json_handler::block_info);
@@ -5238,8 +5281,8 @@ ipc_json_handler_no_arg_func_map create_ipc_json_handler_no_arg_func_map ()
 	no_arg_funcs.emplace ("peers", &nano::json_handler::peers);
 	no_arg_funcs.emplace ("pending", &nano::json_handler::pending);
 	no_arg_funcs.emplace ("pending_exists", &nano::json_handler::pending_exists);
-	no_arg_funcs.emplace ("receivable", &nano::json_handler::pending);
-	no_arg_funcs.emplace ("receivable_exists", &nano::json_handler::pending_exists);
+	no_arg_funcs.emplace ("receivable", &nano::json_handler::receivable);
+	no_arg_funcs.emplace ("receivable_exists", &nano::json_handler::receivable_exists);
 	no_arg_funcs.emplace ("process", &nano::json_handler::process);
 	no_arg_funcs.emplace ("pruned_exists", &nano::json_handler::pruned_exists);
 	no_arg_funcs.emplace ("receive", &nano::json_handler::receive);
@@ -5249,7 +5292,9 @@ ipc_json_handler_no_arg_func_map create_ipc_json_handler_no_arg_func_map ()
 	no_arg_funcs.emplace ("representatives_online", &nano::json_handler::representatives_online);
 	no_arg_funcs.emplace ("republish", &nano::json_handler::republish);
 	no_arg_funcs.emplace ("search_pending", &nano::json_handler::search_pending);
+	no_arg_funcs.emplace ("search_receivable", &nano::json_handler::search_receivable);
 	no_arg_funcs.emplace ("search_pending_all", &nano::json_handler::search_pending_all);
+	no_arg_funcs.emplace ("search_receivable_all", &nano::json_handler::search_receivable_all);
 	no_arg_funcs.emplace ("send", &nano::json_handler::send);
 	no_arg_funcs.emplace ("sign", &nano::json_handler::sign);
 	no_arg_funcs.emplace ("stats", &nano::json_handler::stats);
@@ -5280,6 +5325,7 @@ ipc_json_handler_no_arg_func_map create_ipc_json_handler_no_arg_func_map ()
 	no_arg_funcs.emplace ("wallet_ledger", &nano::json_handler::wallet_ledger);
 	no_arg_funcs.emplace ("wallet_lock", &nano::json_handler::wallet_lock);
 	no_arg_funcs.emplace ("wallet_pending", &nano::json_handler::wallet_pending);
+	no_arg_funcs.emplace ("wallet_receivable", &nano::json_handler::wallet_receivable);
 	no_arg_funcs.emplace ("wallet_representative", &nano::json_handler::wallet_representative);
 	no_arg_funcs.emplace ("wallet_representative_set", &nano::json_handler::wallet_representative_set);
 	no_arg_funcs.emplace ("wallet_republish", &nano::json_handler::wallet_republish);

@@ -15,9 +15,9 @@ pub struct SignatureCheckerHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_signature_checker_create() -> *mut SignatureCheckerHandle {
+pub extern "C" fn rsn_signature_checker_create(num_threads: usize) -> *mut SignatureCheckerHandle {
     Box::into_raw(Box::new(SignatureCheckerHandle {
-        checker: SignatureChecker::new(),
+        checker: SignatureChecker::new(num_threads),
     }))
 }
 

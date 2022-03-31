@@ -865,7 +865,7 @@ uint8_t (*signature)[64]);
 
 uintptr_t rsn_signature_checker_batch_size ();
 
-SignatureCheckerHandle * rsn_signature_checker_create ();
+SignatureCheckerHandle * rsn_signature_checker_create (uintptr_t num_threads);
 
 void rsn_signature_checker_destroy (SignatureCheckerHandle * handle);
 

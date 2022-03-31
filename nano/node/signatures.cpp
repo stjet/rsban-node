@@ -17,7 +17,7 @@ rsnano::SignatureCheckSetDto to_check_set_dto (nano::signature_check_set const &
 
 nano::signature_checker::signature_checker (unsigned num_threads) :
 	thread_pool (num_threads, nano::thread_role::name::signature_checking),
-	handle (rsnano::rsn_signature_checker_create ())
+	handle (rsnano::rsn_signature_checker_create (num_threads))
 {
 }
 
@@ -43,14 +43,6 @@ void nano::signature_checker::verify (nano::signature_check_set & check_a)
 	rsnano::SignatureCheckSetDto check_set_dto{ to_check_set_dto (check_a) };
 	if (!rsnano::rsn_signature_checker_verify (handle, &check_set_dto))
 	{
-		return;
-	}
-
-	if (check_a.size <= get_batch_size () || single_threaded ())
-	{
-		// Not dealing with many so just use the calling thread for checking signatures
-		auto result = verify_batch (check_a, 0, check_a.size);
-		release_assert (result);
 		return;
 	}
 

@@ -30,13 +30,19 @@ impl SignatureCheckSet {
             verifications: vec![-1; size],
         }
     }
+
+    pub fn size(&self) -> usize {
+        self.messages.len()
+    }
 }
 
-pub struct SignatureChecker {}
+pub struct SignatureChecker {
+    num_threads: usize,
+}
 
 impl SignatureChecker {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(num_threads: usize) -> Self {
+        Self { num_threads }
     }
 
     pub const BATCH_SIZE: usize = 256;
@@ -60,6 +66,17 @@ impl SignatureChecker {
     }
 
     pub fn verify(&self, check_set: &mut SignatureCheckSet) -> bool {
+        if check_set.size() <= SignatureChecker::BATCH_SIZE || self.single_threaded() {
+            // Not dealing with many so just use the calling thread for checking signatures
+            let result = self.verify_batch(check_set, 0, check_set.size());
+            assert!(result);
+            return false;
+        }
+
         true
+    }
+
+    fn single_threaded(&self) -> bool {
+        self.num_threads == 0
     }
 }

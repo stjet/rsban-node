@@ -23,7 +23,9 @@ pub extern "C" fn rsn_signature_checker_create(num_threads: usize) -> *mut Signa
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_signature_checker_destroy(handle: *mut SignatureCheckerHandle) {
-    drop(Box::from_raw(handle));
+    let mut bx = Box::from_raw(handle);
+    bx.checker.stop();
+    drop(bx);
 }
 
 #[no_mangle]
@@ -35,32 +37,22 @@ pub extern "C" fn rsn_signature_checker_batch_size() -> usize {
 pub unsafe extern "C" fn rsn_signature_checker_verify(
     handle: &SignatureCheckerHandle,
     check_set: *mut SignatureCheckSetDto,
-) -> bool {
+) {
     let ffi_check_set = &mut *check_set;
     let mut check_set = into_check_set(ffi_check_set);
-    let result = handle.checker.verify(&mut check_set);
+    handle.checker.verify(&mut check_set);
     let valid = std::slice::from_raw_parts_mut(ffi_check_set.verifications, ffi_check_set.size);
     valid.copy_from_slice(&check_set.verifications);
-    result
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_signature_checker_verify_batch(
-    handle: &SignatureCheckerHandle,
-    check_set: *mut SignatureCheckSetDto,
-    start_index: usize,
-    size: usize,
-) -> bool {
-    let ffi_check_set = &mut *check_set;
-    let mut check_set = into_check_set(ffi_check_set);
+pub unsafe extern "C" fn rsn_signature_checker_stop(handle: *mut SignatureCheckerHandle) {
+    (&mut *handle).checker.stop();
+}
 
-    let result = handle
-        .checker
-        .verify_batch(&mut check_set, start_index, size);
-    let valid = std::slice::from_raw_parts_mut(ffi_check_set.verifications, ffi_check_set.size);
-    valid[start_index..start_index + size]
-        .copy_from_slice(&check_set.verifications[start_index..start_index + size]);
-    result
+#[no_mangle]
+pub unsafe extern "C" fn rsn_signature_checker_flush(handle: &SignatureCheckerHandle) {
+    handle.checker.flush();
 }
 
 unsafe fn into_check_set(ffi_check_set: &SignatureCheckSetDto) -> SignatureCheckSet {

@@ -869,13 +869,12 @@ SignatureCheckerHandle * rsn_signature_checker_create (uintptr_t num_threads);
 
 void rsn_signature_checker_destroy (SignatureCheckerHandle * handle);
 
-bool rsn_signature_checker_verify (const SignatureCheckerHandle * handle,
-SignatureCheckSetDto * check_set);
+void rsn_signature_checker_flush (const SignatureCheckerHandle * handle);
 
-bool rsn_signature_checker_verify_batch (const SignatureCheckerHandle * handle,
-SignatureCheckSetDto * check_set,
-uintptr_t start_index,
-uintptr_t size);
+void rsn_signature_checker_stop (SignatureCheckerHandle * handle);
+
+void rsn_signature_checker_verify (const SignatureCheckerHandle * handle,
+SignatureCheckSetDto * check_set);
 
 void rsn_stat_config_create (StatConfigDto * dto);
 

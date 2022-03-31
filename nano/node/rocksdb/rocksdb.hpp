@@ -34,8 +34,8 @@ class rocksdb_block_store_tombstone_count_Test;
 namespace rocksdb
 {
 	/**
- * rocksdb implementation of the block store
- */
+	 * rocksdb implementation of the block store
+	 */
 	class store : public nano::store
 	{
 	private:

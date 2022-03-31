@@ -40,26 +40,5 @@ public:
 
 private:
 	rsnano::SignatureCheckerHandle * handle;
-	std::atomic<int> tasks_remaining{ 0 };
-	std::atomic<bool> stopped{ false };
-	nano::thread_pool thread_pool;
-
-	struct Task final
-	{
-		Task (nano::signature_check_set & check, std::size_t pending) :
-			check (check), pending (pending)
-		{
-		}
-		~Task ()
-		{
-			release_assert (pending == 0);
-		}
-		nano::signature_check_set & check;
-		std::atomic<std::size_t> pending;
-	};
-
-	bool verify_batch (nano::signature_check_set const & check_a, std::size_t index, std::size_t size);
-	void verify_async (nano::signature_check_set & check_a, std::size_t num_batches, std::promise<void> & promise);
-	bool single_threaded () const;
 };
 }

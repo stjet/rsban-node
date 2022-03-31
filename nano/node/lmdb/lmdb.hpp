@@ -43,8 +43,8 @@ class transaction;
 namespace lmdb
 {
 	/**
- * mdb implementation of the block store
- */
+	 * mdb implementation of the block store
+	 */
 	class store : public nano::store
 	{
 	private:

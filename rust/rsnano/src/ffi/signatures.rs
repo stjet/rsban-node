@@ -27,6 +27,24 @@ pub unsafe extern "C" fn rsn_signature_checker_destroy(handle: *mut SignatureChe
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_signature_checker_batch_size() -> usize {
+    SignatureChecker::BATCH_SIZE
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_signature_checker_verify(
+    handle: &SignatureCheckerHandle,
+    check_set: *mut SignatureCheckSetDto,
+) -> bool {
+    let ffi_check_set = &mut *check_set;
+    let mut check_set = into_check_set(ffi_check_set);
+    let result = handle.checker.verify(&mut check_set);
+    let valid = std::slice::from_raw_parts_mut(ffi_check_set.verifications, ffi_check_set.size);
+    valid.copy_from_slice(&check_set.verifications);
+    result
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_signature_checker_verify_batch(
     handle: &SignatureCheckerHandle,
     check_set: *mut SignatureCheckSetDto,

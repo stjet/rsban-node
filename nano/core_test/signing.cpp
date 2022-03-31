@@ -172,7 +172,7 @@ TEST (signature_checker, boundary_checks)
 
 	for (auto i = 1; i <= 5; ++i)
 	{
-		add_boundary (nano::signature_checker::batch_size * i);
+		add_boundary (nano::signature_checker::get_batch_size () * i);
 	}
 
 	nano::signature_checker checker (1);

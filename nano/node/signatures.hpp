@@ -36,7 +36,7 @@ public:
 	void stop ();
 	void flush ();
 
-	static std::size_t constexpr batch_size = 256;
+	static std::size_t get_batch_size ();
 
 private:
 	rsnano::SignatureCheckerHandle * handle;

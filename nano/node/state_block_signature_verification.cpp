@@ -47,7 +47,7 @@ void nano::state_block_signature_verification::run (uint64_t state_block_signatu
 	{
 		if (!state_blocks.empty ())
 		{
-			std::size_t const max_verification_batch (state_block_signature_verification_size != 0 ? state_block_signature_verification_size : nano::signature_checker::batch_size * (node_config.signature_checker_threads + 1));
+			std::size_t const max_verification_batch (state_block_signature_verification_size != 0 ? state_block_signature_verification_size : nano::signature_checker::get_batch_size () * (node_config.signature_checker_threads + 1));
 			active = true;
 			while (!state_blocks.empty () && !stopped)
 			{

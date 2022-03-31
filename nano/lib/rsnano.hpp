@@ -12,6 +12,8 @@
 namespace rsnano
 {
 
+static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
+
 struct BandwidthLimiterHandle;
 
 struct ChangeBlockHandle;
@@ -861,9 +863,14 @@ const uint8_t * message,
 uintptr_t len,
 uint8_t (*signature)[64]);
 
+uintptr_t rsn_signature_checker_batch_size ();
+
 SignatureCheckerHandle * rsn_signature_checker_create ();
 
 void rsn_signature_checker_destroy (SignatureCheckerHandle * handle);
+
+bool rsn_signature_checker_verify (const SignatureCheckerHandle * handle,
+SignatureCheckSetDto * check_set);
 
 bool rsn_signature_checker_verify_batch (const SignatureCheckerHandle * handle,
 SignatureCheckSetDto * check_set,

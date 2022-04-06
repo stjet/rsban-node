@@ -209,6 +209,9 @@ uint64_t nano::system::work_generate_limited (nano::block_hash const & root_a, u
 	return result;
 }
 
+/** Initiate an epoch upgrade. Writes the epoch block into the ledger and leaves it to
+ *  node background processes (e.g. frontiers confirmation) to cement the block.
+ */
 std::unique_ptr<nano::state_block> nano::upgrade_epoch (nano::work_pool & pool_a, nano::ledger & ledger_a, nano::epoch epoch_a)
 {
 	auto transaction (ledger_a.store.tx_begin_write ());
@@ -305,6 +308,22 @@ std::error_code nano::system::poll_until_true (std::chrono::nanoseconds deadline
 		ec = poll ();
 	}
 	return ec;
+}
+
+/**
+ * This function repetitively calls io_ctx.run_one_for until delay number of milliseconds elapse.
+ * It can be used to sleep for a duration in unit tests whilst allowing the background io contexts to continue processing.
+ * @param delay milliseconds of delay
+ */
+void nano::system::delay_ms (std::chrono::milliseconds const & delay)
+{
+	auto now = std::chrono::steady_clock::now ();
+	auto endtime = now + delay;
+	while (now <= endtime)
+	{
+		io_ctx.run_one_for (endtime - now);
+		now = std::chrono::steady_clock::now ();
+	}
 }
 
 namespace

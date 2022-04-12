@@ -3349,7 +3349,7 @@ TEST (node, dont_write_lock_node)
 		{
 			nano::ledger_cache ledger_cache;
 			auto transaction (store->tx_begin_write ());
-			store->initialize (transaction, ledger_cache);
+			store->initialize (transaction, ledger_cache, nano::dev::constants);
 		}
 
 		// Hold write lock open until main thread is done needing it

@@ -23,7 +23,7 @@ pub extern "C" fn rsn_signature_checker_create(num_threads: usize) -> *mut Signa
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_signature_checker_destroy(handle: *mut SignatureCheckerHandle) {
-    let mut bx = Box::from_raw(handle);
+    let bx = Box::from_raw(handle);
     bx.checker.stop();
     drop(bx);
 }

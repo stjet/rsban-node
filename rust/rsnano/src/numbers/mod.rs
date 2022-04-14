@@ -177,6 +177,10 @@ impl Amount {
         Self { value }
     }
 
+    pub fn zero() -> Self {
+        Self::new(0)
+    }
+
     pub fn from_be_bytes(bytes: [u8; 16]) -> Self {
         Self {
             value: u128::from_be_bytes(bytes),

@@ -445,33 +445,30 @@ mod tests {
                 const CHECK_SIZES: &'static [usize; NUM_CHECK_SIZES] = &[2048, 256, 1024, 1,
 			4096, 512, 2050, 1024, 8092, 513, 17, 1024, 2047, 255, 513, 2049, 1025, 1023 ];
 
-                // Create containers so everything is kept in scope while the threads work on the signature checks
-                let mut messages: [Vec<Vec<u8>>; NUM_CHECK_SIZES] = Default::default();
-                let mut pub_keys: [Vec<PublicKey>; NUM_CHECK_SIZES] = Default::default();
-                let mut signatures: [Vec<Signature>; NUM_CHECK_SIZES] = Default::default();
-                let mut verifications: [Vec<i32>; NUM_CHECK_SIZES] = Default::default();
-
                 // Populate all the signature check sets. The last one in each set is given an incorrect block signature.
                 for i in 0..NUM_CHECK_SIZES{
                     let check_size = CHECK_SIZES[i];
                     assert!(check_size > 0);
                     let last_signature_index = check_size - 1;
                     
-                    messages[i].resize_with(check_size, || block_hash.as_bytes().to_vec());
-                    messages[i][last_signature_index] = invalid_block_hash.as_bytes().to_vec();
+                    let mut messages = vec![block_hash.as_bytes().to_vec(); check_size];
+                    messages[last_signature_index] = invalid_block_hash.as_bytes().to_vec();
 
-                    pub_keys[i].resize(check_size, block_account.public_key);
-                    pub_keys[i][last_signature_index] = invalid_block_account.public_key;
+                    let mut pub_keys = vec![block_account.public_key; check_size];
+                    pub_keys[last_signature_index] = invalid_block_account.public_key;
 
-                    signatures[i].resize_with(check_size, || block_signature.clone());
-                    signatures[i][last_signature_index] = invalid_block_signature.clone();
+                    let mut signatures = Vec::with_capacity(check_size);
+                    for _ in 0..check_size - 1{
+                        signatures.push(block_signature.clone());
+                    }
+                    signatures.push(invalid_block_signature.clone());
 
-                    verifications[i].resize(check_size, -1);
+                    let verifications = vec![-1;check_size];
                     let mut check_set = SignatureCheckSet{
-                                            messages: messages[i].clone(),
-                                            pub_keys: pub_keys[i].clone(),
-                                            signatures: signatures[i].clone(),
-                                            verifications: verifications[i].clone(),
+                                            messages,
+                                            pub_keys,
+                                            signatures,
+                                            verifications,
                                         };
 
                     checker.verify(&mut check_set);

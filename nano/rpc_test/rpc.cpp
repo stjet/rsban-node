@@ -3157,6 +3157,7 @@ TEST (rpc, accounts_balances)
 	}
 }
 
+// Tests the  happy path of retrieving an account's representative
 TEST (rpc, accounts_representatives)
 {
 	nano::system system;
@@ -3166,12 +3167,67 @@ TEST (rpc, accounts_representatives)
 	request.put ("action", "accounts_representatives");
 	boost::property_tree::ptree entry;
 	boost::property_tree::ptree accounts;
+	// Adds a valid account present in the ledger.
 	entry.put ("", nano::dev::genesis_key.pub.to_account ());
 	accounts.push_back (std::make_pair ("", entry));
 	request.add_child ("accounts", accounts);
 	auto response (wait_response (system, rpc_ctx, request));
+	// Ensures the response is correct.
 	auto response_representative (response.get_child ("representatives").get<std::string> (nano::dev::genesis->account ().to_account ()));
 	ASSERT_EQ (response_representative, nano::dev::genesis->account ().to_account ());
+}
+
+/**
+ * Test the RPC accounts_frontiers with 3 accounts, one good one, one with an invalid account ID and one with an account that does not exist.
+ */
+TEST (rpc, accounts_representatives_per_account_result_with_errors)
+{
+	nano::system system;
+	auto node = add_ipc_enabled_node (system);
+	auto const rpc_ctx = add_rpc (system, node);
+	boost::property_tree::ptree request;
+	request.put ("action", "accounts_representatives");
+	boost::property_tree::ptree entry1, entry2, entry3;
+	boost::property_tree::ptree accounts_l;
+
+	// Adds a valid account present in the ledger.
+	entry1.put ("", nano::dev::genesis_key.pub.to_account ());
+	accounts_l.push_back (std::make_pair ("", entry1));
+
+	// Adds an invalid account, malformed number with a wrong checksum.
+	// Got with this formula: key1.substr(0, 40) + key2.substr(40, key2.size()).
+	auto const invalid_key = "nano_36uccgpjzhjsdbj44wm1y5hyz8gefx3wjpp1jircxt84nopxkxti5bzq1rnz";
+	entry2.put ("", invalid_key);
+	accounts_l.push_back (std::make_pair ("", entry2));
+
+	// Adds a valid key but that isn't on the ledger. It wont'be found.
+	auto const valid_key = "nano_1hrts7hcoozxccnffoq9hqhngnn9jz783usapejm57ejtqcyz9dpso1bibuy";
+	entry3.put ("", valid_key);
+	accounts_l.push_back (std::make_pair ("", entry3));
+
+	// Packs all the account entries.
+	request.add_child ("accounts", accounts_l);
+	auto response (wait_response (system, rpc_ctx, request));
+
+	auto get_error_message = [] (nano::error_common error_common) -> std::string {
+		std::error_code ec = error_common;
+		return boost::str (boost::format ("error: %1%") % ec.message ());
+	};
+
+	std::map<std::string, std::string> reply_map{
+		{ nano::dev::genesis_key.pub.to_account (), nano::dev::genesis->account ().to_account () },
+		{ invalid_key, get_error_message (nano::error_common::bad_account_number) },
+		{ valid_key, get_error_message (nano::error_common::account_not_found) }
+	};
+
+	for (auto & representative : response.get_child ("representatives"))
+	{
+		std::string account_text = representative.first;
+		std::string frontier_text = representative.second.get<std::string> ("");
+		ASSERT_EQ (frontier_text, reply_map[account_text]);
+		reply_map.erase (account_text);
+	}
+	ASSERT_EQ (reply_map.size (), 0);
 }
 
 TEST (rpc, accounts_frontiers)
@@ -3180,21 +3236,50 @@ TEST (rpc, accounts_frontiers)
 	auto node = add_ipc_enabled_node (system);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	auto const rpc_ctx = add_rpc (system, node);
+
 	boost::property_tree::ptree request;
 	request.put ("action", "accounts_frontiers");
-	boost::property_tree::ptree entry;
-	boost::property_tree::ptree peers_l;
-	entry.put ("", nano::dev::genesis_key.pub.to_account ());
-	peers_l.push_back (std::make_pair ("", entry));
-	request.add_child ("accounts", peers_l);
+	boost::property_tree::ptree accounts_l;
+	// Adds a valid account that will be found in the ledger.
+	boost::property_tree::ptree entry1;
+	entry1.put ("", nano::dev::genesis_key.pub.to_account ());
+	accounts_l.push_back (std::make_pair ("", entry1));
+	// Adds a bad account number for getting an error response.
+	boost::property_tree::ptree entry2;
+	auto const bad_account_number = "nano_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtd1";
+	entry2.put ("", bad_account_number);
+	accounts_l.push_back (std::make_pair ("", entry2));
+	// Adds a valid account that isn't on the ledger for getting an error response.
+	boost::property_tree::ptree entry3;
+	auto const account_not_found = "nano_1os6txqxyuesnxrtshnfb5or1hesc1647wpk9rsr84pmki6eairwha79hk3j";
+	entry3.put ("", account_not_found);
+	accounts_l.push_back (std::make_pair ("", entry3));
+	request.add_child ("accounts", accounts_l);
 	auto response (wait_response (system, rpc_ctx, request));
-	for (auto & frontiers : response.get_child ("frontiers"))
+
+	auto get_error_message = [] (nano::error_common error_common) -> std::string {
+		std::error_code ec = error_common;
+		return boost::str (boost::format ("error: %1%") % ec.message ());
+	};
+
+	// create a map of expected replies, everytime we receive and echeck a reply, we remove it from this map
+	// in the end, this container should be empty, which would signify that all 3 replies were received correctly
+	std::map<std::string, std::string> reply_map{
+		{ nano::dev::genesis_key.pub.to_account (), nano::dev::genesis->hash ().to_string () },
+		{ bad_account_number, get_error_message (nano::error_common::bad_account_number) },
+		{ account_not_found, get_error_message (nano::error_common::account_not_found) },
+	};
+
+	for (auto & frontier : response.get_child ("frontiers"))
 	{
-		std::string account_text (frontiers.first);
-		ASSERT_EQ (nano::dev::genesis_key.pub.to_account (), account_text);
-		std::string frontier_text (frontiers.second.get<std::string> (""));
-		ASSERT_EQ (node->latest (nano::dev::genesis->account ()), nano::block_hash{ frontier_text });
+		std::string account_text = frontier.first;
+		std::string frontier_text = frontier.second.get<std::string> ("");
+		ASSERT_EQ (frontier_text, reply_map[account_text]);
+		reply_map.erase (account_text);
 	}
+
+	// we expect all replies to have been received and this container to be empty
+	ASSERT_EQ (reply_map.size (), 0);
 }
 
 TEST (rpc, accounts_pending)

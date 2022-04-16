@@ -35,7 +35,6 @@ add_executable(
   prioritization.cpp
   request_aggregator.cpp
   signal_manager.cpp
-  signing.cpp
   socket.cpp
   system.cpp
   telemetry.cpp

@@ -1,6 +1,9 @@
-use std::sync::{atomic::{AtomicBool, AtomicUsize, Ordering}, RwLock};
-use yastl::Pool;
 use crate::{validate_message_batch, PublicKey, Signature};
+use std::sync::{
+    atomic::{AtomicBool, AtomicUsize, Ordering},
+    RwLock,
+};
+use yastl::{Pool, ThreadConfig};
 
 pub struct SignatureCheckSet {
     pub messages: Vec<Vec<u8>>,
@@ -62,7 +65,10 @@ impl SignatureChecker {
             thread_pool: if num_threads == 0 {
                 RwLock::new(None)
             } else {
-                RwLock::new(Some(Pool::new(num_threads)))
+                RwLock::new(Some(Pool::with_config(
+                    num_threads,
+                    ThreadConfig::new().prefix("signature-checker"),
+                )))
             },
             thread_pool_threads: num_threads,
             tasks_remaining: AtomicUsize::new(0),
@@ -89,7 +95,7 @@ impl SignatureChecker {
         }
 
         let pool = self.thread_pool.read().unwrap();
-        match &*pool{
+        match &*pool {
             Some(pool) => {
                 if check_set.size() <= SignatureChecker::BATCH_SIZE {
                     // Not dealing with many so just use the calling thread for checking signatures
@@ -123,7 +129,7 @@ impl SignatureChecker {
 
         let task_pending = AtomicUsize::new(thread_distribution_plan.thread_pool_batches);
 
-        pool.scoped(|scope|{
+        pool.scoped(|scope| {
             // Verify a number of signature batches over the thread pool (does not block)
             /* This operates on a number of signatures of size (num_batches * batch_size) from the beginning of the check_a pointers.
              */
@@ -341,6 +347,7 @@ mod tests {
     }
 
     mod signature_checker {
+        use crate::{Amount, BlockHash, KeyPair, Link, StateBlock};
         use super::*;
 
         // original test: signature_checker.empty
@@ -354,6 +361,43 @@ mod tests {
                 verifications: Vec::new(),
             };
             checker.verify(&mut check);
+        }
+
+        // original test: signature_checker.one
+        #[test]
+        fn one() {
+            let checker = SignatureChecker::new(0);
+            let key = KeyPair::new();
+
+            let verify_block = |block: &StateBlock, result: i32| {
+                let mut check = SignatureCheckSet {
+                    messages: vec![block.hash().as_bytes().to_vec()],
+                    pub_keys: vec![block.hashables.account.public_key],
+                    signatures: vec![block.signature.clone()],
+                    verifications: vec![-1],
+                };
+                checker.verify(&mut check);
+                assert_eq!(check.verifications[0], result);
+            };
+
+            let mut block = StateBlock::new(
+                key.public_key().into(),
+                BlockHash::new(),
+                key.public_key().into(),
+                Amount::zero(),
+                Link::new(),
+                &key.private_key(),
+                &key.public_key(),
+                0,
+            )
+            .unwrap();
+
+            // Check for success for a valid block
+            verify_block(&block, 1);
+
+            // Make signaure invalid and check result is incorrect
+            block.signature.make_invalid();
+            verify_block(&block, 0);
         }
     }
 }

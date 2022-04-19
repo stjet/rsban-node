@@ -45,3 +45,8 @@ void nano::signature_checker::flush ()
 {
 	rsnano::rsn_signature_checker_flush (handle);
 }
+
+rsnano::SignatureCheckerHandle const * nano::signature_checker::get_handle () const
+{
+	return handle;
+}

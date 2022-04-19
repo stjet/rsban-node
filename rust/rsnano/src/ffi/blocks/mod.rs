@@ -5,7 +5,7 @@ mod receive_block;
 mod send_block;
 mod state_block;
 
-use std::{convert::TryFrom, ffi::c_void, ptr::null, sync::Arc};
+use std::{convert::TryFrom, ffi::c_void, sync::Arc};
 
 pub use block_details::*;
 pub use change_block::*;

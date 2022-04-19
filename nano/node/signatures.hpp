@@ -35,6 +35,7 @@ public:
 	void verify (signature_check_set &);
 	void stop ();
 	void flush ();
+	rsnano::SignatureCheckerHandle const * get_handle () const;
 
 	static std::size_t get_batch_size ();
 

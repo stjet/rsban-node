@@ -32,7 +32,7 @@ pub use ipc::*;
 pub use numbers::*;
 pub use secure::*;
 pub use signatures::*;
-pub use state_block_signature_verification::*;
+pub(crate) use state_block_signature_verification::*;
 pub use stats::*;
 pub use token_bucket::*;
 pub use utils::*;

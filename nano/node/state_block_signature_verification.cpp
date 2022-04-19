@@ -20,7 +20,7 @@ nano::state_block_signature_verification::state_block_signature_verification (na
 		this->run (state_block_signature_verification_size);
 	})
 {
-	handle = rsnano::rsn_state_block_signature_verification_create ();
+	handle = rsnano::rsn_state_block_signature_verification_create (signature_checker.get_handle ());
 }
 
 nano::state_block_signature_verification::~state_block_signature_verification ()

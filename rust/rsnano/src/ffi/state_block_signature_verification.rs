@@ -1,6 +1,6 @@
 use crate::StateBlockSignatureVerification;
 
-use super::SharedBlockEnumHandle;
+use super::{SharedBlockEnumHandle, SignatureCheckerHandle};
 
 pub struct StateBlockSignatureVerificationHandle {
     verification: StateBlockSignatureVerification,
@@ -29,10 +29,12 @@ pub struct StateBlockSignatureVerificationResultDto {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_create(
+pub unsafe extern "C" fn rsn_state_block_signature_verification_create(
+    checker: *const SignatureCheckerHandle,
 ) -> *mut StateBlockSignatureVerificationHandle {
+    let checker = (&*checker).checker.clone();
     Box::into_raw(Box::new(StateBlockSignatureVerificationHandle {
-        verification: StateBlockSignatureVerification::new(),
+        verification: StateBlockSignatureVerification::new(checker),
     }))
 }
 

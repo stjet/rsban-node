@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{PublicKey, Signature, SignatureCheckSet, SignatureChecker};
 
 #[repr(C)]
@@ -11,13 +13,13 @@ pub struct SignatureCheckSetDto {
 }
 
 pub struct SignatureCheckerHandle {
-    pub checker: SignatureChecker,
+    pub checker: Arc<SignatureChecker>,
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_signature_checker_create(num_threads: usize) -> *mut SignatureCheckerHandle {
     Box::into_raw(Box::new(SignatureCheckerHandle {
-        checker: SignatureChecker::new(num_threads),
+        checker: Arc::new(SignatureChecker::new(num_threads)),
     }))
 }
 

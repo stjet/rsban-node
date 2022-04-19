@@ -5,7 +5,7 @@ mod receive_block;
 mod send_block;
 mod state_block;
 
-use std::{convert::TryFrom, ffi::c_void};
+use std::{convert::TryFrom, ffi::c_void, ptr::null, sync::Arc};
 
 pub use block_details::*;
 pub use change_block::*;
@@ -132,6 +132,28 @@ pub unsafe fn as_block(dto: &BlockDto) -> Option<&dyn Block> {
 pub struct BlockDto {
     pub block_type: u8,
     pub handle: *mut c_void,
+}
+
+pub struct SharedBlockEnumHandle {
+    block: Arc<BlockEnum>,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_to_shared_handle(
+    dto: *const BlockDto,
+) -> *mut SharedBlockEnumHandle {
+    if let Ok(block) = BlockEnum::try_from(&*dto) {
+        return Box::into_raw(Box::new(SharedBlockEnumHandle {
+            block: Arc::new(block),
+        }));
+    }
+
+    std::ptr::null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_shared_block_enum_handle_destroy(handle: *mut SharedBlockEnumHandle) {
+    drop(Box::from_raw(handle));
 }
 
 #[no_mangle]

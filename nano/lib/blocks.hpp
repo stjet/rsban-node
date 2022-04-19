@@ -130,6 +130,7 @@ public:
 	void refresh ();
 	virtual rsnano::BlockDto to_block_dto () const = 0;
 	virtual void * get_handle () const = 0;
+	rsnano::SharedBlockEnumHandle * to_shared_handle () const;
 
 protected:
 	virtual nano::block_hash generate_hash () const = 0;

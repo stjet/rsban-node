@@ -24,9 +24,15 @@ struct ReceiveBlockHandle;
 
 struct SendBlockHandle;
 
+struct SharedBlockEnumHandle;
+
 struct SignatureCheckerHandle;
 
 struct StateBlockHandle;
+
+struct StateBlockSignatureVerificationHandle;
+
+struct StateBlockSignatureVerificationResultHandle;
 
 struct BlockDetailsDto
 {
@@ -533,6 +539,22 @@ struct StateBlockDto2
 	uint64_t work;
 };
 
+struct StateBlockSignatureVerificationValueDto
+{
+	SharedBlockEnumHandle * block;
+	uint8_t account[32];
+	uint8_t verification;
+};
+
+struct StateBlockSignatureVerificationResultDto
+{
+	const uint8_t (*hashes)[32];
+	const uint8_t (*signatures)[64];
+	const int32_t * verifications;
+	uintptr_t size;
+	StateBlockSignatureVerificationResultHandle * handle;
+};
+
 extern "C" {
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
@@ -574,6 +596,8 @@ int32_t rsn_block_sideband_serialize (const BlockSidebandDto * dto, void * strea
 int32_t rsn_block_sideband_set (BlockDto * block, const BlockSidebandDto * sideband);
 
 uintptr_t rsn_block_sideband_size (uint8_t block_type, int32_t * result);
+
+SharedBlockEnumHandle * rsn_block_to_shared_handle (const BlockDto * dto);
 
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
 BootstrapConstantsDto * dto);
@@ -857,6 +881,8 @@ void rsn_send_block_work_set (SendBlockHandle * handle, uint64_t work);
 
 void rsn_send_block_zero (SendBlockHandle * handle);
 
+void rsn_shared_block_enum_handle_destroy (SharedBlockEnumHandle * handle);
+
 int32_t rsn_sign_message (const uint8_t (*priv_key)[32],
 const uint8_t (*pub_key)[32],
 const uint8_t * message,
@@ -922,6 +948,17 @@ int32_t rsn_state_block_serialize_json (const StateBlockHandle * handle, void * 
 void rsn_state_block_signature (const StateBlockHandle * handle, uint8_t (*result)[64]);
 
 void rsn_state_block_signature_set (StateBlockHandle * handle, const uint8_t (*signature)[64]);
+
+StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create ();
+
+void rsn_state_block_signature_verification_destroy (StateBlockSignatureVerificationHandle * handle);
+
+void rsn_state_block_signature_verification_result_destroy (StateBlockSignatureVerificationResultHandle * handle);
+
+void rsn_state_block_signature_verification_verify (const StateBlockSignatureVerificationHandle * _handle,
+const StateBlockSignatureVerificationValueDto * _items,
+uintptr_t _len,
+StateBlockSignatureVerificationResultDto * result);
 
 uintptr_t rsn_state_block_size ();
 

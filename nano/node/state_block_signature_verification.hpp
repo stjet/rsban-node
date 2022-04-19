@@ -7,6 +7,11 @@
 #include <functional>
 #include <thread>
 
+namespace rsnano
+{
+class StateBlockSignatureVerificationHandle;
+}
+
 namespace nano
 {
 class epochs;
@@ -30,6 +35,7 @@ public:
 	std::function<void ()> transition_inactive_callback;
 
 private:
+	rsnano::StateBlockSignatureVerificationHandle * handle;
 	nano::signature_checker & signature_checker;
 	nano::epochs & epochs;
 	nano::node_config & node_config;

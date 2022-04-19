@@ -1,5 +1,6 @@
 #include <nano/lib/logger_mt.hpp>
 #include <nano/lib/numbers.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/node/nodeconfig.hpp>
@@ -19,11 +20,13 @@ nano::state_block_signature_verification::state_block_signature_verification (na
 		this->run (state_block_signature_verification_size);
 	})
 {
+	handle = rsnano::rsn_state_block_signature_verification_create ();
 }
 
 nano::state_block_signature_verification::~state_block_signature_verification ()
 {
 	stop ();
+	rsnano::rsn_state_block_signature_verification_destroy (handle);
 }
 
 void nano::state_block_signature_verification::stop ()
@@ -108,12 +111,43 @@ auto nano::state_block_signature_verification::setup_items (std::size_t max_coun
 	return items;
 }
 
+std::vector<rsnano::StateBlockSignatureVerificationValueDto> items_to_dto (std::deque<nano::state_block_signature_verification::value_type> & items)
+{
+	std::vector<rsnano::StateBlockSignatureVerificationValueDto> result;
+	result.reserve (items.size ());
+	for (auto const & [block, account, verification] : items)
+	{
+		rsnano::StateBlockSignatureVerificationValueDto value_dto;
+		value_dto.block = block->to_shared_handle ();
+		std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (value_dto.account));
+		value_dto.verification = static_cast<uint8_t> (verification);
+
+		result.push_back (value_dto);
+	}
+
+	return result;
+}
+
 void nano::state_block_signature_verification::verify_state_blocks (std::deque<value_type> & items)
 {
 	if (!items.empty ())
 	{
 		nano::timer<> timer_l;
 		timer_l.start ();
+
+		// convert to DTOs
+		auto item_dtos (items_to_dto (items));
+
+		// call Rust verification
+		rsnano::StateBlockSignatureVerificationResultDto result_dto;
+		rsnano::rsn_state_block_signature_verification_verify (handle, item_dtos.data (), item_dtos.size (), &result_dto);
+
+		// destroy DTOs
+		for (auto & i : item_dtos)
+		{
+			rsnano::rsn_shared_block_enum_handle_destroy (i.block);
+		}
+
 		auto size (items.size ());
 		std::vector<nano::block_hash> hashes;
 		hashes.reserve (size);
@@ -152,6 +186,8 @@ void nano::state_block_signature_verification::verify_state_blocks (std::deque<v
 		}
 		nano::signature_check_set check = { size, messages.data (), lengths.data (), pub_keys.data (), signatures.data (), verifications.data () };
 		signature_checker.verify (check);
+		// todo convert DTO array back into items
+
 		if (node_config.logging.timing_logging () && timer_l.stop () > std::chrono::milliseconds (10))
 		{
 			logger.try_log (boost::str (boost::format ("Batch verified %1% state blocks in %2% %3%") % size % timer_l.value ().count () % timer_l.unit ()));

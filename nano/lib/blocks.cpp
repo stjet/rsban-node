@@ -162,6 +162,12 @@ nano::amount nano::block::balance () const
 	return amount;
 }
 
+rsnano::SharedBlockEnumHandle * nano::block::to_shared_handle () const
+{
+	auto dto (to_block_dto ());
+	return rsnano::rsn_block_to_shared_handle (&dto);
+}
+
 void nano::send_block::visit (nano::block_visitor & visitor_a) const
 {
 	visitor_a.send_block (*this);

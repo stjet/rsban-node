@@ -51,8 +51,6 @@ impl SignatureCheckSet {
 }
 
 pub struct SignatureChecker {
-    // ThreadPool is not Sync unfortunatley! That means we cannot process multiple
-    // SignatureCheckSets in parallel (unlike the C++ version)
     thread_pool: RwLock<Option<Pool>>,
     thread_pool_threads: usize,
     tasks_remaining: AtomicUsize,
@@ -347,8 +345,8 @@ mod tests {
     }
 
     mod signature_checker {
-        use crate::{Amount, BlockHash, KeyPair, Link, StateBlock};
         use super::*;
+        use crate::{Amount, BlockHash, KeyPair, Link, StateBlock};
 
         // original test: signature_checker.empty
         #[test]

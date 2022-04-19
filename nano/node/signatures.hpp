@@ -17,7 +17,6 @@ public:
 		size (size), messages (messages), message_lengths (message_lengths), pub_keys (pub_keys), signatures (signatures), verifications (verifications)
 	{
 	}
-
 	std::size_t size;
 	unsigned char const ** messages;
 	std::size_t * message_lengths;
@@ -31,12 +30,15 @@ class signature_checker final
 {
 public:
 	signature_checker (unsigned num_threads);
+	signature_checker (signature_checker const &) = delete;
 	~signature_checker ();
 	void verify (signature_check_set &);
 	void stop ();
 	void flush ();
 
 	static std::size_t get_batch_size ();
+
+	signature_checker & operator= (signature_checker const &) = delete;
 
 private:
 	rsnano::SignatureCheckerHandle * handle;

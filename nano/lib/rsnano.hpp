@@ -18,6 +18,8 @@ struct BandwidthLimiterHandle;
 
 struct ChangeBlockHandle;
 
+struct EpochsHandle;
+
 struct OpenBlockHandle;
 
 struct ReceiveBlockHandle;
@@ -691,6 +693,23 @@ uint64_t rsn_difficulty_from_multiplier (double multiplier, uint64_t base_diffic
 
 double rsn_difficulty_to_multiplier (uint64_t difficulty, uint64_t base_difficulty);
 
+void rsn_epochs_add (EpochsHandle * handle,
+uint8_t epoch,
+const uint8_t * signer,
+const uint8_t * link);
+
+EpochsHandle * rsn_epochs_create ();
+
+void rsn_epochs_destroy (EpochsHandle * handle);
+
+uint8_t rsn_epochs_epoch (const EpochsHandle * handle, const uint8_t * link);
+
+bool rsn_epochs_is_epoch_link (const EpochsHandle * handle, const uint8_t * link);
+
+void rsn_epochs_link (const EpochsHandle * handle, uint8_t epoch, uint8_t * link);
+
+void rsn_epochs_signer (const EpochsHandle * handle, uint8_t epoch, uint8_t * signer);
+
 int32_t rsn_ipc_config_create (IpcConfigDto * dto, const NetworkConstantsDto * network_constants);
 
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
@@ -949,15 +968,16 @@ void rsn_state_block_signature (const StateBlockHandle * handle, uint8_t (*resul
 
 void rsn_state_block_signature_set (StateBlockHandle * handle, const uint8_t (*signature)[64]);
 
-StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create (const SignatureCheckerHandle * checker);
+StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create (const SignatureCheckerHandle * checker,
+const EpochsHandle * epochs);
 
 void rsn_state_block_signature_verification_destroy (StateBlockSignatureVerificationHandle * handle);
 
 void rsn_state_block_signature_verification_result_destroy (StateBlockSignatureVerificationResultHandle * handle);
 
-void rsn_state_block_signature_verification_verify (const StateBlockSignatureVerificationHandle * _handle,
-const StateBlockSignatureVerificationValueDto * _items,
-uintptr_t _len,
+void rsn_state_block_signature_verification_verify (const StateBlockSignatureVerificationHandle * handle,
+const StateBlockSignatureVerificationValueDto * items,
+uintptr_t len,
 StateBlockSignatureVerificationResultDto * result);
 
 uintptr_t rsn_state_block_size ();

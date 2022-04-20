@@ -249,6 +249,10 @@ impl Block for StateBlock {
     fn link(&self) -> Link {
         self.hashables.link
     }
+
+    fn block_signature(&self) -> &Signature {
+        &self.signature
+    }
 }
 
 #[cfg(test)]

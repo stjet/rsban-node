@@ -1,7 +1,7 @@
 use std::ffi::c_void;
 
 use crate::{
-    BlockHash, LazyBlockHash, PublicKey, RawKey, ReceiveBlock, ReceiveHashables, Signature, Block,
+    Block, BlockHash, LazyBlockHash, PublicKey, RawKey, ReceiveBlock, ReceiveHashables, Signature,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};

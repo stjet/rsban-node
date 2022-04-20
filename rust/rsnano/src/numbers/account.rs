@@ -104,6 +104,14 @@ impl From<PublicKey> for Account {
     }
 }
 
+impl From<&PublicKey> for Account {
+    fn from(public_key: &PublicKey) -> Self {
+        Account {
+            public_key: *public_key,
+        }
+    }
+}
+
 struct EncodedAccountU512(U512);
 
 impl EncodedAccountU512 {

@@ -36,6 +36,12 @@ struct hash<::nano::epoch>
 	}
 };
 }
+
+namespace rsnano
+{
+class EpochsHandle;
+}
+
 namespace nano
 {
 class epoch_info
@@ -47,6 +53,12 @@ public:
 class epochs
 {
 public:
+	epochs ();
+	epochs (nano::epochs const &) = delete;
+	epochs (nano::epochs && other);
+	~epochs ();
+
+	rsnano::EpochsHandle * get_handle () const;
 	/** Returns true if link matches one of the released epoch links.
 	 *  WARNING: just because a legal block contains an epoch link, it does not mean it is an epoch block.
 	 *  A legal block containing an epoch link can easily be constructed by sending to an address identical
@@ -59,14 +71,17 @@ public:
 	 *    epoch blocks are not signed by the account key, they are signed either by genesis or by special epoch keys
 	 */
 	bool is_epoch_link (nano::link const & link_a) const;
-	nano::link const & link (nano::epoch epoch_a) const;
-	nano::public_key const & signer (nano::epoch epoch_a) const;
+	nano::link link (nano::epoch epoch_a) const;
+	nano::public_key signer (nano::epoch epoch_a) const;
 	nano::epoch epoch (nano::link const & link_a) const;
 	void add (nano::epoch epoch_a, nano::public_key const & signer_a, nano::link const & link_a);
 	/** Checks that new_epoch is 1 version higher than epoch */
 	static bool is_sequential (nano::epoch epoch_a, nano::epoch new_epoch_a);
 
+	nano::epochs & operator= (nano::epochs const &) = delete;
+	nano::epochs & operator= (nano::epochs &&);
+
 private:
-	std::unordered_map<nano::epoch, nano::epoch_info> epochs_m;
+	rsnano::EpochsHandle * handle;
 };
 }

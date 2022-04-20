@@ -152,8 +152,8 @@ impl BlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{numbers::validate_message, Block};
     use super::*;
+    use crate::{numbers::validate_message, Block};
 
     #[test]
     fn state_block() {
@@ -227,10 +227,7 @@ mod tests {
             .build()?;
 
         let zero_block_build = BlockBuilder::state().zero().sign(&key).build()?;
-        assert_eq!(
-            zero_block_manual.hash(),
-            zero_block_build.hash()
-        );
+        assert_eq!(zero_block_manual.hash(), zero_block_build.hash());
         validate_message(
             &key.public_key(),
             zero_block_build.hash().as_bytes(),

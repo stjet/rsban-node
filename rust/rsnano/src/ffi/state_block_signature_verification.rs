@@ -1,8 +1,13 @@
+use std::sync::Arc;
+
 use num::FromPrimitive;
 
-use crate::{StateBlockSignatureVerification, state_block_signature_verification::StateBlockSignatureVerificationValue};
+use crate::{
+    state_block_signature_verification::StateBlockSignatureVerificationValue,
+    StateBlockSignatureVerification,
+};
 
-use super::{SharedBlockEnumHandle, SignatureCheckerHandle};
+use super::{EpochsHandle, SharedBlockEnumHandle, SignatureCheckerHandle};
 
 pub struct StateBlockSignatureVerificationHandle {
     verification: StateBlockSignatureVerification,
@@ -33,10 +38,12 @@ pub struct StateBlockSignatureVerificationResultDto {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_signature_verification_create(
     checker: *const SignatureCheckerHandle,
+    epochs: *const EpochsHandle,
 ) -> *mut StateBlockSignatureVerificationHandle {
     let checker = (&*checker).checker.clone();
+    let epochs = Arc::new((&*epochs).epochs.clone());
     Box::into_raw(Box::new(StateBlockSignatureVerificationHandle {
-        verification: StateBlockSignatureVerification::new(checker),
+        verification: StateBlockSignatureVerification::new(checker, epochs),
     }))
 }
 
@@ -57,20 +64,25 @@ pub unsafe extern "C" fn rsn_state_block_signature_verification_verify(
     result: *mut StateBlockSignatureVerificationResultDto,
 ) {
     let items = std::slice::from_raw_parts(items, len);
-    let items: Vec<_> = items.iter().map(|i|{
-        StateBlockSignatureVerificationValue {
+    let items: Vec<_> = items
+        .iter()
+        .map(|i| StateBlockSignatureVerificationValue {
             block: (&*i.block).block.clone(),
             account: crate::Account::from_bytes(i.account),
             verification: FromPrimitive::from_u8(i.verification).unwrap(),
-        }
-    }).collect();
+        })
+        .collect();
 
     let verifications = handle.verification.verify_state_blocks(&items);
 
     let result_handle = Box::new(StateBlockSignatureVerificationResultHandle {
         verifications: verifications.verifications,
         hashes: verifications.hashes.iter().map(|x| x.to_bytes()).collect(),
-        signatures: verifications.signatures.iter().map(|x| *x.as_bytes()).collect(),
+        signatures: verifications
+            .signatures
+            .iter()
+            .map(|x| *x.as_bytes())
+            .collect(),
     });
 
     let result = &mut *result;

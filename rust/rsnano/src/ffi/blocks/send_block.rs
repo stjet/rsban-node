@@ -2,8 +2,8 @@ use num::FromPrimitive;
 use std::ffi::c_void;
 
 use crate::{
-    Account, Amount, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock, SendHashables,
-    Signature, Block,
+    Account, Amount, Block, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock, SendHashables,
+    Signature,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};

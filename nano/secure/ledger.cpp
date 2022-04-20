@@ -1290,12 +1290,12 @@ std::shared_ptr<nano::block> nano::ledger::find_receive_block_by_send_hash (nano
 	return result;
 }
 
-nano::account const & nano::ledger::epoch_signer (nano::link const & link_a) const
+nano::account nano::ledger::epoch_signer (nano::link const & link_a) const
 {
 	return constants.epochs.signer (constants.epochs.epoch (link_a));
 }
 
-nano::link const & nano::ledger::epoch_link (nano::epoch epoch_a) const
+nano::link nano::ledger::epoch_link (nano::epoch epoch_a) const
 {
 	return constants.epochs.link (epoch_a);
 }

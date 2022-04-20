@@ -2,7 +2,13 @@
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/ipc/ipc_config.hpp>
 
-nano::ipc::ipc_config::ipc_config (nano::network_constants & network_constants)
+nano::ipc::ipc_config_tcp_socket::ipc_config_tcp_socket (nano::network_constants network_constants_a)
+	: network_constants(network_constants_a)
+{
+}
+
+nano::ipc::ipc_config::ipc_config (nano::network_constants network_constants)
+	: transport_tcp(nano::ipc::ipc_config_tcp_socket(network_constants))
 {
 	rsnano::IpcConfigDto dto;
 	auto network_dto{ network_constants.to_dto () };

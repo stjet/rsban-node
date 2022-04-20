@@ -1,32 +1,63 @@
 #include <nano/lib/epoch.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/utility.hpp>
 
-nano::link const & nano::epochs::link (nano::epoch epoch_a) const
+nano::epochs::epochs () :
+	handle (rsnano::rsn_epochs_create ())
 {
-	return epochs_m.at (epoch_a).link;
+}
+
+nano::epochs::epochs (nano::epochs && other)
+	: handle(other.handle){
+	other.handle = nullptr;
+}
+
+nano::epochs::~epochs ()
+{
+	if (handle != nullptr)
+		rsnano::rsn_epochs_destroy (handle);
+}
+
+nano::epochs & nano::epochs::operator= (nano::epochs &&other){
+	if (handle != nullptr)
+		rsnano::rsn_epochs_destroy (handle);
+	handle = other.handle;
+	other.handle = nullptr;
+	return *this;
+}
+
+rsnano::EpochsHandle * nano::epochs::get_handle () const
+{
+	return handle;
+}
+
+nano::link nano::epochs::link (nano::epoch epoch_a) const
+{
+	nano::link link;
+	rsnano::rsn_epochs_link (handle, static_cast<uint8_t> (epoch_a), link.bytes.data ());
+	return link;
 }
 
 bool nano::epochs::is_epoch_link (nano::link const & link_a) const
 {
-	return std::any_of (epochs_m.begin (), epochs_m.end (), [&link_a] (auto const & item_a) { return item_a.second.link == link_a; });
+	return rsnano::rsn_epochs_is_epoch_link (handle, link_a.bytes.data ());
 }
 
-nano::public_key const & nano::epochs::signer (nano::epoch epoch_a) const
+nano::public_key nano::epochs::signer (nano::epoch epoch_a) const
 {
-	return epochs_m.at (epoch_a).signer;
+	nano::public_key signer;
+	rsnano::rsn_epochs_signer (handle, static_cast<uint8_t> (epoch_a), signer.bytes.data ());
+	return signer;
 }
 
 nano::epoch nano::epochs::epoch (nano::link const & link_a) const
 {
-	auto existing (std::find_if (epochs_m.begin (), epochs_m.end (), [&link_a] (auto const & item_a) { return item_a.second.link == link_a; }));
-	debug_assert (existing != epochs_m.end ());
-	return existing->first;
+	return static_cast<nano::epoch> (rsnano::rsn_epochs_epoch (handle, link_a.bytes.data ()));
 }
 
 void nano::epochs::add (nano::epoch epoch_a, nano::public_key const & signer_a, nano::link const & link_a)
 {
-	debug_assert (epochs_m.find (epoch_a) == epochs_m.end ());
-	epochs_m[epoch_a] = { signer_a, link_a };
+	rsnano::rsn_epochs_add (handle, static_cast<uint8_t> (epoch_a), signer_a.bytes.data (), link_a.bytes.data ());
 }
 
 bool nano::epochs::is_sequential (nano::epoch epoch_a, nano::epoch new_epoch_a)

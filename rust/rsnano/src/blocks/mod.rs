@@ -7,9 +7,7 @@ mod receive_block;
 mod send_block;
 mod state_block;
 
-use std::{
-    sync::{Arc, RwLock}, 
-};
+use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
 #[cfg(test)]
@@ -22,7 +20,7 @@ pub use receive_block::*;
 pub use send_block::*;
 pub use state_block::*;
 
-use crate::{Account, Amount, BlockHash, Epoch, PropertyTreeReader, Stream, Link};
+use crate::{Account, Amount, BlockHash, Epoch, Link, PropertyTreeReader, Signature, Stream};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -251,6 +249,7 @@ pub trait Block {
     fn set_sideband(&mut self, sideband: BlockSideband);
     fn hash(&self) -> BlockHash;
     fn link(&self) -> Link;
+    fn block_signature(&self) -> &Signature;
 }
 
 pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<BlockEnum> {

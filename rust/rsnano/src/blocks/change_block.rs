@@ -1,7 +1,7 @@
 use crate::{
     from_string_hex, sign_message, to_string_hex, Account, Block, BlockHash, BlockHashBuilder,
-    BlockSideband, BlockType, LazyBlockHash, PropertyTreeReader, PropertyTreeWriter, PublicKey,
-    RawKey, Signature, Stream, Link,
+    BlockSideband, BlockType, LazyBlockHash, Link, PropertyTreeReader, PropertyTreeWriter,
+    PublicKey, RawKey, Signature, Stream,
 };
 use anyhow::Result;
 
@@ -156,6 +156,10 @@ impl Block for ChangeBlock {
 
     fn link(&self) -> Link {
         Link::new()
+    }
+
+    fn block_signature(&self) -> &Signature {
+        &self.signature
     }
 }
 

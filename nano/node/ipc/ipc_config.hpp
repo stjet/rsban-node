@@ -46,8 +46,8 @@ namespace ipc
 	class ipc_config_tcp_socket : public ipc_config_transport
 	{
 	public:
-		ipc_config_tcp_socket () = default;
-		ipc_config_tcp_socket (nano::network_constants & network_constants);
+		ipc_config_tcp_socket () = delete;
+		ipc_config_tcp_socket (nano::network_constants network_constants);
 		nano::network_constants network_constants;
 		/** Listening port */
 		uint16_t port;
@@ -58,7 +58,7 @@ namespace ipc
 	{
 	public:
 		ipc_config () = default;
-		ipc_config (nano::network_constants & network_constants);
+		ipc_config (nano::network_constants network_constants);
 		nano::error deserialize_toml (nano::tomlconfig & toml_a);
 		void load_dto (rsnano::IpcConfigDto & dto);
 		rsnano::IpcConfigDto to_dto () const;

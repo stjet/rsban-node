@@ -135,7 +135,7 @@ pub struct BlockDto {
 }
 
 pub struct SharedBlockEnumHandle {
-    block: Arc<BlockEnum>,
+    pub block: Arc<BlockEnum>,
 }
 
 #[no_mangle]

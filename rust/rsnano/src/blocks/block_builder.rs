@@ -152,10 +152,7 @@ impl BlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
-
-    use crate::numbers::validate_message;
-
+    use crate::{numbers::validate_message, Block};
     use super::*;
 
     #[test]
@@ -231,8 +228,8 @@ mod tests {
 
         let zero_block_build = BlockBuilder::state().zero().sign(&key).build()?;
         assert_eq!(
-            zero_block_manual.hash().deref(),
-            zero_block_build.hash().deref()
+            zero_block_manual.hash(),
+            zero_block_build.hash()
         );
         validate_message(
             &key.public_key(),
@@ -296,7 +293,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(block1.hash().deref(), block2.hash().deref());
+        assert_eq!(block1.hash(), block2.hash());
         assert_eq!(block1.work, block2.work);
     }
 }

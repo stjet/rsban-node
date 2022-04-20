@@ -1,9 +1,7 @@
-use std::ops::Deref;
-
 use crate::{
     from_string_hex, sign_message, to_string_hex, Account, Amount, Block, BlockHash,
     BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash, PropertyTreeReader,
-    PropertyTreeWriter, PublicKey, RawKey, Signature, Stream,
+    PropertyTreeWriter, PublicKey, RawKey, Signature, Stream, Link,
 };
 use anyhow::Result;
 
@@ -115,10 +113,6 @@ impl SendBlock {
         })
     }
 
-    pub fn hash(&'_ self) -> impl Deref<Target = BlockHash> + '_ {
-        self.hash.hash(&self.hashables)
-    }
-
     pub const fn serialized_size() -> usize {
         SendHashables::serialized_size() + Signature::serialized_size() + std::mem::size_of::<u64>()
     }
@@ -209,6 +203,14 @@ impl Block for SendBlock {
 
     fn account(&self) -> &Account {
         Account::zero()
+    }
+
+    fn hash(&self) -> BlockHash {
+        self.hash.hash(&self.hashables)
+    }
+
+    fn link(&self) -> crate::Link {
+        Link::new()
     }
 }
 

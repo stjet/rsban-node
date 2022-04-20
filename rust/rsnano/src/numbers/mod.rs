@@ -307,6 +307,10 @@ impl HashOrAccount {
         Self { bytes: [0u8; 32] }
     }
 
+    pub fn is_zero(&self) -> bool{
+        self.bytes == [0u8;32]
+    }
+
     pub fn from_bytes(bytes: [u8; 32]) -> Self {
         Self { bytes }
     }
@@ -380,6 +384,10 @@ impl Link {
 
     pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
         HashOrAccount::decode_hex(s).map(|inner| Self { inner })
+    }
+
+    pub fn is_zero(&self) -> bool{
+        self.inner.is_zero()
     }
 }
 

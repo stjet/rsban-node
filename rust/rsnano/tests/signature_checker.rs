@@ -20,7 +20,7 @@ fn bulk_single_thread() {
     let verifications = vec![0; size];
     let mut accounts = Vec::<Account>::with_capacity(size);
     for _ in 0..size {
-        let hash = *block.hash();
+        let hash = block.hash();
         hashes.push(hash);
         messages.push(hash.as_bytes().to_vec());
         accounts.push(*block.account());
@@ -47,7 +47,7 @@ fn many_multi_threaded() {
         let key = KeyPair::new();
         let block = test_state_block(&key);
 
-        let block_hash = *block.hash();
+        let block_hash = block.hash();
         let block_account = *block.account();
         let block_signature = block.signature;
 
@@ -55,7 +55,7 @@ fn many_multi_threaded() {
         let mut sig_bytes = invalid_block.signature.to_be_bytes();
         sig_bytes[31] ^= 1;
         invalid_block.signature = Signature::from_bytes(sig_bytes);
-        let invalid_block_hash = *invalid_block.hash();
+        let invalid_block_hash = invalid_block.hash();
         let invalid_block_account = *invalid_block.account();
         let invalid_block_signature = invalid_block.signature.clone();
         const NUM_CHECK_SIZES: usize = 18;

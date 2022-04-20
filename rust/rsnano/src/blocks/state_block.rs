@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{
     from_string_hex, sign_message, to_string_hex, Account, Amount, Block, BlockHash,
     BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash, Link, PropertyTreeReader,
@@ -118,18 +116,10 @@ impl StateBlock {
         Account::zero()
     }
 
-    pub fn link(&'_ self) -> &'_ Link {
-        &self.hashables.link
-    }
-
     fn sign(&mut self, prv_key: &RawKey, pub_key: &PublicKey) -> Result<()> {
         let signature = sign_message(prv_key, pub_key, self.hash().as_bytes())?;
         self.signature = signature;
         Ok(())
-    }
-
-    pub fn hash(&'_ self) -> impl Deref<Target = BlockHash> + '_ {
-        self.hash.hash(&self.hashables)
     }
 
     pub const fn serialized_size() -> usize {
@@ -251,6 +241,14 @@ impl Block for StateBlock {
     fn account(&self) -> &Account {
         &self.hashables.account
     }
+
+    fn hash(&self) -> BlockHash {
+        self.hash.hash(&self.hashables)
+    }
+
+    fn link(&self) -> Link {
+        self.hashables.link
+    }
 }
 
 #[cfg(test)]
@@ -296,11 +294,11 @@ mod tests {
     fn hashing() {
         let block = BlockBuilder::state().build().unwrap();
         let hash = block.hash().clone();
-        assert_eq!(&hash, block.hash().deref()); // check cache works
-        assert_eq!(&hash, BlockBuilder::state().build().unwrap().hash().deref());
+        assert_eq!(hash, block.hash()); // check cache works
+        assert_eq!(hash, BlockBuilder::state().build().unwrap().hash());
 
         let assert_different_hash = |b: StateBlockBuilder| {
-            assert_ne!(&hash, b.build().unwrap().hash().deref());
+            assert_ne!(hash, b.build().unwrap().hash());
         };
 
         assert_different_hash(BlockBuilder::state().account(Account::from(1000)));

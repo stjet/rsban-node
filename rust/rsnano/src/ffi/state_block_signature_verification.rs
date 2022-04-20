@@ -1,4 +1,6 @@
-use crate::StateBlockSignatureVerification;
+use num::FromPrimitive;
+
+use crate::{StateBlockSignatureVerification, state_block_signature_verification::StateBlockSignatureVerificationValue};
 
 use super::{SharedBlockEnumHandle, SignatureCheckerHandle};
 
@@ -49,17 +51,26 @@ pub unsafe extern "C" fn rsn_state_block_signature_verification_destroy(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_signature_verification_verify(
-    _handle: &StateBlockSignatureVerificationHandle,
-    _items: *const StateBlockSignatureVerificationValueDto,
-    _len: usize,
+    handle: &StateBlockSignatureVerificationHandle,
+    items: *const StateBlockSignatureVerificationValueDto,
+    len: usize,
     result: *mut StateBlockSignatureVerificationResultDto,
 ) {
-    //todo: perform verification
+    let items = std::slice::from_raw_parts(items, len);
+    let items: Vec<_> = items.iter().map(|i|{
+        StateBlockSignatureVerificationValue {
+            block: (&*i.block).block.clone(),
+            account: crate::Account::from_bytes(i.account),
+            verification: FromPrimitive::from_u8(i.verification).unwrap(),
+        }
+    }).collect();
+
+    let verifications = handle.verification.verify_state_blocks(&items);
 
     let result_handle = Box::new(StateBlockSignatureVerificationResultHandle {
-        verifications: Vec::new(),
-        hashes: Vec::new(),
-        signatures: Vec::new(),
+        verifications: verifications.verifications,
+        hashes: verifications.hashes.iter().map(|x| x.to_bytes()).collect(),
+        signatures: verifications.signatures.iter().map(|x| *x.as_bytes()).collect(),
     });
 
     let result = &mut *result;

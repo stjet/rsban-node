@@ -3,7 +3,7 @@ use std::ffi::c_void;
 
 use crate::{
     Account, Amount, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock, SendHashables,
-    Signature,
+    Signature, Block,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};

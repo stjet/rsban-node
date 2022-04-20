@@ -8,8 +8,7 @@ mod send_block;
 mod state_block;
 
 use std::{
-    ops::Deref,
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock}, 
 };
 
 use anyhow::Result;
@@ -23,7 +22,7 @@ pub use receive_block::*;
 pub use send_block::*;
 pub use state_block::*;
 
-use crate::{Account, Amount, BlockHash, Epoch, PropertyTreeReader, Stream};
+use crate::{Account, Amount, BlockHash, Epoch, PropertyTreeReader, Stream, Link};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -184,7 +183,7 @@ impl LazyBlockHash {
             hash: Arc::new(RwLock::new(BlockHash::new())),
         }
     }
-    pub fn hash(&'_ self, factory: impl Into<BlockHash>) -> impl Deref<Target = BlockHash> + '_ {
+    pub fn hash(&'_ self, factory: impl Into<BlockHash>) -> BlockHash {
         let mut value = self.hash.read().unwrap();
         if value.is_zero() {
             drop(value);
@@ -195,7 +194,7 @@ impl LazyBlockHash {
             value = self.hash.read().unwrap();
         }
 
-        value
+        *value
     }
 
     pub(crate) fn clear(&self) {
@@ -250,6 +249,8 @@ pub trait Block {
      */
     fn sideband(&'_ self) -> Option<&'_ BlockSideband>;
     fn set_sideband(&mut self, sideband: BlockSideband);
+    fn hash(&self) -> BlockHash;
+    fn link(&self) -> Link;
 }
 
 pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<BlockEnum> {

@@ -968,13 +968,14 @@ void rsn_state_block_signature (const StateBlockHandle * handle, uint8_t (*resul
 void rsn_state_block_signature_set (StateBlockHandle * handle, const uint8_t (*signature)[64]);
 
 StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create (const SignatureCheckerHandle * checker,
-const EpochsHandle * epochs);
+const EpochsHandle * epochs,
+bool timing_logging);
 
 void rsn_state_block_signature_verification_destroy (StateBlockSignatureVerificationHandle * handle);
 
 void rsn_state_block_signature_verification_result_destroy (StateBlockSignatureVerificationResultHandle * handle);
 
-void rsn_state_block_signature_verification_verify (const StateBlockSignatureVerificationHandle * handle,
+bool rsn_state_block_signature_verification_verify (const StateBlockSignatureVerificationHandle * handle,
 const StateBlockSignatureVerificationValueDto * items,
 uintptr_t len,
 StateBlockSignatureVerificationResultDto * result);

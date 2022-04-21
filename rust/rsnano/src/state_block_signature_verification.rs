@@ -1,8 +1,8 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use crate::{
-    Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature, SignatureChecker,
-    SignatureVerification, SignatureCheckSet,
+    Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature, SignatureCheckSet,
+    SignatureChecker, SignatureVerification,
 };
 
 pub(crate) struct StateBlockSignatureVerificationValue {
@@ -18,6 +18,7 @@ pub(crate) struct StateBlockSignatureVerificationResult {
 }
 
 pub(crate) struct StateBlockSignatureVerification {
+    pub timing_logging: bool,
     signature_checker: Arc<SignatureChecker>,
     epochs: Arc<Epochs>,
 }
@@ -27,13 +28,19 @@ impl<'a> StateBlockSignatureVerification {
         Self {
             signature_checker,
             epochs,
+            timing_logging: false,
         }
     }
 
     pub(crate) fn verify_state_blocks(
         &self,
         items: &[StateBlockSignatureVerificationValue],
-    ) -> StateBlockSignatureVerificationResult {
+    ) -> Option<StateBlockSignatureVerificationResult> {
+        if items.is_empty() {
+            return None;
+        }
+
+        let now = std::time::Instant::now();
         let size = items.len();
         let mut hashes: Vec<BlockHash> = Vec::with_capacity(size);
         let mut messages: Vec<Vec<u8>> = Vec::with_capacity(size);
@@ -61,7 +68,7 @@ impl<'a> StateBlockSignatureVerification {
             block_signatures.push(block.block_signature().clone())
         }
 
-        let mut check = SignatureCheckSet{
+        let mut check = SignatureCheckSet {
             messages,
             pub_keys,
             signatures: block_signatures,
@@ -69,10 +76,14 @@ impl<'a> StateBlockSignatureVerification {
         };
         self.signature_checker.verify(&mut check);
 
-        StateBlockSignatureVerificationResult {
+        if self.timing_logging && now.elapsed() > Duration::from_millis(10) {
+            //todo log
+        }
+
+        Some(StateBlockSignatureVerificationResult {
             hashes,
             signatures: check.signatures,
             verifications: check.verifications,
-        }
+        })
     }
 }

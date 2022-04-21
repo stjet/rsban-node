@@ -148,49 +148,27 @@ void nano::state_block_signature_verification::verify_state_blocks (std::deque<v
 			rsnano::rsn_shared_block_enum_handle_destroy (i.block);
 		}
 
-		auto size (items.size ());
+		// convert DTO array back into items
+
+		std::vector<int> verifications(result_dto.verifications, result_dto.verifications + result_dto.size);
 		std::vector<nano::block_hash> hashes;
-		hashes.reserve (size);
-		std::vector<unsigned char const *> messages;
-		messages.reserve (size);
-		std::vector<std::size_t> lengths;
-		lengths.reserve (size);
-		std::vector<nano::account> accounts;
-		accounts.reserve (size);
-		std::vector<unsigned char const *> pub_keys;
-		pub_keys.reserve (size);
-		std::vector<nano::signature> blocks_signatures;
-		blocks_signatures.reserve (size);
-		std::vector<unsigned char const *> signatures;
-		signatures.reserve (size);
-		std::vector<int> verifications;
-		verifications.resize (size, 0);
-		for (auto const & [block, account, unused] : items)
-		{
-			hashes.push_back (block->hash ());
-			messages.push_back (hashes.back ().bytes.data ());
-			lengths.push_back (sizeof (decltype (hashes)::value_type));
-			nano::account account_l = block->account ();
-			if (!block->link ().is_zero () && epochs.is_epoch_link (block->link ()))
-			{
-				account_l = epochs.signer (epochs.epoch (block->link ()));
-			}
-			else if (!account.is_zero ())
-			{
-				account_l = account;
-			}
-			accounts.push_back (account_l);
-			pub_keys.push_back (accounts.back ().bytes.data ());
-			blocks_signatures.push_back (block->block_signature ());
-			signatures.push_back (blocks_signatures.back ().bytes.data ());
+		for (auto i = result_dto.hashes; i != result_dto.hashes + result_dto.size; ++i){
+			nano::block_hash hash;
+			std::copy (std::begin (*i), std::end(*i), std::begin (hash.bytes));
+			hashes.push_back(hash);
 		}
-		nano::signature_check_set check = { size, messages.data (), lengths.data (), pub_keys.data (), signatures.data (), verifications.data () };
-		signature_checker.verify (check);
-		// todo convert DTO array back into items
+
+		std::vector<nano::signature> blocks_signatures;
+		blocks_signatures.reserve(result_dto.size);
+		for (auto i = result_dto.signatures; i != result_dto.signatures + result_dto.size; ++i){
+			nano::signature signature;
+			std::copy (std::begin (*i), std::end(*i), std::begin (signature.bytes));
+			blocks_signatures.push_back(signature);
+		}
 
 		if (node_config.logging.timing_logging () && timer_l.stop () > std::chrono::milliseconds (10))
 		{
-			logger.try_log (boost::str (boost::format ("Batch verified %1% state blocks in %2% %3%") % size % timer_l.value ().count () % timer_l.unit ()));
+			logger.try_log (boost::str (boost::format ("Batch verified %1% state blocks in %2% %3%") % result_dto.size % timer_l.value ().count () % timer_l.unit ()));
 		}
 		blocks_verified_callback (items, verifications, hashes, blocks_signatures);
 	}

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature, SignatureChecker,
-    SignatureVerification,
+    SignatureVerification, SignatureCheckSet,
 };
 
 pub(crate) struct StateBlockSignatureVerificationValue {
@@ -40,7 +40,7 @@ impl<'a> StateBlockSignatureVerification {
         let mut accounts: Vec<Account> = Vec::with_capacity(size);
         let mut pub_keys: Vec<PublicKey> = Vec::with_capacity(size);
         let mut block_signatures: Vec<Signature> = Vec::with_capacity(size);
-        let mut verifications = vec![0; size];
+        let verifications = vec![0; size];
 
         for i in items {
             let block = i.block.as_block();
@@ -61,12 +61,18 @@ impl<'a> StateBlockSignatureVerification {
             block_signatures.push(block.block_signature().clone())
         }
 
-        // todo call signature checker
+        let mut check = SignatureCheckSet{
+            messages,
+            pub_keys,
+            signatures: block_signatures,
+            verifications,
+        };
+        self.signature_checker.verify(&mut check);
 
         StateBlockSignatureVerificationResult {
             hashes,
-            signatures: block_signatures,
-            verifications,
+            signatures: check.signatures,
+            verifications: check.verifications,
         }
     }
 }

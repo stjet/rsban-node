@@ -89,7 +89,7 @@ pub unsafe extern "C" fn rsn_state_block_signature_verification_verify(
     result.hashes = result_handle.hashes.as_ptr();
     result.signatures = result_handle.signatures.as_ptr();
     result.verifications = result_handle.verifications.as_ptr();
-    result.size = 0;
+    result.size = result_handle.verifications.len();
     result.handle = Box::into_raw(result_handle);
 }
 

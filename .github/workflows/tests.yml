@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        TEST_USE_ROCKSDB: [1]
+        TEST_USE_ROCKSDB: [0, 1]
         COMPILER: [gcc, clang-6]
         RELEASE:
           - ${{ startsWith(github.ref, 'refs/tags/') }}

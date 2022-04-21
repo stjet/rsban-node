@@ -11,7 +11,6 @@
 
 namespace rsnano
 {
-
 static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
 
 struct BandwidthLimiterHandle;

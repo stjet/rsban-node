@@ -7,8 +7,9 @@ nano::epochs::epochs () :
 {
 }
 
-nano::epochs::epochs (nano::epochs && other)
-	: handle(other.handle){
+nano::epochs::epochs (nano::epochs && other) :
+	handle (other.handle)
+{
 	other.handle = nullptr;
 }
 
@@ -18,7 +19,8 @@ nano::epochs::~epochs ()
 		rsnano::rsn_epochs_destroy (handle);
 }
 
-nano::epochs & nano::epochs::operator= (nano::epochs &&other){
+nano::epochs & nano::epochs::operator= (nano::epochs && other)
+{
 	if (handle != nullptr)
 		rsnano::rsn_epochs_destroy (handle);
 	handle = other.handle;

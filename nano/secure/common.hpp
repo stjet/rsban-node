@@ -483,7 +483,7 @@ public:
 class network_params
 {
 public:
-	network_params() = delete;
+	network_params () = delete;
 	/** Populate values based on \p network_a */
 	network_params (nano::networks network_a);
 

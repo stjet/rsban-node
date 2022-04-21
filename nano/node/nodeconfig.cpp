@@ -112,7 +112,7 @@ nano::node_config::node_config (const std::optional<uint16_t> & peering_port_a, 
 	network_params{ network_params },
 	logging{ logging_a },
 	websocket_config{ network_params.network },
-	ipc_config(network_params.network)
+	ipc_config (network_params.network)
 {
 	rsnano::NodeConfigDto dto;
 	auto network_params_dto{ network_params.to_dto () };

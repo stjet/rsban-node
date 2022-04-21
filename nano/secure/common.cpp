@@ -27,10 +27,10 @@ nano::network_params nano::dev::network_params{ nano::networks::nano_dev_network
 nano::ledger_constants & nano::dev::constants{ nano::dev::network_params.ledger };
 std::shared_ptr<nano::block> & nano::dev::genesis = nano::dev::constants.genesis;
 
-nano::network_params::network_params (nano::networks network_a)
-	: work(nano::work_thresholds(0,0,0)), 
-	network (nano::network_constants(nano::work_thresholds(0,0,0), network_a)),
-	ledger (nano::ledger_constants(nano::work_thresholds(0,0,0), network_a))
+nano::network_params::network_params (nano::networks network_a) :
+	work (nano::work_thresholds (0, 0, 0)),
+	network (nano::network_constants (nano::work_thresholds (0, 0, 0), network_a)),
+	ledger (nano::ledger_constants (nano::work_thresholds (0, 0, 0), network_a))
 {
 	rsnano::NetworkParamsDto dto;
 	if (rsnano::rsn_network_params_create (&dto, static_cast<uint16_t> (network_a)) < 0)
@@ -38,7 +38,7 @@ nano::network_params::network_params (nano::networks network_a)
 
 	work = nano::work_thresholds (dto.work);
 	network = nano::network_constants (dto.network);
-	ledger = std::move(nano::ledger_constants (dto.ledger));
+	ledger = std::move (nano::ledger_constants (dto.ledger));
 	voting = nano::voting_constants (dto.voting);
 	node = nano::node_constants (dto.node);
 	portmapping = nano::portmapping_constants (dto.portmapping);
@@ -60,8 +60,8 @@ rsnano::NetworkParamsDto nano::network_params::to_dto () const
 	return dto;
 }
 
-nano::ledger_constants::ledger_constants (nano::work_thresholds work_a, nano::networks network_a)
-	: work (nano::work_thresholds(0, 0, 0))
+nano::ledger_constants::ledger_constants (nano::work_thresholds work_a, nano::networks network_a) :
+	work (nano::work_thresholds (0, 0, 0))
 {
 	rsnano::LedgerConstantsDto dto;
 	if (rsnano::rsn_ledger_constants_create (&dto, &work_a.dto, static_cast<uint16_t> (network_a)) < 0)
@@ -69,8 +69,8 @@ nano::ledger_constants::ledger_constants (nano::work_thresholds work_a, nano::ne
 	read_dto (dto);
 }
 
-nano::ledger_constants::ledger_constants (rsnano::LedgerConstantsDto const & dto)
-	: work(nano::work_thresholds(0,0,0))
+nano::ledger_constants::ledger_constants (rsnano::LedgerConstantsDto const & dto) :
+	work (nano::work_thresholds (0, 0, 0))
 {
 	read_dto (dto);
 }

@@ -179,8 +179,8 @@ void nano::network_constants::set_active_network (nano::networks network_a)
 	rsnano::rsn_network_constants_active_network_set (static_cast<uint16_t> (network_a));
 }
 
-nano::network_constants::network_constants (nano::work_thresholds work_a, nano::networks network_a)
-	: work(nano::work_thresholds(0,0,0))
+nano::network_constants::network_constants (nano::work_thresholds work_a, nano::networks network_a) :
+	work (nano::work_thresholds (0, 0, 0))
 {
 	rsnano::NetworkConstantsDto dto;
 	if (rsnano::rsn_network_constants_create (&dto, &work_a.dto, static_cast<uint16_t> (network_a)) < 0)
@@ -191,8 +191,8 @@ nano::network_constants::network_constants (nano::work_thresholds work_a, nano::
 	read_dto (dto);
 }
 
-nano::network_constants::network_constants (rsnano::NetworkConstantsDto const & dto)
-	: work(nano::work_thresholds(0,0,0))
+nano::network_constants::network_constants (rsnano::NetworkConstantsDto const & dto) :
+	work (nano::work_thresholds (0, 0, 0))
 {
 	read_dto (dto);
 }

@@ -101,8 +101,6 @@ public:
 	bool backup_before_upgrade{ false };
 	double max_work_generate_multiplier;
 	uint32_t max_queued_requests;
-	/** Maximum amount of confirmation requests (batches) to be sent to each channel */
-	uint32_t confirm_req_batches_max;
 	std::chrono::seconds max_pruning_age;
 	uint64_t max_pruning_depth;
 	nano::rocksdb_config rocksdb_config;

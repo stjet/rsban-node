@@ -54,7 +54,6 @@ pub struct NodeConfig {
     pub max_work_generate_multiplier: f64,
     pub frontiers_confirmation: FrontiersConfirmationMode,
     pub max_queued_requests: u32,
-    pub confirm_req_batches_max: u32,
     pub rep_crawler_weight_minimum: Amount,
     pub work_peers: Vec<Peer>,
     pub secondary_work_peers: Vec<Peer>,
@@ -240,12 +239,6 @@ impl NodeConfig {
             max_work_generate_multiplier: 64_f64,
             frontiers_confirmation: FrontiersConfirmationMode::Automatic,
             max_queued_requests: 512,
-            /** Maximum amount of confirmation requests (batches) to be sent to each channel */
-            confirm_req_batches_max: if network_params.network.is_dev_network() {
-                1
-            } else {
-                2
-            },
             rep_crawler_weight_minimum: Amount::decode_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
                 .unwrap(),
             work_peers: Vec::new(),
@@ -336,7 +329,6 @@ impl NodeConfig {
             "Mode controlling frontier confirmation rate.\ntype:string,{auto,always,disabled}",
         )?;
         toml.put_u32("max_queued_requests", self.max_queued_requests, "Limit for number of queued confirmation requests for one channel, after which new requests are dropped until the queue drops below this value.\ntype:uint32")?;
-        toml.put_u32("confirm_req_batches_max", self.confirm_req_batches_max, "Limit for the number of confirmation requests for one channel per request attempt\ntype:uint32")?;
         toml.put_str("rep_crawler_weight_minimum", &self.rep_crawler_weight_minimum.to_string_dec (), "Rep crawler minimum weight, if this is less than minimum principal weight then this is taken as the minimum weight a rep must have to be tracked. If you want to track all reps set this to 0. If you do not want this to influence anything then set it to max value. This is only useful for debugging or for people who really know what they are doing.\ntype:string,amount,raw")?;
 
         toml.create_array(

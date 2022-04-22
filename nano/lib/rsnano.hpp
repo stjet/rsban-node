@@ -310,7 +310,6 @@ struct NodeConfigDto
 	double max_work_generate_multiplier;
 	uint8_t frontiers_confirmation;
 	uint32_t max_queued_requests;
-	uint32_t confirm_req_batches_max;
 	uint8_t rep_crawler_weight_minimum[16];
 	PeerDto work_peers[5];
 	uintptr_t work_peers_count;

@@ -58,7 +58,6 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.max_work_generate_multiplier = config.max_work_generate_multiplier;
 	dto.frontiers_confirmation = static_cast<uint8_t> (config.frontiers_confirmation);
 	dto.max_queued_requests = config.max_queued_requests;
-	dto.confirm_req_batches_max = config.confirm_req_batches_max;
 	std::copy (std::begin (config.rep_crawler_weight_minimum.bytes), std::end (config.rep_crawler_weight_minimum.bytes), std::begin (dto.rep_crawler_weight_minimum));
 	dto.work_peers_count = config.work_peers.size ();
 	for (auto i = 0; i < config.work_peers.size (); i++)
@@ -172,7 +171,6 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	max_work_generate_multiplier = dto.max_work_generate_multiplier;
 	frontiers_confirmation = static_cast<nano::frontiers_confirmation_mode> (dto.frontiers_confirmation);
 	max_queued_requests = dto.max_queued_requests;
-	confirm_req_batches_max = dto.confirm_req_batches_max;
 	std::copy (std::begin (dto.rep_crawler_weight_minimum), std::end (dto.rep_crawler_weight_minimum), std::begin (rep_crawler_weight_minimum.bytes));
 	work_peers.clear ();
 	for (auto i = 0; i < dto.work_peers_count; i++)
@@ -401,7 +399,6 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		toml.get<double> ("max_work_generate_multiplier", max_work_generate_multiplier);
 
 		toml.get<uint32_t> ("max_queued_requests", max_queued_requests);
-		toml.get<uint32_t> ("confirm_req_batches_max", confirm_req_batches_max);
 
 		auto rep_crawler_weight_minimum_l (rep_crawler_weight_minimum.to_string_dec ());
 		if (toml.has_key ("rep_crawler_weight_minimum"))
@@ -475,10 +472,6 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		if (max_pruning_age < std::chrono::seconds (5 * 60) && !network_params.network.is_dev_network ())
 		{
 			toml.get_error ().set ("max_pruning_age must be greater than or equal to 5 minutes");
-		}
-		if (confirm_req_batches_max < 1 || confirm_req_batches_max > 100)
-		{
-			toml.get_error ().set ("confirm_req_batches_max must be between 1 and 100");
 		}
 		if (bootstrap_frontier_request_count < 1024)
 		{

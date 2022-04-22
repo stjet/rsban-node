@@ -10,6 +10,39 @@
 
 #include <boost/format.hpp>
 
+void blocks_verified_callback_adapter (void * context, const rsnano::StateBlockSignatureVerificationResultDto * result_dto)
+{
+	std::vector<int> verifications (result_dto->verifications, result_dto->verifications + result_dto->size);
+	std::vector<nano::block_hash> hashes;
+	for (auto i = result_dto->hashes; i != result_dto->hashes + result_dto->size; ++i)
+	{
+		nano::block_hash hash;
+		std::copy (std::begin (*i), std::end (*i), std::begin (hash.bytes));
+		hashes.push_back (hash);
+	}
+
+	std::vector<nano::signature> blocks_signatures;
+	blocks_signatures.reserve (result_dto->size);
+	for (auto i = result_dto->signatures; i != result_dto->signatures + result_dto->size; ++i)
+	{
+		nano::signature signature;
+		std::copy (std::begin (*i), std::end (*i), std::begin (signature.bytes));
+		blocks_signatures.push_back (signature);
+	}
+
+	std::deque<nano::state_block_signature_verification::value_type> items;
+	for (auto i = result_dto->items; i != result_dto->items + result_dto->size; i++)
+	{
+		nano::account account;
+		std::copy (std::begin (i->account), std::end (i->account), std::begin (account.bytes));
+		auto verification = static_cast<nano::signature_verification> (i->verification);
+		items.emplace_back (nano::block_handle_to_block (i->block), account, verification);
+	}
+
+	auto instance = reinterpret_cast<nano::state_block_signature_verification *> (context);
+	instance->blocks_verified_callback (items, verifications, hashes, blocks_signatures);
+}
+
 nano::state_block_signature_verification::state_block_signature_verification (nano::signature_checker & signature_checker, nano::epochs & epochs, nano::node_config & node_config, nano::logger_mt & logger, uint64_t state_block_signature_verification_size) :
 	epochs (epochs),
 	node_config (node_config),
@@ -19,6 +52,7 @@ nano::state_block_signature_verification::state_block_signature_verification (na
 	})
 {
 	handle = rsnano::rsn_state_block_signature_verification_create (signature_checker.get_handle (), epochs.get_handle (), &logger, node_config.logging.timing_logging ());
+	rsnano::rsn_state_block_signature_verification_verified_callback (handle, blocks_verified_callback_adapter, this);
 }
 
 nano::state_block_signature_verification::~state_block_signature_verification ()
@@ -116,7 +150,7 @@ std::vector<rsnano::StateBlockSignatureVerificationValueDto> items_to_dto (std::
 	for (auto const & [block, account, verification] : items)
 	{
 		rsnano::StateBlockSignatureVerificationValueDto value_dto;
-		value_dto.block = block->to_shared_handle ();
+		value_dto.block = block->clone_handle ();
 		std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (value_dto.account));
 		value_dto.verification = static_cast<uint8_t> (verification);
 
@@ -128,40 +162,11 @@ std::vector<rsnano::StateBlockSignatureVerificationValueDto> items_to_dto (std::
 
 void nano::state_block_signature_verification::verify_state_blocks (std::deque<value_type> & items)
 {
-	// convert to DTOs
 	auto item_dtos (items_to_dto (items));
-
-	// call Rust verification
-	rsnano::StateBlockSignatureVerificationResultDto result_dto;
-	bool result_available = rsnano::rsn_state_block_signature_verification_verify (handle, item_dtos.data (), item_dtos.size (), &result_dto);
-
-	// destroy DTOs
+	rsnano::rsn_state_block_signature_verification_verify (handle, item_dtos.data (), item_dtos.size ());
 	for (auto & i : item_dtos)
 	{
 		rsnano::rsn_shared_block_enum_handle_destroy (i.block);
-	}
-
-	if (result_available)
-	{
-		// convert DTO array back into items
-		std::vector<int> verifications (result_dto.verifications, result_dto.verifications + result_dto.size);
-		std::vector<nano::block_hash> hashes;
-		for (auto i = result_dto.hashes; i != result_dto.hashes + result_dto.size; ++i)
-		{
-			nano::block_hash hash;
-			std::copy (std::begin (*i), std::end (*i), std::begin (hash.bytes));
-			hashes.push_back (hash);
-		}
-
-		std::vector<nano::signature> blocks_signatures;
-		blocks_signatures.reserve (result_dto.size);
-		for (auto i = result_dto.signatures; i != result_dto.signatures + result_dto.size; ++i)
-		{
-			nano::signature signature;
-			std::copy (std::begin (*i), std::end (*i), std::begin (signature.bytes));
-			blocks_signatures.push_back (signature);
-		}
-		blocks_verified_callback (items, verifications, hashes, blocks_signatures);
 	}
 }
 

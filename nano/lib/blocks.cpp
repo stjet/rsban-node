@@ -102,23 +102,20 @@ nano::block_hash nano::block::full_hash () const
 nano::block_sideband nano::block::sideband () const
 {
 	rsnano::BlockSidebandDto dto;
-	auto block_dto{ to_block_dto () };
-	if (rsnano::rsn_block_sideband (&block_dto, &dto) < 0)
+	if (rsnano::rsn_block_sideband (get_handle (), &dto) < 0)
 		throw std::runtime_error ("cannot get sideband");
 	return nano::block_sideband (dto);
 }
 
 void nano::block::sideband_set (nano::block_sideband const & sideband_a)
 {
-	auto block_dto{ to_block_dto () };
-	if (rsnano::rsn_block_sideband_set (&block_dto, &sideband_a.as_dto ()) < 0)
+	if (rsnano::rsn_block_sideband_set (get_handle (), &sideband_a.as_dto ()) < 0)
 		throw std::runtime_error ("cannot set sideband");
 }
 
 bool nano::block::has_sideband () const
 {
-	auto block_dto{ to_block_dto () };
-	return rsnano::rsn_block_has_sideband (&block_dto);
+	return rsnano::rsn_block_has_sideband (get_handle ());
 }
 
 nano::account nano::block::representative () const
@@ -151,6 +148,11 @@ nano::account nano::block::account () const
 	return account;
 }
 
+rsnano::BlockHandle * nano::block::clone_handle () const
+{
+	return rsnano::rsn_block_handle_clone (get_handle ());
+}
+
 nano::qualified_root nano::block::qualified_root () const
 {
 	return nano::qualified_root (root (), previous ());
@@ -160,12 +162,6 @@ nano::amount nano::block::balance () const
 {
 	static nano::amount amount{ 0 };
 	return amount;
-}
-
-rsnano::SharedBlockEnumHandle * nano::block::to_shared_handle () const
-{
-	auto dto (to_block_dto ());
-	return rsnano::rsn_block_to_shared_handle (&dto);
 }
 
 void nano::send_block::visit (nano::block_visitor & visitor_a) const
@@ -298,7 +294,7 @@ nano::send_block::send_block (const send_block & other)
 	}
 	else
 	{
-		handle = rsnano::rsn_send_block_clone (other.handle);
+		handle = rsnano::rsn_block_clone (other.handle);
 	}
 }
 
@@ -309,7 +305,7 @@ nano::send_block::send_block (send_block && other)
 	other.handle = nullptr;
 }
 
-nano::send_block::send_block (rsnano::SendBlockHandle * handle_a) :
+nano::send_block::send_block (rsnano::BlockHandle * handle_a) :
 	handle (handle_a)
 {
 }
@@ -318,7 +314,7 @@ nano::send_block::~send_block ()
 {
 	if (handle != nullptr)
 	{
-		rsnano::rsn_send_block_destroy (handle);
+		rsnano::rsn_block_destroy (handle);
 		handle = nullptr;
 	}
 }
@@ -405,15 +401,7 @@ nano::block_hash nano::send_block::generate_hash () const
 	return result;
 }
 
-rsnano::BlockDto nano::send_block::to_block_dto () const
-{
-	rsnano::BlockDto dto;
-	dto.block_type = static_cast<uint8_t> (nano::block_type::send);
-	dto.handle = handle;
-	return dto;
-}
-
-void * nano::send_block::get_handle () const
+rsnano::BlockHandle * nano::send_block::get_handle () const
 {
 	return handle;
 }
@@ -482,7 +470,7 @@ nano::open_block::open_block (const open_block & other)
 	}
 	else
 	{
-		handle = rsnano::rsn_open_block_clone (other.handle);
+		handle = rsnano::rsn_block_clone (other.handle);
 	}
 }
 
@@ -493,7 +481,7 @@ nano::open_block::open_block (nano::open_block && other)
 	other.handle = nullptr;
 }
 
-nano::open_block::open_block (rsnano::OpenBlockHandle * handle_a) :
+nano::open_block::open_block (rsnano::BlockHandle * handle_a) :
 	handle (handle_a)
 {
 }
@@ -502,7 +490,7 @@ nano::open_block::~open_block ()
 {
 	if (handle != nullptr)
 	{
-		rsnano::rsn_open_block_destroy (handle);
+		rsnano::rsn_block_destroy (handle);
 		handle = nullptr;
 	}
 }
@@ -675,15 +663,7 @@ nano::block_hash nano::open_block::generate_hash () const
 	return result;
 }
 
-rsnano::BlockDto nano::open_block::to_block_dto () const
-{
-	rsnano::BlockDto dto;
-	dto.block_type = static_cast<uint8_t> (nano::block_type::open);
-	dto.handle = handle;
-	return dto;
-}
-
-void * nano::open_block::get_handle () const
+rsnano::BlockHandle * nano::open_block::get_handle () const
 {
 	return handle;
 }
@@ -736,7 +716,7 @@ nano::change_block::change_block (const nano::change_block & other_a)
 	}
 	else
 	{
-		handle = rsnano::rsn_change_block_clone (other_a.handle);
+		handle = rsnano::rsn_block_clone (other_a.handle);
 	}
 }
 
@@ -747,7 +727,7 @@ nano::change_block::change_block (nano::change_block && other_a)
 	other_a.handle = nullptr;
 }
 
-nano::change_block::change_block (rsnano::ChangeBlockHandle * handle_a) :
+nano::change_block::change_block (rsnano::BlockHandle * handle_a) :
 	handle (handle_a)
 {
 }
@@ -756,7 +736,7 @@ nano::change_block::~change_block ()
 {
 	if (handle != nullptr)
 	{
-		rsnano::rsn_change_block_destroy (handle);
+		rsnano::rsn_block_destroy (handle);
 		handle = nullptr;
 	}
 }
@@ -917,15 +897,7 @@ nano::block_hash nano::change_block::generate_hash () const
 	return result;
 }
 
-rsnano::BlockDto nano::change_block::to_block_dto () const
-{
-	rsnano::BlockDto dto;
-	dto.block_type = static_cast<uint8_t> (nano::block_type::change);
-	dto.handle = handle;
-	return dto;
-}
-
-void * nano::change_block::get_handle () const
+rsnano::BlockHandle * nano::change_block::get_handle () const
 {
 	return handle;
 }
@@ -985,7 +957,7 @@ nano::state_block::state_block (const nano::state_block & other)
 	}
 	else
 	{
-		handle = rsnano::rsn_state_block_clone (other.handle);
+		handle = rsnano::rsn_block_clone (other.handle);
 	}
 }
 
@@ -996,7 +968,7 @@ nano::state_block::state_block (nano::state_block && other)
 	other.handle = nullptr;
 }
 
-nano::state_block::state_block (rsnano::StateBlockHandle * handle_a) :
+nano::state_block::state_block (rsnano::BlockHandle * handle_a) :
 	handle (handle_a)
 {
 }
@@ -1005,7 +977,7 @@ nano::state_block::~state_block ()
 {
 	if (handle != nullptr)
 	{
-		rsnano::rsn_state_block_destroy (handle);
+		rsnano::rsn_block_destroy (handle);
 		handle = nullptr;
 	}
 }
@@ -1095,7 +1067,7 @@ nano::state_block & nano::state_block::operator= (const nano::state_block & othe
 	}
 	else
 	{
-		handle = rsnano::rsn_state_block_clone (other.handle);
+		handle = rsnano::rsn_block_clone (other.handle);
 	}
 	return *this;
 }
@@ -1226,64 +1198,20 @@ nano::block_hash nano::state_block::generate_hash () const
 	return result;
 }
 
-rsnano::BlockDto nano::state_block::to_block_dto () const
-{
-	rsnano::BlockDto dto;
-	dto.block_type = static_cast<uint8_t> (nano::block_type::state);
-	dto.handle = handle;
-	return dto;
-}
-
-void * nano::state_block::get_handle () const
+rsnano::BlockHandle * nano::state_block::get_handle () const
 {
 	return handle;
-}
-
-rsnano::BlockDto nano::block_to_block_dto (nano::block const & source)
-{
-	rsnano::BlockDto result;
-	result.block_type = static_cast<uint8_t> (source.type ());
-	result.handle = source.get_handle ();
-	return result;
-}
-
-std::shared_ptr<nano::block> nano::block_dto_to_block (rsnano::BlockDto const & dto)
-{
-	std::unique_ptr<nano::block> obj;
-	switch (static_cast<nano::block_type> (dto.block_type))
-	{
-		case nano::block_type::send:
-			obj = std::make_unique<nano::send_block> (static_cast<rsnano::SendBlockHandle *> (dto.handle));
-			break;
-		case nano::block_type::receive:
-			obj = std::make_unique<nano::receive_block> (static_cast<rsnano::ReceiveBlockHandle *> (dto.handle));
-			break;
-		case nano::block_type::open:
-			obj = std::make_unique<nano::open_block> (static_cast<rsnano::OpenBlockHandle *> (dto.handle));
-			break;
-		case nano::block_type::change:
-			obj = std::make_unique<nano::change_block> (static_cast<rsnano::ChangeBlockHandle *> (dto.handle));
-			break;
-		case nano::block_type::state:
-			obj = std::make_unique<nano::state_block> (static_cast<rsnano::StateBlockHandle *> (dto.handle));
-			break;
-		default:
-			break;
-	}
-
-	std::shared_ptr<nano::block> result;
-	result = std::move (obj);
-	return result;
 }
 
 std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a, nano::block_uniquer * uniquer_a)
 {
 	std::shared_ptr<nano::block> result;
-	rsnano::BlockDto dto;
-	if (rsnano::rsn_deserialize_block_json (&dto, &tree_a) < 0)
+	rsnano::BlockHandle * block_handle (rsnano::rsn_deserialize_block_json (&tree_a));
+	if (block_handle == nullptr)
 		return result;
 
-	result = nano::block_dto_to_block (dto);
+	result = nano::block_handle_to_block (block_handle);
+
 	if (uniquer_a != nullptr)
 	{
 		result = uniquer_a->unique (result);
@@ -1424,7 +1352,7 @@ nano::receive_block::receive_block (const nano::receive_block & other)
 	}
 	else
 	{
-		handle = rsnano::rsn_receive_block_clone (other.handle);
+		handle = rsnano::rsn_block_clone (other.handle);
 	}
 }
 
@@ -1435,7 +1363,7 @@ nano::receive_block::receive_block (nano::receive_block && other)
 	other.handle = nullptr;
 }
 
-nano::receive_block::receive_block (rsnano::ReceiveBlockHandle * handle_a) :
+nano::receive_block::receive_block (rsnano::BlockHandle * handle_a) :
 	handle (handle_a)
 {
 }
@@ -1443,7 +1371,7 @@ nano::receive_block::receive_block (rsnano::ReceiveBlockHandle * handle_a) :
 nano::receive_block::~receive_block ()
 {
 	if (handle != nullptr)
-		rsnano::rsn_receive_block_destroy (handle);
+		rsnano::rsn_block_destroy (handle);
 }
 
 uint64_t nano::receive_block::block_work () const
@@ -1556,14 +1484,6 @@ std::size_t nano::receive_block::size ()
 	return rsnano::rsn_receive_block_size ();
 }
 
-rsnano::BlockDto nano::receive_block::to_block_dto () const
-{
-	rsnano::BlockDto dto;
-	dto.block_type = static_cast<uint8_t> (nano::block_type::receive);
-	dto.handle = handle;
-	return dto;
-}
-
 nano::block_hash nano::receive_block::generate_hash () const
 {
 	uint8_t bytes[32];
@@ -1573,7 +1493,7 @@ nano::block_hash nano::receive_block::generate_hash () const
 	return result;
 }
 
-void * nano::receive_block::get_handle () const
+rsnano::BlockHandle * nano::receive_block::get_handle () const
 {
 	return handle;
 }
@@ -1844,4 +1764,37 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bl
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "blocks", count, sizeof_element }));
 	return composite;
+}
+
+std::shared_ptr<nano::block> nano::block_handle_to_block (rsnano::BlockHandle * handle)
+{
+	auto type = static_cast<nano::block_type> (rsnano::rsn_block_type (handle));
+	std::shared_ptr<nano::block> result;
+	switch (type)
+	{
+		case nano::block_type::change:
+			result = std::make_shared<nano::change_block> (handle);
+			break;
+
+		case nano::block_type::open:
+			result = std::make_shared<nano::open_block> (handle);
+			break;
+
+		case nano::block_type::receive:
+			result = std::make_shared<nano::receive_block> (handle);
+			break;
+
+		case nano::block_type::send:
+			result = std::make_shared<nano::send_block> (handle);
+			break;
+
+		case nano::block_type::state:
+			result = std::make_shared<nano::state_block> (handle);
+			break;
+
+		default:
+			throw std::runtime_error ("invalid block type");
+	}
+
+	return result;
 }

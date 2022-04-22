@@ -3639,7 +3639,7 @@ TEST (node, rollback_vote_self)
 			election->vote (key.pub, 0, fork->hash ());
 			ASSERT_EQ (2, election->votes ().size ());
 			// The winner changed
-			ASSERT_EQ (election->winner (), fork);
+			ASSERT_EQ (election->winner ()->hash (), fork->hash ());
 		}
 		// Even without the rollback being finished, the aggregator must reply with a vote for the new winner, not the old one
 		ASSERT_TRUE (node.history.votes (send2->root (), send2->hash ()).empty ());

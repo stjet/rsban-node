@@ -85,11 +85,11 @@ rsnano::LedgerConstantsDto nano::ledger_constants::to_dto () const
 	std::copy (std::begin (nano_live_account.bytes), std::end (nano_live_account.bytes), std::begin (dto.nano_live_account));
 	std::copy (std::begin (nano_test_account.bytes), std::end (nano_test_account.bytes), std::begin (dto.nano_test_account));
 
-	dto.nano_dev_genesis = block_to_block_dto (*nano_dev_genesis);
-	dto.nano_beta_genesis = block_to_block_dto (*nano_beta_genesis);
-	dto.nano_live_genesis = block_to_block_dto (*nano_live_genesis);
-	dto.nano_test_genesis = block_to_block_dto (*nano_test_genesis);
-	dto.genesis = block_to_block_dto (*genesis);
+	dto.nano_dev_genesis = nano_dev_genesis->clone_handle ();
+	dto.nano_beta_genesis = nano_beta_genesis->clone_handle ();
+	dto.nano_live_genesis = nano_live_genesis->clone_handle ();
+	dto.nano_test_genesis = nano_test_genesis->clone_handle ();
+	dto.genesis = genesis->clone_handle ();
 	boost::multiprecision::export_bits (genesis_amount, std::begin (dto.genesis_amount), 8);
 	std::copy (std::begin (burn_account.bytes), std::end (burn_account.bytes), std::begin (dto.burn_account));
 	std::copy (std::begin (nano_dev_final_votes_canary_account.bytes), std::end (nano_dev_final_votes_canary_account.bytes), std::begin (dto.nano_dev_final_votes_canary_account));
@@ -126,11 +126,11 @@ void nano::ledger_constants::read_dto (rsnano::LedgerConstantsDto const & dto)
 	std::copy (std::begin (dto.nano_beta_account), std::end (dto.nano_beta_account), std::begin (nano_beta_account.bytes));
 	std::copy (std::begin (dto.nano_live_account), std::end (dto.nano_live_account), std::begin (nano_live_account.bytes));
 	std::copy (std::begin (dto.nano_test_account), std::end (dto.nano_test_account), std::begin (nano_test_account.bytes));
-	nano_dev_genesis = nano::block_dto_to_block (dto.nano_dev_genesis);
-	nano_beta_genesis = nano::block_dto_to_block (dto.nano_beta_genesis);
-	nano_live_genesis = nano::block_dto_to_block (dto.nano_live_genesis);
-	nano_test_genesis = nano::block_dto_to_block (dto.nano_test_genesis);
-	genesis = nano::block_dto_to_block (dto.genesis);
+	nano_dev_genesis = nano::block_handle_to_block (dto.nano_dev_genesis);
+	nano_beta_genesis = nano::block_handle_to_block (dto.nano_beta_genesis);
+	nano_live_genesis = nano::block_handle_to_block (dto.nano_live_genesis);
+	nano_test_genesis = nano::block_handle_to_block (dto.nano_test_genesis);
+	genesis = nano::block_handle_to_block (dto.genesis);
 	boost::multiprecision::import_bits (genesis_amount, std::begin (dto.genesis_amount), std::end (dto.genesis_amount));
 	std::copy (std::begin (dto.burn_account), std::end (dto.burn_account), std::begin (burn_account.bytes));
 	std::copy (std::begin (dto.nano_dev_final_votes_canary_account), std::end (dto.nano_dev_final_votes_canary_account), std::begin (nano_dev_final_votes_canary_account.bytes));

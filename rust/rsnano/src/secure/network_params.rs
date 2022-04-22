@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use crate::{
     BlockEnum, BootstrapConstants, LedgerConstants, NetworkConstants, Networks, NodeConstants,
     PortmappingConstants, VotingConstants, WorkThresholds,
@@ -10,7 +12,7 @@ pub static DEV_NETWORK_PARAMS: Lazy<NetworkParams> =
 
 pub static DEV_CONSTANTS: Lazy<&LedgerConstants> = Lazy::new(|| &DEV_NETWORK_PARAMS.ledger);
 
-pub static DEV_GENESIS: Lazy<&BlockEnum> = Lazy::new(|| &DEV_CONSTANTS.genesis);
+pub static DEV_GENESIS: Lazy<Arc<RwLock<BlockEnum>>> = Lazy::new(|| DEV_CONSTANTS.genesis.clone());
 
 pub struct NetworkParams {
     pub kdf_work: u32,

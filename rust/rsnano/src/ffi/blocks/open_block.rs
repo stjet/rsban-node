@@ -1,15 +1,14 @@
 use std::ffi::c_void;
+use std::sync::{Arc, RwLock};
 
 use crate::{
-    Account, Block, BlockHash, LazyBlockHash, OpenBlock, OpenHashables, PublicKey, RawKey,
-    Signature,
+    Account, Block, BlockEnum, BlockHash, LazyBlockHash, OpenBlock, OpenHashables, PublicKey,
+    RawKey, Signature,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
 
-pub struct OpenBlockHandle {
-    pub block: OpenBlock,
-}
+use super::BlockHandle;
 
 #[repr(C)]
 pub struct OpenBlockDto {
@@ -31,9 +30,9 @@ pub struct OpenBlockDto2 {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut OpenBlockHandle {
-    Box::into_raw(Box::new(OpenBlockHandle {
-        block: OpenBlock {
+pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut BlockHandle {
+    Box::into_raw(Box::new(BlockHandle {
+        block: Arc::new(RwLock::new(BlockEnum::Open(OpenBlock {
             work: dto.work,
             signature: Signature::from_bytes(dto.signature),
             hashables: OpenHashables {
@@ -43,12 +42,12 @@ pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut OpenBlockHan
             },
             hash: LazyBlockHash::new(),
             sideband: None,
-        },
+        }))),
     }))
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_open_block_create2(dto: &OpenBlockDto2) -> *mut OpenBlockHandle {
+pub extern "C" fn rsn_open_block_create2(dto: &OpenBlockDto2) -> *mut BlockHandle {
     let block = match OpenBlock::new(
         BlockHash::from_bytes(dto.source),
         Account::from_bytes(dto.representative),
@@ -64,91 +63,110 @@ pub extern "C" fn rsn_open_block_create2(dto: &OpenBlockDto2) -> *mut OpenBlockH
         }
     };
 
-    Box::into_raw(Box::new(OpenBlockHandle { block }))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_open_block_clone(handle: &OpenBlockHandle) -> *mut OpenBlockHandle {
-    Box::into_raw(Box::new(OpenBlockHandle {
-        block: handle.block.clone(),
+    Box::into_raw(Box::new(BlockHandle {
+        block: Arc::new(RwLock::new(BlockEnum::Open(block))),
     }))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_destroy(handle: *mut OpenBlockHandle) {
-    drop(Box::from_raw(handle))
+unsafe fn read_open_block<T>(handle: *const BlockHandle, f: impl FnOnce(&OpenBlock) -> T) -> T {
+    let block = (*handle).block.read().unwrap();
+    match &*block {
+        BlockEnum::Open(b) => f(b),
+        _ => panic!("expected open block"),
+    }
+}
+
+unsafe fn write_open_block<T>(
+    handle: *mut BlockHandle,
+    mut f: impl FnMut(&mut OpenBlock) -> T,
+) -> T {
+    let mut block = (*handle).block.write().unwrap();
+    match &mut *block {
+        BlockEnum::Open(b) => f(b),
+        _ => panic!("expected open block"),
+    }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_work_set(handle: *mut OpenBlockHandle, work: u64) {
-    (*handle).block.work = work;
+pub unsafe extern "C" fn rsn_open_block_work_set(handle: *mut BlockHandle, work: u64) {
+    write_open_block(handle, |b| b.work = work);
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_open_block_work(handle: &OpenBlockHandle) -> u64 {
-    handle.block.work
+pub unsafe extern "C" fn rsn_open_block_work(handle: *const BlockHandle) -> u64 {
+    read_open_block(handle, |b| b.work)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_signature(handle: &OpenBlockHandle, result: *mut [u8; 64]) {
-    (*result) = (*handle).block.signature.to_be_bytes();
+pub unsafe extern "C" fn rsn_open_block_signature(handle: &BlockHandle, result: *mut [u8; 64]) {
+    (*result) = read_open_block(handle, |b| b.signature.to_be_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_open_block_signature_set(
-    handle: *mut OpenBlockHandle,
+    handle: *mut BlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::from_bytes(*signature);
+    write_open_block(handle, |b| b.signature = Signature::from_bytes(*signature));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_source(handle: &OpenBlockHandle, result: *mut [u8; 32]) {
-    (*result) = (*handle).block.hashables.source.to_bytes();
+pub unsafe extern "C" fn rsn_open_block_source(handle: *const BlockHandle, result: *mut [u8; 32]) {
+    (*result) = read_open_block(handle, |b| b.hashables.source.to_bytes());
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_source_set(
-    handle: *mut OpenBlockHandle,
-    source: &[u8; 32],
-) {
-    (*handle).block.hashables.source = BlockHash::from_bytes(*source);
+pub unsafe extern "C" fn rsn_open_block_source_set(handle: *mut BlockHandle, source: &[u8; 32]) {
+    write_open_block(handle, |b| {
+        b.hashables.source = BlockHash::from_bytes(*source)
+    });
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_open_block_representative(
-    handle: &OpenBlockHandle,
+    handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = (*handle).block.hashables.representative.to_bytes();
+    (*result) = read_open_block(handle, |b| b.hashables.representative.to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_open_block_representative_set(
-    handle: *mut OpenBlockHandle,
+    handle: *mut BlockHandle,
     representative: &[u8; 32],
 ) {
-    (*handle).block.hashables.representative = Account::from_bytes(*representative);
+    write_open_block(handle, |b| {
+        b.hashables.representative = Account::from_bytes(*representative)
+    });
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_account(handle: &OpenBlockHandle, result: *mut [u8; 32]) {
-    (*result) = (*handle).block.hashables.account.to_bytes();
+pub unsafe extern "C" fn rsn_open_block_account(handle: *const BlockHandle, result: *mut [u8; 32]) {
+    (*result) = read_open_block(handle, |b| b.hashables.account.to_bytes());
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_account_set(
-    handle: *mut OpenBlockHandle,
-    account: &[u8; 32],
-) {
-    (*handle).block.hashables.account = Account::from_bytes(*account);
+pub unsafe extern "C" fn rsn_open_block_account_set(handle: *mut BlockHandle, account: &[u8; 32]) {
+    write_open_block(handle, |b| {
+        b.hashables.account = Account::from_bytes(*account)
+    });
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_open_block_equals(a: &OpenBlockHandle, b: &OpenBlockHandle) -> bool {
-    a.block.work.eq(&b.block.work)
-        && a.block.signature.eq(&b.block.signature)
-        && a.block.hashables.eq(&b.block.hashables)
+pub unsafe extern "C" fn rsn_open_block_equals(
+    a: *const BlockHandle,
+    b: *const BlockHandle,
+) -> bool {
+    let a_guard = (*a).block.read().unwrap();
+    let b_guard = (*b).block.read().unwrap();
+    if let BlockEnum::Open(a_block) = &*a_guard {
+        if let BlockEnum::Open(b_block) = &*b_guard {
+            return a_block.work.eq(&b_block.work)
+                && a_block.signature.eq(&b_block.signature)
+                && a_block.hashables.eq(&b_block.hashables);
+        }
+    }
+    false
 }
 
 #[no_mangle]
@@ -157,49 +175,55 @@ pub extern "C" fn rsn_open_block_size() -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_hash(handle: &OpenBlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = handle.block.hash().to_bytes()
+pub unsafe extern "C" fn rsn_open_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
+    (*hash) = read_open_block(handle, |b| b.hash().to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_open_block_serialize(
-    handle: *mut OpenBlockHandle,
+    handle: *mut BlockHandle,
     stream: *mut c_void,
 ) -> i32 {
     let mut stream = FfiStream::new(stream);
-    if (*handle).block.serialize(&mut stream).is_ok() {
-        0
-    } else {
-        -1
-    }
+    read_open_block(handle, |b| {
+        if b.serialize(&mut stream).is_ok() {
+            0
+        } else {
+            -1
+        }
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_deserialize(stream: *mut c_void) -> *mut OpenBlockHandle {
+pub unsafe extern "C" fn rsn_open_block_deserialize(stream: *mut c_void) -> *mut BlockHandle {
     let mut stream = FfiStream::new(stream);
     match OpenBlock::deserialize(&mut stream) {
-        Ok(block) => Box::into_raw(Box::new(OpenBlockHandle { block })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle {
+            block: Arc::new(RwLock::new(BlockEnum::Open(block))),
+        })),
         Err(_) => std::ptr::null_mut(),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_open_block_serialize_json(
-    handle: &OpenBlockHandle,
+pub unsafe extern "C" fn rsn_open_block_serialize_json(
+    handle: *const BlockHandle,
     ptree: *mut c_void,
 ) -> i32 {
     let mut writer = FfiPropertyTreeWriter::new(ptree);
-    match handle.block.serialize_json(&mut writer) {
+    read_open_block(handle, |b| match b.serialize_json(&mut writer) {
         Ok(_) => 0,
         Err(_) => -1,
-    }
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_open_block_deserialize_json(ptree: *const c_void) -> *mut OpenBlockHandle {
+pub extern "C" fn rsn_open_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
     let reader = FfiPropertyTreeReader::new(ptree);
     match OpenBlock::deserialize_json(&reader) {
-        Ok(block) => Box::into_raw(Box::new(OpenBlockHandle { block })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle {
+            block: Arc::new(RwLock::new(BlockEnum::Open(block))),
+        })),
         Err(_) => std::ptr::null_mut(),
     }
 }

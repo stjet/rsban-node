@@ -1,4 +1,8 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    any::Any,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
 use crate::{
     Account, BlockEnum, BlockHash, Epochs, Logger, PublicKey, Signature, SignatureCheckSet,
@@ -6,7 +10,7 @@ use crate::{
 };
 
 pub(crate) struct StateBlockSignatureVerificationValue {
-    pub block: Arc<BlockEnum>,
+    pub block: Arc<RwLock<BlockEnum>>,
     pub account: Account,
     pub verification: SignatureVerification,
 }
@@ -15,10 +19,13 @@ pub(crate) struct StateBlockSignatureVerificationResult {
     pub hashes: Vec<BlockHash>,
     pub signatures: Vec<Signature>,
     pub verifications: Vec<i32>,
+    pub items: Vec<StateBlockSignatureVerificationValue>,
 }
 
 pub(crate) struct StateBlockSignatureVerification {
     pub timing_logging: bool,
+    blocks_verified_callback: fn(&dyn Any, StateBlockSignatureVerificationResult),
+    blocks_verified_callback_context: Option<Box<dyn Any>>,
     signature_checker: Arc<SignatureChecker>,
     epochs: Arc<Epochs>,
     logger: Arc<dyn Logger>,
@@ -35,15 +42,23 @@ impl<'a> StateBlockSignatureVerification {
             epochs,
             timing_logging: false,
             logger,
+            blocks_verified_callback: |_, _| {},
+            blocks_verified_callback_context: None,
         }
     }
 
-    pub(crate) fn verify_state_blocks(
-        &self,
-        items: &[StateBlockSignatureVerificationValue],
-    ) -> Option<StateBlockSignatureVerificationResult> {
+    pub(crate) fn set_blocks_verified_callback(
+        &mut self,
+        callback: fn(&dyn Any, StateBlockSignatureVerificationResult),
+        context: Box<dyn Any>,
+    ) {
+        self.blocks_verified_callback = callback;
+        self.blocks_verified_callback_context = Some(context);
+    }
+
+    pub(crate) fn verify_state_blocks(&self, items: Vec<StateBlockSignatureVerificationValue>) {
         if items.is_empty() {
-            return None;
+            return;
         }
 
         let now = std::time::Instant::now();
@@ -55,8 +70,9 @@ impl<'a> StateBlockSignatureVerification {
         let mut block_signatures: Vec<Signature> = Vec::with_capacity(size);
         let verifications = vec![0; size];
 
-        for i in items {
-            let block = i.block.as_block();
+        for i in &items {
+            let guard = i.block.read().unwrap();
+            let block = guard.as_block();
             hashes.push(block.hash());
             messages.push(block.hash().to_bytes().to_vec());
             let mut account_l = *block.account();
@@ -90,10 +106,15 @@ impl<'a> StateBlockSignatureVerification {
             ));
         }
 
-        Some(StateBlockSignatureVerificationResult {
+        let result = StateBlockSignatureVerificationResult {
             hashes,
             signatures: check.signatures,
             verifications: check.verifications,
-        })
+            items,
+        };
+
+        if let Some(ctx) = &self.blocks_verified_callback_context {
+            (self.blocks_verified_callback)(ctx.as_ref(), result);
+        }
     }
 }

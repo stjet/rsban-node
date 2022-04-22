@@ -1,14 +1,14 @@
 use std::ffi::c_void;
+use std::sync::{Arc, RwLock};
 
 use crate::{
-    Block, BlockHash, LazyBlockHash, PublicKey, RawKey, ReceiveBlock, ReceiveHashables, Signature,
+    Block, BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, ReceiveBlock, ReceiveHashables,
+    Signature,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
 
-pub struct ReceiveBlockHandle {
-    pub block: ReceiveBlock,
-}
+use super::BlockHandle;
 
 #[repr(C)]
 pub struct ReceiveBlockDto {
@@ -27,10 +27,32 @@ pub struct ReceiveBlockDto2 {
     pub work: u64,
 }
 
+unsafe fn read_receive_block<T>(
+    handle: *const BlockHandle,
+    f: impl FnOnce(&ReceiveBlock) -> T,
+) -> T {
+    let block = (*handle).block.read().unwrap();
+    match &*block {
+        BlockEnum::Receive(b) => f(b),
+        _ => panic!("expected receive block"),
+    }
+}
+
+unsafe fn write_receive_block<T>(
+    handle: *mut BlockHandle,
+    mut f: impl FnMut(&mut ReceiveBlock) -> T,
+) -> T {
+    let mut block = (*handle).block.write().unwrap();
+    match &mut *block {
+        BlockEnum::Receive(b) => f(b),
+        _ => panic!("expected receive block"),
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut ReceiveBlockHandle {
-    Box::into_raw(Box::new(ReceiveBlockHandle {
-        block: ReceiveBlock {
+pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut BlockHandle {
+    Box::into_raw(Box::new(BlockHandle {
+        block: Arc::new(RwLock::new(BlockEnum::Receive(ReceiveBlock {
             work: dto.work,
             signature: Signature::from_bytes(dto.signature),
             hashables: ReceiveHashables {
@@ -39,12 +61,12 @@ pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut Receiv
             },
             hash: LazyBlockHash::new(),
             sideband: None,
-        },
+        }))),
     }))
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_receive_block_create2(dto: &ReceiveBlockDto2) -> *mut ReceiveBlockHandle {
+pub extern "C" fn rsn_receive_block_create2(dto: &ReceiveBlockDto2) -> *mut BlockHandle {
     let block = match ReceiveBlock::new(
         BlockHash::from_bytes(dto.previous),
         BlockHash::from_bytes(dto.source),
@@ -59,91 +81,92 @@ pub extern "C" fn rsn_receive_block_create2(dto: &ReceiveBlockDto2) -> *mut Rece
         }
     };
 
-    Box::into_raw(Box::new(ReceiveBlockHandle { block }))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_receive_block_clone(handle: &ReceiveBlockHandle) -> *mut ReceiveBlockHandle {
-    Box::into_raw(Box::new(ReceiveBlockHandle {
-        block: handle.block.clone(),
+    Box::into_raw(Box::new(BlockHandle {
+        block: Arc::new(RwLock::new(BlockEnum::Receive(block))),
     }))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_destroy(handle: *mut ReceiveBlockHandle) {
-    drop(Box::from_raw(handle))
+pub unsafe extern "C" fn rsn_receive_block_work_set(handle: *mut BlockHandle, work: u64) {
+    write_receive_block(handle, |b| b.work = work);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_work_set(handle: *mut ReceiveBlockHandle, work: u64) {
-    (*handle).block.work = work;
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_receive_block_work(handle: &ReceiveBlockHandle) -> u64 {
-    handle.block.work
+pub unsafe extern "C" fn rsn_receive_block_work(handle: *const BlockHandle) -> u64 {
+    read_receive_block(handle, |b| b.work)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_receive_block_signature(
-    handle: &ReceiveBlockHandle,
+    handle: *const BlockHandle,
     result: *mut [u8; 64],
 ) {
-    (*result) = (*handle).block.signature.to_be_bytes();
+    (*result) = read_receive_block(handle, |b| b.signature.to_be_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_receive_block_signature_set(
-    handle: *mut ReceiveBlockHandle,
+    handle: *mut BlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::from_bytes(*signature);
+    write_receive_block(handle, |b| b.signature = Signature::from_bytes(*signature));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_receive_block_previous(
-    handle: &ReceiveBlockHandle,
+    handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = handle.block.hashables.previous.to_bytes();
+    (*result) = read_receive_block(handle, |b| b.hashables.previous.to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_receive_block_previous_set(
-    handle: *mut ReceiveBlockHandle,
+    handle: *mut BlockHandle,
     previous: &[u8; 32],
 ) {
     let previous = BlockHash::from_bytes(*previous);
-    (*handle).block.hashables.previous = previous;
+    write_receive_block(handle, |b| b.hashables.previous = previous);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_receive_block_source(
-    handle: &ReceiveBlockHandle,
+    handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = handle.block.hashables.source.to_bytes();
+    (*result) = read_receive_block(handle, |b| b.hashables.source.to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_receive_block_source_set(
-    handle: *mut ReceiveBlockHandle,
+    handle: *mut BlockHandle,
     previous: &[u8; 32],
 ) {
     let source = BlockHash::from_bytes(*previous);
-    (*handle).block.hashables.source = source;
+    write_receive_block(handle, |b| b.hashables.source = source);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_hash(handle: &ReceiveBlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = handle.block.hash().to_bytes();
+pub unsafe extern "C" fn rsn_receive_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
+    (*hash) = read_receive_block(handle, |b| b.hash().to_bytes());
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_receive_block_equals(a: &ReceiveBlockHandle, b: &ReceiveBlockHandle) -> bool {
-    a.block.work.eq(&b.block.work)
-        && a.block.signature.eq(&b.block.signature)
-        && a.block.hashables.eq(&b.block.hashables)
+pub unsafe extern "C" fn rsn_receive_block_equals(
+    a: *const BlockHandle,
+    b: *const BlockHandle,
+) -> bool {
+    let a_guard = (*a).block.read().unwrap();
+    let b_guard = (*b).block.read().unwrap();
+    if let BlockEnum::Receive(a_block) = &*a_guard {
+        if let BlockEnum::Receive(b_block) = &*b_guard {
+            return a_block.work.eq(&b_block.work)
+                && a_block.signature.eq(&b_block.signature)
+                && a_block.hashables.eq(&b_block.hashables);
+        }
+    }
+
+    false
 }
 
 #[no_mangle]
@@ -152,48 +175,50 @@ pub extern "C" fn rsn_receive_block_size() -> usize {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_receive_block_serialize_json(
-    handle: &ReceiveBlockHandle,
+pub unsafe extern "C" fn rsn_receive_block_serialize_json(
+    handle: *const BlockHandle,
     ptree: *mut c_void,
 ) -> i32 {
     let mut writer = FfiPropertyTreeWriter::new(ptree);
-    match handle.block.serialize_json(&mut writer) {
+    read_receive_block(handle, |b| match b.serialize_json(&mut writer) {
         Ok(_) => 0,
         Err(_) => -1,
-    }
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_receive_block_deserialize_json(
-    ptree: *const c_void,
-) -> *mut ReceiveBlockHandle {
+pub extern "C" fn rsn_receive_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
     let reader = FfiPropertyTreeReader::new(ptree);
     match ReceiveBlock::deserialize_json(&reader) {
-        Ok(block) => Box::into_raw(Box::new(ReceiveBlockHandle { block })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle {
+            block: Arc::new(RwLock::new(BlockEnum::Receive(block))),
+        })),
         Err(_) => std::ptr::null_mut(),
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_deserialize(
-    stream: *mut c_void,
-) -> *mut ReceiveBlockHandle {
+pub unsafe extern "C" fn rsn_receive_block_deserialize(stream: *mut c_void) -> *mut BlockHandle {
     let mut stream = FfiStream::new(stream);
     match ReceiveBlock::deserialize(&mut stream) {
-        Ok(block) => Box::into_raw(Box::new(ReceiveBlockHandle { block })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle {
+            block: Arc::new(RwLock::new(BlockEnum::Receive(block))),
+        })),
         Err(_) => std::ptr::null_mut(),
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_receive_block_serialize(
-    handle: *mut ReceiveBlockHandle,
+    handle: *mut BlockHandle,
     stream: *mut c_void,
 ) -> i32 {
     let mut stream = FfiStream::new(stream);
-    if (*handle).block.serialize(&mut stream).is_ok() {
-        0
-    } else {
-        -1
-    }
+    write_receive_block(handle, |b| {
+        if b.serialize(&mut stream).is_ok() {
+            0
+        } else {
+            -1
+        }
+    })
 }

@@ -1,13 +1,17 @@
-use std::convert::{TryFrom, TryInto};
+use std::{
+    convert::TryFrom,
+    sync::{Arc, RwLock},
+};
 
 use num::FromPrimitive;
 
 use crate::{
     ffi::{
-        blocks::{set_block_dto, BlockDto},
         config::{fill_work_thresholds_dto, WorkThresholdsDto},
+        BlockHandle,
     },
-    Account, Amount, Epoch, Epochs, KeyPair, LedgerConstants, Link, PublicKey, WorkThresholds,
+    Account, Amount, BlockEnum, Epoch, Epochs, KeyPair, LedgerConstants, Link, PublicKey,
+    WorkThresholds,
 };
 
 #[repr(C)]
@@ -18,11 +22,11 @@ pub struct LedgerConstantsDto {
     pub nano_beta_account: [u8; 32],
     pub nano_live_account: [u8; 32],
     pub nano_test_account: [u8; 32],
-    pub nano_dev_genesis: BlockDto,
-    pub nano_beta_genesis: BlockDto,
-    pub nano_live_genesis: BlockDto,
-    pub nano_test_genesis: BlockDto,
-    pub genesis: BlockDto,
+    pub nano_dev_genesis: *mut BlockHandle,
+    pub nano_beta_genesis: *mut BlockHandle,
+    pub nano_live_genesis: *mut BlockHandle,
+    pub nano_test_genesis: *mut BlockHandle,
+    pub genesis: *mut BlockHandle,
     pub genesis_amount: [u8; 16],
     pub burn_account: [u8; 32],
     pub nano_dev_final_votes_canary_account: [u8; 32],
@@ -62,6 +66,10 @@ pub unsafe extern "C" fn rsn_ledger_constants_create(
     0
 }
 
+fn block_to_block_handle(b: Arc<RwLock<BlockEnum>>) -> *mut BlockHandle {
+    Box::into_raw(Box::new(BlockHandle { block: b.clone() }))
+}
+
 pub fn fill_ledger_constants_dto(dto: &mut LedgerConstantsDto, ledger: LedgerConstants) {
     fill_work_thresholds_dto(&mut dto.work, &ledger.work);
     dto.pub_key = ledger.zero_key.public_key().to_be_bytes();
@@ -69,11 +77,11 @@ pub fn fill_ledger_constants_dto(dto: &mut LedgerConstantsDto, ledger: LedgerCon
     dto.nano_beta_account = ledger.nano_beta_account.to_bytes();
     dto.nano_live_account = ledger.nano_live_account.to_bytes();
     dto.nano_test_account = ledger.nano_test_account.to_bytes();
-    set_block_dto(&mut dto.nano_dev_genesis, ledger.nano_dev_genesis);
-    set_block_dto(&mut dto.nano_beta_genesis, ledger.nano_beta_genesis);
-    set_block_dto(&mut dto.nano_live_genesis, ledger.nano_live_genesis);
-    set_block_dto(&mut dto.nano_test_genesis, ledger.nano_test_genesis);
-    set_block_dto(&mut dto.genesis, ledger.genesis.clone());
+    dto.nano_dev_genesis = block_to_block_handle(ledger.nano_dev_genesis);
+    dto.nano_beta_genesis = block_to_block_handle(ledger.nano_beta_genesis);
+    dto.nano_live_genesis = block_to_block_handle(ledger.nano_live_genesis);
+    dto.nano_test_genesis = block_to_block_handle(ledger.nano_test_genesis);
+    dto.genesis = block_to_block_handle(ledger.genesis);
     dto.genesis_amount = ledger.genesis_amount.to_be_bytes();
     dto.burn_account = ledger.burn_account.to_bytes();
     dto.nano_dev_final_votes_canary_account = ledger.nano_dev_final_votes_canary_account.to_bytes();
@@ -117,11 +125,11 @@ impl TryFrom<&LedgerConstantsDto> for LedgerConstants {
             nano_beta_account: Account::from_bytes(value.nano_beta_account),
             nano_live_account: Account::from_bytes(value.nano_live_account),
             nano_test_account: Account::from_bytes(value.nano_test_account),
-            nano_dev_genesis: (&value.nano_dev_genesis).try_into()?,
-            nano_beta_genesis: (&value.nano_beta_genesis).try_into()?,
-            nano_live_genesis: (&value.nano_live_genesis).try_into()?,
-            nano_test_genesis: (&value.nano_test_genesis).try_into()?,
-            genesis: (&value.genesis).try_into()?,
+            nano_dev_genesis: unsafe { &*value.nano_dev_genesis }.block.clone(),
+            nano_beta_genesis: unsafe { &*value.nano_beta_genesis }.block.clone(),
+            nano_live_genesis: unsafe { &*value.nano_live_genesis }.block.clone(),
+            nano_test_genesis: unsafe { &*value.nano_test_genesis }.block.clone(),
+            genesis: unsafe { &*value.genesis }.block.clone(),
             genesis_amount: Amount::from_be_bytes(value.genesis_amount),
             burn_account: Account::from_bytes(value.burn_account),
             nano_dev_final_votes_canary_account: Account::from_bytes(

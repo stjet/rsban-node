@@ -128,9 +128,8 @@ public:
 	virtual nano::work_version work_version () const;
 	// If there are any changes to the hashables, call this to update the cached hash
 	void refresh ();
-	virtual rsnano::BlockDto to_block_dto () const = 0;
-	virtual void * get_handle () const = 0;
-	rsnano::SharedBlockEnumHandle * to_shared_handle () const;
+	virtual rsnano::BlockHandle * get_handle () const = 0;
+	virtual rsnano::BlockHandle * clone_handle () const;
 
 protected:
 	virtual nano::block_hash generate_hash () const = 0;
@@ -146,7 +145,7 @@ public:
 	send_block (bool &, boost::property_tree::ptree const &);
 	send_block (const send_block &);
 	send_block (send_block && other);
-	send_block (rsnano::SendBlockHandle * handle_a);
+	send_block (rsnano::BlockHandle * handle_a);
 	virtual ~send_block ();
 	using nano::block::hash;
 	uint64_t block_work () const override;
@@ -172,14 +171,13 @@ public:
 	void balance_set (nano::amount balance_a);
 	void sign_zero ();
 	static std::size_t size ();
-	rsnano::BlockDto to_block_dto () const override;
-	void * get_handle () const override;
+	rsnano::BlockHandle * get_handle () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
 
 private:
-	rsnano::SendBlockHandle * handle;
+	rsnano::BlockHandle * handle;
 };
 
 class receive_block : public nano::block
@@ -191,7 +189,7 @@ public:
 	receive_block (bool &, boost::property_tree::ptree const &);
 	receive_block (const nano::receive_block &);
 	receive_block (nano::receive_block &&);
-	receive_block (rsnano::ReceiveBlockHandle * handle_a);
+	receive_block (rsnano::BlockHandle * handle_a);
 	virtual ~receive_block ();
 	using nano::block::hash;
 	uint64_t block_work () const override;
@@ -215,14 +213,13 @@ public:
 	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
-	rsnano::BlockDto to_block_dto () const override;
-	void * get_handle () const override;
+	rsnano::BlockHandle * get_handle () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
 
 private:
-	rsnano::ReceiveBlockHandle * handle;
+	rsnano::BlockHandle * handle;
 };
 class open_block : public nano::block
 {
@@ -234,7 +231,7 @@ public:
 	open_block (bool &, boost::property_tree::ptree const &);
 	open_block (const nano::open_block &);
 	open_block (nano::open_block &&);
-	open_block (rsnano::OpenBlockHandle * handle_a);
+	open_block (rsnano::BlockHandle * handle_a);
 	virtual ~open_block ();
 	using nano::block::hash;
 	uint64_t block_work () const override;
@@ -261,14 +258,13 @@ public:
 	void representative_set (nano::account account_a);
 	void zero ();
 	static std::size_t size ();
-	rsnano::BlockDto to_block_dto () const override;
-	void * get_handle () const override;
+	rsnano::BlockHandle * get_handle () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
 
 private:
-	rsnano::OpenBlockHandle * handle;
+	rsnano::BlockHandle * handle;
 };
 class change_block : public nano::block
 {
@@ -279,7 +275,7 @@ public:
 	change_block (bool &, boost::property_tree::ptree const &);
 	change_block (const nano::change_block &);
 	change_block (nano::change_block &&);
-	change_block (rsnano::ChangeBlockHandle * handle_a);
+	change_block (rsnano::BlockHandle * handle_a);
 	virtual ~change_block ();
 	using nano::block::hash;
 	uint64_t block_work () const override;
@@ -303,14 +299,13 @@ public:
 	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
-	rsnano::BlockDto to_block_dto () const override;
-	void * get_handle () const override;
+	rsnano::BlockHandle * get_handle () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
 
 private:
-	rsnano::ChangeBlockHandle * handle;
+	rsnano::BlockHandle * handle;
 };
 class state_block : public nano::block
 {
@@ -321,7 +316,7 @@ public:
 	state_block (bool &, boost::property_tree::ptree const &);
 	state_block (const nano::state_block &);
 	state_block (nano::state_block &&);
-	state_block (rsnano::StateBlockHandle * handle_a);
+	state_block (rsnano::BlockHandle * handle_a);
 	virtual ~state_block ();
 	using nano::block::hash;
 	uint64_t block_work () const override;
@@ -352,14 +347,13 @@ public:
 	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
-	rsnano::BlockDto to_block_dto () const override;
-	void * get_handle () const override;
+	rsnano::BlockHandle * get_handle () const override;
 
 protected:
 	nano::block_hash generate_hash () const override;
 
 private:
-	rsnano::StateBlockHandle * handle;
+	rsnano::BlockHandle * handle;
 };
 class block_visitor
 {
@@ -405,6 +399,5 @@ std::shared_ptr<nano::block> deserialize_block (nano::stream &, nano::block_type
 std::shared_ptr<nano::block> deserialize_block_json (boost::property_tree::ptree const &, nano::block_uniquer * = nullptr);
 void serialize_block (nano::stream &, nano::block const &);
 void block_memory_pool_purge ();
-std::shared_ptr<nano::block> block_dto_to_block (rsnano::BlockDto const & dto);
-rsnano::BlockDto block_to_block_dto (nano::block const & source);
+std::shared_ptr<nano::block> block_handle_to_block (rsnano::BlockHandle * handle);
 }

@@ -1,15 +1,14 @@
 use std::ffi::c_void;
+use std::sync::{Arc, RwLock};
 
 use crate::{
-    Account, Amount, Block, BlockHash, LazyBlockHash, Link, PublicKey, RawKey, Signature,
-    StateBlock, StateHashables,
+    Account, Amount, Block, BlockEnum, BlockHash, LazyBlockHash, Link, PublicKey, RawKey,
+    Signature, StateBlock, StateHashables,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
 
-pub struct StateBlockHandle {
-    pub block: StateBlock,
-}
+use super::BlockHandle;
 
 #[repr(C)]
 pub struct StateBlockDto {
@@ -34,10 +33,29 @@ pub struct StateBlockDto2 {
     pub work: u64,
 }
 
+unsafe fn read_state_block<T>(handle: *const BlockHandle, f: impl FnOnce(&StateBlock) -> T) -> T {
+    let block = (*handle).block.read().unwrap();
+    match &*block {
+        BlockEnum::State(b) => f(b),
+        _ => panic!("expected state block"),
+    }
+}
+
+unsafe fn write_state_block<T>(
+    handle: *mut BlockHandle,
+    mut f: impl FnMut(&mut StateBlock) -> T,
+) -> T {
+    let mut block = (*handle).block.write().unwrap();
+    match &mut *block {
+        BlockEnum::State(b) => f(b),
+        _ => panic!("expected state block"),
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn rsn_state_block_create(dto: &StateBlockDto) -> *mut StateBlockHandle {
-    Box::into_raw(Box::new(StateBlockHandle {
-        block: StateBlock {
+pub extern "C" fn rsn_state_block_create(dto: &StateBlockDto) -> *mut BlockHandle {
+    Box::into_raw(Box::new(BlockHandle {
+        block: Arc::new(RwLock::new(BlockEnum::State(StateBlock {
             work: dto.work,
             signature: Signature::from_bytes(dto.signature),
             hashables: StateHashables {
@@ -49,12 +67,12 @@ pub extern "C" fn rsn_state_block_create(dto: &StateBlockDto) -> *mut StateBlock
             },
             hash: LazyBlockHash::new(),
             sideband: None,
-        },
+        }))),
     }))
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_create2(dto: &StateBlockDto2) -> *mut StateBlockHandle {
+pub extern "C" fn rsn_state_block_create2(dto: &StateBlockDto2) -> *mut BlockHandle {
     let block = match StateBlock::new(
         Account::from_bytes(dto.account),
         BlockHash::from_bytes(dto.previous),
@@ -72,125 +90,133 @@ pub extern "C" fn rsn_state_block_create2(dto: &StateBlockDto2) -> *mut StateBlo
         }
     };
 
-    Box::into_raw(Box::new(StateBlockHandle { block }))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_state_block_clone(handle: &StateBlockHandle) -> *mut StateBlockHandle {
-    Box::into_raw(Box::new(StateBlockHandle {
-        block: handle.block.clone(),
+    Box::into_raw(Box::new(BlockHandle {
+        block: Arc::new(RwLock::new(BlockEnum::State(block))),
     }))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_destroy(handle: *mut StateBlockHandle) {
-    drop(Box::from_raw(handle))
+pub unsafe extern "C" fn rsn_state_block_work_set(handle: *mut BlockHandle, work: u64) {
+    write_state_block(handle, |b| b.work = work);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_work_set(handle: *mut StateBlockHandle, work: u64) {
-    (*handle).block.work = work;
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_state_block_work(handle: &StateBlockHandle) -> u64 {
-    handle.block.work
+pub unsafe extern "C" fn rsn_state_block_work(handle: *const BlockHandle) -> u64 {
+    read_state_block(handle, |b| b.work)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_signature(
-    handle: &StateBlockHandle,
+    handle: *const BlockHandle,
     result: *mut [u8; 64],
 ) {
-    (*result) = (*handle).block.signature.to_be_bytes();
+    (*result) = read_state_block(handle, |b| b.signature.to_be_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_signature_set(
-    handle: *mut StateBlockHandle,
+    handle: *mut BlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::from_bytes(*signature);
+    write_state_block(handle, |b| b.signature = Signature::from_bytes(*signature));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_account(handle: &StateBlockHandle, result: *mut [u8; 32]) {
-    (*result) = (*handle).block.hashables.account.to_bytes();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_account_set(
-    handle: *mut StateBlockHandle,
-    source: &[u8; 32],
+pub unsafe extern "C" fn rsn_state_block_account(
+    handle: *const BlockHandle,
+    result: *mut [u8; 32],
 ) {
-    (*handle).block.hashables.account = Account::from_bytes(*source);
-    (*handle).block.hash.clear();
+    (*result) = read_state_block(handle, |b| b.hashables.account.to_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_state_block_account_set(handle: *mut BlockHandle, source: &[u8; 32]) {
+    write_state_block(handle, |b| {
+        b.hashables.account = Account::from_bytes(*source);
+        b.hash.clear();
+    });
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_previous(
-    handle: &StateBlockHandle,
+    handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = (*handle).block.hashables.previous.to_bytes();
+    (*result) = read_state_block(handle, |b| b.hashables.previous.to_bytes());
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_previous_set(
-    handle: *mut StateBlockHandle,
-    source: &[u8; 32],
-) {
-    (*handle).block.hashables.previous = BlockHash::from_bytes(*source);
-    (*handle).block.hash.clear();
+pub unsafe extern "C" fn rsn_state_block_previous_set(handle: *mut BlockHandle, source: &[u8; 32]) {
+    write_state_block(handle, |b| {
+        b.hashables.previous = BlockHash::from_bytes(*source);
+        b.hash.clear();
+    });
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_representative(
-    handle: &StateBlockHandle,
+    handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = (*handle).block.hashables.representative.to_bytes();
+    (*result) = read_state_block(handle, |b| b.hashables.representative.to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_representative_set(
-    handle: *mut StateBlockHandle,
+    handle: *mut BlockHandle,
     representative: &[u8; 32],
 ) {
-    (*handle).block.hashables.representative = Account::from_bytes(*representative);
-    (*handle).block.hash.clear();
+    write_state_block(handle, |b| {
+        b.hashables.representative = Account::from_bytes(*representative);
+        b.hash.clear();
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_balance(handle: &StateBlockHandle, result: *mut [u8; 16]) {
-    (*result) = (*handle).block.hashables.balance.to_be_bytes();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_balance_set(
-    handle: *mut StateBlockHandle,
-    balance: &[u8; 16],
+pub unsafe extern "C" fn rsn_state_block_balance(
+    handle: *const BlockHandle,
+    result: *mut [u8; 16],
 ) {
-    (*handle).block.hashables.balance = Amount::from_be_bytes(*balance);
-    (*handle).block.hash.clear();
+    (*result) = read_state_block(handle, |b| b.hashables.balance.to_be_bytes());
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_link(handle: &StateBlockHandle, result: *mut [u8; 32]) {
-    (*result) = (*handle).block.hashables.link.to_bytes();
+pub unsafe extern "C" fn rsn_state_block_balance_set(handle: *mut BlockHandle, balance: &[u8; 16]) {
+    write_state_block(handle, |b| {
+        b.hashables.balance = Amount::from_be_bytes(*balance);
+        b.hash.clear();
+    });
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_link_set(handle: *mut StateBlockHandle, link: &[u8; 32]) {
-    (*handle).block.hashables.link = Link::from_bytes(*link);
-    (*handle).block.hash.clear();
+pub unsafe extern "C" fn rsn_state_block_link(handle: *const BlockHandle, result: *mut [u8; 32]) {
+    (*result) = read_state_block(handle, |b| b.hashables.link.to_bytes());
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_equals(a: &StateBlockHandle, b: &StateBlockHandle) -> bool {
-    a.block.work.eq(&b.block.work)
-        && a.block.signature.eq(&b.block.signature)
-        && a.block.hashables.eq(&b.block.hashables)
+pub unsafe extern "C" fn rsn_state_block_link_set(handle: *mut BlockHandle, link: &[u8; 32]) {
+    write_state_block(handle, |b| {
+        b.hashables.link = Link::from_bytes(*link);
+        b.hash.clear();
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_state_block_equals(
+    a: *const BlockHandle,
+    b: *const BlockHandle,
+) -> bool {
+    let a_guard = (*a).block.read().unwrap();
+    let b_guard = (*b).block.read().unwrap();
+
+    if let BlockEnum::State(a_block) = &*a_guard {
+        if let BlockEnum::State(b_block) = &*b_guard {
+            return a_block.work.eq(&b_block.work)
+                && a_block.signature.eq(&b_block.signature)
+                && a_block.hashables.eq(&b_block.hashables);
+        }
+    }
+    false
 }
 
 #[no_mangle]
@@ -199,49 +225,55 @@ pub extern "C" fn rsn_state_block_size() -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_hash(handle: &StateBlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = handle.block.hash().to_bytes();
+pub unsafe extern "C" fn rsn_state_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
+    (*hash) = read_state_block(handle, |b| b.hash().to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_serialize(
-    handle: *mut StateBlockHandle,
+    handle: *mut BlockHandle,
     stream: *mut c_void,
 ) -> i32 {
     let mut stream = FfiStream::new(stream);
-    if (*handle).block.serialize(&mut stream).is_ok() {
-        0
-    } else {
-        -1
-    }
+    write_state_block(handle, |b| {
+        if b.serialize(&mut stream).is_ok() {
+            0
+        } else {
+            -1
+        }
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_deserialize(stream: *mut c_void) -> *mut StateBlockHandle {
+pub unsafe extern "C" fn rsn_state_block_deserialize(stream: *mut c_void) -> *mut BlockHandle {
     let mut stream = FfiStream::new(stream);
     match StateBlock::deserialize(&mut stream) {
-        Ok(block) => Box::into_raw(Box::new(StateBlockHandle { block })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle {
+            block: Arc::new(RwLock::new(BlockEnum::State(block))),
+        })),
         Err(_) => std::ptr::null_mut(),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_serialize_json(
-    handle: &StateBlockHandle,
+pub unsafe extern "C" fn rsn_state_block_serialize_json(
+    handle: *const BlockHandle,
     ptree: *mut c_void,
 ) -> i32 {
     let mut writer = FfiPropertyTreeWriter::new(ptree);
-    match handle.block.serialize_json(&mut writer) {
+    read_state_block(handle, |b| match b.serialize_json(&mut writer) {
         Ok(_) => 0,
         Err(_) => -1,
-    }
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_deserialize_json(ptree: *const c_void) -> *mut StateBlockHandle {
+pub extern "C" fn rsn_state_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
     let reader = FfiPropertyTreeReader::new(ptree);
     match StateBlock::deserialize_json(&reader) {
-        Ok(block) => Box::into_raw(Box::new(StateBlockHandle { block })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle {
+            block: Arc::new(RwLock::new(BlockEnum::State(block))),
+        })),
         Err(_) => std::ptr::null_mut(),
     }
 }

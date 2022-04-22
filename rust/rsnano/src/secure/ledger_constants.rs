@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
@@ -89,11 +91,11 @@ pub struct LedgerConstants {
     pub nano_beta_account: Account,
     pub nano_live_account: Account,
     pub nano_test_account: Account,
-    pub nano_dev_genesis: BlockEnum,
-    pub nano_beta_genesis: BlockEnum,
-    pub nano_live_genesis: BlockEnum,
-    pub nano_test_genesis: BlockEnum,
-    pub genesis: BlockEnum,
+    pub nano_dev_genesis: Arc<RwLock<BlockEnum>>,
+    pub nano_beta_genesis: Arc<RwLock<BlockEnum>>,
+    pub nano_live_genesis: Arc<RwLock<BlockEnum>>,
+    pub nano_test_genesis: Arc<RwLock<BlockEnum>>,
+    pub genesis: Arc<RwLock<BlockEnum>>,
     pub genesis_amount: Amount,
     pub burn_account: Account,
     pub nano_dev_final_votes_canary_account: Account,
@@ -225,11 +227,11 @@ impl LedgerConstants {
             nano_beta_account,
             nano_live_account: Account::decode_hex(LIVE_PUBLIC_KEY_DATA)?,
             nano_test_account,
-            nano_dev_genesis,
-            nano_beta_genesis,
-            nano_live_genesis,
-            nano_test_genesis,
-            genesis,
+            nano_dev_genesis: Arc::new(RwLock::new(nano_dev_genesis)),
+            nano_beta_genesis: Arc::new(RwLock::new(nano_beta_genesis)),
+            nano_live_genesis: Arc::new(RwLock::new(nano_live_genesis)),
+            nano_test_genesis: Arc::new(RwLock::new(nano_test_genesis)),
+            genesis: Arc::new(RwLock::new(genesis)),
             genesis_amount: Amount::new(u128::MAX),
             burn_account: *Account::zero(),
             nano_dev_final_votes_canary_account,

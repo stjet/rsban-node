@@ -118,8 +118,15 @@ impl NodeConfig {
         match network_params.network.current_network {
             Networks::NanoDevNetwork => {
                 enable_voting = true;
-                preconfigured_representatives
-                    .push(*network_params.ledger.genesis.as_block().account());
+                preconfigured_representatives.push(
+                    *network_params
+                        .ledger
+                        .genesis
+                        .read()
+                        .unwrap()
+                        .as_block()
+                        .account(),
+                );
             }
             Networks::NanoBetaNetwork => {
                 preconfigured_peers.push(DEFAULT_BETA_PEER_NETWORK.clone());
@@ -183,8 +190,15 @@ impl NodeConfig {
             }
             Networks::NanoTestNetwork => {
                 preconfigured_peers.push(DEFAULT_TEST_PEER_NETWORK.clone());
-                preconfigured_representatives
-                    .push(*network_params.ledger.genesis.as_block().account());
+                preconfigured_representatives.push(
+                    *network_params
+                        .ledger
+                        .genesis
+                        .read()
+                        .unwrap()
+                        .as_block()
+                        .account(),
+                );
             }
             Networks::Invalid => panic!("invalid network"),
         }

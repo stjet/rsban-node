@@ -1,15 +1,14 @@
 use std::ffi::c_void;
+use std::sync::{Arc, RwLock};
 
 use crate::{
-    Account, Block, BlockHash, ChangeBlock, ChangeHashables, LazyBlockHash, PublicKey, RawKey,
-    Signature,
+    Account, Block, BlockEnum, BlockHash, ChangeBlock, ChangeHashables, LazyBlockHash, PublicKey,
+    RawKey, Signature,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
 
-pub struct ChangeBlockHandle {
-    pub block: ChangeBlock,
-}
+use super::BlockHandle;
 
 #[repr(C)]
 pub struct ChangeBlockDto {
@@ -29,9 +28,9 @@ pub struct ChangeBlockDto2 {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut ChangeBlockHandle {
-    Box::into_raw(Box::new(ChangeBlockHandle {
-        block: ChangeBlock {
+pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut BlockHandle {
+    Box::into_raw(Box::new(BlockHandle {
+        block: Arc::new(RwLock::new(BlockEnum::Change(ChangeBlock {
             work: dto.work,
             signature: Signature::from_bytes(dto.signature),
             hashables: ChangeHashables {
@@ -40,12 +39,12 @@ pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut ChangeBl
             },
             hash: LazyBlockHash::new(),
             sideband: None,
-        },
+        }))),
     }))
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_change_block_create2(dto: &ChangeBlockDto2) -> *mut ChangeBlockHandle {
+pub extern "C" fn rsn_change_block_create2(dto: &ChangeBlockDto2) -> *mut BlockHandle {
     let block = match ChangeBlock::new(
         BlockHash::from_bytes(dto.previous),
         Account::from_bytes(dto.representative),
@@ -60,84 +59,101 @@ pub extern "C" fn rsn_change_block_create2(dto: &ChangeBlockDto2) -> *mut Change
         }
     };
 
-    Box::into_raw(Box::new(ChangeBlockHandle { block }))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_change_block_clone(handle: &ChangeBlockHandle) -> *mut ChangeBlockHandle {
-    Box::into_raw(Box::new(ChangeBlockHandle {
-        block: handle.block.clone(),
+    Box::into_raw(Box::new(BlockHandle {
+        block: Arc::new(RwLock::new(BlockEnum::Change(block))),
     }))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_destroy(handle: *mut ChangeBlockHandle) {
-    drop(Box::from_raw(handle))
+unsafe fn read_change_block<T>(handle: *const BlockHandle, f: impl FnOnce(&ChangeBlock) -> T) -> T {
+    let block = (*handle).block.read().unwrap();
+    match &*block {
+        BlockEnum::Change(b) => f(b),
+        _ => panic!("expected change block"),
+    }
+}
+
+unsafe fn write_change_block<T>(
+    handle: *mut BlockHandle,
+    mut f: impl FnMut(&mut ChangeBlock) -> T,
+) -> T {
+    let mut block = (*handle).block.write().unwrap();
+    match &mut *block {
+        BlockEnum::Change(b) => f(b),
+        _ => panic!("expected change block"),
+    }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_work_set(handle: *mut ChangeBlockHandle, work: u64) {
-    (*handle).block.work = work;
+pub unsafe extern "C" fn rsn_change_block_work_set(handle: *mut BlockHandle, work: u64) {
+    write_change_block(handle, |b| b.work = work);
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_change_block_work(handle: &ChangeBlockHandle) -> u64 {
-    handle.block.work
+pub unsafe extern "C" fn rsn_change_block_work(handle: *const BlockHandle) -> u64 {
+    read_change_block(handle, |b| b.work)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_change_block_signature(
-    handle: &ChangeBlockHandle,
+    handle: *const BlockHandle,
     result: *mut [u8; 64],
 ) {
-    (*result) = (*handle).block.signature.to_be_bytes();
+    (*result) = read_change_block(handle, |b| b.signature.to_be_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_change_block_signature_set(
-    handle: *mut ChangeBlockHandle,
+    handle: *mut BlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::from_bytes(*signature);
+    write_change_block(handle, |b| b.signature = Signature::from_bytes(*signature));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_previous(
-    handle: &ChangeBlockHandle,
-    result: *mut [u8; 32],
-) {
-    (*result) = (*handle).block.hashables.previous.to_bytes();
+pub unsafe extern "C" fn rsn_change_block_previous(handle: &BlockHandle, result: *mut [u8; 32]) {
+    (*result) = read_change_block(handle, |b| b.hashables.previous.to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_change_block_previous_set(
-    handle: *mut ChangeBlockHandle,
+    handle: *mut BlockHandle,
     source: &[u8; 32],
 ) {
-    (*handle).block.hashables.previous = BlockHash::from_bytes(*source);
+    write_change_block(handle, |b| {
+        b.hashables.previous = BlockHash::from_bytes(*source)
+    });
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_change_block_representative(
-    handle: &ChangeBlockHandle,
+    handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = (*handle).block.hashables.representative.to_bytes();
+    (*result) = read_change_block(handle, |b| b.hashables.representative.to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_change_block_representative_set(
-    handle: *mut ChangeBlockHandle,
+    handle: *mut BlockHandle,
     representative: &[u8; 32],
 ) {
-    (*handle).block.hashables.representative = Account::from_bytes(*representative);
+    write_change_block(handle, |b| {
+        b.hashables.representative = Account::from_bytes(*representative)
+    });
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_change_block_equals(a: &ChangeBlockHandle, b: &ChangeBlockHandle) -> bool {
-    a.block.work.eq(&b.block.work)
-        && a.block.signature.eq(&b.block.signature)
-        && a.block.hashables.eq(&b.block.hashables)
+pub extern "C" fn rsn_change_block_equals(a: &BlockHandle, b: &BlockHandle) -> bool {
+    let a_guard = a.block.read().unwrap();
+    let b_guard = b.block.read().unwrap();
+    if let BlockEnum::Change(a_block) = &*a_guard {
+        if let BlockEnum::Change(b_block) = &*b_guard {
+            return a_block.work.eq(&b_block.work)
+                && a_block.signature.eq(&b_block.signature)
+                && a_block.hashables.eq(&b_block.hashables);
+        }
+    };
+    false
 }
 
 #[no_mangle]
@@ -146,53 +162,55 @@ pub extern "C" fn rsn_change_block_size() -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_hash(handle: &ChangeBlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = handle.block.hash().to_bytes();
+pub unsafe extern "C" fn rsn_change_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
+    (*hash) = read_change_block(handle, |b| b.hash().to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_change_block_serialize(
-    handle: *mut ChangeBlockHandle,
+    handle: *mut BlockHandle,
     stream: *mut c_void,
 ) -> i32 {
     let mut stream = FfiStream::new(stream);
-    if (*handle).block.serialize(&mut stream).is_ok() {
-        0
-    } else {
-        -1
-    }
+    read_change_block(handle, |b| {
+        if b.serialize(&mut stream).is_ok() {
+            0
+        } else {
+            -1
+        }
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_deserialize(
-    stream: *mut c_void,
-) -> *mut ChangeBlockHandle {
+pub unsafe extern "C" fn rsn_change_block_deserialize(stream: *mut c_void) -> *mut BlockHandle {
     let mut stream = FfiStream::new(stream);
     match ChangeBlock::deserialize(&mut stream) {
-        Ok(block) => Box::into_raw(Box::new(ChangeBlockHandle { block })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle {
+            block: Arc::new(RwLock::new(BlockEnum::Change(block))),
+        })),
         Err(_) => std::ptr::null_mut(),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_change_block_serialize_json(
-    handle: &ChangeBlockHandle,
+pub unsafe extern "C" fn rsn_change_block_serialize_json(
+    handle: *const BlockHandle,
     ptree: *mut c_void,
 ) -> i32 {
     let mut writer = FfiPropertyTreeWriter::new(ptree);
-    match handle.block.serialize_json(&mut writer) {
+    read_change_block(handle, |b| match b.serialize_json(&mut writer) {
         Ok(_) => 0,
         Err(_) => -1,
-    }
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_change_block_deserialize_json(
-    ptree: *const c_void,
-) -> *mut ChangeBlockHandle {
+pub extern "C" fn rsn_change_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
     let reader = FfiPropertyTreeReader::new(ptree);
     match ChangeBlock::deserialize_json(&reader) {
-        Ok(block) => Box::into_raw(Box::new(ChangeBlockHandle { block })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle {
+            block: Arc::new(RwLock::new(BlockEnum::Change(block))),
+        })),
         Err(_) => std::ptr::null_mut(),
     }
 }

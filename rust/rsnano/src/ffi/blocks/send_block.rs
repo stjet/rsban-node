@@ -1,12 +1,15 @@
 use num::FromPrimitive;
 use std::ffi::c_void;
+use std::sync::{Arc, RwLock};
 
 use crate::{
-    Account, Amount, Block, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock, SendHashables,
-    Signature,
+    Account, Amount, Block, BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock,
+    SendHashables, Signature,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
+
+use super::BlockHandle;
 
 #[repr(C)]
 pub struct SendBlockDto {
@@ -27,19 +30,34 @@ pub struct SendBlockDto2 {
     pub work: u64,
 }
 
-pub struct SendBlockHandle {
-    pub block: SendBlock,
+unsafe fn read_send_block<T>(handle: *const BlockHandle, f: impl FnOnce(&SendBlock) -> T) -> T {
+    let block = (*handle).block.read().unwrap();
+    match &*block {
+        BlockEnum::Send(b) => f(b),
+        _ => panic!("expected send block"),
+    }
+}
+
+unsafe fn write_send_block<T>(
+    handle: *mut BlockHandle,
+    mut f: impl FnMut(&mut SendBlock) -> T,
+) -> T {
+    let mut block = (*handle).block.write().unwrap();
+    match &mut *block {
+        BlockEnum::Send(b) => f(b),
+        _ => panic!("expected send block"),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_send_block_create(dto: &SendBlockDto) -> *mut SendBlockHandle {
-    Box::into_raw(Box::new(SendBlockHandle {
-        block: SendBlock::from(dto),
+pub extern "C" fn rsn_send_block_create(dto: &SendBlockDto) -> *mut BlockHandle {
+    Box::into_raw(Box::new(BlockHandle {
+        block: Arc::new(RwLock::new(BlockEnum::Send(SendBlock::from(dto)))),
     }))
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_send_block_create2(dto: &SendBlockDto2) -> *mut SendBlockHandle {
+pub extern "C" fn rsn_send_block_create2(dto: &SendBlockDto2) -> *mut BlockHandle {
     let previous = BlockHash::from_bytes(dto.previous);
     let destination = Account::from_bytes(dto.destination);
     let balance = Amount::from_be_bytes(dto.balance);
@@ -60,124 +78,132 @@ pub extern "C" fn rsn_send_block_create2(dto: &SendBlockDto2) -> *mut SendBlockH
         }
     };
 
-    Box::into_raw(Box::new(SendBlockHandle { block }))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_destroy(handle: *mut SendBlockHandle) {
-    drop(Box::from_raw(handle));
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_send_block_clone(handle: &SendBlockHandle) -> *mut SendBlockHandle {
-    Box::into_raw(Box::new(SendBlockHandle {
-        block: handle.block.clone(),
+    Box::into_raw(Box::new(BlockHandle {
+        block: Arc::new(RwLock::new(BlockEnum::Send(block))),
     }))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_serialize(
-    handle: *mut SendBlockHandle,
+    handle: *mut BlockHandle,
     stream: *mut c_void,
 ) -> i32 {
-    let mut stream = FfiStream::new(stream);
-    if (*handle).block.serialize(&mut stream).is_ok() {
-        0
-    } else {
-        -1
-    }
+    write_send_block(handle, |b| {
+        let mut stream = FfiStream::new(stream);
+        if b.serialize(&mut stream).is_ok() {
+            0
+        } else {
+            -1
+        }
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_deserialize(stream: *mut c_void) -> *mut SendBlockHandle {
+pub unsafe extern "C" fn rsn_send_block_deserialize(stream: *mut c_void) -> *mut BlockHandle {
     let mut stream = FfiStream::new(stream);
     match SendBlock::deserialize(&mut stream) {
-        Ok(block) => Box::into_raw(Box::new(SendBlockHandle { block })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle {
+            block: Arc::new(RwLock::new(BlockEnum::Send(block))),
+        })),
         Err(_) => std::ptr::null_mut(),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_send_block_work(handle: &SendBlockHandle) -> u64 {
-    handle.block.work
+pub unsafe extern "C" fn rsn_send_block_work(handle: *const BlockHandle) -> u64 {
+    read_send_block(handle, |b| b.work)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_work_set(handle: *mut SendBlockHandle, work: u64) {
-    (*handle).block.work = work;
+pub unsafe extern "C" fn rsn_send_block_work_set(handle: *mut BlockHandle, work: u64) {
+    write_send_block(handle, |b| b.work = work);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_signature(handle: &SendBlockHandle, result: *mut [u8; 64]) {
-    (*result) = (*handle).block.signature.to_be_bytes();
+pub unsafe extern "C" fn rsn_send_block_signature(
+    handle: *const BlockHandle,
+    result: *mut [u8; 64],
+) {
+    (*result) = read_send_block(handle, |b| b.signature.to_be_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_signature_set(
-    handle: *mut SendBlockHandle,
+    handle: *mut BlockHandle,
     signature: &[u8; 64],
 ) {
-    (*handle).block.signature = Signature::from_bytes(*signature);
+    write_send_block(handle, |b| b.signature = Signature::from_bytes(*signature));
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_send_block_equals(a: &SendBlockHandle, b: &SendBlockHandle) -> bool {
-    a.block.eq(&b.block)
+pub unsafe extern "C" fn rsn_send_block_equals(
+    a: *const BlockHandle,
+    b: *const BlockHandle,
+) -> bool {
+    let a_guard = (*a).block.read().unwrap();
+    let b_guard = (*b).block.read().unwrap();
+    if let BlockEnum::Send(a_block) = &*a_guard {
+        if let BlockEnum::Send(b_block) = &*b_guard {
+            return a_block.eq(b_block);
+        }
+    }
+
+    false
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_zero(handle: *mut SendBlockHandle) {
-    (*handle).block.zero();
+pub unsafe extern "C" fn rsn_send_block_zero(handle: *mut BlockHandle) {
+    write_send_block(handle, |b| b.zero());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_destination(
-    handle: &SendBlockHandle,
+    handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = handle.block.hashables.destination.to_bytes();
+    (*result) = read_send_block(handle, |b| b.hashables.destination.to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_destination_set(
-    handle: *mut SendBlockHandle,
+    handle: *mut BlockHandle,
     destination: &[u8; 32],
 ) {
     let destination = Account::from_bytes(*destination);
-    (*handle).block.set_destination(destination);
+    write_send_block(handle, |b| b.set_destination(destination));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_previous(handle: &SendBlockHandle, result: *mut [u8; 32]) {
-    (*result) = handle.block.hashables.previous.to_bytes();
+pub unsafe extern "C" fn rsn_send_block_previous(
+    handle: *const BlockHandle,
+    result: *mut [u8; 32],
+) {
+    (*result) = read_send_block(handle, |b| b.hashables.previous.to_bytes());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_previous_set(
-    handle: *mut SendBlockHandle,
+    handle: *mut BlockHandle,
     previous: &[u8; 32],
 ) {
     let previous = BlockHash::from_bytes(*previous);
-    (*handle).block.set_previous(previous);
+    write_send_block(handle, |b| b.set_previous(previous));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_balance(handle: &SendBlockHandle, result: *mut [u8; 16]) {
-    (*result) = handle.block.hashables.balance.to_be_bytes();
+pub unsafe extern "C" fn rsn_send_block_balance(handle: *const BlockHandle, result: *mut [u8; 16]) {
+    (*result) = read_send_block(handle, |b| b.hashables.balance.to_be_bytes());
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_balance_set(
-    handle: *mut SendBlockHandle,
-    balance: &[u8; 16],
-) {
+pub unsafe extern "C" fn rsn_send_block_balance_set(handle: *mut BlockHandle, balance: &[u8; 16]) {
     let balance = Amount::from_be_bytes(*balance);
-    (*handle).block.set_balance(balance);
+    write_send_block(handle, |b| b.set_balance(balance));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_hash(handle: &SendBlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = handle.block.hash().to_bytes();
+pub unsafe extern "C" fn rsn_send_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
+    (*hash) = read_send_block(handle, |b| b.hash().to_bytes());
 }
 
 #[no_mangle]
@@ -195,22 +221,24 @@ pub extern "C" fn rsn_send_block_size() -> usize {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_send_block_serialize_json(
-    handle: &SendBlockHandle,
+pub unsafe extern "C" fn rsn_send_block_serialize_json(
+    handle: *const BlockHandle,
     ptree: *mut c_void,
 ) -> i32 {
     let mut writer = FfiPropertyTreeWriter::new(ptree);
-    match handle.block.serialize_json(&mut writer) {
+    read_send_block(handle, |b| match b.serialize_json(&mut writer) {
         Ok(_) => 0,
         Err(_) => -1,
-    }
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_send_block_deserialize_json(ptree: *const c_void) -> *mut SendBlockHandle {
+pub extern "C" fn rsn_send_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
     let reader = FfiPropertyTreeReader::new(ptree);
     match SendBlock::deserialize_json(&reader) {
-        Ok(block) => Box::into_raw(Box::new(SendBlockHandle { block })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle {
+            block: Arc::new(RwLock::new(BlockEnum::Send(block))),
+        })),
         Err(_) => std::ptr::null_mut(),
     }
 }

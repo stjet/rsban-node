@@ -139,6 +139,8 @@ using TomlPutStrCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, cons
 
 using TomlPutU64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint64_t, const uint8_t *, uintptr_t);
 
+using TryLogCallback = bool (*) (void *, const uint8_t *, uintptr_t);
+
 using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
 
 using WriteU8Callback = int32_t (*) (void *, uint8_t);
@@ -639,6 +641,8 @@ void rsn_callback_toml_put_str (TomlPutStrCallback f);
 
 void rsn_callback_toml_put_u64 (TomlPutU64Callback f);
 
+void rsn_callback_try_log (TryLogCallback f);
+
 void rsn_callback_write_bytes (WriteBytesCallback f);
 
 void rsn_callback_write_u8 (WriteU8Callback f);
@@ -969,6 +973,7 @@ void rsn_state_block_signature_set (StateBlockHandle * handle, const uint8_t (*s
 
 StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create (const SignatureCheckerHandle * checker,
 const EpochsHandle * epochs,
+void * logger,
 bool timing_logging);
 
 void rsn_state_block_signature_verification_destroy (StateBlockSignatureVerificationHandle * handle);

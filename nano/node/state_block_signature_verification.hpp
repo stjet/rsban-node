@@ -36,10 +36,8 @@ public:
 
 private:
 	rsnano::StateBlockSignatureVerificationHandle * handle;
-	nano::signature_checker & signature_checker;
 	nano::epochs & epochs;
 	nano::node_config & node_config;
-	nano::logger_mt & logger;
 
 	nano::mutex mutex{ mutex_identifier (mutexes::state_block_signature_verification) };
 	bool stopped{ false };

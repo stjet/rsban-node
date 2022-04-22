@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{ffi::c_void, sync::Arc};
 
 use num::FromPrimitive;
 
@@ -7,7 +7,7 @@ use crate::{
     StateBlockSignatureVerification,
 };
 
-use super::{EpochsHandle, SharedBlockEnumHandle, SignatureCheckerHandle};
+use super::{EpochsHandle, LoggerMT, SharedBlockEnumHandle, SignatureCheckerHandle};
 
 pub struct StateBlockSignatureVerificationHandle {
     verification: StateBlockSignatureVerification,
@@ -39,11 +39,13 @@ pub struct StateBlockSignatureVerificationResultDto {
 pub unsafe extern "C" fn rsn_state_block_signature_verification_create(
     checker: *const SignatureCheckerHandle,
     epochs: *const EpochsHandle,
+    logger: *mut c_void,
     timing_logging: bool,
 ) -> *mut StateBlockSignatureVerificationHandle {
     let checker = (&*checker).checker.clone();
     let epochs = Arc::new((&*epochs).epochs.clone());
-    let mut verification = StateBlockSignatureVerification::new(checker, epochs);
+    let logger = Arc::new(LoggerMT::new(logger));
+    let mut verification = StateBlockSignatureVerification::new(checker, epochs, logger);
     verification.timing_logging = timing_logging;
     Box::into_raw(Box::new(StateBlockSignatureVerificationHandle {
         verification,

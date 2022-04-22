@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use crate::{
-    Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature, SignatureCheckSet,
+    Account, BlockEnum, BlockHash, Epochs, Logger, PublicKey, Signature, SignatureCheckSet,
     SignatureChecker, SignatureVerification,
 };
 
@@ -21,14 +21,20 @@ pub(crate) struct StateBlockSignatureVerification {
     pub timing_logging: bool,
     signature_checker: Arc<SignatureChecker>,
     epochs: Arc<Epochs>,
+    logger: Arc<dyn Logger>,
 }
 
 impl<'a> StateBlockSignatureVerification {
-    pub fn new(signature_checker: Arc<SignatureChecker>, epochs: Arc<Epochs>) -> Self {
+    pub fn new(
+        signature_checker: Arc<SignatureChecker>,
+        epochs: Arc<Epochs>,
+        logger: Arc<dyn Logger>,
+    ) -> Self {
         Self {
             signature_checker,
             epochs,
             timing_logging: false,
+            logger,
         }
     }
 
@@ -77,7 +83,11 @@ impl<'a> StateBlockSignatureVerification {
         self.signature_checker.verify(&mut check);
 
         if self.timing_logging && now.elapsed() > Duration::from_millis(10) {
-            //todo log
+            self.logger.try_log(&format!(
+                "Batch verified {} state blocks in {} ms",
+                size,
+                now.elapsed().as_millis()
+            ));
         }
 
         Some(StateBlockSignatureVerificationResult {

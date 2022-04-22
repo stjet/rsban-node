@@ -11,16 +11,14 @@
 #include <boost/format.hpp>
 
 nano::state_block_signature_verification::state_block_signature_verification (nano::signature_checker & signature_checker, nano::epochs & epochs, nano::node_config & node_config, nano::logger_mt & logger, uint64_t state_block_signature_verification_size) :
-	signature_checker (signature_checker),
 	epochs (epochs),
 	node_config (node_config),
-	logger (logger),
 	thread ([this, state_block_signature_verification_size] () {
 		nano::thread_role::set (nano::thread_role::name::state_block_signature_verification);
 		this->run (state_block_signature_verification_size);
 	})
 {
-	handle = rsnano::rsn_state_block_signature_verification_create (signature_checker.get_handle (), epochs.get_handle (), node_config.logging.timing_logging ());
+	handle = rsnano::rsn_state_block_signature_verification_create (signature_checker.get_handle (), epochs.get_handle (), &logger, node_config.logging.timing_logging ());
 }
 
 nano::state_block_signature_verification::~state_block_signature_verification ()
@@ -130,51 +128,40 @@ std::vector<rsnano::StateBlockSignatureVerificationValueDto> items_to_dto (std::
 
 void nano::state_block_signature_verification::verify_state_blocks (std::deque<value_type> & items)
 {
-	if (!items.empty ())
+	// convert to DTOs
+	auto item_dtos (items_to_dto (items));
+
+	// call Rust verification
+	rsnano::StateBlockSignatureVerificationResultDto result_dto;
+	bool result_available = rsnano::rsn_state_block_signature_verification_verify (handle, item_dtos.data (), item_dtos.size (), &result_dto);
+
+	// destroy DTOs
+	for (auto & i : item_dtos)
 	{
-		nano::timer<> timer_l;
-		timer_l.start ();
+		rsnano::rsn_shared_block_enum_handle_destroy (i.block);
+	}
 
-		// convert to DTOs
-		auto item_dtos (items_to_dto (items));
-
-		// call Rust verification
-		rsnano::StateBlockSignatureVerificationResultDto result_dto;
-		bool result_available = rsnano::rsn_state_block_signature_verification_verify (handle, item_dtos.data (), item_dtos.size (), &result_dto);
-
-		// destroy DTOs
-		for (auto & i : item_dtos)
+	if (result_available)
+	{
+		// convert DTO array back into items
+		std::vector<int> verifications (result_dto.verifications, result_dto.verifications + result_dto.size);
+		std::vector<nano::block_hash> hashes;
+		for (auto i = result_dto.hashes; i != result_dto.hashes + result_dto.size; ++i)
 		{
-			rsnano::rsn_shared_block_enum_handle_destroy (i.block);
+			nano::block_hash hash;
+			std::copy (std::begin (*i), std::end (*i), std::begin (hash.bytes));
+			hashes.push_back (hash);
 		}
 
-		if (result_available)
+		std::vector<nano::signature> blocks_signatures;
+		blocks_signatures.reserve (result_dto.size);
+		for (auto i = result_dto.signatures; i != result_dto.signatures + result_dto.size; ++i)
 		{
-			// convert DTO array back into items
-			std::vector<int> verifications (result_dto.verifications, result_dto.verifications + result_dto.size);
-			std::vector<nano::block_hash> hashes;
-			for (auto i = result_dto.hashes; i != result_dto.hashes + result_dto.size; ++i)
-			{
-				nano::block_hash hash;
-				std::copy (std::begin (*i), std::end (*i), std::begin (hash.bytes));
-				hashes.push_back (hash);
-			}
-
-			std::vector<nano::signature> blocks_signatures;
-			blocks_signatures.reserve (result_dto.size);
-			for (auto i = result_dto.signatures; i != result_dto.signatures + result_dto.size; ++i)
-			{
-				nano::signature signature;
-				std::copy (std::begin (*i), std::end (*i), std::begin (signature.bytes));
-				blocks_signatures.push_back (signature);
-			}
-
-			if (node_config.logging.timing_logging () && timer_l.stop () > std::chrono::milliseconds (10))
-			{
-				logger.try_log (boost::str (boost::format ("Batch verified %1% state blocks in %2% %3%") % result_dto.size % timer_l.value ().count () % timer_l.unit ()));
-			}
-			blocks_verified_callback (items, verifications, hashes, blocks_signatures);
+			nano::signature signature;
+			std::copy (std::begin (*i), std::end (*i), std::begin (signature.bytes));
+			blocks_signatures.push_back (signature);
 		}
+		blocks_verified_callback (items, verifications, hashes, blocks_signatures);
 	}
 }
 

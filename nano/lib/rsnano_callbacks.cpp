@@ -1,4 +1,5 @@
 #include <nano/crypto/blake2/blake2.h>
+#include <nano/lib/logger_mt.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnano_callbacks.hpp>
 #include <nano/lib/stream.hpp>
@@ -243,6 +244,13 @@ void toml_put_child (void * handle_a, const uint8_t * key_a, uintptr_t key_len_a
 	parent->put_child (key, *child);
 }
 
+bool logger_try_log (void * handle_a, const uint8_t * message_a, size_t len_a)
+{
+	auto logger = static_cast<nano::logger_mt *> (handle_a);
+	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
+	return logger->try_log (message_string);
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -269,6 +277,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_create_config (toml_create_config);
 	rsnano::rsn_callback_toml_drop_config (toml_drop_config);
 	rsnano::rsn_callback_toml_put_child (toml_put_child);
-	rsn_callback_toml_drop_array (toml_drop_array);
+	rsnano::rsn_callback_toml_drop_array (toml_drop_array);
+	rsnano::rsn_callback_try_log (logger_try_log);
 	callbacks_set = true;
 }

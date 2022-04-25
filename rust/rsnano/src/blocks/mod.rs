@@ -20,7 +20,10 @@ pub use receive_block::*;
 pub use send_block::*;
 pub use state_block::*;
 
-use crate::{Account, Amount, BlockHash, Epoch, Link, PropertyTreeReader, Signature, Stream};
+use crate::{
+    Account, Amount, BlockHash, Epoch, Link, PropertyTreeReader, PropertyTreeWriter, Signature,
+    Stream,
+};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -255,6 +258,7 @@ pub trait Block {
     fn set_work(&mut self, work: u64);
     fn previous(&self) -> &BlockHash;
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()>;
+    fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()>;
 }
 
 pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<BlockEnum> {

@@ -222,6 +222,21 @@ void nano::block::signature_set (nano::signature const & signature_a)
 	rsnano::rsn_block_signature_set (handle, &bytes);
 }
 
+void nano::block::serialize_json (std::string & string_a, bool single_line) const
+{
+	boost::property_tree::ptree tree;
+	serialize_json (tree);
+	std::stringstream ostream;
+	boost::property_tree::write_json (ostream, tree, !single_line);
+	string_a = ostream.str ();
+}
+
+void nano::block::serialize_json (boost::property_tree::ptree & tree) const
+{
+	if (rsnano::rsn_block_serialize_json (handle, &tree) < 0)
+		throw std::runtime_error ("could not serialize send_block as JSON");
+}
+
 nano::block_hash nano::block::generate_hash () const
 {
 	uint8_t bytes[32];
@@ -265,21 +280,6 @@ void nano::send_block::balance_set (nano::amount balance_a)
 	uint8_t bytes[16];
 	std::copy (std::begin (balance_a.bytes), std::end (balance_a.bytes), std::begin (bytes));
 	rsnano::rsn_send_block_balance_set (handle, &bytes);
-}
-
-void nano::send_block::serialize_json (std::string & string_a, bool single_line) const
-{
-	boost::property_tree::ptree tree;
-	serialize_json (tree);
-	std::stringstream ostream;
-	boost::property_tree::write_json (ostream, tree, !single_line);
-	string_a = ostream.str ();
-}
-
-void nano::send_block::serialize_json (boost::property_tree::ptree & tree) const
-{
-	if (rsnano::rsn_send_block_serialize_json (handle, &tree) < 0)
-		throw std::runtime_error ("could not serialize send_block as JSON");
 }
 
 nano::send_block::send_block (nano::block_hash const & previous_a, nano::account const & destination_a, nano::amount const & balance_a, nano::raw_key const & prv_a, nano::public_key const & pub_a, uint64_t work_a)
@@ -503,21 +503,6 @@ nano::account nano::open_block::account () const
 	return result;
 }
 
-void nano::open_block::serialize_json (std::string & string_a, bool single_line) const
-{
-	boost::property_tree::ptree tree;
-	serialize_json (tree);
-	std::stringstream ostream;
-	boost::property_tree::write_json (ostream, tree, !single_line);
-	string_a = ostream.str ();
-}
-
-void nano::open_block::serialize_json (boost::property_tree::ptree & tree) const
-{
-	if (rsnano::rsn_open_block_serialize_json (handle, &tree) < 0)
-		throw std::runtime_error ("could not JSON serialize open_block");
-}
-
 void nano::open_block::visit (nano::block_visitor & visitor_a) const
 {
 	visitor_a.open_block (*this);
@@ -672,21 +657,6 @@ nano::change_block::~change_block ()
 		rsnano::rsn_block_destroy (handle);
 		handle = nullptr;
 	}
-}
-
-void nano::change_block::serialize_json (std::string & string_a, bool single_line) const
-{
-	boost::property_tree::ptree tree;
-	serialize_json (tree);
-	std::stringstream ostream;
-	boost::property_tree::write_json (ostream, tree, !single_line);
-	string_a = ostream.str ();
-}
-
-void nano::change_block::serialize_json (boost::property_tree::ptree & tree) const
-{
-	if (rsnano::rsn_change_block_serialize_json (handle, &tree) < 0)
-		throw std::runtime_error ("could not JSON serialize change_block");
 }
 
 void nano::change_block::visit (nano::block_visitor & visitor_a) const
@@ -855,21 +825,6 @@ nano::account nano::state_block::account () const
 	nano::account result;
 	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
 	return result;
-}
-
-void nano::state_block::serialize_json (std::string & string_a, bool single_line) const
-{
-	boost::property_tree::ptree tree;
-	serialize_json (tree);
-	std::stringstream ostream;
-	boost::property_tree::write_json (ostream, tree, !single_line);
-	string_a = ostream.str ();
-}
-
-void nano::state_block::serialize_json (boost::property_tree::ptree & tree) const
-{
-	if (rsnano::rsn_state_block_serialize_json (handle, &tree) < 0)
-		throw std::runtime_error ("could not JSON serialize state_block");
 }
 
 void nano::state_block::visit (nano::block_visitor & visitor_a) const
@@ -1085,21 +1040,6 @@ void nano::receive_block::visit (nano::mutable_block_visitor & visitor_a)
 bool nano::receive_block::operator== (nano::receive_block const & other_a) const
 {
 	return rsnano::rsn_block_equals (handle, other_a.handle);
-}
-
-void nano::receive_block::serialize_json (std::string & string_a, bool single_line) const
-{
-	boost::property_tree::ptree tree;
-	serialize_json (tree);
-	std::stringstream ostream;
-	boost::property_tree::write_json (ostream, tree, !single_line);
-	string_a = ostream.str ();
-}
-
-void nano::receive_block::serialize_json (boost::property_tree::ptree & tree) const
-{
-	if (rsnano::rsn_receive_block_serialize_json (handle, &tree) < 0)
-		throw std::runtime_error ("could not JSON serialize receive_block");
 }
 
 nano::receive_block::receive_block ()

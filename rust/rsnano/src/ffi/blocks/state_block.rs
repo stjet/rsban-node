@@ -6,7 +6,7 @@ use crate::{
     StateBlock, StateHashables,
 };
 
-use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
+use crate::ffi::{FfiPropertyTreeReader, FfiStream};
 
 use super::BlockHandle;
 
@@ -181,18 +181,6 @@ pub unsafe extern "C" fn rsn_state_block_deserialize(stream: *mut c_void) -> *mu
         })),
         Err(_) => std::ptr::null_mut(),
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_serialize_json(
-    handle: *const BlockHandle,
-    ptree: *mut c_void,
-) -> i32 {
-    let mut writer = FfiPropertyTreeWriter::new(ptree);
-    read_state_block(handle, |b| match b.serialize_json(&mut writer) {
-        Ok(_) => 0,
-        Err(_) => -1,
-    })
 }
 
 #[no_mangle]

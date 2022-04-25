@@ -142,16 +142,6 @@ impl SendBlock {
         }
     }
 
-    pub fn serialize_json(&self, writer: &mut impl PropertyTreeWriter) -> Result<()> {
-        writer.put_string("type", "send")?;
-        writer.put_string("previous", &self.hashables.previous.encode_hex())?;
-        writer.put_string("destination", &self.hashables.destination.encode_account())?;
-        writer.put_string("balance", &self.hashables.balance.encode_hex())?;
-        writer.put_string("work", &to_string_hex(self.work))?;
-        writer.put_string("signature", &self.signature.encode_hex())?;
-        Ok(())
-    }
-
     pub fn deserialize_json(reader: &impl PropertyTreeReader) -> Result<Self> {
         let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
         let destination = Account::decode_account(reader.get_string("destination")?)?;
@@ -231,6 +221,16 @@ impl Block for SendBlock {
         self.hashables.serialize(stream)?;
         self.signature.serialize(stream)?;
         stream.write_bytes(&self.work.to_be_bytes())
+    }
+
+    fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {
+        writer.put_string("type", "send")?;
+        writer.put_string("previous", &self.hashables.previous.encode_hex())?;
+        writer.put_string("destination", &self.hashables.destination.encode_account())?;
+        writer.put_string("balance", &self.hashables.balance.encode_hex())?;
+        writer.put_string("work", &to_string_hex(self.work))?;
+        writer.put_string("signature", &self.signature.encode_hex())?;
+        Ok(())
     }
 }
 

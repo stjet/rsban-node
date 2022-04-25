@@ -157,25 +157,6 @@ impl StateBlock {
         })
     }
 
-    pub fn serialize_json(&self, writer: &mut impl PropertyTreeWriter) -> Result<()> {
-        writer.put_string("type", "state")?;
-        writer.put_string("account", &self.hashables.account.encode_account())?;
-        writer.put_string("previous", &self.hashables.previous.encode_hex())?;
-        writer.put_string(
-            "representative",
-            &self.hashables.representative.encode_account(),
-        )?;
-        writer.put_string("balance", &self.hashables.balance.encode_hex())?;
-        writer.put_string("link", &self.hashables.link.encode_hex())?;
-        writer.put_string(
-            "link_as_account",
-            &self.hashables.link.to_account().encode_account(),
-        )?;
-        writer.put_string("signature", &self.signature.encode_hex())?;
-        writer.put_string("work", &to_string_hex(self.work))?;
-        Ok(())
-    }
-
     pub fn deserialize_json(reader: &impl PropertyTreeReader) -> Result<Self> {
         let block_type = reader.get_string("type")?;
         if block_type != "state" {
@@ -267,6 +248,25 @@ impl Block for StateBlock {
         self.hashables.link.serialize(stream)?;
         self.signature.serialize(stream)?;
         stream.write_bytes(&self.work.to_be_bytes())?;
+        Ok(())
+    }
+
+    fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {
+        writer.put_string("type", "state")?;
+        writer.put_string("account", &self.hashables.account.encode_account())?;
+        writer.put_string("previous", &self.hashables.previous.encode_hex())?;
+        writer.put_string(
+            "representative",
+            &self.hashables.representative.encode_account(),
+        )?;
+        writer.put_string("balance", &self.hashables.balance.encode_hex())?;
+        writer.put_string("link", &self.hashables.link.encode_hex())?;
+        writer.put_string(
+            "link_as_account",
+            &self.hashables.link.to_account().encode_account(),
+        )?;
+        writer.put_string("signature", &self.signature.encode_hex())?;
+        writer.put_string("work", &to_string_hex(self.work))?;
         Ok(())
     }
 }

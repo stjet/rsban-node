@@ -588,6 +588,8 @@ void rsn_block_previous (const BlockHandle * handle, uint8_t (*result)[32]);
 
 int32_t rsn_block_serialize (BlockHandle * handle, void * stream);
 
+int32_t rsn_block_serialize_json (const BlockHandle * handle, void * ptree);
+
 uintptr_t rsn_block_serialized_size (uint8_t block_type);
 
 int32_t rsn_block_sideband (const BlockHandle * block, BlockSidebandDto * sideband);
@@ -668,8 +670,6 @@ void rsn_change_block_previous_set (BlockHandle * handle, const uint8_t (*source
 void rsn_change_block_representative (const BlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_change_block_representative_set (BlockHandle * handle, const uint8_t (*representative)[32]);
-
-int32_t rsn_change_block_serialize_json (const BlockHandle * handle, void * ptree);
 
 uintptr_t rsn_change_block_size ();
 
@@ -763,8 +763,6 @@ void rsn_open_block_representative (const BlockHandle * handle, uint8_t (*result
 
 void rsn_open_block_representative_set (BlockHandle * handle, const uint8_t (*representative)[32]);
 
-int32_t rsn_open_block_serialize_json (const BlockHandle * handle, void * ptree);
-
 uintptr_t rsn_open_block_size ();
 
 void rsn_open_block_source (const BlockHandle * handle, uint8_t (*result)[32]);
@@ -783,8 +781,6 @@ BlockHandle * rsn_receive_block_deserialize (void * stream);
 BlockHandle * rsn_receive_block_deserialize_json (const void * ptree);
 
 void rsn_receive_block_previous_set (BlockHandle * handle, const uint8_t (*previous)[32]);
-
-int32_t rsn_receive_block_serialize_json (const BlockHandle * handle, void * ptree);
 
 uintptr_t rsn_receive_block_size ();
 
@@ -822,8 +818,6 @@ void rsn_send_block_destination (const BlockHandle * handle, uint8_t (*result)[3
 void rsn_send_block_destination_set (BlockHandle * handle, const uint8_t (*destination)[32]);
 
 void rsn_send_block_previous_set (BlockHandle * handle, const uint8_t (*previous)[32]);
-
-int32_t rsn_send_block_serialize_json (const BlockHandle * handle, void * ptree);
 
 uintptr_t rsn_send_block_size ();
 
@@ -879,8 +873,6 @@ void rsn_state_block_previous_set (BlockHandle * handle, const uint8_t (*source)
 void rsn_state_block_representative (const BlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_state_block_representative_set (BlockHandle * handle, const uint8_t (*representative)[32]);
-
-int32_t rsn_state_block_serialize_json (const BlockHandle * handle, void * ptree);
 
 StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create (const SignatureCheckerHandle * checker,
 const EpochsHandle * epochs,

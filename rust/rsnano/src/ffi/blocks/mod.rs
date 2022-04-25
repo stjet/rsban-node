@@ -18,7 +18,7 @@ pub use receive_block::*;
 pub use send_block::*;
 pub use state_block::*;
 
-use super::{property_tree::FfiPropertyTreeReader, FfiStream};
+use super::{property_tree::FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
 use crate::{
     blocks::{deserialize_block_json, serialized_block_size, BlockEnum, BlockSideband},
     Signature,
@@ -193,5 +193,23 @@ pub unsafe extern "C" fn rsn_block_serialize(handle: *mut BlockHandle, stream: *
         0
     } else {
         -1
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_serialize_json(
+    handle: *const BlockHandle,
+    ptree: *mut c_void,
+) -> i32 {
+    let mut writer = FfiPropertyTreeWriter::new(ptree);
+    match (*handle)
+        .block
+        .read()
+        .unwrap()
+        .as_block()
+        .serialize_json(&mut writer)
+    {
+        Ok(_) => 0,
+        Err(_) => -1,
     }
 }

@@ -6,7 +6,7 @@ use crate::{
     Signature,
 };
 
-use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
+use crate::ffi::{FfiPropertyTreeReader, FfiStream};
 
 use super::BlockHandle;
 
@@ -115,18 +115,6 @@ pub unsafe extern "C" fn rsn_receive_block_source_set(
 #[no_mangle]
 pub extern "C" fn rsn_receive_block_size() -> usize {
     ReceiveBlock::serialized_size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_serialize_json(
-    handle: *const BlockHandle,
-    ptree: *mut c_void,
-) -> i32 {
-    let mut writer = FfiPropertyTreeWriter::new(ptree);
-    read_receive_block(handle, |b| match b.serialize_json(&mut writer) {
-        Ok(_) => 0,
-        Err(_) => -1,
-    })
 }
 
 #[no_mangle]

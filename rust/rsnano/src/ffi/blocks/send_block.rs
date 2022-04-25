@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    Account, Amount, Block, BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock,
+    Account, Amount, BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock,
     SendHashables, Signature,
 };
 
@@ -84,21 +84,6 @@ pub extern "C" fn rsn_send_block_create2(dto: &SendBlockDto2) -> *mut BlockHandl
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_serialize(
-    handle: *mut BlockHandle,
-    stream: *mut c_void,
-) -> i32 {
-    write_send_block(handle, |b| {
-        let mut stream = FfiStream::new(stream);
-        if b.serialize(&mut stream).is_ok() {
-            0
-        } else {
-            -1
-        }
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_deserialize(stream: *mut c_void) -> *mut BlockHandle {
     let mut stream = FfiStream::new(stream);
     match SendBlock::deserialize(&mut stream) {
@@ -107,48 +92,6 @@ pub unsafe extern "C" fn rsn_send_block_deserialize(stream: *mut c_void) -> *mut
         })),
         Err(_) => std::ptr::null_mut(),
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_work(handle: *const BlockHandle) -> u64 {
-    read_send_block(handle, |b| b.work)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_work_set(handle: *mut BlockHandle, work: u64) {
-    write_send_block(handle, |b| b.work = work);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_signature(
-    handle: *const BlockHandle,
-    result: *mut [u8; 64],
-) {
-    (*result) = read_send_block(handle, |b| b.signature.to_be_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_signature_set(
-    handle: *mut BlockHandle,
-    signature: &[u8; 64],
-) {
-    write_send_block(handle, |b| b.signature = Signature::from_bytes(*signature));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_equals(
-    a: *const BlockHandle,
-    b: *const BlockHandle,
-) -> bool {
-    let a_guard = (*a).block.read().unwrap();
-    let b_guard = (*b).block.read().unwrap();
-    if let BlockEnum::Send(a_block) = &*a_guard {
-        if let BlockEnum::Send(b_block) = &*b_guard {
-            return a_block.eq(b_block);
-        }
-    }
-
-    false
 }
 
 #[no_mangle]
@@ -174,14 +117,6 @@ pub unsafe extern "C" fn rsn_send_block_destination_set(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_previous(
-    handle: *const BlockHandle,
-    result: *mut [u8; 32],
-) {
-    (*result) = read_send_block(handle, |b| b.hashables.previous.to_bytes());
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_send_block_previous_set(
     handle: *mut BlockHandle,
     previous: &[u8; 32],
@@ -199,11 +134,6 @@ pub unsafe extern "C" fn rsn_send_block_balance(handle: *const BlockHandle, resu
 pub unsafe extern "C" fn rsn_send_block_balance_set(handle: *mut BlockHandle, balance: &[u8; 16]) {
     let balance = Amount::from_be_bytes(*balance);
     write_send_block(handle, |b| b.set_balance(balance));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_send_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = read_send_block(handle, |b| b.hash().to_bytes());
 }
 
 #[no_mangle]

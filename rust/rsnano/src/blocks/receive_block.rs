@@ -100,14 +100,6 @@ impl ReceiveBlock {
             sideband: None,
         })
     }
-
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.hashables.previous.serialize(stream)?;
-        self.hashables.source.serialize(stream)?;
-        self.signature.serialize(stream)?;
-        stream.write_bytes(&self.work.to_be_bytes())?;
-        Ok(())
-    }
 }
 
 impl PartialEq for ReceiveBlock {
@@ -147,6 +139,30 @@ impl Block for ReceiveBlock {
 
     fn block_signature(&self) -> &Signature {
         &self.signature
+    }
+
+    fn set_block_signature(&mut self, signature: &Signature) {
+        self.signature = signature.clone();
+    }
+
+    fn set_work(&mut self, work: u64) {
+        self.work = work;
+    }
+
+    fn work(&self) -> u64 {
+        self.work
+    }
+
+    fn previous(&self) -> &BlockHash {
+        &self.hashables.previous
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.hashables.previous.serialize(stream)?;
+        self.hashables.source.serialize(stream)?;
+        self.signature.serialize(stream)?;
+        stream.write_bytes(&self.work.to_be_bytes())?;
+        Ok(())
     }
 }
 

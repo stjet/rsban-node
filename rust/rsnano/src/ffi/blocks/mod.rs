@@ -19,7 +19,10 @@ pub use send_block::*;
 pub use state_block::*;
 
 use super::{property_tree::FfiPropertyTreeReader, FfiStream};
-use crate::blocks::{deserialize_block_json, serialized_block_size, BlockEnum, BlockSideband};
+use crate::{
+    blocks::{deserialize_block_json, serialized_block_size, BlockEnum, BlockSideband},
+    Signature,
+};
 use num::FromPrimitive;
 
 #[no_mangle]
@@ -114,4 +117,81 @@ pub unsafe extern "C" fn rsn_deserialize_block_json(ptree: *const c_void) -> *mu
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_type(handle: *const BlockHandle) -> u8 {
     (*handle).block.read().unwrap().as_block().block_type() as u8
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_work_set(handle: *mut BlockHandle, work: u64) {
+    (*handle)
+        .block
+        .write()
+        .unwrap()
+        .as_block_mut()
+        .set_work(work);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_work(handle: *const BlockHandle) -> u64 {
+    (*handle).block.read().unwrap().as_block().work()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_signature(handle: *const BlockHandle, result: *mut [u8; 64]) {
+    (*result) = *(*handle)
+        .block
+        .read()
+        .unwrap()
+        .as_block()
+        .block_signature()
+        .as_bytes();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_signature_set(handle: *mut BlockHandle, signature: &[u8; 64]) {
+    (*handle)
+        .block
+        .write()
+        .unwrap()
+        .as_block_mut()
+        .set_block_signature(&Signature::from_bytes(*signature));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_previous(handle: &BlockHandle, result: *mut [u8; 32]) {
+    (*result) = *(*handle)
+        .block
+        .read()
+        .unwrap()
+        .as_block()
+        .previous()
+        .as_bytes();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_equals(a: *const BlockHandle, b: *const BlockHandle) -> bool {
+    let a_guard = (*a).block.read().unwrap();
+    let b_guard = (*b).block.read().unwrap();
+
+    (*a_guard).eq(&*b_guard)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
+    (*hash) = (*handle).block.read().unwrap().as_block().hash().to_bytes();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_serialize(handle: *mut BlockHandle, stream: *mut c_void) -> i32 {
+    let mut stream = FfiStream::new(stream);
+    if (*handle)
+        .block
+        .read()
+        .unwrap()
+        .as_block()
+        .serialize(&mut stream)
+        .is_ok()
+    {
+        0
+    } else {
+        -1
+    }
 }

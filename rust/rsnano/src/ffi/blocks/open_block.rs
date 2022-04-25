@@ -2,8 +2,8 @@ use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    Account, Block, BlockEnum, BlockHash, LazyBlockHash, OpenBlock, OpenHashables, PublicKey,
-    RawKey, Signature,
+    Account, BlockEnum, BlockHash, LazyBlockHash, OpenBlock, OpenHashables, PublicKey, RawKey,
+    Signature,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
@@ -88,29 +88,6 @@ unsafe fn write_open_block<T>(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_work_set(handle: *mut BlockHandle, work: u64) {
-    write_open_block(handle, |b| b.work = work);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_work(handle: *const BlockHandle) -> u64 {
-    read_open_block(handle, |b| b.work)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_signature(handle: &BlockHandle, result: *mut [u8; 64]) {
-    (*result) = read_open_block(handle, |b| b.signature.to_be_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_signature_set(
-    handle: *mut BlockHandle,
-    signature: &[u8; 64],
-) {
-    write_open_block(handle, |b| b.signature = Signature::from_bytes(*signature));
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_open_block_source(handle: *const BlockHandle, result: *mut [u8; 32]) {
     (*result) = read_open_block(handle, |b| b.hashables.source.to_bytes());
 }
@@ -153,45 +130,8 @@ pub unsafe extern "C" fn rsn_open_block_account_set(handle: *mut BlockHandle, ac
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_equals(
-    a: *const BlockHandle,
-    b: *const BlockHandle,
-) -> bool {
-    let a_guard = (*a).block.read().unwrap();
-    let b_guard = (*b).block.read().unwrap();
-    if let BlockEnum::Open(a_block) = &*a_guard {
-        if let BlockEnum::Open(b_block) = &*b_guard {
-            return a_block.work.eq(&b_block.work)
-                && a_block.signature.eq(&b_block.signature)
-                && a_block.hashables.eq(&b_block.hashables);
-        }
-    }
-    false
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_open_block_size() -> usize {
     OpenBlock::serialized_size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = read_open_block(handle, |b| b.hash().to_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_open_block_serialize(
-    handle: *mut BlockHandle,
-    stream: *mut c_void,
-) -> i32 {
-    let mut stream = FfiStream::new(stream);
-    read_open_block(handle, |b| {
-        if b.serialize(&mut stream).is_ok() {
-            0
-        } else {
-            -1
-        }
-    })
 }
 
 #[no_mangle]

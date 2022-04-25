@@ -38,7 +38,7 @@ impl Account {
         PublicKey::serialized_size()
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.public_key.serialize(stream)
     }
 

@@ -68,15 +68,6 @@ impl OpenBlock {
         OpenHashables::serialized_size() + Signature::serialized_size() + std::mem::size_of::<u64>()
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.hashables.source.serialize(stream)?;
-        self.hashables.representative.serialize(stream)?;
-        self.hashables.account.serialize(stream)?;
-        self.signature.serialize(stream)?;
-        stream.write_bytes(&self.work.to_be_bytes())?;
-        Ok(())
-    }
-
     pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
         let hashables = OpenHashables {
             source: BlockHash::deserialize(stream)?,
@@ -166,6 +157,31 @@ impl Block for OpenBlock {
 
     fn block_signature(&self) -> &Signature {
         &self.signature
+    }
+
+    fn set_block_signature(&mut self, signature: &Signature) {
+        self.signature = signature.clone();
+    }
+
+    fn set_work(&mut self, work: u64) {
+        self.work = work;
+    }
+
+    fn work(&self) -> u64 {
+        self.work
+    }
+
+    fn previous(&self) -> &BlockHash {
+        BlockHash::zero()
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.hashables.source.serialize(stream)?;
+        self.hashables.representative.serialize(stream)?;
+        self.hashables.account.serialize(stream)?;
+        self.signature.serialize(stream)?;
+        stream.write_bytes(&self.work.to_be_bytes())?;
+        Ok(())
     }
 }
 

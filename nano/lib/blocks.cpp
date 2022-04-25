@@ -69,6 +69,21 @@ void nano::block::refresh ()
 	}
 }
 
+uint64_t nano::block::block_work () const
+{
+	return rsnano::rsn_block_work (handle);
+}
+
+void nano::block::block_work_set (uint64_t work_a)
+{
+	rsnano::rsn_block_work_set (handle, work_a);
+}
+
+nano::block_type nano::block::type () const
+{
+	return static_cast<nano::block_type> (rsnano::rsn_block_type (handle));
+}
+
 nano::block_hash const & nano::block::hash () const
 {
 	if (!cached_hash.is_zero ())
@@ -118,6 +133,11 @@ bool nano::block::has_sideband () const
 	return rsnano::rsn_block_has_sideband (get_handle ());
 }
 
+rsnano::BlockHandle * nano::block::get_handle () const
+{
+	return handle;
+}
+
 nano::account nano::block::representative () const
 {
 	static nano::account representative{};
@@ -164,6 +184,53 @@ nano::amount nano::block::balance () const
 	return amount;
 }
 
+void nano::block::sign_zero ()
+{
+	signature_set (nano::signature (0));
+}
+
+void nano::block::serialize (nano::stream & stream_a) const
+{
+	if (rsnano::rsn_block_serialize (handle, &stream_a) != 0)
+	{
+		throw std::runtime_error ("could not serialize block");
+	}
+}
+
+nano::block_hash nano::block::previous () const
+{
+	uint8_t buffer[32];
+	rsnano::rsn_block_previous (handle, &buffer);
+	nano::block_hash result;
+	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
+	return result;
+}
+
+nano::signature nano::block::block_signature () const
+{
+	uint8_t bytes[64];
+	rsnano::rsn_block_signature (handle, &bytes);
+	nano::signature result;
+	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
+	return result;
+}
+
+void nano::block::signature_set (nano::signature const & signature_a)
+{
+	uint8_t bytes[64];
+	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (bytes));
+	rsnano::rsn_block_signature_set (handle, &bytes);
+}
+
+nano::block_hash nano::block::generate_hash () const
+{
+	uint8_t bytes[32];
+	rsnano::rsn_block_hash (handle, &bytes);
+	nano::block_hash result;
+	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
+	return result;
+}
+
 void nano::send_block::visit (nano::block_visitor & visitor_a) const
 {
 	visitor_a.send_block (*this);
@@ -172,16 +239,6 @@ void nano::send_block::visit (nano::block_visitor & visitor_a) const
 void nano::send_block::visit (nano::mutable_block_visitor & visitor_a)
 {
 	visitor_a.send_block (*this);
-}
-
-uint64_t nano::send_block::block_work () const
-{
-	return rsnano::rsn_send_block_work (handle);
-}
-
-void nano::send_block::block_work_set (uint64_t work_a)
-{
-	rsnano::rsn_send_block_work_set (handle, work_a);
 }
 
 void nano::send_block::zero ()
@@ -208,20 +265,6 @@ void nano::send_block::balance_set (nano::amount balance_a)
 	uint8_t bytes[16];
 	std::copy (std::begin (balance_a.bytes), std::end (balance_a.bytes), std::begin (bytes));
 	rsnano::rsn_send_block_balance_set (handle, &bytes);
-}
-
-void nano::send_block::sign_zero ()
-{
-	uint8_t sig[64]{ 0 };
-	rsnano::rsn_send_block_signature_set (handle, &sig);
-}
-
-void nano::send_block::serialize (nano::stream & stream_a) const
-{
-	if (rsnano::rsn_send_block_serialize (handle, &stream_a) != 0)
-	{
-		throw std::runtime_error ("could not serialize send_block");
-	}
 }
 
 void nano::send_block::serialize_json (std::string & string_a, bool single_line) const
@@ -305,9 +348,9 @@ nano::send_block::send_block (send_block && other)
 	other.handle = nullptr;
 }
 
-nano::send_block::send_block (rsnano::BlockHandle * handle_a) :
-	handle (handle_a)
+nano::send_block::send_block (rsnano::BlockHandle * handle_a)
 {
+	handle = handle_a;
 }
 
 nano::send_block::~send_block ()
@@ -329,23 +372,9 @@ bool nano::send_block::valid_predecessor (nano::block const & block_a) const
 	return rsnano::rsn_send_block_valid_predecessor (static_cast<uint8_t> (block_a.type ()));
 }
 
-nano::block_type nano::send_block::type () const
-{
-	return nano::block_type::send;
-}
-
 bool nano::send_block::operator== (nano::send_block const & other_a) const
 {
-	return rsnano::rsn_send_block_equals (handle, other_a.handle);
-}
-
-nano::block_hash nano::send_block::previous () const
-{
-	uint8_t buffer[32];
-	rsnano::rsn_send_block_previous (handle, &buffer);
-	nano::block_hash result;
-	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
-	return result;
+	return rsnano::rsn_block_equals (handle, other_a.handle);
 }
 
 nano::account nano::send_block::destination () const
@@ -371,39 +400,9 @@ nano::amount nano::send_block::balance () const
 	return result;
 }
 
-nano::signature nano::send_block::block_signature () const
-{
-	uint8_t bytes[64];
-	rsnano::rsn_send_block_signature (handle, &bytes);
-	nano::signature result;
-	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
-	return result;
-}
-
-void nano::send_block::signature_set (nano::signature const & signature_a)
-{
-	uint8_t bytes[64];
-	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (bytes));
-	rsnano::rsn_send_block_signature_set (handle, &bytes);
-}
-
 std::size_t nano::send_block::size ()
 {
 	return sizeof (nano::block_hash) + sizeof (nano::account) + sizeof (nano::amount) + sizeof (nano::signature) + sizeof (uint64_t);
-}
-
-nano::block_hash nano::send_block::generate_hash () const
-{
-	uint8_t bytes[32];
-	rsnano::rsn_send_block_hash (handle, &bytes);
-	nano::block_hash result;
-	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
-	return result;
-}
-
-rsnano::BlockHandle * nano::send_block::get_handle () const
-{
-	return handle;
 }
 
 nano::open_block::open_block ()
@@ -481,9 +480,9 @@ nano::open_block::open_block (nano::open_block && other)
 	other.handle = nullptr;
 }
 
-nano::open_block::open_block (rsnano::BlockHandle * handle_a) :
-	handle (handle_a)
+nano::open_block::open_block (rsnano::BlockHandle * handle_a)
 {
+	handle = handle_a;
 }
 
 nano::open_block::~open_block ()
@@ -495,22 +494,6 @@ nano::open_block::~open_block ()
 	}
 }
 
-uint64_t nano::open_block::block_work () const
-{
-	return rsnano::rsn_open_block_work (handle);
-}
-
-void nano::open_block::block_work_set (uint64_t work_a)
-{
-	rsnano::rsn_open_block_work_set (handle, work_a);
-}
-
-nano::block_hash nano::open_block::previous () const
-{
-	static nano::block_hash result{ 0 };
-	return result;
-}
-
 nano::account nano::open_block::account () const
 {
 	uint8_t buffer[32];
@@ -518,14 +501,6 @@ nano::account nano::open_block::account () const
 	nano::account result;
 	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
 	return result;
-}
-
-void nano::open_block::serialize (nano::stream & stream_a) const
-{
-	if (rsnano::rsn_open_block_serialize (handle, &stream_a) != 0)
-	{
-		throw std::runtime_error ("open_block serialization failed");
-	}
 }
 
 void nano::open_block::serialize_json (std::string & string_a, bool single_line) const
@@ -553,11 +528,6 @@ void nano::open_block::visit (nano::mutable_block_visitor & visitor_a)
 	visitor_a.open_block (*this);
 }
 
-nano::block_type nano::open_block::type () const
-{
-	return nano::block_type::open;
-}
-
 bool nano::open_block::operator== (nano::block const & other_a) const
 {
 	return blocks_equal (*this, other_a);
@@ -565,7 +535,7 @@ bool nano::open_block::operator== (nano::block const & other_a) const
 
 bool nano::open_block::operator== (nano::open_block const & other_a) const
 {
-	return rsnano::rsn_open_block_equals (handle, other_a.handle);
+	return rsnano::rsn_block_equals (handle, other_a.handle);
 }
 
 bool nano::open_block::valid_predecessor (nano::block const & block_a) const
@@ -594,29 +564,6 @@ nano::account nano::open_block::representative () const
 	nano::account result;
 	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
 	return result;
-}
-
-nano::signature nano::open_block::block_signature () const
-{
-	uint8_t buffer[64];
-	rsnano::rsn_open_block_signature (handle, &buffer);
-	nano::signature result;
-	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
-	return result;
-}
-
-void nano::open_block::signature_set (nano::signature const & signature_a)
-{
-	uint8_t buffer[64];
-	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (buffer));
-	rsnano::rsn_open_block_signature_set (handle, &buffer);
-}
-
-void nano::open_block::sign_zero ()
-{
-	uint8_t buffer[64];
-	std::fill (std::begin (buffer), std::end (buffer), 0);
-	rsnano::rsn_open_block_signature_set (handle, &buffer);
 }
 
 void nano::open_block::source_set (nano::block_hash source_a)
@@ -652,20 +599,6 @@ void nano::open_block::zero ()
 std::size_t nano::open_block::size ()
 {
 	return rsnano::rsn_open_block_size ();
-}
-
-nano::block_hash nano::open_block::generate_hash () const
-{
-	uint8_t bytes[32];
-	rsnano::rsn_open_block_hash (handle, &bytes);
-	nano::block_hash result;
-	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
-	return result;
-}
-
-rsnano::BlockHandle * nano::open_block::get_handle () const
-{
-	return handle;
 }
 
 nano::change_block::change_block ()
@@ -727,9 +660,9 @@ nano::change_block::change_block (nano::change_block && other_a)
 	other_a.handle = nullptr;
 }
 
-nano::change_block::change_block (rsnano::BlockHandle * handle_a) :
-	handle (handle_a)
+nano::change_block::change_block (rsnano::BlockHandle * handle_a)
 {
+	handle = handle_a;
 }
 
 nano::change_block::~change_block ()
@@ -738,33 +671,6 @@ nano::change_block::~change_block ()
 	{
 		rsnano::rsn_block_destroy (handle);
 		handle = nullptr;
-	}
-}
-
-uint64_t nano::change_block::block_work () const
-{
-	return rsnano::rsn_change_block_work (handle);
-}
-
-void nano::change_block::block_work_set (uint64_t work_a)
-{
-	rsnano::rsn_change_block_work_set (handle, work_a);
-}
-
-nano::block_hash nano::change_block::previous () const
-{
-	uint8_t buffer[32];
-	rsnano::rsn_change_block_previous (handle, &buffer);
-	nano::block_hash result;
-	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
-	return result;
-}
-
-void nano::change_block::serialize (nano::stream & stream_a) const
-{
-	if (rsnano::rsn_change_block_serialize (handle, &stream_a) != 0)
-	{
-		throw std::runtime_error ("could not serialize change_block");
 	}
 }
 
@@ -793,11 +699,6 @@ void nano::change_block::visit (nano::mutable_block_visitor & visitor_a)
 	visitor_a.change_block (*this);
 }
 
-nano::block_type nano::change_block::type () const
-{
-	return nano::block_type::change;
-}
-
 bool nano::change_block::operator== (nano::block const & other_a) const
 {
 	return blocks_equal (*this, other_a);
@@ -805,7 +706,7 @@ bool nano::change_block::operator== (nano::block const & other_a) const
 
 bool nano::change_block::operator== (nano::change_block const & other_a) const
 {
-	return rsnano::rsn_change_block_equals (handle, other_a.handle);
+	return rsnano::rsn_block_equals (handle, other_a.handle);
 }
 
 bool nano::change_block::valid_predecessor (nano::block const & block_a) const
@@ -840,22 +741,6 @@ nano::account nano::change_block::representative () const
 	return result;
 }
 
-nano::signature nano::change_block::block_signature () const
-{
-	uint8_t buffer[64];
-	rsnano::rsn_change_block_signature (handle, &buffer);
-	nano::signature result;
-	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
-	return result;
-}
-
-void nano::change_block::signature_set (nano::signature const & signature_a)
-{
-	uint8_t buffer[64];
-	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (buffer));
-	rsnano::rsn_change_block_signature_set (handle, &buffer);
-}
-
 void nano::change_block::previous_set (nano::block_hash previous_a)
 {
 	uint8_t buffer[32];
@@ -870,11 +755,6 @@ void nano::change_block::representative_set (nano::account account_a)
 	rsnano::rsn_change_block_representative_set (handle, &buffer);
 }
 
-void nano::change_block::sign_zero ()
-{
-	signature_set (nano::signature (0));
-}
-
 void nano::change_block::zero ()
 {
 	block_work_set (0);
@@ -886,20 +766,6 @@ void nano::change_block::zero ()
 std::size_t nano::change_block::size ()
 {
 	return rsnano::rsn_change_block_size ();
-}
-
-nano::block_hash nano::change_block::generate_hash () const
-{
-	uint8_t bytes[32];
-	rsnano::rsn_change_block_hash (handle, &bytes);
-	nano::block_hash result;
-	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
-	return result;
-}
-
-rsnano::BlockHandle * nano::change_block::get_handle () const
-{
-	return handle;
 }
 
 nano::state_block::state_block ()
@@ -968,9 +834,9 @@ nano::state_block::state_block (nano::state_block && other)
 	other.handle = nullptr;
 }
 
-nano::state_block::state_block (rsnano::BlockHandle * handle_a) :
-	handle (handle_a)
+nano::state_block::state_block (rsnano::BlockHandle * handle_a)
 {
+	handle = handle_a;
 }
 
 nano::state_block::~state_block ()
@@ -982,25 +848,6 @@ nano::state_block::~state_block ()
 	}
 }
 
-uint64_t nano::state_block::block_work () const
-{
-	return rsnano::rsn_state_block_work (handle);
-}
-
-void nano::state_block::block_work_set (uint64_t work_a)
-{
-	rsnano::rsn_state_block_work_set (handle, work_a);
-}
-
-nano::block_hash nano::state_block::previous () const
-{
-	uint8_t buffer[32];
-	rsnano::rsn_state_block_previous (handle, &buffer);
-	nano::block_hash result;
-	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
-	return result;
-}
-
 nano::account nano::state_block::account () const
 {
 	uint8_t buffer[32];
@@ -1008,14 +855,6 @@ nano::account nano::state_block::account () const
 	nano::account result;
 	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
 	return result;
-}
-
-void nano::state_block::serialize (nano::stream & stream_a) const
-{
-	if (rsnano::rsn_state_block_serialize (handle, &stream_a) != 0)
-	{
-		throw std::runtime_error ("could not serialize state_block");
-	}
 }
 
 void nano::state_block::serialize_json (std::string & string_a, bool single_line) const
@@ -1043,11 +882,6 @@ void nano::state_block::visit (nano::mutable_block_visitor & visitor_a)
 	visitor_a.state_block (*this);
 }
 
-nano::block_type nano::state_block::type () const
-{
-	return nano::block_type::state;
-}
-
 bool nano::state_block::operator== (nano::block const & other_a) const
 {
 	return blocks_equal (*this, other_a);
@@ -1055,7 +889,7 @@ bool nano::state_block::operator== (nano::block const & other_a) const
 
 bool nano::state_block::operator== (nano::state_block const & other_a) const
 {
-	return rsnano::rsn_state_block_equals (handle, other_a.handle);
+	return rsnano::rsn_block_equals (handle, other_a.handle);
 }
 
 nano::state_block & nano::state_block::operator= (const nano::state_block & other)
@@ -1116,22 +950,6 @@ nano::amount nano::state_block::balance () const
 	return result;
 }
 
-nano::signature nano::state_block::block_signature () const
-{
-	uint8_t buffer[64];
-	rsnano::rsn_state_block_signature (handle, &buffer);
-	nano::signature result;
-	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
-	return result;
-}
-
-void nano::state_block::signature_set (nano::signature const & signature_a)
-{
-	uint8_t buffer[64];
-	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (buffer));
-	rsnano::rsn_state_block_signature_set (handle, &buffer);
-}
-
 void nano::state_block::previous_set (nano::block_hash previous_a)
 {
 	uint8_t buffer[32];
@@ -1167,12 +985,6 @@ void nano::state_block::link_set (nano::link link)
 	rsnano::rsn_state_block_link_set (handle, &buffer);
 }
 
-void nano::state_block::sign_zero ()
-{
-	nano::signature sig (0);
-	signature_set (sig);
-}
-
 void nano::state_block::zero ()
 {
 	sign_zero ();
@@ -1187,20 +999,6 @@ void nano::state_block::zero ()
 std::size_t nano::state_block::size ()
 {
 	return rsnano::rsn_state_block_size ();
-}
-
-nano::block_hash nano::state_block::generate_hash () const
-{
-	uint8_t bytes[32];
-	rsnano::rsn_state_block_hash (handle, &bytes);
-	nano::block_hash result;
-	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
-	return result;
-}
-
-rsnano::BlockHandle * nano::state_block::get_handle () const
-{
-	return handle;
 }
 
 std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a, nano::block_uniquer * uniquer_a)
@@ -1286,13 +1084,7 @@ void nano::receive_block::visit (nano::mutable_block_visitor & visitor_a)
 
 bool nano::receive_block::operator== (nano::receive_block const & other_a) const
 {
-	return rsnano::rsn_receive_block_equals (handle, other_a.handle);
-}
-
-void nano::receive_block::serialize (nano::stream & stream_a) const
-{
-	if (rsnano::rsn_receive_block_serialize (handle, &stream_a) < 0)
-		throw std::runtime_error ("could not serialize receive_block");
+	return rsnano::rsn_block_equals (handle, other_a.handle);
 }
 
 void nano::receive_block::serialize_json (std::string & string_a, bool single_line) const
@@ -1363,25 +1155,15 @@ nano::receive_block::receive_block (nano::receive_block && other)
 	other.handle = nullptr;
 }
 
-nano::receive_block::receive_block (rsnano::BlockHandle * handle_a) :
-	handle (handle_a)
+nano::receive_block::receive_block (rsnano::BlockHandle * handle_a)
 {
+	handle = handle_a;
 }
 
 nano::receive_block::~receive_block ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_block_destroy (handle);
-}
-
-uint64_t nano::receive_block::block_work () const
-{
-	return rsnano::rsn_receive_block_work (handle);
-}
-
-void nano::receive_block::block_work_set (uint64_t work_a)
-{
-	rsnano::rsn_receive_block_work_set (handle, work_a);
 }
 
 bool nano::receive_block::operator== (nano::block const & other_a) const
@@ -1404,15 +1186,6 @@ bool nano::receive_block::valid_predecessor (nano::block const & block_a) const
 			result = false;
 			break;
 	}
-	return result;
-}
-
-nano::block_hash nano::receive_block::previous () const
-{
-	uint8_t buffer[32];
-	rsnano::rsn_receive_block_previous (handle, &buffer);
-	nano::block_hash result;
-	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
 	return result;
 }
 
@@ -1444,33 +1217,6 @@ nano::root nano::receive_block::root () const
 	return previous ();
 }
 
-nano::signature nano::receive_block::block_signature () const
-{
-	uint8_t buffer[64];
-	rsnano::rsn_receive_block_signature (handle, &buffer);
-	nano::signature result;
-	std::copy (std::begin (buffer), std::end (buffer), std::begin (result.bytes));
-	return result;
-}
-
-void nano::receive_block::signature_set (nano::signature const & signature_a)
-{
-	uint8_t buffer[64];
-	std::copy (std::begin (signature_a.bytes), std::end (signature_a.bytes), std::begin (buffer));
-	rsnano::rsn_receive_block_signature_set (handle, &buffer);
-}
-
-nano::block_type nano::receive_block::type () const
-{
-	return nano::block_type::receive;
-}
-
-void nano::receive_block::sign_zero ()
-{
-	nano::signature sig{ 0 };
-	signature_set (sig);
-}
-
 void nano::receive_block::zero ()
 {
 	block_work_set (0);
@@ -1482,20 +1228,6 @@ void nano::receive_block::zero ()
 std::size_t nano::receive_block::size ()
 {
 	return rsnano::rsn_receive_block_size ();
-}
-
-nano::block_hash nano::receive_block::generate_hash () const
-{
-	uint8_t bytes[32];
-	rsnano::rsn_receive_block_hash (handle, &bytes);
-	nano::block_hash result;
-	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
-	return result;
-}
-
-rsnano::BlockHandle * nano::receive_block::get_handle () const
-{
-	return handle;
 }
 
 nano::block_details::block_details ()

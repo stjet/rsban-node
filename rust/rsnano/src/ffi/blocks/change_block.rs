@@ -2,8 +2,8 @@ use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    Account, Block, BlockEnum, BlockHash, ChangeBlock, ChangeHashables, LazyBlockHash, PublicKey,
-    RawKey, Signature,
+    Account, BlockEnum, BlockHash, ChangeBlock, ChangeHashables, LazyBlockHash, PublicKey, RawKey,
+    Signature,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
@@ -84,37 +84,6 @@ unsafe fn write_change_block<T>(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_work_set(handle: *mut BlockHandle, work: u64) {
-    write_change_block(handle, |b| b.work = work);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_work(handle: *const BlockHandle) -> u64 {
-    read_change_block(handle, |b| b.work)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_signature(
-    handle: *const BlockHandle,
-    result: *mut [u8; 64],
-) {
-    (*result) = read_change_block(handle, |b| b.signature.to_be_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_signature_set(
-    handle: *mut BlockHandle,
-    signature: &[u8; 64],
-) {
-    write_change_block(handle, |b| b.signature = Signature::from_bytes(*signature));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_previous(handle: &BlockHandle, result: *mut [u8; 32]) {
-    (*result) = read_change_block(handle, |b| b.hashables.previous.to_bytes());
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_change_block_previous_set(
     handle: *mut BlockHandle,
     source: &[u8; 32],
@@ -143,42 +112,8 @@ pub unsafe extern "C" fn rsn_change_block_representative_set(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_change_block_equals(a: &BlockHandle, b: &BlockHandle) -> bool {
-    let a_guard = a.block.read().unwrap();
-    let b_guard = b.block.read().unwrap();
-    if let BlockEnum::Change(a_block) = &*a_guard {
-        if let BlockEnum::Change(b_block) = &*b_guard {
-            return a_block.work.eq(&b_block.work)
-                && a_block.signature.eq(&b_block.signature)
-                && a_block.hashables.eq(&b_block.hashables);
-        }
-    };
-    false
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_change_block_size() -> usize {
     ChangeBlock::serialized_size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = read_change_block(handle, |b| b.hash().to_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_change_block_serialize(
-    handle: *mut BlockHandle,
-    stream: *mut c_void,
-) -> i32 {
-    let mut stream = FfiStream::new(stream);
-    read_change_block(handle, |b| {
-        if b.serialize(&mut stream).is_ok() {
-            0
-        } else {
-            -1
-        }
-    })
 }
 
 #[no_mangle]

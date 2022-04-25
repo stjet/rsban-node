@@ -66,14 +66,6 @@ impl ChangeBlock {
             + std::mem::size_of::<u64>()
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.hashables.previous.serialize(stream)?;
-        self.hashables.representative.serialize(stream)?;
-        self.signature.serialize(stream)?;
-        stream.write_bytes(&self.work.to_be_bytes())?;
-        Ok(())
-    }
-
     pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
         let hashables = ChangeHashables {
             previous: BlockHash::deserialize(stream)?,
@@ -160,6 +152,30 @@ impl Block for ChangeBlock {
 
     fn block_signature(&self) -> &Signature {
         &self.signature
+    }
+
+    fn set_work(&mut self, work: u64) {
+        self.work = work;
+    }
+
+    fn work(&self) -> u64 {
+        self.work
+    }
+
+    fn set_block_signature(&mut self, signature: &Signature) {
+        self.signature = signature.clone();
+    }
+
+    fn previous(&self) -> &BlockHash {
+        &self.hashables.previous
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.hashables.previous.serialize(stream)?;
+        self.hashables.representative.serialize(stream)?;
+        self.signature.serialize(stream)?;
+        stream.write_bytes(&self.work.to_be_bytes())?;
+        Ok(())
     }
 }
 

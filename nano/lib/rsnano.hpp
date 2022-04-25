@@ -576,9 +576,17 @@ int32_t rsn_block_details_deserialize (BlockDetailsDto * dto, void * stream);
 
 int32_t rsn_block_details_serialize (const BlockDetailsDto * dto, void * stream);
 
+bool rsn_block_equals (const BlockHandle * a, const BlockHandle * b);
+
 BlockHandle * rsn_block_handle_clone (const BlockHandle * handle);
 
 bool rsn_block_has_sideband (const BlockHandle * block);
+
+void rsn_block_hash (const BlockHandle * handle, uint8_t (*hash)[32]);
+
+void rsn_block_previous (const BlockHandle * handle, uint8_t (*result)[32]);
+
+int32_t rsn_block_serialize (BlockHandle * handle, void * stream);
 
 uintptr_t rsn_block_serialized_size (uint8_t block_type);
 
@@ -592,7 +600,15 @@ int32_t rsn_block_sideband_set (BlockHandle * block, const BlockSidebandDto * si
 
 uintptr_t rsn_block_sideband_size (uint8_t block_type, int32_t * result);
 
+void rsn_block_signature (const BlockHandle * handle, uint8_t (*result)[64]);
+
+void rsn_block_signature_set (BlockHandle * handle, const uint8_t (*signature)[64]);
+
 uint8_t rsn_block_type (const BlockHandle * handle);
+
+uint64_t rsn_block_work (const BlockHandle * handle);
+
+void rsn_block_work_set (BlockHandle * handle, uint64_t work);
 
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
 BootstrapConstantsDto * dto);
@@ -647,31 +663,15 @@ BlockHandle * rsn_change_block_deserialize (void * stream);
 
 BlockHandle * rsn_change_block_deserialize_json (const void * ptree);
 
-bool rsn_change_block_equals (const BlockHandle * a, const BlockHandle * b);
-
-void rsn_change_block_hash (const BlockHandle * handle, uint8_t (*hash)[32]);
-
-void rsn_change_block_previous (const BlockHandle * handle, uint8_t (*result)[32]);
-
 void rsn_change_block_previous_set (BlockHandle * handle, const uint8_t (*source)[32]);
 
 void rsn_change_block_representative (const BlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_change_block_representative_set (BlockHandle * handle, const uint8_t (*representative)[32]);
 
-int32_t rsn_change_block_serialize (BlockHandle * handle, void * stream);
-
 int32_t rsn_change_block_serialize_json (const BlockHandle * handle, void * ptree);
 
-void rsn_change_block_signature (const BlockHandle * handle, uint8_t (*result)[64]);
-
-void rsn_change_block_signature_set (BlockHandle * handle, const uint8_t (*signature)[64]);
-
 uintptr_t rsn_change_block_size ();
-
-uint64_t rsn_change_block_work (const BlockHandle * handle);
-
-void rsn_change_block_work_set (BlockHandle * handle, uint64_t work);
 
 int32_t rsn_daemon_config_create (DaemonConfigDto * dto, const NetworkParamsDto * network_params);
 
@@ -759,31 +759,17 @@ BlockHandle * rsn_open_block_deserialize (void * stream);
 
 BlockHandle * rsn_open_block_deserialize_json (const void * ptree);
 
-bool rsn_open_block_equals (const BlockHandle * a, const BlockHandle * b);
-
-void rsn_open_block_hash (const BlockHandle * handle, uint8_t (*hash)[32]);
-
 void rsn_open_block_representative (const BlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_open_block_representative_set (BlockHandle * handle, const uint8_t (*representative)[32]);
 
-int32_t rsn_open_block_serialize (BlockHandle * handle, void * stream);
-
 int32_t rsn_open_block_serialize_json (const BlockHandle * handle, void * ptree);
-
-void rsn_open_block_signature (const BlockHandle * handle, uint8_t (*result)[64]);
-
-void rsn_open_block_signature_set (BlockHandle * handle, const uint8_t (*signature)[64]);
 
 uintptr_t rsn_open_block_size ();
 
 void rsn_open_block_source (const BlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_open_block_source_set (BlockHandle * handle, const uint8_t (*source)[32]);
-
-uint64_t rsn_open_block_work (const BlockHandle * handle);
-
-void rsn_open_block_work_set (BlockHandle * handle, uint64_t work);
 
 int32_t rsn_portmapping_constants_create (const NetworkConstantsDto * network_constants,
 PortmappingConstantsDto * dto);
@@ -796,31 +782,15 @@ BlockHandle * rsn_receive_block_deserialize (void * stream);
 
 BlockHandle * rsn_receive_block_deserialize_json (const void * ptree);
 
-bool rsn_receive_block_equals (const BlockHandle * a, const BlockHandle * b);
-
-void rsn_receive_block_hash (const BlockHandle * handle, uint8_t (*hash)[32]);
-
-void rsn_receive_block_previous (const BlockHandle * handle, uint8_t (*result)[32]);
-
 void rsn_receive_block_previous_set (BlockHandle * handle, const uint8_t (*previous)[32]);
 
-int32_t rsn_receive_block_serialize (BlockHandle * handle, void * stream);
-
 int32_t rsn_receive_block_serialize_json (const BlockHandle * handle, void * ptree);
-
-void rsn_receive_block_signature (const BlockHandle * handle, uint8_t (*result)[64]);
-
-void rsn_receive_block_signature_set (BlockHandle * handle, const uint8_t (*signature)[64]);
 
 uintptr_t rsn_receive_block_size ();
 
 void rsn_receive_block_source (const BlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_receive_block_source_set (BlockHandle * handle, const uint8_t (*previous)[32]);
-
-uint64_t rsn_receive_block_work (const BlockHandle * handle);
-
-void rsn_receive_block_work_set (BlockHandle * handle, uint64_t work);
 
 void rsn_remove_temporary_directories ();
 
@@ -851,29 +821,13 @@ void rsn_send_block_destination (const BlockHandle * handle, uint8_t (*result)[3
 
 void rsn_send_block_destination_set (BlockHandle * handle, const uint8_t (*destination)[32]);
 
-bool rsn_send_block_equals (const BlockHandle * a, const BlockHandle * b);
-
-void rsn_send_block_hash (const BlockHandle * handle, uint8_t (*hash)[32]);
-
-void rsn_send_block_previous (const BlockHandle * handle, uint8_t (*result)[32]);
-
 void rsn_send_block_previous_set (BlockHandle * handle, const uint8_t (*previous)[32]);
 
-int32_t rsn_send_block_serialize (BlockHandle * handle, void * stream);
-
 int32_t rsn_send_block_serialize_json (const BlockHandle * handle, void * ptree);
-
-void rsn_send_block_signature (const BlockHandle * handle, uint8_t (*result)[64]);
-
-void rsn_send_block_signature_set (BlockHandle * handle, const uint8_t (*signature)[64]);
 
 uintptr_t rsn_send_block_size ();
 
 bool rsn_send_block_valid_predecessor (uint8_t block_type);
-
-uint64_t rsn_send_block_work (const BlockHandle * handle);
-
-void rsn_send_block_work_set (BlockHandle * handle, uint64_t work);
 
 void rsn_send_block_zero (BlockHandle * handle);
 
@@ -916,15 +870,9 @@ BlockHandle * rsn_state_block_deserialize (void * stream);
 
 BlockHandle * rsn_state_block_deserialize_json (const void * ptree);
 
-bool rsn_state_block_equals (const BlockHandle * a, const BlockHandle * b);
-
-void rsn_state_block_hash (const BlockHandle * handle, uint8_t (*hash)[32]);
-
 void rsn_state_block_link (const BlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_state_block_link_set (BlockHandle * handle, const uint8_t (*link)[32]);
-
-void rsn_state_block_previous (const BlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_state_block_previous_set (BlockHandle * handle, const uint8_t (*source)[32]);
 
@@ -932,13 +880,7 @@ void rsn_state_block_representative (const BlockHandle * handle, uint8_t (*resul
 
 void rsn_state_block_representative_set (BlockHandle * handle, const uint8_t (*representative)[32]);
 
-int32_t rsn_state_block_serialize (BlockHandle * handle, void * stream);
-
 int32_t rsn_state_block_serialize_json (const BlockHandle * handle, void * ptree);
-
-void rsn_state_block_signature (const BlockHandle * handle, uint8_t (*result)[64]);
-
-void rsn_state_block_signature_set (BlockHandle * handle, const uint8_t (*signature)[64]);
 
 StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create (const SignatureCheckerHandle * checker,
 const EpochsHandle * epochs,
@@ -958,10 +900,6 @@ const StateBlockSignatureVerificationValueDto * items,
 uintptr_t len);
 
 uintptr_t rsn_state_block_size ();
-
-uint64_t rsn_state_block_work (const BlockHandle * handle);
-
-void rsn_state_block_work_set (BlockHandle * handle, uint64_t work);
 
 uint16_t rsn_test_node_port ();
 

@@ -95,11 +95,11 @@ public:
 	void sideband_set (nano::block_sideband const &);
 	bool has_sideband () const;
 	std::string to_json () const;
-	virtual uint64_t block_work () const = 0;
-	virtual void block_work_set (uint64_t) = 0;
+	virtual uint64_t block_work () const;
+	virtual void block_work_set (uint64_t);
 	virtual nano::account account () const;
 	// Previous block in account's chain, zero for open block
-	virtual nano::block_hash previous () const = 0;
+	virtual nano::block_hash previous () const;
 	// Source block for open/receive blocks, zero otherwise.
 	virtual nano::block_hash source () const;
 	// Destination account for send blocks, zero otherwise.
@@ -112,15 +112,16 @@ public:
 	virtual nano::link link () const;
 	virtual nano::account representative () const;
 	virtual nano::amount balance () const;
-	virtual void serialize (nano::stream &) const = 0;
+	virtual void serialize (nano::stream &) const;
 	virtual void serialize_json (std::string &, bool = false) const = 0;
 	virtual void serialize_json (boost::property_tree::ptree &) const = 0;
 	virtual void visit (nano::block_visitor &) const = 0;
 	virtual void visit (nano::mutable_block_visitor &) = 0;
 	virtual bool operator== (nano::block const &) const = 0;
-	virtual nano::block_type type () const = 0;
-	virtual nano::signature block_signature () const = 0;
-	virtual void signature_set (nano::signature const &) = 0;
+	virtual nano::block_type type () const;
+	virtual nano::signature block_signature () const;
+	virtual void signature_set (nano::signature const &);
+	virtual void sign_zero ();
 	virtual ~block () = default;
 	virtual bool valid_predecessor (nano::block const &) const = 0;
 	// Serialized size
@@ -128,12 +129,13 @@ public:
 	virtual nano::work_version work_version () const;
 	// If there are any changes to the hashables, call this to update the cached hash
 	void refresh ();
-	virtual rsnano::BlockHandle * get_handle () const = 0;
+	virtual rsnano::BlockHandle * get_handle () const;
 	virtual rsnano::BlockHandle * clone_handle () const;
 
 protected:
-	virtual nano::block_hash generate_hash () const = 0;
+	virtual nano::block_hash generate_hash () const;
 	mutable nano::block_hash cached_hash{ 0 };
+	rsnano::BlockHandle * handle;
 };
 
 class send_block final : public nano::block
@@ -148,20 +150,13 @@ public:
 	send_block (rsnano::BlockHandle * handle_a);
 	virtual ~send_block ();
 	using nano::block::hash;
-	uint64_t block_work () const override;
-	void block_work_set (uint64_t) override;
-	nano::block_hash previous () const override;
 	nano::account destination () const override;
 	nano::root root () const override;
 	nano::amount balance () const override;
-	void serialize (nano::stream &) const override;
 	void serialize_json (std::string &, bool = false) const override;
 	void serialize_json (boost::property_tree::ptree &) const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
-	nano::block_type type () const override;
-	nano::signature block_signature () const override;
-	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::send_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
@@ -169,15 +164,7 @@ public:
 	void set_destination (nano::account account_a);
 	void previous_set (nano::block_hash previous_a);
 	void balance_set (nano::amount balance_a);
-	void sign_zero ();
 	static std::size_t size ();
-	rsnano::BlockHandle * get_handle () const override;
-
-protected:
-	nano::block_hash generate_hash () const override;
-
-private:
-	rsnano::BlockHandle * handle;
 };
 
 class receive_block : public nano::block
@@ -192,34 +179,19 @@ public:
 	receive_block (rsnano::BlockHandle * handle_a);
 	virtual ~receive_block ();
 	using nano::block::hash;
-	uint64_t block_work () const override;
-	void block_work_set (uint64_t) override;
-	nano::block_hash previous () const override;
 	void previous_set (nano::block_hash previous_a);
 	nano::block_hash source () const override;
 	void source_set (nano::block_hash source_a);
 	nano::root root () const override;
-	void serialize (nano::stream &) const override;
 	void serialize_json (std::string &, bool = false) const override;
 	void serialize_json (boost::property_tree::ptree &) const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
-	nano::block_type type () const override;
-	nano::signature block_signature () const override;
-	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::receive_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
-	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
-	rsnano::BlockHandle * get_handle () const override;
-
-protected:
-	nano::block_hash generate_hash () const override;
-
-private:
-	rsnano::BlockHandle * handle;
 };
 class open_block : public nano::block
 {
@@ -234,37 +206,22 @@ public:
 	open_block (rsnano::BlockHandle * handle_a);
 	virtual ~open_block ();
 	using nano::block::hash;
-	uint64_t block_work () const override;
-	void block_work_set (uint64_t) override;
-	nano::block_hash previous () const override;
 	nano::account account () const override;
 	nano::block_hash source () const override;
 	nano::root root () const override;
 	nano::account representative () const override;
-	void serialize (nano::stream &) const override;
 	void serialize_json (std::string &, bool = false) const override;
 	void serialize_json (boost::property_tree::ptree &) const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
-	nano::block_type type () const override;
-	nano::signature block_signature () const override;
-	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::open_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
-	void sign_zero ();
 	void source_set (nano::block_hash source_a);
 	void account_set (nano::account account_a);
 	void representative_set (nano::account account_a);
 	void zero ();
 	static std::size_t size ();
-	rsnano::BlockHandle * get_handle () const override;
-
-protected:
-	nano::block_hash generate_hash () const override;
-
-private:
-	rsnano::BlockHandle * handle;
 };
 class change_block : public nano::block
 {
@@ -278,34 +235,19 @@ public:
 	change_block (rsnano::BlockHandle * handle_a);
 	virtual ~change_block ();
 	using nano::block::hash;
-	uint64_t block_work () const override;
-	void block_work_set (uint64_t) override;
-	nano::block_hash previous () const override;
 	nano::root root () const override;
 	nano::account representative () const override;
-	void serialize (nano::stream &) const override;
 	void serialize_json (std::string &, bool = false) const override;
 	void serialize_json (boost::property_tree::ptree &) const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
-	nano::block_type type () const override;
-	nano::signature block_signature () const override;
-	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::change_block const &) const;
 	bool valid_predecessor (nano::block const &) const override;
 	void previous_set (nano::block_hash previous_a);
 	void representative_set (nano::account account_a);
-	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
-	rsnano::BlockHandle * get_handle () const override;
-
-protected:
-	nano::block_hash generate_hash () const override;
-
-private:
-	rsnano::BlockHandle * handle;
 };
 class state_block : public nano::block
 {
@@ -319,22 +261,15 @@ public:
 	state_block (rsnano::BlockHandle * handle_a);
 	virtual ~state_block ();
 	using nano::block::hash;
-	uint64_t block_work () const override;
-	void block_work_set (uint64_t) override;
-	nano::block_hash previous () const override;
 	nano::account account () const override;
 	nano::root root () const override;
 	nano::link link () const override;
 	nano::account representative () const override;
 	nano::amount balance () const override;
-	void serialize (nano::stream &) const override;
 	void serialize_json (std::string &, bool = false) const override;
 	void serialize_json (boost::property_tree::ptree &) const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
-	nano::block_type type () const override;
-	nano::signature block_signature () const override;
-	void signature_set (nano::signature const &) override;
 	bool operator== (nano::block const &) const override;
 	bool operator== (nano::state_block const &) const;
 	nano::state_block & operator= (const nano::state_block & other);
@@ -344,16 +279,8 @@ public:
 	void account_set (nano::account account_a);
 	void representative_set (nano::account account_a);
 	void link_set (nano::link link);
-	void sign_zero ();
 	void zero ();
 	static std::size_t size ();
-	rsnano::BlockHandle * get_handle () const override;
-
-protected:
-	nano::block_hash generate_hash () const override;
-
-private:
-	rsnano::BlockHandle * handle;
 };
 class block_visitor
 {

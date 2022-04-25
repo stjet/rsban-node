@@ -132,17 +132,6 @@ impl StateBlock {
             + std::mem::size_of::<u64>() // Work
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.hashables.account.serialize(stream)?;
-        self.hashables.previous.serialize(stream)?;
-        self.hashables.representative.serialize(stream)?;
-        self.hashables.balance.serialize(stream)?;
-        self.hashables.link.serialize(stream)?;
-        self.signature.serialize(stream)?;
-        stream.write_bytes(&self.work.to_be_bytes())?;
-        Ok(())
-    }
-
     pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
         let account = Account::deserialize(stream)?;
         let previous = BlockHash::deserialize(stream)?;
@@ -252,6 +241,33 @@ impl Block for StateBlock {
 
     fn block_signature(&self) -> &Signature {
         &self.signature
+    }
+
+    fn set_block_signature(&mut self, signature: &Signature) {
+        self.signature = signature.clone();
+    }
+
+    fn set_work(&mut self, work: u64) {
+        self.work = work;
+    }
+
+    fn work(&self) -> u64 {
+        self.work
+    }
+
+    fn previous(&self) -> &BlockHash {
+        &self.hashables.previous
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.hashables.account.serialize(stream)?;
+        self.hashables.previous.serialize(stream)?;
+        self.hashables.representative.serialize(stream)?;
+        self.hashables.balance.serialize(stream)?;
+        self.hashables.link.serialize(stream)?;
+        self.signature.serialize(stream)?;
+        stream.write_bytes(&self.work.to_be_bytes())?;
+        Ok(())
     }
 }
 

@@ -2,7 +2,7 @@ use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    Block, BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, ReceiveBlock, ReceiveHashables,
+    BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, ReceiveBlock, ReceiveHashables,
     Signature,
 };
 
@@ -87,40 +87,6 @@ pub extern "C" fn rsn_receive_block_create2(dto: &ReceiveBlockDto2) -> *mut Bloc
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_work_set(handle: *mut BlockHandle, work: u64) {
-    write_receive_block(handle, |b| b.work = work);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_work(handle: *const BlockHandle) -> u64 {
-    read_receive_block(handle, |b| b.work)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_signature(
-    handle: *const BlockHandle,
-    result: *mut [u8; 64],
-) {
-    (*result) = read_receive_block(handle, |b| b.signature.to_be_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_signature_set(
-    handle: *mut BlockHandle,
-    signature: &[u8; 64],
-) {
-    write_receive_block(handle, |b| b.signature = Signature::from_bytes(*signature));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_previous(
-    handle: *const BlockHandle,
-    result: *mut [u8; 32],
-) {
-    (*result) = read_receive_block(handle, |b| b.hashables.previous.to_bytes());
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_receive_block_previous_set(
     handle: *mut BlockHandle,
     previous: &[u8; 32],
@@ -144,29 +110,6 @@ pub unsafe extern "C" fn rsn_receive_block_source_set(
 ) {
     let source = BlockHash::from_bytes(*previous);
     write_receive_block(handle, |b| b.hashables.source = source);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = read_receive_block(handle, |b| b.hash().to_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_equals(
-    a: *const BlockHandle,
-    b: *const BlockHandle,
-) -> bool {
-    let a_guard = (*a).block.read().unwrap();
-    let b_guard = (*b).block.read().unwrap();
-    if let BlockEnum::Receive(a_block) = &*a_guard {
-        if let BlockEnum::Receive(b_block) = &*b_guard {
-            return a_block.work.eq(&b_block.work)
-                && a_block.signature.eq(&b_block.signature)
-                && a_block.hashables.eq(&b_block.hashables);
-        }
-    }
-
-    false
 }
 
 #[no_mangle]
@@ -206,19 +149,4 @@ pub unsafe extern "C" fn rsn_receive_block_deserialize(stream: *mut c_void) -> *
         })),
         Err(_) => std::ptr::null_mut(),
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_receive_block_serialize(
-    handle: *mut BlockHandle,
-    stream: *mut c_void,
-) -> i32 {
-    let mut stream = FfiStream::new(stream);
-    write_receive_block(handle, |b| {
-        if b.serialize(&mut stream).is_ok() {
-            0
-        } else {
-            -1
-        }
-    })
 }

@@ -201,7 +201,7 @@ impl LazyBlockHash {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum BlockEnum {
     Send(SendBlock),
     Receive(ReceiveBlock),
@@ -250,6 +250,11 @@ pub trait Block {
     fn hash(&self) -> BlockHash;
     fn link(&self) -> Link;
     fn block_signature(&self) -> &Signature;
+    fn set_block_signature(&mut self, signature: &Signature);
+    fn work(&self) -> u64;
+    fn set_work(&mut self, work: u64);
+    fn previous(&self) -> &BlockHash;
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()>;
 }
 
 pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<BlockEnum> {

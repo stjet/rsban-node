@@ -40,7 +40,7 @@ impl PublicKey {
         32
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         stream.write_bytes(&self.value)
     }
 
@@ -87,7 +87,7 @@ impl BlockHash {
         32
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         stream.write_bytes(&self.value)
     }
 
@@ -191,7 +191,7 @@ impl Amount {
         std::mem::size_of::<u128>()
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         stream.write_bytes(&self.value.to_be_bytes())
     }
 
@@ -258,7 +258,7 @@ impl Signature {
         64
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         stream.write_bytes(&self.bytes)
     }
 
@@ -319,7 +319,7 @@ impl HashOrAccount {
         32
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         stream.write_bytes(&self.bytes)
     }
 

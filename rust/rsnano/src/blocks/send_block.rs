@@ -17,7 +17,7 @@ impl SendHashables {
         BlockHash::serialized_size() + Account::serialized_size() + Amount::serialized_size()
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.previous.serialize(stream)?;
         self.destination.serialize(stream)?;
         self.balance.serialize(stream)?;
@@ -117,12 +117,6 @@ impl SendBlock {
         SendHashables::serialized_size() + Signature::serialized_size() + std::mem::size_of::<u64>()
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.hashables.serialize(stream)?;
-        self.signature.serialize(stream)?;
-        stream.write_bytes(&self.work.to_be_bytes())
-    }
-
     pub fn zero(&mut self) {
         self.work = 0;
         self.signature = Signature::new();
@@ -215,6 +209,28 @@ impl Block for SendBlock {
 
     fn block_signature(&self) -> &Signature {
         &self.signature
+    }
+
+    fn set_block_signature(&mut self, signature: &Signature) {
+        self.signature = signature.clone();
+    }
+
+    fn set_work(&mut self, work: u64) {
+        self.work = work;
+    }
+
+    fn work(&self) -> u64 {
+        self.work
+    }
+
+    fn previous(&self) -> &BlockHash {
+        &self.hashables.previous
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.hashables.serialize(stream)?;
+        self.signature.serialize(stream)?;
+        stream.write_bytes(&self.work.to_be_bytes())
     }
 }
 

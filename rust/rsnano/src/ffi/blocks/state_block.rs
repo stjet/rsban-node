@@ -2,8 +2,8 @@ use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    Account, Amount, Block, BlockEnum, BlockHash, LazyBlockHash, Link, PublicKey, RawKey,
-    Signature, StateBlock, StateHashables,
+    Account, Amount, BlockEnum, BlockHash, LazyBlockHash, Link, PublicKey, RawKey, Signature,
+    StateBlock, StateHashables,
 };
 
 use crate::ffi::{FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
@@ -96,32 +96,6 @@ pub extern "C" fn rsn_state_block_create2(dto: &StateBlockDto2) -> *mut BlockHan
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_work_set(handle: *mut BlockHandle, work: u64) {
-    write_state_block(handle, |b| b.work = work);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_work(handle: *const BlockHandle) -> u64 {
-    read_state_block(handle, |b| b.work)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_signature(
-    handle: *const BlockHandle,
-    result: *mut [u8; 64],
-) {
-    (*result) = read_state_block(handle, |b| b.signature.to_be_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_signature_set(
-    handle: *mut BlockHandle,
-    signature: &[u8; 64],
-) {
-    write_state_block(handle, |b| b.signature = Signature::from_bytes(*signature));
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_account(
     handle: *const BlockHandle,
     result: *mut [u8; 32],
@@ -135,14 +109,6 @@ pub unsafe extern "C" fn rsn_state_block_account_set(handle: *mut BlockHandle, s
         b.hashables.account = Account::from_bytes(*source);
         b.hash.clear();
     });
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_previous(
-    handle: *const BlockHandle,
-    result: *mut [u8; 32],
-) {
-    (*result) = read_state_block(handle, |b| b.hashables.previous.to_bytes());
 }
 
 #[no_mangle]
@@ -202,46 +168,8 @@ pub unsafe extern "C" fn rsn_state_block_link_set(handle: *mut BlockHandle, link
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_equals(
-    a: *const BlockHandle,
-    b: *const BlockHandle,
-) -> bool {
-    let a_guard = (*a).block.read().unwrap();
-    let b_guard = (*b).block.read().unwrap();
-
-    if let BlockEnum::State(a_block) = &*a_guard {
-        if let BlockEnum::State(b_block) = &*b_guard {
-            return a_block.work.eq(&b_block.work)
-                && a_block.signature.eq(&b_block.signature)
-                && a_block.hashables.eq(&b_block.hashables);
-        }
-    }
-    false
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_state_block_size() -> usize {
     StateBlock::serialized_size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = read_state_block(handle, |b| b.hash().to_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_serialize(
-    handle: *mut BlockHandle,
-    stream: *mut c_void,
-) -> i32 {
-    let mut stream = FfiStream::new(stream);
-    write_state_block(handle, |b| {
-        if b.serialize(&mut stream).is_ok() {
-            0
-        } else {
-            -1
-        }
-    })
 }
 
 #[no_mangle]

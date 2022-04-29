@@ -118,7 +118,7 @@ nano::block_sideband nano::block::sideband () const
 {
 	rsnano::BlockSidebandDto dto;
 	auto result = rsnano::rsn_block_sideband (get_handle (), &dto);
-	assert (result == 0);
+	debug_assert (result == 0);
 	return nano::block_sideband (dto);
 }
 

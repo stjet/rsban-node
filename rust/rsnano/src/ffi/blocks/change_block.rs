@@ -6,7 +6,7 @@ use crate::{
     Signature,
 };
 
-use crate::ffi::{FfiStream, FfiPropertyTreeReader};
+use crate::ffi::{FfiPropertyTreeReader, FfiStream};
 
 use super::BlockHandle;
 

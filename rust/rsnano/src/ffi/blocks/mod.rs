@@ -45,7 +45,7 @@ pub unsafe extern "C" fn rsn_block_sideband(
             set_block_sideband_dto(sb, sideband);
             0
         }
-        None => -1, 
+        None => -1,
     }
 }
 

@@ -84,15 +84,4 @@ util/build_prep/*/prep.sh
 
 .cargo
 cargo
-bootstrap_weights_beta.cpp
-bootstrap_weights_live.cpp
-build_version.cc
-config-node.toml.sample
-config-rpc.toml.sample
-counters.stat
-flatc
-ipc_flatbuffers_test_client
-load_test
-*.dump
-samples.stat
-query.json
+build

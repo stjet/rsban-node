@@ -117,8 +117,8 @@ nano::block_hash nano::block::full_hash () const
 nano::block_sideband nano::block::sideband () const
 {
 	rsnano::BlockSidebandDto dto;
-	if (rsnano::rsn_block_sideband (get_handle (), &dto) < 0)
-		throw std::runtime_error ("cannot get sideband");
+	auto result = rsnano::rsn_block_sideband (get_handle (), &dto);
+	assert(result == 0);
 	return nano::block_sideband (dto);
 }
 

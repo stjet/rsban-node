@@ -38,10 +38,10 @@ run_tests()
     ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} ./rpc_test
     rpc_test_res=${?}
 
-	cd ${build_dir}/../rust/rsnano
+	pushd ../rust/rsnano
     ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} ~/.cargo/bin/cargo test 
     cargo_test_res=${?}
-	cd ${build_dir}
+	popd
 
     (cd ../systest && export NANO_NODE_EXE=../build/nano_node && ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} 300 ./RUNALL)
     sys_test_res=${?}

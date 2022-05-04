@@ -1,6 +1,7 @@
 use std::{
     any::Any,
-    sync::{Arc, RwLock},
+    collections::VecDeque,
+    sync::{Arc, Mutex, RwLock},
     time::Duration,
 };
 
@@ -29,6 +30,8 @@ pub(crate) struct StateBlockSignatureVerification {
     signature_checker: Arc<SignatureChecker>,
     epochs: Arc<Epochs>,
     logger: Arc<dyn Logger>,
+    //todo remove pub
+    pub state_blocks: Mutex<VecDeque<StateBlockSignatureVerificationValue>>,
 }
 
 impl<'a> StateBlockSignatureVerification {
@@ -44,6 +47,7 @@ impl<'a> StateBlockSignatureVerification {
             logger,
             blocks_verified_callback: |_, _| {},
             blocks_verified_callback_context: None,
+            state_blocks: Mutex::new(VecDeque::new()),
         }
     }
 
@@ -116,5 +120,14 @@ impl<'a> StateBlockSignatureVerification {
         if let Some(ctx) = &self.blocks_verified_callback_context {
             (self.blocks_verified_callback)(ctx.as_ref(), result);
         }
+    }
+
+    pub(crate) fn setup_items(
+        &self,
+        max_count: usize,
+    ) -> VecDeque<StateBlockSignatureVerificationValue> {
+        let blocks = self.state_blocks.lock().unwrap();
+
+        todo!()
     }
 }

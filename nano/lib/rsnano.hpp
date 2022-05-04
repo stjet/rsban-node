@@ -874,6 +874,20 @@ void rsn_state_block_representative (const BlockHandle * handle, uint8_t (*resul
 
 void rsn_state_block_representative_set (BlockHandle * handle, const uint8_t (*representative)[32]);
 
+void rsn_state_block_signature_verification_blocks_drain (StateBlockSignatureVerificationHandle * handle,
+uintptr_t count,
+StateBlockSignatureVerificationValueDto * result);
+
+bool rsn_state_block_signature_verification_blocks_empty (const StateBlockSignatureVerificationHandle * handle);
+
+void rsn_state_block_signature_verification_blocks_pop (StateBlockSignatureVerificationHandle * handle,
+StateBlockSignatureVerificationValueDto * result);
+
+void rsn_state_block_signature_verification_blocks_push (StateBlockSignatureVerificationHandle * handle,
+const StateBlockSignatureVerificationValueDto * block);
+
+uintptr_t rsn_state_block_signature_verification_blocks_size (const StateBlockSignatureVerificationHandle * handle);
+
 StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create (const SignatureCheckerHandle * checker,
 const EpochsHandle * epochs,
 void * logger,

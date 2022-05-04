@@ -10,6 +10,36 @@
 
 #include <boost/format.hpp>
 
+void item_to_dto (nano::state_block_signature_verification::value_type const & value, rsnano::StateBlockSignatureVerificationValueDto & result)
+{
+	auto const & [block, account, verification] = value;
+	result.block = block->clone_handle ();
+	std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (result.account));
+	result.verification = static_cast<uint8_t> (verification);
+}
+
+std::vector<rsnano::StateBlockSignatureVerificationValueDto> items_to_dto (std::deque<nano::state_block_signature_verification::value_type> & items)
+{
+	std::vector<rsnano::StateBlockSignatureVerificationValueDto> result;
+	result.reserve (items.size ());
+	for (auto i : items)
+	{
+		rsnano::StateBlockSignatureVerificationValueDto value_dto;
+		item_to_dto (i, value_dto);
+		result.push_back (value_dto);
+	}
+
+	return result;
+}
+
+void dto_to_value_type (rsnano::StateBlockSignatureVerificationValueDto const & dto, nano::state_block_signature_verification::value_type & result)
+{
+	nano::account account;
+	std::copy (std::begin (dto.account), std::end (dto.account), std::begin (account.bytes));
+	auto verification = static_cast<nano::signature_verification> (dto.verification);
+	result = nano::state_block_signature_verification::value_type (nano::block_handle_to_block (dto.block), account, verification);
+}
+
 void blocks_verified_callback_adapter (void * context, const rsnano::StateBlockSignatureVerificationResultDto * result_dto)
 {
 	std::vector<int> verifications (result_dto->verifications, result_dto->verifications + result_dto->size);
@@ -33,10 +63,9 @@ void blocks_verified_callback_adapter (void * context, const rsnano::StateBlockS
 	std::deque<nano::state_block_signature_verification::value_type> items;
 	for (auto i = result_dto->items; i != result_dto->items + result_dto->size; i++)
 	{
-		nano::account account;
-		std::copy (std::begin (i->account), std::end (i->account), std::begin (account.bytes));
-		auto verification = static_cast<nano::signature_verification> (i->verification);
-		items.emplace_back (nano::block_handle_to_block (i->block), account, verification);
+		nano::state_block_signature_verification::value_type value;
+		dto_to_value_type (*i, value);
+		items.push_back (value);
 	}
 
 	auto instance = reinterpret_cast<nano::state_block_signature_verification *> (context);
@@ -45,14 +74,14 @@ void blocks_verified_callback_adapter (void * context, const rsnano::StateBlockS
 
 nano::state_block_signature_verification::state_block_signature_verification (nano::signature_checker & signature_checker, nano::epochs & epochs, nano::node_config & node_config, nano::logger_mt & logger, uint64_t state_block_signature_verification_size) :
 	epochs (epochs),
-	node_config (node_config),
-	thread ([this, state_block_signature_verification_size] () {
-		nano::thread_role::set (nano::thread_role::name::state_block_signature_verification);
-		this->run (state_block_signature_verification_size);
-	})
+	node_config (node_config)
 {
 	handle = rsnano::rsn_state_block_signature_verification_create (signature_checker.get_handle (), epochs.get_handle (), &logger, node_config.logging.timing_logging ());
 	rsnano::rsn_state_block_signature_verification_verified_callback (handle, blocks_verified_callback_adapter, this);
+	thread = std::thread ([this, state_block_signature_verification_size] () {
+		nano::thread_role::set (nano::thread_role::name::state_block_signature_verification);
+		this->run (state_block_signature_verification_size);
+	});
 }
 
 nano::state_block_signature_verification::~state_block_signature_verification ()
@@ -80,15 +109,23 @@ void nano::state_block_signature_verification::run (uint64_t state_block_signatu
 	nano::unique_lock<nano::mutex> lk (mutex);
 	while (!stopped)
 	{
-		if (!state_blocks.empty ())
+		;
+		if (!rsnano::rsn_state_block_signature_verification_blocks_empty (handle))
 		{
 			std::size_t const max_verification_batch (state_block_signature_verification_size != 0 ? state_block_signature_verification_size : nano::signature_checker::get_batch_size () * (node_config.signature_checker_threads + 1));
 			active = true;
-			while (!state_blocks.empty () && !stopped)
+			while (!rsnano::rsn_state_block_signature_verification_blocks_empty (handle) && !stopped)
 			{
 				auto items = setup_items (max_verification_batch);
 				lk.unlock ();
-				verify_state_blocks (items);
+
+				auto item_dtos (items_to_dto (items));
+				rsnano::rsn_state_block_signature_verification_verify (handle, item_dtos.data (), item_dtos.size ());
+				for (auto & i : item_dtos)
+				{
+					rsnano::rsn_shared_block_enum_handle_destroy (i.block);
+				}
+
 				lk.lock ();
 			}
 			active = false;
@@ -113,7 +150,9 @@ void nano::state_block_signature_verification::add (value_type const & item)
 {
 	{
 		nano::lock_guard<nano::mutex> guard (mutex);
-		state_blocks.emplace_back (item);
+		rsnano::StateBlockSignatureVerificationValueDto dto;
+		item_to_dto (item, dto);
+		rsnano::rsn_state_block_signature_verification_blocks_push (handle, &dto);
 	}
 	condition.notify_one ();
 }
@@ -121,53 +160,39 @@ void nano::state_block_signature_verification::add (value_type const & item)
 std::size_t nano::state_block_signature_verification::size ()
 {
 	nano::lock_guard<nano::mutex> guard (mutex);
-	return state_blocks.size ();
+	return rsnano::rsn_state_block_signature_verification_blocks_size (handle);
 }
 
 auto nano::state_block_signature_verification::setup_items (std::size_t max_count) -> std::deque<value_type>
 {
 	std::deque<value_type> items;
-	if (state_blocks.size () <= max_count)
+	if (rsnano::rsn_state_block_signature_verification_blocks_size (handle) <= max_count)
 	{
-		items.swap (state_blocks);
+		auto size = rsnano::rsn_state_block_signature_verification_blocks_size (handle);
+		std::vector<rsnano::StateBlockSignatureVerificationValueDto> block_dtos;
+		block_dtos.resize (size);
+		rsnano::rsn_state_block_signature_verification_blocks_drain (handle, size, block_dtos.data ());
+
+		for (auto & dto : block_dtos)
+		{
+			nano::state_block_signature_verification::value_type value;
+			dto_to_value_type (dto, value);
+			items.push_back (value);
+		}
 	}
 	else
 	{
 		for (auto i (0); i < max_count; ++i)
 		{
-			items.push_back (state_blocks.front ());
-			state_blocks.pop_front ();
+			rsnano::StateBlockSignatureVerificationValueDto value_dto;
+			rsnano::rsn_state_block_signature_verification_blocks_pop (handle, &value_dto);
+			nano::state_block_signature_verification::value_type value;
+			dto_to_value_type (value_dto, value);
+			items.push_back (value);
 		}
-		debug_assert (!state_blocks.empty ());
+		debug_assert (!rsnano::rsn_state_block_signature_verification_blocks_empty (handle));
 	}
 	return items;
-}
-
-std::vector<rsnano::StateBlockSignatureVerificationValueDto> items_to_dto (std::deque<nano::state_block_signature_verification::value_type> & items)
-{
-	std::vector<rsnano::StateBlockSignatureVerificationValueDto> result;
-	result.reserve (items.size ());
-	for (auto const & [block, account, verification] : items)
-	{
-		rsnano::StateBlockSignatureVerificationValueDto value_dto;
-		value_dto.block = block->clone_handle ();
-		std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (value_dto.account));
-		value_dto.verification = static_cast<uint8_t> (verification);
-
-		result.push_back (value_dto);
-	}
-
-	return result;
-}
-
-void nano::state_block_signature_verification::verify_state_blocks (std::deque<value_type> & items)
-{
-	auto item_dtos (items_to_dto (items));
-	rsnano::rsn_state_block_signature_verification_verify (handle, item_dtos.data (), item_dtos.size ());
-	for (auto & i : item_dtos)
-	{
-		rsnano::rsn_shared_block_enum_handle_destroy (i.block);
-	}
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (state_block_signature_verification & state_block_signature_verification, std::string const & name)

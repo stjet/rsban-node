@@ -43,13 +43,11 @@ private:
 	nano::mutex mutex{ mutex_identifier (mutexes::state_block_signature_verification) };
 	bool stopped{ false };
 	bool active{ false };
-	std::deque<value_type> state_blocks;
 	nano::condition_variable condition;
 	std::thread thread;
 
 	void run (uint64_t block_processor_verification_size);
 	std::deque<value_type> setup_items (std::size_t);
-	void verify_state_blocks (std::deque<value_type> &);
 };
 
 std::unique_ptr<nano::container_info_component> collect_container_info (state_block_signature_verification & state_block_signature_verification, std::string const & name);

@@ -6,7 +6,7 @@ use crate::{
     state_block_signature_verification::{
         StateBlockSignatureVerificationResult, StateBlockSignatureVerificationValue,
     },
-    StateBlockSignatureVerification,
+    Account, StateBlockSignatureVerification,
 };
 
 use super::{BlockHandle, EpochsHandle, LoggerMT, SignatureCheckerHandle};
@@ -126,13 +126,7 @@ fn blocks_verified_callback_adapter(
         items: result
             .items
             .iter()
-            .map(|i| StateBlockSignatureVerificationValueDto {
-                block: Box::into_raw(Box::new(BlockHandle {
-                    block: i.block.clone(),
-                })),
-                account: i.account.to_bytes(),
-                verification: i.verification as u8,
-            })
+            .map(StateBlockSignatureVerificationValueDto::from)
             .collect(),
     });
 
@@ -150,5 +144,99 @@ fn blocks_verified_callback_adapter(
         .unwrap();
     unsafe {
         (context.ffi_callback)(context.ffi_context, &result_dto);
+    }
+}
+
+//todo
+#[no_mangle]
+pub extern "C" fn rsn_state_block_signature_verification_setup_items(
+    handle: *mut StateBlockSignatureVerificationHandle,
+    max_count: usize,
+    result: *mut StateBlockSignatureVerificationValueDto,
+) -> usize {
+    let verification = unsafe { &(*handle).verification };
+    let result = unsafe { std::slice::from_raw_parts_mut(result, max_count) };
+    let items = verification.setup_items(max_count);
+    for i in 0..items.len() {
+        result[i] = (&items[i]).into();
+    }
+    items.len()
+}
+
+// state_blocks
+//----------------------------
+#[no_mangle]
+pub extern "C" fn rsn_state_block_signature_verification_blocks_empty(
+    handle: *const StateBlockSignatureVerificationHandle,
+) -> bool {
+    let verification = unsafe { &(*handle).verification };
+    verification.state_blocks.lock().unwrap().is_empty()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_state_block_signature_verification_blocks_push(
+    handle: *mut StateBlockSignatureVerificationHandle,
+    block: *const StateBlockSignatureVerificationValueDto,
+) {
+    let verification = unsafe { &mut (*handle).verification };
+    let block = unsafe { &*block };
+    let block = StateBlockSignatureVerificationValue {
+        block: unsafe { &*block.block }.block.clone(),
+        account: Account::from_bytes(block.account),
+        verification: FromPrimitive::from_u8(block.verification).unwrap(),
+    };
+    verification.state_blocks.lock().unwrap().push_back(block);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_state_block_signature_verification_blocks_size(
+    handle: *const StateBlockSignatureVerificationHandle,
+) -> usize {
+    let verification = unsafe { &(*handle).verification };
+    verification.state_blocks.lock().unwrap().len()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_state_block_signature_verification_blocks_drain(
+    handle: *mut StateBlockSignatureVerificationHandle,
+    count: usize,
+    result: *mut StateBlockSignatureVerificationValueDto,
+) {
+    let verification = unsafe { &mut (*handle).verification };
+    let result = unsafe { std::slice::from_raw_parts_mut(result, count) };
+    let mut blocks = verification.state_blocks.lock().unwrap();
+    assert_eq!(count, blocks.len());
+    for i in 0..count {
+        result[i] = (&blocks[i]).into();
+    }
+    blocks.clear();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_state_block_signature_verification_blocks_pop(
+    handle: *mut StateBlockSignatureVerificationHandle,
+    result: *mut StateBlockSignatureVerificationValueDto,
+) {
+    let verification = unsafe { &mut (*handle).verification };
+    let result = unsafe { &mut *result };
+    let mut blocks = verification.state_blocks.lock().unwrap();
+    let front = blocks.pop_front().unwrap();
+    result.block = Box::into_raw(Box::new(BlockHandle {
+        block: front.block.clone(),
+    }));
+    result.account = front.account.to_bytes();
+    result.verification = front.verification as u8;
+}
+//----------------------------
+
+impl From<&StateBlockSignatureVerificationValue> for StateBlockSignatureVerificationValueDto {
+    fn from(value: &StateBlockSignatureVerificationValue) -> Self {
+        StateBlockSignatureVerificationValueDto {
+            block: Box::into_raw(Box::new(BlockHandle {
+                block: value.block.clone(),
+            })),
+            account: value.account.to_bytes(),
+            verification: value.verification as u8,
+        }
     }
 }

@@ -49,7 +49,7 @@ run_tests()
     echo "Sys Test return code: ${sys_test_res}"
     echo "Cargo Test return code: ${cargo_test_res}"
 
-    if [[ ${core_test_res} != 0 || ${rpc_test_res} != 0 || ${sys_test_res} != 0 || ${cargo_test_res} != 0]]; then
+    if [[ ${core_test_res} != 0 || ${rpc_test_res} != 0 || ${sys_test_res} != 0 || ${cargo_test_res} != 0 ]]; then
         return 1
     else
         return 0

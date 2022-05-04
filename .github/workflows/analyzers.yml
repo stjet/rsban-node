@@ -38,3 +38,10 @@ jobs:
       - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
       - name: Run code-inspector
         run: ci/code-inspector-check.sh
+  
+  cargo_fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Run cargo fmt
+        run: ci/cargo-fmt-check.sh

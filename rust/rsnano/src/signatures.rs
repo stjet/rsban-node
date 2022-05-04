@@ -145,7 +145,7 @@ impl SignatureChecker {
             let mut key_chunks = keys_pool.chunks(thread_distribution_plan.batch_size);
             let mut signature_chunks = signatures_pool.chunks(thread_distribution_plan.batch_size);
             let mut verify_chunks = verify_pool.chunks_mut(thread_distribution_plan.batch_size);
-            for messages in message_chunks.by_ref(){
+            for messages in message_chunks.by_ref() {
                 let mut batch = SignatureCheckSetBatch {
                     messages,
                     pub_keys: key_chunks.next().unwrap(),

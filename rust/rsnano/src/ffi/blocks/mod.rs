@@ -76,7 +76,7 @@ pub unsafe extern "C" fn rsn_block_sideband_set(
 ) -> i32 {
     match BlockSideband::try_from(sideband) {
         Ok(sideband) => {
-            (&mut *block)
+            (*block)
                 .block
                 .write()
                 .unwrap()

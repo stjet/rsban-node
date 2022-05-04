@@ -31,16 +31,9 @@ pub trait TomlArrayWriter {
     fn push_back_str(&mut self, value: &str) -> Result<()>;
 }
 
+#[derive(Default)]
 pub struct TomlConfig {
     doc: Document,
-}
-
-impl Default for TomlConfig {
-    fn default() -> Self {
-        Self {
-            doc: Default::default(),
-        }
-    }
 }
 
 impl TomlConfig {
@@ -119,6 +112,7 @@ impl TomlWriter for TomlConfig {
     }
 }
 
+#[derive(Default)]
 pub struct TomlConfigArray {
     array: toml_edit::Array,
 }
@@ -126,14 +120,6 @@ pub struct TomlConfigArray {
 impl TomlConfigArray {
     pub fn new() -> Self {
         Default::default()
-    }
-}
-
-impl Default for TomlConfigArray {
-    fn default() -> Self {
-        Self {
-            array: Default::default(),
-        }
     }
 }
 

@@ -7,6 +7,7 @@ pub trait Blake2b {
     fn finalize(&mut self, out: &mut [u8]) -> Result<()>;
 }
 
+#[derive(Default)]
 pub struct RustBlake2b {
     instance: Option<blake2::VarBlake2b>,
 }
@@ -14,12 +15,6 @@ pub struct RustBlake2b {
 impl RustBlake2b {
     pub fn new() -> Self {
         Default::default()
-    }
-}
-
-impl Default for RustBlake2b {
-    fn default() -> Self {
-        Self { instance: None }
     }
 }
 

@@ -108,10 +108,10 @@ impl SignatureChecker {
 
     pub fn verify_batch(check_set: &mut SignatureCheckSetBatch) {
         validate_message_batch(
-            &check_set.messages,
-            &check_set.pub_keys,
-            &check_set.signatures,
-            &mut check_set.verifications,
+            check_set.messages,
+            check_set.pub_keys,
+            check_set.signatures,
+            check_set.verifications,
         );
 
         let result = check_set.verifications.iter().all(|&x| x == 0 || x == 1);
@@ -145,7 +145,7 @@ impl SignatureChecker {
             let mut key_chunks = keys_pool.chunks(thread_distribution_plan.batch_size);
             let mut signature_chunks = signatures_pool.chunks(thread_distribution_plan.batch_size);
             let mut verify_chunks = verify_pool.chunks_mut(thread_distribution_plan.batch_size);
-            while let Some(messages) = message_chunks.next() {
+            for messages in message_chunks.by_ref(){
                 let mut batch = SignatureCheckSetBatch {
                     messages,
                     pub_keys: key_chunks.next().unwrap(),

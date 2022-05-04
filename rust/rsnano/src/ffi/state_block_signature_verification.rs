@@ -46,8 +46,8 @@ pub unsafe extern "C" fn rsn_state_block_signature_verification_create(
     logger: *mut c_void,
     timing_logging: bool,
 ) -> *mut StateBlockSignatureVerificationHandle {
-    let checker = (&*checker).checker.clone();
-    let epochs = Arc::new((&*epochs).epochs.clone());
+    let checker = (*checker).checker.clone();
+    let epochs = Arc::new((*epochs).epochs.clone());
     let logger = Arc::new(LoggerMT::new(logger));
     let mut verification = StateBlockSignatureVerification::new(checker, epochs, logger);
     verification.timing_logging = timing_logging;
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rsn_state_block_signature_verification_verify(
     let items: Vec<_> = items
         .iter()
         .map(|i| StateBlockSignatureVerificationValue {
-            block: (&*i.block).block.clone(),
+            block: (*i.block).block.clone(),
             account: crate::Account::from_bytes(i.account),
             verification: FromPrimitive::from_u8(i.verification).unwrap(),
         })

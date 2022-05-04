@@ -66,8 +66,8 @@ pub unsafe extern "C" fn rsn_ledger_constants_create(
     0
 }
 
-fn block_to_block_handle(b: Arc<RwLock<BlockEnum>>) -> *mut BlockHandle {
-    Box::into_raw(Box::new(BlockHandle { block: b.clone() }))
+fn block_to_block_handle(block: Arc<RwLock<BlockEnum>>) -> *mut BlockHandle {
+    Box::into_raw(Box::new(BlockHandle { block }))
 }
 
 pub fn fill_ledger_constants_dto(dto: &mut LedgerConstantsDto, ledger: LedgerConstants) {

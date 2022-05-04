@@ -26,17 +26,9 @@ struct EpochInfo {
     pub link: Link,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Epochs {
     epochs: HashMap<Epoch, EpochInfo>,
-}
-
-impl Default for Epochs {
-    fn default() -> Self {
-        Self {
-            epochs: HashMap::new(),
-        }
-    }
 }
 
 impl Epochs {

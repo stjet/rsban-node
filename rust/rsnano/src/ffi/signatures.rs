@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rsn_signature_checker_verify(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_signature_checker_stop(handle: *mut SignatureCheckerHandle) {
-    (&mut *handle).checker.stop();
+    (*handle).checker.stop();
 }
 
 #[no_mangle]
@@ -67,7 +67,7 @@ unsafe fn into_check_set(ffi_check_set: &SignatureCheckSetDto) -> SignatureCheck
             .enumerate()
             .map(|(i, &bytes)| {
                 let msg = std::slice::from_raw_parts(bytes, message_lengths[i]);
-                msg.iter().cloned().collect()
+                msg.to_vec()
             })
             .collect();
 
@@ -87,6 +87,5 @@ unsafe fn into_check_set(ffi_check_set: &SignatureCheckSetDto) -> SignatureCheck
         })
         .collect();
 
-    let check_set = SignatureCheckSet::new(messages, pub_keys, signatures);
-    check_set
+    SignatureCheckSet::new(messages, pub_keys, signatures)
 }

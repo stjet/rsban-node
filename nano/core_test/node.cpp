@@ -2655,8 +2655,8 @@ TEST (node, vote_by_hash_republish)
 	ASSERT_TRUE (node1.active.active (*send1));
 	ASSERT_TRUE (node2.active.active (*send1));
 	node1.vote_processor.vote (vote, std::make_shared<nano::transport::channel_loopback> (node1));
-	ASSERT_TIMELY (60s, node1.block (send2->hash ()));
-	ASSERT_TIMELY (60s, node2.block (send2->hash ()));
+	ASSERT_TIMELY (10s, node1.block (send2->hash ()));
+	ASSERT_TIMELY (10s, node2.block (send2->hash ()));
 	ASSERT_FALSE (node1.block (send1->hash ()));
 	ASSERT_FALSE (node2.block (send1->hash ()));
 	ASSERT_TIMELY (5s, node2.balance (key2.pub) == node1.config.receive_minimum.number () * 2);

@@ -76,6 +76,10 @@ impl SignatureChecker {
 
     pub const BATCH_SIZE: usize = 256;
 
+    pub fn max_size(&self) -> usize {
+        Self::BATCH_SIZE * (self.thread_pool_threads + 1)
+    }
+
     pub fn flush(&self) {
         while !self.stopped.load(Ordering::SeqCst)
             && self.tasks_remaining.load(Ordering::SeqCst) != 0

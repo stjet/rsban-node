@@ -1,7 +1,11 @@
 use std::{
     any::Any,
     collections::VecDeque,
-    sync::{Arc, Mutex, RwLock},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Condvar, Mutex, RwLock,
+    },
+    thread::JoinHandle,
     time::Duration,
 };
 
@@ -20,22 +24,12 @@ pub(crate) struct StateBlockSignatureVerificationResult {
     pub hashes: Vec<BlockHash>,
     pub signatures: Vec<Signature>,
     pub verifications: Vec<i32>,
-    pub items: Vec<StateBlockSignatureVerificationValue>,
+    pub items: VecDeque<StateBlockSignatureVerificationValue>,
 }
 
 pub(crate) struct StateBlockSignatureVerification {
-    pub timing_logging: bool,
-    blocks_verified_callback: fn(&dyn Any, StateBlockSignatureVerificationResult),
-    blocks_verified_callback_context: Option<Box<dyn Any>>,
-    signature_checker: Arc<SignatureChecker>,
-    transition_inactive_callback: fn(&dyn Any) -> (),
-    transition_inactive_callback_context: Option<Box<dyn Any>>,
-    epochs: Arc<Epochs>,
-    logger: Arc<dyn Logger>,
-    //todo remove pub
-    pub state_blocks: Mutex<VecDeque<StateBlockSignatureVerificationValue>>,
-    pub active: bool,
-    pub stopped: bool,
+    join_handle: Option<JoinHandle<()>>,
+    thread: Arc<StateBlockSignatureVerificationThread>,
 }
 
 impl<'a> StateBlockSignatureVerification {
@@ -43,41 +37,194 @@ impl<'a> StateBlockSignatureVerification {
         signature_checker: Arc<SignatureChecker>,
         epochs: Arc<Epochs>,
         logger: Arc<dyn Logger>,
-    ) -> Self {
-        Self {
-            active: false,
-            stopped: false,
+        verification_size: usize,
+    ) -> std::io::Result<Self> {
+        let thread = Arc::new(StateBlockSignatureVerificationThread::new(
+            verification_size,
             signature_checker,
             epochs,
-            timing_logging: false,
             logger,
-            blocks_verified_callback: |_, _| {},
-            blocks_verified_callback_context: None,
-            transition_inactive_callback: |_| {},
-            transition_inactive_callback_context: None,
-            state_blocks: Mutex::new(VecDeque::new()),
-        }
+        ));
+
+        let thread_clone = thread.clone();
+        let join_handle = std::thread::Builder::new()
+            .name("State block sig".to_string())
+            .spawn(move || {
+                thread_clone.run();
+            })?;
+
+        Ok(Self {
+            join_handle: Some(join_handle),
+            thread,
+        })
     }
 
     pub(crate) fn set_blocks_verified_callback(
         &mut self,
         callback: fn(&dyn Any, StateBlockSignatureVerificationResult),
-        context: Box<dyn Any>,
+        context: Box<dyn Any + Send + Sync>,
     ) {
-        self.blocks_verified_callback = callback;
-        self.blocks_verified_callback_context = Some(context);
+        let mut lk = self.thread.callbacks.lock().unwrap();
+        lk.blocks_verified_callback = callback;
+        lk.blocks_verified_callback_context = Some(context);
     }
 
     pub(crate) fn set_transition_inactive_callback(
         &mut self,
         callback: fn(&dyn Any),
-        context: Box<dyn Any>,
+        context: Box<dyn Any + Send + Sync>,
     ) {
-        self.transition_inactive_callback = callback;
-        self.transition_inactive_callback_context = Some(context);
+        let mut lk = self.thread.callbacks.lock().unwrap();
+        lk.transition_inactive_callback = callback;
+        lk.transition_inactive_callback_context = Some(context);
     }
 
-    pub(crate) fn verify_state_blocks(&self, items: Vec<StateBlockSignatureVerificationValue>) {
+    pub(crate) fn stop(&mut self) -> std::thread::Result<()> {
+        {
+            let mut lk = self.thread.mutable.lock().unwrap();
+            lk.stopped = true;
+        }
+
+        if let Some(handle) = self.join_handle.take() {
+            self.thread.condition.notify_one();
+            handle.join()?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn add(&self, block: StateBlockSignatureVerificationValue) {
+        {
+            let mut lk = self.thread.mutable.lock().unwrap();
+            lk.state_blocks.push_back(block);
+        }
+        self.thread.condition.notify_one();
+    }
+
+    pub(crate) fn size(&self) -> usize {
+        let lk = self.thread.mutable.lock().unwrap();
+        lk.state_blocks.len()
+    }
+
+    pub(crate) fn is_active(&self) -> bool {
+        let lk = self.thread.mutable.lock().unwrap();
+        lk.active
+    }
+
+    pub(crate) fn enable_timing_logging(&self, enable: bool) {
+        self.thread.timing_logging.store(enable, Ordering::Relaxed);
+    }
+}
+
+impl Drop for StateBlockSignatureVerification {
+    fn drop(&mut self) {
+        self.stop()
+            .expect("Could not stop state block verification thread");
+    }
+}
+
+struct StateBlockSignatureVerificationThread {
+    condition: Condvar,
+    verification_size: usize,
+    signature_checker: Arc<SignatureChecker>,
+    epochs: Arc<Epochs>,
+    logger: Arc<dyn Logger>,
+    mutable: Mutex<ThreadMutableData>,
+    callbacks: Mutex<Callbacks>,
+    timing_logging: AtomicBool,
+}
+
+struct ThreadMutableData {
+    state_blocks: VecDeque<StateBlockSignatureVerificationValue>,
+    active: bool,
+    stopped: bool,
+}
+
+struct Callbacks {
+    blocks_verified_callback: fn(&dyn Any, StateBlockSignatureVerificationResult),
+    blocks_verified_callback_context: Option<Box<dyn Any + Send + Sync>>,
+    transition_inactive_callback: fn(&dyn Any) -> (),
+    transition_inactive_callback_context: Option<Box<dyn Any + Send + Sync>>,
+}
+
+impl StateBlockSignatureVerificationThread {
+    fn new(
+        verification_size: usize,
+        signature_checker: Arc<SignatureChecker>,
+        epochs: Arc<Epochs>,
+        logger: Arc<dyn Logger>,
+    ) -> Self {
+        Self {
+            condition: Condvar::new(),
+            verification_size,
+            signature_checker,
+            epochs,
+            logger,
+            timing_logging: AtomicBool::new(false),
+            mutable: Mutex::new(ThreadMutableData {
+                state_blocks: VecDeque::new(),
+                active: false,
+                stopped: false,
+            }),
+            callbacks: Mutex::new(Callbacks {
+                blocks_verified_callback: |_, _| {},
+                blocks_verified_callback_context: None,
+                transition_inactive_callback: |_| {},
+                transition_inactive_callback_context: None,
+            }),
+        }
+    }
+
+    fn run(&self) {
+        let mut lk = self.mutable.lock().unwrap();
+        while !lk.stopped {
+            if !lk.state_blocks.is_empty() {
+                let max_verification_batch = if self.verification_size != 0 {
+                    self.verification_size
+                } else {
+                    self.signature_checker.max_size()
+                };
+                lk.active = true;
+                while !lk.state_blocks.is_empty() && !lk.stopped {
+                    let items = Self::setup_items(&mut lk, max_verification_batch);
+                    drop(lk);
+                    self.verify_state_blocks(items);
+                    lk = self.mutable.lock().unwrap();
+                }
+                lk.active = false;
+                drop(lk);
+                {
+                    let callback_lk = self.callbacks.lock().unwrap();
+                    if let Some(context) = &callback_lk.transition_inactive_callback_context {
+                        (callback_lk.transition_inactive_callback)(context.as_ref());
+                    }
+                }
+                lk = self.mutable.lock().unwrap();
+            } else {
+                lk = self.condition.wait(lk).unwrap();
+            }
+        }
+    }
+
+    fn setup_items(
+        data: &mut ThreadMutableData,
+        max_count: usize,
+    ) -> VecDeque<StateBlockSignatureVerificationValue> {
+        let mut items = VecDeque::new();
+        if data.state_blocks.len() <= max_count {
+            std::mem::swap(&mut items, &mut data.state_blocks);
+        } else {
+            for _ in 0..max_count {
+                if let Some(item) = data.state_blocks.pop_front() {
+                    items.push_back(item);
+                }
+            }
+            debug_assert!(!data.state_blocks.is_empty());
+        }
+
+        items
+    }
+
+    fn verify_state_blocks(&self, items: VecDeque<StateBlockSignatureVerificationValue>) {
         if items.is_empty() {
             return;
         }
@@ -119,7 +266,8 @@ impl<'a> StateBlockSignatureVerification {
         };
         self.signature_checker.verify(&mut check);
 
-        if self.timing_logging && now.elapsed() > Duration::from_millis(10) {
+        if self.timing_logging.load(Ordering::Relaxed) && now.elapsed() > Duration::from_millis(10)
+        {
             self.logger.try_log(&format!(
                 "Batch verified {} state blocks in {} ms",
                 size,
@@ -134,32 +282,9 @@ impl<'a> StateBlockSignatureVerification {
             items,
         };
 
-        if let Some(ctx) = &self.blocks_verified_callback_context {
-            (self.blocks_verified_callback)(ctx.as_ref(), result);
+        let lk = self.callbacks.lock().unwrap();
+        if let Some(ctx) = &lk.blocks_verified_callback_context {
+            (lk.blocks_verified_callback)(ctx.as_ref(), result);
         }
-    }
-
-    pub(crate) fn setup_items(
-        &self,
-        max_count: usize,
-    ) -> VecDeque<StateBlockSignatureVerificationValue> {
-        let mut items = VecDeque::new();
-        let mut blocks = self.state_blocks.lock().unwrap();
-        if blocks.len() <= max_count {
-            std::mem::swap(&mut items, &mut blocks);
-        } else {
-            for _ in 0..max_count {
-                if let Some(item) = blocks.pop_front() {
-                    items.push_back(item);
-                }
-            }
-            debug_assert!(!blocks.is_empty());
-        }
-
-        items
-    }
-
-    pub(crate) fn stop(&mut self) {
-        self.stopped = true;
     }
 }

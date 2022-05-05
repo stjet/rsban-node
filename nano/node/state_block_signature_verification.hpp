@@ -37,15 +37,6 @@ public:
 
 private:
 	rsnano::StateBlockSignatureVerificationHandle * handle;
-	nano::epochs & epochs;
-	nano::node_config & node_config;
-
-	nano::mutex mutex{ mutex_identifier (mutexes::state_block_signature_verification) };
-	nano::condition_variable condition;
-	std::thread thread;
-
-	void run (uint64_t block_processor_verification_size);
-	std::deque<value_type> setup_items (std::size_t);
 };
 
 std::unique_ptr<nano::container_info_component> collect_container_info (state_block_signature_verification & state_block_signature_verification, std::string const & name);

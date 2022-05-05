@@ -78,111 +78,38 @@ void transition_inactive_callback_adapter (void * context)
 	instance->transition_inactive_callback ();
 }
 
-nano::state_block_signature_verification::state_block_signature_verification (nano::signature_checker & signature_checker, nano::epochs & epochs, nano::node_config & node_config, nano::logger_mt & logger, uint64_t state_block_signature_verification_size) :
-	epochs (epochs),
-	node_config (node_config)
+nano::state_block_signature_verification::state_block_signature_verification (nano::signature_checker & signature_checker, nano::epochs & epochs, nano::node_config & node_config, nano::logger_mt & logger, uint64_t state_block_signature_verification_size)
 {
-	handle = rsnano::rsn_state_block_signature_verification_create (signature_checker.get_handle (), epochs.get_handle (), &logger, node_config.logging.timing_logging ());
+	handle = rsnano::rsn_state_block_signature_verification_create (signature_checker.get_handle (), epochs.get_handle (), &logger, node_config.logging.timing_logging (), state_block_signature_verification_size);
 	rsnano::rsn_state_block_signature_verification_verified_callback (handle, blocks_verified_callback_adapter, this);
 	rsnano::rsn_state_block_signature_verification_transition_inactive_callback (handle, transition_inactive_callback_adapter, this);
-	thread = std::thread ([this, state_block_signature_verification_size] () {
-		nano::thread_role::set (nano::thread_role::name::state_block_signature_verification);
-		this->run (state_block_signature_verification_size);
-	});
 }
 
 nano::state_block_signature_verification::~state_block_signature_verification ()
 {
-	stop ();
 	rsnano::rsn_state_block_signature_verification_destroy (handle);
 }
 
 void nano::state_block_signature_verification::stop ()
 {
-	{
-		nano::lock_guard<nano::mutex> guard (mutex);
-		rsnano::rsn_state_block_signature_verification_stop (handle);
-	}
-
-	if (thread.joinable ())
-	{
-		condition.notify_one ();
-		thread.join ();
-	}
-}
-
-void nano::state_block_signature_verification::run (uint64_t state_block_signature_verification_size)
-{
-	nano::unique_lock<nano::mutex> lk (mutex);
-	while (!rsnano::rsn_state_block_signature_verification_get_stopped (handle))
-	{
-		if (!rsnano::rsn_state_block_signature_verification_blocks_empty (handle))
-		{
-			std::size_t const max_verification_batch (state_block_signature_verification_size != 0 ? state_block_signature_verification_size : nano::signature_checker::get_batch_size () * (node_config.signature_checker_threads + 1));
-			rsnano::rsn_state_block_signature_verification_set_active (handle, true);
-			while (!rsnano::rsn_state_block_signature_verification_blocks_empty (handle) && !rsnano::rsn_state_block_signature_verification_get_stopped (handle))
-			{
-				auto items = setup_items (max_verification_batch);
-				lk.unlock ();
-
-				auto item_dtos (items_to_dto (items));
-				rsnano::rsn_state_block_signature_verification_verify (handle, item_dtos.data (), item_dtos.size ());
-				for (auto & i : item_dtos)
-				{
-					rsnano::rsn_shared_block_enum_handle_destroy (i.block);
-				}
-
-				lk.lock ();
-			}
-			rsnano::rsn_state_block_signature_verification_set_active (handle, false);
-			lk.unlock ();
-			transition_inactive_callback ();
-			lk.lock ();
-		}
-		else
-		{
-			condition.wait (lk);
-		}
-	}
+	rsnano::rsn_state_block_signature_verification_stop (handle);
 }
 
 bool nano::state_block_signature_verification::is_active ()
 {
-	nano::lock_guard<nano::mutex> guard (mutex);
 	return rsnano::rsn_state_block_signature_verification_is_active (handle);
 }
 
 void nano::state_block_signature_verification::add (value_type const & item)
 {
-	{
-		nano::lock_guard<nano::mutex> guard (mutex);
-		rsnano::StateBlockSignatureVerificationValueDto dto;
-		item_to_dto (item, dto);
-		rsnano::rsn_state_block_signature_verification_add (handle, &dto);
-	}
-	condition.notify_one ();
+	rsnano::StateBlockSignatureVerificationValueDto dto;
+	item_to_dto (item, dto);
+	rsnano::rsn_state_block_signature_verification_add (handle, &dto);
 }
 
 std::size_t nano::state_block_signature_verification::size ()
 {
-	nano::lock_guard<nano::mutex> guard (mutex);
 	return rsnano::rsn_state_block_signature_verification_size (handle);
-}
-
-auto nano::state_block_signature_verification::setup_items (std::size_t max_count) -> std::deque<value_type>
-{
-	std::deque<value_type> items;
-	std::vector<rsnano::StateBlockSignatureVerificationValueDto> item_dtos;
-	item_dtos.resize (max_count);
-	auto count = rsnano::rsn_state_block_signature_verification_setup_items (handle, max_count, item_dtos.data ());
-	for (auto i (0); i < count; i++)
-	{
-		nano::state_block_signature_verification::value_type item;
-		dto_to_value_type (item_dtos[i], item);
-		items.push_back (item);
-	}
-
-	return items;
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (state_block_signature_verification & state_block_signature_verification, std::string const & name)

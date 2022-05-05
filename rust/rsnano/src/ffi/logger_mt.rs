@@ -15,6 +15,9 @@ impl LoggerMT {
     }
 }
 
+unsafe impl Sync for LoggerMT {}
+unsafe impl Send for LoggerMT {}
+
 impl Logger for LoggerMT {
     fn try_log(&self, message: &str) -> bool {
         unsafe {

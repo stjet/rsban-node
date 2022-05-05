@@ -45,12 +45,14 @@ pub unsafe extern "C" fn rsn_state_block_signature_verification_create(
     epochs: *const EpochsHandle,
     logger: *mut c_void,
     timing_logging: bool,
+    verification_size: usize,
 ) -> *mut StateBlockSignatureVerificationHandle {
     let checker = (*checker).checker.clone();
     let epochs = Arc::new((*epochs).epochs.clone());
     let logger = Arc::new(LoggerMT::new(logger));
-    let mut verification = StateBlockSignatureVerification::new(checker, epochs, logger);
-    verification.timing_logging = timing_logging;
+    let verification =
+        StateBlockSignatureVerification::new(checker, epochs, logger, verification_size).unwrap();
+    verification.enable_timing_logging(timing_logging);
     Box::into_raw(Box::new(StateBlockSignatureVerificationHandle {
         verification,
     }))
@@ -60,28 +62,7 @@ pub unsafe extern "C" fn rsn_state_block_signature_verification_create(
 pub unsafe extern "C" fn rsn_state_block_signature_verification_destroy(
     handle: *mut StateBlockSignatureVerificationHandle,
 ) {
-    let bx = Box::from_raw(handle);
-    //bx.checker.stop();
-    drop(bx);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_signature_verification_verify(
-    handle: &StateBlockSignatureVerificationHandle,
-    items: *const StateBlockSignatureVerificationValueDto,
-    len: usize,
-) {
-    let items = std::slice::from_raw_parts(items, len);
-    let items: Vec<_> = items
-        .iter()
-        .map(|i| StateBlockSignatureVerificationValue {
-            block: (*i.block).block.clone(),
-            account: crate::Account::from_bytes(i.account),
-            verification: FromPrimitive::from_u8(i.verification).unwrap(),
-        })
-        .collect();
-
-    handle.verification.verify_state_blocks(items);
+    drop(Box::from_raw(handle));
 }
 
 #[no_mangle]
@@ -114,6 +95,9 @@ struct StateBlocksVerifiedContext {
     pub ffi_context: *mut c_void,
     pub ffi_callback: StateBlockVerifiedCallback,
 }
+
+unsafe impl Sync for StateBlocksVerifiedContext {}
+unsafe impl Send for StateBlocksVerifiedContext {}
 
 fn blocks_verified_callback_adapter(
     context: &dyn Any,
@@ -153,6 +137,9 @@ struct TransitionInactiveContext {
     pub ffi_callback: TransitionInactiveCallback,
 }
 
+unsafe impl Sync for TransitionInactiveContext {}
+unsafe impl Send for TransitionInactiveContext {}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_signature_verification_transition_inactive_callback(
     handle: *mut StateBlockSignatureVerificationHandle,
@@ -177,42 +164,11 @@ fn transition_inactive_callback_adapter(context: &dyn Any) {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_setup_items(
-    handle: *mut StateBlockSignatureVerificationHandle,
-    max_count: usize,
-    result: *mut StateBlockSignatureVerificationValueDto,
-) -> usize {
-    let verification = unsafe { &(*handle).verification };
-    let result = unsafe { std::slice::from_raw_parts_mut(result, max_count) };
-    let items = verification.setup_items(max_count);
-    for i in 0..items.len() {
-        result[i] = (&items[i]).into();
-    }
-    items.len()
-}
-#[no_mangle]
 pub extern "C" fn rsn_state_block_signature_verification_stop(
     handle: *mut StateBlockSignatureVerificationHandle,
 ) {
     let verification = unsafe { &mut (*handle).verification };
-    verification.stop();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_get_stopped(
-    handle: *const StateBlockSignatureVerificationHandle,
-) -> bool {
-    let verification = unsafe { &(*handle).verification };
-    verification.stopped
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_set_active(
-    handle: *mut StateBlockSignatureVerificationHandle,
-    active: bool,
-) {
-    let verification = unsafe { &mut (*handle).verification };
-    verification.active = active;
+    verification.stop().unwrap();
 }
 
 #[no_mangle]
@@ -220,17 +176,7 @@ pub extern "C" fn rsn_state_block_signature_verification_is_active(
     handle: *const StateBlockSignatureVerificationHandle,
 ) -> bool {
     let verification = unsafe { &(*handle).verification };
-    verification.active
-}
-
-// state_blocks
-//----------------------------
-#[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_blocks_empty(
-    handle: *const StateBlockSignatureVerificationHandle,
-) -> bool {
-    let verification = unsafe { &(*handle).verification };
-    verification.state_blocks.lock().unwrap().is_empty()
+    verification.is_active()
 }
 
 #[no_mangle]
@@ -245,7 +191,7 @@ pub extern "C" fn rsn_state_block_signature_verification_add(
         account: Account::from_bytes(block.account),
         verification: FromPrimitive::from_u8(block.verification).unwrap(),
     };
-    verification.state_blocks.lock().unwrap().push_back(block);
+    verification.add(block);
 }
 
 #[no_mangle]
@@ -253,41 +199,8 @@ pub extern "C" fn rsn_state_block_signature_verification_size(
     handle: *const StateBlockSignatureVerificationHandle,
 ) -> usize {
     let verification = unsafe { &(*handle).verification };
-    verification.state_blocks.lock().unwrap().len()
+    verification.size()
 }
-
-#[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_blocks_drain(
-    handle: *mut StateBlockSignatureVerificationHandle,
-    count: usize,
-    result: *mut StateBlockSignatureVerificationValueDto,
-) {
-    let verification = unsafe { &mut (*handle).verification };
-    let result = unsafe { std::slice::from_raw_parts_mut(result, count) };
-    let mut blocks = verification.state_blocks.lock().unwrap();
-    assert_eq!(count, blocks.len());
-    for i in 0..count {
-        result[i] = (&blocks[i]).into();
-    }
-    blocks.clear();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_blocks_pop(
-    handle: *mut StateBlockSignatureVerificationHandle,
-    result: *mut StateBlockSignatureVerificationValueDto,
-) {
-    let verification = unsafe { &mut (*handle).verification };
-    let result = unsafe { &mut *result };
-    let mut blocks = verification.state_blocks.lock().unwrap();
-    let front = blocks.pop_front().unwrap();
-    result.block = Box::into_raw(Box::new(BlockHandle {
-        block: front.block.clone(),
-    }));
-    result.account = front.account.to_bytes();
-    result.verification = front.verification as u8;
-}
-//----------------------------
 
 impl From<&StateBlockSignatureVerificationValue> for StateBlockSignatureVerificationValueDto {
     fn from(value: &StateBlockSignatureVerificationValue) -> Self {

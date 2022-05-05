@@ -147,7 +147,6 @@ fn blocks_verified_callback_adapter(
     }
 }
 
-//todo
 #[no_mangle]
 pub extern "C" fn rsn_state_block_signature_verification_setup_items(
     handle: *mut StateBlockSignatureVerificationHandle,
@@ -161,6 +160,39 @@ pub extern "C" fn rsn_state_block_signature_verification_setup_items(
         result[i] = (&items[i]).into();
     }
     items.len()
+}
+#[no_mangle]
+pub extern "C" fn rsn_state_block_signature_verification_set_stopped(
+    handle: *mut StateBlockSignatureVerificationHandle,
+    stopped: bool,
+) {
+    let verification = unsafe { &mut (*handle).verification };
+    verification.stopped = stopped;
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_state_block_signature_verification_get_stopped(
+    handle: *const StateBlockSignatureVerificationHandle,
+) -> bool {
+    let verification = unsafe { &(*handle).verification };
+    verification.stopped
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_state_block_signature_verification_set_active(
+    handle: *mut StateBlockSignatureVerificationHandle,
+    active: bool,
+) {
+    let verification = unsafe { &mut (*handle).verification };
+    verification.active = active;
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_state_block_signature_verification_get_active(
+    handle: *const StateBlockSignatureVerificationHandle,
+) -> bool {
+    let verification = unsafe { &(*handle).verification };
+    verification.active
 }
 
 // state_blocks

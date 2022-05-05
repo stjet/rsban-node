@@ -94,7 +94,7 @@ void nano::state_block_signature_verification::stop ()
 {
 	{
 		nano::lock_guard<nano::mutex> guard (mutex);
-		stopped = true;
+		rsnano::rsn_state_block_signature_verification_set_stopped (handle, true);
 	}
 
 	if (thread.joinable ())
@@ -107,14 +107,13 @@ void nano::state_block_signature_verification::stop ()
 void nano::state_block_signature_verification::run (uint64_t state_block_signature_verification_size)
 {
 	nano::unique_lock<nano::mutex> lk (mutex);
-	while (!stopped)
+	while (!rsnano::rsn_state_block_signature_verification_get_stopped (handle))
 	{
-		;
 		if (!rsnano::rsn_state_block_signature_verification_blocks_empty (handle))
 		{
 			std::size_t const max_verification_batch (state_block_signature_verification_size != 0 ? state_block_signature_verification_size : nano::signature_checker::get_batch_size () * (node_config.signature_checker_threads + 1));
-			active = true;
-			while (!rsnano::rsn_state_block_signature_verification_blocks_empty (handle) && !stopped)
+			rsnano::rsn_state_block_signature_verification_set_active (handle, true);
+			while (!rsnano::rsn_state_block_signature_verification_blocks_empty (handle) && !rsnano::rsn_state_block_signature_verification_get_stopped (handle))
 			{
 				auto items = setup_items (max_verification_batch);
 				lk.unlock ();
@@ -128,7 +127,7 @@ void nano::state_block_signature_verification::run (uint64_t state_block_signatu
 
 				lk.lock ();
 			}
-			active = false;
+			rsnano::rsn_state_block_signature_verification_set_active (handle, false);
 			lk.unlock ();
 			transition_inactive_callback ();
 			lk.lock ();
@@ -143,7 +142,7 @@ void nano::state_block_signature_verification::run (uint64_t state_block_signatu
 bool nano::state_block_signature_verification::is_active ()
 {
 	nano::lock_guard<nano::mutex> guard (mutex);
-	return active;
+	return rsnano::rsn_state_block_signature_verification_get_active (handle);
 }
 
 void nano::state_block_signature_verification::add (value_type const & item)

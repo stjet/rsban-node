@@ -41,8 +41,6 @@ private:
 	nano::node_config & node_config;
 
 	nano::mutex mutex{ mutex_identifier (mutexes::state_block_signature_verification) };
-	bool stopped{ false };
-	bool active{ false };
 	nano::condition_variable condition;
 	std::thread thread;
 

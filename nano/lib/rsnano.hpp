@@ -893,7 +893,17 @@ bool timing_logging);
 
 void rsn_state_block_signature_verification_destroy (StateBlockSignatureVerificationHandle * handle);
 
+bool rsn_state_block_signature_verification_get_active (const StateBlockSignatureVerificationHandle * handle);
+
+bool rsn_state_block_signature_verification_get_stopped (const StateBlockSignatureVerificationHandle * handle);
+
 void rsn_state_block_signature_verification_result_destroy (StateBlockSignatureVerificationResultHandle * handle);
+
+void rsn_state_block_signature_verification_set_active (StateBlockSignatureVerificationHandle * handle,
+bool active);
+
+void rsn_state_block_signature_verification_set_stopped (StateBlockSignatureVerificationHandle * handle,
+bool stopped);
 
 uintptr_t rsn_state_block_signature_verification_setup_items (StateBlockSignatureVerificationHandle * handle,
 uintptr_t max_count,

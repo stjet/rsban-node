@@ -32,6 +32,8 @@ pub(crate) struct StateBlockSignatureVerification {
     logger: Arc<dyn Logger>,
     //todo remove pub
     pub state_blocks: Mutex<VecDeque<StateBlockSignatureVerificationValue>>,
+    pub active: bool,
+    pub stopped: bool,
 }
 
 impl<'a> StateBlockSignatureVerification {
@@ -41,6 +43,8 @@ impl<'a> StateBlockSignatureVerification {
         logger: Arc<dyn Logger>,
     ) -> Self {
         Self {
+            active: false,
+            stopped: false,
             signature_checker,
             epochs,
             timing_logging: false,

@@ -147,6 +147,35 @@ fn blocks_verified_callback_adapter(
     }
 }
 
+type TransitionInactiveCallback = unsafe extern "C" fn(*mut c_void);
+struct TransitionInactiveContext {
+    pub ffi_context: *mut c_void,
+    pub ffi_callback: TransitionInactiveCallback,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_state_block_signature_verification_transition_inactive_callback(
+    handle: *mut StateBlockSignatureVerificationHandle,
+    callback: TransitionInactiveCallback,
+    context: *mut c_void,
+) {
+    let handle = &mut *handle;
+    let context = Box::new(TransitionInactiveContext {
+        ffi_context: context,
+        ffi_callback: callback,
+    });
+    handle
+        .verification
+        .set_transition_inactive_callback(transition_inactive_callback_adapter, context);
+}
+
+fn transition_inactive_callback_adapter(context: &dyn Any) {
+    let context = context.downcast_ref::<TransitionInactiveContext>().unwrap();
+    unsafe {
+        (context.ffi_callback)(context.ffi_context);
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_state_block_signature_verification_setup_items(
     handle: *mut StateBlockSignatureVerificationHandle,
@@ -162,12 +191,11 @@ pub extern "C" fn rsn_state_block_signature_verification_setup_items(
     items.len()
 }
 #[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_set_stopped(
+pub extern "C" fn rsn_state_block_signature_verification_stop(
     handle: *mut StateBlockSignatureVerificationHandle,
-    stopped: bool,
 ) {
     let verification = unsafe { &mut (*handle).verification };
-    verification.stopped = stopped;
+    verification.stop();
 }
 
 #[no_mangle]
@@ -188,7 +216,7 @@ pub extern "C" fn rsn_state_block_signature_verification_set_active(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_get_active(
+pub extern "C" fn rsn_state_block_signature_verification_is_active(
     handle: *const StateBlockSignatureVerificationHandle,
 ) -> bool {
     let verification = unsafe { &(*handle).verification };
@@ -206,7 +234,7 @@ pub extern "C" fn rsn_state_block_signature_verification_blocks_empty(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_blocks_push(
+pub extern "C" fn rsn_state_block_signature_verification_add(
     handle: *mut StateBlockSignatureVerificationHandle,
     block: *const StateBlockSignatureVerificationValueDto,
 ) {

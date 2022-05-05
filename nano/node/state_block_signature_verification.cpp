@@ -72,12 +72,19 @@ void blocks_verified_callback_adapter (void * context, const rsnano::StateBlockS
 	instance->blocks_verified_callback (items, verifications, hashes, blocks_signatures);
 }
 
+void transition_inactive_callback_adapter (void * context)
+{
+	auto instance = reinterpret_cast<nano::state_block_signature_verification *> (context);
+	instance->transition_inactive_callback ();
+}
+
 nano::state_block_signature_verification::state_block_signature_verification (nano::signature_checker & signature_checker, nano::epochs & epochs, nano::node_config & node_config, nano::logger_mt & logger, uint64_t state_block_signature_verification_size) :
 	epochs (epochs),
 	node_config (node_config)
 {
 	handle = rsnano::rsn_state_block_signature_verification_create (signature_checker.get_handle (), epochs.get_handle (), &logger, node_config.logging.timing_logging ());
 	rsnano::rsn_state_block_signature_verification_verified_callback (handle, blocks_verified_callback_adapter, this);
+	rsnano::rsn_state_block_signature_verification_transition_inactive_callback (handle, transition_inactive_callback_adapter, this);
 	thread = std::thread ([this, state_block_signature_verification_size] () {
 		nano::thread_role::set (nano::thread_role::name::state_block_signature_verification);
 		this->run (state_block_signature_verification_size);
@@ -94,7 +101,7 @@ void nano::state_block_signature_verification::stop ()
 {
 	{
 		nano::lock_guard<nano::mutex> guard (mutex);
-		rsnano::rsn_state_block_signature_verification_set_stopped (handle, true);
+		rsnano::rsn_state_block_signature_verification_stop (handle);
 	}
 
 	if (thread.joinable ())
@@ -142,7 +149,7 @@ void nano::state_block_signature_verification::run (uint64_t state_block_signatu
 bool nano::state_block_signature_verification::is_active ()
 {
 	nano::lock_guard<nano::mutex> guard (mutex);
-	return rsnano::rsn_state_block_signature_verification_get_active (handle);
+	return rsnano::rsn_state_block_signature_verification_is_active (handle);
 }
 
 void nano::state_block_signature_verification::add (value_type const & item)
@@ -151,7 +158,7 @@ void nano::state_block_signature_verification::add (value_type const & item)
 		nano::lock_guard<nano::mutex> guard (mutex);
 		rsnano::StateBlockSignatureVerificationValueDto dto;
 		item_to_dto (item, dto);
-		rsnano::rsn_state_block_signature_verification_blocks_push (handle, &dto);
+		rsnano::rsn_state_block_signature_verification_add (handle, &dto);
 	}
 	condition.notify_one ();
 }

@@ -28,6 +28,8 @@ pub(crate) struct StateBlockSignatureVerification {
     blocks_verified_callback: fn(&dyn Any, StateBlockSignatureVerificationResult),
     blocks_verified_callback_context: Option<Box<dyn Any>>,
     signature_checker: Arc<SignatureChecker>,
+    transition_inactive_callback: fn(&dyn Any) -> (),
+    transition_inactive_callback_context: Option<Box<dyn Any>>,
     epochs: Arc<Epochs>,
     logger: Arc<dyn Logger>,
     //todo remove pub
@@ -51,6 +53,8 @@ impl<'a> StateBlockSignatureVerification {
             logger,
             blocks_verified_callback: |_, _| {},
             blocks_verified_callback_context: None,
+            transition_inactive_callback: |_| {},
+            transition_inactive_callback_context: None,
             state_blocks: Mutex::new(VecDeque::new()),
         }
     }
@@ -62,6 +66,15 @@ impl<'a> StateBlockSignatureVerification {
     ) {
         self.blocks_verified_callback = callback;
         self.blocks_verified_callback_context = Some(context);
+    }
+
+    pub(crate) fn set_transition_inactive_callback(
+        &mut self,
+        callback: fn(&dyn Any),
+        context: Box<dyn Any>,
+    ) {
+        self.transition_inactive_callback = callback;
+        self.transition_inactive_callback_context = Some(context);
     }
 
     pub(crate) fn verify_state_blocks(&self, items: Vec<StateBlockSignatureVerificationValue>) {
@@ -144,5 +157,9 @@ impl<'a> StateBlockSignatureVerification {
         }
 
         items
+    }
+
+    pub(crate) fn stop(&mut self) {
+        self.stopped = true;
     }
 }

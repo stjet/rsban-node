@@ -532,6 +532,8 @@ struct StateBlockSignatureVerificationValueDto
 	uint8_t verification;
 };
 
+using TransitionInactiveCallback = void (*) (void *);
+
 struct StateBlockSignatureVerificationResultDto
 {
 	const uint8_t (*hashes)[32];
@@ -874,6 +876,9 @@ void rsn_state_block_representative (const BlockHandle * handle, uint8_t (*resul
 
 void rsn_state_block_representative_set (BlockHandle * handle, const uint8_t (*representative)[32]);
 
+void rsn_state_block_signature_verification_add (StateBlockSignatureVerificationHandle * handle,
+const StateBlockSignatureVerificationValueDto * block);
+
 void rsn_state_block_signature_verification_blocks_drain (StateBlockSignatureVerificationHandle * handle,
 uintptr_t count,
 StateBlockSignatureVerificationValueDto * result);
@@ -883,9 +888,6 @@ bool rsn_state_block_signature_verification_blocks_empty (const StateBlockSignat
 void rsn_state_block_signature_verification_blocks_pop (StateBlockSignatureVerificationHandle * handle,
 StateBlockSignatureVerificationValueDto * result);
 
-void rsn_state_block_signature_verification_blocks_push (StateBlockSignatureVerificationHandle * handle,
-const StateBlockSignatureVerificationValueDto * block);
-
 StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create (const SignatureCheckerHandle * checker,
 const EpochsHandle * epochs,
 void * logger,
@@ -893,23 +895,26 @@ bool timing_logging);
 
 void rsn_state_block_signature_verification_destroy (StateBlockSignatureVerificationHandle * handle);
 
-bool rsn_state_block_signature_verification_get_active (const StateBlockSignatureVerificationHandle * handle);
-
 bool rsn_state_block_signature_verification_get_stopped (const StateBlockSignatureVerificationHandle * handle);
+
+bool rsn_state_block_signature_verification_is_active (const StateBlockSignatureVerificationHandle * handle);
 
 void rsn_state_block_signature_verification_result_destroy (StateBlockSignatureVerificationResultHandle * handle);
 
 void rsn_state_block_signature_verification_set_active (StateBlockSignatureVerificationHandle * handle,
 bool active);
 
-void rsn_state_block_signature_verification_set_stopped (StateBlockSignatureVerificationHandle * handle,
-bool stopped);
-
 uintptr_t rsn_state_block_signature_verification_setup_items (StateBlockSignatureVerificationHandle * handle,
 uintptr_t max_count,
 StateBlockSignatureVerificationValueDto * result);
 
 uintptr_t rsn_state_block_signature_verification_size (const StateBlockSignatureVerificationHandle * handle);
+
+void rsn_state_block_signature_verification_stop (StateBlockSignatureVerificationHandle * handle);
+
+void rsn_state_block_signature_verification_transition_inactive_callback (StateBlockSignatureVerificationHandle * handle,
+TransitionInactiveCallback callback,
+void * context);
 
 void rsn_state_block_signature_verification_verified_callback (StateBlockSignatureVerificationHandle * handle,
 StateBlockVerifiedCallback callback,

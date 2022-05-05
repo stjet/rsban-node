@@ -189,7 +189,7 @@ pub extern "C" fn rsn_state_block_signature_verification_blocks_push(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_blocks_size(
+pub extern "C" fn rsn_state_block_signature_verification_size(
     handle: *const StateBlockSignatureVerificationHandle,
 ) -> usize {
     let verification = unsafe { &(*handle).verification };

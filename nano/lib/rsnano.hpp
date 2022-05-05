@@ -886,8 +886,6 @@ StateBlockSignatureVerificationValueDto * result);
 void rsn_state_block_signature_verification_blocks_push (StateBlockSignatureVerificationHandle * handle,
 const StateBlockSignatureVerificationValueDto * block);
 
-uintptr_t rsn_state_block_signature_verification_blocks_size (const StateBlockSignatureVerificationHandle * handle);
-
 StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create (const SignatureCheckerHandle * checker,
 const EpochsHandle * epochs,
 void * logger,
@@ -896,6 +894,12 @@ bool timing_logging);
 void rsn_state_block_signature_verification_destroy (StateBlockSignatureVerificationHandle * handle);
 
 void rsn_state_block_signature_verification_result_destroy (StateBlockSignatureVerificationResultHandle * handle);
+
+uintptr_t rsn_state_block_signature_verification_setup_items (StateBlockSignatureVerificationHandle * handle,
+uintptr_t max_count,
+StateBlockSignatureVerificationValueDto * result);
+
+uintptr_t rsn_state_block_signature_verification_size (const StateBlockSignatureVerificationHandle * handle);
 
 void rsn_state_block_signature_verification_verified_callback (StateBlockSignatureVerificationHandle * handle,
 StateBlockVerifiedCallback callback,

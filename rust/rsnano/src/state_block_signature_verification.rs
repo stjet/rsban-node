@@ -126,8 +126,19 @@ impl<'a> StateBlockSignatureVerification {
         &self,
         max_count: usize,
     ) -> VecDeque<StateBlockSignatureVerificationValue> {
-        let blocks = self.state_blocks.lock().unwrap();
+        let mut items = VecDeque::new();
+        let mut blocks = self.state_blocks.lock().unwrap();
+        if blocks.len() <= max_count {
+            std::mem::swap(&mut items, &mut blocks);
+        } else {
+            for _ in 0..max_count {
+                if let Some(item) = blocks.pop_front() {
+                    items.push_back(item);
+                }
+            }
+            debug_assert!(!blocks.is_empty());
+        }
 
-        todo!()
+        items
     }
 }

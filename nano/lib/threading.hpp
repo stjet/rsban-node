@@ -37,7 +37,6 @@ namespace thread_role
 		confirmation_height_processing,
 		worker,
 		request_aggregator,
-		state_block_signature_verification,
 		epoch_upgrader,
 		db_parallel_traversal,
 		election_scheduler,

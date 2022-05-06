@@ -78,9 +78,9 @@ void transition_inactive_callback_adapter (void * context)
 	instance->transition_inactive_callback ();
 }
 
-nano::state_block_signature_verification::state_block_signature_verification (nano::signature_checker & signature_checker, nano::epochs & epochs, nano::node_config & node_config, nano::logger_mt & logger, uint64_t state_block_signature_verification_size)
+nano::state_block_signature_verification::state_block_signature_verification (nano::signature_checker & signature_checker, nano::epochs & epochs, bool timing_logging, nano::logger_mt & logger, uint64_t state_block_signature_verification_size)
 {
-	handle = rsnano::rsn_state_block_signature_verification_create (signature_checker.get_handle (), epochs.get_handle (), &logger, node_config.logging.timing_logging (), state_block_signature_verification_size);
+	handle = rsnano::rsn_state_block_signature_verification_create (signature_checker.get_handle (), epochs.get_handle (), &logger, timing_logging, state_block_signature_verification_size);
 	rsnano::rsn_state_block_signature_verification_verified_callback (handle, blocks_verified_callback_adapter, this);
 	rsnano::rsn_state_block_signature_verification_transition_inactive_callback (handle, transition_inactive_callback_adapter, this);
 }

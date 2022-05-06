@@ -30,7 +30,6 @@ enum class mutexes
 	network_filter,
 	observer_set,
 	request_aggregator,
-	state_block_signature_verification,
 	telemetry,
 	vote_generator,
 	vote_processor,

@@ -84,4 +84,4 @@ util/build_prep/*/prep.sh
 
 .cargo
 cargo
-build
+build*

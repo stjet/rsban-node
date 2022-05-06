@@ -29,7 +29,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	next_log (std::chrono::steady_clock::now ()),
 	node (node_a),
 	write_database_queue (write_database_queue_a),
-	state_block_signature_verification (node.checker, node.ledger.constants.epochs, node.config.logging.timing_logging(), node.logger, node.flags.block_processor_verification_size)
+	state_block_signature_verification (node.checker, node.ledger.constants.epochs, node.config.logging.timing_logging (), node.logger, node.flags.block_processor_verification_size)
 {
 	state_block_signature_verification.blocks_verified_callback = [this] (std::deque<nano::state_block_signature_verification::value_type> & items, std::vector<int> const & verifications, std::vector<nano::block_hash> const & hashes, std::vector<nano::signature> const & blocks_signatures) {
 		this->process_verified_state_blocks (items, verifications, hashes, blocks_signatures);

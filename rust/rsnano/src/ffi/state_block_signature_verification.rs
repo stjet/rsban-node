@@ -1,4 +1,4 @@
-use std::{any::Any, ffi::c_void, sync::Arc};
+use std::{ffi::c_void, sync::Arc};
 
 use num::FromPrimitive;
 
@@ -40,127 +40,116 @@ pub struct StateBlockSignatureVerificationResultDto {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_signature_verification_create(
+pub extern "C" fn rsn_state_block_signature_verification_create(
     checker: *const SignatureCheckerHandle,
     epochs: *const EpochsHandle,
     logger: *mut c_void,
     timing_logging: bool,
     verification_size: usize,
 ) -> *mut StateBlockSignatureVerificationHandle {
-    let checker = (*checker).checker.clone();
-    let epochs = Arc::new((*epochs).epochs.clone());
+    let checker = unsafe { &*checker }.checker.clone();
+    let epochs = Arc::new((unsafe { &*epochs }).epochs.clone());
     let logger = Arc::new(LoggerMT::new(logger));
-    let verification =
-        StateBlockSignatureVerification::new(checker, epochs, logger, verification_size).unwrap();
-    verification.enable_timing_logging(timing_logging);
+    let verification = StateBlockSignatureVerification::builder()
+        .signature_checker(checker)
+        .epochs(epochs)
+        .logger(logger)
+        .enable_timing_logging(timing_logging)
+        .verification_size(verification_size)
+        .spawn()
+        .unwrap();
     Box::into_raw(Box::new(StateBlockSignatureVerificationHandle {
         verification,
     }))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_signature_verification_destroy(
+pub extern "C" fn rsn_state_block_signature_verification_destroy(
     handle: *mut StateBlockSignatureVerificationHandle,
 ) {
-    drop(Box::from_raw(handle));
+    drop(unsafe { Box::from_raw(handle) });
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_signature_verification_result_destroy(
+pub extern "C" fn rsn_state_block_signature_verification_result_destroy(
     handle: *mut StateBlockSignatureVerificationResultHandle,
 ) {
-    drop(Box::from_raw(handle))
+    drop(unsafe { Box::from_raw(handle) });
 }
 
 type StateBlockVerifiedCallback =
     unsafe extern "C" fn(*mut c_void, *const StateBlockSignatureVerificationResultDto);
 
+struct ContextHandle(*mut c_void);
+
+impl ContextHandle {
+    fn get(&self) -> *mut c_void {
+        self.0
+    }
+}
+
+unsafe impl Send for ContextHandle {}
+unsafe impl Sync for ContextHandle {}
+
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_signature_verification_verified_callback(
+pub extern "C" fn rsn_state_block_signature_verification_verified_callback(
     handle: *mut StateBlockSignatureVerificationHandle,
     callback: StateBlockVerifiedCallback,
     context: *mut c_void,
 ) {
-    let handle = &mut *handle;
-    let context = Box::new(StateBlocksVerifiedContext {
-        ffi_context: context,
-        ffi_callback: callback,
+    let handle = unsafe { &mut *handle };
+
+    let context_handle = ContextHandle(context);
+
+    let callback_adapter = Box::new(move |result: StateBlockSignatureVerificationResult| {
+        let result_handle = Box::new(StateBlockSignatureVerificationResultHandle {
+            verifications: result.verifications,
+            hashes: result.hashes.iter().map(|x| x.to_bytes()).collect(),
+            signatures: result.signatures.iter().map(|x| *x.as_bytes()).collect(),
+            items: result
+                .items
+                .iter()
+                .map(StateBlockSignatureVerificationValueDto::from)
+                .collect(),
+        });
+
+        let result_dto = StateBlockSignatureVerificationResultDto {
+            hashes: result_handle.hashes.as_ptr(),
+            signatures: result_handle.signatures.as_ptr(),
+            verifications: result_handle.verifications.as_ptr(),
+            size: result_handle.verifications.len(),
+            items: result_handle.items.as_ptr(),
+            handle: Box::into_raw(result_handle),
+        };
+
+        unsafe {
+            (callback)(context_handle.get(), &result_dto);
+        }
     });
+
     handle
         .verification
-        .set_blocks_verified_callback(blocks_verified_callback_adapter, context);
-}
-
-struct StateBlocksVerifiedContext {
-    pub ffi_context: *mut c_void,
-    pub ffi_callback: StateBlockVerifiedCallback,
-}
-
-unsafe impl Sync for StateBlocksVerifiedContext {}
-unsafe impl Send for StateBlocksVerifiedContext {}
-
-fn blocks_verified_callback_adapter(
-    context: &dyn Any,
-    result: StateBlockSignatureVerificationResult,
-) {
-    let result_handle = Box::new(StateBlockSignatureVerificationResultHandle {
-        verifications: result.verifications,
-        hashes: result.hashes.iter().map(|x| x.to_bytes()).collect(),
-        signatures: result.signatures.iter().map(|x| *x.as_bytes()).collect(),
-        items: result
-            .items
-            .iter()
-            .map(StateBlockSignatureVerificationValueDto::from)
-            .collect(),
-    });
-
-    let result_dto = StateBlockSignatureVerificationResultDto {
-        hashes: result_handle.hashes.as_ptr(),
-        signatures: result_handle.signatures.as_ptr(),
-        verifications: result_handle.verifications.as_ptr(),
-        size: result_handle.verifications.len(),
-        items: result_handle.items.as_ptr(),
-        handle: Box::into_raw(result_handle),
-    };
-
-    let context = context
-        .downcast_ref::<StateBlocksVerifiedContext>()
-        .unwrap();
-    unsafe {
-        (context.ffi_callback)(context.ffi_context, &result_dto);
-    }
+        .set_blocks_verified_callback(callback_adapter);
 }
 
 type TransitionInactiveCallback = unsafe extern "C" fn(*mut c_void);
-struct TransitionInactiveContext {
-    pub ffi_context: *mut c_void,
-    pub ffi_callback: TransitionInactiveCallback,
-}
-
-unsafe impl Sync for TransitionInactiveContext {}
-unsafe impl Send for TransitionInactiveContext {}
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_state_block_signature_verification_transition_inactive_callback(
+pub extern "C" fn rsn_state_block_signature_verification_transition_inactive_callback(
     handle: *mut StateBlockSignatureVerificationHandle,
     callback: TransitionInactiveCallback,
     context: *mut c_void,
 ) {
-    let handle = &mut *handle;
-    let context = Box::new(TransitionInactiveContext {
-        ffi_context: context,
-        ffi_callback: callback,
+    let handle = unsafe { &mut *handle };
+    let context_handle = ContextHandle(context);
+
+    let callback_adapter = Box::new(move || unsafe {
+        (callback)(context_handle.get());
     });
+
     handle
         .verification
-        .set_transition_inactive_callback(transition_inactive_callback_adapter, context);
-}
-
-fn transition_inactive_callback_adapter(context: &dyn Any) {
-    let context = context.downcast_ref::<TransitionInactiveContext>().unwrap();
-    unsafe {
-        (context.ffi_callback)(context.ffi_context);
-    }
+        .set_transition_inactive_callback(callback_adapter);
 }
 
 #[no_mangle]

@@ -17,6 +17,8 @@ struct BandwidthLimiterHandle;
 
 struct BlockHandle;
 
+struct BlockUniquerHandle;
+
 struct EpochsHandle;
 
 struct SignatureCheckerHandle;
@@ -580,6 +582,8 @@ int32_t rsn_block_details_serialize (const BlockDetailsDto * dto, void * stream)
 
 bool rsn_block_equals (const BlockHandle * a, const BlockHandle * b);
 
+void rsn_block_full_hash (const BlockHandle * handle, uint8_t * hash);
+
 BlockHandle * rsn_block_handle_clone (const BlockHandle * handle);
 
 bool rsn_block_has_sideband (const BlockHandle * block);
@@ -609,6 +613,14 @@ void rsn_block_signature (const BlockHandle * handle, uint8_t (*result)[64]);
 void rsn_block_signature_set (BlockHandle * handle, const uint8_t (*signature)[64]);
 
 uint8_t rsn_block_type (const BlockHandle * handle);
+
+BlockUniquerHandle * rsn_block_uniquer_create ();
+
+void rsn_block_uniquer_destroy (BlockUniquerHandle * handle);
+
+uintptr_t rsn_block_uniquer_size (const BlockUniquerHandle * handle);
+
+BlockHandle * rsn_block_uniquer_unique (BlockUniquerHandle * handle, BlockHandle * block);
 
 uint64_t rsn_block_work (const BlockHandle * handle);
 

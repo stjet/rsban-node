@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod block_builder;
 mod block_details;
+mod block_uniquer;
 mod change_block;
 mod open_block;
 mod receive_block;
@@ -13,6 +14,7 @@ use anyhow::Result;
 #[cfg(test)]
 pub use block_builder::*;
 pub use block_details::*;
+pub(crate) use block_uniquer::*;
 pub use change_block::*;
 use num::FromPrimitive;
 pub use open_block::*;
@@ -21,8 +23,8 @@ pub use send_block::*;
 pub use state_block::*;
 
 use crate::{
-    Account, Amount, BlockHash, Epoch, Link, PropertyTreeReader, PropertyTreeWriter, Signature,
-    Stream,
+    Account, Amount, BlockHash, BlockHashBuilder, Epoch, Link, PropertyTreeReader,
+    PropertyTreeWriter, Signature, Stream,
 };
 
 #[repr(u8)]
@@ -251,6 +253,13 @@ pub trait Block {
     fn sideband(&'_ self) -> Option<&'_ BlockSideband>;
     fn set_sideband(&mut self, sideband: BlockSideband);
     fn hash(&self) -> BlockHash;
+    fn full_hash(&self) -> BlockHash {
+        BlockHashBuilder::new()
+            .update(self.hash().as_bytes())
+            .update(self.block_signature().as_bytes())
+            .update(self.work().to_ne_bytes())
+            .build()
+    }
     fn link(&self) -> Link;
     fn block_signature(&self) -> &Signature;
     fn set_block_signature(&mut self, signature: &Signature);

@@ -103,14 +103,7 @@ nano::block_hash const & nano::block::hash () const
 nano::block_hash nano::block::full_hash () const
 {
 	nano::block_hash result;
-	blake2b_state state;
-	blake2b_init (&state, sizeof (result.bytes));
-	blake2b_update (&state, hash ().bytes.data (), sizeof (hash ()));
-	auto signature (block_signature ());
-	blake2b_update (&state, signature.bytes.data (), sizeof (signature));
-	auto work (block_work ());
-	blake2b_update (&state, &work, sizeof (work));
-	blake2b_final (&state, result.bytes.data (), sizeof (result.bytes));
+	rsnano::rsn_block_full_hash (handle, result.bytes.data ());
 	return result;
 }
 
@@ -1382,6 +1375,16 @@ nano::amount nano::block_sideband::balance () const
 	return result;
 }
 
+nano::block_uniquer::block_uniquer () :
+	handle (rsnano::rsn_block_uniquer_create ())
+{
+}
+
+nano::block_uniquer::~block_uniquer ()
+{
+	rsnano::rsn_block_uniquer_destroy (handle);
+}
+
 std::shared_ptr<nano::block> nano::block_uniquer::unique (std::shared_ptr<nano::block> const & block_a)
 {
 	auto result (block_a);
@@ -1421,12 +1424,28 @@ std::shared_ptr<nano::block> nano::block_uniquer::unique (std::shared_ptr<nano::
 		}
 	}
 	return result;
+
+	// if (block_a == nullptr)
+	// {
+	// 	return nullptr;
+	// }
+	// auto uniqued (rsnano::rsn_block_uniquer_unique (handle, block_a->get_handle ()));
+	// if (uniqued == block_a.get_handle ())
+	// {
+	// 	return block_a;
+	// }
+	// else
+	// {
+	// 	return block_handle_to_block (uniqued);
+	// }
 }
 
 size_t nano::block_uniquer::size ()
 {
 	nano::lock_guard<nano::mutex> lock (mutex);
 	return blocks.size ();
+
+	// return rsnano::rsn_block_uniquer_size (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (block_uniquer & block_uniquer, std::string const & name)

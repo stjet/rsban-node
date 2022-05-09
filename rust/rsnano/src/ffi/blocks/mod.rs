@@ -1,4 +1,5 @@
 mod block_details;
+mod block_uniquer;
 mod change_block;
 mod open_block;
 mod receive_block;
@@ -177,6 +178,19 @@ pub unsafe extern "C" fn rsn_block_equals(a: *const BlockHandle, b: *const Block
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
     (*hash) = (*handle).block.read().unwrap().as_block().hash().to_bytes();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_full_hash(handle: *const BlockHandle, hash: *mut u8) {
+    let result = unsafe { std::slice::from_raw_parts_mut(hash, 32) };
+    let hash = (unsafe { &*handle })
+        .block
+        .read()
+        .unwrap()
+        .as_block()
+        .full_hash();
+
+    result.copy_from_slice(hash.as_bytes());
 }
 
 #[no_mangle]

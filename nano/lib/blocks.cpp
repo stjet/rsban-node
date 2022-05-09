@@ -163,7 +163,12 @@ nano::account nano::block::account () const
 
 rsnano::BlockHandle * nano::block::clone_handle () const
 {
-	return rsnano::rsn_block_handle_clone (get_handle ());
+	return rsnano::rsn_block_handle_clone (handle);
+}
+
+const void * nano::block::get_rust_data_pointer () const
+{
+	return rsnano::rsn_block_rust_data_pointer (handle);
 }
 
 nano::qualified_root nano::block::qualified_root () const
@@ -1387,65 +1392,24 @@ nano::block_uniquer::~block_uniquer ()
 
 std::shared_ptr<nano::block> nano::block_uniquer::unique (std::shared_ptr<nano::block> const & block_a)
 {
-	auto result (block_a);
-	if (result != nullptr)
+	if (block_a == nullptr)
 	{
-		nano::uint256_union key (block_a->full_hash ());
-		nano::lock_guard<nano::mutex> lock (mutex);
-		auto & existing (blocks[key]);
-		if (auto block_l = existing.lock ())
-		{
-			result = block_l;
-		}
-		else
-		{
-			existing = block_a;
-		}
-		release_assert (std::numeric_limits<CryptoPP::word32>::max () > blocks.size ());
-		for (auto i (0); i < cleanup_count && !blocks.empty (); ++i)
-		{
-			auto random_offset (nano::random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (blocks.size () - 1)));
-			auto existing (std::next (blocks.begin (), random_offset));
-			if (existing == blocks.end ())
-			{
-				existing = blocks.begin ();
-			}
-			if (existing != blocks.end ())
-			{
-				if (auto block_l = existing->second.lock ())
-				{
-					// Still live
-				}
-				else
-				{
-					blocks.erase (existing);
-				}
-			}
-		}
+		return nullptr;
 	}
-	return result;
-
-	// if (block_a == nullptr)
-	// {
-	// 	return nullptr;
-	// }
-	// auto uniqued (rsnano::rsn_block_uniquer_unique (handle, block_a->get_handle ()));
-	// if (uniqued == block_a.get_handle ())
-	// {
-	// 	return block_a;
-	// }
-	// else
-	// {
-	// 	return block_handle_to_block (uniqued);
-	// }
+	auto uniqued (rsnano::rsn_block_uniquer_unique (handle, block_a->get_handle ()));
+	if (uniqued == block_a->get_handle ())
+	{
+		return block_a;
+	}
+	else
+	{
+		return block_handle_to_block (uniqued);
+	}
 }
 
 size_t nano::block_uniquer::size ()
 {
-	nano::lock_guard<nano::mutex> lock (mutex);
-	return blocks.size ();
-
-	// return rsnano::rsn_block_uniquer_size (handle);
+	return rsnano::rsn_block_uniquer_size (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (block_uniquer & block_uniquer, std::string const & name)

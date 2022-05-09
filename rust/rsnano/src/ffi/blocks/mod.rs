@@ -66,6 +66,12 @@ pub extern "C" fn rsn_block_handle_clone(handle: &BlockHandle) -> *mut BlockHand
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_block_rust_data_pointer(handle: *const BlockHandle) -> *const c_void {
+    let ptr = Arc::as_ptr(&(*handle).block);
+    ptr as *const c_void
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_block_destroy(handle: *mut BlockHandle) {
     drop(Box::from_raw(handle))
 }
@@ -181,14 +187,9 @@ pub unsafe extern "C" fn rsn_block_hash(handle: *const BlockHandle, hash: *mut [
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_full_hash(handle: *const BlockHandle, hash: *mut u8) {
-    let result = unsafe { std::slice::from_raw_parts_mut(hash, 32) };
-    let hash = (unsafe { &*handle })
-        .block
-        .read()
-        .unwrap()
-        .as_block()
-        .full_hash();
+pub unsafe extern "C" fn rsn_block_full_hash(handle: *const BlockHandle, hash: *mut u8) {
+    let result = std::slice::from_raw_parts_mut(hash, 32);
+    let hash = (*handle).block.read().unwrap().as_block().full_hash();
 
     result.copy_from_slice(hash.as_bytes());
 }

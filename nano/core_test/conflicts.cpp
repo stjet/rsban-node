@@ -174,7 +174,7 @@ TEST (vote_uniquer, same_block)
 	ASSERT_EQ (vote1, uniquer.unique (vote1));
 	ASSERT_EQ (vote2, uniquer.unique (vote2));
 	ASSERT_NE (vote1, vote2);
-	ASSERT_EQ (boost::get<std::shared_ptr<nano::block>> (vote1->blocks[0]), boost::get<std::shared_ptr<nano::block>> (vote2->blocks[0]));
+	ASSERT_EQ (boost::get<std::shared_ptr<nano::block>> (vote1->blocks[0])->get_rust_data_pointer (), boost::get<std::shared_ptr<nano::block>> (vote2->blocks[0])->get_rust_data_pointer ());
 }
 
 TEST (vote_uniquer, vbh_one)

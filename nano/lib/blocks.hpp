@@ -129,8 +129,11 @@ public:
 	virtual nano::work_version work_version () const;
 	// If there are any changes to the hashables, call this to update the cached hash
 	void refresh ();
-	virtual rsnano::BlockHandle * get_handle () const;
-	virtual rsnano::BlockHandle * clone_handle () const;
+	rsnano::BlockHandle * get_handle () const;
+	rsnano::BlockHandle * clone_handle () const;
+
+	// gets the pointer to the block data within Rust;
+	const void * get_rust_data_pointer () const;
 
 protected:
 	virtual nano::block_hash generate_hash () const;

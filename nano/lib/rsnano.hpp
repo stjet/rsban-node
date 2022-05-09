@@ -592,6 +592,8 @@ void rsn_block_hash (const BlockHandle * handle, uint8_t (*hash)[32]);
 
 void rsn_block_previous (const BlockHandle * handle, uint8_t (*result)[32]);
 
+const void * rsn_block_rust_data_pointer (const BlockHandle * handle);
+
 int32_t rsn_block_serialize (BlockHandle * handle, void * stream);
 
 int32_t rsn_block_serialize_json (const BlockHandle * handle, void * ptree);

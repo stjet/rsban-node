@@ -59,7 +59,7 @@ impl PublicKey {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug, Hash)]
 pub struct BlockHash {
     value: [u8; 32], //big endian
 }

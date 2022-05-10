@@ -71,7 +71,7 @@ TEST (message_parser, exact_confirm_ack_size)
 	nano::keypair key1;
 	auto block (std::make_shared<nano::send_block> (1, 1, 2, key1.prv, key1.pub, *system.work.generate (nano::root (1))));
 	nano::keypair key2;
-	auto vote (std::make_shared<nano::vote> (0, key2.prv, 0, 0, std::move (block)));
+	auto vote (std::make_shared<nano::vote> (0, key2.prv, 0, 0, std::vector<nano::block_hash>{ block->hash () }));
 	nano::confirm_ack message{ nano::dev::network_params.network, vote };
 	std::vector<uint8_t> bytes;
 	{

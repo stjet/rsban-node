@@ -24,6 +24,7 @@ mod state_block_signature_verification;
 mod stats;
 mod token_bucket;
 mod utils;
+mod vote;
 
 pub use bandwidth_limiter::*;
 pub use blocks::*;
@@ -38,3 +39,4 @@ pub(crate) use state_block_signature_verification::*;
 pub use stats::*;
 pub use token_bucket::*;
 pub use utils::*;
+pub(crate) use vote::*;

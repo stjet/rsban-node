@@ -27,6 +27,8 @@ struct StateBlockSignatureVerificationHandle;
 
 struct StateBlockSignatureVerificationResultHandle;
 
+struct VoteHandle;
+
 struct BlockDetailsDto
 {
 	uint8_t epoch;
@@ -938,6 +940,20 @@ bool rsn_validate_message (const uint8_t (*pub_key)[32],
 const uint8_t * message,
 uintptr_t len,
 const uint8_t (*signature)[64]);
+
+VoteHandle * rsn_vote_copy (const VoteHandle * handle);
+
+VoteHandle * rsn_vote_create ();
+
+VoteHandle * rsn_vote_create2 (uint64_t timestamp, uint8_t duration);
+
+void rsn_vote_destroy (VoteHandle * handle);
+
+bool rsn_vote_equals (const VoteHandle * first, const VoteHandle * second);
+
+uint64_t rsn_vote_timestamp_raw (const VoteHandle * handle);
+
+void rsn_vote_timestamp_raw_set (VoteHandle * handle, uint64_t timestamp);
 
 int32_t rsn_voting_constants_create (const NetworkConstantsDto * network_constants,
 VotingConstantsDto * dto);

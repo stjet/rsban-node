@@ -550,7 +550,7 @@ nano::block_info::block_info (nano::account const & account_a, nano::amount cons
 
 bool nano::vote::operator== (nano::vote const & other_a) const
 {
-	return timestamp_m == other_a.timestamp_m && hashes == other_a.hashes && account == other_a.account && signature == other_a.signature;
+	return rsnano::rsn_vote_equals (handle, other_a.handle) && hashes == other_a.hashes && account == other_a.account && signature == other_a.signature;
 }
 
 bool nano::vote::operator!= (nano::vote const & other_a) const
@@ -590,9 +590,10 @@ std::string nano::vote::to_json () const
  */
 uint64_t nano::vote::timestamp () const
 {
-	return (timestamp_m == std::numeric_limits<uint64_t>::max ())
-	? timestamp_m // final vote
-	: (timestamp_m & timestamp_mask);
+	auto timestamp = rsnano::rsn_vote_timestamp_raw (handle);
+	return (timestamp == std::numeric_limits<uint64_t>::max ())
+	? timestamp // final vote
+	: (timestamp & timestamp_mask);
 }
 
 uint8_t nano::vote::duration_bits () const
@@ -600,7 +601,7 @@ uint8_t nano::vote::duration_bits () const
 	// Duration field is specified in the 4 low-order bits of the timestamp.
 	// This makes the timestamp have a minimum granularity of 16ms
 	// The duration is specified as 2^(duration + 4) giving it a range of 16-524,288ms in power of two increments
-	auto result = timestamp_m & ~timestamp_mask;
+	auto result = rsnano::rsn_vote_timestamp_raw (handle) & ~timestamp_mask;
 	debug_assert (result < 16);
 	return static_cast<uint8_t> (result);
 }
@@ -610,25 +611,48 @@ std::chrono::milliseconds nano::vote::duration () const
 	return std::chrono::milliseconds{ 1u << (duration_bits () + 4) };
 }
 
-nano::vote::vote (nano::vote const & other_a) :
-	timestamp_m{ other_a.timestamp_m },
-	hashes{ other_a.hashes },
-	account (other_a.account),
-	signature (other_a.signature)
+nano::vote::vote () :
+	handle (rsnano::rsn_vote_create ())
 {
 }
 
-nano::vote::vote (bool & error_a, nano::stream & stream_a)
+nano::vote::vote (nano::vote const & other_a) :
+	hashes{ other_a.hashes },
+	account (other_a.account),
+	signature (other_a.signature),
+	handle (rsnano::rsn_vote_copy (other_a.handle))
+{
+}
+
+nano::vote::vote (nano::vote && other_a) :
+	hashes{ other_a.hashes },
+	account (other_a.account),
+	signature (other_a.signature),
+	handle (other_a.handle)
+{
+	other_a.handle = nullptr;
+}
+
+nano::vote::vote (bool & error_a, nano::stream & stream_a) :
+	handle { rsnano::rsn_vote_create () }
 {
 	error_a = deserialize (stream_a);
 }
 
 nano::vote::vote (nano::account const & account_a, nano::raw_key const & prv_a, uint64_t timestamp_a, uint8_t duration, std::vector<nano::block_hash> const & hashes) :
 	hashes{ hashes },
-	timestamp_m{ packed_timestamp (timestamp_a, duration) },
-	account (account_a)
+	account (account_a),
+	handle{ rsnano::rsn_vote_create2 (timestamp_a, duration) }
 {
 	signature = nano::sign_message (prv_a, account_a, hash ());
+}
+
+nano::vote::~vote ()
+{
+	if (handle != nullptr)
+	{
+		rsnano::rsn_vote_destroy (handle);
+	}
 }
 
 std::string nano::vote::hashes_string () const
@@ -659,7 +683,7 @@ nano::block_hash nano::vote::hash () const
 		uint64_t qword;
 		std::array<uint8_t, 8> bytes;
 	};
-	qword = timestamp_m;
+	qword = rsnano::rsn_vote_timestamp_raw (handle);
 	blake2b_update (&hash, bytes.data (), sizeof (bytes));
 	blake2b_final (&hash, result.bytes.data (), sizeof (result.bytes));
 	return result;
@@ -681,7 +705,8 @@ void nano::vote::serialize (nano::stream & stream_a) const
 {
 	write (stream_a, account);
 	write (stream_a, signature);
-	write (stream_a, boost::endian::native_to_little (timestamp_m));
+	auto timestamp = rsnano::rsn_vote_timestamp_raw (handle);
+	write (stream_a, boost::endian::native_to_little (timestamp));
 	for (auto const & hash : hashes)
 	{
 		write (stream_a, hash);
@@ -695,7 +720,9 @@ bool nano::vote::deserialize (nano::stream & stream_a)
 	{
 		nano::read (stream_a, account.bytes);
 		nano::read (stream_a, signature.bytes);
-		nano::read (stream_a, timestamp_m);
+		uint64_t timestamp;
+		nano::read (stream_a, timestamp);
+		rsnano::rsn_vote_timestamp_raw_set (handle, timestamp);
 
 		while (stream_a.in_avail () > 0)
 		{
@@ -714,13 +741,6 @@ bool nano::vote::deserialize (nano::stream & stream_a)
 bool nano::vote::validate () const
 {
 	return nano::validate_message (account, hash (), signature);
-}
-
-uint64_t nano::vote::packed_timestamp (uint64_t timestamp, uint8_t duration) const
-{
-	debug_assert (duration <= duration_max && "Invalid duration");
-	debug_assert ((!(timestamp == timestamp_max) || (duration == duration_max)) && "Invalid final vote");
-	return (timestamp & timestamp_mask) | duration;
 }
 
 nano::block_hash nano::iterate_vote_blocks_as_hash::operator() (nano::block_hash const & item) const

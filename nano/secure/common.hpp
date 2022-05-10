@@ -16,6 +16,11 @@
 
 #include <unordered_map>
 
+namespace rsnano
+{
+class VoteHandle;
+}
+
 namespace boost
 {
 template <>
@@ -254,13 +259,16 @@ public:
 	iterate_vote_blocks_as_hash () = default;
 	nano::block_hash operator() (nano::block_hash const & item) const;
 };
+
 class vote final
 {
 public:
-	vote () = default;
+	vote ();
 	vote (nano::vote const &);
+	vote (nano::vote &&);
 	vote (bool &, nano::stream &);
 	vote (nano::account const &, nano::raw_key const &, uint64_t timestamp, uint8_t duration, std::vector<nano::block_hash> const &);
+	~vote ();
 	std::string hashes_string () const;
 	nano::block_hash hash () const;
 	nano::block_hash full_hash () const;
@@ -286,8 +294,7 @@ public:
 	static uint8_t constexpr duration_max = { 0x0fu };
 
 private:
-	// Vote timestamp
-	uint64_t timestamp_m;
+	rsnano::VoteHandle * handle{ nullptr };
 
 public:
 	// The hashes for which this vote directly covers
@@ -297,9 +304,6 @@ public:
 	// Signature of timestamp + block hashes
 	nano::signature signature;
 	static std::string const hash_prefix;
-
-private:
-	uint64_t packed_timestamp (uint64_t timestamp, uint8_t duration) const;
 };
 /**
  * This class serves to find and return unique variants of a vote in order to minimize memory usage

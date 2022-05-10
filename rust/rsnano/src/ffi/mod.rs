@@ -13,6 +13,7 @@ mod state_block_signature_verification;
 mod stats;
 mod stream;
 mod toml;
+mod vote;
 
 pub use bandwidth_limiter::*;
 pub use blake2b::*;

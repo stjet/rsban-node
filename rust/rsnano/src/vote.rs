@@ -1,4 +1,4 @@
-use crate::Account;
+use crate::{Account, Signature};
 
 #[derive(Clone)]
 pub(crate) struct Vote {
@@ -6,6 +6,9 @@ pub(crate) struct Vote {
 
     // Account that's voting
     pub voting_account: Account,
+
+	// Signature of timestamp + block hashes
+    pub signature: Signature,
 }
 
 impl Vote {
@@ -13,6 +16,7 @@ impl Vote {
         Self {
             timestamp: 0,
             voting_account: Account::new(),
+            signature: Signature::new(),
         }
     }
 
@@ -20,13 +24,14 @@ impl Vote {
         Self {
             voting_account: account,
             timestamp: packed_timestamp(timestamp, duration),
+            signature: Signature::new(),
         }
     }
 }
 
 impl PartialEq for Vote {
     fn eq(&self, other: &Self) -> bool {
-        self.timestamp == other.timestamp && self.voting_account == other.voting_account
+        self.timestamp == other.timestamp && self.voting_account == other.voting_account && self.signature == other.signature
     }
 }
 

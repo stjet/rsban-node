@@ -955,6 +955,10 @@ void rsn_vote_destroy (VoteHandle * handle);
 
 bool rsn_vote_equals (const VoteHandle * first, const VoteHandle * second);
 
+void rsn_vote_signature (const VoteHandle * handle, uint8_t * result);
+
+void rsn_vote_signature_set (VoteHandle * handle, const uint8_t * signature);
+
 uint64_t rsn_vote_timestamp_raw (const VoteHandle * handle);
 
 void rsn_vote_timestamp_raw_set (VoteHandle * handle, uint64_t timestamp);

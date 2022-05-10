@@ -303,8 +303,6 @@ private:
 
 	// The hashes for which this vote directly covers
 	std::vector<nano::block_hash> hashes_m;
-	// Signature of timestamp + block hashes
-	nano::signature signature_m;
 
 public:
 	static std::string const hash_prefix;

@@ -517,7 +517,7 @@ void nano::election::remove_votes (nano::block_hash const & hash_a)
 		auto list_generated_votes (node.history.votes (root, hash_a));
 		for (auto const & vote : list_generated_votes)
 		{
-			last_votes.erase (vote->account);
+			last_votes.erase (vote->account ());
 		}
 		// Clear votes cache
 		node.history.erase (root);

@@ -52,12 +52,12 @@ void nano::rep_crawler::validate ()
 			continue;
 		}
 
-		nano::uint128_t rep_weight = node.ledger.weight (vote->account);
+		nano::uint128_t rep_weight = node.ledger.weight (vote->account ());
 		if (rep_weight < minimum)
 		{
 			if (node.config.logging.rep_crawler_logging ())
 			{
-				node.logger.try_log (boost::str (boost::format ("rep_crawler ignoring vote from account %1% with too little voting weight %2%") % vote->account.to_account () % rep_weight));
+				node.logger.try_log (boost::str (boost::format ("rep_crawler ignoring vote from account %1% with too little voting weight %2%") % vote->account ().to_account () % rep_weight));
 			}
 			continue;
 		}
@@ -69,7 +69,7 @@ void nano::rep_crawler::validate ()
 
 		nano::unique_lock<nano::mutex> lock (probable_reps_mutex);
 
-		auto existing (probable_reps.find (vote->account));
+		auto existing (probable_reps.find (vote->account ()));
 		if (existing != probable_reps.end ())
 		{
 			probable_reps.modify (existing, [rep_weight, &updated, &vote, &channel, &prev_channel] (nano::representative & info) {
@@ -78,7 +78,7 @@ void nano::rep_crawler::validate ()
 				// Update if representative channel was changed
 				if (info.channel->get_endpoint () != channel->get_endpoint ())
 				{
-					debug_assert (info.account == vote->account);
+					debug_assert (info.account == vote->account ());
 					updated = true;
 					info.weight = rep_weight;
 					prev_channel = info.channel;
@@ -88,7 +88,7 @@ void nano::rep_crawler::validate ()
 		}
 		else
 		{
-			probable_reps.emplace (nano::representative (vote->account, rep_weight, channel));
+			probable_reps.emplace (nano::representative (vote->account (), rep_weight, channel));
 			inserted = true;
 		}
 
@@ -96,12 +96,12 @@ void nano::rep_crawler::validate ()
 
 		if (inserted)
 		{
-			node.logger.try_log (boost::str (boost::format ("Found representative %1% at %2%") % vote->account.to_account () % channel->to_string ()));
+			node.logger.try_log (boost::str (boost::format ("Found representative %1% at %2%") % vote->account ().to_account () % channel->to_string ()));
 		}
 
 		if (updated)
 		{
-			node.logger.try_log (boost::str (boost::format ("Updated representative %1% at %2% (was at: %3%)") % vote->account.to_account () % channel->to_string () % prev_channel->to_string ()));
+			node.logger.try_log (boost::str (boost::format ("Updated representative %1% at %2% (was at: %3%)") % vote->account ().to_account () % channel->to_string () % prev_channel->to_string ()));
 		}
 	}
 }
@@ -233,7 +233,8 @@ bool nano::rep_crawler::response (std::shared_ptr<nano::transport::channel> cons
 {
 	bool error = true;
 	nano::lock_guard<nano::mutex> lock (active_mutex);
-	for (auto i = vote_a->hashes.begin (), n = vote_a->hashes.end (); i != n; ++i)
+	auto hashes = vote_a->hashes ();
+	for (auto i = hashes.begin (), n = hashes.end (); i != n; ++i)
 	{
 		if (active.count (*i) != 0)
 		{

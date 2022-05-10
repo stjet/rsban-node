@@ -306,7 +306,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 				if (active_in_rep_crawler)
 				{
 					// Representative is defined as online if replying to live votes or rep_crawler queries
-					this->online_reps.observe (vote_a->account);
+					this->online_reps.observe (vote_a->account ());
 				}
 				this->gap_cache.vote (vote_a);
 			}

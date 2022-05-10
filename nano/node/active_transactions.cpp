@@ -863,7 +863,7 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 	std::vector<std::pair<std::shared_ptr<nano::election>, nano::block_hash>> process;
 	{
 		nano::unique_lock<nano::mutex> lock (mutex);
-		for (auto const & hash : vote_a->hashes)
+		for (auto const & hash : vote_a->hashes ())
 		{
 			auto & recently_confirmed_by_hash (recently_confirmed.get<tag_hash> ());
 			auto existing (blocks.find (hash));
@@ -873,7 +873,7 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 			}
 			else if (recently_confirmed_by_hash.count (hash) == 0)
 			{
-				add_inactive_votes_cache (lock, hash, vote_a->account, vote_a->timestamp ());
+				add_inactive_votes_cache (lock, hash, vote_a->account (), vote_a->timestamp ());
 			}
 			else
 			{
@@ -888,7 +888,7 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 		bool processed (false);
 		for (auto const & [election, block_hash] : process)
 		{
-			auto const result_l = election->vote (vote_a->account, vote_a->timestamp (), block_hash);
+			auto const result_l = election->vote (vote_a->account (), vote_a->timestamp (), block_hash);
 			processed = processed || result_l.processed;
 			replay = replay || result_l.replay;
 		}
@@ -897,14 +897,14 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 		if (processed)
 		{
 			auto const reps (node.wallets.reps ());
-			if (!reps.have_half_rep () && !reps.exists (vote_a->account))
+			if (!reps.have_half_rep () && !reps.exists (vote_a->account ()))
 			{
 				node.network.flood_vote (vote_a, 0.5f);
 			}
 		}
 		result = replay ? nano::vote_code::replay : nano::vote_code::vote;
 	}
-	else if (recently_confirmed_counter == vote_a->hashes.size ())
+	else if (recently_confirmed_counter == vote_a->hashes ().size ())
 	{
 		result = nano::vote_code::replay;
 	}

@@ -57,7 +57,7 @@ bool nano::local_vote_history::consistency_check (nano::root const & root_a) con
 	// All cached votes for a root must be for the same hash, this is actively enforced in local_vote_history::add
 	auto consistent_same = std::all_of (range.first, range.second, [hash = range.first->hash] (auto const & info_a) { return info_a.hash == hash; });
 	std::vector<nano::account> accounts;
-	std::transform (range.first, range.second, std::back_inserter (accounts), [] (auto const & info_a) { return info_a.vote->account; });
+	std::transform (range.first, range.second, std::back_inserter (accounts), [] (auto const & info_a) { return info_a.vote->account (); });
 	std::sort (accounts.begin (), accounts.end ());
 	// All cached votes must be unique by account, this is actively enforced in local_vote_history::add
 	auto consistent_unique = accounts.size () == std::unique (accounts.begin (), accounts.end ()) - accounts.begin ();
@@ -76,11 +76,11 @@ void nano::local_vote_history::add (nano::root const & root_a, nano::block_hash 
 	auto range (history_by_root.equal_range (root_a));
 	for (auto i (range.first); i != range.second;)
 	{
-		if (i->hash != hash_a || (vote_a->account == i->vote->account && i->vote->timestamp () <= vote_a->timestamp ()))
+		if (i->hash != hash_a || (vote_a->account () == i->vote->account () && i->vote->timestamp () <= vote_a->timestamp ()))
 		{
 			i = history_by_root.erase (i);
 		}
-		else if (vote_a->account == i->vote->account && i->vote->timestamp () > vote_a->timestamp ())
+		else if (vote_a->account () == i->vote->account () && i->vote->timestamp () > vote_a->timestamp ())
 		{
 			add_vote = false;
 			++i;
@@ -326,7 +326,7 @@ void nano::vote_generator::reply (nano::unique_lock<nano::mutex> & lock_a, reque
 			{
 				if (cached_sent.insert (cached_vote).second)
 				{
-					stats.add (nano::stat::type::requests, nano::stat::detail::requests_cached_late_hashes, stat::dir::in, cached_vote->hashes.size ());
+					stats.add (nano::stat::type::requests, nano::stat::detail::requests_cached_late_hashes, stat::dir::in, cached_vote->hashes ().size ());
 					stats.inc (nano::stat::type::requests, nano::stat::detail::requests_cached_late_votes, stat::dir::in);
 					reply_action (cached_vote, request_a.second);
 				}

@@ -97,7 +97,7 @@ TEST (message, confirm_ack_hash_serialization)
 	nano::confirm_ack con2 (error, stream2, header);
 	ASSERT_FALSE (error);
 	ASSERT_EQ (con1, con2);
-	ASSERT_EQ (hashes, con2.vote->hashes);
+	ASSERT_EQ (hashes, con2.vote->hashes ());
 	// Check overflow with max hashes
 	ASSERT_EQ (header.count_get (), hashes.size ());
 	ASSERT_EQ (header.block_type (), nano::block_type::not_a_block);

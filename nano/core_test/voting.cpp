@@ -36,8 +36,9 @@ TEST (local_vote_history, basic)
 	ASSERT_EQ (1, votes1b.size ());
 	ASSERT_EQ (vote1b, votes1b[0]);
 	ASSERT_NE (vote1a, votes1b[0]);
-	auto vote2 (std::make_shared<nano::vote> ());
-	vote2->account.dwords[0]++;
+	nano::account account1;
+	account1.dwords[0]++;
+	auto vote2 (std::make_shared<nano::vote> (account1));
 	ASSERT_EQ (1, history.size ());
 	history.add (1, 2, vote2);
 	ASSERT_EQ (2, history.size ());
@@ -45,8 +46,9 @@ TEST (local_vote_history, basic)
 	ASSERT_EQ (2, votes2.size ());
 	ASSERT_TRUE (vote1b == votes2[0] || vote1b == votes2[1]);
 	ASSERT_TRUE (vote2 == votes2[0] || vote2 == votes2[1]);
-	auto vote3 (std::make_shared<nano::vote> ());
-	vote3->account.dwords[1]++;
+	nano::account account2;
+	account2.dwords[1]++;
+	auto vote3 (std::make_shared<nano::vote> (account2));
 	history.add (1, 3, vote3);
 	ASSERT_EQ (1, history.size ());
 	auto votes3 (history.votes (1));
@@ -65,7 +67,8 @@ TEST (vote_generator, cache)
 	ASSERT_TIMELY (1s, !node.history.votes (epoch1->root (), epoch1->hash ()).empty ());
 	auto votes (node.history.votes (epoch1->root (), epoch1->hash ()));
 	ASSERT_FALSE (votes.empty ());
-	ASSERT_TRUE (std::any_of (votes[0]->hashes.begin (), votes[0]->hashes.end (), [hash = epoch1->hash ()] (nano::block_hash const & hash_a) { return hash_a == hash; }));
+	auto hashes {votes[0]->hashes ()};
+	ASSERT_TRUE (std::any_of (hashes.begin (), hashes.end (), [hash = epoch1->hash ()] (nano::block_hash const & hash_a) { return hash_a == hash; }));
 }
 
 TEST (vote_generator, multiple_representatives)
@@ -97,7 +100,7 @@ TEST (vote_generator, multiple_representatives)
 	for (auto const & account : { key1.pub, key2.pub, key3.pub, nano::dev::genesis_key.pub })
 	{
 		auto existing (std::find_if (votes.begin (), votes.end (), [&account] (std::shared_ptr<nano::vote> const & vote_a) -> bool {
-			return vote_a->account == account;
+			return vote_a->account () == account;
 		}));
 		ASSERT_NE (votes.end (), existing);
 	}

@@ -15,7 +15,7 @@ TEST (vote_processor, codes)
 	nano::keypair key;
 	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, nano::vote::timestamp_min * 1, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () }));
 	auto vote_invalid = std::make_shared<nano::vote> (*vote);
-	vote_invalid->signature.bytes[0] ^= 1;
+	vote_invalid->flip_signature_bit_0 ();
 	auto channel (std::make_shared<nano::transport::inproc::channel> (node, node));
 
 	// Invalid signature
@@ -64,7 +64,7 @@ TEST (vote_processor, invalid_signature)
 	nano::keypair key;
 	auto vote = std::make_shared<nano::vote> (key.pub, key.prv, nano::vote::timestamp_min * 1, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
 	auto vote_invalid = std::make_shared<nano::vote> (*vote);
-	vote_invalid->signature.bytes[0] ^= 1;
+	vote_invalid->flip_signature_bit_0 ();
 	auto channel = std::make_shared<nano::transport::inproc::channel> (node, node);
 
 	node.block_confirm (nano::dev::genesis);

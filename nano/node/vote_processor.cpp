@@ -106,17 +106,17 @@ bool nano::vote_processor::vote (std::shared_ptr<nano::vote> const & vote_a, std
 		// Level 1 (0.1-1%)
 		else if (votes.size () < 7.0 / 9.0 * max_votes)
 		{
-			process = (representatives_1.find (vote_a->account) != representatives_1.end ());
+			process = (representatives_1.find (vote_a->account ()) != representatives_1.end ());
 		}
 		// Level 2 (1-5%)
 		else if (votes.size () < 8.0 / 9.0 * max_votes)
 		{
-			process = (representatives_2.find (vote_a->account) != representatives_2.end ());
+			process = (representatives_2.find (vote_a->account ()) != representatives_2.end ());
 		}
 		// Level 3 (> 5%)
 		else if (votes.size () < max_votes)
 		{
-			process = (representatives_3.find (vote_a->account) != representatives_3.end ());
+			process = (representatives_3.find (vote_a->account ()) != representatives_3.end ());
 		}
 		if (process)
 		{
@@ -147,12 +147,16 @@ void nano::vote_processor::verify_votes (decltype (votes) const & votes_a)
 	signatures.reserve (size);
 	std::vector<int> verifications;
 	verifications.resize (size);
+	std::vector<nano::account> tmp_accounts;
+	std::vector<nano::signature> tmp_signatures;
 	for (auto const & vote : votes_a)
 	{
 		hashes.push_back (vote.first->hash ());
 		messages.push_back (hashes.back ().bytes.data ());
-		pub_keys.push_back (vote.first->account.bytes.data ());
-		signatures.push_back (vote.first->signature.bytes.data ());
+		tmp_accounts.push_back(vote.first->account ());
+		tmp_signatures.push_back(vote.first->signature ());
+		pub_keys.push_back (tmp_accounts.back().bytes.data ());
+		signatures.push_back (tmp_signatures.back().bytes.data ());
 	}
 	nano::signature_check_set check = { size, messages.data (), lengths.data (), pub_keys.data (), signatures.data (), verifications.data () };
 	checker.verify (check);
@@ -198,7 +202,7 @@ nano::vote_code nano::vote_processor::vote_blocking (std::shared_ptr<nano::vote>
 	}
 	if (config.logging.vote_logging ())
 	{
-		logger.try_log (boost::str (boost::format ("Vote from: %1% timestamp: %2% duration %3%ms block(s): %4% status: %5%") % vote_a->account.to_account () % std::to_string (vote_a->timestamp ()) % std::to_string (vote_a->duration ().count ()) % vote_a->hashes_string () % status));
+		logger.try_log (boost::str (boost::format ("Vote from: %1% timestamp: %2% duration %3%ms block(s): %4% status: %5%") % vote_a->account ().to_account () % std::to_string (vote_a->timestamp ()) % std::to_string (vote_a->duration ().count ()) % vote_a->hashes_string () % status));
 	}
 	return result;
 }

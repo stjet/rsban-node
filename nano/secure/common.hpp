@@ -264,6 +264,7 @@ class vote final
 {
 public:
 	vote ();
+	vote (nano::account const &);
 	vote (nano::vote const &);
 	vote (nano::vote &&);
 	vote (bool &, nano::stream &);
@@ -287,7 +288,11 @@ public:
 	std::string to_json () const;
 	uint64_t timestamp () const;
 	uint8_t duration_bits () const;
+	nano::account account () const;
+	nano::signature signature () const;
 	std::chrono::milliseconds duration () const;
+	std::vector<nano::block_hash> hashes() const;
+	void flip_signature_bit_0 ();
 	static uint64_t constexpr timestamp_mask = { 0xffff'ffff'ffff'fff0ULL };
 	static uint64_t constexpr timestamp_max = { 0xffff'ffff'ffff'fff0ULL };
 	static uint64_t constexpr timestamp_min = { 0x0000'0000'0000'0010ULL };
@@ -296,13 +301,14 @@ public:
 private:
 	rsnano::VoteHandle * handle{ nullptr };
 
-public:
 	// The hashes for which this vote directly covers
-	std::vector<nano::block_hash> hashes;
+	std::vector<nano::block_hash> hashes_m;
 	// Account that's voting
-	nano::account account;
+	nano::account account_m;
 	// Signature of timestamp + block hashes
-	nano::signature signature;
+	nano::signature signature_m;
+
+public:
 	static std::string const hash_prefix;
 };
 /**

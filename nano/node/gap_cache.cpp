@@ -38,7 +38,7 @@ void nano::gap_cache::erase (nano::block_hash const & hash_a)
 void nano::gap_cache::vote (std::shared_ptr<nano::vote> const & vote_a)
 {
 	nano::lock_guard<nano::mutex> lock (mutex);
-	for (auto const & hash : vote_a->hashes)
+	for (auto const & hash : vote_a->hashes ())
 	{
 		auto & gap_blocks_by_hash (blocks.get<tag_hash> ());
 		auto existing (gap_blocks_by_hash.find (hash));
@@ -46,11 +46,11 @@ void nano::gap_cache::vote (std::shared_ptr<nano::vote> const & vote_a)
 		{
 			auto is_new (false);
 			gap_blocks_by_hash.modify (existing, [&is_new, &vote_a] (nano::gap_information & info) {
-				auto it = std::find (info.voters.begin (), info.voters.end (), vote_a->account);
+				auto it = std::find (info.voters.begin (), info.voters.end (), vote_a->account ());
 				is_new = (it == info.voters.end ());
 				if (is_new)
 				{
-					info.voters.push_back (vote_a->account);
+					info.voters.push_back (vote_a->account ());
 				}
 			});
 

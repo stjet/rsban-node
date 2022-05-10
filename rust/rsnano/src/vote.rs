@@ -1,17 +1,32 @@
-#[derive(Clone, PartialEq, Eq)]
+use crate::Account;
+
+#[derive(Clone)]
 pub(crate) struct Vote {
     pub timestamp: u64,
+
+    // Account that's voting
+    pub voting_account: Account,
 }
 
 impl Vote {
     pub(crate) fn null() -> Self {
-        Self { timestamp: 0 }
+        Self {
+            timestamp: 0,
+            voting_account: Account::new(),
+        }
     }
 
-    pub(crate) fn new(timestamp: u64, duration: u8) -> Self {
+    pub(crate) fn new(account: Account, timestamp: u64, duration: u8) -> Self {
         Self {
+            voting_account: account,
             timestamp: packed_timestamp(timestamp, duration),
         }
+    }
+}
+
+impl PartialEq for Vote {
+    fn eq(&self, other: &Self) -> bool {
+        self.timestamp == other.timestamp && self.voting_account == other.voting_account
     }
 }
 

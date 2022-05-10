@@ -291,7 +291,7 @@ public:
 	nano::account account () const;
 	nano::signature signature () const;
 	std::chrono::milliseconds duration () const;
-	std::vector<nano::block_hash> hashes() const;
+	std::vector<nano::block_hash> hashes () const;
 	void flip_signature_bit_0 ();
 	static uint64_t constexpr timestamp_mask = { 0xffff'ffff'ffff'fff0ULL };
 	static uint64_t constexpr timestamp_max = { 0xffff'ffff'ffff'fff0ULL };
@@ -303,8 +303,6 @@ private:
 
 	// The hashes for which this vote directly covers
 	std::vector<nano::block_hash> hashes_m;
-	// Account that's voting
-	nano::account account_m;
 	// Signature of timestamp + block hashes
 	nano::signature signature_m;
 

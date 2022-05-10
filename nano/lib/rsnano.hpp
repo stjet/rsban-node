@@ -941,11 +941,15 @@ const uint8_t * message,
 uintptr_t len,
 const uint8_t (*signature)[64]);
 
+void rsn_vote_account (const VoteHandle * handle, uint8_t * result);
+
+void rsn_vote_account_set (VoteHandle * handle, const uint8_t * account);
+
 VoteHandle * rsn_vote_copy (const VoteHandle * handle);
 
 VoteHandle * rsn_vote_create ();
 
-VoteHandle * rsn_vote_create2 (uint64_t timestamp, uint8_t duration);
+VoteHandle * rsn_vote_create2 (const uint8_t * account, uint64_t timestamp, uint8_t duration);
 
 void rsn_vote_destroy (VoteHandle * handle);
 

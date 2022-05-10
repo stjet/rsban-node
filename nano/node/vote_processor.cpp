@@ -153,10 +153,10 @@ void nano::vote_processor::verify_votes (decltype (votes) const & votes_a)
 	{
 		hashes.push_back (vote.first->hash ());
 		messages.push_back (hashes.back ().bytes.data ());
-		tmp_accounts.push_back(vote.first->account ());
-		tmp_signatures.push_back(vote.first->signature ());
-		pub_keys.push_back (tmp_accounts.back().bytes.data ());
-		signatures.push_back (tmp_signatures.back().bytes.data ());
+		tmp_accounts.push_back (vote.first->account ());
+		tmp_signatures.push_back (vote.first->signature ());
+		pub_keys.push_back (tmp_accounts.back ().bytes.data ());
+		signatures.push_back (tmp_signatures.back ().bytes.data ());
 	}
 	nano::signature_check_set check = { size, messages.data (), lengths.data (), pub_keys.data (), signatures.data (), verifications.data () };
 	checker.verify (check);

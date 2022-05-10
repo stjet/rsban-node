@@ -550,7 +550,7 @@ nano::block_info::block_info (nano::account const & account_a, nano::amount cons
 
 bool nano::vote::operator== (nano::vote const & other_a) const
 {
-	return rsnano::rsn_vote_equals (handle, other_a.handle) && hashes_m == other_a.hashes_m && account_m == other_a.account_m && signature_m == other_a.signature_m;
+	return rsnano::rsn_vote_equals (handle, other_a.handle) && hashes_m == other_a.hashes_m && signature_m == other_a.signature_m;
 }
 
 bool nano::vote::operator!= (nano::vote const & other_a) const
@@ -560,7 +560,9 @@ bool nano::vote::operator!= (nano::vote const & other_a) const
 
 void nano::vote::serialize_json (boost::property_tree::ptree & tree) const
 {
-	tree.put ("account", account_m.to_account ());
+	nano::account account;
+	rsnano::rsn_vote_account (handle, account.bytes.data ());
+	tree.put ("account", account.to_account ());
 	tree.put ("signature", signature_m.number ());
 	tree.put ("sequence", std::to_string (timestamp ()));
 	tree.put ("timestamp", std::to_string (timestamp ()));
@@ -611,7 +613,7 @@ std::chrono::milliseconds nano::vote::duration () const
 	return std::chrono::milliseconds{ 1u << (duration_bits () + 4) };
 }
 
-std::vector<nano::block_hash> nano::vote::hashes() const
+std::vector<nano::block_hash> nano::vote::hashes () const
 {
 	return hashes_m;
 }
@@ -623,7 +625,6 @@ nano::vote::vote () :
 
 nano::vote::vote (nano::vote const & other_a) :
 	hashes_m{ other_a.hashes_m },
-	account_m (other_a.account_m),
 	signature_m (other_a.signature_m),
 	handle (rsnano::rsn_vote_copy (other_a.handle))
 {
@@ -631,7 +632,6 @@ nano::vote::vote (nano::vote const & other_a) :
 
 nano::vote::vote (nano::vote && other_a) :
 	hashes_m{ other_a.hashes_m },
-	account_m (other_a.account_m),
 	signature_m (other_a.signature_m),
 	handle (other_a.handle)
 {
@@ -639,22 +639,20 @@ nano::vote::vote (nano::vote && other_a) :
 }
 
 nano::vote::vote (nano::account const & account) :
-	handle (rsnano::rsn_vote_create ()),
-	account_m { account }
+	handle (rsnano::rsn_vote_create ())
 {
-
+	rsnano::rsn_vote_account_set (handle, account.bytes.data ());
 }
 
 nano::vote::vote (bool & error_a, nano::stream & stream_a) :
-	handle { rsnano::rsn_vote_create () }
+	handle{ rsnano::rsn_vote_create () }
 {
 	error_a = deserialize (stream_a);
 }
 
 nano::vote::vote (nano::account const & account_a, nano::raw_key const & prv_a, uint64_t timestamp_a, uint8_t duration, std::vector<nano::block_hash> const & hashes) :
 	hashes_m{ hashes },
-	account_m (account_a),
-	handle{ rsnano::rsn_vote_create2 (timestamp_a, duration) }
+	handle{ rsnano::rsn_vote_create2 (account_a.bytes.data (), timestamp_a, duration) }
 {
 	signature_m = nano::sign_message (prv_a, account_a, hash ());
 }
@@ -703,11 +701,13 @@ nano::block_hash nano::vote::hash () const
 
 nano::block_hash nano::vote::full_hash () const
 {
+	nano::account account;
+	rsnano::rsn_vote_account (handle, account.bytes.data ());
 	nano::block_hash result;
 	blake2b_state state;
 	blake2b_init (&state, sizeof (result.bytes));
 	blake2b_update (&state, hash ().bytes.data (), sizeof (hash ().bytes));
-	blake2b_update (&state, account_m.bytes.data (), sizeof (account_m.bytes.data ()));
+	blake2b_update (&state, account.bytes.data (), sizeof (account.bytes.data ()));
 	blake2b_update (&state, signature_m.bytes.data (), sizeof (signature_m.bytes.data ()));
 	blake2b_final (&state, result.bytes.data (), sizeof (result.bytes));
 	return result;
@@ -715,7 +715,9 @@ nano::block_hash nano::vote::full_hash () const
 
 void nano::vote::serialize (nano::stream & stream_a) const
 {
-	write (stream_a, account_m);
+	nano::account account;
+	rsnano::rsn_vote_account (handle, account.bytes.data ());
+	write (stream_a, account);
 	write (stream_a, signature_m);
 	auto timestamp = rsnano::rsn_vote_timestamp_raw (handle);
 	write (stream_a, boost::endian::native_to_little (timestamp));
@@ -730,7 +732,9 @@ bool nano::vote::deserialize (nano::stream & stream_a)
 	auto error = false;
 	try
 	{
-		nano::read (stream_a, account_m.bytes);
+		nano::account account;
+		nano::read (stream_a, account.bytes);
+		rsnano::rsn_vote_account_set (handle, account.bytes.data ());
 		nano::read (stream_a, signature_m.bytes);
 		uint64_t timestamp;
 		nano::read (stream_a, timestamp);
@@ -752,12 +756,16 @@ bool nano::vote::deserialize (nano::stream & stream_a)
 
 bool nano::vote::validate () const
 {
-	return nano::validate_message (account_m, hash (), signature_m);
+	nano::account account;
+	rsnano::rsn_vote_account (handle, account.bytes.data ());
+	return nano::validate_message (account, hash (), signature_m);
 }
 
 nano::account nano::vote::account () const
 {
-	return account_m;
+	nano::account account;
+	rsnano::rsn_vote_account (handle, account.bytes.data ());
+	return account;
 }
 
 nano::signature nano::vote::signature () const

@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use crate::vote::Vote;
+use crate::{vote::Vote, Account};
 
 pub struct VoteHandle {
     vote: Arc<RwLock<Vote>>,
@@ -14,9 +14,16 @@ pub extern "C" fn rsn_vote_create() -> *mut VoteHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_create2(timestamp: u64, duration: u8) -> *mut VoteHandle {
+pub extern "C" fn rsn_vote_create2(
+    account: *const u8,
+    timestamp: u64,
+    duration: u8,
+) -> *mut VoteHandle {
+    let mut bytes = [0; 32];
+    bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(account, 32) });
+    let account = Account::from_bytes(bytes);
     Box::into_raw(Box::new(VoteHandle {
-        vote: Arc::new(RwLock::new(Vote::new(timestamp, duration))),
+        vote: Arc::new(RwLock::new(Vote::new(account, timestamp, duration))),
     }))
 }
 
@@ -45,6 +52,21 @@ pub unsafe extern "C" fn rsn_vote_timestamp_raw(handle: *const VoteHandle) -> u6
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_timestamp_raw_set(handle: *mut VoteHandle, timestamp: u64) {
     (*handle).vote.write().unwrap().timestamp = timestamp;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_account(handle: *const VoteHandle, result: *mut u8) {
+    let lk = (*handle).vote.read().unwrap();
+    let result = std::slice::from_raw_parts_mut(result, 32);
+    result.copy_from_slice(lk.voting_account.as_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_account_set(handle: *mut VoteHandle, account: *const u8) {
+    let mut lk = (*handle).vote.write().unwrap();
+    let mut bytes = [0; 32];
+    bytes.copy_from_slice(std::slice::from_raw_parts(account, 32));
+    lk.voting_account = Account::from_bytes(bytes);
 }
 
 #[no_mangle]

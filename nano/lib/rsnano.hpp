@@ -33,6 +33,8 @@ struct VoteHandle;
 
 struct VoteHashesHandle;
 
+struct VoteUniquerHandle;
+
 struct BlockDetailsDto
 {
 	uint8_t epoch;
@@ -1028,6 +1030,14 @@ uint64_t rsn_vote_timestamp (const VoteHandle * handle);
 uint64_t rsn_vote_timestamp_raw (const VoteHandle * handle);
 
 void rsn_vote_timestamp_raw_set (VoteHandle * handle, uint64_t timestamp);
+
+VoteUniquerHandle * rsn_vote_uniquer_create ();
+
+void rsn_vote_uniquer_destroy (VoteUniquerHandle * handle);
+
+uintptr_t rsn_vote_uniquer_size (const VoteUniquerHandle * handle);
+
+VoteHandle * rsn_vote_uniquer_unique (VoteUniquerHandle * handle, VoteHandle * vote);
 
 bool rsn_vote_validate (const VoteHandle * handle);
 

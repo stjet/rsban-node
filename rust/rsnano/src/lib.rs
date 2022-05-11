@@ -25,6 +25,7 @@ mod stats;
 mod token_bucket;
 mod utils;
 mod vote;
+mod vote_uniquer;
 
 pub use bandwidth_limiter::*;
 pub use blocks::*;
@@ -40,3 +41,4 @@ pub use stats::*;
 pub use token_bucket::*;
 pub use utils::*;
 pub(crate) use vote::*;
+pub(crate) use vote_uniquer::*;

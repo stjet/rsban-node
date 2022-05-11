@@ -8,7 +8,7 @@ use crate::{Account, BlockHash, RawKey, Signature, Vote};
 use super::{FfiPropertyTreeWriter, FfiStream, StringDto};
 
 pub struct VoteHandle {
-    vote: Arc<RwLock<Vote>>,
+    pub(crate) vote: Arc<RwLock<Vote>>,
 }
 
 #[no_mangle]

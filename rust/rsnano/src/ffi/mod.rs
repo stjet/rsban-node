@@ -14,6 +14,7 @@ mod stats;
 mod stream;
 mod toml;
 mod vote;
+mod vote_uniquer;
 
 use std::{ffi::CString, os::raw::c_char};
 

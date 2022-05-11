@@ -6,11 +6,13 @@ type WriteU8Callback = unsafe extern "C" fn(*mut c_void, u8) -> i32;
 type WriteBytesCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> i32;
 type ReadU8Callback = unsafe extern "C" fn(*mut c_void, *mut u8) -> i32;
 type ReadBytesCallback = unsafe extern "C" fn(*mut c_void, *mut u8, usize) -> i32;
+type InAvailCallback = unsafe extern "C" fn(*mut c_void, *mut i32) -> usize;
 
 static mut WRITE_U8_CALLBACK: Option<WriteU8Callback> = None;
 static mut WRITE_BYTES_CALLBACK: Option<WriteBytesCallback> = None;
 static mut READ_U8_CALLBACK: Option<ReadU8Callback> = None;
 static mut READ_BYTES_CALLBACK: Option<ReadBytesCallback> = None;
+static mut IN_AVAIL_CALLBACK: Option<InAvailCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_write_u8(f: WriteU8Callback) {
@@ -30,6 +32,11 @@ pub unsafe extern "C" fn rsn_callback_read_u8(f: ReadU8Callback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_read_bytes(f: ReadBytesCallback) {
     READ_BYTES_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_in_avail(f: InAvailCallback) {
+    IN_AVAIL_CALLBACK = Some(f);
 }
 
 pub struct FfiStream {
@@ -103,6 +110,23 @@ impl Stream for FfiStream {
                     }
                 }
                 None => Err(anyhow!("READ_BYTES_CALLBACK missing")),
+            }
+        }
+    }
+
+    fn in_avail(&mut self) -> anyhow::Result<usize> {
+        unsafe {
+            match IN_AVAIL_CALLBACK {
+                Some(f) => {
+                    let mut error = 0;
+                    let avail = f(self.stream_handle, &mut error);
+                    if error == 0 {
+                        Ok(avail)
+                    } else {
+                        Err(anyhow!("in_avail returned error"))
+                    }
+                }
+                None => Err(anyhow!("IN_AVAIL_CALLBACK missing")),
             }
         }
     }

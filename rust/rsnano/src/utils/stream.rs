@@ -3,6 +3,13 @@ pub trait Stream {
     fn write_bytes(&mut self, bytes: &[u8]) -> anyhow::Result<()>;
     fn read_u8(&mut self) -> anyhow::Result<u8>;
     fn read_bytes(&mut self, buffer: &mut [u8], len: usize) -> anyhow::Result<()>;
+
+    ///  Looking ahead into the stream.
+    ///  returns:  The number of characters available.
+    ///  If a read position is available, returns the number of characters
+    ///  available for reading before the buffer must be refilled.
+    ///  Otherwise returns the derived showmanyc().
+    fn in_avail(&mut self) -> anyhow::Result<usize>;
 }
 
 #[cfg(test)]
@@ -59,6 +66,10 @@ impl Stream for TestStream {
         buffer.copy_from_slice(&self.bytes[self.read_index..self.read_index + len]);
         self.read_index += len;
         Ok(())
+    }
+
+    fn in_avail(&mut self) -> anyhow::Result<usize> {
+        todo!()
     }
 }
 

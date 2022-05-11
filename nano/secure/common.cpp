@@ -686,32 +686,7 @@ void nano::vote::serialize (nano::stream & stream_a) const
 
 bool nano::vote::deserialize (nano::stream & stream_a)
 {
-	auto error = false;
-	try
-	{
-		nano::account account;
-		nano::read (stream_a, account.bytes);
-		rsnano::rsn_vote_account_set (handle, account.bytes.data ());
-		nano::signature signature;
-		nano::read (stream_a, signature.bytes);
-		rsnano::rsn_vote_signature_set (handle, signature.bytes.data ());
-		uint64_t timestamp;
-		nano::read (stream_a, timestamp);
-		rsnano::rsn_vote_timestamp_raw_set (handle, timestamp);
-
-		std::vector<nano::block_hash> hashes;
-		while (stream_a.in_avail () > 0)
-		{
-			nano::block_hash block_hash;
-			nano::read (stream_a, block_hash);
-			hashes.push_back (block_hash);
-		}
-		rsnano::rsn_vote_hashes_set (handle, reinterpret_cast<uint8_t (*)[32]> (hashes.data ()), hashes.size ());
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
+	auto error = rsnano::rsn_vote_deserialize (handle, &stream_a) != 0;
 	return error;
 }
 

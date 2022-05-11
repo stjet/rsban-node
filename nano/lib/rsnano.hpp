@@ -101,6 +101,8 @@ using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
 
 using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
 
+using InAvailCallback = uintptr_t (*) (void *, int32_t *);
+
 using PropertyTreePushBackCallback = void (*) (void *, const char *, const void *);
 
 using PropertyTreeCreateTreeCallback = void * (*)();
@@ -662,6 +664,8 @@ void rsn_callback_blake2b_init (Blake2BInitCallback f);
 
 void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
 
+void rsn_callback_in_avail (InAvailCallback f);
+
 void rsn_callback_property_tree_add_child (PropertyTreePushBackCallback f);
 
 void rsn_callback_property_tree_create (PropertyTreeCreateTreeCallback f);
@@ -988,6 +992,8 @@ uint64_t timestamp,
 uint8_t duration,
 const uint8_t (*hashes)[32],
 uintptr_t hash_count);
+
+int32_t rsn_vote_deserialize (const VoteHandle * handle, void * stream);
 
 void rsn_vote_destroy (VoteHandle * handle);
 

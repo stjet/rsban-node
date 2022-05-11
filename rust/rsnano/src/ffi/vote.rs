@@ -224,3 +224,15 @@ pub unsafe extern "C" fn rsn_vote_serialize(handle: *const VoteHandle, stream: *
         Err(_) => -1,
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_deserialize(
+    handle: *const VoteHandle,
+    stream: *mut c_void,
+) -> i32 {
+    let mut stream = FfiStream::new(stream);
+    match (*handle).vote.write().unwrap().deserialize(&mut stream) {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
+}

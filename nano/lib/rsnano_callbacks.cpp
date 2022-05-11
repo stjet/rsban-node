@@ -72,6 +72,21 @@ int32_t read_bytes (void * stream, uint8_t * buffer, size_t len)
 	return 0;
 }
 
+size_t in_avail (void * stream, int32_t * error)
+{
+	auto s{ static_cast<nano::stream *> (stream) };
+	try
+	{
+		*error = 0;
+		return s->in_avail ();
+	}
+	catch (...)
+	{
+		*error = 1;
+		return 0;
+	}
+}
+
 void ptree_put_string (void * ptree, const char * path, uintptr_t path_len, const char * value, uintptr_t value_len)
 {
 	auto tree (static_cast<boost::property_tree::ptree *> (ptree));
@@ -288,6 +303,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_write_bytes (write_bytes);
 	rsnano::rsn_callback_read_u8 (read_u8);
 	rsnano::rsn_callback_read_bytes (read_bytes);
+	rsnano::rsn_callback_in_avail (in_avail);
 	rsnano::rsn_callback_blake2b_init (reinterpret_cast<Blake2BInitCallback> (blake2b_init));
 	rsnano::rsn_callback_blake2b_update (reinterpret_cast<Blake2BUpdateCallback> (blake2b_update));
 	rsnano::rsn_callback_blake2b_final (reinterpret_cast<Blake2BFinalCallback> (blake2b_final));

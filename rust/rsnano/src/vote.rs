@@ -118,12 +118,25 @@ impl Vote {
             .build()
     }
 
-    pub(crate) fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        stream.write_bytes(self.voting_account.as_bytes())?;
-        stream.write_bytes(self.signature.as_bytes())?;
+    pub(crate) fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+        self.voting_account.serialize(stream)?;
+        self.signature.serialize(stream)?;
         stream.write_bytes(&self.timestamp.to_le_bytes())?;
         for hash in &self.hashes {
-            stream.write_bytes(hash.as_bytes())?;
+            hash.serialize(stream)?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
+        self.voting_account = Account::deserialize(stream)?;
+        self.signature = Signature::deserialize(stream)?;
+        let mut buffer = [0; 8];
+        stream.read_bytes(&mut buffer, 8)?;
+        self.timestamp = u64::from_ne_bytes(buffer);
+        self.hashes = Vec::new();
+        while stream.in_avail()? > 0 {
+            self.hashes.push(BlockHash::deserialize(stream)?);
         }
         Ok(())
     }

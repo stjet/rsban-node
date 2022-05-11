@@ -5,7 +5,7 @@ use std::{
 
 use crate::{Account, BlockHash, RawKey, Signature, Vote};
 
-use super::{FfiPropertyTreeWriter, StringDto};
+use super::{FfiPropertyTreeWriter, FfiStream, StringDto};
 
 pub struct VoteHandle {
     vote: Arc<RwLock<Vote>>,
@@ -38,9 +38,9 @@ pub extern "C" fn rsn_vote_create2(
     let hashes = hashes.iter().map(|&h| BlockHash::from_bytes(h)).collect();
 
     Box::into_raw(Box::new(VoteHandle {
-        vote: Arc::new(RwLock::new(Vote::new(
-            account, key, timestamp, duration, hashes,
-        ))),
+        vote: Arc::new(RwLock::new(
+            Vote::new(account, &key, timestamp, duration, hashes).unwrap(),
+        )),
     }))
 }
 
@@ -207,4 +207,20 @@ pub unsafe extern "C" fn rsn_vote_hash(handle: *const VoteHandle, result: *mut u
     let hash = (*handle).vote.read().unwrap().hash();
     let result = std::slice::from_raw_parts_mut(result, 32);
     result.copy_from_slice(hash.as_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_full_hash(handle: *const VoteHandle, result: *mut u8) {
+    let hash = (*handle).vote.read().unwrap().full_hash();
+    let result = std::slice::from_raw_parts_mut(result, 32);
+    result.copy_from_slice(hash.as_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_serialize(handle: *const VoteHandle, stream: *mut c_void) -> i32 {
+    let mut stream = FfiStream::new(stream);
+    match (*handle).vote.read().unwrap().serialize(&mut stream) {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
 }

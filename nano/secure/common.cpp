@@ -641,8 +641,6 @@ nano::vote::vote (bool & error_a, nano::stream & stream_a) :
 nano::vote::vote (nano::account const & account_a, nano::raw_key const & prv_a, uint64_t timestamp_a, uint8_t duration, std::vector<nano::block_hash> const & hashes)
 {
 	handle = rsnano::rsn_vote_create2 (account_a.bytes.data (), prv_a.bytes.data (), timestamp_a, duration, reinterpret_cast<const uint8_t (*)[32]> (hashes.data ()), hashes.size ());
-	auto signature{ nano::sign_message (prv_a, account_a, hash ()) };
-	rsnano::rsn_vote_signature_set (handle, signature.bytes.data ());
 }
 
 nano::vote::~vote ()
@@ -672,17 +670,8 @@ nano::block_hash nano::vote::hash () const
 
 nano::block_hash nano::vote::full_hash () const
 {
-	nano::account account;
-	rsnano::rsn_vote_account (handle, account.bytes.data ());
-	nano::signature signature;
-	rsnano::rsn_vote_signature (handle, signature.bytes.data ());
 	nano::block_hash result;
-	blake2b_state state;
-	blake2b_init (&state, sizeof (result.bytes));
-	blake2b_update (&state, hash ().bytes.data (), sizeof (hash ().bytes));
-	blake2b_update (&state, account.bytes.data (), sizeof (account.bytes.data ()));
-	blake2b_update (&state, signature.bytes.data (), sizeof (signature.bytes.data ()));
-	blake2b_final (&state, result.bytes.data (), sizeof (result.bytes));
+	rsnano::rsn_vote_full_hash (handle, result.bytes.data ());
 	return result;
 }
 

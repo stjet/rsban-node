@@ -1,8 +1,10 @@
+use anyhow::Result;
 use std::time::Duration;
 
-use anyhow::Error;
-
-use crate::{Account, BlockHash, BlockHashBuilder, PropertyTreeWriter, RawKey, Signature};
+use crate::{
+    sign_message, Account, BlockHash, BlockHashBuilder, PropertyTreeWriter, RawKey, Signature,
+    Stream,
+};
 
 #[derive(Clone)]
 pub(crate) struct Vote {
@@ -32,17 +34,23 @@ impl Vote {
 
     pub(crate) fn new(
         account: Account,
-        key: RawKey,
+        prv: &RawKey,
         timestamp: u64,
         duration: u8,
         hashes: Vec<BlockHash>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        let mut result = Self {
             voting_account: account,
             timestamp: packed_timestamp(timestamp, duration),
             signature: Signature::new(),
             hashes,
-        }
+        };
+        result.signature = sign_message(
+            prv,
+            &result.voting_account.public_key,
+            result.hash().as_bytes(),
+        )?;
+        Ok(result)
     }
 
     /// Returns the timestamp of the vote (with the duration bits masked, set to zero)
@@ -76,7 +84,7 @@ impl Vote {
         result
     }
 
-    pub(crate) fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<(), Error> {
+    pub(crate) fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {
         writer.put_string("account", &self.voting_account.encode_account())?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         writer.put_string("sequence", &self.timestamp().to_string())?;
@@ -100,6 +108,24 @@ impl Vote {
         }
 
         builder.update(self.timestamp.to_ne_bytes()).build()
+    }
+
+    pub(crate) fn full_hash(&self) -> BlockHash {
+        BlockHashBuilder::new()
+            .update(self.hash().as_bytes())
+            .update(self.voting_account.as_bytes())
+            .update(self.signature.as_bytes())
+            .build()
+    }
+
+    pub(crate) fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        stream.write_bytes(self.voting_account.as_bytes())?;
+        stream.write_bytes(self.signature.as_bytes())?;
+        stream.write_bytes(&self.timestamp.to_le_bytes())?;
+        for hash in &self.hashes {
+            stream.write_bytes(hash.as_bytes())?;
+        }
+        Ok(())
     }
 }
 

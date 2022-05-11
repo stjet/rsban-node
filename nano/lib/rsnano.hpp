@@ -997,6 +997,8 @@ uint64_t rsn_vote_duration_ms (const VoteHandle * handle);
 
 bool rsn_vote_equals (const VoteHandle * first, const VoteHandle * second);
 
+void rsn_vote_full_hash (const VoteHandle * handle, uint8_t * result);
+
 void rsn_vote_hash (const VoteHandle * handle, uint8_t * result);
 
 VoteHashesDto rsn_vote_hashes (const VoteHandle * handle);

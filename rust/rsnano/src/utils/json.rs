@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::any::Any;
 #[cfg(test)]
 use std::collections::HashMap;
 
@@ -8,6 +9,10 @@ pub trait PropertyTreeReader {
 
 pub trait PropertyTreeWriter {
     fn put_string(&mut self, path: &str, value: &str) -> Result<()>;
+    fn new_writer(&self) -> Box<dyn PropertyTreeWriter>;
+    fn push_back(&mut self, path: &str, value: &dyn PropertyTreeWriter);
+    fn add_child(&mut self, path: &str, value: &dyn PropertyTreeWriter);
+    fn as_any(&self) -> &dyn Any;
 }
 
 #[cfg(test)]
@@ -39,6 +44,22 @@ impl PropertyTreeWriter for TestPropertyTree {
     fn put_string(&mut self, path: &str, value: &str) -> Result<()> {
         self.properties.insert(path.to_owned(), value.to_owned());
         Ok(())
+    }
+
+    fn new_writer(&self) -> Box<dyn PropertyTreeWriter> {
+        todo!()
+    }
+
+    fn push_back(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+        todo!()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn add_child(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+        todo!()
     }
 }
 

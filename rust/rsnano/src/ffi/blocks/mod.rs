@@ -216,7 +216,7 @@ pub unsafe extern "C" fn rsn_block_serialize_json(
     handle: *const BlockHandle,
     ptree: *mut c_void,
 ) -> i32 {
-    let mut writer = FfiPropertyTreeWriter::new(ptree);
+    let mut writer = FfiPropertyTreeWriter::new_borrowed(ptree);
     match (*handle)
         .block
         .read()

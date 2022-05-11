@@ -187,7 +187,7 @@ pub unsafe extern "C" fn rsn_vote_hashes_string(handle: *const VoteHandle) -> St
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_serialize_json(handle: *const VoteHandle, ptree: *mut c_void) {
-    let mut writer = FfiPropertyTreeWriter::new(ptree);
+    let mut writer = FfiPropertyTreeWriter::new_borrowed(ptree);
     (*handle)
         .vote
         .read()

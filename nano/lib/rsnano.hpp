@@ -101,6 +101,12 @@ using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
 
 using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
 
+using PropertyTreePushBackCallback = void (*) (void *, const char *, const void *);
+
+using PropertyTreeCreateTreeCallback = void * (*)();
+
+using PropertyTreeDestroyTreeCallback = void (*) (void *);
+
 using PropertyTreeGetStringCallback = int32_t (*) (const void *, const char *, uintptr_t, char *, uintptr_t);
 
 using PropertyTreePutStringCallback = void (*) (void *, const char *, uintptr_t, const char *, uintptr_t);
@@ -656,7 +662,15 @@ void rsn_callback_blake2b_init (Blake2BInitCallback f);
 
 void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
 
+void rsn_callback_property_tree_add_child (PropertyTreePushBackCallback f);
+
+void rsn_callback_property_tree_create (PropertyTreeCreateTreeCallback f);
+
+void rsn_callback_property_tree_destroy (PropertyTreeDestroyTreeCallback f);
+
 void rsn_callback_property_tree_get_string (PropertyTreeGetStringCallback f);
+
+void rsn_callback_property_tree_push_back (PropertyTreePushBackCallback f);
 
 void rsn_callback_property_tree_put_string (PropertyTreePutStringCallback f);
 

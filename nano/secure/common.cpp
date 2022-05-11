@@ -575,18 +575,15 @@ void nano::vote::serialize_json (boost::property_tree::ptree & tree) const
 {
 	rsnano::rsn_vote_serialize_json (handle, &tree);
 
-	tree.put ("sequence", std::to_string (timestamp ()));
-	tree.put ("timestamp", std::to_string (timestamp ()));
-	tree.put ("duration", std::to_string (duration_bits ()));
-	auto hashes{ read_block_hashes (handle) };
-	boost::property_tree::ptree blocks_tree;
-	for (auto const & hash : hashes)
-	{
-		boost::property_tree::ptree entry;
-		entry.put ("", hash.to_string ());
-		blocks_tree.push_back (std::make_pair ("", entry));
-	}
-	tree.add_child ("blocks", blocks_tree);
+	// auto hashes{ read_block_hashes (handle) };
+	// boost::property_tree::ptree blocks_tree;
+	// for (auto const & hash : hashes)
+	// {
+	// 	boost::property_tree::ptree entry;
+	// 	entry.put ("", hash.to_string ());
+	// 	blocks_tree.push_back (std::make_pair ("", entry));
+	// }
+	// tree.add_child ("blocks", blocks_tree);
 }
 
 std::string nano::vote::to_json () const

@@ -76,6 +76,16 @@ impl Vote {
     pub(crate) fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<(), Error> {
         writer.put_string("account", &self.voting_account.encode_account())?;
         writer.put_string("signature", &self.signature.encode_hex())?;
+        writer.put_string("sequence", &self.timestamp().to_string())?;
+        writer.put_string("timestamp", &self.timestamp().to_string())?;
+        writer.put_string("duration", &self.duration_bits().to_string())?;
+        let mut blocks_tree = writer.new_writer();
+        for hash in &self.hashes {
+            let mut entry = writer.new_writer();
+            entry.put_string("", &hash.to_string())?;
+            blocks_tree.push_back("", entry.as_ref());
+        }
+        writer.add_child("blocks", blocks_tree.as_ref());
         Ok(())
     }
 }

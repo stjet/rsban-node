@@ -101,6 +101,32 @@ int32_t ptree_get_string (const void * ptree, const char * path, uintptr_t path_
 	}
 }
 
+void * ptree_create ()
+{
+	return new boost::property_tree::ptree ();
+}
+
+void ptree_destroy (void * handle)
+{
+	delete static_cast<boost::property_tree::ptree *> (handle);
+}
+
+void ptree_push_back (void * parent_handle, const char * name, const void * child_handle)
+{
+	auto parent_tree{ static_cast<boost::property_tree::ptree *> (parent_handle) };
+	auto child_tree{ static_cast<const boost::property_tree::ptree *> (child_handle) };
+	std::string name_l (name);
+	parent_tree->push_back (std::make_pair (name_l, *child_tree));
+}
+
+void ptree_add_child (void * parent_handle, const char * name, const void * child_handle)
+{
+	auto parent_tree{ static_cast<boost::property_tree::ptree *> (parent_handle) };
+	auto child_tree{ static_cast<const boost::property_tree::ptree *> (child_handle) };
+	std::string name_l (name);
+	parent_tree->add_child (name_l, *child_tree);
+}
+
 int32_t toml_put_u64 (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a, uint64_t value, const uint8_t * documentation_a, uintptr_t documentation_len_a)
 {
 	try
@@ -267,6 +293,10 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_blake2b_final (reinterpret_cast<Blake2BFinalCallback> (blake2b_final));
 	rsnano::rsn_callback_property_tree_put_string (ptree_put_string);
 	rsnano::rsn_callback_property_tree_get_string (ptree_get_string);
+	rsnano::rsn_callback_property_tree_create (ptree_create);
+	rsnano::rsn_callback_property_tree_destroy (ptree_destroy);
+	rsnano::rsn_callback_property_tree_push_back (ptree_push_back);
+	rsnano::rsn_callback_property_tree_add_child (ptree_add_child);
 	rsnano::rsn_callback_toml_put_u64 (toml_put_u64);
 	rsnano::rsn_callback_toml_put_i64 (toml_put_i64);
 	rsnano::rsn_callback_toml_put_str (toml_put_str);

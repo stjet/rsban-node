@@ -677,18 +677,10 @@ nano::block_hash nano::vote::full_hash () const
 
 void nano::vote::serialize (nano::stream & stream_a) const
 {
-	nano::account account;
-	rsnano::rsn_vote_account (handle, account.bytes.data ());
-	nano::signature signature;
-	rsnano::rsn_vote_signature (handle, signature.bytes.data ());
-	write (stream_a, account);
-	write (stream_a, signature);
-	auto timestamp = rsnano::rsn_vote_timestamp_raw (handle);
-	write (stream_a, boost::endian::native_to_little (timestamp));
-	auto hashes{ read_block_hashes (handle) };
-	for (auto const & hash : hashes)
+	auto result = rsnano::rsn_vote_serialize (handle, &stream_a);
+	if (result != 0)
 	{
-		write (stream_a, hash);
+		throw std::runtime_error ("Could not serialize vote");
 	}
 }
 
@@ -702,8 +694,7 @@ bool nano::vote::deserialize (nano::stream & stream_a)
 		rsnano::rsn_vote_account_set (handle, account.bytes.data ());
 		nano::signature signature;
 		nano::read (stream_a, signature.bytes);
-	rsnano:;
-		rsn_vote_signature_set (handle, signature.bytes.data ());
+		rsnano::rsn_vote_signature_set (handle, signature.bytes.data ());
 		uint64_t timestamp;
 		nano::read (stream_a, timestamp);
 		rsnano::rsn_vote_timestamp_raw_set (handle, timestamp);

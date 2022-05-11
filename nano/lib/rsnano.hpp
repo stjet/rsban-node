@@ -1009,6 +1009,8 @@ void rsn_vote_hashes_set (VoteHandle * handle, const uint8_t (*hashes)[32], uint
 
 StringDto rsn_vote_hashes_string (const VoteHandle * handle);
 
+int32_t rsn_vote_serialize (const VoteHandle * handle, void * stream);
+
 void rsn_vote_serialize_json (const VoteHandle * handle, void * ptree);
 
 void rsn_vote_signature (const VoteHandle * handle, uint8_t * result);

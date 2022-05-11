@@ -1029,6 +1029,8 @@ uint64_t rsn_vote_timestamp_raw (const VoteHandle * handle);
 
 void rsn_vote_timestamp_raw_set (VoteHandle * handle, uint64_t timestamp);
 
+bool rsn_vote_validate (const VoteHandle * handle);
+
 int32_t rsn_voting_constants_create (const NetworkConstantsDto * network_constants,
 VotingConstantsDto * dto);
 

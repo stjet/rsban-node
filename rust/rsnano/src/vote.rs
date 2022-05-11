@@ -2,8 +2,8 @@ use anyhow::Result;
 use std::time::Duration;
 
 use crate::{
-    sign_message, Account, BlockHash, BlockHashBuilder, PropertyTreeWriter, RawKey, Signature,
-    Stream,
+    sign_message, validate_message, Account, BlockHash, BlockHashBuilder, PropertyTreeWriter,
+    RawKey, Signature, Stream,
 };
 
 #[derive(Clone)]
@@ -139,6 +139,14 @@ impl Vote {
             self.hashes.push(BlockHash::deserialize(stream)?);
         }
         Ok(())
+    }
+
+    pub(crate) fn validate(&self) -> Result<()> {
+        validate_message(
+            &self.voting_account.public_key,
+            self.hash().as_bytes(),
+            &self.signature,
+        )
     }
 }
 

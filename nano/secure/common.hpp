@@ -283,8 +283,6 @@ public:
 	 */
 	bool deserialize (nano::stream &);
 	bool validate () const;
-	boost::transform_iterator<nano::iterate_vote_blocks_as_hash, nano::vote_blocks_vec_iter> begin () const;
-	boost::transform_iterator<nano::iterate_vote_blocks_as_hash, nano::vote_blocks_vec_iter> end () const;
 	std::string to_json () const;
 	uint64_t timestamp () const;
 	uint8_t duration_bits () const;
@@ -293,7 +291,6 @@ public:
 	std::chrono::milliseconds duration () const;
 	std::vector<nano::block_hash> hashes () const;
 	void flip_signature_bit_0 ();
-	static uint64_t constexpr timestamp_mask = { 0xffff'ffff'ffff'fff0ULL };
 	static uint64_t constexpr timestamp_max = { 0xffff'ffff'ffff'fff0ULL };
 	static uint64_t constexpr timestamp_min = { 0x0000'0000'0000'0010ULL };
 	static uint8_t constexpr duration_max = { 0x0fu };

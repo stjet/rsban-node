@@ -692,11 +692,7 @@ bool nano::vote::deserialize (nano::stream & stream_a)
 
 bool nano::vote::validate () const
 {
-	nano::account account;
-	rsnano::rsn_vote_account (handle, account.bytes.data ());
-	nano::signature signature;
-	rsnano::rsn_vote_signature (handle, signature.bytes.data ());
-	return nano::validate_message (account, hash (), signature);
+	return rsnano::rsn_vote_validate (handle);
 }
 
 nano::account nano::vote::account () const

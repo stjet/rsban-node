@@ -236,3 +236,8 @@ pub unsafe extern "C" fn rsn_vote_deserialize(
         Err(_) => -1,
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_validate(handle: *const VoteHandle) -> bool {
+    (*handle).vote.read().unwrap().validate().is_err()
+}

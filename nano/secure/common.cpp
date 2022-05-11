@@ -574,16 +574,6 @@ std::vector<nano::block_hash> read_block_hashes (rsnano::VoteHandle const * hand
 void nano::vote::serialize_json (boost::property_tree::ptree & tree) const
 {
 	rsnano::rsn_vote_serialize_json (handle, &tree);
-
-	// auto hashes{ read_block_hashes (handle) };
-	// boost::property_tree::ptree blocks_tree;
-	// for (auto const & hash : hashes)
-	// {
-	// 	boost::property_tree::ptree entry;
-	// 	entry.put ("", hash.to_string ());
-	// 	blocks_tree.push_back (std::make_pair ("", entry));
-	// }
-	// tree.add_child ("blocks", blocks_tree);
 }
 
 std::string nano::vote::to_json () const
@@ -650,7 +640,7 @@ nano::vote::vote (bool & error_a, nano::stream & stream_a) :
 
 nano::vote::vote (nano::account const & account_a, nano::raw_key const & prv_a, uint64_t timestamp_a, uint8_t duration, std::vector<nano::block_hash> const & hashes)
 {
-	handle = rsnano::rsn_vote_create2 (account_a.bytes.data (), timestamp_a, duration, reinterpret_cast<const uint8_t (*)[32]> (hashes.data ()), hashes.size ());
+	handle = rsnano::rsn_vote_create2 (account_a.bytes.data (), prv_a.bytes.data (), timestamp_a, duration, reinterpret_cast<const uint8_t (*)[32]> (hashes.data ()), hashes.size ());
 	auto signature{ nano::sign_message (prv_a, account_a, hash ()) };
 	rsnano::rsn_vote_signature_set (handle, signature.bytes.data ());
 }
@@ -676,22 +666,7 @@ std::string const nano::vote::hash_prefix = "vote ";
 nano::block_hash nano::vote::hash () const
 {
 	nano::block_hash result;
-	blake2b_state hash;
-	blake2b_init (&hash, sizeof (result.bytes));
-	blake2b_update (&hash, hash_prefix.data (), hash_prefix.size ());
-	auto hashes{ read_block_hashes (handle) };
-	for (auto const & block_hash : hashes)
-	{
-		blake2b_update (&hash, block_hash.bytes.data (), sizeof (block_hash.bytes));
-	}
-	union
-	{
-		uint64_t qword;
-		std::array<uint8_t, 8> bytes;
-	};
-	qword = rsnano::rsn_vote_timestamp_raw (handle);
-	blake2b_update (&hash, bytes.data (), sizeof (bytes));
-	blake2b_final (&hash, result.bytes.data (), sizeof (result.bytes));
+	rsnano::rsn_vote_hash (handle, result.bytes.data ());
 	return result;
 }
 

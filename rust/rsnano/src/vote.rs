@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::Error;
 
-use crate::{Account, BlockHash, PropertyTreeWriter, Signature};
+use crate::{Account, BlockHash, BlockHashBuilder, PropertyTreeWriter, RawKey, Signature};
 
 #[derive(Clone)]
 pub(crate) struct Vote {
@@ -18,6 +18,8 @@ pub(crate) struct Vote {
     pub hashes: Vec<BlockHash>,
 }
 
+static HASH_PREFIX: &str = "vote ";
+
 impl Vote {
     pub(crate) fn null() -> Self {
         Self {
@@ -30,6 +32,7 @@ impl Vote {
 
     pub(crate) fn new(
         account: Account,
+        key: RawKey,
         timestamp: u64,
         duration: u8,
         hashes: Vec<BlockHash>,
@@ -87,6 +90,16 @@ impl Vote {
         }
         writer.add_child("blocks", blocks_tree.as_ref());
         Ok(())
+    }
+
+    pub(crate) fn hash(&self) -> BlockHash {
+        let mut builder = BlockHashBuilder::new().update(HASH_PREFIX);
+
+        for hash in &self.hashes {
+            builder = builder.update(hash.as_bytes())
+        }
+
+        builder.update(self.timestamp.to_ne_bytes()).build()
     }
 }
 

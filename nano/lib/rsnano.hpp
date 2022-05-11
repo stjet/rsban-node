@@ -983,6 +983,7 @@ VoteHandle * rsn_vote_copy (const VoteHandle * handle);
 VoteHandle * rsn_vote_create ();
 
 VoteHandle * rsn_vote_create2 (const uint8_t * account,
+const uint8_t * prv_key,
 uint64_t timestamp,
 uint8_t duration,
 const uint8_t (*hashes)[32],
@@ -995,6 +996,8 @@ uint8_t rsn_vote_duration_bits (const VoteHandle * handle);
 uint64_t rsn_vote_duration_ms (const VoteHandle * handle);
 
 bool rsn_vote_equals (const VoteHandle * first, const VoteHandle * second);
+
+void rsn_vote_hash (const VoteHandle * handle, uint8_t * result);
 
 VoteHashesDto rsn_vote_hashes (const VoteHandle * handle);
 

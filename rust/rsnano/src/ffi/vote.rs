@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::{Account, BlockHash, Signature, Vote};
+use crate::{Account, BlockHash, RawKey, Signature, Vote};
 
 use super::{FfiPropertyTreeWriter, StringDto};
 
@@ -21,6 +21,7 @@ pub extern "C" fn rsn_vote_create() -> *mut VoteHandle {
 #[no_mangle]
 pub extern "C" fn rsn_vote_create2(
     account: *const u8,
+    prv_key: *const u8,
     timestamp: u64,
     duration: u8,
     hashes: *const [u8; 32],
@@ -30,11 +31,16 @@ pub extern "C" fn rsn_vote_create2(
     bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(account, 32) });
     let account = Account::from_bytes(bytes);
 
+    bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(prv_key, 32) });
+    let key = RawKey::from_bytes(bytes);
+
     let hashes = unsafe { std::slice::from_raw_parts(hashes, hash_count) };
     let hashes = hashes.iter().map(|&h| BlockHash::from_bytes(h)).collect();
 
     Box::into_raw(Box::new(VoteHandle {
-        vote: Arc::new(RwLock::new(Vote::new(account, timestamp, duration, hashes))),
+        vote: Arc::new(RwLock::new(Vote::new(
+            account, key, timestamp, duration, hashes,
+        ))),
     }))
 }
 
@@ -194,4 +200,11 @@ pub unsafe extern "C" fn rsn_vote_serialize_json(handle: *const VoteHandle, ptre
         .unwrap()
         .serialize_json(&mut writer)
         .unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_hash(handle: *const VoteHandle, result: *mut u8) {
+    let hash = (*handle).vote.read().unwrap().hash();
+    let result = std::slice::from_raw_parts_mut(result, 32);
+    result.copy_from_slice(hash.as_bytes());
 }

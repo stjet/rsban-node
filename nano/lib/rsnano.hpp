@@ -27,7 +27,11 @@ struct StateBlockSignatureVerificationHandle;
 
 struct StateBlockSignatureVerificationResultHandle;
 
+struct StringHandle;
+
 struct VoteHandle;
+
+struct VoteHashesHandle;
 
 struct BlockDetailsDto
 {
@@ -550,6 +554,19 @@ struct StateBlockSignatureVerificationResultDto
 
 using StateBlockVerifiedCallback = void (*) (void *, const StateBlockSignatureVerificationResultDto *);
 
+struct VoteHashesDto
+{
+	VoteHashesHandle * handle;
+	uintptr_t count;
+	const uint8_t (*hashes)[32];
+};
+
+struct StringDto
+{
+	StringHandle * handle;
+	const char * value;
+};
+
 extern "C" {
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
@@ -921,6 +938,8 @@ void * context);
 
 uintptr_t rsn_state_block_size ();
 
+void rsn_string_destroy (StringHandle * handle);
+
 uint16_t rsn_test_node_port ();
 
 void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
@@ -949,15 +968,35 @@ VoteHandle * rsn_vote_copy (const VoteHandle * handle);
 
 VoteHandle * rsn_vote_create ();
 
-VoteHandle * rsn_vote_create2 (const uint8_t * account, uint64_t timestamp, uint8_t duration);
+VoteHandle * rsn_vote_create2 (const uint8_t * account,
+uint64_t timestamp,
+uint8_t duration,
+const uint8_t (*hashes)[32],
+uintptr_t hash_count);
 
 void rsn_vote_destroy (VoteHandle * handle);
 
+uint8_t rsn_vote_duration_bits (const VoteHandle * handle);
+
+uint64_t rsn_vote_duration_ms (const VoteHandle * handle);
+
 bool rsn_vote_equals (const VoteHandle * first, const VoteHandle * second);
+
+VoteHashesDto rsn_vote_hashes (const VoteHandle * handle);
+
+void rsn_vote_hashes_destroy (VoteHashesHandle * hashes);
+
+void rsn_vote_hashes_set (VoteHandle * handle, const uint8_t (*hashes)[32], uintptr_t count);
+
+StringDto rsn_vote_hashes_string (const VoteHandle * handle);
+
+void rsn_vote_serialize_json (const VoteHandle * handle, void * ptree);
 
 void rsn_vote_signature (const VoteHandle * handle, uint8_t * result);
 
 void rsn_vote_signature_set (VoteHandle * handle, const uint8_t * signature);
+
+uint64_t rsn_vote_timestamp (const VoteHandle * handle);
 
 uint64_t rsn_vote_timestamp_raw (const VoteHandle * handle);
 

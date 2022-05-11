@@ -301,9 +301,6 @@ public:
 private:
 	rsnano::VoteHandle * handle{ nullptr };
 
-	// The hashes for which this vote directly covers
-	std::vector<nano::block_hash> hashes_m;
-
 public:
 	static std::string const hash_prefix;
 };

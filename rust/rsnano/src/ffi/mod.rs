@@ -15,6 +15,8 @@ mod stream;
 mod toml;
 mod vote;
 
+use std::{ffi::CString, os::raw::c_char};
+
 pub use bandwidth_limiter::*;
 pub use blake2b::*;
 pub use blocks::*;
@@ -29,3 +31,26 @@ pub use signatures::*;
 pub use stats::*;
 pub use stream::*;
 pub use toml::*;
+
+pub struct StringHandle(CString);
+#[repr(C)]
+pub struct StringDto {
+    pub handle: *mut StringHandle,
+    pub value: *const c_char,
+}
+
+impl From<String> for StringDto {
+    fn from(s: String) -> Self {
+        let handle = Box::new(StringHandle(CString::new(s).unwrap()));
+        let value = handle.0.as_ptr();
+        StringDto {
+            handle: Box::into_raw(handle),
+            value,
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_string_destroy(handle: *mut StringHandle) {
+    drop(Box::from_raw(handle))
+}

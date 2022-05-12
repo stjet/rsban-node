@@ -22,7 +22,7 @@ pub use state_block::*;
 
 use crate::{
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, Link, PropertyTreeReader,
-    PropertyTreeWriter, Signature, Stream,
+    PropertyTreeWriter, Signature, Stream, Uniquer,
 };
 
 #[repr(u8)]
@@ -288,3 +288,5 @@ impl FullHash for RwLock<BlockEnum> {
         self.read().unwrap().as_block().full_hash()
     }
 }
+
+pub(crate) type BlockUniquer = Uniquer<RwLock<BlockEnum>>;

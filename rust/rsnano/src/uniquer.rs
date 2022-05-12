@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex, RwLock, Weak};
+use std::sync::{Arc, Mutex, Weak};
 
 use indexmap::IndexMap;
 use rand::Rng;
 
-use crate::{BlockEnum, BlockHash, FullHash, Vote};
+use crate::{BlockHash, FullHash};
 
 pub(crate) struct Uniquer<T>
 where
@@ -67,9 +67,6 @@ fn cleanup<T>(mut cache: std::sync::MutexGuard<IndexMap<BlockHash, Weak<T>>>) {
         i += 1;
     }
 }
-
-pub(crate) type BlockUniquer = Uniquer<RwLock<BlockEnum>>;
-pub(crate) type VoteUniquer = Uniquer<RwLock<Vote>>;
 
 #[cfg(test)]
 mod tests {

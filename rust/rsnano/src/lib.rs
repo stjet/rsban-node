@@ -25,7 +25,7 @@ mod stats;
 mod token_bucket;
 mod uniquer;
 mod utils;
-mod vote;
+mod voting;
 
 pub use bandwidth_limiter::*;
 pub use blocks::*;
@@ -41,7 +41,7 @@ pub use stats::*;
 pub use token_bucket::*;
 pub(crate) use uniquer::*;
 pub use utils::*;
-pub(crate) use vote::*;
+pub(crate) use voting::*;
 
 pub trait FullHash {
     fn full_hash(&self) -> BlockHash;

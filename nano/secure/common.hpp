@@ -294,6 +294,8 @@ public:
 	std::vector<nano::block_hash> hashes () const;
 	void flip_signature_bit_0 ();
 	rsnano::VoteHandle * get_handle () const;
+	// gets the pointer to the block data within Rust;
+	const void * get_rust_data_pointer () const;
 	static uint64_t constexpr timestamp_max = { 0xffff'ffff'ffff'fff0ULL };
 	static uint64_t constexpr timestamp_min = { 0x0000'0000'0000'0010ULL };
 	static uint8_t constexpr duration_max = { 0x0fu };

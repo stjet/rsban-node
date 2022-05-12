@@ -123,9 +123,7 @@ impl BlockHash {
 impl From<u64> for BlockHash {
     fn from(value: u64) -> Self {
         let mut result = Self { value: [0; 32] };
-
         result.value[24..].copy_from_slice(&value.to_be_bytes());
-
         result
     }
 }
@@ -297,7 +295,7 @@ impl Signature {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Default, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Default, Debug, Copy, Hash)]
 pub struct HashOrAccount {
     bytes: [u8; 32],
 }
@@ -415,7 +413,7 @@ impl From<u64> for Link {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Default, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Default, Debug, Copy, Hash)]
 pub struct Root {
     inner: HashOrAccount,
 }
@@ -433,6 +431,14 @@ impl Deref for Root {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+impl From<u64> for Root {
+    fn from(value: u64) -> Self {
+        let mut bytes = [0; 32];
+        bytes[..8].copy_from_slice(&value.to_le_bytes());
+        Self::from_bytes(bytes)
     }
 }
 

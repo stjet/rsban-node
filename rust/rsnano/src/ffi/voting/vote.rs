@@ -5,7 +5,7 @@ use std::{
 
 use crate::{Account, BlockHash, FullHash, RawKey, Signature, Vote};
 
-use super::{FfiPropertyTreeWriter, FfiStream, StringDto};
+use crate::ffi::{FfiPropertyTreeWriter, FfiStream, StringDto};
 
 pub struct VoteHandle {
     pub(crate) vote: Arc<RwLock<Vote>>,
@@ -240,4 +240,9 @@ pub unsafe extern "C" fn rsn_vote_deserialize(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_validate(handle: *const VoteHandle) -> bool {
     (*handle).vote.read().unwrap().validate().is_err()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_rust_data_pointer(handle: *const VoteHandle) -> *const c_void {
+    Arc::as_ptr(&(*handle).vote) as *const c_void
 }

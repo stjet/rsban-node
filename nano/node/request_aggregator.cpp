@@ -289,8 +289,14 @@ std::pair<std::vector<std::shared_ptr<nano::block>>, std::vector<std::shared_ptr
 		}
 	}
 	// Unique votes
-	std::sort (cached_votes.begin (), cached_votes.end ());
-	cached_votes.erase (std::unique (cached_votes.begin (), cached_votes.end ()), cached_votes.end ());
+	std::sort (cached_votes.begin (), cached_votes.end (), [] (const std::shared_ptr<nano::vote> & a, const std::shared_ptr<nano::vote> & b) -> bool {
+		return a->get_rust_data_pointer () > b->get_rust_data_pointer ();
+	});
+	cached_votes.erase (std::unique (cached_votes.begin (), cached_votes.end (), [] (std::shared_ptr<nano::vote> const & a, std::shared_ptr<nano::vote> const & b) {
+		return a->get_rust_data_pointer () == b->get_rust_data_pointer ();
+	}),
+	cached_votes.end ());
+
 	for (auto const & vote : cached_votes)
 	{
 		reply_action (vote, channel_a);

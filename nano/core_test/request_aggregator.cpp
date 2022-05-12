@@ -171,12 +171,13 @@ TEST (request_aggregator, two)
 	ASSERT_TIMELY (3s, 1 == node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_cached_votes));
 	ASSERT_TIMELY (3s, 0 == node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_cannot_vote));
 	ASSERT_TIMELY (3s, 2 == node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
+
 	// Make sure the cached vote is for both hashes
 	auto vote1 (node.history.votes (send2->root (), send2->hash ()));
 	auto vote2 (node.history.votes (receive1->root (), receive1->hash ()));
 	ASSERT_EQ (1, vote1.size ());
 	ASSERT_EQ (1, vote2.size ());
-	ASSERT_EQ (vote1.front (), vote2.front ());
+	ASSERT_EQ (vote1.front ()->get_rust_data_pointer (), vote2.front ()->get_rust_data_pointer ());
 }
 
 TEST (request_aggregator, two_endpoints)

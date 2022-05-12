@@ -7,56 +7,6 @@
 
 using namespace std::chrono_literals;
 
-namespace nano
-{
-TEST (local_vote_history, basic)
-{
-	nano::local_vote_history history{ nano::dev::network_params.voting };
-	ASSERT_FALSE (history.exists (1));
-	ASSERT_FALSE (history.exists (2));
-	ASSERT_TRUE (history.votes (1).empty ());
-	ASSERT_TRUE (history.votes (2).empty ());
-	auto vote1a (std::make_shared<nano::vote> ());
-	ASSERT_EQ (0, history.size ());
-	history.add (1, 2, vote1a);
-	ASSERT_EQ (1, history.size ());
-	ASSERT_TRUE (history.exists (1));
-	ASSERT_FALSE (history.exists (2));
-	auto votes1a (history.votes (1));
-	ASSERT_FALSE (votes1a.empty ());
-	ASSERT_EQ (1, history.votes (1, 2).size ());
-	ASSERT_TRUE (history.votes (1, 1).empty ());
-	ASSERT_TRUE (history.votes (1, 3).empty ());
-	ASSERT_TRUE (history.votes (2).empty ());
-	ASSERT_EQ (1, votes1a.size ());
-	ASSERT_EQ (vote1a, votes1a[0]);
-	auto vote1b (std::make_shared<nano::vote> ());
-	history.add (1, 2, vote1b);
-	auto votes1b (history.votes (1));
-	ASSERT_EQ (1, votes1b.size ());
-	ASSERT_EQ (vote1b, votes1b[0]);
-	ASSERT_NE (vote1a, votes1b[0]);
-	nano::account account1;
-	account1.dwords[0]++;
-	auto vote2 (std::make_shared<nano::vote> (account1));
-	ASSERT_EQ (1, history.size ());
-	history.add (1, 2, vote2);
-	ASSERT_EQ (2, history.size ());
-	auto votes2 (history.votes (1));
-	ASSERT_EQ (2, votes2.size ());
-	ASSERT_TRUE (vote1b == votes2[0] || vote1b == votes2[1]);
-	ASSERT_TRUE (vote2 == votes2[0] || vote2 == votes2[1]);
-	nano::account account2;
-	account2.dwords[1]++;
-	auto vote3 (std::make_shared<nano::vote> (account2));
-	history.add (1, 3, vote3);
-	ASSERT_EQ (1, history.size ());
-	auto votes3 (history.votes (1));
-	ASSERT_EQ (1, votes3.size ());
-	ASSERT_TRUE (vote3 == votes3[0]);
-}
-}
-
 TEST (vote_generator, cache)
 {
 	nano::system system (1);

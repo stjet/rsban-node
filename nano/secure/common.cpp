@@ -727,6 +727,11 @@ rsnano::VoteHandle * nano::vote::get_handle () const
 	return handle;
 }
 
+const void * nano::vote::get_rust_data_pointer () const
+{
+	return rsnano::rsn_vote_rust_data_pointer (handle);
+}
+
 nano::block_hash nano::iterate_vote_blocks_as_hash::operator() (nano::block_hash const & item) const
 {
 	return item;

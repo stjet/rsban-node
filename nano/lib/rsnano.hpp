@@ -21,6 +21,10 @@ struct BlockUniquerHandle;
 
 struct EpochsHandle;
 
+struct LocalVoteHistoryHandle;
+
+struct LocalVotesResultHandle;
+
 struct SignatureCheckerHandle;
 
 struct StateBlockSignatureVerificationHandle;
@@ -434,6 +438,13 @@ struct NetworkParamsDto
 	BootstrapConstantsDto bootstrap;
 };
 
+struct LocalVotesResult
+{
+	uintptr_t count;
+	VoteHandle * const * votes;
+	LocalVotesResultHandle * handle;
+};
+
 struct OpenBlockDto
 {
 	uint64_t work;
@@ -763,6 +774,33 @@ uint16_t network);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 
+void rsn_local_vote_history_add (LocalVoteHistoryHandle * handle,
+const uint8_t * root,
+const uint8_t * hash,
+const VoteHandle * vote);
+
+void rsn_local_vote_history_container_info (LocalVoteHistoryHandle * handle,
+uintptr_t * size,
+uintptr_t * count);
+
+LocalVoteHistoryHandle * rsn_local_vote_history_create (uintptr_t max_cache);
+
+void rsn_local_vote_history_destroy (LocalVoteHistoryHandle * handle);
+
+void rsn_local_vote_history_erase (LocalVoteHistoryHandle * handle, const uint8_t * root);
+
+bool rsn_local_vote_history_exists (LocalVoteHistoryHandle * handle, const uint8_t * root);
+
+uintptr_t rsn_local_vote_history_size (LocalVoteHistoryHandle * handle);
+
+void rsn_local_vote_history_votes (LocalVoteHistoryHandle * handle,
+const uint8_t * root,
+const uint8_t * hash,
+bool is_final,
+LocalVotesResult * result);
+
+void rsn_local_vote_history_votes_destroy (LocalVotesResultHandle * handle);
+
 void rsn_logging_create (LoggingDto * dto);
 
 uint16_t rsn_network_constants_active_network ();
@@ -1016,6 +1054,8 @@ void rsn_vote_hashes_destroy (VoteHashesHandle * hashes);
 void rsn_vote_hashes_set (VoteHandle * handle, const uint8_t (*hashes)[32], uintptr_t count);
 
 StringDto rsn_vote_hashes_string (const VoteHandle * handle);
+
+const void * rsn_vote_rust_data_pointer (const VoteHandle * handle);
 
 int32_t rsn_vote_serialize (const VoteHandle * handle, void * stream);
 

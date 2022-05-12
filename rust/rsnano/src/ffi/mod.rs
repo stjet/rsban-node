@@ -13,8 +13,7 @@ mod state_block_signature_verification;
 mod stats;
 mod stream;
 mod toml;
-mod vote;
-mod vote_uniquer;
+mod voting;
 
 use std::{ffi::CString, os::raw::c_char};
 

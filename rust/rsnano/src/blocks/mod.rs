@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod block_builder;
 mod block_details;
-mod block_uniquer;
 mod change_block;
 mod open_block;
 mod receive_block;
@@ -14,7 +13,6 @@ use anyhow::Result;
 #[cfg(test)]
 pub use block_builder::*;
 pub use block_details::*;
-pub(crate) use block_uniquer::*;
 pub use change_block::*;
 use num::FromPrimitive;
 pub use open_block::*;
@@ -23,7 +21,7 @@ pub use send_block::*;
 pub use state_block::*;
 
 use crate::{
-    Account, Amount, BlockHash, BlockHashBuilder, Epoch, Link, PropertyTreeReader,
+    Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, Link, PropertyTreeReader,
     PropertyTreeWriter, Signature, Stream,
 };
 
@@ -241,7 +239,7 @@ impl BlockEnum {
     }
 }
 
-pub trait Block {
+pub trait Block: FullHash {
     fn block_type(&self) -> BlockType;
     fn account(&self) -> &Account;
 
@@ -253,13 +251,6 @@ pub trait Block {
     fn sideband(&'_ self) -> Option<&'_ BlockSideband>;
     fn set_sideband(&mut self, sideband: BlockSideband);
     fn hash(&self) -> BlockHash;
-    fn full_hash(&self) -> BlockHash {
-        BlockHashBuilder::new()
-            .update(self.hash().as_bytes())
-            .update(self.block_signature().as_bytes())
-            .update(self.work().to_ne_bytes())
-            .build()
-    }
     fn link(&self) -> Link;
     fn block_signature(&self) -> &Signature;
     fn set_block_signature(&mut self, signature: &Signature);
@@ -268,6 +259,16 @@ pub trait Block {
     fn previous(&self) -> &BlockHash;
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()>;
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()>;
+}
+
+impl<T: Block> FullHash for T {
+    fn full_hash(&self) -> BlockHash {
+        BlockHashBuilder::new()
+            .update(self.hash().as_bytes())
+            .update(self.block_signature().as_bytes())
+            .update(self.work().to_ne_bytes())
+            .build()
+    }
 }
 
 pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<BlockEnum> {
@@ -279,5 +280,11 @@ pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result
         "change" => ChangeBlock::deserialize_json(ptree).map(BlockEnum::Change),
         "state" => StateBlock::deserialize_json(ptree).map(BlockEnum::State),
         _ => Err(anyhow!("unsupported block type")),
+    }
+}
+
+impl FullHash for RwLock<BlockEnum> {
+    fn full_hash(&self) -> BlockHash {
+        self.read().unwrap().as_block().full_hash()
     }
 }

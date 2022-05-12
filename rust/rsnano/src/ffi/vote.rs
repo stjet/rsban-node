@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::{Account, BlockHash, RawKey, Signature, Vote};
+use crate::{Account, BlockHash, FullHash, RawKey, Signature, Vote};
 
 use super::{FfiPropertyTreeWriter, FfiStream, StringDto};
 

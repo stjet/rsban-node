@@ -1,9 +1,9 @@
 use anyhow::Result;
-use std::time::Duration;
+use std::{sync::RwLock, time::Duration};
 
 use crate::{
-    sign_message, validate_message, Account, BlockHash, BlockHashBuilder, PropertyTreeWriter,
-    RawKey, Signature, Stream,
+    sign_message, validate_message, Account, BlockHash, BlockHashBuilder, FullHash,
+    PropertyTreeWriter, RawKey, Signature, Stream,
 };
 
 #[derive(Clone)]
@@ -110,14 +110,6 @@ impl Vote {
         builder.update(self.timestamp.to_ne_bytes()).build()
     }
 
-    pub(crate) fn full_hash(&self) -> BlockHash {
-        BlockHashBuilder::new()
-            .update(self.hash().as_bytes())
-            .update(self.voting_account.as_bytes())
-            .update(self.signature.as_bytes())
-            .build()
-    }
-
     pub(crate) fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         self.voting_account.serialize(stream)?;
         self.signature.serialize(stream)?;
@@ -156,6 +148,22 @@ impl PartialEq for Vote {
             && self.voting_account == other.voting_account
             && self.signature == other.signature
             && self.hashes == other.hashes
+    }
+}
+
+impl FullHash for Vote {
+    fn full_hash(&self) -> BlockHash {
+        BlockHashBuilder::new()
+            .update(self.hash().as_bytes())
+            .update(self.voting_account.as_bytes())
+            .update(self.signature.as_bytes())
+            .build()
+    }
+}
+
+impl FullHash for RwLock<Vote> {
+    fn full_hash(&self) -> BlockHash {
+        self.read().unwrap().full_hash()
     }
 }
 

@@ -19,6 +19,7 @@
 namespace rsnano
 {
 class VoteHandle;
+class VoteUniquerHandle;
 }
 
 namespace boost
@@ -265,6 +266,7 @@ class vote final
 public:
 	vote ();
 	vote (nano::account const &);
+	vote (rsnano::VoteHandle * handle_a);
 	vote (nano::vote const &);
 	vote (nano::vote &&);
 	vote (bool &, nano::stream &);
@@ -291,6 +293,7 @@ public:
 	std::chrono::milliseconds duration () const;
 	std::vector<nano::block_hash> hashes () const;
 	void flip_signature_bit_0 ();
+	rsnano::VoteHandle * get_handle () const;
 	static uint64_t constexpr timestamp_max = { 0xffff'ffff'ffff'fff0ULL };
 	static uint64_t constexpr timestamp_min = { 0x0000'0000'0000'0010ULL };
 	static uint8_t constexpr duration_max = { 0x0fu };
@@ -310,14 +313,15 @@ public:
 	using value_type = std::pair<nano::block_hash const, std::weak_ptr<nano::vote>>;
 
 	vote_uniquer (nano::block_uniquer &);
+	vote_uniquer (nano::vote_uniquer &&) = delete;
+	vote_uniquer (const nano::vote_uniquer &) = delete;
+	~vote_uniquer ();
 	std::shared_ptr<nano::vote> unique (std::shared_ptr<nano::vote> const &);
 	size_t size ();
+	vote_uniquer & operator= (vote_uniquer const &) = delete;
 
 private:
-	nano::block_uniquer & uniquer;
-	nano::mutex mutex{ mutex_identifier (mutexes::vote_uniquer) };
-	std::unordered_map<std::remove_const_t<value_type::first_type>, value_type::second_type> votes;
-	static unsigned constexpr cleanup_count = 2;
+	rsnano::VoteUniquerHandle * handle;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (vote_uniquer & vote_uniquer, std::string const & name);

@@ -615,6 +615,11 @@ nano::vote::vote () :
 {
 }
 
+nano::vote::vote (rsnano::VoteHandle * handle_a) :
+	handle (handle_a)
+{
+}
+
 nano::vote::vote (nano::vote const & other_a) :
 	handle (rsnano::rsn_vote_copy (other_a.handle))
 {
@@ -717,63 +722,49 @@ void nano::vote::flip_signature_bit_0 ()
 	rsnano::rsn_vote_signature_set (handle, signature.bytes.data ());
 }
 
+rsnano::VoteHandle * nano::vote::get_handle () const
+{
+	return handle;
+}
+
 nano::block_hash nano::iterate_vote_blocks_as_hash::operator() (nano::block_hash const & item) const
 {
 	return item;
 }
 
 nano::vote_uniquer::vote_uniquer (nano::block_uniquer & uniquer_a) :
-	uniquer (uniquer_a)
+	handle (rsnano::rsn_vote_uniquer_create ())
 {
+}
+
+nano::vote_uniquer::~vote_uniquer ()
+{
+	if (handle != nullptr)
+	{
+		rsnano::rsn_vote_uniquer_destroy (handle);
+	}
 }
 
 std::shared_ptr<nano::vote> nano::vote_uniquer::unique (std::shared_ptr<nano::vote> const & vote_a)
 {
-	auto result = vote_a;
-	if (result != nullptr)
+	if (vote_a == nullptr)
 	{
-		nano::block_hash key = vote_a->full_hash ();
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		auto & existing = votes[key];
-		if (auto block_l = existing.lock ())
-		{
-			result = block_l;
-		}
-		else
-		{
-			existing = vote_a;
-		}
-
-		release_assert (std::numeric_limits<CryptoPP::word32>::max () > votes.size ());
-		for (auto i (0); i < cleanup_count && !votes.empty (); ++i)
-		{
-			auto random_offset = nano::random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (votes.size () - 1));
-
-			auto existing (std::next (votes.begin (), random_offset));
-			if (existing == votes.end ())
-			{
-				existing = votes.begin ();
-			}
-			if (existing != votes.end ())
-			{
-				if (auto block_l = existing->second.lock ())
-				{
-					// Still live
-				}
-				else
-				{
-					votes.erase (existing);
-				}
-			}
-		}
+		return nullptr;
 	}
-	return result;
+	auto uniqued (rsnano::rsn_vote_uniquer_unique (handle, vote_a->get_handle ()));
+	if (uniqued == vote_a->get_handle ())
+	{
+		return vote_a;
+	}
+	else
+	{
+		return std::make_shared<nano::vote> (uniqued);
+	}
 }
 
 size_t nano::vote_uniquer::size ()
 {
-	nano::lock_guard<nano::mutex> lock (mutex);
-	return votes.size ();
+	return rsnano::rsn_vote_uniquer_size (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (vote_uniquer & vote_uniquer, std::string const & name)

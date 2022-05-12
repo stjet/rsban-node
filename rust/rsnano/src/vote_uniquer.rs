@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex, RwLock, Weak};
 
 use crate::{BlockHash, Vote};
 
+/// This struct serves to find and return unique variants of a vote in order to minimize memory usage
 pub(crate) struct VoteUniquer {
     votes: Mutex<IndexMap<BlockHash, Weak<RwLock<Vote>>>>,
 }

@@ -303,7 +303,8 @@ class block_uniquer
 public:
 	block_uniquer ();
 	~block_uniquer ();
-	block_uniquer (const block_uniquer &) = delete;
+	block_uniquer (const nano::block_uniquer &) = delete;
+	block_uniquer (nano::block_uniquer &&) = delete;
 	using value_type = std::pair<nano::uint256_union const, std::weak_ptr<nano::block>>;
 
 	std::shared_ptr<nano::block> unique (std::shared_ptr<nano::block> const &);
@@ -312,9 +313,6 @@ public:
 	block_uniquer & operator= (block_uniquer const &) = delete;
 
 private:
-	nano::mutex mutex{ mutex_identifier (mutexes::block_uniquer) };
-	std::unordered_map<std::remove_const_t<value_type::first_type>, value_type::second_type> blocks;
-	static unsigned constexpr cleanup_count = 2;
 	rsnano::BlockUniquerHandle * handle;
 };
 

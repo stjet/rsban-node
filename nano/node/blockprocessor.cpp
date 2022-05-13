@@ -39,7 +39,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	stats (node_a.stats),
 	scheduler (node_a.scheduler),
 	history (node_a.history),
-	websocket_server (node_a.websocket_server.get()),
+	websocket_server (node_a.websocket_server),
 	block_arrival (node_a.block_arrival),
 	unchecked (node_a.unchecked),
 	gap_cache (node_a.gap_cache),

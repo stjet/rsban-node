@@ -111,7 +111,7 @@ private:
 	nano::local_vote_history & history;
 	nano::active_transactions & active_transactions;
 	nano::election_scheduler & scheduler;
-	nano::websocket::listener * websocket_server;
+	std::shared_ptr<nano::websocket::listener> & websocket_server;
 	nano::block_arrival & block_arrival;
 	nano::unchecked_map & unchecked;
 	nano::gap_cache & gap_cache;

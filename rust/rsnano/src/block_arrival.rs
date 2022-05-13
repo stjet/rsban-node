@@ -1,6 +1,6 @@
-pub(crate) struct BlockProcessor {}
+pub(crate) struct BlockArrival {}
 
-impl BlockProcessor {
+impl BlockArrival {
     pub(crate) fn new() -> Self {
         Self {}
     }

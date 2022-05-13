@@ -9,8 +9,6 @@ pub extern "C" fn rsn_block_processor_create() -> *mut BlockProcessorHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_destroy(
-    handle: *mut BlockProcessorHandle,
-) {
+pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle) {
     drop(unsafe { Box::from_raw(handle) });
 }

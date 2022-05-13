@@ -64,9 +64,16 @@ public:
 class block_arrival final
 {
 public:
+	block_arrival ();
+	block_arrival (nano::block_arrival const &) = delete;
+	block_arrival (nano::block_arrival &&) = delete;
+	~block_arrival ();
 	// Return `true' to indicated an error if the block has already been inserted
 	bool add (nano::block_hash const &);
 	bool recent (nano::block_hash const &);
+	std::size_t size ();
+	std::size_t size_of_element () const;
+
 	// clang-format off
 	class tag_sequence {};
 	class tag_hash {};
@@ -80,6 +87,9 @@ public:
 	nano::mutex mutex{ mutex_identifier (mutexes::block_arrival) };
 	static std::size_t constexpr arrival_size_min = 8 * 1024;
 	static std::chrono::seconds constexpr arrival_time_min = std::chrono::seconds (300);
+
+private:
+	rsnano::BlockArrivalHandle * handle;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (block_arrival & block_arrival, std::string const & name);

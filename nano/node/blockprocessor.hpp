@@ -37,7 +37,7 @@ class bootstrap_initiator;
 
 namespace websocket
 {
-class listener;
+	class listener;
 }
 
 enum class block_origin
@@ -99,7 +99,7 @@ private:
 	std::deque<nano::unchecked_info> blocks;
 	std::deque<std::shared_ptr<nano::block>> forced;
 	nano::condition_variable condition;
-	
+
 	// already ported to Rust:
 	nano::logger_mt & logger;
 	nano::signature_checker & checker;

@@ -1427,6 +1427,16 @@ void nano::node::process_confirmed (nano::election_status const & status_a, uint
 	}
 }
 
+nano::block_arrival::block_arrival () :
+	handle{ rsnano::rsn_block_arrival_create () }
+{
+}
+
+nano::block_arrival::~block_arrival ()
+{
+	rsnano::rsn_block_arrival_destroy (handle);
+}
+
 bool nano::block_arrival::add (nano::block_hash const & hash_a)
 {
 	nano::lock_guard<nano::mutex> lock (mutex);
@@ -1447,15 +1457,21 @@ bool nano::block_arrival::recent (nano::block_hash const & hash_a)
 	return arrival.get<tag_hash> ().find (hash_a) != arrival.get<tag_hash> ().end ();
 }
 
+std::size_t nano::block_arrival::size ()
+{
+	nano::lock_guard<nano::mutex> guard (mutex);
+	return arrival.size ();
+}
+
+std::size_t nano::block_arrival::size_of_element () const
+{
+	return sizeof (decltype (arrival)::value_type);
+}
+
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (block_arrival & block_arrival, std::string const & name)
 {
-	std::size_t count = 0;
-	{
-		nano::lock_guard<nano::mutex> guard (block_arrival.mutex);
-		count = block_arrival.arrival.size ();
-	}
-
-	auto sizeof_element = sizeof (decltype (block_arrival.arrival)::value_type);
+	std::size_t count = block_arrival.size ();
+	auto sizeof_element = block_arrival.size_of_element ();
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "arrival", count, sizeof_element }));
 	return composite;

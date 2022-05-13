@@ -11,6 +11,8 @@ extern crate num_derive;
 extern crate anyhow;
 
 mod bandwidth_limiter;
+mod block_arrival;
+mod block_processor;
 mod blocks;
 mod config;
 mod epoch;
@@ -26,9 +28,10 @@ mod token_bucket;
 mod uniquer;
 mod utils;
 mod voting;
-mod block_processor;
 
 pub use bandwidth_limiter::*;
+pub(crate) use block_arrival::*;
+pub(crate) use block_processor::*;
 pub use blocks::*;
 pub use config::*;
 pub use epoch::*;
@@ -43,7 +46,6 @@ pub use token_bucket::*;
 pub(crate) use uniquer::*;
 pub use utils::*;
 pub(crate) use voting::*;
-pub(crate) use block_processor::*;
 
 pub trait FullHash {
     fn full_hash(&self) -> BlockHash;

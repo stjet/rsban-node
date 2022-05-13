@@ -15,7 +15,11 @@ static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
 
 struct BandwidthLimiterHandle;
 
+struct BlockArrivalHandle;
+
 struct BlockHandle;
+
+struct BlockProcessorHandle;
 
 struct BlockUniquerHandle;
 
@@ -606,6 +610,10 @@ bool rsn_bandwidth_limiter_should_drop (const BandwidthLimiterHandle * limiter,
 uintptr_t message_size,
 int32_t * result);
 
+BlockArrivalHandle * rsn_block_arrival_create ();
+
+void rsn_block_arrival_destroy (BlockArrivalHandle * handle);
+
 BlockHandle * rsn_block_clone (const BlockHandle * handle);
 
 void rsn_block_destroy (BlockHandle * handle);
@@ -631,6 +639,10 @@ bool rsn_block_has_sideband (const BlockHandle * block);
 void rsn_block_hash (const BlockHandle * handle, uint8_t (*hash)[32]);
 
 void rsn_block_previous (const BlockHandle * handle, uint8_t (*result)[32]);
+
+BlockProcessorHandle * rsn_block_processor_create ();
+
+void rsn_block_processor_destroy (BlockProcessorHandle * handle);
 
 const void * rsn_block_rust_data_pointer (const BlockHandle * handle);
 

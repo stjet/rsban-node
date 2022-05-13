@@ -610,9 +610,17 @@ bool rsn_bandwidth_limiter_should_drop (const BandwidthLimiterHandle * limiter,
 uintptr_t message_size,
 int32_t * result);
 
+bool rsn_block_arrival_add (BlockArrivalHandle * handle, const uint8_t * hash);
+
 BlockArrivalHandle * rsn_block_arrival_create ();
 
 void rsn_block_arrival_destroy (BlockArrivalHandle * handle);
+
+bool rsn_block_arrival_recent (BlockArrivalHandle * handle, const uint8_t * hash);
+
+uintptr_t rsn_block_arrival_size (BlockArrivalHandle * handle);
+
+uintptr_t rsn_block_arrival_size_of_element (BlockArrivalHandle * handle);
 
 BlockHandle * rsn_block_clone (const BlockHandle * handle);
 

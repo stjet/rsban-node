@@ -2212,51 +2212,6 @@ TEST (node, block_confirm)
 	}
 }
 
-TEST (node, block_arrival)
-{
-	nano::block_arrival block_arrival;
-	ASSERT_EQ (0, block_arrival.size ());
-	nano::block_hash hash1 (1);
-	block_arrival.add (hash1);
-	ASSERT_EQ (1, block_arrival.size ());
-	block_arrival.add (hash1);
-	ASSERT_EQ (1, block_arrival.size ());
-	nano::block_hash hash2 (2);
-	block_arrival.add (hash2);
-	ASSERT_EQ (2, block_arrival.size ());
-}
-
-TEST (node, block_arrival_size)
-{
-	nano::block_arrival block_arrival;
-	auto time (std::chrono::steady_clock::now () - nano::block_arrival::arrival_time_min - std::chrono::seconds (5));
-	nano::block_hash hash (0);
-	for (auto i (0); i < nano::block_arrival::arrival_size_min * 2; ++i)
-	{
-		block_arrival.arrival.push_back (nano::block_arrival_info{ time, hash });
-		++hash.qwords[0];
-	}
-	ASSERT_EQ (nano::block_arrival::arrival_size_min * 2, block_arrival.size ());
-	block_arrival.recent (0);
-	ASSERT_EQ (nano::block_arrival::arrival_size_min, block_arrival.size ());
-}
-
-TEST (node, block_arrival_time)
-{
-	nano::system system (1);
-	auto & node (*system.nodes[0]);
-	auto time (std::chrono::steady_clock::now ());
-	nano::block_hash hash (0);
-	for (auto i (0); i < nano::block_arrival::arrival_size_min * 2; ++i)
-	{
-		node.block_arrival.arrival.push_back (nano::block_arrival_info{ time, hash });
-		++hash.qwords[0];
-	}
-	ASSERT_EQ (nano::block_arrival::arrival_size_min * 2, node.block_arrival.arrival.size ());
-	node.block_arrival.recent (0);
-	ASSERT_EQ (nano::block_arrival::arrival_size_min * 2, node.block_arrival.arrival.size ());
-}
-
 TEST (node, confirm_quorum)
 {
 	nano::system system (1);

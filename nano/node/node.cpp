@@ -1439,33 +1439,22 @@ nano::block_arrival::~block_arrival ()
 
 bool nano::block_arrival::add (nano::block_hash const & hash_a)
 {
-	nano::lock_guard<nano::mutex> lock (mutex);
-	auto now (std::chrono::steady_clock::now ());
-	auto inserted (arrival.get<tag_sequence> ().emplace_back (nano::block_arrival_info{ now, hash_a }));
-	auto result (!inserted.second);
-	return result;
+	return rsnano::rsn_block_arrival_add (handle, hash_a.bytes.data ());
 }
 
 bool nano::block_arrival::recent (nano::block_hash const & hash_a)
 {
-	nano::lock_guard<nano::mutex> lock (mutex);
-	auto now (std::chrono::steady_clock::now ());
-	while (arrival.size () > arrival_size_min && arrival.get<tag_sequence> ().front ().arrival + arrival_time_min < now)
-	{
-		arrival.get<tag_sequence> ().pop_front ();
-	}
-	return arrival.get<tag_hash> ().find (hash_a) != arrival.get<tag_hash> ().end ();
+	return rsnano::rsn_block_arrival_recent (handle, hash_a.bytes.data ());
 }
 
 std::size_t nano::block_arrival::size ()
 {
-	nano::lock_guard<nano::mutex> guard (mutex);
-	return arrival.size ();
+	return rsnano::rsn_block_arrival_size (handle);
 }
 
 std::size_t nano::block_arrival::size_of_element () const
 {
-	return sizeof (decltype (arrival)::value_type);
+	return rsnano::rsn_block_arrival_size_of_element (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (block_arrival & block_arrival, std::string const & name)

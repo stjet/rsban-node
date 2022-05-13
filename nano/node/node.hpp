@@ -70,21 +70,11 @@ public:
 	~block_arrival ();
 	// Return `true' to indicated an error if the block has already been inserted
 	bool add (nano::block_hash const &);
+	bool add (nano::block_hash const &, std::chrono::steady_clock::time_point now);
 	bool recent (nano::block_hash const &);
 	std::size_t size ();
 	std::size_t size_of_element () const;
 
-	// clang-format off
-	class tag_sequence {};
-	class tag_hash {};
-	boost::multi_index_container<nano::block_arrival_info,
-		boost::multi_index::indexed_by<
-			boost::multi_index::sequenced<boost::multi_index::tag<tag_sequence>>,
-			boost::multi_index::hashed_unique<boost::multi_index::tag<tag_hash>,
-				boost::multi_index::member<nano::block_arrival_info, nano::block_hash, &nano::block_arrival_info::hash>>>>
-	arrival;
-	// clang-format on
-	nano::mutex mutex{ mutex_identifier (mutexes::block_arrival) };
 	static std::size_t constexpr arrival_size_min = 8 * 1024;
 	static std::chrono::seconds constexpr arrival_time_min = std::chrono::seconds (300);
 

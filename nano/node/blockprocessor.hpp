@@ -22,6 +22,23 @@ class read_transaction;
 class transaction;
 class write_transaction;
 class write_database_queue;
+class node_config;
+class ledger;
+class node_flags;
+class network;
+class stat;
+class local_vote_history;
+class active_transactions;
+class election_scheduler;
+class block_arrival;
+class unchecked_map;
+class gap_cache;
+class bootstrap_initiator;
+
+namespace websocket
+{
+class listener;
+}
 
 enum class block_origin
 {
@@ -82,7 +99,23 @@ private:
 	std::deque<nano::unchecked_info> blocks;
 	std::deque<std::shared_ptr<nano::block>> forced;
 	nano::condition_variable condition;
-	nano::node & node;
+	nano::logger_mt & logger;
+	nano::signature_checker & checker;
+	nano::node_config & config;
+	nano::ledger & ledger;
+	nano::node_flags & flags;
+	nano::network & network;
+	nano::network_params & network_params;
+	nano::store & store;
+	nano::stat & stats;
+	nano::local_vote_history & history;
+	nano::active_transactions & active_transactions;
+	nano::election_scheduler & scheduler;
+	nano::websocket::listener * websocket_server;
+	nano::block_arrival & block_arrival;
+	nano::unchecked_map & unchecked;
+	nano::gap_cache & gap_cache;
+	nano::bootstrap_initiator & bootstrap_initiator;
 	nano::write_database_queue & write_database_queue;
 	nano::mutex mutex{ mutex_identifier (mutexes::block_processor) };
 	nano::state_block_signature_verification state_block_signature_verification;

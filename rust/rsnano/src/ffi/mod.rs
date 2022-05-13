@@ -14,6 +14,7 @@ mod stats;
 mod stream;
 mod toml;
 mod voting;
+mod block_processor;
 
 use std::{ffi::CString, os::raw::c_char};
 

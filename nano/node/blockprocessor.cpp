@@ -27,25 +27,25 @@ nano::block_post_events::~block_post_events ()
 
 nano::block_processor::block_processor (nano::node & node_a, nano::write_database_queue & write_database_queue_a) :
 	next_log (std::chrono::steady_clock::now ()),
-	checker (node_a.checker),
-	ledger (node_a.ledger),
-	config (node_a.config),
 	logger (node_a.logger),
+	checker (node_a.checker),
+	config (node_a.config),
+	state_block_signature_verification (checker, config.network_params.ledger.epochs, config.logging.timing_logging (), logger, node_a.flags.block_processor_verification_size),
+	network_params (node_a.network_params),
+	history (node_a.history),
+	ledger (node_a.ledger),
 	flags (node_a.flags),
 	network (node_a.network),
-	network_params (node_a.network_params),
 	active_transactions (node_a.active),
 	store (node_a.store),
 	stats (node_a.stats),
 	scheduler (node_a.scheduler),
-	history (node_a.history),
 	websocket_server (node_a.websocket_server),
 	block_arrival (node_a.block_arrival),
 	unchecked (node_a.unchecked),
 	gap_cache (node_a.gap_cache),
 	bootstrap_initiator (node_a.bootstrap_initiator),
-	write_database_queue (write_database_queue_a),
-	state_block_signature_verification (checker, ledger.constants.epochs, config.logging.timing_logging (), logger, flags.block_processor_verification_size)
+	write_database_queue (write_database_queue_a)
 {
 	state_block_signature_verification.blocks_verified_callback = [this] (std::deque<nano::state_block_signature_verification::value_type> & items, std::vector<int> const & verifications, std::vector<nano::block_hash> const & hashes, std::vector<nano::signature> const & blocks_signatures) {
 		this->process_verified_state_blocks (items, verifications, hashes, blocks_signatures);

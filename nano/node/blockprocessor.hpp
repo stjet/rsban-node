@@ -99,16 +99,21 @@ private:
 	std::deque<nano::unchecked_info> blocks;
 	std::deque<std::shared_ptr<nano::block>> forced;
 	nano::condition_variable condition;
+	
+	// already ported to Rust:
 	nano::logger_mt & logger;
 	nano::signature_checker & checker;
 	nano::node_config & config;
+	nano::state_block_signature_verification state_block_signature_verification;
+	nano::network_params & network_params;
+	nano::local_vote_history & history;
+
+	// not yet ported:
 	nano::ledger & ledger;
 	nano::node_flags & flags;
 	nano::network & network;
-	nano::network_params & network_params;
 	nano::store & store;
 	nano::stat & stats;
-	nano::local_vote_history & history;
 	nano::active_transactions & active_transactions;
 	nano::election_scheduler & scheduler;
 	std::shared_ptr<nano::websocket::listener> & websocket_server;
@@ -118,7 +123,6 @@ private:
 	nano::bootstrap_initiator & bootstrap_initiator;
 	nano::write_database_queue & write_database_queue;
 	nano::mutex mutex{ mutex_identifier (mutexes::block_processor) };
-	nano::state_block_signature_verification state_block_signature_verification;
 	std::thread processing_thread;
 
 	friend std::unique_ptr<container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);

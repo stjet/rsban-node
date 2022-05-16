@@ -1896,7 +1896,7 @@ void nano::json_handler::bootstrap_status ()
 		{
 			boost::property_tree::ptree entry;
 			auto & attempt (i.second);
-			entry.put ("id", attempt->id);
+			entry.put ("id", attempt->id ());
 			entry.put ("mode", attempt->mode_text ());
 			entry.put ("started", static_cast<bool> (attempt->started));
 			entry.put ("pulling", std::to_string (attempt->pulling));

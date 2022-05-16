@@ -2,8 +2,11 @@ use std::ffi::c_void;
 
 use crate::Logger;
 
-pub(crate) type TryLogCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> bool;
-pub(crate) static mut TRY_LOG_CALLBACK: Option<TryLogCallback> = None;
+pub type TryLogCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> bool;
+pub static mut TRY_LOG_CALLBACK: Option<TryLogCallback> = None;
+
+pub type AlwaysLogCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize);
+pub static mut ALWAYS_LOG_CALLBACK: Option<AlwaysLogCallback> = None;
 
 pub(crate) struct LoggerMT {
     handle: *mut c_void,
@@ -27,8 +30,23 @@ impl Logger for LoggerMT {
             }
         }
     }
+
+    fn always_log(&self, message: &str) {
+        unsafe {
+            match ALWAYS_LOG_CALLBACK {
+                Some(log) => log(self.handle, message.as_ptr(), message.len()),
+                None => panic!("ALWAYS_LOG_CALLBACK not defined"),
+            }
+        }
+    }
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_try_log(f: TryLogCallback) {
     TRY_LOG_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_always_log(f: AlwaysLogCallback) {
+    ALWAYS_LOG_CALLBACK = Some(f);
 }

@@ -23,6 +23,8 @@ struct BlockProcessorHandle;
 
 struct BlockUniquerHandle;
 
+struct BootstrapAttemptHandle;
+
 struct EpochsHandle;
 
 struct LocalVoteHistoryHandle;
@@ -60,6 +62,12 @@ struct BlockSidebandDto
 	uint8_t balance[16];
 	BlockDetailsDto details;
 	uint8_t source_epoch;
+};
+
+struct StringDto
+{
+	StringHandle * handle;
+	const char * value;
 };
 
 struct WorkThresholdsDto
@@ -104,6 +112,8 @@ struct BootstrapConstantsDto
 	int64_t gap_cache_bootstrap_start_interval_ms;
 	uint32_t default_frontiers_age_seconds;
 };
+
+using AlwaysLogCallback = void (*) (void *, const uint8_t *, uintptr_t);
 
 using Blake2BFinalCallback = int32_t (*) (void *, void *, uintptr_t);
 
@@ -586,12 +596,6 @@ struct VoteHashesDto
 	const uint8_t (*hashes)[32];
 };
 
-struct StringDto
-{
-	StringHandle * handle;
-	const char * value;
-};
-
 extern "C" {
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
@@ -688,8 +692,21 @@ uint64_t rsn_block_work (const BlockHandle * handle);
 
 void rsn_block_work_set (BlockHandle * handle, uint64_t work);
 
+BootstrapAttemptHandle * rsn_bootstrap_attempt_create (void * logger, const char * id, uint8_t mode);
+
+void rsn_bootstrap_attempt_destroy (BootstrapAttemptHandle * handle);
+
+void rsn_bootstrap_attempt_id (const BootstrapAttemptHandle * handle, StringDto * result);
+
+const char * rsn_bootstrap_attemt_bootstrap_mode (const BootstrapAttemptHandle * handle,
+uintptr_t * len);
+
+bool rsn_bootstrap_attemt_should_log (const BootstrapAttemptHandle * handle);
+
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
 BootstrapConstantsDto * dto);
+
+void rsn_callback_always_log (AlwaysLogCallback f);
 
 void rsn_callback_blake2b_final (Blake2BFinalCallback f);
 
@@ -785,6 +802,8 @@ bool rsn_epochs_is_epoch_link (const EpochsHandle * handle, const uint8_t * link
 void rsn_epochs_link (const EpochsHandle * handle, uint8_t epoch, uint8_t * link);
 
 void rsn_epochs_signer (const EpochsHandle * handle, uint8_t epoch, uint8_t * signer);
+
+void rsn_hardened_constants_get (uint8_t * not_an_account, uint8_t * random_128);
 
 int32_t rsn_ipc_config_create (IpcConfigDto * dto, const NetworkConstantsDto * network_constants);
 

@@ -292,6 +292,13 @@ bool logger_try_log (void * handle_a, const uint8_t * message_a, size_t len_a)
 	return logger->try_log (message_string);
 }
 
+void logger_always_log (void * handle_a, const uint8_t * message_a, size_t len_a)
+{
+	auto logger = static_cast<nano::logger_mt *> (handle_a);
+	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
+	return logger->always_log (message_string);
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -325,5 +332,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_put_child (toml_put_child);
 	rsnano::rsn_callback_toml_drop_array (toml_drop_array);
 	rsnano::rsn_callback_try_log (logger_try_log);
+	rsnano::rsn_callback_always_log (logger_always_log);
 	callbacks_set = true;
 }

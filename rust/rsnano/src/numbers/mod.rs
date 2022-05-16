@@ -481,6 +481,14 @@ impl TryFrom<&RawKey> for PublicKey {
     }
 }
 
+pub(crate) fn encode_hex(i: u128) -> String {
+    let mut result = String::with_capacity(32);
+    for byte in i.to_ne_bytes() {
+        write!(&mut result, "{:02X}", byte).unwrap();
+    }
+    result
+}
+
 pub struct KeyPair {
     keypair: ed25519_dalek_blake2b::Keypair,
 }

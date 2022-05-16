@@ -547,7 +547,7 @@ TEST (bootstrap_processor, lazy_hash)
 	{
 		auto lazy_attempt (node1->bootstrap_initiator.current_lazy_attempt ());
 		ASSERT_NE (nullptr, lazy_attempt);
-		ASSERT_EQ (receive2->hash ().to_string (), lazy_attempt->id);
+		ASSERT_EQ (receive2->hash ().to_string (), lazy_attempt->id ());
 	}
 	// Check processed blocks
 	ASSERT_TIMELY (10s, node1->balance (key2.pub) != 0);
@@ -621,7 +621,7 @@ TEST (bootstrap_processor, lazy_hash_bootstrap_id)
 	{
 		auto lazy_attempt (node1->bootstrap_initiator.current_lazy_attempt ());
 		ASSERT_NE (nullptr, lazy_attempt);
-		ASSERT_EQ ("123456", lazy_attempt->id);
+		ASSERT_EQ ("123456", lazy_attempt->id ());
 	}
 	// Check processed blocks
 	ASSERT_TIMELY (10s, node1->balance (key2.pub) != 0);
@@ -1167,7 +1167,7 @@ TEST (bootstrap_processor, lazy_cancel)
 	{
 		auto lazy_attempt (node1->bootstrap_initiator.current_lazy_attempt ());
 		ASSERT_NE (nullptr, lazy_attempt);
-		ASSERT_EQ (send1->hash ().to_string (), lazy_attempt->id);
+		ASSERT_EQ (send1->hash ().to_string (), lazy_attempt->id ());
 	}
 	// Cancel failing lazy bootstrap
 	ASSERT_TIMELY (10s, !node1->bootstrap_initiator.in_progress ());
@@ -1245,7 +1245,7 @@ TEST (bootstrap_processor, wallet_lazy_frontier)
 	{
 		auto wallet_attempt (node1->bootstrap_initiator.current_wallet_attempt ());
 		ASSERT_NE (nullptr, wallet_attempt);
-		ASSERT_EQ (key2.pub.to_account (), wallet_attempt->id);
+		ASSERT_EQ (key2.pub.to_account (), wallet_attempt->id ());
 	}
 	// Check processed blocks
 	ASSERT_TIMELY (10s, node1->ledger.block_or_pruned_exists (receive2->hash ()));

@@ -16,45 +16,42 @@ constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit_dev;
 
 nano::bootstrap_attempt::bootstrap_attempt (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_mode mode_a, uint64_t incremental_id_a, std::string id_a) :
+	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, id_a.c_str (), static_cast<uint8_t> (mode_a))),
 	node (node_a),
 	incremental_id (incremental_id_a),
-	id (id_a),
 	mode (mode_a)
 {
-	if (id.empty ())
-	{
-		id = nano::hardened_constants::get ().random_128.to_string ();
-	}
-
-	node->logger.always_log (boost::str (boost::format ("Starting %1% bootstrap attempt with ID %2%") % mode_text () % id));
+	std::string id_l = id ();
 	if (node->websocket_server)
 	{
 		nano::websocket::message_builder builder;
-		node->websocket_server->broadcast (builder.bootstrap_started (id, mode_text ()));
+		node->websocket_server->broadcast (builder.bootstrap_started (id_l, mode_text ()));
 	}
+}
+std::string nano::bootstrap_attempt::id () const
+{
+	rsnano::StringDto str_result;
+	rsnano::rsn_bootstrap_attempt_id (handle, &str_result);
+	std::string id (str_result.value);
+	rsnano::rsn_string_destroy (str_result.handle);
+	return id;
 }
 
 nano::bootstrap_attempt::~bootstrap_attempt ()
 {
-	node->logger.always_log (boost::str (boost::format ("Exiting %1% bootstrap attempt with ID %2%") % mode_text () % id));
+	node->logger.always_log (boost::str (boost::format ("Exiting %1% bootstrap attempt with ID %2%") % mode_text () % id ()));
 	if (node->websocket_server)
 	{
 		nano::websocket::message_builder builder;
-		node->websocket_server->broadcast (builder.bootstrap_exited (id, mode_text (), attempt_start, total_blocks));
+		node->websocket_server->broadcast (builder.bootstrap_exited (id (), mode_text (), attempt_start, total_blocks));
 	}
+
+	rsnano::rsn_bootstrap_attempt_destroy (handle);
 }
 
 bool nano::bootstrap_attempt::should_log ()
 {
-	nano::lock_guard<nano::mutex> guard (next_log_mutex);
-	auto result (false);
-	auto now (std::chrono::steady_clock::now ());
-	if (next_log < now)
-	{
-		result = true;
-		next_log = now + std::chrono::seconds (15);
-	}
-	return result;
+	return rsnano::rsn_bootstrap_attemt_should_log (handle);
 }
 
 bool nano::bootstrap_attempt::still_pulling ()
@@ -95,19 +92,9 @@ void nano::bootstrap_attempt::stop ()
 
 std::string nano::bootstrap_attempt::mode_text ()
 {
-	std::string mode_text;
-	if (mode == nano::bootstrap_mode::legacy)
-	{
-		mode_text = "legacy";
-	}
-	else if (mode == nano::bootstrap_mode::lazy)
-	{
-		mode_text = "lazy";
-	}
-	else if (mode == nano::bootstrap_mode::wallet_lazy)
-	{
-		mode_text = "wallet_lazy";
-	}
+	std::size_t len;
+	auto ptr{ rsnano::rsn_bootstrap_attemt_bootstrap_mode (handle, &len) };
+	std::string mode_text (ptr, len);
 	return mode_text;
 }
 

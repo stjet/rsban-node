@@ -213,7 +213,7 @@ void nano::bootstrap_attempt_lazy::run ()
 	}
 	if (lazy_has_expired ())
 	{
-		node->logger.try_log (boost::str (boost::format ("Lazy bootstrap attempt ID %1% expired") % id));
+		node->logger.try_log (boost::str (boost::format ("Lazy bootstrap attempt ID %1% expired") % id ()));
 	}
 	lock.unlock ();
 	stop ();

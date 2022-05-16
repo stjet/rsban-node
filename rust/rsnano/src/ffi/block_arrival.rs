@@ -1,4 +1,4 @@
-use crate::{block_arrival::BlockArrival, BlockHash};
+use crate::{BlockArrival, BlockHash};
 
 pub struct BlockArrivalHandle(BlockArrival);
 

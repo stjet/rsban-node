@@ -167,8 +167,7 @@ nano::hardened_constants::hardened_constants () :
 	not_an_account{},
 	random_128{}
 {
-	nano::random_pool::generate_block (not_an_account.bytes.data (), not_an_account.bytes.size ());
-	nano::random_pool::generate_block (random_128.bytes.data (), random_128.bytes.size ());
+	rsnano::rsn_hardened_constants_get (not_an_account.bytes.data (), random_128.bytes.data ());
 }
 
 nano::node_constants::node_constants (nano::network_constants & network_constants)

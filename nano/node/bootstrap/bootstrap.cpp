@@ -10,8 +10,35 @@
 #include <algorithm>
 #include <memory>
 
+void nano::bootstrap_notifier::add_observer (std::function<void (bool)> const & observer_a)
+{
+	nano::lock_guard<nano::mutex> lock (observers_mutex);
+	observers.push_back (observer_a);
+}
+
+void nano::bootstrap_notifier::notify_listeners (bool in_progress_a)
+{
+	nano::lock_guard<nano::mutex> lock (observers_mutex);
+	for (auto & i : observers)
+	{
+		i (in_progress_a);
+	}
+}
+
+size_t nano::bootstrap_notifier::size ()
+{
+	nano::lock_guard<nano::mutex> lock (observers_mutex);
+	return observers.size ();
+}
+
+size_t nano::bootstrap_notifier::size_of_element ()
+{
+	return sizeof (decltype (observers)::value_type);
+}
+
 nano::bootstrap_initiator::bootstrap_initiator (nano::node & node_a) :
-	node (node_a)
+	node (node_a),
+	bootstrap_notifier ()
 {
 	connections = std::make_shared<nano::bootstrap_connections> (node);
 	bootstrap_initiator_threads.push_back (boost::thread ([this] () {
@@ -162,8 +189,7 @@ void nano::bootstrap_initiator::lazy_requeue (nano::block_hash const & hash_a, n
 
 void nano::bootstrap_initiator::add_observer (std::function<void (bool)> const & observer_a)
 {
-	nano::lock_guard<nano::mutex> lock (observers_mutex);
-	observers.push_back (observer_a);
+	bootstrap_notifier.add_observer (observer_a); 
 }
 
 bool nano::bootstrap_initiator::in_progress ()
@@ -279,27 +305,19 @@ void nano::bootstrap_initiator::stop ()
 
 void nano::bootstrap_initiator::notify_listeners (bool in_progress_a)
 {
-	nano::lock_guard<nano::mutex> lock (observers_mutex);
-	for (auto & i : observers)
-	{
-		i (in_progress_a);
-	}
+	bootstrap_notifier.notify_listeners (in_progress_a);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (bootstrap_initiator & bootstrap_initiator, std::string const & name)
 {
-	std::size_t count;
+	std::size_t count = bootstrap_initiator.bootstrap_notifier.size ();
 	std::size_t cache_count;
-	{
-		nano::lock_guard<nano::mutex> guard (bootstrap_initiator.observers_mutex);
-		count = bootstrap_initiator.observers.size ();
-	}
 	{
 		nano::lock_guard<nano::mutex> guard (bootstrap_initiator.cache.pulls_cache_mutex);
 		cache_count = bootstrap_initiator.cache.cache.size ();
 	}
 
-	auto sizeof_element = sizeof (decltype (bootstrap_initiator.observers)::value_type);
+	auto sizeof_element = bootstrap_initiator.bootstrap_notifier.size_of_element ();
 	auto sizeof_cache_element = sizeof (decltype (bootstrap_initiator.cache.cache)::value_type);
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "observers", count, sizeof_element }));

@@ -80,6 +80,18 @@ public:
 	std::map<uint64_t, std::shared_ptr<nano::bootstrap_attempt>> attempts;
 };
 
+class bootstrap_notifier
+{
+public:
+	void add_observer (std::function<void (bool)> const &);
+	void notify_listeners (bool);
+	size_t size ();
+	size_t size_of_element ();
+private:
+	nano::mutex observers_mutex;
+	std::vector<std::function<void (bool)>> observers;
+};
+
 class bootstrap_attempt_lazy;
 class bootstrap_attempt_wallet;
 /**
@@ -119,8 +131,7 @@ private:
 	std::atomic<bool> stopped{ false };
 	nano::mutex mutex;
 	nano::condition_variable condition;
-	nano::mutex observers_mutex;
-	std::vector<std::function<void (bool)>> observers;
+	nano::bootstrap_notifier bootstrap_notifier;
 	std::vector<boost::thread> bootstrap_initiator_threads;
 
 	friend std::unique_ptr<container_info_component> collect_container_info (bootstrap_initiator & bootstrap_initiator, std::string const & name);

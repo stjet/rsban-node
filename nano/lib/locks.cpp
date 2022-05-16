@@ -250,12 +250,8 @@ char const * nano::mutex_identifier (mutexes mutex)
 	{
 		case mutexes::active:
 			return "active";
-		case mutexes::block_arrival:
-			return "block_arrival";
 		case mutexes::block_processor:
 			return "block_processor";
-		case mutexes::block_uniquer:
-			return "block_uniquer";
 		case mutexes::blockstore_cache:
 			return "blockstore_cache";
 		case mutexes::confirmation_height_processor:

@@ -107,6 +107,7 @@ private:
 	nano::state_block_signature_verification state_block_signature_verification;
 	nano::network_params & network_params;
 	nano::local_vote_history & history;
+	nano::block_arrival & block_arrival;
 
 	// not yet ported:
 	nano::ledger & ledger;
@@ -117,7 +118,6 @@ private:
 	nano::active_transactions & active_transactions;
 	nano::election_scheduler & scheduler;
 	std::shared_ptr<nano::websocket::listener> & websocket_server;
-	nano::block_arrival & block_arrival;
 	nano::unchecked_map & unchecked;
 	nano::gap_cache & gap_cache;
 	nano::bootstrap_initiator & bootstrap_initiator;

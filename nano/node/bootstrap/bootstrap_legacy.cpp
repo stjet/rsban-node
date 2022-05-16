@@ -10,7 +10,6 @@ nano::bootstrap_attempt_legacy::bootstrap_attempt_legacy (std::shared_ptr<nano::
 	frontiers_age (frontiers_age_a),
 	start_account (start_account_a)
 {
-	node->bootstrap_initiator.notify_listeners (true);
 }
 
 bool nano::bootstrap_attempt_legacy::consume_future (std::future<bool> & future_a)

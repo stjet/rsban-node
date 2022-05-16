@@ -16,13 +16,11 @@ constexpr std::size_t nano::bootstrap_limits::lazy_blocks_restart_limit;
 nano::bootstrap_attempt_lazy::bootstrap_attempt_lazy (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a) :
 	nano::bootstrap_attempt (node_a, nano::bootstrap_mode::lazy, incremental_id_a, id_a)
 {
-	node->bootstrap_initiator.notify_listeners (true);
 }
 
 nano::bootstrap_attempt_lazy::~bootstrap_attempt_lazy ()
 {
 	debug_assert (lazy_blocks.size () == lazy_blocks_count);
-	node->bootstrap_initiator.notify_listeners (false);
 }
 
 bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & hash_or_account_a, bool confirmed)
@@ -470,12 +468,10 @@ void nano::bootstrap_attempt_lazy::get_information (boost::property_tree::ptree 
 nano::bootstrap_attempt_wallet::bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a) :
 	nano::bootstrap_attempt (node_a, nano::bootstrap_mode::wallet_lazy, incremental_id_a, id_a)
 {
-	node->bootstrap_initiator.notify_listeners (true);
 }
 
 nano::bootstrap_attempt_wallet::~bootstrap_attempt_wallet ()
 {
-	node->bootstrap_initiator.notify_listeners (false);
 }
 
 void nano::bootstrap_attempt_wallet::request_pending (nano::unique_lock<nano::mutex> & lock_a)

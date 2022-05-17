@@ -18,6 +18,7 @@ mod stats;
 mod stream;
 mod toml;
 mod voting;
+mod websocket;
 
 use std::{ffi::CString, os::raw::c_char};
 

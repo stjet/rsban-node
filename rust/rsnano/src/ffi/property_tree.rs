@@ -15,6 +15,7 @@ type PropertyTreeDestroyTreeCallback = unsafe extern "C" fn(*mut c_void);
 type PropertyTreePushBackCallback = unsafe extern "C" fn(*mut c_void, *const c_char, *const c_void);
 
 static mut PUT_STRING_CALLBACK: Option<PropertyTreePutStringCallback> = None;
+static mut ADD_CALLBACK: Option<PropertyTreePutStringCallback> = None;
 static mut GET_STRING_CALLBACK: Option<PropertyTreeGetStringCallback> = None;
 static mut CREATE_TREE_CALLBACK: Option<PropertyTreeCreateTreeCallback> = None;
 static mut DESTROY_TREE_CALLBACK: Option<PropertyTreeDestroyTreeCallback> = None;
@@ -24,6 +25,11 @@ static mut ADD_CHILD_CALLBACK: Option<PropertyTreePushBackCallback> = None;
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_property_tree_put_string(f: PropertyTreePutStringCallback) {
     PUT_STRING_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_property_tree_add(f: PropertyTreePutStringCallback) {
+    ADD_CALLBACK = Some(f);
 }
 
 #[no_mangle]
@@ -135,6 +141,24 @@ impl PropertyTreeWriter for FfiPropertyTreeWriter {
                     f(self.handle, path_str.as_ptr(), ffi_value.handle);
                 }
                 None => panic!("ADD_CHILD_CALLBACK missing"),
+            }
+        }
+    }
+
+    fn add(&mut self, path: &str, value: &str) -> Result<()> {
+        unsafe {
+            match ADD_CALLBACK {
+                Some(f) => {
+                    f(
+                        self.handle,
+                        path.as_ptr() as *const i8,
+                        path.len(),
+                        value.as_ptr() as *const i8,
+                        value.len(),
+                    );
+                    Ok(())
+                }
+                None => Err(anyhow!("ADD_CALLBACK missing")),
             }
         }
     }

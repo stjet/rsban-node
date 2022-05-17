@@ -123,6 +123,8 @@ using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
 
 using InAvailCallback = uintptr_t (*) (void *, int32_t *);
 
+using PropertyTreePutStringCallback = void (*) (void *, const char *, uintptr_t, const char *, uintptr_t);
+
 using PropertyTreePushBackCallback = void (*) (void *, const char *, const void *);
 
 using PropertyTreeCreateTreeCallback = void * (*)();
@@ -130,8 +132,6 @@ using PropertyTreeCreateTreeCallback = void * (*)();
 using PropertyTreeDestroyTreeCallback = void (*) (void *);
 
 using PropertyTreeGetStringCallback = int32_t (*) (const void *, const char *, uintptr_t, char *, uintptr_t);
-
-using PropertyTreePutStringCallback = void (*) (void *, const char *, uintptr_t, const char *, uintptr_t);
 
 using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
@@ -596,6 +596,12 @@ struct VoteHashesDto
 	const uint8_t (*hashes)[32];
 };
 
+struct MessageDto
+{
+	uint8_t topic;
+	void * contents;
+};
+
 extern "C" {
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
@@ -716,6 +722,8 @@ void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
 
 void rsn_callback_in_avail (InAvailCallback f);
 
+void rsn_callback_property_tree_add (PropertyTreePutStringCallback f);
+
 void rsn_callback_property_tree_add_child (PropertyTreePushBackCallback f);
 
 void rsn_callback_property_tree_create (PropertyTreeCreateTreeCallback f);
@@ -802,6 +810,8 @@ bool rsn_epochs_is_epoch_link (const EpochsHandle * handle, const uint8_t * link
 void rsn_epochs_link (const EpochsHandle * handle, uint8_t epoch, uint8_t * link);
 
 void rsn_epochs_signer (const EpochsHandle * handle, uint8_t epoch, uint8_t * signer);
+
+void rsn_from_topic (uint8_t topic, StringDto * result);
 
 void rsn_hardened_constants_get (uint8_t * not_an_account, uint8_t * random_128);
 
@@ -1124,6 +1134,8 @@ int32_t rsn_voting_constants_create (const NetworkConstantsDto * network_constan
 VotingConstantsDto * dto);
 
 int32_t rsn_websocket_config_create (WebsocketConfigDto * dto, const NetworkConstantsDto * network);
+
+void rsn_websocket_set_common_fields (MessageDto * message);
 
 void rsn_work_thresholds_create (WorkThresholdsDto * dto,
 uint64_t epoch_1,

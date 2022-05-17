@@ -12,6 +12,7 @@ pub trait PropertyTreeWriter {
     fn new_writer(&self) -> Box<dyn PropertyTreeWriter>;
     fn push_back(&mut self, path: &str, value: &dyn PropertyTreeWriter);
     fn add_child(&mut self, path: &str, value: &dyn PropertyTreeWriter);
+    fn add(&mut self, path: &str, value: &str) -> Result<()>;
     fn as_any(&self) -> &dyn Any;
 }
 
@@ -59,6 +60,10 @@ impl PropertyTreeWriter for TestPropertyTree {
     }
 
     fn add_child(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+        todo!()
+    }
+
+    fn add(&mut self, path: &str, value: &str) -> Result<()> {
         todo!()
     }
 }

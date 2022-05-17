@@ -409,41 +409,11 @@ nano::websocket::topic to_topic (std::string const & topic_a)
 
 std::string from_topic (nano::websocket::topic topic_a)
 {
-	std::string topic = "invalid";
-	if (topic_a == nano::websocket::topic::confirmation)
-	{
-		topic = "confirmation";
-	}
-	else if (topic_a == nano::websocket::topic::stopped_election)
-	{
-		topic = "stopped_election";
-	}
-	else if (topic_a == nano::websocket::topic::vote)
-	{
-		topic = "vote";
-	}
-	else if (topic_a == nano::websocket::topic::ack)
-	{
-		topic = "ack";
-	}
-	else if (topic_a == nano::websocket::topic::work)
-	{
-		topic = "work";
-	}
-	else if (topic_a == nano::websocket::topic::bootstrap)
-	{
-		topic = "bootstrap";
-	}
-	else if (topic_a == nano::websocket::topic::telemetry)
-	{
-		topic = "telemetry";
-	}
-	else if (topic_a == nano::websocket::topic::new_unconfirmed_block)
-	{
-		topic = "new_unconfirmed_block";
-	}
-
-	return topic;
+	rsnano::StringDto result;
+	rsnano::rsn_from_topic (static_cast<uint8_t> (topic_a), &result);
+	std::string topic_str (result.value);
+	rsnano::rsn_string_destroy (result.handle);
+	return topic_str;
 }
 }
 
@@ -929,9 +899,10 @@ nano::websocket::message nano::websocket::message_builder::new_block_arrived (na
 
 void nano::websocket::message_builder::set_common_fields (nano::websocket::message & message_a)
 {
-	// Common message information
-	message_a.contents.add ("topic", from_topic (message_a.topic));
-	message_a.contents.add ("time", std::to_string (nano::milliseconds_since_epoch ()));
+	rsnano::MessageDto msg;
+	msg.topic = static_cast<uint8_t> (message_a.topic);
+	msg.contents = &message_a.contents;
+	rsnano::rsn_websocket_set_common_fields (&msg);
 }
 
 std::string nano::websocket::message::to_string () const

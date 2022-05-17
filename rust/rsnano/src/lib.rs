@@ -30,6 +30,7 @@ mod token_bucket;
 mod uniquer;
 mod utils;
 mod voting;
+mod websocket;
 
 pub use bandwidth_limiter::*;
 pub(crate) use block_arrival::*;
@@ -50,6 +51,7 @@ pub use token_bucket::*;
 pub(crate) use uniquer::*;
 pub use utils::*;
 pub(crate) use voting::*;
+pub(crate) use websocket::*;
 
 pub trait FullHash {
     fn full_hash(&self) -> BlockHash;

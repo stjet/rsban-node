@@ -37,11 +37,10 @@ impl BootstrapAttempt {
         result
     }
 
-    fn start(&self){
+    fn start(&self) {
         let mode = self.mode_text();
         let id = &self.id;
-        self
-            .logger
+        self.logger
             .always_log(&format!("Starting {mode} bootstrap attempt with ID {id}"));
     }
 

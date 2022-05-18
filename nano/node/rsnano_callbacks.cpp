@@ -1,9 +1,10 @@
 #include <nano/crypto/blake2/blake2.h>
 #include <nano/lib/logger_mt.hpp>
 #include <nano/lib/rsnano.hpp>
-#include <nano/lib/rsnano_callbacks.hpp>
 #include <nano/lib/stream.hpp>
 #include <nano/lib/tomlconfig.hpp>
+#include <nano/node/rsnano_callbacks.hpp>
+#include <nano/node/websocket.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -314,6 +315,24 @@ void logger_always_log (void * handle_a, const uint8_t * message_a, size_t len_a
 	return logger->always_log (message_string);
 }
 
+bool listener_broadcast (void * handle_a, rsnano::MessageDto const * message_a)
+{
+	try
+	{
+		auto ptree = static_cast<boost::property_tree::ptree const *> (message_a->contents);
+		nano::websocket::message message_l (static_cast<nano::websocket::topic> (message_a->topic));
+		message_l.contents = *ptree;
+
+		auto listener = static_cast<nano::websocket::listener *> (handle_a);
+		listener->broadcast (message_l);
+		return true;
+	}
+	catch (...)
+	{
+		return false;
+	}
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -350,5 +369,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_drop_array (toml_drop_array);
 	rsnano::rsn_callback_try_log (logger_try_log);
 	rsnano::rsn_callback_always_log (logger_always_log);
+	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
 	callbacks_set = true;
 }

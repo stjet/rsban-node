@@ -3,7 +3,7 @@
 #include <nano/node/common.hpp>
 #include <nano/node/logging.hpp>
 #include <nano/secure/utility.hpp>
-#include <nano/lib/rsnano_callbacks.hpp>
+#include <nano/node/rsnano_callbacks.hpp>
 
 #include <boost/filesystem/path.hpp>
 

@@ -6,24 +6,33 @@ use std::{
 
 use num::FromPrimitive;
 
-use crate::BootstrapAttempt;
+use crate::{
+    websocket::{Listener, NullListener},
+    BootstrapAttempt,
+};
 
-use super::{LoggerMT, StringDto, StringHandle};
+use super::{FfiListener, LoggerMT, StringDto, StringHandle};
 
 pub struct BootstrapAttemptHandle(BootstrapAttempt);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     logger: *mut c_void,
+    websocket_server: *mut c_void,
     id: *const c_char,
     mode: u8,
 ) -> *mut BootstrapAttemptHandle {
     let logger = Arc::new(LoggerMT::new(logger));
     let id_str = CStr::from_ptr(id).to_str().unwrap();
     let mode = FromPrimitive::from_u8(mode).unwrap();
-    Box::into_raw(Box::new(BootstrapAttemptHandle(BootstrapAttempt::new(
-        logger, id_str, mode,
-    ))))
+    let websocket_server: Arc<dyn Listener> = if websocket_server.is_null() {
+        Arc::new(NullListener::new())
+    } else {
+        Arc::new(FfiListener::new(websocket_server))
+    };
+    Box::into_raw(Box::new(BootstrapAttemptHandle(
+        BootstrapAttempt::new(logger, websocket_server, id_str, mode).unwrap(),
+    )))
 }
 
 #[no_mangle]

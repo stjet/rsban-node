@@ -1,6 +1,6 @@
 #include <nano/lib/memory.hpp>
-#include <nano/lib/rsnano_callbacks.hpp>
 #include <nano/node/common.hpp>
+#include <nano/node/rsnano_callbacks.hpp>
 
 #include <gtest/gtest.h>
 namespace nano

@@ -123,6 +123,14 @@ using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
 
 using InAvailCallback = uintptr_t (*) (void *, int32_t *);
 
+struct MessageDto
+{
+	uint8_t topic;
+	void * contents;
+};
+
+using ListenerBroadcastCallback = bool (*) (void *, const MessageDto *);
+
 using PropertyTreePutStringCallback = void (*) (void *, const char *, uintptr_t, const char *, uintptr_t);
 
 using PropertyTreePushBackCallback = void (*) (void *, const char *, const void *);
@@ -461,12 +469,6 @@ struct LocalVotesResult
 	LocalVotesResultHandle * handle;
 };
 
-struct MessageDto
-{
-	uint8_t topic;
-	void * contents;
-};
-
 struct OpenBlockDto
 {
 	uint64_t work;
@@ -700,7 +702,10 @@ uint64_t rsn_block_work (const BlockHandle * handle);
 
 void rsn_block_work_set (BlockHandle * handle, uint64_t work);
 
-BootstrapAttemptHandle * rsn_bootstrap_attempt_create (void * logger, const char * id, uint8_t mode);
+BootstrapAttemptHandle * rsn_bootstrap_attempt_create (void * logger,
+void * websocket_server,
+const char * id,
+uint8_t mode);
 
 void rsn_bootstrap_attempt_destroy (BootstrapAttemptHandle * handle);
 
@@ -723,6 +728,8 @@ void rsn_callback_blake2b_init (Blake2BInitCallback f);
 void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
 
 void rsn_callback_in_avail (InAvailCallback f);
+
+void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
 void rsn_callback_property_tree_add (PropertyTreePutStringCallback f);
 

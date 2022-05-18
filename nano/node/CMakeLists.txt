@@ -170,6 +170,8 @@ add_library(
   rocksdb/rocksdb_iterator.hpp
   rocksdb/rocksdb_txn.hpp
   rocksdb/rocksdb_txn.cpp
+  rsnano_callbacks.hpp
+  rsnano_callbacks.cpp
   signatures.hpp
   signatures.cpp
   socket.hpp

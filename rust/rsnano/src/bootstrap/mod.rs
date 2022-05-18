@@ -1,4 +1,10 @@
-use crate::{encode_hex, logger_mt::Logger, HardenedConstants};
+use crate::{
+    encode_hex,
+    logger_mt::Logger,
+    websocket::{Listener, MessageBuilder},
+    HardenedConstants,
+};
+use anyhow::Result;
 use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
@@ -16,10 +22,16 @@ pub(crate) struct BootstrapAttempt {
     pub mode: BootstrapMode,
     next_log: Mutex<Instant>,
     logger: Arc<dyn Logger>,
+    websocket_server: Arc<dyn Listener>,
 }
 
 impl BootstrapAttempt {
-    pub(crate) fn new(logger: Arc<dyn Logger>, id: &str, mode: BootstrapMode) -> Self {
+    pub(crate) fn new(
+        logger: Arc<dyn Logger>,
+        websocket_server: Arc<dyn Listener>,
+        id: &str,
+        mode: BootstrapMode,
+    ) -> Result<Self> {
         let id = if id.is_empty() {
             encode_hex(HardenedConstants::get().random_128)
         } else {
@@ -31,17 +43,21 @@ impl BootstrapAttempt {
             next_log: Mutex::new(Instant::now()),
             logger,
             mode,
+            websocket_server,
         };
 
-        result.start();
-        result
+        result.start()?;
+        Ok(result)
     }
 
-    fn start(&self) {
+    fn start(&self) -> Result<()> {
         let mode = self.mode_text();
         let id = &self.id;
         self.logger
             .always_log(&format!("Starting {mode} bootstrap attempt with ID {id}"));
+        self.websocket_server
+            .broadcast(&MessageBuilder::bootstrap_started(id, mode)?)?;
+        Ok(())
     }
 
     pub(crate) fn should_log(&self) -> bool {

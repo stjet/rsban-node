@@ -117,3 +117,21 @@ pub(crate) fn to_topic(topic: impl AsRef<str>) -> Topic {
         _ => Topic::Invalid,
     }
 }
+
+pub(crate) trait Listener {
+    fn broadcast(&self, message: &Message) -> Result<()>;
+}
+
+pub(crate) struct NullListener {}
+
+impl NullListener {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Listener for NullListener {
+    fn broadcast(&self, _message: &Message) -> Result<()> {
+        Ok(())
+    }
+}

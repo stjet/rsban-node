@@ -16,18 +16,13 @@ constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit_dev;
 
 nano::bootstrap_attempt::bootstrap_attempt (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_mode mode_a, uint64_t incremental_id_a, std::string id_a) :
-	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, id_a.c_str (), static_cast<uint8_t> (mode_a))),
+	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, node_a->websocket_server.get (), id_a.c_str (), static_cast<uint8_t> (mode_a))),
 	node (node_a),
 	incremental_id (incremental_id_a),
 	mode (mode_a)
 {
-	std::string id_l = id ();
-	if (node->websocket_server)
-	{
-		nano::websocket::message_builder builder;
-		node->websocket_server->broadcast (builder.bootstrap_started (id_l, mode_text ()));
-	}
 }
+
 std::string nano::bootstrap_attempt::id () const
 {
 	rsnano::StringDto str_result;

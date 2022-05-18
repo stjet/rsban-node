@@ -1,7 +1,6 @@
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/numbers.hpp>
-#include <nano/lib/rsnano_callbacks.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/store.hpp>

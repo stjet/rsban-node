@@ -1,5 +1,6 @@
 use super::{FfiPropertyTreeWriter, StringDto, StringHandle};
-use crate::{from_topic, to_topic, Message, MessageBuilder};
+use crate::{from_topic, to_topic, websocket::Listener, Message, MessageBuilder};
+use anyhow::Result;
 use num::FromPrimitive;
 use std::{
     ffi::{c_void, CStr, CString},
@@ -82,4 +83,48 @@ unsafe fn set_message_dto(result: *mut MessageDto, message: Message) {
     // Forget the message, so that the property_tree handle won't get deleted.
     // The caller of this function is responsable for calling delete on the handle.
     std::mem::forget(message);
+}
+
+type ListenerBroadcastCallback = unsafe extern "C" fn(*mut c_void, *const MessageDto) -> bool;
+static mut BROADCAST_CALLBACK: Option<ListenerBroadcastCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_listener_broadcast(f: ListenerBroadcastCallback) {
+    BROADCAST_CALLBACK = Some(f);
+}
+
+pub(crate) struct FfiListener {
+    handle: *mut c_void,
+}
+
+impl FfiListener {
+    pub(crate) fn new(handle: *mut c_void) -> Self {
+        Self { handle }
+    }
+}
+
+impl Listener for FfiListener {
+    fn broadcast(&self, message: &Message) -> Result<()> {
+        unsafe {
+            match BROADCAST_CALLBACK {
+                Some(f) => {
+                    let message_dto = MessageDto {
+                        topic: message.topic as u8,
+                        contents: message
+                            .contents
+                            .as_any()
+                            .downcast_ref::<FfiPropertyTreeWriter>()
+                            .ok_or_else(|| anyhow!("not an FfiPropertyTreeWriter"))?
+                            .handle,
+                    };
+                    if f(self.handle, &message_dto) {
+                        Ok(())
+                    } else {
+                        Err(anyhow!("callback failed"))
+                    }
+                }
+                None => Err(anyhow!("BROADCAST_CALLBACK missing")),
+            }
+        }
+    }
 }

@@ -36,6 +36,7 @@ pub use signatures::*;
 pub use stats::*;
 pub use stream::*;
 pub use toml::*;
+pub(crate) use websocket::*;
 
 pub struct StringHandle(CString);
 #[repr(C)]

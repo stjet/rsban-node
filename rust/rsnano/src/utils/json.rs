@@ -9,11 +9,16 @@ pub trait PropertyTreeReader {
 
 pub trait PropertyTreeWriter {
     fn put_string(&mut self, path: &str, value: &str) -> Result<()>;
+    fn put_u64(&mut self, path: &str, value: u64) -> Result<()>;
     fn new_writer(&self) -> Box<dyn PropertyTreeWriter>;
     fn push_back(&mut self, path: &str, value: &dyn PropertyTreeWriter);
     fn add_child(&mut self, path: &str, value: &dyn PropertyTreeWriter);
     fn add(&mut self, path: &str, value: &str) -> Result<()>;
     fn as_any(&self) -> &dyn Any;
+}
+
+pub(crate) fn create_property_tree() -> Box<dyn PropertyTreeWriter> {
+    crate::ffi::create_ffi_property_tree()
 }
 
 #[cfg(test)]
@@ -63,7 +68,11 @@ impl PropertyTreeWriter for TestPropertyTree {
         todo!()
     }
 
-    fn add(&mut self, path: &str, value: &str) -> Result<()> {
+    fn add(&mut self, _path: &str, _value: &str) -> Result<()> {
+        todo!()
+    }
+
+    fn put_u64(&mut self, path: &str, value: u64) -> Result<()> {
         todo!()
     }
 }

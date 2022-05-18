@@ -95,6 +95,13 @@ void ptree_put_string (void * ptree, const char * path, uintptr_t path_len, cons
 	tree->put (path_str, value_str);
 }
 
+void ptree_put_u64 (void * ptree, const char * path, uintptr_t path_len, uint64_t value)
+{
+	auto tree (static_cast<boost::property_tree::ptree *> (ptree));
+	std::string path_str (path, path_len);
+	tree->put (path_str, value);
+}
+
 void ptree_add (void * ptree, const char * path, uintptr_t path_len, const char * value, uintptr_t value_len)
 {
 	auto tree (static_cast<boost::property_tree::ptree *> (ptree));
@@ -323,6 +330,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_blake2b_update (reinterpret_cast<Blake2BUpdateCallback> (blake2b_update));
 	rsnano::rsn_callback_blake2b_final (reinterpret_cast<Blake2BFinalCallback> (blake2b_final));
 	rsnano::rsn_callback_property_tree_put_string (ptree_put_string);
+	rsnano::rsn_callback_property_tree_put_u64 (ptree_put_u64);
 	rsnano::rsn_callback_property_tree_add (ptree_add);
 	rsnano::rsn_callback_property_tree_get_string (ptree_get_string);
 	rsnano::rsn_callback_property_tree_create (ptree_create);

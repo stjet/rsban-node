@@ -1,7 +1,7 @@
 use anyhow::Result;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::PropertyTreeWriter;
+use crate::{create_property_tree, PropertyTreeWriter};
 
 #[derive(Clone, Copy, FromPrimitive)]
 pub(crate) enum Topic {
@@ -38,6 +38,35 @@ impl MessageBuilder {
         Self {}
     }
 
+    pub(crate) fn bootstrap_started(id: &str, mode: &str) -> Result<Message> {
+        let mut message = Self::new_message()?;
+        // Bootstrap information
+        let mut bootstrap = create_property_tree();
+        bootstrap.put_string("reason", "started")?;
+        bootstrap.put_string("id", id)?;
+        bootstrap.put_string("mode", mode)?;
+        message.contents.add_child("message", bootstrap.as_ref());
+        Ok(message)
+    }
+
+    pub(crate) fn bootstrap_exited(
+        id: &str,
+        mode: &str,
+        duration: Duration,
+        total_blocks: u64,
+    ) -> Result<Message> {
+        let mut message = Self::new_message()?;
+        let mut bootstrap = create_property_tree();
+        bootstrap.put_string("reason", "exited")?;
+        bootstrap.put_string("id", id)?;
+        bootstrap.put_string("mode", mode)?;
+        bootstrap.put_u64("total_blocks", total_blocks)?;
+        bootstrap.put_u64("duration", duration.as_secs())?;
+        message.contents.add_child("message", bootstrap.as_ref());
+
+        Ok(message)
+    }
+
     pub(crate) fn set_common_fields(message: &mut Message) -> Result<()> {
         message.contents.add("topic", from_topic(message.topic))?;
         message.contents.add(
@@ -49,6 +78,15 @@ impl MessageBuilder {
                 .to_string(),
         )?;
         Ok(())
+    }
+
+    fn new_message() -> Result<Message, anyhow::Error> {
+        let mut message = Message {
+            topic: Topic::Bootstrap,
+            contents: create_property_tree(),
+        };
+        Self::set_common_fields(&mut message)?;
+        Ok(message)
     }
 }
 
@@ -63,5 +101,19 @@ pub(crate) fn from_topic(topic: Topic) -> &'static str {
         Topic::Telemetry => "telemetry",
         Topic::NewUnconfirmedBlock => "new_unconfirmed_block",
         _ => "invalid",
+    }
+}
+
+pub(crate) fn to_topic(topic: impl AsRef<str>) -> Topic {
+    match topic.as_ref() {
+        "confirmation" => Topic::Confirmation,
+        "stopped_election" => Topic::StoppedElection,
+        "vote" => Topic::Vote,
+        "ack" => Topic::Ack,
+        "work" => Topic::Work,
+        "bootstrap" => Topic::Bootstrap,
+        "telemetry" => Topic::Telemetry,
+        "new_unconfirmed_block" => Topic::NewUnconfirmedBlock,
+        _ => Topic::Invalid,
     }
 }

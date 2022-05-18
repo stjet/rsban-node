@@ -133,6 +133,8 @@ using PropertyTreeDestroyTreeCallback = void (*) (void *);
 
 using PropertyTreeGetStringCallback = int32_t (*) (const void *, const char *, uintptr_t, char *, uintptr_t);
 
+using PropertyTreePutU64Callback = void (*) (void *, const char *, uintptr_t, uint64_t);
+
 using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
@@ -459,6 +461,12 @@ struct LocalVotesResult
 	LocalVotesResultHandle * handle;
 };
 
+struct MessageDto
+{
+	uint8_t topic;
+	void * contents;
+};
+
 struct OpenBlockDto
 {
 	uint64_t work;
@@ -596,12 +604,6 @@ struct VoteHashesDto
 	const uint8_t (*hashes)[32];
 };
 
-struct MessageDto
-{
-	uint8_t topic;
-	void * contents;
-};
-
 extern "C" {
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
@@ -736,6 +738,8 @@ void rsn_callback_property_tree_push_back (PropertyTreePushBackCallback f);
 
 void rsn_callback_property_tree_put_string (PropertyTreePutStringCallback f);
 
+void rsn_callback_property_tree_put_u64 (PropertyTreePutU64Callback f);
+
 void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
@@ -851,6 +855,14 @@ LocalVotesResult * result);
 void rsn_local_vote_history_votes_destroy (LocalVotesResultHandle * handle);
 
 void rsn_logging_create (LoggingDto * dto);
+
+void rsn_message_builder_bootstrap_exited (const char * id,
+const char * mode,
+uint64_t duration_s,
+uint64_t total_blocks,
+MessageDto * result);
+
+void rsn_message_builder_bootstrap_started (const char * id, const char * mode, MessageDto * result);
 
 uint16_t rsn_network_constants_active_network ();
 
@@ -1048,6 +1060,8 @@ uintptr_t rsn_state_block_size ();
 void rsn_string_destroy (StringHandle * handle);
 
 uint16_t rsn_test_node_port ();
+
+uint8_t rsn_to_topic (const char * topic);
 
 void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
 

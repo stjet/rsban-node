@@ -370,41 +370,7 @@ namespace
 {
 nano::websocket::topic to_topic (std::string const & topic_a)
 {
-	nano::websocket::topic topic = nano::websocket::topic::invalid;
-	if (topic_a == "confirmation")
-	{
-		topic = nano::websocket::topic::confirmation;
-	}
-	else if (topic_a == "stopped_election")
-	{
-		topic = nano::websocket::topic::stopped_election;
-	}
-	else if (topic_a == "vote")
-	{
-		topic = nano::websocket::topic::vote;
-	}
-	else if (topic_a == "ack")
-	{
-		topic = nano::websocket::topic::ack;
-	}
-	else if (topic_a == "work")
-	{
-		topic = nano::websocket::topic::work;
-	}
-	else if (topic_a == "bootstrap")
-	{
-		topic = nano::websocket::topic::bootstrap;
-	}
-	else if (topic_a == "telemetry")
-	{
-		topic = nano::websocket::topic::telemetry;
-	}
-	else if (topic_a == "new_unconfirmed_block")
-	{
-		topic = nano::websocket::topic::new_unconfirmed_block;
-	}
-
-	return topic;
+	return static_cast<nano::websocket::topic> (rsnano::rsn_to_topic (topic_a.c_str ()));
 }
 
 std::string from_topic (nano::websocket::topic topic_a)
@@ -659,6 +625,15 @@ void nano::websocket::listener::decrease_subscriber_count (nano::websocket::topi
 	count -= 1;
 }
 
+nano::websocket::message dto_to_message (rsnano::MessageDto & message_dto)
+{
+	auto ptree = static_cast<boost::property_tree::ptree *> (message_dto.contents);
+	nano::websocket::message message_l (static_cast<nano::websocket::topic> (message_dto.topic));
+	message_l.contents = *ptree;
+	delete ptree;
+	return message_l;
+}
+
 nano::websocket::message nano::websocket::message_builder::stopped_election (nano::block_hash const & hash_a)
 {
 	nano::websocket::message message_l (nano::websocket::topic::stopped_election);
@@ -838,34 +813,17 @@ nano::websocket::message nano::websocket::message_builder::work_failed (nano::wo
 
 nano::websocket::message nano::websocket::message_builder::bootstrap_started (std::string const & id_a, std::string const & mode_a)
 {
-	nano::websocket::message message_l (nano::websocket::topic::bootstrap);
-	set_common_fields (message_l);
-
-	// Bootstrap information
-	boost::property_tree::ptree bootstrap_l;
-	bootstrap_l.put ("reason", "started");
-	bootstrap_l.put ("id", id_a);
-	bootstrap_l.put ("mode", mode_a);
-
-	message_l.contents.add_child ("message", bootstrap_l);
-	return message_l;
+	rsnano::MessageDto message_dto;
+	rsnano::rsn_message_builder_bootstrap_started (id_a.c_str (), mode_a.c_str (), &message_dto);
+	return dto_to_message (message_dto);
 }
 
 nano::websocket::message nano::websocket::message_builder::bootstrap_exited (std::string const & id_a, std::string const & mode_a, std::chrono::steady_clock::time_point const start_time_a, uint64_t const total_blocks_a)
 {
-	nano::websocket::message message_l (nano::websocket::topic::bootstrap);
-	set_common_fields (message_l);
-
-	// Bootstrap information
-	boost::property_tree::ptree bootstrap_l;
-	bootstrap_l.put ("reason", "exited");
-	bootstrap_l.put ("id", id_a);
-	bootstrap_l.put ("mode", mode_a);
-	bootstrap_l.put ("total_blocks", total_blocks_a);
-	bootstrap_l.put ("duration", std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - start_time_a).count ());
-
-	message_l.contents.add_child ("message", bootstrap_l);
-	return message_l;
+	rsnano::MessageDto message_dto;
+	auto duration = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - start_time_a).count ();
+	rsnano::rsn_message_builder_bootstrap_exited (id_a.c_str (), mode_a.c_str (), duration, total_blocks_a, &message_dto);
+	return dto_to_message (message_dto);
 }
 
 nano::websocket::message nano::websocket::message_builder::telemetry_received (nano::telemetry_data const & telemetry_data_a, nano::endpoint const & endpoint_a)

@@ -9,12 +9,15 @@ type PropertyTreePutStringCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char, usize, *const c_char, usize);
 type PropertyTreeGetStringCallback =
     unsafe extern "C" fn(*const c_void, *const c_char, usize, *mut c_char, usize) -> i32;
+type PropertyTreePutU64Callback = unsafe extern "C" fn(*mut c_void, *const c_char, usize, u64);
 
 type PropertyTreeCreateTreeCallback = unsafe extern "C" fn() -> *mut c_void;
 type PropertyTreeDestroyTreeCallback = unsafe extern "C" fn(*mut c_void);
 type PropertyTreePushBackCallback = unsafe extern "C" fn(*mut c_void, *const c_char, *const c_void);
+type CreatePopertyTreeCallback = unsafe extern "C" fn() -> *mut c_void;
 
 static mut PUT_STRING_CALLBACK: Option<PropertyTreePutStringCallback> = None;
+static mut PUT_U64_CALLBACK: Option<PropertyTreePutU64Callback> = None;
 static mut ADD_CALLBACK: Option<PropertyTreePutStringCallback> = None;
 static mut GET_STRING_CALLBACK: Option<PropertyTreeGetStringCallback> = None;
 static mut CREATE_TREE_CALLBACK: Option<PropertyTreeCreateTreeCallback> = None;
@@ -25,6 +28,11 @@ static mut ADD_CHILD_CALLBACK: Option<PropertyTreePushBackCallback> = None;
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_property_tree_put_string(f: PropertyTreePutStringCallback) {
     PUT_STRING_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_property_tree_put_u64(f: PropertyTreePutU64Callback) {
+    PUT_U64_CALLBACK = Some(f);
 }
 
 #[no_mangle]
@@ -58,7 +66,7 @@ pub unsafe extern "C" fn rsn_callback_property_tree_add_child(f: PropertyTreePus
 }
 
 pub struct FfiPropertyTreeWriter {
-    handle: *mut c_void,
+    pub handle: *mut c_void,
     owned: bool,
 }
 
@@ -99,14 +107,20 @@ impl PropertyTreeWriter for FfiPropertyTreeWriter {
         }
     }
 
-    fn new_writer(&self) -> Box<dyn PropertyTreeWriter> {
-        let handle = unsafe {
-            match CREATE_TREE_CALLBACK {
-                Some(f) => f(),
-                None => panic!("CREATE_TREE_CALLBACK missing"),
+    fn put_u64(&mut self, path: &str, value: u64) -> Result<()> {
+        unsafe {
+            match PUT_U64_CALLBACK {
+                Some(f) => {
+                    f(self.handle, path.as_ptr() as *const i8, path.len(), value);
+                    Ok(())
+                }
+                None => Err(anyhow!("PUT_U64_CALLBACK missing")),
             }
-        };
-        Box::new(FfiPropertyTreeWriter::new_owned(handle))
+        }
+    }
+
+    fn new_writer(&self) -> Box<dyn PropertyTreeWriter> {
+        create_ffi_property_tree()
     }
 
     fn push_back(&mut self, path: &str, value: &dyn PropertyTreeWriter) {
@@ -162,6 +176,16 @@ impl PropertyTreeWriter for FfiPropertyTreeWriter {
             }
         }
     }
+}
+
+pub(crate) fn create_ffi_property_tree() -> Box<FfiPropertyTreeWriter> {
+    let handle = unsafe {
+        match CREATE_TREE_CALLBACK {
+            Some(f) => f(),
+            None => panic!("CREATE_TREE_CALLBACK missing"),
+        }
+    };
+    Box::new(FfiPropertyTreeWriter::new_owned(handle))
 }
 
 impl Drop for FfiPropertyTreeWriter {

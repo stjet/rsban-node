@@ -29,10 +29,11 @@ public:
 	std::string mode_text ();
 	virtual bool process_block (std::shared_ptr<nano::block> const &, nano::account const &, uint64_t, nano::bulk_pull::count_t, bool, unsigned);
 	virtual void get_information (boost::property_tree::ptree &) = 0;
+	uint64_t total_blocks () const;
+	void total_blocks_inc ();
 
 	std::atomic<unsigned> pulling{ 0 };
 	std::shared_ptr<nano::node> node;
-	std::atomic<uint64_t> total_blocks{ 0 };
 	std::atomic<unsigned> requeued_pulls{ 0 };
 	std::atomic<bool> started{ false };
 	std::atomic<bool> stopped{ false };
@@ -45,7 +46,7 @@ public:
 
 	std::string id () const;
 
-private:
+protected:
 	rsnano::BootstrapAttemptHandle * handle;
 };
 }

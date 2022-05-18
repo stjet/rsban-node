@@ -1,7 +1,7 @@
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
-    sync::Arc,
+    sync::{atomic::Ordering, Arc},
 };
 
 use num::FromPrimitive;
@@ -53,18 +53,32 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_id(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attemt_should_log(
+pub unsafe extern "C" fn rsn_bootstrap_attempt_should_log(
     handle: *const BootstrapAttemptHandle,
 ) -> bool {
     (*handle).0.should_log()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attemt_bootstrap_mode(
+pub unsafe extern "C" fn rsn_bootstrap_attempt_bootstrap_mode(
     handle: *const BootstrapAttemptHandle,
     len: *mut usize,
 ) -> *const c_char {
     let mode_text = (*handle).0.mode_text();
     *len = mode_text.len();
     mode_text.as_ptr() as *const c_char
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_total_blocks(
+    handle: *const BootstrapAttemptHandle,
+) -> u64 {
+    (*handle).0.total_blocks.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_total_blocks_inc(
+    handle: *const BootstrapAttemptHandle,
+) {
+    (*handle).0.total_blocks.fetch_add(1, Ordering::SeqCst);
 }

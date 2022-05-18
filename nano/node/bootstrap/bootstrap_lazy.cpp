@@ -72,6 +72,7 @@ void nano::bootstrap_attempt_lazy::lazy_requeue (nano::block_hash const & hash_a
 uint32_t nano::bootstrap_attempt_lazy::lazy_batch_size ()
 {
 	auto result (node->network_params.bootstrap.lazy_max_pull_blocks);
+	auto total_blocks = rsnano::rsn_bootstrap_attempt_total_blocks (handle);
 	if (total_blocks > nano::bootstrap_limits::lazy_batch_pull_count_resize_blocks_limit && lazy_blocks_count != 0)
 	{
 		auto lazy_blocks_ratio (static_cast<double> (total_blocks / lazy_blocks_count));
@@ -441,7 +442,7 @@ bool nano::bootstrap_attempt_lazy::lazy_processed_or_exists (nano::block_hash co
 unsigned nano::bootstrap_attempt_lazy::lazy_retry_limit_confirmed ()
 {
 	debug_assert (!mutex.try_lock ());
-	if (total_blocks % 1024 == 512 || peer_count == 0)
+	if (rsnano::rsn_bootstrap_attempt_total_blocks (handle) % 1024 == 512 || peer_count == 0)
 	{
 		// Prevent too frequent network locks
 		peer_count = node->network.size ();

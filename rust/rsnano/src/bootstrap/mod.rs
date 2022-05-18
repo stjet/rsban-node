@@ -6,7 +6,10 @@ use crate::{
 };
 use anyhow::Result;
 use std::{
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex,
+    },
     time::{Duration, Instant},
 };
 
@@ -20,9 +23,11 @@ pub(crate) enum BootstrapMode {
 pub(crate) struct BootstrapAttempt {
     pub id: String,
     pub mode: BootstrapMode,
+    pub total_blocks: AtomicU64,
     next_log: Mutex<Instant>,
     logger: Arc<dyn Logger>,
     websocket_server: Arc<dyn Listener>,
+    attempt_start: Instant,
 }
 
 impl BootstrapAttempt {
@@ -44,6 +49,8 @@ impl BootstrapAttempt {
             logger,
             mode,
             websocket_server,
+            attempt_start: Instant::now(),
+            total_blocks: AtomicU64::new(0),
         };
 
         result.start()?;
@@ -77,5 +84,27 @@ impl BootstrapAttempt {
             BootstrapMode::Lazy => "lazy",
             BootstrapMode::WalletLazy => "wallet_lazy",
         }
+    }
+}
+
+impl Drop for BootstrapAttempt {
+    fn drop(&mut self) {
+        let mode = self.mode_text();
+        let id = &self.id;
+        self.logger
+            .always_log(&format!("Exiting {mode} bootstrap attempt with ID {id}"));
+
+        let duration = self.attempt_start.elapsed();
+        self.websocket_server
+            .broadcast(
+                &MessageBuilder::bootstrap_exited(
+                    id,
+                    mode,
+                    duration,
+                    self.total_blocks.load(Ordering::SeqCst),
+                )
+                .unwrap(),
+            )
+            .unwrap();
     }
 }

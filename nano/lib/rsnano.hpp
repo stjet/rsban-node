@@ -702,6 +702,9 @@ uint64_t rsn_block_work (const BlockHandle * handle);
 
 void rsn_block_work_set (BlockHandle * handle, uint64_t work);
 
+const char * rsn_bootstrap_attempt_bootstrap_mode (const BootstrapAttemptHandle * handle,
+uintptr_t * len);
+
 BootstrapAttemptHandle * rsn_bootstrap_attempt_create (void * logger,
 void * websocket_server,
 const char * id,
@@ -711,10 +714,11 @@ void rsn_bootstrap_attempt_destroy (BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_id (const BootstrapAttemptHandle * handle, StringDto * result);
 
-const char * rsn_bootstrap_attemt_bootstrap_mode (const BootstrapAttemptHandle * handle,
-uintptr_t * len);
+bool rsn_bootstrap_attempt_should_log (const BootstrapAttemptHandle * handle);
 
-bool rsn_bootstrap_attemt_should_log (const BootstrapAttemptHandle * handle);
+uint64_t rsn_bootstrap_attempt_total_blocks (const BootstrapAttemptHandle * handle);
+
+void rsn_bootstrap_attempt_total_blocks_inc (const BootstrapAttemptHandle * handle);
 
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
 BootstrapConstantsDto * dto);

@@ -34,19 +34,22 @@ std::string nano::bootstrap_attempt::id () const
 
 nano::bootstrap_attempt::~bootstrap_attempt ()
 {
-	node->logger.always_log (boost::str (boost::format ("Exiting %1% bootstrap attempt with ID %2%") % mode_text () % id ()));
-	if (node->websocket_server)
-	{
-		nano::websocket::message_builder builder;
-		node->websocket_server->broadcast (builder.bootstrap_exited (id (), mode_text (), attempt_start, total_blocks));
-	}
-
 	rsnano::rsn_bootstrap_attempt_destroy (handle);
 }
 
 bool nano::bootstrap_attempt::should_log ()
 {
-	return rsnano::rsn_bootstrap_attemt_should_log (handle);
+	return rsnano::rsn_bootstrap_attempt_should_log (handle);
+}
+
+uint64_t nano::bootstrap_attempt::total_blocks () const
+{
+	return rsnano::rsn_bootstrap_attempt_total_blocks (handle);
+}
+
+void nano::bootstrap_attempt::total_blocks_inc ()
+{
+	rsnano::rsn_bootstrap_attempt_total_blocks_inc (handle);
 }
 
 bool nano::bootstrap_attempt::still_pulling ()
@@ -88,7 +91,7 @@ void nano::bootstrap_attempt::stop ()
 std::string nano::bootstrap_attempt::mode_text ()
 {
 	std::size_t len;
-	auto ptr{ rsnano::rsn_bootstrap_attemt_bootstrap_mode (handle, &len) };
+	auto ptr{ rsnano::rsn_bootstrap_attempt_bootstrap_mode (handle, &len) };
 	std::string mode_text (ptr, len);
 	return mode_text;
 }

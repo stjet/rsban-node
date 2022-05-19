@@ -457,24 +457,18 @@ nano::unchecked_info::unchecked_info () :
 }
 
 nano::unchecked_info::unchecked_info (nano::unchecked_info const & other_a) :
-	handle (rsnano::rsn_unchecked_info_clone (other_a.handle)),
-	account (other_a.account),
-	verified (other_a.verified)
+	handle (rsnano::rsn_unchecked_info_clone (other_a.handle))
 {
 }
 
 nano::unchecked_info::unchecked_info (nano::unchecked_info && other_a) :
-	handle (other_a.handle),
-	account (other_a.account),
-	verified (other_a.verified)
+	handle (other_a.handle)
 {
 	other_a.handle = nullptr;
 }
 
 nano::unchecked_info::unchecked_info (std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, nano::signature_verification verified_a) :
-	handle (rsnano::rsn_unchecked_info_create2 (block_a->get_handle ())),
-	account (account_a),
-	verified (verified_a)
+	handle (rsnano::rsn_unchecked_info_create2 (block_a->get_handle (), account_a.bytes.data (), static_cast<uint8_t> (verified_a)))
 {
 }
 
@@ -492,8 +486,6 @@ nano::unchecked_info::~unchecked_info ()
 nano::unchecked_info & nano::unchecked_info::operator= (const nano::unchecked_info & other_a)
 {
 	handle = rsnano::rsn_unchecked_info_clone (other_a.handle);
-	account = other_a.account;
-	verified = other_a.verified;
 	return *this;
 }
 
@@ -503,14 +495,32 @@ std::shared_ptr<nano::block> nano::unchecked_info::get_block () const
 	return block_handle_to_block (block_handle);
 }
 
+nano::account nano::unchecked_info::get_account () const
+{
+	nano::account account;
+	rsnano::rsn_unchecked_info_account (handle, account.bytes.data ());
+	return account;
+}
+
+nano::signature_verification nano::unchecked_info::get_verified () const
+{
+	return static_cast<nano::signature_verification> (rsnano::rsn_unchecked_info_verified (handle));
+}
+
+void nano::unchecked_info::set_verified (nano::signature_verification verified)
+{
+	rsnano::rsn_unchecked_info_verified_set (handle, static_cast<uint8_t> (verified));
+}
+
 void nano::unchecked_info::serialize (nano::stream & stream_a) const
 {
 	auto modified = rsnano::rsn_unchecked_info_modified (handle);
 	auto block = get_block ();
+	auto acc = get_account ();
 	nano::serialize_block (stream_a, *block);
-	nano::write (stream_a, account.bytes);
+	nano::write (stream_a, acc.bytes);
 	nano::write (stream_a, modified);
-	nano::write (stream_a, verified);
+	nano::write (stream_a, get_verified ());
 }
 
 bool nano::unchecked_info::deserialize (nano::stream & stream_a)
@@ -522,11 +532,15 @@ bool nano::unchecked_info::deserialize (nano::stream & stream_a)
 		rsnano::rsn_unchecked_info_block_set (handle, block->get_handle ());
 		try
 		{
-			nano::read (stream_a, account.bytes);
+			nano::account acc;
+			nano::read (stream_a, acc.bytes);
+			rsnano::rsn_unchecked_info_account_set (handle, acc.bytes.data ());
 			uint64_t modified;
 			nano::read (stream_a, modified);
 			rsnano::rsn_unchecked_info_modified_set (handle, modified);
-			nano::read (stream_a, verified);
+			nano::signature_verification v;
+			nano::read (stream_a, v);
+			rsnano::rsn_unchecked_info_verified_set (handle, static_cast<uint8_t> (v));
 		}
 		catch (std::runtime_error const &)
 		{

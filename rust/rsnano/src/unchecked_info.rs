@@ -3,7 +3,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::BlockEnum;
+use crate::{Account, BlockEnum, SignatureVerification};
 
 /// Information on an unchecked block
 #[derive(Clone)]
@@ -13,16 +13,24 @@ pub(crate) struct UncheckedInfo {
 
     /// Seconds since posix epoch
     pub modified: u64,
+    pub account: Account,
+    pub verified: SignatureVerification,
 }
 
 impl UncheckedInfo {
-    pub(crate) fn new(block: Arc<RwLock<BlockEnum>>) -> Self {
+    pub(crate) fn new(
+        block: Arc<RwLock<BlockEnum>>,
+        account: &Account,
+        verified: SignatureVerification,
+    ) -> Self {
         Self {
             block: Some(block),
             modified: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs(),
+            account: *account,
+            verified,
         }
     }
 
@@ -30,6 +38,8 @@ impl UncheckedInfo {
         Self {
             block: None,
             modified: 0,
+            account: *Account::zero(),
+            verified: SignatureVerification::Unknown,
         }
     }
 }

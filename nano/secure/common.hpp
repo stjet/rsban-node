@@ -216,13 +216,12 @@ public:
 	bool deserialize (nano::stream &);
 	uint64_t modified () const;
 	std::shared_ptr<nano::block> get_block () const;
-	nano::account account{};
+	nano::account get_account () const;
+	nano::signature_verification get_verified () const;
+	void set_verified (nano::signature_verification verified);
 
 private:
 	rsnano::UncheckedInfoHandle * handle;
-
-public:
-	nano::signature_verification verified{ nano::signature_verification::unknown };
 };
 
 class block_info final

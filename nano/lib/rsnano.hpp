@@ -1078,6 +1078,10 @@ uint8_t rsn_to_topic (const char * topic);
 
 void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
 
+void rsn_unchecked_info_account (const UncheckedInfoHandle * handle, uint8_t * result);
+
+void rsn_unchecked_info_account_set (UncheckedInfoHandle * handle, const uint8_t * account);
+
 BlockHandle * rsn_unchecked_info_block (const UncheckedInfoHandle * handle);
 
 void rsn_unchecked_info_block_set (UncheckedInfoHandle * handle, BlockHandle * block);
@@ -1086,13 +1090,19 @@ UncheckedInfoHandle * rsn_unchecked_info_clone (const UncheckedInfoHandle * hand
 
 UncheckedInfoHandle * rsn_unchecked_info_create ();
 
-UncheckedInfoHandle * rsn_unchecked_info_create2 (const BlockHandle * block);
+UncheckedInfoHandle * rsn_unchecked_info_create2 (const BlockHandle * block,
+const uint8_t * account,
+uint8_t verified);
 
 void rsn_unchecked_info_destroy (UncheckedInfoHandle * handle);
 
 uint64_t rsn_unchecked_info_modified (const UncheckedInfoHandle * handle);
 
 void rsn_unchecked_info_modified_set (UncheckedInfoHandle * handle, uint64_t modified);
+
+uint8_t rsn_unchecked_info_verified (const UncheckedInfoHandle * handle);
+
+void rsn_unchecked_info_verified_set (UncheckedInfoHandle * handle, uint8_t verified);
 
 int32_t rsn_unique_path (uint16_t network, uint8_t * result, uintptr_t size);
 

@@ -1078,6 +1078,10 @@ uint8_t rsn_to_topic (const char * topic);
 
 void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
 
+BlockHandle * rsn_unchecked_info_block (const UncheckedInfoHandle * handle);
+
+void rsn_unchecked_info_block_set (UncheckedInfoHandle * handle, BlockHandle * block);
+
 UncheckedInfoHandle * rsn_unchecked_info_clone (const UncheckedInfoHandle * handle);
 
 UncheckedInfoHandle * rsn_unchecked_info_create ();

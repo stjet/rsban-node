@@ -39,3 +39,11 @@ pub unsafe extern "C" fn rsn_unchecked_info_block(
         block: (*handle).0.block.as_ref().unwrap().clone(),
     }))
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_unchecked_info_block_set(
+    handle: *mut UncheckedInfoHandle,
+    block: *mut BlockHandle,
+) {
+    (*handle).0.block = Some((*block).block.clone());
+}

@@ -219,7 +219,6 @@ public:
 	nano::account account{};
 
 private:
-	std::shared_ptr<nano::block> block;
 	/** Seconds since posix epoch */
 	uint64_t modified_m{ 0 };
 	rsnano::UncheckedInfoHandle * handle;

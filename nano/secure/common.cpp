@@ -458,7 +458,6 @@ nano::unchecked_info::unchecked_info () :
 
 nano::unchecked_info::unchecked_info (nano::unchecked_info const & other_a) :
 	handle (rsnano::rsn_unchecked_info_clone (other_a.handle)),
-	block (other_a.block),
 	account (other_a.account),
 	modified_m (other_a.modified_m),
 	verified (other_a.verified)
@@ -467,7 +466,6 @@ nano::unchecked_info::unchecked_info (nano::unchecked_info const & other_a) :
 
 nano::unchecked_info::unchecked_info (nano::unchecked_info && other_a) :
 	handle (other_a.handle),
-	block (other_a.block),
 	account (other_a.account),
 	modified_m (other_a.modified_m),
 	verified (other_a.verified)
@@ -477,7 +475,6 @@ nano::unchecked_info::unchecked_info (nano::unchecked_info && other_a) :
 
 nano::unchecked_info::unchecked_info (std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, nano::signature_verification verified_a) :
 	handle (rsnano::rsn_unchecked_info_create2 (block_a->get_handle ())),
-	block (block_a),
 	account (account_a),
 	modified_m (nano::seconds_since_epoch ()),
 	verified (verified_a)
@@ -498,7 +495,6 @@ nano::unchecked_info::~unchecked_info ()
 nano::unchecked_info & nano::unchecked_info::operator= (const nano::unchecked_info & other_a)
 {
 	handle = rsnano::rsn_unchecked_info_clone (other_a.handle);
-	block = other_a.block;
 	account = other_a.account;
 	modified_m = other_a.modified_m;
 	verified = other_a.verified;
@@ -507,12 +503,13 @@ nano::unchecked_info & nano::unchecked_info::operator= (const nano::unchecked_in
 
 std::shared_ptr<nano::block> nano::unchecked_info::get_block () const
 {
-	return block;
+	auto block_handle = rsnano::rsn_unchecked_info_block (handle);
+	return block_handle_to_block (block_handle);
 }
 
 void nano::unchecked_info::serialize (nano::stream & stream_a) const
 {
-	debug_assert (block != nullptr);
+	auto block = get_block ();
 	nano::serialize_block (stream_a, *block);
 	nano::write (stream_a, account.bytes);
 	nano::write (stream_a, modified_m);
@@ -521,10 +518,11 @@ void nano::unchecked_info::serialize (nano::stream & stream_a) const
 
 bool nano::unchecked_info::deserialize (nano::stream & stream_a)
 {
-	block = nano::deserialize_block (stream_a);
+	auto block = nano::deserialize_block (stream_a);
 	bool error (block == nullptr);
 	if (!error)
 	{
+		rsnano::rsn_unchecked_info_block_set (handle, block->get_handle ());
 		try
 		{
 			nano::read (stream_a, account.bytes);

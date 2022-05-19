@@ -39,6 +39,8 @@ struct StateBlockSignatureVerificationResultHandle;
 
 struct StringHandle;
 
+struct UncheckedInfoHandle;
+
 struct VoteHandle;
 
 struct VoteHashesHandle;
@@ -1075,6 +1077,14 @@ uint16_t rsn_test_node_port ();
 uint8_t rsn_to_topic (const char * topic);
 
 void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
+
+UncheckedInfoHandle * rsn_unchecked_info_clone (const UncheckedInfoHandle * handle);
+
+UncheckedInfoHandle * rsn_unchecked_info_create ();
+
+UncheckedInfoHandle * rsn_unchecked_info_create2 (const BlockHandle * block);
+
+void rsn_unchecked_info_destroy (UncheckedInfoHandle * handle);
 
 int32_t rsn_unique_path (uint16_t network, uint8_t * result, uintptr_t size);
 

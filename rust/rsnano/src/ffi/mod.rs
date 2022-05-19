@@ -17,6 +17,7 @@ mod state_block_signature_verification;
 mod stats;
 mod stream;
 mod toml;
+mod unchecked_info;
 mod voting;
 mod websocket;
 

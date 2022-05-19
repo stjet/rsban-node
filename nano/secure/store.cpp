@@ -179,7 +179,7 @@ std::vector<nano::unchecked_info> nano::unchecked_store::get (nano::transaction 
 	{
 		auto const & key = i->first;
 		auto const & value = i->second;
-		debug_assert (key.hash == value.block->hash ());
+		debug_assert (key.hash == value.get_block ()->hash ());
 		result.push_back (value);
 	}
 	return result;

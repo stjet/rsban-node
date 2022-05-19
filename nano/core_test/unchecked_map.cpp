@@ -50,7 +50,7 @@ TEST (unchecked_map, put_one)
 {
 	context context;
 	nano::unchecked_info info{ block (), nano::dev::genesis_key.pub };
-	context.unchecked.put (info.block->previous (), info);
+	context.unchecked.put (info.get_block ()->previous (), info);
 }
 
 TEST (block_store, one_bootstrap)
@@ -75,7 +75,7 @@ TEST (block_store, one_bootstrap)
 	ASSERT_EQ (block1->hash (), hash1);
 	auto blocks = unchecked.get (transaction, hash1);
 	ASSERT_EQ (1, blocks.size ());
-	auto block2 = blocks[0].block;
+	auto block2 = blocks[0].get_block ();
 	ASSERT_EQ (*block1, *block2);
 	++begin;
 	ASSERT_EQ (end, begin);

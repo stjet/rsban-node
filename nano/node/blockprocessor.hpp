@@ -65,6 +65,8 @@ class block_processor final
 {
 public:
 	explicit block_processor (nano::node &, nano::write_database_queue &);
+	block_processor (nano::block_processor const &) = delete;
+	block_processor (nano::block_processor &&) = delete;
 	~block_processor ();
 	void stop ();
 	void flush ();
@@ -108,6 +110,8 @@ private:
 	nano::network_params & network_params;
 	nano::local_vote_history & history;
 	nano::block_arrival & block_arrival;
+
+	rsnano::BlockProcessorHandle * handle;
 
 	// not yet ported:
 	nano::ledger & ledger;

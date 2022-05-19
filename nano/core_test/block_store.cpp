@@ -371,7 +371,7 @@ TEST (unchecked, simple)
 	auto block_listing2 = unchecked.get (transaction, block->previous ());
 	ASSERT_FALSE (block_listing2.empty ());
 	// Asserts the added block is equal to the retrieved one
-	ASSERT_EQ (*block, *(block_listing2[0].block));
+	ASSERT_EQ (*block, *(block_listing2[0].get_block ()));
 	// Deletes the block from the database
 	unchecked.del (transaction, nano::unchecked_key (block->previous (), block->hash ()));
 	// Asserts the block is deleted
@@ -485,7 +485,7 @@ TEST (unchecked, multiple_get)
 	ASSERT_EQ (unchecked1_blocks.size (), 3);
 	for (auto & i : unchecked1_blocks)
 	{
-		unchecked1.push_back (i.block->hash ());
+		unchecked1.push_back (i.get_block ()->hash ());
 	}
 	// Asserts the payloads where correclty saved
 	ASSERT_TRUE (std::find (unchecked1.begin (), unchecked1.end (), block1->hash ()) != unchecked1.end ());
@@ -497,7 +497,7 @@ TEST (unchecked, multiple_get)
 	ASSERT_EQ (unchecked2_blocks.size (), 2);
 	for (auto & i : unchecked2_blocks)
 	{
-		unchecked2.push_back (i.block->hash ());
+		unchecked2.push_back (i.get_block ()->hash ());
 	}
 	// Asserts the payloads where correctly saved
 	ASSERT_TRUE (std::find (unchecked2.begin (), unchecked2.end (), block1->hash ()) != unchecked2.end ());
@@ -505,11 +505,11 @@ TEST (unchecked, multiple_get)
 	// Asserts the entry is found by the key and the payload is saved
 	auto unchecked3 = unchecked.get (transaction, block2->previous ());
 	ASSERT_EQ (unchecked3.size (), 1);
-	ASSERT_EQ (unchecked3[0].block->hash (), block2->hash ());
+	ASSERT_EQ (unchecked3[0].get_block ()->hash (), block2->hash ());
 	// Asserts the entry is found by the key and the payload is saved
 	auto unchecked4 = unchecked.get (transaction, block3->hash ());
 	ASSERT_EQ (unchecked4.size (), 1);
-	ASSERT_EQ (unchecked4[0].block->hash (), block3->hash ());
+	ASSERT_EQ (unchecked4[0].get_block ()->hash (), block3->hash ());
 	// Asserts no entry is found for a block that wasn't added
 	auto unchecked5 = unchecked.get (transaction, block2->hash ());
 	ASSERT_EQ (unchecked5.size (), 0);

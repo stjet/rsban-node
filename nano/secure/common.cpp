@@ -451,7 +451,32 @@ nano::account const & nano::pending_key::key () const
 	return account;
 }
 
+nano::unchecked_info::unchecked_info () :
+	handle (rsnano::rsn_unchecked_info_create ())
+{
+}
+
+nano::unchecked_info::unchecked_info (nano::unchecked_info const & other_a) :
+	handle (rsnano::rsn_unchecked_info_clone (other_a.handle)),
+	block (other_a.block),
+	account (other_a.account),
+	modified_m (other_a.modified_m),
+	verified (other_a.verified)
+{
+}
+
+nano::unchecked_info::unchecked_info (nano::unchecked_info && other_a) :
+	handle (other_a.handle),
+	block (other_a.block),
+	account (other_a.account),
+	modified_m (other_a.modified_m),
+	verified (other_a.verified)
+{
+	other_a.handle = nullptr;
+}
+
 nano::unchecked_info::unchecked_info (std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, nano::signature_verification verified_a) :
+	handle (rsnano::rsn_unchecked_info_create2 (block_a->get_handle ())),
 	block (block_a),
 	account (account_a),
 	modified_m (nano::seconds_since_epoch ()),
@@ -462,6 +487,27 @@ nano::unchecked_info::unchecked_info (std::shared_ptr<nano::block> const & block
 nano::unchecked_info::unchecked_info (std::shared_ptr<nano::block> const & block) :
 	unchecked_info{ block, block->account (), nano::signature_verification::unknown }
 {
+}
+
+nano::unchecked_info::~unchecked_info ()
+{
+	if (handle != nullptr)
+		rsnano::rsn_unchecked_info_destroy (handle);
+}
+
+nano::unchecked_info & nano::unchecked_info::operator= (const nano::unchecked_info & other_a)
+{
+	handle = rsnano::rsn_unchecked_info_clone (other_a.handle);
+	block = other_a.block;
+	account = other_a.account;
+	modified_m = other_a.modified_m;
+	verified = other_a.verified;
+	return *this;
+}
+
+std::shared_ptr<nano::block> nano::unchecked_info::get_block () const
+{
+	return block;
 }
 
 void nano::unchecked_info::serialize (nano::stream & stream_a) const

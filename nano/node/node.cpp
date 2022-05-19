@@ -980,7 +980,7 @@ void nano::node::unchecked_cleanup ()
 			nano::unchecked_info const & info (i->second);
 			if ((now - info.modified ()) > static_cast<uint64_t> (config.unchecked_cutoff_time.count ()))
 			{
-				digests.push_back (network.publish_filter.hash (info.block));
+				digests.push_back (network.publish_filter.hash (info.get_block ()));
 				cleaning_list.push_back (key);
 			}
 		}

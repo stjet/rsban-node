@@ -2453,7 +2453,7 @@ TEST (ledger, epoch_open_pending)
 	// Open block should be inserted into unchecked
 	auto blocks = node1.unchecked.get (node1.store.tx_begin_read (), nano::hash_or_account (epoch_open->account ()).hash);
 	ASSERT_EQ (blocks.size (), 1);
-	ASSERT_EQ (blocks[0].block->full_hash (), epoch_open->full_hash ());
+	ASSERT_EQ (blocks[0].get_block ()->full_hash (), epoch_open->full_hash ());
 	ASSERT_EQ (blocks[0].verified, nano::signature_verification::valid_epoch);
 	// New block to process epoch open
 	auto send1 = builder.state ()

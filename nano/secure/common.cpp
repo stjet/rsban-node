@@ -467,6 +467,11 @@ nano::unchecked_info::unchecked_info (nano::unchecked_info && other_a) :
 	other_a.handle = nullptr;
 }
 
+nano::unchecked_info::unchecked_info (rsnano::UncheckedInfoHandle * handle_a) :
+	handle (handle_a)
+{
+}
+
 nano::unchecked_info::unchecked_info (std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, nano::signature_verification verified_a) :
 	handle (rsnano::rsn_unchecked_info_create2 (block_a->get_handle (), account_a.bytes.data (), static_cast<uint8_t> (verified_a)))
 {

@@ -6,6 +6,12 @@ use super::BlockHandle;
 
 pub struct UncheckedInfoHandle(UncheckedInfo);
 
+impl UncheckedInfoHandle {
+    pub(crate) fn new(info: UncheckedInfo) -> Self {
+        Self(info)
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_unchecked_info_create() -> *mut UncheckedInfoHandle {
     let info = UncheckedInfo::null();

@@ -210,6 +210,7 @@ public:
 	unchecked_info (std::shared_ptr<nano::block> const &);
 	unchecked_info (nano::unchecked_info const &);
 	unchecked_info (nano::unchecked_info &&);
+	unchecked_info (rsnano::UncheckedInfoHandle * handle_a);
 	~unchecked_info ();
 	nano::unchecked_info & operator= (const nano::unchecked_info &);
 	void serialize (nano::stream &) const;

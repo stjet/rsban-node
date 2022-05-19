@@ -25,6 +25,7 @@ use std::{ffi::CString, os::raw::c_char};
 
 pub use bandwidth_limiter::*;
 pub use blake2b::*;
+pub(crate) use block_processor::*;
 pub use blocks::*;
 pub use config::*;
 pub use epoch::*;
@@ -37,6 +38,7 @@ pub use signatures::*;
 pub use stats::*;
 pub use stream::*;
 pub use toml::*;
+pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
 pub struct StringHandle(CString);

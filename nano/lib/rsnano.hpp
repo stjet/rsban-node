@@ -123,6 +123,8 @@ using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
 
 using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
 
+using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
+
 using InAvailCallback = uintptr_t (*) (void *, int32_t *);
 
 struct MessageDto
@@ -664,7 +666,7 @@ void rsn_block_hash (const BlockHandle * handle, uint8_t (*hash)[32]);
 
 void rsn_block_previous (const BlockHandle * handle, uint8_t (*result)[32]);
 
-BlockProcessorHandle * rsn_block_processor_create ();
+BlockProcessorHandle * rsn_block_processor_create (void * handle);
 
 void rsn_block_processor_destroy (BlockProcessorHandle * handle);
 
@@ -732,6 +734,8 @@ void rsn_callback_blake2b_final (Blake2BFinalCallback f);
 void rsn_callback_blake2b_init (Blake2BInitCallback f);
 
 void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
+
+void rsn_callback_block_processor_add (BlockProcessorAddCallback f);
 
 void rsn_callback_in_avail (InAvailCallback f);
 

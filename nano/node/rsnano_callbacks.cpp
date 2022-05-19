@@ -3,6 +3,7 @@
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/stream.hpp>
 #include <nano/lib/tomlconfig.hpp>
+#include <nano/node/blockprocessor.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
 #include <nano/node/websocket.hpp>
 
@@ -333,6 +334,13 @@ bool listener_broadcast (void * handle_a, rsnano::MessageDto const * message_a)
 	}
 }
 
+void blockprocessor_add (void * handle_a, rsnano::UncheckedInfoHandle * info_a)
+{
+	auto processor = static_cast<nano::block_processor *> (handle_a);
+	nano::unchecked_info info{ info_a };
+	processor->add (info);
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -370,5 +378,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_try_log (logger_try_log);
 	rsnano::rsn_callback_always_log (logger_always_log);
 	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
+	rsnano::rsn_callback_block_processor_add (blockprocessor_add);
 	callbacks_set = true;
 }

@@ -46,7 +46,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	gap_cache (node_a.gap_cache),
 	bootstrap_initiator (node_a.bootstrap_initiator),
 	write_database_queue (write_database_queue_a),
-	handle (rsnano::rsn_block_processor_create ())
+	handle (rsnano::rsn_block_processor_create (this))
 {
 	state_block_signature_verification.blocks_verified_callback = [this] (std::deque<nano::state_block_signature_verification::value_type> & items, std::vector<int> const & verifications, std::vector<nano::block_hash> const & hashes, std::vector<nano::signature> const & blocks_signatures) {
 		this->process_verified_state_blocks (items, verifications, hashes, blocks_signatures);

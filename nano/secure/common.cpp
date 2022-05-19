@@ -459,7 +459,6 @@ nano::unchecked_info::unchecked_info () :
 nano::unchecked_info::unchecked_info (nano::unchecked_info const & other_a) :
 	handle (rsnano::rsn_unchecked_info_clone (other_a.handle)),
 	account (other_a.account),
-	modified_m (other_a.modified_m),
 	verified (other_a.verified)
 {
 }
@@ -467,7 +466,6 @@ nano::unchecked_info::unchecked_info (nano::unchecked_info const & other_a) :
 nano::unchecked_info::unchecked_info (nano::unchecked_info && other_a) :
 	handle (other_a.handle),
 	account (other_a.account),
-	modified_m (other_a.modified_m),
 	verified (other_a.verified)
 {
 	other_a.handle = nullptr;
@@ -476,7 +474,6 @@ nano::unchecked_info::unchecked_info (nano::unchecked_info && other_a) :
 nano::unchecked_info::unchecked_info (std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, nano::signature_verification verified_a) :
 	handle (rsnano::rsn_unchecked_info_create2 (block_a->get_handle ())),
 	account (account_a),
-	modified_m (nano::seconds_since_epoch ()),
 	verified (verified_a)
 {
 }
@@ -496,7 +493,6 @@ nano::unchecked_info & nano::unchecked_info::operator= (const nano::unchecked_in
 {
 	handle = rsnano::rsn_unchecked_info_clone (other_a.handle);
 	account = other_a.account;
-	modified_m = other_a.modified_m;
 	verified = other_a.verified;
 	return *this;
 }
@@ -509,10 +505,11 @@ std::shared_ptr<nano::block> nano::unchecked_info::get_block () const
 
 void nano::unchecked_info::serialize (nano::stream & stream_a) const
 {
+	auto modified = rsnano::rsn_unchecked_info_modified (handle);
 	auto block = get_block ();
 	nano::serialize_block (stream_a, *block);
 	nano::write (stream_a, account.bytes);
-	nano::write (stream_a, modified_m);
+	nano::write (stream_a, modified);
 	nano::write (stream_a, verified);
 }
 
@@ -526,7 +523,9 @@ bool nano::unchecked_info::deserialize (nano::stream & stream_a)
 		try
 		{
 			nano::read (stream_a, account.bytes);
-			nano::read (stream_a, modified_m);
+			uint64_t modified;
+			nano::read (stream_a, modified);
+			rsnano::rsn_unchecked_info_modified_set (handle, modified);
 			nano::read (stream_a, verified);
 		}
 		catch (std::runtime_error const &)
@@ -539,7 +538,7 @@ bool nano::unchecked_info::deserialize (nano::stream & stream_a)
 
 uint64_t nano::unchecked_info::modified () const
 {
-	return modified_m;
+	return rsnano::rsn_unchecked_info_modified (handle);
 }
 
 nano::endpoint_key::endpoint_key (std::array<uint8_t, 16> const & address_a, uint16_t port_a) :

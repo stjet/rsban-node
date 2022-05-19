@@ -219,8 +219,6 @@ public:
 	nano::account account{};
 
 private:
-	/** Seconds since posix epoch */
-	uint64_t modified_m{ 0 };
 	rsnano::UncheckedInfoHandle * handle;
 
 public:

@@ -1090,6 +1090,10 @@ UncheckedInfoHandle * rsn_unchecked_info_create2 (const BlockHandle * block);
 
 void rsn_unchecked_info_destroy (UncheckedInfoHandle * handle);
 
+uint64_t rsn_unchecked_info_modified (const UncheckedInfoHandle * handle);
+
+void rsn_unchecked_info_modified_set (UncheckedInfoHandle * handle, uint64_t modified);
+
 int32_t rsn_unique_path (uint16_t network, uint8_t * result, uintptr_t size);
 
 bool rsn_using_rocksdb_in_tests ();

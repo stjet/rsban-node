@@ -47,3 +47,16 @@ pub unsafe extern "C" fn rsn_unchecked_info_block_set(
 ) {
     (*handle).0.block = Some((*block).block.clone());
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_unchecked_info_modified(handle: *const UncheckedInfoHandle) -> u64 {
+    (*handle).0.modified
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_unchecked_info_modified_set(
+    handle: *mut UncheckedInfoHandle,
+    modified: u64,
+) {
+    (*handle).0.modified = modified;
+}

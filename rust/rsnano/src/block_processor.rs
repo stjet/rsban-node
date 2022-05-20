@@ -5,7 +5,7 @@ use crate::{
     UncheckedInfo,
 };
 
-pub(crate) struct BlockProcessor {
+pub struct BlockProcessor {
     handle: *mut c_void,
 }
 

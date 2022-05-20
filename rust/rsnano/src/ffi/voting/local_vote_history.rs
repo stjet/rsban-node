@@ -26,15 +26,9 @@ pub unsafe extern "C" fn rsn_local_vote_history_add(
     hash: *const u8,
     vote: *const VoteHandle,
 ) {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(std::slice::from_raw_parts(root, 32));
-    let root = Root::from_bytes(bytes);
-
-    bytes.copy_from_slice(std::slice::from_raw_parts(hash, 32));
-    let hash = BlockHash::from_bytes(bytes);
-
+    let root = Root::from(root);
+    let hash = BlockHash::from(hash);
     let vote = (*vote).vote.clone();
-
     (*handle).history.add(&root, &hash, &vote);
 }
 
@@ -43,9 +37,7 @@ pub unsafe extern "C" fn rsn_local_vote_history_erase(
     handle: *mut LocalVoteHistoryHandle,
     root: *const u8,
 ) {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(std::slice::from_raw_parts(root, 32));
-    let root = Root::from_bytes(bytes);
+    let root = Root::from(root);
     (*handle).history.erase(&root);
 }
 
@@ -66,12 +58,8 @@ pub unsafe extern "C" fn rsn_local_vote_history_votes(
     is_final: bool,
     result: *mut LocalVotesResult,
 ) {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(std::slice::from_raw_parts(root, 32));
-    let root = Root::from_bytes(bytes);
-
-    bytes.copy_from_slice(std::slice::from_raw_parts(hash, 32));
-    let hash = BlockHash::from_bytes(bytes);
+    let root = Root::from(root);
+    let hash = BlockHash::from(hash);
 
     let mut votes = (*handle).history.votes(&root, &hash, is_final);
     let mut votes = Box::new(LocalVotesResultHandle(
@@ -99,9 +87,7 @@ pub unsafe extern "C" fn rsn_local_vote_history_exists(
     handle: *mut LocalVoteHistoryHandle,
     root: *const u8,
 ) -> bool {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(std::slice::from_raw_parts(root, 32));
-    let root = Root::from_bytes(bytes);
+    let root = Root::from(root);
     (*handle).history.exists(&root)
 }
 

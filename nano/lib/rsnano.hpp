@@ -711,12 +711,21 @@ uintptr_t * len);
 
 BootstrapAttemptHandle * rsn_bootstrap_attempt_create (void * logger,
 void * websocket_server,
+const BlockProcessorHandle * block_processor,
 const char * id,
 uint8_t mode);
 
 void rsn_bootstrap_attempt_destroy (BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_id (const BootstrapAttemptHandle * handle, StringDto * result);
+
+void rsn_bootstrap_attempt_process_block (const BootstrapAttemptHandle * handle,
+const BlockHandle * block,
+const uint8_t * known_account,
+uint64_t pull_blocks_processed,
+uint32_t max_blocks,
+bool block_expected,
+uint32_t retry_limit);
 
 bool rsn_bootstrap_attempt_should_log (const BootstrapAttemptHandle * handle);
 

@@ -1,10 +1,18 @@
-use std::{ffi::c_void, sync::Arc};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::BlockProcessor;
 
 use super::unchecked_info::UncheckedInfoHandle;
 
 pub struct BlockProcessorHandle(Arc<BlockProcessor>);
+
+impl Deref for BlockProcessorHandle {
+    type Target = Arc<BlockProcessor>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_create(handle: *mut c_void) -> *mut BlockProcessorHandle {

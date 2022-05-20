@@ -16,7 +16,7 @@ constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit_dev;
 
 nano::bootstrap_attempt::bootstrap_attempt (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_mode mode_a, uint64_t incremental_id_a, std::string id_a) :
-	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, node_a->websocket_server.get (), id_a.c_str (), static_cast<uint8_t> (mode_a))),
+	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, node_a->websocket_server.get (), node_a->block_processor.get_handle (), id_a.c_str (), static_cast<uint8_t> (mode_a))),
 	node (node_a),
 	incremental_id (incremental_id_a),
 	mode (mode_a)
@@ -106,8 +106,7 @@ bool nano::bootstrap_attempt::process_block (std::shared_ptr<nano::block> const 
 	}
 	else
 	{
-		nano::unchecked_info info (block_a, known_account_a, nano::signature_verification::unknown);
-		node->block_processor.add (info);
+		rsnano::rsn_bootstrap_attempt_process_block (handle, block_a->get_handle (), known_account_a.bytes.data (), pull_blocks_processed, max_blocks, block_expected, retry_limit);
 	}
 	return stop_pull;
 }

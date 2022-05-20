@@ -27,12 +27,8 @@ pub extern "C" fn rsn_vote_create2(
     hashes: *const [u8; 32],
     hash_count: usize,
 ) -> *mut VoteHandle {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(account, 32) });
-    let account = Account::from_bytes(bytes);
-
-    bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(prv_key, 32) });
-    let key = RawKey::from_bytes(bytes);
+    let account = Account::from(account);
+    let key = RawKey::from(prv_key);
 
     let hashes = unsafe { std::slice::from_raw_parts(hashes, hash_count) };
     let hashes = hashes.iter().map(|&h| BlockHash::from_bytes(h)).collect();

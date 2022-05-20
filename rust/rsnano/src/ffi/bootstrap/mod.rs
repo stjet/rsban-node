@@ -8,10 +8,10 @@ use num::FromPrimitive;
 
 use crate::{
     websocket::{Listener, NullListener},
-    BootstrapAttempt,
+    Account, BootstrapAttempt,
 };
 
-use super::{FfiListener, LoggerMT, StringDto, StringHandle};
+use super::{BlockHandle, BlockProcessorHandle, FfiListener, LoggerMT, StringDto, StringHandle};
 
 pub struct BootstrapAttemptHandle(BootstrapAttempt);
 
@@ -19,6 +19,7 @@ pub struct BootstrapAttemptHandle(BootstrapAttempt);
 pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     logger: *mut c_void,
     websocket_server: *mut c_void,
+    block_processor: *const BlockProcessorHandle,
     id: *const c_char,
     mode: u8,
 ) -> *mut BootstrapAttemptHandle {
@@ -30,8 +31,9 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     } else {
         Arc::new(FfiListener::new(websocket_server))
     };
+    let block_processor = Arc::downgrade(&(*block_processor));
     Box::into_raw(Box::new(BootstrapAttemptHandle(
-        BootstrapAttempt::new(logger, websocket_server, id_str, mode).unwrap(),
+        BootstrapAttempt::new(logger, websocket_server, block_processor, id_str, mode).unwrap(),
     )))
 }
 
@@ -81,4 +83,25 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_total_blocks_inc(
     handle: *const BootstrapAttemptHandle,
 ) {
     (*handle).0.total_blocks.fetch_add(1, Ordering::SeqCst);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_process_block(
+    handle: *const BootstrapAttemptHandle,
+    block: *const BlockHandle,
+    known_account: *const u8,
+    pull_blocks_processed: u64,
+    max_blocks: u32,
+    block_expected: bool,
+    retry_limit: u32,
+) {
+    let block = (*block).block.clone();
+    (*handle).0.process_block(
+        block,
+        &Account::from(known_account),
+        pull_blocks_processed,
+        max_blocks,
+        block_expected,
+        retry_limit,
+    );
 }

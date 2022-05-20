@@ -1,14 +1,16 @@
 use crate::{
+    block_processor::BlockProcessor,
     encode_hex,
     logger_mt::Logger,
+    unchecked_info::UncheckedInfo,
     websocket::{Listener, MessageBuilder},
-    HardenedConstants,
+    Account, BlockEnum, HardenedConstants,
 };
 use anyhow::Result;
 use std::{
     sync::{
         atomic::{AtomicU64, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, RwLock, Weak,
     },
     time::{Duration, Instant},
 };
@@ -28,12 +30,17 @@ pub(crate) struct BootstrapAttempt {
     logger: Arc<dyn Logger>,
     websocket_server: Arc<dyn Listener>,
     attempt_start: Instant,
+
+    /// There is a circular dependency between BlockProcessor and BootstrapAttempt,
+    /// that's why we take a Weak reference
+    block_processor: Weak<BlockProcessor>,
 }
 
 impl BootstrapAttempt {
     pub(crate) fn new(
         logger: Arc<dyn Logger>,
         websocket_server: Arc<dyn Listener>,
+        block_processor: Weak<BlockProcessor>,
         id: &str,
         mode: BootstrapMode,
     ) -> Result<Self> {
@@ -47,6 +54,7 @@ impl BootstrapAttempt {
             id,
             next_log: Mutex::new(Instant::now()),
             logger,
+            block_processor,
             mode,
             websocket_server,
             attempt_start: Instant::now(),
@@ -83,6 +91,22 @@ impl BootstrapAttempt {
             BootstrapMode::Legacy => "legacy",
             BootstrapMode::Lazy => "lazy",
             BootstrapMode::WalletLazy => "wallet_lazy",
+        }
+    }
+
+    pub(crate) fn process_block(
+        &self,
+        block: Arc<RwLock<BlockEnum>>,
+        known_account: &Account,
+        _pull_blocks_processed: u64,
+        _max_blocks: u32,
+        _block_expected: bool,
+        _retry_limit: u32,
+    ) {
+        let unchecked_info =
+            UncheckedInfo::new(block, known_account, crate::SignatureVerification::Unknown);
+        if let Some(p) = self.block_processor.upgrade() {
+            p.add(&unchecked_info);
         }
     }
 }

@@ -41,6 +41,8 @@ pub use toml::*;
 pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
+use crate::{Account, BlockHash, RawKey, Root};
+
 pub struct StringHandle(CString);
 #[repr(C)]
 pub struct StringDto {
@@ -62,4 +64,34 @@ impl From<String> for StringDto {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_string_destroy(handle: *mut StringHandle) {
     drop(Box::from_raw(handle))
+}
+
+impl From<*const u8> for BlockHash {
+    fn from(ptr: *const u8) -> Self {
+        BlockHash::from_bytes(into_32_byte_array(ptr))
+    }
+}
+
+impl From<*const u8> for Account {
+    fn from(ptr: *const u8) -> Self {
+        Account::from_bytes(into_32_byte_array(ptr))
+    }
+}
+
+impl From<*const u8> for Root {
+    fn from(ptr: *const u8) -> Self {
+        Root::from_bytes(into_32_byte_array(ptr))
+    }
+}
+
+impl From<*const u8> for RawKey {
+    fn from(ptr: *const u8) -> Self {
+        RawKey::from_bytes(into_32_byte_array(ptr))
+    }
+}
+
+fn into_32_byte_array(ptr: *const u8) -> [u8; 32] {
+    let mut bytes = [0; 32];
+    bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(ptr, 32) });
+    bytes
 }

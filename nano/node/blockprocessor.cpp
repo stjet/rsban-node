@@ -77,6 +77,11 @@ nano::block_processor::~block_processor ()
 	rsnano::rsn_block_processor_destroy (handle);
 }
 
+rsnano::BlockProcessorHandle const * nano::block_processor::get_handle () const
+{
+	return handle;
+}
+
 void nano::block_processor::stop ()
 {
 	{

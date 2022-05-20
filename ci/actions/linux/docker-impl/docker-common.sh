@@ -50,7 +50,7 @@ docker_build()
 docker_deploy()
 {
     if [ -n "$DOCKER_PASSWORD" ]; then
-        echo "$DOCKER_PASSWORD" | docker login -u nanoreleaseteam --password-stdin
+        echo "$DOCKER_PASSWORD" | docker login -u simpago --password-stdin
         if [[ "$GITHUB_WORKFLOW" = "Develop" ]]; then
             "$scripts"/custom-timeout.sh 30 docker push "simpago/rsnano-env:base"
             "$scripts"/custom-timeout.sh 30 docker push "simpago/rsnano-env:gcc"

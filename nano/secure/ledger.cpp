@@ -740,12 +740,23 @@ nano::ledger::ledger (nano::store & store_a, nano::stat & stat_a, nano::ledger_c
 	constants{ constants },
 	store{ store_a },
 	stats{ stat_a },
-	check_bootstrap_weights{ true }
+	check_bootstrap_weights{ true },
+	handle{ rsnano::rsn_ledger_create (this) }
 {
 	if (!store.init_error ())
 	{
 		initialize (generate_cache_a);
 	}
+}
+
+nano::ledger::~ledger ()
+{
+	rsnano::rsn_ledger_destroy (handle);
+}
+
+rsnano::LedgerHandle * nano::ledger::get_handle () const
+{
+	return handle;
 }
 
 void nano::ledger::initialize (nano::generate_cache const & generate_cache_a)

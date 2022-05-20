@@ -11,7 +11,9 @@ use crate::{
     Account, BootstrapAttempt,
 };
 
-use super::{BlockHandle, BlockProcessorHandle, FfiListener, LoggerMT, StringDto, StringHandle};
+use super::{
+    BlockHandle, BlockProcessorHandle, FfiListener, LedgerHandle, LoggerMT, StringDto, StringHandle,
+};
 
 pub struct BootstrapAttemptHandle(BootstrapAttempt);
 
@@ -20,6 +22,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     logger: *mut c_void,
     websocket_server: *mut c_void,
     block_processor: *const BlockProcessorHandle,
+    ledger: *const LedgerHandle,
     id: *const c_char,
     mode: u8,
 ) -> *mut BootstrapAttemptHandle {
@@ -32,8 +35,17 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
         Arc::new(FfiListener::new(websocket_server))
     };
     let block_processor = Arc::downgrade(&(*block_processor));
+    let ledger = Arc::clone(&*ledger);
     Box::into_raw(Box::new(BootstrapAttemptHandle(
-        BootstrapAttempt::new(logger, websocket_server, block_processor, id_str, mode).unwrap(),
+        BootstrapAttempt::new(
+            logger,
+            websocket_server,
+            block_processor,
+            ledger,
+            id_str,
+            mode,
+        )
+        .unwrap(),
     )))
 }
 
@@ -94,7 +106,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_process_block(
     max_blocks: u32,
     block_expected: bool,
     retry_limit: u32,
-) {
+) -> bool {
     let block = (*block).block.clone();
     (*handle).0.process_block(
         block,
@@ -103,5 +115,5 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_process_block(
         max_blocks,
         block_expected,
         retry_limit,
-    );
+    )
 }

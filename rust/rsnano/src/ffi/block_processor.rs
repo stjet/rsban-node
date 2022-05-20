@@ -1,8 +1,6 @@
-use std::{ffi::c_void, ops::Deref, sync::Arc};
-
-use crate::BlockProcessor;
-
 use super::unchecked_info::UncheckedInfoHandle;
+use crate::BlockProcessor;
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct BlockProcessorHandle(Arc<BlockProcessor>);
 

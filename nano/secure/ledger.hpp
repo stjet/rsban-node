@@ -28,6 +28,8 @@ class ledger final
 {
 public:
 	ledger (nano::store &, nano::stat &, nano::ledger_constants & constants, nano::generate_cache const & = nano::generate_cache ());
+	ledger (nano::ledger const &) = delete;
+	~ledger ();
 	nano::account account (nano::transaction const &, nano::block_hash const &) const;
 	nano::account account_safe (nano::transaction const &, nano::block_hash const &, bool &) const;
 	nano::uint128_t amount (nano::transaction const &, nano::account const &);
@@ -80,9 +82,11 @@ public:
 	uint64_t bootstrap_weight_max_blocks{ 1 };
 	std::atomic<bool> check_bootstrap_weights;
 	bool pruning{ false };
+	rsnano::LedgerHandle * get_handle () const;
 
 private:
 	void initialize (nano::generate_cache const &);
+	rsnano::LedgerHandle * handle;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (ledger & ledger, std::string const & name);

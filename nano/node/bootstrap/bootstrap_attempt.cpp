@@ -16,7 +16,7 @@ constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit_dev;
 
 nano::bootstrap_attempt::bootstrap_attempt (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_mode mode_a, uint64_t incremental_id_a, std::string id_a) :
-	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, node_a->websocket_server.get (), node_a->block_processor.get_handle (), id_a.c_str (), static_cast<uint8_t> (mode_a))),
+	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, node_a->websocket_server.get (), node_a->block_processor.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), static_cast<uint8_t> (mode_a))),
 	node (node_a),
 	incremental_id (incremental_id_a),
 	mode (mode_a)
@@ -98,15 +98,5 @@ std::string nano::bootstrap_attempt::mode_text ()
 
 bool nano::bootstrap_attempt::process_block (std::shared_ptr<nano::block> const & block_a, nano::account const & known_account_a, uint64_t pull_blocks_processed, nano::bulk_pull::count_t max_blocks, bool block_expected, unsigned retry_limit)
 {
-	bool stop_pull (false);
-	// If block already exists in the ledger, then we can avoid next part of long account chain
-	if (pull_blocks_processed % nano::bootstrap_limits::pull_count_per_check == 0 && node->ledger.block_or_pruned_exists (block_a->hash ()))
-	{
-		stop_pull = true;
-	}
-	else
-	{
-		rsnano::rsn_bootstrap_attempt_process_block (handle, block_a->get_handle (), known_account_a.bytes.data (), pull_blocks_processed, max_blocks, block_expected, retry_limit);
-	}
-	return stop_pull;
+	return rsnano::rsn_bootstrap_attempt_process_block (handle, block_a->get_handle (), known_account_a.bytes.data (), pull_blocks_processed, max_blocks, block_expected, retry_limit);
 }

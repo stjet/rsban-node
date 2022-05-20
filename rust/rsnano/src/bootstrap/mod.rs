@@ -4,7 +4,7 @@ use crate::{
     logger_mt::Logger,
     unchecked_info::UncheckedInfo,
     websocket::{Listener, MessageBuilder},
-    Account, BlockEnum, HardenedConstants,
+    Account, BlockEnum, HardenedConstants, Ledger,
 };
 use anyhow::Result;
 use std::{
@@ -14,6 +14,10 @@ use std::{
     },
     time::{Duration, Instant},
 };
+
+mod bootstrap_limits {
+    pub(crate) const PULL_COUNT_PER_CHECK: u64 = 8 * 1024;
+}
 
 #[derive(FromPrimitive)]
 pub(crate) enum BootstrapMode {
@@ -29,6 +33,7 @@ pub(crate) struct BootstrapAttempt {
     next_log: Mutex<Instant>,
     logger: Arc<dyn Logger>,
     websocket_server: Arc<dyn Listener>,
+    ledger: Arc<Ledger>,
     attempt_start: Instant,
 
     /// There is a circular dependency between BlockProcessor and BootstrapAttempt,
@@ -41,6 +46,7 @@ impl BootstrapAttempt {
         logger: Arc<dyn Logger>,
         websocket_server: Arc<dyn Listener>,
         block_processor: Weak<BlockProcessor>,
+        ledger: Arc<Ledger>,
         id: &str,
         mode: BootstrapMode,
     ) -> Result<Self> {
@@ -57,6 +63,7 @@ impl BootstrapAttempt {
             block_processor,
             mode,
             websocket_server,
+            ledger,
             attempt_start: Instant::now(),
             total_blocks: AtomicU64::new(0),
         };
@@ -98,16 +105,27 @@ impl BootstrapAttempt {
         &self,
         block: Arc<RwLock<BlockEnum>>,
         known_account: &Account,
-        _pull_blocks_processed: u64,
+        pull_blocks_processed: u64,
         _max_blocks: u32,
         _block_expected: bool,
         _retry_limit: u32,
-    ) {
-        let unchecked_info =
-            UncheckedInfo::new(block, known_account, crate::SignatureVerification::Unknown);
-        if let Some(p) = self.block_processor.upgrade() {
-            p.add(&unchecked_info);
+    ) -> bool {
+        let mut stop_pull = false;
+        let hash = { block.read().unwrap().as_block().hash() };
+        // If block already exists in the ledger, then we can avoid next part of long account chain
+        if pull_blocks_processed % bootstrap_limits::PULL_COUNT_PER_CHECK == 0
+            && self.ledger.block_or_pruned_exists(&hash)
+        {
+            stop_pull = true;
+        } else {
+            let unchecked_info =
+                UncheckedInfo::new(block, known_account, crate::SignatureVerification::Unknown);
+            if let Some(p) = self.block_processor.upgrade() {
+                p.add(&unchecked_info);
+            }
         }
+
+        stop_pull
     }
 }
 

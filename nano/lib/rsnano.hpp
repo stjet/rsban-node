@@ -27,6 +27,8 @@ struct BootstrapAttemptHandle;
 
 struct EpochsHandle;
 
+struct LedgerHandle;
+
 struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
@@ -126,6 +128,8 @@ using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
 using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
 
 using InAvailCallback = uintptr_t (*) (void *, int32_t *);
+
+using LedgerBlockOrPrunedExistsCallback = bool (*) (void *, const uint8_t *);
 
 struct MessageDto
 {
@@ -712,6 +716,7 @@ uintptr_t * len);
 BootstrapAttemptHandle * rsn_bootstrap_attempt_create (void * logger,
 void * websocket_server,
 const BlockProcessorHandle * block_processor,
+const LedgerHandle * ledger,
 const char * id,
 uint8_t mode);
 
@@ -719,7 +724,7 @@ void rsn_bootstrap_attempt_destroy (BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_id (const BootstrapAttemptHandle * handle, StringDto * result);
 
-void rsn_bootstrap_attempt_process_block (const BootstrapAttemptHandle * handle,
+bool rsn_bootstrap_attempt_process_block (const BootstrapAttemptHandle * handle,
 const BlockHandle * block,
 const uint8_t * known_account,
 uint64_t pull_blocks_processed,
@@ -747,6 +752,8 @@ void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
 void rsn_callback_block_processor_add (BlockProcessorAddCallback f);
 
 void rsn_callback_in_avail (InAvailCallback f);
+
+void rsn_callback_ledger_block_or_pruned_exists (LedgerBlockOrPrunedExistsCallback f);
 
 void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
@@ -850,6 +857,10 @@ int32_t rsn_ipc_config_create (IpcConfigDto * dto, const NetworkConstantsDto * n
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
+
+LedgerHandle * rsn_ledger_create (void * handle);
+
+void rsn_ledger_destroy (LedgerHandle * handle);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 

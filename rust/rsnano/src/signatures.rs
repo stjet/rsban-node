@@ -83,7 +83,9 @@ impl SignatureChecker {
     pub fn flush(&self) {
         while !self.stopped.load(Ordering::SeqCst)
             && self.tasks_remaining.load(Ordering::SeqCst) != 0
-        {}
+        {
+            std::hint::spin_loop()
+        }
     }
 
     pub fn stop(&self) {

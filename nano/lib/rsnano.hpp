@@ -25,6 +25,8 @@ struct BlockUniquerHandle;
 
 struct BootstrapAttemptHandle;
 
+struct BootstrapInitiatorHandle;
+
 struct EpochsHandle;
 
 struct LedgerHandle;
@@ -716,6 +718,7 @@ uintptr_t * len);
 BootstrapAttemptHandle * rsn_bootstrap_attempt_create (void * logger,
 void * websocket_server,
 const BlockProcessorHandle * block_processor,
+const BootstrapInitiatorHandle * bootstrap_initiator,
 const LedgerHandle * ledger,
 const char * id,
 uint8_t mode);
@@ -740,6 +743,10 @@ void rsn_bootstrap_attempt_total_blocks_inc (const BootstrapAttemptHandle * hand
 
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
 BootstrapConstantsDto * dto);
+
+BootstrapInitiatorHandle * rsn_bootstrap_initiator_create (void * handle);
+
+void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
 
 void rsn_callback_always_log (AlwaysLogCallback f);
 

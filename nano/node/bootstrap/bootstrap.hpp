@@ -90,6 +90,7 @@ class bootstrap_initiator final
 {
 public:
 	explicit bootstrap_initiator (nano::node &);
+	bootstrap_initiator (nano::bootstrap_initiator const &) = delete;
 	~bootstrap_initiator ();
 	void bootstrap (nano::endpoint const &, bool add_to_peers = true, std::string id_a = "");
 	void bootstrap (bool force = false, std::string id_a = "", uint32_t const frontiers_age_a = std::numeric_limits<uint32_t>::max (), nano::account const & start_account_a = nano::account{});
@@ -105,6 +106,7 @@ public:
 	std::shared_ptr<nano::bootstrap_attempt> current_attempt ();
 	std::shared_ptr<nano::bootstrap_attempt_lazy> current_lazy_attempt ();
 	std::shared_ptr<nano::bootstrap_attempt_wallet> current_wallet_attempt ();
+	rsnano::BootstrapInitiatorHandle * get_handle () const;
 	nano::pulls_cache cache;
 	nano::bootstrap_attempts attempts;
 	void stop ();
@@ -118,6 +120,7 @@ private:
 	nano::mutex mutex;
 	nano::condition_variable condition;
 	std::vector<boost::thread> bootstrap_initiator_threads;
+	rsnano::BootstrapInitiatorHandle * handle;
 
 	friend std::unique_ptr<container_info_component> collect_container_info (bootstrap_initiator & bootstrap_initiator, std::string const & name);
 };

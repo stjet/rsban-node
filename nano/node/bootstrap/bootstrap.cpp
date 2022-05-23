@@ -11,7 +11,8 @@
 #include <memory>
 
 nano::bootstrap_initiator::bootstrap_initiator (nano::node & node_a) :
-	node (node_a)
+	node (node_a),
+	handle{ rsnano::rsn_bootstrap_initiator_create (this) }
 {
 	connections = std::make_shared<nano::bootstrap_connections> (node);
 	bootstrap_initiator_threads.push_back (boost::thread ([this] () {
@@ -30,6 +31,7 @@ nano::bootstrap_initiator::bootstrap_initiator (nano::node & node_a) :
 nano::bootstrap_initiator::~bootstrap_initiator ()
 {
 	stop ();
+	rsnano::rsn_bootstrap_initiator_destroy (handle);
 }
 
 void nano::bootstrap_initiator::bootstrap (bool force, std::string id_a, uint32_t const frontiers_age_a, nano::account const & start_account_a)
@@ -251,6 +253,11 @@ void nano::bootstrap_initiator::stop_attempts ()
 	{
 		i->stop ();
 	}
+}
+
+rsnano::BootstrapInitiatorHandle * nano::bootstrap_initiator::get_handle () const
+{
+	return handle;
 }
 
 void nano::bootstrap_initiator::stop ()

@@ -127,6 +127,8 @@ using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
 
 using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
 
+using BootstrapInitiatorClearPullsCallback = void (*) (void *, uint64_t);
+
 using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
 
 using InAvailCallback = uintptr_t (*) (void *, int32_t *);
@@ -721,7 +723,8 @@ const BlockProcessorHandle * block_processor,
 const BootstrapInitiatorHandle * bootstrap_initiator,
 const LedgerHandle * ledger,
 const char * id,
-uint8_t mode);
+uint8_t mode,
+uint64_t incremental_id);
 
 void rsn_bootstrap_attempt_destroy (BootstrapAttemptHandle * handle);
 
@@ -736,6 +739,8 @@ bool block_expected,
 uint32_t retry_limit);
 
 bool rsn_bootstrap_attempt_should_log (const BootstrapAttemptHandle * handle);
+
+void rsn_bootstrap_attempt_stop (BootstrapAttemptHandle * handle);
 
 uint64_t rsn_bootstrap_attempt_total_blocks (const BootstrapAttemptHandle * handle);
 
@@ -755,6 +760,8 @@ void rsn_callback_blake2b_final (Blake2BFinalCallback f);
 void rsn_callback_blake2b_init (Blake2BInitCallback f);
 
 void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
+
+void rsn_callback_block_bootstrap_initiator_clear_pulls (BootstrapInitiatorClearPullsCallback f);
 
 void rsn_callback_block_processor_add (BlockProcessorAddCallback f);
 

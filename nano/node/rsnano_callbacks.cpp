@@ -4,6 +4,7 @@
 #include <nano/lib/stream.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/blockprocessor.hpp>
+#include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
 #include <nano/node/websocket.hpp>
 
@@ -349,6 +350,12 @@ bool ledger_block_or_pruned_exists (void * handle_a, uint8_t const * block_hash_
 	return ledger->block_or_pruned_exists (hash);
 }
 
+void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
+{
+	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
+	bootstrap_initiator->clear_pulls (bootstrap_id_a);
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -388,5 +395,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
 	rsnano::rsn_callback_block_processor_add (blockprocessor_add);
 	rsnano::rsn_callback_ledger_block_or_pruned_exists (ledger_block_or_pruned_exists);
+	rsnano::rsn_callback_block_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	callbacks_set = true;
 }

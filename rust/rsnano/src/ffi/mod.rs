@@ -3,7 +3,7 @@ mod blake2b;
 mod block_arrival;
 mod block_processor;
 mod blocks;
-mod bootstrap;
+pub mod bootstrap;
 mod config;
 mod epoch;
 mod hardened_constants;

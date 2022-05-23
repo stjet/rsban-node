@@ -54,7 +54,7 @@ void nano::bootstrap_attempt_legacy::stop ()
 		}
 	}
 	lock.unlock ();
-	node->bootstrap_initiator.connections->clear_pulls (incremental_id);
+	node->bootstrap_initiator.connections->clear_pulls (get_incremental_id ());
 }
 
 void nano::bootstrap_attempt_legacy::request_push (nano::unique_lock<nano::mutex> & lock_a)

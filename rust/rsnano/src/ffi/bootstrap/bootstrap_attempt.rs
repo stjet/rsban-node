@@ -28,6 +28,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     ledger: *const LedgerHandle,
     id: *const c_char,
     mode: u8,
+    incremental_id: u64,
 ) -> *mut BootstrapAttemptHandle {
     let logger = Arc::new(LoggerMT::new(logger));
     let id_str = CStr::from_ptr(id).to_str().unwrap();
@@ -49,6 +50,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
             ledger,
             id_str,
             mode,
+            incremental_id,
         )
         .unwrap(),
     )))
@@ -57,6 +59,11 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_destroy(handle: *mut BootstrapAttemptHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_stop(handle: *mut BootstrapAttemptHandle) {
+    (*handle).0.stop();
 }
 
 #[no_mangle]

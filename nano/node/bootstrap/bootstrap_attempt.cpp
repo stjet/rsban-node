@@ -16,7 +16,7 @@ constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit_dev;
 
 nano::bootstrap_attempt::bootstrap_attempt (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_mode mode_a, uint64_t incremental_id_a, std::string id_a) :
-	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, node_a->websocket_server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), static_cast<uint8_t> (mode_a))),
+	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, node_a->websocket_server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), static_cast<uint8_t> (mode_a), incremental_id_a)),
 	node (node_a),
 	incremental_id (incremental_id_a),
 	mode (mode_a)
@@ -30,6 +30,11 @@ std::string nano::bootstrap_attempt::id () const
 	std::string id (str_result.value);
 	rsnano::rsn_string_destroy (str_result.handle);
 	return id;
+}
+
+uint64_t nano::bootstrap_attempt::get_incremental_id () const
+{
+	return incremental_id;
 }
 
 nano::bootstrap_attempt::~bootstrap_attempt ()
@@ -85,7 +90,7 @@ void nano::bootstrap_attempt::stop ()
 		stopped = true;
 	}
 	condition.notify_all ();
-	node->bootstrap_initiator.connections->clear_pulls (incremental_id);
+	rsnano::rsn_bootstrap_attempt_stop (handle);
 }
 
 std::string nano::bootstrap_attempt::mode_text ()

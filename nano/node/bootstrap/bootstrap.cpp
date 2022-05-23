@@ -187,7 +187,7 @@ void nano::bootstrap_initiator::remove_attempt (std::shared_ptr<nano::bootstrap_
 	if (attempt != attempts_list.end ())
 	{
 		auto attempt_ptr (*attempt);
-		attempts.remove (attempt_ptr->incremental_id);
+		attempts.remove (attempt_ptr->get_incremental_id ());
 		attempts_list.erase (attempt);
 		debug_assert (attempts.size () == attempts_list.size ());
 		lock.unlock ();
@@ -253,6 +253,11 @@ void nano::bootstrap_initiator::stop_attempts ()
 	{
 		i->stop ();
 	}
+}
+
+void nano::bootstrap_initiator::clear_pulls (uint64_t bootstrap_id_a)
+{
+	connections->clear_pulls (bootstrap_id_a);
 }
 
 rsnano::BootstrapInitiatorHandle * nano::bootstrap_initiator::get_handle () const
@@ -344,7 +349,7 @@ void nano::pulls_cache::remove (nano::pull_info const & pull_a)
 void nano::bootstrap_attempts::add (std::shared_ptr<nano::bootstrap_attempt> attempt_a)
 {
 	nano::lock_guard<nano::mutex> lock (bootstrap_attempts_mutex);
-	attempts.emplace (attempt_a->incremental_id, attempt_a);
+	attempts.emplace (attempt_a->get_incremental_id (), attempt_a);
 }
 
 void nano::bootstrap_attempts::remove (uint64_t incremental_id_a)

@@ -18,6 +18,7 @@ use std::{
 use super::{bootstrap_limits, BootstrapInitiator, BootstrapMode};
 
 pub(crate) struct BootstrapAttempt {
+    incremental_id: u64,
     pub id: String,
     pub mode: BootstrapMode,
     pub total_blocks: AtomicU64,
@@ -45,6 +46,7 @@ impl BootstrapAttempt {
         ledger: Arc<Ledger>,
         id: &str,
         mode: BootstrapMode,
+        incremental_id: u64,
     ) -> Result<Self> {
         let id = if id.is_empty() {
             encode_hex(HardenedConstants::get().random_128)
@@ -53,6 +55,7 @@ impl BootstrapAttempt {
         };
 
         let result = Self {
+            incremental_id,
             id,
             next_log: Mutex::new(Instant::now()),
             logger,
@@ -77,6 +80,12 @@ impl BootstrapAttempt {
         self.websocket_server
             .broadcast(&MessageBuilder::bootstrap_started(id, mode)?)?;
         Ok(())
+    }
+
+    pub(crate) fn stop(&self) {
+        if let Some(initiator) = self.bootstrap_initiator.upgrade() {
+            initiator.clear_pulls(self.incremental_id);
+        }
     }
 
     pub(crate) fn should_log(&self) -> bool {

@@ -37,7 +37,6 @@ public:
 	std::atomic<unsigned> requeued_pulls{ 0 };
 	std::atomic<bool> started{ false };
 	std::atomic<bool> stopped{ false };
-	uint64_t incremental_id{ 0 };
 	std::chrono::steady_clock::time_point attempt_start{ std::chrono::steady_clock::now () };
 	std::atomic<bool> frontiers_received{ false };
 	nano::bootstrap_mode mode;
@@ -45,8 +44,12 @@ public:
 	nano::condition_variable condition;
 
 	std::string id () const;
+	uint64_t get_incremental_id () const;
 
 protected:
 	rsnano::BootstrapAttemptHandle * handle;
+
+private:
+	uint64_t incremental_id{ 0 };
 };
 }

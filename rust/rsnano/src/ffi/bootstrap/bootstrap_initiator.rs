@@ -25,3 +25,15 @@ pub unsafe extern "C" fn rsn_bootstrap_initiator_create(
 pub unsafe extern "C" fn rsn_bootstrap_initiator_destroy(handle: *mut BootstrapInitiatorHandle) {
     drop(Box::from_raw(handle))
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_block_bootstrap_initiator_clear_pulls(
+    f: BootstrapInitiatorClearPullsCallback,
+) {
+    BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK = Some(f);
+}
+
+type BootstrapInitiatorClearPullsCallback = unsafe extern "C" fn(*mut c_void, u64);
+pub(crate) static mut BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK: Option<
+    BootstrapInitiatorClearPullsCallback,
+> = None;

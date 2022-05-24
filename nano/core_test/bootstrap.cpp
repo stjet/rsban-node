@@ -370,7 +370,7 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 	{
 		nano::unique_lock<nano::mutex> lock (node1->bootstrap_initiator.connections->mutex);
 		ASSERT_FALSE (attempt->stopped);
-		++attempt->pulling;
+		attempt->inc_pulling ();
 		node1->bootstrap_initiator.connections->pulls.emplace_back (nano::dev::genesis_key.pub, send1->hash (), nano::dev::genesis->hash (), attempt->get_incremental_id ());
 		node1->bootstrap_initiator.connections->request_pull (lock);
 		node2->stop ();

@@ -31,8 +31,9 @@ public:
 	virtual void get_information (boost::property_tree::ptree &) = 0;
 	uint64_t total_blocks () const;
 	void total_blocks_inc ();
+	unsigned get_pulling () const;
+	void inc_pulling ();
 
-	std::atomic<unsigned> pulling{ 0 };
 	std::shared_ptr<nano::node> node;
 	std::atomic<unsigned> requeued_pulls{ 0 };
 	std::atomic<bool> started{ false };
@@ -47,8 +48,5 @@ public:
 
 protected:
 	rsnano::BootstrapAttemptHandle * handle;
-
-private:
-	uint64_t incremental_id{ 0 };
 };
 }

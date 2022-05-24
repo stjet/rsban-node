@@ -9,7 +9,7 @@ use crate::{
 use anyhow::Result;
 use std::{
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU32, AtomicU64, Ordering},
         Arc, Condvar, Mutex, RwLock, Weak,
     },
     time::{Duration, Instant},
@@ -18,7 +18,7 @@ use std::{
 use super::{bootstrap_limits, BootstrapInitiator, BootstrapMode};
 
 pub(crate) struct BootstrapAttempt {
-    incremental_id: u64,
+    pub incremental_id: u64,
     pub id: String,
     pub mode: BootstrapMode,
     pub total_blocks: AtomicU64,
@@ -37,6 +37,7 @@ pub(crate) struct BootstrapAttempt {
     bootstrap_initiator: Weak<BootstrapInitiator>,
     pub mutex: Mutex<u8>,
     pub condition: Condvar,
+    pub pulling: AtomicU32,
 }
 
 impl BootstrapAttempt {
@@ -70,6 +71,7 @@ impl BootstrapAttempt {
             total_blocks: AtomicU64::new(0),
             mutex: Mutex::new(0),
             condition: Condvar::new(),
+            pulling: AtomicU32::new(0),
         };
 
         result.start()?;
@@ -136,6 +138,22 @@ impl BootstrapAttempt {
         }
 
         stop_pull
+    }
+
+    pub(crate) fn pull_started(&self) {
+        {
+            let _ = self.mutex.lock().unwrap();
+            self.pulling.fetch_add(1, Ordering::SeqCst);
+        }
+        self.condition.notify_all();
+    }
+
+    pub(crate) fn pull_finished(&self) {
+        {
+            let _ = self.mutex.lock().unwrap();
+            self.pulling.fetch_sub(1, Ordering::SeqCst);
+        }
+        self.condition.notify_all();
     }
 }
 

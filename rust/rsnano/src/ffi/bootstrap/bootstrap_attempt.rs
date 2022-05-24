@@ -188,3 +188,32 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_wait_for(
         .unwrap();
     (*lck).0 = Some(std::mem::transmute::<MutexGuard<u8>, MutexGuard<'static, u8>>(guard));
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_incremental_id(
+    handle: *const BootstrapAttemptHandle,
+) -> u64 {
+    (*handle).0.incremental_id
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_pulling(
+    handle: *const BootstrapAttemptHandle,
+) -> u32 {
+    (*handle).0.pulling.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_pulling_inc(handle: *mut BootstrapAttemptHandle) {
+    (*handle).0.pulling.fetch_add(1, Ordering::SeqCst);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_pull_started(handle: *mut BootstrapAttemptHandle) {
+    (*handle).0.pull_started();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_pull_finished(handle: *mut BootstrapAttemptHandle) {
+    (*handle).0.pull_finished();
+}

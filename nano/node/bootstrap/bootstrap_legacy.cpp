@@ -167,7 +167,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::LockHandle ** loc
 				rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
 				node->bootstrap_initiator.connections->add_pull (pull);
 				*lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
-				++pulling;
+				inc_pulling ();
 				frontier_pulls.pop_front ();
 			}
 		}
@@ -212,7 +212,7 @@ void nano::bootstrap_attempt_legacy::run ()
 		while (still_pulling ())
 		{
 			// clang-format off
-			while (!( stopped || pulling == 0 ))
+			while (!( stopped || get_pulling () == 0 ))
 			{
 				rsnano::rsn_bootstrap_attempt_wait (handle, lock);
 			}

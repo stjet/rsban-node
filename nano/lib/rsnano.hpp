@@ -732,6 +732,8 @@ void rsn_bootstrap_attempt_destroy (BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_id (const BootstrapAttemptHandle * handle, StringDto * result);
 
+uint64_t rsn_bootstrap_attempt_incremental_id (const BootstrapAttemptHandle * handle);
+
 LockHandle * rsn_bootstrap_attempt_lock (BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_notifiy_all (BootstrapAttemptHandle * handle);
@@ -745,6 +747,14 @@ uint64_t pull_blocks_processed,
 uint32_t max_blocks,
 bool block_expected,
 uint32_t retry_limit);
+
+void rsn_bootstrap_attempt_pull_finished (BootstrapAttemptHandle * handle);
+
+void rsn_bootstrap_attempt_pull_started (BootstrapAttemptHandle * handle);
+
+uint32_t rsn_bootstrap_attempt_pulling (const BootstrapAttemptHandle * handle);
+
+void rsn_bootstrap_attempt_pulling_inc (BootstrapAttemptHandle * handle);
 
 bool rsn_bootstrap_attempt_should_log (const BootstrapAttemptHandle * handle);
 

@@ -18,7 +18,6 @@ constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit_dev;
 nano::bootstrap_attempt::bootstrap_attempt (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_mode mode_a, uint64_t incremental_id_a, std::string id_a) :
 	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, node_a->websocket_server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), static_cast<uint8_t> (mode_a), incremental_id_a)),
 	node (node_a),
-	incremental_id (incremental_id_a),
 	mode (mode_a)
 {
 }
@@ -34,7 +33,7 @@ std::string nano::bootstrap_attempt::id () const
 
 uint64_t nano::bootstrap_attempt::get_incremental_id () const
 {
-	return incremental_id;
+	return rsnano::rsn_bootstrap_attempt_incremental_id (handle);
 }
 
 nano::bootstrap_attempt::~bootstrap_attempt ()
@@ -57,28 +56,32 @@ void nano::bootstrap_attempt::total_blocks_inc ()
 	rsnano::rsn_bootstrap_attempt_total_blocks_inc (handle);
 }
 
+unsigned nano::bootstrap_attempt::get_pulling () const
+{
+	return rsnano::rsn_bootstrap_attempt_pulling (handle);
+}
+
+void nano::bootstrap_attempt::inc_pulling ()
+{
+	rsnano::rsn_bootstrap_attempt_pulling_inc (handle);
+}
+
 bool nano::bootstrap_attempt::still_pulling ()
 {
 	//debug_assert (!mutex.try_lock ());
 	auto running (!stopped);
-	auto still_pulling (pulling > 0);
+	auto still_pulling (get_pulling () > 0);
 	return running && still_pulling;
 }
 
 void nano::bootstrap_attempt::pull_started ()
 {
-	auto guard{ rsnano::rsn_bootstrap_attempt_lock (handle) };
-	++pulling;
-	rsnano::rsn_bootstrap_attempt_unlock (guard);
-	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
+	rsnano::rsn_bootstrap_attempt_pull_started (handle);
 }
 
 void nano::bootstrap_attempt::pull_finished ()
 {
-	auto guard{ rsnano::rsn_bootstrap_attempt_lock (handle) };
-	--pulling;
-	rsnano::rsn_bootstrap_attempt_unlock (guard);
-	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
+	rsnano::rsn_bootstrap_attempt_pull_finished (handle);
 }
 
 void nano::bootstrap_attempt::stop ()

@@ -75,11 +75,11 @@ void nano::bulk_pull_client::request ()
 
 	if (connection->node->config.logging.bulk_pull_logging ())
 	{
-		connection->node->logger.try_log (boost::str (boost::format ("Requesting account %1% or head block %2% from %3%. %4% accounts in queue") % pull.account_or_head.to_account () % pull.account_or_head.to_string () % connection->channel->to_string () % attempt->pulling));
+		connection->node->logger.try_log (boost::str (boost::format ("Requesting account %1% or head block %2% from %3%. %4% accounts in queue") % pull.account_or_head.to_account () % pull.account_or_head.to_string () % connection->channel->to_string () % attempt->get_pulling ()));
 	}
 	else if (connection->node->config.logging.network_logging () && attempt->should_log ())
 	{
-		connection->node->logger.always_log (boost::str (boost::format ("%1% accounts in pull queue") % attempt->pulling));
+		connection->node->logger.always_log (boost::str (boost::format ("%1% accounts in pull queue") % attempt->get_pulling ()));
 	}
 	auto this_l (shared_from_this ());
 	connection->channel->send (

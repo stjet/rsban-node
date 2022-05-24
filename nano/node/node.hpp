@@ -68,8 +68,8 @@ public:
 	block_arrival (nano::block_arrival const &) = delete;
 	block_arrival (nano::block_arrival &&) = delete;
 	~block_arrival ();
-	nano::block_arrival & operator=(nano::block_arrival const &) = delete;
-	nano::block_arrival & operator=(nano::block_arrival &&) = delete;
+	nano::block_arrival & operator= (nano::block_arrival const &) = delete;
+	nano::block_arrival & operator= (nano::block_arrival &&) = delete;
 	// Return `true' to indicated an error if the block has already been inserted
 	bool add (nano::block_hash const &);
 	bool add (nano::block_hash const &, std::chrono::steady_clock::time_point now);

@@ -101,7 +101,7 @@ uint32_t nano::bootstrap_attempt_lazy::lazy_batch_size ()
 rsnano::LockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flush (rsnano::LockHandle * lock_a)
 {
 	static std::size_t const max_pulls (static_cast<std::size_t> (nano::bootstrap_limits::bootstrap_connection_scale_target_blocks) * 3);
-	if (pulling < max_pulls)
+	if (get_pulling () < max_pulls)
 	{
 		debug_assert (node->network_params.bootstrap.lazy_max_pull_blocks <= std::numeric_limits<nano::pull_info::count_t>::max ());
 		nano::pull_info::count_t batch_count (lazy_batch_size ());
@@ -117,7 +117,7 @@ rsnano::LockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flush (rsnano::Lock
 			{
 				rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 				node->bootstrap_initiator.connections->add_pull (nano::pull_info (pull_start.first, pull_start.first.as_block_hash (), nano::block_hash (0), get_incremental_id (), batch_count, pull_start.second));
-				++pulling;
+				inc_pulling ();
 				++count;
 				lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 			}
@@ -199,7 +199,7 @@ void nano::bootstrap_attempt_lazy::run ()
 		unsigned iterations (0);
 		while (still_pulling () && !lazy_has_expired ())
 		{
-			while (!(stopped || pulling == 0 || (pulling < nano::bootstrap_limits::bootstrap_connection_scale_target_blocks && !lazy_pulls.empty ()) || lazy_has_expired ()))
+			while (!(stopped || get_pulling () == 0 || (get_pulling () < nano::bootstrap_limits::bootstrap_connection_scale_target_blocks && !lazy_pulls.empty ()) || lazy_has_expired ()))
 			{
 				rsnano::rsn_bootstrap_attempt_wait (handle, lock);
 			}
@@ -215,7 +215,7 @@ void nano::bootstrap_attempt_lazy::run ()
 		// Flushing lazy pulls
 		lock = lazy_pull_flush (lock);
 		// Check if some blocks required for backlog were processed. Start destinations check
-		if (pulling == 0)
+		if (get_pulling () == 0)
 		{
 			lazy_backlog_cleanup ();
 			lock = lazy_pull_flush (lock);
@@ -506,7 +506,7 @@ rsnano::LockHandle * nano::bootstrap_attempt_wallet::request_pending (rsnano::Lo
 	{
 		auto account (wallet_accounts.front ());
 		wallet_accounts.pop_front ();
-		++pulling;
+		inc_pulling ();
 		auto this_l = std::dynamic_pointer_cast<nano::bootstrap_attempt_wallet> (shared_from_this ());
 		// The bulk_pull_account_client destructor attempt to requeue_pull which can cause a deadlock if this is the last reference
 		// Dispatch request in an external thread in case it needs to be destroyed
@@ -544,7 +544,7 @@ bool nano::bootstrap_attempt_wallet::wallet_finished ()
 	// debug_assert (!mutex.try_lock ());
 	auto running (!stopped);
 	auto more_accounts (!wallet_accounts.empty ());
-	auto still_pulling (pulling > 0);
+	auto still_pulling (get_pulling () > 0);
 	return running && (more_accounts || still_pulling);
 }
 

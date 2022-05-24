@@ -10,7 +10,7 @@ use anyhow::Result;
 use std::{
     sync::{
         atomic::{AtomicU64, Ordering},
-        Arc, Mutex, RwLock, Weak,
+        Arc, Condvar, Mutex, RwLock, Weak,
     },
     time::{Duration, Instant},
 };
@@ -35,6 +35,8 @@ pub(crate) struct BootstrapAttempt {
     /// There is a circular dependency between BootstrapInitiator and BootstrapAttempt,
     /// that's why we take a Weak reference
     bootstrap_initiator: Weak<BootstrapInitiator>,
+    pub mutex: Mutex<u8>,
+    pub condition: Condvar,
 }
 
 impl BootstrapAttempt {
@@ -66,6 +68,8 @@ impl BootstrapAttempt {
             ledger,
             attempt_start: Instant::now(),
             total_blocks: AtomicU64::new(0),
+            mutex: Mutex::new(0),
+            condition: Condvar::new(),
         };
 
         result.start()?;

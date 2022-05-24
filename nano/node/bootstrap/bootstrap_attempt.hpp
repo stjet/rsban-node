@@ -40,11 +40,10 @@ public:
 	std::chrono::steady_clock::time_point attempt_start{ std::chrono::steady_clock::now () };
 	std::atomic<bool> frontiers_received{ false };
 	nano::bootstrap_mode mode;
-	nano::mutex mutex;
-	nano::condition_variable condition;
 
 	std::string id () const;
 	uint64_t get_incremental_id () const;
+	void notify_all ();
 
 protected:
 	rsnano::BootstrapAttemptHandle * handle;

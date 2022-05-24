@@ -35,6 +35,8 @@ struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
 
+struct LockHandle;
+
 struct SignatureCheckerHandle;
 
 struct StateBlockSignatureVerificationHandle;
@@ -730,6 +732,12 @@ void rsn_bootstrap_attempt_destroy (BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_id (const BootstrapAttemptHandle * handle, StringDto * result);
 
+LockHandle * rsn_bootstrap_attempt_lock (BootstrapAttemptHandle * handle);
+
+void rsn_bootstrap_attempt_notifiy_all (BootstrapAttemptHandle * handle);
+
+void rsn_bootstrap_attempt_notifiy_one (BootstrapAttemptHandle * handle);
+
 bool rsn_bootstrap_attempt_process_block (const BootstrapAttemptHandle * handle,
 const BlockHandle * block,
 const uint8_t * known_account,
@@ -745,6 +753,14 @@ void rsn_bootstrap_attempt_stop (BootstrapAttemptHandle * handle);
 uint64_t rsn_bootstrap_attempt_total_blocks (const BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_total_blocks_inc (const BootstrapAttemptHandle * handle);
+
+void rsn_bootstrap_attempt_unlock (LockHandle * handle);
+
+void rsn_bootstrap_attempt_wait (BootstrapAttemptHandle * handle, LockHandle * lck);
+
+void rsn_bootstrap_attempt_wait_for (BootstrapAttemptHandle * handle,
+LockHandle * lck,
+uint64_t timeout_millis);
 
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
 BootstrapConstantsDto * dto);

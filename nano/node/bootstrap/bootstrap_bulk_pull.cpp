@@ -26,7 +26,7 @@ nano::bulk_pull_client::bulk_pull_client (std::shared_ptr<nano::bootstrap_client
 	pull_blocks (0),
 	unexpected_count (0)
 {
-	attempt->condition.notify_all ();
+	attempt->notify_all ();
 }
 
 nano::bulk_pull_client::~bulk_pull_client ()
@@ -290,7 +290,7 @@ nano::bulk_pull_account_client::bulk_pull_account_client (std::shared_ptr<nano::
 	account (account_a),
 	pull_blocks (0)
 {
-	attempt->condition.notify_all ();
+	attempt->notify_all ();
 }
 
 nano::bulk_pull_account_client::~bulk_pull_account_client ()

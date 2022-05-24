@@ -59,7 +59,7 @@ void nano::bootstrap_attempt::total_blocks_inc ()
 
 bool nano::bootstrap_attempt::still_pulling ()
 {
-	debug_assert (!mutex.try_lock ());
+	//debug_assert (!mutex.try_lock ());
 	auto running (!stopped);
 	auto still_pulling (pulling > 0);
 	return running && still_pulling;
@@ -67,30 +67,32 @@ bool nano::bootstrap_attempt::still_pulling ()
 
 void nano::bootstrap_attempt::pull_started ()
 {
-	{
-		nano::lock_guard<nano::mutex> guard (mutex);
-		++pulling;
-	}
-	condition.notify_all ();
+	auto guard{ rsnano::rsn_bootstrap_attempt_lock (handle) };
+	++pulling;
+	rsnano::rsn_bootstrap_attempt_unlock (guard);
+	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 }
 
 void nano::bootstrap_attempt::pull_finished ()
 {
-	{
-		nano::lock_guard<nano::mutex> guard (mutex);
-		--pulling;
-	}
-	condition.notify_all ();
+	auto guard{ rsnano::rsn_bootstrap_attempt_lock (handle) };
+	--pulling;
+	rsnano::rsn_bootstrap_attempt_unlock (guard);
+	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 }
 
 void nano::bootstrap_attempt::stop ()
 {
-	{
-		nano::lock_guard<nano::mutex> lock (mutex);
-		stopped = true;
-	}
-	condition.notify_all ();
+	auto guard{ rsnano::rsn_bootstrap_attempt_lock (handle) };
+	stopped = true;
+	rsnano::rsn_bootstrap_attempt_unlock (guard);
+	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 	rsnano::rsn_bootstrap_attempt_stop (handle);
+}
+
+void nano::bootstrap_attempt::notify_all ()
+{
+	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 }
 
 std::string nano::bootstrap_attempt::mode_text ()

@@ -23,13 +23,13 @@ public:
 	void run () override;
 	bool consume_future (std::future<bool> &);
 	void stop () override;
-	bool request_frontier (nano::unique_lock<nano::mutex> &, bool = false);
-	void request_push (nano::unique_lock<nano::mutex> &);
+	bool request_frontier (rsnano::LockHandle **, bool = false);
+	rsnano::LockHandle * request_push (rsnano::LockHandle *);
 	void add_frontier (nano::pull_info const &);
 	void add_bulk_push_target (nano::block_hash const &, nano::block_hash const &);
 	bool request_bulk_push_target (std::pair<nano::block_hash, nano::block_hash> &);
 	void set_start_account (nano::account const &);
-	void run_start (nano::unique_lock<nano::mutex> &);
+	rsnano::LockHandle * run_start (rsnano::LockHandle *);
 	void get_information (boost::property_tree::ptree &) override;
 	nano::tcp_endpoint endpoint_frontier_request;
 	std::weak_ptr<nano::frontier_req_client> frontiers;

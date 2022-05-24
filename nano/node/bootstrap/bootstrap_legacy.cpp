@@ -28,11 +28,11 @@ bool nano::bootstrap_attempt_legacy::consume_future (std::future<bool> & future_
 
 void nano::bootstrap_attempt_legacy::stop ()
 {
-	nano::unique_lock<nano::mutex> lock (mutex);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	stopped = true;
-	lock.unlock ();
-	condition.notify_all ();
-	lock.lock ();
+	rsnano::rsn_bootstrap_attempt_unlock (lock);
+	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
+	lock = rsnano::rsn_bootstrap_attempt_lock (handle);
 	if (auto i = frontiers.lock ())
 	{
 		try
@@ -53,16 +53,16 @@ void nano::bootstrap_attempt_legacy::stop ()
 		{
 		}
 	}
-	lock.unlock ();
-	node->bootstrap_initiator.connections->clear_pulls (get_incremental_id ());
+	rsnano::rsn_bootstrap_attempt_unlock (lock);
+	node->bootstrap_initiator.clear_pulls (get_incremental_id ());
 }
 
-void nano::bootstrap_attempt_legacy::request_push (nano::unique_lock<nano::mutex> & lock_a)
+rsnano::LockHandle * nano::bootstrap_attempt_legacy::request_push (rsnano::LockHandle * lock_a)
 {
 	bool error (false);
-	lock_a.unlock ();
+	rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 	auto connection_l (node->bootstrap_initiator.connections->find_connection (endpoint_frontier_request));
-	lock_a.lock ();
+	lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 	if (connection_l)
 	{
 		std::future<bool> future;
@@ -73,9 +73,9 @@ void nano::bootstrap_attempt_legacy::request_push (nano::unique_lock<nano::mutex
 			push = client;
 			future = client->promise.get_future ();
 		}
-		lock_a.unlock ();
+		rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 		error = consume_future (future); // This is out of scope of `client' so when the last reference via boost::asio::io_context is lost and the client is destroyed, the future throws an exception.
-		lock_a.lock ();
+		lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 	}
 	if (node->config.logging.network_logging ())
 	{
@@ -85,6 +85,7 @@ void nano::bootstrap_attempt_legacy::request_push (nano::unique_lock<nano::mutex
 			node->logger.try_log ("Bulk push client failed");
 		}
 	}
+	return lock_a;
 }
 
 void nano::bootstrap_attempt_legacy::add_frontier (nano::pull_info const & pull_a)
@@ -122,12 +123,12 @@ void nano::bootstrap_attempt_legacy::set_start_account (nano::account const & st
 	start_account = start_account_a;
 }
 
-bool nano::bootstrap_attempt_legacy::request_frontier (nano::unique_lock<nano::mutex> & lock_a, bool first_attempt)
+bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::LockHandle ** lock_a, bool first_attempt)
 {
 	auto result (true);
-	lock_a.unlock ();
+	rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
 	auto connection_l (node->bootstrap_initiator.connections->connection (shared_from_this (), first_attempt));
-	lock_a.lock ();
+	*lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 	if (connection_l && !stopped)
 	{
 		endpoint_frontier_request = connection_l->channel->get_tcp_endpoint ();
@@ -139,9 +140,9 @@ bool nano::bootstrap_attempt_legacy::request_frontier (nano::unique_lock<nano::m
 			frontiers = client;
 			future = client->promise.get_future ();
 		}
-		lock_a.unlock ();
+		rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
 		result = consume_future (future); // This is out of scope of `client' so when the last reference via boost::asio::io_context is lost and the client is destroyed, the future throws an exception.
-		lock_a.lock ();
+		*lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 		if (result)
 		{
 			frontier_pulls.clear ();
@@ -163,9 +164,9 @@ bool nano::bootstrap_attempt_legacy::request_frontier (nano::unique_lock<nano::m
 			while (!frontier_pulls.empty ())
 			{
 				auto pull (frontier_pulls.front ());
-				lock_a.unlock ();
+				rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
 				node->bootstrap_initiator.connections->add_pull (pull);
-				lock_a.lock ();
+				*lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 				++pulling;
 				frontier_pulls.pop_front ();
 			}
@@ -185,7 +186,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (nano::unique_lock<nano::m
 	return result;
 }
 
-void nano::bootstrap_attempt_legacy::run_start (nano::unique_lock<nano::mutex> & lock_a)
+rsnano::LockHandle * nano::bootstrap_attempt_legacy::run_start (rsnano::LockHandle * lock_a)
 {
 	frontiers_received = false;
 	auto frontier_failure (true);
@@ -193,9 +194,10 @@ void nano::bootstrap_attempt_legacy::run_start (nano::unique_lock<nano::mutex> &
 	while (!stopped && frontier_failure)
 	{
 		++frontier_attempts;
-		frontier_failure = request_frontier (lock_a, frontier_attempts == 1);
+		frontier_failure = request_frontier (&lock_a, frontier_attempts == 1);
 	}
 	frontiers_received = true;
+	return lock_a;
 }
 
 void nano::bootstrap_attempt_legacy::run ()
@@ -203,25 +205,28 @@ void nano::bootstrap_attempt_legacy::run ()
 	debug_assert (started);
 	debug_assert (!node->flags.disable_legacy_bootstrap);
 	node->bootstrap_initiator.connections->populate_connections (false);
-	nano::unique_lock<nano::mutex> lock (mutex);
-	run_start (lock);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
+	lock = run_start (lock);
 	while (still_pulling ())
 	{
 		while (still_pulling ())
 		{
 			// clang-format off
-			condition.wait (lock, [&stopped = stopped, &pulling = pulling] { return stopped || pulling == 0; });
+			while (!( stopped || pulling == 0 ))
+			{
+				rsnano::rsn_bootstrap_attempt_wait (handle, lock);
+			}
 		}
 		// Flushing may resolve forks which can add more pulls
 		node->logger.try_log ("Flushing unchecked blocks");
-		lock.unlock ();
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
 		node->block_processor.flush ();
-		lock.lock ();
+		lock = rsnano::rsn_bootstrap_attempt_lock (handle);
 		if (start_account.number () != std::numeric_limits<nano::uint256_t>::max ())
 		{
 			node->logger.try_log (boost::str (boost::format ("Finished flushing unchecked blocks, requesting new frontiers after %1%") % start_account.to_account ()));
 			// Requesting new frontiers
-			run_start (lock);
+			lock = run_start (lock);
 		}
 		else
 		{
@@ -233,16 +238,16 @@ void nano::bootstrap_attempt_legacy::run ()
 		node->logger.try_log ("Completed legacy pulls");
 		if (!node->flags.disable_bootstrap_bulk_push_client)
 		{
-			request_push (lock);
+			lock = request_push (lock);
 		}
 		if (!stopped)
 		{
 			node->unchecked_cleanup ();
 		}
 	}
-	lock.unlock ();
+	rsnano::rsn_bootstrap_attempt_unlock (lock);
 	stop ();
-	condition.notify_all ();
+	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 }
 
 void nano::bootstrap_attempt_legacy::get_information (boost::property_tree::ptree & tree_a)

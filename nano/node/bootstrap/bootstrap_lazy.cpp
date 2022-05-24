@@ -25,7 +25,7 @@ nano::bootstrap_attempt_lazy::~bootstrap_attempt_lazy ()
 
 bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & hash_or_account_a, bool confirmed)
 {
-	nano::unique_lock<nano::mutex> lock (mutex);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	bool inserted (false);
 	// Add start blocks, limit 1024 (4k with disabled legacy bootstrap)
 	std::size_t max_keys (node->flags.disable_legacy_bootstrap ? 4 * 1024 : 1024);
@@ -33,9 +33,13 @@ bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & has
 	{
 		lazy_keys.insert (hash_or_account_a.as_block_hash ());
 		lazy_pulls.emplace_back (hash_or_account_a, confirmed ? lazy_retry_limit_confirmed () : node->network_params.bootstrap.lazy_retry_limit);
-		lock.unlock ();
-		condition.notify_all ();
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
+		rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 		inserted = true;
+	}
+	else
+	{
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
 	}
 	return inserted;
 }
@@ -43,7 +47,7 @@ bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & has
 void nano::bootstrap_attempt_lazy::lazy_add (nano::hash_or_account const & hash_or_account_a, unsigned retry_limit)
 {
 	// Add only unknown blocks
-	debug_assert (!mutex.try_lock ());
+	//debug_assert (!mutex.try_lock ());
 	if (!lazy_blocks_processed (hash_or_account_a.as_block_hash ()))
 	{
 		lazy_pulls.emplace_back (hash_or_account_a, retry_limit);
@@ -53,19 +57,24 @@ void nano::bootstrap_attempt_lazy::lazy_add (nano::hash_or_account const & hash_
 void nano::bootstrap_attempt_lazy::lazy_add (nano::pull_info const & pull_a)
 {
 	debug_assert (pull_a.account_or_head == pull_a.head);
-	nano::lock_guard<nano::mutex> lock (mutex);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	lazy_add (pull_a.account_or_head, pull_a.retry_limit);
+	rsnano::rsn_bootstrap_attempt_unlock (lock);
 }
 
 void nano::bootstrap_attempt_lazy::lazy_requeue (nano::block_hash const & hash_a, nano::block_hash const & previous_a)
 {
-	nano::unique_lock<nano::mutex> lock (mutex);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	// Add only known blocks
 	if (lazy_blocks_processed (hash_a))
 	{
 		lazy_blocks_erase (hash_a);
-		lock.unlock ();
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
 		node->bootstrap_initiator.connections->requeue_pull (nano::pull_info (hash_a, hash_a, previous_a, get_incremental_id (), static_cast<nano::pull_info::count_t> (1), node->network_params.bootstrap.lazy_destinations_retry_limit));
+	}
+	else
+	{
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
 	}
 }
 
@@ -89,7 +98,7 @@ uint32_t nano::bootstrap_attempt_lazy::lazy_batch_size ()
 	return result;
 }
 
-void nano::bootstrap_attempt_lazy::lazy_pull_flush (nano::unique_lock<nano::mutex> & lock_a)
+rsnano::LockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flush (rsnano::LockHandle * lock_a)
 {
 	static std::size_t const max_pulls (static_cast<std::size_t> (nano::bootstrap_limits::bootstrap_connection_scale_target_blocks) * 3);
 	if (pulling < max_pulls)
@@ -106,27 +115,28 @@ void nano::bootstrap_attempt_lazy::lazy_pull_flush (nano::unique_lock<nano::mute
 			// Recheck if block was already processed
 			if (!lazy_blocks_processed (pull_start.first.as_block_hash ()) && !node->ledger.block_or_pruned_exists (transaction, pull_start.first.as_block_hash ()))
 			{
-				lock_a.unlock ();
+				rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 				node->bootstrap_initiator.connections->add_pull (nano::pull_info (pull_start.first, pull_start.first.as_block_hash (), nano::block_hash (0), get_incremental_id (), batch_count, pull_start.second));
 				++pulling;
 				++count;
-				lock_a.lock ();
+				lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 			}
 			// We don't want to open read transactions for too long
 			++read_count;
 			if (read_count % batch_read_size == 0)
 			{
-				lock_a.unlock ();
+				rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 				transaction.refresh ();
-				lock_a.lock ();
+				lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 			}
 		}
 	}
+	return lock_a;
 }
 
 bool nano::bootstrap_attempt_lazy::lazy_finished ()
 {
-	debug_assert (!mutex.try_lock ());
+	//debug_assert (!mutex.try_lock ());
 	if (stopped)
 	{
 		return true;
@@ -183,16 +193,19 @@ void nano::bootstrap_attempt_lazy::run ()
 	debug_assert (!node->flags.disable_lazy_bootstrap);
 	node->bootstrap_initiator.connections->populate_connections (false);
 	lazy_start_time = std::chrono::steady_clock::now ();
-	nano::unique_lock<nano::mutex> lock (mutex);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	while ((still_pulling () || !lazy_finished ()) && !lazy_has_expired ())
 	{
 		unsigned iterations (0);
 		while (still_pulling () && !lazy_has_expired ())
 		{
-			condition.wait (lock, [this, &stopped = stopped, &pulling = pulling, &lazy_pulls = lazy_pulls] { return stopped || pulling == 0 || (pulling < nano::bootstrap_limits::bootstrap_connection_scale_target_blocks && !lazy_pulls.empty ()) || lazy_has_expired (); });
+			while (!(stopped || pulling == 0 || (pulling < nano::bootstrap_limits::bootstrap_connection_scale_target_blocks && !lazy_pulls.empty ()) || lazy_has_expired ()))
+			{
+				rsnano::rsn_bootstrap_attempt_wait (handle, lock);
+			}
 			++iterations;
 			// Flushing lazy pulls
-			lazy_pull_flush (lock);
+			lock = lazy_pull_flush (lock);
 			// Start backlog cleanup
 			if (iterations % 100 == 0)
 			{
@@ -200,12 +213,12 @@ void nano::bootstrap_attempt_lazy::run ()
 			}
 		}
 		// Flushing lazy pulls
-		lazy_pull_flush (lock);
+		lock = lazy_pull_flush (lock);
 		// Check if some blocks required for backlog were processed. Start destinations check
 		if (pulling == 0)
 		{
 			lazy_backlog_cleanup ();
-			lazy_pull_flush (lock);
+			lock = lazy_pull_flush (lock);
 		}
 	}
 	if (!stopped)
@@ -216,9 +229,9 @@ void nano::bootstrap_attempt_lazy::run ()
 	{
 		node->logger.try_log (boost::str (boost::format ("Lazy bootstrap attempt ID %1% expired") % id ()));
 	}
-	lock.unlock ();
+	rsnano::rsn_bootstrap_attempt_unlock (lock);
 	stop ();
-	condition.notify_all ();
+	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 }
 
 bool nano::bootstrap_attempt_lazy::process_block (std::shared_ptr<nano::block> const & block_a, nano::account const & known_account_a, uint64_t pull_blocks_processed, nano::bulk_pull::count_t max_blocks, bool block_expected, unsigned retry_limit)
@@ -240,7 +253,8 @@ bool nano::bootstrap_attempt_lazy::process_block_lazy (std::shared_ptr<nano::blo
 {
 	bool stop_pull (false);
 	auto hash (block_a->hash ());
-	nano::unique_lock<nano::mutex> lock (mutex);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
+	bool unlocked = false;
 	// Processing new blocks
 	if (!lazy_blocks_processed (hash))
 	{
@@ -265,7 +279,8 @@ bool nano::bootstrap_attempt_lazy::process_block_lazy (std::shared_ptr<nano::blo
 			lazy_balances.erase (block_a->previous ());
 		}
 		lazy_block_state_backlog_check (block_a, hash);
-		lock.unlock ();
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
+		unlocked = true;
 		nano::unchecked_info info (block_a, known_account_a, nano::signature_verification::unknown);
 		node->block_processor.add (info);
 	}
@@ -273,6 +288,11 @@ bool nano::bootstrap_attempt_lazy::process_block_lazy (std::shared_ptr<nano::blo
 	if (pull_blocks_processed > max_blocks)
 	{
 		stop_pull = true;
+	}
+
+	if (!unlocked)
+	{
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
 	}
 	return stop_pull;
 }
@@ -395,7 +415,7 @@ void nano::bootstrap_attempt_lazy::lazy_backlog_cleanup ()
 
 void nano::bootstrap_attempt_lazy::lazy_blocks_insert (nano::block_hash const & hash_a)
 {
-	debug_assert (!mutex.try_lock ());
+	//debug_assert (!mutex.try_lock ());
 	auto inserted (lazy_blocks.insert (std::hash<::nano::block_hash> () (hash_a)));
 	if (inserted.second)
 	{
@@ -406,7 +426,7 @@ void nano::bootstrap_attempt_lazy::lazy_blocks_insert (nano::block_hash const & 
 
 void nano::bootstrap_attempt_lazy::lazy_blocks_erase (nano::block_hash const & hash_a)
 {
-	debug_assert (!mutex.try_lock ());
+	//debug_assert (!mutex.try_lock ());
 	auto erased (lazy_blocks.erase (std::hash<::nano::block_hash> () (hash_a)));
 	if (erased)
 	{
@@ -423,14 +443,15 @@ bool nano::bootstrap_attempt_lazy::lazy_blocks_processed (nano::block_hash const
 bool nano::bootstrap_attempt_lazy::lazy_processed_or_exists (nano::block_hash const & hash_a)
 {
 	bool result (false);
-	nano::unique_lock<nano::mutex> lock (mutex);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	if (lazy_blocks_processed (hash_a))
 	{
 		result = true;
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
 	}
 	else
 	{
-		lock.unlock ();
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
 		if (node->ledger.block_or_pruned_exists (hash_a))
 		{
 			result = true;
@@ -441,7 +462,7 @@ bool nano::bootstrap_attempt_lazy::lazy_processed_or_exists (nano::block_hash co
 
 unsigned nano::bootstrap_attempt_lazy::lazy_retry_limit_confirmed ()
 {
-	debug_assert (!mutex.try_lock ());
+	// debug_assert (!mutex.try_lock ());
 	if (rsnano::rsn_bootstrap_attempt_total_blocks (handle) % 1024 == 512 || peer_count == 0)
 	{
 		// Prevent too frequent network locks
@@ -453,7 +474,7 @@ unsigned nano::bootstrap_attempt_lazy::lazy_retry_limit_confirmed ()
 
 void nano::bootstrap_attempt_lazy::get_information (boost::property_tree::ptree & tree_a)
 {
-	nano::lock_guard<nano::mutex> lock (mutex);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	tree_a.put ("lazy_blocks", std::to_string (lazy_blocks.size ()));
 	tree_a.put ("lazy_state_backlog", std::to_string (lazy_state_backlog.size ()));
 	tree_a.put ("lazy_balances", std::to_string (lazy_balances.size ()));
@@ -464,6 +485,7 @@ void nano::bootstrap_attempt_lazy::get_information (boost::property_tree::ptree 
 	{
 		tree_a.put ("lazy_key_1", (*(lazy_keys.begin ())).to_string ());
 	}
+	rsnano::rsn_bootstrap_attempt_unlock (lock);
 }
 
 nano::bootstrap_attempt_wallet::bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a) :
@@ -475,11 +497,11 @@ nano::bootstrap_attempt_wallet::~bootstrap_attempt_wallet ()
 {
 }
 
-void nano::bootstrap_attempt_wallet::request_pending (nano::unique_lock<nano::mutex> & lock_a)
+rsnano::LockHandle * nano::bootstrap_attempt_wallet::request_pending (rsnano::LockHandle * lock_a)
 {
-	lock_a.unlock ();
+	rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 	auto connection_l (node->bootstrap_initiator.connections->connection (shared_from_this ()));
-	lock_a.lock ();
+	lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 	if (connection_l && !stopped)
 	{
 		auto account (wallet_accounts.front ());
@@ -493,30 +515,33 @@ void nano::bootstrap_attempt_wallet::request_pending (nano::unique_lock<nano::mu
 			client->request ();
 		});
 	}
+	return lock_a;
 }
 
 void nano::bootstrap_attempt_wallet::requeue_pending (nano::account const & account_a)
 {
 	auto account (account_a);
 	{
-		nano::lock_guard<nano::mutex> lock (mutex);
+		auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 		wallet_accounts.push_front (account);
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
 	}
-	condition.notify_all ();
+	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 }
 
 void nano::bootstrap_attempt_wallet::wallet_start (std::deque<nano::account> & accounts_a)
 {
 	{
-		nano::lock_guard<nano::mutex> lock (mutex);
+		auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 		wallet_accounts.swap (accounts_a);
+		rsnano::rsn_bootstrap_attempt_unlock (lock);
 	}
-	condition.notify_all ();
+	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 }
 
 bool nano::bootstrap_attempt_wallet::wallet_finished ()
 {
-	debug_assert (!mutex.try_lock ());
+	// debug_assert (!mutex.try_lock ());
 	auto running (!stopped);
 	auto more_accounts (!wallet_accounts.empty ());
 	auto still_pulling (pulling > 0);
@@ -530,35 +555,38 @@ void nano::bootstrap_attempt_wallet::run ()
 	node->bootstrap_initiator.connections->populate_connections (false);
 	auto start_time (std::chrono::steady_clock::now ());
 	auto max_time (std::chrono::minutes (10));
-	nano::unique_lock<nano::mutex> lock (mutex);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	while (wallet_finished () && std::chrono::steady_clock::now () - start_time < max_time)
 	{
 		if (!wallet_accounts.empty ())
 		{
-			request_pending (lock);
+			lock = request_pending (lock);
 		}
 		else
 		{
-			condition.wait_for (lock, std::chrono::seconds (1));
+			rsnano::rsn_bootstrap_attempt_wait_for (handle, lock, 1000);
 		}
 	}
 	if (!stopped)
 	{
 		node->logger.try_log ("Completed wallet lazy pulls");
 	}
-	lock.unlock ();
+	rsnano::rsn_bootstrap_attempt_unlock (lock);
 	stop ();
-	condition.notify_all ();
+	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 }
 
 std::size_t nano::bootstrap_attempt_wallet::wallet_size ()
 {
-	nano::lock_guard<nano::mutex> lock (mutex);
-	return wallet_accounts.size ();
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
+	auto size{ wallet_accounts.size () };
+	rsnano::rsn_bootstrap_attempt_unlock (lock);
+	return size;
 }
 
 void nano::bootstrap_attempt_wallet::get_information (boost::property_tree::ptree & tree_a)
 {
-	nano::lock_guard<nano::mutex> lock (mutex);
+	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	tree_a.put ("wallet_accounts", std::to_string (wallet_accounts.size ()));
+	rsnano::rsn_bootstrap_attempt_unlock (lock);
 }

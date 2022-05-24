@@ -1,7 +1,8 @@
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
-    sync::{atomic::Ordering, Arc},
+    sync::{atomic::Ordering, Arc, MutexGuard},
+    time::Duration,
 };
 
 use num::FromPrimitive;
@@ -128,4 +129,62 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_process_block(
         block_expected,
         retry_limit,
     )
+}
+
+pub struct LockHandle(Option<MutexGuard<'static, u8>>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_lock(
+    handle: *mut BootstrapAttemptHandle,
+) -> *mut LockHandle {
+    let guard = (*handle).0.mutex.lock().unwrap();
+    Box::into_raw(Box::new(LockHandle(Some(std::mem::transmute::<
+        MutexGuard<u8>,
+        MutexGuard<'static, u8>,
+    >(guard)))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_unlock(handle: *mut LockHandle) {
+    drop(Box::from_raw(handle));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_notifiy_all(handle: *mut BootstrapAttemptHandle) {
+    (*handle).0.condition.notify_all();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_notifiy_one(handle: *mut BootstrapAttemptHandle) {
+    (*handle).0.condition.notify_one();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_wait(
+    handle: *mut BootstrapAttemptHandle,
+    lck: *mut LockHandle,
+) {
+    let guard = (*handle)
+        .0
+        .condition
+        .wait((*lck).0.take().unwrap())
+        .unwrap();
+    (*lck).0 = Some(std::mem::transmute::<MutexGuard<u8>, MutexGuard<'static, u8>>(guard));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_wait_for(
+    handle: *mut BootstrapAttemptHandle,
+    lck: *mut LockHandle,
+    timeout_millis: u64,
+) {
+    let (guard, _) = (*handle)
+        .0
+        .condition
+        .wait_timeout(
+            (*lck).0.take().unwrap(),
+            Duration::from_millis(timeout_millis),
+        )
+        .unwrap();
+    (*lck).0 = Some(std::mem::transmute::<MutexGuard<u8>, MutexGuard<'static, u8>>(guard));
 }

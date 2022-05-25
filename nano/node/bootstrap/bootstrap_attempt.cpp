@@ -17,8 +17,7 @@ constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit_dev;
 
 nano::bootstrap_attempt::bootstrap_attempt (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_mode mode_a, uint64_t incremental_id_a, std::string id_a) :
 	handle (rsnano::rsn_bootstrap_attempt_create (&node_a->logger, node_a->websocket_server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), static_cast<uint8_t> (mode_a), incremental_id_a)),
-	node (node_a),
-	mode (mode_a)
+	node (node_a)
 {
 }
 
@@ -66,6 +65,41 @@ void nano::bootstrap_attempt::inc_pulling ()
 	rsnano::rsn_bootstrap_attempt_pulling_inc (handle);
 }
 
+bool nano::bootstrap_attempt::get_started () const
+{
+	return rsnano::rsn_bootstrap_attempt_started (handle);
+}
+
+bool nano::bootstrap_attempt::set_started ()
+{
+	return rsnano::rsn_bootstrap_attempt_set_started (handle);
+}
+
+nano::bootstrap_mode nano::bootstrap_attempt::get_mode () const
+{
+	return static_cast<nano::bootstrap_mode> (rsnano::rsn_bootstrap_attempt_bootstrap_mode (handle));
+}
+
+unsigned nano::bootstrap_attempt::get_requeued_pulls () const
+{
+	return rsnano::rsn_bootstrap_attempt_requeued_pulls (handle);
+}
+
+void nano::bootstrap_attempt::inc_requeued_pulls ()
+{
+	rsnano::rsn_bootstrap_attempt_requeued_pulls_inc (handle);
+}
+
+bool nano::bootstrap_attempt::get_frontiers_received () const
+{
+	return rsnano::rsn_bootstrap_attempt_frontiers_received (handle);
+}
+
+void nano::bootstrap_attempt::set_frontiers_received (bool value)
+{
+	rsnano::rsn_bootstrap_attempt_frontiers_received_set (handle, value);
+}
+
 bool nano::bootstrap_attempt::get_stopped () const
 {
 	return rsnano::rsn_bootstrap_attempt_stopped (handle);
@@ -104,7 +138,7 @@ void nano::bootstrap_attempt::notify_all ()
 std::string nano::bootstrap_attempt::mode_text ()
 {
 	std::size_t len;
-	auto ptr{ rsnano::rsn_bootstrap_attempt_bootstrap_mode (handle, &len) };
+	auto ptr{ rsnano::rsn_bootstrap_attempt_bootstrap_mode_text (handle, &len) };
 	std::string mode_text (ptr, len);
 	return mode_text;
 }

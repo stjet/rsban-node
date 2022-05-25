@@ -1898,10 +1898,10 @@ void nano::json_handler::bootstrap_status ()
 			auto & attempt (i.second);
 			entry.put ("id", attempt->id ());
 			entry.put ("mode", attempt->mode_text ());
-			entry.put ("started", static_cast<bool> (attempt->started));
+			entry.put ("started", static_cast<bool> (attempt->get_started ()));
 			entry.put ("pulling", std::to_string (attempt->get_pulling ()));
 			entry.put ("total_blocks", std::to_string (attempt->total_blocks ()));
-			entry.put ("requeued_pulls", std::to_string (attempt->requeued_pulls));
+			entry.put ("requeued_pulls", std::to_string (attempt->get_requeued_pulls ()));
 			attempt->get_information (entry);
 			entry.put ("duration", std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - attempt->attempt_start).count ());
 			attempts.push_back (std::make_pair ("", entry));

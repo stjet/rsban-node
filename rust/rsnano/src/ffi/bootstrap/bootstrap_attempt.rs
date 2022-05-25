@@ -89,6 +89,13 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_should_log(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_bootstrap_mode(
     handle: *const BootstrapAttemptHandle,
+) -> u8 {
+    (*handle).0.mode as u8
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_bootstrap_mode_text(
+    handle: *const BootstrapAttemptHandle,
     len: *mut usize,
 ) -> *const c_char {
     let mode_text = (*handle).0.mode_text();
@@ -219,6 +226,20 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_pull_finished(handle: *mut Bootst
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_started(
+    handle: *const BootstrapAttemptHandle,
+) -> bool {
+    (*handle).0.started.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_set_started(
+    handle: *mut BootstrapAttemptHandle,
+) -> bool {
+    (*handle).0.started.swap(true, Ordering::SeqCst)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_stopped(
     handle: *const BootstrapAttemptHandle,
 ) -> bool {
@@ -235,4 +256,36 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_still_pulling(
     handle: *const BootstrapAttemptHandle,
 ) -> bool {
     (*handle).0.still_pulling()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_requeued_pulls(
+    handle: *const BootstrapAttemptHandle,
+) -> u32 {
+    (*handle).0.requeued_pulls.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_requeued_pulls_inc(
+    handle: *const BootstrapAttemptHandle,
+) {
+    (*handle).0.requeued_pulls.fetch_add(1, Ordering::SeqCst);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_frontiers_received(
+    handle: *const BootstrapAttemptHandle,
+) -> bool {
+    (*handle).0.frontiers_received.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_frontiers_received_set(
+    handle: *mut BootstrapAttemptHandle,
+    received: bool,
+) {
+    (*handle)
+        .0
+        .frontiers_received
+        .store(received, Ordering::SeqCst)
 }

@@ -72,7 +72,7 @@ impl PropertyTreeWriter for TestPropertyTree {
         todo!()
     }
 
-    fn put_u64(&mut self, path: &str, value: u64) -> Result<()> {
+    fn put_u64(&mut self, _path: &str, _value: u64) -> Result<()> {
         todo!()
     }
 }

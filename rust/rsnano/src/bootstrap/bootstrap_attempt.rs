@@ -38,7 +38,10 @@ pub(crate) struct BootstrapAttempt {
     pub mutex: Mutex<u8>,
     pub condition: Condvar,
     pub pulling: AtomicU32,
+    pub requeued_pulls: AtomicU32,
+    pub started: AtomicBool,
     pub stopped: AtomicBool,
+    pub frontiers_received: AtomicBool,
 }
 
 impl BootstrapAttempt {
@@ -73,7 +76,10 @@ impl BootstrapAttempt {
             mutex: Mutex::new(0),
             condition: Condvar::new(),
             pulling: AtomicU32::new(0),
+            started: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
+            requeued_pulls: AtomicU32::new(0),
+            frontiers_received: AtomicBool::new(false),
         };
 
         result.start()?;

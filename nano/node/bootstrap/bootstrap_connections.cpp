@@ -390,12 +390,12 @@ void nano::bootstrap_connections::requeue_pull (nano::pull_info const & pull_a, 
 	if (attempt_l != nullptr)
 	{
 		auto lazy = std::dynamic_pointer_cast<nano::bootstrap_attempt_lazy> (attempt_l);
-		++attempt_l->requeued_pulls;
+		attempt_l->inc_requeued_pulls ();
 		if (lazy)
 		{
 			pull.count = lazy->lazy_batch_size ();
 		}
-		if (attempt_l->mode == nano::bootstrap_mode::legacy && (pull.attempts < pull.retry_limit + (pull.processed / nano::bootstrap_limits::requeued_pulls_processed_blocks_factor)))
+		if (attempt_l->get_mode () == nano::bootstrap_mode::legacy && (pull.attempts < pull.retry_limit + (pull.processed / nano::bootstrap_limits::requeued_pulls_processed_blocks_factor)))
 		{
 			{
 				nano::lock_guard<nano::mutex> lock (mutex);
@@ -429,7 +429,7 @@ void nano::bootstrap_connections::requeue_pull (nano::pull_info const & pull_a, 
 			{
 				lazy->lazy_add (pull);
 			}
-			else if (attempt_l->mode == nano::bootstrap_mode::legacy)
+			else if (attempt_l->get_mode () == nano::bootstrap_mode::legacy)
 			{
 				node.bootstrap_initiator.cache.add (pull);
 			}

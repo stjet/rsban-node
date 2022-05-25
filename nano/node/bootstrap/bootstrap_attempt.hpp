@@ -35,13 +35,16 @@ public:
 	void inc_pulling ();
 	bool get_stopped () const;
 	void set_stopped ();
+	bool get_started () const;
+	bool set_started ();
+	nano::bootstrap_mode get_mode () const;
+	unsigned get_requeued_pulls () const;
+	void inc_requeued_pulls ();
+	bool get_frontiers_received () const;
+	void set_frontiers_received (bool);
 
 	std::shared_ptr<nano::node> node;
-	std::atomic<unsigned> requeued_pulls{ 0 };
-	std::atomic<bool> started{ false };
 	std::chrono::steady_clock::time_point attempt_start{ std::chrono::steady_clock::now () };
-	std::atomic<bool> frontiers_received{ false };
-	nano::bootstrap_mode mode;
 
 	std::string id () const;
 	uint64_t get_incremental_id () const;

@@ -188,7 +188,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::LockHandle ** loc
 
 rsnano::LockHandle * nano::bootstrap_attempt_legacy::run_start (rsnano::LockHandle * lock_a)
 {
-	frontiers_received = false;
+	set_frontiers_received (false);
 	auto frontier_failure (true);
 	uint64_t frontier_attempts (0);
 	while (!get_stopped () && frontier_failure)
@@ -196,13 +196,13 @@ rsnano::LockHandle * nano::bootstrap_attempt_legacy::run_start (rsnano::LockHand
 		++frontier_attempts;
 		frontier_failure = request_frontier (&lock_a, frontier_attempts == 1);
 	}
-	frontiers_received = true;
+	set_frontiers_received (true);
 	return lock_a;
 }
 
 void nano::bootstrap_attempt_legacy::run ()
 {
-	debug_assert (started);
+	debug_assert (get_started ());
 	debug_assert (!node->flags.disable_legacy_bootstrap);
 	node->bootstrap_initiator.connections->populate_connections (false);
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
@@ -254,7 +254,7 @@ void nano::bootstrap_attempt_legacy::get_information (boost::property_tree::ptre
 {
 	nano::lock_guard<nano::mutex> lock (mutex);
 	tree_a.put ("frontier_pulls", std::to_string (frontier_pulls.size ()));
-	tree_a.put ("frontiers_received", static_cast<bool> (frontiers_received));
+	tree_a.put ("frontiers_received", static_cast<bool> (get_frontiers_received ()));
 	tree_a.put ("frontiers_age", std::to_string (frontiers_age));
 	tree_a.put ("last_account", start_account.to_account ());
 }

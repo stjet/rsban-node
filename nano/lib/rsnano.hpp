@@ -716,7 +716,9 @@ uint64_t rsn_block_work (const BlockHandle * handle);
 
 void rsn_block_work_set (BlockHandle * handle, uint64_t work);
 
-const char * rsn_bootstrap_attempt_bootstrap_mode (const BootstrapAttemptHandle * handle,
+uint8_t rsn_bootstrap_attempt_bootstrap_mode (const BootstrapAttemptHandle * handle);
+
+const char * rsn_bootstrap_attempt_bootstrap_mode_text (const BootstrapAttemptHandle * handle,
 uintptr_t * len);
 
 BootstrapAttemptHandle * rsn_bootstrap_attempt_create (void * logger,
@@ -729,6 +731,10 @@ uint8_t mode,
 uint64_t incremental_id);
 
 void rsn_bootstrap_attempt_destroy (BootstrapAttemptHandle * handle);
+
+bool rsn_bootstrap_attempt_frontiers_received (const BootstrapAttemptHandle * handle);
+
+void rsn_bootstrap_attempt_frontiers_received_set (BootstrapAttemptHandle * handle, bool received);
 
 void rsn_bootstrap_attempt_id (const BootstrapAttemptHandle * handle, StringDto * result);
 
@@ -756,9 +762,17 @@ uint32_t rsn_bootstrap_attempt_pulling (const BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_pulling_inc (BootstrapAttemptHandle * handle);
 
+uint32_t rsn_bootstrap_attempt_requeued_pulls (const BootstrapAttemptHandle * handle);
+
+void rsn_bootstrap_attempt_requeued_pulls_inc (const BootstrapAttemptHandle * handle);
+
+bool rsn_bootstrap_attempt_set_started (BootstrapAttemptHandle * handle);
+
 void rsn_bootstrap_attempt_set_stopped (BootstrapAttemptHandle * handle);
 
 bool rsn_bootstrap_attempt_should_log (const BootstrapAttemptHandle * handle);
+
+bool rsn_bootstrap_attempt_started (const BootstrapAttemptHandle * handle);
 
 bool rsn_bootstrap_attempt_still_pulling (const BootstrapAttemptHandle * handle);
 

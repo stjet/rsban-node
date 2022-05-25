@@ -7,7 +7,7 @@ mod bootstrap_limits {
     pub(crate) const PULL_COUNT_PER_CHECK: u64 = 8 * 1024;
 }
 
-#[derive(FromPrimitive)]
+#[derive(Clone, Copy, FromPrimitive)]
 pub(crate) enum BootstrapMode {
     Legacy,
     Lazy,

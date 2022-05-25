@@ -172,7 +172,7 @@ std::shared_ptr<nano::bootstrap_attempt> nano::bootstrap_initiator::find_attempt
 {
 	for (auto & i : attempts_list)
 	{
-		if (i->mode == mode_a)
+		if (i->get_mode () == mode_a)
 		{
 			return i;
 		}
@@ -204,7 +204,7 @@ std::shared_ptr<nano::bootstrap_attempt> nano::bootstrap_initiator::new_attempt 
 {
 	for (auto & i : attempts_list)
 	{
-		if (!i->started.exchange (true))
+		if (!i->set_started ())
 		{
 			return i;
 		}
@@ -216,7 +216,7 @@ bool nano::bootstrap_initiator::has_new_attempts ()
 {
 	for (auto & i : attempts_list)
 	{
-		if (!i->started)
+		if (!i->get_started ())
 		{
 			return true;
 		}

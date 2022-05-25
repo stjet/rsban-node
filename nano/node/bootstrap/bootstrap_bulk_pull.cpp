@@ -111,7 +111,7 @@ void nano::bulk_pull_client::throttled_receive_block ()
 	{
 		auto this_l (shared_from_this ());
 		connection->node->workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (1), [this_l] () {
-			if (!this_l->connection->pending_stop && !this_l->attempt->stopped)
+			if (!this_l->connection->pending_stop && !this_l->attempt->get_stopped ())
 			{
 				this_l->throttled_receive_block ();
 			}

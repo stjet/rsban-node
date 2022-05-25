@@ -66,12 +66,19 @@ void nano::bootstrap_attempt::inc_pulling ()
 	rsnano::rsn_bootstrap_attempt_pulling_inc (handle);
 }
 
+bool nano::bootstrap_attempt::get_stopped () const
+{
+	return rsnano::rsn_bootstrap_attempt_stopped (handle);
+}
+
+void nano::bootstrap_attempt::set_stopped ()
+{
+	rsnano::rsn_bootstrap_attempt_set_stopped (handle);
+}
+
 bool nano::bootstrap_attempt::still_pulling ()
 {
-	//debug_assert (!mutex.try_lock ());
-	auto running (!stopped);
-	auto still_pulling (get_pulling () > 0);
-	return running && still_pulling;
+	return rsnano::rsn_bootstrap_attempt_still_pulling (handle);
 }
 
 void nano::bootstrap_attempt::pull_started ()
@@ -86,10 +93,6 @@ void nano::bootstrap_attempt::pull_finished ()
 
 void nano::bootstrap_attempt::stop ()
 {
-	auto guard{ rsnano::rsn_bootstrap_attempt_lock (handle) };
-	stopped = true;
-	rsnano::rsn_bootstrap_attempt_unlock (guard);
-	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 	rsnano::rsn_bootstrap_attempt_stop (handle);
 }
 

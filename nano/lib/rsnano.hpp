@@ -756,9 +756,15 @@ uint32_t rsn_bootstrap_attempt_pulling (const BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_pulling_inc (BootstrapAttemptHandle * handle);
 
+void rsn_bootstrap_attempt_set_stopped (BootstrapAttemptHandle * handle);
+
 bool rsn_bootstrap_attempt_should_log (const BootstrapAttemptHandle * handle);
 
+bool rsn_bootstrap_attempt_still_pulling (const BootstrapAttemptHandle * handle);
+
 void rsn_bootstrap_attempt_stop (BootstrapAttemptHandle * handle);
+
+bool rsn_bootstrap_attempt_stopped (const BootstrapAttemptHandle * handle);
 
 uint64_t rsn_bootstrap_attempt_total_blocks (const BootstrapAttemptHandle * handle);
 

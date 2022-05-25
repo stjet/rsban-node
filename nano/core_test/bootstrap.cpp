@@ -369,7 +369,7 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 	// Add non-existing pull & stop remote peer
 	{
 		nano::unique_lock<nano::mutex> lock (node1->bootstrap_initiator.connections->mutex);
-		ASSERT_FALSE (attempt->stopped);
+		ASSERT_FALSE (attempt->get_stopped ());
 		attempt->inc_pulling ();
 		node1->bootstrap_initiator.connections->pulls.emplace_back (nano::dev::genesis_key.pub, send1->hash (), nano::dev::genesis->hash (), attempt->get_incremental_id ());
 		node1->bootstrap_initiator.connections->request_pull (lock);
@@ -1112,7 +1112,7 @@ TEST (bootstrap_processor, lazy_pruning_missing_block)
 	// Check processed blocks
 	auto lazy_attempt (node2->bootstrap_initiator.current_lazy_attempt ());
 	ASSERT_NE (nullptr, lazy_attempt);
-	ASSERT_TIMELY (5s, lazy_attempt == nullptr || lazy_attempt->stopped || lazy_attempt->requeued_pulls >= 4);
+	ASSERT_TIMELY (5s, lazy_attempt == nullptr || lazy_attempt->get_stopped () || lazy_attempt->requeued_pulls >= 4);
 	// Some blocks cannot be retrieved from pruned node
 	node2->block_processor.flush ();
 	ASSERT_EQ (1, node2->ledger.cache.block_count);
@@ -1385,8 +1385,8 @@ TEST (bootstrap_processor, multiple_attempts)
 	auto legacy_attempt (node2->bootstrap_initiator.current_attempt ());
 	ASSERT_TIMELY (5s, lazy_attempt->started && legacy_attempt->started);
 	// Check that both bootstrap attempts are running & not finished
-	ASSERT_FALSE (lazy_attempt->stopped);
-	ASSERT_FALSE (legacy_attempt->stopped);
+	ASSERT_FALSE (lazy_attempt->get_stopped ());
+	ASSERT_FALSE (legacy_attempt->get_stopped ());
 	ASSERT_GE (node2->bootstrap_initiator.attempts.size (), 2);
 	// Check processed blocks
 	ASSERT_TIMELY (10s, node2->balance (key2.pub) != 0);

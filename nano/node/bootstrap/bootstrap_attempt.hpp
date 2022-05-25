@@ -33,11 +33,12 @@ public:
 	void total_blocks_inc ();
 	unsigned get_pulling () const;
 	void inc_pulling ();
+	bool get_stopped () const;
+	void set_stopped ();
 
 	std::shared_ptr<nano::node> node;
 	std::atomic<unsigned> requeued_pulls{ 0 };
 	std::atomic<bool> started{ false };
-	std::atomic<bool> stopped{ false };
 	std::chrono::steady_clock::time_point attempt_start{ std::chrono::steady_clock::now () };
 	std::atomic<bool> frontiers_received{ false };
 	nano::bootstrap_mode mode;

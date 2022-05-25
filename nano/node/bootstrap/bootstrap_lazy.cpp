@@ -137,14 +137,14 @@ rsnano::LockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flush (rsnano::Lock
 bool nano::bootstrap_attempt_lazy::lazy_finished ()
 {
 	//debug_assert (!mutex.try_lock ());
-	if (stopped)
+	if (get_stopped ())
 	{
 		return true;
 	}
 	bool result (true);
 	uint64_t read_count (0);
 	auto transaction (node->store.tx_begin_read ());
-	for (auto it (lazy_keys.begin ()), end (lazy_keys.end ()); it != end && !stopped;)
+	for (auto it (lazy_keys.begin ()), end (lazy_keys.end ()); it != end && !get_stopped ();)
 	{
 		if (node->ledger.block_or_pruned_exists (transaction, *it))
 		{
@@ -199,7 +199,7 @@ void nano::bootstrap_attempt_lazy::run ()
 		unsigned iterations (0);
 		while (still_pulling () && !lazy_has_expired ())
 		{
-			while (!(stopped || get_pulling () == 0 || (get_pulling () < nano::bootstrap_limits::bootstrap_connection_scale_target_blocks && !lazy_pulls.empty ()) || lazy_has_expired ()))
+			while (!(get_stopped () || get_pulling () == 0 || (get_pulling () < nano::bootstrap_limits::bootstrap_connection_scale_target_blocks && !lazy_pulls.empty ()) || lazy_has_expired ()))
 			{
 				rsnano::rsn_bootstrap_attempt_wait (handle, lock);
 			}
@@ -221,7 +221,7 @@ void nano::bootstrap_attempt_lazy::run ()
 			lock = lazy_pull_flush (lock);
 		}
 	}
-	if (!stopped)
+	if (!get_stopped ())
 	{
 		node->logger.try_log ("Completed lazy pulls");
 	}
@@ -379,7 +379,7 @@ void nano::bootstrap_attempt_lazy::lazy_backlog_cleanup ()
 {
 	uint64_t read_count (0);
 	auto transaction (node->store.tx_begin_read ());
-	for (auto it (lazy_state_backlog.begin ()), end (lazy_state_backlog.end ()); it != end && !stopped;)
+	for (auto it (lazy_state_backlog.begin ()), end (lazy_state_backlog.end ()); it != end && !get_stopped ();)
 	{
 		if (node->ledger.block_or_pruned_exists (transaction, it->first))
 		{
@@ -502,7 +502,7 @@ rsnano::LockHandle * nano::bootstrap_attempt_wallet::request_pending (rsnano::Lo
 	rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 	auto connection_l (node->bootstrap_initiator.connections->connection (shared_from_this ()));
 	lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
-	if (connection_l && !stopped)
+	if (connection_l && !get_stopped ())
 	{
 		auto account (wallet_accounts.front ());
 		wallet_accounts.pop_front ();
@@ -542,7 +542,7 @@ void nano::bootstrap_attempt_wallet::wallet_start (std::deque<nano::account> & a
 bool nano::bootstrap_attempt_wallet::wallet_finished ()
 {
 	// debug_assert (!mutex.try_lock ());
-	auto running (!stopped);
+	auto running (!get_stopped ());
 	auto more_accounts (!wallet_accounts.empty ());
 	auto still_pulling (get_pulling () > 0);
 	return running && (more_accounts || still_pulling);
@@ -567,7 +567,7 @@ void nano::bootstrap_attempt_wallet::run ()
 			rsnano::rsn_bootstrap_attempt_wait_for (handle, lock, 1000);
 		}
 	}
-	if (!stopped)
+	if (!get_stopped ())
 	{
 		node->logger.try_log ("Completed wallet lazy pulls");
 	}

@@ -29,7 +29,7 @@ bool nano::bootstrap_attempt_legacy::consume_future (std::future<bool> & future_
 void nano::bootstrap_attempt_legacy::stop ()
 {
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
-	stopped = true;
+	set_stopped ();
 	rsnano::rsn_bootstrap_attempt_unlock (lock);
 	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
 	lock = rsnano::rsn_bootstrap_attempt_lock (handle);
@@ -129,7 +129,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::LockHandle ** loc
 	rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
 	auto connection_l (node->bootstrap_initiator.connections->connection (shared_from_this (), first_attempt));
 	*lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
-	if (connection_l && !stopped)
+	if (connection_l && !get_stopped ())
 	{
 		endpoint_frontier_request = connection_l->channel->get_tcp_endpoint ();
 		std::future<bool> future;
@@ -191,7 +191,7 @@ rsnano::LockHandle * nano::bootstrap_attempt_legacy::run_start (rsnano::LockHand
 	frontiers_received = false;
 	auto frontier_failure (true);
 	uint64_t frontier_attempts (0);
-	while (!stopped && frontier_failure)
+	while (!get_stopped () && frontier_failure)
 	{
 		++frontier_attempts;
 		frontier_failure = request_frontier (&lock_a, frontier_attempts == 1);
@@ -212,7 +212,7 @@ void nano::bootstrap_attempt_legacy::run ()
 		while (still_pulling ())
 		{
 			// clang-format off
-			while (!( stopped || get_pulling () == 0 ))
+			while (!( get_stopped () || get_pulling () == 0 ))
 			{
 				rsnano::rsn_bootstrap_attempt_wait (handle, lock);
 			}
@@ -233,14 +233,14 @@ void nano::bootstrap_attempt_legacy::run ()
 			node->logger.try_log ("Finished flushing unchecked blocks");
 		}
 	}
-	if (!stopped)
+	if (!get_stopped ())
 	{
 		node->logger.try_log ("Completed legacy pulls");
 		if (!node->flags.disable_bootstrap_bulk_push_client)
 		{
 			lock = request_push (lock);
 		}
-		if (!stopped)
+		if (!get_stopped ())
 		{
 			node->unchecked_cleanup ();
 		}

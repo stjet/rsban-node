@@ -9,7 +9,7 @@ use crate::{
 use anyhow::Result;
 use std::{
     sync::{
-        atomic::{AtomicU32, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
         Arc, Condvar, Mutex, RwLock, Weak,
     },
     time::{Duration, Instant},
@@ -38,6 +38,7 @@ pub(crate) struct BootstrapAttempt {
     pub mutex: Mutex<u8>,
     pub condition: Condvar,
     pub pulling: AtomicU32,
+    pub stopped: AtomicBool,
 }
 
 impl BootstrapAttempt {
@@ -72,6 +73,7 @@ impl BootstrapAttempt {
             mutex: Mutex::new(0),
             condition: Condvar::new(),
             pulling: AtomicU32::new(0),
+            stopped: AtomicBool::new(false),
         };
 
         result.start()?;
@@ -89,6 +91,10 @@ impl BootstrapAttempt {
     }
 
     pub(crate) fn stop(&self) {
+        let lock = self.mutex.lock().unwrap();
+        self.stopped.store(true, Ordering::SeqCst);
+        drop(lock);
+        self.condition.notify_all();
         if let Some(initiator) = self.bootstrap_initiator.upgrade() {
             initiator.clear_pulls(self.incremental_id);
         }
@@ -154,6 +160,21 @@ impl BootstrapAttempt {
             self.pulling.fetch_sub(1, Ordering::SeqCst);
         }
         self.condition.notify_all();
+    }
+
+    pub(crate) fn stopped(&self) -> bool {
+        self.stopped.load(Ordering::SeqCst)
+    }
+
+    pub(crate) fn set_stopped(&self) {
+        self.stopped.store(true, Ordering::SeqCst);
+    }
+
+    pub(crate) fn still_pulling(&self) -> bool {
+        debug_assert!(self.mutex.try_lock().is_err());
+        let running = !self.stopped.load(Ordering::SeqCst);
+        let still_pulling = self.pulling.load(Ordering::SeqCst) > 0;
+        running && still_pulling
     }
 }
 

@@ -217,3 +217,22 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_pull_started(handle: *mut Bootstr
 pub unsafe extern "C" fn rsn_bootstrap_attempt_pull_finished(handle: *mut BootstrapAttemptHandle) {
     (*handle).0.pull_finished();
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_stopped(
+    handle: *const BootstrapAttemptHandle,
+) -> bool {
+    (*handle).0.stopped()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_set_stopped(handle: *mut BootstrapAttemptHandle) {
+    (*handle).0.set_stopped()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_still_pulling(
+    handle: *const BootstrapAttemptHandle,
+) -> bool {
+    (*handle).0.still_pulling()
+}

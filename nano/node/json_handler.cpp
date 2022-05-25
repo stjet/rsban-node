@@ -1903,7 +1903,7 @@ void nano::json_handler::bootstrap_status ()
 			entry.put ("total_blocks", std::to_string (attempt->total_blocks ()));
 			entry.put ("requeued_pulls", std::to_string (attempt->get_requeued_pulls ()));
 			attempt->get_information (entry);
-			entry.put ("duration", std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - attempt->attempt_start).count ());
+			entry.put ("duration", attempt->duration ().count ());
 			attempts.push_back (std::make_pair ("", entry));
 		}
 	}

@@ -182,6 +182,10 @@ impl BootstrapAttempt {
         let still_pulling = self.pulling.load(Ordering::SeqCst) > 0;
         running && still_pulling
     }
+
+    pub(crate) fn duration(&self) -> Duration {
+        self.attempt_start.elapsed()
+    }
 }
 
 impl Drop for BootstrapAttempt {
@@ -191,13 +195,12 @@ impl Drop for BootstrapAttempt {
         self.logger
             .always_log(&format!("Exiting {mode} bootstrap attempt with ID {id}"));
 
-        let duration = self.attempt_start.elapsed();
         self.websocket_server
             .broadcast(
                 &MessageBuilder::bootstrap_exited(
                     id,
                     mode,
-                    duration,
+                    self.duration(),
                     self.total_blocks.load(Ordering::SeqCst),
                 )
                 .unwrap(),

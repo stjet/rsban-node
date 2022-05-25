@@ -53,6 +53,7 @@ public:
 	bool lazy_processed_or_exists (nano::block_hash const &);
 	unsigned lazy_retry_limit_confirmed ();
 	void get_information (boost::property_tree::ptree &) override;
+	std::shared_ptr<nano::node> node;
 	std::unordered_set<std::size_t> lazy_blocks;
 	std::unordered_map<nano::block_hash, nano::lazy_state_backlog_item> lazy_state_backlog;
 	std::unordered_set<nano::block_hash> lazy_undefined_links;
@@ -81,6 +82,7 @@ public:
 	bool wallet_finished ();
 	std::size_t wallet_size ();
 	void get_information (boost::property_tree::ptree &) override;
+	std::shared_ptr<nano::node> node;
 	std::deque<nano::account> wallet_accounts;
 };
 }

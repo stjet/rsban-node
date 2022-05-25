@@ -42,9 +42,7 @@ public:
 	void inc_requeued_pulls ();
 	bool get_frontiers_received () const;
 	void set_frontiers_received (bool);
-
-	std::shared_ptr<nano::node> node;
-	std::chrono::steady_clock::time_point attempt_start{ std::chrono::steady_clock::now () };
+	std::chrono::seconds duration () const;
 
 	std::string id () const;
 	uint64_t get_incremental_id () const;

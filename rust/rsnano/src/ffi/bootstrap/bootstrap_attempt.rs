@@ -289,3 +289,10 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_frontiers_received_set(
         .frontiers_received
         .store(received, Ordering::SeqCst)
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_duration_seconds(
+    handle: *const BootstrapAttemptHandle,
+) -> u64 {
+    (*handle).0.duration().as_secs()
+}

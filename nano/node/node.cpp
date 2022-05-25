@@ -967,7 +967,7 @@ void nano::node::unchecked_cleanup ()
 	std::vector<nano::uint128_t> digests;
 	std::deque<nano::unchecked_key> cleaning_list;
 	auto const attempt (bootstrap_initiator.current_attempt ());
-	const bool long_attempt (attempt != nullptr && std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - attempt->attempt_start).count () > config.unchecked_cutoff_time.count ());
+	const bool long_attempt (attempt != nullptr && attempt->duration ().count () > config.unchecked_cutoff_time.count ());
 	// Collect old unchecked keys
 	if (ledger.cache.block_count >= ledger.bootstrap_weight_max_blocks && !long_attempt)
 	{

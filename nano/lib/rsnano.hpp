@@ -732,6 +732,8 @@ uint64_t incremental_id);
 
 void rsn_bootstrap_attempt_destroy (BootstrapAttemptHandle * handle);
 
+uint64_t rsn_bootstrap_attempt_duration_seconds (const BootstrapAttemptHandle * handle);
+
 bool rsn_bootstrap_attempt_frontiers_received (const BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_frontiers_received_set (BootstrapAttemptHandle * handle, bool received);

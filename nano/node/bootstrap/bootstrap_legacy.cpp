@@ -7,6 +7,7 @@
 
 nano::bootstrap_attempt_legacy::bootstrap_attempt_legacy (std::shared_ptr<nano::node> const & node_a, uint64_t const incremental_id_a, std::string const & id_a, uint32_t const frontiers_age_a, nano::account const & start_account_a) :
 	nano::bootstrap_attempt (node_a, nano::bootstrap_mode::legacy, incremental_id_a, id_a),
+	node (node_a),
 	frontiers_age (frontiers_age_a),
 	start_account (start_account_a)
 {

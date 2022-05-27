@@ -37,7 +37,6 @@ public:
 	double sample_block_rate ();
 	double elapsed_seconds () const;
 	void set_start_time (std::chrono::steady_clock::time_point start_time_a);
-	std::shared_ptr<nano::node> node;
 	nano::bootstrap_connections & connections;
 	std::shared_ptr<nano::transport::channel_tcp> channel;
 	std::shared_ptr<nano::socket> socket;

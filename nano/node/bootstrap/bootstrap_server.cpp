@@ -662,12 +662,12 @@ public:
 	}
 	void bulk_push (nano::bulk_push const &) override
 	{
-		auto response (std::make_shared<nano::bulk_push_server> (connection));
+		auto response (std::make_shared<nano::bulk_push_server> (node, connection));
 		response->throttled_receive ();
 	}
 	void frontier_req (nano::frontier_req const &) override
 	{
-		auto response (std::make_shared<nano::frontier_req_server> (connection, std::unique_ptr<nano::frontier_req> (static_cast<nano::frontier_req *> (connection->requests.front ().release ()))));
+		auto response (std::make_shared<nano::frontier_req_server> (node, connection, std::unique_ptr<nano::frontier_req> (static_cast<nano::frontier_req *> (connection->requests.front ().release ()))));
 		response->send_next ();
 	}
 	void telemetry_req (nano::telemetry_req const & message_a) override

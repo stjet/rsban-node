@@ -32,6 +32,9 @@ enum class buffer_drop_policy
 
 class node;
 class server_socket;
+class thread_pool;
+class stat;
+class logger_mt;
 
 /** Socket class for tcp clients and newly accepted connections */
 class socket : public std::enable_shared_from_this<nano::socket>
@@ -59,6 +62,7 @@ public:
 	 * @param endpoint_type_a The endpoint's type: either server or client
 	 */
 	explicit socket (nano::node & node, endpoint_type_t endpoint_type_a);
+	explicit socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::thread_pool & workers_a, std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a);
 	virtual ~socket ();
 	void async_connect (boost::asio::ip::tcp::endpoint const &, std::function<void (boost::system::error_code const &)>);
 	void async_read (std::shared_ptr<std::vector<uint8_t>> const &, std::size_t, std::function<void (boost::system::error_code const &, std::size_t)>);
@@ -113,7 +117,11 @@ protected:
 
 	boost::asio::strand<boost::asio::io_context::executor_type> strand;
 	boost::asio::ip::tcp::socket tcp_socket;
-	nano::node & node;
+	nano::logger_mt & logger;
+	nano::stat & stats;
+	boost::asio::io_context & io_ctx;
+	nano::thread_pool & workers;
+	bool network_timeout_logging;
 
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint remote;
@@ -202,6 +210,7 @@ public:
 	}
 
 private:
+	nano::node & node;
 	nano::address_socket_mmap connections_per_address;
 	boost::asio::ip::tcp::acceptor acceptor;
 	boost::asio::ip::tcp::endpoint local;

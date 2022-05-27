@@ -191,7 +191,7 @@ void nano::bulk_pull_client::received_type ()
 			// Avoid re-using slow peers, or peers that sent the wrong blocks.
 			if (!connection->pending_stop && (expected == pull.end || (pull.count != 0 && pull.count == pull_blocks)))
 			{
-				connection->connections.pool_connection (connection);
+				node->bootstrap_initiator.connections->pool_connection (connection);
 			}
 			break;
 		}
@@ -257,7 +257,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 			}
 			else if (stop_pull && block_expected)
 			{
-				connection->connections.pool_connection (connection);
+				node->bootstrap_initiator.connections->pool_connection (connection);
 			}
 		}
 		else if (block == nullptr)
@@ -381,7 +381,7 @@ void nano::bulk_pull_account_client::receive_pending ()
 				}
 				else
 				{
-					this_l->connection->connections.pool_connection (this_l->connection);
+					this_l->node->bootstrap_initiator.connections->pool_connection (this_l->connection);
 				}
 			}
 			else

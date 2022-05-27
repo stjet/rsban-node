@@ -513,7 +513,7 @@ rsnano::LockHandle * nano::bootstrap_attempt_wallet::request_pending (rsnano::Lo
 		// The bulk_pull_account_client destructor attempt to requeue_pull which can cause a deadlock if this is the last reference
 		// Dispatch request in an external thread in case it needs to be destroyed
 		node->background ([connection_l, this_l, account] () {
-			auto client (std::make_shared<nano::bulk_pull_account_client> (connection_l, this_l, account));
+			auto client (std::make_shared<nano::bulk_pull_account_client> (this_l->node, connection_l, this_l, account));
 			client->request ();
 		});
 	}

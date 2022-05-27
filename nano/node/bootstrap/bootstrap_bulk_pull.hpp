@@ -8,6 +8,7 @@
 namespace nano
 {
 class bootstrap_attempt;
+class logger_mt;
 class pull_info
 {
 public:
@@ -32,7 +33,7 @@ class bootstrap_client;
 class bulk_pull_client final : public std::enable_shared_from_this<nano::bulk_pull_client>
 {
 public:
-	bulk_pull_client (std::shared_ptr<nano::bootstrap_client> const &, std::shared_ptr<nano::bootstrap_attempt> const &, nano::pull_info const &);
+	bulk_pull_client (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::bootstrap_client> const &, std::shared_ptr<nano::bootstrap_attempt> const &, nano::pull_info const &);
 	~bulk_pull_client ();
 	void request ();
 	void receive_block ();
@@ -48,12 +49,18 @@ public:
 	uint64_t pull_blocks;
 	uint64_t unexpected_count;
 	bool network_error{ false };
+
+private:
+	bool logging_enabled{ false };
+	bool network_logging{ false };
+	std::shared_ptr<nano::node> node;
+	nano::logger_mt & logger;
 };
 class bootstrap_attempt_wallet;
 class bulk_pull_account_client final : public std::enable_shared_from_this<nano::bulk_pull_account_client>
 {
 public:
-	bulk_pull_account_client (std::shared_ptr<nano::bootstrap_client> const &, std::shared_ptr<nano::bootstrap_attempt_wallet> const &, nano::account const &);
+	bulk_pull_account_client (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::bootstrap_client> const &, std::shared_ptr<nano::bootstrap_attempt_wallet> const &, nano::account const &);
 	~bulk_pull_account_client ();
 	void request ();
 	void receive_pending ();
@@ -61,6 +68,9 @@ public:
 	std::shared_ptr<nano::bootstrap_attempt_wallet> attempt;
 	nano::account account;
 	uint64_t pull_blocks;
+
+private:
+	std::shared_ptr<nano::node> node;
 };
 class bootstrap_server;
 class bulk_pull;
@@ -73,7 +83,7 @@ class bulk_pull;
 class bulk_pull_server final : public std::enable_shared_from_this<nano::bulk_pull_server>
 {
 public:
-	bulk_pull_server (std::shared_ptr<nano::bootstrap_server> const &, std::unique_ptr<nano::bulk_pull>);
+	bulk_pull_server (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::bootstrap_server> const &, std::unique_ptr<nano::bulk_pull>);
 	void set_current_end ();
 	std::shared_ptr<nano::block> get_next ();
 	void send_next ();
@@ -86,12 +96,15 @@ public:
 	bool include_start;
 	nano::bulk_pull::count_t max_count;
 	nano::bulk_pull::count_t sent_count;
+
+private:
+	std::shared_ptr<nano::node> node;
 };
 class bulk_pull_account;
 class bulk_pull_account_server final : public std::enable_shared_from_this<nano::bulk_pull_account_server>
 {
 public:
-	bulk_pull_account_server (std::shared_ptr<nano::bootstrap_server> const &, std::unique_ptr<nano::bulk_pull_account>);
+	bulk_pull_account_server (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::bootstrap_server> const &, std::unique_ptr<nano::bulk_pull_account>);
 	void set_params ();
 	std::pair<std::unique_ptr<nano::pending_key>, std::unique_ptr<nano::pending_info>> get_next ();
 	void send_frontier ();
@@ -106,5 +119,8 @@ public:
 	bool pending_address_only;
 	bool pending_include_address;
 	bool invalid_request;
+
+private:
+	std::shared_ptr<nano::node> node;
 };
 }

@@ -629,8 +629,9 @@ namespace
 class request_response_visitor : public nano::message_visitor
 {
 public:
-	explicit request_response_visitor (std::shared_ptr<nano::bootstrap_server> connection_a) :
-		connection (std::move (connection_a))
+	explicit request_response_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, std::shared_ptr<nano::node> node_a) :
+		connection (std::move (connection_a)),
+		node (std::move (node_a))
 	{
 	}
 	void keepalive (nano::keepalive const & message_a) override
@@ -651,12 +652,12 @@ public:
 	}
 	void bulk_pull (nano::bulk_pull const &) override
 	{
-		auto response (std::make_shared<nano::bulk_pull_server> (connection, std::unique_ptr<nano::bulk_pull> (static_cast<nano::bulk_pull *> (connection->requests.front ().release ()))));
+		auto response (std::make_shared<nano::bulk_pull_server> (node, connection, std::unique_ptr<nano::bulk_pull> (static_cast<nano::bulk_pull *> (connection->requests.front ().release ()))));
 		response->send_next ();
 	}
 	void bulk_pull_account (nano::bulk_pull_account const &) override
 	{
-		auto response (std::make_shared<nano::bulk_pull_account_server> (connection, std::unique_ptr<nano::bulk_pull_account> (static_cast<nano::bulk_pull_account *> (connection->requests.front ().release ()))));
+		auto response (std::make_shared<nano::bulk_pull_account_server> (node, connection, std::unique_ptr<nano::bulk_pull_account> (static_cast<nano::bulk_pull_account *> (connection->requests.front ().release ()))));
 		response->send_frontier ();
 	}
 	void bulk_push (nano::bulk_push const &) override
@@ -736,13 +737,14 @@ public:
 		connection->node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::node_id_handshake> (message_a), connection->remote_endpoint, connection->remote_node_id, connection->socket });
 	}
 	std::shared_ptr<nano::bootstrap_server> connection;
+	std::shared_ptr<nano::node> node;
 };
 }
 
 void nano::bootstrap_server::run_next (nano::unique_lock<nano::mutex> & lock_a)
 {
 	debug_assert (!requests.empty ());
-	request_response_visitor visitor (shared_from_this ());
+	request_response_visitor visitor (shared_from_this (), node);
 	auto type (requests.front ()->header.type);
 	if (type == nano::message_type::bulk_pull || type == nano::message_type::bulk_pull_account || type == nano::message_type::bulk_push || type == nano::message_type::frontier_req || type == nano::message_type::node_id_handshake)
 	{

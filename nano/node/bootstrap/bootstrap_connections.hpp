@@ -19,6 +19,12 @@ class bootstrap_connections;
 class frontier_req_client;
 class pull_info;
 
+class bootstrap_client_observer
+{
+public:
+	virtual void bootstrap_client_closed () = 0;
+};
+
 /**
  * Owns the client side of the bootstrap connection.
  */
@@ -42,6 +48,7 @@ public:
 	std::atomic<bool> hard_stop{ false };
 
 private:
+	nano::bootstrap_client_observer & observer_m;
 	mutable nano::mutex start_time_mutex;
 	std::chrono::steady_clock::time_point start_time_m;
 };
@@ -50,7 +57,7 @@ private:
  * Container for bootstrap_client objects. Owned by bootstrap_initiator which pools open connections and makes them available
  * for use by different bootstrap sessions.
  */
-class bootstrap_connections final : public std::enable_shared_from_this<bootstrap_connections>
+class bootstrap_connections final : public std::enable_shared_from_this<bootstrap_connections>, public bootstrap_client_observer
 {
 public:
 	explicit bootstrap_connections (nano::node & node_a);
@@ -68,6 +75,7 @@ public:
 	void clear_pulls (uint64_t);
 	void run ();
 	void stop ();
+	void bootstrap_client_closed () override;
 	std::deque<std::weak_ptr<nano::bootstrap_client>> clients;
 	std::atomic<unsigned> connections_count{ 0 };
 	nano::node & node;

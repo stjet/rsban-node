@@ -22,16 +22,16 @@ nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::node> const & no
 	channel (channel_a),
 	socket (socket_a),
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
-	start_time_m (std::chrono::steady_clock::now ())
+	start_time_m (std::chrono::steady_clock::now ()),
+	observer_m{ connections_a }
 {
-	++connections.connections_count;
 	receive_buffer->resize (256);
 	channel->set_endpoint ();
 }
 
 nano::bootstrap_client::~bootstrap_client ()
 {
-	--connections.connections_count;
+	observer_m.bootstrap_client_closed ();
 }
 
 double nano::bootstrap_client::sample_block_rate ()
@@ -158,6 +158,7 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 				this_l->node.logger.try_log (boost::str (boost::format ("Connection established to %1%") % endpoint_a));
 			}
 			auto client (std::make_shared<nano::bootstrap_client> (this_l->node.shared (), *this_l, std::make_shared<nano::transport::channel_tcp> (*this_l->node.shared (), socket), socket));
+			this_l->connections_count++;
 			this_l->pool_connection (client, true, push_front);
 		}
 		else
@@ -362,10 +363,11 @@ void nano::bootstrap_connections::request_pull (nano::unique_lock<nano::mutex> &
 		}
 		if (attempt_l != nullptr)
 		{
+			auto node_l{ node.shared_from_this () };
 			// The bulk_pull_client destructor attempt to requeue_pull which can cause a deadlock if this is the last reference
 			// Dispatch request in an external thread in case it needs to be destroyed
-			node.background ([connection_l, attempt_l, pull] () {
-				auto client (std::make_shared<nano::bulk_pull_client> (connection_l, attempt_l, pull));
+			node.background ([node_l, connection_l, attempt_l, pull] () {
+				auto client (std::make_shared<nano::bulk_pull_client> (node_l, connection_l, attempt_l, pull));
 				client->request ();
 			});
 		}
@@ -493,4 +495,9 @@ void nano::bootstrap_connections::stop ()
 	}
 	clients.clear ();
 	idle.clear ();
+}
+
+void nano::bootstrap_connections::bootstrap_client_closed ()
+{
+	--connections_count;
 }

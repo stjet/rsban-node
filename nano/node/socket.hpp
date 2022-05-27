@@ -30,11 +30,11 @@ enum class buffer_drop_policy
 	no_socket_drop
 };
 
-class node;
 class server_socket;
 class thread_pool;
 class stat;
 class logger_mt;
+class node;
 
 /** Socket class for tcp clients and newly accepted connections */
 class socket : public std::enable_shared_from_this<nano::socket>
@@ -61,7 +61,6 @@ public:
 	 * @param node Owning node
 	 * @param endpoint_type_a The endpoint's type: either server or client
 	 */
-	explicit socket (nano::node & node, endpoint_type_t endpoint_type_a);
 	explicit socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::thread_pool & workers_a, std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a);
 	virtual ~socket ();
 	void async_connect (boost::asio::ip::tcp::endpoint const &, std::function<void (boost::system::error_code const &)>);
@@ -230,9 +229,6 @@ public:
 	 * Constructor
 	 * @param node_a Owning node
 	 */
-	explicit client_socket (nano::node & node_a) :
-		socket{ node_a, endpoint_type_t::client }
-	{
-	}
+	explicit client_socket (nano::node & node_a);
 };
 }

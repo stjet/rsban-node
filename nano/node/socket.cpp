@@ -35,23 +35,6 @@ bool is_temporary_error (boost::system::error_code const & ec_a)
 }
 }
 
-nano::socket::socket (nano::node & node_a, endpoint_type_t endpoint_type_a) :
-	strand{ node_a.io_ctx.get_executor () },
-	tcp_socket{ node_a.io_ctx },
-	io_ctx{ node_a.io_ctx },
-	stats{ node_a.stats },
-	logger{ node_a.logger },
-	workers{ node_a.workers },
-	network_timeout_logging{ node_a.config.logging.network_timeout_logging () },
-	endpoint_type_m{ endpoint_type_a },
-	timeout{ std::numeric_limits<uint64_t>::max () },
-	last_completion_time_or_init{ nano::seconds_since_epoch () },
-	last_receive_time_or_init{ nano::seconds_since_epoch () },
-	default_timeout{ node_a.config.tcp_io_timeout },
-	silent_connection_tolerance_time{ node_a.network_params.network.silent_connection_tolerance_time }
-{
-}
-
 nano::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::thread_pool & workers_a, std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a) :
 	strand{ io_ctx_a.get_executor () },
 	tcp_socket{ io_ctx_a },
@@ -314,7 +297,10 @@ nano::tcp_endpoint nano::socket::local_endpoint () const
 
 nano::server_socket::server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, std::size_t max_connections_a) :
 	node{ node_a },
-	socket{ node_a, endpoint_type_t::server },
+	socket{ node_a.io_ctx, endpoint_type_t::server, node_a.stats, node_a.logger, node_a.workers,
+		node_a.config.tcp_io_timeout,
+		node_a.network_params.network.silent_connection_tolerance_time,
+		node_a.config.logging.network_timeout_logging () },
 	acceptor{ node_a.io_ctx },
 	local{ std::move (local_a) },
 	max_inbound_connections{ max_connections_a }
@@ -427,7 +413,8 @@ void nano::server_socket::on_connection (std::function<bool (std::shared_ptr<nan
 		}
 
 		// Prepare new connection
-		auto new_connection = std::make_shared<nano::socket> (this_l->node, endpoint_type_t::server);
+		auto new_connection = std::make_shared<nano::socket> (this_l->node.io_ctx, endpoint_type_t::server,
+		this_l->node.stats, this_l->node.logger, this_l->node.workers, this_l->node.config.tcp_io_timeout, this_l->node.network_params.network.silent_connection_tolerance_time, this_l->node.config.logging.network_timeout_logging ());
 		this_l->acceptor.async_accept (new_connection->tcp_socket, new_connection->remote,
 		boost::asio::bind_executor (this_l->strand,
 		[this_l, new_connection, cbk = std::move (callback)] (boost::system::error_code const & ec_a) mutable {
@@ -533,4 +520,12 @@ void nano::server_socket::evict_dead_connections ()
 		}
 		++it;
 	}
+}
+
+nano::client_socket::client_socket (nano::node & node_a) :
+	socket (node_a.io_ctx, endpoint_type_t::client, node_a.stats, node_a.logger, node_a.workers,
+	node_a.config.tcp_io_timeout,
+	node_a.network_params.network.silent_connection_tolerance_time,
+	node_a.config.logging.network_timeout_logging ())
+{
 }

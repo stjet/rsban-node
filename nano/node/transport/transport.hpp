@@ -51,7 +51,7 @@ namespace transport
 	class channel
 	{
 	public:
-		explicit channel (nano::node &);
+		channel (nano::stat & stats_a, nano::logger_mt & logger_a, nano::bandwidth_limiter & limiter_a, boost::asio::io_context & io_ctx_a, bool network_packet_logging_a, uint8_t network_version_a);
 		virtual ~channel () = default;
 		virtual std::size_t hash_code () const = 0;
 		virtual bool operator== (nano::transport::channel const &) const = 0;
@@ -147,9 +147,11 @@ namespace transport
 		std::chrono::steady_clock::time_point last_packet_sent{ std::chrono::steady_clock::now () };
 		boost::optional<nano::account> node_id{ boost::none };
 		std::atomic<uint8_t> network_version{ 0 };
-
-	protected:
-		nano::node & node;
+		boost::asio::io_context & io_ctx;
+		nano::stat & stats;
+		nano::logger_mt & logger;
+		nano::bandwidth_limiter & limiter;
+		bool network_packet_logging;
 	};
 } // namespace transport
 } // namespace nano

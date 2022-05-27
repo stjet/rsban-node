@@ -4,6 +4,8 @@
 
 namespace nano
 {
+class node;
+
 namespace transport
 {
 	/**
@@ -42,6 +44,7 @@ namespace transport
 			}
 
 		private:
+			nano::node & node;
 			nano::node & destination;
 			nano::endpoint const endpoint;
 		};

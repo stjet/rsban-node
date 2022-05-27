@@ -1,6 +1,6 @@
+#include <nano/lib/logger_mt.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/node/common.hpp>
-#include <nano/node/node.hpp>
 #include <nano/node/transport/inproc.hpp>
 #include <nano/node/transport/transport.hpp>
 
@@ -99,10 +99,14 @@ boost::asio::ip::address nano::transport::ipv4_address_or_ipv6_subnet (boost::as
 	return address_a.to_v6 ().is_v4_mapped () ? address_a : boost::asio::ip::make_network_v6 (address_a.to_v6 (), ipv6_address_prefix_length).network ();
 }
 
-nano::transport::channel::channel (nano::node & node_a) :
-	node (node_a)
+nano::transport::channel::channel (nano::stat & stats_a, nano::logger_mt & logger_a, nano::bandwidth_limiter & limiter_a, boost::asio::io_context & io_ctx_a, bool network_packet_logging_a, uint8_t network_version_a) :
+	stats (stats_a),
+	logger (logger_a),
+	limiter (limiter_a),
+	io_ctx (io_ctx_a),
+	network_packet_logging (network_packet_logging_a)
 {
-	set_network_version (node_a.network_params.network.protocol_version);
+	set_network_version (network_version_a);
 }
 
 void nano::transport::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
@@ -112,25 +116,25 @@ void nano::transport::channel::send (nano::message & message_a, std::function<vo
 	auto buffer (message_a.to_shared_const_buffer ());
 	auto detail (visitor.result);
 	auto is_droppable_by_limiter = drop_policy_a == nano::buffer_drop_policy::limiter;
-	auto should_drop (node.network.limiter.should_drop (buffer.size ()));
+	auto should_drop (limiter.should_drop (buffer.size ()));
 	if (!is_droppable_by_limiter || !should_drop)
 	{
 		send_buffer (buffer, callback_a, drop_policy_a);
-		node.stats.inc (nano::stat::type::message, detail, nano::stat::dir::out);
+		stats.inc (nano::stat::type::message, detail, nano::stat::dir::out);
 	}
 	else
 	{
 		if (callback_a)
 		{
-			node.background ([callback_a] () {
+			io_ctx.post ([callback_a] () {
 				callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
 			});
 		}
 
-		node.stats.inc (nano::stat::type::drop, detail, nano::stat::dir::out);
-		if (node.config.logging.network_packet_logging ())
+		stats.inc (nano::stat::type::drop, detail, nano::stat::dir::out);
+		if (network_packet_logging)
 		{
-			node.logger.always_log (boost::str (boost::format ("%1% of size %2% dropped") % node.stats.detail_to_string (detail) % buffer.size ()));
+			logger.always_log (boost::str (boost::format ("%1% of size %2% dropped") % stats.detail_to_string (detail) % buffer.size ()));
 		}
 	}
 }

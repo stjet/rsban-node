@@ -60,6 +60,26 @@ void nano::bootstrap_client::stop (bool force)
 	}
 }
 
+void nano::bootstrap_client::async_read (std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
+{
+	socket->async_read (receive_buffer, size_a, callback_a);
+}
+
+nano::tcp_endpoint nano::bootstrap_client::remote_endpoint () const
+{
+	return socket->remote_endpoint ();
+}
+
+void nano::bootstrap_client::close_socket ()
+{
+	socket->close ();
+}
+
+void nano::bootstrap_client::set_timeout (std::chrono::seconds timeout_a)
+{
+	socket->set_timeout (timeout_a);
+}
+
 nano::bootstrap_connections::bootstrap_connections (nano::node & node_a) :
 	node (node_a)
 {
@@ -95,10 +115,9 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::connection 
 void nano::bootstrap_connections::pool_connection (std::shared_ptr<nano::bootstrap_client> const & client_a, bool new_client, bool push_front)
 {
 	nano::unique_lock<nano::mutex> lock (mutex);
-	auto const & socket_l = client_a->socket;
 	if (!stopped && !client_a->pending_stop && !node.network.excluded_peers.check (client_a->channel->get_tcp_endpoint ()))
 	{
-		socket_l->set_timeout (node.network_params.network.idle_timeout);
+		client_a->set_timeout (node.network_params.network.idle_timeout);
 		// Push into idle deque
 		if (!push_front)
 		{
@@ -115,7 +134,7 @@ void nano::bootstrap_connections::pool_connection (std::shared_ptr<nano::bootstr
 	}
 	else
 	{
-		socket_l->close ();
+		client_a->close_socket ();
 	}
 	lock.unlock ();
 	condition.notify_all ();
@@ -219,7 +238,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 			if (auto client = c.lock ())
 			{
 				new_clients.push_back (client);
-				endpoints.insert (client->socket->remote_endpoint ());
+				endpoints.insert (client->remote_endpoint ());
 				double elapsed_sec = client->elapsed_seconds ();
 				auto blocks_per_sec = client->sample_block_rate ();
 				rate_sum += blocks_per_sec;
@@ -488,7 +507,7 @@ void nano::bootstrap_connections::stop ()
 	{
 		if (auto client = i.lock ())
 		{
-			client->socket->close ();
+			client->close_socket ();
 		}
 	}
 	clients.clear ();

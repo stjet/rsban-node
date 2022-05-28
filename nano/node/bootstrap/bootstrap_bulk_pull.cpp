@@ -126,7 +126,7 @@ void nano::bulk_pull_client::throttled_receive_block ()
 void nano::bulk_pull_client::receive_block ()
 {
 	auto this_l (shared_from_this ());
-	connection->socket->async_read (connection->receive_buffer, 1, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+	connection->async_read (1, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		if (!ec)
 		{
 			this_l->received_type ();
@@ -148,40 +148,39 @@ void nano::bulk_pull_client::received_type ()
 	auto this_l (shared_from_this ());
 	nano::block_type type (static_cast<nano::block_type> (connection->receive_buffer->data ()[0]));
 
-	auto const & socket_l = connection->socket;
 	switch (type)
 	{
 		case nano::block_type::send:
 		{
-			socket_l->async_read (connection->receive_buffer, nano::send_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
+			connection->async_read (nano::send_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
 				this_l->received_block (ec, size_a, type);
 			});
 			break;
 		}
 		case nano::block_type::receive:
 		{
-			socket_l->async_read (connection->receive_buffer, nano::receive_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
+			connection->async_read (nano::receive_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
 				this_l->received_block (ec, size_a, type);
 			});
 			break;
 		}
 		case nano::block_type::open:
 		{
-			socket_l->async_read (connection->receive_buffer, nano::open_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
+			connection->async_read (nano::open_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
 				this_l->received_block (ec, size_a, type);
 			});
 			break;
 		}
 		case nano::block_type::change:
 		{
-			socket_l->async_read (connection->receive_buffer, nano::change_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
+			connection->async_read (nano::change_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
 				this_l->received_block (ec, size_a, type);
 			});
 			break;
 		}
 		case nano::block_type::state:
 		{
-			socket_l->async_read (connection->receive_buffer, nano::state_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
+			connection->async_read (nano::state_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
 				this_l->received_block (ec, size_a, type);
 			});
 			break;
@@ -341,7 +340,7 @@ void nano::bulk_pull_account_client::receive_pending ()
 {
 	auto this_l (shared_from_this ());
 	std::size_t size_l (sizeof (nano::uint256_union) + sizeof (nano::uint128_union));
-	connection->socket->async_read (connection->receive_buffer, size_l, [this_l, size_l] (boost::system::error_code const & ec, std::size_t size_a) {
+	connection->async_read (size_l, [this_l, size_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		// An issue with asio is that sometimes, instead of reporting a bad file descriptor during disconnect,
 		// we simply get a size of 0.
 		if (size_a == size_l)

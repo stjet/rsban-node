@@ -53,7 +53,7 @@ nano::frontier_req_client::frontier_req_client (std::shared_ptr<nano::node> cons
 void nano::frontier_req_client::receive_frontier ()
 {
 	auto this_l (shared_from_this ());
-	connection->socket->async_read (connection->receive_buffer, nano::frontier_req_client::size_frontier, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+	connection->async_read (nano::frontier_req_client::size_frontier, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		// An issue with asio is that sometimes, instead of reporting a bad file descriptor during disconnect,
 		// we simply get a size of 0.
 		if (size_a == nano::frontier_req_client::size_frontier)

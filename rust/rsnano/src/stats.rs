@@ -1,3 +1,5 @@
+use std::{sync::Mutex, time::SystemTime};
+
 use crate::TomlWriter;
 use anyhow::Result;
 
@@ -81,5 +83,72 @@ impl StatConfig {
             Ok(())
         })?;
         Ok(())
+    }
+}
+
+/// Value and wall time of measurement
+pub struct StatDatapoint {
+    values: Mutex<StatDatapointValues>,
+}
+
+impl Clone for StatDatapoint {
+    fn clone(&self) -> Self {
+        let lock = self.values.lock().unwrap();
+        Self {
+            values: Mutex::new(lock.clone()),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct StatDatapointValues {
+    /// Value of the sample interval
+    value: u64,
+    /// When the sample was added. This is wall time (system_clock), suitable for display purposes.
+    timestamp: SystemTime,
+}
+
+impl StatDatapoint {
+    pub fn new() -> Self {
+        Self {
+            values: Mutex::new(StatDatapointValues {
+                value: 0,
+                timestamp: SystemTime::now(),
+            }),
+        }
+    }
+
+    pub(crate) fn get_value(&self) -> u64 {
+        self.values.lock().unwrap().value
+    }
+
+    pub(crate) fn set_value(&self, value: u64) {
+        self.values.lock().unwrap().value = value;
+    }
+
+    pub(crate) fn get_timestamp(&self) -> SystemTime {
+        self.values.lock().unwrap().timestamp
+    }
+
+    pub(crate) fn set_timestamp(&self, timestamp: SystemTime) {
+        self.values.lock().unwrap().timestamp = timestamp;
+    }
+
+    pub(crate) fn add(&self, addend: u64, update_timestamp: bool) {
+        let mut lock = self.values.lock().unwrap();
+        lock.value += addend;
+        if update_timestamp {
+            lock.timestamp = SystemTime::now();
+        }
+    }
+}
+
+pub struct Stat {
+    config: StatConfig,
+}
+
+impl Stat {
+    pub fn new(config: StatConfig) -> Self {
+        Self { config }
     }
 }

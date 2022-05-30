@@ -264,9 +264,21 @@ std::vector<nano::stat_histogram::bin> nano::stat_histogram::get_bins () const
 	return bins;
 }
 
+nano::stat::stat () :
+	stat (nano::stat_config ())
+{
+}
+
 nano::stat::stat (nano::stat_config config) :
 	config (config)
 {
+	auto config_dto{ config.to_dto () };
+	handle = rsnano::rsn_stat_create (&config_dto);
+}
+
+nano::stat::~stat ()
+{
+	rsnano::rsn_stat_destroy (handle);
 }
 
 std::shared_ptr<nano::stat_entry> nano::stat::get_entry (uint32_t key)
@@ -929,52 +941,51 @@ std::string nano::stat::dir_to_string (uint32_t key)
 	return res;
 }
 
+nano::stat_datapoint::stat_datapoint () :
+	handle (rsnano::rsn_stat_datapoint_create ())
+{
+}
+
+nano::stat_datapoint::~stat_datapoint ()
+{
+	rsnano::rsn_stat_datapoint_destroy (handle);
+}
+
 nano::stat_datapoint::stat_datapoint (stat_datapoint const & other_a)
 {
-	nano::lock_guard<nano::mutex> lock (other_a.datapoint_mutex);
-	value = other_a.value;
-	timestamp = other_a.timestamp;
+	handle = rsnano::rsn_stat_datapoint_clone (other_a.handle);
 }
 
 nano::stat_datapoint & nano::stat_datapoint::operator= (stat_datapoint const & other_a)
 {
-	nano::lock_guard<nano::mutex> lock (other_a.datapoint_mutex);
-	value = other_a.value;
-	timestamp = other_a.timestamp;
+	handle = rsnano::rsn_stat_datapoint_clone (other_a.handle);
 	return *this;
 }
 
 uint64_t nano::stat_datapoint::get_value () const
 {
-	nano::lock_guard<nano::mutex> lock (datapoint_mutex);
-	return value;
+	return rsnano::rsn_stat_datapoint_get_value (handle);
 }
 
 void nano::stat_datapoint::set_value (uint64_t value_a)
 {
-	nano::lock_guard<nano::mutex> lock (datapoint_mutex);
-	value = value_a;
+	rsnano::rsn_stat_datapoint_set_value (handle, value_a);
 }
 
 std::chrono::system_clock::time_point nano::stat_datapoint::get_timestamp () const
 {
-	nano::lock_guard<nano::mutex> lock (datapoint_mutex);
-	return timestamp;
+	auto timestamp_ms = rsnano::rsn_stat_datapoint_get_timestamp_ms (handle);
+	return std::chrono::system_clock::time_point{ std::chrono::milliseconds (timestamp_ms) };
 }
 
 void nano::stat_datapoint::set_timestamp (std::chrono::system_clock::time_point timestamp_a)
 {
-	nano::lock_guard<nano::mutex> lock (datapoint_mutex);
-	timestamp = timestamp_a;
+	auto timestamp_ms (std::chrono::duration_cast<std::chrono::milliseconds> (timestamp_a.time_since_epoch ()));
+	rsnano::rsn_stat_datapoint_set_timestamp_ms (handle, timestamp_ms.count ());
 }
 
 /** Add \addend to the current value and optionally update the timestamp */
 void nano::stat_datapoint::add (uint64_t addend, bool update_timestamp)
 {
-	nano::lock_guard<nano::mutex> lock (datapoint_mutex);
-	value += addend;
-	if (update_timestamp)
-	{
-		timestamp = std::chrono::system_clock::now ();
-	}
+	rsnano::rsn_stat_datapoint_add (handle, addend, update_timestamp);
 }

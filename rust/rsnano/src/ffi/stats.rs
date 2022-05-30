@@ -1,4 +1,6 @@
-use crate::StatConfig;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use crate::{Stat, StatConfig, StatDatapoint};
 
 #[repr(C)]
 pub struct StatConfigDto {
@@ -58,4 +60,81 @@ impl From<&StatConfigDto> for StatConfig {
             .to_string(),
         }
     }
+}
+
+pub struct StatHandle(Stat);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_create(config: *const StatConfigDto) -> *mut StatHandle {
+    Box::into_raw(Box::new(StatHandle(Stat::new(StatConfig::from(&*config)))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_destroy(handle: *mut StatHandle) {
+    drop(Box::from_raw(handle))
+}
+
+pub struct StatDatapointHandle(StatDatapoint);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_datapoint_create() -> *mut StatDatapointHandle {
+    Box::into_raw(Box::new(StatDatapointHandle(StatDatapoint::new())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_datapoint_destroy(handle: *mut StatDatapointHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_datapoint_clone(
+    handle: *const StatDatapointHandle,
+) -> *mut StatDatapointHandle {
+    Box::into_raw(Box::new(StatDatapointHandle((*handle).0.clone())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_datapoint_get_value(handle: *const StatDatapointHandle) -> u64 {
+    (*handle).0.get_value()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_datapoint_set_value(
+    handle: *const StatDatapointHandle,
+    value: u64,
+) {
+    (*handle).0.set_value(value);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_datapoint_get_timestamp_ms(
+    handle: *const StatDatapointHandle,
+) -> u64 {
+    (*handle)
+        .0
+        .get_timestamp()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_datapoint_set_timestamp_ms(
+    handle: *const StatDatapointHandle,
+    timestamp_ms: u64,
+) {
+    (*handle).0.set_timestamp(
+        SystemTime::UNIX_EPOCH
+            .checked_add(Duration::from_millis(timestamp_ms))
+            .unwrap(),
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_datapoint_add(
+    handle: *const StatDatapointHandle,
+    addend: u64,
+    update_timestamp: bool,
+) {
+    (*handle).0.add(addend, update_timestamp);
 }

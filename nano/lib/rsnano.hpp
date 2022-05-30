@@ -39,6 +39,10 @@ struct LockHandle;
 
 struct SignatureCheckerHandle;
 
+struct StatDatapointHandle;
+
+struct StatHandle;
+
 struct StateBlockSignatureVerificationHandle;
 
 struct StateBlockSignatureVerificationResultHandle;
@@ -1100,6 +1104,28 @@ void rsn_signature_checker_verify (const SignatureCheckerHandle * handle,
 SignatureCheckSetDto * check_set);
 
 void rsn_stat_config_create (StatConfigDto * dto);
+
+StatHandle * rsn_stat_create (const StatConfigDto * config);
+
+void rsn_stat_datapoint_add (const StatDatapointHandle * handle,
+uint64_t addend,
+bool update_timestamp);
+
+StatDatapointHandle * rsn_stat_datapoint_clone (const StatDatapointHandle * handle);
+
+StatDatapointHandle * rsn_stat_datapoint_create ();
+
+void rsn_stat_datapoint_destroy (StatDatapointHandle * handle);
+
+uint64_t rsn_stat_datapoint_get_timestamp_ms (const StatDatapointHandle * handle);
+
+uint64_t rsn_stat_datapoint_get_value (const StatDatapointHandle * handle);
+
+void rsn_stat_datapoint_set_timestamp_ms (const StatDatapointHandle * handle, uint64_t timestamp_ms);
+
+void rsn_stat_datapoint_set_value (const StatDatapointHandle * handle, uint64_t value);
+
+void rsn_stat_destroy (StatHandle * handle);
 
 void rsn_state_block_account (const BlockHandle * handle, uint8_t (*result)[32]);
 

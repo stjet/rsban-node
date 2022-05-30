@@ -63,9 +63,11 @@ public:
 class stat_datapoint final
 {
 public:
-	stat_datapoint () = default;
+	stat_datapoint ();
 	stat_datapoint (stat_datapoint const & other_a);
+	~stat_datapoint ();
 	stat_datapoint & operator= (stat_datapoint const & other_a);
+
 	uint64_t get_value () const;
 	void set_value (uint64_t value_a);
 	std::chrono::system_clock::time_point get_timestamp () const;
@@ -73,11 +75,7 @@ public:
 	void add (uint64_t addend, bool update_timestamp = true);
 
 private:
-	mutable nano::mutex datapoint_mutex;
-	/** Value of the sample interval */
-	uint64_t value{ 0 };
-	/** When the sample was added. This is wall time (system_clock), suitable for display purposes. */
-	std::chrono::system_clock::time_point timestamp{ std::chrono::system_clock::now () };
+	rsnano::StatDatapointHandle * handle;
 };
 
 /** Histogram values */
@@ -411,13 +409,16 @@ public:
 	};
 
 	/** Constructor using the default config values */
-	stat () = default;
+	stat ();
+	~stat ();
 
 	/**
 	 * Initialize stats with a config.
 	 * @param config Configuration object; deserialized from config.json
 	 */
 	stat (nano::stat_config config);
+	stat (nano::stat const &) = delete;
+	stat (nano::stat &&) = delete;
 
 	/**
 	 * Call this to override the default sample interval and capacity, for a specific stat entry.
@@ -640,5 +641,6 @@ private:
 
 	/** All access to stat is thread safe, including calls from observers on the same thread */
 	nano::mutex stat_mutex;
+	rsnano::StatHandle * handle;
 };
 }

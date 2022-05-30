@@ -65,6 +65,11 @@ void nano::bootstrap_client::async_read (std::size_t size_a, std::function<void 
 	socket->async_read (receive_buffer, size_a, callback_a);
 }
 
+uint8_t * nano::bootstrap_client::get_receive_buffer ()
+{
+	return receive_buffer->data ();
+}
+
 nano::tcp_endpoint nano::bootstrap_client::remote_endpoint () const
 {
 	return socket->remote_endpoint ();

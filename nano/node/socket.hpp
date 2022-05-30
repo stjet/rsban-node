@@ -58,7 +58,6 @@ public:
 
 	/**
 	 * Constructor
-	 * @param node Owning node
 	 * @param endpoint_type_a The endpoint's type: either server or client
 	 */
 	explicit socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::thread_pool & workers_a, std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a);

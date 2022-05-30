@@ -146,7 +146,7 @@ void nano::bulk_pull_client::receive_block ()
 void nano::bulk_pull_client::received_type ()
 {
 	auto this_l (shared_from_this ());
-	nano::block_type type (static_cast<nano::block_type> (connection->receive_buffer->data ()[0]));
+	nano::block_type type (static_cast<nano::block_type> (connection->get_receive_buffer ()[0]));
 
 	switch (type)
 	{
@@ -209,7 +209,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 {
 	if (!ec)
 	{
-		nano::bufferstream stream (connection->receive_buffer->data (), size_a);
+		nano::bufferstream stream (connection->get_receive_buffer (), size_a);
 		auto block (nano::deserialize_block (stream, type_a));
 		if (block != nullptr && !node->network_params.work.validate_entry (*block))
 		{
@@ -348,12 +348,12 @@ void nano::bulk_pull_account_client::receive_pending ()
 			if (!ec)
 			{
 				nano::block_hash pending;
-				nano::bufferstream frontier_stream (this_l->connection->receive_buffer->data (), sizeof (nano::uint256_union));
+				nano::bufferstream frontier_stream (this_l->connection->get_receive_buffer (), sizeof (nano::uint256_union));
 				auto error1 (nano::try_read (frontier_stream, pending));
 				(void)error1;
 				debug_assert (!error1);
 				nano::amount balance;
-				nano::bufferstream balance_stream (this_l->connection->receive_buffer->data () + sizeof (nano::uint256_union), sizeof (nano::uint128_union));
+				nano::bufferstream balance_stream (this_l->connection->get_receive_buffer () + sizeof (nano::uint256_union), sizeof (nano::uint128_union));
 				auto error2 (nano::try_read (balance_stream, balance));
 				(void)error2;
 				debug_assert (!error2);

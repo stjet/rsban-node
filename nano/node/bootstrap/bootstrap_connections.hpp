@@ -40,15 +40,16 @@ public:
 	void async_read (std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
 	void close_socket ();
 	void set_timeout (std::chrono::seconds timeout_a);
+	uint8_t * get_receive_buffer ();
 	nano::tcp_endpoint remote_endpoint () const;
 	std::shared_ptr<nano::transport::channel_tcp> channel;
-	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::atomic<uint64_t> block_count{ 0 };
 	std::atomic<double> block_rate{ 0 };
 	std::atomic<bool> pending_stop{ false };
 	std::atomic<bool> hard_stop{ false };
 
 private:
+	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::socket> socket;
 	nano::bootstrap_client_observer & observer_m;
 	mutable nano::mutex start_time_mutex;

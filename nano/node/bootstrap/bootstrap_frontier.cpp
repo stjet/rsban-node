@@ -97,12 +97,12 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 	{
 		debug_assert (size_a == nano::frontier_req_client::size_frontier);
 		nano::account account;
-		nano::bufferstream account_stream (connection->receive_buffer->data (), sizeof (account));
+		nano::bufferstream account_stream (connection->get_receive_buffer (), sizeof (account));
 		auto error1 (nano::try_read (account_stream, account));
 		(void)error1;
 		debug_assert (!error1);
 		nano::block_hash latest;
-		nano::bufferstream latest_stream (connection->receive_buffer->data () + sizeof (account), sizeof (latest));
+		nano::bufferstream latest_stream (connection->get_receive_buffer () + sizeof (account), sizeof (latest));
 		auto error2 (nano::try_read (latest_stream, latest));
 		(void)error2;
 		debug_assert (!error2);

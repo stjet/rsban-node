@@ -531,10 +531,10 @@ void nano::server_socket::evict_dead_connections ()
 	}
 }
 
-nano::client_socket::client_socket (nano::node & node_a) :
-	socket (node_a.io_ctx, endpoint_type_t::client, node_a.stats, node_a.logger, node_a.workers,
+std::shared_ptr<nano::socket> nano::create_client_socket (nano::node & node_a)
+{
+	return std::make_shared<nano::socket> (node_a.io_ctx, nano::socket::endpoint_type_t::client, node_a.stats, node_a.logger, node_a.workers,
 	node_a.config.tcp_io_timeout,
 	node_a.network_params.network.silent_connection_tolerance_time,
-	node_a.config.logging.network_timeout_logging ())
-{
+	node_a.config.logging.network_timeout_logging ());
 }

@@ -539,7 +539,10 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 		node.network.tcp_channels.udp_fallback (endpoint_a);
 		return;
 	}
-	auto socket = std::make_shared<nano::client_socket> (node);
+	auto socket = std::make_shared<nano::socket> (node.io_ctx, nano::socket::endpoint_type_t::client, node.stats, node.logger, node.workers,
+	node.config.tcp_io_timeout,
+	node.network_params.network.silent_connection_tolerance_time,
+	node.config.logging.network_timeout_logging ());
 	std::weak_ptr<nano::socket> socket_w (socket);
 	auto channel (std::make_shared<nano::transport::channel_tcp> (node, socket_w));
 	std::weak_ptr<nano::node> node_w (node.shared ());

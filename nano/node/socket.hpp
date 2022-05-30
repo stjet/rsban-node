@@ -226,14 +226,5 @@ private:
 	bool limit_reached_for_incoming_subnetwork_connections (std::shared_ptr<nano::socket> const & new_connection);
 };
 
-/** Socket class for TCP clients */
-class client_socket final : public socket
-{
-public:
-	/**
-	 * Constructor
-	 * @param node_a Owning node
-	 */
-	explicit client_socket (nano::node & node_a);
-};
+std::shared_ptr<nano::socket> create_client_socket (nano::node & node_a);
 }

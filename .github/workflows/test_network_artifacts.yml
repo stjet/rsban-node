@@ -36,6 +36,7 @@ jobs:
       - name: Deploy Artifact
         run: ci/actions/deploy.sh
         env:
+          S3_BUILD_DIRECTORY: ${{ secrets.S3_BUILD_DIRECTORY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-2
@@ -61,6 +62,7 @@ jobs:
       - name: Deploy Artifact
         run: ci/actions/deploy.sh
         env:
+          S3_BUILD_DIRECTORY: ${{ secrets.S3_BUILD_DIRECTORY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-2
@@ -84,6 +86,8 @@ jobs:
       - name: Build Docker (simpago/rsnano)
         run: TRAVIS_TAG=${TAG} ci/actions/linux/docker-build.sh
       - name: Deploy Docker (simpago/rsnano)
+      - name: Deploy Docker Hub (simpago/rsnano-test)
+        if: ${{ github.repository == 'simpago/rsnano-node' }}
         run: TRAVIS_TAG=${TAG} ci/actions/linux/docker-deploy.sh
         env:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -118,6 +122,7 @@ jobs:
       - name: Deploy Artifact
         run: ci/actions/windows/deploy.ps1
         env:
+          S3_BUILD_DIRECTORY: ${{ secrets.S3_BUILD_DIRECTORY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-2

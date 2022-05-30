@@ -186,7 +186,7 @@ namespace socket_functions
 }
 
 /** Socket class for TCP servers */
-class server_socket final : public socket
+class server_socket final : public std::enable_shared_from_this<nano::server_socket>
 {
 public:
 	/**
@@ -206,8 +206,14 @@ public:
 	{
 		return acceptor.local_endpoint ().port ();
 	}
+	nano::socket & get_socket ();
 
 private:
+	boost::asio::strand<boost::asio::io_context::executor_type> strand;
+	nano::logger_mt & logger;
+	nano::stat & stats;
+	nano::socket socket;
+	nano::thread_pool & workers;
 	nano::node & node;
 	nano::address_socket_mmap connections_per_address;
 	boost::asio::ip::tcp::acceptor acceptor;

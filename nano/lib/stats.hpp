@@ -88,6 +88,9 @@ public:
 	 * @param bin_count_a If zero (default), \p intervals_a defines all the bins. If non-zero, \p intervals_a contains the total range, which is uniformly distributed into \p bin_count_a bins.
 	 */
 	stat_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a = 0);
+	stat_histogram (nano::stat_histogram const &) = delete;
+	stat_histogram (nano::stat_histogram &&) = delete;
+	~stat_histogram ();
 
 	/** Add \p addend_a to the histogram bin into which \p index_a falls */
 	void add (uint64_t index_a, uint64_t addend_a);
@@ -108,8 +111,7 @@ public:
 	std::vector<bin> get_bins () const;
 
 private:
-	mutable nano::mutex histogram_mutex;
-	std::vector<bin> bins;
+	rsnano::StatHistogramHandle * handle;
 };
 
 /**

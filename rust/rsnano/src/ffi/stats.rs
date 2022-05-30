@@ -1,6 +1,6 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::{Stat, StatConfig, StatDatapoint};
+use crate::{Stat, StatConfig, StatDatapoint, StatHistogram};
 
 #[repr(C)]
 pub struct StatConfigDto {
@@ -137,4 +137,77 @@ pub unsafe extern "C" fn rsn_stat_datapoint_add(
     update_timestamp: bool,
 ) {
     (*handle).0.add(addend, update_timestamp);
+}
+
+#[repr(C)]
+pub struct HistogramBinDto {
+    pub start_inclusive: u64,
+    pub end_exclusive: u64,
+    pub value: u64,
+    pub timestamp_ms: u64,
+}
+
+pub struct StatHistogramHandle(StatHistogram);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_histogram_create(
+    intervals: *const u64,
+    intervals_len: usize,
+    bin_count: u64,
+) -> *mut StatHistogramHandle {
+    let intervals = std::slice::from_raw_parts(intervals, intervals_len);
+    Box::into_raw(Box::new(StatHistogramHandle(StatHistogram::new(
+        intervals, bin_count,
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_histogram_destroy(handle: *mut StatHistogramHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_histogram_add(
+    handle: *mut StatHistogramHandle,
+    index: u64,
+    addend: u64,
+) {
+    (*handle).0.add(index, addend);
+}
+
+pub struct HistogramsBinHandle(Vec<HistogramBinDto>);
+
+#[repr(C)]
+pub struct HistogramBinsDto {
+    bins: *const HistogramBinDto,
+    len: usize,
+    handle: *mut HistogramsBinHandle,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_histogram_get_bins(
+    handle: *const StatHistogramHandle,
+    result: *mut HistogramBinsDto,
+) {
+    let bins = Box::new(HistogramsBinHandle(
+        (*handle)
+            .0
+            .get_bins()
+            .iter()
+            .map(|b| HistogramBinDto {
+                start_inclusive: b.start_inclusive,
+                end_exclusive: b.end_exclusive,
+                value: b.value,
+                timestamp_ms: b.timestamp.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+            })
+            .collect(),
+    ));
+    (*result).bins = bins.0.as_ptr();
+    (*result).len = bins.0.len();
+    (*result).handle = Box::into_raw(bins);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_histogram_bins_destroy(handle: *mut HistogramsBinHandle) {
+    drop(Box::from_raw(handle));
 }

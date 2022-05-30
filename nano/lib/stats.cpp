@@ -192,75 +192,34 @@ public:
 
 nano::stat_histogram::stat_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a)
 {
-	if (bin_count_a == 0)
-	{
-		debug_assert (intervals_a.size () > 1);
-		uint64_t start_inclusive_l = *intervals_a.begin ();
-		for (auto it = std::next (intervals_a.begin ()); it != intervals_a.end (); ++it)
-		{
-			uint64_t end_exclusive_l = *it;
-			bins.emplace_back (start_inclusive_l, end_exclusive_l);
-			start_inclusive_l = end_exclusive_l;
-		}
-	}
-	else
-	{
-		debug_assert (intervals_a.size () == 2);
-		uint64_t min_inclusive_l = *intervals_a.begin ();
-		uint64_t max_exclusive_l = *std::next (intervals_a.begin ());
+	std::vector<uint64_t> intervals_l{ intervals_a };
+	handle = rsnano::rsn_stat_histogram_create (intervals_l.data (), intervals_l.size (), bin_count_a);
+}
 
-		auto domain_l = (max_exclusive_l - min_inclusive_l);
-		auto bin_size_l = (domain_l + bin_count_a - 1) / bin_count_a;
-		auto last_bin_size_l = (domain_l % bin_size_l);
-		auto next_start_l = min_inclusive_l;
-
-		for (size_t i = 0; i < bin_count_a; i++, next_start_l += bin_size_l)
-		{
-			bins.emplace_back (next_start_l, next_start_l + bin_size_l);
-		}
-		if (last_bin_size_l > 0)
-		{
-			bins.emplace_back (next_start_l, next_start_l + last_bin_size_l);
-		}
-	}
+nano::stat_histogram::~stat_histogram ()
+{
+	rsnano::rsn_stat_histogram_destroy (handle);
 }
 
 void nano::stat_histogram::add (uint64_t index_a, uint64_t addend_a)
 {
-	nano::lock_guard<nano::mutex> lk (histogram_mutex);
-	debug_assert (!bins.empty ());
-
-	// The search for a bin is linear, but we're searching just a few
-	// contiguous items which are likely to be in cache.
-	bool found_l = false;
-	for (auto & bin : bins)
-	{
-		if (index_a >= bin.start_inclusive && index_a < bin.end_exclusive)
-		{
-			bin.value += addend_a;
-			bin.timestamp = std::chrono::system_clock::now ();
-			found_l = true;
-			break;
-		}
-	}
-
-	// Clamp into first or last bin if no suitable bin was found
-	if (!found_l)
-	{
-		if (index_a < bins.front ().start_inclusive)
-		{
-			bins.front ().value += addend_a;
-		}
-		else
-		{
-			bins.back ().value += addend_a;
-		}
-	}
+	rsnano::rsn_stat_histogram_add (handle, index_a, addend_a);
 }
 
 std::vector<nano::stat_histogram::bin> nano::stat_histogram::get_bins () const
 {
-	nano::lock_guard<nano::mutex> lk (histogram_mutex);
+	rsnano::HistogramBinsDto bins_dto;
+	rsnano::rsn_stat_histogram_get_bins (handle, &bins_dto);
+	std::vector<nano::stat_histogram::bin> bins;
+	bins.reserve (bins_dto.len);
+	for (auto i = 0; i < bins_dto.len; ++i)
+	{
+		rsnano::HistogramBinDto const * bin_dto = bins_dto.bins + i;
+		nano::stat_histogram::bin bin{ bin_dto->start_inclusive, bin_dto->end_exclusive };
+		bin.value = bin_dto->value;
+		bin.timestamp = std::chrono::system_clock::time_point (std::chrono::milliseconds (bin_dto->timestamp_ms));
+		bins.push_back (bin);
+	}
 	return bins;
 }
 

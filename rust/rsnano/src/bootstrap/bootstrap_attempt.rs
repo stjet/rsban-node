@@ -154,7 +154,7 @@ impl BootstrapAttempt {
 
     pub(crate) fn pull_started(&self) {
         {
-            let _ = self.mutex.lock().unwrap();
+            let _lock = self.mutex.lock().unwrap();
             self.pulling.fetch_add(1, Ordering::SeqCst);
         }
         self.condition.notify_all();
@@ -162,7 +162,7 @@ impl BootstrapAttempt {
 
     pub(crate) fn pull_finished(&self) {
         {
-            let _ = self.mutex.lock().unwrap();
+            let _lock = self.mutex.lock().unwrap();
             self.pulling.fetch_sub(1, Ordering::SeqCst);
         }
         self.condition.notify_all();

@@ -29,6 +29,8 @@ struct BootstrapInitiatorHandle;
 
 struct EpochsHandle;
 
+struct HistogramsBinHandle;
+
 struct LedgerHandle;
 
 struct LocalVoteHistoryHandle;
@@ -42,6 +44,8 @@ struct SignatureCheckerHandle;
 struct StatDatapointHandle;
 
 struct StatHandle;
+
+struct StatHistogramHandle;
 
 struct StateBlockSignatureVerificationHandle;
 
@@ -571,6 +575,21 @@ struct SignatureCheckSetDto
 	const uint8_t * const * pub_keys;
 	const uint8_t * const * signatures;
 	int32_t * verifications;
+};
+
+struct HistogramBinDto
+{
+	uint64_t start_inclusive;
+	uint64_t end_exclusive;
+	uint64_t value;
+	uint64_t timestamp_ms;
+};
+
+struct HistogramBinsDto
+{
+	const HistogramBinDto * bins;
+	uintptr_t len;
+	HistogramsBinHandle * handle;
 };
 
 struct StateBlockDto
@@ -1126,6 +1145,18 @@ void rsn_stat_datapoint_set_timestamp_ms (const StatDatapointHandle * handle, ui
 void rsn_stat_datapoint_set_value (const StatDatapointHandle * handle, uint64_t value);
 
 void rsn_stat_destroy (StatHandle * handle);
+
+void rsn_stat_histogram_add (StatHistogramHandle * handle, uint64_t index, uint64_t addend);
+
+void rsn_stat_histogram_bins_destroy (HistogramsBinHandle * handle);
+
+StatHistogramHandle * rsn_stat_histogram_create (const uint64_t * intervals,
+uintptr_t intervals_len,
+uint64_t bin_count);
+
+void rsn_stat_histogram_destroy (StatHistogramHandle * handle);
+
+void rsn_stat_histogram_get_bins (const StatHistogramHandle * handle, HistogramBinsDto * result);
 
 void rsn_state_block_account (const BlockHandle * handle, uint8_t (*result)[32]);
 

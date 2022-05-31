@@ -1154,11 +1154,18 @@ void rsn_stat_entry_counter_add (StatEntryHandle * handle, uint64_t addend, bool
 
 StatEntryHandle * rsn_stat_entry_create (uintptr_t capacity, uintptr_t interval);
 
+void rsn_stat_entry_define_histogram (StatEntryHandle * handle,
+const uint64_t * intervals,
+uintptr_t intervals_len,
+uint64_t bin_count);
+
 void rsn_stat_entry_destroy (StatEntryHandle * handle);
 
 uint64_t rsn_stat_entry_get_counter_timestamp (const StatEntryHandle * handle);
 
 uint64_t rsn_stat_entry_get_counter_value (const StatEntryHandle * handle);
+
+StatHistogramHandle * rsn_stat_entry_get_histogram (StatEntryHandle * handle);
 
 StatDatapointHandle * rsn_stat_entry_get_sample (const StatEntryHandle * handle, uintptr_t index);
 
@@ -1181,6 +1188,8 @@ void rsn_stat_entry_sample_current_set_value (StatEntryHandle * handle, uint64_t
 void rsn_stat_entry_set_sample_interval (StatEntryHandle * handle, uintptr_t interval);
 
 void rsn_stat_entry_set_sample_start_time (StatEntryHandle * handle, uint64_t time_ms);
+
+void rsn_stat_entry_update_histogram (StatEntryHandle * handle, uint64_t index, uint64_t addend);
 
 void rsn_stat_histogram_add (StatHistogramHandle * handle, uint64_t index, uint64_t addend);
 

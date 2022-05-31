@@ -196,6 +196,11 @@ nano::stat_histogram::stat_histogram (std::initializer_list<uint64_t> intervals_
 	handle = rsnano::rsn_stat_histogram_create (intervals_l.data (), intervals_l.size (), bin_count_a);
 }
 
+nano::stat_histogram::stat_histogram (rsnano::StatHistogramHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::stat_histogram::stat_histogram (nano::stat_histogram const & other_a) :
 	handle{ rsnano::rsn_stat_histogram_clone (other_a.handle) }
 {
@@ -295,19 +300,20 @@ void nano::stat_entry::counter_add (uint64_t addend, bool update_timestamp)
 
 void nano::stat_entry::define_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a)
 {
-	histogram = std::make_unique<nano::stat_histogram> (intervals_a, bin_count_a);
+	std::vector<uint64_t> intervals_l{ intervals_a };
+	rsnano::rsn_stat_entry_define_histogram (handle, intervals_l.data (), intervals_l.size (), bin_count_a);
 }
 
 void nano::stat_entry::update_histogram (uint64_t index_a, uint64_t addend_a)
 {
-	debug_assert (histogram != nullptr);
-	histogram->add (index_a, addend_a);
+	rsnano::rsn_stat_entry_update_histogram (handle, index_a, addend_a);
 }
 
 nano::stat_histogram nano::stat_entry::get_histogram () const
 {
+	auto histogram = rsnano::rsn_stat_entry_get_histogram (handle);
 	debug_assert (histogram != nullptr);
-	return *histogram;
+	return nano::stat_histogram{ histogram };
 }
 
 std::chrono::system_clock::time_point nano::stat_entry::get_sample_start_time ()

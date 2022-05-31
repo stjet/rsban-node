@@ -87,6 +87,7 @@ public:
 	 * @param bin_count_a If zero (default), \p intervals_a defines all the bins. If non-zero, \p intervals_a contains the total range, which is uniformly distributed into \p bin_count_a bins.
 	 */
 	stat_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a = 0);
+	stat_histogram (rsnano::StatHistogramHandle * handle);
 	stat_histogram (nano::stat_histogram const &);
 	stat_histogram (nano::stat_histogram &&);
 	~stat_histogram ();
@@ -142,9 +143,6 @@ public:
 	void set_sample_start_time (std::chrono::system_clock::time_point time);
 
 private:
-	/** Optional histogram for this entry */
-	std::unique_ptr<stat_histogram> histogram;
-
 	rsnano::StatEntryHandle * handle;
 };
 

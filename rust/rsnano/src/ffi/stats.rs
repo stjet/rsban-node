@@ -362,3 +362,36 @@ pub unsafe extern "C" fn rsn_stat_entry_set_sample_start_time(
 ) {
     (*handle).0.sample_start_time = UNIX_EPOCH + Duration::from_millis(time_ms);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_define_histogram(
+    handle: *mut StatEntryHandle,
+    intervals: *const u64,
+    intervals_len: usize,
+    bin_count: u64,
+) {
+    let intervals = std::slice::from_raw_parts(intervals, intervals_len);
+    (*handle).0.histogram = Some(StatHistogram::new(intervals, bin_count));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_update_histogram(
+    handle: *mut StatEntryHandle,
+    index: u64,
+    addend: u64,
+) {
+    match &mut (*handle).0.histogram {
+        Some(h) => h.add(index, addend),
+        None => {}
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_get_histogram(
+    handle: *mut StatEntryHandle,
+) -> *mut StatHistogramHandle {
+    match &mut (*handle).0.histogram {
+        Some(h) => Box::into_raw(Box::new(StatHistogramHandle(h.clone()))),
+        None => std::ptr::null_mut(),
+    }
+}

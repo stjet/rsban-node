@@ -269,6 +269,9 @@ pub struct StatEntry {
 
     /// Start time of current sample interval. This is a steady clock for measuring interval; the datapoint contains the wall time.
     pub sample_start_time: SystemTime,
+
+    /// Optional histogram for this entry
+    pub histogram: Option<StatHistogram>,
 }
 
 impl StatEntry {
@@ -283,6 +286,7 @@ impl StatEntry {
             },
             counter: StatDatapoint::new(),
             sample_start_time: SystemTime::now(),
+            histogram: None,
         }
     }
 }

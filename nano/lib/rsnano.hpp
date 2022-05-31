@@ -43,6 +43,8 @@ struct SignatureCheckerHandle;
 
 struct StatDatapointHandle;
 
+struct StatEntryHandle;
+
 struct StatHandle;
 
 struct StatHistogramHandle;
@@ -1146,9 +1148,45 @@ void rsn_stat_datapoint_set_value (const StatDatapointHandle * handle, uint64_t 
 
 void rsn_stat_destroy (StatHandle * handle);
 
+void rsn_stat_entry_add_sample (StatEntryHandle * handle, const StatDatapointHandle * sample);
+
+void rsn_stat_entry_counter_add (StatEntryHandle * handle, uint64_t addend, bool update_timestamp);
+
+StatEntryHandle * rsn_stat_entry_create (uintptr_t capacity, uintptr_t interval);
+
+void rsn_stat_entry_destroy (StatEntryHandle * handle);
+
+uint64_t rsn_stat_entry_get_counter_timestamp (const StatEntryHandle * handle);
+
+uint64_t rsn_stat_entry_get_counter_value (const StatEntryHandle * handle);
+
+StatDatapointHandle * rsn_stat_entry_get_sample (const StatEntryHandle * handle, uintptr_t index);
+
+uintptr_t rsn_stat_entry_get_sample_count (const StatEntryHandle * handle);
+
+uintptr_t rsn_stat_entry_get_sample_interval (const StatEntryHandle * handle);
+
+uint64_t rsn_stat_entry_get_sample_start_time (const StatEntryHandle * handle);
+
+StatDatapointHandle * rsn_stat_entry_sample_current (const StatEntryHandle * handle);
+
+void rsn_stat_entry_sample_current_add (StatEntryHandle * handle,
+uint64_t value,
+bool update_timestamp);
+
+void rsn_stat_entry_sample_current_set_timestamp (StatEntryHandle * handle, uint64_t timestamp_ms);
+
+void rsn_stat_entry_sample_current_set_value (StatEntryHandle * handle, uint64_t value);
+
+void rsn_stat_entry_set_sample_interval (StatEntryHandle * handle, uintptr_t interval);
+
+void rsn_stat_entry_set_sample_start_time (StatEntryHandle * handle, uint64_t time_ms);
+
 void rsn_stat_histogram_add (StatHistogramHandle * handle, uint64_t index, uint64_t addend);
 
 void rsn_stat_histogram_bins_destroy (HistogramsBinHandle * handle);
+
+StatHistogramHandle * rsn_stat_histogram_clone (const StatHistogramHandle * handle);
 
 StatHistogramHandle * rsn_stat_histogram_create (const uint64_t * intervals,
 uintptr_t intervals_len,

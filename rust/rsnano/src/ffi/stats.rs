@@ -1,6 +1,6 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::{Stat, StatConfig, StatDatapoint, StatHistogram};
+use crate::{Stat, StatConfig, StatDatapoint, StatEntry, StatHistogram};
 
 #[repr(C)]
 pub struct StatConfigDto {
@@ -162,6 +162,13 @@ pub unsafe extern "C" fn rsn_stat_histogram_create(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_stat_histogram_clone(
+    handle: *const StatHistogramHandle,
+) -> *mut StatHistogramHandle {
+    Box::into_raw(Box::new(StatHistogramHandle((*handle).0.clone())))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_stat_histogram_destroy(handle: *mut StatHistogramHandle) {
     drop(Box::from_raw(handle))
 }
@@ -210,4 +217,148 @@ pub unsafe extern "C" fn rsn_stat_histogram_get_bins(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_stat_histogram_bins_destroy(handle: *mut HistogramsBinHandle) {
     drop(Box::from_raw(handle));
+}
+
+pub struct StatEntryHandle(StatEntry);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_create(
+    capacity: usize,
+    interval: usize,
+) -> *mut StatEntryHandle {
+    Box::into_raw(Box::new(StatEntryHandle(StatEntry::new(
+        capacity, interval,
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_destroy(handle: *mut StatEntryHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_get_sample_interval(
+    handle: *const StatEntryHandle,
+) -> usize {
+    (*handle).0.sample_interval
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_set_sample_interval(
+    handle: *mut StatEntryHandle,
+    interval: usize,
+) {
+    (*handle).0.sample_interval = interval;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_sample_current(
+    handle: *const StatEntryHandle,
+) -> *mut StatDatapointHandle {
+    Box::into_raw(Box::new(StatDatapointHandle(
+        (*handle).0.sample_current.clone(),
+    )))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_sample_current_add(
+    handle: *mut StatEntryHandle,
+    value: u64,
+    update_timestamp: bool,
+) {
+    (*handle).0.sample_current.add(value, update_timestamp);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_sample_current_set_value(
+    handle: *mut StatEntryHandle,
+    value: u64,
+) {
+    (*handle).0.sample_current.set_value(value);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_sample_current_set_timestamp(
+    handle: *mut StatEntryHandle,
+    timestamp_ms: u64,
+) {
+    (*handle)
+        .0
+        .sample_current
+        .set_timestamp(SystemTime::UNIX_EPOCH + Duration::from_millis(timestamp_ms));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_get_sample_count(handle: *const StatEntryHandle) -> usize {
+    match &(*handle).0.samples {
+        Some(s) => s.len(),
+        None => 0,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_get_sample(
+    handle: *const StatEntryHandle,
+    index: usize,
+) -> *mut StatDatapointHandle {
+    Box::into_raw(Box::new(StatDatapointHandle(
+        (*handle).0.samples.as_ref().unwrap()[index].clone(),
+    )))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_add_sample(
+    handle: *mut StatEntryHandle,
+    sample: *const StatDatapointHandle,
+) {
+    if let Some(s) = &mut (*handle).0.samples {
+        s.push_back((*sample).0.clone());
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_get_counter_value(handle: *const StatEntryHandle) -> u64 {
+    (*handle).0.counter.get_value()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_get_counter_timestamp(
+    handle: *const StatEntryHandle,
+) -> u64 {
+    (*handle)
+        .0
+        .counter
+        .get_timestamp()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_counter_add(
+    handle: *mut StatEntryHandle,
+    addend: u64,
+    update_timestamp: bool,
+) {
+    (*handle).0.counter.add(addend, update_timestamp)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_get_sample_start_time(
+    handle: *const StatEntryHandle,
+) -> u64 {
+    (*handle)
+        .0
+        .sample_start_time
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_entry_set_sample_start_time(
+    handle: *mut StatEntryHandle,
+    time_ms: u64,
+) {
+    (*handle).0.sample_start_time = UNIX_EPOCH + Duration::from_millis(time_ms);
 }

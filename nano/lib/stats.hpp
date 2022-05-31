@@ -65,6 +65,7 @@ class stat_datapoint final
 public:
 	stat_datapoint ();
 	stat_datapoint (stat_datapoint const & other_a);
+	stat_datapoint (rsnano::StatDatapointHandle * handle);
 	~stat_datapoint ();
 	stat_datapoint & operator= (stat_datapoint const & other_a);
 
@@ -73,8 +74,6 @@ public:
 	std::chrono::system_clock::time_point get_timestamp () const;
 	void set_timestamp (std::chrono::system_clock::time_point timestamp_a);
 	void add (uint64_t addend, bool update_timestamp = true);
-
-private:
 	rsnano::StatDatapointHandle * handle;
 };
 
@@ -88,8 +87,8 @@ public:
 	 * @param bin_count_a If zero (default), \p intervals_a defines all the bins. If non-zero, \p intervals_a contains the total range, which is uniformly distributed into \p bin_count_a bins.
 	 */
 	stat_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a = 0);
-	stat_histogram (nano::stat_histogram const &) = delete;
-	stat_histogram (nano::stat_histogram &&) = delete;
+	stat_histogram (nano::stat_histogram const &);
+	stat_histogram (nano::stat_histogram &&);
 	~stat_histogram ();
 
 	/** Add \p addend_a to the histogram bin into which \p index_a falls */
@@ -120,34 +119,33 @@ private:
 class stat_entry final
 {
 public:
-	stat_entry (size_t capacity, size_t interval) :
-		samples (capacity), sample_interval (interval)
-	{
-	}
+	stat_entry (size_t capacity, size_t interval);
+	stat_entry (nano::stat_entry const &) = delete;
+	stat_entry (nano::stat_entry &&) = delete;
+	~stat_entry ();
 
-	/** Optional samples. Note that this doesn't allocate any memory unless sampling is configured, which sets the capacity. */
-	boost::circular_buffer<stat_datapoint> samples;
+	size_t get_sample_interval ();
+	void set_sample_interval (size_t interval);
+	void sample_current_add (uint64_t value, bool update_timestamp);
+	void sample_current_set_value (uint64_t value);
+	void sample_current_set_timestamp (std::chrono::system_clock::time_point value);
+	nano::stat_datapoint sample_current ();
+	std::vector<nano::stat_datapoint> get_samples ();
+	void add_sample (nano::stat_datapoint const & sample);
+	uint64_t get_counter_value ();
+	std::chrono::system_clock::time_point get_counter_timestamp ();
+	void counter_add (uint64_t addend, bool update_timestamp = true);
+	void define_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a);
+	void update_histogram (uint64_t index_a, uint64_t addend_a);
+	nano::stat_histogram get_histogram () const;
+	std::chrono::system_clock::time_point get_sample_start_time ();
+	void set_sample_start_time (std::chrono::system_clock::time_point time);
 
-	/** Start time of current sample interval. This is a steady clock for measuring interval; the datapoint contains the wall time. */
-	std::chrono::steady_clock::time_point sample_start_time{ std::chrono::steady_clock::now () };
-
-	/** Sample interval in milliseconds. If 0, sampling is disabled. */
-	size_t sample_interval;
-
-	/** Value within the current sample interval */
-	stat_datapoint sample_current;
-
-	/** Counting value for this entry, including the time of last update. This is never reset and only increases. */
-	stat_datapoint counter;
-
+private:
 	/** Optional histogram for this entry */
 	std::unique_ptr<stat_histogram> histogram;
 
-	/** Zero or more observers for samples. Called at the end of the sample interval. */
-	nano::observer_set<boost::circular_buffer<stat_datapoint> &> sample_observers;
-
-	/** Observers for count. Called on each update. */
-	nano::observer_set<uint64_t, uint64_t> count_observers;
+	rsnano::StatEntryHandle * handle;
 };
 
 /** Log sink interface */
@@ -437,7 +435,7 @@ public:
 	void disable_sampling (stat::type type, stat::detail detail, stat::dir dir)
 	{
 		auto entry = get_entry (key_of (type, detail, dir));
-		entry->sample_interval = 0;
+		entry->set_sample_interval (0);
 	}
 
 	/** Increments the given counter */
@@ -498,7 +496,7 @@ public:
 	void update_histogram (stat::type type, stat::detail detail, stat::dir dir, uint64_t index, uint64_t addend = 1);
 
 	/** Returns a non-owning histogram pointer, or nullptr if a histogram is not defined */
-	nano::stat_histogram * get_histogram (stat::type type, stat::detail detail, stat::dir dir);
+	nano::stat_histogram get_histogram (stat::type type, stat::detail detail, stat::dir dir);
 
 	/**
 	 * Add \p value to stat. If sampling is configured, this will update the current sample and
@@ -529,38 +527,6 @@ public:
 		}
 	}
 
-	/**
-	 * Add a sampling observer for a given counter.
-	 * The observer receives a snapshot of the current sampling. Accessing the sample buffer is thus thread safe.
-	 * To avoid recursion, the observer callback must only use the received data point snapshop, not query the stat object.
-	 * @param observer The observer receives a snapshot of the current samples.
-	 */
-	void observe_sample (stat::type type, stat::detail detail, stat::dir dir, std::function<void (boost::circular_buffer<stat_datapoint> &)> observer)
-	{
-		get_entry (key_of (type, detail, dir))->sample_observers.add (observer);
-	}
-
-	void observe_sample (stat::type type, stat::dir dir, std::function<void (boost::circular_buffer<stat_datapoint> &)> observer)
-	{
-		observe_sample (type, stat::detail::all, dir, observer);
-	}
-
-	/**
-	 * Add count observer for a given type, detail and direction combination. The observer receives old and new value.
-	 * To avoid recursion, the observer callback must only use the received counts, not query the stat object.
-	 * @param observer The observer receives the old and the new count.
-	 */
-	void observe_count (stat::type type, stat::detail detail, stat::dir dir, std::function<void (uint64_t, uint64_t)> observer)
-	{
-		get_entry (key_of (type, detail, dir))->count_observers.add (observer);
-	}
-
-	/** Returns a potentially empty list of the last N samples, where N is determined by the 'capacity' configuration */
-	boost::circular_buffer<stat_datapoint> * samples (stat::type type, stat::detail detail, stat::dir dir)
-	{
-		return &get_entry (key_of (type, detail, dir))->samples;
-	}
-
 	/** Returns current value for the given counter at the type level */
 	uint64_t count (stat::type type, stat::dir dir = stat::dir::in)
 	{
@@ -570,7 +536,7 @@ public:
 	/** Returns current value for the given counter at the detail level */
 	uint64_t count (stat::type type, stat::detail detail, stat::dir dir = stat::dir::in)
 	{
-		return get_entry (key_of (type, detail, dir))->counter.get_value ();
+		return get_entry (key_of (type, detail, dir))->get_counter_value ();
 	}
 
 	/** Returns the number of seconds since clear() was last called, or node startup if it's never called. */

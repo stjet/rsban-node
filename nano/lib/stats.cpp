@@ -71,122 +71,92 @@ nano::error nano::stat_config::deserialize_toml (nano::tomlconfig & toml)
 	return toml.get_error ();
 }
 
-std::string nano::stat_log_sink::tm_to_string (tm & tm)
+std::string nano::tm_to_string (tm & tm)
 {
 	return (boost::format ("%04d.%02d.%02d %02d:%02d:%02d") % (1900 + tm.tm_year) % (tm.tm_mon + 1) % tm.tm_mday % tm.tm_hour % tm.tm_min % tm.tm_sec).str ();
+}
+
+nano::stat_log_sink::stat_log_sink (rsnano::StatLogSinkHandle * handle_a) :
+	handle (handle_a)
+{
+}
+
+nano::stat_log_sink::~stat_log_sink ()
+{
+	rsnano::rsn_stat_log_sink_destroy (handle);
+}
+
+void nano::stat_log_sink::begin ()
+{
+	rsnano::rsn_stat_log_sink_begin (handle);
+}
+
+void nano::stat_log_sink::finalize ()
+{
+	rsnano::rsn_stat_log_sink_finalize (handle);
+}
+
+void nano::stat_log_sink::write_header (std::string const & header, std::chrono::system_clock::time_point & walltime)
+{
+	rsnano::rsn_stat_log_sink_write_header (handle, header.c_str (), std::chrono::duration_cast<std::chrono::milliseconds> (walltime.time_since_epoch ()).count ());
+}
+
+void nano::stat_log_sink::write_entry (std::chrono::system_clock::time_point & time, std::string const & type, std::string const & detail, std::string const & dir, uint64_t value, nano::stat_histogram * histogram)
+{
+	rsnano::StatHistogramHandle * hist_handle = nullptr;
+	if (histogram != nullptr)
+	{
+		hist_handle = histogram->handle;
+	}
+	rsnano::rsn_stat_log_sink_write_entry (handle, std::chrono::duration_cast<std::chrono::milliseconds> (time.time_since_epoch ()).count (), type.c_str (), detail.c_str (), dir.c_str (), value, hist_handle);
+}
+
+void nano::stat_log_sink::rotate ()
+{
+	rsnano::rsn_stat_log_sink_rotate (handle);
+}
+
+size_t nano::stat_log_sink::entries ()
+{
+	return rsnano::rsn_stat_log_sink_entries (handle);
+}
+
+void nano::stat_log_sink::inc_entries ()
+{
+	rsnano::rsn_stat_log_sink_inc_entries (handle);
+}
+
+std::string nano::stat_log_sink::to_string ()
+{
+	rsnano::StringDto dto;
+	rsnano::rsn_stat_log_sink_to_string (handle, &dto);
+	std::string result (dto.value);
+	rsnano::rsn_string_destroy (dto.handle);
+	return result;
+}
+
+void * nano::stat_log_sink::to_object ()
+{
+	return rsnano::rsn_stat_log_sink_to_object (handle);
 }
 
 /** JSON sink. The resulting JSON object is provided as both a property_tree::ptree (to_object) and a string (to_string) */
 class json_writer : public nano::stat_log_sink
 {
-	boost::property_tree::ptree tree;
-	boost::property_tree::ptree entries;
-
 public:
-	std::ostream & out () override
+	json_writer () :
+		stat_log_sink (rsnano::rsn_json_writer_create ())
 	{
-		return sstr;
 	}
-
-	void begin () override
-	{
-		tree.clear ();
-	}
-
-	void write_header (std::string const & header, std::chrono::system_clock::time_point & walltime) override
-	{
-		std::time_t now = std::chrono::system_clock::to_time_t (walltime);
-		tm tm = *localtime (&now);
-		tree.put ("type", header);
-		tree.put ("created", tm_to_string (tm));
-	}
-
-	void write_entry (tm & tm, std::string const & type, std::string const & detail, std::string const & dir, uint64_t value, nano::stat_histogram * histogram) override
-	{
-		boost::property_tree::ptree entry;
-		entry.put ("time", boost::format ("%02d:%02d:%02d") % tm.tm_hour % tm.tm_min % tm.tm_sec);
-		entry.put ("type", type);
-		entry.put ("detail", detail);
-		entry.put ("dir", dir);
-		entry.put ("value", value);
-		if (histogram != nullptr)
-		{
-			boost::property_tree::ptree histogram_node;
-			for (auto const & bin : histogram->get_bins ())
-			{
-				boost::property_tree::ptree bin_node;
-				bin_node.put ("start_inclusive", bin.start_inclusive);
-				bin_node.put ("end_exclusive", bin.end_exclusive);
-				bin_node.put ("value", bin.value);
-
-				std::time_t time = std::chrono::system_clock::to_time_t (bin.timestamp);
-				struct tm local_tm = *localtime (&time);
-				bin_node.put ("time", boost::format ("%02d:%02d:%02d") % local_tm.tm_hour % local_tm.tm_min % local_tm.tm_sec);
-				histogram_node.push_back (std::make_pair ("", bin_node));
-			}
-			entry.put_child ("histogram", histogram_node);
-		}
-		entries.push_back (std::make_pair ("", entry));
-	}
-
-	void finalize () override
-	{
-		tree.add_child ("entries", entries);
-	}
-
-	void * to_object () override
-	{
-		return &tree;
-	}
-
-	std::string to_string () override
-	{
-		boost::property_tree::write_json (sstr, tree);
-		return sstr.str ();
-	}
-
-private:
-	std::ostringstream sstr;
 };
 
 /** File sink with rotation support. This writes one counter per line and does not include histogram values. */
 class file_writer : public nano::stat_log_sink
 {
 public:
-	std::ofstream log;
-	std::string filename;
-
-	explicit file_writer (std::string const & filename) :
-		filename (filename)
+	explicit file_writer (std::string const & filename_a) :
+		stat_log_sink{ rsnano::rsn_file_writer_create (reinterpret_cast<const int8_t *> (filename_a.c_str ())) }
 	{
-		log.open (filename.c_str (), std::ofstream::out);
-	}
-	virtual ~file_writer ()
-	{
-		log.close ();
-	}
-	std::ostream & out () override
-	{
-		return log;
-	}
-
-	void write_header (std::string const & header, std::chrono::system_clock::time_point & walltime) override
-	{
-		std::time_t now = std::chrono::system_clock::to_time_t (walltime);
-		tm tm = *localtime (&now);
-		log << header << "," << boost::format ("%04d.%02d.%02d %02d:%02d:%02d") % (1900 + tm.tm_year) % (tm.tm_mon + 1) % tm.tm_mday % tm.tm_hour % tm.tm_min % tm.tm_sec << std::endl;
-	}
-
-	void write_entry (tm & tm, std::string const & type, std::string const & detail, std::string const & dir, uint64_t value, nano::stat_histogram *) override
-	{
-		log << boost::format ("%02d:%02d:%02d") % tm.tm_hour % tm.tm_min % tm.tm_sec << "," << type << "," << detail << "," << dir << "," << value << std::endl;
-	}
-
-	void rotate () override
-	{
-		log.close ();
-		log.open (filename.c_str (), std::ofstream::out);
-		log_entries = 0;
 	}
 };
 
@@ -415,17 +385,15 @@ void nano::stat::log_counters_impl (stat_log_sink & sink)
 
 	for (auto & it : entries)
 	{
-		std::time_t time = std::chrono::system_clock::to_time_t (it.second->get_counter_timestamp ());
-		tm local_tm = *localtime (&time);
-
+		auto time = it.second->get_counter_timestamp ();
 		auto key = it.first;
 		std::string type = type_to_string (key);
 		std::string detail = detail_to_string (key);
 		std::string dir = dir_to_string (key);
 		auto histogram{ it.second->get_histogram () };
-		sink.write_entry (local_tm, type, detail, dir, it.second->get_counter_value (), &histogram);
+		sink.write_entry (time, type, detail, dir, it.second->get_counter_value (), &histogram);
 	}
-	sink.entries ()++;
+	sink.inc_entries ();
 	sink.finalize ();
 }
 
@@ -458,12 +426,11 @@ void nano::stat::log_samples_impl (stat_log_sink & sink)
 
 		for (auto & datapoint : it.second->get_samples ())
 		{
-			std::time_t time = std::chrono::system_clock::to_time_t (datapoint.get_timestamp ());
-			tm local_tm = *localtime (&time);
-			sink.write_entry (local_tm, type, detail, dir, datapoint.get_value (), nullptr);
+			auto time = datapoint.get_timestamp ();
+			sink.write_entry (time, type, detail, dir, datapoint.get_value (), nullptr);
 		}
 	}
-	sink.entries ()++;
+	sink.inc_entries ();
 	sink.finalize ();
 }
 

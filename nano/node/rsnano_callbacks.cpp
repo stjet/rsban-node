@@ -160,6 +160,41 @@ void ptree_add_child (void * parent_handle, const char * name, const void * chil
 	parent_tree->add_child (name_l, *child_tree);
 }
 
+void ptree_put_child (void * parent_handle, const char * name, const void * child_handle)
+{
+	auto parent_tree{ static_cast<boost::property_tree::ptree *> (parent_handle) };
+	auto child_tree{ static_cast<const boost::property_tree::ptree *> (child_handle) };
+	std::string name_l (name);
+	parent_tree->put_child (name_l, *child_tree);
+}
+
+void ptree_clear (void * handle)
+{
+	auto tree{ static_cast<boost::property_tree::ptree *> (handle) };
+	tree->clear ();
+}
+
+void * ptree_to_json (void * handle)
+{
+	auto tree{ static_cast<boost::property_tree::ptree *> (handle) };
+
+	std::ostringstream sstr;
+	boost::property_tree::write_json (sstr, *tree);
+	return new std::string (sstr.str ());
+}
+
+const char * string_chars (void * handle)
+{
+	auto s{ static_cast<std::string *> (handle) };
+	return s->c_str ();
+}
+
+void string_delete (void * handle)
+{
+	auto s{ static_cast<std::string *> (handle) };
+	delete s;
+}
+
 int32_t toml_put_u64 (void * toml_a, const uint8_t * key_a, uintptr_t key_len_a, uint64_t value, const uint8_t * documentation_a, uintptr_t documentation_len_a)
 {
 	try
@@ -379,6 +414,11 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_property_tree_destroy (ptree_destroy);
 	rsnano::rsn_callback_property_tree_push_back (ptree_push_back);
 	rsnano::rsn_callback_property_tree_add_child (ptree_add_child);
+	rsnano::rsn_callback_property_tree_put_child (ptree_put_child);
+	rsnano::rsn_callback_property_tree_clear (ptree_clear);
+	rsnano::rsn_callback_property_tree_to_json (ptree_to_json);
+	rsnano::rsn_callback_string_chars (string_chars);
+	rsnano::rsn_callback_string_delete (string_delete);
 	rsnano::rsn_callback_toml_put_u64 (toml_put_u64);
 	rsnano::rsn_callback_toml_put_i64 (toml_put_i64);
 	rsnano::rsn_callback_toml_put_str (toml_put_str);

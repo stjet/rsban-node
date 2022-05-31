@@ -49,6 +49,8 @@ struct StatHandle;
 
 struct StatHistogramHandle;
 
+struct StatLogSinkHandle;
+
 struct StateBlockSignatureVerificationHandle;
 
 struct StateBlockSignatureVerificationResultHandle;
@@ -159,6 +161,8 @@ using PropertyTreePutStringCallback = void (*) (void *, const char *, uintptr_t,
 
 using PropertyTreePushBackCallback = void (*) (void *, const char *, const void *);
 
+using PropertyTreeClearCallback = void (*) (void *);
+
 using PropertyTreeCreateTreeCallback = void * (*)();
 
 using PropertyTreeDestroyTreeCallback = void (*) (void *);
@@ -167,9 +171,15 @@ using PropertyTreeGetStringCallback = int32_t (*) (const void *, const char *, u
 
 using PropertyTreePutU64Callback = void (*) (void *, const char *, uintptr_t, uint64_t);
 
+using PropertyTreeToJsonCallback = void * (*)(void *);
+
 using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
+
+using StringCharsCallback = const char * (*)(void *);
+
+using StringDeleteCallback = void (*) (void *);
 
 using TomlArrayPutStrCallback = void (*) (void *, const uint8_t *, uintptr_t);
 
@@ -848,6 +858,8 @@ void rsn_callback_property_tree_add (PropertyTreePutStringCallback f);
 
 void rsn_callback_property_tree_add_child (PropertyTreePushBackCallback f);
 
+void rsn_callback_property_tree_clear (PropertyTreeClearCallback f);
+
 void rsn_callback_property_tree_create (PropertyTreeCreateTreeCallback f);
 
 void rsn_callback_property_tree_destroy (PropertyTreeDestroyTreeCallback f);
@@ -856,13 +868,21 @@ void rsn_callback_property_tree_get_string (PropertyTreeGetStringCallback f);
 
 void rsn_callback_property_tree_push_back (PropertyTreePushBackCallback f);
 
+void rsn_callback_property_tree_put_child (PropertyTreePushBackCallback f);
+
 void rsn_callback_property_tree_put_string (PropertyTreePutStringCallback f);
 
 void rsn_callback_property_tree_put_u64 (PropertyTreePutU64Callback f);
 
+void rsn_callback_property_tree_to_json (PropertyTreeToJsonCallback f);
+
 void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
+
+void rsn_callback_string_chars (StringCharsCallback f);
+
+void rsn_callback_string_delete (StringDeleteCallback f);
 
 void rsn_callback_toml_array_put_str (TomlArrayPutStrCallback f);
 
@@ -935,11 +955,15 @@ void rsn_epochs_link (const EpochsHandle * handle, uint8_t epoch, uint8_t * link
 
 void rsn_epochs_signer (const EpochsHandle * handle, uint8_t epoch, uint8_t * signer);
 
+StatLogSinkHandle * rsn_file_writer_create (const int8_t * filename);
+
 void rsn_from_topic (uint8_t topic, StringDto * result);
 
 void rsn_hardened_constants_get (uint8_t * not_an_account, uint8_t * random_128);
 
 int32_t rsn_ipc_config_create (IpcConfigDto * dto, const NetworkConstantsDto * network_constants);
+
+StatLogSinkHandle * rsn_json_writer_create ();
 
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
@@ -1204,6 +1228,34 @@ uint64_t bin_count);
 void rsn_stat_histogram_destroy (StatHistogramHandle * handle);
 
 void rsn_stat_histogram_get_bins (const StatHistogramHandle * handle, HistogramBinsDto * result);
+
+void rsn_stat_log_sink_begin (StatLogSinkHandle * handle);
+
+void rsn_stat_log_sink_destroy (StatLogSinkHandle * handle);
+
+uintptr_t rsn_stat_log_sink_entries (StatLogSinkHandle * handle);
+
+void rsn_stat_log_sink_finalize (StatLogSinkHandle * handle);
+
+void rsn_stat_log_sink_inc_entries (StatLogSinkHandle * handle);
+
+void rsn_stat_log_sink_rotate (StatLogSinkHandle * handle);
+
+void * rsn_stat_log_sink_to_object (StatLogSinkHandle * handle);
+
+void rsn_stat_log_sink_to_string (StatLogSinkHandle * handle, StringDto * result);
+
+void rsn_stat_log_sink_write_entry (StatLogSinkHandle * handle,
+uint64_t time_ms,
+const char * entry_type,
+const char * detail,
+const char * dir,
+uint64_t value,
+const StatHistogramHandle * histogram);
+
+void rsn_stat_log_sink_write_header (StatLogSinkHandle * handle,
+const char * header,
+uint64_t time_ms);
 
 void rsn_state_block_account (const BlockHandle * handle, uint8_t (*result)[32]);
 

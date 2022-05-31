@@ -110,7 +110,6 @@ public:
 	};
 	std::vector<bin> get_bins () const;
 
-private:
 	rsnano::StatHistogramHandle * handle;
 };
 
@@ -150,61 +149,43 @@ private:
 class stat_log_sink
 {
 public:
-	virtual ~stat_log_sink () = default;
-
-	/** Returns a reference to the log output stream */
-	virtual std::ostream & out () = 0;
+	stat_log_sink (rsnano::StatLogSinkHandle * handle_a);
+	virtual ~stat_log_sink ();
 
 	/** Called before logging starts */
-	virtual void begin ()
-	{
-	}
+	void begin ();
 
 	/** Called after logging is completed */
-	virtual void finalize ()
-	{
-	}
+	void finalize ();
 
 	/** Write a header enrty to the log */
-	virtual void write_header (std::string const & header, std::chrono::system_clock::time_point & walltime)
-	{
-	}
+	void write_header (std::string const & header, std::chrono::system_clock::time_point & walltime);
 
 	/** Write a counter or sampling entry to the log. Some log sinks may support writing histograms as well. */
-	virtual void write_entry (tm & tm, std::string const & type, std::string const & detail, std::string const & dir, uint64_t value, nano::stat_histogram * histogram)
-	{
-	}
+	void write_entry (std::chrono::system_clock::time_point & time, std::string const & type, std::string const & detail, std::string const & dir, uint64_t value, nano::stat_histogram * histogram);
 
 	/** Rotates the log (e.g. empty file). This is a no-op for sinks where rotation is not supported. */
-	virtual void rotate ()
-	{
-	}
+	void rotate ();
 
 	/** Returns a reference to the log entry counter */
-	size_t & entries ()
-	{
-		return log_entries;
-	}
+	size_t entries ();
+
+	void inc_entries ();
 
 	/** Returns the string representation of the log. If not supported, an empty string is returned. */
-	virtual std::string to_string ()
-	{
-		return "";
-	}
+	std::string to_string ();
 
 	/**
 	 * Returns the object representation of the log result. The type depends on the sink used.
 	 * @returns Object, or nullptr if no object result is available.
 	 */
-	virtual void * to_object ()
-	{
-		return nullptr;
-	}
+	void * to_object ();
 
-protected:
-	std::string tm_to_string (tm & tm);
-	size_t log_entries{ 0 };
+private:
+	rsnano::StatLogSinkHandle * handle;
 };
+
+std::string tm_to_string (tm & tm);
 
 /**
  * Collects counts and samples for inbound and outbound traffic, blocks, errors, and so on.

@@ -1,6 +1,14 @@
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    ffi::{c_void, CStr},
+    os::raw::c_char,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
-use crate::{Stat, StatConfig, StatDatapoint, StatEntry, StatHistogram};
+use crate::{
+    FileWriter, JsonWriter, Stat, StatConfig, StatDatapoint, StatEntry, StatHistogram, StatLogSink,
+};
+
+use super::{FfiPropertyTreeWriter, StringDto};
 
 #[repr(C)]
 pub struct StatConfigDto {
@@ -392,6 +400,110 @@ pub unsafe extern "C" fn rsn_stat_entry_get_histogram(
 ) -> *mut StatHistogramHandle {
     match &mut (*handle).0.histogram {
         Some(h) => Box::into_raw(Box::new(StatHistogramHandle(h.clone()))),
+        None => std::ptr::null_mut(),
+    }
+}
+
+pub struct StatLogSinkHandle(Box<dyn StatLogSink>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_file_writer_create(filename: *const i8) -> *mut StatLogSinkHandle {
+    let filename = CStr::from_ptr(filename).to_str().unwrap();
+    Box::into_raw(Box::new(StatLogSinkHandle(Box::new(
+        FileWriter::new(filename).unwrap(),
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_json_writer_create() -> *mut StatLogSinkHandle {
+    Box::into_raw(Box::new(StatLogSinkHandle(Box::new(JsonWriter::new()))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_sink_destroy(handle: *mut StatLogSinkHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_sink_begin(handle: *mut StatLogSinkHandle) {
+    (*handle).0.begin().unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_sink_finalize(handle: *mut StatLogSinkHandle) {
+    (*handle).0.finalize();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_sink_write_header(
+    handle: *mut StatLogSinkHandle,
+    header: *const c_char,
+    time_ms: u64,
+) {
+    let header = CStr::from_ptr(header).to_string_lossy();
+    let wall_time = UNIX_EPOCH + Duration::from_millis(time_ms);
+    (*handle).0.write_header(&header, wall_time).unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_sink_write_entry(
+    handle: *mut StatLogSinkHandle,
+    time_ms: u64,
+    entry_type: *const c_char,
+    detail: *const c_char,
+    dir: *const c_char,
+    value: u64,
+    histogram: *const StatHistogramHandle,
+) {
+    let wall_time = UNIX_EPOCH + Duration::from_millis(time_ms);
+    let entry_type = CStr::from_ptr(entry_type).to_string_lossy();
+    let detail = CStr::from_ptr(detail).to_string_lossy();
+    let dir = CStr::from_ptr(dir).to_string_lossy();
+    let histogram = if histogram.is_null() {
+        None
+    } else {
+        Some(&(*histogram).0)
+    };
+    (*handle)
+        .0
+        .write_entry(wall_time, &entry_type, &detail, &dir, value, histogram)
+        .unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_sink_rotate(handle: *mut StatLogSinkHandle) {
+    (*handle).0.rotate().unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_sink_entries(handle: *mut StatLogSinkHandle) -> usize {
+    (*handle).0.entries()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_sink_inc_entries(handle: *mut StatLogSinkHandle) {
+    (*handle).0.inc_entries()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_sink_to_string(
+    handle: *mut StatLogSinkHandle,
+    result: *mut StringDto,
+) {
+    let s = (*handle).0.to_string();
+    (*result) = StringDto::from(s);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_sink_to_object(
+    handle: *mut StatLogSinkHandle,
+) -> *mut c_void {
+    let obj = (*handle).0.to_object();
+    match obj {
+        Some(obj) => {
+            let x = obj.downcast_ref::<FfiPropertyTreeWriter>().unwrap();
+            x.handle
+        }
         None => std::ptr::null_mut(),
     }
 }

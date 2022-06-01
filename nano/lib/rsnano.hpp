@@ -1172,6 +1172,10 @@ void rsn_stat_datapoint_set_value (const StatDatapointHandle * handle, uint64_t 
 
 void rsn_stat_destroy (StatHandle * handle);
 
+uintptr_t rsn_stat_detail_enum_to_string (uint8_t detail, const uint8_t ** result);
+
+uintptr_t rsn_stat_detail_to_string (uint32_t key, const uint8_t ** result);
+
 void rsn_stat_entry_add_sample (StatEntryHandle * handle, const StatDatapointHandle * sample);
 
 void rsn_stat_entry_counter_add (StatEntryHandle * handle, uint64_t addend, bool update_timestamp);
@@ -1256,6 +1260,8 @@ const StatHistogramHandle * histogram);
 void rsn_stat_log_sink_write_header (StatLogSinkHandle * handle,
 const char * header,
 uint64_t time_ms);
+
+uintptr_t rsn_stat_type_to_string (uint32_t key, const uint8_t ** result);
 
 void rsn_state_block_account (const BlockHandle * handle, uint8_t (*result)[32]);
 

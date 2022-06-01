@@ -4,8 +4,11 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use num::FromPrimitive;
+
 use crate::{
-    FileWriter, JsonWriter, Stat, StatConfig, StatDatapoint, StatEntry, StatHistogram, StatLogSink,
+    stat_detail_as_str, stat_type_as_str, DetailType, FileWriter, JsonWriter, Stat, StatConfig,
+    StatDatapoint, StatEntry, StatHistogram, StatLogSink,
 };
 
 use super::{FfiPropertyTreeWriter, StringDto};
@@ -506,4 +509,29 @@ pub unsafe extern "C" fn rsn_stat_log_sink_to_object(
         }
         None => std::ptr::null_mut(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_type_to_string(key: u32, result: *mut *const u8) -> usize {
+    let type_str = stat_type_as_str(key).unwrap();
+    (*result) = type_str.as_ptr();
+    type_str.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_detail_enum_to_string(
+    detail: u8,
+    result: *mut *const u8,
+) -> usize {
+    let detail: DetailType = FromPrimitive::from_u8(detail).unwrap();
+    let s = detail.as_str();
+    (*result) = s.as_ptr();
+    s.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_detail_to_string(key: u32, result: *mut *const u8) -> usize {
+    let s = stat_detail_as_str(key).unwrap();
+    (*result) = s.as_ptr();
+    s.len()
 }

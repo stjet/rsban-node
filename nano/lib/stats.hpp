@@ -403,43 +403,24 @@ public:
 	 * Call this to override the default sample interval and capacity, for a specific stat entry.
 	 * This must be called before any stat entries are added, as part of the node initialiation.
 	 */
-	void configure (stat::type type, stat::detail detail, stat::dir dir, size_t interval, size_t capacity)
-	{
-		get_entry (key_of (type, detail, dir), interval, capacity);
-	}
+	void configure (stat::type type, stat::detail detail, stat::dir dir, size_t interval, size_t capacity);
 
 	/**
 	 * Disables sampling for a given type/detail/dir combination
 	 */
-	void disable_sampling (stat::type type, stat::detail detail, stat::dir dir)
-	{
-		auto entry = get_entry (key_of (type, detail, dir));
-		entry->set_sample_interval (0);
-	}
+	void disable_sampling (stat::type type, stat::detail detail, stat::dir dir);
 
 	/** Increments the given counter */
-	void inc (stat::type type, stat::dir dir = stat::dir::in)
-	{
-		add (type, dir, 1);
-	}
+	void inc (stat::type type, stat::dir dir = stat::dir::in);
 
 	/** Increments the counter for \detail, but doesn't update at the type level */
-	void inc_detail_only (stat::type type, stat::detail detail, stat::dir dir = stat::dir::in)
-	{
-		add (type, detail, dir, 1, true);
-	}
+	void inc_detail_only (stat::type type, stat::detail detail, stat::dir dir = stat::dir::in);
 
 	/** Increments the given counter */
-	void inc (stat::type type, stat::detail detail, stat::dir dir = stat::dir::in)
-	{
-		add (type, detail, dir, 1);
-	}
+	void inc (stat::type type, stat::detail detail, stat::dir dir = stat::dir::in);
 
 	/** Adds \p value to the given counter */
-	void add (stat::type type, stat::dir dir, uint64_t value)
-	{
-		add (type, detail::all, dir, value);
-	}
+	void add (stat::type type, stat::dir dir, uint64_t value);
 
 	/**
 	 * Define histogram bins. Values are clamped into the first and last bins, but a catch-all bin on one or both
@@ -487,36 +468,13 @@ public:
 	 * @param value The amount to add
 	 * @param detail_only If true, only update the detail-level counter
 	 */
-	void add (stat::type type, stat::detail detail, stat::dir dir, uint64_t value, bool detail_only = false)
-	{
-		if (value == 0)
-		{
-			return;
-		}
-
-		constexpr uint32_t no_detail_mask = 0xffff00ff;
-		uint32_t key = key_of (type, detail, dir);
-
-		update (key, value);
-
-		// Optionally update at type-level as well
-		if (!detail_only && (key & no_detail_mask) != key)
-		{
-			update (key & no_detail_mask, value);
-		}
-	}
+	void add (stat::type type, stat::detail detail, stat::dir dir, uint64_t value, bool detail_only = false);
 
 	/** Returns current value for the given counter at the type level */
-	uint64_t count (stat::type type, stat::dir dir = stat::dir::in)
-	{
-		return count (type, stat::detail::all, dir);
-	}
+	uint64_t count (stat::type type, stat::dir dir = stat::dir::in);
 
 	/** Returns current value for the given counter at the detail level */
-	uint64_t count (stat::type type, stat::detail detail, stat::dir dir = stat::dir::in)
-	{
-		return get_entry (key_of (type, detail, dir))->get_counter_value ();
-	}
+	uint64_t count (stat::type type, stat::detail detail, stat::dir dir = stat::dir::in);
 
 	/** Returns the number of seconds since clear() was last called, or node startup if it's never called. */
 	std::chrono::seconds last_reset ();

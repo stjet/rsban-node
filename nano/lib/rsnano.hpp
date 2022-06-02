@@ -29,8 +29,6 @@ struct BootstrapInitiatorHandle;
 
 struct EpochsHandle;
 
-struct HistogramsBinHandle;
-
 struct LedgerHandle;
 
 struct LocalVoteHistoryHandle;
@@ -43,11 +41,7 @@ struct SignatureCheckerHandle;
 
 struct StatDatapointHandle;
 
-struct StatEntryHandle;
-
 struct StatHandle;
-
-struct StatHistogramHandle;
 
 struct StatLogSinkHandle;
 
@@ -587,21 +581,6 @@ struct SignatureCheckSetDto
 	const uint8_t * const * pub_keys;
 	const uint8_t * const * signatures;
 	int32_t * verifications;
-};
-
-struct HistogramBinDto
-{
-	uint64_t start_inclusive;
-	uint64_t end_exclusive;
-	uint64_t value;
-	uint64_t timestamp_ms;
-};
-
-struct HistogramBinsDto
-{
-	const HistogramBinDto * bins;
-	uintptr_t len;
-	HistogramsBinHandle * handle;
 };
 
 struct StateBlockDto
@@ -1206,68 +1185,6 @@ uintptr_t rsn_stat_dir_to_string (uint32_t key, const uint8_t ** result);
 
 void rsn_stat_disable_sampling (StatHandle * handle, uint8_t stat_type, uint8_t detail, uint8_t dir);
 
-void rsn_stat_entry_add_sample (StatEntryHandle * handle, const StatDatapointHandle * sample);
-
-void rsn_stat_entry_counter_add (StatEntryHandle * handle, uint64_t addend, bool update_timestamp);
-
-StatEntryHandle * rsn_stat_entry_create (uintptr_t capacity, uintptr_t interval);
-
-void rsn_stat_entry_define_histogram (StatEntryHandle * handle,
-const uint64_t * intervals,
-uintptr_t intervals_len,
-uint64_t bin_count);
-
-void rsn_stat_entry_destroy (StatEntryHandle * handle);
-
-uint64_t rsn_stat_entry_get_counter_timestamp (const StatEntryHandle * handle);
-
-uint64_t rsn_stat_entry_get_counter_value (const StatEntryHandle * handle);
-
-StatHistogramHandle * rsn_stat_entry_get_histogram (StatEntryHandle * handle);
-
-StatDatapointHandle * rsn_stat_entry_get_sample (const StatEntryHandle * handle, uintptr_t index);
-
-uintptr_t rsn_stat_entry_get_sample_count (const StatEntryHandle * handle);
-
-uintptr_t rsn_stat_entry_get_sample_interval (const StatEntryHandle * handle);
-
-uint64_t rsn_stat_entry_get_sample_start_time (const StatEntryHandle * handle);
-
-StatDatapointHandle * rsn_stat_entry_sample_current (const StatEntryHandle * handle);
-
-void rsn_stat_entry_sample_current_add (StatEntryHandle * handle,
-uint64_t value,
-bool update_timestamp);
-
-void rsn_stat_entry_sample_current_set_timestamp (StatEntryHandle * handle, uint64_t timestamp_ms);
-
-void rsn_stat_entry_sample_current_set_value (StatEntryHandle * handle, uint64_t value);
-
-void rsn_stat_entry_set_sample_interval (StatEntryHandle * handle, uintptr_t interval);
-
-void rsn_stat_entry_set_sample_start_time (StatEntryHandle * handle, uint64_t time_ms);
-
-void rsn_stat_entry_update_histogram (StatEntryHandle * handle, uint64_t index, uint64_t addend);
-
-StatHistogramHandle * rsn_stat_get_histogram (StatHandle * handle,
-uint8_t stat_type,
-uint8_t detail,
-uint8_t dir);
-
-void rsn_stat_histogram_add (StatHistogramHandle * handle, uint64_t index, uint64_t addend);
-
-void rsn_stat_histogram_bins_destroy (HistogramsBinHandle * handle);
-
-StatHistogramHandle * rsn_stat_histogram_clone (const StatHistogramHandle * handle);
-
-StatHistogramHandle * rsn_stat_histogram_create (const uint64_t * intervals,
-uintptr_t intervals_len,
-uint64_t bin_count);
-
-void rsn_stat_histogram_destroy (StatHistogramHandle * handle);
-
-void rsn_stat_histogram_get_bins (const StatHistogramHandle * handle, HistogramBinsDto * result);
-
 uint64_t rsn_stat_last_reset_s (StatHandle * handle);
 
 void rsn_stat_log_counters (StatHandle * handle, StatLogSinkHandle * sink_handle);
@@ -1289,14 +1206,6 @@ void rsn_stat_log_sink_rotate (StatLogSinkHandle * handle);
 void * rsn_stat_log_sink_to_object (StatLogSinkHandle * handle);
 
 void rsn_stat_log_sink_to_string (StatLogSinkHandle * handle, StringDto * result);
-
-void rsn_stat_log_sink_write_entry (StatLogSinkHandle * handle,
-uint64_t time_ms,
-const char * entry_type,
-const char * detail,
-const char * dir,
-uint64_t value,
-const StatHistogramHandle * histogram);
 
 void rsn_stat_log_sink_write_header (StatLogSinkHandle * handle,
 const char * header,

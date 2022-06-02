@@ -77,72 +77,6 @@ public:
 	rsnano::StatDatapointHandle * handle;
 };
 
-/** Histogram values */
-class stat_histogram final
-{
-public:
-	/**
-	 * Create histogram given a set of intervals and an optional bin count
-	 * @param intervals_a Inclusive-exclusive intervals, e.g. {1,5,8,15} produces bins [1,4] [5,7] [8, 14]
-	 * @param bin_count_a If zero (default), \p intervals_a defines all the bins. If non-zero, \p intervals_a contains the total range, which is uniformly distributed into \p bin_count_a bins.
-	 */
-	stat_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a = 0);
-	stat_histogram (rsnano::StatHistogramHandle * handle);
-	stat_histogram (nano::stat_histogram const &);
-	stat_histogram (nano::stat_histogram &&);
-	~stat_histogram ();
-
-	/** Add \p addend_a to the histogram bin into which \p index_a falls */
-	void add (uint64_t index_a, uint64_t addend_a);
-
-	/** Histogram bin with interval, current value and timestamp of last update */
-	class bin final
-	{
-	public:
-		bin (uint64_t start_inclusive_a, uint64_t end_exclusive_a) :
-			start_inclusive (start_inclusive_a), end_exclusive (end_exclusive_a)
-		{
-		}
-		uint64_t start_inclusive;
-		uint64_t end_exclusive;
-		uint64_t value{ 0 };
-		std::chrono::system_clock::time_point timestamp{ std::chrono::system_clock::now () };
-	};
-	std::vector<bin> get_bins () const;
-
-	rsnano::StatHistogramHandle * handle;
-};
-
-/**
- * Bookkeeping of statistics for a specific type/detail/direction combination
- */
-class stat_entry final
-{
-public:
-	stat_entry (size_t capacity, size_t interval);
-	stat_entry (nano::stat_entry const &) = delete;
-	stat_entry (nano::stat_entry &&) = delete;
-	~stat_entry ();
-
-	size_t get_sample_interval ();
-	void set_sample_interval (size_t interval);
-	void sample_current_add (uint64_t value, bool update_timestamp);
-	void sample_current_set_value (uint64_t value);
-	void sample_current_set_timestamp (std::chrono::system_clock::time_point value);
-	nano::stat_datapoint sample_current ();
-	std::vector<nano::stat_datapoint> get_samples ();
-	void add_sample (nano::stat_datapoint const & sample);
-	uint64_t get_counter_value ();
-	std::chrono::system_clock::time_point get_counter_timestamp ();
-	void counter_add (uint64_t addend, bool update_timestamp = true);
-	void define_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a);
-	void update_histogram (uint64_t index_a, uint64_t addend_a);
-	nano::stat_histogram get_histogram () const;
-
-private:
-	rsnano::StatEntryHandle * handle;
-};
-
 /** Log sink interface */
 class stat_log_sink
 {
@@ -158,9 +92,6 @@ public:
 
 	/** Write a header enrty to the log */
 	void write_header (std::string const & header, std::chrono::system_clock::time_point & walltime);
-
-	/** Write a counter or sampling entry to the log. Some log sinks may support writing histograms as well. */
-	void write_entry (std::chrono::system_clock::time_point & time, std::string const & type, std::string const & detail, std::string const & dir, uint64_t value, nano::stat_histogram * histogram);
 
 	/** Rotates the log (e.g. empty file). This is a no-op for sinks where rotation is not supported. */
 	void rotate ();
@@ -181,8 +112,6 @@ public:
 
 	rsnano::StatLogSinkHandle * handle;
 };
-
-std::string tm_to_string (tm & tm);
 
 /**
  * Collects counts and samples for inbound and outbound traffic, blocks, errors, and so on.
@@ -451,9 +380,6 @@ public:
 	 *  stats.update_histogram(type::vote, detail::log, dir::out, 1001, 3)
 	 */
 	void update_histogram (stat::type type, stat::detail detail, stat::dir dir, uint64_t index, uint64_t addend = 1);
-
-	/** Returns a non-owning histogram pointer, or nullptr if a histogram is not defined */
-	nano::stat_histogram get_histogram (stat::type type, stat::detail detail, stat::dir dir);
 
 	/**
 	 * Add \p value to stat. If sampling is configured, this will update the current sample and

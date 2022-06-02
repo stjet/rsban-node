@@ -92,11 +92,6 @@ nano::error nano::stat_config::deserialize_toml (nano::tomlconfig & toml)
 	return toml.get_error ();
 }
 
-std::string nano::tm_to_string (tm & tm)
-{
-	return (boost::format ("%04d.%02d.%02d %02d:%02d:%02d") % (1900 + tm.tm_year) % (tm.tm_mon + 1) % tm.tm_mday % tm.tm_hour % tm.tm_min % tm.tm_sec).str ();
-}
-
 nano::stat_log_sink::stat_log_sink (rsnano::StatLogSinkHandle * handle_a) :
 	handle (handle_a)
 {
@@ -120,16 +115,6 @@ void nano::stat_log_sink::finalize ()
 void nano::stat_log_sink::write_header (std::string const & header, std::chrono::system_clock::time_point & walltime)
 {
 	rsnano::rsn_stat_log_sink_write_header (handle, header.c_str (), std::chrono::duration_cast<std::chrono::milliseconds> (walltime.time_since_epoch ()).count ());
-}
-
-void nano::stat_log_sink::write_entry (std::chrono::system_clock::time_point & time, std::string const & type, std::string const & detail, std::string const & dir, uint64_t value, nano::stat_histogram * histogram)
-{
-	rsnano::StatHistogramHandle * hist_handle = nullptr;
-	if (histogram != nullptr)
-	{
-		hist_handle = histogram->handle;
-	}
-	rsnano::rsn_stat_log_sink_write_entry (handle, std::chrono::duration_cast<std::chrono::milliseconds> (time.time_since_epoch ()).count (), type.c_str (), detail.c_str (), dir.c_str (), value, hist_handle);
 }
 
 void nano::stat_log_sink::rotate ()
@@ -180,149 +165,6 @@ public:
 	{
 	}
 };
-
-nano::stat_histogram::stat_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a)
-{
-	std::vector<uint64_t> intervals_l{ intervals_a };
-	handle = rsnano::rsn_stat_histogram_create (intervals_l.data (), intervals_l.size (), bin_count_a);
-}
-
-nano::stat_histogram::stat_histogram (rsnano::StatHistogramHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::stat_histogram::stat_histogram (nano::stat_histogram const & other_a) :
-	handle{ rsnano::rsn_stat_histogram_clone (other_a.handle) }
-{
-}
-
-nano::stat_histogram::stat_histogram (nano::stat_histogram && other_a) :
-	handle{ other_a.handle }
-{
-	other_a.handle = nullptr;
-}
-
-nano::stat_histogram::~stat_histogram ()
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_stat_histogram_destroy (handle);
-	}
-}
-
-void nano::stat_histogram::add (uint64_t index_a, uint64_t addend_a)
-{
-	rsnano::rsn_stat_histogram_add (handle, index_a, addend_a);
-}
-
-std::vector<nano::stat_histogram::bin> nano::stat_histogram::get_bins () const
-{
-	rsnano::HistogramBinsDto bins_dto;
-	rsnano::rsn_stat_histogram_get_bins (handle, &bins_dto);
-	std::vector<nano::stat_histogram::bin> bins;
-	bins.reserve (bins_dto.len);
-	for (auto i = 0; i < bins_dto.len; ++i)
-	{
-		rsnano::HistogramBinDto const * bin_dto = bins_dto.bins + i;
-		nano::stat_histogram::bin bin{ bin_dto->start_inclusive, bin_dto->end_exclusive };
-		bin.value = bin_dto->value;
-		bin.timestamp = std::chrono::system_clock::time_point (std::chrono::milliseconds (bin_dto->timestamp_ms));
-		bins.push_back (bin);
-	}
-	return bins;
-}
-
-nano::stat_entry::stat_entry (size_t capacity, size_t interval) :
-	handle (rsnano::rsn_stat_entry_create (capacity, interval))
-{
-}
-
-nano::stat_entry::~stat_entry ()
-{
-	rsnano::rsn_stat_entry_destroy (handle);
-}
-
-size_t nano::stat_entry::get_sample_interval ()
-{
-	return rsnano::rsn_stat_entry_get_sample_interval (handle);
-}
-
-void nano::stat_entry::set_sample_interval (size_t interval)
-{
-	rsnano::rsn_stat_entry_set_sample_interval (handle, interval);
-}
-
-void nano::stat_entry::sample_current_add (uint64_t value, bool update_timestamp)
-{
-	rsnano::rsn_stat_entry_sample_current_add (handle, value, update_timestamp);
-}
-
-void nano::stat_entry::sample_current_set_value (uint64_t value)
-{
-	rsnano::rsn_stat_entry_sample_current_set_value (handle, value);
-}
-
-void nano::stat_entry::sample_current_set_timestamp (std::chrono::system_clock::time_point value)
-{
-	rsnano::rsn_stat_entry_sample_current_set_timestamp (handle, std::chrono::duration_cast<std::chrono::milliseconds> (value.time_since_epoch ()).count ());
-}
-
-void nano::stat_entry::add_sample (nano::stat_datapoint const & sample)
-{
-	rsnano::rsn_stat_entry_add_sample (handle, sample.handle);
-}
-
-uint64_t nano::stat_entry::get_counter_value ()
-{
-	return rsnano::rsn_stat_entry_get_counter_value (handle);
-}
-
-std::chrono::system_clock::time_point nano::stat_entry::get_counter_timestamp ()
-{
-	std::chrono::milliseconds ms (rsnano::rsn_stat_entry_get_counter_timestamp (handle));
-	return std::chrono::system_clock::time_point (ms);
-}
-
-void nano::stat_entry::counter_add (uint64_t addend, bool update_timestamp)
-{
-	rsnano::rsn_stat_entry_counter_add (handle, addend, update_timestamp);
-}
-
-void nano::stat_entry::define_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a)
-{
-	std::vector<uint64_t> intervals_l{ intervals_a };
-	rsnano::rsn_stat_entry_define_histogram (handle, intervals_l.data (), intervals_l.size (), bin_count_a);
-}
-
-void nano::stat_entry::update_histogram (uint64_t index_a, uint64_t addend_a)
-{
-	rsnano::rsn_stat_entry_update_histogram (handle, index_a, addend_a);
-}
-
-nano::stat_histogram nano::stat_entry::get_histogram () const
-{
-	auto histogram = rsnano::rsn_stat_entry_get_histogram (handle);
-	debug_assert (histogram != nullptr);
-	return nano::stat_histogram{ histogram };
-}
-
-nano::stat_datapoint nano::stat_entry::sample_current ()
-{
-	return nano::stat_datapoint{ rsnano::rsn_stat_entry_sample_current (handle) };
-}
-
-std::vector<nano::stat_datapoint> nano::stat_entry::get_samples ()
-{
-	auto count = rsnano::rsn_stat_entry_get_sample_count (handle);
-	std::vector<nano::stat_datapoint> result;
-	result.reserve (count);
-	for (auto i = 0; i < count; ++i)
-	{
-		result.emplace_back (rsnano::rsn_stat_entry_get_sample (handle, i));
-	}
-	return result;
-}
 
 nano::stat::stat () :
 	stat (nano::stat_config ())
@@ -377,20 +219,6 @@ void nano::stat::update_histogram (stat::type type, stat::detail detail, stat::d
 	static_cast<uint8_t> (dir),
 	index_a,
 	addend_a);
-}
-
-nano::stat_histogram nano::stat::get_histogram (stat::type type, stat::detail detail, stat::dir dir)
-{
-	auto hist_handle{ rsnano::rsn_stat_get_histogram (
-	handle,
-	static_cast<uint8_t> (type),
-	static_cast<uint8_t> (detail),
-	static_cast<uint8_t> (dir)) };
-	if (hist_handle == nullptr)
-	{
-		return nullptr;
-	}
-	return nano::stat_histogram{ hist_handle };
 }
 
 std::chrono::seconds nano::stat::last_reset ()

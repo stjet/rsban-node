@@ -8,7 +8,7 @@ use num::FromPrimitive;
 
 use crate::{
     stat_detail_as_str, stat_dir_as_str, stat_type_as_str, DetailType, FileWriter, JsonWriter,
-    Stat, StatConfig, StatDatapoint, StatEntry, StatHistogram, StatLogSink,
+    Stat, StatConfig, StatDatapoint, StatLogSink,
 };
 
 use super::{FfiPropertyTreeWriter, StringDto};
@@ -158,41 +158,6 @@ pub struct HistogramBinDto {
     pub timestamp_ms: u64,
 }
 
-pub struct StatHistogramHandle(StatHistogram);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_histogram_create(
-    intervals: *const u64,
-    intervals_len: usize,
-    bin_count: u64,
-) -> *mut StatHistogramHandle {
-    let intervals = std::slice::from_raw_parts(intervals, intervals_len);
-    Box::into_raw(Box::new(StatHistogramHandle(StatHistogram::new(
-        intervals, bin_count,
-    ))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_histogram_clone(
-    handle: *const StatHistogramHandle,
-) -> *mut StatHistogramHandle {
-    Box::into_raw(Box::new(StatHistogramHandle((*handle).0.clone())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_histogram_destroy(handle: *mut StatHistogramHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_histogram_add(
-    handle: *mut StatHistogramHandle,
-    index: u64,
-    addend: u64,
-) {
-    (*handle).0.add(index, addend);
-}
-
 pub struct HistogramsBinHandle(Vec<HistogramBinDto>);
 
 #[repr(C)]
@@ -200,191 +165,6 @@ pub struct HistogramBinsDto {
     bins: *const HistogramBinDto,
     len: usize,
     handle: *mut HistogramsBinHandle,
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_histogram_get_bins(
-    handle: *const StatHistogramHandle,
-    result: *mut HistogramBinsDto,
-) {
-    let bins = Box::new(HistogramsBinHandle(
-        (*handle)
-            .0
-            .get_bins()
-            .iter()
-            .map(|b| HistogramBinDto {
-                start_inclusive: b.start_inclusive,
-                end_exclusive: b.end_exclusive,
-                value: b.value,
-                timestamp_ms: b.timestamp.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
-            })
-            .collect(),
-    ));
-    (*result).bins = bins.0.as_ptr();
-    (*result).len = bins.0.len();
-    (*result).handle = Box::into_raw(bins);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_histogram_bins_destroy(handle: *mut HistogramsBinHandle) {
-    drop(Box::from_raw(handle));
-}
-
-pub struct StatEntryHandle(StatEntry);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_create(
-    capacity: usize,
-    interval: usize,
-) -> *mut StatEntryHandle {
-    Box::into_raw(Box::new(StatEntryHandle(StatEntry::new(
-        capacity, interval,
-    ))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_destroy(handle: *mut StatEntryHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_get_sample_interval(
-    handle: *const StatEntryHandle,
-) -> usize {
-    (*handle).0.sample_interval
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_set_sample_interval(
-    handle: *mut StatEntryHandle,
-    interval: usize,
-) {
-    (*handle).0.sample_interval = interval;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_sample_current(
-    handle: *const StatEntryHandle,
-) -> *mut StatDatapointHandle {
-    Box::into_raw(Box::new(StatDatapointHandle(
-        (*handle).0.sample_current.clone(),
-    )))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_sample_current_add(
-    handle: *mut StatEntryHandle,
-    value: u64,
-    update_timestamp: bool,
-) {
-    (*handle).0.sample_current.add(value, update_timestamp);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_sample_current_set_value(
-    handle: *mut StatEntryHandle,
-    value: u64,
-) {
-    (*handle).0.sample_current.set_value(value);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_sample_current_set_timestamp(
-    handle: *mut StatEntryHandle,
-    timestamp_ms: u64,
-) {
-    (*handle)
-        .0
-        .sample_current
-        .set_timestamp(SystemTime::UNIX_EPOCH + Duration::from_millis(timestamp_ms));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_get_sample_count(handle: *const StatEntryHandle) -> usize {
-    match &(*handle).0.samples {
-        Some(s) => s.len(),
-        None => 0,
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_get_sample(
-    handle: *const StatEntryHandle,
-    index: usize,
-) -> *mut StatDatapointHandle {
-    Box::into_raw(Box::new(StatDatapointHandle(
-        (*handle).0.samples.as_ref().unwrap()[index].clone(),
-    )))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_add_sample(
-    handle: *mut StatEntryHandle,
-    sample: *const StatDatapointHandle,
-) {
-    if let Some(s) = &mut (*handle).0.samples {
-        s.push_back((*sample).0.clone());
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_get_counter_value(handle: *const StatEntryHandle) -> u64 {
-    (*handle).0.counter.get_value()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_get_counter_timestamp(
-    handle: *const StatEntryHandle,
-) -> u64 {
-    (*handle)
-        .0
-        .counter
-        .get_timestamp()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_counter_add(
-    handle: *mut StatEntryHandle,
-    addend: u64,
-    update_timestamp: bool,
-) {
-    (*handle).0.counter.add(addend, update_timestamp)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_define_histogram(
-    handle: *mut StatEntryHandle,
-    intervals: *const u64,
-    intervals_len: usize,
-    bin_count: u64,
-) {
-    let intervals = std::slice::from_raw_parts(intervals, intervals_len);
-    (*handle).0.histogram = Some(StatHistogram::new(intervals, bin_count));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_update_histogram(
-    handle: *mut StatEntryHandle,
-    index: u64,
-    addend: u64,
-) {
-    match &mut (*handle).0.histogram {
-        Some(h) => h.add(index, addend),
-        None => {}
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_get_histogram(
-    handle: *mut StatEntryHandle,
-) -> *mut StatHistogramHandle {
-    match &mut (*handle).0.histogram {
-        Some(h) => Box::into_raw(Box::new(StatHistogramHandle(h.clone()))),
-        None => std::ptr::null_mut(),
-    }
 }
 
 pub struct StatLogSinkHandle(Box<dyn StatLogSink>);
@@ -426,31 +206,6 @@ pub unsafe extern "C" fn rsn_stat_log_sink_write_header(
     let header = CStr::from_ptr(header).to_string_lossy();
     let wall_time = UNIX_EPOCH + Duration::from_millis(time_ms);
     (*handle).0.write_header(&header, wall_time).unwrap();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_log_sink_write_entry(
-    handle: *mut StatLogSinkHandle,
-    time_ms: u64,
-    entry_type: *const c_char,
-    detail: *const c_char,
-    dir: *const c_char,
-    value: u64,
-    histogram: *const StatHistogramHandle,
-) {
-    let wall_time = UNIX_EPOCH + Duration::from_millis(time_ms);
-    let entry_type = CStr::from_ptr(entry_type).to_string_lossy();
-    let detail = CStr::from_ptr(detail).to_string_lossy();
-    let dir = CStr::from_ptr(dir).to_string_lossy();
-    let histogram = if histogram.is_null() {
-        None
-    } else {
-        Some(&(*histogram).0)
-    };
-    (*handle)
-        .0
-        .write_entry(wall_time, &entry_type, &detail, &dir, value, histogram)
-        .unwrap();
 }
 
 #[no_mangle]
@@ -598,23 +353,6 @@ pub unsafe extern "C" fn rsn_stat_update_histogram(
     (*handle)
         .0
         .update_histogram(stat_type, detail, dir, index, addend);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_get_histogram(
-    handle: *mut StatHandle,
-    stat_type: u8,
-    detail: u8,
-    dir: u8,
-) -> *mut StatHistogramHandle {
-    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
-    let detail = FromPrimitive::from_u8(detail).unwrap();
-    let dir = FromPrimitive::from_u8(dir).unwrap();
-    let histogram = (*handle).0.get_histogram(stat_type, detail, dir);
-    match histogram {
-        Some(h) => Box::into_raw(Box::new(StatHistogramHandle(h))),
-        None => std::ptr::null_mut(),
-    }
 }
 
 #[no_mangle]

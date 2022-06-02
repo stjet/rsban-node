@@ -10,6 +10,27 @@
 #include <fstream>
 #include <sstream>
 
+std::string type_to_string (uint32_t key)
+{
+	uint8_t const * ptr;
+	auto len = rsnano::rsn_stat_type_to_string (key, &ptr);
+	return std::string (reinterpret_cast<const char *> (ptr), len);
+}
+
+std::string detail_key_to_string (uint32_t key)
+{
+	uint8_t const * ptr;
+	auto len = rsnano::rsn_stat_detail_to_string (key, &ptr);
+	return std::string (reinterpret_cast<const char *> (ptr), len);
+}
+
+std::string dir_to_string (uint32_t key)
+{
+	uint8_t const * ptr;
+	auto len = rsnano::rsn_stat_dir_to_string (key, &ptr);
+	return std::string (reinterpret_cast<const char *> (ptr), len);
+}
+
 void nano::stat_config::load_dto (rsnano::StatConfigDto & dto)
 {
 	sampling_enabled = dto.sampling_enabled;
@@ -286,17 +307,6 @@ nano::stat_histogram nano::stat_entry::get_histogram () const
 	return nano::stat_histogram{ histogram };
 }
 
-std::chrono::system_clock::time_point nano::stat_entry::get_sample_start_time ()
-{
-	auto ms{ std::chrono::milliseconds (rsnano::rsn_stat_entry_get_sample_start_time (handle)) };
-	return std::chrono::system_clock::time_point (ms);
-}
-
-void nano::stat_entry::set_sample_start_time (std::chrono::system_clock::time_point time)
-{
-	rsnano::rsn_stat_entry_set_sample_start_time (handle, std::chrono::duration_cast<std::chrono::milliseconds> (time.time_since_epoch ()).count ());
-}
-
 nano::stat_datapoint nano::stat_entry::sample_current ()
 {
 	return nano::stat_datapoint{ rsnano::rsn_stat_entry_sample_current (handle) };
@@ -319,8 +329,7 @@ nano::stat::stat () :
 {
 }
 
-nano::stat::stat (nano::stat_config config) :
-	config (config)
+nano::stat::stat (nano::stat_config config)
 {
 	auto config_dto{ config.to_dto () };
 	handle = rsnano::rsn_stat_create (&config_dto);
@@ -331,33 +340,6 @@ nano::stat::~stat ()
 	rsnano::rsn_stat_destroy (handle);
 }
 
-std::shared_ptr<nano::stat_entry> nano::stat::get_entry (uint32_t key)
-{
-	return get_entry (key, config.interval, config.capacity);
-}
-
-std::shared_ptr<nano::stat_entry> nano::stat::get_entry (uint32_t key, size_t interval, size_t capacity)
-{
-	nano::unique_lock<nano::mutex> lock (stat_mutex);
-	return get_entry_impl (key, interval, capacity);
-}
-
-std::shared_ptr<nano::stat_entry> nano::stat::get_entry_impl (uint32_t key, size_t interval, size_t capacity)
-{
-	std::shared_ptr<nano::stat_entry> res;
-	auto entry = entries.find (key);
-	if (entry == entries.end ())
-	{
-		res = entries.emplace (key, std::make_shared<nano::stat_entry> (capacity, interval)).first->second;
-	}
-	else
-	{
-		res = entry->second;
-	}
-
-	return res;
-}
-
 std::unique_ptr<nano::stat_log_sink> nano::stat::log_sink_json () const
 {
 	return std::make_unique<json_writer> ();
@@ -365,169 +347,65 @@ std::unique_ptr<nano::stat_log_sink> nano::stat::log_sink_json () const
 
 void nano::stat::log_counters (stat_log_sink & sink)
 {
-	nano::unique_lock<nano::mutex> lock (stat_mutex);
-	log_counters_impl (sink);
-}
-
-void nano::stat::log_counters_impl (stat_log_sink & sink)
-{
-	sink.begin ();
-	if (sink.entries () >= config.log_rotation_count)
-	{
-		sink.rotate ();
-	}
-
-	if (config.log_headers)
-	{
-		auto walltime (std::chrono::system_clock::now ());
-		sink.write_header ("counters", walltime);
-	}
-
-	for (auto & it : entries)
-	{
-		auto time = it.second->get_counter_timestamp ();
-		auto key = it.first;
-		std::string type = type_to_string (key);
-		std::string detail = detail_to_string (key);
-		std::string dir = dir_to_string (key);
-		auto histogram{ it.second->get_histogram () };
-		sink.write_entry (time, type, detail, dir, it.second->get_counter_value (), &histogram);
-	}
-	sink.inc_entries ();
-	sink.finalize ();
+	rsnano::rsn_stat_log_counters (handle, sink.handle);
 }
 
 void nano::stat::log_samples (stat_log_sink & sink)
 {
-	nano::unique_lock<nano::mutex> lock (stat_mutex);
-	log_samples_impl (sink);
-}
-
-void nano::stat::log_samples_impl (stat_log_sink & sink)
-{
-	sink.begin ();
-	if (sink.entries () >= config.log_rotation_count)
-	{
-		sink.rotate ();
-	}
-
-	if (config.log_headers)
-	{
-		auto walltime (std::chrono::system_clock::now ());
-		sink.write_header ("samples", walltime);
-	}
-
-	for (auto & it : entries)
-	{
-		auto key = it.first;
-		std::string type = type_to_string (key);
-		std::string detail = detail_to_string (key);
-		std::string dir = dir_to_string (key);
-
-		for (auto & datapoint : it.second->get_samples ())
-		{
-			auto time = datapoint.get_timestamp ();
-			sink.write_entry (time, type, detail, dir, datapoint.get_value (), nullptr);
-		}
-	}
-	sink.inc_entries ();
-	sink.finalize ();
+	rsnano::rsn_stat_log_samples (handle, sink.handle);
 }
 
 void nano::stat::define_histogram (stat::type type, stat::detail detail, stat::dir dir, std::initializer_list<uint64_t> intervals_a, size_t bin_count_a /*=0*/)
 {
-	auto entry (get_entry (key_of (type, detail, dir)));
-	entry->define_histogram (intervals_a, bin_count_a);
+	std::vector<uint64_t> intervals_l{ intervals_a };
+	rsnano::rsn_stat_define_histogram (
+	handle,
+	static_cast<uint8_t> (type),
+	static_cast<uint8_t> (detail),
+	static_cast<uint8_t> (dir),
+	intervals_l.data (),
+	intervals_l.size (),
+	bin_count_a);
 }
 
 void nano::stat::update_histogram (stat::type type, stat::detail detail, stat::dir dir, uint64_t index_a, uint64_t addend_a)
 {
-	auto entry (get_entry (key_of (type, detail, dir)));
-	entry->update_histogram (index_a, addend_a);
+	rsnano::rsn_stat_update_histogram (
+	handle,
+	static_cast<uint8_t> (type),
+	static_cast<uint8_t> (detail),
+	static_cast<uint8_t> (dir),
+	index_a,
+	addend_a);
 }
 
 nano::stat_histogram nano::stat::get_histogram (stat::type type, stat::detail detail, stat::dir dir)
 {
-	auto entry (get_entry (key_of (type, detail, dir)));
-	return entry->get_histogram ();
-}
-
-void nano::stat::update (uint32_t key_a, uint64_t value)
-{
-	static file_writer log_count (config.log_counters_filename);
-	static file_writer log_sample (config.log_samples_filename);
-
-	auto now (std::chrono::steady_clock::now ());
-	auto now2 (std::chrono::system_clock::now ());
-
-	nano::unique_lock<nano::mutex> lock (stat_mutex);
-	if (!stopped)
+	auto hist_handle{ rsnano::rsn_stat_get_histogram (
+	handle,
+	static_cast<uint8_t> (type),
+	static_cast<uint8_t> (detail),
+	static_cast<uint8_t> (dir)) };
+	if (hist_handle == nullptr)
 	{
-		auto entry (get_entry_impl (key_a, config.interval, config.capacity));
-
-		// Counters
-		auto old (entry->get_counter_value ());
-		entry->counter_add (value);
-
-		std::chrono::duration<double, std::milli> duration = now - log_last_count_writeout;
-		if (config.log_interval_counters > 0 && duration.count () > config.log_interval_counters)
-		{
-			log_counters_impl (log_count);
-			log_last_count_writeout = now;
-		}
-
-		// Samples
-		if (config.sampling_enabled && entry->get_sample_interval () > 0)
-		{
-			entry->sample_current_add (value, false);
-
-			std::chrono::duration<double, std::milli> duration = now2 - entry->get_sample_start_time ();
-			if (duration.count () > entry->get_sample_interval ())
-			{
-				entry->set_sample_start_time (now2);
-
-				// Make a snapshot of samples for thread safety and to get a stable container
-				entry->sample_current_set_timestamp (std::chrono::system_clock::now ());
-				entry->add_sample (entry->sample_current ());
-				entry->sample_current_set_value (0);
-
-				// Log sink
-				duration = now - log_last_sample_writeout;
-				if (config.log_interval_samples > 0 && duration.count () > config.log_interval_samples)
-				{
-					log_samples_impl (log_sample);
-					log_last_sample_writeout = now;
-				}
-			}
-		}
+		return nullptr;
 	}
+	return nano::stat_histogram{ hist_handle };
 }
 
 std::chrono::seconds nano::stat::last_reset ()
 {
-	nano::unique_lock<nano::mutex> lock (stat_mutex);
-	auto now (std::chrono::steady_clock::now ());
-	return std::chrono::duration_cast<std::chrono::seconds> (now - timestamp);
+	return std::chrono::seconds{ rsnano::rsn_stat_last_reset_s (handle) };
 }
 
 void nano::stat::stop ()
 {
-	nano::lock_guard<nano::mutex> guard (stat_mutex);
-	stopped = true;
+	rsnano::rsn_stat_stop (handle);
 }
 
 void nano::stat::clear ()
 {
-	nano::unique_lock<nano::mutex> lock (stat_mutex);
-	entries.clear ();
-	timestamp = std::chrono::steady_clock::now ();
-}
-
-std::string nano::stat::type_to_string (uint32_t key)
-{
-	uint8_t const * ptr;
-	auto len = rsnano::rsn_stat_type_to_string (key, &ptr);
-	return std::string (reinterpret_cast<const char *> (ptr), len);
+	rsnano::rsn_stat_clear (handle);
 }
 
 std::string nano::stat::detail_to_string (stat::detail detail)
@@ -537,38 +415,24 @@ std::string nano::stat::detail_to_string (stat::detail detail)
 	return std::string (reinterpret_cast<const char *> (ptr), len);
 }
 
-std::string nano::stat::detail_to_string (uint32_t key)
-{
-	uint8_t const * ptr;
-	auto len = rsnano::rsn_stat_detail_to_string (key, &ptr);
-	return std::string (reinterpret_cast<const char *> (ptr), len);
-}
-
-std::string nano::stat::dir_to_string (uint32_t key)
-{
-	auto dir = static_cast<stat::dir> (key & 0x000000ff);
-	std::string res;
-	switch (dir)
-	{
-		case nano::stat::dir::in:
-			res = "in";
-			break;
-		case nano::stat::dir::out:
-			res = "out";
-			break;
-	}
-	return res;
-}
-
 void nano::stat::configure (stat::type type, stat::detail detail, stat::dir dir, size_t interval, size_t capacity)
 {
-	get_entry (key_of (type, detail, dir), interval, capacity);
+	rsnano::rsn_stat_configure (
+	handle,
+	static_cast<uint8_t> (type),
+	static_cast<uint8_t> (detail),
+	static_cast<uint8_t> (dir),
+	interval,
+	capacity);
 }
 
 void nano::stat::disable_sampling (stat::type type, stat::detail detail, stat::dir dir)
 {
-	auto entry = get_entry (key_of (type, detail, dir));
-	entry->set_sample_interval (0);
+	rsnano::rsn_stat_disable_sampling (
+	handle,
+	static_cast<uint8_t> (type),
+	static_cast<uint8_t> (detail),
+	static_cast<uint8_t> (dir));
 }
 
 void nano::stat::inc (stat::type type, stat::dir dir)
@@ -593,21 +457,12 @@ void nano::stat::add (stat::type type, stat::dir dir, uint64_t value)
 
 void nano::stat::add (stat::type type, stat::detail detail, stat::dir dir, uint64_t value, bool detail_only)
 {
-	if (value == 0)
-	{
-		return;
-	}
-
-	constexpr uint32_t no_detail_mask = 0xffff00ff;
-	uint32_t key = key_of (type, detail, dir);
-
-	update (key, value);
-
-	// Optionally update at type-level as well
-	if (!detail_only && (key & no_detail_mask) != key)
-	{
-		update (key & no_detail_mask, value);
-	}
+	rsnano::rsn_stat_add (handle,
+	static_cast<uint8_t> (type),
+	static_cast<uint8_t> (detail),
+	static_cast<uint8_t> (dir),
+	value,
+	detail_only);
 }
 
 uint64_t nano::stat::count (stat::type type, stat::dir dir)
@@ -617,7 +472,10 @@ uint64_t nano::stat::count (stat::type type, stat::dir dir)
 
 uint64_t nano::stat::count (stat::type type, stat::detail detail, stat::dir dir)
 {
-	return get_entry (key_of (type, detail, dir))->get_counter_value ();
+	return rsnano::rsn_stat_count (handle,
+	static_cast<uint8_t> (type),
+	static_cast<uint8_t> (detail),
+	static_cast<uint8_t> (dir));
 }
 
 nano::stat_datapoint::stat_datapoint () :

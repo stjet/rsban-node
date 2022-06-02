@@ -138,8 +138,6 @@ public:
 	void define_histogram (std::initializer_list<uint64_t> intervals_a, size_t bin_count_a);
 	void update_histogram (uint64_t index_a, uint64_t addend_a);
 	nano::stat_histogram get_histogram () const;
-	std::chrono::system_clock::time_point get_sample_start_time ();
-	void set_sample_start_time (std::chrono::system_clock::time_point time);
 
 private:
 	rsnano::StatEntryHandle * handle;
@@ -181,7 +179,6 @@ public:
 	 */
 	void * to_object ();
 
-private:
 	rsnano::StatLogSinkHandle * handle;
 };
 
@@ -498,54 +495,6 @@ public:
 	void stop ();
 
 private:
-	static std::string type_to_string (uint32_t key);
-	static std::string dir_to_string (uint32_t key);
-	static std::string detail_to_string (uint32_t key);
-
-	/** Constructs a key given type, detail and direction. This is used as input to update(...) and get_entry(...) */
-	uint32_t key_of (stat::type type, stat::detail detail, stat::dir dir) const
-	{
-		return static_cast<uint8_t> (type) << 16 | static_cast<uint8_t> (detail) << 8 | static_cast<uint8_t> (dir);
-	}
-
-	/** Get entry for key, creating a new entry if necessary, using interval and sample count from config */
-	std::shared_ptr<nano::stat_entry> get_entry (uint32_t key);
-
-	/** Get entry for key, creating a new entry if necessary */
-	std::shared_ptr<nano::stat_entry> get_entry (uint32_t key, size_t sample_interval, size_t max_samples);
-
-	/** Unlocked implementation of get_entry() */
-	std::shared_ptr<nano::stat_entry> get_entry_impl (uint32_t key, size_t sample_interval, size_t max_samples);
-
-	/**
-	 * Update count and sample and call any observers on the key
-	 * @param key a key constructor from stat::type, stat::detail and stat::direction
-	 * @value Amount to add to the counter
-	 */
-	void update (uint32_t key, uint64_t value);
-
-	/** Unlocked implementation of log_counters() to avoid using recursive locking */
-	void log_counters_impl (stat_log_sink & sink);
-
-	/** Unlocked implementation of log_samples() to avoid using recursive locking */
-	void log_samples_impl (stat_log_sink & sink);
-
-	/** Time of last clear() call */
-	std::chrono::steady_clock::time_point timestamp{ std::chrono::steady_clock::now () };
-
-	/** Configuration deserialized from config.json */
-	nano::stat_config config;
-
-	/** Stat entries are sorted by key to simplify processing of log output */
-	std::map<uint32_t, std::shared_ptr<nano::stat_entry>> entries;
-	std::chrono::steady_clock::time_point log_last_count_writeout{ std::chrono::steady_clock::now () };
-	std::chrono::steady_clock::time_point log_last_sample_writeout{ std::chrono::steady_clock::now () };
-
-	/** Whether stats should be output */
-	bool stopped{ false };
-
-	/** All access to stat is thread safe, including calls from observers on the same thread */
-	nano::mutex stat_mutex;
 	rsnano::StatHandle * handle;
 };
 }

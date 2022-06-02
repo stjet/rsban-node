@@ -7,8 +7,8 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
-    stat_detail_as_str, stat_type_as_str, DetailType, FileWriter, JsonWriter, Stat, StatConfig,
-    StatDatapoint, StatEntry, StatHistogram, StatLogSink,
+    stat_detail_as_str, stat_dir_as_str, stat_type_as_str, DetailType, FileWriter, JsonWriter,
+    Stat, StatConfig, StatDatapoint, StatEntry, StatHistogram, StatLogSink,
 };
 
 use super::{FfiPropertyTreeWriter, StringDto};
@@ -355,26 +355,6 @@ pub unsafe extern "C" fn rsn_stat_entry_counter_add(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_get_sample_start_time(
-    handle: *const StatEntryHandle,
-) -> u64 {
-    (*handle)
-        .0
-        .sample_start_time
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_entry_set_sample_start_time(
-    handle: *mut StatEntryHandle,
-    time_ms: u64,
-) {
-    (*handle).0.sample_start_time = UNIX_EPOCH + Duration::from_millis(time_ms);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_stat_entry_define_histogram(
     handle: *mut StatEntryHandle,
     intervals: *const u64,
@@ -534,4 +514,158 @@ pub unsafe extern "C" fn rsn_stat_detail_to_string(key: u32, result: *mut *const
     let s = stat_detail_as_str(key).unwrap();
     (*result) = s.as_ptr();
     s.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_dir_to_string(key: u32, result: *mut *const u8) -> usize {
+    let s = stat_dir_as_str(key).unwrap();
+    (*result) = s.as_ptr();
+    s.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_stop(handle: *mut StatHandle) {
+    (*handle).0.stop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_add(
+    handle: *mut StatHandle,
+    stat_type: u8,
+    detail: u8,
+    dir: u8,
+    value: u64,
+    detail_only: bool,
+) {
+    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
+    let detail = FromPrimitive::from_u8(detail).unwrap();
+    let dir = FromPrimitive::from_u8(dir).unwrap();
+    (*handle)
+        .0
+        .add(stat_type, detail, dir, value, detail_only)
+        .unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_counters(
+    handle: *mut StatHandle,
+    sink_handle: *mut StatLogSinkHandle,
+) {
+    let sink = (*sink_handle).0.as_mut();
+    (*handle).0.log_counters(sink).unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_log_samples(
+    handle: *mut StatHandle,
+    sink_handle: *mut StatLogSinkHandle,
+) {
+    let sink = (*sink_handle).0.as_mut();
+    (*handle).0.log_samples(sink).unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_define_histogram(
+    handle: *mut StatHandle,
+    stat_type: u8,
+    detail: u8,
+    dir: u8,
+    intervals: *const u64,
+    intervals_len: usize,
+    bin_count: u64,
+) {
+    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
+    let detail = FromPrimitive::from_u8(detail).unwrap();
+    let dir = FromPrimitive::from_u8(dir).unwrap();
+    let intervals = std::slice::from_raw_parts(intervals, intervals_len);
+    (*handle)
+        .0
+        .define_histogram(stat_type, detail, dir, intervals, bin_count);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_update_histogram(
+    handle: *mut StatHandle,
+    stat_type: u8,
+    detail: u8,
+    dir: u8,
+    index: u64,
+    addend: u64,
+) {
+    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
+    let detail = FromPrimitive::from_u8(detail).unwrap();
+    let dir = FromPrimitive::from_u8(dir).unwrap();
+    (*handle)
+        .0
+        .update_histogram(stat_type, detail, dir, index, addend);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_get_histogram(
+    handle: *mut StatHandle,
+    stat_type: u8,
+    detail: u8,
+    dir: u8,
+) -> *mut StatHistogramHandle {
+    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
+    let detail = FromPrimitive::from_u8(detail).unwrap();
+    let dir = FromPrimitive::from_u8(dir).unwrap();
+    let histogram = (*handle).0.get_histogram(stat_type, detail, dir);
+    match histogram {
+        Some(h) => Box::into_raw(Box::new(StatHistogramHandle(h))),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_last_reset_s(handle: *mut StatHandle) -> u64 {
+    (*handle).0.last_reset().as_secs()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_clear(handle: *mut StatHandle) {
+    (*handle).0.clear();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_configure(
+    handle: *mut StatHandle,
+    stat_type: u8,
+    detail: u8,
+    dir: u8,
+    interval: usize,
+    capacity: usize,
+) {
+    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
+    let detail = FromPrimitive::from_u8(detail).unwrap();
+    let dir = FromPrimitive::from_u8(dir).unwrap();
+    (*handle)
+        .0
+        .configure(stat_type, detail, dir, interval, capacity);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_disable_sampling(
+    handle: *mut StatHandle,
+    stat_type: u8,
+    detail: u8,
+    dir: u8,
+) {
+    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
+    let detail = FromPrimitive::from_u8(detail).unwrap();
+    let dir = FromPrimitive::from_u8(dir).unwrap();
+    (*handle).0.disable_sampling(stat_type, detail, dir);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_count(
+    handle: *mut StatHandle,
+    stat_type: u8,
+    detail: u8,
+    dir: u8,
+) -> u64 {
+    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
+    let detail = FromPrimitive::from_u8(detail).unwrap();
+    let dir = FromPrimitive::from_u8(dir).unwrap();
+    (*handle).0.count(stat_type, detail, dir)
 }

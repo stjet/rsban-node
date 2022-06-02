@@ -1148,7 +1148,25 @@ void rsn_signature_checker_stop (SignatureCheckerHandle * handle);
 void rsn_signature_checker_verify (const SignatureCheckerHandle * handle,
 SignatureCheckSetDto * check_set);
 
+void rsn_stat_add (StatHandle * handle,
+uint8_t stat_type,
+uint8_t detail,
+uint8_t dir,
+uint64_t value,
+bool detail_only);
+
+void rsn_stat_clear (StatHandle * handle);
+
 void rsn_stat_config_create (StatConfigDto * dto);
+
+void rsn_stat_configure (StatHandle * handle,
+uint8_t stat_type,
+uint8_t detail,
+uint8_t dir,
+uintptr_t interval,
+uintptr_t capacity);
+
+uint64_t rsn_stat_count (StatHandle * handle, uint8_t stat_type, uint8_t detail, uint8_t dir);
 
 StatHandle * rsn_stat_create (const StatConfigDto * config);
 
@@ -1170,11 +1188,23 @@ void rsn_stat_datapoint_set_timestamp_ms (const StatDatapointHandle * handle, ui
 
 void rsn_stat_datapoint_set_value (const StatDatapointHandle * handle, uint64_t value);
 
+void rsn_stat_define_histogram (StatHandle * handle,
+uint8_t stat_type,
+uint8_t detail,
+uint8_t dir,
+const uint64_t * intervals,
+uintptr_t intervals_len,
+uint64_t bin_count);
+
 void rsn_stat_destroy (StatHandle * handle);
 
 uintptr_t rsn_stat_detail_enum_to_string (uint8_t detail, const uint8_t ** result);
 
 uintptr_t rsn_stat_detail_to_string (uint32_t key, const uint8_t ** result);
+
+uintptr_t rsn_stat_dir_to_string (uint32_t key, const uint8_t ** result);
+
+void rsn_stat_disable_sampling (StatHandle * handle, uint8_t stat_type, uint8_t detail, uint8_t dir);
 
 void rsn_stat_entry_add_sample (StatEntryHandle * handle, const StatDatapointHandle * sample);
 
@@ -1219,6 +1249,11 @@ void rsn_stat_entry_set_sample_start_time (StatEntryHandle * handle, uint64_t ti
 
 void rsn_stat_entry_update_histogram (StatEntryHandle * handle, uint64_t index, uint64_t addend);
 
+StatHistogramHandle * rsn_stat_get_histogram (StatHandle * handle,
+uint8_t stat_type,
+uint8_t detail,
+uint8_t dir);
+
 void rsn_stat_histogram_add (StatHistogramHandle * handle, uint64_t index, uint64_t addend);
 
 void rsn_stat_histogram_bins_destroy (HistogramsBinHandle * handle);
@@ -1232,6 +1267,12 @@ uint64_t bin_count);
 void rsn_stat_histogram_destroy (StatHistogramHandle * handle);
 
 void rsn_stat_histogram_get_bins (const StatHistogramHandle * handle, HistogramBinsDto * result);
+
+uint64_t rsn_stat_last_reset_s (StatHandle * handle);
+
+void rsn_stat_log_counters (StatHandle * handle, StatLogSinkHandle * sink_handle);
+
+void rsn_stat_log_samples (StatHandle * handle, StatLogSinkHandle * sink_handle);
 
 void rsn_stat_log_sink_begin (StatLogSinkHandle * handle);
 
@@ -1261,7 +1302,16 @@ void rsn_stat_log_sink_write_header (StatLogSinkHandle * handle,
 const char * header,
 uint64_t time_ms);
 
+void rsn_stat_stop (StatHandle * handle);
+
 uintptr_t rsn_stat_type_to_string (uint32_t key, const uint8_t ** result);
+
+void rsn_stat_update_histogram (StatHandle * handle,
+uint8_t stat_type,
+uint8_t detail,
+uint8_t dir,
+uint64_t index,
+uint64_t addend);
 
 void rsn_state_block_account (const BlockHandle * handle, uint8_t (*result)[32]);
 

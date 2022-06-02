@@ -569,7 +569,6 @@ impl Stat {
     ///
     /// # Examples:
     ///
-    /// ```
     ///  // Uniform histogram, total range 12, and 12 bins (each bin has width 1)
     ///  define_histogram (type::vote, detail::confirm_ack, dir::in, {1,13}, 12);
     ///
@@ -578,7 +577,6 @@ impl Stat {
     ///
     ///  // Logarithmic bins matching half-open intervals [1..10) [10..100) [100 1000)
     ///  define_histogram(type::vote, detail::log, dir::out, {1,10,100,1000});
-    /// ```
     pub fn define_histogram(
         &self,
         stat_type: StatType,
@@ -600,7 +598,6 @@ impl Stat {
     ///
     /// # Examples:
     ///
-    ///  ```
     /// // Add 1 to the bin representing a 4-item vbh
     ///  stats.update_histogram(type::vote, detail::confirm_ack, dir::in, 4, 1)
     ///
@@ -609,7 +606,6 @@ impl Stat {
     ///
     ///  // Add 3 to the last bin as the histogram clamps. You can also add a final bin with maximum end value to effectively prevent this.
     ///  stats.update_histogram(type::vote, detail::log, dir::out, 1001, 3)
-    /// ```
     pub fn update_histogram(
         &self,
         stat_type: StatType,
@@ -839,5 +835,77 @@ impl StatMutables {
         sink.inc_entries();
         sink.finalize();
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn specific_bins() {
+        let stats = Stat::new(StatConfig::new());
+        stats.define_histogram(
+            StatType::Vote,
+            DetailType::ConfirmReq,
+            Direction::In,
+            &[1, 6, 10, 16],
+            0,
+        );
+        stats.update_histogram(StatType::Vote, DetailType::ConfirmReq, Direction::In, 1, 50);
+        let histogram_req = stats
+            .get_histogram(StatType::Vote, DetailType::ConfirmReq, Direction::In)
+            .unwrap();
+        assert_eq!(histogram_req.get_bins()[0].value, 50);
+    }
+
+    #[test]
+    fn uniform_distribution_and_clamping() {
+        // Uniform distribution (12 bins, width 1); also test clamping 100 to the last bin
+        let stats = Stat::new(StatConfig::new());
+        stats.define_histogram(
+            StatType::Vote,
+            DetailType::ConfirmAck,
+            Direction::In,
+            &[1, 13],
+            12,
+        );
+        stats.update_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::In, 1, 1);
+        stats.update_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::In, 8, 10);
+        stats.update_histogram(
+            StatType::Vote,
+            DetailType::ConfirmAck,
+            Direction::In,
+            100,
+            1,
+        );
+
+        let histogram_ack = stats
+            .get_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::In)
+            .unwrap();
+        assert_eq!(histogram_ack.get_bins()[0].value, 1);
+        assert_eq!(histogram_ack.get_bins()[7].value, 10);
+        assert_eq!(histogram_ack.get_bins()[11].value, 1);
+    }
+
+    #[test]
+    fn uniform_distribution() {
+        // Uniform distribution (2 bins, width 5); add 1 to each bin
+        let stats = Stat::new(StatConfig::new());
+        stats.define_histogram(
+            StatType::Vote,
+            DetailType::ConfirmAck,
+            Direction::Out,
+            &[1, 11],
+            2,
+        );
+        stats.update_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::Out, 1, 1);
+        stats.update_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::Out, 6, 1);
+
+        let histogram_ack_out = stats
+            .get_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::Out)
+            .unwrap();
+        assert_eq!(histogram_ack_out.get_bins()[0].value, 1);
+        assert_eq!(histogram_ack_out.get_bins()[1].value, 1);
     }
 }

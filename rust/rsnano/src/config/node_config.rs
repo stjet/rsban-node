@@ -1,9 +1,9 @@
 use std::net::Ipv6Addr;
 
 use crate::{
-    get_cpu_count, get_env_or_default_string, Account, Amount, DiagnosticsConfig, IpcConfig,
-    LmdbConfig, Logging, NetworkParams, Networks, RocksDbConfig, StatConfig, TomlWriter,
-    WebsocketConfig, GXRB_RATIO, XRB_RATIO,
+    get_cpu_count, get_env_or_default_string, stats::StatConfig, Account, Amount,
+    DiagnosticsConfig, IpcConfig, LmdbConfig, Logging, NetworkParams, Networks, RocksDbConfig,
+    TomlWriter, WebsocketConfig, GXRB_RATIO, XRB_RATIO,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;

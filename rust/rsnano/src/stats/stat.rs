@@ -8,32 +8,19 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
-use crate::{FileWriter, StatConfig, StatHistogram, StatLogSink};
+use super::histogram::StatHistogram;
+use super::{FileWriter, StatConfig, StatLogSink};
 
 /// Value and wall time of measurement
-#[derive(Default)]
-pub struct StatDatapoint {
-    values: Mutex<StatDatapointValues>,
-}
-
-impl Clone for StatDatapoint {
-    fn clone(&self) -> Self {
-        let lock = self.values.lock().unwrap();
-        Self {
-            values: Mutex::new(lock.clone()),
-        }
-    }
-}
-
 #[derive(Clone)]
-struct StatDatapointValues {
+pub struct StatDatapoint {
     /// Value of the sample interval
     value: u64,
     /// When the sample was added. This is wall time (system_clock), suitable for display purposes.
     timestamp: SystemTime, //todo convert back to Instant
 }
 
-impl Default for StatDatapointValues {
+impl Default for StatDatapoint {
     fn default() -> Self {
         Self {
             value: 0,
@@ -48,26 +35,25 @@ impl StatDatapoint {
     }
 
     pub(crate) fn get_value(&self) -> u64 {
-        self.values.lock().unwrap().value
+        self.value
     }
 
-    pub(crate) fn set_value(&self, value: u64) {
-        self.values.lock().unwrap().value = value;
+    pub(crate) fn set_value(&mut self, value: u64) {
+        self.value = value;
     }
 
     pub(crate) fn get_timestamp(&self) -> SystemTime {
-        self.values.lock().unwrap().timestamp
+        self.timestamp
     }
 
-    pub(crate) fn set_timestamp(&self, timestamp: SystemTime) {
-        self.values.lock().unwrap().timestamp = timestamp;
+    pub(crate) fn set_timestamp(&mut self, timestamp: SystemTime) {
+        self.timestamp = timestamp;
     }
 
-    pub(crate) fn add(&self, addend: u64, update_timestamp: bool) {
-        let mut lock = self.values.lock().unwrap();
-        lock.value += addend;
+    pub(crate) fn add(&mut self, addend: u64, update_timestamp: bool) {
+        self.value += addend;
         if update_timestamp {
-            lock.timestamp = SystemTime::now();
+            self.timestamp = SystemTime::now();
         }
     }
 }
@@ -437,6 +423,8 @@ pub struct Stat {
 
 impl Stat {
     pub fn new(config: StatConfig) -> Self {
+        let default_interval = config.interval;
+        let default_capacity = config.capacity;
         Self {
             config,
             mutables: Mutex::new(StatMutables {
@@ -445,6 +433,8 @@ impl Stat {
                 log_last_count_writeout: Instant::now(),
                 log_last_sample_writeout: Instant::now(),
                 timestamp: Instant::now(),
+                default_interval,
+                default_capacity,
             }),
         }
     }
@@ -492,7 +482,7 @@ impl Stat {
         let mut lock = self.mutables.lock().unwrap();
         if !lock.stopped {
             {
-                let entry = lock.get_entry(key, self.config.interval, self.config.capacity);
+                let entry = lock.get_entry_default(key);
                 entry.counter.add(value, true);
             }
 
@@ -513,7 +503,7 @@ impl Stat {
                 lock.log_last_count_writeout = now;
             }
 
-            let entry = lock.get_entry(key, self.config.interval, self.config.capacity);
+            let entry = lock.get_entry_default(key);
             // Samples
             if self.config.sampling_enabled && entry.sample_interval > 0 {
                 entry.sample_current.add(value, false);
@@ -586,11 +576,7 @@ impl Stat {
         bin_count: u64,
     ) {
         let mut lock = self.mutables.lock().unwrap();
-        let entry = lock.get_entry(
-            key_of(stat_type, detail, dir),
-            self.config.interval,
-            self.config.capacity,
-        );
+        let entry = lock.get_entry_default(key_of(stat_type, detail, dir));
         entry.histogram = Some(StatHistogram::new(intervals, bin_count));
     }
 
@@ -615,11 +601,7 @@ impl Stat {
         addend: u64,
     ) {
         let mut lock = self.mutables.lock().unwrap();
-        let entry = lock.get_entry(
-            key_of(stat_type, detail, dir),
-            self.config.interval,
-            self.config.capacity,
-        );
+        let entry = lock.get_entry_default(key_of(stat_type, detail, dir));
         if let Some(histogram) = entry.histogram.as_mut() {
             histogram.add(index, addend);
         }
@@ -632,11 +614,7 @@ impl Stat {
         dir: Direction,
     ) -> Option<StatHistogram> {
         let mut lock = self.mutables.lock().unwrap();
-        let entry = lock.get_entry(
-            key_of(stat_type, detail, dir),
-            self.config.interval,
-            self.config.capacity,
-        );
+        let entry = lock.get_entry_default(key_of(stat_type, detail, dir));
         entry.histogram.clone()
     }
 
@@ -674,11 +652,7 @@ impl Stat {
         self.mutables
             .lock()
             .unwrap()
-            .get_entry(
-                key_of(stat_type, detail, dir),
-                self.config.interval,
-                self.config.capacity,
-            )
+            .get_entry_default(key_of(stat_type, detail, dir))
             .sample_interval = 0;
     }
 
@@ -687,11 +661,7 @@ impl Stat {
         self.mutables
             .lock()
             .unwrap()
-            .get_entry(
-                key_of(stat_type, detail, dir),
-                self.config.interval,
-                self.config.capacity,
-            )
+            .get_entry_default(key_of(stat_type, detail, dir))
             .counter
             .get_value()
     }
@@ -767,9 +737,16 @@ struct StatMutables {
 
     /// Time of last clear() call
     timestamp: Instant,
+
+    default_interval: usize,
+    default_capacity: usize,
 }
 
 impl StatMutables {
+    fn get_entry_default(&mut self, key: u32) -> &'_ mut StatEntry {
+        self.get_entry(key, self.default_interval, self.default_capacity)
+    }
+
     fn get_entry(&mut self, key: u32, interval: usize, capacity: usize) -> &'_ mut StatEntry {
         self.entries
             .entry(key)

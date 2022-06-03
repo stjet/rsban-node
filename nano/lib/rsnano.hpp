@@ -1157,12 +1157,6 @@ uint64_t bin_count);
 
 void rsn_stat_destroy (StatHandle * handle);
 
-uintptr_t rsn_stat_detail_enum_to_string (uint8_t detail, const uint8_t ** result);
-
-uintptr_t rsn_stat_detail_to_string (uint32_t key, const uint8_t ** result);
-
-uintptr_t rsn_stat_dir_to_string (uint32_t key, const uint8_t ** result);
-
 void rsn_stat_disable_sampling (StatHandle * handle, uint8_t stat_type, uint8_t detail, uint8_t dir);
 
 uint64_t rsn_stat_last_reset_s (StatHandle * handle);

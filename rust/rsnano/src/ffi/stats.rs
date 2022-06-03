@@ -1,13 +1,8 @@
-use std::{
-    ffi::{c_void, CStr},
-};
+use std::ffi::{c_void, CStr};
 
 use num::FromPrimitive;
 
-use crate::{
-    stat_detail_as_str, stat_dir_as_str, stat_type_as_str, DetailType, FileWriter, JsonWriter,
-    Stat, StatConfig, StatLogSink,
-};
+use crate::stats::{stat_type_as_str, FileWriter, JsonWriter, Stat, StatConfig, StatLogSink};
 
 use super::FfiPropertyTreeWriter;
 
@@ -122,31 +117,6 @@ pub unsafe extern "C" fn rsn_stat_type_to_string(key: u32, result: *mut *const u
     let type_str = stat_type_as_str(key).unwrap();
     (*result) = type_str.as_ptr();
     type_str.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_detail_enum_to_string(
-    detail: u8,
-    result: *mut *const u8,
-) -> usize {
-    let detail: DetailType = FromPrimitive::from_u8(detail).unwrap();
-    let s = detail.as_str();
-    (*result) = s.as_ptr();
-    s.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_detail_to_string(key: u32, result: *mut *const u8) -> usize {
-    let s = stat_detail_as_str(key).unwrap();
-    (*result) = s.as_ptr();
-    s.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_dir_to_string(key: u32, result: *mut *const u8) -> usize {
-    let s = stat_dir_as_str(key).unwrap();
-    (*result) = s.as_ptr();
-    s.len()
 }
 
 #[no_mangle]

@@ -1,11 +1,8 @@
-mod stat_config;
-pub use stat_config::*;
-
-mod stat_log_sink;
-pub use stat_log_sink::*;
-
 mod histogram;
-pub use histogram::*;
-
 mod stat;
-pub use stat::*;
+mod stat_config;
+mod stat_log_sink;
+
+pub use stat::{stat_type_as_str, Stat};
+pub use stat_config::StatConfig;
+pub use stat_log_sink::{FileWriter, JsonWriter, StatLogSink};

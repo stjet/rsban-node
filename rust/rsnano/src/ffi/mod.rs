@@ -13,6 +13,7 @@ mod numbers;
 mod property_tree;
 mod secure;
 mod signatures;
+mod socket;
 mod state_block_signature_verification;
 mod stats;
 mod stream;

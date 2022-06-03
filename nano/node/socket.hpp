@@ -108,6 +108,7 @@ public:
 	{
 		return closed;
 	}
+	rsnano::SocketHandle * handle;
 
 protected:
 	/** Holds the buffer and callback for queued writes */
@@ -169,6 +170,7 @@ protected:
 	/** Set by close() - completion handlers must check this. This is more reliable than checking
 	 error codes as the OS may have already completed the async operation. */
 	std::atomic<bool> closed{ false };
+
 	void close_internal ();
 	void set_default_timeout ();
 	void set_last_completion ();
@@ -178,7 +180,6 @@ protected:
 private:
 	type_t type_m{ type_t::undefined };
 	endpoint_type_t endpoint_type_m;
-	rsnano::SocketHandle * handle;
 
 public:
 	static std::size_t constexpr queue_size_max = 128;

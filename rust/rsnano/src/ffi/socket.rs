@@ -1,5 +1,5 @@
 use crate::Socket;
-use std::ffi::c_void;
+use std::{ffi::c_void, net::{SocketAddr, IpAddr, Ipv6Addr, Ipv4Addr}};
 
 pub struct SocketHandle(Socket);
 
@@ -26,15 +26,66 @@ pub struct EndpointDto {
     pub v6: bool,
 }
 
+impl From<&EndpointDto> for SocketAddr{
+    fn from(dto: &EndpointDto) -> Self {
+        let ip = if dto.v6{
+            IpAddr::V6(Ipv6Addr::from(dto.bytes))
+        } else{
+            let mut bytes = [0;4];
+            bytes.copy_from_slice(&dto.bytes[..4]);
+            IpAddr::V4(Ipv4Addr::from(bytes))
+        };
+
+        SocketAddr::new(ip, dto.port)
+    }
+}
+
 type SocketConnectCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_async_connect(
-    _handle: *mut SocketHandle,
+    handle: *mut SocketHandle,
     callback: SocketConnectCallback,
     context: *mut c_void,
     error_code: *const ErrorCodeDto,
-    _endpoint: *const EndpointDto,
+    endpoint: *const EndpointDto,
 ) {
+    (*handle).0.async_connect((&*endpoint).into());
     callback(context, error_code);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_set_remote_endpoint(
+    handle: *mut SocketHandle,
+    endpoint: *const EndpointDto){
+        (*handle).0.remote = Some(SocketAddr::from(&*endpoint));
+    }
+
+fn set_enpoint_dto(endpoint: &SocketAddr, result: &mut EndpointDto){
+    result.port = endpoint.port();
+    match endpoint {
+        SocketAddr::V4(addr) => {
+            result.v6 = false;
+            result.bytes[..4].copy_from_slice(&addr.ip().octets());
+
+        }
+        SocketAddr::V6(addr) => {
+            result.v6 = true;
+            result.bytes.copy_from_slice(&addr.ip().octets());
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_get_remote(handle: *mut SocketHandle, result: *mut EndpointDto) {
+    match &(*handle).0.remote {
+        Some(ep) => {
+            set_enpoint_dto (ep, &mut *result);
+        },
+        None => {
+            (*result).port = 0;
+            (*result).v6 = false;
+            (*result).bytes = [0;16];
+        }
+    }
 }

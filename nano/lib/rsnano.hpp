@@ -1142,7 +1142,7 @@ void rsn_signature_checker_stop (SignatureCheckerHandle * handle);
 void rsn_signature_checker_verify (const SignatureCheckerHandle * handle,
 SignatureCheckSetDto * check_set);
 
-void rsn_socket_async_connect (SocketHandle * _handle,
+void rsn_socket_async_connect (SocketHandle * handle,
 SocketConnectCallback callback,
 void * context,
 const ErrorCodeDto * error_code,
@@ -1151,6 +1151,10 @@ const EndpointDto * endpoint);
 SocketHandle * rsn_socket_create ();
 
 void rsn_socket_destroy (SocketHandle * handle);
+
+void rsn_socket_get_remote (SocketHandle * handle, EndpointDto * result);
+
+void rsn_socket_set_remote_endpoint (SocketHandle * handle, const EndpointDto * endpoint);
 
 void rsn_stat_add (StatHandle * handle,
 uint8_t stat_type,

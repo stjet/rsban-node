@@ -39,6 +39,8 @@ struct LockHandle;
 
 struct SignatureCheckerHandle;
 
+struct SocketHandle;
+
 struct StatHandle;
 
 struct StatLogSinkHandle;
@@ -579,6 +581,21 @@ struct SignatureCheckSetDto
 	const uint8_t * const * pub_keys;
 	const uint8_t * const * signatures;
 	int32_t * verifications;
+};
+
+struct ErrorCodeDto
+{
+	int32_t val;
+	uint8_t category;
+};
+
+using SocketConnectCallback = void (*) (void *, const ErrorCodeDto *);
+
+struct EndpointDto
+{
+	uint8_t bytes[16];
+	uint16_t port;
+	bool v6;
 };
 
 struct StateBlockDto
@@ -1124,6 +1141,16 @@ void rsn_signature_checker_stop (SignatureCheckerHandle * handle);
 
 void rsn_signature_checker_verify (const SignatureCheckerHandle * handle,
 SignatureCheckSetDto * check_set);
+
+void rsn_socket_async_connect (SocketHandle * _handle,
+SocketConnectCallback callback,
+void * context,
+const ErrorCodeDto * error_code,
+const EndpointDto * endpoint);
+
+SocketHandle * rsn_socket_create ();
+
+void rsn_socket_destroy (SocketHandle * handle);
 
 void rsn_stat_add (StatHandle * handle,
 uint8_t stat_type,

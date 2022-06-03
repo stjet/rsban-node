@@ -17,6 +17,11 @@ namespace boost::asio::ip
 class network_v6;
 }
 
+namespace rsnano
+{
+class SocketHandle;
+}
+
 namespace nano
 {
 /** Policy to affect at which stage a buffer can be dropped */
@@ -122,6 +127,9 @@ protected:
 	bool network_timeout_logging;
 
 	/** The other end of the connection */
+	boost::asio::ip::tcp::endpoint & get_remote ();
+
+	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint remote;
 
 	/** number of seconds of inactivity that causes a socket timeout
@@ -170,6 +178,7 @@ protected:
 private:
 	type_t type_m{ type_t::undefined };
 	endpoint_type_t endpoint_type_m;
+	rsnano::SocketHandle * handle;
 
 public:
 	static std::size_t constexpr queue_size_max = 128;

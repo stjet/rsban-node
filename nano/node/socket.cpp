@@ -48,13 +48,93 @@ nano::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoi
 	last_completion_time_or_init{ nano::seconds_since_epoch () },
 	last_receive_time_or_init{ nano::seconds_since_epoch () },
 	default_timeout{ default_timeout_a },
-	silent_connection_tolerance_time{ silent_connection_tolerance_time_a }
+	silent_connection_tolerance_time{ silent_connection_tolerance_time_a },
+	handle{ rsnano::rsn_socket_create () }
 {
 }
 
 nano::socket::~socket ()
 {
 	close_internal ();
+	rsnano::rsn_socket_destroy (handle);
+}
+
+boost::system::error_code dto_to_error_code (rsnano::ErrorCodeDto const & dto)
+{
+	boost::system::error_category const * cat;
+	if (dto.category == 0)
+	{
+		cat = &boost::system::generic_category ();
+	}
+	else
+	{
+		cat = &boost::system::system_category ();
+	}
+
+	return boost::system::error_code (dto.val, *cat);
+}
+
+rsnano::ErrorCodeDto error_code_to_dto (boost::system::error_code const & ec)
+{
+	rsnano::ErrorCodeDto dto;
+	dto.val = ec.value ();
+	if (ec.category () == boost::system::generic_category ())
+	{
+		dto.category = 0;
+	}
+	else
+	{
+		dto.category = 1;
+	}
+
+	return dto;
+}
+
+void async_connect_adapter (void * context, rsnano::ErrorCodeDto const * error)
+{
+	auto ec{ dto_to_error_code (*error) };
+	auto callback = static_cast<std::function<void (boost::system::error_code const &)> *> (context);
+	(*callback) (ec);
+	delete callback;
+}
+
+nano::tcp_endpoint dto_to_endpoint (rsnano::EndpointDto const & dto)
+{
+	if (dto.v6)
+	{
+		std::array<unsigned char, 16> bytes;
+		std::copy (std::begin (dto.bytes), std::end (dto.bytes), std::begin (bytes));
+		boost::asio::ip::address_v6 addr{ bytes };
+		return nano::tcp_endpoint (boost::asio::ip::address{ addr }, dto.port);
+	}
+
+	std::array<unsigned char, 4> bytes;
+	std::copy (std::begin (dto.bytes), std::end (dto.bytes), std::begin (bytes));
+	boost::asio::ip::address_v4 addr{ bytes };
+	return nano::tcp_endpoint (boost::asio::ip::address{ addr }, dto.port);
+}
+
+rsnano::EndpointDto endpoint_to_dto (nano::tcp_endpoint const & ep)
+{
+	rsnano::EndpointDto dto;
+	dto.port = ep.port ();
+	dto.v6 = ep.address ().is_v6 ();
+	if (dto.v6)
+	{
+		auto bytes{ ep.address ().to_v6 ().to_bytes () };
+		std::copy (std::begin (bytes), std::end (bytes), std::begin (dto.bytes));
+	}
+	else
+	{
+		auto bytes{ ep.address ().to_v4 ().to_bytes () };
+		std::copy (std::begin (bytes), std::end (bytes), std::begin (dto.bytes));
+	}
+	return dto;
+}
+
+boost::asio::ip::tcp::endpoint & nano::socket::get_remote ()
+{
+	return remote;
 }
 
 void nano::socket::async_connect (nano::tcp_endpoint const & endpoint_a, std::function<void (boost::system::error_code const &)> callback_a)
@@ -75,7 +155,11 @@ void nano::socket::async_connect (nano::tcp_endpoint const & endpoint_a, std::fu
 			this_l->set_last_completion ();
 		}
 		this_l->remote = endpoint_a;
-		callback (ec);
+
+		auto endpoint_dto{ endpoint_to_dto (endpoint_a) };
+		auto ec_dto{ error_code_to_dto (ec) };
+		auto cb_wrapper = new std::function<void (boost::system::error_code const &)> (std::move (callback));
+		rsnano::rsn_socket_async_connect (this_l->handle, async_connect_adapter, cb_wrapper, &ec_dto, &endpoint_dto);
 	}));
 }
 
@@ -379,7 +463,7 @@ size_t network_prefix)
 bool nano::server_socket::limit_reached_for_incoming_subnetwork_connections (std::shared_ptr<nano::socket> const & new_connection)
 {
 	debug_assert (strand.running_in_this_thread ());
-	if (node.flags.disable_max_peers_per_subnetwork || nano::transport::is_ipv4_or_v4_mapped_address (new_connection->remote.address ()))
+	if (node.flags.disable_max_peers_per_subnetwork || nano::transport::is_ipv4_or_v4_mapped_address (new_connection->get_remote ().address ()))
 	{
 		// If the limit is disabled, then it is unreachable.
 		// If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6 /64.
@@ -387,7 +471,7 @@ bool nano::server_socket::limit_reached_for_incoming_subnetwork_connections (std
 	}
 	auto const counted_connections = socket_functions::count_subnetwork_connections (
 	connections_per_address,
-	new_connection->remote.address ().to_v6 (),
+	new_connection->get_remote ().address ().to_v6 (),
 	node.network_params.network.ipv6_subnetwork_prefix_for_limiting);
 	return counted_connections >= node.network_params.network.max_peers_per_subnetwork;
 }
@@ -400,7 +484,7 @@ bool nano::server_socket::limit_reached_for_incoming_ip_connections (std::shared
 		// If the limit is disabled, then it is unreachable.
 		return false;
 	}
-	auto const address_connections_range = connections_per_address.equal_range (new_connection->remote.address ());
+	auto const address_connections_range = connections_per_address.equal_range (new_connection->get_remote ().address ());
 	auto const counted_connections = std::distance (address_connections_range.first, address_connections_range.second);
 	return counted_connections >= node.network_params.network.max_peers_per_ip;
 }
@@ -419,7 +503,7 @@ void nano::server_socket::on_connection (std::function<bool (std::shared_ptr<nan
 		// Prepare new connection
 		auto new_connection = std::make_shared<nano::socket> (this_l->node.io_ctx, nano::socket::endpoint_type_t::server,
 		this_l->node.stats, this_l->node.logger, this_l->node.workers, this_l->node.config.tcp_io_timeout, this_l->node.network_params.network.silent_connection_tolerance_time, this_l->node.config.logging.network_timeout_logging ());
-		this_l->acceptor.async_accept (new_connection->tcp_socket, new_connection->remote,
+		this_l->acceptor.async_accept (new_connection->tcp_socket, new_connection->get_remote (),
 		boost::asio::bind_executor (this_l->strand,
 		[this_l, new_connection, cbk = std::move (callback)] (boost::system::error_code const & ec_a) mutable {
 			this_l->evict_dead_connections ();
@@ -466,7 +550,7 @@ void nano::server_socket::on_connection (std::function<bool (std::shared_ptr<nan
 				new_connection->checkup ();
 				new_connection->set_timeout (this_l->node.network_params.network.idle_timeout);
 				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
-				this_l->connections_per_address.emplace (new_connection->remote.address (), new_connection);
+				this_l->connections_per_address.emplace (new_connection->get_remote ().address (), new_connection);
 				if (cbk (new_connection, ec_a))
 				{
 					this_l->on_connection (std::move (cbk));

@@ -39,8 +39,6 @@ struct LockHandle;
 
 struct SignatureCheckerHandle;
 
-struct StatDatapointHandle;
-
 struct StatHandle;
 
 struct StatLogSinkHandle;
@@ -1149,24 +1147,6 @@ uint64_t rsn_stat_count (StatHandle * handle, uint8_t stat_type, uint8_t detail,
 
 StatHandle * rsn_stat_create (const StatConfigDto * config);
 
-void rsn_stat_datapoint_add (const StatDatapointHandle * handle,
-uint64_t addend,
-bool update_timestamp);
-
-StatDatapointHandle * rsn_stat_datapoint_clone (const StatDatapointHandle * handle);
-
-StatDatapointHandle * rsn_stat_datapoint_create ();
-
-void rsn_stat_datapoint_destroy (StatDatapointHandle * handle);
-
-uint64_t rsn_stat_datapoint_get_timestamp_ms (const StatDatapointHandle * handle);
-
-uint64_t rsn_stat_datapoint_get_value (const StatDatapointHandle * handle);
-
-void rsn_stat_datapoint_set_timestamp_ms (const StatDatapointHandle * handle, uint64_t timestamp_ms);
-
-void rsn_stat_datapoint_set_value (const StatDatapointHandle * handle, uint64_t value);
-
 void rsn_stat_define_histogram (StatHandle * handle,
 uint8_t stat_type,
 uint8_t detail,
@@ -1191,25 +1171,9 @@ void rsn_stat_log_counters (StatHandle * handle, StatLogSinkHandle * sink_handle
 
 void rsn_stat_log_samples (StatHandle * handle, StatLogSinkHandle * sink_handle);
 
-void rsn_stat_log_sink_begin (StatLogSinkHandle * handle);
-
 void rsn_stat_log_sink_destroy (StatLogSinkHandle * handle);
 
-uintptr_t rsn_stat_log_sink_entries (StatLogSinkHandle * handle);
-
-void rsn_stat_log_sink_finalize (StatLogSinkHandle * handle);
-
-void rsn_stat_log_sink_inc_entries (StatLogSinkHandle * handle);
-
-void rsn_stat_log_sink_rotate (StatLogSinkHandle * handle);
-
 void * rsn_stat_log_sink_to_object (StatLogSinkHandle * handle);
-
-void rsn_stat_log_sink_to_string (StatLogSinkHandle * handle, StringDto * result);
-
-void rsn_stat_log_sink_write_header (StatLogSinkHandle * handle,
-const char * header,
-uint64_t time_ms);
 
 void rsn_stat_stop (StatHandle * handle);
 

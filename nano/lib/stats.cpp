@@ -10,27 +10,6 @@
 #include <fstream>
 #include <sstream>
 
-std::string type_to_string (uint32_t key)
-{
-	uint8_t const * ptr;
-	auto len = rsnano::rsn_stat_type_to_string (key, &ptr);
-	return std::string (reinterpret_cast<const char *> (ptr), len);
-}
-
-std::string detail_key_to_string (uint32_t key)
-{
-	uint8_t const * ptr;
-	auto len = rsnano::rsn_stat_detail_to_string (key, &ptr);
-	return std::string (reinterpret_cast<const char *> (ptr), len);
-}
-
-std::string dir_to_string (uint32_t key)
-{
-	uint8_t const * ptr;
-	auto len = rsnano::rsn_stat_dir_to_string (key, &ptr);
-	return std::string (reinterpret_cast<const char *> (ptr), len);
-}
-
 void nano::stat_config::load_dto (rsnano::StatConfigDto & dto)
 {
 	sampling_enabled = dto.sampling_enabled;
@@ -100,45 +79,6 @@ nano::stat_log_sink::stat_log_sink (rsnano::StatLogSinkHandle * handle_a) :
 nano::stat_log_sink::~stat_log_sink ()
 {
 	rsnano::rsn_stat_log_sink_destroy (handle);
-}
-
-void nano::stat_log_sink::begin ()
-{
-	rsnano::rsn_stat_log_sink_begin (handle);
-}
-
-void nano::stat_log_sink::finalize ()
-{
-	rsnano::rsn_stat_log_sink_finalize (handle);
-}
-
-void nano::stat_log_sink::write_header (std::string const & header, std::chrono::system_clock::time_point & walltime)
-{
-	rsnano::rsn_stat_log_sink_write_header (handle, header.c_str (), std::chrono::duration_cast<std::chrono::milliseconds> (walltime.time_since_epoch ()).count ());
-}
-
-void nano::stat_log_sink::rotate ()
-{
-	rsnano::rsn_stat_log_sink_rotate (handle);
-}
-
-size_t nano::stat_log_sink::entries ()
-{
-	return rsnano::rsn_stat_log_sink_entries (handle);
-}
-
-void nano::stat_log_sink::inc_entries ()
-{
-	rsnano::rsn_stat_log_sink_inc_entries (handle);
-}
-
-std::string nano::stat_log_sink::to_string ()
-{
-	rsnano::StringDto dto;
-	rsnano::rsn_stat_log_sink_to_string (handle, &dto);
-	std::string result (dto.value);
-	rsnano::rsn_string_destroy (dto.handle);
-	return result;
 }
 
 void * nano::stat_log_sink::to_object ()
@@ -304,58 +244,4 @@ uint64_t nano::stat::count (stat::type type, stat::detail detail, stat::dir dir)
 	static_cast<uint8_t> (type),
 	static_cast<uint8_t> (detail),
 	static_cast<uint8_t> (dir));
-}
-
-nano::stat_datapoint::stat_datapoint () :
-	handle (rsnano::rsn_stat_datapoint_create ())
-{
-}
-
-nano::stat_datapoint::~stat_datapoint ()
-{
-	rsnano::rsn_stat_datapoint_destroy (handle);
-}
-
-nano::stat_datapoint::stat_datapoint (stat_datapoint const & other_a)
-{
-	handle = rsnano::rsn_stat_datapoint_clone (other_a.handle);
-}
-
-nano::stat_datapoint::stat_datapoint (rsnano::StatDatapointHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::stat_datapoint & nano::stat_datapoint::operator= (stat_datapoint const & other_a)
-{
-	handle = rsnano::rsn_stat_datapoint_clone (other_a.handle);
-	return *this;
-}
-
-uint64_t nano::stat_datapoint::get_value () const
-{
-	return rsnano::rsn_stat_datapoint_get_value (handle);
-}
-
-void nano::stat_datapoint::set_value (uint64_t value_a)
-{
-	rsnano::rsn_stat_datapoint_set_value (handle, value_a);
-}
-
-std::chrono::system_clock::time_point nano::stat_datapoint::get_timestamp () const
-{
-	auto timestamp_ms = rsnano::rsn_stat_datapoint_get_timestamp_ms (handle);
-	return std::chrono::system_clock::time_point{ std::chrono::milliseconds (timestamp_ms) };
-}
-
-void nano::stat_datapoint::set_timestamp (std::chrono::system_clock::time_point timestamp_a)
-{
-	auto timestamp_ms (std::chrono::duration_cast<std::chrono::milliseconds> (timestamp_a.time_since_epoch ()));
-	rsnano::rsn_stat_datapoint_set_timestamp_ms (handle, timestamp_ms.count ());
-}
-
-/** Add \addend to the current value and optionally update the timestamp */
-void nano::stat_datapoint::add (uint64_t addend, bool update_timestamp)
-{
-	rsnano::rsn_stat_datapoint_add (handle, addend, update_timestamp);
 }

@@ -59,24 +59,6 @@ public:
 	std::string log_samples_filename{ "samples.stat" };
 };
 
-/** Value and wall time of measurement */
-class stat_datapoint final
-{
-public:
-	stat_datapoint ();
-	stat_datapoint (stat_datapoint const & other_a);
-	stat_datapoint (rsnano::StatDatapointHandle * handle);
-	~stat_datapoint ();
-	stat_datapoint & operator= (stat_datapoint const & other_a);
-
-	uint64_t get_value () const;
-	void set_value (uint64_t value_a);
-	std::chrono::system_clock::time_point get_timestamp () const;
-	void set_timestamp (std::chrono::system_clock::time_point timestamp_a);
-	void add (uint64_t addend, bool update_timestamp = true);
-	rsnano::StatDatapointHandle * handle;
-};
-
 /** Log sink interface */
 class stat_log_sink
 {
@@ -84,26 +66,7 @@ public:
 	stat_log_sink (rsnano::StatLogSinkHandle * handle_a);
 	virtual ~stat_log_sink ();
 
-	/** Called before logging starts */
-	void begin ();
-
-	/** Called after logging is completed */
-	void finalize ();
-
-	/** Write a header enrty to the log */
-	void write_header (std::string const & header, std::chrono::system_clock::time_point & walltime);
-
-	/** Rotates the log (e.g. empty file). This is a no-op for sinks where rotation is not supported. */
-	void rotate ();
-
-	/** Returns a reference to the log entry counter */
-	size_t entries ();
-
-	void inc_entries ();
-
-	/** Returns the string representation of the log. If not supported, an empty string is returned. */
-	std::string to_string ();
-
+public:
 	/**
 	 * Returns the object representation of the log result. The type depends on the sink used.
 	 * @returns Object, or nullptr if no object result is available.

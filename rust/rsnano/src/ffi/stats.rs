@@ -1,17 +1,15 @@
 use std::{
     ffi::{c_void, CStr},
-    os::raw::c_char,
-    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use num::FromPrimitive;
 
 use crate::{
     stat_detail_as_str, stat_dir_as_str, stat_type_as_str, DetailType, FileWriter, JsonWriter,
-    Stat, StatConfig, StatDatapoint, StatLogSink,
+    Stat, StatConfig, StatLogSink,
 };
 
-use super::{FfiPropertyTreeWriter, StringDto};
+use super::FfiPropertyTreeWriter;
 
 #[repr(C)]
 pub struct StatConfigDto {
@@ -85,88 +83,6 @@ pub unsafe extern "C" fn rsn_stat_destroy(handle: *mut StatHandle) {
     drop(Box::from_raw(handle))
 }
 
-pub struct StatDatapointHandle(StatDatapoint);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_datapoint_create() -> *mut StatDatapointHandle {
-    Box::into_raw(Box::new(StatDatapointHandle(StatDatapoint::new())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_datapoint_destroy(handle: *mut StatDatapointHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_datapoint_clone(
-    handle: *const StatDatapointHandle,
-) -> *mut StatDatapointHandle {
-    Box::into_raw(Box::new(StatDatapointHandle((*handle).0.clone())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_datapoint_get_value(handle: *const StatDatapointHandle) -> u64 {
-    (*handle).0.get_value()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_datapoint_set_value(
-    handle: *const StatDatapointHandle,
-    value: u64,
-) {
-    (*handle).0.set_value(value);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_datapoint_get_timestamp_ms(
-    handle: *const StatDatapointHandle,
-) -> u64 {
-    (*handle)
-        .0
-        .get_timestamp()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_datapoint_set_timestamp_ms(
-    handle: *const StatDatapointHandle,
-    timestamp_ms: u64,
-) {
-    (*handle).0.set_timestamp(
-        SystemTime::UNIX_EPOCH
-            .checked_add(Duration::from_millis(timestamp_ms))
-            .unwrap(),
-    );
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_datapoint_add(
-    handle: *const StatDatapointHandle,
-    addend: u64,
-    update_timestamp: bool,
-) {
-    (*handle).0.add(addend, update_timestamp);
-}
-
-#[repr(C)]
-pub struct HistogramBinDto {
-    pub start_inclusive: u64,
-    pub end_exclusive: u64,
-    pub value: u64,
-    pub timestamp_ms: u64,
-}
-
-pub struct HistogramsBinHandle(Vec<HistogramBinDto>);
-
-#[repr(C)]
-pub struct HistogramBinsDto {
-    bins: *const HistogramBinDto,
-    len: usize,
-    handle: *mut HistogramsBinHandle,
-}
-
 pub struct StatLogSinkHandle(Box<dyn StatLogSink>);
 
 #[no_mangle]
@@ -185,51 +101,6 @@ pub unsafe extern "C" fn rsn_json_writer_create() -> *mut StatLogSinkHandle {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_stat_log_sink_destroy(handle: *mut StatLogSinkHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_log_sink_begin(handle: *mut StatLogSinkHandle) {
-    (*handle).0.begin().unwrap();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_log_sink_finalize(handle: *mut StatLogSinkHandle) {
-    (*handle).0.finalize();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_log_sink_write_header(
-    handle: *mut StatLogSinkHandle,
-    header: *const c_char,
-    time_ms: u64,
-) {
-    let header = CStr::from_ptr(header).to_string_lossy();
-    let wall_time = UNIX_EPOCH + Duration::from_millis(time_ms);
-    (*handle).0.write_header(&header, wall_time).unwrap();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_log_sink_rotate(handle: *mut StatLogSinkHandle) {
-    (*handle).0.rotate().unwrap();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_log_sink_entries(handle: *mut StatLogSinkHandle) -> usize {
-    (*handle).0.entries()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_log_sink_inc_entries(handle: *mut StatLogSinkHandle) {
-    (*handle).0.inc_entries()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_log_sink_to_string(
-    handle: *mut StatLogSinkHandle,
-    result: *mut StringDto,
-) {
-    let s = (*handle).0.to_string();
-    (*result) = StringDto::from(s);
 }
 
 #[no_mangle]

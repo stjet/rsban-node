@@ -1,4 +1,8 @@
-use std::ffi::{c_void, CStr};
+use std::{
+    ffi::{c_void, CStr},
+    ops::Deref,
+    sync::Arc,
+};
 
 use num::FromPrimitive;
 
@@ -66,11 +70,21 @@ impl From<&StatConfigDto> for StatConfig {
     }
 }
 
-pub struct StatHandle(Stat);
+pub struct StatHandle(Arc<Stat>);
+
+impl Deref for StatHandle {
+    type Target = Arc<Stat>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_stat_create(config: *const StatConfigDto) -> *mut StatHandle {
-    Box::into_raw(Box::new(StatHandle(Stat::new(StatConfig::from(&*config)))))
+    Box::into_raw(Box::new(StatHandle(Arc::new(Stat::new(StatConfig::from(
+        &*config,
+    ))))))
 }
 
 #[no_mangle]

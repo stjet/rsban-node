@@ -1148,11 +1148,15 @@ void * context,
 const ErrorCodeDto * error_code,
 const EndpointDto * endpoint);
 
-SocketHandle * rsn_socket_create ();
+SocketHandle * rsn_socket_create (StatHandle * stats_handle);
 
 void rsn_socket_destroy (SocketHandle * handle);
 
+uint64_t rsn_socket_get_last_completion_time (SocketHandle * handle);
+
 void rsn_socket_get_remote (SocketHandle * handle, EndpointDto * result);
+
+void rsn_socket_set_last_completion (SocketHandle * handle);
 
 void rsn_socket_set_remote_endpoint (SocketHandle * handle, const EndpointDto * endpoint);
 

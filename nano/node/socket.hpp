@@ -41,6 +41,23 @@ class stat;
 class logger_mt;
 class node;
 
+class tcp_socket_facade : public std::enable_shared_from_this<nano::tcp_socket_facade>
+{
+public:
+	tcp_socket_facade (
+	boost::asio::strand<boost::asio::io_context::executor_type> & strand,
+	boost::asio::ip::tcp::socket & tcp_socket,
+	boost::asio::io_context & io_ctx);
+
+	void async_connect (boost::asio::ip::tcp::endpoint endpoint_a,
+	std::function<void (boost::system::error_code const &)> callback_a);
+
+private:
+	boost::asio::strand<boost::asio::io_context::executor_type> & strand;
+	boost::asio::ip::tcp::socket & tcp_socket;
+	boost::asio::io_context & io_ctx;
+};
+
 /** Socket class for tcp clients and newly accepted connections */
 class socket : public std::enable_shared_from_this<nano::socket>
 {
@@ -138,11 +155,6 @@ protected:
 	 */
 	std::atomic<uint64_t> timeout;
 
-	/** the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
-	 *  activity is any successful connect, send or receive event
-	 */
-	std::atomic<uint64_t> last_completion_time_or_init;
-
 	/** the timestamp (in seconds since epoch) of the last time there was successful receive on the socket
 	 *  successful receive includes graceful closing of the socket by the peer (the read succeeds but returns 0 bytes)
 	 */
@@ -180,6 +192,7 @@ protected:
 private:
 	type_t type_m{ type_t::undefined };
 	endpoint_type_t endpoint_type_m;
+	tcp_socket_facade tcp_socket_facade_m;
 
 public:
 	static std::size_t constexpr queue_size_max = 128;

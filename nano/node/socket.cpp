@@ -35,6 +35,22 @@ bool is_temporary_error (boost::system::error_code const & ec_a)
 }
 }
 
+nano::tcp_socket_facade::tcp_socket_facade (
+boost::asio::strand<boost::asio::io_context::executor_type> & strand,
+boost::asio::ip::tcp::socket & tcp_socket,
+boost::asio::io_context & io_ctx) :
+	strand{ strand },
+	tcp_socket{ tcp_socket },
+	io_ctx{ io_ctx }
+{
+}
+
+void nano::tcp_socket_facade::async_connect (boost::asio::ip::tcp::endpoint endpoint_a,
+std::function<void (boost::system::error_code const &)> callback_a)
+{
+	tcp_socket.async_connect (endpoint_a, boost::asio::bind_executor (strand, callback_a));
+}
+
 nano::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::thread_pool & workers_a, std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a) :
 	strand{ io_ctx_a.get_executor () },
 	tcp_socket{ io_ctx_a },
@@ -45,11 +61,11 @@ nano::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoi
 	network_timeout_logging{ network_timeout_logging_a },
 	endpoint_type_m{ endpoint_type_a },
 	timeout{ std::numeric_limits<uint64_t>::max () },
-	last_completion_time_or_init{ nano::seconds_since_epoch () },
 	last_receive_time_or_init{ nano::seconds_since_epoch () },
 	default_timeout{ default_timeout_a },
 	silent_connection_tolerance_time{ silent_connection_tolerance_time_a },
-	handle{ rsnano::rsn_socket_create () }
+	handle{ rsnano::rsn_socket_create (stats_a.handle) },
+	tcp_socket_facade_m{ strand, tcp_socket, io_ctx }
 {
 }
 
@@ -93,9 +109,9 @@ rsnano::ErrorCodeDto error_code_to_dto (boost::system::error_code const & ec)
 void async_connect_adapter (void * context, rsnano::ErrorCodeDto const * error)
 {
 	auto ec{ dto_to_error_code (*error) };
-	auto callback = static_cast<std::function<void (boost::system::error_code const &)> *> (context);
+	auto cb_ptr = static_cast<std::function<void (boost::system::error_code const &)> *> (context);
+	auto callback = std::unique_ptr<std::function<void (boost::system::error_code const &)>> (cb_ptr);
 	(*callback) (ec);
-	delete callback;
 }
 
 boost::asio::ip::tcp::endpoint dto_to_endpoint (rsnano::EndpointDto const & dto)
@@ -143,24 +159,12 @@ void nano::socket::async_connect (nano::tcp_endpoint const & endpoint_a, std::fu
 	checkup ();
 	auto this_l (shared_from_this ());
 	set_default_timeout ();
-	this_l->tcp_socket.async_connect (endpoint_a,
-	boost::asio::bind_executor (this_l->strand,
-	[this_l, callback = std::move (callback_a), endpoint_a] (boost::system::error_code const & ec) {
-		if (ec)
-		{
-			this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_connect_error, nano::stat::dir::in);
-		}
-		else
-		{
-			this_l->set_last_completion ();
-		}
-		this_l->remote = endpoint_a;
+	tcp_socket_facade_m.async_connect (endpoint_a, [this_l, callback = std::move (callback_a), endpoint_a] (boost::system::error_code const & ec) {
 		auto endpoint_dto{ endpoint_to_dto (endpoint_a) };
-		rsnano::rsn_socket_set_remote_endpoint (this_l->handle, &endpoint_dto);
 		auto ec_dto{ error_code_to_dto (ec) };
 		auto cb_wrapper = new std::function<void (boost::system::error_code const &)> (std::move (callback));
 		rsnano::rsn_socket_async_connect (this_l->handle, async_connect_adapter, cb_wrapper, &ec_dto, &endpoint_dto);
-	}));
+	});
 }
 
 void nano::socket::async_read (std::shared_ptr<std::vector<uint8_t>> const & buffer_a, std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
@@ -269,7 +273,7 @@ void nano::socket::set_timeout (std::chrono::seconds timeout_a)
 
 void nano::socket::set_last_completion ()
 {
-	last_completion_time_or_init = nano::seconds_since_epoch ();
+	rsnano::rsn_socket_set_last_completion (handle);
 }
 
 void nano::socket::set_last_receive_time ()
@@ -294,7 +298,7 @@ void nano::socket::checkup ()
 			}
 
 			// if there is no activity for timeout seconds then disconnect
-			if ((now - this_l->last_completion_time_or_init) > this_l->timeout)
+			if ((now - rsnano::rsn_socket_get_last_completion_time (this_l->handle)) > this_l->timeout)
 			{
 				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop,
 				this_l->endpoint_type () == endpoint_type_t::server ? nano::stat::dir::in : nano::stat::dir::out);

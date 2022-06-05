@@ -383,7 +383,6 @@ public:
 	/** Stop stats being output */
 	void stop ();
 
-private:
 	rsnano::StatHandle * handle;
 };
 }

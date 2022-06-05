@@ -471,6 +471,10 @@ impl Stat {
         Ok(())
     }
 
+    pub fn inc(&self, stat_type: StatType, detail: DetailType, dir: Direction) -> Result<()> {
+        self.add(stat_type, detail, dir, 1, false)
+    }
+
     /// Update count and sample
     ///
     /// # Arguments

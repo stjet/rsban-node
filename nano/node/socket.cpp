@@ -61,11 +61,9 @@ nano::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoi
 	workers{ workers_a },
 	network_timeout_logging{ network_timeout_logging_a },
 	endpoint_type_m{ endpoint_type_a },
-	last_receive_time_or_init{ nano::seconds_since_epoch () },
 	default_timeout{ default_timeout_a },
-	silent_connection_tolerance_time{ silent_connection_tolerance_time_a },
 	tcp_socket_facade_m{ strand, tcp_socket, io_ctx },
-	handle{ rsnano::rsn_socket_create (&tcp_socket_facade_m, stats_a.handle, default_timeout_a.count ()) }
+	handle{ rsnano::rsn_socket_create (static_cast<uint8_t> (endpoint_type_a), &tcp_socket_facade_m, stats_a.handle, &workers, default_timeout_a.count (), silent_connection_tolerance_time_a.count ()) }
 {
 }
 
@@ -209,7 +207,7 @@ void nano::socket::set_last_completion ()
 
 void nano::socket::set_last_receive_time ()
 {
-	last_receive_time_or_init = nano::seconds_since_epoch ();
+	rsnano::rsn_socket_set_last_receive_time (handle);
 }
 
 void nano::socket::checkup ()
@@ -222,7 +220,7 @@ void nano::socket::checkup ()
 			auto condition_to_disconnect{ false };
 
 			// if this is a server socket, and no data is received for silent_connection_tolerance_time seconds then disconnect
-			if (this_l->endpoint_type () == endpoint_type_t::server && (now - this_l->last_receive_time_or_init) > this_l->silent_connection_tolerance_time.count ())
+			if (this_l->endpoint_type () == endpoint_type_t::server && (now - rsnano::rsn_socket_get_last_receive_time (this_l->handle)) > rsnano::rsn_socket_get_silent_connnection_tolerance_time_s (this_l->handle))
 			{
 				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_silent_connection_drop, nano::stat::dir::in);
 				condition_to_disconnect = true;
@@ -273,7 +271,7 @@ void nano::socket::set_silent_connection_tolerance_time (std::chrono::seconds to
 {
 	auto this_l (shared_from_this ());
 	boost::asio::dispatch (strand, boost::asio::bind_executor (strand, [this_l, tolerance_time_a] () {
-		this_l->silent_connection_tolerance_time = tolerance_time_a;
+		rsnano::rsn_socket_set_silent_connection_tolerance_time (this_l->handle, tolerance_time_a.count ());
 	}));
 }
 

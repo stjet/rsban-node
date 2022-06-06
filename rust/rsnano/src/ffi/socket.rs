@@ -1,3 +1,5 @@
+use num::FromPrimitive;
+
 use crate::{ErrorCode, Socket, SocketImpl, TcpSocketFacade};
 use std::{
     ffi::c_void,
@@ -7,22 +9,30 @@ use std::{
     time::Duration,
 };
 
-use super::StatHandle;
+use super::{thread_pool::FfiThreadPool, StatHandle};
 
 pub struct SocketHandle(Arc<Mutex<SocketImpl>>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_create(
+    endpoint_type: u8,
     tcp_facade: *mut c_void,
     stats_handle: *mut StatHandle,
+    thread_pool: *mut c_void,
     default_timeout_s: u64,
+    silent_connection_tolerance_time_s: u64,
 ) -> *mut SocketHandle {
+    let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
     let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
+    let thread_pool = Arc::new(FfiThreadPool::new(thread_pool));
     Box::into_raw(Box::new(SocketHandle(Arc::new(Mutex::new(
         SocketImpl::new(
+            endpoint_type,
             tcp_facade,
             (*stats_handle).deref().clone(),
+            thread_pool,
             Duration::from_secs(default_timeout_s),
+            Duration::from_secs(silent_connection_tolerance_time_s),
         ),
     )))))
 }
@@ -167,6 +177,41 @@ pub unsafe extern "C" fn rsn_socket_get_last_completion_time(handle: *mut Socket
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_set_last_completion(handle: *mut SocketHandle) {
     (*handle).0.lock().unwrap().set_last_completion();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_get_last_receive_time(handle: *mut SocketHandle) -> u64 {
+    (*handle)
+        .0
+        .lock()
+        .unwrap()
+        .last_receive_time_or_init
+        .load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_set_last_receive_time(handle: *mut SocketHandle) {
+    (*handle).0.lock().unwrap().set_last_receive_time();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_get_silent_connnection_tolerance_time_s(
+    handle: *mut SocketHandle,
+) -> u64 {
+    (*handle)
+        .0
+        .lock()
+        .unwrap()
+        .silent_connection_tolerance_time
+        .as_secs()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_set_silent_connection_tolerance_time(
+    handle: *mut SocketHandle,
+    time_s: u64,
+) {
+    (*handle).0.lock().unwrap().silent_connection_tolerance_time = Duration::from_secs(time_s);
 }
 
 #[no_mangle]

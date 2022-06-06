@@ -1164,21 +1164,32 @@ const EndpointDto * endpoint,
 SocketConnectCallback callback,
 void * context);
 
-SocketHandle * rsn_socket_create (void * tcp_facade,
+SocketHandle * rsn_socket_create (uint8_t endpoint_type,
+void * tcp_facade,
 StatHandle * stats_handle,
-uint64_t default_timeout_s);
+void * thread_pool,
+uint64_t default_timeout_s,
+uint64_t silent_connection_tolerance_time_s);
 
 void rsn_socket_destroy (SocketHandle * handle);
 
 uint64_t rsn_socket_get_last_completion_time (SocketHandle * handle);
 
+uint64_t rsn_socket_get_last_receive_time (SocketHandle * handle);
+
 void rsn_socket_get_remote (SocketHandle * handle, EndpointDto * result);
+
+uint64_t rsn_socket_get_silent_connnection_tolerance_time_s (SocketHandle * handle);
 
 uint64_t rsn_socket_get_timeout_s (SocketHandle * handle);
 
 void rsn_socket_set_last_completion (SocketHandle * handle);
 
+void rsn_socket_set_last_receive_time (SocketHandle * handle);
+
 void rsn_socket_set_remote_endpoint (SocketHandle * handle, const EndpointDto * endpoint);
+
+void rsn_socket_set_silent_connection_tolerance_time (SocketHandle * handle, uint64_t time_s);
 
 void rsn_socket_set_timeout (SocketHandle * handle, uint64_t timeout_s);
 

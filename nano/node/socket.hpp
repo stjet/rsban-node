@@ -149,11 +149,6 @@ protected:
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint remote;
 
-	/** the timestamp (in seconds since epoch) of the last time there was successful receive on the socket
-	 *  successful receive includes graceful closing of the socket by the peer (the read succeeds but returns 0 bytes)
-	 */
-	std::atomic<uint64_t> last_receive_time_or_init;
-
 	/** Flag that is set when cleanup decides to close the socket due to timeout.
 	 *  NOTE: Currently used by bootstrap_server::timeout() but I suspect that this and bootstrap_server::timeout() are not needed.
 	 */
@@ -161,9 +156,6 @@ protected:
 
 	/** the timeout value to use when calling set_default_timeout() */
 	std::atomic<std::chrono::seconds> default_timeout;
-
-	/** used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout */
-	std::chrono::seconds silent_connection_tolerance_time;
 
 	/** Tracks number of blocks queued for delivery to the local socket send buffers.
 	 *  Under normal circumstances, this should be zero.

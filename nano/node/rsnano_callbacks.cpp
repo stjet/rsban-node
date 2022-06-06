@@ -3,6 +3,7 @@
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/stream.hpp>
+#include <nano/lib/threading.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/blockprocessor.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
@@ -403,6 +404,19 @@ void async_connect (void * handle_a, rsnano::EndpointDto const * endpoint_a, rsn
 	});
 }
 
+void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackHandle * callback_a)
+{
+	auto pool{ static_cast<nano::thread_pool *> (handle_a) };
+	bool added = pool->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_ms), [callback_a] () {
+		rsnano::rsn_void_fn_callback_call (callback_a);
+		rsnano::rsn_void_fn_callback_destroy (callback_a);
+	});
+	if (!added)
+	{
+		rsnano::rsn_void_fn_callback_destroy (callback_a);
+	}
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -449,5 +463,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_ledger_block_or_pruned_exists (ledger_block_or_pruned_exists);
 	rsnano::rsn_callback_block_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_async_connect (async_connect);
+	rsnano::rsn_callback_add_timed_task (add_timed_task);
 	callbacks_set = true;
 }

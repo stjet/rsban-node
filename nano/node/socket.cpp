@@ -61,12 +61,11 @@ nano::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoi
 	workers{ workers_a },
 	network_timeout_logging{ network_timeout_logging_a },
 	endpoint_type_m{ endpoint_type_a },
-	timeout{ std::numeric_limits<uint64_t>::max () },
 	last_receive_time_or_init{ nano::seconds_since_epoch () },
 	default_timeout{ default_timeout_a },
 	silent_connection_tolerance_time{ silent_connection_tolerance_time_a },
 	tcp_socket_facade_m{ strand, tcp_socket, io_ctx },
-	handle{ rsnano::rsn_socket_create (&tcp_socket_facade_m, stats_a.handle) }
+	handle{ rsnano::rsn_socket_create (&tcp_socket_facade_m, stats_a.handle, default_timeout_a.count ()) }
 {
 }
 
@@ -93,12 +92,10 @@ void nano::socket::async_connect (nano::tcp_endpoint const & endpoint_a, std::fu
 {
 	debug_assert (endpoint_type () == endpoint_type_t::client);
 	checkup ();
-	auto this_l (shared_from_this ());
-	set_default_timeout ();
 
 	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
 	auto cb_wrapper = new std::function<void (boost::system::error_code const &)> (std::move (callback_a));
-	rsnano::rsn_socket_async_connect (this_l->handle, &endpoint_dto, async_connect_adapter, cb_wrapper);
+	rsnano::rsn_socket_async_connect (handle, &endpoint_dto, async_connect_adapter, cb_wrapper);
 }
 
 void nano::socket::async_read (std::shared_ptr<std::vector<uint8_t>> const & buffer_a, std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
@@ -202,7 +199,7 @@ void nano::socket::set_default_timeout ()
  */
 void nano::socket::set_timeout (std::chrono::seconds timeout_a)
 {
-	timeout = timeout_a.count ();
+	rsnano::rsn_socket_set_timeout (handle, timeout_a.count ());
 }
 
 void nano::socket::set_last_completion ()
@@ -232,7 +229,7 @@ void nano::socket::checkup ()
 			}
 
 			// if there is no activity for timeout seconds then disconnect
-			if ((now - rsnano::rsn_socket_get_last_completion_time (this_l->handle)) > this_l->timeout)
+			if ((now - rsnano::rsn_socket_get_last_completion_time (this_l->handle)) > rsnano::rsn_socket_get_timeout_s (this_l->handle))
 			{
 				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop,
 				this_l->endpoint_type () == endpoint_type_t::server ? nano::stat::dir::in : nano::stat::dir::out);

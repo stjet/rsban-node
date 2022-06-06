@@ -55,6 +55,8 @@ struct StringHandle;
 
 struct UncheckedInfoHandle;
 
+struct VoidFnCallbackHandle;
+
 struct VoteHandle;
 
 struct VoteHashesHandle;
@@ -134,6 +136,8 @@ struct BootstrapConstantsDto
 	int64_t gap_cache_bootstrap_start_interval_ms;
 	uint32_t default_frontiers_age_seconds;
 };
+
+using AddTimedTaskCallback = void (*) (void *, uint64_t, VoidFnCallbackHandle *);
 
 using AlwaysLogCallback = void (*) (void *, const uint8_t *, uintptr_t);
 
@@ -839,6 +843,8 @@ BootstrapInitiatorHandle * rsn_bootstrap_initiator_create (void * handle);
 
 void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
 
+void rsn_callback_add_timed_task (AddTimedTaskCallback f);
+
 void rsn_callback_always_log (AlwaysLogCallback f);
 
 void rsn_callback_async_connect (AsyncConnectCallback f);
@@ -1158,7 +1164,9 @@ const EndpointDto * endpoint,
 SocketConnectCallback callback,
 void * context);
 
-SocketHandle * rsn_socket_create (void * tcp_facade, StatHandle * stats_handle);
+SocketHandle * rsn_socket_create (void * tcp_facade,
+StatHandle * stats_handle,
+uint64_t default_timeout_s);
 
 void rsn_socket_destroy (SocketHandle * handle);
 
@@ -1166,9 +1174,13 @@ uint64_t rsn_socket_get_last_completion_time (SocketHandle * handle);
 
 void rsn_socket_get_remote (SocketHandle * handle, EndpointDto * result);
 
+uint64_t rsn_socket_get_timeout_s (SocketHandle * handle);
+
 void rsn_socket_set_last_completion (SocketHandle * handle);
 
 void rsn_socket_set_remote_endpoint (SocketHandle * handle, const EndpointDto * endpoint);
+
+void rsn_socket_set_timeout (SocketHandle * handle, uint64_t timeout_s);
 
 void rsn_stat_add (StatHandle * handle,
 uint8_t stat_type,
@@ -1329,6 +1341,10 @@ bool rsn_validate_message (const uint8_t (*pub_key)[32],
 const uint8_t * message,
 uintptr_t len,
 const uint8_t (*signature)[64]);
+
+void rsn_void_fn_callback_call (VoidFnCallbackHandle * f);
+
+void rsn_void_fn_callback_destroy (VoidFnCallbackHandle * f);
 
 void rsn_vote_account (const VoteHandle * handle, uint8_t * result);
 

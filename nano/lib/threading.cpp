@@ -240,8 +240,9 @@ void nano::thread_pool::push_task (std::function<void ()> task)
 	}
 }
 
-void nano::thread_pool::add_timed_task (std::chrono::steady_clock::time_point const & expiry_time, std::function<void ()> task)
+bool nano::thread_pool::add_timed_task (std::chrono::steady_clock::time_point const & expiry_time, std::function<void ()> task)
 {
+	auto added{ false };
 	nano::lock_guard<nano::mutex> guard (mutex);
 	if (!stopped && thread_pool_m)
 	{
@@ -252,7 +253,9 @@ void nano::thread_pool::add_timed_task (std::chrono::steady_clock::time_point co
 				push_task (task);
 			}
 		});
+		added = true;
 	}
+	return added;
 }
 
 unsigned nano::thread_pool::get_num_threads () const

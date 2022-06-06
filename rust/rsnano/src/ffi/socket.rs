@@ -4,6 +4,7 @@ use std::{
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     ops::Deref,
     sync::{atomic::Ordering, Arc, Mutex},
+    time::Duration,
 };
 
 use super::StatHandle;
@@ -14,10 +15,15 @@ pub struct SocketHandle(Arc<Mutex<SocketImpl>>);
 pub unsafe extern "C" fn rsn_socket_create(
     tcp_facade: *mut c_void,
     stats_handle: *mut StatHandle,
+    default_timeout_s: u64,
 ) -> *mut SocketHandle {
     let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
     Box::into_raw(Box::new(SocketHandle(Arc::new(Mutex::new(
-        SocketImpl::new(tcp_facade, (*stats_handle).deref().clone()),
+        SocketImpl::new(
+            tcp_facade,
+            (*stats_handle).deref().clone(),
+            Duration::from_secs(default_timeout_s),
+        ),
     )))))
 }
 
@@ -161,6 +167,20 @@ pub unsafe extern "C" fn rsn_socket_get_last_completion_time(handle: *mut Socket
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_set_last_completion(handle: *mut SocketHandle) {
     (*handle).0.lock().unwrap().set_last_completion();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_set_timeout(handle: *mut SocketHandle, timeout_s: u64) {
+    (*handle)
+        .0
+        .lock()
+        .unwrap()
+        .set_timeout(Duration::from_secs(timeout_s));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_get_timeout_s(handle: *mut SocketHandle) -> u64 {
+    (*handle).0.lock().unwrap().timeout.as_secs()
 }
 
 pub struct AsyncConnectCallbackHandle(Box<dyn Fn(ErrorCode)>);

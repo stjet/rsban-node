@@ -149,11 +149,6 @@ protected:
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint remote;
 
-	/** number of seconds of inactivity that causes a socket timeout
-	 *  activity is any successful connect, send or receive event
-	 */
-	std::atomic<uint64_t> timeout;
-
 	/** the timestamp (in seconds since epoch) of the last time there was successful receive on the socket
 	 *  successful receive includes graceful closing of the socket by the peer (the read succeeds but returns 0 bytes)
 	 */

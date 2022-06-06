@@ -1,6 +1,7 @@
 use std::{
     net::SocketAddr,
-    sync::{atomic::AtomicU64, Arc, Mutex},
+    sync::{atomic::AtomicU64, Arc, Mutex, Weak},
+    time::Duration,
 };
 
 use crate::{
@@ -32,16 +33,28 @@ pub struct SocketImpl {
     /// activity is any successful connect, send or receive event
     pub last_completion_time_or_init: AtomicU64,
 
+    pub default_timeout: Duration,
+
+    /// Duration of inactivity that causes a socket timeout
+    /// activity is any successful connect, send or receive event
+    pub timeout: Duration,
+
     tcp_socket: Arc<dyn TcpSocketFacade>,
     stats: Arc<Stat>,
 }
 
 impl SocketImpl {
-    pub fn new(tcp_socket: Arc<dyn TcpSocketFacade>, stats: Arc<Stat>) -> Self {
+    pub fn new(
+        tcp_socket: Arc<dyn TcpSocketFacade>,
+        stats: Arc<Stat>,
+        default_timeout: Duration,
+    ) -> Self {
         Self {
             remote: None,
             last_completion_time_or_init: AtomicU64::new(seconds_since_epoch()),
             tcp_socket,
+            default_timeout,
+            timeout: Duration::MAX,
             stats,
         }
     }
@@ -49,6 +62,19 @@ impl SocketImpl {
     pub fn set_last_completion(&self) {
         self.last_completion_time_or_init
             .store(seconds_since_epoch(), std::sync::atomic::Ordering::SeqCst);
+    }
+
+    /// Set the current timeout of the socket.
+    ///  timeout occurs when the last socket completion is more than timeout seconds in the past
+    ///  timeout always applies, the socket always has a timeout
+    ///  to set infinite timeout, use Duration::MAX
+    ///  the function checkup() checks for timeout on a regular interval
+    pub fn set_timeout(&mut self, timeout: Duration) {
+        self.timeout = timeout;
+    }
+
+    pub fn set_default_timeout(&mut self) {
+        self.timeout = self.default_timeout;
     }
 }
 
@@ -58,8 +84,12 @@ pub trait Socket {
 
 impl Socket for Arc<Mutex<SocketImpl>> {
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>) {
+        checkup(Arc::downgrade(self));
+
         let self_clone = self.clone();
-        self.lock().unwrap().tcp_socket.async_connect(
+        let mut lock = self.lock().unwrap();
+        lock.set_default_timeout();
+        lock.tcp_socket.async_connect(
             endpoint,
             Box::new(move |ec| {
                 let mut lock = self_clone.lock().unwrap();
@@ -78,3 +108,5 @@ impl Socket for Arc<Mutex<SocketImpl>> {
         );
     }
 }
+
+fn checkup(_socket: Weak<Mutex<SocketImpl>>) {}

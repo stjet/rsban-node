@@ -1,11 +1,13 @@
 mod blake2b;
 mod json;
 mod stream;
+mod thread_pool;
 mod toml;
 
 pub use blake2b::*;
 pub use json::*;
 pub use stream::*;
+pub use thread_pool::*;
 pub use toml::*;
 
 pub fn seconds_since_epoch() -> u64 {

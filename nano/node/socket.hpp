@@ -125,7 +125,6 @@ public:
 	{
 		return closed;
 	}
-	rsnano::SocketHandle * handle;
 
 protected:
 	/** Holds the buffer and callback for queued writes */
@@ -196,6 +195,7 @@ private:
 
 public:
 	static std::size_t constexpr queue_size_max = 128;
+	rsnano::SocketHandle * handle;
 };
 
 using address_socket_mmap = std::multimap<boost::asio::ip::address, std::weak_ptr<socket>>;

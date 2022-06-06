@@ -4,6 +4,7 @@
 #include <nano/boost/asio/ip/address_v6.hpp>
 #include <nano/boost/asio/ip/network_v6.hpp>
 #include <nano/boost/asio/read.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/socket.hpp>
 #include <nano/node/transport/transport.hpp>
@@ -64,8 +65,8 @@ nano::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoi
 	last_receive_time_or_init{ nano::seconds_since_epoch () },
 	default_timeout{ default_timeout_a },
 	silent_connection_tolerance_time{ silent_connection_tolerance_time_a },
-	handle{ rsnano::rsn_socket_create (stats_a.handle) },
-	tcp_socket_facade_m{ strand, tcp_socket, io_ctx }
+	tcp_socket_facade_m{ strand, tcp_socket, io_ctx },
+	handle{ rsnano::rsn_socket_create (&tcp_socket_facade_m, stats_a.handle) }
 {
 }
 
@@ -75,77 +76,12 @@ nano::socket::~socket ()
 	rsnano::rsn_socket_destroy (handle);
 }
 
-boost::system::error_code dto_to_error_code (rsnano::ErrorCodeDto const & dto)
-{
-	boost::system::error_category const * cat;
-	if (dto.category == 0)
-	{
-		cat = &boost::system::generic_category ();
-	}
-	else
-	{
-		cat = &boost::system::system_category ();
-	}
-
-	return boost::system::error_code (dto.val, *cat);
-}
-
-rsnano::ErrorCodeDto error_code_to_dto (boost::system::error_code const & ec)
-{
-	rsnano::ErrorCodeDto dto;
-	dto.val = ec.value ();
-	if (ec.category () == boost::system::generic_category ())
-	{
-		dto.category = 0;
-	}
-	else
-	{
-		dto.category = 1;
-	}
-
-	return dto;
-}
-
 void async_connect_adapter (void * context, rsnano::ErrorCodeDto const * error)
 {
-	auto ec{ dto_to_error_code (*error) };
+	auto ec{ rsnano::dto_to_error_code (*error) };
 	auto cb_ptr = static_cast<std::function<void (boost::system::error_code const &)> *> (context);
 	auto callback = std::unique_ptr<std::function<void (boost::system::error_code const &)>> (cb_ptr);
 	(*callback) (ec);
-}
-
-boost::asio::ip::tcp::endpoint dto_to_endpoint (rsnano::EndpointDto const & dto)
-{
-	if (dto.v6)
-	{
-		std::array<unsigned char, 16> bytes;
-		std::copy (std::begin (dto.bytes), std::end (dto.bytes), std::begin (bytes));
-		boost::asio::ip::address_v6 addr{ bytes };
-		return nano::tcp_endpoint (boost::asio::ip::address{ addr }, dto.port);
-	}
-
-	std::array<unsigned char, 4> bytes;
-	std::copy (dto.bytes, dto.bytes + 4, std::begin (bytes));
-	boost::asio::ip::address_v4 addr{ bytes };
-	return nano::tcp_endpoint (boost::asio::ip::address{ addr }, dto.port);
-}
-
-rsnano::EndpointDto endpoint_to_dto (nano::tcp_endpoint const & ep)
-{
-	rsnano::EndpointDto dto;
-	dto.port = ep.port ();
-	dto.v6 = ep.address ().is_v6 ();
-	if (dto.v6)
-	{
-		auto bytes{ ep.address ().to_v6 ().to_bytes () };
-		std::copy (std::begin (bytes), std::end (bytes), std::begin (dto.bytes));
-	}
-	else
-	{
-		auto bytes{ ep.address ().to_v4 ().to_bytes () };
-		std::copy (std::begin (bytes), std::end (bytes), std::begin (dto.bytes));
-	}
-	return dto;
 }
 
 boost::asio::ip::tcp::endpoint & nano::socket::get_remote ()
@@ -159,12 +95,10 @@ void nano::socket::async_connect (nano::tcp_endpoint const & endpoint_a, std::fu
 	checkup ();
 	auto this_l (shared_from_this ());
 	set_default_timeout ();
-	tcp_socket_facade_m.async_connect (endpoint_a, [this_l, callback = std::move (callback_a), endpoint_a] (boost::system::error_code const & ec) {
-		auto endpoint_dto{ endpoint_to_dto (endpoint_a) };
-		auto ec_dto{ error_code_to_dto (ec) };
-		auto cb_wrapper = new std::function<void (boost::system::error_code const &)> (std::move (callback));
-		rsnano::rsn_socket_async_connect (this_l->handle, async_connect_adapter, cb_wrapper, &ec_dto, &endpoint_dto);
-	});
+
+	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
+	auto cb_wrapper = new std::function<void (boost::system::error_code const &)> (std::move (callback_a));
+	rsnano::rsn_socket_async_connect (this_l->handle, &endpoint_dto, async_connect_adapter, cb_wrapper);
 }
 
 void nano::socket::async_read (std::shared_ptr<std::vector<uint8_t>> const & buffer_a, std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
@@ -377,7 +311,7 @@ boost::asio::ip::tcp::endpoint nano::socket::remote_endpoint () const
 {
 	rsnano::EndpointDto result;
 	rsnano::rsn_socket_get_remote (handle, &result);
-	return dto_to_endpoint (result);
+	return rsnano::dto_to_endpoint (result);
 }
 
 nano::tcp_endpoint nano::socket::local_endpoint () const
@@ -512,7 +446,7 @@ void nano::server_socket::on_connection (std::function<bool (std::shared_ptr<nan
 		this_l->acceptor.async_accept (new_connection->tcp_socket, new_connection->get_remote (),
 		boost::asio::bind_executor (this_l->strand,
 		[this_l, new_connection, cbk = std::move (callback)] (boost::system::error_code const & ec_a) mutable {
-			auto endpoint_dto{ endpoint_to_dto (new_connection->get_remote ()) };
+			auto endpoint_dto{ rsnano::endpoint_to_dto (new_connection->get_remote ()) };
 			rsnano::rsn_socket_set_remote_endpoint (new_connection->handle, &endpoint_dto);
 			this_l->evict_dead_connections ();
 

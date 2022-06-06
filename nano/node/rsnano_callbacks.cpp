@@ -1,6 +1,7 @@
 #include <nano/crypto/blake2/blake2.h>
 #include <nano/lib/logger_mt.hpp>
 #include <nano/lib/rsnano.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/stream.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/blockprocessor.hpp>
@@ -391,6 +392,17 @@ void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
 	bootstrap_initiator->clear_pulls (bootstrap_id_a);
 }
 
+void async_connect (void * handle_a, rsnano::EndpointDto const * endpoint_a, rsnano::AsyncConnectCallbackHandle * callback_a)
+{
+	auto endpoint{ rsnano::dto_to_endpoint (*endpoint_a) };
+	auto socket{ static_cast<nano::tcp_socket_facade *> (handle_a) };
+	socket->async_connect (endpoint, [callback_a] (const boost::system::error_code & ec) {
+		auto ec_dto{ rsnano::error_code_to_dto (ec) };
+		rsnano::rsn_async_connect_callback_execute (callback_a, &ec_dto);
+		rsnano::rsn_async_connect_callback_destroy (callback_a);
+	});
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -436,5 +448,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_block_processor_add (blockprocessor_add);
 	rsnano::rsn_callback_ledger_block_or_pruned_exists (ledger_block_or_pruned_exists);
 	rsnano::rsn_callback_block_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
+	rsnano::rsn_callback_async_connect (async_connect);
 	callbacks_set = true;
 }

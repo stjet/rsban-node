@@ -47,7 +47,7 @@ pub(crate) use logger_mt::*;
 pub use numbers::*;
 pub use secure::*;
 pub use signatures::*;
-pub use socket::Socket;
+pub use socket::SocketImpl;
 pub use socket::*;
 pub(crate) use state_block_signature_verification::*;
 pub use token_bucket::*;

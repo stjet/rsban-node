@@ -13,6 +13,8 @@ namespace rsnano
 {
 static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
 
+struct AsyncConnectCallbackHandle;
+
 struct BandwidthLimiterHandle;
 
 struct BlockArrivalHandle;
@@ -58,6 +60,12 @@ struct VoteHandle;
 struct VoteHashesHandle;
 
 struct VoteUniquerHandle;
+
+struct ErrorCodeDto
+{
+	int32_t val;
+	uint8_t category;
+};
 
 struct BlockDetailsDto
 {
@@ -128,6 +136,15 @@ struct BootstrapConstantsDto
 };
 
 using AlwaysLogCallback = void (*) (void *, const uint8_t *, uintptr_t);
+
+struct EndpointDto
+{
+	uint8_t bytes[16];
+	uint16_t port;
+	bool v6;
+};
+
+using AsyncConnectCallback = void (*) (void *, const EndpointDto *, AsyncConnectCallbackHandle *);
 
 using Blake2BFinalCallback = int32_t (*) (void *, void *, uintptr_t);
 
@@ -583,20 +600,7 @@ struct SignatureCheckSetDto
 	int32_t * verifications;
 };
 
-struct ErrorCodeDto
-{
-	int32_t val;
-	uint8_t category;
-};
-
 using SocketConnectCallback = void (*) (void *, const ErrorCodeDto *);
-
-struct EndpointDto
-{
-	uint8_t bytes[16];
-	uint16_t port;
-	bool v6;
-};
 
 struct StateBlockDto
 {
@@ -654,6 +658,11 @@ extern "C" {
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
 
 void rsn_account_encode (const uint8_t (*bytes)[32], uint8_t (*result)[65]);
+
+void rsn_async_connect_callback_destroy (AsyncConnectCallbackHandle * callback);
+
+void rsn_async_connect_callback_execute (AsyncConnectCallbackHandle * callback,
+const ErrorCodeDto * ec);
 
 BandwidthLimiterHandle * rsn_bandwidth_limiter_create (double limit_burst_ratio, uintptr_t limit);
 
@@ -831,6 +840,8 @@ BootstrapInitiatorHandle * rsn_bootstrap_initiator_create (void * handle);
 void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
 
 void rsn_callback_always_log (AlwaysLogCallback f);
+
+void rsn_callback_async_connect (AsyncConnectCallback f);
 
 void rsn_callback_blake2b_final (Blake2BFinalCallback f);
 
@@ -1143,12 +1154,11 @@ void rsn_signature_checker_verify (const SignatureCheckerHandle * handle,
 SignatureCheckSetDto * check_set);
 
 void rsn_socket_async_connect (SocketHandle * handle,
+const EndpointDto * endpoint,
 SocketConnectCallback callback,
-void * context,
-const ErrorCodeDto * error_code,
-const EndpointDto * endpoint);
+void * context);
 
-SocketHandle * rsn_socket_create (StatHandle * stats_handle);
+SocketHandle * rsn_socket_create (void * tcp_facade, StatHandle * stats_handle);
 
 void rsn_socket_destroy (SocketHandle * handle);
 

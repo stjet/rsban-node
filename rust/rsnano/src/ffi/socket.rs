@@ -269,12 +269,12 @@ type CloseSocketCallback = unsafe extern "C" fn(*mut c_void, *mut ErrorCodeDto);
 static mut CLOSE_SOCKET_CALLBACK: Option<CloseSocketCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_async_connect(f: AsyncConnectCallback) {
+pub unsafe extern "C" fn rsn_callback_tcp_socket_async_connect(f: AsyncConnectCallback) {
     ASYNC_CONNECT_CALLBACK = Some(f);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_remote_endpoint(f: RemoteEndpointCallback) {
+pub unsafe extern "C" fn rsn_callback_tcp_socket_remote_endpoint(f: RemoteEndpointCallback) {
     REMOTE_ENDPOINT_CALLBACK = Some(f);
 }
 
@@ -286,6 +286,15 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_dispatch(f: DispatchCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_tcp_socket_close(f: CloseSocketCallback) {
     CLOSE_SOCKET_CALLBACK = Some(f);
+}
+
+type TcpFacadeDestroyCallback = unsafe extern "C" fn(*mut c_void);
+
+static mut TCP_FACADE_DESTROY_CALLBACK: Option<TcpFacadeDestroyCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_destroy(f: TcpFacadeDestroyCallback) {
+    TCP_FACADE_DESTROY_CALLBACK = Some(f);
 }
 
 #[no_mangle]
@@ -304,6 +313,22 @@ pub unsafe extern "C" fn rsn_async_connect_callback_destroy(
     drop(Box::from_raw(callback))
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_set_default_timeout(handle: *mut SocketHandle) {
+    (*handle).0.set_default_timeout();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_set_default_timeout_value(
+    handle: *mut SocketHandle,
+    timeout_s: u64,
+) {
+    (*handle)
+        .0
+        .default_timeout
+        .store(timeout_s, Ordering::SeqCst);
+}
+
 struct FfiTcpSocketFacade {
     handle: *mut c_void,
 }
@@ -311,6 +336,14 @@ struct FfiTcpSocketFacade {
 impl FfiTcpSocketFacade {
     fn new(handle: *mut c_void) -> Self {
         Self { handle }
+    }
+}
+
+impl Drop for FfiTcpSocketFacade {
+    fn drop(&mut self) {
+        unsafe {
+            TCP_FACADE_DESTROY_CALLBACK.expect("TCP_FACADE_DESTROY_CALLBACK missing")(self.handle)
+        }
     }
 }
 

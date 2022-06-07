@@ -393,17 +393,6 @@ void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
 	bootstrap_initiator->clear_pulls (bootstrap_id_a);
 }
 
-void async_connect (void * handle_a, rsnano::EndpointDto const * endpoint_a, rsnano::AsyncConnectCallbackHandle * callback_a)
-{
-	auto endpoint{ rsnano::dto_to_endpoint (*endpoint_a) };
-	auto socket{ static_cast<nano::tcp_socket_facade *> (handle_a) };
-	socket->async_connect (endpoint, [callback_a] (const boost::system::error_code & ec) {
-		auto ec_dto{ rsnano::error_code_to_dto (ec) };
-		rsnano::rsn_async_connect_callback_execute (callback_a, &ec_dto);
-		rsnano::rsn_async_connect_callback_destroy (callback_a);
-	});
-}
-
 void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackHandle * callback_a)
 {
 	auto pool{ static_cast<nano::thread_pool *> (handle_a) };
@@ -417,19 +406,30 @@ void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackH
 	}
 }
 
-void remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a, rsnano::ErrorCodeDto * ec_a)
+void tcp_socket_async_connect (void * handle_a, rsnano::EndpointDto const * endpoint_a, rsnano::AsyncConnectCallbackHandle * callback_a)
 {
-	auto socket{ static_cast<nano::tcp_socket_facade *> (handle_a) };
+	auto endpoint{ rsnano::dto_to_endpoint (*endpoint_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	(*socket)->async_connect (endpoint, [callback_a] (const boost::system::error_code & ec) {
+		auto ec_dto{ rsnano::error_code_to_dto (ec) };
+		rsnano::rsn_async_connect_callback_execute (callback_a, &ec_dto);
+		rsnano::rsn_async_connect_callback_destroy (callback_a);
+	});
+}
+
+void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a, rsnano::ErrorCodeDto * ec_a)
+{
+	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
 	boost::system::error_code ec;
-	auto endpoint{ socket->remote_endpoint (ec) };
+	auto endpoint{ (*socket)->remote_endpoint (ec) };
 	*endpoint_a = rsnano::endpoint_to_dto (endpoint);
 	*ec_a = rsnano::error_code_to_dto (ec);
 }
 
 void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
 {
-	auto socket{ static_cast<nano::tcp_socket_facade *> (handle_a) };
-	socket->dispatch ([callback_a] () {
+	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	(*socket)->dispatch ([callback_a] () {
 		rsnano::rsn_void_fn_callback_call (callback_a);
 		rsnano::rsn_void_fn_callback_destroy (callback_a);
 	});
@@ -437,10 +437,16 @@ void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callba
 
 void tcp_socket_close (void * handle_a, rsnano::ErrorCodeDto * ec_a)
 {
-	auto socket{ static_cast<nano::tcp_socket_facade *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
 	boost::system::error_code ec;
-	socket->close (ec);
+	(*socket)->close (ec);
 	*ec_a = rsnano::error_code_to_dto (ec);
+}
+
+void tcp_socket_destroy (void * handle_a)
+{
+	auto ptr{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	delete ptr;
 }
 
 static bool callbacks_set = false;
@@ -455,9 +461,11 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_read_u8 (read_u8);
 	rsnano::rsn_callback_read_bytes (read_bytes);
 	rsnano::rsn_callback_in_avail (in_avail);
+
 	rsnano::rsn_callback_blake2b_init (reinterpret_cast<Blake2BInitCallback> (blake2b_init));
 	rsnano::rsn_callback_blake2b_update (reinterpret_cast<Blake2BUpdateCallback> (blake2b_update));
 	rsnano::rsn_callback_blake2b_final (reinterpret_cast<Blake2BFinalCallback> (blake2b_final));
+
 	rsnano::rsn_callback_property_tree_put_string (ptree_put_string);
 	rsnano::rsn_callback_property_tree_put_u64 (ptree_put_u64);
 	rsnano::rsn_callback_property_tree_add (ptree_add);
@@ -469,8 +477,10 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_property_tree_put_child (ptree_put_child);
 	rsnano::rsn_callback_property_tree_clear (ptree_clear);
 	rsnano::rsn_callback_property_tree_to_json (ptree_to_json);
+
 	rsnano::rsn_callback_string_chars (string_chars);
 	rsnano::rsn_callback_string_delete (string_delete);
+
 	rsnano::rsn_callback_toml_put_u64 (toml_put_u64);
 	rsnano::rsn_callback_toml_put_i64 (toml_put_i64);
 	rsnano::rsn_callback_toml_put_str (toml_put_str);
@@ -482,16 +492,20 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_drop_config (toml_drop_config);
 	rsnano::rsn_callback_toml_put_child (toml_put_child);
 	rsnano::rsn_callback_toml_drop_array (toml_drop_array);
+
 	rsnano::rsn_callback_try_log (logger_try_log);
 	rsnano::rsn_callback_always_log (logger_always_log);
 	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
 	rsnano::rsn_callback_block_processor_add (blockprocessor_add);
 	rsnano::rsn_callback_ledger_block_or_pruned_exists (ledger_block_or_pruned_exists);
 	rsnano::rsn_callback_block_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
-	rsnano::rsn_callback_async_connect (async_connect);
 	rsnano::rsn_callback_add_timed_task (add_timed_task);
-	rsnano::rsn_callback_remote_endpoint (remote_endpoint);
+
+	rsnano::rsn_callback_tcp_socket_async_connect (tcp_socket_async_connect);
+	rsnano::rsn_callback_tcp_socket_remote_endpoint (tcp_socket_remote_endpoint);
 	rsnano::rsn_callback_tcp_socket_dispatch (tcp_socket_dispatch);
 	rsnano::rsn_callback_tcp_socket_close (tcp_socket_close);
+	rsnano::rsn_callback_tcp_socket_destroy (tcp_socket_destroy);
+
 	callbacks_set = true;
 }

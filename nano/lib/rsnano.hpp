@@ -141,15 +141,6 @@ using AddTimedTaskCallback = void (*) (void *, uint64_t, VoidFnCallbackHandle *)
 
 using AlwaysLogCallback = void (*) (void *, const uint8_t *, uintptr_t);
 
-struct EndpointDto
-{
-	uint8_t bytes[16];
-	uint16_t port;
-	bool v6;
-};
-
-using AsyncConnectCallback = void (*) (void *, const EndpointDto *, AsyncConnectCallbackHandle *);
-
 using Blake2BFinalCallback = int32_t (*) (void *, void *, uintptr_t);
 
 using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
@@ -192,15 +183,26 @@ using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
-using RemoteEndpointCallback = void (*) (void *, EndpointDto *, ErrorCodeDto *);
-
 using StringCharsCallback = const char * (*)(void *);
 
 using StringDeleteCallback = void (*) (void *);
 
+struct EndpointDto
+{
+	uint8_t bytes[16];
+	uint16_t port;
+	bool v6;
+};
+
+using AsyncConnectCallback = void (*) (void *, const EndpointDto *, AsyncConnectCallbackHandle *);
+
 using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
 
+using TcpFacadeDestroyCallback = void (*) (void *);
+
 using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
+
+using RemoteEndpointCallback = void (*) (void *, EndpointDto *, ErrorCodeDto *);
 
 using TomlArrayPutStrCallback = void (*) (void *, const uint8_t *, uintptr_t);
 
@@ -853,8 +855,6 @@ void rsn_callback_add_timed_task (AddTimedTaskCallback f);
 
 void rsn_callback_always_log (AlwaysLogCallback f);
 
-void rsn_callback_async_connect (AsyncConnectCallback f);
-
 void rsn_callback_blake2b_final (Blake2BFinalCallback f);
 
 void rsn_callback_blake2b_init (Blake2BInitCallback f);
@@ -897,15 +897,19 @@ void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
 
-void rsn_callback_remote_endpoint (RemoteEndpointCallback f);
-
 void rsn_callback_string_chars (StringCharsCallback f);
 
 void rsn_callback_string_delete (StringDeleteCallback f);
 
+void rsn_callback_tcp_socket_async_connect (AsyncConnectCallback f);
+
 void rsn_callback_tcp_socket_close (CloseSocketCallback f);
 
+void rsn_callback_tcp_socket_destroy (TcpFacadeDestroyCallback f);
+
 void rsn_callback_tcp_socket_dispatch (DispatchCallback f);
+
+void rsn_callback_tcp_socket_remote_endpoint (RemoteEndpointCallback f);
 
 void rsn_callback_toml_array_put_str (TomlArrayPutStrCallback f);
 
@@ -1206,6 +1210,10 @@ uint64_t rsn_socket_get_timeout_s (SocketHandle * handle);
 bool rsn_socket_has_timed_out (SocketHandle * handle);
 
 bool rsn_socket_is_closed (SocketHandle * handle);
+
+void rsn_socket_set_default_timeout (SocketHandle * handle);
+
+void rsn_socket_set_default_timeout_value (SocketHandle * handle, uint64_t timeout_s);
 
 void rsn_socket_set_last_completion (SocketHandle * handle);
 

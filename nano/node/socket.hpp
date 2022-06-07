@@ -52,6 +52,9 @@ public:
 	void async_connect (boost::asio::ip::tcp::endpoint endpoint_a,
 	std::function<void (boost::system::error_code const &)> callback_a);
 
+	void async_read (std::shared_ptr<std::vector<uint8_t>> const & buffer_a, size_t len_a,
+	std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
+
 	boost::asio::ip::tcp::endpoint remote_endpoint (boost::system::error_code & ec);
 
 	void dispatch (std::function<void ()> callback_a);
@@ -150,9 +153,6 @@ protected:
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint remote;
 
-	/** the timeout value to use when calling set_default_timeout() */
-	std::atomic<std::chrono::seconds> default_timeout;
-
 	/** Tracks number of blocks queued for delivery to the local socket send buffers.
 	 *  Under normal circumstances, this should be zero.
 	 *  Note that this is not the number of buffers queued to the peer, it is the number of buffers
@@ -170,7 +170,7 @@ protected:
 private:
 	type_t type_m{ type_t::undefined };
 	endpoint_type_t endpoint_type_m;
-	tcp_socket_facade tcp_socket_facade_m;
+	std::shared_ptr<tcp_socket_facade> tcp_socket_facade_m;
 
 public:
 	static std::size_t constexpr queue_size_max = 128;

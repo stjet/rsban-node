@@ -192,9 +192,15 @@ using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
+using RemoteEndpointCallback = void (*) (void *, EndpointDto *, ErrorCodeDto *);
+
 using StringCharsCallback = const char * (*)(void *);
 
 using StringDeleteCallback = void (*) (void *);
+
+using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
+
+using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
 
 using TomlArrayPutStrCallback = void (*) (void *, const uint8_t *, uintptr_t);
 
@@ -891,9 +897,15 @@ void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
 
+void rsn_callback_remote_endpoint (RemoteEndpointCallback f);
+
 void rsn_callback_string_chars (StringCharsCallback f);
 
 void rsn_callback_string_delete (StringDeleteCallback f);
+
+void rsn_callback_tcp_socket_close (CloseSocketCallback f);
+
+void rsn_callback_tcp_socket_dispatch (DispatchCallback f);
 
 void rsn_callback_toml_array_put_str (TomlArrayPutStrCallback f);
 
@@ -1164,12 +1176,20 @@ const EndpointDto * endpoint,
 SocketConnectCallback callback,
 void * context);
 
+void rsn_socket_checkup (SocketHandle * handle);
+
+void rsn_socket_close (SocketHandle * handle);
+
+void rsn_socket_close_internal (SocketHandle * handle);
+
 SocketHandle * rsn_socket_create (uint8_t endpoint_type,
 void * tcp_facade,
 StatHandle * stats_handle,
 void * thread_pool,
 uint64_t default_timeout_s,
-uint64_t silent_connection_tolerance_time_s);
+uint64_t silent_connection_tolerance_time_s,
+bool network_timeout_logging,
+void * logger);
 
 void rsn_socket_destroy (SocketHandle * handle);
 
@@ -1182,6 +1202,10 @@ void rsn_socket_get_remote (SocketHandle * handle, EndpointDto * result);
 uint64_t rsn_socket_get_silent_connnection_tolerance_time_s (SocketHandle * handle);
 
 uint64_t rsn_socket_get_timeout_s (SocketHandle * handle);
+
+bool rsn_socket_has_timed_out (SocketHandle * handle);
+
+bool rsn_socket_is_closed (SocketHandle * handle);
 
 void rsn_socket_set_last_completion (SocketHandle * handle);
 

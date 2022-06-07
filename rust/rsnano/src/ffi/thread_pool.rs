@@ -28,6 +28,12 @@ impl ThreadPool for FfiThreadPool {
 }
 pub struct VoidFnCallbackHandle(Box<dyn Fn()>);
 
+impl VoidFnCallbackHandle {
+    pub fn new(f: Box<dyn Fn()>) -> Self {
+        VoidFnCallbackHandle(f)
+    }
+}
+
 type AddTimedTaskCallback = unsafe extern "C" fn(*mut c_void, u64, *mut VoidFnCallbackHandle);
 
 static mut ADD_TIMED_TASK_CALLBACK: Option<AddTimedTaskCallback> = None;

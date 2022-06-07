@@ -52,6 +52,11 @@ public:
 	void async_connect (boost::asio::ip::tcp::endpoint endpoint_a,
 	std::function<void (boost::system::error_code const &)> callback_a);
 
+	boost::asio::ip::tcp::endpoint remote_endpoint (boost::system::error_code & ec);
+
+	void dispatch (std::function<void ()> callback_a);
+	void close (boost::system::error_code & ec);
+
 private:
 	boost::asio::strand<boost::asio::io_context::executor_type> & strand;
 	boost::asio::ip::tcp::socket & tcp_socket;
@@ -121,10 +126,7 @@ public:
 	{
 		return type () == nano::socket::type_t::realtime || type () == nano::socket::type_t::realtime_response_server;
 	}
-	bool is_closed ()
-	{
-		return closed;
-	}
+	bool is_closed ();
 
 protected:
 	/** Holds the buffer and callback for queued writes */
@@ -141,18 +143,12 @@ protected:
 	nano::stat & stats;
 	boost::asio::io_context & io_ctx;
 	nano::thread_pool & workers;
-	bool network_timeout_logging;
 
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint & get_remote ();
 
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint remote;
-
-	/** Flag that is set when cleanup decides to close the socket due to timeout.
-	 *  NOTE: Currently used by bootstrap_server::timeout() but I suspect that this and bootstrap_server::timeout() are not needed.
-	 */
-	std::atomic<bool> timed_out{ false };
 
 	/** the timeout value to use when calling set_default_timeout() */
 	std::atomic<std::chrono::seconds> default_timeout;
@@ -165,15 +161,11 @@ protected:
 	 */
 	std::atomic<std::size_t> queue_size{ 0 };
 
-	/** Set by close() - completion handlers must check this. This is more reliable than checking
-	 error codes as the OS may have already completed the async operation. */
-	std::atomic<bool> closed{ false };
-
 	void close_internal ();
+	void checkup ();
 	void set_default_timeout ();
 	void set_last_completion ();
 	void set_last_receive_time ();
-	void checkup ();
 
 private:
 	type_t type_m{ type_t::undefined };

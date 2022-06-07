@@ -1,19 +1,20 @@
 use std::{
     net::SocketAddr,
     sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc, Mutex, Weak,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc, Mutex,
     },
     time::Duration,
 };
 
 use crate::{
+    logger_mt::Logger,
     seconds_since_epoch,
     stats::{DetailType, Direction, Stat, StatType},
     ThreadPool,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct ErrorCode {
     pub val: i32,
     pub category: u8,
@@ -27,6 +28,9 @@ impl ErrorCode {
 
 pub trait TcpSocketFacade {
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>);
+    fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode>;
+    fn dispatch(&self, f: Box<dyn Fn()>);
+    fn close(&self) -> Result<(), ErrorCode>;
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, FromPrimitive)]
@@ -37,7 +41,7 @@ pub enum EndpointType {
 
 pub struct SocketImpl {
     /// The other end of the connection
-    pub remote: Option<SocketAddr>,
+    pub remote: Mutex<Option<SocketAddr>>,
 
     /// the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
     /// activity is any successful connect, send or receive event
@@ -47,18 +51,28 @@ pub struct SocketImpl {
     /// successful receive includes graceful closing of the socket by the peer (the read succeeds but returns 0 bytes)
     pub last_receive_time_or_init: AtomicU64,
 
-    pub default_timeout: Duration,
+    pub default_timeout: AtomicU64,
 
-    /// Duration of inactivity that causes a socket timeout
+    /// Duration in seconds of inactivity that causes a socket timeout
     /// activity is any successful connect, send or receive event
-    pub timeout: Duration,
+    pub timeout_seconds: AtomicU64,
 
     tcp_socket: Arc<dyn TcpSocketFacade>,
     stats: Arc<Stat>,
-    thread_pool: Arc<dyn ThreadPool>,
+    pub thread_pool: Arc<dyn ThreadPool>,
     endpoint_type: EndpointType,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
-    pub silent_connection_tolerance_time: Duration,
+    pub silent_connection_tolerance_time: AtomicU64,
+    network_timeout_logging: bool,
+    logger: Arc<dyn Logger>,
+
+    /// Flag that is set when cleanup decides to close the socket due to timeout.
+    /// NOTE: Currently used by bootstrap_server::timeout() but I suspect that this and bootstrap_server::timeout() are not needed.
+    pub timed_out: AtomicBool,
+
+    /// Set by close() - completion handlers must check this. This is more reliable than checking
+    /// error codes as the OS may have already completed the async operation.
+    pub closed: AtomicBool,
 }
 
 impl SocketImpl {
@@ -69,18 +83,26 @@ impl SocketImpl {
         thread_pool: Arc<dyn ThreadPool>,
         default_timeout: Duration,
         silent_connection_tolerance_time: Duration,
+        network_timeout_logging: bool,
+        logger: Arc<dyn Logger>,
     ) -> Self {
         Self {
-            remote: None,
+            remote: Mutex::new(None),
             last_completion_time_or_init: AtomicU64::new(seconds_since_epoch()),
             last_receive_time_or_init: AtomicU64::new(seconds_since_epoch()),
             tcp_socket,
-            default_timeout,
-            timeout: Duration::MAX,
+            default_timeout: AtomicU64::new(default_timeout.as_secs()),
+            timeout_seconds: AtomicU64::new(u64::MAX),
             stats,
             thread_pool,
             endpoint_type,
-            silent_connection_tolerance_time,
+            silent_connection_tolerance_time: AtomicU64::new(
+                silent_connection_tolerance_time.as_secs(),
+            ),
+            network_timeout_logging,
+            logger,
+            timed_out: AtomicBool::new(false),
+            closed: AtomicBool::new(false),
         }
     }
 
@@ -99,35 +121,64 @@ impl SocketImpl {
     ///  timeout always applies, the socket always has a timeout
     ///  to set infinite timeout, use Duration::MAX
     ///  the function checkup() checks for timeout on a regular interval
-    pub fn set_timeout(&mut self, timeout: Duration) {
-        self.timeout = timeout;
+    pub fn set_timeout(&self, timeout: Duration) {
+        self.timeout_seconds
+            .store(timeout.as_secs(), Ordering::SeqCst);
     }
 
-    pub fn set_default_timeout(&mut self) {
-        self.timeout = self.default_timeout;
+    pub fn set_default_timeout(&self) {
+        self.timeout_seconds.store(
+            self.default_timeout.load(Ordering::SeqCst),
+            Ordering::SeqCst,
+        );
+    }
+
+    pub fn close_internal(&self) {
+        if !self.closed.swap(true, Ordering::SeqCst) {
+            self.default_timeout.store(0, Ordering::SeqCst);
+
+            if let Err(ec) = self.tcp_socket.close() {
+                self.logger
+                    .try_log(&format!("Failed to close socket gracefully: {:?}", ec));
+                let _ = self.stats.inc(
+                    StatType::Bootstrap,
+                    DetailType::ErrorSocketClose,
+                    Direction::In,
+                );
+            }
+        }
+    }
+}
+
+impl Drop for SocketImpl {
+    fn drop(&mut self) {
+        self.close_internal();
     }
 }
 
 pub trait Socket {
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>);
+    fn close(&self);
+    fn checkup(&self);
 }
 
-impl Socket for Arc<Mutex<SocketImpl>> {
+impl Socket for Arc<SocketImpl> {
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>) {
         let self_clone = self.clone();
-        let mut lock = self.lock().unwrap();
-        checkup(Arc::downgrade(self), lock.thread_pool.as_ref());
-        lock.set_default_timeout();
-        lock.tcp_socket.async_connect(
+        debug_assert!(self.endpoint_type == EndpointType::Client);
+        self.checkup();
+        self.set_default_timeout();
+        self.tcp_socket.async_connect(
             endpoint,
             Box::new(move |ec| {
-                let mut lock = self_clone.lock().unwrap();
                 if !ec.is_err() {
-                    lock.set_last_completion()
+                    self_clone.set_last_completion()
                 }
-                lock.remote = Some(endpoint);
-                let stats = lock.stats.clone();
-                drop(lock);
+                {
+                    let mut lk = self_clone.remote.lock().unwrap();
+                    *lk = Some(endpoint);
+                }
+                let stats = self_clone.stats.clone();
 
                 if ec.is_err() {
                     let _ = stats.inc(StatType::Tcp, DetailType::TcpConnectError, Direction::In);
@@ -136,56 +187,70 @@ impl Socket for Arc<Mutex<SocketImpl>> {
             }),
         );
     }
-}
 
-fn checkup(socket: Weak<Mutex<SocketImpl>>, thread_pool: &dyn ThreadPool) {
-    thread_pool.add_timed_task(
-        Duration::from_secs(2),
-        Box::new(move || {
-            if let Some(socket) = socket.upgrade() {
-                let now = seconds_since_epoch();
-                let mut condition_to_disconnect = false;
-                let lock = socket.lock().unwrap();
+    fn close(&self) {
+        let clone = self.clone();
+        self.tcp_socket.dispatch(Box::new(move || {
+            clone.close_internal();
+        }));
+    }
 
-                // if this is a server socket, and no data is received for silent_connection_tolerance_time seconds then disconnect
-                if lock.endpoint_type == EndpointType::Server
-                    && (now - lock.last_receive_time_or_init.load(Ordering::SeqCst))
-                        > lock.silent_connection_tolerance_time.as_secs()
-                {
-                    let _ = lock.stats.inc(
-                        StatType::Tcp,
-                        DetailType::TcpSilentConnectionDrop,
-                        Direction::In,
-                    );
-                    condition_to_disconnect = true;
+    fn checkup(&self) {
+        let socket = Arc::downgrade(&self);
+        self.thread_pool.add_timed_task(
+            Duration::from_secs(2),
+            Box::new(move || {
+                if let Some(socket) = socket.upgrade() {
+                    let now = seconds_since_epoch();
+                    let mut condition_to_disconnect = false;
+
+                    // if this is a server socket, and no data is received for silent_connection_tolerance_time seconds then disconnect
+                    if socket.endpoint_type == EndpointType::Server
+                        && (now - socket.last_receive_time_or_init.load(Ordering::SeqCst))
+                            > socket
+                                .silent_connection_tolerance_time
+                                .load(Ordering::SeqCst)
+                    {
+                        let _ = socket.stats.inc(
+                            StatType::Tcp,
+                            DetailType::TcpSilentConnectionDrop,
+                            Direction::In,
+                        );
+                        condition_to_disconnect = true;
+                    }
+
+                    // if there is no activity for timeout seconds then disconnect
+                    if (now - socket.last_completion_time_or_init.load(Ordering::SeqCst))
+                        > socket.timeout_seconds.load(Ordering::SeqCst)
+                    {
+                        let _ = socket.stats.inc(
+                            StatType::Tcp,
+                            DetailType::TcpIoTimeoutDrop,
+                            if socket.endpoint_type == EndpointType::Server {
+                                Direction::In
+                            } else {
+                                Direction::Out
+                            },
+                        );
+                        condition_to_disconnect = true;
+                    }
+
+                    if condition_to_disconnect {
+                        if socket.network_timeout_logging {
+                            // The remote end may have closed the connection before this side timing out, in which case the remote address is no longer available.
+                            if let Ok(ep) = socket.tcp_socket.remote_endpoint() {
+                                socket
+                                    .logger
+                                    .try_log(&format!("Disconnecting from {} due to timeout", ep));
+                            }
+                        }
+                        socket.timed_out.store(true, Ordering::SeqCst);
+                        socket.close();
+                    } else if !socket.closed.load(Ordering::SeqCst) {
+                        socket.checkup();
+                    }
                 }
-
-                // // if there is no activity for timeout seconds then disconnect
-                // if (now - lock.last_completion_time_or_init) > lock.timeout {
-                // 	this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop,
-                // 	this_l->endpoint_type () == endpoint_type_t::server ? nano::stat::dir::in : nano::stat::dir::out);
-                // 	condition_to_disconnect = true;
-                // }
-
-                // if condition_to_disconnect {
-                // 	if (this_l->network_timeout_logging)
-                // 	{
-                // 		// The remote end may have closed the connection before this side timing out, in which case the remote address is no longer available.
-                // 		boost::system::error_code ec_remote_l;
-                // 		boost::asio::ip::tcp::endpoint remote_endpoint_l = this_l->tcp_socket.remote_endpoint (ec_remote_l);
-                // 		if (!ec_remote_l)
-                // 		{
-                // 			this_l->logger.try_log (boost::str (boost::format ("Disconnecting from %1% due to timeout") % remote_endpoint_l));
-                // 		}
-                // 	}
-                // 	this_l->timed_out = true;
-                // 	this_l->close ();
-                // }
-                // else if (!this_l->closed)
-                // {
-                //     checkup(Arc::downgrade(&socket), &lock.workers);
-                // }
-            }
-        }),
-    );
+            }),
+        );
+    }
 }

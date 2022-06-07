@@ -417,6 +417,32 @@ void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackH
 	}
 }
 
+void remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a, rsnano::ErrorCodeDto * ec_a)
+{
+	auto socket{ static_cast<nano::tcp_socket_facade *> (handle_a) };
+	boost::system::error_code ec;
+	auto endpoint{ socket->remote_endpoint (ec) };
+	*endpoint_a = rsnano::endpoint_to_dto (endpoint);
+	*ec_a = rsnano::error_code_to_dto (ec);
+}
+
+void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
+{
+	auto socket{ static_cast<nano::tcp_socket_facade *> (handle_a) };
+	socket->dispatch ([callback_a] () {
+		rsnano::rsn_void_fn_callback_call (callback_a);
+		rsnano::rsn_void_fn_callback_destroy (callback_a);
+	});
+}
+
+void tcp_socket_close (void * handle_a, rsnano::ErrorCodeDto * ec_a)
+{
+	auto socket{ static_cast<nano::tcp_socket_facade *> (handle_a) };
+	boost::system::error_code ec;
+	socket->close (ec);
+	*ec_a = rsnano::error_code_to_dto (ec);
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -464,5 +490,8 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_block_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_async_connect (async_connect);
 	rsnano::rsn_callback_add_timed_task (add_timed_task);
+	rsnano::rsn_callback_remote_endpoint (remote_endpoint);
+	rsnano::rsn_callback_tcp_socket_dispatch (tcp_socket_dispatch);
+	rsnano::rsn_callback_tcp_socket_close (tcp_socket_close);
 	callbacks_set = true;
 }

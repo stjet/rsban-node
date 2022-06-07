@@ -1,4 +1,4 @@
-pub(crate) trait Logger: Send + Sync {
+pub trait Logger: Send + Sync {
     fn try_log(&self, message: &str) -> bool;
     fn always_log(&self, message: &str);
 }

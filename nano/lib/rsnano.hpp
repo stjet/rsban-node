@@ -620,6 +620,8 @@ struct SignatureCheckSetDto
 
 using SocketConnectCallback = void (*) (void *, const ErrorCodeDto *);
 
+using SocketDestroyConnectContext = void (*) (void *);
+
 struct StateBlockDto
 {
 	uint8_t signature[64];
@@ -1196,6 +1198,7 @@ SignatureCheckSetDto * check_set);
 void rsn_socket_async_connect (SocketHandle * handle,
 const EndpointDto * endpoint,
 SocketConnectCallback callback,
+SocketDestroyConnectContext destroy_context,
 void * context);
 
 void rsn_socket_checkup (SocketHandle * handle);

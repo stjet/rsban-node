@@ -393,38 +393,108 @@ void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
 	bootstrap_initiator->clear_pulls (bootstrap_id_a);
 }
 
-void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackHandle * callback_a)
+class void_fn_callback_wrapper
 {
-	auto pool{ static_cast<nano::thread_pool *> (handle_a) };
-	bool added = pool->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_ms), [callback_a] () {
-		rsnano::rsn_void_fn_callback_call (callback_a);
-		rsnano::rsn_void_fn_callback_destroy (callback_a);
-	});
-	if (!added)
+public:
+	void_fn_callback_wrapper (rsnano::VoidFnCallbackHandle * callback_a) :
+		callback_m{ callback_a }
 	{
-		rsnano::rsn_void_fn_callback_destroy (callback_a);
 	}
+
+	void_fn_callback_wrapper (void_fn_callback_wrapper const &) = delete;
+
+	~void_fn_callback_wrapper ()
+	{
+		rsnano::rsn_void_fn_callback_destroy (callback_m);
+	}
+
+	void execute ()
+	{
+		rsnano::rsn_void_fn_callback_call (callback_m);
+	}
+
+private:
+	rsnano::VoidFnCallbackHandle * callback_m;
+};
+
+void
+add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackHandle * callback_a)
+{
+	auto callback_wrapper {std::make_shared<void_fn_callback_wrapper> (callback_a)};
+	auto pool{ static_cast<nano::thread_pool *> (handle_a) };
+	pool->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_ms), [callback_wrapper] () {
+		callback_wrapper->execute ();
+	});
 }
+
+class async_connect_callback_wrapper
+{
+public:
+	async_connect_callback_wrapper (rsnano::AsyncConnectCallbackHandle * callback_a) :
+		callback_m{ callback_a }
+	{
+	}
+
+	async_connect_callback_wrapper (async_connect_callback_wrapper const &) = delete;
+
+	~async_connect_callback_wrapper ()
+	{
+		rsnano::rsn_async_connect_callback_destroy (callback_m);
+	}
+
+	void execute (const boost::system::error_code & ec)
+	{
+		auto ec_dto{ rsnano::error_code_to_dto (ec) };
+		rsnano::rsn_async_connect_callback_execute (callback_m, &ec_dto);
+	}
+
+private:
+	rsnano::AsyncConnectCallbackHandle * callback_m;
+};
 
 void tcp_socket_async_connect (void * handle_a, rsnano::EndpointDto const * endpoint_a, rsnano::AsyncConnectCallbackHandle * callback_a)
 {
+	auto callback_wrapper = std::make_shared<async_connect_callback_wrapper> (callback_a);
 	auto endpoint{ rsnano::dto_to_endpoint (*endpoint_a) };
 	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
-	(*socket)->async_connect (endpoint, [callback_a] (const boost::system::error_code & ec) {
-		auto ec_dto{ rsnano::error_code_to_dto (ec) };
-		rsnano::rsn_async_connect_callback_execute (callback_a, &ec_dto);
-		rsnano::rsn_async_connect_callback_destroy (callback_a);
+	(*socket)->async_connect (endpoint, [callback = std::move (callback_wrapper)] (const boost::system::error_code & ec) {
+		callback->execute (ec);
 	});
 }
+
+
+class async_read_callback_wrapper
+{
+public:
+	async_read_callback_wrapper (rsnano::AsyncReadCallbackHandle * callback_a) :
+		callback_m{ callback_a }
+	{
+	}
+
+	async_read_callback_wrapper (async_read_callback_wrapper const &) = delete;
+
+	~async_read_callback_wrapper ()
+	{
+		rsnano::rsn_async_read_callback_destroy (callback_m);
+	}
+
+	void execute (const boost::system::error_code & ec, std::size_t size)
+	{
+		auto ec_dto{ rsnano::error_code_to_dto (ec) };
+		rsnano::rsn_async_read_callback_execute (callback_m, &ec_dto, size);
+	}
+
+private:
+	rsnano::AsyncReadCallbackHandle * callback_m;
+};
 
 void tcp_socket_async_read (void * handle_a, void * buffer_a, std::size_t size_a, rsnano::AsyncReadCallbackHandle * callback_a)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
 	auto buffer{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (buffer_a) };
-	(*socket)->async_read (*buffer, size_a, [callback_a] (const boost::system::error_code & ec, std::size_t size) {
-		auto ec_dto{ rsnano::error_code_to_dto (ec) };
-		rsnano::rsn_async_read_callback_execute (callback_a, &ec_dto, size);
-		rsnano::rsn_async_read_callback_destroy (callback_a);
+	auto callback_wrapper{ std::make_shared<async_read_callback_wrapper>(callback_a)};
+	(*socket)->async_read (*buffer, size_a, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
+		callback_wrapper->execute(ec, size);
 	});
 }
 
@@ -440,9 +510,9 @@ void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint
 void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
-	(*socket)->dispatch ([callback_a] () {
-		rsnano::rsn_void_fn_callback_call (callback_a);
-		rsnano::rsn_void_fn_callback_destroy (callback_a);
+	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper>(callback_a)};
+	(*socket)->dispatch ([callback_wrapper] () {
+		callback_wrapper->execute();
 	});
 }
 

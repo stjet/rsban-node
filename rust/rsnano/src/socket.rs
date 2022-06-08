@@ -208,7 +208,7 @@ impl Socket for Arc<SocketImpl> {
     }
 
     fn checkup(&self) {
-        let socket = Arc::downgrade(&self);
+        let socket = Arc::downgrade(self);
         self.thread_pool.add_timed_task(
             Duration::from_secs(2),
             Box::new(move || {

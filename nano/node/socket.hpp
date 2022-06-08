@@ -44,10 +44,8 @@ class node;
 class tcp_socket_facade : public std::enable_shared_from_this<nano::tcp_socket_facade>
 {
 public:
-	tcp_socket_facade (
-	boost::asio::strand<boost::asio::io_context::executor_type> & strand,
-	boost::asio::ip::tcp::socket & tcp_socket,
-	boost::asio::io_context & io_ctx);
+	tcp_socket_facade (boost::asio::io_context & io_ctx);
+	~tcp_socket_facade ();
 
 	void async_connect (boost::asio::ip::tcp::endpoint endpoint_a,
 	std::function<void (boost::system::error_code const &)> callback_a);
@@ -60,10 +58,12 @@ public:
 	void dispatch (std::function<void ()> callback_a);
 	void close (boost::system::error_code & ec);
 
-private:
-	boost::asio::strand<boost::asio::io_context::executor_type> & strand;
-	boost::asio::ip::tcp::socket & tcp_socket;
+	boost::asio::strand<boost::asio::io_context::executor_type> strand;
+	boost::asio::ip::tcp::socket tcp_socket;
 	boost::asio::io_context & io_ctx;
+
+private:
+	std::atomic<bool> closed{ false };
 };
 
 /** Socket class for tcp clients and newly accepted connections */
@@ -140,11 +140,8 @@ protected:
 		std::function<void (boost::system::error_code const &, std::size_t)> callback;
 	};
 
-	boost::asio::strand<boost::asio::io_context::executor_type> strand;
-	boost::asio::ip::tcp::socket tcp_socket;
 	nano::logger_mt & logger;
 	nano::stat & stats;
-	boost::asio::io_context & io_ctx;
 	nano::thread_pool & workers;
 
 	/** The other end of the connection */
@@ -170,9 +167,9 @@ protected:
 private:
 	type_t type_m{ type_t::undefined };
 	endpoint_type_t endpoint_type_m;
-	std::shared_ptr<tcp_socket_facade> tcp_socket_facade_m;
 
 public:
+	std::shared_ptr<tcp_socket_facade> tcp_socket_facade_m;
 	static std::size_t constexpr queue_size_max = 128;
 	rsnano::SocketHandle * handle;
 };

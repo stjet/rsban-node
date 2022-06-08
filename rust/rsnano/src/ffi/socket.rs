@@ -114,19 +114,50 @@ impl From<&SocketAddr> for EndpointDto {
 }
 
 type SocketConnectCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto);
+type SocketDestroyConnectContext = unsafe extern "C" fn(*mut c_void);
+
+struct ConnectCallbackWrapper {
+    callback: SocketConnectCallback,
+    destory_context: SocketDestroyConnectContext,
+    context: *mut c_void,
+}
+
+impl ConnectCallbackWrapper {
+    fn new(
+        callback: SocketConnectCallback,
+        destory_context: SocketDestroyConnectContext,
+        context: *mut c_void,
+    ) -> Self {
+        Self {
+            callback,
+            destory_context,
+            context,
+        }
+    }
+    fn execute(&self, ec: ErrorCode) {
+        let ec_dto = ErrorCodeDto::from(&ec);
+        unsafe { (self.callback)(self.context, &ec_dto) };
+    }
+}
+
+impl Drop for ConnectCallbackWrapper {
+    fn drop(&mut self) {
+        unsafe { (self.destory_context)(self.context) };
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_async_connect(
     handle: *mut SocketHandle,
     endpoint: *const EndpointDto,
     callback: SocketConnectCallback,
+    destroy_context: SocketDestroyConnectContext,
     context: *mut c_void,
 ) {
+    let cb_wrapper = ConnectCallbackWrapper::new(callback, destroy_context, context);
     let cb = Box::new(move |ec| {
-        let ec_dto = ErrorCodeDto::from(&ec);
-        callback(context, &ec_dto);
+        cb_wrapper.execute(ec);
     });
-
     (*handle).0.async_connect((&*endpoint).into(), cb);
 }
 

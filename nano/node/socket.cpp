@@ -36,14 +36,19 @@ bool is_temporary_error (boost::system::error_code const & ec_a)
 }
 }
 
-nano::tcp_socket_facade::tcp_socket_facade (
-boost::asio::strand<boost::asio::io_context::executor_type> & strand,
-boost::asio::ip::tcp::socket & tcp_socket,
-boost::asio::io_context & io_ctx) :
-	strand{ strand },
-	tcp_socket{ tcp_socket },
-	io_ctx{ io_ctx }
+nano::tcp_socket_facade::tcp_socket_facade (boost::asio::io_context & io_ctx_a) :
+	strand{ io_ctx_a.get_executor () },
+	tcp_socket{ io_ctx_a },
+	io_ctx{ io_ctx_a }
 {
+	facade_counter++;
+}
+
+nano::tcp_socket_facade::~tcp_socket_facade ()
+{
+	facade_counter--;
+	boost::system::error_code ec;
+	close (ec);
 }
 
 void nano::tcp_socket_facade::async_connect (boost::asio::ip::tcp::endpoint endpoint_a,
@@ -70,27 +75,27 @@ boost::asio::ip::tcp::endpoint nano::tcp_socket_facade::remote_endpoint (boost::
 
 void nano::tcp_socket_facade::dispatch (std::function<void ()> callback_a)
 {
-	boost::asio::dispatch (strand, boost::asio::bind_executor (strand, [callback_a] {
+	boost::asio::dispatch (strand, boost::asio::bind_executor (strand, [callback_a, this_l = shared_from_this ()] {
 		callback_a ();
 	}));
 }
 
 void nano::tcp_socket_facade::close (boost::system::error_code & ec)
 {
-	// Ignore error code for shutdown as it is best-effort
-	tcp_socket.shutdown (boost::asio::ip::tcp::socket::shutdown_both, ec);
-	tcp_socket.close (ec);
+	if (!closed.exchange (true))
+	{
+		// Ignore error code for shutdown as it is best-effort
+		tcp_socket.shutdown (boost::asio::ip::tcp::socket::shutdown_both, ec);
+		tcp_socket.close (ec);
+	}
 }
 
 nano::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::thread_pool & workers_a, std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a) :
-	strand{ io_ctx_a.get_executor () },
-	tcp_socket{ io_ctx_a },
-	io_ctx{ io_ctx_a },
 	stats{ stats_a },
 	logger{ logger_a },
 	workers{ workers_a },
 	endpoint_type_m{ endpoint_type_a },
-	tcp_socket_facade_m{ std::make_shared<nano::tcp_socket_facade> (strand, tcp_socket, io_ctx) },
+	tcp_socket_facade_m{ std::make_shared<nano::tcp_socket_facade> (io_ctx_a) },
 	handle{ rsnano::rsn_socket_create (static_cast<uint8_t> (endpoint_type_a), new std::shared_ptr<nano::tcp_socket_facade> (tcp_socket_facade_m), stats_a.handle, &workers, default_timeout_a.count (), silent_connection_tolerance_time_a.count (), network_timeout_logging_a, &logger_a) }
 {
 }
@@ -103,9 +108,14 @@ nano::socket::~socket ()
 void async_connect_adapter (void * context, rsnano::ErrorCodeDto const * error)
 {
 	auto ec{ rsnano::dto_to_error_code (*error) };
-	auto cb_ptr = static_cast<std::function<void (boost::system::error_code const &)> *> (context);
-	auto callback = std::unique_ptr<std::function<void (boost::system::error_code const &)>> (cb_ptr);
+	auto callback = static_cast<std::function<void (boost::system::error_code const &)> *> (context);
 	(*callback) (ec);
+}
+
+void async_connect_delete_context (void * context)
+{
+	auto callback = static_cast<std::function<void (boost::system::error_code const &)> *> (context);
+	delete callback;
 }
 
 boost::asio::ip::tcp::endpoint & nano::socket::get_remote ()
@@ -117,7 +127,7 @@ void nano::socket::async_connect (nano::tcp_endpoint const & endpoint_a, std::fu
 {
 	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
 	auto cb_wrapper = new std::function<void (boost::system::error_code const &)> (std::move (callback_a));
-	rsnano::rsn_socket_async_connect (handle, &endpoint_dto, async_connect_adapter, cb_wrapper);
+	rsnano::rsn_socket_async_connect (handle, &endpoint_dto, async_connect_adapter, async_connect_delete_context, cb_wrapper);
 }
 
 void nano::socket::async_read (std::shared_ptr<std::vector<uint8_t>> const & buffer_a, std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
@@ -158,7 +168,7 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 	{
 		if (callback_a)
 		{
-			io_ctx.post ([callback = std::move (callback_a)] () {
+			tcp_socket_facade_m->io_ctx.post ([callback = std::move (callback_a)] () {
 				callback (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
 			});
 		}
@@ -168,7 +178,7 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 
 	++queue_size;
 
-	boost::asio::post (strand, boost::asio::bind_executor (strand, [buffer_a, callback = std::move (callback_a), this_l = shared_from_this ()] () mutable {
+	boost::asio::post (tcp_socket_facade_m->strand, boost::asio::bind_executor (tcp_socket_facade_m->strand, [buffer_a, callback = std::move (callback_a), this_l = shared_from_this ()] () mutable {
 		if (this_l->is_closed ())
 		{
 			if (callback)
@@ -181,8 +191,8 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 
 		this_l->set_default_timeout ();
 
-		nano::async_write (this_l->tcp_socket, buffer_a,
-		boost::asio::bind_executor (this_l->strand,
+		nano::async_write (this_l->tcp_socket_facade_m->tcp_socket, buffer_a,
+		boost::asio::bind_executor (this_l->tcp_socket_facade_m->strand,
 		[buffer_a, cbk = std::move (callback), this_l] (boost::system::error_code ec, std::size_t size_a) {
 			--this_l->queue_size;
 
@@ -244,7 +254,7 @@ void nano::socket::set_default_timeout_value (std::chrono::seconds timeout_a)
 void nano::socket::set_silent_connection_tolerance_time (std::chrono::seconds tolerance_time_a)
 {
 	auto this_l (shared_from_this ());
-	boost::asio::dispatch (strand, boost::asio::bind_executor (strand, [this_l, tolerance_time_a] () {
+	boost::asio::dispatch (tcp_socket_facade_m->strand, boost::asio::bind_executor (tcp_socket_facade_m->strand, [this_l, tolerance_time_a] () {
 		rsnano::rsn_socket_set_silent_connection_tolerance_time (this_l->handle, tolerance_time_a.count ());
 	}));
 }
@@ -278,7 +288,7 @@ boost::asio::ip::tcp::endpoint nano::socket::remote_endpoint () const
 
 nano::tcp_endpoint nano::socket::local_endpoint () const
 {
-	return tcp_socket.local_endpoint ();
+	return tcp_socket_facade_m->tcp_socket.local_endpoint ();
 }
 
 nano::server_socket::server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, std::size_t max_connections_a) :
@@ -404,7 +414,7 @@ void nano::server_socket::on_connection (std::function<bool (std::shared_ptr<nan
 		// Prepare new connection
 		auto new_connection = std::make_shared<nano::socket> (this_l->node.io_ctx, nano::socket::endpoint_type_t::server,
 		this_l->node.stats, this_l->node.logger, this_l->node.workers, this_l->node.config.tcp_io_timeout, this_l->node.network_params.network.silent_connection_tolerance_time, this_l->node.config.logging.network_timeout_logging ());
-		this_l->acceptor.async_accept (new_connection->tcp_socket, new_connection->get_remote (),
+		this_l->acceptor.async_accept (new_connection->tcp_socket_facade_m->tcp_socket, new_connection->get_remote (),
 		boost::asio::bind_executor (this_l->strand,
 		[this_l, new_connection, cbk = std::move (callback)] (boost::system::error_code const & ec_a) mutable {
 			auto endpoint_dto{ rsnano::endpoint_to_dto (new_connection->get_remote ()) };

@@ -417,6 +417,17 @@ void tcp_socket_async_connect (void * handle_a, rsnano::EndpointDto const * endp
 	});
 }
 
+void tcp_socket_async_read (void * handle_a, void * buffer_a, std::size_t size_a, rsnano::AsyncReadCallbackHandle * callback_a)
+{
+	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto buffer{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (buffer_a) };
+	(*socket)->async_read (*buffer, size_a, [callback_a] (const boost::system::error_code & ec, std::size_t size) {
+		auto ec_dto{ rsnano::error_code_to_dto (ec) };
+		rsnano::rsn_async_read_callback_execute (callback_a, &ec_dto, size);
+		rsnano::rsn_async_read_callback_destroy (callback_a);
+	});
+}
+
 void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a, rsnano::ErrorCodeDto * ec_a)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
@@ -447,6 +458,18 @@ void tcp_socket_destroy (void * handle_a)
 {
 	auto ptr{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
 	delete ptr;
+}
+
+void buffer_destroy (void * handle_a)
+{
+	auto ptr{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (handle_a) };
+	delete ptr;
+}
+
+std::size_t buffer_size (void * handle_a)
+{
+	auto ptr{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (handle_a) };
+	return (*ptr)->size ();
 }
 
 static bool callbacks_set = false;
@@ -502,10 +525,14 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_add_timed_task (add_timed_task);
 
 	rsnano::rsn_callback_tcp_socket_async_connect (tcp_socket_async_connect);
+	rsnano::rsn_callback_tcp_socket_async_read (tcp_socket_async_read);
 	rsnano::rsn_callback_tcp_socket_remote_endpoint (tcp_socket_remote_endpoint);
 	rsnano::rsn_callback_tcp_socket_dispatch (tcp_socket_dispatch);
 	rsnano::rsn_callback_tcp_socket_close (tcp_socket_close);
 	rsnano::rsn_callback_tcp_socket_destroy (tcp_socket_destroy);
+
+	rsnano::rsn_callback_buffer_destroy (buffer_destroy);
+	rsnano::rsn_callback_buffer_size (buffer_size);
 
 	callbacks_set = true;
 }

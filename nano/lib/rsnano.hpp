@@ -15,6 +15,8 @@ static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
 
 struct AsyncConnectCallbackHandle;
 
+struct AsyncReadCallbackHandle;
+
 struct BandwidthLimiterHandle;
 
 struct BlockArrivalHandle;
@@ -151,6 +153,10 @@ using BootstrapInitiatorClearPullsCallback = void (*) (void *, uint64_t);
 
 using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
 
+using DestroyCallback = void (*) (void *);
+
+using BufferSizeCallback = uintptr_t (*) (void *);
+
 using InAvailCallback = uintptr_t (*) (void *, int32_t *);
 
 using LedgerBlockOrPrunedExistsCallback = bool (*) (void *, const uint8_t *);
@@ -196,9 +202,9 @@ struct EndpointDto
 
 using AsyncConnectCallback = void (*) (void *, const EndpointDto *, AsyncConnectCallbackHandle *);
 
-using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
+using AsyncReadCallback = void (*) (void *, void *, uintptr_t, AsyncReadCallbackHandle *);
 
-using TcpFacadeDestroyCallback = void (*) (void *);
+using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
 
 using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
 
@@ -676,6 +682,12 @@ void rsn_async_connect_callback_destroy (AsyncConnectCallbackHandle * callback);
 void rsn_async_connect_callback_execute (AsyncConnectCallbackHandle * callback,
 const ErrorCodeDto * ec);
 
+void rsn_async_read_callback_destroy (AsyncReadCallbackHandle * callback);
+
+void rsn_async_read_callback_execute (AsyncReadCallbackHandle * callback,
+const ErrorCodeDto * ec,
+uintptr_t size);
+
 BandwidthLimiterHandle * rsn_bandwidth_limiter_create (double limit_burst_ratio, uintptr_t limit);
 
 void rsn_bandwidth_limiter_destroy (BandwidthLimiterHandle * limiter);
@@ -865,6 +877,10 @@ void rsn_callback_block_bootstrap_initiator_clear_pulls (BootstrapInitiatorClear
 
 void rsn_callback_block_processor_add (BlockProcessorAddCallback f);
 
+void rsn_callback_buffer_destroy (DestroyCallback f);
+
+void rsn_callback_buffer_size (BufferSizeCallback f);
+
 void rsn_callback_in_avail (InAvailCallback f);
 
 void rsn_callback_ledger_block_or_pruned_exists (LedgerBlockOrPrunedExistsCallback f);
@@ -903,9 +919,11 @@ void rsn_callback_string_delete (StringDeleteCallback f);
 
 void rsn_callback_tcp_socket_async_connect (AsyncConnectCallback f);
 
+void rsn_callback_tcp_socket_async_read (AsyncReadCallback f);
+
 void rsn_callback_tcp_socket_close (CloseSocketCallback f);
 
-void rsn_callback_tcp_socket_destroy (TcpFacadeDestroyCallback f);
+void rsn_callback_tcp_socket_destroy (DestroyCallback f);
 
 void rsn_callback_tcp_socket_dispatch (DispatchCallback f);
 

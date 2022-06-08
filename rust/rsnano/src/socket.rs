@@ -1,4 +1,5 @@
 use std::{
+    ffi::c_void,
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -26,8 +27,19 @@ impl ErrorCode {
     }
 }
 
+pub trait BufferWrapper {
+    fn len(&self) -> usize;
+    fn handle(&self) -> *mut c_void;
+}
+
 pub trait TcpSocketFacade {
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>);
+    fn async_read(
+        &self,
+        buffer: &Arc<dyn BufferWrapper>,
+        len: usize,
+        callback: Box<dyn Fn(ErrorCode, usize)>,
+    );
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode>;
     fn dispatch(&self, f: Box<dyn Fn()>);
     fn close(&self) -> Result<(), ErrorCode>;

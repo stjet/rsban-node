@@ -1,6 +1,6 @@
 use num::FromPrimitive;
 
-use crate::{ErrorCode, Socket, SocketImpl, TcpSocketFacade};
+use crate::{BufferWrapper, ErrorCode, Socket, SocketImpl, TcpSocketFacade};
 use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
@@ -288,12 +288,24 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_close(f: CloseSocketCallback) {
     CLOSE_SOCKET_CALLBACK = Some(f);
 }
 
-type TcpFacadeDestroyCallback = unsafe extern "C" fn(*mut c_void);
+pub struct AsyncReadCallbackHandle(Box<dyn Fn(ErrorCode, usize)>);
 
-static mut TCP_FACADE_DESTROY_CALLBACK: Option<TcpFacadeDestroyCallback> = None;
+type AsyncReadCallback =
+    unsafe extern "C" fn(*mut c_void, *mut c_void, usize, *mut AsyncReadCallbackHandle);
+
+static mut ASYNC_READ_CALLBACK: Option<AsyncReadCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_destroy(f: TcpFacadeDestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_tcp_socket_async_read(f: AsyncReadCallback) {
+    ASYNC_READ_CALLBACK = Some(f);
+}
+
+type DestroyCallback = unsafe extern "C" fn(*mut c_void);
+
+static mut TCP_FACADE_DESTROY_CALLBACK: Option<DestroyCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_destroy(f: DestroyCallback) {
     TCP_FACADE_DESTROY_CALLBACK = Some(f);
 }
 
@@ -359,6 +371,23 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         }
     }
 
+    fn async_read(
+        &self,
+        buffer: &Arc<dyn BufferWrapper>,
+        len: usize,
+        callback: Box<dyn Fn(ErrorCode, usize)>,
+    ) {
+        let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(callback)));
+        unsafe {
+            ASYNC_READ_CALLBACK.expect("ASYNC_READ_CALLBACK missing")(
+                self.handle,
+                buffer.handle(),
+                len,
+                callback_handle,
+            );
+        }
+    }
+
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
         let mut endpoint_dto = EndpointDto {
             bytes: [0; 16],
@@ -406,5 +435,62 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         } else {
             Err((&ec_dto).into())
         }
+    }
+}
+
+static mut BUFFER_DESTROY_CALLBACK: Option<DestroyCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_buffer_destroy(f: DestroyCallback) {
+    BUFFER_DESTROY_CALLBACK = Some(f);
+}
+
+type BufferSizeCallback = unsafe extern "C" fn(*mut c_void) -> usize;
+
+static mut BUFFER_SIZE_CALLBACK: Option<BufferSizeCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_buffer_size(f: BufferSizeCallback) {
+    BUFFER_SIZE_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_async_read_callback_execute(
+    callback: *mut AsyncReadCallbackHandle,
+    ec: *const ErrorCodeDto,
+    size: usize,
+) {
+    let error_code = ErrorCode::from(&*ec);
+    (*callback).0(error_code, size);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_async_read_callback_destroy(callback: *mut AsyncReadCallbackHandle) {
+    drop(Box::from_raw(callback))
+}
+
+struct FfiBufferWrapper {
+    handle: *mut c_void,
+}
+
+impl FfiBufferWrapper {
+    fn new(handle: *mut c_void) -> Self {
+        Self { handle }
+    }
+}
+
+impl Drop for FfiBufferWrapper {
+    fn drop(&mut self) {
+        unsafe { BUFFER_DESTROY_CALLBACK.expect("BUFFER_DESTROY_CALLBACK missing")(self.handle) }
+    }
+}
+
+impl BufferWrapper for FfiBufferWrapper {
+    fn len(&self) -> usize {
+        unsafe { BUFFER_SIZE_CALLBACK.expect("BUFFER_SIZE_CALLBACK missing")(self.handle) }
+    }
+
+    fn handle(&self) -> *mut c_void {
+        self.handle
     }
 }

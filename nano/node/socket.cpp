@@ -41,12 +41,10 @@ nano::tcp_socket_facade::tcp_socket_facade (boost::asio::io_context & io_ctx_a) 
 	tcp_socket{ io_ctx_a },
 	io_ctx{ io_ctx_a }
 {
-	facade_counter++;
 }
 
 nano::tcp_socket_facade::~tcp_socket_facade ()
 {
-	facade_counter--;
 	boost::system::error_code ec;
 	close (ec);
 }

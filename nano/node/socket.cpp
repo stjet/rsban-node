@@ -163,7 +163,7 @@ void async_read_adapter (void * context_a, rsnano::ErrorCodeDto const * error_a,
 	}
 	catch (...)
 	{
-		std::cerr << "exception in async_connect_adapter!" << std::endl;
+		std::cerr << "exception in async_read_adapter!" << std::endl;
 	}
 }
 
@@ -184,54 +184,12 @@ void nano::socket::async_read (std::shared_ptr<std::vector<uint8_t>> const & buf
 
 void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
 {
-	if (is_closed ())
-	{
-		if (callback_a)
-		{
-			tcp_socket_facade_m->post ([callback = std::move (callback_a)] () {
-				callback (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
-			});
-		}
-
-		return;
-	}
-
-	rsnano::rsn_socket_queue_size_inc (handle);
-
-	tcp_socket_facade_m->post ([buffer_a, callback = std::move (callback_a), this_l = shared_from_this ()] () mutable {
-		if (this_l->is_closed ())
-		{
-			if (callback)
-			{
-				callback (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
-			}
-
-			return;
-		}
-
-		this_l->set_default_timeout ();
-
-		this_l->tcp_socket_facade_m->async_write (
-		buffer_a,
-		[buffer_a, cbk = std::move (callback), this_l] (boost::system::error_code ec, std::size_t size_a) {
-			rsnano::rsn_socket_queue_size_dec (this_l->handle);
-
-			if (ec)
-			{
-				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_error, nano::stat::dir::in);
-			}
-			else
-			{
-				this_l->stats.add (nano::stat::type::traffic_tcp, nano::stat::dir::out, size_a);
-				this_l->set_last_completion ();
-			}
-
-			if (cbk)
-			{
-				cbk (ec, size_a);
-			}
-		});
+	auto cb_wrapper = new std::function<void (boost::system::error_code const &, std::size_t)> ([callback = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code const & ec, std::size_t size) {
+		callback (ec, size);
 	});
+	auto buffer_l{ std::make_shared<nano::shared_const_buffer> (buffer_a) };
+	auto buffer_ptr{ new std::shared_ptr<nano::shared_const_buffer> (buffer_l) };
+	rsnano::rsn_socket_async_write (handle, buffer_ptr, async_read_adapter, async_read_delete_context, cb_wrapper);
 }
 
 /** Call set_timeout with default_timeout as parameter */

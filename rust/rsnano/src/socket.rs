@@ -51,14 +51,18 @@ pub trait SharedConstBuffer {
 }
 
 pub trait TcpSocketFacade {
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>);
+    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>);
     fn async_read(
         &self,
         buffer: &Arc<dyn BufferWrapper>,
         len: usize,
         callback: Box<dyn Fn(ErrorCode, usize)>,
     );
-    fn async_write(&self, buffer: &dyn SharedConstBuffer, callback: Box<dyn Fn(ErrorCode, usize)>);
+    fn async_write(
+        &self,
+        buffer: &dyn SharedConstBuffer,
+        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+    );
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode>;
     fn post(&self, f: Box<dyn FnOnce()>);
     fn dispatch(&self, f: Box<dyn FnOnce()>);
@@ -211,7 +215,7 @@ pub trait Socket {
     fn async_write(
         &self,
         buffer: Arc<dyn SharedConstBuffer>,
-        callback: Option<Box<dyn Fn(ErrorCode, usize)>>,
+        callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
     );
     fn close(&self);
     fn checkup(&self);
@@ -288,7 +292,7 @@ impl Socket for Arc<SocketImpl> {
     fn async_write(
         &self,
         buffer: Arc<dyn SharedConstBuffer>,
-        callback: Option<Box<dyn Fn(ErrorCode, usize)>>,
+        mut callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
     ) {
         if self.is_closed() {
             if let Some(cb) = callback {
@@ -305,7 +309,7 @@ impl Socket for Arc<SocketImpl> {
         let self_clone = self.clone();
         self.tcp_socket.post(Box::new(move || {
             if self_clone.is_closed() {
-                if let Some(cb) = &callback {
+                if let Some(cb) = callback.take() {
                     cb(ErrorCode::not_supported(), 0);
                 }
 
@@ -338,7 +342,7 @@ impl Socket for Arc<SocketImpl> {
                         self_clone_2.set_last_completion();
                     }
 
-                    if let Some(cbk) = &callback {
+                    if let Some(cbk) = callback.take() {
                         cbk(ec, size);
                     }
                 }),

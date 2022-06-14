@@ -211,6 +211,26 @@ pub unsafe extern "C" fn rsn_socket_async_read(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_socket_async_write(
+    handle: *mut SocketHandle,
+    buffer: *mut c_void,
+    callback: SocketReadCallback,
+    destroy_context: SocketDestroyContext,
+    context: *mut c_void,
+) {
+    let cb: Option<Box<dyn FnOnce(ErrorCode, usize)>> = if !context.is_null() {
+        let cb_wrapper = ReadCallbackWrapper::new(callback, destroy_context, context);
+        Some(Box::new(move |ec, size| {
+            cb_wrapper.execute(ec, size);
+        }))
+    } else {
+        None
+    };
+    let buffer_wrapper = Arc::new(FfiSharedConstBuffer::new(buffer));
+    (*handle).0.async_write(buffer_wrapper, cb);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_set_remote_endpoint(
     handle: *mut SocketHandle,
     endpoint: *const EndpointDto,
@@ -344,7 +364,14 @@ pub unsafe extern "C" fn rsn_socket_queue_size_dec(handle: *mut SocketHandle) {
     (*handle).0.queue_size.fetch_sub(1, Ordering::SeqCst);
 }
 
-pub struct AsyncConnectCallbackHandle(Box<dyn Fn(ErrorCode)>);
+pub struct AsyncConnectCallbackHandle(Option<Box<dyn FnOnce(ErrorCode)>>);
+
+impl AsyncConnectCallbackHandle {
+    pub fn new(callback: Box<dyn FnOnce(ErrorCode)>) -> Self {
+        Self(Some(callback))
+    }
+}
+
 type AsyncConnectCallback =
     unsafe extern "C" fn(*mut c_void, *const EndpointDto, *mut AsyncConnectCallbackHandle);
 
@@ -401,7 +428,13 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_async_read(f: AsyncReadCallback
     ASYNC_READ_CALLBACK = Some(f);
 }
 
-pub struct AsyncWriteCallbackHandle(Box<dyn Fn(ErrorCode, usize)>);
+pub struct AsyncWriteCallbackHandle(Option<Box<dyn FnOnce(ErrorCode, usize)>>);
+
+impl AsyncWriteCallbackHandle {
+    pub fn new(callback: Box<dyn FnOnce(ErrorCode, usize)>) -> Self {
+        Self(Some(callback))
+    }
+}
 
 type AsyncWriteCallback =
     unsafe extern "C" fn(*mut c_void, *mut c_void, *mut AsyncWriteCallbackHandle);
@@ -428,7 +461,9 @@ pub unsafe extern "C" fn rsn_async_connect_callback_execute(
     ec: *const ErrorCodeDto,
 ) {
     let error_code = ErrorCode::from(&*ec);
-    (*callback).0(error_code);
+    if let Some(cb) = (*callback).0.take() {
+        cb(error_code);
+    }
 }
 
 #[no_mangle]
@@ -473,9 +508,9 @@ impl Drop for FfiTcpSocketFacade {
 }
 
 impl TcpSocketFacade for FfiTcpSocketFacade {
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>) {
+    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>) {
         let endpoint_dto = EndpointDto::from(&endpoint);
-        let callback_handle = Box::new(AsyncConnectCallbackHandle(callback));
+        let callback_handle = Box::new(AsyncConnectCallbackHandle::new(callback));
         unsafe {
             match ASYNC_CONNECT_CALLBACK {
                 Some(f) => f(self.handle, &endpoint_dto, Box::into_raw(callback_handle)),
@@ -501,8 +536,12 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         }
     }
 
-    fn async_write(&self, buffer: &dyn SharedConstBuffer, callback: Box<dyn Fn(ErrorCode, usize)>) {
-        let callback_handle = Box::into_raw(Box::new(AsyncWriteCallbackHandle(callback)));
+    fn async_write(
+        &self,
+        buffer: &dyn SharedConstBuffer,
+        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+    ) {
+        let callback_handle = Box::into_raw(Box::new(AsyncWriteCallbackHandle::new(callback)));
         unsafe {
             ASYNC_WRITE_CALLBACK.expect("ASYNC_WRITE_CALLBACK missing")(
                 self.handle,
@@ -615,7 +654,9 @@ pub unsafe extern "C" fn rsn_async_write_callback_execute(
     size: usize,
 ) {
     let error_code = ErrorCode::from(&*ec);
-    (*callback).0(error_code, size);
+    if let Some(cb) = (*callback).0.take() {
+        cb(error_code, size);
+    }
 }
 
 #[no_mangle]
@@ -651,6 +692,12 @@ impl BufferWrapper for FfiBufferWrapper {
 
 struct FfiSharedConstBuffer {
     handle: *mut c_void,
+}
+
+impl FfiSharedConstBuffer {
+    fn new(handle: *mut c_void) -> Self {
+        Self { handle }
+    }
 }
 
 impl SharedConstBuffer for FfiSharedConstBuffer {

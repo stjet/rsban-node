@@ -1226,6 +1226,12 @@ SocketReadCallback callback,
 SocketDestroyContext destroy_context,
 void * context);
 
+void rsn_socket_async_write (SocketHandle * handle,
+void * buffer,
+SocketReadCallback callback,
+SocketDestroyContext destroy_context,
+void * context);
+
 void rsn_socket_checkup (SocketHandle * handle);
 
 void rsn_socket_close (SocketHandle * handle);

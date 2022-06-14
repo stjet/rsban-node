@@ -23,6 +23,12 @@ nano::shared_const_buffer::shared_const_buffer (std::string const & data) :
 {
 }
 
+nano::shared_const_buffer::shared_const_buffer (nano::shared_const_buffer const & other_a) :
+	m_data (other_a.m_data),
+	m_buffer (other_a.m_buffer)
+{
+}
+
 nano::shared_const_buffer::shared_const_buffer (std::shared_ptr<std::vector<uint8_t>> const & data) :
 	m_data (data),
 	m_buffer (boost::asio::buffer (*m_data))

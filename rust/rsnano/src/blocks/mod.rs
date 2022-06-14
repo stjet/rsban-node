@@ -21,7 +21,8 @@ pub use send_block::*;
 pub use state_block::*;
 
 use crate::{
-    Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, Link, Signature, Uniquer, utils::{Stream, PropertyTreeWriter, PropertyTreeReader},
+    utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
+    Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, Link, Signature, Uniquer,
 };
 
 #[repr(u8)]

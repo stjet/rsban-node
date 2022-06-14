@@ -1,6 +1,12 @@
 use num::FromPrimitive;
 
-use crate::{BufferWrapper, SharedConstBuffer, Socket, SocketImpl, TcpSocketFacade, utils::ErrorCode};
+use crate::{
+    socket::{
+        BufferWrapper, SharedConstBuffer, Socket, SocketBuilder, SocketImpl, TcpSocketFacade,
+    },
+    stats::SocketStats,
+    utils::ErrorCode,
+};
 use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
@@ -30,16 +36,23 @@ pub unsafe extern "C" fn rsn_socket_create(
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
     let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
     let thread_pool = Arc::new(FfiThreadPool::new(thread_pool));
-    Box::into_raw(Box::new(SocketHandle(Arc::new(SocketImpl::new(
-        endpoint_type,
-        tcp_facade,
-        (*stats_handle).deref().clone(),
-        thread_pool,
-        Duration::from_secs(default_timeout_s),
-        Duration::from_secs(silent_connection_tolerance_time_s),
+    let logger = Arc::new(LoggerMT::new(logger));
+    let stats = (*stats_handle).deref().clone();
+
+    let socket_stats = Arc::new(SocketStats::new(
+        stats.clone(),
+        logger.clone(),
         network_timeout_logging,
-        Arc::new(LoggerMT::new(logger)),
-    )))))
+    ));
+
+    let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool)
+        .default_timeout(Duration::from_secs(default_timeout_s))
+        .silent_connection_tolerance_time(Duration::from_secs(silent_connection_tolerance_time_s))
+        .enable_network_timeout_logging(network_timeout_logging)
+        .observer(socket_stats)
+        .build();
+
+    Box::into_raw(Box::new(SocketHandle(socket)))
 }
 
 #[no_mangle]
@@ -235,8 +248,7 @@ pub unsafe extern "C" fn rsn_socket_set_remote_endpoint(
     handle: *mut SocketHandle,
     endpoint: *const EndpointDto,
 ) {
-    let mut lk = (*handle).0.remote.lock().unwrap();
-    *lk = Some(SocketAddr::from(&*endpoint));
+    (*handle).0.set_remote(SocketAddr::from(&*endpoint))
 }
 
 fn set_enpoint_dto(endpoint: &SocketAddr, result: &mut EndpointDto) {
@@ -258,9 +270,9 @@ pub unsafe extern "C" fn rsn_socket_get_remote(
     handle: *mut SocketHandle,
     result: *mut EndpointDto,
 ) {
-    match (*handle).0.remote.lock().unwrap().as_ref() {
+    match (*handle).0.get_remote() {
         Some(ep) => {
-            set_enpoint_dto(ep, &mut *result);
+            set_enpoint_dto(&ep, &mut *result);
         }
         None => {
             (*result).port = 0;
@@ -313,7 +325,7 @@ pub unsafe extern "C" fn rsn_socket_is_closed(handle: *mut SocketHandle) -> bool
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_has_timed_out(handle: *mut SocketHandle) -> bool {
-    (*handle).0.timed_out.load(Ordering::SeqCst)
+    (*handle).0.has_timed_out()
 }
 
 #[no_mangle]
@@ -323,17 +335,7 @@ pub unsafe extern "C" fn rsn_socket_checkup(handle: *mut SocketHandle) {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_get_queue_size(handle: *mut SocketHandle) -> usize {
-    (*handle).0.queue_size.load(Ordering::SeqCst)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_queue_size_inc(handle: *mut SocketHandle) {
-    (*handle).0.queue_size.fetch_add(1, Ordering::SeqCst);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_queue_size_dec(handle: *mut SocketHandle) {
-    (*handle).0.queue_size.fetch_sub(1, Ordering::SeqCst);
+    (*handle).0.get_queue_size()
 }
 
 pub struct AsyncConnectCallbackHandle(Option<Box<dyn FnOnce(ErrorCode)>>);
@@ -450,10 +452,7 @@ pub unsafe extern "C" fn rsn_socket_set_default_timeout_value(
     handle: *mut SocketHandle,
     timeout_s: u64,
 ) {
-    (*handle)
-        .0
-        .default_timeout
-        .store(timeout_s, Ordering::SeqCst);
+    (*handle).0.set_default_timeout_value(timeout_s)
 }
 
 struct FfiTcpSocketFacade {

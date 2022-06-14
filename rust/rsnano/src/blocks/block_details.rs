@@ -1,7 +1,7 @@
 use anyhow::Result;
 use num::FromPrimitive;
 
-use crate::{Epoch, utils::Stream};
+use crate::{utils::Stream, Epoch};
 
 // Epoch is bit packed in BlockDetails. That's why it's max is limited to 4 bits
 const_assert!((Epoch::MAX as u8) < (1 << 5));

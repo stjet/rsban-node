@@ -1,6 +1,9 @@
 use crate::{
-    from_string_hex, sign_message, to_string_hex, Account, Amount, Block, BlockHash,
-    BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash, Link, PublicKey, RawKey, Signature, utils::{Stream, PropertyTreeReader, PropertyTreeWriter}, };
+    from_string_hex, sign_message, to_string_hex,
+    utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
+    Account, Amount, Block, BlockHash, BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash,
+    Link, PublicKey, RawKey, Signature,
+};
 
 use anyhow::Result;
 

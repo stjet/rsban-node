@@ -8,10 +8,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{
-    logger_mt::Logger,
-    stats::{DetailType, Direction, Stat, StatType}, utils::{ErrorCode, ThreadPool, seconds_since_epoch},
-};
+use crate::utils::{seconds_since_epoch, ErrorCode, ThreadPool};
 
 pub trait BufferWrapper {
     fn len(&self) -> usize;
@@ -47,9 +44,41 @@ pub enum EndpointType {
     Client,
 }
 
+pub trait SocketObserver {
+    fn close_socket_failed(&self, ec: ErrorCode);
+    fn disconnect_due_to_timeout(&self, endpoint: SocketAddr);
+    fn connect_error(&self);
+    fn read_error(&self);
+    fn read_successful(&self, len: usize);
+    fn write_error(&self);
+    fn write_successful(&self, len: usize);
+    fn silent_connection_dropped(&self);
+    fn inactive_connection_dropped(&self, endpoint_type: EndpointType);
+}
+
+pub struct NullSocketObserver {}
+
+impl NullSocketObserver {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl SocketObserver for NullSocketObserver {
+    fn close_socket_failed(&self, _ec: ErrorCode) {}
+    fn disconnect_due_to_timeout(&self, _endpoint: SocketAddr) {}
+    fn connect_error(&self) {}
+    fn read_error(&self) {}
+    fn read_successful(&self, _len: usize) {}
+    fn write_error(&self) {}
+    fn write_successful(&self, _len: usize) {}
+    fn silent_connection_dropped(&self) {}
+    fn inactive_connection_dropped(&self, _endpoint_type: EndpointType) {}
+}
+
 pub struct SocketImpl {
     /// The other end of the connection
-    pub remote: Mutex<Option<SocketAddr>>,
+    remote: Mutex<Option<SocketAddr>>,
 
     /// the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
     /// activity is any successful connect, send or receive event
@@ -59,24 +88,22 @@ pub struct SocketImpl {
     /// successful receive includes graceful closing of the socket by the peer (the read succeeds but returns 0 bytes)
     last_receive_time_or_init: AtomicU64,
 
-    pub default_timeout: AtomicU64,
+    default_timeout: AtomicU64,
 
     /// Duration in seconds of inactivity that causes a socket timeout
     /// activity is any successful connect, send or receive event
     timeout_seconds: AtomicU64,
 
     tcp_socket: Arc<dyn TcpSocketFacade>,
-    stats: Arc<Stat>,
     thread_pool: Arc<dyn ThreadPool>,
     endpoint_type: EndpointType,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
     pub silent_connection_tolerance_time: AtomicU64,
     network_timeout_logging: bool,
-    logger: Arc<dyn Logger>,
 
     /// Flag that is set when cleanup decides to close the socket due to timeout.
     /// NOTE: Currently used by bootstrap_server::timeout() but I suspect that this and bootstrap_server::timeout() are not needed.
-    pub timed_out: AtomicBool,
+    timed_out: AtomicBool,
 
     /// Set by close() - completion handlers must check this. This is more reliable than checking
     /// error codes as the OS may have already completed the async operation.
@@ -87,41 +114,12 @@ pub struct SocketImpl {
     ///  Note that this is not the number of buffers queued to the peer, it is the number of buffers
     ///  queued up to enter the local TCP send buffer
     ///  socket buffer queue -> TCP send queue -> (network) -> TCP receive queue of peer
-    pub queue_size: AtomicUsize,
+    queue_size: AtomicUsize,
+
+    observer: Arc<dyn SocketObserver>,
 }
 
 impl SocketImpl {
-    pub fn new(
-        endpoint_type: EndpointType,
-        tcp_socket: Arc<dyn TcpSocketFacade>,
-        stats: Arc<Stat>,
-        thread_pool: Arc<dyn ThreadPool>,
-        default_timeout: Duration,
-        silent_connection_tolerance_time: Duration,
-        network_timeout_logging: bool,
-        logger: Arc<dyn Logger>,
-    ) -> Self {
-        Self {
-            remote: Mutex::new(None),
-            last_completion_time_or_init: AtomicU64::new(seconds_since_epoch()),
-            last_receive_time_or_init: AtomicU64::new(seconds_since_epoch()),
-            tcp_socket,
-            default_timeout: AtomicU64::new(default_timeout.as_secs()),
-            timeout_seconds: AtomicU64::new(u64::MAX),
-            stats,
-            thread_pool,
-            endpoint_type,
-            silent_connection_tolerance_time: AtomicU64::new(
-                silent_connection_tolerance_time.as_secs(),
-            ),
-            network_timeout_logging,
-            logger,
-            timed_out: AtomicBool::new(false),
-            closed: AtomicBool::new(false),
-            queue_size: AtomicUsize::new(0),
-        }
-    }
-
     pub fn is_closed(&self) -> bool {
         self.closed.load(Ordering::SeqCst)
     }
@@ -131,7 +129,7 @@ impl SocketImpl {
             .store(seconds_since_epoch(), std::sync::atomic::Ordering::SeqCst);
     }
 
-    pub fn set_last_receive_time(&self) {
+    fn set_last_receive_time(&self) {
         self.last_receive_time_or_init
             .store(seconds_since_epoch(), std::sync::atomic::Ordering::SeqCst);
     }
@@ -146,25 +144,20 @@ impl SocketImpl {
             .store(timeout.as_secs(), Ordering::SeqCst);
     }
 
-    pub fn set_default_timeout(&self) {
-        self.timeout_seconds.store(
-            self.default_timeout.load(Ordering::SeqCst),
-            Ordering::SeqCst,
-        );
+    fn set_default_timeout(&self) {
+        self.set_default_timeout_value(self.default_timeout.load(Ordering::SeqCst));
+    }
+
+    pub fn set_default_timeout_value(&self, seconds: u64) {
+        self.timeout_seconds.store(seconds, Ordering::SeqCst);
     }
 
     pub fn close_internal(&self) {
         if !self.closed.swap(true, Ordering::SeqCst) {
-            self.default_timeout.store(0, Ordering::SeqCst);
+            self.set_default_timeout_value(0);
 
             if let Err(ec) = self.tcp_socket.close() {
-                self.logger
-                    .try_log(&format!("Failed to close socket gracefully: {:?}", ec));
-                let _ = self.stats.inc(
-                    StatType::Bootstrap,
-                    DetailType::ErrorSocketClose,
-                    Direction::In,
-                );
+                self.observer.close_socket_failed(ec);
             }
         }
     }
@@ -191,6 +184,11 @@ pub trait Socket {
     );
     fn close(&self);
     fn checkup(&self);
+
+    fn get_remote(&self) -> Option<SocketAddr>;
+    fn set_remote(&self, endpoint: SocketAddr);
+    fn has_timed_out(&self) -> bool;
+    fn get_queue_size(&self) -> usize;
 }
 
 impl Socket for Arc<SocketImpl> {
@@ -209,10 +207,9 @@ impl Socket for Arc<SocketImpl> {
                     let mut lk = self_clone.remote.lock().unwrap();
                     *lk = Some(endpoint);
                 }
-                let stats = self_clone.stats.clone();
 
                 if ec.is_err() {
-                    let _ = stats.inc(StatType::Tcp, DetailType::TcpConnectError, Direction::In);
+                    self_clone.observer.connect_error();
                 }
                 callback(ec);
             }),
@@ -235,19 +232,9 @@ impl Socket for Arc<SocketImpl> {
                     size,
                     Box::new(move |ec, len| {
                         if ec.is_err() {
-                            let _ = self_clone.stats.inc(
-                                StatType::Tcp,
-                                DetailType::TcpReadError,
-                                Direction::In,
-                            );
+                            self_clone.observer.read_error();
                         } else {
-                            let _ = self_clone.stats.add(
-                                StatType::TrafficTcp,
-                                DetailType::All,
-                                Direction::In,
-                                len as u64,
-                                false,
-                            );
+                            self_clone.observer.read_successful(len);
                             self_clone.set_last_completion();
                             self_clone.set_last_receive_time();
                         }
@@ -298,19 +285,9 @@ impl Socket for Arc<SocketImpl> {
                     self_clone_2.queue_size.fetch_sub(1, Ordering::SeqCst);
 
                     if ec.is_err() {
-                        let _ = self_clone_2.stats.inc(
-                            StatType::Tcp,
-                            DetailType::TcpWriteError,
-                            Direction::In,
-                        );
+                        self_clone_2.observer.write_error();
                     } else {
-                        let _ = self_clone_2.stats.add(
-                            StatType::TrafficTcp,
-                            DetailType::All,
-                            Direction::Out,
-                            size as u64,
-                            false,
-                        );
+                        self_clone_2.observer.write_successful(size);
                         self_clone_2.set_last_completion();
                     }
 
@@ -345,11 +322,7 @@ impl Socket for Arc<SocketImpl> {
                                 .silent_connection_tolerance_time
                                 .load(Ordering::SeqCst)
                     {
-                        let _ = socket.stats.inc(
-                            StatType::Tcp,
-                            DetailType::TcpSilentConnectionDrop,
-                            Direction::In,
-                        );
+                        socket.observer.silent_connection_dropped();
                         condition_to_disconnect = true;
                     }
 
@@ -357,26 +330,16 @@ impl Socket for Arc<SocketImpl> {
                     if (now - socket.last_completion_time_or_init.load(Ordering::SeqCst))
                         > socket.timeout_seconds.load(Ordering::SeqCst)
                     {
-                        let _ = socket.stats.inc(
-                            StatType::Tcp,
-                            DetailType::TcpIoTimeoutDrop,
-                            if socket.endpoint_type == EndpointType::Server {
-                                Direction::In
-                            } else {
-                                Direction::Out
-                            },
-                        );
+                        socket
+                            .observer
+                            .inactive_connection_dropped(socket.endpoint_type);
                         condition_to_disconnect = true;
                     }
 
                     if condition_to_disconnect {
-                        if socket.network_timeout_logging {
-                            // The remote end may have closed the connection before this side timing out, in which case the remote address is no longer available.
-                            if let Ok(ep) = socket.tcp_socket.remote_endpoint() {
-                                socket
-                                    .logger
-                                    .try_log(&format!("Disconnecting from {} due to timeout", ep));
-                            }
+                        // The remote end may have closed the connection before this side timing out, in which case the remote address is no longer available.
+                        if let Ok(ep) = socket.tcp_socket.remote_endpoint() {
+                            socket.observer.disconnect_due_to_timeout(ep);
                         }
                         socket.timed_out.store(true, Ordering::SeqCst);
                         socket.close();
@@ -386,5 +349,97 @@ impl Socket for Arc<SocketImpl> {
                 }
             }),
         );
+    }
+
+    fn get_remote(&self) -> Option<SocketAddr> {
+        self.remote.lock().unwrap().clone()
+    }
+
+    fn set_remote(&self, endpoint: SocketAddr) {
+        let mut lk = self.remote.lock().unwrap();
+        *lk = Some(endpoint);
+    }
+
+    fn has_timed_out(&self) -> bool {
+        self.timed_out.load(Ordering::SeqCst)
+    }
+
+    fn get_queue_size(&self) -> usize {
+        self.queue_size.load(Ordering::SeqCst)
+    }
+}
+
+pub struct SocketBuilder {
+    endpoint_type: EndpointType,
+    tcp_facade: Arc<dyn TcpSocketFacade>,
+    thread_pool: Arc<dyn ThreadPool>,
+    default_timeout: Duration,
+    silent_connection_tolerance_time: Duration,
+    network_timeout_logging: bool,
+    observer: Option<Arc<dyn SocketObserver>>,
+}
+
+impl SocketBuilder {
+    pub fn endpoint_type(
+        endpoint_type: EndpointType,
+        tcp_facade: Arc<dyn TcpSocketFacade>,
+        thread_pool: Arc<dyn ThreadPool>,
+    ) -> Self {
+        Self {
+            endpoint_type,
+            tcp_facade,
+            thread_pool,
+            default_timeout: Duration::from_secs(15),
+            silent_connection_tolerance_time: Duration::from_secs(120),
+            network_timeout_logging: false,
+            observer: None,
+        }
+    }
+
+    pub fn default_timeout(mut self, timeout: Duration) -> Self {
+        self.default_timeout = timeout;
+        self
+    }
+
+    pub fn silent_connection_tolerance_time(mut self, timeout: Duration) -> Self {
+        self.silent_connection_tolerance_time = timeout;
+        self
+    }
+
+    pub fn enable_network_timeout_logging(mut self, enable: bool) -> Self {
+        self.network_timeout_logging = enable;
+        self
+    }
+
+    pub fn observer(mut self, observer: Arc<dyn SocketObserver>) -> Self {
+        self.observer = Some(observer);
+        self
+    }
+
+    pub fn build(self) -> Arc<SocketImpl> {
+        let observer = self
+            .observer
+            .unwrap_or_else(|| Arc::new(NullSocketObserver::new()));
+
+        Arc::new({
+            SocketImpl {
+                remote: Mutex::new(None),
+                last_completion_time_or_init: AtomicU64::new(seconds_since_epoch()),
+                last_receive_time_or_init: AtomicU64::new(seconds_since_epoch()),
+                tcp_socket: self.tcp_facade,
+                default_timeout: AtomicU64::new(self.default_timeout.as_secs()),
+                timeout_seconds: AtomicU64::new(u64::MAX),
+                thread_pool: self.thread_pool,
+                endpoint_type: self.endpoint_type,
+                silent_connection_tolerance_time: AtomicU64::new(
+                    self.silent_connection_tolerance_time.as_secs(),
+                ),
+                network_timeout_logging: self.network_timeout_logging,
+                timed_out: AtomicBool::new(false),
+                closed: AtomicBool::new(false),
+                queue_size: AtomicUsize::new(0),
+                observer,
+            }
+        })
     }
 }

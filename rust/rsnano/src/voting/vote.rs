@@ -2,8 +2,10 @@ use anyhow::Result;
 use std::{sync::RwLock, time::Duration};
 
 use crate::{
-    sign_message, validate_message, Account, BlockHash, BlockHashBuilder, FullHash,
-    RawKey, Signature, utils::{PropertyTreeWriter, Stream}, };
+    sign_message,
+    utils::{PropertyTreeWriter, Stream},
+    validate_message, Account, BlockHash, BlockHashBuilder, FullHash, RawKey, Signature,
+};
 
 #[derive(Clone)]
 pub(crate) struct Vote {

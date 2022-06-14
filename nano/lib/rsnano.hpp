@@ -1259,10 +1259,6 @@ bool rsn_socket_has_timed_out (SocketHandle * handle);
 
 bool rsn_socket_is_closed (SocketHandle * handle);
 
-void rsn_socket_queue_size_dec (SocketHandle * handle);
-
-void rsn_socket_queue_size_inc (SocketHandle * handle);
-
 void rsn_socket_set_default_timeout_value (SocketHandle * handle, uint64_t timeout_s);
 
 void rsn_socket_set_remote_endpoint (SocketHandle * handle, const EndpointDto * endpoint);

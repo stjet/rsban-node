@@ -99,7 +99,6 @@ pub struct SocketImpl {
     endpoint_type: EndpointType,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
     pub silent_connection_tolerance_time: AtomicU64,
-    network_timeout_logging: bool,
 
     /// Flag that is set when cleanup decides to close the socket due to timeout.
     /// NOTE: Currently used by bootstrap_server::timeout() but I suspect that this and bootstrap_server::timeout() are not needed.
@@ -375,7 +374,6 @@ pub struct SocketBuilder {
     thread_pool: Arc<dyn ThreadPool>,
     default_timeout: Duration,
     silent_connection_tolerance_time: Duration,
-    network_timeout_logging: bool,
     observer: Option<Arc<dyn SocketObserver>>,
 }
 
@@ -391,7 +389,6 @@ impl SocketBuilder {
             thread_pool,
             default_timeout: Duration::from_secs(15),
             silent_connection_tolerance_time: Duration::from_secs(120),
-            network_timeout_logging: false,
             observer: None,
         }
     }
@@ -403,11 +400,6 @@ impl SocketBuilder {
 
     pub fn silent_connection_tolerance_time(mut self, timeout: Duration) -> Self {
         self.silent_connection_tolerance_time = timeout;
-        self
-    }
-
-    pub fn enable_network_timeout_logging(mut self, enable: bool) -> Self {
-        self.network_timeout_logging = enable;
         self
     }
 
@@ -434,7 +426,6 @@ impl SocketBuilder {
                 silent_connection_tolerance_time: AtomicU64::new(
                     self.silent_connection_tolerance_time.as_secs(),
                 ),
-                network_timeout_logging: self.network_timeout_logging,
                 timed_out: AtomicBool::new(false),
                 closed: AtomicBool::new(false),
                 queue_size: AtomicUsize::new(0),

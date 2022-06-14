@@ -41,6 +41,7 @@ pub trait TcpSocketFacade {
         callback: Box<dyn Fn(ErrorCode, usize)>,
     );
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode>;
+    fn post(&self, f: Box<dyn Fn()>);
     fn dispatch(&self, f: Box<dyn Fn()>);
     fn close(&self) -> Result<(), ErrorCode>;
 }

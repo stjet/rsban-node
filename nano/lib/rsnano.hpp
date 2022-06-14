@@ -931,6 +931,8 @@ void rsn_callback_tcp_socket_destroy (DestroyCallback f);
 
 void rsn_callback_tcp_socket_dispatch (DispatchCallback f);
 
+void rsn_callback_tcp_socket_post (DispatchCallback f);
+
 void rsn_callback_tcp_socket_remote_endpoint (RemoteEndpointCallback f);
 
 void rsn_callback_toml_array_put_str (TomlArrayPutStrCallback f);

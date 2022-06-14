@@ -53,9 +53,12 @@ public:
 	void async_read (std::shared_ptr<std::vector<uint8_t>> const & buffer_a, size_t len_a,
 	std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
 
+	void async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
+
 	boost::asio::ip::tcp::endpoint remote_endpoint (boost::system::error_code & ec);
 
 	void dispatch (std::function<void ()> callback_a);
+	void post (std::function<void ()> callback_a);
 	void close (boost::system::error_code & ec);
 
 	boost::asio::strand<boost::asio::io_context::executor_type> strand;

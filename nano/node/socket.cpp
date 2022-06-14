@@ -66,6 +66,15 @@ void nano::tcp_socket_facade::async_read (std::shared_ptr<std::vector<uint8_t>> 
 	}));
 }
 
+void nano::tcp_socket_facade::async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
+{
+	nano::async_write (tcp_socket, buffer_a,
+	boost::asio::bind_executor (strand,
+	[buffer_a, cbk = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code ec, std::size_t size) {
+		cbk (ec, size);
+	}));
+}
+
 boost::asio::ip::tcp::endpoint nano::tcp_socket_facade::remote_endpoint (boost::system::error_code & ec)
 {
 	return tcp_socket.remote_endpoint (ec);
@@ -74,6 +83,13 @@ boost::asio::ip::tcp::endpoint nano::tcp_socket_facade::remote_endpoint (boost::
 void nano::tcp_socket_facade::dispatch (std::function<void ()> callback_a)
 {
 	boost::asio::dispatch (strand, boost::asio::bind_executor (strand, [callback_a, this_l = shared_from_this ()] {
+		callback_a ();
+	}));
+}
+
+void nano::tcp_socket_facade::post (std::function<void ()> callback_a)
+{
+	boost::asio::post (strand, boost::asio::bind_executor (strand, [callback_a, this_l = shared_from_this ()] {
 		callback_a ();
 	}));
 }
@@ -172,7 +188,7 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 	{
 		if (callback_a)
 		{
-			tcp_socket_facade_m->io_ctx.post ([callback = std::move (callback_a)] () {
+			tcp_socket_facade_m->post ([callback = std::move (callback_a)] () {
 				callback (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
 			});
 		}
@@ -182,7 +198,7 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 
 	++queue_size;
 
-	boost::asio::post (tcp_socket_facade_m->strand, boost::asio::bind_executor (tcp_socket_facade_m->strand, [buffer_a, callback = std::move (callback_a), this_l = shared_from_this ()] () mutable {
+	tcp_socket_facade_m->post ([buffer_a, callback = std::move (callback_a), this_l = shared_from_this ()] () mutable {
 		if (this_l->is_closed ())
 		{
 			if (callback)
@@ -195,8 +211,8 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 
 		this_l->set_default_timeout ();
 
-		nano::async_write (this_l->tcp_socket_facade_m->tcp_socket, buffer_a,
-		boost::asio::bind_executor (this_l->tcp_socket_facade_m->strand,
+		this_l->tcp_socket_facade_m->async_write (
+		buffer_a,
 		[buffer_a, cbk = std::move (callback), this_l] (boost::system::error_code ec, std::size_t size_a) {
 			--this_l->queue_size;
 
@@ -214,8 +230,8 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 			{
 				cbk (ec, size_a);
 			}
-		}));
-	}));
+		});
+	});
 }
 
 /** Call set_timeout with default_timeout as parameter */

@@ -343,6 +343,7 @@ static mut REMOTE_ENDPOINT_CALLBACK: Option<RemoteEndpointCallback> = None;
 type DispatchCallback = unsafe extern "C" fn(*mut c_void, *mut VoidFnCallbackHandle);
 
 static mut DISPATCH_CALLBACK: Option<DispatchCallback> = None;
+static mut POST_CALLBACK: Option<DispatchCallback> = None;
 
 type CloseSocketCallback = unsafe extern "C" fn(*mut c_void, *mut ErrorCodeDto);
 
@@ -361,6 +362,11 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_remote_endpoint(f: RemoteEndpoi
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_tcp_socket_dispatch(f: DispatchCallback) {
     DISPATCH_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_post(f: DispatchCallback) {
+    POST_CALLBACK = Some(f);
 }
 
 #[no_mangle]
@@ -489,6 +495,15 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
             Ok((&endpoint_dto).into())
         } else {
             Err((&ec_dto).into())
+        }
+    }
+
+    fn post(&self, f: Box<dyn Fn()>) {
+        unsafe {
+            POST_CALLBACK.expect("POST_CALLBACK missing")(
+                self.handle,
+                Box::into_raw(Box::new(VoidFnCallbackHandle::new(f))),
+            );
         }
     }
 

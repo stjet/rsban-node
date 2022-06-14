@@ -515,6 +515,15 @@ void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callba
 	});
 }
 
+void tcp_socket_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
+{
+	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
+	(*socket)->post ([callback_wrapper] () {
+		callback_wrapper->execute ();
+	});
+}
+
 void tcp_socket_close (void * handle_a, rsnano::ErrorCodeDto * ec_a)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
@@ -597,6 +606,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_tcp_socket_async_read (tcp_socket_async_read);
 	rsnano::rsn_callback_tcp_socket_remote_endpoint (tcp_socket_remote_endpoint);
 	rsnano::rsn_callback_tcp_socket_dispatch (tcp_socket_dispatch);
+	rsnano::rsn_callback_tcp_socket_post (tcp_socket_post);
 	rsnano::rsn_callback_tcp_socket_close (tcp_socket_close);
 	rsnano::rsn_callback_tcp_socket_destroy (tcp_socket_destroy);
 

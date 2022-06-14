@@ -60,7 +60,7 @@ void nano::tcp_socket_facade::async_read (std::shared_ptr<std::vector<uint8_t>> 
 	auto this_l{ shared_from_this () };
 	boost::asio::post (strand, boost::asio::bind_executor (strand, [buffer_a, callback = std::move (callback_a), len_a, this_l] () mutable {
 		boost::asio::async_read (this_l->tcp_socket, boost::asio::buffer (buffer_a->data (), len_a),
-		boost::asio::bind_executor (this_l->strand, [buffer_a, callback = std::move (callback)] (boost::system::error_code const & ec, std::size_t len) {
+		boost::asio::bind_executor (this_l->strand, [buffer_a, callback = std::move (callback), this_l] (boost::system::error_code const & ec, std::size_t len) {
 			callback (ec, len);
 		}));
 	}));
@@ -105,9 +105,16 @@ nano::socket::~socket ()
 
 void async_connect_adapter (void * context, rsnano::ErrorCodeDto const * error)
 {
-	auto ec{ rsnano::dto_to_error_code (*error) };
-	auto callback = static_cast<std::function<void (boost::system::error_code const &)> *> (context);
-	(*callback) (ec);
+	try
+	{
+		auto ec{ rsnano::dto_to_error_code (*error) };
+		auto callback = static_cast<std::function<void (boost::system::error_code const &)> *> (context);
+		(*callback) (ec);
+	}
+	catch (...)
+	{
+		std::cerr << "exception in async_connect_adapter!" << std::endl;
+	}
 }
 
 void async_connect_delete_context (void * context)
@@ -124,40 +131,39 @@ boost::asio::ip::tcp::endpoint & nano::socket::get_remote ()
 void nano::socket::async_connect (nano::tcp_endpoint const & endpoint_a, std::function<void (boost::system::error_code const &)> callback_a)
 {
 	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
-	auto cb_wrapper = new std::function<void (boost::system::error_code const &)> (std::move (callback_a));
+	auto cb_wrapper = new std::function<void (boost::system::error_code const &)> ([callback = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code const & ec) {
+		callback (ec);
+	});
 	rsnano::rsn_socket_async_connect (handle, &endpoint_dto, async_connect_adapter, async_connect_delete_context, cb_wrapper);
+}
+
+void async_read_adapter (void * context_a, rsnano::ErrorCodeDto const * error_a, std::size_t size_a)
+{
+	try
+	{
+		auto ec{ rsnano::dto_to_error_code (*error_a) };
+		auto callback = static_cast<std::function<void (boost::system::error_code const &, std::size_t)> *> (context_a);
+		(*callback) (ec, size_a);
+	}
+	catch (...)
+	{
+		std::cerr << "exception in async_connect_adapter!" << std::endl;
+	}
+}
+
+void async_read_delete_context (void * context_a)
+{
+	auto callback = static_cast<std::function<void (boost::system::error_code const &, std::size_t)> *> (context_a);
+	delete callback;
 }
 
 void nano::socket::async_read (std::shared_ptr<std::vector<uint8_t>> const & buffer_a, std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
 {
-	if (size_a <= buffer_a->size ())
-	{
-		auto this_l (shared_from_this ());
-		if (!is_closed ())
-		{
-			set_default_timeout ();
-			tcp_socket_facade_m->async_read (
-			buffer_a, size_a, [this_l, cbk = std::move (callback_a)] (boost::system::error_code const & ec, std::size_t len) {
-				if (ec)
-				{
-					this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_read_error, nano::stat::dir::in);
-				}
-				else
-				{
-					this_l->stats.add (nano::stat::type::traffic_tcp, nano::stat::dir::in, len);
-					this_l->set_last_completion ();
-					this_l->set_last_receive_time ();
-				}
-				cbk (ec, len);
-			});
-		}
-	}
-	else
-	{
-		debug_assert (false && "nano::socket::async_read called with incorrect buffer size");
-		boost::system::error_code ec_buffer = boost::system::errc::make_error_code (boost::system::errc::no_buffer_space);
-		callback_a (ec_buffer, 0);
-	}
+	auto cb_wrapper = new std::function<void (boost::system::error_code const &, std::size_t)> ([callback = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code const & ec, std::size_t size) {
+		callback (ec, size);
+	});
+	auto buffer_ptr{ new std::shared_ptr<std::vector<uint8_t>> (buffer_a) };
+	rsnano::rsn_socket_async_read (handle, buffer_ptr, size_a, async_read_adapter, async_read_delete_context, cb_wrapper);
 }
 
 void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)

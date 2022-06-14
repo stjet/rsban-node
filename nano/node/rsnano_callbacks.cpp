@@ -417,10 +417,9 @@ private:
 	rsnano::VoidFnCallbackHandle * callback_m;
 };
 
-void
-add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackHandle * callback_a)
+void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackHandle * callback_a)
 {
-	auto callback_wrapper {std::make_shared<void_fn_callback_wrapper> (callback_a)};
+	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
 	auto pool{ static_cast<nano::thread_pool *> (handle_a) };
 	pool->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_ms), [callback_wrapper] () {
 		callback_wrapper->execute ();
@@ -462,7 +461,6 @@ void tcp_socket_async_connect (void * handle_a, rsnano::EndpointDto const * endp
 	});
 }
 
-
 class async_read_callback_wrapper
 {
 public:
@@ -492,9 +490,10 @@ void tcp_socket_async_read (void * handle_a, void * buffer_a, std::size_t size_a
 {
 	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
 	auto buffer{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (buffer_a) };
-	auto callback_wrapper{ std::make_shared<async_read_callback_wrapper>(callback_a)};
-	(*socket)->async_read (*buffer, size_a, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
-		callback_wrapper->execute(ec, size);
+	auto buffer_copy = *buffer;
+	auto callback_wrapper{ std::make_shared<async_read_callback_wrapper> (callback_a) };
+	(*socket)->async_read (buffer_copy, size_a, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
+		callback_wrapper->execute (ec, size);
 	});
 }
 
@@ -510,9 +509,9 @@ void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint
 void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
-	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper>(callback_a)};
+	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
 	(*socket)->dispatch ([callback_wrapper] () {
-		callback_wrapper->execute();
+		callback_wrapper->execute ();
 	});
 }
 

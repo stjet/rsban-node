@@ -84,7 +84,7 @@ pub struct SocketImpl {
 
     /// Set by close() - completion handlers must check this. This is more reliable than checking
     /// error codes as the OS may have already completed the async operation.
-    pub closed: AtomicBool,
+    closed: AtomicBool,
 }
 
 impl SocketImpl {
@@ -116,6 +116,10 @@ impl SocketImpl {
             timed_out: AtomicBool::new(false),
             closed: AtomicBool::new(false),
         }
+    }
+
+    pub fn is_closed(&self) -> bool {
+        self.closed.load(Ordering::SeqCst)
     }
 
     pub fn set_last_completion(&self) {
@@ -170,6 +174,12 @@ impl Drop for SocketImpl {
 
 pub trait Socket {
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>);
+    fn async_read(
+        &self,
+        buffer: Arc<dyn BufferWrapper>,
+        size: usize,
+        callback: Box<dyn Fn(ErrorCode, usize)>,
+    );
     fn close(&self);
     fn checkup(&self);
 }
@@ -198,6 +208,52 @@ impl Socket for Arc<SocketImpl> {
                 callback(ec);
             }),
         );
+    }
+
+    fn async_read(
+        &self,
+        buffer: Arc<dyn BufferWrapper>,
+        size: usize,
+        callback: Box<dyn Fn(ErrorCode, usize)>,
+    ) {
+        if size <= buffer.len() {
+            if !self.is_closed() {
+                self.set_default_timeout();
+                let self_clone = self.clone();
+
+                self.tcp_socket.async_read(
+                    &buffer,
+                    size,
+                    Box::new(move |ec, len| {
+                        if ec.is_err() {
+                            let _ = self_clone.stats.inc(
+                                StatType::Tcp,
+                                DetailType::TcpReadError,
+                                Direction::In,
+                            );
+                        } else {
+                            let _ = self_clone.stats.add(
+                                StatType::TrafficTcp,
+                                DetailType::All,
+                                Direction::In,
+                                len as u64,
+                                false,
+                            );
+                            self_clone.set_last_completion();
+                            self_clone.set_last_receive_time();
+                        }
+                        callback(ec, len);
+                    }),
+                );
+            }
+        } else {
+            debug_assert!(false); // async_read called with incorrect buffer size
+            let ec_buffer = ErrorCode {
+                val: 105,    // no buffer space
+                category: 0, // generic
+            };
+            callback(ec_buffer, 0);
+        }
     }
 
     fn close(&self) {
@@ -258,7 +314,7 @@ impl Socket for Arc<SocketImpl> {
                         }
                         socket.timed_out.store(true, Ordering::SeqCst);
                         socket.close();
-                    } else if !socket.closed.load(Ordering::SeqCst) {
+                    } else if !socket.is_closed() {
                         socket.checkup();
                     }
                 }

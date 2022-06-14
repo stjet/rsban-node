@@ -2,7 +2,7 @@ use std::{
     ffi::c_void,
     net::SocketAddr,
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
         Arc, Mutex,
     },
     time::Duration,
@@ -86,6 +86,13 @@ pub struct SocketImpl {
     /// Set by close() - completion handlers must check this. This is more reliable than checking
     /// error codes as the OS may have already completed the async operation.
     closed: AtomicBool,
+
+    /// Tracks number of blocks queued for delivery to the local socket send buffers.
+    ///  Under normal circumstances, this should be zero.
+    ///  Note that this is not the number of buffers queued to the peer, it is the number of buffers
+    ///  queued up to enter the local TCP send buffer
+    ///  socket buffer queue -> TCP send queue -> (network) -> TCP receive queue of peer
+    pub queue_size: AtomicUsize,
 }
 
 impl SocketImpl {
@@ -116,6 +123,7 @@ impl SocketImpl {
             logger,
             timed_out: AtomicBool::new(false),
             closed: AtomicBool::new(false),
+            queue_size: AtomicUsize::new(0),
         }
     }
 

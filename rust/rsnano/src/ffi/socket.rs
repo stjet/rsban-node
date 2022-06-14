@@ -329,6 +329,21 @@ pub unsafe extern "C" fn rsn_socket_checkup(handle: *mut SocketHandle) {
     (*handle).0.checkup();
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_get_queue_size(handle: *mut SocketHandle) -> usize {
+    (*handle).0.queue_size.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_queue_size_inc(handle: *mut SocketHandle) {
+    (*handle).0.queue_size.fetch_add(1, Ordering::SeqCst);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_queue_size_dec(handle: *mut SocketHandle) {
+    (*handle).0.queue_size.fetch_sub(1, Ordering::SeqCst);
+}
+
 pub struct AsyncConnectCallbackHandle(Box<dyn Fn(ErrorCode)>);
 type AsyncConnectCallback =
     unsafe extern "C" fn(*mut c_void, *const EndpointDto, *mut AsyncConnectCallbackHandle);

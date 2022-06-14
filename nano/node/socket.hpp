@@ -110,11 +110,11 @@ public:
 	void set_silent_connection_tolerance_time (std::chrono::seconds tolerance_time_a);
 	bool max () const
 	{
-		return queue_size >= queue_size_max;
+		return get_queue_size () >= queue_size_max;
 	}
 	bool full () const
 	{
-		return queue_size >= queue_size_max * 2;
+		return get_queue_size () >= queue_size_max * 2;
 	}
 	type_t type () const
 	{
@@ -153,14 +153,7 @@ protected:
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint remote;
 
-	/** Tracks number of blocks queued for delivery to the local socket send buffers.
-	 *  Under normal circumstances, this should be zero.
-	 *  Note that this is not the number of buffers queued to the peer, it is the number of buffers
-	 *  queued up to enter the local TCP send buffer
-	 *  socket buffer queue -> TCP send queue -> (network) -> TCP receive queue of peer
-	 */
-	std::atomic<std::size_t> queue_size{ 0 };
-
+	std::size_t get_queue_size () const;
 	void close_internal ();
 	void checkup ();
 	void set_default_timeout ();

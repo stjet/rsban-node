@@ -196,7 +196,7 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 		return;
 	}
 
-	++queue_size;
+	rsnano::rsn_socket_queue_size_inc (handle);
 
 	tcp_socket_facade_m->post ([buffer_a, callback = std::move (callback_a), this_l = shared_from_this ()] () mutable {
 		if (this_l->is_closed ())
@@ -214,7 +214,7 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 		this_l->tcp_socket_facade_m->async_write (
 		buffer_a,
 		[buffer_a, cbk = std::move (callback), this_l] (boost::system::error_code ec, std::size_t size_a) {
-			--this_l->queue_size;
+			rsnano::rsn_socket_queue_size_dec (this_l->handle);
 
 			if (ec)
 			{
@@ -282,6 +282,11 @@ void nano::socket::set_silent_connection_tolerance_time (std::chrono::seconds to
 void nano::socket::close ()
 {
 	rsnano::rsn_socket_close (handle);
+}
+
+std::size_t nano::socket::get_queue_size () const
+{
+	return rsnano::rsn_socket_get_queue_size (handle);
 }
 
 void nano::socket::close_internal ()

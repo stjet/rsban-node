@@ -31,7 +31,7 @@ public:
 class bootstrap_client final : public std::enable_shared_from_this<bootstrap_client>
 {
 public:
-	bootstrap_client (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_connections & connections_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a);
+	bootstrap_client (nano::bootstrap_client_observer & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a);
 	~bootstrap_client ();
 	void stop (bool force);
 	double sample_block_rate ();
@@ -42,13 +42,17 @@ public:
 	void set_timeout (std::chrono::seconds timeout_a);
 	uint8_t * get_receive_buffer ();
 	nano::tcp_endpoint remote_endpoint () const;
-	std::shared_ptr<nano::transport::channel_tcp> channel;
+	std::string channel_string () const;
+	void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy drop_policy_a = nano::buffer_drop_policy::limiter);
+	void send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter);
+	nano::tcp_endpoint get_tcp_endpoint () const;
 	std::atomic<uint64_t> block_count{ 0 };
 	std::atomic<double> block_rate{ 0 };
 	std::atomic<bool> pending_stop{ false };
 	std::atomic<bool> hard_stop{ false };
 
 private:
+	std::shared_ptr<nano::transport::channel_tcp> channel;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::socket> socket;
 	nano::bootstrap_client_observer & observer_m;

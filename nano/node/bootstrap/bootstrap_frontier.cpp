@@ -24,7 +24,7 @@ void nano::frontier_req_client::run (nano::account const & start_account_a, uint
 	count_limit = count_a;
 	next (); // Load accounts from disk
 	auto this_l (shared_from_this ());
-	connection->channel->send (
+	connection->send (
 	request, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		if (!ec)
 		{
@@ -124,7 +124,7 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 		}
 		if (attempt->should_log ())
 		{
-			node->logger.always_log (boost::str (boost::format ("Received %1% frontiers from %2%") % std::to_string (count) % connection->channel->to_string ()));
+			node->logger.always_log (boost::str (boost::format ("Received %1% frontiers from %2%") % std::to_string (count) % connection->channel_string ()));
 		}
 		if (!account.is_zero () && count <= count_limit)
 		{

@@ -16,12 +16,12 @@ constexpr double nano::bootstrap_limits::bootstrap_minimum_termination_time_sec;
 constexpr unsigned nano::bootstrap_limits::bootstrap_max_new_connections;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_processed_blocks_factor;
 
-nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_connections & connections_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a) :
+nano::bootstrap_client::bootstrap_client (nano::bootstrap_client_observer & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a) :
 	channel (channel_a),
 	socket (socket_a),
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
 	start_time_m (std::chrono::steady_clock::now ()),
-	observer_m{ connections_a }
+	observer_m{ observer_a }
 {
 	receive_buffer->resize (256);
 	channel->set_endpoint ();
@@ -75,6 +75,26 @@ nano::tcp_endpoint nano::bootstrap_client::remote_endpoint () const
 	return socket->remote_endpoint ();
 }
 
+std::string nano::bootstrap_client::channel_string () const
+{
+	return channel->to_string ();
+}
+
+void nano::bootstrap_client::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
+{
+	channel->send (message_a, callback_a, drop_policy_a);
+}
+
+void nano::bootstrap_client::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)
+{
+	channel->send_buffer (buffer_a, callback_a, policy_a);
+}
+
+nano::tcp_endpoint nano::bootstrap_client::get_tcp_endpoint () const
+{
+	return channel->get_tcp_endpoint ();
+}
+
 void nano::bootstrap_client::close_socket ()
 {
 	socket->close ();
@@ -120,7 +140,7 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::connection 
 void nano::bootstrap_connections::pool_connection (std::shared_ptr<nano::bootstrap_client> const & client_a, bool new_client, bool push_front)
 {
 	nano::unique_lock<nano::mutex> lock (mutex);
-	if (!stopped && !client_a->pending_stop && !node.network.excluded_peers.check (client_a->channel->get_tcp_endpoint ()))
+	if (!stopped && !client_a->pending_stop && !node.network.excluded_peers.check (client_a->get_tcp_endpoint ()))
 	{
 		client_a->set_timeout (node.network_params.network.idle_timeout);
 		// Push into idle deque
@@ -156,7 +176,7 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::find_connec
 	std::shared_ptr<nano::bootstrap_client> result;
 	for (auto i (idle.begin ()), end (idle.end ()); i != end && !stopped; ++i)
 	{
-		if ((*i)->channel->get_tcp_endpoint () == endpoint_a)
+		if ((*i)->get_tcp_endpoint () == endpoint_a)
 		{
 			result = *i;
 			idle.erase (i);
@@ -182,7 +202,7 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 			{
 				this_l->node.logger.try_log (boost::str (boost::format ("Connection established to %1%") % endpoint_a));
 			}
-			auto client (std::make_shared<nano::bootstrap_client> (this_l->node.shared (), *this_l, std::make_shared<nano::transport::channel_tcp> (*this_l->node.shared (), socket), socket));
+			auto client (std::make_shared<nano::bootstrap_client> (*this_l, std::make_shared<nano::transport::channel_tcp> (*this_l->node.shared (), socket), socket));
 			this_l->connections_count++;
 			this_l->pool_connection (client, true, push_front);
 		}
@@ -260,7 +280,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 				{
 					if (node.config.logging.bulk_pull_logging ())
 					{
-						node.logger.try_log (boost::str (boost::format ("Stopping slow peer %1% (elapsed sec %2%s > %3%s and %4% blocks per second < %5%)") % client->channel->to_string () % elapsed_sec % nano::bootstrap_limits::bootstrap_minimum_termination_time_sec % blocks_per_sec % nano::bootstrap_limits::bootstrap_minimum_blocks_per_sec));
+						node.logger.try_log (boost::str (boost::format ("Stopping slow peer %1% (elapsed sec %2%s > %3%s and %4% blocks per second < %5%)") % client->channel_string () % elapsed_sec % nano::bootstrap_limits::bootstrap_minimum_termination_time_sec % blocks_per_sec % nano::bootstrap_limits::bootstrap_minimum_blocks_per_sec));
 					}
 
 					client->stop (true);
@@ -292,7 +312,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 
 			if (node.config.logging.bulk_pull_logging ())
 			{
-				node.logger.try_log (boost::str (boost::format ("Dropping peer with block rate %1%, block count %2% (%3%) ") % client->block_rate % client->block_count % client->channel->to_string ()));
+				node.logger.try_log (boost::str (boost::format ("Dropping peer with block rate %1%, block count %2% (%3%) ") % client->block_rate % client->block_count % client->channel_string ()));
 			}
 
 			client->stop (false);

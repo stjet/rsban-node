@@ -79,14 +79,14 @@ void nano::bulk_pull_client::request ()
 
 	if (logging_enabled)
 	{
-		logger.try_log (boost::str (boost::format ("Requesting account %1% or head block %2% from %3%. %4% accounts in queue") % pull.account_or_head.to_account () % pull.account_or_head.to_string () % connection->channel->to_string () % attempt->get_pulling ()));
+		logger.try_log (boost::str (boost::format ("Requesting account %1% or head block %2% from %3%. %4% accounts in queue") % pull.account_or_head.to_account () % pull.account_or_head.to_string () % connection->channel_string () % attempt->get_pulling ()));
 	}
 	else if (network_logging && attempt->should_log ())
 	{
 		logger.always_log (boost::str (boost::format ("%1% accounts in pull queue") % attempt->get_pulling ()));
 	}
 	auto this_l (shared_from_this ());
-	connection->channel->send (
+	connection->send (
 	req, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		if (!ec)
 		{
@@ -96,7 +96,7 @@ void nano::bulk_pull_client::request ()
 		{
 			if (this_l->node->config.logging.bulk_pull_logging ())
 			{
-				this_l->logger.try_log (boost::str (boost::format ("Error sending bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel->to_string ()));
+				this_l->logger.try_log (boost::str (boost::format ("Error sending bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel_string ()));
 			}
 			this_l->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_request_failure, nano::stat::dir::in);
 		}
@@ -310,14 +310,14 @@ void nano::bulk_pull_account_client::request ()
 	req.flags = nano::bulk_pull_account_flags::pending_hash_and_amount;
 	if (node->config.logging.bulk_pull_logging ())
 	{
-		node->logger.try_log (boost::str (boost::format ("Requesting pending for account %1% from %2%. %3% accounts in queue") % req.account.to_account () % connection->channel->to_string () % attempt->wallet_size ()));
+		node->logger.try_log (boost::str (boost::format ("Requesting pending for account %1% from %2%. %3% accounts in queue") % req.account.to_account () % connection->channel_string () % attempt->wallet_size ()));
 	}
 	else if (node->config.logging.network_logging () && attempt->should_log ())
 	{
 		node->logger.always_log (boost::str (boost::format ("%1% accounts in pull queue") % attempt->wallet_size ()));
 	}
 	auto this_l (shared_from_this ());
-	connection->channel->send (
+	connection->send (
 	req, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		if (!ec)
 		{
@@ -328,7 +328,7 @@ void nano::bulk_pull_account_client::request ()
 			this_l->attempt->requeue_pending (this_l->account);
 			if (this_l->node->config.logging.bulk_pull_logging ())
 			{
-				this_l->node->logger.try_log (boost::str (boost::format ("Error starting bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel->to_string ()));
+				this_l->node->logger.try_log (boost::str (boost::format ("Error starting bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel_string ()));
 			}
 			this_l->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_error_starting_request, nano::stat::dir::in);
 		}

@@ -132,7 +132,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::LockHandle ** loc
 	*lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 	if (connection_l && !get_stopped ())
 	{
-		endpoint_frontier_request = connection_l->channel->get_tcp_endpoint ();
+		endpoint_frontier_request = connection_l->get_tcp_endpoint ();
 		std::future<bool> future;
 		{
 			auto this_l = std::dynamic_pointer_cast<nano::bootstrap_attempt_legacy> (shared_from_this ());
@@ -176,7 +176,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::LockHandle ** loc
 		{
 			if (!result)
 			{
-				node->logger.try_log (boost::str (boost::format ("Completed frontier request, %1% out of sync accounts according to %2%") % account_count % connection_l->channel->to_string ()));
+				node->logger.try_log (boost::str (boost::format ("Completed frontier request, %1% out of sync accounts according to %2%") % account_count % connection_l->channel_string ()));
 			}
 			else
 			{

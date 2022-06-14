@@ -143,8 +143,6 @@ protected:
 		std::function<void (boost::system::error_code const &, std::size_t)> callback;
 	};
 
-	nano::logger_mt & logger;
-	nano::stat & stats;
 	nano::thread_pool & workers;
 
 	/** The other end of the connection */
@@ -156,9 +154,6 @@ protected:
 	std::size_t get_queue_size () const;
 	void close_internal ();
 	void checkup ();
-	void set_default_timeout ();
-	void set_last_completion ();
-	void set_last_receive_time ();
 
 private:
 	type_t type_m{ type_t::undefined };

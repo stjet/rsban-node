@@ -1,5 +1,6 @@
-use crate::TomlWriter;
 use anyhow::Result;
+
+use crate::utils::TomlWriter;
 
 pub enum SyncStrategy {
     /** Always flush to disk on commit. This is default. */

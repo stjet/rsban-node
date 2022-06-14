@@ -11,7 +11,7 @@ use tokio::time::sleep;
 
 use rsnano::{
     get_node_toml_config_path, get_rpc_toml_config_path, unique_path, DaemonConfig,
-    NetworkConstants, NetworkParams, RpcConfig, TomlConfig, DEV_GENESIS_KEY, DEV_NETWORK_PARAMS,
+    NetworkConstants, NetworkParams, RpcConfig, DEV_GENESIS_KEY, DEV_NETWORK_PARAMS, utils::TomlConfig,
 };
 
 use crate::create_send_and_receive_blocks;

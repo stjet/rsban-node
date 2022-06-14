@@ -1249,17 +1249,11 @@ void * logger);
 
 void rsn_socket_destroy (SocketHandle * handle);
 
-uint64_t rsn_socket_get_last_completion_time (SocketHandle * handle);
-
-uint64_t rsn_socket_get_last_receive_time (SocketHandle * handle);
-
 uintptr_t rsn_socket_get_queue_size (SocketHandle * handle);
 
 void rsn_socket_get_remote (SocketHandle * handle, EndpointDto * result);
 
 uint64_t rsn_socket_get_silent_connnection_tolerance_time_s (SocketHandle * handle);
-
-uint64_t rsn_socket_get_timeout_s (SocketHandle * handle);
 
 bool rsn_socket_has_timed_out (SocketHandle * handle);
 
@@ -1269,13 +1263,7 @@ void rsn_socket_queue_size_dec (SocketHandle * handle);
 
 void rsn_socket_queue_size_inc (SocketHandle * handle);
 
-void rsn_socket_set_default_timeout (SocketHandle * handle);
-
 void rsn_socket_set_default_timeout_value (SocketHandle * handle, uint64_t timeout_s);
-
-void rsn_socket_set_last_completion (SocketHandle * handle);
-
-void rsn_socket_set_last_receive_time (SocketHandle * handle);
 
 void rsn_socket_set_remote_endpoint (SocketHandle * handle, const EndpointDto * endpoint);
 

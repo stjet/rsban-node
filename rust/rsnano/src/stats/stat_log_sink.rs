@@ -1,7 +1,8 @@
-use crate::{create_property_tree, PropertyTreeWriter};
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use std::{any::Any, fs::File, io::Write, path::PathBuf, time::SystemTime};
+
+use crate::utils::{PropertyTreeWriter, create_property_tree};
 
 use super::histogram::StatHistogram;
 

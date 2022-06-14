@@ -105,8 +105,6 @@ void nano::tcp_socket_facade::close (boost::system::error_code & ec)
 }
 
 nano::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::thread_pool & workers_a, std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a) :
-	stats{ stats_a },
-	logger{ logger_a },
 	workers{ workers_a },
 	endpoint_type_m{ endpoint_type_a },
 	tcp_socket_facade_m{ std::make_shared<nano::tcp_socket_facade> (io_ctx_a) },
@@ -192,12 +190,6 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 	rsnano::rsn_socket_async_write (handle, buffer_ptr, async_read_adapter, async_read_delete_context, cb_wrapper);
 }
 
-/** Call set_timeout with default_timeout as parameter */
-void nano::socket::set_default_timeout ()
-{
-	rsnano::rsn_socket_set_default_timeout (handle);
-}
-
 /** Set the current timeout of the socket in seconds
  *  timeout occurs when the last socket completion is more than timeout seconds in the past
  *  timeout always applies, the socket always has a timeout
@@ -207,16 +199,6 @@ void nano::socket::set_default_timeout ()
 void nano::socket::set_timeout (std::chrono::seconds timeout_a)
 {
 	rsnano::rsn_socket_set_timeout (handle, timeout_a.count ());
-}
-
-void nano::socket::set_last_completion ()
-{
-	rsnano::rsn_socket_set_last_completion (handle);
-}
-
-void nano::socket::set_last_receive_time ()
-{
-	rsnano::rsn_socket_set_last_receive_time (handle);
 }
 
 bool nano::socket::has_timed_out () const

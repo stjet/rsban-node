@@ -1,7 +1,6 @@
 use crate::{
-    Logging, NetworkParams, NodeConfig, NodePowServerConfig, NodeRpcConfig, OpenclConfig,
-    TomlWriter,
-};
+    Logging, NetworkParams, NodeConfig, NodePowServerConfig, NodeRpcConfig, OpenclConfig, utils::TomlWriter,
+    };
 use anyhow::Result;
 
 pub struct DaemonConfig {

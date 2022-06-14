@@ -10,36 +10,8 @@ use std::{
 
 use crate::{
     logger_mt::Logger,
-    seconds_since_epoch,
-    stats::{DetailType, Direction, Stat, StatType},
-    ThreadPool,
+    stats::{DetailType, Direction, Stat, StatType}, utils::{ErrorCode, ThreadPool, seconds_since_epoch},
 };
-
-#[derive(Clone, Copy, Debug)]
-pub struct ErrorCode {
-    pub val: i32,
-    pub category: u8,
-}
-
-impl ErrorCode {
-    pub fn is_err(&self) -> bool {
-        self.val != 0
-    }
-
-    pub fn not_supported() -> Self {
-        ErrorCode {
-            val: 95,     //not supported
-            category: 0, // generic,
-        }
-    }
-
-    pub fn no_buffer_space() -> Self {
-        ErrorCode {
-            val: 105,    // no buffer space
-            category: 0, // generic
-        }
-    }
-}
 
 pub trait BufferWrapper {
     fn len(&self) -> usize;
@@ -81,21 +53,21 @@ pub struct SocketImpl {
 
     /// the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
     /// activity is any successful connect, send or receive event
-    pub last_completion_time_or_init: AtomicU64,
+    last_completion_time_or_init: AtomicU64,
 
     /// the timestamp (in seconds since epoch) of the last time there was successful receive on the socket
     /// successful receive includes graceful closing of the socket by the peer (the read succeeds but returns 0 bytes)
-    pub last_receive_time_or_init: AtomicU64,
+    last_receive_time_or_init: AtomicU64,
 
     pub default_timeout: AtomicU64,
 
     /// Duration in seconds of inactivity that causes a socket timeout
     /// activity is any successful connect, send or receive event
-    pub timeout_seconds: AtomicU64,
+    timeout_seconds: AtomicU64,
 
     tcp_socket: Arc<dyn TcpSocketFacade>,
     stats: Arc<Stat>,
-    pub thread_pool: Arc<dyn ThreadPool>,
+    thread_pool: Arc<dyn ThreadPool>,
     endpoint_type: EndpointType,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
     pub silent_connection_tolerance_time: AtomicU64,
@@ -154,7 +126,7 @@ impl SocketImpl {
         self.closed.load(Ordering::SeqCst)
     }
 
-    pub fn set_last_completion(&self) {
+    fn set_last_completion(&self) {
         self.last_completion_time_or_init
             .store(seconds_since_epoch(), std::sync::atomic::Ordering::SeqCst);
     }

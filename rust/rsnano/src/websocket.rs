@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::{create_property_tree, PropertyTreeWriter};
+use crate::utils::{PropertyTreeWriter, create_property_tree};
 
 #[derive(Clone, Copy, FromPrimitive)]
 pub(crate) enum Topic {

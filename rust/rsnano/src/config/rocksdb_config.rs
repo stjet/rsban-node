@@ -1,5 +1,6 @@
-use crate::{get_cpu_count, TomlWriter};
 use anyhow::Result;
+
+use crate::utils::{get_cpu_count, TomlWriter};
 
 pub struct RocksDbConfig {
     pub enable: bool,

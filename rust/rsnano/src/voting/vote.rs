@@ -3,8 +3,7 @@ use std::{sync::RwLock, time::Duration};
 
 use crate::{
     sign_message, validate_message, Account, BlockHash, BlockHashBuilder, FullHash,
-    PropertyTreeWriter, RawKey, Signature, Stream,
-};
+    RawKey, Signature, utils::{PropertyTreeWriter, Stream}, };
 
 #[derive(Clone)]
 pub(crate) struct Vote {

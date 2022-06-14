@@ -1,9 +1,10 @@
-use crate::{PropertyTreeReader, PropertyTreeWriter};
 use anyhow::Result;
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
 };
+
+use crate::utils::{PropertyTreeWriter, PropertyTreeReader};
 
 type PropertyTreePutStringCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char, usize, *const c_char, usize);

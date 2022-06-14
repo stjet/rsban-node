@@ -22,3 +22,30 @@ pub fn get_cpu_count() -> usize {
         1
     }
 }
+
+#[derive(Clone, Copy, Debug)]
+pub struct ErrorCode {
+    pub val: i32,
+    pub category: u8,
+}
+
+impl ErrorCode {
+    pub fn is_err(&self) -> bool {
+        self.val != 0
+    }
+
+    pub fn not_supported() -> Self {
+        ErrorCode {
+            val: 95,     //not supported
+            category: 0, // generic,
+        }
+    }
+
+    pub fn no_buffer_space() -> Self {
+        ErrorCode {
+            val: 105,    // no buffer space
+            category: 0, // generic
+        }
+    }
+}
+

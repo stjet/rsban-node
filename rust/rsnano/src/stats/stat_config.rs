@@ -1,5 +1,6 @@
-use crate::TomlWriter;
 use anyhow::Result;
+
+use crate::utils::TomlWriter;
 
 pub struct StatConfig {
     /** If true, sampling of counters is enabled */

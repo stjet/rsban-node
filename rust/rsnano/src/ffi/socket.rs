@@ -1,6 +1,6 @@
 use num::FromPrimitive;
 
-use crate::{BufferWrapper, ErrorCode, SharedConstBuffer, Socket, SocketImpl, TcpSocketFacade};
+use crate::{BufferWrapper, SharedConstBuffer, Socket, SocketImpl, TcpSocketFacade, utils::ErrorCode};
 use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
@@ -271,29 +271,6 @@ pub unsafe extern "C" fn rsn_socket_get_remote(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_socket_get_last_completion_time(handle: *mut SocketHandle) -> u64 {
-    (*handle)
-        .0
-        .last_completion_time_or_init
-        .load(Ordering::SeqCst)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_set_last_completion(handle: *mut SocketHandle) {
-    (*handle).0.set_last_completion();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_get_last_receive_time(handle: *mut SocketHandle) -> u64 {
-    (*handle).0.last_receive_time_or_init.load(Ordering::SeqCst)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_set_last_receive_time(handle: *mut SocketHandle) {
-    (*handle).0.set_last_receive_time();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_get_silent_connnection_tolerance_time_s(
     handle: *mut SocketHandle,
 ) -> u64 {
@@ -317,11 +294,6 @@ pub unsafe extern "C" fn rsn_socket_set_silent_connection_tolerance_time(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_set_timeout(handle: *mut SocketHandle, timeout_s: u64) {
     (*handle).0.set_timeout(Duration::from_secs(timeout_s));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_get_timeout_s(handle: *mut SocketHandle) -> u64 {
-    (*handle).0.timeout_seconds.load(Ordering::SeqCst)
 }
 
 #[no_mangle]
@@ -471,11 +443,6 @@ pub unsafe extern "C" fn rsn_async_connect_callback_destroy(
     callback: *mut AsyncConnectCallbackHandle,
 ) {
     drop(Box::from_raw(callback))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_set_default_timeout(handle: *mut SocketHandle) {
-    (*handle).0.set_default_timeout();
 }
 
 #[no_mangle]

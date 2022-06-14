@@ -30,7 +30,7 @@ pub mod stats;
 mod token_bucket;
 mod unchecked_info;
 mod uniquer;
-mod utils;
+pub mod utils;
 mod voting;
 mod websocket;
 
@@ -53,7 +53,6 @@ pub(crate) use state_block_signature_verification::*;
 pub use token_bucket::*;
 pub(crate) use unchecked_info::*;
 pub(crate) use uniquer::*;
-pub use utils::*;
 pub(crate) use voting::*;
 pub(crate) use websocket::*;
 

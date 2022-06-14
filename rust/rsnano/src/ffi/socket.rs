@@ -1,6 +1,6 @@
 use num::FromPrimitive;
 
-use crate::{BufferWrapper, ErrorCode, Socket, SocketImpl, TcpSocketFacade};
+use crate::{BufferWrapper, ErrorCode, SharedConstBuffer, Socket, SocketImpl, TcpSocketFacade};
 use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
@@ -401,6 +401,18 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_async_read(f: AsyncReadCallback
     ASYNC_READ_CALLBACK = Some(f);
 }
 
+pub struct AsyncWriteCallbackHandle(Box<dyn Fn(ErrorCode, usize)>);
+
+type AsyncWriteCallback =
+    unsafe extern "C" fn(*mut c_void, *mut c_void, *mut AsyncWriteCallbackHandle);
+
+static mut ASYNC_WRITE_CALLBACK: Option<AsyncWriteCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_async_write(f: AsyncWriteCallback) {
+    ASYNC_WRITE_CALLBACK = Some(f);
+}
+
 type DestroyCallback = unsafe extern "C" fn(*mut c_void);
 
 static mut TCP_FACADE_DESTROY_CALLBACK: Option<DestroyCallback> = None;
@@ -489,6 +501,17 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         }
     }
 
+    fn async_write(&self, buffer: &dyn SharedConstBuffer, callback: Box<dyn Fn(ErrorCode, usize)>) {
+        let callback_handle = Box::into_raw(Box::new(AsyncWriteCallbackHandle(callback)));
+        unsafe {
+            ASYNC_WRITE_CALLBACK.expect("ASYNC_WRITE_CALLBACK missing")(
+                self.handle,
+                buffer.handle(),
+                callback_handle,
+            );
+        }
+    }
+
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
         let mut endpoint_dto = EndpointDto {
             bytes: [0; 16],
@@ -513,7 +536,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         }
     }
 
-    fn post(&self, f: Box<dyn Fn()>) {
+    fn post(&self, f: Box<dyn FnOnce()>) {
         unsafe {
             POST_CALLBACK.expect("POST_CALLBACK missing")(
                 self.handle,
@@ -522,7 +545,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         }
     }
 
-    fn dispatch(&self, f: Box<dyn Fn()>) {
+    fn dispatch(&self, f: Box<dyn FnOnce()>) {
         unsafe {
             DISPATCH_CALLBACK.expect("DISPATCH_CALLBACK missing")(
                 self.handle,
@@ -549,10 +572,16 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
 }
 
 static mut BUFFER_DESTROY_CALLBACK: Option<DestroyCallback> = None;
+static mut SHARED_CONST_BUFFER_DESTROY_CALLBACK: Option<DestroyCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_buffer_destroy(f: DestroyCallback) {
     BUFFER_DESTROY_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_shared_const_buffer_destroy(f: DestroyCallback) {
+    SHARED_CONST_BUFFER_DESTROY_CALLBACK = Some(f);
 }
 
 type BufferSizeCallback = unsafe extern "C" fn(*mut c_void) -> usize;
@@ -579,6 +608,21 @@ pub unsafe extern "C" fn rsn_async_read_callback_destroy(callback: *mut AsyncRea
     drop(Box::from_raw(callback))
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_async_write_callback_execute(
+    callback: *mut AsyncWriteCallbackHandle,
+    ec: *const ErrorCodeDto,
+    size: usize,
+) {
+    let error_code = ErrorCode::from(&*ec);
+    (*callback).0(error_code, size);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_async_write_callback_destroy(callback: *mut AsyncWriteCallbackHandle) {
+    drop(Box::from_raw(callback))
+}
+
 struct FfiBufferWrapper {
     handle: *mut c_void,
 }
@@ -602,5 +646,24 @@ impl BufferWrapper for FfiBufferWrapper {
 
     fn handle(&self) -> *mut c_void {
         self.handle
+    }
+}
+
+struct FfiSharedConstBuffer {
+    handle: *mut c_void,
+}
+
+impl SharedConstBuffer for FfiSharedConstBuffer {
+    fn handle(&self) -> *mut c_void {
+        self.handle
+    }
+}
+
+impl Drop for FfiSharedConstBuffer {
+    fn drop(&mut self) {
+        unsafe {
+            SHARED_CONST_BUFFER_DESTROY_CALLBACK
+                .expect("SHARED_CONST_BUFFER_DESTROY_CALLBACK missing")(self.handle)
+        }
     }
 }

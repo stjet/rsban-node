@@ -25,10 +25,28 @@ impl ErrorCode {
     pub fn is_err(&self) -> bool {
         self.val != 0
     }
+
+    pub fn not_supported() -> Self {
+        ErrorCode {
+            val: 95,     //not supported
+            category: 0, // generic,
+        }
+    }
+
+    pub fn no_buffer_space() -> Self {
+        ErrorCode {
+            val: 105,    // no buffer space
+            category: 0, // generic
+        }
+    }
 }
 
 pub trait BufferWrapper {
     fn len(&self) -> usize;
+    fn handle(&self) -> *mut c_void;
+}
+
+pub trait SharedConstBuffer {
     fn handle(&self) -> *mut c_void;
 }
 
@@ -40,9 +58,10 @@ pub trait TcpSocketFacade {
         len: usize,
         callback: Box<dyn Fn(ErrorCode, usize)>,
     );
+    fn async_write(&self, buffer: &dyn SharedConstBuffer, callback: Box<dyn Fn(ErrorCode, usize)>);
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode>;
-    fn post(&self, f: Box<dyn Fn()>);
-    fn dispatch(&self, f: Box<dyn Fn()>);
+    fn post(&self, f: Box<dyn FnOnce()>);
+    fn dispatch(&self, f: Box<dyn FnOnce()>);
     fn close(&self) -> Result<(), ErrorCode>;
 }
 
@@ -189,6 +208,11 @@ pub trait Socket {
         size: usize,
         callback: Box<dyn Fn(ErrorCode, usize)>,
     );
+    fn async_write(
+        &self,
+        buffer: Arc<dyn SharedConstBuffer>,
+        callback: Option<Box<dyn Fn(ErrorCode, usize)>>,
+    );
     fn close(&self);
     fn checkup(&self);
 }
@@ -257,12 +281,69 @@ impl Socket for Arc<SocketImpl> {
             }
         } else {
             debug_assert!(false); // async_read called with incorrect buffer size
-            let ec_buffer = ErrorCode {
-                val: 105,    // no buffer space
-                category: 0, // generic
-            };
-            callback(ec_buffer, 0);
+            callback(ErrorCode::no_buffer_space(), 0);
         }
+    }
+
+    fn async_write(
+        &self,
+        buffer: Arc<dyn SharedConstBuffer>,
+        callback: Option<Box<dyn Fn(ErrorCode, usize)>>,
+    ) {
+        if self.is_closed() {
+            if let Some(cb) = callback {
+                self.tcp_socket.post(Box::new(move || {
+                    cb(ErrorCode::not_supported(), 0);
+                }));
+            }
+
+            return;
+        }
+
+        self.queue_size.fetch_add(1, Ordering::SeqCst);
+
+        let self_clone = self.clone();
+        self.tcp_socket.post(Box::new(move || {
+            if self_clone.is_closed() {
+                if let Some(cb) = &callback {
+                    cb(ErrorCode::not_supported(), 0);
+                }
+
+                return;
+            }
+
+            self_clone.set_default_timeout();
+            let self_clone_2 = self_clone.clone();
+
+            self_clone.tcp_socket.async_write(
+                buffer.as_ref(),
+                Box::new(move |ec, size| {
+                    let _ = buffer;
+                    self_clone_2.queue_size.fetch_sub(1, Ordering::SeqCst);
+
+                    if ec.is_err() {
+                        let _ = self_clone_2.stats.inc(
+                            StatType::Tcp,
+                            DetailType::TcpWriteError,
+                            Direction::In,
+                        );
+                    } else {
+                        let _ = self_clone_2.stats.add(
+                            StatType::TrafficTcp,
+                            DetailType::All,
+                            Direction::Out,
+                            size as u64,
+                            false,
+                        );
+                        self_clone_2.set_last_completion();
+                    }
+
+                    if let Some(cbk) = &callback {
+                        cbk(ec, size);
+                    }
+                }),
+            );
+        }));
     }
 
     fn close(&self) {

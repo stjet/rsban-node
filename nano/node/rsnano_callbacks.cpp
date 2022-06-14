@@ -497,6 +497,41 @@ void tcp_socket_async_read (void * handle_a, void * buffer_a, std::size_t size_a
 	});
 }
 
+class async_write_callback_wrapper
+{
+public:
+	async_write_callback_wrapper (rsnano::AsyncWriteCallbackHandle * callback_a) :
+		callback_m{ callback_a }
+	{
+	}
+
+	async_write_callback_wrapper (async_write_callback_wrapper const &) = delete;
+
+	~async_write_callback_wrapper ()
+	{
+		rsnano::rsn_async_write_callback_destroy (callback_m);
+	}
+
+	void execute (const boost::system::error_code & ec, std::size_t size)
+	{
+		auto ec_dto{ rsnano::error_code_to_dto (ec) };
+		rsnano::rsn_async_write_callback_execute (callback_m, &ec_dto, size);
+	}
+
+private:
+	rsnano::AsyncWriteCallbackHandle * callback_m;
+};
+
+void tcp_socket_async_write (void * handle_a, void * buffer_a, rsnano::AsyncWriteCallbackHandle * callback_a)
+{
+	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto buffer{ static_cast<std::shared_ptr<nano::shared_const_buffer> *> (buffer_a) };
+	auto callback_wrapper{ std::make_shared<async_write_callback_wrapper> (callback_a) };
+	(*socket)->async_write (**buffer, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
+		callback_wrapper->execute (ec, size);
+	});
+}
+
 void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a, rsnano::ErrorCodeDto * ec_a)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
@@ -541,6 +576,12 @@ void tcp_socket_destroy (void * handle_a)
 void buffer_destroy (void * handle_a)
 {
 	auto ptr{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (handle_a) };
+	delete ptr;
+}
+
+void shared_const_buffer_destroy (void * handle_a)
+{
+	auto ptr{ static_cast<std::shared_ptr<nano::shared_const_buffer> *> (handle_a) };
 	delete ptr;
 }
 
@@ -604,6 +645,7 @@ void rsnano::set_rsnano_callbacks ()
 
 	rsnano::rsn_callback_tcp_socket_async_connect (tcp_socket_async_connect);
 	rsnano::rsn_callback_tcp_socket_async_read (tcp_socket_async_read);
+	rsnano::rsn_callback_tcp_socket_async_write (tcp_socket_async_write);
 	rsnano::rsn_callback_tcp_socket_remote_endpoint (tcp_socket_remote_endpoint);
 	rsnano::rsn_callback_tcp_socket_dispatch (tcp_socket_dispatch);
 	rsnano::rsn_callback_tcp_socket_post (tcp_socket_post);
@@ -612,6 +654,7 @@ void rsnano::set_rsnano_callbacks ()
 
 	rsnano::rsn_callback_buffer_destroy (buffer_destroy);
 	rsnano::rsn_callback_buffer_size (buffer_size);
+	rsnano::rsn_callback_shared_const_buffer_destroy (shared_const_buffer_destroy);
 
 	callbacks_set = true;
 }

@@ -17,6 +17,8 @@ struct AsyncConnectCallbackHandle;
 
 struct AsyncReadCallbackHandle;
 
+struct AsyncWriteCallbackHandle;
+
 struct BandwidthLimiterHandle;
 
 struct BlockArrivalHandle;
@@ -203,6 +205,8 @@ struct EndpointDto
 using AsyncConnectCallback = void (*) (void *, const EndpointDto *, AsyncConnectCallbackHandle *);
 
 using AsyncReadCallback = void (*) (void *, void *, uintptr_t, AsyncReadCallbackHandle *);
+
+using AsyncWriteCallback = void (*) (void *, void *, AsyncWriteCallbackHandle *);
 
 using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
 
@@ -692,6 +696,12 @@ void rsn_async_read_callback_execute (AsyncReadCallbackHandle * callback,
 const ErrorCodeDto * ec,
 uintptr_t size);
 
+void rsn_async_write_callback_destroy (AsyncWriteCallbackHandle * callback);
+
+void rsn_async_write_callback_execute (AsyncWriteCallbackHandle * callback,
+const ErrorCodeDto * ec,
+uintptr_t size);
+
 BandwidthLimiterHandle * rsn_bandwidth_limiter_create (double limit_burst_ratio, uintptr_t limit);
 
 void rsn_bandwidth_limiter_destroy (BandwidthLimiterHandle * limiter);
@@ -917,6 +927,8 @@ void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
 
+void rsn_callback_shared_const_buffer_destroy (DestroyCallback f);
+
 void rsn_callback_string_chars (StringCharsCallback f);
 
 void rsn_callback_string_delete (StringDeleteCallback f);
@@ -924,6 +936,8 @@ void rsn_callback_string_delete (StringDeleteCallback f);
 void rsn_callback_tcp_socket_async_connect (AsyncConnectCallback f);
 
 void rsn_callback_tcp_socket_async_read (AsyncReadCallback f);
+
+void rsn_callback_tcp_socket_async_write (AsyncWriteCallback f);
 
 void rsn_callback_tcp_socket_close (CloseSocketCallback f);
 

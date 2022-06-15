@@ -59,6 +59,8 @@ struct StateBlockSignatureVerificationResultHandle;
 
 struct StringHandle;
 
+struct TcpChannelLockHandle;
+
 struct UncheckedInfoHandle;
 
 struct VoidFnCallbackHandle;
@@ -1000,6 +1002,10 @@ void rsn_channel_destroy (ChannelHandle * handle);
 ChannelHandle * rsn_channel_inproc_create ();
 
 ChannelHandle * rsn_channel_tcp_create ();
+
+TcpChannelLockHandle * rsn_channel_tcp_lock (ChannelHandle * handle);
+
+void rsn_channel_tcp_unlock (TcpChannelLockHandle * handle);
 
 ChannelHandle * rsn_channel_udp_create ();
 

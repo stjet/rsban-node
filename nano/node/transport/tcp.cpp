@@ -19,7 +19,7 @@ nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<
 
 nano::transport::channel_tcp::~channel_tcp ()
 {
-	nano::lock_guard<nano::mutex> lk (channel_mutex);
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
 	// Close socket. Exception: socket is used by bootstrap_server
 	if (auto socket_l = socket.lock ())
 	{
@@ -28,6 +28,91 @@ nano::transport::channel_tcp::~channel_tcp ()
 			socket_l->close ();
 		}
 	}
+	rsnano::rsn_channel_tcp_unlock (lk);
+}
+
+std::chrono::steady_clock::time_point nano::transport::channel_tcp::get_last_bootstrap_attempt () const
+{
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
+	auto result{ last_bootstrap_attempt };
+	rsnano::rsn_channel_tcp_unlock (lk);
+	return result;
+}
+
+void nano::transport::channel_tcp::set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a)
+{
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
+	last_bootstrap_attempt = time_a;
+	rsnano::rsn_channel_tcp_unlock (lk);
+}
+
+std::chrono::steady_clock::time_point nano::transport::channel_tcp::get_last_packet_received () const
+{
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
+	auto result{ last_packet_received };
+	rsnano::rsn_channel_tcp_unlock (lk);
+	return result;
+}
+
+void nano::transport::channel_tcp::set_last_packet_received (std::chrono::steady_clock::time_point const time_a)
+{
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
+	last_packet_received = time_a;
+	rsnano::rsn_channel_tcp_unlock (lk);
+}
+
+std::chrono::steady_clock::time_point nano::transport::channel_tcp::get_last_packet_sent () const
+{
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
+	auto result{ last_packet_sent };
+	rsnano::rsn_channel_tcp_unlock (lk);
+	return result;
+}
+
+void nano::transport::channel_tcp::set_last_packet_sent (std::chrono::steady_clock::time_point const time_a)
+{
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
+	last_packet_sent = time_a;
+	rsnano::rsn_channel_tcp_unlock (lk);
+}
+
+boost::optional<nano::account> nano::transport::channel_tcp::get_node_id_optional () const
+{
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
+	auto result{ node_id };
+	rsnano::rsn_channel_tcp_unlock (lk);
+	return result;
+}
+
+nano::account nano::transport::channel_tcp::get_node_id () const
+{
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
+	nano::account result;
+	if (node_id.is_initialized ())
+	{
+		result = node_id.get ();
+	}
+	else
+	{
+		result = 0;
+	}
+	rsnano::rsn_channel_tcp_unlock (lk);
+	return result;
+}
+
+void nano::transport::channel_tcp::set_node_id (nano::account node_id_a)
+{
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
+	node_id = node_id_a;
+	rsnano::rsn_channel_tcp_unlock (lk);
+}
+
+nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_endpoint () const
+{
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
+	auto result{ endpoint };
+	rsnano::rsn_channel_tcp_unlock (lk);
+	return result;
 }
 
 std::size_t nano::transport::channel_tcp::hash_code () const
@@ -133,13 +218,14 @@ std::string nano::transport::channel_tcp::to_string () const
 
 void nano::transport::channel_tcp::set_endpoint ()
 {
-	nano::lock_guard<nano::mutex> lk (channel_mutex);
+	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
 	debug_assert (endpoint == nano::tcp_endpoint (boost::asio::ip::address_v6::any (), 0)); // Not initialized endpoint value
 	// Calculate TCP socket endpoint
 	if (auto socket_l = socket.lock ())
 	{
 		endpoint = socket_l->remote_endpoint ();
 	}
+	rsnano::rsn_channel_tcp_unlock (lk);
 }
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :

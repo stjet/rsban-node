@@ -36,66 +36,15 @@ namespace transport
 		channel_tcp (nano::node &, std::shared_ptr<nano::socket> const &);
 		~channel_tcp () override;
 
-		std::chrono::steady_clock::time_point get_last_bootstrap_attempt () const override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			return last_bootstrap_attempt;
-		}
-
-		void set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a) override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			last_bootstrap_attempt = time_a;
-		}
-
-		std::chrono::steady_clock::time_point get_last_packet_received () const override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			return last_packet_received;
-		}
-
-		void set_last_packet_received (std::chrono::steady_clock::time_point const time_a) override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			last_packet_received = time_a;
-		}
-
-		std::chrono::steady_clock::time_point get_last_packet_sent () const override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			return last_packet_sent;
-		}
-
-		void set_last_packet_sent (std::chrono::steady_clock::time_point const time_a) override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			last_packet_sent = time_a;
-		}
-
-		boost::optional<nano::account> get_node_id_optional () const override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			return node_id;
-		}
-
-		nano::account get_node_id () const override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			if (node_id.is_initialized ())
-			{
-				return node_id.get ();
-			}
-			else
-			{
-				return 0;
-			}
-		}
-
-		void set_node_id (nano::account node_id_a) override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			node_id = node_id_a;
-		}
+		std::chrono::steady_clock::time_point get_last_bootstrap_attempt () const override;
+		void set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a) override;
+		std::chrono::steady_clock::time_point get_last_packet_received () const override;
+		void set_last_packet_received (std::chrono::steady_clock::time_point const time_a) override;
+		std::chrono::steady_clock::time_point get_last_packet_sent () const override;
+		void set_last_packet_sent (std::chrono::steady_clock::time_point const time_a) override;
+		boost::optional<nano::account> get_node_id_optional () const override;
+		nano::account get_node_id () const override;
+		void set_node_id (nano::account node_id_a) override;
 
 		uint8_t get_network_version () const override
 		{
@@ -130,12 +79,7 @@ namespace transport
 			return nano::transport::map_tcp_to_endpoint (get_tcp_endpoint ());
 		}
 
-		nano::tcp_endpoint get_tcp_endpoint () const override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			return endpoint;
-		}
-
+		nano::tcp_endpoint get_tcp_endpoint () const override;
 		nano::transport::transport_type get_type () const override
 		{
 			return nano::transport::transport_type::tcp;
@@ -157,7 +101,6 @@ namespace transport
 		nano::logger_mt & logger;
 		nano::bandwidth_limiter & limiter;
 		bool network_packet_logging;
-		mutable nano::mutex channel_mutex;
 		std::chrono::steady_clock::time_point last_bootstrap_attempt{ std::chrono::steady_clock::time_point () };
 		std::chrono::steady_clock::time_point last_packet_received{ std::chrono::steady_clock::now () };
 		std::chrono::steady_clock::time_point last_packet_sent{ std::chrono::steady_clock::now () };

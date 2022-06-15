@@ -28,18 +28,6 @@ namespace transport
 	public:
 		channel_udp (nano::transport::udp_channels &, nano::endpoint const &, uint8_t protocol_version);
 
-		std::chrono::steady_clock::time_point get_last_packet_received () const override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			return last_packet_received;
-		}
-
-		void set_last_packet_received (std::chrono::steady_clock::time_point const time_a) override
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			last_packet_received = time_a;
-		}
-
 		std::chrono::steady_clock::time_point get_last_packet_sent () const override
 		{
 			nano::lock_guard<nano::mutex> lk (channel_mutex);
@@ -135,7 +123,6 @@ namespace transport
 		nano::bandwidth_limiter & limiter;
 		bool network_packet_logging;
 		mutable nano::mutex channel_mutex;
-		std::chrono::steady_clock::time_point last_packet_received{ std::chrono::steady_clock::now () };
 		std::chrono::steady_clock::time_point last_packet_sent{ std::chrono::steady_clock::now () };
 		boost::optional<nano::account> node_id{ boost::none };
 		std::atomic<uint8_t> network_version{ 0 };

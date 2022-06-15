@@ -13,4 +13,6 @@ pub trait Channel {
     fn set_temporary(&self, temporary: bool);
     fn get_last_bootstrap_attempt(&self) -> u64;
     fn set_last_bootstrap_attempt(&self, instant: u64);
+    fn get_last_packet_received(&self) -> u64;
+    fn set_last_packet_received(&self, instant: u64);
 }

@@ -77,6 +77,17 @@ void nano::transport::channel::set_last_bootstrap_attempt (std::chrono::steady_c
 	rsnano::rsn_channel_set_last_bootstrap_attempt (handle, time_a.time_since_epoch ().count ());
 }
 
+std::chrono::steady_clock::time_point nano::transport::channel::get_last_packet_received () const
+{
+	auto value = rsnano::rsn_channel_get_last_packet_received (handle);
+	return std::chrono::steady_clock::time_point (std::chrono::steady_clock::duration (value));
+}
+
+void nano::transport::channel::set_last_packet_received (std::chrono::steady_clock::time_point const time_a)
+{
+	rsnano::rsn_channel_set_last_packet_received (handle, time_a.time_since_epoch ().count ());
+}
+
 boost::asio::ip::address_v6 nano::transport::mapped_from_v4_bytes (unsigned long address_a)
 {
 	return boost::asio::ip::address_v6::v4_mapped (boost::asio::ip::address_v4 (address_a));

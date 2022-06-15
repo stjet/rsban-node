@@ -5,7 +5,8 @@
 #include <boost/format.hpp>
 
 nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> const & socket_a) :
-	channel (rsnano::rsn_channel_tcp_create (socket_a->handle)),
+	channel (rsnano::rsn_channel_tcp_create (
+	std::chrono::steady_clock::now ().time_since_epoch ().count (), socket_a->handle)),
 	stats (node_a.stats),
 	logger (node_a.logger),
 	limiter (node_a.network.limiter),
@@ -15,21 +16,6 @@ nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<
 	node (node_a)
 {
 	set_network_version (node_a.config.network_params.network.protocol_version);
-}
-
-std::chrono::steady_clock::time_point nano::transport::channel_tcp::get_last_packet_received () const
-{
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	auto result{ last_packet_received };
-	rsnano::rsn_channel_tcp_unlock (lk);
-	return result;
-}
-
-void nano::transport::channel_tcp::set_last_packet_received (std::chrono::steady_clock::time_point const time_a)
-{
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	last_packet_received = time_a;
-	rsnano::rsn_channel_tcp_unlock (lk);
 }
 
 std::chrono::steady_clock::time_point nano::transport::channel_tcp::get_last_packet_sent () const

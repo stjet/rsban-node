@@ -1001,21 +1001,25 @@ void rsn_channel_destroy (ChannelHandle * handle);
 
 uint64_t rsn_channel_get_last_bootstrap_attempt (ChannelHandle * handle);
 
-ChannelHandle * rsn_channel_inproc_create ();
+uint64_t rsn_channel_get_last_packet_received (ChannelHandle * handle);
+
+ChannelHandle * rsn_channel_inproc_create (uint64_t now);
 
 bool rsn_channel_is_temporary (ChannelHandle * handle);
 
 void rsn_channel_set_last_bootstrap_attempt (ChannelHandle * handle, uint64_t instant);
 
+void rsn_channel_set_last_packet_received (ChannelHandle * handle, uint64_t instant);
+
 void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
 
-ChannelHandle * rsn_channel_tcp_create (SocketHandle * socket);
+ChannelHandle * rsn_channel_tcp_create (uint64_t now, SocketHandle * socket);
 
 TcpChannelLockHandle * rsn_channel_tcp_lock (ChannelHandle * handle);
 
 void rsn_channel_tcp_unlock (TcpChannelLockHandle * handle);
 
-ChannelHandle * rsn_channel_udp_create ();
+ChannelHandle * rsn_channel_udp_create (uint64_t now);
 
 int32_t rsn_daemon_config_create (DaemonConfigDto * dto, const NetworkParamsDto * network_params);
 

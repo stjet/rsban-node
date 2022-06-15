@@ -8,7 +8,7 @@
 #include <boost/format.hpp>
 
 nano::transport::channel_udp::channel_udp (nano::transport::udp_channels & channels_a, nano::endpoint const & endpoint_a, uint8_t protocol_version_a) :
-	channel (rsnano::rsn_channel_udp_create ()),
+	channel (rsnano::rsn_channel_udp_create (std::chrono::steady_clock::now ().time_since_epoch ().count ())),
 	stats (channels_a.node.stats),
 	logger (channels_a.node.logger),
 	limiter (channels_a.node.network.limiter),

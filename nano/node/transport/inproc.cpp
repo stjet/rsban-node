@@ -4,7 +4,7 @@
 #include <boost/format.hpp>
 
 nano::transport::inproc::channel::channel (nano::node & node_a, nano::node & destination) :
-	transport::channel{ rsnano::rsn_channel_inproc_create () },
+	transport::channel{ rsnano::rsn_channel_inproc_create (std::chrono::steady_clock::now ().time_since_epoch ().count ()) },
 	stats (node_a.stats),
 	logger (node_a.logger),
 	limiter (node_a.network.limiter),

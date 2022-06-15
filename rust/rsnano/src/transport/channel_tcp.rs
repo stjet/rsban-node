@@ -7,6 +7,7 @@ use super::{Channel, Socket, SocketImpl};
 
 pub struct TcpChannelData {
     last_bootstrap_attempt: u64,
+    last_packet_received: u64,
 }
 
 pub struct ChannelTcp {
@@ -16,10 +17,11 @@ pub struct ChannelTcp {
 }
 
 impl ChannelTcp {
-    pub fn new(socket: &Arc<SocketImpl>) -> Self {
+    pub fn new(socket: &Arc<SocketImpl>, now: u64) -> Self {
         Self {
             channel_mutex: Mutex::new(TcpChannelData {
                 last_bootstrap_attempt: 0,
+                last_packet_received: now,
             }),
             socket: Arc::downgrade(socket),
             temporary: AtomicBool::new(false),
@@ -46,6 +48,14 @@ impl Channel for ChannelTcp {
 
     fn set_last_bootstrap_attempt(&self, instant: u64) {
         self.channel_mutex.lock().unwrap().last_bootstrap_attempt = instant;
+    }
+
+    fn get_last_packet_received(&self) -> u64 {
+        self.channel_mutex.lock().unwrap().last_packet_received
+    }
+
+    fn set_last_packet_received(&self, instant: u64) {
+        self.channel_mutex.lock().unwrap().last_packet_received = instant;
     }
 }
 

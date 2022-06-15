@@ -36,9 +36,12 @@ pub unsafe extern "C" fn rsn_channel_destroy(handle: *mut ChannelHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_create(socket: *mut SocketHandle) -> *mut ChannelHandle {
+pub unsafe extern "C" fn rsn_channel_tcp_create(
+    now: u64,
+    socket: *mut SocketHandle,
+) -> *mut ChannelHandle {
     Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Tcp(
-        ChannelTcp::new((*socket).deref()),
+        ChannelTcp::new((*socket).deref(), now),
     )))))
 }
 
@@ -65,6 +68,19 @@ pub unsafe extern "C" fn rsn_channel_set_last_bootstrap_attempt(
     as_channel(handle).set_last_bootstrap_attempt(instant);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_get_last_packet_received(handle: *mut ChannelHandle) -> u64 {
+    as_channel(handle).get_last_packet_received()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_set_last_packet_received(
+    handle: *mut ChannelHandle,
+    instant: u64,
+) {
+    as_channel(handle).set_last_packet_received(instant);
+}
+
 pub struct TcpChannelLockHandle(MutexGuard<'static, TcpChannelData>);
 
 #[no_mangle]
@@ -84,15 +100,15 @@ pub unsafe extern "C" fn rsn_channel_tcp_unlock(handle: *mut TcpChannelLockHandl
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_channel_inproc_create() -> *mut ChannelHandle {
+pub extern "C" fn rsn_channel_inproc_create(now: u64) -> *mut ChannelHandle {
     Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::InProc(
-        ChannelInProc::new(),
+        ChannelInProc::new(now),
     )))))
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_channel_udp_create() -> *mut ChannelHandle {
+pub extern "C" fn rsn_channel_udp_create(now: u64) -> *mut ChannelHandle {
     Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Udp(
-        ChannelUdp::new(),
+        ChannelUdp::new(now),
     )))))
 }

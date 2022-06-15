@@ -7,6 +7,7 @@ use super::Channel;
 
 pub struct UdpChannelData {
     last_bootstrap_attempt: u64,
+    last_packet_received: u64,
 }
 
 pub struct ChannelUdp {
@@ -15,11 +16,12 @@ pub struct ChannelUdp {
 }
 
 impl ChannelUdp {
-    pub fn new() -> Self {
+    pub fn new(now: u64) -> Self {
         Self {
             temporary: AtomicBool::new(false),
             channel_mutex: Mutex::new(UdpChannelData {
                 last_bootstrap_attempt: 0,
+                last_packet_received: now,
             }),
         }
     }
@@ -40,5 +42,13 @@ impl Channel for ChannelUdp {
 
     fn set_last_bootstrap_attempt(&self, instant: u64) {
         self.channel_mutex.lock().unwrap().last_bootstrap_attempt = instant;
+    }
+
+    fn get_last_packet_received(&self) -> u64 {
+        self.channel_mutex.lock().unwrap().last_packet_received
+    }
+
+    fn set_last_packet_received(&self, instant: u64) {
+        self.channel_mutex.lock().unwrap().last_packet_received = instant;
     }
 }

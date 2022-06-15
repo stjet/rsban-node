@@ -107,6 +107,8 @@ namespace transport
 		virtual ~channel ();
 		virtual std::size_t hash_code () const = 0;
 		virtual bool operator== (nano::transport::channel const &) const = 0;
+		bool is_temporary () const;
+		void set_temporary (bool temporary);
 		virtual void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter) = 0;
 		// TODO: investigate clang-tidy warning about default parameters on virtual/override functions
 		//

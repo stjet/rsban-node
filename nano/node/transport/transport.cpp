@@ -56,6 +56,16 @@ nano::transport::channel::~channel ()
 	rsnano::rsn_channel_destroy (handle);
 }
 
+bool nano::transport::channel::is_temporary () const
+{
+	return rsnano::rsn_channel_is_temporary (handle);
+}
+
+void nano::transport::channel::set_temporary (bool temporary)
+{
+	rsnano::rsn_channel_set_temporary (handle, temporary);
+}
+
 boost::asio::ip::address_v6 nano::transport::mapped_from_v4_bytes (unsigned long address_a)
 {
 	return boost::asio::ip::address_v6::v4_mapped (boost::asio::ip::address_v4 (address_a));

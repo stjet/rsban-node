@@ -22,6 +22,14 @@ use crate::ffi::{
 
 pub struct SocketHandle(Arc<SocketImpl>);
 
+impl Deref for SocketHandle {
+    type Target = Arc<SocketImpl>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_create(
     endpoint_type: u8,
@@ -166,7 +174,7 @@ pub unsafe extern "C" fn rsn_socket_async_connect(
     let cb = Box::new(move |ec| {
         cb_wrapper.execute(ec);
     });
-    (*handle).0.async_connect((&*endpoint).into(), cb);
+    (*handle).async_connect((&*endpoint).into(), cb);
 }
 
 struct ReadCallbackWrapper {
@@ -215,7 +223,7 @@ pub unsafe extern "C" fn rsn_socket_async_read(
         cb_wrapper.execute(ec, size);
     });
     let buffer_wrapper = Arc::new(FfiBufferWrapper::new(buffer));
-    (*handle).0.async_read(buffer_wrapper, size, cb);
+    (*handle).async_read(buffer_wrapper, size, cb);
 }
 
 #[no_mangle]
@@ -235,7 +243,7 @@ pub unsafe extern "C" fn rsn_socket_async_write(
         None
     };
     let buffer_wrapper = Arc::new(FfiSharedConstBuffer::new(buffer));
-    (*handle).0.async_write(buffer_wrapper, cb);
+    (*handle).async_write(buffer_wrapper, cb);
 }
 
 #[no_mangle]
@@ -243,7 +251,7 @@ pub unsafe extern "C" fn rsn_socket_set_remote_endpoint(
     handle: *mut SocketHandle,
     endpoint: *const EndpointDto,
 ) {
-    (*handle).0.set_remote(SocketAddr::from(&*endpoint))
+    (*handle).set_remote(SocketAddr::from(&*endpoint))
 }
 
 fn set_enpoint_dto(endpoint: &SocketAddr, result: &mut EndpointDto) {
@@ -265,7 +273,7 @@ pub unsafe extern "C" fn rsn_socket_get_remote(
     handle: *mut SocketHandle,
     result: *mut EndpointDto,
 ) {
-    match (*handle).0.get_remote() {
+    match (*handle).get_remote() {
         Some(ep) => {
             set_enpoint_dto(&ep, &mut *result);
         }
@@ -282,7 +290,6 @@ pub unsafe extern "C" fn rsn_socket_get_silent_connnection_tolerance_time_s(
     handle: *mut SocketHandle,
 ) -> u64 {
     (*handle)
-        .0
         .silent_connection_tolerance_time
         .load(Ordering::SeqCst)
 }
@@ -293,44 +300,43 @@ pub unsafe extern "C" fn rsn_socket_set_silent_connection_tolerance_time(
     time_s: u64,
 ) {
     (*handle)
-        .0
         .silent_connection_tolerance_time
         .store(time_s, Ordering::SeqCst);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_set_timeout(handle: *mut SocketHandle, timeout_s: u64) {
-    (*handle).0.set_timeout(Duration::from_secs(timeout_s));
+    (*handle).set_timeout(Duration::from_secs(timeout_s));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_close(handle: *mut SocketHandle) {
-    (*handle).0.close()
+    (*handle).close()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_close_internal(handle: *mut SocketHandle) {
-    (*handle).0.close_internal();
+    (*handle).close_internal();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_is_closed(handle: *mut SocketHandle) -> bool {
-    (*handle).0.is_closed()
+    (*handle).is_closed()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_has_timed_out(handle: *mut SocketHandle) -> bool {
-    (*handle).0.has_timed_out()
+    (*handle).has_timed_out()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_checkup(handle: *mut SocketHandle) {
-    (*handle).0.checkup();
+    (*handle).checkup();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_get_queue_size(handle: *mut SocketHandle) -> usize {
-    (*handle).0.get_queue_size()
+    (*handle).get_queue_size()
 }
 
 pub struct AsyncConnectCallbackHandle(Option<Box<dyn FnOnce(ErrorCode)>>);
@@ -447,7 +453,7 @@ pub unsafe extern "C" fn rsn_socket_set_default_timeout_value(
     handle: *mut SocketHandle,
     timeout_s: u64,
 ) {
-    (*handle).0.set_default_timeout_value(timeout_s)
+    (*handle).set_default_timeout_value(timeout_s)
 }
 
 struct FfiTcpSocketFacade {

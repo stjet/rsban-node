@@ -1001,7 +1001,11 @@ void rsn_channel_destroy (ChannelHandle * handle);
 
 ChannelHandle * rsn_channel_inproc_create ();
 
-ChannelHandle * rsn_channel_tcp_create ();
+bool rsn_channel_is_temporary (ChannelHandle * handle);
+
+void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
+
+ChannelHandle * rsn_channel_tcp_create (SocketHandle * socket);
 
 TcpChannelLockHandle * rsn_channel_tcp_lock (ChannelHandle * handle);
 

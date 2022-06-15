@@ -5,7 +5,7 @@
 #include <boost/format.hpp>
 
 nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> const & socket_a) :
-	channel (rsnano::rsn_channel_tcp_create ()),
+	channel (rsnano::rsn_channel_tcp_create (socket_a->handle)),
 	stats (node_a.stats),
 	logger (node_a.logger),
 	limiter (node_a.network.limiter),
@@ -15,20 +15,6 @@ nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<
 	node (node_a)
 {
 	set_network_version (node_a.config.network_params.network.protocol_version);
-}
-
-nano::transport::channel_tcp::~channel_tcp ()
-{
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	// Close socket. Exception: socket is used by bootstrap_server
-	if (auto socket_l = socket.lock ())
-	{
-		if (!temporary)
-		{
-			socket_l->close ();
-		}
-	}
-	rsnano::rsn_channel_tcp_unlock (lk);
 }
 
 std::chrono::steady_clock::time_point nano::transport::channel_tcp::get_last_bootstrap_attempt () const
@@ -247,7 +233,7 @@ bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::cha
 		if (existing == channels.get<endpoint_tag> ().end ())
 		{
 			auto node_id (channel_a->get_node_id ());
-			if (!channel_a->temporary)
+			if (!channel_a->is_temporary ())
 			{
 				channels.get<node_id_tag> ().erase (node_id);
 			}
@@ -306,7 +292,7 @@ std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::transport::t
 			auto index (nano::random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (peers_size - 1)));
 
 			auto channel = channels.get<random_access_tag> ()[index].channel;
-			if (channel->get_network_version () >= min_version && (include_temporary_channels_a || !channel->temporary))
+			if (channel->get_network_version () >= min_version && (include_temporary_channels_a || !channel->is_temporary ()))
 			{
 				result.insert (channel);
 			}
@@ -433,7 +419,7 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
 					temporary_channel->set_node_id (node_id_a);
 					temporary_channel->set_network_version (message_a.header.version_using);
-					temporary_channel->temporary = true;
+					temporary_channel->set_temporary (true);
 					debug_assert (type_a == nano::socket::type_t::realtime || type_a == nano::socket::type_t::realtime_response_server);
 					// Don't insert temporary channels for response_server
 					if (type_a == nano::socket::type_t::realtime)
@@ -625,7 +611,7 @@ void nano::transport::tcp_channels::list (std::deque<std::shared_ptr<nano::trans
 	nano::lock_guard<nano::mutex> lock (mutex);
 	// clang-format off
 	nano::transform_if (channels.get<random_access_tag> ().begin (), channels.get<random_access_tag> ().end (), std::back_inserter (deque_a),
-		[include_temporary_channels_a, minimum_version_a](auto & channel_a) { return channel_a.channel->get_network_version () >= minimum_version_a && (include_temporary_channels_a || !channel_a.channel->temporary); },
+		[include_temporary_channels_a, minimum_version_a](auto & channel_a) { return channel_a.channel->get_network_version () >= minimum_version_a && (include_temporary_channels_a || !channel_a.channel->is_temporary ()); },
 		[](auto const & channel) { return channel.channel; });
 	// clang-format on
 }
@@ -762,7 +748,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 									auto existing_channel (node_l->network.tcp_channels.find_node_id (node_id));
 									if (existing_channel)
 									{
-										process = existing_channel->temporary;
+										process = existing_channel->is_temporary ();
 									}
 								}
 								if (process)

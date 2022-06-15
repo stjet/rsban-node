@@ -34,7 +34,6 @@ namespace transport
 
 	public:
 		channel_tcp (nano::node &, std::shared_ptr<nano::socket> const &);
-		~channel_tcp () override;
 
 		std::chrono::steady_clock::time_point get_last_bootstrap_attempt () const override;
 		void set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a) override;

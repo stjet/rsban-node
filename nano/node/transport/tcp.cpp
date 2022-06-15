@@ -4,9 +4,9 @@
 
 #include <boost/format.hpp>
 
-nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::weak_ptr<nano::socket> socket_a) :
+nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> & socket_a) :
 	channel (node_a.stats, node_a.logger, node_a.network.limiter, node_a.io_ctx, node_a.config.logging.network_packet_logging (), node_a.config.network_params.network.protocol_version),
-	socket (std::move (socket_a)),
+	socket (socket_a),
 	node (node_a)
 {
 }

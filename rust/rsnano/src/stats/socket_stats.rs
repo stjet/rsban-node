@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use crate::{
     logger_mt::Logger,
-    socket::{EndpointType, SocketObserver},
+    transport::{EndpointType, SocketObserver},
     utils::ErrorCode,
 };
 

@@ -1,10 +1,10 @@
 use num::FromPrimitive;
 
 use crate::{
-    socket::{
+    stats::SocketStats,
+    transport::{
         BufferWrapper, SharedConstBuffer, Socket, SocketBuilder, SocketImpl, TcpSocketFacade,
     },
-    stats::SocketStats,
     utils::ErrorCode,
 };
 use std::{
@@ -15,7 +15,7 @@ use std::{
     time::Duration,
 };
 
-use super::{
+use crate::ffi::{
     thread_pool::{FfiThreadPool, VoidFnCallbackHandle},
     LoggerMT, StatHandle,
 };
@@ -39,11 +39,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     let logger = Arc::new(LoggerMT::new(logger));
     let stats = (*stats_handle).deref().clone();
 
-    let socket_stats = Arc::new(SocketStats::new(
-        stats.clone(),
-        logger.clone(),
-        network_timeout_logging,
-    ));
+    let socket_stats = Arc::new(SocketStats::new(stats, logger, network_timeout_logging));
 
     let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool)
         .default_timeout(Duration::from_secs(default_timeout_s))

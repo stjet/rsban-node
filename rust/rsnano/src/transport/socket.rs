@@ -12,6 +12,9 @@ use crate::utils::{seconds_since_epoch, ErrorCode, ThreadPool};
 
 pub trait BufferWrapper {
     fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     fn handle(&self) -> *mut c_void;
 }
 
@@ -56,11 +59,12 @@ pub trait SocketObserver {
     fn inactive_connection_dropped(&self, endpoint_type: EndpointType);
 }
 
+#[derive(Default)]
 pub struct NullSocketObserver {}
 
 impl NullSocketObserver {
     pub fn new() -> Self {
-        Self {}
+        Default::default()
     }
 }
 
@@ -351,7 +355,7 @@ impl Socket for Arc<SocketImpl> {
     }
 
     fn get_remote(&self) -> Option<SocketAddr> {
-        self.remote.lock().unwrap().clone()
+        *self.remote.lock().unwrap()
     }
 
     fn set_remote(&self, endpoint: SocketAddr) {

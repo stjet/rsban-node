@@ -10,6 +10,7 @@
 namespace rsnano
 {
 class BandwidthLimiterHandle;
+class ChannelHandle;
 }
 namespace nano
 {
@@ -51,8 +52,9 @@ namespace transport
 	class channel
 	{
 	public:
-		channel (nano::stat & stats_a, nano::logger_mt & logger_a, nano::bandwidth_limiter & limiter_a, boost::asio::io_context & io_ctx_a, bool network_packet_logging_a, uint8_t network_version_a);
-		virtual ~channel () = default;
+		channel (rsnano::ChannelHandle * handle_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::bandwidth_limiter & limiter_a, boost::asio::io_context & io_ctx_a, bool network_packet_logging_a, uint8_t network_version_a);
+		channel (nano::transport::channel const &) = delete;
+		virtual ~channel ();
 		virtual std::size_t hash_code () const = 0;
 		virtual bool operator== (nano::transport::channel const &) const = 0;
 		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter);
@@ -152,6 +154,9 @@ namespace transport
 		nano::logger_mt & logger;
 		nano::bandwidth_limiter & limiter;
 		bool network_packet_logging;
+
+	public:
+		rsnano::ChannelHandle * handle;
 	};
 } // namespace transport
 } // namespace nano

@@ -33,7 +33,7 @@ namespace transport
 		friend class nano::transport::tcp_channels;
 
 	public:
-		channel_tcp (nano::node &, std::shared_ptr<nano::socket> &);
+		channel_tcp (nano::node &, std::shared_ptr<nano::socket> const &);
 		~channel_tcp () override;
 		std::size_t hash_code () const override;
 		bool operator== (nano::transport::channel const &) const override;

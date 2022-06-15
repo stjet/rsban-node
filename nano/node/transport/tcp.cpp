@@ -4,8 +4,8 @@
 
 #include <boost/format.hpp>
 
-nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> & socket_a) :
-	channel (node_a.stats, node_a.logger, node_a.network.limiter, node_a.io_ctx, node_a.config.logging.network_packet_logging (), node_a.config.network_params.network.protocol_version),
+nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> const & socket_a) :
+	channel (rsnano::rsn_channel_tcp_create (), node_a.stats, node_a.logger, node_a.network.limiter, node_a.io_ctx, node_a.config.logging.network_packet_logging (), node_a.config.network_params.network.protocol_version),
 	socket (socket_a),
 	node (node_a)
 {
@@ -543,8 +543,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 	node.config.tcp_io_timeout,
 	node.network_params.network.silent_connection_tolerance_time,
 	node.config.logging.network_timeout_logging ());
-	std::weak_ptr<nano::socket> socket_w (socket);
-	auto channel (std::make_shared<nano::transport::channel_tcp> (node, socket_w));
+	auto channel (std::make_shared<nano::transport::channel_tcp> (node, socket));
 	std::weak_ptr<nano::node> node_w (node.shared ());
 	socket->async_connect (nano::transport::map_endpoint_to_tcp (endpoint_a),
 	[node_w, channel, socket, endpoint_a] (boost::system::error_code const & ec) {

@@ -33,6 +33,8 @@ struct BootstrapAttemptHandle;
 
 struct BootstrapInitiatorHandle;
 
+struct ChannelHandle;
+
 struct EpochsHandle;
 
 struct LedgerHandle;
@@ -992,6 +994,14 @@ void rsn_change_block_representative (const BlockHandle * handle, uint8_t (*resu
 void rsn_change_block_representative_set (BlockHandle * handle, const uint8_t (*representative)[32]);
 
 uintptr_t rsn_change_block_size ();
+
+void rsn_channel_destroy (ChannelHandle * handle);
+
+ChannelHandle * rsn_channel_inproc_create ();
+
+ChannelHandle * rsn_channel_tcp_create ();
+
+ChannelHandle * rsn_channel_udp_create ();
 
 int32_t rsn_daemon_config_create (DaemonConfigDto * dto, const NetworkParamsDto * network_params);
 

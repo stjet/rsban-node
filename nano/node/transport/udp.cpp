@@ -8,8 +8,12 @@
 #include <boost/format.hpp>
 
 nano::transport::channel_udp::channel_udp (nano::transport::udp_channels & channels_a, nano::endpoint const & endpoint_a, uint8_t protocol_version_a) :
-	channel (rsnano::rsn_channel_udp_create (), channels_a.node.stats, channels_a.node.logger, channels_a.node.network.limiter,
-	channels_a.node.io_ctx, channels_a.node.config.logging.network_logging ()),
+	channel (rsnano::rsn_channel_udp_create ()),
+	stats (channels_a.node.stats),
+	logger (channels_a.node.logger),
+	limiter (channels_a.node.network.limiter),
+	io_ctx (channels_a.node.io_ctx),
+	network_packet_logging (channels_a.node.config.logging.network_packet_logging ()),
 	endpoint (endpoint_a),
 	channels (channels_a)
 {
@@ -32,6 +36,36 @@ bool nano::transport::channel_udp::operator== (nano::transport::channel const & 
 		return *this == *other_l;
 	}
 	return result;
+}
+
+void nano::transport::channel_udp::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
+{
+	nano::transport::callback_visitor visitor;
+	message_a.visit (visitor);
+	auto buffer (message_a.to_shared_const_buffer ());
+	auto detail (visitor.result);
+	auto is_droppable_by_limiter = drop_policy_a == nano::buffer_drop_policy::limiter;
+	auto should_drop (limiter.should_drop (buffer.size ()));
+	if (!is_droppable_by_limiter || !should_drop)
+	{
+		send_buffer (buffer, callback_a, drop_policy_a);
+		stats.inc (nano::stat::type::message, detail, nano::stat::dir::out);
+	}
+	else
+	{
+		if (callback_a)
+		{
+			io_ctx.post ([callback_a] () {
+				callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
+			});
+		}
+
+		stats.inc (nano::stat::type::drop, detail, nano::stat::dir::out);
+		if (network_packet_logging)
+		{
+			logger.always_log (boost::str (boost::format ("%1% of size %2% dropped") % stats.detail_to_string (detail) % buffer.size ()));
+		}
+	}
 }
 
 void nano::transport::channel_udp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)

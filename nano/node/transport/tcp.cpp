@@ -5,7 +5,12 @@
 #include <boost/format.hpp>
 
 nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> const & socket_a) :
-	channel (rsnano::rsn_channel_tcp_create (), node_a.stats, node_a.logger, node_a.network.limiter, node_a.io_ctx, node_a.config.logging.network_packet_logging () ),
+	channel (rsnano::rsn_channel_tcp_create ()),
+	stats (node_a.stats),
+	logger (node_a.logger),
+	limiter (node_a.network.limiter),
+	io_ctx (node_a.io_ctx),
+	network_packet_logging (node_a.config.logging.network_packet_logging ()),
 	socket (socket_a),
 	node (node_a)
 {
@@ -40,6 +45,36 @@ bool nano::transport::channel_tcp::operator== (nano::transport::channel const & 
 		return *this == *other_l;
 	}
 	return result;
+}
+
+void nano::transport::channel_tcp::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
+{
+	nano::transport::callback_visitor visitor;
+	message_a.visit (visitor);
+	auto buffer (message_a.to_shared_const_buffer ());
+	auto detail (visitor.result);
+	auto is_droppable_by_limiter = drop_policy_a == nano::buffer_drop_policy::limiter;
+	auto should_drop (limiter.should_drop (buffer.size ()));
+	if (!is_droppable_by_limiter || !should_drop)
+	{
+		send_buffer (buffer, callback_a, drop_policy_a);
+		stats.inc (nano::stat::type::message, detail, nano::stat::dir::out);
+	}
+	else
+	{
+		if (callback_a)
+		{
+			io_ctx.post ([callback_a] () {
+				callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
+			});
+		}
+
+		stats.inc (nano::stat::type::drop, detail, nano::stat::dir::out);
+		if (network_packet_logging)
+		{
+			logger.always_log (boost::str (boost::format ("%1% of size %2% dropped") % stats.detail_to_string (detail) % buffer.size ()));
+		}
+	}
 }
 
 void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)

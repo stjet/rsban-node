@@ -11,59 +11,6 @@
 
 #include <numeric>
 
-namespace
-{
-class callback_visitor : public nano::message_visitor
-{
-public:
-	void keepalive (nano::keepalive const & message_a) override
-	{
-		result = nano::stat::detail::keepalive;
-	}
-	void publish (nano::publish const & message_a) override
-	{
-		result = nano::stat::detail::publish;
-	}
-	void confirm_req (nano::confirm_req const & message_a) override
-	{
-		result = nano::stat::detail::confirm_req;
-	}
-	void confirm_ack (nano::confirm_ack const & message_a) override
-	{
-		result = nano::stat::detail::confirm_ack;
-	}
-	void bulk_pull (nano::bulk_pull const & message_a) override
-	{
-		result = nano::stat::detail::bulk_pull;
-	}
-	void bulk_pull_account (nano::bulk_pull_account const & message_a) override
-	{
-		result = nano::stat::detail::bulk_pull_account;
-	}
-	void bulk_push (nano::bulk_push const & message_a) override
-	{
-		result = nano::stat::detail::bulk_push;
-	}
-	void frontier_req (nano::frontier_req const & message_a) override
-	{
-		result = nano::stat::detail::frontier_req;
-	}
-	void node_id_handshake (nano::node_id_handshake const & message_a) override
-	{
-		result = nano::stat::detail::node_id_handshake;
-	}
-	void telemetry_req (nano::telemetry_req const & message_a) override
-	{
-		result = nano::stat::detail::telemetry_req;
-	}
-	void telemetry_ack (nano::telemetry_ack const & message_a) override
-	{
-		result = nano::stat::detail::telemetry_ack;
-	}
-	nano::stat::detail result;
-};
-}
-
 nano::endpoint nano::transport::map_endpoint_to_v6 (nano::endpoint const & endpoint_a)
 {
 	auto endpoint_l (endpoint_a);
@@ -99,12 +46,7 @@ boost::asio::ip::address nano::transport::ipv4_address_or_ipv6_subnet (boost::as
 	return address_a.to_v6 ().is_v4_mapped () ? address_a : boost::asio::ip::make_network_v6 (address_a.to_v6 (), ipv6_address_prefix_length).network ();
 }
 
-nano::transport::channel::channel (rsnano::ChannelHandle * handle_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::bandwidth_limiter & limiter_a, boost::asio::io_context & io_ctx_a, bool network_packet_logging_a) :
-	stats (stats_a),
-	logger (logger_a),
-	limiter (limiter_a),
-	io_ctx (io_ctx_a),
-	network_packet_logging (network_packet_logging_a),
+nano::transport::channel::channel (rsnano::ChannelHandle * handle_a) :
 	handle (handle_a)
 {
 }
@@ -112,36 +54,6 @@ nano::transport::channel::channel (rsnano::ChannelHandle * handle_a, nano::stat 
 nano::transport::channel::~channel ()
 {
 	rsnano::rsn_channel_destroy (handle);
-}
-
-void nano::transport::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
-{
-	callback_visitor visitor;
-	message_a.visit (visitor);
-	auto buffer (message_a.to_shared_const_buffer ());
-	auto detail (visitor.result);
-	auto is_droppable_by_limiter = drop_policy_a == nano::buffer_drop_policy::limiter;
-	auto should_drop (limiter.should_drop (buffer.size ()));
-	if (!is_droppable_by_limiter || !should_drop)
-	{
-		send_buffer (buffer, callback_a, drop_policy_a);
-		stats.inc (nano::stat::type::message, detail, nano::stat::dir::out);
-	}
-	else
-	{
-		if (callback_a)
-		{
-			io_ctx.post ([callback_a] () {
-				callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
-			});
-		}
-
-		stats.inc (nano::stat::type::drop, detail, nano::stat::dir::out);
-		if (network_packet_logging)
-		{
-			logger.always_log (boost::str (boost::format ("%1% of size %2% dropped") % stats.detail_to_string (detail) % buffer.size ()));
-		}
-	}
 }
 
 boost::asio::ip::address_v6 nano::transport::mapped_from_v4_bytes (unsigned long address_a)

@@ -30,6 +30,56 @@ private:
 
 namespace transport
 {
+	class callback_visitor : public nano::message_visitor
+	{
+	public:
+		void keepalive (nano::keepalive const & message_a) override
+		{
+			result = nano::stat::detail::keepalive;
+		}
+		void publish (nano::publish const & message_a) override
+		{
+			result = nano::stat::detail::publish;
+		}
+		void confirm_req (nano::confirm_req const & message_a) override
+		{
+			result = nano::stat::detail::confirm_req;
+		}
+		void confirm_ack (nano::confirm_ack const & message_a) override
+		{
+			result = nano::stat::detail::confirm_ack;
+		}
+		void bulk_pull (nano::bulk_pull const & message_a) override
+		{
+			result = nano::stat::detail::bulk_pull;
+		}
+		void bulk_pull_account (nano::bulk_pull_account const & message_a) override
+		{
+			result = nano::stat::detail::bulk_pull_account;
+		}
+		void bulk_push (nano::bulk_push const & message_a) override
+		{
+			result = nano::stat::detail::bulk_push;
+		}
+		void frontier_req (nano::frontier_req const & message_a) override
+		{
+			result = nano::stat::detail::frontier_req;
+		}
+		void node_id_handshake (nano::node_id_handshake const & message_a) override
+		{
+			result = nano::stat::detail::node_id_handshake;
+		}
+		void telemetry_req (nano::telemetry_req const & message_a) override
+		{
+			result = nano::stat::detail::telemetry_req;
+		}
+		void telemetry_ack (nano::telemetry_ack const & message_a) override
+		{
+			result = nano::stat::detail::telemetry_ack;
+		}
+		nano::stat::detail result;
+	};
+
 	nano::endpoint map_endpoint_to_v6 (nano::endpoint const &);
 	nano::endpoint map_tcp_to_endpoint (nano::tcp_endpoint const &);
 	nano::tcp_endpoint map_endpoint_to_tcp (nano::endpoint const &);
@@ -52,12 +102,12 @@ namespace transport
 	class channel
 	{
 	public:
-		channel (rsnano::ChannelHandle * handle_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::bandwidth_limiter & limiter_a, boost::asio::io_context & io_ctx_a, bool network_packet_logging_a);
+		channel (rsnano::ChannelHandle * handle_a);
 		channel (nano::transport::channel const &) = delete;
 		virtual ~channel ();
 		virtual std::size_t hash_code () const = 0;
 		virtual bool operator== (nano::transport::channel const &) const = 0;
-		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter);
+		virtual void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter) = 0;
 		// TODO: investigate clang-tidy warning about default parameters on virtual/override functions
 		//
 		virtual void send_buffer (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr, nano::buffer_drop_policy = nano::buffer_drop_policy::limiter) = 0;
@@ -85,13 +135,6 @@ namespace transport
 
 		virtual uint8_t get_network_version () const = 0;
 		virtual void set_network_version (uint8_t network_version_a) = 0;
-
-	private:
-		boost::asio::io_context & io_ctx;
-		nano::stat & stats;
-		nano::logger_mt & logger;
-		nano::bandwidth_limiter & limiter;
-		bool network_packet_logging;
 
 	public:
 		rsnano::ChannelHandle * handle;

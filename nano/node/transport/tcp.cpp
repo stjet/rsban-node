@@ -17,21 +17,6 @@ nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<
 	set_network_version (node_a.config.network_params.network.protocol_version);
 }
 
-std::chrono::steady_clock::time_point nano::transport::channel_tcp::get_last_bootstrap_attempt () const
-{
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	auto result{ last_bootstrap_attempt };
-	rsnano::rsn_channel_tcp_unlock (lk);
-	return result;
-}
-
-void nano::transport::channel_tcp::set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a)
-{
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	last_bootstrap_attempt = time_a;
-	rsnano::rsn_channel_tcp_unlock (lk);
-}
-
 std::chrono::steady_clock::time_point nano::transport::channel_tcp::get_last_packet_received () const
 {
 	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };

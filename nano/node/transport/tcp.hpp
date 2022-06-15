@@ -35,8 +35,6 @@ namespace transport
 	public:
 		channel_tcp (nano::node &, std::shared_ptr<nano::socket> const &);
 
-		std::chrono::steady_clock::time_point get_last_bootstrap_attempt () const override;
-		void set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a) override;
 		std::chrono::steady_clock::time_point get_last_packet_received () const override;
 		void set_last_packet_received (std::chrono::steady_clock::time_point const time_a) override;
 		std::chrono::steady_clock::time_point get_last_packet_sent () const override;
@@ -100,7 +98,6 @@ namespace transport
 		nano::logger_mt & logger;
 		nano::bandwidth_limiter & limiter;
 		bool network_packet_logging;
-		std::chrono::steady_clock::time_point last_bootstrap_attempt{ std::chrono::steady_clock::time_point () };
 		std::chrono::steady_clock::time_point last_packet_received{ std::chrono::steady_clock::now () };
 		std::chrono::steady_clock::time_point last_packet_sent{ std::chrono::steady_clock::now () };
 		boost::optional<nano::account> node_id{ boost::none };

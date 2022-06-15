@@ -999,9 +999,13 @@ uintptr_t rsn_change_block_size ();
 
 void rsn_channel_destroy (ChannelHandle * handle);
 
+uint64_t rsn_channel_get_last_bootstrap_attempt (ChannelHandle * handle);
+
 ChannelHandle * rsn_channel_inproc_create ();
 
 bool rsn_channel_is_temporary (ChannelHandle * handle);
+
+void rsn_channel_set_last_bootstrap_attempt (ChannelHandle * handle, uint64_t instant);
 
 void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
 

@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, MutexGuard},
 };
 
-use crate::transport::{Channel, ChannelData, ChannelTcp, ChannelInProc, ChannelUdp};
+use crate::transport::{Channel, ChannelInProc, ChannelTcp, ChannelUdp, TcpChannelData};
 
 use super::socket::SocketHandle;
 
@@ -52,7 +52,20 @@ pub unsafe extern "C" fn rsn_channel_set_temporary(handle: *mut ChannelHandle, t
     as_channel(handle).set_temporary(temporary);
 }
 
-pub struct TcpChannelLockHandle(MutexGuard<'static, ChannelData>);
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_get_last_bootstrap_attempt(handle: *mut ChannelHandle) -> u64 {
+    as_channel(handle).get_last_bootstrap_attempt()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_set_last_bootstrap_attempt(
+    handle: *mut ChannelHandle,
+    instant: u64,
+) {
+    as_channel(handle).set_last_bootstrap_attempt(instant);
+}
+
+pub struct TcpChannelLockHandle(MutexGuard<'static, TcpChannelData>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_lock(
@@ -60,8 +73,8 @@ pub unsafe extern "C" fn rsn_channel_tcp_lock(
 ) -> *mut TcpChannelLockHandle {
     let tcp = as_tcp_channel(handle);
     Box::into_raw(Box::new(TcpChannelLockHandle(std::mem::transmute::<
-        MutexGuard<ChannelData>,
-        MutexGuard<'static, ChannelData>,
+        MutexGuard<TcpChannelData>,
+        MutexGuard<'static, TcpChannelData>,
     >(tcp.lock()))))
 }
 
@@ -72,10 +85,14 @@ pub unsafe extern "C" fn rsn_channel_tcp_unlock(handle: *mut TcpChannelLockHandl
 
 #[no_mangle]
 pub extern "C" fn rsn_channel_inproc_create() -> *mut ChannelHandle {
-    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::InProc(ChannelInProc::new())))))
+    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::InProc(
+        ChannelInProc::new(),
+    )))))
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_channel_udp_create() -> *mut ChannelHandle {
-    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Udp(ChannelUdp::new())))))
+    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Udp(
+        ChannelUdp::new(),
+    )))))
 }

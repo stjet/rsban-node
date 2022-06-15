@@ -122,8 +122,8 @@ namespace transport
 			return false;
 		}
 
-		virtual std::chrono::steady_clock::time_point get_last_bootstrap_attempt () const = 0;
-		virtual void set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a) = 0;
+		std::chrono::steady_clock::time_point get_last_bootstrap_attempt () const;
+		void set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a);
 
 		virtual std::chrono::steady_clock::time_point get_last_packet_received () const = 0;
 		virtual void set_last_packet_received (std::chrono::steady_clock::time_point const time_a) = 0;

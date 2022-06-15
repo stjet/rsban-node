@@ -3,17 +3,14 @@ use std::sync::{
     Arc, Mutex, MutexGuard, Weak,
 };
 
-use super::{Socket, SocketImpl};
+use super::{Channel, Socket, SocketImpl};
 
-pub trait Channel {
-    fn is_temporary(&self) -> bool;
-    fn set_temporary(&self, temporary: bool);
+pub struct TcpChannelData {
+    last_bootstrap_attempt: u64,
 }
 
-pub struct ChannelData {}
-
 pub struct ChannelTcp {
-    channel_mutex: Mutex<ChannelData>,
+    channel_mutex: Mutex<TcpChannelData>,
     socket: Weak<SocketImpl>,
     temporary: AtomicBool,
 }
@@ -21,13 +18,15 @@ pub struct ChannelTcp {
 impl ChannelTcp {
     pub fn new(socket: &Arc<SocketImpl>) -> Self {
         Self {
-            channel_mutex: Mutex::new(ChannelData {}),
+            channel_mutex: Mutex::new(TcpChannelData {
+                last_bootstrap_attempt: 0,
+            }),
             socket: Arc::downgrade(socket),
             temporary: AtomicBool::new(false),
         }
     }
 
-    pub fn lock(&self) -> MutexGuard<ChannelData> {
+    pub fn lock(&self) -> MutexGuard<TcpChannelData> {
         self.channel_mutex.lock().unwrap()
     }
 }
@@ -39,6 +38,14 @@ impl Channel for ChannelTcp {
 
     fn set_temporary(&self, temporary: bool) {
         self.temporary.store(temporary, Ordering::SeqCst);
+    }
+
+    fn get_last_bootstrap_attempt(&self) -> u64 {
+        self.channel_mutex.lock().unwrap().last_bootstrap_attempt
+    }
+
+    fn set_last_bootstrap_attempt(&self, instant: u64) {
+        self.channel_mutex.lock().unwrap().last_bootstrap_attempt = instant;
     }
 }
 

@@ -4,7 +4,7 @@
 #include <boost/format.hpp>
 
 nano::transport::inproc::channel::channel (nano::node & node, nano::node & destination) :
-	transport::channel{ rsnano::rsn_channel_inproc_create (), node.stats, node.logger, node.network.limiter, node.io_ctx, node.config.logging.network_packet_logging (), node.network_params.network.protocol_version },
+	transport::channel{ rsnano::rsn_channel_inproc_create (), node.stats, node.logger, node.network.limiter, node.io_ctx, node.config.logging.network_packet_logging () },
 	node{ node },
 	destination{ destination },
 	endpoint{ node.network.endpoint () }

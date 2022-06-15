@@ -99,7 +99,7 @@ boost::asio::ip::address nano::transport::ipv4_address_or_ipv6_subnet (boost::as
 	return address_a.to_v6 ().is_v4_mapped () ? address_a : boost::asio::ip::make_network_v6 (address_a.to_v6 (), ipv6_address_prefix_length).network ();
 }
 
-nano::transport::channel::channel (rsnano::ChannelHandle * handle_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::bandwidth_limiter & limiter_a, boost::asio::io_context & io_ctx_a, bool network_packet_logging_a, uint8_t network_version_a) :
+nano::transport::channel::channel (rsnano::ChannelHandle * handle_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::bandwidth_limiter & limiter_a, boost::asio::io_context & io_ctx_a, bool network_packet_logging_a) :
 	stats (stats_a),
 	logger (logger_a),
 	limiter (limiter_a),
@@ -107,7 +107,6 @@ nano::transport::channel::channel (rsnano::ChannelHandle * handle_a, nano::stat 
 	network_packet_logging (network_packet_logging_a),
 	handle (handle_a)
 {
-	set_network_version (network_version_a);
 }
 
 nano::transport::channel::~channel ()

@@ -52,7 +52,7 @@ namespace transport
 	class channel
 	{
 	public:
-		channel (rsnano::ChannelHandle * handle_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::bandwidth_limiter & limiter_a, boost::asio::io_context & io_ctx_a, bool network_packet_logging_a, uint8_t network_version_a);
+		channel (rsnano::ChannelHandle * handle_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::bandwidth_limiter & limiter_a, boost::asio::io_context & io_ctx_a, bool network_packet_logging_a);
 		channel (nano::transport::channel const &) = delete;
 		virtual ~channel ();
 		virtual std::size_t hash_code () const = 0;
@@ -70,85 +70,23 @@ namespace transport
 			return false;
 		}
 
-		std::chrono::steady_clock::time_point get_last_bootstrap_attempt () const
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			return last_bootstrap_attempt;
-		}
+		virtual std::chrono::steady_clock::time_point get_last_bootstrap_attempt () const = 0;
+		virtual void set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a) = 0;
 
-		void set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a)
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			last_bootstrap_attempt = time_a;
-		}
+		virtual std::chrono::steady_clock::time_point get_last_packet_received () const = 0;
+		virtual void set_last_packet_received (std::chrono::steady_clock::time_point const time_a) = 0;
 
-		std::chrono::steady_clock::time_point get_last_packet_received () const
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			return last_packet_received;
-		}
+		virtual std::chrono::steady_clock::time_point get_last_packet_sent () const = 0;
+		virtual void set_last_packet_sent (std::chrono::steady_clock::time_point const time_a) = 0;
 
-		void set_last_packet_received (std::chrono::steady_clock::time_point const time_a)
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			last_packet_received = time_a;
-		}
+		virtual boost::optional<nano::account> get_node_id_optional () const = 0;
+		virtual nano::account get_node_id () const = 0;
+		virtual void set_node_id (nano::account node_id_a) = 0;
 
-		std::chrono::steady_clock::time_point get_last_packet_sent () const
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			return last_packet_sent;
-		}
-
-		void set_last_packet_sent (std::chrono::steady_clock::time_point const time_a)
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			last_packet_sent = time_a;
-		}
-
-		boost::optional<nano::account> get_node_id_optional () const
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			return node_id;
-		}
-
-		nano::account get_node_id () const
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			if (node_id.is_initialized ())
-			{
-				return node_id.get ();
-			}
-			else
-			{
-				return 0;
-			}
-		}
-
-		void set_node_id (nano::account node_id_a)
-		{
-			nano::lock_guard<nano::mutex> lk (channel_mutex);
-			node_id = node_id_a;
-		}
-
-		uint8_t get_network_version () const
-		{
-			return network_version;
-		}
-
-		void set_network_version (uint8_t network_version_a)
-		{
-			network_version = network_version_a;
-		}
-
-		mutable nano::mutex channel_mutex;
+		virtual uint8_t get_network_version () const = 0;
+		virtual void set_network_version (uint8_t network_version_a) = 0;
 
 	private:
-		std::chrono::steady_clock::time_point last_bootstrap_attempt{ std::chrono::steady_clock::time_point () };
-		std::chrono::steady_clock::time_point last_packet_received{ std::chrono::steady_clock::now () };
-		std::chrono::steady_clock::time_point last_packet_sent{ std::chrono::steady_clock::now () };
-		boost::optional<nano::account> node_id{ boost::none };
-		std::atomic<uint8_t> network_version{ 0 };
 		boost::asio::io_context & io_ctx;
 		nano::stat & stats;
 		nano::logger_mt & logger;

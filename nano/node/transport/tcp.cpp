@@ -5,10 +5,11 @@
 #include <boost/format.hpp>
 
 nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> const & socket_a) :
-	channel (rsnano::rsn_channel_tcp_create (), node_a.stats, node_a.logger, node_a.network.limiter, node_a.io_ctx, node_a.config.logging.network_packet_logging (), node_a.config.network_params.network.protocol_version),
+	channel (rsnano::rsn_channel_tcp_create (), node_a.stats, node_a.logger, node_a.network.limiter, node_a.io_ctx, node_a.config.logging.network_packet_logging () ),
 	socket (socket_a),
 	node (node_a)
 {
+	set_network_version (node_a.config.network_params.network.protocol_version);
 }
 
 nano::transport::channel_tcp::~channel_tcp ()

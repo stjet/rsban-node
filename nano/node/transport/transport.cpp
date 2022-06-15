@@ -83,6 +83,17 @@ std::chrono::steady_clock::time_point nano::transport::channel::get_last_packet_
 	return std::chrono::steady_clock::time_point (std::chrono::steady_clock::duration (value));
 }
 
+void nano::transport::channel::set_last_packet_sent (std::chrono::steady_clock::time_point const time_a)
+{
+	rsnano::rsn_channel_set_last_packet_sent (handle, time_a.time_since_epoch ().count ());
+}
+
+std::chrono::steady_clock::time_point nano::transport::channel::get_last_packet_sent () const
+{
+	auto value = rsnano::rsn_channel_get_last_packet_sent (handle);
+	return std::chrono::steady_clock::time_point (std::chrono::steady_clock::duration (value));
+}
+
 void nano::transport::channel::set_last_packet_received (std::chrono::steady_clock::time_point const time_a)
 {
 	rsnano::rsn_channel_set_last_packet_received (handle, time_a.time_since_epoch ().count ());

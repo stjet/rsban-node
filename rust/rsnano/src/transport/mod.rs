@@ -15,4 +15,6 @@ pub trait Channel {
     fn set_last_bootstrap_attempt(&self, instant: u64);
     fn get_last_packet_received(&self) -> u64;
     fn set_last_packet_received(&self, instant: u64);
+    fn get_last_packet_sent(&self) -> u64;
+    fn set_last_packet_sent(&self, instant: u64);
 }

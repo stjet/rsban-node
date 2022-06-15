@@ -1003,6 +1003,8 @@ uint64_t rsn_channel_get_last_bootstrap_attempt (ChannelHandle * handle);
 
 uint64_t rsn_channel_get_last_packet_received (ChannelHandle * handle);
 
+uint64_t rsn_channel_get_last_packet_sent (ChannelHandle * handle);
+
 ChannelHandle * rsn_channel_inproc_create (uint64_t now);
 
 bool rsn_channel_is_temporary (ChannelHandle * handle);
@@ -1010,6 +1012,8 @@ bool rsn_channel_is_temporary (ChannelHandle * handle);
 void rsn_channel_set_last_bootstrap_attempt (ChannelHandle * handle, uint64_t instant);
 
 void rsn_channel_set_last_packet_received (ChannelHandle * handle, uint64_t instant);
+
+void rsn_channel_set_last_packet_sent (ChannelHandle * handle, uint64_t instant);
 
 void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
 

@@ -18,21 +18,6 @@ nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<
 	set_network_version (node_a.config.network_params.network.protocol_version);
 }
 
-std::chrono::steady_clock::time_point nano::transport::channel_tcp::get_last_packet_sent () const
-{
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	auto result{ last_packet_sent };
-	rsnano::rsn_channel_tcp_unlock (lk);
-	return result;
-}
-
-void nano::transport::channel_tcp::set_last_packet_sent (std::chrono::steady_clock::time_point const time_a)
-{
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	last_packet_sent = time_a;
-	rsnano::rsn_channel_tcp_unlock (lk);
-}
-
 boost::optional<nano::account> nano::transport::channel_tcp::get_node_id_optional () const
 {
 	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };

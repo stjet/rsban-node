@@ -81,6 +81,19 @@ pub unsafe extern "C" fn rsn_channel_set_last_packet_received(
     as_channel(handle).set_last_packet_received(instant);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_get_last_packet_sent(handle: *mut ChannelHandle) -> u64 {
+    as_channel(handle).get_last_packet_sent()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_set_last_packet_sent(
+    handle: *mut ChannelHandle,
+    instant: u64,
+) {
+    as_channel(handle).set_last_packet_sent(instant);
+}
+
 pub struct TcpChannelLockHandle(MutexGuard<'static, TcpChannelData>);
 
 #[no_mangle]

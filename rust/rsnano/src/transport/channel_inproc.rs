@@ -8,6 +8,7 @@ use super::Channel;
 pub struct InProcChannelData {
     last_bootstrap_attempt: u64,
     last_packet_received: u64,
+    last_packet_sent: u64,
 }
 
 pub struct ChannelInProc {
@@ -22,6 +23,7 @@ impl ChannelInProc {
             channel_mutex: Mutex::new(InProcChannelData {
                 last_bootstrap_attempt: 0,
                 last_packet_received: now,
+                last_packet_sent: now,
             }),
         }
     }
@@ -51,5 +53,13 @@ impl Channel for ChannelInProc {
 
     fn set_last_packet_received(&self, instant: u64) {
         self.channel_mutex.lock().unwrap().last_packet_received = instant;
+    }
+
+    fn get_last_packet_sent(&self) -> u64 {
+        self.channel_mutex.lock().unwrap().last_packet_sent
+    }
+
+    fn set_last_packet_sent(&self, instant: u64) {
+        self.channel_mutex.lock().unwrap().last_packet_sent = instant;
     }
 }

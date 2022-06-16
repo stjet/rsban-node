@@ -34,6 +34,10 @@ namespace transport
 	public:
 		virtual void data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a) = 0;
 		virtual void host_unreachable () = 0;
+		virtual void message_sent (nano::message const & message_a) = 0;
+		virtual void message_dropped (nano::message const & message_a, std::size_t buffer_size_a) = 0;
+		virtual void no_socket_drop () = 0;
+		virtual void write_drop () = 0;
 	};
 
 	class channel_tcp : public nano::transport::channel
@@ -94,10 +98,7 @@ namespace transport
 
 	private:
 		boost::asio::io_context & io_ctx;
-		nano::stat & stats;
-		nano::logger_mt & logger;
 		nano::bandwidth_limiter & limiter;
-		bool network_packet_logging;
 		std::atomic<uint8_t> network_version{ 0 };
 		std::weak_ptr<nano::transport::channel_tcp_observer> observer;
 		nano::tcp_endpoint endpoint{ boost::asio::ip::address_v6::any (), 0 };
@@ -144,6 +145,10 @@ namespace transport
 		// channel_tcp_observer:
 		void data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a) override;
 		void host_unreachable () override;
+		void message_sent (nano::message const & message_a) override;
+		void message_dropped (nano::message const & message_a, std::size_t buffer_size_a) override;
+		void no_socket_drop () override;
+		void write_drop () override;
 
 	private:
 		std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;

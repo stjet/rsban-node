@@ -7,11 +7,8 @@
 nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
 	channel (rsnano::rsn_channel_tcp_create (
 	std::chrono::steady_clock::now ().time_since_epoch ().count (), socket_a->handle)),
-	stats (node_a.stats),
-	logger (node_a.logger),
 	limiter (node_a.network.limiter),
 	io_ctx (node_a.io_ctx),
-	network_packet_logging (node_a.config.logging.network_packet_logging ()),
 	socket (socket_a),
 	observer (observer_a)
 {
@@ -45,16 +42,16 @@ bool nano::transport::channel_tcp::operator== (nano::transport::channel const & 
 
 void nano::transport::channel_tcp::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
 {
-	nano::transport::callback_visitor visitor;
-	message_a.visit (visitor);
 	auto buffer (message_a.to_shared_const_buffer ());
-	auto detail (visitor.result);
 	auto is_droppable_by_limiter = drop_policy_a == nano::buffer_drop_policy::limiter;
 	auto should_drop (limiter.should_drop (buffer.size ()));
 	if (!is_droppable_by_limiter || !should_drop)
 	{
 		send_buffer (buffer, callback_a, drop_policy_a);
-		stats.inc (nano::stat::type::message, detail, nano::stat::dir::out);
+		if (auto observer_l = observer.lock ())
+		{
+			observer_l->message_sent (message_a);
+		}
 	}
 	else
 	{
@@ -65,10 +62,9 @@ void nano::transport::channel_tcp::send (nano::message & message_a, std::functio
 			});
 		}
 
-		stats.inc (nano::stat::type::drop, detail, nano::stat::dir::out);
-		if (network_packet_logging)
+		if (auto observer_l = observer.lock ())
 		{
-			logger.always_log (boost::str (boost::format ("%1% of size %2% dropped") % stats.detail_to_string (detail) % buffer.size ()));
+			observer_l->message_dropped (message_a, buffer.size ());
 		}
 	}
 }
@@ -100,13 +96,16 @@ void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const 
 		}
 		else
 		{
-			if (policy_a == nano::buffer_drop_policy::no_socket_drop)
+			if (auto observer_l = observer.lock ())
 			{
-				stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_no_socket_drop, nano::stat::dir::out);
-			}
-			else
-			{
-				stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out);
+				if (policy_a == nano::buffer_drop_policy::no_socket_drop)
+				{
+					observer_l->no_socket_drop ();
+				}
+				else
+				{
+					observer_l->write_drop ();
+				}
 			}
 			if (callback_a)
 			{
@@ -776,4 +775,32 @@ void nano::transport::tcp_channels::data_sent (boost::asio::ip::tcp::endpoint co
 void nano::transport::tcp_channels::host_unreachable ()
 {
 	node.stats.inc (nano::stat::type::error, nano::stat::detail::unreachable_host, nano::stat::dir::out);
+}
+
+void nano::transport::tcp_channels::message_sent (nano::message const & message_a)
+{
+	nano::transport::callback_visitor visitor;
+	message_a.visit (visitor);
+	node.stats.inc (nano::stat::type::message, visitor.result, nano::stat::dir::out);
+}
+
+void nano::transport::tcp_channels::message_dropped (nano::message const & message_a, std::size_t buffer_size_a)
+{
+	nano::transport::callback_visitor visitor;
+	message_a.visit (visitor);
+	node.stats.inc (nano::stat::type::drop, visitor.result, nano::stat::dir::out);
+	if (node.config.logging.network_packet_logging ())
+	{
+		node.logger.always_log (boost::str (boost::format ("%1% of size %2% dropped") % node.stats.detail_to_string (visitor.result) % buffer_size_a));
+	}
+}
+
+void nano::transport::tcp_channels::no_socket_drop ()
+{
+	node.stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_no_socket_drop, nano::stat::dir::out);
+}
+
+void nano::transport::tcp_channels::write_drop ()
+{
+	node.stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out);
 }

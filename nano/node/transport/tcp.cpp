@@ -140,8 +140,14 @@ void nano::transport::channel_tcp::set_endpoint ()
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
 	node{ node },
-	sink{ std::move (sink) }
+	sink{ std::move (sink) },
+	handle{ rsnano::rsn_tcp_channels_create () }
 {
+}
+
+nano::transport::tcp_channels::~tcp_channels ()
+{
+	rsnano::rsn_tcp_channels_destroy (handle);
 }
 
 bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::bootstrap_server> const & bootstrap_server_a)

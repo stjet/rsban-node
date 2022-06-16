@@ -110,6 +110,8 @@ namespace transport
 
 	public:
 		explicit tcp_channels (nano::node &, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
+		tcp_channels (nano::transport::tcp_channels const &) = delete;
+		~tcp_channels ();
 		bool insert (std::shared_ptr<nano::transport::channel_tcp> const &, std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::bootstrap_server> const &);
 		void erase (nano::tcp_endpoint const &);
 		std::size_t size () const;
@@ -269,6 +271,7 @@ namespace transport
 		attempts;
 		// clang-format on
 		std::atomic<bool> stopped{ false };
+		rsnano::TcpChannelsHandle * handle;
 
 		friend class network_peer_max_tcp_attempts_subnetwork_Test;
 	};

@@ -61,6 +61,8 @@ struct StringHandle;
 
 struct TcpChannelLockHandle;
 
+struct TcpChannelsHandle;
+
 struct UncheckedInfoHandle;
 
 struct VoidFnCallbackHandle;
@@ -1414,6 +1416,10 @@ void * context);
 uintptr_t rsn_state_block_size ();
 
 void rsn_string_destroy (StringHandle * handle);
+
+TcpChannelsHandle * rsn_tcp_channels_create ();
+
+void rsn_tcp_channels_destroy (TcpChannelsHandle * handle);
 
 uint16_t rsn_test_node_port ();
 

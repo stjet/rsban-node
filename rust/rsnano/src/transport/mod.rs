@@ -2,11 +2,13 @@ mod channel_inproc;
 mod channel_tcp;
 mod channel_udp;
 mod socket;
+mod tcp_channels;
 
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, TcpChannelData};
 pub use channel_udp::ChannelUdp;
 pub use socket::*;
+pub use tcp_channels::TcpChannels;
 
 use crate::Account;
 

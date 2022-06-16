@@ -1,16 +1,11 @@
-use std::{
-    ops::Deref,
-    sync::{Arc, MutexGuard},
-};
+use std::sync::Arc;
 
 use crate::{
-    transport::{Channel, ChannelInProc, ChannelTcp, ChannelUdp, TcpChannelData},
+    transport::{Channel, ChannelInProc, ChannelTcp, ChannelUdp},
     Account,
 };
 
-use super::socket::SocketHandle;
-
-enum ChannelType {
+pub enum ChannelType {
     Tcp(ChannelTcp),
     InProc(ChannelInProc),
     Udp(ChannelUdp),
@@ -18,14 +13,20 @@ enum ChannelType {
 
 pub struct ChannelHandle(Arc<ChannelType>);
 
-unsafe fn as_tcp_channel(handle: *mut ChannelHandle) -> &'static ChannelTcp {
+impl ChannelHandle {
+    pub fn new(channel: Arc<ChannelType>) -> Self {
+        Self(channel)
+    }
+}
+
+pub unsafe fn as_tcp_channel(handle: *mut ChannelHandle) -> &'static ChannelTcp {
     match (*handle).0.as_ref() {
         ChannelType::Tcp(tcp) => tcp,
         _ => panic!("expected tcp channel"),
     }
 }
 
-unsafe fn as_channel(handle: *mut ChannelHandle) -> &'static dyn Channel {
+pub unsafe fn as_channel(handle: *mut ChannelHandle) -> &'static dyn Channel {
     match (*handle).0.as_ref() {
         ChannelType::Tcp(tcp) => tcp,
         ChannelType::InProc(inproc) => inproc,
@@ -36,16 +37,6 @@ unsafe fn as_channel(handle: *mut ChannelHandle) -> &'static dyn Channel {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_destroy(handle: *mut ChannelHandle) {
     drop(Box::from_raw(handle));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_create(
-    now: u64,
-    socket: *mut SocketHandle,
-) -> *mut ChannelHandle {
-    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Tcp(
-        ChannelTcp::new((*socket).deref(), now),
-    )))))
 }
 
 #[no_mangle]
@@ -114,24 +105,6 @@ pub unsafe extern "C" fn rsn_channel_get_node_id(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_set_node_id(handle: *mut ChannelHandle, id: *const u8) {
     as_channel(handle).set_node_id(Account::from(id));
-}
-
-pub struct TcpChannelLockHandle(MutexGuard<'static, TcpChannelData>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_lock(
-    handle: *mut ChannelHandle,
-) -> *mut TcpChannelLockHandle {
-    let tcp = as_tcp_channel(handle);
-    Box::into_raw(Box::new(TcpChannelLockHandle(std::mem::transmute::<
-        MutexGuard<TcpChannelData>,
-        MutexGuard<'static, TcpChannelData>,
-    >(tcp.lock()))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_unlock(handle: *mut TcpChannelLockHandle) {
-    drop(Box::from_raw(handle))
 }
 
 #[no_mangle]

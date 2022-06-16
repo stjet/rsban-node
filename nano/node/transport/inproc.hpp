@@ -18,31 +18,6 @@ namespace transport
 		public:
 			explicit channel (nano::node & node, nano::node & destination);
 
-			boost::optional<nano::account> get_node_id_optional () const override
-			{
-				nano::lock_guard<nano::mutex> lk (channel_mutex);
-				return node_id;
-			}
-
-			nano::account get_node_id () const override
-			{
-				nano::lock_guard<nano::mutex> lk (channel_mutex);
-				if (node_id.is_initialized ())
-				{
-					return node_id.get ();
-				}
-				else
-				{
-					return 0;
-				}
-			}
-
-			void set_node_id (nano::account node_id_a) override
-			{
-				nano::lock_guard<nano::mutex> lk (channel_mutex);
-				node_id = node_id_a;
-			}
-
 			uint8_t get_network_version () const override
 			{
 				return network_version;
@@ -87,7 +62,6 @@ namespace transport
 			nano::bandwidth_limiter & limiter;
 			bool network_packet_logging;
 			mutable nano::mutex channel_mutex;
-			boost::optional<nano::account> node_id{ boost::none };
 			std::atomic<uint8_t> network_version{ 0 };
 			nano::node & node;
 			nano::node & destination;

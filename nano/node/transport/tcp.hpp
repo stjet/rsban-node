@@ -34,9 +34,6 @@ namespace transport
 
 	public:
 		channel_tcp (nano::node &, std::shared_ptr<nano::socket> const &);
-		boost::optional<nano::account> get_node_id_optional () const override;
-		nano::account get_node_id () const override;
-		void set_node_id (nano::account node_id_a) override;
 
 		uint8_t get_network_version () const override
 		{
@@ -93,7 +90,6 @@ namespace transport
 		nano::logger_mt & logger;
 		nano::bandwidth_limiter & limiter;
 		bool network_packet_logging;
-		boost::optional<nano::account> node_id{ boost::none };
 		std::atomic<uint8_t> network_version{ 0 };
 		nano::node & node;
 		nano::tcp_endpoint endpoint{ boost::asio::ip::address_v6::any (), 0 };

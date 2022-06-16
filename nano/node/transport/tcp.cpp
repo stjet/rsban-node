@@ -18,37 +18,6 @@ nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<
 	set_network_version (node_a.config.network_params.network.protocol_version);
 }
 
-boost::optional<nano::account> nano::transport::channel_tcp::get_node_id_optional () const
-{
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	auto result{ node_id };
-	rsnano::rsn_channel_tcp_unlock (lk);
-	return result;
-}
-
-nano::account nano::transport::channel_tcp::get_node_id () const
-{
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	nano::account result;
-	if (node_id.is_initialized ())
-	{
-		result = node_id.get ();
-	}
-	else
-	{
-		result = 0;
-	}
-	rsnano::rsn_channel_tcp_unlock (lk);
-	return result;
-}
-
-void nano::transport::channel_tcp::set_node_id (nano::account node_id_a)
-{
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	node_id = node_id_a;
-	rsnano::rsn_channel_tcp_unlock (lk);
-}
-
 nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_endpoint () const
 {
 	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };

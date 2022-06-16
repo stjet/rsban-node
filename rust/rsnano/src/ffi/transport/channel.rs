@@ -3,7 +3,10 @@ use std::{
     sync::{Arc, MutexGuard},
 };
 
-use crate::transport::{Channel, ChannelInProc, ChannelTcp, ChannelUdp, TcpChannelData};
+use crate::{
+    transport::{Channel, ChannelInProc, ChannelTcp, ChannelUdp, TcpChannelData},
+    Account,
+};
 
 use super::socket::SocketHandle;
 
@@ -92,6 +95,25 @@ pub unsafe extern "C" fn rsn_channel_set_last_packet_sent(
     instant: u64,
 ) {
     as_channel(handle).set_last_packet_sent(instant);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_get_node_id(
+    handle: *mut ChannelHandle,
+    result: *mut u8,
+) -> bool {
+    match as_channel(handle).get_node_id() {
+        Some(id) => {
+            std::slice::from_raw_parts_mut(result, 32).copy_from_slice(id.as_bytes());
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_set_node_id(handle: *mut ChannelHandle, id: *const u8) {
+    as_channel(handle).set_node_id(Account::from(id));
 }
 
 pub struct TcpChannelLockHandle(MutexGuard<'static, TcpChannelData>);

@@ -99,6 +99,37 @@ void nano::transport::channel::set_last_packet_received (std::chrono::steady_clo
 	rsnano::rsn_channel_set_last_packet_received (handle, time_a.time_since_epoch ().count ());
 }
 
+boost::optional<nano::account> nano::transport::channel::get_node_id_optional () const
+{
+	nano::account result;
+	if (rsnano::rsn_channel_get_node_id (handle, result.bytes.data ()))
+	{
+		return result;
+	}
+
+	return boost::none;
+}
+
+nano::account nano::transport::channel::get_node_id () const
+{
+	auto node_id{ get_node_id_optional () };
+	nano::account result;
+	if (node_id.is_initialized ())
+	{
+		result = node_id.get ();
+	}
+	else
+	{
+		result = 0;
+	}
+	return result;
+}
+
+void nano::transport::channel::set_node_id (nano::account node_id_a)
+{
+	rsnano::rsn_channel_set_node_id (handle, node_id_a.bytes.data ());
+}
+
 boost::asio::ip::address_v6 nano::transport::mapped_from_v4_bytes (unsigned long address_a)
 {
 	return boost::asio::ip::address_v6::v4_mapped (boost::asio::ip::address_v4 (address_a));

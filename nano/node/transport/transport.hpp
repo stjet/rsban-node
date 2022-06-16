@@ -131,9 +131,9 @@ namespace transport
 		std::chrono::steady_clock::time_point get_last_packet_sent () const;
 		void set_last_packet_sent (std::chrono::steady_clock::time_point const time_a);
 
-		virtual boost::optional<nano::account> get_node_id_optional () const = 0;
-		virtual nano::account get_node_id () const = 0;
-		virtual void set_node_id (nano::account node_id_a) = 0;
+		boost::optional<nano::account> get_node_id_optional () const;
+		nano::account get_node_id () const;
+		void set_node_id (nano::account node_id_a);
 
 		virtual uint8_t get_network_version () const = 0;
 		virtual void set_network_version (uint8_t network_version_a) = 0;

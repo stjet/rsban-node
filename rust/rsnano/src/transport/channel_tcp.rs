@@ -3,12 +3,15 @@ use std::sync::{
     Arc, Mutex, MutexGuard, Weak,
 };
 
+use crate::Account;
+
 use super::{Channel, Socket, SocketImpl};
 
 pub struct TcpChannelData {
     last_bootstrap_attempt: u64,
     last_packet_received: u64,
     last_packet_sent: u64,
+    node_id: Option<Account>,
 }
 
 pub struct ChannelTcp {
@@ -24,6 +27,7 @@ impl ChannelTcp {
                 last_bootstrap_attempt: 0,
                 last_packet_received: now,
                 last_packet_sent: now,
+                node_id: None,
             }),
             socket: Arc::downgrade(socket),
             temporary: AtomicBool::new(false),
@@ -66,6 +70,14 @@ impl Channel for ChannelTcp {
 
     fn set_last_packet_sent(&self, instant: u64) {
         self.channel_mutex.lock().unwrap().last_packet_sent = instant;
+    }
+
+    fn get_node_id(&self) -> Option<Account> {
+        self.channel_mutex.lock().unwrap().node_id
+    }
+
+    fn set_node_id(&self, id: Account) {
+        self.channel_mutex.lock().unwrap().node_id = Some(id);
     }
 }
 

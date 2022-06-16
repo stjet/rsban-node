@@ -1005,6 +1005,8 @@ uint64_t rsn_channel_get_last_packet_received (ChannelHandle * handle);
 
 uint64_t rsn_channel_get_last_packet_sent (ChannelHandle * handle);
 
+bool rsn_channel_get_node_id (ChannelHandle * handle, uint8_t * result);
+
 ChannelHandle * rsn_channel_inproc_create (uint64_t now);
 
 bool rsn_channel_is_temporary (ChannelHandle * handle);
@@ -1014,6 +1016,8 @@ void rsn_channel_set_last_bootstrap_attempt (ChannelHandle * handle, uint64_t in
 void rsn_channel_set_last_packet_received (ChannelHandle * handle, uint64_t instant);
 
 void rsn_channel_set_last_packet_sent (ChannelHandle * handle, uint64_t instant);
+
+void rsn_channel_set_node_id (ChannelHandle * handle, const uint8_t * id);
 
 void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
 

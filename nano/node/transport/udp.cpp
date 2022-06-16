@@ -420,7 +420,7 @@ public:
 					node.network.send_node_id_handshake (find_channel, *cookie, boost::none);
 					node.network.send_keepalive_self (find_channel);
 				}
-				else if (!node.network.tcp_channels.find_channel (nano::transport::map_endpoint_to_tcp (endpoint)))
+				else if (!node.network.tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (endpoint)))
 				{
 					// Don't start connection if TCP channel to same IP:port exists
 					find_channel = std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint, node.network_params.network.protocol_version);
@@ -509,7 +509,7 @@ public:
 			if (!node.network.syn_cookies.validate (endpoint, message_a.response->first, message_a.response->second))
 			{
 				validated_response = true;
-				if (message_a.response->first != node.node_id.pub && !node.network.tcp_channels.find_node_id (message_a.response->first))
+				if (message_a.response->first != node.node_id.pub && !node.network.tcp_channels->find_node_id (message_a.response->first))
 				{
 					node.network.udp_channels.clean_node_id (endpoint, message_a.response->first);
 					auto new_channel (node.network.udp_channels.insert (endpoint, message_a.header.version_using));

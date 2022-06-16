@@ -28,12 +28,20 @@ public:
 namespace transport
 {
 	class tcp_channels;
+
+	class channel_tcp_observer
+	{
+	public:
+		virtual void data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a) = 0;
+		virtual void host_unreachable () = 0;
+	};
+
 	class channel_tcp : public nano::transport::channel
 	{
 		friend class nano::transport::tcp_channels;
 
 	public:
-		channel_tcp (nano::node &, std::shared_ptr<nano::socket> const &);
+		channel_tcp (nano::node &, std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a);
 
 		uint8_t get_network_version () const override
 		{
@@ -54,7 +62,7 @@ namespace transport
 		std::string to_string () const override;
 		bool operator== (nano::transport::channel_tcp const & other_a) const
 		{
-			return &node == &other_a.node && socket.lock () == other_a.socket.lock ();
+			return observer.lock () == other_a.observer.lock () && socket.lock () == other_a.socket.lock ();
 		}
 		std::weak_ptr<nano::socket> socket;
 		/* Mark for temporary channels. Usually remote ports of these channels are ephemeral and received from incoming connections to server.
@@ -91,10 +99,10 @@ namespace transport
 		nano::bandwidth_limiter & limiter;
 		bool network_packet_logging;
 		std::atomic<uint8_t> network_version{ 0 };
-		nano::node & node;
+		std::weak_ptr<nano::transport::channel_tcp_observer> observer;
 		nano::tcp_endpoint endpoint{ boost::asio::ip::address_v6::any (), 0 };
 	};
-	class tcp_channels final
+	class tcp_channels final : public nano::transport::channel_tcp_observer
 	{
 		friend class nano::transport::channel_tcp;
 		friend class telemetry_simultaneous_requests_Test;
@@ -132,6 +140,10 @@ namespace transport
 		void start_tcp_receive_node_id (std::shared_ptr<nano::transport::channel_tcp> const &, nano::endpoint const &, std::shared_ptr<std::vector<uint8_t>> const &);
 		void udp_fallback (nano::endpoint const &);
 		nano::node & node;
+
+		// channel_tcp_observer:
+		void data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a) override;
+		void host_unreachable () override;
 
 	private:
 		std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;

@@ -437,7 +437,7 @@ TEST (socket, drop_policy)
 		});
 
 		auto client = create_client_socket (*node);
-		nano::transport::channel_tcp channel{ *node, client };
+		nano::transport::channel_tcp channel{ *node, client, node->network.tcp_channels };
 		nano::util::counted_completion write_completion (static_cast<unsigned> (total_message_count));
 
 		client->async_connect (boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::loopback (), server_socket->listening_port ()),

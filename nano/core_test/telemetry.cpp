@@ -465,7 +465,7 @@ TEST (telemetry, dos_tcp)
 	wait_peer_connections (system);
 
 	nano::telemetry_req message{ nano::dev::network_params.network };
-	auto channel = node_client->network.tcp_channels.find_channel (nano::transport::map_endpoint_to_tcp (node_server->network.endpoint ()));
+	auto channel = node_client->network.tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (node_server->network.endpoint ()));
 	channel->send (message, [] (boost::system::error_code const & ec, size_t size_a) {
 		ASSERT_FALSE (ec);
 	});
@@ -587,7 +587,7 @@ TEST (telemetry, max_possible_size)
 	nano::telemetry_ack message{ nano::dev::network_params.network, data };
 	wait_peer_connections (system);
 
-	auto channel = node_client->network.tcp_channels.find_channel (nano::transport::map_endpoint_to_tcp (node_server->network.endpoint ()));
+	auto channel = node_client->network.tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (node_server->network.endpoint ()));
 	channel->send (message, [] (boost::system::error_code const & ec, size_t size_a) {
 		ASSERT_FALSE (ec);
 	});
@@ -648,8 +648,8 @@ TEST (telemetry, remove_peer_different_genesis_udp)
 	node1->network.send_keepalive (channel0);
 
 	ASSERT_TIMELY (10s, node0->network.udp_channels.size () != 0 && node1->network.udp_channels.size () != 0);
-	ASSERT_EQ (node0->network.tcp_channels.size (), 0);
-	ASSERT_EQ (node1->network.tcp_channels.size (), 0);
+	ASSERT_EQ (node0->network.tcp_channels->size (), 0);
+	ASSERT_EQ (node1->network.tcp_channels->size (), 0);
 
 	std::atomic<bool> done0{ false };
 	std::atomic<bool> done1{ false };
@@ -664,8 +664,8 @@ TEST (telemetry, remove_peer_different_genesis_udp)
 
 	ASSERT_TIMELY (10s, done0 && done1);
 
-	ASSERT_EQ (node0->network.tcp_channels.size (), 0);
-	ASSERT_EQ (node1->network.tcp_channels.size (), 0);
+	ASSERT_EQ (node0->network.tcp_channels->size (), 0);
+	ASSERT_EQ (node1->network.tcp_channels->size (), 0);
 
 	nano::lock_guard<nano::mutex> guard (node0->network.excluded_peers.mutex);
 	ASSERT_EQ (1, node0->network.excluded_peers.peers.get<nano::peer_exclusion::tag_endpoint> ().count (node1->network.endpoint ().address ()));

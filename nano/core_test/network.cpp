@@ -128,7 +128,7 @@ TEST (network, send_node_id_handshake_tcp)
 	auto initial_node1 (node1->stats.count (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in));
 	auto initial_keepalive (node0->stats.count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in));
 	std::weak_ptr<nano::node> node_w (node0);
-	node0->network.tcp_channels.start_tcp (node1->network.endpoint ());
+	node0->network.tcp_channels->start_tcp (node1->network.endpoint ());
 	ASSERT_EQ (0, node0->network.size ());
 	ASSERT_EQ (0, node1->network.size ());
 	ASSERT_TIMELY (10s, node0->stats.count (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in) >= initial + 2);
@@ -164,7 +164,7 @@ TEST (network, last_contacted)
 	ASSERT_TIMELY (3s, node0->network.size () == 1);
 
 	// channel0 is the other side of channel1, same connection different endpoint
-	auto channel0 = node0->network.tcp_channels.find_node_id (node1->node_id.pub);
+	auto channel0 = node0->network.tcp_channels->find_node_id (node1->node_id.pub);
 	ASSERT_NE (nullptr, channel0);
 
 	{
@@ -205,13 +205,13 @@ TEST (network, multi_keepalive)
 	system.nodes.push_back (node1);
 	ASSERT_EQ (0, node1->network.size ());
 	ASSERT_EQ (0, node0->network.size ());
-	node1->network.tcp_channels.start_tcp (node0->network.endpoint ());
+	node1->network.tcp_channels->start_tcp (node0->network.endpoint ());
 	ASSERT_TIMELY (10s, node0->network.size () == 1 && node0->stats.count (nano::stat::type::message, nano::stat::detail::keepalive) >= 1);
 	auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.logging, system.work));
 	ASSERT_FALSE (node2->init_error ());
 	node2->start ();
 	system.nodes.push_back (node2);
-	node2->network.tcp_channels.start_tcp (node0->network.endpoint ());
+	node2->network.tcp_channels->start_tcp (node0->network.endpoint ());
 	ASSERT_TIMELY (10s, node1->network.size () == 2 && node0->network.size () == 2 && node2->network.size () == 2 && node0->stats.count (nano::stat::type::message, nano::stat::detail::keepalive) >= 2);
 }
 
@@ -337,7 +337,7 @@ TEST (network, send_insufficient_work)
 	// Block zero work
 	auto block1 (std::make_shared<nano::send_block> (0, 1, 20, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, 0));
 	nano::publish publish1{ nano::dev::network_params.network, block1 };
-	auto tcp_channel (node1.network.tcp_channels.find_channel (nano::transport::map_endpoint_to_tcp (node2.network.endpoint ())));
+	auto tcp_channel (node1.network.tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (node2.network.endpoint ())));
 	tcp_channel->send (publish1, [] (boost::system::error_code const & ec, size_t size) {});
 	ASSERT_EQ (0, node1.stats.count (nano::stat::type::error, nano::stat::detail::insufficient_work));
 	ASSERT_TIMELY (10s, node2.stats.count (nano::stat::type::error, nano::stat::detail::insufficient_work) != 0);
@@ -859,7 +859,7 @@ TEST (tcp_listener, tcp_listener_timeout_node_id_handshake)
 	auto socket (create_client_socket (*node0));
 	auto cookie (node0->network.syn_cookies.assign (nano::transport::map_tcp_to_endpoint (node0->bootstrap.endpoint ())));
 	nano::node_id_handshake node_id_handshake{ nano::dev::network_params.network, cookie, boost::none };
-	auto channel = std::make_shared<nano::transport::channel_tcp> (*node0, socket);
+	auto channel = std::make_shared<nano::transport::channel_tcp> (*node0, socket, node0->network.tcp_channels);
 	socket->async_connect (node0->bootstrap.endpoint (), [&node_id_handshake, channel] (boost::system::error_code const & ec) {
 		ASSERT_FALSE (ec);
 		channel->send (node_id_handshake, [] (boost::system::error_code const & ec, size_t size_a) {
@@ -932,7 +932,7 @@ TEST (network, peer_max_tcp_attempts)
 		node->network.merge_peer (node2->network.endpoint ());
 	}
 	ASSERT_EQ (0, node->network.size ());
-	ASSERT_TRUE (node->network.tcp_channels.reachout (nano::endpoint (node->network.endpoint ().address (), nano::get_available_port ())));
+	ASSERT_TRUE (node->network.tcp_channels->reachout (nano::endpoint (node->network.endpoint ().address (), nano::get_available_port ())));
 	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::out));
 }
 #endif
@@ -952,11 +952,11 @@ namespace transport
 		{
 			auto address (boost::asio::ip::address_v6::v4_mapped (boost::asio::ip::address_v4 (0x7f000001 + i))); // 127.0.0.1 hex
 			nano::endpoint endpoint (address, nano::get_available_port ());
-			ASSERT_FALSE (node->network.tcp_channels.reachout (endpoint));
+			ASSERT_FALSE (node->network.tcp_channels->reachout (endpoint));
 		}
 		ASSERT_EQ (0, node->network.size ());
 		ASSERT_EQ (0, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_subnetwork, nano::stat::dir::out));
-		ASSERT_TRUE (node->network.tcp_channels.reachout (nano::endpoint (boost::asio::ip::make_address_v6 ("::ffff:127.0.0.1"), nano::get_available_port ())));
+		ASSERT_TRUE (node->network.tcp_channels->reachout (nano::endpoint (boost::asio::ip::make_address_v6 ("::ffff:127.0.0.1"), nano::get_available_port ())));
 		ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_subnetwork, nano::stat::dir::out));
 	}
 }
@@ -979,7 +979,7 @@ TEST (network, duplicate_detection)
 	ASSERT_TIMELY (2s, node1.stats.count (nano::stat::type::filter, nano::stat::detail::duplicate_publish) == 1);
 
 	// Publish duplicate detection through TCP
-	auto tcp_channel (node0.network.tcp_channels.find_channel (nano::transport::map_endpoint_to_tcp (node1.network.endpoint ())));
+	auto tcp_channel (node0.network.tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (node1.network.endpoint ())));
 	ASSERT_EQ (1, node1.stats.count (nano::stat::type::filter, nano::stat::detail::duplicate_publish));
 	tcp_channel->send (publish);
 	ASSERT_TIMELY (2s, node1.stats.count (nano::stat::type::filter, nano::stat::detail::duplicate_publish) == 2);
@@ -1243,7 +1243,7 @@ TEST (network, cleanup_purge)
 	ASSERT_EQ (0, node1.network.size ());
 
 	std::weak_ptr<nano::node> node_w = node1.shared ();
-	node1.network.tcp_channels.start_tcp (node2->network.endpoint ());
+	node1.network.tcp_channels->start_tcp (node2->network.endpoint ());
 
 	ASSERT_TIMELY (3s, node1.network.size () == 1);
 	node1.network.cleanup (test_start);

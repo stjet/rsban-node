@@ -310,7 +310,7 @@ void nano::rep_crawler::cleanup_reps ()
 		bool equal (false);
 		if (i->get_type () == nano::transport::transport_type::tcp)
 		{
-			auto find_channel (node.network.tcp_channels.find_channel (i->get_tcp_endpoint ()));
+			auto find_channel (node.network.tcp_channels->find_channel (i->get_tcp_endpoint ()));
 			if (find_channel != nullptr && *find_channel == *static_cast<nano::transport::channel_tcp *> (i.get ()))
 			{
 				equal = true;

@@ -91,6 +91,7 @@ public:
 	nano::account remote_node_id{};
 	std::chrono::steady_clock::time_point last_telemetry_req{ std::chrono::steady_clock::time_point () };
 	std::shared_ptr<nano::bootstrap_listener> bootstrap;
+	std::shared_ptr<nano::logger_mt> logger;
 
 private:
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;

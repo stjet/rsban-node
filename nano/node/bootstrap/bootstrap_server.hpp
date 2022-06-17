@@ -9,6 +9,7 @@
 namespace nano
 {
 class bootstrap_server;
+class node_config;
 
 namespace transport
 {
@@ -93,6 +94,8 @@ public:
 	std::shared_ptr<nano::bootstrap_listener> bootstrap;
 	std::shared_ptr<nano::logger_mt> logger;
 	std::shared_ptr<nano::stat> stats;
+	std::shared_ptr<nano::node_config> config;
+	nano::network_params & network_params;
 
 private:
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;

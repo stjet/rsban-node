@@ -10,7 +10,7 @@
 nano::transport::channel_udp::channel_udp (nano::transport::udp_channels & channels_a, nano::endpoint const & endpoint_a, uint8_t protocol_version_a) :
 	channel (rsnano::rsn_channel_udp_create (std::chrono::steady_clock::now ().time_since_epoch ().count ())),
 	stats (channels_a.node.stats),
-	logger (channels_a.node.logger),
+	logger (*channels_a.node.logger),
 	limiter (channels_a.node.network.limiter),
 	io_ctx (channels_a.node.io_ctx),
 	network_packet_logging (channels_a.node.config.logging.network_packet_logging ()),
@@ -108,7 +108,7 @@ nano::transport::udp_channels::udp_channels (nano::node & node_a, uint16_t port_
 		auto port (socket->local_endpoint (ec).port ());
 		if (ec)
 		{
-			node.logger.try_log ("Unable to retrieve port: ", ec.message ());
+			node.logger->try_log ("Unable to retrieve port: ", ec.message ());
 		}
 		local_endpoint = nano::endpoint (boost::asio::ip::address_v6::loopback (), port);
 	}
@@ -312,7 +312,7 @@ void nano::transport::udp_channels::receive ()
 		release_assert (socket != nullptr);
 		if (node.config.logging.network_packet_logging ())
 		{
-			node.logger.try_log ("Receiving packet");
+			node.logger->try_log ("Receiving packet");
 		}
 
 		auto data (node.network.buffer_container.allocate ());
@@ -333,7 +333,7 @@ void nano::transport::udp_channels::receive ()
 				{
 					if (this->node.config.logging.network_logging ())
 					{
-						this->node.logger.try_log (boost::str (boost::format ("UDP Receive error: %1%") % error.message ()));
+						this->node.logger->try_log (boost::str (boost::format ("UDP Receive error: %1%") % error.message ()));
 					}
 				}
 				if (!this->stopped)
@@ -495,7 +495,7 @@ public:
 	{
 		if (node.config.logging.network_node_id_handshake_logging ())
 		{
-			node.logger.try_log (boost::str (boost::format ("Received node_id_handshake message from %1% with query %2% and response ID %3%") % endpoint % (message_a.query ? message_a.query->to_string () : std::string ("[none]")) % (message_a.response ? message_a.response->first.to_node_id () : std::string ("[none]"))));
+			node.logger->try_log (boost::str (boost::format ("Received node_id_handshake message from %1% with query %2% and response ID %3%") % endpoint % (message_a.query ? message_a.query->to_string () : std::string ("[none]")) % (message_a.response ? message_a.response->first.to_node_id () : std::string ("[none]"))));
 		}
 		boost::optional<nano::uint256_union> out_query;
 		boost::optional<nano::uint256_union> out_respond_to;
@@ -523,7 +523,7 @@ public:
 			}
 			else if (node.config.logging.network_node_id_handshake_logging ())
 			{
-				node.logger.try_log (boost::str (boost::format ("Failed to validate syn cookie signature %1% by %2%") % message_a.response->second.to_string () % message_a.response->first.to_account ()));
+				node.logger->try_log (boost::str (boost::format ("Failed to validate syn cookie signature %1% by %2%") % message_a.response->second.to_string () % message_a.response->first.to_account ()));
 			}
 		}
 		if (!validated_response && node.network.udp_channels.channel (endpoint) == nullptr)
@@ -637,7 +637,7 @@ void nano::transport::udp_channels::receive_action (nano::message_buffer * data_
 	{
 		if (node.config.logging.network_packet_logging ())
 		{
-			node.logger.try_log (boost::str (boost::format ("Reserved sender %1%") % data_a->endpoint));
+			node.logger->try_log (boost::str (boost::format ("Reserved sender %1%") % data_a->endpoint));
 		}
 
 		node.stats.inc_detail_only (nano::stat::type::error, nano::stat::detail::bad_sender);

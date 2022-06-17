@@ -744,7 +744,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			environment.dump (std::cout);
 			std::stringstream stream;
 			environment.dump (stream);
-			inactive_node->node->logger.always_log (stream.str ());
+			inactive_node->node->logger->always_log (stream.str ());
 		}
 		else
 		{

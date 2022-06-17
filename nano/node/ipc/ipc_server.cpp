@@ -43,7 +43,7 @@ public:
 	{
 		if (node.config.logging.log_ipc ())
 		{
-			node.logger.always_log ("IPC: created session with id: ", session_id.load ());
+			node.logger->always_log ("IPC: created session with id: ", session_id.load ());
 		}
 	}
 
@@ -238,7 +238,7 @@ public:
 			{
 				if (this_l->node.config.logging.log_ipc ())
 				{
-					this_l->node.logger.always_log (boost::str (boost::format ("IPC: error reading %1% ") % ec.message ()));
+					this_l->node.logger->always_log (boost::str (boost::format ("IPC: error reading %1% ") % ec.message ()));
 				}
 			}
 			else if (bytes_transferred_a > 0)
@@ -264,7 +264,7 @@ public:
 			buffer->insert (buffer->end (), body.begin (), body.end ());
 			if (this_l->node.config.logging.log_ipc ())
 			{
-				this_l->node.logger.always_log (boost::str (boost::format ("IPC/RPC request %1% completed in: %2% %3%") % request_id_l % this_l->session_timer.stop ().count () % this_l->session_timer.unit ()));
+				this_l->node.logger->always_log (boost::str (boost::format ("IPC/RPC request %1% completed in: %2% %3%") % request_id_l % this_l->session_timer.stop ().count () % this_l->session_timer.unit ()));
 			}
 
 			this_l->timer_start (std::chrono::seconds (this_l->config_transport.io_timeout));
@@ -276,7 +276,7 @@ public:
 				}
 				else if (this_l->node.config.logging.log_ipc ())
 				{
-					this_l->node.logger.always_log ("IPC: Write failed: ", error_a.message ());
+					this_l->node.logger->always_log ("IPC: Write failed: ", error_a.message ());
 				}
 			});
 
@@ -311,7 +311,7 @@ public:
 			{
 				if (this_l->node.config.logging.log_ipc ())
 				{
-					this_l->node.logger.always_log ("IPC: Invalid preamble");
+					this_l->node.logger->always_log ("IPC: Invalid preamble");
 				}
 			}
 			else if (encoding == static_cast<uint8_t> (nano::ipc::payload_encoding::json_v1) || encoding == static_cast<uint8_t> (nano::ipc::payload_encoding::json_v1_unsafe))
@@ -348,7 +348,7 @@ public:
 							this_l->flatbuffers_handler->process_json (this_l->buffer.data (), this_l->buffer_size, [this_l] (std::shared_ptr<std::string> const & body) {
 								if (this_l->node.config.logging.log_ipc ())
 								{
-									this_l->node.logger.always_log (boost::str (boost::format ("IPC/Flatbuffer request completed in: %1% %2%") % this_l->session_timer.stop ().count () % this_l->session_timer.unit ()));
+									this_l->node.logger->always_log (boost::str (boost::format ("IPC/Flatbuffer request completed in: %1% %2%") % this_l->session_timer.stop ().count () % this_l->session_timer.unit ()));
 								}
 
 								auto big_endian_length = std::make_shared<uint32_t> (boost::endian::native_to_big (static_cast<uint32_t> (body->size ())));
@@ -364,7 +364,7 @@ public:
 									}
 									else if (this_l->node.config.logging.log_ipc ())
 									{
-										this_l->node.logger.always_log ("IPC: Write failed: ", error_a.message ());
+										this_l->node.logger->always_log ("IPC: Write failed: ", error_a.message ());
 									}
 								});
 							});
@@ -374,7 +374,7 @@ public:
 							this_l->flatbuffers_handler->process (this_l->buffer.data (), this_l->buffer_size, [this_l] (std::shared_ptr<flatbuffers::FlatBufferBuilder> const & fbb) {
 								if (this_l->node.config.logging.log_ipc ())
 								{
-									this_l->node.logger.always_log (boost::str (boost::format ("IPC/Flatbuffer request completed in: %1% %2%") % this_l->session_timer.stop ().count () % this_l->session_timer.unit ()));
+									this_l->node.logger->always_log (boost::str (boost::format ("IPC/Flatbuffer request completed in: %1% %2%") % this_l->session_timer.stop ().count () % this_l->session_timer.unit ()));
 								}
 
 								auto big_endian_length = std::make_shared<uint32_t> (boost::endian::native_to_big (static_cast<uint32_t> (fbb->GetSize ())));
@@ -390,7 +390,7 @@ public:
 									}
 									else if (this_l->node.config.logging.log_ipc ())
 									{
-										this_l->node.logger.always_log ("IPC: Write failed: ", error_a.message ());
+										this_l->node.logger->always_log ("IPC: Write failed: ", error_a.message ());
 									}
 								});
 							});
@@ -400,7 +400,7 @@ public:
 			}
 			else if (this_l->node.config.logging.log_ipc ())
 			{
-				this_l->node.logger.always_log ("IPC: Unsupported payload encoding");
+				this_l->node.logger->always_log ("IPC: Unsupported payload encoding");
 			}
 		});
 	}
@@ -518,7 +518,7 @@ public:
 			}
 			else
 			{
-				server.node.logger.always_log ("IPC: acceptor error: ", ec.message ());
+				server.node.logger->always_log ("IPC: acceptor error: ", ec.message ());
 			}
 
 			if (ec != boost::asio::error::operation_aborted && acceptor->is_open ())
@@ -527,7 +527,7 @@ public:
 			}
 			else
 			{
-				server.node.logger.always_log ("IPC: shutting down");
+				server.node.logger->always_log ("IPC: shutting down");
 			}
 		});
 	}
@@ -620,7 +620,7 @@ nano::ipc::ipc_server::ipc_server (nano::node & node_a, nano::node_rpc_config co
 			boost::asio::local::stream_protocol::endpoint ep{ node_a.config.ipc_config.transport_domain.path };
 			transports.push_back (std::make_shared<domain_socket_transport> (*this, ep, node_a.config.ipc_config.transport_domain, threads));
 #else
-			node.logger.always_log ("IPC: Domain sockets are not supported on this platform");
+			node.logger->always_log ("IPC: Domain sockets are not supported on this platform");
 #endif
 		}
 
@@ -630,7 +630,7 @@ nano::ipc::ipc_server::ipc_server (nano::node & node_a, nano::node_rpc_config co
 			transports.push_back (std::make_shared<tcp_socket_transport> (*this, boost::asio::ip::tcp::endpoint (boost::asio::ip::tcp::v6 (), node_a.config.ipc_config.transport_tcp.port), node_a.config.ipc_config.transport_tcp, threads));
 		}
 
-		node.logger.always_log ("IPC: server started");
+		node.logger->always_log ("IPC: server started");
 
 		if (!transports.empty ())
 		{
@@ -639,13 +639,13 @@ nano::ipc::ipc_server::ipc_server (nano::node & node_a, nano::node_rpc_config co
 	}
 	catch (std::runtime_error const & ex)
 	{
-		node.logger.always_log ("IPC: ", ex.what ());
+		node.logger->always_log ("IPC: ", ex.what ());
 	}
 }
 
 nano::ipc::ipc_server::~ipc_server ()
 {
-	node.logger.always_log ("IPC: server stopped");
+	node.logger->always_log ("IPC: server stopped");
 }
 
 void nano::ipc::ipc_server::stop ()
@@ -687,7 +687,7 @@ nano::error nano::ipc::ipc_server::reload_access_config ()
 	{
 		auto error (boost::str (boost::format ("IPC: invalid access configuration file: %1%") % access_config_error.get_message ()));
 		std::cerr << error << std::endl;
-		node.logger.always_log (error);
+		node.logger->always_log (error);
 	}
 	return access_config_error;
 }

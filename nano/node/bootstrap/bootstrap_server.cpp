@@ -22,7 +22,7 @@ void nano::bootstrap_listener::start ()
 	listening_socket->start (ec);
 	if (ec)
 	{
-		node.logger.always_log (boost::str (boost::format ("Network: Error while binding for incoming TCP/bootstrap on port %1%: %2%") % listening_socket->listening_port () % ec.message ()));
+		node.logger->always_log (boost::str (boost::format ("Network: Error while binding for incoming TCP/bootstrap on port %1%: %2%") % listening_socket->listening_port () % ec.message ()));
 		throw std::runtime_error (ec.message ());
 	}
 
@@ -143,7 +143,7 @@ void nano::bootstrap_listener::accept_action (boost::system::error_code const & 
 		node.stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_excluded);
 		if (node.config.logging.network_rejected_logging ())
 		{
-			node.logger.try_log ("Rejected connection from excluded peer ", socket_a->remote_endpoint ());
+			node.logger->try_log ("Rejected connection from excluded peer ", socket_a->remote_endpoint ());
 		}
 	}
 }
@@ -184,7 +184,7 @@ nano::bootstrap_server::~bootstrap_server ()
 {
 	if (node->config.logging.bulk_pull_logging ())
 	{
-		node->logger.try_log ("Exiting incoming TCP/bootstrap server");
+		node->logger->try_log ("Exiting incoming TCP/bootstrap server");
 	}
 	if (socket->type () == nano::socket::type_t::bootstrap)
 	{
@@ -337,7 +337,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				{
 					if (node->config.logging.network_logging ())
 					{
-						node->logger.try_log (boost::str (boost::format ("Received invalid type from bootstrap connection %1%") % static_cast<uint8_t> (header.type)));
+						node->logger->try_log (boost::str (boost::format ("Received invalid type from bootstrap connection %1%") % static_cast<uint8_t> (header.type)));
 					}
 					break;
 				}
@@ -348,7 +348,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 	{
 		if (node->config.logging.bulk_pull_logging ())
 		{
-			node->logger.try_log (boost::str (boost::format ("Error while receiving type: %1%") % ec.message ()));
+			node->logger->try_log (boost::str (boost::format ("Error while receiving type: %1%") % ec.message ()));
 		}
 	}
 }
@@ -364,7 +364,7 @@ void nano::bootstrap_server::receive_bulk_pull_action (boost::system::error_code
 		{
 			if (node->config.logging.bulk_pull_logging ())
 			{
-				node->logger.try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->start.to_string () % request->end.to_string () % (request->count ? request->count : std::numeric_limits<double>::infinity ()) % remote_endpoint));
+				node->logger->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->start.to_string () % request->end.to_string () % (request->count ? request->count : std::numeric_limits<double>::infinity ()) % remote_endpoint));
 			}
 			if (is_bootstrap_connection () && !node->flags.disable_bootstrap_bulk_pull_server)
 			{
@@ -387,7 +387,7 @@ void nano::bootstrap_server::receive_bulk_pull_account_action (boost::system::er
 		{
 			if (node->config.logging.bulk_pull_logging ())
 			{
-				node->logger.try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->account.to_account () % nano::amount (request->minimum_amount).format_balance (nano::Mxrb_ratio, 10, true)));
+				node->logger->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->account.to_account () % nano::amount (request->minimum_amount).format_balance (nano::Mxrb_ratio, 10, true)));
 			}
 			if (is_bootstrap_connection () && !node->flags.disable_bootstrap_bulk_pull_server)
 			{
@@ -409,7 +409,7 @@ void nano::bootstrap_server::receive_frontier_req_action (boost::system::error_c
 		{
 			if (node->config.logging.bulk_pull_logging ())
 			{
-				node->logger.try_log (boost::str (boost::format ("Received frontier request for %1% with age %2%") % request->start.to_string () % request->age));
+				node->logger->try_log (boost::str (boost::format ("Received frontier request for %1% with age %2%") % request->start.to_string () % request->age));
 			}
 			if (is_bootstrap_connection ())
 			{
@@ -422,7 +422,7 @@ void nano::bootstrap_server::receive_frontier_req_action (boost::system::error_c
 	{
 		if (node->config.logging.network_logging ())
 		{
-			node->logger.try_log (boost::str (boost::format ("Error sending receiving frontier request: %1%") % ec.message ()));
+			node->logger->try_log (boost::str (boost::format ("Error sending receiving frontier request: %1%") % ec.message ()));
 		}
 	}
 }
@@ -447,7 +447,7 @@ void nano::bootstrap_server::receive_keepalive_action (boost::system::error_code
 	{
 		if (node->config.logging.network_keepalive_logging ())
 		{
-			node->logger.try_log (boost::str (boost::format ("Error receiving keepalive: %1%") % ec.message ()));
+			node->logger->try_log (boost::str (boost::format ("Error receiving keepalive: %1%") % ec.message ()));
 		}
 	}
 }
@@ -472,7 +472,7 @@ void nano::bootstrap_server::receive_telemetry_ack_action (boost::system::error_
 	{
 		if (node->config.logging.network_telemetry_logging ())
 		{
-			node->logger.try_log (boost::str (boost::format ("Error receiving telemetry ack: %1%") % ec.message ()));
+			node->logger->try_log (boost::str (boost::format ("Error receiving telemetry ack: %1%") % ec.message ()));
 		}
 	}
 }
@@ -513,7 +513,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 	{
 		if (node->config.logging.network_message_logging ())
 		{
-			node->logger.try_log (boost::str (boost::format ("Error receiving publish: %1%") % ec.message ()));
+			node->logger->try_log (boost::str (boost::format ("Error receiving publish: %1%") % ec.message ()));
 		}
 	}
 }
@@ -536,7 +536,7 @@ void nano::bootstrap_server::receive_confirm_req_action (boost::system::error_co
 	}
 	else if (node->config.logging.network_message_logging ())
 	{
-		node->logger.try_log (boost::str (boost::format ("Error receiving confirm_req: %1%") % ec.message ()));
+		node->logger->try_log (boost::str (boost::format ("Error receiving confirm_req: %1%") % ec.message ()));
 	}
 }
 
@@ -558,7 +558,7 @@ void nano::bootstrap_server::receive_confirm_ack_action (boost::system::error_co
 	}
 	else if (node->config.logging.network_message_logging ())
 	{
-		node->logger.try_log (boost::str (boost::format ("Error receiving confirm_ack: %1%") % ec.message ()));
+		node->logger->try_log (boost::str (boost::format ("Error receiving confirm_ack: %1%") % ec.message ()));
 	}
 }
 
@@ -580,7 +580,7 @@ void nano::bootstrap_server::receive_node_id_handshake_action (boost::system::er
 	}
 	else if (node->config.logging.network_node_id_handshake_logging ())
 	{
-		node->logger.try_log (boost::str (boost::format ("Error receiving node_id_handshake: %1%") % ec.message ()));
+		node->logger->try_log (boost::str (boost::format ("Error receiving node_id_handshake: %1%") % ec.message ()));
 	}
 }
 
@@ -646,7 +646,7 @@ void nano::bootstrap_server::timeout ()
 	{
 		if (node->config.logging.bulk_pull_logging ())
 		{
-			node->logger.try_log ("Closing incoming tcp / bootstrap server by timeout");
+			node->logger->try_log ("Closing incoming tcp / bootstrap server by timeout");
 		}
 		{
 			bootstrap->erase_connection (this);
@@ -713,7 +713,7 @@ public:
 	{
 		if (connection->node->config.logging.network_node_id_handshake_logging ())
 		{
-			connection->node->logger.try_log (boost::str (boost::format ("Received node_id_handshake message from %1%") % connection->remote_endpoint));
+			connection->node->logger->try_log (boost::str (boost::format ("Received node_id_handshake message from %1%") % connection->remote_endpoint));
 		}
 		if (message_a.query)
 		{
@@ -729,7 +729,7 @@ public:
 					{
 						if (connection_l->node->config.logging.network_node_id_handshake_logging ())
 						{
-							connection_l->node->logger.try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % connection_l->remote_endpoint % ec.message ()));
+							connection_l->node->logger->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % connection_l->remote_endpoint % ec.message ()));
 						}
 						// Stop invalid handshake
 						connection_l->stop ();

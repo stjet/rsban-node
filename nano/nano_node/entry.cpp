@@ -295,14 +295,14 @@ int main (int argc, char * const * argv)
 				{
 					if (sample.diff > log_threshold)
 					{
-						node->logger.always_log (sample.get_entry ());
+						node->logger->always_log (sample.get_entry ());
 					}
 				}
 				for (auto const & newcomer : newcomers)
 				{
 					if (newcomer.second > log_threshold)
 					{
-						node->logger.always_log (newcomer_entry (newcomer));
+						node->logger->always_log (newcomer_entry (newcomer));
 					}
 				}
 			}
@@ -1916,7 +1916,7 @@ int main (int argc, char * const * argv)
 			}
 #endif
 			auto inactive_node = nano::default_inactive_node (data_path, vm);
-			inactive_node->node->logger.always_log (nano::severity_level::error, "Testing system logger");
+			inactive_node->node->logger->always_log (nano::severity_level::error, "Testing system logger");
 		}
 		else if (vm.count ("debug_account_versions"))
 		{

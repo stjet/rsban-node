@@ -53,27 +53,27 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 			}
 			catch (boost::system::error_code & ec)
 			{
-				this->node.logger.always_log (FATAL_LOG_PREFIX, ec.message ());
+				this->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
 				release_assert (false);
 			}
 			catch (std::error_code & ec)
 			{
-				this->node.logger.always_log (FATAL_LOG_PREFIX, ec.message ());
+				this->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
 				release_assert (false);
 			}
 			catch (std::runtime_error & err)
 			{
-				this->node.logger.always_log (FATAL_LOG_PREFIX, err.what ());
+				this->node.logger->always_log (FATAL_LOG_PREFIX, err.what ());
 				release_assert (false);
 			}
 			catch (...)
 			{
-				this->node.logger.always_log (FATAL_LOG_PREFIX, "Unknown exception");
+				this->node.logger->always_log (FATAL_LOG_PREFIX, "Unknown exception");
 				release_assert (false);
 			}
 			if (this->node.config.logging.network_packet_logging ())
 			{
-				this->node.logger.try_log ("Exiting UDP packet processing thread");
+				this->node.logger->try_log ("Exiting UDP packet processing thread");
 			}
 		});
 	}
@@ -88,27 +88,27 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 			}
 			catch (boost::system::error_code & ec)
 			{
-				this->node.logger.always_log (FATAL_LOG_PREFIX, ec.message ());
+				this->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
 				release_assert (false);
 			}
 			catch (std::error_code & ec)
 			{
-				this->node.logger.always_log (FATAL_LOG_PREFIX, ec.message ());
+				this->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
 				release_assert (false);
 			}
 			catch (std::runtime_error & err)
 			{
-				this->node.logger.always_log (FATAL_LOG_PREFIX, err.what ());
+				this->node.logger->always_log (FATAL_LOG_PREFIX, err.what ());
 				release_assert (false);
 			}
 			catch (...)
 			{
-				this->node.logger.always_log (FATAL_LOG_PREFIX, "Unknown exception");
+				this->node.logger->always_log (FATAL_LOG_PREFIX, "Unknown exception");
 				release_assert (false);
 			}
 			if (this->node.config.logging.network_packet_logging ())
 			{
-				this->node.logger.try_log ("Exiting TCP packet processing thread");
+				this->node.logger->try_log ("Exiting TCP packet processing thread");
 			}
 		});
 	}
@@ -180,7 +180,7 @@ void nano::network::send_node_id_handshake (std::shared_ptr<nano::transport::cha
 	nano::node_id_handshake message{ node.network_params.network, query, response };
 	if (node.config.logging.network_node_id_handshake_logging ())
 	{
-		node.logger.try_log (boost::str (boost::format ("Node ID handshake sent with node ID %1% to %2%: query %3%, respond_to %4% (signature %5%)") % node.node_id.pub.to_node_id () % channel_a->get_endpoint () % (query ? query->to_string () : std::string ("[none]")) % (respond_to ? respond_to->to_string () : std::string ("[none]")) % (response ? response->second.to_string () : std::string ("[none]"))));
+		node.logger->try_log (boost::str (boost::format ("Node ID handshake sent with node ID %1% to %2%: query %3%, respond_to %4% (signature %5%)") % node.node_id.pub.to_node_id () % channel_a->get_endpoint () % (query ? query->to_string () : std::string ("[none]")) % (respond_to ? respond_to->to_string () : std::string ("[none]")) % (response ? response->second.to_string () : std::string ("[none]"))));
 	}
 	channel_a->send (message);
 }
@@ -308,7 +308,7 @@ void nano::network::broadcast_confirm_req_base (std::shared_ptr<nano::block> con
 	std::size_t const max_reps = 10;
 	if (!resumption && node.config.logging.network_logging ())
 	{
-		node.logger.try_log (boost::str (boost::format ("Broadcasting confirm req for block %1% to %2% representatives") % block_a->hash ().to_string () % endpoints_a->size ()));
+		node.logger->try_log (boost::str (boost::format ("Broadcasting confirm req for block %1% to %2% representatives") % block_a->hash ().to_string () % endpoints_a->size ()));
 	}
 	auto count (0);
 	while (!endpoints_a->empty () && count < max_reps)
@@ -336,7 +336,7 @@ void nano::network::broadcast_confirm_req_batched_many (std::unordered_map<std::
 {
 	if (!resumption_a && node.config.logging.network_logging ())
 	{
-		node.logger.try_log (boost::str (boost::format ("Broadcasting batch confirm req to %1% representatives") % request_bundle_a.size ()));
+		node.logger->try_log (boost::str (boost::format ("Broadcasting batch confirm req to %1% representatives") % request_bundle_a.size ()));
 	}
 
 	for (auto i (request_bundle_a.begin ()), n (request_bundle_a.end ()); i != n;)
@@ -419,7 +419,7 @@ public:
 	{
 		if (node.config.logging.network_keepalive_logging ())
 		{
-			node.logger.try_log (boost::str (boost::format ("Received keepalive message from %1%") % channel->to_string ()));
+			node.logger->try_log (boost::str (boost::format ("Received keepalive message from %1%") % channel->to_string ()));
 		}
 		node.stats.inc (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in);
 		node.network.merge_peers (message_a.peers);
@@ -435,7 +435,7 @@ public:
 	{
 		if (node.config.logging.network_message_logging ())
 		{
-			node.logger.try_log (boost::str (boost::format ("Publish message from %1% for %2%") % channel->to_string () % message_a.block->hash ().to_string ()));
+			node.logger->try_log (boost::str (boost::format ("Publish message from %1% for %2%") % channel->to_string () % message_a.block->hash ().to_string ()));
 		}
 		node.stats.inc (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in);
 		if (!node.block_processor.full ())
@@ -454,11 +454,11 @@ public:
 		{
 			if (!message_a.roots_hashes.empty ())
 			{
-				node.logger.try_log (boost::str (boost::format ("Confirm_req message from %1% for hashes:roots %2%") % channel->to_string () % message_a.roots_string ()));
+				node.logger->try_log (boost::str (boost::format ("Confirm_req message from %1% for hashes:roots %2%") % channel->to_string () % message_a.roots_string ()));
 			}
 			else
 			{
-				node.logger.try_log (boost::str (boost::format ("Confirm_req message from %1% for %2%") % channel->to_string () % message_a.block->hash ().to_string ()));
+				node.logger->try_log (boost::str (boost::format ("Confirm_req message from %1% for %2%") % channel->to_string () % message_a.block->hash ().to_string ()));
 			}
 		}
 		node.stats.inc (nano::stat::type::message, nano::stat::detail::confirm_req, nano::stat::dir::in);
@@ -479,7 +479,7 @@ public:
 	{
 		if (node.config.logging.network_message_logging ())
 		{
-			node.logger.try_log (boost::str (boost::format ("Received confirm_ack message from %1% for %2% timestamp %3%") % channel->to_string () % message_a.vote->hashes_string () % std::to_string (message_a.vote->timestamp ())));
+			node.logger->try_log (boost::str (boost::format ("Received confirm_ack message from %1% for %2% timestamp %3%") % channel->to_string () % message_a.vote->hashes_string () % std::to_string (message_a.vote->timestamp ())));
 		}
 		node.stats.inc (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::in);
 		if (!message_a.vote->account ().is_zero ())
@@ -511,7 +511,7 @@ public:
 	{
 		if (node.config.logging.network_telemetry_logging ())
 		{
-			node.logger.try_log (boost::str (boost::format ("Telemetry_req message from %1%") % channel->to_string ()));
+			node.logger->try_log (boost::str (boost::format ("Telemetry_req message from %1%") % channel->to_string ()));
 		}
 		node.stats.inc (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in);
 
@@ -529,7 +529,7 @@ public:
 	{
 		if (node.config.logging.network_telemetry_logging ())
 		{
-			node.logger.try_log (boost::str (boost::format ("Received telemetry_ack message from %1%") % channel->to_string ()));
+			node.logger->try_log (boost::str (boost::format ("Received telemetry_ack message from %1%") % channel->to_string ()));
 		}
 		node.stats.inc (nano::stat::type::message, nano::stat::detail::telemetry_ack, nano::stat::dir::in);
 		if (node.telemetry)

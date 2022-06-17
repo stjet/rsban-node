@@ -169,7 +169,7 @@ public:
 	nano::node_flags flags;
 	nano::work_pool & work;
 	nano::distributed_work_factory distributed_work;
-	nano::logger_mt logger;
+	std::shared_ptr<nano::logger_mt> logger;
 	std::unique_ptr<nano::store> store_impl;
 	nano::store & store;
 	nano::unchecked_map unchecked;

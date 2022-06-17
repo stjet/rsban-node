@@ -2932,7 +2932,7 @@ void nano::json_handler::password_change ()
 				rpc_l->response_l.put ("changed", error ? "0" : "1");
 				if (!error)
 				{
-					rpc_l->node.logger.try_log ("Wallet password changed");
+					rpc_l->node.logger->try_log ("Wallet password changed");
 				}
 			}
 		}
@@ -4772,7 +4772,7 @@ void nano::json_handler::wallet_lock ()
 		empty.clear ();
 		wallet->store.password.value_set (empty);
 		response_l.put ("locked", "1");
-		node.logger.try_log ("Wallet locked");
+		node.logger->try_log ("Wallet locked");
 	}
 	response_errors ();
 }

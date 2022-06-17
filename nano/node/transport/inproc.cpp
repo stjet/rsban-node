@@ -6,7 +6,7 @@
 nano::transport::inproc::channel::channel (nano::node & node_a, nano::node & destination) :
 	transport::channel{ rsnano::rsn_channel_inproc_create (std::chrono::steady_clock::now ().time_since_epoch ().count ()) },
 	stats (node_a.stats),
-	logger (node_a.logger),
+	logger (*node_a.logger),
 	limiter (node_a.network.limiter),
 	io_ctx (node_a.io_ctx),
 	network_packet_logging (node_a.config.logging.network_packet_logging ()),

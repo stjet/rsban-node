@@ -65,7 +65,7 @@ void nano::ipc::broker::start ()
 		}
 		catch (nano::error const & err)
 		{
-			this_l->node.logger.always_log ("IPC: could not broadcast message: ", err.get_message ());
+			this_l->node.logger->always_log ("IPC: could not broadcast message: ", err.get_message ());
 		}
 	});
 }
@@ -106,7 +106,7 @@ void subscribe_or_unsubscribe (nano::logger_mt & logger, COLL & subscriber_colle
 void nano::ipc::broker::subscribe (std::weak_ptr<nano::ipc::subscriber> const & subscriber_a, std::shared_ptr<nanoapi::TopicConfirmationT> const & confirmation_a)
 {
 	auto subscribers = confirmation_subscribers.lock ();
-	subscribe_or_unsubscribe (node.logger, subscribers.get (), subscriber_a, confirmation_a);
+	subscribe_or_unsubscribe (*node.logger, subscribers.get (), subscriber_a, confirmation_a);
 }
 
 void nano::ipc::broker::broadcast (std::shared_ptr<nanoapi::EventConfirmationT> const & confirmation_a)
@@ -257,5 +257,5 @@ void nano::ipc::broker::service_stop (std::string const & service_name_a)
 void nano::ipc::broker::subscribe (std::weak_ptr<nano::ipc::subscriber> const & subscriber_a, std::shared_ptr<nanoapi::TopicServiceStopT> const & service_stop_a)
 {
 	auto subscribers = service_stop_subscribers.lock ();
-	subscribe_or_unsubscribe (node.logger, subscribers.get (), subscriber_a, service_stop_a);
+	subscribe_or_unsubscribe (*node.logger, subscribers.get (), subscriber_a, service_stop_a);
 }

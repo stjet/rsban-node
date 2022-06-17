@@ -324,7 +324,7 @@ void nano::election::log_votes (nano::tally_t const & tally_a, std::string const
 			tally << boost::str (boost::format ("%1%%2% %3% %4%") % line_end % i->first.to_account () % std::to_string (i->second.timestamp) % i->second.hash.to_string ());
 		}
 	}
-	node.logger.try_log (tally.str ());
+	node.logger->try_log (tally.str ());
 }
 
 std::shared_ptr<nano::block> nano::election::find (nano::block_hash const & hash_a) const

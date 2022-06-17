@@ -702,11 +702,11 @@ bool nano::wallet::enter_password (nano::transaction const & transaction_a, std:
 		wallets.node.background ([this_l] () {
 			this_l->search_receivable (this_l->wallets.tx_begin_read ());
 		});
-		wallets.node.logger.try_log ("Wallet unlocked");
+		wallets.node.logger->try_log ("Wallet unlocked");
 	}
 	else
 	{
-		wallets.node.logger.try_log ("Invalid password, wallet locked");
+		wallets.node.logger->try_log ("Invalid password, wallet locked");
 	}
 	lock_observer (result, password_a.empty ());
 	return result;
@@ -863,7 +863,7 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 				}
 				else
 				{
-					wallets.node.logger.try_log ("Unable to receive, wallet locked");
+					wallets.node.logger->try_log ("Unable to receive, wallet locked");
 				}
 			}
 			else
@@ -878,7 +878,7 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 	}
 	else
 	{
-		wallets.node.logger.try_log (boost::str (boost::format ("Not receiving block %1% due to minimum receive threshold") % send_hash_a.to_string ()));
+		wallets.node.logger->try_log (boost::str (boost::format ("Not receiving block %1% due to minimum receive threshold") % send_hash_a.to_string ()));
 		// Someone sent us something below the threshold of receiving
 	}
 	if (block != nullptr)
@@ -1046,7 +1046,7 @@ bool nano::wallet::action_complete (std::shared_ptr<nano::block> const & block_a
 		auto required_difficulty{ wallets.node.network_params.work.threshold (block_a->work_version (), details_a) };
 		if (wallets.node.network_params.work.difficulty (*block_a) < required_difficulty)
 		{
-			wallets.node.logger.try_log (boost::str (boost::format ("Cached or provided work for block %1% account %2% is invalid, regenerating") % block_a->hash ().to_string () % account_a.to_account ()));
+			wallets.node.logger->try_log (boost::str (boost::format ("Cached or provided work for block %1% account %2% is invalid, regenerating") % block_a->hash ().to_string () % account_a.to_account ()));
 			debug_assert (required_difficulty <= wallets.node.max_work_generate_difficulty (block_a->work_version ()));
 			error = !wallets.node.work_generate_blocking (*block_a, required_difficulty).is_initialized ();
 		}
@@ -1140,7 +1140,7 @@ void nano::wallet::work_update (nano::transaction const & transaction_a, nano::a
 	}
 	else
 	{
-		wallets.node.logger.try_log ("Cached work no longer valid, discarding");
+		wallets.node.logger->try_log ("Cached work no longer valid, discarding");
 	}
 }
 
@@ -1169,7 +1169,7 @@ bool nano::wallet::search_receivable (nano::transaction const & wallet_transacti
 	auto result (!store.valid_password (wallet_transaction_a));
 	if (!result)
 	{
-		wallets.node.logger.try_log ("Beginning receivable block search");
+		wallets.node.logger->try_log ("Beginning receivable block search");
 		for (auto i (store.begin (wallet_transaction_a)), n (store.end ()); i != n; ++i)
 		{
 			auto block_transaction (wallets.node.store.tx_begin_read ());
@@ -1185,7 +1185,7 @@ bool nano::wallet::search_receivable (nano::transaction const & wallet_transacti
 					auto amount (pending.amount.number ());
 					if (wallets.node.config.receive_minimum.number () <= amount)
 					{
-						wallets.node.logger.try_log (boost::str (boost::format ("Found a receivable block %1% for account %2%") % hash.to_string () % pending.source.to_account ()));
+						wallets.node.logger->try_log (boost::str (boost::format ("Found a receivable block %1% for account %2%") % hash.to_string () % pending.source.to_account ()));
 						if (wallets.node.ledger.block_confirmed (block_transaction, hash))
 						{
 							auto representative = store.representative (wallet_transaction_a);
@@ -1205,11 +1205,11 @@ bool nano::wallet::search_receivable (nano::transaction const & wallet_transacti
 				}
 			}
 		}
-		wallets.node.logger.try_log ("Receivable block search phase completed");
+		wallets.node.logger->try_log ("Receivable block search phase completed");
 	}
 	else
 	{
-		wallets.node.logger.try_log ("Stopping search, wallet is locked");
+		wallets.node.logger->try_log ("Stopping search, wallet is locked");
 	}
 	return result;
 }
@@ -1301,7 +1301,7 @@ void nano::wallet::work_cache_blocking (nano::account const & account_a, nano::r
 		}
 		else if (!wallets.node.stopped)
 		{
-			wallets.node.logger.try_log (boost::str (boost::format ("Could not precache work for root %1% due to work generation failure") % root_a.to_string ()));
+			wallets.node.logger->try_log (boost::str (boost::format ("Could not precache work for root %1% due to work generation failure") % root_a.to_string ()));
 		}
 	}
 }
@@ -1390,7 +1390,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 		char const * store_path;
 		mdb_env_get_path (env, &store_path);
 		boost::filesystem::path const path (store_path);
-		nano::lmdb::store::create_backup_file (env, path, node_a.logger);
+		nano::lmdb::store::create_backup_file (env, path, *node_a.logger);
 	}
 	for (auto & item : items)
 	{
@@ -1562,7 +1562,7 @@ void nano::wallets::foreach_representative (std::function<void (nano::public_key
 								if (last_log < std::chrono::steady_clock::now () - std::chrono::seconds (60))
 								{
 									last_log = std::chrono::steady_clock::now ();
-									node.logger.always_log (boost::str (boost::format ("Representative locked inside wallet %1%") % i->first.to_string ()));
+									node.logger->always_log (boost::str (boost::format ("Representative locked inside wallet %1%") % i->first.to_string ()));
 								}
 							}
 						}

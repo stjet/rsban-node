@@ -80,10 +80,10 @@ rsnano::LockHandle * nano::bootstrap_attempt_legacy::request_push (rsnano::LockH
 	}
 	if (node->config.logging.network_logging ())
 	{
-		node->logger.try_log ("Exiting bulk push client");
+		node->logger->try_log ("Exiting bulk push client");
 		if (error)
 		{
-			node->logger.try_log ("Bulk push client failed");
+			node->logger->try_log ("Bulk push client failed");
 		}
 	}
 	return lock_a;
@@ -176,7 +176,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::LockHandle ** loc
 		{
 			if (!result)
 			{
-				node->logger.try_log (boost::str (boost::format ("Completed frontier request, %1% out of sync accounts according to %2%") % account_count % connection_l->channel_string ()));
+				node->logger->try_log (boost::str (boost::format ("Completed frontier request, %1% out of sync accounts according to %2%") % account_count % connection_l->channel_string ()));
 			}
 			else
 			{
@@ -219,24 +219,24 @@ void nano::bootstrap_attempt_legacy::run ()
 			}
 		}
 		// Flushing may resolve forks which can add more pulls
-		node->logger.try_log ("Flushing unchecked blocks");
+		node->logger->try_log ("Flushing unchecked blocks");
 		rsnano::rsn_bootstrap_attempt_unlock (lock);
 		node->block_processor.flush ();
 		lock = rsnano::rsn_bootstrap_attempt_lock (handle);
 		if (start_account.number () != std::numeric_limits<nano::uint256_t>::max ())
 		{
-			node->logger.try_log (boost::str (boost::format ("Finished flushing unchecked blocks, requesting new frontiers after %1%") % start_account.to_account ()));
+			node->logger->try_log (boost::str (boost::format ("Finished flushing unchecked blocks, requesting new frontiers after %1%") % start_account.to_account ()));
 			// Requesting new frontiers
 			lock = run_start (lock);
 		}
 		else
 		{
-			node->logger.try_log ("Finished flushing unchecked blocks");
+			node->logger->try_log ("Finished flushing unchecked blocks");
 		}
 	}
 	if (!get_stopped ())
 	{
-		node->logger.try_log ("Completed legacy pulls");
+		node->logger->try_log ("Completed legacy pulls");
 		if (!node->flags.disable_bootstrap_bulk_push_client)
 		{
 			lock = request_push (lock);

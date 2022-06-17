@@ -344,7 +344,7 @@ void nano::active_transactions::request_confirm (nano::unique_lock<nano::mutex> 
 
 	if (node.config.logging.timing_logging ())
 	{
-		node.logger.try_log (boost::str (boost::format ("Processed %1% elections (%2% were already confirmed) in %3% %4%") % this_loop_target_l % (this_loop_target_l - unconfirmed_count_l) % elapsed.value ().count () % elapsed.unit ()));
+		node.logger->try_log (boost::str (boost::format ("Processed %1% elections (%2% were already confirmed) in %3% %4%") % this_loop_target_l % (this_loop_target_l - unconfirmed_count_l) % elapsed.value ().count () % elapsed.unit ()));
 	}
 }
 
@@ -385,7 +385,7 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 	node.stats.inc (nano::stat::type::election, election.confirmed () ? nano::stat::detail::election_confirmed : nano::stat::detail::election_not_confirmed);
 	if (node.config.logging.election_result_logging ())
 	{
-		node.logger.try_log (boost::str (boost::format ("Election erased for root %1%, confirmed: %2$b") % election.qualified_root.to_string () % election.confirmed ()));
+		node.logger->try_log (boost::str (boost::format ("Election erased for root %1%, confirmed: %2$b") % election.qualified_root.to_string () % election.confirmed ()));
 	}
 }
 

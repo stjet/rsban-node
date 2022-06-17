@@ -10,6 +10,11 @@ namespace nano
 {
 class bootstrap_server;
 
+namespace transport
+{
+	class tcp_channels;
+}
+
 /**
  * Server side portion of bootstrap sessions. Listens for new socket connections and spawns bootstrap_server objects when connected.
  */
@@ -21,6 +26,15 @@ public:
 	void stop ();
 	void accept_action (boost::system::error_code const &, std::shared_ptr<nano::socket> const &);
 	std::size_t connection_count ();
+	void erase_connection (nano::bootstrap_server * server_a);
+
+	std::size_t get_bootstrap_count ();
+	void inc_bootstrap_count ();
+	void dec_bootstrap_count ();
+
+	std::size_t get_realtime_count ();
+	void inc_realtime_count ();
+	void dec_realtime_count ();
 
 	nano::mutex mutex;
 	std::unordered_map<nano::bootstrap_server *, std::weak_ptr<nano::bootstrap_server>> connections;
@@ -28,9 +42,11 @@ public:
 	nano::node & node;
 	std::shared_ptr<nano::server_socket> listening_socket;
 	bool on{ false };
+	uint16_t port;
+
+private:
 	std::atomic<std::size_t> bootstrap_count{ 0 };
 	std::atomic<std::size_t> realtime_count{ 0 };
-	uint16_t port;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (bootstrap_listener & bootstrap_listener, std::string const & name);
@@ -74,5 +90,9 @@ public:
 	nano::tcp_endpoint remote_endpoint{ boost::asio::ip::address_v6::any (), 0 };
 	nano::account remote_node_id{};
 	std::chrono::steady_clock::time_point last_telemetry_req{ std::chrono::steady_clock::time_point () };
+	std::shared_ptr<nano::bootstrap_listener> bootstrap;
+
+private:
+	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 };
 }

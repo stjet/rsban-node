@@ -51,10 +51,10 @@ std::shared_ptr<nano::node> nano::system::add_node (nano::node_config const & no
 			auto node1 (*i);
 			auto node2 (*j);
 			auto starting1 (node1->network.size ());
-			size_t starting_listener1 (node1->bootstrap.realtime_count);
+			size_t starting_listener1 (node1->bootstrap->get_realtime_count ());
 			decltype (starting1) new1;
 			auto starting2 (node2->network.size ());
-			size_t starting_listener2 (node2->bootstrap.realtime_count);
+			size_t starting_listener2 (node2->bootstrap->get_realtime_count ());
 			decltype (starting2) new2;
 			if (type_a == nano::transport::transport_type::tcp)
 			{
@@ -80,8 +80,8 @@ std::shared_ptr<nano::node> nano::system::add_node (nano::node_config const & no
 				do
 				{
 					poll ();
-					new_listener1 = node1->bootstrap.realtime_count;
-					new_listener2 = node2->bootstrap.realtime_count;
+					new_listener1 = node1->bootstrap->get_realtime_count ();
+					new_listener2 = node2->bootstrap->get_realtime_count ();
 				} while (new_listener1 == starting_listener1 || new_listener2 == starting_listener2);
 			}
 		}

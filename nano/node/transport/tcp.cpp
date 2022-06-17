@@ -187,6 +187,16 @@ void nano::transport::tcp_channels::erase (nano::tcp_endpoint const & endpoint_a
 	channels.get<endpoint_tag> ().erase (endpoint_a);
 }
 
+void nano::transport::tcp_channels::erase_temporary_channel (nano::tcp_endpoint const & endpoint_a)
+{
+	auto exisiting_response_channel (find_channel (endpoint_a));
+	if (exisiting_response_channel != nullptr)
+	{
+		exisiting_response_channel->temporary = false;
+		erase (endpoint_a);
+	}
+}
+
 std::size_t nano::transport::tcp_channels::size () const
 {
 	nano::lock_guard<nano::mutex> lock (mutex);

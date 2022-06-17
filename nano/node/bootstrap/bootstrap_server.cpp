@@ -178,7 +178,11 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	stats{ node_a->stats },
 	tcp_channels (node->network.tcp_channels),
 	config{ node_a->config },
-	network_params{ node_a->network_params }
+	network_params{ node_a->network_params },
+	disable_bootstrap_bulk_pull_server{ node_a->flags.disable_bootstrap_bulk_pull_server },
+	disable_tcp_realtime{ node_a->flags.disable_tcp_realtime },
+	disable_bootstrap_listener{ node_a->flags.disable_bootstrap_listener }
+
 {
 	debug_assert (socket_a != nullptr);
 	receive_buffer->resize (1024);
@@ -370,7 +374,7 @@ void nano::bootstrap_server::receive_bulk_pull_action (boost::system::error_code
 			{
 				logger->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->start.to_string () % request->end.to_string () % (request->count ? request->count : std::numeric_limits<double>::infinity ()) % remote_endpoint));
 			}
-			if (is_bootstrap_connection () && !node->flags.disable_bootstrap_bulk_pull_server)
+			if (is_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -393,7 +397,7 @@ void nano::bootstrap_server::receive_bulk_pull_account_action (boost::system::er
 			{
 				logger->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->account.to_account () % nano::amount (request->minimum_amount).format_balance (nano::Mxrb_ratio, 10, true)));
 			}
-			if (is_bootstrap_connection () && !node->flags.disable_bootstrap_bulk_pull_server)
+			if (is_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -575,7 +579,7 @@ void nano::bootstrap_server::receive_node_id_handshake_action (boost::system::er
 		auto request (std::make_unique<nano::node_id_handshake> (error, stream, header_a));
 		if (!error)
 		{
-			if (socket->type () == nano::socket::type_t::undefined && !node->flags.disable_tcp_realtime)
+			if (socket->type () == nano::socket::type_t::undefined && !disable_tcp_realtime)
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -800,7 +804,7 @@ void nano::bootstrap_server::run_next (nano::unique_lock<nano::mutex> & lock_a)
 
 bool nano::bootstrap_server::is_bootstrap_connection ()
 {
-	if (socket->type () == nano::socket::type_t::undefined && !node->flags.disable_bootstrap_listener && bootstrap->get_bootstrap_count () < config->bootstrap_connections_max)
+	if (socket->type () == nano::socket::type_t::undefined && !disable_bootstrap_listener && bootstrap->get_bootstrap_count () < config->bootstrap_connections_max)
 	{
 		bootstrap->inc_bootstrap_count ();
 		socket->type_set (nano::socket::type_t::bootstrap);

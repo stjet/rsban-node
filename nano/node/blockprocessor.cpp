@@ -38,7 +38,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	network (node_a.network),
 	active_transactions (node_a.active),
 	store (node_a.store),
-	stats (node_a.stats),
+	stats (*node_a.stats),
 	scheduler (node_a.scheduler),
 	websocket_server (node_a.websocket_server),
 	block_arrival (node_a.block_arrival),

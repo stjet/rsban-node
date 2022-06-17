@@ -192,11 +192,11 @@ TEST (system, transport_basic)
 	// Start nodes in separate systems so they don't automatically connect with each other.
 	nano::system system1{ 1 };
 	auto & node1 = *system1.nodes[0];
-	ASSERT_EQ (0, node1.stats.count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in));
+	ASSERT_EQ (0, node1.stats->count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in));
 	nano::transport::inproc::channel channel{ node0, node1 };
 	// Send a keepalive message since they are easy to construct
 	nano::keepalive junk{ nano::dev::network_params.network };
 	channel.send (junk);
 	// Ensure the keepalive has been reecived on the target.
-	ASSERT_TIMELY (5s, node1.stats.count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in) > 0);
+	ASSERT_TIMELY (5s, node1.stats->count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in) > 0);
 }

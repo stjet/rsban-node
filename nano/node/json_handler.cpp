@@ -3899,12 +3899,12 @@ void nano::json_handler::sign ()
 
 void nano::json_handler::stats ()
 {
-	auto sink = node.stats.log_sink_json ();
+	auto sink = node.stats->log_sink_json ();
 	std::string type (request.get<std::string> ("type", ""));
 	bool use_sink = false;
 	if (type == "counters")
 	{
-		node.stats.log_counters (*sink);
+		node.stats->log_counters (*sink);
 		use_sink = true;
 	}
 	else if (type == "objects")
@@ -3913,7 +3913,7 @@ void nano::json_handler::stats ()
 	}
 	else if (type == "samples")
 	{
-		node.stats.log_samples (*sink);
+		node.stats->log_samples (*sink);
 		use_sink = true;
 	}
 	else if (type == "database")
@@ -3927,7 +3927,7 @@ void nano::json_handler::stats ()
 	if (!ec && use_sink)
 	{
 		auto stat_tree_l (*static_cast<boost::property_tree::ptree *> (sink->to_object ()));
-		stat_tree_l.put ("stat_duration_seconds", node.stats.last_reset ().count ());
+		stat_tree_l.put ("stat_duration_seconds", node.stats->last_reset ().count ());
 		std::stringstream ostream;
 		boost::property_tree::write_json (ostream, stat_tree_l);
 		response (ostream.str ());
@@ -3940,7 +3940,7 @@ void nano::json_handler::stats ()
 
 void nano::json_handler::stats_clear ()
 {
-	node.stats.clear ();
+	node.stats->clear ();
 	response_l.put ("success", "");
 	std::stringstream ostream;
 	boost::property_tree::write_json (ostream, response_l);

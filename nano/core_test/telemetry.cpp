@@ -470,7 +470,7 @@ TEST (telemetry, dos_tcp)
 		ASSERT_FALSE (ec);
 	});
 
-	ASSERT_TIMELY (10s, 1 == node_server->stats.count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in));
+	ASSERT_TIMELY (10s, 1 == node_server->stats->count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in));
 
 	auto orig = std::chrono::steady_clock::now ();
 	for (int i = 0; i < 10; ++i)
@@ -483,10 +483,10 @@ TEST (telemetry, dos_tcp)
 	ASSERT_TIMELY (10s, (nano::telemetry_cache_cutoffs::dev + orig) <= std::chrono::steady_clock::now ());
 
 	// Should process no more telemetry_req messages
-	ASSERT_EQ (1, node_server->stats.count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in));
+	ASSERT_EQ (1, node_server->stats->count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in));
 
 	// Now spam messages waiting for it to be processed
-	while (node_server->stats.count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in) == 1)
+	while (node_server->stats->count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in) == 1)
 	{
 		channel->send (message);
 		ASSERT_NO_ERROR (system.poll ());
@@ -513,7 +513,7 @@ TEST (telemetry, dos_udp)
 		ASSERT_FALSE (ec);
 	});
 
-	ASSERT_TIMELY (20s, 1 == node_server->stats.count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in));
+	ASSERT_TIMELY (20s, 1 == node_server->stats->count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in));
 
 	auto orig = std::chrono::steady_clock::now ();
 	for (int i = 0; i < 10; ++i)
@@ -526,11 +526,11 @@ TEST (telemetry, dos_udp)
 	ASSERT_TIMELY (20s, (nano::telemetry_cache_cutoffs::dev + orig) <= std::chrono::steady_clock::now ());
 
 	// Should process no more telemetry_req messages
-	ASSERT_EQ (1, node_server->stats.count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in));
+	ASSERT_EQ (1, node_server->stats->count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in));
 
 	// Now spam messages waiting for it to be processed
 	system.deadline_set (20s);
-	while (node_server->stats.count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in) == 1)
+	while (node_server->stats->count (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in) == 1)
 	{
 		channel->send (message);
 		ASSERT_NO_ERROR (system.poll ());
@@ -592,7 +592,7 @@ TEST (telemetry, max_possible_size)
 		ASSERT_FALSE (ec);
 	});
 
-	ASSERT_TIMELY (10s, 1 == node_server->stats.count (nano::stat::type::message, nano::stat::detail::telemetry_ack, nano::stat::dir::in));
+	ASSERT_TIMELY (10s, 1 == node_server->stats->count (nano::stat::type::message, nano::stat::detail::telemetry_ack, nano::stat::dir::in));
 }
 
 namespace nano
@@ -614,12 +614,12 @@ TEST (telemetry, DISABLED_remove_peer_different_genesis)
 	system.nodes.push_back (node1);
 	node0->network.merge_peer (node1->network.endpoint ());
 	node1->network.merge_peer (node0->network.endpoint ());
-	ASSERT_TIMELY (10s, node0->stats.count (nano::stat::type::telemetry, nano::stat::detail::different_genesis_hash) != 0 && node1->stats.count (nano::stat::type::telemetry, nano::stat::detail::different_genesis_hash) != 0);
+	ASSERT_TIMELY (10s, node0->stats->count (nano::stat::type::telemetry, nano::stat::detail::different_genesis_hash) != 0 && node1->stats->count (nano::stat::type::telemetry, nano::stat::detail::different_genesis_hash) != 0);
 
 	ASSERT_TIMELY (1s, 0 == node0->network.size ());
 	ASSERT_TIMELY (1s, 0 == node1->network.size ());
-	ASSERT_GE (node0->stats.count (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::out), 1);
-	ASSERT_GE (node1->stats.count (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::out), 1);
+	ASSERT_GE (node0->stats->count (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::out), 1);
+	ASSERT_GE (node1->stats->count (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::out), 1);
 
 	nano::lock_guard<nano::mutex> guard (node0->network.excluded_peers.mutex);
 	ASSERT_EQ (1, node0->network.excluded_peers.peers.get<nano::peer_exclusion::tag_endpoint> ().count (node1->network.endpoint ().address ()));
@@ -692,7 +692,7 @@ TEST (telemetry, remove_peer_invalid_signature)
 	auto telemetry_ack = nano::telemetry_ack{ nano::dev::network_params.network, telemetry_data };
 	node->network.inbound (telemetry_ack, channel);
 
-	ASSERT_TIMELY (10s, node->stats.count (nano::stat::type::telemetry, nano::stat::detail::invalid_signature) > 0);
+	ASSERT_TIMELY (10s, node->stats->count (nano::stat::type::telemetry, nano::stat::detail::invalid_signature) > 0);
 	ASSERT_NO_ERROR (system.poll_until_true (3s, [&node, address = channel->get_endpoint ().address ()] () -> bool {
 		nano::lock_guard<nano::mutex> guard (node->network.excluded_peers.mutex);
 		return node->network.excluded_peers.peers.get<nano::peer_exclusion::tag_endpoint> ().count (address);

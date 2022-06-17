@@ -9,7 +9,7 @@
 
 nano::transport::channel_udp::channel_udp (nano::transport::udp_channels & channels_a, nano::endpoint const & endpoint_a, uint8_t protocol_version_a) :
 	channel (rsnano::rsn_channel_udp_create (std::chrono::steady_clock::now ().time_since_epoch ().count ())),
-	stats (channels_a.node.stats),
+	stats (*channels_a.node.stats),
 	logger (*channels_a.node.logger),
 	limiter (channels_a.node.network.limiter),
 	io_ctx (channels_a.node.io_ctx),
@@ -76,11 +76,11 @@ void nano::transport::channel_udp::send_buffer (nano::shared_const_buffer const 
 		{
 			if (ec == boost::system::errc::host_unreachable)
 			{
-				node_l->stats.inc (nano::stat::type::error, nano::stat::detail::unreachable_host, nano::stat::dir::out);
+				node_l->stats->inc (nano::stat::type::error, nano::stat::detail::unreachable_host, nano::stat::dir::out);
 			}
 			if (size_a > 0)
 			{
-				node_l->stats.add (nano::stat::type::traffic_udp, nano::stat::dir::out, size_a);
+				node_l->stats->add (nano::stat::type::traffic_udp, nano::stat::dir::out, size_a);
 			}
 
 			if (callback_a)
@@ -580,51 +580,51 @@ void nano::transport::udp_channels::receive_action (nano::message_buffer * data_
 		parser.deserialize_buffer (data_a->buffer, data_a->size);
 		if (parser.status == nano::message_parser::parse_status::success)
 		{
-			node.stats.add (nano::stat::type::traffic_udp, nano::stat::dir::in, data_a->size);
+			node.stats->add (nano::stat::type::traffic_udp, nano::stat::dir::in, data_a->size);
 		}
 		else if (parser.status == nano::message_parser::parse_status::duplicate_publish_message)
 		{
-			node.stats.inc (nano::stat::type::filter, nano::stat::detail::duplicate_publish);
+			node.stats->inc (nano::stat::type::filter, nano::stat::detail::duplicate_publish);
 		}
 		else
 		{
-			node.stats.inc (nano::stat::type::error);
+			node.stats->inc (nano::stat::type::error);
 
 			switch (parser.status)
 			{
 				case nano::message_parser::parse_status::insufficient_work:
 					// We've already increment error count, update detail only
-					node.stats.inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
+					node.stats->inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
 					break;
 				case nano::message_parser::parse_status::invalid_header:
-					node.stats.inc (nano::stat::type::udp, nano::stat::detail::invalid_header);
+					node.stats->inc (nano::stat::type::udp, nano::stat::detail::invalid_header);
 					break;
 				case nano::message_parser::parse_status::invalid_message_type:
-					node.stats.inc (nano::stat::type::udp, nano::stat::detail::invalid_message_type);
+					node.stats->inc (nano::stat::type::udp, nano::stat::detail::invalid_message_type);
 					break;
 				case nano::message_parser::parse_status::invalid_keepalive_message:
-					node.stats.inc (nano::stat::type::udp, nano::stat::detail::invalid_keepalive_message);
+					node.stats->inc (nano::stat::type::udp, nano::stat::detail::invalid_keepalive_message);
 					break;
 				case nano::message_parser::parse_status::invalid_publish_message:
-					node.stats.inc (nano::stat::type::udp, nano::stat::detail::invalid_publish_message);
+					node.stats->inc (nano::stat::type::udp, nano::stat::detail::invalid_publish_message);
 					break;
 				case nano::message_parser::parse_status::invalid_confirm_req_message:
-					node.stats.inc (nano::stat::type::udp, nano::stat::detail::invalid_confirm_req_message);
+					node.stats->inc (nano::stat::type::udp, nano::stat::detail::invalid_confirm_req_message);
 					break;
 				case nano::message_parser::parse_status::invalid_confirm_ack_message:
-					node.stats.inc (nano::stat::type::udp, nano::stat::detail::invalid_confirm_ack_message);
+					node.stats->inc (nano::stat::type::udp, nano::stat::detail::invalid_confirm_ack_message);
 					break;
 				case nano::message_parser::parse_status::invalid_node_id_handshake_message:
-					node.stats.inc (nano::stat::type::udp, nano::stat::detail::invalid_node_id_handshake_message);
+					node.stats->inc (nano::stat::type::udp, nano::stat::detail::invalid_node_id_handshake_message);
 					break;
 				case nano::message_parser::parse_status::invalid_telemetry_req_message:
-					node.stats.inc (nano::stat::type::udp, nano::stat::detail::invalid_telemetry_req_message);
+					node.stats->inc (nano::stat::type::udp, nano::stat::detail::invalid_telemetry_req_message);
 					break;
 				case nano::message_parser::parse_status::invalid_telemetry_ack_message:
-					node.stats.inc (nano::stat::type::udp, nano::stat::detail::invalid_telemetry_ack_message);
+					node.stats->inc (nano::stat::type::udp, nano::stat::detail::invalid_telemetry_ack_message);
 					break;
 				case nano::message_parser::parse_status::outdated_version:
-					node.stats.inc (nano::stat::type::udp, nano::stat::detail::outdated_version);
+					node.stats->inc (nano::stat::type::udp, nano::stat::detail::outdated_version);
 					break;
 				case nano::message_parser::parse_status::duplicate_publish_message:
 				case nano::message_parser::parse_status::success:
@@ -640,7 +640,7 @@ void nano::transport::udp_channels::receive_action (nano::message_buffer * data_
 			node.logger->try_log (boost::str (boost::format ("Reserved sender %1%") % data_a->endpoint));
 		}
 
-		node.stats.inc_detail_only (nano::stat::type::error, nano::stat::detail::bad_sender);
+		node.stats->inc_detail_only (nano::stat::type::error, nano::stat::detail::bad_sender);
 	}
 }
 
@@ -674,7 +674,7 @@ bool nano::transport::udp_channels::max_ip_connections (nano::endpoint const & e
 	auto const result = channels.get<ip_address_tag> ().count (address) >= node.network_params.network.max_peers_per_ip;
 	if (!result)
 	{
-		node.stats.inc (nano::stat::type::udp, nano::stat::detail::udp_max_per_ip, nano::stat::dir::out);
+		node.stats->inc (nano::stat::type::udp, nano::stat::detail::udp_max_per_ip, nano::stat::dir::out);
 	}
 	return result;
 }
@@ -690,7 +690,7 @@ bool nano::transport::udp_channels::max_subnetwork_connections (nano::endpoint c
 	auto const result = channels.get<subnetwork_tag> ().count (subnet) >= node.network_params.network.max_peers_per_subnetwork;
 	if (!result)
 	{
-		node.stats.inc (nano::stat::type::udp, nano::stat::detail::udp_max_per_subnetwork, nano::stat::dir::out);
+		node.stats->inc (nano::stat::type::udp, nano::stat::detail::udp_max_per_subnetwork, nano::stat::dir::out);
 	}
 	return result;
 }

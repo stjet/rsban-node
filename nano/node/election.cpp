@@ -383,7 +383,7 @@ nano::election_vote_result nano::election::vote (nano::account const & rep, uint
 		}
 		if (should_process)
 		{
-			node.stats.inc (nano::stat::type::election, nano::stat::detail::vote_new);
+			node.stats->inc (nano::stat::type::election, nano::stat::detail::vote_new);
 			last_votes[rep] = { std::chrono::steady_clock::now (), timestamp_a, block_hash_a };
 			live_vote_action (rep);
 			if (!confirmed ())
@@ -445,7 +445,7 @@ std::size_t nano::election::insert_inactive_votes_cache (nano::inactive_cache_in
 		auto inserted (last_votes.emplace (rep, nano::vote_info{ std::chrono::steady_clock::time_point::min (), timestamp, cache_a.hash }));
 		if (inserted.second)
 		{
-			node.stats.inc (nano::stat::type::election, nano::stat::detail::vote_cached);
+			node.stats->inc (nano::stat::type::election, nano::stat::detail::vote_cached);
 		}
 	}
 	if (!confirmed ())
@@ -455,8 +455,8 @@ std::size_t nano::election::insert_inactive_votes_cache (nano::inactive_cache_in
 			auto delay (std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - cache_a.arrival));
 			if (delay > late_blocks_delay)
 			{
-				node.stats.inc (nano::stat::type::election, nano::stat::detail::late_block);
-				node.stats.add (nano::stat::type::election, nano::stat::detail::late_block_seconds, nano::stat::dir::in, delay.count (), true);
+				node.stats->inc (nano::stat::type::election, nano::stat::detail::late_block);
+				node.stats->add (nano::stat::type::election, nano::stat::detail::late_block_seconds, nano::stat::dir::in, delay.count (), true);
 			}
 		}
 		if (last_votes.size () > 1) // null account

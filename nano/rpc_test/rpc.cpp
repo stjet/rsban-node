@@ -5370,7 +5370,7 @@ TEST (rpc, block_confirm_confirmed)
 		auto transaction (node->store.tx_begin_read ());
 		ASSERT_TRUE (node->ledger.block_confirmed (transaction, nano::dev::genesis->hash ()));
 	}
-	ASSERT_EQ (0, node->stats.count (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out));
+	ASSERT_EQ (0, node->stats->count (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out));
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "block_confirm");
@@ -5382,9 +5382,9 @@ TEST (rpc, block_confirm_confirmed)
 	ASSERT_EQ (1, confirmed.size ());
 	ASSERT_EQ (nano::dev::genesis->hash (), confirmed.begin ()->winner->hash ());
 	// Check callback
-	ASSERT_TIMELY (10s, node->stats.count (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out) != 0);
+	ASSERT_TIMELY (10s, node->stats->count (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out) != 0);
 	// Callback result is error because callback target port isn't listening
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out));
 	node->stop ();
 }
 
@@ -5407,15 +5407,15 @@ TEST (rpc, stats_clear)
 	auto node = add_ipc_enabled_node (system);
 	auto const rpc_ctx = add_rpc (system, node);
 	nano::keypair key;
-	node->stats.inc (nano::stat::type::ledger, nano::stat::dir::in);
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::ledger, nano::stat::dir::in));
+	node->stats->inc (nano::stat::type::ledger, nano::stat::dir::in);
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::ledger, nano::stat::dir::in));
 	boost::property_tree::ptree request;
 	request.put ("action", "stats_clear");
 	auto response (wait_response (system, rpc_ctx, request));
 	std::string success (response.get<std::string> ("success"));
 	ASSERT_TRUE (success.empty ());
-	ASSERT_EQ (0, node->stats.count (nano::stat::type::ledger, nano::stat::dir::in));
-	ASSERT_LE (node->stats.last_reset ().count (), 5);
+	ASSERT_EQ (0, node->stats->count (nano::stat::type::ledger, nano::stat::dir::in));
+	ASSERT_LE (node->stats->last_reset ().count (), 5);
 }
 
 // Tests the RPC command returns the correct data for the unchecked blocks

@@ -10,7 +10,7 @@ using namespace std::chrono_literals;
 std::shared_ptr<nano::bootstrap_server> create_bootstrap_server (std::shared_ptr<nano::node> node)
 {
 	auto socket{ std::make_shared<nano::socket> (node->io_ctx, nano::socket::endpoint_type_t::server,
-	node->stats, *node->logger, node->workers, node->config.tcp_io_timeout, node->network_params.network.silent_connection_tolerance_time, node->config.logging.network_timeout_logging ()) };
+	*node->stats, *node->logger, node->workers, node->config.tcp_io_timeout, node->network_params.network.silent_connection_tolerance_time, node->config.logging.network_timeout_logging ()) };
 	return std::make_shared<nano::bootstrap_server> (socket, node);
 }
 
@@ -383,7 +383,7 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 		node2->stop ();
 	}
 	ASSERT_TIMELY (5s, attempt == nullptr || attempt->get_requeued_pulls () == 1);
-	ASSERT_EQ (0, node1->stats.count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in)); // Requeue is not increasing failed attempts
+	ASSERT_EQ (0, node1->stats->count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in)); // Requeue is not increasing failed attempts
 }
 
 // Test disabled because it's failing intermittently.
@@ -933,7 +933,7 @@ TEST (bootstrap_processor, DISABLED_lazy_unclear_state_link)
 	ASSERT_TIMELY (5s, node2->ledger.block_or_pruned_exists (send2->hash ()));
 	ASSERT_TIMELY (5s, node2->ledger.block_or_pruned_exists (open->hash ()));
 	ASSERT_TIMELY (5s, node2->ledger.block_or_pruned_exists (receive->hash ()));
-	ASSERT_EQ (0, node2->stats.count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in));
+	ASSERT_EQ (0, node2->stats->count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in));
 }
 
 TEST (bootstrap_processor, lazy_unclear_state_link_not_existing)
@@ -983,7 +983,7 @@ TEST (bootstrap_processor, lazy_unclear_state_link_not_existing)
 	ASSERT_TIMELY (5s, node2->ledger.block_or_pruned_exists (send1->hash ()));
 	ASSERT_TIMELY (5s, node2->ledger.block_or_pruned_exists (open->hash ()));
 	ASSERT_TIMELY (5s, node2->ledger.block_or_pruned_exists (send2->hash ()));
-	ASSERT_EQ (1, node2->stats.count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in));
+	ASSERT_EQ (1, node2->stats->count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in));
 }
 
 TEST (bootstrap_processor, DISABLED_lazy_destinations)
@@ -1835,7 +1835,7 @@ TEST (bulk, DISABLED_genesis_pruning)
 	// Bootstrap with missing blocks for node2
 	node2->bootstrap_initiator.bootstrap (node1->network.endpoint (), false);
 	node2->network.merge_peer (node1->network.endpoint ());
-	ASSERT_TIMELY (25s, node2->stats.count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out) >= 1 && !node2->bootstrap_initiator.in_progress ());
+	ASSERT_TIMELY (25s, node2->stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out) >= 1 && !node2->bootstrap_initiator.in_progress ());
 	// node2 still missing blocks
 	ASSERT_EQ (1, node2->ledger.cache.block_count);
 	{

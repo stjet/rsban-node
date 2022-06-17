@@ -98,7 +98,7 @@ void nano::bulk_pull_client::request ()
 			{
 				this_l->logger.try_log (boost::str (boost::format ("Error sending bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel_string ()));
 			}
-			this_l->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_request_failure, nano::stat::dir::in);
+			this_l->node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_request_failure, nano::stat::dir::in);
 		}
 	},
 	nano::buffer_drop_policy::no_limiter_drop);
@@ -137,7 +137,7 @@ void nano::bulk_pull_client::receive_block ()
 			{
 				this_l->node->logger->try_log (boost::str (boost::format ("Error receiving block type: %1%") % ec.message ()));
 			}
-			this_l->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_receive_block_failure, nano::stat::dir::in);
+			this_l->node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_receive_block_failure, nano::stat::dir::in);
 			this_l->network_error = true;
 		}
 	});
@@ -265,7 +265,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 			{
 				node->logger->try_log ("Error deserializing block received from pull request");
 			}
-			node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_deserialize_receive_block, nano::stat::dir::in);
+			node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_deserialize_receive_block, nano::stat::dir::in);
 		}
 		else // Work invalid
 		{
@@ -273,7 +273,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 			{
 				node->logger->try_log (boost::str (boost::format ("Insufficient work for bulk pull block: %1%") % block->hash ().to_string ()));
 			}
-			node->stats.inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
+			node->stats->inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
 		}
 	}
 	else
@@ -282,7 +282,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 		{
 			node->logger->try_log (boost::str (boost::format ("Error bulk receiving block: %1%") % ec.message ()));
 		}
-		node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_receive_block_failure, nano::stat::dir::in);
+		node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_receive_block_failure, nano::stat::dir::in);
 		network_error = true;
 	}
 }
@@ -330,7 +330,7 @@ void nano::bulk_pull_account_client::request ()
 			{
 				this_l->node->logger->try_log (boost::str (boost::format ("Error starting bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel_string ()));
 			}
-			this_l->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_error_starting_request, nano::stat::dir::in);
+			this_l->node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_error_starting_request, nano::stat::dir::in);
 		}
 	},
 	nano::buffer_drop_policy::no_limiter_drop);

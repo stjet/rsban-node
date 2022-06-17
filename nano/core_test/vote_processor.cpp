@@ -113,7 +113,7 @@ TEST (vote_processor, overflow)
 	}
 	ASSERT_GT (not_processed, 0);
 	ASSERT_LT (not_processed, total);
-	ASSERT_EQ (not_processed, node.stats.count (nano::stat::type::vote, nano::stat::detail::vote_overflow));
+	ASSERT_EQ (not_processed, node.stats->count (nano::stat::type::vote, nano::stat::detail::vote_overflow));
 }
 
 namespace nano
@@ -216,8 +216,8 @@ TEST (vote_processor, no_broadcast_local)
 	ASSERT_NE (votes.end (), existing);
 	ASSERT_EQ (vote->timestamp (), existing->second.timestamp);
 	// Ensure the vote, from a local representative, was not broadcast on processing - it should be flooded on vote generation instead.
-	ASSERT_EQ (0, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
+	ASSERT_EQ (0, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
 }
 
 // Issue that tracks last changes on this test: https://github.com/nanocurrency/nano-node/issues/3485
@@ -264,8 +264,8 @@ TEST (vote_processor, local_broadcast_without_a_representative)
 	ASSERT_NE (votes.end (), existing);
 	ASSERT_EQ (vote->timestamp (), existing->second.timestamp);
 	// Ensure the vote was broadcast
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
 }
 
 // Issue that tracks last changes on this test: https://github.com/nanocurrency/nano-node/issues/3485
@@ -317,8 +317,8 @@ TEST (vote_processor, no_broadcast_local_with_a_principal_representative)
 	ASSERT_NE (votes.end (), existing);
 	ASSERT_EQ (vote->timestamp (), existing->second.timestamp);
 	// Ensure the vote was not broadcast.
-	ASSERT_EQ (0, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
+	ASSERT_EQ (0, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
 }
 
 /**

@@ -43,7 +43,7 @@ void nano::bootstrap_initiator::bootstrap (bool force, std::string id_a, uint32_
 	nano::unique_lock<nano::mutex> lock (mutex);
 	if (!stopped && find_attempt (nano::bootstrap_mode::legacy) == nullptr)
 	{
-		node.stats.inc (nano::stat::type::bootstrap, frontiers_age_a == std::numeric_limits<uint32_t>::max () ? nano::stat::detail::initiate : nano::stat::detail::initiate_legacy_age, nano::stat::dir::out);
+		node.stats->inc (nano::stat::type::bootstrap, frontiers_age_a == std::numeric_limits<uint32_t>::max () ? nano::stat::detail::initiate : nano::stat::detail::initiate_legacy_age, nano::stat::dir::out);
 		auto legacy_attempt (std::make_shared<nano::bootstrap_attempt_legacy> (node.shared (), attempts.incremental++, id_a, frontiers_age_a, start_account_a));
 		attempts_list.push_back (legacy_attempt);
 		attempts.add (legacy_attempt);
@@ -68,7 +68,7 @@ void nano::bootstrap_initiator::bootstrap (nano::endpoint const & endpoint_a, bo
 	if (!stopped)
 	{
 		stop_attempts ();
-		node.stats.inc (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out);
+		node.stats->inc (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out);
 		nano::lock_guard<nano::mutex> lock (mutex);
 		auto legacy_attempt (std::make_shared<nano::bootstrap_attempt_legacy> (node.shared (), attempts.incremental++, id_a, std::numeric_limits<uint32_t>::max (), 0));
 		attempts_list.push_back (legacy_attempt);
@@ -91,7 +91,7 @@ bool nano::bootstrap_initiator::bootstrap_lazy (nano::hash_or_account const & ha
 		{
 			stop_attempts ();
 		}
-		node.stats.inc (nano::stat::type::bootstrap, nano::stat::detail::initiate_lazy, nano::stat::dir::out);
+		node.stats->inc (nano::stat::type::bootstrap, nano::stat::detail::initiate_lazy, nano::stat::dir::out);
 		nano::lock_guard<nano::mutex> lock (mutex);
 		if (!stopped && find_attempt (nano::bootstrap_mode::lazy) == nullptr)
 		{
@@ -113,7 +113,7 @@ void nano::bootstrap_initiator::bootstrap_wallet (std::deque<nano::account> & ac
 {
 	debug_assert (!accounts_a.empty ());
 	auto wallet_attempt (current_wallet_attempt ());
-	node.stats.inc (nano::stat::type::bootstrap, nano::stat::detail::initiate_wallet_lazy, nano::stat::dir::out);
+	node.stats->inc (nano::stat::type::bootstrap, nano::stat::detail::initiate_wallet_lazy, nano::stat::dir::out);
 	if (wallet_attempt == nullptr)
 	{
 		nano::lock_guard<nano::mutex> lock (mutex);

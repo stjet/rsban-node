@@ -140,7 +140,7 @@ void nano::bootstrap_listener::accept_action (boost::system::error_code const & 
 	}
 	else
 	{
-		node.stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_excluded);
+		node.stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_excluded);
 		if (node.config.logging.network_rejected_logging ())
 		{
 			node.logger->try_log ("Rejected connection from excluded peer ", socket_a->remote_endpoint ());
@@ -242,7 +242,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 			{
 				case nano::message_type::bulk_pull:
 				{
-					node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull, nano::stat::dir::in);
+					node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull, nano::stat::dir::in);
 					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_bulk_pull_action (ec, size_a, header);
 					});
@@ -250,7 +250,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				}
 				case nano::message_type::bulk_pull_account:
 				{
-					node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_account, nano::stat::dir::in);
+					node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_account, nano::stat::dir::in);
 					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_bulk_pull_account_action (ec, size_a, header);
 					});
@@ -258,7 +258,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				}
 				case nano::message_type::frontier_req:
 				{
-					node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::frontier_req, nano::stat::dir::in);
+					node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::frontier_req, nano::stat::dir::in);
 					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_frontier_req_action (ec, size_a, header);
 					});
@@ -266,7 +266,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				}
 				case nano::message_type::bulk_push:
 				{
-					node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_push, nano::stat::dir::in);
+					node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_push, nano::stat::dir::in);
 					if (is_bootstrap_connection ())
 					{
 						add_request (std::make_unique<nano::bulk_push> (header));
@@ -321,7 +321,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 						}
 						else
 						{
-							node->stats.inc (nano::stat::type::telemetry, nano::stat::detail::request_within_protection_cache_zone);
+							node->stats->inc (nano::stat::type::telemetry, nano::stat::detail::request_within_protection_cache_zone);
 						}
 					}
 					receive ();
@@ -498,7 +498,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 					}
 					else
 					{
-						node->stats.inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
+						node->stats->inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
 					}
 				}
 				receive ();
@@ -506,7 +506,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 		}
 		else
 		{
-			node->stats.inc (nano::stat::type::filter, nano::stat::detail::duplicate_publish);
+			node->stats->inc (nano::stat::type::filter, nano::stat::detail::duplicate_publish);
 			receive ();
 		}
 	}
@@ -606,7 +606,7 @@ void nano::bootstrap_server::finish_request ()
 	}
 	else
 	{
-		node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::request_underflow);
+		node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::request_underflow);
 	}
 
 	while (!requests.empty ())
@@ -737,7 +737,7 @@ public:
 					}
 					else
 					{
-						connection_l->node->stats.inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::out);
+						connection_l->node->stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::out);
 						connection_l->finish_request ();
 					}
 				}

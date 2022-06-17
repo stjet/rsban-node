@@ -372,7 +372,7 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 				{
 					// Initial node_id_handshake request without node ID
 					debug_assert (message_a.header.type == nano::message_type::node_id_handshake);
-					node.stats.inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
+					node.stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
 				}
 			}
 		}
@@ -424,7 +424,7 @@ bool nano::transport::tcp_channels::max_ip_connections (nano::tcp_endpoint const
 	}
 	if (result)
 	{
-		node.stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::out);
+		node.stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::out);
 	}
 	return result;
 }
@@ -445,7 +445,7 @@ bool nano::transport::tcp_channels::max_subnetwork_connections (nano::tcp_endpoi
 	}
 	if (result)
 	{
-		node.stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_subnetwork, nano::stat::dir::out);
+		node.stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_subnetwork, nano::stat::dir::out);
 	}
 	return result;
 }
@@ -587,7 +587,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 		node.network.tcp_channels->udp_fallback (endpoint_a);
 		return;
 	}
-	auto socket = std::make_shared<nano::socket> (node.io_ctx, nano::socket::endpoint_type_t::client, node.stats, *node.logger, node.workers,
+	auto socket = std::make_shared<nano::socket> (node.io_ctx, nano::socket::endpoint_type_t::client, *node.stats, *node.logger, node.workers,
 	node.config.tcp_io_timeout,
 	node.network_params.network.silent_connection_tolerance_time,
 	node.config.logging.network_timeout_logging ());
@@ -667,7 +667,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 			{
 				if (!ec && channel_a)
 				{
-					node_l->stats.inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
+					node_l->stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
 					auto error (false);
 					nano::bufferstream stream (receive_buffer_a->data (), size_a);
 					nano::message_header header (error, stream);
@@ -790,33 +790,33 @@ void nano::transport::tcp_channels::data_sent (boost::asio::ip::tcp::endpoint co
 
 void nano::transport::tcp_channels::host_unreachable ()
 {
-	node.stats.inc (nano::stat::type::error, nano::stat::detail::unreachable_host, nano::stat::dir::out);
+	node.stats->inc (nano::stat::type::error, nano::stat::detail::unreachable_host, nano::stat::dir::out);
 }
 
 void nano::transport::tcp_channels::message_sent (nano::message const & message_a)
 {
 	nano::transport::callback_visitor visitor;
 	message_a.visit (visitor);
-	node.stats.inc (nano::stat::type::message, visitor.result, nano::stat::dir::out);
+	node.stats->inc (nano::stat::type::message, visitor.result, nano::stat::dir::out);
 }
 
 void nano::transport::tcp_channels::message_dropped (nano::message const & message_a, std::size_t buffer_size_a)
 {
 	nano::transport::callback_visitor visitor;
 	message_a.visit (visitor);
-	node.stats.inc (nano::stat::type::drop, visitor.result, nano::stat::dir::out);
+	node.stats->inc (nano::stat::type::drop, visitor.result, nano::stat::dir::out);
 	if (node.config.logging.network_packet_logging ())
 	{
-		node.logger->always_log (boost::str (boost::format ("%1% of size %2% dropped") % node.stats.detail_to_string (visitor.result) % buffer_size_a));
+		node.logger->always_log (boost::str (boost::format ("%1% of size %2% dropped") % node.stats->detail_to_string (visitor.result) % buffer_size_a));
 	}
 }
 
 void nano::transport::tcp_channels::no_socket_drop ()
 {
-	node.stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_no_socket_drop, nano::stat::dir::out);
+	node.stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_no_socket_drop, nano::stat::dir::out);
 }
 
 void nano::transport::tcp_channels::write_drop ()
 {
-	node.stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out);
+	node.stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out);
 }

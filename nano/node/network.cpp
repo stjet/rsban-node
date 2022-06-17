@@ -21,10 +21,10 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 		}
 		else
 		{
-			this->node.stats.inc (nano::stat::type::message, nano::stat::detail::invalid_network);
+			this->node.stats->inc (nano::stat::type::message, nano::stat::detail::invalid_network);
 		}
 	} },
-	buffer_container (node_a.stats, nano::network::buffer_size, 4096), // 2Mb receive buffer
+	buffer_container (*node_a.stats, nano::network::buffer_size, 4096), // 2Mb receive buffer
 	resolver (node_a.io_ctx),
 	limiter (node_a.config.bandwidth_limit_burst_ratio, node_a.config.bandwidth_limit),
 	tcp_message_manager (node_a.config.tcp_incoming_connections_max),
@@ -421,7 +421,7 @@ public:
 		{
 			node.logger->try_log (boost::str (boost::format ("Received keepalive message from %1%") % channel->to_string ()));
 		}
-		node.stats.inc (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in);
+		node.stats->inc (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in);
 		node.network.merge_peers (message_a.peers);
 		// Check for special node port data
 		auto peer0 (message_a.peers[0]);
@@ -437,7 +437,7 @@ public:
 		{
 			node.logger->try_log (boost::str (boost::format ("Publish message from %1% for %2%") % channel->to_string () % message_a.block->hash ().to_string ()));
 		}
-		node.stats.inc (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in);
+		node.stats->inc (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in);
 		if (!node.block_processor.full ())
 		{
 			node.process_active (message_a.block);
@@ -445,7 +445,7 @@ public:
 		else
 		{
 			node.network.publish_filter.clear (message_a.digest);
-			node.stats.inc (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::in);
+			node.stats->inc (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::in);
 		}
 	}
 	void confirm_req (nano::confirm_req const & message_a) override
@@ -461,7 +461,7 @@ public:
 				node.logger->try_log (boost::str (boost::format ("Confirm_req message from %1% for %2%") % channel->to_string () % message_a.block->hash ().to_string ()));
 			}
 		}
-		node.stats.inc (nano::stat::type::message, nano::stat::detail::confirm_req, nano::stat::dir::in);
+		node.stats->inc (nano::stat::type::message, nano::stat::detail::confirm_req, nano::stat::dir::in);
 		// Don't load nodes with disabled voting
 		if (node.config.enable_voting && node.wallets.reps ().voting > 0)
 		{
@@ -481,7 +481,7 @@ public:
 		{
 			node.logger->try_log (boost::str (boost::format ("Received confirm_ack message from %1% for %2% timestamp %3%") % channel->to_string () % message_a.vote->hashes_string () % std::to_string (message_a.vote->timestamp ())));
 		}
-		node.stats.inc (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::in);
+		node.stats->inc (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::in);
 		if (!message_a.vote->account ().is_zero ())
 		{
 			node.vote_processor.vote (message_a.vote, channel);
@@ -505,7 +505,7 @@ public:
 	}
 	void node_id_handshake (nano::node_id_handshake const & message_a) override
 	{
-		node.stats.inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
+		node.stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
 	}
 	void telemetry_req (nano::telemetry_req const & message_a) override
 	{
@@ -513,7 +513,7 @@ public:
 		{
 			node.logger->try_log (boost::str (boost::format ("Telemetry_req message from %1%") % channel->to_string ()));
 		}
-		node.stats.inc (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in);
+		node.stats->inc (nano::stat::type::message, nano::stat::detail::telemetry_req, nano::stat::dir::in);
 
 		// Send an empty telemetry_ack if we do not want, just to acknowledge that we have received the message to
 		// remove any timeouts on the server side waiting for a message.
@@ -531,7 +531,7 @@ public:
 		{
 			node.logger->try_log (boost::str (boost::format ("Received telemetry_ack message from %1%") % channel->to_string ()));
 		}
-		node.stats.inc (nano::stat::type::message, nano::stat::detail::telemetry_ack, nano::stat::dir::in);
+		node.stats->inc (nano::stat::type::message, nano::stat::detail::telemetry_ack, nano::stat::dir::in);
 		if (node.telemetry)
 		{
 			node.telemetry->set (message_a, *channel);

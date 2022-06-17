@@ -58,11 +58,11 @@ TEST (socket, max_connections)
 	client3->async_connect (dst_endpoint, connect_handler);
 
 	auto get_tcp_accept_failures = [&node] () {
-		return node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_failure, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_failure, nano::stat::dir::in);
 	};
 
 	auto get_tcp_accept_successes = [&node] () {
-		return node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
 	};
 
 	ASSERT_TIMELY (5s, get_tcp_accept_failures () == 1);
@@ -154,11 +154,11 @@ TEST (socket, max_connections_per_ip)
 	}
 
 	auto get_tcp_max_per_ip = [&node] () {
-		return node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::in);
 	};
 
 	auto get_tcp_accept_successes = [&node] () {
-		return node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
 	};
 
 	ASSERT_TIMELY (5s, get_tcp_accept_successes () == max_ip_connections);
@@ -276,11 +276,11 @@ TEST (socket, max_connections_per_subnetwork)
 	}
 
 	auto get_tcp_max_per_subnetwork = [&node] () {
-		return node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_subnetwork, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_subnetwork, nano::stat::dir::in);
 	};
 
 	auto get_tcp_accept_successes = [&node] () {
-		return node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
 	};
 
 	ASSERT_TIMELY (5s, get_tcp_accept_successes () == max_subnetwork_connections);
@@ -339,11 +339,11 @@ TEST (socket, disabled_max_peers_per_ip)
 	}
 
 	auto get_tcp_max_per_ip = [&node] () {
-		return node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::in);
 	};
 
 	auto get_tcp_accept_successes = [&node] () {
-		return node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
 	};
 
 	ASSERT_TIMELY (5s, get_tcp_accept_successes () == max_ip_connections + 1);
@@ -397,10 +397,10 @@ TEST (socket, disconnection_of_silent_connections)
 	ASSERT_TIMELY (10s, server_data_socket->is_closed ());
 
 	auto get_tcp_io_timeout_drops = [&node] () {
-		return node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::in);
 	};
 	auto get_tcp_silent_connection_drops = [&node] () {
-		return node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_silent_connection_drop, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_silent_connection_drop, nano::stat::dir::in);
 	};
 	// Just to ensure the disconnection wasn't due to the timer timeout.
 	ASSERT_EQ (0, get_tcp_io_timeout_drops ());
@@ -460,13 +460,13 @@ TEST (socket, drop_policy)
 	// We're going to write twice the queue size + 1, and the server isn't reading
 	// The total number of drops should thus be 1 (the socket allows doubling the queue size for no_socket_drop)
 	func (nano::socket::queue_size_max * 2 + 1, nano::buffer_drop_policy::no_socket_drop);
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_write_no_socket_drop, nano::stat::dir::out));
-	ASSERT_EQ (0, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_write_no_socket_drop, nano::stat::dir::out));
+	ASSERT_EQ (0, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out));
 
 	func (nano::socket::queue_size_max + 1, nano::buffer_drop_policy::limiter);
 	// The stats are accumulated from before
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_write_no_socket_drop, nano::stat::dir::out));
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_write_no_socket_drop, nano::stat::dir::out));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out));
 
 	node->stop ();
 	runner.stop_event_processing ();
@@ -598,9 +598,9 @@ TEST (socket, concurrent_writes)
 	runner.stop_event_processing ();
 	runner.join ();
 
-	ASSERT_EQ (node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in), client_count);
+	ASSERT_EQ (node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in), client_count);
 	// We may exhaust max connections and have some tcp accept failures, but no more than the client count
-	ASSERT_LT (node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_failure, nano::stat::dir::in), client_count);
+	ASSERT_LT (node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_failure, nano::stat::dir::in), client_count);
 
 	for (auto & t : client_threads)
 	{
@@ -642,10 +642,10 @@ TEST (socket_timeout, connect)
 	// check that the callback was called and we got an error
 	ASSERT_TIMELY (6s, done == true);
 	ASSERT_TRUE (ec);
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_connect_error, nano::stat::dir::in));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_connect_error, nano::stat::dir::in));
 
 	// check that the socket was closed due to tcp_io_timeout timeout
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::out));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::out));
 }
 
 TEST (socket_timeout, read)
@@ -687,10 +687,10 @@ TEST (socket_timeout, read)
 	// check that the callback was called and we got an error
 	ASSERT_TIMELY (10s, done == true);
 	ASSERT_TRUE (ec);
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_read_error, nano::stat::dir::in));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_read_error, nano::stat::dir::in));
 
 	// check that the socket was closed due to tcp_io_timeout timeout
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::out));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::out));
 }
 
 TEST (socket_timeout, write)
@@ -737,10 +737,10 @@ TEST (socket_timeout, write)
 	// check that the callback was called and we got an error
 	ASSERT_TIMELY (10s, done == true);
 	ASSERT_TRUE (ec);
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_write_error, nano::stat::dir::in));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_write_error, nano::stat::dir::in));
 
 	// check that the socket was closed due to tcp_io_timeout timeout
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::out));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::out));
 }
 
 TEST (socket_timeout, read_overlapped)
@@ -793,10 +793,10 @@ TEST (socket_timeout, read_overlapped)
 	// check that the callback was called and we got an error
 	ASSERT_TIMELY (10s, done == true);
 	ASSERT_TRUE (ec);
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_read_error, nano::stat::dir::in));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_read_error, nano::stat::dir::in));
 
 	// check that the socket was closed due to tcp_io_timeout timeout
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::out));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::out));
 }
 
 TEST (socket_timeout, write_overlapped)
@@ -851,8 +851,8 @@ TEST (socket_timeout, write_overlapped)
 	// check that the callback was called and we got an error
 	ASSERT_TIMELY (10s, done == true);
 	ASSERT_TRUE (ec);
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_write_error, nano::stat::dir::in));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_write_error, nano::stat::dir::in));
 
 	// check that the socket was closed due to tcp_io_timeout timeout
-	ASSERT_EQ (1, node->stats.count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::out));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_io_timeout_drop, nano::stat::dir::out));
 }

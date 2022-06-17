@@ -225,7 +225,7 @@ TEST (active_transactions, inactive_votes_cache)
 	node.process_active (send);
 	node.block_processor.flush ();
 	ASSERT_TIMELY (5s, node.ledger.block_confirmed (node.store.tx_begin_read (), send->hash ()));
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::election, nano::stat::detail::vote_cached));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
 
 TEST (active_transactions, inactive_votes_cache_non_final)
@@ -246,7 +246,7 @@ TEST (active_transactions, inactive_votes_cache_non_final)
 	ASSERT_TIMELY (5s, node.active.inactive_votes_cache_size () == 1);
 	node.process_active (send);
 	node.block_processor.flush ();
-	ASSERT_TIMELY (5s, node.stats.count (nano::stat::type::election, nano::stat::detail::vote_cached) == 1);
+	ASSERT_TIMELY (5s, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached) == 1);
 	auto election = node.active.election (send->qualified_root ());
 	ASSERT_NE (nullptr, election);
 	ASSERT_FALSE (election->confirmed ());
@@ -290,7 +290,7 @@ TEST (active_transactions, inactive_votes_cache_fork)
 	node.process_active (send1);
 	ASSERT_TIMELY (5s, election->blocks ().size () == 2);
 	ASSERT_TIMELY (5s, node.block_confirmed (send1->hash ()));
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::election, nano::stat::detail::vote_cached));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
 
 TEST (active_transactions, inactive_votes_cache_existing_vote)
@@ -329,7 +329,7 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 	auto vote1 (std::make_shared<nano::vote> (key.pub, key.prv, nano::vote::timestamp_min * 1, 0, std::vector<nano::block_hash> (1, send->hash ())));
 	node.vote_processor.vote (vote1, std::make_shared<nano::transport::inproc::channel> (node, node));
 	ASSERT_TIMELY (5s, election->votes ().size () == 2);
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::election, nano::stat::detail::vote_new));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_new));
 	auto last_vote1 (election->votes ()[key.pub]);
 	ASSERT_EQ (send->hash (), last_vote1.hash);
 	ASSERT_EQ (nano::vote::timestamp_min * 1, last_vote1.timestamp);
@@ -347,7 +347,7 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 	ASSERT_EQ (last_vote1.hash, last_vote2.hash);
 	ASSERT_EQ (last_vote1.timestamp, last_vote2.timestamp);
 	ASSERT_EQ (last_vote1.time, last_vote2.time);
-	ASSERT_EQ (0, node.stats.count (nano::stat::type::election, nano::stat::detail::vote_cached));
+	ASSERT_EQ (0, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
 
 // Test disabled because it's failing intermittently.
@@ -401,7 +401,7 @@ TEST (active_transactions, DISABLED_inactive_votes_cache_multiple_votes)
 	auto election = node.active.election (send1->qualified_root ());
 	ASSERT_NE (nullptr, election);
 	ASSERT_EQ (3, election->votes ().size ()); // 2 votes and 1 default not_an_acount
-	ASSERT_EQ (2, node.stats.count (nano::stat::type::election, nano::stat::detail::vote_cached));
+	ASSERT_EQ (2, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
 
 TEST (active_transactions, inactive_votes_cache_election_start)
@@ -630,7 +630,7 @@ TEST (active_transactions, dropped_cleanup)
 	ASSERT_FALSE (node.network.publish_filter.apply (block_bytes.data (), block_bytes.size ()));
 
 	// An election was recently dropped
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::election, nano::stat::detail::election_drop_all));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::election_drop_all));
 
 	// Block cleared from active
 	ASSERT_EQ (0, node.active.blocks.count (nano::dev::genesis->hash ()));
@@ -649,7 +649,7 @@ TEST (active_transactions, dropped_cleanup)
 	ASSERT_TRUE (node.network.publish_filter.apply (block_bytes.data (), block_bytes.size ()));
 
 	// Not dropped
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::election, nano::stat::detail::election_drop_all));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::election_drop_all));
 
 	// Block cleared from active
 	ASSERT_EQ (0, node.active.blocks.count (nano::dev::genesis->hash ()));
@@ -678,7 +678,7 @@ TEST (active_transactions, republish_winner)
 
 	node1.process_active (send1);
 	node1.block_processor.flush ();
-	ASSERT_TIMELY (3s, node2.stats.count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) == 1);
+	ASSERT_TIMELY (3s, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) == 1);
 
 	// Several forks
 	for (auto i (0); i < 5; i++)
@@ -696,7 +696,7 @@ TEST (active_transactions, republish_winner)
 	}
 	node1.block_processor.flush ();
 	ASSERT_TIMELY (3s, !node1.active.empty ());
-	ASSERT_EQ (1, node2.stats.count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in));
+	ASSERT_EQ (1, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in));
 
 	// Process new fork with vote to change winner
 	auto fork = builder.make_block ()
@@ -905,7 +905,7 @@ TEST (active_transactions, fork_replacement_tally)
 	node_config.peering_port = nano::get_available_port ();
 	auto & node2 (*system.add_node (node_config));
 	node2.network.flood_block (send_last);
-	ASSERT_TIMELY (3s, node1.stats.count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) > 0);
+	ASSERT_TIMELY (3s, node1.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) > 0);
 	node1.block_processor.flush ();
 	std::this_thread::sleep_for (50ms);
 
@@ -919,7 +919,7 @@ TEST (active_transactions, fork_replacement_tally)
 	node1.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
 	node1.vote_processor.flush ();
 	node2.network.flood_block (send_last);
-	ASSERT_TIMELY (3s, node1.stats.count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) > 1);
+	ASSERT_TIMELY (3s, node1.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) > 1);
 	node1.block_processor.flush ();
 	std::this_thread::sleep_for (50ms);
 
@@ -1190,9 +1190,9 @@ TEST (active_transactions, activate_inactive)
 	ASSERT_TRUE (node.block_confirmed (send2->hash ()));
 	ASSERT_TRUE (node.block_confirmed (send->hash ()));
 
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out));
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out));
-	ASSERT_EQ (0, node.stats.count (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out));
+	ASSERT_EQ (0, node.stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out));
 
 	// The first block was not active so no activation takes place
 	ASSERT_FALSE (node.active.active (open->qualified_root ()) || node.block_confirmed_or_being_confirmed (node.store.tx_begin_read (), open->hash ()));
@@ -1507,7 +1507,7 @@ TEST (active_transactions, fifo)
 	ASSERT_TIMELY (5s, node.active.size () == 1);
 
 	// Ensure overflow stats have been incremented
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::election, nano::stat::detail::election_drop_overflow));
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::election_drop_overflow));
 
 	// Ensure the surviving transaction is the least recently inserted
 	ASSERT_TIMELY (1s, node.active.election (receive2->qualified_root ()) != nullptr);

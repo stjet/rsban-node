@@ -180,7 +180,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::LockHandle ** loc
 			}
 			else
 			{
-				node->stats.inc (nano::stat::type::error, nano::stat::detail::frontier_req, nano::stat::dir::out);
+				node->stats->inc (nano::stat::type::error, nano::stat::detail::frontier_req, nano::stat::dir::out);
 			}
 		}
 	}

@@ -22,8 +22,8 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	scheduler{ node_a.scheduler }, // Move dependencies requiring this circular reference
 	confirmation_height_processor{ confirmation_height_processor_a },
 	node{ node_a },
-	generator{ node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, node_a.network, node_a.stats, false },
-	final_generator{ node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, node_a.network, node_a.stats, true },
+	generator{ node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, node_a.network, *node_a.stats, false },
+	final_generator{ node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, node_a.network, *node_a.stats, true },
 	election_time_to_live{ node_a.network_params.network.is_dev_network () ? 0s : 2s },
 	thread ([this] () {
 		nano::thread_role::set (nano::thread_role::name::request_loop);
@@ -331,7 +331,7 @@ void nano::active_transactions::request_confirm (nano::unique_lock<nano::mutex> 
 			// Locks active mutex, cleans up the election and erases it from the main container
 			if (!confirmed_l)
 			{
-				node.stats.inc (nano::stat::type::election, nano::stat::detail::election_drop_expired);
+				node.stats->inc (nano::stat::type::election, nano::stat::detail::election_drop_expired);
 			}
 			erase (election_l->qualified_root);
 		}
@@ -352,7 +352,7 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 {
 	if (!election.confirmed ())
 	{
-		node.stats.inc (nano::stat::type::election, nano::stat::detail::election_drop_all);
+		node.stats->inc (nano::stat::type::election, nano::stat::detail::election_drop_all);
 	}
 
 	auto blocks_l = election.blocks ();
@@ -382,7 +382,7 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 		}
 	}
 
-	node.stats.inc (nano::stat::type::election, election.confirmed () ? nano::stat::detail::election_confirmed : nano::stat::detail::election_not_confirmed);
+	node.stats->inc (nano::stat::type::election, election.confirmed () ? nano::stat::detail::election_confirmed : nano::stat::detail::election_not_confirmed);
 	if (node.config.logging.election_result_logging ())
 	{
 		node.logger->try_log (boost::str (boost::format ("Election erased for root %1%, confirmed: %2$b") % election.qualified_root.to_string () % election.confirmed ()));
@@ -831,7 +831,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::un
 				auto const cache = find_inactive_votes_cache_impl (hash);
 				lock_a.unlock ();
 				result.election->insert_inactive_votes_cache (cache);
-				node.stats.inc (nano::stat::type::election, nano::stat::detail::election_start);
+				node.stats->inc (nano::stat::type::election, nano::stat::detail::election_start);
 				vacancy_update ();
 			}
 		}
@@ -1008,7 +1008,7 @@ void nano::active_transactions::erase_oldest ()
 	nano::unique_lock<nano::mutex> lock (mutex);
 	if (!roots.empty ())
 	{
-		node.stats.inc (nano::stat::type::election, nano::stat::detail::election_drop_overflow);
+		node.stats->inc (nano::stat::type::election, nano::stat::detail::election_drop_overflow);
 		auto item = roots.get<tag_random_access> ().front ();
 		cleanup_election (lock, *item.election);
 	}
@@ -1043,7 +1043,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 			auto const cache = find_inactive_votes_cache_impl (block_a->hash ());
 			lock.unlock ();
 			election->insert_inactive_votes_cache (cache);
-			node.stats.inc (nano::stat::type::election, nano::stat::detail::election_block_conflict);
+			node.stats->inc (nano::stat::type::election, nano::stat::detail::election_block_conflict);
 		}
 	}
 	return result;

@@ -184,5 +184,5 @@ TEST (peer_container, depeer)
 	auto bytes (message.to_bytes ());
 	nano::message_buffer buffer = { bytes->data (), bytes->size (), endpoint0 };
 	system.nodes[0]->network.udp_channels.receive_action (&buffer);
-	ASSERT_EQ (1, system.nodes[0]->stats.count (nano::stat::type::udp, nano::stat::detail::outdated_version));
+	ASSERT_EQ (1, system.nodes[0]->stats->count (nano::stat::type::udp, nano::stat::detail::outdated_version));
 }

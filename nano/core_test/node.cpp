@@ -347,9 +347,9 @@ TEST (node, auto_bootstrap_age)
 	ASSERT_NE (nullptr, nano::establish_tcp (system, *node1, node0->network.endpoint ()));
 	ASSERT_TIMELY (10s, node1->bootstrap_initiator.in_progress ());
 	// 4 bootstraps with frontiers age
-	ASSERT_TIMELY (10s, node0->stats.count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out) >= 3);
+	ASSERT_TIMELY (10s, node0->stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out) >= 3);
 	// More attempts with frontiers age
-	ASSERT_GE (node0->stats.count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out), node0->stats.count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out));
+	ASSERT_GE (node0->stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out), node0->stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out));
 
 	node1->stop ();
 }
@@ -537,7 +537,7 @@ TEST (node, connect_after_junk)
 	junk_buffer.push_back (0);
 	auto channel1 (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node0->network.endpoint (), node1->network_params.network.protocol_version));
 	channel1->send_buffer (nano::shared_const_buffer (std::move (junk_buffer)), [] (boost::system::error_code const &, size_t) {});
-	ASSERT_TIMELY (10s, node0->stats.count (nano::stat::type::error) != 0);
+	ASSERT_TIMELY (10s, node0->stats->count (nano::stat::type::error) != 0);
 	node1->start ();
 	system.nodes.push_back (node1);
 	auto channel2 (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node0->network.endpoint (), node1->network_params.network.protocol_version));
@@ -1165,7 +1165,7 @@ TEST (node, fork_no_vote_quorum)
 	auto channel = node2.network.find_node_id (node3.node_id.pub);
 	ASSERT_NE (nullptr, channel);
 	channel->send_buffer (nano::shared_const_buffer (std::move (buffer)));
-	ASSERT_TIMELY (10s, node3.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::in) >= 3);
+	ASSERT_TIMELY (10s, node3.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::in) >= 3);
 	ASSERT_TRUE (node1.latest (nano::dev::genesis_key.pub) == send1.hash ());
 	ASSERT_TRUE (node2.latest (nano::dev::genesis_key.pub) == send1.hash ());
 	ASSERT_TRUE (node3.latest (nano::dev::genesis_key.pub) == send1.hash ());
@@ -1440,7 +1440,7 @@ TEST (node, DISABLED_broadcast_elected)
 			ASSERT_TRUE (node1->ledger.block_or_pruned_exists (fork0->hash ()));
 			ASSERT_NO_ERROR (ec);
 		}
-		ASSERT_TIMELY (5s, node1->stats.count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out) != 0);
+		ASSERT_TIMELY (5s, node1->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out) != 0);
 	}
 }
 
@@ -1969,7 +1969,7 @@ TEST (node, no_voting)
 	// Broadcast a confirm so others should know this is a rep node
 	wallet1->send_action (nano::dev::genesis_key.pub, key1.pub, nano::Mxrb_ratio);
 	ASSERT_TIMELY (10s, node0.active.empty ());
-	ASSERT_EQ (0, node0.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::in));
+	ASSERT_EQ (0, node0.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::in));
 }
 
 TEST (node, send_callback)
@@ -2051,17 +2051,17 @@ TEST (node, stat_counting)
 {
 	nano::system system (1);
 	auto & node1 (*system.nodes[0]);
-	node1.stats.add (nano::stat::type::ledger, nano::stat::dir::in, 1);
-	node1.stats.add (nano::stat::type::ledger, nano::stat::dir::in, 5);
-	node1.stats.inc (nano::stat::type::ledger, nano::stat::dir::in);
-	node1.stats.inc (nano::stat::type::ledger, nano::stat::detail::send, nano::stat::dir::in);
-	node1.stats.inc (nano::stat::type::ledger, nano::stat::detail::send, nano::stat::dir::in);
-	node1.stats.inc (nano::stat::type::ledger, nano::stat::detail::receive, nano::stat::dir::in);
-	ASSERT_EQ (10, node1.stats.count (nano::stat::type::ledger, nano::stat::dir::in));
-	ASSERT_EQ (2, node1.stats.count (nano::stat::type::ledger, nano::stat::detail::send, nano::stat::dir::in));
-	ASSERT_EQ (1, node1.stats.count (nano::stat::type::ledger, nano::stat::detail::receive, nano::stat::dir::in));
-	node1.stats.add (nano::stat::type::ledger, nano::stat::dir::in, 0);
-	ASSERT_EQ (10, node1.stats.count (nano::stat::type::ledger, nano::stat::dir::in));
+	node1.stats->add (nano::stat::type::ledger, nano::stat::dir::in, 1);
+	node1.stats->add (nano::stat::type::ledger, nano::stat::dir::in, 5);
+	node1.stats->inc (nano::stat::type::ledger, nano::stat::dir::in);
+	node1.stats->inc (nano::stat::type::ledger, nano::stat::detail::send, nano::stat::dir::in);
+	node1.stats->inc (nano::stat::type::ledger, nano::stat::detail::send, nano::stat::dir::in);
+	node1.stats->inc (nano::stat::type::ledger, nano::stat::detail::receive, nano::stat::dir::in);
+	ASSERT_EQ (10, node1.stats->count (nano::stat::type::ledger, nano::stat::dir::in));
+	ASSERT_EQ (2, node1.stats->count (nano::stat::type::ledger, nano::stat::detail::send, nano::stat::dir::in));
+	ASSERT_EQ (1, node1.stats->count (nano::stat::type::ledger, nano::stat::detail::receive, nano::stat::dir::in));
+	node1.stats->add (nano::stat::type::ledger, nano::stat::dir::in, 0);
+	ASSERT_EQ (10, node1.stats->count (nano::stat::type::ledger, nano::stat::dir::in));
 }
 
 TEST (node, online_reps)
@@ -2257,9 +2257,9 @@ TEST (node, local_votes_cache)
 	nano::confirm_req message2{ nano::dev::network_params.network, send2 };
 	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
 	node.network.inbound (message1, channel);
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 1);
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 1);
 	node.network.inbound (message2, channel);
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 2);
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 2);
 	for (auto i (0); i < 100; ++i)
 	{
 		node.network.inbound (message1, channel);
@@ -2270,7 +2270,7 @@ TEST (node, local_votes_cache)
 		ASSERT_NO_ERROR (system.poll (node.aggregator.max_delay));
 	}
 	// Make sure a new vote was not generated
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 2);
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 2);
 	// Max cache
 	{
 		auto transaction (node.store.tx_begin_write ());
@@ -2285,7 +2285,7 @@ TEST (node, local_votes_cache)
 	{
 		ASSERT_NO_ERROR (system.poll (node.aggregator.max_delay));
 	}
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 3);
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 3);
 	ASSERT_FALSE (node.history.votes (send1->root (), send1->hash ()).empty ());
 	ASSERT_FALSE (node.history.votes (send2->root (), send2->hash ()).empty ());
 	ASSERT_FALSE (node.history.votes (send3->root (), send3->hash ()).empty ());
@@ -2340,27 +2340,27 @@ TEST (node, DISABLED_local_votes_cache_batch)
 	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
 	// Generates and sends one vote for both hashes which is then cached
 	node.network.inbound (message, channel);
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 1);
-	ASSERT_EQ (1, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 1);
+	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	ASSERT_FALSE (node.history.votes (send2->root (), send2->hash ()).empty ());
 	ASSERT_FALSE (node.history.votes (receive1->root (), receive1->hash ()).empty ());
 	// Only one confirm_ack should be sent if all hashes are part of the same vote
 	node.network.inbound (message, channel);
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 2);
-	ASSERT_EQ (2, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 2);
+	ASSERT_EQ (2, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	// Test when votes are different
 	node.history.erase (send2->root ());
 	node.history.erase (receive1->root ());
 	node.network.inbound (nano::confirm_req{ nano::dev::network_params.network, send2->hash (), send2->root () }, channel);
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 3);
-	ASSERT_EQ (3, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 3);
+	ASSERT_EQ (3, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	node.network.inbound (nano::confirm_req{ nano::dev::network_params.network, receive1->hash (), receive1->root () }, channel);
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 4);
-	ASSERT_EQ (4, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 4);
+	ASSERT_EQ (4, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	// There are two different votes, so both should be sent in response
 	node.network.inbound (message, channel);
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 6);
-	ASSERT_EQ (6, node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 6);
+	ASSERT_EQ (6, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 }
 
 TEST (node, local_votes_cache_generate_new_vote)
@@ -2379,7 +2379,7 @@ TEST (node, local_votes_cache_generate_new_vote)
 	ASSERT_EQ (1, votes1.size ());
 	ASSERT_EQ (1, votes1[0]->hashes ().size ());
 	ASSERT_EQ (nano::dev::genesis->hash (), votes1[0]->hashes ()[0]);
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 1);
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 1);
 	auto send1 = nano::state_block_builder ()
 				 .account (nano::dev::genesis_key.pub)
 				 .previous (nano::dev::genesis->hash ())
@@ -2398,11 +2398,11 @@ TEST (node, local_votes_cache_generate_new_vote)
 	auto votes2 (node.history.votes (send1->root (), send1->hash ()));
 	ASSERT_EQ (1, votes2.size ());
 	ASSERT_EQ (1, votes2[0]->hashes ().size ());
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 2);
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 2);
 	ASSERT_FALSE (node.history.votes (nano::dev::genesis->root (), nano::dev::genesis->hash ()).empty ());
 	ASSERT_FALSE (node.history.votes (send1->root (), send1->hash ()).empty ());
 	// First generated + again cached + new generated
-	ASSERT_TIMELY (3s, 3 == node.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
+	ASSERT_TIMELY (3s, 3 == node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 }
 
 TEST (node, local_votes_cache_fork)
@@ -2760,7 +2760,7 @@ TEST (node, DISABLED_fork_invalid_block_signature)
 	// Send the vote with the corrupt block signature
 	node2.network.flood_vote (vote_corrupt, 1.0f);
 	// Wait for the rollback
-	ASSERT_TIMELY (5s, node1.stats.count (nano::stat::type::rollback, nano::stat::detail::all));
+	ASSERT_TIMELY (5s, node1.stats->count (nano::stat::type::rollback, nano::stat::detail::all));
 	// Send the vote with the correct block
 	node2.network.flood_vote (vote, 1.0f);
 	ASSERT_TIMELY (10s, !node1.block (send1->hash ()));
@@ -3643,7 +3643,7 @@ TEST (node, rollback_gap_source)
 		ASSERT_TIMELY (3s, election->confirmed ());
 	}
 	// Wait for the rollback (attempt to replace fork with open)
-	ASSERT_TIMELY (5s, node.stats.count (nano::stat::type::rollback, nano::stat::detail::open) == 1);
+	ASSERT_TIMELY (5s, node.stats->count (nano::stat::type::rollback, nano::stat::detail::open) == 1);
 	ASSERT_TIMELY (5s, node.active.empty ());
 	// But replacing is not possible (missing source block - send2)
 	node.block_processor.flush ();
@@ -3669,7 +3669,7 @@ TEST (node, rollback_gap_source)
 		ASSERT_TIMELY (5s, election->votes ().size () == 2);
 	}
 	// Wait for new rollback
-	ASSERT_TIMELY (5s, node.stats.count (nano::stat::type::rollback, nano::stat::detail::open) == 2);
+	ASSERT_TIMELY (5s, node.stats->count (nano::stat::type::rollback, nano::stat::detail::open) == 2);
 	// Now fork block should be replaced with open
 	node.block_processor.flush ();
 	ASSERT_NE (nullptr, node.block (open->hash ()));

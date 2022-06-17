@@ -163,7 +163,7 @@ public:
 	boost::latch node_initialized_latch;
 	nano::node_config config;
 	nano::network_params & network_params;
-	nano::stat stats;
+	std::shared_ptr<nano::stat> stats;
 	nano::thread_pool workers;
 	std::shared_ptr<nano::websocket::listener> websocket_server;
 	nano::node_flags flags;

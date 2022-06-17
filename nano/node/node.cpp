@@ -113,7 +113,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	node_initialized_latch (1),
 	config (config_a),
 	network_params{ config.network_params },
-	stats (config.stat_config),
+	stats{ std::make_shared<nano::stat> (config.stat_config) },
 	workers (std::max (3u, config.io_threads / 4), nano::thread_role::name::worker),
 	flags (flags_a),
 	work (work_a),
@@ -125,13 +125,13 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	wallets_store_impl (std::make_unique<nano::mdb_wallets_store> (application_path_a / "wallets.ldb", config_a.lmdb_config)),
 	wallets_store (*wallets_store_impl),
 	gap_cache (*this),
-	ledger (store, stats, network_params.ledger, flags_a.generate_cache),
+	ledger (store, *stats, network_params.ledger, flags_a.generate_cache),
 	checker (config.signature_checker_threads),
 	// empty `config.peering_port` means the user made no port choice at all;
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
 	//
 	network (*this, config.peering_port.has_value () ? *config.peering_port : 0),
-	telemetry (std::make_shared<nano::telemetry> (network, workers, observers.telemetry, stats, network_params, flags.disable_ongoing_telemetry_requests)),
+	telemetry (std::make_shared<nano::telemetry> (network, workers, observers.telemetry, *stats, network_params, flags.disable_ongoing_telemetry_requests)),
 	bootstrap_initiator (*this),
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
 	//         a peering port and wants the OS to pick one, the picking happens when `network` gets initialized
@@ -144,7 +144,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	application_path (application_path_a),
 	port_mapping (*this),
 	rep_crawler (*this),
-	vote_processor (checker, active, observers, stats, config, flags, *logger, online_reps, rep_crawler, ledger, network_params),
+	vote_processor (checker, active, observers, *stats, config, flags, *logger, online_reps, rep_crawler, ledger, network_params),
 	warmed_up (0),
 	block_processor (*this, write_database_queue),
 	online_reps (ledger, config),
@@ -153,7 +153,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	confirmation_height_processor (ledger, write_database_queue, config.conf_height_processor_batch_min_time, config.logging, *logger, node_initialized_latch, flags.confirmation_height_processor_mode),
 	active (*this, confirmation_height_processor),
 	scheduler{ *this },
-	aggregator (config, stats, active.generator, active.final_generator, history, ledger, wallets, active),
+	aggregator (config, *stats, active.generator, active.final_generator, history, ledger, wallets, active),
 	wallets (wallets_store.init_error (), *this),
 	startup_time (std::chrono::steady_clock::now ()),
 	node_seq (seq)
@@ -240,7 +240,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 								{
 									node_l->logger->always_log (boost::str (boost::format ("Error resolving callback: %1%:%2%: %3%") % address % port % ec.message ()));
 								}
-								node_l->stats.inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
+								node_l->stats->inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
 							}
 						});
 					});
@@ -303,13 +303,13 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 			switch (status_a.type)
 			{
 				case nano::election_status_type::active_confirmed_quorum:
-					this->stats.inc (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out);
+					this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out);
 					break;
 				case nano::election_status_type::active_confirmation_height:
-					this->stats.inc (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out);
+					this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out);
 					break;
 				case nano::election_status_type::inactive_confirmation_height:
-					this->stats.inc (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out);
+					this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out);
 					break;
 				default:
 					break;
@@ -509,7 +509,7 @@ void nano::node::do_rpc_callback (boost::asio::ip::tcp::resolver::iterator i_a, 
 							{
 								if (boost::beast::http::to_status_class (resp->result ()) == boost::beast::http::status_class::successful)
 								{
-									node_l->stats.inc (nano::stat::type::http_callback, nano::stat::detail::initiate, nano::stat::dir::out);
+									node_l->stats->inc (nano::stat::type::http_callback, nano::stat::detail::initiate, nano::stat::dir::out);
 								}
 								else
 								{
@@ -517,7 +517,7 @@ void nano::node::do_rpc_callback (boost::asio::ip::tcp::resolver::iterator i_a, 
 									{
 										node_l->logger->try_log (boost::str (boost::format ("Callback to %1%:%2% failed with status: %3%") % address % port % resp->result ()));
 									}
-									node_l->stats.inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
+									node_l->stats->inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
 								}
 							}
 							else
@@ -526,7 +526,7 @@ void nano::node::do_rpc_callback (boost::asio::ip::tcp::resolver::iterator i_a, 
 								{
 									node_l->logger->try_log (boost::str (boost::format ("Unable complete callback: %1%:%2%: %3%") % address % port % ec.message ()));
 								}
-								node_l->stats.inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
+								node_l->stats->inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
 							};
 						});
 					}
@@ -536,7 +536,7 @@ void nano::node::do_rpc_callback (boost::asio::ip::tcp::resolver::iterator i_a, 
 						{
 							node_l->logger->try_log (boost::str (boost::format ("Unable to send callback: %1%:%2%: %3%") % address % port % ec.message ()));
 						}
-						node_l->stats.inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
+						node_l->stats->inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
 					}
 				});
 			}
@@ -546,7 +546,7 @@ void nano::node::do_rpc_callback (boost::asio::ip::tcp::resolver::iterator i_a, 
 				{
 					node_l->logger->try_log (boost::str (boost::format ("Unable to connect to callback address: %1%:%2%: %3%") % address % port % ec.message ()));
 				}
-				node_l->stats.inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
+				node_l->stats->inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
 				++i_a;
 				node_l->do_rpc_callback (i_a, address, port, target, body, resolver);
 			}
@@ -727,7 +727,7 @@ void nano::node::stop ()
 		port_mapping.stop ();
 		checker.stop ();
 		wallets.stop ();
-		stats.stop ();
+		stats->stop ();
 		auto epoch_upgrade = epoch_upgrading.lock ();
 		if (epoch_upgrade->valid ())
 		{
@@ -857,7 +857,7 @@ void nano::node::ongoing_bootstrap ()
 	// Differential bootstrap with max age (75% of all legacy attempts)
 	uint32_t frontiers_age (std::numeric_limits<uint32_t>::max ());
 	auto bootstrap_weight_reached (ledger.cache.block_count >= ledger.bootstrap_weight_max_blocks);
-	auto previous_bootstrap_count (stats.count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out) + stats.count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out));
+	auto previous_bootstrap_count (stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out) + stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out));
 	/*
 	- Maximum value for 25% of attempts or if block count is below preconfigured value (initial bootstrap not finished)
 	- Node shutdown time minus 1 hour for start attempts (warm up)

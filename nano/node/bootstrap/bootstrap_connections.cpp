@@ -189,7 +189,7 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::find_connec
 void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & endpoint_a, bool push_front)
 {
 	++connections_count;
-	auto socket (std::make_shared<nano::socket> (node.io_ctx, nano::socket::endpoint_type_t::client, node.stats, *node.logger, node.workers,
+	auto socket (std::make_shared<nano::socket> (node.io_ctx, nano::socket::endpoint_type_t::client, *node.stats, *node.logger, node.workers,
 	node.config.tcp_io_timeout,
 	node.network_params.network.silent_connection_tolerance_time,
 	node.config.logging.network_timeout_logging ()));
@@ -470,7 +470,7 @@ void nano::bootstrap_connections::requeue_pull (nano::pull_info const & pull_a, 
 			{
 				node.logger->try_log (boost::str (boost::format ("Failed to pull account %1% or head block %2% down to %3% after %4% attempts and %5% blocks processed") % pull.account_or_head.to_account () % pull.account_or_head.to_string () % pull.end.to_string () % pull.attempts % pull.processed));
 			}
-			node.stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in);
+			node.stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in);
 
 			if (lazy && pull.processed > 0)
 			{

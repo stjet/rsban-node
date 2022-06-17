@@ -283,7 +283,7 @@ public:
 			// Do not call any member variables here (like session_timer) as it's possible that the next request may already be underway.
 		});
 
-		node.stats.inc (nano::stat::type::ipc, nano::stat::detail::invocations);
+		node.stats->inc (nano::stat::type::ipc, nano::stat::detail::invocations);
 		auto body (std::string (reinterpret_cast<char *> (buffer.data ()), buffer.size ()));
 
 		// Note that if the rpc action is async, the shared_ptr<json_handler> lifetime will be extended by the action handler

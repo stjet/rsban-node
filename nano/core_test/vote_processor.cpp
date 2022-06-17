@@ -125,7 +125,7 @@ TEST (vote_processor, weights)
 
 	// Create representatives of different weight levels
 	// The online stake will be the minimum configurable due to online_reps sampling in tests
-	auto const online = node.config.online_weight_minimum.number ();
+	auto const online = node.config->online_weight_minimum.number ();
 	auto const level0 = online / 5000; // 0.02%
 	auto const level1 = online / 500; // 0.2%
 	auto const level2 = online / 50; // 2%
@@ -190,7 +190,7 @@ TEST (vote_processor, no_broadcast_local)
 										.account (nano::dev::genesis_key.pub)
 										.representative (nano::dev::genesis_key.pub)
 										.previous (nano::dev::genesis->hash ())
-										.balance (2 * node.config.vote_minimum.number ())
+										.balance (2 * node.config->vote_minimum.number ())
 										.link (key.pub)
 										.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 										.work (*system.work.generate (nano::dev::genesis->hash ()))
@@ -198,7 +198,7 @@ TEST (vote_processor, no_broadcast_local)
 	ASSERT_FALSE (ec);
 	ASSERT_EQ (nano::process_result::progress, node.process_local (send).code);
 	ASSERT_TIMELY (10s, !node.active.empty ());
-	ASSERT_EQ (2 * node.config.vote_minimum.number (), node.weight (nano::dev::genesis_key.pub));
+	ASSERT_EQ (2 * node.config->vote_minimum.number (), node.weight (nano::dev::genesis_key.pub));
 	// Insert account in wallet. Votes on node are not enabled.
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	// Ensure that the node knows the genesis key in its wallet.
@@ -243,7 +243,7 @@ TEST (vote_processor, local_broadcast_without_a_representative)
 										.account (nano::dev::genesis_key.pub)
 										.representative (nano::dev::genesis_key.pub)
 										.previous (nano::dev::genesis->hash ())
-										.balance (node.config.vote_minimum.number ())
+										.balance (node.config->vote_minimum.number ())
 										.link (key.pub)
 										.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 										.work (*system.work.generate (nano::dev::genesis->hash ()))
@@ -251,7 +251,7 @@ TEST (vote_processor, local_broadcast_without_a_representative)
 	ASSERT_FALSE (ec);
 	ASSERT_EQ (nano::process_result::progress, node.process_local (send).code);
 	ASSERT_TIMELY (10s, !node.active.empty ());
-	ASSERT_EQ (node.config.vote_minimum, node.weight (nano::dev::genesis_key.pub));
+	ASSERT_EQ (node.config->vote_minimum, node.weight (nano::dev::genesis_key.pub));
 	node.block_confirm (send);
 	// Process a vote without a representative
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::milliseconds_since_epoch (), nano::vote::duration_max, std::vector<nano::block_hash>{ send->hash () });
@@ -291,7 +291,7 @@ TEST (vote_processor, no_broadcast_local_with_a_principal_representative)
 										.account (nano::dev::genesis_key.pub)
 										.representative (nano::dev::genesis_key.pub)
 										.previous (nano::dev::genesis->hash ())
-										.balance (nano::dev::constants.genesis_amount - 2 * node.config.vote_minimum.number ())
+										.balance (nano::dev::constants.genesis_amount - 2 * node.config->vote_minimum.number ())
 										.link (key.pub)
 										.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 										.work (*system.work.generate (nano::dev::genesis->hash ()))
@@ -299,7 +299,7 @@ TEST (vote_processor, no_broadcast_local_with_a_principal_representative)
 	ASSERT_FALSE (ec);
 	ASSERT_EQ (nano::process_result::progress, node.process_local (send).code);
 	ASSERT_TIMELY (10s, !node.active.empty ());
-	ASSERT_EQ (nano::dev::constants.genesis_amount - 2 * node.config.vote_minimum.number (), node.weight (nano::dev::genesis_key.pub));
+	ASSERT_EQ (nano::dev::constants.genesis_amount - 2 * node.config->vote_minimum.number (), node.weight (nano::dev::genesis_key.pub));
 	// Insert account in wallet. Votes on node are not enabled.
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	// Ensure that the node knows the genesis key in its wallet.

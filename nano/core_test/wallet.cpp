@@ -802,7 +802,7 @@ TEST (wallet, send_race)
 TEST (wallet, password_race)
 {
 	nano::system system (1);
-	nano::thread_runner runner (system.io_ctx, system.nodes[0]->config.io_threads);
+	nano::thread_runner runner (system.io_ctx, system.nodes[0]->config->io_threads);
 	auto wallet = system.wallet (0);
 	std::thread thread ([&wallet] () {
 		for (int i = 0; i < 100; i++)
@@ -830,7 +830,7 @@ TEST (wallet, password_race)
 TEST (wallet, password_race_corrupt_seed)
 {
 	nano::system system (1);
-	nano::thread_runner runner (system.io_ctx, system.nodes[0]->config.io_threads);
+	nano::thread_runner runner (system.io_ctx, system.nodes[0]->config->io_threads);
 	auto wallet = system.wallet (0);
 	nano::raw_key seed;
 	{
@@ -970,7 +970,7 @@ TEST (wallet, epoch_2_validation)
 	// An epoch 2 receive block should be generated with lower difficulty with high probability
 	auto tries = 0;
 	auto max_tries = 20;
-	auto amount = node.config.receive_minimum.number ();
+	auto amount = node.config->receive_minimum.number ();
 	while (++tries < max_tries)
 	{
 		auto send = wallet.send_action (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, amount, 1);
@@ -1017,7 +1017,7 @@ TEST (wallet, epoch_2_receive_propagation)
 		// Send and open the account
 		wallet.insert_adhoc (nano::dev::genesis_key.prv, false);
 		wallet.insert_adhoc (key.prv, false);
-		auto amount = node.config.receive_minimum.number ();
+		auto amount = node.config->receive_minimum.number ();
 		auto send1 = wallet.send_action (nano::dev::genesis_key.pub, key.pub, amount, 1);
 		ASSERT_NE (nullptr, send1);
 		ASSERT_NE (nullptr, wallet.receive_action (send1->hash (), nano::dev::genesis_key.pub, amount, send1->link ().as_account (), 1));
@@ -1066,7 +1066,7 @@ TEST (wallet, epoch_2_receive_unopened)
 
 		// Send
 		wallet.insert_adhoc (nano::dev::genesis_key.prv, false);
-		auto amount = node.config.receive_minimum.number ();
+		auto amount = node.config->receive_minimum.number ();
 		auto send1 = wallet.send_action (nano::dev::genesis_key.pub, key.pub, amount, 1);
 
 		// Upgrade unopened account to epoch_2
@@ -1127,7 +1127,7 @@ TEST (wallet, search_receivable)
 				.account (nano::dev::genesis->account ())
 				.previous (nano::dev::genesis->hash ())
 				.representative (nano::dev::genesis->account ())
-				.balance (nano::dev::constants.genesis_amount - node.config.receive_minimum.number ())
+				.balance (nano::dev::constants.genesis_amount - node.config->receive_minimum.number ())
 				.link (nano::dev::genesis->account ())
 				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				.work (*system.work.generate (nano::dev::genesis->hash ()))
@@ -1181,7 +1181,7 @@ TEST (wallet, receive_pruned)
 
 	// Send
 	wallet1.insert_adhoc (nano::dev::genesis_key.prv, false);
-	auto amount = node2.config.receive_minimum.number ();
+	auto amount = node2.config->receive_minimum.number ();
 	auto send1 = wallet1.send_action (nano::dev::genesis_key.pub, key.pub, amount, 1);
 	auto send2 = wallet1.send_action (nano::dev::genesis_key.pub, key.pub, 1, 1);
 

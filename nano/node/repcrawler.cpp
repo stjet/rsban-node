@@ -35,7 +35,7 @@ void nano::rep_crawler::validate ()
 
 	// normally the rep_crawler only tracks principal reps but it can be made to track
 	// reps with less weight by setting rep_crawler_weight_minimum to a low value
-	auto minimum = std::min (node.minimum_principal_weight (), node.config.rep_crawler_weight_minimum.number ());
+	auto minimum = std::min (node.minimum_principal_weight (), node.config->rep_crawler_weight_minimum.number ());
 
 	for (auto const & i : responses_l)
 	{
@@ -45,7 +45,7 @@ void nano::rep_crawler::validate ()
 
 		if (channel->get_type () == nano::transport::transport_type::loopback)
 		{
-			if (node.config.logging.rep_crawler_logging ())
+			if (node.config->logging.rep_crawler_logging ())
 			{
 				node.logger->try_log (boost::str (boost::format ("rep_crawler ignoring vote from loopback channel %1%") % channel->to_string ()));
 			}
@@ -55,7 +55,7 @@ void nano::rep_crawler::validate ()
 		nano::uint128_t rep_weight = node.ledger.weight (vote->account ());
 		if (rep_weight < minimum)
 		{
-			if (node.config.logging.rep_crawler_logging ())
+			if (node.config->logging.rep_crawler_logging ())
 			{
 				node.logger->try_log (boost::str (boost::format ("rep_crawler ignoring vote from account %1% with too little voting weight %2%") % vote->account ().to_account () % rep_weight));
 			}
@@ -118,7 +118,7 @@ void nano::rep_crawler::ongoing_crawl ()
 	// If online weight drops below minimum, reach out to preconfigured peers
 	if (!sufficient_weight)
 	{
-		node.keepalive_preconfigured (node.config.preconfigured_peers);
+		node.keepalive_preconfigured (node.config->preconfigured_peers);
 	}
 	// Reduce crawl frequency when there's enough total peer weight
 	unsigned next_run_ms = node.network_params.network.is_dev_network () ? 100 : sufficient_weight ? 7000

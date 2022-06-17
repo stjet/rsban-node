@@ -152,12 +152,12 @@ TEST (active_transactions, keep_local)
 	nano::keypair key6{};
 
 	wallet.insert_adhoc (nano::dev::genesis_key.prv);
-	auto const send1 = wallet.send_action (nano::dev::genesis_key.pub, key1.pub, node.config.receive_minimum.number ());
-	auto const send2 = wallet.send_action (nano::dev::genesis_key.pub, key2.pub, node.config.receive_minimum.number ());
-	auto const send3 = wallet.send_action (nano::dev::genesis_key.pub, key3.pub, node.config.receive_minimum.number ());
-	auto const send4 = wallet.send_action (nano::dev::genesis_key.pub, key4.pub, node.config.receive_minimum.number ());
-	auto const send5 = wallet.send_action (nano::dev::genesis_key.pub, key5.pub, node.config.receive_minimum.number ());
-	auto const send6 = wallet.send_action (nano::dev::genesis_key.pub, key6.pub, node.config.receive_minimum.number ());
+	auto const send1 = wallet.send_action (nano::dev::genesis_key.pub, key1.pub, node.config->receive_minimum.number ());
+	auto const send2 = wallet.send_action (nano::dev::genesis_key.pub, key2.pub, node.config->receive_minimum.number ());
+	auto const send3 = wallet.send_action (nano::dev::genesis_key.pub, key3.pub, node.config->receive_minimum.number ());
+	auto const send4 = wallet.send_action (nano::dev::genesis_key.pub, key4.pub, node.config->receive_minimum.number ());
+	auto const send5 = wallet.send_action (nano::dev::genesis_key.pub, key5.pub, node.config->receive_minimum.number ());
+	auto const send6 = wallet.send_action (nano::dev::genesis_key.pub, key6.pub, node.config->receive_minimum.number ());
 
 	// force-confirm blocks
 	for (auto const & block : { send1, send2, send3, send4, send5, send6 })
@@ -174,7 +174,7 @@ TEST (active_transactions, keep_local)
 						  .account (key1.pub)
 						  .previous (0)
 						  .representative (key1.pub)
-						  .balance (node.config.receive_minimum.number ())
+						  .balance (node.config->receive_minimum.number ())
 						  .link (send1->hash ())
 						  .sign (key1.prv, key1.pub)
 						  .work (*system.work.generate (key1.pub))
@@ -183,7 +183,7 @@ TEST (active_transactions, keep_local)
 						  .account (key2.pub)
 						  .previous (0)
 						  .representative (key2.pub)
-						  .balance (node.config.receive_minimum.number ())
+						  .balance (node.config->receive_minimum.number ())
 						  .link (send2->hash ())
 						  .sign (key2.prv, key2.pub)
 						  .work (*system.work.generate (key2.pub))
@@ -192,7 +192,7 @@ TEST (active_transactions, keep_local)
 						  .account (key3.pub)
 						  .previous (0)
 						  .representative (key3.pub)
-						  .balance (node.config.receive_minimum.number ())
+						  .balance (node.config->receive_minimum.number ())
 						  .link (send3->hash ())
 						  .sign (key3.prv, key3.pub)
 						  .work (*system.work.generate (key3.pub))
@@ -949,7 +949,7 @@ TEST (active_transactions, confirmation_consistency)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	for (unsigned i = 0; i < 10; ++i)
 	{
-		auto block (system.wallet (0)->send_action (nano::dev::genesis_key.pub, nano::public_key (), node.config.receive_minimum.number ()));
+		auto block (system.wallet (0)->send_action (nano::dev::genesis_key.pub, nano::public_key (), node.config->receive_minimum.number ()));
 		ASSERT_NE (nullptr, block);
 		system.deadline_set (5s);
 		while (!node.ledger.block_confirmed (node.store.tx_begin_read (), block->hash ()))

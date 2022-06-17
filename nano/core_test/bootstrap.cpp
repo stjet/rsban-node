@@ -10,7 +10,7 @@ using namespace std::chrono_literals;
 std::shared_ptr<nano::bootstrap_server> create_bootstrap_server (std::shared_ptr<nano::node> node)
 {
 	auto socket{ std::make_shared<nano::socket> (node->io_ctx, nano::socket::endpoint_type_t::server,
-	*node->stats, *node->logger, node->workers, node->config.tcp_io_timeout, node->network_params.network.silent_connection_tolerance_time, node->config.logging.network_timeout_logging ()) };
+	*node->stats, *node->logger, node->workers, node->config->tcp_io_timeout, node->network_params.network.silent_connection_tolerance_time, node->config->logging.network_timeout_logging ()) };
 	return std::make_shared<nano::bootstrap_server> (socket, node);
 }
 
@@ -302,7 +302,7 @@ TEST (bootstrap_processor, process_new)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::keypair key2;
 	system.wallet (1)->insert_adhoc (key2.prv);
-	auto send (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node1->config.receive_minimum.number ()));
+	auto send (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node1->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send);
 	ASSERT_TIMELY (10s, !node1->balance (key2.pub).is_zero ());
 	auto receive (node2->block (node2->latest (key2.pub)));
@@ -1746,7 +1746,7 @@ TEST (bulk, offline_send)
 	nano::keypair key2;
 	auto wallet (node2->wallets.create (nano::random_wallet_id ()));
 	wallet->insert_adhoc (key2.prv);
-	auto send1 (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node1->config.receive_minimum.number ()));
+	auto send1 (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node1->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send1);
 	ASSERT_NE (std::numeric_limits<nano::uint256_t>::max (), node1->balance (nano::dev::genesis_key.pub));
 	node1->block_processor.flush ();
@@ -1765,7 +1765,7 @@ TEST (bulk, offline_send)
 	// Send block arrival via bootstrap
 	ASSERT_TIMELY (10s, node2->balance (nano::dev::genesis_key.pub) != std::numeric_limits<nano::uint256_t>::max ());
 	// Receiving send block
-	ASSERT_TIMELY (20s, node2->balance (key2.pub) == node1->config.receive_minimum.number ());
+	ASSERT_TIMELY (20s, node2->balance (key2.pub) == node1->config->receive_minimum.number ());
 	node2->stop ();
 }
 
@@ -1858,7 +1858,7 @@ TEST (bulk, DISABLED_genesis_pruning)
 TEST (bulk_pull_account, basics)
 {
 	nano::system system (1);
-	system.nodes[0]->config.receive_minimum = 20;
+	system.nodes[0]->config->receive_minimum = 20;
 	nano::keypair key1;
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	system.wallet (0)->insert_adhoc (key1.prv);

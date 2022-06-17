@@ -32,7 +32,7 @@ void nano::frontier_req_client::run (nano::account const & start_account_a, uint
 		}
 		else
 		{
-			if (this_l->node->config.logging.network_logging ())
+			if (this_l->node->config->logging.network_logging ())
 			{
 				this_l->node->logger->try_log (boost::str (boost::format ("Error while sending bootstrap request %1%") % ec.message ()));
 			}
@@ -62,7 +62,7 @@ void nano::frontier_req_client::receive_frontier ()
 		}
 		else
 		{
-			if (this_l->node->config.logging.network_message_logging ())
+			if (this_l->node->config->logging.network_message_logging ())
 			{
 				this_l->node->logger->try_log (boost::str (boost::format ("Invalid size: expected %1%, got %2%") % nano::frontier_req_client::size_frontier % size_a));
 			}
@@ -184,7 +184,7 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 				}
 				// Prevent new frontier_req requests
 				attempt->set_start_account (std::numeric_limits<nano::uint256_t>::max ());
-				if (node->config.logging.bulk_pull_logging ())
+				if (node->config->logging.bulk_pull_logging ())
 				{
 					node->logger->try_log ("Bulk push cost: ", bulk_push_cost);
 				}
@@ -206,7 +206,7 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 	}
 	else
 	{
-		if (node->config.logging.network_logging ())
+		if (node->config->logging.network_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Error while receiving frontier %1%") % ec.message ()));
 		}
@@ -264,7 +264,7 @@ void nano::frontier_req_server::send_next ()
 			debug_assert (!frontier.is_zero ());
 		}
 		auto this_l (shared_from_this ());
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Sending frontier for %1% %2%") % current.to_account () % frontier.to_string ()));
 		}
@@ -289,7 +289,7 @@ void nano::frontier_req_server::send_finished ()
 		write (stream, zero.bytes);
 	}
 	auto this_l (shared_from_this ());
-	if (node->config.logging.network_logging ())
+	if (node->config->logging.network_logging ())
 	{
 		node->logger->try_log ("Frontier sending finished");
 	}
@@ -306,7 +306,7 @@ void nano::frontier_req_server::no_block_sent (boost::system::error_code const &
 	}
 	else
 	{
-		if (node->config.logging.network_logging ())
+		if (node->config->logging.network_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Error sending frontier finish: %1%") % ec.message ()));
 		}
@@ -322,7 +322,7 @@ void nano::frontier_req_server::sent_action (boost::system::error_code const & e
 	}
 	else
 	{
-		if (node->config.logging.network_logging ())
+		if (node->config->logging.network_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Error sending frontier pair: %1%") % ec.message ()));
 		}

@@ -230,7 +230,7 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 				sigman.register_signal_handler (SIGHUP, sighup_signal_handler, true);
 #endif
 
-				runner = std::make_unique<nano::thread_runner> (io_ctx, node->config.io_threads);
+				runner = std::make_unique<nano::thread_runner> (io_ctx, node->config->io_threads);
 				runner->join ();
 
 				if (sig_int_or_term == 1)

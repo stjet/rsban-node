@@ -22,8 +22,8 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	scheduler{ node_a.scheduler }, // Move dependencies requiring this circular reference
 	confirmation_height_processor{ confirmation_height_processor_a },
 	node{ node_a },
-	generator{ node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, node_a.network, *node_a.stats, false },
-	final_generator{ node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, node_a.network, *node_a.stats, true },
+	generator{ *node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, node_a.network, *node_a.stats, false },
+	final_generator{ *node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, node_a.network, *node_a.stats, true },
 	election_time_to_live{ node_a.network_params.network.is_dev_network () ? 0s : 2s },
 	thread ([this] () {
 		nano::thread_role::set (nano::thread_role::name::request_loop);
@@ -81,10 +81,10 @@ nano::frontiers_confirmation_info nano::active_transactions::get_frontiers_confi
 {
 	// Limit maximum count of elections to start
 	auto rep_counts (node.wallets.reps ());
-	bool representative (node.config.enable_voting && rep_counts.voting > 0);
+	bool representative (node.config->enable_voting && rep_counts.voting > 0);
 	bool half_princpal_representative (representative && rep_counts.have_half_rep ());
 	/* Check less frequently for regular nodes in auto mode */
-	bool agressive_mode (half_princpal_representative || node.config.frontiers_confirmation == nano::frontiers_confirmation_mode::always);
+	bool agressive_mode (half_princpal_representative || node.config->frontiers_confirmation == nano::frontiers_confirmation_mode::always);
 	auto is_dev_network = node.network_params.network.is_dev_network ();
 	auto roots_size = size ();
 	auto check_time_exceeded = std::chrono::steady_clock::now () >= next_frontier_check;
@@ -92,7 +92,7 @@ nano::frontiers_confirmation_info nano::active_transactions::get_frontiers_confi
 	auto low_active_elections = roots_size < max_elections;
 	bool wallets_check_required = (!skip_wallets || !priority_wallet_cementable_frontiers.empty ()) && !agressive_mode;
 	// Minimise dropping real-time transactions, set the number of frontiers added to a factor of the maximum number of possible active elections
-	auto max_active = node.config.active_elections_size / 20;
+	auto max_active = node.config->active_elections_size / 20;
 	if (roots_size <= max_active && (check_time_exceeded || wallets_check_required || (!is_dev_network && low_active_elections && agressive_mode)))
 	{
 		// When the number of active elections is low increase max number of elections for setting confirmation height.
@@ -283,7 +283,7 @@ void nano::active_transactions::block_already_cemented_callback (nano::block_has
 int64_t nano::active_transactions::vacancy () const
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	auto result = static_cast<int64_t> (node.config.active_elections_size) - static_cast<int64_t> (roots.size ());
+	auto result = static_cast<int64_t> (node.config->active_elections_size) - static_cast<int64_t> (roots.size ());
 	return result;
 }
 
@@ -296,7 +296,7 @@ void nano::active_transactions::request_confirm (nano::unique_lock<nano::mutex> 
 
 	lock_a.unlock ();
 
-	nano::confirmation_solicitor solicitor (node.network, node.config);
+	nano::confirmation_solicitor solicitor (node.network, *node.config);
 	solicitor.prepare (node.rep_crawler.principal_representatives (std::numeric_limits<std::size_t>::max ()));
 	nano::vote_generator_session generator_session (generator);
 	nano::vote_generator_session final_generator_session (generator);
@@ -342,7 +342,7 @@ void nano::active_transactions::request_confirm (nano::unique_lock<nano::mutex> 
 	final_generator_session.flush ();
 	lock_a.lock ();
 
-	if (node.config.logging.timing_logging ())
+	if (node.config->logging.timing_logging ())
 	{
 		node.logger->try_log (boost::str (boost::format ("Processed %1% elections (%2% were already confirmed) in %3% %4%") % this_loop_target_l % (this_loop_target_l - unconfirmed_count_l) % elapsed.value ().count () % elapsed.unit ()));
 	}
@@ -383,7 +383,7 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 	}
 
 	node.stats->inc (nano::stat::type::election, election.confirmed () ? nano::stat::detail::election_confirmed : nano::stat::detail::election_not_confirmed);
-	if (node.config.logging.election_result_logging ())
+	if (node.config->logging.election_result_logging ())
 	{
 		node.logger->try_log (boost::str (boost::format ("Election erased for root %1%, confirmed: %2$b") % election.qualified_root.to_string () % election.confirmed ()));
 	}
@@ -554,7 +554,7 @@ void nano::active_transactions::confirm_expired_frontiers_pessimistically (nano:
 bool nano::active_transactions::should_do_frontiers_confirmation () const
 {
 	auto pending_confirmation_height_size (confirmation_height_processor.awaiting_processing_size ());
-	auto disabled_confirmation_mode = (node.config.frontiers_confirmation == nano::frontiers_confirmation_mode::disabled);
+	auto disabled_confirmation_mode = (node.config->frontiers_confirmation == nano::frontiers_confirmation_mode::disabled);
 	auto conf_height_capacity_reached = pending_confirmation_height_size > confirmed_frontiers_max_pending_size;
 	auto all_cemented = node.ledger.cache.block_count == node.ledger.cache.cemented_count;
 	return (!disabled_confirmation_mode && !conf_height_capacity_reached && !all_cemented);
@@ -959,7 +959,7 @@ void nano::active_transactions::add_recently_cemented (nano::election_status con
 {
 	nano::lock_guard<nano::mutex> guard (mutex);
 	recently_cemented.push_back (status_a);
-	if (recently_cemented.size () > node.config.confirmation_history_size)
+	if (recently_cemented.size () > node.config->confirmation_history_size)
 	{
 		recently_cemented.pop_front ();
 	}
@@ -1251,7 +1251,7 @@ nano::inactive_cache_status nano::active_transactions::inactive_votes_bootstrap_
 	{
 		status.bootstrap_started = true;
 	}
-	if (!previously_a.election_started && voters_size_a >= election_start_voters_min && tally_a >= (node.online_reps.trended () / 100) * node.config.election_hint_weight_percent)
+	if (!previously_a.election_started && voters_size_a >= election_start_voters_min && tally_a >= (node.online_reps.trended () / 100) * node.config->election_hint_weight_percent)
 	{
 		status.election_started = true;
 	}

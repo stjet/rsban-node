@@ -31,7 +31,7 @@ void nano::port_mapping::start ()
 
 std::string nano::port_mapping::get_config_port (std::string const & node_port_a)
 {
-	return node.config.external_port != 0 ? std::to_string (node.config.external_port) : node_port_a;
+	return node.config->external_port != 0 ? std::to_string (node.config->external_port) : node_port_a;
 }
 
 std::string nano::port_mapping::to_string ()
@@ -58,10 +58,10 @@ void nano::port_mapping::refresh_devices ()
 		std::array<char, 64> local_address_l;
 		local_address_l.fill (0);
 		auto igd_error_l (UPNP_GetValidIGD (upnp_l.devices, &upnp_l.urls, &upnp_l.data, local_address_l.data (), sizeof (local_address_l)));
-		if (check_count % 15 == 0 || node.config.logging.upnp_details_logging ())
+		if (check_count % 15 == 0 || node.config->logging.upnp_details_logging ())
 		{
 			node.logger->always_log (boost::str (boost::format ("UPnP local address: %1%, discovery: %2%, IGD search: %3%") % local_address_l.data () % discover_error_l % igd_error_l));
-			if (node.config.logging.upnp_details_logging ())
+			if (node.config->logging.upnp_details_logging ())
 			{
 				for (auto i (upnp_l.devices); i != nullptr; i = i->pNext)
 				{
@@ -168,7 +168,7 @@ bool nano::port_mapping::check_lost_or_old_mapping ()
 			protocol.external_address = boost::asio::ip::address_v4::any ();
 			node.logger->always_log (boost::str (boost::format ("UPNP_GetExternalIPAddress failed %1%: %2%") % verify_port_mapping_error_l % strupnperror (verify_port_mapping_error_l)));
 		}
-		if (node.config.logging.upnp_details_logging ())
+		if (node.config->logging.upnp_details_logging ())
 		{
 			node.logger->always_log (boost::str (boost::format ("UPnP %1% mapping verification response: %2%, external ip response: %3%, external ip: %4%, internal ip: %5%, remaining lease: %6%") % protocol.name % verify_port_mapping_error_l % external_ip_error_l % external_address_l.data () % address.to_string () % remaining_mapping_duration_l.data ()));
 		}
@@ -197,7 +197,7 @@ void nano::port_mapping::check_mapping_loop ()
 	}
 	else
 	{
-		if (check_count < 10 || node.config.logging.upnp_details_logging ())
+		if (check_count < 10 || node.config->logging.upnp_details_logging ())
 		{
 			node.logger->always_log (boost::str (boost::format ("UPnP No IGD devices found")));
 		}

@@ -1038,7 +1038,7 @@ int main (int argc, char * const * argv)
 			nano::uint128_t genesis_balance (std::numeric_limits<nano::uint128_t>::max ());
 			// Generating keys
 			std::vector<nano::keypair> keys (num_representatives);
-			nano::uint128_t balance ((node->config.online_weight_minimum.number () / num_representatives) + 1);
+			nano::uint128_t balance ((node->config->online_weight_minimum.number () / num_representatives) + 1);
 			for (auto i (0); i != num_representatives; ++i)
 			{
 				auto transaction (node->store.tx_begin_write ());
@@ -1211,7 +1211,7 @@ int main (int argc, char * const * argv)
 				}
 			}
 			node1->start ();
-			nano::thread_runner runner1 (io_ctx1, node1->config.io_threads);
+			nano::thread_runner runner1 (io_ctx1, node1->config->io_threads);
 
 			std::cout << boost::str (boost::format ("Processing %1% blocks\n") % (count * 2));
 			for (auto & block : blocks)
@@ -1259,7 +1259,7 @@ int main (int argc, char * const * argv)
 
 			auto node2 (std::make_shared<nano::node> (io_ctx2, path2, config2, work, flags, 1));
 			node2->start ();
-			nano::thread_runner runner2 (io_ctx2, node2->config.io_threads);
+			nano::thread_runner runner2 (io_ctx2, node2->config->io_threads);
 			std::cout << boost::str (boost::format ("Processing %1% blocks (test node)\n") % (count * 2));
 			// Processing block
 			while (!blocks.empty ())

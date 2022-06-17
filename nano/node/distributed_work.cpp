@@ -318,7 +318,7 @@ void nano::distributed_work::set_once (uint64_t const work_a, std::string const 
 		}
 		winner = source_a;
 		work_result = work_a;
-		if (node.config.logging.work_generation_time ())
+		if (node.config->logging.work_generation_time ())
 		{
 			boost::format unformatted_l ("Work generation for %1%, with a threshold difficulty of %2% (multiplier %3%x) complete: %4% ms");
 			auto multiplier_text_l (nano::to_string (nano::difficulty::to_multiplier (request.difficulty, node.default_difficulty (request.version)), 2));
@@ -338,7 +338,7 @@ void nano::distributed_work::cancel ()
 			request.callback (boost::none);
 		}
 		stop_once (true);
-		if (node.config.logging.work_generation_time ())
+		if (node.config->logging.work_generation_time ())
 		{
 			node.logger->try_log (boost::str (boost::format ("Work generation for %1% was cancelled after %2% ms") % request.root.to_string () % elapsed.value ().count ()));
 		}
@@ -361,7 +361,7 @@ void nano::distributed_work::handle_failure ()
 		if (!local_generation_started && !finished.exchange (true))
 		{
 			status = work_generation_status::failure_peers;
-			if (backoff == std::chrono::seconds (1) && node.config.logging.work_generation_time ())
+			if (backoff == std::chrono::seconds (1) && node.config->logging.work_generation_time ())
 			{
 				node.logger->always_log ("Work peer(s) failed to generate work for root ", request.root.to_string (), ", retrying...");
 			}

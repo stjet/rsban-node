@@ -13,7 +13,7 @@ nano::transport::channel_udp::channel_udp (nano::transport::udp_channels & chann
 	logger (*channels_a.node.logger),
 	limiter (channels_a.node.network.limiter),
 	io_ctx (channels_a.node.io_ctx),
-	network_packet_logging (channels_a.node.config.logging.network_packet_logging ()),
+	network_packet_logging (channels_a.node.config->logging.network_packet_logging ()),
 	endpoint (endpoint_a),
 	channels (channels_a)
 {
@@ -135,7 +135,7 @@ std::shared_ptr<nano::transport::channel_udp> nano::transport::udp_channels::ins
 {
 	debug_assert (endpoint_a.address ().is_v6 ());
 	std::shared_ptr<nano::transport::channel_udp> result;
-	if (!node.network.not_a_peer (endpoint_a, node.config.allow_local_peers) && (node.network_params.network.is_dev_network () || !max_ip_or_subnetwork_connections (endpoint_a)))
+	if (!node.network.not_a_peer (endpoint_a, node.config->allow_local_peers) && (node.network_params.network.is_dev_network () || !max_ip_or_subnetwork_connections (endpoint_a)))
 	{
 		nano::unique_lock<nano::mutex> lock (mutex);
 		auto existing (channels.get<endpoint_tag> ().find (endpoint_a));
@@ -310,7 +310,7 @@ void nano::transport::udp_channels::receive ()
 	if (!stopped)
 	{
 		release_assert (socket != nullptr);
-		if (node.config.logging.network_packet_logging ())
+		if (node.config->logging.network_packet_logging ())
 		{
 			node.logger->try_log ("Receiving packet");
 		}
@@ -331,7 +331,7 @@ void nano::transport::udp_channels::receive ()
 				this->node.network.buffer_container.release (data);
 				if (error)
 				{
-					if (this->node.config.logging.network_logging ())
+					if (this->node.config->logging.network_logging ())
 					{
 						this->node.logger->try_log (boost::str (boost::format ("UDP Receive error: %1%") % error.message ()));
 					}
@@ -348,7 +348,7 @@ void nano::transport::udp_channels::receive ()
 void nano::transport::udp_channels::start ()
 {
 	debug_assert (!node.flags.disable_udp);
-	for (std::size_t i = 0; i < node.config.io_threads && !stopped; ++i)
+	for (std::size_t i = 0; i < node.config->io_threads && !stopped; ++i)
 	{
 		boost::asio::post (strand, [this] () {
 			receive ();
@@ -493,7 +493,7 @@ public:
 	}
 	void node_id_handshake (nano::node_id_handshake const & message_a) override
 	{
-		if (node.config.logging.network_node_id_handshake_logging ())
+		if (node.config->logging.network_node_id_handshake_logging ())
 		{
 			node.logger->try_log (boost::str (boost::format ("Received node_id_handshake message from %1% with query %2% and response ID %3%") % endpoint % (message_a.query ? message_a.query->to_string () : std::string ("[none]")) % (message_a.response ? message_a.response->first.to_node_id () : std::string ("[none]"))));
 		}
@@ -521,7 +521,7 @@ public:
 					}
 				}
 			}
-			else if (node.config.logging.network_node_id_handshake_logging ())
+			else if (node.config->logging.network_node_id_handshake_logging ())
 			{
 				node.logger->try_log (boost::str (boost::format ("Failed to validate syn cookie signature %1% by %2%") % message_a.response->second.to_string () % message_a.response->first.to_account ()));
 			}
@@ -569,7 +569,7 @@ void nano::transport::udp_channels::receive_action (nano::message_buffer * data_
 	{
 		allowed_sender = false;
 	}
-	else if (nano::transport::reserved_address (data_a->endpoint, node.config.allow_local_peers))
+	else if (nano::transport::reserved_address (data_a->endpoint, node.config->allow_local_peers))
 	{
 		allowed_sender = false;
 	}
@@ -635,7 +635,7 @@ void nano::transport::udp_channels::receive_action (nano::message_buffer * data_
 	}
 	else
 	{
-		if (node.config.logging.network_packet_logging ())
+		if (node.config->logging.network_packet_logging ())
 		{
 			node.logger->try_log (boost::str (boost::format ("Reserved sender %1%") % data_a->endpoint));
 		}

@@ -190,15 +190,15 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 {
 	++connections_count;
 	auto socket (std::make_shared<nano::socket> (node.io_ctx, nano::socket::endpoint_type_t::client, *node.stats, *node.logger, node.workers,
-	node.config.tcp_io_timeout,
+	node.config->tcp_io_timeout,
 	node.network_params.network.silent_connection_tolerance_time,
-	node.config.logging.network_timeout_logging ()));
+	node.config->logging.network_timeout_logging ()));
 	auto this_l (shared_from_this ());
 	socket->async_connect (endpoint_a,
 	[this_l, socket, endpoint_a, push_front] (boost::system::error_code const & ec) {
 		if (!ec)
 		{
-			if (this_l->node.config.logging.bulk_pull_logging ())
+			if (this_l->node.config->logging.bulk_pull_logging ())
 			{
 				this_l->node.logger->try_log (boost::str (boost::format ("Connection established to %1%") % endpoint_a));
 			}
@@ -208,7 +208,7 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 		}
 		else
 		{
-			if (this_l->node.config.logging.network_logging ())
+			if (this_l->node.config->logging.network_logging ())
 			{
 				switch (ec.value ())
 				{
@@ -230,15 +230,15 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 
 unsigned nano::bootstrap_connections::target_connections (std::size_t pulls_remaining, std::size_t attempts_count) const
 {
-	auto const attempts_factor = nano::narrow_cast<unsigned> (node.config.bootstrap_connections * attempts_count);
-	if (attempts_factor >= node.config.bootstrap_connections_max)
+	auto const attempts_factor = nano::narrow_cast<unsigned> (node.config->bootstrap_connections * attempts_count);
+	if (attempts_factor >= node.config->bootstrap_connections_max)
 	{
-		return std::max (1U, node.config.bootstrap_connections_max);
+		return std::max (1U, node.config->bootstrap_connections_max);
 	}
 
 	// Only scale up to bootstrap_connections_max for large pulls.
 	double step_scale = std::min (1.0, std::max (0.0, (double)pulls_remaining / nano::bootstrap_limits::bootstrap_connection_scale_target_blocks));
-	double target = (double)attempts_factor + (double)(node.config.bootstrap_connections_max - attempts_factor) * step_scale;
+	double target = (double)attempts_factor + (double)(node.config->bootstrap_connections_max - attempts_factor) * step_scale;
 	return std::max (1U, (unsigned)(target + 0.5f));
 }
 
@@ -278,7 +278,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 				// This is ~1.5kilobits/sec.
 				if (elapsed_sec > nano::bootstrap_limits::bootstrap_minimum_termination_time_sec && blocks_per_sec < nano::bootstrap_limits::bootstrap_minimum_blocks_per_sec)
 				{
-					if (node.config.logging.bulk_pull_logging ())
+					if (node.config->logging.bulk_pull_logging ())
 					{
 						node.logger->try_log (boost::str (boost::format ("Stopping slow peer %1% (elapsed sec %2%s > %3%s and %4% blocks per second < %5%)") % client->channel_string () % elapsed_sec % nano::bootstrap_limits::bootstrap_minimum_termination_time_sec % blocks_per_sec % nano::bootstrap_limits::bootstrap_minimum_blocks_per_sec));
 					}
@@ -301,7 +301,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 		// 4 -> 1, 8 -> 2, 16 -> 4, arbitrary, but seems to work well.
 		auto drop = (int)roundf (sqrtf ((float)target - 2.0f));
 
-		if (node.config.logging.bulk_pull_logging ())
+		if (node.config->logging.bulk_pull_logging ())
 		{
 			node.logger->try_log (boost::str (boost::format ("Dropping %1% bulk pull peers, target connections %2%") % drop % target));
 		}
@@ -310,7 +310,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 		{
 			auto client = sorted_connections.top ();
 
-			if (node.config.logging.bulk_pull_logging ())
+			if (node.config->logging.bulk_pull_logging ())
 			{
 				node.logger->try_log (boost::str (boost::format ("Dropping peer with block rate %1%, block count %2% (%3%) ") % client->block_rate % client->block_count % client->channel_string ()));
 			}
@@ -320,7 +320,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 		}
 	}
 
-	if (node.config.logging.bulk_pull_logging ())
+	if (node.config->logging.bulk_pull_logging ())
 	{
 		node.logger->try_log (boost::str (boost::format ("Bulk pull connections: %1%, rate: %2% blocks/sec, bootstrap attempts %3%, remaining pulls: %4%") % connections_count.load () % (int)rate_sum % attempts_count % num_pulls));
 	}
@@ -466,7 +466,7 @@ void nano::bootstrap_connections::requeue_pull (nano::pull_info const & pull_a, 
 		}
 		else
 		{
-			if (node.config.logging.bulk_pull_logging ())
+			if (node.config->logging.bulk_pull_logging ())
 			{
 				node.logger->try_log (boost::str (boost::format ("Failed to pull account %1% or head block %2% down to %3% after %4% attempts and %5% blocks processed") % pull.account_or_head.to_account () % pull.account_or_head.to_string () % pull.end.to_string () % pull.attempts % pull.processed));
 			}

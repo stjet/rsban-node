@@ -1876,7 +1876,7 @@ void nano::json_handler::bootstrap_lazy ()
 void nano::json_handler::bootstrap_status ()
 {
 	auto attempts_count (node.bootstrap_initiator.attempts.size ());
-	response_l.put ("bootstrap_threads", std::to_string (node.config.bootstrap_initiator_threads));
+	response_l.put ("bootstrap_threads", std::to_string (node.config->bootstrap_initiator_threads));
 	response_l.put ("running_attempts_count", std::to_string (attempts_count));
 	response_l.put ("total_attempts_count", std::to_string (node.bootstrap_initiator.attempts.incremental));
 	boost::property_tree::ptree connections;
@@ -2114,7 +2114,7 @@ void nano::json_handler::confirmation_quorum ()
 {
 	response_l.put ("quorum_delta", node.online_reps.delta ().convert_to<std::string> ());
 	response_l.put ("online_weight_quorum_percent", std::to_string (node.online_reps.online_weight_quorum));
-	response_l.put ("online_weight_minimum", node.config.online_weight_minimum.to_string_dec ());
+	response_l.put ("online_weight_minimum", node.config->online_weight_minimum.to_string_dec ());
 	response_l.put ("online_stake_total", node.online_reps.online ().convert_to<std::string> ());
 	response_l.put ("trended_stake_total", node.online_reps.trended ().convert_to<std::string> ());
 	response_l.put ("peers_stake_total", node.rep_crawler.total_weight ().convert_to<std::string> ());
@@ -2138,7 +2138,7 @@ void nano::json_handler::database_txn_tracker ()
 {
 	boost::property_tree::ptree json;
 
-	if (node.config.diagnostics_config.txn_tracking.enable)
+	if (node.config->diagnostics_config.txn_tracking.enable)
 	{
 		unsigned min_read_time_milliseconds = 0;
 		boost::optional<std::string> min_read_time_text (request.get_optional<std::string> ("min_read_time"));
@@ -3459,7 +3459,7 @@ void nano::json_handler::receive_minimum ()
 {
 	if (!ec)
 	{
-		response_l.put ("amount", node.config.receive_minimum.to_string_dec ());
+		response_l.put ("amount", node.config->receive_minimum.to_string_dec ());
 	}
 	response_errors ();
 }
@@ -3469,7 +3469,7 @@ void nano::json_handler::receive_minimum_set ()
 	auto amount (amount_impl ());
 	if (!ec)
 	{
-		node.config.receive_minimum = amount;
+		node.config->receive_minimum = amount;
 		response_l.put ("success", "");
 	}
 	response_errors ();
@@ -3980,7 +3980,7 @@ void nano::json_handler::telemetry ()
 					if (address.is_loopback () && port == rpc_l->node.network.endpoint ().port ())
 					{
 						// Requesting telemetry metrics locally
-						auto telemetry_data = nano::local_telemetry_data (rpc_l->node.ledger, rpc_l->node.network, rpc_l->node.unchecked, rpc_l->node.config.bandwidth_limit, rpc_l->node.network_params, rpc_l->node.startup_time, rpc_l->node.default_difficulty (nano::work_version::work_1), rpc_l->node.node_id);
+						auto telemetry_data = nano::local_telemetry_data (rpc_l->node.ledger, rpc_l->node.network, rpc_l->node.unchecked, rpc_l->node.config->bandwidth_limit, rpc_l->node.network_params, rpc_l->node.startup_time, rpc_l->node.default_difficulty (nano::work_version::work_1), rpc_l->node.node_id);
 
 						nano::jsonconfig config_l;
 						auto const should_ignore_identification_metrics = false;
@@ -5098,7 +5098,7 @@ void nano::json_handler::work_generate ()
 					}
 				}
 				auto secondary_work_peers_l (request.get<bool> ("secondary_work_peers", false));
-				auto const & peers_l (secondary_work_peers_l ? node.config.secondary_work_peers : node.config.work_peers);
+				auto const & peers_l (secondary_work_peers_l ? node.config->secondary_work_peers : node.config->work_peers);
 				if (node.work_generation_enabled (peers_l))
 				{
 					node.work_generate (work_version, hash, difficulty, callback, account, secondary_work_peers_l);
@@ -5206,7 +5206,7 @@ void nano::json_handler::work_peer_add ()
 	uint16_t port;
 	if (!nano::parse_port (port_text, port))
 	{
-		node.config.work_peers.push_back (std::make_pair (address_text, port));
+		node.config->work_peers.push_back (std::make_pair (address_text, port));
 		response_l.put ("success", "");
 	}
 	else
@@ -5219,7 +5219,7 @@ void nano::json_handler::work_peer_add ()
 void nano::json_handler::work_peers ()
 {
 	boost::property_tree::ptree work_peers_l;
-	for (auto i (node.config.work_peers.begin ()), n (node.config.work_peers.end ()); i != n; ++i)
+	for (auto i (node.config->work_peers.begin ()), n (node.config->work_peers.end ()); i != n; ++i)
 	{
 		boost::property_tree::ptree entry;
 		entry.put ("", boost::str (boost::format ("%1%:%2%") % i->first % i->second));
@@ -5231,7 +5231,7 @@ void nano::json_handler::work_peers ()
 
 void nano::json_handler::work_peers_clear ()
 {
-	node.config.work_peers.clear ();
+	node.config->work_peers.clear ();
 	response_l.put ("success", "");
 	response_errors ();
 }
@@ -5249,7 +5249,7 @@ void nano::inprocess_rpc_handler::process_request (std::string const &, std::str
 void nano::inprocess_rpc_handler::process_request_v2 (rpc_handler_request_params const & params_a, std::string const & body_a, std::function<void (std::shared_ptr<std::string> const &)> response_a)
 {
 	std::string body_l = params_a.json_envelope (body_a);
-	auto handler (std::make_shared<nano::ipc::flatbuffers_handler> (node, ipc_server, nullptr, node.config.ipc_config));
+	auto handler (std::make_shared<nano::ipc::flatbuffers_handler> (node, ipc_server, nullptr, node.config->ipc_config));
 	handler->process_json (reinterpret_cast<uint8_t const *> (body_l.data ()), body_l.size (), response_a);
 }
 

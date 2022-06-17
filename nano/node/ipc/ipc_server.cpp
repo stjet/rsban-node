@@ -41,7 +41,7 @@ public:
 		server (server_a), node (server_a.node), session_id (server_a.id_dispenser.fetch_add (1)),
 		io_ctx (io_ctx_a), strand (io_ctx_a.get_executor ()), socket (io_ctx_a), config_transport (config_transport_a)
 	{
-		if (node.config.logging.log_ipc ())
+		if (node.config->logging.log_ipc ())
 		{
 			node.logger->always_log ("IPC: created session with id: ", session_id.load ());
 		}
@@ -236,7 +236,7 @@ public:
 			this_l->timer_cancel ();
 			if (ec == boost::asio::error::broken_pipe || ec == boost::asio::error::connection_aborted || ec == boost::asio::error::connection_reset || ec == boost::asio::error::connection_refused)
 			{
-				if (this_l->node.config.logging.log_ipc ())
+				if (this_l->node.config->logging.log_ipc ())
 				{
 					this_l->node.logger->always_log (boost::str (boost::format ("IPC: error reading %1% ") % ec.message ()));
 				}
@@ -262,7 +262,7 @@ public:
 			auto buffer (std::make_shared<std::vector<uint8_t>> ());
 			buffer->insert (buffer->end (), reinterpret_cast<std::uint8_t *> (&big), reinterpret_cast<std::uint8_t *> (&big) + sizeof (std::uint32_t));
 			buffer->insert (buffer->end (), body.begin (), body.end ());
-			if (this_l->node.config.logging.log_ipc ())
+			if (this_l->node.config->logging.log_ipc ())
 			{
 				this_l->node.logger->always_log (boost::str (boost::format ("IPC/RPC request %1% completed in: %2% %3%") % request_id_l % this_l->session_timer.stop ().count () % this_l->session_timer.unit ()));
 			}
@@ -274,7 +274,7 @@ public:
 				{
 					this_l->read_next_request ();
 				}
-				else if (this_l->node.config.logging.log_ipc ())
+				else if (this_l->node.config->logging.log_ipc ())
 				{
 					this_l->node.logger->always_log ("IPC: Write failed: ", error_a.message ());
 				}
@@ -309,7 +309,7 @@ public:
 			this_l->active_encoding = static_cast<nano::ipc::payload_encoding> (encoding);
 			if (this_l->buffer[nano::ipc::preamble_offset::lead] != 'N' || this_l->buffer[nano::ipc::preamble_offset::reserved_1] != 0 || this_l->buffer[nano::ipc::preamble_offset::reserved_2] != 0)
 			{
-				if (this_l->node.config.logging.log_ipc ())
+				if (this_l->node.config->logging.log_ipc ())
 				{
 					this_l->node.logger->always_log ("IPC: Invalid preamble");
 				}
@@ -340,13 +340,13 @@ public:
 						// Lazily create one Flatbuffers handler instance per session
 						if (!this_l->flatbuffers_handler)
 						{
-							this_l->flatbuffers_handler = std::make_shared<nano::ipc::flatbuffers_handler> (this_l->node, this_l->server, this_l->get_subscriber (), this_l->node.config.ipc_config);
+							this_l->flatbuffers_handler = std::make_shared<nano::ipc::flatbuffers_handler> (this_l->node, this_l->server, this_l->get_subscriber (), this_l->node.config->ipc_config);
 						}
 
 						if (encoding == static_cast<uint8_t> (nano::ipc::payload_encoding::flatbuffers_json))
 						{
 							this_l->flatbuffers_handler->process_json (this_l->buffer.data (), this_l->buffer_size, [this_l] (std::shared_ptr<std::string> const & body) {
-								if (this_l->node.config.logging.log_ipc ())
+								if (this_l->node.config->logging.log_ipc ())
 								{
 									this_l->node.logger->always_log (boost::str (boost::format ("IPC/Flatbuffer request completed in: %1% %2%") % this_l->session_timer.stop ().count () % this_l->session_timer.unit ()));
 								}
@@ -362,7 +362,7 @@ public:
 									{
 										this_l->read_next_request ();
 									}
-									else if (this_l->node.config.logging.log_ipc ())
+									else if (this_l->node.config->logging.log_ipc ())
 									{
 										this_l->node.logger->always_log ("IPC: Write failed: ", error_a.message ());
 									}
@@ -372,7 +372,7 @@ public:
 						else
 						{
 							this_l->flatbuffers_handler->process (this_l->buffer.data (), this_l->buffer_size, [this_l] (std::shared_ptr<flatbuffers::FlatBufferBuilder> const & fbb) {
-								if (this_l->node.config.logging.log_ipc ())
+								if (this_l->node.config->logging.log_ipc ())
 								{
 									this_l->node.logger->always_log (boost::str (boost::format ("IPC/Flatbuffer request completed in: %1% %2%") % this_l->session_timer.stop ().count () % this_l->session_timer.unit ()));
 								}
@@ -388,7 +388,7 @@ public:
 									{
 										this_l->read_next_request ();
 									}
-									else if (this_l->node.config.logging.log_ipc ())
+									else if (this_l->node.config->logging.log_ipc ())
 									{
 										this_l->node.logger->always_log ("IPC: Write failed: ", error_a.message ());
 									}
@@ -398,7 +398,7 @@ public:
 					});
 				});
 			}
-			else if (this_l->node.config.logging.log_ipc ())
+			else if (this_l->node.config->logging.log_ipc ())
 			{
 				this_l->node.logger->always_log ("IPC: Unsupported payload encoding");
 			}
@@ -612,22 +612,22 @@ nano::ipc::ipc_server::ipc_server (nano::node & node_a, nano::node_rpc_config co
 		auto signals (std::make_shared<boost::asio::signal_set> (node.io_ctx, SIGHUP));
 		await_hup_signal (signals, *this);
 #endif
-		if (node_a.config.ipc_config.transport_domain.enabled)
+		if (node_a.config->ipc_config.transport_domain.enabled)
 		{
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS)
-			auto threads = node_a.config.ipc_config.transport_domain.io_threads;
-			file_remover = std::make_unique<dsock_file_remover> (node_a.config.ipc_config.transport_domain.path);
-			boost::asio::local::stream_protocol::endpoint ep{ node_a.config.ipc_config.transport_domain.path };
-			transports.push_back (std::make_shared<domain_socket_transport> (*this, ep, node_a.config.ipc_config.transport_domain, threads));
+			auto threads = node_a.config->ipc_config.transport_domain.io_threads;
+			file_remover = std::make_unique<dsock_file_remover> (node_a.config->ipc_config.transport_domain.path);
+			boost::asio::local::stream_protocol::endpoint ep{ node_a.config->ipc_config.transport_domain.path };
+			transports.push_back (std::make_shared<domain_socket_transport> (*this, ep, node_a.config->ipc_config.transport_domain, threads));
 #else
 			node.logger->always_log ("IPC: Domain sockets are not supported on this platform");
 #endif
 		}
 
-		if (node_a.config.ipc_config.transport_tcp.enabled)
+		if (node_a.config->ipc_config.transport_tcp.enabled)
 		{
-			auto threads = node_a.config.ipc_config.transport_tcp.io_threads;
-			transports.push_back (std::make_shared<tcp_socket_transport> (*this, boost::asio::ip::tcp::endpoint (boost::asio::ip::tcp::v6 (), node_a.config.ipc_config.transport_tcp.port), node_a.config.ipc_config.transport_tcp, threads));
+			auto threads = node_a.config->ipc_config.transport_tcp.io_threads;
+			transports.push_back (std::make_shared<tcp_socket_transport> (*this, boost::asio::ip::tcp::endpoint (boost::asio::ip::tcp::v6 (), node_a.config->ipc_config.transport_tcp.port), node_a.config->ipc_config.transport_tcp, threads));
 		}
 
 		node.logger->always_log ("IPC: server started");

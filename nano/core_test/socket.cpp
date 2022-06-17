@@ -620,7 +620,7 @@ TEST (socket_timeout, connect)
 	// create one node and set timeout to 1 second
 	nano::system system (1);
 	std::shared_ptr<nano::node> node = system.nodes[0];
-	node->config.tcp_io_timeout = std::chrono::seconds (1);
+	node->config->tcp_io_timeout = std::chrono::seconds (1);
 
 	// try to connect to an IP address that most likely does not exist and will not reply
 	// we want the tcp stack to not receive a negative reply, we want it to see silence and to keep trying
@@ -653,7 +653,7 @@ TEST (socket_timeout, read)
 	// create one node and set timeout to 1 second
 	nano::system system (1);
 	std::shared_ptr<nano::node> node = system.nodes[0];
-	node->config.tcp_io_timeout = std::chrono::seconds (2);
+	node->config->tcp_io_timeout = std::chrono::seconds (2);
 
 	// create a server socket
 	boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v6::loopback (), nano::get_available_port ());
@@ -698,7 +698,7 @@ TEST (socket_timeout, write)
 	// create one node and set timeout to 1 second
 	nano::system system (1);
 	std::shared_ptr<nano::node> node = system.nodes[0];
-	node->config.tcp_io_timeout = std::chrono::seconds (2);
+	node->config->tcp_io_timeout = std::chrono::seconds (2);
 
 	// create a server socket
 	boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v6::loopback (), nano::get_available_port ());
@@ -748,7 +748,7 @@ TEST (socket_timeout, read_overlapped)
 	// create one node and set timeout to 1 second
 	nano::system system (1);
 	std::shared_ptr<nano::node> node = system.nodes[0];
-	node->config.tcp_io_timeout = std::chrono::seconds (2);
+	node->config->tcp_io_timeout = std::chrono::seconds (2);
 
 	// create a server socket
 	boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v6::loopback (), nano::get_available_port ());
@@ -804,7 +804,7 @@ TEST (socket_timeout, write_overlapped)
 	// create one node and set timeout to 1 second
 	nano::system system (1);
 	std::shared_ptr<nano::node> node = system.nodes[0];
-	node->config.tcp_io_timeout = std::chrono::seconds (2);
+	node->config->tcp_io_timeout = std::chrono::seconds (2);
 
 	// create a server socket
 	boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v6::loopback (), nano::get_available_port ());

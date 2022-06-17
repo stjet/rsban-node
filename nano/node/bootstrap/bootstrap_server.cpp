@@ -17,7 +17,7 @@ void nano::bootstrap_listener::start ()
 {
 	nano::lock_guard<nano::mutex> lock (mutex);
 	on = true;
-	listening_socket = std::make_shared<nano::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), node.config.tcp_incoming_connections_max);
+	listening_socket = std::make_shared<nano::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), node.config->tcp_incoming_connections_max);
 	boost::system::error_code ec;
 	listening_socket->start (ec);
 	if (ec)
@@ -141,7 +141,7 @@ void nano::bootstrap_listener::accept_action (boost::system::error_code const & 
 	else
 	{
 		node.stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_excluded);
-		if (node.config.logging.network_rejected_logging ())
+		if (node.config->logging.network_rejected_logging ())
 		{
 			node.logger->try_log ("Rejected connection from excluded peer ", socket_a->remote_endpoint ());
 		}
@@ -184,7 +184,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 
 nano::bootstrap_server::~bootstrap_server ()
 {
-	if (node->config.logging.bulk_pull_logging ())
+	if (node->config->logging.bulk_pull_logging ())
 	{
 		logger->try_log ("Exiting incoming TCP/bootstrap server");
 	}
@@ -222,7 +222,7 @@ void nano::bootstrap_server::receive ()
 			this_l->remote_endpoint = this_l->socket->remote_endpoint ();
 		}
 		// Decrease timeout to default
-		this_l->socket->set_default_timeout_value (this_l->node->config.tcp_io_timeout);
+		this_l->socket->set_default_timeout_value (this_l->node->config->tcp_io_timeout);
 		// Receive header
 		this_l->receive_header_action (ec, size_a);
 	});
@@ -337,7 +337,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				}
 				default:
 				{
-					if (node->config.logging.network_logging ())
+					if (node->config->logging.network_logging ())
 					{
 						logger->try_log (boost::str (boost::format ("Received invalid type from bootstrap connection %1%") % static_cast<uint8_t> (header.type)));
 					}
@@ -348,7 +348,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 	}
 	else
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			logger->try_log (boost::str (boost::format ("Error while receiving type: %1%") % ec.message ()));
 		}
@@ -364,7 +364,7 @@ void nano::bootstrap_server::receive_bulk_pull_action (boost::system::error_code
 		auto request (std::make_unique<nano::bulk_pull> (error, stream, header_a));
 		if (!error)
 		{
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				logger->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->start.to_string () % request->end.to_string () % (request->count ? request->count : std::numeric_limits<double>::infinity ()) % remote_endpoint));
 			}
@@ -387,7 +387,7 @@ void nano::bootstrap_server::receive_bulk_pull_account_action (boost::system::er
 		auto request (std::make_unique<nano::bulk_pull_account> (error, stream, header_a));
 		if (!error)
 		{
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				logger->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->account.to_account () % nano::amount (request->minimum_amount).format_balance (nano::Mxrb_ratio, 10, true)));
 			}
@@ -409,7 +409,7 @@ void nano::bootstrap_server::receive_frontier_req_action (boost::system::error_c
 		auto request (std::make_unique<nano::frontier_req> (error, stream, header_a));
 		if (!error)
 		{
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				logger->try_log (boost::str (boost::format ("Received frontier request for %1% with age %2%") % request->start.to_string () % request->age));
 			}
@@ -422,7 +422,7 @@ void nano::bootstrap_server::receive_frontier_req_action (boost::system::error_c
 	}
 	else
 	{
-		if (node->config.logging.network_logging ())
+		if (node->config->logging.network_logging ())
 		{
 			logger->try_log (boost::str (boost::format ("Error sending receiving frontier request: %1%") % ec.message ()));
 		}
@@ -447,7 +447,7 @@ void nano::bootstrap_server::receive_keepalive_action (boost::system::error_code
 	}
 	else
 	{
-		if (node->config.logging.network_keepalive_logging ())
+		if (node->config->logging.network_keepalive_logging ())
 		{
 			logger->try_log (boost::str (boost::format ("Error receiving keepalive: %1%") % ec.message ()));
 		}
@@ -472,7 +472,7 @@ void nano::bootstrap_server::receive_telemetry_ack_action (boost::system::error_
 	}
 	else
 	{
-		if (node->config.logging.network_telemetry_logging ())
+		if (node->config->logging.network_telemetry_logging ())
 		{
 			logger->try_log (boost::str (boost::format ("Error receiving telemetry ack: %1%") % ec.message ()));
 		}
@@ -513,7 +513,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 	}
 	else
 	{
-		if (node->config.logging.network_message_logging ())
+		if (node->config->logging.network_message_logging ())
 		{
 			logger->try_log (boost::str (boost::format ("Error receiving publish: %1%") % ec.message ()));
 		}
@@ -536,7 +536,7 @@ void nano::bootstrap_server::receive_confirm_req_action (boost::system::error_co
 			receive ();
 		}
 	}
-	else if (node->config.logging.network_message_logging ())
+	else if (node->config->logging.network_message_logging ())
 	{
 		logger->try_log (boost::str (boost::format ("Error receiving confirm_req: %1%") % ec.message ()));
 	}
@@ -558,7 +558,7 @@ void nano::bootstrap_server::receive_confirm_ack_action (boost::system::error_co
 			receive ();
 		}
 	}
-	else if (node->config.logging.network_message_logging ())
+	else if (node->config->logging.network_message_logging ())
 	{
 		logger->try_log (boost::str (boost::format ("Error receiving confirm_ack: %1%") % ec.message ()));
 	}
@@ -580,7 +580,7 @@ void nano::bootstrap_server::receive_node_id_handshake_action (boost::system::er
 			receive ();
 		}
 	}
-	else if (node->config.logging.network_node_id_handshake_logging ())
+	else if (node->config->logging.network_node_id_handshake_logging ())
 	{
 		logger->try_log (boost::str (boost::format ("Error receiving node_id_handshake: %1%") % ec.message ()));
 	}
@@ -623,7 +623,7 @@ void nano::bootstrap_server::finish_request ()
 	}
 
 	std::weak_ptr<nano::bootstrap_server> this_w (shared_from_this ());
-	node->workers.add_timed_task (std::chrono::steady_clock::now () + (node->config.tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w] () {
+	node->workers.add_timed_task (std::chrono::steady_clock::now () + (node->config->tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w] () {
 		if (auto this_l = this_w.lock ())
 		{
 			this_l->timeout ();
@@ -646,7 +646,7 @@ void nano::bootstrap_server::timeout ()
 {
 	if (socket->has_timed_out ())
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			logger->try_log ("Closing incoming tcp / bootstrap server by timeout");
 		}
@@ -713,7 +713,7 @@ public:
 	}
 	void node_id_handshake (nano::node_id_handshake const & message_a) override
 	{
-		if (connection->node->config.logging.network_node_id_handshake_logging ())
+		if (connection->node->config->logging.network_node_id_handshake_logging ())
 		{
 			connection->logger->try_log (boost::str (boost::format ("Received node_id_handshake message from %1%") % connection->remote_endpoint));
 		}
@@ -729,7 +729,7 @@ public:
 				{
 					if (ec)
 					{
-						if (connection_l->node->config.logging.network_node_id_handshake_logging ())
+						if (connection_l->node->config->logging.network_node_id_handshake_logging ())
 						{
 							connection_l->logger->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % connection_l->remote_endpoint % ec.message ()));
 						}
@@ -798,7 +798,7 @@ void nano::bootstrap_server::run_next (nano::unique_lock<nano::mutex> & lock_a)
 
 bool nano::bootstrap_server::is_bootstrap_connection ()
 {
-	if (socket->type () == nano::socket::type_t::undefined && !node->flags.disable_bootstrap_listener && bootstrap->get_bootstrap_count () < node->config.bootstrap_connections_max)
+	if (socket->type () == nano::socket::type_t::undefined && !node->flags.disable_bootstrap_listener && bootstrap->get_bootstrap_count () < node->config->bootstrap_connections_max)
 	{
 		bootstrap->inc_bootstrap_count ();
 		socket->type_set (nano::socket::type_t::bootstrap);

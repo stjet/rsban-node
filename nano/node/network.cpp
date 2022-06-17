@@ -26,8 +26,8 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 	} },
 	buffer_container (*node_a.stats, nano::network::buffer_size, 4096), // 2Mb receive buffer
 	resolver (node_a.io_ctx),
-	limiter (node_a.config.bandwidth_limit_burst_ratio, node_a.config.bandwidth_limit),
-	tcp_message_manager (node_a.config.tcp_incoming_connections_max),
+	limiter (node_a.config->bandwidth_limit_burst_ratio, node_a.config->bandwidth_limit),
+	tcp_message_manager (node_a.config->tcp_incoming_connections_max),
 	node (node_a),
 	publish_filter (256 * 1024),
 	udp_channels (node_a, port_a, inbound),
@@ -43,7 +43,7 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 	boost::thread::attributes attrs;
 	nano::thread_attributes::set (attrs);
 	// UDP
-	for (std::size_t i = 0; i < node.config.network_threads && !node.flags.disable_udp; ++i)
+	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_udp; ++i)
 	{
 		packet_processing_threads.emplace_back (attrs, [this] () {
 			nano::thread_role::set (nano::thread_role::name::packet_processing);
@@ -71,14 +71,14 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 				this->node.logger->always_log (FATAL_LOG_PREFIX, "Unknown exception");
 				release_assert (false);
 			}
-			if (this->node.config.logging.network_packet_logging ())
+			if (this->node.config->logging.network_packet_logging ())
 			{
 				this->node.logger->try_log ("Exiting UDP packet processing thread");
 			}
 		});
 	}
 	// TCP
-	for (std::size_t i = 0; i < node.config.network_threads && !node.flags.disable_tcp_realtime; ++i)
+	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_tcp_realtime; ++i)
 	{
 		packet_processing_threads.emplace_back (attrs, [this] () {
 			nano::thread_role::set (nano::thread_role::name::packet_processing);
@@ -106,7 +106,7 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 				this->node.logger->always_log (FATAL_LOG_PREFIX, "Unknown exception");
 				release_assert (false);
 			}
-			if (this->node.config.logging.network_packet_logging ())
+			if (this->node.config->logging.network_packet_logging ())
 			{
 				this->node.logger->try_log ("Exiting TCP packet processing thread");
 			}
@@ -178,7 +178,7 @@ void nano::network::send_node_id_handshake (std::shared_ptr<nano::transport::cha
 		debug_assert (!nano::validate_message (response->first, *respond_to, response->second));
 	}
 	nano::node_id_handshake message{ node.network_params.network, query, response };
-	if (node.config.logging.network_node_id_handshake_logging ())
+	if (node.config->logging.network_node_id_handshake_logging ())
 	{
 		node.logger->try_log (boost::str (boost::format ("Node ID handshake sent with node ID %1% to %2%: query %3%, respond_to %4% (signature %5%)") % node.node_id.pub.to_node_id () % channel_a->get_endpoint () % (query ? query->to_string () : std::string ("[none]")) % (respond_to ? respond_to->to_string () : std::string ("[none]")) % (response ? response->second.to_string () : std::string ("[none]"))));
 	}
@@ -306,7 +306,7 @@ void nano::network::broadcast_confirm_req (std::shared_ptr<nano::block> const & 
 void nano::network::broadcast_confirm_req_base (std::shared_ptr<nano::block> const & block_a, std::shared_ptr<std::vector<std::shared_ptr<nano::transport::channel>>> const & endpoints_a, unsigned delay_a, bool resumption)
 {
 	std::size_t const max_reps = 10;
-	if (!resumption && node.config.logging.network_logging ())
+	if (!resumption && node.config->logging.network_logging ())
 	{
 		node.logger->try_log (boost::str (boost::format ("Broadcasting confirm req for block %1% to %2% representatives") % block_a->hash ().to_string () % endpoints_a->size ()));
 	}
@@ -334,7 +334,7 @@ void nano::network::broadcast_confirm_req_base (std::shared_ptr<nano::block> con
 
 void nano::network::broadcast_confirm_req_batched_many (std::unordered_map<std::shared_ptr<nano::transport::channel>, std::deque<std::pair<nano::block_hash, nano::root>>> request_bundle_a, std::function<void ()> callback_a, unsigned delay_a, bool resumption_a)
 {
-	if (!resumption_a && node.config.logging.network_logging ())
+	if (!resumption_a && node.config->logging.network_logging ())
 	{
 		node.logger->try_log (boost::str (boost::format ("Broadcasting batch confirm req to %1% representatives") % request_bundle_a.size ()));
 	}
@@ -417,7 +417,7 @@ public:
 	}
 	void keepalive (nano::keepalive const & message_a) override
 	{
-		if (node.config.logging.network_keepalive_logging ())
+		if (node.config->logging.network_keepalive_logging ())
 		{
 			node.logger->try_log (boost::str (boost::format ("Received keepalive message from %1%") % channel->to_string ()));
 		}
@@ -433,7 +433,7 @@ public:
 	}
 	void publish (nano::publish const & message_a) override
 	{
-		if (node.config.logging.network_message_logging ())
+		if (node.config->logging.network_message_logging ())
 		{
 			node.logger->try_log (boost::str (boost::format ("Publish message from %1% for %2%") % channel->to_string () % message_a.block->hash ().to_string ()));
 		}
@@ -450,7 +450,7 @@ public:
 	}
 	void confirm_req (nano::confirm_req const & message_a) override
 	{
-		if (node.config.logging.network_message_logging ())
+		if (node.config->logging.network_message_logging ())
 		{
 			if (!message_a.roots_hashes.empty ())
 			{
@@ -463,7 +463,7 @@ public:
 		}
 		node.stats->inc (nano::stat::type::message, nano::stat::detail::confirm_req, nano::stat::dir::in);
 		// Don't load nodes with disabled voting
-		if (node.config.enable_voting && node.wallets.reps ().voting > 0)
+		if (node.config->enable_voting && node.wallets.reps ().voting > 0)
 		{
 			if (message_a.block != nullptr)
 			{
@@ -477,7 +477,7 @@ public:
 	}
 	void confirm_ack (nano::confirm_ack const & message_a) override
 	{
-		if (node.config.logging.network_message_logging ())
+		if (node.config->logging.network_message_logging ())
 		{
 			node.logger->try_log (boost::str (boost::format ("Received confirm_ack message from %1% for %2% timestamp %3%") % channel->to_string () % message_a.vote->hashes_string () % std::to_string (message_a.vote->timestamp ())));
 		}
@@ -509,7 +509,7 @@ public:
 	}
 	void telemetry_req (nano::telemetry_req const & message_a) override
 	{
-		if (node.config.logging.network_telemetry_logging ())
+		if (node.config->logging.network_telemetry_logging ())
 		{
 			node.logger->try_log (boost::str (boost::format ("Telemetry_req message from %1%") % channel->to_string ()));
 		}
@@ -520,14 +520,14 @@ public:
 		nano::telemetry_ack telemetry_ack{ node.network_params.network };
 		if (!node.flags.disable_providing_telemetry_metrics)
 		{
-			auto telemetry_data = nano::local_telemetry_data (node.ledger, node.network, node.unchecked, node.config.bandwidth_limit, node.network_params, node.startup_time, node.default_difficulty (nano::work_version::work_1), node.node_id);
+			auto telemetry_data = nano::local_telemetry_data (node.ledger, node.network, node.unchecked, node.config->bandwidth_limit, node.network_params, node.startup_time, node.default_difficulty (nano::work_version::work_1), node.node_id);
 			telemetry_ack = nano::telemetry_ack{ node.network_params.network, telemetry_data };
 		}
 		channel->send (telemetry_ack, nullptr, nano::buffer_drop_policy::no_socket_drop);
 	}
 	void telemetry_ack (nano::telemetry_ack const & message_a) override
 	{
-		if (node.config.logging.network_telemetry_logging ())
+		if (node.config->logging.network_telemetry_logging ())
 		{
 			node.logger->try_log (boost::str (boost::format ("Received telemetry_ack message from %1%") % channel->to_string ()));
 		}
@@ -559,7 +559,7 @@ void nano::network::merge_peers (std::array<nano::endpoint, 8> const & peers_a)
 
 void nano::network::merge_peer (nano::endpoint const & peer_a)
 {
-	if (!reachout (peer_a, node.config.allow_local_peers))
+	if (!reachout (peer_a, node.config->allow_local_peers))
 	{
 		std::weak_ptr<nano::node> node_w (node.shared ());
 		node.network.tcp_channels->start_tcp (peer_a);
@@ -672,9 +672,9 @@ void nano::network::fill_keepalive_self (std::array<nano::endpoint, 8> & target_
 	target_a[3] = target_a[1];
 	// Replace part of message with node external address or listening port
 	target_a[1] = nano::endpoint (boost::asio::ip::address_v6{}, 0); // For node v19 (response channels)
-	if (node.config.external_address != boost::asio::ip::address_v6{}.to_string () && node.config.external_port != 0)
+	if (node.config->external_address != boost::asio::ip::address_v6{}.to_string () && node.config->external_port != 0)
 	{
-		target_a[0] = nano::endpoint (boost::asio::ip::make_address_v6 (node.config.external_address), node.config.external_port);
+		target_a[0] = nano::endpoint (boost::asio::ip::make_address_v6 (node.config->external_address), node.config->external_port);
 	}
 	else
 	{

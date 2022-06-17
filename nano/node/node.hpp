@@ -161,7 +161,7 @@ public:
 	nano::write_database_queue write_database_queue;
 	boost::asio::io_context & io_ctx;
 	boost::latch node_initialized_latch;
-	nano::node_config config;
+	std::shared_ptr<nano::node_config> config;
 	nano::network_params & network_params;
 	std::shared_ptr<nano::stat> stats;
 	nano::thread_pool workers;

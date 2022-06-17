@@ -27,8 +27,8 @@ nano::bulk_pull_client::bulk_pull_client (std::shared_ptr<nano::node> const & no
 	unexpected_count (0),
 	logger{ *node_a->logger },
 	node{ node_a },
-	logging_enabled{ node_a->config.logging.bulk_pull_logging () },
-	network_logging{ node_a->config.logging.network_logging () }
+	logging_enabled{ node_a->config->logging.bulk_pull_logging () },
+	network_logging{ node_a->config->logging.network_logging () }
 {
 	attempt->notify_all ();
 }
@@ -94,7 +94,7 @@ void nano::bulk_pull_client::request ()
 		}
 		else
 		{
-			if (this_l->node->config.logging.bulk_pull_logging ())
+			if (this_l->node->config->logging.bulk_pull_logging ())
 			{
 				this_l->logger.try_log (boost::str (boost::format ("Error sending bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel_string ()));
 			}
@@ -133,7 +133,7 @@ void nano::bulk_pull_client::receive_block ()
 		}
 		else
 		{
-			if (this_l->node->config.logging.bulk_pull_logging ())
+			if (this_l->node->config->logging.bulk_pull_logging ())
 			{
 				this_l->node->logger->try_log (boost::str (boost::format ("Error receiving block type: %1%") % ec.message ()));
 			}
@@ -196,7 +196,7 @@ void nano::bulk_pull_client::received_type ()
 		}
 		default:
 		{
-			if (node->config.logging.network_packet_logging ())
+			if (node->config->logging.network_packet_logging ())
 			{
 				node->logger->try_log (boost::str (boost::format ("Unknown type received as block type: %1%") % static_cast<int> (type)));
 			}
@@ -214,10 +214,10 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 		if (block != nullptr && !node->network_params.work.validate_entry (*block))
 		{
 			auto hash (block->hash ());
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				std::string block_l;
-				block->serialize_json (block_l, node->config.logging.single_line_record ());
+				block->serialize_json (block_l, node->config->logging.single_line_record ());
 				node->logger->try_log (boost::str (boost::format ("Pulled block %1% %2%") % hash.to_string () % block_l));
 			}
 			// Is block expected?
@@ -261,7 +261,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 		}
 		else if (block == nullptr)
 		{
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				node->logger->try_log ("Error deserializing block received from pull request");
 			}
@@ -269,7 +269,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 		}
 		else // Work invalid
 		{
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				node->logger->try_log (boost::str (boost::format ("Insufficient work for bulk pull block: %1%") % block->hash ().to_string ()));
 			}
@@ -278,7 +278,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 	}
 	else
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Error bulk receiving block: %1%") % ec.message ()));
 		}
@@ -306,13 +306,13 @@ void nano::bulk_pull_account_client::request ()
 {
 	nano::bulk_pull_account req{ node->network_params.network };
 	req.account = account;
-	req.minimum_amount = node->config.receive_minimum;
+	req.minimum_amount = node->config->receive_minimum;
 	req.flags = nano::bulk_pull_account_flags::pending_hash_and_amount;
-	if (node->config.logging.bulk_pull_logging ())
+	if (node->config->logging.bulk_pull_logging ())
 	{
 		node->logger->try_log (boost::str (boost::format ("Requesting pending for account %1% from %2%. %3% accounts in queue") % req.account.to_account () % connection->channel_string () % attempt->wallet_size ()));
 	}
-	else if (node->config.logging.network_logging () && attempt->should_log ())
+	else if (node->config->logging.network_logging () && attempt->should_log ())
 	{
 		node->logger->always_log (boost::str (boost::format ("%1% accounts in pull queue") % attempt->wallet_size ()));
 	}
@@ -326,7 +326,7 @@ void nano::bulk_pull_account_client::request ()
 		else
 		{
 			this_l->attempt->requeue_pending (this_l->account);
-			if (this_l->node->config.logging.bulk_pull_logging ())
+			if (this_l->node->config->logging.bulk_pull_logging ())
 			{
 				this_l->node->logger->try_log (boost::str (boost::format ("Error starting bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel_string ()));
 			}
@@ -359,7 +359,7 @@ void nano::bulk_pull_account_client::receive_pending ()
 				debug_assert (!error2);
 				if (this_l->pull_blocks == 0 || !pending.is_zero ())
 				{
-					if (this_l->pull_blocks == 0 || balance.number () >= this_l->node->config.receive_minimum.number ())
+					if (this_l->pull_blocks == 0 || balance.number () >= this_l->node->config->receive_minimum.number ())
 					{
 						this_l->pull_blocks++;
 						{
@@ -386,7 +386,7 @@ void nano::bulk_pull_account_client::receive_pending ()
 			else
 			{
 				this_l->attempt->requeue_pending (this_l->account);
-				if (this_l->node->config.logging.network_logging ())
+				if (this_l->node->config->logging.network_logging ())
 				{
 					this_l->node->logger->try_log (boost::str (boost::format ("Error while receiving bulk pull account frontier %1%") % ec.message ()));
 				}
@@ -395,7 +395,7 @@ void nano::bulk_pull_account_client::receive_pending ()
 		else
 		{
 			this_l->attempt->requeue_pending (this_l->account);
-			if (this_l->node->config.logging.network_message_logging ())
+			if (this_l->node->config->logging.network_message_logging ())
 			{
 				this_l->node->logger->try_log (boost::str (boost::format ("Invalid size: expected %1%, got %2%") % size_l % size_a));
 			}
@@ -425,7 +425,7 @@ void nano::bulk_pull_server::set_current_end ()
 	auto transaction (node->store.tx_begin_read ());
 	if (!node->store.block.exists (transaction, request->end))
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Bulk pull end block doesn't exist: %1%, sending everything") % request->end.to_string ()));
 		}
@@ -434,7 +434,7 @@ void nano::bulk_pull_server::set_current_end ()
 
 	if (node->store.block.exists (transaction, request->start.as_block_hash ()))
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Bulk pull request for block hash: %1%") % request->start.to_string ()));
 		}
@@ -448,7 +448,7 @@ void nano::bulk_pull_server::set_current_end ()
 		auto no_address (node->store.account.get (transaction, request->start.as_account (), info));
 		if (no_address)
 		{
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				node->logger->try_log (boost::str (boost::format ("Request for unknown account: %1%") % request->start.to_account ()));
 			}
@@ -462,7 +462,7 @@ void nano::bulk_pull_server::set_current_end ()
 				auto account (node->ledger.account (transaction, request->end));
 				if (account != request->start)
 				{
-					if (node->config.logging.bulk_pull_logging ())
+					if (node->config->logging.bulk_pull_logging ())
 					{
 						node->logger->try_log (boost::str (boost::format ("Request for block that is not on account chain: %1% not on %2%") % request->end.to_string () % request->start.to_account ()));
 					}
@@ -494,7 +494,7 @@ void nano::bulk_pull_server::send_next ()
 			nano::serialize_block (stream, *block);
 		}
 		auto this_l (shared_from_this ());
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Sending block: %1%") % block->hash ().to_string ()));
 		}
@@ -587,7 +587,7 @@ void nano::bulk_pull_server::sent_action (boost::system::error_code const & ec, 
 	}
 	else
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Unable to bulk send block: %1%") % ec.message ()));
 		}
@@ -598,7 +598,7 @@ void nano::bulk_pull_server::send_finished ()
 {
 	nano::shared_const_buffer send_buffer (static_cast<uint8_t> (nano::block_type::not_a_block));
 	auto this_l (shared_from_this ());
-	if (node->config.logging.bulk_pull_logging ())
+	if (node->config->logging.bulk_pull_logging ())
 	{
 		node->logger->try_log ("Bulk sending finished");
 	}
@@ -616,7 +616,7 @@ void nano::bulk_pull_server::no_block_sent (boost::system::error_code const & ec
 	}
 	else
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log ("Unable to send not-a-block");
 		}
@@ -662,7 +662,7 @@ void nano::bulk_pull_account_server::set_params ()
 	}
 	else
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Invalid bulk_pull_account flags supplied %1%") % static_cast<uint8_t> (request->flags)));
 		}
@@ -732,7 +732,7 @@ void nano::bulk_pull_account_server::send_next_block ()
 		{
 			nano::vectorstream output_stream (send_buffer);
 
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				node->logger->try_log (boost::str (boost::format ("Sending address: %1%") % block_info->source.to_string ()));
 			}
@@ -743,7 +743,7 @@ void nano::bulk_pull_account_server::send_next_block ()
 		{
 			nano::vectorstream output_stream (send_buffer);
 
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				node->logger->try_log (boost::str (boost::format ("Sending block: %1%") % block_info_key->hash.to_string ()));
 			}
@@ -770,7 +770,7 @@ void nano::bulk_pull_account_server::send_next_block ()
 		/*
 		 * Otherwise, finalize the connection
 		 */
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Done sending blocks")));
 		}
@@ -866,7 +866,7 @@ void nano::bulk_pull_account_server::sent_action (boost::system::error_code cons
 	}
 	else
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Unable to bulk send block: %1%") % ec.message ()));
 		}
@@ -903,7 +903,7 @@ void nano::bulk_pull_account_server::send_finished ()
 
 	auto this_l (shared_from_this ());
 
-	if (node->config.logging.bulk_pull_logging ())
+	if (node->config->logging.bulk_pull_logging ())
 	{
 		node->logger->try_log ("Bulk sending for an account finished");
 	}
@@ -937,7 +937,7 @@ void nano::bulk_pull_account_server::complete (boost::system::error_code const &
 	}
 	else
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log ("Unable to pending-as-zero");
 		}

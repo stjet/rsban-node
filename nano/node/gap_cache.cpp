@@ -117,7 +117,7 @@ void nano::gap_cache::bootstrap_start (nano::block_hash const & hash_a)
 
 nano::uint128_t nano::gap_cache::bootstrap_threshold ()
 {
-	auto result ((node.online_reps.trended () / 256) * node.config.bootstrap_fraction_numerator);
+	auto result ((node.online_reps.trended () / 256) * node.config->bootstrap_fraction_numerator);
 	return result;
 }
 

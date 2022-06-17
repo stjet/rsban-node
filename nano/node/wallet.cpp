@@ -659,14 +659,14 @@ void nano::kdf::phs (nano::raw_key & result_a, std::string const & password_a, n
 
 nano::wallet::wallet (bool & init_a, nano::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a) :
 	lock_observer ([] (bool, bool) {}),
-	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config.random_representative (), wallets_a.node.config.password_fanout, wallet_a),
+	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a),
 	wallets (wallets_a)
 {
 }
 
 nano::wallet::wallet (bool & init_a, nano::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a, std::string const & json) :
 	lock_observer ([] (bool, bool) {}),
-	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config.random_representative (), wallets_a.node.config.password_fanout, wallet_a, json),
+	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a, json),
 	wallets (wallets_a)
 {
 }
@@ -832,7 +832,7 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 {
 	std::shared_ptr<nano::block> block;
 	nano::epoch epoch = nano::epoch::epoch_0;
-	if (wallets.node.config.receive_minimum.number () <= amount_a.number ())
+	if (wallets.node.config->receive_minimum.number () <= amount_a.number ())
 	{
 		auto block_transaction (wallets.node.ledger.store.tx_begin_read ());
 		auto transaction (wallets.tx_begin_read ());
@@ -1183,7 +1183,7 @@ bool nano::wallet::search_receivable (nano::transaction const & wallet_transacti
 					auto hash (key.hash);
 					nano::pending_info pending (j->second);
 					auto amount (pending.amount.number ());
-					if (wallets.node.config.receive_minimum.number () <= amount)
+					if (wallets.node.config->receive_minimum.number () <= amount)
 					{
 						wallets.node.logger->try_log (boost::str (boost::format ("Found a receivable block %1% for account %2%") % hash.to_string () % pending.source.to_account ()));
 						if (wallets.node.ledger.block_confirmed (block_transaction, hash))
@@ -1334,9 +1334,9 @@ void nano::wallets::do_wallet_actions ()
 }
 
 nano::wallets::wallets (bool error_a, nano::node & node_a) :
-	network_params{ node_a.config.network_params },
+	network_params{ node_a.config->network_params },
 	observer ([] (bool) {}),
-	kdf{ node_a.config.network_params.kdf_work },
+	kdf{ node_a.config->network_params.kdf_work },
 	node (node_a),
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
 	stopped (false)
@@ -1373,7 +1373,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	}
 	// Backup before upgrade wallets
 	bool backup_required (false);
-	if (node.config.backup_before_upgrade)
+	if (node.config->backup_before_upgrade)
 	{
 		auto transaction (tx_begin_read ());
 		for (auto & item : items)
@@ -1396,7 +1396,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	{
 		item.second->enter_initial_password ();
 	}
-	if (node_a.config.enable_voting)
+	if (node_a.config->enable_voting)
 	{
 		lock.unlock ();
 		ongoing_compute_reps ();
@@ -1527,7 +1527,7 @@ void nano::wallets::queue_wallet_action (nano::uint128_t const & amount_a, std::
 
 void nano::wallets::foreach_representative (std::function<void (nano::public_key const & pub_a, nano::raw_key const & prv_a)> const & action_a)
 {
-	if (node.config.enable_voting)
+	if (node.config->enable_voting)
 	{
 		std::vector<std::pair<nano::public_key const, nano::raw_key const>> action_accounts_l;
 		{
@@ -1637,7 +1637,7 @@ bool nano::wallets::check_rep (nano::account const & account_a, nano::uint128_t 
 {
 	auto weight = node.ledger.weight (account_a);
 
-	if (weight < node.config.vote_minimum.number ())
+	if (weight < node.config->vote_minimum.number ())
 	{
 		return false; // account not a representative
 	}

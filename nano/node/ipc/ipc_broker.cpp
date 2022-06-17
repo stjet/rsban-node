@@ -186,7 +186,7 @@ void nano::ipc::broker::broadcast (std::shared_ptr<nanoapi::EventConfirmationT> 
 
 				if (subscriber_l->get_active_encoding () == nano::ipc::payload_encoding::flatbuffers_json)
 				{
-					auto parser (subscriber_l->get_parser (node.config.ipc_config));
+					auto parser (subscriber_l->get_parser (node.config->ipc_config));
 
 					// Convert response to JSON
 					auto json (std::make_shared<std::string> ());

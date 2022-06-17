@@ -29,7 +29,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	next_log (std::chrono::steady_clock::now ()),
 	logger (*node_a.logger),
 	checker (node_a.checker),
-	config (node_a.config),
+	config (*node_a.config),
 	state_block_signature_verification (checker, config.network_params.ledger.epochs, config.logging.timing_logging (), logger, node_a.flags.block_processor_verification_size),
 	network_params (node_a.network_params),
 	history (node_a.history),

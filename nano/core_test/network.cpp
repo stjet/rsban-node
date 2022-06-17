@@ -411,7 +411,7 @@ TEST (receivable_processor, send_with_receive)
 		system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 		nano::block_hash latest1 (node1.latest (nano::dev::genesis_key.pub));
 		system.wallet (1)->insert_adhoc (key2.prv);
-		auto block1 (std::make_shared<nano::send_block> (latest1, key2.pub, amount - node1.config.receive_minimum.number (), nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (latest1)));
+		auto block1 (std::make_shared<nano::send_block> (latest1, key2.pub, amount - node1.config->receive_minimum.number (), nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (latest1)));
 		ASSERT_EQ (amount, node1.balance (nano::dev::genesis_key.pub));
 		ASSERT_EQ (0, node1.balance (key2.pub));
 		ASSERT_EQ (amount, node2.balance (nano::dev::genesis_key.pub));
@@ -420,15 +420,15 @@ TEST (receivable_processor, send_with_receive)
 		node1.block_processor.flush ();
 		node2.process_active (block1);
 		node2.block_processor.flush ();
-		ASSERT_EQ (amount - node1.config.receive_minimum.number (), node1.balance (nano::dev::genesis_key.pub));
+		ASSERT_EQ (amount - node1.config->receive_minimum.number (), node1.balance (nano::dev::genesis_key.pub));
 		ASSERT_EQ (0, node1.balance (key2.pub));
-		ASSERT_EQ (amount - node1.config.receive_minimum.number (), node2.balance (nano::dev::genesis_key.pub));
+		ASSERT_EQ (amount - node1.config->receive_minimum.number (), node2.balance (nano::dev::genesis_key.pub));
 		ASSERT_EQ (0, node2.balance (key2.pub));
-		ASSERT_TIMELY (10s, node1.balance (key2.pub) == node1.config.receive_minimum.number () && node2.balance (key2.pub) == node1.config.receive_minimum.number ());
-		ASSERT_EQ (amount - node1.config.receive_minimum.number (), node1.balance (nano::dev::genesis_key.pub));
-		ASSERT_EQ (node1.config.receive_minimum.number (), node1.balance (key2.pub));
-		ASSERT_EQ (amount - node1.config.receive_minimum.number (), node2.balance (nano::dev::genesis_key.pub));
-		ASSERT_EQ (node1.config.receive_minimum.number (), node2.balance (key2.pub));
+		ASSERT_TIMELY (10s, node1.balance (key2.pub) == node1.config->receive_minimum.number () && node2.balance (key2.pub) == node1.config->receive_minimum.number ());
+		ASSERT_EQ (amount - node1.config->receive_minimum.number (), node1.balance (nano::dev::genesis_key.pub));
+		ASSERT_EQ (node1.config->receive_minimum.number (), node1.balance (key2.pub));
+		ASSERT_EQ (amount - node1.config->receive_minimum.number (), node2.balance (nano::dev::genesis_key.pub));
+		ASSERT_EQ (node1.config->receive_minimum.number (), node2.balance (key2.pub));
 	}
 }
 
@@ -442,8 +442,8 @@ TEST (network, receive_weight_change)
 		auto transaction (system.nodes[1]->wallets.tx_begin_write ());
 		system.wallet (1)->store.representative_set (transaction, key2.pub);
 	}
-	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, system.nodes[0]->config.receive_minimum.number ()));
-	ASSERT_TIMELY (10s, std::all_of (system.nodes.begin (), system.nodes.end (), [&] (std::shared_ptr<nano::node> const & node_a) { return node_a->weight (key2.pub) == system.nodes[0]->config.receive_minimum.number (); }));
+	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, system.nodes[0]->config->receive_minimum.number ()));
+	ASSERT_TIMELY (10s, std::all_of (system.nodes.begin (), system.nodes.end (), [&] (std::shared_ptr<nano::node> const & node_a) { return node_a->weight (key2.pub) == system.nodes[0]->config->receive_minimum.number (); }));
 }
 
 TEST (parse_endpoint, valid)

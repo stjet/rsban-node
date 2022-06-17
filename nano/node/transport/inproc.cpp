@@ -9,7 +9,7 @@ nano::transport::inproc::channel::channel (nano::node & node_a, nano::node & des
 	logger (*node_a.logger),
 	limiter (node_a.network.limiter),
 	io_ctx (node_a.io_ctx),
-	network_packet_logging (node_a.config.logging.network_packet_logging ()),
+	network_packet_logging (node_a.config->logging.network_packet_logging ()),
 	node{ node_a },
 	destination{ destination },
 	endpoint{ node_a.network.endpoint () }

@@ -23,12 +23,12 @@ TEST (frontiers_confirmation, prioritize_frontiers)
 	nano::block_hash latest1 (node->latest (nano::dev::genesis_key.pub));
 
 	// Send different numbers of blocks all accounts
-	nano::send_block send1 (latest1, key1.pub, node->config.online_weight_minimum.number () + 10000, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (latest1));
-	nano::send_block send2 (send1.hash (), key1.pub, node->config.online_weight_minimum.number () + 8500, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send1.hash ()));
-	nano::send_block send3 (send2.hash (), key1.pub, node->config.online_weight_minimum.number () + 8000, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send2.hash ()));
-	nano::send_block send4 (send3.hash (), key2.pub, node->config.online_weight_minimum.number () + 7500, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send3.hash ()));
-	nano::send_block send5 (send4.hash (), key3.pub, node->config.online_weight_minimum.number () + 6500, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send4.hash ()));
-	nano::send_block send6 (send5.hash (), key4.pub, node->config.online_weight_minimum.number () + 6000, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send5.hash ()));
+	nano::send_block send1 (latest1, key1.pub, node->config->online_weight_minimum.number () + 10000, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (latest1));
+	nano::send_block send2 (send1.hash (), key1.pub, node->config->online_weight_minimum.number () + 8500, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send1.hash ()));
+	nano::send_block send3 (send2.hash (), key1.pub, node->config->online_weight_minimum.number () + 8000, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send2.hash ()));
+	nano::send_block send4 (send3.hash (), key2.pub, node->config->online_weight_minimum.number () + 7500, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send3.hash ()));
+	nano::send_block send5 (send4.hash (), key3.pub, node->config->online_weight_minimum.number () + 6500, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send4.hash ()));
+	nano::send_block send6 (send5.hash (), key4.pub, node->config->online_weight_minimum.number () + 6000, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send5.hash ()));
 
 	// Open all accounts and add other sends to get different uncemented counts (as well as some which are the same)
 	nano::open_block open1 (send1.hash (), nano::dev::genesis->account (), key1.pub, key1.prv, key1.pub, *system.work.generate (key1.pub));
@@ -161,7 +161,7 @@ TEST (frontiers_confirmation, prioritize_frontiers_max_optimistic_elections)
 		auto transaction = node->store.tx_begin_write ();
 		auto latest = node->latest (nano::dev::genesis->account ());
 		nano::keypair key;
-		nano::send_block send (latest, key.pub, node->config.online_weight_minimum.number () + 10000, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (latest));
+		nano::send_block send (latest, key.pub, node->config->online_weight_minimum.number () + 10000, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (latest));
 		ASSERT_EQ (nano::process_result::progress, node->ledger.process (transaction, send).code);
 		nano::open_block open (send.hash (), nano::dev::genesis->account (), key.pub, key.prv, key.pub, *system.work.generate (key.pub));
 		ASSERT_EQ (nano::process_result::progress, node->ledger.process (transaction, open).code);

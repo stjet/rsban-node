@@ -29,7 +29,7 @@ void nano::bulk_push_client::start ()
 		}
 		else
 		{
-			if (this_l->node->config.logging.bulk_pull_logging ())
+			if (this_l->node->config->logging.bulk_pull_logging ())
 			{
 				this_l->node->logger->try_log (boost::str (boost::format ("Unable to send bulk_push request: %1%") % ec.message ()));
 			}
@@ -57,7 +57,7 @@ void nano::bulk_push_client::push ()
 			}
 			else
 			{
-				if (node->config.logging.bulk_pull_logging ())
+				if (node->config->logging.bulk_pull_logging ())
 				{
 					node->logger->try_log ("Bulk pushing range ", current_target.first.to_string (), " down to ", current_target.second.to_string ());
 				}
@@ -105,7 +105,7 @@ void nano::bulk_push_client::push_block (nano::block const & block_a)
 		}
 		else
 		{
-			if (this_l->node->config.logging.bulk_pull_logging ())
+			if (this_l->node->config->logging.bulk_pull_logging ())
 			{
 				this_l->node->logger->try_log (boost::str (boost::format ("Error sending block during bulk push: %1%") % ec.message ()));
 			}
@@ -143,7 +143,7 @@ void nano::bulk_push_server::receive ()
 {
 	if (node->bootstrap_initiator.in_progress ())
 	{
-		if (node->config.logging.bulk_pull_logging ())
+		if (node->config->logging.bulk_pull_logging ())
 		{
 			node->logger->try_log ("Aborting bulk_push because a bootstrap attempt is in progress");
 		}
@@ -158,7 +158,7 @@ void nano::bulk_push_server::receive ()
 			}
 			else
 			{
-				if (this_l->node->config.logging.bulk_pull_logging ())
+				if (this_l->node->config->logging.bulk_pull_logging ())
 				{
 					this_l->node->logger->try_log (boost::str (boost::format ("Error receiving block type: %1%") % ec.message ()));
 				}
@@ -220,7 +220,7 @@ void nano::bulk_push_server::received_type ()
 		}
 		default:
 		{
-			if (node->config.logging.network_packet_logging ())
+			if (node->config->logging.network_packet_logging ())
 			{
 				node->logger->try_log ("Unknown type received as block type");
 			}
@@ -242,14 +242,14 @@ void nano::bulk_push_server::received_block (boost::system::error_code const & e
 		}
 		else if (block == nullptr)
 		{
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				node->logger->try_log ("Error deserializing block received from pull request");
 			}
 		}
 		else // Work invalid
 		{
-			if (node->config.logging.bulk_pull_logging ())
+			if (node->config->logging.bulk_pull_logging ())
 			{
 				node->logger->try_log (boost::str (boost::format ("Insufficient work for bulk push block: %1%") % block->hash ().to_string ()));
 			}

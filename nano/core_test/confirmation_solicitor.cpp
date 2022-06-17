@@ -21,7 +21,7 @@ TEST (confirmation_solicitor, batches)
 	// Solicitor will only solicit from this representative
 	nano::representative representative (nano::dev::genesis_key.pub, nano::dev::constants.genesis_amount, channel1);
 	std::vector<nano::representative> representatives{ representative };
-	nano::confirmation_solicitor solicitor (node2.network, node2.config);
+	nano::confirmation_solicitor solicitor (node2.network, *node2.config);
 	solicitor.prepare (representatives);
 	// Ensure the representatives are correct
 	ASSERT_EQ (1, representatives.size ());
@@ -64,7 +64,7 @@ TEST (confirmation_solicitor, different_hash)
 	// Solicitor will only solicit from this representative
 	nano::representative representative (nano::dev::genesis_key.pub, nano::dev::constants.genesis_amount, channel1);
 	std::vector<nano::representative> representatives{ representative };
-	nano::confirmation_solicitor solicitor (node2.network, node2.config);
+	nano::confirmation_solicitor solicitor (node2.network, *node2.config);
 	solicitor.prepare (representatives);
 	// Ensure the representatives are correct
 	ASSERT_EQ (1, representatives.size ());
@@ -94,7 +94,7 @@ TEST (confirmation_solicitor, bypass_max_requests_cap)
 	node_flags.disable_udp = false;
 	auto & node1 = *system.add_node (node_flags);
 	auto & node2 = *system.add_node (node_flags);
-	nano::confirmation_solicitor solicitor (node2.network, node2.config);
+	nano::confirmation_solicitor solicitor (node2.network, *node2.config);
 	std::vector<nano::representative> representatives;
 	auto max_representatives = std::max<size_t> (solicitor.max_election_requests, solicitor.max_election_broadcasts);
 	representatives.reserve (max_representatives + 1);

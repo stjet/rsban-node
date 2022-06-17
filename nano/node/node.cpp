@@ -111,10 +111,10 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	write_database_queue (!flags_a.force_use_write_database_queue && (config_a.rocksdb_config.enable)),
 	io_ctx (io_ctx_a),
 	node_initialized_latch (1),
-	config (config_a),
-	network_params{ config.network_params },
-	stats{ std::make_shared<nano::stat> (config.stat_config) },
-	workers (std::max (3u, config.io_threads / 4), nano::thread_role::name::worker),
+	config{ std::make_shared<nano::node_config> (config_a) },
+	network_params{ config_a.network_params },
+	stats{ std::make_shared<nano::stat> (config_a.stat_config) },
+	workers (std::max (3u, config_a.io_threads / 4), nano::thread_role::name::worker),
 	flags (flags_a),
 	work (work_a),
 	distributed_work (*this),
@@ -126,11 +126,11 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	wallets_store (*wallets_store_impl),
 	gap_cache (*this),
 	ledger (store, *stats, network_params.ledger, flags_a.generate_cache),
-	checker (config.signature_checker_threads),
+	checker (config_a.signature_checker_threads),
 	// empty `config.peering_port` means the user made no port choice at all;
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
 	//
-	network (*this, config.peering_port.has_value () ? *config.peering_port : 0),
+	network (*this, config_a.peering_port.has_value () ? *config_a.peering_port : 0),
 	telemetry (std::make_shared<nano::telemetry> (network, workers, observers.telemetry, *stats, network_params, flags.disable_ongoing_telemetry_requests)),
 	bootstrap_initiator (*this),
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
@@ -144,16 +144,16 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	application_path (application_path_a),
 	port_mapping (*this),
 	rep_crawler (*this),
-	vote_processor (checker, active, observers, *stats, config, flags, *logger, online_reps, rep_crawler, ledger, network_params),
+	vote_processor (checker, active, observers, *stats, *config, flags, *logger, online_reps, rep_crawler, ledger, network_params),
 	warmed_up (0),
 	block_processor (*this, write_database_queue),
-	online_reps (ledger, config),
-	history{ config.network_params.voting },
+	online_reps (ledger, *config),
+	history{ config_a.network_params.voting },
 	vote_uniquer (block_uniquer),
-	confirmation_height_processor (ledger, write_database_queue, config.conf_height_processor_batch_min_time, config.logging, *logger, node_initialized_latch, flags.confirmation_height_processor_mode),
+	confirmation_height_processor (ledger, write_database_queue, config_a.conf_height_processor_batch_min_time, config_a.logging, *logger, node_initialized_latch, flags.confirmation_height_processor_mode),
 	active (*this, confirmation_height_processor),
 	scheduler{ *this },
-	aggregator (config, *stats, active.generator, active.final_generator, history, ledger, wallets, active),
+	aggregator (*config, *stats, active.generator, active.final_generator, history, ledger, wallets, active),
 	wallets (wallets_store.init_error (), *this),
 	startup_time (std::chrono::steady_clock::now ()),
 	node_seq (seq)
@@ -167,10 +167,10 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 
 		active.vacancy_update = [this] () { scheduler.notify (); };
 
-		if (config.websocket_config.enabled)
+		if (config->websocket_config.enabled)
 		{
-			auto endpoint_l (nano::tcp_endpoint (boost::asio::ip::make_address_v6 (config.websocket_config.address), config.websocket_config.port));
-			websocket_server = std::make_shared<nano::websocket::listener> (config.websocket_config.tls_config, *logger, wallets, io_ctx, endpoint_l);
+			auto endpoint_l (nano::tcp_endpoint (boost::asio::ip::make_address_v6 (config->websocket_config.address), config->websocket_config.port));
+			websocket_server = std::make_shared<nano::websocket::listener> (config->websocket_config.tls_config, *logger, wallets, io_ctx, endpoint_l);
 			this->websocket_server->run ();
 		}
 
@@ -184,7 +184,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		network.disconnect_observer = [this] () {
 			observers.disconnect.notify ();
 		};
-		if (!config.callback_address.empty ())
+		if (!config->callback_address.empty ())
 		{
 			observers.blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
 				auto block_a (status_a.winner);
@@ -225,9 +225,9 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 						boost::property_tree::write_json (ostream, event);
 						ostream.flush ();
 						auto body (std::make_shared<std::string> (ostream.str ()));
-						auto address (node_l->config.callback_address);
-						auto port (node_l->config.callback_port);
-						auto target (std::make_shared<std::string> (node_l->config.callback_target));
+						auto address (node_l->config->callback_address);
+						auto port (node_l->config->callback_port);
+						auto target (std::make_shared<std::string> (node_l->config->callback_target));
 						auto resolver (std::make_shared<boost::asio::ip::tcp::resolver> (node_l->io_ctx));
 						resolver->async_resolve (boost::asio::ip::tcp::resolver::query (address, std::to_string (port)), [node_l, address, port, target, body, resolver] (boost::system::error_code const & ec, boost::asio::ip::tcp::resolver::iterator i_a) {
 							if (!ec)
@@ -236,7 +236,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 							}
 							else
 							{
-								if (node_l->config.logging.callback_logging ())
+								if (node_l->config->logging.callback_logging ())
 								{
 									node_l->logger->always_log (boost::str (boost::format ("Error resolving callback: %1%:%2%: %3%") % address % port % ec.message ()));
 								}
@@ -364,18 +364,18 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		logger->always_log ("Active network: ", network_label);
 
 		logger->always_log (boost::str (boost::format ("Work pool running %1% threads %2%") % work.threads.size () % (work.opencl ? "(1 for OpenCL)" : "")));
-		logger->always_log (boost::str (boost::format ("%1% work peers configured") % config.work_peers.size ()));
+		logger->always_log (boost::str (boost::format ("%1% work peers configured") % config->work_peers.size ()));
 		if (!work_generation_enabled ())
 		{
 			logger->always_log ("Work generation is disabled");
 		}
 
-		if (config.logging.node_lifetime_tracing ())
+		if (config->logging.node_lifetime_tracing ())
 		{
 			logger->always_log ("Constructing node");
 		}
 
-		logger->always_log (boost::str (boost::format ("Outbound Voting Bandwidth limited to %1% bytes per second, burst ratio %2%") % config.bandwidth_limit % config.bandwidth_limit_burst_ratio));
+		logger->always_log (boost::str (boost::format ("Outbound Voting Bandwidth limited to %1% bytes per second, burst ratio %2%") % config->bandwidth_limit % config->bandwidth_limit_burst_ratio));
 
 		// First do a pass with a read to see if any writing needs doing, this saves needing to open a write lock (and potentially blocking)
 		auto is_initialized (false);
@@ -391,7 +391,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 			store.initialize (transaction, ledger.cache, ledger.constants);
 		}
 
-		if (!ledger.block_or_pruned_exists (config.network_params.ledger.genesis->hash ()))
+		if (!ledger.block_or_pruned_exists (config->network_params.ledger.genesis->hash ()))
 		{
 			std::stringstream ss;
 			ss << "Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, "
@@ -407,7 +407,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 			std::exit (1);
 		}
 
-		if (config.enable_voting)
+		if (config->enable_voting)
 		{
 			std::ostringstream stream;
 			stream << "Voting is enabled, more system resources will be used";
@@ -454,7 +454,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 
 		if (ledger.pruning)
 		{
-			if (config.enable_voting && !flags.inactive_node)
+			if (config->enable_voting && !flags.inactive_node)
 			{
 				std::string str = "Incompatibility detected between config node.enable_voting and existing pruned blocks";
 				logger->always_log (str);
@@ -475,7 +475,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 
 nano::node::~node ()
 {
-	if (config.logging.node_lifetime_tracing ())
+	if (config->logging.node_lifetime_tracing ())
 	{
 		logger->always_log ("Destructing node");
 	}
@@ -513,7 +513,7 @@ void nano::node::do_rpc_callback (boost::asio::ip::tcp::resolver::iterator i_a, 
 								}
 								else
 								{
-									if (node_l->config.logging.callback_logging ())
+									if (node_l->config->logging.callback_logging ())
 									{
 										node_l->logger->try_log (boost::str (boost::format ("Callback to %1%:%2% failed with status: %3%") % address % port % resp->result ()));
 									}
@@ -522,7 +522,7 @@ void nano::node::do_rpc_callback (boost::asio::ip::tcp::resolver::iterator i_a, 
 							}
 							else
 							{
-								if (node_l->config.logging.callback_logging ())
+								if (node_l->config->logging.callback_logging ())
 								{
 									node_l->logger->try_log (boost::str (boost::format ("Unable complete callback: %1%:%2%: %3%") % address % port % ec.message ()));
 								}
@@ -532,7 +532,7 @@ void nano::node::do_rpc_callback (boost::asio::ip::tcp::resolver::iterator i_a, 
 					}
 					else
 					{
-						if (node_l->config.logging.callback_logging ())
+						if (node_l->config->logging.callback_logging ())
 						{
 							node_l->logger->try_log (boost::str (boost::format ("Unable to send callback: %1%:%2%: %3%") % address % port % ec.message ()));
 						}
@@ -542,7 +542,7 @@ void nano::node::do_rpc_callback (boost::asio::ip::tcp::resolver::iterator i_a, 
 			}
 			else
 			{
-				if (node_l->config.logging.callback_logging ())
+				if (node_l->config->logging.callback_logging ())
 				{
 					node_l->logger->try_log (boost::str (boost::format ("Unable to connect to callback address: %1%:%2%: %3%") % address % port % ec.message ()));
 				}
@@ -658,7 +658,7 @@ void nano::node::start ()
 	ongoing_peer_store ();
 	ongoing_online_weight_calculation_queue ();
 	bool tcp_enabled (false);
-	if (config.tcp_incoming_connections_max > 0 && !(flags.disable_bootstrap_listener && flags.disable_tcp_realtime))
+	if (config->tcp_incoming_connections_max > 0 && !(flags.disable_bootstrap_listener && flags.disable_tcp_realtime))
 	{
 		bootstrap->start ();
 		tcp_enabled = true;
@@ -688,12 +688,12 @@ void nano::node::start ()
 		});
 	}
 	// Start port mapping if external address is not defined and TCP or UDP ports are enabled
-	if (config.external_address == boost::asio::ip::address_v6{}.any ().to_string () && (tcp_enabled || !flags.disable_udp))
+	if (config->external_address == boost::asio::ip::address_v6{}.any ().to_string () && (tcp_enabled || !flags.disable_udp))
 	{
 		port_mapping.start ();
 	}
 	wallets.start ();
-	if (config.frontiers_confirmation != nano::frontiers_confirmation_mode::disabled)
+	if (config->frontiers_confirmation != nano::frontiers_confirmation_mode::disabled)
 	{
 		workers.push_task ([this_l = shared ()] () {
 			this_l->ongoing_backlog_population ();
@@ -967,7 +967,7 @@ void nano::node::unchecked_cleanup ()
 	std::vector<nano::uint128_t> digests;
 	std::deque<nano::unchecked_key> cleaning_list;
 	auto const attempt (bootstrap_initiator.current_attempt ());
-	const bool long_attempt (attempt != nullptr && attempt->duration ().count () > config.unchecked_cutoff_time.count ());
+	const bool long_attempt (attempt != nullptr && attempt->duration ().count () > config->unchecked_cutoff_time.count ());
 	// Collect old unchecked keys
 	if (ledger.cache.block_count >= ledger.bootstrap_weight_max_blocks && !long_attempt)
 	{
@@ -978,7 +978,7 @@ void nano::node::unchecked_cleanup ()
 		{
 			nano::unchecked_key const & key (i->first);
 			nano::unchecked_info const & info (i->second);
-			if ((now - info.modified ()) > static_cast<uint64_t> (config.unchecked_cutoff_time.count ()))
+			if ((now - info.modified ()) > static_cast<uint64_t> (config->unchecked_cutoff_time.count ()))
 			{
 				digests.push_back (network.publish_filter.hash (info.get_block ()));
 				cleaning_list.push_back (key);
@@ -1019,7 +1019,7 @@ void nano::node::ongoing_unchecked_cleanup ()
 void nano::node::ongoing_backlog_population ()
 {
 	populate_backlog ();
-	auto delay = config.network_params.network.is_dev_network () ? std::chrono::seconds{ 1 } : std::chrono::duration_cast<std::chrono::seconds> (std::chrono::minutes{ 5 });
+	auto delay = config->network_params.network.is_dev_network () ? std::chrono::seconds{ 1 } : std::chrono::duration_cast<std::chrono::seconds> (std::chrono::minutes{ 5 });
 	workers.add_timed_task (std::chrono::steady_clock::now () + delay, [this_l = shared ()] () {
 		this_l->ongoing_backlog_population ();
 	});
@@ -1080,8 +1080,8 @@ bool nano::node::collect_ledger_pruning_targets (std::deque<nano::block_hash> & 
 
 void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_weight_reached_a, bool log_to_cout_a)
 {
-	uint64_t const max_depth (config.max_pruning_depth != 0 ? config.max_pruning_depth : std::numeric_limits<uint64_t>::max ());
-	uint64_t const cutoff_time (bootstrap_weight_reached_a ? nano::seconds_since_epoch () - config.max_pruning_age.count () : std::numeric_limits<uint64_t>::max ());
+	uint64_t const max_depth (config->max_pruning_depth != 0 ? config->max_pruning_depth : std::numeric_limits<uint64_t>::max ());
+	uint64_t const cutoff_time (bootstrap_weight_reached_a ? nano::seconds_since_epoch () - config->max_pruning_age.count () : std::numeric_limits<uint64_t>::max ());
 	uint64_t pruned_count (0);
 	uint64_t transaction_write_count (0);
 	nano::account last_account (1); // 0 Burn account is never opened. So it can be used to break loop
@@ -1134,7 +1134,7 @@ void nano::node::ongoing_ledger_pruning ()
 {
 	auto bootstrap_weight_reached (ledger.cache.block_count >= ledger.bootstrap_weight_max_blocks);
 	ledger_pruning (flags.block_processor_batch_size != 0 ? flags.block_processor_batch_size : 2 * 1024, bootstrap_weight_reached, false);
-	auto const ledger_pruning_interval (bootstrap_weight_reached ? config.max_pruning_age : std::min (config.max_pruning_age, std::chrono::seconds (15 * 60)));
+	auto const ledger_pruning_interval (bootstrap_weight_reached ? config->max_pruning_age : std::min (config->max_pruning_age, std::chrono::seconds (15 * 60)));
 	auto this_l (shared ());
 	workers.add_timed_task (std::chrono::steady_clock::now () + ledger_pruning_interval, [this_l] () {
 		this_l->workers.push_task ([this_l] () {
@@ -1189,17 +1189,17 @@ uint64_t nano::node::default_receive_difficulty (nano::work_version const versio
 
 uint64_t nano::node::max_work_generate_difficulty (nano::work_version const version_a) const
 {
-	return nano::difficulty::from_multiplier (config.max_work_generate_multiplier, default_difficulty (version_a));
+	return nano::difficulty::from_multiplier (config->max_work_generate_multiplier, default_difficulty (version_a));
 }
 
 bool nano::node::local_work_generation_enabled () const
 {
-	return config.work_threads > 0 || work.opencl;
+	return config->work_threads > 0 || work.opencl;
 }
 
 bool nano::node::work_generation_enabled () const
 {
-	return work_generation_enabled (config.work_peers);
+	return work_generation_enabled (config->work_peers);
 }
 
 bool nano::node::work_generation_enabled (std::vector<std::pair<std::string, uint16_t>> const & peers_a) const
@@ -1219,7 +1219,7 @@ boost::optional<uint64_t> nano::node::work_generate_blocking (nano::block & bloc
 
 void nano::node::work_generate (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::function<void (boost::optional<uint64_t>)> callback_a, boost::optional<nano::account> const & account_a, bool secondary_work_peers_a)
 {
-	auto const & peers_l (secondary_work_peers_a ? config.secondary_work_peers : config.work_peers);
+	auto const & peers_l (secondary_work_peers_a ? config->secondary_work_peers : config->work_peers);
 	if (distributed_work.make (version_a, root_a, peers_l, difficulty_a, callback_a, account_a))
 	{
 		// Error in creating the job (either stopped or work generation is not possible)
@@ -1268,7 +1268,7 @@ void nano::node::add_initial_peers ()
 	for (auto i (store.peer.begin (transaction)), n (store.peer.end ()); i != n; ++i)
 	{
 		nano::endpoint endpoint (boost::asio::ip::address_v6 (i->first.address_bytes ()), i->first.port ());
-		if (!network.reachout (endpoint, config.allow_local_peers))
+		if (!network.reachout (endpoint, config->allow_local_peers))
 		{
 			network.tcp_channels->start_tcp (endpoint);
 		}
@@ -1403,7 +1403,7 @@ void nano::node::process_confirmed_data (nano::transaction const & transaction_a
 void nano::node::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
 {
 	auto hash (status_a.winner->hash ());
-	auto const num_iters = (config.block_processor_batch_max_time / network_params.node.process_confirmed_interval) * 4;
+	auto const num_iters = (config->block_processor_batch_max_time / network_params.node.process_confirmed_interval) * 4;
 	if (auto block_l = ledger.store.block.get (ledger.store.tx_begin_read (), hash))
 	{
 		active.add_recently_confirmed (block_l->qualified_root (), hash);
@@ -1499,8 +1499,8 @@ bool nano::node::epoch_upgrader (nano::raw_key const & prv_a, nano::epoch epoch_
 
 void nano::node::set_bandwidth_params (std::size_t limit, double ratio)
 {
-	config.bandwidth_limit_burst_ratio = ratio;
-	config.bandwidth_limit = limit;
+	config->bandwidth_limit_burst_ratio = ratio;
+	config->bandwidth_limit = limit;
 	network.set_bandwidth_params (limit, ratio);
 	logger->always_log (boost::str (boost::format ("set_bandwidth_params(%1%, %2%)") % limit % ratio));
 }

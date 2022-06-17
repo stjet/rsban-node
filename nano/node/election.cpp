@@ -30,7 +30,7 @@ nano::election::election (nano::node & node_a, std::shared_ptr<nano::block> cons
 {
 	last_votes.emplace (nano::account::null (), nano::vote_info{ std::chrono::steady_clock::now (), 0, block_a->hash () });
 	last_blocks.emplace (block_a->hash (), block_a);
-	if (node.config.enable_voting && node.wallets.reps ().voting > 0)
+	if (node.config->enable_voting && node.wallets.reps ().voting > 0)
 	{
 		node.active.generator.add (root, block_a->hash ());
 	}
@@ -203,7 +203,7 @@ bool nano::election::transition_time (nano::confirmation_solicitor & solicitor_a
 		if (!state_change (state_m.load (), nano::election::state_t::expired_unconfirmed))
 		{
 			result = true;
-			if (node.config.logging.election_expiration_tally_logging ())
+			if (node.config->logging.election_expiration_tally_logging ())
 			{
 				log_votes (tally_impl (), "Election expired: ");
 			}
@@ -290,7 +290,7 @@ void nano::election::confirm_if_quorum (nano::unique_lock<nano::mutex> & lock_a)
 	}
 	if (have_quorum (tally_l))
 	{
-		if (node.ledger.cache.final_votes_confirmation_canary.load () && !is_quorum.exchange (true) && node.config.enable_voting && node.wallets.reps ().voting > 0)
+		if (node.ledger.cache.final_votes_confirmation_canary.load () && !is_quorum.exchange (true) && node.config->enable_voting && node.wallets.reps ().voting > 0)
 		{
 			auto hash = status.winner->hash ();
 			lock_a.unlock ();
@@ -299,7 +299,7 @@ void nano::election::confirm_if_quorum (nano::unique_lock<nano::mutex> & lock_a)
 		}
 		if (!node.ledger.cache.final_votes_confirmation_canary.load () || final_weight >= node.online_reps.delta ())
 		{
-			if (node.config.logging.vote_logging () || (node.config.logging.election_fork_tally_logging () && last_blocks.size () > 1))
+			if (node.config->logging.vote_logging () || (node.config->logging.election_fork_tally_logging () && last_blocks.size () > 1))
 			{
 				log_votes (tally_l);
 			}
@@ -311,7 +311,7 @@ void nano::election::confirm_if_quorum (nano::unique_lock<nano::mutex> & lock_a)
 void nano::election::log_votes (nano::tally_t const & tally_a, std::string const & prefix_a) const
 {
 	std::stringstream tally;
-	std::string line_end (node.config.logging.single_line_record () ? "\t" : "\n");
+	std::string line_end (node.config->logging.single_line_record () ? "\t" : "\n");
 	tally << boost::str (boost::format ("%1%%2%Vote tally for root %3%, final weight:%4%") % prefix_a % line_end % root.to_string () % final_weight);
 	for (auto i (tally_a.begin ()), n (tally_a.end ()); i != n; ++i)
 	{
@@ -491,7 +491,7 @@ std::shared_ptr<nano::block> nano::election::winner () const
 
 void nano::election::generate_votes () const
 {
-	if (node.config.enable_voting && node.wallets.reps ().voting > 0)
+	if (node.config->enable_voting && node.wallets.reps ().voting > 0)
 	{
 		nano::unique_lock<nano::mutex> lock (mutex);
 		if (confirmed () || have_quorum (tally_impl ()))
@@ -511,7 +511,7 @@ void nano::election::generate_votes () const
 void nano::election::remove_votes (nano::block_hash const & hash_a)
 {
 	debug_assert (!mutex.try_lock ());
-	if (node.config.enable_voting && node.wallets.reps ().voting > 0)
+	if (node.config->enable_voting && node.wallets.reps ().voting > 0)
 	{
 		// Remove votes from election
 		auto list_generated_votes (node.history.votes (root, hash_a));

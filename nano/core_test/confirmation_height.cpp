@@ -795,7 +795,7 @@ TEST (confirmation_height, observers)
 		nano::keypair key1;
 		system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 		nano::block_hash latest1 (node1->latest (nano::dev::genesis_key.pub));
-		auto send1 (std::make_shared<nano::send_block> (latest1, key1.pub, amount - node1->config.receive_minimum.number (), nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (latest1)));
+		auto send1 (std::make_shared<nano::send_block> (latest1, key1.pub, amount - node1->config->receive_minimum.number (), nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (latest1)));
 
 		add_callback_stats (*node1);
 

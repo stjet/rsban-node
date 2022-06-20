@@ -84,6 +84,7 @@ public:
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::socket> const socket;
 	std::shared_ptr<nano::network_filter> publish_filter;
+	std::shared_ptr<nano::thread_pool> workers;
 	std::shared_ptr<nano::node> node;
 	nano::mutex mutex;
 	std::queue<std::unique_ptr<nano::message>> requests;

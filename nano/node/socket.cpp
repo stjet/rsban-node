@@ -378,7 +378,7 @@ void nano::server_socket::on_connection (std::function<bool (std::shared_ptr<nan
 
 		// Prepare new connection
 		auto new_connection = std::make_shared<nano::socket> (this_l->node.io_ctx, nano::socket::endpoint_type_t::server,
-		*this_l->node.stats, *this_l->node.logger, this_l->node->workers, this_l->node.config->tcp_io_timeout, this_l->node.network_params.network.silent_connection_tolerance_time, this_l->node.config->logging.network_timeout_logging ());
+		*this_l->node.stats, *this_l->node.logger, *this_l->node.workers, this_l->node.config->tcp_io_timeout, this_l->node.network_params.network.silent_connection_tolerance_time, this_l->node.config->logging.network_timeout_logging ());
 		this_l->acceptor.async_accept (new_connection->tcp_socket_facade_m->tcp_socket, new_connection->get_remote (),
 		boost::asio::bind_executor (this_l->strand,
 		[this_l, new_connection, cbk = std::move (callback)] (boost::system::error_code const & ec_a) mutable {

@@ -173,6 +173,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
 	socket (socket_a),
 	publish_filter (node_a->network.publish_filter),
+	workers (node_a->workers),
 	node (node_a),
 	bootstrap (node_a->bootstrap),
 	logger{ node_a->logger },
@@ -630,7 +631,7 @@ void nano::bootstrap_server::finish_request ()
 	}
 
 	std::weak_ptr<nano::bootstrap_server> this_w (shared_from_this ());
-	node->workers->add_timed_task (std::chrono::steady_clock::now () + (config->tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + (config->tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w] () {
 		if (auto this_l = this_w.lock ())
 		{
 			this_l->timeout ();

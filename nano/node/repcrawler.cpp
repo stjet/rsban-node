@@ -124,7 +124,7 @@ void nano::rep_crawler::ongoing_crawl ()
 	unsigned next_run_ms = node.network_params.network.is_dev_network () ? 100 : sufficient_weight ? 7000
 																								   : 3000;
 	std::weak_ptr<nano::node> node_w (node.shared ());
-	node.workers.add_timed_task (now + std::chrono::milliseconds (next_run_ms), [node_w, this] () {
+	node.workers->add_timed_task (now + std::chrono::milliseconds (next_run_ms), [node_w, this] () {
 		if (auto node_l = node_w.lock ())
 		{
 			this->ongoing_crawl ();
@@ -183,7 +183,7 @@ void nano::rep_crawler::query (std::vector<std::shared_ptr<nano::transport::chan
 
 	// A representative must respond with a vote within the deadline
 	std::weak_ptr<nano::node> node_w (node.shared ());
-	node.workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (5), [node_w, hash = hash_root.first] () {
+	node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (5), [node_w, hash = hash_root.first] () {
 		if (auto node_l = node_w.lock ())
 		{
 			auto target_finished_processed (node_l->vote_processor.total_processed + node_l->vote_processor.size ());
@@ -208,7 +208,7 @@ void nano::rep_crawler::throttled_remove (nano::block_hash const & hash_a, uint6
 	else
 	{
 		std::weak_ptr<nano::node> node_w (node.shared ());
-		node.workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (5), [node_w, hash_a, target_finished_processed] () {
+		node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (5), [node_w, hash_a, target_finished_processed] () {
 			if (auto node_l = node_w.lock ())
 			{
 				node_l->rep_crawler.throttled_remove (hash_a, target_finished_processed);

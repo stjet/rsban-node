@@ -403,7 +403,7 @@ TEST (telemetry, blocking_request)
 	std::atomic<bool> done{ false };
 	std::function<void ()> call_system_poll;
 	std::promise<void> promise;
-	call_system_poll = [&call_system_poll, &workers = node_client->workers, &done, &system, &promise] () {
+	call_system_poll = [&call_system_poll, &workers = *node_client->workers, &done, &system, &promise] () {
 		if (!done)
 		{
 			ASSERT_NO_ERROR (system.poll ());
@@ -417,7 +417,7 @@ TEST (telemetry, blocking_request)
 
 	// Keep pushing system.polls in another thread (thread_pool), because we will be blocking this thread and unable to do so.
 	system.deadline_set (10s);
-	node_client->workers.push_task (call_system_poll);
+	node_client->workers->push_task (call_system_poll);
 
 	// Now try single request metric
 	auto telemetry_data_response = node_client->telemetry->get_metrics_single_peer (node_client->network.find_channel (node_server->network.endpoint ()));

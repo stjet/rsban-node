@@ -114,7 +114,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	config{ std::make_shared<nano::node_config> (config_a) },
 	network_params{ config_a.network_params },
 	stats{ std::make_shared<nano::stat> (config_a.stat_config) },
-	workers (std::max (3u, config_a.io_threads / 4), nano::thread_role::name::worker),
+	workers{ std::make_shared<nano::thread_pool> (std::max (3u, config_a.io_threads / 4), nano::thread_role::name::worker) },
 	flags (flags_a),
 	work (work_a),
 	distributed_work (*this),
@@ -131,7 +131,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
 	//
 	network (*this, config_a.peering_port.has_value () ? *config_a.peering_port : 0),
-	telemetry (std::make_shared<nano::telemetry> (network, workers, observers.telemetry, *stats, network_params, flags.disable_ongoing_telemetry_requests)),
+	telemetry (std::make_shared<nano::telemetry> (network, *workers, observers.telemetry, *stats, network_params, flags.disable_ongoing_telemetry_requests)),
 	bootstrap_initiator (*this),
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
 	//         a peering port and wants the OS to pick one, the picking happens when `network` gets initialized
@@ -573,7 +573,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	{
 		composite->add_component (collect_container_info (*node.telemetry, "telemetry"));
 	}
-	composite->add_component (collect_container_info (node.workers, "workers"));
+	composite->add_component (collect_container_info (*node.workers, "workers"));
 	composite->add_component (collect_container_info (node.observers, "observers"));
 	composite->add_component (collect_container_info (node.wallets, "wallets"));
 	composite->add_component (collect_container_info (node.vote_processor, "vote_processor"));
@@ -639,14 +639,14 @@ void nano::node::start ()
 	if (!flags.disable_unchecked_cleanup)
 	{
 		auto this_l (shared ());
-		workers.push_task ([this_l] () {
+		workers->push_task ([this_l] () {
 			this_l->ongoing_unchecked_cleanup ();
 		});
 	}
 	if (flags.enable_pruning)
 	{
 		auto this_l (shared ());
-		workers.push_task ([this_l] () {
+		workers->push_task ([this_l] () {
 			this_l->ongoing_ledger_pruning ();
 		});
 	}
@@ -683,7 +683,7 @@ void nano::node::start ()
 	{
 		// Delay to start wallet lazy bootstrap
 		auto this_l (shared ());
-		workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::minutes (1), [this_l] () {
+		workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::minutes (1), [this_l] () {
 			this_l->bootstrap_wallet ();
 		});
 	}
@@ -695,7 +695,7 @@ void nano::node::start ()
 	wallets.start ();
 	if (config->frontiers_confirmation != nano::frontiers_confirmation_mode::disabled)
 	{
-		workers.push_task ([this_l = shared ()] () {
+		workers->push_task ([this_l = shared ()] () {
 			this_l->ongoing_backlog_population ();
 		});
 	}
@@ -733,7 +733,7 @@ void nano::node::stop ()
 		{
 			epoch_upgrade->wait ();
 		}
-		workers.stop ();
+		workers->stop ();
 		// work pool is not stopped on purpose due to testing setup
 	}
 }
@@ -828,7 +828,7 @@ void nano::node::ongoing_rep_calculation ()
 	auto now (std::chrono::steady_clock::now ());
 	vote_processor.calculate_weights ();
 	std::weak_ptr<nano::node> node_w (shared_from_this ());
-	workers.add_timed_task (now + std::chrono::minutes (10), [node_w] () {
+	workers->add_timed_task (now + std::chrono::minutes (10), [node_w] () {
 		if (auto node_l = node_w.lock ())
 		{
 			node_l->ongoing_rep_calculation ();
@@ -888,7 +888,7 @@ void nano::node::ongoing_bootstrap ()
 	// Bootstrap and schedule for next attempt
 	bootstrap_initiator.bootstrap (false, boost::str (boost::format ("auto_bootstrap_%1%") % previous_bootstrap_count), frontiers_age);
 	std::weak_ptr<nano::node> node_w (shared_from_this ());
-	workers.add_timed_task (std::chrono::steady_clock::now () + next_wakeup, [node_w] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + next_wakeup, [node_w] () {
 		if (auto node_l = node_w.lock ())
 		{
 			node_l->ongoing_bootstrap ();
@@ -901,7 +901,7 @@ void nano::node::ongoing_peer_store ()
 	const bool stored (network.tcp_channels->store_all (true));
 	network.udp_channels.store_all (!stored);
 	std::weak_ptr<nano::node> node_w (shared_from_this ());
-	workers.add_timed_task (std::chrono::steady_clock::now () + network_params.network.peer_dump_interval, [node_w] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.peer_dump_interval, [node_w] () {
 		if (auto node_l = node_w.lock ())
 		{
 			node_l->ongoing_peer_store ();
@@ -922,7 +922,7 @@ void nano::node::backup_wallet ()
 		i->second->store.write_backup (transaction, backup_path / (i->first.to_string () + ".json"));
 	}
 	auto this_l (shared ());
-	workers.add_timed_task (std::chrono::steady_clock::now () + network_params.node.backup_interval, [this_l] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.node.backup_interval, [this_l] () {
 		this_l->backup_wallet ();
 	});
 }
@@ -934,7 +934,7 @@ void nano::node::search_receivable_all ()
 	// Search pending
 	wallets.search_receivable_all ();
 	auto this_l (shared ());
-	workers.add_timed_task (std::chrono::steady_clock::now () + network_params.node.search_pending_interval, [this_l] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.node.search_pending_interval, [this_l] () {
 		this_l->search_receivable_all ();
 	});
 }
@@ -1011,7 +1011,7 @@ void nano::node::unchecked_cleanup ()
 void nano::node::ongoing_unchecked_cleanup ()
 {
 	unchecked_cleanup ();
-	workers.add_timed_task (std::chrono::steady_clock::now () + network_params.node.unchecked_cleaning_interval, [this_l = shared ()] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.node.unchecked_cleaning_interval, [this_l = shared ()] () {
 		this_l->ongoing_unchecked_cleanup ();
 	});
 }
@@ -1020,7 +1020,7 @@ void nano::node::ongoing_backlog_population ()
 {
 	populate_backlog ();
 	auto delay = config->network_params.network.is_dev_network () ? std::chrono::seconds{ 1 } : std::chrono::duration_cast<std::chrono::seconds> (std::chrono::minutes{ 5 });
-	workers.add_timed_task (std::chrono::steady_clock::now () + delay, [this_l = shared ()] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + delay, [this_l = shared ()] () {
 		this_l->ongoing_backlog_population ();
 	});
 }
@@ -1136,8 +1136,8 @@ void nano::node::ongoing_ledger_pruning ()
 	ledger_pruning (flags.block_processor_batch_size != 0 ? flags.block_processor_batch_size : 2 * 1024, bootstrap_weight_reached, false);
 	auto const ledger_pruning_interval (bootstrap_weight_reached ? config->max_pruning_age : std::min (config->max_pruning_age, std::chrono::seconds (15 * 60)));
 	auto this_l (shared ());
-	workers.add_timed_task (std::chrono::steady_clock::now () + ledger_pruning_interval, [this_l] () {
-		this_l->workers.push_task ([this_l] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + ledger_pruning_interval, [this_l] () {
+		this_l->workers->push_task ([this_l] () {
 			this_l->ongoing_ledger_pruning ();
 		});
 	});
@@ -1300,7 +1300,7 @@ bool nano::node::block_confirmed_or_being_confirmed (nano::transaction const & t
 void nano::node::ongoing_online_weight_calculation_queue ()
 {
 	std::weak_ptr<nano::node> node_w (shared_from_this ());
-	workers.add_timed_task (std::chrono::steady_clock::now () + (std::chrono::seconds (network_params.node.weight_period)), [node_w] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + (std::chrono::seconds (network_params.node.weight_period)), [node_w] () {
 		if (auto node_l = node_w.lock ())
 		{
 			node_l->ongoing_online_weight_calculation ();
@@ -1413,7 +1413,7 @@ void nano::node::process_confirmed (nano::election_status const & status_a, uint
 	{
 		iteration_a++;
 		std::weak_ptr<nano::node> node_w (shared ());
-		workers.add_timed_task (std::chrono::steady_clock::now () + network_params.node.process_confirmed_interval, [node_w, status_a, iteration_a] () {
+		workers->add_timed_task (std::chrono::steady_clock::now () + network_params.node.process_confirmed_interval, [node_w, status_a, iteration_a] () {
 			if (auto node_l = node_w.lock ())
 			{
 				node_l->process_confirmed (status_a, iteration_a);
@@ -1619,7 +1619,7 @@ void nano::node::epoch_upgrader_impl (nano::raw_key const & prv_a, nano::epoch e
 								upgrader_condition.wait (lock);
 							}
 						}
-						this->workers.push_task ([node_l = shared_from_this (), &upgrader_process, &upgrader_mutex, &upgrader_condition, &upgraded_accounts, &workers, epoch, difficulty, signer, root, account] () {
+						this->workers->push_task ([node_l = shared_from_this (), &upgrader_process, &upgrader_mutex, &upgrader_condition, &upgraded_accounts, &workers, epoch, difficulty, signer, root, account] () {
 							upgrader_process (*node_l, upgraded_accounts, epoch, difficulty, signer, root, account);
 							{
 								nano::lock_guard<nano::mutex> lock (upgrader_mutex);
@@ -1698,7 +1698,7 @@ void nano::node::epoch_upgrader_impl (nano::raw_key const & prv_a, nano::epoch e
 									upgrader_condition.wait (lock);
 								}
 							}
-							this->workers.push_task ([node_l = shared_from_this (), &upgrader_process, &upgrader_mutex, &upgrader_condition, &upgraded_pending, &workers, epoch, difficulty, signer, root, account] () {
+							this->workers->push_task ([node_l = shared_from_this (), &upgrader_process, &upgrader_mutex, &upgrader_condition, &upgraded_pending, &workers, epoch, difficulty, signer, root, account] () {
 								upgrader_process (*node_l, upgraded_pending, epoch, difficulty, signer, root, account);
 								{
 									nano::lock_guard<nano::mutex> lock (upgrader_mutex);

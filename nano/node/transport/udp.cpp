@@ -340,7 +340,7 @@ void nano::transport::udp_channels::receive ()
 				}
 				if (!this->stopped)
 				{
-					this->node.workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (5), [this] () { this->receive (); });
+					this->node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (5), [this] () { this->receive (); });
 				}
 			}
 		}));

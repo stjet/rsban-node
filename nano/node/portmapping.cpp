@@ -204,7 +204,7 @@ void nano::port_mapping::check_mapping_loop ()
 	}
 
 	// Check for new devices or after health_check_period
-	node.workers.add_timed_task (std::chrono::steady_clock::now () + health_check_period, [node_l = node.shared ()] () {
+	node.workers->add_timed_task (std::chrono::steady_clock::now () + health_check_period, [node_l = node.shared ()] () {
 		node_l->port_mapping.check_mapping_loop ();
 	});
 

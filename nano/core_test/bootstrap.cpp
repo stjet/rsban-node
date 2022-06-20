@@ -10,7 +10,7 @@ using namespace std::chrono_literals;
 std::shared_ptr<nano::bootstrap_server> create_bootstrap_server (std::shared_ptr<nano::node> node)
 {
 	auto socket{ std::make_shared<nano::socket> (node->io_ctx, nano::socket::endpoint_type_t::server,
-	*node->stats, *node->logger, node->workers, node->config->tcp_io_timeout, node->network_params.network.silent_connection_tolerance_time, node->config->logging.network_timeout_logging ()) };
+	*node->stats, *node->logger, *node->workers, node->config->tcp_io_timeout, node->network_params.network.silent_connection_tolerance_time, node->config->logging.network_timeout_logging ()) };
 	return std::make_shared<nano::bootstrap_server> (socket, node);
 }
 

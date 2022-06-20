@@ -630,7 +630,7 @@ void nano::bootstrap_server::finish_request ()
 	}
 
 	std::weak_ptr<nano::bootstrap_server> this_w (shared_from_this ());
-	node->workers.add_timed_task (std::chrono::steady_clock::now () + (config->tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w] () {
+	node->workers->add_timed_task (std::chrono::steady_clock::now () + (config->tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w] () {
 		if (auto this_l = this_w.lock ())
 		{
 			this_l->timeout ();

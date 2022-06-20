@@ -94,7 +94,7 @@ TEST (system, receive_while_synchronizing)
 		node1->start ();
 		system.nodes.push_back (node1);
 		ASSERT_NE (nullptr, nano::establish_tcp (system, *node1, node->network.endpoint ()));
-		node1->workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (200), ([&system, &key] () {
+		node1->workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (200), ([&system, &key] () {
 			auto hash (system.wallet (0)->send_sync (nano::dev::genesis_key.pub, key.pub, system.nodes[0]->config.receive_minimum.number ()));
 			auto transaction (system.nodes[0]->store.tx_begin_read ());
 			auto block (system.nodes[0]->store.block.get (transaction, hash));

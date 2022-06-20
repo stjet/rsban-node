@@ -172,6 +172,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bo
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
 	socket (socket_a),
+	publish_filter (node_a->network.publish_filter),
 	node (node_a),
 	bootstrap (node_a->bootstrap),
 	logger{ node_a->logger },
@@ -490,7 +491,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 	if (!ec)
 	{
 		nano::uint128_t digest;
-		if (!node->network.publish_filter->apply (receive_buffer->data (), size_a, &digest))
+		if (!publish_filter->apply (receive_buffer->data (), size_a, &digest))
 		{
 			auto error (false);
 			nano::bufferstream stream (receive_buffer->data (), size_a);

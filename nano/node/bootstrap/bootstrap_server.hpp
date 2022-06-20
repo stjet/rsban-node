@@ -97,7 +97,6 @@ public:
 	std::shared_ptr<nano::thread_pool> workers;
 	boost::asio::io_context & io_ctx;
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
-	std::shared_ptr<nano::node> node;
 	nano::mutex mutex;
 	std::queue<std::unique_ptr<nano::message>> requests;
 	std::atomic<bool> stopped{ false };

@@ -176,7 +176,6 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	workers (node_a->workers),
 	io_ctx (node_a->io_ctx),
 	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) },
-	node (node_a),
 	bootstrap (node_a->bootstrap),
 	logger{ node_a->logger },
 	stats{ node_a->stats },

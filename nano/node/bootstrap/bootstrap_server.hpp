@@ -54,6 +54,16 @@ std::unique_ptr<container_info_component> collect_container_info (bootstrap_list
 
 class message;
 
+class request_response_visitor_factory
+{
+public:
+	request_response_visitor_factory (std::shared_ptr<nano::node> node_a);
+	std::unique_ptr<nano::message_visitor> create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a);
+
+private:
+	std::shared_ptr<nano::node> node;
+};
+
 /**
  * Owns the server side of a bootstrap connection. Responds to bootstrap messages sent over the socket.
  */
@@ -85,6 +95,8 @@ public:
 	std::shared_ptr<nano::socket> const socket;
 	std::shared_ptr<nano::network_filter> publish_filter;
 	std::shared_ptr<nano::thread_pool> workers;
+	boost::asio::io_context & io_ctx;
+	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
 	std::shared_ptr<nano::node> node;
 	nano::mutex mutex;
 	std::queue<std::unique_ptr<nano::message>> requests;

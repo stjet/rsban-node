@@ -6,6 +6,11 @@
 #include <atomic>
 #include <queue>
 
+namespace rsnano
+{
+class BootstrapServerHandle;
+}
+
 namespace nano
 {
 class bootstrap_server;
@@ -27,7 +32,7 @@ public:
 	void stop ();
 	void accept_action (boost::system::error_code const &, std::shared_ptr<nano::socket> const &);
 	std::size_t connection_count ();
-	void erase_connection (nano::bootstrap_server * server_a);
+	void erase_connection2 (std::uintptr_t conn_ptr);
 
 	std::size_t get_bootstrap_count ();
 	void inc_bootstrap_count ();
@@ -38,7 +43,7 @@ public:
 	void dec_realtime_count ();
 
 	nano::mutex mutex;
-	std::unordered_map<nano::bootstrap_server *, std::weak_ptr<nano::bootstrap_server>> connections;
+	std::unordered_map<std::uintptr_t, std::weak_ptr<nano::bootstrap_server>> connections;
 	nano::tcp_endpoint endpoint ();
 	nano::node & node;
 	std::shared_ptr<nano::server_socket> listening_socket;
@@ -71,6 +76,7 @@ class bootstrap_server final : public std::enable_shared_from_this<nano::bootstr
 {
 public:
 	bootstrap_server (std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::node> const &);
+	bootstrap_server (nano::bootstrap_server const &) = delete;
 	~bootstrap_server ();
 	void stop ();
 	void receive ();
@@ -91,6 +97,7 @@ public:
 	void run_next (nano::unique_lock<nano::mutex> & lock_a);
 	bool is_bootstrap_connection ();
 	bool is_realtime_connection ();
+	std::uintptr_t inner_ptr () const;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::socket> const socket;
 	std::shared_ptr<nano::network_filter> publish_filter;
@@ -112,6 +119,7 @@ public:
 	bool disable_bootstrap_bulk_pull_server{ false };
 	bool disable_tcp_realtime{ false };
 	bool disable_bootstrap_listener{ false };
+	rsnano::BootstrapServerHandle * handle;
 
 private:
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;

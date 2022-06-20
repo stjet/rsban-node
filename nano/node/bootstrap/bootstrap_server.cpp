@@ -93,10 +93,10 @@ std::size_t nano::bootstrap_listener::connection_count ()
 	return connections.size ();
 }
 
-void nano::bootstrap_listener::erase_connection (nano::bootstrap_server * server_a)
+void nano::bootstrap_listener::erase_connection2 (std::uintptr_t conn_ptr)
 {
 	nano::lock_guard<nano::mutex> lock (mutex);
-	connections.erase (server_a);
+	connections.erase (conn_ptr);
 }
 
 std::size_t nano::bootstrap_listener::get_bootstrap_count ()
@@ -135,7 +135,7 @@ void nano::bootstrap_listener::accept_action (boost::system::error_code const & 
 	{
 		auto connection (std::make_shared<nano::bootstrap_server> (socket_a, node.shared ()));
 		nano::lock_guard<nano::mutex> lock (mutex);
-		connections[connection.get ()] = connection;
+		connections[connection->inner_ptr ()] = connection;
 		connection->receive ();
 	}
 	else
@@ -185,8 +185,9 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	disable_bootstrap_bulk_pull_server{ node_a->flags.disable_bootstrap_bulk_pull_server },
 	disable_tcp_realtime{ node_a->flags.disable_tcp_realtime },
 	disable_bootstrap_listener{ node_a->flags.disable_bootstrap_listener }
-
 {
+	auto config_dto{ node_a->config->to_dto () };
+	handle = rsnano::rsn_bootstrap_server_create (socket_a->handle, &config_dto, node_a->logger.get ());
 	debug_assert (socket_a != nullptr);
 	receive_buffer->resize (1024);
 }
@@ -208,7 +209,8 @@ nano::bootstrap_server::~bootstrap_server ()
 		tcp_channels->erase_temporary_channel (remote_endpoint);
 	}
 	stop ();
-	bootstrap->erase_connection (this);
+	bootstrap->erase_connection2 (inner_ptr ());
+	rsnano::rsn_bootstrap_server_destroy (handle);
 }
 
 void nano::bootstrap_server::stop ()
@@ -660,7 +662,7 @@ void nano::bootstrap_server::timeout ()
 			logger->try_log ("Closing incoming tcp / bootstrap server by timeout");
 		}
 		{
-			bootstrap->erase_connection (this);
+			bootstrap->erase_connection2 (inner_ptr ());
 		}
 		socket->close ();
 	}
@@ -828,4 +830,9 @@ bool nano::bootstrap_server::is_bootstrap_connection ()
 bool nano::bootstrap_server::is_realtime_connection ()
 {
 	return socket->is_realtime_connection ();
+}
+
+std::uintptr_t nano::bootstrap_server::inner_ptr () const
+{
+	return rsnano::rsn_bootstrap_server_inner_ptr (handle);
 }

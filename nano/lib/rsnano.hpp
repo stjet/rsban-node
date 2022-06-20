@@ -33,6 +33,8 @@ struct BootstrapAttemptHandle;
 
 struct BootstrapInitiatorHandle;
 
+struct BootstrapServerHandle;
+
 struct ChannelHandle;
 
 struct EpochsHandle;
@@ -147,124 +149,6 @@ struct BootstrapConstantsDto
 	uint32_t lazy_destinations_retry_limit;
 	int64_t gap_cache_bootstrap_start_interval_ms;
 	uint32_t default_frontiers_age_seconds;
-};
-
-using AddTimedTaskCallback = void (*) (void *, uint64_t, VoidFnCallbackHandle *);
-
-using AlwaysLogCallback = void (*) (void *, const uint8_t *, uintptr_t);
-
-using Blake2BFinalCallback = int32_t (*) (void *, void *, uintptr_t);
-
-using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
-
-using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
-
-using BootstrapInitiatorClearPullsCallback = void (*) (void *, uint64_t);
-
-using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
-
-using DestroyCallback = void (*) (void *);
-
-using BufferSizeCallback = uintptr_t (*) (void *);
-
-using InAvailCallback = uintptr_t (*) (void *, int32_t *);
-
-using LedgerBlockOrPrunedExistsCallback = bool (*) (void *, const uint8_t *);
-
-struct MessageDto
-{
-	uint8_t topic;
-	void * contents;
-};
-
-using ListenerBroadcastCallback = bool (*) (void *, const MessageDto *);
-
-using PropertyTreePutStringCallback = void (*) (void *, const char *, uintptr_t, const char *, uintptr_t);
-
-using PropertyTreePushBackCallback = void (*) (void *, const char *, const void *);
-
-using PropertyTreeClearCallback = void (*) (void *);
-
-using PropertyTreeCreateTreeCallback = void * (*)();
-
-using PropertyTreeDestroyTreeCallback = void (*) (void *);
-
-using PropertyTreeGetStringCallback = int32_t (*) (const void *, const char *, uintptr_t, char *, uintptr_t);
-
-using PropertyTreePutU64Callback = void (*) (void *, const char *, uintptr_t, uint64_t);
-
-using PropertyTreeToJsonCallback = void * (*)(void *);
-
-using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
-
-using ReadU8Callback = int32_t (*) (void *, uint8_t *);
-
-using StringCharsCallback = const char * (*)(void *);
-
-using StringDeleteCallback = void (*) (void *);
-
-struct EndpointDto
-{
-	uint8_t bytes[16];
-	uint16_t port;
-	bool v6;
-};
-
-using AsyncConnectCallback = void (*) (void *, const EndpointDto *, AsyncConnectCallbackHandle *);
-
-using AsyncReadCallback = void (*) (void *, void *, uintptr_t, AsyncReadCallbackHandle *);
-
-using AsyncWriteCallback = void (*) (void *, void *, AsyncWriteCallbackHandle *);
-
-using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
-
-using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
-
-using RemoteEndpointCallback = void (*) (void *, EndpointDto *, ErrorCodeDto *);
-
-using TomlArrayPutStrCallback = void (*) (void *, const uint8_t *, uintptr_t);
-
-using TomlCreateArrayCallback = void * (*)(void *, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t);
-
-using TomlCreateConfigCallback = void * (*)();
-
-using TomlDropArrayCallback = void (*) (void *);
-
-using TomlDropConfigCallback = void (*) (void *);
-
-using TomlPutBoolCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, bool, const uint8_t *, uintptr_t);
-
-using TomlPutChildCallback = void (*) (void *, const uint8_t *, uintptr_t, void *);
-
-using TomlPutF64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, double, const uint8_t *, uintptr_t);
-
-using TomlPutI64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, int64_t, const uint8_t *, uintptr_t);
-
-using TomlPutStrCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t);
-
-using TomlPutU64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint64_t, const uint8_t *, uintptr_t);
-
-using TryLogCallback = bool (*) (void *, const uint8_t *, uintptr_t);
-
-using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
-
-using WriteU8Callback = int32_t (*) (void *, uint8_t);
-
-struct ChangeBlockDto
-{
-	uint64_t work;
-	uint8_t signature[64];
-	uint8_t previous[32];
-	uint8_t representative[32];
-};
-
-struct ChangeBlockDto2
-{
-	uint8_t previous[32];
-	uint8_t representative[32];
-	uint8_t priv_key[32];
-	uint8_t pub_key[32];
-	uint64_t work;
 };
 
 struct PeerDto
@@ -438,6 +322,124 @@ struct NodeConfigDto
 	StatConfigDto stat_config;
 	RocksDbConfigDto rocksdb_config;
 	LmdbConfigDto lmdb_config;
+};
+
+using AddTimedTaskCallback = void (*) (void *, uint64_t, VoidFnCallbackHandle *);
+
+using AlwaysLogCallback = void (*) (void *, const uint8_t *, uintptr_t);
+
+using Blake2BFinalCallback = int32_t (*) (void *, void *, uintptr_t);
+
+using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
+
+using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
+
+using BootstrapInitiatorClearPullsCallback = void (*) (void *, uint64_t);
+
+using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
+
+using DestroyCallback = void (*) (void *);
+
+using BufferSizeCallback = uintptr_t (*) (void *);
+
+using InAvailCallback = uintptr_t (*) (void *, int32_t *);
+
+using LedgerBlockOrPrunedExistsCallback = bool (*) (void *, const uint8_t *);
+
+struct MessageDto
+{
+	uint8_t topic;
+	void * contents;
+};
+
+using ListenerBroadcastCallback = bool (*) (void *, const MessageDto *);
+
+using PropertyTreePutStringCallback = void (*) (void *, const char *, uintptr_t, const char *, uintptr_t);
+
+using PropertyTreePushBackCallback = void (*) (void *, const char *, const void *);
+
+using PropertyTreeClearCallback = void (*) (void *);
+
+using PropertyTreeCreateTreeCallback = void * (*)();
+
+using PropertyTreeDestroyTreeCallback = void (*) (void *);
+
+using PropertyTreeGetStringCallback = int32_t (*) (const void *, const char *, uintptr_t, char *, uintptr_t);
+
+using PropertyTreePutU64Callback = void (*) (void *, const char *, uintptr_t, uint64_t);
+
+using PropertyTreeToJsonCallback = void * (*)(void *);
+
+using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
+
+using ReadU8Callback = int32_t (*) (void *, uint8_t *);
+
+using StringCharsCallback = const char * (*)(void *);
+
+using StringDeleteCallback = void (*) (void *);
+
+struct EndpointDto
+{
+	uint8_t bytes[16];
+	uint16_t port;
+	bool v6;
+};
+
+using AsyncConnectCallback = void (*) (void *, const EndpointDto *, AsyncConnectCallbackHandle *);
+
+using AsyncReadCallback = void (*) (void *, void *, uintptr_t, AsyncReadCallbackHandle *);
+
+using AsyncWriteCallback = void (*) (void *, void *, AsyncWriteCallbackHandle *);
+
+using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
+
+using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
+
+using RemoteEndpointCallback = void (*) (void *, EndpointDto *, ErrorCodeDto *);
+
+using TomlArrayPutStrCallback = void (*) (void *, const uint8_t *, uintptr_t);
+
+using TomlCreateArrayCallback = void * (*)(void *, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t);
+
+using TomlCreateConfigCallback = void * (*)();
+
+using TomlDropArrayCallback = void (*) (void *);
+
+using TomlDropConfigCallback = void (*) (void *);
+
+using TomlPutBoolCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, bool, const uint8_t *, uintptr_t);
+
+using TomlPutChildCallback = void (*) (void *, const uint8_t *, uintptr_t, void *);
+
+using TomlPutF64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, double, const uint8_t *, uintptr_t);
+
+using TomlPutI64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, int64_t, const uint8_t *, uintptr_t);
+
+using TomlPutStrCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t, const uint8_t *, uintptr_t);
+
+using TomlPutU64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint64_t, const uint8_t *, uintptr_t);
+
+using TryLogCallback = bool (*) (void *, const uint8_t *, uintptr_t);
+
+using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
+
+using WriteU8Callback = int32_t (*) (void *, uint8_t);
+
+struct ChangeBlockDto
+{
+	uint64_t work;
+	uint8_t signature[64];
+	uint8_t previous[32];
+	uint8_t representative[32];
+};
+
+struct ChangeBlockDto2
+{
+	uint8_t previous[32];
+	uint8_t representative[32];
+	uint8_t priv_key[32];
+	uint8_t pub_key[32];
+	uint64_t work;
 };
 
 struct OpenclConfigDto
@@ -884,6 +886,14 @@ BootstrapConstantsDto * dto);
 BootstrapInitiatorHandle * rsn_bootstrap_initiator_create (void * handle);
 
 void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
+
+BootstrapServerHandle * rsn_bootstrap_server_create (SocketHandle * socket,
+const NodeConfigDto * config,
+void * logger);
+
+void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
+
+uintptr_t rsn_bootstrap_server_inner_ptr (BootstrapServerHandle * handle);
 
 void rsn_callback_add_timed_task (AddTimedTaskCallback f);
 

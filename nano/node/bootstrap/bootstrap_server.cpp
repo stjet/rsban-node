@@ -93,7 +93,7 @@ std::size_t nano::bootstrap_listener::connection_count ()
 	return connections.size ();
 }
 
-void nano::bootstrap_listener::erase_connection2 (std::uintptr_t conn_ptr)
+void nano::bootstrap_listener::erase_connection (std::uintptr_t conn_ptr)
 {
 	nano::lock_guard<nano::mutex> lock (mutex);
 	connections.erase (conn_ptr);
@@ -127,6 +127,36 @@ void nano::bootstrap_listener::inc_realtime_count ()
 void nano::bootstrap_listener::dec_realtime_count ()
 {
 	--realtime_count;
+}
+
+void nano::bootstrap_listener::bootstrap_server_timeout (std::uintptr_t inner_ptr)
+{
+	if (node.config->logging.bulk_pull_logging ())
+	{
+		node.logger->try_log ("Closing incoming tcp / bootstrap server by timeout");
+	}
+	{
+		erase_connection (inner_ptr);
+	}
+}
+
+void nano::bootstrap_listener::boostrap_server_exited (nano::socket::type_t type_a, std::uintptr_t inner_ptr_a, nano::tcp_endpoint const & endpoint_a)
+{
+	if (node.config->logging.bulk_pull_logging ())
+	{
+		node.logger->try_log ("Exiting incoming TCP/bootstrap server");
+	}
+	if (type_a == nano::socket::type_t::bootstrap)
+	{
+		dec_bootstrap_count ();
+	}
+	else if (type_a == nano::socket::type_t::realtime)
+	{
+		dec_realtime_count ();
+		// Clear temporary channel
+		node.network.tcp_channels->erase_temporary_channel (endpoint_a);
+	}
+	erase_connection (inner_ptr_a);
 }
 
 void nano::bootstrap_listener::accept_action (boost::system::error_code const & ec, std::shared_ptr<nano::socket> const & socket_a)
@@ -176,7 +206,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	workers (node_a->workers),
 	io_ctx (node_a->io_ctx),
 	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) },
-	bootstrap (node_a->bootstrap),
+	observer (node_a->bootstrap),
 	logger{ node_a->logger },
 	stats{ node_a->stats },
 	tcp_channels (node_a->network.tcp_channels),
@@ -194,22 +224,8 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 
 nano::bootstrap_server::~bootstrap_server ()
 {
-	if (config->logging.bulk_pull_logging ())
-	{
-		logger->try_log ("Exiting incoming TCP/bootstrap server");
-	}
-	if (socket->type () == nano::socket::type_t::bootstrap)
-	{
-		bootstrap->dec_bootstrap_count ();
-	}
-	else if (socket->type () == nano::socket::type_t::realtime)
-	{
-		bootstrap->dec_realtime_count ();
-		// Clear temporary channel
-		tcp_channels->erase_temporary_channel (remote_endpoint);
-	}
+	observer->boostrap_server_exited (socket->type (), inner_ptr (), remote_endpoint);
 	stop ();
-	bootstrap->erase_connection2 (inner_ptr ());
 	rsnano::rsn_bootstrap_server_destroy (handle);
 }
 
@@ -279,7 +295,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				case nano::message_type::bulk_push:
 				{
 					stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_push, nano::stat::dir::in);
-					if (is_bootstrap_connection ())
+					if (make_bootstrap_connection ())
 					{
 						add_request (std::make_unique<nano::bulk_push> (header));
 					}
@@ -379,7 +395,7 @@ void nano::bootstrap_server::receive_bulk_pull_action (boost::system::error_code
 			{
 				logger->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->start.to_string () % request->end.to_string () % (request->count ? request->count : std::numeric_limits<double>::infinity ()) % remote_endpoint));
 			}
-			if (is_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
+			if (make_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -402,7 +418,7 @@ void nano::bootstrap_server::receive_bulk_pull_account_action (boost::system::er
 			{
 				logger->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->account.to_account () % nano::amount (request->minimum_amount).format_balance (nano::Mxrb_ratio, 10, true)));
 			}
-			if (is_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
+			if (make_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -424,7 +440,7 @@ void nano::bootstrap_server::receive_frontier_req_action (boost::system::error_c
 			{
 				logger->try_log (boost::str (boost::format ("Received frontier request for %1% with age %2%") % request->start.to_string () % request->age));
 			}
-			if (is_bootstrap_connection ())
+			if (make_bootstrap_connection ())
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -657,13 +673,7 @@ void nano::bootstrap_server::timeout ()
 {
 	if (socket->has_timed_out ())
 	{
-		if (config->logging.bulk_pull_logging ())
-		{
-			logger->try_log ("Closing incoming tcp / bootstrap server by timeout");
-		}
-		{
-			bootstrap->erase_connection2 (inner_ptr ());
-		}
+		observer->bootstrap_server_timeout (inner_ptr ());
 		socket->close ();
 	}
 }
@@ -762,7 +772,7 @@ public:
 			{
 				connection->remote_node_id = node_id;
 				connection->socket->type_set (nano::socket::type_t::realtime);
-				connection->bootstrap->inc_realtime_count ();
+				node->bootstrap->inc_realtime_count ();
 				connection->finish_request_async ();
 			}
 			else
@@ -817,11 +827,11 @@ void nano::bootstrap_server::run_next (nano::unique_lock<nano::mutex> & lock_a)
 	}
 }
 
-bool nano::bootstrap_server::is_bootstrap_connection ()
+bool nano::bootstrap_server::make_bootstrap_connection ()
 {
-	if (socket->type () == nano::socket::type_t::undefined && !disable_bootstrap_listener && bootstrap->get_bootstrap_count () < config->bootstrap_connections_max)
+	if (socket->type () == nano::socket::type_t::undefined && !disable_bootstrap_listener && observer->get_bootstrap_count () < config->bootstrap_connections_max)
 	{
-		bootstrap->inc_bootstrap_count ();
+		observer->inc_bootstrap_count ();
 		socket->type_set (nano::socket::type_t::bootstrap);
 	}
 	return socket->type () == nano::socket::type_t::bootstrap;

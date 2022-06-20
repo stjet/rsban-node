@@ -21,10 +21,19 @@ namespace transport
 	class tcp_channels;
 }
 
+class bootstrap_server_observer
+{
+public:
+	virtual void bootstrap_server_timeout (std::uintptr_t inner_ptr) = 0;
+	virtual void boostrap_server_exited (nano::socket::type_t type_a, std::uintptr_t inner_ptr, nano::tcp_endpoint const &) = 0;
+	virtual std::size_t get_bootstrap_count () = 0;
+	virtual void inc_bootstrap_count () = 0;
+};
+
 /**
  * Server side portion of bootstrap sessions. Listens for new socket connections and spawns bootstrap_server objects when connected.
  */
-class bootstrap_listener final
+class bootstrap_listener final : public nano::bootstrap_server_observer
 {
 public:
 	bootstrap_listener (uint16_t, nano::node &);
@@ -32,15 +41,18 @@ public:
 	void stop ();
 	void accept_action (boost::system::error_code const &, std::shared_ptr<nano::socket> const &);
 	std::size_t connection_count ();
-	void erase_connection2 (std::uintptr_t conn_ptr);
+	void erase_connection (std::uintptr_t conn_ptr);
 
-	std::size_t get_bootstrap_count ();
-	void inc_bootstrap_count ();
+	std::size_t get_bootstrap_count () override;
+	void inc_bootstrap_count () override;
 	void dec_bootstrap_count ();
 
 	std::size_t get_realtime_count ();
 	void inc_realtime_count ();
 	void dec_realtime_count ();
+
+	void bootstrap_server_timeout (std::uintptr_t inner_ptr) override;
+	void boostrap_server_exited (nano::socket::type_t type_a, std::uintptr_t inner_ptr_a, nano::tcp_endpoint const & endpoint_a) override;
 
 	nano::mutex mutex;
 	std::unordered_map<std::uintptr_t, std::weak_ptr<nano::bootstrap_server>> connections;
@@ -95,7 +107,7 @@ public:
 	void finish_request_async ();
 	void timeout ();
 	void run_next (nano::unique_lock<nano::mutex> & lock_a);
-	bool is_bootstrap_connection ();
+	bool make_bootstrap_connection ();
 	bool is_realtime_connection ();
 	std::uintptr_t inner_ptr () const;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
@@ -111,7 +123,7 @@ public:
 	nano::tcp_endpoint remote_endpoint{ boost::asio::ip::address_v6::any (), 0 };
 	nano::account remote_node_id{};
 	std::chrono::steady_clock::time_point last_telemetry_req{ std::chrono::steady_clock::time_point () };
-	std::shared_ptr<nano::bootstrap_listener> bootstrap;
+	std::shared_ptr<nano::bootstrap_server_observer> observer;
 	std::shared_ptr<nano::logger_mt> logger;
 	std::shared_ptr<nano::stat> stats;
 	std::shared_ptr<nano::node_config> config;

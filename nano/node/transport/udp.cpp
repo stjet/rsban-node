@@ -5,6 +5,8 @@
 #include <nano/node/node.hpp>
 #include <nano/node/transport/udp.hpp>
 
+#include <crypto/cryptopp/config.h>
+
 #include <boost/format.hpp>
 
 nano::transport::channel_udp::channel_udp (nano::transport::udp_channels & channels_a, nano::endpoint const & endpoint_a, uint8_t protocol_version_a) :

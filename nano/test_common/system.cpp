@@ -4,6 +4,8 @@
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>
 
+#include <crypto/cryptopp/config.h>
+
 #include <boost/property_tree/json_parser.hpp>
 
 #include <cstdlib>

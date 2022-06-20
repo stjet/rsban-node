@@ -2,6 +2,8 @@
 #include <nano/node/node.hpp>
 #include <nano/node/transport/tcp.hpp>
 
+#include <crypto/cryptopp/config.h>
+
 #include <boost/format.hpp>
 
 nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :

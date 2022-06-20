@@ -45,6 +45,8 @@ struct LocalVotesResultHandle;
 
 struct LockHandle;
 
+struct NetworkFilterHandle;
+
 struct SignatureCheckerHandle;
 
 struct SocketHandle;
@@ -1136,6 +1138,32 @@ bool rsn_network_constants_is_dev_network (const NetworkConstantsDto * dto);
 bool rsn_network_constants_is_live_network (const NetworkConstantsDto * dto);
 
 bool rsn_network_constants_is_test_network (const NetworkConstantsDto * dto);
+
+bool rsn_network_filter_apply (NetworkFilterHandle * handle,
+const uint8_t * bytes,
+uintptr_t size,
+uint8_t * digest);
+
+void rsn_network_filter_clear (NetworkFilterHandle * handle, const uint8_t (*digest)[16]);
+
+void rsn_network_filter_clear_all (NetworkFilterHandle * handle);
+
+void rsn_network_filter_clear_bytes (NetworkFilterHandle * handle,
+const uint8_t * bytes,
+uintptr_t count);
+
+void rsn_network_filter_clear_many (NetworkFilterHandle * handle,
+const uint8_t (*digests)[16],
+uintptr_t count);
+
+NetworkFilterHandle * rsn_network_filter_create (uintptr_t size);
+
+void rsn_network_filter_destroy (NetworkFilterHandle * handle);
+
+void rsn_network_filter_hash (NetworkFilterHandle * handle,
+const uint8_t * bytes,
+uintptr_t count,
+uint8_t (*digest)[16]);
 
 int32_t rsn_network_params_create (NetworkParamsDto * dto, uint16_t network);
 

@@ -3,6 +3,8 @@
 #include <nano/node/bootstrap/bootstrap_legacy.hpp>
 #include <nano/node/node.hpp>
 
+#include <crypto/cryptopp/config.h>
+
 #include <boost/format.hpp>
 
 nano::bootstrap_attempt_legacy::bootstrap_attempt_legacy (std::shared_ptr<nano::node> const & node_a, uint64_t const incremental_id_a, std::string const & id_a, uint32_t const frontiers_age_a, nano::account const & start_account_a) :

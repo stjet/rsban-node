@@ -109,6 +109,7 @@ public:
 	void run_next (nano::unique_lock<nano::mutex> & lock_a);
 	bool make_bootstrap_connection ();
 	bool is_realtime_connection ();
+	bool is_stopped () const;
 	std::uintptr_t inner_ptr () const;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::socket> const socket;
@@ -118,7 +119,6 @@ public:
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
 	nano::mutex mutex;
 	std::queue<std::unique_ptr<nano::message>> requests;
-	std::atomic<bool> stopped{ false };
 	// Remote enpoint used to remove response channel even after socket closing
 	nano::tcp_endpoint remote_endpoint{ boost::asio::ip::address_v6::any (), 0 };
 	nano::account remote_node_id{};

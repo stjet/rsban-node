@@ -33,3 +33,15 @@ pub unsafe extern "C" fn rsn_bootstrap_server_inner_ptr(
     let ptr = Arc::as_ptr(&(*handle).0);
     ptr as usize
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_stop(handle: *mut BootstrapServerHandle) {
+    (*handle).0.stop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_is_stopped(
+    handle: *mut BootstrapServerHandle,
+) -> bool {
+    (*handle).0.is_stopped()
+}

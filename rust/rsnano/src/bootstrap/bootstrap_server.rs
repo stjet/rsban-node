@@ -1,11 +1,19 @@
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
-use crate::{logger_mt::Logger, transport::SocketImpl, NodeConfig};
+use crate::{
+    logger_mt::Logger,
+    transport::{Socket, SocketImpl},
+    NodeConfig,
+};
 
 pub struct BootstrapServer {
     socket: Arc<SocketImpl>,
     config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
+    stopped: AtomicBool,
 }
 
 impl BootstrapServer {
@@ -14,14 +22,23 @@ impl BootstrapServer {
             socket,
             config,
             logger,
+            stopped: AtomicBool::new(false),
+        }
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.stopped.load(Ordering::SeqCst)
+    }
+
+    pub fn stop(&self) {
+        if !self.stopped.swap(true, Ordering::SeqCst) {
+            self.socket.close();
         }
     }
 }
 
 impl Drop for BootstrapServer {
     fn drop(&mut self) {
-        if self.config.logging.bulk_pull_logging_value {
-            self.logger.try_log("Exiting incoming TCP/bootstrap server");
-        }
+        self.stop();
     }
 }

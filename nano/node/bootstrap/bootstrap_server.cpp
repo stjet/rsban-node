@@ -225,16 +225,12 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 nano::bootstrap_server::~bootstrap_server ()
 {
 	observer->boostrap_server_exited (socket->type (), inner_ptr (), remote_endpoint);
-	stop ();
 	rsnano::rsn_bootstrap_server_destroy (handle);
 }
 
 void nano::bootstrap_server::stop ()
 {
-	if (!stopped.exchange (true))
-	{
-		socket->close ();
-	}
+	rsnano::rsn_bootstrap_server_stop (handle);
 }
 
 void nano::bootstrap_server::receive ()
@@ -840,6 +836,11 @@ bool nano::bootstrap_server::make_bootstrap_connection ()
 bool nano::bootstrap_server::is_realtime_connection ()
 {
 	return socket->is_realtime_connection ();
+}
+
+bool nano::bootstrap_server::is_stopped () const
+{
+	return rsnano::rsn_bootstrap_server_is_stopped (handle);
 }
 
 std::uintptr_t nano::bootstrap_server::inner_ptr () const

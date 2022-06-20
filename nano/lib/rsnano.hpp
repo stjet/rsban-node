@@ -895,6 +895,10 @@ void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
 
 uintptr_t rsn_bootstrap_server_inner_ptr (BootstrapServerHandle * handle);
 
+bool rsn_bootstrap_server_is_stopped (BootstrapServerHandle * handle);
+
+void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
+
 void rsn_callback_add_timed_task (AddTimedTaskCallback f);
 
 void rsn_callback_always_log (AlwaysLogCallback f);

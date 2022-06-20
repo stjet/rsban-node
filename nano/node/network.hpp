@@ -184,7 +184,7 @@ public:
 	nano::peer_exclusion excluded_peers;
 	nano::tcp_message_manager tcp_message_manager;
 	nano::node & node;
-	nano::network_filter publish_filter;
+	std::shared_ptr<nano::network_filter> publish_filter;
 	nano::transport::udp_channels udp_channels;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 	std::atomic<uint16_t> port{ 0 };

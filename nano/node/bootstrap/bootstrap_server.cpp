@@ -490,7 +490,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 	if (!ec)
 	{
 		nano::uint128_t digest;
-		if (!node->network.publish_filter.apply (receive_buffer->data (), size_a, &digest))
+		if (!node->network.publish_filter->apply (receive_buffer->data (), size_a, &digest))
 		{
 			auto error (false);
 			nano::bufferstream stream (receive_buffer->data (), size_a);

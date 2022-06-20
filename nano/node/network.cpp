@@ -29,7 +29,7 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 	limiter (node_a.config->bandwidth_limit_burst_ratio, node_a.config->bandwidth_limit),
 	tcp_message_manager (node_a.config->tcp_incoming_connections_max),
 	node (node_a),
-	publish_filter (256 * 1024),
+	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) },
 	udp_channels (node_a, port_a, inbound),
 	tcp_channels{ std::make_shared<nano::transport::tcp_channels> (node_a, inbound) },
 	port (port_a),
@@ -444,7 +444,7 @@ public:
 		}
 		else
 		{
-			node.network.publish_filter.clear (message_a.digest);
+			node.network.publish_filter->clear (message_a.digest);
 			node.stats->inc (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::in);
 		}
 	}

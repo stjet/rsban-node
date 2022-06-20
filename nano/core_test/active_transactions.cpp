@@ -610,8 +610,8 @@ TEST (active_transactions, dropped_cleanup)
 		nano::vectorstream stream (block_bytes);
 		nano::dev::genesis->serialize (stream);
 	}
-	ASSERT_FALSE (node.network.publish_filter.apply (block_bytes.data (), block_bytes.size ()));
-	ASSERT_TRUE (node.network.publish_filter.apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_FALSE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 
 	node.block_confirm (nano::dev::genesis);
 	node.scheduler.flush ();
@@ -619,7 +619,7 @@ TEST (active_transactions, dropped_cleanup)
 	ASSERT_NE (nullptr, election);
 
 	// Not yet removed
-	ASSERT_TRUE (node.network.publish_filter.apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 	ASSERT_EQ (1, node.active.blocks.count (nano::dev::genesis->hash ()));
 
 	// Now simulate dropping the election
@@ -627,7 +627,7 @@ TEST (active_transactions, dropped_cleanup)
 	node.active.erase (*nano::dev::genesis);
 
 	// The filter must have been cleared
-	ASSERT_FALSE (node.network.publish_filter.apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_FALSE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 
 	// An election was recently dropped
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::election_drop_all));
@@ -636,7 +636,7 @@ TEST (active_transactions, dropped_cleanup)
 	ASSERT_EQ (0, node.active.blocks.count (nano::dev::genesis->hash ()));
 
 	// Repeat test for a confirmed election
-	ASSERT_TRUE (node.network.publish_filter.apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 	node.block_confirm (nano::dev::genesis);
 	node.scheduler.flush ();
 	election = node.active.election (nano::dev::genesis->qualified_root ());
@@ -646,7 +646,7 @@ TEST (active_transactions, dropped_cleanup)
 	node.active.erase (*nano::dev::genesis);
 
 	// The filter should not have been cleared
-	ASSERT_TRUE (node.network.publish_filter.apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 
 	// Not dropped
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::election_drop_all));
@@ -791,7 +791,7 @@ TEST (active_transactions, fork_filter_cleanup)
 	ASSERT_TIMELY (5s, node1.ledger.cache.block_count == 2);
 
 	// Block is erased from the duplicate filter
-	ASSERT_TIMELY (5s, node1.network.publish_filter.apply (send_block_bytes.data (), send_block_bytes.size ()));
+	ASSERT_TIMELY (5s, node1.network.publish_filter->apply (send_block_bytes.data (), send_block_bytes.size ()));
 }
 
 TEST (active_transactions, fork_replacement_tally)

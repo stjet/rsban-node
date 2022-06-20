@@ -95,7 +95,7 @@ void nano::transport::inproc::channel::send_buffer (nano::shared_const_buffer co
 	// create an inbound message visitor class to handle incoming messages because that's what the message parser expects
 	message_visitor_inbound visitor{ destination.network.inbound, remote_channel };
 
-	nano::message_parser parser{ destination.network.publish_filter, destination.block_uniquer, destination.vote_uniquer, visitor, destination.work, destination.network_params.network };
+	nano::message_parser parser{ *destination.network.publish_filter, destination.block_uniquer, destination.vote_uniquer, visitor, destination.work, destination.network_params.network };
 
 	// parse the message and action any work that needs to be done on that object via the visitor object
 	auto bytes = buffer_a.to_bytes ();

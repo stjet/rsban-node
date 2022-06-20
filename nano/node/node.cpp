@@ -980,7 +980,7 @@ void nano::node::unchecked_cleanup ()
 			nano::unchecked_info const & info (i->second);
 			if ((now - info.modified ()) > static_cast<uint64_t> (config->unchecked_cutoff_time.count ()))
 			{
-				digests.push_back (network.publish_filter.hash (info.get_block ()));
+				digests.push_back (network.publish_filter->hash (info.get_block ()));
 				cleaning_list.push_back (key);
 			}
 		}
@@ -1005,7 +1005,7 @@ void nano::node::unchecked_cleanup ()
 		}
 	}
 	// Delete from the duplicate filter
-	network.publish_filter.clear (digests);
+	network.publish_filter->clear (digests);
 }
 
 void nano::node::ongoing_unchecked_cleanup ()

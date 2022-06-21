@@ -1,6 +1,6 @@
 use crate::{utils::Stream, NetworkConstants};
 use anyhow::Result;
-use std::sync::Arc;
+use std::mem::size_of;
 
 /// Message types are serialized to the network and existing values must thus never change as
 /// types are added, removed and reordered in the enum.
@@ -44,26 +44,28 @@ impl MessageType {
 
 #[derive(Clone)]
 pub struct MessageHeader {
-    constants: Arc<NetworkConstants>,
     message_type: MessageType,
     version_using: u8,
+    version_max: u8,
+    version_min: u8,
 }
 
 impl MessageHeader {
-    pub fn new(constants: Arc<NetworkConstants>, message_type: MessageType) -> Self {
+    pub fn new(constants: &NetworkConstants, message_type: MessageType) -> Self {
         let version_using = constants.protocol_version;
         Self::with_version_using(constants, message_type, version_using)
     }
 
     pub fn with_version_using(
-        constants: Arc<NetworkConstants>,
+        constants: &NetworkConstants,
         message_type: MessageType,
         version_using: u8,
     ) -> Self {
         Self {
-            constants,
             message_type,
             version_using,
+            version_max: constants.protocol_version,
+            version_min: constants.protocol_version_min,
         }
     }
 
@@ -71,12 +73,24 @@ impl MessageHeader {
         self.version_using
     }
 
+    pub fn version_max(&self) -> u8 {
+        self.version_max
+    }
+
+    pub fn version_min(&self) -> u8 {
+        self.version_min
+    }
+
     pub fn size() -> usize {
-        std::mem::size_of::<u8>() // version_using
+        size_of::<u8>() // version_using
+        + size_of::<u8>() // version_min
+        + size_of::<u8>() // version_max
     }
 
     pub(crate) fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
+        self.version_max = stream.read_u8()?;
         self.version_using = stream.read_u8()?;
+        self.version_min = stream.read_u8()?;
         Ok(())
     }
 }

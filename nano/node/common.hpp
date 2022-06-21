@@ -248,8 +248,6 @@ public:
 
 private:
 	nano::networks network;
-	uint8_t version_max;
-	uint8_t version_min;
 	nano::message_type type;
 	std::bitset<16> extensions;
 	rsnano::MessageHeaderHandle * handle;

@@ -1,6 +1,5 @@
-use std::{ffi::c_void, sync::Arc};
-
 use num::FromPrimitive;
+use std::ffi::c_void;
 
 use crate::{
     messages::{MessageHeader, MessageType},
@@ -26,11 +25,11 @@ pub unsafe extern "C" fn rsn_message_header_create(
     version_using: i16,
 ) -> *mut MessageHeaderHandle {
     let message_type = MessageType::from_u8(message_type).unwrap();
-    let constants = Arc::new(NetworkConstants::try_from(&*constants).unwrap());
+    let constants = NetworkConstants::try_from(&*constants).unwrap();
     let header = if version_using < 0 {
-        MessageHeader::new(constants, message_type)
+        MessageHeader::new(&constants, message_type)
     } else {
-        MessageHeader::with_version_using(constants, message_type, version_using as u8)
+        MessageHeader::with_version_using(&constants, message_type, version_using as u8)
     };
     Box::into_raw(Box::new(MessageHeaderHandle(header)))
 }
@@ -38,8 +37,8 @@ pub unsafe extern "C" fn rsn_message_header_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_empty() -> *mut MessageHeaderHandle {
     let message_type = MessageType::Invalid;
-    let constants = Arc::new(NetworkConstants::empty());
-    let header = MessageHeader::new(constants, message_type);
+    let constants = NetworkConstants::empty();
+    let header = MessageHeader::new(&constants, message_type);
     Box::into_raw(Box::new(MessageHeaderHandle(header)))
 }
 
@@ -58,6 +57,16 @@ pub unsafe extern "C" fn rsn_message_header_destroy(handle: *mut MessageHeaderHa
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_version_using(handle: *mut MessageHeaderHandle) -> u8 {
     (*handle).0.version_using()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_version_min(handle: *mut MessageHeaderHandle) -> u8 {
+    (*handle).0.version_min()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_version_max(handle: *mut MessageHeaderHandle) -> u8 {
+    (*handle).0.version_max()
 }
 
 #[no_mangle]

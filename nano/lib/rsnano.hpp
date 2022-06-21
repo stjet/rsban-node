@@ -1147,6 +1147,10 @@ MessageHeaderHandle * rsn_message_header_empty ();
 
 uintptr_t rsn_message_header_size ();
 
+uint8_t rsn_message_header_version_max (MessageHeaderHandle * handle);
+
+uint8_t rsn_message_header_version_min (MessageHeaderHandle * handle);
+
 uint8_t rsn_message_header_version_using (MessageHeaderHandle * handle);
 
 void rsn_message_type_to_string (uint8_t msg_type, StringDto * result);

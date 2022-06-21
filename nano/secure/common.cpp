@@ -1,6 +1,7 @@
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/numbers.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/store.hpp>
@@ -719,9 +720,7 @@ nano::vote::~vote ()
 std::string nano::vote::hashes_string () const
 {
 	auto dto{ rsnano::rsn_vote_hashes_string (handle) };
-	std::string result (dto.value);
-	rsnano::rsn_string_destroy (dto.handle);
-	return result;
+	return rsnano::convert_dto_to_string (dto);
 }
 
 std::string const nano::vote::hash_prefix = "vote ";

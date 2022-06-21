@@ -1,6 +1,7 @@
 #include <nano/boost/asio/bind_executor.hpp>
 #include <nano/boost/asio/dispatch.hpp>
 #include <nano/boost/asio/strand.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/tlsconfig.hpp>
 #include <nano/lib/work.hpp>
 #include <nano/node/transport/transport.hpp>
@@ -377,9 +378,7 @@ std::string from_topic (nano::websocket::topic topic_a)
 {
 	rsnano::StringDto result;
 	rsnano::rsn_from_topic (static_cast<uint8_t> (topic_a), &result);
-	std::string topic_str (result.value);
-	rsnano::rsn_string_destroy (result.handle);
-	return topic_str;
+	return rsnano::convert_dto_to_string (result);
 }
 }
 

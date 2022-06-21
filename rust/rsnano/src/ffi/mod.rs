@@ -9,6 +9,7 @@ mod epoch;
 mod hardened_constants;
 mod ipc;
 mod logger_mt;
+mod messages;
 mod numbers;
 mod property_tree;
 mod secure;
@@ -52,9 +53,9 @@ pub struct StringDto {
     pub value: *const c_char,
 }
 
-impl From<String> for StringDto {
-    fn from(s: String) -> Self {
-        let handle = Box::new(StringHandle(CString::new(s).unwrap()));
+impl<T: AsRef<str>> From<T> for StringDto {
+    fn from(s: T) -> Self {
+        let handle = Box::new(StringHandle(CString::new(s.as_ref()).unwrap()));
         let value = handle.0.as_ptr();
         StringDto {
             handle: Box::into_raw(handle),

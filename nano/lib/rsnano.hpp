@@ -1131,6 +1131,8 @@ MessageDto * result);
 
 void rsn_message_builder_bootstrap_started (const char * id, const char * mode, MessageDto * result);
 
+void rsn_message_type_to_string (uint8_t msg_type, StringDto * result);
+
 uint16_t rsn_network_constants_active_network ();
 
 void rsn_network_constants_active_network_set (uint16_t network);

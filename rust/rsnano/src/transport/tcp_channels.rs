@@ -5,3 +5,9 @@ impl TcpChannels {
         Self {}
     }
 }
+
+impl Default for TcpChannels {
+    fn default() -> Self {
+        Self::new()
+    }
+}

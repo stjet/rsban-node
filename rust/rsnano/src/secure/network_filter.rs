@@ -98,6 +98,12 @@ impl DefaultNetworkFilterHasher {
     }
 }
 
+impl Default for DefaultNetworkFilterHasher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkFilterHasher for DefaultNetworkFilterHasher {
     fn hash(&self, bytes: &[u8]) -> u128 {
         let mut siphash = SipHasher::new_with_key(&self.key);

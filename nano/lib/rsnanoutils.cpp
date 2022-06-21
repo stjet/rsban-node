@@ -65,3 +65,10 @@ boost::asio::ip::tcp::endpoint rsnano::dto_to_endpoint (rsnano::EndpointDto cons
 	boost::asio::ip::address_v4 addr{ bytes };
 	return boost::asio::ip::tcp::endpoint (boost::asio::ip::address{ addr }, dto.port);
 }
+
+std::string rsnano::convert_dto_to_string (rsnano::StringDto & dto)
+{
+	std::string result (dto.value);
+	rsnano::rsn_string_destroy (dto.handle);
+	return result;
+}

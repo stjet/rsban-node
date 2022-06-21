@@ -1,4 +1,5 @@
 #include <nano/crypto_lib/random_pool.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_attempt.hpp>
 #include <nano/node/bootstrap/bootstrap_bulk_push.hpp>
@@ -24,9 +25,7 @@ std::string nano::bootstrap_attempt::id () const
 {
 	rsnano::StringDto str_result;
 	rsnano::rsn_bootstrap_attempt_id (handle, &str_result);
-	std::string id (str_result.value);
-	rsnano::rsn_string_destroy (str_result.handle);
-	return id;
+	return rsnano::convert_dto_to_string (str_result);
 }
 
 uint64_t nano::bootstrap_attempt::get_incremental_id () const

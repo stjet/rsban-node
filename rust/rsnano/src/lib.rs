@@ -21,6 +21,7 @@ pub mod ffi;
 mod hardened_constants;
 mod ipc;
 mod logger_mt;
+pub mod messages;
 mod numbers;
 mod secure;
 mod signatures;

@@ -205,6 +205,12 @@ public:
 	message_header (nano::network_constants const &, nano::message_type);
 	message_header (nano::network_constants const &, nano::message_type, uint8_t version_using_a);
 	message_header (bool &, nano::stream &);
+	message_header (message_header const &);
+	message_header (message_header &&);
+	~message_header ();
+
+	message_header & operator= (message_header && other_a);
+	message_header & operator= (message_header const & other_a);
 	void serialize (nano::stream &) const;
 	bool deserialize (nano::stream &);
 	nano::block_type block_type () const;
@@ -243,13 +249,13 @@ public:
 private:
 	nano::networks network;
 	uint8_t version_max;
-	uint8_t version_using;
 	uint8_t version_min;
 	nano::message_type type;
 	std::bitset<16> extensions;
+	rsnano::MessageHeaderHandle * handle;
 
 public:
-	static std::size_t constexpr size = sizeof (nano::networks) + sizeof (version_max) + sizeof (version_using) + sizeof (version_min) + sizeof (type) + sizeof (/* extensions */ uint16_t);
+	static std::size_t size ();
 };
 
 class message

@@ -47,6 +47,8 @@ struct LocalVotesResultHandle;
 
 struct LockHandle;
 
+struct MessageHeaderHandle;
+
 struct NetworkFilterHandle;
 
 struct SignatureCheckerHandle;
@@ -1130,6 +1132,22 @@ uint64_t total_blocks,
 MessageDto * result);
 
 void rsn_message_builder_bootstrap_started (const char * id, const char * mode, MessageDto * result);
+
+MessageHeaderHandle * rsn_message_header_clone (MessageHeaderHandle * handle);
+
+MessageHeaderHandle * rsn_message_header_create (const NetworkConstantsDto * constants,
+uint8_t message_type,
+int16_t version_using);
+
+bool rsn_message_header_deserialize (MessageHeaderHandle * handle, void * stream);
+
+void rsn_message_header_destroy (MessageHeaderHandle * handle);
+
+MessageHeaderHandle * rsn_message_header_empty ();
+
+uintptr_t rsn_message_header_size ();
+
+uint8_t rsn_message_header_version_using (MessageHeaderHandle * handle);
 
 void rsn_message_type_to_string (uint8_t msg_type, StringDto * result);
 

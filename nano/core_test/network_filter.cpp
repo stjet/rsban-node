@@ -20,10 +20,10 @@ TEST (network_filter, unit)
 		ASSERT_FALSE (error);
 
 		// This validates nano::message_header::size
-		ASSERT_EQ (bytes->size (), block_a->size (block_a->type ()) + header.size);
+		ASSERT_EQ (bytes->size (), block_a->size (block_a->type ()) + nano::message_header::size ());
 
 		// Now filter the rest of the stream
-		bool duplicate (filter.apply (bytes->data (), bytes->size () - header.size));
+		bool duplicate (filter.apply (bytes->data (), bytes->size () - nano::message_header::size ()));
 		ASSERT_EQ (expect_duplicate_a, duplicate);
 
 		// Make sure the stream was rewinded correctly
@@ -86,7 +86,7 @@ TEST (network_filter, many)
 		ASSERT_FALSE (error);
 
 		// This validates nano::message_header::size
-		ASSERT_EQ (bytes->size (), block->size () + header.size);
+		ASSERT_EQ (bytes->size (), block->size () + nano::message_header::size ());
 
 		// Now filter the rest of the stream
 		// All blocks should pass through

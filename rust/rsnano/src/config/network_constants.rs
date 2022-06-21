@@ -38,6 +38,10 @@ pub struct NetworkConstants {
 }
 
 impl NetworkConstants {
+    pub fn empty() -> Self {
+        Self::new(WorkThresholds::publish_dev().clone(), Networks::Invalid)
+    }
+
     pub fn new(work: WorkThresholds, network: Networks) -> Self {
         let cleanup_period_s = if network == Networks::NanoDevNetwork {
             1

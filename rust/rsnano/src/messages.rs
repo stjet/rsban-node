@@ -1,7 +1,11 @@
+use crate::{utils::Stream, NetworkConstants};
+use anyhow::Result;
+use std::sync::Arc;
+
 /// Message types are serialized to the network and existing values must thus never change as
 /// types are added, removed and reordered in the enum.
 #[repr(u8)]
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, Clone, Copy, PartialEq, Eq)]
 pub enum MessageType {
     Invalid = 0x0,
     NotAType = 0x1,
@@ -35,5 +39,44 @@ impl MessageType {
             MessageType::TelemetryReq => "telemetry_req",
             MessageType::TelemetryAck => "telemetry_ack",
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct MessageHeader {
+    constants: Arc<NetworkConstants>,
+    message_type: MessageType,
+    version_using: u8,
+}
+
+impl MessageHeader {
+    pub fn new(constants: Arc<NetworkConstants>, message_type: MessageType) -> Self {
+        let version_using = constants.protocol_version;
+        Self::with_version_using(constants, message_type, version_using)
+    }
+
+    pub fn with_version_using(
+        constants: Arc<NetworkConstants>,
+        message_type: MessageType,
+        version_using: u8,
+    ) -> Self {
+        Self {
+            constants,
+            message_type,
+            version_using,
+        }
+    }
+
+    pub fn version_using(&self) -> u8 {
+        self.version_using
+    }
+
+    pub fn size() -> usize {
+        std::mem::size_of::<u8>() // version_using
+    }
+
+    pub(crate) fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
+        self.version_using = stream.read_u8()?;
+        Ok(())
     }
 }

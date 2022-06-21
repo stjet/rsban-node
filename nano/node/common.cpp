@@ -46,22 +46,46 @@ uint64_t nano::ip_address_hash_raw (boost::asio::ip::address const & ip_a, uint1
 nano::message_header::message_header (nano::network_constants const & constants, nano::message_type type_a) :
 	network{ constants.current_network },
 	version_max{ constants.protocol_version },
-	version_using{ constants.protocol_version },
 	version_min{ constants.protocol_version_min },
 	type (type_a)
 {
+	auto constants_dto{ constants.to_dto () };
+	handle = rsnano::rsn_message_header_create (&constants_dto, static_cast<uint8_t> (type_a), -1);
 }
 
 nano::message_header::message_header (nano::network_constants const & constants, nano::message_type type_a, uint8_t version_using_a) :
 	network{ constants.current_network },
 	version_max{ constants.protocol_version },
-	version_using{ version_using_a },
 	version_min{ constants.protocol_version_min },
 	type (type_a)
 {
+	auto constants_dto{ constants.to_dto () };
+	handle = rsnano::rsn_message_header_create (&constants_dto, static_cast<uint8_t> (type_a), version_using_a);
 }
 
-nano::message_header::message_header (bool & error_a, nano::stream & stream_a)
+nano::message_header::message_header (nano::message_header const & other_a) :
+	network{ other_a.network },
+	version_max{ other_a.version_max },
+	version_min{ other_a.version_min },
+	type (other_a.type),
+	extensions{ other_a.extensions },
+	handle{ rsnano::rsn_message_header_clone (other_a.handle) }
+{
+}
+
+nano::message_header::message_header (nano::message_header && other_a) :
+	network{ other_a.network },
+	version_max{ other_a.version_max },
+	version_min{ other_a.version_min },
+	type (other_a.type),
+	extensions{ other_a.extensions },
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+}
+
+nano::message_header::message_header (bool & error_a, nano::stream & stream_a) :
+	handle{ rsnano::rsn_message_header_empty () }
 {
 	if (!error_a)
 	{
@@ -69,11 +93,40 @@ nano::message_header::message_header (bool & error_a, nano::stream & stream_a)
 	}
 }
 
+nano::message_header & nano::message_header::operator= (nano::message_header && other_a)
+{
+	network = other_a.network;
+	version_max = other_a.version_max;
+	version_min = other_a.version_min;
+	type = other_a.type;
+	extensions = other_a.extensions;
+	handle = other_a.handle;
+	other_a.handle = nullptr;
+	return *this;
+}
+
+nano::message_header & nano::message_header::operator= (message_header const & other_a)
+{
+	network = other_a.network;
+	version_max = other_a.version_max;
+	version_min = other_a.version_min;
+	type = other_a.type;
+	extensions = other_a.extensions;
+	handle = rsnano::rsn_message_header_clone (other_a.handle);
+	return *this;
+}
+
+nano::message_header::~message_header ()
+{
+	if (handle != nullptr)
+		rsnano::rsn_message_header_destroy (handle);
+}
+
 void nano::message_header::serialize (nano::stream & stream_a) const
 {
 	nano::write (stream_a, boost::endian::native_to_big (static_cast<uint16_t> (network)));
 	nano::write (stream_a, version_max);
-	nano::write (stream_a, version_using);
+	nano::write (stream_a, get_version_using ());
 	nano::write (stream_a, version_min);
 	nano::write (stream_a, type);
 	nano::write (stream_a, static_cast<uint16_t> (extensions.to_ullong ()));
@@ -88,7 +141,10 @@ bool nano::message_header::deserialize (nano::stream & stream_a)
 		nano::read (stream_a, network_bytes);
 		network = static_cast<nano::networks> (boost::endian::big_to_native (network_bytes));
 		nano::read (stream_a, version_max);
-		nano::read (stream_a, version_using);
+		if (!rsnano::rsn_message_header_deserialize (handle, &stream_a))
+		{
+			throw std::runtime_error ("deserialize failed");
+		}
 		nano::read (stream_a, version_min);
 		nano::read (stream_a, type);
 		uint16_t extensions_l;
@@ -115,7 +171,7 @@ std::string nano::message_header::to_string ()
 	// Cast to uint16_t to get integer value since uint8_t is treated as an unsigned char in string formatting.
 	uint16_t type_l = static_cast<uint16_t> (type);
 	uint16_t version_max_l = static_cast<uint16_t> (version_max);
-	uint16_t version_using_l = static_cast<uint16_t> (version_using);
+	uint16_t version_using_l = static_cast<uint16_t> (get_version_using ());
 	uint16_t version_min_l = static_cast<uint16_t> (version_min);
 	std::string type_text = nano::message_type_to_string (type);
 
@@ -305,7 +361,7 @@ uint8_t nano::message_header::get_version_max () const
 
 uint8_t nano::message_header::get_version_using () const
 {
-	return version_using;
+	return rsnano::rsn_message_header_version_using (handle);
 }
 
 uint8_t nano::message_header::get_version_min () const
@@ -336,6 +392,11 @@ bool nano::message_header::test_extension (std::size_t position) const
 void nano::message_header::set_extension (std::size_t position, bool value)
 {
 	extensions.set (position, value);
+}
+
+size_t nano::message_header::size ()
+{
+	return sizeof (nano::networks) + sizeof (version_max) + sizeof (version_min) + sizeof (type) + sizeof (/* extensions */ uint16_t) + rsnano::rsn_message_header_size ();
 }
 
 // MTU - IP header - UDP header
@@ -442,7 +503,7 @@ void nano::message_parser::deserialize_buffer (uint8_t const * buffer_a, std::si
 					case nano::message_type::publish:
 					{
 						nano::uint128_t digest;
-						if (!publish_filter.apply (buffer_a + header.size, size_a - header.size, &digest))
+						if (!publish_filter.apply (buffer_a + message_header::size (), size_a - message_header::size (), &digest))
 						{
 							deserialize_publish (stream, header, digest);
 						}

@@ -85,6 +85,36 @@ pub unsafe extern "C" fn rsn_message_header_type(handle: *mut MessageHeaderHandl
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_extensions(handle: *mut MessageHeaderHandle) -> u16 {
+    (*handle).0.extensions()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_test_extension(
+    handle: *mut MessageHeaderHandle,
+    position: usize,
+) -> bool {
+    (*handle).0.test_extension(position)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_set_extension(
+    handle: *mut MessageHeaderHandle,
+    position: usize,
+    value: bool,
+) {
+    (*handle).0.set_extension(position, value)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_set_extensions(
+    handle: *mut MessageHeaderHandle,
+    value: u16,
+) {
+    (*handle).0.set_extensions(value)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_deserialize(
     handle: *mut MessageHeaderHandle,
     stream: *mut c_void,

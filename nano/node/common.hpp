@@ -238,6 +238,7 @@ public:
 	uint8_t get_version_min () const;
 	nano::message_type get_type () const;
 	std::bitset<16> get_extensions () const;
+	uint16_t get_extensions_raw () const;
 	void set_extensions (std::bitset<16> const & bits);
 	bool test_extension (std::size_t position) const;
 	void set_extension (std::size_t position, bool value);
@@ -247,7 +248,6 @@ public:
 	static std::bitset<16> constexpr telemetry_size_mask{ 0x3ff };
 
 private:
-	std::bitset<16> extensions;
 	rsnano::MessageHeaderHandle * handle;
 
 public:

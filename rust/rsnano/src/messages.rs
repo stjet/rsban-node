@@ -1,5 +1,6 @@
 use crate::{utils::Stream, NetworkConstants, Networks};
 use anyhow::Result;
+use bitvec::prelude::*;
 use num_traits::FromPrimitive;
 use std::mem::size_of;
 
@@ -50,6 +51,7 @@ pub struct MessageHeader {
     version_max: u8,
     version_min: u8,
     network: Networks,
+    extensions: BitArray<u16>,
 }
 
 impl MessageHeader {
@@ -69,6 +71,7 @@ impl MessageHeader {
             version_max: constants.protocol_version,
             version_min: constants.protocol_version_min,
             network: constants.current_network,
+            extensions: BitArray::ZERO,
         }
     }
 
@@ -92,24 +95,46 @@ impl MessageHeader {
         self.message_type
     }
 
+    pub fn extensions(&self) -> u16 {
+        self.extensions.data
+    }
+
+    pub fn set_extensions(&mut self, value: u16) {
+        self.extensions.data = value;
+    }
+
+    pub fn test_extension(&self, position: usize) -> bool {
+        self.extensions[position]
+    }
+
+    pub fn set_extension(&mut self, position: usize, value: bool) {
+        self.extensions.set(position, value);
+    }
+
     pub fn size() -> usize {
         size_of::<u8>() // version_using
         + size_of::<u8>() // version_min
         + size_of::<u8>() // version_max
         + size_of::<Networks>()
         + size_of::<MessageType>()
+        + size_of::<u16>() // extensions
     }
 
     pub(crate) fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
         let mut buffer = [0; 2];
+
         stream.read_bytes(&mut buffer, 2)?;
         self.network = Networks::from_u16(u16::from_be_bytes(buffer))
             .ok_or_else(|| anyhow!("invalid network"))?;
+
         self.version_max = stream.read_u8()?;
         self.version_using = stream.read_u8()?;
         self.version_min = stream.read_u8()?;
         self.message_type = MessageType::from_u8(stream.read_u8()?)
             .ok_or_else(|| anyhow!("invalid message type"))?;
+
+        stream.read_bytes(&mut buffer, 2)?;
+        self.extensions.data = u16::from_ne_bytes(buffer);
         Ok(())
     }
 }

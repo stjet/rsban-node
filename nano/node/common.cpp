@@ -56,13 +56,11 @@ nano::message_header::message_header (nano::network_constants const & constants,
 }
 
 nano::message_header::message_header (nano::message_header const & other_a) :
-	extensions{ other_a.extensions },
 	handle{ rsnano::rsn_message_header_clone (other_a.handle) }
 {
 }
 
 nano::message_header::message_header (nano::message_header && other_a) :
-	extensions{ other_a.extensions },
 	handle{ other_a.handle }
 {
 	other_a.handle = nullptr;
@@ -79,7 +77,6 @@ nano::message_header::message_header (bool & error_a, nano::stream & stream_a) :
 
 nano::message_header & nano::message_header::operator= (nano::message_header && other_a)
 {
-	extensions = other_a.extensions;
 	handle = other_a.handle;
 	other_a.handle = nullptr;
 	return *this;
@@ -87,7 +84,6 @@ nano::message_header & nano::message_header::operator= (nano::message_header && 
 
 nano::message_header & nano::message_header::operator= (message_header const & other_a)
 {
-	extensions = other_a.extensions;
 	handle = rsnano::rsn_message_header_clone (other_a.handle);
 	return *this;
 }
@@ -105,27 +101,12 @@ void nano::message_header::serialize (nano::stream & stream_a) const
 	nano::write (stream_a, get_version_using ());
 	nano::write (stream_a, get_version_min ());
 	nano::write (stream_a, get_type ());
-	nano::write (stream_a, static_cast<uint16_t> (extensions.to_ullong ()));
+	nano::write (stream_a, get_extensions_raw ());
 }
 
 bool nano::message_header::deserialize (nano::stream & stream_a)
 {
-	auto error (false);
-	try
-	{
-		if (!rsnano::rsn_message_header_deserialize (handle, &stream_a))
-		{
-			throw std::runtime_error ("deserialize failed");
-		}
-		uint16_t extensions_l;
-		nano::read (stream_a, extensions_l);
-		extensions = extensions_l;
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-
+	auto error = !rsnano::rsn_message_header_deserialize (handle, &stream_a);
 	return error;
 }
 
@@ -150,7 +131,7 @@ std::string nano::message_header::to_string ()
 	stream << boost::format ("NetID: %1%(%2%), ") % nano::to_string_hex (static_cast<uint16_t> (get_network ())) % nano::network::to_string (get_network ());
 	stream << boost::format ("VerMaxUsingMin: %1%/%2%/%3%, ") % version_max_l % version_using_l % version_min_l;
 	stream << boost::format ("MsgType: %1%(%2%), ") % type_l % type_text;
-	stream << boost::format ("Extensions: %1%") % nano::to_string_hex (static_cast<uint16_t> (extensions.to_ulong ()));
+	stream << boost::format ("Extensions: %1%") % nano::to_string_hex (get_extensions_raw ());
 
 	return stream.str ();
 }
@@ -185,32 +166,36 @@ nano::shared_const_buffer nano::message::to_shared_const_buffer () const
 
 nano::block_type nano::message_header::block_type () const
 {
-	return static_cast<nano::block_type> (((extensions & block_type_mask) >> 8).to_ullong ());
+	return static_cast<nano::block_type> (((get_extensions () & block_type_mask) >> 8).to_ullong ());
 }
 
 void nano::message_header::block_type_set (nano::block_type type_a)
 {
-	extensions &= ~block_type_mask;
-	extensions |= std::bitset<16> (static_cast<unsigned long long> (type_a) << 8);
+	auto exts = get_extensions ();
+	exts &= ~block_type_mask;
+	exts |= std::bitset<16> (static_cast<unsigned long long> (type_a) << 8);
+	set_extensions (exts);
 }
 
 uint8_t nano::message_header::count_get () const
 {
-	return static_cast<uint8_t> (((extensions & count_mask) >> 12).to_ullong ());
+	return static_cast<uint8_t> (((get_extensions () & count_mask) >> 12).to_ullong ());
 }
 
 void nano::message_header::count_set (uint8_t count_a)
 {
 	debug_assert (count_a < 16);
-	extensions &= ~count_mask;
-	extensions |= std::bitset<16> (static_cast<unsigned long long> (count_a) << 12);
+	auto exts{ get_extensions () };
+	exts &= ~count_mask;
+	exts |= std::bitset<16> (static_cast<unsigned long long> (count_a) << 12);
+	set_extensions (exts);
 }
 
 void nano::message_header::flag_set (uint8_t flag_a)
 {
 	// Flags from 8 are block_type & count
 	debug_assert (flag_a < 8);
-	extensions.set (flag_a, true);
+	set_extension (flag_a, true);
 }
 
 bool nano::message_header::bulk_pull_is_count_present () const
@@ -218,7 +203,7 @@ bool nano::message_header::bulk_pull_is_count_present () const
 	auto result (false);
 	if (get_type () == nano::message_type::bulk_pull)
 	{
-		if (extensions.test (bulk_pull_count_present_flag))
+		if (test_extension (bulk_pull_count_present_flag))
 		{
 			result = true;
 		}
@@ -231,7 +216,7 @@ bool nano::message_header::frontier_req_is_only_confirmed_present () const
 	auto result (false);
 	if (get_type () == nano::message_type::frontier_req)
 	{
-		if (extensions.test (frontier_req_only_confirmed))
+		if (test_extension (frontier_req_only_confirmed))
 		{
 			result = true;
 		}
@@ -244,7 +229,7 @@ bool nano::message_header::node_id_handshake_is_query () const
 	auto result (false);
 	if (get_type () == nano::message_type::node_id_handshake)
 	{
-		if (extensions.test (node_id_handshake_query_flag))
+		if (test_extension (node_id_handshake_query_flag))
 		{
 			result = true;
 		}
@@ -257,7 +242,7 @@ bool nano::message_header::node_id_handshake_is_response () const
 	auto result (false);
 	if (get_type () == nano::message_type::node_id_handshake)
 	{
-		if (extensions.test (node_id_handshake_response_flag))
+		if (test_extension (node_id_handshake_response_flag))
 		{
 			result = true;
 		}
@@ -344,29 +329,35 @@ nano::message_type nano::message_header::get_type () const
 	return static_cast<nano::message_type> (rsnano::rsn_message_header_type (handle));
 }
 
+uint16_t nano::message_header::get_extensions_raw () const
+{
+	return rsnano::rsn_message_header_extensions (handle);
+}
+
 std::bitset<16> nano::message_header::get_extensions () const
 {
-	return extensions;
+	return std::bitset<16> (static_cast<unsigned long long> (get_extensions_raw ()));
 }
 
 void nano::message_header::set_extensions (std::bitset<16> const & bits)
 {
-	extensions = bits;
+	auto value = static_cast<uint16_t> (bits.to_ulong ());
+	rsnano::rsn_message_header_set_extensions (handle, value);
 }
 
 bool nano::message_header::test_extension (std::size_t position) const
 {
-	return extensions.test (position);
+	return rsnano::rsn_message_header_test_extension (handle, position);
 }
 
 void nano::message_header::set_extension (std::size_t position, bool value)
 {
-	extensions.set (position, value);
+	rsnano::rsn_message_header_set_extension (handle, position, value);
 }
 
 size_t nano::message_header::size ()
 {
-	return sizeof (/* extensions */ uint16_t) + rsnano::rsn_message_header_size ();
+	return rsnano::rsn_message_header_size ();
 }
 
 // MTU - IP header - UDP header

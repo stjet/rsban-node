@@ -1145,9 +1145,17 @@ void rsn_message_header_destroy (MessageHeaderHandle * handle);
 
 MessageHeaderHandle * rsn_message_header_empty ();
 
+uint16_t rsn_message_header_extensions (MessageHeaderHandle * handle);
+
 uint16_t rsn_message_header_network (MessageHeaderHandle * handle);
 
+void rsn_message_header_set_extension (MessageHeaderHandle * handle, uintptr_t position, bool value);
+
+void rsn_message_header_set_extensions (MessageHeaderHandle * handle, uint16_t value);
+
 uintptr_t rsn_message_header_size ();
+
+bool rsn_message_header_test_extension (MessageHeaderHandle * handle, uintptr_t position);
 
 uint8_t rsn_message_header_type (MessageHeaderHandle * handle);
 

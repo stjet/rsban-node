@@ -70,8 +70,18 @@ pub unsafe extern "C" fn rsn_message_header_version_max(handle: *mut MessageHead
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_network(handle: *mut MessageHeaderHandle) -> u16 {
+    (*handle).0.network() as u16
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_size() -> usize {
     MessageHeader::size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_type(handle: *mut MessageHeaderHandle) -> u8 {
+    (*handle).0.message_type() as u8
 }
 
 #[no_mangle]

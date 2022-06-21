@@ -247,8 +247,6 @@ public:
 	static std::bitset<16> constexpr telemetry_size_mask{ 0x3ff };
 
 private:
-	nano::networks network;
-	nano::message_type type;
 	std::bitset<16> extensions;
 	rsnano::MessageHeaderHandle * handle;
 

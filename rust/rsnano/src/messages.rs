@@ -1,5 +1,6 @@
-use crate::{utils::Stream, NetworkConstants};
+use crate::{utils::Stream, NetworkConstants, Networks};
 use anyhow::Result;
+use num_traits::FromPrimitive;
 use std::mem::size_of;
 
 /// Message types are serialized to the network and existing values must thus never change as
@@ -48,6 +49,7 @@ pub struct MessageHeader {
     version_using: u8,
     version_max: u8,
     version_min: u8,
+    network: Networks,
 }
 
 impl MessageHeader {
@@ -66,6 +68,7 @@ impl MessageHeader {
             version_using,
             version_max: constants.protocol_version,
             version_min: constants.protocol_version_min,
+            network: constants.current_network,
         }
     }
 
@@ -81,16 +84,32 @@ impl MessageHeader {
         self.version_min
     }
 
+    pub fn network(&self) -> Networks {
+        self.network
+    }
+
+    pub fn message_type(&self) -> MessageType {
+        self.message_type
+    }
+
     pub fn size() -> usize {
         size_of::<u8>() // version_using
         + size_of::<u8>() // version_min
         + size_of::<u8>() // version_max
+        + size_of::<Networks>()
+        + size_of::<MessageType>()
     }
 
     pub(crate) fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
+        let mut buffer = [0; 2];
+        stream.read_bytes(&mut buffer, 2)?;
+        self.network = Networks::from_u16(u16::from_be_bytes(buffer))
+            .ok_or_else(|| anyhow!("invalid network"))?;
         self.version_max = stream.read_u8()?;
         self.version_using = stream.read_u8()?;
         self.version_min = stream.read_u8()?;
+        self.message_type = MessageType::from_u8(stream.read_u8()?)
+            .ok_or_else(|| anyhow!("invalid message type"))?;
         Ok(())
     }
 }

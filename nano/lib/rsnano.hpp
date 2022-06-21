@@ -1145,7 +1145,11 @@ void rsn_message_header_destroy (MessageHeaderHandle * handle);
 
 MessageHeaderHandle * rsn_message_header_empty ();
 
+uint16_t rsn_message_header_network (MessageHeaderHandle * handle);
+
 uintptr_t rsn_message_header_size ();
+
+uint8_t rsn_message_header_type (MessageHeaderHandle * handle);
 
 uint8_t rsn_message_header_version_max (MessageHeaderHandle * handle);
 

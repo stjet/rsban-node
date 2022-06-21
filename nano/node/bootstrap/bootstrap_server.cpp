@@ -262,7 +262,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 		if (!error)
 		{
 			auto this_l (shared_from_this ());
-			switch (header.type)
+			switch (header.get_type ())
 			{
 				case nano::message_type::bulk_pull:
 				{
@@ -362,7 +362,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				{
 					if (config->logging.network_logging ())
 					{
-						logger->try_log (boost::str (boost::format ("Received invalid type from bootstrap connection %1%") % static_cast<uint8_t> (header.type)));
+						logger->try_log (boost::str (boost::format ("Received invalid type from bootstrap connection %1%") % static_cast<uint8_t> (header.get_type ())));
 					}
 					break;
 				}
@@ -805,7 +805,7 @@ void nano::bootstrap_server::run_next (nano::unique_lock<nano::mutex> & lock_a)
 {
 	debug_assert (!requests.empty ());
 	auto visitor{ request_response_visitor_factory->create_visitor (shared_from_this ()) };
-	auto type (requests.front ()->header.type);
+	auto type (requests.front ()->header.get_type ());
 	if (type == nano::message_type::bulk_pull || type == nano::message_type::bulk_pull_account || type == nano::message_type::bulk_push || type == nano::message_type::frontier_req || type == nano::message_type::node_id_handshake)
 	{
 		// Bootstrap & node ID (realtime start)

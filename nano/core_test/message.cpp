@@ -37,7 +37,7 @@ TEST (message, keepalive_deserialize)
 	auto error (false);
 	nano::message_header header (error, stream);
 	ASSERT_FALSE (error);
-	ASSERT_EQ (nano::message_type::keepalive, header.type);
+	ASSERT_EQ (nano::message_type::keepalive, header.get_type ());
 	nano::keepalive message2 (error, stream, header);
 	ASSERT_FALSE (error);
 	ASSERT_EQ (message1.peers, message2.peers);
@@ -66,10 +66,10 @@ TEST (message, publish_serialization)
 	auto error (false);
 	nano::message_header header (error, stream);
 	ASSERT_FALSE (error);
-	ASSERT_EQ (nano::dev::network_params.network.protocol_version_min, header.version_min);
-	ASSERT_EQ (nano::dev::network_params.network.protocol_version, header.version_using);
-	ASSERT_EQ (nano::dev::network_params.network.protocol_version, header.version_max);
-	ASSERT_EQ (nano::message_type::publish, header.type);
+	ASSERT_EQ (nano::dev::network_params.network.protocol_version_min, header.get_version_min ());
+	ASSERT_EQ (nano::dev::network_params.network.protocol_version, header.get_version_using ());
+	ASSERT_EQ (nano::dev::network_params.network.protocol_version, header.get_version_max ());
+	ASSERT_EQ (nano::message_type::publish, header.get_type ());
 }
 
 TEST (message, confirm_ack_hash_serialization)

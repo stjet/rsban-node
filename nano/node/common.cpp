@@ -52,6 +52,15 @@ nano::message_header::message_header (nano::network_constants const & constants,
 {
 }
 
+nano::message_header::message_header (nano::network_constants const & constants, nano::message_type type_a, uint8_t version_using_a) :
+	network{ constants.current_network },
+	version_max{ constants.protocol_version },
+	version_using{ version_using_a },
+	version_min{ constants.protocol_version_min },
+	type (type_a)
+{
+}
+
 nano::message_header::message_header (bool & error_a, nano::stream & stream_a)
 {
 	if (!error_a)
@@ -122,6 +131,11 @@ std::string nano::message_header::to_string ()
 
 nano::message::message (nano::network_constants const & constants, nano::message_type type_a) :
 	header (constants, type_a)
+{
+}
+
+nano::message::message (nano::network_constants const & constants, nano::message_type type_a, uint8_t version_using) :
+	header (constants, type_a, version_using)
 {
 }
 
@@ -279,6 +293,51 @@ std::size_t nano::message_header::payload_length_bytes () const
 	}
 }
 
+nano::networks nano::message_header::get_network () const
+{
+	return network;
+}
+
+uint8_t nano::message_header::get_version_max () const
+{
+	return version_max;
+}
+
+uint8_t nano::message_header::get_version_using () const
+{
+	return version_using;
+}
+
+uint8_t nano::message_header::get_version_min () const
+{
+	return version_min;
+}
+
+nano::message_type nano::message_header::get_type () const
+{
+	return type;
+}
+
+std::bitset<16> nano::message_header::get_extensions () const
+{
+	return extensions;
+}
+
+void nano::message_header::set_extensions (std::bitset<16> const & bits)
+{
+	extensions = bits;
+}
+
+bool nano::message_header::test_extension (std::size_t position) const
+{
+	return extensions.test (position);
+}
+
+void nano::message_header::set_extension (std::size_t position, bool value)
+{
+	extensions.set (position, value);
+}
+
 // MTU - IP header - UDP header
 std::size_t const nano::message_parser::max_safe_udp_message_size = 508;
 
@@ -367,13 +426,13 @@ void nano::message_parser::deserialize_buffer (uint8_t const * buffer_a, std::si
 		nano::message_header header (error, stream);
 		if (!error)
 		{
-			if (header.version_using < network.protocol_version_min)
+			if (header.get_version_using () < network.protocol_version_min)
 			{
 				status = parse_status::outdated_version;
 			}
 			else
 			{
-				switch (header.type)
+				switch (header.get_type ())
 				{
 					case nano::message_type::keepalive:
 					{
@@ -562,6 +621,16 @@ nano::keepalive::keepalive (nano::network_constants const & constants) :
 	}
 }
 
+nano::keepalive::keepalive (nano::network_constants const & constants, uint8_t version_using_a) :
+	message (constants, nano::message_type::keepalive, version_using_a)
+{
+	nano::endpoint endpoint (boost::asio::ip::address_v6{}, 0);
+	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i)
+	{
+		*i = endpoint;
+	}
+}
+
 nano::keepalive::keepalive (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
 	message (header_a)
 {
@@ -590,7 +659,7 @@ void nano::keepalive::serialize (nano::stream & stream_a) const
 
 bool nano::keepalive::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.type == nano::message_type::keepalive);
+	debug_assert (header.get_type () == nano::message_type::keepalive);
 	auto error (false);
 	for (auto i (peers.begin ()), j (peers.end ()); i != j && !error; ++i)
 	{
@@ -639,7 +708,7 @@ void nano::publish::serialize (nano::stream & stream_a) const
 
 bool nano::publish::deserialize (nano::stream & stream_a, nano::block_uniquer * uniquer_a)
 {
-	debug_assert (header.type == nano::message_type::publish);
+	debug_assert (header.get_type () == nano::message_type::publish);
 	block = nano::deserialize_block (stream_a, header.block_type (), uniquer_a);
 	auto result (block == nullptr);
 	return result;
@@ -720,7 +789,7 @@ void nano::confirm_req::serialize (nano::stream & stream_a) const
 bool nano::confirm_req::deserialize (nano::stream & stream_a, nano::block_uniquer * uniquer_a)
 {
 	bool result (false);
-	debug_assert (header.type == nano::message_type::confirm_req);
+	debug_assert (header.get_type () == nano::message_type::confirm_req);
 	try
 	{
 		if (header.block_type () == nano::block_type::not_a_block)
@@ -862,7 +931,7 @@ void nano::frontier_req::serialize (nano::stream & stream_a) const
 
 bool nano::frontier_req::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.type == nano::message_type::frontier_req);
+	debug_assert (header.get_type () == nano::message_type::frontier_req);
 	auto error (false);
 	try
 	{
@@ -938,7 +1007,7 @@ void nano::bulk_pull::serialize (nano::stream & stream_a) const
 
 bool nano::bulk_pull::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.type == nano::message_type::bulk_pull);
+	debug_assert (header.get_type () == nano::message_type::bulk_pull);
 	auto error (false);
 	try
 	{
@@ -976,12 +1045,12 @@ bool nano::bulk_pull::deserialize (nano::stream & stream_a)
 
 bool nano::bulk_pull::is_count_present () const
 {
-	return header.extensions.test (count_present_flag);
+	return header.test_extension (count_present_flag);
 }
 
 void nano::bulk_pull::set_count_present (bool value_a)
 {
-	header.extensions.set (count_present_flag, value_a);
+	header.set_extension (count_present_flag, value_a);
 }
 
 nano::bulk_pull_account::bulk_pull_account (nano::network_constants const & constants) :
@@ -1013,7 +1082,7 @@ void nano::bulk_pull_account::serialize (nano::stream & stream_a) const
 
 bool nano::bulk_pull_account::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.type == nano::message_type::bulk_pull_account);
+	debug_assert (header.get_type () == nano::message_type::bulk_pull_account);
 	auto error (false);
 	try
 	{
@@ -1041,7 +1110,7 @@ nano::bulk_push::bulk_push (nano::message_header const & header_a) :
 
 bool nano::bulk_push::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.type == nano::message_type::bulk_push);
+	debug_assert (header.get_type () == nano::message_type::bulk_push);
 	return false;
 }
 
@@ -1067,7 +1136,7 @@ nano::telemetry_req::telemetry_req (nano::message_header const & header_a) :
 
 bool nano::telemetry_req::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.type == nano::message_type::telemetry_req);
+	debug_assert (header.get_type () == nano::message_type::telemetry_req);
 	return false;
 }
 
@@ -1100,8 +1169,10 @@ nano::telemetry_ack::telemetry_ack (nano::network_constants const & constants, n
 	data (telemetry_data_a)
 {
 	debug_assert (telemetry_data::size + telemetry_data_a.unknown_data.size () <= message_header::telemetry_size_mask.to_ulong ()); // Maximum size the mask allows
-	header.extensions &= ~message_header::telemetry_size_mask;
-	header.extensions |= std::bitset<16> (static_cast<unsigned long long> (telemetry_data::size) + telemetry_data_a.unknown_data.size ());
+	auto extensions{ header.get_extensions () };
+	extensions &= ~message_header::telemetry_size_mask;
+	extensions |= std::bitset<16> (static_cast<unsigned long long> (telemetry_data::size) + telemetry_data_a.unknown_data.size ());
+	header.set_extensions (extensions);
 }
 
 void nano::telemetry_ack::serialize (nano::stream & stream_a) const
@@ -1116,12 +1187,12 @@ void nano::telemetry_ack::serialize (nano::stream & stream_a) const
 bool nano::telemetry_ack::deserialize (nano::stream & stream_a)
 {
 	auto error (false);
-	debug_assert (header.type == nano::message_type::telemetry_ack);
+	debug_assert (header.get_type () == nano::message_type::telemetry_ack);
 	try
 	{
 		if (!is_empty_payload ())
 		{
-			data.deserialize (stream_a, nano::narrow_cast<uint16_t> (header.extensions.to_ulong ()));
+			data.deserialize (stream_a, nano::narrow_cast<uint16_t> (header.get_extensions ().to_ulong ()));
 		}
 	}
 	catch (std::runtime_error const &)
@@ -1144,7 +1215,7 @@ uint16_t nano::telemetry_ack::size () const
 
 uint16_t nano::telemetry_ack::size (nano::message_header const & message_header_a)
 {
-	return static_cast<uint16_t> ((message_header_a.extensions & message_header::telemetry_size_mask).to_ullong ());
+	return static_cast<uint16_t> ((message_header_a.get_extensions () & message_header::telemetry_size_mask).to_ullong ());
 }
 
 bool nano::telemetry_ack::is_empty_payload () const
@@ -1382,7 +1453,7 @@ void nano::node_id_handshake::serialize (nano::stream & stream_a) const
 
 bool nano::node_id_handshake::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.type == nano::message_type::node_id_handshake);
+	debug_assert (header.get_type () == nano::message_type::node_id_handshake);
 	auto error (false);
 	try
 	{

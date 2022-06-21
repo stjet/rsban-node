@@ -203,6 +203,7 @@ class message_header final
 {
 public:
 	message_header (nano::network_constants const &, nano::message_type);
+	message_header (nano::network_constants const &, nano::message_type, uint8_t version_using_a);
 	message_header (bool &, nano::stream &);
 	void serialize (nano::stream &) const;
 	bool deserialize (nano::stream &);
@@ -210,16 +211,7 @@ public:
 	void block_type_set (nano::block_type);
 	uint8_t count_get () const;
 	void count_set (uint8_t);
-	nano::networks network;
-	uint8_t version_max;
-	uint8_t version_using;
-	uint8_t version_min;
 	std::string to_string ();
-
-public:
-	nano::message_type type;
-	std::bitset<16> extensions;
-	static std::size_t constexpr size = sizeof (nano::networks) + sizeof (version_max) + sizeof (version_using) + sizeof (version_min) + sizeof (type) + sizeof (/* extensions */ uint16_t);
 
 	void flag_set (uint8_t);
 	static uint8_t constexpr bulk_pull_count_present_flag = 0;
@@ -234,15 +226,37 @@ public:
 	/** Size of the payload in bytes. For some messages, the payload size is based on header flags. */
 	std::size_t payload_length_bytes () const;
 
+	nano::networks get_network () const;
+	uint8_t get_version_max () const;
+	uint8_t get_version_using () const;
+	uint8_t get_version_min () const;
+	nano::message_type get_type () const;
+	std::bitset<16> get_extensions () const;
+	void set_extensions (std::bitset<16> const & bits);
+	bool test_extension (std::size_t position) const;
+	void set_extension (std::size_t position, bool value);
+
 	static std::bitset<16> constexpr block_type_mask{ 0x0f00 };
 	static std::bitset<16> constexpr count_mask{ 0xf000 };
 	static std::bitset<16> constexpr telemetry_size_mask{ 0x3ff };
+
+private:
+	nano::networks network;
+	uint8_t version_max;
+	uint8_t version_using;
+	uint8_t version_min;
+	nano::message_type type;
+	std::bitset<16> extensions;
+
+public:
+	static std::size_t constexpr size = sizeof (nano::networks) + sizeof (version_max) + sizeof (version_using) + sizeof (version_min) + sizeof (type) + sizeof (/* extensions */ uint16_t);
 };
 
 class message
 {
 public:
 	explicit message (nano::network_constants const &, nano::message_type);
+	explicit message (nano::network_constants const &, nano::message_type, uint8_t version_using);
 	explicit message (nano::message_header const &);
 	virtual ~message () = default;
 	virtual void serialize (nano::stream &) const = 0;
@@ -299,6 +313,7 @@ class keepalive final : public message
 {
 public:
 	explicit keepalive (nano::network_constants const & constants);
+	explicit keepalive (nano::network_constants const & constants, uint8_t version_using_a);
 	keepalive (bool &, nano::stream &, nano::message_header const &);
 	void visit (nano::message_visitor &) const override;
 	void serialize (nano::stream &) const override;

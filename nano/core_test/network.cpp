@@ -1278,11 +1278,12 @@ TEST (network, filter)
 	nano::system system{ 1 };
 	auto & node1 = *system.nodes[0];
 	nano::keepalive keepalive{ nano::dev::network_params.network };
-	const_cast<nano::networks &> (keepalive.header.network) = nano::networks::nano_dev_network;
 	node1.network.inbound (keepalive, std::make_shared<nano::transport::inproc::channel> (node1, node1));
 	ASSERT_EQ (0, node1.stats->count (nano::stat::type::message, nano::stat::detail::invalid_network));
-	const_cast<nano::networks &> (keepalive.header.network) = nano::networks::invalid;
-	node1.network.inbound (keepalive, std::make_shared<nano::transport::inproc::channel> (node1, node1));
+
+	nano::network_constants invalid{ nano::work_thresholds{ 0, 0, 0 }, nano::networks::invalid };
+	nano::keepalive keepalive2{ invalid };
+	node1.network.inbound (keepalive2, std::make_shared<nano::transport::inproc::channel> (node1, node1));
 	ASSERT_EQ (1, node1.stats->count (nano::stat::type::message, nano::stat::detail::invalid_network));
 }
 

@@ -24,6 +24,18 @@ pub enum Networks {
     NanoTestNetwork = 0x5258, // 'R', 'X'
 }
 
+impl Networks {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Networks::Invalid => "invalid",
+            Networks::NanoDevNetwork => "dev",
+            Networks::NanoBetaNetwork => "beta",
+            Networks::NanoLiveNetwork => "live",
+            Networks::NanoTestNetwork => "test",
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum WorkVersion {
     Unspecified,

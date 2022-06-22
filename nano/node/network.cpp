@@ -1,4 +1,5 @@
 #include <nano/crypto_lib/random_pool_shuffle.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/node/network.hpp>
 #include <nano/node/node.hpp>
@@ -1064,20 +1065,7 @@ std::unique_ptr<nano::container_info_component> nano::syn_cookies::collect_conta
 
 std::string nano::network::to_string (nano::networks network)
 {
-	switch (network)
-	{
-		case nano::networks::invalid:
-			return "invalid";
-		case nano::networks::nano_beta_network:
-			return "beta";
-		case nano::networks::nano_dev_network:
-			return "dev";
-		case nano::networks::nano_live_network:
-			return "live";
-		case nano::networks::nano_test_network:
-			return "test";
-			// default case intentionally omitted to cause warnings for unhandled enums
-	}
-
-	return "n/a";
+	rsnano::StringDto result;
+	rsnano::rsn_network_to_string (static_cast<uint16_t> (network), &result);
+	return rsnano::convert_dto_to_string (result);
 }

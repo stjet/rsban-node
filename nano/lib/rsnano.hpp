@@ -1149,6 +1149,8 @@ uint16_t rsn_message_header_extensions (MessageHeaderHandle * handle);
 
 uint16_t rsn_message_header_network (MessageHeaderHandle * handle);
 
+bool rsn_message_header_serialize (MessageHeaderHandle * handle, void * stream);
+
 void rsn_message_header_set_extension (MessageHeaderHandle * handle, uintptr_t position, bool value);
 
 void rsn_message_header_set_extensions (MessageHeaderHandle * handle, uint16_t value);
@@ -1156,6 +1158,8 @@ void rsn_message_header_set_extensions (MessageHeaderHandle * handle, uint16_t v
 uintptr_t rsn_message_header_size ();
 
 bool rsn_message_header_test_extension (MessageHeaderHandle * handle, uintptr_t position);
+
+void rsn_message_header_to_string (MessageHeaderHandle * handle, StringDto * result);
 
 uint8_t rsn_message_header_type (MessageHeaderHandle * handle);
 
@@ -1216,6 +1220,8 @@ uintptr_t count,
 uint8_t (*digest)[16]);
 
 int32_t rsn_network_params_create (NetworkParamsDto * dto, uint16_t network);
+
+void rsn_network_to_string (uint16_t network, StringDto * result);
 
 int32_t rsn_node_config_create (NodeConfigDto * dto,
 uint16_t peering_port,

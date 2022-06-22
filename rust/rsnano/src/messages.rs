@@ -2,7 +2,7 @@ use crate::{utils::Stream, NetworkConstants, Networks};
 use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
-use std::mem::size_of;
+use std::{fmt::Display, mem::size_of};
 
 /// Message types are serialized to the network and existing values must thus never change as
 /// types are added, removed and reordered in the enum.
@@ -25,7 +25,7 @@ pub enum MessageType {
     TelemetryAck = 0x0d,
 }
 impl MessageType {
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             MessageType::Invalid => "invalid",
             MessageType::NotAType => "not_a_type",
@@ -120,7 +120,7 @@ impl MessageHeader {
         + size_of::<u16>() // extensions
     }
 
-    pub(crate) fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
+    pub fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
         let mut buffer = [0; 2];
 
         stream.read_bytes(&mut buffer, 2)?;
@@ -136,5 +136,37 @@ impl MessageHeader {
         stream.read_bytes(&mut buffer, 2)?;
         self.extensions.data = u16::from_ne_bytes(buffer);
         Ok(())
+    }
+
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        stream.write_bytes(&(self.network() as u16).to_be_bytes())?;
+        stream.write_u8(self.version_max())?;
+        stream.write_u8(self.version_using())?;
+        stream.write_u8(self.version_min())?;
+        stream.write_u8(self.message_type() as u8)?;
+        stream.write_bytes(&self.extensions().to_ne_bytes())?;
+        Ok(())
+    }
+}
+
+impl Display for MessageHeader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "NetID: {:04X}({}), ",
+            self.network() as u16,
+            self.network().as_str()
+        ))?;
+        f.write_fmt(format_args!(
+            "VerMaxUsingMin: {}/{}/{}, ",
+            self.version_max(),
+            self.version_using(),
+            self.version_min()
+        ))?;
+        f.write_fmt(format_args!(
+            "MsgType: {}({}), ",
+            self.message_type() as u8,
+            self.message_type().as_str()
+        ))?;
+        f.write_fmt(format_args!("Extensions: {:04X}", self.extensions()))
     }
 }

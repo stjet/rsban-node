@@ -96,12 +96,10 @@ nano::message_header::~message_header ()
 
 void nano::message_header::serialize (nano::stream & stream_a) const
 {
-	nano::write (stream_a, boost::endian::native_to_big (static_cast<uint16_t> (get_network ())));
-	nano::write (stream_a, get_version_max ());
-	nano::write (stream_a, get_version_using ());
-	nano::write (stream_a, get_version_min ());
-	nano::write (stream_a, get_type ());
-	nano::write (stream_a, get_extensions_raw ());
+	if (!rsnano::rsn_message_header_serialize (handle, &stream_a))
+	{
+		throw new std::runtime_error ("could not serialize message header");
+	}
 }
 
 bool nano::message_header::deserialize (nano::stream & stream_a)
@@ -119,21 +117,9 @@ std::string nano::message_type_to_string (nano::message_type message_type_l)
 
 std::string nano::message_header::to_string ()
 {
-	// Cast to uint16_t to get integer value since uint8_t is treated as an unsigned char in string formatting.
-	uint16_t type_l = static_cast<uint16_t> (get_type ());
-	uint16_t version_max_l = static_cast<uint16_t> (get_version_max ());
-	uint16_t version_using_l = static_cast<uint16_t> (get_version_using ());
-	uint16_t version_min_l = static_cast<uint16_t> (get_version_min ());
-	std::string type_text = nano::message_type_to_string (get_type ());
-
-	std::stringstream stream;
-
-	stream << boost::format ("NetID: %1%(%2%), ") % nano::to_string_hex (static_cast<uint16_t> (get_network ())) % nano::network::to_string (get_network ());
-	stream << boost::format ("VerMaxUsingMin: %1%/%2%/%3%, ") % version_max_l % version_using_l % version_min_l;
-	stream << boost::format ("MsgType: %1%(%2%), ") % type_l % type_text;
-	stream << boost::format ("Extensions: %1%") % nano::to_string_hex (get_extensions_raw ());
-
-	return stream.str ();
+	rsnano::StringDto result;
+	rsnano::rsn_message_header_to_string (handle, &result);
+	return rsnano::convert_dto_to_string (result);
 }
 
 nano::message::message (nano::network_constants const & constants, nano::message_type type_a) :

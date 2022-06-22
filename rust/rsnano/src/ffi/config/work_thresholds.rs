@@ -1,7 +1,9 @@
+use num_traits::FromPrimitive;
 use std::convert::TryFrom;
 
 use crate::{
-    ffi::blocks::BlockDetailsDto, BlockDetails, BlockType, Root, WorkThresholds, WorkVersion,
+    ffi::{blocks::BlockDetailsDto, StringDto},
+    BlockDetails, BlockType, Networks, Root, WorkThresholds, WorkVersion,
 };
 
 #[repr(C)]
@@ -184,4 +186,9 @@ impl From<&WorkThresholdsDto> for WorkThresholds {
     fn from(dto: &WorkThresholdsDto) -> Self {
         WorkThresholds::new(dto.epoch_1, dto.epoch_2, dto.epoch_2_receive)
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_network_to_string(network: u16, result: *mut StringDto) {
+    (*result) = Networks::from_u16(network).unwrap().as_str().into();
 }

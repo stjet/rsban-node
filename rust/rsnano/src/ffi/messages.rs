@@ -122,3 +122,20 @@ pub unsafe extern "C" fn rsn_message_header_deserialize(
     let mut stream = FfiStream::new(stream);
     (*handle).0.deserialize(&mut stream).is_ok()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_serialize(
+    handle: *mut MessageHeaderHandle,
+    stream: *mut c_void,
+) -> bool {
+    let mut stream = FfiStream::new(stream);
+    (*handle).0.serialize(&mut stream).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_to_string(
+    handle: *mut MessageHeaderHandle,
+    result: *mut StringDto,
+) {
+    (*result) = (*handle).0.to_string().into()
+}

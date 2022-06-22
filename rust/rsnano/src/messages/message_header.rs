@@ -27,6 +27,7 @@ pub enum MessageType {
     TelemetryReq = 0x0c,
     TelemetryAck = 0x0d,
 }
+
 impl MessageType {
     pub fn as_str(&self) -> &'static str {
         match self {

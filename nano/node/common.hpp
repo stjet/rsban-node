@@ -207,6 +207,7 @@ public:
 	message_header (bool &, nano::stream &);
 	message_header (message_header const &);
 	message_header (message_header &&);
+	message_header (rsnano::MessageHeaderHandle * handle_a);
 	~message_header ();
 
 	message_header & operator= (message_header && other_a);
@@ -246,20 +247,20 @@ public:
 	static std::bitset<16> constexpr count_mask{ 0xf000 };
 	static std::bitset<16> constexpr telemetry_size_mask{ 0x3ff };
 
-private:
 	rsnano::MessageHeaderHandle * handle;
 
-public:
 	static std::size_t size ();
 };
 
 class message
 {
 public:
-	explicit message (nano::network_constants const &, nano::message_type);
-	explicit message (nano::network_constants const &, nano::message_type, uint8_t version_using);
-	explicit message (nano::message_header const &);
-	virtual ~message () = default;
+	explicit message (rsnano::MessageHandle * handle);
+	message (message const &) = delete;
+	message (message &&) = delete;
+	virtual ~message ();
+	message & operator= (message const &) = delete;
+	message & operator= (message &&) = delete;
 	virtual void serialize (nano::stream &) const = 0;
 	virtual void visit (nano::message_visitor &) const = 0;
 	std::shared_ptr<std::vector<uint8_t>> to_bytes () const;
@@ -268,7 +269,7 @@ public:
 	void set_header (nano::message_header const & header);
 
 protected:
-	nano::message_header header;
+	rsnano::MessageHandle * handle;
 };
 
 class work_pool;
@@ -318,6 +319,7 @@ class keepalive final : public message
 public:
 	explicit keepalive (nano::network_constants const & constants);
 	explicit keepalive (nano::network_constants const & constants, uint8_t version_using_a);
+	keepalive (keepalive const & other_a);
 	keepalive (bool &, nano::stream &, nano::message_header const &);
 	void visit (nano::message_visitor &) const override;
 	void serialize (nano::stream &) const override;
@@ -332,6 +334,7 @@ class publish final : public message
 public:
 	publish (bool &, nano::stream &, nano::message_header const &, nano::uint128_t const & = 0, nano::block_uniquer * = nullptr);
 	publish (nano::network_constants const & constants, std::shared_ptr<nano::block> const &);
+	publish (nano::publish const & other_a);
 	void visit (nano::message_visitor &) const override;
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &, nano::block_uniquer * = nullptr);
@@ -347,6 +350,7 @@ public:
 	confirm_req (nano::network_constants const & constants, std::shared_ptr<nano::block> const &);
 	confirm_req (nano::network_constants const & constants, std::vector<std::pair<nano::block_hash, nano::root>> const &);
 	confirm_req (nano::network_constants const & constants, nano::block_hash const &, nano::root const &);
+	confirm_req (nano::confirm_req const & other_a);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &, nano::block_uniquer * = nullptr);
 	void visit (nano::message_visitor &) const override;
@@ -362,6 +366,7 @@ class confirm_ack final : public message
 public:
 	confirm_ack (bool &, nano::stream &, nano::message_header const &, nano::vote_uniquer * = nullptr);
 	confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const &);
+	confirm_ack (nano::confirm_ack const & other_a);
 	void serialize (nano::stream &) const override;
 	void visit (nano::message_visitor &) const override;
 	bool operator== (nano::confirm_ack const &) const;
@@ -436,6 +441,7 @@ class telemetry_req final : public message
 public:
 	explicit telemetry_req (nano::network_constants const & constants);
 	explicit telemetry_req (nano::message_header const &);
+	telemetry_req (nano::telemetry_req const &);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
@@ -447,6 +453,8 @@ public:
 	explicit telemetry_ack (nano::network_constants const & constants);
 	telemetry_ack (bool &, nano::stream &, nano::message_header const &);
 	telemetry_ack (nano::network_constants const & constants, telemetry_data const &);
+	telemetry_ack (nano::telemetry_ack const &);
+	telemetry_ack & operator= (telemetry_ack const & other_a);
 	void serialize (nano::stream &) const override;
 	void visit (nano::message_visitor &) const override;
 	bool deserialize (nano::stream &);
@@ -504,6 +512,7 @@ class node_id_handshake final : public message
 public:
 	node_id_handshake (bool &, nano::stream &, nano::message_header const &);
 	node_id_handshake (nano::network_constants const & constants, boost::optional<nano::uint256_union>, boost::optional<std::pair<nano::account, nano::signature>>);
+	node_id_handshake (node_id_handshake const &);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;

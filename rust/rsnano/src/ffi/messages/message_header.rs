@@ -1,12 +1,12 @@
 use num::FromPrimitive;
-use std::ffi::c_void;
+use std::{ffi::c_void, ops::Deref};
 
 use crate::{
     messages::{MessageHeader, MessageType},
     NetworkConstants,
 };
 
-use super::{FfiStream, NetworkConstantsDto, StringDto};
+use crate::ffi::{FfiStream, NetworkConstantsDto, StringDto};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_type_to_string(msg_type: u8, result: *mut StringDto) {
@@ -17,6 +17,20 @@ pub unsafe extern "C" fn rsn_message_type_to_string(msg_type: u8, result: *mut S
 }
 
 pub struct MessageHeaderHandle(MessageHeader);
+
+impl MessageHeaderHandle {
+    pub fn new(header: MessageHeader) -> Self {
+        Self(header)
+    }
+}
+
+impl Deref for MessageHeaderHandle {
+    type Target = MessageHeader;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_create(

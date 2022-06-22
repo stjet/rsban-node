@@ -47,6 +47,8 @@ struct LocalVotesResultHandle;
 
 struct LockHandle;
 
+struct MessageHandle;
+
 struct MessageHeaderHandle;
 
 struct NetworkFilterHandle;
@@ -1133,6 +1135,38 @@ MessageDto * result);
 
 void rsn_message_builder_bootstrap_started (const char * id, const char * mode, MessageDto * result);
 
+MessageHandle * rsn_message_bulk_pull_account_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_bulk_pull_account_create2 (MessageHeaderHandle * header);
+
+MessageHandle * rsn_message_bulk_pull_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_bulk_pull_create2 (MessageHeaderHandle * header);
+
+MessageHandle * rsn_message_bulk_push_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_bulk_push_create2 (MessageHeaderHandle * header);
+
+MessageHandle * rsn_message_confirm_ack_clone (MessageHandle * handle);
+
+MessageHandle * rsn_message_confirm_ack_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_confirm_ack_create2 (MessageHeaderHandle * header);
+
+MessageHandle * rsn_message_confirm_req_clone (MessageHandle * handle);
+
+MessageHandle * rsn_message_confirm_req_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_confirm_req_create2 (MessageHeaderHandle * header);
+
+void rsn_message_destroy (MessageHandle * handle);
+
+MessageHandle * rsn_message_frontier_req_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_frontier_req_create2 (MessageHeaderHandle * header);
+
+MessageHeaderHandle * rsn_message_header (MessageHandle * handle);
+
 MessageHeaderHandle * rsn_message_header_clone (MessageHeaderHandle * handle);
 
 MessageHeaderHandle * rsn_message_header_create (const NetworkConstantsDto * constants,
@@ -1168,6 +1202,38 @@ uint8_t rsn_message_header_version_max (MessageHeaderHandle * handle);
 uint8_t rsn_message_header_version_min (MessageHeaderHandle * handle);
 
 uint8_t rsn_message_header_version_using (MessageHeaderHandle * handle);
+
+MessageHandle * rsn_message_keepalive_clone (MessageHandle * handle);
+
+MessageHandle * rsn_message_keepalive_create (NetworkConstantsDto * constants, int16_t version_using);
+
+MessageHandle * rsn_message_keepalive_create2 (MessageHeaderHandle * header);
+
+MessageHandle * rsn_message_node_id_handshake_clone (MessageHandle * handle);
+
+MessageHandle * rsn_message_node_id_handshake_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_node_id_handshake_create2 (MessageHeaderHandle * header);
+
+MessageHandle * rsn_message_publish_clone (MessageHandle * handle);
+
+MessageHandle * rsn_message_publish_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_publish_create2 (MessageHeaderHandle * header);
+
+void rsn_message_set_header (MessageHandle * handle, MessageHeaderHandle * header);
+
+MessageHandle * rsn_message_telemetry_ack_clone (MessageHandle * handle);
+
+MessageHandle * rsn_message_telemetry_ack_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_telemetry_ack_create2 (MessageHeaderHandle * header);
+
+MessageHandle * rsn_message_telemetry_req_clone (MessageHandle * handle);
+
+MessageHandle * rsn_message_telemetry_req_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_telemetry_req_create2 (MessageHeaderHandle * header);
 
 void rsn_message_type_to_string (uint8_t msg_type, StringDto * result);
 

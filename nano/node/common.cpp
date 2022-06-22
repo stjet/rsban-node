@@ -66,6 +66,11 @@ nano::message_header::message_header (nano::message_header && other_a) :
 	other_a.handle = nullptr;
 }
 
+nano::message_header::message_header (rsnano::MessageHeaderHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 nano::message_header::message_header (bool & error_a, nano::stream & stream_a) :
 	handle{ rsnano::rsn_message_header_empty () }
 {
@@ -122,19 +127,14 @@ std::string nano::message_header::to_string ()
 	return rsnano::convert_dto_to_string (result);
 }
 
-nano::message::message (nano::network_constants const & constants, nano::message_type type_a) :
-	header (constants, type_a)
+nano::message::message (rsnano::MessageHandle * handle_a) :
+	handle (handle_a)
 {
 }
 
-nano::message::message (nano::network_constants const & constants, nano::message_type type_a, uint8_t version_using) :
-	header (constants, type_a, version_using)
+nano::message::~message ()
 {
-}
-
-nano::message::message (nano::message_header const & header_a) :
-	header (header_a)
-{
+	rsnano::rsn_message_destroy (handle);
 }
 
 std::shared_ptr<std::vector<uint8_t>> nano::message::to_bytes () const
@@ -152,12 +152,12 @@ nano::shared_const_buffer nano::message::to_shared_const_buffer () const
 
 nano::message_header nano::message::get_header () const
 {
-	return header;
+	return nano::message_header{ rsnano::rsn_message_header (handle) };
 }
 
 void nano::message::set_header (nano::message_header const & header_a)
 {
-	header = header_a;
+	rsnano::rsn_message_set_header (handle, header_a.handle);
 }
 
 nano::block_type nano::message_header::block_type () const
@@ -616,8 +616,14 @@ bool nano::message_parser::at_end (nano::stream & stream_a)
 	return end;
 }
 
+rsnano::MessageHandle * create_keepalive_handle (nano::network_constants const & constants, int16_t version_using)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_keepalive_create (&constants_dto, version_using);
+}
+
 nano::keepalive::keepalive (nano::network_constants const & constants) :
-	message (constants, nano::message_type::keepalive)
+	message (create_keepalive_handle (constants, -1))
 {
 	nano::endpoint endpoint (boost::asio::ip::address_v6{}, 0);
 	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i)
@@ -627,7 +633,7 @@ nano::keepalive::keepalive (nano::network_constants const & constants) :
 }
 
 nano::keepalive::keepalive (nano::network_constants const & constants, uint8_t version_using_a) :
-	message (constants, nano::message_type::keepalive, version_using_a)
+	message (create_keepalive_handle (constants, version_using_a))
 {
 	nano::endpoint endpoint (boost::asio::ip::address_v6{}, 0);
 	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i)
@@ -637,12 +643,18 @@ nano::keepalive::keepalive (nano::network_constants const & constants, uint8_t v
 }
 
 nano::keepalive::keepalive (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (header_a)
+	message (rsnano::rsn_message_keepalive_create2 (header_a.handle))
 {
 	if (!error_a)
 	{
 		error_a = deserialize (stream_a);
 	}
+}
+
+nano::keepalive::keepalive (keepalive const & other_a) :
+	message (rsnano::rsn_message_keepalive_clone (other_a.handle)),
+	peers{ other_a.peers }
+{
 }
 
 void nano::keepalive::visit (nano::message_visitor & visitor_a) const
@@ -652,7 +664,7 @@ void nano::keepalive::visit (nano::message_visitor & visitor_a) const
 
 void nano::keepalive::serialize (nano::stream & stream_a) const
 {
-	header.serialize (stream_a);
+	get_header ().serialize (stream_a);
 	for (auto i (peers.begin ()), j (peers.end ()); i != j; ++i)
 	{
 		debug_assert (i->address ().is_v6 ());
@@ -664,7 +676,7 @@ void nano::keepalive::serialize (nano::stream & stream_a) const
 
 bool nano::keepalive::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.get_type () == nano::message_type::keepalive);
+	debug_assert (get_header ().get_type () == nano::message_type::keepalive);
 	auto error (false);
 	for (auto i (peers.begin ()), j (peers.end ()); i != j && !error; ++i)
 	{
@@ -688,7 +700,7 @@ bool nano::keepalive::operator== (nano::keepalive const & other_a) const
 }
 
 nano::publish::publish (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::uint128_t const & digest_a, nano::block_uniquer * uniquer_a) :
-	message (header_a),
+	message (rsnano::rsn_message_publish_create2 (header_a.handle)),
 	digest (digest_a)
 {
 	if (!error_a)
@@ -697,24 +709,39 @@ nano::publish::publish (bool & error_a, nano::stream & stream_a, nano::message_h
 	}
 }
 
+rsnano::MessageHandle * create_publish_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_publish_create (&constants_dto);
+}
+
 nano::publish::publish (nano::network_constants const & constants, std::shared_ptr<nano::block> const & block_a) :
-	message (constants, nano::message_type::publish),
+	message (create_publish_handle (constants)),
 	block (block_a)
 {
+	auto header{ get_header () };
 	header.block_type_set (block->type ());
+	set_header (header);
+}
+
+nano::publish::publish (nano::publish const & other_a) :
+	message (rsnano::rsn_message_publish_clone (other_a.handle)),
+	block{ other_a.block },
+	digest{ other_a.digest }
+{
 }
 
 void nano::publish::serialize (nano::stream & stream_a) const
 {
 	debug_assert (block != nullptr);
-	header.serialize (stream_a);
+	get_header ().serialize (stream_a);
 	block->serialize (stream_a);
 }
 
 bool nano::publish::deserialize (nano::stream & stream_a, nano::block_uniquer * uniquer_a)
 {
-	debug_assert (header.get_type () == nano::message_type::publish);
-	block = nano::deserialize_block (stream_a, header.block_type (), uniquer_a);
+	debug_assert (get_header ().get_type () == nano::message_type::publish);
+	block = nano::deserialize_block (stream_a, get_header ().block_type (), uniquer_a);
 	auto result (block == nullptr);
 	return result;
 }
@@ -729,8 +756,14 @@ bool nano::publish::operator== (nano::publish const & other_a) const
 	return *block == *other_a.block;
 }
 
+rsnano::MessageHandle * create_confirm_req_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_confirm_req_create (&constants_dto);
+}
+
 nano::confirm_req::confirm_req (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::block_uniquer * uniquer_a) :
-	message (header_a)
+	message (rsnano::rsn_message_confirm_req_create2 (header_a.handle))
 {
 	if (!error_a)
 	{
@@ -739,31 +772,44 @@ nano::confirm_req::confirm_req (bool & error_a, nano::stream & stream_a, nano::m
 }
 
 nano::confirm_req::confirm_req (nano::network_constants const & constants, std::shared_ptr<nano::block> const & block_a) :
-	message (constants, nano::message_type::confirm_req),
+	message (create_confirm_req_handle (constants)),
 	block (block_a)
 {
+	auto header{ get_header () };
 	header.block_type_set (block->type ());
+	set_header (header);
 }
 
 nano::confirm_req::confirm_req (nano::network_constants const & constants, std::vector<std::pair<nano::block_hash, nano::root>> const & roots_hashes_a) :
-	message (constants, nano::message_type::confirm_req),
+	message (create_confirm_req_handle (constants)),
 	roots_hashes (roots_hashes_a)
 {
+	auto header{ get_header () };
 	// not_a_block (1) block type for hashes + roots request
 	header.block_type_set (nano::block_type::not_a_block);
 	debug_assert (roots_hashes.size () < 16);
 	header.count_set (static_cast<uint8_t> (roots_hashes.size ()));
+	set_header (header);
 }
 
 nano::confirm_req::confirm_req (nano::network_constants const & constants, nano::block_hash const & hash_a, nano::root const & root_a) :
-	message (constants, nano::message_type::confirm_req),
+	message (create_confirm_req_handle (constants)),
 	roots_hashes (std::vector<std::pair<nano::block_hash, nano::root>> (1, std::make_pair (hash_a, root_a)))
 {
 	debug_assert (!roots_hashes.empty ());
+	auto header{ get_header () };
 	// not_a_block (1) block type for hashes + roots request
 	header.block_type_set (nano::block_type::not_a_block);
 	debug_assert (roots_hashes.size () < 16);
 	header.count_set (static_cast<uint8_t> (roots_hashes.size ()));
+	set_header (header);
+}
+
+nano::confirm_req::confirm_req (nano::confirm_req const & other_a) :
+	message (rsnano::rsn_message_confirm_req_clone (other_a.handle)),
+	block{ other_a.block },
+	roots_hashes{ other_a.roots_hashes }
+{
 }
 
 void nano::confirm_req::visit (nano::message_visitor & visitor_a) const
@@ -773,8 +819,8 @@ void nano::confirm_req::visit (nano::message_visitor & visitor_a) const
 
 void nano::confirm_req::serialize (nano::stream & stream_a) const
 {
-	header.serialize (stream_a);
-	if (header.block_type () == nano::block_type::not_a_block)
+	get_header ().serialize (stream_a);
+	if (get_header ().block_type () == nano::block_type::not_a_block)
 	{
 		debug_assert (!roots_hashes.empty ());
 		// Write hashes & roots
@@ -794,12 +840,12 @@ void nano::confirm_req::serialize (nano::stream & stream_a) const
 bool nano::confirm_req::deserialize (nano::stream & stream_a, nano::block_uniquer * uniquer_a)
 {
 	bool result (false);
-	debug_assert (header.get_type () == nano::message_type::confirm_req);
+	debug_assert (get_header ().get_type () == nano::message_type::confirm_req);
 	try
 	{
-		if (header.block_type () == nano::block_type::not_a_block)
+		if (get_header ().block_type () == nano::block_type::not_a_block)
 		{
-			uint8_t count (header.count_get ());
+			uint8_t count (get_header ().count_get ());
 			for (auto i (0); i != count && !result; ++i)
 			{
 				nano::block_hash block_hash (0);
@@ -816,7 +862,7 @@ bool nano::confirm_req::deserialize (nano::stream & stream_a, nano::block_unique
 		}
 		else
 		{
-			block = nano::deserialize_block (stream_a, header.block_type (), uniquer_a);
+			block = nano::deserialize_block (stream_a, get_header ().block_type (), uniquer_a);
 			result = block == nullptr;
 		}
 	}
@@ -869,8 +915,14 @@ std::size_t nano::confirm_req::size (nano::block_type type_a, std::size_t count)
 	return result;
 }
 
+rsnano::MessageHandle * create_confirm_ack_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_confirm_ack_create (&constants_dto);
+}
+
 nano::confirm_ack::confirm_ack (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::vote_uniquer * uniquer_a) :
-	message (header_a),
+	message (rsnano::rsn_message_confirm_ack_create2 (header_a.handle)),
 	vote (nano::make_shared<nano::vote> (error_a, stream_a))
 {
 	if (!error_a && uniquer_a)
@@ -880,16 +932,25 @@ nano::confirm_ack::confirm_ack (bool & error_a, nano::stream & stream_a, nano::m
 }
 
 nano::confirm_ack::confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const & vote_a) :
-	message (constants, nano::message_type::confirm_ack),
+	message (create_confirm_ack_handle (constants)),
 	vote (vote_a)
 {
+	auto header{ get_header () };
 	header.block_type_set (nano::block_type::not_a_block);
 	debug_assert (vote_a->hashes ().size () < 16);
 	header.count_set (static_cast<uint8_t> (vote_a->hashes ().size ()));
+	set_header (header);
+}
+
+nano::confirm_ack::confirm_ack (nano::confirm_ack const & other_a) :
+	message (rsnano::rsn_message_confirm_ack_clone (other_a.handle)),
+	vote{ other_a.vote }
+{
 }
 
 void nano::confirm_ack::serialize (nano::stream & stream_a) const
 {
+	auto header{ get_header () };
 	debug_assert (header.block_type () == nano::block_type::not_a_block || header.block_type () == nano::block_type::send || header.block_type () == nano::block_type::receive || header.block_type () == nano::block_type::open || header.block_type () == nano::block_type::change || header.block_type () == nano::block_type::state);
 	header.serialize (stream_a);
 	vote->serialize (stream_a);
@@ -912,13 +973,19 @@ std::size_t nano::confirm_ack::size (std::size_t count)
 	return result;
 }
 
+rsnano::MessageHandle * create_frontier_req_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_frontier_req_create (&constants_dto);
+}
+
 nano::frontier_req::frontier_req (nano::network_constants const & constants) :
-	message (constants, nano::message_type::frontier_req)
+	message (create_frontier_req_handle (constants))
 {
 }
 
 nano::frontier_req::frontier_req (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (header_a)
+	message (rsnano::rsn_message_frontier_req_create2 (header_a.handle))
 {
 	if (!error_a)
 	{
@@ -928,7 +995,7 @@ nano::frontier_req::frontier_req (bool & error_a, nano::stream & stream_a, nano:
 
 void nano::frontier_req::serialize (nano::stream & stream_a) const
 {
-	header.serialize (stream_a);
+	get_header ().serialize (stream_a);
 	write (stream_a, start.bytes);
 	write (stream_a, age);
 	write (stream_a, count);
@@ -936,7 +1003,7 @@ void nano::frontier_req::serialize (nano::stream & stream_a) const
 
 bool nano::frontier_req::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.get_type () == nano::message_type::frontier_req);
+	debug_assert (get_header ().get_type () == nano::message_type::frontier_req);
 	auto error (false);
 	try
 	{
@@ -964,16 +1031,22 @@ bool nano::frontier_req::operator== (nano::frontier_req const & other_a) const
 
 bool nano::frontier_req::is_only_confirmed_present () const
 {
-	return header.test_extension (nano::message_header::frontier_req_only_confirmed);
+	return get_header ().test_extension (nano::message_header::frontier_req_only_confirmed);
+}
+
+rsnano::MessageHandle * create_bulk_pull_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_bulk_pull_create (&constants_dto);
 }
 
 nano::bulk_pull::bulk_pull (nano::network_constants const & constants) :
-	message (constants, nano::message_type::bulk_pull)
+	message (create_bulk_pull_handle (constants))
 {
 }
 
 nano::bulk_pull::bulk_pull (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (header_a)
+	message (rsnano::rsn_message_bulk_pull_create2 (header_a.handle))
 {
 	if (!error_a)
 	{
@@ -998,7 +1071,7 @@ void nano::bulk_pull::serialize (nano::stream & stream_a) const
 	 */
 	debug_assert ((count == 0 && !is_count_present ()) || (count != 0 && is_count_present ()));
 
-	header.serialize (stream_a);
+	get_header ().serialize (stream_a);
 	write (stream_a, start);
 	write (stream_a, end);
 
@@ -1017,7 +1090,7 @@ void nano::bulk_pull::serialize (nano::stream & stream_a) const
 
 bool nano::bulk_pull::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.get_type () == nano::message_type::bulk_pull);
+	debug_assert (get_header ().get_type () == nano::message_type::bulk_pull);
 	auto error (false);
 	try
 	{
@@ -1055,21 +1128,29 @@ bool nano::bulk_pull::deserialize (nano::stream & stream_a)
 
 bool nano::bulk_pull::is_count_present () const
 {
-	return header.test_extension (count_present_flag);
+	return get_header ().test_extension (count_present_flag);
 }
 
 void nano::bulk_pull::set_count_present (bool value_a)
 {
+	auto header{ get_header () };
 	header.set_extension (count_present_flag, value_a);
+	set_header (header);
+}
+
+rsnano::MessageHandle * create_bulk_pull_account_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_bulk_pull_account_create (&constants_dto);
 }
 
 nano::bulk_pull_account::bulk_pull_account (nano::network_constants const & constants) :
-	message (constants, nano::message_type::bulk_pull_account)
+	message (create_bulk_pull_account_handle (constants))
 {
 }
 
 nano::bulk_pull_account::bulk_pull_account (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (header_a)
+	message (rsnano::rsn_message_bulk_pull_account_create2 (header_a.handle))
 {
 	if (!error_a)
 	{
@@ -1084,7 +1165,7 @@ void nano::bulk_pull_account::visit (nano::message_visitor & visitor_a) const
 
 void nano::bulk_pull_account::serialize (nano::stream & stream_a) const
 {
-	header.serialize (stream_a);
+	get_header ().serialize (stream_a);
 	write (stream_a, account);
 	write (stream_a, minimum_amount);
 	write (stream_a, flags);
@@ -1092,7 +1173,7 @@ void nano::bulk_pull_account::serialize (nano::stream & stream_a) const
 
 bool nano::bulk_pull_account::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.get_type () == nano::message_type::bulk_pull_account);
+	debug_assert (get_header ().get_type () == nano::message_type::bulk_pull_account);
 	auto error (false);
 	try
 	{
@@ -1108,25 +1189,31 @@ bool nano::bulk_pull_account::deserialize (nano::stream & stream_a)
 	return error;
 }
 
+rsnano::MessageHandle * create_bulk_push_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_bulk_push_create (&constants_dto);
+}
+
 nano::bulk_push::bulk_push (nano::network_constants const & constants) :
-	message (constants, nano::message_type::bulk_push)
+	message (create_bulk_push_handle (constants))
 {
 }
 
 nano::bulk_push::bulk_push (nano::message_header const & header_a) :
-	message (header_a)
+	message (rsnano::rsn_message_bulk_push_create2 (header_a.handle))
 {
 }
 
 bool nano::bulk_push::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.get_type () == nano::message_type::bulk_push);
+	debug_assert (get_header ().get_type () == nano::message_type::bulk_push);
 	return false;
 }
 
 void nano::bulk_push::serialize (nano::stream & stream_a) const
 {
-	header.serialize (stream_a);
+	get_header ().serialize (stream_a);
 }
 
 void nano::bulk_push::visit (nano::message_visitor & visitor_a) const
@@ -1134,25 +1221,36 @@ void nano::bulk_push::visit (nano::message_visitor & visitor_a) const
 	visitor_a.bulk_push (*this);
 }
 
+rsnano::MessageHandle * create_telemetry_req_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_telemetry_req_create (&constants_dto);
+}
+
 nano::telemetry_req::telemetry_req (nano::network_constants const & constants) :
-	message (constants, nano::message_type::telemetry_req)
+	message (create_telemetry_req_handle (constants))
 {
 }
 
 nano::telemetry_req::telemetry_req (nano::message_header const & header_a) :
-	message (header_a)
+	message (rsnano::rsn_message_telemetry_req_create2 (header_a.handle))
+{
+}
+
+nano::telemetry_req::telemetry_req (nano::telemetry_req const & other_a) :
+	message (rsnano::rsn_message_telemetry_req_clone (other_a.handle))
 {
 }
 
 bool nano::telemetry_req::deserialize (nano::stream & stream_a)
 {
-	debug_assert (header.get_type () == nano::message_type::telemetry_req);
+	debug_assert (get_header ().get_type () == nano::message_type::telemetry_req);
 	return false;
 }
 
 void nano::telemetry_req::serialize (nano::stream & stream_a) const
 {
-	header.serialize (stream_a);
+	get_header ().serialize (stream_a);
 }
 
 void nano::telemetry_req::visit (nano::message_visitor & visitor_a) const
@@ -1160,13 +1258,19 @@ void nano::telemetry_req::visit (nano::message_visitor & visitor_a) const
 	visitor_a.telemetry_req (*this);
 }
 
+rsnano::MessageHandle * create_telemetry_ack_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_telemetry_ack_create (&constants_dto);
+}
+
 nano::telemetry_ack::telemetry_ack (nano::network_constants const & constants) :
-	message (constants, nano::message_type::telemetry_ack)
+	message (create_telemetry_ack_handle (constants))
 {
 }
 
 nano::telemetry_ack::telemetry_ack (bool & error_a, nano::stream & stream_a, nano::message_header const & message_header) :
-	message (message_header)
+	message (rsnano::rsn_message_telemetry_ack_create2 (message_header.handle))
 {
 	if (!error_a)
 	{
@@ -1174,20 +1278,35 @@ nano::telemetry_ack::telemetry_ack (bool & error_a, nano::stream & stream_a, nan
 	}
 }
 
+nano::telemetry_ack::telemetry_ack (nano::telemetry_ack const & other_a) :
+	message (rsnano::rsn_message_telemetry_ack_clone (other_a.handle)),
+	data{ other_a.data }
+{
+}
+
 nano::telemetry_ack::telemetry_ack (nano::network_constants const & constants, nano::telemetry_data const & telemetry_data_a) :
-	message (constants, nano::message_type::telemetry_ack),
+	message (create_telemetry_ack_handle (constants)),
 	data (telemetry_data_a)
 {
 	debug_assert (telemetry_data::size + telemetry_data_a.unknown_data.size () <= message_header::telemetry_size_mask.to_ulong ()); // Maximum size the mask allows
+	auto header{ get_header () };
 	auto extensions{ header.get_extensions () };
 	extensions &= ~message_header::telemetry_size_mask;
 	extensions |= std::bitset<16> (static_cast<unsigned long long> (telemetry_data::size) + telemetry_data_a.unknown_data.size ());
 	header.set_extensions (extensions);
+	set_header (header);
+}
+
+nano::telemetry_ack & nano::telemetry_ack::operator= (telemetry_ack const & other_a)
+{
+	handle = rsnano::rsn_message_telemetry_ack_clone (other_a.handle);
+	data = other_a.data;
+	return *this;
 }
 
 void nano::telemetry_ack::serialize (nano::stream & stream_a) const
 {
-	header.serialize (stream_a);
+	get_header ().serialize (stream_a);
 	if (!is_empty_payload ())
 	{
 		data.serialize (stream_a);
@@ -1197,12 +1316,12 @@ void nano::telemetry_ack::serialize (nano::stream & stream_a) const
 bool nano::telemetry_ack::deserialize (nano::stream & stream_a)
 {
 	auto error (false);
-	debug_assert (header.get_type () == nano::message_type::telemetry_ack);
+	debug_assert (get_header ().get_type () == nano::message_type::telemetry_ack);
 	try
 	{
 		if (!is_empty_payload ())
 		{
-			data.deserialize (stream_a, nano::narrow_cast<uint16_t> (header.get_extensions ().to_ulong ()));
+			data.deserialize (stream_a, nano::narrow_cast<uint16_t> (get_header ().get_extensions ().to_ulong ()));
 		}
 	}
 	catch (std::runtime_error const &)
@@ -1220,7 +1339,7 @@ void nano::telemetry_ack::visit (nano::message_visitor & visitor_a) const
 
 uint16_t nano::telemetry_ack::size () const
 {
-	return size (header);
+	return size (get_header ());
 }
 
 uint16_t nano::telemetry_ack::size (nano::message_header const & message_header_a)
@@ -1424,19 +1543,33 @@ bool nano::telemetry_data::validate_signature () const
 	return nano::validate_message (node_id, bytes.data (), bytes.size (), signature);
 }
 
+rsnano::MessageHandle * create_node_id_handshake_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_node_id_handshake_create (&constants_dto);
+}
+
 nano::node_id_handshake::node_id_handshake (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (header_a),
+	message (rsnano::rsn_message_node_id_handshake_create2 (header_a.handle)),
 	query (boost::none),
 	response (boost::none)
 {
 	error_a = deserialize (stream_a);
 }
 
+nano::node_id_handshake::node_id_handshake (node_id_handshake const & other_a) :
+	message{ rsnano::rsn_message_node_id_handshake_clone (other_a.handle) },
+	query (other_a.query),
+	response (other_a.response)
+{
+}
+
 nano::node_id_handshake::node_id_handshake (nano::network_constants const & constants, boost::optional<nano::uint256_union> query, boost::optional<std::pair<nano::account, nano::signature>> response) :
-	message (constants, nano::message_type::node_id_handshake),
+	message (create_node_id_handshake_handle (constants)),
 	query (query),
 	response (response)
 {
+	auto header{ get_header () };
 	if (query)
 	{
 		header.flag_set (nano::message_header::node_id_handshake_query_flag);
@@ -1445,11 +1578,12 @@ nano::node_id_handshake::node_id_handshake (nano::network_constants const & cons
 	{
 		header.flag_set (nano::message_header::node_id_handshake_response_flag);
 	}
+	set_header (header);
 }
 
 void nano::node_id_handshake::serialize (nano::stream & stream_a) const
 {
-	header.serialize (stream_a);
+	get_header ().serialize (stream_a);
 	if (query)
 	{
 		write (stream_a, *query);
@@ -1463,6 +1597,7 @@ void nano::node_id_handshake::serialize (nano::stream & stream_a) const
 
 bool nano::node_id_handshake::deserialize (nano::stream & stream_a)
 {
+	auto header{ get_header () };
 	debug_assert (header.get_type () == nano::message_type::node_id_handshake);
 	auto error (false);
 	try
@@ -1504,7 +1639,7 @@ void nano::node_id_handshake::visit (nano::message_visitor & visitor_a) const
 
 std::size_t nano::node_id_handshake::size () const
 {
-	return size (header);
+	return size (get_header ());
 }
 
 std::size_t nano::node_id_handshake::size (nano::message_header const & header_a)

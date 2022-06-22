@@ -379,5 +379,5 @@ void nano::frontier_req_server::next ()
 
 bool nano::frontier_req_server::send_confirmed ()
 {
-	return request->header.frontier_req_is_only_confirmed_present ();
+	return request->is_only_confirmed_present ();
 }

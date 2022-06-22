@@ -150,6 +150,16 @@ nano::shared_const_buffer nano::message::to_shared_const_buffer () const
 	return shared_const_buffer (to_bytes ());
 }
 
+nano::message_header nano::message::get_header () const
+{
+	return header;
+}
+
+void nano::message::set_header (nano::message_header const & header_a)
+{
+	header = header_a;
+}
+
 nano::block_type nano::message_header::block_type () const
 {
 	return static_cast<nano::block_type> (((get_extensions () & block_type_mask) >> 8).to_ullong ());
@@ -190,19 +200,6 @@ bool nano::message_header::bulk_pull_is_count_present () const
 	if (get_type () == nano::message_type::bulk_pull)
 	{
 		if (test_extension (bulk_pull_count_present_flag))
-		{
-			result = true;
-		}
-	}
-	return result;
-}
-
-bool nano::message_header::frontier_req_is_only_confirmed_present () const
-{
-	auto result (false);
-	if (get_type () == nano::message_type::frontier_req)
-	{
-		if (test_extension (frontier_req_only_confirmed))
 		{
 			result = true;
 		}
@@ -963,6 +960,11 @@ void nano::frontier_req::visit (nano::message_visitor & visitor_a) const
 bool nano::frontier_req::operator== (nano::frontier_req const & other_a) const
 {
 	return start == other_a.start && age == other_a.age && count == other_a.count;
+}
+
+bool nano::frontier_req::is_only_confirmed_present () const
+{
+	return header.test_extension (nano::message_header::frontier_req_only_confirmed);
 }
 
 nano::bulk_pull::bulk_pull (nano::network_constants const & constants) :

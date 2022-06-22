@@ -337,7 +337,7 @@ void nano::transport::tcp_channels::process_messages ()
 void nano::transport::tcp_channels::process_message (nano::message const & message_a, nano::tcp_endpoint const & endpoint_a, nano::account const & node_id_a, std::shared_ptr<nano::socket> const & socket_a)
 {
 	auto type_a = socket_a->type ();
-	if (!stopped && message_a.header.get_version_using () >= node.network_params.network.protocol_version_min)
+	if (!stopped && message_a.get_header ().get_version_using () >= node.network_params.network.protocol_version_min)
 	{
 		auto channel (node.network.find_channel (nano::transport::map_tcp_to_endpoint (endpoint_a)));
 		if (channel)
@@ -360,7 +360,7 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 					temporary_channel->set_endpoint ();
 					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
 					temporary_channel->set_node_id (node_id_a);
-					temporary_channel->set_network_version (message_a.header.get_version_using ());
+					temporary_channel->set_network_version (message_a.get_header ().get_version_using ());
 					temporary_channel->set_temporary (true);
 					debug_assert (type_a == nano::socket::type_t::realtime || type_a == nano::socket::type_t::realtime_response_server);
 					// Don't insert temporary channels for response_server
@@ -373,7 +373,7 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 				else
 				{
 					// Initial node_id_handshake request without node ID
-					debug_assert (message_a.header.get_type () == nano::message_type::node_id_handshake);
+					debug_assert (message_a.get_header ().get_type () == nano::message_type::node_id_handshake);
 					node.stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
 				}
 			}

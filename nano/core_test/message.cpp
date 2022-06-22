@@ -47,11 +47,11 @@ TEST (message, publish_serialization)
 {
 	nano::keypair key1;
 	nano::publish publish{ nano::dev::network_params.network, std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5) };
-	ASSERT_EQ (nano::block_type::send, publish.header.block_type ());
+	ASSERT_EQ (nano::block_type::send, publish.get_header ().block_type ());
 	std::vector<uint8_t> bytes;
 	{
 		nano::vectorstream stream (bytes);
-		publish.header.serialize (stream);
+		publish.get_header ().serialize (stream);
 	}
 	ASSERT_EQ (8, bytes.size ());
 	ASSERT_EQ (0x52, bytes[0]);
@@ -178,22 +178,6 @@ TEST (message, confirm_req_hash_batch_serialization)
 	ASSERT_EQ (req2.roots_hashes, roots_hashes);
 	ASSERT_EQ (header.block_type (), nano::block_type::not_a_block);
 	ASSERT_EQ (header.count_get (), req.roots_hashes.size ());
-}
-
-// this unit test checks that conversion of message_header to string works as expected
-TEST (message, message_header_to_string)
-{
-	// calculate expected string
-	int maxver = nano::dev::network_params.network.protocol_version;
-	int minver = nano::dev::network_params.network.protocol_version_min;
-	std::stringstream ss;
-	ss << "NetID: 5241(dev), VerMaxUsingMin: " << maxver << "/" << maxver << "/" << minver << ", MsgType: 2(keepalive), Extensions: 0000";
-	auto expected_str = ss.str ();
-
-	// check expected vs real
-	nano::keepalive keepalive_msg{ nano::dev::network_params.network };
-	std::string header_string = keepalive_msg.header.to_string ();
-	ASSERT_EQ (expected_str, header_string);
 }
 
 /**

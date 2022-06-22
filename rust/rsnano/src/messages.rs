@@ -2,7 +2,10 @@ use crate::{utils::Stream, NetworkConstants, Networks};
 use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
-use std::{fmt::Display, mem::size_of};
+use std::{
+    fmt::{Debug, Display},
+    mem::size_of,
+};
 
 /// Message types are serialized to the network and existing values must thus never change as
 /// types are added, removed and reordered in the enum.
@@ -44,7 +47,7 @@ impl MessageType {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MessageHeader {
     message_type: MessageType,
     version_using: u8,
@@ -58,6 +61,23 @@ impl MessageHeader {
     pub fn new(constants: &NetworkConstants, message_type: MessageType) -> Self {
         let version_using = constants.protocol_version;
         Self::with_version_using(constants, message_type, version_using)
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            message_type: MessageType::Invalid,
+            version_using: 0,
+            version_max: 0,
+            version_min: 0,
+            network: Networks::NanoDevNetwork,
+            extensions: BitArray::ZERO,
+        }
+    }
+
+    pub fn from_stream(stream: &mut impl Stream) -> Result<MessageHeader> {
+        let mut header = Self::empty();
+        header.deserialize(stream)?;
+        Ok(header)
     }
 
     pub fn with_version_using(
@@ -168,5 +188,48 @@ impl Display for MessageHeader {
             self.message_type().as_str()
         ))?;
         f.write_fmt(format_args!("Extensions: {:04X}", self.extensions()))
+    }
+}
+
+impl Debug for MessageHeader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self, f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::TestStream;
+
+    use super::*;
+
+    #[test]
+    fn message_header_to_string() {
+        assert_eq!(
+            test_header().to_string(),
+            "NetID: 5241(dev), VerMaxUsingMin: 3/2/1, MsgType: 2(keepalive), Extensions: 000E"
+        );
+    }
+
+    #[test]
+    fn serialize_and_deserialize() -> Result<()> {
+        let original = test_header();
+        let mut stream = TestStream::new();
+        original.serialize(&mut stream)?;
+        let deserialized = MessageHeader::from_stream(&mut stream)?;
+        assert_eq!(original, deserialized);
+        Ok(())
+    }
+
+    fn test_header() -> MessageHeader {
+        let header = MessageHeader {
+            message_type: MessageType::Keepalive,
+            version_using: 2,
+            version_max: 3,
+            version_min: 1,
+            network: Networks::NanoDevNetwork,
+            extensions: BitArray::from(14),
+        };
+        header
     }
 }

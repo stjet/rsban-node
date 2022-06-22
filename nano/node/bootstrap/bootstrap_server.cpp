@@ -805,7 +805,7 @@ void nano::bootstrap_server::run_next (nano::unique_lock<nano::mutex> & lock_a)
 {
 	debug_assert (!requests.empty ());
 	auto visitor{ request_response_visitor_factory->create_visitor (shared_from_this ()) };
-	auto type (requests.front ()->header.get_type ());
+	auto type (requests.front ()->get_header ().get_type ());
 	if (type == nano::message_type::bulk_pull || type == nano::message_type::bulk_pull_account || type == nano::message_type::bulk_push || type == nano::message_type::frontier_req || type == nano::message_type::node_id_handshake)
 	{
 		// Bootstrap & node ID (realtime start)

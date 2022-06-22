@@ -223,7 +223,6 @@ public:
 	static uint8_t constexpr bulk_pull_count_present_flag = 0;
 	bool bulk_pull_is_count_present () const;
 	static uint8_t constexpr frontier_req_only_confirmed = 1;
-	bool frontier_req_is_only_confirmed_present () const;
 	static uint8_t constexpr node_id_handshake_query_flag = 0;
 	static uint8_t constexpr node_id_handshake_response_flag = 1;
 	bool node_id_handshake_is_query () const;
@@ -265,7 +264,10 @@ public:
 	virtual void visit (nano::message_visitor &) const = 0;
 	std::shared_ptr<std::vector<uint8_t>> to_bytes () const;
 	nano::shared_const_buffer to_shared_const_buffer () const;
+	nano::message_header get_header () const;
+	void set_header (nano::message_header const & header);
 
+protected:
 	nano::message_header header;
 };
 
@@ -376,6 +378,7 @@ public:
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
 	bool operator== (nano::frontier_req const &) const;
+	bool is_only_confirmed_present () const;
 	nano::account start;
 	uint32_t age;
 	uint32_t count;

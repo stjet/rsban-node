@@ -514,7 +514,7 @@ public:
 				if (message_a.response->first != node.node_id.pub && !node.network.tcp_channels->find_node_id (message_a.response->first))
 				{
 					node.network.udp_channels.clean_node_id (endpoint, message_a.response->first);
-					auto new_channel (node.network.udp_channels.insert (endpoint, message_a.header.get_version_using ()));
+					auto new_channel (node.network.udp_channels.insert (endpoint, message_a.get_header ().get_version_using ()));
 					if (new_channel)
 					{
 						node.network.udp_channels.modify (new_channel, [&message_a] (std::shared_ptr<nano::transport::channel_udp> const & channel_a) {

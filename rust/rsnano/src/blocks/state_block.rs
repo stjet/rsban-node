@@ -133,7 +133,7 @@ impl StateBlock {
             + std::mem::size_of::<u64>() // Work
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let account = Account::deserialize(stream)?;
         let previous = BlockHash::deserialize(stream)?;
         let representative = Account::deserialize(stream)?;

@@ -311,8 +311,6 @@ public:
 	size_t size ();
 
 	block_uniquer & operator= (block_uniquer const &) = delete;
-
-private:
 	rsnano::BlockUniquerHandle * handle;
 };
 

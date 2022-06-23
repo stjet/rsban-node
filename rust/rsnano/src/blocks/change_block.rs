@@ -67,7 +67,7 @@ impl ChangeBlock {
             + std::mem::size_of::<u64>()
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let hashables = ChangeHashables {
             previous: BlockHash::deserialize(stream)?,
             representative: Account::deserialize(stream)?,

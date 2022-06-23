@@ -343,8 +343,7 @@ public:
 	void set_digest (nano::uint128_t digest_a);
 
 private:
-	std::shared_ptr<nano::block> block;
-	nano::uint128_t digest{ 0 };
+	nano::uint128_t digest;
 };
 
 class confirm_req final : public message

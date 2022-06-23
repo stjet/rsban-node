@@ -25,7 +25,7 @@ impl SendHashables {
         Ok(())
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let mut buffer_32 = [0u8; 32];
         let mut buffer_16 = [0u8; 16];
 
@@ -98,7 +98,7 @@ impl SendBlock {
         })
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let hashables = SendHashables::deserialize(stream)?;
         let signature = Signature::deserialize(stream)?;
 

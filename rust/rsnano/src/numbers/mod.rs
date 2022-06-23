@@ -44,7 +44,7 @@ impl PublicKey {
         stream.write_bytes(&self.value)
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let mut result = PublicKey::new();
         stream.read_bytes(&mut result.value, 32)?;
         Ok(result)
@@ -91,7 +91,7 @@ impl BlockHash {
         stream.write_bytes(&self.value)
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let mut result = Self::new();
         stream.read_bytes(&mut result.value, 32)?;
         Ok(result)
@@ -193,7 +193,7 @@ impl Amount {
         stream.write_bytes(&self.value.to_be_bytes())
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let mut buffer = [0u8; 16];
         let len = buffer.len();
         stream.read_bytes(&mut buffer, len)?;
@@ -260,7 +260,7 @@ impl Signature {
         stream.write_bytes(&self.bytes)
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Signature> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Signature> {
         let mut result = Signature { bytes: [0; 64] };
 
         stream.read_bytes(&mut result.bytes, 64)?;
@@ -321,7 +321,7 @@ impl HashOrAccount {
         stream.write_bytes(&self.bytes)
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let mut result = Self::new();
         stream.read_bytes(&mut result.bytes, 32)?;
         Ok(result)
@@ -376,7 +376,7 @@ impl Link {
         32
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         HashOrAccount::deserialize(stream).map(|inner| Self { inner })
     }
 

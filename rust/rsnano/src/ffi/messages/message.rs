@@ -1,13 +1,15 @@
 use super::MessageHeaderHandle;
 use crate::{
-    ffi::{transport::EndpointDto, NetworkConstantsDto},
+    ffi::{
+        transport::EndpointDto, BlockHandle, BlockUniquerHandle, FfiStream, NetworkConstantsDto,
+    },
     messages::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
         Message, MessageHeader, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
     },
     NetworkConstants,
 };
-use std::{net::SocketAddr, ops::Deref};
+use std::{ffi::c_void, net::SocketAddr, ops::Deref};
 
 pub struct MessageHandle(Box<dyn Message>);
 
@@ -40,9 +42,9 @@ pub unsafe extern "C" fn rsn_message_keepalive_create(
 ) -> *mut MessageHandle {
     create_message_handle(constants, |consts| {
         if version_using < 0 {
-            Keepalive::new(&consts)
+            Keepalive::new(consts)
         } else {
-            Keepalive::with_version_using(&consts, version_using as u8)
+            Keepalive::with_version_using(consts, version_using as u8)
         }
     })
 }
@@ -70,7 +72,7 @@ pub unsafe extern "C" fn rsn_message_keepalive_peers(
     let peers: Vec<_> = downcast_message::<Keepalive>(handle)
         .peers()
         .iter()
-        .map(|x| EndpointDto::from(x))
+        .map(EndpointDto::from)
         .collect();
     dtos.clone_from_slice(&peers);
 }
@@ -83,7 +85,7 @@ pub unsafe extern "C" fn rsn_message_keepalive_set_peers(
     let dtos = std::slice::from_raw_parts(result, 8);
     let peers: [SocketAddr; 8] = dtos
         .iter()
-        .map(|x| SocketAddr::from(x))
+        .map(SocketAddr::from)
         .collect::<Vec<_>>()
         .try_into()
         .unwrap();
@@ -93,8 +95,12 @@ pub unsafe extern "C" fn rsn_message_keepalive_set_peers(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_publish_create(
     constants: *mut NetworkConstantsDto,
+    block: *mut BlockHandle,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, Publish::new)
+    create_message_handle(constants, |consts| {
+        let block = (*block).block.clone();
+        Publish::new(consts, block)
+    })
 }
 
 #[no_mangle]
@@ -109,6 +115,31 @@ pub unsafe extern "C" fn rsn_message_publish_clone(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
     message_handle_clone::<Publish>(handle)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_publish_deserialize(
+    handle: *mut MessageHandle,
+    stream: *mut c_void,
+    uniquer: *mut BlockUniquerHandle,
+) -> bool {
+    let mut stream = FfiStream::new(stream);
+    let uniquer = if uniquer.is_null() {
+        None
+    } else {
+        Some((*uniquer).deref())
+    };
+    downcast_message_mut::<Publish>(handle)
+        .deserialize(&mut stream, uniquer)
+        .is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_publish_block(handle: *mut MessageHandle) -> *mut BlockHandle {
+    match &downcast_message::<Publish>(handle).block {
+        Some(b) => Box::into_raw(Box::new(BlockHandle::new(b.clone()))),
+        None => std::ptr::null_mut(),
+    }
 }
 
 #[no_mangle]

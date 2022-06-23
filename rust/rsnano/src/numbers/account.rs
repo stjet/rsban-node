@@ -42,7 +42,7 @@ impl Account {
         self.public_key.serialize(stream)
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         PublicKey::deserialize(stream).map(Self::from)
     }
 

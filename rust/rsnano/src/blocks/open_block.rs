@@ -69,7 +69,7 @@ impl OpenBlock {
         OpenHashables::serialized_size() + Signature::serialized_size() + std::mem::size_of::<u64>()
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let hashables = OpenHashables {
             source: BlockHash::deserialize(stream)?,
             representative: Account::deserialize(stream)?,

@@ -1,11 +1,11 @@
+use super::{MessageHeader, MessageType};
+use crate::{deserialize_block, utils::Stream, BlockEnum, BlockUniquer, NetworkConstants};
+use anyhow::Result;
 use std::{
     any::Any,
     net::{IpAddr, Ipv6Addr, SocketAddr},
+    sync::{Arc, RwLock},
 };
-
-use crate::NetworkConstants;
-
-use super::{MessageHeader, MessageType};
 
 pub trait Message {
     fn header(&self) -> &MessageHeader;
@@ -80,18 +80,41 @@ impl Message for Keepalive {
 #[derive(Clone)]
 pub struct Publish {
     header: MessageHeader,
+    pub block: Option<Arc<RwLock<BlockEnum>>>, //todo remove Option
+    digest: u128,
 }
 
 impl Publish {
-    pub fn new(constants: &NetworkConstants) -> Self {
+    pub fn new(constants: &NetworkConstants, block: Arc<RwLock<BlockEnum>>) -> Self {
+        let mut header = MessageHeader::new(constants, MessageType::Publish);
+        header.set_block_type(block.read().unwrap().block_type());
+
         Self {
-            header: MessageHeader::new(constants, MessageType::Publish),
+            header,
+            block: Some(block),
+            digest: 0,
         }
     }
     pub fn with_header(header: &MessageHeader) -> Self {
         Self {
             header: header.clone(),
+            block: None,
+            digest: 0,
         }
+    }
+
+    pub fn deserialize(
+        &mut self,
+        stream: &mut dyn Stream,
+        uniquer: Option<&BlockUniquer>,
+    ) -> Result<()> {
+        debug_assert!(self.header.message_type() == MessageType::Publish);
+        self.block = Some(deserialize_block(
+            self.header.block_type(),
+            stream,
+            uniquer,
+        )?);
+        Ok(())
     }
 }
 

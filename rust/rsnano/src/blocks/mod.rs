@@ -289,4 +289,27 @@ impl FullHash for RwLock<BlockEnum> {
     }
 }
 
-pub(crate) type BlockUniquer = Uniquer<RwLock<BlockEnum>>;
+pub type BlockUniquer = Uniquer<RwLock<BlockEnum>>;
+
+pub fn deserialize_block(
+    block_type: BlockType,
+    stream: &mut dyn Stream,
+    uniquer: Option<&BlockUniquer>,
+) -> Result<Arc<RwLock<BlockEnum>>> {
+    let block = match block_type {
+        BlockType::Receive => BlockEnum::Receive(ReceiveBlock::deserialize(stream)?),
+        BlockType::Open => BlockEnum::Open(OpenBlock::deserialize(stream)?),
+        BlockType::Change => BlockEnum::Change(ChangeBlock::deserialize(stream)?),
+        BlockType::State => BlockEnum::State(StateBlock::deserialize(stream)?),
+        BlockType::Send => BlockEnum::Send(SendBlock::deserialize(stream)?),
+        BlockType::Invalid | BlockType::NotABlock => bail!("invalid block type"),
+    };
+
+    let mut block = Arc::new(RwLock::new(block));
+
+    if let Some(uniquer) = uniquer {
+        block = uniquer.unique(&block)
+    }
+
+    Ok(block)
+}

@@ -720,41 +720,37 @@ nano::publish::publish (bool & error_a, nano::stream & stream_a, nano::message_h
 	}
 }
 
-rsnano::MessageHandle * create_publish_handle (nano::network_constants const & constants)
+rsnano::MessageHandle * create_publish_handle (nano::network_constants const & constants, std::shared_ptr<nano::block> const & block_a)
 {
 	auto constants_dto{ constants.to_dto () };
-	return rsnano::rsn_message_publish_create (&constants_dto);
+	return rsnano::rsn_message_publish_create (&constants_dto, block_a->get_handle ());
 }
 
 nano::publish::publish (nano::network_constants const & constants, std::shared_ptr<nano::block> const & block_a) :
-	message (create_publish_handle (constants)),
-	block (block_a)
+	message (create_publish_handle (constants, block_a))
 {
-	auto header{ get_header () };
-	header.block_type_set (block->type ());
-	set_header (header);
 }
 
 nano::publish::publish (nano::publish const & other_a) :
-	message (rsnano::rsn_message_publish_clone (other_a.handle)),
-	block{ other_a.block },
-	digest{ other_a.digest }
+	message (rsnano::rsn_message_publish_clone (other_a.handle))
 {
 }
 
 void nano::publish::serialize (nano::stream & stream_a) const
 {
-	debug_assert (block != nullptr);
 	get_header ().serialize (stream_a);
-	block->serialize (stream_a);
+	get_block ()->serialize (stream_a);
 }
 
 bool nano::publish::deserialize (nano::stream & stream_a, nano::block_uniquer * uniquer_a)
 {
-	debug_assert (get_header ().get_type () == nano::message_type::publish);
-	block = nano::deserialize_block (stream_a, get_header ().block_type (), uniquer_a);
-	auto result (block == nullptr);
-	return result;
+	rsnano::BlockUniquerHandle * uniquer_handle = nullptr;
+	if (uniquer_a != nullptr)
+	{
+		uniquer_handle = uniquer_a->handle;
+	}
+	bool error = !rsnano::rsn_message_publish_deserialize (handle, &stream_a, uniquer_handle);
+	return error;
 }
 
 void nano::publish::visit (nano::message_visitor & visitor_a) const
@@ -764,12 +760,15 @@ void nano::publish::visit (nano::message_visitor & visitor_a) const
 
 bool nano::publish::operator== (nano::publish const & other_a) const
 {
-	return *block == *other_a.block;
+	return *get_block () == *other_a.get_block ();
 }
 
 std::shared_ptr<nano::block> nano::publish::get_block () const
 {
-	return block;
+	auto block_handle = rsnano::rsn_message_publish_block (handle);
+	if (block_handle == nullptr)
+		return nullptr;
+	return nano::block_handle_to_block (block_handle);
 }
 
 nano::uint128_t nano::publish::get_digest () const

@@ -21,19 +21,6 @@ bool blocks_equal (T const & first, nano::block const & second)
 	static_assert (std::is_base_of<nano::block, T>::value, "Input parameter is not a block type");
 	return (first.type () == second.type ()) && (static_cast<T const &> (second)) == first;
 }
-
-template <typename block>
-std::shared_ptr<block> deserialize_block (nano::stream & stream_a)
-{
-	auto error (false);
-	auto result = nano::make_shared<block> (error, stream_a);
-	if (error)
-	{
-		result = nullptr;
-	}
-
-	return result;
-}
 }
 
 void nano::block_memory_pool_purge ()
@@ -984,45 +971,18 @@ std::shared_ptr<nano::block> nano::deserialize_block (nano::stream & stream_a)
 
 std::shared_ptr<nano::block> nano::deserialize_block (nano::stream & stream_a, nano::block_type type_a, nano::block_uniquer * uniquer_a)
 {
-	std::shared_ptr<nano::block> result;
-	switch (type_a)
-	{
-		case nano::block_type::receive:
-		{
-			result = ::deserialize_block<nano::receive_block> (stream_a);
-			break;
-		}
-		case nano::block_type::send:
-		{
-			result = ::deserialize_block<nano::send_block> (stream_a);
-			break;
-		}
-		case nano::block_type::open:
-		{
-			result = ::deserialize_block<nano::open_block> (stream_a);
-			break;
-		}
-		case nano::block_type::change:
-		{
-			result = ::deserialize_block<nano::change_block> (stream_a);
-			break;
-		}
-		case nano::block_type::state:
-		{
-			result = ::deserialize_block<nano::state_block> (stream_a);
-			break;
-		}
-		default:
-#ifndef NANO_FUZZER_TEST
-			debug_assert (false);
-#endif
-			break;
-	}
+	rsnano::BlockUniquerHandle * uniquer_handle = nullptr;
 	if (uniquer_a != nullptr)
 	{
-		result = uniquer_a->unique (result);
+		uniquer_handle = uniquer_a->handle;
 	}
-	return result;
+	auto block_handle = rsnano::rsn_deserialize_block (static_cast<uint8_t> (type_a), &stream_a, uniquer_handle);
+	if (block_handle == nullptr)
+	{
+		return nullptr;
+	}
+
+	return nano::block_handle_to_block (block_handle);
 }
 
 void nano::receive_block::visit (nano::block_visitor & visitor_a) const

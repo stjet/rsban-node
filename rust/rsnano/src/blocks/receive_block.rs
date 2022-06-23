@@ -77,7 +77,7 @@ impl ReceiveBlock {
         })
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let previous = BlockHash::deserialize(stream)?;
         let source = BlockHash::deserialize(stream)?;
         let signature = Signature::deserialize(stream)?;

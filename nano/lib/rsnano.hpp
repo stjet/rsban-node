@@ -1055,6 +1055,8 @@ int32_t rsn_daemon_config_create (DaemonConfigDto * dto, const NetworkParamsDto 
 
 int32_t rsn_daemon_config_serialize_toml (const DaemonConfigDto * dto, void * toml);
 
+BlockHandle * rsn_deserialize_block (uint8_t block_type, void * stream, BlockUniquerHandle * uniquer);
+
 BlockHandle * rsn_deserialize_block_json (const void * ptree);
 
 uint64_t rsn_difficulty_from_multiplier (double multiplier, uint64_t base_difficulty);
@@ -1227,11 +1229,17 @@ MessageHandle * rsn_message_node_id_handshake_create (NetworkConstantsDto * cons
 
 MessageHandle * rsn_message_node_id_handshake_create2 (MessageHeaderHandle * header);
 
+BlockHandle * rsn_message_publish_block (MessageHandle * handle);
+
 MessageHandle * rsn_message_publish_clone (MessageHandle * handle);
 
-MessageHandle * rsn_message_publish_create (NetworkConstantsDto * constants);
+MessageHandle * rsn_message_publish_create (NetworkConstantsDto * constants, BlockHandle * block);
 
 MessageHandle * rsn_message_publish_create2 (MessageHeaderHandle * header);
+
+bool rsn_message_publish_deserialize (MessageHandle * handle,
+void * stream,
+BlockUniquerHandle * uniquer);
 
 void rsn_message_set_header (MessageHandle * handle, MessageHeaderHandle * header);
 

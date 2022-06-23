@@ -508,7 +508,8 @@ void nano::message_parser::deserialize_publish (nano::stream & stream_a, nano::m
 	nano::publish incoming (error, stream_a, header_a, digest_a, &block_uniquer);
 	if (!error && at_end (stream_a))
 	{
-		if (!network.work.validate_entry (*incoming.block))
+		auto block{ incoming.get_block () };
+		if (!network.work.validate_entry (*block))
 		{
 			visitor.publish (incoming);
 		}
@@ -764,6 +765,21 @@ void nano::publish::visit (nano::message_visitor & visitor_a) const
 bool nano::publish::operator== (nano::publish const & other_a) const
 {
 	return *block == *other_a.block;
+}
+
+std::shared_ptr<nano::block> nano::publish::get_block () const
+{
+	return block;
+}
+
+nano::uint128_t nano::publish::get_digest () const
+{
+	return digest;
+}
+
+void nano::publish::set_digest (nano::uint128_t digest_a)
+{
+	digest = digest_a;
 }
 
 rsnano::MessageHandle * create_confirm_req_handle (nano::network_constants const & constants)

@@ -516,7 +516,8 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 			{
 				if (is_realtime_connection ())
 				{
-					if (!network_params.work.validate_entry (*request->block))
+					auto block{ request->get_block () };
+					if (!network_params.work.validate_entry (*block))
 					{
 						add_request (std::unique_ptr<nano::message> (request.release ()));
 					}

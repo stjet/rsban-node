@@ -844,15 +844,15 @@ TEST (node, fork_flip)
 	auto election1 (node2.active.election (nano::qualified_root (nano::dev::genesis->hash (), nano::dev::genesis->hash ())));
 	ASSERT_NE (nullptr, election1);
 	ASSERT_EQ (1, election1->votes ().size ());
-	ASSERT_NE (nullptr, node1.block (publish1.block->hash ()));
-	ASSERT_NE (nullptr, node2.block (publish2.block->hash ()));
-	ASSERT_TIMELY (10s, node2.ledger.block_or_pruned_exists (publish1.block->hash ()));
+	ASSERT_NE (nullptr, node1.block (publish1.get_block ()->hash ()));
+	ASSERT_NE (nullptr, node2.block (publish2.get_block ()->hash ()));
+	ASSERT_TIMELY (10s, node2.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
 	auto winner (*election1->tally ().begin ());
-	ASSERT_EQ (*publish1.block, *winner.second);
+	ASSERT_EQ (*publish1.get_block (), *winner.second);
 	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, winner.first);
-	ASSERT_TRUE (node1.ledger.block_or_pruned_exists (publish1.block->hash ()));
-	ASSERT_TRUE (node2.ledger.block_or_pruned_exists (publish1.block->hash ()));
-	ASSERT_FALSE (node2.ledger.block_or_pruned_exists (publish2.block->hash ()));
+	ASSERT_TRUE (node1.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
+	ASSERT_TRUE (node2.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
+	ASSERT_FALSE (node2.ledger.block_or_pruned_exists (publish2.get_block ()->hash ()));
 }
 
 TEST (node, fork_multi_flip)
@@ -894,11 +894,11 @@ TEST (node, fork_multi_flip)
 					 .build_shared ();
 		nano::publish publish2{ nano::dev::network_params.network, send2 };
 		auto send3 = builder.make_block ()
-					 .previous (publish2.block->hash ())
+					 .previous (publish2.get_block ()->hash ())
 					 .destination (key2.pub)
 					 .balance (nano::dev::constants.genesis_amount - 100)
 					 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-					 .work (*system.work.generate (publish2.block->hash ()))
+					 .work (*system.work.generate (publish2.get_block ()->hash ()))
 					 .build_shared ();
 		nano::publish publish3{ nano::dev::network_params.network, send3 };
 		node1.network.inbound (publish1, node1.network.udp_channels.create (node1.network.endpoint ()));
@@ -919,17 +919,17 @@ TEST (node, fork_multi_flip)
 		auto election1 (node2.active.election (nano::qualified_root (nano::dev::genesis->hash (), nano::dev::genesis->hash ())));
 		ASSERT_NE (nullptr, election1);
 		ASSERT_EQ (1, election1->votes ().size ());
-		ASSERT_TRUE (node1.ledger.block_or_pruned_exists (publish1.block->hash ()));
-		ASSERT_TRUE (node2.ledger.block_or_pruned_exists (publish2.block->hash ()));
-		ASSERT_TRUE (node2.ledger.block_or_pruned_exists (publish3.block->hash ()));
-		ASSERT_TIMELY (10s, node2.ledger.block_or_pruned_exists (publish1.block->hash ()));
+		ASSERT_TRUE (node1.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
+		ASSERT_TRUE (node2.ledger.block_or_pruned_exists (publish2.get_block ()->hash ()));
+		ASSERT_TRUE (node2.ledger.block_or_pruned_exists (publish3.get_block ()->hash ()));
+		ASSERT_TIMELY (10s, node2.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
 		auto winner (*election1->tally ().begin ());
-		ASSERT_EQ (*publish1.block, *winner.second);
+		ASSERT_EQ (*publish1.get_block (), *winner.second);
 		ASSERT_EQ (nano::dev::constants.genesis_amount - 100, winner.first);
-		ASSERT_TRUE (node1.ledger.block_or_pruned_exists (publish1.block->hash ()));
-		ASSERT_TRUE (node2.ledger.block_or_pruned_exists (publish1.block->hash ()));
-		ASSERT_FALSE (node2.ledger.block_or_pruned_exists (publish2.block->hash ()));
-		ASSERT_FALSE (node2.ledger.block_or_pruned_exists (publish3.block->hash ()));
+		ASSERT_TRUE (node1.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
+		ASSERT_TRUE (node2.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
+		ASSERT_FALSE (node2.ledger.block_or_pruned_exists (publish2.get_block ()->hash ()));
+		ASSERT_FALSE (node2.ledger.block_or_pruned_exists (publish3.get_block ()->hash ()));
 	}
 }
 
@@ -998,13 +998,13 @@ TEST (node, fork_open)
 	node1.network.inbound (publish1, channel1);
 	node1.block_processor.flush ();
 	node1.scheduler.flush ();
-	auto election = node1.active.election (publish1.block->qualified_root ());
+	auto election = node1.active.election (publish1.get_block ()->qualified_root ());
 	ASSERT_NE (nullptr, election);
 	election->force_confirm ();
-	ASSERT_TIMELY (3s, node1.active.empty () && node1.block_confirmed (publish1.block->hash ()));
+	ASSERT_TIMELY (3s, node1.active.empty () && node1.block_confirmed (publish1.get_block ()->hash ()));
 	nano::open_block_builder builder;
 	auto open1 = builder.make_block ()
-				 .source (publish1.block->hash ())
+				 .source (publish1.get_block ()->hash ())
 				 .representative (1)
 				 .account (key1.pub)
 				 .sign (key1.prv, key1.pub)
@@ -1016,7 +1016,7 @@ TEST (node, fork_open)
 	node1.scheduler.flush ();
 	ASSERT_EQ (1, node1.active.size ());
 	auto open2 = builder.make_block ()
-				 .source (publish1.block->hash ())
+				 .source (publish1.get_block ()->hash ())
 				 .representative (2)
 				 .account (key1.pub)
 				 .sign (key1.prv, key1.pub)
@@ -1027,12 +1027,12 @@ TEST (node, fork_open)
 	node1.network.inbound (publish3, channel1);
 	node1.block_processor.flush ();
 	node1.scheduler.flush ();
-	election = node1.active.election (publish3.block->qualified_root ());
+	election = node1.active.election (publish3.get_block ()->qualified_root ());
 	ASSERT_EQ (2, election->blocks ().size ());
-	ASSERT_EQ (publish2.block->hash (), election->winner ()->hash ());
+	ASSERT_EQ (publish2.get_block ()->hash (), election->winner ()->hash ());
 	ASSERT_FALSE (election->confirmed ());
-	ASSERT_TRUE (node1.block (publish2.block->hash ()));
-	ASSERT_FALSE (node1.block (publish3.block->hash ()));
+	ASSERT_TRUE (node1.block (publish2.get_block ()->hash ()));
+	ASSERT_FALSE (node1.block (publish3.get_block ()->hash ()));
 }
 
 TEST (node, fork_open_flip)

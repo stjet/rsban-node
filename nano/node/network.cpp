@@ -444,16 +444,17 @@ public:
 	{
 		if (node.config->logging.network_message_logging ())
 		{
-			node.logger->try_log (boost::str (boost::format ("Publish message from %1% for %2%") % channel->to_string () % message_a.block->hash ().to_string ()));
+			node.logger->try_log (boost::str (boost::format ("Publish message from %1% for %2%") % channel->to_string () % message_a.get_block ()->hash ().to_string ()));
 		}
 		node.stats->inc (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in);
 		if (!node.block_processor.full ())
 		{
-			node.process_active (message_a.block);
+			auto block{ message_a.get_block () };
+			node.process_active (block);
 		}
 		else
 		{
-			node.network.publish_filter->clear (message_a.digest);
+			node.network.publish_filter->clear (message_a.get_digest ());
 			node.stats->inc (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::in);
 		}
 	}

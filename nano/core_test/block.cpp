@@ -155,7 +155,7 @@ TEST (block, publish_req_serialization)
 	nano::publish req2 (error, stream2, header);
 	ASSERT_FALSE (error);
 	ASSERT_EQ (req, req2);
-	ASSERT_EQ (*req.block, *req2.block);
+	ASSERT_EQ (*req.get_block (), *req2.get_block ());
 }
 
 TEST (block, difficulty)

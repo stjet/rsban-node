@@ -338,6 +338,11 @@ public:
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &, nano::block_uniquer * = nullptr);
 	bool operator== (nano::publish const &) const;
+	std::shared_ptr<nano::block> get_block () const;
+	nano::uint128_t get_digest () const;
+	void set_digest (nano::uint128_t digest_a);
+
+private:
 	std::shared_ptr<nano::block> block;
 	nano::uint128_t digest{ 0 };
 };

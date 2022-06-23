@@ -996,7 +996,7 @@ TEST (network, duplicate_revert_publish)
 	std::vector<uint8_t> bytes;
 	{
 		nano::vectorstream stream (bytes);
-		publish.block->serialize (stream);
+		publish.get_block ()->serialize (stream);
 	}
 	// Add to the blocks filter
 	// Should be cleared when dropping due to a full block processor, as long as the message has the optional digest attached
@@ -1009,10 +1009,10 @@ TEST (network, duplicate_revert_publish)
 	system.nodes.push_back (other_node);
 	auto channel = nano::establish_tcp (system, *other_node, node.network.endpoint ());
 	ASSERT_NE (nullptr, channel);
-	ASSERT_EQ (0, publish.digest);
+	ASSERT_EQ (0, publish.get_digest ());
 	node.network.inbound (publish, channel);
 	ASSERT_TRUE (node.network.publish_filter->apply (bytes.data (), bytes.size ()));
-	publish.digest = digest;
+	publish.set_digest (digest);
 	node.network.inbound (publish, channel);
 	ASSERT_FALSE (node.network.publish_filter->apply (bytes.data (), bytes.size ()));
 }

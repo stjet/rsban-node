@@ -430,7 +430,7 @@ public:
 				}
 			}
 			// Check for special node port data
-			auto peer0 (message_a.peers[0]);
+			auto peer0 (message_a.get_peers ()[0]);
 			if (peer0.address () == boost::asio::ip::address_v6{} && peer0.port () != 0)
 			{
 				nano::endpoint new_endpoint (endpoint.address (), peer0.port ());
@@ -748,7 +748,9 @@ void nano::transport::udp_channels::purge (std::chrono::steady_clock::time_point
 void nano::transport::udp_channels::ongoing_keepalive ()
 {
 	nano::keepalive message{ node.network_params.network };
-	node.network.random_fill (message.peers);
+	auto peers{ message.get_peers () };
+	node.network.random_fill (peers);
+	message.set_peers (peers);
 	std::vector<std::shared_ptr<nano::transport::channel_udp>> send_list;
 	nano::unique_lock<nano::mutex> lock (mutex);
 	auto keepalive_cutoff (channels.get<last_packet_received_tag> ().lower_bound (std::chrono::steady_clock::now () - node.network_params.network.cleanup_period));

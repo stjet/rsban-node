@@ -1,4 +1,7 @@
-use std::any::Any;
+use std::{
+    any::Any,
+    net::{IpAddr, Ipv6Addr, SocketAddr},
+};
 
 use crate::NetworkConstants;
 
@@ -8,17 +11,20 @@ pub trait Message {
     fn header(&self) -> &MessageHeader;
     fn set_header(&mut self, header: &MessageHeader);
     fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 #[derive(Clone)]
 pub struct Keepalive {
     header: MessageHeader,
+    peers: [SocketAddr; 8],
 }
 
 impl Keepalive {
     pub fn new(constants: &NetworkConstants) -> Self {
         Self {
             header: MessageHeader::new(constants, MessageType::Keepalive),
+            peers: empty_peers(),
         }
     }
 
@@ -29,14 +35,28 @@ impl Keepalive {
                 MessageType::Keepalive,
                 version_using,
             ),
+            peers: empty_peers(),
         }
     }
 
     pub fn with_header(header: &MessageHeader) -> Self {
         Self {
             header: header.clone(),
+            peers: empty_peers(),
         }
     }
+
+    pub fn peers(&self) -> &[SocketAddr; 8] {
+        &self.peers
+    }
+
+    pub fn set_peers(&mut self, peers: &[SocketAddr; 8]) {
+        self.peers = *peers;
+    }
+}
+
+fn empty_peers() -> [SocketAddr; 8] {
+    [SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0); 8]
 }
 
 impl Message for Keepalive {
@@ -49,6 +69,10 @@ impl Message for Keepalive {
     }
 
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }
@@ -83,6 +107,10 @@ impl Message for Publish {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 #[derive(Clone)]
@@ -113,6 +141,10 @@ impl Message for ConfirmReq {
     }
 
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }
@@ -147,6 +179,10 @@ impl Message for ConfirmAck {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 #[derive(Clone)]
@@ -177,6 +213,10 @@ impl Message for FrontierReq {
     }
 
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }
@@ -215,6 +255,10 @@ impl Message for BulkPull {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 #[derive(Clone)]
@@ -245,6 +289,10 @@ impl Message for BulkPullAccount {
     }
 
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }
@@ -279,6 +327,10 @@ impl Message for BulkPush {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 #[derive(Clone)]
@@ -309,6 +361,10 @@ impl Message for TelemetryReq {
     }
 
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }
@@ -343,6 +399,10 @@ impl Message for TelemetryAck {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 #[derive(Clone)]
@@ -373,6 +433,10 @@ impl Message for NodeIdHandshake {
     }
 
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }

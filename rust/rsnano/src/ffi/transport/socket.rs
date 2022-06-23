@@ -87,6 +87,7 @@ impl From<&ErrorCodeDto> for ErrorCode {
     }
 }
 
+#[derive(Clone)]
 #[repr(C)]
 pub struct EndpointDto {
     pub bytes: [u8; 16],

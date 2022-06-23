@@ -323,8 +323,9 @@ public:
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	bool operator== (nano::keepalive const &) const;
-	std::array<nano::endpoint, 8> peers;
-	static std::size_t constexpr size = 8 * (16 + 2);
+	std::array<nano::endpoint, 8> get_peers () const;
+	void set_peers (std::array<nano::endpoint, 8> const & peers_a);
+	static std::size_t size ();
 };
 
 class publish final : public message

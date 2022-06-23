@@ -508,7 +508,9 @@ void nano::transport::tcp_channels::purge (std::chrono::steady_clock::time_point
 void nano::transport::tcp_channels::ongoing_keepalive ()
 {
 	nano::keepalive message{ node.network_params.network };
-	node.network.random_fill (message.peers);
+	auto peers{ message.get_peers () };
+	node.network.random_fill (peers);
+	message.set_peers (peers);
 	nano::unique_lock<nano::mutex> lock (mutex);
 	// Wake up channels
 	std::vector<std::shared_ptr<nano::transport::channel_tcp>> send_list;

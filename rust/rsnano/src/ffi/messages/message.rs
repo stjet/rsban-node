@@ -1,13 +1,13 @@
 use super::MessageHeaderHandle;
 use crate::{
-    ffi::NetworkConstantsDto,
+    ffi::{transport::EndpointDto, NetworkConstantsDto},
     messages::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
         Message, MessageHeader, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
     },
     NetworkConstants,
 };
-use std::ops::Deref;
+use std::{net::SocketAddr, ops::Deref};
 
 pub struct MessageHandle(Box<dyn Message>);
 
@@ -59,6 +59,35 @@ pub unsafe extern "C" fn rsn_message_keepalive_clone(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
     message_handle_clone::<Keepalive>(handle)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_keepalive_peers(
+    handle: *mut MessageHandle,
+    result: *mut EndpointDto,
+) {
+    let dtos = std::slice::from_raw_parts_mut(result, 8);
+    let peers: Vec<_> = downcast_message::<Keepalive>(handle)
+        .peers()
+        .iter()
+        .map(|x| EndpointDto::from(x))
+        .collect();
+    dtos.clone_from_slice(&peers);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_keepalive_set_peers(
+    handle: *mut MessageHandle,
+    result: *const EndpointDto,
+) {
+    let dtos = std::slice::from_raw_parts(result, 8);
+    let peers: [SocketAddr; 8] = dtos
+        .iter()
+        .map(|x| SocketAddr::from(x))
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+    downcast_message_mut::<Keepalive>(handle).set_peers(&peers);
 }
 
 #[no_mangle]
@@ -262,6 +291,14 @@ unsafe fn create_message_handle2<T: 'static + Message>(
 unsafe fn message_handle_clone<T: 'static + Message + Clone>(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
-    let msg = (*handle).0.as_any().downcast_ref::<T>().unwrap();
+    let msg = downcast_message::<T>(handle);
     Box::into_raw(Box::new(MessageHandle(Box::new(msg.clone()))))
+}
+
+unsafe fn downcast_message<T: 'static + Message>(handle: *mut MessageHandle) -> &'static T {
+    (*handle).0.as_any().downcast_ref::<T>().unwrap()
+}
+
+unsafe fn downcast_message_mut<T: 'static + Message>(handle: *mut MessageHandle) -> &'static mut T {
+    (*handle).0.as_any_mut().downcast_mut::<T>().unwrap()
 }

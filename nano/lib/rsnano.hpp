@@ -1217,6 +1217,10 @@ MessageHandle * rsn_message_keepalive_create (NetworkConstantsDto * constants, i
 
 MessageHandle * rsn_message_keepalive_create2 (MessageHeaderHandle * header);
 
+void rsn_message_keepalive_peers (MessageHandle * handle, EndpointDto * result);
+
+void rsn_message_keepalive_set_peers (MessageHandle * handle, const EndpointDto * result);
+
 MessageHandle * rsn_message_node_id_handshake_clone (MessageHandle * handle);
 
 MessageHandle * rsn_message_node_id_handshake_create (NetworkConstantsDto * constants);

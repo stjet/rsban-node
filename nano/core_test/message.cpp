@@ -27,7 +27,9 @@ TEST (message, keepalive_serialization)
 TEST (message, keepalive_deserialize)
 {
 	nano::keepalive message1{ nano::dev::network_params.network };
-	message1.peers[0] = nano::endpoint (boost::asio::ip::address_v6::loopback (), 10000);
+	auto peers{ message1.get_peers () };
+	peers[0] = nano::endpoint (boost::asio::ip::address_v6::loopback (), 10000);
+	message1.set_peers (peers);
 	std::vector<uint8_t> bytes;
 	{
 		nano::vectorstream stream (bytes);
@@ -40,7 +42,7 @@ TEST (message, keepalive_deserialize)
 	ASSERT_EQ (nano::message_type::keepalive, header.get_type ());
 	nano::keepalive message2 (error, stream, header);
 	ASSERT_FALSE (error);
-	ASSERT_EQ (message1.peers, message2.peers);
+	ASSERT_EQ (message1.get_peers (), message2.get_peers ());
 }
 
 TEST (message, publish_serialization)

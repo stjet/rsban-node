@@ -248,7 +248,7 @@ std::size_t nano::message_header::payload_length_bytes () const
 		}
 		case nano::message_type::keepalive:
 		{
-			return nano::keepalive::size;
+			return nano::keepalive::size ();
 		}
 		case nano::message_type::publish:
 		{
@@ -616,21 +616,11 @@ rsnano::MessageHandle * create_keepalive_handle (nano::network_constants const &
 nano::keepalive::keepalive (nano::network_constants const & constants) :
 	message (create_keepalive_handle (constants, -1))
 {
-	nano::endpoint endpoint (boost::asio::ip::address_v6{}, 0);
-	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i)
-	{
-		*i = endpoint;
-	}
 }
 
 nano::keepalive::keepalive (nano::network_constants const & constants, uint8_t version_using_a) :
 	message (create_keepalive_handle (constants, version_using_a))
 {
-	nano::endpoint endpoint (boost::asio::ip::address_v6{}, 0);
-	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i)
-	{
-		*i = endpoint;
-	}
 }
 
 nano::keepalive::keepalive (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
@@ -643,8 +633,7 @@ nano::keepalive::keepalive (bool & error_a, nano::stream & stream_a, nano::messa
 }
 
 nano::keepalive::keepalive (keepalive const & other_a) :
-	message (rsnano::rsn_message_keepalive_clone (other_a.handle)),
-	peers{ other_a.peers }
+	message (rsnano::rsn_message_keepalive_clone (other_a.handle))
 {
 }
 
@@ -656,6 +645,7 @@ void nano::keepalive::visit (nano::message_visitor & visitor_a) const
 void nano::keepalive::serialize (nano::stream & stream_a) const
 {
 	get_header ().serialize (stream_a);
+	auto peers{ get_peers () };
 	for (auto i (peers.begin ()), j (peers.end ()); i != j; ++i)
 	{
 		debug_assert (i->address ().is_v6 ());
@@ -669,6 +659,7 @@ bool nano::keepalive::deserialize (nano::stream & stream_a)
 {
 	debug_assert (get_header ().get_type () == nano::message_type::keepalive);
 	auto error (false);
+	std::array<nano::endpoint, 8> peers;
 	for (auto i (peers.begin ()), j (peers.end ()); i != j && !error; ++i)
 	{
 		std::array<uint8_t, 16> address;
@@ -682,12 +673,40 @@ bool nano::keepalive::deserialize (nano::stream & stream_a)
 			error = true;
 		}
 	}
+	set_peers (peers);
 	return error;
 }
 
 bool nano::keepalive::operator== (nano::keepalive const & other_a) const
 {
-	return peers == other_a.peers;
+	return get_peers () == other_a.get_peers ();
+}
+
+std::array<nano::endpoint, 8> nano::keepalive::get_peers () const
+{
+	rsnano::EndpointDto dtos[8];
+	rsnano::rsn_message_keepalive_peers (handle, &dtos[0]);
+	std::array<nano::endpoint, 8> result;
+	for (auto i = 0; i < 8; ++i)
+	{
+		result[i] = rsnano::dto_to_udp_endpoint (dtos[i]);
+	}
+	return result;
+}
+
+void nano::keepalive::set_peers (std::array<nano::endpoint, 8> const & peers_a)
+{
+	rsnano::EndpointDto dtos[8];
+	for (auto i = 0; i < 8; ++i)
+	{
+		dtos[i] = rsnano::udp_endpoint_to_dto (peers_a[i]);
+	}
+	rsnano::rsn_message_keepalive_set_peers (handle, dtos);
+}
+
+std::size_t nano::keepalive::size ()
+{
+	return 8 * (16 + 2);
 }
 
 nano::publish::publish (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::uint128_t const & digest_a, nano::block_uniquer * uniquer_a) :

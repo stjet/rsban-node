@@ -159,14 +159,18 @@ void nano::network::stop ()
 void nano::network::send_keepalive (std::shared_ptr<nano::transport::channel> const & channel_a)
 {
 	nano::keepalive message{ node.network_params.network };
-	random_fill (message.peers);
+	std::array<nano::endpoint, 8> peers;
+	random_fill (peers);
+	message.set_peers (peers);
 	channel_a->send (message);
 }
 
 void nano::network::send_keepalive_self (std::shared_ptr<nano::transport::channel> const & channel_a)
 {
 	nano::keepalive message{ node.network_params.network };
-	fill_keepalive_self (message.peers);
+	auto peers{ message.get_peers () };
+	fill_keepalive_self (peers);
+	message.set_peers (peers);
 	channel_a->send (message);
 }
 
@@ -197,14 +201,18 @@ void nano::network::flood_message (nano::message & message_a, nano::buffer_drop_
 void nano::network::flood_keepalive (float const scale_a)
 {
 	nano::keepalive message{ node.network_params.network };
-	random_fill (message.peers);
+	auto peers{ message.get_peers () };
+	random_fill (peers);
+	message.set_peers (peers);
 	flood_message (message, nano::buffer_drop_policy::limiter, scale_a);
 }
 
 void nano::network::flood_keepalive_self (float const scale_a)
 {
 	nano::keepalive message{ node.network_params.network };
-	fill_keepalive_self (message.peers);
+	auto peers{ message.get_peers () };
+	fill_keepalive_self (peers);
+	message.set_peers (peers);
 	flood_message (message, nano::buffer_drop_policy::limiter, scale_a);
 }
 
@@ -423,9 +431,9 @@ public:
 			node.logger->try_log (boost::str (boost::format ("Received keepalive message from %1%") % channel->to_string ()));
 		}
 		node.stats->inc (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in);
-		node.network.merge_peers (message_a.peers);
+		node.network.merge_peers (message_a.get_peers ());
 		// Check for special node port data
-		auto peer0 (message_a.peers[0]);
+		auto peer0 (message_a.get_peers ()[0]);
 		if (peer0.address () == boost::asio::ip::address_v6{} && peer0.port () != 0)
 		{
 			nano::endpoint new_endpoint (channel->get_tcp_endpoint ().address (), peer0.port ());

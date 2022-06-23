@@ -1,4 +1,4 @@
-use crate::{utils::Stream, NetworkConstants, Networks};
+use crate::{utils::Stream, BlockType, NetworkConstants, Networks};
 use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
@@ -47,6 +47,9 @@ impl MessageType {
         }
     }
 }
+
+const BLOCK_TYPE_MASK: u16 = 0x0f00;
+const COUNT_MASK: u16 = 0xf000;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct MessageHeader {
@@ -130,6 +133,29 @@ impl MessageHeader {
 
     pub fn set_extension(&mut self, position: usize, value: bool) {
         self.extensions.set(position, value);
+    }
+
+    pub fn block_type(&self) -> BlockType {
+        let mut value = self.extensions & BitArray::new(BLOCK_TYPE_MASK);
+        value.shift_left(8);
+        BlockType::from_u16(value.data).unwrap_or(BlockType::Invalid)
+    }
+
+    pub fn set_block_type(&mut self, block_type: BlockType) {
+        self.extensions &= BitArray::new(!BLOCK_TYPE_MASK);
+        self.extensions |= BitArray::new((block_type as u16) << 8);
+    }
+
+    pub fn count(&self) -> u8 {
+        let mut value = self.extensions & BitArray::new(COUNT_MASK);
+        value.shift_left(12);
+        value.data as u8
+    }
+
+    pub fn set_count(&mut self, count: u8) {
+        debug_assert!(count < 16);
+        self.extensions &= BitArray::new(!COUNT_MASK);
+        self.extensions |= BitArray::new((count as u16) << 12)
     }
 
     pub fn size() -> usize {
@@ -220,6 +246,14 @@ mod tests {
         let deserialized = MessageHeader::from_stream(&mut stream)?;
         assert_eq!(original, deserialized);
         Ok(())
+    }
+
+    #[test]
+    fn block_type(){
+        let mut header = test_header();
+        assert_eq!(header.block_type(), BlockType::Invalid);
+        header.set_block_type(BlockType::Receive);
+        assert_eq!(header.block_type(), BlockType::Receive);
     }
 
     fn test_header() -> MessageHeader {

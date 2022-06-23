@@ -243,8 +243,6 @@ public:
 	bool test_extension (std::size_t position) const;
 	void set_extension (std::size_t position, bool value);
 
-	static std::bitset<16> constexpr block_type_mask{ 0x0f00 };
-	static std::bitset<16> constexpr count_mask{ 0xf000 };
 	static std::bitset<16> constexpr telemetry_size_mask{ 0x3ff };
 
 	rsnano::MessageHeaderHandle * handle;

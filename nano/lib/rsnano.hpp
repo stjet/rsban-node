@@ -1167,7 +1167,11 @@ MessageHandle * rsn_message_frontier_req_create2 (MessageHeaderHandle * header);
 
 MessageHeaderHandle * rsn_message_header (MessageHandle * handle);
 
+uint8_t rsn_message_header_block_type (MessageHeaderHandle * handle);
+
 MessageHeaderHandle * rsn_message_header_clone (MessageHeaderHandle * handle);
+
+uint8_t rsn_message_header_count (MessageHeaderHandle * handle);
 
 MessageHeaderHandle * rsn_message_header_create (const NetworkConstantsDto * constants,
 uint8_t message_type,
@@ -1184,6 +1188,10 @@ uint16_t rsn_message_header_extensions (MessageHeaderHandle * handle);
 uint16_t rsn_message_header_network (MessageHeaderHandle * handle);
 
 bool rsn_message_header_serialize (MessageHeaderHandle * handle, void * stream);
+
+void rsn_message_header_set_block_type (MessageHeaderHandle * handle, uint8_t block_type);
+
+void rsn_message_header_set_count (MessageHeaderHandle * handle, uint8_t count);
 
 void rsn_message_header_set_extension (MessageHeaderHandle * handle, uintptr_t position, bool value);
 

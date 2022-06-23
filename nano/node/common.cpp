@@ -17,8 +17,6 @@
 #include <numeric>
 #include <sstream>
 
-std::bitset<16> constexpr nano::message_header::block_type_mask;
-std::bitset<16> constexpr nano::message_header::count_mask;
 std::bitset<16> constexpr nano::message_header::telemetry_size_mask;
 
 std::chrono::seconds constexpr nano::telemetry_cache_cutoffs::dev;
@@ -162,29 +160,22 @@ void nano::message::set_header (nano::message_header const & header_a)
 
 nano::block_type nano::message_header::block_type () const
 {
-	return static_cast<nano::block_type> (((get_extensions () & block_type_mask) >> 8).to_ullong ());
+	return static_cast<nano::block_type> (rsnano::rsn_message_header_block_type (handle));
 }
 
 void nano::message_header::block_type_set (nano::block_type type_a)
 {
-	auto exts = get_extensions ();
-	exts &= ~block_type_mask;
-	exts |= std::bitset<16> (static_cast<unsigned long long> (type_a) << 8);
-	set_extensions (exts);
+	rsnano::rsn_message_header_set_block_type (handle, static_cast<uint8_t> (type_a));
 }
 
 uint8_t nano::message_header::count_get () const
 {
-	return static_cast<uint8_t> (((get_extensions () & count_mask) >> 12).to_ullong ());
+	return rsnano::rsn_message_header_count (handle);
 }
 
 void nano::message_header::count_set (uint8_t count_a)
 {
-	debug_assert (count_a < 16);
-	auto exts{ get_extensions () };
-	exts &= ~count_mask;
-	exts |= std::bitset<16> (static_cast<unsigned long long> (count_a) << 12);
-	set_extensions (exts);
+	rsnano::rsn_message_header_set_count (handle, count_a);
 }
 
 void nano::message_header::flag_set (uint8_t flag_a)

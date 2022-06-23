@@ -106,8 +106,10 @@ pub unsafe extern "C" fn rsn_message_publish_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_publish_create2(
     header: *mut MessageHeaderHandle,
+    digest: *const u8,
 ) -> *mut MessageHandle {
-    create_message_handle2(header, Publish::with_header)
+    let digest = u128::from_be_bytes(std::slice::from_raw_parts(digest, 16).try_into().unwrap());
+    create_message_handle2(header, |consts| Publish::with_header(consts, digest))
 }
 
 #[no_mangle]
@@ -140,6 +142,23 @@ pub unsafe extern "C" fn rsn_message_publish_block(handle: *mut MessageHandle) -
         Some(b) => Box::into_raw(Box::new(BlockHandle::new(b.clone()))),
         None => std::ptr::null_mut(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_publish_digest(handle: *mut MessageHandle, result: *mut u8) {
+    let result_slice = std::slice::from_raw_parts_mut(result, 16);
+    let digest = downcast_message::<Publish>(handle).digest;
+    result_slice.copy_from_slice(&digest.to_be_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_publish_set_digest(
+    handle: *mut MessageHandle,
+    digest: *const u8,
+) {
+    let bytes = std::slice::from_raw_parts(digest, 16);
+    let digest = u128::from_be_bytes(bytes.try_into().unwrap());
+    downcast_message_mut::<Publish>(handle).digest = digest;
 }
 
 #[no_mangle]

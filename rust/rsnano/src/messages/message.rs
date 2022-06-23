@@ -81,7 +81,7 @@ impl Message for Keepalive {
 pub struct Publish {
     header: MessageHeader,
     pub block: Option<Arc<RwLock<BlockEnum>>>, //todo remove Option
-    digest: u128,
+    pub digest: u128,
 }
 
 impl Publish {
@@ -95,11 +95,11 @@ impl Publish {
             digest: 0,
         }
     }
-    pub fn with_header(header: &MessageHeader) -> Self {
+    pub fn with_header(header: &MessageHeader, digest: u128) -> Self {
         Self {
             header: header.clone(),
             block: None,
-            digest: 0,
+            digest,
         }
     }
 

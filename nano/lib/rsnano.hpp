@@ -1235,11 +1235,15 @@ MessageHandle * rsn_message_publish_clone (MessageHandle * handle);
 
 MessageHandle * rsn_message_publish_create (NetworkConstantsDto * constants, BlockHandle * block);
 
-MessageHandle * rsn_message_publish_create2 (MessageHeaderHandle * header);
+MessageHandle * rsn_message_publish_create2 (MessageHeaderHandle * header, const uint8_t * digest);
 
 bool rsn_message_publish_deserialize (MessageHandle * handle,
 void * stream,
 BlockUniquerHandle * uniquer);
+
+void rsn_message_publish_digest (MessageHandle * handle, uint8_t * result);
+
+void rsn_message_publish_set_digest (MessageHandle * handle, const uint8_t * digest);
 
 void rsn_message_set_header (MessageHandle * handle, MessageHeaderHandle * header);
 

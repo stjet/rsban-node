@@ -6,6 +6,7 @@ use crate::{
 use anyhow::Result;
 use std::{
     any::Any,
+    fmt::Write,
     net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{Arc, RwLock},
 };
@@ -288,6 +289,14 @@ impl ConfirmReq {
 
         Ok(())
     }
+
+    pub fn roots_string(&self) -> String {
+        let mut result = String::new();
+        for (hash, root) in self.roots_hashes() {
+            write!(&mut result, "{}:{}, ", hash, root).unwrap();
+        }
+        result
+    }
 }
 
 impl Message for ConfirmReq {
@@ -305,6 +314,23 @@ impl Message for ConfirmReq {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+}
+
+impl PartialEq for ConfirmReq {
+    fn eq(&self, other: &Self) -> bool {
+        let mut equal = false;
+        if let Some(block_a) = self.block() {
+            if let Some(block_b) = other.block() {
+                let lck_a = block_a.read().unwrap();
+                let lck_b = block_b.read().unwrap();
+                equal = lck_a.eq(&lck_b);
+            }
+        } else if !self.roots_hashes().is_empty() && !other.roots_hashes().is_empty() {
+            equal = self.roots_hashes() == other.roots_hashes()
+        }
+
+        equal
     }
 }
 

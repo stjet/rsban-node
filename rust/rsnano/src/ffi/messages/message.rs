@@ -2,6 +2,7 @@ use super::MessageHeaderHandle;
 use crate::{
     ffi::{
         transport::EndpointDto, BlockHandle, BlockUniquerHandle, FfiStream, NetworkConstantsDto,
+        StringDto,
     },
     messages::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
@@ -306,6 +307,25 @@ pub unsafe extern "C" fn rsn_message_confirm_req_deserialize(
     downcast_message_mut::<ConfirmReq>(handle)
         .deserialize(&mut stream, uniquer)
         .is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_confirm_req_equals(
+    handle_a: *mut MessageHandle,
+    handle_b: *mut MessageHandle,
+) -> bool {
+    let a = downcast_message_mut::<ConfirmReq>(handle_a);
+    let b = downcast_message_mut::<ConfirmReq>(handle_b);
+    a == b
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_confirm_req_roots_string(
+    handle: *mut MessageHandle,
+    result: *mut StringDto,
+) {
+    let req = downcast_message_mut::<ConfirmReq>(handle);
+    (*result) = req.roots_string().into();
 }
 
 #[no_mangle]

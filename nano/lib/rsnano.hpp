@@ -1176,9 +1176,13 @@ bool rsn_message_confirm_req_deserialize (MessageHandle * handle,
 void * stream,
 BlockUniquerHandle * uniquer);
 
+bool rsn_message_confirm_req_equals (MessageHandle * handle_a, MessageHandle * handle_b);
+
 void rsn_message_confirm_req_roots_hashes (MessageHandle * handle, HashRootPair * result);
 
 uintptr_t rsn_message_confirm_req_roots_hashes_count (MessageHandle * handle);
+
+void rsn_message_confirm_req_roots_string (MessageHandle * handle, StringDto * result);
 
 bool rsn_message_confirm_req_serialize (MessageHandle * handle, void * stream);
 

@@ -875,29 +875,14 @@ bool nano::confirm_req::deserialize (nano::stream & stream_a, nano::block_unique
 
 bool nano::confirm_req::operator== (nano::confirm_req const & other_a) const
 {
-	bool equal (false);
-	if (get_block () != nullptr && other_a.get_block () != nullptr)
-	{
-		equal = *get_block () == *other_a.get_block ();
-	}
-	else if (!get_roots_hashes ().empty () && !other_a.get_roots_hashes ().empty ())
-	{
-		equal = get_roots_hashes () == other_a.get_roots_hashes ();
-	}
-	return equal;
+	return rsnano::rsn_message_confirm_req_equals (handle, other_a.handle);
 }
 
 std::string nano::confirm_req::roots_string () const
 {
-	std::string result;
-	for (auto & root_hash : get_roots_hashes ())
-	{
-		result += root_hash.first.to_string ();
-		result += ":";
-		result += root_hash.second.to_string ();
-		result += ", ";
-	}
-	return result;
+	rsnano::StringDto dto;
+	rsnano::rsn_message_confirm_req_roots_string (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
 }
 
 std::size_t nano::confirm_req::size (nano::block_type type_a, std::size_t count)

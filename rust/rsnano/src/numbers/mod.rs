@@ -2,7 +2,7 @@ mod account;
 mod difficulty;
 
 use std::convert::TryInto;
-use std::fmt::Write;
+use std::fmt::{Debug, Write};
 use std::ops::Deref;
 use std::{convert::TryFrom, fmt::Display};
 
@@ -128,9 +128,16 @@ impl From<u64> for BlockHash {
     }
 }
 
+fn write_hex_bytes(bytes: &[u8], f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+    for &byte in bytes {
+        write!(f, "{:02X}", byte)?;
+    }
+    Ok(())
+}
+
 impl Display for BlockHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", hex::encode_upper(self.value))
+        write_hex_bytes(&self.value, f)
     }
 }
 
@@ -354,6 +361,12 @@ impl HashOrAccount {
     }
 }
 
+impl Display for HashOrAccount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write_hex_bytes(&self.bytes, f)
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Default, Debug, Copy)]
 pub struct Link {
     inner: HashOrAccount,
@@ -442,6 +455,12 @@ impl From<u64> for Root {
         let mut bytes = [0; 32];
         bytes[..8].copy_from_slice(&value.to_le_bytes());
         Self::from_bytes(bytes)
+    }
+}
+
+impl Display for Root {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write_hex_bytes(&self.bytes, f)
     }
 }
 

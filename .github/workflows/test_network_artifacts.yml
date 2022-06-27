@@ -85,7 +85,6 @@ jobs:
         run: ci/actions/linux/install_deps.sh
       - name: Build Docker (simpago/rsnano)
         run: TRAVIS_TAG=${TAG} ci/actions/linux/docker-build.sh
-      - name: Deploy Docker (simpago/rsnano)
       - name: Deploy Docker Hub (simpago/rsnano-test)
         if: ${{ github.repository == 'simpago/rsnano-node' }}
         run: TRAVIS_TAG=${TAG} ci/actions/linux/docker-deploy.sh

@@ -1,7 +1,9 @@
 use super::{MessageHeader, MessageType};
 use crate::{
-    deserialize_block, serialized_block_size, utils::Stream, voting::Vote, BlockEnum, BlockHash,
-    BlockType, BlockUniquer, NetworkConstants, Root,
+    deserialize_block, serialized_block_size,
+    utils::Stream,
+    voting::{Vote, VoteUniquer},
+    BlockEnum, BlockHash, BlockType, BlockUniquer, NetworkConstants, Root,
 };
 use anyhow::Result;
 use std::{
@@ -364,11 +366,27 @@ impl ConfirmAck {
             vote: Some(vote),
         }
     }
-    pub fn with_header(header: &MessageHeader) -> Self {
-        Self {
-            header: header.clone(),
-            vote: None,
+    pub fn with_header(
+        header: &MessageHeader,
+        stream: &mut impl Stream,
+        uniquer: Option<&VoteUniquer>,
+    ) -> Result<Self> {
+        let mut vote = Vote::null();
+        vote.deserialize(stream)?;
+        let mut vote = Arc::new(RwLock::new(vote));
+
+        if let Some(uniquer) = uniquer {
+            vote = uniquer.unique(&vote);
         }
+
+        Ok(Self {
+            header: header.clone(),
+            vote: Some(vote),
+        })
+    }
+
+    pub fn vote(&self) -> Option<&Arc<RwLock<Vote>>> {
+        self.vote.as_ref()
     }
 }
 

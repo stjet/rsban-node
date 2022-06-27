@@ -372,9 +372,6 @@ public:
 	bool operator== (nano::confirm_ack const &) const;
 	static std::size_t size (std::size_t count);
 	std::shared_ptr<nano::vote> get_vote () const;
-
-private:
-	std::shared_ptr<nano::vote> vote;
 };
 
 class frontier_req final : public message

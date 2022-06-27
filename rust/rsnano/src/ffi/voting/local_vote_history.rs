@@ -28,7 +28,7 @@ pub unsafe extern "C" fn rsn_local_vote_history_add(
 ) {
     let root = Root::from(root);
     let hash = BlockHash::from(hash);
-    let vote = (*vote).vote.clone();
+    let vote = (*vote).clone();
     (*handle).history.add(&root, &hash, &vote);
 }
 
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rsn_local_vote_history_votes(
     let mut votes = Box::new(LocalVotesResultHandle(
         votes
             .drain(..)
-            .map(|vote| Box::into_raw(Box::new(VoteHandle { vote })))
+            .map(|vote| Box::into_raw(Box::new(VoteHandle::new(vote))))
             .collect::<Vec<_>>(),
     ));
     let result = &mut *result;

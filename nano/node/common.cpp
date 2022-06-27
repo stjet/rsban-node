@@ -896,25 +896,28 @@ rsnano::MessageHandle * create_confirm_ack_handle (nano::network_constants const
 	return rsnano::rsn_message_confirm_ack_create (&constants_dto, vote_a.get_handle ());
 }
 
-nano::confirm_ack::confirm_ack (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::vote_uniquer * uniquer_a) :
-	message (rsnano::rsn_message_confirm_ack_create2 (header_a.handle)),
-	vote (nano::make_shared<nano::vote> (error_a, stream_a))
+rsnano::MessageHandle * create_confirm_ack_handle (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::vote_uniquer * uniquer_a)
 {
-	if (!error_a && uniquer_a)
+	rsnano::VoteUniquerHandle * uniquer_handle = nullptr;
+	if (uniquer_a != nullptr)
 	{
-		vote = uniquer_a->unique (vote);
+		uniquer_handle = uniquer_a->handle;
 	}
+	return rsnano::rsn_message_confirm_ack_create2 (header_a.handle, &stream_a, uniquer_handle, &error_a);
+}
+
+nano::confirm_ack::confirm_ack (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::vote_uniquer * uniquer_a) :
+	message (create_confirm_ack_handle (error_a, stream_a, header_a, uniquer_a))
+{
 }
 
 nano::confirm_ack::confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const & vote_a) :
-	message (create_confirm_ack_handle (constants, *vote_a)),
-	vote (vote_a)
+	message (create_confirm_ack_handle (constants, *vote_a))
 {
 }
 
 nano::confirm_ack::confirm_ack (nano::confirm_ack const & other_a) :
-	message (rsnano::rsn_message_confirm_ack_clone (other_a.handle)),
-	vote{ other_a.vote }
+	message (rsnano::rsn_message_confirm_ack_clone (other_a.handle))
 {
 }
 
@@ -923,12 +926,12 @@ void nano::confirm_ack::serialize (nano::stream & stream_a) const
 	auto header{ get_header () };
 	debug_assert (header.block_type () == nano::block_type::not_a_block || header.block_type () == nano::block_type::send || header.block_type () == nano::block_type::receive || header.block_type () == nano::block_type::open || header.block_type () == nano::block_type::change || header.block_type () == nano::block_type::state);
 	header.serialize (stream_a);
-	vote->serialize (stream_a);
+	get_vote ()->serialize (stream_a);
 }
 
 bool nano::confirm_ack::operator== (nano::confirm_ack const & other_a) const
 {
-	auto result (*vote == *other_a.vote);
+	auto result (*get_vote () == *other_a.get_vote ());
 	return result;
 }
 
@@ -945,7 +948,13 @@ std::size_t nano::confirm_ack::size (std::size_t count)
 
 std::shared_ptr<nano::vote> nano::confirm_ack::get_vote () const
 {
-	return vote;
+	auto vote_handle{ rsnano::rsn_message_confirm_ack_vote (handle) };
+	std::shared_ptr<nano::vote> result;
+	if (vote_handle != nullptr)
+	{
+		result = std::make_shared<nano::vote> (vote_handle);
+	}
+	return result;
 }
 
 rsnano::MessageHandle * create_frontier_req_handle (nano::network_constants const & constants)

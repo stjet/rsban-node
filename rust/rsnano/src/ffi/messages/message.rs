@@ -1,17 +1,24 @@
 use super::MessageHeaderHandle;
 use crate::{
     ffi::{
-        transport::EndpointDto, voting::VoteHandle, BlockHandle, BlockUniquerHandle, FfiStream,
-        NetworkConstantsDto, StringDto,
+        transport::EndpointDto,
+        voting::{VoteHandle, VoteUniquerHandle},
+        BlockHandle, BlockUniquerHandle, FfiStream, NetworkConstantsDto, StringDto,
     },
     messages::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
         Message, MessageHeader, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
     },
+    voting::Vote,
     BlockHash, BlockType, NetworkConstants, Root,
 };
 use num_traits::FromPrimitive;
-use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};
+use std::{
+    ffi::c_void,
+    net::SocketAddr,
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 
 pub struct MessageHandle(Box<dyn Message>);
 
@@ -340,7 +347,7 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create(
     vote: *mut VoteHandle,
 ) -> *mut MessageHandle {
     create_message_handle(constants, |consts| {
-        let vote = (*vote).vote.clone();
+        let vote = (*vote).clone();
         ConfirmAck::new(consts, vote)
     })
 }
@@ -348,8 +355,30 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_create2(
     header: *mut MessageHeaderHandle,
+    stream: *mut c_void,
+    uniquer: *mut VoteUniquerHandle,
+    is_error: *mut bool,
 ) -> *mut MessageHandle {
-    create_message_handle2(header, ConfirmAck::with_header)
+    create_message_handle2(header, |hdr| {
+        let mut stream = FfiStream::new(stream);
+        let uniquer = if uniquer.is_null() {
+            None
+        } else {
+            Some((*uniquer).deref())
+        };
+
+        match ConfirmAck::with_header(hdr, &mut stream, uniquer) {
+            Ok(i) => i,
+            Err(_) => {
+                *is_error = true;
+                //workaround to prevent nullptr:
+                ConfirmAck::new(
+                    &NetworkConstants::empty(),
+                    Arc::new(RwLock::new(Vote::null())),
+                )
+            }
+        }
+    })
 }
 
 #[no_mangle]
@@ -357,6 +386,16 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_clone(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
     message_handle_clone::<ConfirmAck>(handle)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_confirm_ack_vote(
+    handle: *mut MessageHandle,
+) -> *mut VoteHandle {
+    match downcast_message::<ConfirmAck>(handle).vote() {
+        Some(vote) => Box::into_raw(Box::new(VoteHandle::new(vote.clone()))),
+        None => std::ptr::null_mut(),
+    }
 }
 
 #[no_mangle]

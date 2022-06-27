@@ -1159,7 +1159,12 @@ MessageHandle * rsn_message_confirm_ack_clone (MessageHandle * handle);
 
 MessageHandle * rsn_message_confirm_ack_create (NetworkConstantsDto * constants, VoteHandle * vote);
 
-MessageHandle * rsn_message_confirm_ack_create2 (MessageHeaderHandle * header);
+MessageHandle * rsn_message_confirm_ack_create2 (MessageHeaderHandle * header,
+void * stream,
+VoteUniquerHandle * uniquer,
+bool * is_error);
+
+VoteHandle * rsn_message_confirm_ack_vote (MessageHandle * handle);
 
 BlockHandle * rsn_message_confirm_req_block (MessageHandle * handle);
 

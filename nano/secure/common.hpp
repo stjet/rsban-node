@@ -324,8 +324,6 @@ public:
 	std::shared_ptr<nano::vote> unique (std::shared_ptr<nano::vote> const &);
 	size_t size ();
 	vote_uniquer & operator= (vote_uniquer const &) = delete;
-
-private:
 	rsnano::VoteUniquerHandle * handle;
 };
 

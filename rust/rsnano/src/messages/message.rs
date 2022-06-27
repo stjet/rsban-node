@@ -1,7 +1,7 @@
 use super::{MessageHeader, MessageType};
 use crate::{
-    deserialize_block, utils::Stream, BlockEnum, BlockHash, BlockType, BlockUniquer,
-    NetworkConstants, Root,
+    deserialize_block, serialized_block_size, utils::Stream, BlockEnum, BlockHash, BlockType,
+    BlockUniquer, NetworkConstants, Root,
 };
 use anyhow::Result;
 use std::{
@@ -294,6 +294,16 @@ impl ConfirmReq {
         let mut result = String::new();
         for (hash, root) in self.roots_hashes() {
             write!(&mut result, "{}:{}, ", hash, root).unwrap();
+        }
+        result
+    }
+
+    pub fn serialized_size(block_type: BlockType, count: usize) -> usize {
+        let mut result = 0;
+        if block_type != BlockType::Invalid && block_type != BlockType::NotABlock {
+            result = serialized_block_size(block_type);
+        } else if block_type == BlockType::NotABlock {
+            result = count * (BlockHash::serialized_size() + Root::serialized_size());
         }
         result
     }

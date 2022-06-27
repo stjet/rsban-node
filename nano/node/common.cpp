@@ -887,16 +887,7 @@ std::string nano::confirm_req::roots_string () const
 
 std::size_t nano::confirm_req::size (nano::block_type type_a, std::size_t count)
 {
-	std::size_t result (0);
-	if (type_a != nano::block_type::invalid && type_a != nano::block_type::not_a_block)
-	{
-		result = nano::block::size (type_a);
-	}
-	else if (type_a == nano::block_type::not_a_block)
-	{
-		result = count * (sizeof (nano::uint256_union) + sizeof (nano::block_hash));
-	}
-	return result;
+	return rsnano::rsn_message_confirm_req_size (static_cast<uint8_t> (type_a), count);
 }
 
 rsnano::MessageHandle * create_confirm_ack_handle (nano::network_constants const & constants)

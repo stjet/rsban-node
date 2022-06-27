@@ -8,8 +8,9 @@ use crate::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
         Message, MessageHeader, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
     },
-    BlockHash, NetworkConstants, Root,
+    BlockHash, BlockType, NetworkConstants, Root,
 };
+use num_traits::FromPrimitive;
 use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};
 
 pub struct MessageHandle(Box<dyn Message>);
@@ -326,6 +327,11 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_string(
 ) {
     let req = downcast_message_mut::<ConfirmReq>(handle);
     (*result) = req.roots_string().into();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_confirm_req_size(block_type: u8, count: usize) -> usize {
+    ConfirmReq::serialized_size(BlockType::from_u8(block_type).unwrap(), count)
 }
 
 #[no_mangle]

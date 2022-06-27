@@ -440,6 +440,10 @@ impl Root {
     pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         HashOrAccount::deserialize(stream).map(|inner| Root { inner })
     }
+
+    pub fn serialized_size() -> usize {
+        HashOrAccount::serialized_size()
+    }
 }
 
 impl Deref for Root {

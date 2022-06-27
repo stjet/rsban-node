@@ -1186,6 +1186,8 @@ void rsn_message_confirm_req_roots_string (MessageHandle * handle, StringDto * r
 
 bool rsn_message_confirm_req_serialize (MessageHandle * handle, void * stream);
 
+uintptr_t rsn_message_confirm_req_size (uint8_t block_type, uintptr_t count);
+
 void rsn_message_destroy (MessageHandle * handle);
 
 MessageHandle * rsn_message_frontier_req_create (NetworkConstantsDto * constants);

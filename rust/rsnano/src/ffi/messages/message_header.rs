@@ -178,3 +178,10 @@ pub unsafe extern "C" fn rsn_message_header_count(handle: *mut MessageHeaderHand
 pub unsafe extern "C" fn rsn_message_header_set_count(handle: *mut MessageHeaderHandle, count: u8) {
     (*handle).0.set_count(count);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_bulk_pull_is_count_present(
+    handle: *mut MessageHeaderHandle,
+) -> bool {
+    (*handle).0.bulk_pull_is_count_present()
+}

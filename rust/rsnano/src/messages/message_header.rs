@@ -194,6 +194,13 @@ impl MessageHeader {
         stream.write_bytes(&self.extensions().to_ne_bytes())?;
         Ok(())
     }
+
+    const BULK_PULL_COUNT_PRESENT_FLAG: usize = 0;
+
+    pub fn bulk_pull_is_count_present(&self) -> bool {
+        self.message_type() == MessageType::BulkPull
+            && self.test_extension(Self::BULK_PULL_COUNT_PRESENT_FLAG)
+    }
 }
 
 impl Display for MessageHeader {

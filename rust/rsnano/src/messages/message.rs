@@ -53,6 +53,40 @@ impl Keepalive {
     pub fn set_peers(&mut self, peers: &[SocketAddr; 8]) {
         self.peers = *peers;
     }
+
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+        self.header().serialize(stream)?;
+        for peer in self.peers() {
+            match peer {
+                SocketAddr::V4(_) => panic!("ipv6 expected but was ipv4"), //todo make peers IpAddrV6?
+                SocketAddr::V6(addr) => {
+                    let ip_bytes = addr.ip().octets();
+                    stream.write_bytes(&ip_bytes)?;
+
+                    let port_bytes = addr.port().to_ne_bytes();
+                    stream.write_bytes(&port_bytes)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
+        debug_assert!(self.header().message_type() == MessageType::Keepalive);
+
+        for i in 0..8 {
+            let mut addr_buffer = [0u8; 16];
+            let mut port_buffer = [0u8; 2];
+            stream.read_bytes(&mut addr_buffer, 16)?;
+            stream.read_bytes(&mut port_buffer, 2)?;
+
+            let port = u16::from_ne_bytes(port_buffer);
+            let ip_addr = Ipv6Addr::from(addr_buffer);
+
+            self.peers[i] = SocketAddr::new(IpAddr::V6(ip_addr), port);
+        }
+        Ok(())
+    }
 }
 
 fn empty_peers() -> [SocketAddr; 8] {

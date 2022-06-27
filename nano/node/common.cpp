@@ -187,15 +187,7 @@ void nano::message_header::flag_set (uint8_t flag_a)
 
 bool nano::message_header::bulk_pull_is_count_present () const
 {
-	auto result (false);
-	if (get_type () == nano::message_type::bulk_pull)
-	{
-		if (test_extension (bulk_pull_count_present_flag))
-		{
-			result = true;
-		}
-	}
-	return result;
+	return rsnano::rsn_message_header_bulk_pull_is_count_present (handle);
 }
 
 bool nano::message_header::node_id_handshake_is_query () const
@@ -645,36 +637,15 @@ void nano::keepalive::visit (nano::message_visitor & visitor_a) const
 
 void nano::keepalive::serialize (nano::stream & stream_a) const
 {
-	get_header ().serialize (stream_a);
-	auto peers{ get_peers () };
-	for (auto i (peers.begin ()), j (peers.end ()); i != j; ++i)
+	if (!rsnano::rsn_message_keepalive_serialize (handle, &stream_a))
 	{
-		debug_assert (i->address ().is_v6 ());
-		auto bytes (i->address ().to_v6 ().to_bytes ());
-		write (stream_a, bytes);
-		write (stream_a, i->port ());
+		throw std::runtime_error ("could not serialize keepalive");
 	}
 }
 
 bool nano::keepalive::deserialize (nano::stream & stream_a)
 {
-	debug_assert (get_header ().get_type () == nano::message_type::keepalive);
-	auto error (false);
-	std::array<nano::endpoint, 8> peers;
-	for (auto i (peers.begin ()), j (peers.end ()); i != j && !error; ++i)
-	{
-		std::array<uint8_t, 16> address;
-		uint16_t port;
-		if (!try_read (stream_a, address) && !try_read (stream_a, port))
-		{
-			*i = nano::endpoint (boost::asio::ip::address_v6 (address), port);
-		}
-		else
-		{
-			error = true;
-		}
-	}
-	set_peers (peers);
+	bool error = !rsnano::rsn_message_keepalive_deserialize (handle, &stream_a);
 	return error;
 }
 

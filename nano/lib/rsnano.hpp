@@ -1171,6 +1171,8 @@ MessageHeaderHandle * rsn_message_header (MessageHandle * handle);
 
 uint8_t rsn_message_header_block_type (MessageHeaderHandle * handle);
 
+bool rsn_message_header_bulk_pull_is_count_present (MessageHeaderHandle * handle);
+
 MessageHeaderHandle * rsn_message_header_clone (MessageHeaderHandle * handle);
 
 uint8_t rsn_message_header_count (MessageHeaderHandle * handle);
@@ -1219,7 +1221,11 @@ MessageHandle * rsn_message_keepalive_create (NetworkConstantsDto * constants, i
 
 MessageHandle * rsn_message_keepalive_create2 (MessageHeaderHandle * header);
 
+bool rsn_message_keepalive_deserialize (MessageHandle * handle, void * stream);
+
 void rsn_message_keepalive_peers (MessageHandle * handle, EndpointDto * result);
+
+bool rsn_message_keepalive_serialize (MessageHandle * handle, void * stream);
 
 void rsn_message_keepalive_set_peers (MessageHandle * handle, const EndpointDto * result);
 

@@ -462,26 +462,26 @@ public:
 	{
 		if (node.config->logging.network_message_logging ())
 		{
-			if (!message_a.roots_hashes.empty ())
+			if (!message_a.get_roots_hashes ().empty ())
 			{
 				node.logger->try_log (boost::str (boost::format ("Confirm_req message from %1% for hashes:roots %2%") % channel->to_string () % message_a.roots_string ()));
 			}
 			else
 			{
-				node.logger->try_log (boost::str (boost::format ("Confirm_req message from %1% for %2%") % channel->to_string () % message_a.block->hash ().to_string ()));
+				node.logger->try_log (boost::str (boost::format ("Confirm_req message from %1% for %2%") % channel->to_string () % message_a.get_block ()->hash ().to_string ()));
 			}
 		}
 		node.stats->inc (nano::stat::type::message, nano::stat::detail::confirm_req, nano::stat::dir::in);
 		// Don't load nodes with disabled voting
 		if (node.config->enable_voting && node.wallets.reps ().voting > 0)
 		{
-			if (message_a.block != nullptr)
+			if (message_a.get_block () != nullptr)
 			{
-				node.aggregator.add (channel, { { message_a.block->hash (), message_a.block->root () } });
+				node.aggregator.add (channel, { { message_a.get_block ()->hash (), message_a.get_block ()->root () } });
 			}
-			else if (!message_a.roots_hashes.empty ())
+			else if (!message_a.get_roots_hashes ().empty ())
 			{
-				node.aggregator.add (channel, message_a.roots_hashes);
+				node.aggregator.add (channel, message_a.get_roots_hashes ());
 			}
 		}
 	}

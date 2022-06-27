@@ -355,10 +355,14 @@ public:
 	bool deserialize (nano::stream &, nano::block_uniquer * = nullptr);
 	void visit (nano::message_visitor &) const override;
 	bool operator== (nano::confirm_req const &) const;
-	std::shared_ptr<nano::block> block;
-	std::vector<std::pair<nano::block_hash, nano::root>> roots_hashes;
 	std::string roots_string () const;
 	static std::size_t size (nano::block_type, std::size_t = 0);
+	std::shared_ptr<nano::block> get_block () const;
+	std::vector<std::pair<nano::block_hash, nano::root>> get_roots_hashes () const;
+
+private:
+	std::shared_ptr<nano::block> block;
+	std::vector<std::pair<nano::block_hash, nano::root>> roots_hashes;
 };
 
 class confirm_ack final : public message

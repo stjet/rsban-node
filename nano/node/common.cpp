@@ -522,7 +522,7 @@ void nano::message_parser::deserialize_confirm_req (nano::stream & stream_a, nan
 	nano::confirm_req incoming (error, stream_a, header_a, &block_uniquer);
 	if (!error && at_end (stream_a))
 	{
-		if (incoming.block == nullptr || !network.work.validate_entry (*incoming.block))
+		if (incoming.get_block () == nullptr || !network.work.validate_entry (*incoming.get_block ()))
 		{
 			visitor.confirm_req (incoming);
 		}
@@ -820,6 +820,16 @@ nano::confirm_req::confirm_req (nano::confirm_req const & other_a) :
 	block{ other_a.block },
 	roots_hashes{ other_a.roots_hashes }
 {
+}
+
+std::shared_ptr<nano::block> nano::confirm_req::get_block () const
+{
+	return block;
+}
+
+std::vector<std::pair<nano::block_hash, nano::root>> nano::confirm_req::get_roots_hashes () const
+{
+	return roots_hashes;
 }
 
 void nano::confirm_req::visit (nano::message_visitor & visitor_a) const

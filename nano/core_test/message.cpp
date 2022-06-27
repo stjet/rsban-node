@@ -122,7 +122,7 @@ TEST (message, confirm_req_serialization)
 	nano::confirm_req req2 (error, stream2, header);
 	ASSERT_FALSE (error);
 	ASSERT_EQ (req, req2);
-	ASSERT_EQ (*req.block, *req2.block);
+	ASSERT_EQ (*req.get_block (), *req2.get_block ());
 }
 
 TEST (message, confirm_req_hash_serialization)
@@ -142,9 +142,9 @@ TEST (message, confirm_req_hash_serialization)
 	nano::confirm_req req2 (error, stream2, header);
 	ASSERT_FALSE (error);
 	ASSERT_EQ (req, req2);
-	ASSERT_EQ (req.roots_hashes, req2.roots_hashes);
+	ASSERT_EQ (req.get_roots_hashes (), req2.get_roots_hashes ());
 	ASSERT_EQ (header.block_type (), nano::block_type::not_a_block);
-	ASSERT_EQ (header.count_get (), req.roots_hashes.size ());
+	ASSERT_EQ (header.count_get (), req.get_roots_hashes ().size ());
 }
 
 TEST (message, confirm_req_hash_batch_serialization)
@@ -175,11 +175,11 @@ TEST (message, confirm_req_hash_batch_serialization)
 	nano::confirm_req req2 (error, stream2, header);
 	ASSERT_FALSE (error);
 	ASSERT_EQ (req, req2);
-	ASSERT_EQ (req.roots_hashes, req2.roots_hashes);
-	ASSERT_EQ (req.roots_hashes, roots_hashes);
-	ASSERT_EQ (req2.roots_hashes, roots_hashes);
+	ASSERT_EQ (req.get_roots_hashes (), req2.get_roots_hashes ());
+	ASSERT_EQ (req.get_roots_hashes (), roots_hashes);
+	ASSERT_EQ (req2.get_roots_hashes (), roots_hashes);
 	ASSERT_EQ (header.block_type (), nano::block_type::not_a_block);
-	ASSERT_EQ (header.count_get (), req.roots_hashes.size ());
+	ASSERT_EQ (header.count_get (), req.get_roots_hashes ().size ());
 }
 
 /**

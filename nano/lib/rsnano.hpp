@@ -550,6 +550,12 @@ struct LocalVotesResult
 	LocalVotesResultHandle * handle;
 };
 
+struct HashRootPair
+{
+	uint8_t block_hash[32];
+	uint8_t root[32];
+};
+
 struct OpenBlockDto
 {
 	uint64_t work;
@@ -1155,11 +1161,24 @@ MessageHandle * rsn_message_confirm_ack_create (NetworkConstantsDto * constants)
 
 MessageHandle * rsn_message_confirm_ack_create2 (MessageHeaderHandle * header);
 
+BlockHandle * rsn_message_confirm_req_block (MessageHandle * handle);
+
 MessageHandle * rsn_message_confirm_req_clone (MessageHandle * handle);
 
-MessageHandle * rsn_message_confirm_req_create (NetworkConstantsDto * constants);
+MessageHandle * rsn_message_confirm_req_create (NetworkConstantsDto * constants,
+BlockHandle * block,
+const HashRootPair * roots_hashes,
+uintptr_t roots_hashes_count);
 
 MessageHandle * rsn_message_confirm_req_create2 (MessageHeaderHandle * header);
+
+bool rsn_message_confirm_req_deserialize (MessageHandle * handle,
+void * stream,
+BlockUniquerHandle * uniquer);
+
+void rsn_message_confirm_req_roots_hashes (MessageHandle * handle, HashRootPair * result);
+
+uintptr_t rsn_message_confirm_req_roots_hashes_count (MessageHandle * handle);
 
 void rsn_message_destroy (MessageHandle * handle);
 

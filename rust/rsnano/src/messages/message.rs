@@ -1,5 +1,8 @@
 use super::{MessageHeader, MessageType};
-use crate::{deserialize_block, utils::Stream, BlockEnum, BlockUniquer, NetworkConstants};
+use crate::{
+    deserialize_block, utils::Stream, BlockEnum, BlockHash, BlockType, BlockUniquer,
+    NetworkConstants, Root,
+};
 use anyhow::Result;
 use std::{
     any::Any,
@@ -184,18 +187,83 @@ impl Message for Publish {
 #[derive(Clone)]
 pub struct ConfirmReq {
     header: MessageHeader,
+    block: Option<Arc<RwLock<BlockEnum>>>,
+    roots_hashes: Vec<(BlockHash, Root)>,
 }
 
 impl ConfirmReq {
     pub fn new(constants: &NetworkConstants) -> Self {
         Self {
             header: MessageHeader::new(constants, MessageType::ConfirmReq),
+            block: None,
+            roots_hashes: Vec::new(),
         }
     }
+
+    pub fn with_block(constants: &NetworkConstants, block: Arc<RwLock<BlockEnum>>) -> Self {
+        Self {
+            header: MessageHeader::new(constants, MessageType::ConfirmReq),
+            block: Some(block),
+            roots_hashes: Vec::new(),
+        }
+    }
+
+    pub fn with_roots_hashes(
+        constants: &NetworkConstants,
+        roots_hashes: Vec<(BlockHash, Root)>,
+    ) -> Self {
+        Self {
+            header: MessageHeader::new(constants, MessageType::ConfirmReq),
+            block: None,
+            roots_hashes,
+        }
+    }
+
     pub fn with_header(header: &MessageHeader) -> Self {
         Self {
             header: header.clone(),
+            block: None,
+            roots_hashes: Vec::new(),
         }
+    }
+
+    pub fn block(&self) -> Option<&Arc<RwLock<BlockEnum>>> {
+        self.block.as_ref()
+    }
+
+    pub fn roots_hashes(&self) -> &[(BlockHash, Root)] {
+        &self.roots_hashes
+    }
+
+    pub fn deserialize(
+        &mut self,
+        stream: &mut impl Stream,
+        uniquer: Option<&BlockUniquer>,
+    ) -> Result<()> {
+        debug_assert!(self.header().message_type() == MessageType::ConfirmReq);
+
+        if self.header().block_type() == BlockType::NotABlock {
+            let count = self.header().count() as usize;
+            for _ in 0..count {
+                let block_hash = BlockHash::deserialize(stream)?;
+                let root = Root::deserialize(stream)?;
+                if !block_hash.is_zero() || !root.is_zero() {
+                    self.roots_hashes.push((block_hash, root));
+                }
+            }
+
+            if self.roots_hashes.is_empty() || self.roots_hashes.len() != count {
+                bail!("roots hashes empty or incorrect count");
+            }
+        } else {
+            self.block = Some(deserialize_block(
+                self.header().block_type(),
+                stream,
+                uniquer,
+            )?);
+        }
+
+        Ok(())
     }
 }
 

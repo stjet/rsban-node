@@ -7,9 +7,9 @@ use crate::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
         Message, MessageHeader, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
     },
-    NetworkConstants,
+    BlockHash, NetworkConstants, Root,
 };
-use std::{ffi::c_void, net::SocketAddr, ops::Deref};
+use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};
 
 pub struct MessageHandle(Box<dyn Message>);
 
@@ -199,11 +199,37 @@ pub unsafe extern "C" fn rsn_message_publish_set_digest(
     downcast_message_mut::<Publish>(handle).digest = digest;
 }
 
+#[repr(C)]
+pub struct HashRootPair {
+    pub block_hash: [u8; 32],
+    pub root: [u8; 32],
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_req_create(
     constants: *mut NetworkConstantsDto,
+    block: *mut BlockHandle,
+    roots_hashes: *const HashRootPair,
+    roots_hashes_count: usize,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, ConfirmReq::new)
+    create_message_handle(constants, |consts| {
+        if !block.is_null() {
+            let block = (*block).block.clone();
+            ConfirmReq::with_block(consts, block)
+        } else {
+            let dtos = std::slice::from_raw_parts(roots_hashes, roots_hashes_count);
+            let roots_hashes = dtos
+                .iter()
+                .map(|dto| {
+                    (
+                        BlockHash::from_bytes(dto.block_hash),
+                        Root::from_bytes(dto.root),
+                    )
+                })
+                .collect();
+            ConfirmReq::with_roots_hashes(consts, roots_hashes)
+        }
+    })
 }
 
 #[no_mangle]
@@ -218,6 +244,57 @@ pub unsafe extern "C" fn rsn_message_confirm_req_clone(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
     message_handle_clone::<ConfirmReq>(handle)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_confirm_req_block(
+    handle: *mut MessageHandle,
+) -> *mut BlockHandle {
+    match downcast_message::<ConfirmReq>(handle).block() {
+        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::clone(block)))),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_confirm_req_roots_hashes_count(
+    handle: *mut MessageHandle,
+) -> usize {
+    downcast_message::<ConfirmReq>(handle).roots_hashes().len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_confirm_req_roots_hashes(
+    handle: *mut MessageHandle,
+    result: *mut HashRootPair,
+) {
+    let req = downcast_message::<ConfirmReq>(handle);
+    let result_slice = std::slice::from_raw_parts_mut(result, req.roots_hashes().len());
+    let mut i = 0;
+    for (hash, root) in req.roots_hashes() {
+        result_slice[i] = HashRootPair {
+            block_hash: hash.to_bytes(),
+            root: root.to_bytes(),
+        };
+        i += 1;
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_confirm_req_deserialize(
+    handle: *mut MessageHandle,
+    stream: *mut c_void,
+    uniquer: *mut BlockUniquerHandle,
+) -> bool {
+    let mut stream = FfiStream::new(stream);
+    let uniquer = if uniquer.is_null() {
+        None
+    } else {
+        Some((*uniquer).deref())
+    };
+    downcast_message_mut::<ConfirmReq>(handle)
+        .deserialize(&mut stream, uniquer)
+        .is_ok()
 }
 
 #[no_mangle]

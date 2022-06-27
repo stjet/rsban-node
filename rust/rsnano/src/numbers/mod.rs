@@ -424,6 +424,9 @@ impl Root {
             inner: HashOrAccount::from_bytes(bytes),
         }
     }
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
+        HashOrAccount::deserialize(stream).map(|inner| Root { inner })
+    }
 }
 
 impl Deref for Root {

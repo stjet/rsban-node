@@ -1229,6 +1229,8 @@ bool rsn_message_keepalive_serialize (MessageHandle * handle, void * stream);
 
 void rsn_message_keepalive_set_peers (MessageHandle * handle, const EndpointDto * result);
 
+uintptr_t rsn_message_keepalive_size ();
+
 MessageHandle * rsn_message_node_id_handshake_clone (MessageHandle * handle);
 
 MessageHandle * rsn_message_node_id_handshake_create (NetworkConstantsDto * constants);
@@ -1248,6 +1250,8 @@ void * stream,
 BlockUniquerHandle * uniquer);
 
 void rsn_message_publish_digest (MessageHandle * handle, uint8_t * result);
+
+bool rsn_message_publish_serialize (MessageHandle * handle, void * stream);
 
 void rsn_message_publish_set_digest (MessageHandle * handle, const uint8_t * digest);
 

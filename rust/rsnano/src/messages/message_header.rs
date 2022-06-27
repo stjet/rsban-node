@@ -181,7 +181,7 @@ impl MessageHeader {
             .ok_or_else(|| anyhow!("invalid message type"))?;
 
         stream.read_bytes(&mut buffer, 2)?;
-        self.extensions.data = u16::from_ne_bytes(buffer);
+        self.extensions.data = u16::from_le_bytes(buffer);
         Ok(())
     }
 
@@ -191,7 +191,7 @@ impl MessageHeader {
         stream.write_u8(self.version_using())?;
         stream.write_u8(self.version_min())?;
         stream.write_u8(self.message_type() as u8)?;
-        stream.write_bytes(&self.extensions().to_ne_bytes())?;
+        stream.write_bytes(&self.extensions().to_le_bytes())?;
         Ok(())
     }
 

@@ -63,7 +63,7 @@ impl Keepalive {
                     let ip_bytes = addr.ip().octets();
                     stream.write_bytes(&ip_bytes)?;
 
-                    let port_bytes = addr.port().to_ne_bytes();
+                    let port_bytes = addr.port().to_le_bytes();
                     stream.write_bytes(&port_bytes)?;
                 }
             }
@@ -80,12 +80,16 @@ impl Keepalive {
             stream.read_bytes(&mut addr_buffer, 16)?;
             stream.read_bytes(&mut port_buffer, 2)?;
 
-            let port = u16::from_ne_bytes(port_buffer);
+            let port = u16::from_le_bytes(port_buffer);
             let ip_addr = Ipv6Addr::from(addr_buffer);
 
             self.peers[i] = SocketAddr::new(IpAddr::V6(ip_addr), port);
         }
         Ok(())
+    }
+
+    pub fn size() -> usize {
+        8 * (16 + 2)
     }
 }
 
@@ -137,9 +141,16 @@ impl Publish {
         }
     }
 
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+        self.header().serialize(stream)?;
+        let block = self.block.as_ref().ok_or_else(|| anyhow!("no block"))?;
+        let lck = block.read().unwrap();
+        lck.as_block().serialize(stream)
+    }
+
     pub fn deserialize(
         &mut self,
-        stream: &mut dyn Stream,
+        stream: &mut impl Stream,
         uniquer: Option<&BlockUniquer>,
     ) -> Result<()> {
         debug_assert!(self.header.message_type() == MessageType::Publish);

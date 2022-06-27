@@ -678,7 +678,7 @@ void nano::keepalive::set_peers (std::array<nano::endpoint, 8> const & peers_a)
 
 std::size_t nano::keepalive::size ()
 {
-	return 8 * (16 + 2);
+	return rsnano::rsn_message_keepalive_size ();
 }
 
 rsnano::MessageHandle * create_publish_handle2 (nano::message_header const & header_a, nano::uint128_t const & digest_a)
@@ -715,8 +715,10 @@ nano::publish::publish (nano::publish const & other_a) :
 
 void nano::publish::serialize (nano::stream & stream_a) const
 {
-	get_header ().serialize (stream_a);
-	get_block ()->serialize (stream_a);
+	if (!rsnano::rsn_message_publish_serialize (handle, &stream_a))
+	{
+		throw std::runtime_error ("could not serialize publish message");
+	}
 }
 
 bool nano::publish::deserialize (nano::stream & stream_a, nano::block_uniquer * uniquer_a)

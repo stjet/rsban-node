@@ -115,6 +115,11 @@ pub unsafe extern "C" fn rsn_message_keepalive_deserialize(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_keepalive_size() -> usize {
+    Keepalive::size()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_publish_create(
     constants: *mut NetworkConstantsDto,
     block: *mut BlockHandle,
@@ -139,6 +144,17 @@ pub unsafe extern "C" fn rsn_message_publish_clone(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
     message_handle_clone::<Publish>(handle)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_publish_serialize(
+    handle: *mut MessageHandle,
+    stream: *mut c_void,
+) -> bool {
+    let mut stream = FfiStream::new(stream);
+    downcast_message::<Publish>(handle)
+        .serialize(&mut stream)
+        .is_ok()
 }
 
 #[no_mangle]

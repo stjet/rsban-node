@@ -1164,6 +1164,10 @@ void * stream,
 VoteUniquerHandle * uniquer,
 bool * is_error);
 
+bool rsn_message_confirm_ack_serialize (MessageHandle * handle, void * stream);
+
+uintptr_t rsn_message_confirm_ack_size (uintptr_t count);
+
 VoteHandle * rsn_message_confirm_ack_vote (MessageHandle * handle);
 
 BlockHandle * rsn_message_confirm_req_block (MessageHandle * handle);

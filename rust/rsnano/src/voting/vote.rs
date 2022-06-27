@@ -141,6 +141,13 @@ impl Vote {
             &self.signature,
         )
     }
+
+    pub fn serialized_size(count: usize) -> usize {
+        Account::serialized_size()
+        + Signature::serialized_size()
+        + std::mem::size_of::<u64>() // timestamp
+        + (BlockHash::serialized_size() * count)
+    }
 }
 
 impl PartialEq for Vote {

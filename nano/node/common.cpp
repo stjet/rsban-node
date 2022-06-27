@@ -923,10 +923,10 @@ nano::confirm_ack::confirm_ack (nano::confirm_ack const & other_a) :
 
 void nano::confirm_ack::serialize (nano::stream & stream_a) const
 {
-	auto header{ get_header () };
-	debug_assert (header.block_type () == nano::block_type::not_a_block || header.block_type () == nano::block_type::send || header.block_type () == nano::block_type::receive || header.block_type () == nano::block_type::open || header.block_type () == nano::block_type::change || header.block_type () == nano::block_type::state);
-	header.serialize (stream_a);
-	get_vote ()->serialize (stream_a);
+	if (!rsnano::rsn_message_confirm_ack_serialize (handle, &stream_a))
+	{
+		throw std::runtime_error ("could not serialize confirm_ack");
+	}
 }
 
 bool nano::confirm_ack::operator== (nano::confirm_ack const & other_a) const
@@ -942,8 +942,7 @@ void nano::confirm_ack::visit (nano::message_visitor & visitor_a) const
 
 std::size_t nano::confirm_ack::size (std::size_t count)
 {
-	std::size_t result = sizeof (nano::account) + sizeof (nano::signature) + sizeof (uint64_t) + count * sizeof (nano::block_hash);
-	return result;
+	return rsnano::rsn_message_confirm_ack_size (count);
 }
 
 std::shared_ptr<nano::vote> nano::confirm_ack::get_vote () const

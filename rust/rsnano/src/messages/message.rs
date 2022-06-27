@@ -192,17 +192,12 @@ pub struct ConfirmReq {
 }
 
 impl ConfirmReq {
-    pub fn new(constants: &NetworkConstants) -> Self {
-        Self {
-            header: MessageHeader::new(constants, MessageType::ConfirmReq),
-            block: None,
-            roots_hashes: Vec::new(),
-        }
-    }
-
     pub fn with_block(constants: &NetworkConstants, block: Arc<RwLock<BlockEnum>>) -> Self {
+        let mut header = MessageHeader::new(constants, MessageType::ConfirmReq);
+        header.set_block_type(block.read().unwrap().block_type());
+
         Self {
-            header: MessageHeader::new(constants, MessageType::ConfirmReq),
+            header,
             block: Some(block),
             roots_hashes: Vec::new(),
         }
@@ -212,8 +207,15 @@ impl ConfirmReq {
         constants: &NetworkConstants,
         roots_hashes: Vec<(BlockHash, Root)>,
     ) -> Self {
+        let mut header = MessageHeader::new(constants, MessageType::ConfirmReq);
+        // not_a_block (1) block type for hashes + roots request
+        header.set_block_type(BlockType::NotABlock);
+
+        debug_assert!(roots_hashes.len() < 16);
+        header.set_count(roots_hashes.len() as u8);
+
         Self {
-            header: MessageHeader::new(constants, MessageType::ConfirmReq),
+            header,
             block: None,
             roots_hashes,
         }

@@ -799,34 +799,18 @@ nano::confirm_req::confirm_req (bool & error_a, nano::stream & stream_a, nano::m
 }
 
 nano::confirm_req::confirm_req (nano::network_constants const & constants, std::shared_ptr<nano::block> const & block_a) :
-	message (create_confirm_req_handle (constants, block_a.get (), std::vector<std::pair<nano::block_hash, nano::root>>()))
+	message (create_confirm_req_handle (constants, block_a.get (), std::vector<std::pair<nano::block_hash, nano::root>> ()))
 {
-	auto header{ get_header () };
-	header.block_type_set (block_a->type ());
-	set_header (header);
 }
 
 nano::confirm_req::confirm_req (nano::network_constants const & constants, std::vector<std::pair<nano::block_hash, nano::root>> const & roots_hashes_a) :
 	message (create_confirm_req_handle (constants, nullptr, roots_hashes_a))
 {
-	auto header{ get_header () };
-	// not_a_block (1) block type for hashes + roots request
-	header.block_type_set (nano::block_type::not_a_block);
-	debug_assert (get_roots_hashes ().size () < 16);
-	header.count_set (static_cast<uint8_t> (get_roots_hashes ().size ()));
-	set_header (header);
 }
 
 nano::confirm_req::confirm_req (nano::network_constants const & constants, nano::block_hash const & hash_a, nano::root const & root_a) :
 	message (create_confirm_req_handle (constants, nullptr, std::vector<std::pair<nano::block_hash, nano::root>> (1, std::make_pair (hash_a, root_a))))
 {
-	debug_assert (!get_roots_hashes ().empty ());
-	auto header{ get_header () };
-	// not_a_block (1) block type for hashes + roots request
-	header.block_type_set (nano::block_type::not_a_block);
-	debug_assert (get_roots_hashes ().size () < 16);
-	header.count_set (static_cast<uint8_t> (get_roots_hashes ().size ()));
-	set_header (header);
 }
 
 nano::confirm_req::confirm_req (nano::confirm_req const & other_a) :

@@ -948,6 +948,11 @@ std::size_t nano::confirm_ack::size (std::size_t count)
 	return result;
 }
 
+std::shared_ptr<nano::vote> nano::confirm_ack::get_vote () const
+{
+	return vote;
+}
+
 rsnano::MessageHandle * create_frontier_req_handle (nano::network_constants const & constants)
 {
 	auto constants_dto{ constants.to_dto () };

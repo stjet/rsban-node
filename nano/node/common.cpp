@@ -890,10 +890,10 @@ std::size_t nano::confirm_req::size (nano::block_type type_a, std::size_t count)
 	return rsnano::rsn_message_confirm_req_size (static_cast<uint8_t> (type_a), count);
 }
 
-rsnano::MessageHandle * create_confirm_ack_handle (nano::network_constants const & constants)
+rsnano::MessageHandle * create_confirm_ack_handle (nano::network_constants const & constants, nano::vote const & vote_a)
 {
 	auto constants_dto{ constants.to_dto () };
-	return rsnano::rsn_message_confirm_ack_create (&constants_dto);
+	return rsnano::rsn_message_confirm_ack_create (&constants_dto, vote_a.get_handle ());
 }
 
 nano::confirm_ack::confirm_ack (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::vote_uniquer * uniquer_a) :
@@ -907,14 +907,9 @@ nano::confirm_ack::confirm_ack (bool & error_a, nano::stream & stream_a, nano::m
 }
 
 nano::confirm_ack::confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const & vote_a) :
-	message (create_confirm_ack_handle (constants)),
+	message (create_confirm_ack_handle (constants, *vote_a)),
 	vote (vote_a)
 {
-	auto header{ get_header () };
-	header.block_type_set (nano::block_type::not_a_block);
-	debug_assert (vote_a->hashes ().size () < 16);
-	header.count_set (static_cast<uint8_t> (vote_a->hashes ().size ()));
-	set_header (header);
 }
 
 nano::confirm_ack::confirm_ack (nano::confirm_ack const & other_a) :

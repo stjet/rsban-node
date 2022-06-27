@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub(crate) struct Vote {
+pub struct Vote {
     pub timestamp: u64,
 
     // Account that's voting

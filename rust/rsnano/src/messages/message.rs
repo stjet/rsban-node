@@ -1,7 +1,7 @@
 use super::{MessageHeader, MessageType};
 use crate::{
-    deserialize_block, serialized_block_size, utils::Stream, BlockEnum, BlockHash, BlockType,
-    BlockUniquer, NetworkConstants, Root,
+    deserialize_block, serialized_block_size, utils::Stream, voting::Vote, BlockEnum, BlockHash,
+    BlockType, BlockUniquer, NetworkConstants, Root,
 };
 use anyhow::Result;
 use std::{
@@ -347,17 +347,27 @@ impl PartialEq for ConfirmReq {
 #[derive(Clone)]
 pub struct ConfirmAck {
     header: MessageHeader,
+    vote: Option<Arc<RwLock<Vote>>>,
 }
 
 impl ConfirmAck {
-    pub fn new(constants: &NetworkConstants) -> Self {
+    pub fn new(constants: &NetworkConstants, vote: Arc<RwLock<Vote>>) -> Self {
+        let mut header = MessageHeader::new(constants, MessageType::ConfirmAck);
+        header.set_block_type(BlockType::NotABlock);
+        let vote_lk = vote.read().unwrap();
+        debug_assert!(vote_lk.hashes.len() < 16);
+        header.set_count(vote_lk.hashes.len() as u8);
+        drop(vote_lk);
+
         Self {
-            header: MessageHeader::new(constants, MessageType::ConfirmAck),
+            header,
+            vote: Some(vote),
         }
     }
     pub fn with_header(header: &MessageHeader) -> Self {
         Self {
             header: header.clone(),
+            vote: None,
         }
     }
 }

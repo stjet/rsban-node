@@ -1,8 +1,8 @@
 use super::MessageHeaderHandle;
 use crate::{
     ffi::{
-        transport::EndpointDto, BlockHandle, BlockUniquerHandle, FfiStream, NetworkConstantsDto,
-        StringDto,
+        transport::EndpointDto, voting::VoteHandle, BlockHandle, BlockUniquerHandle, FfiStream,
+        NetworkConstantsDto, StringDto,
     },
     messages::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
@@ -337,8 +337,12 @@ pub unsafe extern "C" fn rsn_message_confirm_req_size(block_type: u8, count: usi
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_create(
     constants: *mut NetworkConstantsDto,
+    vote: *mut VoteHandle,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, ConfirmAck::new)
+    create_message_handle(constants, |consts| {
+        let vote = (*vote).vote.clone();
+        ConfirmAck::new(consts, vote)
+    })
 }
 
 #[no_mangle]

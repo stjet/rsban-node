@@ -16,9 +16,9 @@ constexpr std::size_t nano::frontier_req_client::size_frontier;
 void nano::frontier_req_client::run (nano::account const & start_account_a, uint32_t const frontiers_age_a, uint32_t const count_a)
 {
 	nano::frontier_req request{ node->network_params.network };
-	request.start = (start_account_a.is_zero () || start_account_a.number () == std::numeric_limits<nano::uint256_t>::max ()) ? start_account_a : start_account_a.number () + 1;
-	request.age = frontiers_age_a;
-	request.count = count_a;
+	request.set_start ((start_account_a.is_zero () || start_account_a.number () == std::numeric_limits<nano::uint256_t>::max ()) ? start_account_a : start_account_a.number () + 1);
+	request.set_age (frontiers_age_a);
+	request.set_count (count_a);
 	current = start_account_a;
 	frontiers_age = frontiers_age_a;
 	count_limit = count_a;
@@ -243,7 +243,7 @@ void nano::frontier_req_client::next ()
 nano::frontier_req_server::frontier_req_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::bootstrap_server> const & connection_a, std::unique_ptr<nano::frontier_req> request_a) :
 	node (node_a),
 	connection (connection_a),
-	current (request_a->start.number () - 1),
+	current (request_a->get_start ().number () - 1),
 	frontier (0),
 	request (std::move (request_a)),
 	count (0)
@@ -253,7 +253,7 @@ nano::frontier_req_server::frontier_req_server (std::shared_ptr<nano::node> cons
 
 void nano::frontier_req_server::send_next ()
 {
-	if (!current.is_zero () && count < request->count)
+	if (!current.is_zero () && count < request->get_count ())
 	{
 		std::vector<uint8_t> send_buffer;
 		{
@@ -335,7 +335,7 @@ void nano::frontier_req_server::next ()
 	if (accounts.empty ())
 	{
 		auto now (nano::seconds_since_epoch ());
-		bool disable_age_filter (request->age == std::numeric_limits<decltype (request->age)>::max ());
+		bool disable_age_filter (request->get_age () == std::numeric_limits<decltype (request->get_age ())>::max ());
 		std::size_t max_size (128);
 		auto transaction (node->store.tx_begin_read ());
 		if (!send_confirmed ())
@@ -343,7 +343,7 @@ void nano::frontier_req_server::next ()
 			for (auto i (node->store.account.begin (transaction, current.number () + 1)), n (node->store.account.end ()); i != n && accounts.size () != max_size; ++i)
 			{
 				nano::account_info const & info (i->second);
-				if (disable_age_filter || (now - info.modified) <= request->age)
+				if (disable_age_filter || (now - info.modified) <= request->get_age ())
 				{
 					nano::account const & account (i->first);
 					accounts.emplace_back (account, info.head);

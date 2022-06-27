@@ -120,9 +120,9 @@ TEST (uint512_union, parse_error_overflow)
 TEST (frontier_req, serialization)
 {
 	nano::frontier_req request1{ nano::dev::network_params.network };
-	request1.start = 1;
-	request1.age = 2;
-	request1.count = 3;
+	request1.set_start (1);
+	request1.set_age (2);
+	request1.set_count (3);
 	std::vector<uint8_t> bytes;
 	{
 		nano::vectorstream stream (bytes);

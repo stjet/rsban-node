@@ -434,7 +434,7 @@ void nano::bootstrap_server::receive_frontier_req_action (boost::system::error_c
 		{
 			if (config->logging.bulk_pull_logging ())
 			{
-				logger->try_log (boost::str (boost::format ("Received frontier request for %1% with age %2%") % request->start.to_string () % request->age));
+				logger->try_log (boost::str (boost::format ("Received frontier request for %1% with age %2%") % request->get_start ().to_string () % request->get_age ()));
 			}
 			if (make_bootstrap_connection ())
 			{

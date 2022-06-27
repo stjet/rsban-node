@@ -232,7 +232,7 @@ std::size_t nano::message_header::payload_length_bytes () const
 		}
 		case nano::message_type::frontier_req:
 		{
-			return nano::frontier_req::size;
+			return nano::frontier_req::size ();
 		}
 		case nano::message_type::bulk_pull_account:
 		{
@@ -1015,6 +1015,41 @@ bool nano::frontier_req::operator== (nano::frontier_req const & other_a) const
 bool nano::frontier_req::is_only_confirmed_present () const
 {
 	return get_header ().test_extension (nano::message_header::frontier_req_only_confirmed);
+}
+
+nano::account nano::frontier_req::get_start () const
+{
+	return start;
+}
+
+uint32_t nano::frontier_req::get_age () const
+{
+	return age;
+}
+
+uint32_t nano::frontier_req::get_count () const
+{
+	return count;
+}
+
+void nano::frontier_req::set_start (nano::account const & account)
+{
+	start = account;
+}
+
+void nano::frontier_req::set_age (uint32_t age_a)
+{
+	age = age_a;
+}
+
+void nano::frontier_req::set_count (uint32_t count_a)
+{
+	count = count_a;
+}
+
+std::size_t nano::frontier_req::size ()
+{
+	return sizeof (start) + sizeof (age) + sizeof (count);
 }
 
 rsnano::MessageHandle * create_bulk_pull_handle (nano::network_constants const & constants)

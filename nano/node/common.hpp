@@ -384,10 +384,18 @@ public:
 	void visit (nano::message_visitor &) const override;
 	bool operator== (nano::frontier_req const &) const;
 	bool is_only_confirmed_present () const;
+	static std::size_t size ();
+	nano::account get_start () const;
+	void set_start (nano::account const & account);
+	uint32_t get_age () const;
+	void set_age (uint32_t age);
+	uint32_t get_count () const;
+	void set_count (uint32_t count);
+
+private:
 	nano::account start;
 	uint32_t age;
 	uint32_t count;
-	static std::size_t constexpr size = sizeof (start) + sizeof (age) + sizeof (count);
 };
 
 enum class telemetry_maker : uint8_t

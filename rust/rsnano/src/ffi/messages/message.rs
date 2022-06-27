@@ -281,6 +281,17 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_hashes(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_confirm_req_serialize(
+    handle: *mut MessageHandle,
+    stream: *mut c_void,
+) -> bool {
+    let mut stream = FfiStream::new(stream);
+    downcast_message_mut::<ConfirmReq>(handle)
+        .serialize(&mut stream)
+        .is_ok()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_req_deserialize(
     handle: *mut MessageHandle,
     stream: *mut c_void,

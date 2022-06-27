@@ -855,21 +855,9 @@ void nano::confirm_req::visit (nano::message_visitor & visitor_a) const
 
 void nano::confirm_req::serialize (nano::stream & stream_a) const
 {
-	get_header ().serialize (stream_a);
-	if (get_header ().block_type () == nano::block_type::not_a_block)
+	if (!rsnano::rsn_message_confirm_req_serialize (handle, &stream_a))
 	{
-		debug_assert (!get_roots_hashes ().empty ());
-		// Write hashes & roots
-		for (auto & root_hash : get_roots_hashes ())
-		{
-			write (stream_a, root_hash.first);
-			write (stream_a, root_hash.second);
-		}
-	}
-	else
-	{
-		debug_assert (get_block () != nullptr);
-		get_block ()->serialize (stream_a);
+		throw std::runtime_error ("could not serialize confirm_req");
 	}
 }
 

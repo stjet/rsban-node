@@ -44,7 +44,7 @@ pub use toml::*;
 pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
-use crate::{Account, BlockHash, HashOrAccount, RawKey, Root};
+use crate::{Account, Amount, BlockHash, HashOrAccount, RawKey, Root};
 
 pub struct StringHandle(CString);
 #[repr(C)]
@@ -99,6 +99,14 @@ impl From<*const u8> for RawKey {
     }
 }
 
+impl From<*const u8> for Amount {
+    fn from(ptr: *const u8) -> Self {
+        let mut bytes = [0; 16];
+        bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(ptr, 16) });
+        Amount::from_be_bytes(bytes)
+    }
+}
+
 fn into_32_byte_array(ptr: *const u8) -> [u8; 32] {
     let mut bytes = [0; 32];
     bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(ptr, 32) });
@@ -118,4 +126,9 @@ pub(crate) unsafe fn copy_hash_or_account_bytes(source: HashOrAccount, target: *
 pub(crate) unsafe fn copy_account_bytes(source: Account, target: *mut u8) {
     let bytes = std::slice::from_raw_parts_mut(target, 32);
     bytes.copy_from_slice(source.as_bytes());
+}
+
+pub(crate) unsafe fn copy_amount_bytes(source: Amount, target: *mut u8) {
+    let bytes = std::slice::from_raw_parts_mut(target, 16);
+    bytes.copy_from_slice(&source.to_be_bytes());
 }

@@ -192,6 +192,12 @@ impl Amount {
         }
     }
 
+    pub fn from_le_bytes(bytes: [u8; 16]) -> Self {
+        Self {
+            value: u128::from_le_bytes(bytes),
+        }
+    }
+
     pub const fn serialized_size() -> usize {
         std::mem::size_of::<u128>()
     }
@@ -209,6 +215,10 @@ impl Amount {
 
     pub fn to_be_bytes(self) -> [u8; 16] {
         self.value.to_be_bytes()
+    }
+
+    pub fn to_le_bytes(self) -> [u8; 16] {
+        self.value.to_le_bytes()
     }
 
     pub fn encode_hex(&self) -> String {

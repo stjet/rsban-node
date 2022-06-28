@@ -1155,7 +1155,7 @@ void nano::bulk_pull_account::visit (nano::message_visitor & visitor_a) const
 
 std::size_t nano::bulk_pull_account::size ()
 {
-	return sizeof (account) + sizeof (minimum_amount) + sizeof (bulk_pull_account_flags);
+	return rsnano::rsn_message_bulk_pull_account_size ();
 }
 
 nano::account nano::bulk_pull_account::get_account () const
@@ -1176,24 +1176,27 @@ nano::bulk_pull_account_flags nano::bulk_pull_account::get_flags () const
 void nano::bulk_pull_account::set_account (nano::account account_a)
 {
 	account = account_a;
+	rsnano::rsn_message_bulk_pull_account_set_account (handle, account_a.bytes.data ());
 }
 
 void nano::bulk_pull_account::set_minimum_amount (nano::amount amount_a)
 {
 	minimum_amount = amount_a;
+	rsnano::rsn_message_bulk_pull_account_set_minimum_amount (handle, amount_a.bytes.data ());
 }
 
 void nano::bulk_pull_account::set_flags (nano::bulk_pull_account_flags flags_a)
 {
 	flags = flags_a;
+	rsnano::rsn_message_bulk_pull_account_set_flags (handle, static_cast<uint8_t> (flags_a));
 }
 
 void nano::bulk_pull_account::serialize (nano::stream & stream_a) const
 {
 	get_header ().serialize (stream_a);
-	write (stream_a, account);
-	write (stream_a, minimum_amount);
-	write (stream_a, flags);
+	write (stream_a, get_account ());
+	write (stream_a, get_minimum_amount ());
+	write (stream_a, get_flags ());
 }
 
 bool nano::bulk_pull_account::deserialize (nano::stream & stream_a)

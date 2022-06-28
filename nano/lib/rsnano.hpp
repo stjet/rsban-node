@@ -1145,9 +1145,25 @@ MessageDto * result);
 
 void rsn_message_builder_bootstrap_started (const char * id, const char * mode, MessageDto * result);
 
+void rsn_message_bulk_pull_account_account (MessageHandle * handle, uint8_t * account);
+
 MessageHandle * rsn_message_bulk_pull_account_create (NetworkConstantsDto * constants);
 
 MessageHandle * rsn_message_bulk_pull_account_create2 (MessageHeaderHandle * header);
+
+bool rsn_message_bulk_pull_account_deserialize (MessageHandle * handle, void * stream);
+
+uint8_t rsn_message_bulk_pull_account_flags (MessageHandle * handle);
+
+void rsn_message_bulk_pull_account_minimum_amount (MessageHandle * handle, uint8_t * amount);
+
+void rsn_message_bulk_pull_account_set_account (MessageHandle * handle, const uint8_t * account);
+
+void rsn_message_bulk_pull_account_set_flags (MessageHandle * handle, uint8_t flags);
+
+void rsn_message_bulk_pull_account_set_minimum_amount (MessageHandle * handle, const uint8_t * amount);
+
+uintptr_t rsn_message_bulk_pull_account_size ();
 
 uint32_t rsn_message_bulk_pull_count (MessageHandle * handle);
 

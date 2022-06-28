@@ -44,7 +44,7 @@ pub use toml::*;
 pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
-use crate::{Account, Amount, BlockHash, HashOrAccount, RawKey, Root};
+use crate::{Account, Amount, BlockHash, HashOrAccount, RawKey, Root, Signature};
 
 pub struct StringHandle(CString);
 #[repr(C)]
@@ -96,6 +96,14 @@ impl From<*const u8> for Root {
 impl From<*const u8> for RawKey {
     fn from(ptr: *const u8) -> Self {
         RawKey::from_bytes(into_32_byte_array(ptr))
+    }
+}
+
+impl From<*const u8> for Signature {
+    fn from(ptr: *const u8) -> Self {
+        let mut bytes = [0; 64];
+        bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(ptr, 64) });
+        Signature::from_bytes(bytes)
     }
 }
 

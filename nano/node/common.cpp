@@ -1461,6 +1461,7 @@ nano::signature nano::telemetry_data::get_signature () const
 void nano::telemetry_data::set_signature (nano::signature const & signature_a)
 {
 	signature = signature_a;
+	rsnano::rsn_telemetry_data_set_signature (handle, signature_a.bytes.data ());
 }
 
 nano::account nano::telemetry_data::get_node_id () const
@@ -1471,6 +1472,7 @@ nano::account nano::telemetry_data::get_node_id () const
 void nano::telemetry_data::set_node_id (nano::account const & node_id_a)
 {
 	node_id = node_id_a;
+	rsnano::rsn_telemetry_data_set_node_id (handle, node_id_a.bytes.data ());
 }
 
 uint64_t nano::telemetry_data::get_block_count () const
@@ -1481,135 +1483,183 @@ uint64_t nano::telemetry_data::get_block_count () const
 void nano::telemetry_data::set_block_count (uint64_t count_a)
 {
 	block_count = count_a;
+	rsnano::rsn_telemetry_data_set_block_count (handle, count_a);
 }
 
 uint64_t nano::telemetry_data::get_cemented_count () const
 {
 	return cemented_count;
 }
+
 void nano::telemetry_data::set_cemented_count (uint64_t count_a)
 {
 	cemented_count = count_a;
+	rsnano::rsn_telemetry_data_set_cemented_count (handle, count_a);
 }
+
 uint64_t nano::telemetry_data::get_unchecked_count () const
 {
 	return unchecked_count;
 }
+
 void nano::telemetry_data::set_unchecked_count (uint64_t count_a)
 {
 	unchecked_count = count_a;
+	rsnano::rsn_telemetry_data_set_unchecked_count (handle, count_a);
 }
+
 uint64_t nano::telemetry_data::get_account_count () const
 {
 	return account_count;
 }
+
 void nano::telemetry_data::set_account_count (uint64_t count_a)
 {
 	account_count = count_a;
+	rsnano::rsn_telemetry_data_set_account_count (handle, count_a);
 }
+
 uint64_t nano::telemetry_data::get_bandwidth_cap () const
 {
 	return bandwidth_cap;
 }
+
 void nano::telemetry_data::set_bandwidth_cap (uint64_t cap_a)
 {
 	bandwidth_cap = cap_a;
+	rsnano::rsn_telemetry_data_set_bandwidth_cap (handle, cap_a);
 }
+
 uint64_t nano::telemetry_data::get_uptime () const
 {
 	return uptime;
 }
+
 void nano::telemetry_data::set_uptime (uint64_t uptime_a)
 {
 	uptime = uptime_a;
+	rsnano::rsn_telemetry_data_set_uptime (handle, uptime_a);
 }
+
 uint32_t nano::telemetry_data::get_peer_count () const
 {
 	return peer_count;
 }
+
 void nano::telemetry_data::set_peer_count (uint32_t count_a)
 {
 	peer_count = count_a;
+	rsnano::rsn_telemetry_data_set_peer_count (handle, count_a);
 }
+
 uint8_t nano::telemetry_data::get_protocol_version () const
 {
 	return protocol_version;
 }
+
 void nano::telemetry_data::set_protocol_version (uint8_t version_a)
 {
 	protocol_version = version_a;
+	rsnano::rsn_telemetry_data_set_protocol_version (handle, version_a);
 }
+
 nano::block_hash nano::telemetry_data::get_genesis_block () const
 {
 	return genesis_block;
 }
+
 void nano::telemetry_data::set_genesis_block (nano::block_hash const & block_a)
 {
 	genesis_block = block_a;
+	rsnano::rsn_telemetry_data_set_genesis_block (handle, block_a.bytes.data ());
 }
+
 uint8_t nano::telemetry_data::get_major_version () const
 {
 	return major_version;
 }
+
 void nano::telemetry_data::set_major_version (uint8_t version_a)
 {
 	major_version = version_a;
+	rsnano::rsn_telemetry_data_set_major_version (handle, version_a);
 }
+
 uint8_t nano::telemetry_data::get_minor_version () const
 {
 	return minor_version;
 }
+
 void nano::telemetry_data::set_minor_version (uint8_t version_a)
 {
 	minor_version = version_a;
+	rsnano::rsn_telemetry_data_set_minor_version (handle, version_a);
 }
+
 uint8_t nano::telemetry_data::get_patch_version () const
 {
 	return patch_version;
 }
+
 void nano::telemetry_data::set_patch_version (uint8_t version_a)
 {
 	patch_version = version_a;
+	rsnano::rsn_telemetry_data_set_patch_version (handle, version_a);
 }
+
 uint8_t nano::telemetry_data::get_pre_release_version () const
 {
 	return pre_release_version;
 }
+
 void nano::telemetry_data::set_pre_release_version (uint8_t version_a)
 {
 	pre_release_version = version_a;
+	rsnano::rsn_telemetry_data_set_pre_release_version (handle, version_a);
 }
+
 uint8_t nano::telemetry_data::get_maker () const
 {
 	return maker;
 }
+
 void nano::telemetry_data::set_maker (uint8_t maker_a)
 {
 	maker = maker_a;
+	rsnano::rsn_telemetry_data_set_maker (handle, maker_a);
 }
+
 std::chrono::system_clock::time_point nano::telemetry_data::get_timestamp () const
 {
 	return timestamp;
 }
+
 void nano::telemetry_data::set_timestamp (std::chrono::system_clock::time_point timestamp_a)
 {
 	timestamp = timestamp_a;
+	rsnano::rsn_telemetry_data_set_timestamp (handle, std::chrono::duration_cast<std::chrono::milliseconds> (timestamp_a.time_since_epoch ()).count ());
 }
+
 uint64_t nano::telemetry_data::get_active_difficulty () const
 {
 	return active_difficulty;
 }
+
 void nano::telemetry_data::set_active_difficulty (uint64_t difficulty_a)
 {
 	active_difficulty = difficulty_a;
+	rsnano::rsn_telemetry_data_set_active_difficulty (handle, difficulty_a);
 }
+
 std::vector<uint8_t> nano::telemetry_data::get_unknown_data () const
 {
 	return unknown_data;
 }
+
 void nano::telemetry_data::set_unknown_data (std::vector<uint8_t> data_a)
 {
 	unknown_data = data_a;
+	rsnano::rsn_telemetry_data_set_unknown_data (handle, data_a.data (), data_a.size ());
 }
 
 void nano::telemetry_data::deserialize (nano::stream & stream_a, uint16_t payload_length_a)

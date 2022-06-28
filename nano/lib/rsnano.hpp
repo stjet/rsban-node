@@ -1717,6 +1717,46 @@ TelemetryDataHandle * rsn_telemetry_data_create ();
 
 void rsn_telemetry_data_destroy (TelemetryDataHandle * handle);
 
+void rsn_telemetry_data_set_account_count (TelemetryDataHandle * handle, uint64_t count);
+
+void rsn_telemetry_data_set_active_difficulty (TelemetryDataHandle * handle, uint64_t difficulty);
+
+void rsn_telemetry_data_set_bandwidth_cap (TelemetryDataHandle * handle, uint64_t cap);
+
+void rsn_telemetry_data_set_block_count (TelemetryDataHandle * handle, uint64_t count);
+
+void rsn_telemetry_data_set_cemented_count (TelemetryDataHandle * handle, uint64_t count);
+
+void rsn_telemetry_data_set_genesis_block (TelemetryDataHandle * handle, const uint8_t * block);
+
+void rsn_telemetry_data_set_major_version (TelemetryDataHandle * handle, uint8_t version);
+
+void rsn_telemetry_data_set_maker (TelemetryDataHandle * handle, uint8_t maker);
+
+void rsn_telemetry_data_set_minor_version (TelemetryDataHandle * handle, uint8_t version);
+
+void rsn_telemetry_data_set_node_id (TelemetryDataHandle * handle, const uint8_t * node_id);
+
+void rsn_telemetry_data_set_patch_version (TelemetryDataHandle * handle, uint8_t version);
+
+void rsn_telemetry_data_set_peer_count (TelemetryDataHandle * handle, uint32_t count);
+
+void rsn_telemetry_data_set_pre_release_version (TelemetryDataHandle * handle, uint8_t version);
+
+void rsn_telemetry_data_set_protocol_version (TelemetryDataHandle * handle, uint8_t version);
+
+void rsn_telemetry_data_set_signature (TelemetryDataHandle * handle, const uint8_t * signature);
+
+void rsn_telemetry_data_set_timestamp (TelemetryDataHandle * handle, uint64_t timestamp_ms);
+
+void rsn_telemetry_data_set_unchecked_count (TelemetryDataHandle * handle, uint64_t count);
+
+void rsn_telemetry_data_set_unknown_data (TelemetryDataHandle * handle,
+const uint8_t * data,
+uintptr_t len);
+
+void rsn_telemetry_data_set_uptime (TelemetryDataHandle * handle, uint64_t uptime);
+
 uint16_t rsn_test_node_port ();
 
 uint8_t rsn_to_topic (const char * topic);

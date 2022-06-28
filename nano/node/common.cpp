@@ -1160,60 +1160,47 @@ std::size_t nano::bulk_pull_account::size ()
 
 nano::account nano::bulk_pull_account::get_account () const
 {
+	nano::account account;
+	rsnano::rsn_message_bulk_pull_account_account (handle, account.bytes.data ());
 	return account;
 }
 
 nano::amount nano::bulk_pull_account::get_minimum_amount () const
 {
-	return minimum_amount;
+	nano::amount amount;
+	rsnano::rsn_message_bulk_pull_account_minimum_amount (handle, amount.bytes.data ());
+	return amount;
 }
 
 nano::bulk_pull_account_flags nano::bulk_pull_account::get_flags () const
 {
-	return flags;
+	return static_cast<nano::bulk_pull_account_flags> (rsnano::rsn_message_bulk_pull_account_flags (handle));
 }
 
 void nano::bulk_pull_account::set_account (nano::account account_a)
 {
-	account = account_a;
 	rsnano::rsn_message_bulk_pull_account_set_account (handle, account_a.bytes.data ());
 }
 
 void nano::bulk_pull_account::set_minimum_amount (nano::amount amount_a)
 {
-	minimum_amount = amount_a;
 	rsnano::rsn_message_bulk_pull_account_set_minimum_amount (handle, amount_a.bytes.data ());
 }
 
 void nano::bulk_pull_account::set_flags (nano::bulk_pull_account_flags flags_a)
 {
-	flags = flags_a;
 	rsnano::rsn_message_bulk_pull_account_set_flags (handle, static_cast<uint8_t> (flags_a));
 }
 
 void nano::bulk_pull_account::serialize (nano::stream & stream_a) const
 {
-	get_header ().serialize (stream_a);
-	write (stream_a, get_account ());
-	write (stream_a, get_minimum_amount ());
-	write (stream_a, get_flags ());
+	if (!rsnano::rsn_message_bulk_pull_account_serialize (handle, &stream_a))
+		throw std::runtime_error ("bulk_pull_account could not be serialized");
 }
 
 bool nano::bulk_pull_account::deserialize (nano::stream & stream_a)
 {
-	debug_assert (get_header ().get_type () == nano::message_type::bulk_pull_account);
-	auto error (false);
-	try
-	{
-		nano::read (stream_a, account);
-		nano::read (stream_a, minimum_amount);
-		nano::read (stream_a, flags);
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-
+	bool error = !rsnano::rsn_message_bulk_pull_account_deserialize (handle, &stream_a);
 	return error;
 }
 

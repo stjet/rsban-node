@@ -1157,6 +1157,8 @@ uint8_t rsn_message_bulk_pull_account_flags (MessageHandle * handle);
 
 void rsn_message_bulk_pull_account_minimum_amount (MessageHandle * handle, uint8_t * amount);
 
+bool rsn_message_bulk_pull_account_serialize (MessageHandle * handle, void * stream);
+
 void rsn_message_bulk_pull_account_set_account (MessageHandle * handle, const uint8_t * account);
 
 void rsn_message_bulk_pull_account_set_flags (MessageHandle * handle, uint8_t flags);

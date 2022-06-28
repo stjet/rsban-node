@@ -66,15 +66,15 @@ void nano::bulk_pull_client::request ()
 	if (pull.head == pull.head_original && pull.attempts % 4 < 3)
 	{
 		// Account for new pulls
-		req.start = pull.account_or_head;
+		req.set_start (pull.account_or_head);
 	}
 	else
 	{
 		// Head for cached pulls or accounts with public key equal to existing block hash (25% of attempts)
-		req.start = pull.head;
+		req.set_start (pull.head);
 	}
-	req.end = pull.end;
-	req.count = pull.count;
+	req.set_end (pull.end);
+	req.set_count (pull.count);
 	req.set_count_present (pull.count != 0);
 
 	if (logging_enabled)
@@ -423,50 +423,50 @@ void nano::bulk_pull_server::set_current_end ()
 	include_start = false;
 	debug_assert (request != nullptr);
 	auto transaction (node->store.tx_begin_read ());
-	if (!node->store.block.exists (transaction, request->end))
+	if (!node->store.block.exists (transaction, request->get_end ()))
 	{
 		if (node->config->logging.bulk_pull_logging ())
 		{
-			node->logger->try_log (boost::str (boost::format ("Bulk pull end block doesn't exist: %1%, sending everything") % request->end.to_string ()));
+			node->logger->try_log (boost::str (boost::format ("Bulk pull end block doesn't exist: %1%, sending everything") % request->get_end ().to_string ()));
 		}
-		request->end.clear ();
+		request->set_end (0);
 	}
 
-	if (node->store.block.exists (transaction, request->start.as_block_hash ()))
+	if (node->store.block.exists (transaction, request->get_start ().as_block_hash ()))
 	{
 		if (node->config->logging.bulk_pull_logging ())
 		{
-			node->logger->try_log (boost::str (boost::format ("Bulk pull request for block hash: %1%") % request->start.to_string ()));
+			node->logger->try_log (boost::str (boost::format ("Bulk pull request for block hash: %1%") % request->get_start ().to_string ()));
 		}
 
-		current = request->start.as_block_hash ();
+		current = request->get_start ().as_block_hash ();
 		include_start = true;
 	}
 	else
 	{
 		nano::account_info info;
-		auto no_address (node->store.account.get (transaction, request->start.as_account (), info));
+		auto no_address (node->store.account.get (transaction, request->get_start ().as_account (), info));
 		if (no_address)
 		{
 			if (node->config->logging.bulk_pull_logging ())
 			{
-				node->logger->try_log (boost::str (boost::format ("Request for unknown account: %1%") % request->start.to_account ()));
+				node->logger->try_log (boost::str (boost::format ("Request for unknown account: %1%") % request->get_start ().to_account ()));
 			}
-			current = request->end;
+			current = request->get_end ();
 		}
 		else
 		{
 			current = info.head;
-			if (!request->end.is_zero ())
+			if (!request->get_end ().is_zero ())
 			{
-				auto account (node->ledger.account (transaction, request->end));
-				if (account != request->start)
+				auto account (node->ledger.account (transaction, request->get_end ()));
+				if (account != request->get_start ())
 				{
 					if (node->config->logging.bulk_pull_logging ())
 					{
-						node->logger->try_log (boost::str (boost::format ("Request for block that is not on account chain: %1% not on %2%") % request->end.to_string () % request->start.to_account ()));
+						node->logger->try_log (boost::str (boost::format ("Request for block that is not on account chain: %1% not on %2%") % request->get_end ().to_string () % request->get_start ().to_account ()));
 					}
-					current = request->end;
+					current = request->get_end ();
 				}
 			}
 		}
@@ -475,7 +475,7 @@ void nano::bulk_pull_server::set_current_end ()
 	sent_count = 0;
 	if (request->is_count_present ())
 	{
-		max_count = request->count;
+		max_count = request->get_count ();
 	}
 	else
 	{
@@ -522,11 +522,11 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 	 * Unless we are including the "start" member and this is the
 	 * start member, then include it anyway.
 	 */
-	if (current != request->end)
+	if (current != request->get_end ())
 	{
 		send_current = true;
 	}
-	else if (current == request->end && include_start == true)
+	else if (current == request->get_end () && include_start == true)
 	{
 		send_current = true;
 
@@ -559,12 +559,12 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 			}
 			else
 			{
-				current = request->end;
+				current = request->get_end ();
 			}
 		}
 		else
 		{
-			current = request->end;
+			current = request->get_end ();
 		}
 
 		sent_count++;

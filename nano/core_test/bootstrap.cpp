@@ -20,11 +20,11 @@ TEST (bulk_pull, no_address)
 	nano::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network);
-	req->start = 1;
-	req->end = 2;
+	req->set_start (1);
+	req->set_end (2);
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
-	ASSERT_EQ (request->current, request->request->end);
+	ASSERT_EQ (request->current, request->request->get_end ());
 	ASSERT_TRUE (request->current.is_zero ());
 }
 
@@ -33,12 +33,12 @@ TEST (bulk_pull, genesis_to_end)
 	nano::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network);
-	req->start = nano::dev::genesis_key.pub;
-	req->end.clear ();
+	req->set_start (nano::dev::genesis_key.pub);
+	req->set_end (0);
 	connection->requests.push (nullptr);
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
 	ASSERT_EQ (system.nodes[0]->latest (nano::dev::genesis_key.pub), request->current);
-	ASSERT_EQ (request->request->end, request->request->end);
+	ASSERT_EQ (request->request->get_end (), request->request->get_end ());
 }
 
 // If we can't find the end block, send everything
@@ -47,12 +47,12 @@ TEST (bulk_pull, no_end)
 	nano::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network);
-	req->start = nano::dev::genesis_key.pub;
-	req->end = 1;
+	req->set_start (nano::dev::genesis_key.pub);
+	req->set_end (1);
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
 	ASSERT_EQ (system.nodes[0]->latest (nano::dev::genesis_key.pub), request->current);
-	ASSERT_TRUE (request->request->end.is_zero ());
+	ASSERT_TRUE (request->request->get_end ().is_zero ());
 }
 
 TEST (bulk_pull, end_not_owned)
@@ -73,11 +73,11 @@ TEST (bulk_pull, end_not_owned)
 	ASSERT_EQ (nano::process_result::progress, system.nodes[0]->process (open).code);
 	auto connection (create_bootstrap_server (system.nodes[0]));
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network);
-	req->start = key2.pub;
-	req->end = nano::dev::genesis->hash ();
+	req->set_start (key2.pub);
+	req->set_end (nano::dev::genesis->hash ());
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
-	ASSERT_EQ (request->current, request->request->end);
+	ASSERT_EQ (request->current, request->request->get_end ());
 }
 
 TEST (bulk_pull, none)
@@ -85,8 +85,8 @@ TEST (bulk_pull, none)
 	nano::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network);
-	req->start = nano::dev::genesis_key.pub;
-	req->end = nano::dev::genesis->hash ();
+	req->set_start (nano::dev::genesis_key.pub);
+	req->set_end (nano::dev::genesis->hash ());
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
 	auto block (request->get_next ());
@@ -98,15 +98,15 @@ TEST (bulk_pull, get_next_on_open)
 	nano::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network);
-	req->start = nano::dev::genesis_key.pub;
-	req->end.clear ();
+	req->set_start (nano::dev::genesis_key.pub);
+	req->set_end (0);
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
 	auto block (request->get_next ());
 	ASSERT_NE (nullptr, block);
 	ASSERT_TRUE (block->previous ().is_zero ());
 	ASSERT_FALSE (connection->requests.empty ());
-	ASSERT_EQ (request->current, request->request->end);
+	ASSERT_EQ (request->current, request->request->get_end ());
 }
 
 TEST (bulk_pull, by_block)
@@ -114,8 +114,8 @@ TEST (bulk_pull, by_block)
 	nano::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network);
-	req->start = nano::dev::genesis->hash ();
-	req->end.clear ();
+	req->set_start (nano::dev::genesis->hash ());
+	req->set_end (0);
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
 	auto block (request->get_next ());
@@ -131,8 +131,8 @@ TEST (bulk_pull, by_block_single)
 	nano::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network);
-	req->start = nano::dev::genesis->hash ();
-	req->end = nano::dev::genesis->hash ();
+	req->set_start (nano::dev::genesis->hash ());
+	req->set_end (nano::dev::genesis->hash ());
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
 	auto block (request->get_next ());
@@ -155,9 +155,9 @@ TEST (bulk_pull, count_limit)
 
 	auto connection (create_bootstrap_server (node0));
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network);
-	req->start = receive1->hash ();
+	req->set_start (receive1->hash ());
 	req->set_count_present (true);
-	req->count = 2;
+	req->set_count (2);
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (node0, connection, std::move (req)));
 

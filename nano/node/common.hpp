@@ -476,14 +476,22 @@ public:
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
-	nano::hash_or_account start{ 0 };
-	nano::block_hash end{ 0 };
-	count_t count{ 0 };
 	bool is_count_present () const;
 	void set_count_present (bool);
 	static std::size_t constexpr count_present_flag = nano::message_header::bulk_pull_count_present_flag;
 	static std::size_t constexpr extended_parameters_size = 8;
-	static std::size_t constexpr size = sizeof (start) + sizeof (end);
+	static std::size_t size ();
+	nano::hash_or_account get_start () const;
+	nano::block_hash get_end () const;
+	count_t get_count () const;
+	void set_start (nano::hash_or_account start_a);
+	void set_end (nano::block_hash end_a);
+	void set_count (count_t count_a);
+
+private:
+	nano::hash_or_account start{ 0 };
+	nano::block_hash end{ 0 };
+	count_t count{ 0 };
 };
 
 class bulk_pull_account final : public message

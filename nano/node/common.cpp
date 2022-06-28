@@ -222,7 +222,7 @@ std::size_t nano::message_header::payload_length_bytes () const
 	{
 		case nano::message_type::bulk_pull:
 		{
-			return nano::bulk_pull::size + (bulk_pull_is_count_present () ? nano::bulk_pull::extended_parameters_size : 0);
+			return nano::bulk_pull::size () + (bulk_pull_is_count_present () ? nano::bulk_pull::extended_parameters_size : 0);
 		}
 		case nano::message_type::bulk_push:
 		case nano::message_type::telemetry_req:
@@ -1060,6 +1060,41 @@ nano::bulk_pull::bulk_pull (bool & error_a, nano::stream & stream_a, nano::messa
 	}
 }
 
+std::size_t nano::bulk_pull::size ()
+{
+	return sizeof (start) + sizeof (end);
+}
+
+nano::hash_or_account nano::bulk_pull::get_start () const
+{
+	return start;
+}
+
+nano::block_hash nano::bulk_pull::get_end () const
+{
+	return end;
+}
+
+uint32_t nano::bulk_pull::get_count () const
+{
+	return count;
+}
+
+void nano::bulk_pull::set_start (nano::hash_or_account start_a)
+{
+	start = start_a;
+}
+
+void nano::bulk_pull::set_end (nano::block_hash end_a)
+{
+	end = end_a;
+}
+
+void nano::bulk_pull::set_count (uint32_t count_a)
+{
+	count = count_a;
+}
+
 void nano::bulk_pull::visit (nano::message_visitor & visitor_a) const
 {
 	visitor_a.bulk_pull (*this);
@@ -1075,19 +1110,19 @@ void nano::bulk_pull::serialize (nano::stream & stream_a) const
 	 * and that is the behavior of not having the flag set
 	 * so it is wasteful to do this.
 	 */
-	debug_assert ((count == 0 && !is_count_present ()) || (count != 0 && is_count_present ()));
+	debug_assert ((get_count () == 0 && !is_count_present ()) || (get_count () != 0 && is_count_present ()));
 
 	get_header ().serialize (stream_a);
-	write (stream_a, start);
-	write (stream_a, end);
+	write (stream_a, get_start ());
+	write (stream_a, get_end ());
 
 	if (is_count_present ())
 	{
 		std::array<uint8_t, extended_parameters_size> count_buffer{ { 0 } };
-		decltype (count) count_little_endian;
+		uint32_t count_little_endian;
 		static_assert (sizeof (count_little_endian) < (count_buffer.size () - 1), "count must fit within buffer");
 
-		count_little_endian = boost::endian::native_to_little (count);
+		count_little_endian = boost::endian::native_to_little (get_count ());
 		memcpy (count_buffer.data () + 1, &count_little_endian, sizeof (count_little_endian));
 
 		write (stream_a, count_buffer);

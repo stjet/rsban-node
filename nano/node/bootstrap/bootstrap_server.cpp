@@ -412,7 +412,7 @@ void nano::bootstrap_server::receive_bulk_pull_account_action (boost::system::er
 		{
 			if (config->logging.bulk_pull_logging ())
 			{
-				logger->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->account.to_account () % nano::amount (request->minimum_amount).format_balance (nano::Mxrb_ratio, 10, true)));
+				logger->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->get_account ().to_account () % nano::amount (request->get_minimum_amount ()).format_balance (nano::Mxrb_ratio, 10, true)));
 			}
 			if (make_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
 			{

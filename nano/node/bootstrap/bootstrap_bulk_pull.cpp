@@ -305,12 +305,12 @@ nano::bulk_pull_account_client::~bulk_pull_account_client ()
 void nano::bulk_pull_account_client::request ()
 {
 	nano::bulk_pull_account req{ node->network_params.network };
-	req.account = account;
-	req.minimum_amount = node->config->receive_minimum;
-	req.flags = nano::bulk_pull_account_flags::pending_hash_and_amount;
+	req.set_account (account);
+	req.set_minimum_amount (node->config->receive_minimum);
+	req.set_flags (nano::bulk_pull_account_flags::pending_hash_and_amount);
 	if (node->config->logging.bulk_pull_logging ())
 	{
-		node->logger->try_log (boost::str (boost::format ("Requesting pending for account %1% from %2%. %3% accounts in queue") % req.account.to_account () % connection->channel_string () % attempt->wallet_size ()));
+		node->logger->try_log (boost::str (boost::format ("Requesting pending for account %1% from %2%. %3% accounts in queue") % req.get_account ().to_account () % connection->channel_string () % attempt->wallet_size ()));
 	}
 	else if (node->config->logging.network_logging () && attempt->should_log ())
 	{
@@ -644,11 +644,11 @@ void nano::bulk_pull_account_server::set_params ()
 	invalid_request = false;
 	pending_include_address = false;
 	pending_address_only = false;
-	if (request->flags == nano::bulk_pull_account_flags::pending_address_only)
+	if (request->get_flags () == nano::bulk_pull_account_flags::pending_address_only)
 	{
 		pending_address_only = true;
 	}
-	else if (request->flags == nano::bulk_pull_account_flags::pending_hash_amount_and_address)
+	else if (request->get_flags () == nano::bulk_pull_account_flags::pending_hash_amount_and_address)
 	{
 		/**
 		 ** This is the same as "pending_hash_and_amount" but with the
@@ -656,7 +656,7 @@ void nano::bulk_pull_account_server::set_params ()
 		 **/
 		pending_include_address = true;
 	}
-	else if (request->flags == nano::bulk_pull_account_flags::pending_hash_and_amount)
+	else if (request->get_flags () == nano::bulk_pull_account_flags::pending_hash_and_amount)
 	{
 		/** The defaults are set above **/
 	}
@@ -664,7 +664,7 @@ void nano::bulk_pull_account_server::set_params ()
 	{
 		if (node->config->logging.bulk_pull_logging ())
 		{
-			node->logger->try_log (boost::str (boost::format ("Invalid bulk_pull_account flags supplied %1%") % static_cast<uint8_t> (request->flags)));
+			node->logger->try_log (boost::str (boost::format ("Invalid bulk_pull_account flags supplied %1%") % static_cast<uint8_t> (request->get_flags ())));
 		}
 
 		invalid_request = true;
@@ -675,7 +675,7 @@ void nano::bulk_pull_account_server::set_params ()
 	/*
 	 * Initialize the current item from the requested account
 	 */
-	current_key.account = request->account;
+	current_key.account = request->get_account ();
 	current_key.hash = 0;
 }
 
@@ -691,8 +691,8 @@ void nano::bulk_pull_account_server::send_frontier ()
 		auto stream_transaction (node->store.tx_begin_read ());
 
 		// Get account balance and frontier block hash
-		auto account_frontier_hash (node->ledger.latest (stream_transaction, request->account));
-		auto account_frontier_balance_int (node->ledger.account_balance (stream_transaction, request->account));
+		auto account_frontier_hash (node->ledger.latest (stream_transaction, request->get_account ()));
+		auto account_frontier_balance_int (node->ledger.account_balance (stream_transaction, request->get_account ()));
 		nano::uint128_union account_frontier_balance (account_frontier_balance_int);
 
 		// Write the frontier block hash and balance into a buffer
@@ -810,7 +810,7 @@ std::pair<std::unique_ptr<nano::pending_key>, std::unique_ptr<nano::pending_info
 		/*
 		 * Finish up if the response is for a different account
 		 */
-		if (key.account != request->account)
+		if (key.account != request->get_account ())
 		{
 			break;
 		}
@@ -819,7 +819,7 @@ std::pair<std::unique_ptr<nano::pending_key>, std::unique_ptr<nano::pending_info
 		 * Skip entries where the amount is less than the requested
 		 * minimum
 		 */
-		if (info.amount < request->minimum_amount)
+		if (info.amount < request->get_minimum_amount ())
 		{
 			continue;
 		}

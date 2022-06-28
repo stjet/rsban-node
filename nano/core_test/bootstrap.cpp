@@ -1880,9 +1880,9 @@ TEST (bulk_pull_account, basics)
 
 	{
 		auto req = std::make_unique<nano::bulk_pull_account> (nano::dev::network_params.network);
-		req->account = key1.pub;
-		req->minimum_amount = 5;
-		req->flags = nano::bulk_pull_account_flags ();
+		req->set_account (key1.pub);
+		req->set_minimum_amount (5);
+		req->set_flags (nano::bulk_pull_account_flags ());
 		connection->requests.push (std::unique_ptr<nano::message>{});
 		auto request (std::make_shared<nano::bulk_pull_account_server> (system.nodes[0], connection, std::move (req)));
 		ASSERT_FALSE (request->invalid_request);
@@ -1899,9 +1899,9 @@ TEST (bulk_pull_account, basics)
 
 	{
 		auto req = std::make_unique<nano::bulk_pull_account> (nano::dev::network_params.network);
-		req->account = key1.pub;
-		req->minimum_amount = 0;
-		req->flags = nano::bulk_pull_account_flags::pending_address_only;
+		req->set_account (key1.pub);
+		req->set_minimum_amount (0);
+		req->set_flags (nano::bulk_pull_account_flags::pending_address_only);
 		auto request (std::make_shared<nano::bulk_pull_account_server> (system.nodes[0], connection, std::move (req)));
 		ASSERT_TRUE (request->pending_address_only);
 		auto block_data (request->get_next ());

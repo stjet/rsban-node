@@ -497,10 +497,18 @@ public:
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
+	static std::size_t size ();
+	nano::account get_account () const;
+	nano::amount get_minimum_amount () const;
+	bulk_pull_account_flags get_flags () const;
+	void set_account (nano::account account_a);
+	void set_minimum_amount (nano::amount amount_a);
+	void set_flags (bulk_pull_account_flags flags_a);
+
+private:
 	nano::account account;
 	nano::amount minimum_amount;
 	bulk_pull_account_flags flags;
-	static std::size_t constexpr size = sizeof (account) + sizeof (minimum_amount) + sizeof (bulk_pull_account_flags);
 };
 
 class bulk_push final : public message

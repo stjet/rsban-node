@@ -236,7 +236,7 @@ std::size_t nano::message_header::payload_length_bytes () const
 		}
 		case nano::message_type::bulk_pull_account:
 		{
-			return nano::bulk_pull_account::size;
+			return nano::bulk_pull_account::size ();
 		}
 		case nano::message_type::keepalive:
 		{
@@ -1151,6 +1151,41 @@ nano::bulk_pull_account::bulk_pull_account (bool & error_a, nano::stream & strea
 void nano::bulk_pull_account::visit (nano::message_visitor & visitor_a) const
 {
 	visitor_a.bulk_pull_account (*this);
+}
+
+std::size_t nano::bulk_pull_account::size ()
+{
+	return sizeof (account) + sizeof (minimum_amount) + sizeof (bulk_pull_account_flags);
+}
+
+nano::account nano::bulk_pull_account::get_account () const
+{
+	return account;
+}
+
+nano::amount nano::bulk_pull_account::get_minimum_amount () const
+{
+	return minimum_amount;
+}
+
+nano::bulk_pull_account_flags nano::bulk_pull_account::get_flags () const
+{
+	return flags;
+}
+
+void nano::bulk_pull_account::set_account (nano::account account_a)
+{
+	account = account_a;
+}
+
+void nano::bulk_pull_account::set_minimum_amount (nano::amount amount_a)
+{
+	minimum_amount = amount_a;
+}
+
+void nano::bulk_pull_account::set_flags (nano::bulk_pull_account_flags flags_a)
+{
+	flags = flags_a;
 }
 
 void nano::bulk_pull_account::serialize (nano::stream & stream_a) const

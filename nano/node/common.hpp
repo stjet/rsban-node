@@ -414,13 +414,43 @@ public:
 	void set_node_id (nano::account const & node_id_a);
 	uint64_t get_block_count () const;
 	void set_block_count (uint64_t count_a);
+	uint64_t get_cemented_count () const;
+	void set_cemented_count (uint64_t count_a);
+	uint64_t get_unchecked_count () const;
+	void set_unchecked_count (uint64_t count_a);
+	uint64_t get_account_count () const;
+	void set_account_count (uint64_t count_a);
+	uint64_t get_bandwidth_cap () const;
+	void set_bandwidth_cap (uint64_t cap_a);
+	uint64_t get_uptime () const;
+	void set_uptime (uint64_t uptime_a);
+	uint32_t get_peer_count () const;
+	void set_peer_count (uint32_t count_a);
+	uint8_t get_protocol_version () const;
+	void set_protocol_version (uint8_t version_a);
+	nano::block_hash get_genesis_block () const;
+	void set_genesis_block (nano::block_hash const & block_a);
+	uint8_t get_major_version () const;
+	void set_major_version (uint8_t version_a);
+	uint8_t get_minor_version () const;
+	void set_minor_version (uint8_t version_a);
+	uint8_t get_patch_version () const;
+	void set_patch_version (uint8_t version_a);
+	uint8_t get_pre_release_version () const;
+	void set_pre_release_version (uint8_t version_a);
+	uint8_t get_maker () const;
+	void set_maker (uint8_t maker_a);
+	std::chrono::system_clock::time_point get_timestamp () const;
+	void set_timestamp (std::chrono::system_clock::time_point timestamp_a);
+	uint64_t get_active_difficulty () const;
+	void set_active_difficulty (uint64_t difficulty_a);
+	std::vector<uint8_t> get_unknown_data () const;
+	void set_unknown_data (std::vector<uint8_t> data_a);
 
 private:
 	nano::signature signature{ 0 };
 	nano::account node_id{};
 	uint64_t block_count{ 0 };
-
-public:
 	uint64_t cemented_count{ 0 };
 	uint64_t unchecked_count{ 0 };
 	uint64_t account_count{ 0 };
@@ -433,11 +463,12 @@ public:
 	uint8_t minor_version{ 0 };
 	uint8_t patch_version{ 0 };
 	uint8_t pre_release_version{ 0 };
-	uint8_t maker{ static_cast<std::underlying_type_t<telemetry_maker>> (telemetry_maker::nf_node) }; // Where this telemetry information originated
+	uint8_t maker{ static_cast<uint8_t> (telemetry_maker::nf_node) }; // Where this telemetry information originated
 	std::chrono::system_clock::time_point timestamp;
 	uint64_t active_difficulty{ 0 };
 	std::vector<uint8_t> unknown_data;
 
+public:
 	void serialize (nano::stream &) const;
 	void deserialize (nano::stream &, uint16_t);
 	nano::error serialize_json (nano::jsonconfig &, bool) const;

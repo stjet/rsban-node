@@ -1305,11 +1305,11 @@ nano::telemetry_ack::telemetry_ack (nano::network_constants const & constants, n
 	message (create_telemetry_ack_handle (constants)),
 	data (telemetry_data_a)
 {
-	debug_assert (telemetry_data::size + telemetry_data_a.unknown_data.size () <= message_header::telemetry_size_mask.to_ulong ()); // Maximum size the mask allows
+	debug_assert (telemetry_data::size + telemetry_data_a.get_unknown_data ().size () <= message_header::telemetry_size_mask.to_ulong ()); // Maximum size the mask allows
 	auto header{ get_header () };
 	auto extensions{ header.get_extensions () };
 	extensions &= ~message_header::telemetry_size_mask;
-	extensions |= std::bitset<16> (static_cast<unsigned long long> (telemetry_data::size) + telemetry_data_a.unknown_data.size ());
+	extensions |= std::bitset<16> (static_cast<unsigned long long> (telemetry_data::size) + telemetry_data_a.get_unknown_data ().size ());
 	header.set_extensions (extensions);
 	set_header (header);
 }
@@ -1481,6 +1481,135 @@ uint64_t nano::telemetry_data::get_block_count () const
 void nano::telemetry_data::set_block_count (uint64_t count_a)
 {
 	block_count = count_a;
+}
+
+uint64_t nano::telemetry_data::get_cemented_count () const
+{
+	return cemented_count;
+}
+void nano::telemetry_data::set_cemented_count (uint64_t count_a)
+{
+	cemented_count = count_a;
+}
+uint64_t nano::telemetry_data::get_unchecked_count () const
+{
+	return unchecked_count;
+}
+void nano::telemetry_data::set_unchecked_count (uint64_t count_a)
+{
+	unchecked_count = count_a;
+}
+uint64_t nano::telemetry_data::get_account_count () const
+{
+	return account_count;
+}
+void nano::telemetry_data::set_account_count (uint64_t count_a)
+{
+	account_count = count_a;
+}
+uint64_t nano::telemetry_data::get_bandwidth_cap () const
+{
+	return bandwidth_cap;
+}
+void nano::telemetry_data::set_bandwidth_cap (uint64_t cap_a)
+{
+	bandwidth_cap = cap_a;
+}
+uint64_t nano::telemetry_data::get_uptime () const
+{
+	return uptime;
+}
+void nano::telemetry_data::set_uptime (uint64_t uptime_a)
+{
+	uptime = uptime_a;
+}
+uint32_t nano::telemetry_data::get_peer_count () const
+{
+	return peer_count;
+}
+void nano::telemetry_data::set_peer_count (uint32_t count_a)
+{
+	peer_count = count_a;
+}
+uint8_t nano::telemetry_data::get_protocol_version () const
+{
+	return protocol_version;
+}
+void nano::telemetry_data::set_protocol_version (uint8_t version_a)
+{
+	protocol_version = version_a;
+}
+nano::block_hash nano::telemetry_data::get_genesis_block () const
+{
+	return genesis_block;
+}
+void nano::telemetry_data::set_genesis_block (nano::block_hash const & block_a)
+{
+	genesis_block = block_a;
+}
+uint8_t nano::telemetry_data::get_major_version () const
+{
+	return major_version;
+}
+void nano::telemetry_data::set_major_version (uint8_t version_a)
+{
+	major_version = version_a;
+}
+uint8_t nano::telemetry_data::get_minor_version () const
+{
+	return minor_version;
+}
+void nano::telemetry_data::set_minor_version (uint8_t version_a)
+{
+	minor_version = version_a;
+}
+uint8_t nano::telemetry_data::get_patch_version () const
+{
+	return patch_version;
+}
+void nano::telemetry_data::set_patch_version (uint8_t version_a)
+{
+	patch_version = version_a;
+}
+uint8_t nano::telemetry_data::get_pre_release_version () const
+{
+	return pre_release_version;
+}
+void nano::telemetry_data::set_pre_release_version (uint8_t version_a)
+{
+	pre_release_version = version_a;
+}
+uint8_t nano::telemetry_data::get_maker () const
+{
+	return maker;
+}
+void nano::telemetry_data::set_maker (uint8_t maker_a)
+{
+	maker = maker_a;
+}
+std::chrono::system_clock::time_point nano::telemetry_data::get_timestamp () const
+{
+	return timestamp;
+}
+void nano::telemetry_data::set_timestamp (std::chrono::system_clock::time_point timestamp_a)
+{
+	timestamp = timestamp_a;
+}
+uint64_t nano::telemetry_data::get_active_difficulty () const
+{
+	return active_difficulty;
+}
+void nano::telemetry_data::set_active_difficulty (uint64_t difficulty_a)
+{
+	active_difficulty = difficulty_a;
+}
+std::vector<uint8_t> nano::telemetry_data::get_unknown_data () const
+{
+	return unknown_data;
+}
+void nano::telemetry_data::set_unknown_data (std::vector<uint8_t> data_a)
+{
+	unknown_data = data_a;
 }
 
 void nano::telemetry_data::deserialize (nano::stream & stream_a, uint16_t payload_length_a)

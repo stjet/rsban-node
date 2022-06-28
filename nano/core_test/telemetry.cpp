@@ -15,98 +15,98 @@ TEST (telemetry, consolidate_data)
 
 	// Pick specific values so that we can check both mode and average are working correctly
 	nano::telemetry_data data;
-	data.account_count = 2;
+	data.set_account_count (2);
 	data.set_block_count (1);
-	data.cemented_count = 1;
-	data.protocol_version = 12;
-	data.peer_count = 2;
-	data.bandwidth_cap = 100;
-	data.unchecked_count = 3;
-	data.uptime = 6;
-	data.genesis_block = nano::block_hash (3);
-	data.major_version = 20;
-	data.minor_version = 1;
-	data.patch_version = 4;
-	data.pre_release_version = 6;
-	data.maker = 2;
-	data.timestamp = std::chrono::system_clock::time_point (std::chrono::milliseconds (time));
-	data.active_difficulty = 2;
+	data.set_cemented_count (1);
+	data.set_protocol_version (12);
+	data.set_peer_count (2);
+	data.set_bandwidth_cap (100);
+	data.set_unchecked_count (3);
+	data.set_uptime (6);
+	data.set_genesis_block (nano::block_hash (3));
+	data.set_major_version (20);
+	data.set_minor_version (1);
+	data.set_patch_version (4);
+	data.set_pre_release_version (6);
+	data.set_maker (2);
+	data.set_timestamp (std::chrono::system_clock::time_point (std::chrono::milliseconds (time)));
+	data.set_active_difficulty (2);
 
 	nano::telemetry_data data1;
-	data1.account_count = 5;
+	data1.set_account_count (5);
 	data1.set_block_count (7);
-	data1.cemented_count = 4;
-	data1.protocol_version = 11;
-	data1.peer_count = 5;
-	data1.bandwidth_cap = 0;
-	data1.unchecked_count = 1;
-	data1.uptime = 10;
-	data1.genesis_block = nano::block_hash (4);
-	data1.major_version = 10;
-	data1.minor_version = 2;
-	data1.patch_version = 3;
-	data1.pre_release_version = 6;
-	data1.maker = 2;
-	data1.timestamp = std::chrono::system_clock::time_point (std::chrono::milliseconds (time + 1));
-	data1.active_difficulty = 3;
+	data1.set_cemented_count (4);
+	data1.set_protocol_version (11);
+	data1.set_peer_count (5);
+	data1.set_bandwidth_cap (0);
+	data1.set_unchecked_count (1);
+	data1.set_uptime (10);
+	data1.set_genesis_block (nano::block_hash (4));
+	data1.set_major_version (10);
+	data1.set_minor_version (2);
+	data1.set_patch_version (3);
+	data1.set_pre_release_version (6);
+	data1.set_maker (2);
+	data1.set_timestamp (std::chrono::system_clock::time_point (std::chrono::milliseconds (time + 1)));
+	data1.set_active_difficulty (3);
 
 	nano::telemetry_data data2;
-	data2.account_count = 3;
+	data2.set_account_count (3);
 	data2.set_block_count (3);
-	data2.cemented_count = 2;
-	data2.protocol_version = 11;
-	data2.peer_count = 4;
-	data2.bandwidth_cap = 0;
-	data2.unchecked_count = 2;
-	data2.uptime = 3;
-	data2.genesis_block = nano::block_hash (4);
-	data2.major_version = 20;
-	data2.minor_version = 1;
-	data2.patch_version = 4;
-	data2.pre_release_version = 6;
-	data2.maker = 2;
-	data2.timestamp = std::chrono::system_clock::time_point (std::chrono::milliseconds (time));
-	data2.active_difficulty = 2;
+	data2.set_cemented_count (2);
+	data2.set_protocol_version (11);
+	data2.set_peer_count (4);
+	data2.set_bandwidth_cap (0);
+	data2.set_unchecked_count (2);
+	data2.set_uptime (3);
+	data2.set_genesis_block (nano::block_hash (4));
+	data2.set_major_version (20);
+	data2.set_minor_version (1);
+	data2.set_patch_version (4);
+	data2.set_pre_release_version (6);
+	data2.set_maker (2);
+	data2.set_timestamp (std::chrono::system_clock::time_point (std::chrono::milliseconds (time)));
+	data2.set_active_difficulty (2);
 
 	std::vector<nano::telemetry_data> all_data{ data, data1, data2 };
 
 	auto consolidated_telemetry_data = nano::consolidate_telemetry_data (all_data);
-	ASSERT_EQ (consolidated_telemetry_data.account_count, 3);
+	ASSERT_EQ (consolidated_telemetry_data.get_account_count (), 3);
 	ASSERT_EQ (consolidated_telemetry_data.get_block_count (), 3);
-	ASSERT_EQ (consolidated_telemetry_data.cemented_count, 2);
-	ASSERT_EQ (consolidated_telemetry_data.protocol_version, 11);
-	ASSERT_EQ (consolidated_telemetry_data.peer_count, 3);
-	ASSERT_EQ (consolidated_telemetry_data.bandwidth_cap, 0);
-	ASSERT_EQ (consolidated_telemetry_data.unchecked_count, 2);
-	ASSERT_EQ (consolidated_telemetry_data.uptime, 6);
-	ASSERT_EQ (consolidated_telemetry_data.genesis_block, nano::block_hash (4));
-	ASSERT_EQ (consolidated_telemetry_data.major_version, 20);
-	ASSERT_EQ (consolidated_telemetry_data.minor_version, 1);
-	ASSERT_EQ (consolidated_telemetry_data.patch_version, 4);
-	ASSERT_EQ (consolidated_telemetry_data.pre_release_version, 6);
-	ASSERT_EQ (consolidated_telemetry_data.maker, 2);
-	ASSERT_EQ (consolidated_telemetry_data.timestamp, std::chrono::system_clock::time_point (std::chrono::milliseconds (time)));
-	ASSERT_EQ (consolidated_telemetry_data.active_difficulty, 2);
+	ASSERT_EQ (consolidated_telemetry_data.get_cemented_count (), 2);
+	ASSERT_EQ (consolidated_telemetry_data.get_protocol_version (), 11);
+	ASSERT_EQ (consolidated_telemetry_data.get_peer_count (), 3);
+	ASSERT_EQ (consolidated_telemetry_data.get_bandwidth_cap (), 0);
+	ASSERT_EQ (consolidated_telemetry_data.get_unchecked_count (), 2);
+	ASSERT_EQ (consolidated_telemetry_data.get_uptime (), 6);
+	ASSERT_EQ (consolidated_telemetry_data.get_genesis_block (), nano::block_hash (4));
+	ASSERT_EQ (consolidated_telemetry_data.get_major_version (), 20);
+	ASSERT_EQ (consolidated_telemetry_data.get_minor_version (), 1);
+	ASSERT_EQ (consolidated_telemetry_data.get_patch_version (), 4);
+	ASSERT_EQ (consolidated_telemetry_data.get_pre_release_version (), 6);
+	ASSERT_EQ (consolidated_telemetry_data.get_maker (), 2);
+	ASSERT_EQ (consolidated_telemetry_data.get_timestamp (), std::chrono::system_clock::time_point (std::chrono::milliseconds (time)));
+	ASSERT_EQ (consolidated_telemetry_data.get_active_difficulty (), 2);
 
 	// Modify the metrics which may be either the mode or averages to ensure all are tested.
-	all_data[2].bandwidth_cap = 53;
-	all_data[2].protocol_version = 13;
-	all_data[2].genesis_block = nano::block_hash (3);
-	all_data[2].major_version = 10;
-	all_data[2].minor_version = 2;
-	all_data[2].patch_version = 3;
-	all_data[2].pre_release_version = 6;
-	all_data[2].maker = 2;
+	all_data[2].set_bandwidth_cap (53);
+	all_data[2].set_protocol_version (13);
+	all_data[2].set_genesis_block (nano::block_hash (3));
+	all_data[2].set_major_version (10);
+	all_data[2].set_minor_version (2);
+	all_data[2].set_patch_version (3);
+	all_data[2].set_pre_release_version (6);
+	all_data[2].set_maker (2);
 
 	auto consolidated_telemetry_data1 = nano::consolidate_telemetry_data (all_data);
-	ASSERT_EQ (consolidated_telemetry_data1.major_version, 10);
-	ASSERT_EQ (consolidated_telemetry_data1.minor_version, 2);
-	ASSERT_EQ (consolidated_telemetry_data1.patch_version, 3);
-	ASSERT_EQ (consolidated_telemetry_data1.pre_release_version, 6);
-	ASSERT_EQ (consolidated_telemetry_data1.maker, 2);
-	ASSERT_TRUE (consolidated_telemetry_data1.protocol_version == 11 || consolidated_telemetry_data1.protocol_version == 12 || consolidated_telemetry_data1.protocol_version == 13);
-	ASSERT_EQ (consolidated_telemetry_data1.bandwidth_cap, 51);
-	ASSERT_EQ (consolidated_telemetry_data1.genesis_block, nano::block_hash (3));
+	ASSERT_EQ (consolidated_telemetry_data1.get_major_version (), 10);
+	ASSERT_EQ (consolidated_telemetry_data1.get_minor_version (), 2);
+	ASSERT_EQ (consolidated_telemetry_data1.get_patch_version (), 3);
+	ASSERT_EQ (consolidated_telemetry_data1.get_pre_release_version (), 6);
+	ASSERT_EQ (consolidated_telemetry_data1.get_maker (), 2);
+	ASSERT_TRUE (consolidated_telemetry_data1.get_protocol_version () == 11 || consolidated_telemetry_data1.get_protocol_version () == 12 || consolidated_telemetry_data1.get_protocol_version () == 13);
+	ASSERT_EQ (consolidated_telemetry_data1.get_bandwidth_cap (), 51);
+	ASSERT_EQ (consolidated_telemetry_data1.get_genesis_block (), nano::block_hash (3));
 
 	// Test equality operator
 	ASSERT_FALSE (consolidated_telemetry_data == consolidated_telemetry_data1);
@@ -116,64 +116,64 @@ TEST (telemetry, consolidate_data)
 TEST (telemetry, consolidate_data_remove_outliers)
 {
 	nano::telemetry_data data;
-	data.account_count = 2;
+	data.set_account_count (2);
 	data.set_block_count (1);
-	data.cemented_count = 1;
-	data.protocol_version = 12;
-	data.peer_count = 2;
-	data.bandwidth_cap = 100;
-	data.unchecked_count = 3;
-	data.uptime = 6;
-	data.genesis_block = nano::block_hash (3);
-	data.major_version = 20;
-	data.minor_version = 1;
-	data.patch_version = 5;
-	data.pre_release_version = 2;
-	data.maker = 1;
-	data.timestamp = std::chrono::system_clock::time_point (100ms);
-	data.active_difficulty = 10;
+	data.set_cemented_count (1);
+	data.set_protocol_version (12);
+	data.set_peer_count (2);
+	data.set_bandwidth_cap (100);
+	data.set_unchecked_count (3);
+	data.set_uptime (6);
+	data.set_genesis_block (nano::block_hash (3));
+	data.set_major_version (20);
+	data.set_minor_version (1);
+	data.set_patch_version (5);
+	data.set_pre_release_version (2);
+	data.set_maker (1);
+	data.set_timestamp (std::chrono::system_clock::time_point (100ms));
+	data.set_active_difficulty (10);
 
 	// Insert 20 of these, and 2 outliers at the lower and upper bounds which should get removed
 	std::vector<nano::telemetry_data> all_data (20, data);
 
 	// Insert some outliers
 	nano::telemetry_data lower_bound_outlier_data;
-	lower_bound_outlier_data.account_count = 1;
+	lower_bound_outlier_data.set_account_count (1);
 	lower_bound_outlier_data.set_block_count (0);
-	lower_bound_outlier_data.cemented_count = 0;
-	lower_bound_outlier_data.protocol_version = 11;
-	lower_bound_outlier_data.peer_count = 0;
-	lower_bound_outlier_data.bandwidth_cap = 8;
-	lower_bound_outlier_data.unchecked_count = 1;
-	lower_bound_outlier_data.uptime = 2;
-	lower_bound_outlier_data.genesis_block = nano::block_hash (2);
-	lower_bound_outlier_data.major_version = 11;
-	lower_bound_outlier_data.minor_version = 1;
-	lower_bound_outlier_data.patch_version = 1;
-	lower_bound_outlier_data.pre_release_version = 1;
-	lower_bound_outlier_data.maker = 1;
-	lower_bound_outlier_data.timestamp = std::chrono::system_clock::time_point (1ms);
-	lower_bound_outlier_data.active_difficulty = 1;
+	lower_bound_outlier_data.set_cemented_count (0);
+	lower_bound_outlier_data.set_protocol_version (11);
+	lower_bound_outlier_data.set_peer_count (0);
+	lower_bound_outlier_data.set_bandwidth_cap (8);
+	lower_bound_outlier_data.set_unchecked_count (1);
+	lower_bound_outlier_data.set_uptime (2);
+	lower_bound_outlier_data.set_genesis_block (nano::block_hash (2));
+	lower_bound_outlier_data.set_major_version (11);
+	lower_bound_outlier_data.set_minor_version (1);
+	lower_bound_outlier_data.set_patch_version (1);
+	lower_bound_outlier_data.set_pre_release_version (1);
+	lower_bound_outlier_data.set_maker (1);
+	lower_bound_outlier_data.set_timestamp (std::chrono::system_clock::time_point (1ms));
+	lower_bound_outlier_data.set_active_difficulty (1);
 	all_data.push_back (lower_bound_outlier_data);
 	all_data.push_back (lower_bound_outlier_data);
 
 	nano::telemetry_data upper_bound_outlier_data;
-	upper_bound_outlier_data.account_count = 99;
+	upper_bound_outlier_data.set_account_count (99);
 	upper_bound_outlier_data.set_block_count (99);
-	upper_bound_outlier_data.cemented_count = 99;
-	upper_bound_outlier_data.protocol_version = 99;
-	upper_bound_outlier_data.peer_count = 99;
-	upper_bound_outlier_data.bandwidth_cap = 999;
-	upper_bound_outlier_data.unchecked_count = 99;
-	upper_bound_outlier_data.uptime = 999;
-	upper_bound_outlier_data.genesis_block = nano::block_hash (99);
-	upper_bound_outlier_data.major_version = 99;
-	upper_bound_outlier_data.minor_version = 9;
-	upper_bound_outlier_data.patch_version = 9;
-	upper_bound_outlier_data.pre_release_version = 9;
-	upper_bound_outlier_data.maker = 9;
-	upper_bound_outlier_data.timestamp = std::chrono::system_clock::time_point (999ms);
-	upper_bound_outlier_data.active_difficulty = 99;
+	upper_bound_outlier_data.set_cemented_count (99);
+	upper_bound_outlier_data.set_protocol_version (99);
+	upper_bound_outlier_data.set_peer_count (99);
+	upper_bound_outlier_data.set_bandwidth_cap (999);
+	upper_bound_outlier_data.set_unchecked_count (99);
+	upper_bound_outlier_data.set_uptime (999);
+	upper_bound_outlier_data.set_genesis_block (nano::block_hash (99));
+	upper_bound_outlier_data.set_major_version (99);
+	upper_bound_outlier_data.set_minor_version (9);
+	upper_bound_outlier_data.set_patch_version (9);
+	upper_bound_outlier_data.set_pre_release_version (9);
+	upper_bound_outlier_data.set_maker (9);
+	upper_bound_outlier_data.set_timestamp (std::chrono::system_clock::time_point (999ms));
+	upper_bound_outlier_data.set_active_difficulty (99);
 	all_data.push_back (upper_bound_outlier_data);
 	all_data.push_back (upper_bound_outlier_data);
 
@@ -184,53 +184,53 @@ TEST (telemetry, consolidate_data_remove_outliers)
 TEST (telemetry, consolidate_data_remove_outliers_with_zero_bandwidth)
 {
 	nano::telemetry_data data1;
-	data1.account_count = 2;
+	data1.set_account_count (2);
 	data1.set_block_count (1);
-	data1.cemented_count = 1;
-	data1.protocol_version = 12;
-	data1.peer_count = 2;
-	data1.bandwidth_cap = 0;
-	data1.unchecked_count = 3;
-	data1.uptime = 6;
-	data1.genesis_block = nano::block_hash (3);
-	data1.major_version = 20;
-	data1.minor_version = 1;
-	data1.patch_version = 5;
-	data1.pre_release_version = 2;
-	data1.maker = 1;
-	data1.timestamp = std::chrono::system_clock::time_point (100ms);
-	data1.active_difficulty = 10;
+	data1.set_cemented_count (1);
+	data1.set_protocol_version (12);
+	data1.set_peer_count (2);
+	data1.set_bandwidth_cap (0);
+	data1.set_unchecked_count (3);
+	data1.set_uptime (6);
+	data1.set_genesis_block (nano::block_hash (3));
+	data1.set_major_version (20);
+	data1.set_minor_version (1);
+	data1.set_patch_version (5);
+	data1.set_pre_release_version (2);
+	data1.set_maker (1);
+	data1.set_timestamp (std::chrono::system_clock::time_point (100ms));
+	data1.set_active_difficulty (10);
 
 	// Add a majority of nodes with bandwidth set to 0
 	std::vector<nano::telemetry_data> all_data (100, data1);
 
 	nano::telemetry_data data2;
-	data2.account_count = 2;
+	data2.set_account_count (2);
 	data2.set_block_count (1);
-	data2.cemented_count = 1;
-	data2.protocol_version = 12;
-	data2.peer_count = 2;
-	data2.bandwidth_cap = 100;
-	data2.unchecked_count = 3;
-	data2.uptime = 6;
-	data2.genesis_block = nano::block_hash (3);
-	data2.major_version = 20;
-	data2.minor_version = 1;
-	data2.patch_version = 5;
-	data2.pre_release_version = 2;
-	data2.maker = 1;
-	data2.timestamp = std::chrono::system_clock::time_point (100ms);
-	data2.active_difficulty = 10;
+	data2.set_cemented_count (1);
+	data2.set_protocol_version (12);
+	data2.set_peer_count (2);
+	data2.set_bandwidth_cap (100);
+	data2.set_unchecked_count (3);
+	data2.set_uptime (6);
+	data2.set_genesis_block (nano::block_hash (3));
+	data2.set_major_version (20);
+	data2.set_minor_version (1);
+	data2.set_patch_version (5);
+	data2.set_pre_release_version (2);
+	data2.set_maker (1);
+	data2.set_timestamp (std::chrono::system_clock::time_point (100ms));
+	data2.set_active_difficulty (10);
 
 	auto consolidated_telemetry_data1 = nano::consolidate_telemetry_data (all_data);
-	ASSERT_EQ (consolidated_telemetry_data1.bandwidth_cap, 0);
+	ASSERT_EQ (consolidated_telemetry_data1.get_bandwidth_cap (), 0);
 
 	// And a few nodes with non-zero bandwidth
 	all_data.push_back (data2);
 	all_data.push_back (data2);
 
 	auto consolidated_telemetry_data2 = nano::consolidate_telemetry_data (all_data);
-	ASSERT_EQ (consolidated_telemetry_data2.bandwidth_cap, 0);
+	ASSERT_EQ (consolidated_telemetry_data2.get_bandwidth_cap (), 0);
 }
 
 TEST (telemetry, signatures)
@@ -238,17 +238,17 @@ TEST (telemetry, signatures)
 	nano::keypair node_id;
 	nano::telemetry_data data;
 	data.set_node_id (node_id.pub);
-	data.major_version = 20;
-	data.minor_version = 1;
-	data.patch_version = 5;
-	data.pre_release_version = 2;
-	data.maker = 1;
-	data.timestamp = std::chrono::system_clock::time_point (100ms);
+	data.set_major_version (20);
+	data.set_minor_version (1);
+	data.set_patch_version (5);
+	data.set_pre_release_version (2);
+	data.set_maker (1);
+	data.set_timestamp (std::chrono::system_clock::time_point (100ms));
 	data.sign (node_id);
 	ASSERT_FALSE (data.validate_signature ());
 	auto signature = data.get_signature ();
 	// Check that the signature is different if changing a piece of data
-	data.maker = 2;
+	data.set_maker (2);
 	data.sign (node_id);
 	ASSERT_NE (data.get_signature (), signature);
 }
@@ -258,13 +258,13 @@ TEST (telemetry, unknown_data)
 	nano::keypair node_id;
 	nano::telemetry_data data;
 	data.set_node_id (node_id.pub);
-	data.major_version = 20;
-	data.minor_version = 1;
-	data.patch_version = 5;
-	data.pre_release_version = 2;
-	data.maker = 1;
-	data.timestamp = std::chrono::system_clock::time_point (100ms);
-	data.unknown_data.push_back (1);
+	data.set_major_version (20);
+	data.set_minor_version (1);
+	data.set_patch_version (5);
+	data.set_pre_release_version (2);
+	data.set_maker (1);
+	data.set_timestamp (std::chrono::system_clock::time_point (100ms));
+	data.set_unknown_data (std::vector<uint8_t>{ 1 });
 	data.sign (node_id);
 	ASSERT_FALSE (data.validate_signature ());
 }
@@ -582,7 +582,9 @@ TEST (telemetry, max_possible_size)
 	auto node_server = system.add_node (node_flags);
 
 	nano::telemetry_data data;
-	data.unknown_data.resize (nano::message_header::telemetry_size_mask.to_ulong () - nano::telemetry_data::latest_size);
+	std::vector<uint8_t> unknown;
+	unknown.resize (nano::message_header::telemetry_size_mask.to_ulong () - nano::telemetry_data::latest_size);
+	data.set_unknown_data (unknown);
 
 	nano::telemetry_ack message{ nano::dev::network_params.network, data };
 	wait_peer_connections (system);
@@ -730,5 +732,5 @@ TEST (telemetry, maker_pruning)
 		ASSERT_TIMELY (10s, done);
 	}
 
-	ASSERT_EQ (nano::telemetry_maker::nf_pruned_node, static_cast<nano::telemetry_maker> (telemetry_data.maker));
+	ASSERT_EQ (nano::telemetry_maker::nf_pruned_node, static_cast<nano::telemetry_maker> (telemetry_data.get_maker ()));
 }

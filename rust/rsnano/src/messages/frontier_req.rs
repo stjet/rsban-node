@@ -32,7 +32,7 @@ impl FrontierReq {
     }
 
     pub fn serialized_size() -> usize {
-        Account::serialized_size() 
+        Account::serialized_size()
         + size_of::<u32>() // age
         + size_of::<u32>() //count
     }
@@ -47,6 +47,19 @@ impl FrontierReq {
         self.count = u32::from_le_bytes(buffer);
         Ok(())
     }
+
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+        self.header.serialize(stream)?;
+        self.start.serialize(stream)?;
+        stream.write_bytes(&self.age.to_le_bytes())?;
+        stream.write_bytes(&self.count.to_le_bytes())
+    }
+
+    pub fn is_confirmed_present(&self) -> bool {
+        self.header.test_extension(Self::ONLY_CONFIRMED)
+    }
+
+    pub const ONLY_CONFIRMED: usize = 1;
 }
 
 impl Message for FrontierReq {

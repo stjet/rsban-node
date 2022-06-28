@@ -80,3 +80,21 @@ pub unsafe extern "C" fn rsn_message_frontier_req_deserialize(
         .deserialize(&mut stream)
         .is_ok()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_frontier_req_serialize(
+    handle: *mut MessageHandle,
+    stream: *mut c_void,
+) -> bool {
+    let mut stream = FfiStream::new(stream);
+    downcast_message::<FrontierReq>(handle)
+        .serialize(&mut stream)
+        .is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_frontier_req_is_confirmed_present(
+    handle: *mut MessageHandle,
+) -> bool {
+    downcast_message::<FrontierReq>(handle).is_confirmed_present()
+}

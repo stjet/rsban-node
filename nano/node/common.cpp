@@ -978,10 +978,8 @@ nano::frontier_req::frontier_req (bool & error_a, nano::stream & stream_a, nano:
 
 void nano::frontier_req::serialize (nano::stream & stream_a) const
 {
-	get_header ().serialize (stream_a);
-	write (stream_a, get_start ().bytes);
-	write (stream_a, get_age ());
-	write (stream_a, get_count ());
+	if (!rsnano::rsn_message_frontier_req_serialize (handle, &stream_a))
+		throw std::runtime_error ("could not serialize frontier_req");
 }
 
 bool nano::frontier_req::deserialize (nano::stream & stream_a)
@@ -1002,7 +1000,7 @@ bool nano::frontier_req::operator== (nano::frontier_req const & other_a) const
 
 bool nano::frontier_req::is_only_confirmed_present () const
 {
-	return get_header ().test_extension (nano::message_header::frontier_req_only_confirmed);
+	return rsnano::rsn_message_frontier_req_is_confirmed_present (handle);
 }
 
 nano::account nano::frontier_req::get_start () const

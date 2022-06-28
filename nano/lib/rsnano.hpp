@@ -13,6 +13,8 @@ namespace rsnano
 {
 static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
 
+static const uintptr_t FrontierReq_ONLY_CONFIRMED = 1;
+
 struct AsyncConnectCallbackHandle;
 
 struct AsyncReadCallbackHandle;
@@ -1208,6 +1210,10 @@ MessageHandle * rsn_message_frontier_req_create (NetworkConstantsDto * constants
 MessageHandle * rsn_message_frontier_req_create2 (MessageHeaderHandle * header);
 
 bool rsn_message_frontier_req_deserialize (MessageHandle * handle, void * stream);
+
+bool rsn_message_frontier_req_is_confirmed_present (MessageHandle * handle);
+
+bool rsn_message_frontier_req_serialize (MessageHandle * handle, void * stream);
 
 void rsn_message_frontier_req_set_age (MessageHandle * handle, uint32_t age);
 

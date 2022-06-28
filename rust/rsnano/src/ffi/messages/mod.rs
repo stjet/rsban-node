@@ -6,5 +6,6 @@ pub use message::*;
 
 mod confirm_ack;
 mod confirm_req;
+mod frontier_req;
 mod keepalive;
 mod publish;

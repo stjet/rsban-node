@@ -979,26 +979,14 @@ nano::frontier_req::frontier_req (bool & error_a, nano::stream & stream_a, nano:
 void nano::frontier_req::serialize (nano::stream & stream_a) const
 {
 	get_header ().serialize (stream_a);
-	write (stream_a, start.bytes);
-	write (stream_a, age);
-	write (stream_a, count);
+	write (stream_a, get_start ().bytes);
+	write (stream_a, get_age ());
+	write (stream_a, get_count ());
 }
 
 bool nano::frontier_req::deserialize (nano::stream & stream_a)
 {
-	debug_assert (get_header ().get_type () == nano::message_type::frontier_req);
-	auto error (false);
-	try
-	{
-		nano::read (stream_a, start.bytes);
-		nano::read (stream_a, age);
-		nano::read (stream_a, count);
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-
+	bool error = !rsnano::rsn_message_frontier_req_deserialize (handle, &stream_a);
 	return error;
 }
 
@@ -1009,7 +997,7 @@ void nano::frontier_req::visit (nano::message_visitor & visitor_a) const
 
 bool nano::frontier_req::operator== (nano::frontier_req const & other_a) const
 {
-	return start == other_a.start && age == other_a.age && count == other_a.count;
+	return get_start () == other_a.get_start () && get_age () == other_a.get_age () && get_count () == other_a.get_count ();
 }
 
 bool nano::frontier_req::is_only_confirmed_present () const
@@ -1019,37 +1007,39 @@ bool nano::frontier_req::is_only_confirmed_present () const
 
 nano::account nano::frontier_req::get_start () const
 {
+	nano::account start;
+	rsnano::rsn_message_frontier_req_start (handle, start.bytes.data ());
 	return start;
 }
 
 uint32_t nano::frontier_req::get_age () const
 {
-	return age;
+	return rsnano::rsn_message_frontier_req_age (handle);
 }
 
 uint32_t nano::frontier_req::get_count () const
 {
-	return count;
+	return rsnano::rsn_message_frontier_req_count (handle);
 }
 
 void nano::frontier_req::set_start (nano::account const & account)
 {
-	start = account;
+	rsnano::rsn_message_frontier_req_set_start (handle, account.bytes.data ());
 }
 
 void nano::frontier_req::set_age (uint32_t age_a)
 {
-	age = age_a;
+	rsnano::rsn_message_frontier_req_set_age (handle, age_a);
 }
 
 void nano::frontier_req::set_count (uint32_t count_a)
 {
-	count = count_a;
+	rsnano::rsn_message_frontier_req_set_count (handle, count_a);
 }
 
 std::size_t nano::frontier_req::size ()
 {
-	return sizeof (start) + sizeof (age) + sizeof (count);
+	return rsnano::rsn_message_frontier_size ();
 }
 
 rsnano::MessageHandle * create_bulk_pull_handle (nano::network_constants const & constants)

@@ -98,3 +98,8 @@ fn into_32_byte_array(ptr: *const u8) -> [u8; 32] {
     bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(ptr, 32) });
     bytes
 }
+
+pub(crate) unsafe fn copy_account_bytes(source: Account, target: *mut u8) {
+    let bytes = std::slice::from_raw_parts_mut(target, 32);
+    bytes.copy_from_slice(source.as_bytes());
+}

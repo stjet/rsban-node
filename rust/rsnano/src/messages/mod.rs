@@ -15,3 +15,6 @@ pub use confirm_req::*;
 
 mod confirm_ack;
 pub use confirm_ack::*;
+
+mod frontier_req;
+pub use frontier_req::*;

@@ -391,11 +391,6 @@ public:
 	void set_age (uint32_t age);
 	uint32_t get_count () const;
 	void set_count (uint32_t count);
-
-private:
-	nano::account start;
-	uint32_t age;
-	uint32_t count;
 };
 
 enum class telemetry_maker : uint8_t

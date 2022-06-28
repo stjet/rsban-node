@@ -1199,9 +1199,25 @@ uintptr_t rsn_message_confirm_req_size (uint8_t block_type, uintptr_t count);
 
 void rsn_message_destroy (MessageHandle * handle);
 
+uint32_t rsn_message_frontier_req_age (MessageHandle * handle);
+
+uint32_t rsn_message_frontier_req_count (MessageHandle * handle);
+
 MessageHandle * rsn_message_frontier_req_create (NetworkConstantsDto * constants);
 
 MessageHandle * rsn_message_frontier_req_create2 (MessageHeaderHandle * header);
+
+bool rsn_message_frontier_req_deserialize (MessageHandle * handle, void * stream);
+
+void rsn_message_frontier_req_set_age (MessageHandle * handle, uint32_t age);
+
+void rsn_message_frontier_req_set_count (MessageHandle * handle, uint32_t count);
+
+void rsn_message_frontier_req_set_start (MessageHandle * handle, const uint8_t * account);
+
+void rsn_message_frontier_req_start (MessageHandle * handle, uint8_t * account);
+
+uintptr_t rsn_message_frontier_size ();
 
 MessageHeaderHandle * rsn_message_header (MessageHandle * handle);
 

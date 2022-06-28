@@ -2,8 +2,8 @@ use super::MessageHeaderHandle;
 use crate::{
     ffi::NetworkConstantsDto,
     messages::{
-        BulkPull, BulkPullAccount, BulkPush, FrontierReq, Message, MessageHeader, NodeIdHandshake,
-        TelemetryAck, TelemetryReq,
+        BulkPull, BulkPullAccount, BulkPush, Message, MessageHeader, NodeIdHandshake, TelemetryAck,
+        TelemetryReq,
     },
     NetworkConstants,
 };
@@ -32,19 +32,6 @@ pub unsafe extern "C" fn rsn_message_set_header(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_destroy(handle: *mut MessageHandle) {
     drop(Box::from_raw(handle))
-}
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_frontier_req_create(
-    constants: *mut NetworkConstantsDto,
-) -> *mut MessageHandle {
-    create_message_handle(constants, FrontierReq::new)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_frontier_req_create2(
-    header: *mut MessageHeaderHandle,
-) -> *mut MessageHandle {
-    create_message_handle2(header, FrontierReq::with_header)
 }
 
 #[no_mangle]

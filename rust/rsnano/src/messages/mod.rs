@@ -30,3 +30,6 @@ pub use bulk_push::*;
 
 mod telemetry_req;
 pub use telemetry_req::*;
+
+mod telemetry_ack;
+pub use telemetry_ack::*;

@@ -73,6 +73,8 @@ struct TcpChannelLockHandle;
 
 struct TcpChannelsHandle;
 
+struct TelemetryDataHandle;
+
 struct UncheckedInfoHandle;
 
 struct VoidFnCallbackHandle;
@@ -1708,6 +1710,12 @@ void rsn_string_destroy (StringHandle * handle);
 TcpChannelsHandle * rsn_tcp_channels_create ();
 
 void rsn_tcp_channels_destroy (TcpChannelsHandle * handle);
+
+TelemetryDataHandle * rsn_telemetry_data_clone (TelemetryDataHandle * handle);
+
+TelemetryDataHandle * rsn_telemetry_data_create ();
+
+void rsn_telemetry_data_destroy (TelemetryDataHandle * handle);
 
 uint16_t rsn_test_node_port ();
 

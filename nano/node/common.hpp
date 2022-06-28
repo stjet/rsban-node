@@ -402,6 +402,11 @@ enum class telemetry_maker : uint8_t
 class telemetry_data
 {
 public:
+	telemetry_data ();
+	telemetry_data (nano::telemetry_data const & other_a);
+	telemetry_data (nano::telemetry_data && other_a);
+	~telemetry_data ();
+	nano::telemetry_data & operator= (nano::telemetry_data const & other_a);
 	nano::signature signature{ 0 };
 	nano::account node_id{};
 	uint64_t block_count{ 0 };
@@ -435,6 +440,8 @@ public:
 	// Size does not include unknown_data
 	static auto constexpr size = sizeof (signature) + sizeof (node_id) + sizeof (block_count) + sizeof (cemented_count) + sizeof (unchecked_count) + sizeof (account_count) + sizeof (bandwidth_cap) + sizeof (peer_count) + sizeof (protocol_version) + sizeof (uptime) + sizeof (genesis_block) + sizeof (major_version) + sizeof (minor_version) + sizeof (patch_version) + sizeof (pre_release_version) + sizeof (maker) + sizeof (uint64_t) + sizeof (active_difficulty);
 	static auto constexpr latest_size = size; // This needs to be updated for each new telemetry version
+	rsnano::TelemetryDataHandle * handle;
+
 private:
 	void serialize_without_signature (nano::stream &) const;
 };
@@ -464,6 +471,7 @@ public:
 	uint16_t size () const;
 	bool is_empty_payload () const;
 	static uint16_t size (nano::message_header const &);
+
 	nano::telemetry_data data;
 };
 

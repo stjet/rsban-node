@@ -1369,6 +1369,90 @@ bool nano::telemetry_ack::is_empty_payload () const
 	return size () == 0;
 }
 
+nano::telemetry_data::telemetry_data () :
+	handle{ rsnano::rsn_telemetry_data_create () }
+{
+}
+
+nano::telemetry_data::telemetry_data (nano::telemetry_data const & other_a) :
+	handle{ rsnano::rsn_telemetry_data_clone (other_a.handle) }
+{
+	signature = other_a.signature;
+	node_id = other_a.node_id;
+	block_count = other_a.block_count;
+	cemented_count = other_a.cemented_count;
+	unchecked_count = other_a.unchecked_count;
+	account_count = other_a.account_count;
+	bandwidth_cap = other_a.bandwidth_cap;
+	uptime = other_a.uptime;
+	peer_count = other_a.peer_count;
+	protocol_version = other_a.protocol_version;
+	genesis_block = other_a.genesis_block;
+	major_version = other_a.major_version;
+	minor_version = other_a.minor_version;
+	patch_version = other_a.patch_version;
+	pre_release_version = other_a.pre_release_version;
+	maker = other_a.maker;
+	timestamp = other_a.timestamp;
+	active_difficulty = other_a.active_difficulty;
+	unknown_data = other_a.unknown_data;
+}
+
+nano::telemetry_data::telemetry_data (nano::telemetry_data && other_a) :
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+	signature = other_a.signature;
+	node_id = other_a.node_id;
+	block_count = other_a.block_count;
+	cemented_count = other_a.cemented_count;
+	unchecked_count = other_a.unchecked_count;
+	account_count = other_a.account_count;
+	bandwidth_cap = other_a.bandwidth_cap;
+	uptime = other_a.uptime;
+	peer_count = other_a.peer_count;
+	protocol_version = other_a.protocol_version;
+	genesis_block = other_a.genesis_block;
+	major_version = other_a.major_version;
+	minor_version = other_a.minor_version;
+	patch_version = other_a.patch_version;
+	pre_release_version = other_a.pre_release_version;
+	maker = other_a.maker;
+	timestamp = other_a.timestamp;
+	active_difficulty = other_a.active_difficulty;
+	unknown_data = other_a.unknown_data;
+}
+
+nano::telemetry_data::~telemetry_data ()
+{
+	if (handle != nullptr)
+		rsnano::rsn_telemetry_data_destroy (handle);
+}
+
+nano::telemetry_data & nano::telemetry_data::operator= (nano::telemetry_data const & other_a)
+{
+	signature = other_a.signature;
+	node_id = other_a.node_id;
+	block_count = other_a.block_count;
+	cemented_count = other_a.cemented_count;
+	unchecked_count = other_a.unchecked_count;
+	account_count = other_a.account_count;
+	bandwidth_cap = other_a.bandwidth_cap;
+	uptime = other_a.uptime;
+	peer_count = other_a.peer_count;
+	protocol_version = other_a.protocol_version;
+	genesis_block = other_a.genesis_block;
+	major_version = other_a.major_version;
+	minor_version = other_a.minor_version;
+	patch_version = other_a.patch_version;
+	pre_release_version = other_a.pre_release_version;
+	maker = other_a.maker;
+	timestamp = other_a.timestamp;
+	active_difficulty = other_a.active_difficulty;
+	unknown_data = other_a.unknown_data;
+	return *this;
+}
+
 void nano::telemetry_data::deserialize (nano::stream & stream_a, uint16_t payload_length_a)
 {
 	read (stream_a, signature);

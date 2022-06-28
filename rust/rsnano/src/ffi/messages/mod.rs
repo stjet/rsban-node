@@ -6,6 +6,7 @@ pub use message::*;
 
 mod bulk_pull;
 mod bulk_pull_account;
+mod bulk_push;
 mod confirm_ack;
 mod confirm_req;
 mod frontier_req;

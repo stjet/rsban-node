@@ -1195,6 +1195,10 @@ MessageHandle * rsn_message_bulk_push_create (NetworkConstantsDto * constants);
 
 MessageHandle * rsn_message_bulk_push_create2 (MessageHeaderHandle * header);
 
+bool rsn_message_bulk_push_deserialize (MessageHandle * handle, void * stream);
+
+bool rsn_message_bulk_push_serialize (MessageHandle * handle, void * stream);
+
 MessageHandle * rsn_message_confirm_ack_clone (MessageHandle * handle);
 
 MessageHandle * rsn_message_confirm_ack_create (NetworkConstantsDto * constants, VoteHandle * vote);

@@ -8,41 +8,6 @@ pub trait Message {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
-#[derive(Clone)]
-pub struct BulkPush {
-    header: MessageHeader,
-}
-
-impl BulkPush {
-    pub fn new(constants: &NetworkConstants) -> Self {
-        Self {
-            header: MessageHeader::new(constants, MessageType::BulkPush),
-        }
-    }
-    pub fn with_header(header: &MessageHeader) -> Self {
-        Self {
-            header: header.clone(),
-        }
-    }
-}
-
-impl Message for BulkPush {
-    fn header(&self) -> &MessageHeader {
-        &self.header
-    }
-
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
 
 #[derive(Clone)]
 pub struct TelemetryReq {

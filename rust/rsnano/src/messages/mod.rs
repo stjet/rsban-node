@@ -24,3 +24,6 @@ pub use bulk_pull::*;
 
 mod bulk_pull_account;
 pub use bulk_pull_account::*;
+
+mod bulk_push;
+pub use bulk_push::*;

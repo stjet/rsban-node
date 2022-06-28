@@ -1222,13 +1222,14 @@ nano::bulk_push::bulk_push (nano::message_header const & header_a) :
 
 bool nano::bulk_push::deserialize (nano::stream & stream_a)
 {
-	debug_assert (get_header ().get_type () == nano::message_type::bulk_push);
-	return false;
+	bool error = !rsnano::rsn_message_bulk_push_deserialize (handle, &stream_a);
+	return error;
 }
 
 void nano::bulk_push::serialize (nano::stream & stream_a) const
 {
-	get_header ().serialize (stream_a);
+	if (!rsnano::rsn_message_bulk_push_serialize (handle, &stream_a))
+		throw std::runtime_error ("could not serialize bulk_push");
 }
 
 void nano::bulk_push::visit (nano::message_visitor & visitor_a) const

@@ -1369,6 +1369,10 @@ MessageHandle * rsn_message_telemetry_req_create (NetworkConstantsDto * constant
 
 MessageHandle * rsn_message_telemetry_req_create2 (MessageHeaderHandle * header);
 
+bool rsn_message_telemetry_req_deserialize (MessageHandle * handle, void * stream);
+
+bool rsn_message_telemetry_req_serialize (MessageHandle * handle, void * stream);
+
 void rsn_message_type_to_string (uint8_t msg_type, StringDto * result);
 
 uint16_t rsn_network_constants_active_network ();

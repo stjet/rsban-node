@@ -12,3 +12,4 @@ mod confirm_req;
 mod frontier_req;
 mod keepalive;
 mod publish;
+mod telemetry_req;

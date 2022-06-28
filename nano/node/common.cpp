@@ -1260,13 +1260,14 @@ nano::telemetry_req::telemetry_req (nano::telemetry_req const & other_a) :
 
 bool nano::telemetry_req::deserialize (nano::stream & stream_a)
 {
-	debug_assert (get_header ().get_type () == nano::message_type::telemetry_req);
-	return false;
+	bool error = !rsnano::rsn_message_telemetry_req_deserialize (handle, &stream_a);
+	return error;
 }
 
 void nano::telemetry_req::serialize (nano::stream & stream_a) const
 {
-	get_header ().serialize (stream_a);
+	if (!rsnano::rsn_message_telemetry_req_serialize (handle, &stream_a))
+		throw std::runtime_error ("could not serialize telemetry_req");
 }
 
 void nano::telemetry_req::visit (nano::message_visitor & visitor_a) const

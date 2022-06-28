@@ -27,3 +27,6 @@ pub use bulk_pull_account::*;
 
 mod bulk_push;
 pub use bulk_push::*;
+
+mod telemetry_req;
+pub use telemetry_req::*;

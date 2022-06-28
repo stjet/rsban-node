@@ -85,7 +85,7 @@ bool nano::telemetry::verify_message (nano::telemetry_ack const & message_a, nan
 	auto remove_channel = false;
 	// We want to ensure that the node_id of the channel matches that in the message before attempting to
 	// use the data to remove any peers.
-	auto node_id_mismatch = (channel_a.get_node_id () != message_a.data.node_id);
+	auto node_id_mismatch = (channel_a.get_node_id () != message_a.data.get_node_id ());
 	if (!node_id_mismatch)
 	{
 		// The data could be correctly signed but for a different node id
@@ -516,7 +516,7 @@ nano::telemetry_data nano::consolidate_telemetry_data (std::vector<nano::telemet
 	for (auto const & telemetry_data : telemetry_datas)
 	{
 		account_counts.insert (telemetry_data.account_count);
-		block_counts.insert (telemetry_data.block_count);
+		block_counts.insert (telemetry_data.get_block_count ());
 		cemented_counts.insert (telemetry_data.cemented_count);
 
 		std::ostringstream ss;
@@ -565,7 +565,7 @@ nano::telemetry_data nano::consolidate_telemetry_data (std::vector<nano::telemet
 	nano::telemetry_data consolidated_data;
 	auto size = telemetry_datas.size () - num_either_side_to_remove * 2;
 	consolidated_data.account_count = boost::numeric_cast<decltype (consolidated_data.account_count)> (account_sum / size);
-	consolidated_data.block_count = boost::numeric_cast<decltype (consolidated_data.block_count)> (block_sum / size);
+	consolidated_data.set_block_count (boost::numeric_cast<decltype (consolidated_data.get_block_count ())> (block_sum / size));
 	consolidated_data.cemented_count = boost::numeric_cast<decltype (consolidated_data.cemented_count)> (cemented_sum / size);
 	consolidated_data.peer_count = boost::numeric_cast<decltype (consolidated_data.peer_count)> (peer_sum / size);
 	consolidated_data.uptime = boost::numeric_cast<decltype (consolidated_data.uptime)> (uptime_sum / size);
@@ -632,8 +632,8 @@ nano::telemetry_data nano::consolidate_telemetry_data (std::vector<nano::telemet
 nano::telemetry_data nano::local_telemetry_data (nano::ledger const & ledger_a, nano::network & network_a, nano::unchecked_map const & unchecked, uint64_t bandwidth_limit_a, nano::network_params const & network_params_a, std::chrono::steady_clock::time_point statup_time_a, uint64_t active_difficulty_a, nano::keypair const & node_id_a)
 {
 	nano::telemetry_data telemetry_data;
-	telemetry_data.node_id = node_id_a.pub;
-	telemetry_data.block_count = ledger_a.cache.block_count;
+	telemetry_data.set_node_id (node_id_a.pub);
+	telemetry_data.set_block_count (ledger_a.cache.block_count);
 	telemetry_data.cemented_count = ledger_a.cache.cemented_count;
 	telemetry_data.bandwidth_cap = bandwidth_limit_a;
 	telemetry_data.protocol_version = network_params_a.network.protocol_version;

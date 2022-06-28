@@ -5,7 +5,7 @@
 
 void nano::compare_default_telemetry_response_data_excluding_signature (nano::telemetry_data const & telemetry_data_a, nano::network_params const & network_params_a, uint64_t bandwidth_limit_a, uint64_t active_difficulty_a)
 {
-	ASSERT_EQ (telemetry_data_a.block_count, 1);
+	ASSERT_EQ (telemetry_data_a.get_block_count (), 1);
 	ASSERT_EQ (telemetry_data_a.cemented_count, 1);
 	ASSERT_EQ (telemetry_data_a.bandwidth_cap, bandwidth_limit_a);
 	ASSERT_EQ (telemetry_data_a.peer_count, 1);
@@ -28,10 +28,10 @@ void nano::compare_default_telemetry_response_data (nano::telemetry_data const &
 {
 	ASSERT_FALSE (telemetry_data_a.validate_signature ());
 	nano::telemetry_data telemetry_data_l = telemetry_data_a;
-	telemetry_data_l.signature.clear ();
+	telemetry_data_l.set_signature (nano::signature{});
 	telemetry_data_l.sign (node_id_a);
 	// Signature should be different because uptime/timestamp will have changed.
-	ASSERT_NE (telemetry_data_a.signature, telemetry_data_l.signature);
+	ASSERT_NE (telemetry_data_a.get_signature (), telemetry_data_l.get_signature ());
 	compare_default_telemetry_response_data_excluding_signature (telemetry_data_a, network_params_a, bandwidth_limit_a, active_difficulty_a);
-	ASSERT_EQ (telemetry_data_a.node_id, node_id_a.pub);
+	ASSERT_EQ (telemetry_data_a.get_node_id (), node_id_a.pub);
 }

@@ -6551,7 +6551,7 @@ TEST (rpc, telemetry_all)
 
 	ASSERT_EQ (node->network.endpoint ().address ().to_string (), metrics.get<std::string> ("address"));
 	ASSERT_EQ (node->network.endpoint ().port (), metrics.get<uint16_t> ("port"));
-	ASSERT_TRUE (node1->network.find_node_id (data.node_id));
+	ASSERT_TRUE (node1->network.find_node_id (data.get_node_id ()));
 }
 
 // Also tests all forms of ipv4/ipv6

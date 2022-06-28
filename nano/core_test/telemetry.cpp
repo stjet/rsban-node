@@ -16,7 +16,7 @@ TEST (telemetry, consolidate_data)
 	// Pick specific values so that we can check both mode and average are working correctly
 	nano::telemetry_data data;
 	data.account_count = 2;
-	data.block_count = 1;
+	data.set_block_count (1);
 	data.cemented_count = 1;
 	data.protocol_version = 12;
 	data.peer_count = 2;
@@ -34,7 +34,7 @@ TEST (telemetry, consolidate_data)
 
 	nano::telemetry_data data1;
 	data1.account_count = 5;
-	data1.block_count = 7;
+	data1.set_block_count (7);
 	data1.cemented_count = 4;
 	data1.protocol_version = 11;
 	data1.peer_count = 5;
@@ -52,7 +52,7 @@ TEST (telemetry, consolidate_data)
 
 	nano::telemetry_data data2;
 	data2.account_count = 3;
-	data2.block_count = 3;
+	data2.set_block_count (3);
 	data2.cemented_count = 2;
 	data2.protocol_version = 11;
 	data2.peer_count = 4;
@@ -72,7 +72,7 @@ TEST (telemetry, consolidate_data)
 
 	auto consolidated_telemetry_data = nano::consolidate_telemetry_data (all_data);
 	ASSERT_EQ (consolidated_telemetry_data.account_count, 3);
-	ASSERT_EQ (consolidated_telemetry_data.block_count, 3);
+	ASSERT_EQ (consolidated_telemetry_data.get_block_count (), 3);
 	ASSERT_EQ (consolidated_telemetry_data.cemented_count, 2);
 	ASSERT_EQ (consolidated_telemetry_data.protocol_version, 11);
 	ASSERT_EQ (consolidated_telemetry_data.peer_count, 3);
@@ -117,7 +117,7 @@ TEST (telemetry, consolidate_data_remove_outliers)
 {
 	nano::telemetry_data data;
 	data.account_count = 2;
-	data.block_count = 1;
+	data.set_block_count (1);
 	data.cemented_count = 1;
 	data.protocol_version = 12;
 	data.peer_count = 2;
@@ -139,7 +139,7 @@ TEST (telemetry, consolidate_data_remove_outliers)
 	// Insert some outliers
 	nano::telemetry_data lower_bound_outlier_data;
 	lower_bound_outlier_data.account_count = 1;
-	lower_bound_outlier_data.block_count = 0;
+	lower_bound_outlier_data.set_block_count (0);
 	lower_bound_outlier_data.cemented_count = 0;
 	lower_bound_outlier_data.protocol_version = 11;
 	lower_bound_outlier_data.peer_count = 0;
@@ -159,7 +159,7 @@ TEST (telemetry, consolidate_data_remove_outliers)
 
 	nano::telemetry_data upper_bound_outlier_data;
 	upper_bound_outlier_data.account_count = 99;
-	upper_bound_outlier_data.block_count = 99;
+	upper_bound_outlier_data.set_block_count (99);
 	upper_bound_outlier_data.cemented_count = 99;
 	upper_bound_outlier_data.protocol_version = 99;
 	upper_bound_outlier_data.peer_count = 99;
@@ -185,7 +185,7 @@ TEST (telemetry, consolidate_data_remove_outliers_with_zero_bandwidth)
 {
 	nano::telemetry_data data1;
 	data1.account_count = 2;
-	data1.block_count = 1;
+	data1.set_block_count (1);
 	data1.cemented_count = 1;
 	data1.protocol_version = 12;
 	data1.peer_count = 2;
@@ -206,7 +206,7 @@ TEST (telemetry, consolidate_data_remove_outliers_with_zero_bandwidth)
 
 	nano::telemetry_data data2;
 	data2.account_count = 2;
-	data2.block_count = 1;
+	data2.set_block_count (1);
 	data2.cemented_count = 1;
 	data2.protocol_version = 12;
 	data2.peer_count = 2;
@@ -237,7 +237,7 @@ TEST (telemetry, signatures)
 {
 	nano::keypair node_id;
 	nano::telemetry_data data;
-	data.node_id = node_id.pub;
+	data.set_node_id (node_id.pub);
 	data.major_version = 20;
 	data.minor_version = 1;
 	data.patch_version = 5;
@@ -246,18 +246,18 @@ TEST (telemetry, signatures)
 	data.timestamp = std::chrono::system_clock::time_point (100ms);
 	data.sign (node_id);
 	ASSERT_FALSE (data.validate_signature ());
-	auto signature = data.signature;
+	auto signature = data.get_signature ();
 	// Check that the signature is different if changing a piece of data
 	data.maker = 2;
 	data.sign (node_id);
-	ASSERT_NE (data.signature, signature);
+	ASSERT_NE (data.get_signature (), signature);
 }
 
 TEST (telemetry, unknown_data)
 {
 	nano::keypair node_id;
 	nano::telemetry_data data;
-	data.node_id = node_id.pub;
+	data.set_node_id (node_id.pub);
 	data.major_version = 20;
 	data.minor_version = 1;
 	data.patch_version = 5;
@@ -688,7 +688,7 @@ TEST (telemetry, remove_peer_invalid_signature)
 
 	auto telemetry_data = nano::local_telemetry_data (node->ledger, node->network, node->unchecked, node->config->bandwidth_limit, node->network_params, node->startup_time, node->default_difficulty (nano::work_version::work_1), node->node_id);
 	// Change anything so that the signed message is incorrect
-	telemetry_data.block_count = 0;
+	telemetry_data.set_block_count (0);
 	auto telemetry_ack = nano::telemetry_ack{ nano::dev::network_params.network, telemetry_data };
 	node->network.inbound (telemetry_ack, channel);
 

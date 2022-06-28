@@ -1453,6 +1453,36 @@ nano::telemetry_data & nano::telemetry_data::operator= (nano::telemetry_data con
 	return *this;
 }
 
+nano::signature nano::telemetry_data::get_signature () const
+{
+	return signature;
+}
+
+void nano::telemetry_data::set_signature (nano::signature const & signature_a)
+{
+	signature = signature_a;
+}
+
+nano::account nano::telemetry_data::get_node_id () const
+{
+	return node_id;
+}
+
+void nano::telemetry_data::set_node_id (nano::account const & node_id_a)
+{
+	node_id = node_id_a;
+}
+
+uint64_t nano::telemetry_data::get_block_count () const
+{
+	return block_count;
+}
+
+void nano::telemetry_data::set_block_count (uint64_t count_a)
+{
+	block_count = count_a;
+}
+
 void nano::telemetry_data::deserialize (nano::stream & stream_a, uint16_t payload_length_a)
 {
 	read (stream_a, signature);

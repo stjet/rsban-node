@@ -407,9 +407,20 @@ public:
 	telemetry_data (nano::telemetry_data && other_a);
 	~telemetry_data ();
 	nano::telemetry_data & operator= (nano::telemetry_data const & other_a);
+
+	nano::signature get_signature () const;
+	void set_signature (nano::signature const & signature_a);
+	nano::account get_node_id () const;
+	void set_node_id (nano::account const & node_id_a);
+	uint64_t get_block_count () const;
+	void set_block_count (uint64_t count_a);
+
+private:
 	nano::signature signature{ 0 };
 	nano::account node_id{};
 	uint64_t block_count{ 0 };
+
+public:
 	uint64_t cemented_count{ 0 };
 	uint64_t unchecked_count{ 0 };
 	uint64_t account_count{ 0 };

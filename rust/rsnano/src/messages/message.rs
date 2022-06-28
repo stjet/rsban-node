@@ -10,46 +10,6 @@ pub trait Message {
 }
 
 #[derive(Clone)]
-pub struct BulkPull {
-    header: MessageHeader,
-}
-
-impl BulkPull {
-    pub fn new(constants: &NetworkConstants) -> Self {
-        Self {
-            header: MessageHeader::new(constants, MessageType::BulkPull),
-        }
-    }
-    pub fn with_header(header: &MessageHeader) -> Self {
-        Self {
-            header: header.clone(),
-        }
-    }
-
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
-    }
-}
-
-impl Message for BulkPull {
-    fn header(&self) -> &MessageHeader {
-        &self.header
-    }
-
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
-#[derive(Clone)]
 pub struct BulkPullAccount {
     header: MessageHeader,
 }

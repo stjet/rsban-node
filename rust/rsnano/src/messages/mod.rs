@@ -18,3 +18,6 @@ pub use confirm_ack::*;
 
 mod frontier_req;
 pub use frontier_req::*;
+
+mod bulk_pull;
+pub use bulk_pull::*;

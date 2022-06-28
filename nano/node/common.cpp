@@ -1062,37 +1062,41 @@ nano::bulk_pull::bulk_pull (bool & error_a, nano::stream & stream_a, nano::messa
 
 std::size_t nano::bulk_pull::size ()
 {
-	return sizeof (start) + sizeof (end);
+	return rsnano::rsn_message_bulk_pull_size ();
 }
 
 nano::hash_or_account nano::bulk_pull::get_start () const
 {
+	nano::hash_or_account start;
+	rsnano::rsn_message_bulk_pull_start (handle, start.bytes.data ());
 	return start;
 }
 
 nano::block_hash nano::bulk_pull::get_end () const
 {
+	nano::block_hash end;
+	rsnano::rsn_message_bulk_pull_end (handle, end.bytes.data ());
 	return end;
 }
 
 uint32_t nano::bulk_pull::get_count () const
 {
-	return count;
+	return rsnano::rsn_message_bulk_pull_count (handle);
 }
 
 void nano::bulk_pull::set_start (nano::hash_or_account start_a)
 {
-	start = start_a;
+	rsnano::rsn_message_bulk_pull_set_start (handle, start_a.bytes.data ());
 }
 
 void nano::bulk_pull::set_end (nano::block_hash end_a)
 {
-	end = end_a;
+	rsnano::rsn_message_bulk_pull_set_end (handle, end_a.bytes.data ());
 }
 
 void nano::bulk_pull::set_count (uint32_t count_a)
 {
-	count = count_a;
+	rsnano::rsn_message_bulk_pull_set_count (handle, count_a);
 }
 
 void nano::bulk_pull::visit (nano::message_visitor & visitor_a) const
@@ -1131,45 +1135,13 @@ void nano::bulk_pull::serialize (nano::stream & stream_a) const
 
 bool nano::bulk_pull::deserialize (nano::stream & stream_a)
 {
-	debug_assert (get_header ().get_type () == nano::message_type::bulk_pull);
-	auto error (false);
-	try
-	{
-		nano::read (stream_a, start);
-		nano::read (stream_a, end);
-
-		if (is_count_present ())
-		{
-			std::array<uint8_t, extended_parameters_size> extended_parameters_buffers;
-			static_assert (sizeof (count) < (extended_parameters_buffers.size () - 1), "count must fit within buffer");
-
-			nano::read (stream_a, extended_parameters_buffers);
-			if (extended_parameters_buffers.front () != 0)
-			{
-				error = true;
-			}
-			else
-			{
-				memcpy (&count, extended_parameters_buffers.data () + 1, sizeof (count));
-				boost::endian::little_to_native_inplace (count);
-			}
-		}
-		else
-		{
-			count = 0;
-		}
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-
+	bool error = !rsnano::rsn_message_bulk_pull_deserialize (handle, &stream_a);
 	return error;
 }
 
 bool nano::bulk_pull::is_count_present () const
 {
-	return get_header ().test_extension (count_present_flag);
+	return rsnano::rsn_message_bulk_pull_is_count_present (handle);
 }
 
 void nano::bulk_pull::set_count_present (bool value_a)

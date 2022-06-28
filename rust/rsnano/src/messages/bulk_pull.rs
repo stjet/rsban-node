@@ -1,0 +1,91 @@
+use crate::{utils::Stream, BlockHash, HashOrAccount, NetworkConstants};
+use anyhow::Result;
+use std::{any::Any, mem::size_of};
+
+use super::{Message, MessageHeader, MessageType};
+
+#[derive(Clone)]
+pub struct BulkPull {
+    header: MessageHeader,
+    pub start: HashOrAccount,
+    pub end: BlockHash,
+    pub count: u32,
+}
+
+impl BulkPull {
+    pub fn new(constants: &NetworkConstants) -> Self {
+        Self {
+            header: MessageHeader::new(constants, MessageType::BulkPull),
+            start: HashOrAccount::new(),
+            end: BlockHash::new(),
+            count: 0,
+        }
+    }
+    pub fn with_header(header: &MessageHeader) -> Self {
+        Self {
+            header: header.clone(),
+            start: HashOrAccount::new(),
+            end: BlockHash::new(),
+            count: 0,
+        }
+    }
+
+    fn clone_box(&self) -> Box<dyn Message> {
+        Box::new(self.clone())
+    }
+
+    pub fn serialized_size() -> usize {
+        HashOrAccount::serialized_size() + BlockHash::serialized_size()
+    }
+
+    const COUNT_PRESENT_FLAG: usize = 0;
+    const EXTENDED_PARAMETERS_SIZE: usize = 8;
+
+    pub fn is_count_present(&self) -> bool {
+        return self.header.test_extension(Self::COUNT_PRESENT_FLAG);
+    }
+
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
+        debug_assert!(self.header.message_type() == MessageType::BulkPull);
+
+        self.start = HashOrAccount::deserialize(stream)?;
+        self.end = BlockHash::deserialize(stream)?;
+
+        if self.is_count_present() {
+            let mut extended_parameters_buffers = [0u8; Self::EXTENDED_PARAMETERS_SIZE];
+            const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // "count must fit within buffer")
+
+            stream.read_bytes(
+                &mut extended_parameters_buffers,
+                Self::EXTENDED_PARAMETERS_SIZE,
+            )?;
+            if extended_parameters_buffers[0] != 0 {
+                bail!("extended parameters front was not 0");
+            } else {
+                self.count =
+                    u32::from_le_bytes(extended_parameters_buffers[1..5].try_into().unwrap());
+            }
+        } else {
+            self.count = 0;
+        }
+        Ok(())
+    }
+}
+
+impl Message for BulkPull {
+    fn header(&self) -> &MessageHeader {
+        &self.header
+    }
+
+    fn set_header(&mut self, header: &MessageHeader) {
+        self.header = header.clone();
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}

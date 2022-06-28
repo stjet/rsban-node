@@ -1149,9 +1149,27 @@ MessageHandle * rsn_message_bulk_pull_account_create (NetworkConstantsDto * cons
 
 MessageHandle * rsn_message_bulk_pull_account_create2 (MessageHeaderHandle * header);
 
+uint32_t rsn_message_bulk_pull_count (MessageHandle * handle);
+
 MessageHandle * rsn_message_bulk_pull_create (NetworkConstantsDto * constants);
 
 MessageHandle * rsn_message_bulk_pull_create2 (MessageHeaderHandle * header);
+
+bool rsn_message_bulk_pull_deserialize (MessageHandle * handle, void * stream);
+
+void rsn_message_bulk_pull_end (MessageHandle * handle, uint8_t * end);
+
+bool rsn_message_bulk_pull_is_count_present (MessageHandle * handle);
+
+void rsn_message_bulk_pull_set_count (MessageHandle * handle, uint32_t count);
+
+void rsn_message_bulk_pull_set_end (MessageHandle * handle, const uint8_t * end);
+
+void rsn_message_bulk_pull_set_start (MessageHandle * handle, const uint8_t * start);
+
+uintptr_t rsn_message_bulk_pull_size ();
+
+void rsn_message_bulk_pull_start (MessageHandle * handle, uint8_t * start);
 
 MessageHandle * rsn_message_bulk_push_create (NetworkConstantsDto * constants);
 

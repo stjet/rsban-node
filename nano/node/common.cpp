@@ -1106,31 +1106,8 @@ void nano::bulk_pull::visit (nano::message_visitor & visitor_a) const
 
 void nano::bulk_pull::serialize (nano::stream & stream_a) const
 {
-	/*
-	 * Ensure the "count_present" flag is set if there
-	 * is a limit specifed.  Additionally, do not allow
-	 * the "count_present" flag with a value of 0, since
-	 * that is a sentinel which we use to mean "all blocks"
-	 * and that is the behavior of not having the flag set
-	 * so it is wasteful to do this.
-	 */
-	debug_assert ((get_count () == 0 && !is_count_present ()) || (get_count () != 0 && is_count_present ()));
-
-	get_header ().serialize (stream_a);
-	write (stream_a, get_start ());
-	write (stream_a, get_end ());
-
-	if (is_count_present ())
-	{
-		std::array<uint8_t, extended_parameters_size> count_buffer{ { 0 } };
-		uint32_t count_little_endian;
-		static_assert (sizeof (count_little_endian) < (count_buffer.size () - 1), "count must fit within buffer");
-
-		count_little_endian = boost::endian::native_to_little (get_count ());
-		memcpy (count_buffer.data () + 1, &count_little_endian, sizeof (count_little_endian));
-
-		write (stream_a, count_buffer);
-	}
+	if (!rsnano::rsn_message_bulk_pull_serialize (handle, &stream_a))
+		throw std::runtime_error ("could not serialize bulk_pull");
 }
 
 bool nano::bulk_pull::deserialize (nano::stream & stream_a)

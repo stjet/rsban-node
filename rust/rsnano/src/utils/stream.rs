@@ -12,6 +12,22 @@ pub trait Stream {
     fn in_avail(&mut self) -> anyhow::Result<usize>;
 }
 
+pub trait StreamExt: Stream {
+    fn read_u32_be(&mut self) -> anyhow::Result<u32> {
+        let mut buffer = [0u8; 4];
+        self.read_bytes(&mut buffer, 4)?;
+        Ok(u32::from_be_bytes(buffer))
+    }
+
+    fn read_u64_be(&mut self) -> anyhow::Result<u64> {
+        let mut buffer = [0u8; 8];
+        self.read_bytes(&mut buffer, 8)?;
+        Ok(u64::from_be_bytes(buffer))
+    }
+}
+
+impl<T: Stream + ?Sized> StreamExt for T {}
+
 #[cfg(test)]
 pub struct TestStream {
     bytes: Vec<u8>,

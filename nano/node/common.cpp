@@ -1305,11 +1305,11 @@ nano::telemetry_ack::telemetry_ack (nano::network_constants const & constants, n
 	message (create_telemetry_ack_handle (constants)),
 	data (telemetry_data_a)
 {
-	debug_assert (telemetry_data::size + telemetry_data_a.get_unknown_data ().size () <= message_header::telemetry_size_mask.to_ulong ()); // Maximum size the mask allows
+	debug_assert (telemetry_data::size () + telemetry_data_a.get_unknown_data ().size () <= message_header::telemetry_size_mask.to_ulong ()); // Maximum size the mask allows
 	auto header{ get_header () };
 	auto extensions{ header.get_extensions () };
 	extensions &= ~message_header::telemetry_size_mask;
-	extensions |= std::bitset<16> (static_cast<unsigned long long> (telemetry_data::size) + telemetry_data_a.get_unknown_data ().size ());
+	extensions |= std::bitset<16> (static_cast<unsigned long long> (telemetry_data::size ()) + telemetry_data_a.get_unknown_data ().size ());
 	header.set_extensions (extensions);
 	set_header (header);
 }
@@ -1377,50 +1377,12 @@ nano::telemetry_data::telemetry_data () :
 nano::telemetry_data::telemetry_data (nano::telemetry_data const & other_a) :
 	handle{ rsnano::rsn_telemetry_data_clone (other_a.handle) }
 {
-	signature = other_a.signature;
-	node_id = other_a.node_id;
-	block_count = other_a.block_count;
-	cemented_count = other_a.cemented_count;
-	unchecked_count = other_a.unchecked_count;
-	account_count = other_a.account_count;
-	bandwidth_cap = other_a.bandwidth_cap;
-	uptime = other_a.uptime;
-	peer_count = other_a.peer_count;
-	protocol_version = other_a.protocol_version;
-	genesis_block = other_a.genesis_block;
-	major_version = other_a.major_version;
-	minor_version = other_a.minor_version;
-	patch_version = other_a.patch_version;
-	pre_release_version = other_a.pre_release_version;
-	maker = other_a.maker;
-	timestamp = other_a.timestamp;
-	active_difficulty = other_a.active_difficulty;
-	unknown_data = other_a.unknown_data;
 }
 
 nano::telemetry_data::telemetry_data (nano::telemetry_data && other_a) :
 	handle{ other_a.handle }
 {
 	other_a.handle = nullptr;
-	signature = other_a.signature;
-	node_id = other_a.node_id;
-	block_count = other_a.block_count;
-	cemented_count = other_a.cemented_count;
-	unchecked_count = other_a.unchecked_count;
-	account_count = other_a.account_count;
-	bandwidth_cap = other_a.bandwidth_cap;
-	uptime = other_a.uptime;
-	peer_count = other_a.peer_count;
-	protocol_version = other_a.protocol_version;
-	genesis_block = other_a.genesis_block;
-	major_version = other_a.major_version;
-	minor_version = other_a.minor_version;
-	patch_version = other_a.patch_version;
-	pre_release_version = other_a.pre_release_version;
-	maker = other_a.maker;
-	timestamp = other_a.timestamp;
-	active_difficulty = other_a.active_difficulty;
-	unknown_data = other_a.unknown_data;
 }
 
 nano::telemetry_data::~telemetry_data ()
@@ -1431,273 +1393,214 @@ nano::telemetry_data::~telemetry_data ()
 
 nano::telemetry_data & nano::telemetry_data::operator= (nano::telemetry_data const & other_a)
 {
-	signature = other_a.signature;
-	node_id = other_a.node_id;
-	block_count = other_a.block_count;
-	cemented_count = other_a.cemented_count;
-	unchecked_count = other_a.unchecked_count;
-	account_count = other_a.account_count;
-	bandwidth_cap = other_a.bandwidth_cap;
-	uptime = other_a.uptime;
-	peer_count = other_a.peer_count;
-	protocol_version = other_a.protocol_version;
-	genesis_block = other_a.genesis_block;
-	major_version = other_a.major_version;
-	minor_version = other_a.minor_version;
-	patch_version = other_a.patch_version;
-	pre_release_version = other_a.pre_release_version;
-	maker = other_a.maker;
-	timestamp = other_a.timestamp;
-	active_difficulty = other_a.active_difficulty;
-	unknown_data = other_a.unknown_data;
+	handle = rsnano::rsn_telemetry_data_clone (other_a.handle);
 	return *this;
 }
 
 nano::signature nano::telemetry_data::get_signature () const
 {
-	return signature;
+	nano::signature result;
+	rsnano::rsn_telemetry_data_get_signature (handle, result.bytes.data ());
+	return result;
 }
 
 void nano::telemetry_data::set_signature (nano::signature const & signature_a)
 {
-	signature = signature_a;
 	rsnano::rsn_telemetry_data_set_signature (handle, signature_a.bytes.data ());
 }
 
 nano::account nano::telemetry_data::get_node_id () const
 {
-	return node_id;
+	nano::account result;
+	rsnano::rsn_telemetry_data_get_node_id (handle, result.bytes.data ());
+	return result;
 }
 
 void nano::telemetry_data::set_node_id (nano::account const & node_id_a)
 {
-	node_id = node_id_a;
 	rsnano::rsn_telemetry_data_set_node_id (handle, node_id_a.bytes.data ());
 }
 
 uint64_t nano::telemetry_data::get_block_count () const
 {
-	return block_count;
+	return rsnano::rsn_telemetry_data_get_block_count (handle);
 }
 
 void nano::telemetry_data::set_block_count (uint64_t count_a)
 {
-	block_count = count_a;
 	rsnano::rsn_telemetry_data_set_block_count (handle, count_a);
 }
 
 uint64_t nano::telemetry_data::get_cemented_count () const
 {
-	return cemented_count;
+	return rsnano::rsn_telemetry_data_get_cemented_count (handle);
 }
 
 void nano::telemetry_data::set_cemented_count (uint64_t count_a)
 {
-	cemented_count = count_a;
 	rsnano::rsn_telemetry_data_set_cemented_count (handle, count_a);
 }
 
 uint64_t nano::telemetry_data::get_unchecked_count () const
 {
-	return unchecked_count;
+	return rsnano::rsn_telemetry_data_get_unchecked_count (handle);
 }
 
 void nano::telemetry_data::set_unchecked_count (uint64_t count_a)
 {
-	unchecked_count = count_a;
 	rsnano::rsn_telemetry_data_set_unchecked_count (handle, count_a);
 }
 
 uint64_t nano::telemetry_data::get_account_count () const
 {
-	return account_count;
+	return rsnano::rsn_telemetry_data_get_account_count (handle);
 }
 
 void nano::telemetry_data::set_account_count (uint64_t count_a)
 {
-	account_count = count_a;
 	rsnano::rsn_telemetry_data_set_account_count (handle, count_a);
 }
 
 uint64_t nano::telemetry_data::get_bandwidth_cap () const
 {
-	return bandwidth_cap;
+	return rsnano::rsn_telemetry_data_get_bandwidth_cap (handle);
 }
 
 void nano::telemetry_data::set_bandwidth_cap (uint64_t cap_a)
 {
-	bandwidth_cap = cap_a;
 	rsnano::rsn_telemetry_data_set_bandwidth_cap (handle, cap_a);
 }
 
 uint64_t nano::telemetry_data::get_uptime () const
 {
-	return uptime;
+	return rsnano::rsn_telemetry_data_get_uptime (handle);
 }
 
 void nano::telemetry_data::set_uptime (uint64_t uptime_a)
 {
-	uptime = uptime_a;
 	rsnano::rsn_telemetry_data_set_uptime (handle, uptime_a);
 }
 
 uint32_t nano::telemetry_data::get_peer_count () const
 {
-	return peer_count;
+	return rsnano::rsn_telemetry_data_get_peer_count (handle);
 }
 
 void nano::telemetry_data::set_peer_count (uint32_t count_a)
 {
-	peer_count = count_a;
 	rsnano::rsn_telemetry_data_set_peer_count (handle, count_a);
 }
 
 uint8_t nano::telemetry_data::get_protocol_version () const
 {
-	return protocol_version;
+	return rsnano::rsn_telemetry_data_get_protocol_version (handle);
 }
 
 void nano::telemetry_data::set_protocol_version (uint8_t version_a)
 {
-	protocol_version = version_a;
 	rsnano::rsn_telemetry_data_set_protocol_version (handle, version_a);
 }
 
 nano::block_hash nano::telemetry_data::get_genesis_block () const
 {
-	return genesis_block;
+	nano::block_hash result;
+	rsnano::rsn_telemetry_data_get_genesis_block (handle, result.bytes.data ());
+	return result;
 }
 
 void nano::telemetry_data::set_genesis_block (nano::block_hash const & block_a)
 {
-	genesis_block = block_a;
 	rsnano::rsn_telemetry_data_set_genesis_block (handle, block_a.bytes.data ());
 }
 
 uint8_t nano::telemetry_data::get_major_version () const
 {
-	return major_version;
+	return rsnano::rsn_telemetry_data_get_major_version (handle);
 }
 
 void nano::telemetry_data::set_major_version (uint8_t version_a)
 {
-	major_version = version_a;
 	rsnano::rsn_telemetry_data_set_major_version (handle, version_a);
 }
 
 uint8_t nano::telemetry_data::get_minor_version () const
 {
-	return minor_version;
+	return rsnano::rsn_telemetry_data_get_minor_version (handle);
 }
 
 void nano::telemetry_data::set_minor_version (uint8_t version_a)
 {
-	minor_version = version_a;
 	rsnano::rsn_telemetry_data_set_minor_version (handle, version_a);
 }
 
 uint8_t nano::telemetry_data::get_patch_version () const
 {
-	return patch_version;
+	return rsnano::rsn_telemetry_data_get_patch_version (handle);
 }
 
 void nano::telemetry_data::set_patch_version (uint8_t version_a)
 {
-	patch_version = version_a;
 	rsnano::rsn_telemetry_data_set_patch_version (handle, version_a);
 }
 
 uint8_t nano::telemetry_data::get_pre_release_version () const
 {
-	return pre_release_version;
+	return rsnano::rsn_telemetry_data_get_pre_release_version (handle);
 }
 
 void nano::telemetry_data::set_pre_release_version (uint8_t version_a)
 {
-	pre_release_version = version_a;
 	rsnano::rsn_telemetry_data_set_pre_release_version (handle, version_a);
 }
 
 uint8_t nano::telemetry_data::get_maker () const
 {
-	return maker;
+	return rsnano::rsn_telemetry_data_get_maker (handle);
 }
 
 void nano::telemetry_data::set_maker (uint8_t maker_a)
 {
-	maker = maker_a;
 	rsnano::rsn_telemetry_data_set_maker (handle, maker_a);
 }
 
 std::chrono::system_clock::time_point nano::telemetry_data::get_timestamp () const
 {
-	return timestamp;
+	auto timestamp_ms = rsnano::rsn_telemetry_data_get_timestamp_ms (handle);
+	return std::chrono::system_clock::time_point (std::chrono::duration_cast<std::chrono::system_clock::duration> (std::chrono::milliseconds (timestamp_ms)));
 }
 
 void nano::telemetry_data::set_timestamp (std::chrono::system_clock::time_point timestamp_a)
 {
-	timestamp = timestamp_a;
 	rsnano::rsn_telemetry_data_set_timestamp (handle, std::chrono::duration_cast<std::chrono::milliseconds> (timestamp_a.time_since_epoch ()).count ());
 }
 
 uint64_t nano::telemetry_data::get_active_difficulty () const
 {
-	return active_difficulty;
+	return rsnano::rsn_telemetry_data_get_active_difficulty (handle);
 }
 
 void nano::telemetry_data::set_active_difficulty (uint64_t difficulty_a)
 {
-	active_difficulty = difficulty_a;
 	rsnano::rsn_telemetry_data_set_active_difficulty (handle, difficulty_a);
 }
 
 std::vector<uint8_t> nano::telemetry_data::get_unknown_data () const
 {
-	return unknown_data;
+	std::vector<uint8_t> result;
+	result.resize (rsnano::rsn_telemetry_data_get_unknown_data_len (handle));
+	rsnano::rsn_telemetry_data_get_unknown_data (handle, result.data ());
+	return result;
 }
 
 void nano::telemetry_data::set_unknown_data (std::vector<uint8_t> data_a)
 {
-	unknown_data = data_a;
 	rsnano::rsn_telemetry_data_set_unknown_data (handle, data_a.data (), data_a.size ());
 }
 
 void nano::telemetry_data::deserialize (nano::stream & stream_a, uint16_t payload_length_a)
 {
-	read (stream_a, signature);
-	read (stream_a, node_id);
-	read (stream_a, block_count);
-	boost::endian::big_to_native_inplace (block_count);
-	read (stream_a, cemented_count);
-	boost::endian::big_to_native_inplace (cemented_count);
-	read (stream_a, unchecked_count);
-	boost::endian::big_to_native_inplace (unchecked_count);
-	read (stream_a, account_count);
-	boost::endian::big_to_native_inplace (account_count);
-	read (stream_a, bandwidth_cap);
-	boost::endian::big_to_native_inplace (bandwidth_cap);
-	read (stream_a, peer_count);
-	boost::endian::big_to_native_inplace (peer_count);
-	read (stream_a, protocol_version);
-	read (stream_a, uptime);
-	boost::endian::big_to_native_inplace (uptime);
-	read (stream_a, genesis_block.bytes);
-	read (stream_a, major_version);
-	read (stream_a, minor_version);
-	read (stream_a, patch_version);
-	read (stream_a, pre_release_version);
-	read (stream_a, maker);
-
-	uint64_t timestamp_l;
-	read (stream_a, timestamp_l);
-	boost::endian::big_to_native_inplace (timestamp_l);
-	timestamp = std::chrono::system_clock::time_point (std::chrono::milliseconds (timestamp_l));
-	read (stream_a, active_difficulty);
-	boost::endian::big_to_native_inplace (active_difficulty);
-	if (payload_length_a > latest_size)
-	{
-		read (stream_a, unknown_data, payload_length_a - latest_size);
-	}
+	if (!rsnano::rsn_telemetry_data_deserialize (handle, &stream_a, payload_length_a))
+		throw std::runtime_error ("could not deserialize telemetry data");
 }
 
 void nano::telemetry_data::serialize_without_signature (nano::stream & stream_a) const
@@ -1895,7 +1798,12 @@ bool nano::telemetry_data::validate_signature () const
 		serialize_without_signature (stream);
 	}
 
-	return nano::validate_message (node_id, bytes.data (), bytes.size (), get_signature ());
+	return nano::validate_message (get_node_id (), bytes.data (), bytes.size (), get_signature ());
+}
+
+std::size_t nano::telemetry_data::size ()
+{
+	return rsnano::rsn_telemetry_data_size ();
 }
 
 rsnano::MessageHandle * create_node_id_handshake_handle (nano::network_constants const & constants)

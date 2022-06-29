@@ -136,6 +136,11 @@ pub(crate) unsafe fn copy_account_bytes(source: Account, target: *mut u8) {
     bytes.copy_from_slice(source.as_bytes());
 }
 
+pub(crate) unsafe fn copy_signature_bytes(source: &Signature, target: *mut u8) {
+    let bytes = std::slice::from_raw_parts_mut(target, 64);
+    bytes.copy_from_slice(source.as_bytes());
+}
+
 pub(crate) unsafe fn copy_amount_bytes(source: Amount, target: *mut u8) {
     let bytes = std::slice::from_raw_parts_mut(target, 16);
     bytes.copy_from_slice(&source.to_be_bytes());

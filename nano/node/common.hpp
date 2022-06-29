@@ -448,25 +448,6 @@ public:
 	void set_unknown_data (std::vector<uint8_t> data_a);
 
 private:
-	nano::signature signature{ 0 };
-	nano::account node_id{};
-	uint64_t block_count{ 0 };
-	uint64_t cemented_count{ 0 };
-	uint64_t unchecked_count{ 0 };
-	uint64_t account_count{ 0 };
-	uint64_t bandwidth_cap{ 0 };
-	uint64_t uptime{ 0 };
-	uint32_t peer_count{ 0 };
-	uint8_t protocol_version{ 0 };
-	nano::block_hash genesis_block{ 0 };
-	uint8_t major_version{ 0 };
-	uint8_t minor_version{ 0 };
-	uint8_t patch_version{ 0 };
-	uint8_t pre_release_version{ 0 };
-	uint8_t maker{ static_cast<uint8_t> (telemetry_maker::nf_node) }; // Where this telemetry information originated
-	std::chrono::system_clock::time_point timestamp;
-	uint64_t active_difficulty{ 0 };
-	std::vector<uint8_t> unknown_data;
 
 public:
 	void serialize (nano::stream &) const;
@@ -480,8 +461,11 @@ public:
 	std::string to_string () const;
 
 	// Size does not include unknown_data
-	static auto constexpr size = sizeof (signature) + sizeof (node_id) + sizeof (block_count) + sizeof (cemented_count) + sizeof (unchecked_count) + sizeof (account_count) + sizeof (bandwidth_cap) + sizeof (peer_count) + sizeof (protocol_version) + sizeof (uptime) + sizeof (genesis_block) + sizeof (major_version) + sizeof (minor_version) + sizeof (patch_version) + sizeof (pre_release_version) + sizeof (maker) + sizeof (uint64_t) + sizeof (active_difficulty);
-	static auto constexpr latest_size = size; // This needs to be updated for each new telemetry version
+	static std::size_t size ();
+	static std::size_t latest_size ()
+	{
+		return size ();
+	}; // This needs to be updated for each new telemetry version
 	rsnano::TelemetryDataHandle * handle;
 
 private:

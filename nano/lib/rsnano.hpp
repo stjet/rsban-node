@@ -1715,7 +1715,51 @@ TelemetryDataHandle * rsn_telemetry_data_clone (TelemetryDataHandle * handle);
 
 TelemetryDataHandle * rsn_telemetry_data_create ();
 
+bool rsn_telemetry_data_deserialize (TelemetryDataHandle * handle,
+void * stream,
+uint16_t payload_len);
+
 void rsn_telemetry_data_destroy (TelemetryDataHandle * handle);
+
+uint64_t rsn_telemetry_data_get_account_count (TelemetryDataHandle * handle);
+
+uint64_t rsn_telemetry_data_get_active_difficulty (TelemetryDataHandle * handle);
+
+uint64_t rsn_telemetry_data_get_bandwidth_cap (TelemetryDataHandle * handle);
+
+uint64_t rsn_telemetry_data_get_block_count (TelemetryDataHandle * handle);
+
+uint64_t rsn_telemetry_data_get_cemented_count (TelemetryDataHandle * handle);
+
+void rsn_telemetry_data_get_genesis_block (TelemetryDataHandle * handle, uint8_t * block);
+
+uint8_t rsn_telemetry_data_get_major_version (TelemetryDataHandle * handle);
+
+uint8_t rsn_telemetry_data_get_maker (TelemetryDataHandle * handle);
+
+uint8_t rsn_telemetry_data_get_minor_version (TelemetryDataHandle * handle);
+
+void rsn_telemetry_data_get_node_id (TelemetryDataHandle * handle, uint8_t * node_id);
+
+uint8_t rsn_telemetry_data_get_patch_version (TelemetryDataHandle * handle);
+
+uint32_t rsn_telemetry_data_get_peer_count (TelemetryDataHandle * handle);
+
+uint8_t rsn_telemetry_data_get_pre_release_version (TelemetryDataHandle * handle);
+
+uint8_t rsn_telemetry_data_get_protocol_version (TelemetryDataHandle * handle);
+
+void rsn_telemetry_data_get_signature (TelemetryDataHandle * handle, uint8_t * signature);
+
+uint64_t rsn_telemetry_data_get_timestamp_ms (TelemetryDataHandle * handle);
+
+uint64_t rsn_telemetry_data_get_unchecked_count (TelemetryDataHandle * handle);
+
+void rsn_telemetry_data_get_unknown_data (TelemetryDataHandle * handle, uint8_t * data);
+
+uintptr_t rsn_telemetry_data_get_unknown_data_len (TelemetryDataHandle * handle);
+
+uint64_t rsn_telemetry_data_get_uptime (TelemetryDataHandle * handle);
 
 void rsn_telemetry_data_set_account_count (TelemetryDataHandle * handle, uint64_t count);
 
@@ -1756,6 +1800,8 @@ const uint8_t * data,
 uintptr_t len);
 
 void rsn_telemetry_data_set_uptime (TelemetryDataHandle * handle, uint64_t uptime);
+
+uintptr_t rsn_telemetry_data_size ();
 
 uint16_t rsn_test_node_port ();
 

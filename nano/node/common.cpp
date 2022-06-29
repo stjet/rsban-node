@@ -1605,25 +1605,8 @@ void nano::telemetry_data::deserialize (nano::stream & stream_a, uint16_t payloa
 
 void nano::telemetry_data::serialize_without_signature (nano::stream & stream_a) const
 {
-	// All values should be serialized in big endian
-	write (stream_a, get_node_id ());
-	write (stream_a, boost::endian::native_to_big (get_block_count ()));
-	write (stream_a, boost::endian::native_to_big (get_cemented_count ()));
-	write (stream_a, boost::endian::native_to_big (get_unchecked_count ()));
-	write (stream_a, boost::endian::native_to_big (get_account_count ()));
-	write (stream_a, boost::endian::native_to_big (get_bandwidth_cap ()));
-	write (stream_a, boost::endian::native_to_big (get_peer_count ()));
-	write (stream_a, get_protocol_version ());
-	write (stream_a, boost::endian::native_to_big (get_uptime ()));
-	write (stream_a, get_genesis_block ().bytes);
-	write (stream_a, get_major_version ());
-	write (stream_a, get_minor_version ());
-	write (stream_a, get_patch_version ());
-	write (stream_a, get_pre_release_version ());
-	write (stream_a, get_maker ());
-	write (stream_a, boost::endian::native_to_big (std::chrono::duration_cast<std::chrono::milliseconds> (get_timestamp ().time_since_epoch ()).count ()));
-	write (stream_a, boost::endian::native_to_big (get_active_difficulty ()));
-	write (stream_a, get_unknown_data ());
+	if (!rsnano::rsn_telemetry_data_serialize (handle, &stream_a))
+		throw std::runtime_error ("could not serialize telemetry data");
 }
 
 void nano::telemetry_data::serialize (nano::stream & stream_a) const

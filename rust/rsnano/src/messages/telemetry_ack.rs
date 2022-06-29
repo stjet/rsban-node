@@ -86,6 +86,33 @@ impl TelemetryData {
         Self::serialized_size_without_unknown_data()
     }
 
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        // All values should be serialized in big endian
+        self.node_id.serialize(stream)?;
+        stream.write_u64_be(self.block_count)?;
+        stream.write_u64_be(self.cemented_count)?;
+        stream.write_u64_be(self.unchecked_count)?;
+        stream.write_u64_be(self.account_count)?;
+        stream.write_u64_be(self.bandwidth_cap)?;
+        stream.write_u32_be(self.peer_count)?;
+        stream.write_u8(self.protocol_version)?;
+        stream.write_u64_be(self.uptime)?;
+        self.genesis_block.serialize(stream)?;
+        stream.write_u8(self.major_version)?;
+        stream.write_u8(self.minor_version)?;
+        stream.write_u8(self.patch_version)?;
+        stream.write_u8(self.pre_release_version)?;
+        stream.write_u8(self.maker)?;
+        stream.write_u64_be(
+            self.timestamp
+                .duration_since(SystemTime::UNIX_EPOCH)?
+                .as_millis() as u64,
+        )?;
+        stream.write_u64_be(self.active_difficulty)?;
+        stream.write_bytes(&self.unknown_data)?;
+        Ok(())
+    }
+
     pub fn deserialize(&mut self, stream: &mut dyn Stream, payload_length: u16) -> Result<()> {
         self.signature = Signature::deserialize(stream)?;
         self.node_id = Account::deserialize(stream)?;
@@ -107,7 +134,7 @@ impl TelemetryData {
         let timestamp_ms = stream.read_u64_be()?;
         self.timestamp = SystemTime::UNIX_EPOCH + Duration::from_millis(timestamp_ms);
         self.active_difficulty = stream.read_u64_be()?;
-        
+
         if payload_length as usize > Self::latest_size() {
             let unknown_len = (payload_length as usize) - Self::latest_size();
             self.unknown_data.resize(unknown_len, 0);

@@ -334,6 +334,15 @@ pub extern "C" fn rsn_telemetry_data_size() -> usize {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_telemetry_data_serialize(
+    handle: *mut TelemetryDataHandle,
+    stream: *mut c_void,
+) -> bool {
+    let mut stream = FfiStream::new(stream);
+    (*handle).0.serialize(&mut stream).is_ok()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_telemetry_data_deserialize(
     handle: *mut TelemetryDataHandle,
     stream: *mut c_void,

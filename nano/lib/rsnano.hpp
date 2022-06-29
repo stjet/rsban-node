@@ -1761,6 +1761,8 @@ uintptr_t rsn_telemetry_data_get_unknown_data_len (TelemetryDataHandle * handle)
 
 uint64_t rsn_telemetry_data_get_uptime (TelemetryDataHandle * handle);
 
+bool rsn_telemetry_data_serialize (TelemetryDataHandle * handle, void * stream);
+
 void rsn_telemetry_data_set_account_count (TelemetryDataHandle * handle, uint64_t count);
 
 void rsn_telemetry_data_set_active_difficulty (TelemetryDataHandle * handle, uint64_t difficulty);

@@ -447,9 +447,6 @@ public:
 	std::vector<uint8_t> get_unknown_data () const;
 	void set_unknown_data (std::vector<uint8_t> data_a);
 
-private:
-
-public:
 	void serialize (nano::stream &) const;
 	void deserialize (nano::stream &, uint16_t);
 	nano::error serialize_json (nano::jsonconfig &, bool) const;

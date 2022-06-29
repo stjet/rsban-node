@@ -1,3 +1,5 @@
+use bitvec::macros::internal::funty::Numeric;
+
 pub trait Stream {
     fn write_u8(&mut self, value: u8) -> anyhow::Result<()>;
     fn write_bytes(&mut self, bytes: &[u8]) -> anyhow::Result<()>;
@@ -23,6 +25,14 @@ pub trait StreamExt: Stream {
         let mut buffer = [0u8; 8];
         self.read_bytes(&mut buffer, 8)?;
         Ok(u64::from_be_bytes(buffer))
+    }
+
+    fn write_u32_be(&mut self, value: u32) -> anyhow::Result<()> {
+        self.write_bytes(&value.to_be_bytes())
+    }
+
+    fn write_u64_be(&mut self, value: u64) -> anyhow::Result<()> {
+        self.write_bytes(&value.to_be_bytes())
     }
 }
 

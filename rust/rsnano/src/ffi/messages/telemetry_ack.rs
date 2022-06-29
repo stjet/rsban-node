@@ -363,3 +363,10 @@ pub unsafe extern "C" fn rsn_telemetry_data_sign(
 
     false
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_telemetry_data_validate_signature(
+    handle: *mut TelemetryDataHandle,
+) -> bool {
+    (*handle).0.validate_signature()
+}

@@ -677,4 +677,17 @@ mod tests {
         validate_message(&keypair.public_key(), &data, &signature)?;
         Ok(())
     }
+
+    #[test]
+    fn signing_same_message_twice_produces_equal_signatures() -> Result<()> {
+        // the C++ implementation adds random bytes and a padding when signing for extra security and for making side channel attacks more difficult.
+        // Currently the Rust impl does not do that.
+        // In C++ signing the same message twice will produce different signatures. In Rust we get the same signature.
+        let keypair = KeyPair::new();
+        let data = [1,2,3];
+        let signature_a = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+        let signature_b = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+        assert_eq!(signature_a, signature_b);
+        Ok(())
+    }
 }

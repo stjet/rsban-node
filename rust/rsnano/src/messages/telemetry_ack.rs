@@ -1,5 +1,5 @@
 use crate::utils::{MemoryStream, Stream, StreamExt};
-use crate::{sign_message, Account, BlockHash, KeyPair, Signature};
+use crate::{sign_message, Account, BlockHash, KeyPair, Signature, validate_message};
 use anyhow::Result;
 use std::mem::size_of;
 use std::time::{Duration, SystemTime};
@@ -144,10 +144,23 @@ impl TelemetryData {
     }
 
     pub fn sign(&mut self, keys: &KeyPair) -> Result<()> {
+        println!(" Rust pubkey: {:?}", keys.public_key());
+        println!(" Rust privkey: {}", keys.private_key().encode_hex());
+
         debug_assert!(self.node_id.public_key == keys.public_key());
         let mut stream = MemoryStream::new();
         self.serialize_without_signature(&mut stream)?;
+        println!("serialized: {:x?}", stream.as_bytes());
         self.signature = sign_message(&keys.private_key(), &keys.public_key(), stream.as_bytes())?;
         Ok(())
+    }
+
+    pub fn validate_signature(&self) -> bool {
+        let mut stream = MemoryStream::new();
+        if self.serialize_without_signature(&mut stream).is_ok(){
+            validate_message(&self.node_id.public_key, stream.as_bytes(), &self.signature).is_ok()
+        }else{
+            false
+        }
     }
 }

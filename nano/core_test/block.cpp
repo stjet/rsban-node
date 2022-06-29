@@ -11,7 +11,9 @@
 TEST (sign_message, sign_in_cpp_and_validate_in_rust)
 {
 	nano::keypair key;
-	auto signature{ nano::sign_message (key.prv, key.pub, 0) };
+	nano::signature signature;
+	nano::uint256_union msg{0};
+	ed25519_sign (msg.bytes.data(), msg.bytes.size(), key.prv.bytes.data (), key.pub.bytes.data (), signature.bytes.data ());
 
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
@@ -30,6 +32,21 @@ TEST (sign_message, sign_in_cpp_and_validate_in_rust)
 	ASSERT_EQ (validate_result, true);
 }
 
+TEST (sign_message, sign_multiple_times)
+{
+	uint8_t data[] = {1,2,3,4};
+	nano::keypair key;
+	auto signature_a{ nano::sign_message(key.prv, key.pub, &data[0], 4)};
+	auto signature_b{ nano::sign_message(key.prv, key.pub, &data[0], 4)};
+	std::cout<<"a: " << signature_a.to_string() << std::endl;
+	std::cout<<"b: " << signature_b.to_string() << std::endl;
+	ASSERT_NE(signature_a, signature_b);
+	bool res_a = nano::validate_message (key.pub, &data[0], 4, signature_a);
+	bool res_b = nano::validate_message (key.pub, &data[0], 4, signature_b);
+	ASSERT_EQ(res_a, false);
+	ASSERT_EQ(res_b, false);
+}
+
 TEST (sign_message, sign_in_rust_and_validate_in_cpp)
 {
 	nano::keypair key;
@@ -46,8 +63,8 @@ TEST (sign_message, sign_in_rust_and_validate_in_cpp)
 
 	nano::signature actual;
 	std::copy (std::begin (rsnano_sig), std::end (rsnano_sig), std::begin (actual.bytes));
-	auto valid{ nano::validate_message (key.pub, 0, actual) };
-	ASSERT_EQ (valid, false);
+	bool valid = ed25519_sign_open (&message[0], 32, key.pub.bytes.data (), actual.bytes.data ()) == 0;
+	ASSERT_EQ (valid, true);
 }
 
 TEST (uint512_union, parse_zero)

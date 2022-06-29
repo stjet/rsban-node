@@ -1763,8 +1763,25 @@ bool nano::telemetry_data::operator!= (nano::telemetry_data const & data_a) cons
 
 void nano::telemetry_data::sign (nano::keypair const & node_id_a)
 {
+	debug_assert (get_node_id () == node_id_a.pub);
+	std::vector<uint8_t> bytes;
+	{
+		nano::vectorstream stream (bytes);
+		serialize_without_signature (stream);
+	}
+
+	std::cout << "C++ Serialized: " << std::hex << std::setfill('0');
+	for (auto i : bytes){
+		std::cout << " " << std::setw(2) << static_cast<unsigned>(i);
+	}
+	std::cout << std::endl;
+
+	set_signature (nano::sign_message (node_id_a.prv, node_id_a.pub, bytes.data (), bytes.size ()));
+	std::cout << "C++  Signature: " << get_signature().to_string() << std::endl;
+
 	if (!rsnano::rsn_telemetry_data_sign (handle, node_id_a.prv.bytes.data ()))
 		throw std::runtime_error ("could not sign telemetry data");
+	std::cout << "Rust Signature: " << get_signature().to_string() << std::endl;
 }
 
 bool nano::telemetry_data::validate_signature () const

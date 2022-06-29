@@ -677,4 +677,14 @@ mod tests {
         validate_message(&keypair.public_key(), &data, &signature)?;
         Ok(())
     }
+
+    #[test]
+    fn signing_same_message_twice_produces_different_signatures() -> Result<()> {
+        let keypair = KeyPair::new();
+        let data = [1,2,3];
+        let signature_a = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+        let signature_b = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+        assert_ne!(signature_a, signature_b);
+        Ok(())
+    }
 }

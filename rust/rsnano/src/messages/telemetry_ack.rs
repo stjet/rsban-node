@@ -1,5 +1,5 @@
-use crate::utils::{Stream, StreamExt};
-use crate::{Account, BlockHash, Signature};
+use crate::utils::{MemoryStream, Stream, StreamExt};
+use crate::{sign_message, Account, BlockHash, KeyPair, Signature};
 use anyhow::Result;
 use std::mem::size_of;
 use std::time::{Duration, SystemTime};
@@ -86,7 +86,7 @@ impl TelemetryData {
         Self::serialized_size_without_unknown_data()
     }
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+    pub fn serialize_without_signature(&self, stream: &mut dyn Stream) -> Result<()> {
         // All values should be serialized in big endian
         self.node_id.serialize(stream)?;
         stream.write_u64_be(self.block_count)?;
@@ -140,6 +140,14 @@ impl TelemetryData {
             self.unknown_data.resize(unknown_len, 0);
             stream.read_bytes(&mut self.unknown_data, unknown_len)?;
         }
+        Ok(())
+    }
+
+    pub fn sign(&mut self, keys: &KeyPair) -> Result<()> {
+        debug_assert!(self.node_id.public_key == keys.public_key());
+        let mut stream = MemoryStream::new();
+        self.serialize_without_signature(&mut stream)?;
+        self.signature = sign_message(&keys.private_key(), &keys.public_key(), stream.as_bytes())?;
         Ok(())
     }
 }

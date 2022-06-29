@@ -233,7 +233,7 @@ impl Debug for MessageHeader {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::TestStream;
+    use crate::utils::MemoryStream;
 
     use super::*;
 
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn serialize_and_deserialize() -> Result<()> {
         let original = test_header();
-        let mut stream = TestStream::new();
+        let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
         let deserialized = MessageHeader::from_stream(&mut stream)?;
         assert_eq!(original, deserialized);

@@ -1,5 +1,3 @@
-use bitvec::macros::internal::funty::Numeric;
-
 pub trait Stream {
     fn write_u8(&mut self, value: u8) -> anyhow::Result<()>;
     fn write_bytes(&mut self, bytes: &[u8]) -> anyhow::Result<()>;
@@ -38,14 +36,12 @@ pub trait StreamExt: Stream {
 
 impl<T: Stream + ?Sized> StreamExt for T {}
 
-#[cfg(test)]
-pub struct TestStream {
+pub struct MemoryStream {
     bytes: Vec<u8>,
     read_index: usize,
 }
 
-#[cfg(test)]
-impl TestStream {
+impl MemoryStream {
     pub fn new() -> Self {
         Self {
             bytes: Vec::new(),
@@ -60,10 +56,13 @@ impl TestStream {
     pub fn byte_at(&self, i: usize) -> u8 {
         self.bytes[i]
     }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
 }
 
-#[cfg(test)]
-impl Stream for TestStream {
+impl Stream for MemoryStream {
     fn write_u8(&mut self, value: u8) -> anyhow::Result<()> {
         self.bytes.push(value);
         Ok(())
@@ -106,7 +105,7 @@ mod tests {
 
     #[test]
     fn test_stream() -> Result<()> {
-        let mut stream = TestStream::new();
+        let mut stream = MemoryStream::new();
         stream.write_bytes(&[1, 2, 3])?;
         assert_eq!(stream.bytes_written(), 3);
 

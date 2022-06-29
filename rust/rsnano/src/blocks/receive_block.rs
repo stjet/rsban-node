@@ -171,7 +171,7 @@ impl Block for ReceiveBlock {
 mod tests {
     use crate::{
         numbers::KeyPair,
-        utils::{TestPropertyTree, TestStream},
+        utils::{MemoryStream, TestPropertyTree},
     };
 
     use super::*;
@@ -188,7 +188,7 @@ mod tests {
             &key1.public_key(),
             4,
         )?;
-        let mut stream = TestStream::new();
+        let mut stream = MemoryStream::new();
         block1.serialize(&mut stream)?;
         assert_eq!(ReceiveBlock::serialized_size(), stream.bytes_written());
 

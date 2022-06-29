@@ -239,7 +239,7 @@ impl Block for SendBlock {
 mod tests {
     use crate::{
         numbers::{validate_message, KeyPair},
-        utils::{TestPropertyTree, TestStream},
+        utils::{MemoryStream, TestPropertyTree},
     };
 
     use super::*;
@@ -277,7 +277,7 @@ mod tests {
             &key.public_key(),
             5,
         )?;
-        let mut stream = TestStream::new();
+        let mut stream = MemoryStream::new();
         block1.serialize(&mut stream)?;
         assert_eq!(SendBlock::serialized_size(), stream.bytes_written());
 

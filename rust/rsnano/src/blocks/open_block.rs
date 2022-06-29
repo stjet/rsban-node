@@ -191,7 +191,7 @@ mod tests {
     use super::*;
     use crate::{
         numbers::KeyPair,
-        utils::{TestPropertyTree, TestStream},
+        utils::{MemoryStream, TestPropertyTree},
     };
 
     // original test: block.open_serialize_json
@@ -226,7 +226,7 @@ mod tests {
             &key1.public_key(),
             0,
         )?;
-        let mut stream = TestStream::new();
+        let mut stream = MemoryStream::new();
         block1.serialize(&mut stream)?;
         assert_eq!(OpenBlock::serialized_size(), stream.bytes_written());
 

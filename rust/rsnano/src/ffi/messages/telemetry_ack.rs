@@ -6,7 +6,7 @@ use std::{
 use crate::{
     ffi::{copy_account_bytes, copy_hash_bytes, copy_signature_bytes, FfiStream},
     messages::TelemetryData,
-    Account, BlockHash, Signature,
+    Account, BlockHash, KeyPair, Signature,
 };
 
 pub struct TelemetryDataHandle(TelemetryData);
@@ -334,12 +334,12 @@ pub extern "C" fn rsn_telemetry_data_size() -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_telemetry_data_serialize(
+pub unsafe extern "C" fn rsn_telemetry_data_serialize_without_signature(
     handle: *mut TelemetryDataHandle,
     stream: *mut c_void,
 ) -> bool {
     let mut stream = FfiStream::new(stream);
-    (*handle).0.serialize(&mut stream).is_ok()
+    (*handle).0.serialize_without_signature(&mut stream).is_ok()
 }
 
 #[no_mangle]
@@ -350,4 +350,16 @@ pub unsafe extern "C" fn rsn_telemetry_data_deserialize(
 ) -> bool {
     let mut stream = FfiStream::new(stream);
     (*handle).0.deserialize(&mut stream, payload_len).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_telemetry_data_sign(
+    handle: *mut TelemetryDataHandle,
+    prv_key: *const u8,
+) -> bool {
+    if let Ok(keys) = KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(prv_key, 32)) {
+        return (*handle).0.sign(&keys).is_ok();
+    }
+
+    false
 }

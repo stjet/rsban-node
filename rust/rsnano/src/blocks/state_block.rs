@@ -276,7 +276,7 @@ impl Block for StateBlock {
 mod tests {
     use crate::{
         blocks::{BlockBuilder, StateBlockBuilder},
-        utils::{TestPropertyTree, TestStream},
+        utils::{MemoryStream, TestPropertyTree},
     };
 
     use super::*;
@@ -285,7 +285,7 @@ mod tests {
     #[test]
     fn serialization() -> Result<()> {
         let block1 = BlockBuilder::state().work(5).build()?;
-        let mut stream = TestStream::new();
+        let mut stream = MemoryStream::new();
         block1.serialize(&mut stream)?;
         assert_eq!(StateBlock::serialized_size(), stream.bytes_written());
         assert_eq!(stream.byte_at(215), 0x5); // Ensure work is serialized big-endian

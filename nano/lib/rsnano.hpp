@@ -1761,7 +1761,7 @@ uintptr_t rsn_telemetry_data_get_unknown_data_len (TelemetryDataHandle * handle)
 
 uint64_t rsn_telemetry_data_get_uptime (TelemetryDataHandle * handle);
 
-bool rsn_telemetry_data_serialize (TelemetryDataHandle * handle, void * stream);
+bool rsn_telemetry_data_serialize_without_signature (TelemetryDataHandle * handle, void * stream);
 
 void rsn_telemetry_data_set_account_count (TelemetryDataHandle * handle, uint64_t count);
 
@@ -1802,6 +1802,8 @@ const uint8_t * data,
 uintptr_t len);
 
 void rsn_telemetry_data_set_uptime (TelemetryDataHandle * handle, uint64_t uptime);
+
+bool rsn_telemetry_data_sign (TelemetryDataHandle * handle, const uint8_t * prv_key);
 
 uintptr_t rsn_telemetry_data_size ();
 

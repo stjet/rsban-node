@@ -1605,7 +1605,7 @@ void nano::telemetry_data::deserialize (nano::stream & stream_a, uint16_t payloa
 
 void nano::telemetry_data::serialize_without_signature (nano::stream & stream_a) const
 {
-	if (!rsnano::rsn_telemetry_data_serialize (handle, &stream_a))
+	if (!rsnano::rsn_telemetry_data_serialize_without_signature (handle, &stream_a))
 		throw std::runtime_error ("could not serialize telemetry data");
 }
 
@@ -1763,14 +1763,8 @@ bool nano::telemetry_data::operator!= (nano::telemetry_data const & data_a) cons
 
 void nano::telemetry_data::sign (nano::keypair const & node_id_a)
 {
-	debug_assert (get_node_id () == node_id_a.pub);
-	std::vector<uint8_t> bytes;
-	{
-		nano::vectorstream stream (bytes);
-		serialize_without_signature (stream);
-	}
-
-	set_signature (nano::sign_message (node_id_a.prv, node_id_a.pub, bytes.data (), bytes.size ()));
+	if (!rsnano::rsn_telemetry_data_sign (handle, node_id_a.prv.bytes.data ()))
+		throw std::runtime_error ("could not sign telemetry data");
 }
 
 bool nano::telemetry_data::validate_signature () const

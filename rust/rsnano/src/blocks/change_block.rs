@@ -185,7 +185,7 @@ mod tests {
     use super::*;
     use crate::{
         numbers::KeyPair,
-        utils::{TestPropertyTree, TestStream},
+        utils::{MemoryStream, TestPropertyTree},
     };
 
     // original test: change_block.deserialize
@@ -199,7 +199,7 @@ mod tests {
             &key1.public_key(),
             5,
         )?;
-        let mut stream = TestStream::new();
+        let mut stream = MemoryStream::new();
         block1.serialize(&mut stream)?;
         assert_eq!(ChangeBlock::serialized_size(), stream.bytes_written());
 

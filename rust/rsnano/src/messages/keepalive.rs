@@ -6,7 +6,7 @@ use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr},
 };
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Keepalive {
     header: MessageHeader,
     peers: [SocketAddr; 8],
@@ -44,6 +44,15 @@ impl Keepalive {
 
     pub fn set_peers(&mut self, peers: &[SocketAddr; 8]) {
         self.peers = *peers;
+    }
+
+    pub fn from_stream(header: MessageHeader, stream: &mut impl Stream) -> Result<Self> {
+        let mut result = Self {
+            header,
+            peers: empty_peers(),
+        };
+        result.deserialize(stream)?;
+        Ok(result)
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
@@ -103,6 +112,40 @@ impl Message for Keepalive {
                 }
             }
         }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{utils::MemoryStream, DEV_NETWORK_PARAMS};
+
+    use super::*;
+
+    #[test]
+    fn serialize_no_peers() -> Result<()> {
+        let request1 = Keepalive::new(&DEV_NETWORK_PARAMS.network);
+        let mut stream = MemoryStream::new();
+        request1.serialize(&mut stream)?;
+        let header = MessageHeader::from_stream(&mut stream)?;
+        let request2 = Keepalive::from_stream(header, &mut stream)?;
+        assert_eq!(request1, request2);
+        Ok(())
+    }
+
+    #[test]
+    fn serialize_peers() -> Result<()> {
+        let mut request1 = Keepalive::new(&DEV_NETWORK_PARAMS.network);
+
+        let mut peers = request1.peers().clone();
+        peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
+        request1.set_peers(&peers);
+
+        let mut stream = MemoryStream::new();
+        request1.serialize(&mut stream)?;
+        let header = MessageHeader::from_stream(&mut stream)?;
+        let request2 = Keepalive::from_stream(header, &mut stream)?;
+        assert_eq!(request1, request2);
         Ok(())
     }
 }

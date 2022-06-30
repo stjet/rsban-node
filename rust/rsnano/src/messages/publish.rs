@@ -72,3 +72,25 @@ impl Message for Publish {
         lck.as_block().serialize(stream)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{utils::MemoryStream, BlockBuilder, BlockType, DEV_NETWORK_PARAMS};
+
+    use super::*;
+
+    #[test]
+    fn serialize() -> Result<()> {
+        let block = BlockBuilder::state().build()?;
+        let block = Arc::new(RwLock::new(BlockEnum::State(block)));
+        let publish = Publish::new(&DEV_NETWORK_PARAMS.network, block);
+        assert_eq!(publish.header().block_type(), BlockType::State);
+        let mut stream = MemoryStream::new();
+        publish.header().serialize(&mut stream)?;
+        let bytes = stream.as_bytes();
+        assert_eq!(bytes.len(), 8);
+        assert_eq!(bytes[0], 0x52);
+        assert_eq!(bytes[1], 0x41);
+        Ok(())
+    }
+}

@@ -1,8 +1,10 @@
+use std::any::Any;
+
 mod message_header;
 pub use message_header::*;
 
-mod message;
-pub use message::*;
+mod node_id_handshake;
+pub use node_id_handshake::*;
 
 mod keepalive;
 pub use keepalive::*;
@@ -33,3 +35,10 @@ pub use telemetry_req::*;
 
 mod telemetry_ack;
 pub use telemetry_ack::*;
+
+pub trait Message {
+    fn header(&self) -> &MessageHeader;
+    fn set_header(&mut self, header: &MessageHeader);
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}

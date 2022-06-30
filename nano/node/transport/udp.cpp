@@ -497,35 +497,35 @@ public:
 	{
 		if (node.config->logging.network_node_id_handshake_logging ())
 		{
-			node.logger->try_log (boost::str (boost::format ("Received node_id_handshake message from %1% with query %2% and response ID %3%") % endpoint % (message_a.query ? message_a.query->to_string () : std::string ("[none]")) % (message_a.response ? message_a.response->first.to_node_id () : std::string ("[none]"))));
+			node.logger->try_log (boost::str (boost::format ("Received node_id_handshake message from %1% with query %2% and response ID %3%") % endpoint % (message_a.get_query () ? message_a.get_query ()->to_string () : std::string ("[none]")) % (message_a.get_response () ? message_a.get_response ()->first.to_node_id () : std::string ("[none]"))));
 		}
 		boost::optional<nano::uint256_union> out_query;
 		boost::optional<nano::uint256_union> out_respond_to;
-		if (message_a.query)
+		if (message_a.get_query ())
 		{
-			out_respond_to = message_a.query;
+			out_respond_to = message_a.get_query ();
 		}
 		auto validated_response (false);
-		if (message_a.response)
+		if (message_a.get_response ())
 		{
-			if (!node.network.syn_cookies.validate (endpoint, message_a.response->first, message_a.response->second))
+			if (!node.network.syn_cookies.validate (endpoint, message_a.get_response ()->first, message_a.get_response ()->second))
 			{
 				validated_response = true;
-				if (message_a.response->first != node.node_id.pub && !node.network.tcp_channels->find_node_id (message_a.response->first))
+				if (message_a.get_response ()->first != node.node_id.pub && !node.network.tcp_channels->find_node_id (message_a.get_response ()->first))
 				{
-					node.network.udp_channels.clean_node_id (endpoint, message_a.response->first);
+					node.network.udp_channels.clean_node_id (endpoint, message_a.get_response ()->first);
 					auto new_channel (node.network.udp_channels.insert (endpoint, message_a.get_header ().get_version_using ()));
 					if (new_channel)
 					{
 						node.network.udp_channels.modify (new_channel, [&message_a] (std::shared_ptr<nano::transport::channel_udp> const & channel_a) {
-							channel_a->set_node_id (message_a.response->first);
+							channel_a->set_node_id (message_a.get_response ()->first);
 						});
 					}
 				}
 			}
 			else if (node.config->logging.network_node_id_handshake_logging ())
 			{
-				node.logger->try_log (boost::str (boost::format ("Failed to validate syn cookie signature %1% by %2%") % message_a.response->second.to_string () % message_a.response->first.to_account ()));
+				node.logger->try_log (boost::str (boost::format ("Failed to validate syn cookie signature %1% by %2%") % message_a.get_response ()->second.to_string () % message_a.get_response ()->first.to_account ()));
 			}
 		}
 		if (!validated_response && node.network.udp_channels.channel (endpoint) == nullptr)

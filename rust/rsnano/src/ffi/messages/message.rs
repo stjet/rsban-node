@@ -1,7 +1,7 @@
 use super::MessageHeaderHandle;
 use crate::{
     ffi::NetworkConstantsDto,
-    messages::{Message, MessageHeader, NodeIdHandshake},
+    messages::{Message, MessageHeader},
     NetworkConstants,
 };
 
@@ -29,27 +29,6 @@ pub unsafe extern "C" fn rsn_message_set_header(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_destroy(handle: *mut MessageHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
-    constants: *mut NetworkConstantsDto,
-) -> *mut MessageHandle {
-    create_message_handle(constants, NodeIdHandshake::new)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_create2(
-    header: *mut MessageHeaderHandle,
-) -> *mut MessageHandle {
-    create_message_handle2(header, NodeIdHandshake::with_header)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_clone(
-    handle: *mut MessageHandle,
-) -> *mut MessageHandle {
-    message_handle_clone::<NodeIdHandshake>(handle)
 }
 
 pub(crate) unsafe fn create_message_handle<T: 'static + Message>(

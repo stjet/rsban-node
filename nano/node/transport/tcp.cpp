@@ -680,11 +680,11 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 						if (header.get_version_using () >= node_l->network_params.network.protocol_version_min)
 						{
 							nano::node_id_handshake message (error, stream, header);
-							if (!error && message.response && message.query)
+							if (!error && message.get_response () && message.get_query ())
 							{
 								channel_a->set_network_version (header.get_version_using ());
-								auto node_id (message.response->first);
-								bool process (!node_l->network.syn_cookies.validate (endpoint_a, node_id, message.response->second) && node_id != node_l->node_id.pub);
+								auto node_id (message.get_response ()->first);
+								bool process (!node_l->network.syn_cookies.validate (endpoint_a, node_id, message.get_response ()->second) && node_id != node_l->node_id.pub);
 								if (process)
 								{
 									/* If node ID is known, don't establish new connection
@@ -699,11 +699,11 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 								{
 									channel_a->set_node_id (node_id);
 									channel_a->set_last_packet_received (std::chrono::steady_clock::now ());
-									boost::optional<std::pair<nano::account, nano::signature>> response (std::make_pair (node_l->node_id.pub, nano::sign_message (node_l->node_id.prv, node_l->node_id.pub, *message.query)));
+									boost::optional<std::pair<nano::account, nano::signature>> response (std::make_pair (node_l->node_id.pub, nano::sign_message (node_l->node_id.prv, node_l->node_id.pub, *message.get_query ())));
 									nano::node_id_handshake response_message (node_l->network_params.network, boost::none, response);
 									if (node_l->config->logging.network_node_id_handshake_logging ())
 									{
-										node_l->logger->try_log (boost::str (boost::format ("Node ID handshake response sent with node ID %1% to %2%: query %3%") % node_l->node_id.pub.to_node_id () % endpoint_a % (*message.query).to_string ()));
+										node_l->logger->try_log (boost::str (boost::format ("Node ID handshake response sent with node ID %1% to %2%: query %3%") % node_l->node_id.pub.to_node_id () % endpoint_a % (*message.get_query ()).to_string ()));
 									}
 									channel_a->send (response_message, [node_w, channel_a, endpoint_a, cleanup_and_udp_fallback] (boost::system::error_code const & ec, std::size_t size_a) {
 										if (auto node_l = node_w.lock ())

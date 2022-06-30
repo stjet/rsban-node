@@ -735,10 +735,10 @@ public:
 		{
 			node->logger->try_log (boost::str (boost::format ("Received node_id_handshake message from %1%") % connection->remote_endpoint));
 		}
-		if (message_a.query)
+		if (message_a.get_query ())
 		{
-			boost::optional<std::pair<nano::account, nano::signature>> response (std::make_pair (node->node_id.pub, nano::sign_message (node->node_id.prv, node->node_id.pub, *message_a.query)));
-			debug_assert (!nano::validate_message (response->first, *message_a.query, response->second));
+			boost::optional<std::pair<nano::account, nano::signature>> response (std::make_pair (node->node_id.pub, nano::sign_message (node->node_id.prv, node->node_id.pub, *message_a.get_query ())));
+			debug_assert (!nano::validate_message (response->first, *message_a.get_query (), response->second));
 			auto cookie (node->network.syn_cookies.assign (nano::transport::map_tcp_to_endpoint (connection->remote_endpoint)));
 			nano::node_id_handshake response_message (connection->network_params.network, cookie, response);
 			auto shared_const_buffer = response_message.to_shared_const_buffer ();
@@ -762,10 +762,10 @@ public:
 				}
 			});
 		}
-		else if (message_a.response)
+		else if (message_a.get_response ())
 		{
-			nano::account const & node_id (message_a.response->first);
-			if (!node->network.syn_cookies.validate (nano::transport::map_tcp_to_endpoint (connection->remote_endpoint), node_id, message_a.response->second) && node_id != node->node_id.pub)
+			nano::account const & node_id (message_a.get_response ()->first);
+			if (!node->network.syn_cookies.validate (nano::transport::map_tcp_to_endpoint (connection->remote_endpoint), node_id, message_a.get_response ()->second) && node_id != node->node_id.pub)
 			{
 				connection->remote_node_id = node_id;
 				connection->socket->type_set (nano::socket::type_t::realtime);

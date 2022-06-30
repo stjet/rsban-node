@@ -11,6 +11,7 @@ mod confirm_ack;
 mod confirm_req;
 mod frontier_req;
 mod keepalive;
+mod node_id_handshake;
 mod publish;
 mod telemetry_ack;
 mod telemetry_req;

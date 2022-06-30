@@ -1,13 +1,6 @@
-use super::{MessageHeader, MessageType};
+use super::{Message, MessageHeader, MessageType};
 use crate::NetworkConstants;
 use std::any::Any;
-
-pub trait Message {
-    fn header(&self) -> &MessageHeader;
-    fn set_header(&mut self, header: &MessageHeader);
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
 
 #[derive(Clone)]
 pub struct NodeIdHandshake {

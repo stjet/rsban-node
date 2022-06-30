@@ -1800,14 +1800,14 @@ nano::node_id_handshake::node_id_handshake (nano::network_constants const & cons
 void nano::node_id_handshake::serialize (nano::stream & stream_a) const
 {
 	get_header ().serialize (stream_a);
-	if (query)
+	if (get_query ())
 	{
-		write (stream_a, *query);
+		write (stream_a, *get_query ());
 	}
-	if (response)
+	if (get_response ())
 	{
-		write (stream_a, response->first);
-		write (stream_a, response->second);
+		write (stream_a, get_response ()->first);
+		write (stream_a, get_response ()->second);
 	}
 }
 
@@ -1842,9 +1842,19 @@ bool nano::node_id_handshake::deserialize (nano::stream & stream_a)
 	return error;
 }
 
+boost::optional<nano::uint256_union> nano::node_id_handshake::get_query () const
+{
+	return query;
+}
+
+boost::optional<std::pair<nano::account, nano::signature>> nano::node_id_handshake::get_response () const
+{
+	return response;
+}
+
 bool nano::node_id_handshake::operator== (nano::node_id_handshake const & other_a) const
 {
-	auto result (*query == *other_a.query && *response == *other_a.response);
+	auto result (*get_query () == *other_a.get_query () && *get_response () == *other_a.get_response ());
 	return result;
 }
 

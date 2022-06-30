@@ -552,10 +552,14 @@ public:
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
 	bool operator== (nano::node_id_handshake const &) const;
-	boost::optional<nano::uint256_union> query;
-	boost::optional<std::pair<nano::account, nano::signature>> response;
 	std::size_t size () const;
 	static std::size_t size (nano::message_header const &);
+	boost::optional<nano::uint256_union> get_query () const;
+	boost::optional<std::pair<nano::account, nano::signature>> get_response () const;
+
+private:
+	boost::optional<nano::uint256_union> query;
+	boost::optional<std::pair<nano::account, nano::signature>> response;
 };
 
 class message_visitor

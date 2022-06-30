@@ -17,8 +17,6 @@
 #include <numeric>
 #include <sstream>
 
-std::bitset<16> constexpr nano::message_header::telemetry_size_mask;
-
 std::chrono::seconds constexpr nano::telemetry_cache_cutoffs::dev;
 std::chrono::seconds constexpr nano::telemetry_cache_cutoffs::beta;
 std::chrono::seconds constexpr nano::telemetry_cache_cutoffs::live;
@@ -1275,14 +1273,19 @@ void nano::telemetry_req::visit (nano::message_visitor & visitor_a) const
 	visitor_a.telemetry_req (*this);
 }
 
-rsnano::MessageHandle * create_telemetry_ack_handle (nano::network_constants const & constants)
+rsnano::MessageHandle * create_telemetry_ack_handle (nano::network_constants const & constants, rsnano::TelemetryDataHandle const * data_handle)
 {
 	auto constants_dto{ constants.to_dto () };
-	return rsnano::rsn_message_telemetry_ack_create (&constants_dto);
+	nano::telemetry_data default_data;
+	if (data_handle == nullptr)
+	{
+		data_handle = default_data.handle;
+	}
+	return rsnano::rsn_message_telemetry_ack_create (&constants_dto, data_handle);
 }
 
 nano::telemetry_ack::telemetry_ack (nano::network_constants const & constants) :
-	message (create_telemetry_ack_handle (constants))
+	message (create_telemetry_ack_handle (constants, nullptr))
 {
 }
 
@@ -1296,28 +1299,18 @@ nano::telemetry_ack::telemetry_ack (bool & error_a, nano::stream & stream_a, nan
 }
 
 nano::telemetry_ack::telemetry_ack (nano::telemetry_ack const & other_a) :
-	message (rsnano::rsn_message_telemetry_ack_clone (other_a.handle)),
-	data{ other_a.data }
+	message (rsnano::rsn_message_telemetry_ack_clone (other_a.handle))
 {
 }
 
 nano::telemetry_ack::telemetry_ack (nano::network_constants const & constants, nano::telemetry_data const & telemetry_data_a) :
-	message (create_telemetry_ack_handle (constants)),
-	data (telemetry_data_a)
+	message (create_telemetry_ack_handle (constants, telemetry_data_a.handle))
 {
-	debug_assert (telemetry_data::size () + telemetry_data_a.get_unknown_data ().size () <= message_header::telemetry_size_mask.to_ulong ()); // Maximum size the mask allows
-	auto header{ get_header () };
-	auto extensions{ header.get_extensions () };
-	extensions &= ~message_header::telemetry_size_mask;
-	extensions |= std::bitset<16> (static_cast<unsigned long long> (telemetry_data::size ()) + telemetry_data_a.get_unknown_data ().size ());
-	header.set_extensions (extensions);
-	set_header (header);
 }
 
 nano::telemetry_ack & nano::telemetry_ack::operator= (telemetry_ack const & other_a)
 {
 	handle = rsnano::rsn_message_telemetry_ack_clone (other_a.handle);
-	data = other_a.data;
 	return *this;
 }
 
@@ -1326,26 +1319,13 @@ void nano::telemetry_ack::serialize (nano::stream & stream_a) const
 	get_header ().serialize (stream_a);
 	if (!is_empty_payload ())
 	{
-		data.serialize (stream_a);
+		get_data ().serialize (stream_a);
 	}
 }
 
 bool nano::telemetry_ack::deserialize (nano::stream & stream_a)
 {
-	auto error (false);
-	debug_assert (get_header ().get_type () == nano::message_type::telemetry_ack);
-	try
-	{
-		if (!is_empty_payload ())
-		{
-			data.deserialize (stream_a, nano::narrow_cast<uint16_t> (get_header ().get_extensions ().to_ulong ()));
-		}
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-
+	bool error = !rsnano::rsn_message_telemetry_ack_deserialize (handle, &stream_a);
 	return error;
 }
 
@@ -1356,26 +1336,32 @@ void nano::telemetry_ack::visit (nano::message_visitor & visitor_a) const
 
 uint16_t nano::telemetry_ack::size () const
 {
-	return size (get_header ());
+	return rsnano::rsn_message_telemetry_ack_size (handle);
 }
 
 uint16_t nano::telemetry_ack::size (nano::message_header const & message_header_a)
 {
-	return static_cast<uint16_t> ((message_header_a.get_extensions () & message_header::telemetry_size_mask).to_ullong ());
+	return rsnano::rsn_message_telemetry_ack_size_from_header (message_header_a.handle);
 }
 
 nano::telemetry_data nano::telemetry_ack::get_data () const
 {
-	return data;
+	auto data_handle = rsnano::rsn_message_telemetry_ack_data (handle);
+	return nano::telemetry_data{ data_handle };
 }
 
 bool nano::telemetry_ack::is_empty_payload () const
 {
-	return size () == 0;
+	return rsnano::rsn_message_telemetry_ack_is_empty_payload (handle);
 }
 
 nano::telemetry_data::telemetry_data () :
 	handle{ rsnano::rsn_telemetry_data_create () }
+{
+}
+
+nano::telemetry_data::telemetry_data (rsnano::TelemetryDataHandle * handle_a) :
+	handle{ handle_a }
 {
 }
 

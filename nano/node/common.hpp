@@ -243,8 +243,6 @@ public:
 	bool test_extension (std::size_t position) const;
 	void set_extension (std::size_t position, bool value);
 
-	static std::bitset<16> constexpr telemetry_size_mask{ 0x3ff };
-
 	rsnano::MessageHeaderHandle * handle;
 
 	static std::size_t size ();
@@ -405,6 +403,7 @@ public:
 	telemetry_data ();
 	telemetry_data (nano::telemetry_data const & other_a);
 	telemetry_data (nano::telemetry_data && other_a);
+	telemetry_data (rsnano::TelemetryDataHandle * handle);
 	~telemetry_data ();
 	nano::telemetry_data & operator= (nano::telemetry_data const & other_a);
 
@@ -492,9 +491,6 @@ public:
 	bool is_empty_payload () const;
 	static uint16_t size (nano::message_header const &);
 	nano::telemetry_data get_data () const;
-
-private:
-	nano::telemetry_data data;
 };
 
 class bulk_pull final : public message

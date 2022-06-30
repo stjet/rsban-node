@@ -1361,9 +1361,20 @@ void rsn_message_set_header (MessageHandle * handle, MessageHeaderHandle * heade
 
 MessageHandle * rsn_message_telemetry_ack_clone (MessageHandle * handle);
 
-MessageHandle * rsn_message_telemetry_ack_create (NetworkConstantsDto * constants);
+MessageHandle * rsn_message_telemetry_ack_create (NetworkConstantsDto * constants,
+const TelemetryDataHandle * data);
 
 MessageHandle * rsn_message_telemetry_ack_create2 (MessageHeaderHandle * header);
+
+TelemetryDataHandle * rsn_message_telemetry_ack_data (MessageHandle * handle);
+
+bool rsn_message_telemetry_ack_deserialize (MessageHandle * handle, void * stream);
+
+bool rsn_message_telemetry_ack_is_empty_payload (MessageHandle * handle);
+
+uint16_t rsn_message_telemetry_ack_size (MessageHandle * handle);
+
+uint16_t rsn_message_telemetry_ack_size_from_header (const MessageHeaderHandle * header);
 
 MessageHandle * rsn_message_telemetry_req_clone (MessageHandle * handle);
 

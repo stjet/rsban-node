@@ -1,8 +1,13 @@
 use crate::utils::{MemoryStream, Stream, StreamExt};
-use crate::{sign_message, validate_message, Account, BlockHash, KeyPair, Signature};
+use crate::{
+    sign_message, validate_message, Account, BlockHash, KeyPair, NetworkConstants, Signature,
+};
 use anyhow::Result;
+use std::any::Any;
 use std::mem::size_of;
 use std::time::{Duration, SystemTime};
+
+use super::{Message, MessageHeader, MessageType};
 
 #[repr(u8)]
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq)]
@@ -163,5 +168,76 @@ impl TelemetryData {
         } else {
             false
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct TelemetryAck {
+    header: MessageHeader,
+    pub data: TelemetryData,
+}
+
+impl TelemetryAck {
+    const SIZE_MASK: u16 = 0x3ff;
+
+    pub fn new(constants: &NetworkConstants, data: TelemetryData) -> Self {
+        debug_assert!(
+            TelemetryData::serialized_size_without_unknown_data() + data.unknown_data.len()
+                <= TelemetryAck::SIZE_MASK as usize
+        ); // Maximum size the mask allows
+        let mut header = MessageHeader::new(constants, MessageType::TelemetryAck);
+        let mut extensions = header.extensions();
+        extensions &= !TelemetryAck::SIZE_MASK;
+        extensions |= TelemetryData::serialized_size_without_unknown_data() as u16
+            + data.unknown_data.len() as u16;
+        header.set_extensions(extensions);
+
+        Self { header, data }
+    }
+
+    pub fn with_header(header: &MessageHeader) -> Self {
+        Self {
+            header: header.clone(),
+            data: TelemetryData::new(),
+        }
+    }
+
+    pub fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
+        debug_assert!(self.header.message_type() == MessageType::TelemetryAck);
+        if !self.is_empty_payload() {
+            self.data.deserialize(stream, self.header.extensions())?;
+        }
+
+        Ok(())
+    }
+
+    pub fn size_from_header(header: &MessageHeader) -> u16 {
+        header.extensions() & TelemetryAck::SIZE_MASK
+    }
+
+    pub fn size(&self) -> u16 {
+        TelemetryAck::size_from_header(&self.header)
+    }
+
+    pub fn is_empty_payload(&self) -> bool {
+        self.size() == 0
+    }
+}
+
+impl Message for TelemetryAck {
+    fn header(&self) -> &MessageHeader {
+        &self.header
+    }
+
+    fn set_header(&mut self, header: &MessageHeader) {
+        self.header = header.clone();
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }

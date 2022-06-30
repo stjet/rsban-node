@@ -1,7 +1,7 @@
 use super::MessageHeaderHandle;
 use crate::{
     ffi::NetworkConstantsDto,
-    messages::{Message, MessageHeader, NodeIdHandshake, TelemetryAck},
+    messages::{Message, MessageHeader, NodeIdHandshake},
     NetworkConstants,
 };
 
@@ -29,27 +29,6 @@ pub unsafe extern "C" fn rsn_message_set_header(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_destroy(handle: *mut MessageHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_telemetry_ack_create(
-    constants: *mut NetworkConstantsDto,
-) -> *mut MessageHandle {
-    create_message_handle(constants, TelemetryAck::new)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_telemetry_ack_create2(
-    header: *mut MessageHeaderHandle,
-) -> *mut MessageHandle {
-    create_message_handle2(header, TelemetryAck::with_header)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_telemetry_ack_clone(
-    handle: *mut MessageHandle,
-) -> *mut MessageHandle {
-    message_handle_clone::<TelemetryAck>(handle)
 }
 
 #[no_mangle]

@@ -4,9 +4,16 @@ use std::{
 };
 
 use crate::{
-    ffi::{copy_account_bytes, copy_hash_bytes, copy_signature_bytes, FfiStream},
-    messages::TelemetryData,
+    ffi::{
+        copy_account_bytes, copy_hash_bytes, copy_signature_bytes, FfiStream, NetworkConstantsDto,
+    },
+    messages::{TelemetryAck, TelemetryData},
     Account, BlockHash, KeyPair, Signature,
+};
+
+use super::{
+    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
+    message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 
 pub struct TelemetryDataHandle(TelemetryData);
@@ -369,4 +376,64 @@ pub unsafe extern "C" fn rsn_telemetry_data_validate_signature(
     handle: *mut TelemetryDataHandle,
 ) -> bool {
     (*handle).0.validate_signature()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_ack_create(
+    constants: *mut NetworkConstantsDto,
+    data: *const TelemetryDataHandle,
+) -> *mut MessageHandle {
+    let data = (*data).0.clone();
+    create_message_handle(constants, move |consts| TelemetryAck::new(consts, data))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_ack_create2(
+    header: *mut MessageHeaderHandle,
+) -> *mut MessageHandle {
+    create_message_handle2(header, TelemetryAck::with_header)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_ack_clone(
+    handle: *mut MessageHandle,
+) -> *mut MessageHandle {
+    message_handle_clone::<TelemetryAck>(handle)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_ack_data(
+    handle: *mut MessageHandle,
+) -> *mut TelemetryDataHandle {
+    let data = downcast_message::<TelemetryAck>(handle).data.clone();
+    Box::into_raw(Box::new(TelemetryDataHandle(data)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_ack_deserialize(
+    handle: *mut MessageHandle,
+    stream: *mut c_void,
+) -> bool {
+    let ack = downcast_message_mut::<TelemetryAck>(handle);
+    let mut stream = FfiStream::new(stream);
+    ack.deserialize(&mut stream).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_ack_size_from_header(
+    header: *const MessageHeaderHandle,
+) -> u16 {
+    TelemetryAck::size_from_header(&*header)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_ack_size(handle: *mut MessageHandle) -> u16 {
+    downcast_message::<TelemetryAck>(handle).size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_ack_is_empty_payload(
+    handle: *mut MessageHandle,
+) -> bool {
+    downcast_message::<TelemetryAck>(handle).is_empty_payload()
 }

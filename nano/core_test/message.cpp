@@ -7,35 +7,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/variant/get.hpp>
 
-TEST (message, publish_serialization)
-{
-	nano::keypair key1;
-	nano::publish publish{ nano::dev::network_params.network, std::make_shared<nano::send_block> (0, 1, 2, key1.prv, key1.pub, 5) };
-	ASSERT_EQ (nano::block_type::send, publish.get_header ().block_type ());
-	std::vector<uint8_t> bytes;
-	{
-		nano::vectorstream stream (bytes);
-		publish.get_header ().serialize (stream);
-	}
-	ASSERT_EQ (8, bytes.size ());
-	ASSERT_EQ (0x52, bytes[0]);
-	ASSERT_EQ (0x41, bytes[1]);
-	ASSERT_EQ (nano::dev::network_params.network.protocol_version, bytes[2]);
-	ASSERT_EQ (nano::dev::network_params.network.protocol_version, bytes[3]);
-	ASSERT_EQ (nano::dev::network_params.network.protocol_version_min, bytes[4]);
-	ASSERT_EQ (static_cast<uint8_t> (nano::message_type::publish), bytes[5]);
-	ASSERT_EQ (0x00, bytes[6]); // extensions
-	ASSERT_EQ (static_cast<uint8_t> (nano::block_type::send), bytes[7]);
-	nano::bufferstream stream (bytes.data (), bytes.size ());
-	auto error (false);
-	nano::message_header header (error, stream);
-	ASSERT_FALSE (error);
-	ASSERT_EQ (nano::dev::network_params.network.protocol_version_min, header.get_version_min ());
-	ASSERT_EQ (nano::dev::network_params.network.protocol_version, header.get_version_using ());
-	ASSERT_EQ (nano::dev::network_params.network.protocol_version, header.get_version_max ());
-	ASSERT_EQ (nano::message_type::publish, header.get_type ());
-}
-
 TEST (message, confirm_ack_hash_serialization)
 {
 	std::vector<nano::block_hash> hashes;

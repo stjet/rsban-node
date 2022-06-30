@@ -2,6 +2,8 @@ use crate::{deserialize_block, utils::Stream, BlockEnum, BlockUniquer, NetworkCo
 use anyhow::Result;
 use std::{
     any::Any,
+    fmt::Debug,
+    ops::Deref,
     sync::{Arc, RwLock},
 };
 
@@ -73,24 +75,54 @@ impl Message for Publish {
     }
 }
 
+impl PartialEq for Publish {
+    fn eq(&self, other: &Self) -> bool {
+        if self.block.is_some() != other.block.is_some() {
+            return false;
+        }
+
+        if let Some(b1) = &self.block {
+            if let Some(b2) = &other.block {
+                let lk1 = b1.read().unwrap();
+                let lk2 = b2.read().unwrap();
+                if lk1.deref() != lk2.deref() {
+                    return false;
+                }
+            }
+        }
+
+        self.header == other.header && self.digest == other.digest
+    }
+}
+
+impl Debug for Publish {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Publish")
+            .field("header", &self.header)
+            .field("digest", &self.digest)
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{utils::MemoryStream, BlockBuilder, BlockType, DEV_NETWORK_PARAMS};
-
     use super::*;
+    use crate::{utils::MemoryStream, BlockBuilder, DEV_NETWORK_PARAMS};
 
     #[test]
     fn serialize() -> Result<()> {
         let block = BlockBuilder::state().build()?;
         let block = Arc::new(RwLock::new(BlockEnum::State(block)));
-        let publish = Publish::new(&DEV_NETWORK_PARAMS.network, block);
-        assert_eq!(publish.header().block_type(), BlockType::State);
+        let network = &DEV_NETWORK_PARAMS.network;
+        let publish1 = Publish::new(network, block);
+
         let mut stream = MemoryStream::new();
-        publish.header().serialize(&mut stream)?;
-        let bytes = stream.as_bytes();
-        assert_eq!(bytes.len(), 8);
-        assert_eq!(bytes[0], 0x52);
-        assert_eq!(bytes[1], 0x41);
+        publish1.serialize(&mut stream)?;
+
+        let header = MessageHeader::from_stream(&mut stream)?;
+        let mut publish2 = Publish::with_header(&header, 0);
+        publish2.deserialize(&mut stream, None)?;
+        assert_eq!(publish1, publish2);
         Ok(())
     }
 }

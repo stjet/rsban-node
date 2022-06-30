@@ -263,7 +263,7 @@ impl Debug for MessageHeader {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::MemoryStream;
+    use crate::{utils::MemoryStream, DEV_NETWORK_PARAMS};
 
     use super::*;
 
@@ -303,5 +303,27 @@ mod tests {
             extensions: BitArray::from(14),
         };
         header
+    }
+
+    #[test]
+    fn serialize_header() -> Result<()> {
+        let network = &DEV_NETWORK_PARAMS.network;
+        let mut header = MessageHeader::new(&network, MessageType::Publish);
+        header.set_block_type(BlockType::State);
+
+        let mut stream = MemoryStream::new();
+        header.serialize(&mut stream)?;
+
+        let bytes = stream.as_bytes();
+        assert_eq!(bytes.len(), 8);
+        assert_eq!(bytes[0], 0x52);
+        assert_eq!(bytes[1], 0x41);
+        assert_eq!(bytes[2], network.protocol_version);
+        assert_eq!(bytes[3], network.protocol_version);
+        assert_eq!(bytes[4], network.protocol_version_min);
+        assert_eq!(bytes[5], 0x03); // publish
+        assert_eq!(bytes[6], 0x00); // extensions
+        assert_eq!(bytes[7], 0x06); // state block
+        Ok(())
     }
 }

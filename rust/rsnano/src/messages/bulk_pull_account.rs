@@ -42,13 +42,6 @@ impl BulkPullAccount {
         Account::serialized_size() + Amount::serialized_size() + size_of::<BulkPullAccountFlags>()
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.header.serialize(stream)?;
-        self.account.serialize(stream)?;
-        self.minimum_amount.serialize(stream)?;
-        stream.write_u8(self.flags as u8)
-    }
-
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
         debug_assert!(self.header.message_type() == MessageType::BulkPullAccount);
         self.account = Account::deserialize(stream)?;
@@ -74,5 +67,12 @@ impl Message for BulkPullAccount {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.header.serialize(stream)?;
+        self.account.serialize(stream)?;
+        self.minimum_amount.serialize(stream)?;
+        stream.write_u8(self.flags as u8)
     }
 }

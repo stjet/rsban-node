@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     ffi::{FfiStream, NetworkConstantsDto},
-    messages::TelemetryReq,
+    messages::{Message, TelemetryReq},
 };
 
 #[no_mangle]

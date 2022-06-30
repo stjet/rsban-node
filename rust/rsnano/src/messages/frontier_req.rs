@@ -48,13 +48,6 @@ impl FrontierReq {
         Ok(())
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.header.serialize(stream)?;
-        self.start.serialize(stream)?;
-        stream.write_bytes(&self.age.to_le_bytes())?;
-        stream.write_bytes(&self.count.to_le_bytes())
-    }
-
     pub fn is_confirmed_present(&self) -> bool {
         self.header.test_extension(Self::ONLY_CONFIRMED)
     }
@@ -77,5 +70,12 @@ impl Message for FrontierReq {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.header.serialize(stream)?;
+        self.start.serialize(stream)?;
+        stream.write_bytes(&self.age.to_le_bytes())?;
+        stream.write_bytes(&self.count.to_le_bytes())
     }
 }

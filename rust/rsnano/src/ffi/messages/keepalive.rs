@@ -2,7 +2,7 @@ use std::{ffi::c_void, net::SocketAddr};
 
 use crate::{
     ffi::{transport::EndpointDto, FfiStream, NetworkConstantsDto},
-    messages::Keepalive,
+    messages::{Keepalive, Message},
 };
 
 use super::{

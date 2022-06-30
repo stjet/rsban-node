@@ -111,7 +111,7 @@ impl Vote {
         builder.update(self.timestamp.to_ne_bytes()).build()
     }
 
-    pub(crate) fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
+    pub(crate) fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.voting_account.serialize(stream)?;
         self.signature.serialize(stream)?;
         stream.write_bytes(&self.timestamp.to_le_bytes())?;

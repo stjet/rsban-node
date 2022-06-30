@@ -58,19 +58,6 @@ impl ConfirmAck {
     pub fn serialized_size(count: usize) -> usize {
         Vote::serialized_size(count)
     }
-
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        debug_assert!(
-            self.header().block_type() == BlockType::NotABlock
-                || self.header().block_type() == BlockType::Send
-                || self.header().block_type() == BlockType::Receive
-                || self.header().block_type() == BlockType::Open
-                || self.header.block_type() == BlockType::Change
-                || self.header.block_type() == BlockType::State
-        );
-        self.header().serialize(stream)?;
-        self.vote().unwrap().read().unwrap().serialize(stream)
-    }
 }
 
 impl Message for ConfirmAck {
@@ -88,5 +75,18 @@ impl Message for ConfirmAck {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        debug_assert!(
+            self.header().block_type() == BlockType::NotABlock
+                || self.header().block_type() == BlockType::Send
+                || self.header().block_type() == BlockType::Receive
+                || self.header().block_type() == BlockType::Open
+                || self.header.block_type() == BlockType::Change
+                || self.header.block_type() == BlockType::State
+        );
+        self.header().serialize(stream)?;
+        self.vote().unwrap().read().unwrap().serialize(stream)
     }
 }

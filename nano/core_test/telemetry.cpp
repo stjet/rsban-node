@@ -547,7 +547,7 @@ TEST (telemetry, max_possible_size)
 
 	nano::telemetry_data data;
 	std::vector<uint8_t> unknown;
-	ulong telemetry_size_mask = 0x3ff;
+	std::size_t telemetry_size_mask = 0x3ff;
 	unknown.resize (telemetry_size_mask - nano::telemetry_data::latest_size ());
 	data.set_unknown_data (unknown);
 

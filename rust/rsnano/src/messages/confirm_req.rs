@@ -64,27 +64,6 @@ impl ConfirmReq {
         &self.roots_hashes
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.header().serialize(stream)?;
-        if self.header().block_type() == BlockType::NotABlock {
-            debug_assert!(!self.roots_hashes().is_empty());
-            // Write hashes & roots
-            for (hash, root) in self.roots_hashes() {
-                stream.write_bytes(hash.as_bytes())?;
-                stream.write_bytes(root.as_bytes())?;
-            }
-        } else {
-            match self.block() {
-                Some(block) => {
-                    block.read().unwrap().as_block().serialize(stream)?;
-                }
-                None => bail!("block not set"),
-            }
-        }
-
-        Ok(())
-    }
-
     pub fn deserialize(
         &mut self,
         stream: &mut impl Stream,
@@ -150,6 +129,27 @@ impl Message for ConfirmReq {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.header().serialize(stream)?;
+        if self.header().block_type() == BlockType::NotABlock {
+            debug_assert!(!self.roots_hashes().is_empty());
+            // Write hashes & roots
+            for (hash, root) in self.roots_hashes() {
+                stream.write_bytes(hash.as_bytes())?;
+                stream.write_bytes(root.as_bytes())?;
+            }
+        } else {
+            match self.block() {
+                Some(block) => {
+                    block.read().unwrap().as_block().serialize(stream)?;
+                }
+                None => bail!("block not set"),
+            }
+        }
+
+        Ok(())
     }
 }
 

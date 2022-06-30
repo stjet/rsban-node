@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use crate::{
     ffi::{copy_hash_bytes, copy_hash_or_account_bytes, FfiStream, NetworkConstantsDto},
-    messages::BulkPull,
+    messages::{BulkPull, Message},
     BlockHash, HashOrAccount,
 };
 

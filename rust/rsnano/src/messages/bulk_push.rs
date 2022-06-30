@@ -21,10 +21,6 @@ impl BulkPush {
         }
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.header.serialize(stream)
-    }
-
     pub fn deserialize(&mut self, _stream: &mut impl Stream) -> Result<()> {
         debug_assert!(self.header.message_type() == MessageType::BulkPush);
         Ok(())
@@ -46,5 +42,9 @@ impl Message for BulkPush {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.header.serialize(stream)
     }
 }

@@ -14,14 +14,11 @@ impl TelemetryReq {
             header: MessageHeader::new(constants, MessageType::TelemetryReq),
         }
     }
+
     pub fn with_header(header: &MessageHeader) -> Self {
         Self {
             header: header.clone(),
         }
-    }
-
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.header.serialize(stream)
     }
 
     pub fn deserialize(&mut self, _stream: &mut impl Stream) -> Result<()> {
@@ -45,5 +42,9 @@ impl Message for TelemetryReq {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.header.serialize(stream)
     }
 }

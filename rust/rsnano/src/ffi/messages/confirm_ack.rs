@@ -9,7 +9,7 @@ use crate::{
         voting::{VoteHandle, VoteUniquerHandle},
         FfiStream, NetworkConstantsDto,
     },
-    messages::ConfirmAck,
+    messages::{ConfirmAck, Message},
     voting::Vote,
     NetworkConstants,
 };

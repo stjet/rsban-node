@@ -81,18 +81,6 @@ impl NodeIdHandshake {
         }
         size
     }
-
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.header.serialize(stream)?;
-        if let Some(query) = &self.query {
-            stream.write_bytes(query)?;
-        }
-        if let Some((acc, sig)) = &self.response {
-            acc.serialize(stream)?;
-            sig.serialize(stream)?;
-        }
-        Ok(())
-    }
 }
 
 impl Message for NodeIdHandshake {
@@ -110,5 +98,17 @@ impl Message for NodeIdHandshake {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.header.serialize(stream)?;
+        if let Some(query) = &self.query {
+            stream.write_bytes(query)?;
+        }
+        if let Some((acc, sig)) = &self.response {
+            acc.serialize(stream)?;
+            sig.serialize(stream)?;
+        }
+        Ok(())
     }
 }

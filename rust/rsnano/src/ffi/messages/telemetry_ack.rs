@@ -7,7 +7,7 @@ use crate::{
     ffi::{
         copy_account_bytes, copy_hash_bytes, copy_signature_bytes, FfiStream, NetworkConstantsDto,
     },
-    messages::{TelemetryAck, TelemetryData},
+    messages::{Message, TelemetryAck, TelemetryData},
     Account, BlockHash, KeyPair, Signature,
 };
 

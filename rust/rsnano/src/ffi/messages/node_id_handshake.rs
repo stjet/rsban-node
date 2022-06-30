@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use crate::{
     ffi::{copy_account_bytes, copy_signature_bytes, FfiStream, NetworkConstantsDto},
-    messages::NodeIdHandshake,
+    messages::{Message, NodeIdHandshake},
     Account, Signature,
 };
 

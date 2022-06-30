@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     ffi::{copy_account_bytes, copy_amount_bytes, FfiStream, NetworkConstantsDto},
-    messages::{BulkPullAccount, BulkPullAccountFlags},
+    messages::{BulkPullAccount, BulkPullAccountFlags, Message},
     Account, Amount,
 };
 use num_traits::FromPrimitive;

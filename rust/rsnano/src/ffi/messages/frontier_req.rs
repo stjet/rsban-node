@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use crate::{
     ffi::{copy_account_bytes, FfiStream, NetworkConstantsDto},
-    messages::FrontierReq,
+    messages::{FrontierReq, Message},
     Account,
 };
 

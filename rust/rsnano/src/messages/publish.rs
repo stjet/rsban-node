@@ -33,13 +33,6 @@ impl Publish {
         }
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        self.header().serialize(stream)?;
-        let block = self.block.as_ref().ok_or_else(|| anyhow!("no block"))?;
-        let lck = block.read().unwrap();
-        lck.as_block().serialize(stream)
-    }
-
     pub fn deserialize(
         &mut self,
         stream: &mut impl Stream,
@@ -70,5 +63,12 @@ impl Message for Publish {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.header().serialize(stream)?;
+        let block = self.block.as_ref().ok_or_else(|| anyhow!("no block"))?;
+        let lck = block.read().unwrap();
+        lck.as_block().serialize(stream)
     }
 }

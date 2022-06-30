@@ -45,32 +45,6 @@ impl BulkPull {
         return self.header.test_extension(Self::COUNT_PRESENT_FLAG);
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        // Ensure the "count_present" flag is set if there
-        // is a limit specifed.  Additionally, do not allow
-        // the "count_present" flag with a value of 0, since
-        // that is a sentinel which we use to mean "all blocks"
-        // and that is the behavior of not having the flag set
-        // so it is wasteful to do this.
-        debug_assert!(
-            (self.count == 0 && !self.is_count_present())
-                || (self.count != 0 && self.is_count_present())
-        );
-
-        self.header.serialize(stream)?;
-        self.start.serialize(stream)?;
-        self.end.serialize(stream)?;
-
-        if self.is_count_present() {
-            let mut count_buffer = [0u8; Self::EXTENDED_PARAMETERS_SIZE];
-            const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // count must fit within buffer
-
-            count_buffer[1..5].copy_from_slice(&self.count.to_le_bytes());
-            stream.write_bytes(&count_buffer)?;
-        }
-        Ok(())
-    }
-
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
         debug_assert!(self.header.message_type() == MessageType::BulkPull);
 
@@ -113,5 +87,31 @@ impl Message for BulkPull {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        // Ensure the "count_present" flag is set if there
+        // is a limit specifed.  Additionally, do not allow
+        // the "count_present" flag with a value of 0, since
+        // that is a sentinel which we use to mean "all blocks"
+        // and that is the behavior of not having the flag set
+        // so it is wasteful to do this.
+        debug_assert!(
+            (self.count == 0 && !self.is_count_present())
+                || (self.count != 0 && self.is_count_present())
+        );
+
+        self.header.serialize(stream)?;
+        self.start.serialize(stream)?;
+        self.end.serialize(stream)?;
+
+        if self.is_count_present() {
+            let mut count_buffer = [0u8; Self::EXTENDED_PARAMETERS_SIZE];
+            const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // count must fit within buffer
+
+            count_buffer[1..5].copy_from_slice(&self.count.to_le_bytes());
+            stream.write_bytes(&count_buffer)?;
+        }
+        Ok(())
     }
 }

@@ -2,7 +2,7 @@ use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::{
     ffi::{BlockHandle, BlockUniquerHandle, FfiStream, NetworkConstantsDto, StringDto},
-    messages::ConfirmReq,
+    messages::{ConfirmReq, Message},
     BlockHash, BlockType, Root,
 };
 

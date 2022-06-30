@@ -2,7 +2,7 @@ use std::{ffi::c_void, ops::Deref};
 
 use crate::{
     ffi::{BlockHandle, BlockUniquerHandle, FfiStream, NetworkConstantsDto},
-    messages::Publish,
+    messages::{Message, Publish},
 };
 
 use super::{

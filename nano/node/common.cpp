@@ -188,32 +188,6 @@ bool nano::message_header::bulk_pull_is_count_present () const
 	return rsnano::rsn_message_header_bulk_pull_is_count_present (handle);
 }
 
-bool nano::message_header::node_id_handshake_is_query () const
-{
-	auto result (false);
-	if (get_type () == nano::message_type::node_id_handshake)
-	{
-		if (test_extension (node_id_handshake_query_flag))
-		{
-			result = true;
-		}
-	}
-	return result;
-}
-
-bool nano::message_header::node_id_handshake_is_response () const
-{
-	auto result (false);
-	if (get_type () == nano::message_type::node_id_handshake)
-	{
-		if (test_extension (node_id_handshake_response_flag))
-		{
-			result = true;
-		}
-	}
-	return result;
-}
-
 std::size_t nano::message_header::payload_length_bytes () const
 {
 	switch (get_type ())
@@ -1759,97 +1733,72 @@ std::size_t nano::telemetry_data::size ()
 	return rsnano::rsn_telemetry_data_size ();
 }
 
-rsnano::MessageHandle * create_node_id_handshake_handle (nano::network_constants const & constants)
+rsnano::MessageHandle * create_node_id_handshake_handle (nano::network_constants const & constants, boost::optional<nano::uint256_union> query, boost::optional<std::pair<nano::account, nano::signature>> response)
 {
 	auto constants_dto{ constants.to_dto () };
-	return rsnano::rsn_message_node_id_handshake_create (&constants_dto);
+	const uint8_t * query_bytes = nullptr;
+	if (query)
+	{
+		query_bytes = query->bytes.data ();
+	}
+
+	const uint8_t * acc_bytes = nullptr;
+	const uint8_t * sig_bytes = nullptr;
+	if (response)
+	{
+		acc_bytes = response->first.bytes.data ();
+		sig_bytes = response->second.bytes.data ();
+	}
+
+	return rsnano::rsn_message_node_id_handshake_create (&constants_dto, query_bytes, acc_bytes, sig_bytes);
 }
 
 nano::node_id_handshake::node_id_handshake (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (rsnano::rsn_message_node_id_handshake_create2 (header_a.handle)),
-	query (boost::none),
-	response (boost::none)
+	message (rsnano::rsn_message_node_id_handshake_create2 (header_a.handle))
 {
 	error_a = deserialize (stream_a);
 }
 
 nano::node_id_handshake::node_id_handshake (node_id_handshake const & other_a) :
-	message{ rsnano::rsn_message_node_id_handshake_clone (other_a.handle) },
-	query (other_a.query),
-	response (other_a.response)
+	message{ rsnano::rsn_message_node_id_handshake_clone (other_a.handle) }
 {
 }
 
 nano::node_id_handshake::node_id_handshake (nano::network_constants const & constants, boost::optional<nano::uint256_union> query, boost::optional<std::pair<nano::account, nano::signature>> response) :
-	message (create_node_id_handshake_handle (constants)),
-	query (query),
-	response (response)
+	message (create_node_id_handshake_handle (constants, query, response))
 {
-	auto header{ get_header () };
-	if (query)
-	{
-		header.flag_set (nano::message_header::node_id_handshake_query_flag);
-	}
-	if (response)
-	{
-		header.flag_set (nano::message_header::node_id_handshake_response_flag);
-	}
-	set_header (header);
 }
 
 void nano::node_id_handshake::serialize (nano::stream & stream_a) const
 {
-	get_header ().serialize (stream_a);
-	if (get_query ())
-	{
-		write (stream_a, *get_query ());
-	}
-	if (get_response ())
-	{
-		write (stream_a, get_response ()->first);
-		write (stream_a, get_response ()->second);
-	}
+	if (!rsnano::rsn_message_node_id_handshake_serialize (handle, &stream_a))
+		throw std::runtime_error ("could not serialize node_id_handshake");
 }
 
 bool nano::node_id_handshake::deserialize (nano::stream & stream_a)
 {
-	auto header{ get_header () };
-	debug_assert (header.get_type () == nano::message_type::node_id_handshake);
-	auto error (false);
-	try
-	{
-		if (header.node_id_handshake_is_query ())
-		{
-			nano::uint256_union query_hash;
-			read (stream_a, query_hash);
-			query = query_hash;
-		}
-
-		if (header.node_id_handshake_is_response ())
-		{
-			nano::account response_account;
-			read (stream_a, response_account);
-			nano::signature response_signature;
-			read (stream_a, response_signature);
-			response = std::make_pair (response_account, response_signature);
-		}
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-
+	bool error = !rsnano::rsn_message_node_id_handshake_deserialize (handle, &stream_a);
 	return error;
 }
 
 boost::optional<nano::uint256_union> nano::node_id_handshake::get_query () const
 {
-	return query;
+	nano::uint256_union data;
+	if (rsnano::rsn_message_node_id_handshake_query (handle, data.bytes.data ()))
+		return boost::optional<nano::uint256_union> (data);
+
+	return boost::none;
 }
 
 boost::optional<std::pair<nano::account, nano::signature>> nano::node_id_handshake::get_response () const
 {
-	return response;
+	nano::account account;
+	nano::signature signature;
+	if (rsnano::rsn_message_node_id_handshake_response (handle, account.bytes.data (), signature.bytes.data ()))
+	{
+		return boost::optional<std::pair<nano::account, nano::signature>> (std::make_pair (account, signature));
+	}
+	return boost::none;
 }
 
 bool nano::node_id_handshake::operator== (nano::node_id_handshake const & other_a) const
@@ -1870,16 +1819,7 @@ std::size_t nano::node_id_handshake::size () const
 
 std::size_t nano::node_id_handshake::size (nano::message_header const & header_a)
 {
-	std::size_t result (0);
-	if (header_a.node_id_handshake_is_query ())
-	{
-		result = sizeof (nano::uint256_union);
-	}
-	if (header_a.node_id_handshake_is_response ())
-	{
-		result += sizeof (nano::account) + sizeof (nano::signature);
-	}
-	return result;
+	return rsnano::rsn_message_node_id_handshake_size (header_a.handle);
 }
 
 nano::message_visitor::~message_visitor ()

@@ -36,9 +36,13 @@ pub use telemetry_req::*;
 mod telemetry_ack;
 pub use telemetry_ack::*;
 
+use crate::utils::Stream;
+use anyhow::Result;
+
 pub trait Message {
     fn header(&self) -> &MessageHeader;
     fn set_header(&mut self, header: &MessageHeader);
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()>;
 }

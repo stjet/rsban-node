@@ -1335,9 +1335,24 @@ uintptr_t rsn_message_keepalive_size ();
 
 MessageHandle * rsn_message_node_id_handshake_clone (MessageHandle * handle);
 
-MessageHandle * rsn_message_node_id_handshake_create (NetworkConstantsDto * constants);
+MessageHandle * rsn_message_node_id_handshake_create (NetworkConstantsDto * constants,
+const uint8_t * query,
+const uint8_t * resp_account,
+const uint8_t * resp_signature);
 
 MessageHandle * rsn_message_node_id_handshake_create2 (MessageHeaderHandle * header);
+
+bool rsn_message_node_id_handshake_deserialize (MessageHandle * handle, void * stream);
+
+bool rsn_message_node_id_handshake_query (MessageHandle * handle, uint8_t * result);
+
+bool rsn_message_node_id_handshake_response (MessageHandle * handle,
+uint8_t * account,
+uint8_t * signature);
+
+bool rsn_message_node_id_handshake_serialize (MessageHandle * handle, void * stream);
+
+uintptr_t rsn_message_node_id_handshake_size (MessageHeaderHandle * header);
 
 BlockHandle * rsn_message_publish_block (MessageHandle * handle);
 

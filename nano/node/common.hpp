@@ -224,10 +224,6 @@ public:
 	static uint8_t constexpr bulk_pull_count_present_flag = 0;
 	bool bulk_pull_is_count_present () const;
 	static uint8_t constexpr frontier_req_only_confirmed = 1;
-	static uint8_t constexpr node_id_handshake_query_flag = 0;
-	static uint8_t constexpr node_id_handshake_response_flag = 1;
-	bool node_id_handshake_is_query () const;
-	bool node_id_handshake_is_response () const;
 
 	/** Size of the payload in bytes. For some messages, the payload size is based on header flags. */
 	std::size_t payload_length_bytes () const;
@@ -556,10 +552,6 @@ public:
 	static std::size_t size (nano::message_header const &);
 	boost::optional<nano::uint256_union> get_query () const;
 	boost::optional<std::pair<nano::account, nano::signature>> get_response () const;
-
-private:
-	boost::optional<nano::uint256_union> query;
-	boost::optional<std::pair<nano::account, nano::signature>> response;
 };
 
 class message_visitor

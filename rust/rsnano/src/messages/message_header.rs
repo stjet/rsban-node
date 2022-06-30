@@ -135,6 +135,12 @@ impl MessageHeader {
         self.extensions.set(position, value);
     }
 
+    pub fn set_flag(&mut self, flag: u8) {
+        // Flags from 8 are block_type & count
+        debug_assert!(flag < 8);
+        self.set_extension(flag as usize, true);
+    }
+
     pub fn block_type(&self) -> BlockType {
         let mut value = self.extensions & BitArray::new(BLOCK_TYPE_MASK);
         value.shift_left(8);

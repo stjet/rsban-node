@@ -1372,6 +1372,8 @@ bool rsn_message_telemetry_ack_deserialize (MessageHandle * handle, void * strea
 
 bool rsn_message_telemetry_ack_is_empty_payload (MessageHandle * handle);
 
+bool rsn_message_telemetry_ack_serialize (MessageHandle * handle, void * stream);
+
 uint16_t rsn_message_telemetry_ack_size (MessageHandle * handle);
 
 uint16_t rsn_message_telemetry_ack_size_from_header (const MessageHeaderHandle * header);

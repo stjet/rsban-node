@@ -222,6 +222,14 @@ impl TelemetryAck {
     pub fn is_empty_payload(&self) -> bool {
         self.size() == 0
     }
+
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.header.serialize(stream)?;
+        if !self.is_empty_payload() {
+            self.data.serialize(stream)?;
+        }
+        Ok(())
+    }
 }
 
 impl Message for TelemetryAck {

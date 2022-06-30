@@ -420,6 +420,16 @@ pub unsafe extern "C" fn rsn_message_telemetry_ack_deserialize(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_ack_serialize(
+    handle: *mut MessageHandle,
+    stream: *mut c_void,
+) -> bool {
+    let ack = downcast_message::<TelemetryAck>(handle);
+    let mut stream = FfiStream::new(stream);
+    ack.serialize(&mut stream).is_ok()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_telemetry_ack_size_from_header(
     header: *const MessageHeaderHandle,
 ) -> u16 {

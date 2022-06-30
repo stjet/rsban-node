@@ -1316,11 +1316,8 @@ nano::telemetry_ack & nano::telemetry_ack::operator= (telemetry_ack const & othe
 
 void nano::telemetry_ack::serialize (nano::stream & stream_a) const
 {
-	get_header ().serialize (stream_a);
-	if (!is_empty_payload ())
-	{
-		get_data ().serialize (stream_a);
-	}
+	if (!rsnano::rsn_message_telemetry_ack_serialize (handle, &stream_a))
+		throw std::runtime_error ("could not serialize telemetry_ack");
 }
 
 bool nano::telemetry_ack::deserialize (nano::stream & stream_a)

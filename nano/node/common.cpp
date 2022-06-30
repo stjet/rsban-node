@@ -1364,6 +1364,11 @@ uint16_t nano::telemetry_ack::size (nano::message_header const & message_header_
 	return static_cast<uint16_t> ((message_header_a.get_extensions () & message_header::telemetry_size_mask).to_ullong ());
 }
 
+nano::telemetry_data nano::telemetry_ack::get_data () const
+{
+	return data;
+}
+
 bool nano::telemetry_ack::is_empty_payload () const
 {
 	return size () == 0;

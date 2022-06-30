@@ -58,7 +58,7 @@ void nano::telemetry::set (nano::telemetry_ack const & message_a, nano::transpor
 		}
 
 		recent_or_initial_request_telemetry_data.modify (it, [&message_a] (nano::telemetry_info & telemetry_info_a) {
-			telemetry_info_a.data = message_a.data;
+			telemetry_info_a.data = message_a.get_data ();
 		});
 
 		// This can also remove the peer
@@ -68,7 +68,7 @@ void nano::telemetry::set (nano::telemetry_ack const & message_a, nano::transpor
 		{
 			// Received telemetry data from a peer which hasn't disabled providing telemetry metrics and there's no errors with the data
 			lk.unlock ();
-			observers.notify (message_a.data, endpoint);
+			observers.notify (message_a.get_data (), endpoint);
 			lk.lock ();
 		}
 		channel_processed (endpoint, error);
@@ -85,15 +85,15 @@ bool nano::telemetry::verify_message (nano::telemetry_ack const & message_a, nan
 	auto remove_channel = false;
 	// We want to ensure that the node_id of the channel matches that in the message before attempting to
 	// use the data to remove any peers.
-	auto node_id_mismatch = (channel_a.get_node_id () != message_a.data.get_node_id ());
+	auto node_id_mismatch = (channel_a.get_node_id () != message_a.get_data ().get_node_id ());
 	if (!node_id_mismatch)
 	{
 		// The data could be correctly signed but for a different node id
-		remove_channel = message_a.data.validate_signature ();
+		remove_channel = message_a.get_data ().validate_signature ();
 		if (!remove_channel)
 		{
 			// Check for different genesis blocks
-			remove_channel = (message_a.data.get_genesis_block () != network_params.ledger.genesis->hash ());
+			remove_channel = (message_a.get_data ().get_genesis_block () != network_params.ledger.genesis->hash ());
 			if (remove_channel)
 			{
 				stats.inc (nano::stat::type::telemetry, nano::stat::detail::different_genesis_hash);

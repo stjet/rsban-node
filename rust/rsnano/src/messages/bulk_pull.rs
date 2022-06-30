@@ -39,7 +39,7 @@ impl BulkPull {
     }
 
     const COUNT_PRESENT_FLAG: usize = 0;
-    const EXTENDED_PARAMETERS_SIZE: usize = 8;
+    pub const EXTENDED_PARAMETERS_SIZE: usize = 8;
 
     pub fn is_count_present(&self) -> bool {
         return self.header.test_extension(Self::COUNT_PRESENT_FLAG);

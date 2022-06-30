@@ -185,3 +185,10 @@ pub unsafe extern "C" fn rsn_message_header_bulk_pull_is_count_present(
 ) -> bool {
     (*handle).0.bulk_pull_is_count_present()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_payload_length(
+    handle: *mut MessageHeaderHandle,
+) -> usize {
+    (*handle).0.payload_length()
+}

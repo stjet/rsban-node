@@ -190,56 +190,7 @@ bool nano::message_header::bulk_pull_is_count_present () const
 
 std::size_t nano::message_header::payload_length_bytes () const
 {
-	switch (get_type ())
-	{
-		case nano::message_type::bulk_pull:
-		{
-			return nano::bulk_pull::size () + (bulk_pull_is_count_present () ? nano::bulk_pull::extended_parameters_size : 0);
-		}
-		case nano::message_type::bulk_push:
-		case nano::message_type::telemetry_req:
-		{
-			// These don't have a payload
-			return 0;
-		}
-		case nano::message_type::frontier_req:
-		{
-			return nano::frontier_req::size ();
-		}
-		case nano::message_type::bulk_pull_account:
-		{
-			return nano::bulk_pull_account::size ();
-		}
-		case nano::message_type::keepalive:
-		{
-			return nano::keepalive::size ();
-		}
-		case nano::message_type::publish:
-		{
-			return nano::block::size (block_type ());
-		}
-		case nano::message_type::confirm_ack:
-		{
-			return nano::confirm_ack::size (count_get ());
-		}
-		case nano::message_type::confirm_req:
-		{
-			return nano::confirm_req::size (block_type (), count_get ());
-		}
-		case nano::message_type::node_id_handshake:
-		{
-			return nano::node_id_handshake::size (*this);
-		}
-		case nano::message_type::telemetry_ack:
-		{
-			return nano::telemetry_ack::size (*this);
-		}
-		default:
-		{
-			debug_assert (false);
-			return 0;
-		}
-	}
+	return rsnano::rsn_message_header_payload_length (handle);
 }
 
 nano::networks nano::message_header::get_network () const

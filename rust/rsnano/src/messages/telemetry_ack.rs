@@ -211,11 +211,11 @@ impl TelemetryAck {
         Ok(())
     }
 
-    pub fn size_from_header(header: &MessageHeader) -> u16 {
-        header.extensions() & TelemetryAck::SIZE_MASK
+    pub fn size_from_header(header: &MessageHeader) -> usize {
+        (header.extensions() & TelemetryAck::SIZE_MASK) as usize
     }
 
-    pub fn size(&self) -> u16 {
+    pub fn size(&self) -> usize {
         TelemetryAck::size_from_header(&self.header)
     }
 

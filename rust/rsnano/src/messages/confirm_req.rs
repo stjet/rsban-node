@@ -103,12 +103,12 @@ impl ConfirmReq {
         result
     }
 
-    pub fn serialized_size(block_type: BlockType, count: usize) -> usize {
+    pub fn serialized_size(block_type: BlockType, count: u8) -> usize {
         let mut result = 0;
         if block_type != BlockType::Invalid && block_type != BlockType::NotABlock {
             result = serialized_block_size(block_type);
         } else if block_type == BlockType::NotABlock {
-            result = count * (BlockHash::serialized_size() + Root::serialized_size());
+            result = count as usize * (BlockHash::serialized_size() + Root::serialized_size());
         }
         result
     }

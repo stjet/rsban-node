@@ -91,5 +91,5 @@ pub unsafe extern "C" fn rsn_message_keepalive_deserialize(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_keepalive_size() -> usize {
-    Keepalive::size()
+    Keepalive::serialized_size()
 }

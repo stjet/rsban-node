@@ -433,12 +433,12 @@ pub unsafe extern "C" fn rsn_message_telemetry_ack_serialize(
 pub unsafe extern "C" fn rsn_message_telemetry_ack_size_from_header(
     header: *const MessageHeaderHandle,
 ) -> u16 {
-    TelemetryAck::size_from_header(&*header)
+    TelemetryAck::size_from_header(&*header) as u16
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_telemetry_ack_size(handle: *mut MessageHandle) -> u16 {
-    downcast_message::<TelemetryAck>(handle).size()
+    downcast_message::<TelemetryAck>(handle).size() as u16
 }
 
 #[no_mangle]

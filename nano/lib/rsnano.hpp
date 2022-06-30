@@ -1293,6 +1293,8 @@ uint16_t rsn_message_header_extensions (MessageHeaderHandle * handle);
 
 uint16_t rsn_message_header_network (MessageHeaderHandle * handle);
 
+uintptr_t rsn_message_header_payload_length (MessageHeaderHandle * handle);
+
 bool rsn_message_header_serialize (MessageHeaderHandle * handle, void * stream);
 
 void rsn_message_header_set_block_type (MessageHeaderHandle * handle, uint8_t block_type);

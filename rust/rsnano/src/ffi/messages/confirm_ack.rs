@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_vote(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_size(count: usize) -> usize {
-    ConfirmAck::serialized_size(count)
+    ConfirmAck::serialized_size(count as u8)
 }
 
 #[no_mangle]

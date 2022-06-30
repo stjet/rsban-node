@@ -63,7 +63,7 @@ impl Keepalive {
         Ok(())
     }
 
-    pub fn size() -> usize {
+    pub fn serialized_size() -> usize {
         8 * (16 + 2)
     }
 }

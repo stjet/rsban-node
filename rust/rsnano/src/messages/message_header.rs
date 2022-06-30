@@ -1,10 +1,15 @@
-use crate::{utils::Stream, BlockType, NetworkConstants, Networks};
+use crate::{serialized_block_size, utils::Stream, BlockType, NetworkConstants, Networks};
 use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
 use std::{
     fmt::{Debug, Display},
     mem::size_of,
+};
+
+use super::{
+    BulkPull, BulkPullAccount, ConfirmAck, ConfirmReq, FrontierReq, Keepalive, NodeIdHandshake,
+    TelemetryAck,
 };
 
 /// Message types are serialized to the network and existing values must thus never change as
@@ -206,6 +211,32 @@ impl MessageHeader {
     pub fn bulk_pull_is_count_present(&self) -> bool {
         self.message_type() == MessageType::BulkPull
             && self.test_extension(Self::BULK_PULL_COUNT_PRESENT_FLAG)
+    }
+
+    pub fn payload_length(&self) -> usize {
+        match self.message_type {
+            MessageType::Keepalive => Keepalive::serialized_size(),
+            MessageType::Publish => serialized_block_size(self.block_type()),
+            MessageType::ConfirmReq => ConfirmReq::serialized_size(self.block_type(), self.count()),
+            MessageType::ConfirmAck => ConfirmAck::serialized_size(self.count()),
+            MessageType::BulkPull => {
+                BulkPull::serialized_size()
+                    + (if self.bulk_pull_is_count_present() {
+                        BulkPull::EXTENDED_PARAMETERS_SIZE
+                    } else {
+                        0
+                    })
+            }
+            MessageType::BulkPush | MessageType::TelemetryReq => 0,
+            MessageType::FrontierReq => FrontierReq::serialized_size(),
+            MessageType::NodeIdHandshake => NodeIdHandshake::serialized_size(self),
+            MessageType::BulkPullAccount => BulkPullAccount::serialized_size(),
+            MessageType::TelemetryAck => TelemetryAck::size_from_header(self),
+            MessageType::Invalid | MessageType::NotAType => {
+                debug_assert!(false);
+                0
+            }
+        }
     }
 }
 

@@ -55,8 +55,8 @@ impl ConfirmAck {
         self.vote.as_ref()
     }
 
-    pub fn serialized_size(count: usize) -> usize {
-        Vote::serialized_size(count)
+    pub fn serialized_size(count: u8) -> usize {
+        Vote::serialized_size(count as usize)
     }
 }
 

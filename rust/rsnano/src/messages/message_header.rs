@@ -169,7 +169,7 @@ impl MessageHeader {
         self.extensions |= BitArray::new((count as u16) << 12)
     }
 
-    pub fn size() -> usize {
+    pub fn serialized_size() -> usize {
         size_of::<u8>() // version_using
         + size_of::<u8>() // version_min
         + size_of::<u8>() // version_max
@@ -221,7 +221,7 @@ impl MessageHeader {
             MessageType::ConfirmAck => ConfirmAck::serialized_size(self.count()),
             MessageType::BulkPull => {
                 BulkPull::serialized_size()
-                    + (if self.bulk_pull_is_count_present() {
+                    + (if BulkPull::is_count_present_in_header(self) {
                         BulkPull::EXTENDED_PARAMETERS_SIZE
                     } else {
                         0

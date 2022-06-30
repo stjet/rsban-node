@@ -221,8 +221,6 @@ public:
 	std::string to_string ();
 
 	void flag_set (uint8_t);
-	static uint8_t constexpr bulk_pull_count_present_flag = 0;
-	bool bulk_pull_is_count_present () const;
 	static uint8_t constexpr frontier_req_only_confirmed = 1;
 
 	/** Size of the payload in bytes. For some messages, the payload size is based on header flags. */
@@ -500,7 +498,6 @@ public:
 	void visit (nano::message_visitor &) const override;
 	bool is_count_present () const;
 	void set_count_present (bool);
-	static std::size_t constexpr count_present_flag = nano::message_header::bulk_pull_count_present_flag;
 	static std::size_t size ();
 	nano::hash_or_account get_start () const;
 	nano::block_hash get_end () const;

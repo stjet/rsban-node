@@ -183,11 +183,6 @@ void nano::message_header::flag_set (uint8_t flag_a)
 	set_extension (flag_a, true);
 }
 
-bool nano::message_header::bulk_pull_is_count_present () const
-{
-	return rsnano::rsn_message_header_bulk_pull_is_count_present (handle);
-}
-
 std::size_t nano::message_header::payload_length_bytes () const
 {
 	return rsnano::rsn_message_header_payload_length (handle);
@@ -1046,9 +1041,7 @@ bool nano::bulk_pull::is_count_present () const
 
 void nano::bulk_pull::set_count_present (bool value_a)
 {
-	auto header{ get_header () };
-	header.set_extension (count_present_flag, value_a);
-	set_header (header);
+	rsnano::rsn_message_bulk_pull_set_count_present (handle, value_a);
 }
 
 rsnano::MessageHandle * create_bulk_pull_account_handle (nano::network_constants const & constants)

@@ -91,3 +91,11 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_is_count_present(
 ) -> bool {
     downcast_message::<BulkPull>(handle).is_count_present()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_bulk_pull_set_count_present(
+    handle: *mut MessageHandle,
+    present: bool,
+) {
+    downcast_message_mut::<BulkPull>(handle).set_count_present(present)
+}

@@ -1185,6 +1185,8 @@ bool rsn_message_bulk_pull_serialize (MessageHandle * handle, void * stream);
 
 void rsn_message_bulk_pull_set_count (MessageHandle * handle, uint32_t count);
 
+void rsn_message_bulk_pull_set_count_present (MessageHandle * handle, bool present);
+
 void rsn_message_bulk_pull_set_end (MessageHandle * handle, const uint8_t * end);
 
 void rsn_message_bulk_pull_set_start (MessageHandle * handle, const uint8_t * start);
@@ -1272,8 +1274,6 @@ uintptr_t rsn_message_frontier_size ();
 MessageHeaderHandle * rsn_message_header (MessageHandle * handle);
 
 uint8_t rsn_message_header_block_type (MessageHeaderHandle * handle);
-
-bool rsn_message_header_bulk_pull_is_count_present (MessageHeaderHandle * handle);
 
 MessageHeaderHandle * rsn_message_header_clone (MessageHeaderHandle * handle);
 

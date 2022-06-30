@@ -90,7 +90,7 @@ pub unsafe extern "C" fn rsn_message_header_network(handle: *mut MessageHeaderHa
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_size() -> usize {
-    MessageHeader::size()
+    MessageHeader::serialized_size()
 }
 
 #[no_mangle]
@@ -177,13 +177,6 @@ pub unsafe extern "C" fn rsn_message_header_count(handle: *mut MessageHeaderHand
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_set_count(handle: *mut MessageHeaderHandle, count: u8) {
     (*handle).0.set_count(count);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_header_bulk_pull_is_count_present(
-    handle: *mut MessageHeaderHandle,
-) -> bool {
-    (*handle).0.bulk_pull_is_count_present()
 }
 
 #[no_mangle]

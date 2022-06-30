@@ -42,7 +42,15 @@ impl BulkPull {
     pub const EXTENDED_PARAMETERS_SIZE: usize = 8;
 
     pub fn is_count_present(&self) -> bool {
-        return self.header.test_extension(Self::COUNT_PRESENT_FLAG);
+        Self::is_count_present_in_header(&self.header)
+    }
+
+    pub fn is_count_present_in_header(header: &MessageHeader) -> bool {
+        header.test_extension(Self::COUNT_PRESENT_FLAG)
+    }
+
+    pub fn set_count_present(&mut self, present: bool) {
+        self.header.set_extension(Self::COUNT_PRESENT_FLAG, present);
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {

@@ -464,9 +464,6 @@ public:
 		return size ();
 	}; // This needs to be updated for each new telemetry version
 	rsnano::TelemetryDataHandle * handle;
-
-private:
-	void serialize_without_signature (nano::stream &) const;
 };
 
 class telemetry_req final : public message

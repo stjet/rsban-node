@@ -233,42 +233,6 @@ TEST (telemetry, consolidate_data_remove_outliers_with_zero_bandwidth)
 	ASSERT_EQ (consolidated_telemetry_data2.get_bandwidth_cap (), 0);
 }
 
-TEST (telemetry, signatures)
-{
-	nano::keypair node_id;
-	nano::telemetry_data data;
-	data.set_node_id (node_id.pub);
-	data.set_major_version (20);
-	data.set_minor_version (1);
-	data.set_patch_version (5);
-	data.set_pre_release_version (2);
-	data.set_maker (1);
-	data.set_timestamp (std::chrono::system_clock::time_point (100ms));
-	data.sign (node_id);
-	ASSERT_FALSE (data.validate_signature ());
-	auto signature = data.get_signature ();
-	// Check that the signature is different if changing a piece of data
-	data.set_maker (2);
-	data.sign (node_id);
-	ASSERT_NE (data.get_signature (), signature);
-}
-
-TEST (telemetry, unknown_data)
-{
-	nano::keypair node_id;
-	nano::telemetry_data data;
-	data.set_node_id (node_id.pub);
-	data.set_major_version (20);
-	data.set_minor_version (1);
-	data.set_patch_version (5);
-	data.set_pre_release_version (2);
-	data.set_maker (1);
-	data.set_timestamp (std::chrono::system_clock::time_point (100ms));
-	data.set_unknown_data (std::vector<uint8_t>{ 1 });
-	data.sign (node_id);
-	ASSERT_FALSE (data.validate_signature ());
-}
-
 TEST (telemetry, no_peers)
 {
 	nano::system system (1);

@@ -337,7 +337,7 @@ pub unsafe extern "C" fn rsn_telemetry_data_set_unknown_data(
 
 #[no_mangle]
 pub extern "C" fn rsn_telemetry_data_size() -> usize {
-    TelemetryData::serialized_size_without_unknown_data()
+    TelemetryData::serialized_size_of_known_data()
 }
 
 #[no_mangle]

@@ -65,7 +65,7 @@ impl TelemetryData {
     }
 
     /// Size does not include unknown_data
-    pub fn serialized_size_without_unknown_data() -> usize {
+    pub fn serialized_size_of_known_data() -> usize {
         Signature::serialized_size()
         + Account::serialized_size()
         + size_of::<u64>() //block_count
@@ -88,7 +88,7 @@ impl TelemetryData {
 
     /// This needs to be updated for each new telemetry version
     pub fn latest_size() -> usize {
-        Self::serialized_size_without_unknown_data()
+        Self::serialized_size_of_known_data()
     }
 
     pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
@@ -182,14 +182,14 @@ impl TelemetryAck {
 
     pub fn new(constants: &NetworkConstants, data: TelemetryData) -> Self {
         debug_assert!(
-            TelemetryData::serialized_size_without_unknown_data() + data.unknown_data.len()
+            TelemetryData::serialized_size_of_known_data() + data.unknown_data.len()
                 <= TelemetryAck::SIZE_MASK as usize
         ); // Maximum size the mask allows
         let mut header = MessageHeader::new(constants, MessageType::TelemetryAck);
         let mut extensions = header.extensions();
         extensions &= !TelemetryAck::SIZE_MASK;
-        extensions |= TelemetryData::serialized_size_without_unknown_data() as u16
-            + data.unknown_data.len() as u16;
+        extensions |=
+            TelemetryData::serialized_size_of_known_data() as u16 + data.unknown_data.len() as u16;
         header.set_extensions(extensions);
 
         Self { header, data }
@@ -239,5 +239,49 @@ impl Message for TelemetryAck {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // original test: telemetry.signatures
+    #[test]
+    fn sign_telemetry_data() -> Result<()> {
+        let keys = KeyPair::new();
+        let mut data = test_data(&keys);
+        data.sign(&keys)?;
+        assert_eq!(data.validate_signature(), true);
+
+        let old_signature = data.signature.clone();
+        // Check that the signature is different if changing a piece of data
+        data.maker = 2;
+        data.sign(&keys)?;
+        assert_ne!(old_signature, data.signature);
+        Ok(())
+    }
+
+    //original test: telemetry.unknown_data
+    #[test]
+    fn sign_with_unknown_data() -> Result<()> {
+        let keys = KeyPair::new();
+        let mut data = test_data(&keys);
+        data.unknown_data = vec![1];
+        data.sign(&keys)?;
+        assert_eq!(data.validate_signature(), true);
+        Ok(())
+    }
+
+    fn test_data(keys: &KeyPair) -> TelemetryData {
+        let mut data = TelemetryData::new();
+        data.node_id = keys.public_key().into();
+        data.major_version = 20;
+        data.minor_version = 1;
+        data.patch_version = 5;
+        data.pre_release_version = 2;
+        data.maker = 1;
+        data.timestamp = SystemTime::UNIX_EPOCH + Duration::from_millis(100);
+        data
     }
 }

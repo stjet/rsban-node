@@ -26,11 +26,6 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_create2(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_size() -> usize {
-    BulkPull::serialized_size()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_start(handle: *mut MessageHandle, start: *mut u8) {
     copy_hash_or_account_bytes(downcast_message::<BulkPull>(handle).start, start);
 }

@@ -978,11 +978,6 @@ nano::bulk_pull::bulk_pull (bool & error_a, nano::stream & stream_a, nano::messa
 	}
 }
 
-std::size_t nano::bulk_pull::size ()
-{
-	return rsnano::rsn_message_bulk_pull_size ();
-}
-
 nano::hash_or_account nano::bulk_pull::get_start () const
 {
 	nano::hash_or_account start;

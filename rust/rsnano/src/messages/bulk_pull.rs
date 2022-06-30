@@ -34,8 +34,14 @@ impl BulkPull {
         Box::new(self.clone())
     }
 
-    pub fn serialized_size() -> usize {
-        HashOrAccount::serialized_size() + BlockHash::serialized_size()
+    pub fn serialized_size(header: &MessageHeader) -> usize {
+        HashOrAccount::serialized_size()
+            + BlockHash::serialized_size()
+            + (if BulkPull::is_count_present_in_header(header) {
+                BulkPull::EXTENDED_PARAMETERS_SIZE
+            } else {
+                0
+            })
     }
 
     const COUNT_PRESENT_FLAG: usize = 0;

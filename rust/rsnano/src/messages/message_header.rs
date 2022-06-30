@@ -219,14 +219,7 @@ impl MessageHeader {
             MessageType::Publish => serialized_block_size(self.block_type()),
             MessageType::ConfirmReq => ConfirmReq::serialized_size(self.block_type(), self.count()),
             MessageType::ConfirmAck => ConfirmAck::serialized_size(self.count()),
-            MessageType::BulkPull => {
-                BulkPull::serialized_size()
-                    + (if BulkPull::is_count_present_in_header(self) {
-                        BulkPull::EXTENDED_PARAMETERS_SIZE
-                    } else {
-                        0
-                    })
-            }
+            MessageType::BulkPull => BulkPull::serialized_size(self),
             MessageType::BulkPush | MessageType::TelemetryReq => 0,
             MessageType::FrontierReq => FrontierReq::serialized_size(),
             MessageType::NodeIdHandshake => NodeIdHandshake::serialized_size(self),

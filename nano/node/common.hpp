@@ -498,7 +498,6 @@ public:
 	void visit (nano::message_visitor &) const override;
 	bool is_count_present () const;
 	void set_count_present (bool);
-	static std::size_t size ();
 	nano::hash_or_account get_start () const;
 	nano::block_hash get_end () const;
 	count_t get_count () const;

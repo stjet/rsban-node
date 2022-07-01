@@ -7,6 +7,7 @@ use crate::{
 use anyhow::Result;
 use std::{
     any::Any,
+    fmt::Debug,
     sync::{Arc, RwLock},
 };
 
@@ -19,6 +20,8 @@ pub struct ConfirmAck {
 }
 
 impl ConfirmAck {
+    pub const HASHES_MAX: usize = 12;
+
     pub fn new(constants: &NetworkConstants, vote: Arc<RwLock<Vote>>) -> Self {
         let mut header = MessageHeader::new(constants, MessageType::ConfirmAck);
         header.set_block_type(BlockType::NotABlock);
@@ -88,5 +91,59 @@ impl Message for ConfirmAck {
         );
         self.header().serialize(stream)?;
         self.vote().unwrap().read().unwrap().serialize(stream)
+    }
+}
+
+impl PartialEq for ConfirmAck {
+    fn eq(&self, other: &Self) -> bool {
+        if self.vote.is_some() != other.vote.is_some() {
+            return false;
+        }
+
+        if let Some(v1) = &self.vote {
+            if let Some(v2) = &other.vote {
+                let lk1 = v1.read().unwrap();
+                let lk2 = v2.read().unwrap();
+                if *lk1 != *lk2 {
+                    return false;
+                }
+            }
+        }
+        self.header == other.header
+    }
+}
+
+impl Debug for ConfirmAck {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ConfirmAck")
+            .field("header", &self.header)
+            .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{utils::MemoryStream, BlockHash, KeyPair};
+
+    use super::*;
+
+    #[test]
+    fn serialize() -> Result<()> {
+        let constants = &NetworkConstants::empty();
+        let keys = KeyPair::new();
+        let mut hashes = Vec::new();
+        for i in 0..ConfirmAck::HASHES_MAX {
+            hashes.push(BlockHash::from(i as u64))
+        }
+        let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes)?;
+        let vote = Arc::new(RwLock::new(vote));
+        let confirm1 = ConfirmAck::new(constants, vote);
+
+        let mut stream = MemoryStream::new();
+        confirm1.serialize(&mut stream)?;
+        let header = MessageHeader::from_stream(&mut stream)?;
+        let confirm2 = ConfirmAck::with_header(&header, &mut stream, None)?;
+        assert_eq!(confirm1, confirm2);
+        Ok(())
     }
 }

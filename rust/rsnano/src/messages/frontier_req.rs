@@ -4,7 +4,7 @@ use std::{any::Any, mem::size_of};
 
 use super::{Message, MessageHeader, MessageType};
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FrontierReq {
     header: MessageHeader,
     pub start: Account,
@@ -77,5 +77,29 @@ impl Message for FrontierReq {
         self.start.serialize(stream)?;
         stream.write_bytes(&self.age.to_le_bytes())?;
         stream.write_bytes(&self.count.to_le_bytes())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{utils::MemoryStream, NetworkConstants};
+
+    #[test]
+    fn serialize() -> Result<()> {
+        let constants = NetworkConstants::empty();
+        let mut request1 = FrontierReq::new(&constants);
+        request1.start = Account::from(1);
+        request1.age = 2;
+        request1.count = 3;
+        let mut stream = MemoryStream::new();
+        request1.serialize(&mut stream)?;
+
+        let header = MessageHeader::from_stream(&mut stream)?;
+        let mut request2 = FrontierReq::with_header(&header);
+        request2.deserialize(&mut stream)?;
+
+        assert_eq!(request1, request2);
+        Ok(())
     }
 }

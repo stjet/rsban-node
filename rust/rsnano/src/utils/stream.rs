@@ -94,7 +94,7 @@ impl Stream for MemoryStream {
     }
 
     fn in_avail(&mut self) -> anyhow::Result<usize> {
-        todo!()
+        Ok(self.bytes.len() - self.read_index)
     }
 }
 

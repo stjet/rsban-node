@@ -5,7 +5,7 @@ use crate::{
 use anyhow::Result;
 use std::{
     any::Any,
-    fmt::Write,
+    fmt::{Debug, Write},
     sync::{Arc, RwLock},
 };
 
@@ -167,5 +167,65 @@ impl PartialEq for ConfirmReq {
         }
 
         equal
+    }
+}
+
+impl Debug for ConfirmReq {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ConfirmReq")
+            .field("header", &self.header)
+            .field("roots_hashes", &self.roots_hashes)
+            .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{utils::MemoryStream, StateBlockBuilder};
+
+    use super::*;
+
+    #[test]
+    fn serialize_block() -> Result<()> {
+        let block = Arc::new(RwLock::new(BlockEnum::State(
+            StateBlockBuilder::new().build()?,
+        )));
+        let constants = NetworkConstants::empty();
+        let confirm_req1 = ConfirmReq::with_block(&constants, block);
+        let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
+        assert_eq!(confirm_req1, confirm_req2);
+        Ok(())
+    }
+
+    #[test]
+    fn serialze_roots_hashes() -> Result<()> {
+        let constants = NetworkConstants::empty();
+        let roots_hashes = vec![(BlockHash::from(1), Root::from(2))];
+        let confirm_req1 = ConfirmReq::with_roots_hashes(&constants, roots_hashes);
+        let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
+        assert_eq!(confirm_req1, confirm_req2);
+        Ok(())
+    }
+
+    #[test]
+    fn serialze_many_roots_hashes() -> Result<()> {
+        let constants = NetworkConstants::empty();
+        let roots_hashes = (0..7)
+            .into_iter()
+            .map(|i| (BlockHash::from(i), Root::from(i + 1)))
+            .collect();
+        let confirm_req1 = ConfirmReq::with_roots_hashes(&constants, roots_hashes);
+        let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
+        assert_eq!(confirm_req1, confirm_req2);
+        Ok(())
+    }
+
+    fn serialize_and_deserialize(confirm_req1: &ConfirmReq) -> Result<ConfirmReq, anyhow::Error> {
+        let mut stream = MemoryStream::new();
+        confirm_req1.serialize(&mut stream)?;
+        let header = MessageHeader::from_stream(&mut stream)?;
+        let mut confirm_req2 = ConfirmReq::with_header(&header);
+        confirm_req2.deserialize(&mut stream, None)?;
+        Ok(confirm_req2)
     }
 }

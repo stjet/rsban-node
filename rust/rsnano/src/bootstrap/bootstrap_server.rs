@@ -1,10 +1,14 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
+use std::{
+    collections::VecDeque,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
 };
 
 use crate::{
     logger_mt::Logger,
+    messages::Message,
     transport::{Socket, SocketImpl},
     NodeConfig,
 };
@@ -14,6 +18,7 @@ pub struct BootstrapServer {
     config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
     stopped: AtomicBool,
+    pub queue: Mutex<VecDeque<Box<dyn Message>>>,
 }
 
 impl BootstrapServer {
@@ -23,6 +28,7 @@ impl BootstrapServer {
             config,
             logger,
             stopped: AtomicBool::new(false),
+            queue: Mutex::new(VecDeque::new()),
         }
     }
 

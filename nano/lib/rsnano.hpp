@@ -35,9 +35,13 @@ struct BlockUniquerHandle;
 
 struct BootstrapAttemptHandle;
 
+struct BootstrapAttemptLockHandle;
+
 struct BootstrapInitiatorHandle;
 
 struct BootstrapServerHandle;
+
+struct BootstrapServerLockHandle;
 
 struct ChannelHandle;
 
@@ -48,8 +52,6 @@ struct LedgerHandle;
 struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
-
-struct LockHandle;
 
 struct MessageHandle;
 
@@ -846,7 +848,7 @@ void rsn_bootstrap_attempt_id (const BootstrapAttemptHandle * handle, StringDto 
 
 uint64_t rsn_bootstrap_attempt_incremental_id (const BootstrapAttemptHandle * handle);
 
-LockHandle * rsn_bootstrap_attempt_lock (BootstrapAttemptHandle * handle);
+BootstrapAttemptLockHandle * rsn_bootstrap_attempt_lock (BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_notifiy_all (BootstrapAttemptHandle * handle);
 
@@ -890,12 +892,12 @@ uint64_t rsn_bootstrap_attempt_total_blocks (const BootstrapAttemptHandle * hand
 
 void rsn_bootstrap_attempt_total_blocks_inc (const BootstrapAttemptHandle * handle);
 
-void rsn_bootstrap_attempt_unlock (LockHandle * handle);
+void rsn_bootstrap_attempt_unlock (BootstrapAttemptLockHandle * handle);
 
-void rsn_bootstrap_attempt_wait (BootstrapAttemptHandle * handle, LockHandle * lck);
+void rsn_bootstrap_attempt_wait (BootstrapAttemptHandle * handle, BootstrapAttemptLockHandle * lck);
 
 void rsn_bootstrap_attempt_wait_for (BootstrapAttemptHandle * handle,
-LockHandle * lck,
+BootstrapAttemptLockHandle * lck,
 uint64_t timeout_millis);
 
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
@@ -915,7 +917,16 @@ uintptr_t rsn_bootstrap_server_inner_ptr (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_is_stopped (BootstrapServerHandle * handle);
 
+BootstrapServerLockHandle * rsn_bootstrap_server_lock (BootstrapServerHandle * handle);
+
+void rsn_bootstrap_server_lock_destroy (BootstrapServerLockHandle * handle);
+
+void rsn_bootstrap_server_relock (BootstrapServerHandle * server_handle,
+BootstrapServerLockHandle * lock_handle);
+
 void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
+
+void rsn_bootstrap_server_unlock (BootstrapServerLockHandle * lock_handle);
 
 void rsn_callback_add_timed_task (AddTimedTaskCallback f);
 

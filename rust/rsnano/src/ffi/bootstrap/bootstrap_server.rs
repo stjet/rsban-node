@@ -1,9 +1,14 @@
 use crate::{
     bootstrap::BootstrapServer,
     ffi::{transport::SocketHandle, LoggerMT, NodeConfigDto},
+    messages::Message,
     NodeConfig,
 };
-use std::{ffi::c_void, sync::Arc};
+use std::{
+    collections::VecDeque,
+    ffi::c_void,
+    sync::{Arc, MutexGuard},
+};
 
 pub struct BootstrapServerHandle(Arc<BootstrapServer>);
 
@@ -44,4 +49,41 @@ pub unsafe extern "C" fn rsn_bootstrap_server_is_stopped(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
     (*handle).0.is_stopped()
+}
+
+pub struct BootstrapServerLockHandle(Option<MutexGuard<'static, VecDeque<Box<dyn Message>>>>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_lock(
+    handle: *mut BootstrapServerHandle,
+) -> *mut BootstrapServerLockHandle {
+    let guard = (*handle).0.queue.lock().unwrap();
+    Box::into_raw(Box::new(BootstrapServerLockHandle(Some(
+        std::mem::transmute::<
+            MutexGuard<VecDeque<Box<dyn Message>>>,
+            MutexGuard<'static, VecDeque<Box<dyn Message>>>,
+        >(guard),
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_unlock(lock_handle: *mut BootstrapServerLockHandle) {
+    (*lock_handle).0 = None
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_relock(
+    server_handle: *mut BootstrapServerHandle,
+    lock_handle: *mut BootstrapServerLockHandle,
+) {
+    let guard = (*server_handle).0.queue.lock().unwrap();
+    (*lock_handle).0 = Some(std::mem::transmute::<
+        MutexGuard<VecDeque<Box<dyn Message>>>,
+        MutexGuard<'static, VecDeque<Box<dyn Message>>>,
+    >(guard))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_lock_destroy(handle: *mut BootstrapServerLockHandle) {
+    drop(Box::from_raw(handle));
 }

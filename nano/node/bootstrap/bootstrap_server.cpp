@@ -199,6 +199,34 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bo
 	return composite;
 }
 
+nano::bootstrap_server_lock::bootstrap_server_lock (rsnano::BootstrapServerLockHandle * handle_a, rsnano::BootstrapServerHandle * server_a) :
+	handle{ handle_a },
+	server{ server_a }
+{
+}
+
+nano::bootstrap_server_lock::bootstrap_server_lock (bootstrap_server_lock && other_a) :
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+}
+
+nano::bootstrap_server_lock::~bootstrap_server_lock ()
+{
+	if (handle)
+		rsnano::rsn_bootstrap_server_lock_destroy (handle);
+}
+
+void nano::bootstrap_server_lock::unlock ()
+{
+	rsnano::rsn_bootstrap_server_unlock (handle);
+}
+
+void nano::bootstrap_server_lock::lock ()
+{
+	rsnano::rsn_bootstrap_server_relock (server, handle);
+}
+
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
 	socket (socket_a),
@@ -209,7 +237,6 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	observer (node_a->bootstrap),
 	logger{ node_a->logger },
 	stats{ node_a->stats },
-	tcp_channels (node_a->network.tcp_channels),
 	config{ node_a->config },
 	network_params{ node_a->network_params },
 	disable_bootstrap_bulk_pull_server{ node_a->flags.disable_bootstrap_bulk_pull_server },
@@ -226,6 +253,12 @@ nano::bootstrap_server::~bootstrap_server ()
 {
 	observer->boostrap_server_exited (socket->type (), inner_ptr (), remote_endpoint);
 	rsnano::rsn_bootstrap_server_destroy (handle);
+}
+
+nano::bootstrap_server_lock nano::bootstrap_server::create_lock ()
+{
+	auto lock_handle{ rsnano::rsn_bootstrap_server_lock (handle) };
+	return nano::bootstrap_server_lock{ lock_handle, handle };
 }
 
 void nano::bootstrap_server::stop ()
@@ -613,7 +646,7 @@ void nano::bootstrap_server::receive_node_id_handshake_action (boost::system::er
 void nano::bootstrap_server::add_request (std::unique_ptr<nano::message> message_a)
 {
 	debug_assert (message_a != nullptr);
-	nano::unique_lock<nano::mutex> lock (mutex);
+	auto lock{ create_lock () };
 	auto start (requests.empty ());
 	requests.push (std::move (message_a));
 	if (start)
@@ -624,7 +657,7 @@ void nano::bootstrap_server::add_request (std::unique_ptr<nano::message> message
 
 void nano::bootstrap_server::finish_request ()
 {
-	nano::unique_lock<nano::mutex> lock (mutex);
+	auto lock{ create_lock () };
 	if (!requests.empty ())
 	{
 		requests.pop ();
@@ -802,7 +835,7 @@ std::unique_ptr<nano::message_visitor> nano::request_response_visitor_factory::c
 	return std::make_unique<request_response_visitor> (connection_a, node);
 }
 
-void nano::bootstrap_server::run_next (nano::unique_lock<nano::mutex> & lock_a)
+void nano::bootstrap_server::run_next (nano::bootstrap_server_lock & lock_a)
 {
 	debug_assert (!requests.empty ());
 	auto visitor{ request_response_visitor_factory->create_visitor (shared_from_this ()) };

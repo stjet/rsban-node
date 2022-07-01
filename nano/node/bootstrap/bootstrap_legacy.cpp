@@ -60,7 +60,7 @@ void nano::bootstrap_attempt_legacy::stop ()
 	node->bootstrap_initiator.clear_pulls (get_incremental_id ());
 }
 
-rsnano::LockHandle * nano::bootstrap_attempt_legacy::request_push (rsnano::LockHandle * lock_a)
+rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_legacy::request_push (rsnano::BootstrapAttemptLockHandle * lock_a)
 {
 	bool error (false);
 	rsnano::rsn_bootstrap_attempt_unlock (lock_a);
@@ -126,7 +126,7 @@ void nano::bootstrap_attempt_legacy::set_start_account (nano::account const & st
 	start_account = start_account_a;
 }
 
-bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::LockHandle ** lock_a, bool first_attempt)
+bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::BootstrapAttemptLockHandle ** lock_a, bool first_attempt)
 {
 	auto result (true);
 	rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
@@ -189,7 +189,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::LockHandle ** loc
 	return result;
 }
 
-rsnano::LockHandle * nano::bootstrap_attempt_legacy::run_start (rsnano::LockHandle * lock_a)
+rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_legacy::run_start (rsnano::BootstrapAttemptLockHandle * lock_a)
 {
 	set_frontiers_received (false);
 	auto frontier_failure (true);

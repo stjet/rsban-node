@@ -42,7 +42,7 @@ public:
 	bool lazy_finished ();
 	bool lazy_has_expired () const;
 	uint32_t lazy_batch_size ();
-	rsnano::LockHandle * lazy_pull_flush (rsnano::LockHandle * lock_a);
+	rsnano::BootstrapAttemptLockHandle * lazy_pull_flush (rsnano::BootstrapAttemptLockHandle * lock_a);
 	bool process_block_lazy (std::shared_ptr<nano::block> const &, nano::account const &, uint64_t, nano::bulk_pull::count_t, unsigned);
 	void lazy_block_state (std::shared_ptr<nano::block> const &, unsigned);
 	void lazy_block_state_backlog_check (std::shared_ptr<nano::block> const &, nano::block_hash const &);
@@ -75,7 +75,7 @@ class bootstrap_attempt_wallet final : public bootstrap_attempt
 public:
 	explicit bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a = "");
 	~bootstrap_attempt_wallet ();
-	rsnano::LockHandle * request_pending (rsnano::LockHandle * lock_a);
+	rsnano::BootstrapAttemptLockHandle * request_pending (rsnano::BootstrapAttemptLockHandle * lock_a);
 	void requeue_pending (nano::account const &);
 	void run () override;
 	void wallet_start (std::deque<nano::account> &);

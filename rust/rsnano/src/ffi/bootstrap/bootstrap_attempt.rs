@@ -138,21 +138,20 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_process_block(
     )
 }
 
-pub struct LockHandle(Option<MutexGuard<'static, u8>>);
+pub struct BootstrapAttemptLockHandle(Option<MutexGuard<'static, u8>>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_lock(
     handle: *mut BootstrapAttemptHandle,
-) -> *mut LockHandle {
+) -> *mut BootstrapAttemptLockHandle {
     let guard = (*handle).0.mutex.lock().unwrap();
-    Box::into_raw(Box::new(LockHandle(Some(std::mem::transmute::<
-        MutexGuard<u8>,
-        MutexGuard<'static, u8>,
-    >(guard)))))
+    Box::into_raw(Box::new(BootstrapAttemptLockHandle(Some(
+        std::mem::transmute::<MutexGuard<u8>, MutexGuard<'static, u8>>(guard),
+    ))))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_unlock(handle: *mut LockHandle) {
+pub unsafe extern "C" fn rsn_bootstrap_attempt_unlock(handle: *mut BootstrapAttemptLockHandle) {
     drop(Box::from_raw(handle));
 }
 
@@ -169,7 +168,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_notifiy_one(handle: *mut Bootstra
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_wait(
     handle: *mut BootstrapAttemptHandle,
-    lck: *mut LockHandle,
+    lck: *mut BootstrapAttemptLockHandle,
 ) {
     let guard = (*handle)
         .0
@@ -182,7 +181,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_wait(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_wait_for(
     handle: *mut BootstrapAttemptHandle,
-    lck: *mut LockHandle,
+    lck: *mut BootstrapAttemptLockHandle,
     timeout_millis: u64,
 ) {
     let (guard, _) = (*handle)

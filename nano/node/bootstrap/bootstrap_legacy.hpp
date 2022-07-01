@@ -23,13 +23,13 @@ public:
 	void run () override;
 	bool consume_future (std::future<bool> &);
 	void stop () override;
-	bool request_frontier (rsnano::LockHandle **, bool = false);
-	rsnano::LockHandle * request_push (rsnano::LockHandle *);
+	bool request_frontier (rsnano::BootstrapAttemptLockHandle **, bool = false);
+	rsnano::BootstrapAttemptLockHandle * request_push (rsnano::BootstrapAttemptLockHandle *);
 	void add_frontier (nano::pull_info const &);
 	void add_bulk_push_target (nano::block_hash const &, nano::block_hash const &);
 	bool request_bulk_push_target (std::pair<nano::block_hash, nano::block_hash> &);
 	void set_start_account (nano::account const &);
-	rsnano::LockHandle * run_start (rsnano::LockHandle *);
+	rsnano::BootstrapAttemptLockHandle * run_start (rsnano::BootstrapAttemptLockHandle *);
 	void get_information (boost::property_tree::ptree &) override;
 	std::shared_ptr<nano::node> node;
 	nano::tcp_endpoint endpoint_frontier_request;

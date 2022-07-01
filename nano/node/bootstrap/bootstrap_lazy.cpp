@@ -101,7 +101,7 @@ uint32_t nano::bootstrap_attempt_lazy::lazy_batch_size ()
 	return result;
 }
 
-rsnano::LockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flush (rsnano::LockHandle * lock_a)
+rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flush (rsnano::BootstrapAttemptLockHandle * lock_a)
 {
 	static std::size_t const max_pulls (static_cast<std::size_t> (nano::bootstrap_limits::bootstrap_connection_scale_target_blocks) * 3);
 	if (get_pulling () < max_pulls)
@@ -501,7 +501,7 @@ nano::bootstrap_attempt_wallet::~bootstrap_attempt_wallet ()
 {
 }
 
-rsnano::LockHandle * nano::bootstrap_attempt_wallet::request_pending (rsnano::LockHandle * lock_a)
+rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_wallet::request_pending (rsnano::BootstrapAttemptLockHandle * lock_a)
 {
 	rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 	auto connection_l (node->bootstrap_initiator.connections->connection (shared_from_this ()));

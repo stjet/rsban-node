@@ -81,6 +81,22 @@ private:
 	std::shared_ptr<nano::node> node;
 };
 
+class bootstrap_server_lock
+{
+public:
+	bootstrap_server_lock (rsnano::BootstrapServerLockHandle * handle_a, rsnano::BootstrapServerHandle * server_a);
+	bootstrap_server_lock (bootstrap_server_lock const &) = delete;
+	bootstrap_server_lock (bootstrap_server_lock && other_a);
+	~bootstrap_server_lock ();
+
+	void unlock ();
+	void lock ();
+
+private:
+	rsnano::BootstrapServerHandle * server;
+	rsnano::BootstrapServerLockHandle * handle;
+};
+
 /**
  * Owns the server side of a bootstrap connection. Responds to bootstrap messages sent over the socket.
  */
@@ -90,6 +106,7 @@ public:
 	bootstrap_server (std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::node> const &);
 	bootstrap_server (nano::bootstrap_server const &) = delete;
 	~bootstrap_server ();
+	nano::bootstrap_server_lock create_lock ();
 	void stop ();
 	void receive ();
 	void receive_header_action (boost::system::error_code const &, std::size_t);
@@ -106,10 +123,15 @@ public:
 	void finish_request ();
 	void finish_request_async ();
 	void timeout ();
-	void run_next (nano::unique_lock<nano::mutex> & lock_a);
+
+private:
+	void run_next (nano::bootstrap_server_lock & lock_a);
+
+public:
 	bool make_bootstrap_connection ();
 	bool is_realtime_connection ();
 	bool is_stopped () const;
+
 	std::uintptr_t inner_ptr () const;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::socket> const socket;
@@ -117,8 +139,8 @@ public:
 	std::shared_ptr<nano::thread_pool> workers;
 	boost::asio::io_context & io_ctx;
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
-	nano::mutex mutex;
-	std::queue<std::unique_ptr<nano::message>> requests;
+
+public:
 	// Remote enpoint used to remove response channel even after socket closing
 	nano::tcp_endpoint remote_endpoint{ boost::asio::ip::address_v6::any (), 0 };
 	nano::account remote_node_id{};
@@ -132,8 +154,6 @@ public:
 	bool disable_tcp_realtime{ false };
 	bool disable_bootstrap_listener{ false };
 	rsnano::BootstrapServerHandle * handle;
-
-private:
-	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
+	std::queue<std::unique_ptr<nano::message>> requests;
 };
 }

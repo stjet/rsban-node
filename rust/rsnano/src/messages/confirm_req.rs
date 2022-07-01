@@ -9,7 +9,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use super::{Message, MessageHeader, MessageType};
+use super::{Message, MessageHeader, MessageType, MessageVisitor};
 
 #[derive(Clone)]
 pub struct ConfirmReq {
@@ -150,6 +150,10 @@ impl Message for ConfirmReq {
         }
 
         Ok(())
+    }
+
+    fn visit(&self, visitor: &dyn MessageVisitor) {
+        visitor.confirm_req(self)
     }
 }
 

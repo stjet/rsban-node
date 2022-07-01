@@ -7,7 +7,7 @@ use std::any::Any;
 use std::mem::size_of;
 use std::time::{Duration, SystemTime};
 
-use super::{Message, MessageHeader, MessageType};
+use super::{Message, MessageHeader, MessageType, MessageVisitor};
 
 #[repr(u8)]
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq)]
@@ -247,6 +247,10 @@ impl Message for TelemetryAck {
             self.data.serialize(stream)?;
         }
         Ok(())
+    }
+
+    fn visit(&self, visitor: &dyn MessageVisitor) {
+        visitor.telemetry_ack(self)
     }
 }
 

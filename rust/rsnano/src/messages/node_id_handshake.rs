@@ -1,4 +1,4 @@
-use super::{Message, MessageHeader, MessageType};
+use super::{Message, MessageHeader, MessageType, MessageVisitor};
 use crate::{utils::Stream, Account, NetworkConstants, Signature};
 use anyhow::Result;
 use std::any::Any;
@@ -110,5 +110,9 @@ impl Message for NodeIdHandshake {
             sig.serialize(stream)?;
         }
         Ok(())
+    }
+
+    fn visit(&self, visitor: &dyn MessageVisitor) {
+        visitor.node_id_handshake(self)
     }
 }

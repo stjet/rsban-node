@@ -9,6 +9,12 @@ use std::ops::Deref;
 
 pub struct MessageHandle(Box<dyn Message>);
 
+impl MessageHandle {
+    pub fn new<T: 'static + Message>(msg: T) -> *mut Self {
+        Box::into_raw(Box::new(Self(Box::new(msg))))
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header(
     handle: *mut MessageHandle,

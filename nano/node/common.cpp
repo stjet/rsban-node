@@ -534,6 +534,11 @@ nano::keepalive::keepalive (nano::network_constants const & constants, uint8_t v
 {
 }
 
+nano::keepalive::keepalive (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
+{
+}
+
 nano::keepalive::keepalive (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
 	message (rsnano::rsn_message_keepalive_create2 (header_a.handle))
 {
@@ -628,6 +633,11 @@ nano::publish::publish (nano::network_constants const & constants, std::shared_p
 
 nano::publish::publish (nano::publish const & other_a) :
 	message (rsnano::rsn_message_publish_clone (other_a.handle))
+{
+}
+
+nano::publish::publish (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
 {
 }
 
@@ -728,6 +738,11 @@ nano::confirm_req::confirm_req (nano::network_constants const & constants, std::
 
 nano::confirm_req::confirm_req (nano::network_constants const & constants, nano::block_hash const & hash_a, nano::root const & root_a) :
 	message (create_confirm_req_handle (constants, nullptr, std::vector<std::pair<nano::block_hash, nano::root>> (1, std::make_pair (hash_a, root_a))))
+{
+}
+
+nano::confirm_req::confirm_req (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
 {
 }
 
@@ -839,6 +854,11 @@ nano::confirm_ack::confirm_ack (nano::confirm_ack const & other_a) :
 {
 }
 
+nano::confirm_ack::confirm_ack (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
+{
+}
+
 void nano::confirm_ack::serialize (nano::stream & stream_a) const
 {
 	if (!rsnano::rsn_message_confirm_ack_serialize (handle, &stream_a))
@@ -892,6 +912,11 @@ nano::frontier_req::frontier_req (bool & error_a, nano::stream & stream_a, nano:
 	{
 		error_a = deserialize (stream_a);
 	}
+}
+
+nano::frontier_req::frontier_req (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
+{
 }
 
 void nano::frontier_req::serialize (nano::stream & stream_a) const
@@ -978,6 +1003,11 @@ nano::bulk_pull::bulk_pull (bool & error_a, nano::stream & stream_a, nano::messa
 	}
 }
 
+nano::bulk_pull::bulk_pull (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
+{
+}
+
 nano::hash_or_account nano::bulk_pull::get_start () const
 {
 	nano::hash_or_account start;
@@ -1059,6 +1089,11 @@ nano::bulk_pull_account::bulk_pull_account (bool & error_a, nano::stream & strea
 	}
 }
 
+nano::bulk_pull_account::bulk_pull_account (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
+{
+}
+
 void nano::bulk_pull_account::visit (nano::message_visitor & visitor_a) const
 {
 	visitor_a.bulk_pull_account (*this);
@@ -1131,6 +1166,11 @@ nano::bulk_push::bulk_push (nano::message_header const & header_a) :
 {
 }
 
+nano::bulk_push::bulk_push (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
+{
+}
+
 bool nano::bulk_push::deserialize (nano::stream & stream_a)
 {
 	bool error = !rsnano::rsn_message_bulk_push_deserialize (handle, &stream_a);
@@ -1169,6 +1209,11 @@ nano::telemetry_req::telemetry_req (nano::telemetry_req const & other_a) :
 {
 }
 
+nano::telemetry_req::telemetry_req (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
+{
+}
+
 bool nano::telemetry_req::deserialize (nano::stream & stream_a)
 {
 	bool error = !rsnano::rsn_message_telemetry_req_deserialize (handle, &stream_a);
@@ -1195,6 +1240,11 @@ rsnano::MessageHandle * create_telemetry_ack_handle (nano::network_constants con
 		data_handle = default_data.handle;
 	}
 	return rsnano::rsn_message_telemetry_ack_create (&constants_dto, data_handle);
+}
+
+nano::telemetry_ack::telemetry_ack (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
+{
 }
 
 nano::telemetry_ack::telemetry_ack (nano::network_constants const & constants) :
@@ -1705,6 +1755,11 @@ nano::node_id_handshake::node_id_handshake (node_id_handshake const & other_a) :
 
 nano::node_id_handshake::node_id_handshake (nano::network_constants const & constants, boost::optional<nano::uint256_union> query, boost::optional<std::pair<nano::account, nano::signature>> response) :
 	message (create_node_id_handshake_handle (constants, query, response))
+{
+}
+
+nano::node_id_handshake::node_id_handshake (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
 {
 }
 

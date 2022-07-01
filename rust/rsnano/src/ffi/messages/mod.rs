@@ -15,3 +15,5 @@ mod node_id_handshake;
 mod publish;
 mod telemetry_ack;
 mod telemetry_req;
+mod visitor;
+pub(crate) use visitor::FfiMessageVisitor;

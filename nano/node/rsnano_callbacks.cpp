@@ -591,6 +591,64 @@ std::size_t buffer_size (void * handle_a)
 	return (*ptr)->size ();
 }
 
+void message_visitor_visit (void * handle_a, rsnano::MessageHandle * msg_a, uint8_t msg_type_a)
+{
+	auto msg_type = static_cast<nano::message_type> (msg_type_a);
+	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
+	try
+	{
+		switch (msg_type)
+		{
+			case nano::message_type::keepalive:
+				(*visitor)->keepalive (nano::keepalive (msg_a));
+				break;
+			case nano::message_type::publish:
+				(*visitor)->publish (nano::publish (msg_a));
+				break;
+			case nano::message_type::confirm_req:
+				(*visitor)->confirm_req (nano::confirm_req (msg_a));
+				break;
+			case nano::message_type::confirm_ack:
+				(*visitor)->confirm_ack (nano::confirm_ack (msg_a));
+				break;
+			case nano::message_type::bulk_pull:
+				(*visitor)->bulk_pull (nano::bulk_pull (msg_a));
+				break;
+			case nano::message_type::bulk_push:
+				(*visitor)->bulk_push (nano::bulk_push (msg_a));
+				break;
+			case nano::message_type::frontier_req:
+				(*visitor)->frontier_req (nano::frontier_req (msg_a));
+				break;
+			case nano::message_type::node_id_handshake:
+				(*visitor)->node_id_handshake (nano::node_id_handshake (msg_a));
+				break;
+			case nano::message_type::bulk_pull_account:
+				(*visitor)->bulk_pull_account (nano::bulk_pull_account (msg_a));
+				break;
+			case nano::message_type::telemetry_req:
+				(*visitor)->telemetry_req (nano::telemetry_req (msg_a));
+				break;
+			case nano::message_type::telemetry_ack:
+				(*visitor)->telemetry_ack (nano::telemetry_ack (msg_a));
+				break;
+
+			default:
+				break;
+		}
+	}
+	catch (std::exception & e)
+	{
+		std::cerr << "message vistior callback error: " << e.what () << std::endl;
+	}
+}
+
+void message_visitor_destroy (void * handle_a)
+{
+	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
+	delete visitor;
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -655,6 +713,9 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_buffer_destroy (buffer_destroy);
 	rsnano::rsn_callback_buffer_size (buffer_size);
 	rsnano::rsn_callback_shared_const_buffer_destroy (shared_const_buffer_destroy);
+
+	rsnano::rsn_callback_message_visitor_visit (message_visitor_visit);
+	rsnano::rsn_callback_message_visitor_destroy (message_visitor_destroy);
 
 	callbacks_set = true;
 }

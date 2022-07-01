@@ -24,7 +24,10 @@ mod unchecked_info;
 mod voting;
 mod websocket;
 
-use std::{ffi::CString, os::raw::c_char};
+use std::{
+    ffi::{c_void, CString},
+    os::raw::c_char,
+};
 
 pub use bandwidth_limiter::*;
 pub use blake2b::*;
@@ -145,3 +148,5 @@ pub(crate) unsafe fn copy_amount_bytes(source: Amount, target: *mut u8) {
     let bytes = std::slice::from_raw_parts_mut(target, 16);
     bytes.copy_from_slice(&source.to_be_bytes());
 }
+
+pub type DestroyCallback = unsafe extern "C" fn(*mut c_void);

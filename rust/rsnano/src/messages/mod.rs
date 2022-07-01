@@ -45,4 +45,19 @@ pub trait Message {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()>;
+    fn visit(&self, visitor: &dyn MessageVisitor);
+}
+
+pub trait MessageVisitor {
+    fn keepalive(&self, message: &Keepalive);
+    fn publish(&self, message: &Publish);
+    fn confirm_req(&self, message: &ConfirmReq);
+    fn confirm_ack(&self, message: &ConfirmAck);
+    fn bulk_pull(&self, message: &BulkPull);
+    fn bulk_pull_account(&self, message: &BulkPullAccount);
+    fn bulk_push(&self, message: &BulkPush);
+    fn frontier_req(&self, message: &FrontierReq);
+    fn node_id_handshake(&self, message: &NodeIdHandshake);
+    fn telemetry_req(&self, message: &TelemetryReq);
+    fn telemetry_ack(&self, message: &TelemetryAck);
 }

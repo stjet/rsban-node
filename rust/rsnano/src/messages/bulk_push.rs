@@ -1,4 +1,4 @@
-use super::{Message, MessageHeader, MessageType};
+use super::{Message, MessageHeader, MessageType, MessageVisitor};
 use crate::{utils::Stream, NetworkConstants};
 use anyhow::Result;
 use std::any::Any;
@@ -46,5 +46,9 @@ impl Message for BulkPush {
 
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.header.serialize(stream)
+    }
+
+    fn visit(&self, visitor: &dyn MessageVisitor) {
+        visitor.bulk_push(self)
     }
 }

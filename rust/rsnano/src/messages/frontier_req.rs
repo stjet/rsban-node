@@ -2,7 +2,7 @@ use crate::{utils::Stream, Account, NetworkConstants};
 use anyhow::Result;
 use std::{any::Any, mem::size_of};
 
-use super::{Message, MessageHeader, MessageType};
+use super::{Message, MessageHeader, MessageType, MessageVisitor};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FrontierReq {
@@ -77,6 +77,10 @@ impl Message for FrontierReq {
         self.start.serialize(stream)?;
         stream.write_bytes(&self.age.to_le_bytes())?;
         stream.write_bytes(&self.count.to_le_bytes())
+    }
+
+    fn visit(&self, visitor: &dyn MessageVisitor) {
+        visitor.frontier_req(self)
     }
 }
 

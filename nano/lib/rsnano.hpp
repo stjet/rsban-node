@@ -13,6 +13,8 @@ namespace rsnano
 {
 static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
 
+static const uintptr_t ConfirmAck_HASHES_MAX = 12;
+
 static const uintptr_t FrontierReq_ONLY_CONFIRMED = 1;
 
 struct AsyncConnectCallbackHandle;
@@ -361,6 +363,8 @@ struct MessageDto
 };
 
 using ListenerBroadcastCallback = bool (*) (void *, const MessageDto *);
+
+using MessageVisitorCallback = void (*) (void *, MessageHandle *, uint8_t);
 
 using PropertyTreePutStringCallback = void (*) (void *, const char *, uintptr_t, const char *, uintptr_t);
 
@@ -937,6 +941,10 @@ void rsn_callback_ledger_block_or_pruned_exists (LedgerBlockOrPrunedExistsCallba
 
 void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
+void rsn_callback_message_visitor_destroy (DestroyCallback f);
+
+void rsn_callback_message_visitor_visit (MessageVisitorCallback f);
+
 void rsn_callback_property_tree_add (PropertyTreePutStringCallback f);
 
 void rsn_callback_property_tree_add_child (PropertyTreePushBackCallback f);
@@ -1190,8 +1198,6 @@ void rsn_message_bulk_pull_set_count_present (MessageHandle * handle, bool prese
 void rsn_message_bulk_pull_set_end (MessageHandle * handle, const uint8_t * end);
 
 void rsn_message_bulk_pull_set_start (MessageHandle * handle, const uint8_t * start);
-
-uintptr_t rsn_message_bulk_pull_size ();
 
 void rsn_message_bulk_pull_start (MessageHandle * handle, uint8_t * start);
 

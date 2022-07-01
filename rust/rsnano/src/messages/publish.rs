@@ -7,7 +7,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use super::{Message, MessageHeader, MessageType};
+use super::{Message, MessageHeader, MessageType, MessageVisitor};
 
 #[derive(Clone)]
 pub struct Publish {
@@ -72,6 +72,10 @@ impl Message for Publish {
         let block = self.block.as_ref().ok_or_else(|| anyhow!("no block"))?;
         let lck = block.read().unwrap();
         lck.as_block().serialize(stream)
+    }
+
+    fn visit(&self, visitor: &dyn MessageVisitor) {
+        visitor.publish(self)
     }
 }
 

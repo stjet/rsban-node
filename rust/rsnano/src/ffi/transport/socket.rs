@@ -1,6 +1,7 @@
 use num::FromPrimitive;
 
 use crate::{
+    ffi::DestroyCallback,
     stats::SocketStats,
     transport::{
         BufferWrapper, SharedConstBuffer, Socket, SocketBuilder, SocketImpl, TcpSocketFacade,
@@ -421,8 +422,6 @@ static mut ASYNC_WRITE_CALLBACK: Option<AsyncWriteCallback> = None;
 pub unsafe extern "C" fn rsn_callback_tcp_socket_async_write(f: AsyncWriteCallback) {
     ASYNC_WRITE_CALLBACK = Some(f);
 }
-
-type DestroyCallback = unsafe extern "C" fn(*mut c_void);
 
 static mut TCP_FACADE_DESTROY_CALLBACK: Option<DestroyCallback> = None;
 

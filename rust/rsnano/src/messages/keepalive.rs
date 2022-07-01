@@ -1,4 +1,4 @@
-use super::{Message, MessageHeader, MessageType};
+use super::{Message, MessageHeader, MessageType, MessageVisitor};
 use crate::{utils::Stream, NetworkConstants};
 use anyhow::Result;
 use std::{
@@ -113,6 +113,10 @@ impl Message for Keepalive {
             }
         }
         Ok(())
+    }
+
+    fn visit(&self, visitor: &dyn MessageVisitor) {
+        visitor.keepalive(self)
     }
 }
 

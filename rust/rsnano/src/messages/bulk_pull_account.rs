@@ -1,4 +1,4 @@
-use super::{Message, MessageHeader, MessageType};
+use super::{Message, MessageHeader, MessageType, MessageVisitor};
 use crate::{utils::Stream, Account, Amount, NetworkConstants};
 use anyhow::Result;
 use num_traits::FromPrimitive;
@@ -74,5 +74,9 @@ impl Message for BulkPullAccount {
         self.account.serialize(stream)?;
         self.minimum_amount.serialize(stream)?;
         stream.write_u8(self.flags as u8)
+    }
+
+    fn visit(&self, visitor: &dyn MessageVisitor) {
+        visitor.bulk_pull_account(self)
     }
 }

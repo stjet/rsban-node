@@ -309,6 +309,7 @@ class keepalive final : public message
 public:
 	explicit keepalive (nano::network_constants const & constants);
 	explicit keepalive (nano::network_constants const & constants, uint8_t version_using_a);
+	keepalive (rsnano::MessageHandle * handle_a);
 	keepalive (keepalive const & other_a);
 	keepalive (bool &, nano::stream &, nano::message_header const &);
 	void visit (nano::message_visitor &) const override;
@@ -326,6 +327,7 @@ public:
 	publish (bool &, nano::stream &, nano::message_header const &, nano::uint128_t const & = 0, nano::block_uniquer * = nullptr);
 	publish (nano::network_constants const & constants, std::shared_ptr<nano::block> const &);
 	publish (nano::publish const & other_a);
+	publish (rsnano::MessageHandle * handle_a);
 	void visit (nano::message_visitor &) const override;
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &, nano::block_uniquer * = nullptr);
@@ -342,6 +344,7 @@ public:
 	confirm_req (nano::network_constants const & constants, std::shared_ptr<nano::block> const &);
 	confirm_req (nano::network_constants const & constants, std::vector<std::pair<nano::block_hash, nano::root>> const &);
 	confirm_req (nano::network_constants const & constants, nano::block_hash const &, nano::root const &);
+	confirm_req (rsnano::MessageHandle * handle_a);
 	confirm_req (nano::confirm_req const & other_a);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &, nano::block_uniquer * = nullptr);
@@ -359,6 +362,7 @@ public:
 	confirm_ack (bool &, nano::stream &, nano::message_header const &, nano::vote_uniquer * = nullptr);
 	confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const &);
 	confirm_ack (nano::confirm_ack const & other_a);
+	confirm_ack (rsnano::MessageHandle * handle_a);
 	void serialize (nano::stream &) const override;
 	void visit (nano::message_visitor &) const override;
 	bool operator== (nano::confirm_ack const &) const;
@@ -371,6 +375,7 @@ class frontier_req final : public message
 public:
 	explicit frontier_req (nano::network_constants const & constants);
 	frontier_req (bool &, nano::stream &, nano::message_header const &);
+	frontier_req (rsnano::MessageHandle * handle_a);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
@@ -465,6 +470,7 @@ public:
 	explicit telemetry_req (nano::network_constants const & constants);
 	explicit telemetry_req (nano::message_header const &);
 	telemetry_req (nano::telemetry_req const &);
+	telemetry_req (rsnano::MessageHandle * handle_a);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
@@ -477,6 +483,7 @@ public:
 	telemetry_ack (bool &, nano::stream &, nano::message_header const &);
 	telemetry_ack (nano::network_constants const & constants, telemetry_data const &);
 	telemetry_ack (nano::telemetry_ack const &);
+	telemetry_ack (rsnano::MessageHandle * handle_a);
 	telemetry_ack & operator= (telemetry_ack const & other_a);
 	void serialize (nano::stream &) const override;
 	void visit (nano::message_visitor &) const override;
@@ -493,6 +500,7 @@ public:
 	using count_t = uint32_t;
 	explicit bulk_pull (nano::network_constants const & constants);
 	bulk_pull (bool &, nano::stream &, nano::message_header const &);
+	bulk_pull (rsnano::MessageHandle * handle_a);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
@@ -511,6 +519,7 @@ class bulk_pull_account final : public message
 public:
 	explicit bulk_pull_account (nano::network_constants const & constants);
 	bulk_pull_account (bool &, nano::stream &, nano::message_header const &);
+	bulk_pull_account (rsnano::MessageHandle * handle_a);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
@@ -528,6 +537,7 @@ class bulk_push final : public message
 public:
 	explicit bulk_push (nano::network_constants const & constants);
 	explicit bulk_push (nano::message_header const &);
+	bulk_push (rsnano::MessageHandle * handle_a);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
@@ -539,6 +549,7 @@ public:
 	node_id_handshake (bool &, nano::stream &, nano::message_header const &);
 	node_id_handshake (nano::network_constants const & constants, boost::optional<nano::uint256_union>, boost::optional<std::pair<nano::account, nano::signature>>);
 	node_id_handshake (node_id_handshake const &);
+	node_id_handshake (rsnano::MessageHandle * handle_a);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;

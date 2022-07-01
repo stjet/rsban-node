@@ -2,7 +2,7 @@ use crate::{utils::Stream, BlockHash, HashOrAccount, NetworkConstants};
 use anyhow::Result;
 use std::{any::Any, mem::size_of};
 
-use super::{Message, MessageHeader, MessageType};
+use super::{Message, MessageHeader, MessageType, MessageVisitor};
 
 #[derive(Clone)]
 pub struct BulkPull {
@@ -127,5 +127,9 @@ impl Message for BulkPull {
             stream.write_bytes(&count_buffer)?;
         }
         Ok(())
+    }
+
+    fn visit(&self, visitor: &dyn MessageVisitor) {
+        visitor.bulk_pull(self)
     }
 }

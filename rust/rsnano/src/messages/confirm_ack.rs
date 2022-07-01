@@ -11,7 +11,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use super::{Message, MessageHeader};
+use super::{Message, MessageHeader, MessageVisitor};
 
 #[derive(Clone)]
 pub struct ConfirmAck {
@@ -91,6 +91,10 @@ impl Message for ConfirmAck {
         );
         self.header().serialize(stream)?;
         self.vote().unwrap().read().unwrap().serialize(stream)
+    }
+
+    fn visit(&self, visitor: &dyn MessageVisitor) {
+        visitor.confirm_ack(self)
     }
 }
 

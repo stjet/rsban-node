@@ -123,9 +123,16 @@ public:
 	void finish_request ();
 	void finish_request_async ();
 	void timeout ();
-	nano::message * release_front_request();
-	void push_request(std::unique_ptr<nano::message> msg);
-	bool requests_empty();
+	void push_request (std::unique_ptr<nano::message> msg);
+	bool requests_empty ();
+	//---------------------------------------------------------------
+	// requests wrappers:
+	nano::message * release_front_request ();
+	bool is_request_queue_empty (nano::bootstrap_server_lock & lock_a);
+	std::unique_ptr<nano::message> & requests_front (nano::bootstrap_server_lock & lock_a);
+	void requests_pop (nano::bootstrap_server_lock & lock_a);
+	void push_request_locked (std::unique_ptr<nano::message> message_a, nano::bootstrap_server_lock & lock_a);
+	//---------------------------------------------------------------
 
 private:
 	void run_next (nano::bootstrap_server_lock & lock_a);
@@ -157,6 +164,7 @@ public:
 	bool disable_tcp_realtime{ false };
 	bool disable_bootstrap_listener{ false };
 	rsnano::BootstrapServerHandle * handle;
+
 private:
 	std::queue<std::unique_ptr<nano::message>> requests;
 };

@@ -647,8 +647,8 @@ void nano::bootstrap_server::add_request (std::unique_ptr<nano::message> message
 {
 	debug_assert (message_a != nullptr);
 	auto lock{ create_lock () };
-	auto start (requests.empty ());
-	requests.push (std::move (message_a));
+	auto start (is_request_queue_empty (lock));
+	push_request_locked (std::move (message_a), lock);
 	if (start)
 	{
 		run_next (lock);
@@ -658,20 +658,20 @@ void nano::bootstrap_server::add_request (std::unique_ptr<nano::message> message
 void nano::bootstrap_server::finish_request ()
 {
 	auto lock{ create_lock () };
-	if (!requests.empty ())
+	if (!is_request_queue_empty (lock))
 	{
-		requests.pop ();
+		requests_pop (lock);
 	}
 	else
 	{
 		stats->inc (nano::stat::type::bootstrap, nano::stat::detail::request_underflow);
 	}
 
-	while (!requests.empty ())
+	while (!is_request_queue_empty (lock))
 	{
-		if (!requests.front ())
+		if (!requests_front (lock))
 		{
-			requests.pop ();
+			requests_pop (lock);
 		}
 		else
 		{
@@ -708,19 +708,45 @@ void nano::bootstrap_server::timeout ()
 	}
 }
 
-nano::message * nano::bootstrap_server::release_front_request()
+void nano::bootstrap_server::push_request (std::unique_ptr<nano::message> msg)
 {
-	return requests.front().release();
+	auto lk{ create_lock () };
+	push_request_locked (std::move (msg), lk);
 }
 
-void nano::bootstrap_server::push_request(std::unique_ptr<nano::message> msg)
+bool nano::bootstrap_server::requests_empty ()
 {
-	requests.push(std::move(msg));
+	auto lk{ create_lock () };
+	return is_request_queue_empty (lk);
 }
 
-bool nano::bootstrap_server::requests_empty(){
-	return requests.empty();
+//---------------------------------------------------------------
+// requests wrappers:
+nano::message * nano::bootstrap_server::release_front_request ()
+{
+	return requests.front ().release ();
 }
+
+bool nano::bootstrap_server::is_request_queue_empty (nano::bootstrap_server_lock & lock_a)
+{
+	return requests.empty ();
+}
+
+std::unique_ptr<nano::message> & nano::bootstrap_server::requests_front (nano::bootstrap_server_lock & lock_a)
+{
+	return requests.front ();
+}
+
+void nano::bootstrap_server::requests_pop (nano::bootstrap_server_lock & lock_a)
+{
+	requests.pop ();
+}
+
+void nano::bootstrap_server::push_request_locked (std::unique_ptr<nano::message> message_a, nano::bootstrap_server_lock & lock_a)
+{
+	requests.push (std::move (message_a));
+}
+//---------------------------------------------------------------
 
 namespace
 {
@@ -851,20 +877,20 @@ std::unique_ptr<nano::message_visitor> nano::request_response_visitor_factory::c
 
 void nano::bootstrap_server::run_next (nano::bootstrap_server_lock & lock_a)
 {
-	debug_assert (!requests.empty ());
+	debug_assert (!is_request_queue_empty (lock_a));
 	auto visitor{ request_response_visitor_factory->create_visitor (shared_from_this ()) };
-	auto type (requests.front ()->get_header ().get_type ());
+	auto type (requests_front (lock_a)->get_header ().get_type ());
 	if (type == nano::message_type::bulk_pull || type == nano::message_type::bulk_pull_account || type == nano::message_type::bulk_push || type == nano::message_type::frontier_req || type == nano::message_type::node_id_handshake)
 	{
 		// Bootstrap & node ID (realtime start)
 		// Request removed from queue in request_response_visitor. For bootstrap with requests.front ().release (), for node ID with finish_request ()
-		requests.front ()->visit (*visitor);
+		requests_front (lock_a)->visit (*visitor);
 	}
 	else
 	{
 		// Realtime
-		auto request (std::move (requests.front ()));
-		requests.pop ();
+		auto request (std::move (requests_front (lock_a)));
+		requests_pop (lock_a);
 		lock_a.unlock ();
 		request->visit (*visitor);
 		lock_a.lock ();

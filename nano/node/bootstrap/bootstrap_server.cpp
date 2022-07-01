@@ -708,6 +708,20 @@ void nano::bootstrap_server::timeout ()
 	}
 }
 
+nano::message * nano::bootstrap_server::release_front_request()
+{
+	return requests.front().release();
+}
+
+void nano::bootstrap_server::push_request(std::unique_ptr<nano::message> msg)
+{
+	requests.push(std::move(msg));
+}
+
+bool nano::bootstrap_server::requests_empty(){
+	return requests.empty();
+}
+
 namespace
 {
 class request_response_visitor : public nano::message_visitor
@@ -736,12 +750,12 @@ public:
 	}
 	void bulk_pull (nano::bulk_pull const &) override
 	{
-		auto response (std::make_shared<nano::bulk_pull_server> (node, connection, std::unique_ptr<nano::bulk_pull> (static_cast<nano::bulk_pull *> (connection->requests.front ().release ()))));
+		auto response (std::make_shared<nano::bulk_pull_server> (node, connection, std::unique_ptr<nano::bulk_pull> (static_cast<nano::bulk_pull *> (connection->release_front_request ()))));
 		response->send_next ();
 	}
 	void bulk_pull_account (nano::bulk_pull_account const &) override
 	{
-		auto response (std::make_shared<nano::bulk_pull_account_server> (node, connection, std::unique_ptr<nano::bulk_pull_account> (static_cast<nano::bulk_pull_account *> (connection->requests.front ().release ()))));
+		auto response (std::make_shared<nano::bulk_pull_account_server> (node, connection, std::unique_ptr<nano::bulk_pull_account> (static_cast<nano::bulk_pull_account *> (connection->release_front_request ()))));
 		response->send_frontier ();
 	}
 	void bulk_push (nano::bulk_push const &) override
@@ -751,7 +765,7 @@ public:
 	}
 	void frontier_req (nano::frontier_req const &) override
 	{
-		auto response (std::make_shared<nano::frontier_req_server> (node, connection, std::unique_ptr<nano::frontier_req> (static_cast<nano::frontier_req *> (connection->requests.front ().release ()))));
+		auto response (std::make_shared<nano::frontier_req_server> (node, connection, std::unique_ptr<nano::frontier_req> (static_cast<nano::frontier_req *> (connection->release_front_request ()))));
 		response->send_next ();
 	}
 	void telemetry_req (nano::telemetry_req const & message_a) override

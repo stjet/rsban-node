@@ -1,12 +1,14 @@
 use crate::{
     bootstrap::BootstrapServer,
-    ffi::{transport::SocketHandle, LoggerMT, NodeConfigDto},
+    ffi::{messages::MessageHandle, transport::SocketHandle, LoggerMT, NodeConfigDto},
     messages::Message,
     NodeConfig,
 };
 use std::{
+    cell::RefCell,
     collections::VecDeque,
     ffi::c_void,
+    rc::Rc,
     sync::{Arc, MutexGuard},
 };
 
@@ -51,24 +53,34 @@ pub unsafe extern "C" fn rsn_bootstrap_server_is_stopped(
     (*handle).0.is_stopped()
 }
 
-pub struct BootstrapServerLockHandle(Option<MutexGuard<'static, VecDeque<Box<dyn Message>>>>);
+pub struct BootstrapServerLockHandle(
+    Rc<RefCell<Option<MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>>>>,
+);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_lock(
     handle: *mut BootstrapServerHandle,
 ) -> *mut BootstrapServerLockHandle {
     let guard = (*handle).0.queue.lock().unwrap();
-    Box::into_raw(Box::new(BootstrapServerLockHandle(Some(
-        std::mem::transmute::<
-            MutexGuard<VecDeque<Box<dyn Message>>>,
-            MutexGuard<'static, VecDeque<Box<dyn Message>>>,
-        >(guard),
-    ))))
+    Box::into_raw(Box::new(BootstrapServerLockHandle(Rc::new(RefCell::new(
+        Some(std::mem::transmute::<
+            MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
+            MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>,
+        >(guard)),
+    )))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_lock_clone(
+    handle: *mut BootstrapServerLockHandle,
+) -> *mut BootstrapServerLockHandle {
+    Box::into_raw(Box::new(BootstrapServerLockHandle((*handle).0.clone())))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_unlock(lock_handle: *mut BootstrapServerLockHandle) {
-    (*lock_handle).0 = None
+    let mut inner = (*lock_handle).0.borrow_mut();
+    *inner = None;
 }
 
 #[no_mangle]
@@ -77,13 +89,82 @@ pub unsafe extern "C" fn rsn_bootstrap_server_relock(
     lock_handle: *mut BootstrapServerLockHandle,
 ) {
     let guard = (*server_handle).0.queue.lock().unwrap();
-    (*lock_handle).0 = Some(std::mem::transmute::<
-        MutexGuard<VecDeque<Box<dyn Message>>>,
-        MutexGuard<'static, VecDeque<Box<dyn Message>>>,
-    >(guard))
+    let mut inner = (*lock_handle).0.borrow_mut();
+    *inner = Some(std::mem::transmute::<
+        MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
+        MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>,
+    >(guard));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_lock_destroy(handle: *mut BootstrapServerLockHandle) {
     drop(Box::from_raw(handle));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_release_front_request(
+    handle: *mut BootstrapServerLockHandle,
+) -> *mut MessageHandle {
+    let mut requests = (*handle).0.borrow_mut();
+    if let Some(r) = requests.as_mut() {
+        if let Some(req) = r.front_mut() {
+            if let Some(msg) = req.take() {
+                return MessageHandle::new(msg);
+            }
+        }
+    }
+
+    std::ptr::null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_queue_empty(
+    handle: *mut BootstrapServerLockHandle,
+) -> bool {
+    let requests = (*handle).0.borrow();
+    if let Some(r) = requests.as_ref() {
+        r.is_empty()
+    } else {
+        true
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_requests_front(
+    handle: *mut BootstrapServerLockHandle,
+) -> *mut MessageHandle {
+    let requests = (*handle).0.borrow();
+    if let Some(r) = requests.as_ref() {
+        if let Some(req) = r.front() {
+            if let Some(msg) = req {
+                return MessageHandle::new(msg.clone_box());
+            }
+        }
+    }
+
+    std::ptr::null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_requests_pop(handle: *mut BootstrapServerLockHandle) {
+    let mut requests = (*handle).0.borrow_mut();
+    if let Some(r) = requests.as_mut() {
+        r.pop_front();
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_requests_push(
+    handle: *mut BootstrapServerLockHandle,
+    msg: *mut MessageHandle,
+) {
+    let mut requests = (*handle).0.borrow_mut();
+    if let Some(r) = requests.as_mut() {
+        if msg.is_null(){
+            r.push_back(None)
+        }
+        else{
+            r.push_back(Some((*msg).clone_box()))
+        }
+    }
 }

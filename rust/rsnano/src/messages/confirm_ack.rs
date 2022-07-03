@@ -96,6 +96,14 @@ impl Message for ConfirmAck {
     fn visit(&self, visitor: &dyn MessageVisitor) {
         visitor.confirm_ack(self)
     }
+
+    fn clone_box(&self) -> Box<dyn Message> {
+        Box::new(self.clone())
+    }
+
+    fn message_type(&self) -> MessageType {
+        MessageType::ConfirmAck
+    }
 }
 
 impl PartialEq for ConfirmAck {

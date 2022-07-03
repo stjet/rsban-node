@@ -77,6 +77,14 @@ impl Message for Publish {
     fn visit(&self, visitor: &dyn MessageVisitor) {
         visitor.publish(self)
     }
+
+    fn clone_box(&self) -> Box<dyn Message> {
+        Box::new(self.clone())
+    }
+
+    fn message_type(&self) -> MessageType {
+        MessageType::Publish
+    }
 }
 
 impl PartialEq for Publish {

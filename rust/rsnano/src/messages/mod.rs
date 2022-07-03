@@ -46,6 +46,8 @@ pub trait Message {
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()>;
     fn visit(&self, visitor: &dyn MessageVisitor);
+    fn clone_box(&self) -> Box<dyn Message>;
+    fn message_type(&self) -> MessageType;
 }
 
 pub trait MessageVisitor {

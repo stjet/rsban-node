@@ -118,6 +118,14 @@ impl Message for Keepalive {
     fn visit(&self, visitor: &dyn MessageVisitor) {
         visitor.keepalive(self)
     }
+
+    fn clone_box(&self) -> Box<dyn Message> {
+        Box::new(self.clone())
+    }
+
+    fn message_type(&self) -> MessageType {
+        MessageType::Keepalive
+    }
 }
 
 #[cfg(test)]

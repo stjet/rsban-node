@@ -257,10 +257,10 @@ public:
 	nano::shared_const_buffer to_shared_const_buffer () const;
 	nano::message_header get_header () const;
 	void set_header (nano::message_header const & header);
-
-protected:
 	rsnano::MessageHandle * handle;
 };
+
+std::unique_ptr<nano::message> message_handle_to_message (rsnano::MessageHandle * handle_a);
 
 class work_pool;
 class network_constants;

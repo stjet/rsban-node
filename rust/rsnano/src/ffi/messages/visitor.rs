@@ -30,7 +30,7 @@ impl FfiMessageVisitor {
     where
         T: 'static + Message + Clone,
     {
-        let message_handle = MessageHandle::new(message.clone());
+        let message_handle = MessageHandle::from_message(message.clone());
         unsafe {
             match MESSAGE_VISITOR_VISIT {
                 Some(f) => f(

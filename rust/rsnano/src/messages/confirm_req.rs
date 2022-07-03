@@ -155,6 +155,14 @@ impl Message for ConfirmReq {
     fn visit(&self, visitor: &dyn MessageVisitor) {
         visitor.confirm_req(self)
     }
+
+    fn clone_box(&self) -> Box<dyn Message> {
+        Box::new(self.clone())
+    }
+
+    fn message_type(&self) -> MessageType {
+        MessageType::ConfirmReq
+    }
 }
 
 impl PartialEq for ConfirmReq {

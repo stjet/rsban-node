@@ -18,7 +18,7 @@ pub struct BootstrapServer {
     config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
     stopped: AtomicBool,
-    pub queue: Mutex<VecDeque<Box<dyn Message>>>,
+    pub queue: Mutex<VecDeque<Option<Box<dyn Message>>>>,
 }
 
 impl BootstrapServer {

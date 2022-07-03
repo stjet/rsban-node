@@ -115,4 +115,12 @@ impl Message for NodeIdHandshake {
     fn visit(&self, visitor: &dyn MessageVisitor) {
         visitor.node_id_handshake(self)
     }
+
+    fn clone_box(&self) -> Box<dyn Message> {
+        Box::new(self.clone())
+    }
+
+    fn message_type(&self) -> MessageType {
+        MessageType::NodeIdHandshake
+    }
 }

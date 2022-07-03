@@ -10,8 +10,20 @@ use std::ops::Deref;
 pub struct MessageHandle(Box<dyn Message>);
 
 impl MessageHandle {
-    pub fn new<T: 'static + Message>(msg: T) -> *mut Self {
+    pub fn new(msg: Box<dyn Message>) -> *mut Self {
+        Box::into_raw(Box::new(Self(msg)))
+    }
+
+    pub fn from_message<T: 'static + Message>(msg: T) -> *mut Self {
         Box::into_raw(Box::new(Self(Box::new(msg))))
+    }
+}
+
+impl Deref for MessageHandle {
+    type Target = Box<dyn Message>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -35,6 +47,11 @@ pub unsafe extern "C" fn rsn_message_set_header(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_destroy(handle: *mut MessageHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_type(handle: *mut MessageHandle) -> u8 {
+    (*handle).message_type() as u8
 }
 
 pub(crate) unsafe fn create_message_handle<T: 'static + Message>(

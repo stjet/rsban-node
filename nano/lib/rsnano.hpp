@@ -919,10 +919,22 @@ bool rsn_bootstrap_server_is_stopped (BootstrapServerHandle * handle);
 
 BootstrapServerLockHandle * rsn_bootstrap_server_lock (BootstrapServerHandle * handle);
 
+BootstrapServerLockHandle * rsn_bootstrap_server_lock_clone (BootstrapServerLockHandle * handle);
+
 void rsn_bootstrap_server_lock_destroy (BootstrapServerLockHandle * handle);
+
+bool rsn_bootstrap_server_queue_empty (BootstrapServerLockHandle * handle);
+
+MessageHandle * rsn_bootstrap_server_release_front_request (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_relock (BootstrapServerHandle * server_handle,
 BootstrapServerLockHandle * lock_handle);
+
+MessageHandle * rsn_bootstrap_server_requests_front (BootstrapServerLockHandle * handle);
+
+void rsn_bootstrap_server_requests_pop (BootstrapServerLockHandle * handle);
+
+void rsn_bootstrap_server_requests_push (BootstrapServerLockHandle * handle, MessageHandle * msg);
 
 void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
 
@@ -1421,6 +1433,8 @@ MessageHandle * rsn_message_telemetry_req_create2 (MessageHeaderHandle * header)
 bool rsn_message_telemetry_req_deserialize (MessageHandle * handle, void * stream);
 
 bool rsn_message_telemetry_req_serialize (MessageHandle * handle, void * stream);
+
+uint8_t rsn_message_type (MessageHandle * handle);
 
 void rsn_message_type_to_string (uint8_t msg_type, StringDto * result);
 

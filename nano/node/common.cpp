@@ -310,6 +310,54 @@ std::string nano::message_parser::status_string ()
 	return "[unknown parse_status]";
 }
 
+std::unique_ptr<nano::message> nano::message_handle_to_message (rsnano::MessageHandle * handle_a)
+{
+	if (handle_a == nullptr)
+		return nullptr;
+
+	auto msg_type{ static_cast<nano::message_type> (rsnano::rsn_message_type (handle_a)) };
+	std::unique_ptr<nano::message> result;
+	switch (msg_type)
+	{
+		case nano::message_type::bulk_pull:
+			result = std::make_unique<nano::bulk_pull> (handle_a);
+			break;
+		case nano::message_type::keepalive:
+			result = std::make_unique<nano::keepalive> (handle_a);
+			break;
+		case nano::message_type::publish:
+			result = std::make_unique<nano::publish> (handle_a);
+			break;
+		case nano::message_type::confirm_req:
+			result = std::make_unique<nano::confirm_req> (handle_a);
+			break;
+		case nano::message_type::confirm_ack:
+			result = std::make_unique<nano::confirm_ack> (handle_a);
+			break;
+		case nano::message_type::bulk_push:
+			result = std::make_unique<nano::bulk_push> (handle_a);
+			break;
+		case nano::message_type::frontier_req:
+			result = std::make_unique<nano::frontier_req> (handle_a);
+			break;
+		case nano::message_type::node_id_handshake:
+			result = std::make_unique<nano::node_id_handshake> (handle_a);
+			break;
+		case nano::message_type::bulk_pull_account:
+			result = std::make_unique<nano::bulk_pull_account> (handle_a);
+			break;
+		case nano::message_type::telemetry_req:
+			result = std::make_unique<nano::telemetry_req> (handle_a);
+			break;
+		case nano::message_type::telemetry_ack:
+			result = std::make_unique<nano::telemetry_ack> (handle_a);
+			break;
+		default:
+			break;
+	}
+	return result;
+}
+
 nano::message_parser::message_parser (nano::network_filter & publish_filter_a, nano::block_uniquer & block_uniquer_a, nano::vote_uniquer & vote_uniquer_a, nano::message_visitor & visitor_a, nano::work_pool & pool_a, nano::network_constants const & network) :
 	publish_filter (publish_filter_a),
 	block_uniquer (block_uniquer_a),

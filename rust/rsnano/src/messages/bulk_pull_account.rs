@@ -79,4 +79,12 @@ impl Message for BulkPullAccount {
     fn visit(&self, visitor: &dyn MessageVisitor) {
         visitor.bulk_pull_account(self)
     }
+
+    fn clone_box(&self) -> Box<dyn Message> {
+        Box::new(self.clone())
+    }
+
+    fn message_type(&self) -> MessageType {
+        MessageType::BulkPullAccount
+    }
 }

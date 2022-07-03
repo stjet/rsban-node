@@ -71,30 +71,31 @@ std::unique_ptr<container_info_component> collect_container_info (bootstrap_list
 
 class message;
 
-class request_response_visitor_factory
-{
-public:
-	request_response_visitor_factory (std::shared_ptr<nano::node> node_a);
-	std::unique_ptr<nano::message_visitor> create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a);
-
-private:
-	std::shared_ptr<nano::node> node;
-};
-
 class bootstrap_server_lock
 {
 public:
 	bootstrap_server_lock (rsnano::BootstrapServerLockHandle * handle_a, rsnano::BootstrapServerHandle * server_a);
-	bootstrap_server_lock (bootstrap_server_lock const &) = delete;
+	bootstrap_server_lock (bootstrap_server_lock const &);
 	bootstrap_server_lock (bootstrap_server_lock && other_a);
 	~bootstrap_server_lock ();
 
 	void unlock ();
 	void lock ();
 
+	rsnano::BootstrapServerLockHandle * handle;
+
 private:
 	rsnano::BootstrapServerHandle * server;
-	rsnano::BootstrapServerLockHandle * handle;
+};
+
+class request_response_visitor_factory
+{
+public:
+	request_response_visitor_factory (std::shared_ptr<nano::node> node_a);
+	std::unique_ptr<nano::message_visitor> create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, nano::bootstrap_server_lock const & lock_a);
+
+private:
+	std::shared_ptr<nano::node> node;
 };
 
 /**
@@ -127,9 +128,9 @@ public:
 	bool requests_empty ();
 	//---------------------------------------------------------------
 	// requests wrappers:
-	nano::message * release_front_request ();
+	nano::message * release_front_request (nano::bootstrap_server_lock & lock_a);
 	bool is_request_queue_empty (nano::bootstrap_server_lock & lock_a);
-	std::unique_ptr<nano::message> & requests_front (nano::bootstrap_server_lock & lock_a);
+	std::unique_ptr<nano::message> requests_front (nano::bootstrap_server_lock & lock_a);
 	void requests_pop (nano::bootstrap_server_lock & lock_a);
 	void push_request_locked (std::unique_ptr<nano::message> message_a, nano::bootstrap_server_lock & lock_a);
 	//---------------------------------------------------------------
@@ -164,8 +165,5 @@ public:
 	bool disable_tcp_realtime{ false };
 	bool disable_bootstrap_listener{ false };
 	rsnano::BootstrapServerHandle * handle;
-
-private:
-	std::queue<std::unique_ptr<nano::message>> requests;
 };
 }

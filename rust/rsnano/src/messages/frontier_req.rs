@@ -82,6 +82,14 @@ impl Message for FrontierReq {
     fn visit(&self, visitor: &dyn MessageVisitor) {
         visitor.frontier_req(self)
     }
+
+    fn clone_box(&self) -> Box<dyn Message> {
+        Box::new(self.clone())
+    }
+
+    fn message_type(&self) -> MessageType {
+        MessageType::FrontierReq
+    }
 }
 
 #[cfg(test)]

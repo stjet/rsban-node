@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    net::SocketAddr,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -9,9 +10,21 @@ use std::{
 use crate::{
     logger_mt::Logger,
     messages::Message,
-    transport::{Socket, SocketImpl},
+    transport::{Socket, SocketImpl, SocketType},
     NodeConfig,
 };
+
+pub trait BootstrapServerObserver {
+    fn bootstrap_server_timeout(&self, inner_ptr: usize);
+    fn boostrap_server_exited(
+        &self,
+        socket_type: SocketType,
+        inner_ptr: usize,
+        endpoint: SocketAddr,
+    );
+    fn get_bootstrap_count(&self) -> usize;
+    fn inc_bootstrap_count(&self);
+}
 
 pub struct BootstrapServer {
     socket: Arc<SocketImpl>,

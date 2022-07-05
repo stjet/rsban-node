@@ -88,12 +88,14 @@ private:
 	rsnano::BootstrapServerHandle * server;
 };
 
-class locked_bootstrap_server_requests{
+class locked_bootstrap_server_requests
+{
 public:
-	locked_bootstrap_server_requests(nano::bootstrap_server_lock lock_a);
-	locked_bootstrap_server_requests(nano::locked_bootstrap_server_requests &&);
-	locked_bootstrap_server_requests(nano::locked_bootstrap_server_requests const &) = delete;
+	locked_bootstrap_server_requests (nano::bootstrap_server_lock lock_a);
+	locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests &&);
+	locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests const &) = delete;
 	nano::message * release_front_request ();
+
 private:
 	nano::bootstrap_server_lock lock;
 };
@@ -148,10 +150,10 @@ public:
 	bool is_realtime_connection ();
 	bool is_stopped () const;
 	std::uintptr_t inner_ptr () const;
-	nano::account get_remote_node_id() const;
-	void set_remote_node_id(nano::account account_a);
-	nano::tcp_endpoint get_remote_endpoint() const;
-	std::shared_ptr<nano::socket> const get_socket() const;
+	nano::account get_remote_node_id () const;
+	void set_remote_node_id (nano::account account_a);
+	nano::tcp_endpoint get_remote_endpoint () const;
+	std::shared_ptr<nano::socket> const get_socket () const;
 
 private:
 	void run_next (nano::bootstrap_server_lock & lock_a);
@@ -175,6 +177,7 @@ private:
 	bool disable_bootstrap_bulk_pull_server{ false };
 	bool disable_tcp_realtime{ false };
 	bool disable_bootstrap_listener{ false };
+
 public:
 	rsnano::BootstrapServerHandle * handle;
 };

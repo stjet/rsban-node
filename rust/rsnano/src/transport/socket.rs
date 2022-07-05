@@ -47,6 +47,14 @@ pub enum EndpointType {
     Client,
 }
 
+#[derive(PartialEq, Eq, Clone, Copy, FromPrimitive)]
+pub enum SocketType {
+    Undefined,
+    Bootstrap,
+    Realtime,
+    RealtimeResponseServer, // special type for tcp channel response server
+}
+
 pub trait SocketObserver {
     fn close_socket_failed(&self, ec: ErrorCode);
     fn disconnect_due_to_timeout(&self, endpoint: SocketAddr);

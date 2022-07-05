@@ -7,6 +7,7 @@
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/blockprocessor.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
+#include <nano/node/bootstrap/bootstrap_server.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
 #include <nano/node/websocket.hpp>
 
@@ -649,6 +650,38 @@ void message_visitor_destroy (void * handle_a)
 	delete visitor;
 }
 
+void bootstrap_observer_destroy (void * handle_a)
+{
+	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	delete observer;
+}
+
+std::size_t bootstrap_observer_bootstrap_count (void * handle_a)
+{
+	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	return (*observer)->get_bootstrap_count ();
+}
+
+void bootstrap_observer_exited (void * handle_a, uint8_t socket_type_a, uintptr_t inner_ptr_a, const rsnano::EndpointDto * endpoint_a)
+{
+	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	auto socket_type = static_cast<nano::socket::type_t> (socket_type_a);
+	auto endpoint = rsnano::dto_to_endpoint (*endpoint_a);
+	(*observer)->boostrap_server_exited (socket_type, inner_ptr_a, endpoint);
+}
+
+void bootstrap_observer_inc_bootstrap_count (void * handle_a)
+{
+	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	(*observer)->inc_bootstrap_count ();
+}
+
+void bootstrap_observer_timeout (void * handle_a, uintptr_t inner_ptr_a)
+{
+	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	(*observer)->bootstrap_server_timeout (inner_ptr_a);
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -716,6 +749,12 @@ void rsnano::set_rsnano_callbacks ()
 
 	rsnano::rsn_callback_message_visitor_visit (message_visitor_visit);
 	rsnano::rsn_callback_message_visitor_destroy (message_visitor_destroy);
+
+	rsnano::rsn_callback_bootstrap_observer_destroy (bootstrap_observer_destroy);
+	rsnano::rsn_callback_bootstrap_observer_bootstrap_count (bootstrap_observer_bootstrap_count);
+	rsnano::rsn_callback_bootstrap_observer_exited (bootstrap_observer_exited);
+	rsnano::rsn_callback_bootstrap_observer_inc_bootstrap_count (bootstrap_observer_inc_bootstrap_count);
+	rsnano::rsn_callback_bootstrap_observer_timeout (bootstrap_observer_timeout);
 
 	callbacks_set = true;
 }

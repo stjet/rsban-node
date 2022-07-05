@@ -498,7 +498,7 @@ void nano::bulk_pull_server::send_next ()
 		{
 			node->logger->try_log (boost::str (boost::format ("Sending block: %1%") % block->hash ().to_string ()));
 		}
-		connection->get_socket()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+		connection->get_socket ()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 			this_l->sent_action (ec, size_a);
 		});
 	}
@@ -602,7 +602,7 @@ void nano::bulk_pull_server::send_finished ()
 	{
 		node->logger->try_log ("Bulk sending finished");
 	}
-	connection->get_socket()->async_write (send_buffer, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+	connection->get_socket ()->async_write (send_buffer, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		this_l->no_block_sent (ec, size_a);
 	});
 }
@@ -705,7 +705,7 @@ void nano::bulk_pull_account_server::send_frontier ()
 
 		// Send the buffer to the requestor
 		auto this_l (shared_from_this ());
-		connection->get_socket()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+		connection->get_socket ()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 			this_l->sent_action (ec, size_a);
 		});
 	}
@@ -761,7 +761,7 @@ void nano::bulk_pull_account_server::send_next_block ()
 		}
 
 		auto this_l (shared_from_this ());
-		connection->get_socket()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+		connection->get_socket ()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 			this_l->sent_action (ec, size_a);
 		});
 	}
@@ -908,7 +908,7 @@ void nano::bulk_pull_account_server::send_finished ()
 		node->logger->try_log ("Bulk sending for an account finished");
 	}
 
-	connection->get_socket()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+	connection->get_socket ()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		this_l->complete (ec, size_a);
 	});
 }

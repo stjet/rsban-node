@@ -350,7 +350,22 @@ using BootstrapInitiatorClearPullsCallback = void (*) (void *, uint64_t);
 
 using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
 
+using BootstrapServerBootstrapCountCallback = uintptr_t (*) (void *);
+
 using DestroyCallback = void (*) (void *);
+
+struct EndpointDto
+{
+	uint8_t bytes[16];
+	uint16_t port;
+	bool v6;
+};
+
+using BootstrapServerExitedCallback = void (*) (void *, uint8_t, uintptr_t, const EndpointDto *);
+
+using BootstrapServerIncBootstrapCountCallback = void (*) (void *);
+
+using BootstrapServerTimeoutCallback = void (*) (void *, uintptr_t);
 
 using BufferSizeCallback = uintptr_t (*) (void *);
 
@@ -391,13 +406,6 @@ using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 using StringCharsCallback = const char * (*)(void *);
 
 using StringDeleteCallback = void (*) (void *);
-
-struct EndpointDto
-{
-	uint8_t bytes[16];
-	uint16_t port;
-	bool v6;
-};
 
 using AsyncConnectCallback = void (*) (void *, const EndpointDto *, AsyncConnectCallbackHandle *);
 
@@ -953,6 +961,16 @@ void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
 void rsn_callback_block_bootstrap_initiator_clear_pulls (BootstrapInitiatorClearPullsCallback f);
 
 void rsn_callback_block_processor_add (BlockProcessorAddCallback f);
+
+void rsn_callback_bootstrap_observer_bootstrap_count (BootstrapServerBootstrapCountCallback f);
+
+void rsn_callback_bootstrap_observer_destroy (DestroyCallback f);
+
+void rsn_callback_bootstrap_observer_exited (BootstrapServerExitedCallback f);
+
+void rsn_callback_bootstrap_observer_inc_bootstrap_count (BootstrapServerIncBootstrapCountCallback f);
+
+void rsn_callback_bootstrap_observer_timeout (BootstrapServerTimeoutCallback f);
 
 void rsn_callback_buffer_destroy (DestroyCallback f);
 

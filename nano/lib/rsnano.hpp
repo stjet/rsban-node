@@ -917,7 +917,8 @@ void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
 
 BootstrapServerHandle * rsn_bootstrap_server_create (SocketHandle * socket,
 const NodeConfigDto * config,
-void * logger);
+void * logger,
+void * observer);
 
 void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
 
@@ -1673,6 +1674,10 @@ void rsn_socket_set_remote_endpoint (SocketHandle * handle, const EndpointDto * 
 void rsn_socket_set_silent_connection_tolerance_time (SocketHandle * handle, uint64_t time_s);
 
 void rsn_socket_set_timeout (SocketHandle * handle, uint64_t timeout_s);
+
+void rsn_socket_set_type (SocketHandle * handle, uint8_t socket_type);
+
+uint8_t rsn_socket_type (SocketHandle * handle);
 
 void rsn_stat_add (StatHandle * handle,
 uint8_t stat_type,

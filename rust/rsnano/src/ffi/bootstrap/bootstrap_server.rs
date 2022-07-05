@@ -25,12 +25,14 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     socket: *mut SocketHandle,
     config: *const NodeConfigDto,
     logger: *mut c_void,
+    observer: *mut c_void,
 ) -> *mut BootstrapServerHandle {
     let socket = Arc::clone(&(*socket));
     let config = Arc::new(NodeConfig::try_from(&*config).unwrap());
     let logger = Arc::new(LoggerMT::new(logger));
+    let observer = Arc::new(FfiBootstrapServerObserver::new(observer));
     Box::into_raw(Box::new(BootstrapServerHandle(Arc::new(
-        BootstrapServer::new(socket, config, logger),
+        BootstrapServer::new(socket, config, logger, observer),
     ))))
 }
 
@@ -221,6 +223,12 @@ pub struct FfiBootstrapServerObserver {
     handle: *mut c_void,
 }
 
+impl FfiBootstrapServerObserver {
+    pub fn new(handle: *mut c_void) -> Self {
+        Self { handle }
+    }
+}
+
 impl Drop for FfiBootstrapServerObserver {
     fn drop(&mut self) {
         unsafe {
@@ -244,7 +252,7 @@ impl BootstrapServerObserver for FfiBootstrapServerObserver {
     ) {
         let endpoint_dto = EndpointDto::from(&endpoint);
         unsafe {
-            EXITED_CALLBACK.expect("EXITED_CALLBACK")(
+            EXITED_CALLBACK.expect("EXITED_CALLBACK missing")(
                 self.handle,
                 socket_type as u8,
                 inner_ptr,
@@ -254,14 +262,12 @@ impl BootstrapServerObserver for FfiBootstrapServerObserver {
     }
 
     fn get_bootstrap_count(&self) -> usize {
-        unsafe { BOOTSTRAP_COUNT_CALLBACK.expect("BOOTSTRAP_COUNT_CALLBACK missing ")(self.handle) }
+        unsafe { BOOTSTRAP_COUNT_CALLBACK.expect("BOOTSTRAP_COUNT_CALLBACK missing")(self.handle) }
     }
 
     fn inc_bootstrap_count(&self) {
         unsafe {
-            INC_BOOTSTRAP_COUNT_CALLBACK.expect("INC_BOOTSTRAP_COUNT_CALLBACK missing ")(
-                self.handle,
-            )
+            INC_BOOTSTRAP_COUNT_CALLBACK.expect("INC_BOOTSTRAP_COUNT_CALLBACK missing")(self.handle)
         }
     }
 }

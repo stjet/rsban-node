@@ -116,14 +116,8 @@ public:
 	{
 		return get_queue_size () >= queue_size_max * 2;
 	}
-	type_t type () const
-	{
-		return type_m;
-	};
-	void type_set (type_t type_a)
-	{
-		type_m = type_a;
-	}
+	type_t type () const;
+	void type_set (type_t type_a);
 	endpoint_type_t endpoint_type () const
 	{
 		return endpoint_type_m;
@@ -156,7 +150,6 @@ protected:
 	void checkup ();
 
 private:
-	type_t type_m{ type_t::undefined };
 	endpoint_type_t endpoint_type_m;
 
 public:

@@ -261,7 +261,8 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	disable_bootstrap_listener{ node_a->flags.disable_bootstrap_listener }
 {
 	auto config_dto{ node_a->config->to_dto () };
-	handle = rsnano::rsn_bootstrap_server_create (socket_a->handle, &config_dto, node_a->logger.get ());
+	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (observer);
+	handle = rsnano::rsn_bootstrap_server_create (socket_a->handle, &config_dto, node_a->logger.get (), observer_handle);
 	debug_assert (socket_a != nullptr);
 	receive_buffer->resize (1024);
 }

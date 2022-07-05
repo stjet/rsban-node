@@ -32,14 +32,21 @@ pub struct BootstrapServer {
     logger: Arc<dyn Logger>,
     stopped: AtomicBool,
     pub queue: Mutex<VecDeque<Option<Box<dyn Message>>>>,
+    observer: Arc<dyn BootstrapServerObserver>,
 }
 
 impl BootstrapServer {
-    pub fn new(socket: Arc<SocketImpl>, config: Arc<NodeConfig>, logger: Arc<dyn Logger>) -> Self {
+    pub fn new(
+        socket: Arc<SocketImpl>,
+        config: Arc<NodeConfig>,
+        logger: Arc<dyn Logger>,
+        observer: Arc<dyn BootstrapServerObserver>,
+    ) -> Self {
         Self {
             socket,
             config,
             logger,
+            observer,
             stopped: AtomicBool::new(false),
             queue: Mutex::new(VecDeque::new()),
         }

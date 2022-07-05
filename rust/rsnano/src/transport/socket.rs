@@ -1,14 +1,14 @@
+use crate::utils::{seconds_since_epoch, ErrorCode, ThreadPool};
+use num_traits::FromPrimitive;
 use std::{
     ffi::c_void,
     net::SocketAddr,
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering},
         Arc, Mutex,
     },
     time::Duration,
 };
-
-use crate::utils::{seconds_since_epoch, ErrorCode, ThreadPool};
 
 pub trait BufferWrapper {
     fn len(&self) -> usize;
@@ -127,6 +127,8 @@ pub struct SocketImpl {
     ///  socket buffer queue -> TCP send queue -> (network) -> TCP receive queue of peer
     queue_size: AtomicUsize,
 
+    socket_type: AtomicU8,
+
     observer: Arc<dyn SocketObserver>,
 }
 
@@ -171,6 +173,14 @@ impl SocketImpl {
                 self.observer.close_socket_failed(ec);
             }
         }
+    }
+
+    pub fn socket_type(&self) -> SocketType {
+        SocketType::from_u8(self.socket_type.load(Ordering::SeqCst)).unwrap()
+    }
+
+    pub fn set_socket_type(&self, socket_type: SocketType) {
+        self.socket_type.store(socket_type as u8, Ordering::SeqCst);
     }
 }
 
@@ -441,6 +451,7 @@ impl SocketBuilder {
                 timed_out: AtomicBool::new(false),
                 closed: AtomicBool::new(false),
                 queue_size: AtomicUsize::new(0),
+                socket_type: AtomicU8::new(SocketType::Undefined as u8),
                 observer,
             }
         })

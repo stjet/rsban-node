@@ -4,7 +4,8 @@ use crate::{
     ffi::DestroyCallback,
     stats::SocketStats,
     transport::{
-        BufferWrapper, SharedConstBuffer, Socket, SocketBuilder, SocketImpl, TcpSocketFacade,
+        BufferWrapper, SharedConstBuffer, Socket, SocketBuilder, SocketImpl, SocketType,
+        TcpSocketFacade,
     },
     utils::ErrorCode,
 };
@@ -454,6 +455,16 @@ pub unsafe extern "C" fn rsn_socket_set_default_timeout_value(
     timeout_s: u64,
 ) {
     (*handle).set_default_timeout_value(timeout_s)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_type(handle: *mut SocketHandle) -> u8 {
+    (*handle).socket_type() as u8
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_set_type(handle: *mut SocketHandle, socket_type: u8) {
+    (*handle).set_socket_type(SocketType::from_u8(socket_type).unwrap());
 }
 
 struct FfiTcpSocketFacade {

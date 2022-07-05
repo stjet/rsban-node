@@ -219,6 +219,16 @@ void nano::socket::set_silent_connection_tolerance_time (std::chrono::seconds to
 	}));
 }
 
+nano::socket::type_t nano::socket::type () const
+{
+	return static_cast<nano::socket::type_t> (rsnano::rsn_socket_type (handle));
+}
+
+void nano::socket::type_set (nano::socket::type_t type_a)
+{
+	rsnano::rsn_socket_set_type (handle, static_cast<uint8_t> (type_a));
+}
+
 void nano::socket::close ()
 {
 	rsnano::rsn_socket_close (handle);

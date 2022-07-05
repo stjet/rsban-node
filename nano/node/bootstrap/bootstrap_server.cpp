@@ -232,6 +232,18 @@ void nano::bootstrap_server_lock::lock ()
 	rsnano::rsn_bootstrap_server_relock (server, handle);
 }
 
+nano::locked_bootstrap_server_requests::locked_bootstrap_server_requests(nano::bootstrap_server_lock lock_a) :
+	lock{lock_a}
+{
+}
+
+nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
+{
+	auto msg_handle{ rsnano::rsn_bootstrap_server_release_front_request (lock.handle) };
+	auto message{ nano::message_handle_to_message (msg_handle) };
+	return message.release ();
+}
+
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
 	socket (socket_a),
@@ -725,15 +737,13 @@ bool nano::bootstrap_server::requests_empty ()
 	return is_request_queue_empty (lk);
 }
 
+nano::locked_bootstrap_server_requests::locked_bootstrap_server_requests(nano::locked_bootstrap_server_requests && other_a) :
+	lock{std::move(other_a.lock)}
+{
+}
+
 //---------------------------------------------------------------
 // requests wrappers:
-
-nano::message * nano::bootstrap_server::release_front_request (nano::bootstrap_server_lock & lock_a)
-{
-	auto msg_handle{ rsnano::rsn_bootstrap_server_release_front_request (lock_a.handle) };
-	auto message{ nano::message_handle_to_message (msg_handle) };
-	return message.release ();
-}
 
 bool nano::bootstrap_server::is_request_queue_empty (nano::bootstrap_server_lock & lock_a)
 {
@@ -766,39 +776,39 @@ namespace
 class request_response_visitor : public nano::message_visitor
 {
 public:
-	explicit request_response_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, std::shared_ptr<nano::node> node_a, nano::bootstrap_server_lock const & lock_a) :
+	explicit request_response_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, std::shared_ptr<nano::node> node_a, nano::locked_bootstrap_server_requests & requests_a) :
 		connection (std::move (connection_a)),
 		node (std::move (node_a)),
-		connection_lock{ lock_a }
+		requests{ std::move(requests_a) }
 	{
 	}
 	void keepalive (nano::keepalive const & message_a) override
 	{
-		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::keepalive> (message_a), connection->remote_endpoint, connection->remote_node_id, connection->socket });
+		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::keepalive> (message_a), connection->get_remote_endpoint(), connection->get_remote_node_id (), connection->get_socket() });
 	}
 	void publish (nano::publish const & message_a) override
 	{
-		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::publish> (message_a), connection->remote_endpoint, connection->remote_node_id, connection->socket });
+		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::publish> (message_a), connection->get_remote_endpoint(), connection->get_remote_node_id (), connection->get_socket() });
 	}
 	void confirm_req (nano::confirm_req const & message_a) override
 	{
-		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::confirm_req> (message_a), connection->remote_endpoint, connection->remote_node_id, connection->socket });
+		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::confirm_req> (message_a), connection->get_remote_endpoint(), connection->get_remote_node_id (), connection->get_socket() });
 	}
 	void confirm_ack (nano::confirm_ack const & message_a) override
 	{
-		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::confirm_ack> (message_a), connection->remote_endpoint, connection->remote_node_id, connection->socket });
+		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::confirm_ack> (message_a), connection->get_remote_endpoint(), connection->get_remote_node_id (), connection->get_socket() });
 	}
 
 	// connection.requests still locked and message still in front of queue!:
 	//----------------------------------------
 	void bulk_pull (nano::bulk_pull const &) override
 	{
-		auto response (std::make_shared<nano::bulk_pull_server> (node, connection, std::unique_ptr<nano::bulk_pull> (static_cast<nano::bulk_pull *> (connection->release_front_request (connection_lock)))));
+		auto response (std::make_shared<nano::bulk_pull_server> (node, connection, std::unique_ptr<nano::bulk_pull> (static_cast<nano::bulk_pull *> (requests.release_front_request ()))));
 		response->send_next ();
 	}
 	void bulk_pull_account (nano::bulk_pull_account const &) override
 	{
-		auto response (std::make_shared<nano::bulk_pull_account_server> (node, connection, std::unique_ptr<nano::bulk_pull_account> (static_cast<nano::bulk_pull_account *> (connection->release_front_request (connection_lock)))));
+		auto response (std::make_shared<nano::bulk_pull_account_server> (node, connection, std::unique_ptr<nano::bulk_pull_account> (static_cast<nano::bulk_pull_account *> (requests.release_front_request ()))));
 		response->send_frontier ();
 	}
 	void bulk_push (nano::bulk_push const &) override
@@ -808,37 +818,37 @@ public:
 	}
 	void frontier_req (nano::frontier_req const &) override
 	{
-		auto response (std::make_shared<nano::frontier_req_server> (node, connection, std::unique_ptr<nano::frontier_req> (static_cast<nano::frontier_req *> (connection->release_front_request (connection_lock)))));
+		auto response (std::make_shared<nano::frontier_req_server> (node, connection, std::unique_ptr<nano::frontier_req> (static_cast<nano::frontier_req *> (requests.release_front_request ()))));
 		response->send_next ();
 	}
 	void node_id_handshake (nano::node_id_handshake const & message_a) override
 	{
-		if (connection->config->logging.network_node_id_handshake_logging ())
+		if (node->config->logging.network_node_id_handshake_logging ())
 		{
-			node->logger->try_log (boost::str (boost::format ("Received node_id_handshake message from %1%") % connection->remote_endpoint));
+			node->logger->try_log (boost::str (boost::format ("Received node_id_handshake message from %1%") % connection->get_remote_endpoint()));
 		}
 		if (message_a.get_query ())
 		{
 			boost::optional<std::pair<nano::account, nano::signature>> response (std::make_pair (node->node_id.pub, nano::sign_message (node->node_id.prv, node->node_id.pub, *message_a.get_query ())));
 			debug_assert (!nano::validate_message (response->first, *message_a.get_query (), response->second));
-			auto cookie (node->network.syn_cookies.assign (nano::transport::map_tcp_to_endpoint (connection->remote_endpoint)));
-			nano::node_id_handshake response_message (connection->network_params.network, cookie, response);
+			auto cookie (node->network.syn_cookies.assign (nano::transport::map_tcp_to_endpoint (connection->get_remote_endpoint())));
+			nano::node_id_handshake response_message (node->network_params.network, cookie, response);
 			auto shared_const_buffer = response_message.to_shared_const_buffer ();
-			connection->socket->async_write (shared_const_buffer, [connection = std::weak_ptr<nano::bootstrap_server> (connection)] (boost::system::error_code const & ec, std::size_t size_a) {
+			connection->get_socket()->async_write (shared_const_buffer, [connection = std::weak_ptr<nano::bootstrap_server> (connection), config_l = node->config, stats_l = node->stats, logger_l = node->logger] (boost::system::error_code const & ec, std::size_t size_a) {
 				if (auto connection_l = connection.lock ())
 				{
 					if (ec)
 					{
-						if (connection_l->config->logging.network_node_id_handshake_logging ())
+						if (config_l->logging.network_node_id_handshake_logging ())
 						{
-							connection_l->logger->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % connection_l->remote_endpoint % ec.message ()));
+							logger_l->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % connection_l->get_remote_endpoint() % ec.message ()));
 						}
 						// Stop invalid handshake
 						connection_l->stop ();
 					}
 					else
 					{
-						connection_l->stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::out);
+						stats_l->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::out);
 						connection_l->finish_request ();
 					}
 				}
@@ -847,10 +857,10 @@ public:
 		else if (message_a.get_response ())
 		{
 			nano::account const & node_id (message_a.get_response ()->first);
-			if (!node->network.syn_cookies.validate (nano::transport::map_tcp_to_endpoint (connection->remote_endpoint), node_id, message_a.get_response ()->second) && node_id != node->node_id.pub)
+			if (!node->network.syn_cookies.validate (nano::transport::map_tcp_to_endpoint (connection->get_remote_endpoint()), node_id, message_a.get_response ()->second) && node_id != node->node_id.pub)
 			{
-				connection->remote_node_id = node_id;
-				connection->socket->type_set (nano::socket::type_t::realtime);
+				connection->set_remote_node_id(node_id);
+				connection->get_socket()->type_set (nano::socket::type_t::realtime);
 				node->bootstrap->inc_realtime_count ();
 				connection->finish_request_async ();
 			}
@@ -864,24 +874,24 @@ public:
 		{
 			connection->finish_request_async ();
 		}
-		nano::account node_id (connection->remote_node_id);
-		nano::socket::type_t type = connection->socket->type ();
+		nano::account node_id (connection->get_remote_node_id());
+		nano::socket::type_t type = connection->get_socket()->type ();
 		debug_assert (node_id.is_zero () || type == nano::socket::type_t::realtime);
-		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::node_id_handshake> (message_a), connection->remote_endpoint, connection->remote_node_id, connection->socket });
+		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::node_id_handshake> (message_a), connection->get_remote_endpoint(), connection->get_remote_node_id(), connection->get_socket() });
 	}
 	//----------------------------------------
 
 	void telemetry_req (nano::telemetry_req const & message_a) override
 	{
-		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::telemetry_req> (message_a), connection->remote_endpoint, connection->remote_node_id, connection->socket });
+		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::telemetry_req> (message_a), connection->get_remote_endpoint(), connection->get_remote_node_id(), connection->get_socket() });
 	}
 	void telemetry_ack (nano::telemetry_ack const & message_a) override
 	{
-		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::telemetry_ack> (message_a), connection->remote_endpoint, connection->remote_node_id, connection->socket });
+		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::telemetry_ack> (message_a), connection->get_remote_endpoint(), connection->get_remote_node_id(), connection->get_socket() });
 	}
 	std::shared_ptr<nano::bootstrap_server> connection;
 	std::shared_ptr<nano::node> node;
-	nano::bootstrap_server_lock connection_lock;
+	nano::locked_bootstrap_server_requests requests;
 };
 }
 
@@ -890,15 +900,16 @@ nano::request_response_visitor_factory::request_response_visitor_factory (std::s
 {
 }
 
-std::unique_ptr<nano::message_visitor> nano::request_response_visitor_factory::create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, nano::bootstrap_server_lock const & lock_a)
+std::unique_ptr<nano::message_visitor> nano::request_response_visitor_factory::create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, nano::locked_bootstrap_server_requests & requests)
 {
-	return std::make_unique<request_response_visitor> (connection_a, node, lock_a);
+	return std::make_unique<request_response_visitor> (connection_a, node, requests);
 }
 
 void nano::bootstrap_server::run_next (nano::bootstrap_server_lock & lock_a)
 {
 	debug_assert (!is_request_queue_empty (lock_a));
-	auto visitor{ request_response_visitor_factory->create_visitor (shared_from_this (), lock_a) };
+	auto locked_requests{nano::locked_bootstrap_server_requests(lock_a)};
+	auto visitor{ request_response_visitor_factory->create_visitor (shared_from_this (), locked_requests) };
 	auto type (requests_front (lock_a)->get_header ().get_type ());
 	if (type == nano::message_type::bulk_pull || type == nano::message_type::bulk_pull_account || type == nano::message_type::bulk_push || type == nano::message_type::frontier_req || type == nano::message_type::node_id_handshake)
 	{
@@ -940,4 +951,24 @@ bool nano::bootstrap_server::is_stopped () const
 std::uintptr_t nano::bootstrap_server::inner_ptr () const
 {
 	return rsnano::rsn_bootstrap_server_inner_ptr (handle);
+}
+
+nano::account nano::bootstrap_server::get_remote_node_id() const
+{
+	return remote_node_id;
+}
+
+void nano::bootstrap_server::set_remote_node_id(nano::account account_a) 
+{
+	remote_node_id = account_a;
+}
+
+nano::tcp_endpoint nano::bootstrap_server::get_remote_endpoint() const
+{
+	return remote_endpoint;
+}
+
+std::shared_ptr<nano::socket> const nano::bootstrap_server::get_socket() const
+{
+	return socket;
 }

@@ -176,7 +176,6 @@ private:
 	nano::network_params & network_params;
 	bool disable_bootstrap_bulk_pull_server{ false };
 	bool disable_tcp_realtime{ false };
-	bool disable_bootstrap_listener{ false };
 
 public:
 	rsnano::BootstrapServerHandle * handle;

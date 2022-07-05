@@ -26,14 +26,17 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     config: *const NodeConfigDto,
     logger: *mut c_void,
     observer: *mut c_void,
+    disable_bootstrap_listener: bool,
+    connections_max: usize,
 ) -> *mut BootstrapServerHandle {
     let socket = Arc::clone(&(*socket));
     let config = Arc::new(NodeConfig::try_from(&*config).unwrap());
     let logger = Arc::new(LoggerMT::new(logger));
     let observer = Arc::new(FfiBootstrapServerObserver::new(observer));
-    Box::into_raw(Box::new(BootstrapServerHandle(Arc::new(
-        BootstrapServer::new(socket, config, logger, observer),
-    ))))
+    let mut server = BootstrapServer::new(socket, config, logger, observer);
+    server.disable_bootstrap_listener = disable_bootstrap_listener;
+    server.connections_max = connections_max;
+    Box::into_raw(Box::new(BootstrapServerHandle(Arc::new(server))))
 }
 
 #[no_mangle]
@@ -59,6 +62,13 @@ pub unsafe extern "C" fn rsn_bootstrap_server_is_stopped(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
     (*handle).0.is_stopped()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_make_bootstrap_connection(
+    handle: *mut BootstrapServerHandle,
+) -> bool {
+    (*handle).0.make_bootstrap_connection()
 }
 
 pub struct BootstrapServerLockHandle(

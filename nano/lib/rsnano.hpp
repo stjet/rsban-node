@@ -918,7 +918,9 @@ void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
 BootstrapServerHandle * rsn_bootstrap_server_create (SocketHandle * socket,
 const NodeConfigDto * config,
 void * logger,
-void * observer);
+void * observer,
+bool disable_bootstrap_listener,
+uintptr_t connections_max);
 
 void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
 
@@ -931,6 +933,8 @@ BootstrapServerLockHandle * rsn_bootstrap_server_lock (BootstrapServerHandle * h
 BootstrapServerLockHandle * rsn_bootstrap_server_lock_clone (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_lock_destroy (BootstrapServerLockHandle * handle);
+
+bool rsn_bootstrap_server_make_bootstrap_connection (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_queue_empty (BootstrapServerLockHandle * handle);
 

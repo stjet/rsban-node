@@ -257,12 +257,11 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	config{ node_a->config },
 	network_params{ node_a->network_params },
 	disable_bootstrap_bulk_pull_server{ node_a->flags.disable_bootstrap_bulk_pull_server },
-	disable_tcp_realtime{ node_a->flags.disable_tcp_realtime },
-	disable_bootstrap_listener{ node_a->flags.disable_bootstrap_listener }
+	disable_tcp_realtime{ node_a->flags.disable_tcp_realtime }
 {
 	auto config_dto{ node_a->config->to_dto () };
 	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (observer);
-	handle = rsnano::rsn_bootstrap_server_create (socket_a->handle, &config_dto, node_a->logger.get (), observer_handle);
+	handle = rsnano::rsn_bootstrap_server_create (socket_a->handle, &config_dto, node_a->logger.get (), observer_handle, node_a->flags.disable_bootstrap_listener, node_a->config->bootstrap_connections_max);
 	debug_assert (socket_a != nullptr);
 	receive_buffer->resize (1024);
 }
@@ -932,12 +931,7 @@ void nano::bootstrap_server::run_next (nano::bootstrap_server_lock & lock_a)
 
 bool nano::bootstrap_server::make_bootstrap_connection ()
 {
-	if (socket->type () == nano::socket::type_t::undefined && !disable_bootstrap_listener && observer->get_bootstrap_count () < config->bootstrap_connections_max)
-	{
-		observer->inc_bootstrap_count ();
-		socket->type_set (nano::socket::type_t::bootstrap);
-	}
-	return socket->type () == nano::socket::type_t::bootstrap;
+	return rsnano::rsn_bootstrap_server_make_bootstrap_connection (handle);
 }
 
 bool nano::bootstrap_server::is_realtime_connection ()

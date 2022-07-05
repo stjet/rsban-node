@@ -31,8 +31,10 @@ pub struct BootstrapServer {
     config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
     stopped: AtomicBool,
-    pub queue: Mutex<VecDeque<Option<Box<dyn Message>>>>,
     observer: Arc<dyn BootstrapServerObserver>,
+    pub queue: Mutex<VecDeque<Option<Box<dyn Message>>>>,
+    pub disable_bootstrap_listener: bool,
+    pub connections_max: usize,
 }
 
 impl BootstrapServer {
@@ -49,6 +51,8 @@ impl BootstrapServer {
             observer,
             stopped: AtomicBool::new(false),
             queue: Mutex::new(VecDeque::new()),
+            disable_bootstrap_listener: false,
+            connections_max: 64,
         }
     }
 
@@ -60,6 +64,18 @@ impl BootstrapServer {
         if !self.stopped.swap(true, Ordering::SeqCst) {
             self.socket.close();
         }
+    }
+
+    pub fn make_bootstrap_connection(&self) -> bool {
+        if self.socket.socket_type() == SocketType::Undefined
+            && !self.disable_bootstrap_listener
+            && self.observer.get_bootstrap_count() < self.connections_max
+        {
+            self.observer.inc_bootstrap_count();
+            self.socket.set_socket_type(SocketType::Bootstrap);
+        }
+
+        return self.socket.socket_type() == SocketType::Bootstrap;
     }
 }
 

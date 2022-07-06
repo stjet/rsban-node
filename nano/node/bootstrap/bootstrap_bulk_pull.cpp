@@ -623,7 +623,7 @@ void nano::bulk_pull_server::no_block_sent (boost::system::error_code const & ec
 	}
 }
 
-nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::bootstrap_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) :
+nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::abstract_bootstrap_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) :
 	connection (connection_a),
 	request (std::move (request_a)),
 	node{ node_a }
@@ -944,7 +944,7 @@ void nano::bulk_pull_account_server::complete (boost::system::error_code const &
 	}
 }
 
-nano::bulk_pull_account_server::bulk_pull_account_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::bootstrap_server> const & connection_a, std::unique_ptr<nano::bulk_pull_account> request_a) :
+nano::bulk_pull_account_server::bulk_pull_account_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::abstract_bootstrap_server> const & connection_a, std::unique_ptr<nano::bulk_pull_account> request_a) :
 	connection (connection_a),
 	request (std::move (request_a)),
 	current_key (0, 0),

@@ -777,7 +777,7 @@ namespace
 class request_response_visitor : public nano::message_visitor
 {
 public:
-	explicit request_response_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, std::shared_ptr<nano::node> node_a, nano::locked_bootstrap_server_requests & requests_a) :
+	explicit request_response_visitor (std::shared_ptr<nano::abstract_bootstrap_server> connection_a, std::shared_ptr<nano::node> node_a, nano::locked_bootstrap_server_requests & requests_a) :
 		connection (std::move (connection_a)),
 		node (std::move (node_a)),
 		requests{ std::move (requests_a) }
@@ -835,7 +835,7 @@ public:
 			auto cookie (node->network.syn_cookies.assign (nano::transport::map_tcp_to_endpoint (connection->get_remote_endpoint ())));
 			nano::node_id_handshake response_message (node->network_params.network, cookie, response);
 			auto shared_const_buffer = response_message.to_shared_const_buffer ();
-			connection->get_socket ()->async_write (shared_const_buffer, [connection = std::weak_ptr<nano::bootstrap_server> (connection), config_l = node->config, stats_l = node->stats, logger_l = node->logger] (boost::system::error_code const & ec, std::size_t size_a) {
+			connection->get_socket ()->async_write (shared_const_buffer, [connection = std::weak_ptr<nano::abstract_bootstrap_server> (connection), config_l = node->config, stats_l = node->stats, logger_l = node->logger] (boost::system::error_code const & ec, std::size_t size_a) {
 				if (auto connection_l = connection.lock ())
 				{
 					if (ec)
@@ -890,7 +890,7 @@ public:
 	{
 		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::telemetry_ack> (message_a), connection->get_remote_endpoint (), connection->get_remote_node_id (), connection->get_socket () });
 	}
-	std::shared_ptr<nano::bootstrap_server> connection;
+	std::shared_ptr<nano::abstract_bootstrap_server> connection;
 	std::shared_ptr<nano::node> node;
 	nano::locked_bootstrap_server_requests requests;
 };

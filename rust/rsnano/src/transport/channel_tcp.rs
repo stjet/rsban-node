@@ -34,6 +34,10 @@ impl ChannelTcp {
         }
     }
 
+    pub fn socket(&self) -> Option<Arc<SocketImpl>> {
+        self.socket.upgrade()
+    }
+
     pub fn lock(&self) -> MutexGuard<TcpChannelData> {
         self.channel_mutex.lock().unwrap()
     }

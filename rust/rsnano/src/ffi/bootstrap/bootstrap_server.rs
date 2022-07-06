@@ -136,6 +136,13 @@ pub unsafe extern "C" fn rsn_bootstrap_server_release_front_request(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_socket(
+    handle: *mut BootstrapServerHandle,
+) -> *mut SocketHandle {
+    SocketHandle::new((*handle).0.socket.clone())
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_queue_empty(
     handle: *mut BootstrapServerLockHandle,
 ) -> bool {

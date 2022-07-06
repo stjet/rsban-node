@@ -135,6 +135,7 @@ class bootstrap_server final : public std::enable_shared_from_this<nano::bootstr
 public:
 	bootstrap_server (std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::node> const &);
 	bootstrap_server (nano::bootstrap_server const &) = delete;
+	bootstrap_server (nano::bootstrap_server &&) = delete;
 	~bootstrap_server ();
 	nano::bootstrap_server_lock create_lock ();
 	void stop () override;
@@ -176,7 +177,6 @@ private:
 	void run_next (nano::bootstrap_server_lock & lock_a);
 
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
-	std::shared_ptr<nano::socket> const socket;
 	std::shared_ptr<nano::network_filter> publish_filter;
 	std::shared_ptr<nano::thread_pool> workers;
 	boost::asio::io_context & io_ctx;

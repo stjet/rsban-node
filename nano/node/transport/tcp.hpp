@@ -66,9 +66,26 @@ namespace transport
 		std::string to_string () const override;
 		bool operator== (nano::transport::channel_tcp const & other_a) const
 		{
-			return observer.lock () == other_a.observer.lock () && socket.lock () == other_a.socket.lock ();
+			auto my_socket{ try_get_socket () };
+			auto other_socket{ other_a.try_get_socket () };
+			if ((!my_socket && other_socket) || (my_socket && !other_socket))
+			{
+				return false;
+			}
+
+			if (my_socket && other_socket)
+			{
+				if (my_socket->inner_ptr () != other_socket->inner_ptr ())
+				{
+					return false;
+				}
+			}
+
+			return observer.lock () == other_a.observer.lock ();
 		}
-		std::weak_ptr<nano::socket> socket;
+		std::shared_ptr<nano::socket> try_get_socket () const;
+
+	public:
 		/* Mark for temporary channels. Usually remote ports of these channels are ephemeral and received from incoming connections to server.
 		If remote part has open listening port, temporary channel will be replaced with direct connection to listening port soon. But if other side is behing NAT or firewall this connection can be pemanent. */
 		std::atomic<bool> temporary{ false };
@@ -89,7 +106,7 @@ namespace transport
 		virtual bool max () override
 		{
 			bool result = true;
-			if (auto socket_l = socket.lock ())
+			if (auto socket_l = try_get_socket ())
 			{
 				result = socket_l->max ();
 			}
@@ -204,6 +221,10 @@ namespace transport
 			std::chrono::steady_clock::time_point last_bootstrap_attempt () const
 			{
 				return channel->get_last_bootstrap_attempt ();
+			}
+			std::shared_ptr<nano::socket> try_get_socket () const
+			{
+				return channel->try_get_socket ();
 			}
 			boost::asio::ip::address ip_address () const
 			{

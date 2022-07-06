@@ -20,6 +20,7 @@ class network_v6;
 namespace rsnano
 {
 class SocketHandle;
+class SocketWeakHandle;
 }
 
 namespace nano
@@ -94,10 +95,14 @@ public:
 	 * @param endpoint_type_a The endpoint's type: either server or client
 	 */
 	explicit socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::thread_pool & workers_a, std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a);
+	socket (rsnano::SocketHandle * handle_a);
+	socket (nano::socket const &) = delete;
+	socket (nano::socket &&) = delete;
 	virtual ~socket ();
 	void async_connect (boost::asio::ip::tcp::endpoint const &, std::function<void (boost::system::error_code const &)>);
 	void async_read (std::shared_ptr<std::vector<uint8_t>> const &, std::size_t, std::function<void (boost::system::error_code const &, std::size_t)>);
 	void async_write (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> = {});
+	const void * inner_ptr () const;
 
 	void close ();
 	boost::asio::ip::tcp::endpoint remote_endpoint () const;
@@ -118,10 +123,7 @@ public:
 	}
 	type_t type () const;
 	void type_set (type_t type_a);
-	endpoint_type_t endpoint_type () const
-	{
-		return endpoint_type_m;
-	}
+	endpoint_type_t endpoint_type () const;
 	bool is_realtime_connection ()
 	{
 		return type () == nano::socket::type_t::realtime || type () == nano::socket::type_t::realtime_response_server;
@@ -137,8 +139,6 @@ protected:
 		std::function<void (boost::system::error_code const &, std::size_t)> callback;
 	};
 
-	nano::thread_pool & workers;
-
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint & get_remote ();
 
@@ -149,16 +149,27 @@ protected:
 	void close_internal ();
 	void checkup ();
 
-private:
-	endpoint_type_t endpoint_type_m;
-
 public:
-	std::shared_ptr<tcp_socket_facade> tcp_socket_facade_m;
 	static std::size_t constexpr queue_size_max = 128;
 	rsnano::SocketHandle * handle;
 };
 
-using address_socket_mmap = std::multimap<boost::asio::ip::address, std::weak_ptr<socket>>;
+class weak_socket_wrapper
+{
+public:
+	weak_socket_wrapper (rsnano::SocketWeakHandle * handle);
+	weak_socket_wrapper (weak_socket_wrapper const &) = delete;
+	weak_socket_wrapper (weak_socket_wrapper &&) = delete;
+	weak_socket_wrapper (std::shared_ptr<nano::socket> & socket);
+	~weak_socket_wrapper ();
+	std::shared_ptr<nano::socket> lock ();
+	bool expired () const;
+
+private:
+	rsnano::SocketWeakHandle * handle;
+};
+
+using address_socket_mmap = std::multimap<boost::asio::ip::address, weak_socket_wrapper>;
 
 namespace socket_functions
 {

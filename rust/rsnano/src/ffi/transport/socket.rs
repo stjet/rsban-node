@@ -13,7 +13,7 @@ use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     ops::Deref,
-    sync::{atomic::Ordering, Arc},
+    sync::{atomic::Ordering, Arc, Weak},
     time::Duration,
 };
 
@@ -23,6 +23,13 @@ use crate::ffi::{
 };
 
 pub struct SocketHandle(Arc<SocketImpl>);
+pub struct SocketWeakHandle(Weak<SocketImpl>);
+
+impl SocketHandle {
+    pub fn new(socket: Arc<SocketImpl>) -> *mut SocketHandle {
+        Box::into_raw(Box::new(SocketHandle(socket)))
+    }
+}
 
 impl Deref for SocketHandle {
     type Target = Arc<SocketImpl>;
@@ -57,12 +64,45 @@ pub unsafe extern "C" fn rsn_socket_create(
         .observer(socket_stats)
         .build();
 
-    Box::into_raw(Box::new(SocketHandle(socket)))
+    SocketHandle::new(socket)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_destroy(handle: *mut SocketHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_inner_ptr(handle: *mut SocketHandle) -> *const c_void {
+    let p = Arc::as_ptr(&(*handle).0);
+    p as *const c_void
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_to_weak_handle(
+    handle: *mut SocketHandle,
+) -> *mut SocketWeakHandle {
+    Box::into_raw(Box::new(SocketWeakHandle(Arc::downgrade(&(*handle).0))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_weak_socket_destroy(handle: *mut SocketWeakHandle) {
+    drop(Box::from_raw(handle));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_weak_socket_to_socket(
+    handle: *mut SocketWeakHandle,
+) -> *mut SocketHandle {
+    match (*handle).0.upgrade() {
+        Some(socket) => SocketHandle::new(socket),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_weak_socket_expired(handle: *mut SocketWeakHandle) -> bool {
+    (*handle).0.strong_count() == 0
 }
 
 #[repr(C)]
@@ -95,6 +135,16 @@ pub struct EndpointDto {
     pub bytes: [u8; 16],
     pub port: u16,
     pub v6: bool,
+}
+
+impl EndpointDto {
+    pub fn new() -> EndpointDto {
+        EndpointDto {
+            bytes: [0; 16],
+            port: 0,
+            v6: false,
+        }
+    }
 }
 
 impl From<&EndpointDto> for SocketAddr {
@@ -250,6 +300,15 @@ pub unsafe extern "C" fn rsn_socket_async_write(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_socket_local_endpoint(
+    handle: *mut SocketHandle,
+    endpoint: *mut EndpointDto,
+) {
+    let ep = (*handle).local_endpoint();
+    set_enpoint_dto(&ep, &mut (*endpoint))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_set_remote_endpoint(
     handle: *mut SocketHandle,
     endpoint: *const EndpointDto,
@@ -289,6 +348,11 @@ pub unsafe extern "C" fn rsn_socket_get_remote(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_socket_endpoint_type(handle: *mut SocketHandle) -> u8 {
+    (*handle).endpoint_type() as u8
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_get_silent_connnection_tolerance_time_s(
     handle: *mut SocketHandle,
 ) -> u64 {
@@ -302,9 +366,7 @@ pub unsafe extern "C" fn rsn_socket_set_silent_connection_tolerance_time(
     handle: *mut SocketHandle,
     time_s: u64,
 ) {
-    (*handle)
-        .silent_connection_tolerance_time
-        .store(time_s, Ordering::SeqCst);
+    (*handle).set_silent_connection_tolerance_time(time_s)
 }
 
 #[no_mangle]
@@ -431,6 +493,15 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_destroy(f: DestroyCallback) {
     TCP_FACADE_DESTROY_CALLBACK = Some(f);
 }
 
+type SocketLocalEndpointCallback = unsafe extern "C" fn(*mut c_void, *mut EndpointDto);
+
+static mut LOCAL_ENDPOINT_CALLBACK: Option<SocketLocalEndpointCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_local_endpoint(f: SocketLocalEndpointCallback) {
+    LOCAL_ENDPOINT_CALLBACK = Some(f);
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_async_connect_callback_execute(
     callback: *mut AsyncConnectCallbackHandle,
@@ -465,6 +536,16 @@ pub unsafe extern "C" fn rsn_socket_type(handle: *mut SocketHandle) -> u8 {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_set_type(handle: *mut SocketHandle, socket_type: u8) {
     (*handle).set_socket_type(SocketType::from_u8(socket_type).unwrap());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_facade(handle: *mut SocketHandle) -> *mut c_void {
+    (*handle)
+        .tcp_socket
+        .as_any()
+        .downcast_ref::<FfiTcpSocketFacade>()
+        .expect("not an ffi socket")
+        .handle
 }
 
 struct FfiTcpSocketFacade {
@@ -530,11 +611,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     }
 
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
-        let mut endpoint_dto = EndpointDto {
-            bytes: [0; 16],
-            port: 0,
-            v6: false,
-        };
+        let mut endpoint_dto = EndpointDto::new();
         let mut ec_dto = ErrorCodeDto {
             val: 0,
             category: 0,
@@ -585,6 +662,21 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         } else {
             Err((&ec_dto).into())
         }
+    }
+
+    fn local_endpoint(&self) -> SocketAddr {
+        unsafe {
+            let mut dto = EndpointDto::new();
+            LOCAL_ENDPOINT_CALLBACK.expect("LOCAL_ENDPOINT_CALLBACK missing")(
+                self.handle,
+                &mut dto,
+            );
+            SocketAddr::from(&dto)
+        }
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::utils::{seconds_since_epoch, ErrorCode, ThreadPool};
 use num_traits::FromPrimitive;
 use std::{
+    any::Any,
     ffi::c_void,
     net::SocketAddr,
     sync::{
@@ -23,6 +24,7 @@ pub trait SharedConstBuffer {
 }
 
 pub trait TcpSocketFacade {
+    fn local_endpoint(&self) -> SocketAddr;
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>);
     fn async_read(
         &self,
@@ -39,6 +41,7 @@ pub trait TcpSocketFacade {
     fn post(&self, f: Box<dyn FnOnce()>);
     fn dispatch(&self, f: Box<dyn FnOnce()>);
     fn close(&self) -> Result<(), ErrorCode>;
+    fn as_any(&self) -> &dyn Any;
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, FromPrimitive)]
@@ -106,7 +109,7 @@ pub struct SocketImpl {
     /// activity is any successful connect, send or receive event
     timeout_seconds: AtomicU64,
 
-    tcp_socket: Arc<dyn TcpSocketFacade>,
+    pub tcp_socket: Arc<dyn TcpSocketFacade>,
     thread_pool: Arc<dyn ThreadPool>,
     endpoint_type: EndpointType,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
@@ -182,6 +185,14 @@ impl SocketImpl {
     pub fn set_socket_type(&self, socket_type: SocketType) {
         self.socket_type.store(socket_type as u8, Ordering::SeqCst);
     }
+
+    pub fn endpoint_type(&self) -> EndpointType {
+        self.endpoint_type
+    }
+
+    pub fn local_endpoint(&self) -> SocketAddr {
+        self.tcp_socket.local_endpoint()
+    }
 }
 
 impl Drop for SocketImpl {
@@ -210,6 +221,7 @@ pub trait Socket {
     fn set_remote(&self, endpoint: SocketAddr);
     fn has_timed_out(&self) -> bool;
     fn get_queue_size(&self) -> usize;
+    fn set_silent_connection_tolerance_time(&self, time_s: u64);
 }
 
 impl Socket for Arc<SocketImpl> {
@@ -388,6 +400,15 @@ impl Socket for Arc<SocketImpl> {
     fn get_queue_size(&self) -> usize {
         self.queue_size.load(Ordering::SeqCst)
     }
+
+    fn set_silent_connection_tolerance_time(&self, time_s: u64) {
+        let socket = Arc::clone(self);
+        self.tcp_socket.dispatch(Box::new(move || {
+            socket
+                .silent_connection_tolerance_time
+                .store(time_s, Ordering::SeqCst);
+        }));
+    }
 }
 
 pub struct SocketBuilder {
@@ -434,7 +455,6 @@ impl SocketBuilder {
         let observer = self
             .observer
             .unwrap_or_else(|| Arc::new(NullSocketObserver::new()));
-
         Arc::new({
             SocketImpl {
                 remote: Mutex::new(None),

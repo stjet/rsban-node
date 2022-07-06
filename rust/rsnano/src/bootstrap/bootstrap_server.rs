@@ -27,7 +27,7 @@ pub trait BootstrapServerObserver {
 }
 
 pub struct BootstrapServer {
-    socket: Arc<SocketImpl>,
+    pub socket: Arc<SocketImpl>,
     config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
     stopped: AtomicBool,
@@ -35,6 +35,7 @@ pub struct BootstrapServer {
     pub queue: Mutex<VecDeque<Option<Box<dyn Message>>>>,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
+    //pub remote_endpoint: SocketAddr
 }
 
 impl BootstrapServer {
@@ -53,6 +54,7 @@ impl BootstrapServer {
             queue: Mutex::new(VecDeque::new()),
             disable_bootstrap_listener: false,
             connections_max: 64,
+            //remote_endpoint: SocketAddr::new(std::net::IpAddr::V6(Ipv6Addr::UNSPECIFIED))
         }
     }
 

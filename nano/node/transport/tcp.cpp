@@ -11,7 +11,6 @@ nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<
 	std::chrono::steady_clock::now ().time_since_epoch ().count (), socket_a->handle)),
 	limiter (node_a.network.limiter),
 	io_ctx (node_a.io_ctx),
-	socket (socket_a),
 	observer (observer_a)
 {
 	set_network_version (node_a.config->network_params.network.protocol_version);
@@ -73,7 +72,7 @@ void nano::transport::channel_tcp::send (nano::message & message_a, std::functio
 
 void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)
 {
-	if (auto socket_l = socket.lock ())
+	if (auto socket_l = try_get_socket ())
 	{
 		if (!socket_l->max () || (policy_a == nano::buffer_drop_policy::no_socket_drop && !socket_l->full ()))
 		{
@@ -128,12 +127,23 @@ std::string nano::transport::channel_tcp::to_string () const
 	return boost::str (boost::format ("%1%") % get_tcp_endpoint ());
 }
 
+std::shared_ptr<nano::socket> nano::transport::channel_tcp::try_get_socket () const
+{
+	auto socket_handle{ rsnano::rsn_channel_tcp_socket (handle) };
+	std::shared_ptr<nano::socket> socket;
+	if (socket_handle)
+	{
+		socket = std::make_shared<nano::socket> (socket_handle);
+	}
+	return socket;
+}
+
 void nano::transport::channel_tcp::set_endpoint ()
 {
 	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
 	debug_assert (endpoint == nano::tcp_endpoint (boost::asio::ip::address_v6::any (), 0)); // Not initialized endpoint value
 	// Calculate TCP socket endpoint
-	if (auto socket_l = socket.lock ())
+	if (auto socket_l = try_get_socket ())
 	{
 		endpoint = socket_l->remote_endpoint ();
 	}
@@ -397,9 +407,10 @@ void nano::transport::tcp_channels::stop ()
 	// Close all TCP sockets
 	for (auto const & channel : channels)
 	{
-		if (channel.socket)
+		auto socket{ channel.try_get_socket () };
+		if (socket)
 		{
-			channel.socket->close ();
+			socket->close ();
 		}
 		// Remove response server
 		if (channel.response_server)
@@ -622,7 +633,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 						}
 						else
 						{
-							if (auto socket_l = channel->socket.lock ())
+							if (auto socket_l = channel->try_get_socket ())
 							{
 								socket_l->close ();
 							}
@@ -646,19 +657,23 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, nano::endpoint const & endpoint_a, std::shared_ptr<std::vector<uint8_t>> const & receive_buffer_a)
 {
 	std::weak_ptr<nano::node> node_w (node.shared ());
-	if (auto socket_l = channel_a->socket.lock ())
+	if (auto socket_l = channel_a->try_get_socket ())
 	{
-		auto cleanup_node_id_handshake_socket = [socket_w = channel_a->socket, node_w] (nano::endpoint const & endpoint_a) {
+		std::weak_ptr<nano::transport::channel_tcp> channel_w (channel_a);
+		auto cleanup_node_id_handshake_socket = [channel_w, node_w] (nano::endpoint const & endpoint_a) {
 			if (auto node_l = node_w.lock ())
 			{
-				if (auto socket_l = socket_w.lock ())
+				if (auto channel_l = channel_w.lock ())
 				{
-					socket_l->close ();
+					if (auto socket_l = channel_l->try_get_socket ())
+					{
+						socket_l->close ();
+					}
 				}
 			}
 		};
 
-		auto cleanup_and_udp_fallback = [socket_w = channel_a->socket, node_w, cleanup_node_id_handshake_socket] (nano::endpoint const & endpoint_a) {
+		auto cleanup_and_udp_fallback = [node_w, cleanup_node_id_handshake_socket] (nano::endpoint const & endpoint_a) {
 			if (auto node_l = node_w.lock ())
 			{
 				node_l->network.tcp_channels->udp_fallback (endpoint_a);
@@ -711,7 +726,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 											if (!ec && channel_a)
 											{
 												// Insert new node ID connection
-												if (auto socket_l = channel_a->socket.lock ())
+												if (auto socket_l = channel_a->try_get_socket ())
 												{
 													channel_a->set_last_packet_sent (std::chrono::steady_clock::now ());
 													auto response_server = std::make_shared<nano::bootstrap_server> (socket_l, node_l);

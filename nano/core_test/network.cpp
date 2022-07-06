@@ -169,8 +169,8 @@ TEST (network, last_contacted)
 
 	{
 		// check that the endpoints are part of the same connection
-		std::shared_ptr<nano::socket> sock0 = channel0->socket.lock ();
-		std::shared_ptr<nano::socket> sock1 = channel1->socket.lock ();
+		std::shared_ptr<nano::socket> sock0 = channel0->try_get_socket ();
+		std::shared_ptr<nano::socket> sock1 = channel1->try_get_socket ();
 		ASSERT_TRUE (sock0->local_endpoint () == sock1->remote_endpoint ());
 		ASSERT_TRUE (sock1->local_endpoint () == sock0->remote_endpoint ());
 	}

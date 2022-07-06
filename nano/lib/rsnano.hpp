@@ -63,6 +63,8 @@ struct SignatureCheckerHandle;
 
 struct SocketHandle;
 
+struct SocketWeakHandle;
+
 struct StatHandle;
 
 struct StatLogSinkHandle;
@@ -416,6 +418,8 @@ using AsyncWriteCallback = void (*) (void *, void *, AsyncWriteCallbackHandle *)
 using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
 
 using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
+
+using SocketLocalEndpointCallback = void (*) (void *, EndpointDto *);
 
 using RemoteEndpointCallback = void (*) (void *, EndpointDto *, ErrorCodeDto *);
 
@@ -949,6 +953,8 @@ void rsn_bootstrap_server_requests_pop (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_requests_push (BootstrapServerLockHandle * handle, MessageHandle * msg);
 
+SocketHandle * rsn_bootstrap_server_socket (BootstrapServerHandle * handle);
+
 void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_unlock (BootstrapServerLockHandle * lock_handle);
@@ -1035,6 +1041,8 @@ void rsn_callback_tcp_socket_destroy (DestroyCallback f);
 
 void rsn_callback_tcp_socket_dispatch (DispatchCallback f);
 
+void rsn_callback_tcp_socket_local_endpoint (SocketLocalEndpointCallback f);
+
 void rsn_callback_tcp_socket_post (DispatchCallback f);
 
 void rsn_callback_tcp_socket_remote_endpoint (RemoteEndpointCallback f);
@@ -1110,6 +1118,8 @@ void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
 ChannelHandle * rsn_channel_tcp_create (uint64_t now, SocketHandle * socket);
 
 TcpChannelLockHandle * rsn_channel_tcp_lock (ChannelHandle * handle);
+
+SocketHandle * rsn_channel_tcp_socket (ChannelHandle * handle);
 
 void rsn_channel_tcp_unlock (TcpChannelLockHandle * handle);
 
@@ -1661,6 +1671,10 @@ void * logger);
 
 void rsn_socket_destroy (SocketHandle * handle);
 
+uint8_t rsn_socket_endpoint_type (SocketHandle * handle);
+
+void * rsn_socket_facade (SocketHandle * handle);
+
 uintptr_t rsn_socket_get_queue_size (SocketHandle * handle);
 
 void rsn_socket_get_remote (SocketHandle * handle, EndpointDto * result);
@@ -1669,7 +1683,11 @@ uint64_t rsn_socket_get_silent_connnection_tolerance_time_s (SocketHandle * hand
 
 bool rsn_socket_has_timed_out (SocketHandle * handle);
 
+const void * rsn_socket_inner_ptr (SocketHandle * handle);
+
 bool rsn_socket_is_closed (SocketHandle * handle);
+
+void rsn_socket_local_endpoint (SocketHandle * handle, EndpointDto * endpoint);
 
 void rsn_socket_set_default_timeout_value (SocketHandle * handle, uint64_t timeout_s);
 
@@ -1680,6 +1698,8 @@ void rsn_socket_set_silent_connection_tolerance_time (SocketHandle * handle, uin
 void rsn_socket_set_timeout (SocketHandle * handle, uint64_t timeout_s);
 
 void rsn_socket_set_type (SocketHandle * handle, uint8_t socket_type);
+
+SocketWeakHandle * rsn_socket_to_weak_handle (SocketHandle * handle);
 
 uint8_t rsn_socket_type (SocketHandle * handle);
 
@@ -2014,6 +2034,12 @@ bool rsn_vote_validate (const VoteHandle * handle);
 
 int32_t rsn_voting_constants_create (const NetworkConstantsDto * network_constants,
 VotingConstantsDto * dto);
+
+void rsn_weak_socket_destroy (SocketWeakHandle * handle);
+
+bool rsn_weak_socket_expired (SocketWeakHandle * handle);
+
+SocketHandle * rsn_weak_socket_to_socket (SocketWeakHandle * handle);
 
 int32_t rsn_websocket_config_create (WebsocketConfigDto * dto, const NetworkConstantsDto * network);
 

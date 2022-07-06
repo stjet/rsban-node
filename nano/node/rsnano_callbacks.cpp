@@ -568,6 +568,13 @@ void tcp_socket_close (void * handle_a, rsnano::ErrorCodeDto * ec_a)
 	*ec_a = rsnano::error_code_to_dto (ec);
 }
 
+void tcp_socket_local_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a)
+{
+	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto ep{ (*socket)->tcp_socket.local_endpoint () };
+	(*endpoint_a) = rsnano::endpoint_to_dto (ep);
+}
+
 void tcp_socket_destroy (void * handle_a)
 {
 	auto ptr{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
@@ -742,6 +749,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_tcp_socket_post (tcp_socket_post);
 	rsnano::rsn_callback_tcp_socket_close (tcp_socket_close);
 	rsnano::rsn_callback_tcp_socket_destroy (tcp_socket_destroy);
+	rsnano::rsn_callback_tcp_socket_local_endpoint (tcp_socket_local_endpoint);
 
 	rsnano::rsn_callback_buffer_destroy (buffer_destroy);
 	rsnano::rsn_callback_buffer_size (buffer_size);

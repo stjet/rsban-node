@@ -246,7 +246,6 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
-	socket (socket_a),
 	publish_filter (node_a->network.publish_filter),
 	workers (node_a->workers),
 	io_ctx (node_a->io_ctx),
@@ -268,7 +267,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 
 nano::bootstrap_server::~bootstrap_server ()
 {
-	observer->boostrap_server_exited (socket->type (), inner_ptr (), remote_endpoint);
+	observer->boostrap_server_exited (get_socket ()->type (), inner_ptr (), remote_endpoint);
 	rsnano::rsn_bootstrap_server_destroy (handle);
 }
 
@@ -286,16 +285,16 @@ void nano::bootstrap_server::stop ()
 void nano::bootstrap_server::receive ()
 {
 	// Increase timeout to receive TCP header (idle server socket)
-	socket->set_default_timeout_value (network_params.network.idle_timeout);
+	get_socket ()->set_default_timeout_value (network_params.network.idle_timeout);
 	auto this_l (shared_from_this ());
-	socket->async_read (receive_buffer, 8, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+	get_socket ()->async_read (receive_buffer, 8, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		// Set remote_endpoint
 		if (this_l->remote_endpoint.port () == 0)
 		{
-			this_l->remote_endpoint = this_l->socket->remote_endpoint ();
+			this_l->remote_endpoint = this_l->get_socket ()->remote_endpoint ();
 		}
 		// Decrease timeout to default
-		this_l->socket->set_default_timeout_value (this_l->config->tcp_io_timeout);
+		this_l->get_socket ()->set_default_timeout_value (this_l->config->tcp_io_timeout);
 		// Receive header
 		this_l->receive_header_action (ec, size_a);
 	});
@@ -317,7 +316,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				case nano::message_type::bulk_pull:
 				{
 					stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull, nano::stat::dir::in);
-					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
+					get_socket ()->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_bulk_pull_action (ec, size_a, header);
 					});
 					break;
@@ -325,7 +324,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				case nano::message_type::bulk_pull_account:
 				{
 					stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_account, nano::stat::dir::in);
-					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
+					get_socket ()->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_bulk_pull_account_action (ec, size_a, header);
 					});
 					break;
@@ -333,7 +332,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				case nano::message_type::frontier_req:
 				{
 					stats->inc (nano::stat::type::bootstrap, nano::stat::detail::frontier_req, nano::stat::dir::in);
-					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
+					get_socket ()->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_frontier_req_action (ec, size_a, header);
 					});
 					break;
@@ -349,35 +348,35 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				}
 				case nano::message_type::keepalive:
 				{
-					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
+					get_socket ()->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_keepalive_action (ec, size_a, header);
 					});
 					break;
 				}
 				case nano::message_type::publish:
 				{
-					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
+					get_socket ()->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_publish_action (ec, size_a, header);
 					});
 					break;
 				}
 				case nano::message_type::confirm_ack:
 				{
-					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
+					get_socket ()->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_confirm_ack_action (ec, size_a, header);
 					});
 					break;
 				}
 				case nano::message_type::confirm_req:
 				{
-					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
+					get_socket ()->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_confirm_req_action (ec, size_a, header);
 					});
 					break;
 				}
 				case nano::message_type::node_id_handshake:
 				{
-					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
+					get_socket ()->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_node_id_handshake_action (ec, size_a, header);
 					});
 					break;
@@ -403,7 +402,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				}
 				case nano::message_type::telemetry_ack:
 				{
-					socket->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
+					get_socket ()->async_read (receive_buffer, header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_telemetry_ack_action (ec, size_a, header);
 					});
 					break;
@@ -647,7 +646,7 @@ void nano::bootstrap_server::receive_node_id_handshake_action (boost::system::er
 		auto request (std::make_unique<nano::node_id_handshake> (error, stream, header_a));
 		if (!error)
 		{
-			if (socket->type () == nano::socket::type_t::undefined && !disable_tcp_realtime)
+			if (get_socket ()->type () == nano::socket::type_t::undefined && !disable_tcp_realtime)
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -718,10 +717,10 @@ void nano::bootstrap_server::finish_request_async ()
 
 void nano::bootstrap_server::timeout ()
 {
-	if (socket->has_timed_out ())
+	if (get_socket ()->has_timed_out ())
 	{
 		observer->bootstrap_server_timeout (inner_ptr ());
-		socket->close ();
+		get_socket ()->close ();
 	}
 }
 
@@ -936,7 +935,7 @@ bool nano::bootstrap_server::make_bootstrap_connection ()
 
 bool nano::bootstrap_server::is_realtime_connection ()
 {
-	return socket->is_realtime_connection ();
+	return get_socket ()->is_realtime_connection ();
 }
 
 bool nano::bootstrap_server::is_stopped () const
@@ -966,5 +965,6 @@ nano::tcp_endpoint nano::bootstrap_server::get_remote_endpoint () const
 
 std::shared_ptr<nano::socket> const nano::bootstrap_server::get_socket () const
 {
-	return socket;
+	auto socket_handle = rsnano::rsn_bootstrap_server_socket (handle);
+	return std::make_shared<nano::socket> (socket_handle);
 }

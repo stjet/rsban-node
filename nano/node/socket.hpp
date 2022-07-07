@@ -21,6 +21,7 @@ namespace rsnano
 {
 class SocketHandle;
 class SocketWeakHandle;
+class BufferHandle;
 }
 
 namespace nano
@@ -68,6 +69,20 @@ public:
 
 private:
 	std::atomic<bool> closed{ false };
+};
+
+class buffer_wrapper
+{
+	buffer_wrapper (std::size_t len);
+	buffer_wrapper (rsnano::BufferHandle * handle_a);
+	buffer_wrapper (buffer_wrapper const &) = delete;
+	buffer_wrapper (buffer_wrapper && other_a);
+	~buffer_wrapper ();
+	std::uint8_t * data ();
+	std::size_t len () const;
+
+public:
+	rsnano::BufferHandle * handle;
 };
 
 /** Socket class for tcp clients and newly accepted connections */

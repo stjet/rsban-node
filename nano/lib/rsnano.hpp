@@ -43,6 +43,8 @@ struct BootstrapServerHandle;
 
 struct BootstrapServerLockHandle;
 
+struct BufferHandle;
+
 struct ChannelHandle;
 
 struct EpochsHandle;
@@ -967,6 +969,14 @@ SocketHandle * rsn_bootstrap_server_socket (BootstrapServerHandle * handle);
 void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_unlock (BootstrapServerLockHandle * lock_handle);
+
+BufferHandle * rsn_buffer_create (uintptr_t len);
+
+uint8_t * rsn_buffer_data (BufferHandle * handle);
+
+void rsn_buffer_destroy (BufferHandle * handle);
+
+uintptr_t rsn_buffer_len (BufferHandle * handle);
 
 void rsn_callback_add_timed_task (AddTimedTaskCallback f);
 

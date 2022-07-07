@@ -104,6 +104,38 @@ void nano::tcp_socket_facade::close (boost::system::error_code & ec)
 	}
 }
 
+nano::buffer_wrapper::buffer_wrapper (std::size_t len) :
+	handle{ rsnano::rsn_buffer_create (len) }
+{
+}
+
+nano::buffer_wrapper::buffer_wrapper (rsnano::BufferHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
+nano::buffer_wrapper::buffer_wrapper (buffer_wrapper && other_a) :
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+}
+
+nano::buffer_wrapper::~buffer_wrapper ()
+{
+	if (handle)
+		rsnano::rsn_buffer_destroy (handle);
+}
+
+std::uint8_t * nano::buffer_wrapper::data ()
+{
+	return rsnano::rsn_buffer_data (handle);
+}
+
+std::size_t nano::buffer_wrapper::len () const
+{
+	return rsnano::rsn_buffer_len (handle);
+}
+
 nano::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a, nano::logger_mt & logger_a, nano::thread_pool & workers_a, std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a) :
 	handle{ rsnano::rsn_socket_create (static_cast<uint8_t> (endpoint_type_a), new std::shared_ptr<nano::tcp_socket_facade> (std::make_shared<nano::tcp_socket_facade> (io_ctx_a)), stats_a.handle, &workers_a, default_timeout_a.count (), silent_connection_tolerance_time_a.count (), network_timeout_logging_a, &logger_a) }
 {

@@ -176,6 +176,7 @@ public:
 private:
 	void run_next (nano::bootstrap_server_lock & lock_a);
 	void set_remote_endpoint (nano::tcp_endpoint const & endpoint);
+	std::shared_ptr<nano::buffer_wrapper> get_buffer () const;
 
 	std::shared_ptr<nano::buffer_wrapper> receive_buffer;
 	std::shared_ptr<nano::network_filter> publish_filter;

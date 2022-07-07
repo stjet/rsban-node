@@ -182,6 +182,12 @@ impl From<&SocketAddr> for EndpointDto {
     }
 }
 
+impl From<SocketAddr> for EndpointDto {
+    fn from(addr: SocketAddr) -> Self {
+        EndpointDto::from(&addr)
+    }
+}
+
 type SocketConnectCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto);
 type SocketDestroyContext = unsafe extern "C" fn(*mut c_void);
 

@@ -338,6 +338,13 @@ struct NodeConfigDto
 	LmdbConfigDto lmdb_config;
 };
 
+struct EndpointDto
+{
+	uint8_t bytes[16];
+	uint16_t port;
+	bool v6;
+};
+
 using AddTimedTaskCallback = void (*) (void *, uint64_t, VoidFnCallbackHandle *);
 
 using AlwaysLogCallback = void (*) (void *, const uint8_t *, uintptr_t);
@@ -355,13 +362,6 @@ using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
 using BootstrapServerBootstrapCountCallback = uintptr_t (*) (void *);
 
 using DestroyCallback = void (*) (void *);
-
-struct EndpointDto
-{
-	uint8_t bytes[16];
-	uint16_t port;
-	bool v6;
-};
 
 using BootstrapServerExitedCallback = void (*) (void *, uint8_t, uintptr_t, const EndpointDto *);
 
@@ -947,11 +947,16 @@ MessageHandle * rsn_bootstrap_server_release_front_request (BootstrapServerLockH
 void rsn_bootstrap_server_relock (BootstrapServerHandle * server_handle,
 BootstrapServerLockHandle * lock_handle);
 
+void rsn_bootstrap_server_remote_endpoint (BootstrapServerHandle * handle, EndpointDto * endpoint);
+
 MessageHandle * rsn_bootstrap_server_requests_front (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_requests_pop (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_requests_push (BootstrapServerLockHandle * handle, MessageHandle * msg);
+
+void rsn_bootstrap_server_set_remote_endpoint (BootstrapServerHandle * handle,
+const EndpointDto * endpoint);
 
 SocketHandle * rsn_bootstrap_server_socket (BootstrapServerHandle * handle);
 

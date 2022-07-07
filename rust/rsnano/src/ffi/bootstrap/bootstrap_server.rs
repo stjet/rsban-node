@@ -65,6 +65,24 @@ pub unsafe extern "C" fn rsn_bootstrap_server_is_stopped(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_remote_endpoint(
+    handle: *mut BootstrapServerHandle,
+    endpoint: *mut EndpointDto,
+) {
+    let ep: SocketAddr = (*handle).0.remote_endpoint.lock().unwrap().clone();
+    (*endpoint) = ep.into();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_set_remote_endpoint(
+    handle: *mut BootstrapServerHandle,
+    endpoint: *const EndpointDto,
+) {
+    let mut lk = (*handle).0.remote_endpoint.lock().unwrap();
+    *lk = SocketAddr::from(&*endpoint);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_make_bootstrap_connection(
     handle: *mut BootstrapServerHandle,
 ) -> bool {

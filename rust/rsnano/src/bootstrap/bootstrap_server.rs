@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    net::SocketAddr,
+    net::{Ipv6Addr, SocketAddr},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -35,7 +35,9 @@ pub struct BootstrapServer {
     pub queue: Mutex<VecDeque<Option<Box<dyn Message>>>>,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
-    //pub remote_endpoint: SocketAddr
+
+    // Remote enpoint used to remove response channel even after socket closing
+    pub remote_endpoint: Mutex<SocketAddr>,
 }
 
 impl BootstrapServer {
@@ -54,7 +56,10 @@ impl BootstrapServer {
             queue: Mutex::new(VecDeque::new()),
             disable_bootstrap_listener: false,
             connections_max: 64,
-            //remote_endpoint: SocketAddr::new(std::net::IpAddr::V6(Ipv6Addr::UNSPECIFIED))
+            remote_endpoint: Mutex::new(SocketAddr::new(
+                std::net::IpAddr::V6(Ipv6Addr::UNSPECIFIED),
+                0,
+            )),
         }
     }
 

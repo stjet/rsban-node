@@ -1,3 +1,4 @@
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/bootstrap/bootstrap_bulk_push.hpp>
 #include <nano/node/bootstrap/bootstrap_frontier.hpp>
 #include <nano/node/bootstrap/bootstrap_server.hpp>
@@ -267,7 +268,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 
 nano::bootstrap_server::~bootstrap_server ()
 {
-	observer->boostrap_server_exited (get_socket ()->type (), inner_ptr (), remote_endpoint);
+	observer->boostrap_server_exited (get_socket ()->type (), inner_ptr (), get_remote_endpoint ());
 	rsnano::rsn_bootstrap_server_destroy (handle);
 }
 
@@ -289,9 +290,9 @@ void nano::bootstrap_server::receive ()
 	auto this_l (shared_from_this ());
 	get_socket ()->async_read (receive_buffer, 8, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		// Set remote_endpoint
-		if (this_l->remote_endpoint.port () == 0)
+		if (this_l->get_remote_endpoint ().port () == 0)
 		{
-			this_l->remote_endpoint = this_l->get_socket ()->remote_endpoint ();
+			this_l->set_remote_endpoint (this_l->get_socket ()->remote_endpoint ());
 		}
 		// Decrease timeout to default
 		this_l->get_socket ()->set_default_timeout_value (this_l->config->tcp_io_timeout);
@@ -438,7 +439,7 @@ void nano::bootstrap_server::receive_bulk_pull_action (boost::system::error_code
 		{
 			if (config->logging.bulk_pull_logging ())
 			{
-				logger->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->get_start ().to_string () % request->get_end ().to_string () % (request->get_count () ? request->get_count () : std::numeric_limits<double>::infinity ()) % remote_endpoint));
+				logger->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->get_start ().to_string () % request->get_end ().to_string () % (request->get_count () ? request->get_count () : std::numeric_limits<double>::infinity ()) % get_remote_endpoint ()));
 			}
 			if (make_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
 			{
@@ -960,7 +961,15 @@ void nano::bootstrap_server::set_remote_node_id (nano::account account_a)
 
 nano::tcp_endpoint nano::bootstrap_server::get_remote_endpoint () const
 {
-	return remote_endpoint;
+	rsnano::EndpointDto dto;
+	rsnano::rsn_bootstrap_server_remote_endpoint (handle, &dto);
+	return rsnano::dto_to_endpoint (dto);
+}
+
+void nano::bootstrap_server::set_remote_endpoint (nano::tcp_endpoint const & endpoint)
+{
+	auto dto{ rsnano::endpoint_to_dto (endpoint) };
+	rsnano::rsn_bootstrap_server_set_remote_endpoint (handle, &dto);
 }
 
 std::shared_ptr<nano::socket> const nano::bootstrap_server::get_socket () const

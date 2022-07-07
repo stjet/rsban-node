@@ -171,6 +171,7 @@ public:
 	nano::account get_remote_node_id () const override;
 	void set_remote_node_id (nano::account account_a) override;
 	nano::tcp_endpoint get_remote_endpoint () const override;
+	void set_remote_endpoint (nano::tcp_endpoint const & endpoint);
 	std::shared_ptr<nano::socket> const get_socket () const override;
 
 private:
@@ -181,9 +182,6 @@ private:
 	std::shared_ptr<nano::thread_pool> workers;
 	boost::asio::io_context & io_ctx;
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
-
-	// Remote enpoint used to remove response channel even after socket closing
-	nano::tcp_endpoint remote_endpoint{ boost::asio::ip::address_v6::any (), 0 };
 	nano::account remote_node_id{};
 	std::chrono::steady_clock::time_point last_telemetry_req{ std::chrono::steady_clock::time_point () };
 	std::shared_ptr<nano::bootstrap_server_observer> observer;

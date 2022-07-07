@@ -39,6 +39,7 @@ pub struct BootstrapServer {
     // Remote enpoint used to remove response channel even after socket closing
     pub remote_endpoint: Mutex<SocketAddr>,
     pub remote_node_id: Mutex<Account>,
+    pub receive_buffer: Arc<Mutex<Vec<u8>>>,
 }
 
 impl BootstrapServer {
@@ -62,6 +63,7 @@ impl BootstrapServer {
                 0,
             )),
             remote_node_id: Mutex::new(Account::new()),
+            receive_buffer: Arc::new(Mutex::new(vec![0; 1024])),
         }
     }
 

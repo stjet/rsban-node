@@ -8,6 +8,7 @@ use crate::{
     },
     messages::Message,
     transport::SocketType,
+    utils::BufferHandle,
     Account, NodeConfig,
 };
 use std::{
@@ -228,6 +229,12 @@ pub unsafe extern "C" fn rsn_bootstrap_server_requests_push(
             r.push_back(Some((*msg).clone_box()))
         }
     }
+}
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_receive_buffer(
+    handle: *mut BootstrapServerHandle,
+) -> *mut BufferHandle {
+    BufferHandle::new((*handle).0.receive_buffer.clone())
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

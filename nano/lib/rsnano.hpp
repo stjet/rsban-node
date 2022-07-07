@@ -946,6 +946,8 @@ bool rsn_bootstrap_server_make_bootstrap_connection (BootstrapServerHandle * han
 
 bool rsn_bootstrap_server_queue_empty (BootstrapServerLockHandle * handle);
 
+BufferHandle * rsn_bootstrap_server_receive_buffer (BootstrapServerHandle * handle);
+
 MessageHandle * rsn_bootstrap_server_release_front_request (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_relock (BootstrapServerHandle * server_handle,

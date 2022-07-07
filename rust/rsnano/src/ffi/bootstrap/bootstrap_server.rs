@@ -1,13 +1,14 @@
 use crate::{
     bootstrap::{BootstrapServer, BootstrapServerObserver},
     ffi::{
+        copy_account_bytes,
         messages::MessageHandle,
         transport::{EndpointDto, SocketHandle},
         DestroyCallback, LoggerMT, NodeConfigDto,
     },
     messages::Message,
     transport::SocketType,
-    NodeConfig,
+    Account, NodeConfig,
 };
 use std::{
     cell::RefCell,
@@ -80,6 +81,24 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_remote_endpoint(
 ) {
     let mut lk = (*handle).0.remote_endpoint.lock().unwrap();
     *lk = SocketAddr::from(&*endpoint);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_remote_node_id(
+    handle: *mut BootstrapServerHandle,
+    node_id: *mut u8,
+) {
+    let lk = (*handle).0.remote_node_id.lock().unwrap();
+    copy_account_bytes(*lk, node_id);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_set_remote_node_id(
+    handle: *mut BootstrapServerHandle,
+    node_id: *const u8,
+) {
+    let mut lk = (*handle).0.remote_node_id.lock().unwrap();
+    *lk = Account::from(node_id);
 }
 
 #[no_mangle]

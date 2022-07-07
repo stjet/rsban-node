@@ -951,12 +951,14 @@ std::uintptr_t nano::bootstrap_server::inner_ptr () const
 
 nano::account nano::bootstrap_server::get_remote_node_id () const
 {
-	return remote_node_id;
+	nano::account node_id;
+	rsnano::rsn_bootstrap_server_remote_node_id (handle, node_id.bytes.data ());
+	return node_id;
 }
 
 void nano::bootstrap_server::set_remote_node_id (nano::account account_a)
 {
-	remote_node_id = account_a;
+	rsnano::rsn_bootstrap_server_set_remote_node_id (handle, account_a.bytes.data ());
 }
 
 nano::tcp_endpoint nano::bootstrap_server::get_remote_endpoint () const

@@ -171,18 +171,17 @@ public:
 	nano::account get_remote_node_id () const override;
 	void set_remote_node_id (nano::account account_a) override;
 	nano::tcp_endpoint get_remote_endpoint () const override;
-	void set_remote_endpoint (nano::tcp_endpoint const & endpoint);
 	std::shared_ptr<nano::socket> const get_socket () const override;
 
 private:
 	void run_next (nano::bootstrap_server_lock & lock_a);
+	void set_remote_endpoint (nano::tcp_endpoint const & endpoint);
 
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::network_filter> publish_filter;
 	std::shared_ptr<nano::thread_pool> workers;
 	boost::asio::io_context & io_ctx;
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
-	nano::account remote_node_id{};
 	std::chrono::steady_clock::time_point last_telemetry_req{ std::chrono::steady_clock::time_point () };
 	std::shared_ptr<nano::bootstrap_server_observer> observer;
 	std::shared_ptr<nano::logger_mt> logger;

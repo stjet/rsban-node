@@ -11,7 +11,7 @@ use crate::{
     logger_mt::Logger,
     messages::Message,
     transport::{Socket, SocketImpl, SocketType},
-    NodeConfig,
+    Account, NodeConfig,
 };
 
 pub trait BootstrapServerObserver {
@@ -38,6 +38,7 @@ pub struct BootstrapServer {
 
     // Remote enpoint used to remove response channel even after socket closing
     pub remote_endpoint: Mutex<SocketAddr>,
+    pub remote_node_id: Mutex<Account>,
 }
 
 impl BootstrapServer {
@@ -60,6 +61,7 @@ impl BootstrapServer {
                 std::net::IpAddr::V6(Ipv6Addr::UNSPECIFIED),
                 0,
             )),
+            remote_node_id: Mutex::new(Account::new()),
         }
     }
 

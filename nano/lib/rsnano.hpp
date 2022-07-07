@@ -949,6 +949,8 @@ BootstrapServerLockHandle * lock_handle);
 
 void rsn_bootstrap_server_remote_endpoint (BootstrapServerHandle * handle, EndpointDto * endpoint);
 
+void rsn_bootstrap_server_remote_node_id (BootstrapServerHandle * handle, uint8_t * node_id);
+
 MessageHandle * rsn_bootstrap_server_requests_front (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_requests_pop (BootstrapServerLockHandle * handle);
@@ -957,6 +959,8 @@ void rsn_bootstrap_server_requests_push (BootstrapServerLockHandle * handle, Mes
 
 void rsn_bootstrap_server_set_remote_endpoint (BootstrapServerHandle * handle,
 const EndpointDto * endpoint);
+
+void rsn_bootstrap_server_set_remote_node_id (BootstrapServerHandle * handle, const uint8_t * node_id);
 
 SocketHandle * rsn_bootstrap_server_socket (BootstrapServerHandle * handle);
 

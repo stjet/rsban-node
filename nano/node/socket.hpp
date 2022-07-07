@@ -43,6 +43,19 @@ class stat;
 class logger_mt;
 class node;
 
+class buffer_wrapper
+{
+public:
+	buffer_wrapper (std::size_t len);
+	buffer_wrapper (rsnano::BufferHandle * handle_a);
+	buffer_wrapper (buffer_wrapper const &) = delete;
+	buffer_wrapper (buffer_wrapper && other_a);
+	~buffer_wrapper ();
+	std::uint8_t * data ();
+	std::size_t len () const;
+	rsnano::BufferHandle * handle;
+};
+
 class tcp_socket_facade : public std::enable_shared_from_this<nano::tcp_socket_facade>
 {
 public:
@@ -53,6 +66,9 @@ public:
 	std::function<void (boost::system::error_code const &)> callback_a);
 
 	void async_read (std::shared_ptr<std::vector<uint8_t>> const & buffer_a, size_t len_a,
+	std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
+
+	void async_read (std::shared_ptr<buffer_wrapper> const & buffer_a, size_t len_a,
 	std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
 
 	void async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
@@ -69,20 +85,6 @@ public:
 
 private:
 	std::atomic<bool> closed{ false };
-};
-
-class buffer_wrapper
-{
-	buffer_wrapper (std::size_t len);
-	buffer_wrapper (rsnano::BufferHandle * handle_a);
-	buffer_wrapper (buffer_wrapper const &) = delete;
-	buffer_wrapper (buffer_wrapper && other_a);
-	~buffer_wrapper ();
-	std::uint8_t * data ();
-	std::size_t len () const;
-
-public:
-	rsnano::BufferHandle * handle;
 };
 
 /** Socket class for tcp clients and newly accepted connections */
@@ -116,6 +118,7 @@ public:
 	virtual ~socket ();
 	void async_connect (boost::asio::ip::tcp::endpoint const &, std::function<void (boost::system::error_code const &)>);
 	void async_read (std::shared_ptr<std::vector<uint8_t>> const &, std::size_t, std::function<void (boost::system::error_code const &, std::size_t)>);
+	void async_read (std::shared_ptr<buffer_wrapper> const &, std::size_t, std::function<void (boost::system::error_code const &, std::size_t)>);
 	void async_write (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> = {});
 	const void * inner_ptr () const;
 

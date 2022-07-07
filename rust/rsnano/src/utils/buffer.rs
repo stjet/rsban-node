@@ -1,6 +1,23 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    ops::Deref,
+    sync::{Arc, Mutex},
+};
 
 pub struct BufferHandle(Arc<Mutex<Vec<u8>>>);
+
+impl BufferHandle {
+    pub fn new(buf: Arc<Mutex<Vec<u8>>>) -> *mut BufferHandle {
+        Box::into_raw(Box::new(BufferHandle(buf)))
+    }
+}
+
+impl Deref for BufferHandle {
+    type Target = Arc<Mutex<Vec<u8>>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_buffer_create(len: usize) -> *mut BufferHandle {

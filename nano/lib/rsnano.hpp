@@ -415,6 +415,8 @@ using AsyncConnectCallback = void (*) (void *, const EndpointDto *, AsyncConnect
 
 using AsyncReadCallback = void (*) (void *, void *, uintptr_t, AsyncReadCallbackHandle *);
 
+using AsyncRead2Callback = void (*) (void *, BufferHandle *, uintptr_t, AsyncReadCallbackHandle *);
+
 using AsyncWriteCallback = void (*) (void *, void *, AsyncWriteCallbackHandle *);
 
 using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
@@ -1052,6 +1054,8 @@ void rsn_callback_tcp_socket_async_connect (AsyncConnectCallback f);
 
 void rsn_callback_tcp_socket_async_read (AsyncReadCallback f);
 
+void rsn_callback_tcp_socket_async_read2 (AsyncRead2Callback f);
+
 void rsn_callback_tcp_socket_async_write (AsyncWriteCallback f);
 
 void rsn_callback_tcp_socket_close (CloseSocketCallback f);
@@ -1662,6 +1666,13 @@ void * context);
 
 void rsn_socket_async_read (SocketHandle * handle,
 void * buffer,
+uintptr_t size,
+SocketReadCallback callback,
+SocketDestroyContext destroy_context,
+void * context);
+
+void rsn_socket_async_read2 (SocketHandle * handle,
+BufferHandle * buffer,
 uintptr_t size,
 SocketReadCallback callback,
 SocketDestroyContext destroy_context,

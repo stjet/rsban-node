@@ -498,6 +498,16 @@ void tcp_socket_async_read (void * handle_a, void * buffer_a, std::size_t size_a
 	});
 }
 
+void tcp_socket_async_read2 (void * handle_a, rsnano::BufferHandle * buffer_a, std::size_t size_a, rsnano::AsyncReadCallbackHandle * callback_a)
+{
+	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto callback_wrapper{ std::make_shared<async_read_callback_wrapper> (callback_a) };
+	auto buffer{ std::make_shared<nano::buffer_wrapper> (buffer_a) };
+	(*socket)->async_read (buffer, size_a, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
+		callback_wrapper->execute (ec, size);
+	});
+}
+
 class async_write_callback_wrapper
 {
 public:
@@ -743,6 +753,7 @@ void rsnano::set_rsnano_callbacks ()
 
 	rsnano::rsn_callback_tcp_socket_async_connect (tcp_socket_async_connect);
 	rsnano::rsn_callback_tcp_socket_async_read (tcp_socket_async_read);
+	rsnano::rsn_callback_tcp_socket_async_read2 (tcp_socket_async_read2);
 	rsnano::rsn_callback_tcp_socket_async_write (tcp_socket_async_write);
 	rsnano::rsn_callback_tcp_socket_remote_endpoint (tcp_socket_remote_endpoint);
 	rsnano::rsn_callback_tcp_socket_dispatch (tcp_socket_dispatch);

@@ -32,6 +32,12 @@ pub trait TcpSocketFacade {
         len: usize,
         callback: Box<dyn Fn(ErrorCode, usize)>,
     );
+    fn async_read2(
+        &self,
+        buffer: &Arc<Mutex<Vec<u8>>>,
+        len: usize,
+        callback: Box<dyn Fn(ErrorCode, usize)>,
+    );
     fn async_write(
         &self,
         buffer: &dyn SharedConstBuffer,
@@ -209,6 +215,12 @@ pub trait Socket {
         size: usize,
         callback: Box<dyn Fn(ErrorCode, usize)>,
     );
+    fn async_read2(
+        &self,
+        buffer: Arc<Mutex<Vec<u8>>>,
+        size: usize,
+        callback: Box<dyn Fn(ErrorCode, usize)>,
+    );
     fn async_write(
         &self,
         buffer: Arc<dyn SharedConstBuffer>,
@@ -261,6 +273,39 @@ impl Socket for Arc<SocketImpl> {
                 let self_clone = self.clone();
 
                 self.tcp_socket.async_read(
+                    &buffer,
+                    size,
+                    Box::new(move |ec, len| {
+                        if ec.is_err() {
+                            self_clone.observer.read_error();
+                        } else {
+                            self_clone.observer.read_successful(len);
+                            self_clone.set_last_completion();
+                            self_clone.set_last_receive_time();
+                        }
+                        callback(ec, len);
+                    }),
+                );
+            }
+        } else {
+            debug_assert!(false); // async_read called with incorrect buffer size
+            callback(ErrorCode::no_buffer_space(), 0);
+        }
+    }
+
+    fn async_read2(
+        &self,
+        buffer: Arc<Mutex<Vec<u8>>>,
+        size: usize,
+        callback: Box<dyn Fn(ErrorCode, usize)>,
+    ) {
+        let buffer_len = { buffer.lock().unwrap().len() };
+        if size <= buffer_len {
+            if !self.is_closed() {
+                self.set_default_timeout();
+                let self_clone = self.clone();
+
+                self.tcp_socket.async_read2(
                     &buffer,
                     size,
                     Box::new(move |ec, len| {

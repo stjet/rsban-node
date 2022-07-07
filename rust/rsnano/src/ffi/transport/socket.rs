@@ -7,13 +7,13 @@ use crate::{
         BufferWrapper, SharedConstBuffer, Socket, SocketBuilder, SocketImpl, SocketType,
         TcpSocketFacade,
     },
-    utils::ErrorCode,
+    utils::{BufferHandle, ErrorCode},
 };
 use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     ops::Deref,
-    sync::{atomic::Ordering, Arc, Weak},
+    sync::{atomic::Ordering, Arc, Mutex, Weak},
     time::Duration,
 };
 
@@ -286,6 +286,22 @@ pub unsafe extern "C" fn rsn_socket_async_read(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_socket_async_read2(
+    handle: *mut SocketHandle,
+    buffer: *mut BufferHandle,
+    size: usize,
+    callback: SocketReadCallback,
+    destroy_context: SocketDestroyContext,
+    context: *mut c_void,
+) {
+    let cb_wrapper = ReadCallbackWrapper::new(callback, destroy_context, context);
+    let cb = Box::new(move |ec, size| {
+        cb_wrapper.execute(ec, size);
+    });
+    (*handle).async_read2(Arc::clone(&(*buffer)), size, cb);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_async_write(
     handle: *mut SocketHandle,
     buffer: *mut c_void,
@@ -467,11 +483,20 @@ pub struct AsyncReadCallbackHandle(Box<dyn Fn(ErrorCode, usize)>);
 type AsyncReadCallback =
     unsafe extern "C" fn(*mut c_void, *mut c_void, usize, *mut AsyncReadCallbackHandle);
 
+type AsyncRead2Callback =
+    unsafe extern "C" fn(*mut c_void, *mut BufferHandle, usize, *mut AsyncReadCallbackHandle);
+
 static mut ASYNC_READ_CALLBACK: Option<AsyncReadCallback> = None;
+static mut ASYNC_READ2_CALLBACK: Option<AsyncRead2Callback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_tcp_socket_async_read(f: AsyncReadCallback) {
     ASYNC_READ_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_async_read2(f: AsyncRead2Callback) {
+    ASYNC_READ2_CALLBACK = Some(f);
 }
 
 pub struct AsyncWriteCallbackHandle(Option<Box<dyn FnOnce(ErrorCode, usize)>>);
@@ -595,6 +620,23 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
             ASYNC_READ_CALLBACK.expect("ASYNC_READ_CALLBACK missing")(
                 self.handle,
                 buffer.handle(),
+                len,
+                callback_handle,
+            );
+        }
+    }
+
+    fn async_read2(
+        &self,
+        buffer: &Arc<Mutex<Vec<u8>>>,
+        len: usize,
+        callback: Box<dyn Fn(ErrorCode, usize)>,
+    ) {
+        let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(callback)));
+        unsafe {
+            ASYNC_READ2_CALLBACK.expect("ASYNC_READ2_CALLBACK missing")(
+                self.handle,
+                BufferHandle::new(buffer.clone()),
                 len,
                 callback_handle,
             );

@@ -66,6 +66,17 @@ void nano::tcp_socket_facade::async_read (std::shared_ptr<std::vector<uint8_t>> 
 	}));
 }
 
+void nano::tcp_socket_facade::async_read (std::shared_ptr<nano::buffer_wrapper> const & buffer_a, size_t len_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
+{
+	auto this_l{ shared_from_this () };
+	boost::asio::post (strand, boost::asio::bind_executor (strand, [buffer_a, callback = std::move (callback_a), len_a, this_l] () mutable {
+		boost::asio::async_read (this_l->tcp_socket, boost::asio::buffer (buffer_a->data (), len_a),
+		boost::asio::bind_executor (this_l->strand, [buffer_a, callback = std::move (callback), this_l] (boost::system::error_code const & ec, std::size_t len) {
+			callback (ec, len);
+		}));
+	}));
+}
+
 void nano::tcp_socket_facade::async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
 {
 	nano::async_write (tcp_socket, buffer_a,
@@ -212,6 +223,14 @@ void nano::socket::async_read (std::shared_ptr<std::vector<uint8_t>> const & buf
 	});
 	auto buffer_ptr{ new std::shared_ptr<std::vector<uint8_t>> (buffer_a) };
 	rsnano::rsn_socket_async_read (handle, buffer_ptr, size_a, async_read_adapter, async_read_delete_context, cb_wrapper);
+}
+
+void nano::socket::async_read (std::shared_ptr<nano::buffer_wrapper> const & buffer_a, std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
+{
+	auto cb_wrapper = new std::function<void (boost::system::error_code const &, std::size_t)> ([callback = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code const & ec, std::size_t size) {
+		callback (ec, size);
+	});
+	rsnano::rsn_socket_async_read2 (handle, buffer_a->handle, size_a, async_read_adapter, async_read_delete_context, cb_wrapper);
 }
 
 void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)

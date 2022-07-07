@@ -246,7 +246,7 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 }
 
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
-	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
+	receive_buffer (std::make_shared<buffer_wrapper> (rsnano::rsn_buffer_create (1024))),
 	publish_filter (node_a->network.publish_filter),
 	workers (node_a->workers),
 	io_ctx (node_a->io_ctx),
@@ -263,7 +263,6 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (observer);
 	handle = rsnano::rsn_bootstrap_server_create (socket_a->handle, &config_dto, node_a->logger.get (), observer_handle, node_a->flags.disable_bootstrap_listener, node_a->config->bootstrap_connections_max);
 	debug_assert (socket_a != nullptr);
-	receive_buffer->resize (1024);
 }
 
 nano::bootstrap_server::~bootstrap_server ()

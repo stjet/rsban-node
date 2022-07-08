@@ -421,8 +421,8 @@ private:
 void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackHandle * callback_a)
 {
 	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-	auto pool{ static_cast<nano::thread_pool *> (handle_a) };
-	pool->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_ms), [callback_wrapper] () {
+	auto pool{ static_cast<std::shared_ptr<nano::thread_pool> *> (handle_a) };
+	(*pool)->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_ms), [callback_wrapper] () {
 		callback_wrapper->execute ();
 	});
 }

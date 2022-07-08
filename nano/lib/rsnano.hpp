@@ -928,6 +928,7 @@ const NodeConfigDto * config,
 void * logger,
 void * observer,
 NetworkFilterHandle * publish_filter,
+void * workers,
 bool disable_bootstrap_listener,
 uintptr_t connections_max);
 
@@ -976,6 +977,8 @@ SocketHandle * rsn_bootstrap_server_socket (BootstrapServerHandle * handle);
 void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_unlock (BootstrapServerLockHandle * lock_handle);
+
+void * rsn_bootstrap_server_workers (BootstrapServerHandle * handle);
 
 BufferHandle * rsn_buffer_create (uintptr_t len);
 

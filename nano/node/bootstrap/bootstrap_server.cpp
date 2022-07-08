@@ -246,7 +246,6 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 }
 
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
-	workers (node_a->workers),
 	io_ctx (node_a->io_ctx),
 	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) },
 	observer (node_a->bootstrap),
@@ -259,7 +258,16 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 {
 	auto config_dto{ node_a->config->to_dto () };
 	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (observer);
-	handle = rsnano::rsn_bootstrap_server_create (socket_a->handle, &config_dto, node_a->logger.get (), observer_handle, node_a->network.publish_filter->handle, node_a->flags.disable_bootstrap_listener, node_a->config->bootstrap_connections_max);
+	auto workers = new std::shared_ptr<nano::thread_pool> (node_a->workers);
+	handle = rsnano::rsn_bootstrap_server_create (
+	socket_a->handle,
+	&config_dto,
+	node_a->logger.get (),
+	observer_handle,
+	node_a->network.publish_filter->handle,
+	workers,
+	node_a->flags.disable_bootstrap_listener,
+	node_a->config->bootstrap_connections_max);
 	debug_assert (socket_a != nullptr);
 }
 
@@ -694,7 +702,9 @@ void nano::bootstrap_server::finish_request ()
 	}
 
 	std::weak_ptr<nano::bootstrap_server> this_w (shared_from_this ());
-	workers->add_timed_task (std::chrono::steady_clock::now () + (config->tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w] () {
+	auto workers_ptr = rsnano::rsn_bootstrap_server_workers (handle);
+	auto workers = static_cast<std::shared_ptr<nano::thread_pool> *> (workers_ptr);
+	(*workers)->add_timed_task (std::chrono::steady_clock::now () + (config->tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w] () {
 		if (auto this_l = this_w.lock ())
 		{
 			this_l->timeout ();

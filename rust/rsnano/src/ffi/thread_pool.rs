@@ -25,6 +25,10 @@ impl ThreadPool for FfiThreadPool {
             }
         }
     }
+
+    fn handle(&self) -> *mut c_void {
+        self.handle
+    }
 }
 pub struct VoidFnCallbackHandle(Option<Box<dyn FnOnce()>>);
 

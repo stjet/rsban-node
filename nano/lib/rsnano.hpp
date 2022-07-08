@@ -354,6 +354,7 @@ struct CreateBootstrapServerParams
 	const NetworkConstantsDto * network;
 	bool disable_bootstrap_listener;
 	uintptr_t connections_max;
+	StatHandle * stats;
 };
 
 struct EndpointDto
@@ -988,6 +989,8 @@ const EndpointDto * endpoint);
 void rsn_bootstrap_server_set_remote_node_id (BootstrapServerHandle * handle, const uint8_t * node_id);
 
 SocketHandle * rsn_bootstrap_server_socket (BootstrapServerHandle * handle);
+
+StatHandle * rsn_bootstrap_server_stats (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
 

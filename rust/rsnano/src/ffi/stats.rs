@@ -72,6 +72,12 @@ impl From<&StatConfigDto> for StatConfig {
 
 pub struct StatHandle(Arc<Stat>);
 
+impl StatHandle {
+    pub fn new(stat: &Arc<Stat>) -> *mut Self {
+        Box::into_raw(Box::new(StatHandle(Arc::clone(stat))))
+    }
+}
+
 impl Deref for StatHandle {
     type Target = Arc<Stat>;
 

@@ -7,6 +7,7 @@ use crate::{
         thread_pool::FfiThreadPool,
         transport::{EndpointDto, SocketHandle},
         DestroyCallback, LoggerMT, NetworkConstantsDto, NetworkFilterHandle, NodeConfigDto,
+        StatHandle,
     },
     messages::Message,
     transport::SocketType,
@@ -36,6 +37,7 @@ pub struct CreateBootstrapServerParams {
     pub network: *const NetworkConstantsDto,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
+    pub stats: *mut StatHandle,
 }
 
 #[no_mangle]
@@ -50,6 +52,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let workers = Arc::new(FfiThreadPool::new(params.workers));
     let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
     let network = NetworkConstants::try_from(&*params.network).unwrap();
+    let stats = Arc::clone(&(*params.stats));
     let mut server = BootstrapServer::new(
         socket,
         config,
@@ -59,6 +62,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         workers,
         io_ctx,
         network,
+        stats,
     );
     server.disable_bootstrap_listener = params.disable_bootstrap_listener;
     server.connections_max = params.connections_max;
@@ -306,6 +310,13 @@ pub unsafe extern "C" fn rsn_bootstrap_server_logger(
     handle: *mut BootstrapServerHandle,
 ) -> *mut c_void {
     (*handle).0.logger.handle()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_stats(
+    handle: *mut BootstrapServerHandle,
+) -> *mut StatHandle {
+    StatHandle::new(&(*handle).0.stats)
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

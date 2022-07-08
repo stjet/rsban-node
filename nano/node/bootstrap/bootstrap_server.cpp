@@ -247,7 +247,6 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
 	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) },
-	stats{ node_a->stats },
 	config{ node_a->config },
 	network_params{ node_a->network_params },
 	disable_bootstrap_bulk_pull_server{ node_a->flags.disable_bootstrap_bulk_pull_server },
@@ -268,6 +267,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	params.network = &network_dto;
 	params.disable_bootstrap_listener = node_a->flags.disable_bootstrap_listener;
 	params.connections_max = node_a->config->bootstrap_connections_max;
+	params.stats = node_a->stats->handle;
 	handle = rsnano::rsn_bootstrap_server_create (&params);
 	debug_assert (socket_a != nullptr);
 }
@@ -321,7 +321,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 			{
 				case nano::message_type::bulk_pull:
 				{
-					stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull, nano::stat::dir::in);
+					stats ()->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull, nano::stat::dir::in);
 					get_socket ()->async_read (get_buffer (), header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_bulk_pull_action (ec, size_a, header);
 					});
@@ -329,7 +329,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				}
 				case nano::message_type::bulk_pull_account:
 				{
-					stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_account, nano::stat::dir::in);
+					stats ()->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_account, nano::stat::dir::in);
 					get_socket ()->async_read (get_buffer (), header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_bulk_pull_account_action (ec, size_a, header);
 					});
@@ -337,7 +337,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				}
 				case nano::message_type::frontier_req:
 				{
-					stats->inc (nano::stat::type::bootstrap, nano::stat::detail::frontier_req, nano::stat::dir::in);
+					stats ()->inc (nano::stat::type::bootstrap, nano::stat::detail::frontier_req, nano::stat::dir::in);
 					get_socket ()->async_read (get_buffer (), header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
 						this_l->receive_frontier_req_action (ec, size_a, header);
 					});
@@ -345,7 +345,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				}
 				case nano::message_type::bulk_push:
 				{
-					stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_push, nano::stat::dir::in);
+					stats ()->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_push, nano::stat::dir::in);
 					if (make_bootstrap_connection ())
 					{
 						add_request (std::make_unique<nano::bulk_push> (header));
@@ -400,7 +400,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 						}
 						else
 						{
-							stats->inc (nano::stat::type::telemetry, nano::stat::detail::request_within_protection_cache_zone);
+							stats ()->inc (nano::stat::type::telemetry, nano::stat::detail::request_within_protection_cache_zone);
 						}
 					}
 					receive ();
@@ -578,7 +578,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 					}
 					else
 					{
-						stats->inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
+						stats ()->inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
 					}
 				}
 				receive ();
@@ -586,7 +586,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 		}
 		else
 		{
-			stats->inc (nano::stat::type::filter, nano::stat::detail::duplicate_publish);
+			stats ()->inc (nano::stat::type::filter, nano::stat::detail::duplicate_publish);
 			receive ();
 		}
 	}
@@ -686,7 +686,7 @@ void nano::bootstrap_server::finish_request ()
 	}
 	else
 	{
-		stats->inc (nano::stat::type::bootstrap, nano::stat::detail::request_underflow);
+		stats ()->inc (nano::stat::type::bootstrap, nano::stat::detail::request_underflow);
 	}
 
 	while (!is_request_queue_empty (lock))
@@ -981,6 +981,12 @@ void nano::bootstrap_server::set_remote_endpoint (nano::tcp_endpoint const & end
 nano::logger_mt * nano::bootstrap_server::logger () const
 {
 	return static_cast<nano::logger_mt *> (rsnano::rsn_bootstrap_server_logger (handle));
+}
+
+std::unique_ptr<nano::stat> nano::bootstrap_server::stats () const
+{
+	auto stats_handle{ rsnano::rsn_bootstrap_server_stats (handle) };
+	return std::make_unique<nano::stat> (stats_handle);
 }
 
 std::shared_ptr<nano::socket> const nano::bootstrap_server::get_socket () const

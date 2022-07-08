@@ -11,6 +11,7 @@ use std::{
 use crate::{
     logger_mt::Logger,
     messages::Message,
+    stats::Stat,
     transport::{Socket, SocketImpl, SocketType},
     utils::{IoContext, ThreadPool},
     Account, NetworkConstants, NetworkFilter, NodeConfig, TelemetryCacheCutoffs,
@@ -49,6 +50,7 @@ pub struct BootstrapServer {
     network: NetworkConstants,
     last_telemetry_req: Mutex<Instant>,
     unique_id: usize,
+    pub stats: Arc<Stat>,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -63,6 +65,7 @@ impl BootstrapServer {
         workers: Arc<dyn ThreadPool>,
         io_ctx: Arc<dyn IoContext>,
         network: NetworkConstants,
+        stats: Arc<Stat>,
     ) -> Self {
         Self {
             socket,
@@ -85,6 +88,7 @@ impl BootstrapServer {
             last_telemetry_req: Mutex::new(Instant::now() - Duration::from_secs(60 * 60)),
             network,
             unique_id: NEXT_UNIQUE_ID.fetch_add(1, Ordering::Relaxed),
+            stats,
         }
     }
 

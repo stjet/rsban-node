@@ -278,6 +278,7 @@ public:
 
 	/** Constructor using the default config values */
 	stat ();
+	stat (rsnano::StatHandle * handle_a);
 	~stat ();
 
 	/**

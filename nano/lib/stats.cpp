@@ -111,6 +111,11 @@ nano::stat::stat () :
 {
 }
 
+nano::stat::stat (rsnano::StatHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 nano::stat::stat (nano::stat_config config)
 {
 	auto config_dto{ config.to_dto () };

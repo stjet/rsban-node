@@ -11,7 +11,7 @@ use crate::{
     logger_mt::Logger,
     messages::Message,
     transport::{Socket, SocketImpl, SocketType},
-    utils::ThreadPool,
+    utils::{IoContext, ThreadPool},
     Account, NetworkFilter, NodeConfig,
 };
 
@@ -43,6 +43,7 @@ pub struct BootstrapServer {
     pub receive_buffer: Arc<Mutex<Vec<u8>>>,
     pub publish_filter: Arc<NetworkFilter>,
     pub workers: Arc<dyn ThreadPool>,
+    pub io_ctx: Arc<dyn IoContext>,
 }
 
 impl BootstrapServer {
@@ -53,6 +54,7 @@ impl BootstrapServer {
         observer: Arc<dyn BootstrapServerObserver>,
         publish_filter: Arc<NetworkFilter>,
         workers: Arc<dyn ThreadPool>,
+        io_ctx: Arc<dyn IoContext>,
     ) -> Self {
         Self {
             socket,
@@ -71,6 +73,7 @@ impl BootstrapServer {
             receive_buffer: Arc::new(Mutex::new(vec![0; 1024])),
             publish_filter,
             workers,
+            io_ctx,
         }
     }
 

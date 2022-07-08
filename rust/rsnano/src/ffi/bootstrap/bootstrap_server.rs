@@ -2,6 +2,7 @@ use crate::{
     bootstrap::{BootstrapServer, BootstrapServerObserver},
     ffi::{
         copy_account_bytes,
+        io_context::{FfiIoContext, IoContextHandle},
         messages::MessageHandle,
         thread_pool::FfiThreadPool,
         transport::{EndpointDto, SocketHandle},
@@ -31,6 +32,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     observer: *mut c_void,
     publish_filter: *mut NetworkFilterHandle,
     workers: *mut c_void,
+    io_ctx: *mut IoContextHandle,
     disable_bootstrap_listener: bool,
     connections_max: usize,
 ) -> *mut BootstrapServerHandle {
@@ -40,8 +42,16 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let observer = Arc::new(FfiBootstrapServerObserver::new(observer));
     let publish_filter = Arc::clone(&*publish_filter);
     let workers = Arc::new(FfiThreadPool::new(workers));
-    let mut server =
-        BootstrapServer::new(socket, config, logger, observer, publish_filter, workers);
+    let io_ctx = Arc::new(FfiIoContext::new((*io_ctx).raw_handle()));
+    let mut server = BootstrapServer::new(
+        socket,
+        config,
+        logger,
+        observer,
+        publish_filter,
+        workers,
+        io_ctx,
+    );
     server.disable_bootstrap_listener = disable_bootstrap_listener;
     server.connections_max = connections_max;
     Box::into_raw(Box::new(BootstrapServerHandle(Arc::new(server))))
@@ -256,6 +266,13 @@ pub unsafe extern "C" fn rsn_bootstrap_server_workers(
     handle: *mut BootstrapServerHandle,
 ) -> *mut c_void {
     (*handle).0.workers.handle()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_io_ctx(
+    handle: *mut BootstrapServerHandle,
+) -> *mut IoContextHandle {
+    IoContextHandle::new((*handle).0.io_ctx.raw_handle())
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

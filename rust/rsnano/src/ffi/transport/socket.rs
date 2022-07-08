@@ -1,7 +1,7 @@
 use num::FromPrimitive;
 
 use crate::{
-    ffi::DestroyCallback,
+    ffi::{DestroyCallback, DispatchCallback},
     stats::SocketStats,
     transport::{
         BufferWrapper, SharedConstBuffer, Socket, SocketBuilder, SocketImpl, SocketType,
@@ -443,8 +443,6 @@ type RemoteEndpointCallback =
     unsafe extern "C" fn(*mut c_void, *mut EndpointDto, *mut ErrorCodeDto);
 
 static mut REMOTE_ENDPOINT_CALLBACK: Option<RemoteEndpointCallback> = None;
-
-type DispatchCallback = unsafe extern "C" fn(*mut c_void, *mut VoidFnCallbackHandle);
 
 static mut DISPATCH_CALLBACK: Option<DispatchCallback> = None;
 static mut POST_CALLBACK: Option<DispatchCallback> = None;

@@ -246,7 +246,6 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 }
 
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
-	io_ctx (node_a->io_ctx),
 	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) },
 	observer (node_a->bootstrap),
 	logger{ node_a->logger },
@@ -259,6 +258,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	auto config_dto{ node_a->config->to_dto () };
 	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (observer);
 	auto workers = new std::shared_ptr<nano::thread_pool> (node_a->workers);
+	rsnano::io_ctx_wrapper io_ctx (node_a->io_ctx);
 	handle = rsnano::rsn_bootstrap_server_create (
 	socket_a->handle,
 	&config_dto,
@@ -266,6 +266,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	observer_handle,
 	node_a->network.publish_filter->handle,
 	workers,
+	io_ctx.handle (),
 	node_a->flags.disable_bootstrap_listener,
 	node_a->config->bootstrap_connections_max);
 	debug_assert (socket_a != nullptr);
@@ -714,8 +715,9 @@ void nano::bootstrap_server::finish_request ()
 
 void nano::bootstrap_server::finish_request_async ()
 {
+	rsnano::io_ctx_wrapper io_ctx (rsnano::rsn_bootstrap_server_io_ctx (handle));
 	std::weak_ptr<nano::bootstrap_server> this_w (shared_from_this ());
-	io_ctx.post ([this_w] () {
+	io_ctx.inner ()->post ([this_w] () {
 		if (auto this_l = this_w.lock ())
 		{
 			this_l->finish_request ();

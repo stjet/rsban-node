@@ -179,7 +179,6 @@ private:
 	std::shared_ptr<nano::buffer_wrapper> get_buffer () const;
 	std::shared_ptr<nano::network_filter> get_publish_filter () const;
 
-	boost::asio::io_context & io_ctx;
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
 	std::chrono::steady_clock::time_point last_telemetry_req{ std::chrono::steady_clock::time_point () };
 	std::shared_ptr<nano::bootstrap_server_observer> observer;

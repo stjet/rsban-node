@@ -49,6 +49,8 @@ struct ChannelHandle;
 
 struct EpochsHandle;
 
+struct IoContextHandle;
+
 struct LedgerHandle;
 
 struct LocalVoteHistoryHandle;
@@ -375,6 +377,8 @@ using BufferSizeCallback = uintptr_t (*) (void *);
 
 using InAvailCallback = uintptr_t (*) (void *, int32_t *);
 
+using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
+
 using LedgerBlockOrPrunedExistsCallback = bool (*) (void *, const uint8_t *);
 
 struct MessageDto
@@ -420,8 +424,6 @@ using AsyncRead2Callback = void (*) (void *, BufferHandle *, uintptr_t, AsyncRea
 using AsyncWriteCallback = void (*) (void *, void *, AsyncWriteCallbackHandle *);
 
 using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
-
-using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
 
 using SocketLocalEndpointCallback = void (*) (void *, EndpointDto *);
 
@@ -929,12 +931,15 @@ void * logger,
 void * observer,
 NetworkFilterHandle * publish_filter,
 void * workers,
+IoContextHandle * io_ctx,
 bool disable_bootstrap_listener,
 uintptr_t connections_max);
 
 void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
 
 uintptr_t rsn_bootstrap_server_inner_ptr (BootstrapServerHandle * handle);
+
+IoContextHandle * rsn_bootstrap_server_io_ctx (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_is_stopped (BootstrapServerHandle * handle);
 
@@ -1017,6 +1022,8 @@ void rsn_callback_buffer_destroy (DestroyCallback f);
 void rsn_callback_buffer_size (BufferSizeCallback f);
 
 void rsn_callback_in_avail (InAvailCallback f);
+
+void rsn_callback_io_ctx_post (DispatchCallback f);
 
 void rsn_callback_ledger_block_or_pruned_exists (LedgerBlockOrPrunedExistsCallback f);
 
@@ -1190,6 +1197,13 @@ StatLogSinkHandle * rsn_file_writer_create (const int8_t * filename);
 void rsn_from_topic (uint8_t topic, StringDto * result);
 
 void rsn_hardened_constants_get (uint8_t * not_an_account, uint8_t * random_128);
+
+/// handle is a `boost::asio::io_context *`
+IoContextHandle * rsn_io_ctx_create (void * handle);
+
+void rsn_io_ctx_destroy (IoContextHandle * handle);
+
+void * rsn_io_ctx_get_ctx (IoContextHandle * handle);
 
 int32_t rsn_ipc_config_create (IpcConfigDto * dto, const NetworkConstantsDto * network_constants);
 

@@ -1,5 +1,6 @@
 mod blake2b;
 mod buffer;
+mod io_context;
 mod json;
 mod stream;
 mod thread_pool;
@@ -7,6 +8,7 @@ mod toml;
 
 pub use blake2b::*;
 pub use buffer::*;
+pub use io_context::*;
 pub use json::*;
 pub use stream::*;
 pub use thread_pool::*;

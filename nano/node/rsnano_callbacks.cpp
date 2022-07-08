@@ -418,6 +418,15 @@ private:
 	rsnano::VoidFnCallbackHandle * callback_m;
 };
 
+void io_ctx_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
+{
+	auto io_ctx{ static_cast<boost::asio::io_context *> (handle_a) };
+	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
+	io_ctx->post ([callback_wrapper] () {
+		callback_wrapper->execute ();
+	});
+}
+
 void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackHandle * callback_a)
 {
 	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
@@ -750,6 +759,8 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_ledger_block_or_pruned_exists (ledger_block_or_pruned_exists);
 	rsnano::rsn_callback_block_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_add_timed_task (add_timed_task);
+
+	rsnano::rsn_callback_tcp_socket_post (io_ctx_post);
 
 	rsnano::rsn_callback_tcp_socket_async_connect (tcp_socket_async_connect);
 	rsnano::rsn_callback_tcp_socket_async_read (tcp_socket_async_read);

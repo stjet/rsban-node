@@ -1,7 +1,7 @@
 use crate::{
     bootstrap::{BootstrapServer, BootstrapServerExt, BootstrapServerObserver},
     ffi::{
-        copy_account_bytes,
+        copy_account_bytes, fill_node_config_dto,
         io_context::{FfiIoContext, IoContextHandle},
         messages::MessageHandle,
         thread_pool::FfiThreadPool,
@@ -317,6 +317,14 @@ pub unsafe extern "C" fn rsn_bootstrap_server_stats(
     handle: *mut BootstrapServerHandle,
 ) -> *mut StatHandle {
     StatHandle::new(&(*handle).0.stats)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_config(
+    handle: *mut BootstrapServerHandle,
+    config: *mut NodeConfigDto,
+) {
+    fill_node_config_dto(&mut *config, &(*handle).0.config);
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

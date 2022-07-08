@@ -9,5 +9,6 @@ mod utility;
 mod voting_constants;
 
 pub(crate) use ledger::*;
+pub use network_filter::NetworkFilterHandle;
 pub use network_params::*;
 pub use utility::*;

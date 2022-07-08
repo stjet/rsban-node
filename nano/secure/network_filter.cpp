@@ -9,6 +9,11 @@ nano::network_filter::network_filter (size_t size_a) :
 {
 }
 
+nano::network_filter::network_filter (rsnano::NetworkFilterHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 nano::network_filter::~network_filter ()
 {
 	rsnano::rsn_network_filter_destroy (handle);

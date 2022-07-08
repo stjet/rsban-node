@@ -1,14 +1,26 @@
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 use crate::NetworkFilter;
 
 pub struct NetworkFilterHandle(Arc<NetworkFilter>);
 
+impl NetworkFilterHandle {
+    pub fn new(filter: Arc<NetworkFilter>) -> *mut Self {
+        Box::into_raw(Box::new(NetworkFilterHandle(filter)))
+    }
+}
+
+impl Deref for NetworkFilterHandle {
+    type Target = Arc<NetworkFilter>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_network_filter_create(size: usize) -> *mut NetworkFilterHandle {
-    Box::into_raw(Box::new(NetworkFilterHandle(Arc::new(NetworkFilter::new(
-        size,
-    )))))
+    NetworkFilterHandle::new(Arc::new(NetworkFilter::new(size)))
 }
 
 #[no_mangle]
@@ -23,7 +35,7 @@ pub unsafe extern "C" fn rsn_network_filter_apply(
     size: usize,
     digest: *mut u8,
 ) -> bool {
-    let (calc_digest, existed) = (*handle).0.apply(std::slice::from_raw_parts(bytes, size));
+    let (calc_digest, existed) = (*handle).apply(std::slice::from_raw_parts(bytes, size));
     if !digest.is_null() {
         std::slice::from_raw_parts_mut(digest, 16).copy_from_slice(&calc_digest.to_be_bytes());
     }
@@ -36,7 +48,7 @@ pub unsafe extern "C" fn rsn_network_filter_clear(
     digest: *const [u8; 16],
 ) {
     let digest = u128::from_be_bytes(*digest);
-    (*handle).0.clear(digest);
+    (*handle).clear(digest);
 }
 
 #[no_mangle]
@@ -48,7 +60,7 @@ pub unsafe extern "C" fn rsn_network_filter_clear_many(
     let digests = std::slice::from_raw_parts(digests, count)
         .iter()
         .map(|bytes| u128::from_be_bytes(*bytes));
-    (*handle).0.clear_many(digests);
+    (*handle).clear_many(digests);
 }
 
 #[no_mangle]
@@ -58,12 +70,12 @@ pub unsafe extern "C" fn rsn_network_filter_clear_bytes(
     count: usize,
 ) {
     let bytes = std::slice::from_raw_parts(bytes, count);
-    (*handle).0.clear_bytes(bytes);
+    (*handle).clear_bytes(bytes);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_network_filter_clear_all(handle: *mut NetworkFilterHandle) {
-    (*handle).0.clear_all();
+    (*handle).clear_all();
 }
 
 #[no_mangle]
@@ -74,6 +86,6 @@ pub unsafe extern "C" fn rsn_network_filter_hash(
     digest: *mut [u8; 16],
 ) {
     let bytes = std::slice::from_raw_parts(bytes, count);
-    let result = (*handle).0.hash(bytes);
+    let result = (*handle).hash(bytes);
     (*digest) = result.to_be_bytes();
 }

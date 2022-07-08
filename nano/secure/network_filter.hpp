@@ -21,6 +21,7 @@ class network_filter final
 public:
 	network_filter () = delete;
 	network_filter (size_t size_a);
+	network_filter (rsnano::NetworkFilterHandle * handle_a);
 	network_filter (nano::network_filter const &) = delete;
 	~network_filter ();
 	/**

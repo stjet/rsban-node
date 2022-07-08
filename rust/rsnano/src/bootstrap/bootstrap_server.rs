@@ -11,7 +11,7 @@ use crate::{
     logger_mt::Logger,
     messages::Message,
     transport::{Socket, SocketImpl, SocketType},
-    Account, NodeConfig,
+    Account, NetworkFilter, NodeConfig,
 };
 
 pub trait BootstrapServerObserver {
@@ -40,6 +40,7 @@ pub struct BootstrapServer {
     pub remote_endpoint: Mutex<SocketAddr>,
     pub remote_node_id: Mutex<Account>,
     pub receive_buffer: Arc<Mutex<Vec<u8>>>,
+    pub publish_filter: Arc<NetworkFilter>,
 }
 
 impl BootstrapServer {
@@ -48,6 +49,7 @@ impl BootstrapServer {
         config: Arc<NodeConfig>,
         logger: Arc<dyn Logger>,
         observer: Arc<dyn BootstrapServerObserver>,
+        publish_filter: Arc<NetworkFilter>,
     ) -> Self {
         Self {
             socket,
@@ -64,6 +66,7 @@ impl BootstrapServer {
             )),
             remote_node_id: Mutex::new(Account::new()),
             receive_buffer: Arc::new(Mutex::new(vec![0; 1024])),
+            publish_filter,
         }
     }
 

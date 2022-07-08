@@ -927,6 +927,7 @@ BootstrapServerHandle * rsn_bootstrap_server_create (SocketHandle * socket,
 const NodeConfigDto * config,
 void * logger,
 void * observer,
+NetworkFilterHandle * publish_filter,
 bool disable_bootstrap_listener,
 uintptr_t connections_max);
 
@@ -943,6 +944,8 @@ BootstrapServerLockHandle * rsn_bootstrap_server_lock_clone (BootstrapServerLock
 void rsn_bootstrap_server_lock_destroy (BootstrapServerLockHandle * handle);
 
 bool rsn_bootstrap_server_make_bootstrap_connection (BootstrapServerHandle * handle);
+
+NetworkFilterHandle * rsn_bootstrap_server_publish_filter (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_queue_empty (BootstrapServerLockHandle * handle);
 

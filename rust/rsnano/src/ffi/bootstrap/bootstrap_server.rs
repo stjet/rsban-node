@@ -4,7 +4,7 @@ use crate::{
         copy_account_bytes,
         messages::MessageHandle,
         transport::{EndpointDto, SocketHandle},
-        DestroyCallback, LoggerMT, NodeConfigDto,
+        DestroyCallback, LoggerMT, NetworkFilterHandle, NodeConfigDto,
     },
     messages::Message,
     transport::SocketType,
@@ -28,6 +28,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     config: *const NodeConfigDto,
     logger: *mut c_void,
     observer: *mut c_void,
+    publish_filter: *mut NetworkFilterHandle,
     disable_bootstrap_listener: bool,
     connections_max: usize,
 ) -> *mut BootstrapServerHandle {
@@ -35,7 +36,8 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let config = Arc::new(NodeConfig::try_from(&*config).unwrap());
     let logger = Arc::new(LoggerMT::new(logger));
     let observer = Arc::new(FfiBootstrapServerObserver::new(observer));
-    let mut server = BootstrapServer::new(socket, config, logger, observer);
+    let publish_filter = Arc::clone(&*publish_filter);
+    let mut server = BootstrapServer::new(socket, config, logger, observer, publish_filter);
     server.disable_bootstrap_listener = disable_bootstrap_listener;
     server.connections_max = connections_max;
     Box::into_raw(Box::new(BootstrapServerHandle(Arc::new(server))))
@@ -230,11 +232,19 @@ pub unsafe extern "C" fn rsn_bootstrap_server_requests_push(
         }
     }
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_receive_buffer(
     handle: *mut BootstrapServerHandle,
 ) -> *mut BufferHandle {
     BufferHandle::new((*handle).0.receive_buffer.clone())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_publish_filter(
+    handle: *mut BootstrapServerHandle,
+) -> *mut NetworkFilterHandle {
+    NetworkFilterHandle::new(Arc::clone(&(*handle).0.publish_filter))
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

@@ -246,7 +246,6 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 }
 
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
-	publish_filter (node_a->network.publish_filter),
 	workers (node_a->workers),
 	io_ctx (node_a->io_ctx),
 	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) },
@@ -260,7 +259,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 {
 	auto config_dto{ node_a->config->to_dto () };
 	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (observer);
-	handle = rsnano::rsn_bootstrap_server_create (socket_a->handle, &config_dto, node_a->logger.get (), observer_handle, node_a->flags.disable_bootstrap_listener, node_a->config->bootstrap_connections_max);
+	handle = rsnano::rsn_bootstrap_server_create (socket_a->handle, &config_dto, node_a->logger.get (), observer_handle, node_a->network.publish_filter->handle, node_a->flags.disable_bootstrap_listener, node_a->config->bootstrap_connections_max);
 	debug_assert (socket_a != nullptr);
 }
 
@@ -555,7 +554,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 	if (!ec)
 	{
 		nano::uint128_t digest;
-		if (!publish_filter->apply (get_buffer ()->data (), size_a, &digest))
+		if (!get_publish_filter ()->apply (get_buffer ()->data (), size_a, &digest))
 		{
 			auto error (false);
 			nano::bufferstream stream (get_buffer ()->data (), size_a);
@@ -981,4 +980,10 @@ std::shared_ptr<nano::socket> const nano::bootstrap_server::get_socket () const
 std::shared_ptr<nano::buffer_wrapper> nano::bootstrap_server::get_buffer () const
 {
 	return std::make_shared<nano::buffer_wrapper> (rsnano::rsn_bootstrap_server_receive_buffer (handle));
+}
+
+std::shared_ptr<nano::network_filter> nano::bootstrap_server::get_publish_filter () const
+{
+	auto filter_handle = rsnano::rsn_bootstrap_server_publish_filter (handle);
+	return std::make_shared<nano::network_filter> (filter_handle);
 }

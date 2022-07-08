@@ -2,7 +2,7 @@ use std::{
     collections::VecDeque,
     net::{Ipv6Addr, SocketAddr},
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex,
     },
     time::{Duration, Instant},
@@ -21,7 +21,7 @@ pub trait BootstrapServerObserver {
     fn boostrap_server_exited(
         &self,
         socket_type: SocketType,
-        inner_ptr: usize,
+        unique_id: usize,
         endpoint: SocketAddr,
     );
     fn get_bootstrap_count(&self) -> usize;
@@ -48,7 +48,10 @@ pub struct BootstrapServer {
 
     network: NetworkConstants,
     last_telemetry_req: Mutex<Instant>,
+    unique_id: usize,
 }
+
+static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 
 impl BootstrapServer {
     pub fn new(
@@ -81,6 +84,7 @@ impl BootstrapServer {
             io_ctx,
             last_telemetry_req: Mutex::new(Instant::now() - Duration::from_secs(60 * 60)),
             network,
+            unique_id: NEXT_UNIQUE_ID.fetch_add(1, Ordering::Relaxed),
         }
     }
 
@@ -115,28 +119,33 @@ impl BootstrapServer {
         let lk = self.last_telemetry_req.lock().unwrap();
         lk.elapsed() >= TelemetryCacheCutoffs::network_to_time(&self.network)
     }
+
+    pub fn unique_id(&self) -> usize {
+        self.unique_id
+    }
 }
 
 impl Drop for BootstrapServer {
     fn drop(&mut self) {
+        let remote_ep = { self.remote_endpoint.lock().unwrap().clone() };
+        self.observer.boostrap_server_exited(
+            self.socket.socket_type(),
+            self.unique_id(),
+            remote_ep,
+        );
         self.stop();
     }
 }
 
 pub trait BootstrapServerExt {
     fn timeout(&self);
-    fn as_ptr(&self) -> usize;
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
     fn timeout(&self) {
         if self.socket.has_timed_out() {
-            self.observer.bootstrap_server_timeout(self.as_ptr());
+            self.observer.bootstrap_server_timeout(self.unique_id());
             self.socket.close();
         }
-    }
-
-    fn as_ptr(&self) -> usize {
-        Arc::as_ptr(self) as usize
     }
 }

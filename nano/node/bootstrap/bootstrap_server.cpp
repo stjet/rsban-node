@@ -166,7 +166,7 @@ void nano::bootstrap_listener::accept_action (boost::system::error_code const & 
 	{
 		auto connection (std::make_shared<nano::bootstrap_server> (socket_a, node.shared ()));
 		nano::lock_guard<nano::mutex> lock (mutex);
-		connections[connection->inner_ptr ()] = connection;
+		connections[connection->unique_id ()] = connection;
 		connection->receive ();
 	}
 	else
@@ -247,7 +247,6 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
 	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) },
-	observer (node_a->bootstrap),
 	logger{ node_a->logger },
 	stats{ node_a->stats },
 	config{ node_a->config },
@@ -276,7 +275,6 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 
 nano::bootstrap_server::~bootstrap_server ()
 {
-	observer->boostrap_server_exited (get_socket ()->type (), inner_ptr (), get_remote_endpoint ());
 	rsnano::rsn_bootstrap_server_destroy (handle);
 }
 
@@ -951,9 +949,9 @@ bool nano::bootstrap_server::is_stopped () const
 	return rsnano::rsn_bootstrap_server_is_stopped (handle);
 }
 
-std::uintptr_t nano::bootstrap_server::inner_ptr () const
+std::uintptr_t nano::bootstrap_server::unique_id () const
 {
-	return rsnano::rsn_bootstrap_server_inner_ptr (handle);
+	return rsnano::rsn_bootstrap_server_unique_id (handle);
 }
 
 nano::account nano::bootstrap_server::get_remote_node_id () const

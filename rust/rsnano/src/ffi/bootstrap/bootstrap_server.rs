@@ -71,10 +71,10 @@ pub unsafe extern "C" fn rsn_bootstrap_server_destroy(handle: *mut BootstrapServ
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_inner_ptr(
+pub unsafe extern "C" fn rsn_bootstrap_server_unique_id(
     handle: *mut BootstrapServerHandle,
 ) -> usize {
-    (*handle).0.as_ptr()
+    (*handle).0.unique_id()
 }
 
 #[no_mangle]
@@ -363,9 +363,9 @@ impl Drop for FfiBootstrapServerObserver {
 }
 
 impl BootstrapServerObserver for FfiBootstrapServerObserver {
-    fn bootstrap_server_timeout(&self, inner_ptr: usize) {
+    fn bootstrap_server_timeout(&self, unique_id: usize) {
         unsafe {
-            TIMEOUT_CALLBACK.expect("TIMEOUT_CALLBACK missing")(self.handle, inner_ptr);
+            TIMEOUT_CALLBACK.expect("TIMEOUT_CALLBACK missing")(self.handle, unique_id);
         }
     }
 

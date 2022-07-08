@@ -945,8 +945,6 @@ BootstrapServerHandle * rsn_bootstrap_server_create (const CreateBootstrapServer
 
 void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
 
-uintptr_t rsn_bootstrap_server_inner_ptr (BootstrapServerHandle * handle);
-
 IoContextHandle * rsn_bootstrap_server_io_ctx (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_is_stopped (BootstrapServerHandle * handle);
@@ -992,6 +990,8 @@ SocketHandle * rsn_bootstrap_server_socket (BootstrapServerHandle * handle);
 void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_timeout (BootstrapServerHandle * handle);
+
+uintptr_t rsn_bootstrap_server_unique_id (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_unlock (BootstrapServerLockHandle * lock_handle);
 

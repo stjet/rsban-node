@@ -55,7 +55,7 @@ public:
 	void boostrap_server_exited (nano::socket::type_t type_a, std::uintptr_t inner_ptr_a, nano::tcp_endpoint const & endpoint_a) override;
 
 	nano::mutex mutex;
-	std::unordered_map<std::uintptr_t, std::weak_ptr<nano::bootstrap_server>> connections;
+	std::unordered_map<std::size_t, std::weak_ptr<nano::bootstrap_server>> connections;
 	nano::tcp_endpoint endpoint ();
 	nano::node & node;
 	std::shared_ptr<nano::server_socket> listening_socket;
@@ -167,7 +167,7 @@ public:
 	bool make_bootstrap_connection ();
 	bool is_realtime_connection ();
 	bool is_stopped () const override;
-	std::uintptr_t inner_ptr () const;
+	std::size_t unique_id () const;
 	nano::account get_remote_node_id () const override;
 	void set_remote_node_id (nano::account account_a) override;
 	nano::tcp_endpoint get_remote_endpoint () const override;
@@ -180,7 +180,6 @@ private:
 	std::shared_ptr<nano::network_filter> get_publish_filter () const;
 
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
-	std::shared_ptr<nano::bootstrap_server_observer> observer;
 	std::shared_ptr<nano::logger_mt> logger;
 	std::shared_ptr<nano::stat> stats;
 	std::shared_ptr<nano::node_config> config;

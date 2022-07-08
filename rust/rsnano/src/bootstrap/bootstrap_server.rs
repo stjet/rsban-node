@@ -122,3 +122,21 @@ impl Drop for BootstrapServer {
         self.stop();
     }
 }
+
+pub trait BootstrapServerExt {
+    fn timeout(&self);
+    fn as_ptr(&self) -> usize;
+}
+
+impl BootstrapServerExt for Arc<BootstrapServer> {
+    fn timeout(&self) {
+        if self.socket.has_timed_out() {
+            self.observer.bootstrap_server_timeout(self.as_ptr());
+            self.socket.close();
+        }
+    }
+
+    fn as_ptr(&self) -> usize {
+        Arc::as_ptr(self) as usize
+    }
+}

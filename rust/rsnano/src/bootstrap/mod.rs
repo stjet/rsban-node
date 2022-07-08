@@ -4,7 +4,7 @@ mod bootstrap_server;
 
 pub(crate) use bootstrap_attempt::*;
 pub(crate) use bootstrap_initiator::*;
-pub use bootstrap_server::{BootstrapServer, BootstrapServerObserver};
+pub use bootstrap_server::{BootstrapServer, BootstrapServerExt, BootstrapServerObserver};
 
 mod bootstrap_limits {
     pub(crate) const PULL_COUNT_PER_CHECK: u64 = 8 * 1024;

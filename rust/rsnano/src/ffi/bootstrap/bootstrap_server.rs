@@ -1,5 +1,5 @@
 use crate::{
-    bootstrap::{BootstrapServer, BootstrapServerObserver},
+    bootstrap::{BootstrapServer, BootstrapServerExt, BootstrapServerObserver},
     ffi::{
         copy_account_bytes,
         io_context::{FfiIoContext, IoContextHandle},
@@ -74,8 +74,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_destroy(handle: *mut BootstrapServ
 pub unsafe extern "C" fn rsn_bootstrap_server_inner_ptr(
     handle: *mut BootstrapServerHandle,
 ) -> usize {
-    let ptr = Arc::as_ptr(&(*handle).0);
-    ptr as usize
+    (*handle).0.as_ptr()
 }
 
 #[no_mangle]
@@ -295,6 +294,11 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_last_telemetry_req(
     handle: *mut BootstrapServerHandle,
 ) {
     (*handle).0.set_last_telemetry_req();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_timeout(handle: *mut BootstrapServerHandle) {
+    (*handle).0.timeout();
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

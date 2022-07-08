@@ -256,7 +256,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	disable_tcp_realtime{ node_a->flags.disable_tcp_realtime }
 {
 	auto config_dto{ node_a->config->to_dto () };
-	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (observer);
+	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (node_a->bootstrap);
 	auto network_dto{ node_a->network_params.network.to_dto () };
 	rsnano::io_ctx_wrapper io_ctx (node_a->io_ctx);
 	rsnano::CreateBootstrapServerParams params;
@@ -729,11 +729,7 @@ void nano::bootstrap_server::finish_request_async ()
 
 void nano::bootstrap_server::timeout ()
 {
-	if (get_socket ()->has_timed_out ())
-	{
-		observer->bootstrap_server_timeout (inner_ptr ());
-		get_socket ()->close ();
-	}
+	rsnano::rsn_bootstrap_server_timeout (handle);
 }
 
 void nano::bootstrap_server::push_request (std::unique_ptr<nano::message> msg)

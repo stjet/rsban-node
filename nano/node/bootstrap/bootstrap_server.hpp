@@ -176,11 +176,11 @@ public:
 private:
 	void run_next (nano::bootstrap_server_lock & lock_a);
 	void set_remote_endpoint (nano::tcp_endpoint const & endpoint);
+	nano::logger_mt * logger () const;
 	std::shared_ptr<nano::buffer_wrapper> get_buffer () const;
 	std::shared_ptr<nano::network_filter> get_publish_filter () const;
 
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
-	std::shared_ptr<nano::logger_mt> logger;
 	std::shared_ptr<nano::stat> stats;
 	std::shared_ptr<nano::node_config> config;
 	nano::network_params & network_params;

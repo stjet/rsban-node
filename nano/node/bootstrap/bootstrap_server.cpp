@@ -247,7 +247,6 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
 	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) },
-	logger{ node_a->logger },
 	stats{ node_a->stats },
 	config{ node_a->config },
 	network_params{ node_a->network_params },
@@ -418,7 +417,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				{
 					if (config->logging.network_logging ())
 					{
-						logger->try_log (boost::str (boost::format ("Received invalid type from bootstrap connection %1%") % static_cast<uint8_t> (header.get_type ())));
+						logger ()->try_log (boost::str (boost::format ("Received invalid type from bootstrap connection %1%") % static_cast<uint8_t> (header.get_type ())));
 					}
 					break;
 				}
@@ -429,7 +428,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 	{
 		if (config->logging.bulk_pull_logging ())
 		{
-			logger->try_log (boost::str (boost::format ("Error while receiving type: %1%") % ec.message ()));
+			logger ()->try_log (boost::str (boost::format ("Error while receiving type: %1%") % ec.message ()));
 		}
 	}
 }
@@ -445,7 +444,7 @@ void nano::bootstrap_server::receive_bulk_pull_action (boost::system::error_code
 		{
 			if (config->logging.bulk_pull_logging ())
 			{
-				logger->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->get_start ().to_string () % request->get_end ().to_string () % (request->get_count () ? request->get_count () : std::numeric_limits<double>::infinity ()) % get_remote_endpoint ()));
+				logger ()->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->get_start ().to_string () % request->get_end ().to_string () % (request->get_count () ? request->get_count () : std::numeric_limits<double>::infinity ()) % get_remote_endpoint ()));
 			}
 			if (make_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
 			{
@@ -468,7 +467,7 @@ void nano::bootstrap_server::receive_bulk_pull_account_action (boost::system::er
 		{
 			if (config->logging.bulk_pull_logging ())
 			{
-				logger->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->get_account ().to_account () % nano::amount (request->get_minimum_amount ()).format_balance (nano::Mxrb_ratio, 10, true)));
+				logger ()->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->get_account ().to_account () % nano::amount (request->get_minimum_amount ()).format_balance (nano::Mxrb_ratio, 10, true)));
 			}
 			if (make_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
 			{
@@ -490,7 +489,7 @@ void nano::bootstrap_server::receive_frontier_req_action (boost::system::error_c
 		{
 			if (config->logging.bulk_pull_logging ())
 			{
-				logger->try_log (boost::str (boost::format ("Received frontier request for %1% with age %2%") % request->get_start ().to_string () % request->get_age ()));
+				logger ()->try_log (boost::str (boost::format ("Received frontier request for %1% with age %2%") % request->get_start ().to_string () % request->get_age ()));
 			}
 			if (make_bootstrap_connection ())
 			{
@@ -503,7 +502,7 @@ void nano::bootstrap_server::receive_frontier_req_action (boost::system::error_c
 	{
 		if (config->logging.network_logging ())
 		{
-			logger->try_log (boost::str (boost::format ("Error sending receiving frontier request: %1%") % ec.message ()));
+			logger ()->try_log (boost::str (boost::format ("Error sending receiving frontier request: %1%") % ec.message ()));
 		}
 	}
 }
@@ -528,7 +527,7 @@ void nano::bootstrap_server::receive_keepalive_action (boost::system::error_code
 	{
 		if (config->logging.network_keepalive_logging ())
 		{
-			logger->try_log (boost::str (boost::format ("Error receiving keepalive: %1%") % ec.message ()));
+			logger ()->try_log (boost::str (boost::format ("Error receiving keepalive: %1%") % ec.message ()));
 		}
 	}
 }
@@ -553,7 +552,7 @@ void nano::bootstrap_server::receive_telemetry_ack_action (boost::system::error_
 	{
 		if (config->logging.network_telemetry_logging ())
 		{
-			logger->try_log (boost::str (boost::format ("Error receiving telemetry ack: %1%") % ec.message ()));
+			logger ()->try_log (boost::str (boost::format ("Error receiving telemetry ack: %1%") % ec.message ()));
 		}
 	}
 }
@@ -595,7 +594,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 	{
 		if (config->logging.network_message_logging ())
 		{
-			logger->try_log (boost::str (boost::format ("Error receiving publish: %1%") % ec.message ()));
+			logger ()->try_log (boost::str (boost::format ("Error receiving publish: %1%") % ec.message ()));
 		}
 	}
 }
@@ -618,7 +617,7 @@ void nano::bootstrap_server::receive_confirm_req_action (boost::system::error_co
 	}
 	else if (config->logging.network_message_logging ())
 	{
-		logger->try_log (boost::str (boost::format ("Error receiving confirm_req: %1%") % ec.message ()));
+		logger ()->try_log (boost::str (boost::format ("Error receiving confirm_req: %1%") % ec.message ()));
 	}
 }
 
@@ -640,7 +639,7 @@ void nano::bootstrap_server::receive_confirm_ack_action (boost::system::error_co
 	}
 	else if (config->logging.network_message_logging ())
 	{
-		logger->try_log (boost::str (boost::format ("Error receiving confirm_ack: %1%") % ec.message ()));
+		logger ()->try_log (boost::str (boost::format ("Error receiving confirm_ack: %1%") % ec.message ()));
 	}
 }
 
@@ -662,7 +661,7 @@ void nano::bootstrap_server::receive_node_id_handshake_action (boost::system::er
 	}
 	else if (config->logging.network_node_id_handshake_logging ())
 	{
-		logger->try_log (boost::str (boost::format ("Error receiving node_id_handshake: %1%") % ec.message ()));
+		logger ()->try_log (boost::str (boost::format ("Error receiving node_id_handshake: %1%") % ec.message ()));
 	}
 }
 
@@ -977,6 +976,11 @@ void nano::bootstrap_server::set_remote_endpoint (nano::tcp_endpoint const & end
 {
 	auto dto{ rsnano::endpoint_to_dto (endpoint) };
 	rsnano::rsn_bootstrap_server_set_remote_endpoint (handle, &dto);
+}
+
+nano::logger_mt * nano::bootstrap_server::logger () const
+{
+	return static_cast<nano::logger_mt *> (rsnano::rsn_bootstrap_server_logger (handle));
 }
 
 std::shared_ptr<nano::socket> const nano::bootstrap_server::get_socket () const

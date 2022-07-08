@@ -31,7 +31,7 @@ pub trait BootstrapServerObserver {
 pub struct BootstrapServer {
     pub socket: Arc<SocketImpl>,
     config: Arc<NodeConfig>,
-    logger: Arc<dyn Logger>,
+    pub logger: Arc<dyn Logger>,
     stopped: AtomicBool,
     observer: Arc<dyn BootstrapServerObserver>,
     pub queue: Mutex<VecDeque<Option<Box<dyn Message>>>>,

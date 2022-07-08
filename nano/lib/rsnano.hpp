@@ -955,6 +955,8 @@ BootstrapServerLockHandle * rsn_bootstrap_server_lock_clone (BootstrapServerLock
 
 void rsn_bootstrap_server_lock_destroy (BootstrapServerLockHandle * handle);
 
+void * rsn_bootstrap_server_logger (BootstrapServerHandle * handle);
+
 bool rsn_bootstrap_server_make_bootstrap_connection (BootstrapServerHandle * handle);
 
 NetworkFilterHandle * rsn_bootstrap_server_publish_filter (BootstrapServerHandle * handle);

@@ -9,10 +9,12 @@ pub type AlwaysLogCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize)
 pub static mut ALWAYS_LOG_CALLBACK: Option<AlwaysLogCallback> = None;
 
 pub(crate) struct LoggerMT {
+    /// handle is a `nano::logger_mt *`
     handle: *mut c_void,
 }
 
 impl LoggerMT {
+    /// handle is a `nano::logger_mt *`
     pub(crate) fn new(handle: *mut c_void) -> Self {
         Self { handle }
     }
@@ -38,6 +40,10 @@ impl Logger for LoggerMT {
                 None => panic!("ALWAYS_LOG_CALLBACK not defined"),
             }
         }
+    }
+
+    fn handle(&self) -> *mut c_void {
+        self.handle
     }
 }
 

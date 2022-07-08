@@ -301,6 +301,13 @@ pub unsafe extern "C" fn rsn_bootstrap_server_timeout(handle: *mut BootstrapServ
     (*handle).0.timeout();
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_logger(
+    handle: *mut BootstrapServerHandle,
+) -> *mut c_void {
+    (*handle).0.logger.handle()
+}
+
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);
 type BootstrapServerExitedCallback =
     unsafe extern "C" fn(*mut c_void, u8, usize, *const EndpointDto);

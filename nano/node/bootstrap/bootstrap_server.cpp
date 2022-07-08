@@ -257,18 +257,20 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 {
 	auto config_dto{ node_a->config->to_dto () };
 	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (observer);
-	auto workers = new std::shared_ptr<nano::thread_pool> (node_a->workers);
+	auto network_dto{ node_a->network_params.network.to_dto () };
 	rsnano::io_ctx_wrapper io_ctx (node_a->io_ctx);
-	handle = rsnano::rsn_bootstrap_server_create (
-	socket_a->handle,
-	&config_dto,
-	node_a->logger.get (),
-	observer_handle,
-	node_a->network.publish_filter->handle,
-	workers,
-	io_ctx.handle (),
-	node_a->flags.disable_bootstrap_listener,
-	node_a->config->bootstrap_connections_max);
+	rsnano::CreateBootstrapServerParams params;
+	params.socket = socket_a->handle;
+	params.config = &config_dto;
+	params.logger = node_a->logger.get ();
+	params.observer = observer_handle;
+	params.publish_filter = node_a->network.publish_filter->handle;
+	params.workers = new std::shared_ptr<nano::thread_pool> (node_a->workers);
+	params.io_ctx = io_ctx.handle ();
+	params.network = &network_dto;
+	params.disable_bootstrap_listener = node_a->flags.disable_bootstrap_listener;
+	params.connections_max = node_a->config->bootstrap_connections_max;
+	handle = rsnano::rsn_bootstrap_server_create (&params);
 	debug_assert (socket_a != nullptr);
 }
 
@@ -393,10 +395,10 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 					if (is_realtime_connection ())
 					{
 						// Only handle telemetry requests if they are outside of the cutoff time
-						auto cache_exceeded = std::chrono::steady_clock::now () >= last_telemetry_req + nano::telemetry_cache_cutoffs::network_to_time (network_params.network);
+						auto cache_exceeded = rsnano::rsn_bootstrap_server_cache_exceeded (handle);
 						if (cache_exceeded)
 						{
-							last_telemetry_req = std::chrono::steady_clock::now ();
+							rsnano::rsn_bootstrap_server_set_last_telemetry_req (handle);
 							add_request (std::make_unique<nano::telemetry_req> (header));
 						}
 						else

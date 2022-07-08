@@ -6,12 +6,12 @@ use crate::{
         messages::MessageHandle,
         thread_pool::FfiThreadPool,
         transport::{EndpointDto, SocketHandle},
-        DestroyCallback, LoggerMT, NetworkFilterHandle, NodeConfigDto,
+        DestroyCallback, LoggerMT, NetworkConstantsDto, NetworkFilterHandle, NodeConfigDto,
     },
     messages::Message,
     transport::SocketType,
     utils::BufferHandle,
-    Account, NodeConfig,
+    Account, NetworkConstants, NodeConfig,
 };
 use std::{
     cell::RefCell,
@@ -24,25 +24,32 @@ use std::{
 
 pub struct BootstrapServerHandle(Arc<BootstrapServer>);
 
+#[repr(C)]
+pub struct CreateBootstrapServerParams {
+    pub socket: *mut SocketHandle,
+    pub config: *const NodeConfigDto,
+    pub logger: *mut c_void,
+    pub observer: *mut c_void,
+    pub publish_filter: *mut NetworkFilterHandle,
+    pub workers: *mut c_void,
+    pub io_ctx: *mut IoContextHandle,
+    pub network: *const NetworkConstantsDto,
+    pub disable_bootstrap_listener: bool,
+    pub connections_max: usize,
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_create(
-    socket: *mut SocketHandle,
-    config: *const NodeConfigDto,
-    logger: *mut c_void,
-    observer: *mut c_void,
-    publish_filter: *mut NetworkFilterHandle,
-    workers: *mut c_void,
-    io_ctx: *mut IoContextHandle,
-    disable_bootstrap_listener: bool,
-    connections_max: usize,
+    params: &CreateBootstrapServerParams,
 ) -> *mut BootstrapServerHandle {
-    let socket = Arc::clone(&(*socket));
-    let config = Arc::new(NodeConfig::try_from(&*config).unwrap());
-    let logger = Arc::new(LoggerMT::new(logger));
-    let observer = Arc::new(FfiBootstrapServerObserver::new(observer));
-    let publish_filter = Arc::clone(&*publish_filter);
-    let workers = Arc::new(FfiThreadPool::new(workers));
-    let io_ctx = Arc::new(FfiIoContext::new((*io_ctx).raw_handle()));
+    let socket = Arc::clone(&(*params.socket));
+    let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
+    let logger = Arc::new(LoggerMT::new(params.logger));
+    let observer = Arc::new(FfiBootstrapServerObserver::new(params.observer));
+    let publish_filter = Arc::clone(&*params.publish_filter);
+    let workers = Arc::new(FfiThreadPool::new(params.workers));
+    let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
+    let network = NetworkConstants::try_from(&*params.network).unwrap();
     let mut server = BootstrapServer::new(
         socket,
         config,
@@ -51,9 +58,10 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         publish_filter,
         workers,
         io_ctx,
+        network,
     );
-    server.disable_bootstrap_listener = disable_bootstrap_listener;
-    server.connections_max = connections_max;
+    server.disable_bootstrap_listener = params.disable_bootstrap_listener;
+    server.connections_max = params.connections_max;
     Box::into_raw(Box::new(BootstrapServerHandle(Arc::new(server))))
 }
 
@@ -273,6 +281,20 @@ pub unsafe extern "C" fn rsn_bootstrap_server_io_ctx(
     handle: *mut BootstrapServerHandle,
 ) -> *mut IoContextHandle {
     IoContextHandle::new((*handle).0.io_ctx.raw_handle())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_cache_exceeded(
+    handle: *mut BootstrapServerHandle,
+) -> bool {
+    (*handle).0.cache_exceeded()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_set_last_telemetry_req(
+    handle: *mut BootstrapServerHandle,
+) {
+    (*handle).0.set_last_telemetry_req();
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

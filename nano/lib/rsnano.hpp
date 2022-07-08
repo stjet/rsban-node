@@ -342,6 +342,20 @@ struct NodeConfigDto
 	LmdbConfigDto lmdb_config;
 };
 
+struct CreateBootstrapServerParams
+{
+	SocketHandle * socket;
+	const NodeConfigDto * config;
+	void * logger;
+	void * observer;
+	NetworkFilterHandle * publish_filter;
+	void * workers;
+	IoContextHandle * io_ctx;
+	const NetworkConstantsDto * network;
+	bool disable_bootstrap_listener;
+	uintptr_t connections_max;
+};
+
 struct EndpointDto
 {
 	uint8_t bytes[16];
@@ -925,15 +939,9 @@ BootstrapInitiatorHandle * rsn_bootstrap_initiator_create (void * handle);
 
 void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
 
-BootstrapServerHandle * rsn_bootstrap_server_create (SocketHandle * socket,
-const NodeConfigDto * config,
-void * logger,
-void * observer,
-NetworkFilterHandle * publish_filter,
-void * workers,
-IoContextHandle * io_ctx,
-bool disable_bootstrap_listener,
-uintptr_t connections_max);
+bool rsn_bootstrap_server_cache_exceeded (BootstrapServerHandle * handle);
+
+BootstrapServerHandle * rsn_bootstrap_server_create (const CreateBootstrapServerParams * params);
 
 void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
 
@@ -971,6 +979,8 @@ MessageHandle * rsn_bootstrap_server_requests_front (BootstrapServerLockHandle *
 void rsn_bootstrap_server_requests_pop (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_requests_push (BootstrapServerLockHandle * handle, MessageHandle * msg);
+
+void rsn_bootstrap_server_set_last_telemetry_req (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_set_remote_endpoint (BootstrapServerHandle * handle,
 const EndpointDto * endpoint);

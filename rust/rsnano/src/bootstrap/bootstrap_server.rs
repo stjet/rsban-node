@@ -5,6 +5,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
+    time::{Duration, Instant},
 };
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
     messages::Message,
     transport::{Socket, SocketImpl, SocketType},
     utils::{IoContext, ThreadPool},
-    Account, NetworkFilter, NodeConfig,
+    Account, NetworkConstants, NetworkFilter, NodeConfig, TelemetryCacheCutoffs,
 };
 
 pub trait BootstrapServerObserver {
@@ -44,6 +45,9 @@ pub struct BootstrapServer {
     pub publish_filter: Arc<NetworkFilter>,
     pub workers: Arc<dyn ThreadPool>,
     pub io_ctx: Arc<dyn IoContext>,
+
+    network: NetworkConstants,
+    last_telemetry_req: Mutex<Instant>,
 }
 
 impl BootstrapServer {
@@ -55,6 +59,7 @@ impl BootstrapServer {
         publish_filter: Arc<NetworkFilter>,
         workers: Arc<dyn ThreadPool>,
         io_ctx: Arc<dyn IoContext>,
+        network: NetworkConstants,
     ) -> Self {
         Self {
             socket,
@@ -74,6 +79,8 @@ impl BootstrapServer {
             publish_filter,
             workers,
             io_ctx,
+            last_telemetry_req: Mutex::new(Instant::now() - Duration::from_secs(60 * 60)),
+            network,
         }
     }
 
@@ -97,6 +104,16 @@ impl BootstrapServer {
         }
 
         return self.socket.socket_type() == SocketType::Bootstrap;
+    }
+
+    pub fn set_last_telemetry_req(&self) {
+        let mut lk = self.last_telemetry_req.lock().unwrap();
+        *lk = Instant::now();
+    }
+
+    pub fn cache_exceeded(&self) -> bool {
+        let lk = self.last_telemetry_req.lock().unwrap();
+        lk.elapsed() >= TelemetryCacheCutoffs::network_to_time(&self.network)
     }
 }
 

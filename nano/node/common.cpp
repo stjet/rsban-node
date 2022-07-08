@@ -17,10 +17,6 @@
 #include <numeric>
 #include <sstream>
 
-std::chrono::seconds constexpr nano::telemetry_cache_cutoffs::dev;
-std::chrono::seconds constexpr nano::telemetry_cache_cutoffs::beta;
-std::chrono::seconds constexpr nano::telemetry_cache_cutoffs::live;
-
 uint64_t nano::ip_address_hash_raw (boost::asio::ip::address const & ip_a, uint16_t port)
 {
 	debug_assert (ip_a.is_v6 ());
@@ -1963,10 +1959,15 @@ bool nano::parse_tcp_endpoint (std::string const & string, nano::tcp_endpoint & 
 	return result;
 }
 
+std::chrono::seconds nano::telemetry_cache_cutoffs::dev ()
+{
+	return std::chrono::seconds (rsnano::rsn_telemetry_cache_cutoffs_dev ());
+}
+
 std::chrono::seconds nano::telemetry_cache_cutoffs::network_to_time (network_constants const & network_constants)
 {
-	return std::chrono::seconds{ (network_constants.is_live_network () || network_constants.is_test_network ()) ? live : network_constants.is_beta_network () ? beta
-																																							  : dev };
+	auto dto = network_constants.to_dto ();
+	return std::chrono::seconds{ rsnano::rsn_telemetry_cache_cutoffs_network_to_time_s (&dto) };
 }
 
 nano::node_singleton_memory_pool_purge_guard::node_singleton_memory_pool_purge_guard () :

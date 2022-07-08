@@ -1871,6 +1871,10 @@ TcpChannelsHandle * rsn_tcp_channels_create ();
 
 void rsn_tcp_channels_destroy (TcpChannelsHandle * handle);
 
+uint64_t rsn_telemetry_cache_cutoffs_dev ();
+
+uint64_t rsn_telemetry_cache_cutoffs_network_to_time_s (const NetworkConstantsDto * network);
+
 TelemetryDataHandle * rsn_telemetry_data_clone (TelemetryDataHandle * handle);
 
 TelemetryDataHandle * rsn_telemetry_data_create ();

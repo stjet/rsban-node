@@ -1,6 +1,6 @@
 use anyhow::Result;
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use std::{sync::Mutex, time::Duration};
 
 use super::{Networks, WorkThresholds};
 
@@ -229,4 +229,22 @@ fn test_ipc_port() -> u16 {
 
 fn test_websocket_port() -> u16 {
     get_env_or_default("NANO_TEST_WEBSOCKET_PORT", 17078)
+}
+
+pub struct TelemetryCacheCutoffs {}
+
+impl TelemetryCacheCutoffs {
+    pub const DEV: Duration = Duration::from_secs(3);
+    pub const BETA: Duration = Duration::from_secs(15);
+    pub const LIVE: Duration = Duration::from_secs(60);
+
+    pub fn network_to_time(network: &NetworkConstants) -> Duration {
+        if network.is_live_network() || network.is_test_network() {
+            TelemetryCacheCutoffs::LIVE
+        } else if network.is_beta_network() {
+            TelemetryCacheCutoffs::BETA
+        } else {
+            TelemetryCacheCutoffs::DEV
+        }
+    }
 }

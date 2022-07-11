@@ -10,6 +10,7 @@ pub(crate) enum Topic {
     Ack,
     /// A confirmation message
     Confirmation,
+    StartedElection,
     /// Stopped election message (dropped elections due to bounding or block lost the elections)
     StoppedElection,
     /// A vote message
@@ -94,6 +95,7 @@ pub(crate) fn from_topic(topic: Topic) -> &'static str {
     match topic {
         Topic::Ack => "ack",
         Topic::Confirmation => "confirmation",
+        Topic::StartedElection => "started_election",
         Topic::StoppedElection => "stopped_election",
         Topic::Vote => "vote",
         Topic::Work => "work",
@@ -107,6 +109,7 @@ pub(crate) fn from_topic(topic: Topic) -> &'static str {
 pub(crate) fn to_topic(topic: impl AsRef<str>) -> Topic {
     match topic.as_ref() {
         "confirmation" => Topic::Confirmation,
+        "started_election" => Topic::StartedElection,
         "stopped_election" => Topic::StoppedElection,
         "vote" => Topic::Vote,
         "ack" => Topic::Ack,

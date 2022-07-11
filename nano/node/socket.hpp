@@ -122,7 +122,7 @@ public:
 	void async_write (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> = {});
 	const void * inner_ptr () const;
 
-	void close ();
+	virtual void close ();
 	boost::asio::ip::tcp::endpoint remote_endpoint () const;
 	boost::asio::ip::tcp::endpoint local_endpoint () const;
 	/** Returns true if the socket has timed out */

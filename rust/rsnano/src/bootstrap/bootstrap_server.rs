@@ -51,6 +51,8 @@ pub struct BootstrapServer {
     last_telemetry_req: Mutex<Instant>,
     unique_id: usize,
     pub stats: Arc<Stat>,
+    pub disable_bootstrap_bulk_pull_server: bool,
+    pub disable_tcp_realtime: bool,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -89,6 +91,8 @@ impl BootstrapServer {
             network,
             unique_id: NEXT_UNIQUE_ID.fetch_add(1, Ordering::Relaxed),
             stats,
+            disable_bootstrap_bulk_pull_server: false,
+            disable_tcp_realtime: false,
         }
     }
 

@@ -246,9 +246,7 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 }
 
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
-	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) },
-	disable_bootstrap_bulk_pull_server{ node_a->flags.disable_bootstrap_bulk_pull_server },
-	disable_tcp_realtime{ node_a->flags.disable_tcp_realtime }
+	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) }
 {
 	auto config_dto{ node_a->config->to_dto () };
 	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (node_a->bootstrap);
@@ -266,6 +264,8 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	params.disable_bootstrap_listener = node_a->flags.disable_bootstrap_listener;
 	params.connections_max = node_a->config->bootstrap_connections_max;
 	params.stats = node_a->stats->handle;
+	params.disable_bootstrap_bulk_pull_server = node_a->flags.disable_bootstrap_bulk_pull_server;
+	params.disable_tcp_realtime = node_a->flags.disable_tcp_realtime;
 	handle = rsnano::rsn_bootstrap_server_create (&params);
 	debug_assert (socket_a != nullptr);
 }
@@ -456,7 +456,7 @@ void nano::bootstrap_server::receive_bulk_pull_action (boost::system::error_code
 			{
 				logger ()->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->get_start ().to_string () % request->get_end ().to_string () % (request->get_count () ? request->get_count () : std::numeric_limits<double>::infinity ()) % get_remote_endpoint ()));
 			}
-			if (make_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
+			if (make_bootstrap_connection () && !rsnano::rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (handle))
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -479,7 +479,7 @@ void nano::bootstrap_server::receive_bulk_pull_account_action (boost::system::er
 			{
 				logger ()->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->get_account ().to_account () % nano::amount (request->get_minimum_amount ()).format_balance (nano::Mxrb_ratio, 10, true)));
 			}
-			if (make_bootstrap_connection () && !disable_bootstrap_bulk_pull_server)
+			if (make_bootstrap_connection () && !rsnano::rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (handle))
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -662,7 +662,7 @@ void nano::bootstrap_server::receive_node_id_handshake_action (boost::system::er
 		auto request (std::make_unique<nano::node_id_handshake> (error, stream, header_a));
 		if (!error)
 		{
-			if (get_socket ()->type () == nano::socket::type_t::undefined && !disable_tcp_realtime)
+			if (get_socket ()->type () == nano::socket::type_t::undefined && !rsnano::rsn_bootstrap_server_disable_tcp_realtime (handle))
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}

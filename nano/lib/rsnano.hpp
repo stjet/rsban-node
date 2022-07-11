@@ -424,6 +424,8 @@ struct CreateBootstrapServerParams
 	bool disable_bootstrap_listener;
 	uintptr_t connections_max;
 	StatHandle * stats;
+	bool disable_bootstrap_bulk_pull_server;
+	bool disable_tcp_realtime;
 };
 
 struct EndpointDto
@@ -951,6 +953,10 @@ void rsn_bootstrap_server_config (BootstrapServerHandle * handle, NodeConfigDto 
 BootstrapServerHandle * rsn_bootstrap_server_create (const CreateBootstrapServerParams * params);
 
 void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
+
+bool rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (BootstrapServerHandle * handle);
+
+bool rsn_bootstrap_server_disable_tcp_realtime (BootstrapServerHandle * handle);
 
 IoContextHandle * rsn_bootstrap_server_io_ctx (BootstrapServerHandle * handle);
 

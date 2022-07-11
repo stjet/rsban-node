@@ -38,6 +38,8 @@ pub struct CreateBootstrapServerParams {
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
     pub stats: *mut StatHandle,
+    pub disable_bootstrap_bulk_pull_server: bool,
+    pub disable_tcp_realtime: bool,
 }
 
 #[no_mangle]
@@ -66,6 +68,8 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     );
     server.disable_bootstrap_listener = params.disable_bootstrap_listener;
     server.connections_max = params.connections_max;
+    server.disable_bootstrap_bulk_pull_server = params.disable_bootstrap_bulk_pull_server;
+    server.disable_tcp_realtime = params.disable_tcp_realtime;
     Box::into_raw(Box::new(BootstrapServerHandle(Arc::new(server))))
 }
 
@@ -333,6 +337,19 @@ pub unsafe extern "C" fn rsn_bootstrap_server_network(
     dto: *mut NetworkParamsDto,
 ) {
     fill_network_params_dto(&mut *dto, &(*handle).0.network);
+}
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_disable_bootstrap_bulk_pull_server(
+    handle: *mut BootstrapServerHandle,
+) -> bool {
+    (*handle).0.disable_bootstrap_bulk_pull_server
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_disable_tcp_realtime(
+    handle: *mut BootstrapServerHandle,
+) -> bool {
+    (*handle).0.disable_tcp_realtime
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

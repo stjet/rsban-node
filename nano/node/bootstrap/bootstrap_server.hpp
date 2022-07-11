@@ -188,8 +188,6 @@ private:
 	nano::network_params get_network_params () const;
 
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
-	bool disable_bootstrap_bulk_pull_server{ false };
-	bool disable_tcp_realtime{ false };
 	std::atomic<bool> handshake_query_received{ false };
 
 public:

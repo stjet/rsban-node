@@ -189,6 +189,11 @@ nano::networks nano::message_header::get_network () const
 	return static_cast<nano::networks> (rsnano::rsn_message_header_network (handle));
 }
 
+void nano::message_header::set_network (nano::networks network)
+{
+	rsnano::rsn_message_header_set_network (handle, static_cast<uint16_t> (network));
+}
+
 uint8_t nano::message_header::get_version_max () const
 {
 	return rsnano::rsn_message_header_version_max (handle);
@@ -197,6 +202,11 @@ uint8_t nano::message_header::get_version_max () const
 uint8_t nano::message_header::get_version_using () const
 {
 	return rsnano::rsn_message_header_version_using (handle);
+}
+
+void nano::message_header::set_version_using (uint8_t version_a)
+{
+	rsnano::rsn_message_header_set_version_using (handle, version_a);
 }
 
 uint8_t nano::message_header::get_version_min () const
@@ -376,6 +386,12 @@ void nano::message_parser::deserialize_buffer (uint8_t const * buffer_a, std::si
 		nano::message_header header (error, stream);
 		if (!error)
 		{
+			if (header.get_network () != network.current_network)
+			{
+				status = parse_status::invalid_header;
+				return;
+			}
+
 			if (header.get_version_using () < network.protocol_version_min)
 			{
 				status = parse_status::outdated_version;

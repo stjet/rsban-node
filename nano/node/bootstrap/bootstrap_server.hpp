@@ -123,6 +123,8 @@ public:
 	virtual std::shared_ptr<nano::socket> const get_socket () const = 0;
 	virtual void finish_request () = 0;
 	virtual void finish_request_async () = 0;
+	virtual bool get_handshake_query_received () = 0;
+	virtual void set_handshake_query_received () = 0;
 	virtual void stop () = 0;
 	virtual bool is_stopped () const = 0;
 };
@@ -153,6 +155,8 @@ public:
 	void add_request (std::unique_ptr<nano::message>);
 	void finish_request () override;
 	void finish_request_async () override;
+	bool get_handshake_query_received () override;
+	void set_handshake_query_received () override;
 	void timeout ();
 	void push_request (std::unique_ptr<nano::message> msg);
 	bool requests_empty ();
@@ -186,6 +190,7 @@ private:
 	nano::network_params & network_params;
 	bool disable_bootstrap_bulk_pull_server{ false };
 	bool disable_tcp_realtime{ false };
+	std::atomic<bool> handshake_query_received{ false };
 
 public:
 	rsnano::BootstrapServerHandle * handle;

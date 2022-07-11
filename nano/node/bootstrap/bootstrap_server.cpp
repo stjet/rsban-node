@@ -315,6 +315,18 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 		nano::message_header header (error, type_stream);
 		if (!error)
 		{
+			if (header.get_network () != network_params.network.current_network)
+			{
+				stats ()->inc (nano::stat::type::message, nano::stat::detail::invalid_network);
+				return;
+			}
+
+			if (header.get_version_using () < network_params.network.protocol_version_min)
+			{
+				stats ()->inc (nano::stat::type::message, nano::stat::detail::outdated_version);
+				return;
+			}
+
 			auto this_l (shared_from_this ());
 			switch (header.get_type ())
 			{
@@ -723,6 +735,16 @@ void nano::bootstrap_server::finish_request_async ()
 	});
 }
 
+bool nano::bootstrap_server::get_handshake_query_received ()
+{
+	return handshake_query_received;
+}
+
+void nano::bootstrap_server::set_handshake_query_received ()
+{
+	handshake_query_received = true;
+}
+
 void nano::bootstrap_server::timeout ()
 {
 	rsnano::rsn_bootstrap_server_timeout (handle);
@@ -827,10 +849,24 @@ public:
 	}
 	void node_id_handshake (nano::node_id_handshake const & message_a) override
 	{
+		// check for multiple handshake messages, there is no reason to receive more than one
+		if (message_a.get_query () && connection->get_handshake_query_received ())
+		{
+			if (node->config->logging.network_node_id_handshake_logging ())
+			{
+				node->logger->try_log (boost::str (boost::format ("Detected multiple node_id_handshake query from %1%") % connection->get_remote_endpoint ()));
+			}
+			connection->stop ();
+			return;
+		}
+
+		connection->set_handshake_query_received ();
+
 		if (node->config->logging.network_node_id_handshake_logging ())
 		{
 			node->logger->try_log (boost::str (boost::format ("Received node_id_handshake message from %1%") % connection->get_remote_endpoint ()));
 		}
+
 		if (message_a.get_query ())
 		{
 			boost::optional<std::pair<nano::account, nano::signature>> response (std::make_pair (node->node_id.pub, nano::sign_message (node->node_id.prv, node->node_id.pub, *message_a.get_query ())));

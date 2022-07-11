@@ -51,6 +51,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.use_memory_pools = config.use_memory_pools;
 	dto.confirmation_history_size = config.confirmation_history_size;
 	dto.active_elections_size = config.active_elections_size;
+	dto.active_elections_hinted_limit_percentage = config.active_elections_hinted_limit_percentage;
 	dto.bandwidth_limit = config.bandwidth_limit;
 	dto.bandwidth_limit_burst_ratio = config.bandwidth_limit_burst_ratio;
 	dto.conf_height_processor_batch_min_time_ms = config.conf_height_processor_batch_min_time.count ();
@@ -164,6 +165,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	use_memory_pools = dto.use_memory_pools;
 	confirmation_history_size = dto.confirmation_history_size;
 	active_elections_size = dto.active_elections_size;
+	active_elections_hinted_limit_percentage = dto.active_elections_hinted_limit_percentage;
 	bandwidth_limit = dto.bandwidth_limit;
 	bandwidth_limit_burst_ratio = dto.bandwidth_limit_burst_ratio;
 	conf_height_processor_batch_min_time = std::chrono::milliseconds (dto.conf_height_processor_batch_min_time_ms);

@@ -108,6 +108,10 @@ impl MessageHeader {
         self.version_using
     }
 
+    pub fn set_version_using(&mut self, version: u8) {
+        self.version_using = version;
+    }
+
     pub fn version_max(&self) -> u8 {
         self.version_max
     }
@@ -118,6 +122,10 @@ impl MessageHeader {
 
     pub fn network(&self) -> Networks {
         self.network
+    }
+
+    pub fn set_network(&mut self, network: Networks) {
+        self.network = network;
     }
 
     pub fn message_type(&self) -> MessageType {

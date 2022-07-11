@@ -227,8 +227,10 @@ public:
 	std::size_t payload_length_bytes () const;
 
 	nano::networks get_network () const;
+	void set_network (nano::networks network);
 	uint8_t get_version_max () const;
 	uint8_t get_version_using () const;
+	void set_version_using (uint8_t version_a);
 	uint8_t get_version_min () const;
 	nano::message_type get_type () const;
 	std::bitset<16> get_extensions () const;

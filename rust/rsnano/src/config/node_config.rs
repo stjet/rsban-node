@@ -49,6 +49,7 @@ pub struct NodeConfig {
     pub use_memory_pools: bool,
     pub confirmation_history_size: usize,
     pub active_elections_size: usize,
+    pub active_elections_hinted_limit_percentage: usize, // Limit of hinted elections as percentage of active_elections_size
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
     pub conf_height_processor_batch_min_time_ms: i64,
@@ -210,7 +211,7 @@ impl NodeConfig {
             bootstrap_fraction_numerator: 1,
             receive_minimum: Amount::new(*XRB_RATIO),
             online_weight_minimum: Amount::new(60000 * *GXRB_RATIO),
-            election_hint_weight_percent: 10,
+            election_hint_weight_percent: 50,
             password_fanout: 1024,
             io_threads: std::cmp::max(get_cpu_count() as u32, 4),
             network_threads: std::cmp::max(get_cpu_count() as u32, 4),
@@ -246,6 +247,7 @@ impl NodeConfig {
             use_memory_pools: true,
             confirmation_history_size: 2048,
             active_elections_size: 5000,
+            active_elections_hinted_limit_percentage: 20,
             /** Default outbound traffic shaping is 10MB/s */
             bandwidth_limit: 10 * 1024 * 1024,
             /** By default, allow bursts of 15MB/s (not sustainable) */

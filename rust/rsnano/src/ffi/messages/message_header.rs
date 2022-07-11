@@ -3,7 +3,7 @@ use std::{ffi::c_void, ops::Deref};
 
 use crate::{
     messages::{MessageHeader, MessageType},
-    BlockType, NetworkConstants,
+    BlockType, NetworkConstants, Networks,
 };
 
 use crate::ffi::{FfiStream, NetworkConstantsDto, StringDto};
@@ -74,6 +74,14 @@ pub unsafe extern "C" fn rsn_message_header_version_using(handle: *mut MessageHe
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_set_version_using(
+    handle: *mut MessageHeaderHandle,
+    version: u8,
+) {
+    (*handle).0.set_version_using(version);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_version_min(handle: *mut MessageHeaderHandle) -> u8 {
     (*handle).0.version_min()
 }
@@ -86,6 +94,16 @@ pub unsafe extern "C" fn rsn_message_header_version_max(handle: *mut MessageHead
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_network(handle: *mut MessageHeaderHandle) -> u16 {
     (*handle).0.network() as u16
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_set_network(
+    handle: *mut MessageHeaderHandle,
+    network: u16,
+) {
+    (*handle)
+        .0
+        .set_network(Networks::from_u16(network).unwrap())
 }
 
 #[no_mangle]

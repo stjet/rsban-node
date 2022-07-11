@@ -310,6 +310,7 @@ struct NodeConfigDto
 	bool use_memory_pools;
 	uintptr_t confirmation_history_size;
 	uintptr_t active_elections_size;
+	uintptr_t active_elections_hinted_limit_percentage;
 	uintptr_t bandwidth_limit;
 	double bandwidth_limit_burst_ratio;
 	int64_t conf_height_processor_batch_min_time_ms;
@@ -1430,6 +1431,10 @@ void rsn_message_header_set_count (MessageHeaderHandle * handle, uint8_t count);
 void rsn_message_header_set_extension (MessageHeaderHandle * handle, uintptr_t position, bool value);
 
 void rsn_message_header_set_extensions (MessageHeaderHandle * handle, uint16_t value);
+
+void rsn_message_header_set_network (MessageHeaderHandle * handle, uint16_t network);
+
+void rsn_message_header_set_version_using (MessageHeaderHandle * handle, uint8_t version);
 
 uintptr_t rsn_message_header_size ();
 

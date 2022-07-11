@@ -72,6 +72,7 @@ public:
 	nano::link epoch_link (nano::epoch) const;
 	std::multimap<uint64_t, uncemented_info, std::greater<>> unconfirmed_frontiers () const;
 	bool migrate_lmdb_to_rocksdb (boost::filesystem::path const &) const;
+	bool bootstrap_weight_reached () const;
 	static nano::uint128_t const unit;
 	nano::ledger_constants & constants;
 	nano::store & store;

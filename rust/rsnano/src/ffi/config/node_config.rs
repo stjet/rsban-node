@@ -53,6 +53,7 @@ pub struct NodeConfigDto {
     pub use_memory_pools: bool,
     pub confirmation_history_size: usize,
     pub active_elections_size: usize,
+    pub active_elections_hinted_limit_percentage: usize,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
     pub conf_height_processor_batch_min_time_ms: i64,
@@ -149,6 +150,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.use_memory_pools = cfg.use_memory_pools;
     dto.confirmation_history_size = cfg.confirmation_history_size;
     dto.active_elections_size = cfg.active_elections_size;
+    dto.active_elections_hinted_limit_percentage = cfg.active_elections_hinted_limit_percentage;
     dto.bandwidth_limit = cfg.bandwidth_limit;
     dto.bandwidth_limit_burst_ratio = cfg.bandwidth_limit_burst_ratio;
     dto.conf_height_processor_batch_min_time_ms = cfg.conf_height_processor_batch_min_time_ms;
@@ -283,6 +285,8 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             use_memory_pools: value.use_memory_pools,
             confirmation_history_size: value.confirmation_history_size,
             active_elections_size: value.active_elections_size,
+            active_elections_hinted_limit_percentage: value
+                .active_elections_hinted_limit_percentage,
             bandwidth_limit: value.bandwidth_limit,
             bandwidth_limit_burst_ratio: value.bandwidth_limit_burst_ratio,
             conf_height_processor_batch_min_time_ms: value.conf_height_processor_batch_min_time_ms,

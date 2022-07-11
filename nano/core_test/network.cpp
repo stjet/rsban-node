@@ -1273,18 +1273,45 @@ TEST (network, loopback_channel)
 }
 
 // Ensure the network filters messages with the incorrect magic number
-TEST (network, filter)
+TEST (network, filter_invalid_network_bytes)
 {
-	nano::system system{ 1 };
+	nano::system system{ 2 };
 	auto & node1 = *system.nodes[0];
-	nano::keepalive keepalive{ nano::dev::network_params.network };
-	node1.network.inbound (keepalive, std::make_shared<nano::transport::inproc::channel> (node1, node1));
-	ASSERT_EQ (0, node1.stats->count (nano::stat::type::message, nano::stat::detail::invalid_network));
+	auto & node2 = *system.nodes[1];
 
-	nano::network_constants invalid{ nano::work_thresholds{ 0, 0, 0 }, nano::networks::invalid };
-	nano::keepalive keepalive2{ invalid };
-	node1.network.inbound (keepalive2, std::make_shared<nano::transport::inproc::channel> (node1, node1));
-	ASSERT_EQ (1, node1.stats->count (nano::stat::type::message, nano::stat::detail::invalid_network));
+	// find the comms channel that goes from node2 to node1
+	auto channel = node2.network.find_channel (node1.network.endpoint ());
+	ASSERT_NE (nullptr, channel);
+
+	// send a keepalive, from node2 to node1, with the wrong network bytes
+	nano::keepalive keepalive{ nano::dev::network_params.network };
+	auto header{ keepalive.get_header () };
+	header.set_network (nano::networks::invalid);
+	keepalive.set_header (header);
+	channel->send (keepalive);
+
+	ASSERT_TIMELY (5s, 1 == node1.stats->count (nano::stat::type::message, nano::stat::detail::invalid_network));
+}
+
+// Ensure the network filters messages with the incorrect minimum version
+TEST (network, filter_invalid_version_using)
+{
+	nano::system system{ 2 };
+	auto & node1 = *system.nodes[0];
+	auto & node2 = *system.nodes[1];
+
+	// find the comms channel that goes from node2 to node1
+	auto channel = node2.network.find_channel (node1.network.endpoint ());
+	ASSERT_NE (nullptr, channel);
+
+	// send a keepalive, from node2 to node1, with the wrong version_using
+	nano::keepalive keepalive{ nano::dev::network_params.network };
+	auto header{ keepalive.get_header () };
+	header.set_version_using (nano::dev::network_params.network.protocol_version_min - 1);
+	keepalive.set_header (header);
+	channel->send (keepalive);
+
+	ASSERT_TIMELY (5s, 1 == node1.stats->count (nano::stat::type::message, nano::stat::detail::outdated_version));
 }
 
 TEST (network, fill_keepalive_self)

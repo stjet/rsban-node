@@ -714,6 +714,12 @@ void bootstrap_observer_timeout (void * handle_a, uintptr_t inner_ptr_a)
 	(*observer)->bootstrap_server_timeout (inner_ptr_a);
 }
 
+void request_response_visitor_factory_destroy (void * handle_a)
+{
+	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (handle_a);
+	delete factory;
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -792,6 +798,8 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_observer_exited (bootstrap_observer_exited);
 	rsnano::rsn_callback_bootstrap_observer_inc_bootstrap_count (bootstrap_observer_inc_bootstrap_count);
 	rsnano::rsn_callback_bootstrap_observer_timeout (bootstrap_observer_timeout);
+
+	rsnano::rsn_callback_request_response_visitor_factory_destroy (request_response_visitor_factory_destroy);
 
 	callbacks_set = true;
 }

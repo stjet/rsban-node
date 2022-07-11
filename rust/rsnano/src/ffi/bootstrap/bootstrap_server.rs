@@ -1,5 +1,7 @@
 use crate::{
-    bootstrap::{BootstrapServer, BootstrapServerExt, BootstrapServerObserver},
+    bootstrap::{
+        BootstrapServer, BootstrapServerExt, BootstrapServerObserver, RequestResponseVisitorFactory,
+    },
     ffi::{
         copy_account_bytes, fill_network_params_dto, fill_node_config_dto,
         io_context::{FfiIoContext, IoContextHandle},
@@ -40,6 +42,7 @@ pub struct CreateBootstrapServerParams {
     pub stats: *mut StatHandle,
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
+    pub request_response_visitor_factory: *mut RequestResponseVisitorFactoryHandle,
 }
 
 #[no_mangle]
@@ -55,6 +58,9 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
     let network = NetworkParams::try_from(&*params.network).unwrap();
     let stats = Arc::clone(&(*params.stats));
+    let visitor_factory = Arc::new(FfiRequestResponseVisitorFactory::new(Box::from_raw(
+        params.request_response_visitor_factory,
+    )));
     let mut server = BootstrapServer::new(
         socket,
         config,
@@ -65,6 +71,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         io_ctx,
         network,
         stats,
+        visitor_factory,
     );
     server.disable_bootstrap_listener = params.disable_bootstrap_listener;
     server.connections_max = params.connections_max;
@@ -462,5 +469,48 @@ impl BootstrapServerObserver for FfiBootstrapServerObserver {
         unsafe {
             INC_BOOTSTRAP_COUNT_CALLBACK.expect("INC_BOOTSTRAP_COUNT_CALLBACK missing")(self.handle)
         }
+    }
+}
+
+static mut DESTROY_VISITOR_FACTORY: Option<DestroyCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(f: DestroyCallback) {
+    DESTROY_VISITOR_FACTORY = Some(f);
+}
+
+/// Contains a `shared_ptr<RequestResponseVisitorFactory> *`
+pub struct RequestResponseVisitorFactoryHandle(*mut c_void);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_request_response_visitory_factory_handle_create(
+    factory: *mut c_void,
+) -> *mut RequestResponseVisitorFactoryHandle {
+    Box::into_raw(Box::new(RequestResponseVisitorFactoryHandle(factory)))
+}
+
+pub struct FfiRequestResponseVisitorFactory {
+    handle: Box<RequestResponseVisitorFactoryHandle>,
+}
+
+impl FfiRequestResponseVisitorFactory {
+    pub fn new(handle: Box<RequestResponseVisitorFactoryHandle>) -> Self {
+        Self { handle }
+    }
+}
+
+impl Drop for FfiRequestResponseVisitorFactory {
+    fn drop(&mut self) {
+        unsafe { DESTROY_VISITOR_FACTORY.expect("DESTROY_VISITOR_FACTORY missing")(self.handle.0) }
+    }
+}
+
+impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
+    fn create_visitor(
+        &self,
+        _connection: &Arc<BootstrapServer>,
+        _requests_lock: &Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>,
+    ) -> Box<dyn crate::messages::MessageVisitor> {
+        todo!()
     }
 }

@@ -66,6 +66,9 @@ struct MessageHeaderHandle;
 
 struct NetworkFilterHandle;
 
+/// Contains a `shared_ptr<RequestResponseVisitorFactory> *`
+struct RequestResponseVisitorFactoryHandle;
+
 struct SignatureCheckerHandle;
 
 struct SocketHandle;
@@ -426,6 +429,7 @@ struct CreateBootstrapServerParams
 	StatHandle * stats;
 	bool disable_bootstrap_bulk_pull_server;
 	bool disable_tcp_realtime;
+	RequestResponseVisitorFactoryHandle * request_response_visitor_factory;
 };
 
 struct EndpointDto
@@ -1096,6 +1100,8 @@ void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
 
+void rsn_callback_request_response_visitor_factory_destroy (DestroyCallback f);
+
 void rsn_callback_shared_const_buffer_destroy (DestroyCallback f);
 
 void rsn_callback_string_chars (StringCharsCallback f);
@@ -1669,6 +1675,8 @@ void rsn_receive_block_source (const BlockHandle * handle, uint8_t (*result)[32]
 void rsn_receive_block_source_set (BlockHandle * handle, const uint8_t (*previous)[32]);
 
 void rsn_remove_temporary_directories ();
+
+RequestResponseVisitorFactoryHandle * rsn_request_response_visitory_factory_handle_create (void * factory);
 
 void rsn_rocksdb_config_create (RocksDbConfigDto * dto);
 

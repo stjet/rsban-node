@@ -253,6 +253,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	auto network_dto{ node_a->network_params.to_dto () };
 	rsnano::io_ctx_wrapper io_ctx (node_a->io_ctx);
 	rsnano::CreateBootstrapServerParams params;
+	auto visitor_factory_handle = rsnano::rsn_request_response_visitory_factory_handle_create (new std::shared_ptr<nano::request_response_visitor_factory> (request_response_visitor_factory));
 	params.socket = socket_a->handle;
 	params.config = &config_dto;
 	params.logger = nano::to_logger_handle (node_a->logger);
@@ -266,6 +267,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	params.stats = node_a->stats->handle;
 	params.disable_bootstrap_bulk_pull_server = node_a->flags.disable_bootstrap_bulk_pull_server;
 	params.disable_tcp_realtime = node_a->flags.disable_tcp_realtime;
+	params.request_response_visitor_factory = visitor_factory_handle;
 	handle = rsnano::rsn_bootstrap_server_create (&params);
 	debug_assert (socket_a != nullptr);
 }

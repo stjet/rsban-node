@@ -3,14 +3,14 @@ use std::{
     net::{Ipv6Addr, SocketAddr},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, MutexGuard,
     },
     time::{Duration, Instant},
 };
 
 use crate::{
     logger_mt::Logger,
-    messages::Message,
+    messages::{Message, MessageVisitor},
     stats::Stat,
     transport::{Socket, SocketImpl, SocketType},
     utils::{IoContext, ThreadPool},
@@ -54,6 +54,7 @@ pub struct BootstrapServer {
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
     pub handshake_query_received: AtomicBool,
+    pub request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -69,6 +70,7 @@ impl BootstrapServer {
         io_ctx: Arc<dyn IoContext>,
         network: NetworkParams,
         stats: Arc<Stat>,
+        request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
     ) -> Self {
         Self {
             socket,
@@ -95,6 +97,7 @@ impl BootstrapServer {
             disable_bootstrap_bulk_pull_server: false,
             disable_tcp_realtime: false,
             handshake_query_received: AtomicBool::new(false),
+            request_response_visitor_factory,
         }
     }
 
@@ -145,6 +148,14 @@ impl Drop for BootstrapServer {
         );
         self.stop();
     }
+}
+
+pub trait RequestResponseVisitorFactory {
+    fn create_visitor(
+        &self,
+        connection: &Arc<BootstrapServer>,
+        requests_lock: &Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>,
+    ) -> Box<dyn MessageVisitor>;
 }
 
 pub trait BootstrapServerExt {

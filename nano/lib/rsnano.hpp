@@ -958,6 +958,8 @@ bool rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (BootstrapServerHan
 
 bool rsn_bootstrap_server_disable_tcp_realtime (BootstrapServerHandle * handle);
 
+bool rsn_bootstrap_server_handshake_query_received (BootstrapServerHandle * handle);
+
 IoContextHandle * rsn_bootstrap_server_io_ctx (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_is_stopped (BootstrapServerHandle * handle);
@@ -994,6 +996,8 @@ MessageHandle * rsn_bootstrap_server_requests_front (BootstrapServerLockHandle *
 void rsn_bootstrap_server_requests_pop (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_requests_push (BootstrapServerLockHandle * handle, MessageHandle * msg);
+
+void rsn_bootstrap_server_set_handshake_query_received (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_set_last_telemetry_req (BootstrapServerHandle * handle);
 

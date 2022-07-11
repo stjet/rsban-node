@@ -20,7 +20,7 @@ use std::{
     ffi::c_void,
     net::SocketAddr,
     rc::Rc,
-    sync::{Arc, MutexGuard},
+    sync::{atomic::Ordering, Arc, MutexGuard},
 };
 
 pub struct BootstrapServerHandle(Arc<BootstrapServer>);
@@ -350,6 +350,23 @@ pub unsafe extern "C" fn rsn_bootstrap_server_disable_tcp_realtime(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
     (*handle).0.disable_tcp_realtime
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_handshake_query_received(
+    handle: *mut BootstrapServerHandle,
+) -> bool {
+    (*handle).0.handshake_query_received.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_set_handshake_query_received(
+    handle: *mut BootstrapServerHandle,
+) {
+    (*handle)
+        .0
+        .handshake_query_received
+        .store(true, Ordering::SeqCst);
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

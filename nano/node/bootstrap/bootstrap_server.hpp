@@ -188,7 +188,6 @@ private:
 	nano::network_params get_network_params () const;
 
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
-	std::atomic<bool> handshake_query_received{ false };
 
 public:
 	rsnano::BootstrapServerHandle * handle;

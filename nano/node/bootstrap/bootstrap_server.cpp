@@ -736,12 +736,12 @@ void nano::bootstrap_server::finish_request_async ()
 
 bool nano::bootstrap_server::get_handshake_query_received ()
 {
-	return handshake_query_received;
+	return rsnano::rsn_bootstrap_server_handshake_query_received (handle);
 }
 
 void nano::bootstrap_server::set_handshake_query_received ()
 {
-	handshake_query_received = true;
+	rsnano::rsn_bootstrap_server_set_handshake_query_received (handle);
 }
 
 void nano::bootstrap_server::timeout ()

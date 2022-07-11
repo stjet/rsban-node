@@ -53,6 +53,7 @@ pub struct BootstrapServer {
     pub stats: Arc<Stat>,
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
+    pub handshake_query_received: AtomicBool,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -93,6 +94,7 @@ impl BootstrapServer {
             stats,
             disable_bootstrap_bulk_pull_server: false,
             disable_tcp_realtime: false,
+            handshake_query_received: AtomicBool::new(false),
         }
     }
 

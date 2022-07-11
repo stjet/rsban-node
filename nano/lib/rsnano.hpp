@@ -346,6 +346,71 @@ struct NodeConfigDto
 	LmdbConfigDto lmdb_config;
 };
 
+struct LedgerConstantsDto
+{
+	WorkThresholdsDto work;
+	uint8_t priv_key[32];
+	uint8_t pub_key[32];
+	uint8_t nano_beta_account[32];
+	uint8_t nano_live_account[32];
+	uint8_t nano_test_account[32];
+	BlockHandle * nano_dev_genesis;
+	BlockHandle * nano_beta_genesis;
+	BlockHandle * nano_live_genesis;
+	BlockHandle * nano_test_genesis;
+	BlockHandle * genesis;
+	uint8_t genesis_amount[16];
+	uint8_t burn_account[32];
+	uint8_t nano_dev_final_votes_canary_account[32];
+	uint8_t nano_beta_final_votes_canary_account[32];
+	uint8_t nano_live_final_votes_canary_account[32];
+	uint8_t nano_test_final_votes_canary_account[32];
+	uint8_t final_votes_canary_account[32];
+	uint64_t nano_dev_final_votes_canary_height;
+	uint64_t nano_beta_final_votes_canary_height;
+	uint64_t nano_live_final_votes_canary_height;
+	uint64_t nano_test_final_votes_canary_height;
+	uint64_t final_votes_canary_height;
+	uint8_t epoch_1_signer[32];
+	uint8_t epoch_1_link[32];
+	uint8_t epoch_2_signer[32];
+	uint8_t epoch_2_link[32];
+};
+
+struct VotingConstantsDto
+{
+	uintptr_t max_cache;
+	int64_t delay_s;
+};
+
+struct NodeConstantsDto
+{
+	int64_t backup_interval_m;
+	int64_t search_pending_interval_s;
+	int64_t unchecked_cleaning_interval_m;
+	int64_t process_confirmed_interval_ms;
+	uint64_t max_weight_samples;
+	uint64_t weight_period;
+};
+
+struct PortmappingConstantsDto
+{
+	int64_t lease_duration_s;
+	int64_t health_check_period_s;
+};
+
+struct NetworkParamsDto
+{
+	uint32_t kdf_work;
+	WorkThresholdsDto work;
+	NetworkConstantsDto network;
+	LedgerConstantsDto ledger;
+	VotingConstantsDto voting;
+	NodeConstantsDto node;
+	PortmappingConstantsDto portmapping;
+	BootstrapConstantsDto bootstrap;
+};
+
 struct CreateBootstrapServerParams
 {
 	SocketHandle * socket;
@@ -355,7 +420,7 @@ struct CreateBootstrapServerParams
 	NetworkFilterHandle * publish_filter;
 	void * workers;
 	IoContextHandle * io_ctx;
-	const NetworkConstantsDto * network;
+	const NetworkParamsDto * network;
 	bool disable_bootstrap_listener;
 	uintptr_t connections_max;
 	StatHandle * stats;
@@ -523,71 +588,6 @@ struct DaemonConfigDto
 	bool opencl_enable;
 	NodePowServerConfigDto pow_server;
 	NodeRpcConfigDto rpc;
-};
-
-struct LedgerConstantsDto
-{
-	WorkThresholdsDto work;
-	uint8_t priv_key[32];
-	uint8_t pub_key[32];
-	uint8_t nano_beta_account[32];
-	uint8_t nano_live_account[32];
-	uint8_t nano_test_account[32];
-	BlockHandle * nano_dev_genesis;
-	BlockHandle * nano_beta_genesis;
-	BlockHandle * nano_live_genesis;
-	BlockHandle * nano_test_genesis;
-	BlockHandle * genesis;
-	uint8_t genesis_amount[16];
-	uint8_t burn_account[32];
-	uint8_t nano_dev_final_votes_canary_account[32];
-	uint8_t nano_beta_final_votes_canary_account[32];
-	uint8_t nano_live_final_votes_canary_account[32];
-	uint8_t nano_test_final_votes_canary_account[32];
-	uint8_t final_votes_canary_account[32];
-	uint64_t nano_dev_final_votes_canary_height;
-	uint64_t nano_beta_final_votes_canary_height;
-	uint64_t nano_live_final_votes_canary_height;
-	uint64_t nano_test_final_votes_canary_height;
-	uint64_t final_votes_canary_height;
-	uint8_t epoch_1_signer[32];
-	uint8_t epoch_1_link[32];
-	uint8_t epoch_2_signer[32];
-	uint8_t epoch_2_link[32];
-};
-
-struct VotingConstantsDto
-{
-	uintptr_t max_cache;
-	int64_t delay_s;
-};
-
-struct NodeConstantsDto
-{
-	int64_t backup_interval_m;
-	int64_t search_pending_interval_s;
-	int64_t unchecked_cleaning_interval_m;
-	int64_t process_confirmed_interval_ms;
-	uint64_t max_weight_samples;
-	uint64_t weight_period;
-};
-
-struct PortmappingConstantsDto
-{
-	int64_t lease_duration_s;
-	int64_t health_check_period_s;
-};
-
-struct NetworkParamsDto
-{
-	uint32_t kdf_work;
-	WorkThresholdsDto work;
-	NetworkConstantsDto network;
-	LedgerConstantsDto ledger;
-	VotingConstantsDto voting;
-	NodeConstantsDto node;
-	PortmappingConstantsDto portmapping;
-	BootstrapConstantsDto bootstrap;
 };
 
 struct LocalVotesResult
@@ -965,6 +965,8 @@ void rsn_bootstrap_server_lock_destroy (BootstrapServerLockHandle * handle);
 void * rsn_bootstrap_server_logger (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_make_bootstrap_connection (BootstrapServerHandle * handle);
+
+void rsn_bootstrap_server_network (BootstrapServerHandle * handle, NetworkParamsDto * dto);
 
 NetworkFilterHandle * rsn_bootstrap_server_publish_filter (BootstrapServerHandle * handle);
 

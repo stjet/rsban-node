@@ -495,6 +495,7 @@ public:
 	network_params () = delete;
 	/** Populate values based on \p network_a */
 	network_params (nano::networks network_a);
+	network_params (rsnano::NetworkParamsDto const & dto);
 
 	rsnano::NetworkParamsDto to_dto () const;
 

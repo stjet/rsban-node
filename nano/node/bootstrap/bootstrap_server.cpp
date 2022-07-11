@@ -247,13 +247,12 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 
 nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
 	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) },
-	network_params{ node_a->network_params },
 	disable_bootstrap_bulk_pull_server{ node_a->flags.disable_bootstrap_bulk_pull_server },
 	disable_tcp_realtime{ node_a->flags.disable_tcp_realtime }
 {
 	auto config_dto{ node_a->config->to_dto () };
 	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (node_a->bootstrap);
-	auto network_dto{ node_a->network_params.network.to_dto () };
+	auto network_dto{ node_a->network_params.to_dto () };
 	rsnano::io_ctx_wrapper io_ctx (node_a->io_ctx);
 	rsnano::CreateBootstrapServerParams params;
 	params.socket = socket_a->handle;
@@ -290,7 +289,7 @@ void nano::bootstrap_server::stop ()
 void nano::bootstrap_server::receive ()
 {
 	// Increase timeout to receive TCP header (idle server socket)
-	get_socket ()->set_default_timeout_value (network_params.network.idle_timeout);
+	get_socket ()->set_default_timeout_value (get_network_params ().network.idle_timeout);
 	auto this_l (shared_from_this ());
 	get_socket ()->async_read (get_buffer (), 8, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		// Set remote_endpoint
@@ -315,13 +314,13 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 		nano::message_header header (error, type_stream);
 		if (!error)
 		{
-			if (header.get_network () != network_params.network.current_network)
+			if (header.get_network () != get_network_params ().network.current_network)
 			{
 				stats ()->inc (nano::stat::type::message, nano::stat::detail::invalid_network);
 				return;
 			}
 
-			if (header.get_version_using () < network_params.network.protocol_version_min)
+			if (header.get_version_using () < get_network_params ().network.protocol_version_min)
 			{
 				stats ()->inc (nano::stat::type::message, nano::stat::detail::outdated_version);
 				return;
@@ -583,7 +582,7 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 				if (is_realtime_connection ())
 				{
 					auto block{ request->get_block () };
-					if (!network_params.work.validate_entry (*block))
+					if (!get_network_params ().work.validate_entry (*block))
 					{
 						add_request (std::unique_ptr<nano::message> (request.release ()));
 					}
@@ -1013,9 +1012,9 @@ void nano::bootstrap_server::set_remote_endpoint (nano::tcp_endpoint const & end
 	rsnano::rsn_bootstrap_server_set_remote_endpoint (handle, &dto);
 }
 
-nano::logger_mt * nano::bootstrap_server::logger () const
+std::shared_ptr<nano::logger_mt> nano::bootstrap_server::logger () const
 {
-	return static_cast<std::shared_ptr<nano::logger_mt> *> (rsnano::rsn_bootstrap_server_logger (handle))->get ();
+	return *static_cast<std::shared_ptr<nano::logger_mt> *> (rsnano::rsn_bootstrap_server_logger (handle));
 }
 
 std::unique_ptr<nano::stat> nano::bootstrap_server::stats () const
@@ -1048,4 +1047,11 @@ std::shared_ptr<nano::network_filter> nano::bootstrap_server::get_publish_filter
 {
 	auto filter_handle = rsnano::rsn_bootstrap_server_publish_filter (handle);
 	return std::make_shared<nano::network_filter> (filter_handle);
+}
+
+nano::network_params nano::bootstrap_server::get_network_params () const
+{
+	rsnano::NetworkParamsDto dto;
+	rsnano::rsn_bootstrap_server_network (handle, &dto);
+	return nano::network_params (dto);
 }

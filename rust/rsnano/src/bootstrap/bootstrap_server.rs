@@ -14,7 +14,7 @@ use crate::{
     stats::Stat,
     transport::{Socket, SocketImpl, SocketType},
     utils::{IoContext, ThreadPool},
-    Account, NetworkConstants, NetworkFilter, NodeConfig, TelemetryCacheCutoffs,
+    Account, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
 };
 
 pub trait BootstrapServerObserver {
@@ -47,7 +47,7 @@ pub struct BootstrapServer {
     pub workers: Arc<dyn ThreadPool>,
     pub io_ctx: Arc<dyn IoContext>,
 
-    network: NetworkConstants,
+    pub network: NetworkParams,
     last_telemetry_req: Mutex<Instant>,
     unique_id: usize,
     pub stats: Arc<Stat>,
@@ -64,7 +64,7 @@ impl BootstrapServer {
         publish_filter: Arc<NetworkFilter>,
         workers: Arc<dyn ThreadPool>,
         io_ctx: Arc<dyn IoContext>,
-        network: NetworkConstants,
+        network: NetworkParams,
         stats: Arc<Stat>,
     ) -> Self {
         Self {
@@ -121,7 +121,7 @@ impl BootstrapServer {
 
     pub fn cache_exceeded(&self) -> bool {
         let lk = self.last_telemetry_req.lock().unwrap();
-        lk.elapsed() >= TelemetryCacheCutoffs::network_to_time(&self.network)
+        lk.elapsed() >= TelemetryCacheCutoffs::network_to_time(&self.network.network)
     }
 
     pub fn unique_id(&self) -> usize {

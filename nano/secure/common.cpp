@@ -46,6 +46,18 @@ nano::network_params::network_params (nano::networks network_a) :
 	kdf_work = dto.kdf_work;
 }
 
+nano::network_params::network_params (rsnano::NetworkParamsDto const & dto) :
+	kdf_work{ dto.kdf_work },
+	work{ dto.work },
+	network{ dto.network },
+	ledger{ dto.ledger },
+	voting{ dto.voting },
+	node{ dto.node },
+	portmapping{ dto.portmapping },
+	bootstrap{ dto.bootstrap }
+{
+}
+
 rsnano::NetworkParamsDto nano::network_params::to_dto () const
 {
 	rsnano::NetworkParamsDto dto;

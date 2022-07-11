@@ -180,14 +180,14 @@ public:
 private:
 	void run_next (nano::bootstrap_server_lock & lock_a);
 	void set_remote_endpoint (nano::tcp_endpoint const & endpoint);
-	nano::logger_mt * logger () const;
+	std::shared_ptr<nano::logger_mt> logger () const;
 	std::unique_ptr<nano::stat> stats () const;
 	std::unique_ptr<nano::node_config> config () const;
 	std::shared_ptr<nano::buffer_wrapper> get_buffer () const;
 	std::shared_ptr<nano::network_filter> get_publish_filter () const;
+	nano::network_params get_network_params () const;
 
 	std::shared_ptr<nano::request_response_visitor_factory> request_response_visitor_factory;
-	nano::network_params & network_params;
 	bool disable_bootstrap_bulk_pull_server{ false };
 	bool disable_tcp_realtime{ false };
 	std::atomic<bool> handshake_query_received{ false };

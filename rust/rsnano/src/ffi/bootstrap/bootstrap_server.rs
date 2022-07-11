@@ -1,18 +1,18 @@
 use crate::{
     bootstrap::{BootstrapServer, BootstrapServerExt, BootstrapServerObserver},
     ffi::{
-        copy_account_bytes, fill_node_config_dto,
+        copy_account_bytes, fill_network_params_dto, fill_node_config_dto,
         io_context::{FfiIoContext, IoContextHandle},
         messages::MessageHandle,
         thread_pool::FfiThreadPool,
         transport::{EndpointDto, SocketHandle},
-        DestroyCallback, LoggerHandle, LoggerMT, NetworkConstantsDto, NetworkFilterHandle,
+        DestroyCallback, LoggerHandle, LoggerMT, NetworkFilterHandle, NetworkParamsDto,
         NodeConfigDto, StatHandle,
     },
     messages::Message,
     transport::SocketType,
     utils::BufferHandle,
-    Account, NetworkConstants, NodeConfig,
+    Account, NetworkParams, NodeConfig,
 };
 use std::{
     cell::RefCell,
@@ -34,7 +34,7 @@ pub struct CreateBootstrapServerParams {
     pub publish_filter: *mut NetworkFilterHandle,
     pub workers: *mut c_void,
     pub io_ctx: *mut IoContextHandle,
-    pub network: *const NetworkConstantsDto,
+    pub network: *const NetworkParamsDto,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
     pub stats: *mut StatHandle,
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let publish_filter = Arc::clone(&*params.publish_filter);
     let workers = Arc::new(FfiThreadPool::new(params.workers));
     let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
-    let network = NetworkConstants::try_from(&*params.network).unwrap();
+    let network = NetworkParams::try_from(&*params.network).unwrap();
     let stats = Arc::clone(&(*params.stats));
     let mut server = BootstrapServer::new(
         socket,
@@ -325,6 +325,14 @@ pub unsafe extern "C" fn rsn_bootstrap_server_config(
     config: *mut NodeConfigDto,
 ) {
     fill_node_config_dto(&mut *config, &(*handle).0.config);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_network(
+    handle: *mut BootstrapServerHandle,
+    dto: *mut NetworkParamsDto,
+) {
+    fill_network_params_dto(&mut *dto, &(*handle).0.network);
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

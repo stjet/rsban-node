@@ -6,8 +6,8 @@ use crate::{
         messages::MessageHandle,
         thread_pool::FfiThreadPool,
         transport::{EndpointDto, SocketHandle},
-        DestroyCallback, LoggerMT, NetworkConstantsDto, NetworkFilterHandle, NodeConfigDto,
-        StatHandle,
+        DestroyCallback, LoggerHandle, LoggerMT, NetworkConstantsDto, NetworkFilterHandle,
+        NodeConfigDto, StatHandle,
     },
     messages::Message,
     transport::SocketType,
@@ -29,7 +29,7 @@ pub struct BootstrapServerHandle(Arc<BootstrapServer>);
 pub struct CreateBootstrapServerParams {
     pub socket: *mut SocketHandle,
     pub config: *const NodeConfigDto,
-    pub logger: *mut c_void,
+    pub logger: *mut LoggerHandle,
     pub observer: *mut c_void,
     pub publish_filter: *mut NetworkFilterHandle,
     pub workers: *mut c_void,
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
 ) -> *mut BootstrapServerHandle {
     let socket = Arc::clone(&(*params.socket));
     let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
-    let logger = Arc::new(LoggerMT::new(params.logger));
+    let logger = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
     let observer = Arc::new(FfiBootstrapServerObserver::new(params.observer));
     let publish_filter = Arc::clone(&*params.publish_filter);
     let workers = Arc::new(FfiThreadPool::new(params.workers));

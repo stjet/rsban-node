@@ -343,16 +343,16 @@ void toml_put_child (void * handle_a, const uint8_t * key_a, uintptr_t key_len_a
 
 bool logger_try_log (void * handle_a, const uint8_t * message_a, size_t len_a)
 {
-	auto logger = static_cast<nano::logger_mt *> (handle_a);
+	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
 	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
-	return logger->try_log (message_string);
+	return (*logger)->try_log (message_string);
 }
 
 void logger_always_log (void * handle_a, const uint8_t * message_a, size_t len_a)
 {
-	auto logger = static_cast<nano::logger_mt *> (handle_a);
+	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
 	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
-	return logger->always_log (message_string);
+	return (*logger)->always_log (message_string);
 }
 
 bool listener_broadcast (void * handle_a, rsnano::MessageDto const * message_a)
@@ -434,6 +434,12 @@ void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackH
 	(*pool)->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_ms), [callback_wrapper] () {
 		callback_wrapper->execute ();
 	});
+}
+
+void logger_destroy (void * handle_a)
+{
+	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
+	delete logger;
 }
 
 class async_connect_callback_wrapper
@@ -759,6 +765,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_ledger_block_or_pruned_exists (ledger_block_or_pruned_exists);
 	rsnano::rsn_callback_block_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_add_timed_task (add_timed_task);
+	rsnano::rsn_callback_logger_destroy (logger_destroy);
 
 	rsnano::rsn_callback_tcp_socket_post (io_ctx_post);
 

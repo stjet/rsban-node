@@ -189,7 +189,7 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::find_connec
 void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & endpoint_a, bool push_front)
 {
 	++connections_count;
-	auto socket (std::make_shared<nano::socket> (node.io_ctx, nano::socket::endpoint_type_t::client, *node.stats, *node.logger, node.workers,
+	auto socket (std::make_shared<nano::socket> (node.io_ctx, nano::socket::endpoint_type_t::client, *node.stats, node.logger, node.workers,
 	node.config->tcp_io_timeout,
 	node.network_params.network.silent_connection_tolerance_time,
 	node.config->logging.network_timeout_logging ()));

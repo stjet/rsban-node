@@ -8,6 +8,7 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
+    ffi::LoggerHandle,
     websocket::{Listener, NullListener},
     Account, BootstrapAttempt,
 };
@@ -22,7 +23,7 @@ pub struct BootstrapAttemptHandle(BootstrapAttempt);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
-    logger: *mut c_void,
+    logger: *mut LoggerHandle,
     websocket_server: *mut c_void,
     block_processor: *const BlockProcessorHandle,
     bootstrap_initiator: *const BootstrapInitiatorHandle,
@@ -31,7 +32,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     mode: u8,
     incremental_id: u64,
 ) -> *mut BootstrapAttemptHandle {
-    let logger = Arc::new(LoggerMT::new(logger));
+    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let id_str = CStr::from_ptr(id).to_str().unwrap();
     let mode = FromPrimitive::from_u8(mode).unwrap();
     let websocket_server: Arc<dyn Listener> = if websocket_server.is_null() {

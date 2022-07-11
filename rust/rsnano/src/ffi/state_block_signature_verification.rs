@@ -9,7 +9,7 @@ use crate::{
     Account, StateBlockSignatureVerification,
 };
 
-use super::{BlockHandle, EpochsHandle, LoggerMT, SignatureCheckerHandle};
+use super::{BlockHandle, EpochsHandle, LoggerHandle, LoggerMT, SignatureCheckerHandle};
 
 pub struct StateBlockSignatureVerificationHandle {
     verification: StateBlockSignatureVerification,
@@ -40,16 +40,16 @@ pub struct StateBlockSignatureVerificationResultDto {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_signature_verification_create(
+pub unsafe extern "C" fn rsn_state_block_signature_verification_create(
     checker: *const SignatureCheckerHandle,
     epochs: *const EpochsHandle,
-    logger: *mut c_void,
+    logger: *mut LoggerHandle,
     timing_logging: bool,
     verification_size: usize,
 ) -> *mut StateBlockSignatureVerificationHandle {
-    let checker = unsafe { &*checker }.checker.clone();
-    let epochs = Arc::new((unsafe { &*epochs }).epochs.clone());
-    let logger = Arc::new(LoggerMT::new(logger));
+    let checker = (*checker).checker.clone();
+    let epochs = Arc::new((*epochs).epochs.clone());
+    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let verification = StateBlockSignatureVerification::builder()
         .signature_checker(checker)
         .epochs(epochs)

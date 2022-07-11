@@ -1,7 +1,7 @@
 use num::FromPrimitive;
 
 use crate::{
-    ffi::{DestroyCallback, DispatchCallback},
+    ffi::{DestroyCallback, DispatchCallback, LoggerHandle},
     stats::SocketStats,
     transport::{
         BufferWrapper, SharedConstBuffer, Socket, SocketBuilder, SocketImpl, SocketType,
@@ -48,12 +48,12 @@ pub unsafe extern "C" fn rsn_socket_create(
     default_timeout_s: u64,
     silent_connection_tolerance_time_s: u64,
     network_timeout_logging: bool,
-    logger: *mut c_void,
+    logger: *mut LoggerHandle,
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
     let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
     let thread_pool = Arc::new(FfiThreadPool::new(thread_pool));
-    let logger = Arc::new(LoggerMT::new(logger));
+    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let stats = (*stats_handle).deref().clone();
 
     let socket_stats = Arc::new(SocketStats::new(stats, logger, network_timeout_logging));

@@ -57,6 +57,9 @@ struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
 
+/// points to a shared_ptr<logger_mt>
+struct LoggerHandle;
+
 struct MessageHandle;
 
 struct MessageHeaderHandle;
@@ -347,7 +350,7 @@ struct CreateBootstrapServerParams
 {
 	SocketHandle * socket;
 	const NodeConfigDto * config;
-	void * logger;
+	LoggerHandle * logger;
 	void * observer;
 	NetworkFilterHandle * publish_filter;
 	void * workers;
@@ -861,7 +864,7 @@ uint8_t rsn_bootstrap_attempt_bootstrap_mode (const BootstrapAttemptHandle * han
 const char * rsn_bootstrap_attempt_bootstrap_mode_text (const BootstrapAttemptHandle * handle,
 uintptr_t * len);
 
-BootstrapAttemptHandle * rsn_bootstrap_attempt_create (void * logger,
+BootstrapAttemptHandle * rsn_bootstrap_attempt_create (LoggerHandle * logger,
 void * websocket_server,
 const BlockProcessorHandle * block_processor,
 const BootstrapInitiatorHandle * bootstrap_initiator,
@@ -1048,6 +1051,8 @@ void rsn_callback_io_ctx_post (DispatchCallback f);
 void rsn_callback_ledger_block_or_pruned_exists (LedgerBlockOrPrunedExistsCallback f);
 
 void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
+
+void rsn_callback_logger_destroy (DestroyCallback f);
 
 void rsn_callback_message_visitor_destroy (DestroyCallback f);
 
@@ -1265,6 +1270,11 @@ bool is_final,
 LocalVotesResult * result);
 
 void rsn_local_vote_history_votes_destroy (LocalVotesResultHandle * handle);
+
+/// logger is a pointer to a shared_ptr<logger_mt>
+LoggerHandle * rsn_logger_create (void * logger);
+
+void rsn_logger_destroy (LoggerHandle * handle);
 
 void rsn_logging_create (LoggingDto * dto);
 
@@ -1743,7 +1753,7 @@ void * thread_pool,
 uint64_t default_timeout_s,
 uint64_t silent_connection_tolerance_time_s,
 bool network_timeout_logging,
-void * logger);
+LoggerHandle * logger);
 
 void rsn_socket_destroy (SocketHandle * handle);
 
@@ -1865,7 +1875,7 @@ const StateBlockSignatureVerificationValueDto * block);
 
 StateBlockSignatureVerificationHandle * rsn_state_block_signature_verification_create (const SignatureCheckerHandle * checker,
 const EpochsHandle * epochs,
-void * logger,
+LoggerHandle * logger,
 bool timing_logging,
 uintptr_t verification_size);
 

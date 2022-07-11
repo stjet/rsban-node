@@ -258,7 +258,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	rsnano::CreateBootstrapServerParams params;
 	params.socket = socket_a->handle;
 	params.config = &config_dto;
-	params.logger = node_a->logger.get ();
+	params.logger = nano::to_logger_handle (node_a->logger);
 	params.observer = observer_handle;
 	params.publish_filter = node_a->network.publish_filter->handle;
 	params.workers = new std::shared_ptr<nano::thread_pool> (node_a->workers);
@@ -1015,7 +1015,7 @@ void nano::bootstrap_server::set_remote_endpoint (nano::tcp_endpoint const & end
 
 nano::logger_mt * nano::bootstrap_server::logger () const
 {
-	return static_cast<nano::logger_mt *> (rsnano::rsn_bootstrap_server_logger (handle));
+	return static_cast<std::shared_ptr<nano::logger_mt> *> (rsnano::rsn_bootstrap_server_logger (handle))->get ();
 }
 
 std::unique_ptr<nano::stat> nano::bootstrap_server::stats () const

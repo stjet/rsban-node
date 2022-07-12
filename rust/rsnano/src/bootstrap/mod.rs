@@ -6,6 +6,7 @@ pub(crate) use bootstrap_attempt::*;
 pub(crate) use bootstrap_initiator::*;
 pub use bootstrap_server::{
     BootstrapServer, BootstrapServerExt, BootstrapServerObserver, RequestResponseVisitorFactory,
+    BootstrapRequestsLock
 };
 
 mod bootstrap_limits {

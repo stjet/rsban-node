@@ -157,7 +157,7 @@ pub trait RequestResponseVisitorFactory {
     fn create_visitor(
         &self,
         connection: &Arc<BootstrapServer>,
-        requests_lock: Rc<RefCell<Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>>>,
+        requests_lock: BootstrapRequestsLock,
     ) -> Box<dyn MessageVisitor>;
 
     fn handle(&self) -> *mut c_void;
@@ -165,6 +165,7 @@ pub trait RequestResponseVisitorFactory {
 
 pub trait BootstrapServerExt {
     fn timeout(&self);
+    fn lock_requests(&self) -> BootstrapRequestsLock;
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
@@ -172,6 +173,94 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
         if self.socket.has_timed_out() {
             self.observer.bootstrap_server_timeout(self.unique_id());
             self.socket.close();
+        }
+    }
+
+    fn lock_requests(&self) -> BootstrapRequestsLock {
+        let guard = self.queue.lock().unwrap();
+        BootstrapRequestsLock::new(Arc::clone(self), guard)
+    }
+}
+
+#[derive(Clone)]
+pub struct BootstrapRequestsLock{
+    server: Arc<BootstrapServer>,
+    requests: Rc<RefCell<Option<MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>>>>
+}
+
+impl BootstrapRequestsLock{
+    pub fn new(server: Arc<BootstrapServer>, guard: MutexGuard<VecDeque<Option<Box<dyn Message>>>>) -> Self{
+        let guard = unsafe{
+            std::mem::transmute::<
+                MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
+                MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>,
+            >(guard)
+        };
+        Self{
+            server,
+            requests: Rc::new(RefCell::new(Some(guard)))
+        }
+    }
+
+    pub fn unlock(&self){
+        let mut inner = self.requests.borrow_mut();
+        *inner = None;
+    }
+
+    pub fn relock(&self){
+        let guard = self.server.queue.lock().unwrap();
+        let mut inner = self.requests.borrow_mut();
+        *inner = unsafe{Some(std::mem::transmute::<
+            MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
+            MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>,
+        >(guard))};
+    }
+
+    pub fn release_front_request(&self) -> Option<Box<dyn Message>>{
+        let mut requests = self.requests.borrow_mut();
+        if let Some(r) = requests.as_mut() {
+            if let Some(req) = r.front_mut() {
+                return req.take();
+            }
+        }
+
+        None
+    }
+
+    pub fn is_queue_empty(&self) -> bool{
+        let requests = self.requests.borrow();
+        if let Some(r) = requests.as_ref() {
+            r.is_empty()
+        } else {
+            true
+        }
+    }
+
+    pub fn front(&self) -> Option<Box<dyn Message>>{
+        let requests = self.requests.borrow();
+        if let Some(r) = requests.as_ref() {
+            if let Some(req) = r.front() {
+                if let Some(msg) = req {
+                    return Some(msg.clone_box());
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn pop(&self){
+        let mut requests = self.requests.borrow_mut();
+        if let Some(r) = requests.as_mut() {
+            r.pop_front();
+        }
+    }
+
+    pub fn push(&self, msg: Option<Box<dyn Message>>)
+    {
+        let mut requests = self.requests.borrow_mut();
+        if let Some(r) = requests.as_mut() {
+            r.push_back(msg)
         }
     }
 }

@@ -74,7 +74,7 @@ class message;
 class bootstrap_server_lock
 {
 public:
-	bootstrap_server_lock (rsnano::BootstrapServerLockHandle * handle_a, rsnano::BootstrapServerHandle * server_a);
+	bootstrap_server_lock (rsnano::BootstrapServerLockHandle * handle_a);
 	bootstrap_server_lock (bootstrap_server_lock const &);
 	bootstrap_server_lock (bootstrap_server_lock && other_a);
 	~bootstrap_server_lock ();
@@ -83,9 +83,6 @@ public:
 	void lock ();
 
 	rsnano::BootstrapServerLockHandle * handle;
-
-private:
-	rsnano::BootstrapServerHandle * server;
 };
 
 class locked_bootstrap_server_requests

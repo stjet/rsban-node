@@ -200,21 +200,18 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bo
 	return composite;
 }
 
-nano::bootstrap_server_lock::bootstrap_server_lock (rsnano::BootstrapServerLockHandle * handle_a, rsnano::BootstrapServerHandle * server_a) :
-	handle{ handle_a },
-	server{ server_a }
+nano::bootstrap_server_lock::bootstrap_server_lock (rsnano::BootstrapServerLockHandle * handle_a) :
+	handle{ handle_a }
 {
 }
 
 nano::bootstrap_server_lock::bootstrap_server_lock (bootstrap_server_lock const & other_a) :
-	handle{ rsnano::rsn_bootstrap_server_lock_clone (other_a.handle) },
-	server{ other_a.server }
+	handle{ rsnano::rsn_bootstrap_server_lock_clone (other_a.handle) }
 {
 }
 
 nano::bootstrap_server_lock::bootstrap_server_lock (bootstrap_server_lock && other_a) :
-	handle{ other_a.handle },
-	server{ other_a.server }
+	handle{ other_a.handle }
 {
 	other_a.handle = nullptr;
 }
@@ -232,7 +229,7 @@ void nano::bootstrap_server_lock::unlock ()
 
 void nano::bootstrap_server_lock::lock ()
 {
-	rsnano::rsn_bootstrap_server_relock (server, handle);
+	rsnano::rsn_bootstrap_server_relock (handle);
 }
 
 nano::locked_bootstrap_server_requests::locked_bootstrap_server_requests (nano::bootstrap_server_lock lock_a) :
@@ -286,7 +283,7 @@ nano::bootstrap_server::~bootstrap_server ()
 nano::bootstrap_server_lock nano::bootstrap_server::create_lock ()
 {
 	auto lock_handle{ rsnano::rsn_bootstrap_server_lock (handle) };
-	return nano::bootstrap_server_lock{ lock_handle, handle };
+	return nano::bootstrap_server_lock{ lock_handle };
 }
 
 void nano::bootstrap_server::stop ()

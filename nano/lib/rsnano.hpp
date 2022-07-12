@@ -989,8 +989,7 @@ BufferHandle * rsn_bootstrap_server_receive_buffer (BootstrapServerHandle * hand
 
 MessageHandle * rsn_bootstrap_server_release_front_request (BootstrapServerLockHandle * handle);
 
-void rsn_bootstrap_server_relock (BootstrapServerHandle * server_handle,
-BootstrapServerLockHandle * lock_handle);
+void rsn_bootstrap_server_relock (BootstrapServerLockHandle * lock_handle);
 
 void rsn_bootstrap_server_remote_endpoint (BootstrapServerHandle * handle, EndpointDto * endpoint);
 

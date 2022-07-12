@@ -724,7 +724,7 @@ void * request_response_visitor_factory_create (void * factory_a, rsnano::Bootst
 {
 	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (factory_a);
 	auto connection = std::make_shared<nano::bootstrap_server> (connection_a);
-	nano::bootstrap_server_lock lock (lock_a, connection_a);
+	nano::bootstrap_server_lock lock (lock_a);
 	nano::locked_bootstrap_server_requests locked_requests (lock);
 	auto visitor{ (*factory)->create_visitor (connection, locked_requests) };
 	return new std::shared_ptr<nano::message_visitor> (visitor);

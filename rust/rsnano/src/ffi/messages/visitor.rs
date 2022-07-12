@@ -18,6 +18,7 @@ pub unsafe extern "C" fn rsn_callback_message_visitor_destroy(f: DestroyCallback
 }
 
 pub(crate) struct FfiMessageVisitor {
+    /// a `shared_ptr<message_visitor> *`
     handle: *mut c_void,
 }
 

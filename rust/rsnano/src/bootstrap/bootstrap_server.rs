@@ -1,7 +1,9 @@
 use std::{
+    cell::RefCell,
     collections::VecDeque,
     ffi::c_void,
     net::{Ipv6Addr, SocketAddr},
+    rc::Rc,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex, MutexGuard,
@@ -155,7 +157,7 @@ pub trait RequestResponseVisitorFactory {
     fn create_visitor(
         &self,
         connection: &Arc<BootstrapServer>,
-        requests_lock: &Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>,
+        requests_lock: Rc<RefCell<Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>>>,
     ) -> Box<dyn MessageVisitor>;
 
     fn handle(&self) -> *mut c_void;

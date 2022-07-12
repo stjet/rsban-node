@@ -720,6 +720,16 @@ void request_response_visitor_factory_destroy (void * handle_a)
 	delete factory;
 }
 
+void * request_response_visitor_factory_create (void * factory_a, rsnano::BootstrapServerHandle * connection_a, rsnano::BootstrapServerLockHandle * lock_a)
+{
+	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (factory_a);
+	auto connection = std::make_shared<nano::bootstrap_server> (connection_a);
+	nano::bootstrap_server_lock lock (lock_a, connection_a);
+	nano::locked_bootstrap_server_requests locked_requests (lock);
+	auto visitor{ (*factory)->create_visitor (connection, locked_requests) };
+	return new std::shared_ptr<nano::message_visitor> (visitor);
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -800,6 +810,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_observer_timeout (bootstrap_observer_timeout);
 
 	rsnano::rsn_callback_request_response_visitor_factory_destroy (request_response_visitor_factory_destroy);
+	rsnano::rsn_callback_request_response_visitor_factory_create (request_response_visitor_factory_create);
 
 	callbacks_set = true;
 }

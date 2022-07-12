@@ -498,6 +498,10 @@ using ReadBytesCallback = int32_t (*) (void *, uint8_t *, uintptr_t);
 
 using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
+/// first arg is a `shared_ptr<request_response_visitor_factory> *`
+/// returns a `shared_ptr<message_visitor> *`
+using RequestResponseVisitorFactoryCreateCallback = void * (*)(void *, BootstrapServerHandle *, BootstrapServerLockHandle *);
+
 using StringCharsCallback = const char * (*)(void *);
 
 using StringDeleteCallback = void (*) (void *);
@@ -1098,6 +1102,8 @@ void rsn_callback_property_tree_to_json (PropertyTreeToJsonCallback f);
 void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
+
+void rsn_callback_request_response_visitor_factory_create (RequestResponseVisitorFactoryCreateCallback f);
 
 void rsn_callback_request_response_visitor_factory_destroy (DestroyCallback f);
 

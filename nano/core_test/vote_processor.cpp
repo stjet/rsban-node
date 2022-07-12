@@ -106,7 +106,7 @@ TEST (vote_processor, producer_consumer)
 	std::thread consumer_thread{ consumer };
 	std::thread monitor_thread{ monitor };
 
-	ASSERT_TIMELY (10s, node.vote_processor.total_processed.load () >= number_of_votes);
+	ASSERT_TIMELY (20s, node.vote_processor.total_processed.load () >= number_of_votes);
 	producer_thread.join ();
 	consumer_thread.join ();
 	monitor_thread.join ();

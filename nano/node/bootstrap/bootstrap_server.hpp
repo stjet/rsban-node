@@ -104,7 +104,7 @@ class request_response_visitor_factory
 {
 public:
 	request_response_visitor_factory (std::shared_ptr<nano::node> node_a);
-	std::unique_ptr<nano::message_visitor> create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, nano::locked_bootstrap_server_requests & lock_a);
+	std::shared_ptr<nano::message_visitor> create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, nano::locked_bootstrap_server_requests & lock_a);
 
 private:
 	std::shared_ptr<nano::node> node;
@@ -136,6 +136,7 @@ class bootstrap_server final : public std::enable_shared_from_this<nano::bootstr
 {
 public:
 	bootstrap_server (std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::node> const &);
+	bootstrap_server (rsnano::BootstrapServerHandle * handle_a);
 	bootstrap_server (nano::bootstrap_server const &) = delete;
 	bootstrap_server (nano::bootstrap_server &&) = delete;
 	~bootstrap_server ();

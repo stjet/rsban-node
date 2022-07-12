@@ -207,12 +207,14 @@ nano::bootstrap_server_lock::bootstrap_server_lock (rsnano::BootstrapServerLockH
 }
 
 nano::bootstrap_server_lock::bootstrap_server_lock (bootstrap_server_lock const & other_a) :
-	handle{ rsnano::rsn_bootstrap_server_lock_clone (other_a.handle) }
+	handle{ rsnano::rsn_bootstrap_server_lock_clone (other_a.handle) },
+	server{ other_a.server }
 {
 }
 
 nano::bootstrap_server_lock::bootstrap_server_lock (bootstrap_server_lock && other_a) :
-	handle{ other_a.handle }
+	handle{ other_a.handle },
+	server{ other_a.server }
 {
 	other_a.handle = nullptr;
 }
@@ -269,6 +271,11 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	params.request_response_visitor_factory = new std::shared_ptr<nano::request_response_visitor_factory> (request_response_visitor_factory);
 	handle = rsnano::rsn_bootstrap_server_create (&params);
 	debug_assert (socket_a != nullptr);
+}
+
+nano::bootstrap_server::bootstrap_server (rsnano::BootstrapServerHandle * handle_a) :
+	handle{ handle_a }
+{
 }
 
 nano::bootstrap_server::~bootstrap_server ()
@@ -940,9 +947,9 @@ nano::request_response_visitor_factory::request_response_visitor_factory (std::s
 {
 }
 
-std::unique_ptr<nano::message_visitor> nano::request_response_visitor_factory::create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, nano::locked_bootstrap_server_requests & requests)
+std::shared_ptr<nano::message_visitor> nano::request_response_visitor_factory::create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, nano::locked_bootstrap_server_requests & requests)
 {
-	return std::make_unique<request_response_visitor> (connection_a, node, requests);
+	return std::make_shared<request_response_visitor> (connection_a, node, requests);
 }
 
 void nano::bootstrap_server::run_next (nano::bootstrap_server_lock & lock_a)

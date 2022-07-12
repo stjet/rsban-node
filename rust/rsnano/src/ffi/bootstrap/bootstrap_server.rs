@@ -5,7 +5,7 @@ use crate::{
     ffi::{
         copy_account_bytes, fill_network_params_dto, fill_node_config_dto,
         io_context::{FfiIoContext, IoContextHandle},
-        messages::MessageHandle,
+        messages::{FfiMessageVisitor, MessageHandle},
         thread_pool::FfiThreadPool,
         transport::{EndpointDto, SocketHandle},
         DestroyCallback, LoggerHandle, LoggerMT, NetworkFilterHandle, NetworkParamsDto,
@@ -26,6 +26,12 @@ use std::{
 };
 
 pub struct BootstrapServerHandle(Arc<BootstrapServer>);
+
+impl BootstrapServerHandle {
+    pub fn new(server: Arc<BootstrapServer>) -> *mut BootstrapServerHandle {
+        Box::into_raw(Box::new(BootstrapServerHandle(server)))
+    }
+}
 
 #[repr(C)]
 pub struct CreateBootstrapServerParams {
@@ -77,7 +83,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     server.connections_max = params.connections_max;
     server.disable_bootstrap_bulk_pull_server = params.disable_bootstrap_bulk_pull_server;
     server.disable_tcp_realtime = params.disable_tcp_realtime;
-    Box::into_raw(Box::new(BootstrapServerHandle(Arc::new(server))))
+    BootstrapServerHandle::new(Arc::new(server))
 }
 
 #[no_mangle]
@@ -151,17 +157,26 @@ pub struct BootstrapServerLockHandle(
     Rc<RefCell<Option<MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>>>>,
 );
 
+impl BootstrapServerLockHandle {
+    pub fn new(
+        guard: Rc<RefCell<Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>>>,
+    ) -> *mut Self {
+        let guard = unsafe {
+            std::mem::transmute::<
+                Rc<RefCell<Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>>>,
+                Rc<RefCell<Option<MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>>>>,
+            >(guard)
+        };
+        Box::into_raw(Box::new(BootstrapServerLockHandle(guard)))
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_lock(
     handle: *mut BootstrapServerHandle,
 ) -> *mut BootstrapServerLockHandle {
     let guard = (*handle).0.queue.lock().unwrap();
-    Box::into_raw(Box::new(BootstrapServerLockHandle(Rc::new(RefCell::new(
-        Some(std::mem::transmute::<
-            MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
-            MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>,
-        >(guard)),
-    )))))
+    BootstrapServerLockHandle::new(Rc::new(RefCell::new(Some(guard))))
 }
 
 #[no_mangle]
@@ -486,6 +501,22 @@ pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(f
     DESTROY_VISITOR_FACTORY = Some(f);
 }
 
+/// first arg is a `shared_ptr<request_response_visitor_factory> *`
+/// returns a `shared_ptr<message_visitor> *`
+pub type RequestResponseVisitorFactoryCreateCallback = unsafe extern "C" fn(
+    *mut c_void,
+    *mut BootstrapServerHandle,
+    *mut BootstrapServerLockHandle,
+) -> *mut c_void;
+static mut CREATE_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_create(
+    f: RequestResponseVisitorFactoryCreateCallback,
+) {
+    CREATE_VISITOR = Some(f);
+}
+
 pub struct FfiRequestResponseVisitorFactory {
     handle: *mut c_void,
 }
@@ -505,10 +536,17 @@ impl Drop for FfiRequestResponseVisitorFactory {
 impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
     fn create_visitor(
         &self,
-        _connection: &Arc<BootstrapServer>,
-        _requests_lock: &Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>,
+        connection: &Arc<BootstrapServer>,
+        requests_lock: Rc<RefCell<Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>>>,
     ) -> Box<dyn crate::messages::MessageVisitor> {
-        todo!()
+        let visitor_handle = unsafe {
+            CREATE_VISITOR.expect("CREATE_VISITOR missing")(
+                self.handle,
+                BootstrapServerHandle::new(connection.clone()),
+                BootstrapServerLockHandle::new(requests_lock),
+            )
+        };
+        Box::new(FfiMessageVisitor::new(visitor_handle))
     }
 
     fn handle(&self) -> *mut c_void {

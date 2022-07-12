@@ -13,7 +13,7 @@ use std::{
 
 use crate::{
     logger_mt::Logger,
-    messages::{Message, MessageVisitor},
+    messages::{Message, MessageType, MessageVisitor},
     stats::Stat,
     transport::{Socket, SocketImpl, SocketType},
     utils::{IoContext, ThreadPool},
@@ -161,7 +161,7 @@ pub trait RequestResponseVisitorFactory {
     fn create_visitor(
         &self,
         connection: &Arc<BootstrapServer>,
-        requests_lock: BootstrapRequestsLock,
+        requests_lock: &BootstrapRequestsLock,
     ) -> Box<dyn MessageVisitor>;
 
     fn handle(&self) -> *mut c_void;
@@ -170,6 +170,7 @@ pub trait RequestResponseVisitorFactory {
 pub trait BootstrapServerExt {
     fn timeout(&self);
     fn lock_requests(&self) -> BootstrapRequestsLock;
+    fn run_next(&self, requests_lock: &BootstrapRequestsLock);
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
@@ -183,6 +184,34 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
     fn lock_requests(&self) -> BootstrapRequestsLock {
         let guard = self.queue.lock().unwrap();
         BootstrapRequestsLock::new(Arc::clone(self), guard)
+    }
+
+    fn run_next(&self, requests_lock: &BootstrapRequestsLock) {
+        debug_assert!(!requests_lock.is_queue_empty());
+        let visitor = self
+            .request_response_visitor_factory
+            .create_visitor(self, requests_lock);
+        let msg_type = requests_lock.front().unwrap().header().message_type();
+        if msg_type == MessageType::BulkPull
+            || msg_type == MessageType::BulkPullAccount
+            || msg_type == MessageType::BulkPush
+            || msg_type == MessageType::FrontierReq
+            || msg_type == MessageType::NodeIdHandshake
+        {
+            // Bootstrap & node ID (realtime start)
+            // Request removed from queue in request_response_visitor. For bootstrap with requests.front ().release (), for node ID with finish_request ()
+            if let Some(msg) = requests_lock.front() {
+                msg.visit(visitor.as_ref())
+            }
+        } else {
+            // Realtime
+            if let Some(msg) = requests_lock.front() {
+                requests_lock.pop();
+                requests_lock.unlock();
+                msg.visit(visitor.as_ref());
+                requests_lock.relock();
+            }
+        }
     }
 }
 

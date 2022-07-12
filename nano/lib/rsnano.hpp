@@ -1011,6 +1011,9 @@ void rsn_bootstrap_server_requests_pop (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_requests_push (BootstrapServerLockHandle * handle, MessageHandle * msg);
 
+void rsn_bootstrap_server_run_next (BootstrapServerHandle * handle,
+BootstrapServerLockHandle * requests_lock);
+
 void rsn_bootstrap_server_set_handshake_query_received (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_set_last_telemetry_req (BootstrapServerHandle * handle);

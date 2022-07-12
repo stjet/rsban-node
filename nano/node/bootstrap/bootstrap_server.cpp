@@ -990,25 +990,7 @@ std::shared_ptr<nano::message_visitor> nano::request_response_visitor_factory::c
 
 void nano::bootstrap_server::run_next (nano::bootstrap_server_lock & lock_a)
 {
-	debug_assert (!is_request_queue_empty (lock_a));
-	auto locked_requests{ nano::locked_bootstrap_server_requests (lock_a) };
-	auto visitor{ get_request_response_visitor_factory ()->create_visitor (shared_from_this (), locked_requests) };
-	auto type (requests_front (lock_a)->get_header ().get_type ());
-	if (type == nano::message_type::bulk_pull || type == nano::message_type::bulk_pull_account || type == nano::message_type::bulk_push || type == nano::message_type::frontier_req || type == nano::message_type::node_id_handshake)
-	{
-		// Bootstrap & node ID (realtime start)
-		// Request removed from queue in request_response_visitor. For bootstrap with requests.front ().release (), for node ID with finish_request ()
-		requests_front (lock_a)->visit (*visitor);
-	}
-	else
-	{
-		// Realtime
-		auto request (std::move (requests_front (lock_a)));
-		requests_pop (lock_a);
-		lock_a.unlock ();
-		request->visit (*visitor);
-		lock_a.lock ();
-	}
+	rsnano::rsn_bootstrap_server_run_next (handle, lock_a.handle);
 }
 
 bool nano::bootstrap_server::make_bootstrap_connection ()

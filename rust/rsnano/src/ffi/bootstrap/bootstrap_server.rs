@@ -392,6 +392,14 @@ pub unsafe extern "C" fn rsn_bootstrap_server_visitor_factory(
     (*handle).0.request_response_visitor_factory.handle()
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_run_next(
+    handle: *mut BootstrapServerHandle,
+    requests_lock: *mut BootstrapServerLockHandle,
+) {
+    (*handle).0.run_next(&(*requests_lock).0)
+}
+
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);
 type BootstrapServerExitedCallback =
     unsafe extern "C" fn(*mut c_void, u8, usize, *const EndpointDto);
@@ -531,13 +539,13 @@ impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
     fn create_visitor(
         &self,
         connection: &Arc<BootstrapServer>,
-        requests_lock: BootstrapRequestsLock,
+        requests_lock: &BootstrapRequestsLock,
     ) -> Box<dyn crate::messages::MessageVisitor> {
         let visitor_handle = unsafe {
             CREATE_VISITOR.expect("CREATE_VISITOR missing")(
                 self.handle,
                 BootstrapServerHandle::new(connection.clone()),
-                BootstrapServerLockHandle::new(requests_lock),
+                BootstrapServerLockHandle::new(requests_lock.clone()),
             )
         };
         Box::new(FfiMessageVisitor::new(visitor_handle))

@@ -245,15 +245,14 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 	return message.release ();
 }
 
-nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a) :
-	request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) }
+nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a)
 {
 	auto config_dto{ node_a->config->to_dto () };
 	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (node_a->bootstrap);
 	auto network_dto{ node_a->network_params.to_dto () };
 	rsnano::io_ctx_wrapper io_ctx (node_a->io_ctx);
+	auto request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) };
 	rsnano::CreateBootstrapServerParams params;
-	auto visitor_factory_handle = rsnano::rsn_request_response_visitory_factory_handle_create (new std::shared_ptr<nano::request_response_visitor_factory> (request_response_visitor_factory));
 	params.socket = socket_a->handle;
 	params.config = &config_dto;
 	params.logger = nano::to_logger_handle (node_a->logger);
@@ -267,7 +266,7 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	params.stats = node_a->stats->handle;
 	params.disable_bootstrap_bulk_pull_server = node_a->flags.disable_bootstrap_bulk_pull_server;
 	params.disable_tcp_realtime = node_a->flags.disable_tcp_realtime;
-	params.request_response_visitor_factory = visitor_factory_handle;
+	params.request_response_visitor_factory = new std::shared_ptr<nano::request_response_visitor_factory> (request_response_visitor_factory);
 	handle = rsnano::rsn_bootstrap_server_create (&params);
 	debug_assert (socket_a != nullptr);
 }
@@ -950,7 +949,7 @@ void nano::bootstrap_server::run_next (nano::bootstrap_server_lock & lock_a)
 {
 	debug_assert (!is_request_queue_empty (lock_a));
 	auto locked_requests{ nano::locked_bootstrap_server_requests (lock_a) };
-	auto visitor{ request_response_visitor_factory->create_visitor (shared_from_this (), locked_requests) };
+	auto visitor{ get_request_response_visitor_factory ()->create_visitor (shared_from_this (), locked_requests) };
 	auto type (requests_front (lock_a)->get_header ().get_type ());
 	if (type == nano::message_type::bulk_pull || type == nano::message_type::bulk_pull_account || type == nano::message_type::bulk_push || type == nano::message_type::frontier_req || type == nano::message_type::node_id_handshake)
 	{
@@ -1056,4 +1055,11 @@ nano::network_params nano::bootstrap_server::get_network_params () const
 	rsnano::NetworkParamsDto dto;
 	rsnano::rsn_bootstrap_server_network (handle, &dto);
 	return nano::network_params (dto);
+}
+
+std::shared_ptr<nano::request_response_visitor_factory> nano::bootstrap_server::get_request_response_visitor_factory () const
+{
+	auto factory_handle = rsnano::rsn_bootstrap_server_visitor_factory (handle);
+	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (factory_handle);
+	return *factory;
 }

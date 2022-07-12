@@ -16,7 +16,7 @@ constexpr double nano::bootstrap_limits::bootstrap_minimum_termination_time_sec;
 constexpr unsigned nano::bootstrap_limits::bootstrap_max_new_connections;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_processed_blocks_factor;
 
-nano::bootstrap_client::bootstrap_client (nano::bootstrap_client_observer & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a) :
+nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a) :
 	channel (channel_a),
 	socket (socket_a),
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
@@ -29,7 +29,9 @@ nano::bootstrap_client::bootstrap_client (nano::bootstrap_client_observer & obse
 
 nano::bootstrap_client::~bootstrap_client ()
 {
-	observer_m.bootstrap_client_closed ();
+	auto observer = observer_m.lock ();
+	if (observer)
+		observer->bootstrap_client_closed ();
 }
 
 double nano::bootstrap_client::sample_block_rate ()
@@ -202,7 +204,7 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 			{
 				this_l->node.logger->try_log (boost::str (boost::format ("Connection established to %1%") % endpoint_a));
 			}
-			auto client (std::make_shared<nano::bootstrap_client> (*this_l, std::make_shared<nano::transport::channel_tcp> (*this_l->node.shared (), socket, this_l->node.network.tcp_channels), socket));
+			auto client (std::make_shared<nano::bootstrap_client> (this_l, std::make_shared<nano::transport::channel_tcp> (*this_l->node.shared (), socket, this_l->node.network.tcp_channels), socket));
 			this_l->connections_count++;
 			this_l->pool_connection (client, true, push_front);
 		}

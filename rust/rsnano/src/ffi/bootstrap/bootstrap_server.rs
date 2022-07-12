@@ -42,7 +42,7 @@ pub struct CreateBootstrapServerParams {
     pub stats: *mut StatHandle,
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
-    pub request_response_visitor_factory: *mut RequestResponseVisitorFactoryHandle,
+    pub request_response_visitor_factory: *mut c_void,
 }
 
 #[no_mangle]
@@ -58,9 +58,9 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
     let network = NetworkParams::try_from(&*params.network).unwrap();
     let stats = Arc::clone(&(*params.stats));
-    let visitor_factory = Arc::new(FfiRequestResponseVisitorFactory::new(Box::from_raw(
+    let visitor_factory = Arc::new(FfiRequestResponseVisitorFactory::new(
         params.request_response_visitor_factory,
-    )));
+    ));
     let mut server = BootstrapServer::new(
         socket,
         config,
@@ -376,6 +376,13 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_handshake_query_received(
         .store(true, Ordering::SeqCst);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_visitor_factory(
+    handle: *mut BootstrapServerHandle,
+) -> *mut c_void {
+    (*handle).0.request_response_visitor_factory.handle()
+}
+
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);
 type BootstrapServerExitedCallback =
     unsafe extern "C" fn(*mut c_void, u8, usize, *const EndpointDto);
@@ -479,29 +486,19 @@ pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(f
     DESTROY_VISITOR_FACTORY = Some(f);
 }
 
-/// Contains a `shared_ptr<RequestResponseVisitorFactory> *`
-pub struct RequestResponseVisitorFactoryHandle(*mut c_void);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_request_response_visitory_factory_handle_create(
-    factory: *mut c_void,
-) -> *mut RequestResponseVisitorFactoryHandle {
-    Box::into_raw(Box::new(RequestResponseVisitorFactoryHandle(factory)))
-}
-
 pub struct FfiRequestResponseVisitorFactory {
-    handle: Box<RequestResponseVisitorFactoryHandle>,
+    handle: *mut c_void,
 }
 
 impl FfiRequestResponseVisitorFactory {
-    pub fn new(handle: Box<RequestResponseVisitorFactoryHandle>) -> Self {
+    pub fn new(handle: *mut c_void) -> Self {
         Self { handle }
     }
 }
 
 impl Drop for FfiRequestResponseVisitorFactory {
     fn drop(&mut self) {
-        unsafe { DESTROY_VISITOR_FACTORY.expect("DESTROY_VISITOR_FACTORY missing")(self.handle.0) }
+        unsafe { DESTROY_VISITOR_FACTORY.expect("DESTROY_VISITOR_FACTORY missing")(self.handle) }
     }
 }
 
@@ -512,5 +509,9 @@ impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
         _requests_lock: &Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>,
     ) -> Box<dyn crate::messages::MessageVisitor> {
         todo!()
+    }
+
+    fn handle(&self) -> *mut c_void {
+        self.handle
     }
 }

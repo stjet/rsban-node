@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    ffi::c_void,
     net::{Ipv6Addr, SocketAddr},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -156,6 +157,8 @@ pub trait RequestResponseVisitorFactory {
         connection: &Arc<BootstrapServer>,
         requests_lock: &Option<MutexGuard<VecDeque<Option<Box<dyn Message>>>>>,
     ) -> Box<dyn MessageVisitor>;
+
+    fn handle(&self) -> *mut c_void;
 }
 
 pub trait BootstrapServerExt {

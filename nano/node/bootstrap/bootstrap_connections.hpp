@@ -31,7 +31,7 @@ public:
 class bootstrap_client final : public std::enable_shared_from_this<bootstrap_client>
 {
 public:
-	bootstrap_client (nano::bootstrap_client_observer & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a);
+	bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a);
 	~bootstrap_client ();
 	void stop (bool force);
 	double sample_block_rate ();
@@ -55,7 +55,7 @@ private:
 	std::shared_ptr<nano::transport::channel_tcp> channel;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::socket> socket;
-	nano::bootstrap_client_observer & observer_m;
+	std::weak_ptr<nano::bootstrap_client_observer> observer_m;
 	mutable nano::mutex start_time_mutex;
 	std::chrono::steady_clock::time_point start_time_m;
 };

@@ -8,7 +8,7 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex, MutexGuard,
     },
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use crate::{
@@ -51,7 +51,7 @@ pub struct BootstrapServer {
     pub io_ctx: Arc<dyn IoContext>,
 
     pub network: NetworkParams,
-    last_telemetry_req: Mutex<Instant>,
+    last_telemetry_req: Mutex<Option<Instant>>,
     unique_id: usize,
     pub stats: Arc<Stat>,
     pub disable_bootstrap_bulk_pull_server: bool,
@@ -93,7 +93,7 @@ impl BootstrapServer {
             publish_filter,
             workers,
             io_ctx,
-            last_telemetry_req: Mutex::new(Instant::now() - Duration::from_secs(60 * 60)),
+            last_telemetry_req: Mutex::new(None),
             network,
             unique_id: NEXT_UNIQUE_ID.fetch_add(1, Ordering::Relaxed),
             stats,
@@ -128,12 +128,16 @@ impl BootstrapServer {
 
     pub fn set_last_telemetry_req(&self) {
         let mut lk = self.last_telemetry_req.lock().unwrap();
-        *lk = Instant::now();
+        *lk = Some(Instant::now());
     }
 
     pub fn cache_exceeded(&self) -> bool {
         let lk = self.last_telemetry_req.lock().unwrap();
-        lk.elapsed() >= TelemetryCacheCutoffs::network_to_time(&self.network.network)
+        if let Some(last_req) = lk.as_ref() {
+            last_req.elapsed() >= TelemetryCacheCutoffs::network_to_time(&self.network.network)
+        } else {
+            true
+        }
     }
 
     pub fn unique_id(&self) -> usize {
@@ -183,40 +187,45 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
 }
 
 #[derive(Clone)]
-pub struct BootstrapRequestsLock{
+pub struct BootstrapRequestsLock {
     server: Arc<BootstrapServer>,
-    requests: Rc<RefCell<Option<MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>>>>
+    requests: Rc<RefCell<Option<MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>>>>,
 }
 
-impl BootstrapRequestsLock{
-    pub fn new(server: Arc<BootstrapServer>, guard: MutexGuard<VecDeque<Option<Box<dyn Message>>>>) -> Self{
-        let guard = unsafe{
+impl BootstrapRequestsLock {
+    pub fn new(
+        server: Arc<BootstrapServer>,
+        guard: MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
+    ) -> Self {
+        let guard = unsafe {
             std::mem::transmute::<
                 MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
                 MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>,
             >(guard)
         };
-        Self{
+        Self {
             server,
-            requests: Rc::new(RefCell::new(Some(guard)))
+            requests: Rc::new(RefCell::new(Some(guard))),
         }
     }
 
-    pub fn unlock(&self){
+    pub fn unlock(&self) {
         let mut inner = self.requests.borrow_mut();
         *inner = None;
     }
 
-    pub fn relock(&self){
+    pub fn relock(&self) {
         let guard = self.server.queue.lock().unwrap();
         let mut inner = self.requests.borrow_mut();
-        *inner = unsafe{Some(std::mem::transmute::<
-            MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
-            MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>,
-        >(guard))};
+        *inner = unsafe {
+            Some(std::mem::transmute::<
+                MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
+                MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>,
+            >(guard))
+        };
     }
 
-    pub fn release_front_request(&self) -> Option<Box<dyn Message>>{
+    pub fn release_front_request(&self) -> Option<Box<dyn Message>> {
         let mut requests = self.requests.borrow_mut();
         if let Some(r) = requests.as_mut() {
             if let Some(req) = r.front_mut() {
@@ -227,7 +236,7 @@ impl BootstrapRequestsLock{
         None
     }
 
-    pub fn is_queue_empty(&self) -> bool{
+    pub fn is_queue_empty(&self) -> bool {
         let requests = self.requests.borrow();
         if let Some(r) = requests.as_ref() {
             r.is_empty()
@@ -236,7 +245,7 @@ impl BootstrapRequestsLock{
         }
     }
 
-    pub fn front(&self) -> Option<Box<dyn Message>>{
+    pub fn front(&self) -> Option<Box<dyn Message>> {
         let requests = self.requests.borrow();
         if let Some(r) = requests.as_ref() {
             if let Some(req) = r.front() {
@@ -249,15 +258,14 @@ impl BootstrapRequestsLock{
         None
     }
 
-    pub fn pop(&self){
+    pub fn pop(&self) {
         let mut requests = self.requests.borrow_mut();
         if let Some(r) = requests.as_mut() {
             r.pop_front();
         }
     }
 
-    pub fn push(&self, msg: Option<Box<dyn Message>>)
-    {
+    pub fn push(&self, msg: Option<Box<dyn Message>>) {
         let mut requests = self.requests.borrow_mut();
         if let Some(r) = requests.as_mut() {
             r.push_back(msg)

@@ -1,6 +1,7 @@
 use crate::{
     bootstrap::{
-        BootstrapServer, BootstrapServerExt, BootstrapServerObserver, RequestResponseVisitorFactory, BootstrapRequestsLock,
+        BootstrapRequestsLock, BootstrapServer, BootstrapServerExt, BootstrapServerObserver,
+        RequestResponseVisitorFactory,
     },
     ffi::{
         copy_account_bytes, fill_network_params_dto, fill_node_config_dto,
@@ -152,9 +153,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_make_bootstrap_connection(
 pub struct BootstrapServerLockHandle(BootstrapRequestsLock);
 
 impl BootstrapServerLockHandle {
-    pub fn new(
-        guard: BootstrapRequestsLock
-    ) -> *mut Self {
+    pub fn new(guard: BootstrapRequestsLock) -> *mut Self {
         Box::into_raw(Box::new(BootstrapServerLockHandle(guard)))
     }
 }
@@ -180,9 +179,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_unlock(lock_handle: *mut Bootstrap
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_relock(
-    lock_handle: *mut BootstrapServerLockHandle,
-) {
+pub unsafe extern "C" fn rsn_bootstrap_server_relock(lock_handle: *mut BootstrapServerLockHandle) {
     (*lock_handle).0.relock();
 }
 
@@ -195,7 +192,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_lock_destroy(handle: *mut Bootstra
 pub unsafe extern "C" fn rsn_bootstrap_server_release_front_request(
     handle: *mut BootstrapServerLockHandle,
 ) -> *mut MessageHandle {
-    match (*handle).0.release_front_request(){
+    match (*handle).0.release_front_request() {
         Some(msg) => MessageHandle::new(msg),
         None => std::ptr::null_mut(),
     }
@@ -219,7 +216,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_queue_empty(
 pub unsafe extern "C" fn rsn_bootstrap_server_requests_front(
     handle: *mut BootstrapServerLockHandle,
 ) -> *mut MessageHandle {
-    match (*handle).0.front(){
+    match (*handle).0.front() {
         Some(msg) => MessageHandle::new(msg),
         None => std::ptr::null_mut(),
     }
@@ -235,7 +232,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_requests_push(
     handle: *mut BootstrapServerLockHandle,
     msg: *mut MessageHandle,
 ) {
-    let msg = if msg.is_null(){
+    let msg = if msg.is_null() {
         None
     } else {
         Some((*msg).clone_box())

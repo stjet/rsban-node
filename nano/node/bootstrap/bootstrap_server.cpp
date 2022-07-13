@@ -8,6 +8,44 @@
 #include <boost/format.hpp>
 #include <boost/variant/get.hpp>
 
+nano::bootstrap_server_weak_wrapper::bootstrap_server_weak_wrapper (std::shared_ptr<nano::bootstrap_server> const & server) :
+	handle{ rsnano::rsn_bootstrap_server_get_weak (server->handle) }
+{
+}
+
+nano::bootstrap_server_weak_wrapper::bootstrap_server_weak_wrapper (bootstrap_server_weak_wrapper const & other_a) :
+	handle{ rsnano::rsn_bootstrap_server_copy_weak (other_a.handle) }
+{
+}
+
+nano::bootstrap_server_weak_wrapper::bootstrap_server_weak_wrapper (bootstrap_server_weak_wrapper && other_a) :
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+}
+
+nano::bootstrap_server_weak_wrapper::~bootstrap_server_weak_wrapper ()
+{
+	if (handle)
+		rsnano::rsn_bootstrap_server_destroy_weak (handle);
+}
+
+nano::bootstrap_server_weak_wrapper & nano::bootstrap_server_weak_wrapper::operator= (bootstrap_server_weak_wrapper && other_a)
+{
+	handle = other_a.handle;
+	other_a.handle = nullptr;
+	return *this;
+}
+
+std::shared_ptr<nano::bootstrap_server> nano::bootstrap_server_weak_wrapper::lock () const
+{
+	auto server_handle = rsnano::rsn_bootstrap_server_lock_weak (handle);
+	if (server_handle)
+		return std::make_shared<nano::bootstrap_server> (server_handle);
+
+	return std::shared_ptr<nano::bootstrap_server> ();
+}
+
 nano::bootstrap_listener::bootstrap_listener (uint16_t port_a, nano::node & node_a) :
 	node (node_a),
 	port (port_a)
@@ -166,7 +204,7 @@ void nano::bootstrap_listener::accept_action (boost::system::error_code const & 
 	{
 		auto connection (std::make_shared<nano::bootstrap_server> (socket_a, node.shared ()));
 		nano::lock_guard<nano::mutex> lock (mutex);
-		connections[connection->unique_id ()] = connection;
+		connections[connection->unique_id ()] = nano::bootstrap_server_weak_wrapper (connection);
 		connection->receive ();
 	}
 	else
@@ -194,7 +232,8 @@ boost::asio::ip::tcp::endpoint nano::bootstrap_listener::endpoint ()
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (bootstrap_listener & bootstrap_listener, std::string const & name)
 {
-	auto sizeof_element = sizeof (decltype (bootstrap_listener.connections)::value_type);
+	//auto sizeof_element = sizeof (decltype (bootstrap_listener.connections)::value_type);
+	size_t sizeof_element = 1;
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "connections", bootstrap_listener.connection_count (), sizeof_element }));
 	return composite;
@@ -716,10 +755,10 @@ void nano::bootstrap_server::finish_request ()
 		}
 	}
 
-	std::weak_ptr<nano::bootstrap_server> this_w (shared_from_this ());
+	nano::bootstrap_server_weak_wrapper this_w (shared_from_this ());
 	auto workers_ptr = rsnano::rsn_bootstrap_server_workers (handle);
 	auto workers = static_cast<std::shared_ptr<nano::thread_pool> *> (workers_ptr);
-	(*workers)->add_timed_task (std::chrono::steady_clock::now () + (config ()->tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w] () {
+	(*workers)->add_timed_task (std::chrono::steady_clock::now () + (config ()->tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w = std::move (this_w)] () {
 		if (auto this_l = this_w.lock ())
 		{
 			this_l->timeout ();
@@ -730,8 +769,8 @@ void nano::bootstrap_server::finish_request ()
 void nano::bootstrap_server::finish_request_async ()
 {
 	rsnano::io_ctx_wrapper io_ctx (rsnano::rsn_bootstrap_server_io_ctx (handle));
-	std::weak_ptr<nano::bootstrap_server> this_w (shared_from_this ());
-	io_ctx.inner ()->post ([this_w] () {
+	nano::bootstrap_server_weak_wrapper this_w (shared_from_this ());
+	io_ctx.inner ()->post ([this_w = std::move (this_w)] () {
 		if (auto this_l = this_w.lock ())
 		{
 			this_l->finish_request ();
@@ -806,7 +845,7 @@ namespace
 class request_response_visitor : public nano::message_visitor
 {
 public:
-	explicit request_response_visitor (std::shared_ptr<nano::abstract_bootstrap_server> connection_a, std::shared_ptr<nano::node> node_a, nano::locked_bootstrap_server_requests & requests_a) :
+	explicit request_response_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, std::shared_ptr<nano::node> node_a, nano::locked_bootstrap_server_requests & requests_a) :
 		connection (std::move (connection_a)),
 		node (std::move (node_a)),
 		requests{ std::move (requests_a) }
@@ -878,7 +917,7 @@ public:
 			auto cookie (node->network.syn_cookies.assign (nano::transport::map_tcp_to_endpoint (connection->get_remote_endpoint ())));
 			nano::node_id_handshake response_message (node->network_params.network, cookie, response);
 			auto shared_const_buffer = response_message.to_shared_const_buffer ();
-			connection->get_socket ()->async_write (shared_const_buffer, [connection = std::weak_ptr<nano::abstract_bootstrap_server> (connection), config_l = node->config, stats_l = node->stats, logger_l = node->logger] (boost::system::error_code const & ec, std::size_t size_a) {
+			connection->get_socket ()->async_write (shared_const_buffer, [connection = nano::bootstrap_server_weak_wrapper (connection), config_l = node->config, stats_l = node->stats, logger_l = node->logger] (boost::system::error_code const & ec, std::size_t size_a) {
 				if (auto connection_l = connection.lock ())
 				{
 					if (ec)
@@ -933,7 +972,7 @@ public:
 	{
 		node->network.tcp_message_manager.put_message (nano::tcp_message_item{ std::make_shared<nano::telemetry_ack> (message_a), connection->get_remote_endpoint (), connection->get_remote_node_id (), connection->get_socket () });
 	}
-	std::shared_ptr<nano::abstract_bootstrap_server> connection;
+	std::shared_ptr<nano::bootstrap_server> connection;
 	std::shared_ptr<nano::node> node;
 	nano::locked_bootstrap_server_requests requests;
 };

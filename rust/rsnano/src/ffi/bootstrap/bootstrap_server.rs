@@ -19,7 +19,7 @@ use crate::{
 use std::{
     ffi::c_void,
     net::SocketAddr,
-    sync::{atomic::Ordering, Arc},
+    sync::{atomic::Ordering, Arc, Weak},
 };
 
 pub struct BootstrapServerHandle(Arc<BootstrapServer>);
@@ -29,6 +29,8 @@ impl BootstrapServerHandle {
         Box::into_raw(Box::new(BootstrapServerHandle(server)))
     }
 }
+
+pub struct BootstrapServerWeakHandle(Weak<BootstrapServer>);
 
 #[repr(C)]
 pub struct CreateBootstrapServerParams {
@@ -93,6 +95,41 @@ pub unsafe extern "C" fn rsn_bootstrap_server_unique_id(
     handle: *mut BootstrapServerHandle,
 ) -> usize {
     (*handle).0.unique_id()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_get_weak(
+    handle: *mut BootstrapServerHandle,
+) -> *mut BootstrapServerWeakHandle {
+    Box::into_raw(Box::new(BootstrapServerWeakHandle(Arc::downgrade(
+        &(*handle).0,
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_destroy_weak(handle: *mut BootstrapServerWeakHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_copy_weak(
+    handle: *mut BootstrapServerWeakHandle,
+) -> *mut BootstrapServerWeakHandle {
+    if handle.is_null() {
+        std::ptr::null_mut()
+    } else {
+        Box::into_raw(Box::new(BootstrapServerWeakHandle((*handle).0.clone())))
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_lock_weak(
+    handle: *mut BootstrapServerWeakHandle,
+) -> *mut BootstrapServerHandle {
+    match (*handle).0.upgrade() {
+        Some(i) => BootstrapServerHandle::new(i),
+        None => std::ptr::null_mut(),
+    }
 }
 
 #[no_mangle]

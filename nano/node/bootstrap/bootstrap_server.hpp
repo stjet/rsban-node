@@ -9,6 +9,7 @@
 namespace rsnano
 {
 class BootstrapServerHandle;
+class BootstrapServerWeakHandle;
 }
 
 namespace nano
@@ -28,6 +29,21 @@ public:
 	virtual void boostrap_server_exited (nano::socket::type_t type_a, std::uintptr_t inner_ptr, nano::tcp_endpoint const &) = 0;
 	virtual std::size_t get_bootstrap_count () = 0;
 	virtual void inc_bootstrap_count () = 0;
+};
+
+class bootstrap_server_weak_wrapper
+{
+public:
+	bootstrap_server_weak_wrapper () = default;
+	bootstrap_server_weak_wrapper (std::shared_ptr<nano::bootstrap_server> const & server);
+	bootstrap_server_weak_wrapper (bootstrap_server_weak_wrapper const &);
+	bootstrap_server_weak_wrapper (bootstrap_server_weak_wrapper &&);
+	~bootstrap_server_weak_wrapper ();
+	bootstrap_server_weak_wrapper & operator= (bootstrap_server_weak_wrapper && other_a);
+	std::shared_ptr<nano::bootstrap_server> lock () const;
+
+private:
+	rsnano::BootstrapServerWeakHandle * handle{ nullptr };
 };
 
 /**
@@ -55,7 +71,7 @@ public:
 	void boostrap_server_exited (nano::socket::type_t type_a, std::uintptr_t inner_ptr_a, nano::tcp_endpoint const & endpoint_a) override;
 
 	nano::mutex mutex;
-	std::unordered_map<std::size_t, std::weak_ptr<nano::bootstrap_server>> connections;
+	std::unordered_map<std::size_t, bootstrap_server_weak_wrapper> connections;
 	nano::tcp_endpoint endpoint ();
 	nano::node & node;
 	std::shared_ptr<nano::server_socket> listening_socket;
@@ -108,28 +124,9 @@ private:
 };
 
 /**
- * This class is a temporary solution for porting it to Rust. The request_response_visitor uses it
- * instead of bootstrap_server, so that bootstrap_server can be ported separatly
- */
-class abstract_bootstrap_server
-{
-public:
-	virtual nano::account get_remote_node_id () const = 0;
-	virtual nano::tcp_endpoint get_remote_endpoint () const = 0;
-	virtual void set_remote_node_id (nano::account account_a) = 0;
-	virtual std::shared_ptr<nano::socket> const get_socket () const = 0;
-	virtual void finish_request () = 0;
-	virtual void finish_request_async () = 0;
-	virtual bool get_handshake_query_received () = 0;
-	virtual void set_handshake_query_received () = 0;
-	virtual void stop () = 0;
-	virtual bool is_stopped () const = 0;
-};
-
-/**
  * Owns the server side of a bootstrap connection. Responds to bootstrap messages sent over the socket.
  */
-class bootstrap_server final : public std::enable_shared_from_this<nano::bootstrap_server>, public abstract_bootstrap_server
+class bootstrap_server final : public std::enable_shared_from_this<nano::bootstrap_server>
 {
 public:
 	bootstrap_server (std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::node> const &);
@@ -138,7 +135,7 @@ public:
 	bootstrap_server (nano::bootstrap_server &&) = delete;
 	~bootstrap_server ();
 	nano::bootstrap_server_lock create_lock ();
-	void stop () override;
+	void stop ();
 	void receive ();
 	void receive_header_action (boost::system::error_code const &, std::size_t);
 	void receive_bulk_pull_action (boost::system::error_code const &, std::size_t, nano::message_header const &);
@@ -151,10 +148,10 @@ public:
 	void receive_node_id_handshake_action (boost::system::error_code const &, std::size_t, nano::message_header const &);
 	void receive_telemetry_ack_action (boost::system::error_code const & ec, std::size_t size_a, nano::message_header const & header_a);
 	void add_request (std::unique_ptr<nano::message>);
-	void finish_request () override;
-	void finish_request_async () override;
-	bool get_handshake_query_received () override;
-	void set_handshake_query_received () override;
+	void finish_request ();
+	void finish_request_async ();
+	bool get_handshake_query_received ();
+	void set_handshake_query_received ();
 	void timeout ();
 	void push_request (std::unique_ptr<nano::message> msg);
 	bool requests_empty ();
@@ -168,12 +165,12 @@ public:
 
 	bool make_bootstrap_connection ();
 	bool is_realtime_connection ();
-	bool is_stopped () const override;
+	bool is_stopped () const;
 	std::size_t unique_id () const;
-	nano::account get_remote_node_id () const override;
-	void set_remote_node_id (nano::account account_a) override;
-	nano::tcp_endpoint get_remote_endpoint () const override;
-	std::shared_ptr<nano::socket> const get_socket () const override;
+	nano::account get_remote_node_id () const;
+	void set_remote_node_id (nano::account account_a);
+	nano::tcp_endpoint get_remote_endpoint () const;
+	std::shared_ptr<nano::socket> const get_socket () const;
 
 private:
 	void run_next (nano::bootstrap_server_lock & lock_a);

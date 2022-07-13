@@ -43,6 +43,8 @@ struct BootstrapServerHandle;
 
 struct BootstrapServerLockHandle;
 
+struct BootstrapServerWeakHandle;
+
 struct BufferHandle;
 
 struct ChannelHandle;
@@ -955,13 +957,19 @@ bool rsn_bootstrap_server_cache_exceeded (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_config (BootstrapServerHandle * handle, NodeConfigDto * config);
 
+BootstrapServerWeakHandle * rsn_bootstrap_server_copy_weak (BootstrapServerWeakHandle * handle);
+
 BootstrapServerHandle * rsn_bootstrap_server_create (const CreateBootstrapServerParams * params);
 
 void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
 
+void rsn_bootstrap_server_destroy_weak (BootstrapServerWeakHandle * handle);
+
 bool rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_disable_tcp_realtime (BootstrapServerHandle * handle);
+
+BootstrapServerWeakHandle * rsn_bootstrap_server_get_weak (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_handshake_query_received (BootstrapServerHandle * handle);
 
@@ -974,6 +982,8 @@ BootstrapServerLockHandle * rsn_bootstrap_server_lock (BootstrapServerHandle * h
 BootstrapServerLockHandle * rsn_bootstrap_server_lock_clone (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_lock_destroy (BootstrapServerLockHandle * handle);
+
+BootstrapServerHandle * rsn_bootstrap_server_lock_weak (BootstrapServerWeakHandle * handle);
 
 void * rsn_bootstrap_server_logger (BootstrapServerHandle * handle);
 

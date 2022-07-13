@@ -181,7 +181,6 @@ private:
 	std::shared_ptr<nano::buffer_wrapper> get_buffer () const;
 	std::shared_ptr<nano::network_filter> get_publish_filter () const;
 	nano::network_params get_network_params () const;
-	std::shared_ptr<nano::request_response_visitor_factory> get_request_response_visitor_factory () const;
 
 public:
 	rsnano::BootstrapServerHandle * handle;

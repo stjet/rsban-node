@@ -386,13 +386,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_handshake_query_received(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_visitor_factory(
-    handle: *mut BootstrapServerHandle,
-) -> *mut c_void {
-    (*handle).0.request_response_visitor_factory.handle()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_run_next(
     handle: *mut BootstrapServerHandle,
     requests_lock: *mut BootstrapServerLockHandle,
@@ -554,4 +547,19 @@ impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
     fn handle(&self) -> *mut c_void {
         self.handle
     }
+}
+
+type BootstrapServerReceiveCallback = unsafe extern "C" fn(*mut BootstrapServerHandle);
+static mut BOOTSTRAP_SERVER_RECEIVE: Option<BootstrapServerReceiveCallback> = None;
+
+pub fn bootstrap_server_receive(server: Arc<BootstrapServer>) {
+    let handle = BootstrapServerHandle::new(server);
+    unsafe {
+        BOOTSTRAP_SERVER_RECEIVE.expect("BOOTSTRAP_SERVER_RECEIVE missing")(handle);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_bootstrap_server_receive(f: BootstrapServerReceiveCallback) {
+    BOOTSTRAP_SERVER_RECEIVE = Some(f);
 }

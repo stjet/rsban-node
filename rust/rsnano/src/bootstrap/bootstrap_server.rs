@@ -171,6 +171,7 @@ pub trait BootstrapServerExt {
     fn timeout(&self);
     fn lock_requests(&self) -> BootstrapRequestsLock;
     fn run_next(&self, requests_lock: &BootstrapRequestsLock);
+    fn receive(&self);
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
@@ -212,6 +213,10 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
                 requests_lock.relock();
             }
         }
+    }
+
+    fn receive(&self) {
+        crate::ffi::bootstrap::bootstrap_server_receive(Arc::clone(self))
     }
 }
 

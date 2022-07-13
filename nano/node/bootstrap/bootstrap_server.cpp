@@ -1081,10 +1081,3 @@ nano::network_params nano::bootstrap_server::get_network_params () const
 	rsnano::rsn_bootstrap_server_network (handle, &dto);
 	return nano::network_params (dto);
 }
-
-std::shared_ptr<nano::request_response_visitor_factory> nano::bootstrap_server::get_request_response_visitor_factory () const
-{
-	auto factory_handle = rsnano::rsn_bootstrap_server_visitor_factory (handle);
-	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (factory_handle);
-	return *factory;
-}

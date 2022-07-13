@@ -714,6 +714,19 @@ void bootstrap_observer_timeout (void * handle_a, uintptr_t inner_ptr_a)
 	(*observer)->bootstrap_server_timeout (inner_ptr_a);
 }
 
+void bootstrap_server_receive (rsnano::BootstrapServerHandle * handle_a)
+{
+	try
+	{
+		auto server = std::make_shared<nano::bootstrap_server> (handle_a);
+		server->receive ();
+	}
+	catch (std::exception & e)
+	{
+		std::cerr << "bootstrap_server_receive failed: " << e.what () << std::endl;
+	}
+}
+
 void request_response_visitor_factory_destroy (void * handle_a)
 {
 	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (handle_a);
@@ -808,6 +821,8 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_observer_exited (bootstrap_observer_exited);
 	rsnano::rsn_callback_bootstrap_observer_inc_bootstrap_count (bootstrap_observer_inc_bootstrap_count);
 	rsnano::rsn_callback_bootstrap_observer_timeout (bootstrap_observer_timeout);
+
+	rsnano::rsn_callback_bootstrap_server_receive (bootstrap_server_receive);
 
 	rsnano::rsn_callback_request_response_visitor_factory_destroy (request_response_visitor_factory_destroy);
 	rsnano::rsn_callback_request_response_visitor_factory_create (request_response_visitor_factory_create);

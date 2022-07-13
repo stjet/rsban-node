@@ -462,6 +462,8 @@ using BootstrapServerIncBootstrapCountCallback = void (*) (void *);
 
 using BootstrapServerTimeoutCallback = void (*) (void *, uintptr_t);
 
+using BootstrapServerReceiveCallback = void (*) (BootstrapServerHandle *);
+
 using BufferSizeCallback = uintptr_t (*) (void *);
 
 using InAvailCallback = uintptr_t (*) (void *, int32_t *);
@@ -1035,8 +1037,6 @@ uintptr_t rsn_bootstrap_server_unique_id (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_unlock (BootstrapServerLockHandle * lock_handle);
 
-void * rsn_bootstrap_server_visitor_factory (BootstrapServerHandle * handle);
-
 void * rsn_bootstrap_server_workers (BootstrapServerHandle * handle);
 
 BufferHandle * rsn_buffer_create (uintptr_t len);
@@ -1070,6 +1070,8 @@ void rsn_callback_bootstrap_observer_exited (BootstrapServerExitedCallback f);
 void rsn_callback_bootstrap_observer_inc_bootstrap_count (BootstrapServerIncBootstrapCountCallback f);
 
 void rsn_callback_bootstrap_observer_timeout (BootstrapServerTimeoutCallback f);
+
+void rsn_callback_bootstrap_server_receive (BootstrapServerReceiveCallback f);
 
 void rsn_callback_buffer_destroy (DestroyCallback f);
 

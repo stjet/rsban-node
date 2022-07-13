@@ -144,7 +144,6 @@ public:
 	void receive_keepalive_action (boost::system::error_code const &, std::size_t, nano::message_header const &);
 	void receive_publish_action (boost::system::error_code const &, std::size_t, nano::message_header const &);
 	void receive_confirm_req_action (boost::system::error_code const &, std::size_t, nano::message_header const &);
-	void receive_telemetry_ack_action (boost::system::error_code const & ec, std::size_t size_a, nano::message_header const & header_a);
 	void add_request (std::unique_ptr<nano::message>);
 	void finish_request ();
 	void finish_request_async ();

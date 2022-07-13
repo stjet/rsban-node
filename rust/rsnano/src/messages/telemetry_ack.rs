@@ -195,6 +195,12 @@ impl TelemetryAck {
         Self { header, data }
     }
 
+    pub fn from_stream(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+        let mut msg = TelemetryAck::with_header(header);
+        msg.deserialize(stream)?;
+        Ok(msg)
+    }
+
     pub fn with_header(header: &MessageHeader) -> Self {
         Self {
             header: header.clone(),

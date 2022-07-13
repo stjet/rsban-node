@@ -1009,6 +1009,11 @@ const ErrorCodeDto * ec,
 uintptr_t size,
 const MessageHeaderHandle * header);
 
+void rsn_bootstrap_server_receive_telemetry_ack_action (BootstrapServerHandle * handle,
+const ErrorCodeDto * ec,
+uintptr_t size,
+const MessageHeaderHandle * header);
+
 MessageHandle * rsn_bootstrap_server_release_front_request (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_relock (BootstrapServerLockHandle * lock_handle);

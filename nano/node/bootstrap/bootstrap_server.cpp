@@ -465,7 +465,8 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				case nano::message_type::telemetry_ack:
 				{
 					get_socket ()->async_read (get_buffer (), header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
-						this_l->receive_telemetry_ack_action (ec, size_a, header);
+						auto ec_dto{ rsnano::error_code_to_dto (ec) };
+						rsnano::rsn_bootstrap_server_receive_telemetry_ack_action (this_l->handle, &ec_dto, size_a, header.handle);
 					});
 					break;
 				}
@@ -584,31 +585,6 @@ void nano::bootstrap_server::receive_keepalive_action (boost::system::error_code
 		if (config ()->logging.network_keepalive_logging ())
 		{
 			logger ()->try_log (boost::str (boost::format ("Error receiving keepalive: %1%") % ec.message ()));
-		}
-	}
-}
-
-void nano::bootstrap_server::receive_telemetry_ack_action (boost::system::error_code const & ec, std::size_t size_a, nano::message_header const & header_a)
-{
-	if (!ec)
-	{
-		auto error (false);
-		nano::bufferstream stream (get_buffer ()->data (), size_a);
-		auto request (std::make_unique<nano::telemetry_ack> (error, stream, header_a));
-		if (!error)
-		{
-			if (is_realtime_connection ())
-			{
-				add_request (std::unique_ptr<nano::message> (request.release ()));
-			}
-			receive ();
-		}
-	}
-	else
-	{
-		if (config ()->logging.network_telemetry_logging ())
-		{
-			logger ()->try_log (boost::str (boost::format ("Error receiving telemetry ack: %1%") % ec.message ()));
 		}
 	}
 }

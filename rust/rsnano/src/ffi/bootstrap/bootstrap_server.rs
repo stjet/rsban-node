@@ -397,16 +397,25 @@ pub unsafe extern "C" fn rsn_bootstrap_server_add_request(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_receive_node_id_handshake_action(
     handle: *mut BootstrapServerHandle,
-    ec: *mut ErrorCodeDto,
+    ec: *const ErrorCodeDto,
     size: usize,
     header: *const MessageHeaderHandle,
 ) {
-    let mut error_code = ErrorCode::from(&*ec);
-    let header = &(*header);
     (*handle)
         .0
-        .receive_node_id_handshake_action(&mut error_code, size, header);
-    *ec = ErrorCodeDto::from(&error_code);
+        .receive_node_id_handshake_action(ErrorCode::from(&*ec), size, &*header);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_receive_confirm_ack_action(
+    handle: *mut BootstrapServerHandle,
+    ec: *const ErrorCodeDto,
+    size: usize,
+    header: *const MessageHeaderHandle,
+) {
+    (*handle)
+        .0
+        .receive_confirm_ack_action(ErrorCode::from(&*ec), size, &*header);
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

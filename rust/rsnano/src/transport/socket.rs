@@ -199,6 +199,11 @@ impl SocketImpl {
     pub fn local_endpoint(&self) -> SocketAddr {
         self.tcp_socket.local_endpoint()
     }
+
+    pub fn is_realtime_connection(&self) -> bool {
+        self.socket_type() == SocketType::Realtime
+            || self.socket_type() == SocketType::RealtimeResponseServer
+    }
 }
 
 impl Drop for SocketImpl {

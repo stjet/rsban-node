@@ -385,7 +385,8 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				{
 					stats ()->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_account, nano::stat::dir::in);
 					get_socket ()->async_read (get_buffer (), header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
-						this_l->receive_bulk_pull_account_action (ec, size_a, header);
+						auto ec_dto{ rsnano::error_code_to_dto (ec) };
+						rsnano::rsn_bootstrap_server_receive_bulk_pull_account_action (this_l->handle, &ec_dto, size_a, header.handle);
 					});
 					break;
 				}
@@ -506,29 +507,6 @@ void nano::bootstrap_server::receive_bulk_pull_action (boost::system::error_code
 			if (config ()->logging.bulk_pull_logging ())
 			{
 				logger ()->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->get_start ().to_string () % request->get_end ().to_string () % (request->get_count () ? request->get_count () : std::numeric_limits<double>::infinity ()) % get_remote_endpoint ()));
-			}
-			if (make_bootstrap_connection () && !rsnano::rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (handle))
-			{
-				add_request (std::unique_ptr<nano::message> (request.release ()));
-			}
-			receive ();
-		}
-	}
-}
-
-void nano::bootstrap_server::receive_bulk_pull_account_action (boost::system::error_code const & ec, std::size_t size_a, nano::message_header const & header_a)
-{
-	if (!ec)
-	{
-		auto error (false);
-		debug_assert (size_a == header_a.payload_length_bytes ());
-		nano::bufferstream stream (get_buffer ()->data (), size_a);
-		auto request (std::make_unique<nano::bulk_pull_account> (error, stream, header_a));
-		if (!error)
-		{
-			if (config ()->logging.bulk_pull_logging ())
-			{
-				logger ()->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->get_account ().to_account () % nano::amount (request->get_minimum_amount ()).format_balance (nano::Mxrb_ratio, 10, true)));
 			}
 			if (make_bootstrap_connection () && !rsnano::rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (handle))
 			{

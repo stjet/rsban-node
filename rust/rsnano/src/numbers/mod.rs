@@ -1,4 +1,5 @@
 mod account;
+mod amount;
 mod difficulty;
 
 use std::convert::TryInto;
@@ -10,6 +11,7 @@ use crate::utils::Stream;
 use anyhow::Result;
 
 pub use account::*;
+pub use amount::*;
 use blake2::digest::{Update, VariableOutput};
 pub use difficulty::*;
 use once_cell::sync::Lazy;
@@ -171,80 +173,6 @@ impl BlockHashBuilder {
         BlockHash::from_bytes(hash_bytes)
     }
 }
-
-#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
-pub struct Amount {
-    value: u128, // native endian!
-}
-
-impl Amount {
-    pub fn new(value: u128) -> Self {
-        Self { value }
-    }
-
-    pub fn zero() -> Self {
-        Self::new(0)
-    }
-
-    pub fn from_be_bytes(bytes: [u8; 16]) -> Self {
-        Self {
-            value: u128::from_be_bytes(bytes),
-        }
-    }
-
-    pub fn from_le_bytes(bytes: [u8; 16]) -> Self {
-        Self {
-            value: u128::from_le_bytes(bytes),
-        }
-    }
-
-    pub const fn serialized_size() -> usize {
-        std::mem::size_of::<u128>()
-    }
-
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        stream.write_bytes(&self.value.to_be_bytes())
-    }
-
-    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
-        let mut buffer = [0u8; 16];
-        let len = buffer.len();
-        stream.read_bytes(&mut buffer, len)?;
-        Ok(Amount::new(u128::from_be_bytes(buffer)))
-    }
-
-    pub fn to_be_bytes(self) -> [u8; 16] {
-        self.value.to_be_bytes()
-    }
-
-    pub fn to_le_bytes(self) -> [u8; 16] {
-        self.value.to_le_bytes()
-    }
-
-    pub fn encode_hex(&self) -> String {
-        format!("{:032X}", self.value)
-    }
-
-    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
-        let value = u128::from_str_radix(s.as_ref(), 16)?;
-        Ok(Amount::new(value))
-    }
-
-    pub fn decode_dec(s: impl AsRef<str>) -> Result<Self> {
-        Ok(Self::new(s.as_ref().parse::<u128>()?))
-    }
-
-    pub fn to_string_dec(self) -> String {
-        self.value.to_string()
-    }
-}
-
-impl From<u128> for Amount {
-    fn from(value: u128) -> Self {
-        Amount::new(value)
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Signature {
     bytes: [u8; 64],
@@ -637,6 +565,10 @@ pub fn from_string_hex(s: impl AsRef<str>) -> Result<u64> {
 }
 
 pub static XRB_RATIO: Lazy<u128> = Lazy::new(|| str::parse("1000000000000000000000000").unwrap()); // 10^24
+pub static KXRB_RATIO: Lazy<u128> =
+    Lazy::new(|| str::parse("1000000000000000000000000000").unwrap()); // 10^27
+pub static MXRB_RATIO: Lazy<u128> =
+    Lazy::new(|| str::parse("1000000000000000000000000000000").unwrap()); // 10^30
 pub static GXRB_RATIO: Lazy<u128> =
     Lazy::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
 

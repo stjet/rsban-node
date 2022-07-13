@@ -999,6 +999,11 @@ bool rsn_bootstrap_server_queue_empty (BootstrapServerLockHandle * handle);
 
 BufferHandle * rsn_bootstrap_server_receive_buffer (BootstrapServerHandle * handle);
 
+void rsn_bootstrap_server_receive_bulk_pull_account_action (BootstrapServerHandle * handle,
+const ErrorCodeDto * ec,
+uintptr_t size,
+const MessageHeaderHandle * header);
+
 void rsn_bootstrap_server_receive_confirm_ack_action (BootstrapServerHandle * handle,
 const ErrorCodeDto * ec,
 uintptr_t size,

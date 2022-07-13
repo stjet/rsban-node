@@ -14,13 +14,13 @@ use std::{
 use crate::{
     logger_mt::Logger,
     messages::{
-        ConfirmAck, ConfirmReq, FrontierReq, Keepalive, Message, MessageHeader, MessageType,
-        MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
+        BulkPullAccount, ConfirmAck, ConfirmReq, FrontierReq, Keepalive, Message, MessageHeader,
+        MessageType, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
     },
     stats::{DetailType, Direction, Stat, StatType},
     transport::{Socket, SocketImpl, SocketType},
     utils::{ErrorCode, IoContext, StreamAdapter, ThreadPool},
-    Account, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
+    Account, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs, MXRB_RATIO,
 };
 
 pub trait BootstrapServerObserver {
@@ -183,6 +183,7 @@ pub trait BootstrapServerExt {
     fn receive_publish_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_keepalive_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_frontier_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
+    fn receive_bulk_pull_account_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
@@ -412,6 +413,30 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
         } else if self.config.logging.network_message_logging_value {
             self.logger
                 .try_log(&format!("Error receiving frontier request: {:?}", ec));
+        }
+    }
+
+    fn receive_bulk_pull_account_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
+        if ec.is_ok() {
+            let request = {
+                let buffer = self.receive_buffer.lock().unwrap();
+                let mut stream = StreamAdapter::new(&buffer[..size]);
+                BulkPullAccount::from_stream(&mut stream, header)
+            };
+
+            if let Ok(request) = request {
+                if self.config.logging.bulk_pull_logging_value {
+                    self.logger.try_log(&format!(
+                        "Received bulk pull account for {} with a minimum amount of {}",
+                        request.account.encode_account(),
+                        request.minimum_amount.format_balance(*MXRB_RATIO, 10, true)
+                    ));
+                }
+                if self.make_bootstrap_connection() && !self.disable_bootstrap_bulk_pull_server {
+                    self.add_request(Box::new(request));
+                }
+                self.receive();
+            }
         }
     }
 }

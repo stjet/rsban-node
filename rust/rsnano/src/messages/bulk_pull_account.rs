@@ -29,6 +29,7 @@ impl BulkPullAccount {
             flags: BulkPullAccountFlags::PendingHashAndAmount,
         }
     }
+
     pub fn with_header(header: &MessageHeader) -> Self {
         Self {
             header: header.clone(),
@@ -36,6 +37,12 @@ impl BulkPullAccount {
             minimum_amount: Amount::zero(),
             flags: BulkPullAccountFlags::PendingHashAndAmount,
         }
+    }
+
+    pub fn from_stream(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+        let mut msg = Self::with_header(header);
+        msg.deserialize(stream)?;
+        Ok(msg)
     }
 
     pub fn serialized_size() -> usize {

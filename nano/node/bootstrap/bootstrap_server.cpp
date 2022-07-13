@@ -721,14 +721,7 @@ void nano::bootstrap_server::receive_node_id_handshake_action (boost::system::er
 
 void nano::bootstrap_server::add_request (std::unique_ptr<nano::message> message_a)
 {
-	debug_assert (message_a != nullptr);
-	auto lock{ create_lock () };
-	auto start (is_request_queue_empty (lock));
-	push_request_locked (std::move (message_a), lock);
-	if (start)
-	{
-		run_next (lock);
-	}
+	rsnano::rsn_bootstrap_server_add_request (handle, message_a->handle);
 }
 
 void nano::bootstrap_server::finish_request ()

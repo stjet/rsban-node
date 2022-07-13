@@ -172,6 +172,7 @@ pub trait BootstrapServerExt {
     fn lock_requests(&self) -> BootstrapRequestsLock;
     fn run_next(&self, requests_lock: &BootstrapRequestsLock);
     fn receive(&self);
+    fn add_request(&self, message: Box<dyn Message>);
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
@@ -217,6 +218,15 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
 
     fn receive(&self) {
         crate::ffi::bootstrap::bootstrap_server_receive(Arc::clone(self))
+    }
+
+    fn add_request(&self, message: Box<dyn Message>) {
+        let lock = self.lock_requests();
+        let start = lock.is_queue_empty();
+        lock.push(Some(message));
+        if start {
+            self.run_next(&lock);
+        }
     }
 }
 

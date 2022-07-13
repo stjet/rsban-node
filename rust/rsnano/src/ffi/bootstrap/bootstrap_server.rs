@@ -393,6 +393,14 @@ pub unsafe extern "C" fn rsn_bootstrap_server_run_next(
     (*handle).0.run_next(&(*requests_lock).0)
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_add_request(
+    handle: *mut BootstrapServerHandle,
+    msg: *mut MessageHandle,
+) {
+    (*handle).0.add_request((*msg).clone_box())
+}
+
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);
 type BootstrapServerExitedCallback =
     unsafe extern "C" fn(*mut c_void, u8, usize, *const EndpointDto);

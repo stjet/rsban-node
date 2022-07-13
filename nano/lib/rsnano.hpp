@@ -955,6 +955,8 @@ BootstrapInitiatorHandle * rsn_bootstrap_initiator_create (void * handle);
 
 void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
 
+void rsn_bootstrap_server_add_request (BootstrapServerHandle * handle, MessageHandle * msg);
+
 bool rsn_bootstrap_server_cache_exceeded (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_config (BootstrapServerHandle * handle, NodeConfigDto * config);

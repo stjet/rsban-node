@@ -431,7 +431,8 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				case nano::message_type::confirm_req:
 				{
 					get_socket ()->async_read (get_buffer (), header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
-						this_l->receive_confirm_req_action (ec, size_a, header);
+						auto ec_dto{ rsnano::error_code_to_dto (ec) };
+						rsnano::rsn_bootstrap_server_receive_confirm_req_action (this_l->handle, &ec_dto, size_a, header.handle);
 					});
 					break;
 				}
@@ -628,28 +629,6 @@ void nano::bootstrap_server::receive_publish_action (boost::system::error_code c
 		{
 			logger ()->try_log (boost::str (boost::format ("Error receiving publish: %1%") % ec.message ()));
 		}
-	}
-}
-
-void nano::bootstrap_server::receive_confirm_req_action (boost::system::error_code const & ec, std::size_t size_a, nano::message_header const & header_a)
-{
-	if (!ec)
-	{
-		auto error (false);
-		nano::bufferstream stream (get_buffer ()->data (), size_a);
-		auto request (std::make_unique<nano::confirm_req> (error, stream, header_a));
-		if (!error)
-		{
-			if (is_realtime_connection ())
-			{
-				add_request (std::unique_ptr<nano::message> (request.release ()));
-			}
-			receive ();
-		}
-	}
-	else if (config ()->logging.network_message_logging ())
-	{
-		logger ()->try_log (boost::str (boost::format ("Error receiving confirm_req: %1%") % ec.message ()));
 	}
 }
 

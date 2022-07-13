@@ -56,6 +56,12 @@ impl ConfirmReq {
         }
     }
 
+    pub fn from_stream(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+        let mut msg = Self::with_header(header);
+        msg.deserialize(stream, None)?;
+        Ok(msg)
+    }
+
     pub fn block(&self) -> Option<&Arc<RwLock<BlockEnum>>> {
         self.block.as_ref()
     }

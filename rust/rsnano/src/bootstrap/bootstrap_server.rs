@@ -14,8 +14,8 @@ use std::{
 use crate::{
     logger_mt::Logger,
     messages::{
-        ConfirmAck, Message, MessageHeader, MessageType, MessageVisitor, NodeIdHandshake,
-        TelemetryAck,
+        ConfirmAck, ConfirmReq, Message, MessageHeader, MessageType, MessageVisitor,
+        NodeIdHandshake, TelemetryAck,
     },
     stats::Stat,
     transport::{Socket, SocketImpl, SocketType},
@@ -178,6 +178,7 @@ pub trait BootstrapServerExt {
     fn add_request(&self, message: Box<dyn Message>);
     fn receive_node_id_handshake_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_confirm_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
+    fn receive_confirm_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_telemetry_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
 }
 
@@ -295,6 +296,25 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
                 self.logger
                     .try_log(&format!("Error receiving telemetry ack: {:?}", ec));
             }
+        }
+    }
+
+    fn receive_confirm_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
+        if ec.is_ok() {
+            let request = {
+                let buffer = self.receive_buffer.lock().unwrap();
+                let mut stream = StreamAdapter::new(&buffer[..size]);
+                ConfirmReq::from_stream(&mut stream, header)
+            };
+            if let Ok(request) = request {
+                if self.socket.is_realtime_connection() {
+                    self.add_request(Box::new(request));
+                }
+                self.receive();
+            }
+        } else if self.config.logging.network_message_logging_value {
+            self.logger
+                .try_log(&format!("Error receiving confirm_req: {:?}", ec));
         }
     }
 }

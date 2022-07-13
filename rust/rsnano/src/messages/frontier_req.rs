@@ -31,6 +31,12 @@ impl FrontierReq {
         }
     }
 
+    pub fn from_stream(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+        let mut msg = Self::with_header(header);
+        msg.deserialize(stream)?;
+        Ok(msg)
+    }
+
     pub fn serialized_size() -> usize {
         Account::serialized_size()
         + size_of::<u32>() // age

@@ -140,7 +140,6 @@ public:
 	void receive_header_action (boost::system::error_code const &, std::size_t);
 	void receive_bulk_pull_action (boost::system::error_code const &, std::size_t, nano::message_header const &);
 	void receive_bulk_pull_account_action (boost::system::error_code const &, std::size_t, nano::message_header const &);
-	void receive_frontier_req_action (boost::system::error_code const &, std::size_t, nano::message_header const &);
 	void add_request (std::unique_ptr<nano::message>);
 	void finish_request ();
 	void finish_request_async ();

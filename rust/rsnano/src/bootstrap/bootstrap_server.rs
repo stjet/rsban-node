@@ -14,8 +14,8 @@ use std::{
 use crate::{
     logger_mt::Logger,
     messages::{
-        ConfirmAck, ConfirmReq, Keepalive, Message, MessageHeader, MessageType, MessageVisitor,
-        NodeIdHandshake, Publish, TelemetryAck,
+        ConfirmAck, ConfirmReq, FrontierReq, Keepalive, Message, MessageHeader, MessageType,
+        MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
     },
     stats::{DetailType, Direction, Stat, StatType},
     transport::{Socket, SocketImpl, SocketType},
@@ -182,6 +182,7 @@ pub trait BootstrapServerExt {
     fn receive_telemetry_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_publish_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_keepalive_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
+    fn receive_frontier_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
@@ -384,6 +385,33 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
         } else if self.config.logging.network_message_logging_value {
             self.logger
                 .try_log(&format!("Error receiving keepalive: {:?}", ec));
+        }
+    }
+
+    fn receive_frontier_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
+        if ec.is_ok() {
+            let request = {
+                let buffer = self.receive_buffer.lock().unwrap();
+                let mut stream = StreamAdapter::new(&buffer[..size]);
+                FrontierReq::from_stream(&mut stream, header)
+            };
+
+            if let Ok(request) = request {
+                if self.config.logging.bulk_pull_logging_value {
+                    self.logger.try_log(&format!(
+                        "Received frontier request for {} with age {}",
+                        request.start.encode_account(),
+                        request.age
+                    ));
+                }
+                if self.make_bootstrap_connection() {
+                    self.add_request(Box::new(request));
+                }
+                self.receive();
+            }
+        } else if self.config.logging.network_message_logging_value {
+            self.logger
+                .try_log(&format!("Error receiving frontier request: {:?}", ec));
         }
     }
 }

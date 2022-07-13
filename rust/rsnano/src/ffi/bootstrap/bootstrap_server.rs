@@ -466,6 +466,18 @@ pub unsafe extern "C" fn rsn_bootstrap_server_receive_keepalive_action(
         .receive_keepalive_action(ErrorCode::from(&*ec), size, &*header);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_receive_frontier_req_action(
+    handle: *mut BootstrapServerHandle,
+    ec: *const ErrorCodeDto,
+    size: usize,
+    header: *const MessageHeaderHandle,
+) {
+    (*handle)
+        .0
+        .receive_frontier_req_action(ErrorCode::from(&*ec), size, &*header);
+}
+
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);
 type BootstrapServerExitedCallback =
     unsafe extern "C" fn(*mut c_void, u8, usize, *const EndpointDto);

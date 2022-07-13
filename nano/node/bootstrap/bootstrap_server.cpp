@@ -393,7 +393,8 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				{
 					stats ()->inc (nano::stat::type::bootstrap, nano::stat::detail::frontier_req, nano::stat::dir::in);
 					get_socket ()->async_read (get_buffer (), header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
-						this_l->receive_frontier_req_action (ec, size_a, header);
+						auto ec_dto{ rsnano::error_code_to_dto (ec) };
+						rsnano::rsn_bootstrap_server_receive_frontier_req_action (this_l->handle, &ec_dto, size_a, header.handle);
 					});
 					break;
 				}
@@ -534,35 +535,6 @@ void nano::bootstrap_server::receive_bulk_pull_account_action (boost::system::er
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
 			receive ();
-		}
-	}
-}
-
-void nano::bootstrap_server::receive_frontier_req_action (boost::system::error_code const & ec, std::size_t size_a, nano::message_header const & header_a)
-{
-	if (!ec)
-	{
-		auto error (false);
-		nano::bufferstream stream (get_buffer ()->data (), size_a);
-		auto request (std::make_unique<nano::frontier_req> (error, stream, header_a));
-		if (!error)
-		{
-			if (config ()->logging.bulk_pull_logging ())
-			{
-				logger ()->try_log (boost::str (boost::format ("Received frontier request for %1% with age %2%") % request->get_start ().to_string () % request->get_age ()));
-			}
-			if (make_bootstrap_connection ())
-			{
-				add_request (std::unique_ptr<nano::message> (request.release ()));
-			}
-			receive ();
-		}
-	}
-	else
-	{
-		if (config ()->logging.network_logging ())
-		{
-			logger ()->try_log (boost::str (boost::format ("Error sending receiving frontier request: %1%") % ec.message ()));
 		}
 	}
 }

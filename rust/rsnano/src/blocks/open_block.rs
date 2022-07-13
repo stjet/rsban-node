@@ -2,7 +2,7 @@ use crate::{
     from_string_hex, sign_message, to_string_hex,
     utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
     Account, Block, BlockHash, BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash, Link,
-    PublicKey, RawKey, Signature,
+    PublicKey, RawKey, Root, Signature,
 };
 use anyhow::Result;
 
@@ -183,6 +183,10 @@ impl Block for OpenBlock {
         writer.put_string("work", &to_string_hex(self.work))?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         Ok(())
+    }
+
+    fn root(&self) -> Root {
+        self.account().into()
     }
 }
 

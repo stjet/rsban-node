@@ -416,7 +416,8 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				case nano::message_type::publish:
 				{
 					get_socket ()->async_read (get_buffer (), header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
-						this_l->receive_publish_action (ec, size_a, header);
+						auto ec_dto{ rsnano::error_code_to_dto (ec) };
+						rsnano::rsn_bootstrap_server_receive_publish_action (this_l->handle, &ec_dto, size_a, header.handle);
 					});
 					break;
 				}
@@ -586,48 +587,6 @@ void nano::bootstrap_server::receive_keepalive_action (boost::system::error_code
 		if (config ()->logging.network_keepalive_logging ())
 		{
 			logger ()->try_log (boost::str (boost::format ("Error receiving keepalive: %1%") % ec.message ()));
-		}
-	}
-}
-
-void nano::bootstrap_server::receive_publish_action (boost::system::error_code const & ec, std::size_t size_a, nano::message_header const & header_a)
-{
-	if (!ec)
-	{
-		nano::uint128_t digest;
-		if (!get_publish_filter ()->apply (get_buffer ()->data (), size_a, &digest))
-		{
-			auto error (false);
-			nano::bufferstream stream (get_buffer ()->data (), size_a);
-			auto request (std::make_unique<nano::publish> (error, stream, header_a, digest));
-			if (!error)
-			{
-				if (is_realtime_connection ())
-				{
-					auto block{ request->get_block () };
-					if (!get_network_params ().work.validate_entry (*block))
-					{
-						add_request (std::unique_ptr<nano::message> (request.release ()));
-					}
-					else
-					{
-						stats ()->inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
-					}
-				}
-				receive ();
-			}
-		}
-		else
-		{
-			stats ()->inc (nano::stat::type::filter, nano::stat::detail::duplicate_publish);
-			receive ();
-		}
-	}
-	else
-	{
-		if (config ()->logging.network_message_logging ())
-		{
-			logger ()->try_log (boost::str (boost::format ("Error receiving publish: %1%") % ec.message ()));
 		}
 	}
 }

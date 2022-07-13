@@ -2,7 +2,7 @@ use num_traits::FromPrimitive;
 use std::convert::TryFrom;
 
 use crate::{
-    ffi::{blocks::BlockDetailsDto, StringDto},
+    ffi::{blocks::BlockDetailsDto, BlockHandle, StringDto},
     BlockDetails, BlockType, Networks, Root, WorkThresholds, WorkVersion,
 };
 
@@ -134,26 +134,46 @@ pub extern "C" fn rsn_work_thresholds_denormalized_multiplier(
 pub extern "C" fn rsn_work_thresholds_difficulty(
     dto: &WorkThresholdsDto,
     work_version: u8,
-    root: &[u8; 32],
+    root: *const u8,
     work: u64,
 ) -> u64 {
     let work_version = WorkVersion::try_from(work_version).unwrap_or(WorkVersion::Unspecified);
-    let root = Root::from_bytes(*root);
+    let root = Root::from(root);
     let thresholds = WorkThresholds::from(dto);
     thresholds.difficulty(work_version, &root, work)
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_work_thresholds_validate_entry(
+pub unsafe extern "C" fn rsn_work_thresholds_difficulty_block(
+    dto: &WorkThresholdsDto,
+    block: *const BlockHandle,
+) -> u64 {
+    let thresholds = WorkThresholds::from(dto);
+    let block = (*block).block.read().unwrap();
+    thresholds.difficulty_block(block.as_block())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_thresholds_validate_entry(
     dto: &WorkThresholdsDto,
     work_version: u8,
-    root: &[u8; 32],
+    root: *const u8,
     work: u64,
 ) -> bool {
     let work_version = WorkVersion::try_from(work_version).unwrap_or(WorkVersion::Unspecified);
-    let root = Root::from_bytes(*root);
+    let root = Root::from(root);
     let thresholds = WorkThresholds::from(dto);
     thresholds.validate_entry(work_version, &root, work)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_thresholds_validate_entry_block(
+    dto: &WorkThresholdsDto,
+    block: *mut BlockHandle,
+) -> bool {
+    let thresholds = WorkThresholds::from(dto);
+    let lk = (*block).block.read().unwrap();
+    thresholds.validate_entry_block(lk.as_block())
 }
 
 pub fn fill_work_thresholds_dto(dto: &mut WorkThresholdsDto, thresholds: &WorkThresholds) {

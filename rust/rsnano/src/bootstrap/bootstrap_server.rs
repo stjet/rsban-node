@@ -15,9 +15,9 @@ use crate::{
     logger_mt::Logger,
     messages::{
         ConfirmAck, ConfirmReq, Message, MessageHeader, MessageType, MessageVisitor,
-        NodeIdHandshake, TelemetryAck,
+        NodeIdHandshake, Publish, TelemetryAck,
     },
-    stats::Stat,
+    stats::{DetailType, Direction, Stat, StatType},
     transport::{Socket, SocketImpl, SocketType},
     utils::{ErrorCode, IoContext, StreamAdapter, ThreadPool},
     Account, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
@@ -180,6 +180,7 @@ pub trait BootstrapServerExt {
     fn receive_confirm_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_confirm_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_telemetry_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
+    fn receive_publish_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
@@ -315,6 +316,53 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
         } else if self.config.logging.network_message_logging_value {
             self.logger
                 .try_log(&format!("Error receiving confirm_req: {:?}", ec));
+        }
+    }
+
+    fn receive_publish_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
+        if ec.is_ok() {
+            let (digest, existed) = {
+                let bytes = self.receive_buffer.lock().unwrap();
+                self.publish_filter.apply(&bytes[..size])
+            };
+
+            if !existed {
+                let request = {
+                    let buffer = self.receive_buffer.lock().unwrap();
+                    let mut stream = StreamAdapter::new(&buffer[..size]);
+                    Publish::from_stream(&mut stream, header, digest)
+                };
+
+                if let Ok(request) = request {
+                    if self.socket.is_realtime_connection() {
+                        let insufficient_work = {
+                            let block = request.block.as_ref().unwrap(); // block cannot be None after deserialize!
+                            let lk = block.read().unwrap();
+                            self.network.work.validate_entry_block(lk.as_block())
+                        };
+                        if !insufficient_work {
+                            self.add_request(Box::new(request));
+                        } else {
+                            let _ = self.stats.inc_detail_only(
+                                StatType::Error,
+                                DetailType::InsufficientWork,
+                                Direction::In,
+                            );
+                        }
+                    }
+                    self.receive();
+                }
+            } else {
+                let _ = self.stats.inc(
+                    StatType::Filter,
+                    DetailType::DuplicatePublish,
+                    Direction::In,
+                );
+                self.receive();
+            }
+        } else if self.config.logging.network_message_logging_value {
+            self.logger
+                .try_log(&format!("Error receiving publish: {:?}", ec));
         }
     }
 }

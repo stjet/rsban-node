@@ -1014,6 +1014,11 @@ const ErrorCodeDto * ec,
 uintptr_t size,
 const MessageHeaderHandle * header);
 
+void rsn_bootstrap_server_receive_publish_action (BootstrapServerHandle * handle,
+const ErrorCodeDto * ec,
+uintptr_t size,
+const MessageHeaderHandle * header);
+
 void rsn_bootstrap_server_receive_telemetry_ack_action (BootstrapServerHandle * handle,
 const ErrorCodeDto * ec,
 uintptr_t size,
@@ -2203,8 +2208,11 @@ uint64_t threshold);
 
 uint64_t rsn_work_thresholds_difficulty (const WorkThresholdsDto * dto,
 uint8_t work_version,
-const uint8_t (*root)[32],
+const uint8_t * root,
 uint64_t work);
+
+uint64_t rsn_work_thresholds_difficulty_block (const WorkThresholdsDto * dto,
+const BlockHandle * block);
 
 double rsn_work_thresholds_normalized_multiplier (const WorkThresholdsDto * dto,
 double multiplier,
@@ -2233,8 +2241,10 @@ uint8_t block_type);
 
 bool rsn_work_thresholds_validate_entry (const WorkThresholdsDto * dto,
 uint8_t work_version,
-const uint8_t (*root)[32],
+const uint8_t * root,
 uint64_t work);
+
+bool rsn_work_thresholds_validate_entry_block (const WorkThresholdsDto * dto, BlockHandle * block);
 
 uint64_t rsn_work_thresholds_value (const WorkThresholdsDto * dto,
 const uint8_t (*root)[32],

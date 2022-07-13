@@ -5,7 +5,7 @@ use std::{
     convert::TryInto,
 };
 
-use crate::{BlockDetails, BlockType, Difficulty, Epoch, Root};
+use crate::{Block, BlockDetails, BlockType, Difficulty, Epoch, Root};
 
 /**
  * Network variants with different genesis blocks and network parameters
@@ -237,8 +237,17 @@ impl WorkThresholds {
         }
     }
 
+    pub fn difficulty_block(&self, block: &dyn Block) -> u64 {
+        self.difficulty(block.work_version(), &block.root(), block.work())
+    }
+
     pub fn validate_entry(&self, work_version: WorkVersion, root: &Root, work: u64) -> bool {
         self.difficulty(work_version, root, work)
             < self.threshold_entry(BlockType::State, work_version)
+    }
+
+    pub fn validate_entry_block(&self, block: &dyn Block) -> bool {
+        self.difficulty_block(block)
+            < self.threshold_entry(block.block_type(), block.work_version())
     }
 }

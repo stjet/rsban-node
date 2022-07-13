@@ -2,7 +2,7 @@ use crate::{
     from_string_hex, sign_message, to_string_hex,
     utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
     Account, Amount, Block, BlockHash, BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash,
-    Link, PublicKey, RawKey, Signature,
+    Link, PublicKey, RawKey, Root, Signature,
 };
 
 use anyhow::Result;
@@ -269,6 +269,14 @@ impl Block for StateBlock {
         writer.put_string("signature", &self.signature.encode_hex())?;
         writer.put_string("work", &to_string_hex(self.work))?;
         Ok(())
+    }
+
+    fn root(&self) -> Root {
+        if !self.previous().is_zero() {
+            self.previous().into()
+        } else {
+            self.account().into()
+        }
     }
 }
 

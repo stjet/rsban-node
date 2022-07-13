@@ -22,7 +22,8 @@ pub use state_block::*;
 
 use crate::{
     utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, Link, Signature, Uniquer,
+    Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, Link, Root, Signature, Uniquer,
+    WorkVersion,
 };
 
 #[repr(u8)]
@@ -259,6 +260,10 @@ pub trait Block: FullHash {
     fn previous(&self) -> &BlockHash;
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()>;
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()>;
+    fn work_version(&self) -> WorkVersion {
+        WorkVersion::Work1
+    }
+    fn root(&self) -> Root;
 }
 
 impl<T: Block> FullHash for T {

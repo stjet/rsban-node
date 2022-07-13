@@ -27,12 +27,23 @@ impl Publish {
             digest: 0,
         }
     }
+
     pub fn with_header(header: &MessageHeader, digest: u128) -> Self {
         Self {
             header: header.clone(),
             block: None,
             digest,
         }
+    }
+
+    pub fn from_stream(
+        stream: &mut impl Stream,
+        header: &MessageHeader,
+        digest: u128,
+    ) -> Result<Self> {
+        let mut msg = Self::with_header(header, digest);
+        msg.deserialize(stream, None)?;
+        Ok(msg)
     }
 
     pub fn deserialize(

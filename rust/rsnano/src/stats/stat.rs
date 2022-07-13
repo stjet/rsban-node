@@ -485,6 +485,15 @@ impl Stat {
         self.add(stat_type, detail, dir, 1, false)
     }
 
+    pub fn inc_detail_only(
+        &self,
+        stat_type: StatType,
+        detail: DetailType,
+        dir: Direction,
+    ) -> Result<()> {
+        self.add(stat_type, detail, dir, 1, true)
+    }
+
     /// Update count and sample
     ///
     /// # Arguments

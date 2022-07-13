@@ -147,26 +147,22 @@ uint64_t nano::work_thresholds::threshold_base (nano::work_version const version
 
 uint64_t nano::work_thresholds::difficulty (nano::work_version const version_a, nano::root const & root_a, uint64_t const work_a) const
 {
-	uint8_t bytes[32];
-	std::copy (std::begin (root_a.bytes), std::end (root_a.bytes), std::begin (bytes));
-	return rsnano::rsn_work_thresholds_difficulty (&dto, work_version_to_uint8 (version_a), &bytes, work_a);
+	return rsnano::rsn_work_thresholds_difficulty (&dto, work_version_to_uint8 (version_a), root_a.bytes.data (), work_a);
 }
 
 uint64_t nano::work_thresholds::difficulty (nano::block const & block_a) const
 {
-	return difficulty (block_a.work_version (), block_a.root (), block_a.block_work ());
+	return rsnano::rsn_work_thresholds_difficulty_block (&dto, block_a.get_handle ());
 }
 
 bool nano::work_thresholds::validate_entry (nano::work_version const version_a, nano::root const & root_a, uint64_t const work_a) const
 {
-	uint8_t bytes[32];
-	std::copy (std::begin (root_a.bytes), std::end (root_a.bytes), std::begin (bytes));
-	return rsnano::rsn_work_thresholds_validate_entry (&dto, work_version_to_uint8 (version_a), &bytes, work_a);
+	return rsnano::rsn_work_thresholds_validate_entry (&dto, work_version_to_uint8 (version_a), root_a.bytes.data (), work_a);
 }
 
 bool nano::work_thresholds::validate_entry (nano::block const & block_a) const
 {
-	return difficulty (block_a) < threshold_entry (block_a.work_version (), block_a.type ());
+	return rsnano::rsn_work_thresholds_validate_entry_block (&dto, block_a.get_handle ());
 }
 
 nano::networks nano::network_constants::active_network ()

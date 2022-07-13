@@ -13,10 +13,10 @@ use std::{
 
 use crate::{
     logger_mt::Logger,
-    messages::{Message, MessageType, MessageVisitor},
+    messages::{Message, MessageHeader, MessageType, MessageVisitor, NodeIdHandshake},
     stats::Stat,
     transport::{Socket, SocketImpl, SocketType},
-    utils::{IoContext, ThreadPool},
+    utils::{ErrorCode, IoContext, StreamAdapter, ThreadPool},
     Account, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
 };
 
@@ -173,6 +173,12 @@ pub trait BootstrapServerExt {
     fn run_next(&self, requests_lock: &BootstrapRequestsLock);
     fn receive(&self);
     fn add_request(&self, message: Box<dyn Message>);
+    fn receive_node_id_handshake_action(
+        &self,
+        ec: &mut ErrorCode,
+        size: usize,
+        header: &MessageHeader,
+    );
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
@@ -226,6 +232,32 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
         lock.push(Some(message));
         if start {
             self.run_next(&lock);
+        }
+    }
+
+    fn receive_node_id_handshake_action(
+        &self,
+        ec: &mut ErrorCode,
+        size: usize,
+        header: &MessageHeader,
+    ) {
+        if ec.is_ok() {
+            let request = {
+                let buffer = self.receive_buffer.lock().unwrap();
+                let mut stream = StreamAdapter::new(&buffer[..size]);
+                NodeIdHandshake::from_stream(&mut stream, header)
+            };
+
+            if let Ok(request) = request {
+                if self.socket.socket_type() == SocketType::Undefined && !self.disable_tcp_realtime
+                {
+                    self.add_request(Box::new(request));
+                }
+                self.receive();
+            }
+        } else if self.config.logging.network_node_id_handshake_logging_value {
+            self.logger
+                .try_log(&format!("Error receiving node_id_handshake: {:?}", ec));
         }
     }
 }

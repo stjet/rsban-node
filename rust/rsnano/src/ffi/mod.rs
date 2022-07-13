@@ -49,7 +49,7 @@ pub use toml::*;
 pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
-use crate::{Account, Amount, BlockHash, HashOrAccount, RawKey, Root, Signature};
+use crate::{utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount, RawKey, Root, Signature};
 
 pub struct StringHandle(CString);
 #[repr(C)]
@@ -152,3 +152,27 @@ pub(crate) unsafe fn copy_amount_bytes(source: Amount, target: *mut u8) {
 }
 
 pub type DestroyCallback = unsafe extern "C" fn(*mut c_void);
+
+#[repr(C)]
+pub struct ErrorCodeDto {
+    pub val: i32,
+    pub category: u8,
+}
+
+impl From<&ErrorCode> for ErrorCodeDto {
+    fn from(ec: &ErrorCode) -> Self {
+        Self {
+            val: ec.val,
+            category: ec.category,
+        }
+    }
+}
+
+impl From<&ErrorCodeDto> for ErrorCode {
+    fn from(dto: &ErrorCodeDto) -> Self {
+        Self {
+            val: dto.val,
+            category: dto.category,
+        }
+    }
+}

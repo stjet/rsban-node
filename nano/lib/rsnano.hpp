@@ -971,8 +971,6 @@ void rsn_bootstrap_server_destroy_weak (BootstrapServerWeakHandle * handle);
 
 bool rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (BootstrapServerHandle * handle);
 
-bool rsn_bootstrap_server_disable_tcp_realtime (BootstrapServerHandle * handle);
-
 BootstrapServerWeakHandle * rsn_bootstrap_server_get_weak (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_handshake_query_received (BootstrapServerHandle * handle);
@@ -1000,6 +998,11 @@ NetworkFilterHandle * rsn_bootstrap_server_publish_filter (BootstrapServerHandle
 bool rsn_bootstrap_server_queue_empty (BootstrapServerLockHandle * handle);
 
 BufferHandle * rsn_bootstrap_server_receive_buffer (BootstrapServerHandle * handle);
+
+void rsn_bootstrap_server_receive_node_id_handshake_action (BootstrapServerHandle * handle,
+ErrorCodeDto * ec,
+uintptr_t size,
+const MessageHeaderHandle * header);
 
 MessageHandle * rsn_bootstrap_server_release_front_request (BootstrapServerLockHandle * handle);
 

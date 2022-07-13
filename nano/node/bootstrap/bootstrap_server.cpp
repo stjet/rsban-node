@@ -699,24 +699,8 @@ void nano::bootstrap_server::receive_confirm_ack_action (boost::system::error_co
 
 void nano::bootstrap_server::receive_node_id_handshake_action (boost::system::error_code const & ec, std::size_t size_a, nano::message_header const & header_a)
 {
-	if (!ec)
-	{
-		auto error (false);
-		nano::bufferstream stream (get_buffer ()->data (), size_a);
-		auto request (std::make_unique<nano::node_id_handshake> (error, stream, header_a));
-		if (!error)
-		{
-			if (get_socket ()->type () == nano::socket::type_t::undefined && !rsnano::rsn_bootstrap_server_disable_tcp_realtime (handle))
-			{
-				add_request (std::unique_ptr<nano::message> (request.release ()));
-			}
-			receive ();
-		}
-	}
-	else if (config ()->logging.network_node_id_handshake_logging ())
-	{
-		logger ()->try_log (boost::str (boost::format ("Error receiving node_id_handshake: %1%") % ec.message ()));
-	}
+	auto ec_dto{ rsnano::error_code_to_dto (ec) };
+	rsnano::rsn_bootstrap_server_receive_node_id_handshake_action (handle, &ec_dto, size_a, header_a.handle);
 }
 
 void nano::bootstrap_server::add_request (std::unique_ptr<nano::message> message_a)

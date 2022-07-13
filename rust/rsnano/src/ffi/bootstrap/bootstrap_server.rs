@@ -6,14 +6,14 @@ use crate::{
     ffi::{
         copy_account_bytes, fill_network_params_dto, fill_node_config_dto,
         io_context::{FfiIoContext, IoContextHandle},
-        messages::{FfiMessageVisitor, MessageHandle},
+        messages::{FfiMessageVisitor, MessageHandle, MessageHeaderHandle},
         thread_pool::FfiThreadPool,
         transport::{EndpointDto, SocketHandle},
-        DestroyCallback, LoggerHandle, LoggerMT, NetworkFilterHandle, NetworkParamsDto,
-        NodeConfigDto, StatHandle,
+        DestroyCallback, ErrorCodeDto, LoggerHandle, LoggerMT, NetworkFilterHandle,
+        NetworkParamsDto, NodeConfigDto, StatHandle,
     },
     transport::SocketType,
-    utils::BufferHandle,
+    utils::{BufferHandle, ErrorCode},
     Account, NetworkParams, NodeConfig,
 };
 use std::{
@@ -362,13 +362,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_disable_bootstrap_bulk_pull_server
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_disable_tcp_realtime(
-    handle: *mut BootstrapServerHandle,
-) -> bool {
-    (*handle).0.disable_tcp_realtime
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_handshake_query_received(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
@@ -399,6 +392,21 @@ pub unsafe extern "C" fn rsn_bootstrap_server_add_request(
     msg: *mut MessageHandle,
 ) {
     (*handle).0.add_request((*msg).clone_box())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_receive_node_id_handshake_action(
+    handle: *mut BootstrapServerHandle,
+    ec: *mut ErrorCodeDto,
+    size: usize,
+    header: *const MessageHeaderHandle,
+) {
+    let mut error_code = ErrorCode::from(&*ec);
+    let header = &(*header);
+    (*handle)
+        .0
+        .receive_node_id_handshake_action(&mut error_code, size, header);
+    *ec = ErrorCodeDto::from(&error_code);
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

@@ -41,6 +41,12 @@ impl NodeIdHandshake {
         }
     }
 
+    pub fn from_stream(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
+        let mut request = NodeIdHandshake::with_header(header);
+        request.deserialize(stream)?;
+        Ok(request)
+    }
+
     const QUERY_FLAG: usize = 0;
     const RESPONSE_FLAG: usize = 1;
 

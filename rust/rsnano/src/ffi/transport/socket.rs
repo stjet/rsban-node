@@ -1,7 +1,7 @@
 use num::FromPrimitive;
 
 use crate::{
-    ffi::{DestroyCallback, DispatchCallback, LoggerHandle},
+    ffi::{DestroyCallback, DispatchCallback, ErrorCodeDto, LoggerHandle},
     stats::SocketStats,
     transport::{
         BufferWrapper, SharedConstBuffer, Socket, SocketBuilder, SocketImpl, SocketType,
@@ -103,30 +103,6 @@ pub unsafe extern "C" fn rsn_weak_socket_to_socket(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_weak_socket_expired(handle: *mut SocketWeakHandle) -> bool {
     (*handle).0.strong_count() == 0
-}
-
-#[repr(C)]
-pub struct ErrorCodeDto {
-    pub val: i32,
-    pub category: u8,
-}
-
-impl From<&ErrorCode> for ErrorCodeDto {
-    fn from(ec: &ErrorCode) -> Self {
-        Self {
-            val: ec.val,
-            category: ec.category,
-        }
-    }
-}
-
-impl From<&ErrorCodeDto> for ErrorCode {
-    fn from(dto: &ErrorCodeDto) -> Self {
-        Self {
-            val: dto.val,
-            category: dto.category,
-        }
-    }
 }
 
 #[derive(Clone)]

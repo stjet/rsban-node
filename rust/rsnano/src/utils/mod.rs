@@ -34,6 +34,10 @@ pub struct ErrorCode {
 }
 
 impl ErrorCode {
+    pub fn is_ok(&self) -> bool {
+        !self.is_err()
+    }
+
     pub fn is_err(&self) -> bool {
         self.val != 0
     }

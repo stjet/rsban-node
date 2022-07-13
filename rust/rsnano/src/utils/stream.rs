@@ -98,6 +98,54 @@ impl Stream for MemoryStream {
     }
 }
 
+pub struct StreamAdapter<'a> {
+    bytes: &'a [u8],
+    read_index: usize,
+}
+
+impl<'a> StreamAdapter<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            bytes,
+            read_index: 0,
+        }
+    }
+}
+
+impl<'a> Stream for StreamAdapter<'a> {
+    fn write_u8(&mut self, _value: u8) -> anyhow::Result<()> {
+        bail!("not supported");
+    }
+
+    fn write_bytes(&mut self, _bytes: &[u8]) -> anyhow::Result<()> {
+        bail!("not supported");
+    }
+
+    fn read_u8(&mut self) -> anyhow::Result<u8> {
+        if self.read_index >= self.bytes.len() {
+            bail!("no more bytes to read")
+        }
+
+        let result = self.bytes[self.read_index];
+        self.read_index += 1;
+        Ok(result)
+    }
+
+    fn read_bytes(&mut self, buffer: &mut [u8], len: usize) -> anyhow::Result<()> {
+        if self.read_index + len > self.bytes.len() {
+            bail!("not enough bytes to read")
+        }
+
+        buffer.copy_from_slice(&self.bytes[self.read_index..self.read_index + len]);
+        self.read_index += len;
+        Ok(())
+    }
+
+    fn in_avail(&mut self) -> anyhow::Result<usize> {
+        Ok(self.bytes.len() - self.read_index)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -14,7 +14,7 @@ use std::{
 use crate::{
     logger_mt::Logger,
     messages::{
-        ConfirmAck, ConfirmReq, Message, MessageHeader, MessageType, MessageVisitor,
+        ConfirmAck, ConfirmReq, Keepalive, Message, MessageHeader, MessageType, MessageVisitor,
         NodeIdHandshake, Publish, TelemetryAck,
     },
     stats::{DetailType, Direction, Stat, StatType},
@@ -181,6 +181,7 @@ pub trait BootstrapServerExt {
     fn receive_confirm_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_telemetry_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_publish_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
+    fn receive_keepalive_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
@@ -363,6 +364,26 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
         } else if self.config.logging.network_message_logging_value {
             self.logger
                 .try_log(&format!("Error receiving publish: {:?}", ec));
+        }
+    }
+
+    fn receive_keepalive_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
+        if ec.is_ok() {
+            let request = {
+                let buffer = self.receive_buffer.lock().unwrap();
+                let mut stream = StreamAdapter::new(&buffer[..size]);
+                Keepalive::from_stream(header.clone(), &mut stream)
+            };
+
+            if let Ok(request) = request {
+                if self.socket.is_realtime_connection() {
+                    self.add_request(Box::new(request));
+                }
+                self.receive();
+            }
+        } else if self.config.logging.network_message_logging_value {
+            self.logger
+                .try_log(&format!("Error receiving keepalive: {:?}", ec));
         }
     }
 }

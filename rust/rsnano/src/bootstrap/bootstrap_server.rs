@@ -14,8 +14,9 @@ use std::{
 use crate::{
     logger_mt::Logger,
     messages::{
-        BulkPull, BulkPullAccount, ConfirmAck, ConfirmReq, FrontierReq, Keepalive, Message,
-        MessageHeader, MessageType, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
+        BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
+        Message, MessageHeader, MessageType, MessageVisitor, NodeIdHandshake, Publish,
+        TelemetryAck, TelemetryReq,
     },
     stats::{DetailType, Direction, Stat, StatType},
     transport::{Socket, SocketImpl, SocketType},
@@ -176,6 +177,7 @@ pub trait BootstrapServerExt {
     fn run_next(&self, requests_lock: &BootstrapRequestsLock);
     fn receive(&self);
     fn add_request(&self, message: Box<dyn Message>);
+    fn receive_header_action(&self, ec: ErrorCode, size: usize);
     fn receive_node_id_handshake_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_confirm_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_confirm_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
@@ -238,6 +240,187 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
         lock.push(Some(message));
         if start {
             self.run_next(&lock);
+        }
+    }
+
+    fn receive_header_action(&self, ec: ErrorCode, size: usize) {
+        if ec.is_ok() {
+            debug_assert!(size == 8);
+            let header = {
+                let buffer = self.receive_buffer.lock().unwrap();
+                let mut stream = StreamAdapter::new(&buffer[..size]);
+                MessageHeader::from_stream(&mut stream)
+            };
+
+            match header {
+                Ok(header) => {
+                    if header.network() != self.network.network.current_network {
+                        _ = self.stats.inc(
+                            StatType::Message,
+                            DetailType::InvalidNetwork,
+                            Direction::In,
+                        );
+                        return;
+                    }
+
+                    if header.version_using() < self.network.network.protocol_version_min {
+                        let _ = self.stats.inc(
+                            StatType::Message,
+                            DetailType::OutdatedVersion,
+                            Direction::In,
+                        );
+                        return;
+                    }
+
+                    let self_clone = self.clone();
+                    let buffer = self.receive_buffer.clone();
+
+                    match header.message_type() {
+                        MessageType::BulkPull => {
+                            let _ = self.stats.inc(
+                                StatType::Bootstrap,
+                                DetailType::BulkPull,
+                                Direction::In,
+                            );
+                            self.socket.async_read2(
+                                buffer,
+                                header.payload_length(),
+                                Box::new(move |ec, size| {
+                                    self_clone.receive_bulk_pull_action(ec, size, &header);
+                                }),
+                            );
+                        }
+                        MessageType::BulkPullAccount => {
+                            let _ = self.stats.inc(
+                                StatType::Bootstrap,
+                                DetailType::BulkPullAccount,
+                                Direction::In,
+                            );
+                            self.socket.async_read2(
+                                buffer,
+                                header.payload_length(),
+                                Box::new(move |ec, size| {
+                                    self_clone.receive_bulk_pull_account_action(ec, size, &header);
+                                }),
+                            );
+                        }
+                        MessageType::FrontierReq => {
+                            let _ = self.stats.inc(
+                                StatType::Bootstrap,
+                                DetailType::FrontierReq,
+                                Direction::In,
+                            );
+                            self.socket.async_read2(
+                                buffer,
+                                header.payload_length(),
+                                Box::new(move |ec, size| {
+                                    self_clone.receive_frontier_req_action(ec, size, &header);
+                                }),
+                            );
+                        }
+                        MessageType::BulkPush => {
+                            let _ = self.stats.inc(
+                                StatType::Bootstrap,
+                                DetailType::BulkPush,
+                                Direction::In,
+                            );
+                            if self.make_bootstrap_connection() {
+                                self.add_request(Box::new(BulkPush::with_header(&header)))
+                            }
+                        }
+                        MessageType::Keepalive => {
+                            self.socket.async_read2(
+                                buffer,
+                                header.payload_length(),
+                                Box::new(move |ec, size| {
+                                    self_clone.receive_keepalive_action(ec, size, &header);
+                                }),
+                            );
+                        }
+                        MessageType::Publish => {
+                            self.socket.async_read2(
+                                buffer,
+                                header.payload_length(),
+                                Box::new(move |ec, size| {
+                                    self_clone.receive_publish_action(ec, size, &header);
+                                }),
+                            );
+                        }
+                        MessageType::ConfirmAck => {
+                            self.socket.async_read2(
+                                buffer,
+                                header.payload_length(),
+                                Box::new(move |ec, size| {
+                                    self_clone.receive_confirm_ack_action(ec, size, &header);
+                                }),
+                            );
+                        }
+                        MessageType::ConfirmReq => {
+                            self.socket.async_read2(
+                                buffer,
+                                header.payload_length(),
+                                Box::new(move |ec, size| {
+                                    self_clone.receive_confirm_req_action(ec, size, &header);
+                                }),
+                            );
+                        }
+                        MessageType::NodeIdHandshake => {
+                            self.socket.async_read2(
+                                buffer,
+                                header.payload_length(),
+                                Box::new(move |ec, size| {
+                                    self_clone.receive_node_id_handshake_action(ec, size, &header);
+                                }),
+                            );
+                        }
+                        MessageType::TelemetryReq => {
+                            if self.socket.is_realtime_connection() {
+                                // Only handle telemetry requests if they are outside of the cutoff time
+                                let cache_exceeded = self.cache_exceeded();
+                                if cache_exceeded {
+                                    self.set_last_telemetry_req();
+                                    self.add_request(Box::new(TelemetryReq::with_header(&header)));
+                                } else {
+                                    let _ = self.stats.inc(
+                                        StatType::Telemetry,
+                                        DetailType::RequestWithinProtectionCacheZone,
+                                        Direction::In,
+                                    );
+                                }
+                            }
+                            self.receive();
+                        }
+                        MessageType::TelemetryAck => {
+                            self.socket.async_read2(
+                                buffer,
+                                header.payload_length(),
+                                Box::new(move |ec, size| {
+                                    self_clone.receive_telemetry_ack_action(ec, size, &header);
+                                }),
+                            );
+                        }
+                        MessageType::Invalid | MessageType::NotAType => {
+                            if self.config.logging.network_logging_value {
+                                self.logger.try_log(&format!(
+                                    "Received invalid type from bootstrap connection {}",
+                                    header.message_type() as u8
+                                ));
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    if self.config.logging.network_logging_value {
+                        self.logger.try_log(&format!(
+                            "Received invalid type from bootstrap connection {}",
+                            e
+                        ));
+                    }
+                }
+            }
+        } else if self.config.logging.bulk_pull_logging_value {
+            self.logger
+                .try_log(&format!("Error while receiving type: {:?}", ec));
         }
     }
 

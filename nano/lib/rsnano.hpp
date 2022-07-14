@@ -1024,6 +1024,10 @@ const ErrorCodeDto * ec,
 uintptr_t size,
 const MessageHeaderHandle * header);
 
+void rsn_bootstrap_server_receive_header_action (BootstrapServerHandle * handle,
+const ErrorCodeDto * ec,
+uintptr_t size);
+
 void rsn_bootstrap_server_receive_keepalive_action (BootstrapServerHandle * handle,
 const ErrorCodeDto * ec,
 uintptr_t size,

@@ -502,6 +502,17 @@ pub unsafe extern "C" fn rsn_bootstrap_server_receive_bulk_pull_action(
         .receive_bulk_pull_action(ErrorCode::from(&*ec), size, &*header);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_receive_header_action(
+    handle: *mut BootstrapServerHandle,
+    ec: *const ErrorCodeDto,
+    size: usize,
+) {
+    (*handle)
+        .0
+        .receive_header_action(ErrorCode::from(&*ec), size);
+}
+
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);
 type BootstrapServerExitedCallback =
     unsafe extern "C" fn(*mut c_void, u8, usize, *const EndpointDto);

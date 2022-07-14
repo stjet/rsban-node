@@ -580,26 +580,6 @@ nano::tcp_endpoint nano::bootstrap_server::get_remote_endpoint () const
 	return rsnano::dto_to_endpoint (dto);
 }
 
-std::shared_ptr<nano::logger_mt> nano::bootstrap_server::logger () const
-{
-	return *static_cast<std::shared_ptr<nano::logger_mt> *> (rsnano::rsn_bootstrap_server_logger (handle));
-}
-
-std::unique_ptr<nano::stat> nano::bootstrap_server::stats () const
-{
-	auto stats_handle{ rsnano::rsn_bootstrap_server_stats (handle) };
-	return std::make_unique<nano::stat> (stats_handle);
-}
-
-std::unique_ptr<nano::node_config> nano::bootstrap_server::config () const
-{
-	auto config{ std::make_unique<nano::node_config> () };
-	rsnano::NodeConfigDto dto;
-	rsnano::rsn_bootstrap_server_config (handle, &dto);
-	config->load_dto (dto);
-	return config;
-}
-
 std::shared_ptr<nano::socket> const nano::bootstrap_server::get_socket () const
 {
 	auto socket_handle = rsnano::rsn_bootstrap_server_socket (handle);

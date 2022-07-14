@@ -4,7 +4,7 @@ use crate::{
         RequestResponseVisitorFactory,
     },
     ffi::{
-        copy_account_bytes, fill_node_config_dto,
+        copy_account_bytes,
         io_context::{FfiIoContext, IoContextHandle},
         messages::{FfiMessageVisitor, MessageHandle},
         thread_pool::FfiThreadPool,
@@ -277,28 +277,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_last_telemetry_req(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_timeout(handle: *mut BootstrapServerHandle) {
     (*handle).0.timeout();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_logger(
-    handle: *mut BootstrapServerHandle,
-) -> *mut c_void {
-    (*handle).0.logger.handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_stats(
-    handle: *mut BootstrapServerHandle,
-) -> *mut StatHandle {
-    StatHandle::new(&(*handle).0.stats)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_config(
-    handle: *mut BootstrapServerHandle,
-    config: *mut NodeConfigDto,
-) {
-    fill_node_config_dto(&mut *config, &(*handle).0.config);
 }
 
 #[no_mangle]

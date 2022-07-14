@@ -157,12 +157,6 @@ public:
 	nano::tcp_endpoint get_remote_endpoint () const;
 	std::shared_ptr<nano::socket> const get_socket () const;
 
-private:
-	std::shared_ptr<nano::logger_mt> logger () const;
-	std::unique_ptr<nano::stat> stats () const;
-	std::unique_ptr<nano::node_config> config () const;
-
-public:
 	rsnano::BootstrapServerHandle * handle;
 };
 }

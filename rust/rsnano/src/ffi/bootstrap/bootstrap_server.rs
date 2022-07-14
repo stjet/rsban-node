@@ -179,28 +179,10 @@ impl BootstrapServerLockHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_lock(
-    handle: *mut BootstrapServerHandle,
-) -> *mut BootstrapServerLockHandle {
-    let guard = (*handle).0.lock_requests();
-    BootstrapServerLockHandle::new(guard)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_lock_clone(
     handle: *mut BootstrapServerLockHandle,
 ) -> *mut BootstrapServerLockHandle {
     Box::into_raw(Box::new(BootstrapServerLockHandle((*handle).0.clone())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_unlock(lock_handle: *mut BootstrapServerLockHandle) {
-    (*lock_handle).0.unlock();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_relock(lock_handle: *mut BootstrapServerLockHandle) {
-    (*lock_handle).0.relock();
 }
 
 #[no_mangle]
@@ -226,15 +208,15 @@ pub unsafe extern "C" fn rsn_bootstrap_server_socket(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_queue_empty(
-    handle: *mut BootstrapServerLockHandle,
+pub unsafe extern "C" fn rsn_bootstrap_server_requests_empty(
+    handle: *mut BootstrapServerHandle,
 ) -> bool {
-    (*handle).0.is_queue_empty()
+    (*handle).0.requests_empty()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_requests_push(
-    handle: *mut BootstrapServerLockHandle,
+pub unsafe extern "C" fn rsn_bootstrap_server_push_request(
+    handle: *mut BootstrapServerHandle,
     msg: *mut MessageHandle,
 ) {
     let msg = if msg.is_null() {
@@ -243,7 +225,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_requests_push(
         Some((*msg).clone_box())
     };
 
-    (*handle).0.push(msg);
+    (*handle).0.push_request(msg);
 }
 
 #[no_mangle]
@@ -251,13 +233,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_workers(
     handle: *mut BootstrapServerHandle,
 ) -> *mut c_void {
     (*handle).0.workers.handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_io_ctx(
-    handle: *mut BootstrapServerHandle,
-) -> *mut IoContextHandle {
-    IoContextHandle::new((*handle).0.io_ctx.raw_handle())
 }
 
 #[no_mangle]
@@ -306,6 +281,13 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_handshake_query_received(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_receive(handle: *mut BootstrapServerHandle) {
     (*handle).0.receive();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_finish_request_async(
+    handle: *mut BootstrapServerHandle,
+) {
+    (*handle).0.finish_request_async();
 }
 
 #[no_mangle]

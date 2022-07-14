@@ -174,9 +174,12 @@ pub trait RequestResponseVisitorFactory {
 pub trait BootstrapServerExt {
     fn timeout(&self);
     fn lock_requests(&self) -> BootstrapRequestsLock;
+    fn requests_empty(&self) -> bool;
+    fn push_request(&self, msg: Option<Box<dyn Message>>);
     fn run_next(&self, requests_lock: &BootstrapRequestsLock);
     fn receive(&self);
     fn finish_request(&self);
+    fn finish_request_async(&self);
     fn add_request(&self, message: Box<dyn Message>);
     fn receive_header_action(&self, ec: ErrorCode, size: usize);
     fn receive_node_id_handshake_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
@@ -703,6 +706,23 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
                 }
             }),
         );
+    }
+
+    fn finish_request_async(&self) {
+        let self_weak = Arc::downgrade(self);
+        self.io_ctx.post(Box::new(move || {
+            if let Some(self_clone) = self_weak.upgrade() {
+                self_clone.finish_request();
+            }
+        }));
+    }
+
+    fn requests_empty(&self) -> bool {
+        self.lock_requests().is_queue_empty()
+    }
+
+    fn push_request(&self, msg: Option<Box<dyn Message>>) {
+        self.lock_requests().push(msg)
     }
 }
 

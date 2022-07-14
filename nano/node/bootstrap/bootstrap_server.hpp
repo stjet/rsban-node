@@ -95,9 +95,6 @@ public:
 	bootstrap_server_lock (bootstrap_server_lock && other_a) noexcept;
 	~bootstrap_server_lock ();
 
-	void unlock ();
-	void lock ();
-
 	rsnano::BootstrapServerLockHandle * handle;
 };
 
@@ -134,7 +131,6 @@ public:
 	bootstrap_server (nano::bootstrap_server const &) = delete;
 	bootstrap_server (nano::bootstrap_server &&) = delete;
 	~bootstrap_server ();
-	nano::bootstrap_server_lock create_lock ();
 	void stop ();
 	void receive ();
 	void finish_request ();
@@ -144,12 +140,6 @@ public:
 	void timeout ();
 	void push_request (std::unique_ptr<nano::message> msg);
 	bool requests_empty ();
-	//---------------------------------------------------------------
-	// requests wrappers:
-	bool is_request_queue_empty (nano::bootstrap_server_lock & lock_a);
-	void push_request_locked (std::unique_ptr<nano::message> message_a, nano::bootstrap_server_lock & lock_a);
-	//---------------------------------------------------------------
-
 	bool is_stopped () const;
 	std::size_t unique_id () const;
 	nano::account get_remote_node_id () const;

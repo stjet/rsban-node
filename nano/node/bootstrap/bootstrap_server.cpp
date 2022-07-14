@@ -261,16 +261,6 @@ nano::bootstrap_server_lock::~bootstrap_server_lock ()
 		rsnano::rsn_bootstrap_server_lock_destroy (handle);
 }
 
-void nano::bootstrap_server_lock::unlock ()
-{
-	rsnano::rsn_bootstrap_server_unlock (handle);
-}
-
-void nano::bootstrap_server_lock::lock ()
-{
-	rsnano::rsn_bootstrap_server_relock (handle);
-}
-
 nano::locked_bootstrap_server_requests::locked_bootstrap_server_requests (nano::bootstrap_server_lock lock_a) :
 	lock{ lock_a }
 {
@@ -319,12 +309,6 @@ nano::bootstrap_server::~bootstrap_server ()
 	rsnano::rsn_bootstrap_server_destroy (handle);
 }
 
-nano::bootstrap_server_lock nano::bootstrap_server::create_lock ()
-{
-	auto lock_handle{ rsnano::rsn_bootstrap_server_lock (handle) };
-	return nano::bootstrap_server_lock{ lock_handle };
-}
-
 void nano::bootstrap_server::stop ()
 {
 	rsnano::rsn_bootstrap_server_stop (handle);
@@ -342,14 +326,7 @@ void nano::bootstrap_server::finish_request ()
 
 void nano::bootstrap_server::finish_request_async ()
 {
-	rsnano::io_ctx_wrapper io_ctx (rsnano::rsn_bootstrap_server_io_ctx (handle));
-	nano::bootstrap_server_weak_wrapper this_w (shared_from_this ());
-	io_ctx.inner ()->post ([this_w = std::move (this_w)] () {
-		if (auto this_l = this_w.lock ())
-		{
-			this_l->finish_request ();
-		}
-	});
+	rsnano::rsn_bootstrap_server_finish_request_async (handle);
 }
 
 bool nano::bootstrap_server::get_handshake_query_received ()
@@ -369,39 +346,23 @@ void nano::bootstrap_server::timeout ()
 
 void nano::bootstrap_server::push_request (std::unique_ptr<nano::message> msg)
 {
-	auto lk{ create_lock () };
-	push_request_locked (std::move (msg), lk);
+	rsnano::MessageHandle * msg_handle = nullptr;
+	if (msg)
+	{
+		msg_handle = msg->handle;
+	}
+	rsnano::rsn_bootstrap_server_push_request (handle, msg_handle);
 }
 
 bool nano::bootstrap_server::requests_empty ()
 {
-	auto lk{ create_lock () };
-	return is_request_queue_empty (lk);
+	return rsnano::rsn_bootstrap_server_requests_empty (handle);
 }
 
 nano::locked_bootstrap_server_requests::locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests && other_a) noexcept :
 	lock{ std::move (other_a.lock) }
 {
 }
-
-//---------------------------------------------------------------
-// requests wrappers:
-
-bool nano::bootstrap_server::is_request_queue_empty (nano::bootstrap_server_lock & lock_a)
-{
-	return rsnano::rsn_bootstrap_server_queue_empty (lock_a.handle);
-}
-
-void nano::bootstrap_server::push_request_locked (std::unique_ptr<nano::message> message_a, nano::bootstrap_server_lock & lock_a)
-{
-	rsnano::MessageHandle * msg_handle = nullptr;
-	if (message_a)
-	{
-		msg_handle = message_a->handle;
-	}
-	rsnano::rsn_bootstrap_server_requests_push (lock_a.handle, msg_handle);
-}
-//---------------------------------------------------------------
 
 namespace
 {

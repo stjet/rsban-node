@@ -783,7 +783,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_add_timed_task (add_timed_task);
 	rsnano::rsn_callback_logger_destroy (logger_destroy);
 
-	rsnano::rsn_callback_tcp_socket_post (io_ctx_post);
+	rsnano::rsn_callback_io_ctx_post (io_ctx_post);
 
 	rsnano::rsn_callback_tcp_socket_async_connect (tcp_socket_async_connect);
 	rsnano::rsn_callback_tcp_socket_async_read (tcp_socket_async_read);

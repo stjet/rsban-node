@@ -377,7 +377,8 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 				{
 					stats ()->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull, nano::stat::dir::in);
 					get_socket ()->async_read (get_buffer (), header.payload_length_bytes (), [this_l, header] (boost::system::error_code const & ec, std::size_t size_a) {
-						this_l->receive_bulk_pull_action (ec, size_a, header);
+						auto ec_dto{ rsnano::error_code_to_dto (ec) };
+						rsnano::rsn_bootstrap_server_receive_bulk_pull_action (this_l->handle, &ec_dto, size_a, header.handle);
 					});
 					break;
 				}
@@ -491,28 +492,6 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 		if (config ()->logging.bulk_pull_logging ())
 		{
 			logger ()->try_log (boost::str (boost::format ("Error while receiving type: %1%") % ec.message ()));
-		}
-	}
-}
-
-void nano::bootstrap_server::receive_bulk_pull_action (boost::system::error_code const & ec, std::size_t size_a, nano::message_header const & header_a)
-{
-	if (!ec)
-	{
-		auto error (false);
-		nano::bufferstream stream (get_buffer ()->data (), size_a);
-		auto request (std::make_unique<nano::bulk_pull> (error, stream, header_a));
-		if (!error)
-		{
-			if (config ()->logging.bulk_pull_logging ())
-			{
-				logger ()->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % request->get_start ().to_string () % request->get_end ().to_string () % (request->get_count () ? request->get_count () : std::numeric_limits<double>::infinity ()) % get_remote_endpoint ()));
-			}
-			if (make_bootstrap_connection () && !rsnano::rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (handle))
-			{
-				add_request (std::unique_ptr<nano::message> (request.release ()));
-			}
-			receive ();
 		}
 	}
 }

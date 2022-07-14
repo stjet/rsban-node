@@ -21,6 +21,7 @@ impl BulkPull {
             count: 0,
         }
     }
+
     pub fn with_header(header: &MessageHeader) -> Self {
         Self {
             header: header.clone(),
@@ -28,6 +29,12 @@ impl BulkPull {
             end: BlockHash::new(),
             count: 0,
         }
+    }
+
+    pub fn from_stream(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+        let mut msg = Self::with_header(header);
+        msg.deserialize(stream)?;
+        Ok(msg)
     }
 
     fn clone_box(&self) -> Box<dyn Message> {

@@ -1004,6 +1004,11 @@ const ErrorCodeDto * ec,
 uintptr_t size,
 const MessageHeaderHandle * header);
 
+void rsn_bootstrap_server_receive_bulk_pull_action (BootstrapServerHandle * handle,
+const ErrorCodeDto * ec,
+uintptr_t size,
+const MessageHeaderHandle * header);
+
 void rsn_bootstrap_server_receive_confirm_ack_action (BootstrapServerHandle * handle,
 const ErrorCodeDto * ec,
 uintptr_t size,

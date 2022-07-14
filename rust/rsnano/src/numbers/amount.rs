@@ -69,9 +69,7 @@ impl Amount {
 
     pub fn format_balance(&self, precision: usize) -> String {
         let precision = std::cmp::min(precision, 30);
-        if self.value == 0
-            || self.value >= *MXRB_RATIO / num_traits::pow(10, precision)
-        {
+        if self.value == 0 || self.value >= *MXRB_RATIO / num_traits::pow(10, precision) {
             let whole = self.value / *MXRB_RATIO;
             let decimals = self.value % *MXRB_RATIO;
             let mut buf = num_format::Buffer::default();

@@ -14,8 +14,8 @@ use std::{
 use crate::{
     logger_mt::Logger,
     messages::{
-        BulkPullAccount, ConfirmAck, ConfirmReq, FrontierReq, Keepalive, Message, MessageHeader,
-        MessageType, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
+        BulkPull, BulkPullAccount, ConfirmAck, ConfirmReq, FrontierReq, Keepalive, Message,
+        MessageHeader, MessageType, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
     },
     stats::{DetailType, Direction, Stat, StatType},
     transport::{Socket, SocketImpl, SocketType},
@@ -184,6 +184,7 @@ pub trait BootstrapServerExt {
     fn receive_keepalive_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_frontier_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
     fn receive_bulk_pull_account_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
+    fn receive_bulk_pull_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
@@ -430,6 +431,30 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
                         "Received bulk pull account for {} with a minimum amount of {}",
                         request.account.encode_account(),
                         request.minimum_amount.format_balance(10)
+                    ));
+                }
+                if self.make_bootstrap_connection() && !self.disable_bootstrap_bulk_pull_server {
+                    self.add_request(Box::new(request));
+                }
+                self.receive();
+            }
+        }
+    }
+
+    fn receive_bulk_pull_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
+        if ec.is_ok() {
+            let request = {
+                let buffer = self.receive_buffer.lock().unwrap();
+                let mut stream = StreamAdapter::new(&buffer[..size]);
+                BulkPull::from_stream(&mut stream, header)
+            };
+
+            if let Ok(request) = request {
+                if self.config.logging.bulk_pull_logging_value {
+                    let remote = { self.remote_endpoint.lock().unwrap().clone() };
+                    self.logger.try_log(&format!(
+                        "Received bulk pull for {} down to {}, maximum of {} from {}",
+                        request.start, request.end, request.count, remote
                     ));
                 }
                 if self.make_bootstrap_connection() && !self.disable_bootstrap_bulk_pull_server {

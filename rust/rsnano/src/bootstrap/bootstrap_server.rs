@@ -20,7 +20,7 @@ use crate::{
     stats::{DetailType, Direction, Stat, StatType},
     transport::{Socket, SocketImpl, SocketType},
     utils::{ErrorCode, IoContext, StreamAdapter, ThreadPool},
-    Account, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs, MXRB_RATIO,
+    Account, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
 };
 
 pub trait BootstrapServerObserver {
@@ -429,7 +429,7 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
                     self.logger.try_log(&format!(
                         "Received bulk pull account for {} with a minimum amount of {}",
                         request.account.encode_account(),
-                        request.minimum_amount.format_balance(*MXRB_RATIO, 10, true)
+                        request.minimum_amount.format_balance(10)
                     ));
                 }
                 if self.make_bootstrap_connection() && !self.disable_bootstrap_bulk_pull_server {

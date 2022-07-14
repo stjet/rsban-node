@@ -138,7 +138,6 @@ public:
 	void stop ();
 	void receive ();
 	void receive_header_action (boost::system::error_code const &, std::size_t);
-	void add_request (std::unique_ptr<nano::message>);
 	void finish_request ();
 	void finish_request_async ();
 	bool get_handshake_query_received ();
@@ -154,8 +153,6 @@ public:
 	void push_request_locked (std::unique_ptr<nano::message> message_a, nano::bootstrap_server_lock & lock_a);
 	//---------------------------------------------------------------
 
-	bool make_bootstrap_connection ();
-	bool is_realtime_connection ();
 	bool is_stopped () const;
 	std::size_t unique_id () const;
 	nano::account get_remote_node_id () const;
@@ -170,7 +167,6 @@ private:
 	std::unique_ptr<nano::stat> stats () const;
 	std::unique_ptr<nano::node_config> config () const;
 	std::shared_ptr<nano::buffer_wrapper> get_buffer () const;
-	std::shared_ptr<nano::network_filter> get_publish_filter () const;
 	nano::network_params get_network_params () const;
 
 public:

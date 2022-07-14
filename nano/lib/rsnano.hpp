@@ -955,8 +955,6 @@ BootstrapInitiatorHandle * rsn_bootstrap_initiator_create (void * handle);
 
 void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
 
-void rsn_bootstrap_server_add_request (BootstrapServerHandle * handle, MessageHandle * msg);
-
 bool rsn_bootstrap_server_cache_exceeded (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_config (BootstrapServerHandle * handle, NodeConfigDto * config);
@@ -989,64 +987,15 @@ BootstrapServerHandle * rsn_bootstrap_server_lock_weak (BootstrapServerWeakHandl
 
 void * rsn_bootstrap_server_logger (BootstrapServerHandle * handle);
 
-bool rsn_bootstrap_server_make_bootstrap_connection (BootstrapServerHandle * handle);
-
 void rsn_bootstrap_server_network (BootstrapServerHandle * handle, NetworkParamsDto * dto);
-
-NetworkFilterHandle * rsn_bootstrap_server_publish_filter (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_queue_empty (BootstrapServerLockHandle * handle);
 
 BufferHandle * rsn_bootstrap_server_receive_buffer (BootstrapServerHandle * handle);
 
-void rsn_bootstrap_server_receive_bulk_pull_account_action (BootstrapServerHandle * handle,
-const ErrorCodeDto * ec,
-uintptr_t size,
-const MessageHeaderHandle * header);
-
-void rsn_bootstrap_server_receive_bulk_pull_action (BootstrapServerHandle * handle,
-const ErrorCodeDto * ec,
-uintptr_t size,
-const MessageHeaderHandle * header);
-
-void rsn_bootstrap_server_receive_confirm_ack_action (BootstrapServerHandle * handle,
-const ErrorCodeDto * ec,
-uintptr_t size,
-const MessageHeaderHandle * header);
-
-void rsn_bootstrap_server_receive_confirm_req_action (BootstrapServerHandle * handle,
-const ErrorCodeDto * ec,
-uintptr_t size,
-const MessageHeaderHandle * header);
-
-void rsn_bootstrap_server_receive_frontier_req_action (BootstrapServerHandle * handle,
-const ErrorCodeDto * ec,
-uintptr_t size,
-const MessageHeaderHandle * header);
-
 void rsn_bootstrap_server_receive_header_action (BootstrapServerHandle * handle,
 const ErrorCodeDto * ec,
 uintptr_t size);
-
-void rsn_bootstrap_server_receive_keepalive_action (BootstrapServerHandle * handle,
-const ErrorCodeDto * ec,
-uintptr_t size,
-const MessageHeaderHandle * header);
-
-void rsn_bootstrap_server_receive_node_id_handshake_action (BootstrapServerHandle * handle,
-const ErrorCodeDto * ec,
-uintptr_t size,
-const MessageHeaderHandle * header);
-
-void rsn_bootstrap_server_receive_publish_action (BootstrapServerHandle * handle,
-const ErrorCodeDto * ec,
-uintptr_t size,
-const MessageHeaderHandle * header);
-
-void rsn_bootstrap_server_receive_telemetry_ack_action (BootstrapServerHandle * handle,
-const ErrorCodeDto * ec,
-uintptr_t size,
-const MessageHeaderHandle * header);
 
 MessageHandle * rsn_bootstrap_server_release_front_request (BootstrapServerLockHandle * handle);
 

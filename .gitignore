@@ -85,3 +85,4 @@ util/build_prep/*/prep.sh
 .cargo
 cargo
 build*
+cmake-build-debug/

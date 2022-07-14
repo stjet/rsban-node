@@ -6,7 +6,7 @@ use crate::{
     ffi::{
         copy_account_bytes, fill_network_params_dto, fill_node_config_dto,
         io_context::{FfiIoContext, IoContextHandle},
-        messages::{FfiMessageVisitor, MessageHandle, MessageHeaderHandle},
+        messages::{FfiMessageVisitor, MessageHandle},
         thread_pool::FfiThreadPool,
         transport::{EndpointDto, SocketHandle},
         DestroyCallback, ErrorCodeDto, LoggerHandle, LoggerMT, NetworkFilterHandle,
@@ -180,13 +180,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_remote_node_id(
     *lk = Account::from(node_id);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_make_bootstrap_connection(
-    handle: *mut BootstrapServerHandle,
-) -> bool {
-    (*handle).0.make_bootstrap_connection()
-}
-
 pub struct BootstrapServerLockHandle(BootstrapRequestsLock);
 
 impl BootstrapServerLockHandle {
@@ -286,13 +279,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_receive_buffer(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_publish_filter(
-    handle: *mut BootstrapServerHandle,
-) -> *mut NetworkFilterHandle {
-    NetworkFilterHandle::new(Arc::clone(&(*handle).0.publish_filter))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_workers(
     handle: *mut BootstrapServerHandle,
 ) -> *mut c_void {
@@ -384,122 +370,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_run_next(
     requests_lock: *mut BootstrapServerLockHandle,
 ) {
     (*handle).0.run_next(&(*requests_lock).0)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_add_request(
-    handle: *mut BootstrapServerHandle,
-    msg: *mut MessageHandle,
-) {
-    (*handle).0.add_request((*msg).clone_box())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_node_id_handshake_action(
-    handle: *mut BootstrapServerHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-    header: *const MessageHeaderHandle,
-) {
-    (*handle)
-        .0
-        .receive_node_id_handshake_action(ErrorCode::from(&*ec), size, &*header);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_confirm_ack_action(
-    handle: *mut BootstrapServerHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-    header: *const MessageHeaderHandle,
-) {
-    (*handle)
-        .0
-        .receive_confirm_ack_action(ErrorCode::from(&*ec), size, &*header);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_telemetry_ack_action(
-    handle: *mut BootstrapServerHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-    header: *const MessageHeaderHandle,
-) {
-    (*handle)
-        .0
-        .receive_telemetry_ack_action(ErrorCode::from(&*ec), size, &*header);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_confirm_req_action(
-    handle: *mut BootstrapServerHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-    header: *const MessageHeaderHandle,
-) {
-    (*handle)
-        .0
-        .receive_confirm_req_action(ErrorCode::from(&*ec), size, &*header);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_publish_action(
-    handle: *mut BootstrapServerHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-    header: *const MessageHeaderHandle,
-) {
-    (*handle)
-        .0
-        .receive_publish_action(ErrorCode::from(&*ec), size, &*header);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_keepalive_action(
-    handle: *mut BootstrapServerHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-    header: *const MessageHeaderHandle,
-) {
-    (*handle)
-        .0
-        .receive_keepalive_action(ErrorCode::from(&*ec), size, &*header);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_frontier_req_action(
-    handle: *mut BootstrapServerHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-    header: *const MessageHeaderHandle,
-) {
-    (*handle)
-        .0
-        .receive_frontier_req_action(ErrorCode::from(&*ec), size, &*header);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_bulk_pull_account_action(
-    handle: *mut BootstrapServerHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-    header: *const MessageHeaderHandle,
-) {
-    (*handle)
-        .0
-        .receive_bulk_pull_account_action(ErrorCode::from(&*ec), size, &*header);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_bulk_pull_action(
-    handle: *mut BootstrapServerHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-    header: *const MessageHeaderHandle,
-) {
-    (*handle)
-        .0
-        .receive_bulk_pull_action(ErrorCode::from(&*ec), size, &*header);
 }
 
 #[no_mangle]

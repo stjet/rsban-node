@@ -354,11 +354,6 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 	rsnano::rsn_bootstrap_server_receive_header_action (handle, &ec_dto, size_a);
 }
 
-void nano::bootstrap_server::add_request (std::unique_ptr<nano::message> message_a)
-{
-	rsnano::rsn_bootstrap_server_add_request (handle, message_a->handle);
-}
-
 void nano::bootstrap_server::finish_request ()
 {
 	auto lock{ create_lock () };
@@ -621,16 +616,6 @@ void nano::bootstrap_server::run_next (nano::bootstrap_server_lock & lock_a)
 	rsnano::rsn_bootstrap_server_run_next (handle, lock_a.handle);
 }
 
-bool nano::bootstrap_server::make_bootstrap_connection ()
-{
-	return rsnano::rsn_bootstrap_server_make_bootstrap_connection (handle);
-}
-
-bool nano::bootstrap_server::is_realtime_connection ()
-{
-	return get_socket ()->is_realtime_connection ();
-}
-
 bool nano::bootstrap_server::is_stopped () const
 {
 	return rsnano::rsn_bootstrap_server_is_stopped (handle);
@@ -695,12 +680,6 @@ std::shared_ptr<nano::socket> const nano::bootstrap_server::get_socket () const
 std::shared_ptr<nano::buffer_wrapper> nano::bootstrap_server::get_buffer () const
 {
 	return std::make_shared<nano::buffer_wrapper> (rsnano::rsn_bootstrap_server_receive_buffer (handle));
-}
-
-std::shared_ptr<nano::network_filter> nano::bootstrap_server::get_publish_filter () const
-{
-	auto filter_handle = rsnano::rsn_bootstrap_server_publish_filter (handle);
-	return std::make_shared<nano::network_filter> (filter_handle);
 }
 
 nano::network_params nano::bootstrap_server::get_network_params () const

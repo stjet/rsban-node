@@ -462,8 +462,6 @@ using BootstrapServerIncBootstrapCountCallback = void (*) (void *);
 
 using BootstrapServerTimeoutCallback = void (*) (void *, uintptr_t);
 
-using BootstrapServerReceiveCallback = void (*) (BootstrapServerHandle *);
-
 using BufferSizeCallback = uintptr_t (*) (void *);
 
 using InAvailCallback = uintptr_t (*) (void *, int32_t *);
@@ -969,6 +967,8 @@ void rsn_bootstrap_server_destroy_weak (BootstrapServerWeakHandle * handle);
 
 bool rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (BootstrapServerHandle * handle);
 
+void rsn_bootstrap_server_finish_request (BootstrapServerHandle * handle);
+
 BootstrapServerWeakHandle * rsn_bootstrap_server_get_weak (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_handshake_query_received (BootstrapServerHandle * handle);
@@ -987,15 +987,9 @@ BootstrapServerHandle * rsn_bootstrap_server_lock_weak (BootstrapServerWeakHandl
 
 void * rsn_bootstrap_server_logger (BootstrapServerHandle * handle);
 
-void rsn_bootstrap_server_network (BootstrapServerHandle * handle, NetworkParamsDto * dto);
-
 bool rsn_bootstrap_server_queue_empty (BootstrapServerLockHandle * handle);
 
-BufferHandle * rsn_bootstrap_server_receive_buffer (BootstrapServerHandle * handle);
-
-void rsn_bootstrap_server_receive_header_action (BootstrapServerHandle * handle,
-const ErrorCodeDto * ec,
-uintptr_t size);
+void rsn_bootstrap_server_receive (BootstrapServerHandle * handle);
 
 MessageHandle * rsn_bootstrap_server_release_front_request (BootstrapServerLockHandle * handle);
 
@@ -1005,21 +999,11 @@ void rsn_bootstrap_server_remote_endpoint (BootstrapServerHandle * handle, Endpo
 
 void rsn_bootstrap_server_remote_node_id (BootstrapServerHandle * handle, uint8_t * node_id);
 
-MessageHandle * rsn_bootstrap_server_requests_front (BootstrapServerLockHandle * handle);
-
-void rsn_bootstrap_server_requests_pop (BootstrapServerLockHandle * handle);
-
 void rsn_bootstrap_server_requests_push (BootstrapServerLockHandle * handle, MessageHandle * msg);
-
-void rsn_bootstrap_server_run_next (BootstrapServerHandle * handle,
-BootstrapServerLockHandle * requests_lock);
 
 void rsn_bootstrap_server_set_handshake_query_received (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_set_last_telemetry_req (BootstrapServerHandle * handle);
-
-void rsn_bootstrap_server_set_remote_endpoint (BootstrapServerHandle * handle,
-const EndpointDto * endpoint);
 
 void rsn_bootstrap_server_set_remote_node_id (BootstrapServerHandle * handle, const uint8_t * node_id);
 
@@ -1068,8 +1052,6 @@ void rsn_callback_bootstrap_observer_exited (BootstrapServerExitedCallback f);
 void rsn_callback_bootstrap_observer_inc_bootstrap_count (BootstrapServerIncBootstrapCountCallback f);
 
 void rsn_callback_bootstrap_observer_timeout (BootstrapServerTimeoutCallback f);
-
-void rsn_callback_bootstrap_server_receive (BootstrapServerReceiveCallback f);
 
 void rsn_callback_buffer_destroy (DestroyCallback f);
 

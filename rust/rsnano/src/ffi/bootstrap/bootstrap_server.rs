@@ -4,16 +4,15 @@ use crate::{
         RequestResponseVisitorFactory,
     },
     ffi::{
-        copy_account_bytes, fill_network_params_dto, fill_node_config_dto,
+        copy_account_bytes, fill_node_config_dto,
         io_context::{FfiIoContext, IoContextHandle},
         messages::{FfiMessageVisitor, MessageHandle},
         thread_pool::FfiThreadPool,
         transport::{EndpointDto, SocketHandle},
-        DestroyCallback, ErrorCodeDto, LoggerHandle, LoggerMT, NetworkFilterHandle,
-        NetworkParamsDto, NodeConfigDto, StatHandle,
+        DestroyCallback, LoggerHandle, LoggerMT, NetworkFilterHandle, NetworkParamsDto,
+        NodeConfigDto, StatHandle,
     },
     transport::SocketType,
-    utils::{BufferHandle, ErrorCode},
     Account, NetworkParams, NodeConfig,
 };
 use std::{
@@ -154,15 +153,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_remote_endpoint(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_set_remote_endpoint(
-    handle: *mut BootstrapServerHandle,
-    endpoint: *const EndpointDto,
-) {
-    let mut lk = (*handle).0.remote_endpoint.lock().unwrap();
-    *lk = SocketAddr::from(&*endpoint);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_remote_node_id(
     handle: *mut BootstrapServerHandle,
     node_id: *mut u8,
@@ -243,21 +233,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_queue_empty(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_requests_front(
-    handle: *mut BootstrapServerLockHandle,
-) -> *mut MessageHandle {
-    match (*handle).0.front() {
-        Some(msg) => MessageHandle::new(msg),
-        None => std::ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_requests_pop(handle: *mut BootstrapServerLockHandle) {
-    (*handle).0.pop();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_requests_push(
     handle: *mut BootstrapServerLockHandle,
     msg: *mut MessageHandle,
@@ -269,13 +244,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_requests_push(
     };
 
     (*handle).0.push(msg);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_buffer(
-    handle: *mut BootstrapServerHandle,
-) -> *mut BufferHandle {
-    BufferHandle::new((*handle).0.receive_buffer.clone())
 }
 
 #[no_mangle]
@@ -334,13 +302,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_config(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_network(
-    handle: *mut BootstrapServerHandle,
-    dto: *mut NetworkParamsDto,
-) {
-    fill_network_params_dto(&mut *dto, &(*handle).0.network);
-}
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_disable_bootstrap_bulk_pull_server(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
@@ -365,22 +326,13 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_handshake_query_received(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_run_next(
-    handle: *mut BootstrapServerHandle,
-    requests_lock: *mut BootstrapServerLockHandle,
-) {
-    (*handle).0.run_next(&(*requests_lock).0)
+pub unsafe extern "C" fn rsn_bootstrap_server_receive(handle: *mut BootstrapServerHandle) {
+    (*handle).0.receive();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive_header_action(
-    handle: *mut BootstrapServerHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-) {
-    (*handle)
-        .0
-        .receive_header_action(ErrorCode::from(&*ec), size);
+pub unsafe extern "C" fn rsn_bootstrap_server_finish_request(handle: *mut BootstrapServerHandle) {
+    (*handle).0.finish_request();
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);
@@ -537,19 +489,4 @@ impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
     fn handle(&self) -> *mut c_void {
         self.handle
     }
-}
-
-type BootstrapServerReceiveCallback = unsafe extern "C" fn(*mut BootstrapServerHandle);
-static mut BOOTSTRAP_SERVER_RECEIVE: Option<BootstrapServerReceiveCallback> = None;
-
-pub fn bootstrap_server_receive(server: Arc<BootstrapServer>) {
-    let handle = BootstrapServerHandle::new(server);
-    unsafe {
-        BOOTSTRAP_SERVER_RECEIVE.expect("BOOTSTRAP_SERVER_RECEIVE missing")(handle);
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_server_receive(f: BootstrapServerReceiveCallback) {
-    BOOTSTRAP_SERVER_RECEIVE = Some(f);
 }

@@ -35,12 +35,12 @@ class bootstrap_server_weak_wrapper
 {
 public:
 	bootstrap_server_weak_wrapper () = default;
-	bootstrap_server_weak_wrapper (std::shared_ptr<nano::bootstrap_server> const & server);
+	explicit bootstrap_server_weak_wrapper (std::shared_ptr<nano::bootstrap_server> const & server);
 	bootstrap_server_weak_wrapper (bootstrap_server_weak_wrapper const &);
-	bootstrap_server_weak_wrapper (bootstrap_server_weak_wrapper &&);
+	bootstrap_server_weak_wrapper (bootstrap_server_weak_wrapper &&) noexcept;
 	~bootstrap_server_weak_wrapper ();
-	bootstrap_server_weak_wrapper & operator= (bootstrap_server_weak_wrapper && other_a);
-	std::shared_ptr<nano::bootstrap_server> lock () const;
+	bootstrap_server_weak_wrapper & operator= (bootstrap_server_weak_wrapper && other_a) noexcept;
+	[[nodiscard]] std::shared_ptr<nano::bootstrap_server> lock () const;
 
 private:
 	rsnano::BootstrapServerWeakHandle * handle{ nullptr };
@@ -90,9 +90,9 @@ class message;
 class bootstrap_server_lock
 {
 public:
-	bootstrap_server_lock (rsnano::BootstrapServerLockHandle * handle_a);
+	explicit bootstrap_server_lock (rsnano::BootstrapServerLockHandle * handle_a);
 	bootstrap_server_lock (bootstrap_server_lock const &);
-	bootstrap_server_lock (bootstrap_server_lock && other_a);
+	bootstrap_server_lock (bootstrap_server_lock && other_a) noexcept;
 	~bootstrap_server_lock ();
 
 	void unlock ();
@@ -104,8 +104,8 @@ public:
 class locked_bootstrap_server_requests
 {
 public:
-	locked_bootstrap_server_requests (nano::bootstrap_server_lock lock_a);
-	locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests &&);
+	explicit locked_bootstrap_server_requests (nano::bootstrap_server_lock lock_a);
+	locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests &&) noexcept;
 	locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests const &) = delete;
 	nano::message * release_front_request ();
 
@@ -116,7 +116,7 @@ private:
 class request_response_visitor_factory
 {
 public:
-	request_response_visitor_factory (std::shared_ptr<nano::node> node_a);
+	explicit request_response_visitor_factory (std::shared_ptr<nano::node> node_a);
 	std::shared_ptr<nano::message_visitor> create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, nano::locked_bootstrap_server_requests & lock_a);
 
 private:
@@ -130,14 +130,13 @@ class bootstrap_server final : public std::enable_shared_from_this<nano::bootstr
 {
 public:
 	bootstrap_server (std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::node> const &);
-	bootstrap_server (rsnano::BootstrapServerHandle * handle_a);
+	explicit bootstrap_server (rsnano::BootstrapServerHandle * handle_a);
 	bootstrap_server (nano::bootstrap_server const &) = delete;
 	bootstrap_server (nano::bootstrap_server &&) = delete;
 	~bootstrap_server ();
 	nano::bootstrap_server_lock create_lock ();
 	void stop ();
 	void receive ();
-	void receive_header_action (boost::system::error_code const &, std::size_t);
 	void finish_request ();
 	void finish_request_async ();
 	bool get_handshake_query_received ();
@@ -148,8 +147,6 @@ public:
 	//---------------------------------------------------------------
 	// requests wrappers:
 	bool is_request_queue_empty (nano::bootstrap_server_lock & lock_a);
-	std::unique_ptr<nano::message> requests_front (nano::bootstrap_server_lock & lock_a);
-	void requests_pop (nano::bootstrap_server_lock & lock_a);
 	void push_request_locked (std::unique_ptr<nano::message> message_a, nano::bootstrap_server_lock & lock_a);
 	//---------------------------------------------------------------
 
@@ -161,13 +158,9 @@ public:
 	std::shared_ptr<nano::socket> const get_socket () const;
 
 private:
-	void run_next (nano::bootstrap_server_lock & lock_a);
-	void set_remote_endpoint (nano::tcp_endpoint const & endpoint);
 	std::shared_ptr<nano::logger_mt> logger () const;
 	std::unique_ptr<nano::stat> stats () const;
 	std::unique_ptr<nano::node_config> config () const;
-	std::shared_ptr<nano::buffer_wrapper> get_buffer () const;
-	nano::network_params get_network_params () const;
 
 public:
 	rsnano::BootstrapServerHandle * handle;

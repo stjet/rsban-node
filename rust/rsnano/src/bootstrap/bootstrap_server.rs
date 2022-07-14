@@ -8,7 +8,7 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex, MutexGuard,
     },
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use crate::{
@@ -176,6 +176,7 @@ pub trait BootstrapServerExt {
     fn lock_requests(&self) -> BootstrapRequestsLock;
     fn run_next(&self, requests_lock: &BootstrapRequestsLock);
     fn receive(&self);
+    fn finish_request(&self);
     fn add_request(&self, message: Box<dyn Message>);
     fn receive_header_action(&self, ec: ErrorCode, size: usize);
     fn receive_node_id_handshake_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
@@ -231,7 +232,32 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
     }
 
     fn receive(&self) {
-        crate::ffi::bootstrap::bootstrap_server_receive(Arc::clone(self))
+        // Increase timeout to receive TCP header (idle server socket)
+        self.socket
+            .set_default_timeout_value(self.network.network.idle_timeout_s as u64);
+        let self_clone = self.clone();
+        self.socket.async_read2(
+            self.receive_buffer.clone(),
+            8,
+            Box::new(move |ec, size| {
+                {
+                    // Set remote_endpoint
+                    let mut endpoint_lk = self_clone.remote_endpoint.lock().unwrap();
+                    if endpoint_lk.port() == 0 {
+                        if let Some(ep) = self_clone.socket.get_remote() {
+                            *endpoint_lk = ep;
+                        }
+                    }
+                }
+
+                // Decrease timeout to default
+                self_clone
+                    .socket
+                    .set_default_timeout_value(self_clone.config.tcp_io_timeout_s as u64);
+                // Receive header
+                self_clone.receive_header_action(ec, size);
+            }),
+        );
     }
 
     fn add_request(&self, message: Box<dyn Message>) {
@@ -646,6 +672,37 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
                 self.receive();
             }
         }
+    }
+
+    fn finish_request(&self) {
+        let lock = self.lock_requests();
+        if !lock.is_queue_empty() {
+            lock.pop();
+        } else {
+            let _ = self.stats.inc(
+                StatType::Bootstrap,
+                DetailType::RequestUnderflow,
+                Direction::In,
+            );
+        }
+
+        while !lock.is_queue_empty() {
+            if lock.front().is_none() {
+                lock.pop();
+            } else {
+                self.run_next(&lock);
+            }
+        }
+
+        let self_weak = Arc::downgrade(self);
+        self.workers.add_timed_task(
+            Duration::from_secs((self.config.tcp_io_timeout_s as u64 * 2) + 1),
+            Box::new(move || {
+                if let Some(self_clone) = self_weak.upgrade() {
+                    self_clone.timeout();
+                }
+            }),
+        );
     }
 }
 

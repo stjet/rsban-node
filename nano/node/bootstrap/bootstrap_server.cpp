@@ -18,7 +18,7 @@ nano::bootstrap_server_weak_wrapper::bootstrap_server_weak_wrapper (bootstrap_se
 {
 }
 
-nano::bootstrap_server_weak_wrapper::bootstrap_server_weak_wrapper (bootstrap_server_weak_wrapper && other_a) :
+nano::bootstrap_server_weak_wrapper::bootstrap_server_weak_wrapper (bootstrap_server_weak_wrapper && other_a) noexcept :
 	handle{ other_a.handle }
 {
 	other_a.handle = nullptr;
@@ -30,7 +30,7 @@ nano::bootstrap_server_weak_wrapper::~bootstrap_server_weak_wrapper ()
 		rsnano::rsn_bootstrap_server_destroy_weak (handle);
 }
 
-nano::bootstrap_server_weak_wrapper & nano::bootstrap_server_weak_wrapper::operator= (bootstrap_server_weak_wrapper && other_a)
+nano::bootstrap_server_weak_wrapper & nano::bootstrap_server_weak_wrapper::operator= (bootstrap_server_weak_wrapper && other_a) noexcept
 {
 	handle = other_a.handle;
 	other_a.handle = nullptr;
@@ -249,7 +249,7 @@ nano::bootstrap_server_lock::bootstrap_server_lock (bootstrap_server_lock const 
 {
 }
 
-nano::bootstrap_server_lock::bootstrap_server_lock (bootstrap_server_lock && other_a) :
+nano::bootstrap_server_lock::bootstrap_server_lock (bootstrap_server_lock && other_a) noexcept :
 	handle{ other_a.handle }
 {
 	other_a.handle = nullptr;
@@ -332,61 +332,12 @@ void nano::bootstrap_server::stop ()
 
 void nano::bootstrap_server::receive ()
 {
-	// Increase timeout to receive TCP header (idle server socket)
-	get_socket ()->set_default_timeout_value (get_network_params ().network.idle_timeout);
-	auto this_l (shared_from_this ());
-	get_socket ()->async_read (get_buffer (), 8, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
-		// Set remote_endpoint
-		if (this_l->get_remote_endpoint ().port () == 0)
-		{
-			this_l->set_remote_endpoint (this_l->get_socket ()->remote_endpoint ());
-		}
-		// Decrease timeout to default
-		this_l->get_socket ()->set_default_timeout_value (this_l->config ()->tcp_io_timeout);
-		// Receive header
-		this_l->receive_header_action (ec, size_a);
-	});
-}
-
-void nano::bootstrap_server::receive_header_action (boost::system::error_code const & ec, std::size_t size_a)
-{
-	auto ec_dto{ rsnano::error_code_to_dto (ec) };
-	rsnano::rsn_bootstrap_server_receive_header_action (handle, &ec_dto, size_a);
+	rsnano::rsn_bootstrap_server_receive (handle);
 }
 
 void nano::bootstrap_server::finish_request ()
 {
-	auto lock{ create_lock () };
-	if (!is_request_queue_empty (lock))
-	{
-		requests_pop (lock);
-	}
-	else
-	{
-		stats ()->inc (nano::stat::type::bootstrap, nano::stat::detail::request_underflow);
-	}
-
-	while (!is_request_queue_empty (lock))
-	{
-		if (!requests_front (lock))
-		{
-			requests_pop (lock);
-		}
-		else
-		{
-			run_next (lock);
-		}
-	}
-
-	nano::bootstrap_server_weak_wrapper this_w (shared_from_this ());
-	auto workers_ptr = rsnano::rsn_bootstrap_server_workers (handle);
-	auto workers = static_cast<std::shared_ptr<nano::thread_pool> *> (workers_ptr);
-	(*workers)->add_timed_task (std::chrono::steady_clock::now () + (config ()->tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w = std::move (this_w)] () {
-		if (auto this_l = this_w.lock ())
-		{
-			this_l->timeout ();
-		}
-	});
+	rsnano::rsn_bootstrap_server_finish_request (handle);
 }
 
 void nano::bootstrap_server::finish_request_async ()
@@ -428,7 +379,7 @@ bool nano::bootstrap_server::requests_empty ()
 	return is_request_queue_empty (lk);
 }
 
-nano::locked_bootstrap_server_requests::locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests && other_a) :
+nano::locked_bootstrap_server_requests::locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests && other_a) noexcept :
 	lock{ std::move (other_a.lock) }
 {
 }
@@ -439,17 +390,6 @@ nano::locked_bootstrap_server_requests::locked_bootstrap_server_requests (nano::
 bool nano::bootstrap_server::is_request_queue_empty (nano::bootstrap_server_lock & lock_a)
 {
 	return rsnano::rsn_bootstrap_server_queue_empty (lock_a.handle);
-}
-
-std::unique_ptr<nano::message> nano::bootstrap_server::requests_front (nano::bootstrap_server_lock & lock_a)
-{
-	auto msg_handle{ rsnano::rsn_bootstrap_server_requests_front (lock_a.handle) };
-	return nano::message_handle_to_message (msg_handle);
-}
-
-void nano::bootstrap_server::requests_pop (nano::bootstrap_server_lock & lock_a)
-{
-	rsnano::rsn_bootstrap_server_requests_pop (lock_a.handle);
 }
 
 void nano::bootstrap_server::push_request_locked (std::unique_ptr<nano::message> message_a, nano::bootstrap_server_lock & lock_a)
@@ -611,11 +551,6 @@ std::shared_ptr<nano::message_visitor> nano::request_response_visitor_factory::c
 	return std::make_shared<request_response_visitor> (connection_a, node, requests);
 }
 
-void nano::bootstrap_server::run_next (nano::bootstrap_server_lock & lock_a)
-{
-	rsnano::rsn_bootstrap_server_run_next (handle, lock_a.handle);
-}
-
 bool nano::bootstrap_server::is_stopped () const
 {
 	return rsnano::rsn_bootstrap_server_is_stopped (handle);
@@ -645,12 +580,6 @@ nano::tcp_endpoint nano::bootstrap_server::get_remote_endpoint () const
 	return rsnano::dto_to_endpoint (dto);
 }
 
-void nano::bootstrap_server::set_remote_endpoint (nano::tcp_endpoint const & endpoint)
-{
-	auto dto{ rsnano::endpoint_to_dto (endpoint) };
-	rsnano::rsn_bootstrap_server_set_remote_endpoint (handle, &dto);
-}
-
 std::shared_ptr<nano::logger_mt> nano::bootstrap_server::logger () const
 {
 	return *static_cast<std::shared_ptr<nano::logger_mt> *> (rsnano::rsn_bootstrap_server_logger (handle));
@@ -675,16 +604,4 @@ std::shared_ptr<nano::socket> const nano::bootstrap_server::get_socket () const
 {
 	auto socket_handle = rsnano::rsn_bootstrap_server_socket (handle);
 	return std::make_shared<nano::socket> (socket_handle);
-}
-
-std::shared_ptr<nano::buffer_wrapper> nano::bootstrap_server::get_buffer () const
-{
-	return std::make_shared<nano::buffer_wrapper> (rsnano::rsn_bootstrap_server_receive_buffer (handle));
-}
-
-nano::network_params nano::bootstrap_server::get_network_params () const
-{
-	rsnano::NetworkParamsDto dto;
-	rsnano::rsn_bootstrap_server_network (handle, &dto);
-	return nano::network_params (dto);
 }

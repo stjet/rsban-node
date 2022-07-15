@@ -1210,9 +1210,14 @@ void rsn_channel_set_node_id (ChannelHandle * handle, const uint8_t * id);
 void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
 
 /// observer is `weak_ptr<channel_tcp_observer> *`
-ChannelHandle * rsn_channel_tcp_create (uint64_t now, SocketHandle * socket, void * observer);
+ChannelHandle * rsn_channel_tcp_create (uint64_t now,
+SocketHandle * socket,
+void * observer,
+const BandwidthLimiterHandle * limiter);
 
 void rsn_channel_tcp_endpoint (ChannelHandle * handle, EndpointDto * endpoint);
+
+BandwidthLimiterHandle * rsn_channel_tcp_limiter (ChannelHandle * handle);
 
 TcpChannelLockHandle * rsn_channel_tcp_lock (ChannelHandle * handle);
 

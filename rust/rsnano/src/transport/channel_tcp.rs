@@ -7,7 +7,7 @@ use std::{
 };
 
 use super::{Channel, Socket, SocketImpl};
-use crate::{ffi::ChannelTcpObserverWeakPtr, messages::Message, Account};
+use crate::{ffi::ChannelTcpObserverWeakPtr, messages::Message, Account, BandwidthLimiter};
 
 pub trait ChannelTcpObserver {
     fn data_sent(&self, endpoint: &SocketAddr);
@@ -32,10 +32,16 @@ pub struct ChannelTcp {
     temporary: AtomicBool,
     network_version: AtomicU8,
     pub observer: ChannelTcpObserverWeakPtr,
+    pub limiter: Arc<BandwidthLimiter>,
 }
 
 impl ChannelTcp {
-    pub fn new(socket: &Arc<SocketImpl>, now: u64, observer: ChannelTcpObserverWeakPtr) -> Self {
+    pub fn new(
+        socket: &Arc<SocketImpl>,
+        now: u64,
+        observer: ChannelTcpObserverWeakPtr,
+        limiter: Arc<BandwidthLimiter>,
+    ) -> Self {
         Self {
             channel_mutex: Mutex::new(TcpChannelData {
                 last_bootstrap_attempt: 0,
@@ -48,6 +54,7 @@ impl ChannelTcp {
             temporary: AtomicBool::new(false),
             network_version: AtomicU8::new(0),
             observer,
+            limiter,
         }
     }
 

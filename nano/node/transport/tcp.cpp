@@ -10,8 +10,10 @@
 
 nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
 	channel (rsnano::rsn_channel_tcp_create (
-	std::chrono::steady_clock::now ().time_since_epoch ().count (), socket_a->handle, new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a))),
-	limiter (node_a.network.limiter),
+	std::chrono::steady_clock::now ().time_since_epoch ().count (),
+	socket_a->handle,
+	new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a),
+	node_a.network.limiter.handle)),
 	io_ctx (node_a.io_ctx)
 {
 	set_network_version (node_a.config->network_params.network.protocol_version);
@@ -55,7 +57,7 @@ void nano::transport::channel_tcp::send (nano::message & message_a, std::functio
 {
 	auto buffer (message_a.to_shared_const_buffer ());
 	auto is_droppable_by_limiter = drop_policy_a == nano::buffer_drop_policy::limiter;
-	auto should_drop (limiter.should_drop (buffer.size ()));
+	auto should_drop (get_limiter ().should_drop (buffer.size ()));
 	if (!is_droppable_by_limiter || !should_drop)
 	{
 		send_buffer (buffer, callback_a, drop_policy_a);
@@ -164,6 +166,10 @@ std::shared_ptr<nano::transport::channel_tcp_observer> nano::transport::channel_
 	auto observer_handle = rsnano::rsn_channel_tcp_observer (handle);
 	auto weak = static_cast<std::weak_ptr<nano::transport::channel_tcp_observer> *> (observer_handle);
 	return weak->lock ();
+}
+nano::bandwidth_limiter nano::transport::channel_tcp::get_limiter () const
+{
+	return nano::bandwidth_limiter{ rsnano::rsn_channel_tcp_limiter (handle) };
 }
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :

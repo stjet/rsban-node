@@ -19,12 +19,14 @@ class bandwidth_limiter final
 public:
 	// initialize with limit 0 = unbounded
 	bandwidth_limiter (double, std::size_t);
+	explicit bandwidth_limiter (rsnano::BandwidthLimiterHandle * handle_a);
+	bandwidth_limiter (bandwidth_limiter && other_a);
+	bandwidth_limiter (bandwidth_limiter const &) = delete;
 	~bandwidth_limiter ();
 	bool should_drop (std::size_t const &);
 	void reset (double, std::size_t);
 
-private:
-	bandwidth_limiter (const bandwidth_limiter &);
+public:
 	rsnano::BandwidthLimiterHandle * handle;
 };
 

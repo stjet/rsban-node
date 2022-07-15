@@ -4,7 +4,7 @@ use super::{
     EndpointDto,
 };
 use crate::{
-    ffi::{messages::MessageHandle, DestroyCallback},
+    ffi::{messages::MessageHandle, BandwidthLimiterHandle, DestroyCallback},
     messages::Message,
     transport::{ChannelTcp, ChannelTcpObserver, TcpChannelData},
 };
@@ -21,10 +21,12 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
     now: u64,
     socket: *mut SocketHandle,
     observer: *mut c_void,
+    limiter: *const BandwidthLimiterHandle,
 ) -> *mut ChannelHandle {
     let observer = ChannelTcpObserverWeakPtr::new(observer);
+    let limiter = Arc::clone(&*limiter);
     Box::into_raw(Box::new(ChannelHandle::new(Arc::new(ChannelType::Tcp(
-        ChannelTcp::new((*socket).deref(), now, observer),
+        ChannelTcp::new((*socket).deref(), now, observer, limiter),
     )))))
 }
 
@@ -57,6 +59,13 @@ pub unsafe extern "C" fn rsn_channel_tcp_endpoint(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_set_endpoint(handle: *mut ChannelHandle) {
     as_tcp_channel(handle).set_endpoint();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_limiter(
+    handle: *mut ChannelHandle,
+) -> *mut BandwidthLimiterHandle {
+    BandwidthLimiterHandle::new(Arc::clone(&as_tcp_channel(handle).limiter))
 }
 
 #[no_mangle]

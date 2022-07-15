@@ -251,9 +251,21 @@ nano::bandwidth_limiter::bandwidth_limiter (double const limit_burst_ratio_a, st
 	handle = rsnano::rsn_bandwidth_limiter_create (limit_burst_ratio_a, limit_a);
 }
 
+nano::bandwidth_limiter::bandwidth_limiter (rsnano::BandwidthLimiterHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
+nano::bandwidth_limiter::bandwidth_limiter (nano::bandwidth_limiter && other_a) :
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+}
+
 nano::bandwidth_limiter::~bandwidth_limiter ()
 {
-	rsnano::rsn_bandwidth_limiter_destroy (handle);
+	if (handle)
+		rsnano::rsn_bandwidth_limiter_destroy (handle);
 }
 
 bool nano::bandwidth_limiter::should_drop (std::size_t const & message_size_a)

@@ -107,8 +107,8 @@ namespace transport
 
 	private:
 		std::shared_ptr<nano::transport::channel_tcp_observer> get_observer () const;
+		nano::bandwidth_limiter get_limiter () const;
 		boost::asio::io_context & io_ctx;
-		nano::bandwidth_limiter & limiter;
 	};
 	class tcp_channels final : public nano::transport::channel_tcp_observer
 	{

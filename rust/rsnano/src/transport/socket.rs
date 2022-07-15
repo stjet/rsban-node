@@ -11,6 +11,17 @@ use std::{
     time::Duration,
 };
 
+/// Policy to affect at which stage a buffer can be dropped
+#[derive(PartialEq, Eq, FromPrimitive)]
+pub enum BufferDropPolicy {
+    /// Can be dropped by bandwidth limiter (default)
+    Limiter,
+    /// Should not be dropped by bandwidth limiter
+    NoLimiterDrop,
+    /// Should not be dropped by bandwidth limiter or socket write queue limiter
+    NoSocketDrop,
+}
+
 pub trait BufferWrapper {
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool {
@@ -203,6 +214,15 @@ impl SocketImpl {
     pub fn is_realtime_connection(&self) -> bool {
         self.socket_type() == SocketType::Realtime
             || self.socket_type() == SocketType::RealtimeResponseServer
+    }
+
+    const QUEUE_SIZE_MAX: usize = 128;
+    pub fn max(&self) -> bool {
+        self.queue_size.load(Ordering::Relaxed) >= Self::QUEUE_SIZE_MAX
+    }
+
+    pub fn full(&self) -> bool {
+        self.queue_size.load(Ordering::Relaxed) >= Self::QUEUE_SIZE_MAX * 2
     }
 }
 

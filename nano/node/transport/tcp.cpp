@@ -231,7 +231,7 @@ void nano::transport::tcp_channels::erase_temporary_channel (nano::tcp_endpoint 
 	auto exisiting_response_channel (find_channel (endpoint_a));
 	if (exisiting_response_channel != nullptr)
 	{
-		exisiting_response_channel->temporary = false;
+		exisiting_response_channel->set_temporary (false);
 		erase (endpoint_a);
 	}
 }

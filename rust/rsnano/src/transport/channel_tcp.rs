@@ -6,9 +6,12 @@ use std::{
     },
 };
 
-use super::{Channel, Socket, SocketImpl};
+use super::{BufferDropPolicy, Channel, Socket, SocketImpl};
 use crate::{
-    ffi::ChannelTcpObserverWeakPtr, messages::Message, utils::IoContext, Account, BandwidthLimiter,
+    ffi::ChannelTcpObserverWeakPtr,
+    messages::Message,
+    utils::{ErrorCode, IoContext},
+    Account, BandwidthLimiter,
 };
 
 pub trait ChannelTcpObserver {
@@ -31,9 +34,9 @@ pub struct TcpChannelData {
 pub struct ChannelTcp {
     channel_mutex: Mutex<TcpChannelData>,
     socket: Weak<SocketImpl>,
-   		/* Mark for temporary channels. Usually remote ports of these channels are ephemeral and received from incoming connections to server.
-		If remote part has open listening port, temporary channel will be replaced with direct connection to listening port soon. 
-        But if other side is behing NAT or firewall this connection can be pemanent. */
+    /* Mark for temporary channels. Usually remote ports of these channels are ephemeral and received from incoming connections to server.
+    If remote part has open listening port, temporary channel will be replaced with direct connection to listening port soon.
+    But if other side is behing NAT or firewall this connection can be pemanent. */
     temporary: AtomicBool,
     network_version: AtomicU8,
     pub observer: ChannelTcpObserverWeakPtr,
@@ -95,6 +98,70 @@ impl ChannelTcp {
                 lock.endpoint = ep;
             }
         }
+    }
+
+    pub fn send_buffer(
+        &self,
+        buffer_a: &Arc<Vec<u8>>,
+        callback_a: Box<dyn FnOnce(ErrorCode, usize)>,
+        policy_a: BufferDropPolicy,
+    ) {
+        if let Some(socket_l) = self.socket() {
+            if !socket_l.max() || (policy_a == BufferDropPolicy::NoSocketDrop && !socket_l.full()) {
+
+                // std::weak_ptr<nano::transport::channel_tcp_observer> observer_weak_l;
+                // auto observer_l = get_observer ();
+                // if (observer_l)
+                // {
+                //     observer_weak_l = observer_l;
+                // }
+
+                //TODO:
+                //socket_l.async_write(Arc::new(), callback)
+
+                // socket_l->async_write (
+                // buffer_a, [endpoint_a = socket_l->remote_endpoint (), callback_a, observer_a = observer_weak_l] (boost::system::error_code const & ec, std::size_t size_a) {
+                //     if (auto observer_l = observer_a.lock ())
+                //     {
+                //         if (!ec)
+                //         {
+                //             observer_l->data_sent (endpoint_a);
+                //         }
+                //         if (ec == boost::system::errc::host_unreachable)
+                //         {
+                //             observer_l->host_unreachable ();
+                //         }
+                //     }
+                //     if (callback_a)
+                //     {
+                //         callback_a (ec, size_a);
+                //     }
+                // });
+            } else {
+                // if (auto observer_l = get_observer ())
+                // {
+                //     if (policy_a == nano::buffer_drop_policy::no_socket_drop)
+                //     {
+                //         observer_l->no_socket_drop ();
+                //     }
+                //     else
+                //     {
+                //         observer_l->write_drop ();
+                //     }
+                // }
+                // if (callback_a)
+                // {
+                //     callback_a (boost::system::errc::make_error_code (boost::system::errc::no_buffer_space), 0);
+                // }
+            }
+        }
+        // else if (callback_a)
+        // {
+        // 	get_io_ctx ()->post ([callback_a] () {
+        // 		callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
+        // 	});
+        // }
+        todo!()
     }
 }
 

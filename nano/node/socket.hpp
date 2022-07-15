@@ -131,14 +131,8 @@ public:
 	void set_default_timeout_value (std::chrono::seconds);
 	void set_timeout (std::chrono::seconds);
 	void set_silent_connection_tolerance_time (std::chrono::seconds tolerance_time_a);
-	bool max () const
-	{
-		return get_queue_size () >= queue_size_max;
-	}
-	bool full () const
-	{
-		return get_queue_size () >= queue_size_max * 2;
-	}
+	bool max () const;
+	bool full () const;
 	type_t type () const;
 	void type_set (type_t type_a);
 	endpoint_type_t endpoint_type () const;
@@ -168,7 +162,6 @@ protected:
 	void checkup ();
 
 public:
-	static std::size_t constexpr queue_size_max = 128;
 	rsnano::SocketHandle * handle;
 };
 

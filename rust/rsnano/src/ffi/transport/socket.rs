@@ -351,6 +351,16 @@ pub unsafe extern "C" fn rsn_socket_endpoint_type(handle: *mut SocketHandle) -> 
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_socket_max(handle: *mut SocketHandle) -> bool {
+    (*handle).max()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_full(handle: *mut SocketHandle) -> bool {
+    (*handle).full()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_get_silent_connnection_tolerance_time_s(
     handle: *mut SocketHandle,
 ) -> u64 {
@@ -783,6 +793,7 @@ impl BufferWrapper for FfiBufferWrapper {
 }
 
 struct FfiSharedConstBuffer {
+    /// handle is `shared_ptr<shared_const_buffer> *`
     handle: *mut c_void,
 }
 

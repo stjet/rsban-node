@@ -1812,6 +1812,8 @@ uint8_t rsn_socket_endpoint_type (SocketHandle * handle);
 
 void * rsn_socket_facade (SocketHandle * handle);
 
+bool rsn_socket_full (SocketHandle * handle);
+
 uintptr_t rsn_socket_get_queue_size (SocketHandle * handle);
 
 void rsn_socket_get_remote (SocketHandle * handle, EndpointDto * result);
@@ -1825,6 +1827,8 @@ const void * rsn_socket_inner_ptr (SocketHandle * handle);
 bool rsn_socket_is_closed (SocketHandle * handle);
 
 void rsn_socket_local_endpoint (SocketHandle * handle, EndpointDto * endpoint);
+
+bool rsn_socket_max (SocketHandle * handle);
 
 void rsn_socket_set_default_timeout_value (SocketHandle * handle, uint64_t timeout_s);
 

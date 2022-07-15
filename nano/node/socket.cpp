@@ -328,6 +328,15 @@ nano::tcp_endpoint nano::socket::local_endpoint () const
 	return rsnano::dto_to_endpoint (dto);
 }
 
+bool nano::socket::max () const
+{
+	return rsnano::rsn_socket_max (handle);
+}
+bool nano::socket::full () const
+{
+	return rsnano::rsn_socket_full (handle);
+}
+
 nano::server_socket::server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, std::size_t max_connections_a) :
 	strand{ node_a.io_ctx.get_executor () },
 	stats{ *node_a.stats },

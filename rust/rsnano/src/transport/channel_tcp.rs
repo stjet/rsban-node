@@ -7,7 +7,9 @@ use std::{
 };
 
 use super::{Channel, Socket, SocketImpl};
-use crate::{ffi::ChannelTcpObserverWeakPtr, messages::Message, Account, BandwidthLimiter};
+use crate::{
+    ffi::ChannelTcpObserverWeakPtr, messages::Message, utils::IoContext, Account, BandwidthLimiter,
+};
 
 pub trait ChannelTcpObserver {
     fn data_sent(&self, endpoint: &SocketAddr);
@@ -29,10 +31,14 @@ pub struct TcpChannelData {
 pub struct ChannelTcp {
     channel_mutex: Mutex<TcpChannelData>,
     socket: Weak<SocketImpl>,
+   		/* Mark for temporary channels. Usually remote ports of these channels are ephemeral and received from incoming connections to server.
+		If remote part has open listening port, temporary channel will be replaced with direct connection to listening port soon. 
+        But if other side is behing NAT or firewall this connection can be pemanent. */
     temporary: AtomicBool,
     network_version: AtomicU8,
     pub observer: ChannelTcpObserverWeakPtr,
     pub limiter: Arc<BandwidthLimiter>,
+    pub io_ctx: Arc<dyn IoContext>,
 }
 
 impl ChannelTcp {
@@ -41,6 +47,7 @@ impl ChannelTcp {
         now: u64,
         observer: ChannelTcpObserverWeakPtr,
         limiter: Arc<BandwidthLimiter>,
+        io_ctx: Arc<dyn IoContext>,
     ) -> Self {
         Self {
             channel_mutex: Mutex::new(TcpChannelData {
@@ -55,6 +62,7 @@ impl ChannelTcp {
             network_version: AtomicU8::new(0),
             observer,
             limiter,
+            io_ctx,
         }
     }
 

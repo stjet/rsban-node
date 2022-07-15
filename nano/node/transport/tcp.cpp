@@ -13,8 +13,8 @@ nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<
 	std::chrono::steady_clock::now ().time_since_epoch ().count (),
 	socket_a->handle,
 	new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a),
-	node_a.network.limiter.handle)),
-	io_ctx (node_a.io_ctx)
+	node_a.network.limiter.handle,
+	&node_a.io_ctx))
 {
 	set_network_version (node_a.config->network_params.network.protocol_version);
 }
@@ -70,7 +70,7 @@ void nano::transport::channel_tcp::send (nano::message & message_a, std::functio
 	{
 		if (callback_a)
 		{
-			io_ctx.post ([callback_a] () {
+			get_io_ctx ()->post ([callback_a] () {
 				callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
 			});
 		}
@@ -134,7 +134,7 @@ void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const 
 	}
 	else if (callback_a)
 	{
-		io_ctx.post ([callback_a] () {
+		get_io_ctx ()->post ([callback_a] () {
 			callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
 		});
 	}
@@ -170,6 +170,11 @@ std::shared_ptr<nano::transport::channel_tcp_observer> nano::transport::channel_
 nano::bandwidth_limiter nano::transport::channel_tcp::get_limiter () const
 {
 	return nano::bandwidth_limiter{ rsnano::rsn_channel_tcp_limiter (handle) };
+}
+
+boost::asio::io_context * nano::transport::channel_tcp::get_io_ctx () const
+{
+	return static_cast<boost::asio::io_context *> (rsnano::rsn_channel_tcp_io_ctx (handle));
 }
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :

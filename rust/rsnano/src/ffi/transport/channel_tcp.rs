@@ -4,7 +4,9 @@ use super::{
     EndpointDto,
 };
 use crate::{
-    ffi::{messages::MessageHandle, BandwidthLimiterHandle, DestroyCallback},
+    ffi::{
+        io_context::FfiIoContext, messages::MessageHandle, BandwidthLimiterHandle, DestroyCallback,
+    },
     messages::Message,
     transport::{ChannelTcp, ChannelTcpObserver, TcpChannelData},
 };
@@ -17,16 +19,19 @@ use std::{
 
 #[no_mangle]
 /// observer is `weak_ptr<channel_tcp_observer> *`
+/// io_ctx is `boost::asio::io_context *`
 pub unsafe extern "C" fn rsn_channel_tcp_create(
     now: u64,
     socket: *mut SocketHandle,
     observer: *mut c_void,
     limiter: *const BandwidthLimiterHandle,
+    io_ctx: *mut c_void,
 ) -> *mut ChannelHandle {
     let observer = ChannelTcpObserverWeakPtr::new(observer);
     let limiter = Arc::clone(&*limiter);
+    let io_ctx = Arc::new(FfiIoContext::new(io_ctx));
     Box::into_raw(Box::new(ChannelHandle::new(Arc::new(ChannelType::Tcp(
-        ChannelTcp::new((*socket).deref(), now, observer, limiter),
+        ChannelTcp::new((*socket).deref(), now, observer, limiter, io_ctx),
     )))))
 }
 
@@ -66,6 +71,11 @@ pub unsafe extern "C" fn rsn_channel_tcp_limiter(
     handle: *mut ChannelHandle,
 ) -> *mut BandwidthLimiterHandle {
     BandwidthLimiterHandle::new(Arc::clone(&as_tcp_channel(handle).limiter))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_io_ctx(handle: *mut ChannelHandle) -> *mut c_void {
+    as_tcp_channel(handle).io_ctx.raw_handle()
 }
 
 #[no_mangle]

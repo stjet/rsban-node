@@ -77,11 +77,6 @@ namespace transport
 		}
 		std::shared_ptr<nano::socket> try_get_socket () const;
 
-	public:
-		/* Mark for temporary channels. Usually remote ports of these channels are ephemeral and received from incoming connections to server.
-		If remote part has open listening port, temporary channel will be replaced with direct connection to listening port soon. But if other side is behing NAT or firewall this connection can be pemanent. */
-		std::atomic<bool> temporary{ false };
-
 		void set_endpoint ();
 
 		nano::endpoint get_endpoint () const override
@@ -106,9 +101,9 @@ namespace transport
 		}
 
 	private:
-		std::shared_ptr<nano::transport::channel_tcp_observer> get_observer () const;
-		nano::bandwidth_limiter get_limiter () const;
-		boost::asio::io_context & io_ctx;
+		[[nodiscard]] std::shared_ptr<nano::transport::channel_tcp_observer> get_observer () const;
+		[[nodiscard]] nano::bandwidth_limiter get_limiter () const;
+		[[nodiscard]] boost::asio::io_context * get_io_ctx () const;
 	};
 	class tcp_channels final : public nano::transport::channel_tcp_observer
 	{

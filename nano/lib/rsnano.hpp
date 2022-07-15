@@ -1210,12 +1210,16 @@ void rsn_channel_set_node_id (ChannelHandle * handle, const uint8_t * id);
 void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
 
 /// observer is `weak_ptr<channel_tcp_observer> *`
+/// io_ctx is `boost::asio::io_context *`
 ChannelHandle * rsn_channel_tcp_create (uint64_t now,
 SocketHandle * socket,
 void * observer,
-const BandwidthLimiterHandle * limiter);
+const BandwidthLimiterHandle * limiter,
+void * io_ctx);
 
 void rsn_channel_tcp_endpoint (ChannelHandle * handle, EndpointDto * endpoint);
+
+void * rsn_channel_tcp_io_ctx (ChannelHandle * handle);
 
 BandwidthLimiterHandle * rsn_channel_tcp_limiter (ChannelHandle * handle);
 

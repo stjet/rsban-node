@@ -5,7 +5,7 @@ mod socket;
 mod tcp_channels;
 
 pub use channel_inproc::ChannelInProc;
-pub use channel_tcp::{ChannelTcp, TcpChannelData};
+pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, TcpChannelData};
 pub use channel_udp::ChannelUdp;
 pub use socket::*;
 pub use tcp_channels::TcpChannels;

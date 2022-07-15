@@ -50,6 +50,7 @@ pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
 use crate::{utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount, RawKey, Root, Signature};
+pub use transport::ChannelTcpObserverWeakPtr;
 
 pub struct StringHandle(CString);
 #[repr(C)]

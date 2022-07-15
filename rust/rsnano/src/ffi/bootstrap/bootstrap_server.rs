@@ -229,20 +229,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_push_request(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_workers(
-    handle: *mut BootstrapServerHandle,
-) -> *mut c_void {
-    (*handle).0.workers.handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_cache_exceeded(
-    handle: *mut BootstrapServerHandle,
-) -> bool {
-    (*handle).0.cache_exceeded()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_set_last_telemetry_req(
     handle: *mut BootstrapServerHandle,
 ) {

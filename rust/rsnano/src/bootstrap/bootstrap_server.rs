@@ -38,8 +38,8 @@ pub trait BootstrapServerObserver {
 
 pub struct BootstrapServer {
     pub socket: Arc<SocketImpl>,
-    pub config: Arc<NodeConfig>,
-    pub logger: Arc<dyn Logger>,
+    config: Arc<NodeConfig>,
+    logger: Arc<dyn Logger>,
     stopped: AtomicBool,
     observer: Arc<dyn BootstrapServerObserver>,
     pub queue: Mutex<VecDeque<Option<Box<dyn Message>>>>,
@@ -50,18 +50,18 @@ pub struct BootstrapServer {
     pub remote_endpoint: Mutex<SocketAddr>,
     pub remote_node_id: Mutex<Account>,
     pub receive_buffer: Arc<Mutex<Vec<u8>>>,
-    pub publish_filter: Arc<NetworkFilter>,
-    pub workers: Arc<dyn ThreadPool>,
-    pub io_ctx: Arc<dyn IoContext>,
+    publish_filter: Arc<NetworkFilter>,
+    workers: Arc<dyn ThreadPool>,
+    io_ctx: Arc<dyn IoContext>,
 
-    pub network: NetworkParams,
+    network: NetworkParams,
     last_telemetry_req: Mutex<Option<Instant>>,
     unique_id: usize,
-    pub stats: Arc<Stat>,
+    stats: Arc<Stat>,
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
     pub handshake_query_received: AtomicBool,
-    pub request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
+    request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);

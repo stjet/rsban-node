@@ -1,11 +1,22 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex, MutexGuard, Weak,
+use std::{
+    net::SocketAddr,
+    sync::{
+        atomic::{AtomicBool, AtomicU8, Ordering},
+        Arc, Mutex, MutexGuard, Weak,
+    },
 };
 
-use crate::Account;
-
 use super::{Channel, Socket, SocketImpl};
+use crate::{ffi::ChannelTcpObserverWeakPtr, messages::Message, Account};
+
+pub trait ChannelTcpObserver {
+    fn data_sent(&self, endpoint: &SocketAddr);
+    fn host_unreachable(&self);
+    fn message_sent(&self, message: &dyn Message);
+    fn message_dropped(&self, message: &dyn Message, buffer_size: usize);
+    fn no_socket_drop(&self);
+    fn write_drop(&self);
+}
 
 pub struct TcpChannelData {
     last_bootstrap_attempt: u64,
@@ -18,10 +29,12 @@ pub struct ChannelTcp {
     channel_mutex: Mutex<TcpChannelData>,
     socket: Weak<SocketImpl>,
     temporary: AtomicBool,
+    network_version: AtomicU8,
+    observer: ChannelTcpObserverWeakPtr,
 }
 
 impl ChannelTcp {
-    pub fn new(socket: &Arc<SocketImpl>, now: u64) -> Self {
+    pub fn new(socket: &Arc<SocketImpl>, now: u64, observer: ChannelTcpObserverWeakPtr) -> Self {
         Self {
             channel_mutex: Mutex::new(TcpChannelData {
                 last_bootstrap_attempt: 0,
@@ -31,6 +44,8 @@ impl ChannelTcp {
             }),
             socket: Arc::downgrade(socket),
             temporary: AtomicBool::new(false),
+            network_version: AtomicU8::new(0),
+            observer,
         }
     }
 
@@ -40,6 +55,14 @@ impl ChannelTcp {
 
     pub fn lock(&self) -> MutexGuard<TcpChannelData> {
         self.channel_mutex.lock().unwrap()
+    }
+
+    pub fn network_version(&self) -> u8 {
+        self.network_version.load(Ordering::Relaxed)
+    }
+
+    pub fn set_network_version(&self, version: u8) {
+        self.network_version.store(version, Ordering::Relaxed)
     }
 }
 

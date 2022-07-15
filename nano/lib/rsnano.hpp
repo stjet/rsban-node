@@ -1212,6 +1212,8 @@ void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
 /// observer is `weak_ptr<channel_tcp_observer> *`
 ChannelHandle * rsn_channel_tcp_create (uint64_t now, SocketHandle * socket, void * observer);
 
+void rsn_channel_tcp_endpoint (ChannelHandle * handle, EndpointDto * endpoint);
+
 TcpChannelLockHandle * rsn_channel_tcp_lock (ChannelHandle * handle);
 
 void rsn_channel_tcp_network_set_version (ChannelHandle * handle, uint8_t version);
@@ -1219,6 +1221,8 @@ void rsn_channel_tcp_network_set_version (ChannelHandle * handle, uint8_t versio
 uint8_t rsn_channel_tcp_network_version (ChannelHandle * handle);
 
 void * rsn_channel_tcp_observer (ChannelHandle * handle);
+
+void rsn_channel_tcp_set_endpoint (ChannelHandle * handle);
 
 SocketHandle * rsn_channel_tcp_socket (ChannelHandle * handle);
 

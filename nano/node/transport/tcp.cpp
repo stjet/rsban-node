@@ -1,3 +1,5 @@
+#include "nano/lib/rsnanoutils.hpp"
+
 #include <nano/lib/stats.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/transport/tcp.hpp>
@@ -27,10 +29,9 @@ void nano::transport::channel_tcp::set_network_version (uint8_t network_version_
 
 nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_endpoint () const
 {
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	auto result{ endpoint };
-	rsnano::rsn_channel_tcp_unlock (lk);
-	return result;
+	rsnano::EndpointDto ep_dto{};
+	rsnano::rsn_channel_tcp_endpoint (handle, &ep_dto);
+	return rsnano::dto_to_endpoint (ep_dto);
 }
 
 std::size_t nano::transport::channel_tcp::hash_code () const
@@ -155,14 +156,7 @@ std::shared_ptr<nano::socket> nano::transport::channel_tcp::try_get_socket () co
 
 void nano::transport::channel_tcp::set_endpoint ()
 {
-	auto lk{ rsnano::rsn_channel_tcp_lock (handle) };
-	debug_assert (endpoint == nano::tcp_endpoint (boost::asio::ip::address_v6::any (), 0)); // Not initialized endpoint value
-	// Calculate TCP socket endpoint
-	if (auto socket_l = try_get_socket ())
-	{
-		endpoint = socket_l->remote_endpoint ();
-	}
-	rsnano::rsn_channel_tcp_unlock (lk);
+	rsnano::rsn_channel_tcp_set_endpoint (handle);
 }
 
 std::shared_ptr<nano::transport::channel_tcp_observer> nano::transport::channel_tcp::get_observer () const

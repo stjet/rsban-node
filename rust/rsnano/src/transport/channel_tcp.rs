@@ -1,5 +1,5 @@
 use std::{
-    net::SocketAddr,
+    net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{
         atomic::{AtomicBool, AtomicU8, Ordering},
         Arc, Mutex, MutexGuard, Weak,
@@ -23,6 +23,7 @@ pub struct TcpChannelData {
     last_packet_received: u64,
     last_packet_sent: u64,
     node_id: Option<Account>,
+    pub endpoint: SocketAddr,
 }
 
 pub struct ChannelTcp {
@@ -41,6 +42,7 @@ impl ChannelTcp {
                 last_packet_received: now,
                 last_packet_sent: now,
                 node_id: None,
+                endpoint: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
             }),
             socket: Arc::downgrade(socket),
             temporary: AtomicBool::new(false),
@@ -63,6 +65,21 @@ impl ChannelTcp {
 
     pub fn set_network_version(&self, version: u8) {
         self.network_version.store(version, Ordering::Relaxed)
+    }
+
+    pub fn endpoint(&self) -> SocketAddr {
+        self.channel_mutex.lock().unwrap().endpoint
+    }
+
+    pub fn set_endpoint(&self) {
+        let mut lock = self.channel_mutex.lock().unwrap();
+        debug_assert!(lock.endpoint == SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0)); // Not initialized endpoint value
+                                                                                               // Calculate TCP socket endpoint
+        if let Some(socket) = self.socket() {
+            if let Some(ep) = socket.get_remote() {
+                lock.endpoint = ep;
+            }
+        }
     }
 }
 

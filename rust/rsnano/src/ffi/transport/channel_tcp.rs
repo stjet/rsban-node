@@ -47,6 +47,19 @@ pub unsafe extern "C" fn rsn_channel_tcp_unlock(handle: *mut TcpChannelLockHandl
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_endpoint(
+    handle: *mut ChannelHandle,
+    endpoint: *mut EndpointDto,
+) {
+    (*endpoint) = EndpointDto::from(as_tcp_channel(handle).endpoint())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_set_endpoint(handle: *mut ChannelHandle) {
+    as_tcp_channel(handle).set_endpoint();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_socket(handle: *mut ChannelHandle) -> *mut SocketHandle {
     let tcp = as_tcp_channel(handle);
     match tcp.socket() {

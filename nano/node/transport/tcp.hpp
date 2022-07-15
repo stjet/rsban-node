@@ -109,7 +109,6 @@ namespace transport
 		std::shared_ptr<nano::transport::channel_tcp_observer> get_observer () const;
 		boost::asio::io_context & io_ctx;
 		nano::bandwidth_limiter & limiter;
-		nano::tcp_endpoint endpoint{ boost::asio::ip::address_v6::any (), 0 };
 	};
 	class tcp_channels final : public nano::transport::channel_tcp_observer
 	{

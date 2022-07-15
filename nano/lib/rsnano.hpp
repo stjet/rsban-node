@@ -464,6 +464,18 @@ using BootstrapServerTimeoutCallback = void (*) (void *, uintptr_t);
 
 using BufferSizeCallback = uintptr_t (*) (void *);
 
+using ChannelTcpObserverDataSentCallback = void (*) (void *, const EndpointDto *);
+
+using ChannelTcpObserverCallback = void (*) (void *);
+
+/// input is a `weak_ptr<channel_tcp_observer> *`
+/// output is a `shared_ptr<channel_tcp_observer> *` or `nullptr`
+using ChannelTcpObserverLockWeakCallback = void * (*)(void *);
+
+using ChannelTcpObserverMessageDroppedCallback = void (*) (void *, MessageHandle * message, uintptr_t);
+
+using ChannelTcpObserverMessageSentCallback = void (*) (void *, MessageHandle * message);
+
 using InAvailCallback = uintptr_t (*) (void *, int32_t *);
 
 using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
@@ -953,8 +965,6 @@ BootstrapInitiatorHandle * rsn_bootstrap_initiator_create (void * handle);
 
 void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
 
-bool rsn_bootstrap_server_cache_exceeded (BootstrapServerHandle * handle);
-
 BootstrapServerWeakHandle * rsn_bootstrap_server_copy_weak (BootstrapServerWeakHandle * handle);
 
 BootstrapServerHandle * rsn_bootstrap_server_create (const CreateBootstrapServerParams * params);
@@ -1007,8 +1017,6 @@ void rsn_bootstrap_server_timeout (BootstrapServerHandle * handle);
 
 uintptr_t rsn_bootstrap_server_unique_id (BootstrapServerHandle * handle);
 
-void * rsn_bootstrap_server_workers (BootstrapServerHandle * handle);
-
 BufferHandle * rsn_buffer_create (uintptr_t len);
 
 uint8_t * rsn_buffer_data (BufferHandle * handle);
@@ -1044,6 +1052,24 @@ void rsn_callback_bootstrap_observer_timeout (BootstrapServerTimeoutCallback f);
 void rsn_callback_buffer_destroy (DestroyCallback f);
 
 void rsn_callback_buffer_size (BufferSizeCallback f);
+
+void rsn_callback_channel_tcp_observer_data_sent (ChannelTcpObserverDataSentCallback f);
+
+void rsn_callback_channel_tcp_observer_destroy (DestroyCallback f);
+
+void rsn_callback_channel_tcp_observer_drop_weak (DestroyCallback f);
+
+void rsn_callback_channel_tcp_observer_host_unreachable (ChannelTcpObserverCallback f);
+
+void rsn_callback_channel_tcp_observer_lock (ChannelTcpObserverLockWeakCallback f);
+
+void rsn_callback_channel_tcp_observer_message_dropped (ChannelTcpObserverMessageDroppedCallback f);
+
+void rsn_callback_channel_tcp_observer_message_sent (ChannelTcpObserverMessageSentCallback f);
+
+void rsn_callback_channel_tcp_observer_no_socket_drop (ChannelTcpObserverCallback f);
+
+void rsn_callback_channel_tcp_observer_write_drop (ChannelTcpObserverCallback f);
 
 void rsn_callback_in_avail (InAvailCallback f);
 
@@ -1183,9 +1209,16 @@ void rsn_channel_set_node_id (ChannelHandle * handle, const uint8_t * id);
 
 void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
 
-ChannelHandle * rsn_channel_tcp_create (uint64_t now, SocketHandle * socket);
+/// observer is `weak_ptr<channel_tcp_observer> *`
+ChannelHandle * rsn_channel_tcp_create (uint64_t now, SocketHandle * socket, void * observer);
 
 TcpChannelLockHandle * rsn_channel_tcp_lock (ChannelHandle * handle);
+
+void rsn_channel_tcp_network_set_version (ChannelHandle * handle, uint8_t version);
+
+uint8_t rsn_channel_tcp_network_version (ChannelHandle * handle);
+
+void * rsn_channel_tcp_observer (ChannelHandle * handle);
 
 SocketHandle * rsn_channel_tcp_socket (ChannelHandle * handle);
 

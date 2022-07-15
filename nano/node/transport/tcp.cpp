@@ -8,12 +8,21 @@
 
 nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
 	channel (rsnano::rsn_channel_tcp_create (
-	std::chrono::steady_clock::now ().time_since_epoch ().count (), socket_a->handle)),
+	std::chrono::steady_clock::now ().time_since_epoch ().count (), socket_a->handle, new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a))),
 	limiter (node_a.network.limiter),
-	io_ctx (node_a.io_ctx),
-	observer (observer_a)
+	io_ctx (node_a.io_ctx)
 {
 	set_network_version (node_a.config->network_params.network.protocol_version);
+}
+
+uint8_t nano::transport::channel_tcp::get_network_version () const
+{
+	return rsnano::rsn_channel_tcp_network_version (handle);
+}
+
+void nano::transport::channel_tcp::set_network_version (uint8_t network_version_a)
+{
+	rsnano::rsn_channel_tcp_network_set_version (handle, network_version_a);
 }
 
 nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_endpoint () const
@@ -49,7 +58,7 @@ void nano::transport::channel_tcp::send (nano::message & message_a, std::functio
 	if (!is_droppable_by_limiter || !should_drop)
 	{
 		send_buffer (buffer, callback_a, drop_policy_a);
-		if (auto observer_l = observer.lock ())
+		if (auto observer_l = get_observer ())
 		{
 			observer_l->message_sent (message_a);
 		}
@@ -63,7 +72,7 @@ void nano::transport::channel_tcp::send (nano::message & message_a, std::functio
 			});
 		}
 
-		if (auto observer_l = observer.lock ())
+		if (auto observer_l = get_observer ())
 		{
 			observer_l->message_dropped (message_a, buffer.size ());
 		}
@@ -76,8 +85,14 @@ void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const 
 	{
 		if (!socket_l->max () || (policy_a == nano::buffer_drop_policy::no_socket_drop && !socket_l->full ()))
 		{
+			std::weak_ptr<nano::transport::channel_tcp_observer> observer_weak_l;
+			auto observer_l = get_observer ();
+			if (observer_l)
+			{
+				observer_weak_l = observer_l;
+			}
 			socket_l->async_write (
-			buffer_a, [endpoint_a = socket_l->remote_endpoint (), callback_a, observer_a = observer] (boost::system::error_code const & ec, std::size_t size_a) {
+			buffer_a, [endpoint_a = socket_l->remote_endpoint (), callback_a, observer_a = observer_weak_l] (boost::system::error_code const & ec, std::size_t size_a) {
 				if (auto observer_l = observer_a.lock ())
 				{
 					if (!ec)
@@ -97,7 +112,7 @@ void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const 
 		}
 		else
 		{
-			if (auto observer_l = observer.lock ())
+			if (auto observer_l = get_observer ())
 			{
 				if (policy_a == nano::buffer_drop_policy::no_socket_drop)
 				{
@@ -148,6 +163,13 @@ void nano::transport::channel_tcp::set_endpoint ()
 		endpoint = socket_l->remote_endpoint ();
 	}
 	rsnano::rsn_channel_tcp_unlock (lk);
+}
+
+std::shared_ptr<nano::transport::channel_tcp_observer> nano::transport::channel_tcp::get_observer () const
+{
+	auto observer_handle = rsnano::rsn_channel_tcp_observer (handle);
+	auto weak = static_cast<std::weak_ptr<nano::transport::channel_tcp_observer> *> (observer_handle);
+	return weak->lock ();
 }
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :

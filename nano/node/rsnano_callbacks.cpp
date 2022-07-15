@@ -9,6 +9,7 @@
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_server.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
+#include <nano/node/transport/tcp.hpp>
 #include <nano/node/websocket.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
@@ -730,6 +731,57 @@ void * request_response_visitor_factory_create (void * factory_a, rsnano::Bootst
 	return new std::shared_ptr<nano::message_visitor> (visitor);
 }
 
+nano::transport::channel_tcp_observer & to_channel_tcp (void * handle_a)
+{
+	auto channel = static_cast<std::shared_ptr<nano::transport::channel_tcp_observer> *> (handle_a);
+	return **channel;
+}
+
+void channel_tcp_data_sent (void * handle_a, const rsnano::EndpointDto * endpoint_a)
+{
+	auto endpoint{ rsnano::dto_to_endpoint (*endpoint_a) };
+	to_channel_tcp (handle_a).data_sent (endpoint);
+}
+
+void channel_tcp_host_unreachable (void * handle_a)
+{
+	to_channel_tcp (handle_a).host_unreachable ();
+}
+
+void channel_tcp_message_dropped (void * handle_a, rsnano::MessageHandle * message_a, size_t buffer_size_a)
+{
+	auto message = nano::message_handle_to_message (message_a);
+	to_channel_tcp (handle_a).message_dropped (*message, buffer_size_a);
+}
+
+void channel_tcp_message_sent (void * handle_a, rsnano::MessageHandle * message_a)
+{
+	auto message = nano::message_handle_to_message (message_a);
+	to_channel_tcp (handle_a).message_sent (*message);
+}
+
+void channel_tcp_no_socket_drop (void * handle_a)
+{
+	to_channel_tcp (handle_a).no_socket_drop ();
+}
+
+void channel_tcp_write_drop (void * handle_a)
+{
+	to_channel_tcp (handle_a).write_drop ();
+}
+
+void channel_tcp_destroy (void * handle_a)
+{
+	auto channel = static_cast<std::shared_ptr<nano::transport::channel_tcp_observer> *> (handle_a);
+	delete channel;
+}
+
+void channel_tcp_drop_weak (void * handle_a)
+{
+	auto observer = static_cast<std::weak_ptr<nano::transport::channel_tcp_observer> *> (handle_a);
+	delete observer;
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -795,6 +847,15 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_tcp_socket_close (tcp_socket_close);
 	rsnano::rsn_callback_tcp_socket_destroy (tcp_socket_destroy);
 	rsnano::rsn_callback_tcp_socket_local_endpoint (tcp_socket_local_endpoint);
+
+	rsnano::rsn_callback_channel_tcp_observer_data_sent (channel_tcp_data_sent);
+	rsnano::rsn_callback_channel_tcp_observer_host_unreachable (channel_tcp_host_unreachable);
+	rsnano::rsn_callback_channel_tcp_observer_message_dropped (channel_tcp_message_dropped);
+	rsnano::rsn_callback_channel_tcp_observer_message_sent (channel_tcp_message_sent);
+	rsnano::rsn_callback_channel_tcp_observer_no_socket_drop (channel_tcp_no_socket_drop);
+	rsnano::rsn_callback_channel_tcp_observer_write_drop (channel_tcp_write_drop);
+	rsnano::rsn_callback_channel_tcp_observer_destroy (channel_tcp_destroy);
+	rsnano::rsn_callback_channel_tcp_observer_drop_weak (channel_tcp_drop_weak);
 
 	rsnano::rsn_callback_buffer_destroy (buffer_destroy);
 	rsnano::rsn_callback_buffer_size (buffer_size);

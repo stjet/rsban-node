@@ -47,16 +47,8 @@ namespace transport
 	public:
 		channel_tcp (nano::node &, std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a);
 
-		uint8_t get_network_version () const override
-		{
-			return network_version;
-		}
-
-		void set_network_version (uint8_t network_version_a) override
-		{
-			network_version = network_version_a;
-		}
-
+		uint8_t get_network_version () const override;
+		void set_network_version (uint8_t network_version_a) override;
 		std::size_t hash_code () const override;
 		bool operator== (nano::transport::channel const &) const override;
 		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter) override;
@@ -81,7 +73,7 @@ namespace transport
 				}
 			}
 
-			return observer.lock () == other_a.observer.lock ();
+			return get_observer () == other_a.get_observer ();
 		}
 		std::shared_ptr<nano::socket> try_get_socket () const;
 
@@ -114,10 +106,9 @@ namespace transport
 		}
 
 	private:
+		std::shared_ptr<nano::transport::channel_tcp_observer> get_observer () const;
 		boost::asio::io_context & io_ctx;
 		nano::bandwidth_limiter & limiter;
-		std::atomic<uint8_t> network_version{ 0 };
-		std::weak_ptr<nano::transport::channel_tcp_observer> observer;
 		nano::tcp_endpoint endpoint{ boost::asio::ip::address_v6::any (), 0 };
 	};
 	class tcp_channels final : public nano::transport::channel_tcp_observer

@@ -70,6 +70,12 @@ pub unsafe extern "C" fn rsn_channel_tcp_network_set_version(
     tcp.set_network_version(version)
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_observer(handle: *mut ChannelHandle) -> *mut c_void {
+    let tcp = as_tcp_channel(handle);
+    tcp.observer.handle
+}
+
 pub struct FfiChannelTcpObserver {
     /// is a `shared_ptr<channel_tcp_observer> *`
     handle: *mut c_void,

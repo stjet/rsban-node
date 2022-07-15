@@ -30,7 +30,7 @@ pub struct ChannelTcp {
     socket: Weak<SocketImpl>,
     temporary: AtomicBool,
     network_version: AtomicU8,
-    observer: ChannelTcpObserverWeakPtr,
+    pub observer: ChannelTcpObserverWeakPtr,
 }
 
 impl ChannelTcp {

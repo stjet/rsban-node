@@ -171,6 +171,16 @@ pub unsafe extern "C" fn rsn_channel_tcp_observer(handle: *mut ChannelHandle) ->
     tcp.observer.handle
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_eq(a: *mut ChannelHandle, b: *mut ChannelHandle) -> bool {
+    as_tcp_channel(a).eq(as_tcp_channel(b))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_max(handle: *mut ChannelHandle) -> bool {
+    as_tcp_channel(handle).max()
+}
+
 pub struct FfiChannelTcpObserver {
     /// is a `shared_ptr<channel_tcp_observer> *`
     handle: *mut c_void,

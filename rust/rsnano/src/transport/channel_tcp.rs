@@ -146,6 +146,10 @@ impl ChannelTcp {
             }));
         }
     }
+
+    pub fn max(&self) -> bool {
+        self.socket.upgrade().map(|s| s.max()).unwrap_or(true)
+    }
 }
 
 impl Channel for ChannelTcp {
@@ -198,5 +202,26 @@ impl Drop for ChannelTcp {
                 socket.close();
             }
         }
+    }
+}
+
+impl PartialEq for ChannelTcp {
+    fn eq(&self, other: &Self) -> bool {
+        let my_socket = self.socket.upgrade();
+        let other_socket = other.socket.upgrade();
+
+        if my_socket.is_some() != other_socket.is_some() {
+            return false;
+        }
+
+        if let Some(my_socket) = my_socket {
+            if let Some(other_socket) = other_socket {
+                if Arc::as_ptr(&my_socket) != Arc::as_ptr(&other_socket) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 }

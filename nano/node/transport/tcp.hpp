@@ -56,25 +56,7 @@ namespace transport
 		//
 		void send_buffer (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr, nano::buffer_drop_policy = nano::buffer_drop_policy::limiter) override;
 		std::string to_string () const override;
-		bool operator== (nano::transport::channel_tcp const & other_a) const
-		{
-			auto my_socket{ try_get_socket () };
-			auto other_socket{ other_a.try_get_socket () };
-			if ((!my_socket && other_socket) || (my_socket && !other_socket))
-			{
-				return false;
-			}
-
-			if (my_socket && other_socket)
-			{
-				if (my_socket->inner_ptr () != other_socket->inner_ptr ())
-				{
-					return false;
-				}
-			}
-
-			return get_observer () == other_a.get_observer ();
-		}
+		bool operator== (nano::transport::channel_tcp const & other_a) const;
 		std::shared_ptr<nano::socket> try_get_socket () const;
 
 		void set_endpoint ();
@@ -90,15 +72,7 @@ namespace transport
 			return nano::transport::transport_type::tcp;
 		}
 
-		virtual bool max () override
-		{
-			bool result = true;
-			if (auto socket_l = try_get_socket ())
-			{
-				result = socket_l->max ();
-			}
-			return result;
-		}
+		bool max () override;
 
 	private:
 		[[nodiscard]] std::shared_ptr<nano::transport::channel_tcp_observer> get_observer () const;

@@ -36,6 +36,11 @@ nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_endpoint () const
 	return rsnano::dto_to_endpoint (ep_dto);
 }
 
+bool nano::transport::channel_tcp::max ()
+{
+	return rsnano::rsn_channel_tcp_max (handle);
+}
+
 std::size_t nano::transport::channel_tcp::hash_code () const
 {
 	std::hash<::nano::tcp_endpoint> hash;
@@ -107,6 +112,11 @@ void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const 
 std::string nano::transport::channel_tcp::to_string () const
 {
 	return boost::str (boost::format ("%1%") % get_tcp_endpoint ());
+}
+
+bool nano::transport::channel_tcp::operator== (nano::transport::channel_tcp const & other_a) const
+{
+	return rsnano::rsn_channel_tcp_eq (handle, other_a.handle);
 }
 
 std::shared_ptr<nano::socket> nano::transport::channel_tcp::try_get_socket () const

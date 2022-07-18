@@ -32,8 +32,12 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
     let observer = ChannelTcpObserverWeakPtr::new(observer);
     let limiter = Arc::clone(&*limiter);
     let io_ctx = Arc::new(FfiIoContext::new(io_ctx));
-    Box::into_raw(Box::new(ChannelHandle::new(Arc::new(ChannelType::Tcp(
-        ChannelTcp::new((*socket).deref(), now, observer, limiter, io_ctx),
+    ChannelHandle::new(Arc::new(ChannelType::Tcp(Arc::new(ChannelTcp::new(
+        (*socket).deref(),
+        now,
+        observer,
+        limiter,
+        io_ctx,
     )))))
 }
 

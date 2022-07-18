@@ -184,7 +184,7 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::fin
 	auto existing (channels.get<endpoint_tag> ().find (endpoint_a));
 	if (existing != channels.get<endpoint_tag> ().end ())
 	{
-		result = existing->channel;
+		result = existing->get_channel ();
 	}
 	return result;
 }
@@ -205,7 +205,7 @@ std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::transport::t
 		{
 			auto index (nano::random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (peers_size - 1)));
 
-			auto channel = channels.get<random_access_tag> ()[index].channel;
+			auto channel = channels.get<random_access_tag> ()[index].get_channel ();
 			if (channel->get_network_version () >= min_version && (include_temporary_channels_a || !channel->is_temporary ()))
 			{
 				result.insert (channel);
@@ -267,7 +267,7 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::fin
 	auto existing (channels.get<node_id_tag> ().find (node_id_a));
 	if (existing != channels.get<node_id_tag> ().end ())
 	{
-		result = existing->channel;
+		result = existing->get_channel ();
 	}
 	return result;
 }
@@ -278,11 +278,11 @@ nano::tcp_endpoint nano::transport::tcp_channels::bootstrap_peer (uint8_t connec
 	nano::lock_guard<nano::mutex> lock (mutex);
 	for (auto i (channels.get<last_bootstrap_attempt_tag> ().begin ()), n (channels.get<last_bootstrap_attempt_tag> ().end ()); i != n;)
 	{
-		if (i->channel->get_network_version () >= connection_protocol_version_min)
+		if (i->get_channel ()->get_network_version () >= connection_protocol_version_min)
 		{
 			result = i->endpoint ();
 			channels.get<last_bootstrap_attempt_tag> ().modify (i, [] (channel_tcp_wrapper & wrapper_a) {
-				wrapper_a.channel->set_last_bootstrap_attempt (std::chrono::steady_clock::now ());
+				wrapper_a.get_channel ()->set_last_bootstrap_attempt (std::chrono::steady_clock::now ());
 			});
 			i = n;
 		}
@@ -375,9 +375,10 @@ void nano::transport::tcp_channels::stop ()
 			socket->close ();
 		}
 		// Remove response server
-		if (channel.response_server)
+		auto server{ channel.get_response_server () };
+		if (server)
 		{
-			channel.response_server->stop ();
+			server->stop ();
 		}
 	}
 	channels.clear ();
@@ -490,7 +491,7 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 	auto keepalive_sent_cutoff (channels.get<last_packet_sent_tag> ().lower_bound (std::chrono::steady_clock::now () - node.network_params.network.cleanup_period));
 	for (auto i (channels.get<last_packet_sent_tag> ().begin ()); i != keepalive_sent_cutoff; ++i)
 	{
-		send_list.push_back (i->channel);
+		send_list.push_back (i->get_channel ());
 	}
 	lock.unlock ();
 	for (auto & channel : send_list)
@@ -528,8 +529,8 @@ void nano::transport::tcp_channels::list (std::deque<std::shared_ptr<nano::trans
 	nano::lock_guard<nano::mutex> lock (mutex);
 	// clang-format off
 	nano::transform_if (channels.get<random_access_tag> ().begin (), channels.get<random_access_tag> ().end (), std::back_inserter (deque_a),
-		[include_temporary_channels_a, minimum_version_a](auto & channel_a) { return channel_a.channel->get_network_version () >= minimum_version_a && (include_temporary_channels_a || !channel_a.channel->is_temporary ()); },
-		[](auto const & channel) { return channel.channel; });
+		[include_temporary_channels_a, minimum_version_a](auto & channel_a) { return channel_a.get_channel()->get_network_version () >= minimum_version_a && (include_temporary_channels_a || !channel_a.get_channel()->is_temporary ()); },
+		[](auto const & channel) { return channel.get_channel(); });
 	// clang-format on
 }
 
@@ -540,7 +541,7 @@ void nano::transport::tcp_channels::modify (std::shared_ptr<nano::transport::cha
 	if (existing != channels.get<endpoint_tag> ().end ())
 	{
 		channels.get<endpoint_tag> ().modify (existing, [modify_callback = std::move (modify_callback_a)] (channel_tcp_wrapper & wrapper_a) {
-			modify_callback (wrapper_a.channel);
+			modify_callback (wrapper_a.get_channel ());
 		});
 	}
 }
@@ -552,7 +553,7 @@ void nano::transport::tcp_channels::update (nano::tcp_endpoint const & endpoint_
 	if (existing != channels.get<endpoint_tag> ().end ())
 	{
 		channels.get<endpoint_tag> ().modify (existing, [] (channel_tcp_wrapper & wrapper_a) {
-			wrapper_a.channel->set_last_packet_sent (std::chrono::steady_clock::now ());
+			wrapper_a.get_channel ()->set_last_packet_sent (std::chrono::steady_clock::now ());
 		});
 	}
 }
@@ -811,4 +812,30 @@ void nano::transport::tcp_channels::no_socket_drop ()
 void nano::transport::tcp_channels::write_drop ()
 {
 	node.stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out);
+}
+
+nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::bootstrap_server> server_a)
+{
+	rsnano::BootstrapServerHandle * server_handle = nullptr;
+	if (server_a)
+		server_handle = server_a->handle;
+	handle = rsnano::rsn_channel_tcp_wrapper_create (channel_a->handle, socket_a->handle, server_handle);
+}
+
+nano::transport::tcp_channels::channel_tcp_wrapper::~channel_tcp_wrapper ()
+{
+	rsnano::rsn_channel_tcp_wrapper_destroy (handle);
+}
+
+std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::channel_tcp_wrapper::get_channel () const
+{
+	return std::make_shared<nano::transport::channel_tcp> (rsnano::rsn_channel_tcp_wrapper_channel (handle));
+}
+std::shared_ptr<nano::bootstrap_server> nano::transport::tcp_channels::channel_tcp_wrapper::get_response_server () const
+{
+	std::shared_ptr<nano::bootstrap_server> server;
+	auto server_handle = rsnano::rsn_channel_tcp_wrapper_server (handle);
+	if (server_handle)
+		server = std::make_shared<nano::bootstrap_server> (server_handle);
+	return server;
 }

@@ -18,6 +18,7 @@ use crate::{
 use std::{
     ffi::c_void,
     net::SocketAddr,
+    ops::Deref,
     sync::{atomic::Ordering, Arc, Weak},
 };
 
@@ -26,6 +27,14 @@ pub struct BootstrapServerHandle(Arc<BootstrapServer>);
 impl BootstrapServerHandle {
     pub fn new(server: Arc<BootstrapServer>) -> *mut BootstrapServerHandle {
         Box::into_raw(Box::new(BootstrapServerHandle(server)))
+    }
+}
+
+impl Deref for BootstrapServerHandle {
+    type Target = Arc<BootstrapServer>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -93,7 +102,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_destroy(handle: *mut BootstrapServ
 pub unsafe extern "C" fn rsn_bootstrap_server_unique_id(
     handle: *mut BootstrapServerHandle,
 ) -> usize {
-    (*handle).0.unique_id()
+    (*handle).unique_id()
 }
 
 #[no_mangle]
@@ -101,7 +110,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_get_weak(
     handle: *mut BootstrapServerHandle,
 ) -> *mut BootstrapServerWeakHandle {
     Box::into_raw(Box::new(BootstrapServerWeakHandle(Arc::downgrade(
-        &(*handle).0,
+        &*handle,
     ))))
 }
 
@@ -133,14 +142,14 @@ pub unsafe extern "C" fn rsn_bootstrap_server_lock_weak(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_stop(handle: *mut BootstrapServerHandle) {
-    (*handle).0.stop();
+    (*handle).stop();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_is_stopped(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
-    (*handle).0.is_stopped()
+    (*handle).is_stopped()
 }
 
 #[no_mangle]
@@ -148,7 +157,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_remote_endpoint(
     handle: *mut BootstrapServerHandle,
     endpoint: *mut EndpointDto,
 ) {
-    let ep: SocketAddr = (*handle).0.remote_endpoint.lock().unwrap().clone();
+    let ep: SocketAddr = (*handle).remote_endpoint.lock().unwrap().clone();
     (*endpoint) = ep.into();
 }
 
@@ -157,7 +166,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_remote_node_id(
     handle: *mut BootstrapServerHandle,
     node_id: *mut u8,
 ) {
-    let lk = (*handle).0.remote_node_id.lock().unwrap();
+    let lk = (*handle).remote_node_id.lock().unwrap();
     copy_account_bytes(*lk, node_id);
 }
 
@@ -166,7 +175,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_remote_node_id(
     handle: *mut BootstrapServerHandle,
     node_id: *const u8,
 ) {
-    let mut lk = (*handle).0.remote_node_id.lock().unwrap();
+    let mut lk = (*handle).remote_node_id.lock().unwrap();
     *lk = Account::from(node_id);
 }
 
@@ -204,14 +213,14 @@ pub unsafe extern "C" fn rsn_bootstrap_server_release_front_request(
 pub unsafe extern "C" fn rsn_bootstrap_server_socket(
     handle: *mut BootstrapServerHandle,
 ) -> *mut SocketHandle {
-    SocketHandle::new((*handle).0.socket.clone())
+    SocketHandle::new((*handle).socket.clone())
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_requests_empty(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
-    (*handle).0.requests_empty()
+    (*handle).requests_empty()
 }
 
 #[no_mangle]
@@ -225,33 +234,33 @@ pub unsafe extern "C" fn rsn_bootstrap_server_push_request(
         Some((*msg).clone_box())
     };
 
-    (*handle).0.push_request(msg);
+    (*handle).push_request(msg);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_set_last_telemetry_req(
     handle: *mut BootstrapServerHandle,
 ) {
-    (*handle).0.set_last_telemetry_req();
+    (*handle).set_last_telemetry_req();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_timeout(handle: *mut BootstrapServerHandle) {
-    (*handle).0.timeout();
+    (*handle).timeout();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_disable_bootstrap_bulk_pull_server(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
-    (*handle).0.disable_bootstrap_bulk_pull_server
+    (*handle).disable_bootstrap_bulk_pull_server
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_handshake_query_received(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
-    (*handle).0.handshake_query_received.load(Ordering::SeqCst)
+    (*handle).handshake_query_received.load(Ordering::SeqCst)
 }
 
 #[no_mangle]
@@ -266,19 +275,19 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_handshake_query_received(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_receive(handle: *mut BootstrapServerHandle) {
-    (*handle).0.receive();
+    (*handle).receive();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_finish_request_async(
     handle: *mut BootstrapServerHandle,
 ) {
-    (*handle).0.finish_request_async();
+    (*handle).finish_request_async();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_finish_request(handle: *mut BootstrapServerHandle) {
-    (*handle).0.finish_request();
+    (*handle).finish_request();
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

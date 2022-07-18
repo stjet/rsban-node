@@ -6,7 +6,7 @@ use crate::{
 };
 
 pub enum ChannelType {
-    Tcp(ChannelTcp),
+    Tcp(Arc<ChannelTcp>),
     InProc(ChannelInProc),
     Udp(ChannelUdp),
 }
@@ -14,12 +14,12 @@ pub enum ChannelType {
 pub struct ChannelHandle(Arc<ChannelType>);
 
 impl ChannelHandle {
-    pub fn new(channel: Arc<ChannelType>) -> Self {
-        Self(channel)
+    pub fn new(channel: Arc<ChannelType>) -> *mut Self {
+        Box::into_raw(Box::new(Self(channel)))
     }
 }
 
-pub unsafe fn as_tcp_channel(handle: *mut ChannelHandle) -> &'static ChannelTcp {
+pub unsafe fn as_tcp_channel(handle: *mut ChannelHandle) -> &'static Arc<ChannelTcp> {
     match (*handle).0.as_ref() {
         ChannelType::Tcp(tcp) => tcp,
         _ => panic!("expected tcp channel"),
@@ -28,7 +28,7 @@ pub unsafe fn as_tcp_channel(handle: *mut ChannelHandle) -> &'static ChannelTcp 
 
 pub unsafe fn as_channel(handle: *mut ChannelHandle) -> &'static dyn Channel {
     match (*handle).0.as_ref() {
-        ChannelType::Tcp(tcp) => tcp,
+        ChannelType::Tcp(tcp) => tcp.as_ref(),
         ChannelType::InProc(inproc) => inproc,
         ChannelType::Udp(udp) => udp,
     }
@@ -109,9 +109,7 @@ pub unsafe extern "C" fn rsn_channel_set_node_id(handle: *mut ChannelHandle, id:
 
 #[no_mangle]
 pub extern "C" fn rsn_channel_inproc_create(now: u64) -> *mut ChannelHandle {
-    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::InProc(
-        ChannelInProc::new(now),
-    )))))
+    ChannelHandle::new(Arc::new(ChannelType::InProc(ChannelInProc::new(now))))
 }
 
 #[no_mangle]

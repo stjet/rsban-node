@@ -46,6 +46,8 @@ namespace transport
 
 	public:
 		channel_tcp (nano::node &, std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a);
+		channel_tcp (rsnano::ChannelHandle * handle_a) :
+			channel{ handle_a } {};
 
 		uint8_t get_network_version () const override;
 		void set_network_version (uint8_t network_version_a) override;
@@ -157,28 +159,26 @@ namespace transport
 		class channel_tcp_wrapper final
 		{
 		public:
-			std::shared_ptr<nano::transport::channel_tcp> channel;
-			std::shared_ptr<nano::socket> socket;
-			std::shared_ptr<nano::bootstrap_server> response_server;
-			channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::bootstrap_server> server_a) :
-				channel (std::move (channel_a)), socket (std::move (socket_a)), response_server (std::move (server_a))
-			{
-			}
+			channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::bootstrap_server> server_a);
+			channel_tcp_wrapper (channel_tcp_wrapper const &) = delete;
+			~channel_tcp_wrapper ();
+			std::shared_ptr<nano::transport::channel_tcp> get_channel () const;
+			std::shared_ptr<nano::bootstrap_server> get_response_server () const;
 			nano::tcp_endpoint endpoint () const
 			{
-				return channel->get_tcp_endpoint ();
+				return get_channel ()->get_tcp_endpoint ();
 			}
 			std::chrono::steady_clock::time_point last_packet_sent () const
 			{
-				return channel->get_last_packet_sent ();
+				return get_channel ()->get_last_packet_sent ();
 			}
 			std::chrono::steady_clock::time_point last_bootstrap_attempt () const
 			{
-				return channel->get_last_bootstrap_attempt ();
+				return get_channel ()->get_last_bootstrap_attempt ();
 			}
 			std::shared_ptr<nano::socket> try_get_socket () const
 			{
-				return channel->try_get_socket ();
+				return get_channel ()->try_get_socket ();
 			}
 			boost::asio::ip::address ip_address () const
 			{
@@ -190,13 +190,16 @@ namespace transport
 			}
 			nano::account node_id () const
 			{
-				auto node_id (channel->get_node_id ());
+				auto node_id (get_channel ()->get_node_id ());
 				return node_id;
 			}
 			uint8_t network_version () const
 			{
-				return channel->get_network_version ();
+				return get_channel ()->get_network_version ();
 			}
+
+		private:
+			rsnano::ChannelTcpWrapperHandle * handle;
 		};
 		class tcp_endpoint_attempt final
 		{

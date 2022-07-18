@@ -51,6 +51,8 @@ struct BufferHandle;
 
 struct ChannelHandle;
 
+struct ChannelTcpWrapperHandle;
+
 struct EpochsHandle;
 
 struct IoContextHandle;
@@ -1258,6 +1260,16 @@ void rsn_channel_tcp_set_endpoint (ChannelHandle * handle);
 SocketHandle * rsn_channel_tcp_socket (ChannelHandle * handle);
 
 void rsn_channel_tcp_unlock (TcpChannelLockHandle * handle);
+
+ChannelHandle * rsn_channel_tcp_wrapper_channel (ChannelTcpWrapperHandle * handle);
+
+ChannelTcpWrapperHandle * rsn_channel_tcp_wrapper_create (ChannelHandle * channel,
+SocketHandle * socket,
+BootstrapServerHandle * response_server);
+
+void rsn_channel_tcp_wrapper_destroy (ChannelTcpWrapperHandle * handle);
+
+BootstrapServerHandle * rsn_channel_tcp_wrapper_server (ChannelTcpWrapperHandle * handle);
 
 ChannelHandle * rsn_channel_udp_create (uint64_t now);
 

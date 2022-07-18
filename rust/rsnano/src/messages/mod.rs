@@ -36,7 +36,7 @@ pub use telemetry_req::*;
 mod telemetry_ack;
 pub use telemetry_ack::*;
 
-use crate::utils::Stream;
+use crate::utils::{MemoryStream, Stream};
 use anyhow::Result;
 
 pub trait Message {
@@ -48,6 +48,11 @@ pub trait Message {
     fn visit(&self, visitor: &dyn MessageVisitor);
     fn clone_box(&self) -> Box<dyn Message>;
     fn message_type(&self) -> MessageType;
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut stream = MemoryStream::new();
+        self.serialize(&mut stream).unwrap();
+        stream.to_vec()
+    }
 }
 
 pub trait MessageVisitor {
@@ -62,4 +67,8 @@ pub trait MessageVisitor {
     fn node_id_handshake(&self, message: &NodeIdHandshake);
     fn telemetry_req(&self, message: &TelemetryReq);
     fn telemetry_ack(&self, message: &TelemetryAck);
+}
+
+pub trait MessageExt {
+    fn to_bytes(&self) -> Vec<u8>;
 }

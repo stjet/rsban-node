@@ -150,6 +150,33 @@ impl ChannelTcp {
     pub fn max(&self) -> bool {
         self.socket.upgrade().map(|s| s.max()).unwrap_or(true)
     }
+
+    pub fn send(
+        &self,
+        message: &dyn Message,
+        callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
+        drop_policy: BufferDropPolicy,
+    ) {
+        let buffer = Arc::new(message.to_bytes());
+        let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
+        let should_drop = self.limiter.should_drop(buffer.len());
+        if !is_droppable_by_limiter || !should_drop {
+            self.send_buffer(&buffer, callback, drop_policy);
+            if let Some(observer) = self.observer.lock() {
+                observer.message_sent(message);
+            }
+        } else {
+            if let Some(callback) = callback {
+                self.io_ctx.post(Box::new(move || {
+                    callback(ErrorCode::not_supported(), 0);
+                }));
+            }
+
+            if let Some(observer) = self.observer.lock() {
+                observer.message_dropped(message, buffer.len());
+            }
+        }
+    }
 }
 
 impl Channel for ChannelTcp {

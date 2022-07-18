@@ -584,6 +584,8 @@ struct ChangeBlockDto2
 	uint64_t work;
 };
 
+using ChannelTcpSendCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
+
 using ChannelTcpSendBufferCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
 
 struct OpenclConfigDto
@@ -1241,6 +1243,13 @@ void rsn_channel_tcp_network_set_version (ChannelHandle * handle, uint8_t versio
 uint8_t rsn_channel_tcp_network_version (ChannelHandle * handle);
 
 void * rsn_channel_tcp_observer (ChannelHandle * handle);
+
+void rsn_channel_tcp_send (ChannelHandle * handle,
+MessageHandle * msg,
+ChannelTcpSendCallback callback,
+DestroyCallback delete_callback,
+void * context,
+uint8_t policy);
 
 void rsn_channel_tcp_send_buffer (ChannelHandle * handle,
 const uint8_t * buffer,

@@ -60,6 +60,10 @@ impl MemoryStream {
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
     }
+
+    pub fn to_vec(self) -> Vec<u8> {
+        self.bytes
+    }
 }
 
 impl Stream for MemoryStream {

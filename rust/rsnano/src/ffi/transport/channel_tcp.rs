@@ -181,6 +181,63 @@ pub unsafe extern "C" fn rsn_channel_tcp_max(handle: *mut ChannelHandle) -> bool
     as_tcp_channel(handle).max()
 }
 
+pub type ChannelTcpSendCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
+
+struct ChannelTcpSendCallbackWrapper {
+    context: *mut c_void,
+    callback: ChannelTcpSendCallback,
+    delete: DestroyCallback,
+}
+
+impl ChannelTcpSendCallbackWrapper {
+    fn new(
+        context: *mut c_void,
+        callback: ChannelTcpSendCallback,
+        delete: DestroyCallback,
+    ) -> Self {
+        Self {
+            context,
+            callback,
+            delete,
+        }
+    }
+
+    fn call(&self, ec: ErrorCode, size: usize) {
+        let ec_dto = ErrorCodeDto::from(&ec);
+        unsafe {
+            (self.callback)(self.context, &ec_dto, size);
+        }
+    }
+}
+
+impl Drop for ChannelTcpSendCallbackWrapper {
+    fn drop(&mut self) {
+        unsafe {
+            (self.delete)(self.context);
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_send(
+    handle: *mut ChannelHandle,
+    msg: *mut MessageHandle,
+    callback: ChannelTcpSendCallback,
+    delete_callback: DestroyCallback,
+    context: *mut c_void,
+    policy: u8,
+) {
+    let callback_wrapper = ChannelTcpSendCallbackWrapper::new(context, callback, delete_callback);
+    let callback_box = Box::new(move |ec, size| {
+        callback_wrapper.call(ec, size);
+    });
+    as_tcp_channel(handle).send(
+        (*msg).as_ref(),
+        Some(callback_box),
+        BufferDropPolicy::from_u8(policy).unwrap(),
+    );
+}
+
 pub struct FfiChannelTcpObserver {
     /// is a `shared_ptr<channel_tcp_observer> *`
     handle: *mut c_void,

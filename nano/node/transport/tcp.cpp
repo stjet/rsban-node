@@ -58,35 +58,6 @@ bool nano::transport::channel_tcp::operator== (nano::transport::channel const & 
 	return result;
 }
 
-void nano::transport::channel_tcp::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
-{
-	auto buffer (message_a.to_shared_const_buffer ());
-	auto is_droppable_by_limiter = drop_policy_a == nano::buffer_drop_policy::limiter;
-	auto should_drop (get_limiter ().should_drop (buffer.size ()));
-	if (!is_droppable_by_limiter || !should_drop)
-	{
-		send_buffer (buffer, callback_a, drop_policy_a);
-		if (auto observer_l = get_observer ())
-		{
-			observer_l->message_sent (message_a);
-		}
-	}
-	else
-	{
-		if (callback_a)
-		{
-			get_io_ctx ()->post ([callback_a] () {
-				callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
-			});
-		}
-
-		if (auto observer_l = get_observer ())
-		{
-			observer_l->message_dropped (message_a, buffer.size ());
-		}
-	}
-}
-
 void channel_tcp_send_callback (void * context_a, const rsnano::ErrorCodeDto * ec_a, std::size_t size_a)
 {
 	auto callback_ptr = static_cast<std::function<void (boost::system::error_code const &, std::size_t)> *> (context_a);
@@ -101,6 +72,12 @@ void delete_send_buffer_callback (void * context_a)
 {
 	auto callback_ptr = static_cast<std::function<void (boost::system::error_code const &, std::size_t)> *> (context_a);
 	delete callback_ptr;
+}
+
+void nano::transport::channel_tcp::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
+{
+	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
+	rsnano::rsn_channel_tcp_send (handle, message_a.handle, channel_tcp_send_callback, delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a));
 }
 
 void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)

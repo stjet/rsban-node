@@ -50,6 +50,7 @@ public:
 	std::atomic<double> block_rate{ 0 };
 	std::atomic<bool> pending_stop{ false };
 	std::atomic<bool> hard_stop{ false };
+	std::shared_ptr<nano::socket> get_socket () const;
 
 private:
 	std::shared_ptr<nano::transport::channel_tcp> channel;

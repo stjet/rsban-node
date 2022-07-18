@@ -107,6 +107,11 @@ void nano::bootstrap_client::set_timeout (std::chrono::seconds timeout_a)
 	socket->set_timeout (timeout_a);
 }
 
+std::shared_ptr<nano::socket> nano::bootstrap_client::get_socket () const
+{
+	return socket;
+}
+
 nano::bootstrap_connections::bootstrap_connections (nano::node & node_a) :
 	node (node_a)
 {

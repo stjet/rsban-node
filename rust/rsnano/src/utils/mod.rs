@@ -27,10 +27,14 @@ pub fn get_cpu_count() -> usize {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ErrorCode {
     pub val: i32,
     pub category: u8,
+}
+
+pub mod error_category {
+    pub const GENERIC: u8 = 0;
 }
 
 impl ErrorCode {
@@ -44,15 +48,22 @@ impl ErrorCode {
 
     pub fn not_supported() -> Self {
         ErrorCode {
-            val: 95,     //not supported
-            category: 0, // generic,
+            val: 95,
+            category: error_category::GENERIC,
         }
     }
 
     pub fn no_buffer_space() -> Self {
         ErrorCode {
-            val: 105,    // no buffer space
-            category: 0, // generic
+            val: 105,
+            category: error_category::GENERIC,
+        }
+    }
+
+    pub fn host_unreachable() -> Self {
+        ErrorCode {
+            val: 113,
+            category: error_category::GENERIC,
         }
     }
 }

@@ -3,11 +3,8 @@ use num::FromPrimitive;
 use crate::{
     ffi::{DestroyCallback, DispatchCallback, ErrorCodeDto, LoggerHandle},
     stats::SocketStats,
-    transport::{
-        BufferWrapper, SharedConstBuffer, Socket, SocketBuilder, SocketImpl, SocketType,
-        TcpSocketFacade,
-    },
-    utils::{BufferHandle, ErrorCode},
+    transport::{Socket, SocketBuilder, SocketImpl, SocketType, TcpSocketFacade},
+    utils::{BufferHandle, BufferWrapper, ErrorCode},
 };
 use std::{
     ffi::c_void,
@@ -280,7 +277,8 @@ pub unsafe extern "C" fn rsn_socket_async_read2(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_async_write(
     handle: *mut SocketHandle,
-    buffer: *mut c_void,
+    buffer: *const u8,
+    buffer_len: usize,
     callback: SocketReadCallback,
     destroy_context: SocketDestroyContext,
     context: *mut c_void,
@@ -293,8 +291,8 @@ pub unsafe extern "C" fn rsn_socket_async_write(
     } else {
         None
     };
-    let buffer_wrapper = Arc::new(FfiSharedConstBuffer::new(buffer));
-    (*handle).async_write(buffer_wrapper, cb);
+    let buffer = std::slice::from_raw_parts(buffer, buffer_len);
+    (*handle).async_write(&Arc::new(buffer.to_vec()), cb);
 }
 
 #[no_mangle]
@@ -492,7 +490,7 @@ impl AsyncWriteCallbackHandle {
 }
 
 type AsyncWriteCallback =
-    unsafe extern "C" fn(*mut c_void, *mut c_void, *mut AsyncWriteCallbackHandle);
+    unsafe extern "C" fn(*mut c_void, *const u8, usize, *mut AsyncWriteCallbackHandle);
 
 static mut ASYNC_WRITE_CALLBACK: Option<AsyncWriteCallback> = None;
 
@@ -627,16 +625,13 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         }
     }
 
-    fn async_write(
-        &self,
-        buffer: &dyn SharedConstBuffer,
-        callback: Box<dyn FnOnce(ErrorCode, usize)>,
-    ) {
+    fn async_write(&self, buffer: &Arc<Vec<u8>>, callback: Box<dyn FnOnce(ErrorCode, usize)>) {
         let callback_handle = Box::into_raw(Box::new(AsyncWriteCallbackHandle::new(callback)));
         unsafe {
             ASYNC_WRITE_CALLBACK.expect("ASYNC_WRITE_CALLBACK missing")(
                 self.handle,
-                buffer.handle(),
+                buffer.as_ptr(),
+                buffer.len(),
                 callback_handle,
             );
         }
@@ -713,16 +708,10 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
 }
 
 static mut BUFFER_DESTROY_CALLBACK: Option<DestroyCallback> = None;
-static mut SHARED_CONST_BUFFER_DESTROY_CALLBACK: Option<DestroyCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_buffer_destroy(f: DestroyCallback) {
     BUFFER_DESTROY_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_shared_const_buffer_destroy(f: DestroyCallback) {
-    SHARED_CONST_BUFFER_DESTROY_CALLBACK = Some(f);
 }
 
 type BufferSizeCallback = unsafe extern "C" fn(*mut c_void) -> usize;
@@ -789,31 +778,5 @@ impl BufferWrapper for FfiBufferWrapper {
 
     fn handle(&self) -> *mut c_void {
         self.handle
-    }
-}
-
-struct FfiSharedConstBuffer {
-    /// handle is `shared_ptr<shared_const_buffer> *`
-    handle: *mut c_void,
-}
-
-impl FfiSharedConstBuffer {
-    fn new(handle: *mut c_void) -> Self {
-        Self { handle }
-    }
-}
-
-impl SharedConstBuffer for FfiSharedConstBuffer {
-    fn handle(&self) -> *mut c_void {
-        self.handle
-    }
-}
-
-impl Drop for FfiSharedConstBuffer {
-    fn drop(&mut self) {
-        unsafe {
-            SHARED_CONST_BUFFER_DESTROY_CALLBACK
-                .expect("SHARED_CONST_BUFFER_DESTROY_CALLBACK missing")(self.handle)
-        }
     }
 }

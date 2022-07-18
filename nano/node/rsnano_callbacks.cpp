@@ -549,12 +549,12 @@ private:
 	rsnano::AsyncWriteCallbackHandle * callback_m;
 };
 
-void tcp_socket_async_write (void * handle_a, void * buffer_a, rsnano::AsyncWriteCallbackHandle * callback_a)
+void tcp_socket_async_write (void * handle_a, const uint8_t * buffer_a, std::size_t len_a, rsnano::AsyncWriteCallbackHandle * callback_a)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
-	auto buffer{ static_cast<std::shared_ptr<nano::shared_const_buffer> *> (buffer_a) };
+	nano::shared_const_buffer buffer{ buffer_a, len_a };
 	auto callback_wrapper{ std::make_shared<async_write_callback_wrapper> (callback_a) };
-	(*socket)->async_write (**buffer, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
+	(*socket)->async_write (buffer, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
 		callback_wrapper->execute (ec, size);
 	});
 }
@@ -610,12 +610,6 @@ void tcp_socket_destroy (void * handle_a)
 void buffer_destroy (void * handle_a)
 {
 	auto ptr{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (handle_a) };
-	delete ptr;
-}
-
-void shared_const_buffer_destroy (void * handle_a)
-{
-	auto ptr{ static_cast<std::shared_ptr<nano::shared_const_buffer> *> (handle_a) };
 	delete ptr;
 }
 
@@ -782,6 +776,23 @@ void channel_tcp_drop_weak (void * handle_a)
 	delete observer;
 }
 
+void * channel_tcp_clone_weak (void * handle_a)
+{
+	auto observer = static_cast<std::weak_ptr<nano::transport::channel_tcp_observer> *> (handle_a);
+	return new std::weak_ptr<nano::transport::channel_tcp_observer> (*observer);
+}
+
+void * channel_tcp_observer_lock (void * handle_a)
+{
+	auto input{ static_cast<std::weak_ptr<nano::transport::channel_tcp_observer> *> (handle_a) };
+	auto sp = input->lock ();
+	if (sp)
+	{
+		return new std::shared_ptr<nano::transport::channel_tcp_observer> (sp);
+	}
+	return nullptr;
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -856,10 +867,11 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_channel_tcp_observer_write_drop (channel_tcp_write_drop);
 	rsnano::rsn_callback_channel_tcp_observer_destroy (channel_tcp_destroy);
 	rsnano::rsn_callback_channel_tcp_observer_drop_weak (channel_tcp_drop_weak);
+	rsnano::rsn_callback_channel_tcp_observer_clone_weak (channel_tcp_clone_weak);
+	rsnano::rsn_callback_channel_tcp_observer_lock (channel_tcp_observer_lock);
 
 	rsnano::rsn_callback_buffer_destroy (buffer_destroy);
 	rsnano::rsn_callback_buffer_size (buffer_size);
-	rsnano::rsn_callback_shared_const_buffer_destroy (shared_const_buffer_destroy);
 
 	rsnano::rsn_callback_message_visitor_visit (message_visitor_visit);
 	rsnano::rsn_callback_message_visitor_destroy (message_visitor_destroy);

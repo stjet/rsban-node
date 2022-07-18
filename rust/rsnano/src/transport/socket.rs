@@ -1,8 +1,7 @@
-use crate::utils::{seconds_since_epoch, ErrorCode, ThreadPool};
+use crate::utils::{seconds_since_epoch, BufferWrapper, ErrorCode, ThreadPool};
 use num_traits::FromPrimitive;
 use std::{
     any::Any,
-    ffi::c_void,
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering},
@@ -22,18 +21,6 @@ pub enum BufferDropPolicy {
     NoSocketDrop,
 }
 
-pub trait BufferWrapper {
-    fn len(&self) -> usize;
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-    fn handle(&self) -> *mut c_void;
-}
-
-pub trait SharedConstBuffer {
-    fn handle(&self) -> *mut c_void;
-}
-
 pub trait TcpSocketFacade {
     fn local_endpoint(&self) -> SocketAddr;
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>);
@@ -49,11 +36,7 @@ pub trait TcpSocketFacade {
         len: usize,
         callback: Box<dyn Fn(ErrorCode, usize)>,
     );
-    fn async_write(
-        &self,
-        buffer: &dyn SharedConstBuffer,
-        callback: Box<dyn FnOnce(ErrorCode, usize)>,
-    );
+    fn async_write(&self, buffer: &Arc<Vec<u8>>, callback: Box<dyn FnOnce(ErrorCode, usize)>);
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode>;
     fn post(&self, f: Box<dyn FnOnce()>);
     fn dispatch(&self, f: Box<dyn FnOnce()>);
@@ -248,7 +231,7 @@ pub trait Socket {
     );
     fn async_write(
         &self,
-        buffer: Arc<dyn SharedConstBuffer>,
+        buffer: &Arc<Vec<u8>>,
         callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
     );
     fn close(&self);
@@ -353,7 +336,7 @@ impl Socket for Arc<SocketImpl> {
 
     fn async_write(
         &self,
-        buffer: Arc<dyn SharedConstBuffer>,
+        buffer: &Arc<Vec<u8>>,
         mut callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
     ) {
         if self.is_closed() {
@@ -369,6 +352,7 @@ impl Socket for Arc<SocketImpl> {
         self.queue_size.fetch_add(1, Ordering::SeqCst);
 
         let self_clone = self.clone();
+        let buffer = Arc::clone(buffer);
         self.tcp_socket.post(Box::new(move || {
             if self_clone.is_closed() {
                 if let Some(cb) = callback.take() {
@@ -382,7 +366,7 @@ impl Socket for Arc<SocketImpl> {
             let self_clone_2 = self_clone.clone();
 
             self_clone.tcp_socket.async_write(
-                buffer.as_ref(),
+                &buffer,
                 Box::new(move |ec, size| {
                     let _ = buffer;
                     self_clone_2.queue_size.fetch_sub(1, Ordering::SeqCst);

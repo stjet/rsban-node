@@ -238,9 +238,9 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 	auto cb_wrapper = new std::function<void (boost::system::error_code const &, std::size_t)> ([callback = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code const & ec, std::size_t size) {
 		callback (ec, size);
 	});
-	auto buffer_l{ std::make_shared<nano::shared_const_buffer> (buffer_a) };
-	auto buffer_ptr{ new std::shared_ptr<nano::shared_const_buffer> (buffer_l) };
-	rsnano::rsn_socket_async_write (handle, buffer_ptr, async_read_adapter, async_read_delete_context, cb_wrapper);
+
+	auto buffer_l = buffer_a.to_bytes ();
+	rsnano::rsn_socket_async_write (handle, buffer_l.data (), buffer_l.size (), async_read_adapter, async_read_delete_context, cb_wrapper);
 }
 
 const void * nano::socket::inner_ptr () const

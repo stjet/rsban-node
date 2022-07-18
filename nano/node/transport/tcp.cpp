@@ -82,62 +82,26 @@ void nano::transport::channel_tcp::send (nano::message & message_a, std::functio
 	}
 }
 
+void channel_tcp_send_callback (void * context_a, const rsnano::ErrorCodeDto * ec_a, std::size_t size_a)
+{
+	auto callback_ptr = static_cast<std::function<void (boost::system::error_code const &, std::size_t)> *> (context_a);
+	if (*callback_ptr)
+	{
+		auto ec{ rsnano::dto_to_error_code (*ec_a) };
+		(*callback_ptr) (ec, size_a);
+	}
+}
+
+void delete_send_buffer_callback (void * context_a)
+{
+	auto callback_ptr = static_cast<std::function<void (boost::system::error_code const &, std::size_t)> *> (context_a);
+	delete callback_ptr;
+}
+
 void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)
 {
-	if (auto socket_l = try_get_socket ())
-	{
-		if (!socket_l->max () || (policy_a == nano::buffer_drop_policy::no_socket_drop && !socket_l->full ()))
-		{
-			std::weak_ptr<nano::transport::channel_tcp_observer> observer_weak_l;
-			auto observer_l = get_observer ();
-			if (observer_l)
-			{
-				observer_weak_l = observer_l;
-			}
-			socket_l->async_write (
-			buffer_a, [endpoint_a = socket_l->remote_endpoint (), callback_a, observer_a = observer_weak_l] (boost::system::error_code const & ec, std::size_t size_a) {
-				if (auto observer_l = observer_a.lock ())
-				{
-					if (!ec)
-					{
-						observer_l->data_sent (endpoint_a);
-					}
-					if (ec == boost::system::errc::host_unreachable)
-					{
-						observer_l->host_unreachable ();
-					}
-				}
-				if (callback_a)
-				{
-					callback_a (ec, size_a);
-				}
-			});
-		}
-		else
-		{
-			if (auto observer_l = get_observer ())
-			{
-				if (policy_a == nano::buffer_drop_policy::no_socket_drop)
-				{
-					observer_l->no_socket_drop ();
-				}
-				else
-				{
-					observer_l->write_drop ();
-				}
-			}
-			if (callback_a)
-			{
-				callback_a (boost::system::errc::make_error_code (boost::system::errc::no_buffer_space), 0);
-			}
-		}
-	}
-	else if (callback_a)
-	{
-		get_io_ctx ()->post ([callback_a] () {
-			callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
-		});
-	}
+	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
+	rsnano::rsn_channel_tcp_send_buffer (handle, buffer_a.data (), buffer_a.size (), channel_tcp_send_callback, delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (policy_a));
 }
 
 std::string nano::transport::channel_tcp::to_string () const

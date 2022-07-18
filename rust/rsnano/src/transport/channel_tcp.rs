@@ -103,65 +103,48 @@ impl ChannelTcp {
     pub fn send_buffer(
         &self,
         buffer_a: &Arc<Vec<u8>>,
-        callback_a: Box<dyn FnOnce(ErrorCode, usize)>,
+        callback_a: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
         policy_a: BufferDropPolicy,
     ) {
         if let Some(socket_l) = self.socket() {
             if !socket_l.max() || (policy_a == BufferDropPolicy::NoSocketDrop && !socket_l.full()) {
-
-                // std::weak_ptr<nano::transport::channel_tcp_observer> observer_weak_l;
-                // auto observer_l = get_observer ();
-                // if (observer_l)
-                // {
-                //     observer_weak_l = observer_l;
-                // }
-
-                //TODO:
-                //socket_l.async_write(Arc::new(), callback)
-
-                // socket_l->async_write (
-                // buffer_a, [endpoint_a = socket_l->remote_endpoint (), callback_a, observer_a = observer_weak_l] (boost::system::error_code const & ec, std::size_t size_a) {
-                //     if (auto observer_l = observer_a.lock ())
-                //     {
-                //         if (!ec)
-                //         {
-                //             observer_l->data_sent (endpoint_a);
-                //         }
-                //         if (ec == boost::system::errc::host_unreachable)
-                //         {
-                //             observer_l->host_unreachable ();
-                //         }
-                //     }
-                //     if (callback_a)
-                //     {
-                //         callback_a (ec, size_a);
-                //     }
-                // });
+                let observer_weak_l = self.observer.clone();
+                let endpoint = socket_l
+                    .get_remote()
+                    .unwrap_or_else(|| SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0));
+                socket_l.async_write(
+                    buffer_a,
+                    Some(Box::new(move |ec, size| {
+                        if let Some(observer_l) = observer_weak_l.lock() {
+                            if ec.is_ok() {
+                                observer_l.data_sent(&endpoint);
+                            }
+                            if ec == ErrorCode::host_unreachable() {
+                                observer_l.host_unreachable();
+                            }
+                        }
+                        if let Some(callback) = callback_a {
+                            callback(ec, size);
+                        }
+                    })),
+                );
             } else {
-                // if (auto observer_l = get_observer ())
-                // {
-                //     if (policy_a == nano::buffer_drop_policy::no_socket_drop)
-                //     {
-                //         observer_l->no_socket_drop ();
-                //     }
-                //     else
-                //     {
-                //         observer_l->write_drop ();
-                //     }
-                // }
-                // if (callback_a)
-                // {
-                //     callback_a (boost::system::errc::make_error_code (boost::system::errc::no_buffer_space), 0);
-                // }
+                if let Some(observer_l) = self.observer.lock() {
+                    if policy_a == BufferDropPolicy::NoSocketDrop {
+                        observer_l.no_socket_drop();
+                    } else {
+                        observer_l.write_drop();
+                    }
+                }
+                if let Some(callback_a) = callback_a {
+                    callback_a(ErrorCode::no_buffer_space(), 0);
+                }
             }
+        } else if let Some(callback_a) = callback_a {
+            self.io_ctx.post(Box::new(|| {
+                callback_a(ErrorCode::not_supported(), 0);
+            }));
         }
-        // else if (callback_a)
-        // {
-        // 	get_io_ctx ()->post ([callback_a] () {
-        // 		callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
-        // 	});
-        // }
-        todo!()
     }
 }
 

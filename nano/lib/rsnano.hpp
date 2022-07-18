@@ -13,6 +13,8 @@ namespace rsnano
 {
 static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
 
+static const uint8_t GENERIC = 0;
+
 static const uintptr_t ConfirmAck_HASHES_MAX = 12;
 
 static const uintptr_t FrontierReq_ONLY_CONFIRMED = 1;
@@ -464,6 +466,9 @@ using BootstrapServerTimeoutCallback = void (*) (void *, uintptr_t);
 
 using BufferSizeCallback = uintptr_t (*) (void *);
 
+/// clones a `weak_ptr<channel_tcp_observer> *`
+using ChannelTcpObserverWeakCloneCallback = void * (*)(void *);
+
 using ChannelTcpObserverDataSentCallback = void (*) (void *, const EndpointDto *);
 
 using ChannelTcpObserverCallback = void (*) (void *);
@@ -526,7 +531,7 @@ using AsyncReadCallback = void (*) (void *, void *, uintptr_t, AsyncReadCallback
 
 using AsyncRead2Callback = void (*) (void *, BufferHandle *, uintptr_t, AsyncReadCallbackHandle *);
 
-using AsyncWriteCallback = void (*) (void *, void *, AsyncWriteCallbackHandle *);
+using AsyncWriteCallback = void (*) (void *, const uint8_t *, uintptr_t, AsyncWriteCallbackHandle *);
 
 using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
 
@@ -578,6 +583,8 @@ struct ChangeBlockDto2
 	uint8_t pub_key[32];
 	uint64_t work;
 };
+
+using ChannelTcpSendBufferCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
 
 struct OpenclConfigDto
 {
@@ -1053,6 +1060,8 @@ void rsn_callback_buffer_destroy (DestroyCallback f);
 
 void rsn_callback_buffer_size (BufferSizeCallback f);
 
+void rsn_callback_channel_tcp_observer_clone_weak (ChannelTcpObserverWeakCloneCallback f);
+
 void rsn_callback_channel_tcp_observer_data_sent (ChannelTcpObserverDataSentCallback f);
 
 void rsn_callback_channel_tcp_observer_destroy (DestroyCallback f);
@@ -1114,8 +1123,6 @@ void rsn_callback_read_u8 (ReadU8Callback f);
 void rsn_callback_request_response_visitor_factory_create (RequestResponseVisitorFactoryCreateCallback f);
 
 void rsn_callback_request_response_visitor_factory_destroy (DestroyCallback f);
-
-void rsn_callback_shared_const_buffer_destroy (DestroyCallback f);
 
 void rsn_callback_string_chars (StringCharsCallback f);
 
@@ -1230,6 +1237,14 @@ void rsn_channel_tcp_network_set_version (ChannelHandle * handle, uint8_t versio
 uint8_t rsn_channel_tcp_network_version (ChannelHandle * handle);
 
 void * rsn_channel_tcp_observer (ChannelHandle * handle);
+
+void rsn_channel_tcp_send_buffer (ChannelHandle * handle,
+const uint8_t * buffer,
+uintptr_t buffer_len,
+ChannelTcpSendBufferCallback callback,
+DestroyCallback delete_callback,
+void * callback_context,
+uint8_t policy);
 
 void rsn_channel_tcp_set_endpoint (ChannelHandle * handle);
 
@@ -1786,7 +1801,8 @@ SocketDestroyContext destroy_context,
 void * context);
 
 void rsn_socket_async_write (SocketHandle * handle,
-void * buffer,
+const uint8_t * buffer,
+uintptr_t buffer_len,
 SocketReadCallback callback,
 SocketDestroyContext destroy_context,
 void * context);

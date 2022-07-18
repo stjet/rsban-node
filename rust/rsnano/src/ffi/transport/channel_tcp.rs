@@ -1,3 +1,5 @@
+use num::FromPrimitive;
+
 use super::{
     channel::{as_tcp_channel, ChannelHandle, ChannelType},
     socket::SocketHandle,
@@ -6,9 +8,11 @@ use super::{
 use crate::{
     ffi::{
         io_context::FfiIoContext, messages::MessageHandle, BandwidthLimiterHandle, DestroyCallback,
+        ErrorCodeDto,
     },
     messages::Message,
-    transport::{ChannelTcp, ChannelTcpObserver, TcpChannelData},
+    transport::{BufferDropPolicy, ChannelTcp, ChannelTcpObserver, TcpChannelData},
+    utils::ErrorCode,
 };
 use std::{
     ffi::c_void,
@@ -64,6 +68,65 @@ pub unsafe extern "C" fn rsn_channel_tcp_endpoint(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_set_endpoint(handle: *mut ChannelHandle) {
     as_tcp_channel(handle).set_endpoint();
+}
+
+pub type ChannelTcpSendBufferCallback =
+    unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
+
+pub struct SendBufferCallbackWrapper {
+    callback: ChannelTcpSendBufferCallback,
+    /// `std::function<error_code const&, size_t>*`
+    context: *mut c_void,
+    delete_callback: DestroyCallback,
+}
+
+impl SendBufferCallbackWrapper {
+    pub fn new(
+        callback: ChannelTcpSendBufferCallback,
+        context: *mut c_void,
+        delete_callback: DestroyCallback,
+    ) -> Self {
+        Self {
+            callback,
+            context,
+            delete_callback,
+        }
+    }
+
+    pub fn call(&self, ec: ErrorCode, size: usize) {
+        let ec_dto = ErrorCodeDto::from(&ec);
+        unsafe {
+            (self.callback)(self.context, &ec_dto, size);
+        }
+    }
+}
+
+impl Drop for SendBufferCallbackWrapper {
+    fn drop(&mut self) {
+        unsafe {
+            (self.delete_callback)(self.context);
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_send_buffer(
+    handle: *mut ChannelHandle,
+    buffer: *const u8,
+    buffer_len: usize,
+    callback: ChannelTcpSendBufferCallback,
+    delete_callback: DestroyCallback,
+    callback_context: *mut c_void,
+    policy: u8,
+) {
+    let buffer = Arc::new(std::slice::from_raw_parts(buffer, buffer_len).to_vec());
+    let callback_wrapper =
+        SendBufferCallbackWrapper::new(callback, callback_context, delete_callback);
+    let cb = Box::new(move |ec, size| {
+        callback_wrapper.call(ec, size);
+    });
+    let policy = BufferDropPolicy::from_u8(policy).unwrap();
+    as_tcp_channel(handle).send_buffer(&buffer, Some(cb), policy);
 }
 
 #[no_mangle]
@@ -266,6 +329,14 @@ impl Drop for ChannelTcpObserverWeakPtr {
     }
 }
 
+impl Clone for ChannelTcpObserverWeakPtr {
+    fn clone(&self) -> Self {
+        Self {
+            handle: unsafe { CLONE_WEAK_PTR.expect("CLONE_WEAK_PTR missing")(self.handle) },
+        }
+    }
+}
+
 /// input is a `weak_ptr<channel_tcp_observer> *`
 /// output is a `shared_ptr<channel_tcp_observer> *` or `nullptr`
 pub type ChannelTcpObserverLockWeakCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
@@ -283,4 +354,15 @@ static mut DROP_WEAK_PTR: Option<DestroyCallback> = None;
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_channel_tcp_observer_drop_weak(f: DestroyCallback) {
     DROP_WEAK_PTR = Some(f);
+}
+
+/// clones a `weak_ptr<channel_tcp_observer> *`
+pub type ChannelTcpObserverWeakCloneCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
+static mut CLONE_WEAK_PTR: Option<ChannelTcpObserverWeakCloneCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_channel_tcp_observer_clone_weak(
+    f: ChannelTcpObserverWeakCloneCallback,
+) {
+    CLONE_WEAK_PTR = Some(f);
 }

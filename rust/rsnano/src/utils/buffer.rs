@@ -1,4 +1,5 @@
 use std::{
+    ffi::c_void,
     ops::Deref,
     sync::{Arc, Mutex},
 };
@@ -38,4 +39,12 @@ pub unsafe extern "C" fn rsn_buffer_data(handle: *mut BufferHandle) -> *mut u8 {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_buffer_len(handle: *mut BufferHandle) -> usize {
     (*handle).0.lock().unwrap().len()
+}
+
+pub trait BufferWrapper {
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+    fn handle(&self) -> *mut c_void;
 }

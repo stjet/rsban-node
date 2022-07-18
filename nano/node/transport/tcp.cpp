@@ -112,22 +112,6 @@ void nano::transport::channel_tcp::set_endpoint ()
 	rsnano::rsn_channel_tcp_set_endpoint (handle);
 }
 
-std::shared_ptr<nano::transport::channel_tcp_observer> nano::transport::channel_tcp::get_observer () const
-{
-	auto observer_handle = rsnano::rsn_channel_tcp_observer (handle);
-	auto weak = static_cast<std::weak_ptr<nano::transport::channel_tcp_observer> *> (observer_handle);
-	return weak->lock ();
-}
-nano::bandwidth_limiter nano::transport::channel_tcp::get_limiter () const
-{
-	return nano::bandwidth_limiter{ rsnano::rsn_channel_tcp_limiter (handle) };
-}
-
-boost::asio::io_context * nano::transport::channel_tcp::get_io_ctx () const
-{
-	return static_cast<boost::asio::io_context *> (rsnano::rsn_channel_tcp_io_ctx (handle));
-}
-
 nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
 	node{ node },
 	sink{ std::move (sink) },

@@ -130,18 +130,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_send_buffer(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_limiter(
-    handle: *mut ChannelHandle,
-) -> *mut BandwidthLimiterHandle {
-    BandwidthLimiterHandle::new(Arc::clone(&as_tcp_channel(handle).limiter))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_io_ctx(handle: *mut ChannelHandle) -> *mut c_void {
-    as_tcp_channel(handle).io_ctx.raw_handle()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_socket(handle: *mut ChannelHandle) -> *mut SocketHandle {
     let tcp = as_tcp_channel(handle);
     match tcp.socket() {
@@ -163,12 +151,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_network_set_version(
 ) {
     let tcp = as_tcp_channel(handle);
     tcp.set_network_version(version)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_observer(handle: *mut ChannelHandle) -> *mut c_void {
-    let tcp = as_tcp_channel(handle);
-    tcp.observer.handle
 }
 
 #[no_mangle]

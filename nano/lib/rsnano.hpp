@@ -1230,10 +1230,6 @@ void rsn_channel_tcp_endpoint (ChannelHandle * handle, EndpointDto * endpoint);
 
 bool rsn_channel_tcp_eq (ChannelHandle * a, ChannelHandle * b);
 
-void * rsn_channel_tcp_io_ctx (ChannelHandle * handle);
-
-BandwidthLimiterHandle * rsn_channel_tcp_limiter (ChannelHandle * handle);
-
 TcpChannelLockHandle * rsn_channel_tcp_lock (ChannelHandle * handle);
 
 bool rsn_channel_tcp_max (ChannelHandle * handle);
@@ -1241,8 +1237,6 @@ bool rsn_channel_tcp_max (ChannelHandle * handle);
 void rsn_channel_tcp_network_set_version (ChannelHandle * handle, uint8_t version);
 
 uint8_t rsn_channel_tcp_network_version (ChannelHandle * handle);
-
-void * rsn_channel_tcp_observer (ChannelHandle * handle);
 
 void rsn_channel_tcp_send (ChannelHandle * handle,
 MessageHandle * msg,

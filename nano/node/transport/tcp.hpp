@@ -73,11 +73,6 @@ namespace transport
 		}
 
 		bool max () override;
-
-	private:
-		[[nodiscard]] std::shared_ptr<nano::transport::channel_tcp_observer> get_observer () const;
-		[[nodiscard]] nano::bandwidth_limiter get_limiter () const;
-		[[nodiscard]] boost::asio::io_context * get_io_ctx () const;
 	};
 	class tcp_channels final : public nano::transport::channel_tcp_observer
 	{

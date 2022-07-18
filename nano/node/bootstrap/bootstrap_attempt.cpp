@@ -150,3 +150,7 @@ bool nano::bootstrap_attempt::process_block (std::shared_ptr<nano::block> const 
 {
 	return rsnano::rsn_bootstrap_attempt_process_block (handle, block_a->get_handle (), known_account_a.bytes.data (), pull_blocks_processed, max_blocks, block_expected, retry_limit);
 }
+
+void nano::bootstrap_attempt::block_processed (nano::transaction const & tx, nano::process_return const & result, nano::block const & block)
+{
+}

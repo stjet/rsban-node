@@ -370,6 +370,9 @@ nano::process_return nano::block_processor::process_one (nano::write_transaction
 	auto block (info_a.get_block ());
 	auto hash (block->hash ());
 	result = ledger.process (transaction_a, *block, info_a.get_verified ());
+	events_a.events.emplace_back ([this, result, block = info_a.get_block ()] (nano::transaction const & tx) {
+		processed.notify (tx, result, *block);
+	});
 	switch (result.code)
 	{
 		case nano::process_result::progress:

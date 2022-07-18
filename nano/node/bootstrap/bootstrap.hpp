@@ -99,6 +99,7 @@ public:
 	void run_bootstrap ();
 	void lazy_requeue (nano::block_hash const &, nano::block_hash const &);
 	bool in_progress ();
+	void block_processed (nano::transaction const & tx, nano::process_return const & result, nano::block const & block);
 	std::shared_ptr<nano::bootstrap_connections> connections;
 	std::shared_ptr<nano::bootstrap_attempt> new_attempt ();
 	bool has_new_attempts ();

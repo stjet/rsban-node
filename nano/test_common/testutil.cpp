@@ -21,7 +21,7 @@ void nano::wait_peer_connections (nano::system & system_a)
 			peer_count = std::accumulate (system_a.nodes.cbegin (), system_a.nodes.cend (), std::size_t{ 0 }, [in_memory] (auto total, auto const & node) {
 				if (in_memory)
 				{
-					return total += node->network.size ();
+					return total += node->network->size ();
 				}
 				else
 				{

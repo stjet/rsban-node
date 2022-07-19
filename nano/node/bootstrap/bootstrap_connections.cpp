@@ -147,7 +147,7 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::connection 
 void nano::bootstrap_connections::pool_connection (std::shared_ptr<nano::bootstrap_client> const & client_a, bool new_client, bool push_front)
 {
 	nano::unique_lock<nano::mutex> lock (mutex);
-	if (!stopped && !client_a->pending_stop && !node.network.excluded_peers.check (client_a->get_tcp_endpoint ()))
+	if (!stopped && !client_a->pending_stop && !node.network->excluded_peers.check (client_a->get_tcp_endpoint ()))
 	{
 		client_a->set_timeout (node.network_params.network.idle_timeout);
 		// Push into idle deque
@@ -209,7 +209,7 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 			{
 				this_l->node.logger->try_log (boost::str (boost::format ("Connection established to %1%") % endpoint_a));
 			}
-			auto client (std::make_shared<nano::bootstrap_client> (this_l, std::make_shared<nano::transport::channel_tcp> (*this_l->node.shared (), socket, this_l->node.network.tcp_channels), socket));
+			auto client (std::make_shared<nano::bootstrap_client> (this_l, std::make_shared<nano::transport::channel_tcp> (*this_l->node.shared (), socket, this_l->node.network->tcp_channels), socket));
 			this_l->connections_count++;
 			this_l->pool_connection (client, true, push_front);
 		}
@@ -339,8 +339,8 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 		// Not many peers respond, need to try to make more connections than we need.
 		for (auto i = 0u; i < delta; i++)
 		{
-			auto endpoint (node.network.bootstrap_peer (true));
-			if (endpoint != nano::tcp_endpoint (boost::asio::ip::address_v6::any (), 0) && (node.flags.allow_bootstrap_peers_duplicates () || endpoints.find (endpoint) == endpoints.end ()) && !node.network.excluded_peers.check (endpoint))
+			auto endpoint (node.network->bootstrap_peer (true));
+			if (endpoint != nano::tcp_endpoint (boost::asio::ip::address_v6::any (), 0) && (node.flags.allow_bootstrap_peers_duplicates () || endpoints.find (endpoint) == endpoints.end ()) && !node.network->excluded_peers.check (endpoint))
 			{
 				connect_client (endpoint);
 				endpoints.insert (endpoint);

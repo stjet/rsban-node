@@ -148,7 +148,7 @@ std::vector<std::shared_ptr<nano::transport::channel>> nano::rep_crawler::get_cr
 	required_peer_count += required_peer_count / 2;
 
 	// The rest of the endpoints are picked randomly
-	auto random_peers (node.network.random_set (required_peer_count, 0, true)); // Include channels with ephemeral remote ports
+	auto random_peers (node.network->random_set (required_peer_count, 0, true)); // Include channels with ephemeral remote ports
 	std::vector<std::shared_ptr<nano::transport::channel>> result;
 	result.insert (result.end (), random_peers.begin (), random_peers.end ());
 	return result;
@@ -178,7 +178,7 @@ void nano::rep_crawler::query (std::vector<std::shared_ptr<nano::transport::chan
 	{
 		debug_assert (*i != nullptr);
 		on_rep_request (*i);
-		node.network.send_confirm_req (*i, hash_root);
+		node.network->send_confirm_req (*i, hash_root);
 	}
 
 	// A representative must respond with a vote within the deadline
@@ -310,7 +310,7 @@ void nano::rep_crawler::cleanup_reps ()
 		bool equal (false);
 		if (i->get_type () == nano::transport::transport_type::tcp)
 		{
-			auto find_channel (node.network.tcp_channels->find_channel (i->get_tcp_endpoint ()));
+			auto find_channel (node.network->tcp_channels->find_channel (i->get_tcp_endpoint ()));
 			if (find_channel != nullptr && *find_channel == *static_cast<nano::transport::channel_tcp *> (i.get ()))
 			{
 				equal = true;
@@ -318,7 +318,7 @@ void nano::rep_crawler::cleanup_reps ()
 		}
 		else if (i->get_type () == nano::transport::transport_type::udp)
 		{
-			auto find_channel (node.network.udp_channels.channel (i->get_endpoint ()));
+			auto find_channel (node.network->udp_channels.channel (i->get_endpoint ()));
 			if (find_channel != nullptr && *find_channel == *static_cast<nano::transport::channel_udp *> (i.get ()))
 			{
 				equal = true;

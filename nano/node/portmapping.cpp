@@ -100,7 +100,7 @@ void nano::port_mapping::refresh_mapping ()
 	if (on)
 	{
 		nano::lock_guard<nano::mutex> guard_l (mutex);
-		auto node_port_l (std::to_string (node.network.endpoint ().port ()));
+		auto node_port_l (std::to_string (node.network->endpoint ().port ()));
 		auto config_port_l (get_config_port (node_port_l));
 
 		// We don't map the RPC port because, unless RPC authentication was added, this would almost always be a security risk
@@ -131,7 +131,7 @@ bool nano::port_mapping::check_lost_or_old_mapping ()
 	debug_assert (!node.network_params.network.is_dev_network ());
 	bool result_l (false);
 	nano::lock_guard<nano::mutex> guard_l (mutex);
-	auto node_port_l (std::to_string (node.network.endpoint ().port ()));
+	auto node_port_l (std::to_string (node.network->endpoint ().port ()));
 	auto config_port_l (get_config_port (node_port_l));
 	for (auto & protocol : protocols | boost::adaptors::filtered ([] (auto const & p) { return p.enabled; }))
 	{

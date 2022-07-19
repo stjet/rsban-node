@@ -17,17 +17,17 @@ TEST (confirmation_solicitor, batches)
 	auto & node1 = *system.add_node (node_flags);
 	node_flags.set_disable_request_loop (true);
 	auto & node2 = *system.add_node (node_flags);
-	auto channel1 (node2.network.udp_channels.create (node1.network.endpoint ()));
+	auto channel1 (node2.network->udp_channels.create (node1.network->endpoint ()));
 	// Solicitor will only solicit from this representative
 	nano::representative representative (nano::dev::genesis_key.pub, nano::dev::constants.genesis_amount, channel1);
 	std::vector<nano::representative> representatives{ representative };
-	nano::confirmation_solicitor solicitor (node2.network, *node2.config);
+	nano::confirmation_solicitor solicitor (*node2.network, *node2.config);
 	solicitor.prepare (representatives);
 	// Ensure the representatives are correct
 	ASSERT_EQ (1, representatives.size ());
 	ASSERT_EQ (channel1, representatives.front ().channel);
 	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().account);
-	ASSERT_TIMELY (3s, node2.network.size () == 1);
+	ASSERT_TIMELY (3s, node2.network->size () == 1);
 	nano::block_builder builder;
 	auto send = builder
 				.send ()
@@ -68,17 +68,17 @@ TEST (confirmation_solicitor, different_hash)
 	node_flags.set_disable_udp (false);
 	auto & node1 = *system.add_node (node_flags);
 	auto & node2 = *system.add_node (node_flags);
-	auto channel1 (node2.network.udp_channels.create (node1.network.endpoint ()));
+	auto channel1 (node2.network->udp_channels.create (node1.network->endpoint ()));
 	// Solicitor will only solicit from this representative
 	nano::representative representative (nano::dev::genesis_key.pub, nano::dev::constants.genesis_amount, channel1);
 	std::vector<nano::representative> representatives{ representative };
-	nano::confirmation_solicitor solicitor (node2.network, *node2.config);
+	nano::confirmation_solicitor solicitor (*node2.network, *node2.config);
 	solicitor.prepare (representatives);
 	// Ensure the representatives are correct
 	ASSERT_EQ (1, representatives.size ());
 	ASSERT_EQ (channel1, representatives.front ().channel);
 	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().account);
-	ASSERT_TIMELY (3s, node2.network.size () == 1);
+	ASSERT_TIMELY (3s, node2.network->size () == 1);
 	nano::block_builder builder;
 	auto send = builder
 				.send ()
@@ -110,19 +110,19 @@ TEST (confirmation_solicitor, bypass_max_requests_cap)
 	node_flags.set_disable_udp (false);
 	auto & node1 = *system.add_node (node_flags);
 	auto & node2 = *system.add_node (node_flags);
-	nano::confirmation_solicitor solicitor (node2.network, *node2.config);
+	nano::confirmation_solicitor solicitor (*node2.network, *node2.config);
 	std::vector<nano::representative> representatives;
 	auto max_representatives = std::max<size_t> (solicitor.max_election_requests, solicitor.max_election_broadcasts);
 	representatives.reserve (max_representatives + 1);
 	for (auto i (0); i < max_representatives + 1; ++i)
 	{
-		auto channel (node2.network.udp_channels.create (node1.network.endpoint ()));
+		auto channel (node2.network->udp_channels.create (node1.network->endpoint ()));
 		nano::representative representative (nano::account (i), i, channel);
 		representatives.push_back (representative);
 	}
 	ASSERT_EQ (max_representatives + 1, representatives.size ());
 	solicitor.prepare (representatives);
-	ASSERT_TIMELY (3s, node2.network.size () == 1);
+	ASSERT_TIMELY (3s, node2.network->size () == 1);
 	nano::block_builder builder;
 	auto send = builder
 				.send ()

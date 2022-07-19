@@ -419,7 +419,7 @@ bool nano::election::publish (std::shared_ptr<nano::block> const & block_a)
 		if (!replace_by_weight (lock, block_a->hash ()))
 		{
 			result = true;
-			node.network.publish_filter->clear (block_a);
+			node.network->publish_filter->clear (block_a);
 		}
 		debug_assert (lock.owns_lock ());
 	}
@@ -437,7 +437,7 @@ bool nano::election::publish (std::shared_ptr<nano::block> const & block_a)
 			if (status.winner->hash () == block_a->hash ())
 			{
 				status.winner = block_a;
-				node.network.flood_block (block_a, nano::buffer_drop_policy::no_limiter_drop);
+				node.network->flood_block (block_a, nano::buffer_drop_policy::no_limiter_drop);
 			}
 		}
 	}
@@ -555,7 +555,7 @@ void nano::election::remove_block (nano::block_hash const & hash_a)
 					++i;
 				}
 			}
-			node.network.publish_filter->clear (existing->second);
+			node.network->publish_filter->clear (existing->second);
 			last_blocks.erase (hash_a);
 		}
 	}

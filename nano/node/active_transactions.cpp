@@ -22,8 +22,8 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	scheduler{ node_a.scheduler }, // Move dependencies requiring this circular reference
 	confirmation_height_processor{ confirmation_height_processor_a },
 	node{ node_a },
-	generator{ *node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, node_a.network, *node_a.stats, false },
-	final_generator{ *node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, node_a.network, *node_a.stats, true },
+	generator{ *node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, *node_a.network, *node_a.stats, false },
+	final_generator{ *node_a.config, node_a.ledger, node_a.wallets, node_a.vote_processor, node_a.history, *node_a.network, *node_a.stats, true },
 	election_time_to_live{ node_a.network_params.network.is_dev_network () ? 0s : 2s },
 	thread ([this] () {
 		nano::thread_role::set (nano::thread_role::name::request_loop);
@@ -296,7 +296,7 @@ void nano::active_transactions::request_confirm (nano::unique_lock<nano::mutex> 
 
 	lock_a.unlock ();
 
-	nano::confirmation_solicitor solicitor (node.network, *node.config);
+	nano::confirmation_solicitor solicitor (*node.network, *node.config);
 	solicitor.prepare (node.rep_crawler.principal_representatives (std::numeric_limits<std::size_t>::max ()));
 	nano::vote_generator_session generator_session (generator);
 	nano::vote_generator_session final_generator_session (generator);
@@ -397,7 +397,7 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 		if (!election->confirmed ())
 		{
 			// Clear from publish filter
-			node.network.publish_filter->clear (block);
+			node.network->publish_filter->clear (block);
 		}
 	}
 
@@ -936,7 +936,7 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 			auto const reps (node.wallets.reps ());
 			if (!reps.have_half_rep () && !reps.exists (vote_a->account ()))
 			{
-				node.network.flood_vote (vote_a, 0.5f);
+				node.network->flood_vote (vote_a, 0.5f);
 			}
 		}
 		result = replay ? nano::vote_code::replay : nano::vote_code::vote;

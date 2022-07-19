@@ -35,84 +35,89 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 	{
 		port = udp_channels.get_local_endpoint ().port ();
 	}
+}
 
+nano::network::~network ()
+{
+	stop ();
+}
+
+void nano::network::start_threads ()
+{
 	boost::thread::attributes attrs;
 	nano::thread_attributes::set (attrs);
+	auto this_l = shared_from_this ();
 	// UDP
 	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_udp (); ++i)
 	{
-		packet_processing_threads.emplace_back (attrs, [this] () {
+		packet_processing_threads.emplace_back (attrs, [this_l] () {
 			nano::thread_role::set (nano::thread_role::name::packet_processing);
 			try
 			{
-				udp_channels.process_packets ();
+				this_l->udp_channels.process_packets ();
 			}
 			catch (boost::system::error_code & ec)
 			{
-				this->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
+				this_l->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
 				release_assert (false);
 			}
 			catch (std::error_code & ec)
 			{
-				this->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
+				this_l->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
 				release_assert (false);
 			}
 			catch (std::runtime_error & err)
 			{
-				this->node.logger->always_log (FATAL_LOG_PREFIX, err.what ());
+				this_l->node.logger->always_log (FATAL_LOG_PREFIX, err.what ());
 				release_assert (false);
 			}
 			catch (...)
 			{
-				this->node.logger->always_log (FATAL_LOG_PREFIX, "Unknown exception");
+				this_l->node.logger->always_log (FATAL_LOG_PREFIX, "Unknown exception");
 				release_assert (false);
 			}
-			if (this->node.config->logging.network_packet_logging ())
+			if (this_l->node.config->logging.network_packet_logging ())
 			{
-				this->node.logger->try_log ("Exiting UDP packet processing thread");
+				this_l->node.logger->try_log ("Exiting UDP packet processing thread");
 			}
 		});
 	}
 	// TCP
 	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_tcp_realtime (); ++i)
 	{
-		packet_processing_threads.emplace_back (attrs, [this] () {
+		auto this_l = shared_from_this ();
+		packet_processing_threads.emplace_back (attrs, [this_l] () {
 			nano::thread_role::set (nano::thread_role::name::packet_processing);
 			try
 			{
-				tcp_channels->process_messages ();
+				this_l->tcp_channels->process_messages ();
 			}
 			catch (boost::system::error_code & ec)
 			{
-				this->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
+				this_l->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
 				release_assert (false);
 			}
 			catch (std::error_code & ec)
 			{
-				this->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
+				this_l->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
 				release_assert (false);
 			}
 			catch (std::runtime_error & err)
 			{
-				this->node.logger->always_log (FATAL_LOG_PREFIX, err.what ());
+				this_l->node.logger->always_log (FATAL_LOG_PREFIX, err.what ());
 				release_assert (false);
 			}
 			catch (...)
 			{
-				this->node.logger->always_log (FATAL_LOG_PREFIX, "Unknown exception");
+				this_l->node.logger->always_log (FATAL_LOG_PREFIX, "Unknown exception");
 				release_assert (false);
 			}
-			if (this->node.config->logging.network_packet_logging ())
+			if (this_l->node.config->logging.network_packet_logging ())
 			{
-				this->node.logger->try_log ("Exiting TCP packet processing thread");
+				this_l->node.logger->try_log ("Exiting TCP packet processing thread");
 			}
 		});
 	}
-}
-
-nano::network::~network ()
-{
-	stop ();
 }
 
 void nano::network::start ()
@@ -261,7 +266,7 @@ void nano::network::flood_block_many (std::deque<std::shared_ptr<nano::block>> b
 			node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_a + std::rand () % delay_a), [node_w, blocks (std::move (blocks_a)), callback_a, delay_a] () {
 				if (auto node_l = node_w.lock ())
 				{
-					node_l->network.flood_block_many (std::move (blocks), callback_a, delay_a);
+					node_l->network->flood_block_many (std::move (blocks), callback_a, delay_a);
 				}
 			});
 		}
@@ -285,7 +290,7 @@ void nano::network::broadcast_confirm_req (std::shared_ptr<nano::block> const & 
 	if (list->empty () || node.rep_crawler.total_weight () < node.online_reps.delta ())
 	{
 		// broadcast request to all peers (with max limit 2 * sqrt (peers count))
-		auto peers (node.network.list (std::min<std::size_t> (100, node.network.fanout (2.0))));
+		auto peers (node.network->list (std::min<std::size_t> (100, node.network->fanout (2.0))));
 		list->clear ();
 		list->insert (list->end (), peers.begin (), peers.end ());
 	}
@@ -330,7 +335,7 @@ void nano::network::broadcast_confirm_req_base (std::shared_ptr<nano::block> con
 		node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_a), [node_w, block_a, endpoints_a, delay_a] () {
 			if (auto node_l = node_w.lock ())
 			{
-				node_l->network.broadcast_confirm_req_base (block_a, endpoints_a, delay_a, true);
+				node_l->network->broadcast_confirm_req_base (block_a, endpoints_a, delay_a, true);
 			}
 		});
 	}
@@ -370,7 +375,7 @@ void nano::network::broadcast_confirm_req_batched_many (std::unordered_map<std::
 		node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_a), [node_w, request_bundle_a, callback_a, delay_a] () {
 			if (auto node_l = node_w.lock ())
 			{
-				node_l->network.broadcast_confirm_req_batched_many (request_bundle_a, callback_a, delay_a, true);
+				node_l->network->broadcast_confirm_req_batched_many (request_bundle_a, callback_a, delay_a, true);
 			}
 		});
 	}
@@ -399,7 +404,7 @@ void nano::network::broadcast_confirm_req_many (std::deque<std::pair<std::shared
 		node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_a + std::rand () % delay_a), [node_w, requests_a, callback_a, delay_a] () {
 			if (auto node_l = node_w.lock ())
 			{
-				node_l->network.broadcast_confirm_req_many (requests_a, callback_a, delay_a);
+				node_l->network->broadcast_confirm_req_many (requests_a, callback_a, delay_a);
 			}
 		});
 	}
@@ -426,13 +431,13 @@ public:
 			node.logger->try_log (boost::str (boost::format ("Received keepalive message from %1%") % channel->to_string ()));
 		}
 		node.stats->inc (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in);
-		node.network.merge_peers (message_a.get_peers ());
+		node.network->merge_peers (message_a.get_peers ());
 		// Check for special node port data
 		auto peer0 (message_a.get_peers ()[0]);
 		if (peer0.address () == boost::asio::ip::address_v6{} && peer0.port () != 0)
 		{
 			nano::endpoint new_endpoint (channel->get_tcp_endpoint ().address (), peer0.port ());
-			node.network.merge_peer (new_endpoint);
+			node.network->merge_peer (new_endpoint);
 		}
 	}
 	void publish (nano::publish const & message_a) override
@@ -449,7 +454,7 @@ public:
 		}
 		else
 		{
-			node.network.publish_filter->clear (message_a.get_digest ());
+			node.network->publish_filter->clear (message_a.get_digest ());
 			node.stats->inc (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::in);
 		}
 	}
@@ -525,7 +530,7 @@ public:
 		nano::telemetry_ack telemetry_ack{ node.network_params.network };
 		if (!node.flags.disable_providing_telemetry_metrics ())
 		{
-			auto telemetry_data = nano::local_telemetry_data (node.ledger, node.network, node.unchecked, node.config->bandwidth_limit, node.network_params, node.startup_time, node.default_difficulty (nano::work_version::work_1), node.node_id);
+			auto telemetry_data = nano::local_telemetry_data (node.ledger, *node.network, node.unchecked, node.config->bandwidth_limit, node.network_params, node.startup_time, node.default_difficulty (nano::work_version::work_1), node.node_id);
 			telemetry_ack = nano::telemetry_ack{ node.network_params.network, telemetry_data };
 		}
 		channel->send (telemetry_ack, nullptr, nano::buffer_drop_policy::no_socket_drop);
@@ -567,7 +572,7 @@ void nano::network::merge_peer (nano::endpoint const & peer_a)
 	if (!reachout (peer_a, node.config->allow_local_peers))
 	{
 		std::weak_ptr<nano::node> node_w (node.shared ());
-		node.network.tcp_channels->start_tcp (peer_a);
+		node.network->tcp_channels->start_tcp (peer_a);
 	}
 }
 
@@ -742,7 +747,7 @@ void nano::network::cleanup (std::chrono::steady_clock::time_point const & cutof
 {
 	tcp_channels->purge (cutoff_a);
 	udp_channels.purge (cutoff_a);
-	if (node.network.empty ())
+	if (node.network->empty ())
 	{
 		disconnect_observer ();
 	}
@@ -755,7 +760,7 @@ void nano::network::ongoing_cleanup ()
 	node.workers->add_timed_task (std::chrono::steady_clock::now () + node.network_params.network.cleanup_period, [node_w] () {
 		if (auto node_l = node_w.lock ())
 		{
-			node_l->network.ongoing_cleanup ();
+			node_l->network->ongoing_cleanup ();
 		}
 	});
 }
@@ -767,7 +772,7 @@ void nano::network::ongoing_syn_cookie_cleanup ()
 	node.workers->add_timed_task (std::chrono::steady_clock::now () + (nano::transport::syn_cookie_cutoff * 2), [node_w] () {
 		if (auto node_l = node_w.lock ())
 		{
-			node_l->network.ongoing_syn_cookie_cleanup ();
+			node_l->network->ongoing_syn_cookie_cleanup ();
 		}
 	});
 }
@@ -780,7 +785,7 @@ void nano::network::ongoing_keepalive ()
 	node.workers->add_timed_task (std::chrono::steady_clock::now () + node.network_params.network.cleanup_period_half (), [node_w] () {
 		if (auto node_l = node_w.lock ())
 		{
-			node_l->network.ongoing_keepalive ();
+			node_l->network->ongoing_keepalive ();
 		}
 	});
 }

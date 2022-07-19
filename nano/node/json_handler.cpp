@@ -2978,7 +2978,7 @@ void nano::json_handler::peers ()
 {
 	boost::property_tree::ptree peers_l;
 	bool const peer_details = request.get<bool> ("peer_details", false);
-	auto peers_list (node.network.list (std::numeric_limits<std::size_t>::max ()));
+	auto peers_list (node.network->list (std::numeric_limits<std::size_t>::max ()));
 	std::sort (peers_list.begin (), peers_list.end (), [] (auto const & lhs, auto const & rhs) {
 		return lhs->get_endpoint () < rhs->get_endpoint ();
 	});
@@ -3676,7 +3676,7 @@ void nano::json_handler::republish ()
 				}
 				hash = node.store.block.successor (transaction, hash);
 			}
-			node.network.flood_block_many (std::move (republish_bundle), nullptr, 25);
+			node.network->flood_block_many (std::move (republish_bundle), nullptr, 25);
 			response_l.put ("success", ""); // obsolete
 			response_l.add_child ("blocks", blocks);
 		}
@@ -3977,10 +3977,10 @@ void nano::json_handler::telemetry ()
 				if (!nano::parse_address (*address_text, address))
 				{
 					nano::endpoint endpoint (address, port);
-					if (address.is_loopback () && port == rpc_l->node.network.endpoint ().port ())
+					if (address.is_loopback () && port == rpc_l->node.network->endpoint ().port ())
 					{
 						// Requesting telemetry metrics locally
-						auto telemetry_data = nano::local_telemetry_data (rpc_l->node.ledger, rpc_l->node.network, rpc_l->node.unchecked, rpc_l->node.config->bandwidth_limit, rpc_l->node.network_params, rpc_l->node.startup_time, rpc_l->node.default_difficulty (nano::work_version::work_1), rpc_l->node.node_id);
+						auto telemetry_data = nano::local_telemetry_data (rpc_l->node.ledger, *rpc_l->node.network, rpc_l->node.unchecked, rpc_l->node.config->bandwidth_limit, rpc_l->node.network_params, rpc_l->node.startup_time, rpc_l->node.default_difficulty (nano::work_version::work_1), rpc_l->node.node_id);
 
 						nano::jsonconfig config_l;
 						auto const should_ignore_identification_metrics = false;
@@ -3997,7 +3997,7 @@ void nano::json_handler::telemetry ()
 					}
 					else
 					{
-						channel = node.network.find_channel (nano::transport::map_endpoint_to_v6 (endpoint));
+						channel = node.network->find_channel (nano::transport::map_endpoint_to_v6 (endpoint));
 						if (!channel)
 						{
 							ec = nano::error_rpc::peer_not_found;
@@ -4944,7 +4944,7 @@ void nano::json_handler::wallet_republish ()
 				blocks.push_back (std::make_pair ("", entry));
 			}
 		}
-		node.network.flood_block_many (std::move (republish_bundle), nullptr, 25);
+		node.network->flood_block_many (std::move (republish_bundle), nullptr, 25);
 		response_l.add_child ("blocks", blocks);
 	}
 	response_errors ();

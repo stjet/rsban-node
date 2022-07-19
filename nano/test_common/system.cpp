@@ -52,27 +52,27 @@ std::shared_ptr<nano::node> nano::system::add_node (nano::node_config const & no
 		{
 			auto node1 (*i);
 			auto node2 (*j);
-			auto starting1 (node1->network.size ());
+			auto starting1 (node1->network->size ());
 			size_t starting_listener1 (node1->bootstrap->get_realtime_count ());
 			decltype (starting1) new1;
-			auto starting2 (node2->network.size ());
+			auto starting2 (node2->network->size ());
 			size_t starting_listener2 (node2->bootstrap->get_realtime_count ());
 			decltype (starting2) new2;
 			if (type_a == nano::transport::transport_type::tcp)
 			{
-				(*j)->network.merge_peer ((*i)->network.endpoint ());
+				(*j)->network->merge_peer ((*i)->network->endpoint ());
 			}
 			else
 			{
 				// UDP connection
-				auto channel (std::make_shared<nano::transport::channel_udp> ((*j)->network.udp_channels, (*i)->network.endpoint (), node1->network_params.network.protocol_version));
-				(*j)->network.send_keepalive (channel);
+				auto channel (std::make_shared<nano::transport::channel_udp> ((*j)->network->udp_channels, (*i)->network->endpoint (), node1->network_params.network.protocol_version));
+				(*j)->network->send_keepalive (channel);
 			}
 			do
 			{
 				poll ();
-				new1 = node1->network.size ();
-				new2 = node2->network.size ();
+				new1 = node1->network->size ();
+				new2 = node2->network->size ();
 			} while (new1 == starting1 || new2 == starting2);
 			if (type_a == nano::transport::transport_type::tcp && node_config_a.tcp_incoming_connections_max != 0 && !node_flags_a.disable_tcp_realtime ())
 			{

@@ -58,11 +58,11 @@ void nano::bootstrap_initiator::bootstrap (nano::endpoint const & endpoint_a, bo
 	{
 		if (!node.flags.disable_udp ())
 		{
-			node.network.udp_channels.insert (nano::transport::map_endpoint_to_v6 (endpoint_a), node.network_params.network.protocol_version);
+			node.network->udp_channels.insert (nano::transport::map_endpoint_to_v6 (endpoint_a), node.network_params.network.protocol_version);
 		}
 		else if (!node.flags.disable_tcp_realtime ())
 		{
-			node.network.merge_peer (nano::transport::map_endpoint_to_v6 (endpoint_a));
+			node.network->merge_peer (nano::transport::map_endpoint_to_v6 (endpoint_a));
 		}
 	}
 	if (!stopped)
@@ -73,7 +73,7 @@ void nano::bootstrap_initiator::bootstrap (nano::endpoint const & endpoint_a, bo
 		auto legacy_attempt (std::make_shared<nano::bootstrap_attempt_legacy> (node.shared (), attempts.incremental++, id_a, std::numeric_limits<uint32_t>::max (), 0));
 		attempts_list.push_back (legacy_attempt);
 		attempts.add (legacy_attempt);
-		if (!node.network.excluded_peers.check (nano::transport::map_endpoint_to_tcp (endpoint_a)))
+		if (!node.network->excluded_peers.check (nano::transport::map_endpoint_to_tcp (endpoint_a)))
 		{
 			connections->add_connection (endpoint_a);
 		}

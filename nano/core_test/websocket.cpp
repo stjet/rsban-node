@@ -158,8 +158,8 @@ TEST (websocket, started_election)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	nano::publish publish1{ nano::dev::network_params.network, send1 };
-	auto channel1 = node1->network.udp_channels.create (node1->network.endpoint ());
-	node1->network.inbound (publish1, channel1);
+	auto channel1 = node1->network->udp_channels.create (node1->network->endpoint ());
+	node1->network->inbound (publish1, channel1);
 	ASSERT_TIMELY (1s, node1->active.election (send1->qualified_root ()));
 	ASSERT_TIMELY (5s, future.wait_for (0s) == std::future_status::ready);
 
@@ -206,8 +206,8 @@ TEST (websocket, stopped_election)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	nano::publish publish1{ nano::dev::network_params.network, send1 };
-	auto channel1 (node1->network.udp_channels.create (node1->network.endpoint ()));
-	node1->network.inbound (publish1, channel1);
+	auto channel1 (node1->network->udp_channels.create (node1->network->endpoint ()));
+	node1->network->inbound (publish1, channel1);
 	node1->block_processor.flush ();
 	ASSERT_TIMELY (1s, node1->active.election (send1->qualified_root ()));
 	node1->active.erase (*send1);
@@ -1000,7 +1000,7 @@ TEST (websocket, telemetry)
 
 	ASSERT_TIMELY (10s, done);
 
-	node1->telemetry->get_metrics_single_peer_async (node1->network.find_channel (node2->network.endpoint ()), [] (auto const & response_a) {
+	node1->telemetry->get_metrics_single_peer_async (node1->network->find_channel (node2->network->endpoint ()), [] (auto const & response_a) {
 		ASSERT_FALSE (response_a.error);
 	});
 
@@ -1021,8 +1021,8 @@ TEST (websocket, telemetry)
 	telemetry_data.deserialize_json (telemetry_contents, false);
 	compare_default_telemetry_response_data (telemetry_data, node2->network_params, node2->config->bandwidth_limit, node2->default_difficulty (nano::work_version::work_1), node2->node_id);
 
-	ASSERT_EQ (contents.get<std::string> ("address"), node2->network.endpoint ().address ().to_string ());
-	ASSERT_EQ (contents.get<uint16_t> ("port"), node2->network.endpoint ().port ());
+	ASSERT_EQ (contents.get<std::string> ("address"), node2->network->endpoint ().address ().to_string ());
+	ASSERT_EQ (contents.get<uint16_t> ("port"), node2->network->endpoint ().port ());
 
 	// Other node should have no subscribers
 	EXPECT_EQ (0, node2->websocket_server->subscriber_count (nano::websocket::topic::telemetry));

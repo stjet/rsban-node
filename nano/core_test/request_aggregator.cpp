@@ -27,7 +27,7 @@ TEST (request_aggregator, one)
 				 .build_shared ();
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send1->hash (), send1->root ());
-	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
+	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
 	node.aggregator.add (channel, request);
 	ASSERT_EQ (1, node.aggregator.size ());
 	ASSERT_TIMELY (3s, node.aggregator.empty ());
@@ -95,7 +95,7 @@ TEST (request_aggregator, one_update)
 	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *receive1).code);
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send2->hash (), send2->root ());
-	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
+	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
 	node.aggregator.add (channel, request);
 	request.clear ();
 	request.emplace_back (receive1->hash (), receive1->root ());
@@ -161,7 +161,7 @@ TEST (request_aggregator, two)
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send2->hash (), send2->root ());
 	request.emplace_back (receive1->hash (), receive1->root ());
-	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
+	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
 	// Process both blocks
 	node.aggregator.add (channel, request);
 	ASSERT_EQ (1, node.aggregator.size ());
@@ -215,8 +215,8 @@ TEST (request_aggregator, two_endpoints)
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send1->hash (), send1->root ());
 	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (node1.store.tx_begin_write (), *send1).code);
-	auto channel1 (node1.network.udp_channels.create (node1.network.endpoint ()));
-	auto channel2 (node2.network.udp_channels.create (node2.network.endpoint ()));
+	auto channel1 (node1.network->udp_channels.create (node1.network->endpoint ()));
+	auto channel2 (node2.network->udp_channels.create (node2.network->endpoint ()));
 	ASSERT_NE (nano::transport::map_endpoint_to_v6 (channel1->get_endpoint ()), nano::transport::map_endpoint_to_v6 (channel2->get_endpoint ()));
 	// Use the aggregator from node1 only, making requests from both nodes
 	node1.aggregator.add (channel1, request);
@@ -271,7 +271,7 @@ TEST (request_aggregator, split)
 	election->force_confirm ();
 	ASSERT_TIMELY (5s, max_vbh + 2 == node.ledger.cache.cemented_count);
 	ASSERT_EQ (max_vbh + 1, request.size ());
-	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
+	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
 	node.aggregator.add (channel, request);
 	ASSERT_EQ (1, node.aggregator.size ());
 	// In the ledger but no vote generated yet
@@ -311,7 +311,7 @@ TEST (request_aggregator, channel_lifetime)
 	request.emplace_back (send1->hash (), send1->root ());
 	{
 		// The aggregator should extend the lifetime of the channel
-		auto channel (node.network.udp_channels.create (node.network.endpoint ()));
+		auto channel (node.network->udp_channels.create (node.network->endpoint ()));
 		node.aggregator.add (channel, request);
 	}
 	ASSERT_EQ (1, node.aggregator.size ());
@@ -341,10 +341,10 @@ TEST (request_aggregator, channel_update)
 	request.emplace_back (send1->hash (), send1->root ());
 	std::weak_ptr<nano::transport::channel> channel1_w;
 	{
-		auto channel1 (node.network.udp_channels.create (node.network.endpoint ()));
+		auto channel1 (node.network->udp_channels.create (node.network->endpoint ()));
 		channel1_w = channel1;
 		node.aggregator.add (channel1, request);
-		auto channel2 (node.network.udp_channels.create (node.network.endpoint ()));
+		auto channel2 (node.network->udp_channels.create (node.network->endpoint ()));
 		// The aggregator then hold channel2 and drop channel1
 		node.aggregator.add (channel2, request);
 	}
@@ -377,7 +377,7 @@ TEST (request_aggregator, channel_max_queue)
 	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send1).code);
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send1->hash (), send1->root ());
-	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
+	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
 	node.aggregator.add (channel, request);
 	node.aggregator.add (channel, request);
 	ASSERT_TIMELY (3s, 1 == node.stats->count (nano::stat::type::aggregator, nano::stat::detail::aggregator_dropped));
@@ -404,7 +404,7 @@ TEST (request_aggregator, unique)
 	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send1).code);
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send1->hash (), send1->root ());
-	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
+	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
 	node.aggregator.add (channel, request);
 	node.aggregator.add (channel, request);
 	node.aggregator.add (channel, request);
@@ -450,7 +450,7 @@ TEST (request_aggregator, cannot_vote)
 	request.emplace_back (send2->hash (), send2->root ());
 	// Incorrect hash, correct root
 	request.emplace_back (1, send2->root ());
-	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
+	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
 	node.aggregator.add (channel, request);
 	ASSERT_EQ (1, node.aggregator.size ());
 	ASSERT_TIMELY (3s, node.aggregator.empty ());

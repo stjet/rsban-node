@@ -36,21 +36,21 @@ extern std::size_t nano_bootstrap_weights_beta_size;
 void nano::node::keepalive (std::string const & address_a, uint16_t port_a)
 {
 	auto node_l (shared_from_this ());
-	network.resolver.async_resolve (boost::asio::ip::udp::resolver::query (address_a, std::to_string (port_a)), [node_l, address_a, port_a] (boost::system::error_code const & ec, boost::asio::ip::udp::resolver::iterator i_a) {
+	network->resolver.async_resolve (boost::asio::ip::udp::resolver::query (address_a, std::to_string (port_a)), [node_l, address_a, port_a] (boost::system::error_code const & ec, boost::asio::ip::udp::resolver::iterator i_a) {
 		if (!ec)
 		{
 			for (auto i (i_a), n (boost::asio::ip::udp::resolver::iterator{}); i != n; ++i)
 			{
 				auto endpoint (nano::transport::map_endpoint_to_v6 (i->endpoint ()));
 				std::weak_ptr<nano::node> node_w (node_l);
-				auto channel (node_l->network.find_channel (endpoint));
+				auto channel (node_l->network->find_channel (endpoint));
 				if (!channel)
 				{
-					node_l->network.tcp_channels->start_tcp (endpoint);
+					node_l->network->tcp_channels->start_tcp (endpoint);
 				}
 				else
 				{
-					node_l->network.send_keepalive (channel);
+					node_l->network->send_keepalive (channel);
 				}
 			}
 		}
@@ -130,8 +130,8 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	// empty `config.peering_port` means the user made no port choice at all;
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
 	//
-	network (*this, config_a.peering_port.has_value () ? *config_a.peering_port : 0),
-	telemetry (std::make_shared<nano::telemetry> (network, *workers, observers.telemetry, *stats, network_params, flags.disable_ongoing_telemetry_requests ())),
+	network{ std::make_shared<nano::network> (*this, config_a.peering_port.has_value () ? *config_a.peering_port : 0) },
+	telemetry (std::make_shared<nano::telemetry> (*network, *workers, observers.telemetry, *stats, network_params, flags.disable_ongoing_telemetry_requests ())),
 	bootstrap_initiator (*this),
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
 	//         a peering port and wants the OS to pick one, the picking happens when `network` gets initialized
@@ -140,7 +140,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	//         Thus, be very careful if you change the order: if `bootstrap` gets constructed before `network`,
 	//         the latter would inherit the port from the former (if TCP is active, otherwise `network` picks first)
 	//
-	bootstrap{ std::make_shared<nano::bootstrap_listener> (network.port, *this) },
+	bootstrap{ std::make_shared<nano::bootstrap_listener> (network->port, *this) },
 	application_path (application_path_a),
 	port_mapping (*this),
 	rep_crawler (*this),
@@ -158,6 +158,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	startup_time (std::chrono::steady_clock::now ()),
 	node_seq (seq)
 {
+	network->start_threads ();
 	unchecked.use_memory = [this] () { return ledger.bootstrap_weight_reached (); };
 	unchecked.satisfied = [this] (nano::unchecked_info const & info) {
 		this->block_processor.add (info);
@@ -178,11 +179,11 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		wallets.observer = [this] (bool active) {
 			observers.wallet.notify (active);
 		};
-		network.channel_observer = [this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
+		network->channel_observer = [this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
 			debug_assert (channel_a != nullptr);
 			observers.endpoint.notify (channel_a);
 		};
-		network.disconnect_observer = [this] () {
+		network->disconnect_observer = [this] () {
 			observers.disconnect.notify ();
 		};
 		if (!config->callback_address.empty ())
@@ -327,11 +328,11 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		observers.endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
 			if (channel_a->get_type () == nano::transport::transport_type::udp)
 			{
-				this->network.send_keepalive (channel_a);
+				this->network->send_keepalive (channel_a);
 			}
 			else
 			{
-				this->network.send_keepalive_self (channel_a);
+				this->network->send_keepalive_self (channel_a);
 			}
 		});
 		observers.vote.add ([this] (std::shared_ptr<nano::vote> vote_a, std::shared_ptr<nano::transport::channel> const & channel_a, nano::vote_code code_a) {
@@ -577,7 +578,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	composite->add_component (collect_container_info (node.active, "active"));
 	composite->add_component (collect_container_info (node.bootstrap_initiator, "bootstrap_initiator"));
 	composite->add_component (collect_container_info (*node.bootstrap, "bootstrap"));
-	composite->add_component (collect_container_info (node.network, "network"));
+	composite->add_component (collect_container_info (*node.network, "network"));
 	if (node.telemetry)
 	{
 		composite->add_component (collect_container_info (*node.telemetry, "telemetry"));
@@ -639,7 +640,7 @@ void nano::node::process_local_async (std::shared_ptr<nano::block> const & block
 void nano::node::start ()
 {
 	long_inactivity_cleanup ();
-	network.start ();
+	network->start ();
 	add_initial_peers ();
 	if (!flags.disable_legacy_bootstrap () && !flags.disable_ongoing_bootstrap ())
 	{
@@ -672,12 +673,12 @@ void nano::node::start ()
 		bootstrap->start ();
 		tcp_enabled = true;
 
-		if (flags.disable_udp () && network.port != bootstrap->port)
+		if (flags.disable_udp () && network->port != bootstrap->port)
 		{
-			network.port = bootstrap->port;
+			network->port = bootstrap->port;
 		}
 
-		logger->always_log (boost::str (boost::format ("Node started with peering port `%1%`.") % network.port));
+		logger->always_log (boost::str (boost::format ("Node started with peering port `%1%`.") % network->port));
 	}
 
 	if (!flags.disable_backup ())
@@ -725,7 +726,7 @@ void nano::node::stop ()
 		scheduler.stop ();
 		active.stop ();
 		confirmation_height_processor.stop ();
-		network.stop ();
+		network->stop ();
 		telemetry->stop ();
 		if (websocket_server)
 		{
@@ -852,7 +853,7 @@ void nano::node::ongoing_bootstrap ()
 	{
 		// Re-attempt bootstrapping more aggressively on startup
 		next_wakeup = std::chrono::seconds (5);
-		if (!bootstrap_initiator.in_progress () && !network.empty ())
+		if (!bootstrap_initiator.in_progress () && !network->empty ())
 		{
 			++warmed_up;
 		}
@@ -907,8 +908,8 @@ void nano::node::ongoing_bootstrap ()
 
 void nano::node::ongoing_peer_store ()
 {
-	const bool stored (network.tcp_channels->store_all (true));
-	network.udp_channels.store_all (!stored);
+	const bool stored (network->tcp_channels->store_all (true));
+	network->udp_channels.store_all (!stored);
 	std::weak_ptr<nano::node> node_w (shared_from_this ());
 	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.peer_dump_interval, [node_w] () {
 		if (auto node_l = node_w.lock ())
@@ -987,7 +988,7 @@ void nano::node::unchecked_cleanup ()
 		transaction, [this, &digests, &cleaning_list, &now] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 			if ((now - info.modified ()) > static_cast<uint64_t> (config->unchecked_cutoff_time.count ()))
 			{
-				digests.push_back (network.publish_filter->hash (info.get_block ()));
+				digests.push_back (network->publish_filter->hash (info.get_block ()));
 				cleaning_list.push_back (key);
 			} }, [iterations = 0, count = 1024 * 1024] () mutable { return iterations++ < count; });
 	}
@@ -1011,7 +1012,7 @@ void nano::node::unchecked_cleanup ()
 		}
 	}
 	// Delete from the duplicate filter
-	network.publish_filter->clear (digests);
+	network->publish_filter->clear (digests);
 }
 
 void nano::node::ongoing_unchecked_cleanup ()
@@ -1274,9 +1275,9 @@ void nano::node::add_initial_peers ()
 	for (auto i (store.peer.begin (transaction)), n (store.peer.end ()); i != n; ++i)
 	{
 		nano::endpoint endpoint (boost::asio::ip::address_v6 (i->first.address_bytes ()), i->first.port ());
-		if (!network.reachout (endpoint, config->allow_local_peers))
+		if (!network->reachout (endpoint, config->allow_local_peers))
 		{
-			network.tcp_channels->start_tcp (endpoint);
+			network->tcp_channels->start_tcp (endpoint);
 		}
 	}
 }
@@ -1507,7 +1508,7 @@ void nano::node::set_bandwidth_params (std::size_t limit, double ratio)
 {
 	config->bandwidth_limit_burst_ratio = ratio;
 	config->bandwidth_limit = limit;
-	network.set_bandwidth_params (limit, ratio);
+	network->set_bandwidth_params (limit, ratio);
 	logger->always_log (boost::str (boost::format ("set_bandwidth_params(%1%, %2%)") % limit % ratio));
 }
 

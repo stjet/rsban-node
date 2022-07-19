@@ -35,7 +35,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	history (node_a.history),
 	ledger (node_a.ledger),
 	flags (node_a.flags),
-	network (node_a.network),
+	network (*node_a.network),
 	active_transactions (node_a.active),
 	store (node_a.store),
 	stats (*node_a.stats),

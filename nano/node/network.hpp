@@ -115,12 +115,13 @@ private:
 	std::unordered_map<boost::asio::ip::address, unsigned> cookies_per_ip;
 	std::size_t max_cookies_per_ip;
 };
-class network final
+class network final : public std::enable_shared_from_this<network>
 {
 public:
 	network (nano::node &, uint16_t);
 	~network ();
 	nano::networks id;
+	void start_threads ();
 	void start ();
 	void stop ();
 	void flood_message (nano::message &, nano::buffer_drop_policy const = nano::buffer_drop_policy::limiter, float const = 1.0f);

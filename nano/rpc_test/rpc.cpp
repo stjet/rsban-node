@@ -1895,17 +1895,17 @@ TEST (rpc, keepalive)
 	auto const rpc_ctx = add_rpc (system, node0);
 	boost::property_tree::ptree request;
 	request.put ("action", "keepalive");
-	auto address (boost::str (boost::format ("%1%") % node1->network.endpoint ().address ()));
-	auto port (boost::str (boost::format ("%1%") % node1->network.endpoint ().port ()));
+	auto address (boost::str (boost::format ("%1%") % node1->network->endpoint ().address ()));
+	auto port (boost::str (boost::format ("%1%") % node1->network->endpoint ().port ()));
 	request.put ("address", address);
 	request.put ("port", port);
-	ASSERT_EQ (nullptr, node0->network.udp_channels.channel (node1->network.endpoint ()));
-	ASSERT_EQ (0, node0->network.size ());
+	ASSERT_EQ (nullptr, node0->network->udp_channels.channel (node1->network->endpoint ()));
+	ASSERT_EQ (0, node0->network->size ());
 	auto response (wait_response (system, rpc_ctx, request));
 	system.deadline_set (10s);
-	while (node0->network.find_channel (node1->network.endpoint ()) == nullptr)
+	while (node0->network->find_channel (node1->network->endpoint ()) == nullptr)
 	{
-		ASSERT_EQ (0, node0->network.size ());
+		ASSERT_EQ (0, node0->network->size ());
 		ASSERT_NO_ERROR (system.poll ());
 	}
 	node1->stop ();
@@ -1918,14 +1918,14 @@ TEST (rpc, peers)
 	auto port = nano::get_available_port ();
 	auto const node2 = system.add_node (nano::node_config (port, system.logging));
 	nano::endpoint endpoint (boost::asio::ip::make_address_v6 ("fc00::1"), 4000);
-	node->network.udp_channels.insert (endpoint, node->network_params.network.protocol_version);
+	node->network->udp_channels.insert (endpoint, node->network_params.network.protocol_version);
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "peers");
 	auto response (wait_response (system, rpc_ctx, request));
 	auto & peers_node (response.get_child ("peers"));
 	ASSERT_EQ (2, peers_node.size ());
-	ASSERT_EQ (std::to_string (node->network_params.network.protocol_version), peers_node.get<std::string> ((boost::format ("[::1]:%1%") % node2->network.endpoint ().port ()).str ()));
+	ASSERT_EQ (std::to_string (node->network_params.network.protocol_version), peers_node.get<std::string> ((boost::format ("[::1]:%1%") % node2->network->endpoint ().port ()).str ()));
 	// Previously "[::ffff:80.80.80.80]:4000", but IPv4 address cause "No such node thrown in the test body" issue with peers_node.get
 	std::stringstream endpoint_text;
 	endpoint_text << endpoint;
@@ -1939,7 +1939,7 @@ TEST (rpc, peers_node_id)
 	auto port = nano::get_available_port ();
 	auto const node2 = system.add_node (nano::node_config (port, system.logging));
 	nano::endpoint endpoint (boost::asio::ip::make_address_v6 ("fc00::1"), 4000);
-	node->network.udp_channels.insert (endpoint, node->network_params.network.protocol_version);
+	node->network->udp_channels.insert (endpoint, node->network_params.network.protocol_version);
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "peers");
@@ -1947,7 +1947,7 @@ TEST (rpc, peers_node_id)
 	auto response (wait_response (system, rpc_ctx, request));
 	auto & peers_node (response.get_child ("peers"));
 	ASSERT_EQ (2, peers_node.size ());
-	auto tree1 (peers_node.get_child ((boost::format ("[::1]:%1%") % node2->network.endpoint ().port ()).str ()));
+	auto tree1 (peers_node.get_child ((boost::format ("[::1]:%1%") % node2->network->endpoint ().port ()).str ()));
 	ASSERT_EQ (std::to_string (node->network_params.network.protocol_version), tree1.get<std::string> ("protocol_version"));
 	ASSERT_EQ (system.nodes[1]->node_id.pub.to_node_id (), tree1.get<std::string> ("node_id"));
 	std::stringstream endpoint_text;
@@ -2658,7 +2658,7 @@ TEST (rpc, DISABLED_work_peer_one)
 	auto node1 = add_ipc_enabled_node (system);
 	auto & node2 = *system.add_node ();
 	auto const rpc_ctx = add_rpc (system, node1);
-	node2.config->work_peers.emplace_back (node1->network.endpoint ().address ().to_string (), rpc_ctx.rpc->listening_port ());
+	node2.config->work_peers.emplace_back (node1->network->endpoint ().address ().to_string (), rpc_ctx.rpc->listening_port ());
 	nano::keypair key1;
 	std::atomic<uint64_t> work (0);
 	node2.work_generate (nano::work_version::work_1, key1.pub, node1->network_params.work.get_base (), [&work] (boost::optional<uint64_t> work_a) {
@@ -2684,9 +2684,9 @@ TEST (rpc, DISABLED_work_peer_many)
 	const auto rpc_ctx_2 = add_rpc (system2, node2);
 	const auto rpc_ctx_3 = add_rpc (system3, node3);
 	const auto rpc_ctx_4 = add_rpc (system4, node4);
-	node1.config->work_peers.emplace_back (node2->network.endpoint ().address ().to_string (), rpc_ctx_2.rpc->listening_port ());
-	node1.config->work_peers.emplace_back (node3->network.endpoint ().address ().to_string (), rpc_ctx_3.rpc->listening_port ());
-	node1.config->work_peers.emplace_back (node4->network.endpoint ().address ().to_string (), rpc_ctx_4.rpc->listening_port ());
+	node1.config->work_peers.emplace_back (node2->network->endpoint ().address ().to_string (), rpc_ctx_2.rpc->listening_port ());
+	node1.config->work_peers.emplace_back (node3->network->endpoint ().address ().to_string (), rpc_ctx_3.rpc->listening_port ());
+	node1.config->work_peers.emplace_back (node4->network->endpoint ().address ().to_string (), rpc_ctx_4.rpc->listening_port ());
 
 	std::array<std::atomic<uint64_t>, 10> works{};
 	for (auto & work : works)
@@ -3063,7 +3063,7 @@ TEST (rpc, bootstrap)
 	boost::property_tree::ptree request;
 	request.put ("action", "bootstrap");
 	request.put ("address", "::ffff:127.0.0.1");
-	request.put ("port", node1->network.endpoint ().port ());
+	request.put ("port", node1->network->endpoint ().port ());
 	test_response response (request, rpc_ctx.rpc->listening_port (), system0.io_ctx);
 	while (response.status == 0)
 	{
@@ -7069,7 +7069,7 @@ TEST (rpc, account_lazy_start)
 	node_config.ipc_config.transport_tcp.enabled = true;
 	node_config.ipc_config.transport_tcp.port = nano::get_available_port ();
 	auto node2 = system.add_node (node_config, node_flags);
-	node2->network.udp_channels.insert (node1->network.endpoint (), node1->network_params.network.protocol_version);
+	node2->network->udp_channels.insert (node1->network->endpoint (), node1->network_params.network.protocol_version);
 	auto const rpc_ctx = add_rpc (system, node2);
 	boost::property_tree::ptree request;
 	request.put ("action", "account_info");
@@ -7318,7 +7318,7 @@ TEST (rpc, telemetry_single)
 	}
 
 	// Then invalid port
-	request.put ("address", (boost::format ("%1%") % node->network.endpoint ().address ()).str ());
+	request.put ("address", (boost::format ("%1%") % node->network->endpoint ().address ()).str ());
 	request.put ("port", "invalid port");
 	{
 		auto response (wait_response (system, rpc_ctx, request, 10s));
@@ -7326,7 +7326,7 @@ TEST (rpc, telemetry_single)
 	}
 
 	// Use correctly formed address and port
-	request.put ("port", node->network.endpoint ().port ());
+	request.put ("port", node->network->endpoint ().port ());
 	{
 		auto response (wait_response (system, rpc_ctx, request, 10s));
 
@@ -7350,7 +7350,7 @@ TEST (rpc, telemetry_all)
 	// First need to set up the cached data
 	std::atomic<bool> done{ false };
 	auto node = system.nodes.front ();
-	node1->telemetry->get_metrics_single_peer_async (node1->network.find_channel (node->network.endpoint ()), [&done] (nano::telemetry_data_response const & telemetry_data_response_a) {
+	node1->telemetry->get_metrics_single_peer_async (node1->network->find_channel (node->network->endpoint ()), [&done] (nano::telemetry_data_response const & telemetry_data_response_a) {
 		ASSERT_FALSE (telemetry_data_response_a.error);
 		done = true;
 	});
@@ -7384,9 +7384,9 @@ TEST (rpc, telemetry_all)
 	ASSERT_FALSE (data.deserialize_json (config, should_ignore_identification_metrics));
 	nano::compare_default_telemetry_response_data (data, node->network_params, node->config->bandwidth_limit, node->default_difficulty (nano::work_version::work_1), node->node_id);
 
-	ASSERT_EQ (node->network.endpoint ().address ().to_string (), metrics.get<std::string> ("address"));
-	ASSERT_EQ (node->network.endpoint ().port (), metrics.get<uint16_t> ("port"));
-	ASSERT_TRUE (node1->network.find_node_id (data.get_node_id ()));
+	ASSERT_EQ (node->network->endpoint ().address ().to_string (), metrics.get<std::string> ("address"));
+	ASSERT_EQ (node->network->endpoint ().port (), metrics.get<uint16_t> ("port"));
+	ASSERT_TRUE (node1->network->find_node_id (data.get_node_id ()));
 }
 
 // Also tests all forms of ipv4/ipv6
@@ -7397,12 +7397,12 @@ TEST (rpc, telemetry_self)
 	auto const rpc_ctx = add_rpc (system, node1);
 
 	// Just to have peer count at 1
-	node1->network.udp_channels.insert (nano::endpoint (boost::asio::ip::make_address_v6 ("::1"), nano::test_node_port ()), 0);
+	node1->network->udp_channels.insert (nano::endpoint (boost::asio::ip::make_address_v6 ("::1"), nano::test_node_port ()), 0);
 
 	boost::property_tree::ptree request;
 	request.put ("action", "telemetry");
 	request.put ("address", "::1");
-	request.put ("port", node1->network.endpoint ().port ());
+	request.put ("port", node1->network->endpoint ().port ());
 	auto const should_ignore_identification_metrics = false;
 	{
 		auto response (wait_response (system, rpc_ctx, request, 10s));

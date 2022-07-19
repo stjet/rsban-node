@@ -469,7 +469,7 @@ unsigned nano::bootstrap_attempt_lazy::lazy_retry_limit_confirmed ()
 	if (rsnano::rsn_bootstrap_attempt_total_blocks (handle) % 1024 == 512 || peer_count == 0)
 	{
 		// Prevent too frequent network locks
-		peer_count = node->network.size ();
+		peer_count = node->network->size ();
 	}
 	auto multiplier (node->flags.disable_legacy_bootstrap () ? 2 : 1.25);
 	return multiplier * std::max (node->network_params.bootstrap.lazy_retry_limit, 2 * nano::narrow_cast<unsigned> (peer_count));

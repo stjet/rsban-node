@@ -178,7 +178,7 @@ public:
 	nano::gap_cache gap_cache;
 	nano::ledger ledger;
 	nano::signature_checker checker;
-	nano::network network;
+	std::shared_ptr<nano::network> network;
 	std::shared_ptr<nano::telemetry> telemetry;
 	nano::bootstrap_initiator bootstrap_initiator;
 	std::shared_ptr<nano::bootstrap_listener> bootstrap;

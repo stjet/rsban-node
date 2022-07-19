@@ -56,7 +56,7 @@ TEST (active_transactions, confirm_election_by_request)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 
 	// Get random peer list (of size 1) from node2 -- so basically just node1
-	auto const peers = node2.network.random_set (1);
+	auto const peers = node2.network->random_set (1);
 	ASSERT_FALSE (peers.empty ());
 
 	// Add representative (node1) to disabled rep crawler of node2
@@ -99,7 +99,7 @@ TEST (active_transactions, confirm_frontier)
 	// Add key to node1
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	// Add representative to disabled rep crawler
-	auto peers (node2.network.random_set (1));
+	auto peers (node2.network->random_set (1));
 	ASSERT_FALSE (peers.empty ());
 	{
 		nano::lock_guard<nano::mutex> guard (node2.rep_crawler.probable_reps_mutex);
@@ -612,8 +612,8 @@ TEST (active_transactions, dropped_cleanup)
 		nano::vectorstream stream (block_bytes);
 		nano::dev::genesis->serialize (stream);
 	}
-	ASSERT_FALSE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
-	ASSERT_TRUE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_FALSE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 
 	node.block_confirm (nano::dev::genesis);
 	node.scheduler.flush ();
@@ -621,7 +621,7 @@ TEST (active_transactions, dropped_cleanup)
 	ASSERT_NE (nullptr, election);
 
 	// Not yet removed
-	ASSERT_TRUE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 	ASSERT_EQ (1, node.active.blocks.count (nano::dev::genesis->hash ()));
 
 	// Now simulate dropping the election
@@ -629,7 +629,7 @@ TEST (active_transactions, dropped_cleanup)
 	node.active.erase (*nano::dev::genesis);
 
 	// The filter must have been cleared
-	ASSERT_FALSE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_FALSE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 
 	// An election was recently dropped
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::election_drop_all));
@@ -638,7 +638,7 @@ TEST (active_transactions, dropped_cleanup)
 	ASSERT_EQ (0, node.active.blocks.count (nano::dev::genesis->hash ()));
 
 	// Repeat test for a confirmed election
-	ASSERT_TRUE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 	node.block_confirm (nano::dev::genesis);
 	node.scheduler.flush ();
 	election = node.active.election (nano::dev::genesis->qualified_root ());
@@ -648,7 +648,7 @@ TEST (active_transactions, dropped_cleanup)
 	node.active.erase (*nano::dev::genesis);
 
 	// The filter should not have been cleared
-	ASSERT_TRUE (node.network.publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 
 	// Not dropped
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::election_drop_all));
@@ -793,7 +793,7 @@ TEST (active_transactions, fork_filter_cleanup)
 	ASSERT_TIMELY (5s, node1.ledger.cache.block_count == 2);
 
 	// Block is erased from the duplicate filter
-	ASSERT_TIMELY (5s, node1.network.publish_filter->apply (send_block_bytes.data (), send_block_bytes.size ()));
+	ASSERT_TIMELY (5s, node1.network->publish_filter->apply (send_block_bytes.data (), send_block_bytes.size ()));
 }
 
 TEST (active_transactions, fork_replacement_tally)
@@ -906,7 +906,7 @@ TEST (active_transactions, fork_replacement_tally)
 	// Process correct block
 	node_config.peering_port = nano::get_available_port ();
 	auto & node2 (*system.add_node (node_config));
-	node2.network.flood_block (send_last);
+	node2.network->flood_block (send_last);
 	ASSERT_TIMELY (3s, node1.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) > 0);
 	node1.block_processor.flush ();
 	std::this_thread::sleep_for (50ms);
@@ -920,7 +920,7 @@ TEST (active_transactions, fork_replacement_tally)
 	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash>{ send_last->hash () }));
 	node1.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
 	node1.vote_processor.flush ();
-	node2.network.flood_block (send_last);
+	node2.network->flood_block (send_last);
 	ASSERT_TIMELY (3s, node1.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) > 1);
 	node1.block_processor.flush ();
 	std::this_thread::sleep_for (50ms);

@@ -271,7 +271,7 @@ TEST (node, node_receive_quorum)
 
 	system2.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	ASSERT_TRUE (node1.balance (key.pub).is_zero ());
-	node1.network.tcp_channels->start_tcp (system2.nodes[0]->network.endpoint ());
+	node1.network->tcp_channels->start_tcp (system2.nodes[0]->network->endpoint ());
 	while (node1.balance (key.pub).is_zero ())
 	{
 		ASSERT_NO_ERROR (system.poll ());
@@ -298,7 +298,7 @@ TEST (node, auto_bootstrap)
 	ASSERT_FALSE (node1->init_error ());
 	node1->start ();
 	system.nodes.push_back (node1);
-	ASSERT_NE (nullptr, nano::establish_tcp (system, *node1, node0->network.endpoint ()));
+	ASSERT_NE (nullptr, nano::establish_tcp (system, *node1, node0->network->endpoint ()));
 	ASSERT_TIMELY (10s, node1->bootstrap_initiator.in_progress ());
 	ASSERT_TIMELY (10s, node1->balance (key2.pub) == node0->config->receive_minimum.number ());
 	ASSERT_TIMELY (10s, !node1->bootstrap_initiator.in_progress ());
@@ -328,7 +328,7 @@ TEST (node, auto_bootstrap_reverse)
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node0->config->receive_minimum.number ()));
 	node1->start ();
 	system.nodes.push_back (node1);
-	ASSERT_NE (nullptr, nano::establish_tcp (system, *node0, node1->network.endpoint ()));
+	ASSERT_NE (nullptr, nano::establish_tcp (system, *node0, node1->network->endpoint ()));
 	ASSERT_TIMELY (10s, node1->balance (key2.pub) == node0->config->receive_minimum.number ());
 }
 
@@ -346,7 +346,7 @@ TEST (node, auto_bootstrap_age)
 	ASSERT_FALSE (node1->init_error ());
 	node1->start ();
 	system.nodes.push_back (node1);
-	ASSERT_NE (nullptr, nano::establish_tcp (system, *node1, node0->network.endpoint ()));
+	ASSERT_NE (nullptr, nano::establish_tcp (system, *node1, node0->network->endpoint ()));
 	ASSERT_TIMELY (10s, node1->bootstrap_initiator.in_progress ());
 	// 4 bootstraps with frontiers age
 	ASSERT_TIMELY (10s, node0->stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out) >= 3);
@@ -370,7 +370,7 @@ TEST (node, receive_gap)
 				 .build_shared ();
 	node1.work_generate_blocking (*block);
 	nano::publish message{ nano::dev::network_params.network, block };
-	node1.network.inbound (message, node1.network.udp_channels.create (node1.network.endpoint ()));
+	node1.network->inbound (message, node1.network->udp_channels.create (node1.network->endpoint ()));
 	node1.block_processor.flush ();
 	ASSERT_EQ (1, node1.gap_cache.size ());
 }
@@ -381,8 +381,8 @@ TEST (node, merge_peers)
 	std::array<nano::endpoint, 8> endpoints;
 	endpoints.fill (nano::endpoint (boost::asio::ip::address_v6::loopback (), nano::get_available_port ()));
 	endpoints[0] = nano::endpoint (boost::asio::ip::address_v6::loopback (), nano::get_available_port ());
-	system.nodes[0]->network.merge_peers (endpoints);
-	ASSERT_EQ (0, system.nodes[0]->network.size ());
+	system.nodes[0]->network->merge_peers (endpoints);
+	ASSERT_EQ (0, system.nodes[0]->network->size ());
 }
 
 TEST (node, search_receivable)
@@ -537,14 +537,14 @@ TEST (node, connect_after_junk)
 	auto node1 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
 	std::vector<uint8_t> junk_buffer;
 	junk_buffer.push_back (0);
-	auto channel1 (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node0->network.endpoint (), node1->network_params.network.protocol_version));
+	auto channel1 (std::make_shared<nano::transport::channel_udp> (node1->network->udp_channels, node0->network->endpoint (), node1->network_params.network.protocol_version));
 	channel1->send_buffer (nano::shared_const_buffer (std::move (junk_buffer)), [] (boost::system::error_code const &, size_t) {});
 	ASSERT_TIMELY (10s, node0->stats->count (nano::stat::type::error) != 0);
 	node1->start ();
 	system.nodes.push_back (node1);
-	auto channel2 (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node0->network.endpoint (), node1->network_params.network.protocol_version));
-	node1->network.send_keepalive (channel2);
-	ASSERT_TIMELY (10s, !node1->network.empty ());
+	auto channel2 (std::make_shared<nano::transport::channel_udp> (node1->network->udp_channels, node0->network->endpoint (), node1->network_params.network.protocol_version));
+	node1->network->send_keepalive (channel2);
+	ASSERT_TIMELY (10s, !node1->network->empty ());
 	node1->stop ();
 }
 
@@ -580,7 +580,7 @@ TEST (node, confirm_locked)
 				 .sign (nano::keypair ().prv, 0)
 				 .work (0)
 				 .build_shared ();
-	system.nodes[0]->network.flood_block (block);
+	system.nodes[0]->network->flood_block (block);
 }
 
 TEST (node_config, random_rep)
@@ -601,13 +601,13 @@ TEST (node_flags, disable_tcp_realtime)
 	auto node1 = system.add_node (node_flags);
 	node_flags.set_disable_tcp_realtime (true);
 	auto node2 = system.add_node (node_flags);
-	ASSERT_EQ (1, node1->network.size ());
-	auto list1 (node1->network.list (2));
-	ASSERT_EQ (node2->network.endpoint (), list1[0]->get_endpoint ());
+	ASSERT_EQ (1, node1->network->size ());
+	auto list1 (node1->network->list (2));
+	ASSERT_EQ (node2->network->endpoint (), list1[0]->get_endpoint ());
 	ASSERT_EQ (nano::transport::transport_type::udp, list1[0]->get_type ());
-	ASSERT_EQ (1, node2->network.size ());
-	auto list2 (node2->network.list (2));
-	ASSERT_EQ (node1->network.endpoint (), list2[0]->get_endpoint ());
+	ASSERT_EQ (1, node2->network->size ());
+	auto list2 (node2->network->list (2));
+	ASSERT_EQ (node1->network->endpoint (), list2[0]->get_endpoint ());
 	ASSERT_EQ (nano::transport::transport_type::udp, list2[0]->get_type ());
 }
 
@@ -621,14 +621,14 @@ TEST (node_flags, disable_tcp_realtime_and_bootstrap_listener)
 	node_flags.set_disable_bootstrap_listener (true);
 	auto node2 = system.add_node (node_flags);
 	ASSERT_EQ (nano::tcp_endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->bootstrap->endpoint ());
-	ASSERT_NE (nano::endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->network.endpoint ());
-	ASSERT_EQ (1, node1->network.size ());
-	auto list1 (node1->network.list (2));
-	ASSERT_EQ (node2->network.endpoint (), list1[0]->get_endpoint ());
+	ASSERT_NE (nano::endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->network->endpoint ());
+	ASSERT_EQ (1, node1->network->size ());
+	auto list1 (node1->network->list (2));
+	ASSERT_EQ (node2->network->endpoint (), list1[0]->get_endpoint ());
 	ASSERT_EQ (nano::transport::transport_type::udp, list1[0]->get_type ());
-	ASSERT_EQ (1, node2->network.size ());
-	auto list2 (node2->network.list (2));
-	ASSERT_EQ (node1->network.endpoint (), list2[0]->get_endpoint ());
+	ASSERT_EQ (1, node2->network->size ());
+	auto list2 (node2->network->list (2));
+	ASSERT_EQ (node1->network->endpoint (), list2[0]->get_endpoint ());
 	ASSERT_EQ (nano::transport::transport_type::udp, list2[0]->get_type ());
 }
 
@@ -642,25 +642,25 @@ TEST (node_flags, disable_udp)
 	auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::unique_path (), nano::node_config (nano::get_available_port (), system.logging), system.work));
 	system.nodes.push_back (node2);
 	node2->start ();
-	ASSERT_EQ (nano::endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->network.udp_channels.get_local_endpoint ());
-	ASSERT_NE (nano::endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->network.endpoint ());
+	ASSERT_EQ (nano::endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->network->udp_channels.get_local_endpoint ());
+	ASSERT_NE (nano::endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->network->endpoint ());
 	// Send UDP message
-	auto channel (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node2->network.endpoint (), node2->network_params.network.protocol_version));
-	node1->network.send_keepalive (channel);
+	auto channel (std::make_shared<nano::transport::channel_udp> (node1->network->udp_channels, node2->network->endpoint (), node2->network_params.network.protocol_version));
+	node1->network->send_keepalive (channel);
 	std::this_thread::sleep_for (std::chrono::milliseconds (500));
 	// Check empty network
-	ASSERT_EQ (0, node1->network.size ());
-	ASSERT_EQ (0, node2->network.size ());
+	ASSERT_EQ (0, node1->network->size ());
+	ASSERT_EQ (0, node2->network->size ());
 	// Send TCP handshake
-	node1->network.merge_peer (node2->network.endpoint ());
+	node1->network->merge_peer (node2->network->endpoint ());
 	ASSERT_TIMELY (5s, node1->bootstrap->get_realtime_count () == 1 && node2->bootstrap->get_realtime_count () == 1);
-	ASSERT_EQ (1, node1->network.size ());
-	auto list1 (node1->network.list (2));
-	ASSERT_EQ (node2->network.endpoint (), list1[0]->get_endpoint ());
+	ASSERT_EQ (1, node1->network->size ());
+	auto list1 (node1->network->list (2));
+	ASSERT_EQ (node2->network->endpoint (), list1[0]->get_endpoint ());
 	ASSERT_EQ (nano::transport::transport_type::tcp, list1[0]->get_type ());
-	ASSERT_EQ (1, node2->network.size ());
-	auto list2 (node2->network.list (2));
-	ASSERT_EQ (node1->network.endpoint (), list2[0]->get_endpoint ());
+	ASSERT_EQ (1, node2->network->size ());
+	auto list2 (node2->network->list (2));
+	ASSERT_EQ (node1->network->endpoint (), list2[0]->get_endpoint ());
 	ASSERT_EQ (nano::transport::transport_type::tcp, list2[0]->get_type ());
 	node2->stop ();
 }
@@ -754,7 +754,7 @@ TEST (node, fork_keep)
 	nano::system system (2);
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
-	ASSERT_EQ (1, node1.network.size ());
+	ASSERT_EQ (1, node1.network->size ());
 	nano::keypair key1;
 	nano::keypair key2;
 	nano::send_block_builder builder;
@@ -808,7 +808,7 @@ TEST (node, fork_flip)
 	nano::system system (2);
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
-	ASSERT_EQ (1, node1.network.size ());
+	ASSERT_EQ (1, node1.network->size ());
 	nano::keypair key1;
 	nano::send_block_builder builder;
 	auto send1 = builder.make_block ()
@@ -828,20 +828,20 @@ TEST (node, fork_flip)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	nano::publish publish2{ nano::dev::network_params.network, send2 };
-	auto channel1 (node1.network.udp_channels.create (node1.network.endpoint ()));
-	node1.network.inbound (publish1, channel1);
+	auto channel1 (node1.network->udp_channels.create (node1.network->endpoint ()));
+	node1.network->inbound (publish1, channel1);
 	node1.block_processor.flush ();
 	node1.scheduler.flush ();
-	auto channel2 (node2.network.udp_channels.create (node1.network.endpoint ()));
-	node2.network.inbound (publish2, channel2);
+	auto channel2 (node2.network->udp_channels.create (node1.network->endpoint ()));
+	node2.network->inbound (publish2, channel2);
 	node2.block_processor.flush ();
 	node2.scheduler.flush ();
 	ASSERT_EQ (1, node1.active.size ());
 	ASSERT_EQ (1, node2.active.size ());
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	node1.network.inbound (publish2, channel1);
+	node1.network->inbound (publish2, channel1);
 	node1.block_processor.flush ();
-	node2.network.inbound (publish1, channel2);
+	node2.network->inbound (publish1, channel2);
 	node2.block_processor.flush ();
 	auto election1 (node2.active.election (nano::qualified_root (nano::dev::genesis->hash (), nano::dev::genesis->hash ())));
 	ASSERT_NE (nullptr, election1);
@@ -875,7 +875,7 @@ TEST (node, fork_multi_flip)
 		auto & node1 (*system.add_node (node_config, node_flags, type));
 		node_config.peering_port = nano::get_available_port ();
 		auto & node2 (*system.add_node (node_config, node_flags, type));
-		ASSERT_EQ (1, node1.network.size ());
+		ASSERT_EQ (1, node1.network->size ());
 		nano::keypair key1;
 		nano::send_block_builder builder;
 		auto send1 = builder.make_block ()
@@ -903,9 +903,9 @@ TEST (node, fork_multi_flip)
 					 .work (*system.work.generate (publish2.get_block ()->hash ()))
 					 .build_shared ();
 		nano::publish publish3{ nano::dev::network_params.network, send3 };
-		node1.network.inbound (publish1, node1.network.udp_channels.create (node1.network.endpoint ()));
-		node2.network.inbound (publish2, node2.network.udp_channels.create (node2.network.endpoint ()));
-		node2.network.inbound (publish3, node2.network.udp_channels.create (node2.network.endpoint ()));
+		node1.network->inbound (publish1, node1.network->udp_channels.create (node1.network->endpoint ()));
+		node2.network->inbound (publish2, node2.network->udp_channels.create (node2.network->endpoint ()));
+		node2.network->inbound (publish3, node2.network->udp_channels.create (node2.network->endpoint ()));
 		node1.block_processor.flush ();
 		node1.scheduler.flush ();
 		node2.block_processor.flush ();
@@ -913,10 +913,10 @@ TEST (node, fork_multi_flip)
 		ASSERT_EQ (1, node1.active.size ());
 		ASSERT_EQ (1, node2.active.size ());
 		system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-		node1.network.inbound (publish2, node1.network.udp_channels.create (node1.network.endpoint ()));
-		node1.network.inbound (publish3, node1.network.udp_channels.create (node1.network.endpoint ()));
+		node1.network->inbound (publish2, node1.network->udp_channels.create (node1.network->endpoint ()));
+		node1.network->inbound (publish3, node1.network->udp_channels.create (node1.network->endpoint ()));
 		node1.block_processor.flush ();
-		node2.network.inbound (publish1, node2.network.udp_channels.create (node2.network.endpoint ()));
+		node2.network->inbound (publish1, node2.network->udp_channels.create (node2.network->endpoint ()));
 		node2.block_processor.flush ();
 		auto election1 (node2.active.election (nano::qualified_root (nano::dev::genesis->hash (), nano::dev::genesis->hash ())));
 		ASSERT_NE (nullptr, election1);
@@ -972,7 +972,7 @@ TEST (node, fork_bootstrap_flip)
 	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (node1.store.tx_begin_write (), *send1).code);
 	ASSERT_EQ (nano::process_result::progress, node2.ledger.process (node2.store.tx_begin_write (), *send2).code);
 	ASSERT_TRUE (node2.store.block.exists (node2.store.tx_begin_read (), send2->hash ()));
-	node2.bootstrap_initiator.bootstrap (node1.network.endpoint ()); // Additionally add new peer to confirm & replace bootstrap block
+	node2.bootstrap_initiator.bootstrap (node1.network->endpoint ()); // Additionally add new peer to confirm & replace bootstrap block
 	auto again (true);
 	system1.deadline_set (50s);
 	while (again)
@@ -996,8 +996,8 @@ TEST (node, fork_open)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	nano::publish publish1{ nano::dev::network_params.network, send1 };
-	auto channel1 (node1.network.udp_channels.create (node1.network.endpoint ()));
-	node1.network.inbound (publish1, channel1);
+	auto channel1 (node1.network->udp_channels.create (node1.network->endpoint ()));
+	node1.network->inbound (publish1, channel1);
 	node1.block_processor.flush ();
 	node1.scheduler.flush ();
 	auto election = node1.active.election (publish1.get_block ()->qualified_root ());
@@ -1013,7 +1013,7 @@ TEST (node, fork_open)
 				 .work (*system.work.generate (key1.pub))
 				 .build_shared ();
 	nano::publish publish2{ nano::dev::network_params.network, open1 };
-	node1.network.inbound (publish2, channel1);
+	node1.network->inbound (publish2, channel1);
 	node1.block_processor.flush ();
 	node1.scheduler.flush ();
 	ASSERT_EQ (1, node1.active.size ());
@@ -1026,7 +1026,7 @@ TEST (node, fork_open)
 				 .build_shared ();
 	nano::publish publish3{ nano::dev::network_params.network, open2 };
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	node1.network.inbound (publish3, channel1);
+	node1.network->inbound (publish3, channel1);
 	node1.block_processor.flush ();
 	node1.scheduler.flush ();
 	election = node1.active.election (publish3.get_block ()->qualified_root ());
@@ -1042,7 +1042,7 @@ TEST (node, fork_open_flip)
 	nano::system system (2);
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
-	ASSERT_EQ (1, node1.network.size ());
+	ASSERT_EQ (1, node1.network->size ());
 	nano::keypair key1;
 	nano::keypair rep1;
 	nano::keypair rep2;
@@ -1174,7 +1174,7 @@ TEST (node, fork_no_vote_quorum)
 		nano::vectorstream stream (buffer);
 		confirm.serialize (stream);
 	}
-	auto channel = node2.network.find_node_id (node3.node_id.pub);
+	auto channel = node2.network->find_node_id (node3.node_id.pub);
 	ASSERT_NE (nullptr, channel);
 	channel->send_buffer (nano::shared_const_buffer (std::move (buffer)));
 	ASSERT_TIMELY (10s, node3.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::in) >= 3);
@@ -1254,8 +1254,8 @@ TEST (node, DISABLED_fork_stale)
 	nano::system system2 (1);
 	auto & node1 (*system1.nodes[0]);
 	auto & node2 (*system2.nodes[0]);
-	node2.bootstrap_initiator.bootstrap (node1.network.endpoint (), false);
-	std::shared_ptr<nano::transport::channel> channel (std::make_shared<nano::transport::channel_udp> (node2.network.udp_channels, node1.network.endpoint (), node2.network_params.network.protocol_version));
+	node2.bootstrap_initiator.bootstrap (node1.network->endpoint (), false);
+	std::shared_ptr<nano::transport::channel> channel (std::make_shared<nano::transport::channel_udp> (node2.network->udp_channels, node1.network->endpoint (), node2.network_params.network.protocol_version));
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash> ());
 	node2.rep_crawler.response (channel, vote);
 	nano::keypair key1;
@@ -1308,7 +1308,7 @@ TEST (node, DISABLED_fork_stale)
 	node1.process_active (send2);
 	node2.process_active (send1);
 	node2.process_active (send2);
-	node2.bootstrap_initiator.bootstrap (node1.network.endpoint (), false);
+	node2.bootstrap_initiator.bootstrap (node1.network->endpoint (), false);
 	while (node2.block (send1->hash ()) == nullptr)
 	{
 		system1.poll ();
@@ -1534,7 +1534,7 @@ TEST (node, DISABLED_bootstrap_no_publish)
 		ASSERT_EQ (nano::process_result::progress, node0->ledger.process (transaction, *send0).code);
 	}
 	ASSERT_FALSE (node1->bootstrap_initiator.in_progress ());
-	node1->bootstrap_initiator.bootstrap (node0->network.endpoint (), false);
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
 	ASSERT_TRUE (node1->active.empty ());
 	system1.deadline_set (10s);
 	while (node1->block (send0->hash ()) == nullptr)
@@ -1576,7 +1576,7 @@ TEST (node, DISABLED_bootstrap_bulk_push)
 	ASSERT_FALSE (node0->bootstrap_initiator.in_progress ());
 	ASSERT_FALSE (node1->bootstrap_initiator.in_progress ());
 	ASSERT_TRUE (node1->active.empty ());
-	node0->bootstrap_initiator.bootstrap (node1->network.endpoint (), false);
+	node0->bootstrap_initiator.bootstrap (node1->network->endpoint (), false);
 	system1.deadline_set (10s);
 	while (node1->block (send0->hash ()) == nullptr)
 	{
@@ -1643,7 +1643,7 @@ TEST (node, bootstrap_fork_open)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	ASSERT_FALSE (node1->ledger.block_or_pruned_exists (open0.hash ()));
 	ASSERT_FALSE (node1->bootstrap_initiator.in_progress ());
-	node1->bootstrap_initiator.bootstrap (node0->network.endpoint (), false);
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
 	ASSERT_TIMELY (1s, node1->active.empty ());
 	ASSERT_TIMELY (10s, !node1->ledger.block_or_pruned_exists (open1.hash ()) && node1->ledger.block_or_pruned_exists (open0.hash ()));
 }
@@ -1676,7 +1676,7 @@ TEST (node, bootstrap_confirm_frontiers)
 
 	// create a bootstrap connection from node1 to node0
 	// this also has the side effect of adding node0 to node1's list of peers, which will trigger realtime connections too
-	node1->bootstrap_initiator.bootstrap (node0->network.endpoint ());
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 
 	// Wait until the block is confirmed on node1. Poll more than usual because we are polling
 	// on 2 different systems at once and in sequence and there might be strange timing effects.
@@ -1831,11 +1831,11 @@ TEST (node, rep_weight)
 		ASSERT_EQ (nano::process_result::progress, node.ledger.process (transaction, *block4).code);
 	}
 	ASSERT_TRUE (node.rep_crawler.representatives (1).empty ());
-	std::shared_ptr<nano::transport::channel> channel1 = nano::establish_tcp (system, node, node1.network.endpoint ());
+	std::shared_ptr<nano::transport::channel> channel1 = nano::establish_tcp (system, node, node1.network->endpoint ());
 	ASSERT_NE (nullptr, channel1);
-	std::shared_ptr<nano::transport::channel> channel2 = nano::establish_tcp (system, node, node2.network.endpoint ());
+	std::shared_ptr<nano::transport::channel> channel2 = nano::establish_tcp (system, node, node2.network->endpoint ());
 	ASSERT_NE (nullptr, channel2);
-	std::shared_ptr<nano::transport::channel> channel3 = nano::establish_tcp (system, node, node3.network.endpoint ());
+	std::shared_ptr<nano::transport::channel> channel3 = nano::establish_tcp (system, node, node3.network->endpoint ());
 	ASSERT_NE (nullptr, channel3);
 	auto vote0 = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
 	auto vote1 = std::make_shared<nano::vote> (keypair1.pub, keypair1.prv, 0, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
@@ -1913,8 +1913,8 @@ TEST (node, rep_remove)
 	}
 	// Add inactive UDP representative channel
 	nano::endpoint endpoint0 (boost::asio::ip::address_v6::loopback (), nano::test_node_port ());
-	std::shared_ptr<nano::transport::channel> channel0 (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint0, node.network_params.network.protocol_version));
-	auto channel_udp = node.network.udp_channels.insert (endpoint0, node.network_params.network.protocol_version);
+	std::shared_ptr<nano::transport::channel> channel0 (std::make_shared<nano::transport::channel_udp> (node.network->udp_channels, endpoint0, node.network_params.network.protocol_version));
+	auto channel_udp = node.network->udp_channels.insert (endpoint0, node.network_params.network.protocol_version);
 	ASSERT_NE (channel_udp, nullptr);
 	auto vote1 = std::make_shared<nano::vote> (keypair1.pub, keypair1.prv, 0, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
 	ASSERT_FALSE (node.rep_crawler.response (channel0, vote1));
@@ -1926,7 +1926,7 @@ TEST (node, rep_remove)
 	ASSERT_EQ (*channel0, reps[0].channel_ref ());
 	// Modify last_packet_received so the channel is removed faster
 	std::chrono::steady_clock::time_point fake_timepoint{};
-	node.network.udp_channels.modify (channel_udp, [fake_timepoint] (std::shared_ptr<nano::transport::channel_udp> const & channel_a) {
+	node.network->udp_channels.modify (channel_udp, [fake_timepoint] (std::shared_ptr<nano::transport::channel_udp> const & channel_a) {
 		channel_a->set_last_packet_received (fake_timepoint);
 	});
 	// This UDP channel is not reachable and should timeout
@@ -1935,7 +1935,7 @@ TEST (node, rep_remove)
 	// Add working representative
 	auto node1 = system.add_node (nano::node_config (nano::get_available_port (), system.logging));
 	system.wallet (1)->insert_adhoc (nano::dev::genesis_key.prv);
-	auto channel1 (node.network.find_channel (node1->network.endpoint ()));
+	auto channel1 (node.network->find_channel (node1->network->endpoint ()));
 	ASSERT_NE (nullptr, channel1);
 	auto vote2 = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
 	node.rep_crawler.response (channel1, vote2);
@@ -1944,18 +1944,18 @@ TEST (node, rep_remove)
 	node2->start ();
 	std::weak_ptr<nano::node> node_w (node.shared ());
 	auto vote3 = std::make_shared<nano::vote> (keypair2.pub, keypair2.prv, 0, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
-	node.network.tcp_channels->start_tcp (node2->network.endpoint ());
+	node.network->tcp_channels->start_tcp (node2->network->endpoint ());
 	std::shared_ptr<nano::transport::channel> channel2;
-	ASSERT_TIMELY (10s, (channel2 = node.network.tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (node2->network.endpoint ()))) != nullptr);
+	ASSERT_TIMELY (10s, (channel2 = node.network->tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (node2->network->endpoint ()))) != nullptr);
 	ASSERT_FALSE (node.rep_crawler.response (channel2, vote3));
 	ASSERT_TIMELY (10s, node.rep_crawler.representative_count () == 2);
 	node2->stop ();
 	ASSERT_TIMELY (10s, node.rep_crawler.representative_count () == 1);
 	reps = node.rep_crawler.representatives (1);
 	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].account);
-	ASSERT_EQ (1, node.network.size ());
-	auto list (node.network.list (1));
-	ASSERT_EQ (node1->network.endpoint (), list[0]->get_endpoint ());
+	ASSERT_EQ (1, node.network->size ());
+	auto list (node.network->list (1));
+	ASSERT_EQ (node1->network->endpoint (), list[0]->get_endpoint ());
 }
 
 TEST (node, rep_connection_close)
@@ -2275,15 +2275,15 @@ TEST (node, local_votes_cache)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::confirm_req message1{ nano::dev::network_params.network, send1 };
 	nano::confirm_req message2{ nano::dev::network_params.network, send2 };
-	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
-	node.network.inbound (message1, channel);
+	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
+	node.network->inbound (message1, channel);
 	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 1);
-	node.network.inbound (message2, channel);
+	node.network->inbound (message2, channel);
 	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 2);
 	for (auto i (0); i < 100; ++i)
 	{
-		node.network.inbound (message1, channel);
-		node.network.inbound (message2, channel);
+		node.network->inbound (message1, channel);
+		node.network->inbound (message2, channel);
 	}
 	for (int i = 0; i < 4; ++i)
 	{
@@ -2299,7 +2299,7 @@ TEST (node, local_votes_cache)
 	nano::confirm_req message3{ nano::dev::network_params.network, send3 };
 	for (auto i (0); i < 100; ++i)
 	{
-		node.network.inbound (message3, channel);
+		node.network->inbound (message3, channel);
 	}
 	for (int i = 0; i < 4; ++i)
 	{
@@ -2357,28 +2357,28 @@ TEST (node, DISABLED_local_votes_cache_batch)
 	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *receive1).code);
 	std::vector<std::pair<nano::block_hash, nano::root>> batch{ { send2->hash (), send2->root () }, { receive1->hash (), receive1->root () } };
 	nano::confirm_req message{ nano::dev::network_params.network, batch };
-	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
+	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
 	// Generates and sends one vote for both hashes which is then cached
-	node.network.inbound (message, channel);
+	node.network->inbound (message, channel);
 	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 1);
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	ASSERT_FALSE (node.history.votes (send2->root (), send2->hash ()).empty ());
 	ASSERT_FALSE (node.history.votes (receive1->root (), receive1->hash ()).empty ());
 	// Only one confirm_ack should be sent if all hashes are part of the same vote
-	node.network.inbound (message, channel);
+	node.network->inbound (message, channel);
 	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 2);
 	ASSERT_EQ (2, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	// Test when votes are different
 	node.history.erase (send2->root ());
 	node.history.erase (receive1->root ());
-	node.network.inbound (nano::confirm_req{ nano::dev::network_params.network, send2->hash (), send2->root () }, channel);
+	node.network->inbound (nano::confirm_req{ nano::dev::network_params.network, send2->hash (), send2->root () }, channel);
 	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 3);
 	ASSERT_EQ (3, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
-	node.network.inbound (nano::confirm_req{ nano::dev::network_params.network, receive1->hash (), receive1->root () }, channel);
+	node.network->inbound (nano::confirm_req{ nano::dev::network_params.network, receive1->hash (), receive1->root () }, channel);
 	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 4);
 	ASSERT_EQ (4, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	// There are two different votes, so both should be sent in response
-	node.network.inbound (message, channel);
+	node.network->inbound (message, channel);
 	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out) == 6);
 	ASSERT_EQ (6, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 }
@@ -2392,8 +2392,8 @@ TEST (node, local_votes_cache_generate_new_vote)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	// Repsond with cached vote
 	nano::confirm_req message1{ nano::dev::network_params.network, nano::dev::genesis };
-	auto channel (node.network.udp_channels.create (node.network.endpoint ()));
-	node.network.inbound (message1, channel);
+	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
+	node.network->inbound (message1, channel);
 	ASSERT_TIMELY (3s, !node.history.votes (nano::dev::genesis->root (), nano::dev::genesis->hash ()).empty ());
 	auto votes1 (node.history.votes (nano::dev::genesis->root (), nano::dev::genesis->hash ()));
 	ASSERT_EQ (1, votes1.size ());
@@ -2413,7 +2413,7 @@ TEST (node, local_votes_cache_generate_new_vote)
 	// One of the hashes is cached
 	std::vector<std::pair<nano::block_hash, nano::root>> roots_hashes{ std::make_pair (nano::dev::genesis->hash (), nano::dev::genesis->root ()), std::make_pair (send1->hash (), send1->root ()) };
 	nano::confirm_req message2{ nano::dev::network_params.network, roots_hashes };
-	node.network.inbound (message2, channel);
+	node.network->inbound (message2, channel);
 	ASSERT_TIMELY (3s, !node.history.votes (send1->root (), send1->hash ()).empty ());
 	auto votes2 (node.history.votes (send1->root (), send1->hash ()));
 	ASSERT_EQ (1, votes2.size ());
@@ -2778,11 +2778,11 @@ TEST (node, DISABLED_fork_invalid_block_signature)
 	node1.process_active (send1);
 	ASSERT_TIMELY (5s, node1.block (send1->hash ()));
 	// Send the vote with the corrupt block signature
-	node2.network.flood_vote (vote_corrupt, 1.0f);
+	node2.network->flood_vote (vote_corrupt, 1.0f);
 	// Wait for the rollback
 	ASSERT_TIMELY (5s, node1.stats->count (nano::stat::type::rollback, nano::stat::detail::all));
 	// Send the vote with the correct block
-	node2.network.flood_vote (vote, 1.0f);
+	node2.network->flood_vote (vote, 1.0f);
 	ASSERT_TIMELY (10s, !node1.block (send1->hash ()));
 	ASSERT_TIMELY (10s, node1.block (send2->hash ()));
 	ASSERT_EQ (node1.block (send2->hash ())->block_signature (), send2->block_signature ());
@@ -2820,14 +2820,14 @@ TEST (node, fork_election_invalid_block_signature)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .sign (nano::dev::genesis_key.prv, 0) // Invalid signature
 				 .build_shared ();
-	auto channel1 (node1.network.udp_channels.create (node1.network.endpoint ()));
-	node1.network.inbound (nano::publish{ nano::dev::network_params.network, send1 }, channel1);
+	auto channel1 (node1.network->udp_channels.create (node1.network->endpoint ()));
+	node1.network->inbound (nano::publish{ nano::dev::network_params.network, send1 }, channel1);
 	ASSERT_TIMELY (5s, node1.active.active (send1->qualified_root ()));
 	auto election (node1.active.election (send1->qualified_root ()));
 	ASSERT_NE (nullptr, election);
 	ASSERT_EQ (1, election->blocks ().size ());
-	node1.network.inbound (nano::publish{ nano::dev::network_params.network, send3 }, channel1);
-	node1.network.inbound (nano::publish{ nano::dev::network_params.network, send2 }, channel1);
+	node1.network->inbound (nano::publish{ nano::dev::network_params.network, send3 }, channel1);
+	node1.network->inbound (nano::publish{ nano::dev::network_params.network, send2 }, channel1);
 	ASSERT_TIMELY (3s, election->blocks ().size () > 1);
 	ASSERT_EQ (election->blocks ()[send2->hash ()]->block_signature (), send2->block_signature ());
 }
@@ -3131,12 +3131,12 @@ TEST (node, peers)
 {
 	nano::system system (1);
 	auto node1 (system.nodes[0]);
-	ASSERT_TRUE (node1->network.empty ());
+	ASSERT_TRUE (node1->network->empty ());
 
 	auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.logging, system.work));
 	system.nodes.push_back (node2);
 
-	auto endpoint = node1->network.endpoint ();
+	auto endpoint = node1->network->endpoint ();
 	nano::endpoint_key endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () };
 	auto & store = node2->store;
 	{
@@ -3149,24 +3149,24 @@ TEST (node, peers)
 	}
 
 	node2->start ();
-	ASSERT_TIMELY (10s, !node2->network.empty () && !node1->network.empty ())
+	ASSERT_TIMELY (10s, !node2->network->empty () && !node1->network->empty ())
 	// Wait to finish TCP node ID handshakes
 	ASSERT_TIMELY (10s, node1->bootstrap->get_realtime_count () != 0 && node2->bootstrap->get_realtime_count () != 0);
 	// Confirm that the peers match with the endpoints we are expecting
-	ASSERT_EQ (1, node1->network.size ());
-	auto list1 (node1->network.list (2));
-	ASSERT_EQ (node2->network.endpoint (), list1[0]->get_endpoint ());
+	ASSERT_EQ (1, node1->network->size ());
+	auto list1 (node1->network->list (2));
+	ASSERT_EQ (node2->network->endpoint (), list1[0]->get_endpoint ());
 	ASSERT_EQ (nano::transport::transport_type::tcp, list1[0]->get_type ());
-	ASSERT_EQ (1, node2->network.size ());
-	auto list2 (node2->network.list (2));
-	ASSERT_EQ (node1->network.endpoint (), list2[0]->get_endpoint ());
+	ASSERT_EQ (1, node2->network->size ());
+	auto list2 (node2->network->list (2));
+	ASSERT_EQ (node1->network->endpoint (), list2[0]->get_endpoint ());
 	ASSERT_EQ (nano::transport::transport_type::tcp, list2[0]->get_type ());
 	// Stop the peer node and check that it is removed from the store
 	node1->stop ();
 
-	ASSERT_TIMELY (10s, node2->network.size () != 1);
+	ASSERT_TIMELY (10s, node2->network->size () != 1);
 
-	ASSERT_TRUE (node2->network.empty ());
+	ASSERT_TRUE (node2->network->empty ());
 
 	// Uncontactable peer should not be stored
 	auto transaction (store.tx_begin_read ());
@@ -3180,8 +3180,8 @@ TEST (node, peer_cache_restart)
 {
 	nano::system system (1);
 	auto node1 (system.nodes[0]);
-	ASSERT_TRUE (node1->network.empty ());
-	auto endpoint = node1->network.endpoint ();
+	ASSERT_TRUE (node1->network->empty ());
+	auto endpoint = node1->network->endpoint ();
 	nano::endpoint_key endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () };
 	auto path (nano::unique_path ());
 	{
@@ -3194,11 +3194,11 @@ TEST (node, peer_cache_restart)
 			store.peer.put (transaction, endpoint_key);
 		}
 		node2->start ();
-		ASSERT_TIMELY (10s, !node2->network.empty ());
+		ASSERT_TIMELY (10s, !node2->network->empty ());
 		// Confirm that the peers match with the endpoints we are expecting
-		auto list (node2->network.list (2));
-		ASSERT_EQ (node1->network.endpoint (), list[0]->get_endpoint ());
-		ASSERT_EQ (1, node2->network.size ());
+		auto list (node2->network->list (2));
+		ASSERT_EQ (node1->network->endpoint (), list[0]->get_endpoint ());
+		ASSERT_EQ (1, node2->network->size ());
 		node2->stop ();
 	}
 	// Restart node
@@ -3208,7 +3208,7 @@ TEST (node, peer_cache_restart)
 		auto node3 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), path, system.logging, system.work, node_flags));
 		system.nodes.push_back (node3);
 		// Check cached peers after restart
-		node3->network.start ();
+		node3->network->start ();
 		node3->add_initial_peers ();
 
 		auto & store = node3->store;
@@ -3217,11 +3217,11 @@ TEST (node, peer_cache_restart)
 			ASSERT_EQ (store.peer.count (transaction), 1);
 			ASSERT_TRUE (store.peer.exists (transaction, endpoint_key));
 		}
-		ASSERT_TIMELY (10s, !node3->network.empty ());
+		ASSERT_TIMELY (10s, !node3->network->empty ());
 		// Confirm that the peers match with the endpoints we are expecting
-		auto list (node3->network.list (2));
-		ASSERT_EQ (node1->network.endpoint (), list[0]->get_endpoint ());
-		ASSERT_EQ (1, node3->network.size ());
+		auto list (node3->network->list (2));
+		ASSERT_EQ (node1->network->endpoint (), list[0]->get_endpoint ());
+		ASSERT_EQ (1, node3->network->size ());
 		node3->stop ();
 	}
 }
@@ -3249,7 +3249,7 @@ TEST (node, unchecked_cleanup)
 	}
 	// Add to the blocks filter
 	// Should be cleared after unchecked cleanup
-	ASSERT_FALSE (node.network.publish_filter->apply (bytes.data (), bytes.size ()));
+	ASSERT_FALSE (node.network->publish_filter->apply (bytes.data (), bytes.size ()));
 	node.process_active (open);
 	// Waits for the open block to get saved in the database
 	ASSERT_TIMELY (15s, 1 == node.unchecked.count (node.store.tx_begin_read ()));
@@ -3257,11 +3257,11 @@ TEST (node, unchecked_cleanup)
 	ASSERT_EQ (1, node.unchecked.count (node.store.tx_begin_read ()));
 	std::this_thread::sleep_for (std::chrono::seconds (1));
 	node.unchecked_cleanup ();
-	ASSERT_TRUE (node.network.publish_filter->apply (bytes.data (), bytes.size ()));
+	ASSERT_TRUE (node.network->publish_filter->apply (bytes.data (), bytes.size ()));
 	ASSERT_EQ (1, node.unchecked.count (node.store.tx_begin_read ()));
 	std::this_thread::sleep_for (std::chrono::seconds (2));
 	node.unchecked_cleanup ();
-	ASSERT_FALSE (node.network.publish_filter->apply (bytes.data (), bytes.size ()));
+	ASSERT_FALSE (node.network->publish_filter->apply (bytes.data (), bytes.size ()));
 	ASSERT_EQ (0, node.unchecked.count (node.store.tx_begin_read ()));
 }
 
@@ -3318,15 +3318,15 @@ TEST (node, bidirectional_tcp)
 	node_config.tcp_incoming_connections_max = 0; // Disable incoming TCP connections for node 2
 	auto node2 = system.add_node (node_config, node_flags);
 	// Check network connections
-	ASSERT_EQ (1, node1->network.size ());
-	ASSERT_EQ (1, node2->network.size ());
-	auto list1 (node1->network.list (1));
+	ASSERT_EQ (1, node1->network->size ());
+	ASSERT_EQ (1, node2->network->size ());
+	auto list1 (node1->network->list (1));
 	ASSERT_EQ (nano::transport::transport_type::tcp, list1[0]->get_type ());
-	ASSERT_NE (node2->network.endpoint (), list1[0]->get_endpoint ()); // Ephemeral port
+	ASSERT_NE (node2->network->endpoint (), list1[0]->get_endpoint ()); // Ephemeral port
 	ASSERT_EQ (node2->node_id.pub, list1[0]->get_node_id ());
-	auto list2 (node2->network.list (1));
+	auto list2 (node2->network->list (1));
 	ASSERT_EQ (nano::transport::transport_type::tcp, list2[0]->get_type ());
-	ASSERT_EQ (node1->network.endpoint (), list2[0]->get_endpoint ());
+	ASSERT_EQ (node1->network->endpoint (), list2[0]->get_endpoint ());
 	ASSERT_EQ (node1->node_id.pub, list2[0]->get_node_id ());
 	// Test block propagation from node 1
 	nano::keypair key;
@@ -3421,8 +3421,8 @@ TEST (node, aggressive_flooding)
 	});
 
 	// This test is only valid if a non-aggressive flood would not reach every peer
-	ASSERT_TIMELY (5s, node1.network.size () == nodes_wallets.size ());
-	ASSERT_LT (node1.network.fanout (), nodes_wallets.size ());
+	ASSERT_TIMELY (5s, node1.network->size () == nodes_wallets.size ());
+	ASSERT_LT (node1.network->fanout (), nodes_wallets.size ());
 
 	// Each new node should see genesis representative
 	ASSERT_TIMELY (10s, std::all_of (nodes_wallets.begin (), nodes_wallets.end (), [] (auto const & node_wallet) { return node_wallet.first->rep_crawler.principal_representatives ().size () != 0; }));
@@ -3589,7 +3589,7 @@ TEST (node, rollback_vote_self)
 		ASSERT_TRUE (node.history.votes (send2->root (), send2->hash ()).empty ());
 		ASSERT_TRUE (node.history.votes (fork->root (), fork->hash ()).empty ());
 		auto & node2 = *system.add_node ();
-		auto channel (node.network.udp_channels.create (node2.network.endpoint ()));
+		auto channel (node.network->udp_channels.create (node2.network->endpoint ()));
 		node.aggregator.add (channel, { { send2->hash (), send2->root () } });
 		ASSERT_TIMELY (5s, !node.history.votes (fork->root (), fork->hash ()).empty ());
 		ASSERT_TRUE (node.history.votes (send2->root (), send2->hash ()).empty ());
@@ -4214,7 +4214,7 @@ TEST (rep_crawler, recently_confirmed)
 	node1.active.add_recently_confirmed (block->qualified_root (), block->hash ());
 	auto & node2 (*system.add_node ());
 	system.wallet (1)->insert_adhoc (nano::dev::genesis_key.prv);
-	auto channel = node1.network.find_channel (node2.network.endpoint ());
+	auto channel = node1.network->find_channel (node2.network->endpoint ());
 	ASSERT_NE (nullptr, channel);
 	node1.rep_crawler.query (channel);
 	ASSERT_TIMELY (3s, node1.rep_crawler.representative_count () == 1);

@@ -7,12 +7,12 @@ nano::transport::inproc::channel::channel (nano::node & node_a, nano::node & des
 	transport::channel{ rsnano::rsn_channel_inproc_create (std::chrono::steady_clock::now ().time_since_epoch ().count ()) },
 	stats (*node_a.stats),
 	logger (*node_a.logger),
-	limiter (node_a.network.limiter),
+	limiter (node_a.network->limiter),
 	io_ctx (node_a.io_ctx),
 	network_packet_logging (node_a.config->logging.network_packet_logging ()),
 	node{ node_a },
 	destination{ destination },
-	endpoint{ node_a.network.endpoint () }
+	endpoint{ node_a.network->endpoint () }
 {
 	set_node_id (node.node_id.pub);
 	set_network_version (node.network_params.network.protocol_version);
@@ -93,9 +93,9 @@ void nano::transport::inproc::channel::send_buffer (nano::shared_const_buffer co
 	auto remote_channel = std::make_shared<nano::transport::inproc::channel> (destination, node);
 
 	// create an inbound message visitor class to handle incoming messages because that's what the message parser expects
-	message_visitor_inbound visitor{ destination.network.inbound, remote_channel };
+	message_visitor_inbound visitor{ destination.network->inbound, remote_channel };
 
-	nano::message_parser parser{ *destination.network.publish_filter, destination.block_uniquer, destination.vote_uniquer, visitor, destination.work, destination.network_params.network };
+	nano::message_parser parser{ *destination.network->publish_filter, destination.block_uniquer, destination.vote_uniquer, visitor, destination.work, destination.network_params.network };
 
 	// parse the message and action any work that needs to be done on that object via the visitor object
 	auto bytes = buffer_a.to_bytes ();

@@ -17,6 +17,7 @@ namespace mi = boost::multi_index;
 namespace nano
 {
 class bootstrap_server;
+class node_config;
 class tcp_message_item final
 {
 public:
@@ -214,6 +215,10 @@ namespace transport
 			}
 		};
 		nano::node & node;
+		nano::network_params & network_params;
+		std::shared_ptr<nano::stat> stats;
+		std::shared_ptr<nano::node_config> config;
+		std::shared_ptr<nano::logger_mt> logger;
 		mutable nano::mutex mutex;
 		// clang-format off
 		boost::multi_index_container<channel_tcp_wrapper,

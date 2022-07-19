@@ -639,6 +639,47 @@ struct HashRootPair
 	uint8_t root[32];
 };
 
+struct NodeFlagsDto
+{
+	bool disable_add_initial_peers;
+	bool disable_backup;
+	bool disable_lazy_bootstrap;
+	bool disable_legacy_bootstrap;
+	bool disable_wallet_bootstrap;
+	bool disable_bootstrap_listener;
+	bool disable_bootstrap_bulk_pull_server;
+	bool disable_bootstrap_bulk_push_client;
+	bool disable_ongoing_bootstrap;
+	bool disable_rep_crawler;
+	bool disable_request_loop;
+	bool disable_tcp_realtime;
+	bool disable_udp;
+	bool disable_unchecked_cleanup;
+	bool disable_unchecked_drop;
+	bool disable_providing_telemetry_metrics;
+	bool disable_ongoing_telemetry_requests;
+	bool disable_initial_telemetry_requests;
+	bool disable_block_processor_unchecked_deletion;
+	bool disable_block_processor_republishing;
+	bool allow_bootstrap_peers_duplicates;
+	bool disable_max_peers_per_ip;
+	bool disable_max_peers_per_subnetwork;
+	bool force_use_write_database_queue;
+	bool disable_search_pending;
+	bool enable_pruning;
+	bool fast_bootstrap;
+	bool read_only;
+	bool disable_connection_cleanup;
+	uint8_t confirmation_height_processor_mode;
+	bool inactive_node;
+	uintptr_t block_processor_batch_size;
+	uintptr_t block_processor_full_size;
+	uintptr_t block_processor_verification_size;
+	uintptr_t inactive_votes_cache_size;
+	uintptr_t vote_processor_capacity;
+	uintptr_t bootstrap_interval;
+};
+
 struct OpenBlockDto
 {
 	uint64_t work;
@@ -1730,9 +1771,35 @@ int32_t rsn_node_config_serialize_toml (const NodeConfigDto * dto, void * toml);
 int32_t rsn_node_constants_create (const NetworkConstantsDto * network_constants,
 NodeConstantsDto * dto);
 
+NodeFlagsHandle * rsn_node_flags_clone (NodeFlagsHandle * handle);
+
+uintptr_t rsn_node_flags_config_overrides (NodeFlagsHandle * handle,
+StringDto * result,
+uintptr_t size);
+
+void rsn_node_flags_config_set_overrides (NodeFlagsHandle * handle,
+const int8_t * const * overrides,
+uintptr_t size);
+
 NodeFlagsHandle * rsn_node_flags_create ();
 
 void rsn_node_flags_destroy (NodeFlagsHandle * handle);
+
+GenerateCacheHandle * rsn_node_flags_generate_cache (NodeFlagsHandle * handle);
+
+void rsn_node_flags_generate_set_cache (NodeFlagsHandle * handle, GenerateCacheHandle * cache);
+
+void rsn_node_flags_get (NodeFlagsHandle * handle, NodeFlagsDto * result);
+
+uintptr_t rsn_node_flags_rpc_config_overrides (NodeFlagsHandle * handle,
+StringDto * result,
+uintptr_t size);
+
+void rsn_node_flags_rpc_config_set_overrides (NodeFlagsHandle * handle,
+const int8_t * const * overrides,
+uintptr_t size);
+
+void rsn_node_flags_set (NodeFlagsHandle * handle, const NodeFlagsDto * flags);
 
 int32_t rsn_node_rpc_config_create (NodeRpcConfigDto * dto);
 

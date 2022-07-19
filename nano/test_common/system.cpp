@@ -46,7 +46,7 @@ std::shared_ptr<nano::node> nano::system::add_node (nano::node_config const & no
 	nodes.push_back (node);
 	if (nodes.size () > 1)
 	{
-		debug_assert (nodes.size () - 1 <= node->network_params.network.max_peers_per_ip || node->flags.disable_max_peers_per_ip); // Check that we don't start more nodes than limit for single IP address
+		debug_assert (nodes.size () - 1 <= node->network_params.network.max_peers_per_ip || node->flags.disable_max_peers_per_ip ()); // Check that we don't start more nodes than limit for single IP address
 		auto begin = nodes.end () - 2;
 		for (auto i (begin), j (begin + 1), n (nodes.end ()); j != n; ++i, ++j)
 		{
@@ -74,7 +74,7 @@ std::shared_ptr<nano::node> nano::system::add_node (nano::node_config const & no
 				new1 = node1->network.size ();
 				new2 = node2->network.size ();
 			} while (new1 == starting1 || new2 == starting2);
-			if (type_a == nano::transport::transport_type::tcp && node_config_a.tcp_incoming_connections_max != 0 && !node_flags_a.disable_tcp_realtime)
+			if (type_a == nano::transport::transport_type::tcp && node_config_a.tcp_incoming_connections_max != 0 && !node_flags_a.disable_tcp_realtime ())
 			{
 				// Wait for initial connection finish
 				decltype (starting_listener1) new_listener1;

@@ -229,7 +229,7 @@ nano::node_flags const & inactive_node_flag_defaults ();
 class node_wrapper final
 {
 public:
-	node_wrapper (boost::filesystem::path const & path_a, boost::filesystem::path const & config_path_a, nano::node_flags const & node_flags_a);
+	node_wrapper (boost::filesystem::path const & path_a, boost::filesystem::path const & config_path_a, nano::node_flags & node_flags_a);
 	~node_wrapper ();
 
 	nano::network_params network_params;
@@ -241,8 +241,8 @@ public:
 class inactive_node final
 {
 public:
-	inactive_node (boost::filesystem::path const & path_a, nano::node_flags const & node_flags_a);
-	inactive_node (boost::filesystem::path const & path_a, boost::filesystem::path const & config_path_a, nano::node_flags const & node_flags_a);
+	inactive_node (boost::filesystem::path const & path_a, nano::node_flags & node_flags_a);
+	inactive_node (boost::filesystem::path const & path_a, boost::filesystem::path const & config_path_a, nano::node_flags & node_flags_a);
 
 	nano::node_wrapper node_wrapper;
 	std::shared_ptr<nano::node> node;

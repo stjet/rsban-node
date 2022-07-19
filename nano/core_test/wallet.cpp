@@ -1003,7 +1003,7 @@ TEST (wallet, epoch_2_receive_propagation)
 	{
 		nano::system system;
 		nano::node_flags node_flags;
-		node_flags.disable_request_loop = true;
+		node_flags.set_disable_request_loop (true);
 		auto & node (*system.add_node (node_flags));
 		auto & wallet (*system.wallet (0));
 
@@ -1053,7 +1053,7 @@ TEST (wallet, epoch_2_receive_unopened)
 	{
 		nano::system system;
 		nano::node_flags node_flags;
-		node_flags.disable_request_loop = true;
+		node_flags.set_disable_request_loop (true);
 		auto & node (*system.add_node (node_flags));
 		auto & wallet (*system.wallet (0));
 
@@ -1125,7 +1125,7 @@ TEST (wallet, search_receivable)
 	config.enable_voting = false;
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags flags;
-	flags.disable_search_pending = true;
+	flags.set_disable_search_pending (true);
 	auto & node (*system.add_node (config, flags));
 	auto & wallet (*system.wallet (0));
 
@@ -1174,9 +1174,9 @@ TEST (wallet, receive_pruned)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
+	node_flags.set_disable_request_loop (true);
 	auto & node1 = *system.add_node (node_flags);
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.enable_voting = false; // Remove after allowing pruned voting
 	auto & node2 = *system.add_node (config, node_flags);

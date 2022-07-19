@@ -522,6 +522,7 @@ class generate_cache
 {
 public:
 	generate_cache ();
+	generate_cache (rsnano::GenerateCacheHandle * handle_a);
 	generate_cache (generate_cache const &);
 	generate_cache (generate_cache && other_a) noexcept;
 	~generate_cache ();

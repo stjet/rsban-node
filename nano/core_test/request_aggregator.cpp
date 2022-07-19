@@ -196,7 +196,7 @@ TEST (request_aggregator, two_endpoints)
 	nano::node_config node_config (nano::get_available_port (), system.logging);
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_rep_crawler = true;
+	node_flags.set_disable_rep_crawler (true);
 	auto & node1 (*system.add_node (node_config, node_flags));
 	node_config.peering_port = nano::get_available_port ();
 	auto & node2 (*system.add_node (node_config, node_flags));
@@ -419,7 +419,7 @@ TEST (request_aggregator, cannot_vote)
 {
 	nano::system system;
 	nano::node_flags flags;
-	flags.disable_request_loop = true;
+	flags.set_disable_request_loop (true);
 	auto & node (*system.add_node (flags));
 	// This prevents activation of blocks which are cemented
 	node.confirmation_height_processor.cemented_observers.clear ();

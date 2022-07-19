@@ -36,7 +36,7 @@ TEST (active_transactions, confirm_election_by_request)
 	auto & node1 = *system.add_node ();
 
 	nano::node_flags node_flags2{};
-	node_flags2.disable_rep_crawler = true;
+	node_flags2.set_disable_rep_crawler (true);
 	auto & node2 = *system.add_node (node_flags2);
 
 	auto send1 = nano::state_block_builder{}.make_block ().account (nano::dev::genesis_key.pub).representative (nano::dev::genesis_key.pub).previous (nano::dev::genesis->hash ()).link (nano::public_key ()).balance (nano::dev::constants.genesis_amount - 100).sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub).work (*system.work.generate (nano::dev::genesis->hash ())).build_shared ();
@@ -88,12 +88,12 @@ TEST (active_transactions, confirm_frontier)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
+	node_flags.set_disable_request_loop (true);
 	// Voting node
 	auto & node1 = *system.add_node (node_flags);
 	nano::node_flags node_flags2;
 	// The rep crawler would otherwise request confirmations in order to find representatives
-	node_flags2.disable_rep_crawler = true;
+	node_flags2.set_disable_rep_crawler (true);
 	auto & node2 = *system.add_node (node_flags2);
 
 	// Add key to node1
@@ -603,7 +603,7 @@ TEST (active_transactions, dropped_cleanup)
 {
 	nano::system system;
 	nano::node_flags flags;
-	flags.disable_request_loop = true;
+	flags.set_disable_request_loop (true);
 	auto & node (*system.add_node (flags));
 
 	// Add to network filter to ensure proper cleanup after the election is dropped
@@ -1001,7 +1001,7 @@ TEST (active_transactions, conflicting_block_vote_existing_election)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
+	node_flags.set_disable_request_loop (true);
 	auto & node = *system.add_node (node_flags);
 	nano::keypair key;
 	nano::state_block_builder builder;

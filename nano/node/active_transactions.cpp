@@ -592,7 +592,7 @@ void nano::active_transactions::request_loop ()
 
 	lock.lock ();
 
-	while (!stopped && !node.flags.disable_request_loop)
+	while (!stopped && !node.flags.disable_request_loop ())
 	{
 		// If many votes are queued, ensure at least the currently active ones finish processing
 		lock.unlock ();
@@ -1146,7 +1146,7 @@ std::size_t nano::active_transactions::inactive_votes_cache_size ()
 
 void nano::active_transactions::add_inactive_votes_cache (nano::unique_lock<nano::mutex> & lock_a, nano::block_hash const & hash_a, nano::account const & representative_a, uint64_t const timestamp_a)
 {
-	if (node.flags.inactive_votes_cache_size == 0)
+	if (node.flags.inactive_votes_cache_size () == 0)
 	{
 		return;
 	}
@@ -1209,7 +1209,7 @@ void nano::active_transactions::add_inactive_votes_cache (nano::unique_lock<nano
 					});
 				}
 			}
-			if (inactive_votes_cache.size () > node.flags.inactive_votes_cache_size)
+			if (inactive_votes_cache.size () > node.flags.inactive_votes_cache_size ())
 			{
 				inactive_by_arrival.erase (inactive_by_arrival.begin ());
 			}
@@ -1289,7 +1289,7 @@ nano::inactive_cache_status nano::active_transactions::inactive_votes_bootstrap_
 		status.bootstrap_started = true;
 		status.confirmed = true;
 	}
-	else if (!previously_a.bootstrap_started && !node.flags.disable_legacy_bootstrap && node.flags.disable_lazy_bootstrap && tally_a > node.gap_cache.bootstrap_threshold ())
+	else if (!previously_a.bootstrap_started && !node.flags.disable_legacy_bootstrap () && node.flags.disable_lazy_bootstrap () && tally_a > node.gap_cache.bootstrap_threshold ())
 	{
 		status.bootstrap_started = true;
 	}

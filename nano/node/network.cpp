@@ -31,7 +31,7 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 	port (port_a),
 	disconnect_observer ([] () {})
 {
-	if (!node.flags.disable_udp)
+	if (!node.flags.disable_udp ())
 	{
 		port = udp_channels.get_local_endpoint ().port ();
 	}
@@ -39,7 +39,7 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 	boost::thread::attributes attrs;
 	nano::thread_attributes::set (attrs);
 	// UDP
-	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_udp; ++i)
+	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_udp (); ++i)
 	{
 		packet_processing_threads.emplace_back (attrs, [this] () {
 			nano::thread_role::set (nano::thread_role::name::packet_processing);
@@ -74,7 +74,7 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 		});
 	}
 	// TCP
-	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_tcp_realtime; ++i)
+	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_tcp_realtime (); ++i)
 	{
 		packet_processing_threads.emplace_back (attrs, [this] () {
 			nano::thread_role::set (nano::thread_role::name::packet_processing);
@@ -117,17 +117,17 @@ nano::network::~network ()
 
 void nano::network::start ()
 {
-	if (!node.flags.disable_connection_cleanup)
+	if (!node.flags.disable_connection_cleanup ())
 	{
 		ongoing_cleanup ();
 	}
 	ongoing_syn_cookie_cleanup ();
-	if (!node.flags.disable_udp)
+	if (!node.flags.disable_udp ())
 	{
 		udp_channels.start ();
 		debug_assert (udp_channels.get_local_endpoint ().port () == port);
 	}
-	if (!node.flags.disable_tcp_realtime)
+	if (!node.flags.disable_tcp_realtime ())
 	{
 		tcp_channels->start ();
 	}
@@ -523,7 +523,7 @@ public:
 		// Send an empty telemetry_ack if we do not want, just to acknowledge that we have received the message to
 		// remove any timeouts on the server side waiting for a message.
 		nano::telemetry_ack telemetry_ack{ node.network_params.network };
-		if (!node.flags.disable_providing_telemetry_metrics)
+		if (!node.flags.disable_providing_telemetry_metrics ())
 		{
 			auto telemetry_data = nano::local_telemetry_data (node.ledger, node.network, node.unchecked, node.config->bandwidth_limit, node.network_params, node.startup_time, node.default_difficulty (nano::work_version::work_1), node.node_id);
 			telemetry_ack = nano::telemetry_ack{ node.network_params.network, telemetry_data };

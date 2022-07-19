@@ -248,3 +248,10 @@ impl TelemetryCacheCutoffs {
         }
     }
 }
+
+#[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]
+pub enum ConfirmationHeightMode {
+    Automatic,
+    Unbounded,
+    Bounded,
+}

@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::GenerateCache;
 
 pub struct GenerateCacheHandle(GenerateCache);
@@ -5,6 +7,14 @@ pub struct GenerateCacheHandle(GenerateCache);
 impl GenerateCacheHandle {
     pub fn new(cfg: GenerateCache) -> *mut GenerateCacheHandle {
         Box::into_raw(Box::new(GenerateCacheHandle(cfg)))
+    }
+}
+
+impl Deref for GenerateCacheHandle {
+    type Target = GenerateCache;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

@@ -168,7 +168,9 @@ int main (int argc, char * const * argv)
 			{
 				auto node_flags = nano::inactive_node_flag_defaults ();
 				nano::update_flags (node_flags, vm);
-				node_flags.generate_cache.enable_reps (true);
+				auto gen_cache{ node_flags.generate_cache () };
+				gen_cache.enable_reps (true);
+				node_flags.set_generate_cache (gen_cache);
 				nano::inactive_node inactive_node (data_path, node_flags);
 				auto node = inactive_node.node;
 
@@ -331,7 +333,9 @@ int main (int argc, char * const * argv)
 		{
 			auto node_flags = nano::inactive_node_flag_defaults ();
 			nano::update_flags (node_flags, vm);
-			node_flags.generate_cache.enable_block_count (true);
+			auto gen_cache{ node_flags.generate_cache () };
+			gen_cache.enable_block_count (true);
+			node_flags.set_generate_cache (gen_cache);
 			nano::inactive_node inactive_node (data_path, node_flags);
 			auto node = inactive_node.node;
 			std::cout << boost::str (boost::format ("Block count: %1%\n") % node->ledger.cache.block_count);
@@ -413,7 +417,9 @@ int main (int argc, char * const * argv)
 		{
 			auto node_flags = nano::inactive_node_flag_defaults ();
 			nano::update_flags (node_flags, vm);
-			node_flags.generate_cache.enable_reps (true);
+			auto gen_cache{ node_flags.generate_cache () };
+			gen_cache.enable_reps (true);
+			node_flags.set_generate_cache (gen_cache);
 			nano::inactive_node inactive_node (data_path, node_flags);
 			auto node = inactive_node.node;
 			auto transaction (node->store.tx_begin_read ());
@@ -453,7 +459,9 @@ int main (int argc, char * const * argv)
 		{
 			auto node_flags = nano::inactive_node_flag_defaults ();
 			nano::update_flags (node_flags, vm);
-			node_flags.generate_cache.enable_account_count (true);
+			auto gen_cache{ node_flags.generate_cache () };
+			gen_cache.enable_account_count (true);
+			node_flags.set_generate_cache (gen_cache);
 			nano::inactive_node inactive_node (data_path, node_flags);
 			std::cout << boost::str (boost::format ("Frontier count: %1%\n") % inactive_node.node->ledger.cache.account_count);
 		}
@@ -1174,10 +1182,10 @@ int main (int argc, char * const * argv)
 
 			nano::node_flags flags;
 			nano::update_flags (flags, vm);
-			flags.disable_lazy_bootstrap = true;
-			flags.disable_legacy_bootstrap = true;
-			flags.disable_wallet_bootstrap = true;
-			flags.disable_bootstrap_listener = true;
+			flags.set_disable_lazy_bootstrap (true);
+			flags.set_disable_legacy_bootstrap (true);
+			flags.set_disable_wallet_bootstrap (true);
+			flags.set_disable_bootstrap_listener (true);
 			auto node1 (std::make_shared<nano::node> (io_ctx1, path1, config1, work, flags, 0));
 			nano::block_hash genesis_latest (node1->latest (nano::dev::genesis_key.pub));
 			nano::uint128_t genesis_balance (std::numeric_limits<nano::uint128_t>::max ());
@@ -1352,7 +1360,9 @@ int main (int argc, char * const * argv)
 
 			auto node_flags = nano::inactive_node_flag_defaults ();
 			nano::update_flags (node_flags, vm);
-			node_flags.generate_cache.enable_all ();
+			auto gen_cache{ node_flags.generate_cache () };
+			gen_cache.enable_all ();
+			node_flags.set_generate_cache (gen_cache);
 			nano::inactive_node inactive_node_l (data_path, node_flags);
 
 			nano::node_rpc_config config;
@@ -1366,7 +1376,9 @@ int main (int argc, char * const * argv)
 			timer.start ();
 			auto node_flags = nano::inactive_node_flag_defaults ();
 			nano::update_flags (node_flags, vm);
-			node_flags.generate_cache.enable_block_count (true);
+			auto gen_cache{ node_flags.generate_cache () };
+			gen_cache.enable_block_count (true);
+			node_flags.set_generate_cache (gen_cache);
 			nano::inactive_node inactive_node (data_path, node_flags);
 			auto node = inactive_node.node;
 			bool const silent (vm.count ("silent"));
@@ -1685,7 +1697,7 @@ int main (int argc, char * const * argv)
 
 			// Validate total block count
 			auto ledger_block_count (node->store.block.count (transaction));
-			if (node->flags.enable_pruning)
+			if (node->flags.enable_pruning ())
 			{
 				block_count += 1; // Add disconnected genesis block
 			}
@@ -1806,7 +1818,7 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_profile_bootstrap"))
 		{
 			auto node_flags = nano::inactive_node_flag_defaults ();
-			node_flags.read_only = false;
+			node_flags.set_read_only (false);
 			nano::update_flags (node_flags, vm);
 			nano::inactive_node node (nano::unique_path (), node_flags);
 			auto begin (std::chrono::high_resolution_clock::now ());
@@ -1816,7 +1828,9 @@ int main (int argc, char * const * argv)
 			{
 				auto node_flags = nano::inactive_node_flag_defaults ();
 				nano::update_flags (node_flags, vm);
-				node_flags.generate_cache.enable_block_count (true);
+				auto gen_cache{ node_flags.generate_cache () };
+				gen_cache.enable_block_count (true);
+				node_flags.set_generate_cache (gen_cache);
 				nano::inactive_node inactive_node (data_path, node_flags);
 				auto source_node = inactive_node.node;
 				auto transaction (source_node->store.tx_begin_read ());
@@ -1895,7 +1909,9 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_cemented_block_count"))
 		{
 			auto node_flags = nano::inactive_node_flag_defaults ();
-			node_flags.generate_cache.enable_cemented_count (true);
+			auto gen_cache{ node_flags.generate_cache () };
+			gen_cache.enable_cemented_count (true);
+			node_flags.set_generate_cache (gen_cache);
 			nano::update_flags (node_flags, vm);
 			nano::inactive_node node (data_path, node_flags);
 			std::cout << "Total cemented block count: " << node.node->ledger.cache.cemented_count << std::endl;
@@ -1903,11 +1919,11 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_prune"))
 		{
 			auto node_flags = nano::inactive_node_flag_defaults ();
-			node_flags.read_only = false;
+			node_flags.set_read_only (false);
 			nano::update_flags (node_flags, vm);
 			nano::inactive_node inactive_node (data_path, node_flags);
 			auto node = inactive_node.node;
-			node->ledger_pruning (node_flags.block_processor_batch_size != 0 ? node_flags.block_processor_batch_size : 16 * 1024, true, true);
+			node->ledger_pruning (node_flags.block_processor_batch_size () != 0 ? node_flags.block_processor_batch_size () : 16 * 1024, true, true);
 		}
 		else if (vm.count ("debug_stacktrace"))
 		{

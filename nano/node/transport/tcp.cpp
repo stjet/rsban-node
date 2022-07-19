@@ -374,7 +374,7 @@ void nano::transport::tcp_channels::stop ()
 
 bool nano::transport::tcp_channels::max_ip_connections (nano::tcp_endpoint const & endpoint_a)
 {
-	if (node.flags.disable_max_peers_per_ip)
+	if (node.flags.disable_max_peers_per_ip ())
 	{
 		return false;
 	}
@@ -395,7 +395,7 @@ bool nano::transport::tcp_channels::max_ip_connections (nano::tcp_endpoint const
 
 bool nano::transport::tcp_channels::max_subnetwork_connections (nano::tcp_endpoint const & endpoint_a)
 {
-	if (node.flags.disable_max_peers_per_subnetwork)
+	if (node.flags.disable_max_peers_per_subnetwork ())
 	{
 		return false;
 	}
@@ -424,7 +424,7 @@ bool nano::transport::tcp_channels::reachout (nano::endpoint const & endpoint_a)
 	auto tcp_endpoint (nano::transport::map_endpoint_to_tcp (endpoint_a));
 	// Don't overload single IP
 	bool error = node.network.excluded_peers.check (tcp_endpoint) || max_ip_or_subnetwork_connections (tcp_endpoint);
-	if (!error && !node.flags.disable_tcp_realtime)
+	if (!error && !node.flags.disable_tcp_realtime ())
 	{
 		// Don't keepalive to nodes that already sent us something
 		error |= find_channel (tcp_endpoint) != nullptr;
@@ -488,7 +488,7 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 	}
 	// Attempt to start TCP connections to known UDP peers
 	nano::tcp_endpoint invalid_endpoint (boost::asio::ip::address_v6::any (), 0);
-	if (!network_params.network.is_dev_network () && !node.flags.disable_udp)
+	if (!network_params.network.is_dev_network () && !node.flags.disable_udp ())
 	{
 		std::size_t random_count (std::min (static_cast<std::size_t> (6), static_cast<std::size_t> (std::ceil (std::sqrt (node.network.udp_channels.size ())))));
 		for (auto i (0); i <= random_count; ++i)
@@ -548,7 +548,7 @@ void nano::transport::tcp_channels::update (nano::tcp_endpoint const & endpoint_
 
 void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a)
 {
-	if (node.flags.disable_tcp_realtime)
+	if (node.flags.disable_tcp_realtime ())
 	{
 		node.network.tcp_channels->udp_fallback (endpoint_a);
 		return;
@@ -695,7 +695,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 													response_server->set_remote_node_id (channel_a->get_node_id ());
 													response_server->receive ();
 
-													if (!node_l->flags.disable_initial_telemetry_requests)
+													if (!node_l->flags.disable_initial_telemetry_requests ())
 													{
 														node_l->telemetry->get_metrics_single_peer_async (channel_a, [] (nano::telemetry_data_response const &) {
 															// Intentionally empty, starts the telemetry request cycle to more quickly disconnect from invalid peers
@@ -764,7 +764,7 @@ void nano::transport::tcp_channels::udp_fallback (nano::endpoint const & endpoin
 		nano::lock_guard<nano::mutex> lock (mutex);
 		attempts.get<endpoint_tag> ().erase (nano::transport::map_endpoint_to_tcp (endpoint_a));
 	}
-	if (!node.flags.disable_udp)
+	if (!node.flags.disable_udp ())
 	{
 		auto channel_udp = node.network.udp_channels.create (endpoint_a);
 		node.network.send_keepalive (channel_udp);

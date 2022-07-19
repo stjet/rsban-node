@@ -1355,7 +1355,7 @@ TEST (rpc, history_pruning)
 	nano::node_config node_config (nano::get_available_port (), system.logging);
 	node_config.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 	auto node0 = add_ipc_enabled_node (system, node_config, node_flags);
 	nano::block_builder builder;
 	auto change = builder
@@ -2771,7 +2771,7 @@ TEST (rpc, block_count_pruning)
 	nano::node_config node_config (nano::get_available_port (), system.logging);
 	node_config.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 	auto node1 = add_ipc_enabled_node (system, node_config, node_flags);
 	auto latest (node1->latest (nano::dev::genesis_key.pub));
 	nano::block_builder builder;
@@ -4849,7 +4849,7 @@ TEST (rpc, block_info_pruning)
 	nano::node_config node_config1 (nano::get_available_port (), system.logging);
 	node_config1.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 	auto node1 = add_ipc_enabled_node (system, node_config1, node_flags);
 	auto latest (node1->latest (nano::dev::genesis_key.pub));
 	nano::block_builder builder;
@@ -4916,7 +4916,7 @@ TEST (rpc, pruned_exists)
 	nano::node_config node_config1 (nano::get_available_port (), system.logging);
 	node_config1.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 	auto node1 = add_ipc_enabled_node (system, node_config1, node_flags);
 	auto latest (node1->latest (nano::dev::genesis_key.pub));
 	nano::block_builder builder;
@@ -5771,7 +5771,7 @@ TEST (rpc, confirmation_height_currently_processing)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.force_use_write_database_queue = true;
+	node_flags.set_force_use_write_database_queue (true);
 	nano::node_config node_config (nano::get_available_port (), system.logging);
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 
@@ -7038,7 +7038,7 @@ TEST (rpc, account_lazy_start)
 {
 	nano::system system{};
 	nano::node_flags node_flags{};
-	node_flags.disable_legacy_bootstrap = true;
+	node_flags.set_disable_legacy_bootstrap (true);
 	auto node1 = system.add_node (node_flags);
 	nano::keypair key{};
 	nano::block_builder builder;
@@ -7223,7 +7223,7 @@ TEST (rpc, receive_pruned)
 	nano::node_config node_config (nano::get_available_port (), system.logging);
 	node_config.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 	auto node2 = add_ipc_enabled_node (system, node_config, node_flags);
 	auto wallet1 = system.wallet (0);
 	auto wallet2 = system.wallet (1);
@@ -7445,7 +7445,7 @@ TEST (rpc, confirmation_active)
 	node_config.ipc_config.transport_tcp.enabled = true;
 	node_config.ipc_config.transport_tcp.port = nano::get_available_port ();
 	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
+	node_flags.set_disable_request_loop (true);
 	auto node1 (system.add_node (node_config, node_flags));
 	auto const rpc_ctx = add_rpc (system, node1);
 

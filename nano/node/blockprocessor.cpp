@@ -30,7 +30,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	logger (*node_a.logger),
 	checker (node_a.checker),
 	config (*node_a.config),
-	state_block_signature_verification (checker, config.network_params.ledger.epochs, config.logging.timing_logging (), node_a.logger, node_a.flags.block_processor_verification_size),
+	state_block_signature_verification (checker, config.network_params.ledger.epochs, config.logging.timing_logging (), node_a.logger, node_a.flags.block_processor_verification_size ()),
 	network_params (node_a.network_params),
 	history (node_a.history),
 	ledger (node_a.ledger),
@@ -112,12 +112,12 @@ std::size_t nano::block_processor::size ()
 
 bool nano::block_processor::full ()
 {
-	return size () >= flags.block_processor_full_size;
+	return size () >= flags.block_processor_full_size ();
 }
 
 bool nano::block_processor::half_full ()
 {
-	return size () >= flags.block_processor_full_size / 2;
+	return size () >= flags.block_processor_full_size () / 2;
 }
 
 void nano::block_processor::add (std::shared_ptr<nano::block> const & block_a)
@@ -264,7 +264,7 @@ void nano::block_processor::process_batch (nano::unique_lock<nano::mutex> & lock
 	// Processing blocks
 	unsigned number_of_blocks_processed (0), number_of_forced_processed (0);
 	auto deadline_reached = [&timer_l, deadline = config.block_processor_batch_max_time] { return timer_l.after_deadline (deadline); };
-	auto processor_batch_reached = [&number_of_blocks_processed, max = flags.block_processor_batch_size] { return number_of_blocks_processed >= max; };
+	auto processor_batch_reached = [&number_of_blocks_processed, max = flags.block_processor_batch_size ()] { return number_of_blocks_processed >= max; };
 	auto store_batch_reached = [&number_of_blocks_processed, max = store.max_block_write_batch_num ()] { return number_of_blocks_processed >= max; };
 	while (have_blocks_ready () && (!deadline_reached () || !processor_batch_reached ()) && !awaiting_write && !store_batch_reached ())
 	{
@@ -353,7 +353,7 @@ void nano::block_processor::process_live (nano::transaction const & transaction_
 	{
 		network.flood_block_initial (block_a);
 	}
-	else if (!flags.disable_block_processor_republishing)
+	else if (!flags.disable_block_processor_republishing ())
 	{
 		network.flood_block (block_a, nano::buffer_drop_policy::limiter);
 	}

@@ -112,7 +112,7 @@ TEST (socket, max_connections_per_ip)
 	nano::system system;
 
 	auto node = system.add_node ();
-	ASSERT_FALSE (node->flags.disable_max_peers_per_ip);
+	ASSERT_FALSE (node->flags.disable_max_peers_per_ip ());
 
 	auto server_port = nano::get_available_port ();
 	boost::asio::ip::tcp::endpoint listen_endpoint{ boost::asio::ip::address_v6::any (), server_port };
@@ -230,11 +230,11 @@ TEST (socket, max_connections_per_subnetwork)
 
 	nano::node_flags node_flags;
 	// disabling IP limit because it will be used the same IP address to check they come from the same subnetwork.
-	node_flags.disable_max_peers_per_ip = true;
-	node_flags.disable_max_peers_per_subnetwork = false;
+	node_flags.set_disable_max_peers_per_ip (true);
+	node_flags.set_disable_max_peers_per_subnetwork (false);
 	auto node = system.add_node (node_flags);
-	ASSERT_TRUE (node->flags.disable_max_peers_per_ip);
-	ASSERT_FALSE (node->flags.disable_max_peers_per_subnetwork);
+	ASSERT_TRUE (node->flags.disable_max_peers_per_ip ());
+	ASSERT_FALSE (node->flags.disable_max_peers_per_subnetwork ());
 
 	auto server_port = nano::get_available_port ();
 	boost::asio::ip::tcp::endpoint listen_endpoint{ boost::asio::ip::address_v6::any (), server_port };
@@ -295,9 +295,9 @@ TEST (socket, disabled_max_peers_per_ip)
 	nano::system system;
 
 	nano::node_flags node_flags;
-	node_flags.disable_max_peers_per_ip = true;
+	node_flags.set_disable_max_peers_per_ip (true);
 	auto node = system.add_node (node_flags);
-	ASSERT_TRUE (node->flags.disable_max_peers_per_ip);
+	ASSERT_TRUE (node->flags.disable_max_peers_per_ip ());
 
 	auto server_port = nano::get_available_port ();
 	boost::asio::ip::tcp::endpoint listen_endpoint{ boost::asio::ip::address_v6::any (), server_port };
@@ -413,7 +413,7 @@ TEST (socket, disconnection_of_silent_connections)
 TEST (socket, drop_policy)
 {
 	auto node_flags = nano::inactive_node_flag_defaults ();
-	node_flags.read_only = false;
+	node_flags.set_read_only (false);
 	nano::inactive_node inactivenode (nano::unique_path (), node_flags);
 	auto node = inactivenode.node;
 
@@ -477,9 +477,9 @@ TEST (socket, drop_policy)
 TEST (socket, concurrent_writes)
 {
 	auto node_flags = nano::inactive_node_flag_defaults ();
-	node_flags.read_only = false;
-	node_flags.disable_max_peers_per_ip = true;
-	node_flags.disable_max_peers_per_subnetwork = true;
+	node_flags.set_read_only (false);
+	node_flags.set_disable_max_peers_per_ip (true);
+	node_flags.set_disable_max_peers_per_subnetwork (true);
 	nano::inactive_node inactivenode (nano::unique_path (), node_flags);
 	auto node = inactivenode.node;
 

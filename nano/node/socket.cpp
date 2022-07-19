@@ -420,7 +420,7 @@ size_t network_prefix)
 bool nano::server_socket::limit_reached_for_incoming_subnetwork_connections (std::shared_ptr<nano::socket> const & new_connection)
 {
 	debug_assert (strand.running_in_this_thread ());
-	if (node.flags.disable_max_peers_per_subnetwork || nano::transport::is_ipv4_or_v4_mapped_address (new_connection->remote_endpoint ().address ()))
+	if (node.flags.disable_max_peers_per_subnetwork () || nano::transport::is_ipv4_or_v4_mapped_address (new_connection->remote_endpoint ().address ()))
 	{
 		// If the limit is disabled, then it is unreachable.
 		// If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6 /64.
@@ -436,7 +436,7 @@ bool nano::server_socket::limit_reached_for_incoming_subnetwork_connections (std
 bool nano::server_socket::limit_reached_for_incoming_ip_connections (std::shared_ptr<nano::socket> const & new_connection)
 {
 	debug_assert (strand.running_in_this_thread ());
-	if (node.flags.disable_max_peers_per_ip)
+	if (node.flags.disable_max_peers_per_ip ())
 	{
 		// If the limit is disabled, then it is unreachable.
 		return false;

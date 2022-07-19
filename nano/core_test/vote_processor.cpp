@@ -140,7 +140,7 @@ TEST (vote_processor, no_capacity)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.vote_processor_capacity = 0;
+	node_flags.set_vote_processor_capacity (0);
 	auto & node (*system.add_node (node_flags));
 	nano::keypair key;
 	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, nano::vote::timestamp_min * 1, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () }));
@@ -152,7 +152,7 @@ TEST (vote_processor, overflow)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.vote_processor_capacity = 1;
+	node_flags.set_vote_processor_capacity (1);
 	auto & node (*system.add_node (node_flags));
 	nano::keypair key;
 	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, nano::vote::timestamp_min * 1, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () }));
@@ -236,7 +236,7 @@ TEST (vote_processor, no_broadcast_local)
 {
 	nano::system system;
 	nano::node_flags flags;
-	flags.disable_request_loop = true;
+	flags.set_disable_request_loop (true);
 	nano::node_config config1, config2;
 	config1.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (config1, flags));
@@ -289,7 +289,7 @@ TEST (vote_processor, local_broadcast_without_a_representative)
 {
 	nano::system system;
 	nano::node_flags flags;
-	flags.disable_request_loop = true;
+	flags.set_disable_request_loop (true);
 	nano::node_config config1, config2;
 	config1.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (config1, flags));
@@ -337,7 +337,7 @@ TEST (vote_processor, no_broadcast_local_with_a_principal_representative)
 {
 	nano::system system;
 	nano::node_flags flags;
-	flags.disable_request_loop = true;
+	flags.set_disable_request_loop (true);
 	nano::node_config config1, config2;
 	config1.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (config1, flags));

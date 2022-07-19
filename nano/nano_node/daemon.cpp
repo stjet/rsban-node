@@ -56,11 +56,13 @@ volatile sig_atomic_t sig_int_or_term = 0;
 constexpr std::size_t OPEN_FILE_DESCRIPTORS_LIMIT = 16384;
 }
 
-static void load_and_set_bandwidth_params (std::shared_ptr<nano::node> const & node, boost::filesystem::path const & data_path, nano::node_flags const & flags)
+static void load_and_set_bandwidth_params (std::shared_ptr<nano::node> const & node, boost::filesystem::path const & data_path, nano::node_flags & flags)
 {
 	nano::daemon_config config{ data_path, node->network_params };
 
-	auto error = nano::read_node_config_toml (data_path, config, flags.config_overrides);
+	auto tmp_overrides{ flags.rpc_config_overrides () };
+	auto error = nano::read_node_config_toml (data_path, config, tmp_overrides);
+	flags.set_rpc_overrides (tmp_overrides);
 	if (!error)
 	{
 		error = nano::flags_config_conflicts (flags, config.node);
@@ -71,7 +73,7 @@ static void load_and_set_bandwidth_params (std::shared_ptr<nano::node> const & n
 	}
 }
 
-void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::node_flags const & flags)
+void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::node_flags & flags)
 {
 	install_abort_signal_handler ();
 
@@ -81,7 +83,9 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 	std::unique_ptr<nano::thread_runner> runner;
 	nano::network_params network_params{ nano::network_constants::active_network () };
 	nano::daemon_config config{ data_path, network_params };
-	auto error = nano::read_node_config_toml (data_path, config, flags.config_overrides);
+	auto tmp_overrides{ flags.config_overrides () };
+	auto error = nano::read_node_config_toml (data_path, config, tmp_overrides);
+	flags.set_config_overrides (tmp_overrides);
 	nano::set_use_memory_pools (config.node.use_memory_pools);
 	if (!error)
 	{
@@ -177,7 +181,9 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 					{
 						// Launch rpc in-process
 						nano::rpc_config rpc_config{ config.node.network_params.network };
-						auto error = nano::read_rpc_config_toml (data_path, rpc_config, flags.rpc_config_overrides);
+						auto tmp_overrides{ flags.rpc_config_overrides () };
+						auto error = nano::read_rpc_config_toml (data_path, rpc_config, tmp_overrides);
+						flags.set_rpc_overrides (tmp_overrides);
 						if (error)
 						{
 							std::cout << error.get_message () << std::endl;

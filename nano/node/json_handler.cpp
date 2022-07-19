@@ -1428,7 +1428,7 @@ void nano::json_handler::block_count ()
 	response_l.put ("count", std::to_string (node.ledger.cache.block_count));
 	response_l.put ("unchecked", std::to_string (node.unchecked.count (node.store.tx_begin_read ())));
 	response_l.put ("cemented", std::to_string (node.ledger.cache.cemented_count));
-	if (node.flags.enable_pruning)
+	if (node.flags.enable_pruning ())
 	{
 		response_l.put ("full", std::to_string (node.ledger.cache.block_count - node.ledger.cache.pruned_count));
 		response_l.put ("pruned", std::to_string (node.ledger.cache.pruned_count));
@@ -1802,7 +1802,7 @@ void nano::json_handler::bootstrap ()
 		uint16_t port;
 		if (!nano::parse_port (port_text, port))
 		{
-			if (!node.flags.disable_legacy_bootstrap)
+			if (!node.flags.disable_legacy_bootstrap ())
 			{
 				std::string bootstrap_id (request.get<std::string> ("id", ""));
 				node.bootstrap_initiator.bootstrap (nano::endpoint (address, port), true, bootstrap_id);
@@ -1828,7 +1828,7 @@ void nano::json_handler::bootstrap ()
 void nano::json_handler::bootstrap_any ()
 {
 	bool const force = request.get<bool> ("force", false);
-	if (!node.flags.disable_legacy_bootstrap)
+	if (!node.flags.disable_legacy_bootstrap ())
 	{
 		nano::account start_account{};
 		boost::optional<std::string> account_text (request.get_optional<std::string> ("account"));
@@ -1853,7 +1853,7 @@ void nano::json_handler::bootstrap_lazy ()
 	bool const force = request.get<bool> ("force", false);
 	if (!ec)
 	{
-		if (!node.flags.disable_lazy_bootstrap)
+		if (!node.flags.disable_lazy_bootstrap ())
 		{
 			auto existed (node.bootstrap_initiator.current_lazy_attempt () != nullptr);
 			std::string bootstrap_id (request.get<std::string> ("id", ""));

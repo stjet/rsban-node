@@ -157,7 +157,7 @@ TEST (peer_container, reachout)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
+	node_flags.set_disable_udp (false);
 	auto & node1 = *system.add_node (node_flags);
 	nano::endpoint endpoint0 (boost::asio::ip::address_v6::loopback (), nano::get_available_port ());
 	// Make sure having been contacted by them already indicates we shouldn't reach out

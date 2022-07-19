@@ -29,7 +29,7 @@ nano::vote_processor::vote_processor (nano::signature_checker & checker_a, nano:
 	rep_crawler (rep_crawler_a),
 	ledger (ledger_a),
 	network_params (network_params_a),
-	max_votes (flags_a.vote_processor_capacity),
+	max_votes (flags_a.vote_processor_capacity ()),
 	started (false),
 	stopped (false),
 	thread ([this] () {

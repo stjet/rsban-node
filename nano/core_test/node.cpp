@@ -82,12 +82,14 @@ TEST (node_DeathTest, readonly_block_store_not_exist)
 	// This is a read-only node with no ledger file
 	if (nano::rocksdb_config::using_rocksdb_in_tests ())
 	{
-		nano::inactive_node node (nano::unique_path (), nano::inactive_node_flag_defaults ());
+		nano::node_flags flags{ nano::inactive_node_flag_defaults () };
+		nano::inactive_node node (nano::unique_path (), flags);
 		ASSERT_TRUE (node.node->init_error ());
 	}
 	else
 	{
-		ASSERT_EXIT (nano::inactive_node node (nano::unique_path (), nano::inactive_node_flag_defaults ()), ::testing::ExitedWithCode (1), "");
+		nano::node_flags flags{ nano::inactive_node_flag_defaults () };
+		ASSERT_EXIT (nano::inactive_node node (nano::unique_path (), flags), ::testing::ExitedWithCode (1), "");
 	}
 }
 
@@ -283,8 +285,8 @@ TEST (node, auto_bootstrap)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_lazy_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_lazy_bootstrap (true);
 	auto node0 = system.add_node (config, node_flags);
 	nano::keypair key2;
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -315,8 +317,8 @@ TEST (node, auto_bootstrap_reverse)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_lazy_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_lazy_bootstrap (true);
 	auto node0 = system.add_node (config, node_flags);
 	nano::keypair key2;
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -336,9 +338,9 @@ TEST (node, auto_bootstrap_age)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_lazy_bootstrap = true;
-	node_flags.bootstrap_interval = 1;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_lazy_bootstrap (true);
+	node_flags.set_bootstrap_interval (1);
 	auto node0 = system.add_node (config, node_flags);
 	auto node1 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
 	ASSERT_FALSE (node1->init_error ());
@@ -469,7 +471,7 @@ TEST (node, search_receivable_pruned)
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto node1 = system.add_node (node_config);
 	nano::node_flags node_flags;
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.enable_voting = false; // Remove after allowing pruned voting
 	auto node2 = system.add_node (config, node_flags);
@@ -530,7 +532,7 @@ TEST (node, connect_after_junk)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
+	node_flags.set_disable_udp (false);
 	auto node0 = system.add_node (node_flags);
 	auto node1 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
 	std::vector<uint8_t> junk_buffer;
@@ -595,9 +597,9 @@ TEST (node_flags, disable_tcp_realtime)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
+	node_flags.set_disable_udp (false);
 	auto node1 = system.add_node (node_flags);
-	node_flags.disable_tcp_realtime = true;
+	node_flags.set_disable_tcp_realtime (true);
 	auto node2 = system.add_node (node_flags);
 	ASSERT_EQ (1, node1->network.size ());
 	auto list1 (node1->network.list (2));
@@ -613,10 +615,10 @@ TEST (node_flags, disable_tcp_realtime_and_bootstrap_listener)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
+	node_flags.set_disable_udp (false);
 	auto node1 = system.add_node (node_flags);
-	node_flags.disable_tcp_realtime = true;
-	node_flags.disable_bootstrap_listener = true;
+	node_flags.set_disable_tcp_realtime (true);
+	node_flags.set_disable_bootstrap_listener (true);
 	auto node2 = system.add_node (node_flags);
 	ASSERT_EQ (nano::tcp_endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->bootstrap->endpoint ());
 	ASSERT_NE (nano::endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->network.endpoint ());
@@ -635,7 +637,7 @@ TEST (node_flags, disable_udp)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
+	node_flags.set_disable_udp (false);
 	auto node1 = system.add_node (node_flags);
 	auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::unique_path (), nano::node_config (nano::get_available_port (), system.logging), system.work));
 	system.nodes.push_back (node2);
@@ -864,9 +866,9 @@ TEST (node, fork_multi_flip)
 		nano::node_flags node_flags;
 		if (type == nano::transport::transport_type::udp)
 		{
-			node_flags.disable_tcp_realtime = true;
-			node_flags.disable_bootstrap_listener = true;
-			node_flags.disable_udp = false;
+			node_flags.set_disable_tcp_realtime (true);
+			node_flags.set_disable_bootstrap_listener (true);
+			node_flags.set_disable_udp (false);
 		}
 		nano::node_config node_config (nano::get_available_port (), system.logging);
 		node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
@@ -942,8 +944,8 @@ TEST (node, fork_bootstrap_flip)
 	nano::node_config config0{ nano::get_available_port (), system0.logging };
 	config0.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_lazy_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_lazy_bootstrap (true);
 	auto & node1 = *system0.add_node (config0, node_flags);
 	nano::node_config config1 (nano::get_available_port (), system1.logging);
 	auto & node2 = *system1.add_node (config1, node_flags);
@@ -1325,9 +1327,9 @@ TEST (node, DISABLED_broadcast_elected)
 		nano::node_flags node_flags;
 		if (type == nano::transport::transport_type::udp)
 		{
-			node_flags.disable_tcp_realtime = true;
-			node_flags.disable_bootstrap_listener = true;
-			node_flags.disable_udp = false;
+			node_flags.set_disable_tcp_realtime (true);
+			node_flags.set_disable_bootstrap_listener (true);
+			node_flags.set_disable_udp (false);
 		}
 		nano::system system;
 		nano::node_config node_config (nano::get_available_port (), system.logging);
@@ -1857,7 +1859,7 @@ TEST (node, rep_remove)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
+	node_flags.set_disable_udp (false);
 	auto & node = *system.add_node (node_flags);
 	nano::keypair keypair1;
 	nano::keypair keypair2;
@@ -2108,7 +2110,7 @@ TEST (node, online_reps_rep_crawler)
 {
 	nano::system system;
 	nano::node_flags flags;
-	flags.disable_rep_crawler = true;
+	flags.set_disable_rep_crawler (true);
 	auto & node1 = *system.add_node (flags);
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::milliseconds_since_epoch (), 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
 	ASSERT_EQ (0, node1.online_reps.online ());
@@ -2129,7 +2131,7 @@ TEST (node, online_reps_election)
 {
 	nano::system system;
 	nano::node_flags flags;
-	flags.disable_rep_crawler = true;
+	flags.set_disable_rep_crawler (true);
 	auto & node1 = *system.add_node (flags);
 	// Start election
 	nano::keypair key;
@@ -2162,9 +2164,9 @@ TEST (node, block_confirm)
 		nano::node_flags node_flags;
 		if (type == nano::transport::transport_type::udp)
 		{
-			node_flags.disable_tcp_realtime = true;
-			node_flags.disable_bootstrap_listener = true;
-			node_flags.disable_udp = false;
+			node_flags.set_disable_tcp_realtime (true);
+			node_flags.set_disable_bootstrap_listener (true);
+			node_flags.set_disable_udp (false);
 		}
 		nano::system system (2, type, node_flags);
 		auto & node1 (*system.nodes[0]);
@@ -2427,12 +2429,12 @@ TEST (node, local_votes_cache_fork)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_bootstrap_bulk_pull_server = true;
-	node_flags.disable_bootstrap_listener = true;
-	node_flags.disable_lazy_bootstrap = true;
-	node_flags.disable_legacy_bootstrap = true;
-	node_flags.disable_wallet_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_bootstrap_bulk_pull_server (true);
+	node_flags.set_disable_bootstrap_listener (true);
+	node_flags.set_disable_lazy_bootstrap (true);
+	node_flags.set_disable_legacy_bootstrap (true);
+	node_flags.set_disable_wallet_bootstrap (true);
 	nano::node_config node_config (nano::get_available_port (), system.logging);
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node1 (*system.add_node (node_config, node_flags));
@@ -2749,7 +2751,7 @@ TEST (node, DISABLED_fork_invalid_block_signature)
 	// - Block *send2* might get processed before the rollback happens, simply due to timings, with code "fork", and not be processed again. Waiting for the rollback fixes this issue.
 	// - Block *send1* might get processed again after the rollback happens, which causes *send2* to be processed with code "fork". Disabling block republishing ensures "send1" is not processed again.
 	// An alternative would be to repeatedly flood the correct vote
-	node_flags.disable_block_processor_republishing = true;
+	node_flags.set_disable_block_processor_republishing (true);
 	auto & node1 (*system.add_node (node_flags));
 	auto & node2 (*system.add_node (node_flags));
 	nano::keypair key2;
@@ -2992,8 +2994,8 @@ TEST (node, block_processor_full)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.force_use_write_database_queue = true;
-	node_flags.block_processor_full_size = 3;
+	node_flags.set_force_use_write_database_queue (true);
+	node_flags.set_block_processor_full_size (3);
 	auto & node = *system.add_node (nano::node_config (nano::get_available_port (), system.logging), node_flags);
 	nano::state_block_builder builder;
 	auto send1 = builder.make_block ()
@@ -3038,8 +3040,8 @@ TEST (node, block_processor_half_full)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.block_processor_full_size = 6;
-	node_flags.force_use_write_database_queue = true;
+	node_flags.set_block_processor_full_size (6);
+	node_flags.set_force_use_write_database_queue (true);
 	auto & node = *system.add_node (nano::node_config (nano::get_available_port (), system.logging), node_flags);
 	nano::state_block_builder builder;
 	auto send1 = builder.make_block ()
@@ -3202,7 +3204,7 @@ TEST (node, peer_cache_restart)
 	// Restart node
 	{
 		nano::node_flags node_flags;
-		node_flags.read_only = true;
+		node_flags.set_read_only (true);
 		auto node3 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), path, system.logging, system.work, node_flags));
 		system.nodes.push_back (node3);
 		// Check cached peers after restart
@@ -3228,7 +3230,7 @@ TEST (node, unchecked_cleanup)
 {
 	nano::system system{};
 	nano::node_flags node_flags{};
-	node_flags.disable_unchecked_cleanup = true;
+	node_flags.set_disable_unchecked_cleanup (true);
 	nano::keypair key{};
 	auto & node = *system.add_node (node_flags);
 	auto open = nano::state_block_builder ()
@@ -3289,7 +3291,8 @@ TEST (node, dont_write_lock_node)
 	write_lock_held_promise.get_future ().wait ();
 
 	// Check inactive node can finish executing while a write lock is open
-	nano::inactive_node node (path, nano::inactive_node_flag_defaults ());
+	nano::node_flags flags{ nano::inactive_node_flag_defaults () };
+	nano::inactive_node node (path, flags);
 	finished_promise.set_value ();
 }
 
@@ -3305,9 +3308,9 @@ TEST (node, bidirectional_tcp)
 	nano::system system;
 	nano::node_flags node_flags;
 	// Disable bootstrap to start elections for new blocks
-	node_flags.disable_legacy_bootstrap = true;
-	node_flags.disable_lazy_bootstrap = true;
-	node_flags.disable_wallet_bootstrap = true;
+	node_flags.set_disable_legacy_bootstrap (true);
+	node_flags.set_disable_lazy_bootstrap (true);
+	node_flags.set_disable_wallet_bootstrap (true);
 	nano::node_config node_config (nano::get_available_port (), system.logging);
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto node1 = system.add_node (node_config, node_flags);
@@ -3396,14 +3399,14 @@ TEST (node, aggressive_flooding)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
-	node_flags.disable_block_processor_republishing = true;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_bootstrap_bulk_pull_server = true;
-	node_flags.disable_bootstrap_listener = true;
-	node_flags.disable_lazy_bootstrap = true;
-	node_flags.disable_legacy_bootstrap = true;
-	node_flags.disable_wallet_bootstrap = true;
+	node_flags.set_disable_request_loop (true);
+	node_flags.set_disable_block_processor_republishing (true);
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_bootstrap_bulk_pull_server (true);
+	node_flags.set_disable_bootstrap_listener (true);
+	node_flags.set_disable_lazy_bootstrap (true);
+	node_flags.set_disable_legacy_bootstrap (true);
+	node_flags.set_disable_wallet_bootstrap (true);
 	auto & node1 (*system.add_node (node_flags));
 	auto & wallet1 (*system.wallet (0));
 	wallet1.insert_adhoc (nano::dev::genesis_key.prv);
@@ -3491,11 +3494,11 @@ TEST (node, aggressive_flooding)
 		});
 	};
 
-	ASSERT_TIMELY (!sanitizer_or_valgrind ? 15s : 25s, all_have_block (block->hash ()));
+	ASSERT_TIMELY (!sanitizer_or_valgrind ? 20s : 25s, all_have_block (block->hash ()));
 
 	// Do the same for a wallet block
 	auto wallet_block = wallet1.send_sync (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 10);
-	ASSERT_TIMELY (!sanitizer_or_valgrind ? 15s : 25s, all_have_block (wallet_block));
+	ASSERT_TIMELY (!sanitizer_or_valgrind ? 20s : 25s, all_have_block (wallet_block));
 
 	// All blocks: genesis + (send+open) for each representative + 2 local blocks
 	// The main node only sees all blocks if other nodes are flooding their PR's open block to all other PRs
@@ -3515,7 +3518,7 @@ TEST (node, rollback_vote_self)
 {
 	nano::system system;
 	nano::node_flags flags;
-	flags.disable_request_loop = true;
+	flags.set_disable_request_loop (true);
 	auto & node = *system.add_node (flags);
 	nano::state_block_builder builder;
 	nano::keypair key;
@@ -4065,7 +4068,7 @@ TEST (node, deferred_dependent_elections)
 {
 	nano::system system;
 	nano::node_flags flags;
-	flags.disable_request_loop = true;
+	flags.set_disable_request_loop (true);
 	auto & node = *system.add_node (flags);
 	auto & node2 = *system.add_node (flags); // node2 will be used to ensure all blocks are being propagated
 
@@ -4223,7 +4226,7 @@ TEST (rep_crawler, local)
 {
 	nano::system system;
 	nano::node_flags flags;
-	flags.disable_rep_crawler = true;
+	flags.set_disable_rep_crawler (true);
 	auto & node = *system.add_node (flags);
 	auto loopback = std::make_shared<nano::transport::inproc::channel> (node, node);
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector{ nano::dev::genesis->hash () });
@@ -4249,7 +4252,7 @@ TEST (node, pruning_automatic)
 	node_config.max_pruning_age = std::chrono::seconds (1);
 
 	nano::node_flags node_flags{};
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 
 	auto & node1 = *system.add_node (node_config, node_flags);
 	nano::keypair key1{};
@@ -4302,7 +4305,7 @@ TEST (node, pruning_age)
 	node_config.enable_voting = false;
 
 	nano::node_flags node_flags{};
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 
 	auto & node1 = *system.add_node (node_config, node_flags);
 	nano::keypair key1{};
@@ -4365,7 +4368,7 @@ TEST (node, pruning_depth)
 	node_config.enable_voting = false;
 
 	nano::node_flags node_flags{};
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 
 	auto & node1 = *system.add_node (node_config, node_flags);
 	nano::keypair key1{};

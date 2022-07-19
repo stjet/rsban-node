@@ -103,7 +103,7 @@ nano::transport::udp_channels::udp_channels (nano::node & node_a, uint16_t port_
 	strand{ node_a.io_ctx.get_executor () },
 	sink{ std::move (sink) }
 {
-	if (!node.flags.disable_udp)
+	if (!node.flags.disable_udp ())
 	{
 		socket = std::make_unique<boost::asio::ip::udp::socket> (node_a.io_ctx, nano::endpoint (boost::asio::ip::address_v6::any (), port_a));
 		boost::system::error_code ec;
@@ -349,7 +349,7 @@ void nano::transport::udp_channels::receive ()
 
 void nano::transport::udp_channels::start ()
 {
-	debug_assert (!node.flags.disable_udp);
+	debug_assert (!node.flags.disable_udp ());
 	for (std::size_t i = 0; i < node.config->io_threads && !stopped; ++i)
 	{
 		boost::asio::post (strand, [this] () {
@@ -667,7 +667,7 @@ std::shared_ptr<nano::transport::channel> nano::transport::udp_channels::create 
 
 bool nano::transport::udp_channels::max_ip_connections (nano::endpoint const & endpoint_a)
 {
-	if (node.flags.disable_max_peers_per_ip)
+	if (node.flags.disable_max_peers_per_ip ())
 	{
 		return false;
 	}
@@ -683,7 +683,7 @@ bool nano::transport::udp_channels::max_ip_connections (nano::endpoint const & e
 
 bool nano::transport::udp_channels::max_subnetwork_connections (nano::endpoint const & endpoint_a)
 {
-	if (node.flags.disable_max_peers_per_subnetwork)
+	if (node.flags.disable_max_peers_per_subnetwork ())
 	{
 		return false;
 	}
@@ -706,7 +706,7 @@ bool nano::transport::udp_channels::reachout (nano::endpoint const & endpoint_a)
 {
 	// Don't overload single IP
 	bool error = max_ip_or_subnetwork_connections (endpoint_a);
-	if (!error && !node.flags.disable_udp)
+	if (!error && !node.flags.disable_udp ())
 	{
 		auto endpoint_l (nano::transport::map_endpoint_to_v6 (endpoint_a));
 		// Don't keepalive to nodes that already sent us something

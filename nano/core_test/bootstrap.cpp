@@ -220,14 +220,14 @@ TEST (bootstrap_processor, process_one)
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	node_config.enable_voting = false;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node0 = system.add_node (node_config, node_flags);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	auto send (system.wallet (0)->send_action (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 100));
 	ASSERT_NE (nullptr, send);
 
 	node_config.peering_port = nano::get_available_port ();
-	node_flags.disable_rep_crawler = true;
+	node_flags.set_disable_rep_crawler (true);
 	auto node1 (std::make_shared<nano::node> (system.io_ctx, nano::unique_path (), node_config, system.work, node_flags));
 	nano::block_hash hash1 (node0->latest (nano::dev::genesis_key.pub));
 	nano::block_hash hash2 (node1->latest (nano::dev::genesis_key.pub));
@@ -245,7 +245,7 @@ TEST (bootstrap_processor, process_two)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node0 (system.add_node (config, node_flags));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::block_hash hash1 (node0->latest (nano::dev::genesis_key.pub));
@@ -272,7 +272,7 @@ TEST (bootstrap_processor, process_state)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node0 (system.add_node (config, node_flags));
 	nano::state_block_builder builder;
 
@@ -318,7 +318,7 @@ TEST (bootstrap_processor, process_new)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node1 (system.add_node (config, node_flags));
 	config.peering_port = nano::get_available_port ();
 	auto node2 (system.add_node (config, node_flags));
@@ -348,7 +348,7 @@ TEST (bootstrap_processor, pull_diamond)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node0 (system.add_node (config, node_flags));
 	nano::keypair key;
 	nano::block_builder builder;
@@ -402,7 +402,7 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node1 (system.add_node (config, node_flags));
 	config.peering_port = nano::get_available_port ();
 	auto node2 (system.add_node (config, node_flags));
@@ -509,7 +509,7 @@ TEST (bootstrap_processor, DISABLED_push_diamond_pruning)
 	config.peering_port = nano::get_available_port ();
 	config.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
-	node_flags.enable_pruning = true;
+	node_flags.set_enable_pruning (true);
 	auto node1 (std::make_shared<nano::node> (system.io_ctx, nano::unique_path (), config, system.work, node_flags, 1));
 	ASSERT_FALSE (node1->init_error ());
 	auto latest (node0->latest (nano::dev::genesis_key.pub));
@@ -600,7 +600,7 @@ TEST (bootstrap_processor, lazy_hash)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node0 (system.add_node (config, node_flags));
 	nano::keypair key1;
 	nano::keypair key2;
@@ -674,7 +674,7 @@ TEST (bootstrap_processor, lazy_hash_bootstrap_id)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node0 (system.add_node (config, node_flags));
 	nano::keypair key1;
 	nano::keypair key2;
@@ -749,8 +749,8 @@ TEST (bootstrap_processor, lazy_hash_pruning)
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	config.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.enable_pruning = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_enable_pruning (true);
 	auto node0 (system.add_node (config, node_flags));
 	nano::keypair key1;
 	nano::keypair key2;
@@ -883,7 +883,7 @@ TEST (bootstrap_processor, lazy_max_pull_count)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node0 (system.add_node (config, node_flags));
 	nano::keypair key1;
 	nano::keypair key2;
@@ -988,8 +988,8 @@ TEST (bootstrap_processor, DISABLED_lazy_unclear_state_link)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_legacy_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_legacy_bootstrap (true);
 	auto node1 = system.add_node (config, node_flags);
 	nano::keypair key;
 	// Generating test chain
@@ -1057,8 +1057,8 @@ TEST (bootstrap_processor, lazy_unclear_state_link_not_existing)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_legacy_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_legacy_bootstrap (true);
 	auto node1 = system.add_node (config, node_flags);
 	nano::keypair key, key2;
 	// Generating test chain
@@ -1115,8 +1115,8 @@ TEST (bootstrap_processor, DISABLED_lazy_destinations)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_legacy_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_legacy_bootstrap (true);
 	auto node1 = system.add_node (config, node_flags);
 	nano::keypair key1, key2;
 	// Generating test chain
@@ -1185,9 +1185,9 @@ TEST (bootstrap_processor, lazy_pruning_missing_block)
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	config.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_legacy_bootstrap = true;
-	node_flags.enable_pruning = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_legacy_bootstrap (true);
+	node_flags.set_enable_pruning (true);
 	auto node1 = system.add_node (config, node_flags);
 	nano::keypair key1, key2;
 	// Generating test chain
@@ -1289,7 +1289,7 @@ TEST (bootstrap_processor, lazy_cancel)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node0 (system.add_node (config, node_flags));
 	nano::keypair key1;
 	// Generating test chain
@@ -1326,8 +1326,8 @@ TEST (bootstrap_processor, wallet_lazy_frontier)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_legacy_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_legacy_bootstrap (true);
 	auto node0 = system.add_node (config, node_flags);
 	nano::keypair key1;
 	nano::keypair key2;
@@ -1404,8 +1404,8 @@ TEST (bootstrap_processor, wallet_lazy_pending)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_legacy_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_legacy_bootstrap (true);
 	auto node0 = system.add_node (config, node_flags);
 	nano::keypair key1;
 	nano::keypair key2;
@@ -1465,7 +1465,7 @@ TEST (bootstrap_processor, multiple_attempts)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node1 = system.add_node (config, node_flags);
 	nano::keypair key1;
 	nano::keypair key2;
@@ -1856,8 +1856,8 @@ TEST (bulk, genesis)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_lazy_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_lazy_bootstrap (true);
 	auto node1 = system.add_node (config, node_flags);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.logging, system.work));
@@ -1883,8 +1883,8 @@ TEST (bulk, offline_send)
 	nano::node_config config (nano::get_available_port (), system.logging);
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_lazy_bootstrap = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_lazy_bootstrap (true);
 	auto node1 = system.add_node (config, node_flags);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.logging, system.work));
@@ -1927,13 +1927,13 @@ TEST (bulk, DISABLED_genesis_pruning)
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	config.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_lazy_bootstrap = true;
-	node_flags.disable_ongoing_bootstrap = true;
-	node_flags.enable_pruning = true;
+	node_flags.set_disable_bootstrap_bulk_push_client (true);
+	node_flags.set_disable_lazy_bootstrap (true);
+	node_flags.set_disable_ongoing_bootstrap (true);
+	node_flags.set_enable_pruning (true);
 	auto node1 = system.add_node (config, node_flags);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	node_flags.enable_pruning = false;
+	node_flags.set_enable_pruning (false);
 	auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
 	ASSERT_FALSE (node2->init_error ());
 	nano::block_hash latest1 (node1->latest (nano::dev::genesis_key.pub));

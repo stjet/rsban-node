@@ -11,11 +11,11 @@ TEST (confirmation_solicitor, batches)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
-	node_flags.disable_rep_crawler = true;
-	node_flags.disable_udp = false;
+	node_flags.set_disable_request_loop (true);
+	node_flags.set_disable_rep_crawler (true);
+	node_flags.set_disable_udp (false);
 	auto & node1 = *system.add_node (node_flags);
-	node_flags.disable_request_loop = true;
+	node_flags.set_disable_request_loop (true);
 	auto & node2 = *system.add_node (node_flags);
 	auto channel1 (node2.network.udp_channels.create (node1.network.endpoint ()));
 	// Solicitor will only solicit from this representative
@@ -63,9 +63,9 @@ TEST (confirmation_solicitor, different_hash)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
-	node_flags.disable_rep_crawler = true;
-	node_flags.disable_udp = false;
+	node_flags.set_disable_request_loop (true);
+	node_flags.set_disable_rep_crawler (true);
+	node_flags.set_disable_udp (false);
 	auto & node1 = *system.add_node (node_flags);
 	auto & node2 = *system.add_node (node_flags);
 	auto channel1 (node2.network.udp_channels.create (node1.network.endpoint ()));
@@ -105,9 +105,9 @@ TEST (confirmation_solicitor, bypass_max_requests_cap)
 {
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
-	node_flags.disable_rep_crawler = true;
-	node_flags.disable_udp = false;
+	node_flags.set_disable_request_loop (true);
+	node_flags.set_disable_rep_crawler (true);
+	node_flags.set_disable_udp (false);
 	auto & node1 = *system.add_node (node_flags);
 	auto & node2 = *system.add_node (node_flags);
 	nano::confirmation_solicitor solicitor (node2.network, *node2.config);

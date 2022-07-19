@@ -73,7 +73,7 @@ void nano::bootstrap_listener::start ()
 	// (4): UDP disabled, port not specified
 	//
 	const auto listening_port = listening_socket->listening_port ();
-	if (!node.flags.disable_udp)
+	if (!node.flags.disable_udp ())
 	{
 		// (1) and (2) -- no matter if (1) or (2), since UDP socket binding happens before this TCP socket binding,
 		// we must have already been constructed with a valid port value, so check that it really is the same everywhere
@@ -289,11 +289,11 @@ nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & 
 	params.workers = new std::shared_ptr<nano::thread_pool> (node_a->workers);
 	params.io_ctx = io_ctx.handle ();
 	params.network = &network_dto;
-	params.disable_bootstrap_listener = node_a->flags.disable_bootstrap_listener;
+	params.disable_bootstrap_listener = node_a->flags.disable_bootstrap_listener ();
 	params.connections_max = node_a->config->bootstrap_connections_max;
 	params.stats = node_a->stats->handle;
-	params.disable_bootstrap_bulk_pull_server = node_a->flags.disable_bootstrap_bulk_pull_server;
-	params.disable_tcp_realtime = node_a->flags.disable_tcp_realtime;
+	params.disable_bootstrap_bulk_pull_server = node_a->flags.disable_bootstrap_bulk_pull_server ();
+	params.disable_tcp_realtime = node_a->flags.disable_tcp_realtime ();
 	params.request_response_visitor_factory = new std::shared_ptr<nano::request_response_visitor_factory> (request_response_visitor_factory);
 	handle = rsnano::rsn_bootstrap_server_create (&params);
 	debug_assert (socket_a != nullptr);

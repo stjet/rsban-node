@@ -914,6 +914,11 @@ nano::generate_cache::generate_cache () :
 {
 }
 
+nano::generate_cache::generate_cache (rsnano::GenerateCacheHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 void nano::generate_cache::enable_all ()
 {
 	rsnano::rsn_generate_cache_enable_all (handle);

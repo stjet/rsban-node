@@ -111,7 +111,7 @@ TEST (vote_spacing, vote_generator)
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_search_pending = true;
+	node_flags.set_disable_search_pending (true);
 	auto & node = *system.add_node (config, node_flags);
 	auto & wallet = *system.wallet (0);
 	wallet.insert_adhoc (nano::dev::genesis_key.prv);
@@ -154,7 +154,7 @@ TEST (vote_spacing, rapid)
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::system system;
 	nano::node_flags node_flags;
-	node_flags.disable_search_pending = true;
+	node_flags.set_disable_search_pending (true);
 	auto & node = *system.add_node (config, node_flags);
 	auto & wallet = *system.wallet (0);
 	wallet.insert_adhoc (nano::dev::genesis_key.prv);

@@ -94,8 +94,8 @@ TEST (gap_cache, comparison)
 TEST (gap_cache, gap_bootstrap)
 {
 	nano::node_flags node_flags;
-	node_flags.disable_legacy_bootstrap = true;
-	node_flags.disable_request_loop = true; // to avoid fallback behavior of broadcasting blocks
+	node_flags.set_disable_legacy_bootstrap (true);
+	node_flags.set_disable_request_loop (true); // to avoid fallback behavior of broadcasting blocks
 	nano::system system (2, nano::transport::transport_type::tcp, node_flags);
 
 	auto & node1 (*system.nodes[0]);

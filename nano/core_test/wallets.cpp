@@ -83,7 +83,8 @@ TEST (wallets, reload)
 	ASSERT_EQ (1, node1.wallets.items.size ());
 	{
 		nano::lock_guard<nano::mutex> lock_wallet (node1.wallets.mutex);
-		nano::inactive_node node (node1.application_path, nano::inactive_node_flag_defaults ());
+		nano::node_flags flags{ nano::inactive_node_flag_defaults () };
+		nano::inactive_node node (node1.application_path, flags);
 		auto wallet (node.node->wallets.create (one));
 		ASSERT_NE (wallet, nullptr);
 	}
@@ -189,7 +190,7 @@ TEST (wallets, search_receivable)
 		config.enable_voting = false;
 		config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 		nano::node_flags flags;
-		flags.disable_search_pending = true;
+		flags.set_disable_search_pending (true);
 		auto & node (*system.add_node (config, flags));
 
 		nano::unique_lock<nano::mutex> lk (node.wallets.mutex);

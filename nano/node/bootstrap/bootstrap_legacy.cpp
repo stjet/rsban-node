@@ -206,7 +206,7 @@ rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_legacy::run_start (
 void nano::bootstrap_attempt_legacy::run ()
 {
 	debug_assert (get_started ());
-	debug_assert (!node->flags.disable_legacy_bootstrap);
+	debug_assert (!node->flags.disable_legacy_bootstrap ());
 	node->bootstrap_initiator.connections->populate_connections (false);
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	lock = run_start (lock);
@@ -239,7 +239,7 @@ void nano::bootstrap_attempt_legacy::run ()
 	if (!get_stopped ())
 	{
 		node->logger->try_log ("Completed legacy pulls");
-		if (!node->flags.disable_bootstrap_bulk_push_client)
+		if (!node->flags.disable_bootstrap_bulk_push_client ())
 		{
 			lock = request_push (lock);
 		}

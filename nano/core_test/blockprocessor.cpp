@@ -20,7 +20,7 @@ TEST (block_processor, broadcast_block_on_arrival)
 	config2.active_elections_size = 0;
 	nano::node_flags flags;
 	// Disables bootstrap listener to make sure the block won't be shared by this channel.
-	flags.disable_bootstrap_listener = true;
+	flags.set_disable_bootstrap_listener (true);
 	auto node1 = system.add_node (config1, flags);
 	auto node2 = system.add_node (config2, flags);
 	nano::state_block_builder builder;

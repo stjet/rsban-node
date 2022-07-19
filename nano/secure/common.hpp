@@ -521,13 +521,24 @@ enum class confirmation_height_mode
 class generate_cache
 {
 public:
-	bool reps = true;
-	bool cemented_count = true;
-	bool unchecked_count = true;
-	bool account_count = true;
-	bool block_count = true;
-
+	generate_cache ();
+	generate_cache (generate_cache const &);
+	generate_cache (generate_cache && other_a) noexcept;
+	~generate_cache ();
+	generate_cache & operator= (generate_cache const & other_a);
+	generate_cache & operator= (generate_cache && other_a);
+	bool reps () const;
+	void enable_reps (bool enable);
+	bool cemented_count () const;
+	void enable_cemented_count (bool enable);
+	bool unchecked_count () const;
+	void enable_unchecked_count (bool enable);
+	bool account_count () const;
+	void enable_account_count (bool enable);
+	bool block_count () const;
+	void enable_block_count (bool enable);
 	void enable_all ();
+	rsnano::GenerateCacheHandle * handle;
 };
 
 /* Holds an in-memory cache of various counts */

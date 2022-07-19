@@ -761,7 +761,7 @@ rsnano::LedgerHandle * nano::ledger::get_handle () const
 
 void nano::ledger::initialize (nano::generate_cache const & generate_cache_a)
 {
-	if (generate_cache_a.reps || generate_cache_a.account_count || generate_cache_a.block_count)
+	if (generate_cache_a.reps () || generate_cache_a.account_count () || generate_cache_a.block_count ())
 	{
 		store.account.for_each_par (
 		[this] (nano::read_transaction const & /*unused*/, nano::store_iterator<nano::account, nano::account_info> i, nano::store_iterator<nano::account, nano::account_info> n) {
@@ -781,7 +781,7 @@ void nano::ledger::initialize (nano::generate_cache const & generate_cache_a)
 		});
 	}
 
-	if (generate_cache_a.cemented_count)
+	if (generate_cache_a.cemented_count ())
 	{
 		store.confirmation_height.for_each_par (
 		[this] (nano::read_transaction const & /*unused*/, nano::store_iterator<nano::account, nano::confirmation_height_info> i, nano::store_iterator<nano::account, nano::confirmation_height_info> n) {

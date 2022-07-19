@@ -1,9 +1,11 @@
 mod daemon_config;
 mod diagnostics_config;
+mod generate_cache;
 mod lmdb_config;
 mod logging;
 mod network_constants;
 mod node_config;
+mod node_flags;
 mod node_pow_server_config;
 mod node_rpc_config;
 mod opencl_config;

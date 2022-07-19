@@ -1883,10 +1883,10 @@ nano::node_flags const & nano::inactive_node_flag_defaults ()
 	static nano::node_flags node_flags;
 	node_flags.inactive_node = true;
 	node_flags.read_only = true;
-	node_flags.generate_cache.reps = false;
-	node_flags.generate_cache.cemented_count = false;
-	node_flags.generate_cache.unchecked_count = false;
-	node_flags.generate_cache.account_count = false;
+	node_flags.generate_cache.enable_reps (false);
+	node_flags.generate_cache.enable_cemented_count (false);
+	node_flags.generate_cache.enable_unchecked_count (false);
+	node_flags.generate_cache.enable_account_count (false);
 	node_flags.disable_bootstrap_listener = true;
 	node_flags.disable_tcp_realtime = true;
 	return node_flags;

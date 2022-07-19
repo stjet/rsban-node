@@ -115,6 +115,10 @@ public:
 class node_flags final
 {
 public:
+	//	node_flags();
+	//	node_flags(node_flags const & other_a) = delete;
+	//	node_flags(node_flags && other_a);
+	//	~node_flags();
 	std::vector<std::string> config_overrides;
 	std::vector<std::string> rpc_config_overrides;
 	bool disable_add_initial_peers{ false }; // For testing only
@@ -155,5 +159,6 @@ public:
 	std::size_t inactive_votes_cache_size{ 1024 * 128 };
 	std::size_t vote_processor_capacity{ 144 * 1024 };
 	std::size_t bootstrap_interval{ 0 }; // For testing only
+	//	rsnano::NodeFlagsHandle * handle;
 };
 }

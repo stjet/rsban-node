@@ -168,7 +168,7 @@ int main (int argc, char * const * argv)
 			{
 				auto node_flags = nano::inactive_node_flag_defaults ();
 				nano::update_flags (node_flags, vm);
-				node_flags.generate_cache.reps = true;
+				node_flags.generate_cache.enable_reps (true);
 				nano::inactive_node inactive_node (data_path, node_flags);
 				auto node = inactive_node.node;
 
@@ -331,7 +331,7 @@ int main (int argc, char * const * argv)
 		{
 			auto node_flags = nano::inactive_node_flag_defaults ();
 			nano::update_flags (node_flags, vm);
-			node_flags.generate_cache.block_count = true;
+			node_flags.generate_cache.enable_block_count (true);
 			nano::inactive_node inactive_node (data_path, node_flags);
 			auto node = inactive_node.node;
 			std::cout << boost::str (boost::format ("Block count: %1%\n") % node->ledger.cache.block_count);
@@ -413,7 +413,7 @@ int main (int argc, char * const * argv)
 		{
 			auto node_flags = nano::inactive_node_flag_defaults ();
 			nano::update_flags (node_flags, vm);
-			node_flags.generate_cache.reps = true;
+			node_flags.generate_cache.enable_reps (true);
 			nano::inactive_node inactive_node (data_path, node_flags);
 			auto node = inactive_node.node;
 			auto transaction (node->store.tx_begin_read ());
@@ -453,7 +453,7 @@ int main (int argc, char * const * argv)
 		{
 			auto node_flags = nano::inactive_node_flag_defaults ();
 			nano::update_flags (node_flags, vm);
-			node_flags.generate_cache.account_count = true;
+			node_flags.generate_cache.enable_account_count (true);
 			nano::inactive_node inactive_node (data_path, node_flags);
 			std::cout << boost::str (boost::format ("Frontier count: %1%\n") % inactive_node.node->ledger.cache.account_count);
 		}
@@ -1366,7 +1366,7 @@ int main (int argc, char * const * argv)
 			timer.start ();
 			auto node_flags = nano::inactive_node_flag_defaults ();
 			nano::update_flags (node_flags, vm);
-			node_flags.generate_cache.block_count = true;
+			node_flags.generate_cache.enable_block_count (true);
 			nano::inactive_node inactive_node (data_path, node_flags);
 			auto node = inactive_node.node;
 			bool const silent (vm.count ("silent"));
@@ -1816,7 +1816,7 @@ int main (int argc, char * const * argv)
 			{
 				auto node_flags = nano::inactive_node_flag_defaults ();
 				nano::update_flags (node_flags, vm);
-				node_flags.generate_cache.block_count = true;
+				node_flags.generate_cache.enable_block_count (true);
 				nano::inactive_node inactive_node (data_path, node_flags);
 				auto source_node = inactive_node.node;
 				auto transaction (source_node->store.tx_begin_read ());
@@ -1895,7 +1895,7 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_cemented_block_count"))
 		{
 			auto node_flags = nano::inactive_node_flag_defaults ();
-			node_flags.generate_cache.cemented_count = true;
+			node_flags.generate_cache.enable_cemented_count (true);
 			nano::update_flags (node_flags, vm);
 			nano::inactive_node node (data_path, node_flags);
 			std::cout << "Total cemented block count: " << node.node->ledger.cache.cemented_count << std::endl;

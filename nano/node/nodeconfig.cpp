@@ -532,3 +532,20 @@ nano::account nano::node_config::random_representative () const
 	auto result (preconfigured_representatives[index]);
 	return result;
 }
+
+//nano::node_flags::node_flags() :
+//	handle{rsnano::rsn_node_flags_create()}
+//{
+//}
+//
+//nano::node_flags::node_flags (nano::node_flags && other_a) :
+//	handle{other_a.handle}
+//{
+//	other_a.handle = nullptr;
+//}
+//
+//nano::node_flags::~node_flags ()
+//{
+//	if (handle)
+//		rsnano::rsn_node_flags_destroy (handle);
+//}

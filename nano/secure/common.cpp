@@ -909,10 +909,81 @@ nano::block_hash const & nano::unchecked_key::key () const
 	return previous;
 }
 
+nano::generate_cache::generate_cache () :
+	handle{ rsnano::rsn_generate_cache_create () }
+{
+}
+
 void nano::generate_cache::enable_all ()
 {
-	reps = true;
-	cemented_count = true;
-	unchecked_count = true;
-	account_count = true;
+	rsnano::rsn_generate_cache_enable_all (handle);
+}
+
+nano::generate_cache::generate_cache (nano::generate_cache && other_a) noexcept :
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+}
+
+nano::generate_cache::generate_cache (const nano::generate_cache & other_a) :
+	handle{ rsnano::rsn_generate_cache_clone (other_a.handle) }
+{
+}
+
+nano::generate_cache::~generate_cache ()
+{
+	if (handle)
+		rsnano::rsn_generate_cache_destroy (handle);
+}
+
+nano::generate_cache & nano::generate_cache::operator= (nano::generate_cache && other_a)
+{
+	handle = other_a.handle;
+	other_a.handle = nullptr;
+	return *this;
+}
+nano::generate_cache & nano::generate_cache::operator= (const nano::generate_cache & other_a)
+{
+	handle = rsnano::rsn_generate_cache_clone (other_a.handle);
+	return *this;
+}
+bool nano::generate_cache::reps () const
+{
+	return rsnano::rsn_generate_cache_reps (handle);
+}
+void nano::generate_cache::enable_reps (bool enable)
+{
+	rsnano::rsn_generate_cache_set_reps (handle, enable);
+}
+bool nano::generate_cache::cemented_count () const
+{
+	return rsnano::rsn_generate_cache_cemented_count (handle);
+}
+void nano::generate_cache::enable_cemented_count (bool enable)
+{
+	rsnano::rsn_generate_cache_set_cemented_count (handle, enable);
+}
+bool nano::generate_cache::unchecked_count () const
+{
+	return rsnano::rsn_generate_cache_unchecked_count (handle);
+}
+void nano::generate_cache::enable_unchecked_count (bool enable)
+{
+	rsnano::rsn_generate_cache_set_unchecked_count (handle, enable);
+}
+bool nano::generate_cache::account_count () const
+{
+	return rsnano::rsn_generate_cache_account_count (handle);
+}
+void nano::generate_cache::enable_account_count (bool enable)
+{
+	rsnano::rsn_generate_cache_set_account_count (handle, enable);
+}
+bool nano::generate_cache::block_count () const
+{
+	return rsnano::rsn_generate_cache_block_count (handle);
+}
+void nano::generate_cache::enable_block_count (bool enable)
+{
+	rsnano::rsn_generate_cache_set_account_count (handle, enable);
 }

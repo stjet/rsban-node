@@ -55,6 +55,8 @@ struct ChannelTcpWrapperHandle;
 
 struct EpochsHandle;
 
+struct GenerateCacheHandle;
+
 struct IoContextHandle;
 
 struct LedgerHandle;
@@ -71,6 +73,8 @@ struct MessageHandle;
 struct MessageHeaderHandle;
 
 struct NetworkFilterHandle;
+
+struct NodeFlagsHandle;
 
 struct SignatureCheckerHandle;
 
@@ -1306,6 +1310,34 @@ StatLogSinkHandle * rsn_file_writer_create (const int8_t * filename);
 
 void rsn_from_topic (uint8_t topic, StringDto * result);
 
+bool rsn_generate_cache_account_count (GenerateCacheHandle * handle);
+
+bool rsn_generate_cache_block_count (GenerateCacheHandle * handle);
+
+bool rsn_generate_cache_cemented_count (GenerateCacheHandle * handle);
+
+GenerateCacheHandle * rsn_generate_cache_clone (GenerateCacheHandle * handle);
+
+GenerateCacheHandle * rsn_generate_cache_create ();
+
+void rsn_generate_cache_destroy (GenerateCacheHandle * handle);
+
+void rsn_generate_cache_enable_all (GenerateCacheHandle * handle);
+
+bool rsn_generate_cache_reps (GenerateCacheHandle * handle);
+
+void rsn_generate_cache_set_account_count (GenerateCacheHandle * handle, bool enable);
+
+void rsn_generate_cache_set_block_count (GenerateCacheHandle * handle, bool enable);
+
+void rsn_generate_cache_set_cemented_count (GenerateCacheHandle * handle, bool enable);
+
+void rsn_generate_cache_set_reps (GenerateCacheHandle * handle, bool enable);
+
+void rsn_generate_cache_set_unchecked_count (GenerateCacheHandle * handle, bool enable);
+
+bool rsn_generate_cache_unchecked_count (GenerateCacheHandle * handle);
+
 void rsn_hardened_constants_get (uint8_t * not_an_account, uint8_t * random_128);
 
 /// handle is a `boost::asio::io_context *`
@@ -1697,6 +1729,10 @@ int32_t rsn_node_config_serialize_toml (const NodeConfigDto * dto, void * toml);
 
 int32_t rsn_node_constants_create (const NetworkConstantsDto * network_constants,
 NodeConstantsDto * dto);
+
+NodeFlagsHandle * rsn_node_flags_create ();
+
+void rsn_node_flags_destroy (NodeFlagsHandle * handle);
 
 int32_t rsn_node_rpc_config_create (NodeRpcConfigDto * dto);
 

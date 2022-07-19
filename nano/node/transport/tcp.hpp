@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/node/nodeconfig.hpp"
+
 #include <nano/node/common.hpp>
 #include <nano/node/transport/transport.hpp>
 
@@ -219,6 +221,7 @@ namespace transport
 		std::shared_ptr<nano::stat> stats;
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;
+		nano::node_flags flags;
 		mutable nano::mutex mutex;
 		// clang-format off
 		boost::multi_index_container<channel_tcp_wrapper,

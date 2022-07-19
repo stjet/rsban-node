@@ -3491,11 +3491,11 @@ TEST (node, aggressive_flooding)
 		});
 	};
 
-	ASSERT_TIMELY (!sanitizer_or_valgrind ? 5s : 25s, all_have_block (block->hash ()));
+	ASSERT_TIMELY (!sanitizer_or_valgrind ? 10s : 25s, all_have_block (block->hash ()));
 
 	// Do the same for a wallet block
 	auto wallet_block = wallet1.send_sync (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 10);
-	ASSERT_TIMELY (!sanitizer_or_valgrind ? 5s : 25s, all_have_block (wallet_block));
+	ASSERT_TIMELY (!sanitizer_or_valgrind ? 10s : 25s, all_have_block (wallet_block));
 
 	// All blocks: genesis + (send+open) for each representative + 2 local blocks
 	// The main node only sees all blocks if other nodes are flooding their PR's open block to all other PRs

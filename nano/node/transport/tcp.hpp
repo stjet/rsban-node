@@ -79,7 +79,6 @@ namespace transport
 	class tcp_channels final : public nano::transport::channel_tcp_observer
 	{
 		friend class nano::transport::channel_tcp;
-		friend class telemetry_simultaneous_requests_Test;
 
 	public:
 		explicit tcp_channels (nano::node &, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
@@ -90,7 +89,6 @@ namespace transport
 		void erase_temporary_channel (nano::tcp_endpoint const &);
 		std::size_t size () const;
 		std::shared_ptr<nano::transport::channel_tcp> find_channel (nano::tcp_endpoint const &) const;
-		void random_fill (std::array<nano::endpoint, 8> &) const;
 		std::unordered_set<std::shared_ptr<nano::transport::channel>> random_set (std::size_t, uint8_t = 0, bool = false) const;
 		bool store_all (bool = true);
 		std::shared_ptr<nano::transport::channel_tcp> find_node_id (nano::account const &);
@@ -116,7 +114,6 @@ namespace transport
 		void start_tcp (nano::endpoint const &);
 		void start_tcp_receive_node_id (std::shared_ptr<nano::transport::channel_tcp> const &, nano::endpoint const &, std::shared_ptr<std::vector<uint8_t>> const &);
 		void udp_fallback (nano::endpoint const &);
-		nano::node & node;
 
 		// channel_tcp_observer:
 		void data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a) override;
@@ -216,6 +213,7 @@ namespace transport
 			{
 			}
 		};
+		nano::node & node;
 		mutable nano::mutex mutex;
 		// clang-format off
 		boost::multi_index_container<channel_tcp_wrapper,

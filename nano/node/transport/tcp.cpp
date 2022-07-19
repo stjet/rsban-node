@@ -215,22 +215,6 @@ std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::transport::t
 	return result;
 }
 
-void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> & target_a) const
-{
-	auto peers (random_set (target_a.size ()));
-	debug_assert (peers.size () <= target_a.size ());
-	auto endpoint (nano::endpoint (boost::asio::ip::address_v6{}, 0));
-	debug_assert (endpoint.address ().is_v6 ());
-	std::fill (target_a.begin (), target_a.end (), endpoint);
-	auto j (target_a.begin ());
-	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i, ++j)
-	{
-		debug_assert ((*i)->get_endpoint ().address ().is_v6 ());
-		debug_assert (j < target_a.end ());
-		*j = (*i)->get_endpoint ();
-	}
-}
-
 bool nano::transport::tcp_channels::store_all (bool clear_peers)
 {
 	// We can't hold the mutex while starting a write transaction, so

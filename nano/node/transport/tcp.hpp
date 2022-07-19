@@ -79,7 +79,7 @@ namespace transport
 
 		bool max () override;
 	};
-	class tcp_channels final : public nano::transport::channel_tcp_observer
+	class tcp_channels final : public nano::transport::channel_tcp_observer, public std::enable_shared_from_this<tcp_channels>
 	{
 		friend class nano::transport::channel_tcp;
 
@@ -222,6 +222,7 @@ namespace transport
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;
 		nano::node_flags flags;
+		boost::asio::io_context & io_ctx;
 		mutable nano::mutex mutex;
 		// clang-format off
 		boost::multi_index_container<channel_tcp_wrapper,

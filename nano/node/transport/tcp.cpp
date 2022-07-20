@@ -8,26 +8,15 @@
 
 #include <boost/format.hpp>
 
-nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
+nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
 	channel (rsnano::rsn_channel_tcp_create (
 	std::chrono::steady_clock::now ().time_since_epoch ().count (),
 	socket_a->handle,
 	new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a),
-	node_a.network->limiter.handle,
-	&node_a.io_ctx))
-{
-	set_network_version (node_a.config->network_params.network.protocol_version);
-}
-
-nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::network & network_a, nano::node_config const & config_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
-	channel (rsnano::rsn_channel_tcp_create (
-	std::chrono::steady_clock::now ().time_since_epoch ().count (),
-	socket_a->handle,
-	new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a),
-	network_a.limiter.handle,
+	limiter_a.handle,
 	&io_ctx_a))
 {
-	set_network_version (config_a.network_params.network.protocol_version);
+	set_network_version (network_a.protocol_version);
 }
 
 uint8_t nano::transport::channel_tcp::get_network_version () const
@@ -331,7 +320,7 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 				if (!node_id_a.is_zero ())
 				{
 					// Add temporary channel
-					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, *network, *config, socket_a, network->tcp_channels));
+					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, network->limiter, config->network_params.network, socket_a, network->tcp_channels));
 					temporary_channel->set_endpoint ();
 					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
 					temporary_channel->set_node_id (node_id_a);
@@ -572,7 +561,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 	config->tcp_io_timeout,
 	network_params.network.silent_connection_tolerance_time,
 	config->logging.network_timeout_logging ());
-	auto channel (std::make_shared<nano::transport::channel_tcp> (node, socket, network->tcp_channels));
+	auto channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, network->limiter, config->network_params.network, socket, network->tcp_channels));
 	auto network_consts = network_params.network;
 	auto config_l = config;
 	auto logger_l = logger;

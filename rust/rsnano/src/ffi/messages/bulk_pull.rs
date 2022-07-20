@@ -59,6 +59,16 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_set_count(handle: *mut MessageHan
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_bulk_pull_is_ascending(handle: *mut MessageHandle) -> bool {
+    downcast_message::<BulkPull>(handle).is_ascending()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_bulk_pull_set_ascending(handle: *mut MessageHandle) {
+    downcast_message_mut::<BulkPull>(handle).set_ascending();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_serialize(
     handle: *mut MessageHandle,
     stream: *mut c_void,

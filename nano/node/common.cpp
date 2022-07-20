@@ -1129,6 +1129,16 @@ void nano::bulk_pull::set_count_present (bool value_a)
 	rsnano::rsn_message_bulk_pull_set_count_present (handle, value_a);
 }
 
+bool nano::bulk_pull::is_ascending () const
+{
+	return rsnano::rsn_message_bulk_pull_is_ascending (handle);
+}
+
+void nano::bulk_pull::set_ascending ()
+{
+	rsnano::rsn_message_bulk_pull_set_ascending (handle);
+}
+
 rsnano::MessageHandle * create_bulk_pull_account_handle (nano::network_constants const & constants)
 {
 	auto constants_dto{ constants.to_dto () };

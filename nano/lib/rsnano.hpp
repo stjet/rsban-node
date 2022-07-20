@@ -1476,9 +1476,13 @@ bool rsn_message_bulk_pull_deserialize (MessageHandle * handle, void * stream);
 
 void rsn_message_bulk_pull_end (MessageHandle * handle, uint8_t * end);
 
+bool rsn_message_bulk_pull_is_ascending (MessageHandle * handle);
+
 bool rsn_message_bulk_pull_is_count_present (MessageHandle * handle);
 
 bool rsn_message_bulk_pull_serialize (MessageHandle * handle, void * stream);
+
+void rsn_message_bulk_pull_set_ascending (MessageHandle * handle);
 
 void rsn_message_bulk_pull_set_count (MessageHandle * handle, uint32_t count);
 

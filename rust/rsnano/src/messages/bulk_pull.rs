@@ -4,7 +4,7 @@ use std::{any::Any, mem::size_of};
 
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct BulkPull {
     header: MessageHeader,
     pub start: HashOrAccount,
@@ -13,6 +13,10 @@ pub struct BulkPull {
 }
 
 impl BulkPull {
+    const COUNT_PRESENT_FLAG: usize = 0;
+    const ASCENDING_FLAG: usize = 1;
+    pub const EXTENDED_PARAMETERS_SIZE: usize = 8;
+
     pub fn new(constants: &NetworkConstants) -> Self {
         Self {
             header: MessageHeader::new(constants, MessageType::BulkPull),
@@ -51,9 +55,6 @@ impl BulkPull {
             })
     }
 
-    const COUNT_PRESENT_FLAG: usize = 0;
-    pub const EXTENDED_PARAMETERS_SIZE: usize = 8;
-
     pub fn is_count_present(&self) -> bool {
         Self::is_count_present_in_header(&self.header)
     }
@@ -64,6 +65,14 @@ impl BulkPull {
 
     pub fn set_count_present(&mut self, present: bool) {
         self.header.set_extension(Self::COUNT_PRESENT_FLAG, present);
+    }
+
+    pub fn is_ascending(&self) -> bool {
+        self.header.test_extension(Self::ASCENDING_FLAG)
+    }
+
+    pub fn set_ascending(&mut self) {
+        self.header.set_extension(Self::ASCENDING_FLAG, true);
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
@@ -146,5 +155,24 @@ impl Message for BulkPull {
 
     fn message_type(&self) -> MessageType {
         MessageType::BulkPull
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{utils::MemoryStream, DEV_NETWORK_PARAMS};
+
+    #[test]
+    fn bulk_pull_serialization() -> Result<()> {
+        let mut message_in = BulkPull::new(&DEV_NETWORK_PARAMS.network);
+        message_in.header.set_flag(BulkPull::ASCENDING_FLAG as u8);
+        let mut stream = MemoryStream::new();
+        message_in.serialize(&mut stream)?;
+        let header = MessageHeader::from_stream(&mut stream)?;
+        let message_out = BulkPull::from_stream(&mut stream, &header)?;
+        assert_eq!(message_in, message_out);
+        assert!(message_out.is_ascending());
+        Ok(())
     }
 }

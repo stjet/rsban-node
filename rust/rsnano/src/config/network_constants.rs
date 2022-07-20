@@ -56,7 +56,7 @@ impl NetworkConstants {
         Self {
             work,
             current_network: network,
-            protocol_version: 0x12,
+            protocol_version: 0x13,
             protocol_version_min: 0x12,
             principal_weight_factor: 1000, // 0.1%
             default_node_port: Self::get_default_node_port(network),

@@ -19,6 +19,17 @@ nano::transport::channel_tcp::channel_tcp (nano::node & node_a, std::shared_ptr<
 	set_network_version (node_a.config->network_params.network.protocol_version);
 }
 
+nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::network & network_a, nano::node_config const & config_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
+	channel (rsnano::rsn_channel_tcp_create (
+	std::chrono::steady_clock::now ().time_since_epoch ().count (),
+	socket_a->handle,
+	new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a),
+	network_a.limiter.handle,
+	&io_ctx_a))
+{
+	set_network_version (config_a.network_params.network.protocol_version);
+}
+
 uint8_t nano::transport::channel_tcp::get_network_version () const
 {
 	return rsnano::rsn_channel_tcp_network_version (handle);
@@ -119,6 +130,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<vo
 	config{ node.config },
 	logger{ node.logger },
 	network{ node.network },
+	workers{ node.workers },
 	flags{ node.flags },
 	io_ctx{ node.io_ctx },
 	sink{ std::move (sink) },
@@ -319,7 +331,7 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 				if (!node_id_a.is_zero ())
 				{
 					// Add temporary channel
-					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (node, socket_a, network->tcp_channels));
+					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, *network, *config, socket_a, network->tcp_channels));
 					temporary_channel->set_endpoint ();
 					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
 					temporary_channel->set_node_id (node_id_a);
@@ -504,7 +516,7 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 		}
 	}
 	std::weak_ptr<nano::network> network_w (network);
-	node.workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.cleanup_period_half (), [network_w] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.cleanup_period_half (), [network_w] () {
 		if (auto network_l = network_w.lock ())
 		{
 			if (!network_l->tcp_channels->stopped)
@@ -556,7 +568,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 		network->tcp_channels->udp_fallback (endpoint_a);
 		return;
 	}
-	auto socket = std::make_shared<nano::socket> (io_ctx, nano::socket::endpoint_type_t::client, *stats, logger, node.workers,
+	auto socket = std::make_shared<nano::socket> (io_ctx, nano::socket::endpoint_type_t::client, *stats, logger, workers,
 	config->tcp_io_timeout,
 	network_params.network.silent_connection_tolerance_time,
 	config->logging.network_timeout_logging ());

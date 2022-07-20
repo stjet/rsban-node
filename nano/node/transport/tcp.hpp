@@ -50,6 +50,7 @@ namespace transport
 
 	public:
 		channel_tcp (nano::node &, std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a);
+		channel_tcp (boost::asio::io_context & io_ctx_a, nano::network & network_a, nano::node_config const & config_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a);
 		channel_tcp (rsnano::ChannelHandle * handle_a) :
 			channel{ handle_a } {};
 
@@ -223,6 +224,7 @@ namespace transport
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;
 		std::shared_ptr<nano::network> network;
+		std::shared_ptr<nano::thread_pool> workers;
 		nano::node_flags flags;
 		boost::asio::io_context & io_ctx;
 		mutable nano::mutex mutex;

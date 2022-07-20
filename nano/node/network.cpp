@@ -27,7 +27,6 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 	node (node_a),
 	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) },
 	udp_channels (node_a, port_a, inbound),
-	tcp_channels{ std::make_shared<nano::transport::tcp_channels> (node_a, inbound) },
 	port (port_a),
 	disconnect_observer ([] () {})
 {
@@ -44,6 +43,7 @@ nano::network::~network ()
 
 void nano::network::start_threads ()
 {
+	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, inbound));
 	boost::thread::attributes attrs;
 	nano::thread_attributes::set (attrs);
 	auto this_l = shared_from_this ();

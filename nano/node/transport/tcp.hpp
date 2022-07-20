@@ -20,6 +20,7 @@ namespace nano
 {
 class bootstrap_server;
 class node_config;
+class network;
 class tcp_message_item final
 {
 public:
@@ -221,6 +222,7 @@ namespace transport
 		std::shared_ptr<nano::stat> stats;
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;
+		std::shared_ptr<nano::network> network;
 		nano::node_flags flags;
 		boost::asio::io_context & io_ctx;
 		mutable nano::mutex mutex;

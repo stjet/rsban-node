@@ -118,6 +118,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<vo
 	stats{ node.stats },
 	config{ node.config },
 	logger{ node.logger },
+	network{ node.network },
 	flags{ node.flags },
 	io_ctx{ node.io_ctx },
 	sink{ std::move (sink) },
@@ -136,7 +137,7 @@ bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::cha
 	debug_assert (endpoint.address ().is_v6 ());
 	auto udp_endpoint (nano::transport::map_tcp_to_endpoint (endpoint));
 	bool error (true);
-	if (!node.network->not_a_peer (udp_endpoint, config->allow_local_peers) && !stopped)
+	if (!network->not_a_peer (udp_endpoint, config->allow_local_peers) && !stopped)
 	{
 		nano::unique_lock<nano::mutex> lock (mutex);
 		auto existing (channels.get<endpoint_tag> ().find (endpoint));
@@ -151,11 +152,11 @@ bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::cha
 			attempts.get<endpoint_tag> ().erase (endpoint);
 			error = false;
 			lock.unlock ();
-			node.network->channel_observer (channel_a);
+			network->channel_observer (channel_a);
 			// Remove UDP channel to same IP:port if exists
-			node.network->udp_channels.erase (udp_endpoint);
+			network->udp_channels.erase (udp_endpoint);
 			// Remove UDP channels with same node ID
-			node.network->udp_channels.clean_node_id (node_id);
+			network->udp_channels.clean_node_id (node_id);
 		}
 	}
 	return error;
@@ -288,7 +289,7 @@ void nano::transport::tcp_channels::process_messages ()
 {
 	while (!stopped)
 	{
-		auto item (node.network->tcp_message_manager.get_message ());
+		auto item (network->tcp_message_manager.get_message ());
 		if (item.message != nullptr)
 		{
 			process_message (*item.message, item.endpoint, item.node_id, item.socket);
@@ -301,24 +302,24 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 	auto type_a = socket_a->type ();
 	if (!stopped && message_a.get_header ().get_version_using () >= network_params.network.protocol_version_min)
 	{
-		auto channel (node.network->find_channel (nano::transport::map_tcp_to_endpoint (endpoint_a)));
+		auto channel (network->find_channel (nano::transport::map_tcp_to_endpoint (endpoint_a)));
 		if (channel)
 		{
 			sink (message_a, channel);
 		}
 		else
 		{
-			channel = node.network->find_node_id (node_id_a);
+			channel = network->find_node_id (node_id_a);
 			if (channel)
 			{
 				sink (message_a, channel);
 			}
-			else if (!node.network->excluded_peers.check (endpoint_a))
+			else if (!network->excluded_peers.check (endpoint_a))
 			{
 				if (!node_id_a.is_zero ())
 				{
 					// Add temporary channel
-					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (node, socket_a, node.network->tcp_channels));
+					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (node, socket_a, network->tcp_channels));
 					temporary_channel->set_endpoint ();
 					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
 					temporary_channel->set_node_id (node_id_a);
@@ -425,7 +426,7 @@ bool nano::transport::tcp_channels::reachout (nano::endpoint const & endpoint_a)
 {
 	auto tcp_endpoint (nano::transport::map_endpoint_to_tcp (endpoint_a));
 	// Don't overload single IP
-	bool error = node.network->excluded_peers.check (tcp_endpoint) || max_ip_or_subnetwork_connections (tcp_endpoint);
+	bool error = network->excluded_peers.check (tcp_endpoint) || max_ip_or_subnetwork_connections (tcp_endpoint);
 	if (!error && !flags.disable_tcp_realtime ())
 	{
 		// Don't keepalive to nodes that already sent us something
@@ -473,7 +474,7 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 {
 	nano::keepalive message{ network_params.network };
 	auto peers{ message.get_peers () };
-	node.network->random_fill (peers);
+	network->random_fill (peers);
 	message.set_peers (peers);
 	nano::unique_lock<nano::mutex> lock (mutex);
 	// Wake up channels
@@ -492,11 +493,11 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 	nano::tcp_endpoint invalid_endpoint (boost::asio::ip::address_v6::any (), 0);
 	if (!network_params.network.is_dev_network () && !flags.disable_udp ())
 	{
-		std::size_t random_count (std::min (static_cast<std::size_t> (6), static_cast<std::size_t> (std::ceil (std::sqrt (node.network->udp_channels.size ())))));
+		std::size_t random_count (std::min (static_cast<std::size_t> (6), static_cast<std::size_t> (std::ceil (std::sqrt (network->udp_channels.size ())))));
 		for (auto i (0); i <= random_count; ++i)
 		{
-			auto tcp_endpoint (node.network->udp_channels.bootstrap_peer (network_params.network.protocol_version_min));
-			if (tcp_endpoint != invalid_endpoint && find_channel (tcp_endpoint) == nullptr && !node.network->excluded_peers.check (tcp_endpoint))
+			auto tcp_endpoint (network->udp_channels.bootstrap_peer (network_params.network.protocol_version_min));
+			if (tcp_endpoint != invalid_endpoint && find_channel (tcp_endpoint) == nullptr && !network->excluded_peers.check (tcp_endpoint))
 			{
 				start_tcp (nano::transport::map_tcp_to_endpoint (tcp_endpoint));
 			}
@@ -552,14 +553,14 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 {
 	if (flags.disable_tcp_realtime ())
 	{
-		node.network->tcp_channels->udp_fallback (endpoint_a);
+		network->tcp_channels->udp_fallback (endpoint_a);
 		return;
 	}
 	auto socket = std::make_shared<nano::socket> (io_ctx, nano::socket::endpoint_type_t::client, *stats, logger, node.workers,
 	config->tcp_io_timeout,
 	network_params.network.silent_connection_tolerance_time,
 	config->logging.network_timeout_logging ());
-	auto channel (std::make_shared<nano::transport::channel_tcp> (node, socket, node.network->tcp_channels));
+	auto channel (std::make_shared<nano::transport::channel_tcp> (node, socket, network->tcp_channels));
 	auto network_consts = network_params.network;
 	auto config_l = config;
 	auto logger_l = logger;
@@ -571,7 +572,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 			if (!ec && channel)
 			{
 				// TCP node ID handshake
-				auto cookie (this_l->node.network->syn_cookies.assign (endpoint_a));
+				auto cookie (this_l->network->syn_cookies.assign (endpoint_a));
 				nano::node_id_handshake message (network_consts, cookie, boost::none);
 				if (config_l->logging.network_node_id_handshake_logging ())
 				{
@@ -585,7 +586,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 					{
 						if (!ec)
 						{
-							this_l->node.network->tcp_channels->start_tcp_receive_node_id (channel, endpoint_a, receive_buffer);
+							this_l->network->tcp_channels->start_tcp_receive_node_id (channel, endpoint_a, receive_buffer);
 						}
 						else
 						{
@@ -597,14 +598,14 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 							{
 								logger_l->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % endpoint_a % ec.message ()));
 							}
-							this_l->node.network->tcp_channels->udp_fallback (endpoint_a);
+							this_l->network->tcp_channels->udp_fallback (endpoint_a);
 						}
 					}
 				});
 			}
 			else
 			{
-				this_l->node.network->tcp_channels->udp_fallback (endpoint_a);
+				this_l->network->tcp_channels->udp_fallback (endpoint_a);
 			}
 		}
 	});
@@ -769,8 +770,8 @@ void nano::transport::tcp_channels::udp_fallback (nano::endpoint const & endpoin
 	}
 	if (!flags.disable_udp ())
 	{
-		auto channel_udp = node.network->udp_channels.create (endpoint_a);
-		node.network->send_keepalive (channel_udp);
+		auto channel_udp = network->udp_channels.create (endpoint_a);
+		network->send_keepalive (channel_udp);
 	}
 }
 

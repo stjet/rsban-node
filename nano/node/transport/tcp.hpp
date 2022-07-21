@@ -20,6 +20,7 @@ namespace nano
 {
 class bootstrap_server;
 class node_config;
+class node_flags;
 class network;
 class tcp_message_item final
 {
@@ -218,6 +219,7 @@ namespace transport
 			}
 		};
 		nano::node & node;
+		nano::keypair node_id;
 		nano::network_params & network_params;
 		std::shared_ptr<nano::stat> stats;
 		std::shared_ptr<nano::node_config> config;

@@ -16,6 +16,7 @@ namespace nano
 {
 class bootstrap_server;
 class node_config;
+class node_flags;
 
 namespace transport
 {
@@ -127,6 +128,17 @@ class bootstrap_server final : public std::enable_shared_from_this<nano::bootstr
 {
 public:
 	bootstrap_server (std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::node> const &);
+	bootstrap_server (
+	boost::asio::io_context & io_ctx_a,
+	std::shared_ptr<nano::socket> const & socket_a,
+	std::shared_ptr<nano::logger_mt> const & logger_a,
+	nano::stat const & stats_a,
+	nano::node_flags const & flags_a,
+	nano::node_config const & config_a,
+	std::shared_ptr<nano::bootstrap_server_observer> const & observer_a,
+	std::shared_ptr<nano::request_response_visitor_factory> visitor_factory_a,
+	std::shared_ptr<nano::thread_pool> const & workers_a,
+	nano::network_filter const & publish_filter_a);
 	explicit bootstrap_server (rsnano::BootstrapServerHandle * handle_a);
 	bootstrap_server (nano::bootstrap_server const &) = delete;
 	bootstrap_server (nano::bootstrap_server &&) = delete;

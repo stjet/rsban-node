@@ -98,6 +98,7 @@ nano::keypair nano::load_or_create_node_id (boost::filesystem::path const & appl
 	}
 	else
 	{
+		boost::filesystem::create_directories (application_path);
 		// no node_id found, generate new one
 		logger.always_log (boost::str (boost::format ("%1% does not exist, creating a new node_id") % node_private_key_path.string ()));
 		nano::keypair kp;
@@ -110,9 +111,9 @@ nano::keypair nano::load_or_create_node_id (boost::filesystem::path const & appl
 	}
 }
 
-std::shared_ptr<nano::network> create_network(nano::node & node_a, nano::node_config const & config_a)
+std::shared_ptr<nano::network> create_network (nano::node & node_a, nano::node_config const & config_a)
 {
-	auto network { std::make_shared<nano::network> (node_a, config_a.peering_port.has_value () ? *config_a.peering_port : 0) };
+	auto network{ std::make_shared<nano::network> (node_a, config_a.peering_port.has_value () ? *config_a.peering_port : 0) };
 	network->start_threads ();
 	return network;
 }
@@ -129,6 +130,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	config{ std::make_shared<nano::node_config> (config_a) },
 	network_params{ config_a.network_params },
 	logger{ std::make_shared<nano::logger_mt> (config_a.logging.min_time_between_log_output) },
+	node_id{ nano::load_or_create_node_id (application_path_a, *logger) },
 	stats{ std::make_shared<nano::stat> (config_a.stat_config) },
 	workers{ std::make_shared<nano::thread_pool> (std::max (3u, config_a.io_threads / 4), nano::thread_role::name::worker) },
 	flags (flags_a),
@@ -174,6 +176,8 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	startup_time (std::chrono::steady_clock::now ()),
 	node_seq (seq)
 {
+	logger->always_log ("Node ID: ", node_id.pub.to_node_id ());
+
 	unchecked.use_memory = [this] () { return ledger.bootstrap_weight_reached (); };
 	unchecked.satisfied = [this] (nano::unchecked_info const & info) {
 		this->block_processor.add (info);
@@ -447,9 +451,6 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 			}
 			logger->always_log (stream.str ());
 		}
-
-		node_id = nano::load_or_create_node_id (application_path, *logger);
-		logger->always_log ("Node ID: ", node_id.pub.to_node_id ());
 
 		if ((network_params.network.is_live_network () || network_params.network.is_beta_network ()) && !flags.inactive_node ())
 		{

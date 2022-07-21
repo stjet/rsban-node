@@ -155,18 +155,20 @@ public:
 	std::pair<uint64_t, decltype (nano::ledger::bootstrap_weights)> get_bootstrap_weights () const;
 	void populate_backlog ();
 	uint64_t get_confirmation_height (nano::transaction const &, nano::account &);
+
 	nano::write_database_queue write_database_queue;
 	boost::asio::io_context & io_ctx;
 	boost::latch node_initialized_latch;
 	std::shared_ptr<nano::node_config> config;
 	nano::network_params & network_params;
+	std::shared_ptr<nano::logger_mt> logger;
+	nano::keypair node_id;
 	std::shared_ptr<nano::stat> stats;
 	std::shared_ptr<nano::thread_pool> workers;
 	std::shared_ptr<nano::websocket::listener> websocket_server;
 	nano::node_flags flags;
 	nano::work_pool & work;
 	nano::distributed_work_factory distributed_work;
-	std::shared_ptr<nano::logger_mt> logger;
 	std::unique_ptr<nano::store> store_impl;
 	nano::store & store;
 	nano::unchecked_map unchecked;
@@ -189,7 +191,6 @@ public:
 	nano::block_processor block_processor;
 	nano::block_arrival block_arrival;
 	nano::local_vote_history history;
-	nano::keypair node_id;
 	nano::block_uniquer block_uniquer;
 	nano::vote_uniquer vote_uniquer;
 	nano::confirmation_height_processor confirmation_height_processor;

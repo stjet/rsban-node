@@ -102,6 +102,13 @@ nano::keypair nano::load_or_create_node_id (boost::filesystem::path const & appl
 	}
 }
 
+std::shared_ptr<nano::network> create_network(nano::node & node_a, nano::node_config const & config_a)
+{
+	auto network { std::make_shared<nano::network> (node_a, config_a.peering_port.has_value () ? *config_a.peering_port : 0) };
+	network->start_threads ();
+	return network;
+}
+
 nano::node::node (boost::asio::io_context & io_ctx_a, uint16_t peering_port_a, boost::filesystem::path const & application_path_a, nano::logging const & logging_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
 	node (io_ctx_a, application_path_a, nano::node_config (peering_port_a, logging_a), work_a, flags_a, seq)
 {
@@ -113,12 +120,12 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	node_initialized_latch (1),
 	config{ std::make_shared<nano::node_config> (config_a) },
 	network_params{ config_a.network_params },
+	logger{ std::make_shared<nano::logger_mt> (config_a.logging.min_time_between_log_output) },
 	stats{ std::make_shared<nano::stat> (config_a.stat_config) },
 	workers{ std::make_shared<nano::thread_pool> (std::max (3u, config_a.io_threads / 4), nano::thread_role::name::worker) },
 	flags (flags_a),
 	work (work_a),
 	distributed_work (*this),
-	logger{ std::make_shared<nano::logger_mt> (config_a.logging.min_time_between_log_output) },
 	store_impl (nano::make_store (*logger, application_path_a, network_params.ledger, flags.read_only (), true, config_a.rocksdb_config, config_a.diagnostics_config.txn_tracking, config_a.block_processor_batch_max_time, config_a.lmdb_config, config_a.backup_before_upgrade)),
 	store (*store_impl),
 	unchecked{ store, flags.disable_block_processor_unchecked_deletion () },
@@ -130,7 +137,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	// empty `config.peering_port` means the user made no port choice at all;
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
 	//
-	network{ std::make_shared<nano::network> (*this, config_a.peering_port.has_value () ? *config_a.peering_port : 0) },
+	network{ create_network (*this, config_a) },
 	telemetry (std::make_shared<nano::telemetry> (*network, *workers, observers.telemetry, *stats, network_params, flags.disable_ongoing_telemetry_requests ())),
 	bootstrap_initiator (*this),
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
@@ -158,7 +165,6 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	startup_time (std::chrono::steady_clock::now ()),
 	node_seq (seq)
 {
-	network->start_threads ();
 	unchecked.use_memory = [this] () { return ledger.bootstrap_weight_reached (); };
 	unchecked.satisfied = [this] (nano::unchecked_info const & info) {
 		this->block_processor.add (info);

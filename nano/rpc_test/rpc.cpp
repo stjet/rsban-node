@@ -4994,6 +4994,42 @@ TEST (rpc, work_peers_all)
 	ASSERT_EQ (0, peers_node.size ());
 }
 
+TEST (rpc, populate_backlog)
+{
+	nano::system system;
+	nano::node_config node_config (nano::get_available_port (), system.logging);
+	// Disable automatic backlog population
+	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
+	auto node = add_ipc_enabled_node (system, node_config);
+
+	// Create and process a block that won't get automatically scheduled for confirmation
+	nano::keypair key;
+	nano::block_builder builder;
+	auto latest (node->latest (nano::dev::genesis_key.pub));
+	auto genesis_balance (nano::dev::constants.genesis_amount);
+	auto send_amount (genesis_balance - 100);
+	auto send = builder
+				.send ()
+				.previous (latest)
+				.destination (key.pub)
+				.balance (genesis_balance)
+				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
+				.work (*node->work_generate_blocking (latest))
+				.build ();
+	ASSERT_EQ (nano::process_result::progress, node->process (*send).code);
+	ASSERT_FALSE (node->block_arrival.recent (send->hash ()));
+
+	auto const rpc_ctx = add_rpc (system, node);
+	boost::property_tree::ptree request;
+	request.put ("action", "populate_backlog");
+	auto response (wait_response (system, rpc_ctx, request));
+	std::string success (response.get<std::string> ("success", ""));
+	ASSERT_TRUE (success.empty ());
+
+	// Ensure block got activated and election was started
+	ASSERT_TIMELY (5s, node->active.active (*send));
+}
+
 TEST (rpc, ledger)
 {
 	nano::system system;

@@ -202,7 +202,12 @@ void nano::bootstrap_listener::accept_action (boost::system::error_code const & 
 {
 	if (!node.network->excluded_peers.check (socket_a->remote_endpoint ()))
 	{
-		auto connection (std::make_shared<nano::bootstrap_server> (socket_a, node.shared ()));
+		auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (node.shared ());
+		auto connection (std::make_shared<nano::bootstrap_server> (
+		node.io_ctx, socket_a, node.logger,
+		*node.stats, node.flags, *node.config,
+		node.bootstrap, req_resp_visitor_factory, node.workers,
+		*node.network->publish_filter));
 		nano::lock_guard<nano::mutex> lock (mutex);
 		connections[connection->unique_id ()] = nano::bootstrap_server_weak_wrapper (connection);
 		connection->receive ();
@@ -271,32 +276,6 @@ nano::message * nano::locked_bootstrap_server_requests::release_front_request ()
 	auto msg_handle{ rsnano::rsn_bootstrap_server_release_front_request (lock.handle) };
 	auto message{ nano::message_handle_to_message (msg_handle) };
 	return message.release ();
-}
-
-nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::node> const & node_a)
-{
-	auto config_dto{ node_a->config->to_dto () };
-	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (node_a->bootstrap);
-	auto network_dto{ node_a->network_params.to_dto () };
-	rsnano::io_ctx_wrapper io_ctx (node_a->io_ctx);
-	auto request_response_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node_a) };
-	rsnano::CreateBootstrapServerParams params;
-	params.socket = socket_a->handle;
-	params.config = &config_dto;
-	params.logger = nano::to_logger_handle (node_a->logger);
-	params.observer = observer_handle;
-	params.publish_filter = node_a->network->publish_filter->handle;
-	params.workers = new std::shared_ptr<nano::thread_pool> (node_a->workers);
-	params.io_ctx = io_ctx.handle ();
-	params.network = &network_dto;
-	params.disable_bootstrap_listener = node_a->flags.disable_bootstrap_listener ();
-	params.connections_max = node_a->config->bootstrap_connections_max;
-	params.stats = node_a->stats->handle;
-	params.disable_bootstrap_bulk_pull_server = node_a->flags.disable_bootstrap_bulk_pull_server ();
-	params.disable_tcp_realtime = node_a->flags.disable_tcp_realtime ();
-	params.request_response_visitor_factory = new std::shared_ptr<nano::request_response_visitor_factory> (request_response_visitor_factory);
-	handle = rsnano::rsn_bootstrap_server_create (&params);
-	debug_assert (socket_a != nullptr);
 }
 
 nano::bootstrap_server::bootstrap_server (

@@ -127,7 +127,6 @@ private:
 class bootstrap_server final : public std::enable_shared_from_this<nano::bootstrap_server>
 {
 public:
-	bootstrap_server (std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::node> const &);
 	bootstrap_server (
 	boost::asio::io_context & io_ctx_a,
 	std::shared_ptr<nano::socket> const & socket_a,

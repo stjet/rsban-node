@@ -22,6 +22,8 @@ class bootstrap_server;
 class node_config;
 class node_flags;
 class network;
+class telemetry;
+class request_response_visitor_factory;
 class tcp_message_item final
 {
 public:
@@ -219,6 +221,7 @@ namespace transport
 			}
 		};
 		nano::node & node;
+		nano::store & store;
 		nano::keypair node_id;
 		nano::network_params & network_params;
 		std::shared_ptr<nano::stat> stats;

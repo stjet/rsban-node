@@ -8,11 +8,17 @@
 
 using namespace std::chrono_literals;
 
-std::shared_ptr<nano::bootstrap_server> create_bootstrap_server (std::shared_ptr<nano::node> node)
+std::shared_ptr<nano::bootstrap_server> create_bootstrap_server (const std::shared_ptr<nano::node> & node)
 {
 	auto socket{ std::make_shared<nano::socket> (node->io_ctx, nano::socket::endpoint_type_t::server,
 	*node->stats, node->logger, node->workers, node->config->tcp_io_timeout, node->network_params.network.silent_connection_tolerance_time, node->config->logging.network_timeout_logging ()) };
-	return std::make_shared<nano::bootstrap_server> (socket, node);
+
+	auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (node);
+	return std::make_shared<nano::bootstrap_server> (
+	node->io_ctx, socket, node->logger,
+	*node->stats, node->flags, *node->config,
+	node->bootstrap, req_resp_visitor_factory, node->workers,
+	*node->network->publish_filter);
 }
 
 // If the account doesn't exist, current == end so there's no iteration
@@ -1645,7 +1651,14 @@ TEST (frontier_req_response, DISABLED_destruction)
 		std::shared_ptr<nano::frontier_req_server> hold; // Destructing tcp acceptor on non-existent io_context
 		{
 			nano::system system (1);
-			auto connection (std::make_shared<nano::bootstrap_server> (nullptr, system.nodes[0]));
+			auto & node = *system.nodes[0];
+			auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (node.shared ());
+			auto connection (std::make_shared<nano::bootstrap_server> (
+			node.io_ctx, nullptr, node.logger,
+			*node.stats, node.flags, *node.config,
+			node.bootstrap, req_resp_visitor_factory, node.workers,
+			*node.network->publish_filter));
+
 			auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
 			req->set_start (nano::account (0));
 			req->set_age (std::numeric_limits<decltype (req->get_age ())>::max ());

@@ -114,6 +114,7 @@ void nano::transport::channel_tcp::set_endpoint ()
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
 	node{ node },
+	store{ node.store },
 	node_id{ node.node_id },
 	network_params{ node.network_params },
 	stats{ node.stats },
@@ -239,14 +240,14 @@ bool nano::transport::tcp_channels::store_all (bool clear_peers)
 	if (!endpoints.empty ())
 	{
 		// Clear all peers then refresh with the current list of peers
-		auto transaction (node.store.tx_begin_write ({ tables::peers }));
+		auto transaction (store.tx_begin_write ({ tables::peers }));
 		if (clear_peers)
 		{
-			node.store.peer.clear (transaction);
+			store.peer.clear (transaction);
 		}
 		for (auto const & endpoint : endpoints)
 		{
-			node.store.peer.put (transaction, nano::endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () });
+			store.peer.put (transaction, nano::endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () });
 		}
 		result = true;
 	}
@@ -615,7 +616,6 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 
 void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, nano::endpoint const & endpoint_a, std::shared_ptr<std::vector<uint8_t>> const & receive_buffer_a)
 {
-	std::weak_ptr<nano::node> node_w (node.shared ());
 	std::weak_ptr<nano::network> network_w (network);
 	std::weak_ptr<nano::transport::tcp_channels> this_w (shared_from_this ());
 	if (auto socket_l = channel_a->try_get_socket ())
@@ -647,10 +647,9 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 		auto config_l = config;
 		auto logger_l = logger;
 		auto flags_l = flags;
-		socket_l->async_read (receive_buffer_a, 8 + sizeof (nano::account) + sizeof (nano::account) + sizeof (nano::signature), [this_w, node_w, channel_a, endpoint_a, receive_buffer_a, cleanup_and_udp_fallback, cleanup_node_id_handshake_socket, network_consts, stats_l, config_l, logger_l, flags_l] (boost::system::error_code const & ec, std::size_t size_a) {
+		socket_l->async_read (receive_buffer_a, 8 + sizeof (nano::account) + sizeof (nano::account) + sizeof (nano::signature), [this_w, channel_a, endpoint_a, receive_buffer_a, cleanup_and_udp_fallback, cleanup_node_id_handshake_socket, network_consts, stats_l, config_l, logger_l, flags_l] (boost::system::error_code const & ec, std::size_t size_a) {
 			auto this_l{ this_w.lock () };
-			auto node_l{ node_w.lock () };
-			if (node_l && this_l)
+			if (this_l)
 			{
 				if (!ec && channel_a)
 				{
@@ -698,8 +697,12 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 												if (auto socket_l = channel_a->try_get_socket ())
 												{
 													channel_a->set_last_packet_sent (std::chrono::steady_clock::now ());
-													auto visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (this_l->node.shared ()) };
-													auto response_server = std::make_shared<nano::bootstrap_server> (this_l->io_ctx, socket_l, this_l->logger, *this_l->stats, this_l->flags, *this_l->config, this_l->node.bootstrap, visitor_factory, this_l->workers, *this_l->network->publish_filter);
+													auto req_resp_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (this_l->node.shared ()) };
+													auto response_server = std::make_shared<nano::bootstrap_server> (
+													this_l->io_ctx, socket_l, this_l->logger,
+													*this_l->stats, this_l->flags, *this_l->config,
+													this_l->node.bootstrap, req_resp_visitor_factory,
+													this_l->workers, *this_l->network->publish_filter);
 													this_l->insert (channel_a, socket_l, response_server);
 													// Listen for possible responses
 													response_server->get_socket ()->type_set (nano::socket::type_t::realtime_response_server);

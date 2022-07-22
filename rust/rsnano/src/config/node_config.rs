@@ -34,6 +34,7 @@ pub struct NodeConfig {
     pub bootstrap_connections: u32,
     pub bootstrap_connections_max: u32,
     pub bootstrap_initiator_threads: u32,
+    pub bootstrap_serving_threads: u32,
     pub bootstrap_frontier_request_count: u32,
     pub block_processor_batch_max_time_ms: i64,
     pub allow_local_peers: bool,
@@ -222,6 +223,7 @@ impl NodeConfig {
             bootstrap_connections: 4,
             bootstrap_connections_max: 64,
             bootstrap_initiator_threads: 1,
+            bootstrap_serving_threads: std::cmp::max(get_cpu_count() as u32 / 2, 2),
             bootstrap_frontier_request_count: 1024 * 1024,
             block_processor_batch_max_time_ms: if network_params.network.is_dev_network() {
                 500
@@ -304,6 +306,7 @@ impl NodeConfig {
         toml.put_u32("bootstrap_connections", self.bootstrap_connections, "Number of outbound bootstrap connections. Must be a power of 2. Defaults to 4.\nWarning: a larger amount of connections may use substantially more system memory.\ntype:uint64")?;
         toml.put_u32("bootstrap_connections_max", self.bootstrap_connections_max, "Maximum number of inbound bootstrap connections. Defaults to 64.\nWarning: a larger amount of connections may use additional system memory.\ntype:uint64")?;
         toml.put_u32("bootstrap_initiator_threads", self.bootstrap_initiator_threads, "Number of threads dedicated to concurrent bootstrap attempts. Defaults to 1.\nWarning: a larger amount of attempts may use additional system memory and disk IO.\ntype:uint64")?;
+        toml.put_u32("bootstrap_serving_threads", self.bootstrap_serving_threads, "Number of threads dedicated to serving bootstrap data to other peers. Defaults to half the number of CPU threads, and at least 2.\ntype:uint64")?;
         toml.put_u32("bootstrap_frontier_request_count", self.bootstrap_frontier_request_count, "Number frontiers per bootstrap frontier request. Defaults to 1048576.\ntype:uint32,[1024..4294967295]")?;
         toml.put_i64("block_processor_batch_max_time", self.block_processor_batch_max_time_ms, "The maximum time the block processor can continuously process blocks for.\ntype:milliseconds")?;
         toml.put_bool(

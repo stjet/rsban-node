@@ -318,7 +318,10 @@ void nano::frontier_req_server::sent_action (boost::system::error_code const & e
 	if (!ec)
 	{
 		count++;
-		send_next ();
+
+		node->bootstrap_workers.push_task ([this_l = shared_from_this ()] () {
+			this_l->send_next ();
+		});
 	}
 	else
 	{

@@ -37,6 +37,7 @@ pub struct NodeConfigDto {
     pub bootstrap_connections: u32,
     pub bootstrap_connections_max: u32,
     pub bootstrap_initiator_threads: u32,
+    pub bootstrap_serving_threads: u32,
     pub bootstrap_frontier_request_count: u32,
     pub block_processor_batch_max_time_ms: i64,
     pub allow_local_peers: bool,
@@ -133,6 +134,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.bootstrap_connections = cfg.bootstrap_connections;
     dto.bootstrap_connections_max = cfg.bootstrap_connections_max;
     dto.bootstrap_initiator_threads = cfg.bootstrap_initiator_threads;
+    dto.bootstrap_serving_threads = cfg.bootstrap_serving_threads;
     dto.bootstrap_frontier_request_count = cfg.bootstrap_frontier_request_count;
     dto.block_processor_batch_max_time_ms = cfg.block_processor_batch_max_time_ms;
     dto.allow_local_peers = cfg.allow_local_peers;
@@ -267,6 +269,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             bootstrap_connections: value.bootstrap_connections,
             bootstrap_connections_max: value.bootstrap_connections_max,
             bootstrap_initiator_threads: value.bootstrap_initiator_threads,
+            bootstrap_serving_threads: value.bootstrap_serving_threads,
             bootstrap_frontier_request_count: value.bootstrap_frontier_request_count,
             block_processor_batch_max_time_ms: value.block_processor_batch_max_time_ms,
             allow_local_peers: value.allow_local_peers,

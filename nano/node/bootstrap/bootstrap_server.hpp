@@ -104,7 +104,7 @@ class locked_bootstrap_server_requests
 public:
 	explicit locked_bootstrap_server_requests (nano::bootstrap_server_lock lock_a);
 	locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests &&) noexcept;
-	locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests const &) = delete;
+	locked_bootstrap_server_requests (nano::locked_bootstrap_server_requests const &);
 	nano::message * release_front_request ();
 
 private:

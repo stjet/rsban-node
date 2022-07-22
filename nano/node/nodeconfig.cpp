@@ -36,6 +36,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.bootstrap_connections = config.bootstrap_connections;
 	dto.bootstrap_connections_max = config.bootstrap_connections_max;
 	dto.bootstrap_initiator_threads = config.bootstrap_initiator_threads;
+	dto.bootstrap_serving_threads = config.bootstrap_serving_threads;
 	dto.bootstrap_frontier_request_count = config.bootstrap_frontier_request_count;
 	dto.block_processor_batch_max_time_ms = config.block_processor_batch_max_time.count ();
 	dto.allow_local_peers = config.allow_local_peers;
@@ -151,6 +152,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	bootstrap_connections = dto.bootstrap_connections;
 	bootstrap_connections_max = dto.bootstrap_connections_max;
 	bootstrap_initiator_threads = dto.bootstrap_initiator_threads;
+	bootstrap_serving_threads = dto.bootstrap_serving_threads;
 	bootstrap_frontier_request_count = dto.bootstrap_frontier_request_count;
 	block_processor_batch_max_time = std::chrono::milliseconds (dto.block_processor_batch_max_time_ms);
 	allow_local_peers = dto.allow_local_peers;
@@ -368,6 +370,7 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		toml.get<unsigned> ("bootstrap_connections", bootstrap_connections);
 		toml.get<unsigned> ("bootstrap_connections_max", bootstrap_connections_max);
 		toml.get<unsigned> ("bootstrap_initiator_threads", bootstrap_initiator_threads);
+		toml.get<unsigned> ("bootstrap_serving_threads", bootstrap_serving_threads);
 		toml.get<uint32_t> ("bootstrap_frontier_request_count", bootstrap_frontier_request_count);
 		toml.get<bool> ("enable_voting", enable_voting);
 		toml.get<bool> ("allow_local_peers", allow_local_peers);

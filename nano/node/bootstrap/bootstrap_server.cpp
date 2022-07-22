@@ -398,6 +398,10 @@ nano::locked_bootstrap_server_requests::locked_bootstrap_server_requests (nano::
 	lock{ std::move (other_a.lock) }
 {
 }
+nano::locked_bootstrap_server_requests::locked_bootstrap_server_requests (const nano::locked_bootstrap_server_requests & other_a) :
+	lock{ other_a.lock }
+{
+}
 
 namespace
 {
@@ -431,13 +435,17 @@ public:
 	//----------------------------------------
 	void bulk_pull (nano::bulk_pull const &) override
 	{
-		auto response (std::make_shared<nano::bulk_pull_server> (node, connection, std::unique_ptr<nano::bulk_pull> (static_cast<nano::bulk_pull *> (requests.release_front_request ()))));
-		response->send_next ();
+		node->bootstrap_workers.push_task ([node = node, connection = connection, requests = requests] () mutable {
+			auto response (std::make_shared<nano::bulk_pull_server> (node, connection, std::unique_ptr<nano::bulk_pull> (static_cast<nano::bulk_pull *> (requests.release_front_request ()))));
+			response->send_next ();
+		});
 	}
 	void bulk_pull_account (nano::bulk_pull_account const &) override
 	{
-		auto response (std::make_shared<nano::bulk_pull_account_server> (node, connection, std::unique_ptr<nano::bulk_pull_account> (static_cast<nano::bulk_pull_account *> (requests.release_front_request ()))));
-		response->send_frontier ();
+		node->bootstrap_workers.push_task ([node = node, connection = connection, requests = requests] () mutable {
+			auto response (std::make_shared<nano::bulk_pull_account_server> (node, connection, std::unique_ptr<nano::bulk_pull_account> (static_cast<nano::bulk_pull_account *> (requests.release_front_request ()))));
+			response->send_frontier ();
+		});
 	}
 	void bulk_push (nano::bulk_push const &) override
 	{
@@ -446,8 +454,10 @@ public:
 	}
 	void frontier_req (nano::frontier_req const &) override
 	{
-		auto response (std::make_shared<nano::frontier_req_server> (node, connection, std::unique_ptr<nano::frontier_req> (static_cast<nano::frontier_req *> (requests.release_front_request ()))));
-		response->send_next ();
+		node->bootstrap_workers.push_task ([node = node, connection = connection, requests = requests] () mutable {
+			auto response (std::make_shared<nano::frontier_req_server> (node, connection, std::unique_ptr<nano::frontier_req> (static_cast<nano::frontier_req *> (requests.release_front_request ()))));
+			response->send_next ();
+		});
 	}
 	void node_id_handshake (nano::node_id_handshake const & message_a) override
 	{

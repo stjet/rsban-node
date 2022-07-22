@@ -307,6 +307,7 @@ struct NodeConfigDto
 	uint32_t bootstrap_connections;
 	uint32_t bootstrap_connections_max;
 	uint32_t bootstrap_initiator_threads;
+	uint32_t bootstrap_serving_threads;
 	uint32_t bootstrap_frontier_request_count;
 	int64_t block_processor_batch_max_time_ms;
 	bool allow_local_peers;

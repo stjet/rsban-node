@@ -498,7 +498,9 @@ void nano::bulk_pull_server::sent_action (boost::system::error_code const & ec, 
 {
 	if (!ec)
 	{
-		send_next ();
+		node->bootstrap_workers.push_task ([this_l = shared_from_this ()] () {
+			this_l->send_next ();
+		});
 	}
 	else
 	{
@@ -782,7 +784,9 @@ void nano::bulk_pull_account_server::sent_action (boost::system::error_code cons
 {
 	if (!ec)
 	{
-		send_next_block ();
+		node->bootstrap_workers.push_task ([this_l = shared_from_this ()] () {
+			this_l->send_next_block ();
+		});
 	}
 	else
 	{

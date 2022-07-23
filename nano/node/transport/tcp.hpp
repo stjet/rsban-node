@@ -224,6 +224,7 @@ namespace transport
 		nano::store & store;
 		nano::keypair node_id;
 		nano::network_params & network_params;
+		std::shared_ptr<nano::request_response_visitor_factory> req_resp_visitor_factory;
 		std::shared_ptr<nano::stat> stats;
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;

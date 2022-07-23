@@ -13,7 +13,7 @@ std::shared_ptr<nano::bootstrap_server> create_bootstrap_server (const std::shar
 	auto socket{ std::make_shared<nano::socket> (node->io_ctx, nano::socket::endpoint_type_t::server,
 	*node->stats, node->logger, node->workers, node->config->tcp_io_timeout, node->network_params.network.silent_connection_tolerance_time, node->config->logging.network_timeout_logging ()) };
 
-	auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (node);
+	auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (*node);
 	return std::make_shared<nano::bootstrap_server> (
 	node->io_ctx, socket, node->logger,
 	*node->stats, node->flags, *node->config,
@@ -1652,7 +1652,7 @@ TEST (frontier_req_response, DISABLED_destruction)
 		{
 			nano::system system (1);
 			auto & node = *system.nodes[0];
-			auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (node.shared ());
+			auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (node);
 			auto connection (std::make_shared<nano::bootstrap_server> (
 			node.io_ctx, nullptr, node.logger,
 			*node.stats, node.flags, *node.config,

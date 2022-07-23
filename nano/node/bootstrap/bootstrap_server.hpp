@@ -114,11 +114,11 @@ private:
 class request_response_visitor_factory
 {
 public:
-	explicit request_response_visitor_factory (std::shared_ptr<nano::node> node_a);
+	explicit request_response_visitor_factory (nano::node & node_a);
 	std::shared_ptr<nano::message_visitor> create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, nano::locked_bootstrap_server_requests & lock_a);
 
 private:
-	std::shared_ptr<nano::node> node;
+	nano::node & node; // shared_ptr isn't possible, because this factory gets created in node's constructor
 };
 
 /**

@@ -202,7 +202,7 @@ void nano::bootstrap_listener::accept_action (boost::system::error_code const & 
 {
 	if (!node.network->excluded_peers.check (socket_a->remote_endpoint ()))
 	{
-		auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (node.shared ());
+		auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (node);
 		auto connection (std::make_shared<nano::bootstrap_server> (
 		node.io_ctx, socket_a, node.logger,
 		*node.stats, node.flags, *node.config,
@@ -526,14 +526,14 @@ public:
 };
 }
 
-nano::request_response_visitor_factory::request_response_visitor_factory (std::shared_ptr<nano::node> node_a) :
-	node{ std::move (node_a) }
+nano::request_response_visitor_factory::request_response_visitor_factory (nano::node & node_a) :
+	node{ node_a }
 {
 }
 
 std::shared_ptr<nano::message_visitor> nano::request_response_visitor_factory::create_visitor (std::shared_ptr<nano::bootstrap_server> connection_a, nano::locked_bootstrap_server_requests & requests)
 {
-	return std::make_shared<request_response_visitor> (connection_a, node, requests);
+	return std::make_shared<request_response_visitor> (connection_a, node.shared (), requests);
 }
 
 bool nano::bootstrap_server::is_stopped () const

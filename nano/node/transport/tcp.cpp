@@ -117,6 +117,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<vo
 	store{ node.store },
 	node_id{ node.node_id },
 	network_params{ node.network_params },
+	req_resp_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (node) },
 	stats{ node.stats },
 	config{ node.config },
 	logger{ node.logger },
@@ -697,11 +698,10 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 												if (auto socket_l = channel_a->try_get_socket ())
 												{
 													channel_a->set_last_packet_sent (std::chrono::steady_clock::now ());
-													auto req_resp_visitor_factory{ std::make_shared<nano::request_response_visitor_factory> (this_l->node.shared ()) };
 													auto response_server = std::make_shared<nano::bootstrap_server> (
 													this_l->io_ctx, socket_l, this_l->logger,
 													*this_l->stats, this_l->flags, *this_l->config,
-													this_l->node.bootstrap, req_resp_visitor_factory,
+													this_l->node.bootstrap, this_l->req_resp_visitor_factory,
 													this_l->workers, *this_l->network->publish_filter);
 													this_l->insert (channel_a, socket_l, response_server);
 													// Listen for possible responses

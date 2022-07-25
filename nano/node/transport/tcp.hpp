@@ -108,7 +108,7 @@ namespace transport
 		std::size_t size () const;
 		std::shared_ptr<nano::transport::channel_tcp> find_channel (nano::tcp_endpoint const &) const;
 		std::unordered_set<std::shared_ptr<nano::transport::channel>> random_set (std::size_t, uint8_t = 0, bool = false) const;
-		bool store_all (bool = true);
+		std::vector<endpoint> get_current_peers () const;
 		std::shared_ptr<nano::transport::channel_tcp> find_node_id (nano::account const &);
 		// Get the next peer for attempting a tcp connection
 		nano::tcp_endpoint bootstrap_peer (uint8_t connection_protocol_version_min);
@@ -232,7 +232,6 @@ namespace transport
 			}
 		};
 		nano::transport::bootstrap_server_factory bootstrap_server_factory;
-		nano::store & store;
 		nano::keypair node_id;
 		nano::network_params & network_params;
 		std::shared_ptr<nano::stat> stats;

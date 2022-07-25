@@ -124,7 +124,7 @@ std::shared_ptr<nano::bootstrap_server> nano::transport::bootstrap_server_factor
 	auto response_server = std::make_shared<nano::bootstrap_server> (
 	node.io_ctx, socket_a, node.logger,
 	*node.stats, node.flags, *node.config,
-	node.bootstrap, std::make_shared<nano::request_response_visitor_factory>(node),
+	node.bootstrap, std::make_shared<nano::request_response_visitor_factory> (node),
 	node.workers, *node.network->publish_filter);
 
 	// Listen for possible responses
@@ -139,13 +139,11 @@ std::shared_ptr<nano::bootstrap_server> nano::transport::bootstrap_server_factor
 		});
 	}
 
-
 	return response_server;
 }
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
 	bootstrap_server_factory{ node },
-	store{ node.store },
 	node_id{ node.node_id },
 	network_params{ node.network_params },
 	stats{ node.stats },
@@ -256,33 +254,14 @@ std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::transport::t
 	return result;
 }
 
-bool nano::transport::tcp_channels::store_all (bool clear_peers)
+std::vector<nano::endpoint> nano::transport::tcp_channels::get_current_peers () const
 {
-	// We can't hold the mutex while starting a write transaction, so
-	// we collect endpoints to be saved and then relase the lock.
 	std::vector<nano::endpoint> endpoints;
-	{
-		nano::lock_guard<nano::mutex> lock (mutex);
-		endpoints.reserve (channels.size ());
-		std::transform (channels.begin (), channels.end (),
-		std::back_inserter (endpoints), [] (auto const & channel) { return nano::transport::map_tcp_to_endpoint (channel.endpoint ()); });
-	}
-	bool result (false);
-	if (!endpoints.empty ())
-	{
-		// Clear all peers then refresh with the current list of peers
-		auto transaction (store.tx_begin_write ({ tables::peers }));
-		if (clear_peers)
-		{
-			store.peer.clear (transaction);
-		}
-		for (auto const & endpoint : endpoints)
-		{
-			store.peer.put (transaction, nano::endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () });
-		}
-		result = true;
-	}
-	return result;
+	nano::lock_guard<nano::mutex> lock (mutex);
+	endpoints.reserve (channels.size ());
+	std::transform (channels.begin (), channels.end (),
+	std::back_inserter (endpoints), [] (auto const & channel) { return nano::transport::map_tcp_to_endpoint (channel.endpoint ()); });
+	return endpoints;
 }
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::find_node_id (nano::account const & node_id_a)

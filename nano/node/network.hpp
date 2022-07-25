@@ -163,7 +163,7 @@ public:
 	void cleanup (std::chrono::steady_clock::time_point const &);
 	void ongoing_cleanup ();
 	// Node ID cookies cleanup
-	nano::syn_cookies syn_cookies;
+	std::shared_ptr<nano::syn_cookies> syn_cookies;
 	void ongoing_syn_cookie_cleanup ();
 	void ongoing_keepalive ();
 	std::size_t size () const;

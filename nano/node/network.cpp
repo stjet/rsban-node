@@ -14,7 +14,7 @@
 
 nano::network::network (nano::node & node_a, uint16_t port_a) :
 	id (nano::network_constants::active_network ()),
-	syn_cookies (node_a.network_params.network.max_peers_per_ip),
+	syn_cookies{ std::make_shared<nano::syn_cookies> (node_a.network_params.network.max_peers_per_ip) },
 	inbound{ [this] (nano::message const & message, std::shared_ptr<nano::transport::channel> const & channel) {
 		debug_assert (message.get_header ().get_network () == node.network_params.network.current_network);
 		debug_assert (message.get_header ().get_version_using () >= node.network_params.network.protocol_version_min);
@@ -767,7 +767,7 @@ void nano::network::ongoing_cleanup ()
 
 void nano::network::ongoing_syn_cookie_cleanup ()
 {
-	syn_cookies.purge (std::chrono::steady_clock::now () - nano::transport::syn_cookie_cutoff);
+	syn_cookies->purge (std::chrono::steady_clock::now () - nano::transport::syn_cookie_cutoff);
 	std::weak_ptr<nano::node> node_w (node.shared ());
 	node.workers->add_timed_task (std::chrono::steady_clock::now () + (nano::transport::syn_cookie_cutoff * 2), [node_w] () {
 		if (auto node_l = node_w.lock ())
@@ -1052,7 +1052,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (ne
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (network.tcp_channels->collect_container_info ("tcp_channels"));
 	composite->add_component (network.udp_channels.collect_container_info ("udp_channels"));
-	composite->add_component (network.syn_cookies.collect_container_info ("syn_cookies"));
+	composite->add_component (network.syn_cookies->collect_container_info ("syn_cookies"));
 	composite->add_component (collect_container_info (network.excluded_peers, "excluded_peers"));
 	return composite;
 }

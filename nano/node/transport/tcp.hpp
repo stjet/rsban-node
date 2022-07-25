@@ -24,6 +24,7 @@ class node_flags;
 class network;
 class telemetry;
 class request_response_visitor_factory;
+class syn_cookies;
 class tcp_message_item final
 {
 public:
@@ -234,6 +235,7 @@ namespace transport
 		nano::transport::bootstrap_server_factory bootstrap_server_factory;
 		nano::keypair node_id;
 		nano::network_params & network_params;
+		std::shared_ptr<nano::syn_cookies> syn_cookies;
 		std::shared_ptr<nano::stat> stats;
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;

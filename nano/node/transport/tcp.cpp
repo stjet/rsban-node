@@ -146,6 +146,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<vo
 	bootstrap_server_factory{ node },
 	node_id{ node.node_id },
 	network_params{ node.network_params },
+	syn_cookies{ node.network->syn_cookies },
 	stats{ node.stats },
 	config{ node.config },
 	logger{ node.logger },
@@ -516,7 +517,7 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 			}
 		}
 	}
-	std::weak_ptr<nano::transport::tcp_channels> this_w (shared_from_this());
+	std::weak_ptr<nano::transport::tcp_channels> this_w (shared_from_this ());
 	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.cleanup_period_half (), [this_w] () {
 		if (auto this_l = this_w.lock ())
 		{
@@ -585,7 +586,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 			if (!ec && channel)
 			{
 				// TCP node ID handshake
-				auto cookie (this_l->network->syn_cookies.assign (endpoint_a));
+				auto cookie (this_l->syn_cookies->assign (endpoint_a));
 				nano::node_id_handshake message (network_consts, cookie, boost::none);
 				if (config_l->logging.network_node_id_handshake_logging ())
 				{
@@ -676,7 +677,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 							{
 								channel_a->set_network_version (header.get_version_using ());
 								auto node_id_l (message.get_response ()->first);
-								bool process (!this_l->network->syn_cookies.validate (endpoint_a, node_id_l, message.get_response ()->second) && node_id_l != this_l->node_id.pub);
+								bool process (!this_l->syn_cookies->validate (endpoint_a, node_id_l, message.get_response ()->second) && node_id_l != this_l->node_id.pub);
 								if (process)
 								{
 									/* If node ID is known, don't establish new connection

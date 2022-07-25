@@ -894,7 +894,7 @@ TEST (tcp_listener, tcp_node_id_handshake)
 	nano::system system (1);
 	auto socket (create_client_socket (*system.nodes[0]));
 	auto bootstrap_endpoint (system.nodes[0]->bootstrap->endpoint ());
-	auto cookie (system.nodes[0]->network->syn_cookies.assign (nano::transport::map_tcp_to_endpoint (bootstrap_endpoint)));
+	auto cookie (system.nodes[0]->network->syn_cookies->assign (nano::transport::map_tcp_to_endpoint (bootstrap_endpoint)));
 	nano::node_id_handshake node_id_handshake{ nano::dev::network_params.network, cookie, boost::none };
 	auto input (node_id_handshake.to_shared_const_buffer ());
 	std::atomic<bool> write_done (false);
@@ -952,7 +952,7 @@ TEST (tcp_listener, tcp_listener_timeout_node_id_handshake)
 	nano::system system (1);
 	auto node0 (system.nodes[0]);
 	auto socket (create_client_socket (*node0));
-	auto cookie (node0->network->syn_cookies.assign (nano::transport::map_tcp_to_endpoint (node0->bootstrap->endpoint ())));
+	auto cookie (node0->network->syn_cookies->assign (nano::transport::map_tcp_to_endpoint (node0->bootstrap->endpoint ())));
 	nano::node_id_handshake node_id_handshake{ nano::dev::network_params.network, cookie, boost::none };
 	auto channel = std::make_shared<nano::transport::channel_tcp> (node0->io_ctx, node0->network->limiter, node0->config->network_params.network, socket, node0->network->tcp_channels);
 	socket->async_connect (node0->bootstrap->endpoint (), [&node_id_handshake, channel] (boost::system::error_code const & ec) {
@@ -1241,11 +1241,11 @@ TEST (network, tcp_no_connect_excluded_peers)
 	ASSERT_FALSE (node0->network->excluded_peers.check (endpoint1_tcp));
 
 	// Wait until there is a syn_cookie
-	ASSERT_TIMELY (5s, node1->network->syn_cookies.cookies_size () != 0);
+	ASSERT_TIMELY (5s, node1->network->syn_cookies->cookies_size () != 0);
 
 	// Manually cleanup previous attempt
 	node1->network->cleanup (std::chrono::steady_clock::now ());
-	node1->network->syn_cookies.purge (std::chrono::steady_clock::now ());
+	node1->network->syn_cookies->purge (std::chrono::steady_clock::now ());
 
 	// Ensure a successful connection
 	ASSERT_EQ (0, node0->network->size ());

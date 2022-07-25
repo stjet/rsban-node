@@ -462,7 +462,7 @@ public:
 		{
 			boost::optional<std::pair<nano::account, nano::signature>> response (std::make_pair (node->node_id.pub, nano::sign_message (node->node_id.prv, node->node_id.pub, *message_a.get_query ())));
 			debug_assert (!nano::validate_message (response->first, *message_a.get_query (), response->second));
-			auto cookie (node->network->syn_cookies.assign (nano::transport::map_tcp_to_endpoint (connection->get_remote_endpoint ())));
+			auto cookie (node->network->syn_cookies->assign (nano::transport::map_tcp_to_endpoint (connection->get_remote_endpoint ())));
 			nano::node_id_handshake response_message (node->network_params.network, cookie, response);
 			auto shared_const_buffer = response_message.to_shared_const_buffer ();
 			connection->get_socket ()->async_write (shared_const_buffer, [connection = nano::bootstrap_server_weak_wrapper (connection), config_l = node->config, stats_l = node->stats, logger_l = node->logger] (boost::system::error_code const & ec, std::size_t size_a) {
@@ -488,7 +488,7 @@ public:
 		else if (message_a.get_response ())
 		{
 			nano::account const & node_id (message_a.get_response ()->first);
-			if (!node->network->syn_cookies.validate (nano::transport::map_tcp_to_endpoint (connection->get_remote_endpoint ()), node_id, message_a.get_response ()->second) && node_id != node->node_id.pub)
+			if (!node->network->syn_cookies->validate (nano::transport::map_tcp_to_endpoint (connection->get_remote_endpoint ()), node_id, message_a.get_response ()->second) && node_id != node->node_id.pub)
 			{
 				connection->set_remote_node_id (node_id);
 				connection->get_socket ()->type_set (nano::socket::type_t::realtime);

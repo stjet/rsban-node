@@ -412,7 +412,7 @@ public:
 	{
 		if (!node.network->udp_channels.max_ip_or_subnetwork_connections (endpoint))
 		{
-			auto cookie (node.network->syn_cookies.assign (endpoint));
+			auto cookie (node.network->syn_cookies->assign (endpoint));
 			if (cookie)
 			{
 				// New connection
@@ -508,7 +508,7 @@ public:
 		auto validated_response (false);
 		if (message_a.get_response ())
 		{
-			if (!node.network->syn_cookies.validate (endpoint, message_a.get_response ()->first, message_a.get_response ()->second))
+			if (!node.network->syn_cookies->validate (endpoint, message_a.get_response ()->first, message_a.get_response ()->second))
 			{
 				validated_response = true;
 				if (message_a.get_response ()->first != node.node_id.pub && !node.network->tcp_channels->find_node_id (message_a.get_response ()->first))
@@ -530,7 +530,7 @@ public:
 		}
 		if (!validated_response && node.network->udp_channels.channel (endpoint) == nullptr)
 		{
-			out_query = node.network->syn_cookies.assign (endpoint);
+			out_query = node.network->syn_cookies->assign (endpoint);
 		}
 		if (out_query || out_respond_to)
 		{

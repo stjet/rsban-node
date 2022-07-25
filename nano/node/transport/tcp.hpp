@@ -83,6 +83,17 @@ namespace transport
 
 		bool max () override;
 	};
+
+	class bootstrap_server_factory
+	{
+	public:
+		bootstrap_server_factory (nano::node & node_a);
+		std::shared_ptr<nano::bootstrap_server> create_bootstrap_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::socket> & socket_a);
+
+	private:
+		nano::node & node;
+	};
+
 	class tcp_channels final : public nano::transport::channel_tcp_observer, public std::enable_shared_from_this<tcp_channels>
 	{
 		friend class nano::transport::channel_tcp;
@@ -220,11 +231,10 @@ namespace transport
 			{
 			}
 		};
-		nano::node & node;
+		nano::transport::bootstrap_server_factory bootstrap_server_factory;
 		nano::store & store;
 		nano::keypair node_id;
 		nano::network_params & network_params;
-		std::shared_ptr<nano::request_response_visitor_factory> req_resp_visitor_factory;
 		std::shared_ptr<nano::stat> stats;
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;

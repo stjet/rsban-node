@@ -516,13 +516,13 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 			}
 		}
 	}
-	std::weak_ptr<nano::network> network_w (network);
-	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.cleanup_period_half (), [network_w] () {
-		if (auto network_l = network_w.lock ())
+	std::weak_ptr<nano::transport::tcp_channels> this_w (shared_from_this());
+	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.cleanup_period_half (), [this_w] () {
+		if (auto this_l = this_w.lock ())
 		{
-			if (!network_l->tcp_channels->stopped)
+			if (!this_l->stopped)
 			{
-				network_l->tcp_channels->ongoing_keepalive ();
+				this_l->ongoing_keepalive ();
 			}
 		}
 	});
@@ -599,7 +599,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 					{
 						if (!ec)
 						{
-							this_l->network->tcp_channels->start_tcp_receive_node_id (channel, endpoint_a, receive_buffer);
+							this_l->start_tcp_receive_node_id (channel, endpoint_a, receive_buffer);
 						}
 						else
 						{
@@ -611,14 +611,14 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 							{
 								logger_l->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % endpoint_a % ec.message ()));
 							}
-							this_l->network->tcp_channels->udp_fallback (endpoint_a);
+							this_l->udp_fallback (endpoint_a);
 						}
 					}
 				});
 			}
 			else
 			{
-				this_l->network->tcp_channels->udp_fallback (endpoint_a);
+				this_l->udp_fallback (endpoint_a);
 			}
 		}
 	});
@@ -626,7 +626,6 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 
 void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, nano::endpoint const & endpoint_a, std::shared_ptr<std::vector<uint8_t>> const & receive_buffer_a)
 {
-	std::weak_ptr<nano::network> network_w (network);
 	std::weak_ptr<nano::transport::tcp_channels> this_w (shared_from_this ());
 	if (auto socket_l = channel_a->try_get_socket ())
 	{

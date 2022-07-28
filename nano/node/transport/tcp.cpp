@@ -112,6 +112,19 @@ void nano::transport::channel_tcp::set_endpoint ()
 	rsnano::rsn_channel_tcp_set_endpoint (handle);
 }
 
+nano::endpoint nano::transport::channel_tcp::get_peering_endpoint () const
+{
+	rsnano::EndpointDto dto;
+	rsnano::rsn_channel_tcp_peering_endpoint (handle, &dto);
+	return rsnano::dto_to_udp_endpoint (dto);
+}
+
+void nano::transport::channel_tcp::set_peering_endpoint (nano::endpoint endpoint)
+{
+	auto dto{ rsnano::udp_endpoint_to_dto (endpoint) };
+	rsnano::rsn_channel_tcp_set_peering_endpoint (handle, &dto);
+}
+
 nano::transport::bootstrap_server_factory::bootstrap_server_factory (nano::node & node) :
 	node{ node }
 {
@@ -285,7 +298,7 @@ nano::tcp_endpoint nano::transport::tcp_channels::bootstrap_peer (uint8_t connec
 	{
 		if (i->get_channel ()->get_network_version () >= connection_protocol_version_min)
 		{
-			result = i->endpoint ();
+			result = nano::transport::map_endpoint_to_tcp (i->get_channel ()->get_peering_endpoint ());
 			channels.get<last_bootstrap_attempt_tag> ().modify (i, [] (channel_tcp_wrapper & wrapper_a) {
 				wrapper_a.get_channel ()->set_last_bootstrap_attempt (std::chrono::steady_clock::now ());
 			});

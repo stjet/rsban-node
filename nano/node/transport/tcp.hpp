@@ -83,6 +83,8 @@ namespace transport
 		}
 
 		bool max () override;
+		nano::endpoint get_peering_endpoint () const override;
+		void set_peering_endpoint (nano::endpoint endpoint) override;
 	};
 
 	class bootstrap_server_factory

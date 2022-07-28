@@ -78,6 +78,8 @@ namespace transport
 			nano::lock_guard<nano::mutex> lk (channel_mutex);
 			last_telemetry_req = time_a;
 		}
+		nano::endpoint get_peering_endpoint () const override;
+		void set_peering_endpoint (nano::endpoint endpoint) override;
 
 	private:
 		boost::asio::io_context & io_ctx;
@@ -90,6 +92,7 @@ namespace transport
 		nano::endpoint endpoint;
 		nano::transport::udp_channels & channels;
 		std::chrono::steady_clock::time_point last_telemetry_req{ std::chrono::steady_clock::time_point () };
+		std::optional<nano::endpoint> peering_endpoint{};
 	};
 	class udp_channels final
 	{

@@ -55,6 +55,9 @@ namespace transport
 				return nano::transport::transport_type::loopback;
 			}
 
+			nano::endpoint get_peering_endpoint () const override;
+			void set_peering_endpoint (nano::endpoint endpoint) override;
+
 		private:
 			boost::asio::io_context & io_ctx;
 			nano::stat & stats;
@@ -66,6 +69,7 @@ namespace transport
 			nano::node & node;
 			nano::node & destination;
 			nano::endpoint const endpoint;
+			std::optional<nano::endpoint> peering_endpoint{};
 		};
 	} // namespace inproc
 } // namespace transport

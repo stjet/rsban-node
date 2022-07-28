@@ -15,6 +15,7 @@ use crate::{
 };
 use std::{
     ffi::c_void,
+    net::SocketAddr,
     ops::Deref,
     sync::{Arc, MutexGuard},
 };
@@ -70,6 +71,23 @@ pub unsafe extern "C" fn rsn_channel_tcp_endpoint(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_set_endpoint(handle: *mut ChannelHandle) {
     as_tcp_channel(handle).set_endpoint();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_peering_endpoint(
+    handle: *mut ChannelHandle,
+    endpoint: *mut EndpointDto,
+) {
+    (*endpoint) = EndpointDto::from(as_tcp_channel(handle).peering_endpoint())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_set_peering_endpoint(
+    handle: *mut ChannelHandle,
+    endpoint: *const EndpointDto,
+) {
+    let address = SocketAddr::from(&*endpoint);
+    as_tcp_channel(handle).set_peering_endpoint(address);
 }
 
 pub type ChannelTcpSendBufferCallback =

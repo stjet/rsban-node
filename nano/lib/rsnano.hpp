@@ -1286,6 +1286,8 @@ void rsn_channel_tcp_network_set_version (ChannelHandle * handle, uint8_t versio
 
 uint8_t rsn_channel_tcp_network_version (ChannelHandle * handle);
 
+void rsn_channel_tcp_peering_endpoint (ChannelHandle * handle, EndpointDto * endpoint);
+
 void rsn_channel_tcp_send (ChannelHandle * handle,
 MessageHandle * msg,
 ChannelTcpSendCallback callback,
@@ -1302,6 +1304,8 @@ void * callback_context,
 uint8_t policy);
 
 void rsn_channel_tcp_set_endpoint (ChannelHandle * handle);
+
+void rsn_channel_tcp_set_peering_endpoint (ChannelHandle * handle, const EndpointDto * endpoint);
 
 SocketHandle * rsn_channel_tcp_socket (ChannelHandle * handle);
 

@@ -98,6 +98,23 @@ std::string nano::transport::channel_udp::to_string () const
 	return boost::str (boost::format ("%1%") % endpoint);
 }
 
+void nano::transport::channel_udp::set_peering_endpoint (nano::endpoint endpoint)
+{
+	peering_endpoint = endpoint;
+}
+
+nano::endpoint nano::transport::channel_udp::get_peering_endpoint () const
+{
+	if (peering_endpoint)
+	{
+		return *peering_endpoint;
+	}
+	else
+	{
+		return get_endpoint ();
+	}
+}
+
 nano::transport::udp_channels::udp_channels (nano::node & node_a, uint16_t port_a, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
 	node{ node_a },
 	strand{ node_a.io_ctx.get_executor () },

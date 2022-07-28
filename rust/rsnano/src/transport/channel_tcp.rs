@@ -29,6 +29,7 @@ pub struct TcpChannelData {
     last_packet_sent: u64,
     node_id: Option<Account>,
     pub endpoint: SocketAddr,
+    pub peering_endpoint: Option<SocketAddr>,
 }
 
 pub struct ChannelTcp {
@@ -59,6 +60,7 @@ impl ChannelTcp {
                 last_packet_sent: now,
                 node_id: None,
                 endpoint: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+                peering_endpoint: None,
             }),
             socket: Arc::downgrade(socket),
             temporary: AtomicBool::new(false),
@@ -98,6 +100,19 @@ impl ChannelTcp {
                 lock.endpoint = ep;
             }
         }
+    }
+
+    pub fn peering_endpoint(&self) -> SocketAddr {
+        let lock = self.channel_mutex.lock().unwrap();
+        match lock.peering_endpoint {
+            Some(addr) => addr,
+            None => lock.endpoint,
+        }
+    }
+
+    pub fn set_peering_endpoint(&self, address: SocketAddr) {
+        let mut lock = self.channel_mutex.lock().unwrap();
+        lock.peering_endpoint = Some(address);
     }
 
     pub fn send_buffer(

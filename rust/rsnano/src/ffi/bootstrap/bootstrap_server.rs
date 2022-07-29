@@ -8,11 +8,11 @@ use crate::{
         io_context::{FfiIoContext, IoContextHandle},
         messages::{FfiMessageVisitor, MessageHandle},
         thread_pool::FfiThreadPool,
-        transport::{EndpointDto, SocketHandle},
+        network::{EndpointDto, SocketHandle},
         DestroyCallback, LoggerHandle, LoggerMT, NetworkFilterHandle, NetworkParamsDto,
         NodeConfigDto, StatHandle,
     },
-    transport::SocketType,
+    network::SocketType,
     Account, NetworkParams, NodeConfig,
 };
 use std::{

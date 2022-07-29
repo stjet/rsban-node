@@ -10,7 +10,7 @@ use crate::{
         io_context::FfiIoContext, messages::MessageHandle, BandwidthLimiterHandle, DestroyCallback,
         ErrorCodeDto,
     },
-    transport::{BufferDropPolicy, ChannelTcp, TcpChannelData},
+    network::{BufferDropPolicy, ChannelTcp, TcpChannelData},
     utils::ErrorCode,
 };
 use std::{

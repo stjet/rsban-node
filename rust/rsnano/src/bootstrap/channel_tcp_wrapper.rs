@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use crate::{
     bootstrap::BootstrapServer,
-    transport::{Channel, ChannelTcp, SocketImpl},
+    network::{Channel, ChannelTcp, SocketImpl},
     Account,
 };
 

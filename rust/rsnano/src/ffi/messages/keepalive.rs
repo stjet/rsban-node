@@ -1,7 +1,7 @@
 use std::{ffi::c_void, net::SocketAddr};
 
 use crate::{
-    ffi::{transport::EndpointDto, FfiStream, NetworkConstantsDto},
+    ffi::{network::EndpointDto, FfiStream, NetworkConstantsDto},
     messages::{Keepalive, Message},
 };
 

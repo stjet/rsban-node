@@ -20,7 +20,7 @@ mod stats;
 mod stream;
 mod thread_pool;
 mod toml;
-mod transport;
+mod network;
 mod unchecked_info;
 mod voting;
 mod websocket;
@@ -50,7 +50,7 @@ pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
 use crate::{utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount, RawKey, Root, Signature};
-pub use transport::ChannelTcpObserverWeakPtr;
+pub use network::ChannelTcpObserverWeakPtr;
 
 pub struct StringHandle(CString);
 #[repr(C)]

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::transport::TcpChannels;
+use crate::network::TcpChannels;
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
 

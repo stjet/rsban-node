@@ -3,7 +3,7 @@ use num::FromPrimitive;
 use crate::{
     ffi::{DestroyCallback, DispatchCallback, ErrorCodeDto, LoggerHandle},
     stats::SocketStats,
-    transport::{Socket, SocketBuilder, SocketImpl, SocketType, TcpSocketFacade},
+    network::{Socket, SocketBuilder, SocketImpl, SocketType, TcpSocketFacade},
     utils::{BufferHandle, BufferWrapper, ErrorCode},
 };
 use std::{

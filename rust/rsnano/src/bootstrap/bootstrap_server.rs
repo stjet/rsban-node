@@ -19,7 +19,7 @@ use crate::{
         TelemetryAck, TelemetryReq,
     },
     stats::{DetailType, Direction, Stat, StatType},
-    transport::{Socket, SocketImpl, SocketType},
+    network::{Socket, SocketImpl, SocketType},
     utils::{ErrorCode, IoContext, StreamAdapter, ThreadPool},
     Account, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
 };

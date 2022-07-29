@@ -135,6 +135,7 @@ namespace transport
 		void start_tcp (nano::endpoint const &);
 		void start_tcp_receive_node_id (std::shared_ptr<nano::transport::channel_tcp> const &, nano::endpoint const &, std::shared_ptr<std::vector<uint8_t>> const &);
 		void udp_fallback (nano::endpoint const &);
+		void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 
 		// channel_tcp_observer:
 		void data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a) override;
@@ -278,6 +279,8 @@ namespace transport
 		attempts;
 		// clang-format on
 		std::atomic<bool> stopped{ false };
+		// Called when a new channel is observed
+		std::function<void (std::shared_ptr<nano::transport::channel>)> channel_observer;
 		rsnano::TcpChannelsHandle * handle;
 
 		friend class network_peer_max_tcp_attempts_subnetwork_Test;

@@ -1034,6 +1034,7 @@ std::string nano::network::to_string (nano::networks network)
 
 void nano::network::on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a)
 {
+	tcp_channels->on_new_channel (observer_a);
 	channel_observer = std::move (observer_a);
 }
 

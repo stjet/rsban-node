@@ -198,7 +198,7 @@ bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::cha
 			attempts.get<endpoint_tag> ().erase (endpoint);
 			error = false;
 			lock.unlock ();
-			network->notify_new_channel (channel_a);
+			channel_observer (channel_a);
 			// Remove UDP channel to same IP:port if exists
 			network->udp_channels.erase (udp_endpoint);
 			// Remove UDP channels with same node ID
@@ -827,6 +827,11 @@ void nano::transport::tcp_channels::no_socket_drop ()
 void nano::transport::tcp_channels::write_drop ()
 {
 	stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out);
+}
+
+void nano::transport::tcp_channels::on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a)
+{
+	channel_observer = std::move (observer_a);
 }
 
 nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::bootstrap_server> server_a)

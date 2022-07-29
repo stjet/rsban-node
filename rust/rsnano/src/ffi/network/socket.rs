@@ -2,8 +2,8 @@ use num::FromPrimitive;
 
 use crate::{
     ffi::{DestroyCallback, DispatchCallback, ErrorCodeDto, LoggerHandle},
-    stats::SocketStats,
     network::{Socket, SocketBuilder, SocketImpl, SocketType, TcpSocketFacade},
+    stats::SocketStats,
     utils::{BufferHandle, BufferWrapper, ErrorCode},
 };
 use std::{

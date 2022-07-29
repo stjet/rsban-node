@@ -2,6 +2,7 @@ mod channel;
 mod channel_tcp;
 mod channel_tcp_observer;
 mod socket;
+mod syn_cookies;
 mod tcp_channels;
 
 pub use channel::{as_tcp_channel, ChannelHandle, ChannelType};

@@ -92,6 +92,8 @@ struct StateBlockSignatureVerificationResultHandle;
 
 struct StringHandle;
 
+struct SynCookiesHandle;
+
 struct TcpChannelLockHandle;
 
 struct TcpChannelsHandle;
@@ -2102,6 +2104,27 @@ void * context);
 uintptr_t rsn_state_block_size ();
 
 void rsn_string_destroy (StringHandle * handle);
+
+bool rsn_syn_cookies_assign (SynCookiesHandle * handle, const EndpointDto * endpoint, uint8_t * result);
+
+uintptr_t rsn_syn_cookies_cookie_info_size ();
+
+uintptr_t rsn_syn_cookies_cookies_count (SynCookiesHandle * handle);
+
+uintptr_t rsn_syn_cookies_cookies_per_ip_count (SynCookiesHandle * handle);
+
+uintptr_t rsn_syn_cookies_cookies_per_ip_size ();
+
+SynCookiesHandle * rsn_syn_cookies_create (uintptr_t max_cookies_per_ip);
+
+void rsn_syn_cookies_destroy (SynCookiesHandle * handle);
+
+void rsn_syn_cookies_purge (SynCookiesHandle * handle, uint32_t cutoff_s);
+
+bool rsn_syn_cookies_validate (SynCookiesHandle * handle,
+const EndpointDto * endpoint,
+const uint8_t * node_id,
+const uint8_t * signature);
 
 TcpChannelsHandle * rsn_tcp_channels_create ();
 

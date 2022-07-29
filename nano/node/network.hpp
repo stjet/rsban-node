@@ -92,8 +92,10 @@ private:
 class syn_cookies final
 {
 public:
-	syn_cookies (std::size_t);
-	void purge (std::chrono::steady_clock::time_point const &);
+	explicit syn_cookies (std::size_t);
+	syn_cookies (nano::syn_cookies const &) = delete;
+	~syn_cookies ();
+	void purge (std::chrono::seconds const &);
 	// Returns boost::none if the IP is rate capped on syn cookie requests,
 	// or if the endpoint already has a syn cookie query
 	boost::optional<nano::uint256_union> assign (nano::endpoint const &);
@@ -104,16 +106,7 @@ public:
 	std::size_t cookies_size ();
 
 private:
-	class syn_cookie_info final
-	{
-	public:
-		nano::uint256_union cookie;
-		std::chrono::steady_clock::time_point created_at;
-	};
-	mutable nano::mutex syn_cookie_mutex;
-	std::unordered_map<nano::endpoint, syn_cookie_info> cookies;
-	std::unordered_map<boost::asio::ip::address, unsigned> cookies_per_ip;
-	std::size_t max_cookies_per_ip;
+	rsnano::SynCookiesHandle * handle;
 };
 class network final : public std::enable_shared_from_this<network>
 {

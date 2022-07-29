@@ -18,8 +18,8 @@ use crate::{
         Message, MessageHeader, MessageType, MessageVisitor, NodeIdHandshake, Publish,
         TelemetryAck, TelemetryReq,
     },
-    stats::{DetailType, Direction, Stat, StatType},
     network::{Socket, SocketImpl, SocketType},
+    stats::{DetailType, Direction, Stat, StatType},
     utils::{ErrorCode, IoContext, StreamAdapter, ThreadPool},
     Account, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
 };

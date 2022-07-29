@@ -1245,7 +1245,7 @@ TEST (network, tcp_no_connect_excluded_peers)
 
 	// Manually cleanup previous attempt
 	node1->network->cleanup (std::chrono::steady_clock::now ());
-	node1->network->syn_cookies->purge (std::chrono::steady_clock::now ());
+	node1->network->syn_cookies->purge (std::chrono::seconds{ 0 });
 
 	// Ensure a successful connection
 	ASSERT_EQ (0, node0->network->size ());

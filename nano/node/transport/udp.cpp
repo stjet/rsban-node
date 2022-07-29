@@ -168,7 +168,7 @@ std::shared_ptr<nano::transport::channel_udp> nano::transport::udp_channels::ins
 			channels.get<endpoint_tag> ().insert (channel_udp_wrapper{ result });
 			attempts.get<endpoint_tag> ().erase (endpoint_a);
 			lock.unlock ();
-			node.network->channel_observer (result);
+			node.network->notify_new_channel (result);
 		}
 	}
 	return result;

@@ -197,10 +197,10 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		wallets.observer = [this] (bool active) {
 			observers.wallet.notify (active);
 		};
-		network->channel_observer = [this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
+		network->on_new_channel ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
 			debug_assert (channel_a != nullptr);
 			observers.endpoint.notify (channel_a);
-		};
+		});
 		network->disconnect_observer = [this] () {
 			observers.disconnect.notify ();
 		};

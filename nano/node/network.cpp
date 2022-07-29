@@ -1031,3 +1031,13 @@ std::string nano::network::to_string (nano::networks network)
 	rsnano::rsn_network_to_string (static_cast<uint16_t> (network), &result);
 	return rsnano::convert_dto_to_string (result);
 }
+
+void nano::network::on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a)
+{
+	channel_observer = std::move (observer_a);
+}
+
+void nano::network::notify_new_channel (std::shared_ptr<nano::transport::channel> channel_a)
+{
+	channel_observer (channel_a);
+}

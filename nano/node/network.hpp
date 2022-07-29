@@ -165,6 +165,8 @@ public:
 	void erase (nano::transport::channel const &);
 	void set_bandwidth_params (double, std::size_t);
 	static std::string to_string (nano::networks);
+	void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
+	void notify_new_channel (std::shared_ptr<nano::transport::channel> channel_a);
 
 private:
 	void process_message (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
@@ -183,8 +185,12 @@ public:
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 	std::atomic<uint16_t> port{ 0 };
 	std::function<void ()> disconnect_observer;
+
+private:
 	// Called when a new channel is observed
 	std::function<void (std::shared_ptr<nano::transport::channel>)> channel_observer;
+
+public:
 	std::atomic<bool> stopped{ false };
 	static unsigned const broadcast_interval_ms = 10;
 	static std::size_t const buffer_size = 512;

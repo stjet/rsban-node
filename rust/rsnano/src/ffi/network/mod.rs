@@ -1,6 +1,7 @@
 mod channel;
 mod channel_tcp;
 mod channel_tcp_observer;
+mod peer_exclusion;
 mod socket;
 mod syn_cookies;
 mod tcp_channels;

@@ -1,6 +1,7 @@
 mod channel_inproc;
 mod channel_tcp;
 mod channel_udp;
+mod peer_exclusion;
 mod socket;
 mod syn_cookies;
 mod tcp_channels;
@@ -8,6 +9,7 @@ mod tcp_channels;
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, TcpChannelData};
 pub use channel_udp::ChannelUdp;
+pub use peer_exclusion::PeerExclusion;
 pub use socket::*;
 pub use syn_cookies::SynCookies;
 pub use tcp_channels::TcpChannels;

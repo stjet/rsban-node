@@ -76,6 +76,8 @@ struct NetworkFilterHandle;
 
 struct NodeFlagsHandle;
 
+struct PeerExclusionHandle;
+
 struct SignatureCheckerHandle;
 
 struct SocketHandle;
@@ -1835,6 +1837,24 @@ uintptr_t rsn_open_block_size ();
 void rsn_open_block_source (const BlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_open_block_source_set (BlockHandle * handle, const uint8_t (*source)[32]);
+
+uint64_t rsn_peer_exclusion_add (PeerExclusionHandle * handle,
+const EndpointDto * endpoint,
+uintptr_t network_peers_count);
+
+bool rsn_peer_exclusion_check (PeerExclusionHandle * handle, const EndpointDto * endpoint);
+
+bool rsn_peer_exclusion_contains (PeerExclusionHandle * handle, const EndpointDto * endpoint);
+
+PeerExclusionHandle * rsn_peer_exclusion_create ();
+
+void rsn_peer_exclusion_destroy (PeerExclusionHandle * handle);
+
+uintptr_t rsn_peer_exclusion_element_size ();
+
+void rsn_peer_exclusion_remove (PeerExclusionHandle * handle, const EndpointDto * endpoint);
+
+uintptr_t rsn_peer_exclusion_size (PeerExclusionHandle * handle);
 
 int32_t rsn_portmapping_constants_create (const NetworkConstantsDto * network_constants,
 PortmappingConstantsDto * dto);

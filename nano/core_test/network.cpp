@@ -1226,12 +1226,11 @@ namespace nano
 TEST (network, tcp_message_manager)
 {
 	nano::tcp_message_manager manager (1);
-	nano::tcp_message_item item;
-	item.node_id = nano::account (100);
+	nano::tcp_message_item item{ nullptr, nano::tcp_endpoint{}, nano::account (100), nullptr };
 	ASSERT_EQ (0, manager.entries.size ());
 	manager.put_message (item);
 	ASSERT_EQ (1, manager.entries.size ());
-	ASSERT_EQ (manager.get_message ().node_id, item.node_id);
+	ASSERT_EQ (manager.get_message ().get_node_id (), item.get_node_id ());
 	ASSERT_EQ (0, manager.entries.size ());
 
 	// Fill the queue
@@ -1248,7 +1247,7 @@ TEST (network, tcp_message_manager)
 	std::this_thread::sleep_for (CI ? 200ms : 100ms);
 
 	ASSERT_EQ (manager.entries.size (), manager.max_entries);
-	ASSERT_EQ (manager.get_message ().node_id, item.node_id);
+	ASSERT_EQ (manager.get_message ().get_node_id (), item.get_node_id ());
 	ASSERT_NE (std::future_status::timeout, future.wait_for (1s));
 	ASSERT_EQ (manager.entries.size (), manager.max_entries);
 
@@ -1260,7 +1259,7 @@ TEST (network, tcp_message_manager)
 		consumers.emplace_back ([&] {
 			for (auto i = 0; i < message_count; ++i)
 			{
-				ASSERT_EQ (manager.get_message ().node_id, item.node_id);
+				ASSERT_EQ (manager.get_message ().get_node_id (), item.get_node_id ());
 			}
 		});
 	}

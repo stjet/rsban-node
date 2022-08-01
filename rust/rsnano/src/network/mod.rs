@@ -5,6 +5,7 @@ mod peer_exclusion;
 mod socket;
 mod syn_cookies;
 mod tcp_channels;
+mod tcp_message_manager;
 
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, TcpChannelData};
@@ -13,6 +14,7 @@ pub use peer_exclusion::PeerExclusion;
 pub use socket::*;
 pub use syn_cookies::SynCookies;
 pub use tcp_channels::TcpChannels;
+pub use tcp_message_manager::{TcpMessageItem, TcpMessageManager};
 
 use crate::Account;
 

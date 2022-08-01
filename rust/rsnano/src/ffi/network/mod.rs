@@ -5,6 +5,7 @@ mod peer_exclusion;
 mod socket;
 mod syn_cookies;
 mod tcp_channels;
+mod tcp_message_item;
 
 pub use channel::{as_tcp_channel, ChannelHandle, ChannelType};
 pub use channel_tcp_observer::ChannelTcpObserverWeakPtr;

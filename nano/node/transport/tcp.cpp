@@ -317,9 +317,10 @@ void nano::transport::tcp_channels::process_messages ()
 	while (!stopped)
 	{
 		auto item (network->tcp_message_manager.get_message ());
-		if (item.message != nullptr)
+		if (item.get_message () != nullptr)
 		{
-			process_message (*item.message, item.endpoint, item.node_id, item.socket);
+			auto message{ item.get_message () };
+			process_message (*message, item.get_endpoint (), item.get_node_id (), item.get_socket ());
 		}
 	}
 }
@@ -858,4 +859,66 @@ std::shared_ptr<nano::bootstrap_server> nano::transport::tcp_channels::channel_t
 	if (server_handle)
 		server = std::make_shared<nano::bootstrap_server> (server_handle);
 	return server;
+}
+
+nano::tcp_message_item::tcp_message_item (std::shared_ptr<nano::message> message_a, nano::tcp_endpoint endpoint_a, nano::account node_id_a, std::shared_ptr<nano::socket> socket_a) :
+	message{ std::move (message_a) },
+	endpoint{ endpoint_a },
+	node_id{ node_id_a },
+	socket{ std::move (socket_a) }
+{
+}
+
+nano::tcp_message_item::tcp_message_item (nano::tcp_message_item const & other_a) :
+	message{ other_a.message },
+	endpoint{ other_a.endpoint },
+	node_id{ other_a.node_id },
+	socket{ other_a.socket }
+{
+}
+
+nano::tcp_message_item::tcp_message_item (nano::tcp_message_item && other_a) :
+	message{ std::move (other_a.message) },
+	endpoint{ other_a.endpoint },
+	node_id{ other_a.node_id },
+	socket{ std::move (other_a.socket) }
+{
+}
+
+std::shared_ptr<nano::message> nano::tcp_message_item::get_message () const
+{
+	return message;
+}
+
+nano::tcp_endpoint nano::tcp_message_item::get_endpoint () const
+{
+	return endpoint;
+}
+
+nano::account nano::tcp_message_item::get_node_id () const
+{
+	return node_id;
+}
+
+std::shared_ptr<nano::socket> nano::tcp_message_item::get_socket () const
+{
+	return socket;
+}
+
+nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item const & other_a)
+{
+	message = other_a.message;
+	endpoint = other_a.endpoint;
+	node_id = other_a.node_id;
+	socket = other_a.socket;
+	return *this;
+}
+
+nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item && other_a)
+{
+	message = std::move (other_a.message);
+	endpoint = other_a.endpoint;
+	node_id = other_a.node_id;
+	socket = std::move (other_a.socket);
+	return *this;
 }

@@ -28,6 +28,18 @@ class syn_cookies;
 class tcp_message_item final
 {
 public:
+	tcp_message_item () = default;
+	tcp_message_item (std::shared_ptr<nano::message> message_a, nano::tcp_endpoint endpoint_a, nano::account node_id_a, std::shared_ptr<nano::socket> socket_a);
+	tcp_message_item (nano::tcp_message_item const & other_a);
+	tcp_message_item (nano::tcp_message_item && other_a);
+	tcp_message_item & operator= (tcp_message_item const & other_a);
+	tcp_message_item & operator= (tcp_message_item && other_a);
+	std::shared_ptr<nano::message> get_message () const;
+	nano::tcp_endpoint get_endpoint () const;
+	nano::account get_node_id () const;
+	std::shared_ptr<nano::socket> get_socket () const;
+
+private:
 	std::shared_ptr<nano::message> message;
 	nano::tcp_endpoint endpoint;
 	nano::account node_id;

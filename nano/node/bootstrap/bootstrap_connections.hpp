@@ -36,7 +36,7 @@ public:
 	void stop (bool force);
 	double sample_block_rate ();
 	double elapsed_seconds () const;
-	void set_start_time (std::chrono::steady_clock::time_point start_time_a);
+	void set_start_time ();
 	void async_read (std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
 	void close_socket ();
 	void set_timeout (std::chrono::seconds timeout_a);
@@ -55,13 +55,7 @@ public:
 
 private:
 	std::shared_ptr<nano::transport::channel_tcp> get_channel () const;
-	std::atomic<uint64_t> block_count{ 0 };
-	std::atomic<double> block_rate{ 0 };
-	std::atomic<bool> pending_stop{ false };
-	std::atomic<bool> hard_stop{ false };
-	std::vector<uint8_t> buffer;
-	mutable nano::mutex start_time_mutex;
-	std::chrono::steady_clock::time_point start_time_m;
+	std::vector<uint8_t> buffer; // only used for returning a uint8_t*
 	rsnano::BootstrapClientHandle * handle;
 };
 

@@ -13,11 +13,15 @@ namespace rsnano
 {
 static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
 
+static const double BOOTSTRAP_MINIMUM_ELAPSED_SECONDS_BLOCKRATE = 0.02;
+
 static const uint8_t GENERIC = 0;
 
 static const uintptr_t ConfirmAck_HASHES_MAX = 12;
 
 static const uintptr_t FrontierReq_ONLY_CONFIRMED = 1;
+
+static const uint64_t PULL_COUNT_PER_CHECK = (8 * 1024);
 
 struct AsyncConnectCallbackHandle;
 
@@ -1030,6 +1034,10 @@ void rsn_bootstrap_attempt_wait_for (BootstrapAttemptHandle * handle,
 BootstrapAttemptLockHandle * lck,
 uint64_t timeout_millis);
 
+uint64_t rsn_bootstrap_client_block_count (BootstrapClientHandle * handle);
+
+double rsn_bootstrap_client_block_rate (BootstrapClientHandle * handle);
+
 ChannelHandle * rsn_bootstrap_client_channel (BootstrapClientHandle * handle);
 
 /// `observer` is a `shared_ptr<bootstrap_client_observer>*`
@@ -1038,6 +1046,14 @@ ChannelHandle * channel,
 SocketHandle * socket);
 
 void rsn_bootstrap_client_destroy (BootstrapClientHandle * handle);
+
+double rsn_bootstrap_client_elapsed_seconds (BootstrapClientHandle * handle);
+
+bool rsn_bootstrap_client_hard_stop (BootstrapClientHandle * handle);
+
+uint64_t rsn_bootstrap_client_inc_block_count (BootstrapClientHandle * handle);
+
+bool rsn_bootstrap_client_pending_stop (BootstrapClientHandle * handle);
 
 void rsn_bootstrap_client_read (BootstrapClientHandle * handle,
 uintptr_t size,
@@ -1051,7 +1067,13 @@ uintptr_t len);
 
 uintptr_t rsn_bootstrap_client_receive_buffer_size (BootstrapClientHandle * handle);
 
+double rsn_bootstrap_client_sample_block_rate (BootstrapClientHandle * handle);
+
+void rsn_bootstrap_client_set_start_time (BootstrapClientHandle * handle);
+
 SocketHandle * rsn_bootstrap_client_socket (BootstrapClientHandle * handle);
+
+void rsn_bootstrap_client_stop (BootstrapClientHandle * handle, bool force);
 
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
 BootstrapConstantsDto * dto);

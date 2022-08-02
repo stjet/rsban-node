@@ -17,7 +17,6 @@ constexpr unsigned nano::bootstrap_limits::bootstrap_max_new_connections;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_processed_blocks_factor;
 
 nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a) :
-	start_time_m (std::chrono::steady_clock::now ()),
 	handle{ rsnano::rsn_bootstrap_client_create (new std::shared_ptr<nano::bootstrap_client_observer> (observer_a), channel_a->handle, socket_a->handle) }
 {
 }
@@ -29,30 +28,22 @@ nano::bootstrap_client::~bootstrap_client ()
 
 double nano::bootstrap_client::sample_block_rate ()
 {
-	auto elapsed = std::max (elapsed_seconds (), nano::bootstrap_limits::bootstrap_minimum_elapsed_seconds_blockrate);
-	block_rate = static_cast<double> (get_block_count ()) / elapsed;
-	return block_rate;
+	return rsnano::rsn_bootstrap_client_sample_block_rate (handle);
 }
 
-void nano::bootstrap_client::set_start_time (std::chrono::steady_clock::time_point start_time_a)
+void nano::bootstrap_client::set_start_time ()
 {
-	nano::lock_guard<nano::mutex> guard (start_time_mutex);
-	start_time_m = start_time_a;
+	rsnano::rsn_bootstrap_client_set_start_time (handle);
 }
 
 double nano::bootstrap_client::elapsed_seconds () const
 {
-	nano::lock_guard<nano::mutex> guard (start_time_mutex);
-	return std::chrono::duration_cast<std::chrono::duration<double>> (std::chrono::steady_clock::now () - start_time_m).count ();
+	return rsnano::rsn_bootstrap_client_elapsed_seconds (handle);
 }
 
 void nano::bootstrap_client::stop (bool force)
 {
-	pending_stop = true;
-	if (force)
-	{
-		hard_stop = true;
-	}
+	rsnano::rsn_bootstrap_client_stop (handle, force);
 }
 
 void nano::bootstrap_client::async_read (std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
@@ -112,24 +103,24 @@ std::shared_ptr<nano::socket> nano::bootstrap_client::get_socket () const
 
 uint64_t nano::bootstrap_client::inc_block_count ()
 {
-	return block_count++;
+	return rsnano::rsn_bootstrap_client_inc_block_count (handle);
 }
 
 uint64_t nano::bootstrap_client::get_block_count () const
 {
-	return block_count;
+	return rsnano::rsn_bootstrap_client_block_count (handle);
 }
 double nano::bootstrap_client::get_block_rate () const
 {
-	return block_rate;
+	return rsnano::rsn_bootstrap_client_block_rate (handle);
 }
 bool nano::bootstrap_client::get_pending_stop () const
 {
-	return pending_stop;
+	return rsnano::rsn_bootstrap_client_pending_stop (handle);
 }
 bool nano::bootstrap_client::get_hard_stop () const
 {
-	return hard_stop;
+	return rsnano::rsn_bootstrap_client_hard_stop (handle);
 }
 std::shared_ptr<nano::transport::channel_tcp> nano::bootstrap_client::get_channel () const
 {

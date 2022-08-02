@@ -182,7 +182,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::
 	}
 	if (connection->inc_block_count () == 0)
 	{
-		connection->set_start_time (std::chrono::steady_clock::now ());
+		connection->set_start_time ();
 	}
 	attempt->total_blocks_inc ();
 	pull_blocks++;

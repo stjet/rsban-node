@@ -1,9 +1,17 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc, Mutex,
+    },
+    time::{Duration, Instant},
+};
 
 use crate::{
     network::{ChannelTcp, Socket, SocketImpl},
     utils::ErrorCode,
 };
+
+use super::bootstrap_limits;
 
 pub trait BootstrapClientObserver {
     fn bootstrap_client_closed(&self);
@@ -19,6 +27,11 @@ pub struct BootstrapClient {
     channel: Arc<ChannelTcp>,
     socket: Arc<SocketImpl>,
     receive_buffer: Arc<Mutex<Vec<u8>>>,
+    block_count: AtomicU64,
+    block_rate: AtomicU64,
+    pending_stop: AtomicBool,
+    hard_stop: AtomicBool,
+    start_time: Mutex<Instant>,
 }
 
 impl BootstrapClient {
@@ -33,7 +46,36 @@ impl BootstrapClient {
             channel,
             socket,
             receive_buffer: Arc::new(Mutex::new(vec![0; 256])),
+            block_count: AtomicU64::new(0),
+            block_rate: AtomicU64::new(0f64.to_bits()),
+            pending_stop: AtomicBool::new(false),
+            hard_stop: AtomicBool::new(false),
+            start_time: Mutex::new(Instant::now()),
         }
+    }
+
+    pub fn sample_block_rate(&self) -> f64 {
+        let elapsed = {
+            let elapsed_seconds = self.elapsed().as_secs_f64();
+            if elapsed_seconds > bootstrap_limits::BOOTSTRAP_MINIMUM_ELAPSED_SECONDS_BLOCKRATE {
+                elapsed_seconds
+            } else {
+                bootstrap_limits::BOOTSTRAP_MINIMUM_ELAPSED_SECONDS_BLOCKRATE
+            }
+        };
+        let new_block_rate = self.block_count.load(Ordering::SeqCst) as f64 / elapsed;
+        self.block_rate
+            .store((new_block_rate).to_bits(), Ordering::SeqCst);
+        new_block_rate
+    }
+
+    pub fn elapsed(&self) -> Duration {
+        self.start_time.lock().unwrap().elapsed()
+    }
+
+    pub fn set_start_time(&self) {
+        let mut lock = self.start_time.lock().unwrap();
+        *lock = Instant::now();
     }
 
     pub fn get_channel(&self) -> &Arc<ChannelTcp> {
@@ -55,6 +97,33 @@ impl BootstrapClient {
 
     pub fn receive_buffer_len(&self) -> usize {
         self.receive_buffer.lock().unwrap().len()
+    }
+
+    pub fn inc_block_count(&self) -> u64 {
+        self.block_count.fetch_add(1, Ordering::SeqCst)
+    }
+
+    pub fn block_count(&self) -> u64 {
+        self.block_count.load(Ordering::SeqCst)
+    }
+
+    pub fn block_rate(&self) -> f64 {
+        f64::from_bits(self.block_rate.load(Ordering::SeqCst))
+    }
+
+    pub fn pending_stop(&self) -> bool {
+        self.pending_stop.load(Ordering::SeqCst)
+    }
+
+    pub fn hard_stop(&self) -> bool {
+        self.hard_stop.load(Ordering::SeqCst)
+    }
+
+    pub fn stop(&self, force: bool) {
+        self.pending_stop.store(true, Ordering::SeqCst);
+        if force {
+            self.hard_stop.store(true, Ordering::SeqCst);
+        }
     }
 }
 

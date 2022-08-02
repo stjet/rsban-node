@@ -65,6 +65,25 @@ pub unsafe extern "C" fn rsn_bootstrap_client_read(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_sample_block_rate(
+    handle: *mut BootstrapClientHandle,
+) -> f64 {
+    (*handle).0.sample_block_rate()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_set_start_time(handle: *mut BootstrapClientHandle) {
+    (*handle).0.set_start_time()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_elapsed_seconds(
+    handle: *mut BootstrapClientHandle,
+) -> f64 {
+    (*handle).0.elapsed().as_secs_f64()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_client_receive_buffer_size(
     handle: *mut BootstrapClientHandle,
 ) -> usize {
@@ -79,6 +98,49 @@ pub unsafe extern "C" fn rsn_bootstrap_client_receive_buffer(
 ) {
     let buffer = std::slice::from_raw_parts_mut(buffer, len);
     buffer.copy_from_slice(&(*handle).0.receive_buffer());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_inc_block_count(
+    handle: *mut BootstrapClientHandle,
+) -> u64 {
+    (*handle).0.inc_block_count()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_block_count(
+    handle: *mut BootstrapClientHandle,
+) -> u64 {
+    (*handle).0.block_count()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_block_rate(
+    handle: *mut BootstrapClientHandle,
+) -> f64 {
+    (*handle).0.block_rate()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_pending_stop(
+    handle: *mut BootstrapClientHandle,
+) -> bool {
+    (*handle).0.pending_stop()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_hard_stop(
+    handle: *mut BootstrapClientHandle,
+) -> bool {
+    (*handle).0.hard_stop()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_stop(
+    handle: *mut BootstrapClientHandle,
+    force: bool,
+) {
+    (*handle).0.stop(force);
 }
 
 struct FfiBootstrapClientObserver {

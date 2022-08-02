@@ -17,8 +17,9 @@ pub use bootstrap_client::{
 
 pub use channel_tcp_wrapper::ChannelTcpWrapper;
 
-mod bootstrap_limits {
-    pub(crate) const PULL_COUNT_PER_CHECK: u64 = 8 * 1024;
+pub mod bootstrap_limits {
+    pub const PULL_COUNT_PER_CHECK: u64 = 8 * 1024;
+    pub const BOOTSTRAP_MINIMUM_ELAPSED_SECONDS_BLOCKRATE: f64 = 0.02;
 }
 
 #[derive(Clone, Copy, FromPrimitive)]

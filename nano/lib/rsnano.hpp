@@ -1033,9 +1033,13 @@ uint64_t timeout_millis);
 ChannelHandle * rsn_bootstrap_client_channel (BootstrapClientHandle * handle);
 
 /// `observer` is a `shared_ptr<bootstrap_client_observer>*`
-BootstrapClientHandle * rsn_bootstrap_client_create (void * observer, ChannelHandle * channel);
+BootstrapClientHandle * rsn_bootstrap_client_create (void * observer,
+ChannelHandle * channel,
+SocketHandle * socket);
 
 void rsn_bootstrap_client_destroy (BootstrapClientHandle * handle);
+
+SocketHandle * rsn_bootstrap_client_socket (BootstrapClientHandle * handle);
 
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
 BootstrapConstantsDto * dto);

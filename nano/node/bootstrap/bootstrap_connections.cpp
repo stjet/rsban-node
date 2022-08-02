@@ -17,10 +17,9 @@ constexpr unsigned nano::bootstrap_limits::bootstrap_max_new_connections;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_processed_blocks_factor;
 
 nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a) :
-	socket (socket_a),
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
 	start_time_m (std::chrono::steady_clock::now ()),
-	handle{ rsnano::rsn_bootstrap_client_create (new std::shared_ptr<nano::bootstrap_client_observer> (observer_a), channel_a->handle) }
+	handle{ rsnano::rsn_bootstrap_client_create (new std::shared_ptr<nano::bootstrap_client_observer> (observer_a), channel_a->handle, socket_a->handle) }
 {
 	receive_buffer->resize (256);
 }
@@ -60,7 +59,7 @@ void nano::bootstrap_client::stop (bool force)
 
 void nano::bootstrap_client::async_read (std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
 {
-	socket->async_read (receive_buffer, size_a, callback_a);
+	get_socket ()->async_read (receive_buffer, size_a, callback_a);
 }
 
 uint8_t * nano::bootstrap_client::get_receive_buffer ()
@@ -70,7 +69,7 @@ uint8_t * nano::bootstrap_client::get_receive_buffer ()
 
 nano::tcp_endpoint nano::bootstrap_client::remote_endpoint () const
 {
-	return socket->remote_endpoint ();
+	return get_socket ()->remote_endpoint ();
 }
 
 std::string nano::bootstrap_client::channel_string () const
@@ -95,17 +94,17 @@ nano::tcp_endpoint nano::bootstrap_client::get_tcp_endpoint () const
 
 void nano::bootstrap_client::close_socket ()
 {
-	socket->close ();
+	get_socket ()->close ();
 }
 
 void nano::bootstrap_client::set_timeout (std::chrono::seconds timeout_a)
 {
-	socket->set_timeout (timeout_a);
+	get_socket ()->set_timeout (timeout_a);
 }
 
 std::shared_ptr<nano::socket> nano::bootstrap_client::get_socket () const
 {
-	return socket;
+	return std::make_shared<nano::socket> (rsnano::rsn_bootstrap_client_socket (handle));
 }
 
 uint64_t nano::bootstrap_client::inc_block_count ()

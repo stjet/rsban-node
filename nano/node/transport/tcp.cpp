@@ -861,64 +861,81 @@ std::shared_ptr<nano::bootstrap_server> nano::transport::tcp_channels::channel_t
 	return server;
 }
 
-nano::tcp_message_item::tcp_message_item (std::shared_ptr<nano::message> message_a, nano::tcp_endpoint endpoint_a, nano::account node_id_a, std::shared_ptr<nano::socket> socket_a) :
-	message{ std::move (message_a) },
-	endpoint{ endpoint_a },
-	node_id{ node_id_a },
-	socket{ std::move (socket_a) }
+nano::tcp_message_item::tcp_message_item () :
+	handle{ rsnano::rsn_tcp_message_item_empty () }
 {
 }
 
+nano::tcp_message_item::~tcp_message_item ()
+{
+	if (handle)
+		rsnano::rsn_tcp_message_item_destroy (handle);
+}
+
+nano::tcp_message_item::tcp_message_item (std::shared_ptr<nano::message> message_a, nano::tcp_endpoint endpoint_a, nano::account node_id_a, std::shared_ptr<nano::socket> socket_a)
+{
+	rsnano::MessageHandle * message_handle = nullptr;
+	if (message_a)
+	{
+		message_handle = message_a->handle;
+	}
+
+	rsnano::EndpointDto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
+	rsnano::SocketHandle * socket_handle = nullptr;
+	if (socket_a)
+	{
+		socket_handle = socket_a->handle;
+	}
+	handle = rsnano::rsn_tcp_message_item_create (message_handle, &endpoint_dto, node_id_a.bytes.data (), socket_handle);
+}
+
 nano::tcp_message_item::tcp_message_item (nano::tcp_message_item const & other_a) :
-	message{ other_a.message },
-	endpoint{ other_a.endpoint },
-	node_id{ other_a.node_id },
-	socket{ other_a.socket }
+	handle{ rsnano::rsn_tcp_message_item_clone (other_a.handle) }
 {
 }
 
 nano::tcp_message_item::tcp_message_item (nano::tcp_message_item && other_a) :
-	message{ std::move (other_a.message) },
-	endpoint{ other_a.endpoint },
-	node_id{ other_a.node_id },
-	socket{ std::move (other_a.socket) }
+	handle{ other_a.handle }
 {
+	other_a.handle = nullptr;
 }
 
 std::shared_ptr<nano::message> nano::tcp_message_item::get_message () const
 {
-	return message;
+	auto message_handle = rsnano::rsn_tcp_message_item_message (handle);
+	return nano::message_handle_to_message (message_handle);
 }
 
 nano::tcp_endpoint nano::tcp_message_item::get_endpoint () const
 {
-	return endpoint;
+	rsnano::EndpointDto endpoint_dto;
+	rsnano::rsn_tcp_message_item_endpoint (handle, &endpoint_dto);
+	return rsnano::dto_to_endpoint (endpoint_dto);
 }
 
 nano::account nano::tcp_message_item::get_node_id () const
 {
+	nano::account node_id;
+	rsnano::rsn_tcp_message_item_node_id (handle, node_id.bytes.data ());
 	return node_id;
 }
 
 std::shared_ptr<nano::socket> nano::tcp_message_item::get_socket () const
 {
-	return socket;
+	auto socket_handle = rsnano::rsn_tcp_message_item_socket (handle);
+	return std::make_shared<nano::socket> (socket_handle);
 }
 
 nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item const & other_a)
 {
-	message = other_a.message;
-	endpoint = other_a.endpoint;
-	node_id = other_a.node_id;
-	socket = other_a.socket;
+	rsnano::rsn_tcp_message_item_destroy (handle);
+	handle = rsnano::rsn_tcp_message_item_clone (other_a.handle);
 	return *this;
 }
 
 nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item && other_a)
 {
-	message = std::move (other_a.message);
-	endpoint = other_a.endpoint;
-	node_id = other_a.node_id;
-	socket = std::move (other_a.socket);
+	handle = other_a.handle;
+	other_a.handle = nullptr;
 	return *this;
 }

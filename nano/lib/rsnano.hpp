@@ -100,6 +100,8 @@ struct TcpChannelLockHandle;
 
 struct TcpChannelsHandle;
 
+struct TcpMessageItemHandle;
+
 struct TelemetryDataHandle;
 
 struct UncheckedInfoHandle;
@@ -2149,6 +2151,25 @@ const uint8_t * signature);
 TcpChannelsHandle * rsn_tcp_channels_create ();
 
 void rsn_tcp_channels_destroy (TcpChannelsHandle * handle);
+
+TcpMessageItemHandle * rsn_tcp_message_item_clone (TcpMessageItemHandle * handle);
+
+TcpMessageItemHandle * rsn_tcp_message_item_create (const MessageHandle * message,
+const EndpointDto * endpoint,
+const uint8_t * node_id,
+const SocketHandle * socket);
+
+void rsn_tcp_message_item_destroy (TcpMessageItemHandle * handle);
+
+TcpMessageItemHandle * rsn_tcp_message_item_empty ();
+
+void rsn_tcp_message_item_endpoint (TcpMessageItemHandle * handle, EndpointDto * endpoint);
+
+MessageHandle * rsn_tcp_message_item_message (TcpMessageItemHandle * handle);
+
+void rsn_tcp_message_item_node_id (TcpMessageItemHandle * handle, uint8_t * node_id);
+
+SocketHandle * rsn_tcp_message_item_socket (TcpMessageItemHandle * handle);
 
 uint64_t rsn_telemetry_cache_cutoffs_dev ();
 

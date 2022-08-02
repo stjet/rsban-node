@@ -6,7 +6,9 @@ mod socket;
 mod syn_cookies;
 mod tcp_channels;
 mod tcp_message_item;
+mod tcp_message_manager;
 
 pub use channel::{as_tcp_channel, ChannelHandle, ChannelType};
 pub use channel_tcp_observer::ChannelTcpObserverWeakPtr;
 pub use socket::{EndpointDto, SocketHandle};
+pub use tcp_message_item::TcpMessageItemHandle;

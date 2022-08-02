@@ -10,6 +10,14 @@ use super::{EndpointDto, SocketHandle};
 
 pub struct TcpMessageItemHandle(Arc<TcpMessageItem>);
 
+impl Deref for TcpMessageItemHandle {
+    type Target = Arc<TcpMessageItem>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_tcp_message_item_empty() -> *mut TcpMessageItemHandle {
     Box::into_raw(Box::new(TcpMessageItemHandle(Arc::new(

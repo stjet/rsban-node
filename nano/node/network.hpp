@@ -69,7 +69,10 @@ private:
 class tcp_message_manager final
 {
 public:
-	tcp_message_manager (unsigned incoming_connections_max_a);
+	explicit tcp_message_manager (unsigned incoming_connections_max_a);
+	tcp_message_manager (tcp_message_manager const &) = delete;
+	tcp_message_manager (tcp_message_manager &&) = delete;
+	~tcp_message_manager ();
 	void put_message (nano::tcp_message_item const & item_a);
 	nano::tcp_message_item get_message ();
 	// Stop container and notify waiting threads
@@ -83,6 +86,7 @@ private:
 	unsigned max_entries;
 	static unsigned const max_entries_per_connection = 16;
 	bool stopped{ false };
+	rsnano::TcpMessageManagerHandle * handle;
 
 	friend class network_tcp_message_manager_Test;
 };

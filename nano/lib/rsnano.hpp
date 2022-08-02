@@ -102,6 +102,8 @@ struct TcpChannelsHandle;
 
 struct TcpMessageItemHandle;
 
+struct TcpMessageManagerHandle;
+
 struct TelemetryDataHandle;
 
 struct UncheckedInfoHandle;
@@ -2170,6 +2172,10 @@ MessageHandle * rsn_tcp_message_item_message (TcpMessageItemHandle * handle);
 void rsn_tcp_message_item_node_id (TcpMessageItemHandle * handle, uint8_t * node_id);
 
 SocketHandle * rsn_tcp_message_item_socket (TcpMessageItemHandle * handle);
+
+TcpMessageManagerHandle * rsn_tcp_message_manager_create (uintptr_t incoming_connections_max);
+
+void rsn_tcp_message_manager_destroy (TcpMessageManagerHandle * handle);
 
 uint64_t rsn_telemetry_cache_cutoffs_dev ();
 

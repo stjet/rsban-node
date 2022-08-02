@@ -1124,6 +1124,8 @@ void rsn_callback_bootstrap_client_observer_to_weak (BootstrapClientObserverToWe
 
 void rsn_callback_bootstrap_client_observer_weak_destroy (DestroyCallback f);
 
+void rsn_callback_bootstrap_client_weak_to_observer (BootstrapClientObserverToWeakCallback f);
+
 void rsn_callback_bootstrap_observer_bootstrap_count (BootstrapServerBootstrapCountCallback f);
 
 void rsn_callback_bootstrap_observer_destroy (DestroyCallback f);

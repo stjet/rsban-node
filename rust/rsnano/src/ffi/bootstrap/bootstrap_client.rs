@@ -40,9 +40,8 @@ impl BootstrapClientObserver for FfiBootstrapClientObserver {
     }
 
     fn to_weak(&self) -> Box<dyn BootstrapClientObserverWeakPtr> {
-        let weak_handle = unsafe {
-            OBSERVER_TO_WEAK.expect("OBSERVER_TO_WEAK missing")(self.handle)
-        };
+        let weak_handle =
+            unsafe { OBSERVER_TO_WEAK.expect("OBSERVER_TO_WEAK missing")(self.handle) };
         Box::new(FfiBootstrapClientObserverWeakPtr::new(weak_handle))
     }
 }
@@ -67,7 +66,7 @@ impl FfiBootstrapClientObserverWeakPtr {
 impl BootstrapClientObserverWeakPtr for FfiBootstrapClientObserverWeakPtr {
     fn upgrade(&self) -> Option<Arc<dyn BootstrapClientObserver>> {
         let observer_handle =
-            unsafe { OBSERVER_TO_WEAK.expect("OBSERVER_TO_WEAK missing")(self.handle) };
+            unsafe { WEAK_TO_OBSERVER.expect("WEAK_TO_OBSERVER missing")(self.handle) };
         if observer_handle.is_null() {
             None
         } else {
@@ -97,12 +96,20 @@ pub unsafe extern "C" fn rsn_callback_bootstrap_client_observer_closed(
 pub type BootstrapClientObserverToWeakCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
 
 static mut OBSERVER_TO_WEAK: Option<BootstrapClientObserverToWeakCallback> = None;
+static mut WEAK_TO_OBSERVER: Option<BootstrapClientObserverToWeakCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_bootstrap_client_observer_to_weak(
     f: BootstrapClientObserverToWeakCallback,
 ) {
     OBSERVER_TO_WEAK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_bootstrap_client_weak_to_observer(
+    f: BootstrapClientObserverToWeakCallback,
+) {
+    WEAK_TO_OBSERVER = Some(f);
 }
 
 static mut DROP_WEAK: Option<DestroyCallback> = None;

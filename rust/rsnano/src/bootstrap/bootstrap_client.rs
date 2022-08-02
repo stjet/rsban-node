@@ -20,3 +20,11 @@ impl BootstrapClient {
         }
     }
 }
+
+impl Drop for BootstrapClient {
+    fn drop(&mut self) {
+        if let Some(observer) = self.observer.upgrade() {
+            observer.bootstrap_client_closed();
+        }
+    }
+}

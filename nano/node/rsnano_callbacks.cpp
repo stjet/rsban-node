@@ -811,6 +811,16 @@ void * bootstrap_client_observer_to_weak (void * handle_a)
 	return new std::weak_ptr<nano::bootstrap_client_observer> (*observer);
 }
 
+void * bootstrap_client_weak_to_observer (void * handle_a)
+{
+	auto weak{ static_cast<std::weak_ptr<nano::bootstrap_client_observer> *> (handle_a) };
+	auto observer = (*weak).lock ();
+	void * result = nullptr;
+	if (observer)
+		result = new std::shared_ptr<nano::bootstrap_client_observer> (observer);
+	return result;
+}
+
 void bootstrap_client_observer_weak_destroy (void * handle_a)
 {
 	auto observer{ static_cast<std::weak_ptr<nano::bootstrap_client_observer> *> (handle_a) };
@@ -912,6 +922,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_client_observer_closed (bootstrap_client_observer_closed);
 	rsnano::rsn_callback_bootstrap_client_observer_destroy (bootstrap_client_observer_destroy);
 	rsnano::rsn_callback_bootstrap_client_observer_to_weak (bootstrap_client_observer_to_weak);
+	rsnano::rsn_callback_bootstrap_client_weak_to_observer (bootstrap_client_weak_to_observer);
 	rsnano::rsn_callback_bootstrap_client_observer_weak_destroy (bootstrap_client_observer_weak_destroy);
 
 	callbacks_set = true;

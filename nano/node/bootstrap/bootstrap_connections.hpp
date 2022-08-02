@@ -61,7 +61,6 @@ private:
 	std::shared_ptr<nano::transport::channel_tcp> channel;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::socket> socket;
-	std::weak_ptr<nano::bootstrap_client_observer> observer_m;
 	mutable nano::mutex start_time_mutex;
 	std::chrono::steady_clock::time_point start_time_m;
 	rsnano::BootstrapClientHandle * handle;

@@ -3,7 +3,10 @@ use std::{ffi::c_void, ops::Deref, sync::Arc};
 use crate::{
     bootstrap::{BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr},
     ffi::{
-        network::{as_tcp_channel, ChannelHandle, ChannelType, SocketHandle},
+        network::{
+            as_tcp_channel, ChannelHandle, ChannelType, ReadCallbackWrapper, SocketDestroyContext,
+            SocketHandle, SocketReadCallback,
+        },
         DestroyCallback,
     },
 };
@@ -44,6 +47,38 @@ pub unsafe extern "C" fn rsn_bootstrap_client_socket(
     handle: *mut BootstrapClientHandle,
 ) -> *mut SocketHandle {
     SocketHandle::new(Arc::clone((*handle).0.get_socket()))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_read(
+    handle: *mut BootstrapClientHandle,
+    size: usize,
+    callback: SocketReadCallback,
+    destroy_context: SocketDestroyContext,
+    context: *mut c_void,
+) {
+    let cb_wrapper = ReadCallbackWrapper::new(callback, destroy_context, context);
+    let cb = Box::new(move |ec, size| {
+        cb_wrapper.execute(ec, size);
+    });
+    (*handle).0.read_async(size, cb)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_receive_buffer_size(
+    handle: *mut BootstrapClientHandle,
+) -> usize {
+    (*handle).0.receive_buffer_len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_receive_buffer(
+    handle: *mut BootstrapClientHandle,
+    buffer: *mut u8,
+    len: usize,
+) {
+    let buffer = std::slice::from_raw_parts_mut(buffer, len);
+    buffer.copy_from_slice(&(*handle).0.receive_buffer());
 }
 
 struct FfiBootstrapClientObserver {

@@ -59,7 +59,7 @@ private:
 	std::atomic<double> block_rate{ 0 };
 	std::atomic<bool> pending_stop{ false };
 	std::atomic<bool> hard_stop{ false };
-	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
+	std::vector<uint8_t> buffer;
 	mutable nano::mutex start_time_mutex;
 	std::chrono::steady_clock::time_point start_time_m;
 	rsnano::BootstrapClientHandle * handle;

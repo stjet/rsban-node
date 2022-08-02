@@ -22,6 +22,7 @@ namespace rsnano
 class SocketHandle;
 class SocketWeakHandle;
 class BufferHandle;
+class ErrorCodeDto;
 }
 
 namespace nano
@@ -86,6 +87,9 @@ public:
 private:
 	std::atomic<bool> closed{ false };
 };
+
+void async_read_adapter (void * context_a, rsnano::ErrorCodeDto const * error_a, std::size_t size_a);
+void async_read_delete_context (void * context_a);
 
 /** Socket class for tcp clients and newly accepted connections */
 class socket : public std::enable_shared_from_this<nano::socket>

@@ -17,11 +17,9 @@ constexpr unsigned nano::bootstrap_limits::bootstrap_max_new_connections;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_processed_blocks_factor;
 
 nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a) :
-	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
 	start_time_m (std::chrono::steady_clock::now ()),
 	handle{ rsnano::rsn_bootstrap_client_create (new std::shared_ptr<nano::bootstrap_client_observer> (observer_a), channel_a->handle, socket_a->handle) }
 {
-	receive_buffer->resize (256);
 }
 
 nano::bootstrap_client::~bootstrap_client ()
@@ -59,12 +57,17 @@ void nano::bootstrap_client::stop (bool force)
 
 void nano::bootstrap_client::async_read (std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
 {
-	get_socket ()->async_read (receive_buffer, size_a, callback_a);
+	auto cb_wrapper = new std::function<void (boost::system::error_code const &, std::size_t)> ([callback = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code const & ec, std::size_t size) {
+		callback (ec, size);
+	});
+	rsnano::rsn_bootstrap_client_read (handle, size_a, nano::async_read_adapter, nano::async_read_delete_context, cb_wrapper);
 }
 
 uint8_t * nano::bootstrap_client::get_receive_buffer ()
 {
-	return receive_buffer->data ();
+	buffer.resize (rsnano::rsn_bootstrap_client_receive_buffer_size (handle));
+	rsnano::rsn_bootstrap_client_receive_buffer (handle, buffer.data (), buffer.size ());
+	return buffer.data ();
 }
 
 nano::tcp_endpoint nano::bootstrap_client::remote_endpoint () const

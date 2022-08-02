@@ -162,7 +162,7 @@ impl From<SocketAddr> for EndpointDto {
 }
 
 type SocketConnectCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto);
-type SocketDestroyContext = unsafe extern "C" fn(*mut c_void);
+pub type SocketDestroyContext = unsafe extern "C" fn(*mut c_void);
 
 struct ConnectCallbackWrapper {
     callback: SocketConnectCallback,
@@ -209,14 +209,14 @@ pub unsafe extern "C" fn rsn_socket_async_connect(
     (*handle).async_connect((&*endpoint).into(), cb);
 }
 
-struct ReadCallbackWrapper {
+pub struct ReadCallbackWrapper {
     callback: SocketReadCallback,
     destory_context: SocketDestroyContext,
     context: *mut c_void,
 }
 
 impl ReadCallbackWrapper {
-    fn new(
+    pub fn new(
         callback: SocketReadCallback,
         destory_context: SocketDestroyContext,
         context: *mut c_void,
@@ -227,7 +227,8 @@ impl ReadCallbackWrapper {
             context,
         }
     }
-    fn execute(&self, ec: ErrorCode, size: usize) {
+
+    pub fn execute(&self, ec: ErrorCode, size: usize) {
         let ec_dto = ErrorCodeDto::from(&ec);
         unsafe { (self.callback)(self.context, &ec_dto, size) };
     }
@@ -239,7 +240,7 @@ impl Drop for ReadCallbackWrapper {
     }
 }
 
-type SocketReadCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
+pub type SocketReadCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_async_read(

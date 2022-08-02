@@ -149,6 +149,10 @@ struct StringDto
 	const char * value;
 };
 
+using SocketReadCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
+
+using SocketDestroyContext = void (*) (void *);
+
 struct WorkThresholdsDto
 {
 	uint64_t epoch_1;
@@ -784,10 +788,6 @@ struct SignatureCheckSetDto
 
 using SocketConnectCallback = void (*) (void *, const ErrorCodeDto *);
 
-using SocketDestroyContext = void (*) (void *);
-
-using SocketReadCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
-
 struct StateBlockDto
 {
 	uint8_t signature[64];
@@ -1038,6 +1038,18 @@ ChannelHandle * channel,
 SocketHandle * socket);
 
 void rsn_bootstrap_client_destroy (BootstrapClientHandle * handle);
+
+void rsn_bootstrap_client_read (BootstrapClientHandle * handle,
+uintptr_t size,
+SocketReadCallback callback,
+SocketDestroyContext destroy_context,
+void * context);
+
+void rsn_bootstrap_client_receive_buffer (BootstrapClientHandle * handle,
+uint8_t * buffer,
+uintptr_t len);
+
+uintptr_t rsn_bootstrap_client_receive_buffer_size (BootstrapClientHandle * handle);
 
 SocketHandle * rsn_bootstrap_client_socket (BootstrapClientHandle * handle);
 

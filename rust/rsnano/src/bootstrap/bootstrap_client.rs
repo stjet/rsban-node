@@ -8,7 +8,8 @@ use std::{
 };
 
 use crate::{
-    network::{ChannelTcp, Socket, SocketImpl},
+    messages::Message,
+    network::{BufferDropPolicy, ChannelTcp, Socket, SocketImpl},
     utils::ErrorCode,
 };
 
@@ -98,6 +99,24 @@ impl BootstrapClient {
 
     pub fn receive_buffer_len(&self) -> usize {
         self.receive_buffer.lock().unwrap().len()
+    }
+
+    pub fn send_buffer(
+        &self,
+        buffer_a: &Arc<Vec<u8>>,
+        callback_a: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
+        policy_a: BufferDropPolicy,
+    ) {
+        self.channel.send_buffer(buffer_a, callback_a, policy_a);
+    }
+
+    pub fn send(
+        &self,
+        message: &dyn Message,
+        callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
+        drop_policy: BufferDropPolicy,
+    ) {
+        self.channel.send(message, callback, drop_policy);
     }
 
     pub fn inc_block_count(&self) -> u64 {

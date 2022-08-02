@@ -54,7 +54,6 @@ public:
 	bool get_hard_stop () const;
 
 private:
-	std::shared_ptr<nano::transport::channel_tcp> get_channel () const;
 	std::vector<uint8_t> buffer; // only used for returning a uint8_t*
 	rsnano::BootstrapClientHandle * handle;
 };

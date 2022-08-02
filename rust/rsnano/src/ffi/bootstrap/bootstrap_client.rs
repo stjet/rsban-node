@@ -3,13 +3,18 @@ use std::{ffi::c_void, ops::Deref, sync::Arc, time::Duration};
 use crate::{
     bootstrap::{BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr},
     ffi::{
+        messages::MessageHandle,
         network::{
-            as_tcp_channel, ChannelHandle, ChannelType, EndpointDto, ReadCallbackWrapper,
-            SocketDestroyContext, SocketHandle, SocketReadCallback,
+            as_tcp_channel, ChannelHandle, ChannelTcpSendBufferCallback, ChannelTcpSendCallback,
+            ChannelTcpSendCallbackWrapper, ChannelType, EndpointDto, ReadCallbackWrapper,
+            SendBufferCallbackWrapper, SocketDestroyContext, SocketHandle, SocketReadCallback,
         },
         DestroyCallback, StringDto,
     },
+    network::BufferDropPolicy,
 };
+
+use num_traits::FromPrimitive;
 
 pub struct BootstrapClientHandle(BootstrapClient);
 
@@ -31,15 +36,6 @@ pub unsafe extern "C" fn rsn_bootstrap_client_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_client_destroy(handle: *mut BootstrapClientHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_client_channel(
-    handle: *mut BootstrapClientHandle,
-) -> *mut ChannelHandle {
-    ChannelHandle::new(Arc::new(ChannelType::Tcp(
-        (*handle).0.get_channel().clone(),
-    )))
 }
 
 #[no_mangle]
@@ -98,6 +94,46 @@ pub unsafe extern "C" fn rsn_bootstrap_client_receive_buffer(
 ) {
     let buffer = std::slice::from_raw_parts_mut(buffer, len);
     buffer.copy_from_slice(&(*handle).0.receive_buffer());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_send_buffer(
+    handle: *mut BootstrapClientHandle,
+    buffer: *const u8,
+    len: usize,
+    callback: ChannelTcpSendBufferCallback,
+    delete_callback: DestroyCallback,
+    callback_context: *mut c_void,
+    policy: u8,
+) {
+    let buffer = Arc::new(std::slice::from_raw_parts(buffer, len).to_vec());
+    let callback_wrapper =
+        SendBufferCallbackWrapper::new(callback, callback_context, delete_callback);
+    let cb = Box::new(move |ec, size| {
+        callback_wrapper.call(ec, size);
+    });
+    let policy = BufferDropPolicy::from_u8(policy).unwrap();
+    (*handle).0.send_buffer(&buffer, Some(cb), policy);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_send(
+    handle: *mut BootstrapClientHandle,
+    msg: *mut MessageHandle,
+    callback: ChannelTcpSendCallback,
+    delete_callback: DestroyCallback,
+    context: *mut c_void,
+    policy: u8,
+) {
+    let callback_wrapper = ChannelTcpSendCallbackWrapper::new(context, callback, delete_callback);
+    let callback_box = Box::new(move |ec, size| {
+        callback_wrapper.call(ec, size);
+    });
+    (*handle).0.send(
+        (*msg).as_ref(),
+        Some(callback_box),
+        BufferDropPolicy::from_u8(policy).unwrap(),
+    );
 }
 
 #[no_mangle]

@@ -57,6 +57,9 @@ namespace transport
 		virtual void write_drop () = 0;
 	};
 
+	void channel_tcp_send_callback (void * context_a, const rsnano::ErrorCodeDto * ec_a, std::size_t size_a);
+	void delete_send_buffer_callback (void * context_a);
+
 	class channel_tcp : public nano::transport::channel
 	{
 		friend class nano::transport::tcp_channels;

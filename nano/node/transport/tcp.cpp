@@ -58,7 +58,7 @@ bool nano::transport::channel_tcp::operator== (nano::transport::channel const & 
 	return result;
 }
 
-void channel_tcp_send_callback (void * context_a, const rsnano::ErrorCodeDto * ec_a, std::size_t size_a)
+void nano::transport::channel_tcp_send_callback (void * context_a, const rsnano::ErrorCodeDto * ec_a, std::size_t size_a)
 {
 	auto callback_ptr = static_cast<std::function<void (boost::system::error_code const &, std::size_t)> *> (context_a);
 	if (*callback_ptr)
@@ -68,7 +68,7 @@ void channel_tcp_send_callback (void * context_a, const rsnano::ErrorCodeDto * e
 	}
 }
 
-void delete_send_buffer_callback (void * context_a)
+void nano::transport::delete_send_buffer_callback (void * context_a)
 {
 	auto callback_ptr = static_cast<std::function<void (boost::system::error_code const &, std::size_t)> *> (context_a);
 	delete callback_ptr;
@@ -77,13 +77,13 @@ void delete_send_buffer_callback (void * context_a)
 void nano::transport::channel_tcp::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
 {
 	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
-	rsnano::rsn_channel_tcp_send (handle, message_a.handle, channel_tcp_send_callback, delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a));
+	rsnano::rsn_channel_tcp_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a));
 }
 
 void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)
 {
 	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
-	rsnano::rsn_channel_tcp_send_buffer (handle, buffer_a.data (), buffer_a.size (), channel_tcp_send_callback, delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (policy_a));
+	rsnano::rsn_channel_tcp_send_buffer (handle, buffer_a.data (), buffer_a.size (), nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (policy_a));
 }
 
 std::string nano::transport::channel_tcp::to_string () const

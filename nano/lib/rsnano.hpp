@@ -164,6 +164,12 @@ struct EndpointDto
 	bool v6;
 };
 
+using ChannelTcpSendCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
+
+using DestroyCallback = void (*) (void *);
+
+using ChannelTcpSendBufferCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
+
 struct WorkThresholdsDto
 {
 	uint64_t epoch_1;
@@ -481,8 +487,6 @@ using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
 
 using BootstrapClientClosedCallback = void (*) (void *);
 
-using DestroyCallback = void (*) (void *);
-
 /// takes a `shared_ptr<bootstrap_client_observer>*` and
 using BootstrapClientObserverToWeakCallback = void * (*)(void *);
 
@@ -613,10 +617,6 @@ struct ChangeBlockDto2
 	uint8_t pub_key[32];
 	uint64_t work;
 };
-
-using ChannelTcpSendCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
-
-using ChannelTcpSendBufferCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
 
 struct OpenclConfigDto
 {
@@ -1038,8 +1038,6 @@ uint64_t rsn_bootstrap_client_block_count (BootstrapClientHandle * handle);
 
 double rsn_bootstrap_client_block_rate (BootstrapClientHandle * handle);
 
-ChannelHandle * rsn_bootstrap_client_channel (BootstrapClientHandle * handle);
-
 void rsn_bootstrap_client_channel_string (BootstrapClientHandle * handle, StringDto * result);
 
 void rsn_bootstrap_client_close_socket (BootstrapClientHandle * handle);
@@ -1074,6 +1072,21 @@ uintptr_t rsn_bootstrap_client_receive_buffer_size (BootstrapClientHandle * hand
 void rsn_bootstrap_client_remote_endpoint (BootstrapClientHandle * handle, EndpointDto * endpoint);
 
 double rsn_bootstrap_client_sample_block_rate (BootstrapClientHandle * handle);
+
+void rsn_bootstrap_client_send (BootstrapClientHandle * handle,
+MessageHandle * msg,
+ChannelTcpSendCallback callback,
+DestroyCallback delete_callback,
+void * context,
+uint8_t policy);
+
+void rsn_bootstrap_client_send_buffer (BootstrapClientHandle * handle,
+const uint8_t * buffer,
+uintptr_t len,
+ChannelTcpSendBufferCallback callback,
+DestroyCallback delete_callback,
+void * callback_context,
+uint8_t policy);
 
 void rsn_bootstrap_client_set_start_time (BootstrapClientHandle * handle);
 

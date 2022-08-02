@@ -79,12 +79,14 @@ std::string nano::bootstrap_client::channel_string () const
 
 void nano::bootstrap_client::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
 {
-	get_channel ()->send (message_a, callback_a, drop_policy_a);
+	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
+	rsnano::rsn_bootstrap_client_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a));
 }
 
 void nano::bootstrap_client::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)
 {
-	get_channel ()->send_buffer (buffer_a, callback_a, policy_a);
+	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
+	rsnano::rsn_bootstrap_client_send_buffer (handle, buffer_a.data (), buffer_a.size (), nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (policy_a));
 }
 
 nano::tcp_endpoint nano::bootstrap_client::get_tcp_endpoint () const
@@ -129,10 +131,6 @@ bool nano::bootstrap_client::get_pending_stop () const
 bool nano::bootstrap_client::get_hard_stop () const
 {
 	return rsnano::rsn_bootstrap_client_hard_stop (handle);
-}
-std::shared_ptr<nano::transport::channel_tcp> nano::bootstrap_client::get_channel () const
-{
-	return std::make_shared<nano::transport::channel_tcp> (rsnano::rsn_bootstrap_client_channel (handle));
 }
 
 nano::bootstrap_connections::bootstrap_connections (nano::node & node_a) :

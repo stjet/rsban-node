@@ -9,6 +9,10 @@ mod tcp_message_item;
 mod tcp_message_manager;
 
 pub use channel::{as_tcp_channel, ChannelHandle, ChannelType};
+pub use channel_tcp::{
+    ChannelTcpSendBufferCallback, ChannelTcpSendCallback, ChannelTcpSendCallbackWrapper,
+    SendBufferCallbackWrapper,
+};
 pub use channel_tcp_observer::ChannelTcpObserverWeakPtr;
 pub use socket::{
     EndpointDto, ReadCallbackWrapper, SocketDestroyContext, SocketHandle, SocketReadCallback,

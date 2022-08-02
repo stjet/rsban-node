@@ -185,14 +185,14 @@ pub unsafe extern "C" fn rsn_channel_tcp_max(handle: *mut ChannelHandle) -> bool
 
 pub type ChannelTcpSendCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
 
-struct ChannelTcpSendCallbackWrapper {
+pub struct ChannelTcpSendCallbackWrapper {
     context: *mut c_void,
     callback: ChannelTcpSendCallback,
     delete: DestroyCallback,
 }
 
 impl ChannelTcpSendCallbackWrapper {
-    fn new(
+    pub fn new(
         context: *mut c_void,
         callback: ChannelTcpSendCallback,
         delete: DestroyCallback,
@@ -204,7 +204,7 @@ impl ChannelTcpSendCallbackWrapper {
         }
     }
 
-    fn call(&self, ec: ErrorCode, size: usize) {
+    pub fn call(&self, ec: ErrorCode, size: usize) {
         let ec_dto = ErrorCodeDto::from(&ec);
         unsafe {
             (self.callback)(self.context, &ec_dto, size);

@@ -1,4 +1,5 @@
 use std::{
+    net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
@@ -124,6 +125,28 @@ impl BootstrapClient {
         if force {
             self.hard_stop.store(true, Ordering::SeqCst);
         }
+    }
+
+    pub fn close_socket(&self) {
+        self.socket.close();
+    }
+
+    pub fn set_timeout(&self, timeout: Duration) {
+        self.socket.set_timeout(timeout);
+    }
+
+    pub fn remote_endpoint(&self) -> SocketAddr {
+        self.socket
+            .get_remote()
+            .unwrap_or_else(|| SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0))
+    }
+
+    pub fn channel_string(&self) -> String {
+        self.channel.to_string()
+    }
+
+    pub fn tcp_endpoint(&self) -> SocketAddr {
+        self.channel.endpoint()
     }
 }
 

@@ -192,6 +192,10 @@ impl ChannelTcp {
             }
         }
     }
+
+    pub fn to_string(&self) -> String {
+        self.endpoint().to_string()
+    }
 }
 
 impl Channel for ChannelTcp {

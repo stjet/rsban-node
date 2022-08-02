@@ -1,13 +1,13 @@
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use std::{ffi::c_void, ops::Deref, sync::Arc, time::Duration};
 
 use crate::{
     bootstrap::{BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr},
     ffi::{
         network::{
-            as_tcp_channel, ChannelHandle, ChannelType, ReadCallbackWrapper, SocketDestroyContext,
-            SocketHandle, SocketReadCallback,
+            as_tcp_channel, ChannelHandle, ChannelType, EndpointDto, ReadCallbackWrapper,
+            SocketDestroyContext, SocketHandle, SocketReadCallback,
         },
-        DestroyCallback,
+        DestroyCallback, StringDto,
     },
 };
 
@@ -119,6 +119,45 @@ pub unsafe extern "C" fn rsn_bootstrap_client_block_rate(
     handle: *mut BootstrapClientHandle,
 ) -> f64 {
     (*handle).0.block_rate()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_close_socket(handle: *mut BootstrapClientHandle) {
+    (*handle).0.close_socket();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_remote_endpoint(
+    handle: *mut BootstrapClientHandle,
+    endpoint: *mut EndpointDto,
+) {
+    let ep = (*handle).0.remote_endpoint();
+    *endpoint = EndpointDto::from(&ep);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_tcp_endpoint(
+    handle: *mut BootstrapClientHandle,
+    endpoint: *mut EndpointDto,
+) {
+    let ep = (*handle).0.tcp_endpoint();
+    *endpoint = EndpointDto::from(&ep);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_channel_string(
+    handle: *mut BootstrapClientHandle,
+    result: *mut StringDto,
+) {
+    *result = StringDto::from((*handle).0.channel_string());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_set_timeout(
+    handle: *mut BootstrapClientHandle,
+    timeout_s: u64,
+) {
+    (*handle).0.set_timeout(Duration::from_secs(timeout_s));
 }
 
 #[no_mangle]

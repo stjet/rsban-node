@@ -157,6 +157,13 @@ using SocketReadCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
 
 using SocketDestroyContext = void (*) (void *);
 
+struct EndpointDto
+{
+	uint8_t bytes[16];
+	uint16_t port;
+	bool v6;
+};
+
 struct WorkThresholdsDto
 {
 	uint64_t epoch_1;
@@ -456,13 +463,6 @@ struct CreateBootstrapServerParams
 	bool disable_bootstrap_bulk_pull_server;
 	bool disable_tcp_realtime;
 	void * request_response_visitor_factory;
-};
-
-struct EndpointDto
-{
-	uint8_t bytes[16];
-	uint16_t port;
-	bool v6;
 };
 
 using AddTimedTaskCallback = void (*) (void *, uint64_t, VoidFnCallbackHandle *);
@@ -1040,6 +1040,10 @@ double rsn_bootstrap_client_block_rate (BootstrapClientHandle * handle);
 
 ChannelHandle * rsn_bootstrap_client_channel (BootstrapClientHandle * handle);
 
+void rsn_bootstrap_client_channel_string (BootstrapClientHandle * handle, StringDto * result);
+
+void rsn_bootstrap_client_close_socket (BootstrapClientHandle * handle);
+
 /// `observer` is a `shared_ptr<bootstrap_client_observer>*`
 BootstrapClientHandle * rsn_bootstrap_client_create (void * observer,
 ChannelHandle * channel,
@@ -1067,13 +1071,19 @@ uintptr_t len);
 
 uintptr_t rsn_bootstrap_client_receive_buffer_size (BootstrapClientHandle * handle);
 
+void rsn_bootstrap_client_remote_endpoint (BootstrapClientHandle * handle, EndpointDto * endpoint);
+
 double rsn_bootstrap_client_sample_block_rate (BootstrapClientHandle * handle);
 
 void rsn_bootstrap_client_set_start_time (BootstrapClientHandle * handle);
 
+void rsn_bootstrap_client_set_timeout (BootstrapClientHandle * handle, uint64_t timeout_s);
+
 SocketHandle * rsn_bootstrap_client_socket (BootstrapClientHandle * handle);
 
 void rsn_bootstrap_client_stop (BootstrapClientHandle * handle, bool force);
+
+void rsn_bootstrap_client_tcp_endpoint (BootstrapClientHandle * handle, EndpointDto * endpoint);
 
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
 BootstrapConstantsDto * dto);

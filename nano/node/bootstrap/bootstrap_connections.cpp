@@ -1,3 +1,5 @@
+#include "nano/lib/rsnanoutils.hpp"
+
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_attempt.hpp>
 #include <nano/node/bootstrap/bootstrap_connections.hpp>
@@ -63,12 +65,16 @@ uint8_t * nano::bootstrap_client::get_receive_buffer ()
 
 nano::tcp_endpoint nano::bootstrap_client::remote_endpoint () const
 {
-	return get_socket ()->remote_endpoint ();
+	rsnano::EndpointDto result;
+	rsnano::rsn_bootstrap_client_remote_endpoint (handle, &result);
+	return rsnano::dto_to_endpoint (result);
 }
 
 std::string nano::bootstrap_client::channel_string () const
 {
-	return get_channel ()->to_string ();
+	rsnano::StringDto dto;
+	rsnano::rsn_bootstrap_client_channel_string (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
 }
 
 void nano::bootstrap_client::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
@@ -83,17 +89,19 @@ void nano::bootstrap_client::send_buffer (nano::shared_const_buffer const & buff
 
 nano::tcp_endpoint nano::bootstrap_client::get_tcp_endpoint () const
 {
-	return get_channel ()->get_tcp_endpoint ();
+	rsnano::EndpointDto dto;
+	rsnano::rsn_bootstrap_client_tcp_endpoint (handle, &dto);
+	return rsnano::dto_to_endpoint (dto);
 }
 
 void nano::bootstrap_client::close_socket ()
 {
-	get_socket ()->close ();
+	rsnano::rsn_bootstrap_client_close_socket (handle);
 }
 
 void nano::bootstrap_client::set_timeout (std::chrono::seconds timeout_a)
 {
-	get_socket ()->set_timeout (timeout_a);
+	rsnano::rsn_bootstrap_client_set_timeout (handle, timeout_a.count ());
 }
 
 std::shared_ptr<nano::socket> nano::bootstrap_client::get_socket () const

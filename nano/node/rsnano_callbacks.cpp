@@ -793,6 +793,30 @@ void * channel_tcp_observer_lock (void * handle_a)
 	return nullptr;
 }
 
+void bootstrap_client_observer_closed (void * handle_a)
+{
+	auto observer{ static_cast<std::shared_ptr<nano::bootstrap_client_observer> *> (handle_a) };
+	(*observer)->bootstrap_client_closed ();
+}
+
+void bootstrap_client_observer_destroy (void * handle_a)
+{
+	auto observer{ static_cast<std::shared_ptr<nano::bootstrap_client_observer> *> (handle_a) };
+	delete observer;
+}
+
+void * bootstrap_client_observer_to_weak (void * handle_a)
+{
+	auto observer{ static_cast<std::shared_ptr<nano::bootstrap_client_observer> *> (handle_a) };
+	return new std::weak_ptr<nano::bootstrap_client_observer> (*observer);
+}
+
+void bootstrap_client_observer_weak_destroy (void * handle_a)
+{
+	auto observer{ static_cast<std::weak_ptr<nano::bootstrap_client_observer> *> (handle_a) };
+	delete observer;
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -884,6 +908,11 @@ void rsnano::set_rsnano_callbacks ()
 
 	rsnano::rsn_callback_request_response_visitor_factory_destroy (request_response_visitor_factory_destroy);
 	rsnano::rsn_callback_request_response_visitor_factory_create (request_response_visitor_factory_create);
+
+	rsnano::rsn_callback_bootstrap_client_observer_closed (bootstrap_client_observer_closed);
+	rsnano::rsn_callback_bootstrap_client_observer_destroy (bootstrap_client_observer_destroy);
+	rsnano::rsn_callback_bootstrap_client_observer_to_weak (bootstrap_client_observer_to_weak);
+	rsnano::rsn_callback_bootstrap_client_observer_weak_destroy (bootstrap_client_observer_weak_destroy);
 
 	callbacks_set = true;
 }

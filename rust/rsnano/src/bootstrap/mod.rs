@@ -11,7 +11,9 @@ pub use bootstrap_server::{
     RequestResponseVisitorFactory,
 };
 
-pub use bootstrap_client::BootstrapClient;
+pub use bootstrap_client::{
+    BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr,
+};
 
 pub use channel_tcp_wrapper::ChannelTcpWrapper;
 

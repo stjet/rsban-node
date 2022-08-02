@@ -22,7 +22,7 @@ nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::bootstrap_client
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
 	start_time_m (std::chrono::steady_clock::now ()),
 	observer_m{ observer_a },
-	handle{ rsnano::rsn_bootstrap_client_create () }
+	handle{ rsnano::rsn_bootstrap_client_create (new std::shared_ptr<nano::bootstrap_client_observer> (observer_a)) }
 {
 	receive_buffer->resize (256);
 	channel->set_endpoint ();

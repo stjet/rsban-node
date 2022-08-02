@@ -471,9 +471,14 @@ using BootstrapInitiatorClearPullsCallback = void (*) (void *, uint64_t);
 
 using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
 
-using BootstrapServerBootstrapCountCallback = uintptr_t (*) (void *);
+using BootstrapClientClosedCallback = void (*) (void *);
 
 using DestroyCallback = void (*) (void *);
+
+/// takes a `shared_ptr<bootstrap_client_observer>*` and
+using BootstrapClientObserverToWeakCallback = void * (*)(void *);
+
+using BootstrapServerBootstrapCountCallback = uintptr_t (*) (void *);
 
 using BootstrapServerExitedCallback = void (*) (void *, uint8_t, uintptr_t, const EndpointDto *);
 
@@ -1025,7 +1030,8 @@ void rsn_bootstrap_attempt_wait_for (BootstrapAttemptHandle * handle,
 BootstrapAttemptLockHandle * lck,
 uint64_t timeout_millis);
 
-BootstrapClientHandle * rsn_bootstrap_client_create ();
+/// `observer` is a `shared_ptr<bootstrap_client_observer>*`
+BootstrapClientHandle * rsn_bootstrap_client_create (void * observer);
 
 void rsn_bootstrap_client_destroy (BootstrapClientHandle * handle);
 
@@ -1109,6 +1115,14 @@ void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
 void rsn_callback_block_bootstrap_initiator_clear_pulls (BootstrapInitiatorClearPullsCallback f);
 
 void rsn_callback_block_processor_add (BlockProcessorAddCallback f);
+
+void rsn_callback_bootstrap_client_observer_closed (BootstrapClientClosedCallback f);
+
+void rsn_callback_bootstrap_client_observer_destroy (DestroyCallback f);
+
+void rsn_callback_bootstrap_client_observer_to_weak (BootstrapClientObserverToWeakCallback f);
+
+void rsn_callback_bootstrap_client_observer_weak_destroy (DestroyCallback f);
 
 void rsn_callback_bootstrap_observer_bootstrap_count (BootstrapServerBootstrapCountCallback f);
 

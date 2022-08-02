@@ -917,10 +917,8 @@ void nano::message_buffer_manager::stop ()
 }
 
 nano::tcp_message_manager::tcp_message_manager (unsigned incoming_connections_max_a) :
-	max_entries (incoming_connections_max_a * nano::tcp_message_manager::max_entries_per_connection + 1),
 	handle{ rsnano::rsn_tcp_message_manager_create (incoming_connections_max_a) }
 {
-	debug_assert (max_entries > 0);
 }
 
 nano::tcp_message_manager::~tcp_message_manager ()
@@ -930,47 +928,17 @@ nano::tcp_message_manager::~tcp_message_manager ()
 
 void nano::tcp_message_manager::put_message (nano::tcp_message_item const & item_a)
 {
-	{
-		nano::unique_lock<nano::mutex> lock (mutex);
-		while (entries.size () >= max_entries && !stopped)
-		{
-			producer_condition.wait (lock);
-		}
-		entries.push_back (item_a);
-	}
-	consumer_condition.notify_one ();
+	rsnano::rsn_tcp_message_manager_put_message (handle, item_a.handle);
 }
 
 nano::tcp_message_item nano::tcp_message_manager::get_message ()
 {
-	nano::tcp_message_item result;
-	nano::unique_lock<nano::mutex> lock (mutex);
-	while (entries.empty () && !stopped)
-	{
-		consumer_condition.wait (lock);
-	}
-	if (!entries.empty ())
-	{
-		result = std::move (entries.front ());
-		entries.pop_front ();
-	}
-	else
-	{
-		result = nano::tcp_message_item{ nullptr, nano::tcp_endpoint (boost::asio::ip::address_v6::any (), 0), 0, nullptr };
-	}
-	lock.unlock ();
-	producer_condition.notify_one ();
-	return result;
+	return nano::tcp_message_item{ rsnano::rsn_tcp_message_manager_get_message (handle) };
 }
 
 void nano::tcp_message_manager::stop ()
 {
-	{
-		nano::lock_guard<nano::mutex> lock (mutex);
-		stopped = true;
-	}
-	consumer_condition.notify_all ();
-	producer_condition.notify_all ();
+	rsnano::rsn_tcp_message_manager_stop (handle);
 }
 
 nano::syn_cookies::syn_cookies (std::size_t max_cookies_per_ip_a) :

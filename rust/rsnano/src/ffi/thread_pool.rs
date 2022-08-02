@@ -30,6 +30,10 @@ impl ThreadPool for FfiThreadPool {
         self.handle
     }
 }
+
+unsafe impl Send for FfiThreadPool {}
+unsafe impl Sync for FfiThreadPool {}
+
 pub struct VoidFnCallbackHandle(Option<Box<dyn FnOnce()>>);
 
 impl VoidFnCallbackHandle {

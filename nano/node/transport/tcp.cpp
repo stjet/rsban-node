@@ -894,10 +894,15 @@ nano::tcp_message_item::tcp_message_item (nano::tcp_message_item const & other_a
 {
 }
 
-nano::tcp_message_item::tcp_message_item (nano::tcp_message_item && other_a) :
+nano::tcp_message_item::tcp_message_item (nano::tcp_message_item && other_a) noexcept :
 	handle{ other_a.handle }
 {
 	other_a.handle = nullptr;
+}
+
+nano::tcp_message_item::tcp_message_item (rsnano::TcpMessageItemHandle * handle_a) :
+	handle{ handle_a }
+{
 }
 
 std::shared_ptr<nano::message> nano::tcp_message_item::get_message () const
@@ -932,7 +937,6 @@ nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item con
 	handle = rsnano::rsn_tcp_message_item_clone (other_a.handle);
 	return *this;
 }
-
 nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item && other_a)
 {
 	handle = other_a.handle;

@@ -2177,6 +2177,13 @@ TcpMessageManagerHandle * rsn_tcp_message_manager_create (uintptr_t incoming_con
 
 void rsn_tcp_message_manager_destroy (TcpMessageManagerHandle * handle);
 
+TcpMessageItemHandle * rsn_tcp_message_manager_get_message (TcpMessageManagerHandle * handle);
+
+void rsn_tcp_message_manager_put_message (TcpMessageManagerHandle * handle,
+const TcpMessageItemHandle * msg);
+
+void rsn_tcp_message_manager_stop (TcpMessageManagerHandle * handle);
+
 uint64_t rsn_telemetry_cache_cutoffs_dev ();
 
 uint64_t rsn_telemetry_cache_cutoffs_network_to_time_s (const NetworkConstantsDto * network);

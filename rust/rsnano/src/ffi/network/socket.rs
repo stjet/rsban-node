@@ -707,6 +707,9 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     }
 }
 
+unsafe impl Send for FfiTcpSocketFacade {}
+unsafe impl Sync for FfiTcpSocketFacade {}
+
 static mut BUFFER_DESTROY_CALLBACK: Option<DestroyCallback> = None;
 
 #[no_mangle]

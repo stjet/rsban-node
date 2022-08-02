@@ -79,16 +79,7 @@ public:
 	void stop ();
 
 private:
-	nano::mutex mutex;
-	nano::condition_variable producer_condition;
-	nano::condition_variable consumer_condition;
-	std::deque<nano::tcp_message_item> entries;
-	unsigned max_entries;
-	static unsigned const max_entries_per_connection = 16;
-	bool stopped{ false };
 	rsnano::TcpMessageManagerHandle * handle;
-
-	friend class network_tcp_message_manager_Test;
 };
 /**
  * Node ID cookies for node ID handshakes

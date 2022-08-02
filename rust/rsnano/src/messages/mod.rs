@@ -39,7 +39,7 @@ pub use telemetry_ack::*;
 use crate::utils::{MemoryStream, Stream};
 use anyhow::Result;
 
-pub trait Message {
+pub trait Message: Send {
     fn header(&self) -> &MessageHeader;
     fn set_header(&mut self, header: &MessageHeader);
     fn as_any(&self) -> &dyn Any;

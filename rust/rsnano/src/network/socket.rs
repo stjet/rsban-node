@@ -21,7 +21,7 @@ pub enum BufferDropPolicy {
     NoSocketDrop,
 }
 
-pub trait TcpSocketFacade {
+pub trait TcpSocketFacade: Send + Sync {
     fn local_endpoint(&self) -> SocketAddr;
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>);
     fn async_read(
@@ -58,7 +58,7 @@ pub enum SocketType {
     RealtimeResponseServer, // special type for tcp channel response server
 }
 
-pub trait SocketObserver {
+pub trait SocketObserver: Send + Sync {
     fn close_socket_failed(&self, ec: ErrorCode);
     fn disconnect_due_to_timeout(&self, endpoint: SocketAddr);
     fn connect_error(&self);

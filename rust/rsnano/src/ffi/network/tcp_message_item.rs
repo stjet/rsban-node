@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, ops::Deref, sync::Arc};
+use std::{net::SocketAddr, ops::Deref};
 
 use crate::{
     ffi::{copy_account_bytes, messages::MessageHandle},
@@ -8,10 +8,16 @@ use crate::{
 
 use super::{EndpointDto, SocketHandle};
 
-pub struct TcpMessageItemHandle(Arc<TcpMessageItem>);
+pub struct TcpMessageItemHandle(TcpMessageItem);
+
+impl TcpMessageItemHandle {
+    pub fn new(msg: TcpMessageItem) -> *mut Self {
+        Box::into_raw(Box::new(TcpMessageItemHandle(msg)))
+    }
+}
 
 impl Deref for TcpMessageItemHandle {
-    type Target = Arc<TcpMessageItem>;
+    type Target = TcpMessageItem;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -20,9 +26,7 @@ impl Deref for TcpMessageItemHandle {
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_message_item_empty() -> *mut TcpMessageItemHandle {
-    Box::into_raw(Box::new(TcpMessageItemHandle(Arc::new(
-        TcpMessageItem::new(),
-    ))))
+    TcpMessageItemHandle::new(TcpMessageItem::new())
 }
 
 #[no_mangle]
@@ -44,19 +48,19 @@ pub unsafe extern "C" fn rsn_tcp_message_item_create(
     } else {
         Some((*socket).deref().clone())
     };
-    Box::into_raw(Box::new(TcpMessageItemHandle(Arc::new(TcpMessageItem {
+    TcpMessageItemHandle::new(TcpMessageItem {
         message,
         endpoint,
         node_id,
         socket,
-    }))))
+    })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_message_item_clone(
     handle: *mut TcpMessageItemHandle,
 ) -> *mut TcpMessageItemHandle {
-    Box::into_raw(Box::new(TcpMessageItemHandle(Arc::clone(&(*handle).0))))
+    Box::into_raw(Box::new(TcpMessageItemHandle((*handle).0.clone())))
 }
 
 #[no_mangle]

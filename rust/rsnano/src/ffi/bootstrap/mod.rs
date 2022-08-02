@@ -1,4 +1,5 @@
 mod bootstrap_attempt;
+mod bootstrap_client;
 mod bootstrap_initiator;
 mod bootstrap_server;
 mod channel_tcp_wrapper;

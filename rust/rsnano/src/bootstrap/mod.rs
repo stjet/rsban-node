@@ -1,4 +1,5 @@
 mod bootstrap_attempt;
+mod bootstrap_client;
 mod bootstrap_initiator;
 mod bootstrap_server;
 mod channel_tcp_wrapper;
@@ -9,6 +10,8 @@ pub use bootstrap_server::{
     BootstrapRequestsLock, BootstrapServer, BootstrapServerExt, BootstrapServerObserver,
     RequestResponseVisitorFactory,
 };
+
+pub use bootstrap_client::BootstrapClient;
 
 pub use channel_tcp_wrapper::ChannelTcpWrapper;
 

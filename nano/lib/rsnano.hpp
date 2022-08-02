@@ -39,6 +39,8 @@ struct BootstrapAttemptHandle;
 
 struct BootstrapAttemptLockHandle;
 
+struct BootstrapClientHandle;
+
 struct BootstrapInitiatorHandle;
 
 struct BootstrapServerHandle;
@@ -1022,6 +1024,10 @@ void rsn_bootstrap_attempt_wait (BootstrapAttemptHandle * handle, BootstrapAttem
 void rsn_bootstrap_attempt_wait_for (BootstrapAttemptHandle * handle,
 BootstrapAttemptLockHandle * lck,
 uint64_t timeout_millis);
+
+BootstrapClientHandle * rsn_bootstrap_client_create ();
+
+void rsn_bootstrap_client_destroy (BootstrapClientHandle * handle);
 
 int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
 BootstrapConstantsDto * dto);

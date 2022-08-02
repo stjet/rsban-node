@@ -1030,8 +1030,10 @@ void rsn_bootstrap_attempt_wait_for (BootstrapAttemptHandle * handle,
 BootstrapAttemptLockHandle * lck,
 uint64_t timeout_millis);
 
+ChannelHandle * rsn_bootstrap_client_channel (BootstrapClientHandle * handle);
+
 /// `observer` is a `shared_ptr<bootstrap_client_observer>*`
-BootstrapClientHandle * rsn_bootstrap_client_create (void * observer);
+BootstrapClientHandle * rsn_bootstrap_client_create (void * observer, ChannelHandle * channel);
 
 void rsn_bootstrap_client_destroy (BootstrapClientHandle * handle);
 

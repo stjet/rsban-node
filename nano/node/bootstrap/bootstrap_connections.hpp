@@ -54,11 +54,11 @@ public:
 	bool get_hard_stop () const;
 
 private:
+	std::shared_ptr<nano::transport::channel_tcp> get_channel () const;
 	std::atomic<uint64_t> block_count{ 0 };
 	std::atomic<double> block_rate{ 0 };
 	std::atomic<bool> pending_stop{ false };
 	std::atomic<bool> hard_stop{ false };
-	std::shared_ptr<nano::transport::channel_tcp> channel;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::socket> socket;
 	mutable nano::mutex start_time_mutex;

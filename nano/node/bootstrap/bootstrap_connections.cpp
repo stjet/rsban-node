@@ -17,14 +17,12 @@ constexpr unsigned nano::bootstrap_limits::bootstrap_max_new_connections;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_processed_blocks_factor;
 
 nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a) :
-	channel (channel_a),
 	socket (socket_a),
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
 	start_time_m (std::chrono::steady_clock::now ()),
-	handle{ rsnano::rsn_bootstrap_client_create (new std::shared_ptr<nano::bootstrap_client_observer> (observer_a)) }
+	handle{ rsnano::rsn_bootstrap_client_create (new std::shared_ptr<nano::bootstrap_client_observer> (observer_a), channel_a->handle) }
 {
 	receive_buffer->resize (256);
-	channel->set_endpoint ();
 }
 
 nano::bootstrap_client::~bootstrap_client ()
@@ -77,22 +75,22 @@ nano::tcp_endpoint nano::bootstrap_client::remote_endpoint () const
 
 std::string nano::bootstrap_client::channel_string () const
 {
-	return channel->to_string ();
+	return get_channel ()->to_string ();
 }
 
 void nano::bootstrap_client::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
 {
-	channel->send (message_a, callback_a, drop_policy_a);
+	get_channel ()->send (message_a, callback_a, drop_policy_a);
 }
 
 void nano::bootstrap_client::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)
 {
-	channel->send_buffer (buffer_a, callback_a, policy_a);
+	get_channel ()->send_buffer (buffer_a, callback_a, policy_a);
 }
 
 nano::tcp_endpoint nano::bootstrap_client::get_tcp_endpoint () const
 {
-	return channel->get_tcp_endpoint ();
+	return get_channel ()->get_tcp_endpoint ();
 }
 
 void nano::bootstrap_client::close_socket ()
@@ -130,6 +128,10 @@ bool nano::bootstrap_client::get_pending_stop () const
 bool nano::bootstrap_client::get_hard_stop () const
 {
 	return hard_stop;
+}
+std::shared_ptr<nano::transport::channel_tcp> nano::bootstrap_client::get_channel () const
+{
+	return std::make_shared<nano::transport::channel_tcp> (rsnano::rsn_bootstrap_client_channel (handle));
 }
 
 nano::bootstrap_connections::bootstrap_connections (nano::node & node_a) :

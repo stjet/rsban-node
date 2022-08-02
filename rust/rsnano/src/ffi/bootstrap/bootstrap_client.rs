@@ -2,23 +2,40 @@ use std::{ffi::c_void, sync::Arc};
 
 use crate::{
     bootstrap::{BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr},
-    ffi::DestroyCallback,
+    ffi::{
+        network::{as_tcp_channel, ChannelHandle, ChannelType},
+        DestroyCallback,
+    },
 };
 
 pub struct BootstrapClientHandle(BootstrapClient);
 
 /// `observer` is a `shared_ptr<bootstrap_client_observer>*`
 #[no_mangle]
-pub extern "C" fn rsn_bootstrap_client_create(observer: *mut c_void) -> *mut BootstrapClientHandle {
+pub unsafe extern "C" fn rsn_bootstrap_client_create(
+    observer: *mut c_void,
+    channel: *mut ChannelHandle,
+) -> *mut BootstrapClientHandle {
     let observer = Arc::new(FfiBootstrapClientObserver::new(observer));
+    let channel = as_tcp_channel(channel);
     Box::into_raw(Box::new(BootstrapClientHandle(BootstrapClient::new(
         observer,
+        channel.clone(),
     ))))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_client_destroy(handle: *mut BootstrapClientHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_client_channel(
+    handle: *mut BootstrapClientHandle,
+) -> *mut ChannelHandle {
+    ChannelHandle::new(Arc::new(ChannelType::Tcp(
+        (*handle).0.get_channel().clone(),
+    )))
 }
 
 struct FfiBootstrapClientObserver {

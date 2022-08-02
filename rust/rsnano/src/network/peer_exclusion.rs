@@ -6,49 +6,93 @@ use std::{
     cmp::min,
     collections::{BTreeMap, HashMap},
     net::{IpAddr, SocketAddr},
-    sync::Mutex,
     time::Duration,
 };
 
 /// Manages excluded peers.
 /// Peers are excluded for a while if they behave badly
-pub struct PeerExclusion(Mutex<PeerExclusionData>);
+pub struct PeerExclusion {
+    ordered_by_date: PeersOrderedByExclusionDate,
+    by_ip: HashMap<IpAddr, Peer>,
+}
 
 impl PeerExclusion {
     pub fn new() -> Self {
-        Self(Mutex::new(PeerExclusionData {
+        Self {
             ordered_by_date: PeersOrderedByExclusionDate::new(),
             by_ip: HashMap::new(),
-        }))
+        }
     }
 
-    // Excludes the given `endpoint` for a while
-    pub fn peer_misbehaved(&self, endpoint: &SocketAddr, network_peers_count: usize) -> u64 {
-        self.0.lock().unwrap().add(endpoint, network_peers_count)
+    /// Excludes the given `endpoint` for a while. If the endpoint was already
+    /// excluded its exclusion duration gets increased.
+    /// Returns the new score for the peer.
+    pub fn peer_misbehaved(&mut self, endpoint: &SocketAddr, network_peers_count: usize) -> u64 {
+        self.clean_old_peers(network_peers_count);
+        if let Some(peer) = self.by_ip.get_mut(&endpoint.ip()) {
+            let old_exclution_end = peer.exclude_until;
+            peer.misbehaved();
+            if peer.exclude_until != old_exclution_end {
+                self.ordered_by_date
+                    .update_exclusion_end(old_exclution_end, peer);
+            }
+            peer.score
+        } else {
+            let peer = Peer::new(endpoint.clone());
+            self.insert(&peer);
+            peer.score
+        }
     }
 
     pub fn contains(&self, endpoint: &SocketAddr) -> bool {
-        self.0.lock().unwrap().contains(endpoint)
+        self.by_ip.contains_key(&endpoint.ip())
     }
 
     pub fn excluded_until(&self, endpoint: &SocketAddr) -> Option<Instant> {
-        self.0.lock().unwrap().excluded_until(endpoint)
+        self.by_ip
+            .get(&endpoint.ip())
+            .map(|item| item.exclude_until)
     }
 
-    pub fn is_excluded(&self, endpoint: &SocketAddr) -> bool {
-        self.0.lock().unwrap().is_excluded(endpoint)
+    /// Checks if an endpoint is currently excluded.
+    pub fn is_excluded(&mut self, endpoint: &SocketAddr) -> bool {
+        if let Some(peer) = self.by_ip.get(&endpoint.ip()).cloned() {
+            if peer.has_expired() {
+                self.remove(&peer.address);
+            }
+            peer.is_excluded()
+        } else {
+            false
+        }
     }
 
-    pub fn remove(&self, endpoint: &SocketAddr) {
-        self.0.lock().unwrap().remove(&endpoint.ip());
+    pub fn remove(&mut self, endpoint: &SocketAddr) {
+        if let Some(item) = self.by_ip.remove(&endpoint.ip()) {
+            self.ordered_by_date
+                .remove(&item.address.ip(), item.exclude_until);
+        }
     }
 
     pub fn size(&self) -> usize {
-        self.0.lock().unwrap().size()
+        self.by_ip.len()
     }
 
     pub fn element_size() -> usize {
         std::mem::size_of::<Peer>()
+    }
+
+    fn clean_old_peers(&mut self, network_peers_count: usize) {
+        let limited = limited_size(network_peers_count);
+        while self.by_ip.len() > 1 && self.by_ip.len() > limited {
+            let ip = self.ordered_by_date.pop().unwrap();
+            self.by_ip.remove(&ip);
+        }
+    }
+
+    fn insert(&mut self, peer: &Peer) {
+        self.ordered_by_date
+            .insert(peer.address.ip(), peer.exclude_until);
+        self.by_ip.insert(peer.address.ip(), peer.clone());
     }
 }
 
@@ -63,14 +107,14 @@ pub fn limited_size(network_peers_count: usize) -> usize {
 #[derive(Clone)]
 struct Peer {
     exclude_until: Instant,
-    address: IpAddr,
+    address: SocketAddr,
 
     /// gets increased for each bad behaviour
     score: u64,
 }
 
 impl Peer {
-    fn new(address: IpAddr) -> Self {
+    fn new(address: SocketAddr) -> Self {
         let score = 1;
         Self {
             address,
@@ -105,80 +149,6 @@ impl Peer {
     }
 }
 
-struct PeerExclusionData {
-    ordered_by_date: PeersOrderedByExclusionDate,
-    by_ip: HashMap<IpAddr, Peer>,
-}
-
-impl PeerExclusionData {
-    pub fn size(&self) -> usize {
-        self.by_ip.len()
-    }
-
-    pub fn contains(&self, endpoint: &SocketAddr) -> bool {
-        self.by_ip.contains_key(&endpoint.ip())
-    }
-
-    pub fn remove(&mut self, ip: &IpAddr) {
-        if let Some(item) = self.by_ip.remove(ip) {
-            self.ordered_by_date
-                .remove(&item.address, item.exclude_until);
-        }
-    }
-
-    pub fn excluded_until(&self, endpoint: &SocketAddr) -> Option<Instant> {
-        self.by_ip
-            .get(&endpoint.ip())
-            .map(|item| item.exclude_until)
-    }
-
-    /// Excludes the given `endpoint` for a while. If the endpoint was already
-    /// excluded its exclusion duration gets increased.
-    /// Returns the new score for the peer.
-    pub fn add(&mut self, endpoint: &SocketAddr, network_peers_count: usize) -> u64 {
-        self.clean_old_peers(network_peers_count);
-        if let Some(peer) = self.by_ip.get_mut(&endpoint.ip()) {
-            let old_exclution_end = peer.exclude_until;
-            peer.misbehaved();
-            if peer.exclude_until != old_exclution_end {
-                self.ordered_by_date
-                    .update_exclusion_end(old_exclution_end, peer);
-            }
-            peer.score
-        } else {
-            let peer = Peer::new(endpoint.ip());
-            self.insert(&peer);
-            peer.score
-        }
-    }
-
-    fn clean_old_peers(&mut self, network_peers_count: usize) {
-        let limited = limited_size(network_peers_count);
-        while self.by_ip.len() > 1 && self.by_ip.len() > limited {
-            let ip = self.ordered_by_date.pop().unwrap();
-            self.by_ip.remove(&ip);
-        }
-    }
-
-    /// Checks if an endpoint is currently excluded.
-    pub fn is_excluded(&mut self, endpoint: &SocketAddr) -> bool {
-        if let Some(peer) = self.by_ip.get(&endpoint.ip()).cloned() {
-            if peer.has_expired() {
-                self.remove(&peer.address);
-            }
-            peer.is_excluded()
-        } else {
-            false
-        }
-    }
-
-    fn insert(&mut self, peer: &Peer) {
-        self.ordered_by_date
-            .insert(peer.address, peer.exclude_until);
-        self.by_ip.insert(peer.address, peer.clone());
-    }
-}
-
 struct PeersOrderedByExclusionDate(BTreeMap<Instant, Vec<IpAddr>>);
 
 impl PeersOrderedByExclusionDate {
@@ -196,8 +166,8 @@ impl PeersOrderedByExclusionDate {
     }
 
     fn update_exclusion_end(&mut self, old_date: Instant, peer: &Peer) {
-        self.remove(&peer.address, old_date);
-        self.insert(peer.address, peer.exclude_until);
+        self.remove(&peer.address.ip(), old_date);
+        self.insert(peer.address.ip(), peer.exclude_until);
     }
 
     pub fn insert(&mut self, ip: IpAddr, exclude_until: Instant) {
@@ -230,14 +200,14 @@ mod tests {
 
     #[test]
     fn new_excluded_peers_excludes_nothing() {
-        let excluded_peers = PeerExclusion::new();
+        let mut excluded_peers = PeerExclusion::new();
         assert_eq!(excluded_peers.is_excluded(&test_endpoint(1)), false);
         assert_eq!(excluded_peers.is_excluded(&test_endpoint(2)), false);
     }
 
     #[test]
     fn misbehaving_once_is_allowed() {
-        let excluded_peers = PeerExclusion::new();
+        let mut excluded_peers = PeerExclusion::new();
         let endpoint = test_endpoint(1);
         excluded_peers.peer_misbehaved(&endpoint, 10);
         assert_eq!(excluded_peers.is_excluded(&endpoint), false);
@@ -245,7 +215,7 @@ mod tests {
 
     #[test]
     fn misbehaving_twice_leads_to_a_ban() {
-        let excluded_peers = PeerExclusion::new();
+        let mut excluded_peers = PeerExclusion::new();
         let endpoint = test_endpoint(1);
         excluded_peers.peer_misbehaved(&endpoint, 10);
         excluded_peers.peer_misbehaved(&endpoint, 10);
@@ -258,7 +228,7 @@ mod tests {
 
     #[test]
     fn misbehaving_more_than_twice_increases_exclusion_time() {
-        let excluded_peers = PeerExclusion::new();
+        let mut excluded_peers = PeerExclusion::new();
         let endpoint = test_endpoint(1);
         excluded_peers.peer_misbehaved(&endpoint, 10);
         excluded_peers.peer_misbehaved(&endpoint, 10);
@@ -292,7 +262,7 @@ mod tests {
 
     #[test]
     fn remove_oldest_entry() {
-        let excluded_peers = PeerExclusion::new();
+        let mut excluded_peers = PeerExclusion::new();
         let peers_count = 10;
         for i in 0..6 {
             excluded_peers.peer_misbehaved(&test_endpoint(i), peers_count);
@@ -307,7 +277,7 @@ mod tests {
 
     #[test]
     fn remove_many_old_entries() {
-        let excluded_peers = PeerExclusion::new();
+        let mut excluded_peers = PeerExclusion::new();
         let peers_count = 10;
         for i in 0..6 {
             excluded_peers.peer_misbehaved(&test_endpoint(i), peers_count);

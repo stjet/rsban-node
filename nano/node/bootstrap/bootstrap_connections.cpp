@@ -37,7 +37,7 @@ nano::bootstrap_client::~bootstrap_client ()
 double nano::bootstrap_client::sample_block_rate ()
 {
 	auto elapsed = std::max (elapsed_seconds (), nano::bootstrap_limits::bootstrap_minimum_elapsed_seconds_blockrate);
-	block_rate = static_cast<double> (block_count.load ()) / elapsed;
+	block_rate = static_cast<double> (get_block_count ()) / elapsed;
 	return block_rate;
 }
 
@@ -112,6 +112,28 @@ std::shared_ptr<nano::socket> nano::bootstrap_client::get_socket () const
 	return socket;
 }
 
+uint64_t nano::bootstrap_client::inc_block_count ()
+{
+	return block_count++;
+}
+
+uint64_t nano::bootstrap_client::get_block_count () const
+{
+	return block_count;
+}
+double nano::bootstrap_client::get_block_rate () const
+{
+	return block_rate;
+}
+bool nano::bootstrap_client::get_pending_stop () const
+{
+	return pending_stop;
+}
+bool nano::bootstrap_client::get_hard_stop () const
+{
+	return hard_stop;
+}
+
 nano::bootstrap_connections::bootstrap_connections (nano::node & node_a) :
 	node (node_a)
 {
@@ -147,7 +169,7 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::connection 
 void nano::bootstrap_connections::pool_connection (std::shared_ptr<nano::bootstrap_client> const & client_a, bool new_client, bool push_front)
 {
 	nano::unique_lock<nano::mutex> lock (mutex);
-	if (!stopped && !client_a->pending_stop && !node.network->excluded_peers.check (client_a->get_tcp_endpoint ()))
+	if (!stopped && !client_a->get_pending_stop () && !node.network->excluded_peers.check (client_a->get_tcp_endpoint ()))
 	{
 		client_a->set_timeout (node.network_params.network.idle_timeout);
 		// Push into idle deque
@@ -253,7 +275,7 @@ struct block_rate_cmp
 {
 	bool operator() (std::shared_ptr<nano::bootstrap_client> const & lhs, std::shared_ptr<nano::bootstrap_client> const & rhs) const
 	{
-		return lhs->block_rate > rhs->block_rate;
+		return lhs->get_block_rate () > rhs->get_block_rate ();
 	}
 };
 
@@ -277,7 +299,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 				double elapsed_sec = client->elapsed_seconds ();
 				auto blocks_per_sec = client->sample_block_rate ();
 				rate_sum += blocks_per_sec;
-				if (client->elapsed_seconds () > nano::bootstrap_limits::bootstrap_connection_warmup_time_sec && client->block_count > 0)
+				if (client->elapsed_seconds () > nano::bootstrap_limits::bootstrap_connection_warmup_time_sec && client->get_block_count () > 0)
 				{
 					sorted_connections.push (client);
 				}
@@ -319,7 +341,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 
 			if (node.config->logging.bulk_pull_logging ())
 			{
-				node.logger->try_log (boost::str (boost::format ("Dropping peer with block rate %1%, block count %2% (%3%) ") % client->block_rate % client->block_count % client->channel_string ()));
+				node.logger->try_log (boost::str (boost::format ("Dropping peer with block rate %1%, block count %2% (%3%) ") % client->get_block_rate () % client->get_block_count () % client->channel_string ()));
 			}
 
 			client->stop (false);

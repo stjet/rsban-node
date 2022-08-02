@@ -115,7 +115,7 @@ void nano::bulk_pull_client::throttled_receive_block ()
 	{
 		auto this_l (shared_from_this ());
 		node->workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (1), [this_l] () {
-			if (!this_l->connection->pending_stop && !this_l->attempt->get_stopped ())
+			if (!this_l->connection->get_pending_stop () && !this_l->attempt->get_stopped ())
 			{
 				this_l->throttled_receive_block ();
 			}
@@ -141,7 +141,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::
 	if (block == nullptr)
 	{
 		// Avoid re-using slow peers, or peers that sent the wrong blocks.
-		if (!connection->pending_stop && (expected == pull.end || (pull.count != 0 && pull.count == pull_blocks)))
+		if (!connection->get_pending_stop () && (expected == pull.end || (pull.count != 0 && pull.count == pull_blocks)))
 		{
 			connections->pool_connection (connection);
 		}
@@ -180,14 +180,14 @@ void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::
 	{
 		known_account = block->account ();
 	}
-	if (connection->block_count++ == 0)
+	if (connection->inc_block_count () == 0)
 	{
 		connection->set_start_time (std::chrono::steady_clock::now ());
 	}
 	attempt->total_blocks_inc ();
 	pull_blocks++;
 	bool stop_pull (attempt->process_block (block, known_account, pull_blocks, pull.count, block_expected, pull.retry_limit));
-	if (!stop_pull && !connection->hard_stop.load ())
+	if (!stop_pull && !connection->get_hard_stop ())
 	{
 		/* Process block in lazy pull if not stopped
 		Stop usual pull request with unexpected block & more than 16k blocks processed

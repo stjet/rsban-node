@@ -46,13 +46,18 @@ public:
 	void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy drop_policy_a = nano::buffer_drop_policy::limiter);
 	void send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter);
 	nano::tcp_endpoint get_tcp_endpoint () const;
+	std::shared_ptr<nano::socket> get_socket () const;
+	uint64_t get_block_count () const;
+	uint64_t inc_block_count (); // returns the previous block count
+	double get_block_rate () const;
+	bool get_pending_stop () const;
+	bool get_hard_stop () const;
+
+private:
 	std::atomic<uint64_t> block_count{ 0 };
 	std::atomic<double> block_rate{ 0 };
 	std::atomic<bool> pending_stop{ false };
 	std::atomic<bool> hard_stop{ false };
-	std::shared_ptr<nano::socket> get_socket () const;
-
-private:
 	std::shared_ptr<nano::transport::channel_tcp> channel;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::socket> socket;

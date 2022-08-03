@@ -43,6 +43,8 @@ struct BootstrapAttemptHandle;
 
 struct BootstrapAttemptLockHandle;
 
+struct BootstrapAttemptsHandle;
+
 struct BootstrapClientHandle;
 
 struct BootstrapInitiatorHandle;
@@ -153,6 +155,12 @@ struct StringDto
 {
 	StringHandle * handle;
 	const char * value;
+};
+
+struct BootstrapAttemptResultDto
+{
+	uint64_t id;
+	BootstrapAttemptHandle * attempt;
 };
 
 using SocketReadCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
@@ -1056,6 +1064,29 @@ void rsn_bootstrap_attempt_wait (BootstrapAttemptHandle * handle, BootstrapAttem
 void rsn_bootstrap_attempt_wait_for (BootstrapAttemptHandle * handle,
 BootstrapAttemptLockHandle * lck,
 uint64_t timeout_millis);
+
+void rsn_bootstrap_attempts_add (BootstrapAttemptsHandle * handle, BootstrapAttemptHandle * attempt);
+
+uintptr_t rsn_bootstrap_attempts_attempts (BootstrapAttemptsHandle * handle,
+BootstrapAttemptResultDto * result,
+uintptr_t result_size);
+
+void rsn_bootstrap_attempts_clear (BootstrapAttemptsHandle * handle);
+
+BootstrapAttemptsHandle * rsn_bootstrap_attempts_create ();
+
+void rsn_bootstrap_attempts_destroy (BootstrapAttemptsHandle * handle);
+
+BootstrapAttemptHandle * rsn_bootstrap_attempts_find (BootstrapAttemptsHandle * handle,
+uintptr_t incremental_id);
+
+uintptr_t rsn_bootstrap_attempts_get_incremental_id (BootstrapAttemptsHandle * handle);
+
+void rsn_bootstrap_attempts_remove (BootstrapAttemptsHandle * handle, uintptr_t incremental_id);
+
+uintptr_t rsn_bootstrap_attempts_size (BootstrapAttemptsHandle * handle);
+
+uintptr_t rsn_bootstrap_attempts_total_attempts (BootstrapAttemptsHandle * handle);
 
 uint64_t rsn_bootstrap_client_block_count (BootstrapClientHandle * handle);
 

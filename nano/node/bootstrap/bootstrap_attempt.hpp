@@ -49,8 +49,6 @@ public:
 	std::string id () const;
 	uint64_t get_incremental_id () const;
 	void notify_all ();
-
-protected:
 	rsnano::BootstrapAttemptHandle * handle;
 };
 }

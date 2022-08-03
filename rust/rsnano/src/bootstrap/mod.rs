@@ -1,4 +1,5 @@
 mod bootstrap_attempt;
+mod bootstrap_attempts;
 mod bootstrap_client;
 mod bootstrap_initiator;
 mod bootstrap_lazy;
@@ -17,6 +18,7 @@ pub use bootstrap_client::{
     BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr,
 };
 
+pub use bootstrap_attempts::BootstrapAttempts;
 pub use bootstrap_lazy::BootstrapAttemptLazy;
 pub use channel_tcp_wrapper::ChannelTcpWrapper;
 pub use pulls_cache::{PullInfo, PullsCache};

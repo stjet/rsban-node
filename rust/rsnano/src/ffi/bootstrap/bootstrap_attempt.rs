@@ -21,16 +21,16 @@ use crate::ffi::{
 
 use super::bootstrap_initiator::BootstrapInitiatorHandle;
 
-pub struct BootstrapAttemptHandle(BootstrapStrategy);
+pub struct BootstrapAttemptHandle(Arc<BootstrapStrategy>);
 
 impl BootstrapAttemptHandle {
-    pub fn new(strategy: BootstrapStrategy) -> *mut BootstrapAttemptHandle {
+    pub fn new(strategy: Arc<BootstrapStrategy>) -> *mut BootstrapAttemptHandle {
         Box::into_raw(Box::new(BootstrapAttemptHandle(strategy)))
     }
 }
 
 impl Deref for BootstrapAttemptHandle {
-    type Target = BootstrapStrategy;
+    type Target = Arc<BootstrapStrategy>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -59,7 +59,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     let block_processor = Arc::downgrade(&*block_processor);
     let bootstrap_initiator = Arc::downgrade(&*bootstrap_initiator);
     let ledger = Arc::clone(&*ledger);
-    BootstrapAttemptHandle::new(BootstrapStrategy::Other(
+    BootstrapAttemptHandle::new(Arc::new(BootstrapStrategy::Other(
         BootstrapAttempt::new(
             logger,
             websocket_server,
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
             incremental_id,
         )
         .unwrap(),
-    ))
+    )))
 }
 
 #[no_mangle]

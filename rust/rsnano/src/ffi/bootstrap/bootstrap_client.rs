@@ -6,7 +6,7 @@ use crate::{
         messages::MessageHandle,
         network::{
             as_tcp_channel, ChannelHandle, ChannelTcpSendBufferCallback, ChannelTcpSendCallback,
-            ChannelTcpSendCallbackWrapper, ChannelType, EndpointDto, ReadCallbackWrapper,
+            ChannelTcpSendCallbackWrapper, EndpointDto, ReadCallbackWrapper,
             SendBufferCallbackWrapper, SocketDestroyContext, SocketHandle, SocketReadCallback,
         },
         DestroyCallback, StringDto,

@@ -1,15 +1,13 @@
 use std::{
     ffi::{c_void, CStr},
-    ops::Deref,
     os::raw::c_char,
-    sync::{atomic::Ordering, Arc},
+    sync::Arc,
 };
 
 use crate::{
     bootstrap::{BootstrapAttemptLazy, BootstrapStrategy},
     ffi::{BlockProcessorHandle, FfiListener, LedgerHandle, LoggerHandle, LoggerMT},
     websocket::{Listener, NullListener},
-    BlockHash,
 };
 
 use super::{
@@ -36,7 +34,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_create(
     let block_processor = Arc::downgrade(&*block_processor);
     let bootstrap_initiator = Arc::downgrade(&*bootstrap_initiator);
     let ledger = Arc::clone(&*ledger);
-    BootstrapAttemptHandle::new(BootstrapStrategy::Lazy(
+    BootstrapAttemptHandle::new(Arc::new(BootstrapStrategy::Lazy(
         BootstrapAttemptLazy::new(
             logger,
             websocket_server,
@@ -47,12 +45,5 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_create(
             incremental_id,
         )
         .unwrap(),
-    ))
-}
-
-unsafe fn as_lazy(handle: *mut BootstrapAttemptHandle) -> &'static BootstrapAttemptLazy {
-    match (*handle).deref() {
-        BootstrapStrategy::Lazy(a) => a,
-        _ => panic!("not a lazy attempt!"),
-    }
+    )))
 }

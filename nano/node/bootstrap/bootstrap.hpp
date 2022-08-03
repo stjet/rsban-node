@@ -63,11 +63,21 @@ public:
 class bootstrap_attempts final
 {
 public:
+	bootstrap_attempts ();
+	bootstrap_attempts (bootstrap_attempts const &) = delete;
+	bootstrap_attempts (bootstrap_attempts &&) = delete;
+	~bootstrap_attempts () noexcept;
 	void add (std::shared_ptr<nano::bootstrap_attempt>);
 	void remove (uint64_t);
 	void clear ();
 	std::shared_ptr<nano::bootstrap_attempt> find (uint64_t);
 	std::size_t size ();
+	uint64_t create_incremental_id ();
+	uint64_t total_attempts () const;
+	std::map<uint64_t, std::shared_ptr<nano::bootstrap_attempt>> get_attempts ();
+	rsnano::BootstrapAttemptsHandle * handle;
+
+private:
 	std::atomic<uint64_t> incremental{ 0 };
 	nano::mutex bootstrap_attempts_mutex;
 	std::map<uint64_t, std::shared_ptr<nano::bootstrap_attempt>> attempts;

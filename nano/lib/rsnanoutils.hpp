@@ -27,5 +27,4 @@ public:
 private:
 	rsnano::IoContextHandle * handle_m;
 };
-
 }

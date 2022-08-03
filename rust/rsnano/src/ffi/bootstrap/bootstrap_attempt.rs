@@ -1,5 +1,6 @@
 use std::{
     ffi::{c_void, CStr, CString},
+    ops::Deref,
     os::raw::c_char,
     sync::{atomic::Ordering, Arc, MutexGuard},
     time::Duration,
@@ -25,6 +26,14 @@ pub struct BootstrapAttemptHandle(BootstrapStrategy);
 impl BootstrapAttemptHandle {
     pub fn new(strategy: BootstrapStrategy) -> *mut BootstrapAttemptHandle {
         Box::into_raw(Box::new(BootstrapAttemptHandle(strategy)))
+    }
+}
+
+impl Deref for BootstrapAttemptHandle {
+    type Target = BootstrapStrategy;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

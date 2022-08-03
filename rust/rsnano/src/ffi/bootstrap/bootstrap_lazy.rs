@@ -1,13 +1,15 @@
 use std::{
     ffi::{c_void, CStr},
+    ops::Deref,
     os::raw::c_char,
-    sync::Arc,
+    sync::{atomic::Ordering, Arc},
 };
 
 use crate::{
     bootstrap::{BootstrapAttemptLazy, BootstrapStrategy},
     ffi::{BlockProcessorHandle, FfiListener, LedgerHandle, LoggerHandle, LoggerMT},
     websocket::{Listener, NullListener},
+    BlockHash,
 };
 
 use super::{
@@ -46,4 +48,11 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_create(
         )
         .unwrap(),
     ))
+}
+
+unsafe fn as_lazy(handle: *mut BootstrapAttemptHandle) -> &'static BootstrapAttemptLazy {
+    match (*handle).deref() {
+        BootstrapStrategy::Lazy(a) => a,
+        _ => panic!("not a lazy attempt!"),
+    }
 }

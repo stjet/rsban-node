@@ -53,6 +53,8 @@ public:
 	bool lazy_processed_or_exists (nano::block_hash const &);
 	unsigned lazy_retry_limit_confirmed ();
 	void get_information (boost::property_tree::ptree &) override;
+
+private:
 	std::shared_ptr<nano::node> node;
 	std::unordered_set<std::size_t> lazy_blocks;
 	std::unordered_map<nano::block_hash, nano::lazy_state_backlog_item> lazy_state_backlog;

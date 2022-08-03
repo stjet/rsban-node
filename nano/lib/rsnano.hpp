@@ -982,6 +982,14 @@ void rsn_bootstrap_attempt_id (const BootstrapAttemptHandle * handle, StringDto 
 
 uint64_t rsn_bootstrap_attempt_incremental_id (const BootstrapAttemptHandle * handle);
 
+BootstrapAttemptHandle * rsn_bootstrap_attempt_lazy_create (LoggerHandle * logger,
+void * websocket_server,
+const BlockProcessorHandle * block_processor,
+const BootstrapInitiatorHandle * bootstrap_initiator,
+const LedgerHandle * ledger,
+const char * id,
+uint64_t incremental_id);
+
 BootstrapAttemptLockHandle * rsn_bootstrap_attempt_lock (BootstrapAttemptHandle * handle);
 
 void rsn_bootstrap_attempt_notifiy_all (BootstrapAttemptHandle * handle);

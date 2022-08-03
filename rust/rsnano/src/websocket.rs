@@ -4,7 +4,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::utils::{create_property_tree, PropertyTreeWriter};
 
 #[derive(Clone, Copy, FromPrimitive)]
-pub(crate) enum Topic {
+pub enum Topic {
     Invalid = 0,
     /// Acknowledgement of prior incoming message
     Ack,
@@ -27,12 +27,12 @@ pub(crate) enum Topic {
     Length,
 }
 
-pub(crate) struct Message {
+pub struct Message {
     pub topic: Topic,
     pub contents: Box<dyn PropertyTreeWriter>,
 }
 
-pub(crate) struct MessageBuilder {}
+pub struct MessageBuilder {}
 
 impl MessageBuilder {
     pub(crate) fn new() -> Self {
@@ -121,7 +121,7 @@ pub(crate) fn to_topic(topic: impl AsRef<str>) -> Topic {
     }
 }
 
-pub(crate) trait Listener {
+pub trait Listener {
     fn broadcast(&self, message: &Message) -> Result<()>;
 }
 

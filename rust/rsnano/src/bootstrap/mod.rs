@@ -1,6 +1,7 @@
 mod bootstrap_attempt;
 mod bootstrap_client;
 mod bootstrap_initiator;
+mod bootstrap_lazy;
 mod bootstrap_server;
 mod channel_tcp_wrapper;
 
@@ -15,6 +16,7 @@ pub use bootstrap_client::{
     BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr,
 };
 
+pub use bootstrap_lazy::BootstrapAttemptLazy;
 pub use channel_tcp_wrapper::ChannelTcpWrapper;
 
 pub mod bootstrap_limits {
@@ -23,8 +25,22 @@ pub mod bootstrap_limits {
 }
 
 #[derive(Clone, Copy, FromPrimitive)]
-pub(crate) enum BootstrapMode {
+pub enum BootstrapMode {
     Legacy,
     Lazy,
     WalletLazy,
+}
+
+pub enum BootstrapStrategy {
+    Lazy(BootstrapAttemptLazy),
+    Other(BootstrapAttempt),
+}
+
+impl BootstrapStrategy {
+    pub fn attempt(&self) -> &BootstrapAttempt {
+        match self {
+            BootstrapStrategy::Other(i) => i,
+            BootstrapStrategy::Lazy(i) => &i.attempt,
+        }
+    }
 }

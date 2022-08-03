@@ -8,6 +8,7 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
+    bootstrap::BootstrapStrategy,
     ffi::LoggerHandle,
     websocket::{Listener, NullListener},
     Account, BootstrapAttempt,
@@ -19,7 +20,13 @@ use crate::ffi::{
 
 use super::bootstrap_initiator::BootstrapInitiatorHandle;
 
-pub struct BootstrapAttemptHandle(BootstrapAttempt);
+pub struct BootstrapAttemptHandle(BootstrapStrategy);
+
+impl BootstrapAttemptHandle {
+    pub fn new(strategy: BootstrapStrategy) -> *mut BootstrapAttemptHandle {
+        Box::into_raw(Box::new(BootstrapAttemptHandle(strategy)))
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
@@ -43,7 +50,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     let block_processor = Arc::downgrade(&*block_processor);
     let bootstrap_initiator = Arc::downgrade(&*bootstrap_initiator);
     let ledger = Arc::clone(&*ledger);
-    Box::into_raw(Box::new(BootstrapAttemptHandle(
+    BootstrapAttemptHandle::new(BootstrapStrategy::Other(
         BootstrapAttempt::new(
             logger,
             websocket_server,
@@ -55,7 +62,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
             incremental_id,
         )
         .unwrap(),
-    )))
+    ))
 }
 
 #[no_mangle]
@@ -65,7 +72,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_destroy(handle: *mut BootstrapAtt
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_stop(handle: *mut BootstrapAttemptHandle) {
-    (*handle).0.stop();
+    (*handle).0.attempt().stop();
 }
 
 #[no_mangle]
@@ -73,7 +80,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_id(
     handle: *const BootstrapAttemptHandle,
     result: *mut StringDto,
 ) {
-    let id = CString::new((*handle).0.id.as_str()).unwrap();
+    let id = CString::new((*handle).0.attempt().id.as_str()).unwrap();
     let string_handle = Box::new(StringHandle(id));
     let result = &mut (*result);
     result.value = string_handle.0.as_ptr();
@@ -84,14 +91,14 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_id(
 pub unsafe extern "C" fn rsn_bootstrap_attempt_should_log(
     handle: *const BootstrapAttemptHandle,
 ) -> bool {
-    (*handle).0.should_log()
+    (*handle).0.attempt().should_log()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_bootstrap_mode(
     handle: *const BootstrapAttemptHandle,
 ) -> u8 {
-    (*handle).0.mode as u8
+    (*handle).0.attempt().mode as u8
 }
 
 #[no_mangle]
@@ -99,7 +106,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_bootstrap_mode_text(
     handle: *const BootstrapAttemptHandle,
     len: *mut usize,
 ) -> *const c_char {
-    let mode_text = (*handle).0.mode_text();
+    let mode_text = (*handle).0.attempt().mode_text();
     *len = mode_text.len();
     mode_text.as_ptr() as *const c_char
 }
@@ -108,14 +115,18 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_bootstrap_mode_text(
 pub unsafe extern "C" fn rsn_bootstrap_attempt_total_blocks(
     handle: *const BootstrapAttemptHandle,
 ) -> u64 {
-    (*handle).0.total_blocks.load(Ordering::SeqCst)
+    (*handle).0.attempt().total_blocks.load(Ordering::SeqCst)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_total_blocks_inc(
     handle: *const BootstrapAttemptHandle,
 ) {
-    (*handle).0.total_blocks.fetch_add(1, Ordering::SeqCst);
+    (*handle)
+        .0
+        .attempt()
+        .total_blocks
+        .fetch_add(1, Ordering::SeqCst);
 }
 
 #[no_mangle]
@@ -129,7 +140,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_process_block(
     retry_limit: u32,
 ) -> bool {
     let block = (*block).block.clone();
-    (*handle).0.process_block(
+    (*handle).0.attempt().process_block(
         block,
         &Account::from(known_account),
         pull_blocks_processed,
@@ -145,7 +156,7 @@ pub struct BootstrapAttemptLockHandle(Option<MutexGuard<'static, u8>>);
 pub unsafe extern "C" fn rsn_bootstrap_attempt_lock(
     handle: *mut BootstrapAttemptHandle,
 ) -> *mut BootstrapAttemptLockHandle {
-    let guard = (*handle).0.mutex.lock().unwrap();
+    let guard = (*handle).0.attempt().mutex.lock().unwrap();
     Box::into_raw(Box::new(BootstrapAttemptLockHandle(Some(
         std::mem::transmute::<MutexGuard<u8>, MutexGuard<'static, u8>>(guard),
     ))))
@@ -158,12 +169,12 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_unlock(handle: *mut BootstrapAtte
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_notifiy_all(handle: *mut BootstrapAttemptHandle) {
-    (*handle).0.condition.notify_all();
+    (*handle).0.attempt().condition.notify_all();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_notifiy_one(handle: *mut BootstrapAttemptHandle) {
-    (*handle).0.condition.notify_one();
+    (*handle).0.attempt().condition.notify_one();
 }
 
 #[no_mangle]
@@ -173,6 +184,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_wait(
 ) {
     let guard = (*handle)
         .0
+        .attempt()
         .condition
         .wait((*lck).0.take().unwrap())
         .unwrap();
@@ -187,6 +199,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_wait_for(
 ) {
     let (guard, _) = (*handle)
         .0
+        .attempt()
         .condition
         .wait_timeout(
             (*lck).0.take().unwrap(),
@@ -200,83 +213,91 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_wait_for(
 pub unsafe extern "C" fn rsn_bootstrap_attempt_incremental_id(
     handle: *const BootstrapAttemptHandle,
 ) -> u64 {
-    (*handle).0.incremental_id
+    (*handle).0.attempt().incremental_id
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_pulling(
     handle: *const BootstrapAttemptHandle,
 ) -> u32 {
-    (*handle).0.pulling.load(Ordering::SeqCst)
+    (*handle).0.attempt().pulling.load(Ordering::SeqCst)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_pulling_inc(handle: *mut BootstrapAttemptHandle) {
-    (*handle).0.pulling.fetch_add(1, Ordering::SeqCst);
+    (*handle).0.attempt().pulling.fetch_add(1, Ordering::SeqCst);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_pull_started(handle: *mut BootstrapAttemptHandle) {
-    (*handle).0.pull_started();
+    (*handle).0.attempt().pull_started();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_pull_finished(handle: *mut BootstrapAttemptHandle) {
-    (*handle).0.pull_finished();
+    (*handle).0.attempt().pull_finished();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_started(
     handle: *const BootstrapAttemptHandle,
 ) -> bool {
-    (*handle).0.started.load(Ordering::SeqCst)
+    (*handle).0.attempt().started.load(Ordering::SeqCst)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_set_started(
     handle: *mut BootstrapAttemptHandle,
 ) -> bool {
-    (*handle).0.started.swap(true, Ordering::SeqCst)
+    (*handle).0.attempt().started.swap(true, Ordering::SeqCst)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_stopped(
     handle: *const BootstrapAttemptHandle,
 ) -> bool {
-    (*handle).0.stopped()
+    (*handle).0.attempt().stopped()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_set_stopped(handle: *mut BootstrapAttemptHandle) {
-    (*handle).0.set_stopped()
+    (*handle).0.attempt().set_stopped()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_still_pulling(
     handle: *const BootstrapAttemptHandle,
 ) -> bool {
-    (*handle).0.still_pulling()
+    (*handle).0.attempt().still_pulling()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_requeued_pulls(
     handle: *const BootstrapAttemptHandle,
 ) -> u32 {
-    (*handle).0.requeued_pulls.load(Ordering::SeqCst)
+    (*handle).0.attempt().requeued_pulls.load(Ordering::SeqCst)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_requeued_pulls_inc(
     handle: *const BootstrapAttemptHandle,
 ) {
-    (*handle).0.requeued_pulls.fetch_add(1, Ordering::SeqCst);
+    (*handle)
+        .0
+        .attempt()
+        .requeued_pulls
+        .fetch_add(1, Ordering::SeqCst);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_frontiers_received(
     handle: *const BootstrapAttemptHandle,
 ) -> bool {
-    (*handle).0.frontiers_received.load(Ordering::SeqCst)
+    (*handle)
+        .0
+        .attempt()
+        .frontiers_received
+        .load(Ordering::SeqCst)
 }
 
 #[no_mangle]
@@ -286,6 +307,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_frontiers_received_set(
 ) {
     (*handle)
         .0
+        .attempt()
         .frontiers_received
         .store(received, Ordering::SeqCst)
 }
@@ -294,5 +316,5 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_frontiers_received_set(
 pub unsafe extern "C" fn rsn_bootstrap_attempt_duration_seconds(
     handle: *const BootstrapAttemptHandle,
 ) -> u64 {
-    (*handle).0.duration().as_secs()
+    (*handle).0.attempt().duration().as_secs()
 }

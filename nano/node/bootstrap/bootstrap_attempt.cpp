@@ -21,6 +21,16 @@ nano::bootstrap_attempt::bootstrap_attempt (std::shared_ptr<nano::node> const & 
 {
 }
 
+nano::bootstrap_attempt::bootstrap_attempt (rsnano::BootstrapAttemptHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
+nano::bootstrap_attempt::~bootstrap_attempt ()
+{
+	rsnano::rsn_bootstrap_attempt_destroy (handle);
+}
+
 std::string nano::bootstrap_attempt::id () const
 {
 	rsnano::StringDto str_result;
@@ -31,11 +41,6 @@ std::string nano::bootstrap_attempt::id () const
 uint64_t nano::bootstrap_attempt::get_incremental_id () const
 {
 	return rsnano::rsn_bootstrap_attempt_incremental_id (handle);
-}
-
-nano::bootstrap_attempt::~bootstrap_attempt ()
-{
-	rsnano::rsn_bootstrap_attempt_destroy (handle);
 }
 
 bool nano::bootstrap_attempt::should_log ()

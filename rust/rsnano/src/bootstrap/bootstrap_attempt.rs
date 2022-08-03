@@ -17,7 +17,7 @@ use std::{
 
 use super::{bootstrap_limits, BootstrapInitiator, BootstrapMode};
 
-pub(crate) struct BootstrapAttempt {
+pub struct BootstrapAttempt {
     pub incremental_id: u64,
     pub id: String,
     pub mode: BootstrapMode,

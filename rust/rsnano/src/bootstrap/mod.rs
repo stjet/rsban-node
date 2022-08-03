@@ -4,6 +4,7 @@ mod bootstrap_initiator;
 mod bootstrap_lazy;
 mod bootstrap_server;
 mod channel_tcp_wrapper;
+mod pulls_cache;
 
 pub(crate) use bootstrap_attempt::*;
 pub(crate) use bootstrap_initiator::*;
@@ -18,6 +19,7 @@ pub use bootstrap_client::{
 
 pub use bootstrap_lazy::BootstrapAttemptLazy;
 pub use channel_tcp_wrapper::ChannelTcpWrapper;
+pub use pulls_cache::{PullInfo, PullsCache};
 
 pub mod bootstrap_limits {
     pub const PULL_COUNT_PER_CHECK: u64 = 8 * 1024;

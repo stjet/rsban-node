@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nano/lib/rsnano.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/socket.hpp>
 
@@ -28,6 +29,8 @@ public:
 	uint64_t processed{ 0 };
 	unsigned retry_limit{ 0 };
 	uint64_t bootstrap_id{ 0 };
+	rsnano::PullInfoDto to_dto () const;
+	void load_dto (rsnano::PullInfoDto const & dto);
 };
 class bootstrap_client;
 class bootstrap_connections;

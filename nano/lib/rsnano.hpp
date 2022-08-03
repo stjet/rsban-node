@@ -84,6 +84,8 @@ struct NodeFlagsHandle;
 
 struct PeerExclusionHandle;
 
+struct PullsCacheHandle;
+
 struct SignatureCheckerHandle;
 
 struct SocketHandle;
@@ -721,6 +723,19 @@ struct OpenBlockDto2
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
 	uint64_t work;
+};
+
+struct PullInfoDto
+{
+	uint8_t account_or_head[32];
+	uint8_t head[32];
+	uint8_t head_original[32];
+	uint8_t end[32];
+	uint32_t count;
+	uint32_t attempts;
+	uint64_t processed;
+	uint32_t retry_limit;
+	uint64_t bootstrap_id;
 };
 
 struct ReceiveBlockDto
@@ -1955,6 +1970,20 @@ uintptr_t rsn_peer_exclusion_size (PeerExclusionHandle * handle);
 
 int32_t rsn_portmapping_constants_create (const NetworkConstantsDto * network_constants,
 PortmappingConstantsDto * dto);
+
+void rsn_pulls_cache_add (PullsCacheHandle * handle, const PullInfoDto * pull);
+
+PullsCacheHandle * rsn_pulls_cache_create ();
+
+void rsn_pulls_cache_destroy (PullsCacheHandle * handle);
+
+uintptr_t rsn_pulls_cache_element_size ();
+
+void rsn_pulls_cache_remove (PullsCacheHandle * handle, const PullInfoDto * pull);
+
+uintptr_t rsn_pulls_cache_size (PullsCacheHandle * handle);
+
+void rsn_pulls_cache_update_pull (PullsCacheHandle * handle, PullInfoDto * pull);
 
 BlockHandle * rsn_receive_block_create (const ReceiveBlockDto * dto);
 

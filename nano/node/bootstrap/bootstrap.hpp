@@ -45,23 +45,16 @@ public:
 class pulls_cache final
 {
 public:
+	pulls_cache ();
+	pulls_cache (pulls_cache const &) = delete;
+	pulls_cache (pulls_cache &&) = delete;
+	~pulls_cache ();
 	void add (nano::pull_info const &);
 	void update_pull (nano::pull_info &);
 	void remove (nano::pull_info const &);
-	nano::mutex pulls_cache_mutex;
-	class account_head_tag
-	{
-	};
-	// clang-format off
-	boost::multi_index_container<nano::cached_pulls,
-	mi::indexed_by<
-		mi::ordered_non_unique<
-			mi::member<nano::cached_pulls, std::chrono::steady_clock::time_point, &nano::cached_pulls::time>>,
-		mi::hashed_unique<mi::tag<account_head_tag>,
-			mi::member<nano::cached_pulls, nano::uint512_union, &nano::cached_pulls::account_head>>>>
-	cache;
-	// clang-format on
-	constexpr static std::size_t cache_size_max = 10000;
+	size_t size ();
+	static size_t element_size ();
+	rsnano::PullsCacheHandle * handle;
 };
 
 /**

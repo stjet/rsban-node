@@ -294,65 +294,49 @@ void nano::bootstrap_initiator::stop ()
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (bootstrap_initiator & bootstrap_initiator, std::string const & name)
 {
-	std::size_t cache_count;
-	{
-		nano::lock_guard<nano::mutex> guard (bootstrap_initiator.cache.pulls_cache_mutex);
-		cache_count = bootstrap_initiator.cache.cache.size ();
-	}
-
-	auto sizeof_cache_element = sizeof (decltype (bootstrap_initiator.cache.cache)::value_type);
+	auto cache_count = bootstrap_initiator.cache.size ();
+	auto sizeof_cache_element = pulls_cache::element_size ();
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pulls_cache", cache_count, sizeof_cache_element }));
 	return composite;
 }
 
+nano::pulls_cache::pulls_cache () :
+	handle{ rsnano::rsn_pulls_cache_create () }
+{
+}
+
+nano::pulls_cache::~pulls_cache ()
+{
+	rsnano::rsn_pulls_cache_destroy (handle);
+}
+
 void nano::pulls_cache::add (nano::pull_info const & pull_a)
 {
-	if (pull_a.processed > 500)
-	{
-		nano::lock_guard<nano::mutex> guard (pulls_cache_mutex);
-		// Clean old pull
-		if (cache.size () > cache_size_max)
-		{
-			cache.erase (cache.begin ());
-		}
-		debug_assert (cache.size () <= cache_size_max);
-		nano::uint512_union head_512 (pull_a.account_or_head, pull_a.head_original);
-		auto existing (cache.get<account_head_tag> ().find (head_512));
-		if (existing == cache.get<account_head_tag> ().end ())
-		{
-			// Insert new pull
-			auto inserted (cache.emplace (nano::cached_pulls{ std::chrono::steady_clock::now (), head_512, pull_a.head }));
-			(void)inserted;
-			debug_assert (inserted.second);
-		}
-		else
-		{
-			// Update existing pull
-			cache.get<account_head_tag> ().modify (existing, [pull_a] (nano::cached_pulls & cache_a) {
-				cache_a.time = std::chrono::steady_clock::now ();
-				cache_a.new_head = pull_a.head;
-			});
-		}
-	}
+	auto dto{ pull_a.to_dto () };
+	rsnano::rsn_pulls_cache_add (handle, &dto);
 }
 
 void nano::pulls_cache::update_pull (nano::pull_info & pull_a)
 {
-	nano::lock_guard<nano::mutex> guard (pulls_cache_mutex);
-	nano::uint512_union head_512 (pull_a.account_or_head, pull_a.head_original);
-	auto existing (cache.get<account_head_tag> ().find (head_512));
-	if (existing != cache.get<account_head_tag> ().end ())
-	{
-		pull_a.head = existing->new_head;
-	}
+	auto dto{ pull_a.to_dto () };
+	rsnano::rsn_pulls_cache_update_pull (handle, &dto);
+	pull_a.load_dto (dto);
 }
 
 void nano::pulls_cache::remove (nano::pull_info const & pull_a)
 {
-	nano::lock_guard<nano::mutex> guard (pulls_cache_mutex);
-	nano::uint512_union head_512 (pull_a.account_or_head, pull_a.head_original);
-	cache.get<account_head_tag> ().erase (head_512);
+	auto dto{ pull_a.to_dto () };
+	rsnano::rsn_pulls_cache_remove (handle, &dto);
+}
+
+size_t nano::pulls_cache::size ()
+{
+	return rsnano::rsn_pulls_cache_size (handle);
+}
+size_t nano::pulls_cache::element_size ()
+{
+	return rsnano::rsn_pulls_cache_element_size ();
 }
 
 void nano::bootstrap_attempts::add (std::shared_ptr<nano::bootstrap_attempt> attempt_a)

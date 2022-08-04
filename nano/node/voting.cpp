@@ -104,14 +104,26 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (na
 	return composite;
 }
 
+nano::vote_broadcaster::vote_broadcaster (nano::vote_processor & vote_processor_a, nano::network & network_a) :
+	vote_processor{ vote_processor_a },
+	network{ network_a }
+{
+}
+
+void nano::vote_broadcaster::broadcast (std::shared_ptr<nano::vote> const & vote_a) const
+{
+	network.flood_vote_pr (vote_a);
+	network.flood_vote (vote_a, 2.0f);
+	vote_processor.vote (vote_a, std::make_shared<nano::transport::inproc::channel> (network.node, network.node));
+}
+
 nano::vote_generator::vote_generator (nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stat & stats_a, bool is_final_a) :
 	config (config_a),
 	ledger (ledger_a),
 	wallets (wallets_a),
-	vote_processor (vote_processor_a),
 	history (history_a),
 	spacing{ config_a.network_params.voting.delay },
-	network (network_a),
+	vote_broadcaster{ vote_processor_a, network_a },
 	stats (stats_a),
 	thread ([this] () { run (); }),
 	is_final (is_final_a)
@@ -127,7 +139,7 @@ void nano::vote_generator::add (nano::root const & root_a, nano::block_hash cons
 	{
 		for (auto const & vote : cached_votes)
 		{
-			broadcast_action (vote);
+			vote_broadcaster.broadcast (vote);
 		}
 	}
 	else
@@ -220,7 +232,7 @@ void nano::vote_generator::broadcast (nano::unique_lock<nano::mutex> & lock_a)
 		{
 			if (cached_sent.insert (cached_vote).second)
 			{
-				broadcast_action (cached_vote);
+				vote_broadcaster.broadcast (cached_vote);
 			}
 		}
 		if (cached_votes.empty () && std::find (roots.begin (), roots.end (), root) == roots.end ())
@@ -241,7 +253,7 @@ void nano::vote_generator::broadcast (nano::unique_lock<nano::mutex> & lock_a)
 	{
 		lock_a.unlock ();
 		vote (hashes, roots, [this] (auto const & vote_a) {
-			this->broadcast_action (vote_a);
+			this->vote_broadcaster.broadcast (vote_a);
 			this->stats.inc (nano::stat::type::vote_generator, nano::stat::detail::generator_broadcasts);
 		});
 		lock_a.lock ();
@@ -317,13 +329,6 @@ void nano::vote_generator::vote (std::vector<nano::block_hash> const & hashes_a,
 		}
 		action_a (vote_l);
 	}
-}
-
-void nano::vote_generator::broadcast_action (std::shared_ptr<nano::vote> const & vote_a) const
-{
-	network.flood_vote_pr (vote_a);
-	network.flood_vote (vote_a, 2.0f);
-	vote_processor.vote (vote_a, std::make_shared<nano::transport::inproc::channel> (network.node, network.node));
 }
 
 void nano::vote_generator::run ()

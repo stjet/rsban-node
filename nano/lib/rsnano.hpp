@@ -126,6 +126,10 @@ struct VoteHashesHandle;
 
 struct VoteUniquerHandle;
 
+struct WriteDatabaseQueueHandle;
+
+struct WriteGuardHandle;
+
 struct ErrorCodeDto
 {
 	int32_t val;
@@ -2621,6 +2625,22 @@ const uint8_t (*root)[32],
 uint64_t work);
 
 int32_t rsn_working_path (uint16_t network, uint8_t * result, uintptr_t size);
+
+bool rsn_write_database_queue_contains (WriteDatabaseQueueHandle * handle, uint8_t writer);
+
+WriteDatabaseQueueHandle * rsn_write_database_queue_create (bool use_noop);
+
+void rsn_write_database_queue_destroy (WriteDatabaseQueueHandle * handle);
+
+WriteGuardHandle * rsn_write_database_queue_pop (WriteDatabaseQueueHandle * handle);
+
+bool rsn_write_database_queue_process (WriteDatabaseQueueHandle * handle, uint8_t writer);
+
+WriteGuardHandle * rsn_write_database_queue_wait (WriteDatabaseQueueHandle * handle, uint8_t writer);
+
+void rsn_write_guard_destroy (WriteGuardHandle * handle);
+
+void rsn_write_guard_release (WriteGuardHandle * handle);
 
 } // extern "C"
 

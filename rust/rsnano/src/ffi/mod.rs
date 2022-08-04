@@ -5,6 +5,7 @@ mod block_processor;
 mod blocks;
 pub mod bootstrap;
 mod config;
+pub mod datastore;
 mod epoch;
 mod hardened_constants;
 mod io_context;

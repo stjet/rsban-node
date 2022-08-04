@@ -1,4 +1,4 @@
-use crate::Ledger;
+use crate::datastore::Ledger;
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct LedgerHandle(Arc<Ledger>);

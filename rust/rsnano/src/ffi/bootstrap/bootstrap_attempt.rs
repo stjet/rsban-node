@@ -10,13 +10,13 @@ use num::FromPrimitive;
 
 use crate::{
     bootstrap::BootstrapStrategy,
-    ffi::LoggerHandle,
+    ffi::{datastore::LedgerHandle, LoggerHandle},
     websocket::{Listener, NullListener},
     Account, BootstrapAttempt,
 };
 
 use crate::ffi::{
-    BlockHandle, BlockProcessorHandle, FfiListener, LedgerHandle, LoggerMT, StringDto, StringHandle,
+    BlockHandle, BlockProcessorHandle, FfiListener, LoggerMT, StringDto, StringHandle,
 };
 
 use super::bootstrap_initiator::BootstrapInitiatorHandle;

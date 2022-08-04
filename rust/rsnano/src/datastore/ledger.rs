@@ -1,4 +1,4 @@
-use crate::{ffi::BLOCK_OR_PRUNED_EXISTS_CALLBACK, BlockHash};
+use crate::{ffi::datastore::BLOCK_OR_PRUNED_EXISTS_CALLBACK, BlockHash};
 use std::ffi::c_void;
 
 pub struct Ledger {

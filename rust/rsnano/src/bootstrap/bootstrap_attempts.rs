@@ -2,7 +2,6 @@ use std::{collections::HashMap, sync::Arc};
 
 use super::BootstrapStrategy;
 
-
 /// WARNING: BootstrapAttempts is not connected to the C++ version yet!
 /// Container for bootstrap sessions that are active. Owned by `BootstrapInitiator`.
 pub struct BootstrapAttempts {

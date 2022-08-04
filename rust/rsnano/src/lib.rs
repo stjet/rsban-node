@@ -16,6 +16,7 @@ mod block_processor;
 mod blocks;
 mod bootstrap;
 mod config;
+pub mod datastore;
 mod epoch;
 pub mod ffi;
 mod hardened_constants;

@@ -124,6 +124,8 @@ struct VoteHandle;
 
 struct VoteHashesHandle;
 
+struct VoteSpacingHandle;
+
 struct VoteUniquerHandle;
 
 struct WriteDatabaseQueueHandle;
@@ -2541,6 +2543,16 @@ void rsn_vote_serialize_json (const VoteHandle * handle, void * ptree);
 void rsn_vote_signature (const VoteHandle * handle, uint8_t * result);
 
 void rsn_vote_signature_set (VoteHandle * handle, const uint8_t * signature);
+
+VoteSpacingHandle * rsn_vote_spacing_create (uint64_t delay_ms);
+
+void rsn_vote_spacing_destroy (VoteSpacingHandle * handle);
+
+void rsn_vote_spacing_flag (VoteSpacingHandle * handle, const uint8_t * root, const uint8_t * hash);
+
+uintptr_t rsn_vote_spacing_len (VoteSpacingHandle * handle);
+
+bool rsn_vote_spacing_votable (VoteSpacingHandle * handle, const uint8_t * root, const uint8_t * hash);
 
 uint64_t rsn_vote_timestamp (const VoteHandle * handle);
 

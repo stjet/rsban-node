@@ -12,42 +12,29 @@
 
 #include <chrono>
 
-void nano::vote_spacing::trim ()
+nano::vote_spacing::vote_spacing (std::chrono::milliseconds const & delay) :
+	handle{ rsnano::rsn_vote_spacing_create (delay.count ()) }
 {
-	recent.get<tag_time> ().erase (recent.get<tag_time> ().begin (), recent.get<tag_time> ().upper_bound (std::chrono::steady_clock::now () - delay));
+}
+
+nano::vote_spacing::~vote_spacing ()
+{
+	rsnano::rsn_vote_spacing_destroy (handle);
 }
 
 bool nano::vote_spacing::votable (nano::root const & root_a, nano::block_hash const & hash_a) const
 {
-	bool result = true;
-	for (auto range = recent.get<tag_root> ().equal_range (root_a); result && range.first != range.second; ++range.first)
-	{
-		auto & item = *range.first;
-		result = hash_a == item.hash || item.time < std::chrono::steady_clock::now () - delay;
-	}
-	return result;
+	return rsnano::rsn_vote_spacing_votable (handle, root_a.bytes.data (), hash_a.bytes.data ());
 }
 
 void nano::vote_spacing::flag (nano::root const & root_a, nano::block_hash const & hash_a)
 {
-	trim ();
-	auto now = std::chrono::steady_clock::now ();
-	auto existing = recent.get<tag_root> ().find (root_a);
-	if (existing != recent.end ())
-	{
-		recent.get<tag_root> ().modify (existing, [now] (entry & entry) {
-			entry.time = now;
-		});
-	}
-	else
-	{
-		recent.insert ({ root_a, now, hash_a });
-	}
+	rsnano::rsn_vote_spacing_flag (handle, root_a.bytes.data (), hash_a.bytes.data ());
 }
 
 std::size_t nano::vote_spacing::size () const
 {
-	return recent.size ();
+	return rsnano::rsn_vote_spacing_len (handle);
 }
 
 nano::local_vote_history::local_vote_history (nano::voting_constants const & constants) :

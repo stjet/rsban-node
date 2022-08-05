@@ -257,12 +257,12 @@ bool nano::transport::udp_channels::store_all (bool clear_peers)
 		auto transaction (node.store.tx_begin_write ({ tables::peers }));
 		if (clear_peers)
 		{
-			node.store.peer.clear (transaction);
+			node.store.peer.clear (*transaction);
 		}
 		for (auto endpoint : endpoints)
 		{
 			nano::endpoint_key endpoint_key (endpoint.address ().to_v6 ().to_bytes (), endpoint.port ());
-			node.store.peer.put (transaction, std::move (endpoint_key));
+			node.store.peer.put (*transaction, std::move (endpoint_key));
 		}
 		result = true;
 	}

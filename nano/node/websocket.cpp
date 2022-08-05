@@ -124,7 +124,7 @@ bool nano::websocket::confirmation_options::should_filter (nano::websocket::mess
 			(void)decode_source_ok_l;
 			(void)decode_destination_ok_l;
 			debug_assert (decode_source_ok_l && decode_destination_ok_l);
-			if (wallets.exists (transaction_l, source_l) || wallets.exists (transaction_l, destination_l))
+			if (wallets.exists (*transaction_l, source_l) || wallets.exists (*transaction_l, destination_l))
 			{
 				should_filter_account = false;
 			}

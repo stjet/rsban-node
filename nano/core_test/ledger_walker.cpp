@@ -65,7 +65,7 @@ TEST (ledger_walker, genesis_account_longer)
 
 	auto const transaction = node->ledger.store.tx_begin_read ();
 	nano::account_info genesis_account_info{};
-	ASSERT_FALSE (node->ledger.store.account.get (transaction, nano::dev::genesis_key.pub, genesis_account_info));
+	ASSERT_FALSE (node->ledger.store.account.get (*transaction, nano::dev::genesis_key.pub, genesis_account_info));
 	EXPECT_EQ (get_number_of_walked_blocks (genesis_account_info.open_block), 1);
 	EXPECT_EQ (get_number_of_walked_blocks (genesis_account_info.head), 1);
 
@@ -76,7 +76,7 @@ TEST (ledger_walker, genesis_account_longer)
 		ASSERT_TRUE (send);
 		EXPECT_EQ (get_number_of_walked_blocks (send->hash ()), 1 + itr * 2 - 1);
 		ASSERT_TIMELY (3s, 1 + itr * 2 == node->ledger.cache.cemented_count);
-		ASSERT_FALSE (node->ledger.store.account.get (transaction, nano::dev::genesis_key.pub, genesis_account_info));
+		ASSERT_FALSE (node->ledger.store.account.get (*transaction, nano::dev::genesis_key.pub, genesis_account_info));
 		// TODO: check issue with account head
 		// EXPECT_EQ(get_number_of_walked_blocks (genesis_account_info.head), 1 + itr * 2);
 	}
@@ -108,7 +108,7 @@ TEST (ledger_walker, cross_account)
 
 	auto const transaction = node->ledger.store.tx_begin_read ();
 	nano::account_info account_info{};
-	ASSERT_FALSE (node->ledger.store.account.get (transaction, key.pub, account_info));
+	ASSERT_FALSE (node->ledger.store.account.get (*transaction, key.pub, account_info));
 
 	//    TODO: check issue with account head
 	//    auto const first = node->ledger.store.block.get_no_sideband(transaction, account_info.head);
@@ -175,8 +175,11 @@ TEST (ledger_walker, DISABLED_ladder_geometry)
 
 	ASSERT_TRUE (last_destination);
 	nano::account_info last_destination_info{};
-	auto const last_destination_read_error = node->ledger.store.account.get (node->ledger.store.tx_begin_read (), *last_destination, last_destination_info);
-	ASSERT_FALSE (last_destination_read_error);
+	{
+		auto tx{node->ledger.store.tx_begin_read ()};
+		auto const last_destination_read_error = node->ledger.store.account.get (*tx, *last_destination, last_destination_info);
+		ASSERT_FALSE (last_destination_read_error);
+	}
 
 	// This is how we expect chains to look like (for 3 accounts and 10 amounts to be sent)
 	// k1: 1000     SEND     3     SEND     6     SEND     9     SEND
@@ -194,7 +197,8 @@ TEST (ledger_walker, DISABLED_ladder_geometry)
 			nano::amount previous_balance{};
 			if (!block->previous ().is_zero ())
 			{
-				auto const previous_block = node->ledger.store.block.get_no_sideband (node->ledger.store.tx_begin_read (), block->previous ());
+				auto tx{node->ledger.store.tx_begin_read ()};
+				auto const previous_block = node->ledger.store.block.get_no_sideband (*tx, block->previous ());
 				previous_balance = previous_block->balance ();
 			}
 
@@ -213,7 +217,8 @@ TEST (ledger_walker, DISABLED_ladder_geometry)
 			nano::amount previous_balance{};
 			if (!block->previous ().is_zero ())
 			{
-				auto const previous_block = node->ledger.store.block.get_no_sideband (node->ledger.store.tx_begin_read (), block->previous ());
+				auto tx{node->ledger.store.tx_begin_read ()};
+				auto const previous_block = node->ledger.store.block.get_no_sideband (*tx, block->previous ());
 				previous_balance = previous_block->balance ();
 			}
 

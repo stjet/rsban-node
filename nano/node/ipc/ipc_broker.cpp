@@ -151,7 +151,7 @@ void nano::ipc::broker::broadcast (std::shared_ptr<nanoapi::EventConfirmationT> 
 						(void)decode_source_ok_l;
 						(void)decode_destination_ok_l;
 						debug_assert (decode_source_ok_l && decode_destination_ok_l);
-						if (this->node.wallets.exists (transaction_l, source_l) || this->node.wallets.exists (transaction_l, destination_l))
+						if (this->node.wallets.exists (*transaction_l, source_l) || this->node.wallets.exists (*transaction_l, destination_l))
 						{
 							should_filter_account_l = false;
 						}

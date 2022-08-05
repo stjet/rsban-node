@@ -105,11 +105,11 @@ private:
 	nano::node_config const & config;
 	nano::local_vote_history & history;
 	nano::stat & stats;
+	nano::vote_spacing spacing;
 
 	// not ported yet:
 	nano::ledger & ledger;
 	nano::wallets & wallets;
-	nano::vote_spacing spacing;
 	nano::vote_broadcaster vote_broadcaster;
 
 	mutable nano::mutex mutex;

@@ -795,11 +795,11 @@ void nano::ledger::initialize (nano::generate_cache const & generate_cache_a)
 	}
 
 	auto transaction (store.tx_begin_read ());
-	cache.pruned_count = store.pruned.count (transaction);
+	cache.pruned_count = store.pruned.count (*transaction);
 
 	// Final votes requirement for confirmation canary block
 	nano::confirmation_height_info confirmation_height_info;
-	if (!store.confirmation_height.get (transaction, constants.final_votes_canary_account, confirmation_height_info))
+	if (!store.confirmation_height.get (*transaction, constants.final_votes_canary_account, confirmation_height_info))
 	{
 		cache.final_votes_confirmation_canary = (confirmation_height_info.height >= constants.final_votes_canary_height);
 	}
@@ -900,7 +900,8 @@ nano::block_hash nano::ledger::representative_calculated (nano::transaction cons
 
 bool nano::ledger::block_or_pruned_exists (nano::block_hash const & hash_a) const
 {
-	return block_or_pruned_exists (store.tx_begin_read (), hash_a);
+	auto tx = store.tx_begin_read ();
+	return block_or_pruned_exists (*tx, hash_a);
 }
 
 bool nano::ledger::block_or_pruned_exists (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
@@ -926,7 +927,7 @@ std::string nano::ledger::block_text (nano::block_hash const & hash_a)
 {
 	std::string result;
 	auto transaction (store.tx_begin_read ());
-	auto block (store.block.get (transaction, hash_a));
+	auto block (store.block.get (*transaction, hash_a));
 	if (block != nullptr)
 	{
 		block->serialize_json (result);
@@ -1170,10 +1171,10 @@ nano::root nano::ledger::latest_root (nano::transaction const & transaction_a, n
 void nano::ledger::dump_account_chain (nano::account const & account_a, std::ostream & stream)
 {
 	auto transaction (store.tx_begin_read ());
-	auto hash (latest (transaction, account_a));
+	auto hash (latest (*transaction, account_a));
 	while (!hash.is_zero ())
 	{
-		auto block (store.block.get (transaction, hash));
+		auto block (store.block.get (*transaction, hash));
 		debug_assert (block != nullptr);
 		stream << hash.to_string () << std::endl;
 		hash = block->previous ();
@@ -1502,7 +1503,7 @@ bool nano::ledger::migrate_lmdb_to_rocksdb (boost::filesystem::path const & data
 					nano::serialize_block (stream, *i->second.block);
 					i->second.sideband.serialize (stream, i->second.block->type ());
 				}
-				rocksdb_store->block.raw_put (rocksdb_transaction, vector, i->first);
+				rocksdb_store->block.raw_put (*rocksdb_transaction, vector, i->first);
 			}
 		});
 
@@ -1511,7 +1512,7 @@ bool nano::ledger::migrate_lmdb_to_rocksdb (boost::filesystem::path const & data
 			for (; i != n; ++i)
 			{
 				auto rocksdb_transaction (rocksdb_store->tx_begin_write ({}, { nano::tables::pending }));
-				rocksdb_store->pending.put (rocksdb_transaction, i->first, i->second);
+				rocksdb_store->pending.put (*rocksdb_transaction, i->first, i->second);
 			}
 		});
 
@@ -1520,7 +1521,7 @@ bool nano::ledger::migrate_lmdb_to_rocksdb (boost::filesystem::path const & data
 			for (; i != n; ++i)
 			{
 				auto rocksdb_transaction (rocksdb_store->tx_begin_write ({}, { nano::tables::confirmation_height }));
-				rocksdb_store->confirmation_height.put (rocksdb_transaction, i->first, i->second);
+				rocksdb_store->confirmation_height.put (*rocksdb_transaction, i->first, i->second);
 			}
 		});
 
@@ -1529,7 +1530,7 @@ bool nano::ledger::migrate_lmdb_to_rocksdb (boost::filesystem::path const & data
 			for (; i != n; ++i)
 			{
 				auto rocksdb_transaction (rocksdb_store->tx_begin_write ({}, { nano::tables::accounts }));
-				rocksdb_store->account.put (rocksdb_transaction, i->first, i->second);
+				rocksdb_store->account.put (*rocksdb_transaction, i->first, i->second);
 			}
 		});
 
@@ -1538,7 +1539,7 @@ bool nano::ledger::migrate_lmdb_to_rocksdb (boost::filesystem::path const & data
 			for (; i != n; ++i)
 			{
 				auto rocksdb_transaction (rocksdb_store->tx_begin_write ({}, { nano::tables::frontiers }));
-				rocksdb_store->frontier.put (rocksdb_transaction, i->first, i->second);
+				rocksdb_store->frontier.put (*rocksdb_transaction, i->first, i->second);
 			}
 		});
 
@@ -1547,7 +1548,7 @@ bool nano::ledger::migrate_lmdb_to_rocksdb (boost::filesystem::path const & data
 			for (; i != n; ++i)
 			{
 				auto rocksdb_transaction (rocksdb_store->tx_begin_write ({}, { nano::tables::pruned }));
-				rocksdb_store->pruned.put (rocksdb_transaction, i->first);
+				rocksdb_store->pruned.put (*rocksdb_transaction, i->first);
 			}
 		});
 
@@ -1556,45 +1557,45 @@ bool nano::ledger::migrate_lmdb_to_rocksdb (boost::filesystem::path const & data
 			for (; i != n; ++i)
 			{
 				auto rocksdb_transaction (rocksdb_store->tx_begin_write ({}, { nano::tables::final_votes }));
-				rocksdb_store->final_vote.put (rocksdb_transaction, i->first, i->second);
+				rocksdb_store->final_vote.put (*rocksdb_transaction, i->first, i->second);
 			}
 		});
 
 		auto lmdb_transaction (store.tx_begin_read ());
-		auto version = store.version.get (lmdb_transaction);
+		auto version = store.version.get (*lmdb_transaction);
 		auto rocksdb_transaction (rocksdb_store->tx_begin_write ());
-		rocksdb_store->version.put (rocksdb_transaction, version);
+		rocksdb_store->version.put (*rocksdb_transaction, version);
 
-		for (auto i (store.online_weight.begin (lmdb_transaction)), n (store.online_weight.end ()); i != n; ++i)
+		for (auto i (store.online_weight.begin (*lmdb_transaction)), n (store.online_weight.end ()); i != n; ++i)
 		{
-			rocksdb_store->online_weight.put (rocksdb_transaction, i->first, i->second);
+			rocksdb_store->online_weight.put (*rocksdb_transaction, i->first, i->second);
 		}
 
-		for (auto i (store.peer.begin (lmdb_transaction)), n (store.peer.end ()); i != n; ++i)
+		for (auto i (store.peer.begin (*lmdb_transaction)), n (store.peer.end ()); i != n; ++i)
 		{
-			rocksdb_store->peer.put (rocksdb_transaction, i->first);
+			rocksdb_store->peer.put (*rocksdb_transaction, i->first);
 		}
 
 		// Compare counts
-		error |= store.peer.count (lmdb_transaction) != rocksdb_store->peer.count (rocksdb_transaction);
-		error |= store.pruned.count (lmdb_transaction) != rocksdb_store->pruned.count (rocksdb_transaction);
-		error |= store.final_vote.count (lmdb_transaction) != rocksdb_store->final_vote.count (rocksdb_transaction);
-		error |= store.online_weight.count (lmdb_transaction) != rocksdb_store->online_weight.count (rocksdb_transaction);
-		error |= store.version.get (lmdb_transaction) != rocksdb_store->version.get (rocksdb_transaction);
+		error |= store.peer.count (*lmdb_transaction) != rocksdb_store->peer.count (*rocksdb_transaction);
+		error |= store.pruned.count (*lmdb_transaction) != rocksdb_store->pruned.count (*rocksdb_transaction);
+		error |= store.final_vote.count (*lmdb_transaction) != rocksdb_store->final_vote.count (*rocksdb_transaction);
+		error |= store.online_weight.count (*lmdb_transaction) != rocksdb_store->online_weight.count (*rocksdb_transaction);
+		error |= store.version.get (*lmdb_transaction) != rocksdb_store->version.get (*rocksdb_transaction);
 
 		// For large tables a random key is used instead and makes sure it exists
-		auto random_block (store.block.random (lmdb_transaction));
-		error |= rocksdb_store->block.get (rocksdb_transaction, random_block->hash ()) == nullptr;
+		auto random_block (store.block.random (*lmdb_transaction));
+		error |= rocksdb_store->block.get (*rocksdb_transaction, random_block->hash ()) == nullptr;
 
 		auto account = random_block->account ().is_zero () ? random_block->sideband ().account () : random_block->account ();
 		nano::account_info account_info;
-		error |= rocksdb_store->account.get (rocksdb_transaction, account, account_info);
+		error |= rocksdb_store->account.get (*rocksdb_transaction, account, account_info);
 
 		// If confirmation height exists in the lmdb ledger for this account it should exist in the rocksdb ledger
 		nano::confirmation_height_info confirmation_height_info{};
-		if (!store.confirmation_height.get (lmdb_transaction, account, confirmation_height_info))
+		if (!store.confirmation_height.get (*lmdb_transaction, account, confirmation_height_info))
 		{
-			error |= rocksdb_store->confirmation_height.get (rocksdb_transaction, account, confirmation_height_info);
+			error |= rocksdb_store->confirmation_height.get (*rocksdb_transaction, account, confirmation_height_info);
 		}
 	}
 	else

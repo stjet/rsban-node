@@ -27,6 +27,12 @@ void nano::read_rocksdb_txn::renew ()
 	options.snapshot = db->GetSnapshot ();
 }
 
+void nano::read_rocksdb_txn::refresh ()
+{
+	reset ();
+	renew ();
+}
+
 void * nano::read_rocksdb_txn::get_handle () const
 {
 	return (void *)&options;
@@ -80,6 +86,12 @@ void nano::write_rocksdb_txn::renew ()
 	txn_options.set_snapshot = true;
 	db->BeginTransaction (rocksdb::WriteOptions (), txn_options, txn);
 	active = true;
+}
+
+void nano::write_rocksdb_txn::refresh ()
+{
+	commit ();
+	renew ();
 }
 
 void * nano::write_rocksdb_txn::get_handle () const

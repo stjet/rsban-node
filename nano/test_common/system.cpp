@@ -36,7 +36,8 @@ std::shared_ptr<nano::node> nano::system::add_node (nano::node_config const & no
 	auto node (std::make_shared<nano::node> (io_ctx, nano::unique_path (), node_config_a, work, node_flags_a, node_sequence++));
 	for (auto i : initialization_blocks)
 	{
-		auto result = node->ledger.process (node->store.tx_begin_write (), *i);
+		auto tx{node->store.tx_begin_write ()};
+		auto result = node->ledger.process (*tx, *i);
 		debug_assert (result.code == nano::process_result::progress);
 	}
 	debug_assert (!node->init_error ());
@@ -222,8 +223,8 @@ std::unique_ptr<nano::state_block> nano::upgrade_epoch (nano::work_pool & pool_a
 	auto transaction (ledger_a.store.tx_begin_write ());
 	auto dev_genesis_key = nano::dev::genesis_key;
 	auto account = dev_genesis_key.pub;
-	auto latest = ledger_a.latest (transaction, account);
-	auto balance = ledger_a.account_balance (transaction, account);
+	auto latest = ledger_a.latest (*transaction, account);
+	auto balance = ledger_a.account_balance (*transaction, account);
 
 	nano::state_block_builder builder;
 	std::error_code ec;
@@ -240,7 +241,7 @@ std::unique_ptr<nano::state_block> nano::upgrade_epoch (nano::work_pool & pool_a
 	bool error{ true };
 	if (!ec && epoch)
 	{
-		error = ledger_a.process (transaction, *epoch).code != nano::process_result::progress;
+		error = ledger_a.process (*transaction, *epoch).code != nano::process_result::progress;
 	}
 
 	return !error ? std::move (epoch) : nullptr;
@@ -385,7 +386,7 @@ void nano::system::generate_rollback (nano::node & node_a, std::vector<nano::acc
 	auto index (random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (accounts_a.size () - 1)));
 	auto account (accounts_a[index]);
 	nano::account_info info;
-	auto error (node_a.store.account.get (transaction, account, info));
+	auto error (node_a.store.account.get (*transaction, account, info));
 	if (!error)
 	{
 		auto hash (info.open_block);
@@ -394,7 +395,7 @@ void nano::system::generate_rollback (nano::node & node_a, std::vector<nano::acc
 			accounts_a[index] = accounts_a[accounts_a.size () - 1];
 			accounts_a.pop_back ();
 			std::vector<std::shared_ptr<nano::block>> rollback_list;
-			auto error = node_a.ledger.rollback (transaction, hash, rollback_list);
+			auto error = node_a.ledger.rollback (*transaction, hash, rollback_list);
 			(void)error;
 			debug_assert (!error);
 			for (auto & i : rollback_list)
@@ -412,11 +413,11 @@ void nano::system::generate_receive (nano::node & node_a)
 		auto transaction (node_a.store.tx_begin_read ());
 		nano::account random_account;
 		random_pool::generate_block (random_account.bytes.data (), sizeof (random_account.bytes));
-		auto i (node_a.store.pending.begin (transaction, nano::pending_key (random_account, 0)));
+		auto i (node_a.store.pending.begin (*transaction, nano::pending_key (random_account, 0)));
 		if (i != node_a.store.pending.end ())
 		{
 			nano::pending_key const & send_hash (i->first);
-			send_block = node_a.store.block.get (transaction, send_hash.hash);
+			send_block = node_a.store.block.get (*transaction, send_hash.hash);
 		}
 	}
 	if (send_block != nullptr)
@@ -480,15 +481,15 @@ void nano::system::generate_send_existing (nano::node & node_a, std::vector<nano
 		nano::account account;
 		random_pool::generate_block (account.bytes.data (), sizeof (account.bytes));
 		auto transaction (node_a.store.tx_begin_read ());
-		nano::store_iterator<nano::account, nano::account_info> entry (node_a.store.account.begin (transaction, account));
+		nano::store_iterator<nano::account, nano::account_info> entry (node_a.store.account.begin (*transaction, account));
 		if (entry == node_a.store.account.end ())
 		{
-			entry = node_a.store.account.begin (transaction);
+			entry = node_a.store.account.begin (*transaction);
 		}
 		debug_assert (entry != node_a.store.account.end ());
 		destination = nano::account (entry->first);
 		source = get_random_account (accounts_a);
-		amount = get_random_amount (transaction, node_a, source);
+		amount = get_random_amount (*transaction, node_a, source);
 	}
 	if (!amount.is_zero ())
 	{
@@ -531,7 +532,7 @@ void nano::system::generate_send_new (nano::node & node_a, std::vector<nano::acc
 	{
 		auto transaction (node_a.store.tx_begin_read ());
 		source = get_random_account (accounts_a);
-		amount = get_random_amount (transaction, node_a, source);
+		amount = get_random_amount (*transaction, node_a, source);
 	}
 	if (!amount.is_zero ())
 	{

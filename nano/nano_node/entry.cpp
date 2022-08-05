@@ -318,7 +318,7 @@ int main (int argc, char * const * argv)
 		{
 			auto inactive_node = nano::default_inactive_node (data_path, vm);
 			auto transaction = inactive_node->node->store.tx_begin_read ();
-			auto i = inactive_node->node->store.block.begin (transaction);
+			auto i = inactive_node->node->store.block.begin (*transaction);
 			auto end = inactive_node->node->store.block.end ();
 			for (; i != end; ++i)
 			{
@@ -403,7 +403,7 @@ int main (int argc, char * const * argv)
 			auto current (node->online_reps.trended ());
 			std::cout << boost::str (boost::format ("Trended Weight %1%\n") % current);
 			auto transaction (node->store.tx_begin_read ());
-			for (auto i (node->store.online_weight.begin (transaction)), n (node->store.online_weight.end ()); i != n; ++i)
+			for (auto i (node->store.online_weight.begin (*transaction)), n (node->store.online_weight.end ()); i != n; ++i)
 			{
 				using time_point = std::chrono::system_clock::time_point;
 				time_point ts (std::chrono::duration_cast<time_point::duration> (std::chrono::nanoseconds (i->first)));
@@ -441,13 +441,13 @@ int main (int argc, char * const * argv)
 			// Cache the account heads to make searching quicker against unchecked keys.
 			auto transaction (node->store.tx_begin_read ());
 			std::unordered_set<nano::block_hash> frontier_hashes;
-			for (auto i (node->store.account.begin (transaction)), n (node->store.account.end ()); i != n; ++i)
+			for (auto i (node->store.account.begin (*transaction)), n (node->store.account.end ()); i != n; ++i)
 			{
 				frontier_hashes.insert (i->second.head);
 			}
 
 			// Check all unchecked keys for matching frontier hashes. Indicates an issue with process_batch algorithm
-			node->unchecked.for_each (transaction, [&frontier_hashes] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
+			node->unchecked.for_each (*transaction, [&frontier_hashes] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 				auto it = frontier_hashes.find (key.key ());
 				if (it != frontier_hashes.cend ())
 				{
@@ -1026,7 +1026,8 @@ int main (int argc, char * const * argv)
 				if (timer_l.after_deadline (std::chrono::seconds (15)))
 				{
 					timer_l.restart ();
-					std::cout << boost::str (boost::format ("%1% (%2%) blocks processed (unchecked), %3% remaining") % node->ledger.cache.block_count % node->unchecked.count (node->store.tx_begin_read ()) % node->block_processor.size ()) << std::endl;
+					auto tx{node->store.tx_begin_read ()};
+					std::cout << boost::str (boost::format ("%1% (%2%) blocks processed (unchecked), %3% remaining") % node->ledger.cache.block_count % node->unchecked.count (*tx) % node->block_processor.size ()) << std::endl;
 				}
 			}
 
@@ -1070,7 +1071,7 @@ int main (int argc, char * const * argv)
 							.build ();
 
 				genesis_latest = send->hash ();
-				node->ledger.process (transaction, *send);
+				node->ledger.process (*transaction, *send);
 
 				auto open = builder.state ()
 							.account (keys[i].pub)
@@ -1082,7 +1083,7 @@ int main (int argc, char * const * argv)
 							.work (*node->work.generate (nano::work_version::work_1, keys[i].pub, node->network_params.work.get_epoch_1 ()))
 							.build ();
 
-				node->ledger.process (transaction, *open);
+				node->ledger.process (*transaction, *open);
 			}
 			// Generating blocks
 			std::deque<std::shared_ptr<nano::block>> blocks;
@@ -1429,7 +1430,7 @@ int main (int argc, char * const * argv)
 								auto pair (deque_a.front ());
 								deque_a.pop_front ();
 								lock.unlock ();
-								function_a (node, transaction, pair.first, pair.second);
+								function_a (node, *transaction, pair.first, pair.second);
 								lock.lock ();
 							}
 						}
@@ -1666,7 +1667,7 @@ int main (int argc, char * const * argv)
 			}
 			size_t const accounts_deque_overflow (32 * 1024);
 			auto transaction (node->store.tx_begin_read ());
-			for (auto i (node->store.account.begin (transaction)), n (node->store.account.end ()); i != n; ++i)
+			for (auto i (node->store.account.begin (*transaction)), n (node->store.account.end ()); i != n; ++i)
 			{
 				{
 					nano::unique_lock<nano::mutex> lock (mutex);
@@ -1696,7 +1697,7 @@ int main (int argc, char * const * argv)
 			}
 
 			// Validate total block count
-			auto ledger_block_count (node->store.block.count (transaction));
+			auto ledger_block_count (node->store.block.count (*transaction));
 			if (node->flags.enable_pruning ())
 			{
 				block_count += 1; // Add disconnected genesis block
@@ -1777,7 +1778,7 @@ int main (int argc, char * const * argv)
 			start_threads (check_pending, pending);
 
 			size_t const pending_deque_overflow (64 * 1024);
-			for (auto i (node->store.pending.begin (transaction)), n (node->store.pending.end ()); i != n; ++i)
+			for (auto i (node->store.pending.begin (*transaction)), n (node->store.pending.end ()); i != n; ++i)
 			{
 				{
 					nano::unique_lock<nano::mutex> lock (mutex);
@@ -1836,7 +1837,7 @@ int main (int argc, char * const * argv)
 				auto transaction (source_node->store.tx_begin_read ());
 				block_count = source_node->ledger.cache.block_count;
 				std::cout << boost::str (boost::format ("Performing bootstrap emulation, %1% blocks in ledger...") % block_count) << std::endl;
-				for (auto i (source_node->store.account.begin (transaction)), n (source_node->store.account.end ()); i != n; ++i)
+				for (auto i (source_node->store.account.begin (*transaction)), n (source_node->store.account.end ()); i != n; ++i)
 				{
 					nano::account const & account (i->first);
 					nano::account_info const & info (i->second);
@@ -1844,7 +1845,7 @@ int main (int argc, char * const * argv)
 					while (!hash.is_zero ())
 					{
 						// Retrieving block data
-						auto block (source_node->store.block.get_no_sideband (transaction, hash));
+						auto block (source_node->store.block.get_no_sideband (*transaction, hash));
 						if (block != nullptr)
 						{
 							++count;
@@ -1881,7 +1882,8 @@ int main (int argc, char * const * argv)
 				if (timer_l.after_deadline (std::chrono::seconds (60)))
 				{
 					timer_l.restart ();
-					std::cout << boost::str (boost::format ("%1% (%2%) blocks processed (unchecked)") % node.node->ledger.cache.block_count % node.node->unchecked.count (node.node->store.tx_begin_read ())) << std::endl;
+					auto tx{node.node->store.tx_begin_read ()};
+					std::cout << boost::str (boost::format ("%1% (%2%) blocks processed (unchecked)") % node.node->ledger.cache.block_count % node.node->unchecked.count (*tx)) << std::endl;
 				}
 			}
 
@@ -1901,7 +1903,7 @@ int main (int argc, char * const * argv)
 			auto node = inactive_node->node;
 			auto transaction (node->store.tx_begin_read ());
 
-			for (auto i (node->store.peer.begin (transaction)), n (node->store.peer.end ()); i != n; ++i)
+			for (auto i (node->store.peer.begin (*transaction)), n (node->store.peer.end ()); i != n; ++i)
 			{
 				std::cout << boost::str (boost::format ("%1%\n") % nano::endpoint (boost::asio::ip::address_v6 (i->first.address_bytes ()), i->first.port ()));
 			}

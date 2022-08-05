@@ -67,6 +67,6 @@ void nano::rocksdb::pending_store::for_each_par (std::function<void (nano::read_
 		nano::pending_key key_start (union_start.uint256s[0].number (), union_start.uint256s[1].number ());
 		nano::pending_key key_end (union_end.uint256s[0].number (), union_end.uint256s[1].number ());
 		auto transaction (this->store.tx_begin_read ());
-		action_a (transaction, this->begin (transaction, key_start), !is_last ? this->begin (transaction, key_end) : this->end ());
+		action_a (*transaction, this->begin (*transaction, key_start), !is_last ? this->begin (*transaction, key_end) : this->end ());
 	});
 }

@@ -1,3 +1,5 @@
+#include "nano/lib/threading.hpp"
+
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/rocksdbconfig.hpp>
 #include <nano/node/rocksdb/rocksdb.hpp>
@@ -167,7 +169,7 @@ void nano::rocksdb::store::open (bool & error_a, boost::filesystem::path const &
 	if (!error_a)
 	{
 		auto transaction = tx_begin_read ();
-		auto version_l = version.get (transaction);
+		auto version_l = version.get (*transaction);
 		if (version_l > version_current)
 		{
 			error_a = true;
@@ -321,8 +323,13 @@ std::vector<rocksdb::ColumnFamilyDescriptor> nano::rocksdb::store::create_column
 	return column_families;
 }
 
-nano::write_transaction nano::rocksdb::store::tx_begin_write (std::vector<nano::tables> const & tables_requiring_locks_a, std::vector<nano::tables> const & tables_no_locks_a)
+std::unique_ptr<nano::write_transaction> nano::rocksdb::store::tx_begin_write (std::vector<nano::tables> const & tables_requiring_locks_a, std::vector<nano::tables> const & tables_no_locks_a)
 {
+	/*
+	 * For IO threads, we do not want them to block on creating write transactions.
+	 */
+	debug_assert (nano::thread_role::get () != nano::thread_role::name::io);
+
 	std::unique_ptr<nano::write_rocksdb_txn> txn;
 	release_assert (optimistic_db != nullptr);
 	if (tables_requiring_locks_a.empty () && tables_no_locks_a.empty ())
@@ -338,12 +345,12 @@ nano::write_transaction nano::rocksdb::store::tx_begin_write (std::vector<nano::
 	// Tables must be kept in alphabetical order. These can be used for mutex locking, so order is important to prevent deadlocking
 	debug_assert (std::is_sorted (tables_requiring_locks_a.begin (), tables_requiring_locks_a.end ()));
 
-	return nano::write_transaction{ std::move (txn) };
+	return txn;
 }
 
-nano::read_transaction nano::rocksdb::store::tx_begin_read () const
+std::unique_ptr<nano::read_transaction> nano::rocksdb::store::tx_begin_read () const
 {
-	return nano::read_transaction{ std::make_unique<nano::read_rocksdb_txn> (db.get ()) };
+	return std::make_unique<nano::read_rocksdb_txn> (db.get ());
 }
 
 std::string nano::rocksdb::store::vendor_get () const

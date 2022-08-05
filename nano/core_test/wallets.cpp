@@ -164,20 +164,20 @@ TEST (wallets, exists)
 	nano::keypair key2;
 	{
 		auto transaction (node.wallets.tx_begin_read ());
-		ASSERT_FALSE (node.wallets.exists (transaction, key1.pub));
-		ASSERT_FALSE (node.wallets.exists (transaction, key2.pub));
+		ASSERT_FALSE (node.wallets.exists (*transaction, key1.pub));
+		ASSERT_FALSE (node.wallets.exists (*transaction, key2.pub));
 	}
 	system.wallet (0)->insert_adhoc (key1.prv);
 	{
 		auto transaction (node.wallets.tx_begin_read ());
-		ASSERT_TRUE (node.wallets.exists (transaction, key1.pub));
-		ASSERT_FALSE (node.wallets.exists (transaction, key2.pub));
+		ASSERT_TRUE (node.wallets.exists (*transaction, key1.pub));
+		ASSERT_FALSE (node.wallets.exists (*transaction, key2.pub));
 	}
 	system.wallet (0)->insert_adhoc (key2.prv);
 	{
 		auto transaction (node.wallets.tx_begin_read ());
-		ASSERT_TRUE (node.wallets.exists (transaction, key1.pub));
-		ASSERT_TRUE (node.wallets.exists (transaction, key2.pub));
+		ASSERT_TRUE (node.wallets.exists (*transaction, key1.pub));
+		ASSERT_TRUE (node.wallets.exists (*transaction, key2.pub));
 	}
 }
 
@@ -227,7 +227,7 @@ TEST (wallets, search_receivable)
 		ASSERT_NE (nullptr, election);
 
 		// Erase the key so the confirmation does not trigger an automatic receive
-		wallet->store.erase (node.wallets.tx_begin_write (), nano::dev::genesis->account ());
+		wallet->store.erase (*node.wallets.tx_begin_write (), nano::dev::genesis->account ());
 
 		// Now confirm the election
 		election->force_confirm ();
@@ -248,7 +248,7 @@ TEST (wallets, search_receivable)
 			node.wallets.search_receivable (wallet_id);
 		}
 		ASSERT_TIMELY (3s, node.balance (nano::dev::genesis->account ()) == nano::dev::constants.genesis_amount);
-		auto receive_hash = node.ledger.latest (node.store.tx_begin_read (), nano::dev::genesis->account ());
+		auto receive_hash = node.ledger.latest (*node.store.tx_begin_read (), nano::dev::genesis->account ());
 		auto receive = node.block (receive_hash);
 		ASSERT_NE (nullptr, receive);
 		ASSERT_EQ (receive->sideband ().height (), 3);

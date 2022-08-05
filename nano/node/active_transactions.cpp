@@ -52,7 +52,7 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 	boost::optional<nano::election_status_type> election_status_type;
 	if (!confirmation_height_processor.is_processing_added_block (block_a->hash ()))
 	{
-		election_status_type = confirm_block (transaction, block_a);
+		election_status_type = confirm_block (*transaction, block_a);
 	}
 	else
 	{
@@ -69,7 +69,7 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 			bool is_state_send (false);
 			bool is_state_epoch (false);
 			nano::account pending_account{};
-			node.process_confirmed_data (transaction, block_a, block_a->hash (), account, amount, is_state_send, is_state_epoch, pending_account);
+			node.process_confirmed_data (*transaction, block_a, block_a->hash (), account, amount, is_state_send, is_state_epoch, pending_account);
 			node.observers.blocks.notify (nano::election_status{ block_a, 0, 0, std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()), std::chrono::duration_values<std::chrono::milliseconds>::zero (), 0, 1, 0, nano::election_status_type::inactive_confirmation_height }, {}, account, amount, is_state_send, is_state_epoch);
 		}
 		else
@@ -89,13 +89,13 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 					election_lk.unlock ();
 					add_recently_cemented (status_l);
 					auto destination (block_a->link ().is_zero () ? block_a->destination () : block_a->link ().as_account ());
-					node.receive_confirmed (transaction, hash, destination);
+					node.receive_confirmed (*transaction, hash, destination);
 					nano::account account{};
 					nano::uint128_t amount (0);
 					bool is_state_send (false);
 					bool is_state_epoch (false);
 					nano::account pending_account{};
-					node.process_confirmed_data (transaction, block_a, hash, account, amount, is_state_send, is_state_epoch, pending_account);
+					node.process_confirmed_data (*transaction, block_a, hash, account, amount, is_state_send, is_state_epoch, pending_account);
 					election_lk.lock ();
 					election->status.type = *election_status_type;
 					election->status.confirmation_request_count = election->confirmation_request_count;
@@ -131,13 +131,13 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 		if (cemented_bootstrap_count_reached && was_active)
 		{
 			// Start or vote for the next unconfirmed block
-			scheduler.activate (account, transaction);
+			scheduler.activate (account, *transaction);
 
 			// Start or vote for the next unconfirmed block in the destination account
-			auto const & destination (node.ledger.block_destination (transaction, *block_a));
+			auto const & destination (node.ledger.block_destination (*transaction, *block_a));
 			if (!destination.is_zero () && destination != account)
 			{
-				scheduler.activate (destination, transaction);
+				scheduler.activate (destination, *transaction);
 			}
 		}
 	}
@@ -834,8 +834,8 @@ nano::inactive_cache_status nano::active_transactions::inactive_votes_bootstrap_
 	if ((status.election_started && !previously_a.election_started) || (status.bootstrap_started && !previously_a.bootstrap_started))
 	{
 		auto transaction (node.store.tx_begin_read ());
-		auto block = node.store.block.get (transaction, hash_a);
-		if (block && status.election_started && !previously_a.election_started && !node.block_confirmed_or_being_confirmed (transaction, hash_a))
+		auto block = node.store.block.get (*transaction, hash_a);
+		if (block && status.election_started && !previously_a.election_started && !node.block_confirmed_or_being_confirmed (*transaction, hash_a))
 		{
 			lock_a.lock ();
 			auto result = insert_hinted (lock_a, block);
@@ -844,7 +844,7 @@ nano::inactive_cache_status nano::active_transactions::inactive_votes_bootstrap_
 				status.election_started = false;
 			}
 		}
-		else if (!block && status.bootstrap_started && !previously_a.bootstrap_started && (!node.ledger.pruning || !node.store.pruned.exists (transaction, hash_a)))
+		else if (!block && status.bootstrap_started && !previously_a.bootstrap_started && (!node.ledger.pruning || !node.store.pruned.exists (*transaction, hash_a)))
 		{
 			node.gap_cache.bootstrap_start (hash_a);
 		}

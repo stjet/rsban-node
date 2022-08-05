@@ -8,10 +8,10 @@ nano::test::context::ledger_context::ledger_context (std::deque<std::shared_ptr<
 {
 	debug_assert (!store_m->init_error ());
 	auto tx = store_m->tx_begin_write ();
-	store_m->initialize (tx, ledger_m.cache, ledger_m.constants);
+	store_m->initialize (*tx, ledger_m.cache, ledger_m.constants);
 	for (auto const & i : blocks_m)
 	{
-		auto process_result = ledger_m.process (tx, *i);
+		auto process_result = ledger_m.process (*tx, *i);
 		debug_assert (process_result.code == nano::process_result::progress);
 	}
 }

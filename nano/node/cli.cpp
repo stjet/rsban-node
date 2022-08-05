@@ -230,31 +230,38 @@ bool copy_database (boost::filesystem::path const & data_path, boost::program_op
 		auto & store (node.node->store);
 		if (vm.count ("unchecked_clear"))
 		{
-			node.node->unchecked.clear (store.tx_begin_write ());
+			auto tx { store.tx_begin_write ()};
+			node.node->unchecked.clear (*tx);
 		}
 		if (vm.count ("clear_send_ids"))
 		{
-			node.node->wallets.clear_send_ids (node.node->wallets.tx_begin_write ());
+			auto tx {node.node->wallets.tx_begin_write ()};
+			node.node->wallets.clear_send_ids (*tx);
 		}
 		if (vm.count ("online_weight_clear"))
 		{
-			node.node->store.online_weight.clear (store.tx_begin_write ());
+			auto tx{store.tx_begin_write ()};
+			node.node->store.online_weight.clear (*tx);
 		}
 		if (vm.count ("peer_clear"))
 		{
-			node.node->store.peer.clear (store.tx_begin_write ());
+			auto tx{ store.tx_begin_write ()};
+			node.node->store.peer.clear (*tx);
 		}
 		if (vm.count ("confirmation_height_clear"))
 		{
-			reset_confirmation_heights (store.tx_begin_write (), node.node->network_params.ledger, store);
+			auto tx{store.tx_begin_write ()};
+			reset_confirmation_heights (*tx, node.node->network_params.ledger, store);
 		}
 		if (vm.count ("final_vote_clear"))
 		{
-			node.node->store.final_vote.clear (store.tx_begin_write ());
+			auto tx{store.tx_begin_write ()};
+			node.node->store.final_vote.clear (*tx);
 		}
 		if (vm.count ("rebuild_database"))
 		{
-			node.node->store.rebuild_db (store.tx_begin_write ());
+			auto tx{store.tx_begin_write ()};
+			node.node->store.rebuild_db (*tx);
 		}
 
 		success = node.node->copy_with_compaction (output_path);
@@ -296,9 +303,9 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				if (wallet != nullptr)
 				{
 					auto transaction (wallet->wallets.tx_begin_write ());
-					if (!wallet->enter_password (transaction, password))
+					if (!wallet->enter_password (*transaction, password))
 					{
-						auto pub (wallet->store.deterministic_insert (transaction));
+						auto pub (wallet->store.deterministic_insert (*transaction));
 						std::cout << boost::str (boost::format ("Account: %1%\n") % pub.to_account ());
 					}
 					else
@@ -510,7 +517,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
-			node.node->unchecked.clear (transaction);
+			node.node->unchecked.clear (*transaction);
 			std::cout << "Unchecked blocks deleted" << std::endl;
 		}
 		else
@@ -528,7 +535,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->wallets.tx_begin_write ());
-			node.node->wallets.clear_send_ids (transaction);
+			node.node->wallets.clear_send_ids (*transaction);
 			std::cout << "Send IDs deleted" << std::endl;
 		}
 		else
@@ -546,7 +553,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
-			node.node->store.online_weight.clear (transaction);
+			node.node->store.online_weight.clear (*transaction);
 			std::cout << "Online weight records are removed" << std::endl;
 		}
 		else
@@ -564,7 +571,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
-			node.node->store.peer.clear (transaction);
+			node.node->store.peer.clear (*transaction);
 			std::cout << "Database peers are removed" << std::endl;
 		}
 		else
@@ -588,18 +595,23 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				if (!account.decode_account (account_str))
 				{
 					nano::confirmation_height_info confirmation_height_info;
-					if (!node.node->store.confirmation_height.get (node.node->store.tx_begin_read (), account, confirmation_height_info))
+					auto error = false;
+					{
+						auto tx{node.node->store.tx_begin_read ()};
+						error = node.node->store.confirmation_height.get (*tx, account, confirmation_height_info);
+					}
+					if (!error)
 					{
 						auto transaction (node.node->store.tx_begin_write ());
 						auto conf_height_reset_num = 0;
 						if (account == node.node->network_params.ledger.genesis->account ())
 						{
 							conf_height_reset_num = 1;
-							node.node->store.confirmation_height.put (transaction, account, { confirmation_height_info.height, node.node->network_params.ledger.genesis->hash () });
+							node.node->store.confirmation_height.put (*transaction, account, { confirmation_height_info.height, node.node->network_params.ledger.genesis->hash () });
 						}
 						else
 						{
-							node.node->store.confirmation_height.clear (transaction, account);
+							node.node->store.confirmation_height.clear (*transaction, account);
 						}
 
 						std::cout << "Confirmation height of account " << account_str << " is set to " << conf_height_reset_num << std::endl;
@@ -613,7 +625,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				else if (account_str == "all")
 				{
 					auto transaction (node.node->store.tx_begin_write ());
-					reset_confirmation_heights (transaction, node.node->network_params.ledger, node.node->store);
+					reset_confirmation_heights (*transaction, node.node->network_params.ledger, node.node->store);
 					std::cout << "Confirmation heights of all accounts (except genesis which is set to 1) are set to 0" << std::endl;
 				}
 				else
@@ -649,7 +661,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				nano::root root;
 				if (!root.decode_hex (root_str))
 				{
-					node.node->store.final_vote.clear (transaction, root);
+					node.node->store.final_vote.clear (*transaction, root);
 					std::cout << "Successfully cleared final votes" << std::endl;
 				}
 				else
@@ -660,7 +672,8 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			}
 			else if (vm.count ("all"))
 			{
-				node.node->store.final_vote.clear (node.node->store.tx_begin_write ());
+				auto tx{node.node->store.tx_begin_write ()};
+				node.node->store.final_vote.clear (*tx);
 				std::cout << "All final votes are cleared" << std::endl;
 			}
 			else
@@ -799,12 +812,12 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				if (wallet != nullptr)
 				{
 					auto transaction (wallet->wallets.tx_begin_write ());
-					if (!wallet->enter_password (transaction, password))
+					if (!wallet->enter_password (*transaction, password))
 					{
 						nano::raw_key key;
 						if (!key.decode_hex (vm["key"].as<std::string> ()))
 						{
-							wallet->store.insert_adhoc (transaction, key);
+							wallet->store.insert_adhoc (*transaction, key);
 						}
 						else
 						{
@@ -853,7 +866,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				if (wallet != nullptr)
 				{
 					auto transaction (wallet->wallets.tx_begin_write ());
-					if (!wallet->enter_password (transaction, password))
+					if (!wallet->enter_password (*transaction, password))
 					{
 						nano::raw_key seed;
 						if (vm.count ("seed"))
@@ -872,7 +885,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 						if (!ec)
 						{
 							std::cout << "Changing seed and caching work. Please wait..." << std::endl;
-							wallet->change_seed (transaction, seed);
+							wallet->change_seed (*transaction, seed);
 						}
 					}
 					else
@@ -939,7 +952,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				{
 					std::string password (vm["password"].as<std::string> ());
 					auto transaction (wallet->wallets.tx_begin_write ());
-					auto error (wallet->store.rekey (transaction, password));
+					auto error (wallet->store.rekey (*transaction, password));
 					if (error)
 					{
 						std::cerr << "Password change error\n";
@@ -949,7 +962,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				if (vm.count ("seed") || vm.count ("key"))
 				{
 					auto transaction (wallet->wallets.tx_begin_write ());
-					wallet->change_seed (transaction, seed_key);
+					wallet->change_seed (*transaction, seed_key);
 				}
 				std::cout << wallet_key.to_string () << std::endl;
 			}
@@ -978,16 +991,16 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				if (existing != inactive_node->node->wallets.items.end ())
 				{
 					auto transaction (existing->second->wallets.tx_begin_write ());
-					if (!existing->second->enter_password (transaction, password))
+					if (!existing->second->enter_password (*transaction, password))
 					{
 						nano::raw_key seed;
-						existing->second->store.seed (seed, transaction);
+						existing->second->store.seed (seed, *transaction);
 						std::cout << boost::str (boost::format ("Seed: %1%\n") % seed.to_string ());
-						for (auto i (existing->second->store.begin (transaction)), m (existing->second->store.end ()); i != m; ++i)
+						for (auto i (existing->second->store.begin (*transaction)), m (existing->second->store.end ()); i != m; ++i)
 						{
 							nano::account const & account (i->first);
 							nano::raw_key key;
-							auto error (existing->second->store.fetch (transaction, account, key));
+							auto error (existing->second->store.fetch (*transaction, account, key));
 							(void)error;
 							debug_assert (!error);
 							std::cout << boost::str (boost::format ("Pub: %1% Prv: %2%\n") % account.to_account () % key.to_string ());
@@ -1086,10 +1099,10 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 							bool valid (false);
 							{
 								auto transaction (node->wallets.tx_begin_write ());
-								valid = existing->second->store.valid_password (transaction);
+								valid = existing->second->store.valid_password (*transaction);
 								if (!valid)
 								{
-									valid = !existing->second->enter_password (transaction, password);
+									valid = !existing->second->enter_password (*transaction, password);
 								}
 							}
 							if (valid)
@@ -1123,7 +1136,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 								{
 									nano::lock_guard<nano::mutex> lock (node->wallets.mutex);
 									auto transaction (node->wallets.tx_begin_write ());
-									nano::wallet wallet (error, transaction, node->wallets, wallet_id.to_string (), contents.str ());
+									nano::wallet wallet (error, *transaction, node->wallets, wallet_id.to_string (), contents.str ());
 								}
 								if (error)
 								{
@@ -1172,7 +1185,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		{
 			std::cout << boost::str (boost::format ("Wallet ID: %1%\n") % i->first.to_string ());
 			auto transaction (i->second->wallets.tx_begin_read ());
-			for (auto j (i->second->store.begin (transaction)), m (i->second->store.end ()); j != m; ++j)
+			for (auto j (i->second->store.begin (*transaction)), m (i->second->store.end ()); j != m; ++j)
 			{
 				std::cout << nano::account (j->first).to_account () << '\n';
 			}
@@ -1194,10 +1207,10 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					if (!account_id.decode_account (vm["account"].as<std::string> ()))
 					{
 						auto transaction (wallet->second->wallets.tx_begin_write ());
-						auto account (wallet->second->store.find (transaction, account_id));
+						auto account (wallet->second->store.find (*transaction, account_id));
 						if (account != wallet->second->store.end ())
 						{
-							wallet->second->store.erase (transaction, account_id);
+							wallet->second->store.erase (*transaction, account_id);
 						}
 						else
 						{
@@ -1242,7 +1255,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				if (wallet != node->wallets.items.end ())
 				{
 					auto transaction (wallet->second->wallets.tx_begin_read ());
-					auto representative (wallet->second->store.representative (transaction));
+					auto representative (wallet->second->store.representative (*transaction));
 					std::cout << boost::str (boost::format ("Representative: %1%\n") % representative.to_account ());
 				}
 				else
@@ -1281,7 +1294,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 						if (wallet != node->wallets.items.end ())
 						{
 							auto transaction (wallet->second->wallets.tx_begin_write ());
-							wallet->second->store.representative_set (transaction, account);
+							wallet->second->store.representative_set (*transaction, account);
 						}
 						else
 						{

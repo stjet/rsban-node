@@ -34,25 +34,25 @@ namespace
 class matches_txn final
 {
 public:
-	explicit matches_txn (nano::transaction_impl const * transaction_impl_a) :
-		transaction_impl (transaction_impl_a)
+	explicit matches_txn (nano::transaction const * tx_a) :
+		tx (tx_a)
 	{
 	}
 
 	bool operator() (nano::mdb_txn_stats const & mdb_txn_stats)
 	{
-		return (mdb_txn_stats.transaction_impl == transaction_impl);
+		return (mdb_txn_stats.transaction == tx);
 	}
 
 private:
-	nano::transaction_impl const * transaction_impl;
+	nano::transaction const * tx;
 };
 }
 
-nano::read_mdb_txn::read_mdb_txn (nano::mdb_env const & environment_a, nano::mdb_txn_callbacks txn_callbacks_a) :
+nano::read_mdb_txn::read_mdb_txn (MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
 	txn_callbacks (txn_callbacks_a)
 {
-	auto status (mdb_txn_begin (environment_a, nullptr, MDB_RDONLY, &handle));
+	auto status (mdb_txn_begin (env_a, nullptr, MDB_RDONLY, &handle));
 	release_assert (status == 0);
 	txn_callbacks.txn_start (this);
 }
@@ -78,13 +78,19 @@ void nano::read_mdb_txn::renew ()
 	txn_callbacks.txn_start (this);
 }
 
+void nano::read_mdb_txn::refresh ()
+{
+	reset ();
+	renew ();
+}
+
 void * nano::read_mdb_txn::get_handle () const
 {
 	return handle;
 }
 
-nano::write_mdb_txn::write_mdb_txn (nano::mdb_env const & environment_a, nano::mdb_txn_callbacks txn_callbacks_a) :
-	env (environment_a),
+nano::write_mdb_txn::write_mdb_txn (MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
+	env (env_a),
 	txn_callbacks (txn_callbacks_a)
 {
 	renew ();
@@ -116,6 +122,12 @@ void nano::write_mdb_txn::renew ()
 	txn_callbacks.txn_start (this);
 	active = true;
 }
+
+void nano::write_mdb_txn::refresh () {
+	commit();
+	renew();
+}
+
 
 void * nano::write_mdb_txn::get_handle () const
 {
@@ -210,18 +222,18 @@ void nano::mdb_txn_tracker::log_if_held_long_enough (nano::mdb_txn_stats const &
 	}
 }
 
-void nano::mdb_txn_tracker::add (nano::transaction_impl const * transaction_impl)
+void nano::mdb_txn_tracker::add (nano::transaction const * transaction)
 {
 	nano::lock_guard<nano::mutex> guard (mutex);
-	debug_assert (std::find_if (stats.cbegin (), stats.cend (), matches_txn (transaction_impl)) == stats.cend ());
-	stats.emplace_back (transaction_impl);
+	debug_assert (std::find_if (stats.cbegin (), stats.cend (), matches_txn (transaction)) == stats.cend ());
+	stats.emplace_back (transaction);
 }
 
 /** Can be called without error if transaction does not exist */
-void nano::mdb_txn_tracker::erase (nano::transaction_impl const * transaction_impl)
+void nano::mdb_txn_tracker::erase (nano::transaction const * transaction)
 {
 	nano::unique_lock<nano::mutex> lk (mutex);
-	auto it = std::find_if (stats.begin (), stats.end (), matches_txn (transaction_impl));
+	auto it = std::find_if (stats.begin (), stats.end (), matches_txn (transaction));
 	if (it != stats.end ())
 	{
 		auto tracker_stats_copy = *it;
@@ -231,8 +243,8 @@ void nano::mdb_txn_tracker::erase (nano::transaction_impl const * transaction_im
 	}
 }
 
-nano::mdb_txn_stats::mdb_txn_stats (nano::transaction_impl const * transaction_impl) :
-	transaction_impl (transaction_impl),
+nano::mdb_txn_stats::mdb_txn_stats (nano::transaction const * transaction_a) :
+	transaction (transaction_a),
 	thread_name (nano::thread_role::get_string ()),
 	stacktrace (std::make_shared<boost::stacktrace::stacktrace> ())
 {
@@ -241,5 +253,5 @@ nano::mdb_txn_stats::mdb_txn_stats (nano::transaction_impl const * transaction_i
 
 bool nano::mdb_txn_stats::is_write () const
 {
-	return (dynamic_cast<nano::write_transaction_impl const *> (transaction_impl) != nullptr);
+	return (dynamic_cast<nano::write_mdb_txn const *> (transaction) != nullptr);
 }

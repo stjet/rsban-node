@@ -33,7 +33,7 @@ TEST (request_aggregator, one)
 	ASSERT_TIMELY (3s, node.aggregator.empty ());
 	// Not yet in the ledger
 	ASSERT_TIMELY (3s, 1 == node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_unknown));
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send1).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *send1).code);
 	node.aggregator.add (channel, request);
 	ASSERT_EQ (1, node.aggregator.size ());
 	// In the ledger but no vote generated yet
@@ -70,9 +70,9 @@ TEST (request_aggregator, one_update)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send1).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *send1).code);
 	node.confirmation_height_processor.add (send1);
-	ASSERT_TIMELY (5s, node.ledger.block_confirmed (node.store.tx_begin_read (), send1->hash ()));
+	ASSERT_TIMELY (5s, node.ledger.block_confirmed (*node.store.tx_begin_read (), send1->hash ()));
 	auto send2 = nano::state_block_builder ()
 				 .account (nano::dev::genesis_key.pub)
 				 .previous (send1->hash ())
@@ -82,7 +82,7 @@ TEST (request_aggregator, one_update)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node.work_generate_blocking (send1->hash ()))
 				 .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send2).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *send2).code);
 	auto receive1 = nano::state_block_builder ()
 					.account (key1.pub)
 					.previous (0)
@@ -92,7 +92,7 @@ TEST (request_aggregator, one_update)
 					.sign (key1.prv, key1.pub)
 					.work (*node.work_generate_blocking (key1.pub))
 					.build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *receive1).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *receive1).code);
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send2->hash (), send2->root ());
 	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
@@ -135,9 +135,9 @@ TEST (request_aggregator, two)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send1).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *send1).code);
 	node.confirmation_height_processor.add (send1);
-	ASSERT_TIMELY (5s, node.ledger.block_confirmed (node.store.tx_begin_read (), send1->hash ()));
+	ASSERT_TIMELY (5s, node.ledger.block_confirmed (*node.store.tx_begin_read (), send1->hash ()));
 	auto send2 = builder.make_block ()
 				 .account (nano::dev::genesis_key.pub)
 				 .previous (send1->hash ())
@@ -156,8 +156,8 @@ TEST (request_aggregator, two)
 					.sign (key1.prv, key1.pub)
 					.work (*node.work_generate_blocking (key1.pub))
 					.build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send2).code);
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *receive1).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *send2).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *receive1).code);
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send2->hash (), send2->root ());
 	request.emplace_back (receive1->hash (), receive1->root ());
@@ -214,7 +214,7 @@ TEST (request_aggregator, two_endpoints)
 				 .build_shared ();
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send1->hash (), send1->root ());
-	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (node1.store.tx_begin_write (), *send1).code);
+	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*node1.store.tx_begin_write (), *send1).code);
 	auto channel1 (node1.network->udp_channels.create (node1.network->endpoint ()));
 	auto channel2 (node2.network->udp_channels.create (node2.network->endpoint ()));
 	ASSERT_NE (nano::transport::map_endpoint_to_v6 (channel1->get_endpoint ()), nano::transport::map_endpoint_to_v6 (channel2->get_endpoint ()));
@@ -261,7 +261,7 @@ TEST (request_aggregator, split)
 						  .build ());
 		auto const & block = blocks.back ();
 		previous = block->hash ();
-		ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *block).code);
+		ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *block).code);
 		request.emplace_back (block->hash (), block->root ());
 	}
 	// Confirm all blocks
@@ -306,7 +306,7 @@ TEST (request_aggregator, channel_lifetime)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send1).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *send1).code);
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send1->hash (), send1->root ());
 	{
@@ -336,7 +336,7 @@ TEST (request_aggregator, channel_update)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send1).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *send1).code);
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send1->hash (), send1->root ());
 	std::weak_ptr<nano::transport::channel> channel1_w;
@@ -374,7 +374,7 @@ TEST (request_aggregator, channel_max_queue)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send1).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *send1).code);
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send1->hash (), send1->root ());
 	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
@@ -401,7 +401,7 @@ TEST (request_aggregator, unique)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node.ledger.process (node.store.tx_begin_write (), *send1).code);
+	ASSERT_EQ (nano::process_result::progress, node.ledger.process (*node.store.tx_begin_write (), *send1).code);
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send1->hash (), send1->root ());
 	auto channel (node.network->udp_channels.create (node.network->endpoint ()));
@@ -443,7 +443,7 @@ TEST (request_aggregator, cannot_vote)
 	ASSERT_EQ (nano::process_result::progress, node.process (*send1).code);
 	ASSERT_EQ (nano::process_result::progress, node.process (*send2).code);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	ASSERT_FALSE (node.ledger.dependents_confirmed (node.store.tx_begin_read (), *send2));
+	ASSERT_FALSE (node.ledger.dependents_confirmed (*node.store.tx_begin_read (), *send2));
 
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	// Correct hash, correct root
@@ -480,7 +480,7 @@ TEST (request_aggregator, cannot_vote)
 	auto election (node.active.election (send1->qualified_root ()));
 	ASSERT_NE (nullptr, election);
 	election->force_confirm ();
-	ASSERT_TIMELY (3s, node.ledger.dependents_confirmed (node.store.tx_begin_read (), *send2));
+	ASSERT_TIMELY (3s, node.ledger.dependents_confirmed (*node.store.tx_begin_read (), *send2));
 	node.aggregator.add (channel, request);
 	ASSERT_EQ (1, node.aggregator.size ());
 	ASSERT_TIMELY (3s, node.aggregator.empty ());

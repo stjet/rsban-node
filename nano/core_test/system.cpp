@@ -29,7 +29,7 @@ TEST (system, system_genesis)
 	for (auto & i : system.nodes)
 	{
 		auto transaction (i->store.tx_begin_read ());
-		ASSERT_EQ (nano::dev::constants.genesis_amount, i->ledger.account_balance (transaction, nano::dev::genesis->account ()));
+		ASSERT_EQ (nano::dev::constants.genesis_amount, i->ledger.account_balance (*transaction, nano::dev::genesis->account ()));
 	}
 }
 
@@ -44,7 +44,7 @@ TEST (system, DISABLED_generate_send_existing)
 	nano::account_info info1;
 	{
 		auto transaction (node1.store.tx_begin_read ());
-		ASSERT_FALSE (node1.store.account.get (transaction, nano::dev::genesis_key.pub, info1));
+		ASSERT_FALSE (node1.store.account.get (*transaction, nano::dev::genesis_key.pub, info1));
 	}
 	std::vector<nano::account> accounts;
 	accounts.push_back (nano::dev::genesis_key.pub);
@@ -62,13 +62,13 @@ TEST (system, DISABLED_generate_send_existing)
 						  .work (0)
 						  .build_shared ();
 		node1.work_generate_blocking (*open_block);
-		ASSERT_EQ (nano::process_result::progress, node1.ledger.process (transaction, *open_block).code);
+		ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*transaction, *open_block).code);
 	}
 	ASSERT_GT (node1.balance (stake_preserver.pub), node1.balance (nano::dev::genesis->account ()));
 	nano::account_info info2;
 	{
 		auto transaction (node1.store.tx_begin_read ());
-		ASSERT_FALSE (node1.store.account.get (transaction, nano::dev::genesis_key.pub, info2));
+		ASSERT_FALSE (node1.store.account.get (*transaction, nano::dev::genesis_key.pub, info2));
 	}
 	ASSERT_NE (info1.head, info2.head);
 	system.deadline_set (15s);
@@ -76,13 +76,13 @@ TEST (system, DISABLED_generate_send_existing)
 	{
 		ASSERT_NO_ERROR (system.poll ());
 		auto transaction (node1.store.tx_begin_read ());
-		ASSERT_FALSE (node1.store.account.get (transaction, nano::dev::genesis_key.pub, info2));
+		ASSERT_FALSE (node1.store.account.get (*transaction, nano::dev::genesis_key.pub, info2));
 	}
 	ASSERT_EQ (info1.block_count + 2, info2.block_count);
 	ASSERT_EQ (info2.balance, nano::dev::constants.genesis_amount / 3);
 	{
 		auto transaction (node1.store.tx_begin_read ());
-		ASSERT_NE (node1.ledger.amount (transaction, info2.head), 0);
+		ASSERT_NE (node1.ledger.amount (*transaction, info2.head), 0);
 	}
 	system.stop ();
 	runner.join ();
@@ -96,7 +96,7 @@ TEST (system, DISABLED_generate_send_new)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	{
 		auto transaction (node1.store.tx_begin_read ());
-		auto iterator1 (node1.store.account.begin (transaction));
+		auto iterator1 (node1.store.account.begin (*transaction));
 		ASSERT_NE (node1.store.account.end (), iterator1);
 		++iterator1;
 		ASSERT_EQ (node1.store.account.end (), iterator1);
@@ -115,7 +115,7 @@ TEST (system, DISABLED_generate_send_new)
 						  .work (0)
 						  .build_shared ();
 		node1.work_generate_blocking (*open_block);
-		ASSERT_EQ (nano::process_result::progress, node1.ledger.process (transaction, *open_block).code);
+		ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*transaction, *open_block).code);
 	}
 	ASSERT_GT (node1.balance (stake_preserver.pub), node1.balance (nano::dev::genesis->account ()));
 	std::vector<nano::account> accounts;
@@ -126,7 +126,7 @@ TEST (system, DISABLED_generate_send_new)
 	nano::account new_account{};
 	{
 		auto transaction (node1.wallets.tx_begin_read ());
-		auto iterator2 (system.wallet (0)->store.begin (transaction));
+		auto iterator2 (system.wallet (0)->store.begin (*transaction));
 		if (iterator2->first != nano::dev::genesis_key.pub)
 		{
 			new_account = iterator2->first;

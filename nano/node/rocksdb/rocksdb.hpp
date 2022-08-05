@@ -66,8 +66,8 @@ namespace rocksdb
 
 		explicit store (nano::logger_mt &, boost::filesystem::path const &, nano::ledger_constants & constants, nano::rocksdb_config const & = nano::rocksdb_config{}, bool open_read_only = false);
 
-		nano::write_transaction tx_begin_write (std::vector<nano::tables> const & tables_requiring_lock = {}, std::vector<nano::tables> const & tables_no_lock = {}) override;
-		nano::read_transaction tx_begin_read () const override;
+		std::unique_ptr<nano::write_transaction> tx_begin_write (std::vector<nano::tables> const & tables_requiring_lock = {}, std::vector<nano::tables> const & tables_no_lock = {}) override;
+		std::unique_ptr<nano::read_transaction> tx_begin_read () const override;
 
 		std::string vendor_get () const override;
 

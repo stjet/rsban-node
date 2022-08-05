@@ -116,7 +116,7 @@ rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flu
 			auto pull_start (lazy_pulls.front ());
 			lazy_pulls.pop_front ();
 			// Recheck if block was already processed
-			if (!lazy_blocks_processed (pull_start.first.as_block_hash ()) && !node->ledger.block_or_pruned_exists (transaction, pull_start.first.as_block_hash ()))
+			if (!lazy_blocks_processed (pull_start.first.as_block_hash ()) && !node->ledger.block_or_pruned_exists (*transaction, pull_start.first.as_block_hash ()))
 			{
 				rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 				node->bootstrap_initiator.connections->add_pull (nano::pull_info (pull_start.first, pull_start.first.as_block_hash (), nano::block_hash (0), get_incremental_id (), batch_count, pull_start.second));
@@ -129,7 +129,7 @@ rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flu
 			if (read_count % batch_read_size == 0)
 			{
 				rsnano::rsn_bootstrap_attempt_unlock (lock_a);
-				transaction.refresh ();
+				transaction->refresh ();
 				lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 			}
 		}
@@ -149,7 +149,7 @@ bool nano::bootstrap_attempt_lazy::lazy_finished ()
 	auto transaction (node->store.tx_begin_read ());
 	for (auto it (lazy_keys.begin ()), end (lazy_keys.end ()); it != end && !get_stopped ();)
 	{
-		if (node->ledger.block_or_pruned_exists (transaction, *it))
+		if (node->ledger.block_or_pruned_exists (*transaction, *it))
 		{
 			it = lazy_keys.erase (it);
 		}
@@ -163,7 +163,7 @@ bool nano::bootstrap_attempt_lazy::lazy_finished ()
 		++read_count;
 		if (read_count % batch_read_size == 0)
 		{
-			transaction.refresh ();
+			transaction->refresh ();
 		}
 	}
 	// Finish lazy bootstrap without lazy pulls (in combination with still_pulling ())
@@ -309,7 +309,7 @@ void nano::bootstrap_attempt_lazy::lazy_block_state (std::shared_ptr<nano::block
 		nano::uint128_t balance (block_l->balance ().number ());
 		auto const & link (block_l->link ());
 		// If link is not epoch link or 0. And if block from link is unknown
-		if (!link.is_zero () && !node->ledger.is_epoch_link (link) && !lazy_blocks_processed (link.as_block_hash ()) && !node->ledger.block_or_pruned_exists (transaction, link.as_block_hash ()))
+		if (!link.is_zero () && !node->ledger.is_epoch_link (link) && !lazy_blocks_processed (link.as_block_hash ()) && !node->ledger.block_or_pruned_exists (*transaction, link.as_block_hash ()))
 		{
 			auto const & previous (block_l->previous ());
 			// If state block previous is 0 then source block required
@@ -318,10 +318,10 @@ void nano::bootstrap_attempt_lazy::lazy_block_state (std::shared_ptr<nano::block
 				lazy_add (link, retry_limit);
 			}
 			// In other cases previous block balance required to find out subtype of state block
-			else if (node->ledger.block_or_pruned_exists (transaction, previous))
+			else if (node->ledger.block_or_pruned_exists (*transaction, previous))
 			{
 				bool error_or_pruned (false);
-				auto previous_balance (node->ledger.balance_safe (transaction, previous, error_or_pruned));
+				auto previous_balance (node->ledger.balance_safe (*transaction, previous, error_or_pruned));
 				if (!error_or_pruned)
 				{
 					if (previous_balance <= balance)
@@ -384,11 +384,11 @@ void nano::bootstrap_attempt_lazy::lazy_backlog_cleanup ()
 	auto transaction (node->store.tx_begin_read ());
 	for (auto it (lazy_state_backlog.begin ()), end (lazy_state_backlog.end ()); it != end && !get_stopped ();)
 	{
-		if (node->ledger.block_or_pruned_exists (transaction, it->first))
+		if (node->ledger.block_or_pruned_exists (*transaction, it->first))
 		{
 			auto next_block (it->second);
 			bool error_or_pruned (false);
-			auto balance (node->ledger.balance_safe (transaction, it->first, error_or_pruned));
+			auto balance (node->ledger.balance_safe (*transaction, it->first, error_or_pruned));
 			if (!error_or_pruned)
 			{
 				if (balance <= next_block.balance) // balance
@@ -411,7 +411,7 @@ void nano::bootstrap_attempt_lazy::lazy_backlog_cleanup ()
 		++read_count;
 		if (read_count % batch_read_size == 0)
 		{
-			transaction.refresh ();
+			transaction->refresh ();
 		}
 	}
 }

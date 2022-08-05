@@ -78,11 +78,11 @@ nano::lmdb::store::store (nano::logger_mt & logger_a, boost::filesystem::path co
 		auto is_fresh_db (false);
 		{
 			auto transaction (tx_begin_read ());
-			auto err = mdb_dbi_open (env.tx (transaction), "meta", 0, &block_store.meta_handle);
+			auto err = mdb_dbi_open (env.tx (*transaction), "meta", 0, &block_store.meta_handle);
 			is_fresh_db = err != MDB_SUCCESS;
 			if (err == MDB_SUCCESS)
 			{
-				is_fully_upgraded = (version.get (transaction) == version_current);
+				is_fully_upgraded = (version.get (*transaction) == version_current);
 				mdb_dbi_close (env, block_store.meta_handle);
 			}
 		}
@@ -103,10 +103,10 @@ nano::lmdb::store::store (nano::logger_mt & logger_a, boost::filesystem::path co
 			auto needs_vacuuming = false;
 			{
 				auto transaction (tx_begin_write ());
-				open_databases (error, transaction, MDB_CREATE);
+				open_databases (error, *transaction, MDB_CREATE);
 				if (!error)
 				{
-					error |= do_upgrades (transaction, constants, needs_vacuuming);
+					error |= do_upgrades (*transaction, constants, needs_vacuuming);
 				}
 			}
 
@@ -120,7 +120,7 @@ nano::lmdb::store::store (nano::logger_mt & logger_a, boost::filesystem::path co
 		else
 		{
 			auto transaction (tx_begin_read ());
-			open_databases (error, transaction, 0);
+			open_databases (error, *transaction, 0);
 		}
 	}
 }
@@ -149,7 +149,7 @@ bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & pa
 		if (!error)
 		{
 			auto transaction (tx_begin_read ());
-			open_databases (error, transaction, 0);
+			open_databases (error, *transaction, 0);
 		}
 	}
 	else
@@ -178,12 +178,12 @@ void nano::lmdb::store::serialize_memory_stats (boost::property_tree::ptree & js
 	json.put ("page_size", stats.ms_psize);
 }
 
-nano::write_transaction nano::lmdb::store::tx_begin_write (std::vector<nano::tables> const &, std::vector<nano::tables> const &)
+std::unique_ptr<nano::write_transaction> nano::lmdb::store::tx_begin_write (std::vector<nano::tables> const &, std::vector<nano::tables> const &)
 {
 	return env.tx_begin_write (create_txn_callbacks ());
 }
 
-nano::read_transaction nano::lmdb::store::tx_begin_read () const
+std::unique_ptr<nano::read_transaction> nano::lmdb::store::tx_begin_read () const
 {
 	return env.tx_begin_read (create_txn_callbacks ());
 }
@@ -198,11 +198,11 @@ nano::mdb_txn_callbacks nano::lmdb::store::create_txn_callbacks () const
 	nano::mdb_txn_callbacks mdb_txn_callbacks;
 	if (txn_tracking_enabled)
 	{
-		mdb_txn_callbacks.txn_start = ([&mdb_txn_tracker = mdb_txn_tracker] (nano::transaction_impl const * transaction_impl) {
-			mdb_txn_tracker.add (transaction_impl);
+		mdb_txn_callbacks.txn_start = ([&mdb_txn_tracker = mdb_txn_tracker] (nano::transaction const * tx) {
+			mdb_txn_tracker.add (tx);
 		});
-		mdb_txn_callbacks.txn_end = ([&mdb_txn_tracker = mdb_txn_tracker] (nano::transaction_impl const * transaction_impl) {
-			mdb_txn_tracker.erase (transaction_impl);
+		mdb_txn_callbacks.txn_end = ([&mdb_txn_tracker = mdb_txn_tracker] (nano::transaction const * tx) {
+			mdb_txn_tracker.erase (tx);
 		});
 	}
 	return mdb_txn_callbacks;

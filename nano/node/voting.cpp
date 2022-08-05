@@ -135,15 +135,15 @@ void nano::vote_generator::add (nano::root const & root_a, nano::block_hash cons
 		if (is_final)
 		{
 			auto transaction (ledger.store.tx_begin_write ({ tables::final_votes }));
-			auto block (ledger.store.block.get (transaction, hash_a));
-			should_vote = block != nullptr && ledger.dependents_confirmed (transaction, *block) && ledger.store.final_vote.put (transaction, block->qualified_root (), hash_a);
+			auto block (ledger.store.block.get (*transaction, hash_a));
+			should_vote = block != nullptr && ledger.dependents_confirmed (*transaction, *block) && ledger.store.final_vote.put (*transaction, block->qualified_root (), hash_a);
 			debug_assert (block == nullptr || root_a == block->root ());
 		}
 		else
 		{
 			auto transaction (ledger.store.tx_begin_read ());
-			auto block (ledger.store.block.get (transaction, hash_a));
-			should_vote = block != nullptr && ledger.dependents_confirmed (transaction, *block);
+			auto block (ledger.store.block.get (*transaction, hash_a));
+			should_vote = block != nullptr && ledger.dependents_confirmed (*transaction, *block);
 		}
 		if (should_vote)
 		{
@@ -178,7 +178,7 @@ std::size_t nano::vote_generator::generate (std::vector<std::shared_ptr<nano::bl
 	{
 		auto transaction (ledger.store.tx_begin_read ());
 		auto dependents_confirmed = [&transaction, this] (auto const & block_a) {
-			return this->ledger.dependents_confirmed (transaction, *block_a);
+			return this->ledger.dependents_confirmed (*transaction, *block_a);
 		};
 		auto as_candidate = [] (auto const & block_a) {
 			return candidate_t{ block_a->root (), block_a->hash () };

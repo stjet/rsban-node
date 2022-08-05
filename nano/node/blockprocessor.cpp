@@ -10,7 +10,7 @@
 
 std::chrono::milliseconds constexpr nano::block_processor::confirmation_request_delay;
 
-nano::block_post_events::block_post_events (std::function<nano::read_transaction ()> && get_transaction_a) :
+nano::block_post_events::block_post_events (std::function<std::unique_ptr<nano::read_transaction> ()> && get_transaction_a) :
 	get_transaction (std::move (get_transaction_a))
 {
 }
@@ -21,7 +21,7 @@ nano::block_post_events::~block_post_events ()
 	auto transaction (get_transaction ());
 	for (auto const & i : events)
 	{
-		i (transaction);
+		i (*transaction);
 	}
 }
 
@@ -292,7 +292,7 @@ void nano::block_processor::process_batch (nano::unique_lock<nano::mutex> & lock
 		lock_a.unlock ();
 		if (force)
 		{
-			auto successor (ledger.successor (transaction, info.get_block ()->qualified_root ()));
+			auto successor (ledger.successor (*transaction, info.get_block ()->qualified_root ()));
 			if (successor != nullptr && successor->hash () != hash)
 			{
 				// Replace our block with the winner and roll back any dependent blocks
@@ -301,7 +301,7 @@ void nano::block_processor::process_batch (nano::unique_lock<nano::mutex> & lock
 					logger.always_log (boost::str (boost::format ("Rolling back %1% and replacing with %2%") % successor->hash ().to_string () % hash.to_string ()));
 				}
 				std::vector<std::shared_ptr<nano::block>> rollback_list;
-				if (ledger.rollback (transaction, successor->hash (), rollback_list))
+				if (ledger.rollback (*transaction, successor->hash (), rollback_list))
 				{
 					stats.inc (nano::stat::type::ledger, nano::stat::detail::rollback_failed);
 					logger.always_log (nano::severity_level::error, boost::str (boost::format ("Failed to roll back %1% because it or a successor was confirmed") % successor->hash ().to_string ()));
@@ -323,7 +323,7 @@ void nano::block_processor::process_batch (nano::unique_lock<nano::mutex> & lock
 			}
 		}
 		number_of_blocks_processed++;
-		process_one (transaction, post_events, info, force);
+		process_one (*transaction, post_events, info, force);
 		lock_a.lock ();
 	}
 	awaiting_write = false;

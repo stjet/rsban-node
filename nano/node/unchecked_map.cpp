@@ -176,7 +176,7 @@ void nano::unchecked_map::item_visitor::operator() (query const & item)
 void nano::unchecked_map::write_buffer (decltype (buffer) const & back_buffer)
 {
 	auto transaction = store.tx_begin_write ();
-	item_visitor visitor{ *this, transaction };
+	item_visitor visitor{ *this, *transaction };
 	for (auto const & item : back_buffer)
 	{
 		boost::apply_visitor (visitor, item);

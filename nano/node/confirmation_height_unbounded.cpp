@@ -69,7 +69,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		}
 		else
 		{
-			block = get_block_and_sideband (current, read_transaction);
+			block = get_block_and_sideband (current, *read_transaction);
 		}
 		if (!block)
 		{
@@ -95,7 +95,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		else
 		{
 			nano::confirmation_height_info confirmation_height_info;
-			ledger.store.confirmation_height.get (read_transaction, account, confirmation_height_info);
+			ledger.store.confirmation_height.get (*read_transaction, account, confirmation_height_info);
 			confirmation_height = confirmation_height_info.height;
 
 			// This block was added to the confirmation height processor but is already confirmed
@@ -116,7 +116,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		auto already_traversed = iterated_height >= block_height;
 		if (!already_traversed)
 		{
-			collect_unconfirmed_receive_and_sources_for_account (block_height, iterated_height, block, current, account, read_transaction, receive_source_pairs, block_callback_datas_required, orig_block_callback_data, original_block);
+			collect_unconfirmed_receive_and_sources_for_account (block_height, iterated_height, block, current, account, *read_transaction, receive_source_pairs, block_callback_datas_required, orig_block_callback_data, original_block);
 		}
 
 		// Exit early when the processor has been stopped, otherwise this function may take a
@@ -127,7 +127,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		}
 
 		// No longer need the read transaction
-		read_transaction.reset ();
+		read_transaction->reset ();
 
 		// If this adds no more open or receive blocks, then we can now confirm this account as well as the linked open/receive block
 		// Collect as pending any writes to the database and do them in bulk after a certain time.
@@ -185,7 +185,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		}
 
 		first_iter = false;
-		read_transaction.renew ();
+		read_transaction->renew ();
 	} while ((!receive_source_pairs.empty () || current != original_block->hash ()) && !stopped);
 }
 
@@ -376,17 +376,17 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 		{
 			auto & pending = pending_writes.front ();
 			nano::confirmation_height_info confirmation_height_info;
-			ledger.store.confirmation_height.get (transaction, pending.account, confirmation_height_info);
+			ledger.store.confirmation_height.get (*transaction, pending.account, confirmation_height_info);
 			auto confirmation_height = confirmation_height_info.height;
 			if (pending.height > confirmation_height)
 			{
-				auto block = ledger.store.block.get (transaction, pending.hash);
+				auto block = ledger.store.block.get (*transaction, pending.hash);
 				debug_assert (ledger.pruning || block != nullptr);
 				debug_assert (ledger.pruning || block->sideband ().height () == pending.height);
 
 				if (!block)
 				{
-					if (ledger.pruning && ledger.store.pruned.exists (transaction, pending.hash))
+					if (ledger.pruning && ledger.store.pruned.exists (*transaction, pending.hash))
 					{
 						pending_writes.erase (pending_writes.begin ());
 						--pending_writes_size;
@@ -406,7 +406,7 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 				debug_assert (pending.num_blocks_confirmed == pending.height - confirmation_height);
 				confirmation_height = pending.height;
 				ledger.cache.cemented_count += pending.num_blocks_confirmed;
-				ledger.store.confirmation_height.put (transaction, pending.account, { confirmation_height, pending.hash });
+				ledger.store.confirmation_height.put (*transaction, pending.account, { confirmation_height, pending.hash });
 
 				// Reverse it so that the callbacks start from the lowest newly cemented block and move upwards
 				std::reverse (pending.block_callback_data.begin (), pending.block_callback_data.end ());

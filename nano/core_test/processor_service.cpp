@@ -15,10 +15,10 @@ TEST (processor_service, bad_send_signature)
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
 	auto transaction (store->tx_begin_write ());
-	store->initialize (transaction, ledger.cache, ledger.constants);
+	store->initialize (*transaction, ledger.cache, ledger.constants);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
 	nano::account_info info1;
-	ASSERT_FALSE (store->account.get (transaction, nano::dev::genesis_key.pub, info1));
+	ASSERT_FALSE (store->account.get (*transaction, nano::dev::genesis_key.pub, info1));
 	nano::keypair key2;
 	nano::block_builder builder;
 	auto send = builder
@@ -32,7 +32,7 @@ TEST (processor_service, bad_send_signature)
 	nano::signature sig{ send->block_signature () };
 	sig.bytes[32] ^= 0x1;
 	send->signature_set (sig);
-	ASSERT_EQ (nano::process_result::bad_signature, ledger.process (transaction, *send).code);
+	ASSERT_EQ (nano::process_result::bad_signature, ledger.process (*transaction, *send).code);
 }
 
 TEST (processor_service, bad_receive_signature)
@@ -43,10 +43,10 @@ TEST (processor_service, bad_receive_signature)
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
 	auto transaction (store->tx_begin_write ());
-	store->initialize (transaction, ledger.cache, ledger.constants);
+	store->initialize (*transaction, ledger.cache, ledger.constants);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
 	nano::account_info info1;
-	ASSERT_FALSE (store->account.get (transaction, nano::dev::genesis_key.pub, info1));
+	ASSERT_FALSE (store->account.get (*transaction, nano::dev::genesis_key.pub, info1));
 	nano::block_builder builder;
 	auto send = builder
 				.send ()
@@ -57,9 +57,9 @@ TEST (processor_service, bad_receive_signature)
 				.work (*pool.generate (info1.head))
 				.build ();
 	nano::block_hash hash1 (send->hash ());
-	ASSERT_EQ (nano::process_result::progress, ledger.process (transaction, *send).code);
+	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send).code);
 	nano::account_info info2;
-	ASSERT_FALSE (store->account.get (transaction, nano::dev::genesis_key.pub, info2));
+	ASSERT_FALSE (store->account.get (*transaction, nano::dev::genesis_key.pub, info2));
 	auto receive = builder
 				   .receive ()
 				   .previous (hash1)
@@ -70,5 +70,5 @@ TEST (processor_service, bad_receive_signature)
 	auto new_sig{ receive->block_signature () };
 	new_sig.bytes[32] ^= 0x1;
 	receive->signature_set (new_sig);
-	ASSERT_EQ (nano::process_result::bad_signature, ledger.process (transaction, *receive).code);
+	ASSERT_EQ (nano::process_result::bad_signature, ledger.process (*transaction, *receive).code);
 }

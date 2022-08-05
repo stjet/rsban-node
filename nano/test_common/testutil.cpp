@@ -26,7 +26,7 @@ void nano::wait_peer_connections (nano::system & system_a)
 				else
 				{
 					auto transaction = node->store.tx_begin_read ();
-					return total += node->store.peer.count (transaction);
+					return total += node->store.peer.count (*transaction);
 				}
 			});
 		}

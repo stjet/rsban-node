@@ -157,7 +157,7 @@ std::vector<std::shared_ptr<nano::transport::channel>> nano::rep_crawler::get_cr
 void nano::rep_crawler::query (std::vector<std::shared_ptr<nano::transport::channel>> const & channels_a)
 {
 	auto transaction (node.store.tx_begin_read ());
-	auto hash_root (node.ledger.hash_root_random (transaction));
+	auto hash_root (node.ledger.hash_root_random (*transaction));
 	{
 		nano::lock_guard<nano::mutex> lock (active_mutex);
 		// Don't send same block multiple times in tests
@@ -165,7 +165,7 @@ void nano::rep_crawler::query (std::vector<std::shared_ptr<nano::transport::chan
 		{
 			for (auto i (0); active.count (hash_root.first) != 0 && i < 4; ++i)
 			{
-				hash_root = node.ledger.hash_root_random (transaction);
+				hash_root = node.ledger.hash_root_random (*transaction);
 			}
 		}
 		active.insert (hash_root.first);

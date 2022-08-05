@@ -554,28 +554,6 @@ enum class tables
 	vote
 };
 
-class transaction_impl
-{
-public:
-	virtual ~transaction_impl () = default;
-	virtual void * get_handle () const = 0;
-};
-
-class read_transaction_impl : public transaction_impl
-{
-public:
-	virtual void reset () = 0;
-	virtual void renew () = 0;
-};
-
-class write_transaction_impl : public transaction_impl
-{
-public:
-	virtual void commit () = 0;
-	virtual void renew () = 0;
-	virtual bool contains (nano::tables table_a) const = 0;
-};
-
 class transaction
 {
 public:
@@ -587,35 +565,25 @@ public:
  * RAII wrapper of a read MDB_txn where the constructor starts the transaction
  * and the destructor aborts it.
  */
-class read_transaction final : public transaction
+class read_transaction : public transaction
 {
 public:
-	explicit read_transaction (std::unique_ptr<nano::read_transaction_impl> read_transaction_impl);
-	void * get_handle () const override;
-	void reset () const;
-	void renew () const;
-	void refresh () const;
-
-private:
-	std::unique_ptr<nano::read_transaction_impl> impl;
+	virtual void reset () = 0;
+	virtual void renew () = 0;
+	virtual void refresh () = 0;
 };
 
 /**
  * RAII wrapper of a read-write MDB_txn where the constructor starts the transaction
  * and the destructor commits it.
  */
-class write_transaction final : public transaction
+class write_transaction : public transaction
 {
 public:
-	explicit write_transaction (std::unique_ptr<nano::write_transaction_impl> write_transaction_impl);
-	void * get_handle () const override;
-	void commit ();
-	void renew ();
-	void refresh ();
-	bool contains (nano::tables table_a) const;
-
-private:
-	std::unique_ptr<nano::write_transaction_impl> impl;
+	virtual void commit () = 0;
+	virtual void renew () = 0;
+	virtual void refresh () = 0;
+	virtual bool contains (nano::tables table_a) const = 0;
 };
 
 class ledger_cache;
@@ -883,10 +851,10 @@ public:
 	virtual bool init_error () const = 0;
 
 	/** Start read-write transaction */
-	virtual nano::write_transaction tx_begin_write (std::vector<nano::tables> const & tables_to_lock = {}, std::vector<nano::tables> const & tables_no_lock = {}) = 0;
+	virtual std::unique_ptr<nano::write_transaction> tx_begin_write (std::vector<nano::tables> const & tables_to_lock = {}, std::vector<nano::tables> const & tables_no_lock = {}) = 0;
 
 	/** Start read-only transaction */
-	virtual nano::read_transaction tx_begin_read () const = 0;
+	virtual std::unique_ptr<nano::read_transaction> tx_begin_read () const = 0;
 
 	virtual std::string vendor_get () const = 0;
 

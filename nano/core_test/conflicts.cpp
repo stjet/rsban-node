@@ -25,7 +25,7 @@ TEST (conflicts, start_stop)
 	node1.work_generate_blocking (*send1);
 	ASSERT_EQ (nano::process_result::progress, node1.process (*send1).code);
 	ASSERT_EQ (0, node1.active.size ());
-	node1.scheduler.activate (nano::dev::genesis_key.pub, node1.store.tx_begin_read ());
+	node1.scheduler.activate (nano::dev::genesis_key.pub, *node1.store.tx_begin_read ());
 	node1.scheduler.flush ();
 	auto election1 = node1.active.election (send1->qualified_root ());
 	ASSERT_EQ (1, node1.active.size ());
@@ -49,7 +49,7 @@ TEST (conflicts, add_existing)
 				 .build_shared ();
 	node1.work_generate_blocking (*send1);
 	ASSERT_EQ (nano::process_result::progress, node1.process (*send1).code);
-	node1.scheduler.activate (nano::dev::genesis_key.pub, node1.store.tx_begin_read ());
+	node1.scheduler.activate (nano::dev::genesis_key.pub, *node1.store.tx_begin_read ());
 	nano::keypair key2;
 	auto send2 = builder
 				 .send ()
@@ -147,7 +147,7 @@ TEST (conflicts, add_two)
 
 	// activate elections for the previous two send blocks (to account3) that we did not forcefully confirm
 	//
-	node->scheduler.activate (account3.pub, node->store.tx_begin_read ());
+	node->scheduler.activate (account3.pub, *node->store.tx_begin_read ());
 	ASSERT_TIMELY (5s, node->active.election ((*send3)->qualified_root ()) != nullptr);
 	ASSERT_TIMELY (5s, node->active.election ((*send4)->qualified_root ()) != nullptr);
 

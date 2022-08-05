@@ -23,13 +23,9 @@ impl VoteSpacing {
     }
 
     pub fn votable(&self, root: &Root, hash: &BlockHash) -> bool {
-        for item in self.recent.by_root(root) {
-            if *hash != item.hash && item.time.elapsed() < self.delay {
-                return false;
-            }
-        }
-
-        true
+        self.recent
+            .by_root(root)
+            .all(|item| *hash == item.hash || item.time.elapsed() >= self.delay)
     }
 
     pub fn flag(&mut self, root: &Root, hash: &BlockHash) {
@@ -63,7 +59,7 @@ struct Entry {
 struct EntryContainer {
     entries: HashMap<usize, Entry>,
     by_root: HashMap<Root, HashSet<usize>>,
-    by_time: BTreeMap<Instant, HashSet<usize>>,
+    by_time: BTreeMap<Instant, Vec<usize>>,
     next_id: usize,
     empty_id_set: HashSet<usize>,
 }
@@ -74,16 +70,21 @@ impl EntryContainer {
     }
 
     pub fn insert(&mut self, entry: Entry) {
-        let id = self.next_id;
-        self.next_id += 1;
+        let id = self.create_id();
 
         let by_root = self.by_root.entry(entry.root).or_default();
         by_root.insert(id);
 
         let by_time = self.by_time.entry(entry.time).or_default();
-        by_time.insert(id);
+        by_time.push(id);
 
         self.entries.insert(id, entry);
+    }
+
+    fn create_id(&mut self) -> usize {
+        let id = self.next_id;
+        self.next_id = self.next_id.wrapping_add(1);
+        id
     }
 
     pub fn by_root(&self, root: &Root) -> impl Iterator<Item = &Entry> + '_ {
@@ -122,19 +123,7 @@ impl EntryContainer {
     fn change_time_for_root(&mut self, root: &Root, time: Instant) -> bool {
         match self.by_root.get(root) {
             Some(ids) => {
-                for id in ids {
-                    if let Some(entry) = self.entries.get_mut(id) {
-                        let old_time = entry.time;
-                        entry.time = time;
-                        if let Some(time_ids) = self.by_time.get_mut(&old_time) {
-                            time_ids.remove(id);
-                            if time_ids.is_empty() {
-                                self.by_time.remove(&old_time);
-                            }
-                        }
-                        self.by_time.entry(time).or_default().insert(*id);
-                    }
-                }
+                change_time_for_entries(ids, time, &mut self.entries, &mut self.by_time);
                 true
             }
             None => false,
@@ -146,6 +135,45 @@ impl EntryContainer {
     }
 }
 
+fn change_time_for_entries(
+    ids: &HashSet<usize>,
+    time: Instant,
+    entries: &mut HashMap<usize, Entry>,
+    by_time: &mut BTreeMap<Instant, Vec<usize>>,
+) {
+    for id in ids {
+        change_time_for_entry(id, time, entries, by_time);
+    }
+}
+
+fn change_time_for_entry(
+    id: &usize,
+    time: Instant,
+    entries: &mut HashMap<usize, Entry>,
+    by_time: &mut BTreeMap<Instant, Vec<usize>>,
+) {
+    if let Some(entry) = entries.get_mut(id) {
+        let old_time = entry.time;
+        entry.time = time;
+        remove_from_time_index(old_time, id, by_time);
+        by_time.entry(time).or_default().push(*id);
+    }
+}
+
+fn remove_from_time_index(
+    time: Instant,
+    id: &usize,
+    ids_by_time: &mut BTreeMap<Instant, Vec<usize>>,
+) {
+    if let Some(ids) = ids_by_time.get_mut(&time) {
+        if ids.len() == 1 {
+            ids_by_time.remove(&time);
+        } else {
+            ids.retain(|x| x != id);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use mock_instant::MockClock;
@@ -153,16 +181,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn basic() {
+    fn empty() {
+        let spacing = VoteSpacing::new(Duration::from_millis(100));
+        assert_eq!(spacing.len(), 0);
+        assert_eq!(spacing.votable(&Root::from(1), &BlockHash::from(2)), true);
+    }
+
+    #[test]
+    fn flag() {
         let mut spacing = VoteSpacing::new(Duration::from_millis(100));
         let root1 = Root::from(1);
         let root2 = Root::from(2);
         let hash1 = BlockHash::from(3);
         let hash2 = BlockHash::from(4);
         let hash3 = BlockHash::from(5);
-
-        assert_eq!(spacing.len(), 0);
-        assert_eq!(spacing.votable(&root1, &hash1), true);
 
         spacing.flag(&root1, &hash1);
         assert_eq!(spacing.len(), 1);

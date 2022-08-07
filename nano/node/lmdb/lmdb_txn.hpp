@@ -30,7 +30,7 @@ public:
 	read_mdb_txn (MDB_env * env_a, mdb_txn_callbacks mdb_txn_callbacks);
 	read_mdb_txn (read_mdb_txn const &) = delete;
 	read_mdb_txn (read_mdb_txn &&) = delete;
-	~read_mdb_txn ();
+	~read_mdb_txn () override;
 	void reset () override;
 	void renew () override;
 	void refresh () override;
@@ -45,7 +45,7 @@ public:
 	write_mdb_txn (MDB_env * env_a, mdb_txn_callbacks mdb_txn_callbacks);
 	write_mdb_txn (write_mdb_txn const &) = delete;
 	write_mdb_txn (write_mdb_txn &&) = delete;
-	~write_mdb_txn ();
+	~write_mdb_txn () override;
 	void commit () override;
 	void renew () override;
 	void refresh () override;

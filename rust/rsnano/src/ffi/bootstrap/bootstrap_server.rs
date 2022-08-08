@@ -9,8 +9,8 @@ use crate::{
         messages::{FfiMessageVisitor, MessageHandle},
         network::{EndpointDto, SocketHandle},
         thread_pool::FfiThreadPool,
-        DestroyCallback, LoggerHandle, LoggerMT, NetworkFilterHandle, NetworkParamsDto,
-        NodeConfigDto, StatHandle,
+        LoggerHandle, LoggerMT, NetworkFilterHandle, NetworkParamsDto, NodeConfigDto, StatHandle,
+        VoidPointerCallback,
     },
     network::SocketType,
     Account, NetworkParams, NodeConfig,
@@ -296,14 +296,14 @@ type BootstrapServerExitedCallback =
 type BootstrapServerBootstrapCountCallback = unsafe extern "C" fn(*mut c_void) -> usize;
 type BootstrapServerIncBootstrapCountCallback = unsafe extern "C" fn(*mut c_void);
 
-static mut DESTROY_OBSERVER_CALLBACK: Option<DestroyCallback> = None;
+static mut DESTROY_OBSERVER_CALLBACK: Option<VoidPointerCallback> = None;
 static mut TIMEOUT_CALLBACK: Option<BootstrapServerTimeoutCallback> = None;
 static mut EXITED_CALLBACK: Option<BootstrapServerExitedCallback> = None;
 static mut BOOTSTRAP_COUNT_CALLBACK: Option<BootstrapServerBootstrapCountCallback> = None;
 static mut INC_BOOTSTRAP_COUNT_CALLBACK: Option<BootstrapServerIncBootstrapCountCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_observer_destroy(f: DestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_bootstrap_observer_destroy(f: VoidPointerCallback) {
     DESTROY_OBSERVER_CALLBACK = Some(f);
 }
 
@@ -386,10 +386,12 @@ impl BootstrapServerObserver for FfiBootstrapServerObserver {
     }
 }
 
-static mut DESTROY_VISITOR_FACTORY: Option<DestroyCallback> = None;
+static mut DESTROY_VISITOR_FACTORY: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(f: DestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(
+    f: VoidPointerCallback,
+) {
     DESTROY_VISITOR_FACTORY = Some(f);
 }
 

@@ -34,27 +34,29 @@ namespace
 class matches_txn final
 {
 public:
-	explicit matches_txn (nano::transaction const * tx_a) :
-		tx (tx_a)
+	explicit matches_txn (uint64_t txn_id_a) :
+		txn_id (txn_id_a)
 	{
 	}
 
 	bool operator() (nano::mdb_txn_stats const & mdb_txn_stats)
 	{
-		return (mdb_txn_stats.transaction == tx);
+		return mdb_txn_stats.txn_id == txn_id;
 	}
 
 private:
-	nano::transaction const * tx;
+	uint64_t txn_id;
 };
 }
 
-nano::read_mdb_txn::read_mdb_txn (MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
-	txn_callbacks (txn_callbacks_a)
+nano::read_mdb_txn::read_mdb_txn (uint64_t txn_id_a, MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
+	txn_callbacks (txn_callbacks_a),
+	txn_id{ txn_id_a },
+	txn_handle{ rsnano::rsn_lmdb_read_txn_create (txn_id_a, new nano::mdb_txn_callbacks{ txn_callbacks_a }) }
 {
 	auto status (mdb_txn_begin (env_a, nullptr, MDB_RDONLY, &handle));
 	release_assert (status == 0);
-	txn_callbacks.txn_start (this);
+	txn_callbacks.txn_start (txn_id, false);
 }
 
 nano::read_mdb_txn::~read_mdb_txn ()
@@ -62,20 +64,21 @@ nano::read_mdb_txn::~read_mdb_txn ()
 	// This uses commit rather than abort, as it is needed when opening databases with a read only transaction
 	auto status (mdb_txn_commit (handle));
 	release_assert (status == MDB_SUCCESS);
-	txn_callbacks.txn_end (this);
+	txn_callbacks.txn_end (txn_id);
+	rsnano::rsn_lmdb_read_txn_destroy (txn_handle);
 }
 
 void nano::read_mdb_txn::reset ()
 {
 	mdb_txn_reset (handle);
-	txn_callbacks.txn_end (this);
+	txn_callbacks.txn_end (txn_id);
 }
 
 void nano::read_mdb_txn::renew ()
 {
 	auto status (mdb_txn_renew (handle));
 	release_assert (status == 0);
-	txn_callbacks.txn_start (this);
+	txn_callbacks.txn_start (txn_id, false);
 }
 
 void nano::read_mdb_txn::refresh ()
@@ -89,7 +92,8 @@ void * nano::read_mdb_txn::get_handle () const
 	return handle;
 }
 
-nano::write_mdb_txn::write_mdb_txn (MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
+nano::write_mdb_txn::write_mdb_txn (uint64_t txn_id_a, MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
+	txn_id{ txn_id_a },
 	env (env_a),
 	txn_callbacks (txn_callbacks_a)
 {
@@ -110,7 +114,7 @@ void nano::write_mdb_txn::commit ()
 		{
 			release_assert (false && "Unable to write to the LMDB database", mdb_strerror (status));
 		}
-		txn_callbacks.txn_end (this);
+		txn_callbacks.txn_end (txn_id);
 		active = false;
 	}
 }
@@ -119,15 +123,15 @@ void nano::write_mdb_txn::renew ()
 {
 	auto status (mdb_txn_begin (env, nullptr, 0, &handle));
 	release_assert (status == MDB_SUCCESS, mdb_strerror (status));
-	txn_callbacks.txn_start (this);
+	txn_callbacks.txn_start (txn_id, true);
 	active = true;
 }
 
-void nano::write_mdb_txn::refresh () {
-	commit();
-	renew();
+void nano::write_mdb_txn::refresh ()
+{
+	commit ();
+	renew ();
 }
-
 
 void * nano::write_mdb_txn::get_handle () const
 {
@@ -222,18 +226,18 @@ void nano::mdb_txn_tracker::log_if_held_long_enough (nano::mdb_txn_stats const &
 	}
 }
 
-void nano::mdb_txn_tracker::add (nano::transaction const * transaction)
+void nano::mdb_txn_tracker::add (uint64_t txn_id, bool is_write)
 {
 	nano::lock_guard<nano::mutex> guard (mutex);
-	debug_assert (std::find_if (stats.cbegin (), stats.cend (), matches_txn (transaction)) == stats.cend ());
-	stats.emplace_back (transaction);
+	debug_assert (std::find_if (stats.cbegin (), stats.cend (), matches_txn (txn_id)) == stats.cend ());
+	stats.emplace_back (txn_id, is_write);
 }
 
 /** Can be called without error if transaction does not exist */
-void nano::mdb_txn_tracker::erase (nano::transaction const * transaction)
+void nano::mdb_txn_tracker::erase (uint64_t txn_id)
 {
 	nano::unique_lock<nano::mutex> lk (mutex);
-	auto it = std::find_if (stats.begin (), stats.end (), matches_txn (transaction));
+	auto it = std::find_if (stats.begin (), stats.end (), matches_txn (txn_id));
 	if (it != stats.end ())
 	{
 		auto tracker_stats_copy = *it;
@@ -243,8 +247,9 @@ void nano::mdb_txn_tracker::erase (nano::transaction const * transaction)
 	}
 }
 
-nano::mdb_txn_stats::mdb_txn_stats (nano::transaction const * transaction_a) :
-	transaction (transaction_a),
+nano::mdb_txn_stats::mdb_txn_stats (uint64_t txn_id_a, bool is_write_a) :
+	txn_id{ txn_id_a },
+	is_write_m{ is_write_a },
 	thread_name (nano::thread_role::get_string ()),
 	stacktrace (std::make_shared<boost::stacktrace::stacktrace> ())
 {
@@ -253,5 +258,5 @@ nano::mdb_txn_stats::mdb_txn_stats (nano::transaction const * transaction_a) :
 
 bool nano::mdb_txn_stats::is_write () const
 {
-	return (dynamic_cast<nano::write_mdb_txn const *> (transaction) != nullptr);
+	return is_write_m;
 }

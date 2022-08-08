@@ -116,6 +116,8 @@ struct TcpMessageManagerHandle;
 
 struct TelemetryDataHandle;
 
+struct TransactionHandle;
+
 struct UncheckedInfoHandle;
 
 struct VoidFnCallbackHandle;
@@ -182,7 +184,7 @@ struct EndpointDto
 
 using ChannelTcpSendCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
 
-using DestroyCallback = void (*) (void *);
+using VoidPointerCallback = void (*) (void *);
 
 using ChannelTcpSendBufferCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
 
@@ -612,6 +614,10 @@ using TomlPutStrCallback = int32_t (*) (void *, const uint8_t *, uintptr_t, cons
 using TomlPutU64Callback = int32_t (*) (void *, const uint8_t *, uintptr_t, uint64_t, const uint8_t *, uintptr_t);
 
 using TryLogCallback = bool (*) (void *, const uint8_t *, uintptr_t);
+
+using TxnEndCallback = void (*) (void *, uint64_t);
+
+using TxnStartCallback = void (*) (void *, uint64_t, bool);
 
 using WriteBytesCallback = int32_t (*) (void *, const uint8_t *, uintptr_t);
 
@@ -1136,7 +1142,7 @@ double rsn_bootstrap_client_sample_block_rate (BootstrapClientHandle * handle);
 void rsn_bootstrap_client_send (BootstrapClientHandle * handle,
 MessageHandle * msg,
 ChannelTcpSendCallback callback,
-DestroyCallback delete_callback,
+VoidPointerCallback delete_callback,
 void * context,
 uint8_t policy);
 
@@ -1144,7 +1150,7 @@ void rsn_bootstrap_client_send_buffer (BootstrapClientHandle * handle,
 const uint8_t * buffer,
 uintptr_t len,
 ChannelTcpSendBufferCallback callback,
-DestroyCallback delete_callback,
+VoidPointerCallback delete_callback,
 void * callback_context,
 uint8_t policy);
 
@@ -1241,17 +1247,17 @@ void rsn_callback_block_processor_add (BlockProcessorAddCallback f);
 
 void rsn_callback_bootstrap_client_observer_closed (BootstrapClientClosedCallback f);
 
-void rsn_callback_bootstrap_client_observer_destroy (DestroyCallback f);
+void rsn_callback_bootstrap_client_observer_destroy (VoidPointerCallback f);
 
 void rsn_callback_bootstrap_client_observer_to_weak (BootstrapClientObserverToWeakCallback f);
 
-void rsn_callback_bootstrap_client_observer_weak_destroy (DestroyCallback f);
+void rsn_callback_bootstrap_client_observer_weak_destroy (VoidPointerCallback f);
 
 void rsn_callback_bootstrap_client_weak_to_observer (BootstrapClientObserverToWeakCallback f);
 
 void rsn_callback_bootstrap_observer_bootstrap_count (BootstrapServerBootstrapCountCallback f);
 
-void rsn_callback_bootstrap_observer_destroy (DestroyCallback f);
+void rsn_callback_bootstrap_observer_destroy (VoidPointerCallback f);
 
 void rsn_callback_bootstrap_observer_exited (BootstrapServerExitedCallback f);
 
@@ -1259,7 +1265,7 @@ void rsn_callback_bootstrap_observer_inc_bootstrap_count (BootstrapServerIncBoot
 
 void rsn_callback_bootstrap_observer_timeout (BootstrapServerTimeoutCallback f);
 
-void rsn_callback_buffer_destroy (DestroyCallback f);
+void rsn_callback_buffer_destroy (VoidPointerCallback f);
 
 void rsn_callback_buffer_size (BufferSizeCallback f);
 
@@ -1267,9 +1273,9 @@ void rsn_callback_channel_tcp_observer_clone_weak (ChannelTcpObserverWeakCloneCa
 
 void rsn_callback_channel_tcp_observer_data_sent (ChannelTcpObserverDataSentCallback f);
 
-void rsn_callback_channel_tcp_observer_destroy (DestroyCallback f);
+void rsn_callback_channel_tcp_observer_destroy (VoidPointerCallback f);
 
-void rsn_callback_channel_tcp_observer_drop_weak (DestroyCallback f);
+void rsn_callback_channel_tcp_observer_drop_weak (VoidPointerCallback f);
 
 void rsn_callback_channel_tcp_observer_host_unreachable (ChannelTcpObserverCallback f);
 
@@ -1291,9 +1297,9 @@ void rsn_callback_ledger_block_or_pruned_exists (LedgerBlockOrPrunedExistsCallba
 
 void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
-void rsn_callback_logger_destroy (DestroyCallback f);
+void rsn_callback_logger_destroy (VoidPointerCallback f);
 
-void rsn_callback_message_visitor_destroy (DestroyCallback f);
+void rsn_callback_message_visitor_destroy (VoidPointerCallback f);
 
 void rsn_callback_message_visitor_visit (MessageVisitorCallback f);
 
@@ -1325,7 +1331,7 @@ void rsn_callback_read_u8 (ReadU8Callback f);
 
 void rsn_callback_request_response_visitor_factory_create (RequestResponseVisitorFactoryCreateCallback f);
 
-void rsn_callback_request_response_visitor_factory_destroy (DestroyCallback f);
+void rsn_callback_request_response_visitor_factory_destroy (VoidPointerCallback f);
 
 void rsn_callback_string_chars (StringCharsCallback f);
 
@@ -1341,7 +1347,7 @@ void rsn_callback_tcp_socket_async_write (AsyncWriteCallback f);
 
 void rsn_callback_tcp_socket_close (CloseSocketCallback f);
 
-void rsn_callback_tcp_socket_destroy (DestroyCallback f);
+void rsn_callback_tcp_socket_destroy (VoidPointerCallback f);
 
 void rsn_callback_tcp_socket_dispatch (DispatchCallback f);
 
@@ -1374,6 +1380,12 @@ void rsn_callback_toml_put_str (TomlPutStrCallback f);
 void rsn_callback_toml_put_u64 (TomlPutU64Callback f);
 
 void rsn_callback_try_log (TryLogCallback f);
+
+void rsn_callback_txn_callbacks_destroy (VoidPointerCallback f);
+
+void rsn_callback_txn_callbacks_end (TxnEndCallback f);
+
+void rsn_callback_txn_callbacks_start (TxnStartCallback f);
 
 void rsn_callback_write_bytes (WriteBytesCallback f);
 
@@ -1444,7 +1456,7 @@ void rsn_channel_tcp_peering_endpoint (ChannelHandle * handle, EndpointDto * end
 void rsn_channel_tcp_send (ChannelHandle * handle,
 MessageHandle * msg,
 ChannelTcpSendCallback callback,
-DestroyCallback delete_callback,
+VoidPointerCallback delete_callback,
 void * context,
 uint8_t policy);
 
@@ -1452,7 +1464,7 @@ void rsn_channel_tcp_send_buffer (ChannelHandle * handle,
 const uint8_t * buffer,
 uintptr_t buffer_len,
 ChannelTcpSendBufferCallback callback,
-DestroyCallback delete_callback,
+VoidPointerCallback delete_callback,
 void * callback_context,
 uint8_t policy);
 
@@ -1559,6 +1571,10 @@ LedgerHandle * rsn_ledger_create (void * handle);
 void rsn_ledger_destroy (LedgerHandle * handle);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
+
+TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, void * callbacks);
+
+void rsn_lmdb_read_txn_destroy (TransactionHandle * handle);
 
 void rsn_local_vote_history_add (LocalVoteHistoryHandle * handle,
 const uint8_t * root,

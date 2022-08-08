@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use crate::Logger;
 
-use super::DestroyCallback;
+use super::VoidPointerCallback;
 
 pub type TryLogCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> bool;
 pub static mut TRY_LOG_CALLBACK: Option<TryLogCallback> = None;
@@ -80,9 +80,9 @@ pub unsafe extern "C" fn rsn_logger_destroy(handle: *mut LoggerHandle) {
     drop(Box::from_raw(handle))
 }
 
-pub static mut DESTROY_LOGGER_HANDLE: Option<DestroyCallback> = None;
+pub static mut DESTROY_LOGGER_HANDLE: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_logger_destroy(f: DestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_logger_destroy(f: VoidPointerCallback) {
     DESTROY_LOGGER_HANDLE = Some(f);
 }

@@ -638,7 +638,7 @@ nano::telemetry_data nano::local_telemetry_data (nano::ledger const & ledger_a, 
 	telemetry_data.set_protocol_version (network_params_a.network.protocol_version);
 	telemetry_data.set_uptime (std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - statup_time_a).count ());
 	{
-		auto tx{ledger_a.store.tx_begin_read ()};
+		auto tx{ ledger_a.store.tx_begin_read () };
 		telemetry_data.set_unchecked_count (unchecked.count (*tx));
 	}
 	telemetry_data.set_genesis_block (network_params_a.ledger.genesis->hash ());

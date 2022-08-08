@@ -176,7 +176,7 @@ TEST (ledger_walker, DISABLED_ladder_geometry)
 	ASSERT_TRUE (last_destination);
 	nano::account_info last_destination_info{};
 	{
-		auto tx{node->ledger.store.tx_begin_read ()};
+		auto tx{ node->ledger.store.tx_begin_read () };
 		auto const last_destination_read_error = node->ledger.store.account.get (*tx, *last_destination, last_destination_info);
 		ASSERT_FALSE (last_destination_read_error);
 	}
@@ -197,7 +197,7 @@ TEST (ledger_walker, DISABLED_ladder_geometry)
 			nano::amount previous_balance{};
 			if (!block->previous ().is_zero ())
 			{
-				auto tx{node->ledger.store.tx_begin_read ()};
+				auto tx{ node->ledger.store.tx_begin_read () };
 				auto const previous_block = node->ledger.store.block.get_no_sideband (*tx, block->previous ());
 				previous_balance = previous_block->balance ();
 			}
@@ -217,7 +217,7 @@ TEST (ledger_walker, DISABLED_ladder_geometry)
 			nano::amount previous_balance{};
 			if (!block->previous ().is_zero ())
 			{
-				auto tx{node->ledger.store.tx_begin_read ()};
+				auto tx{ node->ledger.store.tx_begin_read () };
 				auto const previous_block = node->ledger.store.block.get_no_sideband (*tx, block->previous ());
 				previous_balance = previous_block->balance ();
 			}

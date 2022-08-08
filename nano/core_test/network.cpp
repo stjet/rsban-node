@@ -451,7 +451,7 @@ TEST (receivable_processor, confirm_insufficient_pos)
 	node1.work_generate_blocking (*block1);
 	ASSERT_EQ (nano::process_result::progress, node1.process (*block1).code);
 	{
-		auto tx{node1.store.tx_begin_read ()};
+		auto tx{ node1.store.tx_begin_read () };
 		node1.scheduler.activate (nano::dev::genesis_key.pub, *tx);
 	}
 	nano::keypair key1;
@@ -476,7 +476,7 @@ TEST (receivable_processor, confirm_sufficient_pos)
 	node1.work_generate_blocking (*block1);
 	ASSERT_EQ (nano::process_result::progress, node1.process (*block1).code);
 	{
-		auto tx{node1.store.tx_begin_read ()};
+		auto tx{ node1.store.tx_begin_read () };
 		node1.scheduler.activate (nano::dev::genesis_key.pub, *tx);
 	}
 	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash>{ block1->hash () }));

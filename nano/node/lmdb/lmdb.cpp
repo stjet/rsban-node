@@ -198,11 +198,11 @@ nano::mdb_txn_callbacks nano::lmdb::store::create_txn_callbacks () const
 	nano::mdb_txn_callbacks mdb_txn_callbacks;
 	if (txn_tracking_enabled)
 	{
-		mdb_txn_callbacks.txn_start = ([&mdb_txn_tracker = mdb_txn_tracker] (nano::transaction const * tx) {
-			mdb_txn_tracker.add (tx);
+		mdb_txn_callbacks.txn_start = ([&mdb_txn_tracker = mdb_txn_tracker] (uint64_t txn_id, bool is_write) {
+			mdb_txn_tracker.add (txn_id, is_write);
 		});
-		mdb_txn_callbacks.txn_end = ([&mdb_txn_tracker = mdb_txn_tracker] (nano::transaction const * tx) {
-			mdb_txn_tracker.erase (tx);
+		mdb_txn_callbacks.txn_end = ([&mdb_txn_tracker = mdb_txn_tracker] (uint64_t txn_id) {
+			mdb_txn_tracker.erase (txn_id);
 		});
 	}
 	return mdb_txn_callbacks;

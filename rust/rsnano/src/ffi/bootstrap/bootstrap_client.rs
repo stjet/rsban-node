@@ -9,7 +9,7 @@ use crate::{
             ChannelTcpSendCallbackWrapper, EndpointDto, ReadCallbackWrapper,
             SendBufferCallbackWrapper, SocketDestroyContext, SocketHandle, SocketReadCallback,
         },
-        DestroyCallback, StringDto,
+        StringDto, VoidPointerCallback,
     },
     network::BufferDropPolicy,
 };
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send_buffer(
     buffer: *const u8,
     len: usize,
     callback: ChannelTcpSendBufferCallback,
-    delete_callback: DestroyCallback,
+    delete_callback: VoidPointerCallback,
     callback_context: *mut c_void,
     policy: u8,
 ) {
@@ -121,7 +121,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send(
     handle: *mut BootstrapClientHandle,
     msg: *mut MessageHandle,
     callback: ChannelTcpSendCallback,
-    delete_callback: DestroyCallback,
+    delete_callback: VoidPointerCallback,
     context: *mut c_void,
     policy: u8,
 ) {
@@ -309,15 +309,17 @@ pub unsafe extern "C" fn rsn_callback_bootstrap_client_weak_to_observer(
     WEAK_TO_OBSERVER = Some(f);
 }
 
-static mut DROP_WEAK: Option<DestroyCallback> = None;
-static mut DROP_OBSERVER: Option<DestroyCallback> = None;
+static mut DROP_WEAK: Option<VoidPointerCallback> = None;
+static mut DROP_OBSERVER: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_client_observer_destroy(f: DestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_bootstrap_client_observer_destroy(f: VoidPointerCallback) {
     DROP_OBSERVER = Some(f);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_client_observer_weak_destroy(f: DestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_bootstrap_client_observer_weak_destroy(
+    f: VoidPointerCallback,
+) {
     DROP_WEAK = Some(f);
 }

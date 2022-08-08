@@ -230,37 +230,37 @@ bool copy_database (boost::filesystem::path const & data_path, boost::program_op
 		auto & store (node.node->store);
 		if (vm.count ("unchecked_clear"))
 		{
-			auto tx { store.tx_begin_write ()};
+			auto tx{ store.tx_begin_write () };
 			node.node->unchecked.clear (*tx);
 		}
 		if (vm.count ("clear_send_ids"))
 		{
-			auto tx {node.node->wallets.tx_begin_write ()};
+			auto tx{ node.node->wallets.tx_begin_write () };
 			node.node->wallets.clear_send_ids (*tx);
 		}
 		if (vm.count ("online_weight_clear"))
 		{
-			auto tx{store.tx_begin_write ()};
+			auto tx{ store.tx_begin_write () };
 			node.node->store.online_weight.clear (*tx);
 		}
 		if (vm.count ("peer_clear"))
 		{
-			auto tx{ store.tx_begin_write ()};
+			auto tx{ store.tx_begin_write () };
 			node.node->store.peer.clear (*tx);
 		}
 		if (vm.count ("confirmation_height_clear"))
 		{
-			auto tx{store.tx_begin_write ()};
+			auto tx{ store.tx_begin_write () };
 			reset_confirmation_heights (*tx, node.node->network_params.ledger, store);
 		}
 		if (vm.count ("final_vote_clear"))
 		{
-			auto tx{store.tx_begin_write ()};
+			auto tx{ store.tx_begin_write () };
 			node.node->store.final_vote.clear (*tx);
 		}
 		if (vm.count ("rebuild_database"))
 		{
-			auto tx{store.tx_begin_write ()};
+			auto tx{ store.tx_begin_write () };
 			node.node->store.rebuild_db (*tx);
 		}
 
@@ -597,7 +597,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					nano::confirmation_height_info confirmation_height_info;
 					auto error = false;
 					{
-						auto tx{node.node->store.tx_begin_read ()};
+						auto tx{ node.node->store.tx_begin_read () };
 						error = node.node->store.confirmation_height.get (*tx, account, confirmation_height_info);
 					}
 					if (!error)
@@ -672,7 +672,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			}
 			else if (vm.count ("all"))
 			{
-				auto tx{node.node->store.tx_begin_write ()};
+				auto tx{ node.node->store.tx_begin_write () };
 				node.node->store.final_vote.clear (*tx);
 				std::cout << "All final votes are cleared" << std::endl;
 			}

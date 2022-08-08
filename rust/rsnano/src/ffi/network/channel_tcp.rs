@@ -7,8 +7,8 @@ use super::{
 };
 use crate::{
     ffi::{
-        io_context::FfiIoContext, messages::MessageHandle, BandwidthLimiterHandle, DestroyCallback,
-        ErrorCodeDto,
+        io_context::FfiIoContext, messages::MessageHandle, BandwidthLimiterHandle, ErrorCodeDto,
+        VoidPointerCallback,
     },
     network::{BufferDropPolicy, ChannelTcp, TcpChannelData},
     utils::ErrorCode,
@@ -97,14 +97,14 @@ pub struct SendBufferCallbackWrapper {
     callback: ChannelTcpSendBufferCallback,
     /// `std::function<error_code const&, size_t>*`
     context: *mut c_void,
-    delete_callback: DestroyCallback,
+    delete_callback: VoidPointerCallback,
 }
 
 impl SendBufferCallbackWrapper {
     pub fn new(
         callback: ChannelTcpSendBufferCallback,
         context: *mut c_void,
-        delete_callback: DestroyCallback,
+        delete_callback: VoidPointerCallback,
     ) -> Self {
         Self {
             callback,
@@ -135,7 +135,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_send_buffer(
     buffer: *const u8,
     buffer_len: usize,
     callback: ChannelTcpSendBufferCallback,
-    delete_callback: DestroyCallback,
+    delete_callback: VoidPointerCallback,
     callback_context: *mut c_void,
     policy: u8,
 ) {
@@ -188,14 +188,14 @@ pub type ChannelTcpSendCallback = unsafe extern "C" fn(*mut c_void, *const Error
 pub struct ChannelTcpSendCallbackWrapper {
     context: *mut c_void,
     callback: ChannelTcpSendCallback,
-    delete: DestroyCallback,
+    delete: VoidPointerCallback,
 }
 
 impl ChannelTcpSendCallbackWrapper {
     pub fn new(
         context: *mut c_void,
         callback: ChannelTcpSendCallback,
-        delete: DestroyCallback,
+        delete: VoidPointerCallback,
     ) -> Self {
         Self {
             context,
@@ -225,7 +225,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_send(
     handle: *mut ChannelHandle,
     msg: *mut MessageHandle,
     callback: ChannelTcpSendCallback,
-    delete_callback: DestroyCallback,
+    delete_callback: VoidPointerCallback,
     context: *mut c_void,
     policy: u8,
 ) {

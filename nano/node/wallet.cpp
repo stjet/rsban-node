@@ -700,7 +700,7 @@ bool nano::wallet::enter_password (nano::transaction const & transaction_a, std:
 	{
 		auto this_l (shared_from_this ());
 		wallets.node.background ([this_l] () {
-			auto tx{this_l->wallets.tx_begin_read ()};
+			auto tx{ this_l->wallets.tx_begin_read () };
 			this_l->search_receivable (*tx);
 		});
 		wallets.node.logger->try_log ("Wallet unlocked");
@@ -1444,7 +1444,7 @@ bool nano::wallets::search_receivable (nano::wallet_id const & wallet_a)
 	auto result (false);
 	if (auto wallet = open (wallet_a); wallet != nullptr)
 	{
-		auto tx{tx_begin_read ()};
+		auto tx{ tx_begin_read () };
 		result = wallet->search_receivable (*tx);
 	}
 	return result;

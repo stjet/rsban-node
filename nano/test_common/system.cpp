@@ -36,7 +36,7 @@ std::shared_ptr<nano::node> nano::system::add_node (nano::node_config const & no
 	auto node (std::make_shared<nano::node> (io_ctx, nano::unique_path (), node_config_a, work, node_flags_a, node_sequence++));
 	for (auto i : initialization_blocks)
 	{
-		auto tx{node->store.tx_begin_write ()};
+		auto tx{ node->store.tx_begin_write () };
 		auto result = node->ledger.process (*tx, *i);
 		debug_assert (result.code == nano::process_result::progress);
 	}

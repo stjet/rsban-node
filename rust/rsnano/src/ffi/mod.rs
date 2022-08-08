@@ -153,7 +153,7 @@ pub(crate) unsafe fn copy_amount_bytes(source: Amount, target: *mut u8) {
     bytes.copy_from_slice(&source.to_be_bytes());
 }
 
-pub type DestroyCallback = unsafe extern "C" fn(*mut c_void);
+pub type VoidPointerCallback = unsafe extern "C" fn(*mut c_void);
 
 #[repr(C)]
 pub struct ErrorCodeDto {

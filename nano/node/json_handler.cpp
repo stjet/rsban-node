@@ -1427,7 +1427,7 @@ void nano::json_handler::block_count ()
 {
 	response_l.put ("count", std::to_string (node.ledger.cache.block_count));
 	{
-		auto tx{node.store.tx_begin_read ()};
+		auto tx{ node.store.tx_begin_read () };
 		response_l.put ("unchecked", std::to_string (node.unchecked.count (*tx)));
 	}
 	response_l.put ("cemented", std::to_string (node.ledger.cache.cemented_count));
@@ -3701,7 +3701,7 @@ void nano::json_handler::search_receivable ()
 	auto wallet (wallet_impl ());
 	if (!ec)
 	{
-		auto tx{wallet->wallets.tx_begin_read ()};
+		auto tx{ wallet->wallets.tx_begin_read () };
 		auto error (wallet->search_receivable (*tx));
 		response_l.put ("started", !error);
 	}
@@ -4168,7 +4168,7 @@ void nano::json_handler::unchecked_get ()
 	if (!ec)
 	{
 		bool done = false;
-		auto tx{node.store.tx_begin_read ()};
+		auto tx{ node.store.tx_begin_read () };
 		node.unchecked.for_each (
 		*tx, [&] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 			if (key.hash == hash)

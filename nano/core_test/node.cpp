@@ -394,7 +394,7 @@ TEST (node, search_receivable)
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	system.wallet (0)->insert_adhoc (key2.prv);
 	{
-		auto tx{system.wallet (0)->wallets.tx_begin_read ()};
+		auto tx{ system.wallet (0)->wallets.tx_begin_read () };
 		ASSERT_FALSE (system.wallet (0)->search_receivable (*tx));
 	}
 	ASSERT_TIMELY (10s, !node->balance (key2.pub).is_zero ());
@@ -410,7 +410,7 @@ TEST (node, search_receivable_same)
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	system.wallet (0)->insert_adhoc (key2.prv);
 	{
-		auto tx{system.wallet (0)->wallets.tx_begin_read ()};
+		auto tx{ system.wallet (0)->wallets.tx_begin_read () };
 		ASSERT_FALSE (system.wallet (0)->search_receivable (*tx));
 	}
 	ASSERT_TIMELY (10s, node->balance (key2.pub) == 2 * node->config->receive_minimum.number ());
@@ -430,7 +430,7 @@ TEST (node, search_receivable_multiple)
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (key3.pub, key2.pub, node->config->receive_minimum.number ()));
 	system.wallet (0)->insert_adhoc (key2.prv);
 	{
-		auto tx{system.wallet (0)->wallets.tx_begin_read ()};
+		auto tx{ system.wallet (0)->wallets.tx_begin_read () };
 		ASSERT_FALSE (system.wallet (0)->search_receivable (*tx));
 	}
 	ASSERT_TIMELY (10s, node->balance (key2.pub) == 2 * node->config->receive_minimum.number ());
@@ -463,7 +463,7 @@ TEST (node, search_receivable_confirmed)
 	}
 	system.wallet (0)->insert_adhoc (key2.prv);
 	{
-		auto tx{system.wallet (0)->wallets.tx_begin_read ()};
+		auto tx{ system.wallet (0)->wallets.tx_begin_read () };
 		ASSERT_FALSE (system.wallet (0)->search_receivable (*tx));
 	}
 	{
@@ -982,15 +982,15 @@ TEST (node, fork_bootstrap_flip)
 				 .build_shared ();
 	// Insert but don't rebroadcast, simulating settled blocks
 	{
-		auto tx{node1.store.tx_begin_write ()};
+		auto tx{ node1.store.tx_begin_write () };
 		ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*tx, *send1).code);
 	}
 	{
-		auto tx{node2.store.tx_begin_write ()};
+		auto tx{ node2.store.tx_begin_write () };
 		ASSERT_EQ (nano::process_result::progress, node2.ledger.process (*tx, *send2).code);
 	}
 	{
-		auto tx{node2.store.tx_begin_read ()};
+		auto tx{ node2.store.tx_begin_read () };
 		ASSERT_TRUE (node2.store.block.exists (*tx, send2->hash ()));
 	}
 	node2.bootstrap_initiator.bootstrap (node1.network->endpoint ()); // Additionally add new peer to confirm & replace bootstrap block
@@ -1001,7 +1001,7 @@ TEST (node, fork_bootstrap_flip)
 	{
 		ASSERT_NO_ERROR (system0.poll ());
 		ASSERT_NO_ERROR (system1.poll ());
-		auto tx{node2.store.tx_begin_read ()};
+		auto tx{ node2.store.tx_begin_read () };
 		again = !node2.store.block.exists (*tx, send1->hash ());
 	}
 }
@@ -1524,7 +1524,7 @@ TEST (node, rep_self_vote)
 	auto & active = node0->active;
 	auto & scheduler = node0->scheduler;
 	{
-		auto tx{node0->store.tx_begin_read ()};
+		auto tx{ node0->store.tx_begin_read () };
 		scheduler.activate (nano::dev::genesis_key.pub, *tx);
 	}
 	scheduler.flush ();
@@ -1711,7 +1711,7 @@ TEST (node, bootstrap_confirm_frontiers)
 	while (true)
 	{
 		{
-			auto tx{node1->store.tx_begin_read ()};
+			auto tx{ node1->store.tx_begin_read () };
 			if (node1->ledger.block_confirmed (*tx, send0->hash ()))
 			{
 				break;

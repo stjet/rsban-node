@@ -476,7 +476,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		}
 
 		{
-			auto tx{store.tx_begin_read ()};
+			auto tx{ store.tx_begin_read () };
 			ledger.pruning = flags.enable_pruning () || store.pruned.count (*tx) > 0;
 		}
 
@@ -889,7 +889,7 @@ void nano::node::ongoing_bootstrap ()
 			uint64_t last_sample_time (0);
 
 			{
-				auto tx{store.tx_begin_read ()};
+				auto tx{ store.tx_begin_read () };
 				auto last_record = store.online_weight.rbegin (*tx);
 				if (last_record != store.online_weight.end ())
 				{
@@ -1431,7 +1431,7 @@ void nano::node::process_confirmed (nano::election_status const & status_a, uint
 	auto const num_iters = (config->block_processor_batch_max_time / network_params.node.process_confirmed_interval) * 4;
 	std::shared_ptr<nano::block> block_l;
 	{
-		auto tx{ledger.store.tx_begin_read ()};
+		auto tx{ ledger.store.tx_begin_read () };
 		block_l = ledger.store.block.get (*tx, hash);
 	}
 	if (block_l)

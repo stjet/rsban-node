@@ -1026,7 +1026,7 @@ int main (int argc, char * const * argv)
 				if (timer_l.after_deadline (std::chrono::seconds (15)))
 				{
 					timer_l.restart ();
-					auto tx{node->store.tx_begin_read ()};
+					auto tx{ node->store.tx_begin_read () };
 					std::cout << boost::str (boost::format ("%1% (%2%) blocks processed (unchecked), %3% remaining") % node->ledger.cache.block_count % node->unchecked.count (*tx) % node->block_processor.size ()) << std::endl;
 				}
 			}
@@ -1882,7 +1882,7 @@ int main (int argc, char * const * argv)
 				if (timer_l.after_deadline (std::chrono::seconds (60)))
 				{
 					timer_l.restart ();
-					auto tx{node.node->store.tx_begin_read ()};
+					auto tx{ node.node->store.tx_begin_read () };
 					std::cout << boost::str (boost::format ("%1% (%2%) blocks processed (unchecked)") % node.node->ledger.cache.block_count % node.node->unchecked.count (*tx)) << std::endl;
 				}
 			}

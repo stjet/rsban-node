@@ -1,7 +1,7 @@
 use std::{ffi::c_void, net::SocketAddr, sync::Arc};
 
 use crate::{
-    ffi::{messages::MessageHandle, DestroyCallback},
+    ffi::{messages::MessageHandle, VoidPointerCallback},
     messages::Message,
     network::ChannelTcpObserver,
 };
@@ -133,10 +133,10 @@ pub unsafe extern "C" fn rsn_callback_channel_tcp_observer_write_drop(
     WRITE_DROP = Some(f);
 }
 
-static mut DESTROY_OBSERVER: Option<DestroyCallback> = None;
+static mut DESTROY_OBSERVER: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_channel_tcp_observer_destroy(f: DestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_channel_tcp_observer_destroy(f: VoidPointerCallback) {
     DESTROY_OBSERVER = Some(f);
 }
 
@@ -186,10 +186,10 @@ pub unsafe extern "C" fn rsn_callback_channel_tcp_observer_lock(
     LOCK_OBSERVER = Some(f);
 }
 
-static mut DROP_WEAK_PTR: Option<DestroyCallback> = None;
+static mut DROP_WEAK_PTR: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_channel_tcp_observer_drop_weak(f: DestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_channel_tcp_observer_drop_weak(f: VoidPointerCallback) {
     DROP_WEAK_PTR = Some(f);
 }
 

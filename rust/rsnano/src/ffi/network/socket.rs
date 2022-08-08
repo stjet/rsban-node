@@ -1,7 +1,7 @@
 use num::FromPrimitive;
 
 use crate::{
-    ffi::{DestroyCallback, DispatchCallback, ErrorCodeDto, LoggerHandle},
+    ffi::{DispatchCallback, ErrorCodeDto, LoggerHandle, VoidPointerCallback},
     network::{Socket, SocketBuilder, SocketImpl, SocketType, TcpSocketFacade},
     stats::SocketStats,
     utils::{BufferHandle, BufferWrapper, ErrorCode},
@@ -500,10 +500,10 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_async_write(f: AsyncWriteCallba
     ASYNC_WRITE_CALLBACK = Some(f);
 }
 
-static mut TCP_FACADE_DESTROY_CALLBACK: Option<DestroyCallback> = None;
+static mut TCP_FACADE_DESTROY_CALLBACK: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_destroy(f: DestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_tcp_socket_destroy(f: VoidPointerCallback) {
     TCP_FACADE_DESTROY_CALLBACK = Some(f);
 }
 
@@ -711,10 +711,10 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
 unsafe impl Send for FfiTcpSocketFacade {}
 unsafe impl Sync for FfiTcpSocketFacade {}
 
-static mut BUFFER_DESTROY_CALLBACK: Option<DestroyCallback> = None;
+static mut BUFFER_DESTROY_CALLBACK: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_buffer_destroy(f: DestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_buffer_destroy(f: VoidPointerCallback) {
     BUFFER_DESTROY_CALLBACK = Some(f);
 }
 

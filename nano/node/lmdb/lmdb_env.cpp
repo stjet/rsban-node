@@ -97,7 +97,7 @@ nano::mdb_env::operator MDB_env * () const
 
 std::unique_ptr<nano::read_transaction> nano::mdb_env::tx_begin_read (mdb_txn_callbacks mdb_txn_callbacks) const
 {
-	return std::make_unique<nano::read_mdb_txn> (environment, mdb_txn_callbacks);
+	return std::make_unique<nano::read_mdb_txn> (next_txn_id++, environment, mdb_txn_callbacks);
 }
 
 std::unique_ptr<nano::write_transaction> nano::mdb_env::tx_begin_write (mdb_txn_callbacks mdb_txn_callbacks) const
@@ -106,7 +106,7 @@ std::unique_ptr<nano::write_transaction> nano::mdb_env::tx_begin_write (mdb_txn_
 	 * For IO threads, we do not want them to block on creating write transactions.
 	 */
 	debug_assert (nano::thread_role::get () != nano::thread_role::name::io);
-	return std::make_unique<nano::write_mdb_txn> (environment, mdb_txn_callbacks);
+	return std::make_unique<nano::write_mdb_txn> (next_txn_id++, environment, mdb_txn_callbacks);
 }
 
 MDB_txn * nano::mdb_env::tx (nano::transaction const & transaction_a) const

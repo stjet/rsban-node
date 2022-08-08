@@ -1,11 +1,11 @@
 use super::MessageHandle;
-use crate::{ffi::DestroyCallback, messages::*};
+use crate::{ffi::VoidPointerCallback, messages::*};
 use std::ffi::c_void;
 use MessageVisitor;
 
 type MessageVisitorCallback = unsafe extern "C" fn(*mut c_void, *mut MessageHandle, u8);
 static mut MESSAGE_VISITOR_VISIT: Option<MessageVisitorCallback> = None;
-static mut MESSAGE_VISITOR_DESTROY: Option<DestroyCallback> = None;
+static mut MESSAGE_VISITOR_DESTROY: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_message_visitor_visit(f: MessageVisitorCallback) {
@@ -13,7 +13,7 @@ pub unsafe extern "C" fn rsn_callback_message_visitor_visit(f: MessageVisitorCal
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_message_visitor_destroy(f: DestroyCallback) {
+pub unsafe extern "C" fn rsn_callback_message_visitor_destroy(f: VoidPointerCallback) {
     MESSAGE_VISITOR_DESTROY = Some(f);
 }
 

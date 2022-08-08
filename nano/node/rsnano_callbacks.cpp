@@ -8,6 +8,7 @@
 #include <nano/node/blockprocessor.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_server.hpp>
+#include <nano/node/lmdb/lmdb_txn.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
 #include <nano/node/transport/tcp.hpp>
 #include <nano/node/websocket.hpp>
@@ -827,6 +828,24 @@ void bootstrap_client_observer_weak_destroy (void * handle_a)
 	delete observer;
 }
 
+void txn_callbacks_destroy (void * handle_a)
+{
+	auto callbacks = static_cast<nano::mdb_txn_callbacks *> (handle_a);
+	delete callbacks;
+}
+
+void txn_callbacks_start (void * handle_a, uint64_t txn_id_a, bool is_write_a)
+{
+	auto callbacks = static_cast<nano::mdb_txn_callbacks *> (handle_a);
+	callbacks->txn_start (txn_id_a, is_write_a);
+}
+
+void txn_callbacks_end (void * handle_a, uint64_t txn_id_a)
+{
+	auto callbacks = static_cast<nano::mdb_txn_callbacks *> (handle_a);
+	callbacks->txn_end (txn_id_a);
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -924,6 +943,10 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_client_observer_to_weak (bootstrap_client_observer_to_weak);
 	rsnano::rsn_callback_bootstrap_client_weak_to_observer (bootstrap_client_weak_to_observer);
 	rsnano::rsn_callback_bootstrap_client_observer_weak_destroy (bootstrap_client_observer_weak_destroy);
+
+	rsnano::rsn_callback_txn_callbacks_destroy (txn_callbacks_destroy);
+	rsnano::rsn_callback_txn_callbacks_start (txn_callbacks_start);
+	rsnano::rsn_callback_txn_callbacks_end (txn_callbacks_end);
 
 	callbacks_set = true;
 }

@@ -30,16 +30,16 @@ impl BulkPullAccount {
         }
     }
 
-    pub fn with_header(header: &MessageHeader) -> Self {
+    pub fn with_header(header: MessageHeader) -> Self {
         Self {
-            header: header.clone(),
+            header,
             account: Account::new(),
             minimum_amount: Amount::zero(),
             flags: BulkPullAccountFlags::PendingHashAndAmount,
         }
     }
 
-    pub fn from_stream(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+    pub fn from_stream(stream: &mut impl Stream, header: MessageHeader) -> Result<Self> {
         let mut msg = Self::with_header(header);
         msg.deserialize(stream)?;
         Ok(msg)

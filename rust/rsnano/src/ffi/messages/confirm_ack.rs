@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create2(
         let uniquer = if uniquer.is_null() {
             None
         } else {
-            Some((*uniquer).deref())
+            Some((*uniquer).deref().as_ref())
         };
 
         match ConfirmAck::with_header(hdr, &mut stream, uniquer) {

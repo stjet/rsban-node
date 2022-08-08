@@ -1,28 +1,25 @@
 use std::{
-    cell::RefCell,
-    collections::VecDeque,
     ffi::c_void,
     net::{Ipv6Addr, SocketAddr},
-    rc::Rc,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Mutex, MutexGuard,
+        Arc, Mutex,
     },
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use crate::{
+    bootstrap::ParseStatus,
     logger_mt::Logger,
-    messages::{
-        BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
-        Message, MessageHeader, MessageType, MessageVisitor, NodeIdHandshake, Publish,
-        TelemetryAck, TelemetryReq,
-    },
-    network::{Socket, SocketImpl, SocketType},
+    messages::{Message, MessageVisitor},
+    network::{Socket, SocketImpl, SocketType, TcpMessageItem, TcpMessageManager},
     stats::{DetailType, Direction, Stat, StatType},
-    utils::{ErrorCode, IoContext, StreamAdapter, ThreadPool},
-    Account, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
+    utils::{IoContext, ThreadPool},
+    voting::VoteUniquer,
+    Account, BlockUniquer, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
 };
+
+use super::{MessageDeserializer, MessageDeserializerExt};
 
 pub trait BootstrapServerObserver {
     fn bootstrap_server_timeout(&self, inner_ptr: usize);
@@ -34,6 +31,7 @@ pub trait BootstrapServerObserver {
     );
     fn get_bootstrap_count(&self) -> usize;
     fn inc_bootstrap_count(&self);
+    fn inc_realtime_count(&self);
 }
 
 pub struct BootstrapServer {
@@ -42,15 +40,12 @@ pub struct BootstrapServer {
     logger: Arc<dyn Logger>,
     stopped: AtomicBool,
     observer: Arc<dyn BootstrapServerObserver>,
-    pub queue: Mutex<VecDeque<Option<Box<dyn Message>>>>,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
 
     // Remote enpoint used to remove response channel even after socket closing
     pub remote_endpoint: Mutex<SocketAddr>,
     pub remote_node_id: Mutex<Account>,
-    pub receive_buffer: Arc<Mutex<Vec<u8>>>,
-    publish_filter: Arc<NetworkFilter>,
     workers: Arc<dyn ThreadPool>,
     io_ctx: Arc<dyn IoContext>,
 
@@ -62,6 +57,8 @@ pub struct BootstrapServer {
     pub disable_tcp_realtime: bool,
     pub handshake_query_received: AtomicBool,
     request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
+    message_deserializer: Arc<MessageDeserializer>,
+    tcp_message_manager: Arc<TcpMessageManager>,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -78,14 +75,17 @@ impl BootstrapServer {
         network: NetworkParams,
         stats: Arc<Stat>,
         request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
+        block_uniquer: Arc<BlockUniquer>,
+        vote_uniquer: Arc<VoteUniquer>,
+        tcp_message_manager: Arc<TcpMessageManager>,
     ) -> Self {
+        let network_constants = network.network.clone();
         Self {
             socket,
             config,
             logger,
             observer,
             stopped: AtomicBool::new(false),
-            queue: Mutex::new(VecDeque::new()),
             disable_bootstrap_listener: false,
             connections_max: 64,
             remote_endpoint: Mutex::new(SocketAddr::new(
@@ -93,8 +93,6 @@ impl BootstrapServer {
                 0,
             )),
             remote_node_id: Mutex::new(Account::new()),
-            receive_buffer: Arc::new(Mutex::new(vec![0; 1024])),
-            publish_filter,
             workers,
             io_ctx,
             last_telemetry_req: Mutex::new(None),
@@ -105,6 +103,13 @@ impl BootstrapServer {
             disable_tcp_realtime: false,
             handshake_query_received: AtomicBool::new(false),
             request_response_visitor_factory,
+            message_deserializer: Arc::new(MessageDeserializer::new(
+                network_constants,
+                publish_filter,
+                block_uniquer,
+                vote_uniquer,
+            )),
+            tcp_message_manager,
         }
     }
 
@@ -118,7 +123,16 @@ impl BootstrapServer {
         }
     }
 
-    pub fn make_bootstrap_connection(&self) -> bool {
+    pub fn is_telemetry_cutoff_exceeded(&self) -> bool {
+        let cutoff = TelemetryCacheCutoffs::network_to_time(&self.network.network);
+        let lock = self.last_telemetry_req.lock().unwrap();
+        match *lock {
+            Some(last_req) => last_req.elapsed() >= cutoff,
+            None => true,
+        }
+    }
+
+    pub fn to_bootstrap_connection(&self) -> bool {
         if self.socket.socket_type() == SocketType::Undefined
             && !self.disable_bootstrap_listener
             && self.observer.get_bootstrap_count() < self.connections_max
@@ -128,6 +142,20 @@ impl BootstrapServer {
         }
 
         return self.socket.socket_type() == SocketType::Bootstrap;
+    }
+
+    pub fn to_realtime_connection(&self, node_id: &Account) -> bool {
+        if self.socket.socket_type() == SocketType::Undefined && !self.disable_tcp_realtime {
+            {
+                let mut lk = self.remote_node_id.lock().unwrap();
+                *lk = *node_id;
+            }
+
+            self.observer.inc_realtime_count();
+            self.socket.set_socket_type(SocketType::Realtime);
+            return true;
+        }
+        return false;
     }
 
     pub fn set_last_telemetry_req(&self) {
@@ -147,6 +175,27 @@ impl BootstrapServer {
     pub fn unique_id(&self) -> usize {
         self.unique_id
     }
+
+    pub fn is_undefined_connection(&self) -> bool {
+        self.socket.socket_type() == SocketType::Undefined
+    }
+
+    pub fn is_bootstrap_connection(&self) -> bool {
+        self.socket.is_bootstrap_connection()
+    }
+
+    pub fn is_realtime_connection(&self) -> bool {
+        self.socket.is_realtime_connection()
+    }
+
+    pub fn queue_realtime(&self, message: Box<dyn Message>) {
+        self.tcp_message_manager.put_message(TcpMessageItem {
+            message: Some(message),
+            endpoint: *self.remote_endpoint.lock().unwrap(),
+            node_id: *self.remote_node_id.lock().unwrap(),
+            socket: Some(Arc::clone(&self.socket)),
+        });
+    }
 }
 
 impl Drop for BootstrapServer {
@@ -162,38 +211,53 @@ impl Drop for BootstrapServer {
 }
 
 pub trait RequestResponseVisitorFactory {
-    fn create_visitor(
-        &self,
-        connection: &Arc<BootstrapServer>,
-        requests_lock: &BootstrapRequestsLock,
-    ) -> Box<dyn MessageVisitor>;
+    fn handshake_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn HandshakeMessageVisitor>;
+
+    fn realtime_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn RealtimeMessageVisitor>;
+
+    fn bootstrap_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn BootstrapMessageVisitor>;
 
     fn handle(&self) -> *mut c_void;
 }
 
+pub trait HandshakeMessageVisitor: MessageVisitor {
+    fn process(&self) -> bool;
+    fn bootstrap(&self) -> bool;
+    fn as_message_visitor(&self) -> &dyn MessageVisitor;
+}
+
+pub trait RealtimeMessageVisitor: MessageVisitor {
+    fn process(&self) -> bool;
+    fn as_message_visitor(&self) -> &dyn MessageVisitor;
+}
+
+pub trait BootstrapMessageVisitor: MessageVisitor {
+    fn processed(&self) -> bool;
+    fn as_message_visitor(&self) -> &dyn MessageVisitor;
+}
+
 pub trait BootstrapServerExt {
+    fn start(&self);
     fn timeout(&self);
-    fn lock_requests(&self) -> BootstrapRequestsLock;
-    fn requests_empty(&self) -> bool;
-    fn push_request(&self, msg: Option<Box<dyn Message>>);
-    fn run_next(&self, requests_lock: &BootstrapRequestsLock);
-    fn receive(&self);
-    fn finish_request(&self);
-    fn finish_request_async(&self);
-    fn add_request(&self, message: Box<dyn Message>);
-    fn receive_header_action(&self, ec: ErrorCode, size: usize);
-    fn receive_node_id_handshake_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
-    fn receive_confirm_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
-    fn receive_confirm_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
-    fn receive_telemetry_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
-    fn receive_publish_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
-    fn receive_keepalive_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
-    fn receive_frontier_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
-    fn receive_bulk_pull_account_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
-    fn receive_bulk_pull_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader);
+
+    fn receive_message(&self);
+    fn received_message(&self, message: Option<Box<dyn Message>>);
+    fn process_message(&self, message: Box<dyn Message>) -> bool;
 }
 
 impl BootstrapServerExt for Arc<BootstrapServer> {
+    fn start(&self) {
+        // Set remote_endpoint
+        let mut guard = self.remote_endpoint.lock().unwrap();
+        if guard.port() == 0 {
+            if let Some(ep) = self.socket.get_remote() {
+                *guard = ep;
+            }
+            debug_assert!(guard.port() != 0);
+        }
+        self.receive_message();
+    }
+
     fn timeout(&self) {
         if self.socket.has_timed_out() {
             self.observer.bootstrap_server_timeout(self.unique_id());
@@ -201,614 +265,118 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
         }
     }
 
-    fn lock_requests(&self) -> BootstrapRequestsLock {
-        let guard = self.queue.lock().unwrap();
-        BootstrapRequestsLock::new(Arc::clone(self), guard)
-    }
-
-    fn run_next(&self, requests_lock: &BootstrapRequestsLock) {
-        debug_assert!(!requests_lock.is_queue_empty());
-        let visitor = self
-            .request_response_visitor_factory
-            .create_visitor(self, requests_lock);
-        let msg_type = requests_lock.front().unwrap().header().message_type();
-        if msg_type == MessageType::BulkPull
-            || msg_type == MessageType::BulkPullAccount
-            || msg_type == MessageType::BulkPush
-            || msg_type == MessageType::FrontierReq
-            || msg_type == MessageType::NodeIdHandshake
-        {
-            // Bootstrap & node ID (realtime start)
-            // Request removed from queue in request_response_visitor. For bootstrap with requests.front ().release (), for node ID with finish_request ()
-            if let Some(msg) = requests_lock.front() {
-                msg.visit(visitor.as_ref())
-            }
-        } else {
-            // Realtime
-            if let Some(msg) = requests_lock.front() {
-                requests_lock.pop();
-                requests_lock.unlock();
-                msg.visit(visitor.as_ref());
-                requests_lock.relock();
-            }
+    fn receive_message(&self) {
+        if self.is_stopped() {
+            return;
         }
-    }
 
-    fn receive(&self) {
-        // Increase timeout to receive TCP header (idle server socket)
-        self.socket
-            .set_default_timeout_value(self.network.network.idle_timeout_s as u64);
-        let self_clone = self.clone();
-        self.socket.async_read2(
-            self.receive_buffer.clone(),
-            8,
-            Box::new(move |ec, size| {
-                {
-                    // Set remote_endpoint
-                    let mut endpoint_lk = self_clone.remote_endpoint.lock().unwrap();
-                    if endpoint_lk.port() == 0 {
-                        if let Some(ep) = self_clone.socket.get_remote() {
-                            *endpoint_lk = ep;
-                        }
-                    }
+        let self_clone = Arc::clone(self);
+        self.message_deserializer.read(
+            Arc::clone(&self.socket),
+            Box::new(move |ec, msg| {
+                if ec.is_err() {
+                    // IO error or critical error when deserializing message
+                    let _ = self_clone.stats.inc(
+                        StatType::Error,
+                        DetailType::from(self_clone.message_deserializer.status()),
+                        Direction::In,
+                    );
+                    self_clone.stop();
+                    return;
                 }
-
-                // Decrease timeout to default
-                self_clone
-                    .socket
-                    .set_default_timeout_value(self_clone.config.tcp_io_timeout_s as u64);
-                // Receive header
-                self_clone.receive_header_action(ec, size);
+                self_clone.received_message(msg);
             }),
         );
     }
 
-    fn add_request(&self, message: Box<dyn Message>) {
-        let lock = self.lock_requests();
-        let start = lock.is_queue_empty();
-        lock.push(Some(message));
-        if start {
-            self.run_next(&lock);
-        }
-    }
-
-    fn receive_header_action(&self, ec: ErrorCode, size: usize) {
-        if ec.is_ok() {
-            debug_assert!(size == 8);
-            let header = {
-                let buffer = self.receive_buffer.lock().unwrap();
-                let mut stream = StreamAdapter::new(&buffer[..size]);
-                MessageHeader::from_stream(&mut stream)
-            };
-
-            match header {
-                Ok(header) => {
-                    if header.network() != self.network.network.current_network {
-                        _ = self.stats.inc(
-                            StatType::Message,
-                            DetailType::InvalidNetwork,
-                            Direction::In,
-                        );
-                        return;
-                    }
-
-                    if header.version_using() < self.network.network.protocol_version_min {
-                        let _ = self.stats.inc(
-                            StatType::Message,
-                            DetailType::OutdatedVersion,
-                            Direction::In,
-                        );
-                        return;
-                    }
-
-                    let self_clone = self.clone();
-                    let buffer = self.receive_buffer.clone();
-
-                    match header.message_type() {
-                        MessageType::BulkPull => {
-                            let _ = self.stats.inc(
-                                StatType::Bootstrap,
-                                DetailType::BulkPull,
-                                Direction::In,
-                            );
-                            self.socket.async_read2(
-                                buffer,
-                                header.payload_length(),
-                                Box::new(move |ec, size| {
-                                    self_clone.receive_bulk_pull_action(ec, size, &header);
-                                }),
-                            );
-                        }
-                        MessageType::BulkPullAccount => {
-                            let _ = self.stats.inc(
-                                StatType::Bootstrap,
-                                DetailType::BulkPullAccount,
-                                Direction::In,
-                            );
-                            self.socket.async_read2(
-                                buffer,
-                                header.payload_length(),
-                                Box::new(move |ec, size| {
-                                    self_clone.receive_bulk_pull_account_action(ec, size, &header);
-                                }),
-                            );
-                        }
-                        MessageType::FrontierReq => {
-                            let _ = self.stats.inc(
-                                StatType::Bootstrap,
-                                DetailType::FrontierReq,
-                                Direction::In,
-                            );
-                            self.socket.async_read2(
-                                buffer,
-                                header.payload_length(),
-                                Box::new(move |ec, size| {
-                                    self_clone.receive_frontier_req_action(ec, size, &header);
-                                }),
-                            );
-                        }
-                        MessageType::BulkPush => {
-                            let _ = self.stats.inc(
-                                StatType::Bootstrap,
-                                DetailType::BulkPush,
-                                Direction::In,
-                            );
-                            if self.make_bootstrap_connection() {
-                                self.add_request(Box::new(BulkPush::with_header(&header)))
-                            }
-                        }
-                        MessageType::Keepalive => {
-                            self.socket.async_read2(
-                                buffer,
-                                header.payload_length(),
-                                Box::new(move |ec, size| {
-                                    self_clone.receive_keepalive_action(ec, size, &header);
-                                }),
-                            );
-                        }
-                        MessageType::Publish => {
-                            self.socket.async_read2(
-                                buffer,
-                                header.payload_length(),
-                                Box::new(move |ec, size| {
-                                    self_clone.receive_publish_action(ec, size, &header);
-                                }),
-                            );
-                        }
-                        MessageType::ConfirmAck => {
-                            self.socket.async_read2(
-                                buffer,
-                                header.payload_length(),
-                                Box::new(move |ec, size| {
-                                    self_clone.receive_confirm_ack_action(ec, size, &header);
-                                }),
-                            );
-                        }
-                        MessageType::ConfirmReq => {
-                            self.socket.async_read2(
-                                buffer,
-                                header.payload_length(),
-                                Box::new(move |ec, size| {
-                                    self_clone.receive_confirm_req_action(ec, size, &header);
-                                }),
-                            );
-                        }
-                        MessageType::NodeIdHandshake => {
-                            self.socket.async_read2(
-                                buffer,
-                                header.payload_length(),
-                                Box::new(move |ec, size| {
-                                    self_clone.receive_node_id_handshake_action(ec, size, &header);
-                                }),
-                            );
-                        }
-                        MessageType::TelemetryReq => {
-                            if self.socket.is_realtime_connection() {
-                                // Only handle telemetry requests if they are outside of the cutoff time
-                                let cache_exceeded = self.cache_exceeded();
-                                if cache_exceeded {
-                                    self.set_last_telemetry_req();
-                                    self.add_request(Box::new(TelemetryReq::with_header(&header)));
-                                } else {
-                                    let _ = self.stats.inc(
-                                        StatType::Telemetry,
-                                        DetailType::RequestWithinProtectionCacheZone,
-                                        Direction::In,
-                                    );
-                                }
-                            }
-                            self.receive();
-                        }
-                        MessageType::TelemetryAck => {
-                            self.socket.async_read2(
-                                buffer,
-                                header.payload_length(),
-                                Box::new(move |ec, size| {
-                                    self_clone.receive_telemetry_ack_action(ec, size, &header);
-                                }),
-                            );
-                        }
-                        MessageType::Invalid | MessageType::NotAType => {
-                            if self.config.logging.network_logging_value {
-                                self.logger.try_log(&format!(
-                                    "Received invalid type from bootstrap connection {}",
-                                    header.message_type() as u8
-                                ));
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    if self.config.logging.network_logging_value {
-                        self.logger.try_log(&format!(
-                            "Received invalid type from bootstrap connection {}",
-                            e
-                        ));
-                    }
-                }
+    fn received_message(&self, message: Option<Box<dyn Message>>) {
+        let mut should_continue = true;
+        match message {
+            Some(message) => {
+                should_continue = self.process_message(message);
             }
-        } else if self.config.logging.bulk_pull_logging_value {
-            self.logger
-                .try_log(&format!("Error while receiving type: {:?}", ec));
-        }
-    }
-
-    fn receive_node_id_handshake_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
-        if ec.is_ok() {
-            let request = {
-                let buffer = self.receive_buffer.lock().unwrap();
-                let mut stream = StreamAdapter::new(&buffer[..size]);
-                NodeIdHandshake::from_stream(&mut stream, header)
-            };
-
-            if let Ok(request) = request {
-                if self.socket.socket_type() == SocketType::Undefined && !self.disable_tcp_realtime
-                {
-                    self.add_request(Box::new(request));
-                }
-                self.receive();
-            }
-        } else if self.config.logging.network_node_id_handshake_logging_value {
-            self.logger
-                .try_log(&format!("Error receiving node_id_handshake: {:?}", ec));
-        }
-    }
-
-    fn receive_confirm_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
-        if ec.is_ok() {
-            let request = {
-                let buffer = self.receive_buffer.lock().unwrap();
-                let mut stream = StreamAdapter::new(&buffer[..size]);
-                ConfirmAck::with_header(header, &mut stream, None)
-            };
-
-            if let Ok(request) = request {
-                if self.socket.is_realtime_connection() {
-                    self.add_request(Box::new(request));
-                }
-                self.receive();
-            }
-        } else if self.config.logging.network_message_logging_value {
-            self.logger
-                .try_log(&format!("Error receiving confirm_ack: {:?}", ec));
-        }
-    }
-
-    fn receive_telemetry_ack_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
-        if ec.is_ok() {
-            let request = {
-                let buffer = self.receive_buffer.lock().unwrap();
-                let mut stream = StreamAdapter::new(&buffer[..size]);
-                TelemetryAck::from_stream(&mut stream, header)
-            };
-
-            if let Ok(request) = request {
-                if self.socket.is_realtime_connection() {
-                    self.add_request(Box::new(request));
-                }
-                self.receive();
-            }
-        } else {
-            if self.config.logging.network_telemetry_logging_value {
-                self.logger
-                    .try_log(&format!("Error receiving telemetry ack: {:?}", ec));
-            }
-        }
-    }
-
-    fn receive_confirm_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
-        if ec.is_ok() {
-            let request = {
-                let buffer = self.receive_buffer.lock().unwrap();
-                let mut stream = StreamAdapter::new(&buffer[..size]);
-                ConfirmReq::from_stream(&mut stream, header)
-            };
-            if let Ok(request) = request {
-                if self.socket.is_realtime_connection() {
-                    self.add_request(Box::new(request));
-                }
-                self.receive();
-            }
-        } else if self.config.logging.network_message_logging_value {
-            self.logger
-                .try_log(&format!("Error receiving confirm_req: {:?}", ec));
-        }
-    }
-
-    fn receive_publish_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
-        if ec.is_ok() {
-            let (digest, existed) = {
-                let bytes = self.receive_buffer.lock().unwrap();
-                self.publish_filter.apply(&bytes[..size])
-            };
-
-            if !existed {
-                let request = {
-                    let buffer = self.receive_buffer.lock().unwrap();
-                    let mut stream = StreamAdapter::new(&buffer[..size]);
-                    Publish::from_stream(&mut stream, header, digest)
-                };
-
-                if let Ok(request) = request {
-                    if self.socket.is_realtime_connection() {
-                        let insufficient_work = {
-                            let block = request.block.as_ref().unwrap(); // block cannot be None after deserialize!
-                            let lk = block.read().unwrap();
-                            self.network.work.validate_entry_block(lk.as_block())
-                        };
-                        if !insufficient_work {
-                            self.add_request(Box::new(request));
-                        } else {
-                            let _ = self.stats.inc_detail_only(
-                                StatType::Error,
-                                DetailType::InsufficientWork,
-                                Direction::In,
-                            );
-                        }
-                    }
-                    self.receive();
-                }
-            } else {
+            None => {
+                // Error while deserializing message
+                debug_assert!(self.message_deserializer.status() != ParseStatus::Success);
                 let _ = self.stats.inc(
-                    StatType::Filter,
-                    DetailType::DuplicatePublish,
+                    StatType::Error,
+                    DetailType::from(self.message_deserializer.status()),
                     Direction::In,
                 );
-                self.receive();
+                if self.message_deserializer.status() == ParseStatus::DuplicatePublishMessage {
+                    let _ = self.stats.inc(
+                        StatType::Filter,
+                        DetailType::DuplicatePublish,
+                        Direction::In,
+                    );
+                }
             }
-        } else if self.config.logging.network_message_logging_value {
-            self.logger
-                .try_log(&format!("Error receiving publish: {:?}", ec));
+        }
+
+        if should_continue {
+            self.receive_message();
         }
     }
 
-    fn receive_keepalive_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
-        if ec.is_ok() {
-            let request = {
-                let buffer = self.receive_buffer.lock().unwrap();
-                let mut stream = StreamAdapter::new(&buffer[..size]);
-                Keepalive::from_stream(header.clone(), &mut stream)
-            };
-
-            if let Ok(request) = request {
-                if self.socket.is_realtime_connection() {
-                    self.add_request(Box::new(request));
-                }
-                self.receive();
-            }
-        } else if self.config.logging.network_message_logging_value {
-            self.logger
-                .try_log(&format!("Error receiving keepalive: {:?}", ec));
-        }
-    }
-
-    fn receive_frontier_req_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
-        if ec.is_ok() {
-            let request = {
-                let buffer = self.receive_buffer.lock().unwrap();
-                let mut stream = StreamAdapter::new(&buffer[..size]);
-                FrontierReq::from_stream(&mut stream, header)
-            };
-
-            if let Ok(request) = request {
-                if self.config.logging.bulk_pull_logging_value {
-                    self.logger.try_log(&format!(
-                        "Received frontier request for {} with age {}",
-                        request.start.encode_account(),
-                        request.age
-                    ));
-                }
-                if self.make_bootstrap_connection() {
-                    self.add_request(Box::new(request));
-                }
-                self.receive();
-            }
-        } else if self.config.logging.network_message_logging_value {
-            self.logger
-                .try_log(&format!("Error receiving frontier request: {:?}", ec));
-        }
-    }
-
-    fn receive_bulk_pull_account_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
-        if ec.is_ok() {
-            let request = {
-                let buffer = self.receive_buffer.lock().unwrap();
-                let mut stream = StreamAdapter::new(&buffer[..size]);
-                BulkPullAccount::from_stream(&mut stream, header)
-            };
-
-            if let Ok(request) = request {
-                if self.config.logging.bulk_pull_logging_value {
-                    self.logger.try_log(&format!(
-                        "Received bulk pull account for {} with a minimum amount of {}",
-                        request.account.encode_account(),
-                        request.minimum_amount.format_balance(10)
-                    ));
-                }
-                if self.make_bootstrap_connection() && !self.disable_bootstrap_bulk_pull_server {
-                    self.add_request(Box::new(request));
-                }
-                self.receive();
-            }
-        }
-    }
-
-    fn receive_bulk_pull_action(&self, ec: ErrorCode, size: usize, header: &MessageHeader) {
-        if ec.is_ok() {
-            let request = {
-                let buffer = self.receive_buffer.lock().unwrap();
-                let mut stream = StreamAdapter::new(&buffer[..size]);
-                BulkPull::from_stream(&mut stream, header)
-            };
-
-            if let Ok(request) = request {
-                if self.config.logging.bulk_pull_logging_value {
-                    let remote = { self.remote_endpoint.lock().unwrap().clone() };
-                    self.logger.try_log(&format!(
-                        "Received bulk pull for {} down to {}, maximum of {} from {}",
-                        request.start, request.end, request.count, remote
-                    ));
-                }
-                if self.make_bootstrap_connection() && !self.disable_bootstrap_bulk_pull_server {
-                    self.add_request(Box::new(request));
-                }
-                self.receive();
-            }
-        }
-    }
-
-    fn finish_request(&self) {
-        let lock = self.lock_requests();
-        if !lock.is_queue_empty() {
-            lock.pop();
-        } else {
-            let _ = self.stats.inc(
-                StatType::Bootstrap,
-                DetailType::RequestUnderflow,
-                Direction::In,
-            );
-        }
-
-        while !lock.is_queue_empty() {
-            if lock.front().is_none() {
-                lock.pop();
-            } else {
-                self.run_next(&lock);
-            }
-        }
-
-        let self_weak = Arc::downgrade(self);
-        self.workers.add_timed_task(
-            Duration::from_secs((self.config.tcp_io_timeout_s as u64 * 2) + 1),
-            Box::new(move || {
-                if let Some(self_clone) = self_weak.upgrade() {
-                    self_clone.timeout();
-                }
-            }),
+    fn process_message(&self, message: Box<dyn Message>) -> bool {
+        let _ = self.stats.inc(
+            StatType::BootstrapServer,
+            DetailType::from(message.header().message_type()),
+            Direction::In,
         );
-    }
 
-    fn finish_request_async(&self) {
-        let self_weak = Arc::downgrade(self);
-        self.io_ctx.post(Box::new(move || {
-            if let Some(self_clone) = self_weak.upgrade() {
-                self_clone.finish_request();
+        debug_assert!(
+            self.is_undefined_connection()
+                || self.is_realtime_connection()
+                || self.is_bootstrap_connection()
+        );
+
+        /*
+         * Server initially starts in undefined state, where it waits for either a handshake or booststrap request message
+         * If the server receives a handshake (and it is successfully validated) it will switch to a realtime mode.
+         * In realtime mode messages are deserialized and queued to `tcp_message_manager` for further processing.
+         * In realtime mode any bootstrap requests are ignored.
+         *
+         * If the server receives a bootstrap request before receiving a handshake, it will switch to a bootstrap mode.
+         * In bootstrap mode once a valid bootstrap request message is received, the server will start a corresponding bootstrap server and pass control to that server.
+         * Once that server finishes its task, control is passed back to this server to read and process any subsequent messages.
+         * In bootstrap mode any realtime messages are ignored
+         */
+        if self.is_undefined_connection() {
+            let handshake_visitor = self
+                .request_response_visitor_factory
+                .handshake_visitor(Arc::clone(self));
+            message.visit(handshake_visitor.as_message_visitor());
+
+            if handshake_visitor.process() {
+                self.queue_realtime(message);
+                return true;
+            } else if handshake_visitor.bootstrap() {
+                // Switch to bootstrap connection mode and handle message in subsequent bootstrap visitor
+                self.to_bootstrap_connection();
+            } else {
+                // Neither handshake nor bootstrap received when in handshake mode
+                return true;
             }
-        }));
-    }
-
-    fn requests_empty(&self) -> bool {
-        self.lock_requests().is_queue_empty()
-    }
-
-    fn push_request(&self, msg: Option<Box<dyn Message>>) {
-        self.lock_requests().push(msg)
-    }
-}
-
-#[derive(Clone)]
-pub struct BootstrapRequestsLock {
-    server: Arc<BootstrapServer>,
-    requests: Rc<RefCell<Option<MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>>>>,
-}
-
-impl BootstrapRequestsLock {
-    pub fn new(
-        server: Arc<BootstrapServer>,
-        guard: MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
-    ) -> Self {
-        let guard = unsafe {
-            std::mem::transmute::<
-                MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
-                MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>,
-            >(guard)
-        };
-        Self {
-            server,
-            requests: Rc::new(RefCell::new(Some(guard))),
-        }
-    }
-
-    pub fn unlock(&self) {
-        let mut inner = self.requests.borrow_mut();
-        *inner = None;
-    }
-
-    pub fn relock(&self) {
-        let guard = self.server.queue.lock().unwrap();
-        let mut inner = self.requests.borrow_mut();
-        *inner = unsafe {
-            Some(std::mem::transmute::<
-                MutexGuard<VecDeque<Option<Box<dyn Message>>>>,
-                MutexGuard<'static, VecDeque<Option<Box<dyn Message>>>>,
-            >(guard))
-        };
-    }
-
-    pub fn release_front_request(&self) -> Option<Box<dyn Message>> {
-        let mut requests = self.requests.borrow_mut();
-        if let Some(r) = requests.as_mut() {
-            if let Some(req) = r.front_mut() {
-                return req.take();
+        } else if self.is_realtime_connection() {
+            let realtime_visitor = self
+                .request_response_visitor_factory
+                .realtime_visitor(Arc::clone(self));
+            message.visit(realtime_visitor.as_message_visitor());
+            if realtime_visitor.process() {
+                self.queue_realtime(message);
             }
+            return true;
         }
-
-        None
-    }
-
-    pub fn is_queue_empty(&self) -> bool {
-        let requests = self.requests.borrow();
-        if let Some(r) = requests.as_ref() {
-            r.is_empty()
-        } else {
-            true
+        // It is possible for server to switch to bootstrap mode immediately after processing handshake, thus no `else if`
+        if self.is_bootstrap_connection() {
+            let bootstrap_visitor = self
+                .request_response_visitor_factory
+                .bootstrap_visitor(Arc::clone(self));
+            message.visit(bootstrap_visitor.as_message_visitor());
+            return !bootstrap_visitor.processed(); // Stop receiving new messages if bootstrap serving started
         }
-    }
-
-    pub fn front(&self) -> Option<Box<dyn Message>> {
-        let requests = self.requests.borrow();
-        if let Some(r) = requests.as_ref() {
-            if let Some(req) = r.front() {
-                if let Some(msg) = req {
-                    return Some(msg.clone_box());
-                }
-            }
-        }
-
-        None
-    }
-
-    pub fn pop(&self) {
-        let mut requests = self.requests.borrow_mut();
-        if let Some(r) = requests.as_mut() {
-            r.pop_front();
-        }
-    }
-
-    pub fn push(&self, msg: Option<Box<dyn Message>>) {
-        let mut requests = self.requests.borrow_mut();
-        if let Some(r) = requests.as_mut() {
-            r.push_back(msg)
-        }
+        debug_assert!(false);
+        true // Continue receiving new messages
     }
 }

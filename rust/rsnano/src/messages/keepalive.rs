@@ -31,9 +31,9 @@ impl Keepalive {
         }
     }
 
-    pub fn with_header(header: &MessageHeader) -> Self {
+    pub fn with_header(header: MessageHeader) -> Self {
         Self {
-            header: header.clone(),
+            header,
             peers: empty_peers(),
         }
     }

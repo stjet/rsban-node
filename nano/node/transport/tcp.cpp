@@ -138,12 +138,12 @@ std::shared_ptr<nano::bootstrap_server> nano::transport::bootstrap_server_factor
 	node.io_ctx, socket_a, node.logger,
 	*node.stats, node.flags, *node.config,
 	node.bootstrap, std::make_shared<nano::request_response_visitor_factory> (node),
-	node.workers, *node.network->publish_filter);
+	node.workers, *node.network->publish_filter, node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager);
 
 	// Listen for possible responses
 	response_server->get_socket ()->type_set (nano::socket::type_t::realtime_response_server);
 	response_server->set_remote_node_id (channel_a->get_node_id ());
-	response_server->receive ();
+	response_server->start ();
 
 	if (!node.flags.disable_initial_telemetry_requests ())
 	{
@@ -804,9 +804,8 @@ void nano::transport::tcp_channels::host_unreachable ()
 
 void nano::transport::tcp_channels::message_sent (nano::message const & message_a)
 {
-	nano::transport::callback_visitor visitor;
-	message_a.visit (visitor);
-	stats->inc (nano::stat::type::message, visitor.result, nano::stat::dir::out);
+	auto detail = nano::message_type_to_stat_detail (message_a.get_header ().get_type ());
+	stats->inc (nano::stat::type::message, detail, nano::stat::dir::out);
 }
 
 void nano::transport::tcp_channels::message_dropped (nano::message const & message_a, std::size_t buffer_size_a)

@@ -95,6 +95,7 @@ public:
 		ledger,
 		rollback,
 		bootstrap,
+		bootstrap_server,
 		vote,
 		election,
 		http_callback,
@@ -143,6 +144,8 @@ public:
 		rollback_failed,
 
 		// message specific
+		not_a_type,
+		invalid,
 		keepalive,
 		publish,
 		republish_vote,
@@ -212,6 +215,10 @@ public:
 		invalid_node_id_handshake_message,
 		invalid_telemetry_req_message,
 		invalid_telemetry_ack_message,
+		invalid_bulk_pull_message,
+		invalid_bulk_pull_account_message,
+		invalid_frontier_req_message,
+		message_too_big,
 		outdated_version,
 		udp_max_per_ip,
 		udp_max_per_subnetwork,

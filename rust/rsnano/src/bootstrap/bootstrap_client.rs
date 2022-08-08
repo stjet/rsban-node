@@ -88,7 +88,7 @@ impl BootstrapClient {
         &self.socket
     }
 
-    pub fn read_async(&self, size: usize, callback: Box<dyn Fn(ErrorCode, usize)>) {
+    pub fn read_async(&self, size: usize, callback: Box<dyn FnOnce(ErrorCode, usize)>) {
         self.socket
             .async_read2(Arc::clone(&self.receive_buffer), size, callback);
     }

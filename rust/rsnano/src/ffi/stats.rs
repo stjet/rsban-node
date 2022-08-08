@@ -6,7 +6,10 @@ use std::{
 
 use num::FromPrimitive;
 
-use crate::stats::{stat_type_as_str, FileWriter, JsonWriter, Stat, StatConfig, StatLogSink};
+use crate::{
+    messages::MessageType,
+    stats::{stat_type_as_str, DetailType, FileWriter, JsonWriter, Stat, StatConfig, StatLogSink},
+};
 
 use super::FfiPropertyTreeWriter;
 
@@ -267,4 +270,9 @@ pub unsafe extern "C" fn rsn_stat_count(
     let detail = FromPrimitive::from_u8(detail).unwrap();
     let dir = FromPrimitive::from_u8(dir).unwrap();
     (*handle).0.count(stat_type, detail, dir)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_message_type_to_stat_detail(message_type: u8) -> u8 {
+    DetailType::from(MessageType::from_u8(message_type).unwrap()) as u8
 }

@@ -1,5 +1,9 @@
 use super::MessageHandle;
-use crate::{ffi::VoidPointerCallback, messages::*};
+use crate::{
+    bootstrap::{BootstrapMessageVisitor, HandshakeMessageVisitor, RealtimeMessageVisitor},
+    ffi::VoidPointerCallback,
+    messages::*,
+};
 use std::ffi::c_void;
 use MessageVisitor;
 
@@ -88,6 +92,72 @@ impl MessageVisitor for FfiMessageVisitor {
 
     fn telemetry_ack(&self, message: &TelemetryAck) {
         self.visit_callback(message);
+    }
+}
+
+pub type MessageVisitorFlagCallback = unsafe extern "C" fn(*mut c_void) -> bool;
+static mut BOOTSTRAP_PROCESSED: Option<MessageVisitorFlagCallback> = None;
+static mut REALTIME_PROCESS: Option<MessageVisitorFlagCallback> = None;
+static mut HANDSHAKE_PROCESS: Option<MessageVisitorFlagCallback> = None;
+static mut HANDSHAKE_BOOTSTRAP: Option<MessageVisitorFlagCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_message_visitor_bootstrap_processed(
+    f: MessageVisitorFlagCallback,
+) {
+    BOOTSTRAP_PROCESSED = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_message_visitor_realtime_process(
+    f: MessageVisitorFlagCallback,
+) {
+    REALTIME_PROCESS = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_message_visitor_handshake_process(
+    f: MessageVisitorFlagCallback,
+) {
+    HANDSHAKE_PROCESS = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_message_visitor_handshake_bootstrap(
+    f: MessageVisitorFlagCallback,
+) {
+    HANDSHAKE_BOOTSTRAP = Some(f);
+}
+
+impl BootstrapMessageVisitor for FfiMessageVisitor {
+    fn processed(&self) -> bool {
+        unsafe { BOOTSTRAP_PROCESSED.expect("BOOTSTRAP_PROCESSED missing")(self.handle) }
+    }
+
+    fn as_message_visitor(&self) -> &dyn MessageVisitor {
+        self
+    }
+}
+
+impl RealtimeMessageVisitor for FfiMessageVisitor {
+    fn process(&self) -> bool {
+        unsafe { REALTIME_PROCESS.expect("REALTIME_PROCESS missing")(self.handle) }
+    }
+    fn as_message_visitor(&self) -> &dyn MessageVisitor {
+        self
+    }
+}
+
+impl HandshakeMessageVisitor for FfiMessageVisitor {
+    fn process(&self) -> bool {
+        unsafe { HANDSHAKE_PROCESS.expect("HANDSHAKE_PROCESS missing")(self.handle) }
+    }
+
+    fn bootstrap(&self) -> bool {
+        unsafe { HANDSHAKE_BOOTSTRAP.expect("HANDSHAKE_BOOTSTRAP missing")(self.handle) }
+    }
+    fn as_message_visitor(&self) -> &dyn MessageVisitor {
+        self
     }
 }
 

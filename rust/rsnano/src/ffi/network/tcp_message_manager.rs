@@ -5,6 +5,14 @@ use super::TcpMessageItemHandle;
 
 pub struct TcpMessageManagerHandle(Arc<TcpMessageManager>);
 
+impl Deref for TcpMessageManagerHandle {
+    type Target = Arc<TcpMessageManager>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_tcp_message_manager_create(
     incoming_connections_max: usize,

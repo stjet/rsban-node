@@ -64,9 +64,9 @@ pub(crate) unsafe fn create_message_handle<T: 'static + Message>(
 
 pub(crate) unsafe fn create_message_handle2<T: 'static + Message>(
     header: *mut MessageHeaderHandle,
-    f: impl FnOnce(&MessageHeader) -> T,
+    f: impl FnOnce(MessageHeader) -> T,
 ) -> *mut MessageHandle {
-    let msg = f((*header).deref());
+    let msg = f((*header).deref().clone());
     Box::into_raw(Box::new(MessageHandle(Box::new(msg))))
 }
 

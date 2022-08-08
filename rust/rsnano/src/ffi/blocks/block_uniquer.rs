@@ -2,10 +2,10 @@ use super::BlockHandle;
 use crate::BlockUniquer;
 use std::{ops::Deref, sync::Arc};
 
-pub struct BlockUniquerHandle(BlockUniquer);
+pub struct BlockUniquerHandle(Arc<BlockUniquer>);
 
 impl Deref for BlockUniquerHandle {
-    type Target = BlockUniquer;
+    type Target = Arc<BlockUniquer>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -14,7 +14,7 @@ impl Deref for BlockUniquerHandle {
 
 #[no_mangle]
 pub extern "C" fn rsn_block_uniquer_create() -> *mut BlockUniquerHandle {
-    Box::into_raw(Box::new(BlockUniquerHandle(BlockUniquer::new())))
+    Box::into_raw(Box::new(BlockUniquerHandle(Arc::new(BlockUniquer::new()))))
 }
 
 #[no_mangle]

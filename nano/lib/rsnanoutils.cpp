@@ -1,3 +1,5 @@
+#include "nano/node/common.hpp"
+
 #include <nano/lib/rsnanoutils.hpp>
 
 boost::system::error_code rsnano::dto_to_error_code (rsnano::ErrorCodeDto const & dto)
@@ -114,4 +116,36 @@ rsnano::IoContextHandle * rsnano::io_ctx_wrapper::handle () const
 boost::asio::io_context * rsnano::io_ctx_wrapper::inner () const
 {
 	return static_cast<boost::asio::io_context *> (rsnano::rsn_io_ctx_get_ctx (handle_m));
+}
+
+std::unique_ptr<nano::message> rsnano::message_handle_to_message (rsnano::MessageHandle * handle)
+{
+	auto type = static_cast<nano::message_type> (rsnano::rsn_message_type (handle));
+	switch (type)
+	{
+		case nano::message_type::keepalive:
+			return std::make_unique<nano::keepalive> (handle);
+		case nano::message_type::publish:
+			return std::make_unique<nano::publish> (handle);
+		case nano::message_type::confirm_req:
+			return std::make_unique<nano::confirm_req> (handle);
+		case nano::message_type::confirm_ack:
+			return std::make_unique<nano::confirm_ack> (handle);
+		case nano::message_type::bulk_pull:
+			return std::make_unique<nano::bulk_pull> (handle);
+		case nano::message_type::bulk_push:
+			return std::make_unique<nano::bulk_push> (handle);
+		case nano::message_type::frontier_req:
+			return std::make_unique<nano::frontier_req> (handle);
+		case nano::message_type::node_id_handshake:
+			return std::make_unique<nano::node_id_handshake> (handle);
+		case nano::message_type::bulk_pull_account:
+			return std::make_unique<nano::bulk_pull_account> (handle);
+		case nano::message_type::telemetry_req:
+			return std::make_unique<nano::telemetry_req> (handle);
+		case nano::message_type::telemetry_ack:
+			return std::make_unique<nano::telemetry_ack> (handle);
+	}
+
+	throw std::runtime_error ("invalid message type");
 }

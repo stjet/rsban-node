@@ -15,10 +15,8 @@ impl BulkPush {
         }
     }
 
-    pub fn with_header(header: &MessageHeader) -> Self {
-        Self {
-            header: header.clone(),
-        }
+    pub fn with_header(header: MessageHeader) -> Self {
+        Self { header }
     }
 
     pub fn deserialize(&mut self, _stream: &mut impl Stream) -> Result<()> {

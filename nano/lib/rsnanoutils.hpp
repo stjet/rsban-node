@@ -4,6 +4,11 @@
 #include <nano/boost/asio/ip/udp.hpp>
 #include <nano/lib/rsnano.hpp>
 
+namespace nano
+{
+class message;
+}
+
 namespace rsnano
 {
 boost::system::error_code dto_to_error_code (rsnano::ErrorCodeDto const & dto);
@@ -13,6 +18,7 @@ rsnano::EndpointDto endpoint_to_dto (boost::asio::ip::tcp::endpoint const & ep);
 boost::asio::ip::tcp::endpoint dto_to_endpoint (rsnano::EndpointDto const & dto);
 boost::asio::ip::udp::endpoint dto_to_udp_endpoint (rsnano::EndpointDto const & dto);
 std::string convert_dto_to_string (rsnano::StringDto & dto);
+std::unique_ptr<nano::message> message_handle_to_message (rsnano::MessageHandle * handle);
 
 class io_ctx_wrapper
 {

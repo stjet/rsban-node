@@ -112,6 +112,11 @@ std::string nano::message_type_to_string (nano::message_type message_type_l)
 	return rsnano::convert_dto_to_string (result);
 }
 
+nano::stat::detail nano::message_type_to_stat_detail (nano::message_type message_type)
+{
+	return static_cast<nano::stat::detail> (rsnano::rsn_message_type_to_stat_detail (static_cast<uint8_t> (message_type)));
+}
+
 std::string nano::message_header::to_string ()
 {
 	rsnano::StringDto result;
@@ -248,6 +253,11 @@ void nano::message_header::set_extension (std::size_t position, bool value)
 size_t nano::message_header::size ()
 {
 	return rsnano::rsn_message_header_size ();
+}
+
+bool nano::message_header::is_valid_message_type () const
+{
+	return rsnano::rsn_message_header_is_valid_message_type (handle);
 }
 
 // MTU - IP header - UDP header
@@ -979,6 +989,11 @@ nano::frontier_req::frontier_req (rsnano::MessageHandle * handle_a) :
 {
 }
 
+nano::frontier_req::frontier_req (frontier_req const & other_a) :
+	message (rsnano::rsn_message_frontier_req_clone (other_a.handle))
+{
+}
+
 void nano::frontier_req::serialize (nano::stream & stream_a) const
 {
 	if (!rsnano::rsn_message_frontier_req_serialize (handle, &stream_a))
@@ -1065,6 +1080,11 @@ nano::bulk_pull::bulk_pull (bool & error_a, nano::stream & stream_a, nano::messa
 
 nano::bulk_pull::bulk_pull (rsnano::MessageHandle * handle_a) :
 	message (handle_a)
+{
+}
+
+nano::bulk_pull::bulk_pull (bulk_pull const & other_a) :
+	message (rsnano::rsn_message_bulk_pull_req_clone (other_a.handle))
 {
 }
 
@@ -1161,6 +1181,11 @@ nano::bulk_pull_account::bulk_pull_account (bool & error_a, nano::stream & strea
 
 nano::bulk_pull_account::bulk_pull_account (rsnano::MessageHandle * handle_a) :
 	message (handle_a)
+{
+}
+
+nano::bulk_pull_account::bulk_pull_account (bulk_pull_account const & other_a) :
+	message (rsnano::rsn_message_bulk_pull_account_clone (other_a.handle))
 {
 }
 

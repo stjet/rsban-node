@@ -112,7 +112,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_deserialize(
     let uniquer = if uniquer.is_null() {
         None
     } else {
-        Some((*uniquer).deref())
+        Some((*uniquer).deref().as_ref())
     };
     downcast_message_mut::<ConfirmReq>(handle)
         .deserialize(&mut stream, uniquer)

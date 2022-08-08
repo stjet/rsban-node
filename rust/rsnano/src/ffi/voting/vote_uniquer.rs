@@ -3,10 +3,10 @@ use std::{ops::Deref, sync::Arc};
 use super::vote::VoteHandle;
 use crate::VoteUniquer;
 
-pub struct VoteUniquerHandle(VoteUniquer);
+pub struct VoteUniquerHandle(Arc<VoteUniquer>);
 
 impl Deref for VoteUniquerHandle {
-    type Target = VoteUniquer;
+    type Target = Arc<VoteUniquer>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -15,7 +15,7 @@ impl Deref for VoteUniquerHandle {
 
 #[no_mangle]
 pub extern "C" fn rsn_vote_uniquer_create() -> *mut VoteUniquerHandle {
-    Box::into_raw(Box::new(VoteUniquerHandle(VoteUniquer::new())))
+    Box::into_raw(Box::new(VoteUniquerHandle(Arc::new(VoteUniquer::new()))))
 }
 
 #[no_mangle]

@@ -33,7 +33,7 @@ impl NodeIdHandshake {
         }
     }
 
-    pub fn with_header(header: &MessageHeader) -> Self {
+    pub fn with_header(header: MessageHeader) -> Self {
         Self {
             header: header.clone(),
             query: None,
@@ -41,7 +41,7 @@ impl NodeIdHandshake {
         }
     }
 
-    pub fn from_stream(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
+    pub fn from_stream(stream: &mut dyn Stream, header: MessageHeader) -> Result<Self> {
         let mut request = NodeIdHandshake::with_header(header);
         request.deserialize(stream)?;
         Ok(request)

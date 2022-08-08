@@ -18,3 +18,4 @@ pub use socket::{
     EndpointDto, ReadCallbackWrapper, SocketDestroyContext, SocketHandle, SocketReadCallback,
 };
 pub use tcp_message_item::TcpMessageItemHandle;
+pub use tcp_message_manager::TcpMessageManagerHandle;

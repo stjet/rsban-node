@@ -23,6 +23,8 @@ static const uintptr_t FrontierReq_ONLY_CONFIRMED = 1;
 
 static const uint64_t PULL_COUNT_PER_CHECK = (8 * 1024);
 
+static const uint8_t SYSTEM = 1;
+
 struct AsyncConnectCallbackHandle;
 
 struct AsyncReadCallbackHandle;
@@ -51,8 +53,6 @@ struct BootstrapInitiatorHandle;
 
 struct BootstrapServerHandle;
 
-struct BootstrapServerLockHandle;
-
 struct BootstrapServerWeakHandle;
 
 struct BufferHandle;
@@ -75,6 +75,8 @@ struct LocalVotesResultHandle;
 
 /// points to a shared_ptr<logger_mt>
 struct LoggerHandle;
+
+struct MessageDeserializerHandle;
 
 struct MessageHandle;
 
@@ -487,6 +489,9 @@ struct CreateBootstrapServerParams
 	bool disable_bootstrap_bulk_pull_server;
 	bool disable_tcp_realtime;
 	void * request_response_visitor_factory;
+	BlockUniquerHandle * block_uniquer;
+	VoteUniquerHandle * vote_uniquer;
+	TcpMessageManagerHandle * tcp_message_manager;
 };
 
 using AddTimedTaskCallback = void (*) (void *, uint64_t, VoidFnCallbackHandle *);
@@ -547,6 +552,8 @@ struct MessageDto
 
 using ListenerBroadcastCallback = bool (*) (void *, const MessageDto *);
 
+using MessageVisitorFlagCallback = bool (*) (void *);
+
 using MessageVisitorCallback = void (*) (void *, MessageHandle *, uint8_t);
 
 using PropertyTreePutStringCallback = void (*) (void *, const char *, uintptr_t, const char *, uintptr_t);
@@ -571,7 +578,7 @@ using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
 /// first arg is a `shared_ptr<request_response_visitor_factory> *`
 /// returns a `shared_ptr<message_visitor> *`
-using RequestResponseVisitorFactoryCreateCallback = void * (*)(void *, BootstrapServerHandle *, BootstrapServerLockHandle *);
+using RequestResponseVisitorFactoryCreateCallback = void * (*)(void *, BootstrapServerHandle *);
 
 using StringCharsCallback = const char * (*)(void *);
 
@@ -684,6 +691,8 @@ struct HashRootPair
 	uint8_t block_hash[32];
 	uint8_t root[32];
 };
+
+using MessageDeserializedCallback = void (*) (void *, const ErrorCodeDto *, MessageHandle *);
 
 struct NodeFlagsDto
 {
@@ -1179,35 +1188,17 @@ void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_destroy_weak (BootstrapServerWeakHandle * handle);
 
-bool rsn_bootstrap_server_disable_bootstrap_bulk_pull_server (BootstrapServerHandle * handle);
-
-void rsn_bootstrap_server_finish_request (BootstrapServerHandle * handle);
-
-void rsn_bootstrap_server_finish_request_async (BootstrapServerHandle * handle);
-
 BootstrapServerWeakHandle * rsn_bootstrap_server_get_weak (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_handshake_query_received (BootstrapServerHandle * handle);
 
 bool rsn_bootstrap_server_is_stopped (BootstrapServerHandle * handle);
 
-BootstrapServerLockHandle * rsn_bootstrap_server_lock_clone (BootstrapServerLockHandle * handle);
-
-void rsn_bootstrap_server_lock_destroy (BootstrapServerLockHandle * handle);
-
 BootstrapServerHandle * rsn_bootstrap_server_lock_weak (BootstrapServerWeakHandle * handle);
-
-void rsn_bootstrap_server_push_request (BootstrapServerHandle * handle, MessageHandle * msg);
-
-void rsn_bootstrap_server_receive (BootstrapServerHandle * handle);
-
-MessageHandle * rsn_bootstrap_server_release_front_request (BootstrapServerLockHandle * handle);
 
 void rsn_bootstrap_server_remote_endpoint (BootstrapServerHandle * handle, EndpointDto * endpoint);
 
 void rsn_bootstrap_server_remote_node_id (BootstrapServerHandle * handle, uint8_t * node_id);
-
-bool rsn_bootstrap_server_requests_empty (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_set_handshake_query_received (BootstrapServerHandle * handle);
 
@@ -1217,9 +1208,16 @@ void rsn_bootstrap_server_set_remote_node_id (BootstrapServerHandle * handle, co
 
 SocketHandle * rsn_bootstrap_server_socket (BootstrapServerHandle * handle);
 
+void rsn_bootstrap_server_start (BootstrapServerHandle * handle);
+
 void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
 
+bool rsn_bootstrap_server_telemetry_cutoff_exceeded (BootstrapServerHandle * handle);
+
 void rsn_bootstrap_server_timeout (BootstrapServerHandle * handle);
+
+bool rsn_bootstrap_server_to_realtime_connection (BootstrapServerHandle * handle,
+const uint8_t * node_id);
 
 uintptr_t rsn_bootstrap_server_unique_id (BootstrapServerHandle * handle);
 
@@ -1263,6 +1261,8 @@ void rsn_callback_bootstrap_observer_exited (BootstrapServerExitedCallback f);
 
 void rsn_callback_bootstrap_observer_inc_bootstrap_count (BootstrapServerIncBootstrapCountCallback f);
 
+void rsn_callback_bootstrap_observer_inc_realtime_count (BootstrapServerIncBootstrapCountCallback f);
+
 void rsn_callback_bootstrap_observer_timeout (BootstrapServerTimeoutCallback f);
 
 void rsn_callback_buffer_destroy (VoidPointerCallback f);
@@ -1299,7 +1299,15 @@ void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
 void rsn_callback_logger_destroy (VoidPointerCallback f);
 
+void rsn_callback_message_visitor_bootstrap_processed (MessageVisitorFlagCallback f);
+
 void rsn_callback_message_visitor_destroy (VoidPointerCallback f);
+
+void rsn_callback_message_visitor_handshake_bootstrap (MessageVisitorFlagCallback f);
+
+void rsn_callback_message_visitor_handshake_process (MessageVisitorFlagCallback f);
+
+void rsn_callback_message_visitor_realtime_process (MessageVisitorFlagCallback f);
 
 void rsn_callback_message_visitor_visit (MessageVisitorCallback f);
 
@@ -1329,9 +1337,13 @@ void rsn_callback_read_bytes (ReadBytesCallback f);
 
 void rsn_callback_read_u8 (ReadU8Callback f);
 
-void rsn_callback_request_response_visitor_factory_create (RequestResponseVisitorFactoryCreateCallback f);
+void rsn_callback_request_response_visitor_factory_bootstrap_visitor (RequestResponseVisitorFactoryCreateCallback f);
 
 void rsn_callback_request_response_visitor_factory_destroy (VoidPointerCallback f);
+
+void rsn_callback_request_response_visitor_factory_handshake_visitor (RequestResponseVisitorFactoryCreateCallback f);
+
+void rsn_callback_request_response_visitor_factory_realtime_visitor (RequestResponseVisitorFactoryCreateCallback f);
 
 void rsn_callback_string_chars (StringCharsCallback f);
 
@@ -1620,6 +1632,8 @@ void rsn_message_builder_bootstrap_started (const char * id, const char * mode, 
 
 void rsn_message_bulk_pull_account_account (MessageHandle * handle, uint8_t * account);
 
+MessageHandle * rsn_message_bulk_pull_account_clone (MessageHandle * other);
+
 MessageHandle * rsn_message_bulk_pull_account_create (NetworkConstantsDto * constants);
 
 MessageHandle * rsn_message_bulk_pull_account_create2 (MessageHeaderHandle * header);
@@ -1653,6 +1667,8 @@ void rsn_message_bulk_pull_end (MessageHandle * handle, uint8_t * end);
 bool rsn_message_bulk_pull_is_ascending (MessageHandle * handle);
 
 bool rsn_message_bulk_pull_is_count_present (MessageHandle * handle);
+
+MessageHandle * rsn_message_bulk_pull_req_clone (MessageHandle * other);
 
 bool rsn_message_bulk_pull_serialize (MessageHandle * handle, void * stream);
 
@@ -1718,9 +1734,31 @@ bool rsn_message_confirm_req_serialize (MessageHandle * handle, void * stream);
 
 uintptr_t rsn_message_confirm_req_size (uint8_t block_type, uintptr_t count);
 
+MessageDeserializerHandle * rsn_message_deserializer_create (const NetworkConstantsDto * network_constants,
+NetworkFilterHandle * network_filter,
+BlockUniquerHandle * block_uniquer,
+VoteUniquerHandle * vote_uniquer);
+
+void rsn_message_deserializer_destroy (MessageDeserializerHandle * handle);
+
+uint8_t rsn_message_deserializer_parse_status_to_stat_detail (MessageDeserializerHandle * handle);
+
+void rsn_message_deserializer_parse_status_to_string (MessageDeserializerHandle * handle,
+StringDto * result);
+
+void rsn_message_deserializer_read (MessageDeserializerHandle * handle,
+SocketHandle * socket,
+MessageDeserializedCallback callback,
+VoidPointerCallback destroy_callback,
+void * context);
+
+uint8_t rsn_message_deserializer_status (MessageDeserializerHandle * handle);
+
 void rsn_message_destroy (MessageHandle * handle);
 
 uint32_t rsn_message_frontier_req_age (MessageHandle * handle);
+
+MessageHandle * rsn_message_frontier_req_clone (MessageHandle * other);
 
 uint32_t rsn_message_frontier_req_count (MessageHandle * handle);
 
@@ -1763,6 +1801,8 @@ void rsn_message_header_destroy (MessageHeaderHandle * handle);
 MessageHeaderHandle * rsn_message_header_empty ();
 
 uint16_t rsn_message_header_extensions (MessageHeaderHandle * handle);
+
+bool rsn_message_header_is_valid_message_type (MessageHeaderHandle * handle);
 
 uint16_t rsn_message_header_network (MessageHeaderHandle * handle);
 
@@ -1883,6 +1923,8 @@ bool rsn_message_telemetry_req_deserialize (MessageHandle * handle, void * strea
 bool rsn_message_telemetry_req_serialize (MessageHandle * handle, void * stream);
 
 uint8_t rsn_message_type (MessageHandle * handle);
+
+uint8_t rsn_message_type_to_stat_detail (uint8_t message_type);
 
 void rsn_message_type_to_string (uint8_t msg_type, StringDto * result);
 
@@ -2154,6 +2196,8 @@ uint64_t silent_connection_tolerance_time_s,
 bool network_timeout_logging,
 LoggerHandle * logger);
 
+uint64_t rsn_socket_default_timeout_value (SocketHandle * handle);
+
 void rsn_socket_destroy (SocketHandle * handle);
 
 uint8_t rsn_socket_endpoint_type (SocketHandle * handle);
@@ -2171,6 +2215,8 @@ uint64_t rsn_socket_get_silent_connnection_tolerance_time_s (SocketHandle * hand
 bool rsn_socket_has_timed_out (SocketHandle * handle);
 
 const void * rsn_socket_inner_ptr (SocketHandle * handle);
+
+bool rsn_socket_is_bootstrap_connection (SocketHandle * handle);
 
 bool rsn_socket_is_closed (SocketHandle * handle);
 
@@ -2191,6 +2237,8 @@ void rsn_socket_set_type (SocketHandle * handle, uint8_t socket_type);
 SocketWeakHandle * rsn_socket_to_weak_handle (SocketHandle * handle);
 
 uint8_t rsn_socket_type (SocketHandle * handle);
+
+void rsn_socket_type_to_string (uint8_t socket_type, StringDto * result);
 
 void rsn_stat_add (StatHandle * handle,
 uint8_t stat_type,

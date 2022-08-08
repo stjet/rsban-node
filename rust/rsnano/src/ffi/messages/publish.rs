@@ -58,7 +58,7 @@ pub unsafe extern "C" fn rsn_message_publish_deserialize(
     let uniquer = if uniquer.is_null() {
         None
     } else {
-        Some((*uniquer).deref())
+        Some((*uniquer).deref().as_ref())
     };
     downcast_message_mut::<Publish>(handle)
         .deserialize(&mut stream, uniquer)

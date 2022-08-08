@@ -7,3 +7,4 @@ mod bootstrap_server;
 mod channel_tcp_wrapper;
 mod pulls_cache;
 pub(crate) use bootstrap_initiator::BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK;
+mod message_deserializer;

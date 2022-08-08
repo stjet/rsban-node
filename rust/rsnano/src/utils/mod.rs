@@ -35,9 +35,17 @@ pub struct ErrorCode {
 
 pub mod error_category {
     pub const GENERIC: u8 = 0;
+    pub const SYSTEM: u8 = 1;
 }
 
 impl ErrorCode {
+    pub fn new() -> Self {
+        Self {
+            val: 0,
+            category: error_category::SYSTEM,
+        }
+    }
+
     pub fn is_ok(&self) -> bool {
         !self.is_err()
     }
@@ -63,6 +71,13 @@ impl ErrorCode {
     pub fn host_unreachable() -> Self {
         ErrorCode {
             val: 113,
+            category: error_category::GENERIC,
+        }
+    }
+
+    pub fn fault() -> Self {
+        ErrorCode {
+            val: 14,
             category: error_category::GENERIC,
         }
     }

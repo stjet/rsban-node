@@ -26,6 +26,13 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_create2(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_bulk_pull_account_clone(
+    other: *mut MessageHandle,
+) -> *mut MessageHandle {
+    MessageHandle::from_message(downcast_message::<BulkPullAccount>(other).clone())
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_account_account(
     handle: *mut MessageHandle,
     account: *mut u8,

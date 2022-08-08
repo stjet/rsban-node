@@ -36,7 +36,7 @@ impl ConfirmAck {
         }
     }
     pub fn with_header(
-        header: &MessageHeader,
+        header: MessageHeader,
         stream: &mut impl Stream,
         uniquer: Option<&VoteUniquer>,
     ) -> Result<Self> {
@@ -49,7 +49,7 @@ impl ConfirmAck {
         }
 
         Ok(Self {
-            header: header.clone(),
+            header,
             vote: Some(vote),
         })
     }
@@ -154,7 +154,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         confirm1.serialize(&mut stream)?;
         let header = MessageHeader::from_stream(&mut stream)?;
-        let confirm2 = ConfirmAck::with_header(&header, &mut stream, None)?;
+        let confirm2 = ConfirmAck::with_header(header, &mut stream, None)?;
         assert_eq!(confirm1, confirm2);
         Ok(())
     }

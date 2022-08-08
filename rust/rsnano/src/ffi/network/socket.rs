@@ -1,7 +1,7 @@
 use num::FromPrimitive;
 
 use crate::{
-    ffi::{DispatchCallback, ErrorCodeDto, LoggerHandle, VoidPointerCallback},
+    ffi::{DispatchCallback, ErrorCodeDto, LoggerHandle, StringDto, VoidPointerCallback},
     network::{Socket, SocketBuilder, SocketImpl, SocketType, TcpSocketFacade},
     stats::SocketStats,
     utils::{BufferHandle, BufferWrapper, ErrorCode},
@@ -461,7 +461,7 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_close(f: CloseSocketCallback) {
     CLOSE_SOCKET_CALLBACK = Some(f);
 }
 
-pub struct AsyncReadCallbackHandle(Box<dyn Fn(ErrorCode, usize)>);
+pub struct AsyncReadCallbackHandle(Option<Box<dyn FnOnce(ErrorCode, usize)>>);
 
 type AsyncReadCallback =
     unsafe extern "C" fn(*mut c_void, *mut c_void, usize, *mut AsyncReadCallbackHandle);
@@ -562,6 +562,21 @@ pub unsafe extern "C" fn rsn_socket_facade(handle: *mut SocketHandle) -> *mut c_
         .handle
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_is_bootstrap_connection(handle: *mut SocketHandle) -> bool {
+    (*handle).is_bootstrap_connection()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_default_timeout_value(handle: *mut SocketHandle) -> u64 {
+    (*handle).default_timeout_value()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_type_to_string(socket_type: u8, result: *mut StringDto) {
+    *result = StringDto::from(SocketType::from_u8(socket_type).unwrap().as_str())
+}
+
 struct FfiTcpSocketFacade {
     handle: *mut c_void,
 }
@@ -596,9 +611,9 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         &self,
         buffer: &Arc<dyn BufferWrapper>,
         len: usize,
-        callback: Box<dyn Fn(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize)>,
     ) {
-        let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(callback)));
+        let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(Some(callback))));
         unsafe {
             ASYNC_READ_CALLBACK.expect("ASYNC_READ_CALLBACK missing")(
                 self.handle,
@@ -613,9 +628,9 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         &self,
         buffer: &Arc<Mutex<Vec<u8>>>,
         len: usize,
-        callback: Box<dyn Fn(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize)>,
     ) {
-        let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(callback)));
+        let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(Some(callback))));
         unsafe {
             ASYNC_READ2_CALLBACK.expect("ASYNC_READ2_CALLBACK missing")(
                 self.handle,
@@ -734,7 +749,7 @@ pub unsafe extern "C" fn rsn_async_read_callback_execute(
     size: usize,
 ) {
     let error_code = ErrorCode::from(&*ec);
-    (*callback).0(error_code, size);
+    (*callback).0.take().unwrap()(error_code, size);
 }
 
 #[no_mangle]

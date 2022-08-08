@@ -48,17 +48,21 @@ impl ConfirmReq {
         }
     }
 
-    pub fn with_header(header: &MessageHeader) -> Self {
+    pub fn with_header(header: MessageHeader) -> Self {
         Self {
-            header: header.clone(),
+            header,
             block: None,
             roots_hashes: Vec::new(),
         }
     }
 
-    pub fn from_stream(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+    pub fn from_stream(
+        stream: &mut impl Stream,
+        header: MessageHeader,
+        uniquer: Option<&BlockUniquer>,
+    ) -> Result<Self> {
         let mut msg = Self::with_header(header);
-        msg.deserialize(stream, None)?;
+        msg.deserialize(stream, uniquer)?;
         Ok(msg)
     }
 
@@ -242,7 +246,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         confirm_req1.serialize(&mut stream)?;
         let header = MessageHeader::from_stream(&mut stream)?;
-        let mut confirm_req2 = ConfirmReq::with_header(&header);
+        let mut confirm_req2 = ConfirmReq::with_header(header);
         confirm_req2.deserialize(&mut stream, None)?;
         Ok(confirm_req2)
     }

@@ -26,16 +26,16 @@ impl BulkPull {
         }
     }
 
-    pub fn with_header(header: &MessageHeader) -> Self {
+    pub fn with_header(header: MessageHeader) -> Self {
         Self {
-            header: header.clone(),
+            header,
             start: HashOrAccount::new(),
             end: BlockHash::new(),
             count: 0,
         }
     }
 
-    pub fn from_stream(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+    pub fn from_stream(stream: &mut impl Stream, header: MessageHeader) -> Result<Self> {
         let mut msg = Self::with_header(header);
         msg.deserialize(stream)?;
         Ok(msg)
@@ -170,7 +170,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         message_in.serialize(&mut stream)?;
         let header = MessageHeader::from_stream(&mut stream)?;
-        let message_out = BulkPull::from_stream(&mut stream, &header)?;
+        let message_out = BulkPull::from_stream(&mut stream, header)?;
         assert_eq!(message_in, message_out);
         assert!(message_out.is_ascending());
         Ok(())

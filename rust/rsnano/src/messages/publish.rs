@@ -28,9 +28,9 @@ impl Publish {
         }
     }
 
-    pub fn with_header(header: &MessageHeader, digest: u128) -> Self {
+    pub fn with_header(header: MessageHeader, digest: u128) -> Self {
         Self {
-            header: header.clone(),
+            header,
             block: None,
             digest,
         }
@@ -38,11 +38,12 @@ impl Publish {
 
     pub fn from_stream(
         stream: &mut impl Stream,
-        header: &MessageHeader,
+        header: MessageHeader,
         digest: u128,
+        uniquer: Option<&BlockUniquer>,
     ) -> Result<Self> {
         let mut msg = Self::with_header(header, digest);
-        msg.deserialize(stream, None)?;
+        msg.deserialize(stream, uniquer)?;
         Ok(msg)
     }
 
@@ -143,7 +144,7 @@ mod tests {
         publish1.serialize(&mut stream)?;
 
         let header = MessageHeader::from_stream(&mut stream)?;
-        let mut publish2 = Publish::with_header(&header, 0);
+        let mut publish2 = Publish::with_header(header, 0);
         publish2.deserialize(&mut stream, None)?;
         assert_eq!(publish1, publish2);
         Ok(())

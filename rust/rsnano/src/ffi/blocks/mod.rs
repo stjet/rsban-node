@@ -252,7 +252,7 @@ pub unsafe extern "C" fn rsn_deserialize_block(
     let uniquer = if uniquer.is_null() {
         None
     } else {
-        Some((*uniquer).deref())
+        Some((*uniquer).deref().as_ref())
     };
 
     match deserialize_block(block_type, &mut stream, uniquer) {

@@ -203,3 +203,10 @@ pub unsafe extern "C" fn rsn_message_header_payload_length(
 ) -> usize {
     (*handle).0.payload_length()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_header_is_valid_message_type(
+    handle: *mut MessageHeaderHandle,
+) -> bool {
+    (*handle).0.is_valid_message_type()
+}

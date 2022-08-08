@@ -26,6 +26,13 @@ pub unsafe extern "C" fn rsn_message_frontier_req_create2(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_frontier_req_clone(
+    other: *mut MessageHandle,
+) -> *mut MessageHandle {
+    MessageHandle::from_message(downcast_message::<FrontierReq>(other).clone())
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_set_start(
     handle: *mut MessageHandle,
     account: *const u8,

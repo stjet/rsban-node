@@ -269,6 +269,11 @@ void nano::socket::set_default_timeout_value (std::chrono::seconds timeout_a)
 	rsnano::rsn_socket_set_default_timeout_value (handle, timeout_a.count ());
 }
 
+std::chrono::seconds nano::socket::get_default_timeout_value () const
+{
+	return std::chrono::seconds{ rsnano::rsn_socket_default_timeout_value (handle) };
+}
+
 void nano::socket::set_silent_connection_tolerance_time (std::chrono::seconds tolerance_time_a)
 {
 	rsnano::rsn_socket_set_silent_connection_tolerance_time (handle, tolerance_time_a.count ());
@@ -307,6 +312,11 @@ void nano::socket::close_internal ()
 void nano::socket::checkup ()
 {
 	rsnano::rsn_socket_checkup (handle);
+}
+
+bool nano::socket::is_bootstrap_connection ()
+{
+	return rsnano::rsn_socket_is_bootstrap_connection (handle);
 }
 
 bool nano::socket::is_closed ()
@@ -614,4 +624,11 @@ std::shared_ptr<nano::socket> nano::weak_socket_wrapper::lock ()
 bool nano::weak_socket_wrapper::expired () const
 {
 	return rsnano::rsn_weak_socket_expired (handle);
+}
+
+std::string nano::socket_type_to_string (nano::socket::type_t type)
+{
+	rsnano::StringDto dto;
+	rsnano::rsn_socket_type_to_string (static_cast<uint8_t> (type), &dto);
+	return rsnano::convert_dto_to_string (dto);
 }

@@ -77,8 +77,6 @@ public:
 	nano::tcp_message_item get_message ();
 	// Stop container and notify waiting threads
 	void stop ();
-
-private:
 	rsnano::TcpMessageManagerHandle * handle;
 };
 /**

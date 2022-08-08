@@ -28,13 +28,13 @@ pub trait TcpSocketFacade: Send + Sync {
         &self,
         buffer: &Arc<dyn BufferWrapper>,
         len: usize,
-        callback: Box<dyn Fn(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize)>,
     );
     fn async_read2(
         &self,
         buffer: &Arc<Mutex<Vec<u8>>>,
         len: usize,
-        callback: Box<dyn Fn(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize)>,
     );
     fn async_write(&self, buffer: &Arc<Vec<u8>>, callback: Box<dyn FnOnce(ErrorCode, usize)>);
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode>;
@@ -56,6 +56,17 @@ pub enum SocketType {
     Bootstrap,
     Realtime,
     RealtimeResponseServer, // special type for tcp channel response server
+}
+
+impl SocketType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SocketType::Undefined => "undefined",
+            SocketType::Bootstrap => "bootstrap",
+            SocketType::Realtime => "realtime",
+            SocketType::RealtimeResponseServer => "realtime_response_server",
+        }
+    }
 }
 
 pub trait SocketObserver: Send + Sync {
@@ -207,6 +218,14 @@ impl SocketImpl {
     pub fn full(&self) -> bool {
         self.queue_size.load(Ordering::Relaxed) >= Self::QUEUE_SIZE_MAX * 2
     }
+
+    pub fn is_bootstrap_connection(&self) -> bool {
+        self.socket_type() == SocketType::Bootstrap
+    }
+
+    pub fn default_timeout_value(&self) -> u64 {
+        self.default_timeout.load(Ordering::SeqCst)
+    }
 }
 
 impl Drop for SocketImpl {
@@ -227,7 +246,7 @@ pub trait Socket {
         &self,
         buffer: Arc<Mutex<Vec<u8>>>,
         size: usize,
-        callback: Box<dyn Fn(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize)>,
     );
     fn async_write(
         &self,
@@ -305,7 +324,7 @@ impl Socket for Arc<SocketImpl> {
         &self,
         buffer: Arc<Mutex<Vec<u8>>>,
         size: usize,
-        callback: Box<dyn Fn(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize)>,
     ) {
         let buffer_len = { buffer.lock().unwrap().len() };
         if size <= buffer_len {

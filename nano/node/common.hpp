@@ -6,6 +6,7 @@
 #include <nano/lib/asio.hpp>
 #include <nano/lib/jsonconfig.hpp>
 #include <nano/lib/memory.hpp>
+#include <nano/lib/stats.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/network_filter.hpp>
 
@@ -190,6 +191,7 @@ enum class message_type : uint8_t
 };
 
 std::string message_type_to_string (message_type);
+stat::detail message_type_to_stat_detail (message_type);
 
 enum class bulk_pull_account_flags : uint8_t
 {
@@ -225,6 +227,7 @@ public:
 
 	/** Size of the payload in bytes. For some messages, the payload size is based on header flags. */
 	std::size_t payload_length_bytes () const;
+	bool is_valid_message_type () const;
 
 	nano::networks get_network () const;
 	void set_network (nano::networks network);
@@ -378,6 +381,7 @@ public:
 	explicit frontier_req (nano::network_constants const & constants);
 	frontier_req (bool &, nano::stream &, nano::message_header const &);
 	frontier_req (rsnano::MessageHandle * handle_a);
+	frontier_req (frontier_req const &);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
@@ -503,6 +507,7 @@ public:
 	explicit bulk_pull (nano::network_constants const & constants);
 	bulk_pull (bool &, nano::stream &, nano::message_header const &);
 	bulk_pull (rsnano::MessageHandle * handle_a);
+	bulk_pull (bulk_pull const & other_a);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;
@@ -524,6 +529,7 @@ public:
 	explicit bulk_pull_account (nano::network_constants const & constants);
 	bulk_pull_account (bool &, nano::stream &, nano::message_header const &);
 	bulk_pull_account (rsnano::MessageHandle * handle_a);
+	bulk_pull_account (bulk_pull_account const & other_a);
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
 	void visit (nano::message_visitor &) const override;

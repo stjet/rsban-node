@@ -8,6 +8,8 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
+use crate::messages::MessageType;
+
 use super::histogram::StatHistogram;
 use super::{FileWriter, StatConfig, StatLogSink};
 
@@ -107,6 +109,7 @@ pub enum StatType {
     Ledger,
     Rollback,
     Bootstrap,
+    BootstrapServer,
     Vote,
     Election,
     HttpCallback,
@@ -156,6 +159,8 @@ pub enum DetailType {
     RollbackFailed,
 
     // message specific
+    NotAType,
+    Invalid,
     Keepalive,
     Publish,
     RepublishVote,
@@ -225,6 +230,10 @@ pub enum DetailType {
     InvalidNodeIdHandshakeMessage,
     InvalidTelemetryReqMessage,
     InvalidTelemetryAckMessage,
+    InvalidBulkPullMessage,
+    InvalidBulkPullAccountMessage,
+    InvalidFrontierReqMessage,
+    MessageTooBig,
     OutdatedVersion,
     UdpMaxPerIp,
     UdpMaxPerSubnetwork,
@@ -324,8 +333,10 @@ impl DetailType {
             DetailType::InitiateLazy => "initiate_lazy",
             DetailType::InitiateWalletLazy => "initiate_wallet_lazy",
             DetailType::InsufficientWork => "insufficient_work",
+            DetailType::Invalid => "invalid",
             DetailType::Invocations => "invocations",
             DetailType::Keepalive => "keepalive",
+            DetailType::NotAType => "not_a_type",
             DetailType::Open => "open",
             DetailType::Publish => "publish",
             DetailType::Receive => "receive",
@@ -382,6 +393,10 @@ impl DetailType {
             DetailType::InvalidNodeIdHandshakeMessage => "invalid_node_id_handshake_message",
             DetailType::InvalidTelemetryReqMessage => "invalid_telemetry_req_message",
             DetailType::InvalidTelemetryAckMessage => "invalid_telemetry_ack_message",
+            DetailType::InvalidBulkPullMessage => "invalid_bulk_pull_message",
+            DetailType::InvalidBulkPullAccountMessage => "invalid_bulk_pull_account_message",
+            DetailType::InvalidFrontierReqMessage => "invalid_frontier_req_message",
+            DetailType::MessageTooBig => "message_too_big",
             DetailType::OutdatedVersion => "outdated_version",
             DetailType::UdpMaxPerIp => "udp_max_per_ip",
             DetailType::UdpMaxPerSubnetwork => "udp_max_per_subnetwork",
@@ -707,6 +722,7 @@ pub fn stat_type_as_str(key: u32) -> Result<&'static str> {
         StatType::Ipc => "ipc",
         StatType::Block => "block",
         StatType::Bootstrap => "bootstrap",
+        StatType::BootstrapServer => "bootstrap_server",
         StatType::Error => "error",
         StatType::HttpCallback => "http_callback",
         StatType::Ledger => "ledger",
@@ -835,6 +851,26 @@ impl StatMutables {
         sink.inc_entries();
         sink.finalize();
         Ok(())
+    }
+}
+
+impl From<MessageType> for DetailType {
+    fn from(msg: MessageType) -> Self {
+        match msg {
+            MessageType::Invalid => DetailType::Invalid,
+            MessageType::NotAType => DetailType::NotAType,
+            MessageType::Keepalive => DetailType::Keepalive,
+            MessageType::Publish => DetailType::Publish,
+            MessageType::ConfirmReq => DetailType::ConfirmReq,
+            MessageType::ConfirmAck => DetailType::ConfirmAck,
+            MessageType::BulkPull => DetailType::BulkPull,
+            MessageType::BulkPush => DetailType::BulkPush,
+            MessageType::FrontierReq => DetailType::FrontierReq,
+            MessageType::NodeIdHandshake => DetailType::NodeIdHandshake,
+            MessageType::BulkPullAccount => DetailType::BulkPullAccount,
+            MessageType::TelemetryReq => DetailType::TelemetryReq,
+            MessageType::TelemetryAck => DetailType::TelemetryAck,
+        }
     }
 }
 

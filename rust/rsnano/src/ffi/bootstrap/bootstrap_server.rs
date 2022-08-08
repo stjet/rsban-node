@@ -1,16 +1,17 @@
 use crate::{
     bootstrap::{
-        BootstrapRequestsLock, BootstrapServer, BootstrapServerExt, BootstrapServerObserver,
-        RequestResponseVisitorFactory,
+        BootstrapMessageVisitor, BootstrapServer, BootstrapServerExt, BootstrapServerObserver,
+        HandshakeMessageVisitor, RealtimeMessageVisitor, RequestResponseVisitorFactory,
     },
     ffi::{
         copy_account_bytes,
         io_context::{FfiIoContext, IoContextHandle},
-        messages::{FfiMessageVisitor, MessageHandle},
-        network::{EndpointDto, SocketHandle},
+        messages::FfiMessageVisitor,
+        network::{EndpointDto, SocketHandle, TcpMessageManagerHandle},
         thread_pool::FfiThreadPool,
-        LoggerHandle, LoggerMT, NetworkFilterHandle, NetworkParamsDto, NodeConfigDto, StatHandle,
-        VoidPointerCallback,
+        voting::VoteUniquerHandle,
+        BlockUniquerHandle, LoggerHandle, LoggerMT, NetworkFilterHandle, NetworkParamsDto,
+        NodeConfigDto, StatHandle, VoidPointerCallback,
     },
     network::SocketType,
     Account, NetworkParams, NodeConfig,
@@ -56,6 +57,9 @@ pub struct CreateBootstrapServerParams {
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
     pub request_response_visitor_factory: *mut c_void,
+    pub block_uniquer: *mut BlockUniquerHandle,
+    pub vote_uniquer: *mut VoteUniquerHandle,
+    pub tcp_message_manager: *mut TcpMessageManagerHandle,
 }
 
 #[no_mangle]
@@ -74,6 +78,9 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let visitor_factory = Arc::new(FfiRequestResponseVisitorFactory::new(
         params.request_response_visitor_factory,
     ));
+    let block_uniquer = Arc::clone(&*params.block_uniquer);
+    let vote_uniquer = Arc::clone(&*params.vote_uniquer);
+    let tcp_message_manager = Arc::clone(&*params.tcp_message_manager);
     let mut server = BootstrapServer::new(
         socket,
         config,
@@ -85,6 +92,9 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         network,
         stats,
         visitor_factory,
+        block_uniquer,
+        vote_uniquer,
+        tcp_message_manager,
     );
     server.disable_bootstrap_listener = params.disable_bootstrap_listener;
     server.connections_max = params.connections_max;
@@ -103,6 +113,15 @@ pub unsafe extern "C" fn rsn_bootstrap_server_unique_id(
     handle: *mut BootstrapServerHandle,
 ) -> usize {
     (*handle).unique_id()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_to_realtime_connection(
+    handle: *mut BootstrapServerHandle,
+    node_id: *const u8,
+) -> bool {
+    let node_id = Account::from(node_id);
+    (*handle).to_realtime_connection(&node_id)
 }
 
 #[no_mangle]
@@ -141,6 +160,11 @@ pub unsafe extern "C" fn rsn_bootstrap_server_lock_weak(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_start(handle: *mut BootstrapServerHandle) {
+    (*handle).start();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_stop(handle: *mut BootstrapServerHandle) {
     (*handle).stop();
 }
@@ -150,6 +174,13 @@ pub unsafe extern "C" fn rsn_bootstrap_server_is_stopped(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
     (*handle).is_stopped()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_server_telemetry_cutoff_exceeded(
+    handle: *mut BootstrapServerHandle,
+) -> bool {
+    (*handle).is_telemetry_cutoff_exceeded()
 }
 
 #[no_mangle]
@@ -179,62 +210,11 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_remote_node_id(
     *lk = Account::from(node_id);
 }
 
-pub struct BootstrapServerLockHandle(BootstrapRequestsLock);
-
-impl BootstrapServerLockHandle {
-    pub fn new(guard: BootstrapRequestsLock) -> *mut Self {
-        Box::into_raw(Box::new(BootstrapServerLockHandle(guard)))
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_lock_clone(
-    handle: *mut BootstrapServerLockHandle,
-) -> *mut BootstrapServerLockHandle {
-    Box::into_raw(Box::new(BootstrapServerLockHandle((*handle).0.clone())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_lock_destroy(handle: *mut BootstrapServerLockHandle) {
-    drop(Box::from_raw(handle));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_release_front_request(
-    handle: *mut BootstrapServerLockHandle,
-) -> *mut MessageHandle {
-    match (*handle).0.release_front_request() {
-        Some(msg) => MessageHandle::new(msg),
-        None => std::ptr::null_mut(),
-    }
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_socket(
     handle: *mut BootstrapServerHandle,
 ) -> *mut SocketHandle {
     SocketHandle::new((*handle).socket.clone())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_requests_empty(
-    handle: *mut BootstrapServerHandle,
-) -> bool {
-    (*handle).requests_empty()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_push_request(
-    handle: *mut BootstrapServerHandle,
-    msg: *mut MessageHandle,
-) {
-    let msg = if msg.is_null() {
-        None
-    } else {
-        Some((*msg).clone_box())
-    };
-
-    (*handle).push_request(msg);
 }
 
 #[no_mangle]
@@ -247,13 +227,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_last_telemetry_req(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_timeout(handle: *mut BootstrapServerHandle) {
     (*handle).timeout();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_disable_bootstrap_bulk_pull_server(
-    handle: *mut BootstrapServerHandle,
-) -> bool {
-    (*handle).disable_bootstrap_bulk_pull_server
 }
 
 #[no_mangle]
@@ -273,23 +246,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_handshake_query_received(
         .store(true, Ordering::SeqCst);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_receive(handle: *mut BootstrapServerHandle) {
-    (*handle).receive();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_finish_request_async(
-    handle: *mut BootstrapServerHandle,
-) {
-    (*handle).finish_request_async();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_finish_request(handle: *mut BootstrapServerHandle) {
-    (*handle).finish_request();
-}
-
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);
 type BootstrapServerExitedCallback =
     unsafe extern "C" fn(*mut c_void, u8, usize, *const EndpointDto);
@@ -301,6 +257,7 @@ static mut TIMEOUT_CALLBACK: Option<BootstrapServerTimeoutCallback> = None;
 static mut EXITED_CALLBACK: Option<BootstrapServerExitedCallback> = None;
 static mut BOOTSTRAP_COUNT_CALLBACK: Option<BootstrapServerBootstrapCountCallback> = None;
 static mut INC_BOOTSTRAP_COUNT_CALLBACK: Option<BootstrapServerIncBootstrapCountCallback> = None;
+static mut INC_REALTIME_COUNT_CALLBACK: Option<BootstrapServerIncBootstrapCountCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_bootstrap_observer_destroy(f: VoidPointerCallback) {
@@ -331,6 +288,13 @@ pub unsafe extern "C" fn rsn_callback_bootstrap_observer_inc_bootstrap_count(
     f: BootstrapServerIncBootstrapCountCallback,
 ) {
     INC_BOOTSTRAP_COUNT_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_bootstrap_observer_inc_realtime_count(
+    f: BootstrapServerIncBootstrapCountCallback,
+) {
+    INC_REALTIME_COUNT_CALLBACK = Some(f);
 }
 
 pub struct FfiBootstrapServerObserver {
@@ -384,6 +348,12 @@ impl BootstrapServerObserver for FfiBootstrapServerObserver {
             INC_BOOTSTRAP_COUNT_CALLBACK.expect("INC_BOOTSTRAP_COUNT_CALLBACK missing")(self.handle)
         }
     }
+
+    fn inc_realtime_count(&self) {
+        unsafe {
+            INC_REALTIME_COUNT_CALLBACK.expect("INC_REALTIME_COUNT_CALLBACK missing")(self.handle)
+        }
+    }
 }
 
 static mut DESTROY_VISITOR_FACTORY: Option<VoidPointerCallback> = None;
@@ -397,18 +367,31 @@ pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(
 
 /// first arg is a `shared_ptr<request_response_visitor_factory> *`
 /// returns a `shared_ptr<message_visitor> *`
-pub type RequestResponseVisitorFactoryCreateCallback = unsafe extern "C" fn(
-    *mut c_void,
-    *mut BootstrapServerHandle,
-    *mut BootstrapServerLockHandle,
-) -> *mut c_void;
-static mut CREATE_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
+pub type RequestResponseVisitorFactoryCreateCallback =
+    unsafe extern "C" fn(*mut c_void, *mut BootstrapServerHandle) -> *mut c_void;
+static mut HANDSHAKE_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
+static mut BOOTSTRAP_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
+static mut REALTIME_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_create(
+pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_handshake_visitor(
     f: RequestResponseVisitorFactoryCreateCallback,
 ) {
-    CREATE_VISITOR = Some(f);
+    HANDSHAKE_VISITOR = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_bootstrap_visitor(
+    f: RequestResponseVisitorFactoryCreateCallback,
+) {
+    BOOTSTRAP_VISITOR = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_realtime_visitor(
+    f: RequestResponseVisitorFactoryCreateCallback,
+) {
+    REALTIME_VISITOR = Some(f);
 }
 
 pub struct FfiRequestResponseVisitorFactory {
@@ -419,6 +402,20 @@ impl FfiRequestResponseVisitorFactory {
     pub fn new(handle: *mut c_void) -> Self {
         Self { handle }
     }
+
+    fn create_visitor(
+        &self,
+        callback: Option<RequestResponseVisitorFactoryCreateCallback>,
+        server: Arc<BootstrapServer>,
+    ) -> Box<FfiMessageVisitor> {
+        let visitor_handle = unsafe {
+            callback.expect("RequestResponseVisitorFactory callbacks missing")(
+                self.handle,
+                BootstrapServerHandle::new(server),
+            )
+        };
+        Box::new(FfiMessageVisitor::new(visitor_handle))
+    }
 }
 
 impl Drop for FfiRequestResponseVisitorFactory {
@@ -428,22 +425,19 @@ impl Drop for FfiRequestResponseVisitorFactory {
 }
 
 impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
-    fn create_visitor(
-        &self,
-        connection: &Arc<BootstrapServer>,
-        requests_lock: &BootstrapRequestsLock,
-    ) -> Box<dyn crate::messages::MessageVisitor> {
-        let visitor_handle = unsafe {
-            CREATE_VISITOR.expect("CREATE_VISITOR missing")(
-                self.handle,
-                BootstrapServerHandle::new(connection.clone()),
-                BootstrapServerLockHandle::new(requests_lock.clone()),
-            )
-        };
-        Box::new(FfiMessageVisitor::new(visitor_handle))
-    }
-
     fn handle(&self) -> *mut c_void {
         self.handle
+    }
+
+    fn handshake_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn HandshakeMessageVisitor> {
+        unsafe { self.create_visitor(HANDSHAKE_VISITOR, server) }
+    }
+
+    fn realtime_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn RealtimeMessageVisitor> {
+        unsafe { self.create_visitor(REALTIME_VISITOR, server) }
+    }
+
+    fn bootstrap_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn BootstrapMessageVisitor> {
+        unsafe { self.create_visitor(BOOTSTRAP_VISITOR, server) }
     }
 }

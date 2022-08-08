@@ -22,16 +22,16 @@ impl FrontierReq {
         }
     }
 
-    pub fn with_header(header: &MessageHeader) -> Self {
+    pub fn with_header(header: MessageHeader) -> Self {
         Self {
-            header: header.clone(),
+            header,
             start: *Account::zero(),
             age: 0,
             count: 0,
         }
     }
 
-    pub fn from_stream(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+    pub fn from_stream(stream: &mut impl Stream, header: MessageHeader) -> Result<Self> {
         let mut msg = Self::with_header(header);
         msg.deserialize(stream)?;
         Ok(msg)
@@ -114,7 +114,7 @@ mod tests {
         request1.serialize(&mut stream)?;
 
         let header = MessageHeader::from_stream(&mut stream)?;
-        let mut request2 = FrontierReq::with_header(&header);
+        let mut request2 = FrontierReq::with_header(header);
         request2.deserialize(&mut stream)?;
 
         assert_eq!(request1, request2);

@@ -704,6 +704,12 @@ void bootstrap_observer_inc_bootstrap_count (void * handle_a)
 	(*observer)->inc_bootstrap_count ();
 }
 
+void bootstrap_observer_inc_realtime_count (void * handle_a)
+{
+	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	(*observer)->inc_realtime_count ();
+}
+
 void bootstrap_observer_timeout (void * handle_a, uintptr_t inner_ptr_a)
 {
 	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
@@ -716,13 +722,27 @@ void request_response_visitor_factory_destroy (void * handle_a)
 	delete factory;
 }
 
-void * request_response_visitor_factory_create (void * factory_a, rsnano::BootstrapServerHandle * connection_a, rsnano::BootstrapServerLockHandle * lock_a)
+void * request_response_visitor_factory_handshake_visitor (void * factory_a, rsnano::BootstrapServerHandle * connection_a)
 {
 	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (factory_a);
 	auto connection = std::make_shared<nano::bootstrap_server> (connection_a);
-	nano::bootstrap_server_lock lock (lock_a);
-	nano::locked_bootstrap_server_requests locked_requests (lock);
-	auto visitor{ (*factory)->create_visitor (connection, locked_requests) };
+	auto visitor{ (*factory)->create_handshake (connection) };
+	return new std::shared_ptr<nano::message_visitor> (visitor);
+}
+
+void * request_response_visitor_factory_bootstrap_visitor (void * factory_a, rsnano::BootstrapServerHandle * connection_a)
+{
+	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (factory_a);
+	auto connection = std::make_shared<nano::bootstrap_server> (connection_a);
+	auto visitor{ (*factory)->create_bootstrap (connection) };
+	return new std::shared_ptr<nano::message_visitor> (visitor);
+}
+
+void * request_response_visitor_factory_realtime_visitor (void * factory_a, rsnano::BootstrapServerHandle * connection_a)
+{
+	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (factory_a);
+	auto connection = std::make_shared<nano::bootstrap_server> (connection_a);
+	auto visitor{ (*factory)->create_realtime (connection) };
 	return new std::shared_ptr<nano::message_visitor> (visitor);
 }
 
@@ -846,6 +866,30 @@ void txn_callbacks_end (void * handle_a, uint64_t txn_id_a)
 	callbacks->txn_end (txn_id_a);
 }
 
+bool message_visitor_bootstrap_processed (void * handle_a)
+{
+	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
+	return (static_cast<nano::bootstrap_server::bootstrap_message_visitor *> (visitor->get ()))->processed;
+}
+
+bool message_visitor_handshake_process (void * handle_a)
+{
+	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
+	return (static_cast<nano::bootstrap_server::handshake_message_visitor *> (visitor->get ()))->process;
+}
+
+bool message_visitor_handshake_bootstrap (void * handle_a)
+{
+	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
+	return (static_cast<nano::bootstrap_server::handshake_message_visitor *> (visitor->get ()))->bootstrap;
+}
+
+bool message_visitor_realtime_process (void * handle_a)
+{
+	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
+	return (static_cast<nano::bootstrap_server::realtime_message_visitor *> (visitor->get ()))->process;
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -933,10 +977,13 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_observer_bootstrap_count (bootstrap_observer_bootstrap_count);
 	rsnano::rsn_callback_bootstrap_observer_exited (bootstrap_observer_exited);
 	rsnano::rsn_callback_bootstrap_observer_inc_bootstrap_count (bootstrap_observer_inc_bootstrap_count);
+	rsnano::rsn_callback_bootstrap_observer_inc_realtime_count (bootstrap_observer_inc_realtime_count);
 	rsnano::rsn_callback_bootstrap_observer_timeout (bootstrap_observer_timeout);
 
 	rsnano::rsn_callback_request_response_visitor_factory_destroy (request_response_visitor_factory_destroy);
-	rsnano::rsn_callback_request_response_visitor_factory_create (request_response_visitor_factory_create);
+	rsnano::rsn_callback_request_response_visitor_factory_handshake_visitor (request_response_visitor_factory_handshake_visitor);
+	rsnano::rsn_callback_request_response_visitor_factory_bootstrap_visitor (request_response_visitor_factory_bootstrap_visitor);
+	rsnano::rsn_callback_request_response_visitor_factory_realtime_visitor (request_response_visitor_factory_realtime_visitor);
 
 	rsnano::rsn_callback_bootstrap_client_observer_closed (bootstrap_client_observer_closed);
 	rsnano::rsn_callback_bootstrap_client_observer_destroy (bootstrap_client_observer_destroy);
@@ -947,6 +994,11 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_txn_callbacks_destroy (txn_callbacks_destroy);
 	rsnano::rsn_callback_txn_callbacks_start (txn_callbacks_start);
 	rsnano::rsn_callback_txn_callbacks_end (txn_callbacks_end);
+
+	rsnano::rsn_callback_message_visitor_bootstrap_processed (message_visitor_bootstrap_processed);
+	rsnano::rsn_callback_message_visitor_realtime_process (message_visitor_realtime_process);
+	rsnano::rsn_callback_message_visitor_handshake_process (message_visitor_handshake_process);
+	rsnano::rsn_callback_message_visitor_handshake_bootstrap (message_visitor_handshake_bootstrap);
 
 	callbacks_set = true;
 }

@@ -1298,7 +1298,7 @@ TEST (network, filter_invalid_network_bytes)
 	keepalive.set_header (header);
 	channel->send (keepalive);
 
-	ASSERT_TIMELY (5s, 1 == node1.stats->count (nano::stat::type::message, nano::stat::detail::invalid_network));
+	ASSERT_TIMELY (5s, 1 == node1.stats->count (nano::stat::type::error, nano::stat::detail::invalid_network));
 }
 
 // Ensure the network filters messages with the incorrect minimum version
@@ -1319,7 +1319,7 @@ TEST (network, filter_invalid_version_using)
 	keepalive.set_header (header);
 	channel->send (keepalive);
 
-	ASSERT_TIMELY (5s, 1 == node1.stats->count (nano::stat::type::message, nano::stat::detail::outdated_version));
+	ASSERT_TIMELY (5s, 1 == node1.stats->count (nano::stat::type::error, nano::stat::detail::outdated_version));
 }
 
 TEST (network, fill_keepalive_self)

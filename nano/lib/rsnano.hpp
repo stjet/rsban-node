@@ -482,6 +482,8 @@ struct CreateBootstrapServerParams
 	BlockUniquerHandle * block_uniquer;
 	VoteUniquerHandle * vote_uniquer;
 	TcpMessageManagerHandle * tcp_message_manager;
+	SynCookiesHandle * syn_cookies;
+	const uint8_t * node_id_prv;
 };
 
 using AddTimedTaskCallback = void (*) (void *, uint64_t, VoidFnCallbackHandle *);
@@ -1273,10 +1275,6 @@ void rsn_callback_message_visitor_bootstrap_processed (MessageVisitorFlagCallbac
 
 void rsn_callback_message_visitor_destroy (VoidPointerCallback f);
 
-void rsn_callback_message_visitor_handshake_bootstrap (MessageVisitorFlagCallback f);
-
-void rsn_callback_message_visitor_handshake_process (MessageVisitorFlagCallback f);
-
 void rsn_callback_message_visitor_realtime_process (MessageVisitorFlagCallback f);
 
 void rsn_callback_message_visitor_visit (MessageVisitorCallback f);
@@ -1310,8 +1308,6 @@ void rsn_callback_read_u8 (ReadU8Callback f);
 void rsn_callback_request_response_visitor_factory_bootstrap_visitor (RequestResponseVisitorFactoryCreateCallback f);
 
 void rsn_callback_request_response_visitor_factory_destroy (VoidPointerCallback f);
-
-void rsn_callback_request_response_visitor_factory_handshake_visitor (RequestResponseVisitorFactoryCreateCallback f);
 
 void rsn_callback_request_response_visitor_factory_realtime_visitor (RequestResponseVisitorFactoryCreateCallback f);
 

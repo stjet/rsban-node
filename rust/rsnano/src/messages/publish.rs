@@ -86,7 +86,7 @@ impl Message for Publish {
         lck.as_block().serialize(stream)
     }
 
-    fn visit(&self, visitor: &dyn MessageVisitor) {
+    fn visit(&self, visitor: &mut dyn MessageVisitor) {
         visitor.publish(self)
     }
 

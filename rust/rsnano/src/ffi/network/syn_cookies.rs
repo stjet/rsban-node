@@ -1,9 +1,17 @@
 use crate::{network::SynCookies, Account, Signature};
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, ops::Deref, sync::Arc, time::Duration};
 
 use super::EndpointDto;
 
 pub struct SynCookiesHandle(Arc<SynCookies>);
+
+impl Deref for SynCookiesHandle {
+    type Target = Arc<SynCookies>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_syn_cookies_create(max_cookies_per_ip: usize) -> *mut SynCookiesHandle {

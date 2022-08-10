@@ -97,8 +97,6 @@ public:
 	bool validate (nano::endpoint const &, nano::account const &, nano::signature const &);
 	std::unique_ptr<container_info_component> collect_container_info (std::string const &);
 	std::size_t cookies_size ();
-
-private:
 	rsnano::SynCookiesHandle * handle;
 };
 class network final : public std::enable_shared_from_this<network>

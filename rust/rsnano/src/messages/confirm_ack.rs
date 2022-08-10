@@ -93,7 +93,7 @@ impl Message for ConfirmAck {
         self.vote().unwrap().read().unwrap().serialize(stream)
     }
 
-    fn visit(&self, visitor: &dyn MessageVisitor) {
+    fn visit(&self, visitor: &mut dyn MessageVisitor) {
         visitor.confirm_ack(self)
     }
 

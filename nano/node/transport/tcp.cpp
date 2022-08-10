@@ -138,7 +138,8 @@ std::shared_ptr<nano::bootstrap_server> nano::transport::bootstrap_server_factor
 	node.io_ctx, socket_a, node.logger,
 	*node.stats, node.flags, *node.config,
 	node.bootstrap, std::make_shared<nano::request_response_visitor_factory> (node),
-	node.workers, *node.network->publish_filter, node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager);
+	node.workers, *node.network->publish_filter, node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager,
+	*node.network->syn_cookies, node.node_id);
 
 	// Listen for possible responses
 	response_server->get_socket ()->type_set (nano::socket::type_t::realtime_response_server);

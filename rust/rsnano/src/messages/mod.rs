@@ -45,7 +45,7 @@ pub trait Message: Send {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()>;
-    fn visit(&self, visitor: &dyn MessageVisitor);
+    fn visit(&self, visitor: &mut dyn MessageVisitor);
     fn clone_box(&self) -> Box<dyn Message>;
     fn message_type(&self) -> MessageType;
     fn to_bytes(&self) -> Vec<u8> {
@@ -56,17 +56,17 @@ pub trait Message: Send {
 }
 
 pub trait MessageVisitor {
-    fn keepalive(&self, message: &Keepalive);
-    fn publish(&self, message: &Publish);
-    fn confirm_req(&self, message: &ConfirmReq);
-    fn confirm_ack(&self, message: &ConfirmAck);
-    fn bulk_pull(&self, message: &BulkPull);
-    fn bulk_pull_account(&self, message: &BulkPullAccount);
-    fn bulk_push(&self, message: &BulkPush);
-    fn frontier_req(&self, message: &FrontierReq);
-    fn node_id_handshake(&self, message: &NodeIdHandshake);
-    fn telemetry_req(&self, message: &TelemetryReq);
-    fn telemetry_ack(&self, message: &TelemetryAck);
+    fn keepalive(&mut self, _message: &Keepalive) {}
+    fn publish(&mut self, _message: &Publish) {}
+    fn confirm_req(&mut self, _message: &ConfirmReq) {}
+    fn confirm_ack(&mut self, _message: &ConfirmAck) {}
+    fn bulk_pull(&mut self, _message: &BulkPull) {}
+    fn bulk_pull_account(&mut self, _message: &BulkPullAccount) {}
+    fn bulk_push(&mut self, _message: &BulkPush) {}
+    fn frontier_req(&mut self, _message: &FrontierReq) {}
+    fn node_id_handshake(&mut self, _message: &NodeIdHandshake) {}
+    fn telemetry_req(&mut self, _message: &TelemetryReq) {}
+    fn telemetry_ack(&mut self, _message: &TelemetryAck) {}
 }
 
 pub trait MessageExt {

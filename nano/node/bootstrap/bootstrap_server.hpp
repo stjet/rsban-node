@@ -89,12 +89,12 @@ std::unique_ptr<container_info_component> collect_container_info (bootstrap_list
 
 class message;
 class tcp_message_manager;
+class syn_cookies;
 
 class request_response_visitor_factory
 {
 public:
 	explicit request_response_visitor_factory (nano::node & node_a);
-	std::shared_ptr<nano::message_visitor> create_handshake (std::shared_ptr<nano::bootstrap_server> connection_a);
 	std::shared_ptr<nano::message_visitor> create_bootstrap (std::shared_ptr<nano::bootstrap_server> connection_a);
 	std::shared_ptr<nano::message_visitor> create_realtime (std::shared_ptr<nano::bootstrap_server> connection_a);
 
@@ -123,7 +123,9 @@ public:
 	nano::network_filter const & publish_filter_a,
 	nano::block_uniquer & block_uniquer_a,
 	nano::vote_uniquer & vote_uniquer_a,
-	nano::tcp_message_manager & tcp_message_manager_a);
+	nano::tcp_message_manager & tcp_message_manager_a,
+	nano::syn_cookies & syn_cookies_a,
+	nano::keypair & node_id_a);
 	explicit bootstrap_server (rsnano::BootstrapServerHandle * handle_a);
 	bootstrap_server (nano::bootstrap_server const &) = delete;
 	bootstrap_server (nano::bootstrap_server &&) = delete;
@@ -146,25 +148,6 @@ private:
 	bool to_realtime_connection (nano::account const & node_id);
 
 public:
-	class handshake_message_visitor : public nano::message_visitor
-	{
-	public:
-		bool process{ false };
-		bool bootstrap{ false };
-
-		handshake_message_visitor (std::shared_ptr<bootstrap_server>, std::shared_ptr<nano::node>);
-
-		void node_id_handshake (nano::node_id_handshake const &) override;
-		void bulk_pull (nano::bulk_pull const &) override;
-		void bulk_pull_account (nano::bulk_pull_account const &) override;
-		void bulk_push (nano::bulk_push const &) override;
-		void frontier_req (nano::frontier_req const &) override;
-
-	private:
-		std::shared_ptr<nano::node> node;
-		std::shared_ptr<bootstrap_server> server;
-	};
-
 	class realtime_message_visitor : public nano::message_visitor
 	{
 	public:

@@ -17,5 +17,6 @@ pub use channel_tcp_observer::ChannelTcpObserverWeakPtr;
 pub use socket::{
     EndpointDto, ReadCallbackWrapper, SocketDestroyContext, SocketHandle, SocketReadCallback,
 };
+pub use syn_cookies::SynCookiesHandle;
 pub use tcp_message_item::TcpMessageItemHandle;
 pub use tcp_message_manager::TcpMessageManagerHandle;

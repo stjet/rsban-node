@@ -162,7 +162,7 @@ impl Message for ConfirmReq {
         Ok(())
     }
 
-    fn visit(&self, visitor: &dyn MessageVisitor) {
+    fn visit(&self, visitor: &mut dyn MessageVisitor) {
         visitor.confirm_req(self)
     }
 

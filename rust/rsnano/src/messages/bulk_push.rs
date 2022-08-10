@@ -46,7 +46,7 @@ impl Message for BulkPush {
         self.header.serialize(stream)
     }
 
-    fn visit(&self, visitor: &dyn MessageVisitor) {
+    fn visit(&self, visitor: &mut dyn MessageVisitor) {
         visitor.bulk_push(self)
     }
 

@@ -11,12 +11,16 @@ use std::{
 use crate::{
     bootstrap::ParseStatus,
     logger_mt::Logger,
-    messages::{Message, MessageVisitor},
-    network::{Socket, SocketImpl, SocketType, TcpMessageItem, TcpMessageManager},
+    messages::{
+        BulkPull, BulkPullAccount, BulkPush, FrontierReq, Message, MessageVisitor, NodeIdHandshake,
+    },
+    network::{Socket, SocketImpl, SocketType, SynCookies, TcpMessageItem, TcpMessageManager},
+    sign_message,
     stats::{DetailType, Direction, Stat, StatType},
-    utils::{IoContext, ThreadPool},
+    utils::{IoContext, MemoryStream, ThreadPool},
     voting::VoteUniquer,
-    Account, BlockUniquer, NetworkFilter, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
+    Account, BlockUniquer, KeyPair, NetworkConstants, NetworkFilter, NetworkParams, NodeConfig,
+    TelemetryCacheCutoffs,
 };
 
 use super::{MessageDeserializer, MessageDeserializerExt};
@@ -44,7 +48,7 @@ pub struct BootstrapServer {
     pub connections_max: usize,
 
     // Remote enpoint used to remove response channel even after socket closing
-    pub remote_endpoint: Mutex<SocketAddr>,
+    remote_endpoint: Mutex<SocketAddr>,
     pub remote_node_id: Mutex<Account>,
     workers: Arc<dyn ThreadPool>,
     io_ctx: Arc<dyn IoContext>,
@@ -55,7 +59,7 @@ pub struct BootstrapServer {
     stats: Arc<Stat>,
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
-    pub handshake_query_received: AtomicBool,
+    handshake_query_received: AtomicBool,
     request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
     message_deserializer: Arc<MessageDeserializer>,
     tcp_message_manager: Arc<TcpMessageManager>,
@@ -121,6 +125,18 @@ impl BootstrapServer {
         if !self.stopped.swap(true, Ordering::SeqCst) {
             self.socket.close();
         }
+    }
+
+    pub fn was_handshake_query_received(&self) -> bool {
+        self.handshake_query_received.load(Ordering::SeqCst)
+    }
+
+    pub fn handshake_query_received(&self) {
+        self.handshake_query_received.store(true, Ordering::SeqCst);
+    }
+
+    pub fn remote_endpoint(&self) -> SocketAddr {
+        self.remote_endpoint.lock().unwrap().clone()
     }
 
     pub fn is_telemetry_cutoff_exceeded(&self) -> bool {
@@ -223,17 +239,17 @@ pub trait RequestResponseVisitorFactory {
 pub trait HandshakeMessageVisitor: MessageVisitor {
     fn process(&self) -> bool;
     fn bootstrap(&self) -> bool;
-    fn as_message_visitor(&self) -> &dyn MessageVisitor;
+    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor;
 }
 
 pub trait RealtimeMessageVisitor: MessageVisitor {
     fn process(&self) -> bool;
-    fn as_message_visitor(&self) -> &dyn MessageVisitor;
+    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor;
 }
 
 pub trait BootstrapMessageVisitor: MessageVisitor {
     fn processed(&self) -> bool;
-    fn as_message_visitor(&self) -> &dyn MessageVisitor;
+    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor;
 }
 
 pub trait BootstrapServerExt {
@@ -343,7 +359,7 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
          * In bootstrap mode any realtime messages are ignored
          */
         if self.is_undefined_connection() {
-            let handshake_visitor = self
+            let mut handshake_visitor = self
                 .request_response_visitor_factory
                 .handshake_visitor(Arc::clone(self));
             message.visit(handshake_visitor.as_message_visitor());
@@ -359,7 +375,7 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
                 return true;
             }
         } else if self.is_realtime_connection() {
-            let realtime_visitor = self
+            let mut realtime_visitor = self
                 .request_response_visitor_factory
                 .realtime_visitor(Arc::clone(self));
             message.visit(realtime_visitor.as_message_visitor());
@@ -370,7 +386,7 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
         }
         // It is possible for server to switch to bootstrap mode immediately after processing handshake, thus no `else if`
         if self.is_bootstrap_connection() {
-            let bootstrap_visitor = self
+            let mut bootstrap_visitor = self
                 .request_response_visitor_factory
                 .bootstrap_visitor(Arc::clone(self));
             message.visit(bootstrap_visitor.as_message_visitor());
@@ -378,5 +394,173 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
         }
         debug_assert!(false);
         true // Continue receiving new messages
+    }
+}
+
+pub struct HandshakeMessageVisitorImpl {
+    pub process: bool,
+    pub bootstrap: bool,
+    logger: Arc<dyn Logger>,
+    server: Arc<BootstrapServer>,
+    syn_cookies: Arc<SynCookies>,
+    stats: Arc<Stat>,
+    node_id: Arc<KeyPair>,
+    network_constants: NetworkConstants,
+    pub handshake_logging: bool,
+    pub disable_tcp_realtime: bool,
+}
+
+impl HandshakeMessageVisitorImpl {
+    pub fn new(
+        server: Arc<BootstrapServer>,
+        logger: Arc<dyn Logger>,
+        syn_cookies: Arc<SynCookies>,
+        stats: Arc<Stat>,
+        node_id: Arc<KeyPair>,
+        network_constants: NetworkConstants,
+    ) -> Self {
+        Self {
+            process: false,
+            bootstrap: false,
+            logger,
+            server,
+            syn_cookies,
+            stats,
+            node_id,
+            network_constants,
+            disable_tcp_realtime: false,
+            handshake_logging: false,
+        }
+    }
+}
+
+impl MessageVisitor for HandshakeMessageVisitorImpl {
+    fn bulk_pull(&mut self, _message: &BulkPull) {
+        self.bootstrap = true;
+    }
+
+    fn bulk_pull_account(&mut self, _message: &BulkPullAccount) {
+        self.bootstrap = true;
+    }
+
+    fn bulk_push(&mut self, _message: &BulkPush) {
+        self.bootstrap = true;
+    }
+
+    fn frontier_req(&mut self, _message: &FrontierReq) {
+        self.bootstrap = true;
+    }
+
+    fn node_id_handshake(&mut self, message: &NodeIdHandshake) {
+        if self.disable_tcp_realtime {
+            if self.handshake_logging {
+                self.logger.try_log(&format!(
+                    "Disabled realtime TCP for handshake {}",
+                    self.server.remote_endpoint()
+                ));
+            }
+            self.server.stop();
+            return;
+        }
+
+        if message.query.is_some() && self.server.was_handshake_query_received() {
+            if self.handshake_logging {
+                self.logger.try_log(&format!(
+                    "Detected multiple node_id_handshake query from {}",
+                    self.server.remote_endpoint()
+                ));
+            }
+            self.server.stop();
+            return;
+        }
+
+        self.server.handshake_query_received();
+
+        if self.handshake_logging {
+            self.logger.try_log(&format!(
+                "Received node_id_handshake message from {}",
+                self.server.remote_endpoint()
+            ));
+        }
+
+        if let Some(query) = &message.query {
+            let account = Account::from(self.node_id.public_key());
+            let signature = sign_message(
+                &self.node_id.private_key(),
+                &self.node_id.public_key(),
+                query,
+            )
+            .unwrap();
+            let response = Some((account, signature));
+            let cookie = self.syn_cookies.assign(&self.server.remote_endpoint());
+            let response_message = NodeIdHandshake::new(&self.network_constants, cookie, response);
+
+            let mut stream = MemoryStream::new();
+            response_message.serialize(&mut stream).unwrap();
+
+            let shared_const_buffer = Arc::new(stream.to_vec());
+            let server_weak = Arc::downgrade(&self.server);
+            let logger = Arc::clone(&self.logger);
+            let stats = Arc::clone(&self.stats);
+            let handshake_logging = self.handshake_logging;
+            self.server.socket.async_write(
+                &shared_const_buffer,
+                Some(Box::new(move |ec, _size| {
+                    if let Some(server_l) = server_weak.upgrade() {
+                        if ec.is_err() {
+                            if handshake_logging {
+                                logger.try_log(&format!(
+                                    "Error sending node_id_handshake to {}: {:?}",
+                                    server_l.remote_endpoint(),
+                                    ec
+                                ));
+                            }
+                            // Stop invalid handshake
+                            server_l.stop();
+                        } else {
+                            let _ = stats.inc(
+                                StatType::Message,
+                                DetailType::NodeIdHandshake,
+                                Direction::Out,
+                            );
+                        }
+                    }
+                })),
+            );
+        } else if let Some(response) = &message.response {
+            let response_node_id = &response.0;
+            let local_node_id = Account::from(self.node_id.public_key());
+            if self
+                .syn_cookies
+                .validate(
+                    &self.server.remote_endpoint(),
+                    response_node_id,
+                    &response.1,
+                )
+                .is_ok()
+                && response_node_id != &local_node_id
+            {
+                self.server.to_realtime_connection(response_node_id);
+            } else {
+                // Stop invalid handshake
+                self.server.stop();
+            }
+        }
+
+        self.process = true;
+    }
+}
+
+impl HandshakeMessageVisitor for HandshakeMessageVisitorImpl {
+    fn process(&self) -> bool {
+        self.process
+    }
+
+    fn bootstrap(&self) -> bool {
+        self.bootstrap
+    }
+
+    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor {
+        self
     }
 }

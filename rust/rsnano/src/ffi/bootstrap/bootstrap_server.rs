@@ -1,26 +1,29 @@
 use crate::{
     bootstrap::{
         BootstrapMessageVisitor, BootstrapServer, BootstrapServerExt, BootstrapServerObserver,
-        HandshakeMessageVisitor, RealtimeMessageVisitor, RequestResponseVisitorFactory,
+        HandshakeMessageVisitor, HandshakeMessageVisitorImpl, RealtimeMessageVisitor,
+        RequestResponseVisitorFactory,
     },
     ffi::{
         copy_account_bytes,
         io_context::{FfiIoContext, IoContextHandle},
         messages::FfiMessageVisitor,
-        network::{EndpointDto, SocketHandle, TcpMessageManagerHandle},
+        network::{EndpointDto, SocketHandle, SynCookiesHandle, TcpMessageManagerHandle},
         thread_pool::FfiThreadPool,
         voting::VoteUniquerHandle,
         BlockUniquerHandle, LoggerHandle, LoggerMT, NetworkFilterHandle, NetworkParamsDto,
         NodeConfigDto, StatHandle, VoidPointerCallback,
     },
-    network::SocketType,
-    Account, NetworkParams, NodeConfig,
+    logger_mt::Logger,
+    network::{SocketType, SynCookies},
+    stats::Stat,
+    Account, KeyPair, NetworkConstants, NetworkParams, NodeConfig,
 };
 use std::{
     ffi::c_void,
     net::SocketAddr,
     ops::Deref,
-    sync::{atomic::Ordering, Arc, Weak},
+    sync::{Arc, Weak},
 };
 
 pub struct BootstrapServerHandle(Arc<BootstrapServer>);
@@ -60,6 +63,8 @@ pub struct CreateBootstrapServerParams {
     pub block_uniquer: *mut BlockUniquerHandle,
     pub vote_uniquer: *mut VoteUniquerHandle,
     pub tcp_message_manager: *mut TcpMessageManagerHandle,
+    pub syn_cookies: *mut SynCookiesHandle,
+    pub node_id_prv: *const u8,
 }
 
 #[no_mangle]
@@ -68,16 +73,27 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
 ) -> *mut BootstrapServerHandle {
     let socket = Arc::clone(&(*params.socket));
     let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
-    let logger = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
+    let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
     let observer = Arc::new(FfiBootstrapServerObserver::new(params.observer));
     let publish_filter = Arc::clone(&*params.publish_filter);
     let workers = Arc::new(FfiThreadPool::new(params.workers));
     let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
     let network = NetworkParams::try_from(&*params.network).unwrap();
     let stats = Arc::clone(&(*params.stats));
-    let visitor_factory = Arc::new(FfiRequestResponseVisitorFactory::new(
+    let node_id = Arc::new(
+        KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(params.node_id_prv, 32)).unwrap(),
+    );
+    let mut visitor_factory = FfiRequestResponseVisitorFactory::new(
         params.request_response_visitor_factory,
-    ));
+        Arc::clone(&logger),
+        Arc::clone(&*params.syn_cookies),
+        Arc::clone(&stats),
+        network.network.clone(),
+        node_id,
+    );
+    visitor_factory.handshake_logging = config.logging.network_node_id_handshake_logging_value;
+    visitor_factory.disable_tcp_realtime = params.disable_tcp_realtime;
+    let visitor_factory = Arc::new(visitor_factory);
     let block_uniquer = Arc::clone(&*params.block_uniquer);
     let vote_uniquer = Arc::clone(&*params.vote_uniquer);
     let tcp_message_manager = Arc::clone(&*params.tcp_message_manager);
@@ -188,8 +204,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_remote_endpoint(
     handle: *mut BootstrapServerHandle,
     endpoint: *mut EndpointDto,
 ) {
-    let ep: SocketAddr = (*handle).remote_endpoint.lock().unwrap().clone();
-    (*endpoint) = ep.into();
+    (*endpoint) = (*handle).remote_endpoint().into();
 }
 
 #[no_mangle]
@@ -233,17 +248,14 @@ pub unsafe extern "C" fn rsn_bootstrap_server_timeout(handle: *mut BootstrapServ
 pub unsafe extern "C" fn rsn_bootstrap_server_handshake_query_received(
     handle: *mut BootstrapServerHandle,
 ) -> bool {
-    (*handle).handshake_query_received.load(Ordering::SeqCst)
+    (*handle).was_handshake_query_received()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_set_handshake_query_received(
     handle: *mut BootstrapServerHandle,
 ) {
-    (*handle)
-        .0
-        .handshake_query_received
-        .store(true, Ordering::SeqCst);
+    (*handle).0.handshake_query_received();
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);
@@ -369,16 +381,8 @@ pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(
 /// returns a `shared_ptr<message_visitor> *`
 pub type RequestResponseVisitorFactoryCreateCallback =
     unsafe extern "C" fn(*mut c_void, *mut BootstrapServerHandle) -> *mut c_void;
-static mut HANDSHAKE_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
 static mut BOOTSTRAP_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
 static mut REALTIME_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_handshake_visitor(
-    f: RequestResponseVisitorFactoryCreateCallback,
-) {
-    HANDSHAKE_VISITOR = Some(f);
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_bootstrap_visitor(
@@ -396,11 +400,34 @@ pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_realtime_
 
 pub struct FfiRequestResponseVisitorFactory {
     handle: *mut c_void,
+    logger: Arc<dyn Logger>,
+    syn_cookies: Arc<SynCookies>,
+    stats: Arc<Stat>,
+    node_id: Arc<KeyPair>,
+    network_constants: NetworkConstants,
+    pub disable_tcp_realtime: bool,
+    pub handshake_logging: bool,
 }
 
 impl FfiRequestResponseVisitorFactory {
-    pub fn new(handle: *mut c_void) -> Self {
-        Self { handle }
+    pub fn new(
+        handle: *mut c_void,
+        logger: Arc<dyn Logger>,
+        syn_cookies: Arc<SynCookies>,
+        stats: Arc<Stat>,
+        network_constants: NetworkConstants,
+        node_id: Arc<KeyPair>,
+    ) -> Self {
+        Self {
+            handle,
+            logger,
+            syn_cookies,
+            stats,
+            node_id,
+            disable_tcp_realtime: false,
+            handshake_logging: false,
+            network_constants,
+        }
     }
 
     fn create_visitor(
@@ -430,7 +457,17 @@ impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
     }
 
     fn handshake_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn HandshakeMessageVisitor> {
-        unsafe { self.create_visitor(HANDSHAKE_VISITOR, server) }
+        let mut visitor = Box::new(HandshakeMessageVisitorImpl::new(
+            server,
+            Arc::clone(&self.logger),
+            Arc::clone(&self.syn_cookies),
+            Arc::clone(&self.stats),
+            Arc::clone(&self.node_id),
+            self.network_constants.clone(),
+        ));
+        visitor.disable_tcp_realtime = self.disable_tcp_realtime;
+        visitor.handshake_logging = self.handshake_logging;
+        visitor
     }
 
     fn realtime_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn RealtimeMessageVisitor> {

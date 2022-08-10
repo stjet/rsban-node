@@ -145,7 +145,7 @@ impl Message for BulkPull {
         Ok(())
     }
 
-    fn visit(&self, visitor: &dyn MessageVisitor) {
+    fn visit(&self, visitor: &mut dyn MessageVisitor) {
         visitor.bulk_pull(self)
     }
 

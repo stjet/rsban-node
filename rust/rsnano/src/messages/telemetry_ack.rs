@@ -255,7 +255,7 @@ impl Message for TelemetryAck {
         Ok(())
     }
 
-    fn visit(&self, visitor: &dyn MessageVisitor) {
+    fn visit(&self, visitor: &mut dyn MessageVisitor) {
         visitor.telemetry_ack(self)
     }
 

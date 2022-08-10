@@ -1,6 +1,6 @@
 use super::MessageHandle;
 use crate::{
-    bootstrap::{BootstrapMessageVisitor, HandshakeMessageVisitor, RealtimeMessageVisitor},
+    bootstrap::{BootstrapMessageVisitor, RealtimeMessageVisitor},
     ffi::VoidPointerCallback,
     messages::*,
 };
@@ -50,47 +50,47 @@ impl FfiMessageVisitor {
 }
 
 impl MessageVisitor for FfiMessageVisitor {
-    fn keepalive(&self, message: &Keepalive) {
+    fn keepalive(&mut self, message: &Keepalive) {
         self.visit_callback(message);
     }
 
-    fn publish(&self, message: &Publish) {
+    fn publish(&mut self, message: &Publish) {
         self.visit_callback(message);
     }
 
-    fn confirm_req(&self, message: &ConfirmReq) {
+    fn confirm_req(&mut self, message: &ConfirmReq) {
         self.visit_callback(message);
     }
 
-    fn confirm_ack(&self, message: &ConfirmAck) {
+    fn confirm_ack(&mut self, message: &ConfirmAck) {
         self.visit_callback(message);
     }
 
-    fn bulk_pull(&self, message: &BulkPull) {
+    fn bulk_pull(&mut self, message: &BulkPull) {
         self.visit_callback(message);
     }
 
-    fn bulk_pull_account(&self, message: &BulkPullAccount) {
+    fn bulk_pull_account(&mut self, message: &BulkPullAccount) {
         self.visit_callback(message);
     }
 
-    fn bulk_push(&self, message: &BulkPush) {
+    fn bulk_push(&mut self, message: &BulkPush) {
         self.visit_callback(message);
     }
 
-    fn frontier_req(&self, message: &FrontierReq) {
+    fn frontier_req(&mut self, message: &FrontierReq) {
         self.visit_callback(message);
     }
 
-    fn node_id_handshake(&self, message: &NodeIdHandshake) {
+    fn node_id_handshake(&mut self, message: &NodeIdHandshake) {
         self.visit_callback(message);
     }
 
-    fn telemetry_req(&self, message: &TelemetryReq) {
+    fn telemetry_req(&mut self, message: &TelemetryReq) {
         self.visit_callback(message);
     }
 
-    fn telemetry_ack(&self, message: &TelemetryAck) {
+    fn telemetry_ack(&mut self, message: &TelemetryAck) {
         self.visit_callback(message);
     }
 }
@@ -98,8 +98,6 @@ impl MessageVisitor for FfiMessageVisitor {
 pub type MessageVisitorFlagCallback = unsafe extern "C" fn(*mut c_void) -> bool;
 static mut BOOTSTRAP_PROCESSED: Option<MessageVisitorFlagCallback> = None;
 static mut REALTIME_PROCESS: Option<MessageVisitorFlagCallback> = None;
-static mut HANDSHAKE_PROCESS: Option<MessageVisitorFlagCallback> = None;
-static mut HANDSHAKE_BOOTSTRAP: Option<MessageVisitorFlagCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_message_visitor_bootstrap_processed(
@@ -115,26 +113,12 @@ pub unsafe extern "C" fn rsn_callback_message_visitor_realtime_process(
     REALTIME_PROCESS = Some(f);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_message_visitor_handshake_process(
-    f: MessageVisitorFlagCallback,
-) {
-    HANDSHAKE_PROCESS = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_message_visitor_handshake_bootstrap(
-    f: MessageVisitorFlagCallback,
-) {
-    HANDSHAKE_BOOTSTRAP = Some(f);
-}
-
 impl BootstrapMessageVisitor for FfiMessageVisitor {
     fn processed(&self) -> bool {
         unsafe { BOOTSTRAP_PROCESSED.expect("BOOTSTRAP_PROCESSED missing")(self.handle) }
     }
 
-    fn as_message_visitor(&self) -> &dyn MessageVisitor {
+    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor {
         self
     }
 }
@@ -143,20 +127,7 @@ impl RealtimeMessageVisitor for FfiMessageVisitor {
     fn process(&self) -> bool {
         unsafe { REALTIME_PROCESS.expect("REALTIME_PROCESS missing")(self.handle) }
     }
-    fn as_message_visitor(&self) -> &dyn MessageVisitor {
-        self
-    }
-}
-
-impl HandshakeMessageVisitor for FfiMessageVisitor {
-    fn process(&self) -> bool {
-        unsafe { HANDSHAKE_PROCESS.expect("HANDSHAKE_PROCESS missing")(self.handle) }
-    }
-
-    fn bootstrap(&self) -> bool {
-        unsafe { HANDSHAKE_BOOTSTRAP.expect("HANDSHAKE_BOOTSTRAP missing")(self.handle) }
-    }
-    fn as_message_visitor(&self) -> &dyn MessageVisitor {
+    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor {
         self
     }
 }

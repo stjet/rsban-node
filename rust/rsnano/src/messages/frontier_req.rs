@@ -85,7 +85,7 @@ impl Message for FrontierReq {
         stream.write_bytes(&self.count.to_le_bytes())
     }
 
-    fn visit(&self, visitor: &dyn MessageVisitor) {
+    fn visit(&self, visitor: &mut dyn MessageVisitor) {
         visitor.frontier_req(self)
     }
 

@@ -118,7 +118,7 @@ impl Message for NodeIdHandshake {
         Ok(())
     }
 
-    fn visit(&self, visitor: &dyn MessageVisitor) {
+    fn visit(&self, visitor: &mut dyn MessageVisitor) {
         visitor.node_id_handshake(self)
     }
 

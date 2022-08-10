@@ -544,6 +544,18 @@ struct MessageDto
 
 using ListenerBroadcastCallback = bool (*) (void *, const MessageDto *);
 
+/// args: MDB_env* env, MDB_txn* parent, flags, MDB_txn** ret
+using MdbTxnBeginCallback = int32_t (*) (void *, void *, uint32_t, void **);
+
+/// args: MDB_txn*
+using MdbTxnCommitCallback = int32_t (*) (void *);
+
+/// args: MDB_txn*
+using MdbTxnRenewCallback = int32_t (*) (void *);
+
+/// args: MDB_txn*
+using MdbTxnResetCallback = void (*) (void *);
+
 using MessageVisitorFlagCallback = bool (*) (void *);
 
 using MessageVisitorCallback = void (*) (void *, MessageHandle *, uint8_t);
@@ -1260,6 +1272,14 @@ void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
 void rsn_callback_logger_destroy (VoidPointerCallback f);
 
+void rsn_callback_mdb_txn_begin (MdbTxnBeginCallback f);
+
+void rsn_callback_mdb_txn_commit (MdbTxnCommitCallback f);
+
+void rsn_callback_mdb_txn_renew (MdbTxnRenewCallback f);
+
+void rsn_callback_mdb_txn_reset (MdbTxnResetCallback f);
+
 void rsn_callback_message_visitor_bootstrap_processed (MessageVisitorFlagCallback f);
 
 void rsn_callback_message_visitor_destroy (VoidPointerCallback f);
@@ -1531,9 +1551,17 @@ void rsn_ledger_destroy (LedgerHandle * handle);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 
-TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, void * callbacks);
+TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, void * env, void * callbacks);
 
 void rsn_lmdb_read_txn_destroy (TransactionHandle * handle);
+
+void * rsn_lmdb_read_txn_handle (TransactionHandle * handle);
+
+void rsn_lmdb_read_txn_refresh (TransactionHandle * handle);
+
+void rsn_lmdb_read_txn_renew (TransactionHandle * handle);
+
+void rsn_lmdb_read_txn_reset (TransactionHandle * handle);
 
 void rsn_local_vote_history_add (LocalVoteHistoryHandle * handle,
 const uint8_t * root,

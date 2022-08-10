@@ -50,46 +50,33 @@ private:
 }
 
 nano::read_mdb_txn::read_mdb_txn (uint64_t txn_id_a, MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
-	txn_callbacks (txn_callbacks_a),
-	txn_id{ txn_id_a },
-	txn_handle{ rsnano::rsn_lmdb_read_txn_create (txn_id_a, new nano::mdb_txn_callbacks{ txn_callbacks_a }) }
+	txn_handle{ rsnano::rsn_lmdb_read_txn_create (txn_id_a, env_a, new nano::mdb_txn_callbacks{ txn_callbacks_a }) }
 {
-	auto status (mdb_txn_begin (env_a, nullptr, MDB_RDONLY, &handle));
-	release_assert (status == 0);
-	txn_callbacks.txn_start (txn_id, false);
 }
 
 nano::read_mdb_txn::~read_mdb_txn ()
 {
-	// This uses commit rather than abort, as it is needed when opening databases with a read only transaction
-	auto status (mdb_txn_commit (handle));
-	release_assert (status == MDB_SUCCESS);
-	txn_callbacks.txn_end (txn_id);
 	rsnano::rsn_lmdb_read_txn_destroy (txn_handle);
 }
 
 void nano::read_mdb_txn::reset ()
 {
-	mdb_txn_reset (handle);
-	txn_callbacks.txn_end (txn_id);
+	rsnano::rsn_lmdb_read_txn_reset (txn_handle);
 }
 
 void nano::read_mdb_txn::renew ()
 {
-	auto status (mdb_txn_renew (handle));
-	release_assert (status == 0);
-	txn_callbacks.txn_start (txn_id, false);
+	rsnano::rsn_lmdb_read_txn_renew (txn_handle);
 }
 
 void nano::read_mdb_txn::refresh ()
 {
-	reset ();
-	renew ();
+	rsnano::rsn_lmdb_read_txn_refresh (txn_handle);
 }
 
 void * nano::read_mdb_txn::get_handle () const
 {
-	return handle;
+	return rsnano::rsn_lmdb_read_txn_handle (txn_handle);
 }
 
 nano::write_mdb_txn::write_mdb_txn (uint64_t txn_id_a, MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :

@@ -38,9 +38,6 @@ public:
 	void renew () override;
 	void refresh () override;
 	void * get_handle () const override;
-	MDB_txn * handle;
-	mdb_txn_callbacks txn_callbacks;
-	uint64_t txn_id;
 	rsnano::TransactionHandle * txn_handle;
 };
 

@@ -1,11 +1,23 @@
 use std::{ffi::c_void, sync::Arc};
 
 use crate::{
-    datastore::lmdb::{LmdbReadTransaction, TxnCallbacks},
+    datastore::lmdb::{
+        LmdbReadTransaction, MdbTxnBeginCallback, MdbTxnCommitCallback, MdbTxnRenewCallback,
+        MdbTxnResetCallback, TxnCallbacks, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW,
+        MDB_TXN_RESET,
+    },
     ffi::VoidPointerCallback,
 };
 
 pub struct TransactionHandle(TransactionType);
+
+impl TransactionHandle {
+    pub fn as_read_tx(&mut self) -> &mut LmdbReadTransaction {
+        match &mut self.0 {
+            TransactionType::Read(rtx) => rtx,
+        }
+    }
+}
 
 enum TransactionType {
     Read(LmdbReadTransaction),
@@ -14,17 +26,38 @@ enum TransactionType {
 #[no_mangle]
 pub extern "C" fn rsn_lmdb_read_txn_create(
     txn_id: u64,
+    env: *mut c_void,
     callbacks: *mut c_void,
 ) -> *mut TransactionHandle {
     let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
     Box::into_raw(Box::new(TransactionHandle(TransactionType::Read(
-        LmdbReadTransaction::new(txn_id, callbacks),
+        LmdbReadTransaction::new(txn_id, env, callbacks),
     ))))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_read_txn_destroy(handle: *mut TransactionHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_read_txn_reset(handle: *mut TransactionHandle) {
+    (*handle).as_read_tx().reset();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_read_txn_renew(handle: *mut TransactionHandle) {
+    (*handle).as_read_tx().renew();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_read_txn_refresh(handle: *mut TransactionHandle) {
+    (*handle).as_read_tx().refresh();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_read_txn_handle(handle: *mut TransactionHandle) -> *mut c_void {
+    (*handle).as_read_tx().handle
 }
 
 struct FfiCallbacksWrapper {
@@ -72,4 +105,24 @@ pub unsafe extern "C" fn rsn_callback_txn_callbacks_start(f: TxnStartCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_txn_callbacks_end(f: TxnEndCallback) {
     TXN_END = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_txn_begin(f: MdbTxnBeginCallback) {
+    MDB_TXN_BEGIN = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_txn_commit(f: MdbTxnCommitCallback) {
+    MDB_TXN_COMMIT = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_txn_reset(f: MdbTxnResetCallback) {
+    MDB_TXN_RESET = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_txn_renew(f: MdbTxnRenewCallback) {
+    MDB_TXN_RENEW = Some(f);
 }

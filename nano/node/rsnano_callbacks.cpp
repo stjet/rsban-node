@@ -961,5 +961,10 @@ void rsnano::set_rsnano_callbacks ()
 
 	rsnano::rsn_callback_message_visitor_bootstrap_processed (message_visitor_bootstrap_processed);
 
+	rsnano::rsn_callback_mdb_txn_begin (reinterpret_cast<rsnano::MdbTxnBeginCallback> (mdb_txn_begin));
+	rsnano::rsn_callback_mdb_txn_commit (reinterpret_cast<rsnano::MdbTxnCommitCallback> (mdb_txn_commit));
+	rsnano::rsn_callback_mdb_txn_reset (reinterpret_cast<rsnano::MdbTxnResetCallback> (mdb_txn_reset));
+	rsnano::rsn_callback_mdb_txn_renew (reinterpret_cast<rsnano::MdbTxnRenewCallback> (mdb_txn_renew));
+
 	callbacks_set = true;
 }

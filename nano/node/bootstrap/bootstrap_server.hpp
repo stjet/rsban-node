@@ -131,22 +131,15 @@ public:
 	~bootstrap_server ();
 	void start ();
 	void stop ();
-	bool get_handshake_query_received ();
-	void set_handshake_query_received ();
 	void timeout ();
 	bool is_stopped () const;
 	std::size_t unique_id () const;
-	nano::account get_remote_node_id () const;
 	void set_remote_node_id (nano::account account_a);
 	nano::tcp_endpoint get_remote_endpoint () const;
 	std::shared_ptr<nano::socket> const get_socket () const;
 
 	rsnano::BootstrapServerHandle * handle;
 
-private:
-	bool to_realtime_connection (nano::account const & node_id);
-
-public:
 	class bootstrap_message_visitor : public nano::message_visitor
 	{
 	public:
@@ -163,7 +156,5 @@ public:
 		std::shared_ptr<bootstrap_server> server;
 		std::shared_ptr<nano::node> node;
 	};
-
-	friend class bootstrap_message_visitor;
 };
 }

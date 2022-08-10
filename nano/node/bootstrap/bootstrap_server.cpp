@@ -311,16 +311,6 @@ void nano::bootstrap_server::stop ()
 	rsnano::rsn_bootstrap_server_stop (handle);
 }
 
-bool nano::bootstrap_server::get_handshake_query_received ()
-{
-	return rsnano::rsn_bootstrap_server_handshake_query_received (handle);
-}
-
-void nano::bootstrap_server::set_handshake_query_received ()
-{
-	rsnano::rsn_bootstrap_server_set_handshake_query_received (handle);
-}
-
 /*
  * Bootstrap
  */
@@ -409,21 +399,9 @@ bool nano::bootstrap_server::is_stopped () const
 	return rsnano::rsn_bootstrap_server_is_stopped (handle);
 }
 
-bool nano::bootstrap_server::to_realtime_connection (nano::account const & node_id)
-{
-	return rsnano::rsn_bootstrap_server_to_realtime_connection (handle, node_id.bytes.data ());
-}
-
 std::uintptr_t nano::bootstrap_server::unique_id () const
 {
 	return rsnano::rsn_bootstrap_server_unique_id (handle);
-}
-
-nano::account nano::bootstrap_server::get_remote_node_id () const
-{
-	nano::account node_id;
-	rsnano::rsn_bootstrap_server_remote_node_id (handle, node_id.bytes.data ());
-	return node_id;
 }
 
 void nano::bootstrap_server::set_remote_node_id (nano::account account_a)

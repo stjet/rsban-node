@@ -1162,8 +1162,6 @@ void rsn_bootstrap_server_destroy_weak (BootstrapServerWeakHandle * handle);
 
 BootstrapServerWeakHandle * rsn_bootstrap_server_get_weak (BootstrapServerHandle * handle);
 
-bool rsn_bootstrap_server_handshake_query_received (BootstrapServerHandle * handle);
-
 bool rsn_bootstrap_server_is_stopped (BootstrapServerHandle * handle);
 
 BootstrapServerHandle * rsn_bootstrap_server_lock_weak (BootstrapServerWeakHandle * handle);
@@ -1171,10 +1169,6 @@ BootstrapServerHandle * rsn_bootstrap_server_lock_weak (BootstrapServerWeakHandl
 void rsn_bootstrap_server_remote_endpoint (BootstrapServerHandle * handle, EndpointDto * endpoint);
 
 void rsn_bootstrap_server_remote_node_id (BootstrapServerHandle * handle, uint8_t * node_id);
-
-void rsn_bootstrap_server_set_handshake_query_received (BootstrapServerHandle * handle);
-
-void rsn_bootstrap_server_set_last_telemetry_req (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_set_remote_node_id (BootstrapServerHandle * handle, const uint8_t * node_id);
 
@@ -1184,12 +1178,7 @@ void rsn_bootstrap_server_start (BootstrapServerHandle * handle);
 
 void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
 
-bool rsn_bootstrap_server_telemetry_cutoff_exceeded (BootstrapServerHandle * handle);
-
 void rsn_bootstrap_server_timeout (BootstrapServerHandle * handle);
-
-bool rsn_bootstrap_server_to_realtime_connection (BootstrapServerHandle * handle,
-const uint8_t * node_id);
 
 uintptr_t rsn_bootstrap_server_unique_id (BootstrapServerHandle * handle);
 

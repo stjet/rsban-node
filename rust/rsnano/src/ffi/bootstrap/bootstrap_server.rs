@@ -132,15 +132,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_unique_id(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_to_realtime_connection(
-    handle: *mut BootstrapServerHandle,
-    node_id: *const u8,
-) -> bool {
-    let node_id = Account::from(node_id);
-    (*handle).to_realtime_connection(&node_id)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_get_weak(
     handle: *mut BootstrapServerHandle,
 ) -> *mut BootstrapServerWeakHandle {
@@ -193,13 +184,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_is_stopped(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_telemetry_cutoff_exceeded(
-    handle: *mut BootstrapServerHandle,
-) -> bool {
-    (*handle).is_telemetry_cutoff_exceeded()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_remote_endpoint(
     handle: *mut BootstrapServerHandle,
     endpoint: *mut EndpointDto,
@@ -233,29 +217,8 @@ pub unsafe extern "C" fn rsn_bootstrap_server_socket(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_set_last_telemetry_req(
-    handle: *mut BootstrapServerHandle,
-) {
-    (*handle).set_last_telemetry_req();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_timeout(handle: *mut BootstrapServerHandle) {
     (*handle).timeout();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_handshake_query_received(
-    handle: *mut BootstrapServerHandle,
-) -> bool {
-    (*handle).was_handshake_query_received()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_set_handshake_query_received(
-    handle: *mut BootstrapServerHandle,
-) {
-    (*handle).0.handshake_query_received();
 }
 
 type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);

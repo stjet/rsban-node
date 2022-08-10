@@ -96,7 +96,6 @@ class request_response_visitor_factory
 public:
 	explicit request_response_visitor_factory (nano::node & node_a);
 	std::shared_ptr<nano::message_visitor> create_bootstrap (std::shared_ptr<nano::bootstrap_server> connection_a);
-	std::shared_ptr<nano::message_visitor> create_realtime (std::shared_ptr<nano::bootstrap_server> connection_a);
 
 private:
 	nano::node & node; // shared_ptr isn't possible, because this factory gets created in node's constructor
@@ -148,26 +147,6 @@ private:
 	bool to_realtime_connection (nano::account const & node_id);
 
 public:
-	class realtime_message_visitor : public nano::message_visitor
-	{
-	public:
-		bool process{ false };
-
-		explicit realtime_message_visitor (std::shared_ptr<bootstrap_server>, std::shared_ptr<nano::node>);
-
-		void keepalive (nano::keepalive const &) override;
-		void publish (nano::publish const &) override;
-		void confirm_req (nano::confirm_req const &) override;
-		void confirm_ack (nano::confirm_ack const &) override;
-		void frontier_req (nano::frontier_req const &) override;
-		void telemetry_req (nano::telemetry_req const &) override;
-		void telemetry_ack (nano::telemetry_ack const &) override;
-
-	private:
-		std::shared_ptr<bootstrap_server> server;
-		std::shared_ptr<nano::node> node;
-	};
-
 	class bootstrap_message_visitor : public nano::message_visitor
 	{
 	public:
@@ -185,8 +164,6 @@ public:
 		std::shared_ptr<nano::node> node;
 	};
 
-	friend class handshake_message_visitor;
-	friend class realtime_message_visitor;
 	friend class bootstrap_message_visitor;
 };
 }

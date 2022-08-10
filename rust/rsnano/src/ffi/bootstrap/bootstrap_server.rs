@@ -2,7 +2,7 @@ use crate::{
     bootstrap::{
         BootstrapMessageVisitor, BootstrapServer, BootstrapServerExt, BootstrapServerObserver,
         HandshakeMessageVisitor, HandshakeMessageVisitorImpl, RealtimeMessageVisitor,
-        RequestResponseVisitorFactory,
+        RealtimeMessageVisitorImpl, RequestResponseVisitorFactory,
     },
     ffi::{
         copy_account_bytes,
@@ -382,20 +382,12 @@ pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(
 pub type RequestResponseVisitorFactoryCreateCallback =
     unsafe extern "C" fn(*mut c_void, *mut BootstrapServerHandle) -> *mut c_void;
 static mut BOOTSTRAP_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
-static mut REALTIME_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_bootstrap_visitor(
     f: RequestResponseVisitorFactoryCreateCallback,
 ) {
     BOOTSTRAP_VISITOR = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_realtime_visitor(
-    f: RequestResponseVisitorFactoryCreateCallback,
-) {
-    REALTIME_VISITOR = Some(f);
 }
 
 pub struct FfiRequestResponseVisitorFactory {
@@ -471,7 +463,10 @@ impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
     }
 
     fn realtime_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn RealtimeMessageVisitor> {
-        unsafe { self.create_visitor(REALTIME_VISITOR, server) }
+        Box::new(RealtimeMessageVisitorImpl::new(
+            server,
+            Arc::clone(&self.stats),
+        ))
     }
 
     fn bootstrap_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn BootstrapMessageVisitor> {

@@ -1275,8 +1275,6 @@ void rsn_callback_message_visitor_bootstrap_processed (MessageVisitorFlagCallbac
 
 void rsn_callback_message_visitor_destroy (VoidPointerCallback f);
 
-void rsn_callback_message_visitor_realtime_process (MessageVisitorFlagCallback f);
-
 void rsn_callback_message_visitor_visit (MessageVisitorCallback f);
 
 void rsn_callback_property_tree_add (PropertyTreePutStringCallback f);
@@ -1308,8 +1306,6 @@ void rsn_callback_read_u8 (ReadU8Callback f);
 void rsn_callback_request_response_visitor_factory_bootstrap_visitor (RequestResponseVisitorFactoryCreateCallback f);
 
 void rsn_callback_request_response_visitor_factory_destroy (VoidPointerCallback f);
-
-void rsn_callback_request_response_visitor_factory_realtime_visitor (RequestResponseVisitorFactoryCreateCallback f);
 
 void rsn_callback_string_chars (StringCharsCallback f);
 

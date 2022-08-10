@@ -12,7 +12,8 @@ use crate::{
     bootstrap::ParseStatus,
     logger_mt::Logger,
     messages::{
-        BulkPull, BulkPullAccount, BulkPush, FrontierReq, Message, MessageVisitor, NodeIdHandshake,
+        BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
+        Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
     },
     network::{Socket, SocketImpl, SocketType, SynCookies, TcpMessageItem, TcpMessageManager},
     sign_message,
@@ -558,6 +559,66 @@ impl HandshakeMessageVisitor for HandshakeMessageVisitorImpl {
 
     fn bootstrap(&self) -> bool {
         self.bootstrap
+    }
+
+    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor {
+        self
+    }
+}
+
+pub struct RealtimeMessageVisitorImpl {
+    server: Arc<BootstrapServer>,
+    stats: Arc<Stat>,
+    process: bool,
+}
+
+impl RealtimeMessageVisitorImpl {
+    pub fn new(server: Arc<BootstrapServer>, stats: Arc<Stat>) -> Self {
+        Self {
+            server,
+            stats,
+            process: false,
+        }
+    }
+}
+
+impl MessageVisitor for RealtimeMessageVisitorImpl {
+    fn keepalive(&mut self, _message: &Keepalive) {
+        self.process = true;
+    }
+    fn publish(&mut self, _message: &Publish) {
+        self.process = true;
+    }
+    fn confirm_req(&mut self, _message: &ConfirmReq) {
+        self.process = true;
+    }
+    fn confirm_ack(&mut self, _message: &ConfirmAck) {
+        self.process = true;
+    }
+    fn frontier_req(&mut self, _message: &FrontierReq) {
+        self.process = true;
+    }
+    fn telemetry_req(&mut self, _message: &TelemetryReq) {
+        // Only handle telemetry requests if they are outside of the cutoff time
+        if self.server.is_telemetry_cutoff_exceeded() {
+            self.server.set_last_telemetry_req();
+            self.process = true;
+        } else {
+            let _ = self.stats.inc(
+                StatType::Telemetry,
+                DetailType::RequestWithinProtectionCacheZone,
+                Direction::In,
+            );
+        }
+    }
+    fn telemetry_ack(&mut self, _message: &TelemetryAck) {
+        self.process = true;
+    }
+}
+
+impl RealtimeMessageVisitor for RealtimeMessageVisitorImpl {
+    fn process(&self) -> bool {
+        self.process
     }
 
     fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor {

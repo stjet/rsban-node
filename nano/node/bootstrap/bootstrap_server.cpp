@@ -322,60 +322,6 @@ void nano::bootstrap_server::set_handshake_query_received ()
 }
 
 /*
- * Realtime
- */
-
-nano::bootstrap_server::realtime_message_visitor::realtime_message_visitor (std::shared_ptr<nano::bootstrap_server> bootstrap_server, std::shared_ptr<nano::node> node_a) :
-	server{ std::move (bootstrap_server) },
-	node{ std::move (node_a) }
-{
-}
-
-void nano::bootstrap_server::realtime_message_visitor::keepalive (const nano::keepalive & message)
-{
-	process = true;
-}
-
-void nano::bootstrap_server::realtime_message_visitor::publish (const nano::publish & message)
-{
-	process = true;
-}
-
-void nano::bootstrap_server::realtime_message_visitor::confirm_req (const nano::confirm_req & message)
-{
-	process = true;
-}
-
-void nano::bootstrap_server::realtime_message_visitor::confirm_ack (const nano::confirm_ack & message)
-{
-	process = true;
-}
-
-void nano::bootstrap_server::realtime_message_visitor::frontier_req (const nano::frontier_req & message)
-{
-	process = true;
-}
-
-void nano::bootstrap_server::realtime_message_visitor::telemetry_req (const nano::telemetry_req & message)
-{
-	// Only handle telemetry requests if they are outside of the cutoff time
-	if (rsnano::rsn_bootstrap_server_telemetry_cutoff_exceeded (server->handle))
-	{
-		rsnano::rsn_bootstrap_server_set_last_telemetry_req (server->handle);
-		process = true;
-	}
-	else
-	{
-		node->stats->inc (nano::stat::type::telemetry, nano::stat::detail::request_within_protection_cache_zone);
-	}
-}
-
-void nano::bootstrap_server::realtime_message_visitor::telemetry_ack (const nano::telemetry_ack & message)
-{
-	process = true;
-}
-
-/*
  * Bootstrap
  */
 
@@ -456,11 +402,6 @@ nano::request_response_visitor_factory::request_response_visitor_factory (nano::
 std::shared_ptr<nano::message_visitor> nano::request_response_visitor_factory::create_bootstrap (std::shared_ptr<nano::bootstrap_server> connection_a)
 {
 	return std::make_shared<nano::bootstrap_server::bootstrap_message_visitor> (connection_a, node.shared ());
-}
-
-std::shared_ptr<nano::message_visitor> nano::request_response_visitor_factory::create_realtime (std::shared_ptr<nano::bootstrap_server> connection_a)
-{
-	return std::make_shared<nano::bootstrap_server::realtime_message_visitor> (connection_a, node.shared ());
 }
 
 bool nano::bootstrap_server::is_stopped () const

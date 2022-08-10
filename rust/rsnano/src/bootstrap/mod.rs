@@ -13,7 +13,7 @@ pub(crate) use bootstrap_initiator::*;
 pub use bootstrap_server::{
     BootstrapMessageVisitor, BootstrapServer, BootstrapServerExt, BootstrapServerObserver,
     HandshakeMessageVisitor, HandshakeMessageVisitorImpl, RealtimeMessageVisitor,
-    RequestResponseVisitorFactory,
+    RealtimeMessageVisitorImpl, RequestResponseVisitorFactory,
 };
 
 pub use bootstrap_client::{

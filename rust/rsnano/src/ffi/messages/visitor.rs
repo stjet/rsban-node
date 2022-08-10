@@ -1,9 +1,5 @@
 use super::MessageHandle;
-use crate::{
-    bootstrap::{BootstrapMessageVisitor, RealtimeMessageVisitor},
-    ffi::VoidPointerCallback,
-    messages::*,
-};
+use crate::{bootstrap::BootstrapMessageVisitor, ffi::VoidPointerCallback, messages::*};
 use std::ffi::c_void;
 use MessageVisitor;
 
@@ -97,7 +93,6 @@ impl MessageVisitor for FfiMessageVisitor {
 
 pub type MessageVisitorFlagCallback = unsafe extern "C" fn(*mut c_void) -> bool;
 static mut BOOTSTRAP_PROCESSED: Option<MessageVisitorFlagCallback> = None;
-static mut REALTIME_PROCESS: Option<MessageVisitorFlagCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_message_visitor_bootstrap_processed(
@@ -106,27 +101,11 @@ pub unsafe extern "C" fn rsn_callback_message_visitor_bootstrap_processed(
     BOOTSTRAP_PROCESSED = Some(f);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_message_visitor_realtime_process(
-    f: MessageVisitorFlagCallback,
-) {
-    REALTIME_PROCESS = Some(f);
-}
-
 impl BootstrapMessageVisitor for FfiMessageVisitor {
     fn processed(&self) -> bool {
         unsafe { BOOTSTRAP_PROCESSED.expect("BOOTSTRAP_PROCESSED missing")(self.handle) }
     }
 
-    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor {
-        self
-    }
-}
-
-impl RealtimeMessageVisitor for FfiMessageVisitor {
-    fn process(&self) -> bool {
-        unsafe { REALTIME_PROCESS.expect("REALTIME_PROCESS missing")(self.handle) }
-    }
     fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor {
         self
     }

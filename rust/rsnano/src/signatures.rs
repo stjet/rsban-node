@@ -1,8 +1,8 @@
 use crate::{validate_message_batch, PublicKey, Signature};
-use std::sync::{
+use std::{sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},
     RwLock,
-};
+}, hint::spin_loop};
 use yastl::{Pool, ThreadConfig};
 
 pub struct SignatureCheckSet {
@@ -84,13 +84,15 @@ impl SignatureChecker {
         while !self.stopped.load(Ordering::SeqCst)
             && self.tasks_remaining.load(Ordering::SeqCst) != 0
         {
-            std::hint::spin_loop()
+            spin_loop();
         }
     }
 
     pub fn stop(&self) {
         self.stopped.swap(true, Ordering::SeqCst);
-        std::mem::drop(self.thread_pool.write().unwrap().take());
+        if let Some(pool) = {self.thread_pool.write().unwrap().take()}{
+            pool.shutdown();
+        }
     }
 
     pub fn verify(&self, check_set: &mut SignatureCheckSet) {

@@ -28,13 +28,6 @@ pub struct StatConfigDto {
     pub log_samples_filename_len: usize,
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_config_create(dto: *mut StatConfigDto) {
-    let config = StatConfig::new();
-    let dto = &mut (*dto);
-    fill_stat_config_dto(dto, &config);
-}
-
 pub fn fill_stat_config_dto(dto: &mut StatConfigDto, config: &StatConfig) {
     dto.sampling_enabled = config.sampling_enabled;
     dto.capacity = config.capacity;

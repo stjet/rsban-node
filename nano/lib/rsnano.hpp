@@ -102,13 +102,9 @@ struct StatLogSinkHandle;
 
 struct StateBlockSignatureVerificationHandle;
 
-struct StateBlockSignatureVerificationResultHandle;
-
 struct StringHandle;
 
 struct SynCookiesHandle;
-
-struct TcpChannelLockHandle;
 
 struct TcpChannelsHandle;
 
@@ -165,12 +161,6 @@ struct StringDto
 {
 	StringHandle * handle;
 	const char * value;
-};
-
-struct BootstrapAttemptResultDto
-{
-	uint64_t id;
-	BootstrapAttemptHandle * attempt;
 };
 
 using SocketReadCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
@@ -875,7 +865,6 @@ struct StateBlockSignatureVerificationResultDto
 	const int32_t * verifications;
 	const StateBlockSignatureVerificationValueDto * items;
 	uintptr_t size;
-	StateBlockSignatureVerificationResultHandle * handle;
 };
 
 using StateBlockVerifiedCallback = void (*) (void *, const StateBlockSignatureVerificationResultDto *);
@@ -1038,8 +1027,6 @@ BootstrapAttemptLockHandle * rsn_bootstrap_attempt_lock (BootstrapAttemptHandle 
 
 void rsn_bootstrap_attempt_notifiy_all (BootstrapAttemptHandle * handle);
 
-void rsn_bootstrap_attempt_notifiy_one (BootstrapAttemptHandle * handle);
-
 bool rsn_bootstrap_attempt_process_block (const BootstrapAttemptHandle * handle,
 const BlockHandle * block,
 const uint8_t * known_account,
@@ -1088,26 +1075,9 @@ uint64_t timeout_millis);
 
 void rsn_bootstrap_attempts_add (BootstrapAttemptsHandle * handle, BootstrapAttemptHandle * attempt);
 
-uintptr_t rsn_bootstrap_attempts_attempts (BootstrapAttemptsHandle * handle,
-BootstrapAttemptResultDto * result,
-uintptr_t result_size);
-
-void rsn_bootstrap_attempts_clear (BootstrapAttemptsHandle * handle);
-
 BootstrapAttemptsHandle * rsn_bootstrap_attempts_create ();
 
 void rsn_bootstrap_attempts_destroy (BootstrapAttemptsHandle * handle);
-
-BootstrapAttemptHandle * rsn_bootstrap_attempts_find (BootstrapAttemptsHandle * handle,
-uintptr_t incremental_id);
-
-uintptr_t rsn_bootstrap_attempts_get_incremental_id (BootstrapAttemptsHandle * handle);
-
-void rsn_bootstrap_attempts_remove (BootstrapAttemptsHandle * handle, uintptr_t incremental_id);
-
-uintptr_t rsn_bootstrap_attempts_size (BootstrapAttemptsHandle * handle);
-
-uintptr_t rsn_bootstrap_attempts_total_attempts (BootstrapAttemptsHandle * handle);
 
 uint64_t rsn_bootstrap_client_block_count (BootstrapClientHandle * handle);
 
@@ -1455,8 +1425,6 @@ void rsn_channel_tcp_endpoint (ChannelHandle * handle, EndpointDto * endpoint);
 
 bool rsn_channel_tcp_eq (ChannelHandle * a, ChannelHandle * b);
 
-TcpChannelLockHandle * rsn_channel_tcp_lock (ChannelHandle * handle);
-
 bool rsn_channel_tcp_max (ChannelHandle * handle);
 
 void rsn_channel_tcp_network_set_version (ChannelHandle * handle, uint8_t version);
@@ -1485,8 +1453,6 @@ void rsn_channel_tcp_set_endpoint (ChannelHandle * handle);
 void rsn_channel_tcp_set_peering_endpoint (ChannelHandle * handle, const EndpointDto * endpoint);
 
 SocketHandle * rsn_channel_tcp_socket (ChannelHandle * handle);
-
-void rsn_channel_tcp_unlock (TcpChannelLockHandle * handle);
 
 ChannelHandle * rsn_channel_tcp_wrapper_channel (ChannelTcpWrapperHandle * handle);
 
@@ -1617,8 +1583,6 @@ void rsn_local_vote_history_votes_destroy (LocalVotesResultHandle * handle);
 
 /// logger is a pointer to a shared_ptr<logger_mt>
 LoggerHandle * rsn_logger_create (void * logger);
-
-void rsn_logger_destroy (LoggerHandle * handle);
 
 void rsn_logging_create (LoggingDto * dto);
 
@@ -2127,13 +2091,9 @@ void rsn_send_block_destination_set (BlockHandle * handle, const uint8_t (*desti
 
 void rsn_send_block_previous_set (BlockHandle * handle, const uint8_t (*previous)[32]);
 
-uintptr_t rsn_send_block_size ();
-
 bool rsn_send_block_valid_predecessor (uint8_t block_type);
 
 void rsn_send_block_zero (BlockHandle * handle);
-
-void rsn_shared_block_enum_handle_destroy (BlockHandle * handle);
 
 int32_t rsn_sign_message (const uint8_t (*priv_key)[32],
 const uint8_t (*pub_key)[32],
@@ -2210,8 +2170,6 @@ uintptr_t rsn_socket_get_queue_size (SocketHandle * handle);
 
 void rsn_socket_get_remote (SocketHandle * handle, EndpointDto * result);
 
-uint64_t rsn_socket_get_silent_connnection_tolerance_time_s (SocketHandle * handle);
-
 bool rsn_socket_has_timed_out (SocketHandle * handle);
 
 const void * rsn_socket_inner_ptr (SocketHandle * handle);
@@ -2248,8 +2206,6 @@ uint64_t value,
 bool detail_only);
 
 void rsn_stat_clear (StatHandle * handle);
-
-void rsn_stat_config_create (StatConfigDto * dto);
 
 void rsn_stat_configure (StatHandle * handle,
 uint8_t stat_type,
@@ -2333,8 +2289,6 @@ uintptr_t verification_size);
 void rsn_state_block_signature_verification_destroy (StateBlockSignatureVerificationHandle * handle);
 
 bool rsn_state_block_signature_verification_is_active (const StateBlockSignatureVerificationHandle * handle);
-
-void rsn_state_block_signature_verification_result_destroy (StateBlockSignatureVerificationResultHandle * handle);
 
 uintptr_t rsn_state_block_signature_verification_size (const StateBlockSignatureVerificationHandle * handle);
 
@@ -2594,8 +2548,6 @@ VoteHashesDto rsn_vote_hashes (const VoteHandle * handle);
 
 void rsn_vote_hashes_destroy (VoteHashesHandle * hashes);
 
-void rsn_vote_hashes_set (VoteHandle * handle, const uint8_t (*hashes)[32], uintptr_t count);
-
 StringDto rsn_vote_hashes_string (const VoteHandle * handle);
 
 const void * rsn_vote_rust_data_pointer (const VoteHandle * handle);
@@ -2619,10 +2571,6 @@ uintptr_t rsn_vote_spacing_len (VoteSpacingHandle * handle);
 bool rsn_vote_spacing_votable (VoteSpacingHandle * handle, const uint8_t * root, const uint8_t * hash);
 
 uint64_t rsn_vote_timestamp (const VoteHandle * handle);
-
-uint64_t rsn_vote_timestamp_raw (const VoteHandle * handle);
-
-void rsn_vote_timestamp_raw_set (VoteHandle * handle, uint64_t timestamp);
 
 VoteUniquerHandle * rsn_vote_uniquer_create ();
 

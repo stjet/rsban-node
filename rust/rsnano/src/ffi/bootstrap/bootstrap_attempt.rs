@@ -182,11 +182,6 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_notifiy_all(handle: *mut Bootstra
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_notifiy_one(handle: *mut BootstrapAttemptHandle) {
-    (*handle).0.attempt().condition.notify_one();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_wait(
     handle: *mut BootstrapAttemptHandle,
     lck: *mut BootstrapAttemptLockHandle,

@@ -114,11 +114,6 @@ impl BlockHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_shared_block_enum_handle_destroy(handle: *mut BlockHandle) {
-    drop(Box::from_raw(handle));
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_deserialize_block_json(ptree: *const c_void) -> *mut BlockHandle {
     let ptree_reader = FfiPropertyTreeReader::new(ptree);
     match deserialize_block_json(&ptree_reader) {

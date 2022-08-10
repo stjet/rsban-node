@@ -10,7 +10,7 @@ use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     ops::Deref,
-    sync::{atomic::Ordering, Arc, Mutex, Weak},
+    sync::{Arc, Mutex, Weak},
     time::Duration,
 };
 
@@ -357,15 +357,6 @@ pub unsafe extern "C" fn rsn_socket_max(handle: *mut SocketHandle) -> bool {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_full(handle: *mut SocketHandle) -> bool {
     (*handle).full()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_get_silent_connnection_tolerance_time_s(
-    handle: *mut SocketHandle,
-) -> u64 {
-    (*handle)
-        .silent_connection_tolerance_time
-        .load(Ordering::SeqCst)
 }
 
 #[no_mangle]

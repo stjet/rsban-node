@@ -11,9 +11,8 @@ mod pulls_cache;
 pub(crate) use bootstrap_attempt::*;
 pub(crate) use bootstrap_initiator::*;
 pub use bootstrap_server::{
-    BootstrapMessageVisitor, BootstrapServer, BootstrapServerExt,
-    BootstrapServerObserver, HandshakeMessageVisitor, RealtimeMessageVisitor,
-    RequestResponseVisitorFactory,
+    BootstrapMessageVisitor, BootstrapServer, BootstrapServerExt, BootstrapServerObserver,
+    HandshakeMessageVisitor, RealtimeMessageVisitor, RequestResponseVisitorFactory,
 };
 
 pub use bootstrap_client::{

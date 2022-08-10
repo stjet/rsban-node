@@ -76,10 +76,7 @@ pub unsafe extern "C" fn rsn_local_vote_history_votes(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_local_vote_history_votes_destroy(handle: *mut LocalVotesResultHandle) {
-    let votes = Box::from_raw(handle);
-    for x in votes.0 {
-        drop(Box::from_raw(x))
-    }
+    drop(Box::from_raw(handle));
 }
 
 #[no_mangle]

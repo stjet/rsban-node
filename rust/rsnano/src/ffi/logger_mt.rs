@@ -75,11 +75,6 @@ pub unsafe extern "C" fn rsn_logger_create(logger: *mut c_void) -> *mut LoggerHa
     Box::into_raw(Box::new(LoggerHandle(logger)))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_logger_destroy(handle: *mut LoggerHandle) {
-    drop(Box::from_raw(handle))
-}
-
 pub static mut DESTROY_LOGGER_HANDLE: Option<VoidPointerCallback> = None;
 
 #[no_mangle]

@@ -67,16 +67,6 @@ pub unsafe extern "C" fn rsn_vote_copy(handle: *const VoteHandle) -> *mut VoteHa
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_vote_timestamp_raw(handle: *const VoteHandle) -> u64 {
-    (*handle).read().unwrap().timestamp
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_timestamp_raw_set(handle: *mut VoteHandle, timestamp: u64) {
-    (*handle).write().unwrap().timestamp = timestamp;
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_account(handle: *const VoteHandle, result: *mut u8) {
     let lk = (*handle).read().unwrap();
     let result = std::slice::from_raw_parts_mut(result, 32);
@@ -153,21 +143,6 @@ pub unsafe extern "C" fn rsn_vote_duration_ms(handle: *const VoteHandle) -> u64 
 #[no_mangle]
 pub extern "C" fn rsn_vote_hashes_destroy(hashes: *mut VoteHashesHandle) {
     drop(unsafe { Box::from_raw(hashes) });
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_hashes_set(
-    handle: *mut VoteHandle,
-    hashes: *const [u8; 32],
-    count: usize,
-) {
-    let hashes = std::slice::from_raw_parts(hashes, count)
-        .iter()
-        .map(|&h| BlockHash::from_bytes(h))
-        .collect();
-
-    let mut lk = (*handle).write().unwrap();
-    lk.hashes = hashes;
 }
 
 #[no_mangle]

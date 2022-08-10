@@ -10,15 +10,10 @@ use crate::{
         io_context::FfiIoContext, messages::MessageHandle, BandwidthLimiterHandle, ErrorCodeDto,
         VoidPointerCallback,
     },
-    network::{BufferDropPolicy, ChannelTcp, TcpChannelData},
+    network::{BufferDropPolicy, ChannelTcp},
     utils::ErrorCode,
 };
-use std::{
-    ffi::c_void,
-    net::SocketAddr,
-    ops::Deref,
-    sync::{Arc, MutexGuard},
-};
+use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};
 
 #[no_mangle]
 /// observer is `weak_ptr<channel_tcp_observer> *`
@@ -40,24 +35,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
         limiter,
         io_ctx,
     )))))
-}
-
-pub struct TcpChannelLockHandle(MutexGuard<'static, TcpChannelData>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_lock(
-    handle: *mut ChannelHandle,
-) -> *mut TcpChannelLockHandle {
-    let tcp = as_tcp_channel(handle);
-    Box::into_raw(Box::new(TcpChannelLockHandle(std::mem::transmute::<
-        MutexGuard<TcpChannelData>,
-        MutexGuard<'static, TcpChannelData>,
-    >(tcp.lock()))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_unlock(handle: *mut TcpChannelLockHandle) {
-    drop(Box::from_raw(handle))
 }
 
 #[no_mangle]

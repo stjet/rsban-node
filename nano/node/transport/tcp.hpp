@@ -259,6 +259,7 @@ namespace transport
 		nano::node_flags flags;
 		boost::asio::io_context & io_ctx;
 		mutable nano::mutex mutex;
+	public:
 		// clang-format off
 		boost::multi_index_container<channel_tcp_wrapper,
 		mi::indexed_by<
@@ -278,6 +279,7 @@ namespace transport
 			mi::hashed_non_unique<mi::tag<subnetwork_tag>,
 				mi::const_mem_fun<channel_tcp_wrapper, boost::asio::ip::address, &channel_tcp_wrapper::subnetwork>>>>
 		channels;
+private:
 		boost::multi_index_container<tcp_endpoint_attempt,
 		mi::indexed_by<
 			mi::hashed_unique<mi::tag<endpoint_tag>,

@@ -80,49 +80,33 @@ void * nano::read_mdb_txn::get_handle () const
 }
 
 nano::write_mdb_txn::write_mdb_txn (uint64_t txn_id_a, MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
-	txn_id{ txn_id_a },
-	env (env_a),
-	txn_callbacks (txn_callbacks_a)
+	txn_handle{ rsnano::rsn_lmdb_write_txn_create (txn_id_a, env_a, new nano::mdb_txn_callbacks{ txn_callbacks_a }) }
 {
-	renew ();
 }
 
 nano::write_mdb_txn::~write_mdb_txn ()
 {
-	commit ();
+	rsnano::rsn_lmdb_write_txn_destroy (txn_handle);
 }
 
 void nano::write_mdb_txn::commit ()
 {
-	if (active)
-	{
-		auto status = mdb_txn_commit (handle);
-		if (status != MDB_SUCCESS)
-		{
-			release_assert (false && "Unable to write to the LMDB database", mdb_strerror (status));
-		}
-		txn_callbacks.txn_end (txn_id);
-		active = false;
-	}
+	rsnano::rsn_lmdb_write_txn_commit (txn_handle);
 }
 
 void nano::write_mdb_txn::renew ()
 {
-	auto status (mdb_txn_begin (env, nullptr, 0, &handle));
-	release_assert (status == MDB_SUCCESS, mdb_strerror (status));
-	txn_callbacks.txn_start (txn_id, true);
-	active = true;
+	rsnano::rsn_lmdb_write_txn_renew (txn_handle);
 }
 
 void nano::write_mdb_txn::refresh ()
 {
-	commit ();
-	renew ();
+	rsnano::rsn_lmdb_write_txn_refresh (txn_handle);
 }
 
 void * nano::write_mdb_txn::get_handle () const
 {
-	return handle;
+	return rsnano::rsn_lmdb_write_txn_handle (txn_handle);
 }
 
 bool nano::write_mdb_txn::contains (nano::tables table_a) const

@@ -53,13 +53,7 @@ public:
 	void refresh () override;
 	void * get_handle () const override;
 	bool contains (nano::tables table_a) const override;
-	MDB_txn * handle;
-	mdb_txn_callbacks txn_callbacks;
-	bool active{ true };
-	uint64_t txn_id;
-
-private:
-	MDB_env * env;
+	rsnano::TransactionHandle * txn_handle;
 };
 
 class mdb_txn_stats

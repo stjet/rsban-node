@@ -2,9 +2,9 @@ use std::{ffi::c_void, sync::Arc};
 
 use crate::{
     datastore::lmdb::{
-        LmdbReadTransaction, MdbTxnBeginCallback, MdbTxnCommitCallback, MdbTxnRenewCallback,
-        MdbTxnResetCallback, TxnCallbacks, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW,
-        MDB_TXN_RESET,
+        LmdbReadTransaction, LmdbWriteTransaction, MdbStrerrorCallback, MdbTxnBeginCallback,
+        MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks, MDB_STRERROR,
+        MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
     },
     ffi::VoidPointerCallback,
 };
@@ -14,13 +14,22 @@ pub struct TransactionHandle(TransactionType);
 impl TransactionHandle {
     pub fn as_read_tx(&mut self) -> &mut LmdbReadTransaction {
         match &mut self.0 {
-            TransactionType::Read(rtx) => rtx,
+            TransactionType::Read(tx) => tx,
+            _ => panic!("invalid tx type"),
+        }
+    }
+
+    pub fn as_write_tx(&mut self) -> &mut LmdbWriteTransaction {
+        match &mut self.0 {
+            TransactionType::Write(tx) => tx,
+            _ => panic!("invalid tx type"),
         }
     }
 }
 
 enum TransactionType {
     Read(LmdbReadTransaction),
+    Write(LmdbWriteTransaction),
 }
 
 #[no_mangle]
@@ -58,6 +67,43 @@ pub unsafe extern "C" fn rsn_lmdb_read_txn_refresh(handle: *mut TransactionHandl
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_read_txn_handle(handle: *mut TransactionHandle) -> *mut c_void {
     (*handle).as_read_tx().handle
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_lmdb_write_txn_create(
+    txn_id: u64,
+    env: *mut c_void,
+    callbacks: *mut c_void,
+) -> *mut TransactionHandle {
+    let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
+    Box::into_raw(Box::new(TransactionHandle(TransactionType::Write(
+        LmdbWriteTransaction::new(txn_id, env, callbacks),
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_write_txn_destroy(handle: *mut TransactionHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_write_txn_commit(handle: *mut TransactionHandle) {
+    (*handle).as_write_tx().commit();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_write_txn_renew(handle: *mut TransactionHandle) {
+    (*handle).as_write_tx().renew();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh(handle: *mut TransactionHandle) {
+    (*handle).as_write_tx().refresh();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_write_txn_handle(handle: *mut TransactionHandle) -> *mut c_void {
+    (*handle).as_write_tx().handle
 }
 
 struct FfiCallbacksWrapper {
@@ -125,4 +171,9 @@ pub unsafe extern "C" fn rsn_callback_mdb_txn_reset(f: MdbTxnResetCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_txn_renew(f: MdbTxnRenewCallback) {
     MDB_TXN_RENEW = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_strerror(f: MdbStrerrorCallback) {
+    MDB_STRERROR = Some(f);
 }

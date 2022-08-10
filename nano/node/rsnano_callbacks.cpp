@@ -965,6 +965,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_mdb_txn_commit (reinterpret_cast<rsnano::MdbTxnCommitCallback> (mdb_txn_commit));
 	rsnano::rsn_callback_mdb_txn_reset (reinterpret_cast<rsnano::MdbTxnResetCallback> (mdb_txn_reset));
 	rsnano::rsn_callback_mdb_txn_renew (reinterpret_cast<rsnano::MdbTxnRenewCallback> (mdb_txn_renew));
+	rsnano::rsn_callback_mdb_strerror (mdb_strerror);
 
 	callbacks_set = true;
 }

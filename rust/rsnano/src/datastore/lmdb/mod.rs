@@ -1,4 +1,9 @@
-use std::{ffi::c_void, ptr, sync::Arc};
+use std::{
+    ffi::{c_void, CStr},
+    os::raw::c_char,
+    ptr,
+    sync::Arc,
+};
 
 pub struct LmdbReadTransaction {
     env: *mut c_void,
@@ -48,6 +53,61 @@ impl Drop for LmdbReadTransaction {
     }
 }
 
+pub struct LmdbWriteTransaction {
+    env: *mut c_void,
+    txn_id: u64,
+    callbacks: Arc<dyn TxnCallbacks>,
+    pub handle: *mut c_void,
+    active: bool,
+}
+
+impl LmdbWriteTransaction {
+    pub fn new(txn_id: u64, env: *mut c_void, callbacks: Arc<dyn TxnCallbacks>) -> Self {
+        let mut tx = Self {
+            env,
+            txn_id,
+            callbacks,
+            handle: ptr::null_mut(),
+            active: true,
+        };
+        tx.renew();
+        tx
+    }
+
+    pub fn commit(&mut self) {
+        if self.active {
+            let status = unsafe { mdb_txn_commit(self.handle) };
+            if status != MDB_SUCCESS {
+                panic!("Unable to write to the LMDB database {}", unsafe {
+                    mdb_strerror(status)
+                });
+            }
+            self.callbacks.txn_end(self.txn_id);
+            self.active = false;
+        }
+    }
+
+    pub fn renew(&mut self) {
+        let status = unsafe { mdb_txn_begin(self.env, ptr::null_mut(), 0, &mut self.handle) };
+        if status != MDB_SUCCESS {
+            panic!("write tx renew failed: {}", unsafe { mdb_strerror(status) });
+        }
+        self.callbacks.txn_start(self.txn_id, true);
+        self.active = true;
+    }
+
+    pub fn refresh(&mut self) {
+        self.commit();
+        self.renew();
+    }
+}
+
+impl Drop for LmdbWriteTransaction {
+    fn drop(&mut self) {
+        self.commit();
+    }
+}
+
 pub trait TxnCallbacks {
     fn txn_start(&self, txn_id: u64, is_write: bool);
     fn txn_end(&self, txn_id: u64);
@@ -66,10 +126,14 @@ pub type MdbTxnResetCallback = extern "C" fn(*mut c_void);
 /// args: MDB_txn*
 pub type MdbTxnRenewCallback = extern "C" fn(*mut c_void) -> i32;
 
+/// args: status
+pub type MdbStrerrorCallback = extern "C" fn(i32) -> *mut c_char;
+
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
 pub static mut MDB_TXN_RESET: Option<MdbTxnResetCallback> = None;
 pub static mut MDB_TXN_RENEW: Option<MdbTxnRenewCallback> = None;
+pub static mut MDB_STRERROR: Option<MdbStrerrorCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut c_void,
@@ -90,6 +154,11 @@ pub unsafe fn mdb_txn_reset(txn: *mut c_void) {
 
 pub unsafe fn mdb_txn_renew(txn: *mut c_void) -> i32 {
     MDB_TXN_RENEW.expect("MDB_TXN_RENEW missing")(txn)
+}
+
+pub unsafe fn mdb_strerror(status: i32) -> &'static str {
+    let ptr = MDB_STRERROR.expect("MDB_STRERROR missing")(status);
+    CStr::from_ptr(ptr).to_str().unwrap()
 }
 
 ///	Successful result

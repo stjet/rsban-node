@@ -1436,7 +1436,7 @@ void nano::node::process_confirmed (nano::election_status const & status_a, uint
 	}
 	if (block_l)
 	{
-		active.add_recently_confirmed (block_l->qualified_root (), hash);
+		active.recently_confirmed.put (block_l->qualified_root (), hash);
 		confirmation_height_processor.add (block_l);
 	}
 	else if (iteration_a < num_iters)

@@ -166,7 +166,7 @@ impl SignatureChecker {
 
                 scope.execute(move || {
                     Self::verify_batch(&mut batch);
-                    if task_pending.fetch_sub(1, Ordering::SeqCst) == 0 {
+                    if task_pending.fetch_sub(1, Ordering::SeqCst) == 1 {
                         tasks_remaining.fetch_sub(1, Ordering::SeqCst);
                     }
                 });

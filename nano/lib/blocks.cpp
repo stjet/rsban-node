@@ -31,6 +31,14 @@ void nano::block_memory_pool_purge ()
 	nano::purge_shared_ptr_singleton_pool_memory<nano::change_block> ();
 }
 
+nano::block::~block ()
+{
+	if (handle != nullptr)
+	{
+		rsnano::rsn_block_destroy (handle);
+	}
+}
+
 std::string nano::block::to_json () const
 {
 	std::string result;
@@ -338,15 +346,6 @@ nano::send_block::send_block (rsnano::BlockHandle * handle_a)
 	handle = handle_a;
 }
 
-nano::send_block::~send_block ()
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_block_destroy (handle);
-		handle = nullptr;
-	}
-}
-
 bool nano::send_block::operator== (nano::block const & other_a) const
 {
 	return blocks_equal (*this, other_a);
@@ -468,15 +467,6 @@ nano::open_block::open_block (nano::open_block && other)
 nano::open_block::open_block (rsnano::BlockHandle * handle_a)
 {
 	handle = handle_a;
-}
-
-nano::open_block::~open_block ()
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_block_destroy (handle);
-		handle = nullptr;
-	}
 }
 
 nano::account nano::open_block::account () const
@@ -635,15 +625,6 @@ nano::change_block::change_block (rsnano::BlockHandle * handle_a)
 	handle = handle_a;
 }
 
-nano::change_block::~change_block ()
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_block_destroy (handle);
-		handle = nullptr;
-	}
-}
-
 void nano::change_block::visit (nano::block_visitor & visitor_a) const
 {
 	visitor_a.change_block (*this);
@@ -792,15 +773,6 @@ nano::state_block::state_block (nano::state_block && other)
 nano::state_block::state_block (rsnano::BlockHandle * handle_a)
 {
 	handle = handle_a;
-}
-
-nano::state_block::~state_block ()
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_block_destroy (handle);
-		handle = nullptr;
-	}
 }
 
 nano::account nano::state_block::account () const
@@ -1056,12 +1028,6 @@ nano::receive_block::receive_block (nano::receive_block && other)
 nano::receive_block::receive_block (rsnano::BlockHandle * handle_a)
 {
 	handle = handle_a;
-}
-
-nano::receive_block::~receive_block ()
-{
-	if (handle != nullptr)
-		rsnano::rsn_block_destroy (handle);
 }
 
 bool nano::receive_block::operator== (nano::block const & other_a) const
@@ -1408,6 +1374,7 @@ std::shared_ptr<nano::block> nano::block_handle_to_block (rsnano::BlockHandle * 
 			break;
 
 		default:
+			rsnano::rsn_block_destroy (handle);
 			throw std::runtime_error ("invalid block type");
 	}
 

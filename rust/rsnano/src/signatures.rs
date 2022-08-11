@@ -93,9 +93,7 @@ impl SignatureChecker {
 
     pub fn stop(&self) {
         self.stopped.swap(true, Ordering::SeqCst);
-        if let Some(pool) = { self.thread_pool.write().unwrap().take() } {
-            pool.shutdown();
-        }
+        drop(self.thread_pool.write().unwrap().take());
     }
 
     pub fn verify(&self, check_set: &mut SignatureCheckSet) {
@@ -254,6 +252,7 @@ impl ThreadDistributionPlan {
 #[cfg(test)]
 mod tests {
     use super::*;
+
 
     mod thread_distribution_plan {
         use super::*;

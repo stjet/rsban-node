@@ -164,7 +164,7 @@ TEST (wallet, two_item_iteration)
 
 TEST (wallet, insufficient_spend_one)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	nano::keypair key1;
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	auto block (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key1.pub, 500));
@@ -174,7 +174,7 @@ TEST (wallet, insufficient_spend_one)
 
 TEST (wallet, spend_all_one)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
 	nano::block_hash latest1 (node1.latest (nano::dev::genesis_key.pub));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -195,7 +195,7 @@ TEST (wallet, spend_all_one)
 
 TEST (wallet, send_async)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::keypair key2;
 	std::thread thread ([&system] () {
@@ -209,7 +209,7 @@ TEST (wallet, send_async)
 
 TEST (wallet, spend)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
 	nano::block_hash latest1 (node1.latest (nano::dev::genesis_key.pub));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -232,7 +232,7 @@ TEST (wallet, spend)
 
 TEST (wallet, change)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::keypair key2;
 	auto block1 (system.nodes[0]->rep_block (nano::dev::genesis_key.pub));
@@ -245,7 +245,7 @@ TEST (wallet, change)
 
 TEST (wallet, partial_spend)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::keypair key2;
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, 500));
@@ -254,7 +254,7 @@ TEST (wallet, partial_spend)
 
 TEST (wallet, spend_no_previous)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	{
 		system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 		auto transaction (system.nodes[0]->store.tx_begin_read ());
@@ -552,7 +552,7 @@ TEST (wallet_store, move)
 
 TEST (wallet_store, import)
 {
-	nano::system system (2);
+	nano::test::system system (2);
 	auto wallet1 (system.wallet (0));
 	auto wallet2 (system.wallet (1));
 	nano::keypair key1;
@@ -567,7 +567,7 @@ TEST (wallet_store, import)
 
 TEST (wallet_store, fail_import_bad_password)
 {
-	nano::system system (2);
+	nano::test::system system (2);
 	auto wallet1 (system.wallet (0));
 	auto wallet2 (system.wallet (1));
 	nano::keypair key1;
@@ -581,7 +581,7 @@ TEST (wallet_store, fail_import_bad_password)
 
 TEST (wallet_store, fail_import_corrupt)
 {
-	nano::system system (2);
+	nano::test::system system (2);
 	auto wallet1 (system.wallet (1));
 	std::string json;
 	auto error (wallet1->import (json, "1"));
@@ -591,7 +591,7 @@ TEST (wallet_store, fail_import_corrupt)
 // Test work is precached when a key is inserted
 TEST (wallet, work)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto wallet (system.wallet (0));
 	wallet->insert_adhoc (nano::dev::genesis_key.prv);
 	wallet->insert_adhoc (nano::dev::genesis_key.prv);
@@ -611,7 +611,7 @@ TEST (wallet, work)
 
 TEST (wallet, work_generate)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
 	auto wallet (system.wallet (0));
 	nano::uint128_t amount1 (node1.balance (nano::dev::genesis_key.pub));
@@ -639,7 +639,7 @@ TEST (wallet, work_generate)
 
 TEST (wallet, work_cache_delayed)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
 	auto wallet (system.wallet (0));
 	uint64_t work1;
@@ -671,7 +671,7 @@ TEST (wallet, work_cache_delayed)
 
 TEST (wallet, insert_locked)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto wallet (system.wallet (0));
 	{
 		auto transaction (wallet->wallets.tx_begin_write ());
@@ -762,7 +762,7 @@ TEST (wallet, reseed)
 
 TEST (wallet, insert_deterministic_locked)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto wallet (system.wallet (0));
 	auto transaction (wallet->wallets.tx_begin_write ());
 	wallet->store.rekey (*transaction, "1");
@@ -774,7 +774,7 @@ TEST (wallet, insert_deterministic_locked)
 
 TEST (wallet, no_work)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv, false);
 	nano::keypair key2;
 	auto block (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, std::numeric_limits<nano::uint128_t>::max (), false));
@@ -789,7 +789,7 @@ TEST (wallet, no_work)
 
 TEST (wallet, send_race)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::keypair key2;
 	for (auto i (1); i < 60; ++i)
@@ -801,7 +801,7 @@ TEST (wallet, send_race)
 
 TEST (wallet, password_race)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	nano::thread_runner runner (system.io_ctx, system.nodes[0]->config->io_threads);
 	auto wallet = system.wallet (0);
 	std::thread thread ([&wallet] () {
@@ -829,7 +829,7 @@ TEST (wallet, password_race)
 
 TEST (wallet, password_race_corrupt_seed)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	nano::thread_runner runner (system.io_ctx, system.nodes[0]->config->io_threads);
 	auto wallet = system.wallet (0);
 	nano::raw_key seed;
@@ -899,7 +899,7 @@ TEST (wallet, password_race_corrupt_seed)
 
 TEST (wallet, change_seed)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto wallet (system.wallet (0));
 	wallet->enter_initial_password ();
 	nano::raw_key seed1;
@@ -925,7 +925,7 @@ TEST (wallet, change_seed)
 
 TEST (wallet, deterministic_restore)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto wallet (system.wallet (0));
 	wallet->enter_initial_password ();
 	nano::raw_key seed1;
@@ -956,7 +956,7 @@ TEST (wallet, deterministic_restore)
 
 TEST (wallet, epoch_2_validation)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto & node (*system.nodes[0]);
 	auto & wallet (*system.wallet (0));
 
@@ -1001,7 +1001,7 @@ TEST (wallet, epoch_2_receive_propagation)
 	auto const max_tries = 20;
 	while (++tries < max_tries)
 	{
-		nano::system system;
+		nano::test::system system;
 		nano::node_flags node_flags;
 		node_flags.set_disable_request_loop (true);
 		auto & node (*system.add_node (node_flags));
@@ -1051,7 +1051,7 @@ TEST (wallet, epoch_2_receive_unopened)
 	auto const max_tries = 20;
 	while (++tries < max_tries)
 	{
-		nano::system system;
+		nano::test::system system;
 		nano::node_flags node_flags;
 		node_flags.set_disable_request_loop (true);
 		auto & node (*system.add_node (node_flags));
@@ -1101,7 +1101,7 @@ TEST (wallet, epoch_2_receive_unopened)
  */
 TEST (wallet, foreach_representative_deadlock)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto & node (*system.nodes[0]);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	node.wallets.compute_reps ();
@@ -1120,8 +1120,8 @@ TEST (wallet, foreach_representative_deadlock)
 
 TEST (wallet, search_receivable)
 {
-	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::test::system system;
+	nano::node_config config (nano::test::get_available_port (), system.logging);
 	config.enable_voting = false;
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags flags;
@@ -1172,12 +1172,12 @@ TEST (wallet, search_receivable)
 
 TEST (wallet, receive_pruned)
 {
-	nano::system system;
+	nano::test::system system;
 	nano::node_flags node_flags;
 	node_flags.set_disable_request_loop (true);
 	auto & node1 = *system.add_node (node_flags);
 	node_flags.set_enable_pruning (true);
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config (nano::test::get_available_port (), system.logging);
 	config.enable_voting = false; // Remove after allowing pruned voting
 	auto & node2 = *system.add_node (config, node_flags);
 

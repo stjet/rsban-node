@@ -7,7 +7,7 @@ using namespace std::chrono_literals;
 
 TEST (gap_cache, add_new)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	nano::gap_cache cache (*system.nodes[0]);
 	nano::block_builder builder;
 	nano::keypair key1;
@@ -24,7 +24,7 @@ TEST (gap_cache, add_new)
 
 TEST (gap_cache, add_existing)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	nano::gap_cache cache (*system.nodes[0]);
 	nano::keypair key1;
 	nano::block_builder builder;
@@ -53,7 +53,7 @@ TEST (gap_cache, add_existing)
 
 TEST (gap_cache, comparison)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	nano::gap_cache cache (*system.nodes[0]);
 	nano::keypair key1;
 	nano::block_builder builder;
@@ -96,7 +96,7 @@ TEST (gap_cache, gap_bootstrap)
 	nano::node_flags node_flags;
 	node_flags.set_disable_legacy_bootstrap (true);
 	node_flags.set_disable_request_loop (true); // to avoid fallback behavior of broadcasting blocks
-	nano::system system (2, nano::transport::transport_type::tcp, node_flags);
+	nano::test::system system (2, nano::transport::transport_type::tcp, node_flags);
 
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
@@ -131,7 +131,7 @@ TEST (gap_cache, gap_bootstrap)
 
 TEST (gap_cache, two_dependencies)
 {
-	nano::system system (1);
+	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
 	nano::keypair key;
 	nano::block_builder builder;

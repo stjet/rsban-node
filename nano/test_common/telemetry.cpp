@@ -3,7 +3,7 @@
 
 #include <gtest/gtest.h>
 
-void nano::compare_default_telemetry_response_data_excluding_signature (nano::telemetry_data const & telemetry_data_a, nano::network_params const & network_params_a, uint64_t bandwidth_limit_a, uint64_t active_difficulty_a)
+void nano::test::compare_default_telemetry_response_data_excluding_signature (nano::telemetry_data const & telemetry_data_a, nano::network_params const & network_params_a, uint64_t bandwidth_limit_a, uint64_t active_difficulty_a)
 {
 	ASSERT_EQ (telemetry_data_a.get_block_count (), 1);
 	ASSERT_EQ (telemetry_data_a.get_cemented_count (), 1);
@@ -24,7 +24,7 @@ void nano::compare_default_telemetry_response_data_excluding_signature (nano::te
 	ASSERT_EQ (telemetry_data_a.get_unknown_data (), std::vector<uint8_t>{});
 }
 
-void nano::compare_default_telemetry_response_data (nano::telemetry_data const & telemetry_data_a, nano::network_params const & network_params_a, uint64_t bandwidth_limit_a, uint64_t active_difficulty_a, nano::keypair const & node_id_a)
+void nano::test::compare_default_telemetry_response_data (nano::telemetry_data const & telemetry_data_a, nano::network_params const & network_params_a, uint64_t bandwidth_limit_a, uint64_t active_difficulty_a, nano::keypair const & node_id_a)
 {
 	ASSERT_FALSE (telemetry_data_a.validate_signature ());
 	compare_default_telemetry_response_data_excluding_signature (telemetry_data_a, network_params_a, bandwidth_limit_a, active_difficulty_a);

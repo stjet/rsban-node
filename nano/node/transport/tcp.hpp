@@ -259,6 +259,7 @@ namespace transport
 		nano::node_flags flags;
 		boost::asio::io_context & io_ctx;
 		mutable nano::mutex mutex;
+
 	public:
 		// clang-format off
 		boost::multi_index_container<channel_tcp_wrapper,

@@ -145,7 +145,7 @@ std::unique_ptr<nano::message> rsnano::message_handle_to_message (rsnano::Messag
 			return std::make_unique<nano::telemetry_req> (handle);
 		case nano::message_type::telemetry_ack:
 			return std::make_unique<nano::telemetry_ack> (handle);
+		default:
+			throw std::runtime_error ("invalid message type");
 	}
-
-	throw std::runtime_error ("invalid message type");
 }

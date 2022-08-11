@@ -1000,7 +1000,7 @@ TEST (confirmation_height, dynamic_algorithm_no_transition_while_pending)
 		nano::node_config node_config (nano::get_available_port (), system.logging);
 		node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 		nano::node_flags node_flags;
-		node_flags.set_force_use_write_database_queue(true);
+		node_flags.set_force_use_write_database_queue (true);
 		auto node = system.add_node (node_config, node_flags);
 		nano::keypair key;
 		system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -1080,7 +1080,7 @@ TEST (confirmation_height, many_accounts_send_receive_self)
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	node_config.active_elections_size = 400000;
 	nano::node_flags node_flags;
-	node_flags.set_confirmation_height_processor_mode(nano::confirmation_height_mode::unbounded);
+	node_flags.set_confirmation_height_processor_mode (nano::confirmation_height_mode::unbounded);
 	auto node = system.add_node (node_config);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 
@@ -1430,7 +1430,7 @@ namespace transport
 	{
 		nano::system system;
 		nano::node_flags node_flags;
-		node_flags.set_disable_initial_telemetry_requests(true);
+		node_flags.set_disable_initial_telemetry_requests (true);
 		auto const num_nodes = 4;
 		for (int i = 0; i < num_nodes; ++i)
 		{
@@ -1465,7 +1465,7 @@ namespace transport
 							shared_data.write_completion.increment_required_count ();
 
 							// Pick first peer to be consistent
-							auto peer = data.node->network->tcp_channels->channels[0].get_channel();
+							auto peer = data.node->network->tcp_channels->channels[0].get_channel ();
 							data.node->telemetry->get_metrics_single_peer_async (peer, [&shared_data, &data, &node_data] (nano::telemetry_data_response const & telemetry_data_response_a) {
 								ASSERT_FALSE (telemetry_data_response_a.error);
 								callback_process (shared_data, data, node_data, telemetry_data_response_a.telemetry_data.get_timestamp ());
@@ -1767,7 +1767,7 @@ TEST (signature_checker, mass_boundary_checks)
 
 	for (auto i = 1; i <= 10; ++i)
 	{
-		add_boundary (nano::signature_checker::get_batch_size() * i);
+		add_boundary (nano::signature_checker::get_batch_size () * i);
 	}
 
 	nano::block_builder builder;

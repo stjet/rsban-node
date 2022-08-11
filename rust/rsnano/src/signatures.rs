@@ -1,8 +1,11 @@
 use crate::{validate_message_batch, PublicKey, Signature};
-use std::{sync::{
-    atomic::{AtomicBool, AtomicUsize, Ordering},
-    RwLock,
-}, hint::spin_loop};
+use std::{
+    hint::spin_loop,
+    sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        RwLock,
+    },
+};
 use yastl::{Pool, ThreadConfig};
 
 pub struct SignatureCheckSet {
@@ -90,7 +93,7 @@ impl SignatureChecker {
 
     pub fn stop(&self) {
         self.stopped.swap(true, Ordering::SeqCst);
-        if let Some(pool) = {self.thread_pool.write().unwrap().take()}{
+        if let Some(pool) = { self.thread_pool.write().unwrap().take() } {
             pool.shutdown();
         }
     }

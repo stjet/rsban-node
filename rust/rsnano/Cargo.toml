@@ -34,4 +34,4 @@ siphasher = "0.3.10"
 static_assertions = "1.1.0"
 toml_edit = "0.10.0"
 uuid = { version = "0.8.2", features = ["v4"] }
-yastl = "0.1.2"
+scoped_threadpool = "0.1.*"

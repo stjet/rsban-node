@@ -1,13 +1,13 @@
+use scoped_threadpool::Pool;
+
 use crate::{validate_message_batch, PublicKey, Signature};
 use std::{
     hint::spin_loop,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        RwLock,
+        Mutex,
     },
 };
-use yastl::{Pool, ThreadConfig};
-
 pub struct SignatureCheckSet {
     pub messages: Vec<Vec<u8>>,
     pub pub_keys: Vec<PublicKey>,
@@ -54,7 +54,9 @@ impl SignatureCheckSet {
 }
 
 pub struct SignatureChecker {
-    thread_pool: RwLock<Option<Pool>>,
+    // todo: scoped_threadpool is behind a Mutex which leads to unnecessary waiting in vote_processor and state_block_verification...
+    // Ideally there should be no locking required when adding work to the threadpool!
+    thread_pool: Mutex<Option<Pool>>,
     thread_pool_threads: usize,
     tasks_remaining: AtomicUsize,
     stopped: AtomicBool,
@@ -64,12 +66,9 @@ impl SignatureChecker {
     pub fn new(num_threads: usize) -> Self {
         Self {
             thread_pool: if num_threads == 0 {
-                RwLock::new(None)
+                Mutex::new(None)
             } else {
-                RwLock::new(Some(Pool::with_config(
-                    num_threads,
-                    ThreadConfig::new().prefix("signature-checker"),
-                )))
+                Mutex::new(Some(Pool::new(num_threads as u32)))
             },
             thread_pool_threads: num_threads,
             tasks_remaining: AtomicUsize::new(0),
@@ -93,7 +92,7 @@ impl SignatureChecker {
 
     pub fn stop(&self) {
         self.stopped.swap(true, Ordering::SeqCst);
-        drop(self.thread_pool.write().unwrap().take());
+        drop(self.thread_pool.lock().unwrap().take());
     }
 
     pub fn verify(&self, check_set: &mut SignatureCheckSet) {
@@ -101,17 +100,21 @@ impl SignatureChecker {
             return;
         }
 
-        let pool = self.thread_pool.read().unwrap();
-        match &*pool {
+        let mut pool = self.thread_pool.lock().unwrap();
+        match &mut *pool {
             Some(pool) => {
                 if check_set.size() <= SignatureChecker::BATCH_SIZE {
+                    drop(pool);
                     // Not dealing with many so just use the calling thread for checking signatures
                     Self::verify_batch(&mut check_set.as_batch());
                 } else {
                     self.verify_batch_async(check_set, pool);
                 }
             }
-            None => Self::verify_batch(&mut check_set.as_batch()),
+            None => {
+                drop(pool);
+                Self::verify_batch(&mut check_set.as_batch());
+            }
         }
     }
 
@@ -127,7 +130,7 @@ impl SignatureChecker {
         assert!(result);
     }
 
-    fn verify_batch_async(&self, check_set: &mut SignatureCheckSet, pool: &Pool) {
+    fn verify_batch_async(&self, check_set: &mut SignatureCheckSet, pool: &mut Pool) {
         let thread_distribution_plan = ThreadDistributionPlan::new(
             check_set.size(),
             self.thread_pool_threads,
@@ -178,7 +181,6 @@ impl SignatureChecker {
                 verifications: verify_calling,
             };
             Self::verify_batch(&mut batch);
-            scope.join();
         });
     }
 }
@@ -252,7 +254,6 @@ impl ThreadDistributionPlan {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     mod thread_distribution_plan {
         use super::*;

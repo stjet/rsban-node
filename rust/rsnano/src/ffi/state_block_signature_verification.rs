@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rsn_state_block_signature_verification_create(
     timing_logging: bool,
     verification_size: usize,
 ) -> *mut StateBlockSignatureVerificationHandle {
-    let checker = (*checker).checker.clone();
+    let checker = Arc::clone(&*checker);
     let epochs = Arc::new((*epochs).epochs.clone());
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let verification = StateBlockSignatureVerification::builder()

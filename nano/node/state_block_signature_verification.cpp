@@ -105,6 +105,7 @@ void nano::state_block_signature_verification::add (value_type const & item)
 	rsnano::StateBlockSignatureVerificationValueDto dto;
 	item_to_dto (item, dto);
 	rsnano::rsn_state_block_signature_verification_add (handle, &dto);
+	rsnano::rsn_block_destroy (dto.block);
 }
 
 std::size_t nano::state_block_signature_verification::size ()

@@ -836,8 +836,8 @@ void nano::transport::tcp_channels::on_new_channel (std::function<void (std::sha
 }
 
 nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::bootstrap_server> server_a) :
-	channel { channel_a },
-	server{ server_a}
+	channel{ channel_a },
+	server{ server_a }
 {
 	rsnano::BootstrapServerHandle * server_handle = nullptr;
 	if (server_a)

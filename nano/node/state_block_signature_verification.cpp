@@ -18,20 +18,6 @@ void item_to_dto (nano::state_block_signature_verification::value_type const & v
 	result.verification = static_cast<uint8_t> (verification);
 }
 
-std::vector<rsnano::StateBlockSignatureVerificationValueDto> items_to_dto (std::deque<nano::state_block_signature_verification::value_type> & items)
-{
-	std::vector<rsnano::StateBlockSignatureVerificationValueDto> result;
-	result.reserve (items.size ());
-	for (auto i : items)
-	{
-		rsnano::StateBlockSignatureVerificationValueDto value_dto;
-		item_to_dto (i, value_dto);
-		result.push_back (value_dto);
-	}
-
-	return result;
-}
-
 void dto_to_value_type (rsnano::StateBlockSignatureVerificationValueDto const & dto, nano::state_block_signature_verification::value_type & result)
 {
 	nano::account account;

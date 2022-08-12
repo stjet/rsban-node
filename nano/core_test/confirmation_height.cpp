@@ -1561,7 +1561,7 @@ TEST (confirmation_height, callback_confirmed_history)
 			ASSERT_NE (nullptr, election);
 			election->force_confirm ();
 			ASSERT_TIMELY (10s, node->active.size () == 0);
-			ASSERT_EQ (0, node->active.list_recently_cemented ().size ());
+			ASSERT_EQ (0, node->active.recently_cemented.list ().size ());
 			{
 				nano::lock_guard<nano::mutex> guard (node->active.mutex);
 				ASSERT_EQ (0, node->active.blocks.size ());
@@ -1584,7 +1584,7 @@ TEST (confirmation_height, callback_confirmed_history)
 		ASSERT_TIMELY (10s, node->active.size () == 0);
 		ASSERT_TIMELY (10s, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out) == 1);
 
-		ASSERT_EQ (1, node->active.list_recently_cemented ().size ());
+		ASSERT_EQ (1, node->active.recently_cemented.list ().size ());
 		ASSERT_EQ (0, node->active.blocks.size ());
 
 		// Confirm the callback is not called under this circumstance

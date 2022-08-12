@@ -1009,7 +1009,11 @@ TEST (node, fork_bootstrap_flip)
 TEST (node, fork_open)
 {
 	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
+	auto & node = *system.nodes[0];
+	std::shared_ptr<nano::election> election;
+
+	// create block send1, to send all the balance from genesis to key1
+	// this is done to ensure that the open block(s) cannot be voted on and confirmed
 	nano::keypair key1;
 	auto send1 = nano::send_block_builder ()
 				 .previous (nano::dev::genesis->hash ())
@@ -1019,14 +1023,17 @@ TEST (node, fork_open)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	nano::publish publish1{ nano::dev::network_params.network, send1 };
-	auto channel1 (node1.network->udp_channels.create (node1.network->endpoint ()));
-	node1.network->inbound (publish1, channel1);
-	node1.block_processor.flush ();
-	node1.scheduler.flush ();
-	auto election = node1.active.election (publish1.get_block ()->qualified_root ());
-	ASSERT_NE (nullptr, election);
+	auto channel1 (node.network->udp_channels.create (node.network->endpoint ()));
+	node.network->inbound (publish1, channel1);
+	ASSERT_TIMELY (5s, (election = node.active.election (publish1.get_block ()->qualified_root ())) != nullptr);
 	election->force_confirm ();
-	ASSERT_TIMELY (3s, node1.active.empty () && node1.block_confirmed (publish1.get_block ()->hash ()));
+	ASSERT_TIMELY (5s, node.active.empty () && node.block_confirmed (publish1.get_block ()->hash ()));
+
+	// register key for genesis account, not sure why we do this, it seems needless,
+	// since the genesis account at this stage has zero voting weight
+	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+
+	// create the 1st open block to receive send1, which should be regarded as the winner just because it is first
 	nano::open_block_builder builder;
 	auto open1 = builder.make_block ()
 				 .source (publish1.get_block ()->hash ())
@@ -1036,10 +1043,10 @@ TEST (node, fork_open)
 				 .work (*system.work.generate (key1.pub))
 				 .build_shared ();
 	nano::publish publish2{ nano::dev::network_params.network, open1 };
-	node1.network->inbound (publish2, channel1);
-	node1.block_processor.flush ();
-	node1.scheduler.flush ();
-	ASSERT_EQ (1, node1.active.size ());
+	node.network->inbound (publish2, channel1);
+	ASSERT_TIMELY (5s, 1 == node.active.size ());
+
+	// create 2nd open block, which is a fork of open1 block
 	auto open2 = builder.make_block ()
 				 .source (publish1.get_block ()->hash ())
 				 .representative (2)
@@ -1048,16 +1055,20 @@ TEST (node, fork_open)
 				 .work (*system.work.generate (key1.pub))
 				 .build_shared ();
 	nano::publish publish3{ nano::dev::network_params.network, open2 };
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	node1.network->inbound (publish3, channel1);
-	node1.block_processor.flush ();
-	node1.scheduler.flush ();
-	election = node1.active.election (publish3.get_block ()->qualified_root ());
-	ASSERT_EQ (2, election->blocks ().size ());
+	node.network->inbound (publish3, channel1);
+	ASSERT_TIMELY (5s, (election = node.active.election (publish3.get_block ()->qualified_root ())) != nullptr);
+
+	// we expect to find 2 blocks in the election and we expect the first block to be the winner just because it was first
+	ASSERT_TIMELY (5s, 2 == election->blocks ().size ());
 	ASSERT_EQ (publish2.get_block ()->hash (), election->winner ()->hash ());
+
+	// wait for a second and check that the election did not get confirmed
+	system.delay_ms (1000ms);
 	ASSERT_FALSE (election->confirmed ());
-	ASSERT_TRUE (node1.block (publish2.get_block ()->hash ()));
-	ASSERT_FALSE (node1.block (publish3.get_block ()->hash ()));
+
+	// check that only the first block is saved to the ledger
+	ASSERT_TIMELY (5s, node.block (publish2.get_block ()->hash ()));
+	ASSERT_FALSE (node.block (publish3.get_block ()->hash ()));
 }
 
 TEST (node, fork_open_flip)
@@ -2229,7 +2240,7 @@ TEST (node, block_confirm)
 		node2.block_confirm (send1_copy);
 		auto election = node2.active.election (send1_copy->qualified_root ());
 		ASSERT_NE (nullptr, election);
-		ASSERT_TIMELY (10s, node1.active.list_recently_cemented ().size () == 1);
+		ASSERT_TIMELY (10s, node1.active.recently_cemented.list ().size () == 1);
 	}
 }
 

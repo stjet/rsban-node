@@ -40,8 +40,41 @@ void mdb_val::convert_buffer_to_value ()
 }
 }
 
+nano::lmdb::lmdb_gateway::lmdb_gateway (nano::logger_mt & logger_a, boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a) :
+	env (error, path_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true)),
+	mdb_txn_tracker (logger_a, txn_tracking_config_a, block_processor_batch_max_time_a),
+	txn_tracking_enabled (txn_tracking_config_a.enable)
+{
+}
+
+nano::mdb_txn_callbacks nano::lmdb::lmdb_gateway::create_txn_callbacks () const
+{
+	nano::mdb_txn_callbacks mdb_txn_callbacks;
+	if (txn_tracking_enabled)
+	{
+		mdb_txn_callbacks.txn_start = ([&mdb_txn_tracker = mdb_txn_tracker] (uint64_t txn_id, bool is_write) {
+			mdb_txn_tracker.add (txn_id, is_write);
+		});
+		mdb_txn_callbacks.txn_end = ([&mdb_txn_tracker = mdb_txn_tracker] (uint64_t txn_id) {
+			mdb_txn_tracker.erase (txn_id);
+		});
+	}
+	return mdb_txn_callbacks;
+}
+
+std::unique_ptr<nano::write_transaction> nano::lmdb::lmdb_gateway::tx_begin_write ()
+{
+	return env.tx_begin_write (create_txn_callbacks ());
+}
+
+std::unique_ptr<nano::read_transaction> nano::lmdb::lmdb_gateway::tx_begin_read () const
+{
+	return env.tx_begin_read (create_txn_callbacks ());
+}
+
 nano::lmdb::store::store (nano::logger_mt & logger_a, boost::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
 	// clang-format off
+	gateway (logger_a, path_a, lmdb_config_a, txn_tracking_config_a, block_processor_batch_max_time_a),
 	nano::store{
 		block_store,
 		frontier_store,
@@ -67,23 +100,20 @@ nano::lmdb::store::store (nano::logger_mt & logger_a, boost::filesystem::path co
 	final_vote_store{ *this },
 	unchecked_store{ *this },
 	version_store{ *this },
-	logger (logger_a),
-	env (error, path_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true)),
-	mdb_txn_tracker (logger_a, txn_tracking_config_a, block_processor_batch_max_time_a),
-	txn_tracking_enabled (txn_tracking_config_a.enable)
+	logger (logger_a)
 {
-	if (!error)
+	if (!gateway.error)
 	{
 		auto is_fully_upgraded (false);
 		auto is_fresh_db (false);
 		{
 			auto transaction (tx_begin_read ());
-			auto err = mdb_dbi_open (env.tx (*transaction), "meta", 0, &block_store.meta_handle);
+			auto err = mdb_dbi_open (env ().tx (*transaction), "meta", 0, &block_store.meta_handle);
 			is_fresh_db = err != MDB_SUCCESS;
 			if (err == MDB_SUCCESS)
 			{
 				is_fully_upgraded = (version.get (*transaction) == version_current);
-				mdb_dbi_close (env, block_store.meta_handle);
+				mdb_dbi_close (env (), block_store.meta_handle);
 			}
 		}
 
@@ -97,16 +127,16 @@ nano::lmdb::store::store (nano::logger_mt & logger_a, boost::filesystem::path co
 				logger.always_log ("Upgrade in progress...");
 				if (backup_before_upgrade_a)
 				{
-					create_backup_file (env, path_a, logger_a);
+					create_backup_file (env (), path_a, logger_a);
 				}
 			}
 			auto needs_vacuuming = false;
 			{
 				auto transaction (tx_begin_write ());
-				open_databases (error, *transaction, MDB_CREATE);
-				if (!error)
+				open_databases (gateway.error, *transaction, MDB_CREATE);
+				if (!gateway.error)
 				{
-					error |= do_upgrades (*transaction, constants, needs_vacuuming);
+					gateway.error |= do_upgrades (*transaction, constants, needs_vacuuming);
 				}
 			}
 
@@ -120,7 +150,7 @@ nano::lmdb::store::store (nano::logger_mt & logger_a, boost::filesystem::path co
 		else
 		{
 			auto transaction (tx_begin_read ());
-			open_databases (error, *transaction, 0);
+			open_databases (gateway.error, *transaction, 0);
 		}
 	}
 }
@@ -134,9 +164,9 @@ bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & pa
 	if (vacuum_success)
 	{
 		// Need to close the database to release the file handle
-		mdb_env_sync (env.environment, true);
-		mdb_env_close (env.environment);
-		env.environment = nullptr;
+		mdb_env_sync (env ().environment, true);
+		mdb_env_close (env ().environment);
+		gateway.env.environment = nullptr;
 
 		// Replace the ledger file with the vacuumed one
 		boost::filesystem::rename (vacuum_path, path_a);
@@ -145,11 +175,11 @@ bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & pa
 		auto options = nano::mdb_env::options::make ()
 					   .set_config (lmdb_config_a)
 					   .set_use_no_mem_init (true);
-		env.init (error, path_a, options);
-		if (!error)
+		gateway.env.init (gateway.error, path_a, options);
+		if (!gateway.error)
 		{
 			auto transaction (tx_begin_read ());
-			open_databases (error, *transaction, 0);
+			open_databases (gateway.error, *transaction, 0);
 		}
 	}
 	else
@@ -162,13 +192,13 @@ bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & pa
 
 void nano::lmdb::store::serialize_mdb_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time)
 {
-	mdb_txn_tracker.serialize_json (json, min_read_time, min_write_time);
+	gateway.mdb_txn_tracker.serialize_json (json, min_read_time, min_write_time);
 }
 
 void nano::lmdb::store::serialize_memory_stats (boost::property_tree::ptree & json)
 {
 	MDB_stat stats;
-	auto status (mdb_env_stat (env.environment, &stats));
+	auto status (mdb_env_stat (env ().environment, &stats));
 	release_assert (status == 0);
 	json.put ("branch_pages", stats.ms_branch_pages);
 	json.put ("depth", stats.ms_depth);
@@ -180,12 +210,12 @@ void nano::lmdb::store::serialize_memory_stats (boost::property_tree::ptree & js
 
 std::unique_ptr<nano::write_transaction> nano::lmdb::store::tx_begin_write (std::vector<nano::tables> const &, std::vector<nano::tables> const &)
 {
-	return env.tx_begin_write (create_txn_callbacks ());
+	return gateway.tx_begin_write ();
 }
 
 std::unique_ptr<nano::read_transaction> nano::lmdb::store::tx_begin_read () const
 {
-	return env.tx_begin_read (create_txn_callbacks ());
+	return gateway.tx_begin_read ();
 }
 
 std::string nano::lmdb::store::vendor_get () const
@@ -193,69 +223,54 @@ std::string nano::lmdb::store::vendor_get () const
 	return boost::str (boost::format ("LMDB %1%.%2%.%3%") % MDB_VERSION_MAJOR % MDB_VERSION_MINOR % MDB_VERSION_PATCH);
 }
 
-nano::mdb_txn_callbacks nano::lmdb::store::create_txn_callbacks () const
-{
-	nano::mdb_txn_callbacks mdb_txn_callbacks;
-	if (txn_tracking_enabled)
-	{
-		mdb_txn_callbacks.txn_start = ([&mdb_txn_tracker = mdb_txn_tracker] (uint64_t txn_id, bool is_write) {
-			mdb_txn_tracker.add (txn_id, is_write);
-		});
-		mdb_txn_callbacks.txn_end = ([&mdb_txn_tracker = mdb_txn_tracker] (uint64_t txn_id) {
-			mdb_txn_tracker.erase (txn_id);
-		});
-	}
-	return mdb_txn_callbacks;
-}
-
 void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const & transaction_a, unsigned flags)
 {
-	error_a |= mdb_dbi_open (env.tx (transaction_a), "frontiers", flags, &frontier_store.frontiers_handle) != 0;
-	error_a |= mdb_dbi_open (env.tx (transaction_a), "unchecked", flags, &unchecked_store.unchecked_handle) != 0;
-	error_a |= mdb_dbi_open (env.tx (transaction_a), "online_weight", flags, &online_weight_store.online_weight_handle) != 0;
-	error_a |= mdb_dbi_open (env.tx (transaction_a), "meta", flags, &block_store.meta_handle) != 0;
-	error_a |= mdb_dbi_open (env.tx (transaction_a), "peers", flags, &peer_store.peers_handle) != 0;
-	error_a |= mdb_dbi_open (env.tx (transaction_a), "pruned", flags, &pruned_store.pruned_handle) != 0;
-	error_a |= mdb_dbi_open (env.tx (transaction_a), "confirmation_height", flags, &confirmation_height_store.confirmation_height_handle) != 0;
-	error_a |= mdb_dbi_open (env.tx (transaction_a), "accounts", flags, &account_store.accounts_v0_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "frontiers", flags, &frontier_store.frontiers_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "unchecked", flags, &unchecked_store.unchecked_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "online_weight", flags, &online_weight_store.online_weight_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "meta", flags, &block_store.meta_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "peers", flags, &peer_store.peers_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "pruned", flags, &pruned_store.pruned_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "confirmation_height", flags, &confirmation_height_store.confirmation_height_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "accounts", flags, &account_store.accounts_v0_handle) != 0;
 	account_store.accounts_handle = account_store.accounts_v0_handle;
-	error_a |= mdb_dbi_open (env.tx (transaction_a), "pending", flags, &pending_store.pending_v0_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "pending", flags, &pending_store.pending_v0_handle) != 0;
 	pending_store.pending_handle = pending_store.pending_v0_handle;
-	error_a |= mdb_dbi_open (env.tx (transaction_a), "final_votes", flags, &final_vote_store.final_votes_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "final_votes", flags, &final_vote_store.final_votes_handle) != 0;
 
 	auto version_l = version.get (transaction_a);
 	if (version_l < 19)
 	{
 		// These legacy (and state) block databases are no longer used, but need opening so they can be deleted during an upgrade
-		error_a |= mdb_dbi_open (env.tx (transaction_a), "send", flags, &block_store.send_blocks_handle) != 0;
-		error_a |= mdb_dbi_open (env.tx (transaction_a), "receive", flags, &block_store.receive_blocks_handle) != 0;
-		error_a |= mdb_dbi_open (env.tx (transaction_a), "open", flags, &block_store.open_blocks_handle) != 0;
-		error_a |= mdb_dbi_open (env.tx (transaction_a), "change", flags, &block_store.change_blocks_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "send", flags, &block_store.send_blocks_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "receive", flags, &block_store.receive_blocks_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "open", flags, &block_store.open_blocks_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "change", flags, &block_store.change_blocks_handle) != 0;
 		if (version_l >= 15)
 		{
-			error_a |= mdb_dbi_open (env.tx (transaction_a), "state_blocks", flags, &block_store.state_blocks_handle) != 0;
+			error_a |= mdb_dbi_open (env ().tx (transaction_a), "state_blocks", flags, &block_store.state_blocks_handle) != 0;
 			block_store.state_blocks_v0_handle = block_store.state_blocks_handle;
 		}
 	}
 	else
 	{
-		error_a |= mdb_dbi_open (env.tx (transaction_a), "blocks", MDB_CREATE, &block_store.blocks_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "blocks", MDB_CREATE, &block_store.blocks_handle) != 0;
 	}
 
 	if (version_l < 16)
 	{
 		// The representation database is no longer used, but needs opening so that it can be deleted during an upgrade
-		error_a |= mdb_dbi_open (env.tx (transaction_a), "representation", flags, &account_store.representation_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "representation", flags, &account_store.representation_handle) != 0;
 	}
 
 	if (version_l < 15)
 	{
 		// These databases are no longer used, but need opening so they can be deleted during an upgrade
-		error_a |= mdb_dbi_open (env.tx (transaction_a), "state", flags, &block_store.state_blocks_v0_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "state", flags, &block_store.state_blocks_v0_handle) != 0;
 		block_store.state_blocks_handle = block_store.state_blocks_v0_handle;
-		error_a |= mdb_dbi_open (env.tx (transaction_a), "accounts_v1", flags, &account_store.accounts_v1_handle) != 0;
-		error_a |= mdb_dbi_open (env.tx (transaction_a), "pending_v1", flags, &pending_store.pending_v1_handle) != 0;
-		error_a |= mdb_dbi_open (env.tx (transaction_a), "state_v1", flags, &block_store.state_blocks_v1_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "accounts_v1", flags, &account_store.accounts_v1_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "pending_v1", flags, &pending_store.pending_v1_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "state_v1", flags, &block_store.state_blocks_v1_handle) != 0;
 	}
 }
 
@@ -335,7 +350,7 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 		release_assert (rep_block != nullptr);
 		account_infos.emplace_back (account, nano::account_info{ account_info_v14.head, rep_block->representative (), account_info_v14.open_block, account_info_v14.balance, account_info_v14.modified, account_info_v14.block_count, i_account.from_first_database ? nano::epoch::epoch_0 : nano::epoch::epoch_1 });
 		// Move confirmation height from account_info database to its own table
-		mdb_put (env.tx (transaction_a), confirmation_height_store.confirmation_height_handle, nano::mdb_val (account), nano::mdb_val (account_info_v14.confirmation_height), MDB_APPEND);
+		mdb_put (env ().tx (transaction_a), confirmation_height_store.confirmation_height_handle, nano::mdb_val (account), nano::mdb_val (account_info_v14.confirmation_height), MDB_APPEND);
 		i_account.from_first_database ? ++account_counters.after_v0 : ++account_counters.after_v1;
 	}
 
@@ -343,13 +358,13 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 
 	debug_assert (account_counters.are_equal ());
 	// No longer need accounts_v1, keep v0 but clear it
-	mdb_drop (env.tx (transaction_a), account_store.accounts_v1_handle, 1);
-	mdb_drop (env.tx (transaction_a), account_store.accounts_v0_handle, 0);
+	mdb_drop (env ().tx (transaction_a), account_store.accounts_v1_handle, 1);
+	mdb_drop (env ().tx (transaction_a), account_store.accounts_v0_handle, 0);
 
 	for (auto const & account_account_info_pair : account_infos)
 	{
 		auto const & account_info (account_account_info_pair.second);
-		mdb_put (env.tx (transaction_a), account_store.accounts_handle, nano::mdb_val (account_account_info_pair.first), nano::mdb_val (account_info), MDB_APPEND);
+		mdb_put (env ().tx (transaction_a), account_store.accounts_handle, nano::mdb_val (account_account_info_pair.first), nano::mdb_val (account_info), MDB_APPEND);
 	}
 
 	logger.always_log ("Epoch merge upgrade: Finished accounts, now doing state blocks");
@@ -358,7 +373,7 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 
 	// Have to create a new database as we are iterating over the existing ones and want to use MDB_APPEND for quick insertion
 	MDB_dbi state_blocks_new;
-	mdb_dbi_open (env.tx (transaction_a), "state_blocks", MDB_CREATE, &state_blocks_new);
+	mdb_dbi_open (env ().tx (transaction_a), "state_blocks", MDB_CREATE, &state_blocks_new);
 
 	upgrade_counters state_counters (count (transaction_a, block_store.state_blocks_v0_handle), count (transaction_a, block_store.state_blocks_v1_handle));
 
@@ -382,7 +397,7 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 		}
 
 		nano::mdb_val value{ data.size (), (void *)data.data () };
-		auto s = mdb_put (env.tx (transaction_a), state_blocks_new, nano::mdb_val (hash), value, MDB_APPEND);
+		auto s = mdb_put (env ().tx (transaction_a), state_blocks_new, nano::mdb_val (hash), value, MDB_APPEND);
 		release_assert_success (s);
 
 		// Every so often output to the log to indicate progress
@@ -400,8 +415,8 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 	block_store.state_blocks_handle = state_blocks_new;
 
 	// No longer need states v0/v1 databases
-	mdb_drop (env.tx (transaction_a), block_store.state_blocks_v1_handle, 1);
-	mdb_drop (env.tx (transaction_a), block_store.state_blocks_v0_handle, 1);
+	mdb_drop (env ().tx (transaction_a), block_store.state_blocks_v1_handle, 1);
+	mdb_drop (env ().tx (transaction_a), block_store.state_blocks_v0_handle, 1);
 
 	block_store.state_blocks_v0_handle = block_store.state_blocks_handle;
 
@@ -421,12 +436,12 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 	debug_assert (pending_counters.are_equal ());
 
 	// No longer need the pending v1 table
-	mdb_drop (env.tx (transaction_a), pending_store.pending_v1_handle, 1);
-	mdb_drop (env.tx (transaction_a), pending_store.pending_v0_handle, 0);
+	mdb_drop (env ().tx (transaction_a), pending_store.pending_v1_handle, 1);
+	mdb_drop (env ().tx (transaction_a), pending_store.pending_v0_handle, 0);
 
 	for (auto const & pending_key_pending_info_pair : pending_infos)
 	{
-		mdb_put (env.tx (transaction_a), pending_store.pending_handle, nano::mdb_val (pending_key_pending_info_pair.first), nano::mdb_val (pending_key_pending_info_pair.second), MDB_APPEND);
+		mdb_put (env ().tx (transaction_a), pending_store.pending_handle, nano::mdb_val (pending_key_pending_info_pair.first), nano::mdb_val (pending_key_pending_info_pair.second), MDB_APPEND);
 	}
 
 	version.put (transaction_a, 15);
@@ -439,7 +454,7 @@ void nano::lmdb::store::upgrade_v15_to_v16 (nano::write_transaction const & tran
 	debug_assert (account_store.representation_handle != 0);
 	if (account_store.representation_handle != 0)
 	{
-		auto status (mdb_drop (env.tx (transaction_a), account_store.representation_handle, 1));
+		auto status (mdb_drop (env ().tx (transaction_a), account_store.representation_handle, 1));
 		release_assert (status == MDB_SUCCESS);
 		account_store.representation_handle = 0;
 	}
@@ -513,12 +528,12 @@ void nano::lmdb::store::upgrade_v16_to_v17 (nano::write_transaction const & tran
 	}
 
 	// Clear it then append
-	auto status (mdb_drop (env.tx (transaction_a), confirmation_height_store.confirmation_height_handle, 0));
+	auto status (mdb_drop (env ().tx (transaction_a), confirmation_height_store.confirmation_height_handle, 0));
 	release_assert_success (status);
 
 	for (auto const & confirmation_height_info_pair : confirmation_height_infos)
 	{
-		mdb_put (env.tx (transaction_a), confirmation_height_store.confirmation_height_handle, nano::mdb_val (confirmation_height_info_pair.first), nano::mdb_val (confirmation_height_info_pair.second), MDB_APPEND);
+		mdb_put (env ().tx (transaction_a), confirmation_height_store.confirmation_height_handle, nano::mdb_val (confirmation_height_info_pair.first), nano::mdb_val (confirmation_height_info_pair.second), MDB_APPEND);
 	}
 
 	version.put (transaction_a, 17);
@@ -616,18 +631,18 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 		legacy_open_receive_change_blocks[i->first] = { nano::block_w_sideband{ i->second.block, new_sideband } };
 	}
 
-	release_assert (!mdb_drop (env.tx (transaction_a), block_store.receive_blocks_handle, 1));
+	release_assert (!mdb_drop (env ().tx (transaction_a), block_store.receive_blocks_handle, 1));
 	block_store.receive_blocks_handle = 0;
-	release_assert (!mdb_drop (env.tx (transaction_a), block_store.open_blocks_handle, 1));
+	release_assert (!mdb_drop (env ().tx (transaction_a), block_store.open_blocks_handle, 1));
 	block_store.open_blocks_handle = 0;
-	release_assert (!mdb_drop (env.tx (transaction_a), block_store.change_blocks_handle, 1));
+	release_assert (!mdb_drop (env ().tx (transaction_a), block_store.change_blocks_handle, 1));
 	block_store.change_blocks_handle = 0;
 
 	logger.always_log ("Write legacy open/receive/change to new format");
 
 	MDB_dbi temp_legacy_open_receive_change_blocks;
 	{
-		mdb_dbi_open (env.tx (transaction_a), "temp_legacy_open_receive_change_blocks", MDB_CREATE, &temp_legacy_open_receive_change_blocks);
+		mdb_dbi_open (env ().tx (transaction_a), "temp_legacy_open_receive_change_blocks", MDB_CREATE, &temp_legacy_open_receive_change_blocks);
 
 		for (auto const & legacy_block : legacy_open_receive_change_blocks)
 		{
@@ -639,7 +654,7 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 			}
 
 			nano::mdb_val value{ data.size (), (void *)data.data () };
-			auto s = mdb_put (env.tx (transaction_a), temp_legacy_open_receive_change_blocks, nano::mdb_val (legacy_block.first), value, MDB_APPEND);
+			auto s = mdb_put (env ().tx (transaction_a), temp_legacy_open_receive_change_blocks, nano::mdb_val (legacy_block.first), value, MDB_APPEND);
 			release_assert_success (s);
 		}
 	}
@@ -649,7 +664,7 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 	// Write send blocks to a new table (this was not done in memory as it would push us above memory requirements)
 	MDB_dbi temp_legacy_send_blocks;
 	{
-		mdb_dbi_open (env.tx (transaction_a), "temp_legacy_send_blocks", MDB_CREATE, &temp_legacy_send_blocks);
+		mdb_dbi_open (env ().tx (transaction_a), "temp_legacy_send_blocks", MDB_CREATE, &temp_legacy_send_blocks);
 
 		for (auto i (nano::store_iterator<nano::block_hash, nano::block_w_sideband_v18<nano::send_block>> (std::make_unique<nano::mdb_iterator<nano::block_hash, nano::block_w_sideband_v18<nano::send_block>>> (transaction_a, block_store.send_blocks_handle))), n (nano::store_iterator<nano::block_hash, nano::block_w_sideband_v18<nano::send_block>> (nullptr)); i != n; ++i)
 		{
@@ -663,31 +678,31 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 			}
 
 			nano::mdb_val value{ data.size (), (void *)data.data () };
-			auto s = mdb_put (env.tx (transaction_a), temp_legacy_send_blocks, nano::mdb_val (i->first), value, MDB_APPEND);
+			auto s = mdb_put (env ().tx (transaction_a), temp_legacy_send_blocks, nano::mdb_val (i->first), value, MDB_APPEND);
 			release_assert_success (s);
 		}
 	}
 
-	release_assert (!mdb_drop (env.tx (transaction_a), block_store.send_blocks_handle, 1));
+	release_assert (!mdb_drop (env ().tx (transaction_a), block_store.send_blocks_handle, 1));
 	block_store.send_blocks_handle = 0;
 
 	logger.always_log ("Merge legacy open/receive/change with legacy send blocks");
 
 	MDB_dbi temp_legacy_send_open_receive_change_blocks;
 	{
-		mdb_dbi_open (env.tx (transaction_a), "temp_legacy_send_open_receive_change_blocks", MDB_CREATE, &temp_legacy_send_open_receive_change_blocks);
+		mdb_dbi_open (env ().tx (transaction_a), "temp_legacy_send_open_receive_change_blocks", MDB_CREATE, &temp_legacy_send_open_receive_change_blocks);
 
 		nano::mdb_merge_iterator<nano::block_hash, nano::block_w_sideband> i (transaction_a, temp_legacy_open_receive_change_blocks, temp_legacy_send_blocks);
 		nano::mdb_merge_iterator<nano::block_hash, nano::block_w_sideband> n{};
 		for (; i != n; ++i)
 		{
-			auto s = mdb_put (env.tx (transaction_a), temp_legacy_send_open_receive_change_blocks, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
+			auto s = mdb_put (env ().tx (transaction_a), temp_legacy_send_open_receive_change_blocks, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
 			release_assert_success (s);
 		}
 
 		// Delete tables
-		mdb_drop (env.tx (transaction_a), temp_legacy_send_blocks, 1);
-		mdb_drop (env.tx (transaction_a), temp_legacy_open_receive_change_blocks, 1);
+		mdb_drop (env ().tx (transaction_a), temp_legacy_send_blocks, 1);
+		mdb_drop (env ().tx (transaction_a), temp_legacy_open_receive_change_blocks, 1);
 	}
 
 	logger.always_log ("Write state blocks to new format");
@@ -696,7 +711,7 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 	MDB_dbi temp_state_blocks;
 	{
 		auto type_state (nano::block_type::state);
-		mdb_dbi_open (env.tx (transaction_a), "temp_state_blocks", MDB_CREATE, &temp_state_blocks);
+		mdb_dbi_open (env ().tx (transaction_a), "temp_state_blocks", MDB_CREATE, &temp_state_blocks);
 
 		for (auto i (nano::store_iterator<nano::block_hash, nano::block_w_sideband_v18<nano::state_block>> (std::make_unique<nano::mdb_iterator<nano::block_hash, nano::block_w_sideband_v18<nano::state_block>>> (transaction_a, block_store.state_blocks_handle))), n (nano::store_iterator<nano::block_hash, nano::block_w_sideband_v18<nano::state_block>> (nullptr)); i != n; ++i)
 		{
@@ -728,12 +743,12 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 			}
 
 			nano::mdb_val value{ data.size (), (void *)data.data () };
-			auto s = mdb_put (env.tx (transaction_a), temp_state_blocks, nano::mdb_val (i->first), value, MDB_APPEND);
+			auto s = mdb_put (env ().tx (transaction_a), temp_state_blocks, nano::mdb_val (i->first), value, MDB_APPEND);
 			release_assert_success (s);
 		}
 	}
 
-	release_assert (!mdb_drop (env.tx (transaction_a), block_store.state_blocks_handle, 1));
+	release_assert (!mdb_drop (env ().tx (transaction_a), block_store.state_blocks_handle, 1));
 	block_store.state_blocks_handle = 0;
 
 	logger.always_log ("Merging all legacy blocks with state blocks");
@@ -741,23 +756,23 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 	// Merge all legacy blocks with state blocks into the final table
 	nano::mdb_merge_iterator<nano::block_hash, nano::block_w_sideband> i (transaction_a, temp_legacy_send_open_receive_change_blocks, temp_state_blocks);
 	nano::mdb_merge_iterator<nano::block_hash, nano::block_w_sideband> n{};
-	mdb_dbi_open (env.tx (transaction_a), "blocks", MDB_CREATE, &block_store.blocks_handle);
+	mdb_dbi_open (env ().tx (transaction_a), "blocks", MDB_CREATE, &block_store.blocks_handle);
 	for (; i != n; ++i)
 	{
-		auto s = mdb_put (env.tx (transaction_a), block_store.blocks_handle, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
+		auto s = mdb_put (env ().tx (transaction_a), block_store.blocks_handle, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
 		release_assert_success (s);
 	}
 
 	// Delete tables
-	mdb_drop (env.tx (transaction_a), temp_legacy_send_open_receive_change_blocks, 1);
-	mdb_drop (env.tx (transaction_a), temp_state_blocks, 1);
+	mdb_drop (env ().tx (transaction_a), temp_legacy_send_open_receive_change_blocks, 1);
+	mdb_drop (env ().tx (transaction_a), temp_state_blocks, 1);
 
 	auto count_post (count (transaction_a, block_store.blocks_handle));
 	release_assert (count_pre == count_post);
 
 	MDB_dbi vote{ 0 };
-	release_assert (!mdb_dbi_open (env.tx (transaction_a), "vote", MDB_CREATE, &vote));
-	release_assert (!mdb_drop (env.tx (transaction_a), vote, 1));
+	release_assert (!mdb_dbi_open (env ().tx (transaction_a), "vote", MDB_CREATE, &vote));
+	release_assert (!mdb_drop (env ().tx (transaction_a), vote, 1));
 
 	version.put (transaction_a, 19);
 	logger.always_log ("Finished upgrading all blocks to new blocks database");
@@ -766,7 +781,7 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 void nano::lmdb::store::upgrade_v19_to_v20 (nano::write_transaction const & transaction_a)
 {
 	logger.always_log ("Preparing v19 to v20 database upgrade...");
-	mdb_dbi_open (env.tx (transaction_a), "pruned", MDB_CREATE, &pruned_store.pruned_handle);
+	mdb_dbi_open (env ().tx (transaction_a), "pruned", MDB_CREATE, &pruned_store.pruned_handle);
 	version.put (transaction_a, 20);
 	logger.always_log ("Finished creating new pruned table");
 }
@@ -774,13 +789,13 @@ void nano::lmdb::store::upgrade_v19_to_v20 (nano::write_transaction const & tran
 void nano::lmdb::store::upgrade_v20_to_v21 (nano::write_transaction const & transaction_a)
 {
 	logger.always_log ("Preparing v20 to v21 database upgrade...");
-	mdb_dbi_open (env.tx (transaction_a), "final_votes", MDB_CREATE, &final_vote_store.final_votes_handle);
+	mdb_dbi_open (env ().tx (transaction_a), "final_votes", MDB_CREATE, &final_vote_store.final_votes_handle);
 	version.put (transaction_a, 21);
 	logger.always_log ("Finished creating new final_vote table");
 }
 
 /** Takes a filepath, appends '_backup_<timestamp>' to the end (but before any extension) and saves that file in the same directory */
-void nano::lmdb::store::create_backup_file (nano::mdb_env & env_a, boost::filesystem::path const & filepath_a, nano::logger_mt & logger_a)
+void nano::lmdb::store::create_backup_file (nano::mdb_env const & env_a, boost::filesystem::path const & filepath_a, nano::logger_mt & logger_a)
 {
 	auto extension = filepath_a.extension ();
 	auto filename_without_extension = filepath_a.filename ().replace_extension ("");
@@ -820,17 +835,17 @@ bool nano::lmdb::store::exists (nano::transaction const & transaction_a, tables 
 
 int nano::lmdb::store::get (nano::transaction const & transaction_a, tables table_a, nano::mdb_val const & key_a, nano::mdb_val & value_a) const
 {
-	return mdb_get (env.tx (transaction_a), table_to_dbi (table_a), key_a, value_a);
+	return mdb_get (env ().tx (transaction_a), table_to_dbi (table_a), key_a, value_a);
 }
 
 int nano::lmdb::store::put (nano::write_transaction const & transaction_a, tables table_a, nano::mdb_val const & key_a, nano::mdb_val const & value_a) const
 {
-	return (mdb_put (env.tx (transaction_a), table_to_dbi (table_a), key_a, value_a, 0));
+	return (mdb_put (env ().tx (transaction_a), table_to_dbi (table_a), key_a, value_a, 0));
 }
 
 int nano::lmdb::store::del (nano::write_transaction const & transaction_a, tables table_a, nano::mdb_val const & key_a) const
 {
-	return (mdb_del (env.tx (transaction_a), table_to_dbi (table_a), key_a, nullptr));
+	return (mdb_del (env ().tx (transaction_a), table_to_dbi (table_a), key_a, nullptr));
 }
 
 int nano::lmdb::store::drop (nano::write_transaction const & transaction_a, tables table_a)
@@ -840,7 +855,7 @@ int nano::lmdb::store::drop (nano::write_transaction const & transaction_a, tabl
 
 int nano::lmdb::store::clear (nano::write_transaction const & transaction_a, MDB_dbi handle_a)
 {
-	return mdb_drop (env.tx (transaction_a), handle_a, 0);
+	return mdb_drop (env ().tx (transaction_a), handle_a, 0);
 }
 
 uint64_t nano::lmdb::store::count (nano::transaction const & transaction_a, tables table_a) const
@@ -851,7 +866,7 @@ uint64_t nano::lmdb::store::count (nano::transaction const & transaction_a, tabl
 uint64_t nano::lmdb::store::count (nano::transaction const & transaction_a, MDB_dbi db_a) const
 {
 	MDB_stat stats;
-	auto status (mdb_stat (env.tx (transaction_a), db_a, &stats));
+	auto status (mdb_stat (env ().tx (transaction_a), db_a, &stats));
 	release_assert_success (status);
 	return (stats.ms_entries);
 }
@@ -910,7 +925,7 @@ std::string nano::lmdb::store::error_string (int status) const
 
 bool nano::lmdb::store::copy_db (boost::filesystem::path const & destination_file)
 {
-	return !mdb_env_copy2 (env.environment, destination_file.string ().c_str (), MDB_CP_COMPACT);
+	return !mdb_env_copy2 (env ().environment, destination_file.string ().c_str (), MDB_CP_COMPACT);
 }
 
 void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_a)
@@ -920,52 +935,52 @@ void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_
 	for (auto const & table : tables)
 	{
 		MDB_dbi temp;
-		mdb_dbi_open (env.tx (transaction_a), "temp_table", MDB_CREATE, &temp);
+		mdb_dbi_open (env ().tx (transaction_a), "temp_table", MDB_CREATE, &temp);
 		// Copy all values to temporary table
 		for (auto i (nano::store_iterator<nano::uint256_union, nano::mdb_val> (std::make_unique<nano::mdb_iterator<nano::uint256_union, nano::mdb_val>> (transaction_a, table))), n (nano::store_iterator<nano::uint256_union, nano::mdb_val> (nullptr)); i != n; ++i)
 		{
-			auto s = mdb_put (env.tx (transaction_a), temp, nano::mdb_val (i->first), i->second, MDB_APPEND);
+			auto s = mdb_put (env ().tx (transaction_a), temp, nano::mdb_val (i->first), i->second, MDB_APPEND);
 			release_assert_success (s);
 		}
 		release_assert (count (transaction_a, table) == count (transaction_a, temp));
 		// Clear existing table
-		mdb_drop (env.tx (transaction_a), table, 0);
+		mdb_drop (env ().tx (transaction_a), table, 0);
 		// Put values from copy
 		for (auto i (nano::store_iterator<nano::uint256_union, nano::mdb_val> (std::make_unique<nano::mdb_iterator<nano::uint256_union, nano::mdb_val>> (transaction_a, temp))), n (nano::store_iterator<nano::uint256_union, nano::mdb_val> (nullptr)); i != n; ++i)
 		{
-			auto s = mdb_put (env.tx (transaction_a), table, nano::mdb_val (i->first), i->second, MDB_APPEND);
+			auto s = mdb_put (env ().tx (transaction_a), table, nano::mdb_val (i->first), i->second, MDB_APPEND);
 			release_assert_success (s);
 		}
 		release_assert (count (transaction_a, table) == count (transaction_a, temp));
 		// Remove temporary table
-		mdb_drop (env.tx (transaction_a), temp, 1);
+		mdb_drop (env ().tx (transaction_a), temp, 1);
 	}
 	// Pending table
 	{
 		MDB_dbi temp;
-		mdb_dbi_open (env.tx (transaction_a), "temp_table", MDB_CREATE, &temp);
+		mdb_dbi_open (env ().tx (transaction_a), "temp_table", MDB_CREATE, &temp);
 		// Copy all values to temporary table
 		for (auto i (nano::store_iterator<nano::pending_key, nano::pending_info> (std::make_unique<nano::mdb_iterator<nano::pending_key, nano::pending_info>> (transaction_a, pending_store.pending_handle))), n (nano::store_iterator<nano::pending_key, nano::pending_info> (nullptr)); i != n; ++i)
 		{
-			auto s = mdb_put (env.tx (transaction_a), temp, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
+			auto s = mdb_put (env ().tx (transaction_a), temp, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
 			release_assert_success (s);
 		}
 		release_assert (count (transaction_a, pending_store.pending_handle) == count (transaction_a, temp));
-		mdb_drop (env.tx (transaction_a), pending_store.pending_handle, 0);
+		mdb_drop (env ().tx (transaction_a), pending_store.pending_handle, 0);
 		// Put values from copy
 		for (auto i (nano::store_iterator<nano::pending_key, nano::pending_info> (std::make_unique<nano::mdb_iterator<nano::pending_key, nano::pending_info>> (transaction_a, temp))), n (nano::store_iterator<nano::pending_key, nano::pending_info> (nullptr)); i != n; ++i)
 		{
-			auto s = mdb_put (env.tx (transaction_a), pending_store.pending_handle, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
+			auto s = mdb_put (env ().tx (transaction_a), pending_store.pending_handle, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
 			release_assert_success (s);
 		}
 		release_assert (count (transaction_a, pending_store.pending_handle) == count (transaction_a, temp));
-		mdb_drop (env.tx (transaction_a), temp, 1);
+		mdb_drop (env ().tx (transaction_a), temp, 1);
 	}
 }
 
 bool nano::lmdb::store::init_error () const
 {
-	return error;
+	return gateway.error;
 }
 
 std::shared_ptr<nano::block> nano::lmdb::store::block_get_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
@@ -1014,27 +1029,27 @@ boost::optional<nano::mdb_val> nano::lmdb::store::block_raw_get_by_type_v18 (nan
 	{
 		case nano::block_type::send:
 		{
-			status = mdb_get (env.tx (transaction_a), block_store.send_blocks_handle, hash, value);
+			status = mdb_get (env ().tx (transaction_a), block_store.send_blocks_handle, hash, value);
 			break;
 		}
 		case nano::block_type::receive:
 		{
-			status = mdb_get (env.tx (transaction_a), block_store.receive_blocks_handle, hash, value);
+			status = mdb_get (env ().tx (transaction_a), block_store.receive_blocks_handle, hash, value);
 			break;
 		}
 		case nano::block_type::open:
 		{
-			status = mdb_get (env.tx (transaction_a), block_store.open_blocks_handle, hash, value);
+			status = mdb_get (env ().tx (transaction_a), block_store.open_blocks_handle, hash, value);
 			break;
 		}
 		case nano::block_type::change:
 		{
-			status = mdb_get (env.tx (transaction_a), block_store.change_blocks_handle, hash, value);
+			status = mdb_get (env ().tx (transaction_a), block_store.change_blocks_handle, hash, value);
 			break;
 		}
 		case nano::block_type::state:
 		{
-			status = mdb_get (env.tx (transaction_a), block_store.state_blocks_handle, hash, value);
+			status = mdb_get (env ().tx (transaction_a), block_store.state_blocks_handle, hash, value);
 			break;
 		}
 		case nano::block_type::invalid:
@@ -1115,34 +1130,34 @@ boost::optional<nano::mdb_val> nano::lmdb::store::block_raw_get_by_type_v14 (nan
 	{
 		case nano::block_type::send:
 		{
-			status = mdb_get (env.tx (transaction_a), block_store.send_blocks_handle, hash, value);
+			status = mdb_get (env ().tx (transaction_a), block_store.send_blocks_handle, hash, value);
 			break;
 		}
 		case nano::block_type::receive:
 		{
-			status = mdb_get (env.tx (transaction_a), block_store.receive_blocks_handle, hash, value);
+			status = mdb_get (env ().tx (transaction_a), block_store.receive_blocks_handle, hash, value);
 			break;
 		}
 		case nano::block_type::open:
 		{
-			status = mdb_get (env.tx (transaction_a), block_store.open_blocks_handle, hash, value);
+			status = mdb_get (env ().tx (transaction_a), block_store.open_blocks_handle, hash, value);
 			break;
 		}
 		case nano::block_type::change:
 		{
-			status = mdb_get (env.tx (transaction_a), block_store.change_blocks_handle, hash, value);
+			status = mdb_get (env ().tx (transaction_a), block_store.change_blocks_handle, hash, value);
 			break;
 		}
 		case nano::block_type::state:
 		{
-			status = mdb_get (env.tx (transaction_a), block_store.state_blocks_v1_handle, hash, value);
+			status = mdb_get (env ().tx (transaction_a), block_store.state_blocks_v1_handle, hash, value);
 			if (is_state_v1 != nullptr)
 			{
 				*is_state_v1 = success (status);
 			}
 			if (not_found (status))
 			{
-				status = mdb_get (env.tx (transaction_a), block_store.state_blocks_v0_handle, hash, value);
+				status = mdb_get (env ().tx (transaction_a), block_store.state_blocks_v0_handle, hash, value);
 			}
 			break;
 		}

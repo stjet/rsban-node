@@ -42,12 +42,27 @@ class transaction;
 
 namespace lmdb
 {
+	class lmdb_gateway
+	{
+	public:
+		lmdb_gateway (nano::logger_mt & logger_a, boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a);
+		nano::mdb_txn_callbacks create_txn_callbacks () const;
+		std::unique_ptr<nano::write_transaction> tx_begin_write ();
+		std::unique_ptr<nano::read_transaction> tx_begin_read () const;
+
+		bool txn_tracking_enabled;
+		bool error{ false };
+		nano::mdb_env env;
+		mutable nano::mdb_txn_tracker mdb_txn_tracker;
+	};
+
 	/**
 	 * mdb implementation of the block store
 	 */
 	class store : public nano::store
 	{
 	private:
+		nano::lmdb::lmdb_gateway gateway;
 		nano::lmdb::account_store account_store;
 		nano::lmdb::block_store block_store;
 		nano::lmdb::confirmation_height_store confirmation_height_store;
@@ -81,7 +96,7 @@ namespace lmdb
 
 		void serialize_mdb_tracker (boost::property_tree::ptree &, std::chrono::milliseconds, std::chrono::milliseconds) override;
 
-		static void create_backup_file (nano::mdb_env &, boost::filesystem::path const &, nano::logger_mt &);
+		static void create_backup_file (nano::mdb_env const &, boost::filesystem::path const &, nano::logger_mt &);
 
 		void serialize_memory_stats (boost::property_tree::ptree &) override;
 
@@ -89,10 +104,12 @@ namespace lmdb
 
 	private:
 		nano::logger_mt & logger;
-		bool error{ false };
 
 	public:
-		nano::mdb_env env;
+		nano::mdb_env const & env () const
+		{
+			return gateway.env;
+		}
 
 		bool exists (nano::transaction const & transaction_a, tables table_a, nano::mdb_val const & key_a) const;
 
@@ -159,10 +176,6 @@ namespace lmdb
 		int status_code_not_found () const override;
 
 		MDB_dbi table_to_dbi (tables table_a) const;
-
-		mutable nano::mdb_txn_tracker mdb_txn_tracker;
-		nano::mdb_txn_callbacks create_txn_callbacks () const;
-		bool txn_tracking_enabled;
 
 		uint64_t count (nano::transaction const & transaction_a, tables table_a) const override;
 

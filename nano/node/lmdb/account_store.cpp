@@ -5,19 +5,30 @@
 nano::lmdb::account_store::account_store (nano::lmdb::store & store_a) :
 	store (store_a){};
 
+bool nano::lmdb::account_store::open_databases (nano::transaction const & transaction_a, unsigned flags)
+{
+	bool error = mdb_dbi_open (to_mdb_txn (transaction_a), "accounts", flags, &accounts_v0_handle) != MDB_SUCCESS;
+	accounts_handle = accounts_v0_handle;
+	return error;
+}
+
 void nano::lmdb::account_store::put (nano::write_transaction const & transaction, nano::account const & account, nano::account_info const & info)
 {
-	auto status = store.put (transaction, tables::accounts, account, info);
-	store.release_assert_success (status);
+	nano::mdb_val account_val{ account };
+	nano::mdb_val info_val{ info };
+	auto status = mdb_put (to_mdb_txn (transaction), accounts_handle, account_val, info_val, 0);
+	nano::assert_success (status);
 }
 
 bool nano::lmdb::account_store::get (nano::transaction const & transaction, nano::account const & account, nano::account_info & info)
 {
+	nano::mdb_val key{ account };
 	nano::mdb_val value;
-	auto status1 (store.get (transaction, tables::accounts, account, value));
-	release_assert (store.success (status1) || store.not_found (status1));
+	auto status1 = mdb_get (to_mdb_txn (transaction), accounts_handle, key, value);
+
+	release_assert (status1 == MDB_SUCCESS || status1 == MDB_NOTFOUND);
 	bool result (true);
-	if (store.success (status1))
+	if (status1 == MDB_SUCCESS)
 	{
 		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (value.data ()), value.size ());
 		result = info.deserialize (stream);
@@ -27,8 +38,9 @@ bool nano::lmdb::account_store::get (nano::transaction const & transaction, nano
 
 void nano::lmdb::account_store::del (nano::write_transaction const & transaction_a, nano::account const & account_a)
 {
-	auto status = store.del (transaction_a, tables::accounts, account_a);
-	store.release_assert_success (status);
+	nano::mdb_val key{ account_a };
+	auto status = mdb_del (to_mdb_txn (transaction_a), accounts_handle, key, nullptr);
+	nano::assert_success (status);
 }
 
 bool nano::lmdb::account_store::exists (nano::transaction const & transaction_a, nano::account const & account_a)

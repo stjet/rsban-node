@@ -64,4 +64,8 @@ public:
 	MDB_env * environment;
 	mutable std::atomic<uint64_t> next_txn_id{ 0 };
 };
+
+MDB_txn * to_mdb_txn (nano::transaction const & transaction_a);
+void assert_success (int const status);
+
 }

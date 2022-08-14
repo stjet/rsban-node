@@ -232,8 +232,7 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "peers", flags, &peer_store.peers_handle) != 0;
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "pruned", flags, &pruned_store.pruned_handle) != 0;
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "confirmation_height", flags, &confirmation_height_store.confirmation_height_handle) != 0;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "accounts", flags, &account_store.accounts_v0_handle) != 0;
-	account_store.accounts_handle = account_store.accounts_v0_handle;
+	error_a |= account_store.open_databases (transaction_a, flags);
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "pending", flags, &pending_store.pending_v0_handle) != 0;
 	pending_store.pending_handle = pending_store.pending_v0_handle;
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "final_votes", flags, &final_vote_store.final_votes_handle) != 0;
@@ -980,7 +979,7 @@ void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_
 
 bool nano::lmdb::store::init_error () const
 {
-	return gateway.error;
+	return gateway.error != MDB_SUCCESS;
 }
 
 std::shared_ptr<nano::block> nano::lmdb::store::block_get_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const

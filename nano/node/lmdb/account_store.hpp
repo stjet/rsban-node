@@ -16,6 +16,7 @@ namespace lmdb
 
 	public:
 		explicit account_store (nano::lmdb::store & store_a);
+		bool open_databases (nano::transaction const & transaction_a, unsigned flags);
 		void put (nano::write_transaction const & transaction, nano::account const & account, nano::account_info const & info) override;
 		bool get (nano::transaction const & transaction_a, nano::account const & account_a, nano::account_info & info_a) override;
 		void del (nano::write_transaction const & transaction_a, nano::account const & account_a) override;

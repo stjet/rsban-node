@@ -50,9 +50,9 @@ namespace lmdb
 		std::unique_ptr<nano::write_transaction> tx_begin_write ();
 		std::unique_ptr<nano::read_transaction> tx_begin_read () const;
 
-		bool txn_tracking_enabled;
 		bool error{ false };
 		nano::mdb_env env;
+		bool txn_tracking_enabled;
 		mutable nano::mdb_txn_tracker mdb_txn_tracker;
 	};
 
@@ -168,10 +168,7 @@ namespace lmdb
 		bool success (int status) const override;
 		void release_assert_success (int const status) const
 		{
-			if (!success (status))
-			{
-				release_assert (false, error_string (status));
-			}
+			assert_success (status);
 		}
 		int status_code_not_found () const override;
 

@@ -67,5 +67,5 @@ public:
 
 MDB_txn * to_mdb_txn (nano::transaction const & transaction_a);
 void assert_success (int const status);
-
+uint64_t mdb_count (MDB_txn * txn, MDB_dbi db_a);
 }

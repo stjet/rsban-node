@@ -583,7 +583,7 @@ void nano::lmdb::store::upgrade_v17_to_v18 (nano::write_transaction const & tran
 			new_sideband.serialize (stream, block->type ());
 		}
 		nano::mdb_val value{ data.size (), (void *)data.data () };
-		auto s = mdb_cursor_put (state_i.cursor, state_i->first, value, MDB_CURRENT);
+		auto s = mdb_cursor_put (state_i.get_cursor (), state_i->first, value, MDB_CURRENT);
 		release_assert_success (s);
 
 		// Every so often output to the log to indicate progress

@@ -51,7 +51,7 @@ bool nano::lmdb::account_store::exists (nano::transaction const & transaction_a,
 
 size_t nano::lmdb::account_store::count (nano::transaction const & transaction_a)
 {
-	return store.count (transaction_a, tables::accounts);
+	return nano::mdb_count (nano::to_mdb_txn (transaction_a), accounts_handle);
 }
 
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::begin (nano::transaction const & transaction, nano::account const & account) const

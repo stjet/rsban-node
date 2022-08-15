@@ -1,10 +1,12 @@
-use std::{ffi::c_void, sync::Arc};
+mod iterator;
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::{
     datastore::lmdb::{
-        LmdbReadTransaction, LmdbWriteTransaction, MdbStrerrorCallback, MdbTxnBeginCallback,
-        MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks, MDB_STRERROR,
-        MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
+        LmdbReadTransaction, LmdbWriteTransaction, MdbCursorOpenCallback, MdbStrerrorCallback,
+        MdbTxnBeginCallback, MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback,
+        TxnCallbacks, MDB_CURSOR_OPEN, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW,
+        MDB_TXN_RESET,
     },
     ffi::VoidPointerCallback,
 };
@@ -27,7 +29,15 @@ impl TransactionHandle {
     }
 }
 
-enum TransactionType {
+impl Deref for TransactionHandle {
+    type Target = TransactionType;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+pub enum TransactionType {
     Read(LmdbReadTransaction),
     Write(LmdbWriteTransaction),
 }
@@ -176,4 +186,9 @@ pub unsafe extern "C" fn rsn_callback_mdb_txn_renew(f: MdbTxnRenewCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_strerror(f: MdbStrerrorCallback) {
     MDB_STRERROR = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_cursor_open(f: MdbCursorOpenCallback) {
+    MDB_CURSOR_OPEN = Some(f);
 }

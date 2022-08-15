@@ -1,9 +1,15 @@
+mod iterator;
+
 use std::{
     ffi::{c_void, CStr},
     os::raw::c_char,
     ptr,
     sync::Arc,
 };
+
+pub use iterator::LmdbIterator;
+
+use super::{ReadTransaction, Transaction};
 
 pub struct LmdbReadTransaction {
     env: *mut c_void,
@@ -52,6 +58,10 @@ impl Drop for LmdbReadTransaction {
         self.callbacks.txn_end(self.txn_id);
     }
 }
+
+impl Transaction for LmdbReadTransaction {}
+
+impl ReadTransaction for LmdbReadTransaction {}
 
 pub struct LmdbWriteTransaction {
     env: *mut c_void,
@@ -108,6 +118,8 @@ impl Drop for LmdbWriteTransaction {
     }
 }
 
+impl Transaction for LmdbWriteTransaction {}
+
 pub trait TxnCallbacks {
     fn txn_start(&self, txn_id: u64, is_write: bool);
     fn txn_end(&self, txn_id: u64);
@@ -129,11 +141,15 @@ pub type MdbTxnRenewCallback = extern "C" fn(*mut c_void) -> i32;
 /// args: status
 pub type MdbStrerrorCallback = extern "C" fn(i32) -> *mut c_char;
 
+///args: MDB_txn*, MDB_dbi, MDB_cursor**
+pub type MdbCursorOpenCallback = extern "C" fn(*mut c_void, u32, *mut *mut c_void) -> i32;
+
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
 pub static mut MDB_TXN_RESET: Option<MdbTxnResetCallback> = None;
 pub static mut MDB_TXN_RENEW: Option<MdbTxnRenewCallback> = None;
 pub static mut MDB_STRERROR: Option<MdbStrerrorCallback> = None;
+pub static mut MDB_CURSOR_OPEN: Option<MdbCursorOpenCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut c_void,
@@ -159,6 +175,10 @@ pub unsafe fn mdb_txn_renew(txn: *mut c_void) -> i32 {
 pub unsafe fn mdb_strerror(status: i32) -> &'static str {
     let ptr = MDB_STRERROR.expect("MDB_STRERROR missing")(status);
     CStr::from_ptr(ptr).to_str().unwrap()
+}
+
+pub unsafe fn mdb_cursor_open(txn: *mut c_void, dbi: u32, cursor: *mut *mut c_void) -> i32 {
+    MDB_CURSOR_OPEN.expect("MDB_CURSOR_OPEN missing")(txn, dbi, cursor)
 }
 
 ///	Successful result

@@ -69,6 +69,8 @@ struct IoContextHandle;
 
 struct LedgerHandle;
 
+struct LmdbIteratorHandle;
+
 struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
@@ -543,6 +545,9 @@ struct MessageDto
 };
 
 using ListenerBroadcastCallback = bool (*) (void *, const MessageDto *);
+
+///args: MDB_txn*, MDB_dbi, MDB_cursor**
+using MdbCursorOpenCallback = int32_t (*) (void *, uint32_t, void **);
 
 /// args: status
 using MdbStrerrorCallback = char * (*)(int32_t);
@@ -1275,6 +1280,8 @@ void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
 void rsn_callback_logger_destroy (VoidPointerCallback f);
 
+void rsn_callback_mdb_cursor_open (MdbCursorOpenCallback f);
+
 void rsn_callback_mdb_strerror (MdbStrerrorCallback f);
 
 void rsn_callback_mdb_txn_begin (MdbTxnBeginCallback f);
@@ -1555,6 +1562,14 @@ LedgerHandle * rsn_ledger_create (void * handle);
 void rsn_ledger_destroy (LedgerHandle * handle);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
+
+LmdbIteratorHandle * rsn_lmdb_iterator_create (void * txn, uint32_t dbi);
+
+void * rsn_lmdb_iterator_cursor (LmdbIteratorHandle * handle);
+
+void rsn_lmdb_iterator_destroy (LmdbIteratorHandle * handle);
+
+void rsn_lmdb_iterator_set_cursor (LmdbIteratorHandle * handle, void * cursor);
 
 TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, void * env, void * callbacks);
 

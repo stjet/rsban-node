@@ -509,6 +509,9 @@ nano::unchecked_info::~unchecked_info ()
 
 nano::unchecked_info & nano::unchecked_info::operator= (const nano::unchecked_info & other_a)
 {
+	if (handle != nullptr)
+		rsnano::rsn_unchecked_info_destroy (handle);
+
 	handle = rsnano::rsn_unchecked_info_clone (other_a.handle);
 	return *this;
 }

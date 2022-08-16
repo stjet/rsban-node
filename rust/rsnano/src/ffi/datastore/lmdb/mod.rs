@@ -3,10 +3,10 @@ use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::{
     datastore::lmdb::{
-        LmdbReadTransaction, LmdbWriteTransaction, MdbCursorOpenCallback, MdbStrerrorCallback,
-        MdbTxnBeginCallback, MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback,
-        TxnCallbacks, MDB_CURSOR_OPEN, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW,
-        MDB_TXN_RESET,
+        LmdbReadTransaction, LmdbWriteTransaction, MdbCursorGetCallback, MdbCursorOpenCallback,
+        MdbEnv, MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback, MdbTxnCommitCallback,
+        MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks, MDB_CURSOR_GET, MDB_CURSOR_OPEN,
+        MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
     },
     ffi::VoidPointerCallback,
 };
@@ -45,7 +45,7 @@ pub enum TransactionType {
 #[no_mangle]
 pub extern "C" fn rsn_lmdb_read_txn_create(
     txn_id: u64,
-    env: *mut c_void,
+    env: *mut MdbEnv,
     callbacks: *mut c_void,
 ) -> *mut TransactionHandle {
     let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
@@ -75,14 +75,14 @@ pub unsafe extern "C" fn rsn_lmdb_read_txn_refresh(handle: *mut TransactionHandl
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_read_txn_handle(handle: *mut TransactionHandle) -> *mut c_void {
+pub unsafe extern "C" fn rsn_lmdb_read_txn_handle(handle: *mut TransactionHandle) -> *mut MdbTxn {
     (*handle).as_read_tx().handle
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_lmdb_write_txn_create(
     txn_id: u64,
-    env: *mut c_void,
+    env: *mut MdbEnv,
     callbacks: *mut c_void,
 ) -> *mut TransactionHandle {
     let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
@@ -112,7 +112,7 @@ pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh(handle: *mut TransactionHand
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_write_txn_handle(handle: *mut TransactionHandle) -> *mut c_void {
+pub unsafe extern "C" fn rsn_lmdb_write_txn_handle(handle: *mut TransactionHandle) -> *mut MdbTxn {
     (*handle).as_write_tx().handle
 }
 
@@ -191,4 +191,9 @@ pub unsafe extern "C" fn rsn_callback_mdb_strerror(f: MdbStrerrorCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_cursor_open(f: MdbCursorOpenCallback) {
     MDB_CURSOR_OPEN = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_cursor_get(f: MdbCursorGetCallback) {
+    MDB_CURSOR_GET = Some(f);
 }

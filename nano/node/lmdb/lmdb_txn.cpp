@@ -50,7 +50,7 @@ private:
 }
 
 nano::read_mdb_txn::read_mdb_txn (uint64_t txn_id_a, MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
-	txn_handle{ rsnano::rsn_lmdb_read_txn_create (txn_id_a, env_a, new nano::mdb_txn_callbacks{ txn_callbacks_a }) }
+	txn_handle{ rsnano::rsn_lmdb_read_txn_create (txn_id_a, reinterpret_cast<rsnano::MdbEnv *> (env_a), new nano::mdb_txn_callbacks{ txn_callbacks_a }) }
 {
 }
 
@@ -80,7 +80,7 @@ void * nano::read_mdb_txn::get_handle () const
 }
 
 nano::write_mdb_txn::write_mdb_txn (uint64_t txn_id_a, MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
-	txn_handle{ rsnano::rsn_lmdb_write_txn_create (txn_id_a, env_a, new nano::mdb_txn_callbacks{ txn_callbacks_a }) }
+	txn_handle{ rsnano::rsn_lmdb_write_txn_create (txn_id_a, reinterpret_cast<rsnano::MdbEnv *> (env_a), new nano::mdb_txn_callbacks{ txn_callbacks_a }) }
 {
 }
 

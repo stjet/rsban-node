@@ -25,6 +25,29 @@ static const uint64_t PULL_COUNT_PER_CHECK = (8 * 1024);
 
 static const uint8_t SYSTEM = 1;
 
+enum class MdbCursorOp
+{
+	MdbFirst,
+	MdbFirstDup,
+	MdbGetBoth,
+	MdbGetBothRange,
+	MdbGetCurrent,
+	MdbGetMultiple,
+	MdbLast,
+	MdbLastDup,
+	MdbNext,
+	MdbNextDup,
+	MdbNextMultiple,
+	MdbNextNodup,
+	MdbPrev,
+	MdbPrevDup,
+	MdbPrevNodup,
+	MdbSet,
+	MdbSetKey,
+	MdbSetRange,
+	MdbPrevMultiple,
+};
+
 struct AsyncConnectCallbackHandle;
 
 struct AsyncReadCallbackHandle;
@@ -546,23 +569,37 @@ struct MessageDto
 
 using ListenerBroadcastCallback = bool (*) (void *, const MessageDto *);
 
-///args: MDB_txn*, MDB_dbi, MDB_cursor**
-using MdbCursorOpenCallback = int32_t (*) (void *, uint32_t, void **);
+struct MdbCursor
+{
+};
 
-/// args: status
+struct MdbVal
+{
+	uintptr_t mv_size;
+	void * mv_data;
+};
+
+using MdbCursorGetCallback = int32_t (*) (MdbCursor *, MdbVal *, MdbVal *, MdbCursorOp);
+
+struct MdbTxn
+{
+};
+
+using MdbCursorOpenCallback = int32_t (*) (MdbTxn *, uint32_t, MdbCursor **);
+
 using MdbStrerrorCallback = char * (*)(int32_t);
 
-/// args: MDB_env* env, MDB_txn* parent, flags, MDB_txn** ret
-using MdbTxnBeginCallback = int32_t (*) (void *, void *, uint32_t, void **);
+struct MdbEnv
+{
+};
 
-/// args: MDB_txn*
-using MdbTxnCommitCallback = int32_t (*) (void *);
+using MdbTxnBeginCallback = int32_t (*) (MdbEnv *, MdbTxn *, uint32_t, MdbTxn **);
 
-/// args: MDB_txn*
-using MdbTxnRenewCallback = int32_t (*) (void *);
+using MdbTxnCommitCallback = int32_t (*) (MdbTxn *);
 
-/// args: MDB_txn*
-using MdbTxnResetCallback = void (*) (void *);
+using MdbTxnRenewCallback = int32_t (*) (MdbTxn *);
+
+using MdbTxnResetCallback = void (*) (MdbTxn *);
 
 using MessageVisitorFlagCallback = bool (*) (void *);
 
@@ -1280,6 +1317,8 @@ void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
 void rsn_callback_logger_destroy (VoidPointerCallback f);
 
+void rsn_callback_mdb_cursor_get (MdbCursorGetCallback f);
+
 void rsn_callback_mdb_cursor_open (MdbCursorOpenCallback f);
 
 void rsn_callback_mdb_strerror (MdbStrerrorCallback f);
@@ -1563,19 +1602,27 @@ void rsn_ledger_destroy (LedgerHandle * handle);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 
-LmdbIteratorHandle * rsn_lmdb_iterator_create (void * txn, uint32_t dbi);
+LmdbIteratorHandle * rsn_lmdb_iterator_create (MdbTxn * txn,
+uint32_t dbi,
+const MdbVal * val,
+bool direction_asc,
+uintptr_t expected_value_size);
 
-void * rsn_lmdb_iterator_cursor (LmdbIteratorHandle * handle);
+void rsn_lmdb_iterator_current (LmdbIteratorHandle * handle, MdbVal * key, MdbVal * value);
+
+MdbCursor * rsn_lmdb_iterator_cursor (LmdbIteratorHandle * handle);
 
 void rsn_lmdb_iterator_destroy (LmdbIteratorHandle * handle);
 
-void rsn_lmdb_iterator_set_cursor (LmdbIteratorHandle * handle, void * cursor);
+void rsn_lmdb_iterator_set_current (LmdbIteratorHandle * handle, MdbVal * key, MdbVal * value);
 
-TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, void * env, void * callbacks);
+void rsn_lmdb_iterator_set_cursor (LmdbIteratorHandle * handle, MdbCursor * cursor);
+
+TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);
 
 void rsn_lmdb_read_txn_destroy (TransactionHandle * handle);
 
-void * rsn_lmdb_read_txn_handle (TransactionHandle * handle);
+MdbTxn * rsn_lmdb_read_txn_handle (TransactionHandle * handle);
 
 void rsn_lmdb_read_txn_refresh (TransactionHandle * handle);
 
@@ -1585,11 +1632,11 @@ void rsn_lmdb_read_txn_reset (TransactionHandle * handle);
 
 void rsn_lmdb_write_txn_commit (TransactionHandle * handle);
 
-TransactionHandle * rsn_lmdb_write_txn_create (uint64_t txn_id, void * env, void * callbacks);
+TransactionHandle * rsn_lmdb_write_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);
 
 void rsn_lmdb_write_txn_destroy (TransactionHandle * handle);
 
-void * rsn_lmdb_write_txn_handle (TransactionHandle * handle);
+MdbTxn * rsn_lmdb_write_txn_handle (TransactionHandle * handle);
 
 void rsn_lmdb_write_txn_refresh (TransactionHandle * handle);
 

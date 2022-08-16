@@ -1,25 +1,77 @@
-use super::mdb_cursor_open;
-use crate::datastore::lmdb::MDB_SUCCESS;
-use std::{ffi::c_void, ptr};
+use super::{mdb_cursor_open, MdbCursor, MdbTxn, MdbVal};
+use crate::datastore::lmdb::{mdb_cursor_get, MdbCursorOp, MDB_NOTFOUND, MDB_SUCCESS};
+use std::ptr;
 
 pub struct LmdbIterator {
-    cursor: *mut c_void, //a MDB_cursor
+    cursor: *mut MdbCursor,
+    pub key: MdbVal,
+    pub value: MdbVal,
+    expected_value_size: usize,
 }
 
 impl LmdbIterator {
-    pub fn new(txn: *mut c_void, dbi: u32) -> Self {
-        let mut cursor = ptr::null_mut();
-        let status = unsafe { mdb_cursor_open(txn, dbi, &mut cursor) };
-        assert!(status == MDB_SUCCESS);
-
-        Self { cursor }
+    pub fn new(
+        txn: *mut MdbTxn,
+        dbi: u32,
+        val: &MdbVal,
+        direction_asc: bool,
+        expected_value_size: usize,
+    ) -> Self {
+        let mut iterator = Self {
+            cursor: ptr::null_mut(),
+            key: MdbVal::new(),
+            value: MdbVal::new(),
+            expected_value_size,
+        };
+        iterator.init(txn, dbi, val, direction_asc);
+        iterator
     }
 
-    pub fn cursor(&self) -> *mut c_void {
+    fn init(&mut self, txn: *mut MdbTxn, dbi: u32, val_a: &MdbVal, direction_asc: bool) {
+        let status = unsafe { mdb_cursor_open(txn, dbi, &mut self.cursor) };
+        assert!(status == MDB_SUCCESS);
+
+        let mut operation = MdbCursorOp::MdbSetRange;
+        if val_a.mv_size != 0 {
+            self.key = val_a.clone();
+        } else {
+            operation = if direction_asc {
+                MdbCursorOp::MdbFirst
+            } else {
+                MdbCursorOp::MdbLast
+            };
+        }
+        let status2 =
+            unsafe { mdb_cursor_get(self.cursor, &mut self.key, &mut self.value, operation) };
+        assert!(status2 == MDB_SUCCESS || status2 == MDB_NOTFOUND);
+        if status2 != MDB_NOTFOUND {
+            let status3 = unsafe {
+                mdb_cursor_get(
+                    self.cursor,
+                    &mut self.key,
+                    &mut self.value,
+                    MdbCursorOp::MdbGetCurrent,
+                )
+            };
+            assert!(status3 == MDB_SUCCESS || status3 == MDB_NOTFOUND);
+            if self.key.mv_size != self.expected_value_size {
+                self.clear();
+            }
+        } else {
+            self.clear();
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.key = MdbVal::new();
+        self.value = MdbVal::new();
+    }
+
+    pub fn cursor(&self) -> *mut MdbCursor {
         self.cursor
     }
 
-    pub fn set_cursor(&mut self, cursor: *mut c_void) {
+    pub fn set_cursor(&mut self, cursor: *mut MdbCursor) {
         self.cursor = cursor;
     }
 }

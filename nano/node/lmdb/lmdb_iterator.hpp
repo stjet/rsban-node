@@ -11,39 +11,16 @@ class mdb_iterator : public store_iterator_impl<T, U>
 {
 public:
 	mdb_iterator (nano::transaction const & transaction_a, MDB_dbi db_a, MDB_val const & val_a = MDB_val{}, bool const direction_asc = true) :
-		handle{ rsnano::rsn_lmdb_iterator_create (transaction_a.get_handle (), db_a) }
+		handle{ rsnano::rsn_lmdb_iterator_create (static_cast<rsnano::MdbTxn *> (transaction_a.get_handle ()), db_a, reinterpret_cast<const rsnano::MdbVal *> (&val_a), direction_asc, sizeof (T)) }
 	{
-		auto operation (MDB_SET_RANGE);
-		if (val_a.mv_size != 0)
-		{
-			current.first = val_a;
-		}
-		else
-		{
-			operation = direction_asc ? MDB_FIRST : MDB_LAST;
-		}
-		auto status2 (mdb_cursor_get (get_cursor (), &current.first.value, &current.second.value, operation));
-		release_assert (status2 == 0 || status2 == MDB_NOTFOUND);
-		if (status2 != MDB_NOTFOUND)
-		{
-			auto status3 (mdb_cursor_get (get_cursor (), &current.first.value, &current.second.value, MDB_GET_CURRENT));
-			release_assert (status3 == 0 || status3 == MDB_NOTFOUND);
-			if (current.first.size () != sizeof (T))
-			{
-				clear ();
-			}
-		}
-		else
-		{
-			clear ();
-		}
+		rsnano::rsn_lmdb_iterator_current (handle, reinterpret_cast<rsnano::MdbVal *> (&current.first.value), reinterpret_cast<rsnano::MdbVal *> (&current.second.value));
 	}
 
 	mdb_iterator () = default;
 
 	mdb_iterator (nano::mdb_iterator<T, U> && other_a)
 	{
-		rsnano::rsn_lmdb_iterator_set_cursor (handle, other_a.get_cursor());
+		rsnano::rsn_lmdb_iterator_set_cursor (handle, other_a.get_cursor ());
 		rsnano::rsn_lmdb_iterator_set_cursor (other_a.handle, nullptr);
 		current = other_a.current;
 		handle = other_a.handle;
@@ -157,7 +134,7 @@ public:
 	nano::store_iterator_impl<T, U> & operator= (nano::store_iterator_impl<T, U> const &) = delete;
 	MDB_cursor * get_cursor ()
 	{
-		return static_cast<MDB_cursor *> (rsnano::rsn_lmdb_iterator_cursor (handle));
+		return reinterpret_cast<MDB_cursor *> (rsnano::rsn_lmdb_iterator_cursor (handle));
 	}
 	std::pair<nano::db_val<MDB_val>, nano::db_val<MDB_val>> get_current ()
 	{

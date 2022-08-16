@@ -12,15 +12,15 @@ pub use iterator::LmdbIterator;
 use super::{ReadTransaction, Transaction};
 
 pub struct LmdbReadTransaction {
-    env: *mut c_void,
+    env: *mut MdbEnv,
     txn_id: u64,
     callbacks: Arc<dyn TxnCallbacks>,
-    pub handle: *mut c_void,
+    pub handle: *mut MdbTxn,
 }
 
 impl LmdbReadTransaction {
-    pub fn new(txn_id: u64, env: *mut c_void, callbacks: Arc<dyn TxnCallbacks>) -> Self {
-        let mut handle: *mut c_void = ptr::null_mut();
+    pub fn new(txn_id: u64, env: *mut MdbEnv, callbacks: Arc<dyn TxnCallbacks>) -> Self {
+        let mut handle: *mut MdbTxn = ptr::null_mut();
         let status = unsafe { mdb_txn_begin(env, ptr::null_mut(), MDB_RDONLY, &mut handle) };
         assert!(status == 0);
         callbacks.txn_start(txn_id, false);
@@ -64,15 +64,15 @@ impl Transaction for LmdbReadTransaction {}
 impl ReadTransaction for LmdbReadTransaction {}
 
 pub struct LmdbWriteTransaction {
-    env: *mut c_void,
+    env: *mut MdbEnv,
     txn_id: u64,
     callbacks: Arc<dyn TxnCallbacks>,
-    pub handle: *mut c_void,
+    pub handle: *mut MdbTxn,
     active: bool,
 }
 
 impl LmdbWriteTransaction {
-    pub fn new(txn_id: u64, env: *mut c_void, callbacks: Arc<dyn TxnCallbacks>) -> Self {
+    pub fn new(txn_id: u64, env: *mut MdbEnv, callbacks: Arc<dyn TxnCallbacks>) -> Self {
         let mut tx = Self {
             env,
             txn_id,
@@ -125,24 +125,64 @@ pub trait TxnCallbacks {
     fn txn_end(&self, txn_id: u64);
 }
 
-/// args: MDB_env* env, MDB_txn* parent, flags, MDB_txn** ret
+#[repr(C)]
+#[derive(PartialEq, Eq)]
+pub enum MdbCursorOp {
+    MdbFirst,        // Position at first key/data item */
+    MdbFirstDup,     // Position at first data item of current key.  Only for #MDB_DUPSORT */
+    MdbGetBoth,      // Position at key/data pair. Only for #MDB_DUPSORT */
+    MdbGetBothRange, // position at key, nearest data. Only for #MDB_DUPSORT */
+    MdbGetCurrent,   // Return key/data at current cursor position */
+    MdbGetMultiple, // Return up to a page of duplicate data items from current cursor position. Move cursor to prepare for #MDB_NEXT_MULTIPLE. Only for #MDB_DUPFIXED */
+    MdbLast,        // Position at last key/data item */
+    MdbLastDup,     // Position at last data item of current key.  Only for #MDB_DUPSORT */
+    MdbNext,        // Position at next data item */
+    MdbNextDup,     // Position at next data item of current key.  Only for #MDB_DUPSORT */
+    MdbNextMultiple, // Return up to a page of duplicate data items from next cursor position. Move cursor to prepare for #MDB_NEXT_MULTIPLE. Only for #MDB_DUPFIXED */
+    MdbNextNodup,    // Position at first data item of next key */
+    MdbPrev,         // Position at previous data item */
+    MdbPrevDup,      // Position at previous data item of current key.  Only for #MDB_DUPSORT */
+    MdbPrevNodup,    // Position at last data item of previous key */
+    MdbSet,          // Position at specified key */
+    MdbSetKey,       // Position at specified key, return key + data */
+    MdbSetRange,     // Position at first key greater than or equal to specified key. */
+    MdbPrevMultiple, // Position at previous page and return up to a page of duplicate data items. Only for #MDB_DUPFIXED */
+}
+
+#[repr(C)]
+#[derive(Clone)]
+pub struct MdbVal {
+    pub mv_size: usize,       // size of the data item
+    pub mv_data: *mut c_void, // address of the data item
+}
+
+impl MdbVal {
+    pub fn new() -> Self {
+        Self {
+            mv_size: 0,
+            mv_data: ptr::null_mut(),
+        }
+    }
+}
+
+#[repr(C)]
+pub struct MdbEnv {}
+
+#[repr(C)]
+pub struct MdbTxn {}
+
+#[repr(C)]
+pub struct MdbCursor {}
+
 pub type MdbTxnBeginCallback =
-    extern "C" fn(*mut c_void, *mut c_void, u32, *mut *mut c_void) -> i32;
-
-/// args: MDB_txn*
-pub type MdbTxnCommitCallback = extern "C" fn(*mut c_void) -> i32;
-
-/// args: MDB_txn*
-pub type MdbTxnResetCallback = extern "C" fn(*mut c_void);
-
-/// args: MDB_txn*
-pub type MdbTxnRenewCallback = extern "C" fn(*mut c_void) -> i32;
-
-/// args: status
+    extern "C" fn(*mut MdbEnv, *mut MdbTxn, u32, *mut *mut MdbTxn) -> i32;
+pub type MdbTxnCommitCallback = extern "C" fn(*mut MdbTxn) -> i32;
+pub type MdbTxnResetCallback = extern "C" fn(*mut MdbTxn);
+pub type MdbTxnRenewCallback = extern "C" fn(*mut MdbTxn) -> i32;
 pub type MdbStrerrorCallback = extern "C" fn(i32) -> *mut c_char;
-
-///args: MDB_txn*, MDB_dbi, MDB_cursor**
-pub type MdbCursorOpenCallback = extern "C" fn(*mut c_void, u32, *mut *mut c_void) -> i32;
+pub type MdbCursorOpenCallback = extern "C" fn(*mut MdbTxn, u32, *mut *mut MdbCursor) -> i32;
+pub type MdbCursorGetCallback =
+    extern "C" fn(*mut MdbCursor, *mut MdbVal, *mut MdbVal, MdbCursorOp) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -150,25 +190,26 @@ pub static mut MDB_TXN_RESET: Option<MdbTxnResetCallback> = None;
 pub static mut MDB_TXN_RENEW: Option<MdbTxnRenewCallback> = None;
 pub static mut MDB_STRERROR: Option<MdbStrerrorCallback> = None;
 pub static mut MDB_CURSOR_OPEN: Option<MdbCursorOpenCallback> = None;
+pub static mut MDB_CURSOR_GET: Option<MdbCursorGetCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
-    env: *mut c_void,
-    parent: *mut c_void,
+    env: *mut MdbEnv,
+    parent: *mut MdbTxn,
     flags: u32,
-    result: *mut *mut c_void,
+    result: *mut *mut MdbTxn,
 ) -> i32 {
     MDB_TXN_BEGIN.expect("MDB_TXN_BEGIN missing")(env, parent, flags, result)
 }
 
-pub unsafe fn mdb_txn_commit(txn: *mut c_void) -> i32 {
+pub unsafe fn mdb_txn_commit(txn: *mut MdbTxn) -> i32 {
     MDB_TXN_COMMIT.expect("MDB_TXN_COMMIT missing")(txn)
 }
 
-pub unsafe fn mdb_txn_reset(txn: *mut c_void) {
+pub unsafe fn mdb_txn_reset(txn: *mut MdbTxn) {
     MDB_TXN_RESET.expect("MDB_TXN_RESET missing")(txn)
 }
 
-pub unsafe fn mdb_txn_renew(txn: *mut c_void) -> i32 {
+pub unsafe fn mdb_txn_renew(txn: *mut MdbTxn) -> i32 {
     MDB_TXN_RENEW.expect("MDB_TXN_RENEW missing")(txn)
 }
 
@@ -177,8 +218,17 @@ pub unsafe fn mdb_strerror(status: i32) -> &'static str {
     CStr::from_ptr(ptr).to_str().unwrap()
 }
 
-pub unsafe fn mdb_cursor_open(txn: *mut c_void, dbi: u32, cursor: *mut *mut c_void) -> i32 {
+pub unsafe fn mdb_cursor_open(txn: *mut MdbTxn, dbi: u32, cursor: *mut *mut MdbCursor) -> i32 {
     MDB_CURSOR_OPEN.expect("MDB_CURSOR_OPEN missing")(txn, dbi, cursor)
+}
+
+pub unsafe fn mdb_cursor_get(
+    cursor: *mut MdbCursor,
+    key: &mut MdbVal,
+    value: &mut MdbVal,
+    op: MdbCursorOp,
+) -> i32 {
+    MDB_CURSOR_GET.expect("MDB_CURSOR_GET missing")(cursor, key, value, op)
 }
 
 ///	Successful result
@@ -186,3 +236,6 @@ const MDB_SUCCESS: i32 = 0;
 
 /// read only
 const MDB_RDONLY: u32 = 0x20000;
+
+/// key/data pair not found (EOF)
+const MDB_NOTFOUND: i32 = -30798;

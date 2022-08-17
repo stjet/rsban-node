@@ -1,12 +1,14 @@
+mod account_store;
 mod iterator;
 
 use std::{
-    ffi::{c_void, CStr},
+    ffi::{c_void, CStr, CString},
     os::raw::c_char,
     ptr,
     sync::Arc,
 };
 
+pub use account_store::AccountStore;
 pub use iterator::LmdbIterator;
 
 use super::{ReadTransaction, Transaction};
@@ -59,7 +61,11 @@ impl Drop for LmdbReadTransaction {
     }
 }
 
-impl Transaction for LmdbReadTransaction {}
+impl Transaction for LmdbReadTransaction {
+    fn as_any(&self) -> &(dyn std::any::Any + '_) {
+        self
+    }
+}
 
 impl ReadTransaction for LmdbReadTransaction {}
 
@@ -118,7 +124,11 @@ impl Drop for LmdbWriteTransaction {
     }
 }
 
-impl Transaction for LmdbWriteTransaction {}
+impl Transaction for LmdbWriteTransaction {
+    fn as_any(&self) -> &(dyn std::any::Any + '_) {
+        self
+    }
+}
 
 pub trait TxnCallbacks {
     fn txn_start(&self, txn_id: u64, is_write: bool);
@@ -184,6 +194,7 @@ pub type MdbCursorOpenCallback = extern "C" fn(*mut MdbTxn, u32, *mut *mut MdbCu
 pub type MdbCursorGetCallback =
     extern "C" fn(*mut MdbCursor, *mut MdbVal, *mut MdbVal, MdbCursorOp) -> i32;
 pub type MdbCursorCloseCallback = extern "C" fn(*mut MdbCursor);
+pub type MdbDbiOpen = extern "C" fn(*mut MdbTxn, *const i8, u32, *mut u32) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -193,6 +204,7 @@ pub static mut MDB_STRERROR: Option<MdbStrerrorCallback> = None;
 pub static mut MDB_CURSOR_OPEN: Option<MdbCursorOpenCallback> = None;
 pub static mut MDB_CURSOR_GET: Option<MdbCursorGetCallback> = None;
 pub static mut MDB_CURSOR_CLOSE: Option<MdbCursorCloseCallback> = None;
+pub static mut MDB_DBI_OPEN: Option<MdbDbiOpen> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -235,6 +247,11 @@ pub unsafe fn mdb_cursor_get(
 
 pub unsafe fn mdb_cursor_close(cursor: *mut MdbCursor) {
     MDB_CURSOR_CLOSE.expect("MDB_CURSOR_CLOSE missing")(cursor);
+}
+
+pub unsafe fn mdb_dbi_open(txn: *mut MdbTxn, name: &str, flags: u32, dbi: &mut u32) -> i32 {
+    let name_cstr = CString::new(name).unwrap();
+    MDB_DBI_OPEN.expect("MDB_DBI_OPEN missing")(txn, name_cstr.as_ptr(), flags, dbi)
 }
 
 ///	Successful result

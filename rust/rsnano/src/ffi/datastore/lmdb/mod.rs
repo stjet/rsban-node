@@ -1,13 +1,19 @@
+mod account_store;
 mod iterator;
+
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::{
-    datastore::lmdb::{
-        LmdbReadTransaction, LmdbWriteTransaction, MdbCursorCloseCallback, MdbCursorGetCallback,
-        MdbCursorOpenCallback, MdbEnv, MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback,
-        MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks,
-        MDB_CURSOR_CLOSE, MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_STRERROR, MDB_TXN_BEGIN,
-        MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
+    datastore::{
+        lmdb::{
+            LmdbReadTransaction, LmdbWriteTransaction, MdbCursorCloseCallback,
+            MdbCursorGetCallback, MdbCursorOpenCallback, MdbDbiOpen, MdbEnv, MdbStrerrorCallback,
+            MdbTxn, MdbTxnBeginCallback, MdbTxnCommitCallback, MdbTxnRenewCallback,
+            MdbTxnResetCallback, TxnCallbacks, MDB_CURSOR_CLOSE, MDB_CURSOR_GET, MDB_CURSOR_OPEN,
+            MDB_DBI_OPEN, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW,
+            MDB_TXN_RESET,
+        },
+        Transaction,
     },
     ffi::VoidPointerCallback,
 };
@@ -26,6 +32,13 @@ impl TransactionHandle {
         match &mut self.0 {
             TransactionType::Write(tx) => tx,
             _ => panic!("invalid tx type"),
+        }
+    }
+
+    pub fn as_txn(&self) -> &dyn Transaction {
+        match &self.0 {
+            TransactionType::Read(t) => t,
+            TransactionType::Write(t) => t,
         }
     }
 }
@@ -202,4 +215,9 @@ pub unsafe extern "C" fn rsn_callback_mdb_cursor_get(f: MdbCursorGetCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_cursor_close(f: MdbCursorCloseCallback) {
     MDB_CURSOR_CLOSE = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_dbi_open(f: MdbDbiOpen) {
+    MDB_DBI_OPEN = Some(f);
 }

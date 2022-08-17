@@ -38,6 +38,11 @@ public:
 	void renew () override;
 	void refresh () override;
 	void * get_handle () const override;
+	rsnano::TransactionHandle * get_rust_handle () const override
+	{
+		return txn_handle;
+	};
+
 	rsnano::TransactionHandle * txn_handle;
 };
 
@@ -53,6 +58,11 @@ public:
 	void refresh () override;
 	void * get_handle () const override;
 	bool contains (nano::tables table_a) const override;
+	rsnano::TransactionHandle * get_rust_handle () const override
+	{
+		return txn_handle;
+	};
+
 	rsnano::TransactionHandle * txn_handle;
 };
 

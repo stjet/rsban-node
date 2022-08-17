@@ -559,6 +559,7 @@ class transaction
 public:
 	virtual ~transaction () = default;
 	virtual void * get_handle () const = 0;
+	virtual rsnano::TransactionHandle * get_rust_handle () const = 0;
 };
 
 /**
@@ -609,6 +610,7 @@ public:
 class account_store
 {
 public:
+	virtual ~account_store (){};
 	virtual void put (nano::write_transaction const &, nano::account const &, nano::account_info const &) = 0;
 	virtual bool get (nano::transaction const &, nano::account const &, nano::account_info &) = 0;
 	virtual void del (nano::write_transaction const &, nano::account const &) = 0;

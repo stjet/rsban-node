@@ -92,6 +92,8 @@ struct IoContextHandle;
 
 struct LedgerHandle;
 
+struct LmdbAccountStoreHandle;
+
 struct LmdbIteratorHandle;
 
 struct LocalVoteHistoryHandle;
@@ -588,6 +590,8 @@ struct MdbTxn
 };
 
 using MdbCursorOpenCallback = int32_t (*) (MdbTxn *, uint32_t, MdbCursor **);
+
+using MdbDbiOpen = int32_t (*) (MdbTxn *, const int8_t *, uint32_t, uint32_t *);
 
 using MdbStrerrorCallback = char * (*)(int32_t);
 
@@ -1325,6 +1329,8 @@ void rsn_callback_mdb_cursor_get (MdbCursorGetCallback f);
 
 void rsn_callback_mdb_cursor_open (MdbCursorOpenCallback f);
 
+void rsn_callback_mdb_dbi_open (MdbDbiOpen f);
+
 void rsn_callback_mdb_strerror (MdbStrerrorCallback f);
 
 void rsn_callback_mdb_txn_begin (MdbTxnBeginCallback f);
@@ -1603,6 +1609,16 @@ uint16_t network);
 LedgerHandle * rsn_ledger_create (void * handle);
 
 void rsn_ledger_destroy (LedgerHandle * handle);
+
+uint32_t rsn_lmdb_account_store_accounts_handle (LmdbAccountStoreHandle * handle);
+
+LmdbAccountStoreHandle * rsn_lmdb_account_store_create ();
+
+void rsn_lmdb_account_store_destroy (LmdbAccountStoreHandle * handle);
+
+bool rsn_lmdb_account_store_open_databases (LmdbAccountStoreHandle * handle,
+TransactionHandle * txn,
+uint32_t flags);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 

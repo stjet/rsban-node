@@ -3,20 +3,25 @@
 #include <nano/secure/parallel_traversal.hpp>
 
 nano::lmdb::account_store::account_store (nano::lmdb::store & store_a) :
-	store (store_a){};
+	store (store_a),
+	handle{ rsnano::rsn_lmdb_account_store_create () } {};
+
+nano::lmdb::account_store::~account_store ()
+{
+	rsnano::rsn_lmdb_account_store_destroy (handle);
+}
 
 bool nano::lmdb::account_store::open_databases (nano::transaction const & transaction_a, unsigned flags)
 {
-	bool error = mdb_dbi_open (to_mdb_txn (transaction_a), "accounts", flags, &accounts_v0_handle) != MDB_SUCCESS;
-	accounts_handle = accounts_v0_handle;
-	return error;
+	bool success = rsnano::rsn_lmdb_account_store_open_databases (handle, transaction_a.get_rust_handle (), flags);
+	return !success;
 }
 
 void nano::lmdb::account_store::put (nano::write_transaction const & transaction, nano::account const & account, nano::account_info const & info)
 {
 	nano::mdb_val account_val{ account };
 	nano::mdb_val info_val{ info };
-	auto status = mdb_put (to_mdb_txn (transaction), accounts_handle, account_val, info_val, 0);
+	auto status = mdb_put (to_mdb_txn (transaction), get_accounts_handle (), account_val, info_val, 0);
 	nano::assert_success (status);
 }
 
@@ -24,7 +29,7 @@ bool nano::lmdb::account_store::get (nano::transaction const & transaction, nano
 {
 	nano::mdb_val key{ account };
 	nano::mdb_val value;
-	auto status1 = mdb_get (to_mdb_txn (transaction), accounts_handle, key, value);
+	auto status1 = mdb_get (to_mdb_txn (transaction), get_accounts_handle (), key, value);
 
 	release_assert (status1 == MDB_SUCCESS || status1 == MDB_NOTFOUND);
 	bool result (true);
@@ -39,7 +44,7 @@ bool nano::lmdb::account_store::get (nano::transaction const & transaction, nano
 void nano::lmdb::account_store::del (nano::write_transaction const & transaction_a, nano::account const & account_a)
 {
 	nano::mdb_val key{ account_a };
-	auto status = mdb_del (to_mdb_txn (transaction_a), accounts_handle, key, nullptr);
+	auto status = mdb_del (to_mdb_txn (transaction_a), get_accounts_handle (), key, nullptr);
 	nano::assert_success (status);
 }
 
@@ -51,7 +56,7 @@ bool nano::lmdb::account_store::exists (nano::transaction const & transaction_a,
 
 size_t nano::lmdb::account_store::count (nano::transaction const & transaction_a)
 {
-	return nano::mdb_count (nano::to_mdb_txn (transaction_a), accounts_handle);
+	return nano::mdb_count (nano::to_mdb_txn (transaction_a), get_accounts_handle ());
 }
 
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::begin (nano::transaction const & transaction, nano::account const & account) const
@@ -81,4 +86,8 @@ void nano::lmdb::account_store::for_each_par (std::function<void (nano::read_tra
 		auto transaction (this->store.tx_begin_read ());
 		action_a (*transaction, this->begin (*transaction, start), !is_last ? this->begin (*transaction, end) : this->end ());
 	});
+}
+MDB_dbi nano::lmdb::account_store::get_accounts_handle () const
+{
+	return rsnano::rsn_lmdb_account_store_accounts_handle (handle);
 }

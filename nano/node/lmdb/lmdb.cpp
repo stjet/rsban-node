@@ -334,10 +334,10 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 	logger.always_log ("Preparing v14 to v15 database upgrade...");
 
 	std::vector<std::pair<nano::account, nano::account_info>> account_infos;
-	upgrade_counters account_counters (count (transaction_a, account_store.accounts_v0_handle), count (transaction_a, account_store.accounts_v1_handle));
+	upgrade_counters account_counters (count (transaction_a, account_store.get_accounts_handle ()), count (transaction_a, account_store.accounts_v1_handle));
 	account_infos.reserve (account_counters.before_v0 + account_counters.before_v1);
 
-	nano::mdb_merge_iterator<nano::account, nano::account_info_v14> i_account (transaction_a, account_store.accounts_v0_handle, account_store.accounts_v1_handle);
+	nano::mdb_merge_iterator<nano::account, nano::account_info_v14> i_account (transaction_a, account_store.get_accounts_handle (), account_store.accounts_v1_handle);
 	nano::mdb_merge_iterator<nano::account, nano::account_info_v14> n_account{};
 	for (; i_account != n_account; ++i_account)
 	{
@@ -358,12 +358,12 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 	debug_assert (account_counters.are_equal ());
 	// No longer need accounts_v1, keep v0 but clear it
 	mdb_drop (env ().tx (transaction_a), account_store.accounts_v1_handle, 1);
-	mdb_drop (env ().tx (transaction_a), account_store.accounts_v0_handle, 0);
+	mdb_drop (env ().tx (transaction_a), account_store.get_accounts_handle (), 0);
 
 	for (auto const & account_account_info_pair : account_infos)
 	{
 		auto const & account_info (account_account_info_pair.second);
-		mdb_put (env ().tx (transaction_a), account_store.accounts_handle, nano::mdb_val (account_account_info_pair.first), nano::mdb_val (account_info), MDB_APPEND);
+		mdb_put (env ().tx (transaction_a), account_store.get_accounts_handle (), nano::mdb_val (account_account_info_pair.first), nano::mdb_val (account_info), MDB_APPEND);
 	}
 
 	logger.always_log ("Epoch merge upgrade: Finished accounts, now doing state blocks");

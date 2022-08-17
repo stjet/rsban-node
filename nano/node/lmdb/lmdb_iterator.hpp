@@ -95,7 +95,8 @@ public:
 
 	nano::mdb_iterator<T, U> & operator= (nano::mdb_iterator<T, U> && other_a)
 	{
-		if (handle != nullptr){
+		if (handle != nullptr)
+		{
 			rsnano::rsn_lmdb_iterator_destroy (handle);
 		}
 		handle = other_a.handle;

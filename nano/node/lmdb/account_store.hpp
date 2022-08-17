@@ -16,6 +16,9 @@ namespace lmdb
 
 	public:
 		explicit account_store (nano::lmdb::store & store_a);
+		account_store (account_store const &) = delete;
+		account_store (account_store &&) = delete;
+		~account_store () override;
 		bool open_databases (nano::transaction const & transaction_a, unsigned flags);
 		void put (nano::write_transaction const & transaction, nano::account const & account, nano::account_info const & info) override;
 		bool get (nano::transaction const & transaction_a, nano::account const & account_a, nano::account_info & info_a) override;
@@ -29,28 +32,22 @@ namespace lmdb
 		void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::account, nano::account_info>, nano::store_iterator<nano::account, nano::account_info>)> const & action_a) const override;
 
 		/**
-		 * Maps account v1 to account information, head, rep, open, balance, timestamp and block count. (Removed)
-		 * nano::account -> nano::block_hash, nano::block_hash, nano::block_hash, nano::amount, uint64_t, uint64_t
-		 */
-		MDB_dbi accounts_v0_handle{ 0 };
-
-		/**
 		 * Maps account v0 to account information, head, rep, open, balance, timestamp and block count. (Removed)
 		 * nano::account -> nano::block_hash, nano::block_hash, nano::block_hash, nano::amount, uint64_t, uint64_t
 		 */
 		MDB_dbi accounts_v1_handle{ 0 };
 
-		/**
-		 * Maps account v0 to account information, head, rep, open, balance, timestamp, block count and epoch
-		 * nano::account -> nano::block_hash, nano::block_hash, nano::block_hash, nano::amount, uint64_t, uint64_t, nano::epoch
-		 */
-		MDB_dbi accounts_handle{ 0 };
+		MDB_dbi get_accounts_handle () const;
 
+	public:
 		/**
 		 * Representative weights. (Removed)
 		 * nano::account -> nano::uint128_t
 		 */
 		MDB_dbi representation_handle{ 0 };
+
+	private:
+		rsnano::LmdbAccountStoreHandle * handle;
 	};
 }
 }

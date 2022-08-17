@@ -561,12 +561,16 @@ nano::node_flags::~node_flags ()
 
 nano::node_flags & nano::node_flags::operator= (nano::node_flags const & other_a)
 {
+	if (handle != nullptr)
+		rsnano::rsn_node_flags_destroy (handle);
 	handle = rsnano::rsn_node_flags_clone (other_a.handle);
 	return *this;
 }
 
 nano::node_flags & nano::node_flags::operator= (nano::node_flags && other_a)
 {
+	if (handle != nullptr)
+		rsnano::rsn_node_flags_destroy (handle);
 	handle = other_a.handle;
 	other_a.handle = nullptr;
 	return *this;

@@ -806,6 +806,10 @@ bool nano::state_block::operator== (nano::state_block const & other_a) const
 
 nano::state_block & nano::state_block::operator= (const nano::state_block & other)
 {
+	if (handle != nullptr)
+	{
+		rsnano::rsn_block_destroy (handle);
+	}
 	cached_hash = other.cached_hash;
 	if (other.handle == nullptr)
 	{

@@ -16,6 +16,9 @@ nano::write_guard::write_guard (nano::write_guard && write_guard_a) noexcept :
 
 nano::write_guard & nano::write_guard::operator= (nano::write_guard && write_guard_a) noexcept
 {
+	if (owns && handle != nullptr)
+		rsnano::rsn_write_guard_destroy (handle);
+
 	owns = write_guard_a.owns;
 	handle = write_guard_a.handle;
 

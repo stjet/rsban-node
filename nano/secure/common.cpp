@@ -952,12 +952,16 @@ nano::generate_cache::~generate_cache ()
 
 nano::generate_cache & nano::generate_cache::operator= (nano::generate_cache && other_a)
 {
+	if (handle != nullptr)
+		rsnano::rsn_generate_cache_destroy (handle);
 	handle = other_a.handle;
 	other_a.handle = nullptr;
 	return *this;
 }
 nano::generate_cache & nano::generate_cache::operator= (const nano::generate_cache & other_a)
 {
+	if (handle != nullptr)
+		rsnano::rsn_generate_cache_destroy (handle);
 	handle = rsnano::rsn_generate_cache_clone (other_a.handle);
 	return *this;
 }

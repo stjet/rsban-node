@@ -74,6 +74,8 @@ nano::message_header::message_header (bool & error_a, nano::stream & stream_a) :
 
 nano::message_header & nano::message_header::operator= (nano::message_header && other_a)
 {
+	if (handle != nullptr)
+		rsnano::rsn_message_header_destroy (handle);
 	handle = other_a.handle;
 	other_a.handle = nullptr;
 	return *this;
@@ -81,6 +83,8 @@ nano::message_header & nano::message_header::operator= (nano::message_header && 
 
 nano::message_header & nano::message_header::operator= (message_header const & other_a)
 {
+	if (handle != nullptr)
+		rsnano::rsn_message_header_destroy (handle);
 	handle = rsnano::rsn_message_header_clone (other_a.handle);
 	return *this;
 }
@@ -1368,6 +1372,8 @@ nano::telemetry_ack::telemetry_ack (nano::network_constants const & constants, n
 
 nano::telemetry_ack & nano::telemetry_ack::operator= (telemetry_ack const & other_a)
 {
+	if (handle != nullptr)
+		rsnano::rsn_message_destroy (handle);
 	handle = rsnano::rsn_message_telemetry_ack_clone (other_a.handle);
 	return *this;
 }
@@ -1439,6 +1445,8 @@ nano::telemetry_data::~telemetry_data ()
 
 nano::telemetry_data & nano::telemetry_data::operator= (nano::telemetry_data const & other_a)
 {
+	if (handle != nullptr)
+		rsnano::rsn_telemetry_data_destroy (handle);
 	handle = rsnano::rsn_telemetry_data_clone (other_a.handle);
 	return *this;
 }

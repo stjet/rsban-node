@@ -33,6 +33,8 @@ nano::bootstrap_server_weak_wrapper::~bootstrap_server_weak_wrapper ()
 
 nano::bootstrap_server_weak_wrapper & nano::bootstrap_server_weak_wrapper::operator= (bootstrap_server_weak_wrapper && other_a) noexcept
 {
+	if (handle)
+		rsnano::rsn_bootstrap_server_destroy_weak (handle);
 	handle = other_a.handle;
 	other_a.handle = nullptr;
 	return *this;

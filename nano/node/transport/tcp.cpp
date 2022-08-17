@@ -931,12 +931,15 @@ std::shared_ptr<nano::socket> nano::tcp_message_item::get_socket () const
 
 nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item const & other_a)
 {
-	rsnano::rsn_tcp_message_item_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_tcp_message_item_destroy (handle);
 	handle = rsnano::rsn_tcp_message_item_clone (other_a.handle);
 	return *this;
 }
 nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item && other_a)
 {
+	if (handle != nullptr)
+		rsnano::rsn_tcp_message_item_destroy (handle);
 	handle = other_a.handle;
 	other_a.handle = nullptr;
 	return *this;

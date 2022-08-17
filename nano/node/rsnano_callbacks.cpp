@@ -968,6 +968,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_mdb_strerror (mdb_strerror);
 	rsnano::rsn_callback_mdb_cursor_open (reinterpret_cast<rsnano::MdbCursorOpenCallback> (mdb_cursor_open));
 	rsnano::rsn_callback_mdb_cursor_get (reinterpret_cast<rsnano::MdbCursorGetCallback> (mdb_cursor_get));
+	rsnano::rsn_callback_mdb_cursor_close (reinterpret_cast<rsnano::MdbCursorCloseCallback> (mdb_cursor_close));
 
 	callbacks_set = true;
 }

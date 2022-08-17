@@ -183,6 +183,7 @@ pub type MdbStrerrorCallback = extern "C" fn(i32) -> *mut c_char;
 pub type MdbCursorOpenCallback = extern "C" fn(*mut MdbTxn, u32, *mut *mut MdbCursor) -> i32;
 pub type MdbCursorGetCallback =
     extern "C" fn(*mut MdbCursor, *mut MdbVal, *mut MdbVal, MdbCursorOp) -> i32;
+pub type MdbCursorCloseCallback = extern "C" fn(*mut MdbCursor);
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -191,6 +192,7 @@ pub static mut MDB_TXN_RENEW: Option<MdbTxnRenewCallback> = None;
 pub static mut MDB_STRERROR: Option<MdbStrerrorCallback> = None;
 pub static mut MDB_CURSOR_OPEN: Option<MdbCursorOpenCallback> = None;
 pub static mut MDB_CURSOR_GET: Option<MdbCursorGetCallback> = None;
+pub static mut MDB_CURSOR_CLOSE: Option<MdbCursorCloseCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -229,6 +231,10 @@ pub unsafe fn mdb_cursor_get(
     op: MdbCursorOp,
 ) -> i32 {
     MDB_CURSOR_GET.expect("MDB_CURSOR_GET missing")(cursor, key, value, op)
+}
+
+pub unsafe fn mdb_cursor_close(cursor: *mut MdbCursor) {
+    MDB_CURSOR_CLOSE.expect("MDB_CURSOR_CLOSE missing")(cursor);
 }
 
 ///	Successful result

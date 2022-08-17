@@ -1,4 +1,4 @@
-use super::{mdb_cursor_open, MdbCursor, MdbTxn, MdbVal};
+use super::{mdb_cursor_close, mdb_cursor_open, MdbCursor, MdbTxn, MdbVal};
 use crate::datastore::lmdb::{mdb_cursor_get, MdbCursorOp, MDB_NOTFOUND, MDB_SUCCESS};
 use std::ptr;
 
@@ -73,5 +73,51 @@ impl LmdbIterator {
 
     pub fn set_cursor(&mut self, cursor: *mut MdbCursor) {
         self.cursor = cursor;
+    }
+
+    pub fn next(&mut self) {
+        debug_assert!(!self.cursor.is_null());
+        let status = unsafe {
+            mdb_cursor_get(
+                self.cursor,
+                &mut self.key,
+                &mut self.value,
+                MdbCursorOp::MdbNext,
+            )
+        };
+        assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
+        if status == MDB_NOTFOUND {
+            self.clear();
+        }
+        if self.key.mv_size != self.expected_value_size {
+            self.clear();
+        }
+    }
+
+    pub fn previous(&mut self) {
+        debug_assert!(!self.cursor.is_null());
+        let status = unsafe {
+            mdb_cursor_get(
+                self.cursor,
+                &mut self.key,
+                &mut self.value,
+                MdbCursorOp::MdbPrev,
+            )
+        };
+        assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
+        if status == MDB_NOTFOUND {
+            self.clear();
+        }
+        if self.key.mv_size != self.expected_value_size {
+            self.clear();
+        }
+    }
+}
+
+impl Drop for LmdbIterator {
+    fn drop(&mut self) {
+        if !self.cursor.is_null() {
+            unsafe { mdb_cursor_close(self.cursor) };
+        }
     }
 }

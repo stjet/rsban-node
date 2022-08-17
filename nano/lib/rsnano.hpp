@@ -573,6 +573,8 @@ struct MdbCursor
 {
 };
 
+using MdbCursorCloseCallback = void (*) (MdbCursor *);
+
 struct MdbVal
 {
 	uintptr_t mv_size;
@@ -1317,6 +1319,8 @@ void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
 void rsn_callback_logger_destroy (VoidPointerCallback f);
 
+void rsn_callback_mdb_cursor_close (MdbCursorCloseCallback f);
+
 void rsn_callback_mdb_cursor_get (MdbCursorGetCallback f);
 
 void rsn_callback_mdb_cursor_open (MdbCursorOpenCallback f);
@@ -1602,6 +1606,8 @@ void rsn_ledger_destroy (LedgerHandle * handle);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 
+void rsn_lmdb_iterator_clear (LmdbIteratorHandle * handle);
+
 LmdbIteratorHandle * rsn_lmdb_iterator_create (MdbTxn * txn,
 uint32_t dbi,
 const MdbVal * val,
@@ -1613,6 +1619,10 @@ void rsn_lmdb_iterator_current (LmdbIteratorHandle * handle, MdbVal * key, MdbVa
 MdbCursor * rsn_lmdb_iterator_cursor (LmdbIteratorHandle * handle);
 
 void rsn_lmdb_iterator_destroy (LmdbIteratorHandle * handle);
+
+void rsn_lmdb_iterator_next (LmdbIteratorHandle * handle);
+
+void rsn_lmdb_iterator_previous (LmdbIteratorHandle * handle);
 
 void rsn_lmdb_iterator_set_current (LmdbIteratorHandle * handle, MdbVal * key, MdbVal * value);
 

@@ -3,10 +3,11 @@ use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::{
     datastore::lmdb::{
-        LmdbReadTransaction, LmdbWriteTransaction, MdbCursorGetCallback, MdbCursorOpenCallback,
-        MdbEnv, MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback, MdbTxnCommitCallback,
-        MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks, MDB_CURSOR_GET, MDB_CURSOR_OPEN,
-        MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
+        LmdbReadTransaction, LmdbWriteTransaction, MdbCursorCloseCallback, MdbCursorGetCallback,
+        MdbCursorOpenCallback, MdbEnv, MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback,
+        MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks,
+        MDB_CURSOR_CLOSE, MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_STRERROR, MDB_TXN_BEGIN,
+        MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
     },
     ffi::VoidPointerCallback,
 };
@@ -196,4 +197,9 @@ pub unsafe extern "C" fn rsn_callback_mdb_cursor_open(f: MdbCursorOpenCallback) 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_cursor_get(f: MdbCursorGetCallback) {
     MDB_CURSOR_GET = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_cursor_close(f: MdbCursorCloseCallback) {
+    MDB_CURSOR_CLOSE = Some(f);
 }

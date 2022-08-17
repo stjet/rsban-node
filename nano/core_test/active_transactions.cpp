@@ -893,6 +893,7 @@ TEST (active_transactions, fork_replacement_tally)
 		node1.process_active (fork);
 	}
 	node1.block_processor.flush ();
+	std::this_thread::sleep_for (50ms);
 	// Check overflow of blocks
 	ASSERT_EQ (max_blocks, election->blocks ().size ());
 	// Check that only max weight blocks remains (and start winner)

@@ -1,6 +1,7 @@
 mod account;
 mod amount;
 mod difficulty;
+mod account_info;
 
 use std::convert::TryInto;
 use std::fmt::{Debug, Write};

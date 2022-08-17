@@ -25,6 +25,12 @@ pub trait StreamExt: Stream {
         Ok(u64::from_be_bytes(buffer))
     }
 
+    fn read_u64_ne(&mut self) -> anyhow::Result<u64> {
+        let mut buffer = [0u8; 8];
+        self.read_bytes(&mut buffer, 8)?;
+        Ok(u64::from_ne_bytes(buffer))
+    }
+
     fn write_u32_be(&mut self, value: u32) -> anyhow::Result<()> {
         self.write_bytes(&value.to_be_bytes())
     }

@@ -877,7 +877,7 @@ MDB_dbi nano::lmdb::store::table_to_dbi (tables table_a) const
 		case tables::frontiers:
 			return frontier_store.frontiers_handle;
 		case tables::accounts:
-			return account_store.accounts_handle;
+			return account_store.get_accounts_handle ();
 		case tables::blocks:
 			return block_store.blocks_handle;
 		case tables::pending:
@@ -930,7 +930,7 @@ bool nano::lmdb::store::copy_db (boost::filesystem::path const & destination_fil
 void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_a)
 {
 	// Tables with uint256_union key
-	std::vector<MDB_dbi> tables = { account_store.accounts_handle, block_store.blocks_handle, pruned_store.pruned_handle, confirmation_height_store.confirmation_height_handle };
+	std::vector<MDB_dbi> tables = { account_store.get_accounts_handle (), block_store.blocks_handle, pruned_store.pruned_handle, confirmation_height_store.confirmation_height_handle };
 	for (auto const & table : tables)
 	{
 		MDB_dbi temp;

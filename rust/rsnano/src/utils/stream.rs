@@ -38,6 +38,10 @@ pub trait StreamExt: Stream {
     fn write_u64_be(&mut self, value: u64) -> anyhow::Result<()> {
         self.write_bytes(&value.to_be_bytes())
     }
+
+    fn write_u64_ne(&mut self, value: u64) -> anyhow::Result<()> {
+        self.write_bytes(&value.to_ne_bytes())
+    }
 }
 
 impl<T: Stream + ?Sized> StreamExt for T {}

@@ -14,6 +14,16 @@ pub struct AccountInfo{
 }
 
 impl AccountInfo{
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()>{
+        self.head.serialize(stream)?;
+        self.representative.serialize(stream)?;
+        self.open_block.serialize(stream)?;
+        self.balance.serialize(stream)?;
+        stream.write_u64_ne(self.modified)?;
+        stream.write_u64_ne(self.block_count)?;
+        stream.write_u8(self.epoch as u8)
+    }
+
     pub fn deserialize(stream: &mut impl Stream) -> Result<AccountInfo>{
         Ok(Self{
             head: BlockHash::deserialize(stream)?,

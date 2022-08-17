@@ -1754,7 +1754,7 @@ namespace lmdb
 
 		// Size of account_info should now equal that set in db
 		nano::mdb_val value;
-		ASSERT_FALSE (mdb_get (store.env ().tx (*transaction), store.account_store.accounts_handle,
+		ASSERT_FALSE (mdb_get (store.env ().tx (*transaction), store.account_store.get_accounts_handle (),
 		nano::mdb_val (nano::dev::genesis->account ()), value));
 		nano::account_info info (value);
 		ASSERT_EQ (value.size (), info.db_size ());
@@ -2745,7 +2745,7 @@ namespace lmdb
 		nano::account_info info;
 		ASSERT_FALSE (store.account.get (transaction, account, info));
 		nano::account_info_v14 account_info_v14 (info.head, rep_block, info.open_block, info.balance, info.modified, info.block_count, confirmation_height, info.epoch ());
-		auto status (mdb_put (store.env ().tx (transaction), info.epoch () == nano::epoch::epoch_0 ? store.account_store.accounts_v0_handle : store.account_store.accounts_v1_handle, nano::mdb_val (account), nano::mdb_val (account_info_v14), 0));
+		auto status (mdb_put (store.env ().tx (transaction), info.epoch () == nano::epoch::epoch_0 ? store.account_store.get_accounts_handle () : store.account_store.accounts_v1_handle, nano::mdb_val (account), nano::mdb_val (account_info_v14), 0));
 		ASSERT_EQ (status, 0);
 	}
 

@@ -194,7 +194,7 @@ pub type MdbCursorOpenCallback = extern "C" fn(*mut MdbTxn, u32, *mut *mut MdbCu
 pub type MdbCursorGetCallback =
     extern "C" fn(*mut MdbCursor, *mut MdbVal, *mut MdbVal, MdbCursorOp) -> i32;
 pub type MdbCursorCloseCallback = extern "C" fn(*mut MdbCursor);
-pub type MdbDbiOpen = extern "C" fn(*mut MdbTxn, *const i8, u32, *mut u32) -> i32;
+pub type MdbDbiOpenCallback = extern "C" fn(*mut MdbTxn, *const i8, u32, *mut u32) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -204,7 +204,7 @@ pub static mut MDB_STRERROR: Option<MdbStrerrorCallback> = None;
 pub static mut MDB_CURSOR_OPEN: Option<MdbCursorOpenCallback> = None;
 pub static mut MDB_CURSOR_GET: Option<MdbCursorGetCallback> = None;
 pub static mut MDB_CURSOR_CLOSE: Option<MdbCursorCloseCallback> = None;
-pub static mut MDB_DBI_OPEN: Option<MdbDbiOpen> = None;
+pub static mut MDB_DBI_OPEN: Option<MdbDbiOpenCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,

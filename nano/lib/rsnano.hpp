@@ -591,7 +591,7 @@ struct MdbTxn
 
 using MdbCursorOpenCallback = int32_t (*) (MdbTxn *, uint32_t, MdbCursor **);
 
-using MdbDbiOpen = int32_t (*) (MdbTxn *, const int8_t *, uint32_t, uint32_t *);
+using MdbDbiOpenCallback = int32_t (*) (MdbTxn *, const int8_t *, uint32_t, uint32_t *);
 
 using MdbStrerrorCallback = char * (*)(int32_t);
 
@@ -1329,7 +1329,7 @@ void rsn_callback_mdb_cursor_get (MdbCursorGetCallback f);
 
 void rsn_callback_mdb_cursor_open (MdbCursorOpenCallback f);
 
-void rsn_callback_mdb_dbi_open (MdbDbiOpen f);
+void rsn_callback_mdb_dbi_open (MdbDbiOpenCallback f);
 
 void rsn_callback_mdb_strerror (MdbStrerrorCallback f);
 

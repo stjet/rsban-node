@@ -1,7 +1,7 @@
 mod account;
+mod account_info;
 mod amount;
 mod difficulty;
-mod account_info;
 
 use std::convert::TryInto;
 use std::fmt::{Debug, Write};
@@ -12,6 +12,7 @@ use crate::utils::Stream;
 use anyhow::Result;
 
 pub use account::*;
+pub use account_info::AccountInfo;
 pub use amount::*;
 use blake2::digest::{Update, VariableOutput};
 pub use difficulty::*;

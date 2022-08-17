@@ -443,7 +443,7 @@ int main (int argc, char * const * argv)
 			std::unordered_set<nano::block_hash> frontier_hashes;
 			for (auto i (node->store.account.begin (*transaction)), n (node->store.account.end ()); i != n; ++i)
 			{
-				frontier_hashes.insert (i->second.head);
+				frontier_hashes.insert (i->second.head ());
 			}
 
 			// Check all unchecked keys for matching frontier hashes. Indicates an issue with process_batch algorithm
@@ -1447,12 +1447,12 @@ int main (int argc, char * const * argv)
 				nano::confirmation_height_info confirmation_height_info;
 				node->store.confirmation_height.get (transaction, account, confirmation_height_info);
 
-				if (confirmation_height_info.height > info.block_count)
+				if (confirmation_height_info.height > info.block_count ())
 				{
-					print_error_message (boost::str (boost::format ("Confirmation height %1% greater than block count %2% for account: %3%\n") % confirmation_height_info.height % info.block_count % account.to_account ()));
+					print_error_message (boost::str (boost::format ("Confirmation height %1% greater than block count %2% for account: %3%\n") % confirmation_height_info.height % info.block_count () % account.to_account ()));
 				}
 
-				auto hash (info.open_block);
+				auto hash (info.open_block ());
 				nano::block_hash calculated_hash (0);
 				auto block (node->store.block.get (transaction, hash)); // Block data
 				uint64_t height (0);
@@ -1481,9 +1481,9 @@ int main (int argc, char * const * argv)
 					}
 					calculated_hash = block->previous ();
 					height = block->sideband ().height () - 1;
-					if (!node->ledger.block_or_pruned_exists (transaction, info.open_block))
+					if (!node->ledger.block_or_pruned_exists (transaction, info.open_block ()))
 					{
-						print_error_message (boost::str (boost::format ("Open block does not exist %1%\n") % info.open_block.to_string ()));
+						print_error_message (boost::str (boost::format ("Open block does not exist %1%\n") % info.open_block ().to_string ()));
 					}
 				}
 				uint64_t previous_timestamp (0);
@@ -1643,19 +1643,19 @@ int main (int argc, char * const * argv)
 					print_error_message (boost::str (boost::format ("Required block in account %1% chain was not found in ledger: %2%\n") % account.to_account () % hash.to_string ()));
 				}
 				// Check account block count
-				if (info.block_count != height)
+				if (info.block_count () != height)
 				{
-					print_error_message (boost::str (boost::format ("Incorrect block count for account %1%. Actual: %2%. Expected: %3%\n") % account.to_account () % height % info.block_count));
+					print_error_message (boost::str (boost::format ("Incorrect block count for account %1%. Actual: %2%. Expected: %3%\n") % account.to_account () % height % info.block_count ()));
 				}
 				// Check account head block (frontier)
-				if (info.head != calculated_hash)
+				if (info.head () != calculated_hash)
 				{
-					print_error_message (boost::str (boost::format ("Incorrect frontier for account %1%. Actual: %2%. Expected: %3%\n") % account.to_account () % calculated_hash.to_string () % info.head.to_string ()));
+					print_error_message (boost::str (boost::format ("Incorrect frontier for account %1%. Actual: %2%. Expected: %3%\n") % account.to_account () % calculated_hash.to_string () % info.head ().to_string ()));
 				}
 				// Check account representative block
-				if (info.representative != calculated_representative)
+				if (info.representative () != calculated_representative)
 				{
-					print_error_message (boost::str (boost::format ("Incorrect representative for account %1%. Actual: %2%. Expected: %3%\n") % account.to_account () % calculated_representative.to_string () % info.representative.to_string ()));
+					print_error_message (boost::str (boost::format ("Incorrect representative for account %1%. Actual: %2%. Expected: %3%\n") % account.to_account () % calculated_representative.to_string () % info.representative ().to_string ()));
 				}
 			};
 
@@ -1841,7 +1841,7 @@ int main (int argc, char * const * argv)
 				{
 					nano::account const & account (i->first);
 					nano::account_info const & info (i->second);
-					auto hash (info.head);
+					auto hash (info.head ());
 					while (!hash.is_zero ())
 					{
 						// Retrieving block data

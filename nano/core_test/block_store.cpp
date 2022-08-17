@@ -387,13 +387,13 @@ TEST (block_store, genesis)
 	store->initialize (*transaction, ledger_cache, nano::dev::constants);
 	nano::account_info info;
 	ASSERT_FALSE (store->account.get (*transaction, nano::dev::genesis->account (), info));
-	ASSERT_EQ (nano::dev::genesis->hash (), info.head);
-	auto block1 (store->block.get (*transaction, info.head));
+	ASSERT_EQ (nano::dev::genesis->hash (), info.head ());
+	auto block1 (store->block.get (*transaction, info.head ()));
 	ASSERT_NE (nullptr, block1);
 	auto receive1 (dynamic_cast<nano::open_block *> (block1.get ()));
 	ASSERT_NE (nullptr, receive1);
-	ASSERT_LE (info.modified, nano::seconds_since_epoch ());
-	ASSERT_EQ (info.block_count, 1);
+	ASSERT_LE (info.modified (), nano::seconds_since_epoch ());
+	ASSERT_EQ (info.block_count (), 1);
 	// Genesis block should be confirmed by default
 	nano::confirmation_height_info confirmation_height_info;
 	ASSERT_FALSE (store->confirmation_height.get (*transaction, nano::dev::genesis->account (), confirmation_height_info));
@@ -719,10 +719,10 @@ TEST (block_store, one_account)
 	ASSERT_NE (end, begin);
 	ASSERT_EQ (account, nano::account (begin->first));
 	nano::account_info info (begin->second);
-	ASSERT_EQ (hash, info.head);
-	ASSERT_EQ (42, info.balance.number ());
-	ASSERT_EQ (100, info.modified);
-	ASSERT_EQ (200, info.block_count);
+	ASSERT_EQ (hash, info.head ());
+	ASSERT_EQ (42, info.balance ().number ());
+	ASSERT_EQ (100, info.modified ());
+	ASSERT_EQ (200, info.block_count ());
 	nano::confirmation_height_info confirmation_height_info;
 	ASSERT_FALSE (store->confirmation_height.get (*transaction, account, confirmation_height_info));
 	ASSERT_EQ (20, confirmation_height_info.height);
@@ -788,10 +788,10 @@ TEST (block_store, two_account)
 	ASSERT_NE (end, begin);
 	ASSERT_EQ (account1, nano::account (begin->first));
 	nano::account_info info1 (begin->second);
-	ASSERT_EQ (hash1, info1.head);
-	ASSERT_EQ (42, info1.balance.number ());
-	ASSERT_EQ (100, info1.modified);
-	ASSERT_EQ (300, info1.block_count);
+	ASSERT_EQ (hash1, info1.head ());
+	ASSERT_EQ (42, info1.balance ().number ());
+	ASSERT_EQ (100, info1.modified ());
+	ASSERT_EQ (300, info1.block_count ());
 	nano::confirmation_height_info confirmation_height_info;
 	ASSERT_FALSE (store->confirmation_height.get (*transaction, account1, confirmation_height_info));
 	ASSERT_EQ (20, confirmation_height_info.height);
@@ -800,10 +800,10 @@ TEST (block_store, two_account)
 	ASSERT_NE (end, begin);
 	ASSERT_EQ (account2, nano::account (begin->first));
 	nano::account_info info2 (begin->second);
-	ASSERT_EQ (hash2, info2.head);
-	ASSERT_EQ (84, info2.balance.number ());
-	ASSERT_EQ (200, info2.modified);
-	ASSERT_EQ (400, info2.block_count);
+	ASSERT_EQ (hash2, info2.head ());
+	ASSERT_EQ (84, info2.balance ().number ());
+	ASSERT_EQ (200, info2.modified ());
+	ASSERT_EQ (400, info2.block_count ());
 	ASSERT_FALSE (store->confirmation_height.get (*transaction, account2, confirmation_height_info));
 	ASSERT_EQ (30, confirmation_height_info.height);
 	ASSERT_EQ (nano::block_hash (20), confirmation_height_info.frontier);
@@ -2744,7 +2744,7 @@ namespace lmdb
 	{
 		nano::account_info info;
 		ASSERT_FALSE (store.account.get (transaction, account, info));
-		nano::account_info_v14 account_info_v14 (info.head, rep_block, info.open_block, info.balance, info.modified, info.block_count, confirmation_height, info.epoch ());
+		nano::account_info_v14 account_info_v14 (info.head (), rep_block, info.open_block (), info.balance (), info.modified (), info.block_count (), confirmation_height, info.epoch ());
 		auto status (mdb_put (store.env ().tx (transaction), info.epoch () == nano::epoch::epoch_0 ? store.account_store.get_accounts_handle () : store.account_store.accounts_v1_handle, nano::mdb_val (account), nano::mdb_val (account_info_v14), 0));
 		ASSERT_EQ (status, 0);
 	}

@@ -389,7 +389,7 @@ void nano::test::system::generate_rollback (nano::node & node_a, std::vector<nan
 	auto error (node_a.store.account.get (*transaction, account, info));
 	if (!error)
 	{
-		auto hash (info.open_block);
+		auto hash (info.open_block ());
 		if (hash != node_a.network_params.ledger.genesis->hash ())
 		{
 			accounts_a[index] = accounts_a[accounts_a.size () - 1];

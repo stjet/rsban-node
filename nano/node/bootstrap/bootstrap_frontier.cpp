@@ -224,7 +224,7 @@ void nano::frontier_req_client::next ()
 		{
 			nano::account_info const & info (i->second);
 			nano::account const & account (i->first);
-			accounts.emplace_back (account, info.head);
+			accounts.emplace_back (account, info.head ());
 		}
 
 		/* If loop breaks before max_size, then accounts_end () is reached. Add empty record */
@@ -346,10 +346,10 @@ void nano::frontier_req_server::next ()
 			for (auto i (node->store.account.begin (*transaction, current.number () + 1)), n (node->store.account.end ()); i != n && accounts.size () != max_size; ++i)
 			{
 				nano::account_info const & info (i->second);
-				if (disable_age_filter || (now - info.modified) <= request->get_age ())
+				if (disable_age_filter || (now - info.modified ()) <= request->get_age ())
 				{
 					nano::account const & account (i->first);
-					accounts.emplace_back (account, info.head);
+					accounts.emplace_back (account, info.head ());
 				}
 			}
 		}

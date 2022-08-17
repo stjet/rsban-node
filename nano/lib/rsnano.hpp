@@ -48,6 +48,8 @@ enum class MdbCursorOp
 	MdbPrevMultiple,
 };
 
+struct AccountInfoHandle;
+
 struct AsyncConnectCallbackHandle;
 
 struct AsyncReadCallbackHandle;
@@ -158,6 +160,17 @@ struct VoteUniquerHandle;
 struct WriteDatabaseQueueHandle;
 
 struct WriteGuardHandle;
+
+struct AccountInfoDto
+{
+	uint8_t head[32];
+	uint8_t representative[32];
+	uint8_t open_block[32];
+	uint8_t balance[16];
+	uint64_t modified;
+	uint64_t block_count;
+	uint8_t epoch;
+};
 
 struct ErrorCodeDto
 {
@@ -946,6 +959,28 @@ extern "C" {
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
 
 void rsn_account_encode (const uint8_t (*bytes)[32], uint8_t (*result)[65]);
+
+AccountInfoHandle * rsn_account_info_clone (AccountInfoHandle * handle);
+
+AccountInfoHandle * rsn_account_info_create (const uint8_t * head,
+const uint8_t * rep,
+const uint8_t * open_block,
+const uint8_t * balance,
+uint64_t modified,
+uint64_t block_count,
+uint8_t epoch);
+
+uintptr_t rsn_account_info_db_size ();
+
+bool rsn_account_info_deserialize (AccountInfoHandle * handle, void * stream);
+
+void rsn_account_info_destroy (AccountInfoHandle * handle);
+
+bool rsn_account_info_equals (AccountInfoHandle * handle, AccountInfoHandle * other);
+
+bool rsn_account_info_serialize (AccountInfoHandle * handle, void * stream);
+
+void rsn_account_info_values (AccountInfoHandle * handle, AccountInfoDto * values);
 
 void rsn_async_connect_callback_destroy (AsyncConnectCallbackHandle * callback);
 

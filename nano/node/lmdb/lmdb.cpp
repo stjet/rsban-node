@@ -486,10 +486,10 @@ void nano::lmdb::store::upgrade_v16_to_v17 (nano::write_transaction const & tran
 		}
 		else
 		{
-			if (account_info_i->second.block_count / 2 >= confirmation_height)
+			if (account_info_i->second.block_count () / 2 >= confirmation_height)
 			{
 				// The confirmation height of the account is closer to the bottom of the chain, so start there and work up
-				auto block = block_get_v18 (transaction_a, account_info.open_block);
+				auto block = block_get_v18 (transaction_a, account_info.open_block ());
 				debug_assert (block);
 				auto height = 1;
 
@@ -506,7 +506,7 @@ void nano::lmdb::store::upgrade_v16_to_v17 (nano::write_transaction const & tran
 			else
 			{
 				// The confirmation height of the account is closer to the top of the chain so start there and work down
-				auto block = block_get_v18 (transaction_a, account_info.head);
+				auto block = block_get_v18 (transaction_a, account_info.head ());
 				auto height = block->sideband ().height ();
 				while (height != confirmation_height)
 				{

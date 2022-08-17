@@ -184,12 +184,12 @@ TEST (wallet, spend_all_one)
 	{
 		auto transaction (node1.store.tx_begin_read ());
 		node1.store.account.get (*transaction, nano::dev::genesis_key.pub, info2);
-		ASSERT_NE (latest1, info2.head);
-		auto block (node1.store.block.get (*transaction, info2.head));
+		ASSERT_NE (latest1, info2.head ());
+		auto block (node1.store.block.get (*transaction, info2.head ()));
 		ASSERT_NE (nullptr, block);
 		ASSERT_EQ (latest1, block->previous ());
 	}
-	ASSERT_TRUE (info2.balance.is_zero ());
+	ASSERT_TRUE (info2.balance ().is_zero ());
 	ASSERT_EQ (0, node1.balance (nano::dev::genesis_key.pub));
 }
 
@@ -221,12 +221,12 @@ TEST (wallet, spend)
 	{
 		auto transaction (node1.store.tx_begin_read ());
 		node1.store.account.get (*transaction, nano::dev::genesis_key.pub, info2);
-		ASSERT_NE (latest1, info2.head);
-		auto block (node1.store.block.get (*transaction, info2.head));
+		ASSERT_NE (latest1, info2.head ());
+		auto block (node1.store.block.get (*transaction, info2.head ()));
 		ASSERT_NE (nullptr, block);
 		ASSERT_EQ (latest1, block->previous ());
 	}
-	ASSERT_TRUE (info2.balance.is_zero ());
+	ASSERT_TRUE (info2.balance ().is_zero ());
 	ASSERT_EQ (0, node1.balance (nano::dev::genesis_key.pub));
 }
 

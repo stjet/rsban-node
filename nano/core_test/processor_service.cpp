@@ -23,11 +23,11 @@ TEST (processor_service, bad_send_signature)
 	nano::block_builder builder;
 	auto send = builder
 				.send ()
-				.previous (info1.head)
+				.previous (info1.head ())
 				.destination (nano::dev::genesis_key.pub)
 				.balance (50)
 				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*pool.generate (info1.head))
+				.work (*pool.generate (info1.head ()))
 				.build ();
 	nano::signature sig{ send->block_signature () };
 	sig.bytes[32] ^= 0x1;
@@ -50,11 +50,11 @@ TEST (processor_service, bad_receive_signature)
 	nano::block_builder builder;
 	auto send = builder
 				.send ()
-				.previous (info1.head)
+				.previous (info1.head ())
 				.destination (nano::dev::genesis_key.pub)
 				.balance (50)
 				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*pool.generate (info1.head))
+				.work (*pool.generate (info1.head ()))
 				.build ();
 	nano::block_hash hash1 (send->hash ());
 	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send).code);

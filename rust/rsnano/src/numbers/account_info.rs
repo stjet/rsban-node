@@ -1,20 +1,27 @@
-use crate::{BlockHash, Account, Amount, Epoch, utils::{Stream, StreamExt}};
+use std::mem::size_of;
+
+use crate::{
+    utils::{Stream, StreamExt},
+    Account, Amount, BlockHash, Epoch,
+};
 use anyhow::Result;
 use num_traits::FromPrimitive;
 
-pub struct AccountInfo{
+/// Latest information about an account
+#[derive(PartialEq, Clone)]
+pub struct AccountInfo {
     pub head: BlockHash,
-	pub representative: Account,
-	pub open_block: BlockHash,
-	pub balance: Amount,
-	/** Seconds since posix epoch */
-	pub modified: u64,
-	pub block_count: u64,
-	pub epoch: Epoch
+    pub representative: Account,
+    pub open_block: BlockHash,
+    pub balance: Amount,
+    /** Seconds since posix epoch */
+    pub modified: u64,
+    pub block_count: u64,
+    pub epoch: Epoch,
 }
 
-impl AccountInfo{
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()>{
+impl AccountInfo {
+    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
         self.head.serialize(stream)?;
         self.representative.serialize(stream)?;
         self.open_block.serialize(stream)?;
@@ -24,15 +31,25 @@ impl AccountInfo{
         stream.write_u8(self.epoch as u8)
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<AccountInfo>{
-        Ok(Self{
+    pub fn deserialize(stream: &mut impl Stream) -> Result<AccountInfo> {
+        Ok(Self {
             head: BlockHash::deserialize(stream)?,
             representative: Account::deserialize(stream)?,
             open_block: BlockHash::deserialize(stream)?,
             balance: Amount::deserialize(stream)?,
             modified: stream.read_u64_ne()?,
             block_count: stream.read_u64_ne()?,
-            epoch: Epoch::from_u8(stream.read_u8()?).ok_or_else(||anyhow!("invalid epoch"))?
+            epoch: Epoch::from_u8(stream.read_u8()?).ok_or_else(|| anyhow!("invalid epoch"))?,
         })
+    }
+
+    pub fn db_size() -> usize {
+        BlockHash::serialized_size()  // head
+        + Account::serialized_size() // representative
+        + BlockHash::serialized_size() // open_block
+        + Amount::serialized_size() // balance
+        + size_of::<u64>() // modified
+        + size_of::<u64>() // block_count
+        + size_of::<Epoch>()
     }
 }

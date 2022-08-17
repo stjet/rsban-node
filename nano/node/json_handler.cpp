@@ -544,7 +544,7 @@ void nano::json_handler::account_block_count ()
 		auto info (account_info_impl (*transaction, account));
 		if (!ec)
 		{
-			response_l.put ("block_count", std::to_string (info.block_count));
+			response_l.put ("block_count", std::to_string (info.block_count ()));
 		}
 	}
 	response_errors ();
@@ -623,10 +623,10 @@ void nano::json_handler::account_info ()
 		node.store.confirmation_height.get (*transaction, account, confirmation_height_info);
 		if (!ec)
 		{
-			response_l.put ("frontier", info.head.to_string ());
-			response_l.put ("open_block", info.open_block.to_string ());
-			response_l.put ("representative_block", node.ledger.representative (*transaction, info.head).to_string ());
-			nano::amount balance_l (info.balance);
+			response_l.put ("frontier", info.head ().to_string ());
+			response_l.put ("open_block", info.open_block ().to_string ());
+			response_l.put ("representative_block", node.ledger.representative (*transaction, info.head ()).to_string ());
+			nano::amount balance_l (info.balance ());
 			std::string balance;
 			balance_l.encode_dec (balance);
 
@@ -635,7 +635,7 @@ void nano::json_handler::account_info ()
 			nano::amount confirmed_balance_l;
 			if (include_confirmed)
 			{
-				if (info.block_count != confirmation_height_info.height)
+				if (info.block_count () != confirmation_height_info.height)
 				{
 					confirmed_balance_l = node.ledger.balance (*transaction, confirmation_height_info.frontier);
 				}
@@ -649,8 +649,8 @@ void nano::json_handler::account_info ()
 				response_l.put ("confirmed_balance", confirmed_balance);
 			}
 
-			response_l.put ("modified_timestamp", std::to_string (info.modified));
-			response_l.put ("block_count", std::to_string (info.block_count));
+			response_l.put ("modified_timestamp", std::to_string (info.modified ()));
+			response_l.put ("block_count", std::to_string (info.block_count ()));
 			response_l.put ("account_version", epoch_as_string (info.epoch ()));
 			auto confirmed_frontier = confirmation_height_info.frontier.to_string ();
 			if (include_confirmed)
@@ -673,7 +673,7 @@ void nano::json_handler::account_info ()
 
 			if (representative)
 			{
-				response_l.put ("representative", info.representative.to_account ());
+				response_l.put ("representative", info.representative ().to_account ());
 				if (include_confirmed)
 				{
 					nano::account confirmed_representative{};
@@ -808,7 +808,7 @@ void nano::json_handler::account_representative ()
 		auto info (account_info_impl (*transaction, account));
 		if (!ec)
 		{
-			response_l.put ("representative", info.representative.to_account ());
+			response_l.put ("representative", info.representative ().to_account ());
 		}
 	}
 	response_errors ();
@@ -836,7 +836,7 @@ void nano::json_handler::account_representative_set ()
 					if (!rpc_l->ec)
 					{
 						nano::block_details details (info.epoch (), false, false, false);
-						if (rpc_l->node.network_params.work.difficulty (nano::work_version::work_1, info.head, work) < rpc_l->node.network_params.work.threshold (nano::work_version::work_1, details))
+						if (rpc_l->node.network_params.work.difficulty (nano::work_version::work_1, info.head (), work) < rpc_l->node.network_params.work.threshold (nano::work_version::work_1, details))
 						{
 							rpc_l->ec = nano::error_common::invalid_work;
 						}
@@ -936,7 +936,7 @@ void nano::json_handler::accounts_representatives ()
 			auto info = account_info_impl (*transaction, account);
 			if (!ec)
 			{
-				representatives.put (account_from_request.second.data (), info.representative.to_account ());
+				representatives.put (account_from_request.second.data (), info.representative ().to_account ());
 				continue;
 			}
 		}
@@ -2201,12 +2201,12 @@ void nano::json_handler::delegators ()
 		for (auto i (node.store.account.begin (*transaction, start_account.number () + 1)), n (node.store.account.end ()); i != n && delegators.size () < count; ++i)
 		{
 			nano::account_info const & info (i->second);
-			if (info.representative == representative)
+			if (info.representative () == representative)
 			{
-				if (info.balance.number () >= threshold.number ())
+				if (info.balance ().number () >= threshold.number ())
 				{
 					std::string balance;
-					nano::uint128_union (info.balance).encode_dec (balance);
+					nano::uint128_union (info.balance ()).encode_dec (balance);
 					nano::account const & delegator (i->first);
 					delegators.put (delegator.to_account (), balance);
 				}
@@ -2227,7 +2227,7 @@ void nano::json_handler::delegators_count ()
 		for (auto i (node.store.account.begin (*transaction)), n (node.store.account.end ()); i != n; ++i)
 		{
 			nano::account_info const & info (i->second);
-			if (info.representative == account)
+			if (info.representative () == account)
 			{
 				++count;
 			}
@@ -2337,7 +2337,7 @@ void nano::json_handler::frontiers ()
 		auto transaction (node.store.tx_begin_read ());
 		for (auto i (node.store.account.begin (*transaction, start)), n (node.store.account.end ()); i != n && frontiers.size () < count; ++i)
 		{
-			frontiers.put (i->first.to_account (), i->second.head.to_string ());
+			frontiers.put (i->first.to_account (), i->second.head ().to_string ());
 		}
 		response_l.add_child ("frontiers", frontiers);
 	}
@@ -2609,7 +2609,7 @@ void nano::json_handler::account_history ()
 				auto info (account_info_impl (*transaction, account));
 				if (!ec)
 				{
-					hash = info.open_block;
+					hash = info.open_block ();
 				}
 			}
 			else
@@ -2742,31 +2742,31 @@ void nano::json_handler::ledger ()
 			for (auto i (node.store.account.begin (*transaction, start)), n (node.store.account.end ()); i != n && accounts.size () < count; ++i)
 			{
 				nano::account_info const & info (i->second);
-				if (info.modified >= modified_since && (receivable || info.balance.number () >= threshold.number ()))
+				if (info.modified () >= modified_since && (receivable || info.balance ().number () >= threshold.number ()))
 				{
 					nano::account const & account (i->first);
 					boost::property_tree::ptree response_a;
 					if (receivable)
 					{
 						auto account_receivable = node.ledger.account_receivable (*transaction, account);
-						if (info.balance.number () + account_receivable < threshold.number ())
+						if (info.balance ().number () + account_receivable < threshold.number ())
 						{
 							continue;
 						}
 						response_a.put ("pending", account_receivable.convert_to<std::string> ());
 						response_a.put ("receivable", account_receivable.convert_to<std::string> ());
 					}
-					response_a.put ("frontier", info.head.to_string ());
-					response_a.put ("open_block", info.open_block.to_string ());
-					response_a.put ("representative_block", node.ledger.representative (*transaction, info.head).to_string ());
+					response_a.put ("frontier", info.head ().to_string ());
+					response_a.put ("open_block", info.open_block ().to_string ());
+					response_a.put ("representative_block", node.ledger.representative (*transaction, info.head ()).to_string ());
 					std::string balance;
-					nano::uint128_union (info.balance).encode_dec (balance);
+					nano::uint128_union (info.balance ()).encode_dec (balance);
 					response_a.put ("balance", balance);
-					response_a.put ("modified_timestamp", std::to_string (info.modified));
-					response_a.put ("block_count", std::to_string (info.block_count));
+					response_a.put ("modified_timestamp", std::to_string (info.modified ()));
+					response_a.put ("block_count", std::to_string (info.block_count ()));
 					if (representative)
 					{
-						response_a.put ("representative", info.representative.to_account ());
+						response_a.put ("representative", info.representative ().to_account ());
 					}
 					if (weight)
 					{
@@ -2783,8 +2783,8 @@ void nano::json_handler::ledger ()
 			for (auto i (node.store.account.begin (*transaction, start)), n (node.store.account.end ()); i != n; ++i)
 			{
 				nano::account_info const & info (i->second);
-				nano::uint128_union balance (info.balance);
-				if (info.modified >= modified_since)
+				nano::uint128_union balance (info.balance ());
+				if (info.modified () >= modified_since)
 				{
 					ledger_l.emplace_back (balance, i->first);
 				}
@@ -2795,31 +2795,31 @@ void nano::json_handler::ledger ()
 			for (auto i (ledger_l.begin ()), n (ledger_l.end ()); i != n && accounts.size () < count; ++i)
 			{
 				node.store.account.get (*transaction, i->second, info);
-				if (receivable || info.balance.number () >= threshold.number ())
+				if (receivable || info.balance ().number () >= threshold.number ())
 				{
 					nano::account const & account (i->second);
 					boost::property_tree::ptree response_a;
 					if (receivable)
 					{
 						auto account_receivable = node.ledger.account_receivable (*transaction, account);
-						if (info.balance.number () + account_receivable < threshold.number ())
+						if (info.balance ().number () + account_receivable < threshold.number ())
 						{
 							continue;
 						}
 						response_a.put ("pending", account_receivable.convert_to<std::string> ());
 						response_a.put ("receivable", account_receivable.convert_to<std::string> ());
 					}
-					response_a.put ("frontier", info.head.to_string ());
-					response_a.put ("open_block", info.open_block.to_string ());
-					response_a.put ("representative_block", node.ledger.representative (*transaction, info.head).to_string ());
+					response_a.put ("frontier", info.head ().to_string ());
+					response_a.put ("open_block", info.open_block ().to_string ());
+					response_a.put ("representative_block", node.ledger.representative (*transaction, info.head ()).to_string ());
 					std::string balance;
 					(i->first).encode_dec (balance);
 					response_a.put ("balance", balance);
-					response_a.put ("modified_timestamp", std::to_string (info.modified));
-					response_a.put ("block_count", std::to_string (info.block_count));
+					response_a.put ("modified_timestamp", std::to_string (info.modified ()));
+					response_a.put ("block_count", std::to_string (info.block_count ()));
 					if (representative)
 					{
-						response_a.put ("representative", info.representative.to_account ());
+						response_a.put ("representative", info.representative ().to_account ());
 					}
 					if (weight)
 					{
@@ -3393,7 +3393,7 @@ void nano::json_handler::receive ()
 						nano::epoch epoch = pending_info.epoch;
 						if (!node.store.account.get (*block_transaction, account, info))
 						{
-							head = info.head;
+							head = info.head ();
 							// When receiving, epoch version is the higher between the previous and the source blocks
 							epoch = std::max (info.epoch (), epoch);
 						}
@@ -3754,12 +3754,12 @@ void nano::json_handler::send ()
 			auto info (account_info_impl (*block_transaction, source));
 			if (!ec)
 			{
-				balance = (info.balance).number ();
+				balance = (info.balance ()).number ();
 			}
 			if (!ec && work)
 			{
 				nano::block_details details (info.epoch (), true, false, false);
-				if (node.network_params.work.difficulty (nano::work_version::work_1, info.head, work) < node.network_params.work.threshold (nano::work_version::work_1, details))
+				if (node.network_params.work.difficulty (nano::work_version::work_1, info.head (), work) < node.network_params.work.threshold (nano::work_version::work_1, details))
 				{
 					ec = nano::error_common::invalid_work;
 				}
@@ -4414,7 +4414,7 @@ void nano::json_handler::wallet_info ()
 			nano::account_info account_info{};
 			if (!node.store.account.get (*block_transaction, account, account_info))
 			{
-				block_count += account_info.block_count;
+				block_count += account_info.block_count ();
 			}
 
 			nano::confirmation_height_info confirmation_info{};
@@ -4423,7 +4423,7 @@ void nano::json_handler::wallet_info ()
 				cemented_block_count += confirmation_info.height;
 			}
 
-			balance += account_info.balance.number ();
+			balance += account_info.balance ().number ();
 			receivable += node.ledger.account_receivable (*block_transaction, account);
 
 			nano::key_type key_type (wallet->store.key_type (i->second));
@@ -4651,8 +4651,8 @@ void nano::json_handler::wallet_history ()
 			nano::account_info info;
 			if (!node.store.account.get (*block_transaction, account, info))
 			{
-				auto timestamp (info.modified);
-				auto hash (info.head);
+				auto timestamp (info.modified ());
+				auto hash (info.head ());
 				while (timestamp >= modified_since && !hash.is_zero ())
 				{
 					auto block (node.store.block.get (*block_transaction, hash));
@@ -4725,20 +4725,20 @@ void nano::json_handler::wallet_ledger ()
 			nano::account_info info;
 			if (!node.store.account.get (*block_transaction, account, info))
 			{
-				if (info.modified >= modified_since)
+				if (info.modified () >= modified_since)
 				{
 					boost::property_tree::ptree entry;
-					entry.put ("frontier", info.head.to_string ());
-					entry.put ("open_block", info.open_block.to_string ());
-					entry.put ("representative_block", node.ledger.representative (*block_transaction, info.head).to_string ());
+					entry.put ("frontier", info.head ().to_string ());
+					entry.put ("open_block", info.open_block ().to_string ());
+					entry.put ("representative_block", node.ledger.representative (*block_transaction, info.head ()).to_string ());
 					std::string balance;
-					nano::uint128_union (info.balance).encode_dec (balance);
+					nano::uint128_union (info.balance ()).encode_dec (balance);
 					entry.put ("balance", balance);
-					entry.put ("modified_timestamp", std::to_string (info.modified));
-					entry.put ("block_count", std::to_string (info.block_count));
+					entry.put ("modified_timestamp", std::to_string (info.modified ()));
+					entry.put ("block_count", std::to_string (info.block_count ()));
 					if (representative)
 					{
-						entry.put ("representative", info.representative.to_account ());
+						entry.put ("representative", info.representative ().to_account ());
 					}
 					if (weight)
 					{
@@ -4891,7 +4891,7 @@ void nano::json_handler::wallet_representative_set ()
 						nano::account_info info;
 						if (!rpc_l->node.store.account.get (*block_transaction, account, info))
 						{
-							if (info.representative != representative)
+							if (info.representative () != representative)
 							{
 								accounts.push_back (account);
 							}

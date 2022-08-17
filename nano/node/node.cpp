@@ -811,7 +811,7 @@ nano::block_hash nano::node::rep_block (nano::account const & account_a)
 	nano::block_hash result (0);
 	if (!store.account.get (*transaction, account_a, info))
 	{
-		result = ledger.representative (*transaction, info.head);
+		result = ledger.representative (*transaction, info.head ());
 	}
 	return result;
 }
@@ -1571,7 +1571,7 @@ void nano::node::epoch_upgrader_impl (nano::raw_key const & prv_a, nano::epoch e
 					if (info.epoch () < epoch_a)
 					{
 						release_assert (nano::epochs::is_sequential (info.epoch (), epoch_a));
-						accounts_list.emplace (account_upgrade_item{ account, info.modified });
+						accounts_list.emplace (account_upgrade_item{ account, info.modified () });
 					}
 				}
 			}
@@ -1590,12 +1590,12 @@ void nano::node::epoch_upgrader_impl (nano::raw_key const & prv_a, nano::epoch e
 				{
 					++attempts;
 					auto difficulty (network_params.work.threshold (nano::work_version::work_1, nano::block_details (epoch_a, false, false, true)));
-					nano::root const & root (info.head);
+					nano::root const & root (info.head ());
 					std::shared_ptr<nano::block> epoch = builder.state ()
 														 .account (account)
-														 .previous (info.head)
-														 .representative (info.representative)
-														 .balance (info.balance)
+														 .previous (info.head ())
+														 .representative (info.representative ())
+														 .balance (info.balance ())
 														 .link (link)
 														 .sign (raw_key, signer)
 														 .work (0)

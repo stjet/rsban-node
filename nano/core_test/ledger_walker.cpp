@@ -66,8 +66,8 @@ TEST (ledger_walker, genesis_account_longer)
 	auto const transaction = node->ledger.store.tx_begin_read ();
 	nano::account_info genesis_account_info{};
 	ASSERT_FALSE (node->ledger.store.account.get (*transaction, nano::dev::genesis_key.pub, genesis_account_info));
-	EXPECT_EQ (get_number_of_walked_blocks (genesis_account_info.open_block), 1);
-	EXPECT_EQ (get_number_of_walked_blocks (genesis_account_info.head), 1);
+	EXPECT_EQ (get_number_of_walked_blocks (genesis_account_info.open_block ()), 1);
+	EXPECT_EQ (get_number_of_walked_blocks (genesis_account_info.head ()), 1);
 
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	for (auto itr = 1; itr <= 5; ++itr)
@@ -190,7 +190,7 @@ TEST (ledger_walker, DISABLED_ladder_geometry)
 	auto amounts_expected_backwards_itr = amounts_expected_backwards.cbegin ();
 
 	nano::ledger_walker ledger_walker{ node->ledger };
-	ledger_walker.walk_backward (last_destination_info.head,
+	ledger_walker.walk_backward (last_destination_info.head (),
 	[&] (auto const & block) {
 		if (block->sideband ().details ().is_receive ())
 		{
@@ -210,7 +210,7 @@ TEST (ledger_walker, DISABLED_ladder_geometry)
 
 	auto amounts_expected_itr = amounts_expected_backwards.crbegin ();
 
-	ledger_walker.walk (last_destination_info.head,
+	ledger_walker.walk (last_destination_info.head (),
 	[&] (auto const & block) {
 		if (block->sideband ().details ().is_receive ())
 		{

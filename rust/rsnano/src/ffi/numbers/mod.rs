@@ -1,3 +1,5 @@
+mod account_info;
+
 use std::{ffi::CStr, os::raw::c_char};
 
 use crate::numbers::{

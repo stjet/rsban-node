@@ -70,19 +70,19 @@ TEST (system, DISABLED_generate_send_existing)
 		auto transaction (node1.store.tx_begin_read ());
 		ASSERT_FALSE (node1.store.account.get (*transaction, nano::dev::genesis_key.pub, info2));
 	}
-	ASSERT_NE (info1.head, info2.head);
+	ASSERT_NE (info1.head (), info2.head ());
 	system.deadline_set (15s);
-	while (info2.block_count < info1.block_count + 2)
+	while (info2.block_count () < info1.block_count () + 2)
 	{
 		ASSERT_NO_ERROR (system.poll ());
 		auto transaction (node1.store.tx_begin_read ());
 		ASSERT_FALSE (node1.store.account.get (*transaction, nano::dev::genesis_key.pub, info2));
 	}
-	ASSERT_EQ (info1.block_count + 2, info2.block_count);
-	ASSERT_EQ (info2.balance, nano::dev::constants.genesis_amount / 3);
+	ASSERT_EQ (info1.block_count () + 2, info2.block_count ());
+	ASSERT_EQ (info2.balance (), nano::dev::constants.genesis_amount / 3);
 	{
 		auto transaction (node1.store.tx_begin_read ());
-		ASSERT_NE (node1.ledger.amount (*transaction, info2.head), 0);
+		ASSERT_NE (node1.ledger.amount (*transaction, info2.head ()), 0);
 	}
 	system.stop ();
 	runner.join ();

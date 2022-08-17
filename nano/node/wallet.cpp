@@ -853,7 +853,7 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 					auto new_account (wallets.node.ledger.store.account.get (*block_transaction, account_a, info));
 					if (!new_account)
 					{
-						block = std::make_shared<nano::state_block> (account_a, info.head, info.representative, info.balance.number () + pending_info.amount.number (), send_hash_a, prv, account_a, work_a);
+						block = std::make_shared<nano::state_block> (account_a, info.head (), info.representative (), info.balance ().number () + pending_info.amount.number (), send_hash_a, prv, account_a, work_a);
 						epoch = std::max (info.epoch (), pending_info.epoch);
 					}
 					else
@@ -918,7 +918,7 @@ std::shared_ptr<nano::block> nano::wallet::change_action (nano::account const & 
 				{
 					store.work_get (*transaction, source_a, work_a);
 				}
-				block = std::make_shared<nano::state_block> (source_a, info.head, representative_a, info.balance, 0, prv, source_a, work_a);
+				block = std::make_shared<nano::state_block> (source_a, info.head (), representative_a, info.balance (), 0, prv, source_a, work_a);
 				epoch = info.epoch ();
 			}
 		}
@@ -990,7 +990,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 						{
 							store.work_get (*transaction, source_a, work_a);
 						}
-						block = std::make_shared<nano::state_block> (source_a, info.head, info.representative, balance - amount_a, account_a, prv, source_a, work_a);
+						block = std::make_shared<nano::state_block> (source_a, info.head (), info.representative (), balance - amount_a, account_a, prv, source_a, work_a);
 						details = nano::block_details (info.epoch (), details.is_send (), details.is_receive (), details.is_epoch ());
 						if (id_mdb_val && block != nullptr)
 						{

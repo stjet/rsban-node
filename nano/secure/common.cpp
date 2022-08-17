@@ -344,42 +344,56 @@ void nano::serialize_block (nano::stream & stream_a, nano::block const & block_a
 	write (stream_a, block_a.type ());
 	block_a.serialize (stream_a);
 }
+nano::account_info::account_info () :
+	account_info (0, 0, 0, 0, 0, 0, nano::epoch::epoch_0)
+{
+}
 
 nano::account_info::account_info (nano::block_hash const & head_a, nano::account const & representative_a, nano::block_hash const & open_block_a, nano::amount const & balance_a, uint64_t modified_a, uint64_t block_count_a, nano::epoch epoch_a) :
-	head (head_a),
-	representative (representative_a),
-	open_block (open_block_a),
-	balance (balance_a),
-	modified (modified_a),
-	block_count (block_count_a),
-	epoch_m (epoch_a)
+	handle{ rsnano::rsn_account_info_create (head_a.bytes.data (), representative_a.bytes.data (), open_block_a.bytes.data (), balance_a.bytes.data (), modified_a, block_count_a, static_cast<uint8_t> (epoch_a)) }
 {
+}
+
+nano::account_info::account_info (nano::account_info const & other_a) :
+	handle{ rsnano::rsn_account_info_clone (other_a.handle) }
+{
+}
+
+nano::account_info::account_info (nano::account_info && other_a) :
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+}
+
+nano::account_info::~account_info ()
+{
+	if (handle)
+		rsnano::rsn_account_info_destroy (handle);
+}
+
+nano::account_info & nano::account_info::operator= (nano::account_info const & other_a)
+{
+	if (handle)
+		rsnano::rsn_account_info_destroy (handle);
+	handle = rsnano::rsn_account_info_clone (other_a.handle);
+	return *this;
+}
+
+bool nano::account_info::serialize (nano::stream & stream_a) const
+{
+	bool success = rsnano::rsn_account_info_serialize (handle, &stream_a);
+	return !success;
 }
 
 bool nano::account_info::deserialize (nano::stream & stream_a)
 {
-	auto error (false);
-	try
-	{
-		nano::read (stream_a, head.bytes);
-		nano::read (stream_a, representative.bytes);
-		nano::read (stream_a, open_block.bytes);
-		nano::read (stream_a, balance.bytes);
-		nano::read (stream_a, modified);
-		nano::read (stream_a, block_count);
-		nano::read (stream_a, epoch_m);
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-
-	return error;
+	bool success = rsnano::rsn_account_info_deserialize (handle, &stream_a);
+	return !success;
 }
 
 bool nano::account_info::operator== (nano::account_info const & other_a) const
 {
-	return head == other_a.head && representative == other_a.representative && open_block == other_a.open_block && balance == other_a.balance && modified == other_a.modified && block_count == other_a.block_count && epoch () == other_a.epoch ();
+	return rsnano::rsn_account_info_equals (handle, other_a.handle);
 }
 
 bool nano::account_info::operator!= (nano::account_info const & other_a) const
@@ -389,19 +403,60 @@ bool nano::account_info::operator!= (nano::account_info const & other_a) const
 
 size_t nano::account_info::db_size () const
 {
-	debug_assert (reinterpret_cast<uint8_t const *> (this) == reinterpret_cast<uint8_t const *> (&head));
-	debug_assert (reinterpret_cast<uint8_t const *> (&head) + sizeof (head) == reinterpret_cast<uint8_t const *> (&representative));
-	debug_assert (reinterpret_cast<uint8_t const *> (&representative) + sizeof (representative) == reinterpret_cast<uint8_t const *> (&open_block));
-	debug_assert (reinterpret_cast<uint8_t const *> (&open_block) + sizeof (open_block) == reinterpret_cast<uint8_t const *> (&balance));
-	debug_assert (reinterpret_cast<uint8_t const *> (&balance) + sizeof (balance) == reinterpret_cast<uint8_t const *> (&modified));
-	debug_assert (reinterpret_cast<uint8_t const *> (&modified) + sizeof (modified) == reinterpret_cast<uint8_t const *> (&block_count));
-	debug_assert (reinterpret_cast<uint8_t const *> (&block_count) + sizeof (block_count) == reinterpret_cast<uint8_t const *> (&epoch_m));
-	return sizeof (head) + sizeof (representative) + sizeof (open_block) + sizeof (balance) + sizeof (modified) + sizeof (block_count) + sizeof (epoch_m);
+	return rsnano::rsn_account_info_db_size ();
 }
 
 nano::epoch nano::account_info::epoch () const
 {
-	return epoch_m;
+	rsnano::AccountInfoDto dto;
+	rsnano::rsn_account_info_values (handle, &dto);
+	return static_cast<nano::epoch> (dto.epoch);
+}
+nano::block_hash nano::account_info::head () const
+{
+	rsnano::AccountInfoDto dto;
+	rsnano::rsn_account_info_values (handle, &dto);
+	nano::block_hash head;
+	std::copy (std::begin (dto.head), std::end (dto.head), std::begin (head.bytes));
+	return head;
+}
+
+nano::account nano::account_info::representative () const
+{
+	rsnano::AccountInfoDto dto;
+	rsnano::rsn_account_info_values (handle, &dto);
+	nano::account representative;
+	std::copy (std::begin (dto.representative), std::end (dto.representative), std::begin (representative.bytes));
+	return representative;
+}
+
+nano::block_hash nano::account_info::open_block () const
+{
+	rsnano::AccountInfoDto dto;
+	rsnano::rsn_account_info_values (handle, &dto);
+	nano::block_hash open_block;
+	std::copy (std::begin (dto.open_block), std::end (dto.open_block), std::begin (open_block.bytes));
+	return open_block;
+}
+nano::amount nano::account_info::balance () const
+{
+	rsnano::AccountInfoDto dto;
+	rsnano::rsn_account_info_values (handle, &dto);
+	nano::amount balance;
+	std::copy (std::begin (dto.balance), std::end (dto.balance), std::begin (balance.bytes));
+	return balance;
+}
+uint64_t nano::account_info::modified () const
+{
+	rsnano::AccountInfoDto dto;
+	rsnano::rsn_account_info_values (handle, &dto);
+	return dto.modified;
+}
+uint64_t nano::account_info::block_count () const
+{
+	rsnano::AccountInfoDto dto;
+	rsnano::rsn_account_info_values (handle, &dto);
+	return dto.block_count;
 }
 
 nano::pending_info::pending_info (nano::account const & source_a, nano::amount const & amount_a, nano::epoch epoch_a) :

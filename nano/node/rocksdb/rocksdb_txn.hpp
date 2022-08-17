@@ -20,7 +20,11 @@ public:
 	void renew () override;
 	void refresh () override;
 	void * get_handle () const override;
-	rsnano::TransactionHandle * get_rust_handle () const override { throw std::runtime_error("not yet ported to Rust");};
+	rsnano::TransactionHandle * get_rust_handle () const override
+	{
+		throw std::runtime_error ("not yet ported to Rust");
+	};
+
 private:
 	::rocksdb::DB * db;
 	::rocksdb::ReadOptions options;
@@ -36,7 +40,10 @@ public:
 	void refresh () override;
 	void * get_handle () const override;
 	bool contains (nano::tables table_a) const override;
-	rsnano::TransactionHandle * get_rust_handle () const override { throw std::runtime_error("not yet ported to Rust");};
+	rsnano::TransactionHandle * get_rust_handle () const override
+	{
+		throw std::runtime_error ("not yet ported to Rust");
+	};
 
 private:
 	::rocksdb::Transaction * txn;

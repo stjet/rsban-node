@@ -59,8 +59,8 @@ pub unsafe extern "C" fn rsn_signature_checker_stop(handle: *mut SignatureChecke
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_signature_checker_flush(handle: &SignatureCheckerHandle) {
-    handle.0.flush();
+pub unsafe extern "C" fn rsn_signature_checker_flush(handle: &SignatureCheckerHandle) -> bool {
+    handle.0.flush().is_ok()
 }
 
 unsafe fn into_check_set(ffi_check_set: &SignatureCheckSetDto) -> SignatureCheckSet {

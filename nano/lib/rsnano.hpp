@@ -2195,7 +2195,7 @@ SignatureCheckerHandle * rsn_signature_checker_create (uintptr_t num_threads);
 
 void rsn_signature_checker_destroy (SignatureCheckerHandle * handle);
 
-void rsn_signature_checker_flush (const SignatureCheckerHandle * handle);
+bool rsn_signature_checker_flush (const SignatureCheckerHandle * handle);
 
 void rsn_signature_checker_stop (SignatureCheckerHandle * handle);
 

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use scoped_threadpool::Pool;
 
 use crate::{validate_message_batch, PublicKey, Signature};
@@ -7,6 +8,7 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Mutex,
     },
+    time::{Duration, Instant},
 };
 pub struct SignatureCheckSet {
     pub messages: Vec<Vec<u8>>,
@@ -82,11 +84,19 @@ impl SignatureChecker {
         Self::BATCH_SIZE * (self.thread_pool_threads + 1)
     }
 
-    pub fn flush(&self) {
+    pub fn flush(&self) -> Result<()> {
+        let instant = Instant::now();
         while !self.stopped.load(Ordering::SeqCst)
             && self.tasks_remaining.load(Ordering::SeqCst) != 0
+            && instant.elapsed() < Duration::from_secs(20)
         {
             spin_loop();
+        }
+
+        if instant.elapsed() >= Duration::from_secs(20) {
+            Err(anyhow!("timeout in flush"))
+        } else {
+            Ok(())
         }
     }
 

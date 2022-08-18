@@ -117,5 +117,5 @@ pub unsafe extern "C" fn rsn_account_info_equals(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_account_info_db_size() -> usize {
-    AccountInfo::db_size()
+    AccountInfo::serialized_size()
 }

@@ -1,13 +1,13 @@
 use crate::{
-    datastore::{lmdb::MDB_NOTFOUND, AccountStore, Transaction, WriteTransaction},
-    utils::{Deserialize, MemoryStream, Serialize, StreamAdapter},
+    datastore::{lmdb::MDB_NOTFOUND, AccountStore, DbIterator, Transaction, WriteTransaction},
+    utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
 };
 use anyhow::Result;
 
 use super::{
-    assert_success, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbRawIterator, LmdbReadTransaction,
-    LmdbWriteTransaction, MdbTxn, MdbVal, OwnedMdbVal, MDB_SUCCESS,
+    assert_success, get_raw_lmdb_txn, iterator::LmdbIterator, mdb_dbi_open, mdb_del, mdb_get,
+    mdb_put, MdbVal, OwnedMdbVal, MDB_SUCCESS,
 };
 
 pub struct LmdbAccountStore {
@@ -29,8 +29,16 @@ impl LmdbAccountStore {
         }
         Ok(())
     }
+}
 
-    pub fn put(&self, transaction: &dyn WriteTransaction, account: &Account, info: &AccountInfo) {
+impl Default for LmdbAccountStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AccountStore for LmdbAccountStore {
+    fn put(&self, transaction: &dyn WriteTransaction, account: &Account, info: &AccountInfo) {
         let mut account_val = OwnedMdbVal::from(account);
         let mut info_val = OwnedMdbVal::from(info);
 
@@ -46,7 +54,7 @@ impl LmdbAccountStore {
         assert_success(status);
     }
 
-    pub fn get(&self, transaction: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
+    fn get(&self, transaction: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
         let mut account_val = OwnedMdbVal::from(account);
         let mut value = MdbVal::new();
         let status1 = unsafe {
@@ -68,7 +76,7 @@ impl LmdbAccountStore {
         }
     }
 
-    pub fn del(&self, transaction: &dyn WriteTransaction, account: &Account) {
+    fn del(&self, transaction: &dyn WriteTransaction, account: &Account) {
         let mut key_val = OwnedMdbVal::from(account);
         let status = unsafe {
             mdb_del(
@@ -81,44 +89,16 @@ impl LmdbAccountStore {
         assert_success(status);
     }
 
-    pub fn begin(&self, transaction: &dyn Transaction, account: &Account) -> LmdbRawIterator {
-        let mut account_val = OwnedMdbVal::from(account);
-        LmdbRawIterator::new(
-            get_raw_lmdb_txn(transaction),
+    fn begin(
+        &self,
+        transaction: &dyn Transaction,
+        account: &Account,
+    ) -> Box<dyn DbIterator<Account, AccountInfo>> {
+        Box::new(LmdbIterator::new(
+            transaction,
             self.accounts_handle,
-            account_val.as_mdb_val(),
+            Some(account),
             true,
-            Account::serialized_size(),
-        )
-    }
-}
-
-impl Default for LmdbAccountStore {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl AccountStore for LmdbAccountStore {}
-
-fn get_raw_lmdb_txn(txn: &dyn Transaction) -> *mut MdbTxn {
-    let any = txn.as_any();
-    if let Some(t) = any.downcast_ref::<LmdbReadTransaction>() {
-        t.handle
-    } else if let Some(t) = any.downcast_ref::<LmdbWriteTransaction>() {
-        t.handle
-    } else {
-        panic!("not an LMDB transaction");
-    }
-}
-
-impl<T> From<&T> for OwnedMdbVal
-where
-    T: Serialize,
-{
-    fn from(value: &T) -> Self {
-        let mut stream = MemoryStream::new();
-        value.serialize(&mut stream).unwrap();
-        OwnedMdbVal::new(stream.to_vec())
+        ))
     }
 }

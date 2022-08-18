@@ -123,7 +123,7 @@ impl StateBlock {
         Ok(())
     }
 
-    pub const fn serialized_size() -> usize {
+    pub fn serialized_size() -> usize {
         Account::serialized_size() // Account
             + BlockHash::serialized_size() // Previous
             + Account::serialized_size() // Representative

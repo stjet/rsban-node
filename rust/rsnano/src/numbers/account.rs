@@ -34,10 +34,6 @@ impl Account {
         }
     }
 
-    pub const fn serialized_size() -> usize {
-        PublicKey::serialized_size()
-    }
-
     pub fn to_bytes(self) -> [u8; 32] {
         self.public_key.to_be_bytes()
     }
@@ -99,6 +95,10 @@ impl Serialize for Account {
 impl Deserialize<Account> for Account {
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Account> {
         PublicKey::deserialize(stream).map(Self::from)
+    }
+
+    fn serialized_size() -> usize {
+        PublicKey::serialized_size()
     }
 }
 

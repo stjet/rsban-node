@@ -14,7 +14,7 @@ pub struct OpenHashables {
 }
 
 impl OpenHashables {
-    const fn serialized_size() -> usize {
+    fn serialized_size() -> usize {
         BlockHash::serialized_size() + Account::serialized_size() + Account::serialized_size()
     }
 }
@@ -65,7 +65,7 @@ impl OpenBlock {
         })
     }
 
-    pub const fn serialized_size() -> usize {
+    pub fn serialized_size() -> usize {
         OpenHashables::serialized_size() + Signature::serialized_size() + std::mem::size_of::<u64>()
     }
 

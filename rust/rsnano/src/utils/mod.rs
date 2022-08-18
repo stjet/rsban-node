@@ -94,5 +94,6 @@ pub trait Serialize {
 }
 
 pub trait Deserialize<T> {
+    fn serialized_size() -> usize;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<T>;
 }

@@ -1,7 +1,14 @@
-use super::{mdb_cursor_close, mdb_cursor_open, MdbCursor, MdbTxn, MdbVal};
-use crate::datastore::lmdb::{mdb_cursor_get, MdbCursorOp, MDB_NOTFOUND, MDB_SUCCESS};
+use super::{mdb_cursor_close, mdb_cursor_open, MdbCursor, MdbTxn, MdbVal, OwnedMdbVal};
+use crate::{
+    datastore::{
+        lmdb::{get_raw_lmdb_txn, mdb_cursor_get, MdbCursorOp, MDB_NOTFOUND, MDB_SUCCESS},
+        DbIterator, Transaction,
+    },
+    utils::{Deserialize, Serialize, StreamAdapter},
+};
 use std::ptr;
 
+#[derive(Clone)]
 pub struct LmdbRawIterator {
     cursor: *mut MdbCursor,
     pub key: MdbVal,
@@ -25,6 +32,12 @@ impl LmdbRawIterator {
         };
         iterator.init(txn, dbi, val, direction_asc);
         iterator
+    }
+
+    pub fn take(&mut self) -> Self {
+        let result = self.clone();
+        self.cursor = ptr::null_mut();
+        result
     }
 
     fn init(&mut self, txn: *mut MdbTxn, dbi: u32, val_a: &MdbVal, direction_asc: bool) {
@@ -119,5 +132,64 @@ impl Drop for LmdbRawIterator {
         if !self.cursor.is_null() {
             unsafe { mdb_cursor_close(self.cursor) };
         }
+    }
+}
+
+pub struct LmdbIterator<K, V>
+where
+    K: Serialize + Deserialize<K> + Default,
+    V: Serialize + Deserialize<V> + Default,
+{
+    key: K,
+    value: V,
+    raw_iterator: LmdbRawIterator,
+}
+
+impl<K, V> LmdbIterator<K, V>
+where
+    K: Serialize + Deserialize<K> + Default,
+    V: Serialize + Deserialize<V> + Default,
+{
+    pub fn new(txn: &dyn Transaction, dbi: u32, key: Option<&K>, direction_asc: bool) -> Self {
+        let mut key_val = match key {
+            Some(key) => OwnedMdbVal::from(key),
+            None => OwnedMdbVal::empty(),
+        };
+        let raw_iterator = LmdbRawIterator::new(
+            get_raw_lmdb_txn(txn),
+            dbi,
+            key_val.as_mdb_val(),
+            direction_asc,
+            K::serialized_size(),
+        );
+        let key = if raw_iterator.key.mv_size > 0 {
+            K::deserialize(&mut StreamAdapter::new(raw_iterator.key.as_slice())).unwrap()
+        } else {
+            Default::default()
+        };
+        let value = if raw_iterator.value.mv_size > 0 {
+            V::deserialize(&mut StreamAdapter::new(raw_iterator.value.as_slice())).unwrap()
+        } else {
+            Default::default()
+        };
+        Self {
+            key,
+            value,
+            raw_iterator,
+        }
+    }
+
+    pub fn as_raw(self) -> LmdbRawIterator {
+        self.raw_iterator
+    }
+}
+
+impl<K, V> DbIterator<K, V> for LmdbIterator<K, V>
+where
+    K: Serialize + Deserialize<K> + Default,
+    V: Serialize + Deserialize<V> + Default,
+{
+    fn take_lmdb_raw_iterator(&mut self) -> LmdbRawIterator {
+        self.raw_iterator.take()
     }
 }

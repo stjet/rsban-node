@@ -9,7 +9,9 @@ use std::{
 };
 
 pub use account_store::LmdbAccountStore;
-pub use iterator::LmdbRawIterator;
+pub use iterator::{LmdbIterator, LmdbRawIterator};
+
+use crate::utils::{MemoryStream, Serialize};
 
 use super::{ReadTransaction, Transaction, WriteTransaction};
 
@@ -186,6 +188,10 @@ impl MdbVal {
             mv_data: ptr::null_mut(),
         }
     }
+
+    pub fn as_slice(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.mv_data as *const u8, self.mv_size) }
+    }
 }
 
 impl Default for MdbVal {
@@ -200,6 +206,10 @@ pub struct OwnedMdbVal {
 }
 
 impl OwnedMdbVal {
+    pub fn empty() -> Self {
+        Self::new(Vec::new())
+    }
+
     pub fn new(bytes: Vec<u8>) -> Self {
         Self {
             bytes,
@@ -213,6 +223,28 @@ impl OwnedMdbVal {
         self.val.mv_size = self.bytes.len();
         self.val.mv_data = self.bytes.as_mut_ptr() as *mut c_void;
         &mut self.val
+    }
+}
+
+impl<T> From<&T> for OwnedMdbVal
+where
+    T: Serialize,
+{
+    fn from(value: &T) -> Self {
+        let mut stream = MemoryStream::new();
+        value.serialize(&mut stream).unwrap();
+        OwnedMdbVal::new(stream.to_vec())
+    }
+}
+
+pub fn get_raw_lmdb_txn(txn: &dyn Transaction) -> *mut MdbTxn {
+    let any = txn.as_any();
+    if let Some(t) = any.downcast_ref::<LmdbReadTransaction>() {
+        t.handle
+    } else if let Some(t) = any.downcast_ref::<LmdbWriteTransaction>() {
+        t.handle
+    } else {
+        panic!("not an LMDB transaction");
     }
 }
 

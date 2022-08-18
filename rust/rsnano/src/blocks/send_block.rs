@@ -1,6 +1,6 @@
 use crate::{
     from_string_hex, sign_message, to_string_hex,
-    utils::{PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
+    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
     Account, Amount, Block, BlockHash, BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash,
     Link, PublicKey, RawKey, Root, Signature,
 };
@@ -14,7 +14,7 @@ pub struct SendHashables {
 }
 
 impl SendHashables {
-    pub const fn serialized_size() -> usize {
+    pub fn serialized_size() -> usize {
         BlockHash::serialized_size() + Account::serialized_size() + Amount::serialized_size()
     }
 
@@ -114,7 +114,7 @@ impl SendBlock {
         })
     }
 
-    pub const fn serialized_size() -> usize {
+    pub fn serialized_size() -> usize {
         SendHashables::serialized_size() + Signature::serialized_size() + std::mem::size_of::<u64>()
     }
 

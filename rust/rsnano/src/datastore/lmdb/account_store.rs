@@ -6,8 +6,8 @@ use crate::{
 use anyhow::Result;
 
 use super::{
-    assert_success, mdb_dbi_open, mdb_get, mdb_put, LmdbReadTransaction, LmdbWriteTransaction,
-    MdbTxn, MdbVal, OwnedMdbVal, MDB_SUCCESS,
+    assert_success, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbReadTransaction,
+    LmdbWriteTransaction, MdbTxn, MdbVal, OwnedMdbVal, MDB_SUCCESS,
 };
 
 pub struct AccountStore {
@@ -66,6 +66,19 @@ impl AccountStore {
         } else {
             None
         }
+    }
+
+    pub fn del(&self, transaction: &dyn WriteTransaction, account: &Account) {
+        let mut key_val = OwnedMdbVal::from(account);
+        let status = unsafe {
+            mdb_del(
+                get_raw_lmdb_txn(transaction.as_transaction()),
+                self.accounts_handle,
+                key_val.as_mdb_val(),
+                None,
+            )
+        };
+        assert_success(status);
     }
 }
 

@@ -7,11 +7,12 @@ use crate::{
     datastore::{
         lmdb::{
             LmdbReadTransaction, LmdbWriteTransaction, MdbCursorCloseCallback,
-            MdbCursorGetCallback, MdbCursorOpenCallback, MdbDbiOpenCallback, MdbEnv,
-            MdbGetCallback, MdbPutCallback, MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback,
-            MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks,
-            MDB_CURSOR_CLOSE, MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_GET, MDB_PUT,
-            MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
+            MdbCursorGetCallback, MdbCursorOpenCallback, MdbDbiOpenCallback, MdbDelCallback,
+            MdbEnv, MdbGetCallback, MdbPutCallback, MdbStrerrorCallback, MdbTxn,
+            MdbTxnBeginCallback, MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback,
+            TxnCallbacks, MDB_CURSOR_CLOSE, MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_DEL,
+            MDB_GET, MDB_PUT, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW,
+            MDB_TXN_RESET,
         },
         Transaction,
     },
@@ -230,4 +231,9 @@ pub unsafe extern "C" fn rsn_callback_mdb_put(f: MdbPutCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_get(f: MdbGetCallback) {
     MDB_GET = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_del(f: MdbDelCallback) {
+    MDB_DEL = Some(f);
 }

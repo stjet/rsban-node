@@ -606,6 +606,8 @@ using MdbCursorOpenCallback = int32_t (*) (MdbTxn *, uint32_t, MdbCursor **);
 
 using MdbDbiOpenCallback = int32_t (*) (MdbTxn *, const int8_t *, uint32_t, uint32_t *);
 
+using MdbDelCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
+
 using MdbGetCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
 
 using MdbPutCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *, uint32_t);
@@ -1370,6 +1372,8 @@ void rsn_callback_mdb_cursor_open (MdbCursorOpenCallback f);
 
 void rsn_callback_mdb_dbi_open (MdbDbiOpenCallback f);
 
+void rsn_callback_mdb_del (MdbDelCallback f);
+
 void rsn_callback_mdb_get (MdbGetCallback f);
 
 void rsn_callback_mdb_put (MdbPutCallback f);
@@ -1656,6 +1660,10 @@ void rsn_ledger_destroy (LedgerHandle * handle);
 uint32_t rsn_lmdb_account_store_accounts_handle (LmdbAccountStoreHandle * handle);
 
 LmdbAccountStoreHandle * rsn_lmdb_account_store_create ();
+
+void rsn_lmdb_account_store_del (LmdbAccountStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account);
 
 void rsn_lmdb_account_store_destroy (LmdbAccountStoreHandle * handle);
 

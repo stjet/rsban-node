@@ -30,9 +30,7 @@ bool nano::lmdb::account_store::get (nano::transaction const & transaction, nano
 
 void nano::lmdb::account_store::del (nano::write_transaction const & transaction_a, nano::account const & account_a)
 {
-	nano::mdb_val key{ account_a };
-	auto status = mdb_del (to_mdb_txn (transaction_a), get_accounts_handle (), key, nullptr);
-	nano::assert_success (status);
+	rsnano::rsn_lmdb_account_store_del (handle, transaction_a.get_rust_handle (), account_a.bytes.data ());
 }
 
 bool nano::lmdb::account_store::exists (nano::transaction const & transaction_a, nano::account const & account_a)

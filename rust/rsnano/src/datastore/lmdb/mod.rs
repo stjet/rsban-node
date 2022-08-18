@@ -238,6 +238,7 @@ pub type MdbCursorCloseCallback = extern "C" fn(*mut MdbCursor);
 pub type MdbDbiOpenCallback = extern "C" fn(*mut MdbTxn, *const i8, u32, *mut u32) -> i32;
 pub type MdbPutCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbVal, *mut MdbVal, u32) -> i32;
 pub type MdbGetCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbVal, *mut MdbVal) -> i32;
+pub type MdbDelCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbVal, *mut MdbVal) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -250,6 +251,7 @@ pub static mut MDB_CURSOR_CLOSE: Option<MdbCursorCloseCallback> = None;
 pub static mut MDB_DBI_OPEN: Option<MdbDbiOpenCallback> = None;
 pub static mut MDB_PUT: Option<MdbPutCallback> = None;
 pub static mut MDB_GET: Option<MdbGetCallback> = None;
+pub static mut MDB_DEL: Option<MdbDelCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -311,6 +313,16 @@ pub unsafe fn mdb_put(
 
 pub unsafe fn mdb_get(txn: *mut MdbTxn, dbi: u32, key: &mut MdbVal, data: &mut MdbVal) -> i32 {
     MDB_GET.expect("MDB_GET missing")(txn, dbi, key, data)
+}
+
+pub unsafe fn mdb_del(
+    txn: *mut MdbTxn,
+    dbi: u32,
+    key: &mut MdbVal,
+    data: Option<&mut MdbVal>,
+) -> i32 {
+    let dataptr = data.map(|v| v as *mut MdbVal).unwrap_or(ptr::null_mut());
+    MDB_DEL.expect("MDB_DEL missing")(txn, dbi, key, dataptr)
 }
 
 /// Successful result

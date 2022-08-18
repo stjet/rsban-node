@@ -61,3 +61,13 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_get(
         None => false,
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_account_store_del(
+    handle: *mut LmdbAccountStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+) {
+    let account = Account::from_ptr(account);
+    (*handle).0.del((*txn).as_write_txn(), &account);
+}

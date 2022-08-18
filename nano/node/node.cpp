@@ -1590,7 +1590,7 @@ void nano::node::epoch_upgrader_impl (nano::raw_key const & prv_a, nano::epoch e
 				{
 					++attempts;
 					auto difficulty (network_params.work.threshold (nano::work_version::work_1, nano::block_details (epoch_a, false, false, true)));
-					nano::root const & root (info.head ());
+					nano::root root (info.head ());
 					std::shared_ptr<nano::block> epoch = builder.state ()
 														 .account (account)
 														 .previous (info.head ())

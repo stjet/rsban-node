@@ -126,8 +126,6 @@ public:
 	nano::amount balance () const;
 	uint64_t modified () const;
 	uint64_t block_count () const;
-
-private:
 	rsnano::AccountInfoHandle * handle;
 };
 

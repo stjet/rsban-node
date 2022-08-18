@@ -1,6 +1,7 @@
 mod account_store;
 mod iterator;
 
+use anyhow::Result;
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
@@ -11,7 +12,7 @@ use std::{
 pub use account_store::AccountStore;
 pub use iterator::LmdbIterator;
 
-use super::{ReadTransaction, Transaction};
+use super::{ReadTransaction, Transaction, WriteTransaction};
 
 pub struct LmdbReadTransaction {
     env: *mut MdbEnv,
@@ -130,9 +131,24 @@ impl Transaction for LmdbWriteTransaction {
     }
 }
 
+impl WriteTransaction for LmdbWriteTransaction {
+    fn as_transaction(&self) -> &dyn Transaction {
+        self
+    }
+}
+
 pub trait TxnCallbacks {
     fn txn_start(&self, txn_id: u64, is_write: bool);
     fn txn_end(&self, txn_id: u64);
+}
+
+pub fn ensure_success(status: i32) -> Result<()> {
+    if status == MDB_SUCCESS {
+        Ok(())
+    } else {
+        let msg = unsafe { mdb_strerror(status) };
+        Err(anyhow!(msg))
+    }
 }
 
 #[repr(C)]
@@ -175,6 +191,28 @@ impl MdbVal {
     }
 }
 
+pub struct OwnedMdbVal {
+    bytes: Vec<u8>,
+    val: MdbVal,
+}
+
+impl OwnedMdbVal {
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self {
+            bytes,
+            val: MdbVal {
+                mv_size: 0,
+                mv_data: ptr::null_mut(),
+            },
+        }
+    }
+    pub fn as_mdb_val(&mut self) -> &mut MdbVal {
+        self.val.mv_size = self.bytes.len();
+        self.val.mv_data = self.bytes.as_mut_ptr() as *mut c_void;
+        &mut self.val
+    }
+}
+
 #[repr(C)]
 pub struct MdbEnv {}
 
@@ -195,6 +233,7 @@ pub type MdbCursorGetCallback =
     extern "C" fn(*mut MdbCursor, *mut MdbVal, *mut MdbVal, MdbCursorOp) -> i32;
 pub type MdbCursorCloseCallback = extern "C" fn(*mut MdbCursor);
 pub type MdbDbiOpenCallback = extern "C" fn(*mut MdbTxn, *const i8, u32, *mut u32) -> i32;
+pub type MdbPutCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbVal, *mut MdbVal, u32) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -205,6 +244,7 @@ pub static mut MDB_CURSOR_OPEN: Option<MdbCursorOpenCallback> = None;
 pub static mut MDB_CURSOR_GET: Option<MdbCursorGetCallback> = None;
 pub static mut MDB_CURSOR_CLOSE: Option<MdbCursorCloseCallback> = None;
 pub static mut MDB_DBI_OPEN: Option<MdbDbiOpenCallback> = None;
+pub static mut MDB_PUT: Option<MdbPutCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -252,6 +292,16 @@ pub unsafe fn mdb_cursor_close(cursor: *mut MdbCursor) {
 pub unsafe fn mdb_dbi_open(txn: *mut MdbTxn, name: &str, flags: u32, dbi: &mut u32) -> i32 {
     let name_cstr = CString::new(name).unwrap();
     MDB_DBI_OPEN.expect("MDB_DBI_OPEN missing")(txn, name_cstr.as_ptr(), flags, dbi)
+}
+
+pub unsafe fn mdb_put(
+    txn: *mut MdbTxn,
+    dbi: u32,
+    key: &mut MdbVal,
+    data: &mut MdbVal,
+    flags: u32,
+) -> i32 {
+    MDB_PUT.expect("MDB_PUT missing")(txn, dbi, key, data, flags)
 }
 
 ///	Successful result

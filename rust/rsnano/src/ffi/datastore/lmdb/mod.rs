@@ -8,9 +8,9 @@ use crate::{
         lmdb::{
             LmdbReadTransaction, LmdbWriteTransaction, MdbCursorCloseCallback,
             MdbCursorGetCallback, MdbCursorOpenCallback, MdbDbiOpenCallback, MdbEnv,
-            MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback, MdbTxnCommitCallback,
+            MdbPutCallback, MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback, MdbTxnCommitCallback,
             MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks, MDB_CURSOR_CLOSE,
-            MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_STRERROR, MDB_TXN_BEGIN,
+            MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_PUT, MDB_STRERROR, MDB_TXN_BEGIN,
             MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
         },
         Transaction,
@@ -220,4 +220,9 @@ pub unsafe extern "C" fn rsn_callback_mdb_cursor_close(f: MdbCursorCloseCallback
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_dbi_open(f: MdbDbiOpenCallback) {
     MDB_DBI_OPEN = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_put(f: MdbPutCallback) {
+    MDB_PUT = Some(f);
 }

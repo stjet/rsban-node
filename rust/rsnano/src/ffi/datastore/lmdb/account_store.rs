@@ -1,4 +1,6 @@
-use crate::datastore::lmdb::AccountStore;
+use std::ops::Deref;
+
+use crate::{datastore::lmdb::AccountStore, ffi::AccountInfoHandle, Account};
 
 use super::TransactionHandle;
 
@@ -28,4 +30,19 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_open_databases(
     flags: u32,
 ) -> bool {
     (*handle).0.open_databases((*txn).as_txn(), flags).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_account_store_put(
+    handle: *mut LmdbAccountStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    info: *const AccountInfoHandle,
+) -> bool {
+    let account = Account::from(account);
+    let info = (*info).deref();
+    (*handle)
+        .0
+        .put((*txn).as_write_tx(), &account, info)
+        .is_ok()
 }

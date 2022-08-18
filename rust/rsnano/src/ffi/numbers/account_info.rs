@@ -1,9 +1,17 @@
-use std::ffi::c_void;
+use std::{ffi::c_void, ops::Deref};
 
 use crate::{ffi::FfiStream, Account, AccountInfo, Amount, BlockHash, Epoch};
 use num_traits::FromPrimitive;
 
 pub struct AccountInfoHandle(AccountInfo);
+
+impl Deref for AccountInfoHandle {
+    type Target = AccountInfo;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_account_info_create(

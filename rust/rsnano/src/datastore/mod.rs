@@ -12,3 +12,7 @@ pub trait Transaction {
 }
 
 pub trait ReadTransaction: Transaction {}
+
+pub trait WriteTransaction: Transaction {
+    fn as_transaction(&self) -> &dyn Transaction;
+}

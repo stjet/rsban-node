@@ -2,6 +2,8 @@ mod account_info;
 
 use std::{ffi::CStr, os::raw::c_char};
 
+pub use account_info::AccountInfoHandle;
+
 use crate::numbers::{
     sign_message, validate_message, validate_message_batch, Account, Difficulty, PublicKey, RawKey,
     Signature,

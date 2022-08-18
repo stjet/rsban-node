@@ -19,10 +19,8 @@ bool nano::lmdb::account_store::open_databases (nano::transaction const & transa
 
 void nano::lmdb::account_store::put (nano::write_transaction const & transaction, nano::account const & account, nano::account_info const & info)
 {
-	nano::mdb_val account_val{ account };
-	nano::mdb_val info_val{ info };
-	auto status = mdb_put (to_mdb_txn (transaction), get_accounts_handle (), account_val, info_val, 0);
-	nano::assert_success (status);
+	bool is_success = rsnano::rsn_lmdb_account_store_put (handle, transaction.get_rust_handle (), account.bytes.data (), info.handle);
+	assert (is_success);
 }
 
 bool nano::lmdb::account_store::get (nano::transaction const & transaction, nano::account const & account, nano::account_info & info)

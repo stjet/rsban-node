@@ -1,9 +1,11 @@
+mod account_store;
 mod ledger;
 pub mod lmdb;
 mod write_database_queue;
 
 use std::any::Any;
 
+pub use account_store::AccountStore;
 pub use ledger::Ledger;
 pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
 

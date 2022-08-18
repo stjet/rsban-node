@@ -1,9 +1,9 @@
-use crate::datastore::lmdb::{LmdbIterator, MdbCursor, MdbTxn, MdbVal};
+use crate::datastore::lmdb::{LmdbRawIterator, MdbCursor, MdbTxn, MdbVal};
 
-pub struct LmdbIteratorHandle(LmdbIterator);
+pub struct LmdbIteratorHandle(LmdbRawIterator);
 
-impl LmdbIteratorHandle{
-    pub fn new(it: LmdbIterator) -> *mut Self{
+impl LmdbIteratorHandle {
+    pub fn new(it: LmdbRawIterator) -> *mut Self {
         Box::into_raw(Box::new(LmdbIteratorHandle(it)))
     }
 }
@@ -16,7 +16,7 @@ pub unsafe extern "C" fn rsn_lmdb_iterator_create(
     direction_asc: bool,
     expected_value_size: usize,
 ) -> *mut LmdbIteratorHandle {
-    LmdbIteratorHandle::new(LmdbIterator::new(
+    LmdbIteratorHandle::new(LmdbRawIterator::new(
         txn,
         dbi,
         &*val,

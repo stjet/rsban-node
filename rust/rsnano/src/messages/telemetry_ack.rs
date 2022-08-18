@@ -1,4 +1,4 @@
-use crate::utils::{MemoryStream, Stream, StreamExt};
+use crate::utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt};
 use crate::{
     sign_message, validate_message, Account, BlockHash, KeyPair, NetworkConstants, Signature,
 };

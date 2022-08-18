@@ -17,8 +17,9 @@ public:
 	}
 
 	mdb_iterator (rsnano::LmdbIteratorHandle * handle_a) :
-		handle{ handle_a }{
-		load_current();
+		handle{ handle_a }
+	{
+		load_current ();
 	}
 
 	mdb_iterator () = default;

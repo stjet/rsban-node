@@ -1,5 +1,5 @@
 use super::PublicKey;
-use crate::utils::Stream;
+use crate::utils::{Deserialize, Serialize, Stream};
 use anyhow::Result;
 use blake2::digest::{Update, VariableOutput};
 use primitive_types::U512;
@@ -36,14 +36,6 @@ impl Account {
 
     pub const fn serialized_size() -> usize {
         PublicKey::serialized_size()
-    }
-
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.public_key.serialize(stream)
-    }
-
-    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
-        PublicKey::deserialize(stream).map(Self::from)
     }
 
     pub fn to_bytes(self) -> [u8; 32] {
@@ -95,6 +87,18 @@ impl Account {
         let mut bytes = [0u8; 32];
         hex::decode_to_slice(s, &mut bytes)?;
         Ok(Account::from_bytes(bytes))
+    }
+}
+
+impl Serialize for Account {
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        self.public_key.serialize(stream)
+    }
+}
+
+impl Deserialize<Account> for Account {
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Account> {
+        PublicKey::deserialize(stream).map(Self::from)
     }
 }
 

@@ -21,7 +21,7 @@ pub use send_block::*;
 pub use state_block::*;
 
 use crate::{
-    utils::{PropertyTreeReader, PropertyTreeWriter, Stream},
+    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, Link, Root, Signature, Uniquer,
     WorkVersion,
 };

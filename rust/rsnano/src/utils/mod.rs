@@ -88,3 +88,11 @@ impl ErrorCode {
         }
     }
 }
+
+pub trait Serialize {
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;
+}
+
+pub trait Deserialize<T> {
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<T>;
+}

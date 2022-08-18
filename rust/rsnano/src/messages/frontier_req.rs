@@ -1,4 +1,7 @@
-use crate::{utils::Stream, Account, NetworkConstants};
+use crate::{
+    utils::{Deserialize, Serialize, Stream},
+    Account, NetworkConstants,
+};
 use anyhow::Result;
 use std::{any::Any, mem::size_of};
 

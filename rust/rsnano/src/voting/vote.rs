@@ -3,7 +3,7 @@ use std::{sync::RwLock, time::Duration};
 
 use crate::{
     sign_message,
-    utils::{PropertyTreeWriter, Stream},
+    utils::{Deserialize, PropertyTreeWriter, Serialize, Stream},
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, RawKey, Signature,
 };
 

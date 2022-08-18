@@ -46,9 +46,9 @@ size_t nano::lmdb::account_store::count (nano::transaction const & transaction_a
 
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::begin (nano::transaction const & transaction, nano::account const & account) const
 {
-	auto it_handle {rsnano::rsn_lmdb_account_store_begin (handle, transaction.get_rust_handle(), account.bytes.data())};
+	auto it_handle{ rsnano::rsn_lmdb_account_store_begin (handle, transaction.get_rust_handle (), account.bytes.data ()) };
 	return nano::store_iterator<nano::account, nano::account_info> (
-		std::make_unique<nano::mdb_iterator<nano::account, nano::account_info>> (it_handle));
+	std::make_unique<nano::mdb_iterator<nano::account, nano::account_info>> (it_handle));
 }
 
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::begin (nano::transaction const & transaction) const

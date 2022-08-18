@@ -1,5 +1,8 @@
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
-use crate::{utils::Stream, Account, Amount, NetworkConstants};
+use crate::{
+    utils::{Deserialize, Serialize, Stream},
+    Account, Amount, NetworkConstants,
+};
 use anyhow::Result;
 use num_traits::FromPrimitive;
 use std::{any::Any, mem::size_of};

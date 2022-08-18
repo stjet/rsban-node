@@ -3,7 +3,11 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::{ffi::FfiStream, Account, AccountInfo, Amount, BlockHash, Epoch};
+use crate::{
+    ffi::FfiStream,
+    utils::{Deserialize, Serialize},
+    Account, AccountInfo, Amount, BlockHash, Epoch,
+};
 use num_traits::FromPrimitive;
 
 pub struct AccountInfoHandle(AccountInfo);

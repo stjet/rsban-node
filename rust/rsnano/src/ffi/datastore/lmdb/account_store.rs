@@ -1,14 +1,14 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::{datastore::lmdb::AccountStore, ffi::AccountInfoHandle, Account};
+use crate::{datastore::lmdb::LmdbAccountStore, ffi::AccountInfoHandle, Account};
 
-use super::{TransactionHandle, iterator::LmdbIteratorHandle};
+use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 
-pub struct LmdbAccountStoreHandle(AccountStore);
+pub struct LmdbAccountStoreHandle(LmdbAccountStore);
 
 #[no_mangle]
 pub extern "C" fn rsn_lmdb_account_store_create() -> *mut LmdbAccountStoreHandle {
-    Box::into_raw(Box::new(LmdbAccountStoreHandle(AccountStore::new())))
+    Box::into_raw(Box::new(LmdbAccountStoreHandle(LmdbAccountStore::new())))
 }
 
 #[no_mangle]

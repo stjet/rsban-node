@@ -8,8 +8,8 @@ use std::{
     sync::Arc,
 };
 
-pub use account_store::AccountStore;
-pub use iterator::LmdbIterator;
+pub use account_store::LmdbAccountStore;
+pub use iterator::LmdbRawIterator;
 
 use super::{ReadTransaction, Transaction, WriteTransaction};
 

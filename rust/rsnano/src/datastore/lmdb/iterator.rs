@@ -2,14 +2,14 @@ use super::{mdb_cursor_close, mdb_cursor_open, MdbCursor, MdbTxn, MdbVal};
 use crate::datastore::lmdb::{mdb_cursor_get, MdbCursorOp, MDB_NOTFOUND, MDB_SUCCESS};
 use std::ptr;
 
-pub struct LmdbIterator {
+pub struct LmdbRawIterator {
     cursor: *mut MdbCursor,
     pub key: MdbVal,
     pub value: MdbVal,
     expected_key_size: usize,
 }
 
-impl LmdbIterator {
+impl LmdbRawIterator {
     pub fn new(
         txn: *mut MdbTxn,
         dbi: u32,
@@ -114,7 +114,7 @@ impl LmdbIterator {
     }
 }
 
-impl Drop for LmdbIterator {
+impl Drop for LmdbRawIterator {
     fn drop(&mut self) {
         if !self.cursor.is_null() {
             unsafe { mdb_cursor_close(self.cursor) };

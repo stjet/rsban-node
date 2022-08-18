@@ -52,10 +52,16 @@ impl AccountStore {
     }
 }
 
+impl Default for AccountStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn get_raw_lmdb_txn(txn: &dyn Transaction) -> *mut MdbTxn {
     let any = txn.as_any();
     if let Some(t) = any.downcast_ref::<LmdbReadTransaction>() {
-        t.handle.clone()
+        t.handle
     } else if let Some(t) = any.downcast_ref::<LmdbWriteTransaction>() {
         t.handle
     } else {

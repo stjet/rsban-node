@@ -14,7 +14,7 @@ impl Deref for AccountInfoHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_account_info_create(
+pub unsafe extern "C" fn rsn_account_info_create(
     head: *const u8,
     rep: *const u8,
     open_block: *const u8,
@@ -24,10 +24,10 @@ pub extern "C" fn rsn_account_info_create(
     epoch: u8,
 ) -> *mut AccountInfoHandle {
     Box::into_raw(Box::new(AccountInfoHandle(AccountInfo {
-        head: BlockHash::from(head),
-        representative: Account::from(rep),
-        open_block: BlockHash::from(open_block),
-        balance: Amount::from(balance),
+        head: BlockHash::from_ptr(head),
+        representative: Account::from_ptr(rep),
+        open_block: BlockHash::from_ptr(open_block),
+        balance: Amount::from_ptr(balance),
         modified,
         block_count,
         epoch: Epoch::from_u8(epoch).unwrap(),

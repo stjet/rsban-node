@@ -46,6 +46,7 @@ pub trait StreamExt: Stream {
 
 impl<T: Stream + ?Sized> StreamExt for T {}
 
+#[derive(Default)]
 pub struct MemoryStream {
     bytes: Vec<u8>,
     read_index: usize,
@@ -53,10 +54,7 @@ pub struct MemoryStream {
 
 impl MemoryStream {
     pub fn new() -> Self {
-        Self {
-            bytes: Vec::new(),
-            read_index: 0,
-        }
+        Default::default()
     }
 
     pub fn bytes_written(&self) -> usize {

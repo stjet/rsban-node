@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_put(
     account: *const u8,
     info: *const AccountInfoHandle,
 ) -> bool {
-    let account = Account::from(account);
+    let account = Account::from_ptr(account);
     let info = (*info).deref();
     (*handle)
         .0

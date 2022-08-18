@@ -206,7 +206,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_remote_node_id(
     node_id: *const u8,
 ) {
     let mut lk = (*handle).remote_node_id.lock().unwrap();
-    *lk = Account::from(node_id);
+    *lk = Account::from_ptr(node_id);
 }
 
 #[no_mangle]

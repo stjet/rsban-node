@@ -38,7 +38,7 @@ impl PeerExclusion {
             }
             peer.score
         } else {
-            let peer = Peer::new(endpoint.clone());
+            let peer = Peer::new(*endpoint);
             self.insert(&peer);
             peer.score
         }
@@ -93,6 +93,12 @@ impl PeerExclusion {
         self.ordered_by_date
             .insert(peer.address.ip(), peer.exclude_until);
         self.by_ip.insert(peer.address.ip(), peer.clone());
+    }
+}
+
+impl Default for PeerExclusion {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

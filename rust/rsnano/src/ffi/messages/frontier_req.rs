@@ -37,7 +37,7 @@ pub unsafe extern "C" fn rsn_message_frontier_req_set_start(
     handle: *mut MessageHandle,
     account: *const u8,
 ) {
-    downcast_message_mut::<FrontierReq>(handle).start = Account::from(account);
+    downcast_message_mut::<FrontierReq>(handle).start = Account::from_ptr(account);
 }
 
 #[no_mangle]

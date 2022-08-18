@@ -8,7 +8,7 @@ use anyhow::Result;
 use num_traits::FromPrimitive;
 
 /// Latest information about an account
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct AccountInfo {
     pub head: BlockHash,
     pub representative: Account,

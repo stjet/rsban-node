@@ -48,7 +48,7 @@ pub unsafe extern "C" fn rsn_telemetry_data_set_signature(
     handle: *mut TelemetryDataHandle,
     signature: *const u8,
 ) {
-    (*handle).0.signature = Signature::from(signature);
+    (*handle).0.signature = Signature::from_ptr(signature);
 }
 
 #[no_mangle]
@@ -64,7 +64,7 @@ pub unsafe extern "C" fn rsn_telemetry_data_set_node_id(
     handle: *mut TelemetryDataHandle,
     node_id: *const u8,
 ) {
-    (*handle).0.node_id = Account::from(node_id);
+    (*handle).0.node_id = Account::from_ptr(node_id);
 }
 
 #[no_mangle]
@@ -198,7 +198,7 @@ pub unsafe extern "C" fn rsn_telemetry_data_set_genesis_block(
     handle: *mut TelemetryDataHandle,
     block: *const u8,
 ) {
-    (*handle).0.genesis_block = BlockHash::from(block);
+    (*handle).0.genesis_block = BlockHash::from_ptr(block);
 }
 
 #[no_mangle]
@@ -329,10 +329,7 @@ pub unsafe extern "C" fn rsn_telemetry_data_set_unknown_data(
     data: *const u8,
     len: usize,
 ) {
-    (*handle).0.unknown_data = std::slice::from_raw_parts(data, len)
-        .iter()
-        .cloned()
-        .collect()
+    (*handle).0.unknown_data = std::slice::from_raw_parts(data, len).to_vec()
 }
 
 #[no_mangle]

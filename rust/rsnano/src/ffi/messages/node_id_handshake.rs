@@ -25,8 +25,8 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
     };
 
     let response = if !resp_account.is_null() && !resp_signature.is_null() {
-        let account = Account::from(resp_account);
-        let signature = Signature::from(resp_signature);
+        let account = Account::from_ptr(resp_account);
+        let signature = Signature::from_ptr(resp_signature);
         Some((account, signature))
     } else {
         None

@@ -131,14 +131,14 @@ pub extern "C" fn rsn_work_thresholds_denormalized_multiplier(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_work_thresholds_difficulty(
+pub unsafe extern "C" fn rsn_work_thresholds_difficulty(
     dto: &WorkThresholdsDto,
     work_version: u8,
     root: *const u8,
     work: u64,
 ) -> u64 {
     let work_version = WorkVersion::try_from(work_version).unwrap_or(WorkVersion::Unspecified);
-    let root = Root::from(root);
+    let root = Root::from_ptr(root);
     let thresholds = WorkThresholds::from(dto);
     thresholds.difficulty(work_version, &root, work)
 }
@@ -161,7 +161,7 @@ pub unsafe extern "C" fn rsn_work_thresholds_validate_entry(
     work: u64,
 ) -> bool {
     let work_version = WorkVersion::try_from(work_version).unwrap_or(WorkVersion::Unspecified);
-    let root = Root::from(root);
+    let root = Root::from_ptr(root);
     let thresholds = WorkThresholds::from(dto);
     thresholds.validate_entry(work_version, &root, work)
 }

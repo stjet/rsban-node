@@ -24,7 +24,7 @@ pub unsafe extern "C" fn rsn_vote_spacing_votable(
 ) -> bool {
     (*handle)
         .0
-        .votable(&Root::from(root), &BlockHash::from(hash))
+        .votable(&Root::from_ptr(root), &BlockHash::from_ptr(hash))
 }
 
 #[no_mangle]
@@ -33,7 +33,9 @@ pub unsafe extern "C" fn rsn_vote_spacing_flag(
     root: *const u8,
     hash: *const u8,
 ) {
-    (*handle).0.flag(&Root::from(root), &BlockHash::from(hash));
+    (*handle)
+        .0
+        .flag(&Root::from_ptr(root), &BlockHash::from_ptr(hash));
 }
 
 #[no_mangle]

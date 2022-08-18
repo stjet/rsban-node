@@ -19,8 +19,8 @@ impl Clone for TcpMessageItem {
     fn clone(&self) -> Self {
         Self {
             message: self.message.as_ref().map(|m| m.clone_box()),
-            endpoint: self.endpoint.clone(),
-            node_id: self.node_id.clone(),
+            endpoint: self.endpoint,
+            node_id: self.node_id,
             socket: self.socket.clone(),
         }
     }
@@ -34,6 +34,12 @@ impl TcpMessageItem {
             node_id: Account::new(),
             socket: None,
         }
+    }
+}
+
+impl Default for TcpMessageItem {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -73,7 +79,7 @@ impl TcpMessageManager {
                 }
                 lock = self.producer_condition.wait(lock).unwrap();
             }
-            lock.entries.push_back(item.clone());
+            lock.entries.push_back(item);
         }
         self.consumer_condition.notify_one();
     }

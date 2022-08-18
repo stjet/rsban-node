@@ -90,3 +90,9 @@ impl NodeFlags {
         }
     }
 }
+
+impl Default for NodeFlags {
+    fn default() -> Self {
+        Self::new()
+    }
+}

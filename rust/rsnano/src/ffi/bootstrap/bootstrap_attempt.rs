@@ -151,7 +151,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_process_block(
     let block = (*block).block.clone();
     (*handle).0.attempt().process_block(
         block,
-        &Account::from(known_account),
+        &Account::from_ptr(known_account),
         pull_blocks_processed,
         max_blocks,
         block_expected,

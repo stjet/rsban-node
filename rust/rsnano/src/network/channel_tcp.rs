@@ -1,4 +1,5 @@
 use std::{
+    fmt::Display,
     net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{
         atomic::{AtomicBool, AtomicU8, Ordering},
@@ -192,9 +193,11 @@ impl ChannelTcp {
             }
         }
     }
+}
 
-    pub fn to_string(&self) -> String {
-        self.endpoint().to_string()
+impl Display for ChannelTcp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.endpoint().fmt(f)
     }
 }
 
@@ -268,6 +271,6 @@ impl PartialEq for ChannelTcp {
             }
         }
 
-        return true;
+        true
     }
 }

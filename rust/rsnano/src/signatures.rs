@@ -110,18 +110,14 @@ impl SignatureChecker {
             return;
         }
 
-        let mut pool = self.thread_pool.lock().unwrap();
-        match &mut *pool {
-            Some(pool) => {
-                if check_set.size() <= SignatureChecker::BATCH_SIZE {
-                    drop(pool);
-                    // Not dealing with many so just use the calling thread for checking signatures
-                    Self::verify_batch(&mut check_set.as_batch());
-                } else {
-                    self.verify_batch_async(check_set, pool);
-                }
-            }
-            None => {
+        if check_set.size() <= SignatureChecker::BATCH_SIZE {
+            // Not dealing with many so just use the calling thread for checking signatures
+            Self::verify_batch(&mut check_set.as_batch());
+        } else {
+            let mut pool = self.thread_pool.lock().unwrap();
+            if let Some(pool) = &mut *pool {
+                self.verify_batch_async(check_set, pool);
+            } else {
                 drop(pool);
                 Self::verify_batch(&mut check_set.as_batch());
             }

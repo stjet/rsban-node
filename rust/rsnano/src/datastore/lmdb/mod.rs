@@ -22,9 +22,9 @@ pub struct LmdbReadTransaction {
 }
 
 impl LmdbReadTransaction {
-    pub fn new(txn_id: u64, env: *mut MdbEnv, callbacks: Arc<dyn TxnCallbacks>) -> Self {
+    pub unsafe fn new(txn_id: u64, env: *mut MdbEnv, callbacks: Arc<dyn TxnCallbacks>) -> Self {
         let mut handle: *mut MdbTxn = ptr::null_mut();
-        let status = unsafe { mdb_txn_begin(env, ptr::null_mut(), MDB_RDONLY, &mut handle) };
+        let status = mdb_txn_begin(env, ptr::null_mut(), MDB_RDONLY, &mut handle);
         assert!(status == 0);
         callbacks.txn_start(txn_id, false);
 
@@ -191,6 +191,12 @@ impl MdbVal {
     }
 }
 
+impl Default for MdbVal {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct OwnedMdbVal {
     bytes: Vec<u8>,
     val: MdbVal,
@@ -304,7 +310,7 @@ pub unsafe fn mdb_put(
     MDB_PUT.expect("MDB_PUT missing")(txn, dbi, key, data, flags)
 }
 
-///	Successful result
+/// Successful result
 const MDB_SUCCESS: i32 = 0;
 
 /// read only

@@ -38,12 +38,18 @@ pub mod error_category {
     pub const SYSTEM: u8 = 1;
 }
 
-impl ErrorCode {
-    pub fn new() -> Self {
+impl Default for ErrorCode {
+    fn default() -> Self {
         Self {
             val: 0,
             category: error_category::SYSTEM,
         }
+    }
+}
+
+impl ErrorCode {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     pub fn is_ok(&self) -> bool {

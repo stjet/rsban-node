@@ -241,10 +241,10 @@ impl MessageHeader {
     }
 
     pub fn is_valid_message_type(&self) -> bool {
-        match self.message_type {
-            MessageType::Invalid | MessageType::NotAType => false,
-            _ => true,
-        }
+        !matches!(
+            self.message_type,
+            MessageType::Invalid | MessageType::NotAType
+        )
     }
 }
 

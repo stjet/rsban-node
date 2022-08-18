@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_set_start(
     handle: *mut MessageHandle,
     start: *const u8,
 ) {
-    downcast_message_mut::<BulkPull>(handle).start = HashOrAccount::from(start);
+    downcast_message_mut::<BulkPull>(handle).start = HashOrAccount::from_ptr(start);
 }
 
 #[no_mangle]
@@ -52,7 +52,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_end(handle: *mut MessageHandle, e
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_set_end(handle: *mut MessageHandle, end: *const u8) {
-    downcast_message_mut::<BulkPull>(handle).end = BlockHash::from(end);
+    downcast_message_mut::<BulkPull>(handle).end = BlockHash::from_ptr(end);
 }
 
 #[no_mangle]

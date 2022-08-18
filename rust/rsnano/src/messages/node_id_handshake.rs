@@ -35,7 +35,7 @@ impl NodeIdHandshake {
 
     pub fn with_header(header: MessageHeader) -> Self {
         Self {
-            header: header.clone(),
+            header,
             query: None,
             response: None,
         }

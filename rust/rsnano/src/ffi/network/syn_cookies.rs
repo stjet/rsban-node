@@ -49,8 +49,8 @@ pub unsafe extern "C" fn rsn_syn_cookies_validate(
     signature: *const u8,
 ) -> bool {
     let endpoint = SocketAddr::from(&*endpoint);
-    let node_id = Account::from(node_id);
-    let signature = Signature::from(signature);
+    let node_id = Account::from_ptr(node_id);
+    let signature = Signature::from_ptr(signature);
     (*handle)
         .0
         .validate(&endpoint, &node_id, &signature)

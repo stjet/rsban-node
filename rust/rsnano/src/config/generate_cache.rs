@@ -25,3 +25,9 @@ impl GenerateCache {
         self.account_count = true;
     }
 }
+
+impl Default for GenerateCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}

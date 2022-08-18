@@ -32,7 +32,7 @@ pub extern "C" fn rsn_vote_create() -> *mut VoteHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_create2(
+pub unsafe extern "C" fn rsn_vote_create2(
     account: *const u8,
     prv_key: *const u8,
     timestamp: u64,
@@ -40,10 +40,10 @@ pub extern "C" fn rsn_vote_create2(
     hashes: *const [u8; 32],
     hash_count: usize,
 ) -> *mut VoteHandle {
-    let account = Account::from(account);
-    let key = RawKey::from(prv_key);
+    let account = Account::from_ptr(account);
+    let key = RawKey::from_ptr(prv_key);
 
-    let hashes = unsafe { std::slice::from_raw_parts(hashes, hash_count) };
+    let hashes = std::slice::from_raw_parts(hashes, hash_count);
     let hashes = hashes.iter().map(|&h| BlockHash::from_bytes(h)).collect();
 
     Box::into_raw(Box::new(VoteHandle::new(Arc::new(RwLock::new(

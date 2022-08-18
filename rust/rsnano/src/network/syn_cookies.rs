@@ -46,7 +46,7 @@ impl SynCookies {
             lock.cookies.insert(
                 *endpoint,
                 SynCookieInfo {
-                    cookie: cookie.clone(),
+                    cookie,
                     created_at: Instant::now(),
                 },
             );

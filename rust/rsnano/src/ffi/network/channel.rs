@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rsn_channel_get_node_id(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_set_node_id(handle: *mut ChannelHandle, id: *const u8) {
-    as_channel(handle).set_node_id(Account::from(id));
+    as_channel(handle).set_node_id(Account::from_ptr(id));
 }
 
 #[no_mangle]

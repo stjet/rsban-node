@@ -45,7 +45,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_set_account(
     handle: *mut MessageHandle,
     account: *const u8,
 ) {
-    downcast_message_mut::<BulkPullAccount>(handle).account = Account::from(account);
+    downcast_message_mut::<BulkPullAccount>(handle).account = Account::from_ptr(account);
 }
 
 #[no_mangle]
@@ -64,7 +64,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_set_minimum_amount(
     handle: *mut MessageHandle,
     amount: *const u8,
 ) {
-    downcast_message_mut::<BulkPullAccount>(handle).minimum_amount = Amount::from(amount);
+    downcast_message_mut::<BulkPullAccount>(handle).minimum_amount = Amount::from_ptr(amount);
 }
 
 #[no_mangle]

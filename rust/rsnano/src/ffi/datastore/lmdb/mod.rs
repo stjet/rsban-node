@@ -57,7 +57,7 @@ pub enum TransactionType {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_lmdb_read_txn_create(
+pub unsafe extern "C" fn rsn_lmdb_read_txn_create(
     txn_id: u64,
     env: *mut MdbEnv,
     callbacks: *mut c_void,

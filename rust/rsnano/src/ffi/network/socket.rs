@@ -120,6 +120,12 @@ impl EndpointDto {
     }
 }
 
+impl Default for EndpointDto {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<&EndpointDto> for SocketAddr {
     fn from(dto: &EndpointDto) -> Self {
         let ip = if dto.v6 {

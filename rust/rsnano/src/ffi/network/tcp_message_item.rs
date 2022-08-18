@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rsn_tcp_message_item_create(
         Some((*message).clone_box())
     };
     let endpoint = SocketAddr::from(&*endpoint);
-    let node_id = Account::from(node_id);
+    let node_id = Account::from_ptr(node_id);
     let socket = if socket.is_null() {
         None
     } else {

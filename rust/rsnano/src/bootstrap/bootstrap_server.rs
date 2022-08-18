@@ -137,7 +137,7 @@ impl BootstrapServer {
     }
 
     pub fn remote_endpoint(&self) -> SocketAddr {
-        self.remote_endpoint.lock().unwrap().clone()
+        *self.remote_endpoint.lock().unwrap()
     }
 
     pub fn is_telemetry_cutoff_exceeded(&self) -> bool {
@@ -158,7 +158,7 @@ impl BootstrapServer {
             self.socket.set_socket_type(SocketType::Bootstrap);
         }
 
-        return self.socket.socket_type() == SocketType::Bootstrap;
+        self.socket.socket_type() == SocketType::Bootstrap
     }
 
     pub fn to_realtime_connection(&self, node_id: &Account) -> bool {
@@ -172,7 +172,7 @@ impl BootstrapServer {
             self.socket.set_socket_type(SocketType::Realtime);
             return true;
         }
-        return false;
+        false
     }
 
     pub fn set_last_telemetry_req(&self) {
@@ -217,7 +217,7 @@ impl BootstrapServer {
 
 impl Drop for BootstrapServer {
     fn drop(&mut self) {
-        let remote_ep = { self.remote_endpoint.lock().unwrap().clone() };
+        let remote_ep = { *self.remote_endpoint.lock().unwrap() };
         self.observer.boostrap_server_exited(
             self.socket.socket_type(),
             self.unique_id(),

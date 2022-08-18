@@ -171,6 +171,12 @@ impl TelemetryData {
     }
 }
 
+impl Default for TelemetryData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Clone)]
 pub struct TelemetryAck {
     header: MessageHeader,

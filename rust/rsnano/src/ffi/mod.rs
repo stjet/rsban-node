@@ -76,48 +76,48 @@ pub unsafe extern "C" fn rsn_string_destroy(handle: *mut StringHandle) {
     drop(Box::from_raw(handle))
 }
 
-impl From<*const u8> for BlockHash {
-    fn from(ptr: *const u8) -> Self {
+impl BlockHash {
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
         BlockHash::from_bytes(into_32_byte_array(ptr))
     }
 }
 
-impl From<*const u8> for Account {
-    fn from(ptr: *const u8) -> Self {
+impl Account {
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
         Account::from_bytes(into_32_byte_array(ptr))
     }
 }
 
-impl From<*const u8> for HashOrAccount {
-    fn from(ptr: *const u8) -> Self {
+impl HashOrAccount {
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
         HashOrAccount::from_bytes(into_32_byte_array(ptr))
     }
 }
 
-impl From<*const u8> for Root {
-    fn from(ptr: *const u8) -> Self {
+impl Root {
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
         Root::from_bytes(into_32_byte_array(ptr))
     }
 }
 
-impl From<*const u8> for RawKey {
-    fn from(ptr: *const u8) -> Self {
+impl RawKey {
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
         RawKey::from_bytes(into_32_byte_array(ptr))
     }
 }
 
-impl From<*const u8> for Signature {
-    fn from(ptr: *const u8) -> Self {
+impl Signature {
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
         let mut bytes = [0; 64];
-        bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(ptr, 64) });
+        bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 64));
         Signature::from_bytes(bytes)
     }
 }
 
-impl From<*const u8> for Amount {
-    fn from(ptr: *const u8) -> Self {
+impl Amount {
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
         let mut bytes = [0; 16];
-        bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(ptr, 16) });
+        bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 16));
         Amount::from_be_bytes(bytes)
     }
 }

@@ -1,13 +1,13 @@
 use crate::{
-    datastore::{Transaction, WriteTransaction},
-    utils::MemoryStream,
+    datastore::{lmdb::MDB_NOTFOUND, Transaction, WriteTransaction},
+    utils::{MemoryStream, StreamAdapter},
     Account, AccountInfo,
 };
 use anyhow::Result;
 
 use super::{
-    ensure_success, mdb_dbi_open, mdb_put, LmdbReadTransaction, LmdbWriteTransaction, MdbTxn,
-    OwnedMdbVal, MDB_SUCCESS,
+    assert_success, mdb_dbi_open, mdb_get, mdb_put, LmdbReadTransaction, LmdbWriteTransaction,
+    MdbTxn, MdbVal, OwnedMdbVal, MDB_SUCCESS,
 };
 
 pub struct AccountStore {
@@ -30,14 +30,9 @@ impl AccountStore {
         Ok(())
     }
 
-    pub fn put(
-        &self,
-        transaction: &dyn WriteTransaction,
-        account: &Account,
-        info: &AccountInfo,
-    ) -> Result<()> {
-        let mut account_val = OwnedMdbVal::try_from(account)?;
-        let mut info_val = OwnedMdbVal::try_from(info)?;
+    pub fn put(&self, transaction: &dyn WriteTransaction, account: &Account, info: &AccountInfo) {
+        let mut account_val = OwnedMdbVal::from(account);
+        let mut info_val = OwnedMdbVal::from(info);
 
         let status = unsafe {
             mdb_put(
@@ -48,7 +43,29 @@ impl AccountStore {
                 0,
             )
         };
-        ensure_success(status)
+        assert_success(status);
+    }
+
+    pub fn get(&self, transaction: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
+        let mut account_val = OwnedMdbVal::from(account);
+        let mut value = MdbVal::new();
+        let status1 = unsafe {
+            mdb_get(
+                get_raw_lmdb_txn(transaction),
+                self.accounts_handle,
+                account_val.as_mdb_val(),
+                &mut value,
+            )
+        };
+        assert!(status1 == MDB_SUCCESS || status1 == MDB_NOTFOUND);
+        if status1 == MDB_SUCCESS {
+            let mut stream = StreamAdapter::new(unsafe {
+                std::slice::from_raw_parts(value.mv_data as *const u8, value.mv_size)
+            });
+            AccountInfo::deserialize(&mut stream).ok()
+        } else {
+            None
+        }
     }
 }
 
@@ -69,22 +86,18 @@ fn get_raw_lmdb_txn(txn: &dyn Transaction) -> *mut MdbTxn {
     }
 }
 
-impl TryFrom<&Account> for OwnedMdbVal {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &Account) -> Result<Self, Self::Error> {
+impl From<&Account> for OwnedMdbVal {
+    fn from(value: &Account) -> Self {
         let mut stream = MemoryStream::new();
-        value.serialize(&mut stream)?;
-        Ok(OwnedMdbVal::new(stream.to_vec()))
+        value.serialize(&mut stream).unwrap();
+        OwnedMdbVal::new(stream.to_vec())
     }
 }
 
-impl TryFrom<&AccountInfo> for OwnedMdbVal {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &AccountInfo) -> Result<Self, Self::Error> {
+impl From<&AccountInfo> for OwnedMdbVal {
+    fn from(value: &AccountInfo) -> Self {
         let mut stream = MemoryStream::new();
-        value.serialize(&mut stream)?;
-        Ok(OwnedMdbVal::new(stream.to_vec()))
+        value.serialize(&mut stream).unwrap();
+        OwnedMdbVal::new(stream.to_vec())
     }
 }

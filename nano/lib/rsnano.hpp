@@ -606,6 +606,8 @@ using MdbCursorOpenCallback = int32_t (*) (MdbTxn *, uint32_t, MdbCursor **);
 
 using MdbDbiOpenCallback = int32_t (*) (MdbTxn *, const int8_t *, uint32_t, uint32_t *);
 
+using MdbGetCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
+
 using MdbPutCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *, uint32_t);
 
 using MdbStrerrorCallback = char * (*)(int32_t);
@@ -1368,6 +1370,8 @@ void rsn_callback_mdb_cursor_open (MdbCursorOpenCallback f);
 
 void rsn_callback_mdb_dbi_open (MdbDbiOpenCallback f);
 
+void rsn_callback_mdb_get (MdbGetCallback f);
+
 void rsn_callback_mdb_put (MdbPutCallback f);
 
 void rsn_callback_mdb_strerror (MdbStrerrorCallback f);
@@ -1655,11 +1659,16 @@ LmdbAccountStoreHandle * rsn_lmdb_account_store_create ();
 
 void rsn_lmdb_account_store_destroy (LmdbAccountStoreHandle * handle);
 
+bool rsn_lmdb_account_store_get (LmdbAccountStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account,
+AccountInfoHandle * info);
+
 bool rsn_lmdb_account_store_open_databases (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn,
 uint32_t flags);
 
-bool rsn_lmdb_account_store_put (LmdbAccountStoreHandle * handle,
+void rsn_lmdb_account_store_put (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account,
 const AccountInfoHandle * info);

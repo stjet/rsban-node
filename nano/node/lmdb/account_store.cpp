@@ -19,24 +19,13 @@ bool nano::lmdb::account_store::open_databases (nano::transaction const & transa
 
 void nano::lmdb::account_store::put (nano::write_transaction const & transaction, nano::account const & account, nano::account_info const & info)
 {
-	bool is_success = rsnano::rsn_lmdb_account_store_put (handle, transaction.get_rust_handle (), account.bytes.data (), info.handle);
-	assert (is_success);
+	rsnano::rsn_lmdb_account_store_put (handle, transaction.get_rust_handle (), account.bytes.data (), info.handle);
 }
 
 bool nano::lmdb::account_store::get (nano::transaction const & transaction, nano::account const & account, nano::account_info & info)
 {
-	nano::mdb_val key{ account };
-	nano::mdb_val value;
-	auto status1 = mdb_get (to_mdb_txn (transaction), get_accounts_handle (), key, value);
-
-	release_assert (status1 == MDB_SUCCESS || status1 == MDB_NOTFOUND);
-	bool result (true);
-	if (status1 == MDB_SUCCESS)
-	{
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (value.data ()), value.size ());
-		result = info.deserialize (stream);
-	}
-	return result;
+	bool found = rsnano::rsn_lmdb_account_store_get (handle, transaction.get_rust_handle (), account.bytes.data (), info.handle);
+	return !found;
 }
 
 void nano::lmdb::account_store::del (nano::write_transaction const & transaction_a, nano::account const & account_a)

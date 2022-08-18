@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use crate::{datastore::lmdb::AccountStore, ffi::AccountInfoHandle, Account};
 
@@ -38,11 +38,26 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_put(
     txn: *mut TransactionHandle,
     account: *const u8,
     info: *const AccountInfoHandle,
-) -> bool {
+) {
     let account = Account::from_ptr(account);
     let info = (*info).deref();
-    (*handle)
-        .0
-        .put((*txn).as_write_tx(), &account, info)
-        .is_ok()
+    (*handle).0.put((*txn).as_write_txn(), &account, info);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_account_store_get(
+    handle: *mut LmdbAccountStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    info: *mut AccountInfoHandle,
+) -> bool {
+    let account = Account::from_ptr(account);
+    let info = (*info).deref_mut();
+    match (*handle).0.get((*txn).as_txn(), &account) {
+        Some(i) => {
+            *info = i;
+            true
+        }
+        None => false,
+    }
 }

@@ -1,4 +1,7 @@
-use std::{ffi::c_void, ops::Deref};
+use std::{
+    ffi::c_void,
+    ops::{Deref, DerefMut},
+};
 
 use crate::{ffi::FfiStream, Account, AccountInfo, Amount, BlockHash, Epoch};
 use num_traits::FromPrimitive;
@@ -10,6 +13,12 @@ impl Deref for AccountInfoHandle {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl DerefMut for AccountInfoHandle {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

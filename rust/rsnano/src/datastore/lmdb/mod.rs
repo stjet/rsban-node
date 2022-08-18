@@ -1,7 +1,6 @@
 mod account_store;
 mod iterator;
 
-use anyhow::Result;
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
@@ -142,12 +141,10 @@ pub trait TxnCallbacks {
     fn txn_end(&self, txn_id: u64);
 }
 
-pub fn ensure_success(status: i32) -> Result<()> {
-    if status == MDB_SUCCESS {
-        Ok(())
-    } else {
+pub fn assert_success(status: i32) {
+    if status != MDB_SUCCESS {
         let msg = unsafe { mdb_strerror(status) };
-        Err(anyhow!(msg))
+        panic!("LMDB status: {}", msg);
     }
 }
 
@@ -240,6 +237,7 @@ pub type MdbCursorGetCallback =
 pub type MdbCursorCloseCallback = extern "C" fn(*mut MdbCursor);
 pub type MdbDbiOpenCallback = extern "C" fn(*mut MdbTxn, *const i8, u32, *mut u32) -> i32;
 pub type MdbPutCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbVal, *mut MdbVal, u32) -> i32;
+pub type MdbGetCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbVal, *mut MdbVal) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -251,6 +249,7 @@ pub static mut MDB_CURSOR_GET: Option<MdbCursorGetCallback> = None;
 pub static mut MDB_CURSOR_CLOSE: Option<MdbCursorCloseCallback> = None;
 pub static mut MDB_DBI_OPEN: Option<MdbDbiOpenCallback> = None;
 pub static mut MDB_PUT: Option<MdbPutCallback> = None;
+pub static mut MDB_GET: Option<MdbGetCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -308,6 +307,10 @@ pub unsafe fn mdb_put(
     flags: u32,
 ) -> i32 {
     MDB_PUT.expect("MDB_PUT missing")(txn, dbi, key, data, flags)
+}
+
+pub unsafe fn mdb_get(txn: *mut MdbTxn, dbi: u32, key: &mut MdbVal, data: &mut MdbVal) -> i32 {
+    MDB_GET.expect("MDB_GET missing")(txn, dbi, key, data)
 }
 
 /// Successful result

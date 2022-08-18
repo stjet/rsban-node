@@ -16,6 +16,11 @@ public:
 		load_current ();
 	}
 
+	mdb_iterator (rsnano::LmdbIteratorHandle * handle_a) :
+		handle{ handle_a }{
+		load_current();
+	}
+
 	mdb_iterator () = default;
 
 	mdb_iterator (nano::mdb_iterator<T, U> && other_a)

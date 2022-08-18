@@ -6,7 +6,7 @@ pub struct LmdbIterator {
     cursor: *mut MdbCursor,
     pub key: MdbVal,
     pub value: MdbVal,
-    expected_value_size: usize,
+    expected_key_size: usize,
 }
 
 impl LmdbIterator {
@@ -15,13 +15,13 @@ impl LmdbIterator {
         dbi: u32,
         val: &MdbVal,
         direction_asc: bool,
-        expected_value_size: usize,
+        expected_key_size: usize,
     ) -> Self {
         let mut iterator = Self {
             cursor: ptr::null_mut(),
             key: MdbVal::new(),
             value: MdbVal::new(),
-            expected_value_size,
+            expected_key_size,
         };
         iterator.init(txn, dbi, val, direction_asc);
         iterator
@@ -54,7 +54,7 @@ impl LmdbIterator {
                 )
             };
             assert!(status3 == MDB_SUCCESS || status3 == MDB_NOTFOUND);
-            if self.key.mv_size != self.expected_value_size {
+            if self.key.mv_size != self.expected_key_size {
                 self.clear();
             }
         } else {
@@ -89,7 +89,7 @@ impl LmdbIterator {
         if status == MDB_NOTFOUND {
             self.clear();
         }
-        if self.key.mv_size != self.expected_value_size {
+        if self.key.mv_size != self.expected_key_size {
             self.clear();
         }
     }
@@ -108,7 +108,7 @@ impl LmdbIterator {
         if status == MDB_NOTFOUND {
             self.clear();
         }
-        if self.key.mv_size != self.expected_value_size {
+        if self.key.mv_size != self.expected_key_size {
             self.clear();
         }
     }

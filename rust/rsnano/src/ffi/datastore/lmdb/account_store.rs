@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{datastore::lmdb::AccountStore, ffi::AccountInfoHandle, Account};
 
-use super::TransactionHandle;
+use super::{TransactionHandle, iterator::LmdbIteratorHandle};
 
 pub struct LmdbAccountStoreHandle(AccountStore);
 
@@ -70,4 +70,15 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_del(
 ) {
     let account = Account::from_ptr(account);
     (*handle).0.del((*txn).as_write_txn(), &account);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_account_store_begin(
+    handle: *mut LmdbAccountStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+) -> *mut LmdbIteratorHandle {
+    let account = Account::from_ptr(account);
+    let iterator = (*handle).0.begin((*txn).as_txn(), &account);
+    LmdbIteratorHandle::new(iterator)
 }

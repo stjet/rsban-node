@@ -2,6 +2,12 @@ use crate::datastore::lmdb::{LmdbIterator, MdbCursor, MdbTxn, MdbVal};
 
 pub struct LmdbIteratorHandle(LmdbIterator);
 
+impl LmdbIteratorHandle{
+    pub fn new(it: LmdbIterator) -> *mut Self{
+        Box::into_raw(Box::new(LmdbIteratorHandle(it)))
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_iterator_create(
     txn: *mut MdbTxn,
@@ -10,13 +16,13 @@ pub unsafe extern "C" fn rsn_lmdb_iterator_create(
     direction_asc: bool,
     expected_value_size: usize,
 ) -> *mut LmdbIteratorHandle {
-    Box::into_raw(Box::new(LmdbIteratorHandle(LmdbIterator::new(
+    LmdbIteratorHandle::new(LmdbIterator::new(
         txn,
         dbi,
         &*val,
         direction_asc,
         expected_value_size,
-    ))))
+    ))
 }
 
 #[no_mangle]

@@ -7,7 +7,7 @@ use anyhow::Result;
 
 use super::{
     assert_success, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbReadTransaction,
-    LmdbWriteTransaction, MdbTxn, MdbVal, OwnedMdbVal, MDB_SUCCESS,
+    LmdbWriteTransaction, MdbTxn, MdbVal, OwnedMdbVal, MDB_SUCCESS, LmdbIterator,
 };
 
 pub struct AccountStore {
@@ -79,6 +79,11 @@ impl AccountStore {
             )
         };
         assert_success(status);
+    }
+
+    pub fn begin (&self, transaction: &dyn Transaction, account: &Account) -> LmdbIterator{
+        let mut account_val = OwnedMdbVal::from(account);
+        LmdbIterator::new(get_raw_lmdb_txn(transaction), self.accounts_handle, account_val.as_mdb_val(), true, Account::serialized_size())
     }
 }
 

@@ -8,7 +8,7 @@ env:
 
 jobs:
   osx_test:
-    name: OSX unit tests [TEST_USE_ROCKSDB=${{ matrix.TEST_USE_ROCKSDB }}]
+    name: OSX Tests [ROCKSDB=${{ matrix.TEST_USE_ROCKSDB }}]
     strategy:
       fail-fast: false
       matrix:
@@ -39,7 +39,7 @@ jobs:
         run: cd build && sudo TEST_USE_ROCKSDB=$TEST_USE_ROCKSDB RUST_BACKTRACE=1 ../ci/test.sh .
 
   linux_test:
-    name: Linux Unit Tests [TEST_USE_ROCKSDB=${{ matrix.TEST_USE_ROCKSDB }} - COMPILER=${{ matrix.COMPILER }}]
+    name: Linux Tests [ROCKSDB=${{ matrix.TEST_USE_ROCKSDB }} - ${{ matrix.COMPILER }}]
     timeout-minutes: 90
     strategy:
       fail-fast: false

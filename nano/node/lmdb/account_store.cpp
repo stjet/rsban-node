@@ -44,21 +44,28 @@ size_t nano::lmdb::account_store::count (nano::transaction const & transaction_a
 	return nano::mdb_count (nano::to_mdb_txn (transaction_a), get_accounts_handle ());
 }
 
-nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::begin (nano::transaction const & transaction, nano::account const & account) const
+nano::store_iterator<nano::account, nano::account_info> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
 {
-	auto it_handle{ rsnano::rsn_lmdb_account_store_begin (handle, transaction.get_rust_handle (), account.bytes.data ()) };
 	return nano::store_iterator<nano::account, nano::account_info> (
 	std::make_unique<nano::mdb_iterator<nano::account, nano::account_info>> (it_handle));
 }
 
+nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::begin (nano::transaction const & transaction, nano::account const & account) const
+{
+	auto it_handle{ rsnano::rsn_lmdb_account_store_begin_account (handle, transaction.get_rust_handle (), account.bytes.data ()) };
+	return to_iterator (it_handle);
+}
+
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::begin (nano::transaction const & transaction) const
 {
-	return store.make_iterator<nano::account, nano::account_info> (transaction, tables::accounts);
+	auto it_handle{ rsnano::rsn_lmdb_account_store_begin (handle, transaction.get_rust_handle ()) };
+	return to_iterator (it_handle);
 }
 
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::rbegin (nano::transaction const & transaction_a) const
 {
-	return store.make_iterator<nano::account, nano::account_info> (transaction_a, tables::accounts, false);
+	auto it_handle{ rsnano::rsn_lmdb_account_store_rbegin (handle, transaction_a.get_rust_handle ()) };
+	return to_iterator (it_handle);
 }
 
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::end () const

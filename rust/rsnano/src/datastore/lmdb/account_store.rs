@@ -1,5 +1,8 @@
 use crate::{
-    datastore::{lmdb::MDB_NOTFOUND, AccountStore, DbIterator, Transaction, WriteTransaction},
+    datastore::{
+        lmdb::MDB_NOTFOUND, AccountStore, DbIterator, ReadTransaction, Transaction,
+        WriteTransaction,
+    },
     utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
 };
@@ -89,7 +92,7 @@ impl AccountStore for LmdbAccountStore {
         assert_success(status);
     }
 
-    fn begin(
+    fn begin_account(
         &self,
         transaction: &dyn Transaction,
         account: &Account,
@@ -100,5 +103,38 @@ impl AccountStore for LmdbAccountStore {
             Some(account),
             true,
         ))
+    }
+
+    fn begin(&self, transaction: &dyn Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
+        Box::new(LmdbIterator::new(
+            transaction,
+            self.accounts_handle,
+            None,
+            true,
+        ))
+    }
+
+    fn rbegin(&self, transaction: &dyn Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
+        Box::new(LmdbIterator::new(
+            transaction,
+            self.accounts_handle,
+            None,
+            false,
+        ))
+    }
+
+    fn for_each_par(
+        &self,
+        _action: &dyn Fn(
+            &dyn ReadTransaction,
+            &mut dyn DbIterator<Account, AccountInfo>,
+            &mut dyn DbIterator<Account, AccountInfo>,
+        ),
+    ) {
+        todo!()
+        // parallel_traversal(&|start, end, is_last|{
+        //     let transaction (this->store.tx_begin_read ());
+        //     action_a (*transaction, this->begin (*transaction, start), !is_last ? this->begin (*transaction, end) : this->end ());
+        // });
     }
 }

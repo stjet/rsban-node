@@ -1660,6 +1660,9 @@ void rsn_ledger_destroy (LedgerHandle * handle);
 uint32_t rsn_lmdb_account_store_accounts_handle (LmdbAccountStoreHandle * handle);
 
 LmdbIteratorHandle * rsn_lmdb_account_store_begin (LmdbAccountStoreHandle * handle,
+TransactionHandle * txn);
+
+LmdbIteratorHandle * rsn_lmdb_account_store_begin_account (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account);
 
@@ -1684,6 +1687,9 @@ void rsn_lmdb_account_store_put (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account,
 const AccountInfoHandle * info);
+
+LmdbIteratorHandle * rsn_lmdb_account_store_rbegin (LmdbAccountStoreHandle * handle,
+TransactionHandle * txn);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 

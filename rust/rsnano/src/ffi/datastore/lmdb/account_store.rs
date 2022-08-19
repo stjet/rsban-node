@@ -77,12 +77,30 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_del(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_account_store_begin(
+pub unsafe extern "C" fn rsn_lmdb_account_store_begin_account(
     handle: *mut LmdbAccountStoreHandle,
     txn: *mut TransactionHandle,
     account: *const u8,
 ) -> *mut LmdbIteratorHandle {
     let account = Account::from_ptr(account);
-    let mut iterator = (*handle).0.begin((*txn).as_txn(), &account);
+    let mut iterator = (*handle).0.begin_account((*txn).as_txn(), &account);
+    LmdbIteratorHandle::new(iterator.take_lmdb_raw_iterator())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_account_store_begin(
+    handle: *mut LmdbAccountStoreHandle,
+    txn: *mut TransactionHandle,
+) -> *mut LmdbIteratorHandle {
+    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    LmdbIteratorHandle::new(iterator.take_lmdb_raw_iterator())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_account_store_rbegin(
+    handle: *mut LmdbAccountStoreHandle,
+    txn: *mut TransactionHandle,
+) -> *mut LmdbIteratorHandle {
+    let mut iterator = (*handle).0.rbegin((*txn).as_txn());
     LmdbIteratorHandle::new(iterator.take_lmdb_raw_iterator())
 }

@@ -116,12 +116,12 @@ MDB_txn * nano::mdb_env::tx (nano::transaction const & transaction_a) const
 	return to_mdb_txn (transaction_a);
 }
 
-MDB_env * nano::mdb_env::env() const
+MDB_env * nano::mdb_env::env () const
 {
 	return environment;
 }
 
-void nano::mdb_env::close_env()
+void nano::mdb_env::close_env ()
 {
 	environment = nullptr;
 }

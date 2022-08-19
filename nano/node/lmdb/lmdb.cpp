@@ -164,8 +164,8 @@ bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & pa
 	if (vacuum_success)
 	{
 		// Need to close the database to release the file handle
-		mdb_env_sync (env ().env(), true);
-		mdb_env_close (env ().env());
+		mdb_env_sync (env ().env (), true);
+		mdb_env_close (env ().env ());
 		gateway.env.close_env ();
 
 		// Replace the ledger file with the vacuumed one

@@ -32,7 +32,7 @@ class unchecked_map
 	};
 
 public:
-	unchecked_map (nano::store & store, bool const & do_delete);
+	unchecked_map (nano::store & store, bool do_delete);
 	~unchecked_map ();
 	void put (nano::hash_or_account const & dependency, nano::unchecked_info const & info);
 	void for_each (
@@ -69,7 +69,7 @@ private:
 	void insert_impl (nano::write_transaction const & transaction, nano::hash_or_account const & dependency, nano::unchecked_info const & info);
 	void query_impl (nano::write_transaction const & transaction, nano::block_hash const & hash);
 	nano::store & store;
-	bool const & disable_delete;
+	bool disable_delete;
 	std::deque<boost::variant<insert, query>> buffer;
 	std::deque<boost::variant<insert, query>> back_buffer;
 	bool writing_back_buffer{ false };

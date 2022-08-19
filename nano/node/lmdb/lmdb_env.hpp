@@ -63,8 +63,8 @@ public:
 	std::unique_ptr<nano::read_transaction> tx_begin_read (mdb_txn_callbacks txn_callbacks = mdb_txn_callbacks{}) const;
 	std::unique_ptr<nano::write_transaction> tx_begin_write (mdb_txn_callbacks txn_callbacks = mdb_txn_callbacks{}) const;
 	MDB_txn * tx (nano::transaction const & transaction_a) const;
-	MDB_env * env() const;
-	void close_env();
+	MDB_env * env () const;
+	void close_env ();
 
 private:
 	MDB_env * environment;

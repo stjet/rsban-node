@@ -6,7 +6,7 @@
 
 #include <boost/range/join.hpp>
 
-nano::unchecked_map::unchecked_map (nano::store & store, bool const & disable_delete) :
+nano::unchecked_map::unchecked_map (nano::store & store, bool disable_delete) :
 	store{ store },
 	disable_delete{ disable_delete },
 	thread{ [this] () { run (); } }

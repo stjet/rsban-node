@@ -4,7 +4,8 @@
 
 #include <boost/filesystem/operations.hpp>
 
-nano::mdb_env::mdb_env (bool & error_a, boost::filesystem::path const & path_a, nano::mdb_env::options options_a)
+nano::mdb_env::mdb_env (bool & error_a, boost::filesystem::path const & path_a, nano::mdb_env::options options_a) :
+	handle{ rsnano::rsn_mdb_env_create () }
 {
 	init (error_a, path_a, options_a);
 }
@@ -88,6 +89,7 @@ nano::mdb_env::~mdb_env ()
 		mdb_env_sync (environment, true);
 		mdb_env_close (environment);
 	}
+	rsnano::rsn_mdb_env_destroy (handle);
 }
 
 nano::mdb_env::operator MDB_env * () const
@@ -112,6 +114,16 @@ std::unique_ptr<nano::write_transaction> nano::mdb_env::tx_begin_write (mdb_txn_
 MDB_txn * nano::mdb_env::tx (nano::transaction const & transaction_a) const
 {
 	return to_mdb_txn (transaction_a);
+}
+
+MDB_env * nano::mdb_env::env() const
+{
+	return environment;
+}
+
+void nano::mdb_env::close_env()
+{
+	environment = nullptr;
 }
 
 MDB_txn * nano::to_mdb_txn (nano::transaction const & transaction_a)

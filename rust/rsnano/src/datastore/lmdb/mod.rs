@@ -1,5 +1,6 @@
 mod account_store;
 mod iterator;
+mod lmdb_env;
 
 use std::{
     ffi::{c_void, CStr, CString},
@@ -10,6 +11,7 @@ use std::{
 
 pub use account_store::LmdbAccountStore;
 pub use iterator::{LmdbIterator, LmdbRawIterator};
+pub use lmdb_env::LmdbEnv;
 
 use crate::utils::{MemoryStream, Serialize};
 

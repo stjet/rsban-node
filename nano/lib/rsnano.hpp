@@ -96,6 +96,8 @@ struct LedgerHandle;
 
 struct LmdbAccountStoreHandle;
 
+struct LmdbEnvHandle;
+
 struct LmdbIteratorHandle;
 
 struct LocalVoteHistoryHandle;
@@ -1770,6 +1772,10 @@ void rsn_local_vote_history_votes_destroy (LocalVotesResultHandle * handle);
 LoggerHandle * rsn_logger_create (void * logger);
 
 void rsn_logging_create (LoggingDto * dto);
+
+LmdbEnvHandle * rsn_mdb_env_create ();
+
+void rsn_mdb_env_destroy (LmdbEnvHandle * handle);
 
 void rsn_message_builder_bootstrap_exited (const char * id,
 const char * mode,

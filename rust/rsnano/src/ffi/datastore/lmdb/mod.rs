@@ -1,5 +1,6 @@
 mod account_store;
 mod iterator;
+mod lmdb_env;
 
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 

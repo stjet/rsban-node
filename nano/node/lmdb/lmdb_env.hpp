@@ -55,14 +55,21 @@ public:
 	};
 
 	mdb_env (bool &, boost::filesystem::path const &, nano::mdb_env::options options_a = nano::mdb_env::options::make ());
+	mdb_env (mdb_env const &) = delete;
+	mdb_env (mdb_env &&) = delete;
 	void init (bool &, boost::filesystem::path const &, nano::mdb_env::options options_a = nano::mdb_env::options::make ());
 	~mdb_env ();
 	operator MDB_env * () const;
 	std::unique_ptr<nano::read_transaction> tx_begin_read (mdb_txn_callbacks txn_callbacks = mdb_txn_callbacks{}) const;
 	std::unique_ptr<nano::write_transaction> tx_begin_write (mdb_txn_callbacks txn_callbacks = mdb_txn_callbacks{}) const;
 	MDB_txn * tx (nano::transaction const & transaction_a) const;
+	MDB_env * env() const;
+	void close_env();
+
+private:
 	MDB_env * environment;
 	mutable std::atomic<uint64_t> next_txn_id{ 0 };
+	rsnano::LmdbEnvHandle * handle;
 };
 
 MDB_txn * to_mdb_txn (nano::transaction const & transaction_a);

@@ -15,6 +15,7 @@ mod websocket_config;
 mod work_thresholds;
 
 pub use diagnostics_config::*;
+pub use lmdb_config::LmdbConfigDto;
 pub use logging::*;
 pub use network_constants::*;
 pub use node_config::*;

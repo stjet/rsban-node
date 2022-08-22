@@ -2,6 +2,7 @@ use anyhow::Result;
 
 use crate::utils::TomlWriter;
 
+#[derive(PartialEq, Eq)]
 pub enum SyncStrategy {
     /** Always flush to disk on commit. This is default. */
     Always,

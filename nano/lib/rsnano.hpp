@@ -610,15 +610,23 @@ using MdbDbiOpenCallback = int32_t (*) (MdbTxn *, const int8_t *, uint32_t, uint
 
 using MdbDelCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
 
+struct MdbEnv
+{
+};
+
+using MdbEnvCreateCallback = int32_t (*) (MdbEnv **);
+
+using MdbEnvOpenCallback = int32_t (*) (MdbEnv *, const int8_t *, uint32_t, uint32_t);
+
+using MdbEnvSetMapSizeCallback = int32_t (*) (MdbEnv *, uintptr_t);
+
+using MdbEnvSetMaxDbsCallback = int32_t (*) (MdbEnv *, uint32_t);
+
 using MdbGetCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
 
 using MdbPutCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *, uint32_t);
 
 using MdbStrerrorCallback = char * (*)(int32_t);
-
-struct MdbEnv
-{
-};
 
 using MdbTxnBeginCallback = int32_t (*) (MdbEnv *, MdbTxn *, uint32_t, MdbTxn **);
 
@@ -655,6 +663,8 @@ using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 /// first arg is a `shared_ptr<request_response_visitor_factory> *`
 /// returns a `shared_ptr<message_visitor> *`
 using RequestResponseVisitorFactoryCreateCallback = void * (*)(void *, BootstrapServerHandle *);
+
+using RunningWithValgrindCallback = bool (*) ();
 
 using StringCharsCallback = const char * (*)(void *);
 
@@ -1376,6 +1386,14 @@ void rsn_callback_mdb_dbi_open (MdbDbiOpenCallback f);
 
 void rsn_callback_mdb_del (MdbDelCallback f);
 
+void rsn_callback_mdb_env_create (MdbEnvCreateCallback f);
+
+void rsn_callback_mdb_env_open (MdbEnvOpenCallback f);
+
+void rsn_callback_mdb_env_set_map_size (MdbEnvSetMapSizeCallback f);
+
+void rsn_callback_mdb_env_set_max_dbs (MdbEnvSetMaxDbsCallback f);
+
 void rsn_callback_mdb_get (MdbGetCallback f);
 
 void rsn_callback_mdb_put (MdbPutCallback f);
@@ -1425,6 +1443,8 @@ void rsn_callback_read_u8 (ReadU8Callback f);
 void rsn_callback_request_response_visitor_factory_bootstrap_visitor (RequestResponseVisitorFactoryCreateCallback f);
 
 void rsn_callback_request_response_visitor_factory_destroy (VoidPointerCallback f);
+
+void rsn_callback_running_with_valgrind (RunningWithValgrindCallback f);
 
 void rsn_callback_string_chars (StringCharsCallback f);
 
@@ -1773,9 +1793,22 @@ LoggerHandle * rsn_logger_create (void * logger);
 
 void rsn_logging_create (LoggingDto * dto);
 
-LmdbEnvHandle * rsn_mdb_env_create ();
+void rsn_mdb_env_close_env (LmdbEnvHandle * handle);
+
+LmdbEnvHandle * rsn_mdb_env_create (bool * error,
+const int8_t * path,
+const LmdbConfigDto * lmdb_config,
+bool use_no_mem_init);
 
 void rsn_mdb_env_destroy (LmdbEnvHandle * handle);
+
+void * rsn_mdb_env_get_env (LmdbEnvHandle * handle);
+
+void rsn_mdb_env_init (LmdbEnvHandle * handle,
+bool * error,
+const int8_t * path,
+const LmdbConfigDto * lmdb_config,
+bool use_no_mem_init);
 
 void rsn_message_builder_bootstrap_exited (const char * id,
 const char * mode,

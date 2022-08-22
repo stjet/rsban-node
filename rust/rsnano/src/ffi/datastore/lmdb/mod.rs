@@ -9,11 +9,12 @@ use crate::{
         lmdb::{
             LmdbReadTransaction, LmdbWriteTransaction, MdbCursorCloseCallback,
             MdbCursorGetCallback, MdbCursorOpenCallback, MdbDbiOpenCallback, MdbDelCallback,
-            MdbEnv, MdbGetCallback, MdbPutCallback, MdbStrerrorCallback, MdbTxn,
+            MdbEnv, MdbEnvCreateCallback, MdbEnvOpenCallback, MdbEnvSetMapSizeCallback,
+            MdbEnvSetMaxDbsCallback, MdbGetCallback, MdbPutCallback, MdbStrerrorCallback, MdbTxn,
             MdbTxnBeginCallback, MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback,
             TxnCallbacks, MDB_CURSOR_CLOSE, MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_DEL,
-            MDB_GET, MDB_PUT, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW,
-            MDB_TXN_RESET,
+            MDB_ENV_CREATE, MDB_ENV_OPEN, MDB_ENV_SET_MAP_SIZE, MDB_ENV_SET_MAX_DBS, MDB_GET,
+            MDB_PUT, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
         },
         Transaction,
     },
@@ -237,4 +238,24 @@ pub unsafe extern "C" fn rsn_callback_mdb_get(f: MdbGetCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_del(f: MdbDelCallback) {
     MDB_DEL = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_env_create(f: MdbEnvCreateCallback) {
+    MDB_ENV_CREATE = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_env_set_map_size(f: MdbEnvSetMapSizeCallback) {
+    MDB_ENV_SET_MAP_SIZE = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_env_set_max_dbs(f: MdbEnvSetMaxDbsCallback) {
+    MDB_ENV_SET_MAX_DBS = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_env_open(f: MdbEnvOpenCallback) {
+    MDB_ENV_OPEN = Some(f);
 }

@@ -50,7 +50,10 @@ pub use toml::*;
 pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
-use crate::{utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount, RawKey, Root, Signature};
+use crate::{
+    utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount, RawKey, Root,
+    RunningWithValgrindCallback, Signature, RUNNING_WITH_VALGRIND,
+};
 pub use network::ChannelTcpObserverWeakPtr;
 
 pub struct StringHandle(CString);
@@ -177,4 +180,9 @@ impl From<&ErrorCodeDto> for ErrorCode {
             category: dto.category,
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_running_with_valgrind(f: RunningWithValgrindCallback) {
+    RUNNING_WITH_VALGRIND = Some(f);
 }

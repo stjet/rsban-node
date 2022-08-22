@@ -1,4 +1,5 @@
 #include <nano/crypto/blake2/blake2.h>
+#include <nano/lib/config.hpp>
 #include <nano/lib/logger_mt.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
@@ -960,6 +961,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_txn_callbacks_end (txn_callbacks_end);
 
 	rsnano::rsn_callback_message_visitor_bootstrap_processed (message_visitor_bootstrap_processed);
+	rsnano::rsn_callback_running_with_valgrind (nano::running_within_valgrind);
 
 	rsnano::rsn_callback_mdb_txn_begin (reinterpret_cast<rsnano::MdbTxnBeginCallback> (mdb_txn_begin));
 	rsnano::rsn_callback_mdb_txn_commit (reinterpret_cast<rsnano::MdbTxnCommitCallback> (mdb_txn_commit));
@@ -973,6 +975,10 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_mdb_put (reinterpret_cast<rsnano::MdbPutCallback> (mdb_put));
 	rsnano::rsn_callback_mdb_get (reinterpret_cast<rsnano::MdbGetCallback> (mdb_get));
 	rsnano::rsn_callback_mdb_del (reinterpret_cast<rsnano::MdbDelCallback> (mdb_del));
+	rsnano::rsn_callback_mdb_env_create (reinterpret_cast<rsnano::MdbEnvCreateCallback> (mdb_env_create));
+	rsnano::rsn_callback_mdb_env_set_max_dbs (reinterpret_cast<rsnano::MdbEnvSetMaxDbsCallback> (mdb_env_set_maxdbs));
+	rsnano::rsn_callback_mdb_env_set_map_size (reinterpret_cast<rsnano::MdbEnvSetMapSizeCallback> (mdb_env_set_mapsize));
+	rsnano::rsn_callback_mdb_env_open (reinterpret_cast<rsnano::MdbEnvOpenCallback> (mdb_env_open));
 
 	callbacks_set = true;
 }

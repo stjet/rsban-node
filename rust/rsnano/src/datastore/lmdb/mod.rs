@@ -5,13 +5,14 @@ mod lmdb_env;
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
+    path::Path,
     ptr,
     sync::Arc,
 };
 
 pub use account_store::LmdbAccountStore;
 pub use iterator::{LmdbIterator, LmdbRawIterator};
-pub use lmdb_env::LmdbEnv;
+pub use lmdb_env::{EnvOptions, LmdbEnv};
 
 use crate::utils::{MemoryStream, Serialize};
 
@@ -98,9 +99,11 @@ impl LmdbWriteTransaction {
         if self.active {
             let status = unsafe { mdb_txn_commit(self.handle) };
             if status != MDB_SUCCESS {
-                panic!("Unable to write to the LMDB database {}", unsafe {
-                    mdb_strerror(status)
-                });
+                let err_msg = unsafe { mdb_strerror(status) };
+                panic!(
+                    "Unable to write to the LMDB database {}",
+                    err_msg.unwrap_or("unknown")
+                );
             }
             self.callbacks.txn_end(self.txn_id);
             self.active = false;
@@ -110,7 +113,8 @@ impl LmdbWriteTransaction {
     pub fn renew(&mut self) {
         let status = unsafe { mdb_txn_begin(self.env, ptr::null_mut(), 0, &mut self.handle) };
         if status != MDB_SUCCESS {
-            panic!("write tx renew failed: {}", unsafe { mdb_strerror(status) });
+            let err_msg = unsafe { mdb_strerror(status) };
+            panic!("write tx renew failed: {}", err_msg.unwrap_or("unknown"));
         }
         self.callbacks.txn_start(self.txn_id, true);
         self.active = true;
@@ -146,9 +150,19 @@ pub trait TxnCallbacks {
 }
 
 pub fn assert_success(status: i32) {
-    if status != MDB_SUCCESS {
+    ensure_success(status).unwrap();
+}
+
+pub fn ensure_success(status: i32) -> anyhow::Result<()> {
+    if status == MDB_SUCCESS {
+        Ok(())
+    } else {
         let msg = unsafe { mdb_strerror(status) };
-        panic!("LMDB status: {}", msg);
+        Err(anyhow!(
+            "LMDB returned status {}: {}",
+            status,
+            msg.unwrap_or("unknown")
+        ))
     }
 }
 
@@ -273,6 +287,10 @@ pub type MdbDbiOpenCallback = extern "C" fn(*mut MdbTxn, *const i8, u32, *mut u3
 pub type MdbPutCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbVal, *mut MdbVal, u32) -> i32;
 pub type MdbGetCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbVal, *mut MdbVal) -> i32;
 pub type MdbDelCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbVal, *mut MdbVal) -> i32;
+pub type MdbEnvCreateCallback = extern "C" fn(*mut *mut MdbEnv) -> i32;
+pub type MdbEnvSetMaxDbsCallback = extern "C" fn(*mut MdbEnv, u32) -> i32;
+pub type MdbEnvSetMapSizeCallback = extern "C" fn(*mut MdbEnv, usize) -> i32;
+pub type MdbEnvOpenCallback = extern "C" fn(*mut MdbEnv, *const i8, u32, u32) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -286,6 +304,10 @@ pub static mut MDB_DBI_OPEN: Option<MdbDbiOpenCallback> = None;
 pub static mut MDB_PUT: Option<MdbPutCallback> = None;
 pub static mut MDB_GET: Option<MdbGetCallback> = None;
 pub static mut MDB_DEL: Option<MdbDelCallback> = None;
+pub static mut MDB_ENV_CREATE: Option<MdbEnvCreateCallback> = None;
+pub static mut MDB_ENV_SET_MAX_DBS: Option<MdbEnvSetMaxDbsCallback> = None;
+pub static mut MDB_ENV_SET_MAP_SIZE: Option<MdbEnvSetMapSizeCallback> = None;
+pub static mut MDB_ENV_OPEN: Option<MdbEnvOpenCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -308,9 +330,13 @@ pub unsafe fn mdb_txn_renew(txn: *mut MdbTxn) -> i32 {
     MDB_TXN_RENEW.expect("MDB_TXN_RENEW missing")(txn)
 }
 
-pub unsafe fn mdb_strerror(status: i32) -> &'static str {
+pub unsafe fn mdb_strerror(status: i32) -> Option<&'static str> {
     let ptr = MDB_STRERROR.expect("MDB_STRERROR missing")(status);
-    CStr::from_ptr(ptr).to_str().unwrap()
+    if ptr.is_null() {
+        None
+    } else {
+        Some(CStr::from_ptr(ptr).to_str().unwrap())
+    }
 }
 
 pub unsafe fn mdb_cursor_open(txn: *mut MdbTxn, dbi: u32, cursor: *mut *mut MdbCursor) -> i32 {
@@ -359,11 +385,50 @@ pub unsafe fn mdb_del(
     MDB_DEL.expect("MDB_DEL missing")(txn, dbi, key, dataptr)
 }
 
+pub unsafe fn mdb_env_create(env: *mut *mut MdbEnv) -> i32 {
+    MDB_ENV_CREATE.expect("MDB_ENV_CREATE missing")(env)
+}
+
+pub unsafe fn mdb_env_set_maxdbs(env: *mut MdbEnv, max_dbs: u32) -> i32 {
+    MDB_ENV_SET_MAX_DBS.expect("MDB_ENV_SET_MAX_DBS missing")(env, max_dbs)
+}
+
+pub unsafe fn mdb_env_set_mapsize(env: *mut MdbEnv, size: usize) -> i32 {
+    MDB_ENV_SET_MAP_SIZE.expect("MDB_ENV_SET_MAP_SIZE missing")(env, size)
+}
+
+pub unsafe fn mdb_env_open(env: *mut MdbEnv, path: &Path, flags: u32, mode: u32) -> i32 {
+    let path_cstr = CString::new(path.to_str().unwrap()).unwrap();
+    MDB_ENV_OPEN.expect("MDB_ENV_OPEN missing")(env, path_cstr.as_ptr(), flags, mode)
+}
+
 /// Successful result
 const MDB_SUCCESS: i32 = 0;
 
-/// read only
-const MDB_RDONLY: u32 = 0x20000;
-
 /// key/data pair not found (EOF)
 const MDB_NOTFOUND: i32 = -30798;
+
+// mdb_env environment flags:
+
+/// mmap at a fixed address (experimental)
+const MDB_FIXEDMAP: u32 = 0x01;
+/// no environment directory
+const MDB_NOSUBDIR: u32 = 0x4000;
+/// don't fsync after commit
+const MDB_NOSYNC: u32 = 0x10000;
+/// read only
+const MDB_RDONLY: u32 = 0x20000;
+/// don't fsync metapage after commit
+const MDB_NOMETASYNC: u32 = 0x40000;
+/// use writable mmap
+const MDB_WRITEMAP: u32 = 0x80000;
+/// use asynchronous msync when #WRITEMAP is used
+const MDB_MAPASYNC: u32 = 0x100000;
+/// tie reader locktable slots to #txn objects instead of to threads
+const MDB_NOTLS: u32 = 0x200000;
+/// don't do any locking, caller must manage their own locks
+const MDB_NOLOCK: u32 = 0x400000;
+/// don't do readahead (no effect on Windows)
+const MDB_NORDAHEAD: u32 = 0x800000;
+/// don't initialize malloc'd memory before writing to datafile
+const MDB_NOMEMINIT: u32 = 0x1000000;

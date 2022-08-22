@@ -59,3 +59,9 @@ pub(crate) use websocket::*;
 pub trait FullHash {
     fn full_hash(&self) -> BlockHash;
 }
+
+pub type RunningWithValgrindCallback = extern "C" fn() -> bool;
+pub static mut RUNNING_WITH_VALGRIND: Option<RunningWithValgrindCallback> = None;
+pub fn running_within_valgrind() -> bool {
+    unsafe { RUNNING_WITH_VALGRIND.expect("RUNNING_WITH_VALGRIND missing")() }
+}

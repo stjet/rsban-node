@@ -83,7 +83,7 @@ pub struct LmdbWriteTransaction {
 }
 
 impl LmdbWriteTransaction {
-    pub fn new(txn_id: u64, env: *mut MdbEnv, callbacks: Arc<dyn TxnCallbacks>) -> Self {
+    pub unsafe fn new(txn_id: u64, env: *mut MdbEnv, callbacks: Arc<dyn TxnCallbacks>) -> Self {
         let mut tx = Self {
             env,
             txn_id,

@@ -2,6 +2,7 @@ use std::{
     ffi::{c_void, CStr},
     path::Path,
     ptr,
+    sync::Arc,
 };
 
 use crate::{
@@ -9,6 +10,8 @@ use crate::{
     ffi::LmdbConfigDto,
     LmdbConfig,
 };
+
+use super::{FfiCallbacksWrapper, TransactionHandle, TransactionType};
 
 pub struct LmdbEnvHandle(LmdbEnv);
 
@@ -70,4 +73,24 @@ pub unsafe extern "C" fn rsn_mdb_env_init(
     let path_str = CStr::from_ptr(path).to_str().unwrap();
     let path = Path::new(path_str);
     *error = (*handle).0.init(path, &options).is_err()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_mdb_env_tx_begin_read(
+    handle: *mut LmdbEnvHandle,
+    callbacks: *mut c_void,
+) -> *mut TransactionHandle {
+    let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
+    let txn = (*handle).0.tx_begin_read(callbacks);
+    TransactionHandle::new(TransactionType::Read(txn))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_mdb_env_tx_begin_write(
+    handle: *mut LmdbEnvHandle,
+    callbacks: *mut c_void,
+) -> *mut TransactionHandle {
+    let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
+    let txn = (*handle).0.tx_begin_write(callbacks);
+    TransactionHandle::new(TransactionType::Write(txn))
 }

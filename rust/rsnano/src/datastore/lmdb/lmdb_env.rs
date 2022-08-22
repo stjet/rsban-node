@@ -1,4 +1,7 @@
-use super::{assert_success, mdb_env_close, mdb_env_create, mdb_env_sync, MdbEnv};
+use super::{
+    assert_success, mdb_env_close, mdb_env_create, mdb_env_sync, LmdbReadTransaction,
+    LmdbWriteTransaction, MdbEnv, TxnCallbacks,
+};
 use crate::{
     datastore::lmdb::{
         mdb_env_open, mdb_env_set_mapsize, mdb_env_set_maxdbs, MDB_MAPASYNC, MDB_NOMEMINIT,
@@ -12,6 +15,10 @@ use std::{
     os::unix::prelude::PermissionsExt,
     path::Path,
     ptr,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 pub struct EnvOptions {
@@ -21,12 +28,14 @@ pub struct EnvOptions {
 
 pub struct LmdbEnv {
     pub environment: *mut MdbEnv,
+    next_txn_id: AtomicU64,
 }
 
 impl LmdbEnv {
     pub fn new(path: &Path, options: &EnvOptions) -> Result<Self> {
         let mut result = Self {
             environment: ptr::null_mut(),
+            next_txn_id: AtomicU64::new(0),
         };
         result.init(path, options)?;
         Ok(result)
@@ -71,6 +80,18 @@ impl LmdbEnv {
 
     pub fn close_env(&mut self) {
         self.environment = ptr::null_mut();
+    }
+
+    pub fn tx_begin_read(&self, callbacks: Arc<dyn TxnCallbacks>) -> LmdbReadTransaction {
+        let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
+        unsafe { LmdbReadTransaction::new(txn_id, self.environment, callbacks) }
+    }
+
+    pub fn tx_begin_write(&self, callbacks: Arc<dyn TxnCallbacks>) -> LmdbWriteTransaction {
+        // For IO threads, we do not want them to block on creating write transactions.
+        debug_assert!(std::thread::current().name() != Some("I/O"));
+        let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
+        unsafe { LmdbWriteTransaction::new(txn_id, self.environment, callbacks) }
     }
 }
 

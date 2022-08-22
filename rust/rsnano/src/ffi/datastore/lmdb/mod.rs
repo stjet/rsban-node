@@ -25,6 +25,10 @@ use crate::{
 pub struct TransactionHandle(TransactionType);
 
 impl TransactionHandle {
+    pub fn new(txn_type: TransactionType) -> *mut TransactionHandle {
+        Box::into_raw(Box::new(TransactionHandle(txn_type)))
+    }
+
     pub fn as_read_txn(&mut self) -> &mut LmdbReadTransaction {
         match &mut self.0 {
             TransactionType::Read(tx) => tx,
@@ -105,7 +109,7 @@ pub extern "C" fn rsn_lmdb_write_txn_create(
 ) -> *mut TransactionHandle {
     let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
     Box::into_raw(Box::new(TransactionHandle(TransactionType::Write(
-        LmdbWriteTransaction::new(txn_id, env, callbacks),
+        unsafe { LmdbWriteTransaction::new(txn_id, env, callbacks) },
     ))))
 }
 

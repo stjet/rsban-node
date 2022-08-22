@@ -66,7 +66,6 @@ public:
 	void close_env ();
 
 private:
-	mutable std::atomic<uint64_t> next_txn_id{ 0 };
 	rsnano::LmdbEnvHandle * handle;
 };
 

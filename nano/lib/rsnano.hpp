@@ -1818,6 +1818,10 @@ const int8_t * path,
 const LmdbConfigDto * lmdb_config,
 bool use_no_mem_init);
 
+TransactionHandle * rsn_mdb_env_tx_begin_read (LmdbEnvHandle * handle, void * callbacks);
+
+TransactionHandle * rsn_mdb_env_tx_begin_write (LmdbEnvHandle * handle, void * callbacks);
+
 void rsn_message_builder_bootstrap_exited (const char * id,
 const char * mode,
 uint64_t duration_s,

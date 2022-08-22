@@ -1,9 +1,8 @@
-use super::{mdb_env_create, MdbEnv, assert_success};
+use super::{assert_success, mdb_env_create, MdbEnv};
 use crate::{
     datastore::lmdb::{
-        mdb_env_open, mdb_env_set_mapsize, mdb_env_set_maxdbs, MDB_MAPASYNC,
-        MDB_NOMEMINIT, MDB_NOMETASYNC, MDB_NORDAHEAD, MDB_NOSUBDIR, MDB_NOSYNC, MDB_NOTLS,
-        MDB_WRITEMAP,
+        mdb_env_open, mdb_env_set_mapsize, mdb_env_set_maxdbs, MDB_MAPASYNC, MDB_NOMEMINIT,
+        MDB_NOMETASYNC, MDB_NORDAHEAD, MDB_NOSUBDIR, MDB_NOSYNC, MDB_NOTLS, MDB_WRITEMAP,
     },
     running_within_valgrind, LmdbConfig, SyncStrategy,
 };

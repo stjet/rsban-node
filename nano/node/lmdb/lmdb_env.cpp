@@ -31,11 +31,12 @@ nano::mdb_env::~mdb_env ()
 
 void nano::mdb_env::init (bool & error_a, boost::filesystem::path const & path_a, nano::mdb_env::options options_a)
 {
-	if (handle == nullptr){
+	if (handle == nullptr)
+	{
 		error_a = true;
 		return;
 	}
-	
+
 	auto config_dto{ options_a.config.to_dto () };
 	rsnano::rsn_mdb_env_init (handle, &error_a, reinterpret_cast<const int8_t *> (path_a.string ().c_str ()), &config_dto, options_a.use_no_mem_init);
 }

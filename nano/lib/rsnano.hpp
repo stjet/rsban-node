@@ -614,6 +614,8 @@ struct MdbEnv
 {
 };
 
+using MdbEnvCloseCallback = int32_t (*) (MdbEnv *);
+
 using MdbEnvCreateCallback = int32_t (*) (MdbEnv **);
 
 using MdbEnvOpenCallback = int32_t (*) (MdbEnv *, const int8_t *, uint32_t, uint32_t);
@@ -621,6 +623,8 @@ using MdbEnvOpenCallback = int32_t (*) (MdbEnv *, const int8_t *, uint32_t, uint
 using MdbEnvSetMapSizeCallback = int32_t (*) (MdbEnv *, uintptr_t);
 
 using MdbEnvSetMaxDbsCallback = int32_t (*) (MdbEnv *, uint32_t);
+
+using MdbEnvSyncCallback = int32_t (*) (MdbEnv *, int32_t);
 
 using MdbGetCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
 
@@ -1386,6 +1390,8 @@ void rsn_callback_mdb_dbi_open (MdbDbiOpenCallback f);
 
 void rsn_callback_mdb_del (MdbDelCallback f);
 
+void rsn_callback_mdb_env_close (MdbEnvCloseCallback f);
+
 void rsn_callback_mdb_env_create (MdbEnvCreateCallback f);
 
 void rsn_callback_mdb_env_open (MdbEnvOpenCallback f);
@@ -1393,6 +1399,8 @@ void rsn_callback_mdb_env_open (MdbEnvOpenCallback f);
 void rsn_callback_mdb_env_set_map_size (MdbEnvSetMapSizeCallback f);
 
 void rsn_callback_mdb_env_set_max_dbs (MdbEnvSetMaxDbsCallback f);
+
+void rsn_callback_mdb_env_sync (MdbEnvSyncCallback f);
 
 void rsn_callback_mdb_get (MdbGetCallback f);
 

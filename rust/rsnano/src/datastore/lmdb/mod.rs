@@ -291,6 +291,8 @@ pub type MdbEnvCreateCallback = extern "C" fn(*mut *mut MdbEnv) -> i32;
 pub type MdbEnvSetMaxDbsCallback = extern "C" fn(*mut MdbEnv, u32) -> i32;
 pub type MdbEnvSetMapSizeCallback = extern "C" fn(*mut MdbEnv, usize) -> i32;
 pub type MdbEnvOpenCallback = extern "C" fn(*mut MdbEnv, *const i8, u32, u32) -> i32;
+pub type MdbEnvSyncCallback = extern "C" fn(*mut MdbEnv, i32) -> i32;
+pub type MdbEnvCloseCallback = extern "C" fn(*mut MdbEnv) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -308,6 +310,8 @@ pub static mut MDB_ENV_CREATE: Option<MdbEnvCreateCallback> = None;
 pub static mut MDB_ENV_SET_MAX_DBS: Option<MdbEnvSetMaxDbsCallback> = None;
 pub static mut MDB_ENV_SET_MAP_SIZE: Option<MdbEnvSetMapSizeCallback> = None;
 pub static mut MDB_ENV_OPEN: Option<MdbEnvOpenCallback> = None;
+pub static mut MDB_ENV_SYNC: Option<MdbEnvSyncCallback> = None;
+pub static mut MDB_ENV_CLOSE: Option<MdbEnvCloseCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -400,6 +404,14 @@ pub unsafe fn mdb_env_set_mapsize(env: *mut MdbEnv, size: usize) -> i32 {
 pub unsafe fn mdb_env_open(env: *mut MdbEnv, path: &Path, flags: u32, mode: u32) -> i32 {
     let path_cstr = CString::new(path.to_str().unwrap()).unwrap();
     MDB_ENV_OPEN.expect("MDB_ENV_OPEN missing")(env, path_cstr.as_ptr(), flags, mode)
+}
+
+pub unsafe fn mdb_env_sync(env: *mut MdbEnv, force: bool) -> i32 {
+    MDB_ENV_SYNC.expect("MDB_ENV_SYNC missing")(env, force as i32)
+}
+
+pub unsafe fn mdb_env_close(env: *mut MdbEnv) -> i32 {
+    MDB_ENV_CLOSE.expect("MDB_ENV_CLOSE missing")(env)
 }
 
 /// Successful result

@@ -1,4 +1,4 @@
-use super::{assert_success, mdb_env_create, MdbEnv};
+use super::{assert_success, mdb_env_close, mdb_env_create, mdb_env_sync, MdbEnv};
 use crate::{
     datastore::lmdb::{
         mdb_env_open, mdb_env_set_mapsize, mdb_env_set_maxdbs, MDB_MAPASYNC, MDB_NOMEMINIT,
@@ -71,5 +71,17 @@ impl LmdbEnv {
 
     pub fn close_env(&mut self) {
         self.environment = ptr::null_mut();
+    }
+}
+
+impl Drop for LmdbEnv {
+    fn drop(&mut self) {
+        if !self.environment.is_null() {
+            // Make sure the commits are flushed. This is a no-op unless MDB_NOSYNC is used.
+            unsafe {
+                mdb_env_sync(self.environment, true);
+                mdb_env_close(self.environment);
+            }
+        }
     }
 }

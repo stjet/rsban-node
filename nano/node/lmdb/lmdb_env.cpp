@@ -18,13 +18,6 @@ nano::mdb_env::mdb_env (bool & error_a, boost::filesystem::path const & path_a, 
 
 nano::mdb_env::~mdb_env ()
 {
-	auto environment = env ();
-	if (environment != nullptr)
-	{
-		// Make sure the commits are flushed. This is a no-op unless MDB_NOSYNC is used.
-		mdb_env_sync (environment, true);
-		mdb_env_close (environment);
-	}
 	if (handle != nullptr)
 		rsnano::rsn_mdb_env_destroy (handle);
 }

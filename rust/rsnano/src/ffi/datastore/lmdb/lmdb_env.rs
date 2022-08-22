@@ -1,7 +1,7 @@
 use std::{
     ffi::{c_void, CStr},
+    ops::Deref,
     path::Path,
-    ptr,
     sync::Arc,
 };
 
@@ -13,7 +13,15 @@ use crate::{
 
 use super::{FfiCallbacksWrapper, TransactionHandle, TransactionType};
 
-pub struct LmdbEnvHandle(LmdbEnv);
+pub struct LmdbEnvHandle(Arc<LmdbEnv>);
+
+impl Deref for LmdbEnvHandle {
+    type Target = Arc<LmdbEnv>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_mdb_env_create(
@@ -29,32 +37,11 @@ pub unsafe extern "C" fn rsn_mdb_env_create(
     };
     let path_str = CStr::from_ptr(path).to_str().unwrap();
     let path = Path::new(path_str);
-    match LmdbEnv::new(path, &options) {
-        Ok(env) => {
-            *error = false;
-            Box::into_raw(Box::new(LmdbEnvHandle(env)))
-        }
-        Err(e) => {
-            eprintln!("Could not create LMDB env: {}", e);
-            *error = true;
-            ptr::null_mut()
-        }
+    let env = LmdbEnv::new(&mut *error, path, &options);
+    if *error {
+        eprintln!("Could not create LMDB env");
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_mdb_env_destroy(handle: *mut LmdbEnvHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_mdb_env_get_env(handle: *mut LmdbEnvHandle) -> *mut c_void {
-    (*handle).0.environment as *mut c_void
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_mdb_env_close_env(handle: *mut LmdbEnvHandle) {
-    (*handle).0.close_env()
+    Box::into_raw(Box::new(LmdbEnvHandle(Arc::new(env))))
 }
 
 #[no_mangle]
@@ -72,7 +59,22 @@ pub unsafe extern "C" fn rsn_mdb_env_init(
     };
     let path_str = CStr::from_ptr(path).to_str().unwrap();
     let path = Path::new(path_str);
-    *error = (*handle).0.init(path, &options).is_err()
+    *error = (*handle).init(path, &options).is_err();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_mdb_env_close(handle: *mut LmdbEnvHandle) {
+    (*handle).close();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_mdb_env_destroy(handle: *mut LmdbEnvHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_mdb_env_get_env(handle: *mut LmdbEnvHandle) -> *mut c_void {
+    (*handle).0.env() as *mut c_void
 }
 
 #[no_mangle]

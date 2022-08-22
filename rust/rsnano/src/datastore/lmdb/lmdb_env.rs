@@ -16,7 +16,7 @@ use std::{
     path::Path,
     ptr,
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU64, AtomicUsize, Ordering},
         Arc,
     },
 };
@@ -27,36 +27,37 @@ pub struct EnvOptions {
 }
 
 pub struct LmdbEnv {
-    pub environment: *mut MdbEnv,
+    environment: AtomicUsize,
     next_txn_id: AtomicU64,
 }
 
 impl LmdbEnv {
-    pub fn new(path: &Path, options: &EnvOptions) -> Result<Self> {
-        let mut result = Self {
-            environment: ptr::null_mut(),
+    pub fn new(error: &mut bool, path: &Path, options: &EnvOptions) -> Self {
+        let result = Self {
+            environment: AtomicUsize::new(0),
             next_txn_id: AtomicU64::new(0),
         };
-        result.init(path, options)?;
-        Ok(result)
+        *error = result.init(path, options).is_err();
+        result
     }
 
-    pub fn init(&mut self, path: &Path, options: &EnvOptions) -> Result<()> {
+    pub fn init(&self, path: &Path, options: &EnvOptions) -> Result<()> {
         let parent = path.parent().ok_or_else(|| anyhow!("no parent path"))?;
         create_dir_all(parent)?;
         let perms = Permissions::from_mode(0o700);
         let _ = set_permissions(parent, perms);
-        assert_success(unsafe { mdb_env_create(&mut self.environment) });
-        assert_success(unsafe {
-            mdb_env_set_maxdbs(self.environment, options.config.max_databases)
-        });
+        let mut environment: *mut MdbEnv = ptr::null_mut();
+        assert_success(unsafe { mdb_env_create(&mut environment) });
+        self.environment
+            .store(environment as usize, Ordering::SeqCst);
+        assert_success(unsafe { mdb_env_set_maxdbs(self.env(), options.config.max_databases) });
         let mut map_size = options.config.map_size;
         let max_valgrind_map_size = 16 * 1024 * 1024;
         if running_within_valgrind() && map_size > max_valgrind_map_size {
             // In order to run LMDB under Valgrind, the maximum map size must be smaller than half your available RAM
             map_size = max_valgrind_map_size;
         }
-        assert_success(unsafe { mdb_env_set_mapsize(self.environment, map_size) });
+        assert_success(unsafe { mdb_env_set_mapsize(self.env(), map_size) });
         // It seems if there's ever more threads than mdb_env_set_maxreaders has read slots available, we get failures on transaction creation unless MDB_NOTLS is specified
         // This can happen if something like 256 io_threads are specified in the node config
         // MDB_NORDAHEAD will allow platforms that support it to load the DB in memory as needed.
@@ -74,35 +75,40 @@ impl LmdbEnv {
             environment_flags |= MDB_NOMEMINIT;
         }
 
-        assert_success(unsafe { mdb_env_open(self.environment, path, environment_flags, 0o600) });
+        assert_success(unsafe { mdb_env_open(self.env(), path, environment_flags, 0o600) });
         Ok(())
     }
 
-    pub fn close_env(&mut self) {
-        self.environment = ptr::null_mut();
+    pub fn env(&self) -> *mut MdbEnv {
+        self.environment.load(Ordering::SeqCst) as *mut MdbEnv
     }
 
     pub fn tx_begin_read(&self, callbacks: Arc<dyn TxnCallbacks>) -> LmdbReadTransaction {
         let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
-        unsafe { LmdbReadTransaction::new(txn_id, self.environment, callbacks) }
+        unsafe { LmdbReadTransaction::new(txn_id, self.env(), callbacks) }
     }
 
     pub fn tx_begin_write(&self, callbacks: Arc<dyn TxnCallbacks>) -> LmdbWriteTransaction {
         // For IO threads, we do not want them to block on creating write transactions.
         debug_assert!(std::thread::current().name() != Some("I/O"));
         let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
-        unsafe { LmdbWriteTransaction::new(txn_id, self.environment, callbacks) }
+        unsafe { LmdbWriteTransaction::new(txn_id, self.env(), callbacks) }
+    }
+
+    pub fn close(&self) {
+        if !self.env().is_null() {
+            // Make sure the commits are flushed. This is a no-op unless MDB_NOSYNC is used.
+            unsafe {
+                mdb_env_sync(self.env(), true);
+                mdb_env_close(self.env());
+                self.environment.store(0, Ordering::SeqCst);
+            }
+        }
     }
 }
 
 impl Drop for LmdbEnv {
     fn drop(&mut self) {
-        if !self.environment.is_null() {
-            // Make sure the commits are flushed. This is a no-op unless MDB_NOSYNC is used.
-            unsafe {
-                mdb_env_sync(self.environment, true);
-                mdb_env_close(self.environment);
-            }
-        }
+        self.close();
     }
 }

@@ -64,8 +64,6 @@ public:
 	MDB_txn * tx (nano::transaction const & transaction_a) const;
 	MDB_env * env () const;
 	void close_env ();
-
-private:
 	rsnano::LmdbEnvHandle * handle;
 };
 

@@ -1,4 +1,7 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use crate::{
     datastore::{lmdb::LmdbAccountStore, AccountStore},
@@ -6,13 +9,17 @@ use crate::{
     Account,
 };
 
-use super::{iterator::LmdbIteratorHandle, TransactionHandle};
+use super::{iterator::LmdbIteratorHandle, lmdb_env::LmdbEnvHandle, TransactionHandle};
 
 pub struct LmdbAccountStoreHandle(LmdbAccountStore);
 
 #[no_mangle]
-pub extern "C" fn rsn_lmdb_account_store_create() -> *mut LmdbAccountStoreHandle {
-    Box::into_raw(Box::new(LmdbAccountStoreHandle(LmdbAccountStore::new())))
+pub unsafe extern "C" fn rsn_lmdb_account_store_create(
+    env_handle: *mut LmdbEnvHandle,
+) -> *mut LmdbAccountStoreHandle {
+    Box::into_raw(Box::new(LmdbAccountStoreHandle(LmdbAccountStore::new(
+        Arc::clone(&*env_handle),
+    ))))
 }
 
 #[no_mangle]

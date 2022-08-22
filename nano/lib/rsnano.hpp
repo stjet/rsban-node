@@ -614,7 +614,7 @@ struct MdbEnv
 {
 };
 
-using MdbEnvCloseCallback = int32_t (*) (MdbEnv *);
+using MdbEnvCloseCallback = void (*) (MdbEnv *);
 
 using MdbEnvCreateCallback = int32_t (*) (MdbEnv **);
 
@@ -1696,7 +1696,7 @@ LmdbIteratorHandle * rsn_lmdb_account_store_begin_account (LmdbAccountStoreHandl
 TransactionHandle * txn,
 const uint8_t * account);
 
-LmdbAccountStoreHandle * rsn_lmdb_account_store_create ();
+LmdbAccountStoreHandle * rsn_lmdb_account_store_create (LmdbEnvHandle * env_handle);
 
 void rsn_lmdb_account_store_del (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn,
@@ -1801,7 +1801,7 @@ LoggerHandle * rsn_logger_create (void * logger);
 
 void rsn_logging_create (LoggingDto * dto);
 
-void rsn_mdb_env_close_env (LmdbEnvHandle * handle);
+void rsn_mdb_env_close (LmdbEnvHandle * handle);
 
 LmdbEnvHandle * rsn_mdb_env_create (bool * error,
 const int8_t * path,

@@ -4,7 +4,7 @@
 
 nano::lmdb::account_store::account_store (nano::lmdb::store & store_a) :
 	store (store_a),
-	handle{ rsnano::rsn_lmdb_account_store_create () } {};
+	handle{ rsnano::rsn_lmdb_account_store_create (store_a.env ().handle) } {};
 
 nano::lmdb::account_store::~account_store ()
 {

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     datastore::{
         lmdb::MDB_NOTFOUND, AccountStore, DbIterator, ReadTransaction, Transaction,
@@ -10,18 +12,23 @@ use anyhow::Result;
 
 use super::{
     assert_success, get_raw_lmdb_txn, iterator::LmdbIterator, mdb_dbi_open, mdb_del, mdb_get,
-    mdb_put, MdbVal, OwnedMdbVal, MDB_SUCCESS,
+    mdb_put, LmdbEnv, MdbVal, OwnedMdbVal, MDB_SUCCESS,
 };
 
 pub struct LmdbAccountStore {
     /// Maps account v0 to account information, head, rep, open, balance, timestamp, block count and epoch
     /// nano::account -> nano::block_hash, nano::block_hash, nano::block_hash, nano::amount, uint64_t, uint64_t, nano::epoch
     pub accounts_handle: u32,
+
+    env: Arc<LmdbEnv>,
 }
 
 impl LmdbAccountStore {
-    pub fn new() -> Self {
-        Self { accounts_handle: 0 }
+    pub fn new(env: Arc<LmdbEnv>) -> Self {
+        Self {
+            accounts_handle: 0,
+            env,
+        }
     }
 
     pub fn open_databases(&mut self, transaction: &dyn Transaction, flags: u32) -> Result<()> {
@@ -31,12 +38,6 @@ impl LmdbAccountStore {
             bail!("could not open accounts database");
         }
         Ok(())
-    }
-}
-
-impl Default for LmdbAccountStore {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

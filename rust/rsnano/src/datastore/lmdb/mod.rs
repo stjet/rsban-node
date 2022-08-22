@@ -292,7 +292,7 @@ pub type MdbEnvSetMaxDbsCallback = extern "C" fn(*mut MdbEnv, u32) -> i32;
 pub type MdbEnvSetMapSizeCallback = extern "C" fn(*mut MdbEnv, usize) -> i32;
 pub type MdbEnvOpenCallback = extern "C" fn(*mut MdbEnv, *const i8, u32, u32) -> i32;
 pub type MdbEnvSyncCallback = extern "C" fn(*mut MdbEnv, i32) -> i32;
-pub type MdbEnvCloseCallback = extern "C" fn(*mut MdbEnv) -> i32;
+pub type MdbEnvCloseCallback = extern "C" fn(*mut MdbEnv);
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -410,8 +410,8 @@ pub unsafe fn mdb_env_sync(env: *mut MdbEnv, force: bool) -> i32 {
     MDB_ENV_SYNC.expect("MDB_ENV_SYNC missing")(env, force as i32)
 }
 
-pub unsafe fn mdb_env_close(env: *mut MdbEnv) -> i32 {
-    MDB_ENV_CLOSE.expect("MDB_ENV_CLOSE missing")(env)
+pub unsafe fn mdb_env_close(env: *mut MdbEnv) {
+    MDB_ENV_CLOSE.expect("MDB_ENV_CLOSE missing")(env);
 }
 
 /// Successful result

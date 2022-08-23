@@ -114,7 +114,7 @@ TEST (system, receive_while_synchronizing)
 
 TEST (ledger, deep_account_compute)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::stat stats;
@@ -531,7 +531,7 @@ TEST (store, vote_load)
  */
 TEST (store, pruned_load)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto path (nano::unique_path ());
 	constexpr auto num_pruned = 2000000;
 	auto const expected_result = num_pruned / 2;
@@ -691,7 +691,7 @@ TEST (confirmation_height, many_accounts_single_confirmation)
 		nano::confirmation_height_info confirmation_height_info;
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, account, confirmation_height_info));
 		ASSERT_EQ (count, confirmation_height_info.height);
-		ASSERT_EQ (count, account_info.block_count);
+		ASSERT_EQ (count, account_info.block_count ());
 	}
 
 	size_t cemented_count = 0;
@@ -910,12 +910,12 @@ TEST (confirmation_height, long_chains)
 	nano::confirmation_height_info confirmation_height_info;
 	ASSERT_FALSE (node->store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
 	ASSERT_EQ (num_blocks + 2, confirmation_height_info.height);
-	ASSERT_EQ (num_blocks + 3, account_info.block_count); // Includes the unpocketed send
+	ASSERT_EQ (num_blocks + 3, account_info.block_count ()); // Includes the unpocketed send
 
 	ASSERT_FALSE (node->store.account.get (*transaction, key1.pub, account_info));
 	ASSERT_FALSE (node->store.confirmation_height.get (*transaction, key1.pub, confirmation_height_info));
 	ASSERT_EQ (num_blocks + 1, confirmation_height_info.height);
-	ASSERT_EQ (num_blocks + 1, account_info.block_count);
+	ASSERT_EQ (num_blocks + 1, account_info.block_count ());
 
 	size_t cemented_count = 0;
 	for (auto i (node->ledger.store.confirmation_height.begin (*transaction)), n (node->ledger.store.confirmation_height.end ()); i != n; ++i)
@@ -1216,7 +1216,7 @@ TEST (confirmation_height, many_accounts_send_receive_self_no_elections)
 		// Don't test this in rocksdb mode
 		return;
 	}
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	nano::logging logging;
 	auto path (nano::unique_path ());
 	auto store = nano::make_store (logger, path, nano::dev::constants);
@@ -1229,7 +1229,7 @@ TEST (confirmation_height, many_accounts_send_receive_self_no_elections)
 	boost::latch initialized_latch{ 0 };
 
 	nano::block_hash block_hash_being_processed{ 0 };
-	nano::confirmation_height_processor confirmation_height_processor{ ledger, write_database_queue, 10ms, logging, logger, initialized_latch, confirmation_height_mode::automatic };
+	nano::confirmation_height_processor confirmation_height_processor{ ledger, write_database_queue, 10ms, logging, *logger, initialized_latch, confirmation_height_mode::automatic };
 
 	auto const num_accounts = 100000;
 
@@ -1933,7 +1933,7 @@ TEST (node, mass_epoch_upgrader)
 			{
 				nano::account_info info (i->second);
 				ASSERT_EQ (info.epoch (), nano::epoch::epoch_1);
-				block_count_sum += info.block_count;
+				block_count_sum += info.block_count ();
 			}
 			ASSERT_EQ (expected_blocks, block_count_sum);
 		}

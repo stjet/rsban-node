@@ -136,7 +136,7 @@ TEST (vote_cache, perf_singlethreaded)
 {
 	nano::test::system system;
 	nano::node_flags flags;
-	flags.inactive_votes_cache_size = 5000; // Keep it below block count size so it is forced to constantly evict stale entries
+	flags.set_inactive_votes_cache_size (5000); // Keep it below block count size so it is forced to constantly evict stale entries
 	nano::node_config config = system.default_config ();
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node = *system.add_node (config, flags);
@@ -183,20 +183,20 @@ TEST (vote_cache, perf_singlethreaded)
 		}
 	}
 
-	std::cout << "total votes processed: " << node.stats.count (nano::stat::type::vote_cache, nano::stat::detail::vote_processed, nano::stat::dir::in) << std::endl;
+	std::cout << "total votes processed: " << node.stats->count (nano::stat::type::vote_cache, nano::stat::detail::vote_processed, nano::stat::dir::in) << std::endl;
 
 	// Ensure we processed all the votes
-	ASSERT_EQ (node.stats.count (nano::stat::type::vote_cache, nano::stat::detail::vote_processed, nano::stat::dir::in), vote_count * single_vote_size * single_vote_reps);
+	ASSERT_EQ (node.stats->count (nano::stat::type::vote_cache, nano::stat::detail::vote_processed, nano::stat::dir::in), vote_count * single_vote_size * single_vote_reps);
 
 	// Ensure vote cache size is at max capacity
-	ASSERT_EQ (node.active.inactive_votes_cache_size (), flags.inactive_votes_cache_size);
+	ASSERT_EQ (node.active.inactive_votes_cache_size (), flags.inactive_votes_cache_size ());
 }
 
 TEST (vote_cache, perf_multithreaded)
 {
 	nano::test::system system;
 	nano::node_flags flags;
-	flags.inactive_votes_cache_size = 5000; // Keep it below block count size so it is forced to constantly evict stale entries
+	flags.set_inactive_votes_cache_size (5000); // Keep it below block count size so it is forced to constantly evict stale entries
 	nano::node_config config = system.default_config ();
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node = *system.add_node (config, flags);
@@ -250,8 +250,8 @@ TEST (vote_cache, perf_multithreaded)
 		}
 	});
 
-	std::cout << "total votes processed: " << node.stats.count (nano::stat::type::vote_cache, nano::stat::detail::vote_processed, nano::stat::dir::in) << std::endl;
+	std::cout << "total votes processed: " << node.stats->count (nano::stat::type::vote_cache, nano::stat::detail::vote_processed, nano::stat::dir::in) << std::endl;
 
 	// Ensure vote cache size is at max capacity
-	ASSERT_EQ (node.active.inactive_votes_cache_size (), flags.inactive_votes_cache_size);
+	ASSERT_EQ (node.active.inactive_votes_cache_size (), flags.inactive_votes_cache_size ());
 }

@@ -817,7 +817,7 @@ TEST (ledger, representation)
 
 TEST (ledger, double_open)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
@@ -4107,7 +4107,7 @@ TEST (ledger, block_hash_account_conflict)
 
 TEST (ledger, could_fit)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
@@ -4753,7 +4753,7 @@ TEST (ledger, dependents_confirmed)
 
 TEST (ledger, dependents_confirmed_pruning)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::stat stats;
@@ -4943,7 +4943,7 @@ TEST (ledger, cache)
 
 TEST (ledger, pruning_action)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
@@ -5027,7 +5027,7 @@ TEST (ledger, pruning_action)
 
 TEST (ledger, pruning_large_chain)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
@@ -5082,7 +5082,7 @@ TEST (ledger, pruning_large_chain)
 
 TEST (ledger, pruning_source_rollback)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
@@ -5170,7 +5170,7 @@ TEST (ledger, pruning_source_rollback)
 
 TEST (ledger, pruning_source_rollback_legacy)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
@@ -5283,7 +5283,7 @@ TEST (ledger, pruning_source_rollback_legacy)
 
 TEST (ledger, pruning_process_error)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
@@ -5330,7 +5330,7 @@ TEST (ledger, pruning_process_error)
 
 TEST (ledger, pruning_legacy_blocks)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
@@ -5416,7 +5416,7 @@ TEST (ledger, pruning_legacy_blocks)
 
 TEST (ledger, pruning_safe_functions)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
@@ -5477,7 +5477,7 @@ TEST (ledger, pruning_safe_functions)
 
 TEST (ledger, hash_root_random)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
@@ -5540,7 +5540,7 @@ TEST (ledger, hash_root_random)
 TEST (ledger, migrate_lmdb_to_rocksdb)
 {
 	auto path = nano::unique_path ();
-	nano::logger_mt logger{};
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	boost::asio::ip::address_v6 address (boost::asio::ip::make_address_v6 ("::ffff:127.0.0.1"));
 	uint16_t port = 100;
 	nano::lmdb::store store{ logger, path / "data.ldb", nano::dev::constants };
@@ -5585,7 +5585,7 @@ TEST (ledger, migrate_lmdb_to_rocksdb)
 	auto error = ledger.migrate_lmdb_to_rocksdb (path);
 	ASSERT_FALSE (error);
 
-	nano::rocksdb::store rocksdb_store{ logger, path / "rocksdb", nano::dev::constants };
+	nano::rocksdb::store rocksdb_store{ *logger, path / "rocksdb", nano::dev::constants };
 	nano::unchecked_map rocksdb_unchecked{ rocksdb_store, false };
 	auto rocksdb_transaction (rocksdb_store.tx_begin_read ());
 

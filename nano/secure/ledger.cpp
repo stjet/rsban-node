@@ -1481,7 +1481,7 @@ bool nano::ledger::migrate_lmdb_to_rocksdb (boost::filesystem::path const & data
 	auto rockdb_data_path = data_path_a / "rocksdb";
 	boost::filesystem::remove_all (rockdb_data_path);
 
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto error (false);
 
 	// Open rocksdb database

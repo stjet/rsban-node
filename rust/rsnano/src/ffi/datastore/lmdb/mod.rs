@@ -1,6 +1,7 @@
 mod account_store;
 mod iterator;
 mod lmdb_env;
+mod txn_tracker;
 
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 

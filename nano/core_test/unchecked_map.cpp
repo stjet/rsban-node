@@ -18,11 +18,12 @@ class context
 {
 public:
 	context () :
+		logger{ std::make_shared<nano::logger_mt> () },
 		store{ nano::make_store (logger, nano::unique_path (), nano::dev::constants) },
 		unchecked{ *store, false }
 	{
 	}
-	nano::logger_mt logger;
+	std::shared_ptr<nano::logger_mt> logger;
 	std::unique_ptr<nano::store> store;
 	nano::unchecked_map unchecked;
 };
@@ -56,7 +57,7 @@ TEST (unchecked_map, put_one)
 TEST (block_store, one_bootstrap)
 {
 	nano::test::system system{};
-	nano::logger_mt logger{};
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	nano::unchecked_map unchecked{ *store, false };
 	ASSERT_TRUE (!store->init_error ());

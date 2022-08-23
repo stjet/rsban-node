@@ -1,6 +1,7 @@
 mod account_store;
 mod iterator;
 mod lmdb_env;
+mod txn_tracker;
 
 use std::{
     ffi::{c_void, CStr, CString},
@@ -13,6 +14,7 @@ use std::{
 pub use account_store::LmdbAccountStore;
 pub use iterator::{LmdbIterator, LmdbRawIterator};
 pub use lmdb_env::{EnvOptions, LmdbEnv};
+pub use txn_tracker::TxnTracker;
 
 use crate::utils::{MemoryStream, Serialize};
 

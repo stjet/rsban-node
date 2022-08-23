@@ -45,7 +45,7 @@ namespace lmdb
 	class lmdb_gateway
 	{
 	public:
-		lmdb_gateway (nano::logger_mt & logger_a, boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a);
+		lmdb_gateway (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a);
 		nano::mdb_txn_callbacks create_txn_callbacks () const;
 		std::unique_ptr<nano::write_transaction> tx_begin_write ();
 		std::unique_ptr<nano::read_transaction> tx_begin_read () const;
@@ -88,7 +88,7 @@ namespace lmdb
 		friend class nano::lmdb::version_store;
 
 	public:
-		store (nano::logger_mt &, boost::filesystem::path const &, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);
+		store (std::shared_ptr<nano::logger_mt>, boost::filesystem::path const &, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);
 		std::unique_ptr<nano::write_transaction> tx_begin_write (std::vector<nano::tables> const & tables_requiring_lock = {}, std::vector<nano::tables> const & tables_no_lock = {}) override;
 		std::unique_ptr<nano::read_transaction> tx_begin_read () const override;
 

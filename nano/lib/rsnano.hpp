@@ -107,6 +107,8 @@ struct LocalVotesResultHandle;
 /// points to a shared_ptr<logger_mt>
 struct LoggerHandle;
 
+struct MdbTxnTrackerHandle;
+
 struct MessageDeserializerHandle;
 
 struct MessageHandle;
@@ -1821,6 +1823,21 @@ bool use_no_mem_init);
 TransactionHandle * rsn_mdb_env_tx_begin_read (LmdbEnvHandle * handle, void * callbacks);
 
 TransactionHandle * rsn_mdb_env_tx_begin_write (LmdbEnvHandle * handle, void * callbacks);
+
+void rsn_mdb_txn_tracker_add (MdbTxnTrackerHandle * handle, uint64_t txn_id, bool is_write);
+
+MdbTxnTrackerHandle * rsn_mdb_txn_tracker_create (LoggerHandle * logger,
+const TxnTrackingConfigDto * config,
+uint64_t block_processor_batch_max_time_ms);
+
+void rsn_mdb_txn_tracker_destroy (MdbTxnTrackerHandle * handle);
+
+void rsn_mdb_txn_tracker_erase (MdbTxnTrackerHandle * handle, uint64_t txn_id);
+
+void rsn_mdb_txn_tracker_serialize_json (MdbTxnTrackerHandle * handle,
+void * json,
+uint64_t min_read_time_ms,
+uint64_t min_write_time_ms);
 
 void rsn_message_builder_bootstrap_exited (const char * id,
 const char * mode,

@@ -9,7 +9,7 @@
 
 TEST (processor_service, bad_send_signature)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::stat stats;
@@ -37,7 +37,7 @@ TEST (processor_service, bad_send_signature)
 
 TEST (processor_service, bad_receive_signature)
 {
-	nano::logger_mt logger;
+	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::stat stats;

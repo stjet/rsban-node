@@ -68,35 +68,18 @@ public:
 	rsnano::TransactionHandle * txn_handle;
 };
 
-class mdb_txn_stats
-{
-public:
-	mdb_txn_stats (uint64_t txn_id_a, bool is_write_a);
-	bool is_write () const;
-	nano::timer<std::chrono::milliseconds> timer;
-	uint64_t txn_id;
-	bool is_write_m;
-	std::string thread_name;
-
-	// Smart pointer so that we don't need the full definition which causes min/max issues on Windows
-	std::shared_ptr<boost::stacktrace::stacktrace> stacktrace;
-};
-
 class mdb_txn_tracker
 {
 public:
-	mdb_txn_tracker (nano::logger_mt & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a);
+	mdb_txn_tracker (std::shared_ptr<nano::logger_mt> logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a);
+	mdb_txn_tracker (mdb_txn_tracker const &) = delete;
+	mdb_txn_tracker (mdb_txn_tracker &&) = delete;
+	~mdb_txn_tracker ();
 	void serialize_json (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time);
 	void add (uint64_t txn_id, bool is_write);
 	void erase (uint64_t txn_id);
 
 private:
-	nano::mutex mutex;
-	std::vector<mdb_txn_stats> stats;
-	nano::logger_mt & logger;
-	nano::txn_tracking_config txn_tracking_config;
-	std::chrono::milliseconds block_processor_batch_max_time;
-
-	void log_if_held_long_enough (nano::mdb_txn_stats const & mdb_txn_stats) const;
+	rsnano::MdbTxnTrackerHandle * handle;
 };
 }

@@ -6590,7 +6590,8 @@ TEST (rpc, database_txn_tracker)
 	}
 
 	ASSERT_EQ (1, json_l.size ());
-	auto thread_name = nano::thread_role::get_string (nano::thread_role::name::rpc_process_container);
+	// auto thread_name = nano::thread_role::get_string (nano::thread_role::name::rpc_process_container);
+	std::string thread_name{ "unnamed" }; // thread names are currently not available in Rust
 	// Should only have a read transaction
 	ASSERT_EQ (thread_name, std::get<0> (json_l.front ()));
 	ASSERT_LE (1000u, boost::lexical_cast<unsigned> (std::get<1> (json_l.front ())));

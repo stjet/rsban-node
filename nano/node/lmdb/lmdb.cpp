@@ -40,7 +40,7 @@ void mdb_val::convert_buffer_to_value ()
 }
 }
 
-nano::lmdb::lmdb_gateway::lmdb_gateway (nano::logger_mt & logger_a, boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a) :
+nano::lmdb::lmdb_gateway::lmdb_gateway (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a) :
 	env (error, path_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true)),
 	mdb_txn_tracker (logger_a, txn_tracking_config_a, block_processor_batch_max_time_a),
 	txn_tracking_enabled (txn_tracking_config_a.enable)
@@ -72,7 +72,7 @@ std::unique_ptr<nano::read_transaction> nano::lmdb::lmdb_gateway::tx_begin_read 
 	return env.tx_begin_read (create_txn_callbacks ());
 }
 
-nano::lmdb::store::store (nano::logger_mt & logger_a, boost::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
+nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
 	// clang-format off
 	gateway (logger_a, path_a, lmdb_config_a, txn_tracking_config_a, block_processor_batch_max_time_a),
 	nano::store{
@@ -100,7 +100,7 @@ nano::lmdb::store::store (nano::logger_mt & logger_a, boost::filesystem::path co
 	final_vote_store{ *this },
 	unchecked_store{ *this },
 	version_store{ *this },
-	logger (logger_a)
+	logger (*logger_a)
 {
 	if (!gateway.error)
 	{
@@ -127,7 +127,7 @@ nano::lmdb::store::store (nano::logger_mt & logger_a, boost::filesystem::path co
 				logger.always_log ("Upgrade in progress...");
 				if (backup_before_upgrade_a)
 				{
-					create_backup_file (env (), path_a, logger_a);
+					create_backup_file (env (), path_a, *logger_a);
 				}
 			}
 			auto needs_vacuuming = false;

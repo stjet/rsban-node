@@ -104,30 +104,3 @@ bool nano::write_mdb_txn::contains (nano::tables table_a) const
 	// LMDB locks on every write
 	return true;
 }
-
-nano::mdb_txn_tracker::mdb_txn_tracker (std::shared_ptr<nano::logger_mt> logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a)
-{
-	auto config_dto{ txn_tracking_config_a.to_dto () };
-	handle = rsnano::rsn_mdb_txn_tracker_create (nano::to_logger_handle (logger_a), &config_dto, block_processor_batch_max_time_a.count ());
-}
-
-nano::mdb_txn_tracker::~mdb_txn_tracker ()
-{
-	rsnano::rsn_mdb_txn_tracker_destroy (handle);
-}
-
-void nano::mdb_txn_tracker::serialize_json (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time)
-{
-	rsnano::rsn_mdb_txn_tracker_serialize_json (handle, &json, min_read_time.count (), min_write_time.count ());
-}
-
-void nano::mdb_txn_tracker::add (uint64_t txn_id, bool is_write)
-{
-	rsnano::rsn_mdb_txn_tracker_add (handle, txn_id, is_write);
-}
-
-/** Can be called without error if transaction does not exist */
-void nano::mdb_txn_tracker::erase (uint64_t txn_id)
-{
-	rsnano::rsn_mdb_txn_tracker_erase (handle, txn_id);
-}

@@ -130,10 +130,7 @@ impl LmdbEnv {
 
     fn create_txn_callbacks(&self) -> Arc<dyn TxnCallbacks> {
         match &self.txn_tracker {
-            Some(tracker) => {
-                let tracker = Arc::clone(tracker);
-                tracker
-            }
+            Some(tracker) => Arc::clone(tracker) as Arc<dyn TxnCallbacks>,
             None => Arc::new(NullTxnCallbacks::new()),
         }
     }

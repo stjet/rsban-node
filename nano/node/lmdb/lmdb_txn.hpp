@@ -67,19 +67,4 @@ public:
 
 	rsnano::TransactionHandle * txn_handle;
 };
-
-class mdb_txn_tracker
-{
-public:
-	mdb_txn_tracker (std::shared_ptr<nano::logger_mt> logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a);
-	mdb_txn_tracker (mdb_txn_tracker const &) = delete;
-	mdb_txn_tracker (mdb_txn_tracker &&) = delete;
-	~mdb_txn_tracker ();
-	void serialize_json (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time);
-	void add (uint64_t txn_id, bool is_write);
-	void erase (uint64_t txn_id);
-
-private:
-	rsnano::MdbTxnTrackerHandle * handle;
-};
 }

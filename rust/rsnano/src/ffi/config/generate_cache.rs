@@ -102,11 +102,3 @@ pub unsafe extern "C" fn rsn_generate_cache_set_account_count(
 pub unsafe extern "C" fn rsn_generate_cache_block_count(handle: *mut GenerateCacheHandle) -> bool {
     (*handle).0.block_count
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_generate_cache_set_block_count(
-    handle: *mut GenerateCacheHandle,
-    enable: bool,
-) {
-    (*handle).0.block_count = enable;
-}

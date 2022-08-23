@@ -1197,8 +1197,6 @@ void rsn_bootstrap_attempt_wait_for (BootstrapAttemptHandle * handle,
 BootstrapAttemptLockHandle * lck,
 uint64_t timeout_millis);
 
-void rsn_bootstrap_attempts_add (BootstrapAttemptsHandle * handle, BootstrapAttemptHandle * attempt);
-
 BootstrapAttemptsHandle * rsn_bootstrap_attempts_create ();
 
 void rsn_bootstrap_attempts_destroy (BootstrapAttemptsHandle * handle);
@@ -1289,8 +1287,6 @@ bool rsn_bootstrap_server_is_stopped (BootstrapServerHandle * handle);
 BootstrapServerHandle * rsn_bootstrap_server_lock_weak (BootstrapServerWeakHandle * handle);
 
 void rsn_bootstrap_server_remote_endpoint (BootstrapServerHandle * handle, EndpointDto * endpoint);
-
-void rsn_bootstrap_server_remote_node_id (BootstrapServerHandle * handle, uint8_t * node_id);
 
 void rsn_bootstrap_server_set_remote_node_id (BootstrapServerHandle * handle, const uint8_t * node_id);
 
@@ -1595,15 +1591,11 @@ void rsn_channel_tcp_set_peering_endpoint (ChannelHandle * handle, const Endpoin
 
 SocketHandle * rsn_channel_tcp_socket (ChannelHandle * handle);
 
-ChannelHandle * rsn_channel_tcp_wrapper_channel (ChannelTcpWrapperHandle * handle);
-
 ChannelTcpWrapperHandle * rsn_channel_tcp_wrapper_create (ChannelHandle * channel,
 SocketHandle * socket,
 BootstrapServerHandle * response_server);
 
 void rsn_channel_tcp_wrapper_destroy (ChannelTcpWrapperHandle * handle);
-
-BootstrapServerHandle * rsn_channel_tcp_wrapper_server (ChannelTcpWrapperHandle * handle);
 
 ChannelHandle * rsn_channel_udp_create (uint64_t now);
 
@@ -1657,8 +1649,6 @@ void rsn_generate_cache_enable_all (GenerateCacheHandle * handle);
 bool rsn_generate_cache_reps (GenerateCacheHandle * handle);
 
 void rsn_generate_cache_set_account_count (GenerateCacheHandle * handle, bool enable);
-
-void rsn_generate_cache_set_block_count (GenerateCacheHandle * handle, bool enable);
 
 void rsn_generate_cache_set_cemented_count (GenerateCacheHandle * handle, bool enable);
 
@@ -1742,10 +1732,6 @@ void rsn_lmdb_iterator_destroy (LmdbIteratorHandle * handle);
 void rsn_lmdb_iterator_next (LmdbIteratorHandle * handle);
 
 void rsn_lmdb_iterator_previous (LmdbIteratorHandle * handle);
-
-void rsn_lmdb_iterator_set_current (LmdbIteratorHandle * handle, MdbVal * key, MdbVal * value);
-
-void rsn_lmdb_iterator_set_cursor (LmdbIteratorHandle * handle, MdbCursor * cursor);
 
 TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);
 
@@ -2471,21 +2457,11 @@ uint64_t rsn_stat_count (StatHandle * handle, uint8_t stat_type, uint8_t detail,
 
 StatHandle * rsn_stat_create (const StatConfigDto * config);
 
-void rsn_stat_define_histogram (StatHandle * handle,
-uint8_t stat_type,
-uint8_t detail,
-uint8_t dir,
-const uint64_t * intervals,
-uintptr_t intervals_len,
-uint64_t bin_count);
-
 void rsn_stat_destroy (StatHandle * handle);
 
 uintptr_t rsn_stat_detail_to_string (uint8_t key, const uint8_t ** result);
 
 uintptr_t rsn_stat_dir_to_string (uint8_t key, const uint8_t ** result);
-
-void rsn_stat_disable_sampling (StatHandle * handle, uint8_t stat_type, uint8_t detail, uint8_t dir);
 
 uint64_t rsn_stat_last_reset_s (StatHandle * handle);
 
@@ -2500,13 +2476,6 @@ void * rsn_stat_log_sink_to_object (StatLogSinkHandle * handle);
 void rsn_stat_stop (StatHandle * handle);
 
 uintptr_t rsn_stat_type_to_string (uint8_t key, const uint8_t ** result);
-
-void rsn_stat_update_histogram (StatHandle * handle,
-uint8_t stat_type,
-uint8_t detail,
-uint8_t dir,
-uint64_t index,
-uint64_t addend);
 
 void rsn_state_block_account (const BlockHandle * handle, uint8_t (*result)[32]);
 

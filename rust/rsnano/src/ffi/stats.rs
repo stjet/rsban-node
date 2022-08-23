@@ -193,42 +193,6 @@ pub unsafe extern "C" fn rsn_stat_log_samples(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_stat_define_histogram(
-    handle: *mut StatHandle,
-    stat_type: u8,
-    detail: u8,
-    dir: u8,
-    intervals: *const u64,
-    intervals_len: usize,
-    bin_count: u64,
-) {
-    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
-    let detail = FromPrimitive::from_u8(detail).unwrap();
-    let dir = FromPrimitive::from_u8(dir).unwrap();
-    let intervals = std::slice::from_raw_parts(intervals, intervals_len);
-    (*handle)
-        .0
-        .define_histogram(stat_type, detail, dir, intervals, bin_count);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_update_histogram(
-    handle: *mut StatHandle,
-    stat_type: u8,
-    detail: u8,
-    dir: u8,
-    index: u64,
-    addend: u64,
-) {
-    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
-    let detail = FromPrimitive::from_u8(detail).unwrap();
-    let dir = FromPrimitive::from_u8(dir).unwrap();
-    (*handle)
-        .0
-        .update_histogram(stat_type, detail, dir, index, addend);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_stat_last_reset_s(handle: *mut StatHandle) -> u64 {
     (*handle).0.last_reset().as_secs()
 }
@@ -253,19 +217,6 @@ pub unsafe extern "C" fn rsn_stat_configure(
     (*handle)
         .0
         .configure(stat_type, detail, dir, interval, capacity);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_disable_sampling(
-    handle: *mut StatHandle,
-    stat_type: u8,
-    detail: u8,
-    dir: u8,
-) {
-    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
-    let detail = FromPrimitive::from_u8(detail).unwrap();
-    let dir = FromPrimitive::from_u8(dir).unwrap();
-    (*handle).0.disable_sampling(stat_type, detail, dir);
 }
 
 #[no_mangle]

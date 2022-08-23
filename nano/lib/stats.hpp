@@ -27,7 +27,7 @@ class stat_config final
 {
 public:
 	void load_dto (rsnano::StatConfigDto & dto);
-	rsnano::StatConfigDto to_dto () const;
+	[[nodiscard]] rsnano::StatConfigDto to_dto () const;
 	/** Reads the JSON statistics node */
 	nano::error deserialize_toml (nano::tomlconfig & toml);
 
@@ -63,7 +63,7 @@ public:
 class stat_log_sink
 {
 public:
-	stat_log_sink (rsnano::StatLogSinkHandle * handle_a);
+	explicit stat_log_sink (rsnano::StatLogSinkHandle * handle_a);
 	virtual ~stat_log_sink ();
 
 public:
@@ -293,14 +293,14 @@ public:
 
 	/** Constructor using the default config values */
 	stat ();
-	stat (rsnano::StatHandle * handle_a);
+	explicit stat (rsnano::StatHandle * handle_a);
 	~stat ();
 
 	/**
 	 * Initialize stats with a config.
 	 * @param config Configuration object; deserialized from config.json
 	 */
-	stat (nano::stat_config config);
+	explicit stat (nano::stat_config config);
 	stat (nano::stat const &) = delete;
 	stat (nano::stat &&) = delete;
 
@@ -309,11 +309,6 @@ public:
 	 * This must be called before any stat entries are added, as part of the node initialiation.
 	 */
 	void configure (stat::type type, stat::detail detail, stat::dir dir, size_t interval, size_t capacity);
-
-	/**
-	 * Disables sampling for a given type/detail/dir combination
-	 */
-	void disable_sampling (stat::type type, stat::detail detail, stat::dir dir);
 
 	/** Increments the given counter */
 	void inc (stat::type type, stat::dir dir = stat::dir::in);
@@ -326,39 +321,6 @@ public:
 
 	/** Adds \p value to the given counter */
 	void add (stat::type type, stat::dir dir, uint64_t value);
-
-	/**
-	 * Define histogram bins. Values are clamped into the first and last bins, but a catch-all bin on one or both
-	 * ends can be defined.
-	 *
-	 * Examples:
-	 *
-	 *  // Uniform histogram, total range 12, and 12 bins (each bin has width 1)
-	 *  define_histogram (type::vote, detail::confirm_ack, dir::in, {1,13}, 12);
-	 *
-	 *  // Specific bins matching closed intervals [1,4] [5,19] [20,99]
-	 *  define_histogram (type::vote, detail::something, dir::out, {1,5,20,100});
-	 *
-	 *  // Logarithmic bins matching half-open intervals [1..10) [10..100) [100 1000)
-	 *  define_histogram(type::vote, detail::log, dir::out, {1,10,100,1000});
-	 */
-	void define_histogram (stat::type type, stat::detail detail, stat::dir dir, std::initializer_list<uint64_t> intervals_a, size_t bin_count_a = 0);
-
-	/**
-	 * Update histogram
-	 *
-	 * Examples:
-	 *
-	 *  // Add 1 to the bin representing a 4-item vbh
-	 *  stats.update_histogram(type::vote, detail::confirm_ack, dir::in, 4, 1)
-	 *
-	 *  // Add 5 to the second bin where 17 falls
-	 *  stats.update_histogram(type::vote, detail::something, dir::in, 17, 5)
-	 *
-	 *  // Add 3 to the last bin as the histogram clamps. You can also add a final bin with maximum end value to effectively prevent this.
-	 *  stats.update_histogram(type::vote, detail::log, dir::out, 1001, 3)
-	 */
-	void update_histogram (stat::type type, stat::detail detail, stat::dir dir, uint64_t index, uint64_t addend = 1);
 
 	/**
 	 * Add \p value to stat. If sampling is configured, this will update the current sample and
@@ -391,7 +353,7 @@ public:
 	void log_samples (stat_log_sink & sink);
 
 	/** Returns a new JSON log sink */
-	std::unique_ptr<stat_log_sink> log_sink_json () const;
+	[[nodiscard]] std::unique_ptr<stat_log_sink> log_sink_json () const;
 
 	/** Returns string representation of type */
 	static std::string type_to_string (stat::type type);

@@ -7,8 +7,6 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <ctime>
-#include <fstream>
-#include <sstream>
 
 void nano::stat_config::load_dto (rsnano::StatConfigDto & dto)
 {
@@ -25,7 +23,7 @@ void nano::stat_config::load_dto (rsnano::StatConfigDto & dto)
 
 rsnano::StatConfigDto nano::stat_config::to_dto () const
 {
-	rsnano::StatConfigDto dto;
+	rsnano::StatConfigDto dto{};
 	dto.sampling_enabled = sampling_enabled;
 	dto.capacity = capacity;
 	dto.interval = interval;
@@ -142,30 +140,6 @@ void nano::stat::log_samples (stat_log_sink & sink)
 	rsnano::rsn_stat_log_samples (handle, sink.handle);
 }
 
-void nano::stat::define_histogram (stat::type type, stat::detail detail, stat::dir dir, std::initializer_list<uint64_t> intervals_a, size_t bin_count_a /*=0*/)
-{
-	std::vector<uint64_t> intervals_l{ intervals_a };
-	rsnano::rsn_stat_define_histogram (
-	handle,
-	static_cast<uint8_t> (type),
-	static_cast<uint8_t> (detail),
-	static_cast<uint8_t> (dir),
-	intervals_l.data (),
-	intervals_l.size (),
-	bin_count_a);
-}
-
-void nano::stat::update_histogram (stat::type type, stat::detail detail, stat::dir dir, uint64_t index_a, uint64_t addend_a)
-{
-	rsnano::rsn_stat_update_histogram (
-	handle,
-	static_cast<uint8_t> (type),
-	static_cast<uint8_t> (detail),
-	static_cast<uint8_t> (dir),
-	index_a,
-	addend_a);
-}
-
 std::chrono::seconds nano::stat::last_reset ()
 {
 	return std::chrono::seconds{ rsnano::rsn_stat_last_reset_s (handle) };
@@ -211,15 +185,6 @@ void nano::stat::configure (stat::type type, stat::detail detail, stat::dir dir,
 	static_cast<uint8_t> (dir),
 	interval,
 	capacity);
-}
-
-void nano::stat::disable_sampling (stat::type type, stat::detail detail, stat::dir dir)
-{
-	rsnano::rsn_stat_disable_sampling (
-	handle,
-	static_cast<uint8_t> (type),
-	static_cast<uint8_t> (detail),
-	static_cast<uint8_t> (dir));
 }
 
 void nano::stat::inc (stat::type type, stat::dir dir)

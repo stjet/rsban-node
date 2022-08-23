@@ -38,14 +38,6 @@ pub unsafe extern "C" fn rsn_lmdb_iterator_cursor(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_iterator_set_cursor(
-    handle: *mut LmdbIteratorHandle,
-    cursor: *mut MdbCursor,
-) {
-    (*handle).0.set_cursor(cursor);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_iterator_current(
     handle: *mut LmdbIteratorHandle,
     key: *mut MdbVal,
@@ -53,16 +45,6 @@ pub unsafe extern "C" fn rsn_lmdb_iterator_current(
 ) {
     *key = (*handle).0.key.clone();
     *value = (*handle).0.value.clone();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_iterator_set_current(
-    handle: *mut LmdbIteratorHandle,
-    key: *mut MdbVal,
-    value: *mut MdbVal,
-) {
-    (*handle).0.key = (*key).clone();
-    (*handle).0.value = (*value).clone();
 }
 
 #[no_mangle]

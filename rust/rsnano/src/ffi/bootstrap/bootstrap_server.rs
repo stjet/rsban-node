@@ -5,7 +5,6 @@ use crate::{
         RealtimeMessageVisitorImpl, RequestResponseVisitorFactory,
     },
     ffi::{
-        copy_account_bytes,
         io_context::{FfiIoContext, IoContextHandle},
         messages::FfiMessageVisitor,
         network::{EndpointDto, SocketHandle, SynCookiesHandle, TcpMessageManagerHandle},
@@ -189,15 +188,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_remote_endpoint(
     endpoint: *mut EndpointDto,
 ) {
     (*endpoint) = (*handle).remote_endpoint().into();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_remote_node_id(
-    handle: *mut BootstrapServerHandle,
-    node_id: *mut u8,
-) {
-    let lk = (*handle).remote_node_id.lock().unwrap();
-    copy_account_bytes(*lk, node_id);
 }
 
 #[no_mangle]

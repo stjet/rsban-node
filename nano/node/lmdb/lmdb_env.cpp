@@ -12,7 +12,16 @@ rsnano::LmdbEnvHandle * create_mdb_env_handle (bool & error_a, boost::filesystem
 }
 
 nano::mdb_env::mdb_env (bool & error_a, boost::filesystem::path const & path_a, nano::mdb_env::options options_a) :
-	handle{ create_mdb_env_handle (error_a, path_a, options_a) }
+	handle{ create_mdb_env_handle (error_a, path_a, options_a) },
+	txn_tracking_enabled{ false },
+	mdb_txn_tracker{ nullptr }
+{
+}
+
+nano::mdb_env::mdb_env (bool & error_a, boost::filesystem::path const & path_a, std::shared_ptr<nano::logger_mt> logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::mdb_env::options options_a) :
+	handle{ create_mdb_env_handle (error_a, path_a, options_a) },
+	mdb_txn_tracker{ std::make_unique<nano::mdb_txn_tracker> (logger_a, txn_tracking_config_a, block_processor_batch_max_time_a) },
+	txn_tracking_enabled (txn_tracking_config_a.enable)
 {
 }
 
@@ -20,6 +29,27 @@ nano::mdb_env::~mdb_env ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_mdb_env_destroy (handle);
+}
+
+nano::mdb_txn_callbacks nano::mdb_env::create_txn_callbacks () const
+{
+	nano::mdb_txn_callbacks mdb_txn_callbacks;
+	if (txn_tracking_enabled)
+	{
+		mdb_txn_callbacks.txn_start = ([&mdb_txn_tracker = mdb_txn_tracker] (uint64_t txn_id, bool is_write) {
+			mdb_txn_tracker->add (txn_id, is_write);
+		});
+		mdb_txn_callbacks.txn_end = ([&mdb_txn_tracker = mdb_txn_tracker] (uint64_t txn_id) {
+			mdb_txn_tracker->erase (txn_id);
+		});
+	}
+	return mdb_txn_callbacks;
+}
+
+void nano::mdb_env::serialize_txn_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time)
+{
+	if (mdb_txn_tracker != nullptr)
+		mdb_txn_tracker->serialize_json (json, min_read_time, min_write_time);
 }
 
 void nano::mdb_env::init (bool & error_a, boost::filesystem::path const & path_a, nano::mdb_env::options options_a)
@@ -34,14 +64,14 @@ nano::mdb_env::operator MDB_env * () const
 	return env ();
 }
 
-std::unique_ptr<nano::read_transaction> nano::mdb_env::tx_begin_read (mdb_txn_callbacks mdb_txn_callbacks) const
+std::unique_ptr<nano::read_transaction> nano::mdb_env::tx_begin_read () const
 {
-	return std::make_unique<nano::read_mdb_txn> (rsnano::rsn_mdb_env_tx_begin_read (handle, new nano::mdb_txn_callbacks (std::move (mdb_txn_callbacks))));
+	return std::make_unique<nano::read_mdb_txn> (rsnano::rsn_mdb_env_tx_begin_read (handle, new nano::mdb_txn_callbacks (std::move (create_txn_callbacks ()))));
 }
 
-std::unique_ptr<nano::write_transaction> nano::mdb_env::tx_begin_write (mdb_txn_callbacks mdb_txn_callbacks) const
+std::unique_ptr<nano::write_transaction> nano::mdb_env::tx_begin_write () const
 {
-	return std::make_unique<nano::write_mdb_txn> (rsnano::rsn_mdb_env_tx_begin_write (handle, new nano::mdb_txn_callbacks (std::move (mdb_txn_callbacks))));
+	return std::make_unique<nano::write_mdb_txn> (rsnano::rsn_mdb_env_tx_begin_write (handle, new nano::mdb_txn_callbacks (std::move (create_txn_callbacks ()))));
 }
 
 MDB_txn * nano::mdb_env::tx (nano::transaction const & transaction_a) const

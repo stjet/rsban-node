@@ -41,35 +41,18 @@ void mdb_val::convert_buffer_to_value ()
 }
 
 nano::lmdb::lmdb_gateway::lmdb_gateway (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a) :
-	env (error, path_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true)),
-	mdb_txn_tracker (logger_a, txn_tracking_config_a, block_processor_batch_max_time_a),
-	txn_tracking_enabled (txn_tracking_config_a.enable)
+	env (error, path_a, logger_a, txn_tracking_config_a, block_processor_batch_max_time_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true))
 {
-}
-
-nano::mdb_txn_callbacks nano::lmdb::lmdb_gateway::create_txn_callbacks () const
-{
-	nano::mdb_txn_callbacks mdb_txn_callbacks;
-	if (txn_tracking_enabled)
-	{
-		mdb_txn_callbacks.txn_start = ([&mdb_txn_tracker = mdb_txn_tracker] (uint64_t txn_id, bool is_write) {
-			mdb_txn_tracker.add (txn_id, is_write);
-		});
-		mdb_txn_callbacks.txn_end = ([&mdb_txn_tracker = mdb_txn_tracker] (uint64_t txn_id) {
-			mdb_txn_tracker.erase (txn_id);
-		});
-	}
-	return mdb_txn_callbacks;
 }
 
 std::unique_ptr<nano::write_transaction> nano::lmdb::lmdb_gateway::tx_begin_write ()
 {
-	return env.tx_begin_write (create_txn_callbacks ());
+	return env.tx_begin_write ();
 }
 
 std::unique_ptr<nano::read_transaction> nano::lmdb::lmdb_gateway::tx_begin_read () const
 {
-	return env.tx_begin_read (create_txn_callbacks ());
+	return env.tx_begin_read ();
 }
 
 nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
@@ -189,7 +172,7 @@ bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & pa
 
 void nano::lmdb::store::serialize_mdb_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time)
 {
-	gateway.mdb_txn_tracker.serialize_json (json, min_read_time, min_write_time);
+	gateway.env.serialize_txn_tracker (json, min_read_time, min_write_time);
 }
 
 void nano::lmdb::store::serialize_memory_stats (boost::property_tree::ptree & json)

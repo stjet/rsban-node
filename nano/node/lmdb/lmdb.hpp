@@ -46,14 +46,11 @@ namespace lmdb
 	{
 	public:
 		lmdb_gateway (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a);
-		nano::mdb_txn_callbacks create_txn_callbacks () const;
 		std::unique_ptr<nano::write_transaction> tx_begin_write ();
 		std::unique_ptr<nano::read_transaction> tx_begin_read () const;
 
 		bool error{ false };
 		nano::mdb_env env;
-		bool txn_tracking_enabled;
-		mutable nano::mdb_txn_tracker mdb_txn_tracker;
 	};
 
 	/**

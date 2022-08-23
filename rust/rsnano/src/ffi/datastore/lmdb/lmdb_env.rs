@@ -3,15 +3,16 @@ use std::{
     ops::Deref,
     path::Path,
     sync::Arc,
+    time::Duration,
 };
 
 use crate::{
     datastore::lmdb::{EnvOptions, LmdbEnv},
-    ffi::LmdbConfigDto,
-    LmdbConfig,
+    ffi::{FfiPropertyTreeWriter, LmdbConfigDto, LoggerHandle, LoggerMT, TxnTrackingConfigDto},
+    DiagnosticsConfig, LmdbConfig,
 };
 
-use super::{FfiCallbacksWrapper, TransactionHandle, TransactionType};
+use super::{TransactionHandle, TransactionType};
 
 pub struct LmdbEnvHandle(Arc<LmdbEnv>);
 
@@ -38,6 +39,40 @@ pub unsafe extern "C" fn rsn_mdb_env_create(
     let path_str = CStr::from_ptr(path).to_str().unwrap();
     let path = Path::new(path_str);
     let env = LmdbEnv::new(&mut *error, path, &options);
+    if *error {
+        eprintln!("Could not create LMDB env");
+    }
+    Box::into_raw(Box::new(LmdbEnvHandle(Arc::new(env))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_mdb_env_create2(
+    error: *mut bool,
+    path: *const i8,
+    lmdb_config: *const LmdbConfigDto,
+    use_no_mem_init: bool,
+    logger: *mut LoggerHandle,
+    txn_config: *const TxnTrackingConfigDto,
+    block_processor_batch_max_time_ms: u64,
+) -> *mut LmdbEnvHandle {
+    let config = LmdbConfig::from(&*lmdb_config);
+    let options = EnvOptions {
+        config,
+        use_no_mem_init,
+    };
+    let path_str = CStr::from_ptr(path).to_str().unwrap();
+    let path = Path::new(path_str);
+    let txn_config = DiagnosticsConfig::from(&*txn_config).txn_tracking;
+    let block_processor_batch_max_time = Duration::from_millis(block_processor_batch_max_time_ms);
+    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let env = LmdbEnv::with_tracking(
+        &mut *error,
+        path,
+        &options,
+        txn_config,
+        block_processor_batch_max_time,
+        logger,
+    );
     if *error {
         eprintln!("Could not create LMDB env");
     }
@@ -80,19 +115,33 @@ pub unsafe extern "C" fn rsn_mdb_env_get_env(handle: *mut LmdbEnvHandle) -> *mut
 #[no_mangle]
 pub unsafe extern "C" fn rsn_mdb_env_tx_begin_read(
     handle: *mut LmdbEnvHandle,
-    callbacks: *mut c_void,
 ) -> *mut TransactionHandle {
-    let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
-    let txn = (*handle).0.tx_begin_read(callbacks);
+    let txn = (*handle).0.tx_begin_read();
     TransactionHandle::new(TransactionType::Read(txn))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_mdb_env_tx_begin_write(
     handle: *mut LmdbEnvHandle,
-    callbacks: *mut c_void,
 ) -> *mut TransactionHandle {
-    let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
-    let txn = (*handle).0.tx_begin_write(callbacks);
+    let txn = (*handle).0.tx_begin_write();
     TransactionHandle::new(TransactionType::Write(txn))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_mdb_env_serialize_txn_tracker(
+    handle: *mut LmdbEnvHandle,
+    ptree: *mut c_void,
+    min_read_time_ms: u64,
+    min_write_time_ms: u64,
+) {
+    let mut ptree = FfiPropertyTreeWriter::new_borrowed(ptree);
+    (*handle)
+        .0
+        .serialize_txn_tracker(
+            &mut ptree,
+            Duration::from_millis(min_read_time_ms),
+            Duration::from_millis(min_write_time_ms),
+        )
+        .unwrap()
 }

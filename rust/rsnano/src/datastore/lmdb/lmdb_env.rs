@@ -1,13 +1,16 @@
 use super::{
     assert_success, mdb_env_close, mdb_env_create, mdb_env_sync, LmdbReadTransaction,
-    LmdbWriteTransaction, MdbEnv, TxnCallbacks,
+    LmdbWriteTransaction, MdbEnv, NullTxnCallbacks, TxnCallbacks, TxnTracker,
 };
 use crate::{
     datastore::lmdb::{
         mdb_env_open, mdb_env_set_mapsize, mdb_env_set_maxdbs, MDB_MAPASYNC, MDB_NOMEMINIT,
         MDB_NOMETASYNC, MDB_NORDAHEAD, MDB_NOSUBDIR, MDB_NOSYNC, MDB_NOTLS, MDB_WRITEMAP,
     },
-    running_within_valgrind, LmdbConfig, SyncStrategy,
+    logger_mt::Logger,
+    running_within_valgrind,
+    utils::PropertyTreeWriter,
+    LmdbConfig, SyncStrategy, TxnTrackingConfig,
 };
 use anyhow::Result;
 use std::{
@@ -19,6 +22,7 @@ use std::{
         atomic::{AtomicU64, AtomicUsize, Ordering},
         Arc,
     },
+    time::Duration,
 };
 
 pub struct EnvOptions {
@@ -29,6 +33,7 @@ pub struct EnvOptions {
 pub struct LmdbEnv {
     environment: AtomicUsize,
     next_txn_id: AtomicU64,
+    txn_tracker: Option<Arc<TxnTracker>>,
 }
 
 impl LmdbEnv {
@@ -36,6 +41,34 @@ impl LmdbEnv {
         let result = Self {
             environment: AtomicUsize::new(0),
             next_txn_id: AtomicU64::new(0),
+            txn_tracker: None,
+        };
+        *error = result.init(path, options).is_err();
+        result
+    }
+
+    pub fn with_tracking(
+        error: &mut bool,
+        path: &Path,
+        options: &EnvOptions,
+        tracking_cfg: TxnTrackingConfig,
+        block_processor_batch_max_time: Duration,
+        logger: Arc<dyn Logger>,
+    ) -> Self {
+        let txn_tracker = if tracking_cfg.enable {
+            Some(Arc::new(TxnTracker::new(
+                logger,
+                tracking_cfg,
+                block_processor_batch_max_time,
+            )))
+        } else {
+            None
+        };
+
+        let result = Self {
+            environment: AtomicUsize::new(0),
+            next_txn_id: AtomicU64::new(0),
+            txn_tracker,
         };
         *error = result.init(path, options).is_err();
         result
@@ -83,16 +116,26 @@ impl LmdbEnv {
         self.environment.load(Ordering::SeqCst) as *mut MdbEnv
     }
 
-    pub fn tx_begin_read(&self, callbacks: Arc<dyn TxnCallbacks>) -> LmdbReadTransaction {
+    pub fn tx_begin_read(&self) -> LmdbReadTransaction {
         let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
-        unsafe { LmdbReadTransaction::new(txn_id, self.env(), callbacks) }
+        unsafe { LmdbReadTransaction::new(txn_id, self.env(), self.create_txn_callbacks()) }
     }
 
-    pub fn tx_begin_write(&self, callbacks: Arc<dyn TxnCallbacks>) -> LmdbWriteTransaction {
+    pub fn tx_begin_write(&self) -> LmdbWriteTransaction {
         // For IO threads, we do not want them to block on creating write transactions.
         debug_assert!(std::thread::current().name() != Some("I/O"));
         let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
-        unsafe { LmdbWriteTransaction::new(txn_id, self.env(), callbacks) }
+        unsafe { LmdbWriteTransaction::new(txn_id, self.env(), self.create_txn_callbacks()) }
+    }
+
+    fn create_txn_callbacks(&self) -> Arc<dyn TxnCallbacks> {
+        match &self.txn_tracker {
+            Some(tracker) => {
+                let tracker = Arc::clone(tracker);
+                tracker
+            }
+            None => Arc::new(NullTxnCallbacks::new()),
+        }
     }
 
     pub fn close(&self) {
@@ -103,6 +146,18 @@ impl LmdbEnv {
                 mdb_env_close(self.env());
                 self.environment.store(0, Ordering::SeqCst);
             }
+        }
+    }
+
+    pub fn serialize_txn_tracker(
+        &self,
+        json: &mut dyn PropertyTreeWriter,
+        min_read_time: Duration,
+        min_write_time: Duration,
+    ) -> anyhow::Result<()> {
+        match &self.txn_tracker {
+            Some(tracker) => tracker.serialize_json(json, min_read_time, min_write_time),
+            None => Ok(()),
         }
     }
 }

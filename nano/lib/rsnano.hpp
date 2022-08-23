@@ -1796,6 +1796,14 @@ const int8_t * path,
 const LmdbConfigDto * lmdb_config,
 bool use_no_mem_init);
 
+LmdbEnvHandle * rsn_mdb_env_create2 (bool * error,
+const int8_t * path,
+const LmdbConfigDto * lmdb_config,
+bool use_no_mem_init,
+LoggerHandle * logger,
+const TxnTrackingConfigDto * txn_config,
+uint64_t block_processor_batch_max_time_ms);
+
 void rsn_mdb_env_destroy (LmdbEnvHandle * handle);
 
 void * rsn_mdb_env_get_env (LmdbEnvHandle * handle);
@@ -1806,9 +1814,14 @@ const int8_t * path,
 const LmdbConfigDto * lmdb_config,
 bool use_no_mem_init);
 
-TransactionHandle * rsn_mdb_env_tx_begin_read (LmdbEnvHandle * handle, void * callbacks);
+void rsn_mdb_env_serialize_txn_tracker (LmdbEnvHandle * handle,
+void * ptree,
+uint64_t min_read_time_ms,
+uint64_t min_write_time_ms);
 
-TransactionHandle * rsn_mdb_env_tx_begin_write (LmdbEnvHandle * handle, void * callbacks);
+TransactionHandle * rsn_mdb_env_tx_begin_read (LmdbEnvHandle * handle);
+
+TransactionHandle * rsn_mdb_env_tx_begin_write (LmdbEnvHandle * handle);
 
 void rsn_mdb_txn_tracker_add (MdbTxnTrackerHandle * handle, uint64_t txn_id, bool is_write);
 

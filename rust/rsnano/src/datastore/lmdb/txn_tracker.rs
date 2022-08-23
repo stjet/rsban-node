@@ -6,6 +6,8 @@ use std::{
 
 use crate::{logger_mt::Logger, utils::PropertyTreeWriter, TxnTrackingConfig};
 
+use super::TxnCallbacks;
+
 pub struct TxnTracker {
     stats: Mutex<HashMap<u64, TxnStats>>,
     logger: Arc<dyn Logger>,
@@ -142,4 +144,14 @@ struct TxnStats {
     thread_name: Option<String>,
     //todo: stacktrace
     start: Instant,
+}
+
+impl TxnCallbacks for TxnTracker {
+    fn txn_start(&self, txn_id: u64, is_write: bool) {
+        self.add(txn_id, is_write);
+    }
+
+    fn txn_end(&self, txn_id: u64) {
+        self.erase(txn_id);
+    }
 }

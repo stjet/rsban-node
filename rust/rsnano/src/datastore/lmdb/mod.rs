@@ -151,6 +151,20 @@ pub trait TxnCallbacks {
     fn txn_end(&self, txn_id: u64);
 }
 
+pub struct NullTxnCallbacks {}
+
+impl NullTxnCallbacks {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl TxnCallbacks for NullTxnCallbacks {
+    fn txn_start(&self, _txn_id: u64, _is_write: bool) {}
+
+    fn txn_end(&self, _txn_id: u64) {}
+}
+
 pub fn assert_success(status: i32) {
     ensure_success(status).unwrap();
 }

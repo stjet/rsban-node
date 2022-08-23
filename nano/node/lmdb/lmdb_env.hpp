@@ -67,11 +67,7 @@ public:
 	void close_env ();
 	nano::mdb_txn_callbacks create_txn_callbacks () const;
 	void serialize_txn_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time);
-	bool txn_tracking_enabled;
 	rsnano::LmdbEnvHandle * handle;
-
-private:
-	mutable std::unique_ptr<nano::mdb_txn_tracker> mdb_txn_tracker;
 };
 
 MDB_txn * to_mdb_txn (nano::transaction const & transaction_a);

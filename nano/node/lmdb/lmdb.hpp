@@ -37,7 +37,6 @@ namespace nano
 {
 using mdb_val = db_val<MDB_val>;
 
-class logging_mt;
 class transaction;
 
 namespace lmdb

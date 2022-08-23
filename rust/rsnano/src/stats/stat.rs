@@ -125,6 +125,39 @@ pub enum StatType {
     Filter,
     Telemetry,
     VoteGenerator,
+    VoteCache,
+}
+
+impl StatType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            StatType::Ipc => "ipc",
+            StatType::Block => "block",
+            StatType::Bootstrap => "bootstrap",
+            StatType::BootstrapServer => "bootstrap_server",
+            StatType::Error => "error",
+            StatType::HttpCallback => "http_callback",
+            StatType::Ledger => "ledger",
+            StatType::Tcp => "tcp",
+            StatType::Udp => "udp",
+            StatType::Peering => "peering",
+            StatType::Rollback => "rollback",
+            StatType::TrafficUdp => "traffic_udp",
+            StatType::TrafficTcp => "traffic_tcp",
+            StatType::Vote => "vote",
+            StatType::Election => "election",
+            StatType::Message => "message",
+            StatType::ConfirmationObserver => "observer",
+            StatType::ConfirmationHeight => "confirmation_height",
+            StatType::Drop => "drop",
+            StatType::Aggregator => "aggregator",
+            StatType::Requests => "requests",
+            StatType::Filter => "filter",
+            StatType::Telemetry => "telemetry",
+            StatType::VoteGenerator => "vote_generator",
+            StatType::VoteCache => "vote_cache",
+        }
+    }
 }
 
 // Optional detail type
@@ -200,6 +233,7 @@ pub enum DetailType {
 
     // election specific
     VoteNew,
+    VoteProcessed,
     VoteCached,
     LateBlock,
     LateBlockSeconds,
@@ -352,6 +386,7 @@ impl DetailType {
             DetailType::VoteInvalid => "vote_invalid",
             DetailType::VoteOverflow => "vote_overflow",
             DetailType::VoteNew => "vote_new",
+            DetailType::VoteProcessed => "vote_processed",
             DetailType::VoteCached => "vote_cached",
             DetailType::LateBlock => "late_block",
             DetailType::LateBlockSeconds => "late_block_seconds",
@@ -436,6 +471,15 @@ impl DetailType {
 pub enum Direction {
     In,
     Out,
+}
+
+impl Direction {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Direction::In => "in",
+            Direction::Out => "out",
+        }
+    }
 }
 
 static LOG_COUNT: Lazy<Mutex<Option<FileWriter>>> = Lazy::new(|| Mutex::new(None));
@@ -718,33 +762,7 @@ fn key_of(stat_type: StatType, detail: DetailType, dir: Direction) -> u32 {
 pub fn stat_type_as_str(key: u32) -> Result<&'static str> {
     let stat_type: StatType =
         FromPrimitive::from_u32(key >> 16 & 0x000000ff).ok_or_else(|| anyhow!("invalid key"))?;
-    let str = match stat_type {
-        StatType::Ipc => "ipc",
-        StatType::Block => "block",
-        StatType::Bootstrap => "bootstrap",
-        StatType::BootstrapServer => "bootstrap_server",
-        StatType::Error => "error",
-        StatType::HttpCallback => "http_callback",
-        StatType::Ledger => "ledger",
-        StatType::Tcp => "tcp",
-        StatType::Udp => "udp",
-        StatType::Peering => "peering",
-        StatType::Rollback => "rollback",
-        StatType::TrafficUdp => "traffic_udp",
-        StatType::TrafficTcp => "traffic_tcp",
-        StatType::Vote => "vote",
-        StatType::Election => "election",
-        StatType::Message => "message",
-        StatType::ConfirmationObserver => "observer",
-        StatType::ConfirmationHeight => "confirmation_height",
-        StatType::Drop => "drop",
-        StatType::Aggregator => "aggregator",
-        StatType::Requests => "requests",
-        StatType::Filter => "filter",
-        StatType::Telemetry => "telemetry",
-        StatType::VoteGenerator => "vote_generator",
-    };
-    Ok(str)
+    Ok(stat_type.as_str())
 }
 
 pub fn stat_detail_as_str(key: u32) -> Result<&'static str> {
@@ -756,12 +774,7 @@ pub fn stat_detail_as_str(key: u32) -> Result<&'static str> {
 pub fn stat_dir_as_str(key: u32) -> Result<&'static str> {
     let stat_dir: Direction =
         FromPrimitive::from_u32(key & 0x000000ff).ok_or_else(|| anyhow!("invalid key"))?;
-
-    let str = match stat_dir {
-        Direction::In => "in",
-        Direction::Out => "out",
-    };
-    Ok(str)
+    Ok(stat_dir.as_str())
 }
 
 struct StatMutables {

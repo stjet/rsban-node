@@ -8,7 +8,9 @@ use num::FromPrimitive;
 
 use crate::{
     messages::MessageType,
-    stats::{stat_type_as_str, DetailType, FileWriter, JsonWriter, Stat, StatConfig, StatLogSink},
+    stats::{
+        DetailType, Direction, FileWriter, JsonWriter, Stat, StatConfig, StatLogSink, StatType,
+    },
 };
 
 use super::FfiPropertyTreeWriter;
@@ -129,8 +131,22 @@ pub unsafe extern "C" fn rsn_stat_log_sink_to_object(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_stat_type_to_string(key: u32, result: *mut *const u8) -> usize {
-    let type_str = stat_type_as_str(key).unwrap();
+pub unsafe extern "C" fn rsn_stat_type_to_string(key: u8, result: *mut *const u8) -> usize {
+    let type_str = StatType::from_u8(key).unwrap().as_str();
+    (*result) = type_str.as_ptr();
+    type_str.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_detail_to_string(key: u8, result: *mut *const u8) -> usize {
+    let type_str = DetailType::from_u8(key).unwrap().as_str();
+    (*result) = type_str.as_ptr();
+    type_str.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_stat_dir_to_string(key: u8, result: *mut *const u8) -> usize {
+    let type_str = Direction::from_u8(key).unwrap().as_str();
     (*result) = type_str.as_ptr();
     type_str.len()
 }

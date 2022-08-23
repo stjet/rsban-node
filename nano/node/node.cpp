@@ -1300,7 +1300,7 @@ void nano::node::add_initial_peers ()
 	}
 }
 
-void nano::node::block_confirm (std::shared_ptr<nano::block> const & block_a)
+std::shared_ptr<nano::election> nano::node::block_confirm (std::shared_ptr<nano::block> const & block_a)
 {
 	scheduler.manual (block_a);
 	scheduler.flush ();
@@ -1308,7 +1308,9 @@ void nano::node::block_confirm (std::shared_ptr<nano::block> const & block_a)
 	if (election != nullptr)
 	{
 		election->transition_active ();
+		return election;
 	}
+	return {};
 }
 
 bool nano::node::block_confirmed (nano::block_hash const & hash_a)

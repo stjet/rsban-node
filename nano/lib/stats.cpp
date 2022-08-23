@@ -181,10 +181,24 @@ void nano::stat::clear ()
 	rsnano::rsn_stat_clear (handle);
 }
 
+std::string nano::stat::type_to_string (stat::type type)
+{
+	uint8_t const * ptr;
+	auto len = rsnano::rsn_stat_type_to_string (static_cast<uint8_t> (type), &ptr);
+	return std::string (reinterpret_cast<const char *> (ptr), len);
+}
+
 std::string nano::stat::detail_to_string (stat::detail detail)
 {
 	uint8_t const * ptr;
-	auto len = rsnano::rsn_stat_type_to_string (static_cast<uint8_t> (detail), &ptr);
+	auto len = rsnano::rsn_stat_detail_to_string (static_cast<uint8_t> (detail), &ptr);
+	return std::string (reinterpret_cast<const char *> (ptr), len);
+}
+
+std::string nano::stat::dir_to_string (stat::dir detail)
+{
+	uint8_t const * ptr;
+	auto len = rsnano::rsn_stat_dir_to_string (static_cast<uint8_t> (detail), &ptr);
 	return std::string (reinterpret_cast<const char *> (ptr), len);
 }
 

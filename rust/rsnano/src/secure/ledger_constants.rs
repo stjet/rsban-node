@@ -86,6 +86,20 @@ fn parse_block_from_genesis_data(genesis_data: &str) -> Result<BlockEnum> {
     deserialize_block_json(&ptree)
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::BlockType;
+
+    use super::*;
+
+    #[test]
+    fn test_parse_block() {
+        let block_str = r###"{"type": "open", "source": "37FCEA4DA94F1635484EFCBA57483C4C654F573B435C09D8AACE1CB45E63FFB1", "representative": "nano_1fzwxb8tkmrp8o66xz7tcx65rm57bxdmpitw39ecomiwpjh89zxj33juzt6p", "account": "nano_1fzwxb8tkmrp8o66xz7tcx65rm57bxdmpitw39ecomiwpjh89zxj33juzt6p", "work": "ef0547d86748c71b", "signature": "13E33D1ADA50A79B64741C5159C0C0AFE0515581B47ABD73676FE02A1D600CDB637050D37BF92C9629649AE92949814BB57C6B5B0A44BF76E2F33043A3DF2D01"}"###;
+        let block = parse_block_from_genesis_data(block_str).unwrap();
+        assert_eq!(block.block_type(), BlockType::Open);
+    }
+}
+
 pub struct LedgerConstants {
     pub work: WorkThresholds,
     pub zero_key: KeyPair,

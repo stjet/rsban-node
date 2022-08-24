@@ -77,7 +77,7 @@ nano::ledger_constants::ledger_constants (nano::work_thresholds work_a, nano::ne
 {
 	rsnano::LedgerConstantsDto dto;
 	if (rsnano::rsn_ledger_constants_create (&dto, &work_a.dto, static_cast<uint16_t> (network_a)) < 0)
-		throw std::runtime_error ("could not create ledger_constants");
+		throw std::runtime_error ("could not create ledger_constants.");
 	read_dto (dto);
 }
 

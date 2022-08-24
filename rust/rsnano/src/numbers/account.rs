@@ -77,11 +77,25 @@ impl Account {
     pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
         let s = s.as_ref();
         if s.is_empty() || s.len() > 64 {
-            bail!("invalid length");
+            bail!(
+                "Invalid account string length. Expected <= 64 but was {}",
+                s.len()
+            );
         }
 
+        let mut padded_string = String::new();
+        let sanitized = if s.len() < 64 {
+            for _ in 0..(64 - s.len()) {
+                padded_string.push('0');
+            }
+            padded_string.push_str(s);
+            &padded_string
+        } else {
+            s
+        };
+
         let mut bytes = [0u8; 32];
-        hex::decode_to_slice(s, &mut bytes)?;
+        hex::decode_to_slice(sanitized, &mut bytes)?;
         Ok(Account::from_bytes(bytes))
     }
 }
@@ -327,5 +341,17 @@ mod tests {
             Account::decode_account(&encoded).expect("could not decode"),
             account
         );
+    }
+
+    #[test]
+    fn decode_less_than_64_chars() {
+        let account = Account::decode_hex("AA").unwrap();
+        assert_eq!(
+            account.to_bytes(),
+            [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0xAA
+            ]
+        )
     }
 }

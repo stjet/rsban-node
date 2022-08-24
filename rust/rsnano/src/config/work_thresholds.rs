@@ -89,8 +89,25 @@ static PUBLISH_TEST: Lazy<WorkThresholds> = Lazy::new(|| {
 
 fn get_env_threshold_or_default(variable_name: &str, default_value: u64) -> u64 {
     match std::env::var(variable_name) {
-        Ok(value) => u64::from_str_radix(&value, 16).expect("could not parse difficulty env var"),
+        Ok(value) => parse_hex_u64(value).expect("could not parse difficulty env var"),
         Err(_) => default_value,
+    }
+}
+
+fn parse_hex_u64(value: impl AsRef<str>) -> Result<u64, std::num::ParseIntError> {
+    let s = value.as_ref();
+    let s = s.strip_prefix("0x").unwrap_or(s);
+    u64::from_str_radix(s, 16)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_parse_threshold() {
+        assert_eq!(parse_hex_u64("0xffffffc000000000"), Ok(0xffffffc000000000));
+        assert_eq!(parse_hex_u64("0xFFFFFFC000000000"), Ok(0xffffffc000000000));
+        assert_eq!(parse_hex_u64("FFFFFFC000000000"), Ok(0xffffffc000000000));
     }
 }
 

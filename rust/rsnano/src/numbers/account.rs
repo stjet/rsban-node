@@ -2,7 +2,7 @@ use super::PublicKey;
 use crate::utils::{Deserialize, Serialize, Stream};
 use anyhow::Result;
 use blake2::digest::{Update, VariableOutput};
-use primitive_types::U512;
+use primitive_types::{U256, U512};
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct Account {
@@ -265,6 +265,12 @@ impl From<u64> for Account {
         let mut key = PublicKey::new();
         key.value[24..].copy_from_slice(&value.to_be_bytes());
         Account::from(key)
+    }
+}
+
+impl From<U256> for Account {
+    fn from(value: U256) -> Self {
+        PublicKey::from(value).into()
     }
 }
 

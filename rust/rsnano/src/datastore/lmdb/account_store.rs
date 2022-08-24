@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use crate::{
     datastore::{
-        lmdb::MDB_NOTFOUND, AccountStore, DbIterator, ReadTransaction, Transaction,
-        WriteTransaction,
+        lmdb::MDB_NOTFOUND, parallel_traversal, AccountStore, DbIterator, NullIterator,
+        ReadTransaction, Transaction, WriteTransaction,
     },
     utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
@@ -124,18 +124,28 @@ impl AccountStore for LmdbAccountStore {
         ))
     }
 
+    fn end(&self) -> Box<dyn DbIterator<Account, AccountInfo>> {
+        Box::new(NullIterator::new())
+    }
+
     fn for_each_par(
         &self,
-        _action: &dyn Fn(
+        action: &(dyn Fn(
             &dyn ReadTransaction,
             &mut dyn DbIterator<Account, AccountInfo>,
             &mut dyn DbIterator<Account, AccountInfo>,
-        ),
+        ) + Send
+              + Sync),
     ) {
-        todo!()
-        // parallel_traversal(&|start, end, is_last|{
-        //     let transaction (this->store.tx_begin_read ());
-        //     action_a (*transaction, this->begin (*transaction, start), !is_last ? this->begin (*transaction, end) : this->end ());
-        // });
+        parallel_traversal(&|start, end, is_last| {
+            let mut transaction = self.env.tx_begin_read();
+            let mut begin_it = self.begin_account(&transaction, &start.into());
+            let mut end_it = if !is_last {
+                self.begin_account(&transaction, &end.into())
+            } else {
+                self.end()
+            };
+            action(&mut transaction, begin_it.as_mut(), end_it.as_mut());
+        });
     }
 }

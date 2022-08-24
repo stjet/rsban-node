@@ -29,9 +29,17 @@ impl TransactionHandle {
         Box::into_raw(Box::new(TransactionHandle(txn_type)))
     }
 
-    pub fn as_read_txn(&mut self) -> &mut LmdbReadTransaction {
+    pub fn as_read_txn_mut(&mut self) -> &mut LmdbReadTransaction {
         match &mut self.0 {
             TransactionType::Read(tx) => tx,
+            _ => panic!("invalid tx type"),
+        }
+    }
+
+    pub fn as_read_txn(&mut self) -> &LmdbReadTransaction {
+        match &mut self.0 {
+            TransactionType::Read(tx) => tx,
+            TransactionType::ReadRef(tx) => *tx,
             _ => panic!("invalid tx type"),
         }
     }
@@ -46,6 +54,7 @@ impl TransactionHandle {
     pub fn as_txn(&self) -> &dyn Transaction {
         match &self.0 {
             TransactionType::Read(t) => t,
+            TransactionType::ReadRef(t) => *t,
             TransactionType::Write(t) => t,
         }
     }
@@ -61,6 +70,7 @@ impl Deref for TransactionHandle {
 
 pub enum TransactionType {
     Read(LmdbReadTransaction),
+    ReadRef(&'static LmdbReadTransaction),
     Write(LmdbWriteTransaction),
 }
 
@@ -83,17 +93,17 @@ pub unsafe extern "C" fn rsn_lmdb_read_txn_destroy(handle: *mut TransactionHandl
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_read_txn_reset(handle: *mut TransactionHandle) {
-    (*handle).as_read_txn().reset();
+    (*handle).as_read_txn_mut().reset();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_read_txn_renew(handle: *mut TransactionHandle) {
-    (*handle).as_read_txn().renew();
+    (*handle).as_read_txn_mut().renew();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_read_txn_refresh(handle: *mut TransactionHandle) {
-    (*handle).as_read_txn().refresh();
+    (*handle).as_read_txn_mut().refresh();
 }
 
 #[no_mangle]

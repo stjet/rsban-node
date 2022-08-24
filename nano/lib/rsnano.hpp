@@ -769,6 +769,8 @@ struct DaemonConfigDto
 	NodeRpcConfigDto rpc;
 };
 
+using AccountStoreForEachParCallback = void (*) (void *, TransactionHandle *, LmdbIteratorHandle *, LmdbIteratorHandle *);
+
 struct LocalVotesResult
 {
 	uintptr_t count;
@@ -1693,6 +1695,11 @@ TransactionHandle * txn,
 const uint8_t * account);
 
 void rsn_lmdb_account_store_destroy (LmdbAccountStoreHandle * handle);
+
+void rsn_lmdb_account_store_for_each_par (LmdbAccountStoreHandle * handle,
+AccountStoreForEachParCallback action,
+void * context,
+VoidPointerCallback delete_context);
 
 bool rsn_lmdb_account_store_get (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn,

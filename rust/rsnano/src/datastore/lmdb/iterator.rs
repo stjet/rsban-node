@@ -189,7 +189,7 @@ where
     K: Serialize + Deserialize<K> + Default,
     V: Serialize + Deserialize<V> + Default,
 {
-    fn take_lmdb_raw_iterator(&mut self) -> LmdbRawIterator {
-        self.raw_iterator.take()
+    fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator> {
+        Some(self.raw_iterator.take())
     }
 }

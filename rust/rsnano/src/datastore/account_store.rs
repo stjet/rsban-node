@@ -14,10 +14,12 @@ pub trait AccountStore {
     fn rbegin(&self, transaction: &dyn Transaction) -> Box<dyn DbIterator<Account, AccountInfo>>;
     fn for_each_par(
         &self,
-        action: &dyn Fn(
+        action: &(dyn Fn(
             &dyn ReadTransaction,
             &mut dyn DbIterator<Account, AccountInfo>,
             &mut dyn DbIterator<Account, AccountInfo>,
-        ),
+        ) + Send
+              + Sync),
     );
+    fn end(&self) -> Box<dyn DbIterator<Account, AccountInfo>>;
 }

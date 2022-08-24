@@ -1,15 +1,22 @@
 use std::{
+    ffi::c_void,
     ops::{Deref, DerefMut},
+    ptr,
     sync::Arc,
 };
 
 use crate::{
-    datastore::{lmdb::LmdbAccountStore, AccountStore},
-    ffi::AccountInfoHandle,
-    Account,
+    datastore::{
+        lmdb::{LmdbAccountStore, LmdbReadTransaction},
+        AccountStore, DbIterator, ReadTransaction,
+    },
+    ffi::{AccountInfoHandle, VoidPointerCallback},
+    Account, AccountInfo,
 };
 
-use super::{iterator::LmdbIteratorHandle, lmdb_env::LmdbEnvHandle, TransactionHandle};
+use super::{
+    iterator::LmdbIteratorHandle, lmdb_env::LmdbEnvHandle, TransactionHandle, TransactionType,
+};
 
 pub struct LmdbAccountStoreHandle(LmdbAccountStore);
 
@@ -91,7 +98,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_begin_account(
 ) -> *mut LmdbIteratorHandle {
     let account = Account::from_ptr(account);
     let mut iterator = (*handle).0.begin_account((*txn).as_txn(), &account);
-    LmdbIteratorHandle::new(iterator.take_lmdb_raw_iterator())
+    to_lmdb_iterator_handle(iterator.as_mut())
 }
 
 #[no_mangle]
@@ -100,7 +107,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_begin(
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
     let mut iterator = (*handle).0.begin((*txn).as_txn());
-    LmdbIteratorHandle::new(iterator.take_lmdb_raw_iterator())
+    to_lmdb_iterator_handle(iterator.as_mut())
 }
 
 #[no_mangle]
@@ -109,5 +116,69 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_rbegin(
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
     let mut iterator = (*handle).0.rbegin((*txn).as_txn());
-    LmdbIteratorHandle::new(iterator.take_lmdb_raw_iterator())
+    to_lmdb_iterator_handle(iterator.as_mut())
+}
+
+pub type AccountStoreForEachParCallback = extern "C" fn(
+    *mut c_void,
+    *mut TransactionHandle,
+    *mut LmdbIteratorHandle,
+    *mut LmdbIteratorHandle,
+);
+
+struct ForEachParWrapper {
+    action: AccountStoreForEachParCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+}
+
+impl ForEachParWrapper {
+    pub fn execute(
+        &self,
+        txn: &dyn ReadTransaction,
+        begin: &mut dyn DbIterator<Account, AccountInfo>,
+        end: &mut dyn DbIterator<Account, AccountInfo>,
+    ) {
+        let lmdb_txn = txn.as_any().downcast_ref::<LmdbReadTransaction>().unwrap();
+        let lmdb_txn = unsafe {
+            std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(lmdb_txn)
+        };
+        let txn_handle = TransactionHandle::new(TransactionType::ReadRef(lmdb_txn));
+        let begin_handle = to_lmdb_iterator_handle(begin);
+        let end_handle = to_lmdb_iterator_handle(end);
+        (self.action)(self.context, txn_handle, begin_handle, end_handle);
+    }
+}
+
+unsafe impl Send for ForEachParWrapper {}
+unsafe impl Sync for ForEachParWrapper {}
+
+impl Drop for ForEachParWrapper {
+    fn drop(&mut self) {
+        unsafe { (self.delete_context)(self.context) }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_account_store_for_each_par(
+    handle: *mut LmdbAccountStoreHandle,
+    action: AccountStoreForEachParCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let wrapper = ForEachParWrapper {
+        action,
+        context,
+        delete_context,
+    };
+    (*handle)
+        .0
+        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
+}
+
+fn to_lmdb_iterator_handle<K, V>(iterator: &mut dyn DbIterator<K, V>) -> *mut LmdbIteratorHandle {
+    match iterator.take_lmdb_raw_iterator() {
+        Some(it) => LmdbIteratorHandle::new(it),
+        None => ptr::null_mut(),
+    }
 }

@@ -17,6 +17,7 @@ pub use amount::*;
 use blake2::digest::{Update, VariableOutput};
 pub use difficulty::*;
 use once_cell::sync::Lazy;
+use primitive_types::U256;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct PublicKey {
@@ -60,6 +61,14 @@ impl PublicKey {
 
     pub fn to_be_bytes(self) -> [u8; 32] {
         self.value
+    }
+}
+
+impl From<U256> for PublicKey {
+    fn from(value: U256) -> Self {
+        let mut key = Self::new();
+        value.to_big_endian(&mut key.value);
+        key
     }
 }
 

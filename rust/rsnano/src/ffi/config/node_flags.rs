@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rsn_node_flags_rpc_config_overrides(
     for (i, s) in lock.rpc_config_overrides.iter().enumerate() {
         result[i] = StringDto::from(s);
     }
-    lock.config_overrides.len()
+    lock.rpc_config_overrides.len()
 }
 
 #[no_mangle]

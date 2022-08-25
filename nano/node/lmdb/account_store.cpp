@@ -2,9 +2,8 @@
 #include <nano/node/lmdb/lmdb.hpp>
 #include <nano/secure/parallel_traversal.hpp>
 
-nano::lmdb::account_store::account_store (nano::lmdb::store & store_a) :
-	store (store_a),
-	handle{ rsnano::rsn_lmdb_account_store_create (store_a.env ().handle) } {};
+nano::lmdb::account_store::account_store (nano::mdb_env const & env_a) :
+	handle{ rsnano::rsn_lmdb_account_store_create (env_a.handle) } {};
 
 nano::lmdb::account_store::~account_store ()
 {

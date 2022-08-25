@@ -40,24 +40,9 @@ void mdb_val::convert_buffer_to_value ()
 }
 }
 
-nano::lmdb::lmdb_gateway::lmdb_gateway (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a) :
-	env (error, path_a, logger_a, txn_tracking_config_a, block_processor_batch_max_time_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true))
-{
-}
-
-std::unique_ptr<nano::write_transaction> nano::lmdb::lmdb_gateway::tx_begin_write ()
-{
-	return env.tx_begin_write ();
-}
-
-std::unique_ptr<nano::read_transaction> nano::lmdb::lmdb_gateway::tx_begin_read () const
-{
-	return env.tx_begin_read ();
-}
-
 nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
 	// clang-format off
-	gateway (logger_a, path_a, lmdb_config_a, txn_tracking_config_a, block_processor_batch_max_time_a),
+	env_m {error, path_a, logger_a, txn_tracking_config_a, block_processor_batch_max_time_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true)},
 	nano::store{
 		block_store,
 		frontier_store,
@@ -74,7 +59,7 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 	// clang-format on
 	block_store{ *this },
 	frontier_store{ *this },
-	account_store{ *this },
+	account_store{ env_m },
 	pending_store{ *this },
 	online_weight_store{ *this },
 	pruned_store{ *this },
@@ -85,7 +70,7 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 	version_store{ *this },
 	logger (*logger_a)
 {
-	if (!gateway.error)
+	if (!error)
 	{
 		auto is_fully_upgraded (false);
 		auto is_fresh_db (false);
@@ -116,10 +101,10 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 			auto needs_vacuuming = false;
 			{
 				auto transaction (tx_begin_write ());
-				open_databases (gateway.error, *transaction, MDB_CREATE);
-				if (!gateway.error)
+				open_databases (error, *transaction, MDB_CREATE);
+				if (!error)
 				{
-					gateway.error |= do_upgrades (*transaction, constants, needs_vacuuming);
+					error |= do_upgrades (*transaction, constants, needs_vacuuming);
 				}
 			}
 
@@ -133,7 +118,7 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 		else
 		{
 			auto transaction (tx_begin_read ());
-			open_databases (gateway.error, *transaction, 0);
+			open_databases (error, *transaction, 0);
 		}
 	}
 }
@@ -146,7 +131,7 @@ bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & pa
 	auto vacuum_success = copy_db (vacuum_path);
 	if (vacuum_success)
 	{
-		gateway.env.close_env ();
+		env_m.close_env ();
 
 		// Replace the ledger file with the vacuumed one
 		boost::filesystem::rename (vacuum_path, path_a);
@@ -155,11 +140,11 @@ bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & pa
 		auto options = nano::mdb_env::options::make ()
 					   .set_config (lmdb_config_a)
 					   .set_use_no_mem_init (true);
-		gateway.env.init (gateway.error, path_a, options);
-		if (!gateway.error)
+		env_m.init (error, path_a, options);
+		if (!error)
 		{
 			auto transaction (tx_begin_read ());
-			open_databases (gateway.error, *transaction, 0);
+			open_databases (error, *transaction, 0);
 		}
 	}
 	else
@@ -172,7 +157,7 @@ bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & pa
 
 void nano::lmdb::store::serialize_mdb_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time)
 {
-	gateway.env.serialize_txn_tracker (json, min_read_time, min_write_time);
+	env_m.serialize_txn_tracker (json, min_read_time, min_write_time);
 }
 
 void nano::lmdb::store::serialize_memory_stats (boost::property_tree::ptree & json)
@@ -190,12 +175,12 @@ void nano::lmdb::store::serialize_memory_stats (boost::property_tree::ptree & js
 
 std::unique_ptr<nano::write_transaction> nano::lmdb::store::tx_begin_write (std::vector<nano::tables> const &, std::vector<nano::tables> const &)
 {
-	return gateway.tx_begin_write ();
+	return env_m.tx_begin_write ();
 }
 
 std::unique_ptr<nano::read_transaction> nano::lmdb::store::tx_begin_read () const
 {
-	return gateway.tx_begin_read ();
+	return env_m.tx_begin_read ();
 }
 
 std::string nano::lmdb::store::vendor_get () const
@@ -959,7 +944,7 @@ void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_
 
 bool nano::lmdb::store::init_error () const
 {
-	return gateway.error != MDB_SUCCESS;
+	return error != MDB_SUCCESS;
 }
 
 std::shared_ptr<nano::block> nano::lmdb::store::block_get_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
@@ -973,8 +958,8 @@ std::shared_ptr<nano::block> nano::lmdb::store::block_get_v18 (nano::transaction
 		result = nano::deserialize_block (stream, type);
 		release_assert (result != nullptr);
 		nano::block_sideband_v18 sideband;
-		auto error = (sideband.deserialize (stream, type));
-		release_assert (!error);
+		auto error_l = (sideband.deserialize (stream, type));
+		release_assert (!error_l);
 		result->sideband_set (nano::block_sideband (sideband.account, sideband.successor, sideband.balance, sideband.height, sideband.timestamp, sideband.details.epoch (), sideband.details.is_send (), sideband.details.is_receive (), sideband.details.is_epoch (), nano::epoch::epoch_0));
 	}
 	return result;

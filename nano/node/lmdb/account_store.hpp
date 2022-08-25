@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nano/node/lmdb/lmdb_env.hpp>
 #include <nano/secure/store.hpp>
 
 #include <lmdb/libraries/liblmdb/lmdb.h>
@@ -8,14 +9,10 @@ namespace nano
 {
 namespace lmdb
 {
-	class store;
 	class account_store : public nano::account_store
 	{
-	private:
-		nano::lmdb::store & store;
-
 	public:
-		explicit account_store (nano::lmdb::store & store_a);
+		explicit account_store (nano::mdb_env const & env_a);
 		account_store (account_store const &) = delete;
 		account_store (account_store &&) = delete;
 		~account_store () override;

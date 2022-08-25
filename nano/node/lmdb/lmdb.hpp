@@ -41,24 +41,14 @@ class transaction;
 
 namespace lmdb
 {
-	class lmdb_gateway
-	{
-	public:
-		lmdb_gateway (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a);
-		std::unique_ptr<nano::write_transaction> tx_begin_write ();
-		std::unique_ptr<nano::read_transaction> tx_begin_read () const;
-
-		bool error{ false };
-		nano::mdb_env env;
-	};
-
 	/**
 	 * mdb implementation of the block store
 	 */
 	class store : public nano::store
 	{
 	private:
-		nano::lmdb::lmdb_gateway gateway;
+		bool error{ false };
+		nano::mdb_env env_m;
 		nano::lmdb::account_store account_store;
 		nano::lmdb::block_store block_store;
 		nano::lmdb::confirmation_height_store confirmation_height_store;
@@ -104,7 +94,7 @@ namespace lmdb
 	public:
 		nano::mdb_env const & env () const
 		{
-			return gateway.env;
+			return env_m;
 		}
 
 		bool exists (nano::transaction const & transaction_a, tables table_a, nano::mdb_val const & key_a) const;

@@ -1,4 +1,5 @@
 mod account_store;
+mod block_store;
 mod iterator;
 mod lmdb_env;
 mod txn_tracker;
@@ -12,6 +13,7 @@ use std::{
 };
 
 pub use account_store::LmdbAccountStore;
+pub use block_store::LmdbBlockStore;
 pub use iterator::{LmdbIterator, LmdbRawIterator};
 pub use lmdb_env::{EnvOptions, LmdbEnv};
 pub use txn_tracker::TxnTracker;
@@ -218,6 +220,13 @@ impl MdbVal {
         Self {
             mv_size: 0,
             mv_data: ptr::null_mut(),
+        }
+    }
+
+    pub fn from_slice(data: &[u8]) -> Self {
+        Self {
+            mv_size: data.len(),
+            mv_data: data.as_ptr() as *mut c_void,
         }
     }
 

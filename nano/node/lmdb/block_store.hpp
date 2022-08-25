@@ -14,10 +14,14 @@ namespace lmdb
 	class block_store : public nano::block_store
 	{
 		friend class nano::block_predecessor_mdb_set;
+		rsnano::LmdbBlockStoreHandle * handle;
 		nano::lmdb::store & store;
 
 	public:
 		explicit block_store (nano::lmdb::store & store_a);
+		block_store (block_store const &) = delete;
+		block_store (block_store &&) = delete;
+		~block_store () override;
 		void put (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a, nano::block const & block_a) override;
 		void raw_put (nano::write_transaction const & transaction_a, std::vector<uint8_t> const & data, nano::block_hash const & hash_a) override;
 		nano::block_hash successor (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
@@ -92,11 +96,11 @@ namespace lmdb
 		 * Contains block_sideband and block for all block types (legacy send/change/open/receive & state blocks)
 		 * nano::block_hash -> nano::block_sideband, nano::block
 		 */
-		MDB_dbi blocks_handle{ 0 };
+		MDB_dbi get_blocks_handle () const;
+		void set_blocks_handle (MDB_dbi handle);
 
 	protected:
 		void block_raw_get (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::mdb_val & value) const;
-		size_t block_successor_offset (nano::transaction const & transaction_a, size_t entry_size_a, nano::block_type type_a) const;
 		static nano::block_type block_type_from_raw (void * data_a);
 	};
 }

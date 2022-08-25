@@ -218,7 +218,9 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 	}
 	else
 	{
-		error_a |= mdb_dbi_open (env ().tx (transaction_a), "blocks", MDB_CREATE, &block_store.blocks_handle) != 0;
+		MDB_dbi blocks_handle;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "blocks", MDB_CREATE, &blocks_handle) != 0;
+		block_store.set_blocks_handle (blocks_handle);
 	}
 
 	if (version_l < 16)
@@ -720,10 +722,12 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 	// Merge all legacy blocks with state blocks into the final table
 	nano::mdb_merge_iterator<nano::block_hash, nano::block_w_sideband> i (transaction_a, temp_legacy_send_open_receive_change_blocks, temp_state_blocks);
 	nano::mdb_merge_iterator<nano::block_hash, nano::block_w_sideband> n{};
-	mdb_dbi_open (env ().tx (transaction_a), "blocks", MDB_CREATE, &block_store.blocks_handle);
+	MDB_dbi blocks_handle;
+	mdb_dbi_open (env ().tx (transaction_a), "blocks", MDB_CREATE, &blocks_handle);
+	block_store.set_blocks_handle (blocks_handle);
 	for (; i != n; ++i)
 	{
-		auto s = mdb_put (env ().tx (transaction_a), block_store.blocks_handle, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
+		auto s = mdb_put (env ().tx (transaction_a), blocks_handle, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
 		release_assert_success (s);
 	}
 
@@ -731,7 +735,7 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 	mdb_drop (env ().tx (transaction_a), temp_legacy_send_open_receive_change_blocks, 1);
 	mdb_drop (env ().tx (transaction_a), temp_state_blocks, 1);
 
-	auto count_post (count (transaction_a, block_store.blocks_handle));
+	auto count_post (count (transaction_a, blocks_handle));
 	release_assert (count_pre == count_post);
 
 	MDB_dbi vote{ 0 };
@@ -844,7 +848,7 @@ MDB_dbi nano::lmdb::store::table_to_dbi (tables table_a) const
 		case tables::accounts:
 			return account_store.get_accounts_handle ();
 		case tables::blocks:
-			return block_store.blocks_handle;
+			return block_store.get_blocks_handle ();
 		case tables::pending:
 			return pending_store.pending_handle;
 		case tables::unchecked:
@@ -895,7 +899,7 @@ bool nano::lmdb::store::copy_db (boost::filesystem::path const & destination_fil
 void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_a)
 {
 	// Tables with uint256_union key
-	std::vector<MDB_dbi> tables = { account_store.get_accounts_handle (), block_store.blocks_handle, pruned_store.pruned_handle, confirmation_height_store.confirmation_height_handle };
+	std::vector<MDB_dbi> tables = { account_store.get_accounts_handle (), block_store.get_blocks_handle (), pruned_store.pruned_handle, confirmation_height_store.confirmation_height_handle };
 	for (auto const & table : tables)
 	{
 		MDB_dbi temp;

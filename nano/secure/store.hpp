@@ -775,6 +775,9 @@ public:
 class block_store
 {
 public:
+	virtual ~block_store ()
+	{
+	}
 	virtual void put (nano::write_transaction const &, nano::block_hash const &, nano::block const &) = 0;
 	virtual void raw_put (nano::write_transaction const &, std::vector<uint8_t> const &, nano::block_hash const &) = 0;
 	virtual nano::block_hash successor (nano::transaction const &, nano::block_hash const &) const = 0;

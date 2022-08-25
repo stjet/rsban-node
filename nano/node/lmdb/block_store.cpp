@@ -4,6 +4,11 @@
 
 namespace nano
 {
+size_t block_successor_offset (nano::transaction const & transaction_a, size_t entry_size_a, nano::block_type type_a)
+{
+	return entry_size_a - nano::block_sideband::size (type_a);
+}
+
 /**
  * Fill in our predecessors
  */
@@ -24,7 +29,13 @@ public:
 }
 
 nano::lmdb::block_store::block_store (nano::lmdb::store & store_a) :
+	handle{ rsnano::rsn_lmdb_block_store_create (store_a.env ().handle) },
 	store{ store_a } {};
+
+nano::lmdb::block_store::~block_store ()
+{
+	rsnano::rsn_lmdb_block_store_destroy (handle);
+}
 
 void nano::lmdb::block_store::put (nano::write_transaction const & transaction, nano::block_hash const & hash, nano::block const & block)
 {
@@ -43,9 +54,7 @@ void nano::lmdb::block_store::put (nano::write_transaction const & transaction, 
 
 void nano::lmdb::block_store::raw_put (nano::write_transaction const & transaction_a, std::vector<uint8_t> const & data, nano::block_hash const & hash_a)
 {
-	nano::mdb_val value{ data.size (), (void *)data.data () };
-	auto status = store.put (transaction_a, tables::blocks, hash_a, value);
-	store.release_assert_success (status);
+	rsnano::rsn_lmdb_block_store_raw_put (handle, transaction_a.get_rust_handle (), data.data (), data.size (), hash_a.bytes.data ());
 }
 
 nano::block_hash nano::lmdb::block_store::successor (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
@@ -239,15 +248,20 @@ uint64_t nano::lmdb::block_store::account_height (nano::transaction const & tran
 	return block->sideband ().height ();
 }
 
+MDB_dbi nano::lmdb::block_store::get_blocks_handle () const
+{
+	return rsnano::rsn_lmdb_block_store_blocks_handle (handle);
+}
+
+void nano::lmdb::block_store::set_blocks_handle (MDB_dbi dbi)
+{
+	rsnano::rsn_lmdb_block_store_set_blocks_handle (handle, dbi);
+}
+
 void nano::lmdb::block_store::block_raw_get (nano::transaction const & transaction, nano::block_hash const & hash, nano::mdb_val & value) const
 {
 	auto status = store.get (transaction, tables::blocks, hash, value);
 	release_assert (store.success (status) || store.not_found (status));
-}
-
-size_t nano::lmdb::block_store::block_successor_offset (nano::transaction const & transaction_a, size_t entry_size_a, nano::block_type type_a) const
-{
-	return entry_size_a - nano::block_sideband::size (type_a);
 }
 
 nano::block_type nano::lmdb::block_store::block_type_from_raw (void * data_a)
@@ -269,7 +283,7 @@ void nano::block_predecessor_mdb_set::fill_value (nano::block const & block_a)
 	debug_assert (value.size () != 0);
 	auto type = block_store.block_type_from_raw (value.data ());
 	std::vector<uint8_t> data (static_cast<uint8_t *> (value.data ()), static_cast<uint8_t *> (value.data ()) + value.size ());
-	std::copy (hash.bytes.begin (), hash.bytes.end (), data.begin () + block_store.block_successor_offset (transaction, value.size (), type));
+	std::copy (hash.bytes.begin (), hash.bytes.end (), data.begin () + block_successor_offset (transaction, value.size (), type));
 	block_store.raw_put (transaction, data, block_a.previous ());
 }
 void nano::block_predecessor_mdb_set::send_block (nano::send_block const & block_a)

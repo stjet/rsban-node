@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use chrono::Local;
+use backtrace::Backtrace;
 
 use crate::{logger_mt::Logger, utils::PropertyTreeWriter, TxnTrackingConfig};
 
@@ -15,7 +15,6 @@ pub struct TxnTracker {
     logger: Arc<dyn Logger>,
     config: TxnTrackingConfig,
     block_processor_batch_max_time: Duration,
-    log_all_write_txns: bool,
 }
 
 impl TxnTracker {
@@ -29,20 +28,10 @@ impl TxnTracker {
             config,
             block_processor_batch_max_time,
             stats: Mutex::new(HashMap::new()),
-            log_all_write_txns: std::env::vars().any(|(k, _)| k == "LOG_WRITE_TXNS"),
         }
     }
 
     pub fn add(&self, txn_id: u64, is_write: bool) {
-        // todo remove this logging:
-        if is_write {
-            self.logger.always_log(&format!(
-                "{} - Write txn started. ID {}. Thread {}.",
-                Local::now().to_rfc3339(),
-                txn_id,
-                std::thread::current().name().unwrap_or("unnamed")
-            ));
-        }
         let mut stats = self.stats.lock().unwrap();
         stats.insert(
             txn_id,
@@ -51,31 +40,23 @@ impl TxnTracker {
                 is_write,
                 start: Instant::now(),
                 thread_name: std::thread::current().name().map(|s| s.to_owned()),
+                stacktrace: Backtrace::new_unresolved(),
             },
         );
     }
 
-    pub fn erase(&self, txn_id: u64, is_write: bool) {
+    pub fn erase(&self, txn_id: u64, _is_write: bool) {
         let entry = {
             let mut stats = self.stats.lock().unwrap();
             stats.remove(&txn_id)
         };
 
-        if let Some(entry) = entry {
-            self.log_if_held_long_enough(&entry);
-        }
-        // todo remove this logging:
-        if is_write {
-            self.logger.always_log(&format!(
-                "{} - Write txn stopped. ID {}. Thread {}.",
-                Local::now().to_rfc3339(),
-                txn_id,
-                std::thread::current().name().unwrap_or("unnamed")
-            ));
+        if let Some(mut entry) = entry {
+            self.log_if_held_long_enough(&mut entry);
         }
     }
 
-    fn log_if_held_long_enough(&self, txn: &TxnStats) {
+    fn log_if_held_long_enough(&self, txn: &mut TxnStats) {
         // Only log these transactions if they were held for longer than the min_read_txn_time/min_write_txn_time config values
         let time_open = txn.start.elapsed();
         // Reduce noise in log files by removing any entries from the block processor (if enabled) which are less than the max batch time (+ a few second buffer) because these are expected writes during bootstrapping.
@@ -96,12 +77,13 @@ impl TxnTracker {
                 && time_open >= Duration::from_millis(self.config.min_read_txn_time_ms as u64))
         {
             let txn_type = if txn.is_write { "write lock" } else { "read" };
+            txn.stacktrace.resolve();
             self.logger.always_log(&format!(
-                "{}ms {} held on thread {}\n{}",
+                "{}ms {} held on thread {}\n{:?}",
                 time_open.as_millis(),
                 txn_type,
                 txn.thread_name.as_deref().unwrap_or("unnamed"),
-                "todo stacktrace"
+                txn.stacktrace
             ));
         }
     }
@@ -130,12 +112,13 @@ impl TxnTracker {
         let times_since_start: Vec<_> = copy_stats.iter().map(|i| i.start.elapsed()).collect();
 
         for i in 0..times_since_start.len() {
-            let stat = &copy_stats[i];
+            let stat = &mut copy_stats[i];
             let time_held_open = times_since_start[i];
 
             if (are_writes[i] && time_held_open >= min_write_time)
                 || (!are_writes[i] && time_held_open >= min_read_time)
             {
+                stat.stacktrace.resolve();
                 let mut mdb_lock_config = json.new_writer();
 
                 mdb_lock_config
@@ -144,13 +127,33 @@ impl TxnTracker {
                 mdb_lock_config.put_string("write", &are_writes[i].to_string())?;
 
                 let mut stacktrace_config = json.new_writer();
-                //todo: serialize stacktrace
-                let mut frame_json = json.new_writer();
-                frame_json.put_string("name", "todo")?;
-                frame_json.put_string("address", "todo")?;
-                frame_json.put_string("source_file", "todo")?;
-                frame_json.put_u64("source_line", 1)?;
-                stacktrace_config.push_back("", frame_json.as_ref());
+
+                for frame in stat.stacktrace.frames() {
+                    let mut frame_json = json.new_writer();
+                    for symbol in frame.symbols() {
+                        frame_json.put_string(
+                            "name",
+                            symbol
+                                .name()
+                                .map(|n| n.as_str().unwrap_or("unknown"))
+                                .unwrap_or("unknown"),
+                        )?;
+                        frame_json.put_string(
+                            "address",
+                            &format!("{:016x}", symbol.addr().map(|a| a as usize).unwrap_or(0)),
+                        )?;
+                        frame_json.put_string(
+                            "source_file",
+                            symbol
+                                .filename()
+                                .map(|f| f.to_str().unwrap_or("invalid"))
+                                .unwrap_or("unknown"),
+                        )?;
+                        frame_json.put_u64("source_line", symbol.lineno().unwrap_or(0) as u64)?;
+                        stacktrace_config.push_back("", frame_json.as_ref());
+                    }
+                }
+
                 mdb_lock_config.put_child("stacktrace", stacktrace_config.as_ref());
                 json.push_back("", mdb_lock_config.as_ref());
             }
@@ -164,8 +167,8 @@ struct TxnStats {
     txn_id: u64,
     is_write: bool,
     thread_name: Option<String>,
-    //todo: stacktrace
     start: Instant,
+    stacktrace: Backtrace,
 }
 
 impl TxnCallbacks for TxnTracker {

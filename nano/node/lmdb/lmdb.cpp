@@ -226,7 +226,7 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 	if (version_l < 16)
 	{
 		// The representation database is no longer used, but needs opening so that it can be deleted during an upgrade
-		error_a |= mdb_dbi_open (env ().tx (transaction_a), "representation", flags, &account_store.representation_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "representation", flags, &representation_handle) != 0;
 	}
 
 	if (version_l < 15)
@@ -234,7 +234,7 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 		// These databases are no longer used, but need opening so they can be deleted during an upgrade
 		error_a |= mdb_dbi_open (env ().tx (transaction_a), "state", flags, &block_store.state_blocks_v0_handle) != 0;
 		block_store.state_blocks_handle = block_store.state_blocks_v0_handle;
-		error_a |= mdb_dbi_open (env ().tx (transaction_a), "accounts_v1", flags, &account_store.accounts_v1_handle) != 0;
+		error_a |= mdb_dbi_open (env ().tx (transaction_a), "accounts_v1", flags, &accounts_v1_handle) != 0;
 		error_a |= mdb_dbi_open (env ().tx (transaction_a), "pending_v1", flags, &pending_store.pending_v1_handle) != 0;
 		error_a |= mdb_dbi_open (env ().tx (transaction_a), "state_v1", flags, &block_store.state_blocks_v1_handle) != 0;
 	}
@@ -301,10 +301,10 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 	logger.always_log ("Preparing v14 to v15 database upgrade...");
 
 	std::vector<std::pair<nano::account, nano::account_info>> account_infos;
-	upgrade_counters account_counters (count (transaction_a, account_store.get_accounts_handle ()), count (transaction_a, account_store.accounts_v1_handle));
+	upgrade_counters account_counters (count (transaction_a, account_store.get_accounts_handle ()), count (transaction_a, accounts_v1_handle));
 	account_infos.reserve (account_counters.before_v0 + account_counters.before_v1);
 
-	nano::mdb_merge_iterator<nano::account, nano::account_info_v14> i_account (transaction_a, account_store.get_accounts_handle (), account_store.accounts_v1_handle);
+	nano::mdb_merge_iterator<nano::account, nano::account_info_v14> i_account (transaction_a, account_store.get_accounts_handle (), accounts_v1_handle);
 	nano::mdb_merge_iterator<nano::account, nano::account_info_v14> n_account{};
 	for (; i_account != n_account; ++i_account)
 	{
@@ -324,7 +324,7 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 
 	debug_assert (account_counters.are_equal ());
 	// No longer need accounts_v1, keep v0 but clear it
-	mdb_drop (env ().tx (transaction_a), account_store.accounts_v1_handle, 1);
+	mdb_drop (env ().tx (transaction_a), accounts_v1_handle, 1);
 	mdb_drop (env ().tx (transaction_a), account_store.get_accounts_handle (), 0);
 
 	for (auto const & account_account_info_pair : account_infos)
@@ -417,12 +417,12 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 void nano::lmdb::store::upgrade_v15_to_v16 (nano::write_transaction const & transaction_a)
 {
 	// Representation table is no longer used
-	debug_assert (account_store.representation_handle != 0);
-	if (account_store.representation_handle != 0)
+	debug_assert (representation_handle != 0);
+	if (representation_handle != 0)
 	{
-		auto status (mdb_drop (env ().tx (transaction_a), account_store.representation_handle, 1));
+		auto status (mdb_drop (env ().tx (transaction_a), representation_handle, 1));
 		release_assert (status == MDB_SUCCESS);
-		account_store.representation_handle = 0;
+		representation_handle = 0;
 	}
 	version.put (transaction_a, 16);
 }

@@ -981,6 +981,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_mdb_env_open (reinterpret_cast<rsnano::MdbEnvOpenCallback> (mdb_env_open));
 	rsnano::rsn_callback_mdb_env_sync (reinterpret_cast<rsnano::MdbEnvSyncCallback> (mdb_env_sync));
 	rsnano::rsn_callback_mdb_env_close (reinterpret_cast<rsnano::MdbEnvCloseCallback> (mdb_env_close));
+	rsnano::rsn_callback_mdb_stat (reinterpret_cast<rsnano::MdbStatCallback> (mdb_stat));
 
 	callbacks_set = true;
 }

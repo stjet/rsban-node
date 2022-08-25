@@ -22,4 +22,5 @@ pub trait AccountStore {
               + Sync),
     );
     fn end(&self) -> Box<dyn DbIterator<Account, AccountInfo>>;
+    fn count(&self, txn: &dyn Transaction) -> usize;
 }

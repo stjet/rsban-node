@@ -11,8 +11,8 @@ use crate::{
 use anyhow::Result;
 
 use super::{
-    assert_success, get_raw_lmdb_txn, iterator::LmdbIterator, mdb_dbi_open, mdb_del, mdb_get,
-    mdb_put, LmdbEnv, MdbVal, OwnedMdbVal, MDB_SUCCESS,
+    assert_success, get_raw_lmdb_txn, iterator::LmdbIterator, mdb_count, mdb_dbi_open, mdb_del,
+    mdb_get, mdb_put, LmdbEnv, MdbVal, OwnedMdbVal, MDB_SUCCESS,
 };
 
 pub struct LmdbAccountStore {
@@ -147,5 +147,9 @@ impl AccountStore for LmdbAccountStore {
             };
             action(&mut transaction, begin_it.as_mut(), end_it.as_mut());
         });
+    }
+
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.accounts_handle) }
     }
 }

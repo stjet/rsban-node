@@ -40,7 +40,7 @@ bool nano::lmdb::account_store::exists (nano::transaction const & transaction_a,
 
 size_t nano::lmdb::account_store::count (nano::transaction const & transaction_a)
 {
-	return nano::mdb_count (nano::to_mdb_txn (transaction_a), get_accounts_handle ());
+	return rsnano::rsn_lmdb_account_store_count (handle, transaction_a.get_rust_handle());
 }
 
 nano::store_iterator<nano::account, nano::account_info> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
@@ -94,6 +94,7 @@ void nano::lmdb::account_store::for_each_par (std::function<void (nano::read_tra
 	auto context = (void *)&action_a;
 	rsnano::rsn_lmdb_account_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
 }
+
 MDB_dbi nano::lmdb::account_store::get_accounts_handle () const
 {
 	return rsnano::rsn_lmdb_account_store_accounts_handle (handle);

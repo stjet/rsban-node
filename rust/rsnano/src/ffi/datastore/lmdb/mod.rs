@@ -12,11 +12,12 @@ use crate::{
             MdbCursorGetCallback, MdbCursorOpenCallback, MdbDbiOpenCallback, MdbDelCallback,
             MdbEnv, MdbEnvCloseCallback, MdbEnvCreateCallback, MdbEnvOpenCallback,
             MdbEnvSetMapSizeCallback, MdbEnvSetMaxDbsCallback, MdbEnvSyncCallback, MdbGetCallback,
-            MdbPutCallback, MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback, MdbTxnCommitCallback,
-            MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks, MDB_CURSOR_CLOSE,
-            MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_DEL, MDB_ENV_CLOSE, MDB_ENV_CREATE,
-            MDB_ENV_OPEN, MDB_ENV_SET_MAP_SIZE, MDB_ENV_SET_MAX_DBS, MDB_ENV_SYNC, MDB_GET,
-            MDB_PUT, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
+            MdbPutCallback, MdbStatCallback, MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback,
+            MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks,
+            MDB_CURSOR_CLOSE, MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_DEL,
+            MDB_ENV_CLOSE, MDB_ENV_CREATE, MDB_ENV_OPEN, MDB_ENV_SET_MAP_SIZE, MDB_ENV_SET_MAX_DBS,
+            MDB_ENV_SYNC, MDB_GET, MDB_PUT, MDB_STAT, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT,
+            MDB_TXN_RENEW, MDB_TXN_RESET,
         },
         Transaction,
     },
@@ -284,4 +285,9 @@ pub unsafe extern "C" fn rsn_callback_mdb_env_sync(f: MdbEnvSyncCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_env_close(f: MdbEnvCloseCallback) {
     MDB_ENV_CLOSE = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_stat(f: MdbStatCallback) {
+    MDB_STAT = Some(f);
 }

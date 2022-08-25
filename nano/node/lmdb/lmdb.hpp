@@ -48,6 +48,23 @@ namespace lmdb
 	{
 	private:
 		bool error{ false };
+
+	public:
+		// Handles for DB update:
+
+		/**
+		 * Maps account v0 to account information, head, rep, open, balance, timestamp and block count. (Removed)
+		 * nano::account -> nano::block_hash, nano::block_hash, nano::block_hash, nano::amount, uint64_t, uint64_t
+		 */
+		MDB_dbi accounts_v1_handle{ 0 };
+
+		/**
+		 * Representative weights. (Removed)
+		 * nano::account -> nano::uint128_t
+		 */
+		MDB_dbi representation_handle{ 0 };
+
+	private:
 		nano::mdb_env env_m;
 		nano::lmdb::account_store account_store;
 		nano::lmdb::block_store block_store;

@@ -119,6 +119,13 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_rbegin(
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_account_store_count(
+    handle: *mut LmdbAccountStoreHandle,
+    txn: *mut TransactionHandle,
+) -> usize {
+    (*handle).0.count((*txn).as_txn())
+}
 pub type AccountStoreForEachParCallback = extern "C" fn(
     *mut c_void,
     *mut TransactionHandle,

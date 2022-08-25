@@ -289,6 +289,31 @@ pub fn get_raw_lmdb_txn(txn: &dyn Transaction) -> *mut MdbTxn {
     }
 }
 
+/** @brief Statistics for a database in the environment */
+#[repr(C)]
+#[derive(Default)]
+pub struct MdbStat {
+    /// Size of a database page.  This is currently the same for all databases.
+    pub ms_psize: u32,
+    /// Depth (height) of the B-tree
+    pub ms_depth: u32,
+    /// Number of internal (non-leaf) pages
+    pub ms_branch_pages: usize,
+    /// Number of leaf pages
+    pub ms_leaf_pages: usize,
+    /// Number of overflow pages
+    pub ms_overflow_pages: usize,
+    /// Number of data items
+    pub ms_entries: usize,
+}
+
+pub unsafe fn mdb_count(txn: *mut MdbTxn, db: u32) -> usize {
+    let mut stats = MdbStat::default();
+    let status = mdb_stat(txn, db, &mut stats);
+    assert_success(status);
+    stats.ms_entries
+}
+
 #[repr(C)]
 pub struct MdbEnv {}
 
@@ -318,6 +343,7 @@ pub type MdbEnvSetMapSizeCallback = extern "C" fn(*mut MdbEnv, usize) -> i32;
 pub type MdbEnvOpenCallback = extern "C" fn(*mut MdbEnv, *const i8, u32, u32) -> i32;
 pub type MdbEnvSyncCallback = extern "C" fn(*mut MdbEnv, i32) -> i32;
 pub type MdbEnvCloseCallback = extern "C" fn(*mut MdbEnv);
+pub type MdbStatCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbStat) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -337,6 +363,7 @@ pub static mut MDB_ENV_SET_MAP_SIZE: Option<MdbEnvSetMapSizeCallback> = None;
 pub static mut MDB_ENV_OPEN: Option<MdbEnvOpenCallback> = None;
 pub static mut MDB_ENV_SYNC: Option<MdbEnvSyncCallback> = None;
 pub static mut MDB_ENV_CLOSE: Option<MdbEnvCloseCallback> = None;
+pub static mut MDB_STAT: Option<MdbStatCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -437,6 +464,10 @@ pub unsafe fn mdb_env_sync(env: *mut MdbEnv, force: bool) -> i32 {
 
 pub unsafe fn mdb_env_close(env: *mut MdbEnv) {
     MDB_ENV_CLOSE.expect("MDB_ENV_CLOSE missing")(env);
+}
+
+pub unsafe fn mdb_stat(txn: *mut MdbTxn, dbi: u32, stat: &mut MdbStat) -> i32 {
+    MDB_STAT.expect("MDB_STAT missing")(txn, dbi, stat)
 }
 
 /// Successful result

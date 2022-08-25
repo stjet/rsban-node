@@ -632,6 +632,25 @@ using MdbGetCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
 
 using MdbPutCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *, uint32_t);
 
+/// @brief Statistics for a database in the environment
+struct MdbStat
+{
+	/// Size of a database page.  This is currently the same for all databases.
+	uint32_t ms_psize;
+	/// Depth (height) of the B-tree
+	uint32_t ms_depth;
+	/// Number of internal (non-leaf) pages
+	uintptr_t ms_branch_pages;
+	/// Number of leaf pages
+	uintptr_t ms_leaf_pages;
+	/// Number of overflow pages
+	uintptr_t ms_overflow_pages;
+	/// Number of data items
+	uintptr_t ms_entries;
+};
+
+using MdbStatCallback = int32_t (*) (MdbTxn *, uint32_t, MdbStat *);
+
 using MdbStrerrorCallback = char * (*)(int32_t);
 
 using MdbTxnBeginCallback = int32_t (*) (MdbEnv *, MdbTxn *, uint32_t, MdbTxn **);
@@ -1406,6 +1425,8 @@ void rsn_callback_mdb_get (MdbGetCallback f);
 
 void rsn_callback_mdb_put (MdbPutCallback f);
 
+void rsn_callback_mdb_stat (MdbStatCallback f);
+
 void rsn_callback_mdb_strerror (MdbStrerrorCallback f);
 
 void rsn_callback_mdb_txn_begin (MdbTxnBeginCallback f);
@@ -1689,6 +1710,8 @@ TransactionHandle * txn);
 LmdbIteratorHandle * rsn_lmdb_account_store_begin_account (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account);
+
+uintptr_t rsn_lmdb_account_store_count (LmdbAccountStoreHandle * handle, TransactionHandle * txn);
 
 LmdbAccountStoreHandle * rsn_lmdb_account_store_create (LmdbEnvHandle * env_handle);
 

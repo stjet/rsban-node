@@ -163,7 +163,7 @@ impl TxnCallbacks for FfiCallbacksWrapper {
         unsafe { TXN_START.expect("TXN_START")(self.handle, txn_id, is_write) }
     }
 
-    fn txn_end(&self, txn_id: u64) {
+    fn txn_end(&self, txn_id: u64, _is_write: bool) {
         unsafe { TXN_END.expect("TXN_END")(self.handle, txn_id) }
     }
 }

@@ -31,7 +31,7 @@ impl LmdbReadTransaction {
     pub unsafe fn new(txn_id: u64, env: *mut MdbEnv, callbacks: Arc<dyn TxnCallbacks>) -> Self {
         let mut handle: *mut MdbTxn = ptr::null_mut();
         let status = mdb_txn_begin(env, ptr::null_mut(), MDB_RDONLY, &mut handle);
-        assert!(status == 0);
+        assert!(status == MDB_SUCCESS);
         callbacks.txn_start(txn_id, false);
 
         Self {
@@ -44,12 +44,12 @@ impl LmdbReadTransaction {
 
     pub fn reset(&mut self) {
         unsafe { mdb_txn_reset(self.handle) };
-        self.callbacks.txn_end(self.txn_id);
+        self.callbacks.txn_end(self.txn_id, false);
     }
 
     pub fn renew(&mut self) {
         let status = unsafe { mdb_txn_renew(self.handle) };
-        assert!(status == 0);
+        assert!(status == MDB_SUCCESS);
         self.callbacks.txn_start(self.txn_id, false);
     }
 
@@ -64,7 +64,7 @@ impl Drop for LmdbReadTransaction {
         // This uses commit rather than abort, as it is needed when opening databases with a read only transaction
         let status = unsafe { mdb_txn_commit(self.handle) };
         assert!(status == MDB_SUCCESS);
-        self.callbacks.txn_end(self.txn_id);
+        self.callbacks.txn_end(self.txn_id, false);
     }
 }
 
@@ -91,7 +91,7 @@ impl LmdbWriteTransaction {
             txn_id,
             callbacks,
             handle: ptr::null_mut(),
-            active: true,
+            active: false,
         };
         tx.renew();
         tx
@@ -100,6 +100,7 @@ impl LmdbWriteTransaction {
     pub fn commit(&mut self) {
         if self.active {
             let status = unsafe { mdb_txn_commit(self.handle) };
+            self.active = false;
             if status != MDB_SUCCESS {
                 let err_msg = unsafe { mdb_strerror(status) };
                 panic!(
@@ -107,8 +108,7 @@ impl LmdbWriteTransaction {
                     err_msg.unwrap_or("unknown")
                 );
             }
-            self.callbacks.txn_end(self.txn_id);
-            self.active = false;
+            self.callbacks.txn_end(self.txn_id, true);
         }
     }
 
@@ -118,8 +118,8 @@ impl LmdbWriteTransaction {
             let err_msg = unsafe { mdb_strerror(status) };
             panic!("write tx renew failed: {}", err_msg.unwrap_or("unknown"));
         }
-        self.callbacks.txn_start(self.txn_id, true);
         self.active = true;
+        self.callbacks.txn_start(self.txn_id, true);
     }
 
     pub fn refresh(&mut self) {
@@ -148,7 +148,7 @@ impl WriteTransaction for LmdbWriteTransaction {
 
 pub trait TxnCallbacks {
     fn txn_start(&self, txn_id: u64, is_write: bool);
-    fn txn_end(&self, txn_id: u64);
+    fn txn_end(&self, txn_id: u64, is_write: bool);
 }
 
 pub struct NullTxnCallbacks {}
@@ -162,7 +162,7 @@ impl NullTxnCallbacks {
 impl TxnCallbacks for NullTxnCallbacks {
     fn txn_start(&self, _txn_id: u64, _is_write: bool) {}
 
-    fn txn_end(&self, _txn_id: u64) {}
+    fn txn_end(&self, _txn_id: u64, _is_write: bool) {}
 }
 
 pub fn assert_success(status: i32) {

@@ -4,6 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use chrono::Local;
+
 use crate::{logger_mt::Logger, utils::PropertyTreeWriter, TxnTrackingConfig};
 
 use super::TxnCallbacks;
@@ -13,6 +15,7 @@ pub struct TxnTracker {
     logger: Arc<dyn Logger>,
     config: TxnTrackingConfig,
     block_processor_batch_max_time: Duration,
+    log_all_write_txns: bool,
 }
 
 impl TxnTracker {
@@ -26,10 +29,20 @@ impl TxnTracker {
             config,
             block_processor_batch_max_time,
             stats: Mutex::new(HashMap::new()),
+            log_all_write_txns: std::env::vars().any(|(k, _)| k == "LOG_WRITE_TXNS"),
         }
     }
 
     pub fn add(&self, txn_id: u64, is_write: bool) {
+        // todo remove this logging:
+        if is_write {
+            self.logger.always_log(&format!(
+                "{} - Write txn started. ID {}. Thread {}.",
+                Local::now().to_rfc3339(),
+                txn_id,
+                std::thread::current().name().unwrap_or("unnamed")
+            ));
+        }
         let mut stats = self.stats.lock().unwrap();
         stats.insert(
             txn_id,
@@ -42,7 +55,7 @@ impl TxnTracker {
         );
     }
 
-    pub fn erase(&self, txn_id: u64) {
+    pub fn erase(&self, txn_id: u64, is_write: bool) {
         let entry = {
             let mut stats = self.stats.lock().unwrap();
             stats.remove(&txn_id)
@@ -50,6 +63,15 @@ impl TxnTracker {
 
         if let Some(entry) = entry {
             self.log_if_held_long_enough(&entry);
+        }
+        // todo remove this logging:
+        if is_write {
+            self.logger.always_log(&format!(
+                "{} - Write txn stopped. ID {}. Thread {}.",
+                Local::now().to_rfc3339(),
+                txn_id,
+                std::thread::current().name().unwrap_or("unnamed")
+            ));
         }
     }
 
@@ -151,7 +173,7 @@ impl TxnCallbacks for TxnTracker {
         self.add(txn_id, is_write);
     }
 
-    fn txn_end(&self, txn_id: u64) {
-        self.erase(txn_id);
+    fn txn_end(&self, txn_id: u64, is_write: bool) {
+        self.erase(txn_id, is_write);
     }
 }

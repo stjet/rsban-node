@@ -188,6 +188,10 @@ impl Block for OpenBlock {
     fn root(&self) -> Root {
         self.account().into()
     }
+
+    fn visit(&self, visitor: &mut dyn crate::BlockVisitor) {
+        visitor.open_block(self);
+    }
 }
 
 #[cfg(test)]

@@ -264,6 +264,7 @@ pub trait Block: FullHash {
         WorkVersion::Work1
     }
     fn root(&self) -> Root;
+    fn visit(&self, visitor: &mut dyn BlockVisitor);
 }
 
 impl<T: Block> FullHash for T {
@@ -317,4 +318,12 @@ pub fn deserialize_block(
     }
 
     Ok(block)
+}
+
+pub trait BlockVisitor {
+    fn send_block(&mut self, block: &SendBlock);
+    fn receive_block(&mut self, block: &ReceiveBlock);
+    fn open_block(&mut self, block: &OpenBlock);
+    fn change_block(&mut self, block: &ChangeBlock);
+    fn state_block(&mut self, block: &StateBlock);
 }

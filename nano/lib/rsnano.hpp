@@ -1754,6 +1754,15 @@ LmdbBlockStoreHandle * rsn_lmdb_block_store_create (LmdbEnvHandle * env_handle);
 
 void rsn_lmdb_block_store_destroy (LmdbBlockStoreHandle * handle);
 
+bool rsn_lmdb_block_store_exists (LmdbBlockStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
+void rsn_lmdb_block_store_put (LmdbBlockStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+BlockHandle * block);
+
 void rsn_lmdb_block_store_raw_put (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * data,
@@ -1761,6 +1770,11 @@ uintptr_t len,
 const uint8_t * hash);
 
 void rsn_lmdb_block_store_set_blocks_handle (LmdbBlockStoreHandle * handle, uint32_t dbi);
+
+void rsn_lmdb_block_store_successor (LmdbBlockStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+uint8_t * result);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 

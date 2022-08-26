@@ -237,6 +237,10 @@ impl Block for SendBlock {
     fn root(&self) -> Root {
         self.previous().into()
     }
+
+    fn visit(&self, visitor: &mut dyn crate::BlockVisitor) {
+        visitor.send_block(self);
+    }
 }
 
 #[cfg(test)]

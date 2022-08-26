@@ -278,6 +278,10 @@ impl Block for StateBlock {
             self.account().into()
         }
     }
+
+    fn visit(&self, visitor: &mut dyn crate::BlockVisitor) {
+        visitor.state_block(self)
+    }
 }
 
 #[cfg(test)]

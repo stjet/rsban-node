@@ -182,6 +182,10 @@ impl Block for ChangeBlock {
     fn root(&self) -> Root {
         self.previous().into()
     }
+
+    fn visit(&self, visitor: &mut dyn crate::BlockVisitor) {
+        visitor.change_block(self);
+    }
 }
 
 #[cfg(test)]

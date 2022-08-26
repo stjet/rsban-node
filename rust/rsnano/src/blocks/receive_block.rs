@@ -169,6 +169,10 @@ impl Block for ReceiveBlock {
     fn root(&self) -> Root {
         self.previous().into()
     }
+
+    fn visit(&self, visitor: &mut dyn crate::BlockVisitor) {
+        visitor.receive_block(self);
+    }
 }
 
 #[cfg(test)]

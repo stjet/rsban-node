@@ -1,6 +1,9 @@
 use std::{slice, sync::Arc};
 
-use crate::{datastore::lmdb::LmdbBlockStore, BlockHash};
+use crate::{
+    datastore::lmdb::{LmdbBlockStore, MdbVal},
+    BlockHash,
+};
 
 use super::{lmdb_env::LmdbEnvHandle, TransactionHandle};
 
@@ -47,4 +50,16 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_raw_put(
     let data = slice::from_raw_parts(data, len);
     let hash = BlockHash::from_ptr(hash);
     (*handle).0.raw_put(txn, data, hash);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_block_raw_get(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    value: *mut MdbVal,
+) {
+    let txn = (*txn).as_txn();
+    let hash = BlockHash::from_ptr(hash);
+    (*handle).0.block_raw_get(txn, hash, &mut *value);
 }

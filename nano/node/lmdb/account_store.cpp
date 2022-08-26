@@ -40,7 +40,7 @@ bool nano::lmdb::account_store::exists (nano::transaction const & transaction_a,
 
 size_t nano::lmdb::account_store::count (nano::transaction const & transaction_a)
 {
-	return rsnano::rsn_lmdb_account_store_count (handle, transaction_a.get_rust_handle());
+	return rsnano::rsn_lmdb_account_store_count (handle, transaction_a.get_rust_handle ());
 }
 
 nano::store_iterator<nano::account, nano::account_info> to_iterator (rsnano::LmdbIteratorHandle * it_handle)

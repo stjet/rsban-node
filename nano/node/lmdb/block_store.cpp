@@ -260,8 +260,7 @@ void nano::lmdb::block_store::set_blocks_handle (MDB_dbi dbi)
 
 void nano::lmdb::block_store::block_raw_get (nano::transaction const & transaction, nano::block_hash const & hash, nano::mdb_val & value) const
 {
-	auto status = store.get (transaction, tables::blocks, hash, value);
-	release_assert (store.success (status) || store.not_found (status));
+	rsnano::rsn_lmdb_block_store_block_raw_get (handle, transaction.get_rust_handle (), hash.bytes.data (), reinterpret_cast<rsnano::MdbVal *> (&value.value));
 }
 
 nano::block_type nano::lmdb::block_store::block_type_from_raw (void * data_a)

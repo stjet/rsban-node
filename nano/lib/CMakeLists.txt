@@ -53,6 +53,7 @@ add_library(
   memory.cpp
   numbers.hpp
   numbers.cpp
+  observer_set.hpp
   optional_ptr.hpp
   rep_weights.hpp
   rep_weights.cpp

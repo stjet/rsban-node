@@ -378,3 +378,9 @@ std::string get_tls_toml_config_path (boost::filesystem::path const & data_path)
 	return (data_path / "config-tls.toml").string ();
 }
 } // namespace nano
+
+uint32_t nano::test_scan_wallet_reps_delay ()
+{
+	auto test_env = nano::get_env_or_default ("NANO_TEST_WALLET_SCAN_REPS_DELAY", "900000"); // 15 minutes by default
+	return boost::lexical_cast<uint32_t> (test_env);
+}

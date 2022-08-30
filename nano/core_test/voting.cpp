@@ -76,6 +76,7 @@ TEST (vote_spacing, vote_generator)
 {
 	nano::node_config config;
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
+	config.active_elections_hinted_limit_percentage = 0; // Disable election hinting
 	nano::test::system system;
 	nano::node_flags node_flags;
 	node_flags.set_disable_search_pending (true);
@@ -119,6 +120,7 @@ TEST (vote_spacing, rapid)
 {
 	nano::node_config config;
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
+	config.active_elections_hinted_limit_percentage = 0; // Disable election hinting
 	nano::test::system system;
 	nano::node_flags node_flags;
 	node_flags.set_disable_search_pending (true);

@@ -61,6 +61,10 @@ uint16_t test_rpc_port ();
 uint16_t test_ipc_port ();
 uint16_t test_websocket_port ();
 std::array<uint8_t, 2> test_magic_number ();
+/*
+ * How often to scan for representatives in local wallet, in milliseconds
+ */
+uint32_t test_scan_wallet_reps_delay ();
 
 /**
  * Network variants with different genesis blocks and network parameters

@@ -230,14 +230,14 @@ bool nano::rep_crawler::is_pr (nano::transport::channel const & channel_a) const
 	return result;
 }
 
-bool nano::rep_crawler::response (std::shared_ptr<nano::transport::channel> const & channel_a, std::shared_ptr<nano::vote> const & vote_a)
+bool nano::rep_crawler::response (std::shared_ptr<nano::transport::channel> const & channel_a, std::shared_ptr<nano::vote> const & vote_a, bool force)
 {
 	bool error = true;
 	nano::lock_guard<nano::mutex> lock (active_mutex);
 	auto hashes = vote_a->hashes ();
 	for (auto i = hashes.begin (), n = hashes.end (); i != n; ++i)
 	{
-		if (active.count (*i) != 0)
+		if (force || active.count (*i) != 0)
 		{
 			responses.emplace_back (channel_a, vote_a);
 			error = false;

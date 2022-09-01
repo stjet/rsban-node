@@ -228,7 +228,7 @@ impl Block for SendBlock {
         writer.put_string("type", "send")?;
         writer.put_string("previous", &self.hashables.previous.encode_hex())?;
         writer.put_string("destination", &self.hashables.destination.encode_account())?;
-        writer.put_string("balance", &self.hashables.balance.encode_hex())?;
+        writer.put_string("balance", &self.hashables.balance.to_string_dec())?;
         writer.put_string("work", &to_string_hex(self.work))?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         Ok(())

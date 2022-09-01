@@ -260,7 +260,7 @@ impl Block for StateBlock {
             "representative",
             &self.hashables.representative.encode_account(),
         )?;
-        writer.put_string("balance", &self.hashables.balance.encode_hex())?;
+        writer.put_string("balance", &self.hashables.balance.to_string_dec())?;
         writer.put_string("link", &self.hashables.link.encode_hex())?;
         writer.put_string(
             "link_as_account",

@@ -146,7 +146,7 @@ impl SendBlock {
     pub fn deserialize_json(reader: &impl PropertyTreeReader) -> Result<Self> {
         let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
         let destination = Account::decode_account(reader.get_string("destination")?)?;
-        let balance = Amount::decode_hex(reader.get_string("balance")?)?;
+        let balance = Amount::decode_dec(reader.get_string("balance")?)?;
         let signature = Signature::decode_hex(reader.get_string("signature")?)?;
         let work = from_string_hex(reader.get_string("work")?)?;
         Ok(SendBlock {

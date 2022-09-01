@@ -166,7 +166,7 @@ impl StateBlock {
         let account = Account::decode_account(reader.get_string("account")?)?;
         let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
         let representative = Account::decode_account(reader.get_string("representative")?)?;
-        let balance = Amount::decode_hex(reader.get_string("balance")?)?;
+        let balance = Amount::decode_dec(reader.get_string("balance")?)?;
         let link = Link::decode_hex(reader.get_string("link")?)?;
         let work = from_string_hex(reader.get_string("work")?)?;
         let signature = Signature::decode_hex(reader.get_string("signature")?)?;

@@ -160,9 +160,9 @@ public:
 	nano::rep_crawler rep_crawler;
 	nano::vote_processor vote_processor;
 	unsigned warmed_up;
-	nano::block_processor block_processor;
-	nano::block_arrival block_arrival;
 	nano::local_vote_history history;
+	nano::block_arrival block_arrival;
+	nano::block_processor block_processor;
 	nano::block_uniquer block_uniquer;
 	nano::vote_uniquer vote_uniquer;
 	nano::confirmation_height_processor confirmation_height_processor;

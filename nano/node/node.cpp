@@ -169,6 +169,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	rep_crawler (*this),
 	vote_processor (checker, active, observers, *stats, *config, flags, *logger, online_reps, rep_crawler, ledger, network_params),
 	warmed_up (0),
+	block_arrival {},
 	block_processor (*this, write_database_queue),
 	online_reps (ledger, *config),
 	history{ config_a.network_params.voting },

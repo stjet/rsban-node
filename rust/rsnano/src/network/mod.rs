@@ -1,3 +1,4 @@
+mod channel_fake;
 mod channel_inproc;
 mod channel_tcp;
 mod channel_udp;
@@ -7,6 +8,7 @@ mod syn_cookies;
 mod tcp_channels;
 mod tcp_message_manager;
 
+pub use channel_fake::ChannelFake;
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, TcpChannelData};
 pub use channel_udp::ChannelUdp;

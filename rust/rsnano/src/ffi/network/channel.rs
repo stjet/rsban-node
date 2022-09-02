@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    network::{Channel, ChannelInProc, ChannelTcp, ChannelUdp},
+    network::{Channel, ChannelFake, ChannelInProc, ChannelTcp, ChannelUdp},
     Account,
 };
 
@@ -9,6 +9,7 @@ pub enum ChannelType {
     Tcp(Arc<ChannelTcp>),
     InProc(ChannelInProc),
     Udp(ChannelUdp),
+    Fake(ChannelFake),
 }
 
 pub struct ChannelHandle(Arc<ChannelType>);
@@ -31,6 +32,7 @@ pub unsafe fn as_channel(handle: *mut ChannelHandle) -> &'static dyn Channel {
         ChannelType::Tcp(tcp) => tcp.as_ref(),
         ChannelType::InProc(inproc) => inproc,
         ChannelType::Udp(udp) => udp,
+        ChannelType::Fake(fake) => fake,
     }
 }
 
@@ -116,5 +118,12 @@ pub extern "C" fn rsn_channel_inproc_create(now: u64) -> *mut ChannelHandle {
 pub extern "C" fn rsn_channel_udp_create(now: u64) -> *mut ChannelHandle {
     Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Udp(
         ChannelUdp::new(now),
+    )))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_channel_fake_create(now: u64) -> *mut ChannelHandle {
+    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Fake(
+        ChannelFake::new(now),
     )))))
 }

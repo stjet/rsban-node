@@ -19,6 +19,8 @@ namespace transport
 			std::string to_string () const override;
 			std::size_t hash_code () const override;
 
+			void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter) override;
+
 			// clang-format off
 			void send_buffer (
 				nano::shared_const_buffer const &,
@@ -29,6 +31,16 @@ namespace transport
 
 			bool operator== (nano::transport::channel const &) const override;
 			bool operator== (nano::transport::fake::channel const & other_a) const;
+
+			uint8_t get_network_version () const override
+			{
+				return network_version;
+			}
+
+			void set_network_version (uint8_t network_version_a) override
+			{
+				network_version = network_version_a;
+			}
 
 			nano::endpoint get_endpoint () const override
 			{
@@ -45,8 +57,14 @@ namespace transport
 				return nano::transport::transport_type::fake;
 			}
 
+			nano::endpoint get_peering_endpoint () const override;
+			void set_peering_endpoint (nano::endpoint endpoint) override;
+
 		private:
+			nano::node & node;
 			nano::endpoint const endpoint;
+			std::atomic<uint8_t> network_version{ 0 };
+			std::optional<nano::endpoint> peering_endpoint{};
 		};
 	} // namespace fake
 } // namespace transport

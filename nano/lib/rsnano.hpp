@@ -1551,6 +1551,8 @@ uintptr_t rsn_change_block_size ();
 
 void rsn_channel_destroy (ChannelHandle * handle);
 
+ChannelHandle * rsn_channel_fake_create (uint64_t now);
+
 uint64_t rsn_channel_get_last_bootstrap_attempt (ChannelHandle * handle);
 
 uint64_t rsn_channel_get_last_packet_received (ChannelHandle * handle);

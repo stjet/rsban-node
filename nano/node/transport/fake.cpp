@@ -4,11 +4,18 @@
 #include <boost/format.hpp>
 
 nano::transport::fake::channel::channel (nano::node & node) :
-	transport::channel{ node },
-	endpoint{ node.network.endpoint () }
+	node{ node },
+	transport::channel{ rsnano::rsn_channel_udp_create (std::chrono::steady_clock::now ().time_since_epoch ().count ()) },
+	endpoint{ node.network->endpoint () }
 {
 	set_node_id (node.node_id.pub);
 	set_network_version (node.network_params.network.protocol_version);
+}
+
+void nano::transport::fake::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
+{
+	auto buffer (message_a.to_shared_const_buffer ());
+	send_buffer (buffer, callback_a, drop_policy_a);
 }
 
 /**

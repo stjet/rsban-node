@@ -5,7 +5,7 @@
 
 nano::transport::fake::channel::channel (nano::node & node) :
 	node{ node },
-	transport::channel{ rsnano::rsn_channel_udp_create (std::chrono::steady_clock::now ().time_since_epoch ().count ()) },
+	transport::channel{ rsnano::rsn_channel_fake_create (std::chrono::steady_clock::now ().time_since_epoch ().count ()) },
 	endpoint{ node.network->endpoint () }
 {
 	set_node_id (node.node_id.pub);
@@ -15,7 +15,25 @@ nano::transport::fake::channel::channel (nano::node & node) :
 void nano::transport::fake::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
 {
 	auto buffer (message_a.to_shared_const_buffer ());
-	send_buffer (buffer, callback_a, drop_policy_a);
+	auto detail = nano::message_type_to_stat_detail (message_a.get_header ().get_type ());
+	auto is_droppable_by_limiter = drop_policy_a == nano::buffer_drop_policy::limiter;
+	auto should_drop (node.network->limiter.should_drop (buffer.size ()));
+	if (!is_droppable_by_limiter || !should_drop)
+	{
+		send_buffer (buffer, callback_a, drop_policy_a);
+		node.stats->inc (nano::stat::type::message, detail, nano::stat::dir::out);
+	}
+	else
+	{
+		if (callback_a)
+		{
+			node.background ([callback_a] () {
+				callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
+			});
+		}
+
+		node.stats->inc (nano::stat::type::drop, detail, nano::stat::dir::out);
+	}
 }
 
 /**

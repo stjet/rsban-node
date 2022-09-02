@@ -86,3 +86,4 @@ util/build_prep/*/prep.sh
 cargo
 build*
 cmake-build-debug/
+rust/target

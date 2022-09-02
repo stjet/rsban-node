@@ -64,6 +64,7 @@ pub struct BootstrapServer {
     request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
     message_deserializer: Arc<MessageDeserializer>,
     tcp_message_manager: Arc<TcpMessageManager>,
+    allow_bootstrap: bool,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -83,6 +84,7 @@ impl BootstrapServer {
         block_uniquer: Arc<BlockUniquer>,
         vote_uniquer: Arc<VoteUniquer>,
         tcp_message_manager: Arc<TcpMessageManager>,
+        allow_bootstrap: bool,
     ) -> Self {
         let network_constants = network.network.clone();
         Self {
@@ -115,6 +117,7 @@ impl BootstrapServer {
                 vote_uniquer,
             )),
             tcp_message_manager,
+            allow_bootstrap,
         }
     }
 
@@ -369,8 +372,14 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
                 self.queue_realtime(message);
                 return true;
             } else if handshake_visitor.bootstrap() {
-                // Switch to bootstrap connection mode and handle message in subsequent bootstrap visitor
-                self.to_bootstrap_connection();
+                if self.allow_bootstrap {
+                    // Switch to bootstrap connection mode and handle message in subsequent bootstrap visitor
+                    self.to_bootstrap_connection();
+                } else {
+                    // Received bootstrap request in a connection that only allows for realtime traffic, abort
+                    self.stop();
+                    return false;
+                }
             } else {
                 // Neither handshake nor bootstrap received when in handshake mode
                 return true;
@@ -433,6 +442,52 @@ impl HandshakeMessageVisitorImpl {
             handshake_logging: false,
         }
     }
+
+    fn send_handshake_response(&self, query: &[u8; 32]) {
+        let account = Account::from(self.node_id.public_key());
+        let signature = sign_message(
+            &self.node_id.private_key(),
+            &self.node_id.public_key(),
+            query,
+        )
+        .unwrap();
+        let response = Some((account, signature));
+        let cookie = self.syn_cookies.assign(&self.server.remote_endpoint());
+        let response_message = NodeIdHandshake::new(&self.network_constants, cookie, response);
+
+        let mut stream = MemoryStream::new();
+        response_message.serialize(&mut stream).unwrap();
+
+        let shared_const_buffer = Arc::new(stream.to_vec());
+        let server_weak = Arc::downgrade(&self.server);
+        let logger = Arc::clone(&self.logger);
+        let stats = Arc::clone(&self.stats);
+        let handshake_logging = self.handshake_logging;
+        self.server.socket.async_write(
+            &shared_const_buffer,
+            Some(Box::new(move |ec, _size| {
+                if let Some(server_l) = server_weak.upgrade() {
+                    if ec.is_err() {
+                        if handshake_logging {
+                            logger.try_log(&format!(
+                                "Error sending node_id_handshake to {}: {:?}",
+                                server_l.remote_endpoint(),
+                                ec
+                            ));
+                        }
+                        // Stop invalid handshake
+                        server_l.stop();
+                    } else {
+                        let _ = stats.inc(
+                            StatType::Message,
+                            DetailType::NodeIdHandshake,
+                            Direction::Out,
+                        );
+                    }
+                }
+            })),
+        );
+    }
 }
 
 impl MessageVisitor for HandshakeMessageVisitorImpl {
@@ -485,49 +540,7 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
         }
 
         if let Some(query) = &message.query {
-            let account = Account::from(self.node_id.public_key());
-            let signature = sign_message(
-                &self.node_id.private_key(),
-                &self.node_id.public_key(),
-                query,
-            )
-            .unwrap();
-            let response = Some((account, signature));
-            let cookie = self.syn_cookies.assign(&self.server.remote_endpoint());
-            let response_message = NodeIdHandshake::new(&self.network_constants, cookie, response);
-
-            let mut stream = MemoryStream::new();
-            response_message.serialize(&mut stream).unwrap();
-
-            let shared_const_buffer = Arc::new(stream.to_vec());
-            let server_weak = Arc::downgrade(&self.server);
-            let logger = Arc::clone(&self.logger);
-            let stats = Arc::clone(&self.stats);
-            let handshake_logging = self.handshake_logging;
-            self.server.socket.async_write(
-                &shared_const_buffer,
-                Some(Box::new(move |ec, _size| {
-                    if let Some(server_l) = server_weak.upgrade() {
-                        if ec.is_err() {
-                            if handshake_logging {
-                                logger.try_log(&format!(
-                                    "Error sending node_id_handshake to {}: {:?}",
-                                    server_l.remote_endpoint(),
-                                    ec
-                                ));
-                            }
-                            // Stop invalid handshake
-                            server_l.stop();
-                        } else {
-                            let _ = stats.inc(
-                                StatType::Message,
-                                DetailType::NodeIdHandshake,
-                                Direction::Out,
-                            );
-                        }
-                    }
-                })),
-            );
+            self.send_handshake_response(query);
         } else if let Some(response) = &message.response {
             let response_node_id = &response.0;
             let local_node_id = Account::from(self.node_id.public_key());

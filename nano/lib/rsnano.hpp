@@ -528,6 +528,7 @@ struct CreateBootstrapServerParams
 	TcpMessageManagerHandle * tcp_message_manager;
 	SynCookiesHandle * syn_cookies;
 	const uint8_t * node_id_prv;
+	bool allow_bootstrap;
 };
 
 using AddTimedTaskCallback = void (*) (void *, uint64_t, VoidFnCallbackHandle *);

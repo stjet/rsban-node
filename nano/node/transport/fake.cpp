@@ -53,3 +53,20 @@ std::string nano::transport::fake::channel::to_string () const
 {
 	return boost::str (boost::format ("%1%") % endpoint);
 }
+
+void nano::transport::fake::channel::set_peering_endpoint (nano::endpoint endpoint)
+{
+	peering_endpoint = endpoint;
+}
+
+nano::endpoint nano::transport::fake::channel::get_peering_endpoint () const
+{
+	if (peering_endpoint)
+	{
+		return *peering_endpoint;
+	}
+	else
+	{
+		return get_endpoint ();
+	}
+}

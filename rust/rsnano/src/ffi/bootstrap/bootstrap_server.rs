@@ -64,6 +64,7 @@ pub struct CreateBootstrapServerParams {
     pub tcp_message_manager: *mut TcpMessageManagerHandle,
     pub syn_cookies: *mut SynCookiesHandle,
     pub node_id_prv: *const u8,
+    pub allow_bootstrap: bool,
 }
 
 #[no_mangle]
@@ -110,6 +111,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         block_uniquer,
         vote_uniquer,
         tcp_message_manager,
+        params.allow_bootstrap,
     );
     server.disable_bootstrap_listener = params.disable_bootstrap_listener;
     server.connections_max = params.connections_max;

@@ -1,4 +1,5 @@
 #include <nano/node/election.hpp>
+#include <nano/node/transport/fake.hpp>
 #include <nano/node/transport/inproc.hpp>
 #include <nano/node/transport/udp.hpp>
 #include <nano/test_common/network.hpp>
@@ -2244,7 +2245,7 @@ TEST (node, local_votes_cache)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::confirm_req message1{ nano::dev::network_params.network, send1 };
 	nano::confirm_req message2{ nano::dev::network_params.network, send2 };
-	auto channel = std::make_shared<nano::transport::inproc::channel> (node, node);
+	auto channel = std::make_shared<nano::transport::fake::channel> (node);
 	node.network->inbound (message1, channel);
 	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 1);
 	node.network->inbound (message2, channel);
@@ -2367,7 +2368,7 @@ TEST (node, local_votes_cache_generate_new_vote)
 
 	// Send a confirm req for genesis block to node
 	nano::confirm_req message1{ nano::dev::network_params.network, nano::dev::genesis };
-	auto channel = std::make_shared<nano::transport::inproc::channel> (node, node);
+	auto channel = std::make_shared<nano::transport::fake::channel> (node);
 	node.network->inbound (message1, channel);
 
 	// check that the node generated a vote for the genesis block and that it is stored in the local vote cache and it is the only vote

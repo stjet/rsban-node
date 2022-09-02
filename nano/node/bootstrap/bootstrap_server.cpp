@@ -211,7 +211,7 @@ void nano::bootstrap_listener::accept_action (boost::system::error_code const & 
 		*node.stats, node.flags, *node.config,
 		node.bootstrap, req_resp_visitor_factory, node.workers,
 		*node.network->publish_filter,
-		node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager, *node.network->syn_cookies, node.node_id));
+		node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager, *node.network->syn_cookies, node.node_id, true));
 		nano::lock_guard<nano::mutex> lock (mutex);
 		connections[server->unique_id ()] = nano::bootstrap_server_weak_wrapper (server);
 		server->start ();
@@ -263,7 +263,8 @@ nano::block_uniquer & block_uniquer_a,
 nano::vote_uniquer & vote_uniquer_a,
 nano::tcp_message_manager & tcp_message_manager_a,
 nano::syn_cookies & syn_cookies_a,
-nano::keypair & node_id_a)
+nano::keypair & node_id_a,
+bool allow_bootstrap_a)
 {
 	auto config_dto{ config_a.to_dto () };
 	auto observer_handle = new std::shared_ptr<nano::bootstrap_server_observer> (observer_a);
@@ -289,6 +290,7 @@ nano::keypair & node_id_a)
 	params.tcp_message_manager = tcp_message_manager_a.handle;
 	params.syn_cookies = syn_cookies_a.handle;
 	params.node_id_prv = node_id_a.prv.bytes.data ();
+	params.allow_bootstrap = allow_bootstrap_a;
 	handle = rsnano::rsn_bootstrap_server_create (&params);
 	debug_assert (socket_a != nullptr);
 }

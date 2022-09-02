@@ -124,7 +124,8 @@ public:
 	nano::vote_uniquer & vote_uniquer_a,
 	nano::tcp_message_manager & tcp_message_manager_a,
 	nano::syn_cookies & syn_cookies_a,
-	nano::keypair & node_id_a);
+	nano::keypair & node_id_a,
+	bool allow_bootstrap_a = true);
 	explicit bootstrap_server (rsnano::BootstrapServerHandle * handle_a);
 	bootstrap_server (nano::bootstrap_server const &) = delete;
 	bootstrap_server (nano::bootstrap_server &&) = delete;
@@ -132,6 +133,7 @@ public:
 	void start ();
 	void stop ();
 	void timeout ();
+	void send_handshake_response (nano::uint256_union query);
 	bool is_stopped () const;
 	std::size_t unique_id () const;
 	void set_remote_node_id (nano::account account_a);

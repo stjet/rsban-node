@@ -112,6 +112,9 @@ impl EntryContainer {
 
                 let by_root = self.by_root.get_mut(&entry.root).unwrap();
                 by_root.remove(id);
+                if by_root.is_empty() {
+                    self.by_root.remove(&entry.root);
+                }
             }
         }
 
@@ -215,5 +218,25 @@ mod tests {
         MockClock::advance(length);
         spacing.flag(&Root::from(2), &BlockHash::from(4));
         assert_eq!(spacing.len(), 1);
+    }
+
+    mod entry_container_tests {
+        use super::*;
+
+        #[test]
+        fn trim() {
+            let mut container = EntryContainer::new();
+            container.insert(Entry {
+                root: Root::from(1),
+                hash: BlockHash::from(2),
+                time: Instant::now(),
+            });
+            MockClock::advance(Duration::from_secs(10));
+            container.trim(Duration::from_secs(5));
+            assert_eq!(container.len(), 0);
+            assert_eq!(container.by_time.len(), 0);
+            assert_eq!(container.entries.len(), 0);
+            assert_eq!(container.by_root.len(), 0);
+        }
     }
 }

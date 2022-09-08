@@ -1779,6 +1779,10 @@ TransactionHandle * txn,
 const uint8_t * hash,
 uint8_t * result);
 
+void rsn_lmdb_block_store_successor_clear (LmdbBlockStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 
 void rsn_lmdb_iterator_clear (LmdbIteratorHandle * handle);

@@ -105,3 +105,14 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_successor(
         .successor((*txn).as_txn(), &BlockHash::from_ptr(hash));
     copy_hash_bytes(successor, result);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_successor_clear(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+) {
+    (*handle)
+        .0
+        .successor_clear((*txn).as_write_txn(), &BlockHash::from_ptr(hash));
+}

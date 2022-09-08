@@ -38,13 +38,7 @@ nano::block_hash nano::lmdb::block_store::successor (nano::transaction const & t
 
 void nano::lmdb::block_store::successor_clear (nano::write_transaction const & transaction, nano::block_hash const & hash)
 {
-	nano::mdb_val value;
-	block_raw_get (transaction, hash, value);
-	debug_assert (value.size () != 0);
-	auto type = block_type_from_raw (value.data ());
-	std::vector<uint8_t> data (static_cast<uint8_t *> (value.data ()), static_cast<uint8_t *> (value.data ()) + value.size ());
-	std::fill_n (data.begin () + block_successor_offset (transaction, value.size (), type), sizeof (nano::block_hash), uint8_t{ 0 });
-	raw_put (transaction, data, hash);
+	rsnano::rsn_lmdb_block_store_successor_clear (handle, transaction.get_rust_handle (), hash.bytes.data ());
 }
 
 std::shared_ptr<nano::block> nano::lmdb::block_store::get (nano::transaction const & transaction, nano::block_hash const & hash) const

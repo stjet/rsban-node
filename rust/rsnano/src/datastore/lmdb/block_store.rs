@@ -7,7 +7,7 @@ use crate::{
     Block, BlockHash, BlockSideband, BlockType, BlockVisitor,
 };
 use num_traits::FromPrimitive;
-use std::sync::Arc;
+use std::{ffi::c_void, sync::Arc};
 
 use super::{
     assert_success, get_raw_lmdb_txn, mdb_get, mdb_put, LmdbEnv, LmdbWriteTransaction, MdbVal,
@@ -38,6 +38,12 @@ impl LmdbBlockStore {
         let status = unsafe { mdb_get(get_raw_lmdb_txn(txn), self.blocks_handle, &mut key, value) };
         assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
     }
+}
+
+unsafe fn block_type_from_raw(data: *const c_void) -> Option<BlockType> {
+    // The block type is the first byte
+    let first_byte = *(data as *const u8);
+    BlockType::from_u8(first_byte)
 }
 
 impl BlockStore for LmdbBlockStore {
@@ -84,6 +90,21 @@ impl BlockStore for LmdbBlockStore {
         } else {
             BlockHash::new()
         }
+    }
+
+    fn successor_clear(&self, txn: &dyn WriteTransaction, hash: &BlockHash) {
+        let mut value = MdbVal::new();
+        self.block_raw_get(txn.as_transaction(), hash, &mut value);
+        debug_assert!(value.mv_size != 0);
+        let block_type = unsafe { block_type_from_raw(value.mv_data) }.unwrap();
+
+        let mut data =
+            unsafe { std::slice::from_raw_parts(value.mv_data as *const u8, value.mv_size) }
+                .to_vec();
+        let offset = block_successor_offset(value.mv_size, block_type);
+        data[offset..offset + BlockHash::serialized_size()].fill(0);
+        let lmdb_txn = txn.as_any().downcast_ref::<LmdbWriteTransaction>().unwrap();
+        self.raw_put(lmdb_txn, &data, hash)
     }
 }
 

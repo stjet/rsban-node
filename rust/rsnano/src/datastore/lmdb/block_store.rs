@@ -3,8 +3,9 @@ use crate::{
         lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
         BlockStore, Transaction, WriteTransaction,
     },
-    utils::{MemoryStream, Stream},
-    Block, BlockHash, BlockSideband, BlockType, BlockVisitor,
+    deserialize_block_enum,
+    utils::{MemoryStream, Stream, StreamAdapter},
+    Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
 };
 use num_traits::FromPrimitive;
 use std::{ffi::c_void, sync::Arc};
@@ -98,13 +99,26 @@ impl BlockStore for LmdbBlockStore {
         debug_assert!(value.mv_size != 0);
         let block_type = unsafe { block_type_from_raw(value.mv_data) }.unwrap();
 
-        let mut data =
-            unsafe { std::slice::from_raw_parts(value.mv_data as *const u8, value.mv_size) }
-                .to_vec();
+        let mut data = value.as_slice().to_vec();
         let offset = block_successor_offset(value.mv_size, block_type);
         data[offset..offset + BlockHash::serialized_size()].fill(0);
         let lmdb_txn = txn.as_any().downcast_ref::<LmdbWriteTransaction>().unwrap();
         self.raw_put(lmdb_txn, &data, hash)
+    }
+
+    fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+        let mut value = MdbVal::new();
+        self.block_raw_get(txn, hash, &mut value);
+        if value.mv_size != 0 {
+            let mut stream = StreamAdapter::new(value.as_slice());
+            let block_type = BlockType::from_u8(stream.read_u8().unwrap()).unwrap();
+            let mut block = deserialize_block_enum(block_type, &mut stream).unwrap();
+            let sideband = BlockSideband::from_stream(&mut stream, block_type).unwrap();
+            block.as_block_mut().set_sideband(sideband);
+            Some(block)
+        } else {
+            None
+        }
     }
 }
 

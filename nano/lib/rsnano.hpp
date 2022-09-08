@@ -1761,6 +1761,10 @@ bool rsn_lmdb_block_store_exists (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash);
 
+BlockHandle * rsn_lmdb_block_store_get (LmdbBlockStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
 void rsn_lmdb_block_store_put (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,

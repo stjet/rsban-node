@@ -1,4 +1,7 @@
-use std::{slice, sync::Arc};
+use std::{
+    ptr, slice,
+    sync::{Arc, RwLock},
+};
 
 use crate::{
     datastore::{
@@ -115,4 +118,16 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_successor_clear(
     (*handle)
         .0
         .successor_clear((*txn).as_write_txn(), &BlockHash::from_ptr(hash));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_get(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+) -> *mut BlockHandle {
+    match (*handle).0.get((*txn).as_txn(), &BlockHash::from_ptr(hash)) {
+        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
+        None => ptr::null_mut(),
+    }
 }

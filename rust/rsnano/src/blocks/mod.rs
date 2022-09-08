@@ -127,6 +127,20 @@ impl BlockSideband {
         Ok(())
     }
 
+    pub fn from_stream(stream: &mut impl Stream, block_type: BlockType) -> Result<Self> {
+        let mut result = Self {
+            height: 0,
+            timestamp: 0,
+            successor: BlockHash::new(),
+            account: Account::new(),
+            balance: Amount::zero(),
+            details: BlockDetails::new(Epoch::Epoch0, false, false, false),
+            source_epoch: Epoch::Epoch0,
+        };
+        result.deserialize(stream, block_type)?;
+        Ok(result)
+    }
+
     pub fn deserialize(&mut self, stream: &mut impl Stream, block_type: BlockType) -> Result<()> {
         self.successor = BlockHash::deserialize(stream)?;
 
@@ -302,6 +316,18 @@ pub fn deserialize_block(
     stream: &mut dyn Stream,
     uniquer: Option<&BlockUniquer>,
 ) -> Result<Arc<RwLock<BlockEnum>>> {
+    let block = deserialize_block_enum(block_type, stream)?;
+
+    let mut block = Arc::new(RwLock::new(block));
+
+    if let Some(uniquer) = uniquer {
+        block = uniquer.unique(&block)
+    }
+
+    Ok(block)
+}
+
+pub fn deserialize_block_enum(block_type: BlockType, stream: &mut dyn Stream) -> Result<BlockEnum> {
     let block = match block_type {
         BlockType::Receive => BlockEnum::Receive(ReceiveBlock::deserialize(stream)?),
         BlockType::Open => BlockEnum::Open(OpenBlock::deserialize(stream)?),
@@ -310,13 +336,6 @@ pub fn deserialize_block(
         BlockType::Send => BlockEnum::Send(SendBlock::deserialize(stream)?),
         BlockType::Invalid | BlockType::NotABlock => bail!("invalid block type"),
     };
-
-    let mut block = Arc::new(RwLock::new(block));
-
-    if let Some(uniquer) = uniquer {
-        block = uniquer.unique(&block)
-    }
-
     Ok(block)
 }
 

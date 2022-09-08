@@ -1353,6 +1353,9 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bl
 
 std::shared_ptr<nano::block> nano::block_handle_to_block (rsnano::BlockHandle * handle)
 {
+	if (handle == nullptr)
+		return nullptr;
+
 	auto type = static_cast<nano::block_type> (rsnano::rsn_block_type (handle));
 	std::shared_ptr<nano::block> result;
 	switch (type)

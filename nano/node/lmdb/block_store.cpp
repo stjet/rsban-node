@@ -43,23 +43,8 @@ void nano::lmdb::block_store::successor_clear (nano::write_transaction const & t
 
 std::shared_ptr<nano::block> nano::lmdb::block_store::get (nano::transaction const & transaction, nano::block_hash const & hash) const
 {
-	nano::mdb_val value;
-	block_raw_get (transaction, hash, value);
-	std::shared_ptr<nano::block> result;
-	if (value.size () != 0)
-	{
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (value.data ()), value.size ());
-		nano::block_type type;
-		auto error (try_read (stream, type));
-		release_assert (!error);
-		result = nano::deserialize_block (stream, type);
-		release_assert (result != nullptr);
-		nano::block_sideband sideband;
-		error = (sideband.deserialize (stream, type));
-		release_assert (!error);
-		result->sideband_set (sideband);
-	}
-	return result;
+	auto block_handle = rsnano::rsn_lmdb_block_store_get (handle, transaction.get_rust_handle (), hash.bytes.data ());
+	return nano::block_handle_to_block (block_handle);
 }
 
 std::shared_ptr<nano::block> nano::lmdb::block_store::get_no_sideband (nano::transaction const & transaction, nano::block_hash const & hash) const

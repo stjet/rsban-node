@@ -1,4 +1,4 @@
-use crate::{Account, Block, BlockEnum, BlockHash, BlockWithSideband};
+use crate::{Account, Amount, Block, BlockEnum, BlockHash, BlockWithSideband};
 
 use super::{DbIterator, Transaction, WriteTransaction};
 
@@ -13,14 +13,13 @@ pub trait BlockStore {
     fn count(&self, txn: &dyn Transaction) -> usize;
     fn account_calculated(&self, block: &dyn Block) -> Account;
     fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account;
-    fn begin(
-        &self,
-        transaction: &dyn Transaction,
-    ) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
+    fn begin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
     fn begin_at_hash(
         &self,
-        transaction: &dyn Transaction,
+        txn: &dyn Transaction,
         hash: &BlockHash,
     ) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
-    fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum>;
+    fn random(&self, txn: &dyn Transaction) -> Option<BlockEnum>;
+    fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Amount;
+    fn balance_calculated(&self, block: &BlockEnum) -> Amount;
 }

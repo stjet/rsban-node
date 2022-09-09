@@ -5,7 +5,7 @@ use crate::{
     },
     deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
-    Account, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
+    Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
     BlockWithSideband,
 };
 use num_traits::FromPrimitive;
@@ -199,6 +199,23 @@ impl BlockStore for LmdbBlockStore {
         }
 
         existing.value().map(|i| i.block.clone())
+    }
+
+    fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Amount {
+        match self.get(txn, hash) {
+            Some(block) => self.balance_calculated(&block),
+            None => Amount::zero(),
+        }
+    }
+
+    fn balance_calculated(&self, block: &BlockEnum) -> Amount {
+        match block {
+            BlockEnum::Send(b) => b.balance(),
+            BlockEnum::Receive(b) => b.sideband().unwrap().balance,
+            BlockEnum::Open(b) => b.sideband().unwrap().balance,
+            BlockEnum::Change(b) => b.sideband().unwrap().balance,
+            BlockEnum::State(b) => b.balance(),
+        }
     }
 }
 

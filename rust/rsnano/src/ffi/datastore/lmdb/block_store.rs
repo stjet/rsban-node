@@ -8,7 +8,7 @@ use crate::{
         lmdb::{LmdbBlockStore, MdbVal},
         BlockStore,
     },
-    ffi::{copy_account_bytes, copy_hash_bytes, BlockHandle},
+    ffi::{copy_account_bytes, copy_amount_bytes, copy_hash_bytes, BlockHandle},
     BlockHash,
 };
 
@@ -224,4 +224,29 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_random(
         Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
         None => ptr::null_mut(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_balance(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    balance: *mut u8,
+) {
+    let result = (*handle)
+        .0
+        .balance((*txn).as_txn(), &BlockHash::from_ptr(hash));
+    copy_amount_bytes(result, balance);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_balance_calculated(
+    handle: *mut LmdbBlockStoreHandle,
+    block: *const BlockHandle,
+    balance: *mut u8,
+) {
+    let result = (*handle)
+        .0
+        .balance_calculated(&(*block).block.read().unwrap());
+    copy_amount_bytes(result, balance);
 }

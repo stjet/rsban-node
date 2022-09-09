@@ -1755,6 +1755,15 @@ void rsn_lmdb_block_store_account_calculated (LmdbBlockStoreHandle * handle,
 const BlockHandle * block,
 uint8_t * result);
 
+void rsn_lmdb_block_store_balance (LmdbBlockStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+uint8_t * balance);
+
+void rsn_lmdb_block_store_balance_calculated (LmdbBlockStoreHandle * handle,
+const BlockHandle * block,
+uint8_t * balance);
+
 LmdbIteratorHandle * rsn_lmdb_block_store_begin (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn);
 

@@ -12,7 +12,11 @@ use crate::{
     BlockHash,
 };
 
-use super::{lmdb_env::LmdbEnvHandle, TransactionHandle};
+use super::{
+    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    lmdb_env::LmdbEnvHandle,
+    TransactionHandle,
+};
 
 pub struct LmdbBlockStoreHandle(LmdbBlockStore);
 
@@ -176,4 +180,26 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_account_calculated(
         .0
         .account_calculated((*block).block.read().unwrap().as_block());
     copy_account_bytes(account, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_account(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    result: *mut u8,
+) {
+    let account = (*handle)
+        .0
+        .account((*txn).as_txn(), &BlockHash::from_ptr(hash));
+    copy_account_bytes(account, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_begin(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+) -> *mut LmdbIteratorHandle {
+    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    to_lmdb_iterator_handle(iterator.as_mut())
 }

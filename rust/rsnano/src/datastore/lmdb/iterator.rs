@@ -138,17 +138,17 @@ impl Drop for LmdbRawIterator {
 pub struct LmdbIterator<K, V>
 where
     K: Serialize + Deserialize<K> + Default,
-    V: Serialize + Deserialize<V> + Default,
+    V: Deserialize<V>,
 {
     key: K,
-    value: V,
+    value: Option<V>,
     raw_iterator: LmdbRawIterator,
 }
 
 impl<K, V> LmdbIterator<K, V>
 where
     K: Serialize + Deserialize<K> + Default,
-    V: Serialize + Deserialize<V> + Default,
+    V: Deserialize<V>,
 {
     pub fn new(txn: &dyn Transaction, dbi: u32, key: Option<&K>, direction_asc: bool) -> Self {
         let mut key_val = match key {
@@ -168,9 +168,9 @@ where
             Default::default()
         };
         let value = if raw_iterator.value.mv_size > 0 {
-            V::deserialize(&mut StreamAdapter::new(raw_iterator.value.as_slice())).unwrap()
+            Some(V::deserialize(&mut StreamAdapter::new(raw_iterator.value.as_slice())).unwrap())
         } else {
-            Default::default()
+            None
         };
         Self {
             key,
@@ -187,7 +187,7 @@ where
 impl<K, V> DbIterator<K, V> for LmdbIterator<K, V>
 where
     K: Serialize + Deserialize<K> + Default,
-    V: Serialize + Deserialize<V> + Default,
+    V: Deserialize<V>,
 {
     fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator> {
         Some(self.raw_iterator.take())

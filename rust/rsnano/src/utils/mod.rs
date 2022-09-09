@@ -90,10 +90,10 @@ impl ErrorCode {
 }
 
 pub trait Serialize {
+    fn serialized_size() -> usize;
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;
 }
 
 pub trait Deserialize<T> {
-    fn serialized_size() -> usize;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<T>;
 }

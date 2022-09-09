@@ -2,12 +2,15 @@
 #include <nano/node/lmdb/lmdb.hpp>
 #include <nano/secure/parallel_traversal.hpp>
 
-namespace nano
+nano::store_iterator<nano::block_hash, nano::block_w_sideband> to_block_iterator (rsnano::LmdbIteratorHandle * it_handle)
 {
-size_t block_successor_offset (nano::transaction const & transaction_a, size_t entry_size_a, nano::block_type type_a)
-{
-	return entry_size_a - nano::block_sideband::size (type_a);
-}
+	if (it_handle == nullptr)
+	{
+		return nano::store_iterator<nano::block_hash, nano::block_w_sideband> (nullptr);
+	}
+
+	return nano::store_iterator<nano::block_hash, nano::block_w_sideband> (
+	std::make_unique<nano::mdb_iterator<nano::block_hash, nano::block_w_sideband>> (it_handle));
 }
 
 nano::lmdb::block_store::block_store (nano::lmdb::store & store_a) :
@@ -83,9 +86,9 @@ uint64_t nano::lmdb::block_store::count (nano::transaction const & transaction_a
 
 nano::account nano::lmdb::block_store::account (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
-	auto block (get (transaction_a, hash_a));
-	debug_assert (block != nullptr);
-	return account_calculated (*block);
+	nano::account result;
+	rsnano::rsn_lmdb_block_store_account (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
+	return result;
 }
 
 nano::account nano::lmdb::block_store::account_calculated (nano::block const & block_a) const
@@ -97,7 +100,8 @@ nano::account nano::lmdb::block_store::account_calculated (nano::block const & b
 
 nano::store_iterator<nano::block_hash, nano::block_w_sideband> nano::lmdb::block_store::begin (nano::transaction const & transaction) const
 {
-	return store.make_iterator<nano::block_hash, nano::block_w_sideband> (transaction, tables::blocks);
+	auto it_handle{ rsnano::rsn_lmdb_block_store_begin (handle, transaction.get_rust_handle ()) };
+	return to_block_iterator (it_handle);
 }
 
 nano::store_iterator<nano::block_hash, nano::block_w_sideband> nano::lmdb::block_store::begin (nano::transaction const & transaction, nano::block_hash const & hash) const

@@ -127,7 +127,7 @@ impl BlockSideband {
         Ok(())
     }
 
-    pub fn from_stream(stream: &mut impl Stream, block_type: BlockType) -> Result<Self> {
+    pub fn from_stream(stream: &mut dyn Stream, block_type: BlockType) -> Result<Self> {
         let mut result = Self {
             height: 0,
             timestamp: 0,
@@ -141,7 +141,7 @@ impl BlockSideband {
         Ok(result)
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream, block_type: BlockType) -> Result<()> {
+    pub fn deserialize(&mut self, stream: &mut dyn Stream, block_type: BlockType) -> Result<()> {
         self.successor = BlockHash::deserialize(stream)?;
 
         if block_type != BlockType::State && block_type != BlockType::Open {
@@ -354,4 +354,18 @@ pub trait BlockVisitor {
     fn open_block(&mut self, block: &OpenBlock);
     fn change_block(&mut self, block: &ChangeBlock);
     fn state_block(&mut self, block: &StateBlock);
+}
+
+pub struct BlockWithSideband {
+    pub block: BlockEnum,
+    pub sideband: BlockSideband,
+}
+
+impl Deserialize<BlockWithSideband> for BlockWithSideband {
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
+        let mut block = deserialize_block_enum(stream)?;
+        let sideband = BlockSideband::from_stream(stream, block.block_type())?;
+        block.as_block_mut().set_sideband(sideband.clone());
+        Ok(BlockWithSideband { block, sideband })
+    }
 }

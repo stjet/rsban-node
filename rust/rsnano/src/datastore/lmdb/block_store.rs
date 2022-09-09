@@ -1,17 +1,18 @@
 use crate::{
     datastore::{
         lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        BlockStore, Transaction, WriteTransaction,
+        BlockStore, DbIterator, Transaction, WriteTransaction,
     },
     deserialize_block_enum,
-    utils::{MemoryStream, Stream, StreamAdapter},
+    utils::{MemoryStream, Serialize, Stream, StreamAdapter},
     Account, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
+    BlockWithSideband,
 };
 use num_traits::FromPrimitive;
 use std::{ffi::c_void, sync::Arc};
 
 use super::{
-    assert_success, get_raw_lmdb_txn, mdb_count, mdb_del, mdb_get, mdb_put, LmdbEnv,
+    assert_success, get_raw_lmdb_txn, mdb_count, mdb_del, mdb_get, mdb_put, LmdbEnv, LmdbIterator,
     LmdbWriteTransaction, MdbVal,
 };
 
@@ -158,6 +159,23 @@ impl BlockStore for LmdbBlockStore {
 
         debug_assert!(!result.is_zero());
         result
+    }
+
+    fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account {
+        let block = self.get(txn, hash).unwrap();
+        self.account_calculated(block.as_block())
+    }
+
+    fn begin(
+        &self,
+        transaction: &dyn Transaction,
+    ) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>> {
+        Box::new(LmdbIterator::new(
+            transaction,
+            self.blocks_handle,
+            None,
+            true,
+        ))
     }
 }
 

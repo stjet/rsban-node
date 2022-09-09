@@ -1,4 +1,9 @@
-use crate::datastore::lmdb::{LmdbRawIterator, MdbCursor, MdbTxn, MdbVal};
+use std::ptr;
+
+use crate::datastore::{
+    lmdb::{LmdbRawIterator, MdbCursor, MdbTxn, MdbVal},
+    DbIterator,
+};
 
 pub struct LmdbIteratorHandle(LmdbRawIterator);
 
@@ -60,4 +65,13 @@ pub unsafe extern "C" fn rsn_lmdb_iterator_previous(handle: *mut LmdbIteratorHan
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_iterator_clear(handle: *mut LmdbIteratorHandle) {
     (*handle).0.clear();
+}
+
+pub fn to_lmdb_iterator_handle<K, V>(
+    iterator: &mut dyn DbIterator<K, V>,
+) -> *mut LmdbIteratorHandle {
+    match iterator.take_lmdb_raw_iterator() {
+        Some(it) => LmdbIteratorHandle::new(it),
+        None => ptr::null_mut(),
+    }
 }

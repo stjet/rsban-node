@@ -8,7 +8,7 @@ use std::fmt::{Debug, Write};
 use std::ops::Deref;
 use std::{convert::TryFrom, fmt::Display};
 
-use crate::utils::{Serialize, Stream};
+use crate::utils::{Deserialize, Serialize, Stream};
 use anyhow::Result;
 
 pub use account::*;
@@ -96,16 +96,6 @@ impl BlockHash {
         Self { value }
     }
 
-    pub const fn serialized_size() -> usize {
-        32
-    }
-
-    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
-        let mut result = Self::new();
-        stream.read_bytes(&mut result.value, 32)?;
-        Ok(result)
-    }
-
     pub fn to_bytes(self) -> [u8; 32] {
         self.value
     }
@@ -126,6 +116,14 @@ impl BlockHash {
         let mut bytes = [0u8; 32];
         hex::decode_to_slice(s.as_ref(), &mut bytes)?;
         Ok(BlockHash::from_bytes(bytes))
+    }
+}
+
+impl Deserialize<BlockHash> for BlockHash {
+    fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
+        let mut result = Self::new();
+        stream.read_bytes(&mut result.value, 32)?;
+        Ok(result)
     }
 }
 
@@ -151,6 +149,10 @@ impl Display for BlockHash {
 }
 
 impl Serialize for BlockHash {
+    fn serialized_size() -> usize {
+        32
+    }
+
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         stream.write_bytes(&self.value)
     }

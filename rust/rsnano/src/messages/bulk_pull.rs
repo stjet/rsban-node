@@ -1,5 +1,5 @@
 use crate::{
-    utils::{Serialize, Stream},
+    utils::{Deserialize, Serialize, Stream},
     BlockHash, HashOrAccount, NetworkConstants,
 };
 use anyhow::Result;

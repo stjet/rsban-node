@@ -43,7 +43,7 @@ size_t nano::lmdb::account_store::count (nano::transaction const & transaction_a
 	return rsnano::rsn_lmdb_account_store_count (handle, transaction_a.get_rust_handle ());
 }
 
-nano::store_iterator<nano::account, nano::account_info> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
+nano::store_iterator<nano::account, nano::account_info> to_account_iterator (rsnano::LmdbIteratorHandle * it_handle)
 {
 	if (it_handle == nullptr)
 	{
@@ -57,19 +57,19 @@ nano::store_iterator<nano::account, nano::account_info> to_iterator (rsnano::Lmd
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::begin (nano::transaction const & transaction, nano::account const & account) const
 {
 	auto it_handle{ rsnano::rsn_lmdb_account_store_begin_account (handle, transaction.get_rust_handle (), account.bytes.data ()) };
-	return to_iterator (it_handle);
+	return to_account_iterator (it_handle);
 }
 
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::begin (nano::transaction const & transaction) const
 {
 	auto it_handle{ rsnano::rsn_lmdb_account_store_begin (handle, transaction.get_rust_handle ()) };
-	return to_iterator (it_handle);
+	return to_account_iterator (it_handle);
 }
 
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::rbegin (nano::transaction const & transaction_a) const
 {
 	auto it_handle{ rsnano::rsn_lmdb_account_store_rbegin (handle, transaction_a.get_rust_handle ()) };
-	return to_iterator (it_handle);
+	return to_account_iterator (it_handle);
 }
 
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::end () const
@@ -81,8 +81,8 @@ void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handl
 {
 	auto action = static_cast<std::function<void (nano::read_transaction const &, nano::store_iterator<nano::account, nano::account_info>, nano::store_iterator<nano::account, nano::account_info>)> const *> (context);
 	nano::read_mdb_txn txn{ txn_handle };
-	auto begin{ to_iterator (begin_handle) };
-	auto end{ to_iterator (end_handle) };
+	auto begin{ to_account_iterator (begin_handle) };
+	auto end{ to_account_iterator (end_handle) };
 	(*action) (txn, std::move (begin), std::move (end));
 }
 void for_each_par_delete_context (void * context)

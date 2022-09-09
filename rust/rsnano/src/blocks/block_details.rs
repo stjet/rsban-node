@@ -32,7 +32,7 @@ impl BlockDetails {
         stream.write_u8(self.packed())
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<BlockDetails> {
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<BlockDetails> {
         BlockDetails::unpack(stream.read_u8()?)
     }
 

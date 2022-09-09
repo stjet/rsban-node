@@ -1,7 +1,6 @@
 use std::{
     ffi::c_void,
     ops::{Deref, DerefMut},
-    ptr,
     sync::Arc,
 };
 
@@ -15,7 +14,9 @@ use crate::{
 };
 
 use super::{
-    iterator::LmdbIteratorHandle, lmdb_env::LmdbEnvHandle, TransactionHandle, TransactionType,
+    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    lmdb_env::LmdbEnvHandle,
+    TransactionHandle, TransactionType,
 };
 
 pub struct LmdbAccountStoreHandle(LmdbAccountStore);
@@ -181,11 +182,4 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_for_each_par(
     (*handle)
         .0
         .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
-}
-
-fn to_lmdb_iterator_handle<K, V>(iterator: &mut dyn DbIterator<K, V>) -> *mut LmdbIteratorHandle {
-    match iterator.take_lmdb_raw_iterator() {
-        Some(it) => LmdbIteratorHandle::new(it),
-        None => ptr::null_mut(),
-    }
 }

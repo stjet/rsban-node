@@ -101,6 +101,10 @@ impl Account {
 }
 
 impl Serialize for Account {
+    fn serialized_size() -> usize {
+        PublicKey::serialized_size()
+    }
+
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.public_key.serialize(stream)
     }
@@ -109,10 +113,6 @@ impl Serialize for Account {
 impl Deserialize<Account> for Account {
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Account> {
         PublicKey::deserialize(stream).map(Self::from)
-    }
-
-    fn serialized_size() -> usize {
-        PublicKey::serialized_size()
     }
 }
 

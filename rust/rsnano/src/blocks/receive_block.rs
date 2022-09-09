@@ -1,6 +1,6 @@
 use crate::{
     from_string_hex, sign_message, to_string_hex,
-    utils::{PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
+    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
     Account, Block, BlockHash, BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash, Link,
     PublicKey, RawKey, Root, Signature,
 };
@@ -13,7 +13,7 @@ pub struct ReceiveHashables {
 }
 
 impl ReceiveHashables {
-    const fn serialized_size() -> usize {
+    fn serialized_size() -> usize {
         BlockHash::serialized_size() + BlockHash::serialized_size()
     }
 }
@@ -57,7 +57,7 @@ impl ReceiveBlock {
         })
     }
 
-    pub const fn serialized_size() -> usize {
+    pub fn serialized_size() -> usize {
         ReceiveHashables::serialized_size()
             + Signature::serialized_size()
             + std::mem::size_of::<u64>()

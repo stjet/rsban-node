@@ -17,4 +17,10 @@ pub trait BlockStore {
         &self,
         transaction: &dyn Transaction,
     ) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
+    fn begin_at_hash(
+        &self,
+        transaction: &dyn Transaction,
+        hash: &BlockHash,
+    ) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
+    fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum>;
 }

@@ -58,15 +58,13 @@ std::shared_ptr<nano::block> nano::lmdb::block_store::get_no_sideband (nano::tra
 
 std::shared_ptr<nano::block> nano::lmdb::block_store::random (nano::transaction const & transaction)
 {
-	nano::block_hash hash;
-	nano::random_pool::generate_block (hash.bytes.data (), hash.bytes.size ());
-	auto existing = begin (transaction, hash);
-	if (existing == end ())
+	std::shared_ptr<nano::block> result;
+	auto block_handle = rsnano::rsn_lmdb_block_store_random (handle, transaction.get_rust_handle ());
+	if (block_handle != nullptr)
 	{
-		existing = begin (transaction);
+		result = std::move (nano::block_handle_to_block (block_handle));
 	}
-	debug_assert (existing != end ());
-	return existing->second.block;
+	return result;
 }
 
 void nano::lmdb::block_store::del (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a)
@@ -106,7 +104,8 @@ nano::store_iterator<nano::block_hash, nano::block_w_sideband> nano::lmdb::block
 
 nano::store_iterator<nano::block_hash, nano::block_w_sideband> nano::lmdb::block_store::begin (nano::transaction const & transaction, nano::block_hash const & hash) const
 {
-	return store.make_iterator<nano::block_hash, nano::block_w_sideband> (transaction, tables::blocks, hash);
+	auto it_handle{ rsnano::rsn_lmdb_block_store_begin_at_hash (handle, transaction.get_rust_handle (), hash.bytes.data ()) };
+	return to_block_iterator (it_handle);
 }
 
 nano::store_iterator<nano::block_hash, nano::block_w_sideband> nano::lmdb::block_store::end () const

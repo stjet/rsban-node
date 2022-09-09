@@ -1758,6 +1758,10 @@ uint8_t * result);
 LmdbIteratorHandle * rsn_lmdb_block_store_begin (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn);
 
+LmdbIteratorHandle * rsn_lmdb_block_store_begin_at_hash (LmdbBlockStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
 void rsn_lmdb_block_store_block_raw_get (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,
@@ -1791,6 +1795,8 @@ void rsn_lmdb_block_store_put (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,
 BlockHandle * block);
+
+BlockHandle * rsn_lmdb_block_store_random (LmdbBlockStoreHandle * handle, TransactionHandle * txn);
 
 void rsn_lmdb_block_store_raw_put (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,

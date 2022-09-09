@@ -203,3 +203,25 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_begin(
     let mut iterator = (*handle).0.begin((*txn).as_txn());
     to_lmdb_iterator_handle(iterator.as_mut())
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_begin_at_hash(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+) -> *mut LmdbIteratorHandle {
+    let hash = BlockHash::from_ptr(hash);
+    let mut iterator = (*handle).0.begin_at_hash((*txn).as_txn(), &hash);
+    to_lmdb_iterator_handle(iterator.as_mut())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_random(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+) -> *mut BlockHandle {
+    match (*handle).0.random((*txn).as_txn()) {
+        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
+        None => ptr::null_mut(),
+    }
+}

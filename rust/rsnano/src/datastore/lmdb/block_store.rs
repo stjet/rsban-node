@@ -177,6 +177,29 @@ impl BlockStore for LmdbBlockStore {
             true,
         ))
     }
+
+    fn begin_at_hash(
+        &self,
+        transaction: &dyn Transaction,
+        hash: &BlockHash,
+    ) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>> {
+        Box::new(LmdbIterator::new(
+            transaction,
+            self.blocks_handle,
+            Some(hash),
+            true,
+        ))
+    }
+
+    fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum> {
+        let hash = BlockHash::random();
+        let mut existing = self.begin_at_hash(transaction, &hash);
+        if existing.is_end() {
+            existing = self.begin(transaction);
+        }
+
+        existing.value().map(|i| i.block.clone())
+    }
 }
 
 /// Fill in our predecessors

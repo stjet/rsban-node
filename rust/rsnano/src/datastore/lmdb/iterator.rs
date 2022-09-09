@@ -192,4 +192,12 @@ where
     fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator> {
         Some(self.raw_iterator.take())
     }
+
+    fn is_end(&self) -> bool {
+        self.raw_iterator.key.mv_size == 0
+    }
+
+    fn value(&self) -> Option<&V> {
+        self.value.as_ref()
+    }
 }

@@ -31,6 +31,8 @@ pub trait WriteTransaction: Transaction {
 
 pub trait DbIterator<K, V> {
     fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator>;
+    fn value(&self) -> Option<&V>;
+    fn is_end(&self) -> bool;
 }
 
 pub struct NullIterator {}
@@ -43,6 +45,14 @@ impl NullIterator {
 
 impl<K, V> DbIterator<K, V> for NullIterator {
     fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator> {
+        None
+    }
+
+    fn is_end(&self) -> bool {
+        true
+    }
+
+    fn value(&self) -> Option<&V> {
         None
     }
 }

@@ -18,6 +18,7 @@ use blake2::digest::{Update, VariableOutput};
 pub use difficulty::*;
 use once_cell::sync::Lazy;
 use primitive_types::U256;
+use rand::{thread_rng, Rng};
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct PublicKey {
@@ -90,6 +91,10 @@ impl BlockHash {
 
     pub fn is_zero(&self) -> bool {
         self.value == [0u8; 32]
+    }
+
+    pub fn random() -> Self {
+        BlockHash::from_bytes(thread_rng().gen())
     }
 
     pub fn from_bytes(value: [u8; 32]) -> Self {

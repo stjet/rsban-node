@@ -8,7 +8,7 @@ use crate::{
         lmdb::{LmdbBlockStore, MdbVal},
         BlockStore,
     },
-    ffi::{copy_hash_bytes, BlockHandle},
+    ffi::{copy_account_bytes, copy_hash_bytes, BlockHandle},
     BlockHash,
 };
 
@@ -156,4 +156,24 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_del(
     (*handle)
         .0
         .del((*txn).as_write_txn(), &BlockHash::from_ptr(hash));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_count(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+) -> u64 {
+    (*handle).0.count((*txn).as_txn()) as u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_account_calculated(
+    handle: *mut LmdbBlockStoreHandle,
+    block: *const BlockHandle,
+    result: *mut u8,
+) {
+    let account = (*handle)
+        .0
+        .account_calculated((*block).block.read().unwrap().as_block());
+    copy_account_bytes(account, result);
 }

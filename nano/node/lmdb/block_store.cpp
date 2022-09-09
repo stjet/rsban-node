@@ -78,7 +78,7 @@ bool nano::lmdb::block_store::exists (nano::transaction const & transaction, nan
 
 uint64_t nano::lmdb::block_store::count (nano::transaction const & transaction_a)
 {
-	return store.count (transaction_a, tables::blocks);
+	return rsnano::rsn_lmdb_block_store_count (handle, transaction_a.get_rust_handle ());
 }
 
 nano::account nano::lmdb::block_store::account (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
@@ -90,13 +90,8 @@ nano::account nano::lmdb::block_store::account (nano::transaction const & transa
 
 nano::account nano::lmdb::block_store::account_calculated (nano::block const & block_a) const
 {
-	debug_assert (block_a.has_sideband ());
-	nano::account result (block_a.account ());
-	if (result.is_zero ())
-	{
-		result = block_a.sideband ().account ();
-	}
-	debug_assert (!result.is_zero ());
+	nano::account result;
+	rsnano::rsn_lmdb_block_store_account_calculated (handle, block_a.get_handle (), result.bytes.data ());
 	return result;
 }
 

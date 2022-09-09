@@ -5,14 +5,14 @@ use crate::{
     },
     deserialize_block_enum,
     utils::{MemoryStream, Stream, StreamAdapter},
-    Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
+    Account, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
 };
 use num_traits::FromPrimitive;
 use std::{ffi::c_void, sync::Arc};
 
 use super::{
-    assert_success, get_raw_lmdb_txn, mdb_del, mdb_get, mdb_put, LmdbEnv, LmdbWriteTransaction,
-    MdbVal,
+    assert_success, get_raw_lmdb_txn, mdb_count, mdb_del, mdb_get, mdb_put, LmdbEnv,
+    LmdbWriteTransaction, MdbVal,
 };
 
 pub struct LmdbBlockStore {
@@ -143,6 +143,21 @@ impl BlockStore for LmdbBlockStore {
             )
         };
         assert_success(status);
+    }
+
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.blocks_handle) }
+    }
+
+    fn account_calculated(&self, block: &dyn Block) -> Account {
+        let result = if block.account().is_zero() {
+            block.sideband().unwrap().account
+        } else {
+            *block.account()
+        };
+
+        debug_assert!(!result.is_zero());
+        result
     }
 }
 

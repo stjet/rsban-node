@@ -1,4 +1,4 @@
-use crate::{Block, BlockEnum, BlockHash};
+use crate::{Account, Block, BlockEnum, BlockHash};
 
 use super::{Transaction, WriteTransaction};
 
@@ -10,4 +10,6 @@ pub trait BlockStore {
     fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum>;
     fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum>;
     fn del(&self, txn: &dyn WriteTransaction, hash: &BlockHash);
+    fn count(&self, txn: &dyn Transaction) -> usize;
+    fn account_calculated(&self, block: &dyn Block) -> Account;
 }

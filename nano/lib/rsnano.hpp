@@ -1746,12 +1746,18 @@ const AccountInfoHandle * info);
 LmdbIteratorHandle * rsn_lmdb_account_store_rbegin (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn);
 
+void rsn_lmdb_block_store_account_calculated (LmdbBlockStoreHandle * handle,
+const BlockHandle * block,
+uint8_t * result);
+
 void rsn_lmdb_block_store_block_raw_get (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,
 MdbVal * value);
 
 uint32_t rsn_lmdb_block_store_blocks_handle (LmdbBlockStoreHandle * handle);
+
+uint64_t rsn_lmdb_block_store_count (LmdbBlockStoreHandle * handle, TransactionHandle * txn);
 
 LmdbBlockStoreHandle * rsn_lmdb_block_store_create (LmdbEnvHandle * env_handle);
 

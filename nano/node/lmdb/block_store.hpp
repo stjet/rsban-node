@@ -98,10 +98,6 @@ namespace lmdb
 		 */
 		MDB_dbi get_blocks_handle () const;
 		void set_blocks_handle (MDB_dbi handle);
-
-	protected:
-		void block_raw_get (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::mdb_val & value) const;
-		static nano::block_type block_type_from_raw (void * data_a);
 	};
 }
 }

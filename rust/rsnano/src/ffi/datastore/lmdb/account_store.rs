@@ -5,18 +5,17 @@ use std::{
 };
 
 use crate::{
-    datastore::{
-        lmdb::{LmdbAccountStore, LmdbReadTransaction},
-        AccountStore, DbIterator, ReadTransaction,
-    },
+    datastore::{lmdb::LmdbAccountStore, AccountStore},
     ffi::{AccountInfoHandle, VoidPointerCallback},
-    Account, AccountInfo,
+    Account,
 };
 
 use super::{
-    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    iterator::{
+        to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
+    },
     lmdb_env::LmdbEnvHandle,
-    TransactionHandle, TransactionType,
+    TransactionHandle,
 };
 
 pub struct LmdbAccountStoreHandle(LmdbAccountStore);
@@ -127,50 +126,11 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_count(
 ) -> usize {
     (*handle).0.count((*txn).as_txn())
 }
-pub type AccountStoreForEachParCallback = extern "C" fn(
-    *mut c_void,
-    *mut TransactionHandle,
-    *mut LmdbIteratorHandle,
-    *mut LmdbIteratorHandle,
-);
-
-struct ForEachParWrapper {
-    action: AccountStoreForEachParCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-}
-
-impl ForEachParWrapper {
-    pub fn execute(
-        &self,
-        txn: &dyn ReadTransaction,
-        begin: &mut dyn DbIterator<Account, AccountInfo>,
-        end: &mut dyn DbIterator<Account, AccountInfo>,
-    ) {
-        let lmdb_txn = txn.as_any().downcast_ref::<LmdbReadTransaction>().unwrap();
-        let lmdb_txn = unsafe {
-            std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(lmdb_txn)
-        };
-        let txn_handle = TransactionHandle::new(TransactionType::ReadRef(lmdb_txn));
-        let begin_handle = to_lmdb_iterator_handle(begin);
-        let end_handle = to_lmdb_iterator_handle(end);
-        (self.action)(self.context, txn_handle, begin_handle, end_handle);
-    }
-}
-
-unsafe impl Send for ForEachParWrapper {}
-unsafe impl Sync for ForEachParWrapper {}
-
-impl Drop for ForEachParWrapper {
-    fn drop(&mut self) {
-        unsafe { (self.delete_context)(self.context) }
-    }
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_account_store_for_each_par(
     handle: *mut LmdbAccountStoreHandle,
-    action: AccountStoreForEachParCallback,
+    action: ForEachParCallback,
     context: *mut c_void,
     delete_context: VoidPointerCallback,
 ) {

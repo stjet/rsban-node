@@ -1,4 +1,5 @@
 use std::{
+    ffi::c_void,
     ptr, slice,
     sync::{Arc, RwLock},
 };
@@ -8,12 +9,16 @@ use crate::{
         lmdb::{LmdbBlockStore, MdbVal},
         BlockStore,
     },
-    ffi::{copy_account_bytes, copy_amount_bytes, copy_hash_bytes, BlockHandle},
+    ffi::{
+        copy_account_bytes, copy_amount_bytes, copy_hash_bytes, BlockHandle, VoidPointerCallback,
+    },
     BlockHash,
 };
 
 use super::{
-    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    iterator::{
+        to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
+    },
     lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
@@ -249,4 +254,32 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_balance_calculated(
         .0
         .balance_calculated(&(*block).block.read().unwrap());
     copy_amount_bytes(result, balance);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_version(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+) -> u8 {
+    (*handle)
+        .0
+        .version((*txn).as_txn(), &BlockHash::from_ptr(hash)) as u8
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_for_each_par(
+    handle: *mut LmdbBlockStoreHandle,
+    action: ForEachParCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let wrapper = ForEachParWrapper {
+        action,
+        context,
+        delete_context,
+    };
+    (*handle)
+        .0
+        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }

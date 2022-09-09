@@ -1,12 +1,13 @@
 use crate::{
     datastore::{
         lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        BlockStore, DbIterator, Transaction, WriteTransaction,
+        parallel_traversal, BlockStore, DbIterator, NullIterator, ReadTransaction, Transaction,
+        WriteTransaction,
     },
     deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
     Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
-    BlockWithSideband,
+    BlockWithSideband, Epoch,
 };
 use num_traits::FromPrimitive;
 use std::{ffi::c_void, sync::Arc};
@@ -191,6 +192,10 @@ impl BlockStore for LmdbBlockStore {
         ))
     }
 
+    fn end(&self) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>> {
+        Box::new(NullIterator::new())
+    }
+
     fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum> {
         let hash = BlockHash::random();
         let mut existing = self.begin_at_hash(transaction, &hash);
@@ -216,6 +221,40 @@ impl BlockStore for LmdbBlockStore {
             BlockEnum::Change(b) => b.sideband().unwrap().balance,
             BlockEnum::State(b) => b.balance(),
         }
+    }
+
+    fn version(&self, txn: &dyn Transaction, hash: &BlockHash) -> crate::Epoch {
+        match self.get(txn, hash) {
+            Some(block) => {
+                if let BlockEnum::State(b) = block {
+                    b.sideband().unwrap().details.epoch
+                } else {
+                    Epoch::Epoch0
+                }
+            }
+            None => Epoch::Epoch0,
+        }
+    }
+
+    fn for_each_par(
+        &self,
+        action: &(dyn Fn(
+            &dyn ReadTransaction,
+            &mut dyn DbIterator<BlockHash, BlockWithSideband>,
+            &mut dyn DbIterator<BlockHash, BlockWithSideband>,
+        ) + Send
+              + Sync),
+    ) {
+        parallel_traversal(&|start, end, is_last| {
+            let mut transaction = self.env.tx_begin_read();
+            let mut begin_it = self.begin_at_hash(&transaction, &start.into());
+            let mut end_it = if !is_last {
+                self.begin_at_hash(&transaction, &end.into())
+            } else {
+                self.end()
+            };
+            action(&mut transaction, begin_it.as_mut(), end_it.as_mut());
+        });
     }
 }
 

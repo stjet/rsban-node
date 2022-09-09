@@ -77,6 +77,8 @@ nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_stor
 	return nano::store_iterator<nano::account, nano::account_info> (nullptr);
 }
 
+namespace
+{
 void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)
 {
 	auto action = static_cast<std::function<void (nano::read_transaction const &, nano::store_iterator<nano::account, nano::account_info>, nano::store_iterator<nano::account, nano::account_info>)> const *> (context);
@@ -87,6 +89,7 @@ void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handl
 }
 void for_each_par_delete_context (void * context)
 {
+}
 }
 
 void nano::lmdb::account_store::for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::account, nano::account_info>, nano::store_iterator<nano::account, nano::account_info>)> const & action_a) const

@@ -140,6 +140,14 @@ impl From<u64> for BlockHash {
     }
 }
 
+impl From<U256> for BlockHash {
+    fn from(value: U256) -> Self {
+        let mut hash = BlockHash::new();
+        value.to_big_endian(&mut hash.value);
+        hash
+    }
+}
+
 fn write_hex_bytes(bytes: &[u8], f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
     for &byte in bytes {
         write!(f, "{:02X}", byte)?;

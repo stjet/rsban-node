@@ -791,7 +791,7 @@ struct DaemonConfigDto
 	NodeRpcConfigDto rpc;
 };
 
-using AccountStoreForEachParCallback = void (*) (void *, TransactionHandle *, LmdbIteratorHandle *, LmdbIteratorHandle *);
+using ForEachParCallback = void (*) (void *, TransactionHandle *, LmdbIteratorHandle *, LmdbIteratorHandle *);
 
 struct LocalVotesResult
 {
@@ -1725,7 +1725,7 @@ const uint8_t * account);
 void rsn_lmdb_account_store_destroy (LmdbAccountStoreHandle * handle);
 
 void rsn_lmdb_account_store_for_each_par (LmdbAccountStoreHandle * handle,
-AccountStoreForEachParCallback action,
+ForEachParCallback action,
 void * context,
 VoidPointerCallback delete_context);
 
@@ -1792,6 +1792,11 @@ bool rsn_lmdb_block_store_exists (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash);
 
+void rsn_lmdb_block_store_for_each_par (LmdbBlockStoreHandle * handle,
+ForEachParCallback action,
+void * context,
+VoidPointerCallback delete_context);
+
 BlockHandle * rsn_lmdb_block_store_get (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash);
@@ -1821,6 +1826,10 @@ const uint8_t * hash,
 uint8_t * result);
 
 void rsn_lmdb_block_store_successor_clear (LmdbBlockStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
+uint8_t rsn_lmdb_block_store_version (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash);
 

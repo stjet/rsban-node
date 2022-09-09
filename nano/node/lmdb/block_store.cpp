@@ -49,16 +49,8 @@ std::shared_ptr<nano::block> nano::lmdb::block_store::get (nano::transaction con
 
 std::shared_ptr<nano::block> nano::lmdb::block_store::get_no_sideband (nano::transaction const & transaction, nano::block_hash const & hash) const
 {
-	nano::mdb_val value;
-	block_raw_get (transaction, hash, value);
-	std::shared_ptr<nano::block> result;
-	if (value.size () != 0)
-	{
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (value.data ()), value.size ());
-		result = nano::deserialize_block (stream);
-		debug_assert (result != nullptr);
-	}
-	return result;
+	auto block_handle = rsnano::rsn_lmdb_block_store_get_no_sideband (handle, transaction.get_rust_handle (), hash.bytes.data ());
+	return nano::block_handle_to_block (block_handle);
 }
 
 std::shared_ptr<nano::block> nano::lmdb::block_store::random (nano::transaction const & transaction)
@@ -76,8 +68,7 @@ std::shared_ptr<nano::block> nano::lmdb::block_store::random (nano::transaction 
 
 void nano::lmdb::block_store::del (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a)
 {
-	auto status = store.del (transaction_a, tables::blocks, hash_a);
-	store.release_assert_success (status);
+	rsnano::rsn_lmdb_block_store_del (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
 }
 
 bool nano::lmdb::block_store::exists (nano::transaction const & transaction, nano::block_hash const & hash)

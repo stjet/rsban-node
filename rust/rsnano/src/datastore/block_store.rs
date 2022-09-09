@@ -8,4 +8,6 @@ pub trait BlockStore {
     fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash;
     fn successor_clear(&self, txn: &dyn WriteTransaction, hash: &BlockHash);
     fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum>;
+    fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum>;
+    fn del(&self, txn: &dyn WriteTransaction, hash: &BlockHash);
 }

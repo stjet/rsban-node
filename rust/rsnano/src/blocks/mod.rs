@@ -316,7 +316,7 @@ pub fn deserialize_block(
     stream: &mut dyn Stream,
     uniquer: Option<&BlockUniquer>,
 ) -> Result<Arc<RwLock<BlockEnum>>> {
-    let block = deserialize_block_enum(block_type, stream)?;
+    let block = deserialize_block_enum_with_type(block_type, stream)?;
 
     let mut block = Arc::new(RwLock::new(block));
 
@@ -327,7 +327,16 @@ pub fn deserialize_block(
     Ok(block)
 }
 
-pub fn deserialize_block_enum(block_type: BlockType, stream: &mut dyn Stream) -> Result<BlockEnum> {
+pub fn deserialize_block_enum(stream: &mut dyn Stream) -> Result<BlockEnum> {
+    let block_type =
+        BlockType::from_u8(stream.read_u8()?).ok_or_else(|| anyhow!("invalid block type"))?;
+    deserialize_block_enum_with_type(block_type, stream)
+}
+
+pub fn deserialize_block_enum_with_type(
+    block_type: BlockType,
+    stream: &mut dyn Stream,
+) -> Result<BlockEnum> {
     let block = match block_type {
         BlockType::Receive => BlockEnum::Receive(ReceiveBlock::deserialize(stream)?),
         BlockType::Open => BlockEnum::Open(OpenBlock::deserialize(stream)?),

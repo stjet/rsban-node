@@ -11,7 +11,8 @@ use num_traits::FromPrimitive;
 use std::{ffi::c_void, sync::Arc};
 
 use super::{
-    assert_success, get_raw_lmdb_txn, mdb_get, mdb_put, LmdbEnv, LmdbWriteTransaction, MdbVal,
+    assert_success, get_raw_lmdb_txn, mdb_del, mdb_get, mdb_put, LmdbEnv, LmdbWriteTransaction,
+    MdbVal,
 };
 
 pub struct LmdbBlockStore {
@@ -111,14 +112,37 @@ impl BlockStore for LmdbBlockStore {
         self.block_raw_get(txn, hash, &mut value);
         if value.mv_size != 0 {
             let mut stream = StreamAdapter::new(value.as_slice());
-            let block_type = BlockType::from_u8(stream.read_u8().unwrap()).unwrap();
-            let mut block = deserialize_block_enum(block_type, &mut stream).unwrap();
-            let sideband = BlockSideband::from_stream(&mut stream, block_type).unwrap();
+            let mut block = deserialize_block_enum(&mut stream).unwrap();
+            let sideband = BlockSideband::from_stream(&mut stream, block.block_type()).unwrap();
             block.as_block_mut().set_sideband(sideband);
             Some(block)
         } else {
             None
         }
+    }
+
+    fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+        let mut value = MdbVal::new();
+        self.block_raw_get(txn, hash, &mut value);
+        if value.mv_size != 0 {
+            let mut stream = StreamAdapter::new(value.as_slice());
+            Some(deserialize_block_enum(&mut stream).unwrap())
+        } else {
+            None
+        }
+    }
+
+    fn del(&self, txn: &dyn WriteTransaction, hash: &BlockHash) {
+        let txn = txn.as_any().downcast_ref::<LmdbWriteTransaction>().unwrap();
+        let status = unsafe {
+            mdb_del(
+                txn.handle,
+                self.blocks_handle,
+                &mut MdbVal::from_slice(hash.as_bytes()),
+                None,
+            )
+        };
+        assert_success(status);
     }
 }
 

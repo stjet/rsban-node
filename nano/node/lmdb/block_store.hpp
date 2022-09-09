@@ -7,15 +7,12 @@
 namespace nano
 {
 using mdb_val = db_val<MDB_val>;
-class block_predecessor_mdb_set;
 namespace lmdb
 {
 	class store;
 	class block_store : public nano::block_store
 	{
-		friend class nano::block_predecessor_mdb_set;
 		rsnano::LmdbBlockStoreHandle * handle;
-		nano::lmdb::store & store;
 
 	public:
 		explicit block_store (nano::lmdb::store & store_a);

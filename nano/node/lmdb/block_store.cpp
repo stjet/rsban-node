@@ -14,8 +14,7 @@ nano::store_iterator<nano::block_hash, nano::block_w_sideband> to_block_iterator
 }
 
 nano::lmdb::block_store::block_store (nano::lmdb::store & store_a) :
-	handle{ rsnano::rsn_lmdb_block_store_create (store_a.env ().handle) },
-	store{ store_a } {};
+	handle{ rsnano::rsn_lmdb_block_store_create (store_a.env ().handle) } {};
 
 nano::lmdb::block_store::~block_store ()
 {

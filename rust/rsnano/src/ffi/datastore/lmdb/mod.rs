@@ -1,5 +1,6 @@
 mod account_store;
 mod block_store;
+mod confirmation_height_store;
 mod iterator;
 mod lmdb_env;
 

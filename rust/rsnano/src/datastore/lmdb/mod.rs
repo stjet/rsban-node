@@ -1,5 +1,6 @@
 mod account_store;
 mod block_store;
+mod confirmation_height_store;
 mod iterator;
 mod lmdb_env;
 mod txn_tracker;
@@ -14,6 +15,7 @@ use std::{
 
 pub use account_store::LmdbAccountStore;
 pub use block_store::LmdbBlockStore;
+pub use confirmation_height_store::LmdbConfirmationHeightStore;
 pub use iterator::{LmdbIterator, LmdbRawIterator};
 pub use lmdb_env::{EnvOptions, LmdbEnv};
 pub use txn_tracker::TxnTracker;

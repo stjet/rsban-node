@@ -11,10 +11,14 @@ namespace lmdb
 	class store;
 	class confirmation_height_store : public nano::confirmation_height_store
 	{
+		rsnano::LmdbConfirmationHeightStoreHandle * handle;
 		nano::lmdb::store & store;
 
 	public:
 		explicit confirmation_height_store (nano::lmdb::store & store_a);
+		~confirmation_height_store ();
+		confirmation_height_store (confirmation_height_store const &) = delete;
+		confirmation_height_store (confirmation_height_store &&) = delete;
 		void put (nano::write_transaction const & transaction_a, nano::account const & account_a, nano::confirmation_height_info const & confirmation_height_info_a) override;
 		bool get (nano::transaction const & transaction_a, nano::account const & account_a, nano::confirmation_height_info & confirmation_height_info_a) override;
 		bool exists (nano::transaction const & transaction_a, nano::account const & account_a) const override;

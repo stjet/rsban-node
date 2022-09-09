@@ -3,8 +3,14 @@
 #include <nano/secure/parallel_traversal.hpp>
 
 nano::lmdb::confirmation_height_store::confirmation_height_store (nano::lmdb::store & store) :
-	store{ store }
+	store{ store },
+	handle{ rsnano::rsn_lmdb_confirmation_height_store_create (store.env ().handle) }
 {
+}
+
+nano::lmdb::confirmation_height_store::~confirmation_height_store ()
+{
+	rsnano::rsn_lmdb_confirmation_height_store_destroy (handle);
 }
 
 void nano::lmdb::confirmation_height_store::put (nano::write_transaction const & transaction, nano::account const & account, nano::confirmation_height_info const & confirmation_height_info)

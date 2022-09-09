@@ -98,6 +98,8 @@ struct LmdbAccountStoreHandle;
 
 struct LmdbBlockStoreHandle;
 
+struct LmdbConfirmationHeightStoreHandle;
+
 struct LmdbEnvHandle;
 
 struct LmdbIteratorHandle;
@@ -1838,6 +1840,10 @@ TransactionHandle * txn,
 const uint8_t * hash);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
+
+LmdbConfirmationHeightStoreHandle * rsn_lmdb_confirmation_height_store_create (LmdbEnvHandle * env_handle);
+
+void rsn_lmdb_confirmation_height_store_destroy (LmdbConfirmationHeightStoreHandle * handle);
 
 void rsn_lmdb_iterator_clear (LmdbIteratorHandle * handle);
 

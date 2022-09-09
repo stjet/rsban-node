@@ -156,8 +156,7 @@ void nano::lmdb::block_store::for_each_par (std::function<void (nano::read_trans
 // Converts a block hash to a block height
 uint64_t nano::lmdb::block_store::account_height (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
-	auto block = get (transaction_a, hash_a);
-	return block->sideband ().height ();
+	return rsnano::rsn_lmdb_block_store_account_height (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
 }
 
 MDB_dbi nano::lmdb::block_store::get_blocks_handle () const

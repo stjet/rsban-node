@@ -283,3 +283,14 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_for_each_par(
         .0
         .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_block_store_account_height(
+    handle: *mut LmdbBlockStoreHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+) -> u64 {
+    (*handle)
+        .0
+        .account_height((*txn).as_txn(), &BlockHash::from_ptr(hash))
+}

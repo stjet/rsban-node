@@ -33,4 +33,5 @@ pub trait BlockStore {
         ) + Send
               + Sync),
     );
+    fn account_height(&self, txn: &dyn Transaction, hash: &BlockHash) -> u64;
 }

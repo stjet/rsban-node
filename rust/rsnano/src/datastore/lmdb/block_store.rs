@@ -256,6 +256,13 @@ impl BlockStore for LmdbBlockStore {
             action(&mut transaction, begin_it.as_mut(), end_it.as_mut());
         });
     }
+
+    fn account_height(&self, txn: &dyn Transaction, hash: &BlockHash) -> u64 {
+        match self.get(txn, hash) {
+            Some(block) => block.as_block().sideband().unwrap().height,
+            None => 0,
+        }
+    }
 }
 
 /// Fill in our predecessors

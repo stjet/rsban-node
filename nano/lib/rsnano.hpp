@@ -1755,6 +1755,10 @@ void rsn_lmdb_block_store_account_calculated (LmdbBlockStoreHandle * handle,
 const BlockHandle * block,
 uint8_t * result);
 
+uint64_t rsn_lmdb_block_store_account_height (LmdbBlockStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
 void rsn_lmdb_block_store_balance (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,

@@ -9,7 +9,6 @@ mod node_flags;
 mod node_pow_server_config;
 mod node_rpc_config;
 mod opencl_config;
-mod rocksdb_config;
 mod rpc_config;
 mod websocket_config;
 mod work_thresholds;

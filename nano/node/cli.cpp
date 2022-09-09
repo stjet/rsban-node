@@ -11,7 +11,6 @@
 namespace
 {
 void reset_confirmation_heights (nano::write_transaction const & transaction, nano::ledger_constants & constants, nano::store & store);
-bool is_using_rocksdb (boost::filesystem::path const & data_path, boost::program_options::variables_map const & vm, std::error_code & ec);
 }
 
 std::string nano::error_cli_messages::message (int ev) const
@@ -60,7 +59,6 @@ void nano::add_node_options (boost::program_options::options_description & descr
 	("confirmation_height_clear", "Clear confirmation height. Requires an <account> option that can be 'all' to clear all accounts")
 	("final_vote_clear", "Clear final votes")
 	("rebuild_database", "Rebuild LMDB database with vacuum for best compaction")
-	("migrate_database_lmdb_to_rocksdb", "Migrates LMDB database to RocksDB")
 	("diagnostics", "Run internal diagnostics")
 	("generate_config", boost::program_options::value<std::string> (), "Write configuration to stdout, populated with defaults suitable for this system. Pass the configuration type node, rpc or tls. See also use_defaults.")
 	("key_create", "Generates a adhoc random keypair and prints it to stdout")
@@ -364,32 +362,16 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	{
 		try
 		{
-			auto using_rocksdb = is_using_rocksdb (data_path, vm, ec);
 			if (!ec)
 			{
 				std::cout << "Vacuuming database copy in ";
 				boost::filesystem::path source_path;
 				boost::filesystem::path backup_path;
 				boost::filesystem::path vacuum_path;
-				if (using_rocksdb)
-				{
-					source_path = data_path / "rocksdb";
-					backup_path = source_path / "backup";
-					vacuum_path = backup_path / "vacuumed";
-					if (!boost::filesystem::exists (vacuum_path))
-					{
-						boost::filesystem::create_directories (vacuum_path);
-					}
-
-					std::cout << source_path << "\n";
-				}
-				else
-				{
-					source_path = data_path / "data.ldb";
-					backup_path = data_path / "backup.vacuum.ldb";
-					vacuum_path = data_path / "vacuumed.ldb";
-					std::cout << data_path << "\n";
-				}
+				source_path = data_path / "data.ldb";
+				backup_path = data_path / "backup.vacuum.ldb";
+				vacuum_path = data_path / "vacuumed.ldb";
+				std::cout << data_path << "\n";
 				std::cout << "This may take a while..." << std::endl;
 
 				bool success = copy_database (data_path, vm, vacuum_path, ec);
@@ -397,19 +379,9 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				{
 					// Note that these throw on failure
 					std::cout << "Finalizing" << std::endl;
-					if (using_rocksdb)
-					{
-						nano::remove_all_files_in_dir (backup_path);
-						nano::move_all_files_to_dir (source_path, backup_path);
-						nano::move_all_files_to_dir (vacuum_path, source_path);
-						boost::filesystem::remove_all (vacuum_path);
-					}
-					else
-					{
-						boost::filesystem::remove (backup_path);
-						boost::filesystem::rename (source_path, backup_path);
-						boost::filesystem::rename (vacuum_path, source_path);
-					}
+					boost::filesystem::remove (backup_path);
+					boost::filesystem::rename (source_path, backup_path);
+					boost::filesystem::rename (vacuum_path, source_path);
 					std::cout << "Vacuum completed" << std::endl;
 				}
 				else
@@ -435,21 +407,12 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	{
 		try
 		{
-			auto using_rocksdb = is_using_rocksdb (data_path, vm, ec);
 			if (!ec)
 			{
 				boost::filesystem::path source_path;
 				boost::filesystem::path snapshot_path;
-				if (using_rocksdb)
-				{
-					source_path = data_path / "rocksdb";
-					snapshot_path = source_path / "backup";
-				}
-				else
-				{
-					source_path = data_path / "data.ldb";
-					snapshot_path = data_path / "snapshot.ldb";
-				}
+				source_path = data_path / "data.ldb";
+				snapshot_path = data_path / "snapshot.ldb";
 
 				std::cout << "Database snapshot of " << source_path << " to " << snapshot_path << " in progress" << std::endl;
 				std::cout << "This may take a while..." << std::endl;
@@ -476,35 +439,6 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		catch (...)
 		{
 			std::cerr << "Snapshot failed (unknown reason)" << std::endl;
-		}
-	}
-	else if (vm.count ("migrate_database_lmdb_to_rocksdb"))
-	{
-		auto data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : nano::working_path ();
-		auto node_flags = nano::inactive_node_flag_defaults ();
-		auto tmp_overrides{ node_flags.config_overrides () };
-		tmp_overrides.push_back ("node.rocksdb.enable=false");
-		node_flags.set_config_overrides (tmp_overrides);
-		nano::update_flags (node_flags, vm);
-		nano::inactive_node node (data_path, node_flags);
-		auto error (false);
-		if (!node.node->init_error ())
-		{
-			std::cout << "Migrating LMDB database to RocksDB, might take a while..." << std::endl;
-			error = node.node->ledger.migrate_lmdb_to_rocksdb (data_path);
-		}
-		else
-		{
-			error = true;
-		}
-
-		if (!error)
-		{
-			std::cout << "Migration completed, after confirming it is correct the data.ldb file can be deleted if no longer required" << std::endl;
-		}
-		else
-		{
-			std::cerr << "There was an error migrating" << std::endl;
 		}
 	}
 	else if (vm.count ("unchecked_clear"))
@@ -1350,32 +1284,5 @@ void reset_confirmation_heights (nano::write_transaction const & transaction, na
 
 	// Then make sure the confirmation height of the genesis account open block is 1
 	store.confirmation_height.put (transaction, constants.genesis->account (), { 1, constants.genesis->hash () });
-}
-
-bool is_using_rocksdb (boost::filesystem::path const & data_path, boost::program_options::variables_map const & vm, std::error_code & ec)
-{
-	nano::network_params network_params{ nano::network_constants::active_network () };
-	nano::daemon_config config{ data_path, network_params };
-
-	// Config overriding
-	auto config_arg (vm.find ("config"));
-	std::vector<std::string> config_overrides;
-	if (config_arg != vm.end ())
-	{
-		config_overrides = nano::config_overrides (config_arg->second.as<std::vector<nano::config_key_value_pair>> ());
-	}
-
-	// config override...
-	auto error = nano::read_node_config_toml (data_path, config, config_overrides);
-	if (!error)
-	{
-		return config.node.rocksdb_config.enable;
-	}
-	else
-	{
-		ec = nano::error_cli::reading_config;
-	}
-
-	return false;
 }
 }

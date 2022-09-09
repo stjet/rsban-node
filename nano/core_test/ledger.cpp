@@ -1,7 +1,6 @@
 #include <nano/lib/stats.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/node/election.hpp>
-#include <nano/node/rocksdb/rocksdb.hpp>
 #include <nano/node/transport/inproc.hpp>
 #include <nano/test_common/ledger.hpp>
 #include <nano/test_common/system.hpp>
@@ -14,11 +13,6 @@ using namespace std::chrono_literals;
 // Init returns an error if it can't open files at the path
 TEST (ledger, store_error)
 {
-	if (nano::rocksdb_config::using_rocksdb_in_tests ())
-	{
-		// Don't test this in rocksdb mode
-		return;
-	}
 	auto ctx = nano::test::context::ledger_empty ();
 }
 
@@ -5535,83 +5529,6 @@ TEST (ledger, hash_root_random)
 		done = (root_hash.first == send2->hash ()) && (root_hash.second == send2->root ().as_block_hash ());
 		ASSERT_LE (iteration, 1000);
 	}
-}
-
-TEST (ledger, migrate_lmdb_to_rocksdb)
-{
-	auto path = nano::unique_path ();
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	boost::asio::ip::address_v6 address (boost::asio::ip::make_address_v6 ("::ffff:127.0.0.1"));
-	uint16_t port = 100;
-	nano::lmdb::store store{ logger, path / "data.ldb", nano::dev::constants };
-	nano::unchecked_map unchecked{ store, false };
-	nano::stat stats{};
-	nano::ledger ledger{ store, stats, nano::dev::constants };
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-
-	std::shared_ptr<nano::block> send = nano::state_block_builder ()
-										.account (nano::dev::genesis_key.pub)
-										.previous (nano::dev::genesis->hash ())
-										.representative (0)
-										.link (nano::account (10))
-										.balance (nano::dev::constants.genesis_amount - 100)
-										.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-										.work (*pool.generate (nano::dev::genesis->hash ()))
-										.build_shared ();
-
-	nano::endpoint_key endpoint_key (address.to_bytes (), port);
-	auto version = 99;
-
-	{
-		auto transaction = store.tx_begin_write ();
-		store.initialize (*transaction, ledger.cache, ledger.constants);
-		ASSERT_FALSE (store.init_error ());
-
-		// Lower the database to the max version unsupported for upgrades
-		store.confirmation_height.put (*transaction, nano::dev::genesis->account (), { 2, send->hash () });
-
-		store.online_weight.put (*transaction, 100, nano::amount (2));
-		store.frontier.put (*transaction, nano::block_hash (2), nano::account (5));
-		store.peer.put (*transaction, endpoint_key);
-
-		store.pending.put (*transaction, nano::pending_key (nano::dev::genesis->account (), send->hash ()), nano::pending_info (nano::dev::genesis->account (), 100, nano::epoch::epoch_0));
-		store.pruned.put (*transaction, send->hash ());
-		store.version.put (*transaction, version);
-		send->sideband_set ({});
-		store.block.put (*transaction, send->hash (), *send);
-		store.final_vote.put (*transaction, send->qualified_root (), nano::block_hash (2));
-	}
-
-	auto error = ledger.migrate_lmdb_to_rocksdb (path);
-	ASSERT_FALSE (error);
-
-	nano::rocksdb::store rocksdb_store{ *logger, path / "rocksdb", nano::dev::constants };
-	nano::unchecked_map rocksdb_unchecked{ rocksdb_store, false };
-	auto rocksdb_transaction (rocksdb_store.tx_begin_read ());
-
-	nano::pending_info pending_info{};
-	ASSERT_FALSE (rocksdb_store.pending.get (*rocksdb_transaction, nano::pending_key (nano::dev::genesis->account (), send->hash ()), pending_info));
-
-	for (auto i = rocksdb_store.online_weight.begin (*rocksdb_transaction); i != rocksdb_store.online_weight.end (); ++i)
-	{
-		ASSERT_EQ (i->first, 100);
-		ASSERT_EQ (i->second, 2);
-	}
-
-	ASSERT_EQ (rocksdb_store.online_weight.count (*rocksdb_transaction), 1);
-
-	auto block1 = rocksdb_store.block.get (*rocksdb_transaction, send->hash ());
-
-	ASSERT_EQ (*send, *block1);
-	ASSERT_TRUE (rocksdb_store.peer.exists (*rocksdb_transaction, endpoint_key));
-	ASSERT_EQ (rocksdb_store.version.get (*rocksdb_transaction), version);
-	ASSERT_EQ (rocksdb_store.frontier.get (*rocksdb_transaction, 2), 5);
-	nano::confirmation_height_info confirmation_height_info;
-	ASSERT_FALSE (rocksdb_store.confirmation_height.get (*rocksdb_transaction, nano::dev::genesis->account (), confirmation_height_info));
-	ASSERT_EQ (confirmation_height_info.height, 2);
-	ASSERT_EQ (confirmation_height_info.frontier, send->hash ());
-	ASSERT_TRUE (rocksdb_store.final_vote.get (*rocksdb_transaction, nano::root (send->previous ())).size () == 1);
-	ASSERT_EQ (rocksdb_store.final_vote.get (*rocksdb_transaction, nano::root (send->previous ()))[0], nano::block_hash (2));
 }
 
 TEST (ledger, unconfirmed_frontiers)

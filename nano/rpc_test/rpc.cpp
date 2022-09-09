@@ -6493,12 +6493,6 @@ TEST (rpc, block_confirmed)
 
 TEST (rpc, database_txn_tracker)
 {
-	if (nano::rocksdb_config::using_rocksdb_in_tests ())
-	{
-		// Don't test this in rocksdb mode
-		return;
-	}
-
 	// First try when database tracking is disabled
 	{
 		nano::test::system system;

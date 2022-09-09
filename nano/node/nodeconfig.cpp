@@ -100,7 +100,6 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.ipc_config = config.ipc_config.to_dto ();
 	dto.diagnostics_config = config.diagnostics_config.to_dto ();
 	dto.stat_config = config.stat_config.to_dto ();
-	dto.rocksdb_config = config.rocksdb_config.to_dto ();
 	dto.lmdb_config = config.lmdb_config.to_dto ();
 	return dto;
 }
@@ -211,7 +210,6 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	ipc_config.load_dto (dto.ipc_config);
 	diagnostics_config.load_dto (dto.diagnostics_config);
 	stat_config.load_dto (dto.stat_config);
-	rocksdb_config.load_dto (dto.rocksdb_config);
 	lmdb_config.load_dto (dto.lmdb_config);
 }
 
@@ -264,12 +262,6 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto stat_config_l (toml.get_required_child ("statistics"));
 			stat_config.deserialize_toml (stat_config_l);
-		}
-
-		if (toml.has_key ("rocksdb"))
-		{
-			auto rocksdb_config_l (toml.get_required_child ("rocksdb"));
-			rocksdb_config.deserialize_toml (rocksdb_config_l);
 		}
 
 		if (toml.has_key ("work_peers"))
@@ -824,7 +816,7 @@ void nano::node_flags::set_disable_max_peers_per_subnetwork (bool value)
 {
 	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_max_peers_per_subnetwork = value; });
 }
-bool nano::node_flags::force_use_write_database_queue () const // For testing only. RocksDB does not use the database queue, but some tests rely on it being used
+bool nano::node_flags::force_use_write_database_queue () const // For testing only
 {
 	return flags_dto ().force_use_write_database_queue;
 }
@@ -832,7 +824,7 @@ void nano::node_flags::set_force_use_write_database_queue (bool value)
 {
 	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.force_use_write_database_queue = value; });
 }
-bool nano::node_flags::disable_search_pending () const // For testing onl
+bool nano::node_flags::disable_search_pending () const // For testing only
 {
 	return flags_dto ().disable_search_pending;
 }

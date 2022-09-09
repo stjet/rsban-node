@@ -6,7 +6,6 @@
 #include <nano/lib/work.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/lmdb/lmdb.hpp>
-#include <nano/node/rocksdb/rocksdb.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/secure/utility.hpp>
 #include <nano/secure/versioning.hpp>
@@ -451,11 +450,6 @@ TEST (unchecked, simple)
 TEST (unchecked, multiple)
 {
 	nano::test::system system{};
-	if (nano::rocksdb_config::using_rocksdb_in_tests ())
-	{
-		// Don't test this in rocksdb mode
-		return;
-	}
 	auto logger{ std::make_shared<nano::logger_mt> () };
 	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
 	nano::unchecked_map unchecked{ *store, false };
@@ -842,11 +836,6 @@ namespace lmdb
 {
 	TEST (mdb_block_store, supported_version_upgrades)
 	{
-		if (nano::rocksdb_config::using_rocksdb_in_tests ())
-		{
-			// Don't test this in rocksdb mode
-			return;
-		}
 		// Check that upgrading from an unsupported version is not supported
 		auto path (nano::unique_path ());
 		auto logger{ std::make_shared<nano::logger_mt> () };
@@ -896,11 +885,6 @@ namespace lmdb
 
 TEST (mdb_block_store, bad_path)
 {
-	if (nano::rocksdb_config::using_rocksdb_in_tests ())
-	{
-		// Don't test this in rocksdb mode
-		return;
-	}
 	auto logger{ std::make_shared<nano::logger_mt> () };
 	nano::lmdb::store store (logger, boost::filesystem::path ("///"), nano::dev::constants);
 	ASSERT_TRUE (store.init_error ());
@@ -1267,11 +1251,6 @@ TEST (block_store, state_block)
 
 TEST (mdb_block_store, sideband_height)
 {
-	if (nano::rocksdb_config::using_rocksdb_in_tests ())
-	{
-		// Don't test this in rocksdb mode
-		return;
-	}
 	auto logger{ std::make_shared<nano::logger_mt> () };
 
 	nano::keypair key1;
@@ -1644,11 +1623,6 @@ namespace lmdb
 {
 	TEST (mdb_block_store, upgrade_v14_v15)
 	{
-		if (nano::rocksdb_config::using_rocksdb_in_tests ())
-		{
-			// Don't test this in rocksdb mode
-			return;
-		}
 		// Extract confirmation height to a separate database
 		auto path (nano::unique_path ());
 		nano::block_builder builder;
@@ -1809,11 +1783,6 @@ namespace lmdb
 
 	TEST (mdb_block_store, upgrade_v15_v16)
 	{
-		if (nano::rocksdb_config::using_rocksdb_in_tests ())
-		{
-			// Don't test this in rocksdb mode
-			return;
-		}
 		auto path (nano::unique_path ());
 		nano::mdb_val value;
 		{
@@ -1858,11 +1827,6 @@ namespace lmdb
 
 	TEST (mdb_block_store, upgrade_v16_v17)
 	{
-		if (nano::rocksdb_config::using_rocksdb_in_tests ())
-		{
-			// Don't test this in rocksdb mode
-			return;
-		}
 		nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
 		nano::block_builder builder;
 		auto block1 = builder
@@ -1950,11 +1914,6 @@ namespace lmdb
 
 	TEST (mdb_block_store, upgrade_v17_v18)
 	{
-		if (nano::rocksdb_config::using_rocksdb_in_tests ())
-		{
-			// Don't test this in rocksdb mode
-			return;
-		}
 		auto path (nano::unique_path ());
 		nano::block_builder builder;
 		nano::keypair key1;
@@ -2261,11 +2220,6 @@ namespace lmdb
 
 	TEST (mdb_block_store, upgrade_v18_v19)
 	{
-		if (nano::rocksdb_config::using_rocksdb_in_tests ())
-		{
-			// Don't test this in rocksdb mode
-			return;
-		}
 		auto path (nano::unique_path ());
 		nano::keypair key1;
 		nano::block_builder builder;
@@ -2400,11 +2354,6 @@ namespace lmdb
 
 	TEST (mdb_block_store, upgrade_v19_v20)
 	{
-		if (nano::rocksdb_config::using_rocksdb_in_tests ())
-		{
-			// Don't test this in rocksdb mode
-			return;
-		}
 		auto path (nano::unique_path ());
 		auto logger{ std::make_shared<nano::logger_mt> () };
 
@@ -2430,11 +2379,6 @@ namespace lmdb
 
 	TEST (mdb_block_store, upgrade_v20_v21)
 	{
-		if (nano::rocksdb_config::using_rocksdb_in_tests ())
-		{
-			// Don't test this in rocksdb mode
-			return;
-		}
 		auto path (nano::unique_path ());
 		auto logger{ std::make_shared<nano::logger_mt> () };
 
@@ -2462,11 +2406,6 @@ namespace lmdb
 
 TEST (mdb_block_store, upgrade_backup)
 {
-	if (nano::rocksdb_config::using_rocksdb_in_tests ())
-	{
-		// Don't test this in rocksdb mode
-		return;
-	}
 	auto dir (nano::unique_path ());
 	namespace fs = boost::filesystem;
 	fs::create_directory (dir);
@@ -2505,11 +2444,6 @@ TEST (mdb_block_store, upgrade_backup)
 // Test various confirmation height values as well as clearing them
 TEST (block_store, confirmation_height)
 {
-	if (nano::rocksdb_config::using_rocksdb_in_tests ())
-	{
-		// Don't test this in rocksdb mode
-		return;
-	}
 	auto path (nano::unique_path ());
 	auto logger{ std::make_shared<nano::logger_mt> () };
 
@@ -2552,11 +2486,6 @@ TEST (block_store, confirmation_height)
 // Test various confirmation height values as well as clearing them
 TEST (block_store, final_vote)
 {
-	if (nano::rocksdb_config::using_rocksdb_in_tests ())
-	{
-		// Don't test this in rocksdb mode as deletions cause inaccurate counts
-		return;
-	}
 	auto path (nano::unique_path ());
 	auto logger{ std::make_shared<nano::logger_mt> () };
 
@@ -2645,67 +2574,6 @@ TEST (block_store, reset_renew_existing_transaction)
 	// Block should exist now
 	auto block_existing (store->block.get (*read_transaction, hash1));
 	ASSERT_NE (nullptr, block_existing);
-}
-
-TEST (block_store, rocksdb_force_test_env_variable)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-
-	// Set environment variable
-	constexpr auto env_var = "TEST_USE_ROCKSDB";
-	auto value = std::getenv (env_var);
-
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-
-	auto mdb_cast = dynamic_cast<nano::lmdb::store *> (store.get ());
-	if (value && boost::lexical_cast<int> (value) == 1)
-	{
-		ASSERT_NE (boost::polymorphic_downcast<nano::rocksdb::store *> (store.get ()), nullptr);
-	}
-	else
-	{
-		ASSERT_NE (mdb_cast, nullptr);
-	}
-}
-
-namespace nano
-{
-// This thest ensures the tombstone_count is increased when there is a delete. The tombstone_count is part of a flush
-// logic bound to the way RocksDB is used by the node.
-TEST (rocksdb_block_store, tombstone_count)
-{
-	if (!nano::rocksdb_config::using_rocksdb_in_tests ())
-	{
-		return;
-	}
-	nano::test::system system{};
-	auto logger{ std::make_shared<nano::logger_mt> () };
-
-	auto store = std::make_unique<nano::rocksdb::store> (*logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-	nano::block_builder builder;
-	auto block = builder
-				 .send ()
-				 .previous (0)
-				 .destination (1)
-				 .balance (2)
-				 .sign (nano::keypair ().prv, 4)
-				 .work (5)
-				 .build_shared ();
-	// Enqueues a block to be saved in the database
-	auto previous = block->previous ();
-	store->unchecked.put (*store->tx_begin_write (), previous, nano::unchecked_info (block));
-	nano::unchecked_key key{ previous, block->hash () };
-	auto check_block_is_listed = [&] (nano::transaction const & transaction_a) {
-		return store->unchecked.exists (transaction_a, key);
-	};
-	// Waits for the block to get saved
-	ASSERT_TIMELY (5s, check_block_is_listed (*store->tx_begin_read ()));
-	ASSERT_EQ (store->tombstone_map.at (nano::tables::unchecked).num_since_last_flush.load (), 0);
-	// Perorms a delete and checks for the tombstone counter
-	store->unchecked.del (*store->tx_begin_write (), nano::unchecked_key (previous, block->hash ()));
-	ASSERT_TIMELY (5s, store->tombstone_map.at (nano::tables::unchecked).num_since_last_flush.load () == 1);
-}
 }
 
 namespace nano

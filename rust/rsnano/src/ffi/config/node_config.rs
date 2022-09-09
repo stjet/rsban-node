@@ -16,7 +16,6 @@ use crate::{
 use super::{
     fill_logging_dto, fill_txn_tracking_config_dto, fill_websocket_config_dto,
     lmdb_config::{fill_lmdb_config_dto, LmdbConfigDto},
-    rocksdb_config::{fill_rocksdb_config_dto, RocksDbConfigDto},
     LoggingDto, TxnTrackingConfigDto,
 };
 
@@ -83,7 +82,6 @@ pub struct NodeConfigDto {
     pub ipc_config: IpcConfigDto,
     pub diagnostics_config: TxnTrackingConfigDto,
     pub stat_config: StatConfigDto,
-    pub rocksdb_config: RocksDbConfigDto,
     pub lmdb_config: LmdbConfigDto,
 }
 
@@ -202,7 +200,6 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
         &cfg.diagnostics_config.txn_tracking,
     );
     fill_stat_config_dto(&mut dto.stat_config, &cfg.stat_config);
-    fill_rocksdb_config_dto(&mut dto.rocksdb_config, &cfg.rocksdb_config);
     fill_lmdb_config_dto(&mut dto.lmdb_config, &cfg.lmdb_config);
 }
 
@@ -319,7 +316,6 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             ipc_config: (&value.ipc_config).try_into()?,
             diagnostics_config: (&value.diagnostics_config).into(),
             stat_config: (&value.stat_config).into(),
-            rocksdb_config: (&value.rocksdb_config).into(),
             lmdb_config: (&value.lmdb_config).into(),
         };
 

@@ -5,7 +5,6 @@
 #include <nano/lib/errors.hpp>
 #include <nano/lib/lmdbconfig.hpp>
 #include <nano/lib/numbers.hpp>
-#include <nano/lib/rocksdbconfig.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/node/ipc/ipc_config.hpp>
 #include <nano/node/logging.hpp>
@@ -105,7 +104,6 @@ public:
 	uint32_t max_queued_requests;
 	std::chrono::seconds max_pruning_age;
 	uint64_t max_pruning_depth;
-	nano::rocksdb_config rocksdb_config;
 	nano::lmdb_config lmdb_config;
 	nano::frontiers_confirmation_mode frontiers_confirmation{ nano::frontiers_confirmation_mode::automatic };
 	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);

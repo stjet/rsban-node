@@ -151,33 +151,6 @@ add_library(
   repcrawler.cpp
   request_aggregator.hpp
   request_aggregator.cpp
-  rocksdb/account_store.hpp
-  rocksdb/account_store.cpp
-  rocksdb/block_store.hpp
-  rocksdb/block_store.cpp
-  rocksdb/confirmation_height_store.hpp
-  rocksdb/confirmation_height_store.cpp
-  rocksdb/final_vote_store.hpp
-  rocksdb/final_vote_store.cpp
-  rocksdb/frontier_store.hpp
-  rocksdb/frontier_store.cpp
-  rocksdb/online_weight_store.hpp
-  rocksdb/online_weight_store.cpp
-  rocksdb/peer_store.hpp
-  rocksdb/peer_store.cpp
-  rocksdb/pending_store.hpp
-  rocksdb/pending_store.cpp
-  rocksdb/pruned_store.hpp
-  rocksdb/pruned_store.cpp
-  rocksdb/unchecked_store.hpp
-  rocksdb/unchecked_store.cpp
-  rocksdb/version_store.hpp
-  rocksdb/version_store.cpp
-  rocksdb/rocksdb.hpp
-  rocksdb/rocksdb.cpp
-  rocksdb/rocksdb_iterator.hpp
-  rocksdb/rocksdb_txn.hpp
-  rocksdb/rocksdb_txn.cpp
   rsnano_callbacks.hpp
   rsnano_callbacks.cpp
   signatures.hpp
@@ -237,7 +210,6 @@ target_link_libraries(
   Boost::system
   Boost::thread
   Boost::boost
-  rocksdb
   ${DISKHASH}
   ${CMAKE_DL_LIBS}
   ${psapi_lib})

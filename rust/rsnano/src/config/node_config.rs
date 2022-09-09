@@ -5,7 +5,7 @@ use crate::{
     stats::StatConfig,
     utils::{get_cpu_count, TomlWriter},
     Account, Amount, DiagnosticsConfig, IpcConfig, LmdbConfig, Logging, NetworkParams, Networks,
-    RocksDbConfig, WebsocketConfig, GXRB_RATIO, XRB_RATIO,
+    WebsocketConfig, GXRB_RATIO, XRB_RATIO,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;
@@ -73,7 +73,6 @@ pub struct NodeConfig {
     pub ipc_config: IpcConfig,
     pub diagnostics_config: DiagnosticsConfig,
     pub stat_config: StatConfig,
-    pub rocksdb_config: RocksDbConfig,
     pub lmdb_config: LmdbConfig,
 }
 
@@ -279,7 +278,6 @@ impl NodeConfig {
             ipc_config: IpcConfig::new(&network_params.network),
             diagnostics_config: DiagnosticsConfig::new(),
             stat_config: StatConfig::new(),
-            rocksdb_config: RocksDbConfig::new(),
             lmdb_config: LmdbConfig::new(),
         }
     }
@@ -427,10 +425,6 @@ impl NodeConfig {
 
         toml.put_child("statistics", &mut |statistics| {
             self.stat_config.serialize_toml(statistics)
-        })?;
-
-        toml.put_child("rocksdb", &mut |rocksdb| {
-            self.rocksdb_config.serialize_toml(rocksdb)
         })?;
 
         toml.put_child("lmdb", &mut |lmdb| self.lmdb_config.serialize_toml(lmdb))?;

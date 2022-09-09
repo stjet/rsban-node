@@ -5,7 +5,6 @@
 #include <nano/lib/lmdbconfig.hpp>
 #include <nano/lib/logger_mt.hpp>
 #include <nano/lib/memory.hpp>
-#include <nano/lib/rocksdbconfig.hpp>
 #include <nano/secure/buffer.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/versioning.hpp>
@@ -549,7 +548,6 @@ enum class tables
 	accounts,
 	blocks,
 	confirmation_height,
-	default_unused, // RocksDB only
 	final_votes,
 	frontiers,
 	meta,
@@ -806,8 +804,6 @@ class unchecked_map;
  */
 class store
 {
-	friend class rocksdb_block_store_tombstone_count_Test;
-
 public:
 	// clang-format off
 	explicit store (
@@ -873,7 +869,7 @@ public:
 	friend class unchecked_map;
 };
 
-std::unique_ptr<nano::store> make_store (std::shared_ptr<nano::logger_mt> logger, boost::filesystem::path const & path, nano::ledger_constants & constants, bool open_read_only = false, bool add_db_postfix = false, nano::rocksdb_config const & rocksdb_config = nano::rocksdb_config{}, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);
+std::unique_ptr<nano::store> make_store (std::shared_ptr<nano::logger_mt> logger, boost::filesystem::path const & path, nano::ledger_constants & constants, bool open_read_only = false, bool add_db_postfix = false, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);
 }
 
 namespace std

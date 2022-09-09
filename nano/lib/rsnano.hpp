@@ -363,13 +363,6 @@ struct StatConfigDto
 	uintptr_t log_samples_filename_len;
 };
 
-struct RocksDbConfigDto
-{
-	bool enable;
-	uint8_t memory_multiplier;
-	uint32_t io_threads;
-};
-
 struct LmdbConfigDto
 {
 	uint8_t sync;
@@ -440,7 +433,6 @@ struct NodeConfigDto
 	IpcConfigDto ipc_config;
 	TxnTrackingConfigDto diagnostics_config;
 	StatConfigDto stat_config;
-	RocksDbConfigDto rocksdb_config;
 	LmdbConfigDto lmdb_config;
 };
 
@@ -2429,8 +2421,6 @@ void rsn_receive_block_source_set (BlockHandle * handle, const uint8_t (*previou
 
 void rsn_remove_temporary_directories ();
 
-void rsn_rocksdb_config_create (RocksDbConfigDto * dto);
-
 int32_t rsn_rpc_config_create (RpcConfigDto * dto, const NetworkConstantsDto * network_constants);
 
 int32_t rsn_rpc_config_create2 (RpcConfigDto * dto,
@@ -2850,8 +2840,6 @@ uint8_t rsn_unchecked_info_verified (const UncheckedInfoHandle * handle);
 void rsn_unchecked_info_verified_set (UncheckedInfoHandle * handle, uint8_t verified);
 
 int32_t rsn_unique_path (uint16_t network, uint8_t * result, uintptr_t size);
-
-bool rsn_using_rocksdb_in_tests ();
 
 bool rsn_validate_batch (const uint8_t * const * messages,
 const uintptr_t * message_lengths,

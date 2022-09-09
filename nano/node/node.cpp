@@ -4,7 +4,6 @@
 #include <nano/node/common.hpp>
 #include <nano/node/daemonconfig.hpp>
 #include <nano/node/node.hpp>
-#include <nano/node/rocksdb/rocksdb.hpp>
 #include <nano/node/telemetry.hpp>
 #include <nano/node/websocket.hpp>
 #include <nano/rpc/rpc.hpp>
@@ -129,7 +128,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, uint16_t peering_port_a, b
 }
 
 nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path const & application_path_a, nano::node_config const & config_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
-	write_database_queue (!flags_a.force_use_write_database_queue () && (config_a.rocksdb_config.enable)),
+	write_database_queue (!flags_a.force_use_write_database_queue ()),
 	io_ctx (io_ctx_a),
 	node_initialized_latch (1),
 	config{ std::make_shared<nano::node_config> (config_a) },
@@ -142,7 +141,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	flags (flags_a),
 	work (work_a),
 	distributed_work (*this),
-	store_impl (nano::make_store (logger, application_path_a, network_params.ledger, flags.read_only (), true, config_a.rocksdb_config, config_a.diagnostics_config.txn_tracking, config_a.block_processor_batch_max_time, config_a.lmdb_config, config_a.backup_before_upgrade)),
+	store_impl (nano::make_store (logger, application_path_a, network_params.ledger, flags.read_only (), true, config_a.diagnostics_config.txn_tracking, config_a.block_processor_batch_max_time, config_a.lmdb_config, config_a.backup_before_upgrade)),
 	store (*store_impl),
 	unchecked{ store, flags.disable_block_processor_unchecked_deletion () },
 	wallets_store_impl (std::make_unique<nano::mdb_wallets_store> (application_path_a / "wallets.ldb", config_a.lmdb_config)),
@@ -1878,12 +1877,7 @@ nano::node_flags const & nano::inactive_node_flag_defaults ()
 	return node_flags;
 }
 
-std::unique_ptr<nano::store> nano::make_store (std::shared_ptr<nano::logger_mt> logger, boost::filesystem::path const & path, nano::ledger_constants & constants, bool read_only, bool add_db_postfix, nano::rocksdb_config const & rocksdb_config, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade)
+std::unique_ptr<nano::store> nano::make_store (std::shared_ptr<nano::logger_mt> logger, boost::filesystem::path const & path, nano::ledger_constants & constants, bool read_only, bool add_db_postfix, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade)
 {
-	if (rocksdb_config.enable)
-	{
-		return std::make_unique<nano::rocksdb::store> (*logger, add_db_postfix ? path / "rocksdb" : path, constants, rocksdb_config, read_only);
-	}
-
 	return std::make_unique<nano::lmdb::store> (logger, add_db_postfix ? path / "data.ldb" : path, constants, txn_tracking_config_a, block_processor_batch_max_time_a, lmdb_config_a, backup_before_upgrade);
 }

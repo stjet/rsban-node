@@ -42,6 +42,11 @@ namespace transport
 				network_version = network_version_a;
 			}
 
+			void set_endpoint (nano::endpoint const & endpoint_a)
+			{
+				endpoint = endpoint_a;
+			}
+
 			nano::endpoint get_endpoint () const override
 			{
 				return endpoint;
@@ -60,11 +65,16 @@ namespace transport
 			nano::endpoint get_peering_endpoint () const override;
 			void set_peering_endpoint (nano::endpoint endpoint) override;
 
+			void disconnect ()
+			{
+				endpoint = nano::endpoint (boost::asio::ip::address_v6::any (), 0);
+			}
+
 		private:
 			nano::node & node;
-			nano::endpoint const endpoint;
 			std::atomic<uint8_t> network_version{ 0 };
 			std::optional<nano::endpoint> peering_endpoint{};
+			nano::endpoint endpoint;
 		};
 	} // namespace fake
 } // namespace transport

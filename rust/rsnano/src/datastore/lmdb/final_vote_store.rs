@@ -59,4 +59,12 @@ impl FinalVoteStore for LmdbFinalVoteStore {
     fn begin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>> {
         Box::new(LmdbIterator::new(txn, self.table_handle, None, true))
     }
+
+    fn begin_at_root(
+        &self,
+        txn: &dyn Transaction,
+        root: &QualifiedRoot,
+    ) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>> {
+        Box::new(LmdbIterator::new(txn, self.table_handle, Some(root), true))
+    }
 }

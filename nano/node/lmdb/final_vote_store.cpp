@@ -75,7 +75,8 @@ void nano::lmdb::final_vote_store::clear (nano::write_transaction const & transa
 
 nano::store_iterator<nano::qualified_root, nano::block_hash> nano::lmdb::final_vote_store::begin (nano::transaction const & transaction, nano::qualified_root const & root) const
 {
-	return store.make_iterator<nano::qualified_root, nano::block_hash> (transaction, tables::final_votes, root);
+	auto it_handle{ rsnano::rsn_lmdb_final_vote_store_begin_at_root (handle, transaction.get_rust_handle (), root.bytes.data ()) };
+	return to_iterator (it_handle);
 }
 
 nano::store_iterator<nano::qualified_root, nano::block_hash> nano::lmdb::final_vote_store::begin (nano::transaction const & transaction) const

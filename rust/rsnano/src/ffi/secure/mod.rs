@@ -8,6 +8,7 @@ mod portmapping_constants;
 mod utility;
 mod voting_constants;
 
+pub use confirmation_height_info::ConfirmationHeightInfoDto;
 pub use network_filter::NetworkFilterHandle;
 pub use network_params::*;
 pub use utility::*;

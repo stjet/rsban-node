@@ -264,8 +264,6 @@ public:
 
 	/** hash of the highest cemented block, the cemented/confirmed frontier */
 	nano::block_hash frontier () const;
-
-private:
 	rsnano::ConfirmationHeightInfoDto dto;
 };
 

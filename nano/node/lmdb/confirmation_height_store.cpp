@@ -15,8 +15,7 @@ nano::lmdb::confirmation_height_store::~confirmation_height_store ()
 
 void nano::lmdb::confirmation_height_store::put (nano::write_transaction const & transaction, nano::account const & account, nano::confirmation_height_info const & confirmation_height_info)
 {
-	auto status = store.put (transaction, tables::confirmation_height, account, confirmation_height_info);
-	store.release_assert_success (status);
+	rsnano::rsn_lmdb_confirmation_height_store_put (handle, transaction.get_rust_handle (), account.bytes.data (), &confirmation_height_info.dto);
 }
 
 bool nano::lmdb::confirmation_height_store::get (nano::transaction const & transaction, nano::account const & account, nano::confirmation_height_info & confirmation_height_info)

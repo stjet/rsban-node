@@ -3,12 +3,12 @@ use std::sync::Arc;
 use crate::{
     datastore::{
         lmdb::{assert_success, mdb_put, MDB_NOTFOUND, MDB_SUCCESS},
-        FinalVoteStore, WriteTransaction,
+        DbIterator, FinalVoteStore, Transaction, WriteTransaction,
     },
     BlockHash, QualifiedRoot,
 };
 
-use super::{get_raw_lmdb_txn, mdb_get, LmdbEnv, MdbVal};
+use super::{get_raw_lmdb_txn, mdb_get, LmdbEnv, LmdbIterator, MdbVal};
 
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash
@@ -54,5 +54,9 @@ impl FinalVoteStore for LmdbFinalVoteStore {
             assert_success(status);
             true
         }
+    }
+
+    fn begin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>> {
+        Box::new(LmdbIterator::new(txn, self.table_handle, None, true))
     }
 }

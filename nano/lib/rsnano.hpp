@@ -1900,6 +1900,9 @@ uint32_t table_handle);
 
 uint32_t rsn_lmdb_confirmation_height_store_table_handle (LmdbConfirmationHeightStoreHandle * handle);
 
+LmdbIteratorHandle * rsn_lmdb_final_vote_store_begin (LmdbFinalVoteStoreHandle * handle,
+TransactionHandle * txn);
+
 LmdbFinalVoteStoreHandle * rsn_lmdb_final_vote_store_create (LmdbEnvHandle * env_handle);
 
 void rsn_lmdb_final_vote_store_destroy (LmdbFinalVoteStoreHandle * handle);

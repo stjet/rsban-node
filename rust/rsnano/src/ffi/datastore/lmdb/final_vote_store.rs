@@ -5,7 +5,11 @@ use crate::{
     BlockHash, QualifiedRoot,
 };
 
-use super::{lmdb_env::LmdbEnvHandle, TransactionHandle};
+use super::{
+    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    lmdb_env::LmdbEnvHandle,
+    TransactionHandle,
+};
 
 pub struct LmdbFinalVoteStoreHandle(LmdbFinalVoteStore);
 
@@ -50,4 +54,13 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_put(
         &QualifiedRoot::from_ptr(root),
         &BlockHash::from_ptr(hash),
     )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_final_vote_store_begin(
+    handle: *mut LmdbFinalVoteStoreHandle,
+    txn: *mut TransactionHandle,
+) -> *mut LmdbIteratorHandle {
+    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    to_lmdb_iterator_handle(iterator.as_mut())
 }

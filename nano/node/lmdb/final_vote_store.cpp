@@ -2,6 +2,20 @@
 #include <nano/node/lmdb/lmdb.hpp>
 #include <nano/secure/parallel_traversal.hpp>
 
+namespace
+{
+nano::store_iterator<nano::qualified_root, nano::block_hash> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
+{
+	if (it_handle == nullptr)
+	{
+		return nano::store_iterator<nano::qualified_root, nano::block_hash> (nullptr);
+	}
+
+	return nano::store_iterator<nano::qualified_root, nano::block_hash> (
+	std::make_unique<nano::mdb_iterator<nano::qualified_root, nano::block_hash>> (it_handle));
+}
+}
+
 nano::lmdb::final_vote_store::final_vote_store (nano::lmdb::store & store) :
 	store{ store }
 {
@@ -66,7 +80,8 @@ nano::store_iterator<nano::qualified_root, nano::block_hash> nano::lmdb::final_v
 
 nano::store_iterator<nano::qualified_root, nano::block_hash> nano::lmdb::final_vote_store::begin (nano::transaction const & transaction) const
 {
-	return store.make_iterator<nano::qualified_root, nano::block_hash> (transaction, tables::final_votes);
+	auto it_handle{ rsnano::rsn_lmdb_final_vote_store_begin (handle, transaction.get_rust_handle ()) };
+	return to_iterator (it_handle);
 }
 
 nano::store_iterator<nano::qualified_root, nano::block_hash> nano::lmdb::final_vote_store::end () const

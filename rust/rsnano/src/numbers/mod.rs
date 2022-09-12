@@ -447,9 +447,29 @@ impl From<&BlockHash> for Root {
     }
 }
 
+#[derive(Default)]
 pub struct QualifiedRoot {
     pub root: Root,
     pub previous: BlockHash,
+}
+
+impl Serialize for QualifiedRoot {
+    fn serialized_size() -> usize {
+        Root::serialized_size() + BlockHash::serialized_size()
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        self.root.serialize(stream)?;
+        self.previous.serialize(stream)
+    }
+}
+
+impl Deserialize<QualifiedRoot> for QualifiedRoot {
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<QualifiedRoot> {
+        let root = Root::deserialize(stream)?;
+        let previous = BlockHash::deserialize(stream)?;
+        Ok(QualifiedRoot { root, previous })
+    }
 }
 
 #[derive(Default)]

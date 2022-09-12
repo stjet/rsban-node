@@ -1,6 +1,7 @@
 mod account_store;
 mod block_store;
 mod confirmation_height_store;
+mod final_vote_store;
 mod ledger;
 pub mod lmdb;
 mod write_database_queue;
@@ -13,6 +14,7 @@ use std::{
 pub use account_store::AccountStore;
 pub use block_store::BlockStore;
 pub use confirmation_height_store::ConfirmationHeightStore;
+pub use final_vote_store::FinalVoteStore;
 pub use ledger::Ledger;
 use primitive_types::U256;
 pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};

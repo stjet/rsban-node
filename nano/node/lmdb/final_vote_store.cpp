@@ -3,7 +3,15 @@
 #include <nano/secure/parallel_traversal.hpp>
 
 nano::lmdb::final_vote_store::final_vote_store (nano::lmdb::store & store) :
-	store{ store } {};
+	store{ store }
+{
+	handle = rsnano::rsn_lmdb_final_vote_store_create (store.env ().handle);
+};
+
+nano::lmdb::final_vote_store::~final_vote_store ()
+{
+	rsnano::rsn_lmdb_final_vote_store_destroy (handle);
+}
 
 bool nano::lmdb::final_vote_store::put (nano::write_transaction const & transaction, nano::qualified_root const & root, nano::block_hash const & hash)
 {
@@ -86,4 +94,14 @@ void nano::lmdb::final_vote_store::for_each_par (std::function<void (nano::read_
 		auto transaction (this->store.tx_begin_read ());
 		action_a (*transaction, this->begin (*transaction, start), !is_last ? this->begin (*transaction, end) : this->end ());
 	});
+}
+
+MDB_dbi nano::lmdb::final_vote_store::table_handle () const
+{
+	return rsnano::rsn_lmdb_final_vote_store_table_handle (handle);
+}
+
+void nano::lmdb::final_vote_store::set_table_handle (MDB_dbi dbi)
+{
+	rsnano::rsn_lmdb_final_vote_store_set_table_handle (handle, dbi);
 }

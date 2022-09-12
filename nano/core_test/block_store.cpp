@@ -2389,13 +2389,13 @@ namespace lmdb
 			auto transaction (store.tx_begin_write ());
 			store.initialize (*transaction, ledger.cache, ledger.constants);
 			// Delete pruned table
-			ASSERT_FALSE (mdb_drop (store.env ().tx (*transaction), store.final_vote_store.final_votes_handle, 1));
+			ASSERT_FALSE (mdb_drop (store.env ().tx (*transaction), store.final_vote_store.table_handle (), 1));
 			store.version.put (*transaction, 20);
 		}
 		// Upgrading should create the table
 		nano::lmdb::store store (logger, path, nano::dev::constants);
 		ASSERT_FALSE (store.init_error ());
-		ASSERT_NE (store.final_vote_store.final_votes_handle, 0);
+		ASSERT_NE (store.final_vote_store.table_handle (), 0);
 
 		// Version should be correct
 		auto transaction (store.tx_begin_read ());

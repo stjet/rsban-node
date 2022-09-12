@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::{
-    assert_success, exists, get_raw_lmdb_txn, mdb_del, mdb_get, mdb_put, LmdbEnv,
+    assert_success, exists, get_raw_lmdb_txn, mdb_count, mdb_del, mdb_get, mdb_put, LmdbEnv,
     LmdbWriteTransaction, MdbVal, OwnedMdbVal,
 };
 
@@ -88,5 +88,9 @@ impl ConfirmationHeightStore for LmdbConfirmationHeightStore {
             )
         };
         assert_success(status);
+    }
+
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.table_handle) }
     }
 }

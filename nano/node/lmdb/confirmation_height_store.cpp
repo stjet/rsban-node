@@ -36,7 +36,7 @@ void nano::lmdb::confirmation_height_store::del (nano::write_transaction const &
 
 uint64_t nano::lmdb::confirmation_height_store::count (nano::transaction const & transaction_a)
 {
-	return store.count (transaction_a, tables::confirmation_height);
+	return rsnano::rsn_lmdb_confirmation_height_store_count (handle, transaction_a.get_rust_handle ());
 }
 
 void nano::lmdb::confirmation_height_store::clear (nano::write_transaction const & transaction_a, nano::account const & account_a)

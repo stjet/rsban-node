@@ -6,4 +6,5 @@ pub trait ConfirmationHeightStore {
     fn get(&self, txn: &dyn Transaction, account: &Account) -> Option<ConfirmationHeightInfo>;
     fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool;
     fn del(&self, txn: &dyn Transaction, account: &Account);
+    fn count(&self, txn: &dyn Transaction) -> usize;
 }

@@ -1849,6 +1849,9 @@ const uint8_t * hash);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 
+uint64_t rsn_lmdb_confirmation_height_store_count (LmdbConfirmationHeightStoreHandle * handle,
+TransactionHandle * txn);
+
 LmdbConfirmationHeightStoreHandle * rsn_lmdb_confirmation_height_store_create (LmdbEnvHandle * env_handle);
 
 void rsn_lmdb_confirmation_height_store_del (LmdbConfirmationHeightStoreHandle * handle,

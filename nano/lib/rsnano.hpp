@@ -194,6 +194,13 @@ struct BlockDetailsDto
 	bool is_epoch;
 };
 
+struct BlockHashArrayDto
+{
+	const uint8_t * data;
+	uintptr_t count;
+	void * raw_data;
+};
+
 struct BlockSidebandDto
 {
 	uint64_t height;
@@ -1097,6 +1104,8 @@ bool rsn_block_has_sideband (const BlockHandle * block);
 
 void rsn_block_hash (const BlockHandle * handle, uint8_t (*hash)[32]);
 
+void rsn_block_hash_array_destroy (BlockHashArrayDto * data);
+
 void rsn_block_previous (const BlockHandle * handle, uint8_t (*result)[32]);
 
 BlockProcessorHandle * rsn_block_processor_create (void * handle);
@@ -1906,6 +1915,11 @@ TransactionHandle * txn);
 LmdbIteratorHandle * rsn_lmdb_final_vote_store_begin_at_root (LmdbFinalVoteStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * root);
+
+void rsn_lmdb_final_vote_store_begin_get (LmdbFinalVoteStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * root,
+BlockHashArrayDto * result);
 
 LmdbFinalVoteStoreHandle * rsn_lmdb_final_vote_store_create (LmdbEnvHandle * env_handle);
 

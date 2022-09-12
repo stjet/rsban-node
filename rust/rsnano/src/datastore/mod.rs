@@ -35,7 +35,9 @@ pub trait WriteTransaction: Transaction {
 
 pub trait DbIterator<K, V> {
     fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator>;
+    fn current(&self) -> Option<(&K, &V)>;
     fn value(&self) -> Option<&V>;
+    fn next(&mut self);
     fn is_end(&self) -> bool;
 }
 
@@ -59,6 +61,12 @@ impl<K, V> DbIterator<K, V> for NullIterator {
     fn value(&self) -> Option<&V> {
         None
     }
+
+    fn current(&self) -> Option<(&K, &V)> {
+        None
+    }
+
+    fn next(&mut self) {}
 }
 
 pub fn parallel_traversal(action: &(impl Fn(U256, U256, bool) + Send + Sync)) {

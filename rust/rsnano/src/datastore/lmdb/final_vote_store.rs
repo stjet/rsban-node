@@ -5,7 +5,7 @@ use crate::{
         lmdb::{assert_success, mdb_put, MDB_NOTFOUND, MDB_SUCCESS},
         DbIterator, FinalVoteStore, Transaction, WriteTransaction,
     },
-    BlockHash, QualifiedRoot,
+    BlockHash, QualifiedRoot, Root,
 };
 
 use super::{get_raw_lmdb_txn, mdb_get, LmdbEnv, LmdbIterator, MdbVal};
@@ -66,5 +66,25 @@ impl FinalVoteStore for LmdbFinalVoteStore {
         root: &QualifiedRoot,
     ) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>> {
         Box::new(LmdbIterator::new(txn, self.table_handle, Some(root), true))
+    }
+
+    fn get(&self, txn: &dyn Transaction, root: Root) -> Vec<BlockHash> {
+        let mut result = Vec::new();
+        let key_start = QualifiedRoot {
+            root,
+            previous: BlockHash::new(),
+        };
+
+        let mut i = self.begin_at_root(txn, &key_start);
+        while let Some((k, v)) = i.current() {
+            if k.root != root {
+                break;
+            }
+
+            result.push(*v);
+            i.next();
+        }
+
+        result
     }
 }

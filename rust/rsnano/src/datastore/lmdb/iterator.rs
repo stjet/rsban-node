@@ -162,25 +162,34 @@ where
             direction_asc,
             K::serialized_size(),
         );
-        let key = if raw_iterator.key.mv_size > 0 {
-            K::deserialize(&mut StreamAdapter::new(raw_iterator.key.as_slice())).unwrap()
-        } else {
-            Default::default()
-        };
-        let value = if raw_iterator.value.mv_size > 0 {
-            Some(V::deserialize(&mut StreamAdapter::new(raw_iterator.value.as_slice())).unwrap())
-        } else {
-            None
-        };
-        Self {
-            key,
-            value,
+        let mut result = Self {
+            key: Default::default(),
+            value: None,
             raw_iterator,
-        }
+        };
+        result.load_current();
+        result
     }
 
     pub fn as_raw(self) -> LmdbRawIterator {
         self.raw_iterator
+    }
+
+    fn load_current(&mut self) {
+        self.key = if self.raw_iterator.key.mv_size > 0 {
+            K::deserialize(&mut StreamAdapter::new(self.raw_iterator.key.as_slice())).unwrap()
+        } else {
+            Default::default()
+        };
+
+        self.value = if self.raw_iterator.value.mv_size > 0 {
+            Some(
+                V::deserialize(&mut StreamAdapter::new(self.raw_iterator.value.as_slice()))
+                    .unwrap(),
+            )
+        } else {
+            None
+        };
     }
 }
 
@@ -199,5 +208,18 @@ where
 
     fn value(&self) -> Option<&V> {
         self.value.as_ref()
+    }
+
+    fn current(&self) -> Option<(&K, &V)> {
+        if let Some(v) = self.value.as_ref() {
+            Some((&self.key, v))
+        } else {
+            None
+        }
+    }
+
+    fn next(&mut self) {
+        self.raw_iterator.next();
+        self.load_current();
     }
 }

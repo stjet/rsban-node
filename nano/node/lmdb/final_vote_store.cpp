@@ -34,12 +34,27 @@ bool nano::lmdb::final_vote_store::put (nano::write_transaction const & transact
 
 std::vector<nano::block_hash> nano::lmdb::final_vote_store::get (nano::transaction const & transaction, nano::root const & root_a)
 {
+	//	std::vector<nano::block_hash> result;
+	//	nano::qualified_root key_start{ root_a.raw, 0 };
+	//	for (auto i = begin (transaction, key_start), n = end (); i != n && nano::qualified_root{ i->first }.root () == root_a; ++i)
+	//	{
+	//		result.push_back (i->second);
+	//
+	//
+	//	}
+	//
+	//	return result;
+
+	rsnano::BlockHashArrayDto dto;
+	rsnano::rsn_lmdb_final_vote_store_begin_get (handle, transaction.get_rust_handle (), root_a.bytes.data (), &dto);
 	std::vector<nano::block_hash> result;
-	nano::qualified_root key_start{ root_a.raw, 0 };
-	for (auto i = begin (transaction, key_start), n = end (); i != n && nano::qualified_root{ i->first }.root () == root_a; ++i)
+	for (auto i = 0; i < dto.count / 32; ++i)
 	{
-		result.push_back (i->second);
+		nano::block_hash hash;
+		std::copy (dto.data + (i * 32), dto.data + ((i + 1) * 32), std::begin (hash.bytes));
+		result.push_back (hash);
 	}
+	rsnano::rsn_block_hash_array_destroy (&dto);
 	return result;
 }
 

@@ -7,6 +7,7 @@ mod lmdb_env;
 mod txn_tracker;
 
 use std::{
+    convert::TryFrom,
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
     path::Path,
@@ -24,7 +25,7 @@ pub use txn_tracker::TxnTracker;
 
 use crate::{
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
-    Account,
+    Account, BlockHash,
 };
 
 use super::{ReadTransaction, Transaction, WriteTransaction};
@@ -262,6 +263,20 @@ impl Default for MdbVal {
 impl From<&Account> for MdbVal {
     fn from(a: &Account) -> Self {
         MdbVal::from_slice(a.as_bytes())
+    }
+}
+
+impl From<&BlockHash> for MdbVal {
+    fn from(hash: &BlockHash) -> Self {
+        MdbVal::from_slice(hash.as_bytes())
+    }
+}
+impl TryFrom<&MdbVal> for BlockHash {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &MdbVal) -> Result<Self, Self::Error> {
+        let bytes = value.as_slice().try_into()?;
+        Ok(BlockHash::from_bytes(bytes))
     }
 }
 

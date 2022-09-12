@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
-use crate::datastore::lmdb::LmdbFinalVoteStore;
+use crate::{
+    datastore::{lmdb::LmdbFinalVoteStore, FinalVoteStore},
+    BlockHash, QualifiedRoot,
+};
 
-use super::lmdb_env::LmdbEnvHandle;
+use super::{lmdb_env::LmdbEnvHandle, TransactionHandle};
 
 pub struct LmdbFinalVoteStoreHandle(LmdbFinalVoteStore);
 
@@ -33,4 +36,18 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_set_table_handle(
     table_handle: u32,
 ) {
     (*handle).0.table_handle = table_handle;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_final_vote_store_put(
+    handle: *mut LmdbFinalVoteStoreHandle,
+    txn: *mut TransactionHandle,
+    root: *const u8,
+    hash: *const u8,
+) -> bool {
+    (*handle).0.put(
+        (*txn).as_write_txn(),
+        &QualifiedRoot::from_ptr(root),
+        &BlockHash::from_ptr(hash),
+    )
 }

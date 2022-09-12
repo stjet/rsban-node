@@ -403,6 +403,7 @@ impl Root {
             inner: HashOrAccount::from_bytes(bytes),
         }
     }
+
     pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         HashOrAccount::deserialize(stream).map(|inner| Root { inner })
     }
@@ -444,6 +445,11 @@ impl From<&BlockHash> for Root {
     fn from(hash: &BlockHash) -> Self {
         Root::from_bytes(hash.to_bytes())
     }
+}
+
+pub struct QualifiedRoot {
+    pub root: Root,
+    pub previous: BlockHash,
 }
 
 #[derive(Default)]
@@ -661,5 +667,14 @@ mod tests {
         let signature_b = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
         assert_eq!(signature_a, signature_b);
         Ok(())
+    }
+}
+
+impl QualifiedRoot {
+    pub fn to_bytes(&self) -> [u8; 64] {
+        let mut result = [0; 64];
+        result[..32].copy_from_slice(self.root.as_bytes());
+        result[32..].copy_from_slice(self.previous.as_bytes());
+        result
     }
 }

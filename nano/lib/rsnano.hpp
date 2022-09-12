@@ -1904,6 +1904,11 @@ LmdbFinalVoteStoreHandle * rsn_lmdb_final_vote_store_create (LmdbEnvHandle * env
 
 void rsn_lmdb_final_vote_store_destroy (LmdbFinalVoteStoreHandle * handle);
 
+bool rsn_lmdb_final_vote_store_put (LmdbFinalVoteStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * root,
+const uint8_t * hash);
+
 void rsn_lmdb_final_vote_store_set_table_handle (LmdbFinalVoteStoreHandle * handle,
 uint32_t table_handle);
 

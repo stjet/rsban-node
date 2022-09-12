@@ -51,7 +51,7 @@ pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
 use crate::{
-    utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount, RawKey, Root,
+    utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount, QualifiedRoot, RawKey, Root,
     RunningWithValgrindCallback, Signature, RUNNING_WITH_VALGRIND,
 };
 pub use network::ChannelTcpObserverWeakPtr;
@@ -100,6 +100,15 @@ impl HashOrAccount {
 impl Root {
     unsafe fn from_ptr(ptr: *const u8) -> Self {
         Root::from_bytes(into_32_byte_array(ptr))
+    }
+}
+
+impl QualifiedRoot {
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
+        QualifiedRoot {
+            root: Root::from_ptr(ptr),
+            previous: BlockHash::from_ptr(ptr.add(32)),
+        }
     }
 }
 

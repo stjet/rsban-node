@@ -15,20 +15,7 @@ nano::lmdb::final_vote_store::~final_vote_store ()
 
 bool nano::lmdb::final_vote_store::put (nano::write_transaction const & transaction, nano::qualified_root const & root, nano::block_hash const & hash)
 {
-	nano::mdb_val value;
-	auto status = store.get (transaction, tables::final_votes, root, value);
-	release_assert (store.success (status) || store.not_found (status));
-	bool result (true);
-	if (store.success (status))
-	{
-		result = static_cast<nano::block_hash> (value) == hash;
-	}
-	else
-	{
-		status = store.put (transaction, tables::final_votes, root, hash);
-		store.release_assert_success (status);
-	}
-	return result;
+	return rsnano::rsn_lmdb_final_vote_store_put (handle, transaction.get_rust_handle (), root.bytes.data (), hash.bytes.data ());
 }
 
 std::vector<nano::block_hash> nano::lmdb::final_vote_store::get (nano::transaction const & transaction, nano::root const & root_a)

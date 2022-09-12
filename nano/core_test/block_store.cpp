@@ -1725,7 +1725,7 @@ namespace lmdb
 			store.account.del (*transaction, nano::dev::genesis->account ());
 
 			// Confirmation height for the account should be deleted
-			ASSERT_TRUE (mdb_get (store.env ().tx (*transaction), store.confirmation_height_store.confirmation_height_handle,
+			ASSERT_TRUE (mdb_get (store.env ().tx (*transaction), store.confirmation_height_store.table_handle (),
 			nano::mdb_val (nano::dev::genesis->account ()), value));
 		}
 
@@ -2646,7 +2646,7 @@ namespace lmdb
 
 	void modify_confirmation_height_to_v15 (nano::lmdb::store & store, nano::transaction const & transaction, nano::account const & account, uint64_t confirmation_height)
 	{
-		auto status (mdb_put (store.env ().tx (transaction), store.confirmation_height_store.confirmation_height_handle, nano::mdb_val (account), nano::mdb_val (confirmation_height), 0));
+		auto status (mdb_put (store.env ().tx (transaction), store.confirmation_height_store.table_handle (), nano::mdb_val (account), nano::mdb_val (confirmation_height), 0));
 		ASSERT_EQ (status, 0);
 	}
 }

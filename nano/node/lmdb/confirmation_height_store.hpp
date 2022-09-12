@@ -35,7 +35,8 @@ namespace lmdb
 		 * Confirmation height of an account, and the hash for the block at that height
 		 * nano::account -> uint64_t, nano::block_hash
 		 */
-		MDB_dbi confirmation_height_handle{ 0 };
+		MDB_dbi table_handle () const;
+		void set_table_handle (MDB_dbi handle_a);
 	};
 }
 }

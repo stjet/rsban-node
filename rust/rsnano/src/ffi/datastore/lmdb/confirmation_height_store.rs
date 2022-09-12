@@ -21,3 +21,18 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_destroy(
 ) {
     drop(Box::from_raw(handle))
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_table_handle(
+    handle: *mut LmdbConfirmationHeightStoreHandle,
+) -> u32 {
+    (*handle).0.table_handle
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_set_table_handle(
+    handle: *mut LmdbConfirmationHeightStoreHandle,
+    table_handle: u32,
+) {
+    (*handle).0.table_handle = table_handle;
+}

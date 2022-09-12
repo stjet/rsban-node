@@ -87,3 +87,13 @@ void nano::lmdb::confirmation_height_store::for_each_par (std::function<void (na
 		action_a (*transaction, this->begin (*transaction, start), !is_last ? this->begin (*transaction, end) : this->end ());
 	});
 }
+
+MDB_dbi nano::lmdb::confirmation_height_store::table_handle () const
+{
+	return rsnano::rsn_lmdb_confirmation_height_store_table_handle (handle);
+}
+
+void nano::lmdb::confirmation_height_store::set_table_handle (MDB_dbi handle_a)
+{
+	rsnano::rsn_lmdb_confirmation_height_store_set_table_handle (handle, handle_a);
+}

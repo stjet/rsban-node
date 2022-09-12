@@ -20,7 +20,10 @@ pub use iterator::{LmdbIterator, LmdbRawIterator};
 pub use lmdb_env::{EnvOptions, LmdbEnv};
 pub use txn_tracker::TxnTracker;
 
-use crate::utils::{MemoryStream, Serialize};
+use crate::{
+    utils::{MemoryStream, Serialize, Stream, StreamAdapter},
+    Account,
+};
 
 use super::{ReadTransaction, Transaction, WriteTransaction};
 
@@ -235,11 +238,21 @@ impl MdbVal {
     pub fn as_slice(&self) -> &[u8] {
         unsafe { std::slice::from_raw_parts(self.mv_data as *const u8, self.mv_size) }
     }
+
+    pub fn as_stream(&self) -> impl Stream + '_ {
+        StreamAdapter::new(self.as_slice())
+    }
 }
 
 impl Default for MdbVal {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl From<&Account> for MdbVal {
+    fn from(a: &Account) -> Self {
+        MdbVal::from_slice(a.as_bytes())
     }
 }
 

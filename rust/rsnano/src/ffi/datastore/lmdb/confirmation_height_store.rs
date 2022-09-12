@@ -54,3 +54,26 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_put(
         &ConfirmationHeightInfo::from(&*info),
     );
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_get(
+    handle: *mut LmdbConfirmationHeightStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    info: *mut ConfirmationHeightInfoDto,
+) -> bool {
+    let result = (*handle)
+        .0
+        .get((*txn).as_txn(), &Account::from_ptr(account));
+
+    match result {
+        Some(i) => {
+            (*info) = i.into();
+            true
+        }
+        None => {
+            *info = ConfirmationHeightInfo::default().into();
+            false
+        }
+    }
+}

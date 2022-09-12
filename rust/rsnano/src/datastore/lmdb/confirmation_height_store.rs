@@ -1,11 +1,17 @@
 use std::sync::Arc;
 
 use crate::{
-    datastore::{ConfirmationHeightStore, WriteTransaction},
+    datastore::{
+        lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
+        ConfirmationHeightStore, WriteTransaction,
+    },
     ConfirmationHeightInfo,
 };
 
-use super::{assert_success, mdb_put, LmdbEnv, LmdbWriteTransaction, MdbVal, OwnedMdbVal};
+use super::{
+    assert_success, get_raw_lmdb_txn, mdb_get, mdb_put, LmdbEnv, LmdbWriteTransaction, MdbVal,
+    OwnedMdbVal,
+};
 
 pub struct LmdbConfirmationHeightStore {
     env: Arc<LmdbEnv>,
@@ -41,5 +47,30 @@ impl ConfirmationHeightStore for LmdbConfirmationHeightStore {
             )
         };
         assert_success(status);
+    }
+
+    fn get(
+        &self,
+        txn: &dyn crate::datastore::Transaction,
+        account: &crate::Account,
+    ) -> Option<ConfirmationHeightInfo> {
+        let mut key = MdbVal::from(account);
+        let mut data = MdbVal::new();
+        let status = unsafe {
+            mdb_get(
+                get_raw_lmdb_txn(txn),
+                self.table_handle,
+                &mut key,
+                &mut data,
+            )
+        };
+        assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
+
+        if status == MDB_SUCCESS {
+            let mut stream = data.as_stream();
+            ConfirmationHeightInfo::deserialize(&mut stream).ok()
+        } else {
+            None
+        }
     }
 }

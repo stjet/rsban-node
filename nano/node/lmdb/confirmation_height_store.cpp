@@ -26,7 +26,7 @@ bool nano::lmdb::confirmation_height_store::get (nano::transaction const & trans
 
 bool nano::lmdb::confirmation_height_store::exists (nano::transaction const & transaction, nano::account const & account) const
 {
-	return store.exists (transaction, tables::confirmation_height, account);
+	return rsnano::rsn_lmdb_confirmation_height_store_exists (handle, transaction.get_rust_handle (), account.bytes.data ());
 }
 
 void nano::lmdb::confirmation_height_store::del (nano::write_transaction const & transaction, nano::account const & account)

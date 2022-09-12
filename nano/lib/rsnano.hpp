@@ -1853,6 +1853,10 @@ LmdbConfirmationHeightStoreHandle * rsn_lmdb_confirmation_height_store_create (L
 
 void rsn_lmdb_confirmation_height_store_destroy (LmdbConfirmationHeightStoreHandle * handle);
 
+bool rsn_lmdb_confirmation_height_store_exists (LmdbConfirmationHeightStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account);
+
 bool rsn_lmdb_confirmation_height_store_get (LmdbConfirmationHeightStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account,

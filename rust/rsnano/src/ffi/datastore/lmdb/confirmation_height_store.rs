@@ -77,3 +77,14 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_get(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_exists(
+    handle: *mut LmdbConfirmationHeightStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+) -> bool {
+    (*handle)
+        .0
+        .exists((*txn).as_txn(), &Account::from_ptr(account))
+}

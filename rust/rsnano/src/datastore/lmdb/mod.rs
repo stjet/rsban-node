@@ -189,6 +189,13 @@ pub fn ensure_success(status: i32) -> anyhow::Result<()> {
     }
 }
 
+pub fn exists(txn: &dyn Transaction, table: u32, key: &mut MdbVal) -> bool {
+    let mut junk = MdbVal::new();
+    let status = unsafe { mdb_get(get_raw_lmdb_txn(txn), table, key, &mut junk) };
+    assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
+    status == MDB_SUCCESS
+}
+
 #[repr(C)]
 #[derive(PartialEq, Eq)]
 pub enum MdbCursorOp {

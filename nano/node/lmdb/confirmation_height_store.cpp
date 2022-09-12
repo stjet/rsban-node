@@ -31,8 +31,7 @@ bool nano::lmdb::confirmation_height_store::exists (nano::transaction const & tr
 
 void nano::lmdb::confirmation_height_store::del (nano::write_transaction const & transaction, nano::account const & account)
 {
-	auto status = store.del (transaction, tables::confirmation_height, account);
-	store.release_assert_success (status);
+	rsnano::rsn_lmdb_confirmation_height_store_del (handle, transaction.get_rust_handle (), account.bytes.data ());
 }
 
 uint64_t nano::lmdb::confirmation_height_store::count (nano::transaction const & transaction_a)

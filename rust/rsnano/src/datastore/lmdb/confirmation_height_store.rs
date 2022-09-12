@@ -9,8 +9,8 @@ use crate::{
 };
 
 use super::{
-    assert_success, exists, get_raw_lmdb_txn, mdb_get, mdb_put, LmdbEnv, LmdbWriteTransaction,
-    MdbVal, OwnedMdbVal,
+    assert_success, exists, get_raw_lmdb_txn, mdb_del, mdb_get, mdb_put, LmdbEnv,
+    LmdbWriteTransaction, MdbVal, OwnedMdbVal,
 };
 
 pub struct LmdbConfirmationHeightStore {
@@ -76,5 +76,17 @@ impl ConfirmationHeightStore for LmdbConfirmationHeightStore {
 
     fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
         exists(txn, self.table_handle, &mut MdbVal::from(account))
+    }
+
+    fn del(&self, txn: &dyn Transaction, account: &Account) {
+        let status = unsafe {
+            mdb_del(
+                get_raw_lmdb_txn(txn),
+                self.table_handle,
+                &mut MdbVal::from(account),
+                None,
+            )
+        };
+        assert_success(status);
     }
 }

@@ -25,12 +25,6 @@ impl ConfirmationHeightInfo {
     pub fn new(height: u64, frontier: BlockHash) -> Self {
         Self { height, frontier }
     }
-
-    pub fn deserialize(stream: &mut impl Stream) -> anyhow::Result<Self> {
-        let height = stream.read_u64_ne()?;
-        let frontier = BlockHash::deserialize(stream)?;
-        Ok(Self { height, frontier })
-    }
 }
 
 impl Serialize for ConfirmationHeightInfo {
@@ -41,5 +35,13 @@ impl Serialize for ConfirmationHeightInfo {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         stream.write_u64_ne(self.height)?;
         self.frontier.serialize(stream)
+    }
+}
+
+impl Deserialize<ConfirmationHeightInfo> for ConfirmationHeightInfo {
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
+        let height = stream.read_u64_ne()?;
+        let frontier = BlockHash::deserialize(stream)?;
+        Ok(Self { height, frontier })
     }
 }

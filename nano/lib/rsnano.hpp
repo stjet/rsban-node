@@ -1853,6 +1853,13 @@ const uint8_t * hash);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
 
+LmdbIteratorHandle * rsn_lmdb_confirmation_height_store_begin (LmdbConfirmationHeightStoreHandle * handle,
+TransactionHandle * txn);
+
+LmdbIteratorHandle * rsn_lmdb_confirmation_height_store_begin_at_account (LmdbConfirmationHeightStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account);
+
 void rsn_lmdb_confirmation_height_store_clear (LmdbConfirmationHeightStoreHandle * handle,
 TransactionHandle * txn);
 

@@ -6,7 +6,11 @@ use crate::{
     Account, ConfirmationHeightInfo,
 };
 
-use super::{lmdb_env::LmdbEnvHandle, TransactionHandle};
+use super::{
+    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    lmdb_env::LmdbEnvHandle,
+    TransactionHandle,
+};
 
 pub struct LmdbConfirmationHeightStoreHandle(LmdbConfirmationHeightStore);
 
@@ -114,4 +118,25 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_clear(
     txn: *mut TransactionHandle,
 ) {
     (*handle).0.clear((*txn).as_write_txn());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_begin(
+    handle: *mut LmdbConfirmationHeightStoreHandle,
+    txn: *mut TransactionHandle,
+) -> *mut LmdbIteratorHandle {
+    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    to_lmdb_iterator_handle(iterator.as_mut())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_begin_at_account(
+    handle: *mut LmdbConfirmationHeightStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+) -> *mut LmdbIteratorHandle {
+    let mut iterator = (*handle)
+        .0
+        .begin_at_account((*txn).as_txn(), &Account::from_ptr(account));
+    to_lmdb_iterator_handle(iterator.as_mut())
 }

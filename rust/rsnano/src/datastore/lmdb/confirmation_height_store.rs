@@ -3,14 +3,15 @@ use std::sync::Arc;
 use crate::{
     datastore::{
         lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        ConfirmationHeightStore, Transaction, WriteTransaction,
+        ConfirmationHeightStore, DbIterator, Transaction, WriteTransaction,
     },
+    utils::Deserialize,
     Account, ConfirmationHeightInfo,
 };
 
 use super::{
     assert_success, exists, get_raw_lmdb_txn, mdb_count, mdb_del, mdb_drop, mdb_get, mdb_put,
-    LmdbEnv, MdbVal, OwnedMdbVal,
+    LmdbEnv, LmdbIterator, MdbVal, OwnedMdbVal,
 };
 
 pub struct LmdbConfirmationHeightStore {
@@ -95,5 +96,22 @@ impl ConfirmationHeightStore for LmdbConfirmationHeightStore {
 
     fn clear(&self, txn: &dyn WriteTransaction) {
         unsafe { mdb_drop(get_raw_lmdb_txn(txn.as_transaction()), self.table_handle, 0) };
+    }
+
+    fn begin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<Account, ConfirmationHeightInfo>> {
+        Box::new(LmdbIterator::new(txn, self.table_handle, None, true))
+    }
+
+    fn begin_at_account(
+        &self,
+        txn: &dyn Transaction,
+        account: &Account,
+    ) -> Box<dyn DbIterator<Account, ConfirmationHeightInfo>> {
+        Box::new(LmdbIterator::new(
+            txn,
+            self.table_handle,
+            Some(account),
+            true,
+        ))
     }
 }

@@ -2,6 +2,20 @@
 #include <nano/node/lmdb/lmdb.hpp>
 #include <nano/secure/parallel_traversal.hpp>
 
+namespace
+{
+nano::store_iterator<nano::account, nano::confirmation_height_info> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
+{
+	if (it_handle == nullptr)
+	{
+		return nano::store_iterator<nano::account, nano::confirmation_height_info> (nullptr);
+	}
+
+	return nano::store_iterator<nano::account, nano::confirmation_height_info> (
+	std::make_unique<nano::mdb_iterator<nano::account, nano::confirmation_height_info>> (it_handle));
+}
+}
+
 nano::lmdb::confirmation_height_store::confirmation_height_store (nano::lmdb::store & store) :
 	store{ store },
 	handle{ rsnano::rsn_lmdb_confirmation_height_store_create (store.env ().handle) }
@@ -51,12 +65,14 @@ void nano::lmdb::confirmation_height_store::clear (nano::write_transaction const
 
 nano::store_iterator<nano::account, nano::confirmation_height_info> nano::lmdb::confirmation_height_store::begin (nano::transaction const & transaction, nano::account const & account) const
 {
-	return store.make_iterator<nano::account, nano::confirmation_height_info> (transaction, tables::confirmation_height, account);
+	auto it_handle{ rsnano::rsn_lmdb_confirmation_height_store_begin_at_account (handle, transaction.get_rust_handle (), account.bytes.data ()) };
+	return to_iterator (it_handle);
 }
 
 nano::store_iterator<nano::account, nano::confirmation_height_info> nano::lmdb::confirmation_height_store::begin (nano::transaction const & transaction) const
 {
-	return store.make_iterator<nano::account, nano::confirmation_height_info> (transaction, tables::confirmation_height);
+	auto it_handle{ rsnano::rsn_lmdb_confirmation_height_store_begin (handle, transaction.get_rust_handle ()) };
+	return to_iterator (it_handle);
 }
 
 nano::store_iterator<nano::account, nano::confirmation_height_info> nano::lmdb::confirmation_height_store::end () const

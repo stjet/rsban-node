@@ -607,6 +607,8 @@ using MdbDbiOpenCallback = int32_t (*) (MdbTxn *, const int8_t *, uint32_t, uint
 
 using MdbDelCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
 
+using MdbDropCallback = int32_t (*) (MdbTxn *, uint32_t, int32_t);
+
 struct MdbEnv
 {
 };
@@ -1410,6 +1412,8 @@ void rsn_callback_mdb_dbi_open (MdbDbiOpenCallback f);
 
 void rsn_callback_mdb_del (MdbDelCallback f);
 
+void rsn_callback_mdb_drop (MdbDropCallback f);
+
 void rsn_callback_mdb_env_close (MdbEnvCloseCallback f);
 
 void rsn_callback_mdb_env_create (MdbEnvCreateCallback f);
@@ -1848,6 +1852,9 @@ TransactionHandle * txn,
 const uint8_t * hash);
 
 void rsn_lmdb_config_create (LmdbConfigDto * dto);
+
+void rsn_lmdb_confirmation_height_store_clear (LmdbConfirmationHeightStoreHandle * handle,
+TransactionHandle * txn);
 
 uint64_t rsn_lmdb_confirmation_height_store_count (LmdbConfirmationHeightStoreHandle * handle,
 TransactionHandle * txn);

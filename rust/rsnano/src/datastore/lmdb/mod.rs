@@ -366,6 +366,7 @@ pub type MdbEnvOpenCallback = extern "C" fn(*mut MdbEnv, *const i8, u32, u32) ->
 pub type MdbEnvSyncCallback = extern "C" fn(*mut MdbEnv, i32) -> i32;
 pub type MdbEnvCloseCallback = extern "C" fn(*mut MdbEnv);
 pub type MdbStatCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbStat) -> i32;
+pub type MdbDropCallback = extern "C" fn(*mut MdbTxn, u32, i32) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -386,6 +387,7 @@ pub static mut MDB_ENV_OPEN: Option<MdbEnvOpenCallback> = None;
 pub static mut MDB_ENV_SYNC: Option<MdbEnvSyncCallback> = None;
 pub static mut MDB_ENV_CLOSE: Option<MdbEnvCloseCallback> = None;
 pub static mut MDB_STAT: Option<MdbStatCallback> = None;
+pub static mut MDB_DROP: Option<MdbDropCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -490,6 +492,10 @@ pub unsafe fn mdb_env_close(env: *mut MdbEnv) {
 
 pub unsafe fn mdb_stat(txn: *mut MdbTxn, dbi: u32, stat: &mut MdbStat) -> i32 {
     MDB_STAT.expect("MDB_STAT missing")(txn, dbi, stat)
+}
+
+pub unsafe fn mdb_drop(txn: *mut MdbTxn, dbi: u32, del: i32) -> i32 {
+    MDB_DROP.expect("MDB_DROP missing")(txn, dbi, del)
 }
 
 /// Successful result

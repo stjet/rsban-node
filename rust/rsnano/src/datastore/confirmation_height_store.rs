@@ -7,4 +7,5 @@ pub trait ConfirmationHeightStore {
     fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool;
     fn del(&self, txn: &dyn Transaction, account: &Account);
     fn count(&self, txn: &dyn Transaction) -> usize;
+    fn clear(&self, txn: &dyn WriteTransaction);
 }

@@ -11,11 +11,11 @@ use crate::{
         lmdb::{
             LmdbReadTransaction, LmdbWriteTransaction, MdbCursorCloseCallback,
             MdbCursorGetCallback, MdbCursorOpenCallback, MdbDbiOpenCallback, MdbDelCallback,
-            MdbEnv, MdbEnvCloseCallback, MdbEnvCreateCallback, MdbEnvOpenCallback,
+            MdbDropCallback, MdbEnv, MdbEnvCloseCallback, MdbEnvCreateCallback, MdbEnvOpenCallback,
             MdbEnvSetMapSizeCallback, MdbEnvSetMaxDbsCallback, MdbEnvSyncCallback, MdbGetCallback,
             MdbPutCallback, MdbStatCallback, MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback,
             MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks,
-            MDB_CURSOR_CLOSE, MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_DEL,
+            MDB_CURSOR_CLOSE, MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_DEL, MDB_DROP,
             MDB_ENV_CLOSE, MDB_ENV_CREATE, MDB_ENV_OPEN, MDB_ENV_SET_MAP_SIZE, MDB_ENV_SET_MAX_DBS,
             MDB_ENV_SYNC, MDB_GET, MDB_PUT, MDB_STAT, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT,
             MDB_TXN_RENEW, MDB_TXN_RESET,
@@ -291,4 +291,9 @@ pub unsafe extern "C" fn rsn_callback_mdb_env_close(f: MdbEnvCloseCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_stat(f: MdbStatCallback) {
     MDB_STAT = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_drop(f: MdbDropCallback) {
+    MDB_DROP = Some(f);
 }

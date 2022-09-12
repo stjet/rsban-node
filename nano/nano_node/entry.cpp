@@ -1447,18 +1447,18 @@ int main (int argc, char * const * argv)
 				nano::confirmation_height_info confirmation_height_info;
 				node->store.confirmation_height.get (transaction, account, confirmation_height_info);
 
-				if (confirmation_height_info.height > info.block_count ())
+				if (confirmation_height_info.height () > info.block_count ())
 				{
-					print_error_message (boost::str (boost::format ("Confirmation height %1% greater than block count %2% for account: %3%\n") % confirmation_height_info.height % info.block_count () % account.to_account ()));
+					print_error_message (boost::str (boost::format ("Confirmation height %1% greater than block count %2% for account: %3%\n") % confirmation_height_info.height () % info.block_count () % account.to_account ()));
 				}
 
 				auto hash (info.open_block ());
 				nano::block_hash calculated_hash (0);
 				auto block (node->store.block.get (transaction, hash)); // Block data
 				uint64_t height (0);
-				if (node->ledger.pruning && confirmation_height_info.height != 0)
+				if (node->ledger.pruning && confirmation_height_info.height () != 0)
 				{
-					hash = confirmation_height_info.frontier;
+					hash = confirmation_height_info.frontier ();
 					block = node->store.block.get (transaction, hash);
 					// Iteration until pruned block
 					bool pruned_block (false);

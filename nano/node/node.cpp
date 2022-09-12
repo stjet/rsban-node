@@ -1073,7 +1073,7 @@ bool nano::node::collect_ledger_pruning_targets (std::deque<nano::block_hash> & 
 	{
 		++read_operations;
 		auto const & account (i->first);
-		nano::block_hash hash (i->second.frontier);
+		nano::block_hash hash (i->second.frontier ());
 		uint64_t depth (0);
 		while (!hash.is_zero () && depth < max_depth_a)
 		{
@@ -1805,7 +1805,7 @@ uint64_t nano::node::get_confirmation_height (nano::transaction const & transact
 {
 	nano::confirmation_height_info info;
 	store.confirmation_height.get (transaction_a, account_a, info);
-	return info.height;
+	return info.height ();
 };
 
 nano::node_wrapper::node_wrapper (boost::filesystem::path const & path_a, boost::filesystem::path const & config_path_a, nano::node_flags & node_flags_a) :

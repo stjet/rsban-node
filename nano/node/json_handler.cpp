@@ -635,9 +635,9 @@ void nano::json_handler::account_info ()
 			nano::amount confirmed_balance_l;
 			if (include_confirmed)
 			{
-				if (info.block_count () != confirmation_height_info.height)
+				if (info.block_count () != confirmation_height_info.height ())
 				{
-					confirmed_balance_l = node.ledger.balance (*transaction, confirmation_height_info.frontier);
+					confirmed_balance_l = node.ledger.balance (*transaction, confirmation_height_info.frontier ());
 				}
 				else
 				{
@@ -652,23 +652,23 @@ void nano::json_handler::account_info ()
 			response_l.put ("modified_timestamp", std::to_string (info.modified ()));
 			response_l.put ("block_count", std::to_string (info.block_count ()));
 			response_l.put ("account_version", epoch_as_string (info.epoch ()));
-			auto confirmed_frontier = confirmation_height_info.frontier.to_string ();
+			auto confirmed_frontier = confirmation_height_info.frontier ().to_string ();
 			if (include_confirmed)
 			{
-				response_l.put ("confirmed_height", std::to_string (confirmation_height_info.height));
+				response_l.put ("confirmed_height", std::to_string (confirmation_height_info.height ()));
 				response_l.put ("confirmed_frontier", confirmed_frontier);
 			}
 			else
 			{
 				// For backwards compatibility purposes
-				response_l.put ("confirmation_height", std::to_string (confirmation_height_info.height));
+				response_l.put ("confirmation_height", std::to_string (confirmation_height_info.height ()));
 				response_l.put ("confirmation_height_frontier", confirmed_frontier);
 			}
 
 			std::shared_ptr<nano::block> confirmed_frontier_block;
-			if (include_confirmed && confirmation_height_info.height > 0)
+			if (include_confirmed && confirmation_height_info.height () > 0)
 			{
-				confirmed_frontier_block = node.store.block.get (*transaction, confirmation_height_info.frontier);
+				confirmed_frontier_block = node.store.block.get (*transaction, confirmation_height_info.frontier ());
 			}
 
 			if (representative)
@@ -682,7 +682,7 @@ void nano::json_handler::account_info ()
 						confirmed_representative = confirmed_frontier_block->representative ();
 						if (confirmed_representative.is_zero ())
 						{
-							confirmed_representative = node.store.block.get (*transaction, node.ledger.representative (*transaction, confirmation_height_info.frontier))->representative ();
+							confirmed_representative = node.store.block.get (*transaction, node.ledger.representative (*transaction, confirmation_height_info.frontier ()))->representative ();
 						}
 					}
 
@@ -4420,7 +4420,7 @@ void nano::json_handler::wallet_info ()
 			nano::confirmation_height_info confirmation_info{};
 			if (!node.store.confirmation_height.get (*block_transaction, account, confirmation_info))
 			{
-				cemented_block_count += confirmation_info.height;
+				cemented_block_count += confirmation_info.height ();
 			}
 
 			balance += account_info.balance ().number ();

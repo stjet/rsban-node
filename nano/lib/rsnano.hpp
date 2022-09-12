@@ -753,6 +753,12 @@ struct ChangeBlockDto2
 	uint64_t work;
 };
 
+struct ConfirmationHeightInfoDto
+{
+	uint64_t height;
+	uint8_t frontier[32];
+};
+
 struct OpenclConfigDto
 {
 	uint32_t platform;
@@ -1618,6 +1624,16 @@ BootstrapServerHandle * response_server);
 void rsn_channel_tcp_wrapper_destroy (ChannelTcpWrapperHandle * handle);
 
 ChannelHandle * rsn_channel_udp_create (uint64_t now);
+
+void rsn_confirmation_height_info_create (ConfirmationHeightInfoDto * result);
+
+void rsn_confirmation_height_info_create2 (uint64_t height,
+const uint8_t * hash,
+ConfirmationHeightInfoDto * result);
+
+bool rsn_confirmation_height_info_deserialize (ConfirmationHeightInfoDto * info, void * stream);
+
+bool rsn_confirmation_height_info_serialize (const ConfirmationHeightInfoDto * info, void * stream);
 
 int32_t rsn_daemon_config_create (DaemonConfigDto * dto, const NetworkParamsDto * network_params);
 

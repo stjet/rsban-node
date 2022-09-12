@@ -32,8 +32,7 @@ bool nano::lmdb::confirmation_height_store::get (nano::transaction const & trans
 	}
 	if (result)
 	{
-		confirmation_height_info.height = 0;
-		confirmation_height_info.frontier = 0;
+		confirmation_height_info = nano::confirmation_height_info{};
 	}
 
 	return result;

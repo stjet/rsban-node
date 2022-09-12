@@ -59,8 +59,8 @@ TEST (confirmation_height, single)
 		add_callback_stats (*node);
 		auto transaction = node->store.tx_begin_read ();
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-		ASSERT_EQ (1, confirmation_height_info.height);
-		ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (1, confirmation_height_info.height ());
+		ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier ());
 
 		node->process_active (send1);
 		node->block_processor.flush ();
@@ -71,8 +71,8 @@ TEST (confirmation_height, single)
 			auto transaction = node->store.tx_begin_write ();
 			ASSERT_TRUE (node->ledger.block_confirmed (*transaction, send1->hash ()));
 			ASSERT_FALSE (node->store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-			ASSERT_EQ (2, confirmation_height_info.height);
-			ASSERT_EQ (send1->hash (), confirmation_height_info.frontier);
+			ASSERT_EQ (2, confirmation_height_info.height ());
+			ASSERT_EQ (send1->hash (), confirmation_height_info.frontier ());
 
 			// Rollbacks should fail as these blocks have been cemented
 			ASSERT_TRUE (node->ledger.rollback (*transaction, latest1));
@@ -221,17 +221,17 @@ TEST (confirmation_height, multiple_accounts)
 			// as we have any just added them to the ledger and not processed any live transactions yet.
 			nano::confirmation_height_info confirmation_height_info;
 			ASSERT_FALSE (node->store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-			ASSERT_EQ (1, confirmation_height_info.height);
-			ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier);
+			ASSERT_EQ (1, confirmation_height_info.height ());
+			ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier ());
 			ASSERT_TRUE (node->store.confirmation_height.get (*transaction, key1.pub, confirmation_height_info));
-			ASSERT_EQ (0, confirmation_height_info.height);
-			ASSERT_EQ (nano::block_hash (0), confirmation_height_info.frontier);
+			ASSERT_EQ (0, confirmation_height_info.height ());
+			ASSERT_EQ (nano::block_hash (0), confirmation_height_info.frontier ());
 			ASSERT_TRUE (node->store.confirmation_height.get (*transaction, key2.pub, confirmation_height_info));
-			ASSERT_EQ (0, confirmation_height_info.height);
-			ASSERT_EQ (nano::block_hash (0), confirmation_height_info.frontier);
+			ASSERT_EQ (0, confirmation_height_info.height ());
+			ASSERT_EQ (nano::block_hash (0), confirmation_height_info.frontier ());
 			ASSERT_TRUE (node->store.confirmation_height.get (*transaction, key3.pub, confirmation_height_info));
-			ASSERT_EQ (0, confirmation_height_info.height);
-			ASSERT_EQ (nano::block_hash (0), confirmation_height_info.frontier);
+			ASSERT_EQ (0, confirmation_height_info.height ());
+			ASSERT_EQ (nano::block_hash (0), confirmation_height_info.frontier ());
 		}
 
 		// The nodes process a live receive which propagates across to all accounts
@@ -258,23 +258,23 @@ TEST (confirmation_height, multiple_accounts)
 		ASSERT_TRUE (node->ledger.block_confirmed (*transaction, receive3->hash ()));
 		ASSERT_FALSE (store.account.get (*transaction, nano::dev::genesis_key.pub, account_info));
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-		ASSERT_EQ (4, confirmation_height_info.height);
-		ASSERT_EQ (send3->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (4, confirmation_height_info.height ());
+		ASSERT_EQ (send3->hash (), confirmation_height_info.frontier ());
 		ASSERT_EQ (4, account_info.block_count ());
 		ASSERT_FALSE (store.account.get (*transaction, key1.pub, account_info));
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, key1.pub, confirmation_height_info));
-		ASSERT_EQ (2, confirmation_height_info.height);
-		ASSERT_EQ (send4->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (2, confirmation_height_info.height ());
+		ASSERT_EQ (send4->hash (), confirmation_height_info.frontier ());
 		ASSERT_EQ (3, account_info.block_count ());
 		ASSERT_FALSE (store.account.get (*transaction, key2.pub, account_info));
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, key2.pub, confirmation_height_info));
-		ASSERT_EQ (3, confirmation_height_info.height);
-		ASSERT_EQ (send6->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (3, confirmation_height_info.height ());
+		ASSERT_EQ (send6->hash (), confirmation_height_info.frontier ());
 		ASSERT_EQ (4, account_info.block_count ());
 		ASSERT_FALSE (store.account.get (*transaction, key3.pub, account_info));
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, key3.pub, confirmation_height_info));
-		ASSERT_EQ (2, confirmation_height_info.height);
-		ASSERT_EQ (receive3->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (2, confirmation_height_info.height ());
+		ASSERT_EQ (receive3->hash (), confirmation_height_info.frontier ());
 		ASSERT_EQ (2, account_info.block_count ());
 
 		// The accounts for key1 and key2 have 1 more block in the chain than is confirmed.
@@ -404,8 +404,8 @@ TEST (confirmation_height, gap_bootstrap)
 
 			nano::confirmation_height_info confirmation_height_info;
 			ASSERT_FALSE (node1.store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-			ASSERT_EQ (1, confirmation_height_info.height);
-			ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier);
+			ASSERT_EQ (1, confirmation_height_info.height ());
+			ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier ());
 		}
 
 		// Now complete the chain where the block comes in on the bootstrap network.
@@ -417,11 +417,11 @@ TEST (confirmation_height, gap_bootstrap)
 			auto transaction = node1.store.tx_begin_read ();
 			nano::confirmation_height_info confirmation_height_info;
 			ASSERT_FALSE (node1.store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-			ASSERT_EQ (1, confirmation_height_info.height);
-			ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier);
+			ASSERT_EQ (1, confirmation_height_info.height ());
+			ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier ());
 			ASSERT_TRUE (node1.store.confirmation_height.get (*transaction, destination.pub, confirmation_height_info));
-			ASSERT_EQ (0, confirmation_height_info.height);
-			ASSERT_EQ (nano::block_hash (0), confirmation_height_info.frontier);
+			ASSERT_EQ (0, confirmation_height_info.height ());
+			ASSERT_EQ (nano::block_hash (0), confirmation_height_info.frontier ());
 		}
 		ASSERT_EQ (0, node1.stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
 		ASSERT_EQ (0, node1.stats->count (nano::stat::type::confirmation_height, get_stats_detail (mode_a), nano::stat::dir::in));
@@ -529,8 +529,8 @@ TEST (confirmation_height, gap_live)
 			auto transaction = node->store.tx_begin_read ();
 			nano::confirmation_height_info confirmation_height_info;
 			ASSERT_FALSE (node->store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-			ASSERT_EQ (1, confirmation_height_info.height);
-			ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier);
+			ASSERT_EQ (1, confirmation_height_info.height ());
+			ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier ());
 		}
 
 		// Vote and confirm all existing blocks
@@ -551,11 +551,11 @@ TEST (confirmation_height, gap_live)
 		nano::confirmation_height_info confirmation_height_info{};
 		ASSERT_TRUE (node->ledger.block_confirmed (*transaction, receive2->hash ()));
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-		ASSERT_EQ (4, confirmation_height_info.height);
-		ASSERT_EQ (send3->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (4, confirmation_height_info.height ());
+		ASSERT_EQ (send3->hash (), confirmation_height_info.frontier ());
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, destination.pub, confirmation_height_info));
-		ASSERT_EQ (3, confirmation_height_info.height);
-		ASSERT_EQ (receive2->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (3, confirmation_height_info.height ());
+		ASSERT_EQ (receive2->hash (), confirmation_height_info.frontier ());
 
 		ASSERT_EQ (6, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
 		ASSERT_EQ (6, node->stats->count (nano::stat::type::confirmation_height, get_stats_detail (mode_a), nano::stat::dir::in));
@@ -703,14 +703,14 @@ TEST (confirmation_height, send_receive_between_2_accounts)
 		nano::confirmation_height_info confirmation_height_info;
 		ASSERT_FALSE (node->store.account.get (*transaction, nano::dev::genesis_key.pub, account_info));
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-		ASSERT_EQ (6, confirmation_height_info.height);
-		ASSERT_EQ (send5->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (6, confirmation_height_info.height ());
+		ASSERT_EQ (send5->hash (), confirmation_height_info.frontier ());
 		ASSERT_EQ (7, account_info.block_count ());
 
 		ASSERT_FALSE (node->store.account.get (*transaction, key1.pub, account_info));
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, key1.pub, confirmation_height_info));
-		ASSERT_EQ (5, confirmation_height_info.height);
-		ASSERT_EQ (receive4->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (5, confirmation_height_info.height ());
+		ASSERT_EQ (receive4->hash (), confirmation_height_info.frontier ());
 		ASSERT_EQ (5, account_info.block_count ());
 
 		ASSERT_EQ (10, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
@@ -820,13 +820,13 @@ TEST (confirmation_height, send_receive_self)
 		ASSERT_FALSE (node->store.account.get (*transaction, nano::dev::genesis_key.pub, account_info));
 		nano::confirmation_height_info confirmation_height_info;
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-		ASSERT_EQ (7, confirmation_height_info.height);
-		ASSERT_EQ (receive3->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (7, confirmation_height_info.height ());
+		ASSERT_EQ (receive3->hash (), confirmation_height_info.frontier ());
 		ASSERT_EQ (8, account_info.block_count ());
 		ASSERT_EQ (6, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
 		ASSERT_EQ (6, node->stats->count (nano::stat::type::confirmation_height, get_stats_detail (mode_a), nano::stat::dir::in));
 		ASSERT_EQ (6, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out));
-		ASSERT_EQ (confirmation_height_info.height, node->ledger.cache.cemented_count);
+		ASSERT_EQ (confirmation_height_info.height (), node->ledger.cache.cemented_count);
 		ASSERT_EQ (0, node->active.election_winner_details_size ());
 	};
 
@@ -1066,20 +1066,20 @@ TEST (confirmation_height, all_block_types)
 		nano::confirmation_height_info confirmation_height_info;
 		ASSERT_FALSE (node->store.account.get (*transaction, nano::dev::genesis_key.pub, account_info));
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, nano::dev::genesis_key.pub, confirmation_height_info));
-		ASSERT_EQ (3, confirmation_height_info.height);
-		ASSERT_EQ (send1->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (3, confirmation_height_info.height ());
+		ASSERT_EQ (send1->hash (), confirmation_height_info.frontier ());
 		ASSERT_LE (4, account_info.block_count ());
 
 		ASSERT_FALSE (node->store.account.get (*transaction, key1.pub, account_info));
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, key1.pub, confirmation_height_info));
-		ASSERT_EQ (state_send1->hash (), confirmation_height_info.frontier);
-		ASSERT_EQ (6, confirmation_height_info.height);
+		ASSERT_EQ (state_send1->hash (), confirmation_height_info.frontier ());
+		ASSERT_EQ (6, confirmation_height_info.height ());
 		ASSERT_LE (7, account_info.block_count ());
 
 		ASSERT_FALSE (node->store.account.get (*transaction, key2.pub, account_info));
 		ASSERT_FALSE (node->store.confirmation_height.get (*transaction, key2.pub, confirmation_height_info));
-		ASSERT_EQ (7, confirmation_height_info.height);
-		ASSERT_EQ (state_send2->hash (), confirmation_height_info.frontier);
+		ASSERT_EQ (7, confirmation_height_info.height ());
+		ASSERT_EQ (state_send2->hash (), confirmation_height_info.frontier ());
 		ASSERT_LE (8, account_info.block_count ());
 
 		ASSERT_EQ (15, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));

@@ -116,26 +116,25 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 		auto account_it = accounts_confirmed_info.find (account);
 		if (account_it != accounts_confirmed_info.cend ())
 		{
-			confirmation_height_info.height = account_it->second.confirmed_height;
-			confirmation_height_info.frontier = account_it->second.iterated_frontier;
+			confirmation_height_info = nano::confirmation_height_info (account_it->second.confirmed_height, account_it->second.iterated_frontier);
 		}
 		else
 		{
 			ledger.store.confirmation_height.get (*transaction, account, confirmation_height_info);
 			// This block was added to the confirmation height processor but is already confirmed
-			if (first_iter && confirmation_height_info.height >= block->sideband ().height () && current == original_block->hash ())
+			if (first_iter && confirmation_height_info.height () >= block->sideband ().height () && current == original_block->hash ())
 			{
 				notify_block_already_cemented_observers_callback (original_block->hash ());
 			}
 		}
 
 		auto block_height = block->sideband ().height ();
-		bool already_cemented = confirmation_height_info.height >= block_height;
+		bool already_cemented = confirmation_height_info.height () >= block_height;
 
 		// If we are not already at the bottom of the account chain (1 above cemented frontier) then find it
-		if (!already_cemented && block_height - confirmation_height_info.height > 1)
+		if (!already_cemented && block_height - confirmation_height_info.height () > 1)
 		{
-			if (block_height - confirmation_height_info.height == 2)
+			if (block_height - confirmation_height_info.height () == 2)
 			{
 				// If there is 1 uncemented block in-between this block and the cemented frontier,
 				// we can just use the previous block to get the least unconfirmed hash.
@@ -225,11 +224,11 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 nano::block_hash nano::confirmation_height_bounded::get_least_unconfirmed_hash_from_top_level (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::account const & account_a, nano::confirmation_height_info const & confirmation_height_info_a, uint64_t & block_height_a)
 {
 	nano::block_hash least_unconfirmed_hash = hash_a;
-	if (confirmation_height_info_a.height != 0)
+	if (confirmation_height_info_a.height () != 0)
 	{
-		if (block_height_a > confirmation_height_info_a.height)
+		if (block_height_a > confirmation_height_info_a.height ())
 		{
-			auto block (ledger.store.block.get (transaction_a, confirmation_height_info_a.frontier));
+			auto block (ledger.store.block.get (transaction_a, confirmation_height_info_a.frontier ()));
 			release_assert (block != nullptr);
 			least_unconfirmed_hash = block->sideband ().successor ();
 			block_height_a = block->sideband ().height () + 1;
@@ -309,7 +308,7 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 	{
 		// Add the non-receive blocks iterated for this account
 		auto block_height = (ledger.store.block.account_height (preparation_data_a.transaction, preparation_data_a.top_most_non_receive_block_hash));
-		if (block_height > preparation_data_a.confirmation_height_info.height)
+		if (block_height > preparation_data_a.confirmation_height_info.height ())
 		{
 			confirmed_info confirmed_info_l{ block_height, preparation_data_a.top_most_non_receive_block_hash };
 			if (preparation_data_a.account_it != accounts_confirmed_info.cend ())
@@ -388,7 +387,7 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 				ledger.store.confirmation_height.get (*transaction, account, confirmation_height_info);
 				auto block (ledger.store.block.get (*transaction, confirmed_frontier));
 				debug_assert (block != nullptr);
-				debug_assert (block->sideband ().height () == confirmation_height_info.height + num_blocks_cemented);
+				debug_assert (block->sideband ().height () == confirmation_height_info.height () + num_blocks_cemented);
 #endif
 				ledger.store.confirmation_height.put (*transaction, account, nano::confirmation_height_info{ confirmation_height, confirmed_frontier });
 				ledger.cache.cemented_count += num_blocks_cemented;
@@ -400,26 +399,26 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 			ledger.store.confirmation_height.get (*transaction, pending.account, confirmation_height_info);
 
 			// Some blocks need to be cemented at least
-			if (pending.top_height > confirmation_height_info.height)
+			if (pending.top_height > confirmation_height_info.height ())
 			{
 				// The highest hash which will be cemented
 				nano::block_hash new_cemented_frontier;
 				uint64_t num_blocks_confirmed = 0;
 				uint64_t start_height = 0;
-				if (pending.bottom_height > confirmation_height_info.height)
+				if (pending.bottom_height > confirmation_height_info.height ())
 				{
 					new_cemented_frontier = pending.bottom_hash;
 					// If we are higher than the cemented frontier, we should be exactly 1 block above
-					debug_assert (pending.bottom_height == confirmation_height_info.height + 1);
+					debug_assert (pending.bottom_height == confirmation_height_info.height () + 1);
 					num_blocks_confirmed = pending.top_height - pending.bottom_height + 1;
 					start_height = pending.bottom_height;
 				}
 				else
 				{
-					auto block = ledger.store.block.get (*transaction, confirmation_height_info.frontier);
+					auto block = ledger.store.block.get (*transaction, confirmation_height_info.frontier ());
 					new_cemented_frontier = block->sideband ().successor ();
-					num_blocks_confirmed = pending.top_height - confirmation_height_info.height;
-					start_height = confirmation_height_info.height + 1;
+					num_blocks_confirmed = pending.top_height - confirmation_height_info.height ();
+					start_height = confirmation_height_info.height () + 1;
 				}
 
 				auto total_blocks_cemented = 0;

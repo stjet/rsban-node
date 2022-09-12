@@ -788,7 +788,7 @@ void nano::ledger::initialize (nano::generate_cache const & generate_cache_a)
 			uint64_t cemented_count_l (0);
 			for (; i != n; ++i)
 			{
-				cemented_count_l += i->second.height;
+				cemented_count_l += i->second.height ();
 			}
 			this->cache.cemented_count += cemented_count_l;
 		});
@@ -801,7 +801,7 @@ void nano::ledger::initialize (nano::generate_cache const & generate_cache_a)
 	nano::confirmation_height_info confirmation_height_info;
 	if (!store.confirmation_height.get (*transaction, constants.final_votes_canary_account, confirmation_height_info))
 	{
-		cache.final_votes_confirmation_canary = (confirmation_height_info.height >= constants.final_votes_canary_height);
+		cache.final_votes_confirmation_canary = (confirmation_height_info.height () >= constants.final_votes_canary_height);
 	}
 }
 
@@ -835,7 +835,7 @@ nano::uint128_t nano::ledger::account_balance (nano::transaction const & transac
 		nano::confirmation_height_info info;
 		if (!store.confirmation_height.get (transaction_a, account_a, info))
 		{
-			result = balance (transaction_a, info.frontier);
+			result = balance (transaction_a, info.frontier ());
 		}
 	}
 	else
@@ -1067,7 +1067,7 @@ bool nano::ledger::rollback (nano::write_transaction const & transaction_a, nano
 	{
 		nano::confirmation_height_info confirmation_height_info;
 		store.confirmation_height.get (transaction_a, account_l, confirmation_height_info);
-		if (block_account_height > confirmation_height_info.height)
+		if (block_account_height > confirmation_height_info.height ())
 		{
 			auto latest_error = store.account.get (transaction_a, account_l, account_info);
 			debug_assert (!latest_error);
@@ -1273,7 +1273,7 @@ std::shared_ptr<nano::block> nano::ledger::find_receive_block_by_send_hash (nano
 	{
 		return nullptr;
 	}
-	auto possible_receive_block = store.block.get (transaction, info.frontier);
+	auto possible_receive_block = store.block.get (transaction, info.frontier ());
 
 	// walk down the chain until the source field of a receive block matches the send block hash
 	while (possible_receive_block != nullptr)
@@ -1403,7 +1403,7 @@ bool nano::ledger::block_confirmed (nano::transaction const & transaction_a, nan
 	{
 		nano::confirmation_height_info confirmation_height_info;
 		store.confirmation_height.get (transaction_a, block->account ().is_zero () ? block->sideband ().account () : block->account (), confirmation_height_info);
-		auto confirmed (confirmation_height_info.height >= block->sideband ().height ());
+		auto confirmed (confirmation_height_info.height () >= block->sideband ().height ());
 		return confirmed;
 	}
 	return false;
@@ -1457,12 +1457,12 @@ std::multimap<uint64_t, nano::uncemented_info, std::greater<>> nano::ledger::unc
 			nano::confirmation_height_info conf_height_info;
 			this->store.confirmation_height.get (transaction_a, account, conf_height_info);
 
-			if (account_info.block_count () != conf_height_info.height)
+			if (account_info.block_count () != conf_height_info.height ())
 			{
 				// Always output as no confirmation height has been set on the account yet
-				auto height_delta = account_info.block_count () - conf_height_info.height;
+				auto height_delta = account_info.block_count () - conf_height_info.height ();
 				auto const & frontier = account_info.head ();
-				auto const & cemented_frontier = conf_height_info.frontier;
+				auto const cemented_frontier = conf_height_info.frontier ();
 				unconfirmed_frontiers_l.emplace (std::piecewise_construct, std::forward_as_tuple (height_delta), std::forward_as_tuple (cemented_frontier, frontier, i->first));
 			}
 		}

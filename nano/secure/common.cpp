@@ -652,31 +652,40 @@ uint16_t nano::endpoint_key::port () const
 	return boost::endian::big_to_native (network_port);
 }
 
-nano::confirmation_height_info::confirmation_height_info (uint64_t confirmation_height_a, nano::block_hash const & confirmed_frontier_a) :
-	height (confirmation_height_a),
-	frontier (confirmed_frontier_a)
+nano::confirmation_height_info::confirmation_height_info ()
 {
+	rsnano::rsn_confirmation_height_info_create (&dto);
+}
+
+uint64_t nano::confirmation_height_info::height () const
+{
+	return dto.height;
+}
+
+nano::block_hash nano::confirmation_height_info::frontier () const
+{
+	nano::block_hash hash;
+	std::copy (std::begin (dto.frontier), std::end (dto.frontier), std::begin (hash.bytes));
+	return hash;
+}
+
+nano::confirmation_height_info::confirmation_height_info (uint64_t confirmation_height_a, nano::block_hash const & confirmed_frontier_a)
+{
+	rsnano::rsn_confirmation_height_info_create2 (confirmation_height_a, confirmed_frontier_a.bytes.data (), &dto);
 }
 
 void nano::confirmation_height_info::serialize (nano::stream & stream_a) const
 {
-	nano::write (stream_a, height);
-	nano::write (stream_a, frontier);
+	if (!rsnano::rsn_confirmation_height_info_serialize (&dto, &stream_a))
+	{
+		throw std::runtime_error ("could not serialize confirmation_height_info");
+	}
 }
 
 bool nano::confirmation_height_info::deserialize (nano::stream & stream_a)
 {
-	auto error (false);
-	try
-	{
-		nano::read (stream_a, height);
-		nano::read (stream_a, frontier);
-	}
-	catch (std::runtime_error const &)
-	{
-		error = true;
-	}
-	return error;
+	bool success = rsnano::rsn_confirmation_height_info_deserialize (&dto, &stream_a);
+	return !success;
 }
 
 nano::block_info::block_info (nano::account const & account_a, nano::amount const & balance_a) :

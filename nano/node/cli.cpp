@@ -541,7 +541,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 						if (account == node.node->network_params.ledger.genesis->account ())
 						{
 							conf_height_reset_num = 1;
-							node.node->store.confirmation_height.put (*transaction, account, { confirmation_height_info.height, node.node->network_params.ledger.genesis->hash () });
+							node.node->store.confirmation_height.put (*transaction, account, { confirmation_height_info.height (), node.node->network_params.ledger.genesis->hash () });
 						}
 						else
 						{

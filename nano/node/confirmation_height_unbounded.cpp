@@ -96,7 +96,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		{
 			nano::confirmation_height_info confirmation_height_info;
 			ledger.store.confirmation_height.get (*read_transaction, account, confirmation_height_info);
-			confirmation_height = confirmation_height_info.height;
+			confirmation_height = confirmation_height_info.height ();
 
 			// This block was added to the confirmation height processor but is already confirmed
 			if (first_iter && confirmation_height >= block_height)
@@ -374,7 +374,7 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 			auto & pending = pending_writes.front ();
 			nano::confirmation_height_info confirmation_height_info;
 			ledger.store.confirmation_height.get (*transaction, pending.account, confirmation_height_info);
-			auto confirmation_height = confirmation_height_info.height;
+			auto confirmation_height = confirmation_height_info.height ();
 			if (pending.height > confirmation_height)
 			{
 				auto block = ledger.store.block.get (*transaction, pending.hash);

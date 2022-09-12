@@ -358,7 +358,7 @@ void nano::frontier_req_server::next ()
 			for (auto i (node->store.confirmation_height.begin (*transaction, current.number () + 1)), n (node->store.confirmation_height.end ()); i != n && accounts.size () != max_size; ++i)
 			{
 				nano::confirmation_height_info const & info (i->second);
-				nano::block_hash const & confirmed_frontier (info.frontier);
+				nano::block_hash const confirmed_frontier (info.frontier ());
 				if (!confirmed_frontier.is_zero ())
 				{
 					nano::account const & account (i->first);

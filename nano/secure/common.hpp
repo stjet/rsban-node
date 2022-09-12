@@ -7,6 +7,7 @@
 #include <nano/lib/epoch.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/rep_weights.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/utility.hpp>
 
 #include <boost/iterator/transform_iterator.hpp>
@@ -252,17 +253,20 @@ public:
 class confirmation_height_info final
 {
 public:
-	confirmation_height_info () = default;
+	confirmation_height_info ();
 	confirmation_height_info (uint64_t, nano::block_hash const &);
 
 	void serialize (nano::stream &) const;
 	bool deserialize (nano::stream &);
 
 	/** height of the cemented frontier */
-	uint64_t height{};
+	uint64_t height () const;
 
 	/** hash of the highest cemented block, the cemented/confirmed frontier */
-	nano::block_hash frontier{};
+	nano::block_hash frontier () const;
+
+private:
+	rsnano::ConfirmationHeightInfoDto dto;
 };
 
 namespace confirmation_height

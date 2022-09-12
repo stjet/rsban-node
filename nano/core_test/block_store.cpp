@@ -396,8 +396,8 @@ TEST (block_store, genesis)
 	// Genesis block should be confirmed by default
 	nano::confirmation_height_info confirmation_height_info;
 	ASSERT_FALSE (store->confirmation_height.get (*transaction, nano::dev::genesis->account (), confirmation_height_info));
-	ASSERT_EQ (confirmation_height_info.height, 1);
-	ASSERT_EQ (confirmation_height_info.frontier, nano::dev::genesis->hash ());
+	ASSERT_EQ (confirmation_height_info.height (), 1);
+	ASSERT_EQ (confirmation_height_info.frontier (), nano::dev::genesis->hash ());
 	auto dev_pub_text (nano::dev::genesis_key.pub.to_string ());
 	auto dev_pub_account (nano::dev::genesis_key.pub.to_account ());
 	auto dev_prv_text (nano::dev::genesis_key.prv.to_string ());
@@ -719,8 +719,8 @@ TEST (block_store, one_account)
 	ASSERT_EQ (200, info.block_count ());
 	nano::confirmation_height_info confirmation_height_info;
 	ASSERT_FALSE (store->confirmation_height.get (*transaction, account, confirmation_height_info));
-	ASSERT_EQ (20, confirmation_height_info.height);
-	ASSERT_EQ (nano::block_hash (15), confirmation_height_info.frontier);
+	ASSERT_EQ (20, confirmation_height_info.height ());
+	ASSERT_EQ (nano::block_hash (15), confirmation_height_info.frontier ());
 	++begin;
 	ASSERT_EQ (end, begin);
 }
@@ -788,8 +788,8 @@ TEST (block_store, two_account)
 	ASSERT_EQ (300, info1.block_count ());
 	nano::confirmation_height_info confirmation_height_info;
 	ASSERT_FALSE (store->confirmation_height.get (*transaction, account1, confirmation_height_info));
-	ASSERT_EQ (20, confirmation_height_info.height);
-	ASSERT_EQ (nano::block_hash (10), confirmation_height_info.frontier);
+	ASSERT_EQ (20, confirmation_height_info.height ());
+	ASSERT_EQ (nano::block_hash (10), confirmation_height_info.frontier ());
 	++begin;
 	ASSERT_NE (end, begin);
 	ASSERT_EQ (account2, nano::account (begin->first));
@@ -799,8 +799,8 @@ TEST (block_store, two_account)
 	ASSERT_EQ (200, info2.modified ());
 	ASSERT_EQ (400, info2.block_count ());
 	ASSERT_FALSE (store->confirmation_height.get (*transaction, account2, confirmation_height_info));
-	ASSERT_EQ (30, confirmation_height_info.height);
-	ASSERT_EQ (nano::block_hash (20), confirmation_height_info.frontier);
+	ASSERT_EQ (30, confirmation_height_info.height ());
+	ASSERT_EQ (nano::block_hash (20), confirmation_height_info.frontier ());
 	++begin;
 	ASSERT_EQ (end, begin);
 }
@@ -1668,8 +1668,8 @@ namespace lmdb
 			nano::confirmation_height_info confirmation_height_info;
 			ASSERT_FALSE (store.confirmation_height.get (*transaction, nano::dev::genesis->account (),
 			confirmation_height_info));
-			ASSERT_EQ (confirmation_height_info.height, 1);
-			ASSERT_EQ (confirmation_height_info.frontier, nano::dev::genesis->hash ());
+			ASSERT_EQ (confirmation_height_info.height (), 1);
+			ASSERT_EQ (confirmation_height_info.frontier (), nano::dev::genesis->hash ());
 			// These databases get removed after an upgrade, so readd them
 			ASSERT_FALSE (
 			mdb_dbi_open (store.env ().tx (*transaction), "state_v1", MDB_CREATE, &store.block_store.state_blocks_v1_handle));
@@ -1689,7 +1689,7 @@ namespace lmdb
 			store.version.put (*transaction, 14);
 			store.confirmation_height.del (*transaction, nano::dev::genesis->account ());
 			modify_account_info_to_v14 (store, *transaction, nano::dev::genesis->account (),
-			confirmation_height_info.height, state_send->hash ());
+			confirmation_height_info.height (), state_send->hash ());
 
 			store.pending.del (*transaction, nano::pending_key (nano::dev::genesis->account (), state_send->hash ()));
 
@@ -1748,8 +1748,8 @@ namespace lmdb
 		ASSERT_FALSE (
 		store.confirmation_height.get (*transaction, nano::dev::genesis->account (),
 		confirmation_height_info));
-		ASSERT_EQ (confirmation_height_info.height, 1);
-		ASSERT_EQ (confirmation_height_info.frontier, nano::dev::genesis->hash ());
+		ASSERT_EQ (confirmation_height_info.height (), 1);
+		ASSERT_EQ (confirmation_height_info.frontier (), nano::dev::genesis->hash ());
 
 		// accounts_v1, state_blocks_v1 & pending_v1 tables should be deleted
 		auto error_get_accounts_v1 (mdb_get (store.env ().tx (*transaction), store.accounts_v1_handle,
@@ -1896,10 +1896,10 @@ namespace lmdb
 
 			nano::confirmation_height_info confirmation_height_info;
 			ASSERT_FALSE (store.confirmation_height.get (*transaction, nano::dev::genesis->account (), confirmation_height_info));
-			ASSERT_EQ (confirmation_height_info.height, confirmation_height);
+			ASSERT_EQ (confirmation_height_info.height (), confirmation_height);
 
 			// Check confirmation height frontier is correct
-			ASSERT_EQ (confirmation_height_info.frontier, expected_cemented_frontier);
+			ASSERT_EQ (confirmation_height_info.frontier (), expected_cemented_frontier);
 
 			// Version should be correct
 			ASSERT_LT (16, store.version.get (*transaction));
@@ -2463,14 +2463,14 @@ TEST (block_store, confirmation_height)
 
 		nano::confirmation_height_info confirmation_height_info;
 		ASSERT_FALSE (store->confirmation_height.get (*transaction, account1, confirmation_height_info));
-		ASSERT_EQ (confirmation_height_info.height, 500);
-		ASSERT_EQ (confirmation_height_info.frontier, cemented_frontier1);
+		ASSERT_EQ (confirmation_height_info.height (), 500);
+		ASSERT_EQ (confirmation_height_info.frontier (), cemented_frontier1);
 		ASSERT_FALSE (store->confirmation_height.get (*transaction, account2, confirmation_height_info));
-		ASSERT_EQ (confirmation_height_info.height, std::numeric_limits<uint64_t>::max ());
-		ASSERT_EQ (confirmation_height_info.frontier, cemented_frontier2);
+		ASSERT_EQ (confirmation_height_info.height (), std::numeric_limits<uint64_t>::max ());
+		ASSERT_EQ (confirmation_height_info.frontier (), cemented_frontier2);
 		ASSERT_FALSE (store->confirmation_height.get (*transaction, account3, confirmation_height_info));
-		ASSERT_EQ (confirmation_height_info.height, 10);
-		ASSERT_EQ (confirmation_height_info.frontier, cemented_frontier3);
+		ASSERT_EQ (confirmation_height_info.height (), 10);
+		ASSERT_EQ (confirmation_height_info.frontier (), cemented_frontier3);
 
 		// Check clearing of confirmation heights
 		store->confirmation_height.clear (*transaction);

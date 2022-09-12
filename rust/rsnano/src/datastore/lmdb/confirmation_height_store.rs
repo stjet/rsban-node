@@ -3,7 +3,8 @@ use std::sync::Arc;
 use crate::{
     datastore::{
         lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        ConfirmationHeightStore, DbIterator, Transaction, WriteTransaction,
+        parallel_traversal, ConfirmationHeightStore, DbIterator, NullIterator, ReadTransaction,
+        Transaction, WriteTransaction,
     },
     utils::Deserialize,
     Account, ConfirmationHeightInfo,
@@ -113,5 +114,30 @@ impl ConfirmationHeightStore for LmdbConfirmationHeightStore {
             Some(account),
             true,
         ))
+    }
+
+    fn end(&self) -> Box<dyn DbIterator<Account, ConfirmationHeightInfo>> {
+        Box::new(NullIterator::new())
+    }
+
+    fn for_each_par(
+        &self,
+        action: &(dyn Fn(
+            &dyn ReadTransaction,
+            &mut dyn DbIterator<Account, ConfirmationHeightInfo>,
+            &mut dyn DbIterator<Account, ConfirmationHeightInfo>,
+        ) + Send
+              + Sync),
+    ) {
+        parallel_traversal(&|start, end, is_last| {
+            let mut transaction = self.env.tx_begin_read();
+            let mut begin_it = self.begin_at_account(&transaction, &start.into());
+            let mut end_it = if !is_last {
+                self.begin_at_account(&transaction, &end.into())
+            } else {
+                self.end()
+            };
+            action(&mut transaction, begin_it.as_mut(), end_it.as_mut());
+        });
     }
 }

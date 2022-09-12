@@ -1,13 +1,15 @@
-use std::sync::Arc;
+use std::{ffi::c_void, sync::Arc};
 
 use crate::{
     datastore::{lmdb::LmdbConfirmationHeightStore, ConfirmationHeightStore},
-    ffi::ConfirmationHeightInfoDto,
+    ffi::{ConfirmationHeightInfoDto, VoidPointerCallback},
     Account, ConfirmationHeightInfo,
 };
 
 use super::{
-    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    iterator::{
+        to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
+    },
     lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
@@ -139,4 +141,21 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_begin_at_account(
         .0
         .begin_at_account((*txn).as_txn(), &Account::from_ptr(account));
     to_lmdb_iterator_handle(iterator.as_mut())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_for_each_par(
+    handle: *mut LmdbConfirmationHeightStoreHandle,
+    action: ForEachParCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let wrapper = ForEachParWrapper {
+        action,
+        context,
+        delete_context,
+    };
+    (*handle)
+        .0
+        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }

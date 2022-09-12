@@ -1878,6 +1878,11 @@ bool rsn_lmdb_confirmation_height_store_exists (LmdbConfirmationHeightStoreHandl
 TransactionHandle * txn,
 const uint8_t * account);
 
+void rsn_lmdb_confirmation_height_store_for_each_par (LmdbConfirmationHeightStoreHandle * handle,
+ForEachParCallback action,
+void * context,
+VoidPointerCallback delete_context);
+
 bool rsn_lmdb_confirmation_height_store_get (LmdbConfirmationHeightStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account,

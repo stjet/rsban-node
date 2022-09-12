@@ -1,4 +1,4 @@
-use super::{DbIterator, Transaction, WriteTransaction};
+use super::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
 use crate::{Account, ConfirmationHeightInfo};
 
 pub trait ConfirmationHeightStore {
@@ -14,4 +14,14 @@ pub trait ConfirmationHeightStore {
         txn: &dyn Transaction,
         account: &Account,
     ) -> Box<dyn DbIterator<Account, ConfirmationHeightInfo>>;
+    fn end(&self) -> Box<dyn DbIterator<Account, ConfirmationHeightInfo>>;
+    fn for_each_par(
+        &self,
+        action: &(dyn Fn(
+            &dyn ReadTransaction,
+            &mut dyn DbIterator<Account, ConfirmationHeightInfo>,
+            &mut dyn DbIterator<Account, ConfirmationHeightInfo>,
+        ) + Send
+              + Sync),
+    );
 }

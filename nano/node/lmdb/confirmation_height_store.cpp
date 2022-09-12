@@ -80,13 +80,25 @@ nano::store_iterator<nano::account, nano::confirmation_height_info> nano::lmdb::
 	return nano::store_iterator<nano::account, nano::confirmation_height_info> (nullptr);
 }
 
+namespace
+{
+void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)
+{
+	auto action = static_cast<std::function<void (nano::read_transaction const &, nano::store_iterator<nano::account, nano::confirmation_height_info>, nano::store_iterator<nano::account, nano::confirmation_height_info>)> const *> (context);
+	nano::read_mdb_txn txn{ txn_handle };
+	auto begin{ to_iterator (begin_handle) };
+	auto end{ to_iterator (end_handle) };
+	(*action) (txn, std::move (begin), std::move (end));
+}
+void for_each_par_delete_context (void * context)
+{
+}
+}
+
 void nano::lmdb::confirmation_height_store::for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::account, nano::confirmation_height_info>, nano::store_iterator<nano::account, nano::confirmation_height_info>)> const & action_a) const
 {
-	parallel_traversal<nano::uint256_t> (
-	[&action_a, this] (nano::uint256_t const & start, nano::uint256_t const & end, bool const is_last) {
-		auto transaction (this->store.tx_begin_read ());
-		action_a (*transaction, this->begin (*transaction, start), !is_last ? this->begin (*transaction, end) : this->end ());
-	});
+	auto context = (void *)&action_a;
+	rsnano::rsn_lmdb_confirmation_height_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
 }
 
 MDB_dbi nano::lmdb::confirmation_height_store::table_handle () const

@@ -447,7 +447,7 @@ impl From<&BlockHash> for Root {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct QualifiedRoot {
     pub root: Root,
     pub previous: BlockHash,

@@ -84,7 +84,7 @@ pub struct BlockHashArrayDto {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_final_vote_store_begin_get(
+pub unsafe extern "C" fn rsn_lmdb_final_vote_store_get(
     handle: *mut LmdbFinalVoteStoreHandle,
     txn: *mut TransactionHandle,
     root: *const u8,
@@ -106,4 +106,13 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_begin_get(
 pub unsafe extern "C" fn rsn_block_hash_array_destroy(data: *mut BlockHashArrayDto) {
     let v = (*data).raw_data as *mut Vec<u8>;
     drop(Box::from_raw(v))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_final_vote_store_del(
+    handle: *mut LmdbFinalVoteStoreHandle,
+    txn: *mut TransactionHandle,
+    root: *const u8,
+) {
+    (*handle).0.del((*txn).as_write_txn(), Root::from_ptr(root));
 }

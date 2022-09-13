@@ -34,19 +34,8 @@ bool nano::lmdb::final_vote_store::put (nano::write_transaction const & transact
 
 std::vector<nano::block_hash> nano::lmdb::final_vote_store::get (nano::transaction const & transaction, nano::root const & root_a)
 {
-	//	std::vector<nano::block_hash> result;
-	//	nano::qualified_root key_start{ root_a.raw, 0 };
-	//	for (auto i = begin (transaction, key_start), n = end (); i != n && nano::qualified_root{ i->first }.root () == root_a; ++i)
-	//	{
-	//		result.push_back (i->second);
-	//
-	//
-	//	}
-	//
-	//	return result;
-
 	rsnano::BlockHashArrayDto dto;
-	rsnano::rsn_lmdb_final_vote_store_begin_get (handle, transaction.get_rust_handle (), root_a.bytes.data (), &dto);
+	rsnano::rsn_lmdb_final_vote_store_get (handle, transaction.get_rust_handle (), root_a.bytes.data (), &dto);
 	std::vector<nano::block_hash> result;
 	for (auto i = 0; i < dto.count / 32; ++i)
 	{
@@ -60,17 +49,7 @@ std::vector<nano::block_hash> nano::lmdb::final_vote_store::get (nano::transacti
 
 void nano::lmdb::final_vote_store::del (nano::write_transaction const & transaction, nano::root const & root)
 {
-	std::vector<nano::qualified_root> final_vote_qualified_roots;
-	for (auto i = begin (transaction, nano::qualified_root{ root.raw, 0 }), n = end (); i != n && nano::qualified_root{ i->first }.root () == root; ++i)
-	{
-		final_vote_qualified_roots.push_back (i->first);
-	}
-
-	for (auto & final_vote_qualified_root : final_vote_qualified_roots)
-	{
-		auto status = store.del (transaction, tables::final_votes, final_vote_qualified_root);
-		store.release_assert_success (status);
-	}
+	rsnano::rsn_lmdb_final_vote_store_del (handle, transaction.get_rust_handle (), root.bytes.data ());
 }
 
 size_t nano::lmdb::final_vote_store::count (nano::transaction const & transaction_a) const

@@ -10,4 +10,5 @@ pub trait FinalVoteStore {
         root: &QualifiedRoot,
     ) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
     fn get(&self, txn: &dyn Transaction, root: Root) -> Vec<BlockHash>;
+    fn del(&self, txn: &dyn WriteTransaction, root: Root);
 }

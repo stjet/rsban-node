@@ -60,8 +60,16 @@ pub trait FullHash {
     fn full_hash(&self) -> BlockHash;
 }
 
-pub type RunningWithValgrindCallback = extern "C" fn() -> bool;
-pub static mut RUNNING_WITH_VALGRIND: Option<RunningWithValgrindCallback> = None;
-pub fn running_within_valgrind() -> bool {
-    unsafe { RUNNING_WITH_VALGRIND.expect("RUNNING_WITH_VALGRIND missing")() }
+pub type MemoryIntensiveInstrumentationCallback = extern "C" fn() -> bool;
+
+pub static mut MEMORY_INTENSIVE_INSTRUMENTATION: Option<MemoryIntensiveInstrumentationCallback> =
+    None;
+pub static mut IS_SANITIZER_BUILD: Option<MemoryIntensiveInstrumentationCallback> = None;
+
+pub fn memory_intensive_instrumentation() -> bool {
+    unsafe { MEMORY_INTENSIVE_INSTRUMENTATION.expect("MEMORY_INTENSIVE_INSTRUMENTATION missing")() }
+}
+
+pub fn is_sanitizer_build() -> bool {
+    unsafe { IS_SANITIZER_BUILD.expect("IS_SANITIZER_BUILD missing")() }
 }

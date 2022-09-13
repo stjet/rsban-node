@@ -89,6 +89,7 @@ target_link_libraries(
   ed25519
   crypto_lib
   blake2
+  secure
   ipc_flatbuffers_lib
   rsnano
   ${CRYPTOPP_LIBRARY}

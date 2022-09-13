@@ -961,7 +961,8 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_txn_callbacks_end (txn_callbacks_end);
 
 	rsnano::rsn_callback_message_visitor_bootstrap_processed (message_visitor_bootstrap_processed);
-	rsnano::rsn_callback_running_with_valgrind (nano::running_within_valgrind);
+	rsnano::rsn_callback_memory_intensive_instrumentation (nano::memory_intensive_instrumentation);
+	rsnano::rsn_callback_is_sanitizer_build (nano::is_sanitizer_build);
 
 	rsnano::rsn_callback_mdb_txn_begin (reinterpret_cast<rsnano::MdbTxnBeginCallback> (mdb_txn_begin));
 	rsnano::rsn_callback_mdb_txn_commit (reinterpret_cast<rsnano::MdbTxnCommitCallback> (mdb_txn_commit));

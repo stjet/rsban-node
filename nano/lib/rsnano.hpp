@@ -582,6 +582,8 @@ using InAvailCallback = uintptr_t (*) (void *, int32_t *);
 
 using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
 
+using MemoryIntensiveInstrumentationCallback = bool (*) ();
+
 using LedgerBlockOrPrunedExistsCallback = bool (*) (void *, const uint8_t *);
 
 struct MessageDto
@@ -694,8 +696,6 @@ using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 /// first arg is a `shared_ptr<request_response_visitor_factory> *`
 /// returns a `shared_ptr<message_visitor> *`
 using RequestResponseVisitorFactoryCreateCallback = void * (*)(void *, BootstrapServerHandle *);
-
-using RunningWithValgrindCallback = bool (*) ();
 
 using StringCharsCallback = const char * (*)(void *);
 
@@ -1407,6 +1407,8 @@ void rsn_callback_in_avail (InAvailCallback f);
 
 void rsn_callback_io_ctx_post (DispatchCallback f);
 
+void rsn_callback_is_sanitizer_build (MemoryIntensiveInstrumentationCallback f);
+
 void rsn_callback_ledger_block_or_pruned_exists (LedgerBlockOrPrunedExistsCallback f);
 
 void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
@@ -1453,6 +1455,8 @@ void rsn_callback_mdb_txn_renew (MdbTxnRenewCallback f);
 
 void rsn_callback_mdb_txn_reset (MdbTxnResetCallback f);
 
+void rsn_callback_memory_intensive_instrumentation (MemoryIntensiveInstrumentationCallback f);
+
 void rsn_callback_message_visitor_bootstrap_processed (MessageVisitorFlagCallback f);
 
 void rsn_callback_message_visitor_destroy (VoidPointerCallback f);
@@ -1488,8 +1492,6 @@ void rsn_callback_read_u8 (ReadU8Callback f);
 void rsn_callback_request_response_visitor_factory_bootstrap_visitor (RequestResponseVisitorFactoryCreateCallback f);
 
 void rsn_callback_request_response_visitor_factory_destroy (VoidPointerCallback f);
-
-void rsn_callback_running_with_valgrind (RunningWithValgrindCallback f);
 
 void rsn_callback_string_chars (StringCharsCallback f);
 

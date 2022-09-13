@@ -51,8 +51,9 @@ pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
 use crate::{
-    utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount, QualifiedRoot, RawKey, Root,
-    RunningWithValgrindCallback, Signature, RUNNING_WITH_VALGRIND,
+    utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount,
+    MemoryIntensiveInstrumentationCallback, QualifiedRoot, RawKey, Root, Signature,
+    IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION,
 };
 pub use network::ChannelTcpObserverWeakPtr;
 
@@ -192,6 +193,15 @@ impl From<&ErrorCodeDto> for ErrorCode {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_running_with_valgrind(f: RunningWithValgrindCallback) {
-    RUNNING_WITH_VALGRIND = Some(f);
+pub unsafe extern "C" fn rsn_callback_memory_intensive_instrumentation(
+    f: MemoryIntensiveInstrumentationCallback,
+) {
+    MEMORY_INTENSIVE_INSTRUMENTATION = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_is_sanitizer_build(
+    f: MemoryIntensiveInstrumentationCallback,
+) {
+    IS_SANITIZER_BUILD = Some(f);
 }

@@ -5,7 +5,7 @@ use crate::{
     stats::StatConfig,
     utils::{get_cpu_count, TomlWriter},
     Account, Amount, DiagnosticsConfig, IpcConfig, LmdbConfig, Logging, NetworkParams, Networks,
-    WebsocketConfig, GXRB_RATIO, XRB_RATIO,
+    WebsocketConfig, GXRB_RATIO, XRB_RATIO, is_sanitizer_build,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;
@@ -235,7 +235,7 @@ impl NodeConfig {
             vote_generator_delay_ms: 100,
             vote_generator_threshold: 3,
             unchecked_cutoff_time_s: 4 * 60 * 60, // 4 hours
-            tcp_io_timeout_s: if network_params.network.is_dev_network() {
+            tcp_io_timeout_s: if network_params.network.is_dev_network() && !is_sanitizer_build() {
                 5
             } else {
                 15

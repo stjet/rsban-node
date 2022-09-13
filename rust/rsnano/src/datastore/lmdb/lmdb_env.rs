@@ -8,7 +8,7 @@ use crate::{
         MDB_NOMETASYNC, MDB_NORDAHEAD, MDB_NOSUBDIR, MDB_NOSYNC, MDB_NOTLS, MDB_WRITEMAP,
     },
     logger_mt::Logger,
-    running_within_valgrind,
+    memory_intensive_instrumentation,
     utils::PropertyTreeWriter,
     LmdbConfig, SyncStrategy, TxnTrackingConfig,
 };
@@ -85,10 +85,10 @@ impl LmdbEnv {
             .store(environment as usize, Ordering::SeqCst);
         assert_success(unsafe { mdb_env_set_maxdbs(self.env(), options.config.max_databases) });
         let mut map_size = options.config.map_size;
-        let max_valgrind_map_size = 16 * 1024 * 1024;
-        if running_within_valgrind() && map_size > max_valgrind_map_size {
+        let max_instrumented_map_size = 16 * 1024 * 1024;
+        if memory_intensive_instrumentation() && map_size > max_instrumented_map_size {
             // In order to run LMDB under Valgrind, the maximum map size must be smaller than half your available RAM
-            map_size = max_valgrind_map_size;
+            map_size = max_instrumented_map_size;
         }
         assert_success(unsafe { mdb_env_set_mapsize(self.env(), map_size) });
         // It seems if there's ever more threads than mdb_env_set_maxreaders has read slots available, we get failures on transaction creation unless MDB_NOTLS is specified
@@ -104,7 +104,7 @@ impl LmdbEnv {
             environment_flags |= MDB_NOSYNC | MDB_WRITEMAP | MDB_MAPASYNC;
         }
 
-        if !running_within_valgrind() && options.use_no_mem_init {
+        if !memory_intensive_instrumentation() && options.use_no_mem_init {
             environment_flags |= MDB_NOMEMINIT;
         }
 

@@ -1,4 +1,4 @@
-use super::{DbIterator, Transaction, WriteTransaction};
+use super::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
 use crate::{BlockHash, QualifiedRoot, Root};
 
 pub trait FinalVoteStore {
@@ -9,6 +9,18 @@ pub trait FinalVoteStore {
         txn: &dyn Transaction,
         root: &QualifiedRoot,
     ) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
+    fn end(&self) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
     fn get(&self, txn: &dyn Transaction, root: Root) -> Vec<BlockHash>;
     fn del(&self, txn: &dyn WriteTransaction, root: Root);
+    fn count(&self, txn: &dyn Transaction) -> usize;
+    fn clear(&self, txn: &dyn WriteTransaction);
+    fn for_each_par(
+        &self,
+        action: &(dyn Fn(
+            &dyn ReadTransaction,
+            &mut dyn DbIterator<QualifiedRoot, BlockHash>,
+            &mut dyn DbIterator<QualifiedRoot, BlockHash>,
+        ) + Send
+              + Sync),
+    );
 }

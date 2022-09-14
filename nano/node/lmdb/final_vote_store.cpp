@@ -54,7 +54,7 @@ void nano::lmdb::final_vote_store::del (nano::write_transaction const & transact
 
 size_t nano::lmdb::final_vote_store::count (nano::transaction const & transaction_a) const
 {
-	return store.count (transaction_a, tables::final_votes);
+	return rsnano::rsn_lmdb_final_vote_store_count (handle, transaction_a.get_rust_handle ());
 }
 
 void nano::lmdb::final_vote_store::clear (nano::write_transaction const & transaction_a, nano::root const & root_a)
@@ -64,7 +64,7 @@ void nano::lmdb::final_vote_store::clear (nano::write_transaction const & transa
 
 void nano::lmdb::final_vote_store::clear (nano::write_transaction const & transaction_a)
 {
-	store.drop (transaction_a, nano::tables::final_votes);
+	rsnano::rsn_lmdb_final_vote_store_clear (handle, transaction_a.get_rust_handle ());
 }
 
 nano::store_iterator<nano::qualified_root, nano::block_hash> nano::lmdb::final_vote_store::begin (nano::transaction const & transaction, nano::qualified_root const & root) const
@@ -84,13 +84,25 @@ nano::store_iterator<nano::qualified_root, nano::block_hash> nano::lmdb::final_v
 	return nano::store_iterator<nano::qualified_root, nano::block_hash> (nullptr);
 }
 
+namespace
+{
+void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)
+{
+	auto action = static_cast<std::function<void (nano::read_transaction const &, nano::store_iterator<nano::qualified_root, nano::block_hash>, nano::store_iterator<nano::qualified_root, nano::block_hash>)> const *> (context);
+	nano::read_mdb_txn txn{ txn_handle };
+	auto begin{ to_iterator (begin_handle) };
+	auto end{ to_iterator (end_handle) };
+	(*action) (txn, std::move (begin), std::move (end));
+}
+void for_each_par_delete_context (void * context)
+{
+}
+}
+
 void nano::lmdb::final_vote_store::for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::qualified_root, nano::block_hash>, nano::store_iterator<nano::qualified_root, nano::block_hash>)> const & action_a) const
 {
-	parallel_traversal<nano::uint512_t> (
-	[&action_a, this] (nano::uint512_t const & start, nano::uint512_t const & end, bool const is_last) {
-		auto transaction (this->store.tx_begin_read ());
-		action_a (*transaction, this->begin (*transaction, start), !is_last ? this->begin (*transaction, end) : this->end ());
-	});
+	auto context = (void *)&action_a;
+	rsnano::rsn_lmdb_final_vote_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
 }
 
 MDB_dbi nano::lmdb::final_vote_store::table_handle () const

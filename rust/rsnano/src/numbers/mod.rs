@@ -17,7 +17,7 @@ pub use amount::*;
 use blake2::digest::{Update, VariableOutput};
 pub use difficulty::*;
 use once_cell::sync::Lazy;
-use primitive_types::U256;
+use primitive_types::{U256, U512};
 use rand::{thread_rng, Rng};
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
@@ -99,6 +99,16 @@ impl BlockHash {
 
     pub fn from_bytes(value: [u8; 32]) -> Self {
         Self { value }
+    }
+
+    fn from_slice(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != 32 {
+            None
+        } else {
+            let mut result = Self::new();
+            result.value.copy_from_slice(bytes);
+            Some(result)
+        }
     }
 
     pub fn to_bytes(self) -> [u8; 32] {
@@ -286,6 +296,16 @@ impl HashOrAccount {
         Self { bytes }
     }
 
+    fn from_slice(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != 32 {
+            None
+        } else {
+            let mut result = Self { bytes: [0; 32] };
+            result.bytes.copy_from_slice(bytes);
+            Some(result)
+        }
+    }
+
     pub const fn serialized_size() -> usize {
         32
     }
@@ -404,6 +424,13 @@ impl Root {
         }
     }
 
+    pub fn from_slice(bytes: &[u8]) -> Option<Self> {
+        match HashOrAccount::from_slice(bytes) {
+            Some(inner) => Some(Self { inner }),
+            None => None,
+        }
+    }
+
     pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         HashOrAccount::deserialize(stream).map(|inner| Root { inner })
     }
@@ -469,6 +496,16 @@ impl Deserialize<QualifiedRoot> for QualifiedRoot {
         let root = Root::deserialize(stream)?;
         let previous = BlockHash::deserialize(stream)?;
         Ok(QualifiedRoot { root, previous })
+    }
+}
+
+impl From<U512> for QualifiedRoot {
+    fn from(value: U512) -> Self {
+        let mut bytes = [0; 64];
+        value.to_big_endian(&mut bytes);
+        let root = Root::from_slice(&bytes[..32]).unwrap();
+        let previous = BlockHash::from_slice(&bytes[32..]).unwrap();
+        QualifiedRoot { root, previous }
     }
 }
 

@@ -2,11 +2,14 @@ use std::{ffi::c_void, sync::Arc};
 
 use crate::{
     datastore::{lmdb::LmdbFinalVoteStore, FinalVoteStore},
+    ffi::VoidPointerCallback,
     BlockHash, QualifiedRoot, Root,
 };
 
 use super::{
-    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    iterator::{
+        to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
+    },
     lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
@@ -115,4 +118,37 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_del(
     root: *const u8,
 ) {
     (*handle).0.del((*txn).as_write_txn(), Root::from_ptr(root));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_final_vote_store_count(
+    handle: *mut LmdbFinalVoteStoreHandle,
+    txn: *mut TransactionHandle,
+) -> usize {
+    (*handle).0.count((*txn).as_txn())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_final_vote_store_clear(
+    handle: *mut LmdbFinalVoteStoreHandle,
+    txn: *mut TransactionHandle,
+) {
+    (*handle).0.clear((*txn).as_write_txn());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_final_vote_store_for_each_par(
+    handle: *mut LmdbFinalVoteStoreHandle,
+    action: ForEachParCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let wrapper = ForEachParWrapper {
+        action,
+        context,
+        delete_context,
+    };
+    (*handle)
+        .0
+        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }

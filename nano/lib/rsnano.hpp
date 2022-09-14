@@ -1918,6 +1918,10 @@ LmdbIteratorHandle * rsn_lmdb_final_vote_store_begin_at_root (LmdbFinalVoteStore
 TransactionHandle * txn,
 const uint8_t * root);
 
+void rsn_lmdb_final_vote_store_clear (LmdbFinalVoteStoreHandle * handle, TransactionHandle * txn);
+
+uintptr_t rsn_lmdb_final_vote_store_count (LmdbFinalVoteStoreHandle * handle, TransactionHandle * txn);
+
 LmdbFinalVoteStoreHandle * rsn_lmdb_final_vote_store_create (LmdbEnvHandle * env_handle);
 
 void rsn_lmdb_final_vote_store_del (LmdbFinalVoteStoreHandle * handle,
@@ -1925,6 +1929,11 @@ TransactionHandle * txn,
 const uint8_t * root);
 
 void rsn_lmdb_final_vote_store_destroy (LmdbFinalVoteStoreHandle * handle);
+
+void rsn_lmdb_final_vote_store_for_each_par (LmdbFinalVoteStoreHandle * handle,
+ForEachParCallback action,
+void * context,
+VoidPointerCallback delete_context);
 
 void rsn_lmdb_final_vote_store_get (LmdbFinalVoteStoreHandle * handle,
 TransactionHandle * txn,

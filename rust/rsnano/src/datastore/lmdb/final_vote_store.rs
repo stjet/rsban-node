@@ -3,12 +3,15 @@ use std::sync::Arc;
 use crate::{
     datastore::{
         lmdb::{assert_success, mdb_put, MDB_NOTFOUND, MDB_SUCCESS},
-        DbIterator, FinalVoteStore, Transaction, WriteTransaction,
+        parallel_traversal_u512, DbIterator, FinalVoteStore, NullIterator, Transaction,
+        WriteTransaction,
     },
     BlockHash, QualifiedRoot, Root,
 };
 
-use super::{get_raw_lmdb_txn, mdb_del, mdb_get, LmdbEnv, LmdbIterator, MdbVal};
+use super::{
+    get_raw_lmdb_txn, mdb_count, mdb_del, mdb_drop, mdb_get, LmdbEnv, LmdbIterator, MdbVal,
+};
 
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash
@@ -118,5 +121,40 @@ impl FinalVoteStore for LmdbFinalVoteStore {
             };
             assert_success(status);
         }
+    }
+
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.table_handle) }
+    }
+
+    fn clear(&self, txn: &dyn WriteTransaction) {
+        unsafe {
+            mdb_drop(get_raw_lmdb_txn(txn.as_transaction()), self.table_handle, 0);
+        }
+    }
+
+    fn for_each_par(
+        &self,
+        action: &(dyn Fn(
+            &dyn crate::datastore::ReadTransaction,
+            &mut dyn DbIterator<QualifiedRoot, BlockHash>,
+            &mut dyn DbIterator<QualifiedRoot, BlockHash>,
+        ) + Send
+              + Sync),
+    ) {
+        parallel_traversal_u512(&|start, end, is_last| {
+            let mut transaction = self.env.tx_begin_read();
+            let mut begin_it = self.begin_at_root(&transaction, &start.into());
+            let mut end_it = if !is_last {
+                self.begin_at_root(&transaction, &end.into())
+            } else {
+                self.end()
+            };
+            action(&mut transaction, begin_it.as_mut(), end_it.as_mut());
+        });
+    }
+
+    fn end(&self) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>> {
+        Box::new(NullIterator::new())
     }
 }

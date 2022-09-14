@@ -190,7 +190,9 @@ std::string nano::lmdb::store::vendor_get () const
 
 void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const & transaction_a, unsigned flags)
 {
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "frontiers", flags, &frontier_store.frontiers_handle) != 0;
+	MDB_dbi frontiers_handle;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "frontiers", flags, &frontiers_handle) != 0;
+	frontier_store.set_table_handle (frontiers_handle);
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "unchecked", flags, &unchecked_store.unchecked_handle) != 0;
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "online_weight", flags, &online_weight_store.online_weight_handle) != 0;
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "meta", flags, &block_store.meta_handle) != 0;
@@ -850,7 +852,7 @@ MDB_dbi nano::lmdb::store::table_to_dbi (tables table_a) const
 	switch (table_a)
 	{
 		case tables::frontiers:
-			return frontier_store.frontiers_handle;
+			return frontier_store.table_handle ();
 		case tables::accounts:
 			return account_store.get_accounts_handle ();
 		case tables::blocks:

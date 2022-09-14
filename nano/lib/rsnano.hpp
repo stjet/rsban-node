@@ -104,6 +104,8 @@ struct LmdbEnvHandle;
 
 struct LmdbFinalVoteStoreHandle;
 
+struct LmdbFrontierStoreHandle;
+
 struct LmdbIteratorHandle;
 
 struct LocalVoteHistoryHandle;
@@ -1949,6 +1951,15 @@ void rsn_lmdb_final_vote_store_set_table_handle (LmdbFinalVoteStoreHandle * hand
 uint32_t table_handle);
 
 uint32_t rsn_lmdb_final_vote_store_table_handle (LmdbFinalVoteStoreHandle * handle);
+
+LmdbFrontierStoreHandle * rsn_lmdb_frontier_store_create (LmdbEnvHandle * env_handle);
+
+void rsn_lmdb_frontier_store_destroy (LmdbFrontierStoreHandle * handle);
+
+void rsn_lmdb_frontier_store_set_table_handle (LmdbFrontierStoreHandle * handle,
+uint32_t table_handle);
+
+uint32_t rsn_lmdb_frontier_store_table_handle (LmdbFrontierStoreHandle * handle);
 
 void rsn_lmdb_iterator_clear (LmdbIteratorHandle * handle);
 

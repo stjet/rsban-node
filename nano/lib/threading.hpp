@@ -42,7 +42,8 @@ namespace thread_role
 		db_parallel_traversal,
 		election_scheduler,
 		unchecked,
-		backlog_population
+		backlog_population,
+		election_hinting
 	};
 
 	/*

@@ -34,6 +34,7 @@ class block_arrival;
 class unchecked_map;
 class gap_cache;
 class bootstrap_initiator;
+class vote_cache;
 
 namespace websocket
 {
@@ -122,6 +123,7 @@ private:
 	nano::store & store;
 	nano::stat & stats;
 	nano::active_transactions & active_transactions;
+	nano::vote_cache & inactive_vote_cache;
 	nano::election_scheduler & scheduler;
 	std::shared_ptr<nano::websocket::listener> & websocket_server;
 	nano::unchecked_map & unchecked;

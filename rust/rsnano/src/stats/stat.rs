@@ -126,6 +126,7 @@ pub enum StatType {
     Telemetry,
     VoteGenerator,
     VoteCache,
+    Hinting,
 }
 
 impl StatType {
@@ -156,6 +157,7 @@ impl StatType {
             StatType::Telemetry => "telemetry",
             StatType::VoteGenerator => "vote_generator",
             StatType::VoteCache => "vote_cache",
+            StatType::Hinting => "hinting",
         }
     }
 }
@@ -328,6 +330,11 @@ pub enum DetailType {
     GeneratorReplies,
     GeneratorRepliesDiscarded,
     GeneratorSpacing,
+
+    // hinting
+    Hinted,
+    InsertFailed,
+    MissingBlock,
 }
 
 impl DetailType {
@@ -461,6 +468,9 @@ impl DetailType {
             DetailType::GeneratorRepliesDiscarded => "generator_replies_discarded",
             DetailType::GeneratorSpacing => "generator_spacing",
             DetailType::InvalidNetwork => "invalid_network",
+            DetailType::Hinted => "hinted",
+            DetailType::InsertFailed => "insert_failed",
+            DetailType::MissingBlock => "missing_block",
         }
     }
 }

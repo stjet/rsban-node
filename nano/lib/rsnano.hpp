@@ -108,6 +108,8 @@ struct LmdbFrontierStoreHandle;
 
 struct LmdbIteratorHandle;
 
+struct LmdbOnlineWeightStoreHandle;
+
 struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
@@ -2006,6 +2008,15 @@ void rsn_lmdb_iterator_destroy (LmdbIteratorHandle * handle);
 void rsn_lmdb_iterator_next (LmdbIteratorHandle * handle);
 
 void rsn_lmdb_iterator_previous (LmdbIteratorHandle * handle);
+
+LmdbOnlineWeightStoreHandle * rsn_lmdb_online_weight_store_create (LmdbEnvHandle * env_handle);
+
+void rsn_lmdb_online_weight_store_destroy (LmdbOnlineWeightStoreHandle * handle);
+
+void rsn_lmdb_online_weight_store_set_table_handle (LmdbOnlineWeightStoreHandle * handle,
+uint32_t table_handle);
+
+uint32_t rsn_lmdb_online_weight_store_table_handle (LmdbOnlineWeightStoreHandle * handle);
 
 TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);
 

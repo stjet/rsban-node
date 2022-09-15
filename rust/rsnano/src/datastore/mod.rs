@@ -5,6 +5,7 @@ mod final_vote_store;
 mod frontier_store;
 mod ledger;
 pub mod lmdb;
+mod online_weight_store;
 mod write_database_queue;
 
 use std::{
@@ -18,6 +19,7 @@ pub use confirmation_height_store::ConfirmationHeightStore;
 pub use final_vote_store::FinalVoteStore;
 pub use frontier_store::FrontierStore;
 pub use ledger::Ledger;
+pub use online_weight_store::OnlineWeightStore;
 use primitive_types::{U256, U512};
 pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
 

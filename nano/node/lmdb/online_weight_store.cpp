@@ -2,8 +2,14 @@
 #include <nano/node/lmdb/online_weight_store.hpp>
 
 nano::lmdb::online_weight_store::online_weight_store (nano::lmdb::store & store_a) :
-	store{ store_a }
+	store{ store_a },
+	handle{ rsnano::rsn_lmdb_online_weight_store_create (store_a.env ().handle) }
 {
+}
+
+nano::lmdb::online_weight_store::~online_weight_store ()
+{
+	rsnano::rsn_lmdb_online_weight_store_destroy (handle);
 }
 
 void nano::lmdb::online_weight_store::put (nano::write_transaction const & transaction, uint64_t time, nano::amount const & amount)

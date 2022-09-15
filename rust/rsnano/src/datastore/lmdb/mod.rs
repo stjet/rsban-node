@@ -5,6 +5,7 @@ mod final_vote_store;
 mod frontier_store;
 mod iterator;
 mod lmdb_env;
+mod online_weight_store;
 mod txn_tracker;
 
 use std::{
@@ -23,6 +24,7 @@ pub use final_vote_store::LmdbFinalVoteStore;
 pub use frontier_store::LmdbFrontierStore;
 pub use iterator::{LmdbIterator, LmdbRawIterator};
 pub use lmdb_env::{EnvOptions, LmdbEnv};
+pub use online_weight_store::LmdbOnlineWeightStore;
 pub use txn_tracker::TxnTracker;
 
 use crate::{

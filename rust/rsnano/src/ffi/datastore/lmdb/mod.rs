@@ -5,6 +5,7 @@ mod final_vote_store;
 mod frontier_store;
 mod iterator;
 mod lmdb_env;
+mod online_weight_store;
 
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 

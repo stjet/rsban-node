@@ -439,6 +439,12 @@ void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackH
 	});
 }
 
+void destroy_thread_pool (void * handle_a)
+{
+	auto ptr = static_cast<std::shared_ptr<nano::thread_pool> *> (handle_a);
+	delete ptr;
+}
+
 void logger_destroy (void * handle_a)
 {
 	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
@@ -908,6 +914,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_ledger_block_or_pruned_exists (ledger_block_or_pruned_exists);
 	rsnano::rsn_callback_block_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_add_timed_task (add_timed_task);
+	rsnano::rsn_callback_destroy_thread_pool (destroy_thread_pool);
 	rsnano::rsn_callback_logger_destroy (logger_destroy);
 
 	rsnano::rsn_callback_io_ctx_post (io_ctx_post);

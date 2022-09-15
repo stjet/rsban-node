@@ -1405,6 +1405,8 @@ void rsn_callback_channel_tcp_observer_no_socket_drop (ChannelTcpObserverCallbac
 
 void rsn_callback_channel_tcp_observer_write_drop (ChannelTcpObserverCallback f);
 
+void rsn_callback_destroy_thread_pool (VoidPointerCallback f);
+
 void rsn_callback_in_avail (InAvailCallback f);
 
 void rsn_callback_io_ctx_post (DispatchCallback f);

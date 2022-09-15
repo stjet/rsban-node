@@ -387,18 +387,23 @@ enum class tally_result
 
 class network_params;
 
-class NetworkParamsDtoWrapper{
+class NetworkParamsDtoWrapper
+{
 public:
-	NetworkParamsDtoWrapper(rsnano::NetworkParamsDto dto_a) : dto{ dto_a }{}
-	NetworkParamsDtoWrapper(NetworkParamsDtoWrapper const &) = delete;
-	NetworkParamsDtoWrapper(NetworkParamsDtoWrapper && other_a)
+	NetworkParamsDtoWrapper (rsnano::NetworkParamsDto dto_a) :
+		dto{ dto_a }
+	{
+	}
+	NetworkParamsDtoWrapper (NetworkParamsDtoWrapper const &) = delete;
+	NetworkParamsDtoWrapper (NetworkParamsDtoWrapper && other_a)
 	{
 		dto = other_a.dto;
 		other_a.moved = true;
 	}
-	~NetworkParamsDtoWrapper()
+	~NetworkParamsDtoWrapper ()
 	{
-		if (!moved){
+		if (!moved)
+		{
 			rsnano::rsn_block_destroy (dto.ledger.genesis);
 			rsnano::rsn_block_destroy (dto.ledger.nano_beta_genesis);
 			rsnano::rsn_block_destroy (dto.ledger.nano_dev_genesis);
@@ -407,7 +412,7 @@ public:
 		}
 	}
 	rsnano::NetworkParamsDto dto;
-	bool moved{false};
+	bool moved{ false };
 };
 
 /** Genesis keys and ledger constants for network variants */

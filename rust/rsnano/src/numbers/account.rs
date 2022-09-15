@@ -34,6 +34,13 @@ impl Account {
         }
     }
 
+    pub fn from_slice(bytes: &[u8]) -> Option<Self> {
+        match PublicKey::from_slice(bytes) {
+            Some(key) => Some(Account { public_key: key }),
+            None => None,
+        }
+    }
+
     pub fn to_bytes(self) -> [u8; 32] {
         self.public_key.to_be_bytes()
     }

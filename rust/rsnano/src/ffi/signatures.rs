@@ -81,7 +81,7 @@ unsafe fn into_check_set(ffi_check_set: &SignatureCheckSetDto) -> SignatureCheck
         .iter()
         .map(|&bytes| {
             let bytes = std::slice::from_raw_parts(bytes, 32);
-            PublicKey::try_from_bytes(bytes).unwrap()
+            PublicKey::from_slice(bytes).unwrap()
         })
         .collect();
 

@@ -38,8 +38,11 @@ impl PublicKey {
         Self { value }
     }
 
-    pub fn try_from_bytes(value: &[u8]) -> Result<Self> {
-        Ok(Self::from_bytes(value.try_into()?))
+    pub fn from_slice(value: &[u8]) -> Option<Self> {
+        match value.try_into() {
+            Ok(value) => Some(Self { value }),
+            Err(_) => None,
+        }
     }
 
     pub const fn serialized_size() -> usize {

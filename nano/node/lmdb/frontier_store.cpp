@@ -15,20 +15,13 @@ nano::lmdb::frontier_store::~frontier_store ()
 
 void nano::lmdb::frontier_store::put (nano::write_transaction const & transaction, nano::block_hash const & hash, nano::account const & account)
 {
-	auto status = store.put (transaction, tables::frontiers, hash, account);
-	store.release_assert_success (status);
+	rsnano::rsn_lmdb_frontier_store_put (handle, transaction.get_rust_handle (), hash.bytes.data (), account.bytes.data ());
 }
 
 nano::account nano::lmdb::frontier_store::get (nano::transaction const & transaction, nano::block_hash const & hash) const
 {
-	nano::db_val<MDB_val> value;
-	auto status = store.get (transaction, tables::frontiers, hash, value);
-	release_assert (store.success (status) || store.not_found (status));
-	nano::account result{};
-	if (store.success (status))
-	{
-		result = static_cast<nano::account> (value);
-	}
+	nano::account result;
+	rsnano::rsn_lmdb_frontier_store_get (handle, transaction.get_rust_handle (), hash.bytes.data (), result.bytes.data ());
 	return result;
 }
 

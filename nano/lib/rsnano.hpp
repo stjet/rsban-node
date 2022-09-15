@@ -1956,6 +1956,16 @@ LmdbFrontierStoreHandle * rsn_lmdb_frontier_store_create (LmdbEnvHandle * env_ha
 
 void rsn_lmdb_frontier_store_destroy (LmdbFrontierStoreHandle * handle);
 
+void rsn_lmdb_frontier_store_get (LmdbFrontierStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+uint8_t * account);
+
+void rsn_lmdb_frontier_store_put (LmdbFrontierStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+const uint8_t * account);
+
 void rsn_lmdb_frontier_store_set_table_handle (LmdbFrontierStoreHandle * handle,
 uint32_t table_handle);
 

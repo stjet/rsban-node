@@ -43,23 +43,23 @@ nano::store_iterator<uint64_t, nano::amount> nano::lmdb::online_weight_store::be
 
 nano::store_iterator<uint64_t, nano::amount> nano::lmdb::online_weight_store::rbegin (nano::transaction const & transaction) const
 {
-	return store.make_iterator<uint64_t, nano::amount> (transaction, tables::online_weight, false);
+	auto it_handle{ rsnano::rsn_lmdb_online_weight_store_rbegin (handle, transaction.get_rust_handle ()) };
+	return to_iterator (it_handle);
 }
 
-nano::store_iterator<uint64_t, nano::amount> nano::lmdb::online_weight_store::end () const
+nano::store_iterator<uint64_t, nano::amount> nano::lmdb::online_weight_store::end () constr
 {
 	return nano::store_iterator<uint64_t, nano::amount> (nullptr);
 }
 
 size_t nano::lmdb::online_weight_store::count (nano::transaction const & transaction) const
 {
-	return store.count (transaction, tables::online_weight);
+	return rsnano::rsn_lmdb_online_weight_store_count (handle, transaction.get_rust_handle ());
 }
 
 void nano::lmdb::online_weight_store::clear (nano::write_transaction const & transaction)
 {
-	auto status = store.drop (transaction, tables::online_weight);
-	store.release_assert_success (status);
+	return rsnano::rsn_lmdb_online_weight_store_clear (handle, transaction.get_rust_handle ());
 }
 
 MDB_dbi nano::lmdb::online_weight_store::table_handle () const

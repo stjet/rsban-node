@@ -6,6 +6,7 @@ mod frontier_store;
 mod iterator;
 mod lmdb_env;
 mod online_weight_store;
+mod peer_store;
 
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 

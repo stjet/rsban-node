@@ -666,6 +666,64 @@ pub static MXRB_RATIO: Lazy<u128> =
 pub static GXRB_RATIO: Lazy<u128> =
     Lazy::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
 
+pub struct EndpointKey {
+    /// The ipv6 address in network byte order
+    address: [u8; 16],
+
+    /// The port in host byte order
+    port: u16,
+}
+
+impl EndpointKey {
+    /// address in network byte order, port in host byte order
+    pub fn new(address: [u8; 16], port: u16) -> Self {
+        Self { address, port }
+    }
+}
+
+impl Serialize for EndpointKey {
+    fn serialized_size() -> usize {
+        18
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        stream.write_bytes(&self.address)?;
+        stream.write_bytes(&self.port.to_be_bytes())
+    }
+}
+
+impl Deserialize<EndpointKey> for EndpointKey {
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<EndpointKey> {
+        let mut result = EndpointKey {
+            address: Default::default(),
+            port: 0,
+        };
+        stream.read_bytes(&mut result.address, 16)?;
+        let mut buffer = [0; 2];
+        stream.read_bytes(&mut buffer, 2)?;
+        result.port = u16::from_be_bytes(buffer);
+        Ok(result)
+    }
+}
+
+pub struct NoValue {}
+
+impl Serialize for NoValue {
+    fn serialized_size() -> usize {
+        0
+    }
+
+    fn serialize(&self, _stream: &mut dyn Stream) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
+impl Deserialize<NoValue> for NoValue {
+    fn deserialize(_stream: &mut dyn Stream) -> anyhow::Result<NoValue> {
+        Ok(NoValue {})
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

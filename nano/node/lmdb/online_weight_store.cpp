@@ -47,7 +47,7 @@ nano::store_iterator<uint64_t, nano::amount> nano::lmdb::online_weight_store::rb
 	return to_iterator (it_handle);
 }
 
-nano::store_iterator<uint64_t, nano::amount> nano::lmdb::online_weight_store::end () constr
+nano::store_iterator<uint64_t, nano::amount> nano::lmdb::online_weight_store::end () const
 {
 	return nano::store_iterator<uint64_t, nano::amount> (nullptr);
 }

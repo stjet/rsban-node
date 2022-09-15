@@ -2,7 +2,13 @@
 #include <nano/node/lmdb/peer_store.hpp>
 
 nano::lmdb::peer_store::peer_store (nano::lmdb::store & store) :
-	store{ store } {};
+	store{ store },
+	handle{ rsnano::rsn_lmdb_peer_store_create (store.env ().handle) } {};
+
+nano::lmdb::peer_store::~peer_store ()
+{
+	rsnano::rsn_lmdb_peer_store_destroy (handle);
+}
 
 void nano::lmdb::peer_store::put (nano::write_transaction const & transaction, nano::endpoint_key const & endpoint)
 {
@@ -40,4 +46,14 @@ nano::store_iterator<nano::endpoint_key, nano::no_value> nano::lmdb::peer_store:
 nano::store_iterator<nano::endpoint_key, nano::no_value> nano::lmdb::peer_store::end () const
 {
 	return nano::store_iterator<nano::endpoint_key, nano::no_value> (nullptr);
+}
+
+MDB_dbi nano::lmdb::peer_store::table_handle () const
+{
+	return rsnano::rsn_lmdb_peer_store_table_handle (handle);
+}
+
+void nano::lmdb::peer_store::set_table_handle (MDB_dbi dbi)
+{
+	rsnano::rsn_lmdb_peer_store_set_table_handle (handle, dbi);
 }

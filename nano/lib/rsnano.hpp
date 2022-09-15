@@ -1969,6 +1969,11 @@ const uint8_t * hash);
 
 void rsn_lmdb_frontier_store_destroy (LmdbFrontierStoreHandle * handle);
 
+void rsn_lmdb_frontier_store_for_each_par (LmdbFrontierStoreHandle * handle,
+ForEachParCallback action,
+void * context,
+VoidPointerCallback delete_context);
+
 void rsn_lmdb_frontier_store_get (LmdbFrontierStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,

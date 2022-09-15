@@ -3,7 +3,8 @@ use std::sync::Arc;
 use crate::{
     datastore::{
         lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        FrontierStore, WriteTransaction,
+        parallel_traversal, DbIterator, FrontierStore, NullIterator, ReadTransaction,
+        WriteTransaction,
     },
     Account, BlockHash,
 };
@@ -83,5 +84,30 @@ impl FrontierStore for LmdbFrontierStore {
         hash: &BlockHash,
     ) -> Box<dyn crate::datastore::DbIterator<BlockHash, Account>> {
         Box::new(LmdbIterator::new(txn, self.table_handle, Some(hash), true))
+    }
+
+    fn for_each_par(
+        &self,
+        action: &(dyn Fn(
+            &dyn ReadTransaction,
+            &mut dyn DbIterator<BlockHash, Account>,
+            &mut dyn DbIterator<BlockHash, Account>,
+        ) + Send
+              + Sync),
+    ) {
+        parallel_traversal(&|start, end, is_last| {
+            let mut transaction = self.env.tx_begin_read();
+            let mut begin_it = self.begin_at_hash(&transaction, &start.into());
+            let mut end_it = if !is_last {
+                self.begin_at_hash(&transaction, &end.into())
+            } else {
+                self.end()
+            };
+            action(&mut transaction, begin_it.as_mut(), end_it.as_mut());
+        });
+    }
+
+    fn end(&self) -> Box<dyn DbIterator<BlockHash, Account>> {
+        Box::new(NullIterator::new())
     }
 }

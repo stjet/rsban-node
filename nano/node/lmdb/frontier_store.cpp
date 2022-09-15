@@ -36,11 +36,10 @@ nano::store_iterator<nano::block_hash, nano::account> to_iterator (rsnano::LmdbI
 {
 	if (it_handle == nullptr)
 	{
-		return nano::store_iterator<nano::block_hash, nano::account> (nullptr);
+		return { nullptr };
 	}
 
-	return nano::store_iterator<nano::block_hash, nano::account> (
-	std::make_unique<nano::mdb_iterator<nano::block_hash, nano::account>> (it_handle));
+	return { std::make_unique<nano::mdb_iterator<nano::block_hash, nano::account>> (it_handle) };
 }
 }
 
@@ -58,16 +57,28 @@ nano::store_iterator<nano::block_hash, nano::account> nano::lmdb::frontier_store
 
 nano::store_iterator<nano::block_hash, nano::account> nano::lmdb::frontier_store::end () const
 {
-	return nano::store_iterator<nano::block_hash, nano::account> (nullptr);
+	return { nullptr };
+}
+
+namespace
+{
+void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)
+{
+	auto action = static_cast<std::function<void (nano::read_transaction const &, nano::store_iterator<nano::block_hash, nano::account>, nano::store_iterator<nano::block_hash, nano::account>)> const *> (context);
+	nano::read_mdb_txn txn{ txn_handle };
+	auto begin{ to_iterator (begin_handle) };
+	auto end{ to_iterator (end_handle) };
+	(*action) (txn, std::move (begin), std::move (end));
+}
+void for_each_par_delete_context (void * context)
+{
+}
 }
 
 void nano::lmdb::frontier_store::for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::block_hash, nano::account>, nano::store_iterator<nano::block_hash, nano::account>)> const & action_a) const
 {
-	parallel_traversal<nano::uint256_t> (
-	[&action_a, this] (nano::uint256_t const & start, nano::uint256_t const & end, bool const is_last) {
-		auto transaction (this->store.tx_begin_read ());
-		action_a (*transaction, this->begin (*transaction, start), !is_last ? this->begin (*transaction, end) : this->end ());
-	});
+	auto context = (void *)&action_a;
+	rsnano::rsn_lmdb_frontier_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
 }
 
 MDB_dbi nano::lmdb::frontier_store::table_handle () const

@@ -27,18 +27,33 @@ nano::account nano::lmdb::frontier_store::get (nano::transaction const & transac
 
 void nano::lmdb::frontier_store::del (nano::write_transaction const & transaction, nano::block_hash const & hash)
 {
-	auto status = store.del (transaction, tables::frontiers, hash);
-	store.release_assert_success (status);
+	rsnano::rsn_lmdb_frontier_store_del (handle, transaction.get_rust_handle (), hash.bytes.data ());
+}
+
+namespace
+{
+nano::store_iterator<nano::block_hash, nano::account> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
+{
+	if (it_handle == nullptr)
+	{
+		return nano::store_iterator<nano::block_hash, nano::account> (nullptr);
+	}
+
+	return nano::store_iterator<nano::block_hash, nano::account> (
+	std::make_unique<nano::mdb_iterator<nano::block_hash, nano::account>> (it_handle));
+}
 }
 
 nano::store_iterator<nano::block_hash, nano::account> nano::lmdb::frontier_store::begin (nano::transaction const & transaction) const
 {
-	return store.make_iterator<nano::block_hash, nano::account> (transaction, tables::frontiers);
+	auto it_handle{ rsnano::rsn_lmdb_frontier_store_begin (handle, transaction.get_rust_handle ()) };
+	return to_iterator (it_handle);
 }
 
 nano::store_iterator<nano::block_hash, nano::account> nano::lmdb::frontier_store::begin (nano::transaction const & transaction, nano::block_hash const & hash) const
 {
-	return store.make_iterator<nano::block_hash, nano::account> (transaction, tables::frontiers, nano::db_val<MDB_val> (hash));
+	auto it_handle{ rsnano::rsn_lmdb_frontier_store_begin_at_hash (handle, transaction.get_rust_handle (), hash.bytes.data ()) };
+	return to_iterator (it_handle);
 }
 
 nano::store_iterator<nano::block_hash, nano::account> nano::lmdb::frontier_store::end () const

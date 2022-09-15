@@ -1954,7 +1954,18 @@ uint32_t table_handle);
 
 uint32_t rsn_lmdb_final_vote_store_table_handle (LmdbFinalVoteStoreHandle * handle);
 
+LmdbIteratorHandle * rsn_lmdb_frontier_store_begin (LmdbFrontierStoreHandle * handle,
+TransactionHandle * txn);
+
+LmdbIteratorHandle * rsn_lmdb_frontier_store_begin_at_hash (LmdbFrontierStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
 LmdbFrontierStoreHandle * rsn_lmdb_frontier_store_create (LmdbEnvHandle * env_handle);
+
+void rsn_lmdb_frontier_store_del (LmdbFrontierStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
 
 void rsn_lmdb_frontier_store_destroy (LmdbFrontierStoreHandle * handle);
 

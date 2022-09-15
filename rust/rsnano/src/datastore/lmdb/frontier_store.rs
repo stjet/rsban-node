@@ -8,7 +8,9 @@ use crate::{
     Account, BlockHash,
 };
 
-use super::{assert_success, get_raw_lmdb_txn, mdb_get, mdb_put, LmdbEnv, MdbVal};
+use super::{
+    assert_success, get_raw_lmdb_txn, mdb_del, mdb_get, mdb_put, LmdbEnv, LmdbIterator, MdbVal,
+};
 
 pub struct LmdbFrontierStore {
     env: Arc<LmdbEnv>,
@@ -54,5 +56,32 @@ impl FrontierStore for LmdbFrontierStore {
         } else {
             Account::new()
         }
+    }
+
+    fn del(&self, txn: &dyn WriteTransaction, hash: &BlockHash) {
+        let status = unsafe {
+            mdb_del(
+                get_raw_lmdb_txn(txn.as_transaction()),
+                self.table_handle,
+                &mut MdbVal::from(hash),
+                None,
+            )
+        };
+        assert_success(status);
+    }
+
+    fn begin(
+        &self,
+        txn: &dyn crate::datastore::Transaction,
+    ) -> Box<dyn crate::datastore::DbIterator<BlockHash, Account>> {
+        Box::new(LmdbIterator::new(txn, self.table_handle, None, true))
+    }
+
+    fn begin_at_hash(
+        &self,
+        txn: &dyn crate::datastore::Transaction,
+        hash: &BlockHash,
+    ) -> Box<dyn crate::datastore::DbIterator<BlockHash, Account>> {
+        Box::new(LmdbIterator::new(txn, self.table_handle, Some(hash), true))
     }
 }

@@ -1,4 +1,7 @@
-use crate::{utils::Stream, MXRB_RATIO};
+use crate::{
+    utils::{Deserialize, Serialize, Stream},
+    MXRB_RATIO,
+};
 use anyhow::Result;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
@@ -25,21 +28,6 @@ impl Amount {
         Self {
             value: u128::from_le_bytes(bytes),
         }
-    }
-
-    pub const fn serialized_size() -> usize {
-        std::mem::size_of::<u128>()
-    }
-
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        stream.write_bytes(&self.value.to_be_bytes())
-    }
-
-    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
-        let mut buffer = [0u8; 16];
-        let len = buffer.len();
-        stream.read_bytes(&mut buffer, len)?;
-        Ok(Amount::new(u128::from_be_bytes(buffer)))
     }
 
     pub fn to_be_bytes(self) -> [u8; 16] {
@@ -97,6 +85,25 @@ impl Amount {
 impl From<u128> for Amount {
     fn from(value: u128) -> Self {
         Amount::new(value)
+    }
+}
+
+impl Serialize for Amount {
+    fn serialized_size() -> usize {
+        std::mem::size_of::<u128>()
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        stream.write_bytes(&self.value.to_be_bytes())
+    }
+}
+
+impl Deserialize<Amount> for Amount {
+    fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
+        let mut buffer = [0u8; 16];
+        let len = buffer.len();
+        stream.read_bytes(&mut buffer, len)?;
+        Ok(Amount::new(u128::from_be_bytes(buffer)))
     }
 }
 

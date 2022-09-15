@@ -97,3 +97,19 @@ pub trait Serialize {
 pub trait Deserialize<T> {
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<T>;
 }
+
+impl Serialize for u64 {
+    fn serialized_size() -> usize {
+        std::mem::size_of::<u64>()
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        stream.write_u64_be(*self)
+    }
+}
+
+impl Deserialize<u64> for u64 {
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<u64> {
+        stream.read_u64_be()
+    }
+}

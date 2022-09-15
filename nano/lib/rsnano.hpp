@@ -2009,9 +2009,21 @@ void rsn_lmdb_iterator_next (LmdbIteratorHandle * handle);
 
 void rsn_lmdb_iterator_previous (LmdbIteratorHandle * handle);
 
+LmdbIteratorHandle * rsn_lmdb_online_weight_store_begin (LmdbOnlineWeightStoreHandle * handle,
+TransactionHandle * txn);
+
 LmdbOnlineWeightStoreHandle * rsn_lmdb_online_weight_store_create (LmdbEnvHandle * env_handle);
 
+void rsn_lmdb_online_weight_store_del (LmdbOnlineWeightStoreHandle * handle,
+TransactionHandle * txn,
+uint64_t time);
+
 void rsn_lmdb_online_weight_store_destroy (LmdbOnlineWeightStoreHandle * handle);
+
+void rsn_lmdb_online_weight_store_put (LmdbOnlineWeightStoreHandle * handle,
+TransactionHandle * txn,
+uint64_t time,
+const uint8_t * amount);
 
 void rsn_lmdb_online_weight_store_set_table_handle (LmdbOnlineWeightStoreHandle * handle,
 uint32_t table_handle);

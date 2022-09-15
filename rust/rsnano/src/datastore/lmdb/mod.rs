@@ -275,6 +275,7 @@ impl From<&BlockHash> for MdbVal {
         MdbVal::from_slice(hash.as_bytes())
     }
 }
+
 impl TryFrom<&MdbVal> for BlockHash {
     type Error = anyhow::Error;
 

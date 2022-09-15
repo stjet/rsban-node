@@ -387,6 +387,29 @@ enum class tally_result
 
 class network_params;
 
+class NetworkParamsDtoWrapper{
+public:
+	NetworkParamsDtoWrapper(rsnano::NetworkParamsDto dto_a) : dto{ dto_a }{}
+	NetworkParamsDtoWrapper(NetworkParamsDtoWrapper const &) = delete;
+	NetworkParamsDtoWrapper(NetworkParamsDtoWrapper && other_a)
+	{
+		dto = other_a.dto;
+		other_a.moved = true;
+	}
+	~NetworkParamsDtoWrapper()
+	{
+		if (!moved){
+			rsnano::rsn_block_destroy (dto.ledger.genesis);
+			rsnano::rsn_block_destroy (dto.ledger.nano_beta_genesis);
+			rsnano::rsn_block_destroy (dto.ledger.nano_dev_genesis);
+			rsnano::rsn_block_destroy (dto.ledger.nano_live_genesis);
+			rsnano::rsn_block_destroy (dto.ledger.nano_test_genesis);
+		}
+	}
+	rsnano::NetworkParamsDto dto;
+	bool moved{false};
+};
+
 /** Genesis keys and ledger constants for network variants */
 class ledger_constants
 {
@@ -513,7 +536,7 @@ public:
 	network_params (nano::networks network_a);
 	network_params (rsnano::NetworkParamsDto const & dto);
 
-	rsnano::NetworkParamsDto to_dto () const;
+	nano::NetworkParamsDtoWrapper to_dto () const;
 
 	unsigned kdf_work;
 	nano::work_thresholds work;

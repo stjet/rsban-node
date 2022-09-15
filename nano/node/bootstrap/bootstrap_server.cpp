@@ -50,6 +50,9 @@ std::shared_ptr<nano::bootstrap_server> nano::bootstrap_server_weak_wrapper::loc
 }
 
 nano::bootstrap_listener::bootstrap_listener (uint16_t port_a, nano::node & node_a) :
+	config{ node_a.config },
+	logger{ node_a.logger },
+	network{ node_a.network },
 	node (node_a),
 	port (port_a)
 {
@@ -59,12 +62,12 @@ void nano::bootstrap_listener::start ()
 {
 	nano::lock_guard<nano::mutex> lock (mutex);
 	on = true;
-	listening_socket = std::make_shared<nano::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), node.config->tcp_incoming_connections_max);
+	listening_socket = std::make_shared<nano::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), config->tcp_incoming_connections_max);
 	boost::system::error_code ec;
 	listening_socket->start (ec);
 	if (ec)
 	{
-		node.logger->always_log (boost::str (boost::format ("Network: Error while binding for incoming TCP/bootstrap on port %1%: %2%") % listening_socket->listening_port () % ec.message ()));
+		logger->always_log (boost::str (boost::format ("Network: Error while binding for incoming TCP/bootstrap on port %1%: %2%") % listening_socket->listening_port () % ec.message ()));
 		throw std::runtime_error (ec.message ());
 	}
 
@@ -82,8 +85,8 @@ void nano::bootstrap_listener::start ()
 		// we must have already been constructed with a valid port value, so check that it really is the same everywhere
 		//
 		debug_assert (port == listening_port);
-		debug_assert (port == node.network->port);
-		debug_assert (port == node.network->endpoint ().port ());
+		debug_assert (port == network->port);
+		debug_assert (port == network->endpoint ().port ());
 	}
 	else
 	{
@@ -91,8 +94,8 @@ void nano::bootstrap_listener::start ()
 		//
 		if (port == listening_port)
 		{
-			debug_assert (port == node.network->port);
-			debug_assert (port == node.network->endpoint ().port ());
+			debug_assert (port == network->port);
+			debug_assert (port == network->endpoint ().port ());
 		}
 		// (4) -- OS port choice happened at TCP socket bind time, so propagate this port value back;
 		// the propagation is done here for the `bootstrap_listener` itself, whereas for `network`, the node does it
@@ -173,9 +176,9 @@ void nano::bootstrap_listener::dec_realtime_count ()
 
 void nano::bootstrap_listener::bootstrap_server_timeout (std::uintptr_t inner_ptr)
 {
-	if (node.config->logging.bulk_pull_logging ())
+	if (config->logging.bulk_pull_logging ())
 	{
-		node.logger->try_log ("Closing incoming tcp / bootstrap server by timeout");
+		logger->try_log ("Closing incoming tcp / bootstrap server by timeout");
 	}
 	{
 		erase_connection (inner_ptr);
@@ -184,9 +187,9 @@ void nano::bootstrap_listener::bootstrap_server_timeout (std::uintptr_t inner_pt
 
 void nano::bootstrap_listener::boostrap_server_exited (nano::socket::type_t type_a, std::uintptr_t inner_ptr_a, nano::tcp_endpoint const & endpoint_a)
 {
-	if (node.config->logging.bulk_pull_logging ())
+	if (config->logging.bulk_pull_logging ())
 	{
-		node.logger->try_log ("Exiting incoming TCP/bootstrap server");
+		logger->try_log ("Exiting incoming TCP/bootstrap server");
 	}
 	if (type_a == nano::socket::type_t::bootstrap)
 	{
@@ -196,22 +199,22 @@ void nano::bootstrap_listener::boostrap_server_exited (nano::socket::type_t type
 	{
 		dec_realtime_count ();
 		// Clear temporary channel
-		node.network->tcp_channels->erase_temporary_channel (endpoint_a);
+		network->tcp_channels->erase_temporary_channel (endpoint_a);
 	}
 	erase_connection (inner_ptr_a);
 }
 
 void nano::bootstrap_listener::accept_action (boost::system::error_code const & ec, std::shared_ptr<nano::socket> const & socket_a)
 {
-	if (!node.network->excluded_peers.check (socket_a->remote_endpoint ()))
+	if (!network->excluded_peers.check (socket_a->remote_endpoint ()))
 	{
 		auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (node);
 		auto server (std::make_shared<nano::bootstrap_server> (
-		node.io_ctx, socket_a, node.logger,
-		*node.stats, node.flags, *node.config,
+		node.io_ctx, socket_a, logger,
+		*node.stats, node.flags, *config,
 		node.bootstrap, req_resp_visitor_factory, node.workers,
-		*node.network->publish_filter,
-		node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager, *node.network->syn_cookies, node.node_id, true));
+		*network->publish_filter,
+		node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager, *network->syn_cookies, node.node_id, true));
 		nano::lock_guard<nano::mutex> lock (mutex);
 		connections[server->unique_id ()] = nano::bootstrap_server_weak_wrapper (server);
 		server->start ();
@@ -219,9 +222,9 @@ void nano::bootstrap_listener::accept_action (boost::system::error_code const & 
 	else
 	{
 		node.stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_excluded);
-		if (node.config->logging.network_rejected_logging ())
+		if (config->logging.network_rejected_logging ())
 		{
-			node.logger->try_log ("Rejected connection from excluded peer ", socket_a->remote_endpoint ());
+			logger->try_log ("Rejected connection from excluded peer ", socket_a->remote_endpoint ());
 		}
 	}
 }
@@ -278,7 +281,7 @@ bool allow_bootstrap_a)
 	params.publish_filter = publish_filter_a.handle;
 	params.workers = new std::shared_ptr<nano::thread_pool> (workers_a);
 	params.io_ctx = io_ctx.handle ();
-	params.network = &network_dto;
+	params.network = &network_dto.dto;
 	params.disable_bootstrap_listener = flags_a.disable_bootstrap_listener ();
 	params.connections_max = config_a.bootstrap_connections_max;
 	params.stats = stats_a.handle;

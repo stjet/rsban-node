@@ -17,6 +17,7 @@ namespace nano
 class bootstrap_server;
 class node_config;
 class node_flags;
+class network;
 
 namespace transport
 {
@@ -75,6 +76,9 @@ public:
 	nano::mutex mutex;
 	std::unordered_map<std::size_t, bootstrap_server_weak_wrapper> connections;
 	nano::tcp_endpoint endpoint ();
+	std::shared_ptr<nano::node_config> config;
+	std::shared_ptr<nano::logger_mt> logger;
+	std::shared_ptr<nano::network> network;
 	nano::node & node;
 	std::shared_ptr<nano::server_socket> listening_socket;
 	bool on{ false };

@@ -118,7 +118,7 @@ nano::node_config::node_config (const std::optional<uint16_t> & peering_port_a, 
 	rsnano::NodeConfigDto dto;
 	auto network_params_dto{ network_params.to_dto () };
 	auto logging_dto{ logging.to_dto () };
-	rsnano::rsn_node_config_create (&dto, peering_port_a.value_or (0), peering_port_a.has_value (), &logging_dto, &network_params_dto);
+	rsnano::rsn_node_config_create (&dto, peering_port_a.value_or (0), peering_port_a.has_value (), &logging_dto, &network_params_dto.dto);
 	load_dto (dto);
 }
 

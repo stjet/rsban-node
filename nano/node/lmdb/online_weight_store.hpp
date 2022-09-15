@@ -27,11 +27,8 @@ namespace lmdb
 		size_t count (nano::transaction const & transaction_a) const override;
 		void clear (nano::write_transaction const & transaction_a) override;
 
-		/**
-		 * Samples of online vote weight
-		 * uint64_t -> nano::amount
-		 */
-		MDB_dbi online_weight_handle{ 0 };
+		MDB_dbi table_handle () const;
+		void set_table_handle (MDB_dbi dbi);
 	};
 }
 }

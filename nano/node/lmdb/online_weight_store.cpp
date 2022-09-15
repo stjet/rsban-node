@@ -49,3 +49,13 @@ void nano::lmdb::online_weight_store::clear (nano::write_transaction const & tra
 	auto status = store.drop (transaction, tables::online_weight);
 	store.release_assert_success (status);
 }
+
+MDB_dbi nano::lmdb::online_weight_store::table_handle () const
+{
+	return rsnano::rsn_lmdb_online_weight_store_table_handle (handle);
+}
+
+void nano::lmdb::online_weight_store::set_table_handle (MDB_dbi dbi)
+{
+	rsnano::rsn_lmdb_online_weight_store_set_table_handle (handle, dbi);
+}

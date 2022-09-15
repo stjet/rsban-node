@@ -194,7 +194,9 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "frontiers", flags, &frontiers_handle) != 0;
 	frontier_store.set_table_handle (frontiers_handle);
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "unchecked", flags, &unchecked_store.unchecked_handle) != 0;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "online_weight", flags, &online_weight_store.online_weight_handle) != 0;
+	MDB_dbi online_weight_handle;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "online_weight", flags, &online_weight_handle) != 0;
+	online_weight_store.set_table_handle (online_weight_handle);
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "meta", flags, &block_store.meta_handle) != 0;
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "peers", flags, &peer_store.peers_handle) != 0;
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "pruned", flags, &pruned_store.pruned_handle) != 0;
@@ -862,7 +864,7 @@ MDB_dbi nano::lmdb::store::table_to_dbi (tables table_a) const
 		case tables::unchecked:
 			return unchecked_store.unchecked_handle;
 		case tables::online_weight:
-			return online_weight_store.online_weight_handle;
+			return online_weight_store.table_handle ();
 		case tables::meta:
 			return block_store.meta_handle;
 		case tables::peers:

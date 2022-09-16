@@ -107,7 +107,7 @@ impl BlockHash {
         Self { value }
     }
 
-    fn from_slice(bytes: &[u8]) -> Option<Self> {
+    pub fn from_slice(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != 32 {
             None
         } else {
@@ -732,7 +732,7 @@ impl Deserialize for NoValue {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq)]
 pub struct PendingKey {
     pub account: Account,
     pub hash: BlockHash,
@@ -741,6 +741,13 @@ pub struct PendingKey {
 impl PendingKey {
     pub fn new(account: Account, hash: BlockHash) -> Self {
         Self { account, hash }
+    }
+
+    pub fn to_bytes(&self) -> [u8; 64] {
+        let mut result = [0; 64];
+        result[..32].copy_from_slice(self.account.as_bytes());
+        result[32..].copy_from_slice(self.hash.as_bytes());
+        result
     }
 }
 
@@ -788,6 +795,14 @@ impl PendingInfo {
             amount,
             epoch,
         }
+    }
+
+    pub fn to_bytes(&self) -> [u8; 49] {
+        let mut bytes = [0; 49];
+        bytes[..32].copy_from_slice(self.source.as_bytes());
+        bytes[32..48].copy_from_slice(&self.amount.to_be_bytes());
+        bytes[48] = self.epoch as u8;
+        bytes
     }
 }
 

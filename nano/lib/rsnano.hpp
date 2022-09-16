@@ -812,6 +812,19 @@ struct DaemonConfigDto
 
 using ForEachParCallback = void (*) (void *, TransactionHandle *, LmdbIteratorHandle *, LmdbIteratorHandle *);
 
+struct PendingKeyDto
+{
+	uint8_t account[32];
+	uint8_t hash[32];
+};
+
+struct PendingInfoDto
+{
+	uint8_t source[32];
+	uint8_t amount[16];
+	uint8_t epoch;
+};
+
 struct LocalVotesResult
 {
 	uintptr_t count;
@@ -2072,9 +2085,43 @@ void rsn_lmdb_peer_store_set_table_handle (LmdbPeerStoreHandle * handle, uint32_
 
 uint32_t rsn_lmdb_peer_store_table_handle (LmdbPeerStoreHandle * handle);
 
+bool rsn_lmdb_pending_store_any (LmdbPendingStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account);
+
+LmdbIteratorHandle * rsn_lmdb_pending_store_begin (LmdbPendingStoreHandle * handle,
+TransactionHandle * txn);
+
+LmdbIteratorHandle * rsn_lmdb_pending_store_begin_at_key (LmdbPendingStoreHandle * handle,
+TransactionHandle * txn,
+const PendingKeyDto * key);
+
 LmdbPendingStoreHandle * rsn_lmdb_pending_store_create (LmdbEnvHandle * env_handle);
 
+void rsn_lmdb_pending_store_del (LmdbPendingStoreHandle * handle,
+TransactionHandle * txn,
+const PendingKeyDto * key);
+
 void rsn_lmdb_pending_store_destroy (LmdbPendingStoreHandle * handle);
+
+bool rsn_lmdb_pending_store_exists (LmdbPendingStoreHandle * handle,
+TransactionHandle * txn,
+const PendingKeyDto * key);
+
+void rsn_lmdb_pending_store_for_each_par (LmdbPendingStoreHandle * handle,
+ForEachParCallback action,
+void * context,
+VoidPointerCallback delete_context);
+
+bool rsn_lmdb_pending_store_get (LmdbPendingStoreHandle * handle,
+TransactionHandle * txn,
+const PendingKeyDto * key,
+PendingInfoDto * pending);
+
+void rsn_lmdb_pending_store_put (LmdbPendingStoreHandle * handle,
+TransactionHandle * txn,
+const PendingKeyDto * key,
+const PendingInfoDto * pending);
 
 void rsn_lmdb_pending_store_set_table_handle (LmdbPendingStoreHandle * handle, uint32_t table_handle);
 

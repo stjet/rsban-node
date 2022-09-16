@@ -114,6 +114,8 @@ struct LmdbPeerStoreHandle;
 
 struct LmdbPendingStoreHandle;
 
+struct LmdbPrunedStoreHandle;
+
 struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
@@ -2126,6 +2128,46 @@ const PendingInfoDto * pending);
 void rsn_lmdb_pending_store_set_table_handle (LmdbPendingStoreHandle * handle, uint32_t table_handle);
 
 uint32_t rsn_lmdb_pending_store_table_handle (LmdbPendingStoreHandle * handle);
+
+LmdbIteratorHandle * rsn_lmdb_pruned_store_begin (LmdbPrunedStoreHandle * handle,
+TransactionHandle * txn);
+
+LmdbIteratorHandle * rsn_lmdb_pruned_store_begin_at_hash (LmdbPrunedStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
+void rsn_lmdb_pruned_store_clear (LmdbPrunedStoreHandle * handle, TransactionHandle * txn);
+
+uintptr_t rsn_lmdb_pruned_store_count (LmdbPrunedStoreHandle * handle, TransactionHandle * txn);
+
+LmdbPrunedStoreHandle * rsn_lmdb_pruned_store_create (LmdbEnvHandle * env_handle);
+
+void rsn_lmdb_pruned_store_del (LmdbPrunedStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
+void rsn_lmdb_pruned_store_destroy (LmdbPrunedStoreHandle * handle);
+
+bool rsn_lmdb_pruned_store_exists (LmdbPrunedStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
+void rsn_lmdb_pruned_store_for_each_par (LmdbPrunedStoreHandle * handle,
+ForEachParCallback action,
+void * context,
+VoidPointerCallback delete_context);
+
+void rsn_lmdb_pruned_store_put (LmdbPrunedStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
+void rsn_lmdb_pruned_store_random (LmdbPrunedStoreHandle * handle,
+TransactionHandle * txn,
+uint8_t * hash);
+
+void rsn_lmdb_pruned_store_set_table_handle (LmdbPrunedStoreHandle * handle, uint32_t table_handle);
+
+uint32_t rsn_lmdb_pruned_store_table_handle (LmdbPrunedStoreHandle * handle);
 
 TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);
 

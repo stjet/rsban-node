@@ -8,6 +8,7 @@ mod lmdb_env;
 mod online_weight_store;
 mod peer_store;
 mod pending_store;
+mod pruned_store;
 
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 

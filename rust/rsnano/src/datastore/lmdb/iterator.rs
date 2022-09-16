@@ -137,17 +137,17 @@ impl Drop for LmdbRawIterator {
 
 pub struct LmdbIterator<K, V>
 where
-    K: Serialize + Deserialize<Target = K> + Default,
+    K: Serialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
 {
-    key: K,
+    key: Option<K>,
     value: Option<V>,
     raw_iterator: LmdbRawIterator,
 }
 
 impl<K, V> LmdbIterator<K, V>
 where
-    K: Serialize + Deserialize<Target = K> + Default,
+    K: Serialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
 {
     pub fn new(txn: &dyn Transaction, dbi: u32, key: Option<&K>, direction_asc: bool) -> Self {
@@ -177,19 +177,19 @@ where
 
     fn load_current(&mut self) {
         self.key = if self.raw_iterator.key.mv_size > 0 {
-            K::deserialize(&mut StreamAdapter::new(self.raw_iterator.key.as_slice())).unwrap()
+            Some(K::deserialize(&mut StreamAdapter::new(self.raw_iterator.key.as_slice())).unwrap())
         } else {
-            Default::default()
+            None
         };
 
-        self.value = if self.raw_iterator.value.mv_size > 0 {
+        self.value = if self.key.is_some() {
             Some(
                 V::deserialize(&mut StreamAdapter::new(self.raw_iterator.value.as_slice()))
                     .unwrap(),
             )
         } else {
             None
-        };
+        }
     }
 }
 
@@ -211,8 +211,8 @@ where
     }
 
     fn current(&self) -> Option<(&K, &V)> {
-        if let Some(v) = self.value.as_ref() {
-            Some((&self.key, v))
+        if let Some(k) = self.key.as_ref() {
+            Some((k, self.value.as_ref().unwrap()))
         } else {
             None
         }

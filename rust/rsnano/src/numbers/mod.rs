@@ -666,6 +666,7 @@ pub static MXRB_RATIO: Lazy<u128> =
 pub static GXRB_RATIO: Lazy<u128> =
     Lazy::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
 
+#[derive(Default)]
 pub struct EndpointKey {
     /// The ipv6 address in network byte order
     address: [u8; 16],

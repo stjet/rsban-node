@@ -2041,9 +2041,30 @@ uint32_t table_handle);
 
 uint32_t rsn_lmdb_online_weight_store_table_handle (LmdbOnlineWeightStoreHandle * handle);
 
+LmdbIteratorHandle * rsn_lmdb_peer_store_begin (LmdbPeerStoreHandle * handle, TransactionHandle * txn);
+
+void rsn_lmdb_peer_store_clear (LmdbPeerStoreHandle * handle, TransactionHandle * txn);
+
+uintptr_t rsn_lmdb_peer_store_count (LmdbPeerStoreHandle * handle, TransactionHandle * txn);
+
 LmdbPeerStoreHandle * rsn_lmdb_peer_store_create (LmdbEnvHandle * env_handle);
 
+void rsn_lmdb_peer_store_del (LmdbPeerStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * address,
+uint16_t port);
+
 void rsn_lmdb_peer_store_destroy (LmdbPeerStoreHandle * handle);
+
+bool rsn_lmdb_peer_store_exists (LmdbPeerStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * address,
+uint16_t port);
+
+void rsn_lmdb_peer_store_put (LmdbPeerStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * address,
+uint16_t port);
 
 void rsn_lmdb_peer_store_set_table_handle (LmdbPeerStoreHandle * handle, uint32_t table_handle);
 

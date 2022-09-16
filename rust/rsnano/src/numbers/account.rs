@@ -117,7 +117,8 @@ impl Serialize for Account {
     }
 }
 
-impl Deserialize<Account> for Account {
+impl Deserialize for Account {
+    type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Account> {
         PublicKey::deserialize(stream).map(Self::from)
     }

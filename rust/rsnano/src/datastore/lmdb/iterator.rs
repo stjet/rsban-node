@@ -137,8 +137,8 @@ impl Drop for LmdbRawIterator {
 
 pub struct LmdbIterator<K, V>
 where
-    K: Serialize + Deserialize<K> + Default,
-    V: Deserialize<V>,
+    K: Serialize + Deserialize<Target = K> + Default,
+    V: Deserialize<Target = V>,
 {
     key: K,
     value: Option<V>,
@@ -147,8 +147,8 @@ where
 
 impl<K, V> LmdbIterator<K, V>
 where
-    K: Serialize + Deserialize<K> + Default,
-    V: Deserialize<V>,
+    K: Serialize + Deserialize<Target = K> + Default,
+    V: Deserialize<Target = V>,
 {
     pub fn new(txn: &dyn Transaction, dbi: u32, key: Option<&K>, direction_asc: bool) -> Self {
         let mut key_val = match key {
@@ -195,8 +195,8 @@ where
 
 impl<K, V> DbIterator<K, V> for LmdbIterator<K, V>
 where
-    K: Serialize + Deserialize<K> + Default,
-    V: Deserialize<V>,
+    K: Serialize + Deserialize<Target = K> + Default,
+    V: Deserialize<Target = V>,
 {
     fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator> {
         Some(self.raw_iterator.take())

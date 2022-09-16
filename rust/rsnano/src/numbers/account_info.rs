@@ -42,7 +42,8 @@ impl Serialize for AccountInfo {
     }
 }
 
-impl Deserialize<AccountInfo> for AccountInfo {
+impl Deserialize for AccountInfo {
+    type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> Result<AccountInfo> {
         Ok(Self {
             head: BlockHash::deserialize(stream)?,

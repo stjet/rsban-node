@@ -38,7 +38,8 @@ impl Serialize for ConfirmationHeightInfo {
     }
 }
 
-impl Deserialize<ConfirmationHeightInfo> for ConfirmationHeightInfo {
+impl Deserialize for ConfirmationHeightInfo {
+    type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
         let height = stream.read_u64_ne()?;
         let frontier = BlockHash::deserialize(stream)?;

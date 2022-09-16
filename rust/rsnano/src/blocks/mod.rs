@@ -361,7 +361,8 @@ pub struct BlockWithSideband {
     pub sideband: BlockSideband,
 }
 
-impl Deserialize<BlockWithSideband> for BlockWithSideband {
+impl Deserialize for BlockWithSideband {
+    type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
         let mut block = deserialize_block_enum(stream)?;
         let sideband = BlockSideband::from_stream(stream, block.block_type())?;

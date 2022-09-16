@@ -94,8 +94,9 @@ pub trait Serialize {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;
 }
 
-pub trait Deserialize<T> {
-    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<T>;
+pub trait Deserialize {
+    type Target;
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target>;
 }
 
 impl Serialize for u64 {
@@ -108,7 +109,8 @@ impl Serialize for u64 {
     }
 }
 
-impl Deserialize<u64> for u64 {
+impl Deserialize for u64 {
+    type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<u64> {
         stream.read_u64_be()
     }

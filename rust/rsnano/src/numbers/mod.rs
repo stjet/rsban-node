@@ -137,7 +137,8 @@ impl BlockHash {
     }
 }
 
-impl Deserialize<BlockHash> for BlockHash {
+impl Deserialize for BlockHash {
+    type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let mut result = Self::new();
         stream.read_bytes(&mut result.value, 32)?;
@@ -494,7 +495,8 @@ impl Serialize for QualifiedRoot {
     }
 }
 
-impl Deserialize<QualifiedRoot> for QualifiedRoot {
+impl Deserialize for QualifiedRoot {
+    type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<QualifiedRoot> {
         let root = Root::deserialize(stream)?;
         let previous = BlockHash::deserialize(stream)?;
@@ -693,7 +695,8 @@ impl Serialize for EndpointKey {
     }
 }
 
-impl Deserialize<EndpointKey> for EndpointKey {
+impl Deserialize for EndpointKey {
+    type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<EndpointKey> {
         let mut result = EndpointKey {
             address: Default::default(),
@@ -719,7 +722,8 @@ impl Serialize for NoValue {
     }
 }
 
-impl Deserialize<NoValue> for NoValue {
+impl Deserialize for NoValue {
+    type Target = Self;
     fn deserialize(_stream: &mut dyn Stream) -> anyhow::Result<NoValue> {
         Ok(NoValue {})
     }

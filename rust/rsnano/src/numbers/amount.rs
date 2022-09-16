@@ -98,7 +98,8 @@ impl Serialize for Amount {
     }
 }
 
-impl Deserialize<Amount> for Amount {
+impl Deserialize for Amount {
+    type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let mut buffer = [0u8; 16];
         let len = buffer.len();

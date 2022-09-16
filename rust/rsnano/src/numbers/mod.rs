@@ -5,10 +5,12 @@ mod difficulty;
 
 use std::convert::TryInto;
 use std::fmt::{Debug, Write};
+use std::mem::size_of;
 use std::ops::Deref;
 use std::{convert::TryFrom, fmt::Display};
 
 use crate::utils::{Deserialize, Serialize, Stream};
+use crate::Epoch;
 use anyhow::Result;
 
 pub use account::*;
@@ -16,6 +18,7 @@ pub use account_info::AccountInfo;
 pub use amount::*;
 use blake2::digest::{Update, VariableOutput};
 pub use difficulty::*;
+use num::FromPrimitive;
 use once_cell::sync::Lazy;
 use primitive_types::{U256, U512};
 use rand::{thread_rng, Rng};
@@ -726,6 +729,93 @@ impl Deserialize for NoValue {
     type Target = Self;
     fn deserialize(_stream: &mut dyn Stream) -> anyhow::Result<NoValue> {
         Ok(NoValue {})
+    }
+}
+
+#[derive(Default)]
+pub struct PendingKey {
+    pub account: Account,
+    pub hash: BlockHash,
+}
+
+impl PendingKey {
+    pub fn new(account: Account, hash: BlockHash) -> Self {
+        Self { account, hash }
+    }
+}
+
+impl Serialize for PendingKey {
+    fn serialized_size() -> usize {
+        Account::serialized_size() + BlockHash::serialized_size()
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        self.account.serialize(stream)?;
+        self.hash.serialize(stream)
+    }
+}
+
+impl Deserialize for PendingKey {
+    type Target = Self;
+
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
+        let account = Account::deserialize(stream)?;
+        let hash = BlockHash::deserialize(stream)?;
+        Ok(Self { account, hash })
+    }
+}
+
+pub struct PendingInfo {
+    pub source: Account,
+    pub amount: Amount,
+    pub epoch: Epoch,
+}
+
+impl Default for PendingInfo {
+    fn default() -> Self {
+        Self {
+            source: Default::default(),
+            amount: Default::default(),
+            epoch: Epoch::Epoch0,
+        }
+    }
+}
+
+impl PendingInfo {
+    pub fn new(source: Account, amount: Amount, epoch: Epoch) -> Self {
+        Self {
+            source,
+            amount,
+            epoch,
+        }
+    }
+}
+
+impl Serialize for PendingInfo {
+    fn serialized_size() -> usize {
+        Account::serialized_size() + Amount::serialized_size() + size_of::<u8>()
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        self.source.serialize(stream)?;
+        self.amount.serialize(stream)?;
+        stream.write_u8(self.epoch as u8)
+    }
+}
+
+impl Deserialize for PendingInfo {
+    type Target = Self;
+
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
+        let source = Account::deserialize(stream)?;
+        let amount = Amount::deserialize(stream)?;
+        let epoch =
+            FromPrimitive::from_u8(stream.read_u8()?).ok_or_else(|| anyhow!("invalid epoch"))?;
+        Ok(Self {
+            source,
+            amount,
+            epoch,
+        })
     }
 }
 

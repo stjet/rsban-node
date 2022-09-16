@@ -3,7 +3,13 @@
 #include <nano/secure/parallel_traversal.hpp>
 
 nano::lmdb::pending_store::pending_store (nano::lmdb::store & store) :
-	store{ store } {};
+	store{ store },
+	handle{ rsnano::rsn_lmdb_pending_store_create (store.env ().handle) } {};
+
+nano::lmdb::pending_store::~pending_store ()
+{
+	rsnano::rsn_lmdb_pending_store_destroy (handle);
+}
 
 void nano::lmdb::pending_store::put (nano::write_transaction const & transaction, nano::pending_key const & key, nano::pending_info const & pending)
 {
@@ -69,4 +75,14 @@ void nano::lmdb::pending_store::for_each_par (std::function<void (nano::read_tra
 		auto transaction (this->store.tx_begin_read ());
 		action_a (*transaction, this->begin (*transaction, key_start), !is_last ? this->begin (*transaction, key_end) : this->end ());
 	});
+}
+
+MDB_dbi nano::lmdb::pending_store::table_handle () const
+{
+	return rsnano::rsn_lmdb_pending_store_table_handle (handle);
+}
+
+void nano::lmdb::pending_store::set_table_handle (MDB_dbi dbi)
+{
+	rsnano::rsn_lmdb_pending_store_set_table_handle (handle, dbi);
 }

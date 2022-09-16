@@ -13,9 +13,13 @@ namespace lmdb
 	{
 	private:
 		nano::lmdb::store & store;
+		rsnano::LmdbPendingStoreHandle * handle;
 
 	public:
 		explicit pending_store (nano::lmdb::store & store_a);
+		~pending_store ();
+		pending_store (pending_store const &) = delete;
+		pending_store (pending_store &&) = delete;
 		void put (nano::write_transaction const & transaction_a, nano::pending_key const & key_a, nano::pending_info const & pending_info_a) override;
 		void del (nano::write_transaction const & transaction_a, nano::pending_key const & key_a) override;
 		bool get (nano::transaction const & transaction_a, nano::pending_key const & key_a, nano::pending_info & pending_a) override;
@@ -38,11 +42,8 @@ namespace lmdb
 		 */
 		MDB_dbi pending_v1_handle{ 0 };
 
-		/**
-		 * Maps (destination account, pending block) to (source account, amount, version). (Removed)
-		 * nano::account, nano::block_hash -> nano::account, nano::amount, nano::epoch
-		 */
-		MDB_dbi pending_handle{ 0 };
+		MDB_dbi table_handle () const;
+		void set_table_handle (MDB_dbi dbi);
 	};
 }
 }

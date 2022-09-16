@@ -7,6 +7,7 @@ mod iterator;
 mod lmdb_env;
 mod online_weight_store;
 mod peer_store;
+mod pending_store;
 
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 

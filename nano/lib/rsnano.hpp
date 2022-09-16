@@ -112,6 +112,8 @@ struct LmdbOnlineWeightStoreHandle;
 
 struct LmdbPeerStoreHandle;
 
+struct LmdbPendingStoreHandle;
+
 struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
@@ -2069,6 +2071,14 @@ uint16_t port);
 void rsn_lmdb_peer_store_set_table_handle (LmdbPeerStoreHandle * handle, uint32_t table_handle);
 
 uint32_t rsn_lmdb_peer_store_table_handle (LmdbPeerStoreHandle * handle);
+
+LmdbPendingStoreHandle * rsn_lmdb_pending_store_create (LmdbEnvHandle * env_handle);
+
+void rsn_lmdb_pending_store_destroy (LmdbPendingStoreHandle * handle);
+
+void rsn_lmdb_pending_store_set_table_handle (LmdbPendingStoreHandle * handle, uint32_t table_handle);
+
+uint32_t rsn_lmdb_pending_store_table_handle (LmdbPendingStoreHandle * handle);
 
 TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);
 

@@ -7,6 +7,7 @@ mod iterator;
 mod lmdb_env;
 mod online_weight_store;
 mod peer_store;
+mod pending_store;
 mod txn_tracker;
 
 use std::{
@@ -27,6 +28,7 @@ pub use iterator::{LmdbIterator, LmdbRawIterator};
 pub use lmdb_env::{EnvOptions, LmdbEnv};
 pub use online_weight_store::LmdbOnlineWeightStore;
 pub use peer_store::LmdbPeerStore;
+pub use pending_store::LmdbPendingStore;
 pub use txn_tracker::TxnTracker;
 
 use crate::{

@@ -116,6 +116,8 @@ struct LmdbPendingStoreHandle;
 
 struct LmdbPrunedStoreHandle;
 
+struct LmdbUncheckedStoreHandle;
+
 struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
@@ -2180,6 +2182,15 @@ void rsn_lmdb_read_txn_refresh (TransactionHandle * handle);
 void rsn_lmdb_read_txn_renew (TransactionHandle * handle);
 
 void rsn_lmdb_read_txn_reset (TransactionHandle * handle);
+
+LmdbUncheckedStoreHandle * rsn_lmdb_unchecked_store_create (LmdbEnvHandle * env_handle);
+
+void rsn_lmdb_unchecked_store_destroy (LmdbUncheckedStoreHandle * handle);
+
+void rsn_lmdb_unchecked_store_set_table_handle (LmdbUncheckedStoreHandle * handle,
+uint32_t table_handle);
+
+uint32_t rsn_lmdb_unchecked_store_table_handle (LmdbUncheckedStoreHandle * handle);
 
 void rsn_lmdb_write_txn_commit (TransactionHandle * handle);
 

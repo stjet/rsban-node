@@ -9,6 +9,7 @@ mod online_weight_store;
 mod peer_store;
 mod pending_store;
 mod pruned_store;
+mod unchecked_store;
 mod write_database_queue;
 
 use std::{
@@ -27,6 +28,7 @@ pub use peer_store::PeerStore;
 pub use pending_store::PendingStore;
 use primitive_types::{U256, U512};
 pub use pruned_store::PrunedStore;
+pub use unchecked_store::UncheckedStore;
 pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
 
 use crate::utils::get_cpu_count;

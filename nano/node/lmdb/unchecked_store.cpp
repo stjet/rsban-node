@@ -3,7 +3,13 @@
 #include <nano/secure/parallel_traversal.hpp>
 
 nano::lmdb::unchecked_store::unchecked_store (nano::lmdb::store & store_a) :
-	store (store_a){};
+	store (store_a),
+	handle{ rsnano::rsn_lmdb_unchecked_store_create (store_a.env ().handle) } {};
+
+nano::lmdb::unchecked_store::~unchecked_store ()
+{
+	rsnano::rsn_lmdb_unchecked_store_destroy (handle);
+}
 
 void nano::lmdb::unchecked_store::clear (nano::write_transaction const & transaction_a)
 {
@@ -49,4 +55,14 @@ nano::store_iterator<nano::unchecked_key, nano::unchecked_info> nano::lmdb::unch
 size_t nano::lmdb::unchecked_store::count (nano::transaction const & transaction_a)
 {
 	return store.count (transaction_a, tables::unchecked);
+}
+
+MDB_dbi nano::lmdb::unchecked_store::table_handle () const
+{
+	return rsnano::rsn_lmdb_unchecked_store_table_handle (handle);
+}
+
+void nano::lmdb::unchecked_store::set_table_handle (MDB_dbi dbi)
+{
+	rsnano::rsn_lmdb_unchecked_store_set_table_handle (handle, dbi);
 }

@@ -10,6 +10,7 @@ mod peer_store;
 mod pending_store;
 mod pruned_store;
 mod txn_tracker;
+mod unchecked_store;
 
 use std::{
     convert::TryFrom,
@@ -32,6 +33,7 @@ pub use peer_store::LmdbPeerStore;
 pub use pending_store::LmdbPendingStore;
 pub use pruned_store::LmdbPrunedStore;
 pub use txn_tracker::TxnTracker;
+pub use unchecked_store::LmdbUncheckedStore;
 
 use crate::{
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},

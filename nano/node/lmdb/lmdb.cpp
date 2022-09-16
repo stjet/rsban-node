@@ -193,7 +193,10 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 	MDB_dbi frontiers_handle;
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "frontiers", flags, &frontiers_handle) != 0;
 	frontier_store.set_table_handle (frontiers_handle);
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "unchecked", flags, &unchecked_store.unchecked_handle) != 0;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "frontiers", flags, &frontiers_handle) != 0;
+	MDB_dbi unchecked_handle;
+	error_a |= mdb_dbi_open (env ().tx (transaction_a), "unchecked", flags, &unchecked_handle) != 0;
+	unchecked_store.set_table_handle (unchecked_handle);
 	MDB_dbi online_weight_handle;
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "online_weight", flags, &online_weight_handle) != 0;
 	online_weight_store.set_table_handle (online_weight_handle);
@@ -868,7 +871,7 @@ MDB_dbi nano::lmdb::store::table_to_dbi (tables table_a) const
 		case tables::pending:
 			return pending_store.table_handle ();
 		case tables::unchecked:
-			return unchecked_store.unchecked_handle;
+			return unchecked_store.table_handle ();
 		case tables::online_weight:
 			return online_weight_store.table_handle ();
 		case tables::meta:

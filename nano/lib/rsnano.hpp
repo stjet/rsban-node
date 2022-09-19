@@ -23,6 +23,10 @@ static const uintptr_t FrontierReq_ONLY_CONFIRMED = 1;
 
 static const uint64_t PULL_COUNT_PER_CHECK = (8 * 1024);
 
+static const int32_t STORE_VERSION_CURRENT = 21;
+
+static const int32_t STORE_VERSION_MINIMUM = 14;
+
 static const uint8_t SYSTEM = 1;
 
 enum class MdbCursorOp
@@ -117,6 +121,8 @@ struct LmdbPendingStoreHandle;
 struct LmdbPrunedStoreHandle;
 
 struct LmdbUncheckedStoreHandle;
+
+struct LmdbVersionStoreHandle;
 
 struct LocalVoteHistoryHandle;
 
@@ -2221,6 +2227,20 @@ void rsn_lmdb_unchecked_store_set_table_handle (LmdbUncheckedStoreHandle * handl
 uint32_t table_handle);
 
 uint32_t rsn_lmdb_unchecked_store_table_handle (LmdbUncheckedStoreHandle * handle);
+
+LmdbVersionStoreHandle * rsn_lmdb_version_store_create (LmdbEnvHandle * env_handle);
+
+void rsn_lmdb_version_store_destroy (LmdbVersionStoreHandle * handle);
+
+int32_t rsn_lmdb_version_store_get (LmdbVersionStoreHandle * handle, TransactionHandle * txn);
+
+void rsn_lmdb_version_store_put (LmdbVersionStoreHandle * handle,
+TransactionHandle * txn,
+int32_t version);
+
+void rsn_lmdb_version_store_set_table_handle (LmdbVersionStoreHandle * handle, uint32_t table_handle);
+
+uint32_t rsn_lmdb_version_store_table_handle (LmdbVersionStoreHandle * handle);
 
 void rsn_lmdb_write_txn_commit (TransactionHandle * handle);
 

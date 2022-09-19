@@ -10,6 +10,7 @@ mod peer_store;
 mod pending_store;
 mod pruned_store;
 mod unchecked_store;
+mod version_store;
 mod write_database_queue;
 
 use std::{
@@ -29,6 +30,7 @@ pub use pending_store::PendingStore;
 use primitive_types::{U256, U512};
 pub use pruned_store::PrunedStore;
 pub use unchecked_store::UncheckedStore;
+pub use version_store::VersionStore;
 pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
 
 use crate::utils::get_cpu_count;
@@ -112,3 +114,6 @@ where
         }
     });
 }
+
+pub const STORE_VERSION_MINIMUM: i32 = 14;
+pub const STORE_VERSION_CURRENT: i32 = 21;

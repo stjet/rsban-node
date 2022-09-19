@@ -352,6 +352,10 @@ impl HashOrAccount {
     pub fn to_account(self) -> Account {
         Account::from_bytes(self.bytes)
     }
+
+    pub fn to_block_hash(self) -> BlockHash {
+        BlockHash::from_bytes(self.bytes)
+    }
 }
 
 impl Display for HashOrAccount {

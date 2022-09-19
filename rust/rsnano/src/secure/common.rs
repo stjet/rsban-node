@@ -8,7 +8,7 @@ use crate::{
  */
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
-pub(crate) enum SignatureVerification {
+pub enum SignatureVerification {
     Unknown = 0,
     Invalid = 1,
     Valid = 2,

@@ -596,40 +596,14 @@ void nano::unchecked_info::set_verified (nano::signature_verification verified)
 
 void nano::unchecked_info::serialize (nano::stream & stream_a) const
 {
-	auto modified = rsnano::rsn_unchecked_info_modified (handle);
-	auto block = get_block ();
-	auto acc = get_account ();
-	nano::serialize_block (stream_a, *block);
-	nano::write (stream_a, acc.bytes);
-	nano::write (stream_a, modified);
-	nano::write (stream_a, get_verified ());
+	if (!rsnano::rsn_unchecked_info_serialize (handle, &stream_a))
+		throw std::runtime_error ("could not serialize unchecked_info");
 }
 
 bool nano::unchecked_info::deserialize (nano::stream & stream_a)
 {
-	auto block = nano::deserialize_block (stream_a);
-	bool error (block == nullptr);
-	if (!error)
-	{
-		rsnano::rsn_unchecked_info_block_set (handle, block->get_handle ());
-		try
-		{
-			nano::account acc;
-			nano::read (stream_a, acc.bytes);
-			rsnano::rsn_unchecked_info_account_set (handle, acc.bytes.data ());
-			uint64_t modified;
-			nano::read (stream_a, modified);
-			rsnano::rsn_unchecked_info_modified_set (handle, modified);
-			nano::signature_verification v;
-			nano::read (stream_a, v);
-			rsnano::rsn_unchecked_info_verified_set (handle, static_cast<uint8_t> (v));
-		}
-		catch (std::runtime_error const &)
-		{
-			error = true;
-		}
-	}
-	return error;
+	auto success = rsnano::rsn_unchecked_info_deserialize (handle, &stream_a);
+	return !success;
 }
 
 uint64_t nano::unchecked_info::modified () const

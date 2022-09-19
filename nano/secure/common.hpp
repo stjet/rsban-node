@@ -236,8 +236,6 @@ public:
 	nano::account get_account () const;
 	nano::signature_verification get_verified () const;
 	void set_verified (nano::signature_verification verified);
-
-private:
 	rsnano::UncheckedInfoHandle * handle;
 };
 

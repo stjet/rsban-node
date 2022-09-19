@@ -2183,9 +2183,16 @@ void rsn_lmdb_read_txn_renew (TransactionHandle * handle);
 
 void rsn_lmdb_read_txn_reset (TransactionHandle * handle);
 
+void rsn_lmdb_unchecked_store_clear (LmdbUncheckedStoreHandle * handle, TransactionHandle * txn);
+
 LmdbUncheckedStoreHandle * rsn_lmdb_unchecked_store_create (LmdbEnvHandle * env_handle);
 
 void rsn_lmdb_unchecked_store_destroy (LmdbUncheckedStoreHandle * handle);
+
+void rsn_lmdb_unchecked_store_put (LmdbUncheckedStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * dependency,
+UncheckedInfoHandle * info);
 
 void rsn_lmdb_unchecked_store_set_table_handle (LmdbUncheckedStoreHandle * handle,
 uint32_t table_handle);
@@ -3154,11 +3161,15 @@ UncheckedInfoHandle * rsn_unchecked_info_create2 (const BlockHandle * block,
 const uint8_t * account,
 uint8_t verified);
 
+bool rsn_unchecked_info_deserialize (UncheckedInfoHandle * handle, void * stream);
+
 void rsn_unchecked_info_destroy (UncheckedInfoHandle * handle);
 
 uint64_t rsn_unchecked_info_modified (const UncheckedInfoHandle * handle);
 
 void rsn_unchecked_info_modified_set (UncheckedInfoHandle * handle, uint64_t modified);
+
+bool rsn_unchecked_info_serialize (UncheckedInfoHandle * handle, void * stream);
 
 uint8_t rsn_unchecked_info_verified (const UncheckedInfoHandle * handle);
 

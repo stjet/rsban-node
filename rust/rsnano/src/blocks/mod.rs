@@ -327,6 +327,12 @@ pub fn deserialize_block(
     Ok(block)
 }
 
+pub fn serialize_block_enum(stream: &mut dyn Stream, block: &BlockEnum) -> Result<()> {
+    let block_type = block.block_type() as u8;
+    stream.write_u8(block_type)?;
+    block.as_block().serialize(stream)
+}
+
 pub fn deserialize_block_enum(stream: &mut dyn Stream) -> Result<BlockEnum> {
     let block_type =
         BlockType::from_u8(stream.read_u8()?).ok_or_else(|| anyhow!("invalid block type"))?;

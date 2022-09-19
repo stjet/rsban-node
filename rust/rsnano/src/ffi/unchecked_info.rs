@@ -1,14 +1,27 @@
+use std::{ffi::c_void, ops::Deref};
+
 use num::FromPrimitive;
 
-use crate::{Account, UncheckedInfo};
+use crate::{
+    utils::{Deserialize, Serialize},
+    Account, UncheckedInfo,
+};
 
-use super::BlockHandle;
+use super::{BlockHandle, FfiStream};
 
 pub struct UncheckedInfoHandle(UncheckedInfo);
 
 impl UncheckedInfoHandle {
     pub(crate) fn new(info: UncheckedInfo) -> Self {
         Self(info)
+    }
+}
+
+impl Deref for UncheckedInfoHandle {
+    type Target = UncheckedInfo;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -103,4 +116,28 @@ pub unsafe extern "C" fn rsn_unchecked_info_verified_set(
     verified: u8,
 ) {
     (*handle).0.verified = FromPrimitive::from_u8(verified).unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_unchecked_info_serialize(
+    handle: *mut UncheckedInfoHandle,
+    stream: *mut c_void,
+) -> bool {
+    let mut stream = FfiStream::new(stream);
+    (*handle).0.serialize(&mut stream).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_unchecked_info_deserialize(
+    handle: *mut UncheckedInfoHandle,
+    stream: *mut c_void,
+) -> bool {
+    let mut stream = FfiStream::new(stream);
+    match UncheckedInfo::deserialize(&mut stream) {
+        Ok(info) => {
+            (*handle).0 = info;
+            true
+        }
+        Err(_) => false,
+    }
 }

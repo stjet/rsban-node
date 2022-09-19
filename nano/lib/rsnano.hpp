@@ -829,6 +829,12 @@ struct PendingInfoDto
 	uint8_t epoch;
 };
 
+struct UncheckedKeyDto
+{
+	uint8_t previous[32];
+	uint8_t hash[32];
+};
+
 struct LocalVotesResult
 {
 	uintptr_t count;
@@ -2183,11 +2189,28 @@ void rsn_lmdb_read_txn_renew (TransactionHandle * handle);
 
 void rsn_lmdb_read_txn_reset (TransactionHandle * handle);
 
+LmdbIteratorHandle * rsn_lmdb_unchecked_store_begin (LmdbUncheckedStoreHandle * handle,
+TransactionHandle * txn);
+
 void rsn_lmdb_unchecked_store_clear (LmdbUncheckedStoreHandle * handle, TransactionHandle * txn);
+
+uintptr_t rsn_lmdb_unchecked_store_count (LmdbUncheckedStoreHandle * handle, TransactionHandle * txn);
 
 LmdbUncheckedStoreHandle * rsn_lmdb_unchecked_store_create (LmdbEnvHandle * env_handle);
 
+void rsn_lmdb_unchecked_store_del (LmdbUncheckedStoreHandle * handle,
+TransactionHandle * txn,
+const UncheckedKeyDto * key);
+
 void rsn_lmdb_unchecked_store_destroy (LmdbUncheckedStoreHandle * handle);
+
+bool rsn_lmdb_unchecked_store_exists (LmdbUncheckedStoreHandle * handle,
+TransactionHandle * txn,
+const UncheckedKeyDto * key);
+
+LmdbIteratorHandle * rsn_lmdb_unchecked_store_lower_bound (LmdbUncheckedStoreHandle * handle,
+TransactionHandle * txn,
+const UncheckedKeyDto * key);
 
 void rsn_lmdb_unchecked_store_put (LmdbUncheckedStoreHandle * handle,
 TransactionHandle * txn,

@@ -955,6 +955,13 @@ nano::block_hash const & nano::unchecked_key::key () const
 {
 	return previous;
 }
+rsnano::UncheckedKeyDto nano::unchecked_key::to_dto () const
+{
+	rsnano::UncheckedKeyDto dto;
+	std::copy (std::begin (previous.bytes), std::end (previous.bytes), std::begin (dto.previous));
+	std::copy (std::begin (hash.bytes), std::end (hash.bytes), std::begin (dto.hash));
+	return dto;
+}
 
 nano::generate_cache::generate_cache () :
 	handle{ rsnano::rsn_generate_cache_create () }

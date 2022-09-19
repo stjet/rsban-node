@@ -163,7 +163,7 @@ where
             K::serialized_size(),
         );
         let mut result = Self {
-            key: Default::default(),
+            key: None,
             value: None,
             raw_iterator,
         };
@@ -195,7 +195,7 @@ where
 
 impl<K, V> DbIterator<K, V> for LmdbIterator<K, V>
 where
-    K: Serialize + Deserialize<Target = K> + Default,
+    K: Serialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
 {
     fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator> {

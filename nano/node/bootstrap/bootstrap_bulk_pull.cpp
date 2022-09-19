@@ -366,7 +366,7 @@ void nano::bulk_pull_server::set_current_end ()
 	include_start = false;
 	debug_assert (request != nullptr);
 	auto transaction (node->store.tx_begin_read ());
-	if (!node->store.block.exists (*transaction, request->get_end ()))
+	if (!node->store.block ().exists (*transaction, request->get_end ()))
 	{
 		if (node->config->logging.bulk_pull_logging ())
 		{
@@ -375,7 +375,7 @@ void nano::bulk_pull_server::set_current_end ()
 		request->set_end (0);
 	}
 
-	if (node->store.block.exists (*transaction, request->get_start ().as_block_hash ()))
+	if (node->store.block ().exists (*transaction, request->get_start ().as_block_hash ()))
 	{
 		if (node->config->logging.bulk_pull_logging ())
 		{
@@ -388,7 +388,7 @@ void nano::bulk_pull_server::set_current_end ()
 	else
 	{
 		nano::account_info info;
-		auto no_address (node->store.account.get (*transaction, request->get_start ().as_account (), info));
+		auto no_address (node->store.account ().get (*transaction, request->get_start ().as_account (), info));
 		if (no_address)
 		{
 			if (node->config->logging.bulk_pull_logging ())
@@ -740,7 +740,7 @@ std::pair<std::unique_ptr<nano::pending_key>, std::unique_ptr<nano::pending_info
 		 * database for a prolonged period.
 		 */
 		auto stream_transaction (node->store.tx_begin_read ());
-		auto stream (node->store.pending.begin (*stream_transaction, current_key));
+		auto stream (node->store.pending ().begin (*stream_transaction, current_key));
 
 		if (stream == nano::store_iterator<nano::pending_key, nano::pending_info> (nullptr))
 		{

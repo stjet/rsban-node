@@ -805,21 +805,6 @@ class unchecked_map;
 class store
 {
 public:
-	// clang-format off
-	explicit store (
-		nano::block_store &,
-		nano::frontier_store &,
-		nano::account_store &,
-		nano::pending_store &,
-		nano::unchecked_store &,
-		nano::online_weight_store &,
-		nano::pruned_store &,
-		nano::peer_store &,
-		nano::confirmation_height_store &,
-		nano::final_vote_store &,
-		nano::version_store &
-	);
-	// clang-format on
 	virtual ~store () = default;
 	void initialize (nano::write_transaction const & transaction_a, nano::ledger_cache & ledger_cache_a, nano::ledger_constants & constants);
 	virtual uint64_t count (nano::transaction const & transaction_a, tables table_a) const = 0;
@@ -827,25 +812,19 @@ public:
 	virtual bool not_found (int status) const = 0;
 	virtual bool success (int status) const = 0;
 	virtual int status_code_not_found () const = 0;
-	virtual std::string error_string (int status) const = 0;
-
-	block_store & block;
-	frontier_store & frontier;
-	account_store & account;
-	pending_store & pending;
+	virtual block_store & block () = 0;
+	virtual frontier_store & frontier () = 0;
+	virtual account_store & account () = 0;
+	virtual pending_store & pending () = 0;
+	virtual unchecked_store & unchecked () = 0;
+	virtual online_weight_store & online_weight () = 0;
+	virtual pruned_store & pruned () = 0;
+	virtual peer_store & peer () = 0;
+	virtual confirmation_height_store & confirmation_height () = 0;
+	virtual final_vote_store & final_vote () = 0;
+	virtual version_store & version () = 0;
 	static int constexpr version_minimum{ 14 };
 	static int constexpr version_current{ 21 };
-
-private:
-	unchecked_store & unchecked;
-
-public:
-	online_weight_store & online_weight;
-	pruned_store & pruned;
-	peer_store & peer;
-	confirmation_height_store & confirmation_height;
-	final_vote_store & final_vote;
-	version_store & version;
 
 	virtual unsigned max_block_write_batch_num () const = 0;
 

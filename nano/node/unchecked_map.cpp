@@ -33,7 +33,7 @@ nano::transaction const & transaction, std::function<void (nano::unchecked_key c
 	nano::lock_guard<std::recursive_mutex> lock{ entries_mutex };
 	if (entries == nullptr)
 	{
-		for (auto [i, n] = store.unchecked.full_range (transaction); predicate () && i != n; ++i)
+		for (auto [i, n] = store.unchecked ().full_range (transaction); predicate () && i != n; ++i)
 		{
 			action (i->first, i->second);
 		}
@@ -53,7 +53,7 @@ nano::transaction const & transaction, nano::hash_or_account const & dependency,
 	nano::lock_guard<std::recursive_mutex> lock{ entries_mutex };
 	if (entries == nullptr)
 	{
-		for (auto [i, n] = store.unchecked.equal_range (transaction, dependency.as_block_hash ()); predicate () && i->first.key () == dependency && i != n; ++i)
+		for (auto [i, n] = store.unchecked ().equal_range (transaction, dependency.as_block_hash ()); predicate () && i->first.key () == dependency && i != n; ++i)
 		{
 			action (i->first, i->second);
 		}
@@ -81,7 +81,7 @@ bool nano::unchecked_map::exists (nano::transaction const & transaction, nano::u
 	nano::lock_guard<std::recursive_mutex> lock{ entries_mutex };
 	if (entries == nullptr)
 	{
-		return store.unchecked.exists (transaction, key);
+		return store.unchecked ().exists (transaction, key);
 	}
 	else
 	{
@@ -94,7 +94,7 @@ void nano::unchecked_map::del (nano::write_transaction const & transaction, nano
 	nano::lock_guard<std::recursive_mutex> lock{ entries_mutex };
 	if (entries == nullptr)
 	{
-		store.unchecked.del (transaction, key);
+		store.unchecked ().del (transaction, key);
 	}
 	else
 	{
@@ -108,7 +108,7 @@ void nano::unchecked_map::clear (nano::write_transaction const & transaction)
 	nano::lock_guard<std::recursive_mutex> lock{ entries_mutex };
 	if (entries == nullptr)
 	{
-		store.unchecked.clear (transaction);
+		store.unchecked ().clear (transaction);
 	}
 	else
 	{
@@ -121,7 +121,7 @@ size_t nano::unchecked_map::count (nano::transaction const & transaction) const
 	nano::lock_guard<std::recursive_mutex> lock{ entries_mutex };
 	if (entries == nullptr)
 	{
-		return store.unchecked.count (transaction);
+		return store.unchecked ().count (transaction);
 	}
 	else
 	{
@@ -225,7 +225,7 @@ void nano::unchecked_map::insert_impl (nano::write_transaction const & transacti
 	{
 		auto block{ info.get_block () };
 		auto account{ info.get_account () };
-		store.unchecked.put (transaction, dependency, { block, account, info.get_verified () });
+		store.unchecked ().put (transaction, dependency, { block, account, info.get_verified () });
 	}
 	else
 	{

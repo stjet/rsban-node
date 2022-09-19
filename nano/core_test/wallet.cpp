@@ -183,9 +183,9 @@ TEST (wallet, spend_all_one)
 	nano::account_info info2;
 	{
 		auto transaction (node1.store.tx_begin_read ());
-		node1.store.account.get (*transaction, nano::dev::genesis_key.pub, info2);
+		node1.store.account ().get (*transaction, nano::dev::genesis_key.pub, info2);
 		ASSERT_NE (latest1, info2.head ());
-		auto block (node1.store.block.get (*transaction, info2.head ()));
+		auto block (node1.store.block ().get (*transaction, info2.head ()));
 		ASSERT_NE (nullptr, block);
 		ASSERT_EQ (latest1, block->previous ());
 	}
@@ -220,9 +220,9 @@ TEST (wallet, spend)
 	nano::account_info info2;
 	{
 		auto transaction (node1.store.tx_begin_read ());
-		node1.store.account.get (*transaction, nano::dev::genesis_key.pub, info2);
+		node1.store.account ().get (*transaction, nano::dev::genesis_key.pub, info2);
 		ASSERT_NE (latest1, info2.head ());
-		auto block (node1.store.block.get (*transaction, info2.head ()));
+		auto block (node1.store.block ().get (*transaction, info2.head ()));
 		ASSERT_NE (nullptr, block);
 		ASSERT_EQ (latest1, block->previous ());
 	}
@@ -259,7 +259,7 @@ TEST (wallet, spend_no_previous)
 		system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 		auto transaction (system.nodes[0]->store.tx_begin_read ());
 		nano::account_info info1;
-		ASSERT_FALSE (system.nodes[0]->store.account.get (*transaction, nano::dev::genesis_key.pub, info1));
+		ASSERT_FALSE (system.nodes[0]->store.account ().get (*transaction, nano::dev::genesis_key.pub, info1));
 		for (auto i (0); i < 50; ++i)
 		{
 			nano::keypair key;
@@ -1035,7 +1035,7 @@ TEST (wallet, epoch_2_receive_propagation)
 		if (nano::dev::network_params.work.difficulty (*receive2) < node.network_params.work.get_base ())
 		{
 			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive2), node.network_params.work.get_epoch_2_receive ());
-			ASSERT_EQ (nano::epoch::epoch_2, node.store.block.version (*node.store.tx_begin_read (), receive2->hash ()));
+			ASSERT_EQ (nano::epoch::epoch_2, node.store.block ().version (*node.store.tx_begin_read (), receive2->hash ()));
 			ASSERT_EQ (nano::epoch::epoch_2, receive2->sideband ().source_epoch ());
 			break;
 		}
@@ -1088,7 +1088,7 @@ TEST (wallet, epoch_2_receive_unopened)
 		if (nano::dev::network_params.work.difficulty (*receive1) < node.network_params.work.get_base ())
 		{
 			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive1), node.network_params.work.get_epoch_2_receive ());
-			ASSERT_EQ (nano::epoch::epoch_2, node.store.block.version (*node.store.tx_begin_read (), receive1->hash ()));
+			ASSERT_EQ (nano::epoch::epoch_2, node.store.block ().version (*node.store.tx_begin_read (), receive1->hash ()));
 			ASSERT_EQ (nano::epoch::epoch_1, receive1->sideband ().source_epoch ());
 			break;
 		}
@@ -1201,7 +1201,7 @@ TEST (wallet, receive_pruned)
 	}
 	ASSERT_EQ (1, node2.ledger.cache.pruned_count);
 	ASSERT_TRUE (node2.ledger.block_or_pruned_exists (send1->hash ()));
-	ASSERT_FALSE (node2.store.block.exists (*node2.store.tx_begin_read (), send1->hash ()));
+	ASSERT_FALSE (node2.store.block ().exists (*node2.store.tx_begin_read (), send1->hash ()));
 
 	wallet2.insert_adhoc (key.prv, false);
 

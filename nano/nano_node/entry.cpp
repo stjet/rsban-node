@@ -318,8 +318,8 @@ int main (int argc, char * const * argv)
 		{
 			auto inactive_node = nano::default_inactive_node (data_path, vm);
 			auto transaction = inactive_node->node->store.tx_begin_read ();
-			auto i = inactive_node->node->store.block.begin (*transaction);
-			auto end = inactive_node->node->store.block.end ();
+			auto i = inactive_node->node->store.block ().begin (*transaction);
+			auto end = inactive_node->node->store.block ().end ();
 			for (; i != end; ++i)
 			{
 				nano::block_hash hash = i->first;
@@ -403,7 +403,7 @@ int main (int argc, char * const * argv)
 			auto current (node->online_reps.trended ());
 			std::cout << boost::str (boost::format ("Trended Weight %1%\n") % current);
 			auto transaction (node->store.tx_begin_read ());
-			for (auto i (node->store.online_weight.begin (*transaction)), n (node->store.online_weight.end ()); i != n; ++i)
+			for (auto i (node->store.online_weight ().begin (*transaction)), n (node->store.online_weight ().end ()); i != n; ++i)
 			{
 				using time_point = std::chrono::system_clock::time_point;
 				time_point ts (std::chrono::duration_cast<time_point::duration> (std::chrono::nanoseconds (i->first)));
@@ -441,7 +441,7 @@ int main (int argc, char * const * argv)
 			// Cache the account heads to make searching quicker against unchecked keys.
 			auto transaction (node->store.tx_begin_read ());
 			std::unordered_set<nano::block_hash> frontier_hashes;
-			for (auto i (node->store.account.begin (*transaction)), n (node->store.account.end ()); i != n; ++i)
+			for (auto i (node->store.account ().begin (*transaction)), n (node->store.account ().end ()); i != n; ++i)
 			{
 				frontier_hashes.insert (i->second.head ());
 			}
@@ -1445,7 +1445,7 @@ int main (int argc, char * const * argv)
 					std::cout << boost::str (boost::format ("%1% accounts validated\n") % count);
 				}
 				nano::confirmation_height_info confirmation_height_info;
-				node->store.confirmation_height.get (transaction, account, confirmation_height_info);
+				node->store.confirmation_height ().get (transaction, account, confirmation_height_info);
 
 				if (confirmation_height_info.height () > info.block_count ())
 				{
@@ -1454,17 +1454,17 @@ int main (int argc, char * const * argv)
 
 				auto hash (info.open_block ());
 				nano::block_hash calculated_hash (0);
-				auto block (node->store.block.get (transaction, hash)); // Block data
+				auto block (node->store.block ().get (transaction, hash)); // Block data
 				uint64_t height (0);
 				if (node->ledger.pruning && confirmation_height_info.height () != 0)
 				{
 					hash = confirmation_height_info.frontier ();
-					block = node->store.block.get (transaction, hash);
+					block = node->store.block ().get (transaction, hash);
 					// Iteration until pruned block
 					bool pruned_block (false);
 					while (!pruned_block && !block->previous ().is_zero ())
 					{
-						auto previous_block (node->store.block.get (transaction, block->previous ()));
+						auto previous_block (node->store.block ().get (transaction, block->previous ()));
 						if (previous_block != nullptr)
 						{
 							hash = previous_block->hash ();
@@ -1473,7 +1473,7 @@ int main (int argc, char * const * argv)
 						else
 						{
 							pruned_block = true;
-							if (!node->store.pruned.exists (transaction, block->previous ()))
+							if (!node->store.pruned ().exists (transaction, block->previous ()))
 							{
 								print_error_message (boost::str (boost::format ("Pruned previous block does not exist %1%\n") % block->previous ().to_string ()));
 							}
@@ -1590,7 +1590,7 @@ int main (int argc, char * const * argv)
 								}
 							}
 						}
-						else if (!node->store.pruned.exists (transaction, block->previous ()))
+						else if (!node->store.pruned ().exists (transaction, block->previous ()))
 						{
 							print_error_message (boost::str (boost::format ("Previous pruned block does not exist %1%\n") % block->previous ().to_string ()));
 						}
@@ -1600,9 +1600,9 @@ int main (int argc, char * const * argv)
 						print_error_message (boost::str (boost::format ("Incorrect sideband block details for block %1%\n") % hash.to_string ()));
 					}
 					// Check link epoch version
-					if (sideband.details ().is_receive () && (!node->ledger.pruning || !node->store.pruned.exists (transaction, block->link ().as_block_hash ())))
+					if (sideband.details ().is_receive () && (!node->ledger.pruning || !node->store.pruned ().exists (transaction, block->link ().as_block_hash ())))
 					{
-						if (sideband.source_epoch () != node->store.block.version (transaction, block->link ().as_block_hash ()))
+						if (sideband.source_epoch () != node->store.block ().version (transaction, block->link ().as_block_hash ()))
 						{
 							print_error_message (boost::str (boost::format ("Incorrect source epoch for block %1%\n") % hash.to_string ()));
 						}
@@ -1630,11 +1630,11 @@ int main (int argc, char * const * argv)
 						calculated_representative = block->representative ();
 					}
 					// Retrieving successor block hash
-					hash = node->store.block.successor (transaction, hash);
+					hash = node->store.block ().successor (transaction, hash);
 					// Retrieving block data
 					if (!hash.is_zero ())
 					{
-						block = node->store.block.get (transaction, hash);
+						block = node->store.block ().get (transaction, hash);
 					}
 				}
 				// Check if required block exists
@@ -1667,7 +1667,7 @@ int main (int argc, char * const * argv)
 			}
 			size_t const accounts_deque_overflow (32 * 1024);
 			auto transaction (node->store.tx_begin_read ());
-			for (auto i (node->store.account.begin (*transaction)), n (node->store.account.end ()); i != n; ++i)
+			for (auto i (node->store.account ().begin (*transaction)), n (node->store.account ().end ()); i != n; ++i)
 			{
 				{
 					nano::unique_lock<nano::mutex> lock (mutex);
@@ -1697,7 +1697,7 @@ int main (int argc, char * const * argv)
 			}
 
 			// Validate total block count
-			auto ledger_block_count (node->store.block.count (*transaction));
+			auto ledger_block_count (node->store.block ().count (*transaction));
 			if (node->flags.enable_pruning ())
 			{
 				block_count += 1; // Add disconnected genesis block
@@ -1719,11 +1719,11 @@ int main (int argc, char * const * argv)
 					std::cout << boost::str (boost::format ("%1% pending blocks validated\n") % count);
 				}
 				// Check block existance
-				auto block (node->store.block.get_no_sideband (transaction, key.hash));
+				auto block (node->store.block ().get_no_sideband (transaction, key.hash));
 				bool pruned (false);
 				if (block == nullptr)
 				{
-					pruned = node->ledger.pruning && node->store.pruned.exists (transaction, key.hash);
+					pruned = node->ledger.pruning && node->store.pruned ().exists (transaction, key.hash);
 					if (!pruned)
 					{
 						print_error_message (boost::str (boost::format ("Pending block does not exist %1%\n") % key.hash.to_string ()));
@@ -1733,10 +1733,10 @@ int main (int argc, char * const * argv)
 				{
 					// Check if pending destination is correct
 					nano::account destination{};
-					bool previous_pruned = node->ledger.pruning && node->store.pruned.exists (transaction, block->previous ());
+					bool previous_pruned = node->ledger.pruning && node->store.pruned ().exists (transaction, block->previous ());
 					if (previous_pruned)
 					{
-						block = node->store.block.get (transaction, key.hash);
+						block = node->store.block ().get (transaction, key.hash);
 					}
 					if (auto state = dynamic_cast<nano::state_block *> (block.get ()))
 					{
@@ -1778,7 +1778,7 @@ int main (int argc, char * const * argv)
 			start_threads (check_pending, pending);
 
 			size_t const pending_deque_overflow (64 * 1024);
-			for (auto i (node->store.pending.begin (*transaction)), n (node->store.pending.end ()); i != n; ++i)
+			for (auto i (node->store.pending ().begin (*transaction)), n (node->store.pending ().end ()); i != n; ++i)
 			{
 				{
 					nano::unique_lock<nano::mutex> lock (mutex);
@@ -1837,7 +1837,7 @@ int main (int argc, char * const * argv)
 				auto transaction (source_node->store.tx_begin_read ());
 				block_count = source_node->ledger.cache.block_count;
 				std::cout << boost::str (boost::format ("Performing bootstrap emulation, %1% blocks in ledger...") % block_count) << std::endl;
-				for (auto i (source_node->store.account.begin (*transaction)), n (source_node->store.account.end ()); i != n; ++i)
+				for (auto i (source_node->store.account ().begin (*transaction)), n (source_node->store.account ().end ()); i != n; ++i)
 				{
 					nano::account const & account (i->first);
 					nano::account_info const & info (i->second);
@@ -1845,7 +1845,7 @@ int main (int argc, char * const * argv)
 					while (!hash.is_zero ())
 					{
 						// Retrieving block data
-						auto block (source_node->store.block.get_no_sideband (*transaction, hash));
+						auto block (source_node->store.block ().get_no_sideband (*transaction, hash));
 						if (block != nullptr)
 						{
 							++count;
@@ -1903,7 +1903,7 @@ int main (int argc, char * const * argv)
 			auto node = inactive_node->node;
 			auto transaction (node->store.tx_begin_read ());
 
-			for (auto i (node->store.peer.begin (*transaction)), n (node->store.peer.end ()); i != n; ++i)
+			for (auto i (node->store.peer ().begin (*transaction)), n (node->store.peer ().end ()); i != n; ++i)
 			{
 				std::cout << boost::str (boost::format ("%1%\n") % nano::endpoint (boost::asio::ip::address_v6 (i->first.address_bytes ()), i->first.port ()));
 			}
@@ -1951,7 +1951,7 @@ int main (int argc, char * const * argv)
 			// Cache the accounts in a collection to make searching quicker against unchecked keys. Group by epoch
 			nano::locked<std::vector<boost::unordered_set<nano::account>>> opened_account_versions_shared (epoch_count);
 			using opened_account_versions_t = decltype (opened_account_versions_shared)::value_type;
-			node->store.account.for_each_par (
+			node->store.account ().for_each_par (
 			[&opened_account_versions_shared, epoch_count] (nano::read_transaction const & /*unused*/, nano::store_iterator<nano::account, nano::account_info> i, nano::store_iterator<nano::account, nano::account_info> n) {
 				// First cache locally
 				opened_account_versions_t opened_account_versions_l (epoch_count);
@@ -1988,7 +1988,7 @@ int main (int argc, char * const * argv)
 			// Iterate all pending blocks and collect the lowest version for each unopened account
 			nano::locked<boost::unordered_map<nano::account, std::underlying_type_t<nano::epoch>>> unopened_highest_pending_shared;
 			using unopened_highest_pending_t = decltype (unopened_highest_pending_shared)::value_type;
-			node->store.pending.for_each_par (
+			node->store.pending ().for_each_par (
 			[&unopened_highest_pending_shared, &opened_accounts] (nano::read_transaction const & /*unused*/, nano::store_iterator<nano::pending_key, nano::pending_info> i, nano::store_iterator<nano::pending_key, nano::pending_info> n) {
 				// First cache locally
 				unopened_highest_pending_t unopened_highest_pending_l;

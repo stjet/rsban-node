@@ -43,19 +43,6 @@ void mdb_val::convert_buffer_to_value ()
 nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
 	// clang-format off
 	env_m {error, path_a, logger_a, txn_tracking_config_a, block_processor_batch_max_time_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true)},
-	nano::store{
-		block_store,
-		frontier_store,
-		account_store,
-		pending_store,
-		unchecked_store,
-		online_weight_store,
-		pruned_store,
-		peer_store,
-		confirmation_height_store,
-		final_vote_store,
-		version_store
-	},
 	// clang-format on
 	block_store{ *this },
 	frontier_store{ *this },
@@ -82,7 +69,7 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 			is_fresh_db = err != MDB_SUCCESS;
 			if (err == MDB_SUCCESS)
 			{
-				is_fully_upgraded = (version.get (*transaction) == version_current);
+				is_fully_upgraded = (version_store.get (*transaction) == version_current);
 				mdb_dbi_close (env (), meta_handle);
 			}
 		}
@@ -221,7 +208,7 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 	error_a |= mdb_dbi_open (env ().tx (transaction_a), "final_votes", flags, &final_votes_handle) != 0;
 	final_vote_store.set_table_handle (final_votes_handle);
 
-	auto version_l = version.get (transaction_a);
+	auto version_l = version ().get (transaction_a);
 	if (version_l < 19)
 	{
 		// These legacy (and state) block databases are no longer used, but need opening so they can be deleted during an upgrade
@@ -262,7 +249,7 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 bool nano::lmdb::store::do_upgrades (nano::write_transaction & transaction_a, nano::ledger_constants & constants, bool & needs_vacuuming)
 {
 	auto error (false);
-	auto version_l = version.get (transaction_a);
+	auto version_l = version ().get (transaction_a);
 	switch (version_l)
 	{
 		case 1:
@@ -429,7 +416,7 @@ void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transactio
 		mdb_put (env ().tx (transaction_a), pending_store.table_handle (), nano::mdb_val (pending_key_pending_info_pair.first), nano::mdb_val (pending_key_pending_info_pair.second), MDB_APPEND);
 	}
 
-	version.put (transaction_a, 15);
+	version ().put (transaction_a, 15);
 	logger.always_log ("Finished epoch merge upgrade");
 }
 
@@ -443,15 +430,15 @@ void nano::lmdb::store::upgrade_v15_to_v16 (nano::write_transaction const & tran
 		release_assert (status == MDB_SUCCESS);
 		representation_handle = 0;
 	}
-	version.put (transaction_a, 16);
+	version ().put (transaction_a, 16);
 }
 
 void nano::lmdb::store::upgrade_v16_to_v17 (nano::write_transaction const & transaction_a)
 {
 	logger.always_log ("Preparing v16 to v17 database upgrade...");
 
-	auto account_info_i = account.begin (transaction_a);
-	auto account_info_n = account.end ();
+	auto account_info_i = account ().begin (transaction_a);
+	auto account_info_n = account ().end ();
 
 	// Set the confirmed frontier for each account in the confirmation height table
 	std::vector<std::pair<nano::account, nano::confirmation_height_info>> confirmation_height_infos;
@@ -521,7 +508,7 @@ void nano::lmdb::store::upgrade_v16_to_v17 (nano::write_transaction const & tran
 		mdb_put (env ().tx (transaction_a), confirmation_height_store.table_handle (), nano::mdb_val (confirmation_height_info_pair.first), nano::mdb_val (confirmation_height_info_pair.second), MDB_APPEND);
 	}
 
-	version.put (transaction_a, 17);
+	version ().put (transaction_a, 17);
 	logger.always_log ("Finished upgrading confirmation height frontiers");
 }
 
@@ -583,7 +570,7 @@ void nano::lmdb::store::upgrade_v17_to_v18 (nano::write_transaction const & tran
 	auto count_post (count (transaction_a, block_store.state_blocks_handle));
 	release_assert (count_pre == count_post);
 
-	version.put (transaction_a, 18);
+	version ().put (transaction_a, 18);
 	logger.always_log ("Finished upgrading the sideband");
 }
 
@@ -761,7 +748,7 @@ void nano::lmdb::store::upgrade_v18_to_v19 (nano::write_transaction const & tran
 	release_assert (!mdb_dbi_open (env ().tx (transaction_a), "vote", MDB_CREATE, &vote));
 	release_assert (!mdb_drop (env ().tx (transaction_a), vote, 1));
 
-	version.put (transaction_a, 19);
+	version ().put (transaction_a, 19);
 	logger.always_log ("Finished upgrading all blocks to new blocks database");
 }
 
@@ -771,7 +758,7 @@ void nano::lmdb::store::upgrade_v19_to_v20 (nano::write_transaction const & tran
 	MDB_dbi pruned_handle;
 	mdb_dbi_open (env ().tx (transaction_a), "pruned", MDB_CREATE, &pruned_handle);
 	pruned_store.set_table_handle (pruned_handle);
-	version.put (transaction_a, 20);
+	version ().put (transaction_a, 20);
 	logger.always_log ("Finished creating new pruned table");
 }
 
@@ -781,7 +768,7 @@ void nano::lmdb::store::upgrade_v20_to_v21 (nano::write_transaction const & tran
 	MDB_dbi final_vote_handle;
 	mdb_dbi_open (env ().tx (transaction_a), "final_votes", MDB_CREATE, &final_vote_handle);
 	final_vote_store.set_table_handle (final_vote_handle);
-	version.put (transaction_a, 21);
+	version ().put (transaction_a, 21);
 	logger.always_log ("Finished creating new final_vote table");
 }
 
@@ -907,11 +894,6 @@ bool nano::lmdb::store::success (int status) const
 int nano::lmdb::store::status_code_not_found () const
 {
 	return MDB_NOTFOUND;
-}
-
-std::string nano::lmdb::store::error_string (int status) const
-{
-	return mdb_strerror (status);
 }
 
 bool nano::lmdb::store::copy_db (boost::filesystem::path const & destination_file)
@@ -1059,37 +1041,11 @@ boost::optional<nano::mdb_val> nano::lmdb::store::block_raw_get_by_type_v18 (nan
 	return result;
 }
 
-nano::uint128_t nano::lmdb::store::block_balance_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
+nano::uint128_t nano::lmdb::store::block_balance_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a)
 {
 	auto block (block_get_v18 (transaction_a, hash_a));
 	release_assert (block);
-	nano::uint128_t result (this->block.balance_calculated (block));
-	return result;
-}
-
-// All the v14 functions below are only needed during upgrades
-std::size_t nano::lmdb::store::block_successor_offset_v14 (nano::transaction const & transaction_a, std::size_t entry_size_a, nano::block_type type_a) const
-{
-	return entry_size_a - nano::block_sideband_v14::size (type_a);
-}
-
-nano::block_hash nano::lmdb::store::block_successor_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
-{
-	nano::block_type type;
-	auto value (block_raw_get_v14 (transaction_a, hash_a, type));
-	nano::block_hash result;
-	if (value.size () != 0)
-	{
-		debug_assert (value.size () >= result.bytes.size ());
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (value.data ()) + block_successor_offset_v14 (transaction_a, value.size (), type), result.bytes.size ());
-		auto error (nano::try_read (stream, result.bytes));
-		(void)error;
-		debug_assert (!error);
-	}
-	else
-	{
-		result.clear ();
-	}
+	nano::uint128_t result (this->block ().balance_calculated (block));
 	return result;
 }
 
@@ -1203,4 +1159,59 @@ bool nano::lmdb::store::upgrade_counters::are_equal () const
 unsigned nano::lmdb::store::max_block_write_batch_num () const
 {
 	return std::numeric_limits<unsigned>::max ();
+}
+
+nano::block_store & nano::lmdb::store::block ()
+{
+	return block_store;
+}
+
+nano::frontier_store & nano::lmdb::store::frontier ()
+{
+	return frontier_store;
+}
+
+nano::account_store & nano::lmdb::store::account ()
+{
+	return account_store;
+}
+
+nano::pending_store & nano::lmdb::store::pending ()
+{
+	return pending_store;
+}
+
+nano::unchecked_store & nano::lmdb::store::unchecked ()
+{
+	return unchecked_store;
+}
+
+nano::online_weight_store & nano::lmdb::store::online_weight ()
+{
+	return online_weight_store;
+};
+
+nano::pruned_store & nano::lmdb::store::pruned ()
+{
+	return pruned_store;
+}
+
+nano::peer_store & nano::lmdb::store::peer ()
+{
+	return peer_store;
+}
+
+nano::confirmation_height_store & nano::lmdb::store::confirmation_height ()
+{
+	return confirmation_height_store;
+}
+
+nano::final_vote_store & nano::lmdb::store::final_vote ()
+{
+	return final_vote_store;
+}
+
+nano::version_store & nano::lmdb::store::version ()
+{
+	return version_store;
 }

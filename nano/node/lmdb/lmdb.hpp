@@ -104,6 +104,17 @@ namespace lmdb
 		void serialize_memory_stats (boost::property_tree::ptree &) override;
 
 		unsigned max_block_write_batch_num () const override;
+		nano::block_store & block () override;
+		nano::frontier_store & frontier () override;
+		nano::account_store & account () override;
+		nano::pending_store & pending () override;
+		nano::unchecked_store & unchecked () override;
+		nano::online_weight_store & online_weight () override;
+		nano::pruned_store & pruned () override;
+		nano::peer_store & peer () override;
+		nano::confirmation_height_store & confirmation_height () override;
+		nano::final_vote_store & final_vote () override;
+		nano::version_store & version () override;
 
 	private:
 		nano::logger_mt & logger;
@@ -123,27 +134,12 @@ namespace lmdb
 		bool copy_db (boost::filesystem::path const & destination_file) override;
 		void rebuild_db (nano::write_transaction const & transaction_a) override;
 
-		template <typename Key, typename Value>
-		nano::store_iterator<Key, Value> make_iterator (nano::transaction const & transaction_a, tables table_a, bool const direction_asc = true) const
-		{
-			return nano::store_iterator<Key, Value> (std::make_unique<nano::mdb_iterator<Key, Value>> (transaction_a, table_to_dbi (table_a), nano::mdb_val{}, direction_asc));
-		}
-
-		template <typename Key, typename Value>
-		nano::store_iterator<Key, Value> make_iterator (nano::transaction const & transaction_a, tables table_a, nano::mdb_val const & key) const
-		{
-			return nano::store_iterator<Key, Value> (std::make_unique<nano::mdb_iterator<Key, Value>> (transaction_a, table_to_dbi (table_a), key));
-		}
-
 		bool init_error () const override;
 
 		uint64_t count (nano::transaction const &, MDB_dbi) const;
-		std::string error_string (int status) const override;
 
 		// These are only use in the upgrade process.
 		std::shared_ptr<nano::block> block_get_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_sideband_v14 * sideband_a = nullptr, bool * is_state_v1 = nullptr) const;
-		std::size_t block_successor_offset_v14 (nano::transaction const & transaction_a, std::size_t entry_size_a, nano::block_type type_a) const;
-		nano::block_hash block_successor_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const;
 		nano::mdb_val block_raw_get_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_type & type_a, bool * is_state_v1 = nullptr) const;
 		boost::optional<nano::mdb_val> block_raw_get_by_type_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_type & type_a, bool * is_state_v1) const;
 
@@ -160,7 +156,7 @@ namespace lmdb
 		std::shared_ptr<nano::block> block_get_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const;
 		nano::mdb_val block_raw_get_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_type & type_a) const;
 		boost::optional<nano::mdb_val> block_raw_get_by_type_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_type & type_a) const;
-		nano::uint128_t block_balance_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const;
+		nano::uint128_t block_balance_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a);
 
 		void open_databases (bool &, nano::transaction const &, unsigned);
 

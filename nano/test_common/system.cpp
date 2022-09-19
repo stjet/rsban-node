@@ -400,7 +400,7 @@ void nano::test::system::generate_rollback (nano::node & node_a, std::vector<nan
 	auto index (random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (accounts_a.size () - 1)));
 	auto account (accounts_a[index]);
 	nano::account_info info;
-	auto error (node_a.store.account.get (*transaction, account, info));
+	auto error (node_a.store.account ().get (*transaction, account, info));
 	if (!error)
 	{
 		auto hash (info.open_block ());
@@ -427,11 +427,11 @@ void nano::test::system::generate_receive (nano::node & node_a)
 		auto transaction (node_a.store.tx_begin_read ());
 		nano::account random_account;
 		random_pool::generate_block (random_account.bytes.data (), sizeof (random_account.bytes));
-		auto i (node_a.store.pending.begin (*transaction, nano::pending_key (random_account, 0)));
-		if (i != node_a.store.pending.end ())
+		auto i (node_a.store.pending ().begin (*transaction, nano::pending_key (random_account, 0)));
+		if (i != node_a.store.pending ().end ())
 		{
 			nano::pending_key const & send_hash (i->first);
-			send_block = node_a.store.block.get (*transaction, send_hash.hash);
+			send_block = node_a.store.block ().get (*transaction, send_hash.hash);
 		}
 	}
 	if (send_block != nullptr)
@@ -495,12 +495,12 @@ void nano::test::system::generate_send_existing (nano::node & node_a, std::vecto
 		nano::account account;
 		random_pool::generate_block (account.bytes.data (), sizeof (account.bytes));
 		auto transaction (node_a.store.tx_begin_read ());
-		nano::store_iterator<nano::account, nano::account_info> entry (node_a.store.account.begin (*transaction, account));
-		if (entry == node_a.store.account.end ())
+		nano::store_iterator<nano::account, nano::account_info> entry (node_a.store.account ().begin (*transaction, account));
+		if (entry == node_a.store.account ().end ())
 		{
-			entry = node_a.store.account.begin (*transaction);
+			entry = node_a.store.account ().begin (*transaction);
 		}
-		debug_assert (entry != node_a.store.account.end ());
+		debug_assert (entry != node_a.store.account ().end ());
 		destination = nano::account (entry->first);
 		source = get_random_account (accounts_a);
 		amount = get_random_amount (*transaction, node_a, source);

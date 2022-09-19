@@ -261,7 +261,7 @@ nano::account_info nano::json_handler::account_info_impl (nano::transaction cons
 	nano::account_info result;
 	if (!ec)
 	{
-		if (node.store.account.get (transaction_a, account_a, result))
+		if (node.store.account ().get (transaction_a, account_a, result))
 		{
 			ec = nano::error_common::account_not_found;
 			node.bootstrap_initiator.bootstrap_lazy (account_a, false, false, account_a.to_account ());
@@ -391,12 +391,12 @@ uint64_t nano::json_handler::difficulty_ledger (nano::block const & block_a)
 	auto previous (block_a.previous ());
 	if (!previous.is_zero ())
 	{
-		block_previous = node.store.block.get (*transaction, previous);
+		block_previous = node.store.block ().get (*transaction, previous);
 	}
 	// Send check
 	if (block_previous != nullptr)
 	{
-		auto is_send = node.store.block.balance (*transaction, previous) > block_a.balance ().number ();
+		auto is_send = node.store.block ().balance (*transaction, previous) > block_a.balance ().number ();
 		details = nano::block_details (nano::epoch::epoch_0, is_send, false, false);
 		details_found = true;
 	}
@@ -409,8 +409,8 @@ uint64_t nano::json_handler::difficulty_ledger (nano::block const & block_a)
 	auto link (block_a.link ());
 	if (!link.is_zero () && !details.is_send ())
 	{
-		auto block_link (node.store.block.get (*transaction, link.as_block_hash ()));
-		if (block_link != nullptr && node.store.pending.exists (*transaction, nano::pending_key (block_a.account (), link.as_block_hash ())))
+		auto block_link (node.store.block ().get (*transaction, link.as_block_hash ()));
+		if (block_link != nullptr && node.store.pending ().exists (*transaction, nano::pending_key (block_a.account (), link.as_block_hash ())))
 		{
 			auto epoch = std::max (details.epoch (), block_link->sideband ().details ().epoch ());
 			details = nano::block_details (epoch, details.is_send (), true, details.is_epoch ());
@@ -620,7 +620,7 @@ void nano::json_handler::account_info ()
 		auto transaction (node.store.tx_begin_read ());
 		auto info (account_info_impl (*transaction, account));
 		nano::confirmation_height_info confirmation_height_info;
-		node.store.confirmation_height.get (*transaction, account, confirmation_height_info);
+		node.store.confirmation_height ().get (*transaction, account, confirmation_height_info);
 		if (!ec)
 		{
 			response_l.put ("frontier", info.head ().to_string ());
@@ -668,7 +668,7 @@ void nano::json_handler::account_info ()
 			std::shared_ptr<nano::block> confirmed_frontier_block;
 			if (include_confirmed && confirmation_height_info.height () > 0)
 			{
-				confirmed_frontier_block = node.store.block.get (*transaction, confirmation_height_info.frontier ());
+				confirmed_frontier_block = node.store.block ().get (*transaction, confirmation_height_info.frontier ());
 			}
 
 			if (representative)
@@ -682,7 +682,7 @@ void nano::json_handler::account_info ()
 						confirmed_representative = confirmed_frontier_block->representative ();
 						if (confirmed_representative.is_zero ())
 						{
-							confirmed_representative = node.store.block.get (*transaction, node.ledger.representative (*transaction, confirmation_height_info.frontier ()))->representative ();
+							confirmed_representative = node.store.block ().get (*transaction, node.ledger.representative (*transaction, confirmation_height_info.frontier ()))->representative ();
 						}
 					}
 
@@ -902,7 +902,7 @@ void nano::json_handler::accounts_balances ()
 		if (!ec)
 		{
 			nano::account_info info;
-			if (!node.store.account.get (*transaction, account, info))
+			if (!node.store.account ().get (*transaction, account, info))
 			{
 				auto balance = node.balance_pending (account, false);
 				entry.put ("balance", balance.first.convert_to<std::string> ());
@@ -1022,7 +1022,7 @@ void nano::json_handler::accounts_receivable ()
 		if (!ec)
 		{
 			boost::property_tree::ptree peers_l;
-			for (auto i (node.store.pending.begin (*transaction, nano::pending_key (account, 0))), n (node.store.pending.end ()); i != n && nano::pending_key (i->first).account == account && peers_l.size () < count; ++i)
+			for (auto i (node.store.pending ().begin (*transaction, nano::pending_key (account, 0))), n (node.store.pending ().end ()); i != n && nano::pending_key (i->first).account == account && peers_l.size () < count; ++i)
 			{
 				nano::pending_key const & key (i->first);
 				if (block_confirmed (node, *transaction, key.hash, include_active, include_only_confirmed))
@@ -1122,7 +1122,7 @@ void nano::json_handler::block_info ()
 	if (!ec)
 	{
 		auto transaction (node.store.tx_begin_read ());
-		auto block (node.store.block.get (*transaction, hash));
+		auto block (node.store.block ().get (*transaction, hash));
 		if (block != nullptr)
 		{
 			nano::account account (block->account ().is_zero () ? block->sideband ().account () : block->account ());
@@ -1174,7 +1174,7 @@ void nano::json_handler::block_confirm ()
 	if (!ec)
 	{
 		auto transaction (node.store.tx_begin_read ());
-		auto block_l (node.store.block.get (*transaction, hash));
+		auto block_l (node.store.block ().get (*transaction, hash));
 		if (block_l != nullptr)
 		{
 			if (!node.ledger.block_confirmed (*transaction, hash))
@@ -1230,7 +1230,7 @@ void nano::json_handler::blocks ()
 			nano::block_hash hash;
 			if (!hash.decode_hex (hash_text))
 			{
-				auto block (node.store.block.get (*transaction, hash));
+				auto block (node.store.block ().get (*transaction, hash));
 				if (block != nullptr)
 				{
 					if (json_block_l)
@@ -1281,7 +1281,7 @@ void nano::json_handler::blocks_info ()
 			nano::block_hash hash;
 			if (!hash.decode_hex (hash_text))
 			{
-				auto block (node.store.block.get (*transaction, hash));
+				auto block (node.store.block ().get (*transaction, hash));
 				if (block != nullptr)
 				{
 					boost::property_tree::ptree entry;
@@ -1333,7 +1333,7 @@ void nano::json_handler::blocks_info ()
 								entry.put ("receive_hash", nano::block_hash (0).to_string ());
 							}
 						}
-						else if (node.store.pending.exists (*transaction, nano::pending_key (destination, hash)))
+						else if (node.store.pending ().exists (*transaction, nano::pending_key (destination, hash)))
 						{
 							if (receivable)
 							{
@@ -1363,7 +1363,7 @@ void nano::json_handler::blocks_info ()
 					if (source)
 					{
 						nano::block_hash source_hash (node.ledger.block_source (*transaction, *block));
-						auto block_a (node.store.block.get (*transaction, source_hash));
+						auto block_a (node.store.block ().get (*transaction, source_hash));
 						if (block_a != nullptr)
 						{
 							auto source_account (node.ledger.account (*transaction, source_hash));
@@ -1410,7 +1410,7 @@ void nano::json_handler::block_account ()
 	if (!ec)
 	{
 		auto transaction (node.store.tx_begin_read ());
-		if (node.store.block.exists (*transaction, hash))
+		if (node.store.block ().exists (*transaction, hash))
 		{
 			auto account (node.ledger.account (*transaction, hash));
 			response_l.put ("account", account.to_account ());
@@ -1633,7 +1633,7 @@ void nano::json_handler::block_create ()
 			else if (previous_text.is_initialized () && balance_text.is_initialized () && type == "send")
 			{
 				auto transaction (node.store.tx_begin_read ());
-				if (node.store.block.exists (*transaction, previous) && node.store.block.balance (*transaction, previous) != balance.number ())
+				if (node.store.block ().exists (*transaction, previous) && node.store.block ().balance (*transaction, previous) != balance.number ())
 				{
 					ec = nano::error_rpc::block_create_balance_mismatch;
 				}
@@ -1925,7 +1925,7 @@ void nano::json_handler::chain (bool successors)
 		auto transaction (node.store.tx_begin_read ());
 		while (!hash.is_zero () && blocks.size () < count)
 		{
-			auto block_l (node.store.block.get (*transaction, hash));
+			auto block_l (node.store.block ().get (*transaction, hash));
 			if (block_l != nullptr)
 			{
 				if (offset > 0)
@@ -1938,7 +1938,7 @@ void nano::json_handler::chain (bool successors)
 					entry.put ("", hash.to_string ());
 					blocks.push_back (std::make_pair ("", entry));
 				}
-				hash = successors ? node.store.block.successor (*transaction, hash) : block_l->previous ();
+				hash = successors ? node.store.block ().successor (*transaction, hash) : block_l->previous ();
 			}
 			else
 			{
@@ -2198,7 +2198,7 @@ void nano::json_handler::delegators ()
 	{
 		auto transaction (node.store.tx_begin_read ());
 		boost::property_tree::ptree delegators;
-		for (auto i (node.store.account.begin (*transaction, start_account.number () + 1)), n (node.store.account.end ()); i != n && delegators.size () < count; ++i)
+		for (auto i (node.store.account ().begin (*transaction, start_account.number () + 1)), n (node.store.account ().end ()); i != n && delegators.size () < count; ++i)
 		{
 			nano::account_info const & info (i->second);
 			if (info.representative () == representative)
@@ -2224,7 +2224,7 @@ void nano::json_handler::delegators_count ()
 	{
 		uint64_t count (0);
 		auto transaction (node.store.tx_begin_read ());
-		for (auto i (node.store.account.begin (*transaction)), n (node.store.account.end ()); i != n; ++i)
+		for (auto i (node.store.account ().begin (*transaction)), n (node.store.account ().end ()); i != n; ++i)
 		{
 			nano::account_info const & info (i->second);
 			if (info.representative () == account)
@@ -2335,7 +2335,7 @@ void nano::json_handler::frontiers ()
 	{
 		boost::property_tree::ptree frontiers;
 		auto transaction (node.store.tx_begin_read ());
-		for (auto i (node.store.account.begin (*transaction, start)), n (node.store.account.end ()); i != n && frontiers.size () < count; ++i)
+		for (auto i (node.store.account ().begin (*transaction, start)), n (node.store.account ().end ()); i != n && frontiers.size () < count; ++i)
 		{
 			frontiers.put (i->first.to_account (), i->second.head ().to_string ());
 		}
@@ -2585,7 +2585,7 @@ void nano::json_handler::account_history ()
 	{
 		if (!hash.decode_hex (*head_str))
 		{
-			if (node.store.block.exists (*transaction, hash))
+			if (node.store.block ().exists (*transaction, hash))
 			{
 				account = node.ledger.account (*transaction, hash);
 			}
@@ -2623,7 +2623,7 @@ void nano::json_handler::account_history ()
 		boost::property_tree::ptree history;
 		bool output_raw (request.get_optional<bool> ("raw") == true);
 		response_l.put ("account", account.to_account ());
-		auto block (node.store.block.get (*transaction, hash));
+		auto block (node.store.block ().get (*transaction, hash));
 		while (block != nullptr && count > 0)
 		{
 			if (offset > 0)
@@ -2650,8 +2650,8 @@ void nano::json_handler::account_history ()
 					--count;
 				}
 			}
-			hash = reverse ? node.store.block.successor (*transaction, hash) : block->previous ();
-			block = node.store.block.get (*transaction, hash);
+			hash = reverse ? node.store.block ().successor (*transaction, hash) : block->previous ();
+			block = node.store.block ().get (*transaction, hash);
 		}
 		response_l.add_child ("history", history);
 		if (!hash.is_zero ())
@@ -2739,7 +2739,7 @@ void nano::json_handler::ledger ()
 		auto transaction (node.store.tx_begin_read ());
 		if (!ec && !sorting) // Simple
 		{
-			for (auto i (node.store.account.begin (*transaction, start)), n (node.store.account.end ()); i != n && accounts.size () < count; ++i)
+			for (auto i (node.store.account ().begin (*transaction, start)), n (node.store.account ().end ()); i != n && accounts.size () < count; ++i)
 			{
 				nano::account_info const & info (i->second);
 				if (info.modified () >= modified_since && (receivable || info.balance ().number () >= threshold.number ()))
@@ -2780,7 +2780,7 @@ void nano::json_handler::ledger ()
 		else if (!ec) // Sorting
 		{
 			std::vector<std::pair<nano::uint128_union, nano::account>> ledger_l;
-			for (auto i (node.store.account.begin (*transaction, start)), n (node.store.account.end ()); i != n; ++i)
+			for (auto i (node.store.account ().begin (*transaction, start)), n (node.store.account ().end ()); i != n; ++i)
 			{
 				nano::account_info const & info (i->second);
 				nano::uint128_union balance (info.balance ());
@@ -2794,7 +2794,7 @@ void nano::json_handler::ledger ()
 			nano::account_info info;
 			for (auto i (ledger_l.begin ()), n (ledger_l.end ()); i != n && accounts.size () < count; ++i)
 			{
-				node.store.account.get (*transaction, i->second, info);
+				node.store.account ().get (*transaction, i->second, info);
 				if (receivable || info.balance ().number () >= threshold.number ())
 				{
 					nano::account const & account (i->second);
@@ -3041,7 +3041,7 @@ void nano::json_handler::receivable ()
 		// The ptree container is used if there are any children nodes (e.g source/min_version) otherwise the amount container is used.
 		std::vector<std::pair<std::string, boost::property_tree::ptree>> hash_ptree_pairs;
 		std::vector<std::pair<std::string, nano::uint128_t>> hash_amount_pairs;
-		for (auto i (node.store.pending.begin (*transaction, nano::pending_key (account, 0))), n (node.store.pending.end ()); i != n && nano::pending_key (i->first).account == account && (should_sort || peers_l.size () < count); ++i)
+		for (auto i (node.store.pending ().begin (*transaction, nano::pending_key (account, 0))), n (node.store.pending ().end ()); i != n && nano::pending_key (i->first).account == account && (should_sort || peers_l.size () < count); ++i)
 		{
 			nano::pending_key const & key (i->first);
 			if (block_confirmed (node, *transaction, key.hash, include_active, include_only_confirmed))
@@ -3143,14 +3143,14 @@ void nano::json_handler::receivable_exists ()
 	if (!ec)
 	{
 		auto transaction (node.store.tx_begin_read ());
-		auto block (node.store.block.get (*transaction, hash));
+		auto block (node.store.block ().get (*transaction, hash));
 		if (block != nullptr)
 		{
 			auto exists (false);
 			auto destination (node.ledger.block_destination (*transaction, *block));
 			if (!destination.is_zero ())
 			{
-				exists = node.store.pending.exists (*transaction, nano::pending_key (destination, hash));
+				exists = node.store.pending ().exists (*transaction, nano::pending_key (destination, hash));
 			}
 			exists = exists && (block_confirmed (node, *transaction, block->hash (), include_active, include_only_confirmed));
 			response_l.put ("exists", exists ? "1" : "0");
@@ -3177,7 +3177,7 @@ void nano::json_handler::process ()
 			{
 				std::shared_ptr<nano::state_block> block_state (std::static_pointer_cast<nano::state_block> (block));
 				auto transaction (rpc_l->node.store.tx_begin_read ());
-				if (!block_state->previous ().is_zero () && !rpc_l->node.store.block.exists (*transaction, block_state->previous ()))
+				if (!block_state->previous ().is_zero () && !rpc_l->node.store.block ().exists (*transaction, block_state->previous ()))
 				{
 					rpc_l->ec = nano::error_process::gap_previous;
 				}
@@ -3356,7 +3356,7 @@ void nano::json_handler::pruned_exists ()
 		auto transaction (node.store.tx_begin_read ());
 		if (node.ledger.pruning)
 		{
-			auto exists (node.store.pruned.exists (*transaction, hash));
+			auto exists (node.store.pruned ().exists (*transaction, hash));
 			response_l.put ("exists", exists ? "1" : "0");
 		}
 		else
@@ -3383,7 +3383,7 @@ void nano::json_handler::receive ()
 			if (node.ledger.block_or_pruned_exists (*block_transaction, hash))
 			{
 				nano::pending_info pending_info;
-				if (!node.store.pending.get (*block_transaction, nano::pending_key (account, hash), pending_info))
+				if (!node.store.pending ().get (*block_transaction, nano::pending_key (account, hash), pending_info))
 				{
 					auto work (work_optional_impl ());
 					if (!ec && work)
@@ -3391,7 +3391,7 @@ void nano::json_handler::receive ()
 						nano::account_info info;
 						nano::root head;
 						nano::epoch epoch = pending_info.epoch;
-						if (!node.store.account.get (*block_transaction, account, info))
+						if (!node.store.account ().get (*block_transaction, account, info))
 						{
 							head = info.head ();
 							// When receiving, epoch version is the higher between the previous and the source blocks
@@ -3609,28 +3609,28 @@ void nano::json_handler::republish ()
 	{
 		boost::property_tree::ptree blocks;
 		auto transaction (node.store.tx_begin_read ());
-		auto block (node.store.block.get (*transaction, hash));
+		auto block (node.store.block ().get (*transaction, hash));
 		if (block != nullptr)
 		{
 			std::deque<std::shared_ptr<nano::block>> republish_bundle;
 			for (auto i (0); !hash.is_zero () && i < count; ++i)
 			{
-				block = node.store.block.get (*transaction, hash);
+				block = node.store.block ().get (*transaction, hash);
 				if (sources != 0) // Republish source chain
 				{
 					nano::block_hash source (node.ledger.block_source (*transaction, *block));
-					auto block_a (node.store.block.get (*transaction, source));
+					auto block_a (node.store.block ().get (*transaction, source));
 					std::vector<nano::block_hash> hashes;
 					while (block_a != nullptr && hashes.size () < sources)
 					{
 						hashes.push_back (source);
 						source = block_a->previous ();
-						block_a = node.store.block.get (*transaction, source);
+						block_a = node.store.block ().get (*transaction, source);
 					}
 					std::reverse (hashes.begin (), hashes.end ());
 					for (auto & hash_l : hashes)
 					{
-						block_a = node.store.block.get (*transaction, hash_l);
+						block_a = node.store.block ().get (*transaction, hash_l);
 						republish_bundle.push_back (std::move (block_a));
 						boost::property_tree::ptree entry_l;
 						entry_l.put ("", hash_l.to_string ());
@@ -3643,14 +3643,14 @@ void nano::json_handler::republish ()
 				blocks.push_back (std::make_pair ("", entry));
 				if (destinations != 0) // Republish destination chain
 				{
-					auto block_b (node.store.block.get (*transaction, hash));
+					auto block_b (node.store.block ().get (*transaction, hash));
 					auto destination (node.ledger.block_destination (*transaction, *block_b));
 					if (!destination.is_zero ())
 					{
-						if (!node.store.pending.exists (*transaction, nano::pending_key (destination, hash)))
+						if (!node.store.pending ().exists (*transaction, nano::pending_key (destination, hash)))
 						{
 							nano::block_hash previous (node.ledger.latest (*transaction, destination));
-							auto block_d (node.store.block.get (*transaction, previous));
+							auto block_d (node.store.block ().get (*transaction, previous));
 							nano::block_hash source;
 							std::vector<nano::block_hash> hashes;
 							while (block_d != nullptr && hash != source)
@@ -3658,7 +3658,7 @@ void nano::json_handler::republish ()
 								hashes.push_back (previous);
 								source = node.ledger.block_source (*transaction, *block_d);
 								previous = block_d->previous ();
-								block_d = node.store.block.get (*transaction, previous);
+								block_d = node.store.block ().get (*transaction, previous);
 							}
 							std::reverse (hashes.begin (), hashes.end ());
 							if (hashes.size () > destinations)
@@ -3667,7 +3667,7 @@ void nano::json_handler::republish ()
 							}
 							for (auto & hash_l : hashes)
 							{
-								block_d = node.store.block.get (*transaction, hash_l);
+								block_d = node.store.block ().get (*transaction, hash_l);
 								republish_bundle.push_back (std::move (block_d));
 								boost::property_tree::ptree entry_l;
 								entry_l.put ("", hash_l.to_string ());
@@ -3676,7 +3676,7 @@ void nano::json_handler::republish ()
 						}
 					}
 				}
-				hash = node.store.block.successor (*transaction, hash);
+				hash = node.store.block ().successor (*transaction, hash);
 			}
 			node.network->flood_block_many (std::move (republish_bundle), nullptr, 25);
 			response_l.put ("success", ""); // obsolete
@@ -4253,8 +4253,8 @@ void nano::json_handler::unopened ()
 	if (!ec)
 	{
 		auto transaction (node.store.tx_begin_read ());
-		auto iterator (node.store.pending.begin (*transaction, nano::pending_key (start, 0)));
-		auto end (node.store.pending.end ());
+		auto iterator (node.store.pending ().begin (*transaction, nano::pending_key (start, 0)));
+		auto end (node.store.pending ().end ());
 		nano::account current_account (start);
 		nano::uint128_t current_account_sum{ 0 };
 		boost::property_tree::ptree accounts;
@@ -4263,14 +4263,14 @@ void nano::json_handler::unopened ()
 			nano::pending_key key (iterator->first);
 			nano::account account (key.account);
 			nano::pending_info info (iterator->second);
-			if (node.store.account.exists (*transaction, account))
+			if (node.store.account ().exists (*transaction, account))
 			{
 				if (account.number () == std::numeric_limits<nano::uint256_t>::max ())
 				{
 					break;
 				}
 				// Skip existing accounts
-				iterator = node.store.pending.begin (*transaction, nano::pending_key (account.number () + 1, 0));
+				iterator = node.store.pending ().begin (*transaction, nano::pending_key (account.number () + 1, 0));
 			}
 			else
 			{
@@ -4412,13 +4412,13 @@ void nano::json_handler::wallet_info ()
 			nano::account const & account (i->first);
 
 			nano::account_info account_info{};
-			if (!node.store.account.get (*block_transaction, account, account_info))
+			if (!node.store.account ().get (*block_transaction, account, account_info))
 			{
 				block_count += account_info.block_count ();
 			}
 
 			nano::confirmation_height_info confirmation_info{};
-			if (!node.store.confirmation_height.get (*block_transaction, account, confirmation_info))
+			if (!node.store.confirmation_height ().get (*block_transaction, account, confirmation_info))
 			{
 				cemented_block_count += confirmation_info.height ();
 			}
@@ -4649,13 +4649,13 @@ void nano::json_handler::wallet_history ()
 		{
 			nano::account const & account (i->first);
 			nano::account_info info;
-			if (!node.store.account.get (*block_transaction, account, info))
+			if (!node.store.account ().get (*block_transaction, account, info))
 			{
 				auto timestamp (info.modified ());
 				auto hash (info.head ());
 				while (timestamp >= modified_since && !hash.is_zero ())
 				{
-					auto block (node.store.block.get (*block_transaction, hash));
+					auto block (node.store.block ().get (*block_transaction, hash));
 					timestamp = block->sideband ().timestamp ();
 					if (block != nullptr && timestamp >= modified_since)
 					{
@@ -4723,7 +4723,7 @@ void nano::json_handler::wallet_ledger ()
 		{
 			nano::account const & account (i->first);
 			nano::account_info info;
-			if (!node.store.account.get (*block_transaction, account, info))
+			if (!node.store.account ().get (*block_transaction, account, info))
 			{
 				if (info.modified () >= modified_since)
 				{
@@ -4798,7 +4798,7 @@ void nano::json_handler::wallet_receivable ()
 		{
 			nano::account const & account (i->first);
 			boost::property_tree::ptree peers_l;
-			for (auto ii (node.store.pending.begin (*block_transaction, nano::pending_key (account, 0))), nn (node.store.pending.end ()); ii != nn && nano::pending_key (ii->first).account == account && peers_l.size () < count; ++ii)
+			for (auto ii (node.store.pending ().begin (*block_transaction, nano::pending_key (account, 0))), nn (node.store.pending ().end ()); ii != nn && nano::pending_key (ii->first).account == account && peers_l.size () < count; ++ii)
 			{
 				nano::pending_key key (ii->first);
 				if (block_confirmed (node, *block_transaction, key.hash, include_active, include_only_confirmed))
@@ -4889,7 +4889,7 @@ void nano::json_handler::wallet_representative_set ()
 					{
 						nano::account const & account (i->first);
 						nano::account_info info;
-						if (!rpc_l->node.store.account.get (*block_transaction, account, info))
+						if (!rpc_l->node.store.account ().get (*block_transaction, account, info))
 						{
 							if (info.representative () != representative)
 							{
@@ -4928,7 +4928,7 @@ void nano::json_handler::wallet_republish ()
 			while (!latest.is_zero () && hashes.size () < count)
 			{
 				hashes.push_back (latest);
-				block = node.store.block.get (*block_transaction, latest);
+				block = node.store.block ().get (*block_transaction, latest);
 				if (block != nullptr)
 				{
 					latest = block->previous ();
@@ -4941,7 +4941,7 @@ void nano::json_handler::wallet_republish ()
 			std::reverse (hashes.begin (), hashes.end ());
 			for (auto & hash : hashes)
 			{
-				block = node.store.block.get (*block_transaction, hash);
+				block = node.store.block ().get (*block_transaction, hash);
 				republish_bundle.push_back (std::move (block));
 				boost::property_tree::ptree entry;
 				entry.put ("", hash.to_string ());
@@ -5089,9 +5089,9 @@ void nano::json_handler::work_generate ()
 				{
 					// Fetch account from block if not given
 					auto transaction_l (node.store.tx_begin_read ());
-					if (node.store.block.exists (*transaction_l, hash))
+					if (node.store.block ().exists (*transaction_l, hash))
 					{
-						account = node.store.block.account (*transaction_l, hash);
+						account = node.store.block ().account (*transaction_l, hash);
 					}
 				}
 				auto secondary_work_peers_l (request.get<bool> ("secondary_work_peers", false));
@@ -5424,7 +5424,7 @@ bool block_confirmed (nano::node & node, nano::transaction & transaction, nano::
 	// This just checks it's not currently undergoing an active transaction
 	else if (!include_only_confirmed)
 	{
-		auto block (node.store.block.get (transaction, hash));
+		auto block (node.store.block ().get (transaction, hash));
 		is_confirmed = (block != nullptr && !node.active.active (*block));
 	}
 

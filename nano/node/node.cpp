@@ -434,7 +434,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		auto is_initialized (false);
 		{
 			auto const transaction (store.tx_begin_read ());
-			is_initialized = (store.account.begin (*transaction) != store.account.end ());
+			is_initialized = (store.account ().begin (*transaction) != store.account ().end ());
 		}
 
 		if (!is_initialized && !flags.read_only ())
@@ -502,7 +502,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 
 		{
 			auto tx{ store.tx_begin_read () };
-			ledger.pruning = flags.enable_pruning () || store.pruned.count (*tx) > 0;
+			ledger.pruning = flags.enable_pruning () || store.pruned ().count (*tx) > 0;
 		}
 
 		if (ledger.pruning)
@@ -815,7 +815,7 @@ nano::uint128_t nano::node::balance (nano::account const & account_a)
 std::shared_ptr<nano::block> nano::node::block (nano::block_hash const & hash_a)
 {
 	auto const transaction (store.tx_begin_read ());
-	return store.block.get (*transaction, hash_a);
+	return store.block ().get (*transaction, hash_a);
 }
 
 std::pair<nano::uint128_t, nano::uint128_t> nano::node::balance_pending (nano::account const & account_a, bool only_confirmed_a)
@@ -837,7 +837,7 @@ nano::block_hash nano::node::rep_block (nano::account const & account_a)
 	auto const transaction (store.tx_begin_read ());
 	nano::account_info info;
 	nano::block_hash result (0);
-	if (!store.account.get (*transaction, account_a, info))
+	if (!store.account ().get (*transaction, account_a, info))
 	{
 		result = ledger.representative (*transaction, info.head ());
 	}
@@ -853,18 +853,18 @@ void nano::node::long_inactivity_cleanup ()
 {
 	bool perform_cleanup = false;
 	auto const transaction (store.tx_begin_write ({ tables::online_weight, tables::peers }));
-	if (store.online_weight.count (*transaction) > 0)
+	if (store.online_weight ().count (*transaction) > 0)
 	{
-		auto sample (store.online_weight.rbegin (*transaction));
-		auto n (store.online_weight.end ());
+		auto sample (store.online_weight ().rbegin (*transaction));
+		auto n (store.online_weight ().end ());
 		debug_assert (sample != n);
 		auto const one_week_ago = static_cast<std::size_t> ((std::chrono::system_clock::now () - std::chrono::hours (7 * 24)).time_since_epoch ().count ());
 		perform_cleanup = sample->first < one_week_ago;
 	}
 	if (perform_cleanup)
 	{
-		store.online_weight.clear (*transaction);
-		store.peer.clear (*transaction);
+		store.online_weight ().clear (*transaction);
+		store.peer ().clear (*transaction);
 		logger->always_log ("Removed records of peers and online weight after a long period of inactivity");
 	}
 }
@@ -918,8 +918,8 @@ void nano::node::ongoing_bootstrap ()
 
 			{
 				auto tx{ store.tx_begin_read () };
-				auto last_record = store.online_weight.rbegin (*tx);
-				if (last_record != store.online_weight.end ())
+				auto last_record = store.online_weight ().rbegin (*tx);
+				if (last_record != store.online_weight ().end ())
 				{
 					last_sample_time = last_record->first;
 				}
@@ -955,10 +955,10 @@ void nano::node::ongoing_peer_store ()
 	{
 		// Clear all peers then refresh with the current list of peers
 		auto transaction (store.tx_begin_write ({ tables::peers }));
-		store.peer.clear (*transaction);
+		store.peer ().clear (*transaction);
 		for (auto const & endpoint : endpoints)
 		{
-			store.peer.put (*transaction, nano::endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () });
+			store.peer ().put (*transaction, nano::endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () });
 		}
 		stored = true;
 	}
@@ -1083,7 +1083,7 @@ bool nano::node::collect_ledger_pruning_targets (std::deque<nano::block_hash> & 
 	uint64_t read_operations (0);
 	bool finish_transaction (false);
 	auto const transaction (store.tx_begin_read ());
-	for (auto i (store.confirmation_height.begin (*transaction, last_account_a)), n (store.confirmation_height.end ()); i != n && !finish_transaction;)
+	for (auto i (store.confirmation_height ().begin (*transaction, last_account_a)), n (store.confirmation_height ().end ()); i != n && !finish_transaction;)
 	{
 		++read_operations;
 		auto const & account (i->first);
@@ -1091,7 +1091,7 @@ bool nano::node::collect_ledger_pruning_targets (std::deque<nano::block_hash> & 
 		uint64_t depth (0);
 		while (!hash.is_zero () && depth < max_depth_a)
 		{
-			auto block (store.block.get (*transaction, hash));
+			auto block (store.block ().get (*transaction, hash));
 			if (block != nullptr)
 			{
 				if (block->sideband ().timestamp () > cutoff_time_a || depth == 0)
@@ -1318,7 +1318,7 @@ void nano::node::add_initial_peers ()
 	}
 
 	auto transaction (store.tx_begin_read ());
-	for (auto i (store.peer.begin (*transaction)), n (store.peer.end ()); i != n; ++i)
+	for (auto i (store.peer ().begin (*transaction)), n (store.peer ().end ()); i != n; ++i)
 	{
 		nano::endpoint endpoint (boost::asio::ip::address_v6 (i->first.address_bytes ()), i->first.port ());
 		if (!network->reachout (endpoint, config->allow_local_peers))
@@ -1387,7 +1387,7 @@ void nano::node::receive_confirmed (nano::transaction const & block_transaction_
 			nano::account representative;
 			nano::pending_info pending;
 			representative = wallet->store.representative (*wallet_transaction);
-			auto error (store.pending.get (block_transaction_a, nano::pending_key (destination_a, hash_a), pending));
+			auto error (store.pending ().get (block_transaction_a, nano::pending_key (destination_a, hash_a), pending));
 			if (!error)
 			{
 				auto amount (pending.amount.number ());
@@ -1421,7 +1421,7 @@ void nano::node::process_confirmed_data (nano::transaction const & transaction_a
 	auto previous (block_a->previous ());
 	bool error (false);
 	auto previous_balance (ledger.balance_safe (transaction_a, previous, error));
-	auto block_balance (store.block.balance_calculated (block_a));
+	auto block_balance (store.block ().balance_calculated (block_a));
 	if (hash_a != ledger.constants.genesis->account ())
 	{
 		if (!error)
@@ -1462,7 +1462,7 @@ void nano::node::process_confirmed (nano::election_status const & status_a, uint
 	std::shared_ptr<nano::block> block_l;
 	{
 		auto tx{ ledger.store.tx_begin_read () };
-		block_l = ledger.store.block.get (*tx, hash);
+		block_l = ledger.store.block ().get (*tx, hash);
 	}
 	if (block_l)
 	{
@@ -1495,7 +1495,7 @@ std::shared_ptr<nano::node> nano::node::shared ()
 int nano::node::store_version ()
 {
 	auto transaction (store.tx_begin_read ());
-	return store.version.get (*transaction);
+	return store.version ().get (*transaction);
 }
 
 bool nano::node::init_error () const
@@ -1594,7 +1594,7 @@ void nano::node::epoch_upgrader_impl (nano::raw_key const & prv_a, nano::epoch e
 			{
 				auto transaction (store.tx_begin_read ());
 				// Collect accounts to upgrade
-				for (auto i (store.account.begin (*transaction)), n (store.account.end ()); i != n && accounts_list.size () < count_limit; ++i)
+				for (auto i (store.account ().begin (*transaction)), n (store.account ().end ()); i != n && accounts_list.size () < count_limit; ++i)
 				{
 					nano::account const & account (i->first);
 					nano::account_info const & info (i->second);
@@ -1616,7 +1616,7 @@ void nano::node::epoch_upgrader_impl (nano::raw_key const & prv_a, nano::epoch e
 				auto transaction (store.tx_begin_read ());
 				nano::account_info info;
 				nano::account const & account (i->account);
-				if (!store.account.get (*transaction, account, info) && info.epoch () < epoch_a)
+				if (!store.account ().get (*transaction, account, info) && info.epoch () < epoch_a)
 				{
 					++attempts;
 					auto difficulty (network_params.work.threshold (nano::work_version::work_1, nano::block_details (epoch_a, false, false, true)));
@@ -1686,11 +1686,11 @@ void nano::node::epoch_upgrader_impl (nano::raw_key const & prv_a, nano::epoch e
 			uint64_t workers (0);
 			uint64_t attempts (0);
 			auto transaction (store.tx_begin_read ());
-			for (auto i (store.pending.begin (*transaction, nano::pending_key (1, 0))), n (store.pending.end ()); i != n && attempts < upgrade_batch_size && attempts < count_limit && !stopped;)
+			for (auto i (store.pending ().begin (*transaction, nano::pending_key (1, 0))), n (store.pending ().end ()); i != n && attempts < upgrade_batch_size && attempts < count_limit && !stopped;)
 			{
 				bool to_next_account (false);
 				nano::pending_key const & key (i->first);
-				if (!store.account.exists (*transaction, key.account))
+				if (!store.account ().exists (*transaction, key.account))
 				{
 					nano::pending_info const & info (i->second);
 					if (info.epoch < epoch_a)
@@ -1747,7 +1747,7 @@ void nano::node::epoch_upgrader_impl (nano::raw_key const & prv_a, nano::epoch e
 					}
 					else
 					{
-						i = store.pending.begin (*transaction, nano::pending_key (key.account.number () + 1, 0));
+						i = store.pending ().begin (*transaction, nano::pending_key (key.account.number () + 1, 0));
 					}
 				}
 				else
@@ -1817,7 +1817,7 @@ std::pair<uint64_t, decltype (nano::ledger::bootstrap_weights)> nano::node::get_
 void nano::node::bootstrap_block (const nano::block_hash & hash)
 {
 	// If we are running pruning node check if block was not already pruned
-	if (!ledger.pruning || !store.pruned.exists (*store.tx_begin_read (), hash))
+	if (!ledger.pruning || !store.pruned ().exists (*store.tx_begin_read (), hash))
 	{
 		// We don't have the block, try to bootstrap it
 		gap_cache.bootstrap_start (hash);
@@ -1828,7 +1828,7 @@ void nano::node::bootstrap_block (const nano::block_hash & hash)
 uint64_t nano::node::get_confirmation_height (nano::transaction const & transaction_a, nano::account & account_a)
 {
 	nano::confirmation_height_info info;
-	store.confirmation_height.get (transaction_a, account_a, info);
+	store.confirmation_height ().get (transaction_a, account_a, info);
 	return info.height ();
 };
 

@@ -113,7 +113,7 @@ TEST (node, representative)
 	auto block1 (system.nodes[0]->rep_block (nano::dev::genesis_key.pub));
 	{
 		auto transaction (system.nodes[0]->store.tx_begin_read ());
-		ASSERT_TRUE (system.nodes[0]->ledger.store.block.exists (*transaction, block1));
+		ASSERT_TRUE (system.nodes[0]->ledger.store.block ().exists (*transaction, block1));
 	}
 	nano::keypair key;
 	ASSERT_TRUE (system.nodes[0]->rep_block (key.pub).is_zero ());
@@ -712,8 +712,8 @@ TEST (node, fork_keep)
 	auto winner (*election1->tally ().begin ());
 	ASSERT_EQ (*send1, *winner.second);
 	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, winner.first);
-	ASSERT_TRUE (node1.store.block.exists (*transaction0, send1->hash ()));
-	ASSERT_TRUE (node2.store.block.exists (*transaction1, send1->hash ()));
+	ASSERT_TRUE (node1.store.block ().exists (*transaction0, send1->hash ()));
+	ASSERT_TRUE (node2.store.block ().exists (*transaction1, send1->hash ()));
 }
 
 TEST (node, fork_flip)
@@ -887,7 +887,7 @@ TEST (node, fork_bootstrap_flip)
 	}
 	{
 		auto tx{ node2.store.tx_begin_read () };
-		ASSERT_TRUE (node2.store.block.exists (*tx, send2->hash ()));
+		ASSERT_TRUE (node2.store.block ().exists (*tx, send2->hash ()));
 	}
 	node2.bootstrap_initiator.bootstrap (node1.network->endpoint ()); // Additionally add new peer to confirm & replace bootstrap block
 	auto again (true);
@@ -898,7 +898,7 @@ TEST (node, fork_bootstrap_flip)
 		ASSERT_NO_ERROR (system0.poll ());
 		ASSERT_NO_ERROR (system1.poll ());
 		auto tx{ node2.store.tx_begin_read () };
-		again = !node2.store.block.exists (*tx, send1->hash ());
+		again = !node2.store.block ().exists (*tx, send1->hash ());
 	}
 }
 
@@ -1050,9 +1050,9 @@ TEST (node, fork_open_flip)
 	// check the correct blocks are in the ledgers
 	auto transaction1 (node1.store.tx_begin_read ());
 	auto transaction2 (node2.store.tx_begin_read ());
-	ASSERT_TRUE (node1.store.block.exists (*transaction1, open1->hash ()));
-	ASSERT_TRUE (node2.store.block.exists (*transaction2, open1->hash ()));
-	ASSERT_FALSE (node2.store.block.exists (*transaction2, open2->hash ()));
+	ASSERT_TRUE (node1.store.block ().exists (*transaction1, open1->hash ()));
+	ASSERT_TRUE (node2.store.block ().exists (*transaction2, open1->hash ()));
+	ASSERT_FALSE (node2.store.block ().exists (*transaction2, open2->hash ()));
 }
 
 TEST (node, coherent_observer)
@@ -1061,7 +1061,7 @@ TEST (node, coherent_observer)
 	auto & node1 (*system.nodes[0]);
 	node1.observers.blocks.add ([&node1] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const &, nano::account const &, nano::uint128_t const &, bool, bool) {
 		auto transaction (node1.store.tx_begin_read ());
-		ASSERT_TRUE (node1.store.block.exists (*transaction, status_a.winner->hash ()));
+		ASSERT_TRUE (node1.store.block ().exists (*transaction, status_a.winner->hash ()));
 	});
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::keypair key;
@@ -2937,14 +2937,14 @@ TEST (node, block_processor_signatures)
 	node1.block_processor.force (send5);
 	node1.block_processor.flush ();
 	auto transaction (node1.store.tx_begin_read ());
-	ASSERT_TRUE (node1.store.block.exists (*transaction, send1->hash ()));
-	ASSERT_TRUE (node1.store.block.exists (*transaction, send2->hash ()));
-	ASSERT_TRUE (node1.store.block.exists (*transaction, send3->hash ()));
-	ASSERT_FALSE (node1.store.block.exists (*transaction, send4->hash ()));
-	ASSERT_FALSE (node1.store.block.exists (*transaction, send5->hash ()));
-	ASSERT_TRUE (node1.store.block.exists (*transaction, receive1->hash ()));
-	ASSERT_TRUE (node1.store.block.exists (*transaction, receive2->hash ()));
-	ASSERT_FALSE (node1.store.block.exists (*transaction, receive3->hash ()));
+	ASSERT_TRUE (node1.store.block ().exists (*transaction, send1->hash ()));
+	ASSERT_TRUE (node1.store.block ().exists (*transaction, send2->hash ()));
+	ASSERT_TRUE (node1.store.block ().exists (*transaction, send3->hash ()));
+	ASSERT_FALSE (node1.store.block ().exists (*transaction, send4->hash ()));
+	ASSERT_FALSE (node1.store.block ().exists (*transaction, send5->hash ()));
+	ASSERT_TRUE (node1.store.block ().exists (*transaction, receive1->hash ()));
+	ASSERT_TRUE (node1.store.block ().exists (*transaction, receive2->hash ()));
+	ASSERT_FALSE (node1.store.block ().exists (*transaction, receive3->hash ()));
 }
 
 /*
@@ -3140,10 +3140,10 @@ TEST (node, peers)
 	{
 		// Add a peer to the database
 		auto transaction (store.tx_begin_write ());
-		store.peer.put (*transaction, endpoint_key);
+		store.peer ().put (*transaction, endpoint_key);
 
 		// Add a peer which is not contactable
-		store.peer.put (*transaction, nano::endpoint_key{ boost::asio::ip::address_v6::any ().to_bytes (), 55555 });
+		store.peer ().put (*transaction, nano::endpoint_key{ boost::asio::ip::address_v6::any ().to_bytes (), 55555 });
 	}
 
 	node2->start ();
@@ -3168,8 +3168,8 @@ TEST (node, peers)
 
 	// Uncontactable peer should not be stored
 	auto transaction (store.tx_begin_read ());
-	ASSERT_EQ (store.peer.count (*transaction), 1);
-	ASSERT_TRUE (store.peer.exists (*transaction, endpoint_key));
+	ASSERT_EQ (store.peer ().count (*transaction), 1);
+	ASSERT_TRUE (store.peer ().exists (*transaction, endpoint_key));
 
 	node2->stop ();
 }
@@ -3189,7 +3189,7 @@ TEST (node, peer_cache_restart)
 		{
 			// Add a peer to the database
 			auto transaction (store.tx_begin_write ());
-			store.peer.put (*transaction, endpoint_key);
+			store.peer ().put (*transaction, endpoint_key);
 		}
 		node2->start ();
 		ASSERT_TIMELY (10s, !node2->network->empty ());
@@ -3212,8 +3212,8 @@ TEST (node, peer_cache_restart)
 		auto & store = node3->store;
 		{
 			auto transaction (store.tx_begin_read ());
-			ASSERT_EQ (store.peer.count (*transaction), 1);
-			ASSERT_TRUE (store.peer.exists (*transaction, endpoint_key));
+			ASSERT_EQ (store.peer ().count (*transaction), 1);
+			ASSERT_TRUE (store.peer ().exists (*transaction, endpoint_key));
 		}
 		ASSERT_TIMELY (10s, !node3->network->empty ());
 		// Confirm that the peers match with the endpoints we are expecting
@@ -4274,7 +4274,7 @@ TEST (node, pruning_automatic)
 	// Check pruning result
 	ASSERT_EQ (3, node1.ledger.cache.block_count);
 	ASSERT_TIMELY (5s, node1.ledger.cache.pruned_count == 1);
-	ASSERT_TIMELY (5s, node1.store.pruned.count (*node1.store.tx_begin_read ()) == 1);
+	ASSERT_TIMELY (5s, node1.store.pruned ().count (*node1.store.tx_begin_read ()) == 1);
 	ASSERT_EQ (1, node1.ledger.cache.pruned_count);
 	ASSERT_EQ (3, node1.ledger.cache.block_count);
 

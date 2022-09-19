@@ -840,7 +840,7 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 		nano::pending_info pending_info;
 		if (wallets.node.ledger.block_or_pruned_exists (*block_transaction, send_hash_a))
 		{
-			if (!wallets.node.ledger.store.pending.get (*block_transaction, nano::pending_key (account_a, send_hash_a), pending_info))
+			if (!wallets.node.ledger.store.pending ().get (*block_transaction, nano::pending_key (account_a, send_hash_a), pending_info))
 			{
 				nano::raw_key prv;
 				if (!store.fetch (*transaction, account_a, prv))
@@ -850,7 +850,7 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 						store.work_get (*transaction, account_a, work_a);
 					}
 					nano::account_info info;
-					auto new_account (wallets.node.ledger.store.account.get (*block_transaction, account_a, info));
+					auto new_account (wallets.node.ledger.store.account ().get (*block_transaction, account_a, info));
 					if (!new_account)
 					{
 						block = std::make_shared<nano::state_block> (account_a, info.head (), info.representative (), info.balance ().number () + pending_info.amount.number (), send_hash_a, prv, account_a, work_a);
@@ -907,7 +907,7 @@ std::shared_ptr<nano::block> nano::wallet::change_action (nano::account const & 
 			if (existing != store.end () && !wallets.node.ledger.latest (*block_transaction, source_a).is_zero ())
 			{
 				nano::account_info info;
-				auto error1 (wallets.node.ledger.store.account.get (*block_transaction, source_a, info));
+				auto error1 (wallets.node.ledger.store.account ().get (*block_transaction, source_a, info));
 				(void)error1;
 				debug_assert (!error1);
 				nano::raw_key prv;
@@ -956,7 +956,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 			if (status == 0)
 			{
 				nano::block_hash hash (result);
-				block = wallets.node.store.block.get (*block_transaction, hash);
+				block = wallets.node.store.block ().get (*block_transaction, hash);
 				if (block != nullptr)
 				{
 					cached_block = true;
@@ -979,7 +979,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 					if (!balance.is_zero () && balance >= amount_a)
 					{
 						nano::account_info info;
-						auto error1 (wallets.node.ledger.store.account.get (*block_transaction, source_a, info));
+						auto error1 (wallets.node.ledger.store.account ().get (*block_transaction, source_a, info));
 						(void)error1;
 						debug_assert (!error1);
 						nano::raw_key prv;
@@ -1178,7 +1178,7 @@ bool nano::wallet::search_receivable (nano::transaction const & wallet_transacti
 			// Don't search pending for watch-only accounts
 			if (!nano::wallet_value (i->second).key.is_zero ())
 			{
-				for (auto j (wallets.node.store.pending.begin (*block_transaction, nano::pending_key (account, 0))), k (wallets.node.store.pending.end ()); j != k && nano::pending_key (j->first).account == account; ++j)
+				for (auto j (wallets.node.store.pending ().begin (*block_transaction, nano::pending_key (account, 0))), k (wallets.node.store.pending ().end ()); j != k && nano::pending_key (j->first).account == account; ++j)
 				{
 					nano::pending_key key (j->first);
 					auto hash (key.hash);
@@ -1195,7 +1195,7 @@ bool nano::wallet::search_receivable (nano::transaction const & wallet_transacti
 						}
 						else if (!wallets.node.confirmation_height_processor.is_processing_block (hash))
 						{
-							auto block (wallets.node.store.block.get (*block_transaction, hash));
+							auto block (wallets.node.store.block ().get (*block_transaction, hash));
 							if (block)
 							{
 								// Request confirmation for block which is not being processed yet
@@ -1243,7 +1243,7 @@ uint32_t nano::wallet::deterministic_check (nano::transaction const & transactio
 		else
 		{
 			// Check if there are pending blocks for account
-			for (auto ii (wallets.node.store.pending.begin (*block_transaction, nano::pending_key (pair.pub, 0))), nn (wallets.node.store.pending.end ()); ii != nn && nano::pending_key (ii->first).account == pair.pub; ++ii)
+			for (auto ii (wallets.node.store.pending ().begin (*block_transaction, nano::pending_key (pair.pub, 0))), nn (wallets.node.store.pending ().end ()); ii != nn && nano::pending_key (ii->first).account == pair.pub; ++ii)
 			{
 				index = i;
 				n = i + 64 + (i / 64);

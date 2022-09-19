@@ -239,12 +239,12 @@ bool copy_database (boost::filesystem::path const & data_path, boost::program_op
 		if (vm.count ("online_weight_clear"))
 		{
 			auto tx{ store.tx_begin_write () };
-			node.node->store.online_weight.clear (*tx);
+			node.node->store.online_weight ().clear (*tx);
 		}
 		if (vm.count ("peer_clear"))
 		{
 			auto tx{ store.tx_begin_write () };
-			node.node->store.peer.clear (*tx);
+			node.node->store.peer ().clear (*tx);
 		}
 		if (vm.count ("confirmation_height_clear"))
 		{
@@ -254,7 +254,7 @@ bool copy_database (boost::filesystem::path const & data_path, boost::program_op
 		if (vm.count ("final_vote_clear"))
 		{
 			auto tx{ store.tx_begin_write () };
-			node.node->store.final_vote.clear (*tx);
+			node.node->store.final_vote ().clear (*tx);
 		}
 		if (vm.count ("rebuild_database"))
 		{
@@ -487,7 +487,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
-			node.node->store.online_weight.clear (*transaction);
+			node.node->store.online_weight ().clear (*transaction);
 			std::cout << "Online weight records are removed" << std::endl;
 		}
 		else
@@ -505,7 +505,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
-			node.node->store.peer.clear (*transaction);
+			node.node->store.peer ().clear (*transaction);
 			std::cout << "Database peers are removed" << std::endl;
 		}
 		else
@@ -532,7 +532,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					auto error = false;
 					{
 						auto tx{ node.node->store.tx_begin_read () };
-						error = node.node->store.confirmation_height.get (*tx, account, confirmation_height_info);
+						error = node.node->store.confirmation_height ().get (*tx, account, confirmation_height_info);
 					}
 					if (!error)
 					{
@@ -541,11 +541,11 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 						if (account == node.node->network_params.ledger.genesis->account ())
 						{
 							conf_height_reset_num = 1;
-							node.node->store.confirmation_height.put (*transaction, account, { confirmation_height_info.height (), node.node->network_params.ledger.genesis->hash () });
+							node.node->store.confirmation_height ().put (*transaction, account, { confirmation_height_info.height (), node.node->network_params.ledger.genesis->hash () });
 						}
 						else
 						{
-							node.node->store.confirmation_height.clear (*transaction, account);
+							node.node->store.confirmation_height ().clear (*transaction, account);
 						}
 
 						std::cout << "Confirmation height of account " << account_str << " is set to " << conf_height_reset_num << std::endl;
@@ -595,7 +595,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				nano::root root;
 				if (!root.decode_hex (root_str))
 				{
-					node.node->store.final_vote.clear (*transaction, root);
+					node.node->store.final_vote ().clear (*transaction, root);
 					std::cout << "Successfully cleared final votes" << std::endl;
 				}
 				else
@@ -607,7 +607,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			else if (vm.count ("all"))
 			{
 				auto tx{ node.node->store.tx_begin_write () };
-				node.node->store.final_vote.clear (*tx);
+				node.node->store.final_vote ().clear (*tx);
 				std::cout << "All final votes are cleared" << std::endl;
 			}
 			else
@@ -1280,9 +1280,9 @@ namespace
 void reset_confirmation_heights (nano::write_transaction const & transaction, nano::ledger_constants & constants, nano::store & store)
 {
 	// First do a clean sweep
-	store.confirmation_height.clear (transaction);
+	store.confirmation_height ().clear (transaction);
 
 	// Then make sure the confirmation height of the genesis account open block is 1
-	store.confirmation_height.put (transaction, constants.genesis->account (), { 1, constants.genesis->hash () });
+	store.confirmation_height ().put (transaction, constants.genesis->account (), { 1, constants.genesis->hash () });
 }
 }

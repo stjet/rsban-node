@@ -377,7 +377,7 @@ nano::process_return nano::block_processor::process_one (nano::write_transaction
 	{
 		case nano::process_result::progress:
 		{
-			release_assert (info_a.get_account ().is_zero () || info_a.get_account () == store.block.account_calculated (*block));
+			release_assert (info_a.get_account ().is_zero () || info_a.get_account () == store.block ().account_calculated (*block));
 			if (config.logging.ledger_logging ())
 			{
 				std::string block_string;

@@ -14,15 +14,21 @@ use super::{
     TransactionHandle,
 };
 
-pub struct LmdbConfirmationHeightStoreHandle(LmdbConfirmationHeightStore);
+pub struct LmdbConfirmationHeightStoreHandle(Arc<LmdbConfirmationHeightStore>);
+
+impl LmdbConfirmationHeightStoreHandle {
+    pub fn new(store: Arc<LmdbConfirmationHeightStore>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbConfirmationHeightStoreHandle(store)))
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_create(
     env_handle: *mut LmdbEnvHandle,
 ) -> *mut LmdbConfirmationHeightStoreHandle {
-    Box::into_raw(Box::new(LmdbConfirmationHeightStoreHandle(
-        LmdbConfirmationHeightStore::new(Arc::clone(&*env_handle)),
-    )))
+    LmdbConfirmationHeightStoreHandle::new(Arc::new(LmdbConfirmationHeightStore::new(Arc::clone(
+        &*env_handle,
+    ))))
 }
 
 #[no_mangle]
@@ -36,7 +42,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_destroy(
 pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_table_handle(
     handle: *mut LmdbConfirmationHeightStoreHandle,
 ) -> u32 {
-    (*handle).0.table_handle
+    (*handle).0.db_handle()
 }
 
 #[no_mangle]

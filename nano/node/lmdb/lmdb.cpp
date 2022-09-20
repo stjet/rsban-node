@@ -38,22 +38,31 @@ void mdb_val::convert_buffer_to_value ()
 	value = { buffer->size (), const_cast<uint8_t *> (buffer->data ()) };
 }
 }
+namespace
+{
+rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, boost::filesystem::path const & path_a, nano::mdb_env::options options_a, const std::shared_ptr<nano::logger_mt> & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a)
+{
+	auto path_string{ path_a.string () };
+	auto config_dto{ options_a.config.to_dto () };
+	auto txn_config_dto{ txn_tracking_config_a.to_dto () };
+	return rsnano::rsn_lmdb_store_create (&error_a, reinterpret_cast<const int8_t *> (path_string.c_str ()), &config_dto, options_a.use_no_mem_init, nano::to_logger_handle (logger_a), &txn_config_dto, block_processor_batch_max_time_a.count ());
+}
+}
 
 nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
-	// clang-format off
-	env_m {error, path_a, logger_a, txn_tracking_config_a, block_processor_batch_max_time_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true)},
-	// clang-format on
-	block_store{ *this },
-	frontier_store{ *this },
-	account_store{ env_m },
-	pending_store{ *this },
-	online_weight_store{ *this },
-	pruned_store{ *this },
-	peer_store{ *this },
-	confirmation_height_store{ *this },
-	final_vote_store{ *this },
-	unchecked_store{ *this },
-	version_store{ *this },
+	handle{ create_store_handle (error, path_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true), logger_a, txn_tracking_config_a, block_processor_batch_max_time_a) },
+	env_m{ rsnano::rsn_lmdb_store_env (handle) },
+	block_store{ rsnano::rsn_lmdb_store_block (handle) },
+	frontier_store{ rsnano::rsn_lmdb_store_frontier (handle) },
+	account_store{ rsnano::rsn_lmdb_store_account (handle) },
+	pending_store{ rsnano::rsn_lmdb_store_pending (handle) },
+	online_weight_store{ rsnano::rsn_lmdb_store_online_weight (handle) },
+	pruned_store{ rsnano::rsn_lmdb_store_pruned (handle) },
+	peer_store{ rsnano::rsn_lmdb_store_peer (handle) },
+	confirmation_height_store{ rsnano::rsn_lmdb_store_confirmation_height (handle) },
+	final_vote_store{ rsnano::rsn_lmdb_store_final_vote (handle) },
+	unchecked_store{ rsnano::rsn_lmdb_store_unchecked (handle) },
+	version_store{ rsnano::rsn_lmdb_store_version (handle) },
 	logger (*logger_a)
 {
 	if (!error)
@@ -106,6 +115,12 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 			open_databases (error, *transaction, 0);
 		}
 	}
+}
+
+nano::lmdb::store::~store ()
+{
+	if (handle != nullptr)
+		rsnano::rsn_lmdb_store_destroy (handle);
 }
 
 bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a)

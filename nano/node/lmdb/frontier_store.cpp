@@ -2,15 +2,15 @@
 #include <nano/node/lmdb/lmdb.hpp>
 #include <nano/secure/parallel_traversal.hpp>
 
-nano::lmdb::frontier_store::frontier_store (nano::lmdb::store & store) :
-	store{ store }
+nano::lmdb::frontier_store::frontier_store (rsnano::LmdbFrontierStoreHandle * handle_a) :
+	handle{ handle_a }
 {
-	handle = rsnano::rsn_lmdb_frontier_store_create (store.env ().handle);
 }
 
 nano::lmdb::frontier_store::~frontier_store ()
 {
-	rsnano::rsn_lmdb_frontier_store_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_lmdb_frontier_store_destroy (handle);
 }
 
 bool nano::lmdb::frontier_store::open_db (nano::transaction const & txn, uint32_t flags)

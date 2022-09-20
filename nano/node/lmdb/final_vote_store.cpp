@@ -16,15 +16,20 @@ nano::store_iterator<nano::qualified_root, nano::block_hash> to_iterator (rsnano
 }
 }
 
-nano::lmdb::final_vote_store::final_vote_store (nano::lmdb::store & store) :
-	store{ store }
+nano::lmdb::final_vote_store::final_vote_store (nano::lmdb::store & store)
 {
 	handle = rsnano::rsn_lmdb_final_vote_store_create (store.env ().handle);
 };
 
+nano::lmdb::final_vote_store::final_vote_store (rsnano::LmdbFinalVoteStoreHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 nano::lmdb::final_vote_store::~final_vote_store ()
 {
-	rsnano::rsn_lmdb_final_vote_store_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_lmdb_final_vote_store_destroy (handle);
 }
 
 bool nano::lmdb::final_vote_store::open_db (nano::transaction const & txn, uint32_t flags)

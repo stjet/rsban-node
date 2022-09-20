@@ -9,6 +9,7 @@ mod online_weight_store;
 mod peer_store;
 mod pending_store;
 mod pruned_store;
+mod store;
 mod unchecked_store;
 mod version_store;
 

@@ -12,11 +12,11 @@ namespace lmdb
 	class pruned_store : public nano::pruned_store
 	{
 	private:
-		nano::lmdb::store & store;
 		rsnano::LmdbPrunedStoreHandle * handle;
 
 	public:
 		explicit pruned_store (nano::lmdb::store & store_a);
+		explicit pruned_store (rsnano::LmdbPrunedStoreHandle * handle_a);
 		~pruned_store ();
 		pruned_store (pruned_store const &) = delete;
 		pruned_store (pruned_store &&) = delete;

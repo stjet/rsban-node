@@ -14,15 +14,19 @@ use super::{
     TransactionHandle,
 };
 
-pub struct LmdbPrunedStoreHandle(LmdbPrunedStore);
+pub struct LmdbPrunedStoreHandle(Arc<LmdbPrunedStore>);
+
+impl LmdbPrunedStoreHandle {
+    pub fn new(store: Arc<LmdbPrunedStore>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbPrunedStoreHandle(store)))
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_pruned_store_create(
     env_handle: *mut LmdbEnvHandle,
 ) -> *mut LmdbPrunedStoreHandle {
-    Box::into_raw(Box::new(LmdbPrunedStoreHandle(LmdbPrunedStore::new(
-        Arc::clone(&*env_handle),
-    ))))
+    LmdbPrunedStoreHandle::new(Arc::new(LmdbPrunedStore::new(Arc::clone(&*env_handle))))
 }
 
 #[no_mangle]
@@ -34,7 +38,7 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_destroy(handle: *mut LmdbPrunedSt
 pub unsafe extern "C" fn rsn_lmdb_pruned_store_table_handle(
     handle: *mut LmdbPrunedStoreHandle,
 ) -> u32 {
-    (*handle).0.db_handle
+    (*handle).0.db_handle()
 }
 
 #[no_mangle]

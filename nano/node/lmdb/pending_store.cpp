@@ -16,12 +16,15 @@ nano::store_iterator<nano::pending_key, nano::pending_info> to_iterator (rsnano:
 }
 
 nano::lmdb::pending_store::pending_store (nano::lmdb::store & store) :
-	store{ store },
 	handle{ rsnano::rsn_lmdb_pending_store_create (store.env ().handle) } {};
+
+nano::lmdb::pending_store::pending_store (rsnano::LmdbPendingStoreHandle * handle_a) :
+	handle{ handle_a } {};
 
 nano::lmdb::pending_store::~pending_store ()
 {
-	rsnano::rsn_lmdb_pending_store_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_lmdb_pending_store_destroy (handle);
 }
 
 bool nano::lmdb::pending_store::open_db (nano::transaction const & txn, uint32_t flags)

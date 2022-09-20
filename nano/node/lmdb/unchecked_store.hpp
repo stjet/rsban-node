@@ -12,11 +12,11 @@ namespace lmdb
 	class unchecked_store : public nano::unchecked_store
 	{
 	private:
-		nano::lmdb::store & store;
 		rsnano::LmdbUncheckedStoreHandle * handle;
 
 	public:
 		unchecked_store (nano::lmdb::store & store_a);
+		unchecked_store (rsnano::LmdbUncheckedStoreHandle * handle_a);
 		~unchecked_store ();
 		unchecked_store (unchecked_store const &) = delete;
 		unchecked_store (unchecked_store &&) = delete;

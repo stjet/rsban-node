@@ -120,6 +120,8 @@ struct LmdbPendingStoreHandle;
 
 struct LmdbPrunedStoreHandle;
 
+struct LmdbStoreHandle;
+
 struct LmdbUncheckedStoreHandle;
 
 struct LmdbVersionStoreHandle;
@@ -2206,6 +2208,40 @@ void rsn_lmdb_read_txn_refresh (TransactionHandle * handle);
 void rsn_lmdb_read_txn_renew (TransactionHandle * handle);
 
 void rsn_lmdb_read_txn_reset (TransactionHandle * handle);
+
+LmdbAccountStoreHandle * rsn_lmdb_store_account (LmdbStoreHandle * handle);
+
+LmdbBlockStoreHandle * rsn_lmdb_store_block (LmdbStoreHandle * handle);
+
+LmdbConfirmationHeightStoreHandle * rsn_lmdb_store_confirmation_height (LmdbStoreHandle * handle);
+
+LmdbStoreHandle * rsn_lmdb_store_create (bool * error,
+const int8_t * path,
+const LmdbConfigDto * lmdb_config,
+bool use_no_mem_init,
+LoggerHandle * logger,
+const TxnTrackingConfigDto * txn_config,
+uint64_t block_processor_batch_max_time_ms);
+
+void rsn_lmdb_store_destroy (LmdbStoreHandle * handle);
+
+LmdbEnvHandle * rsn_lmdb_store_env (LmdbStoreHandle * handle);
+
+LmdbFinalVoteStoreHandle * rsn_lmdb_store_final_vote (LmdbStoreHandle * handle);
+
+LmdbFrontierStoreHandle * rsn_lmdb_store_frontier (LmdbStoreHandle * handle);
+
+LmdbOnlineWeightStoreHandle * rsn_lmdb_store_online_weight (LmdbStoreHandle * handle);
+
+LmdbPeerStoreHandle * rsn_lmdb_store_peer (LmdbStoreHandle * handle);
+
+LmdbPendingStoreHandle * rsn_lmdb_store_pending (LmdbStoreHandle * handle);
+
+LmdbPrunedStoreHandle * rsn_lmdb_store_pruned (LmdbStoreHandle * handle);
+
+LmdbUncheckedStoreHandle * rsn_lmdb_store_unchecked (LmdbStoreHandle * handle);
+
+LmdbVersionStoreHandle * rsn_lmdb_store_version (LmdbStoreHandle * handle);
 
 LmdbIteratorHandle * rsn_lmdb_unchecked_store_begin (LmdbUncheckedStoreHandle * handle,
 TransactionHandle * txn);

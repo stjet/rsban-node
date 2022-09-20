@@ -15,15 +15,19 @@ use super::{
     TransactionHandle,
 };
 
-pub struct LmdbPendingStoreHandle(LmdbPendingStore);
+pub struct LmdbPendingStoreHandle(Arc<LmdbPendingStore>);
+
+impl LmdbPendingStoreHandle {
+    pub fn new(store: Arc<LmdbPendingStore>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbPendingStoreHandle(store)))
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_pending_store_create(
     env_handle: *mut LmdbEnvHandle,
 ) -> *mut LmdbPendingStoreHandle {
-    Box::into_raw(Box::new(LmdbPendingStoreHandle(LmdbPendingStore::new(
-        Arc::clone(&*env_handle),
-    ))))
+    LmdbPendingStoreHandle::new(Arc::new(LmdbPendingStore::new(Arc::clone(&*env_handle))))
 }
 
 #[no_mangle]
@@ -35,7 +39,7 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_destroy(handle: *mut LmdbPending
 pub unsafe extern "C" fn rsn_lmdb_pending_store_table_handle(
     handle: *mut LmdbPendingStoreHandle,
 ) -> u32 {
-    (*handle).0.table_handle
+    (*handle).0.db_handle()
 }
 
 #[no_mangle]

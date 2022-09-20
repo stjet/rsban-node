@@ -16,6 +16,12 @@ use super::{TransactionHandle, TransactionType};
 
 pub struct LmdbEnvHandle(Arc<LmdbEnv>);
 
+impl LmdbEnvHandle {
+    pub fn new(env: Arc<LmdbEnv>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbEnvHandle(env)))
+    }
+}
+
 impl Deref for LmdbEnvHandle {
     type Target = Arc<LmdbEnv>;
 
@@ -66,17 +72,22 @@ pub unsafe extern "C" fn rsn_mdb_env_create2(
     let block_processor_batch_max_time = Duration::from_millis(block_processor_batch_max_time_ms);
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let env = LmdbEnv::with_tracking(
-        &mut *error,
         path,
         &options,
         txn_config,
         block_processor_batch_max_time,
         logger,
     );
-    if *error {
-        eprintln!("Could not create LMDB env");
+    match env {
+        Ok(e) => {
+            *error = false;
+            Box::into_raw(Box::new(LmdbEnvHandle(Arc::new(e))))
+        }
+        Err(_) => {
+            *error = true;
+            std::ptr::null_mut()
+        }
     }
-    Box::into_raw(Box::new(LmdbEnvHandle(Arc::new(env))))
 }
 
 #[no_mangle]

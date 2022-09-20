@@ -16,12 +16,17 @@ nano::store_iterator<nano::block_hash, std::nullptr_t> to_iterator (rsnano::Lmdb
 }
 
 nano::lmdb::pruned_store::pruned_store (nano::lmdb::store & store_a) :
-	store{ store_a },
 	handle{ rsnano::rsn_lmdb_pruned_store_create (store_a.env ().handle) } {};
+
+nano::lmdb::pruned_store::pruned_store (rsnano::LmdbPrunedStoreHandle * handle_a) :
+	handle{ handle_a }
+{
+}
 
 nano::lmdb::pruned_store::~pruned_store ()
 {
-	rsnano::rsn_lmdb_pruned_store_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_lmdb_pruned_store_destroy (handle);
 }
 
 bool nano::lmdb::pruned_store::open_db (nano::transaction const & txn, uint32_t flags)

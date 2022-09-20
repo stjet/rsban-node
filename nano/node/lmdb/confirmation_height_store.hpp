@@ -12,10 +12,9 @@ namespace lmdb
 	class confirmation_height_store : public nano::confirmation_height_store
 	{
 		rsnano::LmdbConfirmationHeightStoreHandle * handle;
-		nano::lmdb::store & store;
 
 	public:
-		explicit confirmation_height_store (nano::lmdb::store & store_a);
+		explicit confirmation_height_store (rsnano::LmdbConfirmationHeightStoreHandle * handle_a);
 		~confirmation_height_store ();
 		confirmation_height_store (confirmation_height_store const &) = delete;
 		confirmation_height_store (confirmation_height_store &&) = delete;

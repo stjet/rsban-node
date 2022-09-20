@@ -10,7 +10,10 @@ use crate::{
     BlockWithSideband, Epoch,
 };
 use num_traits::FromPrimitive;
-use std::{ffi::c_void, sync::Arc};
+use std::{
+    ffi::c_void,
+    sync::{Arc, Mutex},
+};
 
 use super::{
     assert_success, ensure_success, get_raw_lmdb_txn, mdb_count, mdb_dbi_open, mdb_del, mdb_get,
@@ -19,30 +22,39 @@ use super::{
 
 pub struct LmdbBlockStore {
     env: Arc<LmdbEnv>,
-    pub db_handle: u32,
+    db_handle: Mutex<u32>,
 }
 
 impl LmdbBlockStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self { env, db_handle: 0 }
+        Self {
+            env,
+            db_handle: Mutex::new(0),
+        }
+    }
+
+    pub fn db_handle(&self) -> u32 {
+        *self.db_handle.lock().unwrap()
     }
 
     pub fn raw_put(&self, txn: &LmdbWriteTransaction, data: &[u8], hash: &BlockHash) {
         let mut key = MdbVal::from_slice(hash.as_bytes());
         let mut data = MdbVal::from_slice(data);
-        let status = unsafe { mdb_put(txn.handle, self.db_handle, &mut key, &mut data, 0) };
+        let status = unsafe { mdb_put(txn.handle, self.db_handle(), &mut key, &mut data, 0) };
         assert_success(status);
     }
 
     pub fn block_raw_get(&self, txn: &dyn Transaction, hash: &BlockHash, value: &mut MdbVal) {
         let mut key = MdbVal::from_slice(hash.as_bytes());
-        let status = unsafe { mdb_get(get_raw_lmdb_txn(txn), self.db_handle, &mut key, value) };
+        let status = unsafe { mdb_get(get_raw_lmdb_txn(txn), self.db_handle(), &mut key, value) };
         assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
     }
 
-    pub fn open_db(&mut self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
-        let status =
-            unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), "blocks", flags, &mut self.db_handle) };
+    pub fn open_db(&self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+        let mut handle = 0;
+        let status = unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), "blocks", flags, &mut handle) };
+        let mut guard = self.db_handle.lock().unwrap();
+        *guard = handle;
         ensure_success(status)
     }
 }
@@ -142,7 +154,7 @@ impl BlockStore for LmdbBlockStore {
         let status = unsafe {
             mdb_del(
                 txn.handle,
-                self.db_handle,
+                self.db_handle(),
                 &mut MdbVal::from_slice(hash.as_bytes()),
                 None,
             )
@@ -151,7 +163,7 @@ impl BlockStore for LmdbBlockStore {
     }
 
     fn count(&self, txn: &dyn Transaction) -> usize {
-        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.db_handle) }
+        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.db_handle()) }
     }
 
     fn account_calculated(&self, block: &dyn Block) -> Account {
@@ -174,7 +186,7 @@ impl BlockStore for LmdbBlockStore {
         &self,
         transaction: &dyn Transaction,
     ) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>> {
-        Box::new(LmdbIterator::new(transaction, self.db_handle, None, true))
+        Box::new(LmdbIterator::new(transaction, self.db_handle(), None, true))
     }
 
     fn begin_at_hash(
@@ -184,7 +196,7 @@ impl BlockStore for LmdbBlockStore {
     ) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>> {
         Box::new(LmdbIterator::new(
             transaction,
-            self.db_handle,
+            self.db_handle(),
             Some(hash),
             true,
         ))

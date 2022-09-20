@@ -8,15 +8,13 @@ namespace nano
 {
 namespace lmdb
 {
-	class store;
 	class frontier_store : public nano::frontier_store
 	{
 	private:
-		nano::lmdb::store & store;
 		rsnano::LmdbFrontierStoreHandle * handle;
 
 	public:
-		frontier_store (nano::lmdb::store & store);
+		explicit frontier_store (rsnano::LmdbFrontierStoreHandle * handle_a);
 		~frontier_store ();
 		frontier_store (frontier_store const &) = delete;
 		frontier_store (frontier_store &&) = delete;

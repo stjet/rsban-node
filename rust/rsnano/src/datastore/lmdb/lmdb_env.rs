@@ -48,13 +48,12 @@ impl LmdbEnv {
     }
 
     pub fn with_tracking(
-        error: &mut bool,
         path: &Path,
         options: &EnvOptions,
         tracking_cfg: TxnTrackingConfig,
         block_processor_batch_max_time: Duration,
         logger: Arc<dyn Logger>,
-    ) -> Self {
+    ) -> Result<Self> {
         let txn_tracker = if tracking_cfg.enable {
             Some(Arc::new(TxnTracker::new(
                 logger,
@@ -70,8 +69,8 @@ impl LmdbEnv {
             next_txn_id: AtomicU64::new(0),
             txn_tracker,
         };
-        *error = result.init(path, options).is_err();
-        result
+        result.init(path, options)?;
+        Ok(result)
     }
 
     pub fn init(&self, path: &Path, options: &EnvOptions) -> Result<()> {

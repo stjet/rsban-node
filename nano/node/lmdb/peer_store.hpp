@@ -12,11 +12,11 @@ namespace lmdb
 	class peer_store : public nano::peer_store
 	{
 	private:
-		nano::lmdb::store & store;
 		rsnano::LmdbPeerStoreHandle * handle;
 
 	public:
 		explicit peer_store (nano::lmdb::store & store_a);
+		explicit peer_store (rsnano::LmdbPeerStoreHandle * handle_a);
 		~peer_store ();
 		peer_store (peer_store const &) = delete;
 		peer_store (peer_store &&) = delete;

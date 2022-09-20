@@ -13,7 +13,13 @@ use super::{
     TransactionHandle,
 };
 
-pub struct LmdbUncheckedStoreHandle(LmdbUncheckedStore);
+pub struct LmdbUncheckedStoreHandle(Arc<LmdbUncheckedStore>);
+
+impl LmdbUncheckedStoreHandle {
+    pub fn new(store: Arc<LmdbUncheckedStore>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbUncheckedStoreHandle(store)))
+    }
+}
 
 #[repr(C)]
 pub struct UncheckedKeyDto {
@@ -34,9 +40,7 @@ impl From<&UncheckedKeyDto> for UncheckedKey {
 pub unsafe extern "C" fn rsn_lmdb_unchecked_store_create(
     env_handle: *mut LmdbEnvHandle,
 ) -> *mut LmdbUncheckedStoreHandle {
-    Box::into_raw(Box::new(LmdbUncheckedStoreHandle(LmdbUncheckedStore::new(
-        Arc::clone(&*env_handle),
-    ))))
+    LmdbUncheckedStoreHandle::new(Arc::new(LmdbUncheckedStore::new(Arc::clone(&*env_handle))))
 }
 
 #[no_mangle]
@@ -48,7 +52,7 @@ pub unsafe extern "C" fn rsn_lmdb_unchecked_store_destroy(handle: *mut LmdbUnche
 pub unsafe extern "C" fn rsn_lmdb_unchecked_store_table_handle(
     handle: *mut LmdbUncheckedStoreHandle,
 ) -> u32 {
-    (*handle).0.db_handle
+    (*handle).0.db_handle()
 }
 
 #[no_mangle]

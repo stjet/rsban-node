@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::{
     datastore::{DbIterator, OnlineWeightStore, Transaction, WriteTransaction},
@@ -12,23 +12,26 @@ use super::{
 
 pub struct LmdbOnlineWeightStore {
     env: Arc<LmdbEnv>,
-    pub db_handle: u32,
+    db_handle: Mutex<u32>,
 }
 
 impl LmdbOnlineWeightStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self { env, db_handle: 0 }
+        Self {
+            env,
+            db_handle: Mutex::new(0),
+        }
     }
 
-    pub fn open_db(&mut self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
-        let status = unsafe {
-            mdb_dbi_open(
-                get_raw_lmdb_txn(txn),
-                "online_weight",
-                flags,
-                &mut self.db_handle,
-            )
-        };
+    pub fn db_handle(&self) -> u32 {
+        *self.db_handle.lock().unwrap()
+    }
+
+    pub fn open_db(&self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+        let mut handle = 0;
+        let status =
+            unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), "online_weight", flags, &mut handle) };
+        *self.db_handle.lock().unwrap() = handle;
         ensure_success(status)
     }
 }
@@ -40,7 +43,7 @@ impl OnlineWeightStore for LmdbOnlineWeightStore {
         let status = unsafe {
             mdb_put(
                 get_raw_lmdb_txn(txn.as_transaction()),
-                self.db_handle,
+                self.db_handle(),
                 &mut MdbVal::from_slice(&time_bytes),
                 &mut MdbVal::from_slice(&amount_bytes),
                 0,
@@ -54,7 +57,7 @@ impl OnlineWeightStore for LmdbOnlineWeightStore {
         let status = unsafe {
             mdb_del(
                 get_raw_lmdb_txn(txn.as_transaction()),
-                self.db_handle,
+                self.db_handle(),
                 &mut MdbVal::from_slice(&time_bytes),
                 None,
             )
@@ -63,19 +66,20 @@ impl OnlineWeightStore for LmdbOnlineWeightStore {
     }
 
     fn begin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<u64, Amount>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle, None, true))
+        Box::new(LmdbIterator::new(txn, self.db_handle(), None, true))
     }
 
     fn rbegin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<u64, Amount>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle, None, false))
+        Box::new(LmdbIterator::new(txn, self.db_handle(), None, false))
     }
 
     fn count(&self, txn: &dyn Transaction) -> usize {
-        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.db_handle) }
+        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.db_handle()) }
     }
 
     fn clear(&self, txn: &dyn WriteTransaction) {
-        let status = unsafe { mdb_drop(get_raw_lmdb_txn(txn.as_transaction()), self.db_handle, 0) };
+        let status =
+            unsafe { mdb_drop(get_raw_lmdb_txn(txn.as_transaction()), self.db_handle(), 0) };
         assert_success(status);
     }
 }

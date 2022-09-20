@@ -13,6 +13,7 @@ namespace lmdb
 	{
 	public:
 		explicit account_store (nano::mdb_env const & env_a);
+		explicit account_store (rsnano::LmdbAccountStoreHandle * handle_a);
 		account_store (account_store const &) = delete;
 		account_store (account_store &&) = delete;
 		~account_store () override;

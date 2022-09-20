@@ -14,15 +14,19 @@ use super::{
     TransactionHandle,
 };
 
-pub struct LmdbFrontierStoreHandle(LmdbFrontierStore);
+pub struct LmdbFrontierStoreHandle(Arc<LmdbFrontierStore>);
+
+impl LmdbFrontierStoreHandle {
+    pub fn new(store: Arc<LmdbFrontierStore>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbFrontierStoreHandle(store)))
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_frontier_store_create(
     env_handle: *mut LmdbEnvHandle,
 ) -> *mut LmdbFrontierStoreHandle {
-    Box::into_raw(Box::new(LmdbFrontierStoreHandle(LmdbFrontierStore::new(
-        Arc::clone(&*env_handle),
-    ))))
+    LmdbFrontierStoreHandle::new(Arc::new(LmdbFrontierStore::new(Arc::clone(&*env_handle))))
 }
 
 #[no_mangle]
@@ -34,7 +38,7 @@ pub unsafe extern "C" fn rsn_lmdb_frontier_store_destroy(handle: *mut LmdbFronti
 pub unsafe extern "C" fn rsn_lmdb_frontier_store_table_handle(
     handle: *mut LmdbFrontierStoreHandle,
 ) -> u32 {
-    (*handle).0.db_handle
+    (*handle).0.db_handle()
 }
 
 #[no_mangle]

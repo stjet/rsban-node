@@ -29,6 +29,11 @@ nano::mdb_env::mdb_env (bool & error_a, boost::filesystem::path const & path_a, 
 {
 }
 
+nano::mdb_env::mdb_env (rsnano::LmdbEnvHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 nano::mdb_env::~mdb_env ()
 {
 	if (handle != nullptr)
@@ -94,12 +99,4 @@ void nano::assert_success (int const status)
 	{
 		release_assert (false, mdb_strerror (status));
 	}
-}
-
-uint64_t nano::mdb_count (MDB_txn * txn, MDB_dbi db_a)
-{
-	MDB_stat stats;
-	auto status (mdb_stat (txn, db_a, &stats));
-	nano::assert_success (status);
-	return (stats.ms_entries);
 }

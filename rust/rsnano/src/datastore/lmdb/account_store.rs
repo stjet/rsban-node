@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::{
     datastore::{
@@ -18,22 +18,27 @@ use super::{
 pub struct LmdbAccountStore {
     /// Maps account v0 to account information, head, rep, open, balance, timestamp, block count and epoch
     /// nano::account -> nano::block_hash, nano::block_hash, nano::block_hash, nano::amount, uint64_t, uint64_t, nano::epoch
-    pub accounts_handle: u32,
-
+    db_handle: Mutex<u32>,
     env: Arc<LmdbEnv>,
 }
 
 impl LmdbAccountStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
         Self {
-            accounts_handle: 0,
+            db_handle: Mutex::new(0),
             env,
         }
     }
 
-    pub fn open_databases(&mut self, transaction: &dyn Transaction, flags: u32) -> Result<()> {
+    pub fn db_handle(&self) -> u32 {
+        *self.db_handle.lock().unwrap()
+    }
+
+    pub fn open_db(&self, transaction: &dyn Transaction, flags: u32) -> Result<()> {
         let txn = get_raw_lmdb_txn(transaction);
-        let status = unsafe { mdb_dbi_open(txn, "accounts", flags, &mut self.accounts_handle) };
+        let mut handle = 0;
+        let status = unsafe { mdb_dbi_open(txn, "accounts", flags, &mut handle) };
+        *self.db_handle.lock().unwrap() = handle;
         if status != MDB_SUCCESS {
             bail!("could not open accounts database");
         }
@@ -49,7 +54,7 @@ impl AccountStore for LmdbAccountStore {
         let status = unsafe {
             mdb_put(
                 get_raw_lmdb_txn(transaction.as_transaction()),
-                self.accounts_handle,
+                self.db_handle(),
                 account_val.as_mdb_val(),
                 info_val.as_mdb_val(),
                 0,
@@ -64,7 +69,7 @@ impl AccountStore for LmdbAccountStore {
         let status1 = unsafe {
             mdb_get(
                 get_raw_lmdb_txn(transaction),
-                self.accounts_handle,
+                self.db_handle(),
                 account_val.as_mdb_val(),
                 &mut value,
             )
@@ -85,7 +90,7 @@ impl AccountStore for LmdbAccountStore {
         let status = unsafe {
             mdb_del(
                 get_raw_lmdb_txn(transaction.as_transaction()),
-                self.accounts_handle,
+                self.db_handle(),
                 key_val.as_mdb_val(),
                 None,
             )
@@ -100,25 +105,20 @@ impl AccountStore for LmdbAccountStore {
     ) -> Box<dyn DbIterator<Account, AccountInfo>> {
         Box::new(LmdbIterator::new(
             transaction,
-            self.accounts_handle,
+            self.db_handle(),
             Some(account),
             true,
         ))
     }
 
     fn begin(&self, transaction: &dyn Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
-        Box::new(LmdbIterator::new(
-            transaction,
-            self.accounts_handle,
-            None,
-            true,
-        ))
+        Box::new(LmdbIterator::new(transaction, self.db_handle(), None, true))
     }
 
     fn rbegin(&self, transaction: &dyn Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
         Box::new(LmdbIterator::new(
             transaction,
-            self.accounts_handle,
+            self.db_handle(),
             None,
             false,
         ))
@@ -150,6 +150,6 @@ impl AccountStore for LmdbAccountStore {
     }
 
     fn count(&self, txn: &dyn Transaction) -> usize {
-        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.accounts_handle) }
+        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.db_handle()) }
     }
 }

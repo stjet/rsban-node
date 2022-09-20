@@ -5,9 +5,15 @@
 nano::lmdb::account_store::account_store (nano::mdb_env const & env_a) :
 	handle{ rsnano::rsn_lmdb_account_store_create (env_a.handle) } {};
 
+nano::lmdb::account_store::account_store (rsnano::LmdbAccountStoreHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 nano::lmdb::account_store::~account_store ()
 {
-	rsnano::rsn_lmdb_account_store_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_lmdb_account_store_destroy (handle);
 }
 
 bool nano::lmdb::account_store::open_databases (nano::transaction const & transaction_a, unsigned flags)

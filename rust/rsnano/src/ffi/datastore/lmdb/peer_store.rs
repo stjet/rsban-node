@@ -11,15 +11,19 @@ use super::{
     TransactionHandle,
 };
 
-pub struct LmdbPeerStoreHandle(LmdbPeerStore);
+pub struct LmdbPeerStoreHandle(Arc<LmdbPeerStore>);
+
+impl LmdbPeerStoreHandle {
+    pub fn new(store: Arc<LmdbPeerStore>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbPeerStoreHandle(store)))
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_peer_store_create(
     env_handle: *mut LmdbEnvHandle,
 ) -> *mut LmdbPeerStoreHandle {
-    Box::into_raw(Box::new(LmdbPeerStoreHandle(LmdbPeerStore::new(
-        Arc::clone(&*env_handle),
-    ))))
+    LmdbPeerStoreHandle::new(Arc::new(LmdbPeerStore::new(Arc::clone(&*env_handle))))
 }
 
 #[no_mangle]
@@ -29,7 +33,7 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_destroy(handle: *mut LmdbPeerStoreH
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_peer_store_table_handle(handle: *mut LmdbPeerStoreHandle) -> u32 {
-    (*handle).0.db_handle
+    (*handle).0.db_handle()
 }
 
 #[no_mangle]

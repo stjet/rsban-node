@@ -4,15 +4,19 @@ use crate::datastore::{lmdb::LmdbVersionStore, VersionStore};
 
 use super::{lmdb_env::LmdbEnvHandle, TransactionHandle};
 
-pub struct LmdbVersionStoreHandle(LmdbVersionStore);
+pub struct LmdbVersionStoreHandle(Arc<LmdbVersionStore>);
+
+impl LmdbVersionStoreHandle {
+    pub fn new(store: Arc<LmdbVersionStore>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbVersionStoreHandle(store)))
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_version_store_create(
     env_handle: *mut LmdbEnvHandle,
 ) -> *mut LmdbVersionStoreHandle {
-    Box::into_raw(Box::new(LmdbVersionStoreHandle(LmdbVersionStore::new(
-        Arc::clone(&*env_handle),
-    ))))
+    LmdbVersionStoreHandle::new(Arc::new(LmdbVersionStore::new(Arc::clone(&*env_handle))))
 }
 
 #[no_mangle]
@@ -24,7 +28,7 @@ pub unsafe extern "C" fn rsn_lmdb_version_store_destroy(handle: *mut LmdbVersion
 pub unsafe extern "C" fn rsn_lmdb_version_store_table_handle(
     handle: *mut LmdbVersionStoreHandle,
 ) -> u32 {
-    (*handle).0.db_handle
+    (*handle).0.db_handle()
 }
 
 #[no_mangle]

@@ -16,15 +16,15 @@ nano::store_iterator<nano::account, nano::confirmation_height_info> to_iterator 
 }
 }
 
-nano::lmdb::confirmation_height_store::confirmation_height_store (nano::lmdb::store & store) :
-	store{ store },
-	handle{ rsnano::rsn_lmdb_confirmation_height_store_create (store.env ().handle) }
+nano::lmdb::confirmation_height_store::confirmation_height_store (rsnano::LmdbConfirmationHeightStoreHandle * handle_a) :
+	handle{ handle_a }
 {
 }
 
 nano::lmdb::confirmation_height_store::~confirmation_height_store ()
 {
-	rsnano::rsn_lmdb_confirmation_height_store_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_lmdb_confirmation_height_store_destroy (handle);
 }
 
 bool nano::lmdb::confirmation_height_store::open_db (nano::transaction const & txn, uint32_t flags)

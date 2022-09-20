@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::{
     datastore::{
@@ -16,23 +16,29 @@ use super::{
 
 pub struct LmdbFrontierStore {
     env: Arc<LmdbEnv>,
-    pub db_handle: u32,
+    db_handle: Mutex<u32>,
 }
 
 impl LmdbFrontierStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self { env, db_handle: 0 }
+        Self {
+            env,
+            db_handle: Mutex::new(0),
+        }
     }
 
-    pub fn open_db(&mut self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
-        let status = unsafe {
-            mdb_dbi_open(
-                get_raw_lmdb_txn(txn),
-                "frontiers",
-                flags,
-                &mut self.db_handle,
-            )
-        };
+    pub fn db_handle(&self) -> u32 {
+        *self.db_handle.lock().unwrap()
+    }
+
+    pub fn open_db(&self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+        let mut handle = 0;
+        let status =
+            unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), "frontiers", flags, &mut handle) };
+
+        let mut guard = self.db_handle.lock().unwrap();
+        *guard = handle;
+
         ensure_success(status)
     }
 }
@@ -42,7 +48,7 @@ impl FrontierStore for LmdbFrontierStore {
         let status = unsafe {
             mdb_put(
                 get_raw_lmdb_txn(txn.as_transaction()),
-                self.db_handle,
+                self.db_handle(),
                 &mut MdbVal::from(hash),
                 &mut MdbVal::from(account),
                 0,
@@ -56,7 +62,7 @@ impl FrontierStore for LmdbFrontierStore {
         let status = unsafe {
             mdb_get(
                 get_raw_lmdb_txn(txn),
-                self.db_handle,
+                self.db_handle(),
                 &mut MdbVal::from(hash),
                 &mut value,
             )
@@ -73,7 +79,7 @@ impl FrontierStore for LmdbFrontierStore {
         let status = unsafe {
             mdb_del(
                 get_raw_lmdb_txn(txn.as_transaction()),
-                self.db_handle,
+                self.db_handle(),
                 &mut MdbVal::from(hash),
                 None,
             )
@@ -85,7 +91,7 @@ impl FrontierStore for LmdbFrontierStore {
         &self,
         txn: &dyn crate::datastore::Transaction,
     ) -> Box<dyn crate::datastore::DbIterator<BlockHash, Account>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle, None, true))
+        Box::new(LmdbIterator::new(txn, self.db_handle(), None, true))
     }
 
     fn begin_at_hash(
@@ -93,7 +99,7 @@ impl FrontierStore for LmdbFrontierStore {
         txn: &dyn crate::datastore::Transaction,
         hash: &BlockHash,
     ) -> Box<dyn crate::datastore::DbIterator<BlockHash, Account>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle, Some(hash), true))
+        Box::new(LmdbIterator::new(txn, self.db_handle(), Some(hash), true))
     }
 
     fn for_each_par(

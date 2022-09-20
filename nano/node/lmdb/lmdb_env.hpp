@@ -55,6 +55,7 @@ public:
 
 	mdb_env (bool &, boost::filesystem::path const &, nano::mdb_env::options options_a = nano::mdb_env::options::make ());
 	mdb_env (bool &, boost::filesystem::path const &, std::shared_ptr<nano::logger_mt> logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::mdb_env::options options_a = nano::mdb_env::options::make ());
+	mdb_env (rsnano::LmdbEnvHandle * handle_a);
 	mdb_env (mdb_env const &) = delete;
 	mdb_env (mdb_env &&) = delete;
 	~mdb_env ();
@@ -65,12 +66,10 @@ public:
 	MDB_txn * tx (nano::transaction const & transaction_a) const;
 	MDB_env * env () const;
 	void close_env ();
-	nano::mdb_txn_callbacks create_txn_callbacks () const;
 	void serialize_txn_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time);
 	rsnano::LmdbEnvHandle * handle;
 };
 
 MDB_txn * to_mdb_txn (nano::transaction const & transaction_a);
 void assert_success (int const status);
-uint64_t mdb_count (MDB_txn * txn, MDB_dbi db_a);
 }

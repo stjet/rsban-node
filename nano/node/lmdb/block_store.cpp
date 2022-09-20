@@ -16,9 +16,15 @@ nano::store_iterator<nano::block_hash, nano::block_w_sideband> to_block_iterator
 nano::lmdb::block_store::block_store (nano::lmdb::store & store_a) :
 	handle{ rsnano::rsn_lmdb_block_store_create (store_a.env ().handle) } {};
 
+nano::lmdb::block_store::block_store (rsnano::LmdbBlockStoreHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 nano::lmdb::block_store::~block_store ()
 {
-	rsnano::rsn_lmdb_block_store_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_lmdb_block_store_destroy (handle);
 }
 
 bool nano::lmdb::block_store::open_db (nano::transaction const & txn, uint32_t flags)

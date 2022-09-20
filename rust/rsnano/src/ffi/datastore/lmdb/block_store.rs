@@ -23,14 +23,20 @@ use super::{
     TransactionHandle,
 };
 
-pub struct LmdbBlockStoreHandle(LmdbBlockStore);
+pub struct LmdbBlockStoreHandle(Arc<LmdbBlockStore>);
+
+impl LmdbBlockStoreHandle {
+    pub fn new(store: Arc<LmdbBlockStore>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbBlockStoreHandle(store)))
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_block_store_create(
     env_handle: *mut LmdbEnvHandle,
 ) -> *mut LmdbBlockStoreHandle {
-    Box::into_raw(Box::new(LmdbBlockStoreHandle(LmdbBlockStore::new(
-        Arc::clone(&*env_handle),
+    Box::into_raw(Box::new(LmdbBlockStoreHandle(Arc::new(
+        LmdbBlockStore::new(Arc::clone(&*env_handle)),
     ))))
 }
 
@@ -43,7 +49,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_destroy(handle: *mut LmdbBlockStor
 pub unsafe extern "C" fn rsn_lmdb_block_store_blocks_handle(
     handle: *mut LmdbBlockStoreHandle,
 ) -> u32 {
-    (*handle).0.db_handle
+    (*handle).0.db_handle()
 }
 
 #[no_mangle]

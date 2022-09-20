@@ -14,15 +14,19 @@ use super::{
     TransactionHandle,
 };
 
-pub struct LmdbFinalVoteStoreHandle(LmdbFinalVoteStore);
+pub struct LmdbFinalVoteStoreHandle(Arc<LmdbFinalVoteStore>);
+
+impl LmdbFinalVoteStoreHandle {
+    pub fn new(store: Arc<LmdbFinalVoteStore>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbFinalVoteStoreHandle(store)))
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_final_vote_store_create(
     env_handle: *mut LmdbEnvHandle,
 ) -> *mut LmdbFinalVoteStoreHandle {
-    Box::into_raw(Box::new(LmdbFinalVoteStoreHandle(LmdbFinalVoteStore::new(
-        Arc::clone(&*env_handle),
-    ))))
+    LmdbFinalVoteStoreHandle::new(Arc::new(LmdbFinalVoteStore::new(Arc::clone(&*env_handle))))
 }
 
 #[no_mangle]
@@ -34,7 +38,7 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_destroy(handle: *mut LmdbFina
 pub unsafe extern "C" fn rsn_lmdb_final_vote_store_table_handle(
     handle: *mut LmdbFinalVoteStoreHandle,
 ) -> u32 {
-    (*handle).0.table_handle
+    (*handle).0.db_handle()
 }
 
 #[no_mangle]

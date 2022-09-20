@@ -12,11 +12,11 @@ namespace lmdb
 	class pending_store : public nano::pending_store
 	{
 	private:
-		nano::lmdb::store & store;
 		rsnano::LmdbPendingStoreHandle * handle;
 
 	public:
 		explicit pending_store (nano::lmdb::store & store_a);
+		explicit pending_store (rsnano::LmdbPendingStoreHandle * handle_a);
 		~pending_store ();
 		pending_store (pending_store const &) = delete;
 		pending_store (pending_store &&) = delete;

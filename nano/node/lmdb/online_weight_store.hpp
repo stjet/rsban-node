@@ -12,10 +12,10 @@ namespace lmdb
 	{
 	private:
 		rsnano::LmdbOnlineWeightStoreHandle * handle;
-		nano::lmdb::store & store;
 
 	public:
 		explicit online_weight_store (nano::lmdb::store & store_a);
+		explicit online_weight_store (rsnano::LmdbOnlineWeightStoreHandle * handle_a);
 		~online_weight_store ();
 		bool open_db (nano::transaction const & txn, uint32_t flags);
 		online_weight_store (online_weight_store const &) = delete;

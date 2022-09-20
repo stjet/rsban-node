@@ -16,12 +16,17 @@ nano::store_iterator<nano::unchecked_key, nano::unchecked_info> to_iterator (rsn
 }
 
 nano::lmdb::unchecked_store::unchecked_store (nano::lmdb::store & store_a) :
-	store (store_a),
 	handle{ rsnano::rsn_lmdb_unchecked_store_create (store_a.env ().handle) } {};
+
+nano::lmdb::unchecked_store::unchecked_store (rsnano::LmdbUncheckedStoreHandle * handle_a) :
+	handle{ handle_a }
+{
+}
 
 nano::lmdb::unchecked_store::~unchecked_store ()
 {
-	rsnano::rsn_lmdb_unchecked_store_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_lmdb_unchecked_store_destroy (handle);
 }
 
 bool nano::lmdb::unchecked_store::open_db (nano::transaction const & txn, uint32_t flags)

@@ -10,11 +10,11 @@ namespace lmdb
 	class version_store : public nano::version_store
 	{
 	protected:
-		nano::lmdb::store & store;
 		rsnano::LmdbVersionStoreHandle * handle;
 
 	public:
 		explicit version_store (nano::lmdb::store & store_a);
+		explicit version_store (rsnano::LmdbVersionStoreHandle * handle_a);
 		~version_store ();
 		bool open_db (nano::transaction const & txn, uint32_t flags);
 		version_store (version_store const &) = delete;

@@ -11,11 +11,9 @@ namespace lmdb
 	class store;
 	class final_vote_store : public nano::final_vote_store
 	{
-	private:
-		nano::lmdb::store & store;
-
 	public:
 		explicit final_vote_store (nano::lmdb::store & store);
+		explicit final_vote_store (rsnano::LmdbFinalVoteStoreHandle * handle_a);
 		~final_vote_store ();
 		final_vote_store (final_vote_store const &) = delete;
 		final_vote_store (final_vote_store &&) = delete;

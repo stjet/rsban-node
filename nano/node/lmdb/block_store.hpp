@@ -16,6 +16,7 @@ namespace lmdb
 
 	public:
 		explicit block_store (nano::lmdb::store & store_a);
+		explicit block_store (rsnano::LmdbBlockStoreHandle * handle_a);
 		block_store (block_store const &) = delete;
 		block_store (block_store &&) = delete;
 		~block_store () override;

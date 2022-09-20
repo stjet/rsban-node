@@ -18,15 +18,19 @@ use super::{
     TransactionHandle,
 };
 
-pub struct LmdbAccountStoreHandle(LmdbAccountStore);
+pub struct LmdbAccountStoreHandle(Arc<LmdbAccountStore>);
+
+impl LmdbAccountStoreHandle {
+    pub fn new(store: Arc<LmdbAccountStore>) -> *mut Self {
+        Box::into_raw(Box::new(LmdbAccountStoreHandle(store)))
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_account_store_create(
     env_handle: *mut LmdbEnvHandle,
 ) -> *mut LmdbAccountStoreHandle {
-    Box::into_raw(Box::new(LmdbAccountStoreHandle(LmdbAccountStore::new(
-        Arc::clone(&*env_handle),
-    ))))
+    LmdbAccountStoreHandle::new(Arc::new(LmdbAccountStore::new(Arc::clone(&*env_handle))))
 }
 
 #[no_mangle]
@@ -38,7 +42,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_destroy(handle: *mut LmdbAccount
 pub unsafe extern "C" fn rsn_lmdb_account_store_accounts_handle(
     handle: *mut LmdbAccountStoreHandle,
 ) -> u32 {
-    (*handle).0.accounts_handle
+    (*handle).0.db_handle()
 }
 
 #[no_mangle]
@@ -47,7 +51,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_open_databases(
     txn: *mut TransactionHandle,
     flags: u32,
 ) -> bool {
-    (*handle).0.open_databases((*txn).as_txn(), flags).is_ok()
+    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

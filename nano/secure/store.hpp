@@ -7,7 +7,6 @@
 #include <nano/lib/memory.hpp>
 #include <nano/secure/buffer.hpp>
 #include <nano/secure/common.hpp>
-#include <nano/secure/versioning.hpp>
 
 #include <boost/endian/conversion.hpp>
 #include <boost/polymorphic_cast.hpp>
@@ -17,14 +16,6 @@
 namespace nano
 {
 // Move to versioning with a specific version if required for a future upgrade
-template <typename T>
-class block_w_sideband_v18
-{
-public:
-	std::shared_ptr<T> block;
-	nano::block_sideband_v18 sideband;
-};
-
 class block_w_sideband
 {
 public:
@@ -270,21 +261,6 @@ public:
 		nano::endpoint_key result;
 		std::copy (reinterpret_cast<uint8_t const *> (data ()), reinterpret_cast<uint8_t const *> (data ()) + sizeof (result), reinterpret_cast<uint8_t *> (&result));
 		return result;
-	}
-
-	template <class Block>
-	explicit operator block_w_sideband_v18<Block> () const
-	{
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (data ()), size ());
-		auto error (false);
-		block_w_sideband_v18<Block> block_w_sideband;
-		block_w_sideband.block = std::make_shared<Block> (error, stream);
-		release_assert (!error);
-
-		error = block_w_sideband.sideband.deserialize (stream, block_w_sideband.block->type ());
-		release_assert (!error);
-
-		return block_w_sideband;
 	}
 
 	explicit operator block_w_sideband () const
@@ -781,7 +757,7 @@ public:
 	virtual confirmation_height_store & confirmation_height () = 0;
 	virtual final_vote_store & final_vote () = 0;
 	virtual version_store & version () = 0;
-	static int constexpr version_minimum{ 15 };
+	static int constexpr version_minimum{ 21 };
 	static int constexpr version_current{ 21 };
 
 	virtual unsigned max_block_write_batch_num () const = 0;

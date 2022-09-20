@@ -42,48 +42,6 @@ namespace lmdb
 		uint64_t account_height (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
 
 		/**
-		 * Maps block hash to send block. (Removed)
-		 * nano::block_hash -> nano::send_block
-		 */
-		MDB_dbi send_blocks_handle{ 0 };
-
-		/**
-		 * Maps block hash to receive block. (Removed)
-		 * nano::block_hash -> nano::receive_block
-		 */
-		MDB_dbi receive_blocks_handle{ 0 };
-
-		/**
-		 * Maps block hash to open block. (Removed)
-		 * nano::block_hash -> nano::open_block
-		 */
-		MDB_dbi open_blocks_handle{ 0 };
-
-		/**
-		 * Maps block hash to change block. (Removed)
-		 * nano::block_hash -> nano::change_block
-		 */
-		MDB_dbi change_blocks_handle{ 0 };
-
-		/**
-		 * Maps block hash to v0 state block. (Removed)
-		 * nano::block_hash -> nano::state_block
-		 */
-		MDB_dbi state_blocks_v0_handle{ 0 };
-
-		/**
-		 * Maps block hash to v1 state block. (Removed)
-		 * nano::block_hash -> nano::state_block
-		 */
-		MDB_dbi state_blocks_v1_handle{ 0 };
-
-		/**
-		 * Maps block hash to state block. (Removed)
-		 * nano::block_hash -> nano::state_block
-		 */
-		MDB_dbi state_blocks_handle{ 0 };
-
-		/**
 		 * Contains block_sideband and block for all block types (legacy send/change/open/receive & state blocks)
 		 * nano::block_hash -> nano::block_sideband, nano::block
 		 */

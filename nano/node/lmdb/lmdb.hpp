@@ -19,7 +19,6 @@
 #include <nano/node/lmdb/unchecked_store.hpp>
 #include <nano/node/lmdb/version_store.hpp>
 #include <nano/secure/common.hpp>
-#include <nano/secure/versioning.hpp>
 
 #include <boost/optional.hpp>
 
@@ -48,23 +47,6 @@ namespace lmdb
 	{
 	private:
 		bool error{ false };
-
-	public:
-		// Handles for DB update:
-
-		/**
-		 * Maps account v0 to account information, head, rep, open, balance, timestamp and block count. (Removed)
-		 * nano::account -> nano::block_hash, nano::block_hash, nano::block_hash, nano::amount, uint64_t, uint64_t
-		 */
-		MDB_dbi accounts_v1_handle{ 0 };
-
-		/**
-		 * Representative weights. (Removed)
-		 * nano::account -> nano::uint128_t
-		 */
-		MDB_dbi representation_handle{ 0 };
-
-	private:
 		nano::mdb_env env_m;
 		nano::lmdb::account_store account_store;
 		nano::lmdb::block_store block_store;
@@ -140,18 +122,6 @@ namespace lmdb
 
 	private:
 		bool do_upgrades (nano::write_transaction &, nano::ledger_constants & constants, bool &);
-		void upgrade_v15_to_v16 (nano::write_transaction const &);
-		void upgrade_v16_to_v17 (nano::write_transaction const &);
-		void upgrade_v17_to_v18 (nano::write_transaction const &, nano::ledger_constants & constants);
-		void upgrade_v18_to_v19 (nano::write_transaction const &);
-		void upgrade_v19_to_v20 (nano::write_transaction const &);
-		void upgrade_v20_to_v21 (nano::write_transaction const &);
-
-		std::shared_ptr<nano::block> block_get_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const;
-		nano::mdb_val block_raw_get_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_type & type_a) const;
-		boost::optional<nano::mdb_val> block_raw_get_by_type_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_type & type_a) const;
-		nano::uint128_t block_balance_v18 (nano::transaction const & transaction_a, nano::block_hash const & hash_a);
-
 		void open_databases (bool &, nano::transaction const &, unsigned);
 
 		int drop (nano::write_transaction const & transaction_a, tables table_a) override;
@@ -172,15 +142,7 @@ namespace lmdb
 		bool vacuum_after_upgrade (boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a);
 
 		friend class mdb_block_store_supported_version_upgrades_Test;
-		friend class mdb_block_store_upgrade_v15_v16_Test;
-		friend class mdb_block_store_upgrade_v16_v17_Test;
-		friend class mdb_block_store_upgrade_v17_v18_Test;
-		friend class mdb_block_store_upgrade_v18_v19_Test;
-		friend class mdb_block_store_upgrade_v19_v20_Test;
-		friend class mdb_block_store_upgrade_v20_v21_Test;
 		friend class block_store_DISABLED_change_dupsort_Test;
-		friend void write_sideband_v15 (nano::lmdb::store &, nano::transaction &, nano::block const &);
-		friend void modify_confirmation_height_to_v15 (nano::lmdb::store &, nano::transaction const &, nano::account const &, uint64_t);
 	};
 }
 

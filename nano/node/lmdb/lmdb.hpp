@@ -138,14 +138,8 @@ namespace lmdb
 
 		uint64_t count (nano::transaction const &, MDB_dbi) const;
 
-		// These are only use in the upgrade process.
-		std::shared_ptr<nano::block> block_get_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_sideband_v14 * sideband_a = nullptr, bool * is_state_v1 = nullptr) const;
-		nano::mdb_val block_raw_get_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_type & type_a, bool * is_state_v1 = nullptr) const;
-		boost::optional<nano::mdb_val> block_raw_get_by_type_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_type & type_a, bool * is_state_v1) const;
-
 	private:
 		bool do_upgrades (nano::write_transaction &, nano::ledger_constants & constants, bool &);
-		void upgrade_v14_to_v15 (nano::write_transaction &);
 		void upgrade_v15_to_v16 (nano::write_transaction const &);
 		void upgrade_v16_to_v17 (nano::write_transaction const &);
 		void upgrade_v17_to_v18 (nano::write_transaction const &, nano::ledger_constants & constants);
@@ -177,20 +171,7 @@ namespace lmdb
 
 		bool vacuum_after_upgrade (boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a);
 
-		class upgrade_counters
-		{
-		public:
-			upgrade_counters (uint64_t count_before_v0, uint64_t count_before_v1);
-			bool are_equal () const;
-
-			uint64_t before_v0;
-			uint64_t before_v1;
-			uint64_t after_v0{ 0 };
-			uint64_t after_v1{ 0 };
-		};
-
 		friend class mdb_block_store_supported_version_upgrades_Test;
-		friend class mdb_block_store_upgrade_v14_v15_Test;
 		friend class mdb_block_store_upgrade_v15_v16_Test;
 		friend class mdb_block_store_upgrade_v16_v17_Test;
 		friend class mdb_block_store_upgrade_v17_v18_Test;
@@ -198,9 +179,7 @@ namespace lmdb
 		friend class mdb_block_store_upgrade_v19_v20_Test;
 		friend class mdb_block_store_upgrade_v20_v21_Test;
 		friend class block_store_DISABLED_change_dupsort_Test;
-		friend void write_sideband_v14 (nano::lmdb::store &, nano::transaction &, nano::block const &, MDB_dbi);
 		friend void write_sideband_v15 (nano::lmdb::store &, nano::transaction &, nano::block const &);
-		friend void modify_account_info_to_v14 (nano::lmdb::store &, nano::transaction const &, nano::account const &, uint64_t, nano::block_hash const &);
 		friend void modify_confirmation_height_to_v15 (nano::lmdb::store &, nano::transaction const &, nano::account const &, uint64_t);
 	};
 }

@@ -84,21 +84,10 @@ public:
 		convert_buffer_to_value ();
 	}
 
-	db_val (nano::account_info_v14 const & val_a) :
-		db_val (val_a.db_size (), const_cast<nano::account_info_v14 *> (&val_a))
-	{
-	}
-
 	db_val (nano::pending_info const & val_a) :
 		db_val (val_a.db_size (), const_cast<nano::pending_info *> (&val_a))
 	{
 		static_assert (std::is_standard_layout<nano::pending_info>::value, "Standard layout is required");
-	}
-
-	db_val (nano::pending_info_v14 const & val_a) :
-		db_val (val_a.db_size (), const_cast<nano::pending_info_v14 *> (&val_a))
-	{
-		static_assert (std::is_standard_layout<nano::pending_info_v14>::value, "Standard layout is required");
 	}
 
 	db_val (nano::pending_key const & val_a) :
@@ -176,28 +165,12 @@ public:
 		return result;
 	}
 
-	explicit operator nano::account_info_v14 () const
-	{
-		nano::account_info_v14 result;
-		debug_assert (size () == result.db_size ());
-		std::copy (reinterpret_cast<uint8_t const *> (data ()), reinterpret_cast<uint8_t const *> (data ()) + result.db_size (), reinterpret_cast<uint8_t *> (&result));
-		return result;
-	}
-
 	explicit operator nano::block_info () const
 	{
 		nano::block_info result;
 		debug_assert (size () == sizeof (result));
 		static_assert (sizeof (nano::block_info::account) + sizeof (nano::block_info::balance) == sizeof (result), "Packed class");
 		std::copy (reinterpret_cast<uint8_t const *> (data ()), reinterpret_cast<uint8_t const *> (data ()) + sizeof (result), reinterpret_cast<uint8_t *> (&result));
-		return result;
-	}
-
-	explicit operator nano::pending_info_v14 () const
-	{
-		nano::pending_info_v14 result;
-		debug_assert (size () == result.db_size ());
-		std::copy (reinterpret_cast<uint8_t const *> (data ()), reinterpret_cast<uint8_t const *> (data ()) + result.db_size (), reinterpret_cast<uint8_t *> (&result));
 		return result;
 	}
 
@@ -322,21 +295,6 @@ public:
 		auto error = block_w_sideband.sideband.deserialize (stream, block_w_sideband.block->type ());
 		release_assert (!error);
 		block_w_sideband.block->sideband_set (block_w_sideband.sideband);
-		return block_w_sideband;
-	}
-
-	explicit operator state_block_w_sideband_v14 () const
-	{
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (data ()), size ());
-		auto error (false);
-		nano::state_block_w_sideband_v14 block_w_sideband;
-		block_w_sideband.state_block = std::make_shared<nano::state_block> (error, stream);
-		debug_assert (!error);
-
-		block_w_sideband.sideband.type = nano::block_type::state;
-		error = block_w_sideband.sideband.deserialize (stream);
-		debug_assert (!error);
-
 		return block_w_sideband;
 	}
 
@@ -823,7 +781,7 @@ public:
 	virtual confirmation_height_store & confirmation_height () = 0;
 	virtual final_vote_store & final_vote () = 0;
 	virtual version_store & version () = 0;
-	static int constexpr version_minimum{ 14 };
+	static int constexpr version_minimum{ 15 };
 	static int constexpr version_current{ 21 };
 
 	virtual unsigned max_block_write_batch_num () const = 0;

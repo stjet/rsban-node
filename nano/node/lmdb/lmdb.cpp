@@ -234,16 +234,6 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 		// The representation database is no longer used, but needs opening so that it can be deleted during an upgrade
 		error_a |= mdb_dbi_open (env ().tx (transaction_a), "representation", flags, &representation_handle) != 0;
 	}
-
-	if (version_l < 15)
-	{
-		// These databases are no longer used, but need opening so they can be deleted during an upgrade
-		error_a |= mdb_dbi_open (env ().tx (transaction_a), "state", flags, &block_store.state_blocks_v0_handle) != 0;
-		block_store.state_blocks_handle = block_store.state_blocks_v0_handle;
-		error_a |= mdb_dbi_open (env ().tx (transaction_a), "accounts_v1", flags, &accounts_v1_handle) != 0;
-		error_a |= mdb_dbi_open (env ().tx (transaction_a), "pending_v1", flags, &pending_store.pending_v1_handle) != 0;
-		error_a |= mdb_dbi_open (env ().tx (transaction_a), "state_v1", flags, &block_store.state_blocks_v1_handle) != 0;
-	}
 }
 
 bool nano::lmdb::store::do_upgrades (nano::write_transaction & transaction_a, nano::ledger_constants & constants, bool & needs_vacuuming)
@@ -265,12 +255,10 @@ bool nano::lmdb::store::do_upgrades (nano::write_transaction & transaction_a, na
 		case 11:
 		case 12:
 		case 13:
+		case 14:
 			logger.always_log (boost::str (boost::format ("The version of the ledger (%1%) is lower than the minimum (%2%) which is supported for upgrades. Either upgrade to a v19, v20 or v21 node first or delete the ledger.") % version_l % version_minimum));
 			error = true;
 			break;
-		case 14:
-			upgrade_v14_to_v15 (transaction_a);
-			[[fallthrough]];
 			// Upgrades to version 16, 17 & 18 are all part of the v21 node release
 		case 15:
 			upgrade_v15_to_v16 (transaction_a);
@@ -300,124 +288,6 @@ bool nano::lmdb::store::do_upgrades (nano::write_transaction & transaction_a, na
 			break;
 	}
 	return error;
-}
-
-void nano::lmdb::store::upgrade_v14_to_v15 (nano::write_transaction & transaction_a)
-{
-	logger.always_log ("Preparing v14 to v15 database upgrade...");
-
-	std::vector<std::pair<nano::account, nano::account_info>> account_infos;
-	upgrade_counters account_counters (count (transaction_a, account_store.get_accounts_handle ()), count (transaction_a, accounts_v1_handle));
-	account_infos.reserve (account_counters.before_v0 + account_counters.before_v1);
-
-	nano::mdb_merge_iterator<nano::account, nano::account_info_v14> i_account (transaction_a, account_store.get_accounts_handle (), accounts_v1_handle);
-	nano::mdb_merge_iterator<nano::account, nano::account_info_v14> n_account{};
-	for (; i_account != n_account; ++i_account)
-	{
-		nano::account account (i_account->first);
-		nano::account_info_v14 account_info_v14 (i_account->second);
-
-		// Upgrade rep block to representative account
-		auto rep_block = block_get_v14 (transaction_a, account_info_v14.rep_block);
-		release_assert (rep_block != nullptr);
-		account_infos.emplace_back (account, nano::account_info{ account_info_v14.head, rep_block->representative (), account_info_v14.open_block, account_info_v14.balance, account_info_v14.modified, account_info_v14.block_count, i_account.from_first_database ? nano::epoch::epoch_0 : nano::epoch::epoch_1 });
-		// Move confirmation height from account_info database to its own table
-		mdb_put (env ().tx (transaction_a), confirmation_height_store.table_handle (), nano::mdb_val (account), nano::mdb_val (account_info_v14.confirmation_height), MDB_APPEND);
-		i_account.from_first_database ? ++account_counters.after_v0 : ++account_counters.after_v1;
-	}
-
-	logger.always_log ("Finished extracting confirmation height to its own database");
-
-	debug_assert (account_counters.are_equal ());
-	// No longer need accounts_v1, keep v0 but clear it
-	mdb_drop (env ().tx (transaction_a), accounts_v1_handle, 1);
-	mdb_drop (env ().tx (transaction_a), account_store.get_accounts_handle (), 0);
-
-	for (auto const & account_account_info_pair : account_infos)
-	{
-		auto const & account_info (account_account_info_pair.second);
-		mdb_put (env ().tx (transaction_a), account_store.get_accounts_handle (), nano::mdb_val (account_account_info_pair.first), nano::mdb_val (account_info), MDB_APPEND);
-	}
-
-	logger.always_log ("Epoch merge upgrade: Finished accounts, now doing state blocks");
-
-	account_infos.clear ();
-
-	// Have to create a new database as we are iterating over the existing ones and want to use MDB_APPEND for quick insertion
-	MDB_dbi state_blocks_new;
-	mdb_dbi_open (env ().tx (transaction_a), "state_blocks", MDB_CREATE, &state_blocks_new);
-
-	upgrade_counters state_counters (count (transaction_a, block_store.state_blocks_v0_handle), count (transaction_a, block_store.state_blocks_v1_handle));
-
-	nano::mdb_merge_iterator<nano::block_hash, nano::state_block_w_sideband_v14> i_state (transaction_a, block_store.state_blocks_v0_handle, block_store.state_blocks_v1_handle);
-	nano::mdb_merge_iterator<nano::block_hash, nano::state_block_w_sideband_v14> n_state{};
-	auto num = 0u;
-	for (; i_state != n_state; ++i_state, ++num)
-	{
-		nano::block_hash hash (i_state->first);
-		nano::state_block_w_sideband_v14 state_block_w_sideband_v14 (i_state->second);
-		auto & sideband_v14 = state_block_w_sideband_v14.sideband;
-
-		nano::block_sideband_v18 sideband (sideband_v14.account, sideband_v14.successor, sideband_v14.balance, sideband_v14.height, sideband_v14.timestamp, i_state.from_first_database ? nano::epoch::epoch_0 : nano::epoch::epoch_1, false, false, false);
-
-		// Write these out
-		std::vector<uint8_t> data;
-		{
-			nano::vectorstream stream (data);
-			state_block_w_sideband_v14.state_block->serialize (stream);
-			sideband.serialize (stream, sideband_v14.type);
-		}
-
-		nano::mdb_val value{ data.size (), (void *)data.data () };
-		auto s = mdb_put (env ().tx (transaction_a), state_blocks_new, nano::mdb_val (hash), value, MDB_APPEND);
-		release_assert_success (s);
-
-		// Every so often output to the log to indicate progress
-		constexpr auto output_cutoff = 1000000;
-		if (num % output_cutoff == 0 && num != 0)
-		{
-			logger.always_log (boost::str (boost::format ("Database epoch merge upgrade %1% million state blocks upgraded") % (num / output_cutoff)));
-		}
-		i_state.from_first_database ? ++state_counters.after_v0 : ++state_counters.after_v1;
-	}
-
-	debug_assert (state_counters.are_equal ());
-	logger.always_log ("Epoch merge upgrade: Finished state blocks, now doing pending blocks");
-
-	block_store.state_blocks_handle = state_blocks_new;
-
-	// No longer need states v0/v1 databases
-	mdb_drop (env ().tx (transaction_a), block_store.state_blocks_v1_handle, 1);
-	mdb_drop (env ().tx (transaction_a), block_store.state_blocks_v0_handle, 1);
-
-	block_store.state_blocks_v0_handle = block_store.state_blocks_handle;
-
-	upgrade_counters pending_counters (count (transaction_a, pending_store.pending_v0_handle), count (transaction_a, pending_store.pending_v1_handle));
-	std::vector<std::pair<nano::pending_key, nano::pending_info>> pending_infos;
-	pending_infos.reserve (pending_counters.before_v0 + pending_counters.before_v1);
-
-	nano::mdb_merge_iterator<nano::pending_key, nano::pending_info_v14> i_pending (transaction_a, pending_store.pending_v0_handle, pending_store.pending_v1_handle);
-	nano::mdb_merge_iterator<nano::pending_key, nano::pending_info_v14> n_pending{};
-	for (; i_pending != n_pending; ++i_pending)
-	{
-		nano::pending_info_v14 info (i_pending->second);
-		pending_infos.emplace_back (nano::pending_key (i_pending->first), nano::pending_info{ info.source, info.amount, i_pending.from_first_database ? nano::epoch::epoch_0 : nano::epoch::epoch_1 });
-		i_pending.from_first_database ? ++pending_counters.after_v0 : ++pending_counters.after_v1;
-	}
-
-	debug_assert (pending_counters.are_equal ());
-
-	// No longer need the pending v1 table
-	mdb_drop (env ().tx (transaction_a), pending_store.pending_v1_handle, 1);
-	mdb_drop (env ().tx (transaction_a), pending_store.pending_v0_handle, 0);
-
-	for (auto const & pending_key_pending_info_pair : pending_infos)
-	{
-		mdb_put (env ().tx (transaction_a), pending_store.table_handle (), nano::mdb_val (pending_key_pending_info_pair.first), nano::mdb_val (pending_key_pending_info_pair.second), MDB_APPEND);
-	}
-
-	version ().put (transaction_a, 15);
-	logger.always_log ("Finished epoch merge upgrade");
 }
 
 void nano::lmdb::store::upgrade_v15_to_v16 (nano::write_transaction const & transaction_a)
@@ -1047,113 +917,6 @@ nano::uint128_t nano::lmdb::store::block_balance_v18 (nano::transaction const & 
 	release_assert (block);
 	nano::uint128_t result (this->block ().balance_calculated (block));
 	return result;
-}
-
-nano::mdb_val nano::lmdb::store::block_raw_get_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_type & type_a, bool * is_state_v1) const
-{
-	nano::mdb_val result;
-	// Table lookups are ordered by match probability
-	nano::block_type block_types[]{ nano::block_type::state, nano::block_type::send, nano::block_type::receive, nano::block_type::open, nano::block_type::change };
-	for (auto current_type : block_types)
-	{
-		auto db_val (block_raw_get_by_type_v14 (transaction_a, hash_a, current_type, is_state_v1));
-		if (db_val.is_initialized ())
-		{
-			type_a = current_type;
-			result = db_val.get ();
-			break;
-		}
-	}
-
-	return result;
-}
-
-boost::optional<nano::mdb_val> nano::lmdb::store::block_raw_get_by_type_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_type & type_a, bool * is_state_v1) const
-{
-	nano::mdb_val value;
-	nano::mdb_val hash (hash_a);
-	int status = status_code_not_found ();
-	switch (type_a)
-	{
-		case nano::block_type::send:
-		{
-			status = mdb_get (env ().tx (transaction_a), block_store.send_blocks_handle, hash, value);
-			break;
-		}
-		case nano::block_type::receive:
-		{
-			status = mdb_get (env ().tx (transaction_a), block_store.receive_blocks_handle, hash, value);
-			break;
-		}
-		case nano::block_type::open:
-		{
-			status = mdb_get (env ().tx (transaction_a), block_store.open_blocks_handle, hash, value);
-			break;
-		}
-		case nano::block_type::change:
-		{
-			status = mdb_get (env ().tx (transaction_a), block_store.change_blocks_handle, hash, value);
-			break;
-		}
-		case nano::block_type::state:
-		{
-			status = mdb_get (env ().tx (transaction_a), block_store.state_blocks_v1_handle, hash, value);
-			if (is_state_v1 != nullptr)
-			{
-				*is_state_v1 = success (status);
-			}
-			if (not_found (status))
-			{
-				status = mdb_get (env ().tx (transaction_a), block_store.state_blocks_v0_handle, hash, value);
-			}
-			break;
-		}
-		case nano::block_type::invalid:
-		case nano::block_type::not_a_block:
-		{
-			break;
-		}
-	}
-
-	release_assert (success (status) || not_found (status));
-	boost::optional<nano::mdb_val> result;
-	if (success (status))
-	{
-		result = value;
-	}
-	return result;
-}
-
-std::shared_ptr<nano::block> nano::lmdb::store::block_get_v14 (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::block_sideband_v14 * sideband_a, bool * is_state_v1) const
-{
-	nano::block_type type;
-	auto value (block_raw_get_v14 (transaction_a, hash_a, type, is_state_v1));
-	std::shared_ptr<nano::block> result;
-	if (value.size () != 0)
-	{
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (value.data ()), value.size ());
-		result = nano::deserialize_block (stream, type);
-		debug_assert (result != nullptr);
-		if (sideband_a)
-		{
-			sideband_a->type = type;
-			bool error = sideband_a->deserialize (stream);
-			(void)error;
-			debug_assert (!error);
-		}
-	}
-	return result;
-}
-
-nano::lmdb::store::upgrade_counters::upgrade_counters (uint64_t count_before_v0, uint64_t count_before_v1) :
-	before_v0 (count_before_v0),
-	before_v1 (count_before_v1)
-{
-}
-
-bool nano::lmdb::store::upgrade_counters::are_equal () const
-{
-	return (before_v0 == after_v0) && (before_v1 == after_v1);
 }
 
 unsigned nano::lmdb::store::max_block_write_batch_num () const

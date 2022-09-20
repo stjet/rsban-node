@@ -23,6 +23,11 @@ nano::lmdb::peer_store::~peer_store ()
 	rsnano::rsn_lmdb_peer_store_destroy (handle);
 }
 
+bool nano::lmdb::peer_store::open_db (nano::transaction const & txn, uint32_t flags)
+{
+	return !rsnano::rsn_lmdb_peer_store_open_db (handle, txn.get_rust_handle (), flags);
+}
+
 void nano::lmdb::peer_store::put (nano::write_transaction const & transaction, nano::endpoint_key const & endpoint)
 {
 	rsnano::rsn_lmdb_peer_store_put (handle, transaction.get_rust_handle (), endpoint.address_bytes ().data (), endpoint.port ());
@@ -62,9 +67,4 @@ nano::store_iterator<nano::endpoint_key, nano::no_value> nano::lmdb::peer_store:
 MDB_dbi nano::lmdb::peer_store::table_handle () const
 {
 	return rsnano::rsn_lmdb_peer_store_table_handle (handle);
-}
-
-void nano::lmdb::peer_store::set_table_handle (MDB_dbi dbi)
-{
-	rsnano::rsn_lmdb_peer_store_set_table_handle (handle, dbi);
 }

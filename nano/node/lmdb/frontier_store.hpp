@@ -20,6 +20,7 @@ namespace lmdb
 		~frontier_store ();
 		frontier_store (frontier_store const &) = delete;
 		frontier_store (frontier_store &&) = delete;
+		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const &, nano::block_hash const &, nano::account const &) override;
 		nano::account get (nano::transaction const &, nano::block_hash const &) const override;
 		void del (nano::write_transaction const &, nano::block_hash const &) override;
@@ -29,7 +30,6 @@ namespace lmdb
 		void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::block_hash, nano::account>, nano::store_iterator<nano::block_hash, nano::account>)> const & action_a) const override;
 
 		MDB_dbi table_handle () const;
-		void set_table_handle (MDB_dbi dbi);
 	};
 }
 }

@@ -19,6 +19,7 @@ namespace lmdb
 		~confirmation_height_store ();
 		confirmation_height_store (confirmation_height_store const &) = delete;
 		confirmation_height_store (confirmation_height_store &&) = delete;
+		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const & transaction_a, nano::account const & account_a, nano::confirmation_height_info const & confirmation_height_info_a) override;
 		bool get (nano::transaction const & transaction_a, nano::account const & account_a, nano::confirmation_height_info & confirmation_height_info_a) override;
 		bool exists (nano::transaction const & transaction_a, nano::account const & account_a) const override;
@@ -36,7 +37,6 @@ namespace lmdb
 		 * nano::account -> uint64_t, nano::block_hash
 		 */
 		MDB_dbi table_handle () const;
-		void set_table_handle (MDB_dbi handle_a);
 	};
 }
 }

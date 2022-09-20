@@ -38,11 +38,12 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_table_handle(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_final_vote_store_set_table_handle(
+pub unsafe extern "C" fn rsn_lmdb_final_vote_store_open_db(
     handle: *mut LmdbFinalVoteStoreHandle,
-    table_handle: u32,
-) {
-    (*handle).0.table_handle = table_handle;
+    txn: *mut TransactionHandle,
+    flags: u32,
+) -> bool {
+    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

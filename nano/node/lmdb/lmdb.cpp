@@ -62,14 +62,11 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 		auto is_fresh_db (false);
 		{
 			auto transaction (tx_begin_read ());
-			MDB_dbi meta_handle;
-			auto err = mdb_dbi_open (env ().tx (*transaction), "meta", 0, &meta_handle);
-			version_store.set_table_handle (meta_handle);
-			is_fresh_db = err != MDB_SUCCESS;
+			auto err = version_store.open_db (*transaction, 0);
 			if (err == MDB_SUCCESS)
 			{
 				is_fully_upgraded = (version_store.get (*transaction) == version_current);
-				mdb_dbi_close (env (), meta_handle);
+				mdb_dbi_close (env (), version_store.table_handle ());
 			}
 		}
 
@@ -178,38 +175,17 @@ std::string nano::lmdb::store::vendor_get () const
 
 void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const & transaction_a, unsigned flags)
 {
-	MDB_dbi frontiers_handle;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "frontiers", flags, &frontiers_handle) != 0;
-	frontier_store.set_table_handle (frontiers_handle);
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "frontiers", flags, &frontiers_handle) != 0;
-	MDB_dbi unchecked_handle;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "unchecked", flags, &unchecked_handle) != 0;
-	unchecked_store.set_table_handle (unchecked_handle);
-	MDB_dbi online_weight_handle;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "online_weight", flags, &online_weight_handle) != 0;
-	online_weight_store.set_table_handle (online_weight_handle);
-	MDB_dbi meta_handle;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "meta", flags, &meta_handle) != 0;
-	version_store.set_table_handle (meta_handle);
-	MDB_dbi peers_handle;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "peers", flags, &peers_handle) != 0;
-	peer_store.set_table_handle (peers_handle);
-	MDB_dbi pruned_handle;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "pruned", flags, &pruned_handle) != 0;
-	pruned_store.set_table_handle (pruned_handle);
-	MDB_dbi confirmation_height_handle;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "confirmation_height", flags, &confirmation_height_handle) != 0;
-	confirmation_height_store.set_table_handle (confirmation_height_handle);
+	error_a |= frontier_store.open_db (transaction_a, flags);
+	error_a |= unchecked_store.open_db (transaction_a, flags);
+	error_a |= online_weight_store.open_db (transaction_a, flags);
+	error_a |= version_store.open_db (transaction_a, flags);
+	error_a |= peer_store.open_db (transaction_a, flags);
+	error_a |= pruned_store.open_db (transaction_a, flags);
+	error_a |= confirmation_height_store.open_db (transaction_a, flags);
 	error_a |= account_store.open_databases (transaction_a, flags);
-	MDB_dbi pending_handle;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "pending", flags, &pending_handle) != 0;
-	pending_store.set_table_handle (pending_handle);
-	MDB_dbi final_votes_handle;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "final_votes", flags, &final_votes_handle) != 0;
-	final_vote_store.set_table_handle (final_votes_handle);
-	MDB_dbi blocks_handle;
-	error_a |= mdb_dbi_open (env ().tx (transaction_a), "blocks", MDB_CREATE, &blocks_handle) != 0;
-	block_store.set_blocks_handle (blocks_handle);
+	error_a |= pending_store.open_db (transaction_a, flags);
+	error_a |= final_vote_store.open_db (transaction_a, flags);
+	error_a |= block_store.open_db (transaction_a, MDB_CREATE);
 }
 
 bool nano::lmdb::store::do_upgrades (nano::write_transaction & transaction_a, nano::ledger_constants & constants, bool & needs_vacuuming)

@@ -13,6 +13,11 @@ nano::lmdb::frontier_store::~frontier_store ()
 	rsnano::rsn_lmdb_frontier_store_destroy (handle);
 }
 
+bool nano::lmdb::frontier_store::open_db (nano::transaction const & txn, uint32_t flags)
+{
+	return !rsnano::rsn_lmdb_frontier_store_open_db (handle, txn.get_rust_handle (), flags);
+}
+
 void nano::lmdb::frontier_store::put (nano::write_transaction const & transaction, nano::block_hash const & hash, nano::account const & account)
 {
 	rsnano::rsn_lmdb_frontier_store_put (handle, transaction.get_rust_handle (), hash.bytes.data (), account.bytes.data ());
@@ -84,9 +89,4 @@ void nano::lmdb::frontier_store::for_each_par (std::function<void (nano::read_tr
 MDB_dbi nano::lmdb::frontier_store::table_handle () const
 {
 	return rsnano::rsn_lmdb_frontier_store_table_handle (handle);
-}
-
-void nano::lmdb::frontier_store::set_table_handle (MDB_dbi dbi)
-{
-	rsnano::rsn_lmdb_frontier_store_set_table_handle (handle, dbi);
 }

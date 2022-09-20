@@ -24,6 +24,11 @@ nano::lmdb::pruned_store::~pruned_store ()
 	rsnano::rsn_lmdb_pruned_store_destroy (handle);
 }
 
+bool nano::lmdb::pruned_store::open_db (nano::transaction const & txn, uint32_t flags)
+{
+	return !rsnano::rsn_lmdb_pruned_store_open_db (handle, txn.get_rust_handle (), flags);
+}
+
 void nano::lmdb::pruned_store::put (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a)
 {
 	rsnano::rsn_lmdb_pruned_store_put (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
@@ -97,9 +102,4 @@ void nano::lmdb::pruned_store::for_each_par (std::function<void (nano::read_tran
 MDB_dbi nano::lmdb::pruned_store::table_handle () const
 {
 	return rsnano::rsn_lmdb_pruned_store_table_handle (handle);
-}
-
-void nano::lmdb::pruned_store::set_table_handle (MDB_dbi dbi)
-{
-	rsnano::rsn_lmdb_pruned_store_set_table_handle (handle, dbi);
 }

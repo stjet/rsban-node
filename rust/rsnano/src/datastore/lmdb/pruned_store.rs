@@ -11,21 +11,24 @@ use crate::{
 };
 
 use super::{
-    assert_success, exists, get_raw_lmdb_txn, mdb_count, mdb_del, mdb_drop, mdb_put, LmdbEnv,
-    LmdbIterator, MdbVal,
+    assert_success, ensure_success, exists, get_raw_lmdb_txn, mdb_count, mdb_dbi_open, mdb_del,
+    mdb_drop, mdb_put, LmdbEnv, LmdbIterator, MdbVal,
 };
 
 pub struct LmdbPrunedStore {
     env: Arc<LmdbEnv>,
-    pub table_handle: u32,
+    pub db_handle: u32,
 }
 
 impl LmdbPrunedStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self {
-            env,
-            table_handle: 0,
-        }
+        Self { env, db_handle: 0 }
+    }
+
+    pub fn open_db(&mut self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+        let status =
+            unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), "pruned", flags, &mut self.db_handle) };
+        ensure_success(status)
     }
 }
 
@@ -34,7 +37,7 @@ impl PrunedStore for LmdbPrunedStore {
         let status = unsafe {
             mdb_put(
                 get_raw_lmdb_txn(txn.as_transaction()),
-                self.table_handle,
+                self.db_handle,
                 &mut MdbVal::from(hash),
                 &mut MdbVal::new(),
                 0,
@@ -47,7 +50,7 @@ impl PrunedStore for LmdbPrunedStore {
         let status = unsafe {
             mdb_del(
                 get_raw_lmdb_txn(txn.as_transaction()),
-                self.table_handle,
+                self.db_handle,
                 &mut MdbVal::from(hash),
                 None,
             )
@@ -56,11 +59,11 @@ impl PrunedStore for LmdbPrunedStore {
     }
 
     fn exists(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
-        exists(txn, self.table_handle, &mut hash.into())
+        exists(txn, self.db_handle, &mut hash.into())
     }
 
     fn begin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<BlockHash, NoValue>> {
-        Box::new(LmdbIterator::new(txn, self.table_handle, None, true))
+        Box::new(LmdbIterator::new(txn, self.db_handle, None, true))
     }
 
     fn begin_at_hash(
@@ -68,7 +71,7 @@ impl PrunedStore for LmdbPrunedStore {
         txn: &dyn Transaction,
         hash: &BlockHash,
     ) -> Box<dyn DbIterator<BlockHash, NoValue>> {
-        Box::new(LmdbIterator::new(txn, self.table_handle, Some(hash), true))
+        Box::new(LmdbIterator::new(txn, self.db_handle, Some(hash), true))
     }
 
     fn random(&self, txn: &dyn Transaction) -> BlockHash {
@@ -83,12 +86,11 @@ impl PrunedStore for LmdbPrunedStore {
     }
 
     fn count(&self, txn: &dyn Transaction) -> usize {
-        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.table_handle) }
+        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.db_handle) }
     }
 
     fn clear(&self, txn: &dyn WriteTransaction) {
-        let status =
-            unsafe { mdb_drop(get_raw_lmdb_txn(txn.as_transaction()), self.table_handle, 0) };
+        let status = unsafe { mdb_drop(get_raw_lmdb_txn(txn.as_transaction()), self.db_handle, 0) };
         assert_success(status);
     }
 

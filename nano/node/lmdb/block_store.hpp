@@ -19,6 +19,7 @@ namespace lmdb
 		block_store (block_store const &) = delete;
 		block_store (block_store &&) = delete;
 		~block_store () override;
+		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a, nano::block const & block_a) override;
 		void raw_put (nano::write_transaction const & transaction_a, std::vector<uint8_t> const & data, nano::block_hash const & hash_a) override;
 		nano::block_hash successor (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
@@ -46,7 +47,6 @@ namespace lmdb
 		 * nano::block_hash -> nano::block_sideband, nano::block
 		 */
 		MDB_dbi get_blocks_handle () const;
-		void set_blocks_handle (MDB_dbi handle);
 	};
 }
 }

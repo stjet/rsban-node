@@ -10,7 +10,8 @@ use crate::{
 };
 
 use super::{
-    get_raw_lmdb_txn, mdb_count, mdb_del, mdb_drop, mdb_get, LmdbEnv, LmdbIterator, MdbVal,
+    ensure_success, get_raw_lmdb_txn, mdb_count, mdb_dbi_open, mdb_del, mdb_drop, mdb_get, LmdbEnv,
+    LmdbIterator, MdbVal,
 };
 
 /// Maps root to block hash for generated final votes.
@@ -26,6 +27,18 @@ impl LmdbFinalVoteStore {
             env,
             table_handle: 0,
         }
+    }
+
+    pub fn open_db(&mut self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+        let status = unsafe {
+            mdb_dbi_open(
+                get_raw_lmdb_txn(txn),
+                "final_votes",
+                flags,
+                &mut self.table_handle,
+            )
+        };
+        ensure_success(status)
     }
 }
 

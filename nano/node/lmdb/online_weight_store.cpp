@@ -25,6 +25,11 @@ nano::lmdb::online_weight_store::~online_weight_store ()
 	rsnano::rsn_lmdb_online_weight_store_destroy (handle);
 }
 
+bool nano::lmdb::online_weight_store::open_db (nano::transaction const & txn, uint32_t flags)
+{
+	return !rsnano::rsn_lmdb_online_weight_store_open_db (handle, txn.get_rust_handle (), flags);
+}
+
 void nano::lmdb::online_weight_store::put (nano::write_transaction const & transaction, uint64_t time, nano::amount const & amount)
 {
 	rsnano::rsn_lmdb_online_weight_store_put (handle, transaction.get_rust_handle (), time, amount.bytes.data ());
@@ -65,9 +70,4 @@ void nano::lmdb::online_weight_store::clear (nano::write_transaction const & tra
 MDB_dbi nano::lmdb::online_weight_store::table_handle () const
 {
 	return rsnano::rsn_lmdb_online_weight_store_table_handle (handle);
-}
-
-void nano::lmdb::online_weight_store::set_table_handle (MDB_dbi dbi)
-{
-	rsnano::rsn_lmdb_online_weight_store_set_table_handle (handle, dbi);
 }

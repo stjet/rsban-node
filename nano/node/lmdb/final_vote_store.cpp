@@ -27,6 +27,11 @@ nano::lmdb::final_vote_store::~final_vote_store ()
 	rsnano::rsn_lmdb_final_vote_store_destroy (handle);
 }
 
+bool nano::lmdb::final_vote_store::open_db (nano::transaction const & txn, uint32_t flags)
+{
+	return !rsnano::rsn_lmdb_final_vote_store_open_db (handle, txn.get_rust_handle (), flags);
+}
+
 bool nano::lmdb::final_vote_store::put (nano::write_transaction const & transaction, nano::qualified_root const & root, nano::block_hash const & hash)
 {
 	return rsnano::rsn_lmdb_final_vote_store_put (handle, transaction.get_rust_handle (), root.bytes.data (), hash.bytes.data ());
@@ -108,9 +113,4 @@ void nano::lmdb::final_vote_store::for_each_par (std::function<void (nano::read_
 MDB_dbi nano::lmdb::final_vote_store::table_handle () const
 {
 	return rsnano::rsn_lmdb_final_vote_store_table_handle (handle);
-}
-
-void nano::lmdb::final_vote_store::set_table_handle (MDB_dbi dbi)
-{
-	rsnano::rsn_lmdb_final_vote_store_set_table_handle (handle, dbi);
 }

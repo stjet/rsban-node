@@ -20,6 +20,7 @@ namespace lmdb
 		~pending_store ();
 		pending_store (pending_store const &) = delete;
 		pending_store (pending_store &&) = delete;
+		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const & transaction_a, nano::pending_key const & key_a, nano::pending_info const & pending_info_a) override;
 		void del (nano::write_transaction const & transaction_a, nano::pending_key const & key_a) override;
 		bool get (nano::transaction const & transaction_a, nano::pending_key const & key_a, nano::pending_info & pending_a) override;
@@ -30,7 +31,6 @@ namespace lmdb
 		nano::store_iterator<nano::pending_key, nano::pending_info> end () const override;
 		void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::pending_key, nano::pending_info>, nano::store_iterator<nano::pending_key, nano::pending_info>)> const & action_a) const override;
 		MDB_dbi table_handle () const;
-		void set_table_handle (MDB_dbi dbi);
 	};
 }
 }

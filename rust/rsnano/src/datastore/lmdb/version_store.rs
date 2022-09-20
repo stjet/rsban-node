@@ -2,21 +2,27 @@ use std::{convert::TryInto, sync::Arc};
 
 use crate::datastore::{Transaction, VersionStore, WriteTransaction, STORE_VERSION_MINIMUM};
 
-use super::{assert_success, get_raw_lmdb_txn, mdb_get, mdb_put, LmdbEnv, MdbVal, MDB_SUCCESS};
+use super::{
+    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_get, mdb_put, LmdbEnv,
+    MdbVal, MDB_SUCCESS,
+};
 
 pub struct LmdbVersionStore {
     env: Arc<LmdbEnv>,
 
     /// U256 (arbitrary key) -> blob
-    pub table_handle: u32,
+    pub db_handle: u32,
 }
 
 impl LmdbVersionStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self {
-            env,
-            table_handle: 0,
-        }
+        Self { env, db_handle: 0 }
+    }
+
+    pub fn open_db(&mut self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+        let status =
+            unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), "meta", flags, &mut self.db_handle) };
+        ensure_success(status)
     }
 }
 
@@ -28,7 +34,7 @@ impl VersionStore for LmdbVersionStore {
         let status = unsafe {
             mdb_put(
                 get_raw_lmdb_txn(txn.as_transaction()),
-                self.table_handle,
+                self.db_handle,
                 &mut MdbVal::from_slice(&key_bytes),
                 &mut MdbVal::from_slice(&value_bytes),
                 0,
@@ -43,7 +49,7 @@ impl VersionStore for LmdbVersionStore {
         let status = unsafe {
             mdb_get(
                 get_raw_lmdb_txn(txn),
-                self.table_handle,
+                self.db_handle,
                 &mut MdbVal::from_slice(&key_bytes),
                 &mut data,
             )

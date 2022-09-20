@@ -24,6 +24,11 @@ nano::lmdb::unchecked_store::~unchecked_store ()
 	rsnano::rsn_lmdb_unchecked_store_destroy (handle);
 }
 
+bool nano::lmdb::unchecked_store::open_db (nano::transaction const & txn, uint32_t flags)
+{
+	return !rsnano::rsn_lmdb_unchecked_store_open_db (handle, txn.get_rust_handle (), flags);
+}
+
 void nano::lmdb::unchecked_store::clear (nano::write_transaction const & transaction_a)
 {
 	rsnano::rsn_lmdb_unchecked_store_clear (handle, transaction_a.get_rust_handle ());
@@ -72,9 +77,4 @@ size_t nano::lmdb::unchecked_store::count (nano::transaction const & transaction
 MDB_dbi nano::lmdb::unchecked_store::table_handle () const
 {
 	return rsnano::rsn_lmdb_unchecked_store_table_handle (handle);
-}
-
-void nano::lmdb::unchecked_store::set_table_handle (MDB_dbi dbi)
-{
-	rsnano::rsn_lmdb_unchecked_store_set_table_handle (handle, dbi);
 }

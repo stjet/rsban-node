@@ -43,15 +43,16 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_destroy(handle: *mut LmdbBlockStor
 pub unsafe extern "C" fn rsn_lmdb_block_store_blocks_handle(
     handle: *mut LmdbBlockStoreHandle,
 ) -> u32 {
-    (*handle).0.blocks_handle
+    (*handle).0.db_handle
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_set_blocks_handle(
+pub unsafe extern "C" fn rsn_lmdb_block_store_open_db(
     handle: *mut LmdbBlockStoreHandle,
-    dbi: u32,
-) {
-    (*handle).0.blocks_handle = dbi;
+    txn: *mut TransactionHandle,
+    flags: u32,
+) -> bool {
+    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

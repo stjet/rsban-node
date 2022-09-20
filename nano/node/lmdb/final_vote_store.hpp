@@ -19,6 +19,7 @@ namespace lmdb
 		~final_vote_store ();
 		final_vote_store (final_vote_store const &) = delete;
 		final_vote_store (final_vote_store &&) = delete;
+		bool open_db (nano::transaction const & txn, uint32_t flags);
 		bool put (nano::write_transaction const & transaction_a, nano::qualified_root const & root_a, nano::block_hash const & hash_a) override;
 		std::vector<nano::block_hash> get (nano::transaction const & transaction_a, nano::root const & root_a) override;
 		void del (nano::write_transaction const & transaction_a, nano::root const & root_a) override;
@@ -35,7 +36,6 @@ namespace lmdb
 		 * nano::qualified_root -> nano::block_hash
 		 */
 		MDB_dbi table_handle () const;
-		void set_table_handle (MDB_dbi dbi);
 		rsnano::LmdbFinalVoteStoreHandle * handle;
 	};
 }

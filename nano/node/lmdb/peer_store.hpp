@@ -20,6 +20,7 @@ namespace lmdb
 		~peer_store ();
 		peer_store (peer_store const &) = delete;
 		peer_store (peer_store &&) = delete;
+		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const & transaction_a, nano::endpoint_key const & endpoint_a) override;
 		void del (nano::write_transaction const & transaction_a, nano::endpoint_key const & endpoint_a) override;
 		bool exists (nano::transaction const & transaction_a, nano::endpoint_key const & endpoint_a) const override;
@@ -29,7 +30,6 @@ namespace lmdb
 		nano::store_iterator<nano::endpoint_key, nano::no_value> end () const override;
 
 		MDB_dbi table_handle () const;
-		void set_table_handle (MDB_dbi dbi);
 	};
 }
 }

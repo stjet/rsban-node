@@ -33,15 +33,16 @@ pub unsafe extern "C" fn rsn_lmdb_online_weight_store_destroy(
 pub unsafe extern "C" fn rsn_lmdb_online_weight_store_table_handle(
     handle: *mut LmdbOnlineWeightStoreHandle,
 ) -> u32 {
-    (*handle).0.table_handle
+    (*handle).0.db_handle
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_online_weight_store_set_table_handle(
+pub unsafe extern "C" fn rsn_lmdb_online_weight_store_open_db(
     handle: *mut LmdbOnlineWeightStoreHandle,
-    table_handle: u32,
-) {
-    (*handle).0.table_handle = table_handle;
+    txn: *mut TransactionHandle,
+    flags: u32,
+) -> bool {
+    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

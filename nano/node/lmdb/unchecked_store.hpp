@@ -20,7 +20,7 @@ namespace lmdb
 		~unchecked_store ();
 		unchecked_store (unchecked_store const &) = delete;
 		unchecked_store (unchecked_store &&) = delete;
-
+		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void clear (nano::write_transaction const & transaction_a) override;
 		void put (nano::write_transaction const & transaction_a, nano::hash_or_account const & dependency, nano::unchecked_info const & info_a) override;
 		bool exists (nano::transaction const & transaction_a, nano::unchecked_key const & unchecked_key_a) override;
@@ -31,7 +31,6 @@ namespace lmdb
 		size_t count (nano::transaction const & transaction_a) override;
 
 		MDB_dbi table_handle () const;
-		void set_table_handle (MDB_dbi dbi);
 	};
 }
 }

@@ -7,28 +7,36 @@ use crate::{
 };
 
 use super::{
-    assert_success, get_raw_lmdb_txn, mdb_count, mdb_del, mdb_drop, mdb_get, mdb_put, LmdbEnv,
-    LmdbIterator, MdbVal, OwnedMdbVal, MDB_NOTFOUND, MDB_SUCCESS,
+    assert_success, ensure_success, get_raw_lmdb_txn, mdb_count, mdb_dbi_open, mdb_del, mdb_drop,
+    mdb_get, mdb_put, LmdbEnv, LmdbIterator, MdbVal, OwnedMdbVal, MDB_NOTFOUND, MDB_SUCCESS,
 };
 
 pub struct LmdbUncheckedStore {
     env: Arc<LmdbEnv>,
-    pub table_handle: u32,
+    pub db_handle: u32,
 }
 
 impl LmdbUncheckedStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self {
-            env,
-            table_handle: 0,
-        }
+        Self { env, db_handle: 0 }
+    }
+
+    pub fn open_db(&mut self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+        let status = unsafe {
+            mdb_dbi_open(
+                get_raw_lmdb_txn(txn),
+                "unchecked",
+                flags,
+                &mut self.db_handle,
+            )
+        };
+        ensure_success(status)
     }
 }
 
 impl UncheckedStore for LmdbUncheckedStore {
     fn clear(&self, txn: &dyn WriteTransaction) {
-        let status =
-            unsafe { mdb_drop(get_raw_lmdb_txn(txn.as_transaction()), self.table_handle, 0) };
+        let status = unsafe { mdb_drop(get_raw_lmdb_txn(txn.as_transaction()), self.db_handle, 0) };
         assert_success(status);
     }
 
@@ -49,7 +57,7 @@ impl UncheckedStore for LmdbUncheckedStore {
         let status = unsafe {
             mdb_put(
                 get_raw_lmdb_txn(txn.as_transaction()),
-                self.table_handle,
+                self.db_handle,
                 &mut MdbVal::from_slice(&key_bytes),
                 value.as_mdb_val(),
                 0,
@@ -64,7 +72,7 @@ impl UncheckedStore for LmdbUncheckedStore {
         let status = unsafe {
             mdb_get(
                 get_raw_lmdb_txn(txn),
-                self.table_handle,
+                self.db_handle,
                 &mut MdbVal::from_slice(&key_bytes),
                 &mut value,
             )
@@ -78,7 +86,7 @@ impl UncheckedStore for LmdbUncheckedStore {
         let status = unsafe {
             mdb_del(
                 get_raw_lmdb_txn(txn.as_transaction()),
-                self.table_handle,
+                self.db_handle,
                 &mut MdbVal::from_slice(&key_bytes),
                 None,
             )
@@ -87,7 +95,7 @@ impl UncheckedStore for LmdbUncheckedStore {
     }
 
     fn begin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<UncheckedKey, UncheckedInfo>> {
-        Box::new(LmdbIterator::new(txn, self.table_handle, None, true))
+        Box::new(LmdbIterator::new(txn, self.db_handle, None, true))
     }
 
     fn lower_bound(
@@ -95,10 +103,10 @@ impl UncheckedStore for LmdbUncheckedStore {
         txn: &dyn Transaction,
         key: &UncheckedKey,
     ) -> Box<dyn DbIterator<UncheckedKey, UncheckedInfo>> {
-        Box::new(LmdbIterator::new(txn, self.table_handle, Some(key), true))
+        Box::new(LmdbIterator::new(txn, self.db_handle, Some(key), true))
     }
 
     fn count(&self, txn: &dyn Transaction) -> usize {
-        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.table_handle) }
+        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.db_handle) }
     }
 }

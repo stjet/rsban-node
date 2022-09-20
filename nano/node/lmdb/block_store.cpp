@@ -21,6 +21,11 @@ nano::lmdb::block_store::~block_store ()
 	rsnano::rsn_lmdb_block_store_destroy (handle);
 }
 
+bool nano::lmdb::block_store::open_db (nano::transaction const & txn, uint32_t flags)
+{
+	return !rsnano::rsn_lmdb_block_store_open_db (handle, txn.get_rust_handle (), flags);
+}
+
 void nano::lmdb::block_store::put (nano::write_transaction const & transaction, nano::block_hash const & hash, nano::block const & block)
 {
 	rsnano::rsn_lmdb_block_store_put (handle, transaction.get_rust_handle (), hash.bytes.data (), block.get_handle ());
@@ -162,9 +167,4 @@ uint64_t nano::lmdb::block_store::account_height (nano::transaction const & tran
 MDB_dbi nano::lmdb::block_store::get_blocks_handle () const
 {
 	return rsnano::rsn_lmdb_block_store_blocks_handle (handle);
-}
-
-void nano::lmdb::block_store::set_blocks_handle (MDB_dbi dbi)
-{
-	rsnano::rsn_lmdb_block_store_set_blocks_handle (handle, dbi);
 }

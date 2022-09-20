@@ -20,6 +20,7 @@ namespace lmdb
 		~pruned_store ();
 		pruned_store (pruned_store const &) = delete;
 		pruned_store (pruned_store &&) = delete;
+		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a) override;
 		void del (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a) override;
 		bool exists (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
@@ -32,7 +33,6 @@ namespace lmdb
 		void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::block_hash, std::nullptr_t>, nano::store_iterator<nano::block_hash, std::nullptr_t>)> const & action_a) const override;
 
 		MDB_dbi table_handle () const;
-		void set_table_handle (MDB_dbi dbi);
 	};
 }
 }

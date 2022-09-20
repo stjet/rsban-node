@@ -12,8 +12,8 @@ use crate::{
 };
 
 use super::{
-    assert_success, get_raw_lmdb_txn, mdb_del, mdb_get, mdb_put, LmdbEnv, LmdbIterator, MdbVal,
-    MDB_NOTFOUND, MDB_SUCCESS,
+    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_del, mdb_get, mdb_put,
+    LmdbEnv, LmdbIterator, MdbVal, MDB_NOTFOUND, MDB_SUCCESS,
 };
 
 pub struct LmdbPendingStore {
@@ -27,6 +27,18 @@ impl LmdbPendingStore {
             env,
             table_handle: 0,
         }
+    }
+
+    pub fn open_db(&mut self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+        let status = unsafe {
+            mdb_dbi_open(
+                get_raw_lmdb_txn(txn),
+                "pending",
+                flags,
+                &mut self.table_handle,
+            )
+        };
+        ensure_success(status)
     }
 }
 

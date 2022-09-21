@@ -10,7 +10,6 @@ use super::{
     iterator::{
         to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
     },
-    lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
 
@@ -20,15 +19,6 @@ impl LmdbConfirmationHeightStoreHandle {
     pub fn new(store: Arc<LmdbConfirmationHeightStore>) -> *mut Self {
         Box::into_raw(Box::new(LmdbConfirmationHeightStoreHandle(store)))
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_create(
-    env_handle: *mut LmdbEnvHandle,
-) -> *mut LmdbConfirmationHeightStoreHandle {
-    LmdbConfirmationHeightStoreHandle::new(Arc::new(LmdbConfirmationHeightStore::new(Arc::clone(
-        &*env_handle,
-    ))))
 }
 
 #[no_mangle]
@@ -43,15 +33,6 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_table_handle(
     handle: *mut LmdbConfirmationHeightStoreHandle,
 ) -> u32 {
     (*handle).0.db_handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_open_db(
-    handle: *mut LmdbConfirmationHeightStoreHandle,
-    txn: *mut TransactionHandle,
-    flags: u32,
-) -> bool {
-    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

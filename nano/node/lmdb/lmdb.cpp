@@ -190,17 +190,7 @@ std::string nano::lmdb::store::vendor_get () const
 
 void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const & transaction_a, unsigned flags)
 {
-	error_a |= frontier_store.open_db (transaction_a, flags);
-	error_a |= unchecked_store.open_db (transaction_a, flags);
-	error_a |= online_weight_store.open_db (transaction_a, flags);
-	error_a |= version_store.open_db (transaction_a, flags);
-	error_a |= peer_store.open_db (transaction_a, flags);
-	error_a |= pruned_store.open_db (transaction_a, flags);
-	error_a |= confirmation_height_store.open_db (transaction_a, flags);
-	error_a |= account_store.open_databases (transaction_a, flags);
-	error_a |= pending_store.open_db (transaction_a, flags);
-	error_a |= final_vote_store.open_db (transaction_a, flags);
-	error_a |= block_store.open_db (transaction_a, MDB_CREATE);
+	error_a |= !rsnano::rsn_lmdb_store_open_databases (handle, transaction_a.get_rust_handle (), flags);
 }
 
 bool nano::lmdb::store::do_upgrades (nano::write_transaction & transaction_a, nano::ledger_constants & constants, bool & needs_vacuuming)

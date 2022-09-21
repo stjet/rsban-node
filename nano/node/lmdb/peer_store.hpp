@@ -15,12 +15,10 @@ namespace lmdb
 		rsnano::LmdbPeerStoreHandle * handle;
 
 	public:
-		explicit peer_store (nano::lmdb::store & store_a);
 		explicit peer_store (rsnano::LmdbPeerStoreHandle * handle_a);
 		~peer_store ();
 		peer_store (peer_store const &) = delete;
 		peer_store (peer_store &&) = delete;
-		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const & transaction_a, nano::endpoint_key const & endpoint_a) override;
 		void del (nano::write_transaction const & transaction_a, nano::endpoint_key const & endpoint_a) override;
 		bool exists (nano::transaction const & transaction_a, nano::endpoint_key const & endpoint_a) const override;

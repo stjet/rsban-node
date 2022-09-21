@@ -13,7 +13,7 @@ use super::{
     lmdb_env::LmdbEnvHandle, online_weight_store::LmdbOnlineWeightStoreHandle,
     peer_store::LmdbPeerStoreHandle, pending_store::LmdbPendingStoreHandle,
     pruned_store::LmdbPrunedStoreHandle, unchecked_store::LmdbUncheckedStoreHandle,
-    version_store::LmdbVersionStoreHandle,
+    version_store::LmdbVersionStoreHandle, TransactionHandle,
 };
 
 pub struct LmdbStoreHandle(LmdbStore);
@@ -182,6 +182,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_unchecked(
         LmdbUncheckedStoreHandle::new((*handle).0.unchecked_store.clone())
     }
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_store_version(
     handle: *mut LmdbStoreHandle,
@@ -191,4 +192,13 @@ pub unsafe extern "C" fn rsn_lmdb_store_version(
     } else {
         LmdbVersionStoreHandle::new((*handle).0.version_store.clone())
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_open_databases(
+    handle: *mut LmdbStoreHandle,
+    txn: *mut TransactionHandle,
+    flags: u32,
+) -> bool {
+    (*handle).0.open_databases((*txn).as_txn(), flags).is_ok()
 }

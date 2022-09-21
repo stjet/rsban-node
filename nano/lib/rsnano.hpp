@@ -1784,8 +1784,6 @@ const uint8_t * account);
 
 uintptr_t rsn_lmdb_account_store_count (LmdbAccountStoreHandle * handle, TransactionHandle * txn);
 
-LmdbAccountStoreHandle * rsn_lmdb_account_store_create (LmdbEnvHandle * env_handle);
-
 void rsn_lmdb_account_store_del (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account);
@@ -1801,10 +1799,6 @@ bool rsn_lmdb_account_store_get (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account,
 AccountInfoHandle * info);
-
-bool rsn_lmdb_account_store_open_databases (LmdbAccountStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
 
 void rsn_lmdb_account_store_put (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn,
@@ -1843,16 +1837,9 @@ LmdbIteratorHandle * rsn_lmdb_block_store_begin_at_hash (LmdbBlockStoreHandle * 
 TransactionHandle * txn,
 const uint8_t * hash);
 
-void rsn_lmdb_block_store_block_raw_get (LmdbBlockStoreHandle * handle,
-TransactionHandle * txn,
-const uint8_t * hash,
-MdbVal * value);
-
 uint32_t rsn_lmdb_block_store_blocks_handle (LmdbBlockStoreHandle * handle);
 
 uint64_t rsn_lmdb_block_store_count (LmdbBlockStoreHandle * handle, TransactionHandle * txn);
-
-LmdbBlockStoreHandle * rsn_lmdb_block_store_create (LmdbEnvHandle * env_handle);
 
 void rsn_lmdb_block_store_del (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
@@ -1876,10 +1863,6 @@ const uint8_t * hash);
 BlockHandle * rsn_lmdb_block_store_get_no_sideband (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash);
-
-bool rsn_lmdb_block_store_open_db (LmdbBlockStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
 
 void rsn_lmdb_block_store_put (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
@@ -1922,8 +1905,6 @@ TransactionHandle * txn);
 uint64_t rsn_lmdb_confirmation_height_store_count (LmdbConfirmationHeightStoreHandle * handle,
 TransactionHandle * txn);
 
-LmdbConfirmationHeightStoreHandle * rsn_lmdb_confirmation_height_store_create (LmdbEnvHandle * env_handle);
-
 void rsn_lmdb_confirmation_height_store_del (LmdbConfirmationHeightStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account);
@@ -1944,10 +1925,6 @@ TransactionHandle * txn,
 const uint8_t * account,
 ConfirmationHeightInfoDto * info);
 
-bool rsn_lmdb_confirmation_height_store_open_db (LmdbConfirmationHeightStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
-
 void rsn_lmdb_confirmation_height_store_put (LmdbConfirmationHeightStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account,
@@ -1966,8 +1943,6 @@ void rsn_lmdb_final_vote_store_clear (LmdbFinalVoteStoreHandle * handle, Transac
 
 uintptr_t rsn_lmdb_final_vote_store_count (LmdbFinalVoteStoreHandle * handle, TransactionHandle * txn);
 
-LmdbFinalVoteStoreHandle * rsn_lmdb_final_vote_store_create (LmdbEnvHandle * env_handle);
-
 void rsn_lmdb_final_vote_store_del (LmdbFinalVoteStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * root);
@@ -1984,10 +1959,6 @@ TransactionHandle * txn,
 const uint8_t * root,
 BlockHashArrayDto * result);
 
-bool rsn_lmdb_final_vote_store_open_db (LmdbFinalVoteStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
-
 bool rsn_lmdb_final_vote_store_put (LmdbFinalVoteStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * root,
@@ -2001,8 +1972,6 @@ TransactionHandle * txn);
 LmdbIteratorHandle * rsn_lmdb_frontier_store_begin_at_hash (LmdbFrontierStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash);
-
-LmdbFrontierStoreHandle * rsn_lmdb_frontier_store_create (LmdbEnvHandle * env_handle);
 
 void rsn_lmdb_frontier_store_del (LmdbFrontierStoreHandle * handle,
 TransactionHandle * txn,
@@ -2019,10 +1988,6 @@ void rsn_lmdb_frontier_store_get (LmdbFrontierStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,
 uint8_t * account);
-
-bool rsn_lmdb_frontier_store_open_db (LmdbFrontierStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
 
 void rsn_lmdb_frontier_store_put (LmdbFrontierStoreHandle * handle,
 TransactionHandle * txn,
@@ -2058,17 +2023,11 @@ TransactionHandle * txn);
 uintptr_t rsn_lmdb_online_weight_store_count (LmdbOnlineWeightStoreHandle * handle,
 TransactionHandle * txn);
 
-LmdbOnlineWeightStoreHandle * rsn_lmdb_online_weight_store_create (LmdbEnvHandle * env_handle);
-
 void rsn_lmdb_online_weight_store_del (LmdbOnlineWeightStoreHandle * handle,
 TransactionHandle * txn,
 uint64_t time);
 
 void rsn_lmdb_online_weight_store_destroy (LmdbOnlineWeightStoreHandle * handle);
-
-bool rsn_lmdb_online_weight_store_open_db (LmdbOnlineWeightStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
 
 void rsn_lmdb_online_weight_store_put (LmdbOnlineWeightStoreHandle * handle,
 TransactionHandle * txn,
@@ -2086,8 +2045,6 @@ void rsn_lmdb_peer_store_clear (LmdbPeerStoreHandle * handle, TransactionHandle 
 
 uintptr_t rsn_lmdb_peer_store_count (LmdbPeerStoreHandle * handle, TransactionHandle * txn);
 
-LmdbPeerStoreHandle * rsn_lmdb_peer_store_create (LmdbEnvHandle * env_handle);
-
 void rsn_lmdb_peer_store_del (LmdbPeerStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * address,
@@ -2099,10 +2056,6 @@ bool rsn_lmdb_peer_store_exists (LmdbPeerStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * address,
 uint16_t port);
-
-bool rsn_lmdb_peer_store_open_db (LmdbPeerStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
 
 void rsn_lmdb_peer_store_put (LmdbPeerStoreHandle * handle,
 TransactionHandle * txn,
@@ -2121,8 +2074,6 @@ TransactionHandle * txn);
 LmdbIteratorHandle * rsn_lmdb_pending_store_begin_at_key (LmdbPendingStoreHandle * handle,
 TransactionHandle * txn,
 const PendingKeyDto * key);
-
-LmdbPendingStoreHandle * rsn_lmdb_pending_store_create (LmdbEnvHandle * env_handle);
 
 void rsn_lmdb_pending_store_del (LmdbPendingStoreHandle * handle,
 TransactionHandle * txn,
@@ -2144,10 +2095,6 @@ TransactionHandle * txn,
 const PendingKeyDto * key,
 PendingInfoDto * pending);
 
-bool rsn_lmdb_pending_store_open_db (LmdbPendingStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
-
 void rsn_lmdb_pending_store_put (LmdbPendingStoreHandle * handle,
 TransactionHandle * txn,
 const PendingKeyDto * key,
@@ -2166,8 +2113,6 @@ void rsn_lmdb_pruned_store_clear (LmdbPrunedStoreHandle * handle, TransactionHan
 
 uintptr_t rsn_lmdb_pruned_store_count (LmdbPrunedStoreHandle * handle, TransactionHandle * txn);
 
-LmdbPrunedStoreHandle * rsn_lmdb_pruned_store_create (LmdbEnvHandle * env_handle);
-
 void rsn_lmdb_pruned_store_del (LmdbPrunedStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash);
@@ -2182,10 +2127,6 @@ void rsn_lmdb_pruned_store_for_each_par (LmdbPrunedStoreHandle * handle,
 ForEachParCallback action,
 void * context,
 VoidPointerCallback delete_context);
-
-bool rsn_lmdb_pruned_store_open_db (LmdbPrunedStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
 
 void rsn_lmdb_pruned_store_put (LmdbPrunedStoreHandle * handle,
 TransactionHandle * txn,
@@ -2233,6 +2174,8 @@ LmdbFrontierStoreHandle * rsn_lmdb_store_frontier (LmdbStoreHandle * handle);
 
 LmdbOnlineWeightStoreHandle * rsn_lmdb_store_online_weight (LmdbStoreHandle * handle);
 
+bool rsn_lmdb_store_open_databases (LmdbStoreHandle * handle, TransactionHandle * txn, uint32_t flags);
+
 LmdbPeerStoreHandle * rsn_lmdb_store_peer (LmdbStoreHandle * handle);
 
 LmdbPendingStoreHandle * rsn_lmdb_store_pending (LmdbStoreHandle * handle);
@@ -2250,8 +2193,6 @@ void rsn_lmdb_unchecked_store_clear (LmdbUncheckedStoreHandle * handle, Transact
 
 uintptr_t rsn_lmdb_unchecked_store_count (LmdbUncheckedStoreHandle * handle, TransactionHandle * txn);
 
-LmdbUncheckedStoreHandle * rsn_lmdb_unchecked_store_create (LmdbEnvHandle * env_handle);
-
 void rsn_lmdb_unchecked_store_del (LmdbUncheckedStoreHandle * handle,
 TransactionHandle * txn,
 const UncheckedKeyDto * key);
@@ -2266,18 +2207,12 @@ LmdbIteratorHandle * rsn_lmdb_unchecked_store_lower_bound (LmdbUncheckedStoreHan
 TransactionHandle * txn,
 const UncheckedKeyDto * key);
 
-bool rsn_lmdb_unchecked_store_open_db (LmdbUncheckedStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
-
 void rsn_lmdb_unchecked_store_put (LmdbUncheckedStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * dependency,
 UncheckedInfoHandle * info);
 
 uint32_t rsn_lmdb_unchecked_store_table_handle (LmdbUncheckedStoreHandle * handle);
-
-LmdbVersionStoreHandle * rsn_lmdb_version_store_create (LmdbEnvHandle * env_handle);
 
 void rsn_lmdb_version_store_destroy (LmdbVersionStoreHandle * handle);
 
@@ -3241,11 +3176,7 @@ void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
 
 void rsn_unchecked_info_account (const UncheckedInfoHandle * handle, uint8_t * result);
 
-void rsn_unchecked_info_account_set (UncheckedInfoHandle * handle, const uint8_t * account);
-
 BlockHandle * rsn_unchecked_info_block (const UncheckedInfoHandle * handle);
-
-void rsn_unchecked_info_block_set (UncheckedInfoHandle * handle, BlockHandle * block);
 
 UncheckedInfoHandle * rsn_unchecked_info_clone (const UncheckedInfoHandle * handle);
 
@@ -3260,8 +3191,6 @@ bool rsn_unchecked_info_deserialize (UncheckedInfoHandle * handle, void * stream
 void rsn_unchecked_info_destroy (UncheckedInfoHandle * handle);
 
 uint64_t rsn_unchecked_info_modified (const UncheckedInfoHandle * handle);
-
-void rsn_unchecked_info_modified_set (UncheckedInfoHandle * handle, uint64_t modified);
 
 bool rsn_unchecked_info_serialize (UncheckedInfoHandle * handle, void * stream);
 

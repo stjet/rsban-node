@@ -14,10 +14,8 @@ namespace lmdb
 		rsnano::LmdbOnlineWeightStoreHandle * handle;
 
 	public:
-		explicit online_weight_store (nano::lmdb::store & store_a);
 		explicit online_weight_store (rsnano::LmdbOnlineWeightStoreHandle * handle_a);
 		~online_weight_store ();
-		bool open_db (nano::transaction const & txn, uint32_t flags);
 		online_weight_store (online_weight_store const &) = delete;
 		online_weight_store (online_weight_store &&) = delete;
 		void put (nano::write_transaction const & transaction_a, uint64_t time_a, nano::amount const & amount_a) override;

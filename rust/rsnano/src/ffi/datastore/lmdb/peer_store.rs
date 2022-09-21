@@ -7,7 +7,6 @@ use crate::{
 
 use super::{
     iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
-    lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
 
@@ -20,13 +19,6 @@ impl LmdbPeerStoreHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_peer_store_create(
-    env_handle: *mut LmdbEnvHandle,
-) -> *mut LmdbPeerStoreHandle {
-    LmdbPeerStoreHandle::new(Arc::new(LmdbPeerStore::new(Arc::clone(&*env_handle))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_peer_store_destroy(handle: *mut LmdbPeerStoreHandle) {
     drop(Box::from_raw(handle))
 }
@@ -34,15 +26,6 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_destroy(handle: *mut LmdbPeerStoreH
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_peer_store_table_handle(handle: *mut LmdbPeerStoreHandle) -> u32 {
     (*handle).0.db_handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_peer_store_open_db(
-    handle: *mut LmdbPeerStoreHandle,
-    txn: *mut TransactionHandle,
-    flags: u32,
-) -> bool {
-    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

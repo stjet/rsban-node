@@ -12,12 +12,10 @@ namespace lmdb
 	class account_store : public nano::account_store
 	{
 	public:
-		explicit account_store (nano::mdb_env const & env_a);
 		explicit account_store (rsnano::LmdbAccountStoreHandle * handle_a);
 		account_store (account_store const &) = delete;
 		account_store (account_store &&) = delete;
 		~account_store () override;
-		bool open_databases (nano::transaction const & transaction_a, unsigned flags);
 		void put (nano::write_transaction const & transaction, nano::account const & account, nano::account_info const & info) override;
 		bool get (nano::transaction const & transaction_a, nano::account const & account_a, nano::account_info & info_a) override;
 		void del (nano::write_transaction const & transaction_a, nano::account const & account_a) override;

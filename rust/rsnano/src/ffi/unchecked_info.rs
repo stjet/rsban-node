@@ -67,24 +67,8 @@ pub unsafe extern "C" fn rsn_unchecked_info_block(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_info_block_set(
-    handle: *mut UncheckedInfoHandle,
-    block: *mut BlockHandle,
-) {
-    (*handle).0.block = Some((*block).block.clone());
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_unchecked_info_modified(handle: *const UncheckedInfoHandle) -> u64 {
     (*handle).0.modified
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_info_modified_set(
-    handle: *mut UncheckedInfoHandle,
-    modified: u64,
-) {
-    (*handle).0.modified = modified;
 }
 
 #[no_mangle]
@@ -93,16 +77,6 @@ pub unsafe extern "C" fn rsn_unchecked_info_account(
     result: *mut u8,
 ) {
     std::slice::from_raw_parts_mut(result, 32).copy_from_slice((*handle).0.account.as_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_info_account_set(
-    handle: *mut UncheckedInfoHandle,
-    account: *const u8,
-) {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(std::slice::from_raw_parts(account, 32));
-    (*handle).0.account = Account::from_bytes(bytes);
 }
 
 #[no_mangle]

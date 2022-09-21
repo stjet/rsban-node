@@ -15,12 +15,10 @@ namespace lmdb
 		rsnano::LmdbUncheckedStoreHandle * handle;
 
 	public:
-		unchecked_store (nano::lmdb::store & store_a);
 		unchecked_store (rsnano::LmdbUncheckedStoreHandle * handle_a);
 		~unchecked_store ();
 		unchecked_store (unchecked_store const &) = delete;
 		unchecked_store (unchecked_store &&) = delete;
-		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void clear (nano::write_transaction const & transaction_a) override;
 		void put (nano::write_transaction const & transaction_a, nano::hash_or_account const & dependency, nano::unchecked_info const & info_a) override;
 		bool exists (nano::transaction const & transaction_a, nano::unchecked_key const & unchecked_key_a) override;

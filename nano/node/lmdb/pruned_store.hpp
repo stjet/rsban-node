@@ -15,12 +15,10 @@ namespace lmdb
 		rsnano::LmdbPrunedStoreHandle * handle;
 
 	public:
-		explicit pruned_store (nano::lmdb::store & store_a);
 		explicit pruned_store (rsnano::LmdbPrunedStoreHandle * handle_a);
 		~pruned_store ();
 		pruned_store (pruned_store const &) = delete;
 		pruned_store (pruned_store &&) = delete;
-		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a) override;
 		void del (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a) override;
 		bool exists (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override;

@@ -1,9 +1,6 @@
 #include <nano/node/lmdb/lmdb.hpp>
 #include <nano/node/lmdb/version_store.hpp>
 
-nano::lmdb::version_store::version_store (nano::lmdb::store & store_a) :
-	handle{ rsnano::rsn_lmdb_version_store_create (store_a.env ().handle) } {};
-
 nano::lmdb::version_store::version_store (rsnano::LmdbVersionStoreHandle * handle_a) :
 	handle{ handle_a }
 {

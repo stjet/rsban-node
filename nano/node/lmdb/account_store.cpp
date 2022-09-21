@@ -2,9 +2,6 @@
 #include <nano/node/lmdb/lmdb.hpp>
 #include <nano/secure/parallel_traversal.hpp>
 
-nano::lmdb::account_store::account_store (nano::mdb_env const & env_a) :
-	handle{ rsnano::rsn_lmdb_account_store_create (env_a.handle) } {};
-
 nano::lmdb::account_store::account_store (rsnano::LmdbAccountStoreHandle * handle_a) :
 	handle{ handle_a }
 {
@@ -14,12 +11,6 @@ nano::lmdb::account_store::~account_store ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_lmdb_account_store_destroy (handle);
-}
-
-bool nano::lmdb::account_store::open_databases (nano::transaction const & transaction_a, unsigned flags)
-{
-	bool success = rsnano::rsn_lmdb_account_store_open_databases (handle, transaction_a.get_rust_handle (), flags);
-	return !success;
 }
 
 void nano::lmdb::account_store::put (nano::write_transaction const & transaction, nano::account const & account, nano::account_info const & info)

@@ -14,11 +14,6 @@ nano::store_iterator<uint64_t, nano::amount> to_iterator (rsnano::LmdbIteratorHa
 }
 }
 
-nano::lmdb::online_weight_store::online_weight_store (nano::lmdb::store & store_a) :
-	handle{ rsnano::rsn_lmdb_online_weight_store_create (store_a.env ().handle) }
-{
-}
-
 nano::lmdb::online_weight_store::online_weight_store (rsnano::LmdbOnlineWeightStoreHandle * handle_a) :
 	handle{ handle_a }
 {
@@ -28,11 +23,6 @@ nano::lmdb::online_weight_store::~online_weight_store ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_lmdb_online_weight_store_destroy (handle);
-}
-
-bool nano::lmdb::online_weight_store::open_db (nano::transaction const & txn, uint32_t flags)
-{
-	return !rsnano::rsn_lmdb_online_weight_store_open_db (handle, txn.get_rust_handle (), flags);
 }
 
 void nano::lmdb::online_weight_store::put (nano::write_transaction const & transaction, uint64_t time, nano::amount const & amount)

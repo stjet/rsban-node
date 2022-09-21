@@ -27,11 +27,6 @@ nano::lmdb::confirmation_height_store::~confirmation_height_store ()
 		rsnano::rsn_lmdb_confirmation_height_store_destroy (handle);
 }
 
-bool nano::lmdb::confirmation_height_store::open_db (nano::transaction const & txn, uint32_t flags)
-{
-	return !rsnano::rsn_lmdb_confirmation_height_store_open_db (handle, txn.get_rust_handle (), flags);
-}
-
 void nano::lmdb::confirmation_height_store::put (nano::write_transaction const & transaction, nano::account const & account, nano::confirmation_height_info const & confirmation_height_info)
 {
 	rsnano::rsn_lmdb_confirmation_height_store_put (handle, transaction.get_rust_handle (), account.bytes.data (), &confirmation_height_info.dto);

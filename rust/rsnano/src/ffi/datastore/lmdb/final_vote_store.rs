@@ -10,7 +10,6 @@ use super::{
     iterator::{
         to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
     },
-    lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
 
@@ -23,13 +22,6 @@ impl LmdbFinalVoteStoreHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_final_vote_store_create(
-    env_handle: *mut LmdbEnvHandle,
-) -> *mut LmdbFinalVoteStoreHandle {
-    LmdbFinalVoteStoreHandle::new(Arc::new(LmdbFinalVoteStore::new(Arc::clone(&*env_handle))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_final_vote_store_destroy(handle: *mut LmdbFinalVoteStoreHandle) {
     drop(Box::from_raw(handle))
 }
@@ -39,15 +31,6 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_table_handle(
     handle: *mut LmdbFinalVoteStoreHandle,
 ) -> u32 {
     (*handle).0.db_handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_final_vote_store_open_db(
-    handle: *mut LmdbFinalVoteStoreHandle,
-    txn: *mut TransactionHandle,
-    flags: u32,
-) -> bool {
-    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

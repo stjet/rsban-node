@@ -14,9 +14,6 @@ nano::store_iterator<nano::endpoint_key, nano::no_value> to_iterator (rsnano::Lm
 }
 }
 
-nano::lmdb::peer_store::peer_store (nano::lmdb::store & store) :
-	handle{ rsnano::rsn_lmdb_peer_store_create (store.env ().handle) } {};
-
 nano::lmdb::peer_store::peer_store (rsnano::LmdbPeerStoreHandle * handle_a) :
 	handle{ handle_a }
 {
@@ -26,11 +23,6 @@ nano::lmdb::peer_store::~peer_store ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_lmdb_peer_store_destroy (handle);
-}
-
-bool nano::lmdb::peer_store::open_db (nano::transaction const & txn, uint32_t flags)
-{
-	return !rsnano::rsn_lmdb_peer_store_open_db (handle, txn.get_rust_handle (), flags);
 }
 
 void nano::lmdb::peer_store::put (nano::write_transaction const & transaction, nano::endpoint_key const & endpoint)

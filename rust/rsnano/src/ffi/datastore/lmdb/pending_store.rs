@@ -11,7 +11,6 @@ use super::{
     iterator::{
         to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
     },
-    lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
 
@@ -24,13 +23,6 @@ impl LmdbPendingStoreHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_pending_store_create(
-    env_handle: *mut LmdbEnvHandle,
-) -> *mut LmdbPendingStoreHandle {
-    LmdbPendingStoreHandle::new(Arc::new(LmdbPendingStore::new(Arc::clone(&*env_handle))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_pending_store_destroy(handle: *mut LmdbPendingStoreHandle) {
     drop(Box::from_raw(handle))
 }
@@ -40,15 +32,6 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_table_handle(
     handle: *mut LmdbPendingStoreHandle,
 ) -> u32 {
     (*handle).0.db_handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_pending_store_open_db(
-    handle: *mut LmdbPendingStoreHandle,
-    txn: *mut TransactionHandle,
-    flags: u32,
-) -> bool {
-    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[repr(C)]

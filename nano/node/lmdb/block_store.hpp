@@ -9,18 +9,15 @@ namespace nano
 using mdb_val = db_val<MDB_val>;
 namespace lmdb
 {
-	class store;
 	class block_store : public nano::block_store
 	{
 		rsnano::LmdbBlockStoreHandle * handle;
 
 	public:
-		explicit block_store (nano::lmdb::store & store_a);
 		explicit block_store (rsnano::LmdbBlockStoreHandle * handle_a);
 		block_store (block_store const &) = delete;
 		block_store (block_store &&) = delete;
 		~block_store () override;
-		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a, nano::block const & block_a) override;
 		void raw_put (nano::write_transaction const & transaction_a, std::vector<uint8_t> const & data, nano::block_hash const & hash_a) override;
 		nano::block_hash successor (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override;

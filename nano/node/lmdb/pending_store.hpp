@@ -15,12 +15,10 @@ namespace lmdb
 		rsnano::LmdbPendingStoreHandle * handle;
 
 	public:
-		explicit pending_store (nano::lmdb::store & store_a);
 		explicit pending_store (rsnano::LmdbPendingStoreHandle * handle_a);
 		~pending_store ();
 		pending_store (pending_store const &) = delete;
 		pending_store (pending_store &&) = delete;
-		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const & transaction_a, nano::pending_key const & key_a, nano::pending_info const & pending_info_a) override;
 		void del (nano::write_transaction const & transaction_a, nano::pending_key const & key_a) override;
 		bool get (nano::transaction const & transaction_a, nano::pending_key const & key_a, nano::pending_info & pending_a) override;

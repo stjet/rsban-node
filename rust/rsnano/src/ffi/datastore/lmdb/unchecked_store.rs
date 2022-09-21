@@ -9,7 +9,6 @@ use crate::{
 
 use super::{
     iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
-    lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
 
@@ -37,13 +36,6 @@ impl From<&UncheckedKeyDto> for UncheckedKey {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_unchecked_store_create(
-    env_handle: *mut LmdbEnvHandle,
-) -> *mut LmdbUncheckedStoreHandle {
-    LmdbUncheckedStoreHandle::new(Arc::new(LmdbUncheckedStore::new(Arc::clone(&*env_handle))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_unchecked_store_destroy(handle: *mut LmdbUncheckedStoreHandle) {
     drop(Box::from_raw(handle))
 }
@@ -53,15 +45,6 @@ pub unsafe extern "C" fn rsn_lmdb_unchecked_store_table_handle(
     handle: *mut LmdbUncheckedStoreHandle,
 ) -> u32 {
     (*handle).0.db_handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_unchecked_store_open_db(
-    handle: *mut LmdbUncheckedStoreHandle,
-    txn: *mut TransactionHandle,
-    flags: u32,
-) -> bool {
-    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

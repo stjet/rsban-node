@@ -18,7 +18,6 @@ namespace lmdb
 		~frontier_store ();
 		frontier_store (frontier_store const &) = delete;
 		frontier_store (frontier_store &&) = delete;
-		bool open_db (nano::transaction const & txn, uint32_t flags);
 		void put (nano::write_transaction const &, nano::block_hash const &, nano::account const &) override;
 		nano::account get (nano::transaction const &, nano::block_hash const &) const override;
 		void del (nano::write_transaction const &, nano::block_hash const &) override;

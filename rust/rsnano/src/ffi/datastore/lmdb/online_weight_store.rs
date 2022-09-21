@@ -7,7 +7,6 @@ use crate::{
 
 use super::{
     iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
-    lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
 
@@ -17,15 +16,6 @@ impl LmdbOnlineWeightStoreHandle {
     pub fn new(store: Arc<LmdbOnlineWeightStore>) -> *mut Self {
         Box::into_raw(Box::new(LmdbOnlineWeightStoreHandle(store)))
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_online_weight_store_create(
-    env_handle: *mut LmdbEnvHandle,
-) -> *mut LmdbOnlineWeightStoreHandle {
-    LmdbOnlineWeightStoreHandle::new(Arc::new(LmdbOnlineWeightStore::new(Arc::clone(
-        &*env_handle,
-    ))))
 }
 
 #[no_mangle]
@@ -40,15 +30,6 @@ pub unsafe extern "C" fn rsn_lmdb_online_weight_store_table_handle(
     handle: *mut LmdbOnlineWeightStoreHandle,
 ) -> u32 {
     (*handle).0.db_handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_online_weight_store_open_db(
-    handle: *mut LmdbOnlineWeightStoreHandle,
-    txn: *mut TransactionHandle,
-    flags: u32,
-) -> bool {
-    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

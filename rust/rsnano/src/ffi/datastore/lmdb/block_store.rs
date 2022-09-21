@@ -5,10 +5,7 @@ use std::{
 };
 
 use crate::{
-    datastore::{
-        lmdb::{LmdbBlockStore, MdbVal},
-        BlockStore,
-    },
+    datastore::{lmdb::LmdbBlockStore, BlockStore},
     ffi::{
         copy_account_bytes, copy_amount_bytes, copy_hash_bytes, BlockHandle, VoidPointerCallback,
     },
@@ -19,7 +16,6 @@ use super::{
     iterator::{
         to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
     },
-    lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
 
@@ -29,15 +25,6 @@ impl LmdbBlockStoreHandle {
     pub fn new(store: Arc<LmdbBlockStore>) -> *mut Self {
         Box::into_raw(Box::new(LmdbBlockStoreHandle(store)))
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_create(
-    env_handle: *mut LmdbEnvHandle,
-) -> *mut LmdbBlockStoreHandle {
-    Box::into_raw(Box::new(LmdbBlockStoreHandle(Arc::new(
-        LmdbBlockStore::new(Arc::clone(&*env_handle)),
-    ))))
 }
 
 #[no_mangle]
@@ -53,15 +40,6 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_blocks_handle(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_open_db(
-    handle: *mut LmdbBlockStoreHandle,
-    txn: *mut TransactionHandle,
-    flags: u32,
-) -> bool {
-    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_block_store_raw_put(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,
@@ -73,18 +51,6 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_raw_put(
     let data = slice::from_raw_parts(data, len);
     let hash = BlockHash::from_ptr(hash);
     (*handle).0.raw_put(txn, data, &hash);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_block_raw_get(
-    handle: *mut LmdbBlockStoreHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-    value: *mut MdbVal,
-) {
-    let txn = (*txn).as_txn();
-    let hash = BlockHash::from_ptr(hash);
-    (*handle).0.block_raw_get(txn, &hash, &mut *value);
 }
 
 #[no_mangle]

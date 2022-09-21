@@ -10,7 +10,6 @@ use super::{
     iterator::{
         to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
     },
-    lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
 
@@ -23,13 +22,6 @@ impl LmdbFrontierStoreHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_frontier_store_create(
-    env_handle: *mut LmdbEnvHandle,
-) -> *mut LmdbFrontierStoreHandle {
-    LmdbFrontierStoreHandle::new(Arc::new(LmdbFrontierStore::new(Arc::clone(&*env_handle))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_frontier_store_destroy(handle: *mut LmdbFrontierStoreHandle) {
     drop(Box::from_raw(handle))
 }
@@ -39,15 +31,6 @@ pub unsafe extern "C" fn rsn_lmdb_frontier_store_table_handle(
     handle: *mut LmdbFrontierStoreHandle,
 ) -> u32 {
     (*handle).0.db_handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_frontier_store_open_db(
-    handle: *mut LmdbFrontierStoreHandle,
-    txn: *mut TransactionHandle,
-    flags: u32,
-) -> bool {
-    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

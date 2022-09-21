@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
+use super::TransactionHandle;
 use crate::datastore::{lmdb::LmdbVersionStore, VersionStore};
-
-use super::{lmdb_env::LmdbEnvHandle, TransactionHandle};
+use std::sync::Arc;
 
 pub struct LmdbVersionStoreHandle(Arc<LmdbVersionStore>);
 
@@ -10,13 +8,6 @@ impl LmdbVersionStoreHandle {
     pub fn new(store: Arc<LmdbVersionStore>) -> *mut Self {
         Box::into_raw(Box::new(LmdbVersionStoreHandle(store)))
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_version_store_create(
-    env_handle: *mut LmdbEnvHandle,
-) -> *mut LmdbVersionStoreHandle {
-    LmdbVersionStoreHandle::new(Arc::new(LmdbVersionStore::new(Arc::clone(&*env_handle))))
 }
 
 #[no_mangle]

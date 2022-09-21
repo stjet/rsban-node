@@ -14,7 +14,6 @@ use super::{
     iterator::{
         to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
     },
-    lmdb_env::LmdbEnvHandle,
     TransactionHandle,
 };
 
@@ -27,13 +26,6 @@ impl LmdbAccountStoreHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_account_store_create(
-    env_handle: *mut LmdbEnvHandle,
-) -> *mut LmdbAccountStoreHandle {
-    LmdbAccountStoreHandle::new(Arc::new(LmdbAccountStore::new(Arc::clone(&*env_handle))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_account_store_destroy(handle: *mut LmdbAccountStoreHandle) {
     drop(Box::from_raw(handle))
 }
@@ -43,15 +35,6 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_accounts_handle(
     handle: *mut LmdbAccountStoreHandle,
 ) -> u32 {
     (*handle).0.db_handle()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_account_store_open_databases(
-    handle: *mut LmdbAccountStoreHandle,
-    txn: *mut TransactionHandle,
-    flags: u32,
-) -> bool {
-    (*handle).0.open_db((*txn).as_txn(), flags).is_ok()
 }
 
 #[no_mangle]

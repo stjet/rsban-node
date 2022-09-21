@@ -1,6 +1,6 @@
 use std::{path::Path, sync::Arc, time::Duration};
 
-use crate::{logger_mt::Logger, TxnTrackingConfig};
+use crate::{datastore::Transaction, logger_mt::Logger, TxnTrackingConfig};
 
 use super::{
     EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv,
@@ -53,5 +53,19 @@ impl LmdbStore {
             unchecked_store: Arc::new(LmdbUncheckedStore::new(env.clone())),
             version_store: Arc::new(LmdbVersionStore::new(env.clone())),
         })
+    }
+
+    pub fn open_databases(&self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+        self.block_store.open_db(txn, flags)?;
+        self.frontier_store.open_db(txn, flags)?;
+        self.account_store.open_db(txn, flags)?;
+        self.pending_store.open_db(txn, flags)?;
+        self.online_weight_store.open_db(txn, flags)?;
+        self.pruned_store.open_db(txn, flags)?;
+        self.peer_store.open_db(txn, flags)?;
+        self.confirmation_height_store.open_db(txn, flags)?;
+        self.final_vote_store.open_db(txn, flags)?;
+        self.unchecked_store.open_db(txn, flags)?;
+        self.version_store.open_db(txn, flags)
     }
 }

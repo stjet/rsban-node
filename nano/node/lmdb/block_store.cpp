@@ -13,9 +13,6 @@ nano::store_iterator<nano::block_hash, nano::block_w_sideband> to_block_iterator
 	std::make_unique<nano::mdb_iterator<nano::block_hash, nano::block_w_sideband>> (it_handle));
 }
 
-nano::lmdb::block_store::block_store (nano::lmdb::store & store_a) :
-	handle{ rsnano::rsn_lmdb_block_store_create (store_a.env ().handle) } {};
-
 nano::lmdb::block_store::block_store (rsnano::LmdbBlockStoreHandle * handle_a) :
 	handle{ handle_a }
 {
@@ -25,11 +22,6 @@ nano::lmdb::block_store::~block_store ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_lmdb_block_store_destroy (handle);
-}
-
-bool nano::lmdb::block_store::open_db (nano::transaction const & txn, uint32_t flags)
-{
-	return !rsnano::rsn_lmdb_block_store_open_db (handle, txn.get_rust_handle (), flags);
 }
 
 void nano::lmdb::block_store::put (nano::write_transaction const & transaction, nano::block_hash const & hash, nano::block const & block)

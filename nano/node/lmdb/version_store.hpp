@@ -13,7 +13,6 @@ namespace lmdb
 		rsnano::LmdbVersionStoreHandle * handle;
 
 	public:
-		explicit version_store (nano::lmdb::store & store_a);
 		explicit version_store (rsnano::LmdbVersionStoreHandle * handle_a);
 		~version_store ();
 		bool open_db (nano::transaction const & txn, uint32_t flags);

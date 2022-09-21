@@ -110,7 +110,7 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 				open_databases (error, *transaction, MDB_CREATE);
 				if (!error)
 				{
-					error |= do_upgrades (*transaction, constants, needs_vacuuming);
+					error |= !rsnano::rsn_lmdb_store_do_upgrades (handle, transaction->get_rust_handle (), &needs_vacuuming);
 				}
 			}
 
@@ -205,45 +205,6 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 	error_a |= !rsnano::rsn_lmdb_store_open_databases (handle, transaction_a.get_rust_handle (), flags);
 }
 
-bool nano::lmdb::store::do_upgrades (nano::write_transaction & transaction_a, nano::ledger_constants & constants, bool & needs_vacuuming)
-{
-	auto error (false);
-	auto version_l = version ().get (transaction_a);
-	switch (version_l)
-	{
-		case 1:
-		case 2:
-		case 3:
-		case 4:
-		case 5:
-		case 6:
-		case 7:
-		case 8:
-		case 9:
-		case 10:
-		case 11:
-		case 12:
-		case 13:
-		case 14:
-		case 15:
-		case 16:
-		case 17:
-		case 18:
-		case 19:
-		case 20:
-			logger.always_log (boost::str (boost::format ("The version of the ledger (%1%) is lower than the minimum (%2%) which is supported for upgrades. Either upgrade to a v19, v20 or v21 node first or delete the ledger.") % version_l % version_minimum));
-			error = true;
-			break;
-		case 21:
-			break;
-		default:
-			logger.always_log (boost::str (boost::format ("The version of the ledger (%1%) is too high for this node") % version_l));
-			error = true;
-			break;
-	}
-	return error;
-}
-
 /** Takes a filepath, appends '_backup_<timestamp>' to the end (but before any extension) and saves that file in the same directory */
 void nano::lmdb::store::create_backup_file (nano::mdb_env const & env_a, boost::filesystem::path const & filepath_a, nano::logger_mt & logger_a)
 {
@@ -294,7 +255,7 @@ void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_
 			auto s = mdb_put (env ().tx (transaction_a), temp, nano::mdb_val (i->first), i->second, MDB_APPEND);
 			release_assert_success (s);
 		}
-		release_assert (count (env(), transaction_a, table) == count (env (), transaction_a, temp));
+		release_assert (count (env (), transaction_a, table) == count (env (), transaction_a, temp));
 		// Clear existing table
 		mdb_drop (env ().tx (transaction_a), table, 0);
 		// Put values from copy
@@ -303,7 +264,7 @@ void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_
 			auto s = mdb_put (env ().tx (transaction_a), table, nano::mdb_val (i->first), i->second, MDB_APPEND);
 			release_assert_success (s);
 		}
-		release_assert (count (env(), transaction_a, table) == count (env (), transaction_a, temp));
+		release_assert (count (env (), transaction_a, table) == count (env (), transaction_a, temp));
 		// Remove temporary table
 		mdb_drop (env ().tx (transaction_a), temp, 1);
 	}
@@ -317,7 +278,7 @@ void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_
 			auto s = mdb_put (env ().tx (transaction_a), temp, nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
 			release_assert_success (s);
 		}
-		release_assert (count (env(), transaction_a, pending_store.table_handle ()) == count (env(), transaction_a, temp));
+		release_assert (count (env (), transaction_a, pending_store.table_handle ()) == count (env (), transaction_a, temp));
 		mdb_drop (env ().tx (transaction_a), pending_store.table_handle (), 0);
 		// Put values from copy
 		for (auto i (nano::store_iterator<nano::pending_key, nano::pending_info> (std::make_unique<nano::mdb_iterator<nano::pending_key, nano::pending_info>> (transaction_a, temp))), n (nano::store_iterator<nano::pending_key, nano::pending_info> (nullptr)); i != n; ++i)
@@ -325,7 +286,7 @@ void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_
 			auto s = mdb_put (env ().tx (transaction_a), pending_store.table_handle (), nano::mdb_val (i->first), nano::mdb_val (i->second), MDB_APPEND);
 			release_assert_success (s);
 		}
-		release_assert (count (env(), transaction_a, pending_store.table_handle ()) == count (env(), transaction_a, temp));
+		release_assert (count (env (), transaction_a, pending_store.table_handle ()) == count (env (), transaction_a, temp));
 		mdb_drop (env ().tx (transaction_a), temp, 1);
 	}
 }

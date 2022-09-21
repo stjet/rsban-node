@@ -2166,6 +2166,10 @@ uint64_t block_processor_batch_max_time_ms);
 
 void rsn_lmdb_store_destroy (LmdbStoreHandle * handle);
 
+bool rsn_lmdb_store_do_upgrades (LmdbStoreHandle * handle,
+TransactionHandle * txn,
+bool * needs_vacuuming);
+
 LmdbEnvHandle * rsn_lmdb_store_env (LmdbStoreHandle * handle);
 
 LmdbFinalVoteStoreHandle * rsn_lmdb_store_final_vote (LmdbStoreHandle * handle);

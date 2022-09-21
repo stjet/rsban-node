@@ -1,12 +1,22 @@
 use std::{path::Path, sync::Arc, time::Duration};
 
-use crate::{datastore::Transaction, logger_mt::Logger, TxnTrackingConfig};
+use crate::{
+    datastore::{Transaction, VersionStore, WriteTransaction, STORE_VERSION_MINIMUM},
+    logger_mt::Logger,
+    TxnTrackingConfig,
+};
 
 use super::{
     EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv,
     LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
     LmdbPrunedStore, LmdbUncheckedStore, LmdbVersionStore,
 };
+
+#[derive(PartialEq, Eq)]
+pub enum Vacuuming {
+    Needed,
+    NotNeeded,
+}
 
 pub struct LmdbStore {
     pub env: Arc<LmdbEnv>,
@@ -21,6 +31,7 @@ pub struct LmdbStore {
     pub final_vote_store: Arc<LmdbFinalVoteStore>,
     pub unchecked_store: Arc<LmdbUncheckedStore>,
     pub version_store: Arc<LmdbVersionStore>,
+    logger: Arc<dyn Logger>,
 }
 
 impl LmdbStore {
@@ -36,7 +47,7 @@ impl LmdbStore {
             options,
             tracking_cfg,
             block_processor_batch_max_time,
-            logger,
+            logger.clone(),
         )?);
 
         Ok(Self {
@@ -52,6 +63,7 @@ impl LmdbStore {
             final_vote_store: Arc::new(LmdbFinalVoteStore::new(env.clone())),
             unchecked_store: Arc::new(LmdbUncheckedStore::new(env.clone())),
             version_store: Arc::new(LmdbVersionStore::new(env.clone())),
+            logger,
         })
     }
 
@@ -67,5 +79,26 @@ impl LmdbStore {
         self.final_vote_store.open_db(txn, flags)?;
         self.unchecked_store.open_db(txn, flags)?;
         self.version_store.open_db(txn, flags)
+    }
+
+    pub fn do_upgrades(&self, txn: &dyn WriteTransaction) -> anyhow::Result<Vacuuming> {
+        let version = self.version_store.get(txn.as_transaction());
+        match version {
+            1..=20 => {
+                self.logger.always_log(&format!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM));
+                Err(anyhow!("version too low"))
+            }
+            21 => {
+                // most recent version
+                Ok(Vacuuming::NotNeeded)
+            }
+            _ => {
+                self.logger.always_log(&format!(
+                    "The version of the ledger ({}) is too high for this node",
+                    version
+                ));
+                Err(anyhow!("version too high"))
+            }
+        }
     }
 }

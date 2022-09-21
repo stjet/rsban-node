@@ -111,7 +111,6 @@ namespace lmdb
 		bool init_error () const override;
 
 	private:
-		bool do_upgrades (nano::write_transaction &, nano::ledger_constants & constants, bool &);
 		void open_databases (bool &, nano::transaction const &, unsigned);
 		bool vacuum_after_upgrade (boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a);
 

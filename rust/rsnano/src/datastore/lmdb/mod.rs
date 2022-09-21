@@ -34,7 +34,7 @@ pub use online_weight_store::LmdbOnlineWeightStore;
 pub use peer_store::LmdbPeerStore;
 pub use pending_store::LmdbPendingStore;
 pub use pruned_store::LmdbPrunedStore;
-pub use store::LmdbStore;
+pub use store::{LmdbStore, Vacuuming};
 pub use txn_tracker::TxnTracker;
 pub use unchecked_store::LmdbUncheckedStore;
 pub use version_store::LmdbVersionStore;

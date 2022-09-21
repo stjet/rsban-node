@@ -1,7 +1,7 @@
 use std::{ffi::CStr, path::Path, ptr, sync::Arc, time::Duration};
 
 use crate::{
-    datastore::lmdb::{EnvOptions, LmdbStore},
+    datastore::lmdb::{EnvOptions, LmdbStore, Vacuuming},
     ffi::{LmdbConfigDto, LoggerHandle, LoggerMT, TxnTrackingConfigDto},
     DiagnosticsConfig, LmdbConfig,
 };
@@ -201,4 +201,22 @@ pub unsafe extern "C" fn rsn_lmdb_store_open_databases(
     flags: u32,
 ) -> bool {
     (*handle).0.open_databases((*txn).as_txn(), flags).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_do_upgrades(
+    handle: *mut LmdbStoreHandle,
+    txn: *mut TransactionHandle,
+    needs_vacuuming: *mut bool,
+) -> bool {
+    match (*handle).0.do_upgrades((*txn).as_write_txn()) {
+        Ok(vacuuming) => {
+            *needs_vacuuming = vacuuming == Vacuuming::Needed;
+            true
+        }
+        Err(_) => {
+            *needs_vacuuming = false;
+            false
+        }
+    }
 }

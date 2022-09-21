@@ -80,15 +80,10 @@ namespace lmdb
 		store (store &&) = delete;
 		std::unique_ptr<nano::write_transaction> tx_begin_write (std::vector<nano::tables> const & tables_requiring_lock = {}, std::vector<nano::tables> const & tables_no_lock = {}) override;
 		std::unique_ptr<nano::read_transaction> tx_begin_read () const override;
-
 		std::string vendor_get () const override;
-
 		void serialize_mdb_tracker (boost::property_tree::ptree &, std::chrono::milliseconds, std::chrono::milliseconds) override;
-
 		static void create_backup_file (nano::mdb_env const &, boost::filesystem::path const &, nano::logger_mt &);
-
 		void serialize_memory_stats (boost::property_tree::ptree &) override;
-
 		unsigned max_block_write_batch_num () const override;
 		nano::block_store & block () override;
 		nano::frontier_store & frontier () override;
@@ -111,38 +106,13 @@ namespace lmdb
 			return env_m;
 		}
 
-		bool exists (nano::transaction const & transaction_a, tables table_a, nano::mdb_val const & key_a) const;
-
-		int get (nano::transaction const & transaction_a, tables table_a, nano::mdb_val const & key_a, nano::mdb_val & value_a) const;
-		int put (nano::write_transaction const & transaction_a, tables table_a, nano::mdb_val const & key_a, nano::mdb_val const & value_a) const;
-		int del (nano::write_transaction const & transaction_a, tables table_a, nano::mdb_val const & key_a) const;
-
 		bool copy_db (boost::filesystem::path const & destination_file) override;
 		void rebuild_db (nano::write_transaction const & transaction_a) override;
-
 		bool init_error () const override;
-
-		uint64_t count (nano::transaction const &, MDB_dbi) const;
 
 	private:
 		bool do_upgrades (nano::write_transaction &, nano::ledger_constants & constants, bool &);
 		void open_databases (bool &, nano::transaction const &, unsigned);
-
-		int drop (nano::write_transaction const & transaction_a, tables table_a) override;
-		int clear (nano::write_transaction const & transaction_a, MDB_dbi handle_a);
-
-		bool not_found (int status) const override;
-		bool success (int status) const override;
-		void release_assert_success (int const status) const
-		{
-			assert_success (status);
-		}
-		int status_code_not_found () const override;
-
-		MDB_dbi table_to_dbi (tables table_a) const;
-
-		uint64_t count (nano::transaction const & transaction_a, tables table_a) const override;
-
 		bool vacuum_after_upgrade (boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a);
 
 		friend class mdb_block_store_supported_version_upgrades_Test;

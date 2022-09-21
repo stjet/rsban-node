@@ -646,6 +646,8 @@ struct MdbEnv
 
 using MdbEnvCloseCallback = void (*) (MdbEnv *);
 
+using MdbEnvCopyCallback = int32_t (*) (MdbEnv *, const int8_t *);
+
 using MdbEnvCreateCallback = int32_t (*) (MdbEnv **);
 
 using MdbEnvOpenCallback = int32_t (*) (MdbEnv *, const int8_t *, uint32_t, uint32_t);
@@ -1470,6 +1472,8 @@ void rsn_callback_mdb_drop (MdbDropCallback f);
 
 void rsn_callback_mdb_env_close (MdbEnvCloseCallback f);
 
+void rsn_callback_mdb_env_copy (MdbEnvCopyCallback f);
+
 void rsn_callback_mdb_env_create (MdbEnvCreateCallback f);
 
 void rsn_callback_mdb_env_open (MdbEnvOpenCallback f);
@@ -2163,6 +2167,10 @@ bool use_no_mem_init,
 LoggerHandle * logger,
 const TxnTrackingConfigDto * txn_config,
 uint64_t block_processor_batch_max_time_ms);
+
+bool rsn_lmdb_store_create_backup_file (LmdbEnvHandle * env,
+const int8_t * path,
+LoggerHandle * logger);
 
 void rsn_lmdb_store_destroy (LmdbStoreHandle * handle);
 

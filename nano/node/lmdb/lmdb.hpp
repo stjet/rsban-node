@@ -82,7 +82,6 @@ namespace lmdb
 		std::unique_ptr<nano::read_transaction> tx_begin_read () const override;
 		std::string vendor_get () const override;
 		void serialize_mdb_tracker (boost::property_tree::ptree &, std::chrono::milliseconds, std::chrono::milliseconds) override;
-		static void create_backup_file (nano::mdb_env const &, boost::filesystem::path const &, nano::logger_mt &);
 		void serialize_memory_stats (boost::property_tree::ptree &) override;
 		unsigned max_block_write_batch_num () const override;
 		nano::block_store & block () override;

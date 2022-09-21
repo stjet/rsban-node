@@ -1,8 +1,12 @@
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{ffi::CString, path::Path, sync::Arc, time::Duration};
 
 use crate::{
-    datastore::{Transaction, VersionStore, WriteTransaction, STORE_VERSION_MINIMUM},
+    datastore::{
+        lmdb::{mdb_env_copy, MDB_SUCCESS},
+        Transaction, VersionStore, WriteTransaction, STORE_VERSION_MINIMUM,
+    },
     logger_mt::Logger,
+    utils::seconds_since_epoch,
     TxnTrackingConfig,
 };
 
@@ -100,5 +104,59 @@ impl LmdbStore {
                 Err(anyhow!("version too high"))
             }
         }
+    }
+}
+
+/// Takes a filepath, appends '_backup_<timestamp>' to the end (but before any extension) and saves that file in the same directory
+pub fn create_backup_file(
+    env: &LmdbEnv,
+    source_path: &Path,
+    logger: &dyn Logger,
+) -> anyhow::Result<()> {
+    let extension = source_path
+        .extension()
+        .ok_or_else(|| anyhow!("no extension"))?
+        .to_string_lossy();
+    let filename = source_path
+        .file_name()
+        .ok_or_else(|| anyhow!("no file name"))?
+        .to_string_lossy();
+    let filename_without_extension = source_path
+        .file_stem()
+        .ok_or_else(|| anyhow!("no file stem"))?
+        .to_string_lossy();
+    let mut backup_path = source_path
+        .parent()
+        .ok_or_else(|| anyhow!("no parent path"))?
+        .to_owned();
+    let backup_filename = format!(
+        "{}_backup_{}.{}",
+        filename_without_extension,
+        seconds_since_epoch(),
+        extension
+    );
+    backup_path.push(&backup_filename);
+
+    let start_message = format!("Performing {} backup before database upgrade...", filename);
+    logger.always_log(&start_message);
+    println!("{}", start_message);
+
+    let backup_path_cstr = CString::new(
+        backup_path
+            .as_os_str()
+            .to_str()
+            .ok_or_else(|| anyhow!("invalid backup path"))?,
+    )?;
+    let status = unsafe { mdb_env_copy(env.env(), backup_path_cstr.as_ptr()) };
+    if status != MDB_SUCCESS {
+        let error_message = format!("{} backup failed", filename);
+        logger.always_log(&error_message);
+        eprintln!("{}", error_message);
+        Err(anyhow!(error_message))
+    } else {
+        let success_message = format!("Backup created: {}", backup_filename);
+        logger.always_log(&success_message);
+        println!("{}", success_message);
+        Ok(())
     }
 }

@@ -1,7 +1,13 @@
-use std::{ffi::CStr, path::Path, ptr, sync::Arc, time::Duration};
+use std::{
+    ffi::CStr,
+    path::{Path, PathBuf},
+    ptr,
+    sync::Arc,
+    time::Duration,
+};
 
 use crate::{
-    datastore::lmdb::{EnvOptions, LmdbStore, Vacuuming},
+    datastore::lmdb::{create_backup_file, EnvOptions, LmdbStore, Vacuuming},
     ffi::{LmdbConfigDto, LoggerHandle, LoggerMT, TxnTrackingConfigDto},
     DiagnosticsConfig, LmdbConfig,
 };
@@ -219,4 +225,15 @@ pub unsafe extern "C" fn rsn_lmdb_store_do_upgrades(
             false
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_create_backup_file(
+    env: *mut LmdbEnvHandle,
+    path: *const i8,
+    logger: *mut LoggerHandle,
+) -> bool {
+    let logger = LoggerMT::new(Box::from_raw(logger));
+    let path = CStr::from_ptr(path);
+    create_backup_file(&*env, &PathBuf::from(path.to_str().unwrap()), &logger).is_ok()
 }

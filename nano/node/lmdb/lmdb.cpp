@@ -101,7 +101,8 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 				logger.always_log ("Upgrade in progress...");
 				if (backup_before_upgrade_a)
 				{
-					create_backup_file (env (), path_a, *logger_a);
+					auto path_str{ path_a.native () };
+					rsnano::rsn_lmdb_store_create_backup_file (env_m.handle, reinterpret_cast<const int8_t *> (path_str.data ()), nano::to_logger_handle (logger_a));
 				}
 			}
 			auto needs_vacuuming = false;
@@ -203,37 +204,6 @@ std::string nano::lmdb::store::vendor_get () const
 void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const & transaction_a, unsigned flags)
 {
 	error_a |= !rsnano::rsn_lmdb_store_open_databases (handle, transaction_a.get_rust_handle (), flags);
-}
-
-/** Takes a filepath, appends '_backup_<timestamp>' to the end (but before any extension) and saves that file in the same directory */
-void nano::lmdb::store::create_backup_file (nano::mdb_env const & env_a, boost::filesystem::path const & filepath_a, nano::logger_mt & logger_a)
-{
-	auto extension = filepath_a.extension ();
-	auto filename_without_extension = filepath_a.filename ().replace_extension ("");
-	auto orig_filepath = filepath_a;
-	auto & backup_path = orig_filepath.remove_filename ();
-	auto backup_filename = filename_without_extension;
-	backup_filename += "_backup_";
-	backup_filename += std::to_string (std::chrono::system_clock::now ().time_since_epoch ().count ());
-	backup_filename += extension;
-	auto backup_filepath = backup_path / backup_filename;
-	auto start_message (boost::str (boost::format ("Performing %1% backup before database upgrade...") % filepath_a.filename ()));
-	logger_a.always_log (start_message);
-	std::cout << start_message << std::endl;
-	auto error (mdb_env_copy (env_a, backup_filepath.string ().c_str ()));
-	if (error)
-	{
-		auto error_message (boost::str (boost::format ("%1% backup failed") % filepath_a.filename ()));
-		logger_a.always_log (error_message);
-		std::cerr << error_message << std::endl;
-		std::exit (1);
-	}
-	else
-	{
-		auto success_message (boost::str (boost::format ("Backup created: %1%") % backup_filename));
-		logger_a.always_log (success_message);
-		std::cout << success_message << std::endl;
-	}
 }
 
 bool nano::lmdb::store::copy_db (boost::filesystem::path const & destination_file)

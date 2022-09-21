@@ -34,7 +34,7 @@ pub use online_weight_store::LmdbOnlineWeightStore;
 pub use peer_store::LmdbPeerStore;
 pub use pending_store::LmdbPendingStore;
 pub use pruned_store::LmdbPrunedStore;
-pub use store::{LmdbStore, Vacuuming};
+pub use store::{create_backup_file, LmdbStore, Vacuuming};
 pub use txn_tracker::TxnTracker;
 pub use unchecked_store::LmdbUncheckedStore;
 pub use version_store::LmdbVersionStore;
@@ -401,6 +401,7 @@ pub type MdbEnvSyncCallback = extern "C" fn(*mut MdbEnv, i32) -> i32;
 pub type MdbEnvCloseCallback = extern "C" fn(*mut MdbEnv);
 pub type MdbStatCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbStat) -> i32;
 pub type MdbDropCallback = extern "C" fn(*mut MdbTxn, u32, i32) -> i32;
+pub type MdbEnvCopyCallback = extern "C" fn(*mut MdbEnv, *const i8) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -422,6 +423,7 @@ pub static mut MDB_ENV_SYNC: Option<MdbEnvSyncCallback> = None;
 pub static mut MDB_ENV_CLOSE: Option<MdbEnvCloseCallback> = None;
 pub static mut MDB_STAT: Option<MdbStatCallback> = None;
 pub static mut MDB_DROP: Option<MdbDropCallback> = None;
+pub static mut MDB_ENV_COPY: Option<MdbEnvCopyCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -530,6 +532,10 @@ pub unsafe fn mdb_stat(txn: *mut MdbTxn, dbi: u32, stat: &mut MdbStat) -> i32 {
 
 pub unsafe fn mdb_drop(txn: *mut MdbTxn, dbi: u32, del: i32) -> i32 {
     MDB_DROP.expect("MDB_DROP missing")(txn, dbi, del)
+}
+
+pub unsafe fn mdb_env_copy(env: *mut MdbEnv, target: *const i8) -> i32 {
+    MDB_ENV_COPY.expect("MDB_ENV_COPY missing")(env, target)
 }
 
 /// Successful result

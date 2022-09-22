@@ -146,7 +146,6 @@ namespace transport
 		// Connection start
 		void start_tcp (nano::endpoint const &);
 		void start_tcp_receive_node_id (std::shared_ptr<nano::transport::channel_tcp> const &, nano::endpoint const &, std::shared_ptr<std::vector<uint8_t>> const &);
-		void udp_fallback (nano::endpoint const &);
 		void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 
 		// channel_tcp_observer:

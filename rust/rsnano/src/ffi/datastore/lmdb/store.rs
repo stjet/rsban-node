@@ -1,5 +1,5 @@
 use std::{
-    ffi::CStr,
+    ffi::{c_void, CStr},
     path::{Path, PathBuf},
     ptr,
     sync::Arc,
@@ -11,7 +11,7 @@ use crate::{
         lmdb::{create_backup_file, EnvOptions, LmdbStore, Vacuuming},
         Store,
     },
-    ffi::{LmdbConfigDto, LoggerHandle, LoggerMT, TxnTrackingConfigDto},
+    ffi::{FfiPropertyTreeWriter, LmdbConfigDto, LoggerHandle, LoggerMT, TxnTrackingConfigDto},
     DiagnosticsConfig, LmdbConfig,
 };
 
@@ -267,6 +267,17 @@ pub unsafe extern "C" fn rsn_lmdb_store_rebuild_db(
     txn: *mut TransactionHandle,
 ) {
     if let Err(e) = (*handle).0.rebuild_db((*txn).as_write_txn()) {
-        eprintln!("rebuild db  failed: {:?}", e);
+        eprintln!("rebuild db failed: {:?}", e);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_serialize_memory_stats(
+    handle: *mut LmdbStoreHandle,
+    ptree: *mut c_void,
+) {
+    let mut writer = FfiPropertyTreeWriter::new_borrowed(ptree);
+    if let Err(e) = (*handle).0.serialize_memory_stats(&mut writer) {
+        eprintln!("memory stat serialization failed: {:?}", e);
     }
 }

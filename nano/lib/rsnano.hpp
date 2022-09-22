@@ -658,12 +658,6 @@ using MdbEnvSetMapSizeCallback = int32_t (*) (MdbEnv *, uintptr_t);
 
 using MdbEnvSetMaxDbsCallback = int32_t (*) (MdbEnv *, uint32_t);
 
-using MdbEnvSyncCallback = int32_t (*) (MdbEnv *, int32_t);
-
-using MdbGetCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
-
-using MdbPutCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *, uint32_t);
-
 /// @brief Statistics for a database in the environment
 struct MdbStat
 {
@@ -680,6 +674,14 @@ struct MdbStat
 	/// Number of data items
 	uintptr_t ms_entries;
 };
+
+using MdbEnvStatCallback = int32_t (*) (MdbEnv *, MdbStat *);
+
+using MdbEnvSyncCallback = int32_t (*) (MdbEnv *, int32_t);
+
+using MdbGetCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
+
+using MdbPutCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *, uint32_t);
 
 using MdbStatCallback = int32_t (*) (MdbTxn *, uint32_t, MdbStat *);
 
@@ -1486,6 +1488,8 @@ void rsn_callback_mdb_env_set_map_size (MdbEnvSetMapSizeCallback f);
 
 void rsn_callback_mdb_env_set_max_dbs (MdbEnvSetMaxDbsCallback f);
 
+void rsn_callback_mdb_env_stat (MdbEnvStatCallback f);
+
 void rsn_callback_mdb_env_sync (MdbEnvSyncCallback f);
 
 void rsn_callback_mdb_get (MdbGetCallback f);
@@ -2201,6 +2205,8 @@ LmdbPendingStoreHandle * rsn_lmdb_store_pending (LmdbStoreHandle * handle);
 LmdbPrunedStoreHandle * rsn_lmdb_store_pruned (LmdbStoreHandle * handle);
 
 void rsn_lmdb_store_rebuild_db (LmdbStoreHandle * handle, TransactionHandle * txn);
+
+void rsn_lmdb_store_serialize_memory_stats (LmdbStoreHandle * handle, void * ptree);
 
 LmdbUncheckedStoreHandle * rsn_lmdb_store_unchecked (LmdbStoreHandle * handle);
 

@@ -6,16 +6,16 @@ use crate::{
         Store, Transaction, VersionStore, WriteTransaction, STORE_VERSION_MINIMUM,
     },
     logger_mt::Logger,
-    utils::{seconds_since_epoch, Serialize},
+    utils::{seconds_since_epoch, PropertyTreeWriter, Serialize},
     LmdbConfig, PendingKey, TxnTrackingConfig,
 };
 
 use super::{
-    ensure_success, get_raw_lmdb_txn, mdb_count, mdb_dbi_open, mdb_drop, mdb_env_copy2, mdb_put,
-    EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv,
-    LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
-    LmdbPrunedStore, LmdbRawIterator, LmdbUncheckedStore, LmdbVersionStore, MdbVal, MDB_APPEND,
-    MDB_CP_COMPACT, MDB_CREATE,
+    ensure_success, get_raw_lmdb_txn, mdb_count, mdb_dbi_open, mdb_drop, mdb_env_copy2,
+    mdb_env_stat, mdb_put, EnvOptions, LmdbAccountStore, LmdbBlockStore,
+    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
+    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbRawIterator,
+    LmdbUncheckedStore, LmdbVersionStore, MdbStat, MdbVal, MDB_APPEND, MDB_CP_COMPACT, MDB_CREATE,
 };
 
 #[derive(PartialEq, Eq)]
@@ -236,6 +236,19 @@ impl LmdbStore {
 
             unsafe { mdb_drop(raw_txn, temp, 1) };
         }
+        Ok(())
+    }
+
+    pub fn serialize_memory_stats(&self, json: &mut dyn PropertyTreeWriter) -> anyhow::Result<()> {
+        let mut stats = MdbStat::default();
+        let status = unsafe { mdb_env_stat(self.env.env(), &mut stats) };
+        ensure_success(status)?;
+        json.put_u64("branch_pages", stats.ms_branch_pages as u64)?;
+        json.put_u64("depth", stats.ms_depth as u64)?;
+        json.put_u64("entries", stats.ms_entries as u64)?;
+        json.put_u64("leaf_pages", stats.ms_leaf_pages as u64)?;
+        json.put_u64("overflow_pages", stats.ms_overflow_pages as u64)?;
+        json.put_u64("page_size", stats.ms_psize as u64)?;
         Ok(())
     }
 }

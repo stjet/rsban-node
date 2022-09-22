@@ -147,15 +147,7 @@ void nano::lmdb::store::serialize_mdb_tracker (boost::property_tree::ptree & jso
 
 void nano::lmdb::store::serialize_memory_stats (boost::property_tree::ptree & json)
 {
-	MDB_stat stats;
-	auto status (mdb_env_stat (env ().env (), &stats));
-	release_assert (status == 0);
-	json.put ("branch_pages", stats.ms_branch_pages);
-	json.put ("depth", stats.ms_depth);
-	json.put ("entries", stats.ms_entries);
-	json.put ("leaf_pages", stats.ms_leaf_pages);
-	json.put ("overflow_pages", stats.ms_overflow_pages);
-	json.put ("page_size", stats.ms_psize);
+	rsnano::rsn_lmdb_store_serialize_memory_stats (handle, &json);
 }
 
 std::unique_ptr<nano::write_transaction> nano::lmdb::store::tx_begin_write (std::vector<nano::tables> const &, std::vector<nano::tables> const &)

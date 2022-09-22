@@ -403,6 +403,7 @@ pub type MdbStatCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbStat) -> i32;
 pub type MdbDropCallback = extern "C" fn(*mut MdbTxn, u32, i32) -> i32;
 pub type MdbEnvCopyCallback = extern "C" fn(*mut MdbEnv, *const i8) -> i32;
 pub type MdbEnvCopy2Callback = extern "C" fn(*mut MdbEnv, *const i8, u32) -> i32;
+pub type MdbEnvStatCallback = extern "C" fn(*mut MdbEnv, *mut MdbStat) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -426,6 +427,7 @@ pub static mut MDB_STAT: Option<MdbStatCallback> = None;
 pub static mut MDB_DROP: Option<MdbDropCallback> = None;
 pub static mut MDB_ENV_COPY: Option<MdbEnvCopyCallback> = None;
 pub static mut MDB_ENV_COPY2: Option<MdbEnvCopy2Callback> = None;
+pub static mut MDB_ENV_STAT: Option<MdbEnvStatCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -543,6 +545,11 @@ pub unsafe fn mdb_env_copy(env: *mut MdbEnv, target: *const i8) -> i32 {
 pub unsafe fn mdb_env_copy2(env: *mut MdbEnv, path: *const i8, flags: u32) -> i32 {
     MDB_ENV_COPY2.expect("MDB_ENV_COPY2 missing")(env, path, flags)
 }
+
+pub unsafe fn mdb_env_stat(env: *mut MdbEnv, stat: *mut MdbStat) -> i32 {
+    MDB_ENV_STAT.expect("MDB_ENV_STAT missing")(env, stat)
+}
+
 /// Successful result
 const MDB_SUCCESS: i32 = 0;
 

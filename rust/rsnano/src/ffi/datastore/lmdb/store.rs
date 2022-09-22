@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     datastore::{
-        lmdb::{create_backup_file, EnvOptions, LmdbStore, Vacuuming},
+        lmdb::{create_backup_file, EnvOptions, LmdbStore},
         Store,
     },
     ffi::{FfiPropertyTreeWriter, LmdbConfigDto, LoggerHandle, LoggerMT, TxnTrackingConfigDto},
@@ -36,6 +36,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_create(
     logger: *mut LoggerHandle,
     txn_config: *const TxnTrackingConfigDto,
     block_processor_batch_max_time_ms: u64,
+    backup_before_upgrade: bool,
 ) -> *mut LmdbStoreHandle {
     let config = LmdbConfig::from(&*lmdb_config);
     let options = EnvOptions {
@@ -54,6 +55,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_create(
         txn_config,
         block_processor_batch_max_time,
         logger,
+        backup_before_upgrade,
     );
     match store {
         Ok(s) => {
@@ -204,33 +206,6 @@ pub unsafe extern "C" fn rsn_lmdb_store_version(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_store_open_databases(
-    handle: *mut LmdbStoreHandle,
-    txn: *mut TransactionHandle,
-    flags: u32,
-) -> bool {
-    (*handle).0.open_databases((*txn).as_txn(), flags).is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_store_do_upgrades(
-    handle: *mut LmdbStoreHandle,
-    txn: *mut TransactionHandle,
-    needs_vacuuming: *mut bool,
-) -> bool {
-    match (*handle).0.do_upgrades((*txn).as_write_txn()) {
-        Ok(vacuuming) => {
-            *needs_vacuuming = vacuuming == Vacuuming::Needed;
-            true
-        }
-        Err(_) => {
-            *needs_vacuuming = false;
-            false
-        }
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_store_create_backup_file(
     env: *mut LmdbEnvHandle,
     path: *const i8,
@@ -248,17 +223,6 @@ pub unsafe extern "C" fn rsn_lmdb_store_copy_db(
 ) -> bool {
     let path = PathBuf::from(CStr::from_ptr(path).to_str().unwrap());
     (*handle).0.copy_db(&path).is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_store_vacuum_after_upgrade(
-    handle: *mut LmdbStoreHandle,
-    path: *const i8,
-    config: *const LmdbConfigDto,
-) -> bool {
-    let config = LmdbConfig::from(&*config);
-    let path = PathBuf::from(CStr::from_ptr(path).to_str().unwrap());
-    (*handle).0.vacuum_after_upgrade(&path, config).is_ok()
 }
 
 #[no_mangle]

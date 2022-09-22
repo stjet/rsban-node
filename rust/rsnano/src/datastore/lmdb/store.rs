@@ -3,7 +3,8 @@ use std::{ffi::CString, path::Path, sync::Arc, time::Duration};
 use crate::{
     datastore::{
         lmdb::{mdb_env_copy, MDB_SUCCESS},
-        Store, Transaction, VersionStore, WriteTransaction, STORE_VERSION_MINIMUM,
+        Store, Transaction, VersionStore, WriteTransaction, STORE_VERSION_CURRENT,
+        STORE_VERSION_MINIMUM,
     },
     logger_mt::Logger,
     utils::{seconds_since_epoch, PropertyTreeWriter, Serialize},
@@ -11,8 +12,8 @@ use crate::{
 };
 
 use super::{
-    ensure_success, get_raw_lmdb_txn, mdb_count, mdb_dbi_open, mdb_drop, mdb_env_copy2,
-    mdb_env_stat, mdb_put, EnvOptions, LmdbAccountStore, LmdbBlockStore,
+    ensure_success, get_raw_lmdb_txn, mdb_count, mdb_dbi_close, mdb_dbi_open, mdb_drop,
+    mdb_env_copy2, mdb_env_stat, mdb_put, EnvOptions, LmdbAccountStore, LmdbBlockStore,
     LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
     LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbRawIterator,
     LmdbUncheckedStore, LmdbVersionStore, MdbStat, MdbVal, MDB_APPEND, MDB_CP_COMPACT, MDB_CREATE,
@@ -47,6 +48,7 @@ impl LmdbStore {
         tracking_cfg: TxnTrackingConfig,
         block_processor_batch_max_time: Duration,
         logger: Arc<dyn Logger>,
+        backup_before_upgrade: bool,
     ) -> anyhow::Result<Self> {
         let env = Arc::new(LmdbEnv::with_tracking(
             path,
@@ -56,7 +58,7 @@ impl LmdbStore {
             logger.clone(),
         )?);
 
-        Ok(Self {
+        let store = Self {
             env: env.clone(),
             block_store: Arc::new(LmdbBlockStore::new(env.clone())),
             frontier_store: Arc::new(LmdbFrontierStore::new(env.clone())),
@@ -70,7 +72,51 @@ impl LmdbStore {
             unchecked_store: Arc::new(LmdbUncheckedStore::new(env.clone())),
             version_store: Arc::new(LmdbVersionStore::new(env.clone())),
             logger,
-        })
+        };
+
+        let mut is_fully_upgraded = false;
+        let mut is_fresh_db = false;
+        {
+            let transaction = store.env.tx_begin_read();
+            if store.version_store.open_db(&transaction, 0).is_ok() {
+                is_fully_upgraded = store.version_store.get(&transaction) == STORE_VERSION_CURRENT;
+                unsafe {
+                    mdb_dbi_close(store.env.env(), store.version_store.db_handle());
+                }
+            } else {
+                is_fresh_db = true;
+            }
+        }
+
+        // Only open a write lock when upgrades are needed. This is because CLI commands
+        // open inactive nodes which can otherwise be locked here if there is a long write
+        // (can be a few minutes with the --fast_bootstrap flag for instance)
+        if !is_fully_upgraded {
+            if !is_fresh_db {
+                store.logger.always_log("Upgrade in progress...");
+                if backup_before_upgrade {
+                    create_backup_file(&store.env, path, store.logger.as_ref())?;
+                }
+            }
+            let vacuuming = {
+                let transaction = store.env.tx_begin_write();
+                store.open_databases(&transaction, MDB_CREATE)?;
+                store.do_upgrades(&transaction)?
+            };
+
+            if vacuuming == Vacuuming::Needed {
+                store.logger.always_log("Preparing vacuum...");
+                match store.vacuum_after_upgrade (path, &options.config){
+                    Ok(_) => store.logger.always_log("Vacuum succeeded."),
+                    Err(_) => store.logger.always_log("Failed to vacuum. (Optional) Ensure enough disk space is available for a copy of the database and try to vacuum after shutting down the node"),
+                }
+            }
+        } else {
+            let transaction = store.env.tx_begin_read();
+            store.open_databases(&transaction, 0)?;
+        }
+
+        Ok(store)
     }
 
     pub fn open_databases(&self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
@@ -108,7 +154,7 @@ impl LmdbStore {
         }
     }
 
-    pub fn vacuum_after_upgrade(&self, path: &Path, config: LmdbConfig) -> anyhow::Result<()> {
+    pub fn vacuum_after_upgrade(&self, path: &Path, config: &LmdbConfig) -> anyhow::Result<()> {
         // Vacuum the database. This is not a required step and may actually fail if there isn't enough storage space.
         let mut vacuum_path = path.to_owned();
         vacuum_path.pop();
@@ -123,7 +169,7 @@ impl LmdbStore {
 
                 // Set up the environment again
                 let options = EnvOptions {
-                    config,
+                    config: config.clone(),
                     use_no_mem_init: true,
                 };
                 self.env.init(path, &options)?;

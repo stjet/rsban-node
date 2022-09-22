@@ -634,15 +634,17 @@ struct MdbTxn
 
 using MdbCursorOpenCallback = int32_t (*) (MdbTxn *, uint32_t, MdbCursor **);
 
+struct MdbEnv
+{
+};
+
+using MdbDbiCloseCallback = void (*) (MdbEnv *, uint32_t);
+
 using MdbDbiOpenCallback = int32_t (*) (MdbTxn *, const int8_t *, uint32_t, uint32_t *);
 
 using MdbDelCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
 
 using MdbDropCallback = int32_t (*) (MdbTxn *, uint32_t, int32_t);
-
-struct MdbEnv
-{
-};
 
 using MdbEnvCloseCallback = void (*) (MdbEnv *);
 
@@ -1468,6 +1470,8 @@ void rsn_callback_mdb_cursor_get (MdbCursorGetCallback f);
 
 void rsn_callback_mdb_cursor_open (MdbCursorOpenCallback f);
 
+void rsn_callback_mdb_dbi_close (MdbDbiCloseCallback f);
+
 void rsn_callback_mdb_dbi_open (MdbDbiOpenCallback f);
 
 void rsn_callback_mdb_del (MdbDelCallback f);
@@ -2176,17 +2180,14 @@ const LmdbConfigDto * lmdb_config,
 bool use_no_mem_init,
 LoggerHandle * logger,
 const TxnTrackingConfigDto * txn_config,
-uint64_t block_processor_batch_max_time_ms);
+uint64_t block_processor_batch_max_time_ms,
+bool backup_before_upgrade);
 
 bool rsn_lmdb_store_create_backup_file (LmdbEnvHandle * env,
 const int8_t * path,
 LoggerHandle * logger);
 
 void rsn_lmdb_store_destroy (LmdbStoreHandle * handle);
-
-bool rsn_lmdb_store_do_upgrades (LmdbStoreHandle * handle,
-TransactionHandle * txn,
-bool * needs_vacuuming);
 
 LmdbEnvHandle * rsn_lmdb_store_env (LmdbStoreHandle * handle);
 
@@ -2195,8 +2196,6 @@ LmdbFinalVoteStoreHandle * rsn_lmdb_store_final_vote (LmdbStoreHandle * handle);
 LmdbFrontierStoreHandle * rsn_lmdb_store_frontier (LmdbStoreHandle * handle);
 
 LmdbOnlineWeightStoreHandle * rsn_lmdb_store_online_weight (LmdbStoreHandle * handle);
-
-bool rsn_lmdb_store_open_databases (LmdbStoreHandle * handle, TransactionHandle * txn, uint32_t flags);
 
 LmdbPeerStoreHandle * rsn_lmdb_store_peer (LmdbStoreHandle * handle);
 
@@ -2209,10 +2208,6 @@ void rsn_lmdb_store_rebuild_db (LmdbStoreHandle * handle, TransactionHandle * tx
 void rsn_lmdb_store_serialize_memory_stats (LmdbStoreHandle * handle, void * ptree);
 
 LmdbUncheckedStoreHandle * rsn_lmdb_store_unchecked (LmdbStoreHandle * handle);
-
-bool rsn_lmdb_store_vacuum_after_upgrade (LmdbStoreHandle * handle,
-const int8_t * path,
-const LmdbConfigDto * config);
 
 LmdbVersionStoreHandle * rsn_lmdb_store_version (LmdbStoreHandle * handle);
 

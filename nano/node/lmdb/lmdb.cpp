@@ -38,29 +38,17 @@ void mdb_val::convert_buffer_to_value ()
 }
 namespace
 {
-rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, boost::filesystem::path const & path_a, nano::mdb_env::options options_a, const std::shared_ptr<nano::logger_mt> & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a)
+rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, boost::filesystem::path const & path_a, nano::mdb_env::options options_a, const std::shared_ptr<nano::logger_mt> & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, bool backup_before_upgrade)
 {
 	auto path_string{ path_a.string () };
 	auto config_dto{ options_a.config.to_dto () };
 	auto txn_config_dto{ txn_tracking_config_a.to_dto () };
-	return rsnano::rsn_lmdb_store_create (&error_a, reinterpret_cast<const int8_t *> (path_string.c_str ()), &config_dto, options_a.use_no_mem_init, nano::to_logger_handle (logger_a), &txn_config_dto, block_processor_batch_max_time_a.count ());
-}
-
-void release_assert_success (int const status)
-{
-	nano::assert_success (status);
-}
-uint64_t count (nano::mdb_env const & env, nano::transaction const & transaction_a, MDB_dbi db_a)
-{
-	MDB_stat stats;
-	auto status (mdb_stat (env.tx (transaction_a), db_a, &stats));
-	release_assert_success (status);
-	return (stats.ms_entries);
+	return rsnano::rsn_lmdb_store_create (&error_a, reinterpret_cast<const int8_t *> (path_string.c_str ()), &config_dto, options_a.use_no_mem_init, nano::to_logger_handle (logger_a), &txn_config_dto, block_processor_batch_max_time_a.count (), backup_before_upgrade);
 }
 }
 
 nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
-	handle{ create_store_handle (error, path_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true), logger_a, txn_tracking_config_a, block_processor_batch_max_time_a) },
+	handle{ create_store_handle (error, path_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true), logger_a, txn_tracking_config_a, block_processor_batch_max_time_a, backup_before_upgrade_a) },
 	env_m{ rsnano::rsn_lmdb_store_env (handle) },
 	block_store{ rsnano::rsn_lmdb_store_block (handle) },
 	frontier_store{ rsnano::rsn_lmdb_store_frontier (handle) },
@@ -72,72 +60,14 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 	confirmation_height_store{ rsnano::rsn_lmdb_store_confirmation_height (handle) },
 	final_vote_store{ rsnano::rsn_lmdb_store_final_vote (handle) },
 	unchecked_store{ rsnano::rsn_lmdb_store_unchecked (handle) },
-	version_store{ rsnano::rsn_lmdb_store_version (handle) },
-	logger (*logger_a)
+	version_store{ rsnano::rsn_lmdb_store_version (handle) }
 {
-	if (!error)
-	{
-		auto is_fully_upgraded (false);
-		auto is_fresh_db (false);
-		{
-			auto transaction (tx_begin_read ());
-			auto err = version_store.open_db (*transaction, 0);
-			if (err == MDB_SUCCESS)
-			{
-				is_fully_upgraded = (version_store.get (*transaction) == version_current);
-				mdb_dbi_close (env (), version_store.table_handle ());
-			}
-		}
-
-		// Only open a write lock when upgrades are needed. This is because CLI commands
-		// open inactive nodes which can otherwise be locked here if there is a long write
-		// (can be a few minutes with the --fast_bootstrap flag for instance)
-		if (!is_fully_upgraded)
-		{
-			if (!is_fresh_db)
-			{
-				logger.always_log ("Upgrade in progress...");
-				if (backup_before_upgrade_a)
-				{
-					auto path_str{ path_a.native () };
-					rsnano::rsn_lmdb_store_create_backup_file (env_m.handle, reinterpret_cast<const int8_t *> (path_str.data ()), nano::to_logger_handle (logger_a));
-				}
-			}
-			auto needs_vacuuming = false;
-			{
-				auto transaction (tx_begin_write ());
-				open_databases (error, *transaction, MDB_CREATE);
-				if (!error)
-				{
-					error |= !rsnano::rsn_lmdb_store_do_upgrades (handle, transaction->get_rust_handle (), &needs_vacuuming);
-				}
-			}
-
-			if (needs_vacuuming)
-			{
-				logger.always_log ("Preparing vacuum...");
-				auto vacuum_success = vacuum_after_upgrade (path_a, lmdb_config_a);
-				logger.always_log (vacuum_success ? "Vacuum succeeded." : "Failed to vacuum. (Optional) Ensure enough disk space is available for a copy of the database and try to vacuum after shutting down the node");
-			}
-		}
-		else
-		{
-			auto transaction (tx_begin_read ());
-			open_databases (error, *transaction, 0);
-		}
-	}
 }
 
 nano::lmdb::store::~store ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_lmdb_store_destroy (handle);
-}
-
-bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a)
-{
-	auto config_dto{ lmdb_config_a.to_dto () };
-	return rsnano::rsn_lmdb_store_vacuum_after_upgrade (handle, reinterpret_cast<const int8_t *> (path_a.string ().c_str ()), &config_dto);
 }
 
 void nano::lmdb::store::serialize_mdb_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time)
@@ -163,11 +93,6 @@ std::unique_ptr<nano::read_transaction> nano::lmdb::store::tx_begin_read () cons
 std::string nano::lmdb::store::vendor_get () const
 {
 	return boost::str (boost::format ("LMDB %1%.%2%.%3%") % MDB_VERSION_MAJOR % MDB_VERSION_MINOR % MDB_VERSION_PATCH);
-}
-
-void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const & transaction_a, unsigned flags)
-{
-	error_a |= !rsnano::rsn_lmdb_store_open_databases (handle, transaction_a.get_rust_handle (), flags);
 }
 
 bool nano::lmdb::store::copy_db (boost::filesystem::path const & destination_file)

@@ -95,24 +95,11 @@ namespace lmdb
 		nano::confirmation_height_store & confirmation_height () override;
 		nano::final_vote_store & final_vote () override;
 		nano::version_store & version () override;
-
-	private:
-		nano::logger_mt & logger;
-
-	public:
-		nano::mdb_env const & env () const
-		{
-			return env_m;
-		}
-
 		bool copy_db (boost::filesystem::path const & destination_file) override;
 		void rebuild_db (nano::write_transaction const & transaction_a) override;
 		bool init_error () const override;
 
 	private:
-		void open_databases (bool &, nano::transaction const &, unsigned);
-		bool vacuum_after_upgrade (boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a);
-
 		friend class mdb_block_store_supported_version_upgrades_Test;
 		friend class block_store_DISABLED_change_dupsort_Test;
 	};

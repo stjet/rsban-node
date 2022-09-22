@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::utils::TomlWriter;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum SyncStrategy {
     /** Always flush to disk on commit. This is default. */
     Always,
@@ -24,6 +24,7 @@ pub enum SyncStrategy {
     NosyncUnsafeLargeMemory,
 }
 
+#[derive(Clone)]
 pub struct LmdbConfig {
     pub sync: SyncStrategy,
     pub max_databases: u32,

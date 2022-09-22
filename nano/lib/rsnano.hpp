@@ -2200,6 +2200,8 @@ LmdbPendingStoreHandle * rsn_lmdb_store_pending (LmdbStoreHandle * handle);
 
 LmdbPrunedStoreHandle * rsn_lmdb_store_pruned (LmdbStoreHandle * handle);
 
+void rsn_lmdb_store_rebuild_db (LmdbStoreHandle * handle, TransactionHandle * txn);
+
 LmdbUncheckedStoreHandle * rsn_lmdb_store_unchecked (LmdbStoreHandle * handle);
 
 bool rsn_lmdb_store_vacuum_after_upgrade (LmdbStoreHandle * handle,

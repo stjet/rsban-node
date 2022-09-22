@@ -260,3 +260,13 @@ pub unsafe extern "C" fn rsn_lmdb_store_vacuum_after_upgrade(
     let path = PathBuf::from(CStr::from_ptr(path).to_str().unwrap());
     (*handle).0.vacuum_after_upgrade(&path, config).is_ok()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_rebuild_db(
+    handle: *mut LmdbStoreHandle,
+    txn: *mut TransactionHandle,
+) {
+    if let Err(e) = (*handle).0.rebuild_db((*txn).as_write_txn()) {
+        eprintln!("rebuild db  failed: {:?}", e);
+    }
+}

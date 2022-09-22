@@ -6,15 +6,16 @@ use crate::{
         Store, Transaction, VersionStore, WriteTransaction, STORE_VERSION_MINIMUM,
     },
     logger_mt::Logger,
-    utils::seconds_since_epoch,
-    LmdbConfig, TxnTrackingConfig,
+    utils::{seconds_since_epoch, Serialize},
+    LmdbConfig, PendingKey, TxnTrackingConfig,
 };
 
 use super::{
-    ensure_success, mdb_env_copy2, EnvOptions, LmdbAccountStore, LmdbBlockStore,
-    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
-    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbUncheckedStore,
-    LmdbVersionStore, MDB_CP_COMPACT,
+    ensure_success, get_raw_lmdb_txn, mdb_count, mdb_dbi_open, mdb_drop, mdb_env_copy2, mdb_put,
+    EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv,
+    LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
+    LmdbPrunedStore, LmdbRawIterator, LmdbUncheckedStore, LmdbVersionStore, MdbVal, MDB_APPEND,
+    MDB_CP_COMPACT, MDB_CREATE,
 };
 
 #[derive(PartialEq, Eq)]
@@ -135,6 +136,107 @@ impl LmdbStore {
                 Err(e)
             }
         }
+    }
+
+    pub fn rebuild_db(&self, txn: &dyn WriteTransaction) -> anyhow::Result<()> {
+        let raw_txn = get_raw_lmdb_txn(txn.as_transaction());
+        // Tables with uint256_union key
+        let tables = [
+            self.account_store.db_handle(),
+            self.block_store.db_handle(),
+            self.pruned_store.db_handle(),
+            self.confirmation_height_store.db_handle(),
+        ];
+        for table in tables {
+            let mut temp = 0;
+            unsafe {
+                mdb_dbi_open(raw_txn, "temp_table", MDB_CREATE, &mut temp);
+            }
+            // Copy all values to temporary table
+
+            let mut i = LmdbRawIterator::new(raw_txn, table, &MdbVal::new(), true, 32);
+            while i.key.mv_size > 0 {
+                let s = unsafe { mdb_put(raw_txn, temp, &mut i.key, &mut i.value, MDB_APPEND) };
+                ensure_success(s)?;
+                i.next();
+            }
+
+            if unsafe { mdb_count(raw_txn, table) != mdb_count(raw_txn, temp) } {
+                bail!("table count mismatch");
+            }
+
+            // Clear existing table
+            unsafe { mdb_drop(raw_txn, table, 0) };
+            // Put values from copy
+            let mut i = LmdbRawIterator::new(raw_txn, temp, &MdbVal::new(), true, 32);
+            while i.key.mv_size > 0 {
+                let s = unsafe { mdb_put(raw_txn, table, &mut i.key, &mut i.value, MDB_APPEND) };
+                ensure_success(s)?;
+                i.next();
+            }
+
+            if unsafe { mdb_count(raw_txn, table) != mdb_count(raw_txn, temp) } {
+                bail!("table count mismatch");
+            }
+            // Remove temporary table
+            unsafe { mdb_drop(raw_txn, temp, 1) };
+        }
+        // Pending table
+        {
+            let mut temp = 0;
+            unsafe {
+                mdb_dbi_open(raw_txn, "temp_table", MDB_CREATE, &mut temp);
+            }
+            // Copy all values to temporary table
+            let mut i = LmdbRawIterator::new(
+                raw_txn,
+                self.pending_store.db_handle(),
+                &MdbVal::new(),
+                true,
+                PendingKey::serialized_size(),
+            );
+            while i.key.mv_size > 0 {
+                let s = unsafe { mdb_put(raw_txn, temp, &mut i.key, &mut i.value, MDB_APPEND) };
+                ensure_success(s)?;
+                i.next();
+            }
+
+            if unsafe {
+                mdb_count(raw_txn, self.pending_store.db_handle()) != mdb_count(raw_txn, temp)
+            } {
+                bail!("table count mismatch");
+            }
+            unsafe { mdb_drop(raw_txn, self.pending_store.db_handle(), 0) };
+            // Put values from copy
+            let mut i = LmdbRawIterator::new(
+                raw_txn,
+                temp,
+                &MdbVal::new(),
+                true,
+                PendingKey::serialized_size(),
+            );
+            while i.key.mv_size > 0 {
+                let s = unsafe {
+                    mdb_put(
+                        raw_txn,
+                        self.pending_store.db_handle(),
+                        &mut i.key,
+                        &mut i.value,
+                        MDB_APPEND,
+                    )
+                };
+                ensure_success(s)?;
+                i.next();
+            }
+            if unsafe {
+                mdb_count(raw_txn, self.pending_store.db_handle()) != mdb_count(raw_txn, temp)
+            } {
+                bail!("table count mismatch");
+            }
+
+            unsafe { mdb_drop(raw_txn, temp, 1) };
+        }
+        Ok(())
     }
 }
 

@@ -549,6 +549,12 @@ const MDB_SUCCESS: i32 = 0;
 /// key/data pair not found (EOF)
 const MDB_NOTFOUND: i32 = -30798;
 
+/// create DB if not already existing */
+const MDB_CREATE: u32 = 0x40000;
+
+/// Data is being appended, don't split full pages. */
+const MDB_APPEND: u32 = 0x20000;
+
 /// Compacting copy: Omit free space from copy, and renumber all
 /// pages sequentially.
 const MDB_CP_COMPACT: u32 = 0x01;

@@ -20,15 +20,15 @@ use crate::{
         lmdb::{
             LmdbReadTransaction, LmdbWriteTransaction, MdbCursorCloseCallback,
             MdbCursorGetCallback, MdbCursorOpenCallback, MdbDbiOpenCallback, MdbDelCallback,
-            MdbDropCallback, MdbEnv, MdbEnvCloseCallback, MdbEnvCopyCallback, MdbEnvCreateCallback,
-            MdbEnvOpenCallback, MdbEnvSetMapSizeCallback, MdbEnvSetMaxDbsCallback,
-            MdbEnvSyncCallback, MdbGetCallback, MdbPutCallback, MdbStatCallback,
-            MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback, MdbTxnCommitCallback,
-            MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks, MDB_CURSOR_CLOSE,
-            MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_DEL, MDB_DROP, MDB_ENV_CLOSE,
-            MDB_ENV_COPY, MDB_ENV_CREATE, MDB_ENV_OPEN, MDB_ENV_SET_MAP_SIZE, MDB_ENV_SET_MAX_DBS,
-            MDB_ENV_SYNC, MDB_GET, MDB_PUT, MDB_STAT, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT,
-            MDB_TXN_RENEW, MDB_TXN_RESET,
+            MdbDropCallback, MdbEnv, MdbEnvCloseCallback, MdbEnvCopy2Callback, MdbEnvCopyCallback,
+            MdbEnvCreateCallback, MdbEnvOpenCallback, MdbEnvSetMapSizeCallback,
+            MdbEnvSetMaxDbsCallback, MdbEnvSyncCallback, MdbGetCallback, MdbPutCallback,
+            MdbStatCallback, MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback,
+            MdbTxnCommitCallback, MdbTxnRenewCallback, MdbTxnResetCallback, TxnCallbacks,
+            MDB_CURSOR_CLOSE, MDB_CURSOR_GET, MDB_CURSOR_OPEN, MDB_DBI_OPEN, MDB_DEL, MDB_DROP,
+            MDB_ENV_CLOSE, MDB_ENV_COPY, MDB_ENV_COPY2, MDB_ENV_CREATE, MDB_ENV_OPEN,
+            MDB_ENV_SET_MAP_SIZE, MDB_ENV_SET_MAX_DBS, MDB_ENV_SYNC, MDB_GET, MDB_PUT, MDB_STAT,
+            MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW, MDB_TXN_RESET,
         },
         Transaction,
     },
@@ -311,4 +311,9 @@ pub unsafe extern "C" fn rsn_callback_mdb_drop(f: MdbDropCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_mdb_env_copy(f: MdbEnvCopyCallback) {
     MDB_ENV_COPY = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_mdb_env_copy2(f: MdbEnvCopy2Callback) {
+    MDB_ENV_COPY2 = Some(f);
 }

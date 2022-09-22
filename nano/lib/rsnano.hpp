@@ -648,6 +648,8 @@ using MdbEnvCloseCallback = void (*) (MdbEnv *);
 
 using MdbEnvCopyCallback = int32_t (*) (MdbEnv *, const int8_t *);
 
+using MdbEnvCopy2Callback = int32_t (*) (MdbEnv *, const int8_t *, uint32_t);
+
 using MdbEnvCreateCallback = int32_t (*) (MdbEnv **);
 
 using MdbEnvOpenCallback = int32_t (*) (MdbEnv *, const int8_t *, uint32_t, uint32_t);
@@ -1474,6 +1476,8 @@ void rsn_callback_mdb_env_close (MdbEnvCloseCallback f);
 
 void rsn_callback_mdb_env_copy (MdbEnvCopyCallback f);
 
+void rsn_callback_mdb_env_copy2 (MdbEnvCopy2Callback f);
+
 void rsn_callback_mdb_env_create (MdbEnvCreateCallback f);
 
 void rsn_callback_mdb_env_open (MdbEnvOpenCallback f);
@@ -2160,6 +2164,8 @@ LmdbBlockStoreHandle * rsn_lmdb_store_block (LmdbStoreHandle * handle);
 
 LmdbConfirmationHeightStoreHandle * rsn_lmdb_store_confirmation_height (LmdbStoreHandle * handle);
 
+bool rsn_lmdb_store_copy_db (LmdbStoreHandle * handle, const int8_t * path);
+
 LmdbStoreHandle * rsn_lmdb_store_create (bool * error,
 const int8_t * path,
 const LmdbConfigDto * lmdb_config,
@@ -2195,6 +2201,10 @@ LmdbPendingStoreHandle * rsn_lmdb_store_pending (LmdbStoreHandle * handle);
 LmdbPrunedStoreHandle * rsn_lmdb_store_pruned (LmdbStoreHandle * handle);
 
 LmdbUncheckedStoreHandle * rsn_lmdb_store_unchecked (LmdbStoreHandle * handle);
+
+bool rsn_lmdb_store_vacuum_after_upgrade (LmdbStoreHandle * handle,
+const int8_t * path,
+const LmdbConfigDto * config);
 
 LmdbVersionStoreHandle * rsn_lmdb_store_version (LmdbStoreHandle * handle);
 

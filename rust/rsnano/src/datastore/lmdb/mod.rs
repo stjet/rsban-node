@@ -402,6 +402,7 @@ pub type MdbEnvCloseCallback = extern "C" fn(*mut MdbEnv);
 pub type MdbStatCallback = extern "C" fn(*mut MdbTxn, u32, *mut MdbStat) -> i32;
 pub type MdbDropCallback = extern "C" fn(*mut MdbTxn, u32, i32) -> i32;
 pub type MdbEnvCopyCallback = extern "C" fn(*mut MdbEnv, *const i8) -> i32;
+pub type MdbEnvCopy2Callback = extern "C" fn(*mut MdbEnv, *const i8, u32) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -424,6 +425,7 @@ pub static mut MDB_ENV_CLOSE: Option<MdbEnvCloseCallback> = None;
 pub static mut MDB_STAT: Option<MdbStatCallback> = None;
 pub static mut MDB_DROP: Option<MdbDropCallback> = None;
 pub static mut MDB_ENV_COPY: Option<MdbEnvCopyCallback> = None;
+pub static mut MDB_ENV_COPY2: Option<MdbEnvCopy2Callback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -538,11 +540,18 @@ pub unsafe fn mdb_env_copy(env: *mut MdbEnv, target: *const i8) -> i32 {
     MDB_ENV_COPY.expect("MDB_ENV_COPY missing")(env, target)
 }
 
+pub unsafe fn mdb_env_copy2(env: *mut MdbEnv, path: *const i8, flags: u32) -> i32 {
+    MDB_ENV_COPY2.expect("MDB_ENV_COPY2 missing")(env, path, flags)
+}
 /// Successful result
 const MDB_SUCCESS: i32 = 0;
 
 /// key/data pair not found (EOF)
 const MDB_NOTFOUND: i32 = -30798;
+
+/// Compacting copy: Omit free space from copy, and renumber all
+/// pages sequentially.
+const MDB_CP_COMPACT: u32 = 0x01;
 
 // mdb_env environment flags:
 

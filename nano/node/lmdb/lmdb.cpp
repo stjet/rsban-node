@@ -138,34 +138,8 @@ nano::lmdb::store::~store ()
 
 bool nano::lmdb::store::vacuum_after_upgrade (boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a)
 {
-	// Vacuum the database. This is not a required step and may actually fail if there isn't enough storage space.
-	auto vacuum_path = path_a.parent_path () / "vacuumed.ldb";
-
-	auto vacuum_success = copy_db (vacuum_path);
-	if (vacuum_success)
-	{
-		env_m.close_env ();
-
-		// Replace the ledger file with the vacuumed one
-		boost::filesystem::rename (vacuum_path, path_a);
-
-		// Set up the environment again
-		auto options = nano::mdb_env::options::make ()
-					   .set_config (lmdb_config_a)
-					   .set_use_no_mem_init (true);
-		env_m.init (error, path_a, options);
-		if (!error)
-		{
-			auto transaction (tx_begin_read ());
-			open_databases (error, *transaction, 0);
-		}
-	}
-	else
-	{
-		// The vacuum file can be in an inconsistent state if there wasn't enough space to create it
-		boost::filesystem::remove (vacuum_path);
-	}
-	return vacuum_success;
+	auto config_dto{ lmdb_config_a.to_dto () };
+	return rsnano::rsn_lmdb_store_vacuum_after_upgrade (handle, reinterpret_cast<const int8_t *> (path_a.string ().c_str ()), &config_dto);
 }
 
 void nano::lmdb::store::serialize_mdb_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time)
@@ -208,7 +182,7 @@ void nano::lmdb::store::open_databases (bool & error_a, nano::transaction const 
 
 bool nano::lmdb::store::copy_db (boost::filesystem::path const & destination_file)
 {
-	return !mdb_env_copy2 (env ().env (), destination_file.string ().c_str (), MDB_CP_COMPACT);
+	return !rsnano::rsn_lmdb_store_copy_db (handle, reinterpret_cast<const int8_t *> (destination_file.string ().c_str ()));
 }
 
 void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_a)

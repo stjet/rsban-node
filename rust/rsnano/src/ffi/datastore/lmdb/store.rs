@@ -7,7 +7,10 @@ use std::{
 };
 
 use crate::{
-    datastore::lmdb::{create_backup_file, EnvOptions, LmdbStore, Vacuuming},
+    datastore::{
+        lmdb::{create_backup_file, EnvOptions, LmdbStore, Vacuuming},
+        Store,
+    },
     ffi::{LmdbConfigDto, LoggerHandle, LoggerMT, TxnTrackingConfigDto},
     DiagnosticsConfig, LmdbConfig,
 };
@@ -236,4 +239,24 @@ pub unsafe extern "C" fn rsn_lmdb_store_create_backup_file(
     let logger = LoggerMT::new(Box::from_raw(logger));
     let path = CStr::from_ptr(path);
     create_backup_file(&*env, &PathBuf::from(path.to_str().unwrap()), &logger).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_copy_db(
+    handle: *mut LmdbStoreHandle,
+    path: *const i8,
+) -> bool {
+    let path = PathBuf::from(CStr::from_ptr(path).to_str().unwrap());
+    (*handle).0.copy_db(&path).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_vacuum_after_upgrade(
+    handle: *mut LmdbStoreHandle,
+    path: *const i8,
+    config: *const LmdbConfigDto,
+) -> bool {
+    let config = LmdbConfig::from(&*config);
+    let path = PathBuf::from(CStr::from_ptr(path).to_str().unwrap());
+    (*handle).0.vacuum_after_upgrade(&path, config).is_ok()
 }

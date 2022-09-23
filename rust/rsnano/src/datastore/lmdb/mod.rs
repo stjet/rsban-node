@@ -16,12 +16,13 @@ mod version_store;
 mod wallet_store;
 
 use std::{
+    any::Any,
     convert::TryFrom,
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
     path::Path,
     ptr,
-    sync::Arc, any::Any,
+    sync::Arc,
 };
 
 pub use account_store::LmdbAccountStore;

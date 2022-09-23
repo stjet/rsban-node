@@ -24,6 +24,7 @@ mod thread_pool;
 mod toml;
 mod unchecked_info;
 mod voting;
+mod wallet;
 mod websocket;
 
 use std::{

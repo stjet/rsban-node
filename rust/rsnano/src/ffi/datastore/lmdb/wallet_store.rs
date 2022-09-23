@@ -43,7 +43,13 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_set_wallet_key_mem(
     handle: *mut LmdbWalletStoreHandle,
     key: *const u8,
 ) {
-    (*handle).0.fans.lock().unwrap().wallet_key_mem.value_set(RawKey::from_ptr(key));
+    (*handle)
+        .0
+        .fans
+        .lock()
+        .unwrap()
+        .wallet_key_mem
+        .value_set(RawKey::from_ptr(key));
 }
 
 #[no_mangle]
@@ -60,5 +66,11 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_set_password(
     handle: *mut LmdbWalletStoreHandle,
     password: *const u8,
 ) {
-    (*handle).0.fans.lock().unwrap().password.value_set(RawKey::from_ptr(password));
+    (*handle)
+        .0
+        .fans
+        .lock()
+        .unwrap()
+        .password
+        .value_set(RawKey::from_ptr(password));
 }

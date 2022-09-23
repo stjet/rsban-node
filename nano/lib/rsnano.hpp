@@ -96,6 +96,8 @@ struct GenerateCacheHandle;
 
 struct IoContextHandle;
 
+struct KdfHandle;
+
 struct LedgerHandle;
 
 struct LmdbAccountStoreHandle;
@@ -1782,6 +1784,12 @@ void * rsn_io_ctx_get_ctx (IoContextHandle * handle);
 int32_t rsn_ipc_config_create (IpcConfigDto * dto, const NetworkConstantsDto * network_constants);
 
 StatLogSinkHandle * rsn_json_writer_create ();
+
+KdfHandle * rsn_kdf_create (uint32_t kdf_work);
+
+void rsn_kdf_destroy (KdfHandle * handle);
+
+void rsn_kdf_phs (KdfHandle * handle, uint8_t * result, const char * password, const uint8_t * salt);
 
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,

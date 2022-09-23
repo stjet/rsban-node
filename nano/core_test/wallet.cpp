@@ -329,7 +329,7 @@ TEST (wallet, rekey)
 	nano::raw_key prv2;
 	wallet.fetch (*transaction, key1.pub, prv2);
 	ASSERT_EQ (key1.prv, prv2);
-	wallet.set_password(nano::raw_key(2));
+	wallet.set_password (nano::raw_key (2));
 	ASSERT_TRUE (wallet.rekey (*transaction, "2"));
 }
 

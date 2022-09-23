@@ -1,4 +1,5 @@
 #include <nano/crypto_lib/random_pool.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/election.hpp>
@@ -644,12 +645,19 @@ void nano::wallet_store::version_put (nano::transaction const & transaction_a, u
 	entry_put_raw (transaction_a, nano::wallet_store::version_special, nano::wallet_value (entry, 0));
 }
 
+nano::kdf::kdf (unsigned kdf_work) :
+	handle{ rsnano::rsn_kdf_create (kdf_work) }
+{
+}
+
+nano::kdf::~kdf ()
+{
+	rsnano::rsn_kdf_destroy (handle);
+}
+
 void nano::kdf::phs (nano::raw_key & result_a, std::string const & password_a, nano::uint256_union const & salt_a)
 {
-	nano::lock_guard<nano::mutex> lock (mutex);
-	auto success (argon2_hash (1, kdf_work, 1, password_a.data (), password_a.size (), salt_a.bytes.data (), salt_a.bytes.size (), result_a.bytes.data (), result_a.bytes.size (), NULL, 0, Argon2_d, 0x10));
-	debug_assert (success == 0);
-	(void)success;
+	rsnano::rsn_kdf_phs (handle, result_a.bytes.data (), password_a.c_str (), salt_a.bytes.data ());
 }
 
 nano::wallet::wallet (bool & init_a, nano::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a) :

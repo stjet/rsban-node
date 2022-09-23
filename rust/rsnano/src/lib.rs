@@ -34,6 +34,7 @@ mod unchecked_info;
 mod uniquer;
 pub mod utils;
 mod voting;
+pub mod wallet;
 mod websocket;
 
 pub use bandwidth_limiter::*;

@@ -1,18 +1,21 @@
-use std::sync::{atomic::{AtomicU32, Ordering}, Mutex};
+use std::sync::{
+    atomic::{AtomicU32, Ordering},
+    Mutex,
+};
 
 use crate::{Fan, RawKey};
 
-pub struct Fans{
+pub struct Fans {
     pub password: Fan,
     pub wallet_key_mem: Fan,
 }
 
 impl Fans {
-    pub fn new(fanout: usize) -> Self{
-        Self { 
+    pub fn new(fanout: usize) -> Self {
+        Self {
             password: Fan::new(RawKey::new(), fanout),
             wallet_key_mem: Fan::new(RawKey::new(), fanout),
-         }
+        }
     }
 }
 

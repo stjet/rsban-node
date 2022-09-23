@@ -13,6 +13,10 @@
 #include <mutex>
 #include <thread>
 #include <unordered_set>
+namespace rsnano
+{
+class KdfHandle;
+}
 namespace nano
 {
 class node;
@@ -21,13 +25,14 @@ class wallets;
 class kdf final
 {
 public:
-	kdf (unsigned & kdf_work) :
-		kdf_work{ kdf_work }
-	{
-	}
+	kdf (unsigned kdf_work);
+	kdf (kdf const &) = delete;
+	kdf (kdf &&) = delete;
+	~kdf ();
 	void phs (nano::raw_key &, std::string const &, nano::uint256_union const &);
-	nano::mutex mutex;
-	unsigned & kdf_work;
+
+private:
+	rsnano::KdfHandle * handle;
 };
 enum class key_type
 {

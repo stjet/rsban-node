@@ -2,11 +2,12 @@ mod account;
 mod account_info;
 mod amount;
 mod difficulty;
+mod fan;
 
 use std::convert::TryInto;
 use std::fmt::{Debug, Write};
 use std::mem::size_of;
-use std::ops::Deref;
+use std::ops::{BitXorAssign, Deref};
 use std::{convert::TryFrom, fmt::Display};
 
 use crate::utils::{Deserialize, Serialize, Stream};
@@ -18,6 +19,7 @@ pub use account_info::AccountInfo;
 pub use amount::*;
 use blake2::digest::{Update, VariableOutput};
 pub use difficulty::*;
+pub use fan::Fan;
 use num::FromPrimitive;
 use once_cell::sync::Lazy;
 use primitive_types::{U256, U512};
@@ -521,7 +523,7 @@ impl From<U512> for QualifiedRoot {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq, Debug, Copy, Clone)]
 pub struct RawKey {
     bytes: [u8; 32],
 }
@@ -545,6 +547,14 @@ impl RawKey {
             write!(&mut result, "{:02X}", byte).unwrap();
         }
         result
+    }
+}
+
+impl BitXorAssign for RawKey {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        for (a, b) in self.bytes.iter_mut().zip(rhs.bytes) {
+            *a ^= b;
+        }
     }
 }
 

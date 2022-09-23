@@ -1805,14 +1805,14 @@ nano::uint128_t const nano::wallets::high_priority = std::numeric_limits<nano::u
 
 nano::store_iterator<nano::account, nano::wallet_value> nano::wallet_store::begin (nano::transaction const & transaction_a)
 {
-	MDB_dbi handle = rsnano::rsn_lmdb_wallet_store_db_handle(rust_handle);
+	MDB_dbi handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
 	nano::store_iterator<nano::account, nano::wallet_value> result (std::make_unique<nano::mdb_iterator<nano::account, nano::wallet_value>> (transaction_a, handle, nano::mdb_val (nano::account (special_count))));
 	return result;
 }
 
 nano::store_iterator<nano::account, nano::wallet_value> nano::wallet_store::begin (nano::transaction const & transaction_a, nano::account const & key)
 {
-	MDB_dbi handle = rsnano::rsn_lmdb_wallet_store_db_handle(rust_handle);
+	MDB_dbi handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
 	nano::store_iterator<nano::account, nano::wallet_value> result (std::make_unique<nano::mdb_iterator<nano::account, nano::wallet_value>> (transaction_a, handle, nano::mdb_val (key)));
 	return result;
 }

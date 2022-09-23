@@ -126,6 +126,8 @@ struct LmdbUncheckedStoreHandle;
 
 struct LmdbVersionStoreHandle;
 
+struct LmdbWalletStoreHandle;
+
 struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
@@ -2252,6 +2254,14 @@ TransactionHandle * txn,
 int32_t version);
 
 uint32_t rsn_lmdb_version_store_table_handle (LmdbVersionStoreHandle * handle);
+
+LmdbWalletStoreHandle * rsn_lmdb_wallet_store_create ();
+
+uint32_t rsn_lmdb_wallet_store_db_handle (LmdbWalletStoreHandle * handle);
+
+void rsn_lmdb_wallet_store_destroy (LmdbWalletStoreHandle * handle);
+
+void rsn_lmdb_wallet_store_set_db_handle (LmdbWalletStoreHandle * handle, uint32_t dbi);
 
 void rsn_lmdb_write_txn_commit (TransactionHandle * handle);
 

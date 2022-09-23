@@ -13,6 +13,7 @@ mod store;
 mod txn_tracker;
 mod unchecked_store;
 mod version_store;
+mod wallet_store;
 
 use std::{
     convert::TryFrom,
@@ -38,6 +39,7 @@ pub use store::{create_backup_file, LmdbStore, Vacuuming};
 pub use txn_tracker::TxnTracker;
 pub use unchecked_store::LmdbUncheckedStore;
 pub use version_store::LmdbVersionStore;
+pub use wallet_store::LmdbWalletStore;
 
 use crate::{
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},

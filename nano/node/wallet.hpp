@@ -54,6 +54,9 @@ class wallet_store final
 public:
 	wallet_store (bool &, nano::kdf &, nano::transaction &, nano::account, unsigned, std::string const &);
 	wallet_store (bool &, nano::kdf &, nano::transaction &, nano::account, unsigned, std::string const &, std::string const &);
+	~wallet_store ();
+	wallet_store (wallet_store const &) = delete;
+	bool is_open () const;
 	std::vector<nano::account> accounts (nano::transaction const &);
 	void initialize (nano::transaction const &, bool &, std::string const &);
 	nano::uint256_union check (nano::transaction const &);
@@ -114,11 +117,11 @@ public:
 	static std::size_t const seed_iv_index;
 	static int const special_count;
 	nano::kdf & kdf;
-	std::atomic<MDB_dbi> handle{ 0 };
 	std::recursive_mutex mutex;
 
 private:
 	MDB_txn * tx (nano::transaction const &) const;
+	rsnano::LmdbWalletStoreHandle * rust_handle;
 };
 // A wallet is a set of account keys encrypted by a common encryption key
 class wallet final : public std::enable_shared_from_this<nano::wallet>

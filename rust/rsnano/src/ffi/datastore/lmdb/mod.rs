@@ -12,6 +12,7 @@ mod pruned_store;
 mod store;
 mod unchecked_store;
 mod version_store;
+mod wallet_store;
 
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 

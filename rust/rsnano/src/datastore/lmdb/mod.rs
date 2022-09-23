@@ -21,7 +21,7 @@ use std::{
     os::raw::c_char,
     path::Path,
     ptr,
-    sync::Arc,
+    sync::Arc, any::Any,
 };
 
 pub use account_store::LmdbAccountStore;
@@ -97,7 +97,7 @@ impl Drop for LmdbReadTransaction {
 }
 
 impl Transaction for LmdbReadTransaction {
-    fn as_any(&self) -> &(dyn std::any::Any + '_) {
+    fn as_any(&self) -> &dyn std::any::Any {
         self
     }
 }
@@ -163,7 +163,7 @@ impl Drop for LmdbWriteTransaction {
 }
 
 impl Transaction for LmdbWriteTransaction {
-    fn as_any(&self) -> &(dyn std::any::Any + '_) {
+    fn as_any(&self) -> &dyn Any {
         self
     }
 }

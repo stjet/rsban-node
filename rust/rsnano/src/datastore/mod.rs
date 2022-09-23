@@ -40,7 +40,7 @@ use crate::utils::get_cpu_count;
 use self::lmdb::LmdbRawIterator;
 
 pub trait Transaction {
-    fn as_any(&self) -> &(dyn Any + '_);
+    fn as_any(&self) -> &dyn Any;
 }
 
 pub trait ReadTransaction: Transaction {}

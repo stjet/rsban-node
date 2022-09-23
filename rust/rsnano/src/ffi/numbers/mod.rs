@@ -4,10 +4,15 @@ use std::{ffi::CStr, os::raw::c_char};
 
 pub use account_info::AccountInfoHandle;
 
-use crate::numbers::{
-    sign_message, validate_message, validate_message_batch, Account, Difficulty, PublicKey, RawKey,
-    Signature,
+use crate::{
+    numbers::{
+        sign_message, validate_message, validate_message_batch, Account, Difficulty, PublicKey,
+        RawKey, Signature,
+    },
+    KeyPair,
 };
+
+use super::copy_account_bytes;
 
 #[no_mangle]
 pub extern "C" fn rsn_difficulty_to_multiplier(difficulty: u64, base_difficulty: u64) -> f64 {
@@ -118,4 +123,12 @@ pub unsafe extern "C" fn rsn_validate_batch(
 
     validate_message_batch(&messages, &public_keys, &signatures, valid);
     true
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_pub_key(raw_key: *const u8, pub_key: *mut u8) {
+    let raw_key = RawKey::from_ptr(raw_key);
+    let p = PublicKey::try_from(&raw_key).unwrap();
+    let bytes = std::slice::from_raw_parts_mut(pub_key, 32);
+    bytes.copy_from_slice(p.as_bytes());
 }

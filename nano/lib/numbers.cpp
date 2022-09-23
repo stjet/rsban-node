@@ -334,7 +334,7 @@ nano::raw_key nano::deterministic_key (nano::raw_key const & seed_a, uint32_t in
 nano::public_key nano::pub_key (nano::raw_key const & raw_key_a)
 {
 	nano::public_key result;
-	ed25519_publickey (raw_key_a.bytes.data (), result.bytes.data ());
+	rsnano::rsn_pub_key(raw_key_a.bytes.data (), result.bytes.data ());
 	return result;
 }
 

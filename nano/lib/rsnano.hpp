@@ -2789,6 +2789,8 @@ uintptr_t rsn_peer_exclusion_size (PeerExclusionHandle * handle);
 int32_t rsn_portmapping_constants_create (const NetworkConstantsDto * network_constants,
 PortmappingConstantsDto * dto);
 
+void rsn_pub_key (const uint8_t * raw_key, uint8_t * pub_key);
+
 void rsn_pulls_cache_add (PullsCacheHandle * handle, const PullInfoDto * pull);
 
 PullsCacheHandle * rsn_pulls_cache_create ();

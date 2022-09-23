@@ -1,5 +1,4 @@
 mod bandwidth_limiter;
-mod blake2b;
 mod block_arrival;
 mod block_processor;
 mod blocks;
@@ -33,7 +32,6 @@ use std::{
 };
 
 pub use bandwidth_limiter::*;
-pub use blake2b::*;
 pub(crate) use block_processor::*;
 pub use blocks::*;
 pub use config::*;

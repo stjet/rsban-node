@@ -562,12 +562,6 @@ using AddTimedTaskCallback = void (*) (void *, uint64_t, VoidFnCallbackHandle *)
 
 using AlwaysLogCallback = void (*) (void *, const uint8_t *, uintptr_t);
 
-using Blake2BFinalCallback = int32_t (*) (void *, void *, uintptr_t);
-
-using Blake2BInitCallback = int32_t (*) (void *, uintptr_t);
-
-using Blake2BUpdateCallback = int32_t (*) (void *, const void *, uintptr_t);
-
 using BootstrapInitiatorClearPullsCallback = void (*) (void *, uint64_t);
 
 using BlockProcessorAddCallback = void (*) (void *, UncheckedInfoHandle *);
@@ -1397,12 +1391,6 @@ uintptr_t rsn_buffer_len (BufferHandle * handle);
 void rsn_callback_add_timed_task (AddTimedTaskCallback f);
 
 void rsn_callback_always_log (AlwaysLogCallback f);
-
-void rsn_callback_blake2b_final (Blake2BFinalCallback f);
-
-void rsn_callback_blake2b_init (Blake2BInitCallback f);
-
-void rsn_callback_blake2b_update (Blake2BUpdateCallback f);
 
 void rsn_callback_block_bootstrap_initiator_clear_pulls (BootstrapInitiatorClearPullsCallback f);
 

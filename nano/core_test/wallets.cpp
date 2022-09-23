@@ -37,7 +37,7 @@ TEST (wallets, open_existing)
 		while (password == 0)
 		{
 			ASSERT_NO_ERROR (system.poll ());
-			wallet->store.password.value (password);
+			wallet->store.password (password);
 		}
 	}
 	{

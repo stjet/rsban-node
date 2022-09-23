@@ -4765,9 +4765,7 @@ void nano::json_handler::wallet_lock ()
 	auto wallet (wallet_impl ());
 	if (!ec)
 	{
-		nano::raw_key empty;
-		empty.clear ();
-		wallet->store.password.value_set (empty);
+		wallet->store.lock ();
 		response_l.put ("locked", "1");
 		node.logger->try_log ("Wallet locked");
 	}

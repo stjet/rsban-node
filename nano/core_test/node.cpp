@@ -95,7 +95,7 @@ TEST (node, password_fanout)
 	config.password_fanout = 10;
 	nano::node node (io_ctx, path, config, pool);
 	auto wallet (node.wallets.create (100));
-	ASSERT_EQ (10, wallet->store.password.values.size ());
+	ASSERT_EQ (10, wallet->store.fanout);
 	node.stop ();
 }
 
@@ -124,7 +124,7 @@ TEST (node, send_unkeyed)
 	nano::test::system system (1);
 	nano::keypair key2;
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	system.wallet (0)->store.password.value_set (nano::keypair ().prv);
+	system.wallet (0)->store.set_password (nano::keypair ().prv);
 	ASSERT_EQ (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, system.nodes[0]->config->receive_minimum.number ()));
 }
 
@@ -524,7 +524,7 @@ TEST (node, unlock_search)
 	system.wallet (0)->insert_adhoc (key2.prv);
 	{
 		nano::lock_guard<std::recursive_mutex> lock (system.wallet (0)->store.mutex);
-		system.wallet (0)->store.password.value_set (nano::keypair ().prv);
+		system.wallet (0)->store.set_password (nano::keypair ().prv);
 	}
 	{
 		auto transaction (system.wallet (0)->wallets.tx_begin_write ());

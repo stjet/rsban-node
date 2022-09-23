@@ -62,7 +62,7 @@ TEST (wallet, fetch_locked)
 	ASSERT_FALSE (key2.is_zero ());
 	nano::raw_key key3;
 	key3 = 1;
-	wallet.password.value_set (key3);
+	wallet.set_password (key3);
 	ASSERT_FALSE (wallet.valid_password (*transaction));
 	nano::raw_key key4;
 	ASSERT_TRUE (wallet.fetch (*transaction, key1.pub, key4));
@@ -85,7 +85,7 @@ TEST (wallet, retrieval)
 	ASSERT_FALSE (wallet.fetch (*transaction, key1.pub, prv1));
 	ASSERT_TRUE (wallet.valid_password (*transaction));
 	ASSERT_EQ (key1.prv, prv1);
-	wallet.password.values[0]->bytes[16] ^= 1;
+	wallet.set_password (nano::keypair{}.prv);
 	nano::raw_key prv2;
 	ASSERT_TRUE (wallet.fetch (*transaction, key1.pub, prv2));
 	ASSERT_FALSE (wallet.valid_password (*transaction));
@@ -313,7 +313,7 @@ TEST (wallet, rekey)
 	nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis->account (), 1, "0");
 	ASSERT_FALSE (init);
 	nano::raw_key password;
-	wallet.password.value (password);
+	wallet.password (password);
 	ASSERT_TRUE (password.is_zero ());
 	ASSERT_FALSE (init);
 	nano::keypair key1;
@@ -322,14 +322,14 @@ TEST (wallet, rekey)
 	wallet.fetch (*transaction, key1.pub, prv1);
 	ASSERT_EQ (key1.prv, prv1);
 	ASSERT_FALSE (wallet.rekey (*transaction, "1"));
-	wallet.password.value (password);
+	wallet.password (password);
 	nano::raw_key password1;
 	wallet.derive_key (password1, *transaction, "1");
 	ASSERT_EQ (password1, password);
 	nano::raw_key prv2;
 	wallet.fetch (*transaction, key1.pub, prv2);
 	ASSERT_EQ (key1.prv, prv2);
-	*wallet.password.values[0] = 2;
+	wallet.set_password(nano::raw_key(2));
 	ASSERT_TRUE (wallet.rekey (*transaction, "2"));
 }
 
@@ -350,36 +350,6 @@ TEST (wallet, hash_password)
 	nano::raw_key hash3;
 	wallet.derive_key (hash3, *transaction, "a");
 	ASSERT_NE (hash1, hash3);
-}
-
-TEST (fan, reconstitute)
-{
-	nano::raw_key value0 (0);
-	nano::fan fan (value0, 1024);
-	for (auto & i : fan.values)
-	{
-		ASSERT_NE (value0, *i);
-	}
-	nano::raw_key value1;
-	fan.value (value1);
-	ASSERT_EQ (value0, value1);
-}
-
-TEST (fan, change)
-{
-	nano::raw_key value0;
-	value0 = 0;
-	nano::raw_key value1;
-	value1 = 1;
-	ASSERT_NE (value0, value1);
-	nano::fan fan (value0, 1024);
-	ASSERT_EQ (1024, fan.values.size ());
-	nano::raw_key value2;
-	fan.value (value2);
-	ASSERT_EQ (value0, value2);
-	fan.value_set (value1);
-	fan.value (value2);
-	ASSERT_EQ (value1, value2);
 }
 
 TEST (wallet, reopen_default_password)

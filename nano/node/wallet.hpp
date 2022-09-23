@@ -18,19 +18,6 @@ namespace nano
 class node;
 class node_config;
 class wallets;
-// The fan spreads a key out over the heap to decrease the likelihood of it being recovered by memory inspection
-class fan final
-{
-public:
-	fan (nano::raw_key const &, std::size_t);
-	void value (nano::raw_key &);
-	void value_set (nano::raw_key const &);
-	std::vector<std::unique_ptr<nano::raw_key>> values;
-
-private:
-	nano::mutex mutex;
-	void value_get (nano::raw_key &);
-};
 class kdf final
 {
 public:
@@ -57,6 +44,9 @@ public:
 	~wallet_store ();
 	wallet_store (wallet_store const &) = delete;
 	bool is_open () const;
+	void lock ();
+	void password (nano::raw_key & password_a) const;
+	void set_password (nano::raw_key const & password_a);
 	std::vector<nano::account> accounts (nano::transaction const &);
 	void initialize (nano::transaction const &, bool &, std::string const &);
 	nano::uint256_union check (nano::transaction const &);
@@ -99,8 +89,6 @@ public:
 	void work_put (nano::transaction const &, nano::public_key const &, uint64_t);
 	unsigned version (nano::transaction const &);
 	void version_put (nano::transaction const &, unsigned);
-	nano::fan password;
-	nano::fan wallet_key_mem;
 	static unsigned const version_1 = 1;
 	static unsigned const version_2 = 2;
 	static unsigned const version_3 = 3;
@@ -118,6 +106,7 @@ public:
 	static int const special_count;
 	nano::kdf & kdf;
 	std::recursive_mutex mutex;
+	unsigned fanout;
 
 private:
 	MDB_txn * tx (nano::transaction const &) const;

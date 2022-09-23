@@ -662,7 +662,7 @@ TEST (rpc, wallet_password_enter)
 	while (password_l == 0)
 	{
 		ASSERT_NO_ERROR (system.poll ());
-		system.wallet (0)->store.password.value (password_l);
+		system.wallet (0)->store.password (password_l);
 	}
 	boost::property_tree::ptree request;
 	std::string wallet;

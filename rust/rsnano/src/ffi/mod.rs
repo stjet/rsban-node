@@ -141,6 +141,11 @@ fn into_32_byte_array(ptr: *const u8) -> [u8; 32] {
     bytes
 }
 
+pub(crate) unsafe fn copy_raw_key_bytes(source: RawKey, target: *mut u8) {
+    let bytes = std::slice::from_raw_parts_mut(target, 32);
+    bytes.copy_from_slice(source.as_bytes());
+}
+
 pub(crate) unsafe fn copy_hash_bytes(source: BlockHash, target: *mut u8) {
     let bytes = std::slice::from_raw_parts_mut(target, 32);
     bytes.copy_from_slice(source.as_bytes());

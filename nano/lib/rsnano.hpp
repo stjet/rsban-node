@@ -1779,6 +1779,12 @@ void rsn_kdf_destroy (KdfHandle * handle);
 
 void rsn_kdf_phs (KdfHandle * handle, uint8_t * result, const char * password, const uint8_t * salt);
 
+void rsn_keypair_create (uint8_t * prv_key, uint8_t * pub_key);
+
+void rsn_keypair_create_from_hex_str (const char * prv_hex, uint8_t * prv_key, uint8_t * pub_key);
+
+void rsn_keypair_create_from_prv_key (const uint8_t * prv_key, uint8_t * pub_key);
+
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
@@ -2804,6 +2810,8 @@ void rsn_pulls_cache_remove (PullsCacheHandle * handle, const PullInfoDto * pull
 uintptr_t rsn_pulls_cache_size (PullsCacheHandle * handle);
 
 void rsn_pulls_cache_update_pull (PullsCacheHandle * handle, PullInfoDto * pull);
+
+void rsn_random_wallet_id (uint8_t * result);
 
 BlockHandle * rsn_receive_block_create (const ReceiveBlockDto * dto);
 

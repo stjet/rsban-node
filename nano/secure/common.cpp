@@ -15,8 +15,6 @@
 #include <limits>
 #include <queue>
 
-#include <crypto/ed25519-donna/ed25519.h>
-
 namespace
 {
 char const * dev_private_key_data = "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
@@ -307,23 +305,20 @@ void nano::bootstrap_constants::read_dto (rsnano::BootstrapConstantsDto const & 
 // Create a new random keypair
 nano::keypair::keypair ()
 {
-	random_pool::generate_block (prv.bytes.data (), prv.bytes.size ());
-	ed25519_publickey (prv.bytes.data (), pub.bytes.data ());
+	rsnano::rsn_keypair_create (prv.bytes.data (), pub.bytes.data ());
 }
 
 // Create a keypair given a private key
 nano::keypair::keypair (nano::raw_key && prv_a) :
 	prv (std::move (prv_a))
 {
-	ed25519_publickey (prv.bytes.data (), pub.bytes.data ());
+	rsnano::rsn_keypair_create_from_prv_key (prv.bytes.data (), pub.bytes.data ());
 }
 
 // Create a keypair given a hex string of the private key
 nano::keypair::keypair (std::string const & prv_a)
 {
-	[[maybe_unused]] auto error (prv.decode_hex (prv_a));
-	debug_assert (!error);
-	ed25519_publickey (prv.bytes.data (), pub.bytes.data ());
+	rsnano::rsn_keypair_create_from_hex_str (prv_a.c_str (), prv.bytes.data (), pub.bytes.data ());
 }
 
 nano::keypair::keypair (nano::raw_key const & priv_key_a, nano::public_key const & pub_key_a) :
@@ -902,9 +897,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (vo
 nano::wallet_id nano::random_wallet_id ()
 {
 	nano::wallet_id wallet_id;
-	nano::uint256_union dummy_secret;
-	random_pool::generate_block (dummy_secret.bytes.data (), dummy_secret.bytes.size ());
-	ed25519_publickey (dummy_secret.bytes.data (), wallet_id.bytes.data ());
+	rsnano::rsn_random_wallet_id (wallet_id.bytes.data ());
 	return wallet_id;
 }
 

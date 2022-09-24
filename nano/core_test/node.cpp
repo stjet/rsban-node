@@ -353,11 +353,12 @@ TEST (node, receive_gap)
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
 	ASSERT_EQ (0, node1.gap_cache.size ());
+	nano::keypair keys{};
 	auto block = nano::send_block_builder ()
 				 .previous (5)
 				 .destination (1)
 				 .balance (2)
-				 .sign (nano::keypair ().prv, 4)
+				 .sign (keys.prv, keys.pub)
 				 .work (0)
 				 .build_shared ();
 	node1.work_generate_blocking (*block);

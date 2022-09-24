@@ -3,10 +3,14 @@ mod account_info;
 use std::{ffi::CStr, os::raw::c_char, slice};
 
 pub use account_info::AccountInfoHandle;
+use rand::{thread_rng, Rng};
 
-use crate::numbers::{
-    sign_message, validate_message, validate_message_batch, Account, Difficulty, PublicKey, RawKey,
-    Signature,
+use crate::{
+    numbers::{
+        sign_message, validate_message, validate_message_batch, Account, Difficulty, PublicKey,
+        RawKey, Signature,
+    },
+    KeyPair,
 };
 
 #[no_mangle]
@@ -127,4 +131,35 @@ pub unsafe extern "C" fn rsn_pub_key(raw_key: *const u8, pub_key: *mut u8) {
     let p = PublicKey::try_from(&raw_key).unwrap();
     let bytes = std::slice::from_raw_parts_mut(pub_key, 32);
     bytes.copy_from_slice(p.as_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_keypair_create(prv_key: *mut u8, pub_key: *mut u8) {
+    let pair = KeyPair::new();
+    slice::from_raw_parts_mut(prv_key, 32).copy_from_slice(pair.private_key().as_bytes());
+    slice::from_raw_parts_mut(pub_key, 32).copy_from_slice(pair.public_key().as_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_keypair_create_from_prv_key(prv_key: *const u8, pub_key: *mut u8) {
+    let pair = KeyPair::from_priv_key_bytes(slice::from_raw_parts(prv_key, 32)).unwrap();
+    slice::from_raw_parts_mut(pub_key, 32).copy_from_slice(pair.public_key().as_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_keypair_create_from_hex_str(
+    prv_hex: *const c_char,
+    prv_key: *mut u8,
+    pub_key: *mut u8,
+) {
+    let pair = KeyPair::from_priv_key_hex(CStr::from_ptr(prv_hex).to_str().unwrap()).unwrap();
+    slice::from_raw_parts_mut(prv_key, 32).copy_from_slice(pair.private_key().as_bytes());
+    slice::from_raw_parts_mut(pub_key, 32).copy_from_slice(pair.public_key().as_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_random_wallet_id(result: *mut u8) {
+    let secret = thread_rng().gen::<[u8; 32]>();
+    let keys = KeyPair::from_priv_key_bytes(&secret).unwrap();
+    slice::from_raw_parts_mut(result, 32).copy_from_slice(keys.public_key().as_bytes());
 }

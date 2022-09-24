@@ -12,7 +12,7 @@ TEST (sign_message, sign_multiple_times)
 	nano::keypair key;
 	auto signature_a{ nano::sign_message (key.prv, key.pub, &data[0], 4) };
 	auto signature_b{ nano::sign_message (key.prv, key.pub, &data[0], 4) };
-	ASSERT_NE (signature_a, signature_b);
+	ASSERT_EQ (signature_a, signature_b);
 	bool res_a = nano::validate_message (key.pub, &data[0], 4, signature_a);
 	bool res_b = nano::validate_message (key.pub, &data[0], 4, signature_b);
 	ASSERT_EQ (res_a, false);

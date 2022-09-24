@@ -8,8 +8,6 @@
 #include <crypto/cryptopp/aes.h>
 #include <crypto/cryptopp/modes.h>
 
-#include <crypto/ed25519-donna/ed25519.h>
-
 void nano::public_key::encode_account (std::string & destination_a) const
 {
 	uint8_t account_bytes[32];
@@ -334,14 +332,15 @@ nano::raw_key nano::deterministic_key (nano::raw_key const & seed_a, uint32_t in
 nano::public_key nano::pub_key (nano::raw_key const & raw_key_a)
 {
 	nano::public_key result;
-	rsnano::rsn_pub_key(raw_key_a.bytes.data (), result.bytes.data ());
+	rsnano::rsn_pub_key (raw_key_a.bytes.data (), result.bytes.data ());
 	return result;
 }
 
 nano::signature nano::sign_message (nano::raw_key const & private_key, nano::public_key const & public_key, uint8_t const * data, size_t size)
 {
 	nano::signature result;
-	ed25519_sign (data, size, private_key.bytes.data (), public_key.bytes.data (), result.bytes.data ());
+	if (rsnano::rsn_sign_message (private_key.bytes.data (), public_key.bytes.data (), data, size, result.bytes.data ()) != 0)
+		throw std::runtime_error ("could not sign message");
 	return result;
 }
 

@@ -2854,11 +2854,11 @@ bool rsn_send_block_valid_predecessor (uint8_t block_type);
 
 void rsn_send_block_zero (BlockHandle * handle);
 
-int32_t rsn_sign_message (const uint8_t (*priv_key)[32],
-const uint8_t (*pub_key)[32],
+int32_t rsn_sign_message (const uint8_t * priv_key,
+const uint8_t * pub_key,
 const uint8_t * message,
 uintptr_t len,
-uint8_t (*signature)[64]);
+uint8_t * signature);
 
 uintptr_t rsn_signature_checker_batch_size ();
 

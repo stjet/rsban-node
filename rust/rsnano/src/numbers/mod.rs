@@ -8,6 +8,7 @@ use std::convert::TryInto;
 use std::fmt::{Debug, Write};
 use std::mem::size_of;
 use std::ops::{BitXorAssign, Deref};
+use std::slice;
 use std::{convert::TryFrom, fmt::Display};
 
 use crate::utils::{Deserialize, Serialize, Stream};
@@ -47,6 +48,12 @@ impl PublicKey {
         match value.try_into() {
             Ok(value) => Some(Self { value }),
             Err(_) => None,
+        }
+    }
+
+    pub unsafe fn from_ptr(data: *const u8) -> Self {
+        Self {
+            value: slice::from_raw_parts(data, 32).try_into().unwrap(),
         }
     }
 

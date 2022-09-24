@@ -257,14 +257,12 @@ else()
     else()
       add_compile_options(-fsanitize=address,undefined)
     endif()
-    add_definitions(-DED25519_NO_INLINE_ASM)
   elseif(${USING_TSAN})
     add_compile_options(-fsanitize=thread)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       add_compile_options(
         "-fsanitize-blacklist=${PROJECT_SOURCE_DIR}/tsan_clang_blacklist")
     endif()
-    add_definitions(-DED25519_NO_INLINE_ASM)
   endif()
 
   if(NANO_FUZZER_TEST)
@@ -399,7 +397,6 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 
 include_directories(cpptoml/include)
-add_subdirectory(crypto/ed25519-donna)
 
 add_subdirectory(nano/ipc_flatbuffers_lib)
 add_subdirectory(nano/ipc_flatbuffers_test)

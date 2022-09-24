@@ -86,7 +86,6 @@ add_library(
 
 target_link_libraries(
   nano_lib
-  ed25519
   crypto_lib
   blake2
   secure

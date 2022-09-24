@@ -55,7 +55,6 @@ add_library(
 target_link_libraries(
   secure
   nano_lib
-  ed25519
   crypto_lib
   lmdb
   Boost::boost

@@ -23,18 +23,6 @@ uint64_t nano::ip_address_hash_raw (boost::asio::ip::address const & ip_a, uint1
 	return rsnano::rsn_ip_address_hash_raw (ip_a.to_v6 ().to_bytes ().data (), port);
 }
 
-nano::message_header::message_header (nano::network_constants const & constants, nano::message_type type_a)
-{
-	auto constants_dto{ constants.to_dto () };
-	handle = rsnano::rsn_message_header_create (&constants_dto, static_cast<uint8_t> (type_a), -1);
-}
-
-nano::message_header::message_header (nano::network_constants const & constants, nano::message_type type_a, uint8_t version_using_a)
-{
-	auto constants_dto{ constants.to_dto () };
-	handle = rsnano::rsn_message_header_create (&constants_dto, static_cast<uint8_t> (type_a), version_using_a);
-}
-
 nano::message_header::message_header (nano::message_header const & other_a) :
 	handle{ rsnano::rsn_message_header_clone (other_a.handle) }
 {
@@ -97,13 +85,6 @@ bool nano::message_header::deserialize (nano::stream & stream_a)
 	return error;
 }
 
-std::string nano::message_type_to_string (nano::message_type message_type_l)
-{
-	rsnano::StringDto result;
-	rsnano::rsn_message_type_to_string (static_cast<uint8_t> (message_type_l), &result);
-	return rsnano::convert_dto_to_string (result);
-}
-
 nano::stat::detail nano::message_type_to_stat_detail (nano::message_type message_type)
 {
 	return static_cast<nano::stat::detail> (rsnano::rsn_message_type_to_stat_detail (static_cast<uint8_t> (message_type)));
@@ -154,31 +135,11 @@ nano::block_type nano::message_header::block_type () const
 	return static_cast<nano::block_type> (rsnano::rsn_message_header_block_type (handle));
 }
 
-void nano::message_header::block_type_set (nano::block_type type_a)
-{
-	rsnano::rsn_message_header_set_block_type (handle, static_cast<uint8_t> (type_a));
-}
-
-uint8_t nano::message_header::count_get () const
-{
-	return rsnano::rsn_message_header_count (handle);
-}
-
-void nano::message_header::count_set (uint8_t count_a)
-{
-	rsnano::rsn_message_header_set_count (handle, count_a);
-}
-
 void nano::message_header::flag_set (uint8_t flag_a)
 {
 	// Flags from 8 are block_type & count
 	debug_assert (flag_a < 8);
 	set_extension (flag_a, true);
-}
-
-std::size_t nano::message_header::payload_length_bytes () const
-{
-	return rsnano::rsn_message_header_payload_length (handle);
 }
 
 nano::networks nano::message_header::get_network () const
@@ -191,11 +152,6 @@ void nano::message_header::set_network (nano::networks network)
 	rsnano::rsn_message_header_set_network (handle, static_cast<uint16_t> (network));
 }
 
-uint8_t nano::message_header::get_version_max () const
-{
-	return rsnano::rsn_message_header_version_max (handle);
-}
-
 uint8_t nano::message_header::get_version_using () const
 {
 	return rsnano::rsn_message_header_version_using (handle);
@@ -206,35 +162,9 @@ void nano::message_header::set_version_using (uint8_t version_a)
 	rsnano::rsn_message_header_set_version_using (handle, version_a);
 }
 
-uint8_t nano::message_header::get_version_min () const
-{
-	return rsnano::rsn_message_header_version_min (handle);
-}
-
 nano::message_type nano::message_header::get_type () const
 {
 	return static_cast<nano::message_type> (rsnano::rsn_message_header_type (handle));
-}
-
-uint16_t nano::message_header::get_extensions_raw () const
-{
-	return rsnano::rsn_message_header_extensions (handle);
-}
-
-std::bitset<16> nano::message_header::get_extensions () const
-{
-	return std::bitset<16> (static_cast<unsigned long long> (get_extensions_raw ()));
-}
-
-void nano::message_header::set_extensions (std::bitset<16> const & bits)
-{
-	auto value = static_cast<uint16_t> (bits.to_ulong ());
-	rsnano::rsn_message_header_set_extensions (handle, value);
-}
-
-bool nano::message_header::test_extension (std::size_t position) const
-{
-	return rsnano::rsn_message_header_test_extension (handle, position);
 }
 
 void nano::message_header::set_extension (std::size_t position, bool value)
@@ -245,11 +175,6 @@ void nano::message_header::set_extension (std::size_t position, bool value)
 size_t nano::message_header::size ()
 {
 	return rsnano::rsn_message_header_size ();
-}
-
-bool nano::message_header::is_valid_message_type () const
-{
-	return rsnano::rsn_message_header_is_valid_message_type (handle);
 }
 
 // MTU - IP header - UDP header

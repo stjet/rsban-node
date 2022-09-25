@@ -1,11 +1,6 @@
 mod account_info;
 
-use std::{
-    ffi::CStr,
-    net::Ipv6Addr,
-    os::raw::c_char,
-    slice,
-};
+use std::{ffi::CStr, net::Ipv6Addr, os::raw::c_char, slice};
 
 pub use account_info::AccountInfoHandle;
 use rand::{thread_rng, Rng};

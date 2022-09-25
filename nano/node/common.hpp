@@ -190,7 +190,6 @@ enum class message_type : uint8_t
 	telemetry_ack = 0x0d
 };
 
-std::string message_type_to_string (message_type);
 stat::detail message_type_to_stat_detail (message_type);
 
 enum class bulk_pull_account_flags : uint8_t
@@ -204,12 +203,10 @@ class message_visitor;
 class message_header final
 {
 public:
-	message_header (nano::network_constants const &, nano::message_type);
-	message_header (nano::network_constants const &, nano::message_type, uint8_t version_using_a);
-	message_header (bool &, nano::stream &);
 	message_header (message_header const &);
 	message_header (message_header &&);
 	message_header (rsnano::MessageHeaderHandle * handle_a);
+	message_header (bool &, nano::stream &);
 	~message_header ();
 
 	message_header & operator= (message_header && other_a);
@@ -217,34 +214,19 @@ public:
 	void serialize (nano::stream &) const;
 	bool deserialize (nano::stream &);
 	nano::block_type block_type () const;
-	void block_type_set (nano::block_type);
-	uint8_t count_get () const;
-	void count_set (uint8_t);
 	std::string to_string ();
 
 	void flag_set (uint8_t);
 	static uint8_t constexpr frontier_req_only_confirmed = 1;
 
-	/** Size of the payload in bytes. For some messages, the payload size is based on header flags. */
-	std::size_t payload_length_bytes () const;
-	bool is_valid_message_type () const;
-
 	nano::networks get_network () const;
 	void set_network (nano::networks network);
-	uint8_t get_version_max () const;
 	uint8_t get_version_using () const;
 	void set_version_using (uint8_t version_a);
-	uint8_t get_version_min () const;
 	nano::message_type get_type () const;
-	std::bitset<16> get_extensions () const;
-	uint16_t get_extensions_raw () const;
-	void set_extensions (std::bitset<16> const & bits);
-	bool test_extension (std::size_t position) const;
 	void set_extension (std::size_t position, bool value);
-
-	rsnano::MessageHeaderHandle * handle;
-
 	static std::size_t size ();
+	rsnano::MessageHeaderHandle * handle;
 };
 
 class message

@@ -2519,35 +2519,17 @@ uint8_t rsn_message_header_block_type (MessageHeaderHandle * handle);
 
 MessageHeaderHandle * rsn_message_header_clone (MessageHeaderHandle * handle);
 
-uint8_t rsn_message_header_count (MessageHeaderHandle * handle);
-
-MessageHeaderHandle * rsn_message_header_create (const NetworkConstantsDto * constants,
-uint8_t message_type,
-int16_t version_using);
-
 bool rsn_message_header_deserialize (MessageHeaderHandle * handle, void * stream);
 
 void rsn_message_header_destroy (MessageHeaderHandle * handle);
 
 MessageHeaderHandle * rsn_message_header_empty ();
 
-uint16_t rsn_message_header_extensions (MessageHeaderHandle * handle);
-
-bool rsn_message_header_is_valid_message_type (MessageHeaderHandle * handle);
-
 uint16_t rsn_message_header_network (MessageHeaderHandle * handle);
-
-uintptr_t rsn_message_header_payload_length (MessageHeaderHandle * handle);
 
 bool rsn_message_header_serialize (MessageHeaderHandle * handle, void * stream);
 
-void rsn_message_header_set_block_type (MessageHeaderHandle * handle, uint8_t block_type);
-
-void rsn_message_header_set_count (MessageHeaderHandle * handle, uint8_t count);
-
 void rsn_message_header_set_extension (MessageHeaderHandle * handle, uintptr_t position, bool value);
-
-void rsn_message_header_set_extensions (MessageHeaderHandle * handle, uint16_t value);
 
 void rsn_message_header_set_network (MessageHeaderHandle * handle, uint16_t network);
 
@@ -2555,15 +2537,9 @@ void rsn_message_header_set_version_using (MessageHeaderHandle * handle, uint8_t
 
 uintptr_t rsn_message_header_size ();
 
-bool rsn_message_header_test_extension (MessageHeaderHandle * handle, uintptr_t position);
-
 void rsn_message_header_to_string (MessageHeaderHandle * handle, StringDto * result);
 
 uint8_t rsn_message_header_type (MessageHeaderHandle * handle);
-
-uint8_t rsn_message_header_version_max (MessageHeaderHandle * handle);
-
-uint8_t rsn_message_header_version_min (MessageHeaderHandle * handle);
 
 uint8_t rsn_message_header_version_using (MessageHeaderHandle * handle);
 

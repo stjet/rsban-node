@@ -1,11 +1,17 @@
 mod account_info;
 
-use std::{ffi::CStr, os::raw::c_char, slice};
+use std::{
+    ffi::CStr,
+    net::Ipv6Addr,
+    os::raw::c_char,
+    slice,
+};
 
 pub use account_info::AccountInfoHandle;
 use rand::{thread_rng, Rng};
 
 use crate::{
+    ip_address_hash_raw,
     numbers::{
         sign_message, validate_message, validate_message_batch, Account, Difficulty, PublicKey,
         RawKey, Signature,
@@ -162,4 +168,11 @@ pub unsafe extern "C" fn rsn_random_wallet_id(result: *mut u8) {
     let secret = thread_rng().gen::<[u8; 32]>();
     let keys = KeyPair::from_priv_key_bytes(&secret).unwrap();
     slice::from_raw_parts_mut(result, 32).copy_from_slice(keys.public_key().as_bytes());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ip_address_hash_raw(address: *const u8, port: u16) -> u64 {
+    let bytes: [u8; 16] = std::slice::from_raw_parts(address, 16).try_into().unwrap();
+    let v6 = Ipv6Addr::from(bytes);
+    ip_address_hash_raw(&v6, port)
 }

@@ -1769,6 +1769,8 @@ void rsn_io_ctx_destroy (IoContextHandle * handle);
 
 void * rsn_io_ctx_get_ctx (IoContextHandle * handle);
 
+uint64_t rsn_ip_address_hash_raw (const uint8_t * address, uint16_t port);
+
 int32_t rsn_ipc_config_create (IpcConfigDto * dto, const NetworkConstantsDto * network_constants);
 
 StatLogSinkHandle * rsn_json_writer_create ();

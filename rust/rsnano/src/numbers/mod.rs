@@ -7,10 +7,12 @@ mod fan;
 use std::convert::TryInto;
 use std::fmt::{Debug, Write};
 use std::mem::size_of;
+use std::net::Ipv6Addr;
 use std::ops::{BitXorAssign, Deref};
 use std::slice;
 use std::{convert::TryFrom, fmt::Display};
 
+use crate::hardened_constants::HardenedConstants;
 use crate::utils::{Deserialize, Serialize, Stream};
 use crate::Epoch;
 use anyhow::Result;
@@ -19,6 +21,7 @@ pub use account::*;
 pub use account_info::AccountInfo;
 pub use amount::*;
 use blake2::digest::{Update, VariableOutput};
+use blake2::VarBlake2b;
 pub use difficulty::*;
 pub use fan::Fan;
 use num::FromPrimitive;
@@ -926,4 +929,17 @@ impl QualifiedRoot {
         result[32..].copy_from_slice(self.previous.as_bytes());
         result
     }
+}
+
+pub fn ip_address_hash_raw(address: &Ipv6Addr, port: u16) -> u64 {
+    let address_bytes = address.octets();
+    let mut hasher = VarBlake2b::new(8).unwrap();
+    hasher.update(&HardenedConstants::get().random_128.to_be_bytes());
+    if port != 0 {
+        hasher.update(port.to_ne_bytes());
+    }
+    hasher.update(address_bytes);
+    let mut result = 0;
+    hasher.finalize_variable(|res| result = u64::from_ne_bytes(res.try_into().unwrap()));
+    result
 }

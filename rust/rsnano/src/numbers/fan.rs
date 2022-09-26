@@ -1,12 +1,10 @@
-use std::sync::{Mutex, MutexGuard};
-
 use rand::{thread_rng, Rng};
 
 use crate::RawKey;
 
 /// The fan spreads a key out over the heap to decrease the likelihood of it being recovered by memory inspection
 pub struct Fan {
-    values: Mutex<Vec<Box<RawKey>>>,
+    values: Vec<Box<RawKey>>,
 }
 
 impl Fan {
@@ -21,30 +19,22 @@ impl Fan {
         }
         values.push(first);
 
-        Self {
-            values: Mutex::new(values),
-        }
+        Self { values }
     }
 
     pub fn value(&self) -> RawKey {
-        let guard = self.values.lock().unwrap();
-        get_fan_value(&guard)
+        let mut key = RawKey::new();
+        for i in self.values.iter() {
+            key ^= i.as_ref().clone();
+        }
+        key
     }
 
-    pub fn value_set(&self, new_value: RawKey) {
-        let mut guard = self.values.lock().unwrap();
-        let old_value = get_fan_value(&guard);
-        *guard[0] ^= old_value;
-        *guard[0] ^= new_value;
+    pub fn value_set(&mut self, new_value: RawKey) {
+        let old_value = self.value();
+        *self.values[0] ^= old_value;
+        *self.values[0] ^= new_value;
     }
-}
-
-fn get_fan_value(guard: &MutexGuard<Vec<Box<RawKey>>>) -> RawKey {
-    let mut key = RawKey::new();
-    for i in guard.iter() {
-        key ^= i.as_ref().clone();
-    }
-    key
 }
 
 #[cfg(test)]
@@ -55,7 +45,7 @@ mod tests {
     fn reconstitute_fan() {
         let value0 = RawKey::from_bytes([0; 32]);
         let fan = Fan::new(value0, 1024);
-        for i in fan.values.lock().unwrap().iter() {
+        for i in fan.values.iter() {
             assert_ne!(i.as_ref(), &value0);
         }
         let value1 = fan.value();
@@ -66,8 +56,8 @@ mod tests {
     fn change_fan() {
         let value0 = RawKey::from_bytes([0; 32]);
         let value1 = RawKey::from_bytes([1; 32]);
-        let fan = Fan::new(value0, 1024);
-        assert_eq!(fan.values.lock().unwrap().len(), 1024);
+        let mut fan = Fan::new(value0, 1024);
+        assert_eq!(fan.values.len(), 1024);
         assert_eq!(fan.value(), value0);
         fan.value_set(value1);
         assert_eq!(fan.value(), value1);

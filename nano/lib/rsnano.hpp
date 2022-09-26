@@ -1709,6 +1709,8 @@ BlockHandle * rsn_deserialize_block (uint8_t block_type, void * stream, BlockUni
 
 BlockHandle * rsn_deserialize_block_json (const void * ptree);
 
+void rsn_deterministic_key (const uint8_t * seed, uint32_t index, uint8_t * result);
+
 uint64_t rsn_difficulty_from_multiplier (double multiplier, uint64_t base_difficulty);
 
 double rsn_difficulty_to_multiplier (uint64_t difficulty, uint64_t base_difficulty);

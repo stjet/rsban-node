@@ -320,12 +320,7 @@ void nano::raw_key::decrypt (nano::uint256_union const & ciphertext, nano::raw_k
 nano::raw_key nano::deterministic_key (nano::raw_key const & seed_a, uint32_t index_a)
 {
 	nano::raw_key prv_key;
-	blake2b_state hash;
-	blake2b_init (&hash, prv_key.bytes.size ());
-	blake2b_update (&hash, seed_a.bytes.data (), seed_a.bytes.size ());
-	nano::uint256_union index (index_a);
-	blake2b_update (&hash, reinterpret_cast<uint8_t *> (&index.dwords[7]), sizeof (uint32_t));
-	blake2b_final (&hash, prv_key.bytes.data (), prv_key.bytes.size ());
+	rsnano::rsn_deterministic_key (seed_a.bytes.data (), index_a, prv_key.bytes.data ());
 	return prv_key;
 }
 

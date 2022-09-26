@@ -558,6 +558,12 @@ impl RawKey {
         }
         result
     }
+
+    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
+        let mut bytes = [0u8; 32];
+        hex::decode_to_slice(s.as_ref(), &mut bytes)?;
+        Ok(RawKey::from_bytes(bytes))
+    }
 }
 
 impl BitXorAssign for RawKey {
@@ -577,6 +583,14 @@ impl TryFrom<&RawKey> for PublicKey {
         Ok(PublicKey {
             value: public.to_bytes(),
         })
+    }
+}
+
+impl From<u64> for RawKey {
+    fn from(value: u64) -> Self {
+        let mut bytes = [0; 32];
+        bytes[24..].copy_from_slice(&value.to_be_bytes());
+        Self::from_bytes(bytes)
     }
 }
 
@@ -942,4 +956,29 @@ pub fn ip_address_hash_raw(address: &Ipv6Addr, port: u16) -> u64 {
     let mut result = 0;
     hasher.finalize_variable(|res| result = u64::from_ne_bytes(res.try_into().unwrap()));
     result
+}
+
+pub fn deterministic_key(seed: &RawKey, index: u32) -> RawKey {
+    let mut hasher = VarBlake2b::new(32).unwrap();
+    hasher.update(seed.as_bytes());
+    hasher.update(&index.to_be_bytes());
+    let mut result = RawKey::new();
+    hasher.finalize_variable(|res| result = RawKey::from_bytes(res.try_into().unwrap()));
+    result
+}
+
+#[cfg(test)]
+mod deterministic_key_tests {
+    use crate::{deterministic_key, RawKey};
+
+    #[test]
+    fn test_deterministic_key() {
+        let seed = RawKey::from(1);
+        let key = deterministic_key(&seed, 3);
+        assert_eq!(
+            key,
+            RawKey::decode_hex("89A518E3B70A0843DE8470F87FF851F9C980B1B2802267A05A089677B8FA1926")
+                .unwrap()
+        );
+    }
 }

@@ -6,13 +6,15 @@ pub use account_info::AccountInfoHandle;
 use rand::{thread_rng, Rng};
 
 use crate::{
-    ip_address_hash_raw,
+    deterministic_key, ip_address_hash_raw,
     numbers::{
         sign_message, validate_message, validate_message_batch, Account, Difficulty, PublicKey,
         RawKey, Signature,
     },
     KeyPair,
 };
+
+use super::copy_raw_key_bytes;
 
 #[no_mangle]
 pub extern "C" fn rsn_difficulty_to_multiplier(difficulty: u64, base_difficulty: u64) -> f64 {
@@ -170,4 +172,10 @@ pub unsafe extern "C" fn rsn_ip_address_hash_raw(address: *const u8, port: u16) 
     let bytes: [u8; 16] = std::slice::from_raw_parts(address, 16).try_into().unwrap();
     let v6 = Ipv6Addr::from(bytes);
     ip_address_hash_raw(&v6, port)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_deterministic_key(seed: *const u8, index: u32, result: *mut u8) {
+    let key = deterministic_key(&RawKey::from_ptr(seed), index);
+    copy_raw_key_bytes(key, result);
 }

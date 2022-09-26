@@ -366,12 +366,7 @@ std::vector<nano::account> nano::wallet_store::accounts (nano::transaction const
 
 void nano::wallet_store::initialize (nano::transaction const & transaction_a, bool & init_a, std::string const & path_a)
 {
-	debug_assert (strlen (path_a.c_str ()) == path_a.size ());
-	auto error (0);
-	MDB_dbi handle_l;
-	error |= mdb_dbi_open (tx (transaction_a), path_a.c_str (), MDB_CREATE, &handle_l);
-	rsnano::rsn_lmdb_wallet_store_set_db_handle (rust_handle, handle_l);
-	init_a = error != 0;
+	init_a = !rsnano::rsn_lmdb_wallet_store_initialize (rust_handle, transaction_a.get_rust_handle (), path_a.c_str ());
 }
 
 bool nano::wallet_store::is_representative (nano::transaction const & transaction_a)

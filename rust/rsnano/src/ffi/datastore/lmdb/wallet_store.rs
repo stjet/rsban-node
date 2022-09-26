@@ -1,4 +1,12 @@
+use std::{
+    ffi::{c_char, CStr},
+    path::PathBuf,
+    str::FromStr,
+};
+
 use crate::{datastore::lmdb::LmdbWalletStore, ffi::copy_raw_key_bytes, RawKey};
+
+use super::TransactionHandle;
 
 pub struct LmdbWalletStoreHandle(LmdbWalletStore);
 
@@ -12,6 +20,16 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_create(fanout: usize) -> *mut Lmd
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallet_store_destroy(handle: *mut LmdbWalletStoreHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_initialize(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    path: *const c_char,
+) -> bool {
+    let p = PathBuf::from_str(CStr::from_ptr(path).to_str().unwrap()).unwrap();
+    (*handle).0.initialize((*txn).as_txn(), &p).is_ok()
 }
 
 #[no_mangle]

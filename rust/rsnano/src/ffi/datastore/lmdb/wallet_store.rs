@@ -20,8 +20,8 @@ pub struct WalletValueDto {
     pub work: u64,
 }
 
-impl From<&WalletValue> for WalletValueDto {
-    fn from(value: &WalletValue) -> Self {
+impl From<WalletValue> for WalletValueDto {
+    fn from(value: WalletValue) -> Self {
         WalletValueDto {
             key: *value.key.as_bytes(),
             work: value.work,
@@ -130,4 +130,17 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_entry_put_raw(
         &Account::from_ptr(account),
         &WalletValue::from(&*entry),
     )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_entry_get_raw(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    result: *mut WalletValueDto,
+) {
+    let entry = (*handle)
+        .0
+        .entry_get_raw((*txn).as_txn(), &Account::from_ptr(account));
+    *result = entry.into()
 }

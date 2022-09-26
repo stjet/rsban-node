@@ -419,20 +419,9 @@ void nano::wallet_store::erase (nano::transaction const & transaction_a, nano::a
 
 nano::wallet_value nano::wallet_store::entry_get_raw (nano::transaction const & transaction_a, nano::account const & pub_a)
 {
-	nano::wallet_value result;
-	nano::mdb_val value;
-	MDB_dbi handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
-	auto status (mdb_get (tx (transaction_a), handle, nano::mdb_val (pub_a), value));
-	if (status == 0)
-	{
-		result = nano::wallet_value (value);
-	}
-	else
-	{
-		result.key.clear ();
-		result.work = 0;
-	}
-	return result;
+	rsnano::WalletValueDto value;
+	rsnano::rsn_lmdb_wallet_store_entry_get_raw (rust_handle, transaction_a.get_rust_handle (), pub_a.bytes.data (), &value);
+	return nano::wallet_value (value);
 }
 
 void nano::wallet_store::entry_put_raw (nano::transaction const & transaction_a, nano::account const & pub_a, nano::wallet_value const & entry_a)

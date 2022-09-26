@@ -2273,6 +2273,11 @@ uint32_t rsn_lmdb_wallet_store_db_handle (LmdbWalletStoreHandle * handle);
 
 void rsn_lmdb_wallet_store_destroy (LmdbWalletStoreHandle * handle);
 
+void rsn_lmdb_wallet_store_entry_get_raw (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account,
+WalletValueDto * result);
+
 void rsn_lmdb_wallet_store_entry_put_raw (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account,

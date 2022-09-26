@@ -8,13 +8,13 @@ use std::{
 
 use crate::{
     datastore::Transaction,
-    utils::{Deserialize, Serialize, Stream, StreamExt},
+    utils::{Deserialize, Serialize, Stream, StreamAdapter, StreamExt},
     Account, Fan, RawKey,
 };
 
 use super::{
-    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_put, OwnedMdbVal,
-    MDB_CREATE,
+    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_get, mdb_put, MdbVal,
+    OwnedMdbVal, MDB_CREATE, MDB_SUCCESS,
 };
 
 pub struct Fans {
@@ -63,6 +63,15 @@ impl Deserialize for WalletValue {
     }
 }
 
+impl TryFrom<&MdbVal> for WalletValue {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &MdbVal) -> Result<Self, Self::Error> {
+        let mut stream = StreamAdapter::new(value.as_slice());
+        WalletValue::deserialize(&mut stream)
+    }
+}
+
 pub struct LmdbWalletStore {
     db_handle: AtomicU32,
     pub fans: Mutex<Fans>,
@@ -96,14 +105,32 @@ impl LmdbWalletStore {
         self.db_handle.store(handle, Ordering::SeqCst);
     }
 
+    pub fn entry_get_raw(&self, txn: &dyn Transaction, account: &Account) -> WalletValue {
+        let mut key = MdbVal::from(account);
+        let mut value = MdbVal::new();
+        let status = unsafe {
+            mdb_get(
+                get_raw_lmdb_txn(txn),
+                self.db_handle(),
+                &mut key,
+                &mut value,
+            )
+        };
+        if status == MDB_SUCCESS {
+            WalletValue::try_from(&value).unwrap()
+        } else {
+            WalletValue::new(RawKey::new(), 0)
+        }
+    }
+
     pub fn entry_put_raw(&self, txn: &dyn Transaction, account: &Account, entry: &WalletValue) {
-        let mut key = OwnedMdbVal::from(account);
+        let mut key = MdbVal::from(account);
         let mut value = OwnedMdbVal::from(entry);
         let status = unsafe {
             mdb_put(
                 get_raw_lmdb_txn(txn),
                 self.db_handle(),
-                key.as_mdb_val(),
+                &mut key,
                 value.as_mdb_val(),
                 0,
             )

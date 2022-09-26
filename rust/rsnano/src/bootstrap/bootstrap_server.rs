@@ -374,7 +374,10 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
             } else if handshake_visitor.bootstrap() {
                 if self.allow_bootstrap {
                     // Switch to bootstrap connection mode and handle message in subsequent bootstrap visitor
-                    self.to_bootstrap_connection();
+                    if !self.to_bootstrap_connection() {
+                        self.stop();
+                        return false;
+                    }
                 } else {
                     // Received bootstrap request in a connection that only allows for realtime traffic, abort
                     self.stop();
@@ -394,7 +397,7 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
             }
             return true;
         }
-        // It is possible for server to switch to bootstrap mode immediately after processing handshake, thus no `else if`
+        // the server will switch to bootstrap mode immediately after processing the first bootstrap message, thus no `else if`
         if self.is_bootstrap_connection() {
             let mut bootstrap_visitor = self
                 .request_response_visitor_factory

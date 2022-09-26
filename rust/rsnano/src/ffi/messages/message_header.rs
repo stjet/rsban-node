@@ -3,7 +3,7 @@ use std::{ffi::c_void, ops::Deref};
 
 use crate::{
     messages::{MessageHeader, MessageType},
-    Networks, NetworkConstants,
+    NetworkConstants, Networks,
 };
 
 use crate::ffi::{FfiStream, StringDto};

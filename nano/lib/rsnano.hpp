@@ -849,6 +849,12 @@ struct UncheckedKeyDto
 	uint8_t hash[32];
 };
 
+struct WalletValueDto
+{
+	uint8_t key[32];
+	uint64_t work;
+};
+
 struct LocalVotesResult
 {
 	uintptr_t count;
@@ -2266,6 +2272,11 @@ LmdbWalletStoreHandle * rsn_lmdb_wallet_store_create (uintptr_t fanout);
 uint32_t rsn_lmdb_wallet_store_db_handle (LmdbWalletStoreHandle * handle);
 
 void rsn_lmdb_wallet_store_destroy (LmdbWalletStoreHandle * handle);
+
+void rsn_lmdb_wallet_store_entry_put_raw (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account,
+const WalletValueDto * entry);
 
 bool rsn_lmdb_wallet_store_initialize (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,

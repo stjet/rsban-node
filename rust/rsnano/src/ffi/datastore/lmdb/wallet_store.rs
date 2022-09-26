@@ -4,11 +4,36 @@ use std::{
     str::FromStr,
 };
 
-use crate::{datastore::lmdb::LmdbWalletStore, ffi::copy_raw_key_bytes, RawKey};
+use crate::{
+    datastore::lmdb::{LmdbWalletStore, WalletValue},
+    ffi::copy_raw_key_bytes,
+    Account, RawKey,
+};
 
 use super::TransactionHandle;
 
 pub struct LmdbWalletStoreHandle(LmdbWalletStore);
+
+#[repr(C)]
+pub struct WalletValueDto {
+    pub key: [u8; 32],
+    pub work: u64,
+}
+
+impl From<&WalletValue> for WalletValueDto {
+    fn from(value: &WalletValue) -> Self {
+        WalletValueDto {
+            key: *value.key.as_bytes(),
+            work: value.work,
+        }
+    }
+}
+
+impl From<&WalletValueDto> for WalletValue {
+    fn from(dto: &WalletValueDto) -> Self {
+        WalletValue::new(RawKey::from_bytes(dto.key), dto.work)
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallet_store_create(fanout: usize) -> *mut LmdbWalletStoreHandle {
@@ -91,4 +116,18 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_set_password(
         .unwrap()
         .password
         .value_set(RawKey::from_ptr(password));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_entry_put_raw(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    entry: *const WalletValueDto,
+) {
+    (*handle).0.entry_put_raw(
+        (*txn).as_txn(),
+        &Account::from_ptr(account),
+        &WalletValue::from(&*entry),
+    )
 }

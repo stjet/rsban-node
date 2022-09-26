@@ -40,7 +40,7 @@ pub use store::{create_backup_file, LmdbStore, Vacuuming};
 pub use txn_tracker::TxnTracker;
 pub use unchecked_store::LmdbUncheckedStore;
 pub use version_store::LmdbVersionStore;
-pub use wallet_store::LmdbWalletStore;
+pub use wallet_store::{LmdbWalletStore, WalletValue};
 
 use crate::{
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},

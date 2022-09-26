@@ -437,10 +437,8 @@ nano::wallet_value nano::wallet_store::entry_get_raw (nano::transaction const & 
 
 void nano::wallet_store::entry_put_raw (nano::transaction const & transaction_a, nano::account const & pub_a, nano::wallet_value const & entry_a)
 {
-	MDB_dbi handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
-	auto status (mdb_put (tx (transaction_a), handle, nano::mdb_val (pub_a), nano::mdb_val (sizeof (entry_a), const_cast<nano::wallet_value *> (&entry_a)), 0));
-	(void)status;
-	debug_assert (status == 0);
+	auto entry_dto{ entry_a.to_dto () };
+	rsnano::rsn_lmdb_wallet_store_entry_put_raw (rust_handle, transaction_a.get_rust_handle (), pub_a.bytes.data (), &entry_dto);
 }
 
 nano::key_type nano::wallet_store::key_type (nano::wallet_value const & value_a)

@@ -594,6 +594,26 @@ impl From<u64> for RawKey {
     }
 }
 
+impl Serialize for RawKey {
+    fn serialized_size() -> usize {
+        32
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        stream.write_bytes(self.as_bytes())
+    }
+}
+
+impl Deserialize for RawKey {
+    type Target = Self;
+
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
+        let mut buffer = [0; 32];
+        stream.read_bytes(&mut buffer, 32)?;
+        Ok(RawKey::from_bytes(buffer))
+    }
+}
+
 pub(crate) fn encode_hex(i: u128) -> String {
     let mut result = String::with_capacity(32);
     for byte in i.to_ne_bytes() {

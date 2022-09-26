@@ -6,13 +6,9 @@
 #include <nano/secure/common.hpp>
 #include <nano/secure/store.hpp>
 
-#include <crypto/cryptopp/words.h>
-
 #include <boost/endian/conversion.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/variant/get.hpp>
 
-#include <limits>
 #include <queue>
 
 namespace

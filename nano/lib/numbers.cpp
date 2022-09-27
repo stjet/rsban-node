@@ -72,9 +72,7 @@ bool nano::uint256_union::operator== (nano::uint256_union const & other_a) const
 // Construct a uint256_union = AES_ENC_CTR (cleartext, key, iv)
 void nano::uint256_union::encrypt (nano::raw_key const & cleartext, nano::raw_key const & key, uint128_union const & iv)
 {
-	CryptoPP::AES::Encryption alg (key.bytes.data (), sizeof (key.bytes));
-	CryptoPP::CTR_Mode_ExternalCipher::Encryption enc (alg, iv.bytes.data ());
-	enc.ProcessData (bytes.data (), cleartext.bytes.data (), sizeof (cleartext.bytes));
+	rsnano::rsn_raw_key_encrypt (bytes.data (), cleartext.bytes.data (), key.bytes.data (), iv.bytes.data ());
 }
 
 bool nano::uint256_union::is_zero () const

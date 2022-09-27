@@ -13,6 +13,8 @@ crate-type = ["staticlib", "lib"]
 mock_instant = "0.2.1"
 
 [dependencies]
+ctr = "0.9.1"
+aes = "0.8.1"
 rust-argon2 = "1.0"
 anyhow = "1.0.40"
 bitvec = "1.0.0"

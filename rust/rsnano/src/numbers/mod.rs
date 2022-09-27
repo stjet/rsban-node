@@ -22,6 +22,8 @@ pub use account_info::AccountInfo;
 pub use amount::*;
 use blake2::digest::{Update, VariableOutput};
 use blake2::VarBlake2b;
+use ctr::cipher::KeyIvInit;
+use ctr::cipher::StreamCipher;
 pub use difficulty::*;
 pub use fan::Fan;
 use num::FromPrimitive;
@@ -538,6 +540,8 @@ pub struct RawKey {
     bytes: [u8; 32],
 }
 
+type Aes256Ctr = ctr::Ctr64BE<aes::Aes256>;
+
 impl RawKey {
     pub fn new() -> Self {
         Default::default()
@@ -563,6 +567,13 @@ impl RawKey {
         let mut bytes = [0u8; 32];
         hex::decode_to_slice(s.as_ref(), &mut bytes)?;
         Ok(RawKey::from_bytes(bytes))
+    }
+
+    pub fn encrypt(&self, cleartext: &RawKey, key: &RawKey, iv: &[u8; 16]) -> Self {
+        let mut cipher = Aes256Ctr::new(&(*key.as_bytes()).into(), &(*iv).into());
+        let mut buf = *cleartext.as_bytes();
+        cipher.apply_keystream(&mut buf);
+        RawKey { bytes: buf }
     }
 }
 
@@ -892,70 +903,6 @@ impl Deserialize for PendingInfo {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    mod block_hash {
-        use super::*;
-
-        #[test]
-        fn block_hash_encode_hex() {
-            assert_eq!(
-                BlockHash::new().encode_hex(),
-                "0000000000000000000000000000000000000000000000000000000000000000"
-            );
-            assert_eq!(
-                BlockHash::from(0x12ab).encode_hex(),
-                "00000000000000000000000000000000000000000000000000000000000012AB"
-            );
-            assert_eq!(
-                BlockHash::from_bytes([0xff; 32]).encode_hex(),
-                "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
-            );
-        }
-    }
-
-    #[test]
-    fn ed25519_signing() -> Result<()> {
-        let secret_key = ed25519_dalek_blake2b::SecretKey::from_bytes(&[0u8; 32]).unwrap();
-        let public_key = ed25519_dalek_blake2b::PublicKey::from(&secret_key);
-        let message = [0u8; 32];
-        let expanded_prv_key = ed25519_dalek_blake2b::ExpandedSecretKey::from(&secret_key);
-        let signature = expanded_prv_key.sign(&message, &public_key);
-        public_key.verify_strict(&message, &signature).unwrap();
-
-        let mut sig_bytes = signature.to_bytes();
-        sig_bytes[32] ^= 0x1;
-        let signature = ed25519_dalek_blake2b::Signature::from_bytes(&sig_bytes).unwrap();
-        assert!(public_key.verify_strict(&message, &signature).is_err());
-
-        Ok(())
-    }
-
-    #[test]
-    fn sign_message_test() -> Result<()> {
-        let keypair = KeyPair::new();
-        let data = [0u8; 32];
-        let signature = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
-        validate_message(&keypair.public_key(), &data, &signature)?;
-        Ok(())
-    }
-
-    #[test]
-    fn signing_same_message_twice_produces_equal_signatures() -> Result<()> {
-        // the C++ implementation adds random bytes and a padding when signing for extra security and for making side channel attacks more difficult.
-        // Currently the Rust impl does not do that.
-        // In C++ signing the same message twice will produce different signatures. In Rust we get the same signature.
-        let keypair = KeyPair::new();
-        let data = [1, 2, 3];
-        let signature_a = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
-        let signature_b = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
-        assert_eq!(signature_a, signature_b);
-        Ok(())
-    }
-}
-
 impl QualifiedRoot {
     pub fn to_bytes(&self) -> [u8; 64] {
         let mut result = [0; 64];
@@ -988,17 +935,102 @@ pub fn deterministic_key(seed: &RawKey, index: u32) -> RawKey {
 }
 
 #[cfg(test)]
-mod deterministic_key_tests {
-    use crate::{deterministic_key, RawKey};
+mod tests {
+    use super::*;
 
-    #[test]
-    fn test_deterministic_key() {
-        let seed = RawKey::from(1);
-        let key = deterministic_key(&seed, 3);
-        assert_eq!(
-            key,
-            RawKey::decode_hex("89A518E3B70A0843DE8470F87FF851F9C980B1B2802267A05A089677B8FA1926")
+    mod deterministic_key_tests {
+        use crate::{deterministic_key, RawKey};
+
+        #[test]
+        fn test_deterministic_key() {
+            let seed = RawKey::from(1);
+            let key = deterministic_key(&seed, 3);
+            assert_eq!(
+                key,
+                RawKey::decode_hex(
+                    "89A518E3B70A0843DE8470F87FF851F9C980B1B2802267A05A089677B8FA1926"
+                )
                 .unwrap()
-        );
+            );
+        }
+    }
+
+    mod block_hash {
+        use super::*;
+
+        #[test]
+        fn block_hash_encode_hex() {
+            assert_eq!(
+                BlockHash::new().encode_hex(),
+                "0000000000000000000000000000000000000000000000000000000000000000"
+            );
+            assert_eq!(
+                BlockHash::from(0x12ab).encode_hex(),
+                "00000000000000000000000000000000000000000000000000000000000012AB"
+            );
+            assert_eq!(
+                BlockHash::from_bytes([0xff; 32]).encode_hex(),
+                "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+            );
+        }
+    }
+
+    mod signing {
+        use super::*;
+
+        #[test]
+        fn ed25519_signing() -> Result<()> {
+            let secret_key = ed25519_dalek_blake2b::SecretKey::from_bytes(&[0u8; 32]).unwrap();
+            let public_key = ed25519_dalek_blake2b::PublicKey::from(&secret_key);
+            let message = [0u8; 32];
+            let expanded_prv_key = ed25519_dalek_blake2b::ExpandedSecretKey::from(&secret_key);
+            let signature = expanded_prv_key.sign(&message, &public_key);
+            public_key.verify_strict(&message, &signature).unwrap();
+
+            let mut sig_bytes = signature.to_bytes();
+            sig_bytes[32] ^= 0x1;
+            let signature = ed25519_dalek_blake2b::Signature::from_bytes(&sig_bytes).unwrap();
+            assert!(public_key.verify_strict(&message, &signature).is_err());
+
+            Ok(())
+        }
+
+        #[test]
+        fn sign_message_test() -> Result<()> {
+            let keypair = KeyPair::new();
+            let data = [0u8; 32];
+            let signature = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+            validate_message(&keypair.public_key(), &data, &signature)?;
+            Ok(())
+        }
+
+        #[test]
+        fn signing_same_message_twice_produces_equal_signatures() -> Result<()> {
+            // the C++ implementation adds random bytes and a padding when signing for extra security and for making side channel attacks more difficult.
+            // Currently the Rust impl does not do that.
+            // In C++ signing the same message twice will produce different signatures. In Rust we get the same signature.
+            let keypair = KeyPair::new();
+            let data = [1, 2, 3];
+            let signature_a = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+            let signature_b = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+            assert_eq!(signature_a, signature_b);
+            Ok(())
+        }
+    }
+
+    mod raw_key_tests {
+        use super::*;
+        #[test]
+        fn encrypt_basic() {
+            let clear_text = RawKey::from(1);
+            let key = RawKey::from(2);
+            let iv: u128 = 123;
+            let encrypted = RawKey::from(3).encrypt(&clear_text, &key, &iv.to_be_bytes());
+            let expected = RawKey::decode_hex(
+                "3ED412A6F9840EA148EAEE236AFD10983D8E11326B07DFB33C5E1C47000AF3FD",
+            )
+            .unwrap();
+            assert_eq!(encrypted, expected)
+        }
     }
 }

@@ -167,6 +167,17 @@ TEST (unions, identity)
 	ASSERT_EQ (1, nano::uint512_union (1).number ().convert_to<uint8_t> ());
 }
 
+TEST (uint256_union, encrypt_one)
+{
+	nano::raw_key clear_text{ 1 };
+	nano::raw_key key{ 2 };
+	nano::uint256_union encrypted{ 3 };
+	encrypted.encrypt (clear_text, key, 123);
+	nano::uint256_union expected;
+	ASSERT_FALSE (expected.decode_hex ("3ED412A6F9840EA148EAEE236AFD10983D8E11326B07DFB33C5E1C47000AF3FD"));
+	ASSERT_EQ (expected, encrypted);
+}
+
 TEST (uint256_union, key_encryption)
 {
 	nano::keypair key1;

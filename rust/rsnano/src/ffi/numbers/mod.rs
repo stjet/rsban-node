@@ -179,3 +179,18 @@ pub unsafe extern "C" fn rsn_deterministic_key(seed: *const u8, index: u32, resu
     let key = deterministic_key(&RawKey::from_ptr(seed), index);
     copy_raw_key_bytes(key, result);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_raw_key_encrypt(
+    value: *mut u8,
+    cleartext: *const u8,
+    key: *const u8,
+    iv: *const u8,
+) {
+    let v = RawKey::from_ptr(value);
+    let ct = RawKey::from_ptr(cleartext);
+    let k = RawKey::from_ptr(key);
+    let iv = slice::from_raw_parts(iv, 16).try_into().unwrap();
+    let encrypted = v.encrypt(&ct, &k, &iv);
+    copy_raw_key_bytes(encrypted, value);
+}

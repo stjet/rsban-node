@@ -167,47 +167,6 @@ TEST (unions, identity)
 	ASSERT_EQ (1, nano::uint512_union (1).number ().convert_to<uint8_t> ());
 }
 
-TEST (uint256_union, encrypt_one)
-{
-	nano::raw_key clear_text{ 1 };
-	nano::raw_key key{ 2 };
-	nano::uint256_union encrypted{ 3 };
-	encrypted.encrypt (clear_text, key, 123);
-	nano::uint256_union expected;
-	ASSERT_FALSE (expected.decode_hex ("3ED412A6F9840EA148EAEE236AFD10983D8E11326B07DFB33C5E1C47000AF3FD"));
-	ASSERT_EQ (expected, encrypted);
-}
-
-TEST (uint256_union, key_encryption)
-{
-	nano::keypair key1;
-	nano::raw_key secret_key;
-	secret_key.clear ();
-	nano::uint256_union encrypted;
-	encrypted.encrypt (key1.prv, secret_key, key1.pub.owords[0]);
-	nano::raw_key key4;
-	key4.decrypt (encrypted, secret_key, key1.pub.owords[0]);
-	ASSERT_EQ (key1.prv, key4);
-	auto pub (nano::pub_key (key4));
-	ASSERT_EQ (key1.pub, pub);
-}
-
-TEST (uint256_union, encryption)
-{
-	nano::raw_key key;
-	key.clear ();
-	nano::raw_key number1;
-	number1 = 1;
-	nano::uint256_union encrypted1;
-	encrypted1.encrypt (number1, key, key.owords[0]);
-	nano::uint256_union encrypted2;
-	encrypted2.encrypt (number1, key, key.owords[0]);
-	ASSERT_EQ (encrypted1, encrypted2);
-	nano::raw_key number2;
-	number2.decrypt (encrypted1, key, key.owords[0]);
-	ASSERT_EQ (number1, number2);
-}
-
 TEST (uint256_union, decode_empty)
 {
 	std::string text;

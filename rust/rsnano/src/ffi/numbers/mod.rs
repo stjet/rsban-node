@@ -187,11 +187,10 @@ pub unsafe extern "C" fn rsn_raw_key_encrypt(
     key: *const u8,
     iv: *const u8,
 ) {
-    let v = RawKey::from_ptr(value);
     let cleartext = RawKey::from_ptr(cleartext);
     let key = RawKey::from_ptr(key);
     let iv = slice::from_raw_parts(iv, 16).try_into().unwrap();
-    let encrypted = v.encrypt(&cleartext, &key, &iv);
+    let encrypted = cleartext.encrypt(&key, &iv);
     copy_raw_key_bytes(encrypted, value);
 }
 
@@ -202,10 +201,9 @@ pub unsafe extern "C" fn rsn_raw_key_decrypt(
     key: *const u8,
     iv: *const u8,
 ) {
-    let v = RawKey::from_ptr(value);
     let ciphertext = RawKey::from_ptr(ciphertext);
     let key = RawKey::from_ptr(key);
     let iv = slice::from_raw_parts(iv, 16).try_into().unwrap();
-    let decrypted = v.decrypt(&ciphertext, &key, &iv);
+    let decrypted = ciphertext.decrypt(&key, &iv);
     copy_raw_key_bytes(decrypted, value);
 }

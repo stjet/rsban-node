@@ -95,6 +95,11 @@ impl LmdbWalletStore {
         Account::from(3)
     }
 
+    /// Wallet seed for deterministic key generation
+    pub fn seed_special() -> Account {
+        Account::from(5)
+    }
+
     pub fn initialize(&self, txn: &dyn Transaction, path: &Path) -> anyhow::Result<()> {
         let path_str = path
             .as_os_str()
@@ -154,5 +159,20 @@ impl LmdbWalletStore {
 
     pub fn salt(&self, txn: &dyn Transaction) -> RawKey {
         self.entry_get_raw(txn, &Self::salt_special()).key
+    }
+
+    pub fn wallet_key(&self, txn: &dyn Transaction) -> RawKey {
+        let guard = self.fans.lock().unwrap();
+        let wallet_l = guard.wallet_key_mem.value();
+        let password_l = guard.password.value();
+        let iv = self.salt(txn).initialization_vector_low();
+        wallet_l.decrypt(&password_l, &iv)
+    }
+
+    pub fn seed(&self, txn: &dyn Transaction) -> RawKey {
+        let value = self.entry_get_raw(txn, &Self::seed_special());
+        let password_l = self.wallet_key(txn);
+        let iv = self.salt(txn).initialization_vector_high();
+        value.key.decrypt(&password_l, &iv)
     }
 }

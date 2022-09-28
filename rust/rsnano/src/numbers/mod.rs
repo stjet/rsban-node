@@ -584,6 +584,16 @@ impl RawKey {
     pub fn decrypt(&self, key: &RawKey, iv: &[u8; 16]) -> Self {
         self.encrypt(key, iv)
     }
+
+    /// IV for Key encryption
+    pub fn initialization_vector_low(&self) -> [u8; 16] {
+        self.bytes[..16].try_into().unwrap()
+    }
+
+    /// IV for Key encryption
+    pub fn initialization_vector_high(&self) -> [u8; 16] {
+        self.bytes[16..].try_into().unwrap()
+    }
 }
 
 impl BitXorAssign for RawKey {

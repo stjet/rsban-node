@@ -2297,11 +2297,19 @@ void rsn_lmdb_wallet_store_salt (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 uint8_t * result);
 
+void rsn_lmdb_wallet_store_seed (LmdbWalletStoreHandle * handle,
+uint8_t * prv_key,
+TransactionHandle * txn);
+
 void rsn_lmdb_wallet_store_set_db_handle (LmdbWalletStoreHandle * handle, uint32_t dbi);
 
 void rsn_lmdb_wallet_store_set_password (LmdbWalletStoreHandle * handle, const uint8_t * password);
 
 void rsn_lmdb_wallet_store_set_wallet_key_mem (LmdbWalletStoreHandle * handle, const uint8_t * key);
+
+void rsn_lmdb_wallet_store_wallet_key (LmdbWalletStoreHandle * handle,
+uint8_t * prv_key,
+TransactionHandle * txn);
 
 void rsn_lmdb_wallet_store_wallet_key_mem (LmdbWalletStoreHandle * handle, uint8_t * key);
 

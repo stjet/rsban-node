@@ -32,20 +32,12 @@ nano::uint256_union nano::wallet_store::salt (nano::transaction const & transact
 
 void nano::wallet_store::wallet_key (nano::raw_key & prv_a, nano::transaction const & transaction_a)
 {
-	nano::lock_guard<std::recursive_mutex> lock (mutex);
-	nano::raw_key wallet_l;
-	rsnano::rsn_lmdb_wallet_store_wallet_key_mem (rust_handle, wallet_l.bytes.data ());
-	nano::raw_key password_l;
-	rsnano::rsn_lmdb_wallet_store_password (rust_handle, password_l.bytes.data ());
-	prv_a.decrypt (wallet_l, password_l, salt (transaction_a).owords[0]);
+	rsnano::rsn_lmdb_wallet_store_wallet_key (rust_handle, prv_a.bytes.data (), transaction_a.get_rust_handle ());
 }
 
 void nano::wallet_store::seed (nano::raw_key & prv_a, nano::transaction const & transaction_a)
 {
-	nano::wallet_value value (entry_get_raw (transaction_a, nano::wallet_store::seed_special));
-	nano::raw_key password_l;
-	wallet_key (password_l, transaction_a);
-	prv_a.decrypt (value.key, password_l, salt (transaction_a).owords[seed_iv_index]);
+	rsnano::rsn_lmdb_wallet_store_seed (rust_handle, prv_a.bytes.data (), transaction_a.get_rust_handle ());
 }
 
 void nano::wallet_store::seed_set (nano::transaction const & transaction_a, nano::raw_key const & prv_a)

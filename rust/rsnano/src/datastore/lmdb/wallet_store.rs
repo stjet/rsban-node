@@ -100,6 +100,11 @@ impl LmdbWalletStore {
         Account::from(5)
     }
 
+    /// Current key index for deterministic keys
+    pub fn deterministic_index_special() -> Account {
+        Account::from(6)
+    }
+
     pub fn initialize(&self, txn: &dyn Transaction, path: &Path) -> anyhow::Result<()> {
         let path_str = path
             .as_os_str()
@@ -163,16 +168,31 @@ impl LmdbWalletStore {
 
     pub fn wallet_key(&self, txn: &dyn Transaction) -> RawKey {
         let guard = self.fans.lock().unwrap();
-        let wallet_l = guard.wallet_key_mem.value();
-        let password_l = guard.password.value();
+        let wallet = guard.wallet_key_mem.value();
+        let password = guard.password.value();
         let iv = self.salt(txn).initialization_vector_low();
-        wallet_l.decrypt(&password_l, &iv)
+        wallet.decrypt(&password, &iv)
     }
 
     pub fn seed(&self, txn: &dyn Transaction) -> RawKey {
         let value = self.entry_get_raw(txn, &Self::seed_special());
+        let password = self.wallet_key(txn);
+        let iv = self.salt(txn).initialization_vector_high();
+        value.key.decrypt(&password, &iv)
+    }
+
+    pub fn set_seed(&self, txn: &dyn Transaction, prv: &RawKey) {
         let password_l = self.wallet_key(txn);
         let iv = self.salt(txn).initialization_vector_high();
-        value.key.decrypt(&password_l, &iv)
+        let ciphertext = prv.encrypt(&password_l, &iv);
+        self.entry_put_raw(txn, &Self::seed_special(), &WalletValue::new(ciphertext, 0));
+        //todo:
+        //deterministic_clear (transaction_a);
+    }
+
+    pub fn deterministic_index_set(&self, txn: &dyn Transaction, index: u32) {
+        let index = RawKey::from(index as u64);
+        let value = WalletValue::new(index, 0);
+        self.entry_put_raw(txn, &Self::deterministic_index_special(), &value);
     }
 }

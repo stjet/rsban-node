@@ -97,9 +97,7 @@ uint32_t nano::wallet_store::deterministic_index_get (nano::transaction const & 
 
 void nano::wallet_store::deterministic_index_set (nano::transaction const & transaction_a, uint32_t index_a)
 {
-	nano::raw_key index_l (index_a);
-	nano::wallet_value value (index_l, 0);
-	entry_put_raw (transaction_a, nano::wallet_store::deterministic_index_special, value);
+	rsnano::rsn_lmdb_wallet_store_deterministic_index_set (rust_handle, transaction_a.get_rust_handle (), index_a);
 }
 
 void nano::wallet_store::deterministic_clear (nano::transaction const & transaction_a)

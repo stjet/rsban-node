@@ -184,3 +184,23 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_seed(
     let key = (*handle).0.seed((*txn).as_txn());
     copy_raw_key_bytes(key, prv_key);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_seed_set(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    prv_key: *const u8,
+) {
+    (*handle)
+        .0
+        .set_seed((*txn).as_txn(), &RawKey::from_ptr(prv_key));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_index_set(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    index: u32,
+) {
+    (*handle).0.deterministic_index_set((*txn).as_txn(), index);
+}

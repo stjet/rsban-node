@@ -2277,6 +2277,10 @@ uint32_t rsn_lmdb_wallet_store_db_handle (LmdbWalletStoreHandle * handle);
 
 void rsn_lmdb_wallet_store_destroy (LmdbWalletStoreHandle * handle);
 
+void rsn_lmdb_wallet_store_deterministic_index_set (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+uint32_t index);
+
 void rsn_lmdb_wallet_store_entry_get_raw (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account,
@@ -2300,6 +2304,10 @@ uint8_t * result);
 void rsn_lmdb_wallet_store_seed (LmdbWalletStoreHandle * handle,
 uint8_t * prv_key,
 TransactionHandle * txn);
+
+void rsn_lmdb_wallet_store_seed_set (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * prv_key);
 
 void rsn_lmdb_wallet_store_set_db_handle (LmdbWalletStoreHandle * handle, uint32_t dbi);
 

@@ -2813,6 +2813,11 @@ void rsn_pulls_cache_update_pull (PullsCacheHandle * handle, PullInfoDto * pull)
 
 void rsn_random_wallet_id (uint8_t * result);
 
+void rsn_raw_key_decrypt (uint8_t * value,
+const uint8_t * ciphertext,
+const uint8_t * key,
+const uint8_t * iv);
+
 void rsn_raw_key_encrypt (uint8_t * value,
 const uint8_t * cleartext,
 const uint8_t * key,

@@ -575,6 +575,10 @@ impl RawKey {
         cipher.apply_keystream(&mut buf);
         RawKey { bytes: buf }
     }
+
+    pub fn decrypt(&self, ciphertext: &RawKey, key: &RawKey, iv: &[u8; 16]) -> Self {
+        self.encrypt(ciphertext, key, iv)
+    }
 }
 
 impl BitXorAssign for RawKey {
@@ -1020,6 +1024,7 @@ mod tests {
 
     mod raw_key_tests {
         use super::*;
+
         #[test]
         fn encrypt_basic() {
             let clear_text = RawKey::from(1);
@@ -1031,6 +1036,17 @@ mod tests {
             )
             .unwrap();
             assert_eq!(encrypted, expected)
+        }
+
+        #[test]
+        fn encrypt_and_decrypt() {
+            let clear_text = RawKey::from(1);
+            let key = RawKey::from(2);
+            let iv: u128 = 123;
+            let v = RawKey::from(3);
+            let encrypted = v.encrypt(&clear_text, &key, &iv.to_be_bytes());
+            let decrypted = v.decrypt(&encrypted, &key, &iv.to_be_bytes());
+            assert_eq!(decrypted, clear_text)
         }
     }
 }

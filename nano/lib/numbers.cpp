@@ -5,9 +5,6 @@
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 
-#include <crypto/cryptopp/aes.h>
-#include <crypto/cryptopp/modes.h>
-
 void nano::public_key::encode_account (std::string & destination_a) const
 {
 	uint8_t account_bytes[32];
@@ -307,12 +304,9 @@ nano::raw_key::~raw_key ()
 	secure_wipe_memory (bytes.data (), bytes.size ());
 }
 
-// This this = AES_DEC_CTR (ciphertext, key, iv)
 void nano::raw_key::decrypt (nano::uint256_union const & ciphertext, nano::raw_key const & key_a, uint128_union const & iv)
 {
-	CryptoPP::AES::Encryption alg (key_a.bytes.data (), sizeof (key_a.bytes));
-	CryptoPP::CTR_Mode_ExternalCipher::Decryption dec (alg, iv.bytes.data ());
-	dec.ProcessData (bytes.data (), ciphertext.bytes.data (), sizeof (ciphertext.bytes));
+	rsnano::rsn_raw_key_decrypt (bytes.data (), ciphertext.bytes.data (), key_a.bytes.data (), iv.bytes.data ());
 }
 
 nano::raw_key nano::deterministic_key (nano::raw_key const & seed_a, uint32_t index_a)

@@ -2293,6 +2293,10 @@ const char * path);
 
 void rsn_lmdb_wallet_store_password (LmdbWalletStoreHandle * handle, uint8_t * password);
 
+void rsn_lmdb_wallet_store_salt (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+uint8_t * result);
+
 void rsn_lmdb_wallet_store_set_db_handle (LmdbWalletStoreHandle * handle, uint32_t dbi);
 
 void rsn_lmdb_wallet_store_set_password (LmdbWalletStoreHandle * handle, const uint8_t * password);

@@ -25,8 +25,9 @@ nano::uint256_union nano::wallet_store::check (nano::transaction const & transac
 
 nano::uint256_union nano::wallet_store::salt (nano::transaction const & transaction_a)
 {
-	nano::wallet_value value (entry_get_raw (transaction_a, nano::wallet_store::salt_special));
-	return value.key;
+	nano::uint256_union result;
+	rsnano::rsn_lmdb_wallet_store_salt (rust_handle, transaction_a.get_rust_handle (), result.bytes.data ());
+	return result;
 }
 
 void nano::wallet_store::wallet_key (nano::raw_key & prv_a, nano::transaction const & transaction_a)

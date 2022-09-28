@@ -85,6 +85,11 @@ impl LmdbWalletStore {
         }
     }
 
+    /// Random number used to salt private key encryption
+    pub fn salt_special() -> Account {
+        Account::from(1)
+    }
+
     /// Check value used to see if password is valid
     pub fn check_special() -> Account {
         Account::from(3)
@@ -145,5 +150,9 @@ impl LmdbWalletStore {
 
     pub fn check(&self, txn: &dyn Transaction) -> RawKey {
         self.entry_get_raw(txn, &Self::check_special()).key
+    }
+
+    pub fn salt(&self, txn: &dyn Transaction) -> RawKey {
+        self.entry_get_raw(txn, &Self::salt_special()).key
     }
 }

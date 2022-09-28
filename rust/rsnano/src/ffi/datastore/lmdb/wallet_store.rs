@@ -154,3 +154,13 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_check(
     let value = (*handle).0.check((*txn).as_txn());
     copy_raw_key_bytes(value, result);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_salt(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    result: *mut u8,
+) {
+    let value = (*handle).0.salt((*txn).as_txn());
+    copy_raw_key_bytes(value, result);
+}

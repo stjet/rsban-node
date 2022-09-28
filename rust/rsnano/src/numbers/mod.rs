@@ -45,7 +45,7 @@ impl PublicKey {
         self.value == [0; 32]
     }
 
-    pub fn from_bytes(value: [u8; 32]) -> Self {
+    pub const fn from_bytes(value: [u8; 32]) -> Self {
         Self { value }
     }
 

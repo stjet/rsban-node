@@ -85,6 +85,11 @@ impl LmdbWalletStore {
         }
     }
 
+    /// Check value used to see if password is valid
+    pub fn check_special() -> Account {
+        Account::from(3)
+    }
+
     pub fn initialize(&self, txn: &dyn Transaction, path: &Path) -> anyhow::Result<()> {
         let path_str = path
             .as_os_str()
@@ -136,5 +141,9 @@ impl LmdbWalletStore {
             )
         };
         assert_success(status);
+    }
+
+    pub fn check(&self, txn: &dyn Transaction) -> RawKey {
+        self.entry_get_raw(txn, &Self::check_special()).key
     }
 }

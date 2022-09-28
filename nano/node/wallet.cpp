@@ -18,8 +18,9 @@
 
 nano::uint256_union nano::wallet_store::check (nano::transaction const & transaction_a)
 {
-	nano::wallet_value value (entry_get_raw (transaction_a, nano::wallet_store::check_special));
-	return value.key;
+	nano::uint256_union result;
+	rsnano::rsn_lmdb_wallet_store_check (rust_handle, transaction_a.get_rust_handle (), result.bytes.data ());
+	return result;
 }
 
 nano::uint256_union nano::wallet_store::salt (nano::transaction const & transaction_a)

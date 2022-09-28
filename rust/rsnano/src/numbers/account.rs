@@ -28,7 +28,7 @@ impl Account {
         self.public_key.is_zero()
     }
 
-    pub fn from_bytes(bytes: [u8; 32]) -> Account {
+    pub const fn from_bytes(bytes: [u8; 32]) -> Account {
         Self {
             public_key: PublicKey::from_bytes(bytes),
         }

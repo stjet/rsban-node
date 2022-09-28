@@ -144,3 +144,13 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_entry_get_raw(
         .entry_get_raw((*txn).as_txn(), &Account::from_ptr(account));
     *result = entry.into()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_check(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    result: *mut u8,
+) {
+    let value = (*handle).0.check((*txn).as_txn());
+    copy_raw_key_bytes(value, result);
+}

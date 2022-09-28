@@ -1,12 +1,13 @@
 use std::{
     ffi::{c_char, CStr},
+    ops::Deref,
     path::PathBuf,
     str::FromStr,
 };
 
 use crate::{
     datastore::lmdb::{LmdbWalletStore, WalletValue},
-    ffi::copy_raw_key_bytes,
+    ffi::{copy_raw_key_bytes, wallet::kdf::KdfHandle},
     Account, RawKey,
 };
 
@@ -36,9 +37,13 @@ impl From<&WalletValueDto> for WalletValue {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_create(fanout: usize) -> *mut LmdbWalletStoreHandle {
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_create(
+    fanout: usize,
+    kdf: *const KdfHandle,
+) -> *mut LmdbWalletStoreHandle {
     Box::into_raw(Box::new(LmdbWalletStoreHandle(LmdbWalletStore::new(
         fanout,
+        (*kdf).deref().clone(),
     ))))
 }
 
@@ -203,4 +208,34 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_index_set(
     index: u32,
 ) {
     (*handle).0.deterministic_index_set((*txn).as_txn(), index);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_valid_password(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+) -> bool {
+    (*handle).0.valid_password((*txn).as_txn())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_derive_key(
+    handle: *mut LmdbWalletStoreHandle,
+    prv: *mut u8,
+    txn: *mut TransactionHandle,
+    password: *const c_char,
+) {
+    let password = CStr::from_ptr(password).to_str().unwrap();
+    let key = (*handle).0.derive_key((*txn).as_txn(), password);
+    copy_raw_key_bytes(key, prv);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_rekey(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    password: *const c_char,
+) -> bool {
+    let password = CStr::from_ptr(password).to_str().unwrap();
+    (*handle).0.rekey((*txn).as_txn(), password).is_ok()
 }

@@ -126,14 +126,7 @@ void nano::wallet_store::deterministic_clear (nano::transaction const & transact
 
 bool nano::wallet_store::valid_password (nano::transaction const & transaction_a)
 {
-	nano::raw_key zero;
-	zero.clear ();
-	nano::raw_key wallet_key_l;
-	wallet_key (wallet_key_l, transaction_a);
-	nano::uint256_union check_l;
-	check_l.encrypt (zero, wallet_key_l, salt (transaction_a).owords[check_iv_index]);
-	bool ok = check (transaction_a) == check_l;
-	return ok;
+	return rsnano::rsn_lmdb_wallet_store_valid_password (rust_handle, transaction_a.get_rust_handle ());
 }
 
 bool nano::wallet_store::attempt_password (nano::transaction const & transaction_a, std::string const & password_a)
@@ -184,12 +177,12 @@ bool nano::wallet_store::rekey (nano::transaction const & transaction_a, std::st
 		result = true;
 	}
 	return result;
+	//	return !rsnano::rsn_lmdb_wallet_store_rekey (rust_handle, transaction_a.get_rust_handle (), password_a.c_str ());
 }
 
 void nano::wallet_store::derive_key (nano::raw_key & prv_a, nano::transaction const & transaction_a, std::string const & password_a)
 {
-	auto salt_l (salt (transaction_a));
-	kdf.phs (prv_a, password_a, salt_l);
+	rsnano::rsn_lmdb_wallet_store_derive_key (rust_handle, prv_a.bytes.data (), transaction_a.get_rust_handle (), password_a.c_str ());
 }
 
 // Wallet version number
@@ -212,7 +205,7 @@ std::size_t const nano::wallet_store::seed_iv_index (1);
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a, std::string const & json_a) :
 	kdf (kdf_a),
-	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a) },
+	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle) },
 	fanout{ fanout_a }
 {
 	init_a = false;
@@ -269,7 +262,7 @@ nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transa
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a) :
 	kdf (kdf_a),
-	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a) },
+	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle) },
 	fanout{ fanout_a }
 {
 	init_a = false;

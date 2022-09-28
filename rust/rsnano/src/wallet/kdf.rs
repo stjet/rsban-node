@@ -3,6 +3,7 @@ use argon2::{Variant, Version};
 use crate::RawKey;
 
 /// Key derivation function
+#[derive(Clone)]
 pub struct KeyDerivationFunction {
     kdf_work: u32,
 }
@@ -12,7 +13,7 @@ impl KeyDerivationFunction {
         Self { kdf_work }
     }
 
-    pub fn hash_password(&self, password: &str, salt: &[u8; 32]) -> anyhow::Result<RawKey> {
+    pub fn hash_password(&self, password: &str, salt: &[u8; 32]) -> RawKey {
         let config = argon2::Config {
             hash_length: 32,
             lanes: 1,
@@ -24,7 +25,7 @@ impl KeyDerivationFunction {
             ..Default::default()
         };
 
-        let hash = argon2::hash_raw(password.as_bytes(), salt, &config)?;
-        Ok(RawKey::from_bytes(hash.as_slice().try_into()?))
+        let hash = argon2::hash_raw(password.as_bytes(), salt, &config).unwrap();
+        RawKey::from_bytes(hash.as_slice().try_into().unwrap())
     }
 }

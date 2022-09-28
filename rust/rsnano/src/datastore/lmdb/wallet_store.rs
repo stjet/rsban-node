@@ -2,13 +2,14 @@ use std::{
     path::Path,
     sync::{
         atomic::{AtomicU32, Ordering},
-        Mutex,
+        Mutex, MutexGuard,
     },
 };
 
 use crate::{
     datastore::Transaction,
     utils::{Deserialize, Serialize, Stream, StreamAdapter, StreamExt},
+    wallet::{self, KeyDerivationFunction},
     Account, Fan, RawKey,
 };
 
@@ -75,19 +76,26 @@ impl TryFrom<&MdbVal> for WalletValue {
 pub struct LmdbWalletStore {
     db_handle: AtomicU32,
     pub fans: Mutex<Fans>,
+    kdf: KeyDerivationFunction,
 }
 
 impl LmdbWalletStore {
-    pub fn new(fanout: usize) -> Self {
+    pub fn new(fanout: usize, kdf: KeyDerivationFunction) -> Self {
         Self {
             db_handle: AtomicU32::new(0),
             fans: Mutex::new(Fans::new(fanout)),
+            kdf,
         }
     }
 
     /// Random number used to salt private key encryption
     pub fn salt_special() -> Account {
         Account::from(1)
+    }
+
+    /// Key used to encrypt wallet keys, encrypted itself by the user password
+    pub fn wallet_key_special() -> Account {
+        Account::from(2)
     }
 
     /// Check value used to see if password is valid
@@ -168,6 +176,10 @@ impl LmdbWalletStore {
 
     pub fn wallet_key(&self, txn: &dyn Transaction) -> RawKey {
         let guard = self.fans.lock().unwrap();
+        self.wallet_key_locked(&guard, txn)
+    }
+
+    fn wallet_key_locked(&self, guard: &MutexGuard<Fans>, txn: &dyn Transaction) -> RawKey {
         let wallet = guard.wallet_key_mem.value();
         let password = guard.password.value();
         let iv = self.salt(txn).initialization_vector_low();
@@ -194,5 +206,47 @@ impl LmdbWalletStore {
         let index = RawKey::from(index as u64);
         let value = WalletValue::new(index, 0);
         self.entry_put_raw(txn, &Self::deterministic_index_special(), &value);
+    }
+
+    pub fn valid_password(&self, txn: &dyn Transaction) -> bool {
+        let zero = RawKey::new();
+        let wallet_key = self.wallet_key(txn);
+        let salt = self.salt(txn);
+        let iv = salt.initialization_vector_low();
+        let check = zero.encrypt(&wallet_key, &iv);
+        self.check(txn) == check
+    }
+
+    pub fn valid_password_locked(&self, guard: &MutexGuard<Fans>, txn: &dyn Transaction) -> bool {
+        let zero = RawKey::new();
+        let wallet_key = self.wallet_key_locked(guard, txn);
+        let iv = self.salt(txn).initialization_vector_high();
+        let check = zero.encrypt(&wallet_key, &iv);
+        self.check(txn) == check
+    }
+
+    pub fn derive_key(&self, txn: &dyn Transaction, password: &str) -> RawKey {
+        let salt = self.salt(txn);
+        self.kdf.hash_password(password, salt.as_bytes())
+    }
+
+    pub fn rekey(&self, txn: &dyn Transaction, password: &str) -> anyhow::Result<()> {
+        let mut guard = self.fans.lock().unwrap();
+        if self.valid_password_locked(&guard, txn) {
+            let password_new = self.derive_key(txn, password);
+            let wallet_key = self.wallet_key_locked(&guard, txn);
+            guard.password.value_set(password_new);
+            let iv = self.salt(txn).initialization_vector_low();
+            let encrypted = wallet_key.encrypt(&password_new, &iv);
+            guard.wallet_key_mem.value_set(encrypted);
+            self.entry_put_raw(
+                txn,
+                &Self::wallet_key_special(),
+                &WalletValue::new(encrypted, 0),
+            );
+            Ok(())
+        } else {
+            Err(anyhow!("invalid password"))
+        }
     }
 }

@@ -30,8 +30,6 @@ public:
 	kdf (kdf &&) = delete;
 	~kdf ();
 	void phs (nano::raw_key &, std::string const &, nano::uint256_union const &);
-
-private:
 	rsnano::KdfHandle * handle;
 };
 enum class key_type

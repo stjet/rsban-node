@@ -2271,9 +2271,14 @@ void rsn_lmdb_wallet_store_check (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 uint8_t * result);
 
-LmdbWalletStoreHandle * rsn_lmdb_wallet_store_create (uintptr_t fanout);
+LmdbWalletStoreHandle * rsn_lmdb_wallet_store_create (uintptr_t fanout, const KdfHandle * kdf);
 
 uint32_t rsn_lmdb_wallet_store_db_handle (LmdbWalletStoreHandle * handle);
+
+void rsn_lmdb_wallet_store_derive_key (LmdbWalletStoreHandle * handle,
+uint8_t * prv,
+TransactionHandle * txn,
+const char * password);
 
 void rsn_lmdb_wallet_store_destroy (LmdbWalletStoreHandle * handle);
 
@@ -2297,6 +2302,10 @@ const char * path);
 
 void rsn_lmdb_wallet_store_password (LmdbWalletStoreHandle * handle, uint8_t * password);
 
+bool rsn_lmdb_wallet_store_rekey (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const char * password);
+
 void rsn_lmdb_wallet_store_salt (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 uint8_t * result);
@@ -2314,6 +2323,8 @@ void rsn_lmdb_wallet_store_set_db_handle (LmdbWalletStoreHandle * handle, uint32
 void rsn_lmdb_wallet_store_set_password (LmdbWalletStoreHandle * handle, const uint8_t * password);
 
 void rsn_lmdb_wallet_store_set_wallet_key_mem (LmdbWalletStoreHandle * handle, const uint8_t * key);
+
+bool rsn_lmdb_wallet_store_valid_password (LmdbWalletStoreHandle * handle, TransactionHandle * txn);
 
 void rsn_lmdb_wallet_store_wallet_key (LmdbWalletStoreHandle * handle,
 uint8_t * prv_key,

@@ -2289,6 +2289,9 @@ const char * password);
 
 void rsn_lmdb_wallet_store_destroy (LmdbWalletStoreHandle * handle);
 
+void rsn_lmdb_wallet_store_deterministic_clear (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn);
+
 void rsn_lmdb_wallet_store_deterministic_index_set (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 uint32_t index);
@@ -2303,9 +2306,15 @@ TransactionHandle * txn,
 const uint8_t * account,
 const WalletValueDto * entry);
 
+void rsn_lmdb_wallet_store_erase (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account);
+
 bool rsn_lmdb_wallet_store_initialize (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const char * path);
+
+uint8_t rsn_lmdb_wallet_store_key_type (const WalletValueDto * value);
 
 void rsn_lmdb_wallet_store_password (LmdbWalletStoreHandle * handle, uint8_t * password);
 

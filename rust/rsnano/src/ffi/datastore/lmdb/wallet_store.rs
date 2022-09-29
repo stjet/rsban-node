@@ -263,3 +263,27 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_begin_at_account(
         .begin_at_account((*txn).as_txn(), &Account::from_ptr(account));
     to_lmdb_iterator_handle(iterator.as_mut())
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_erase(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+) {
+    (*handle)
+        .0
+        .erase((*txn).as_txn(), &Account::from_ptr(account));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_key_type(value: *const WalletValueDto) -> u8 {
+    LmdbWalletStore::key_type(&WalletValue::from(&*value)) as u8
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_clear(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+) {
+    (*handle).0.deterministic_clear((*txn).as_txn());
+}

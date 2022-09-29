@@ -594,6 +594,10 @@ impl RawKey {
     pub fn initialization_vector_high(&self) -> [u8; 16] {
         self.bytes[16..].try_into().unwrap()
     }
+
+    pub fn number(&self) -> U256 {
+        U256::from_big_endian(&self.bytes)
+    }
 }
 
 impl BitXorAssign for RawKey {

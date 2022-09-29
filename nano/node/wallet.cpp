@@ -102,26 +102,7 @@ void nano::wallet_store::deterministic_index_set (nano::transaction const & tran
 
 void nano::wallet_store::deterministic_clear (nano::transaction const & transaction_a)
 {
-	nano::uint256_union key (0);
-	for (auto i (begin (transaction_a)), n (end ()); i != n;)
-	{
-		switch (key_type (nano::wallet_value (i->second)))
-		{
-			case nano::key_type::deterministic:
-			{
-				auto const & key (i->first);
-				erase (transaction_a, key);
-				i = begin (transaction_a, key);
-				break;
-			}
-			default:
-			{
-				++i;
-				break;
-			}
-		}
-	}
-	deterministic_index_set (transaction_a, 0);
+	rsnano::rsn_lmdb_wallet_store_deterministic_clear (rust_handle, transaction_a.get_rust_handle ());
 }
 
 bool nano::wallet_store::valid_password (nano::transaction const & transaction_a)
@@ -373,10 +354,7 @@ bool nano::wallet_store::insert_watch (nano::transaction const & transaction_a, 
 
 void nano::wallet_store::erase (nano::transaction const & transaction_a, nano::account const & pub)
 {
-	MDB_dbi handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
-	auto status (mdb_del (tx (transaction_a), handle, nano::mdb_val (pub), nullptr));
-	(void)status;
-	debug_assert (status == 0);
+	rsnano::rsn_lmdb_wallet_store_erase (rust_handle, transaction_a.get_rust_handle (), pub.bytes.data ());
 }
 
 nano::wallet_value nano::wallet_store::entry_get_raw (nano::transaction const & transaction_a, nano::account const & pub_a)
@@ -394,25 +372,8 @@ void nano::wallet_store::entry_put_raw (nano::transaction const & transaction_a,
 
 nano::key_type nano::wallet_store::key_type (nano::wallet_value const & value_a)
 {
-	auto number (value_a.key.number ());
-	nano::key_type result;
-	auto text (number.convert_to<std::string> ());
-	if (number > std::numeric_limits<uint64_t>::max ())
-	{
-		result = nano::key_type::adhoc;
-	}
-	else
-	{
-		if ((number >> 32).convert_to<uint32_t> () == 1)
-		{
-			result = nano::key_type::deterministic;
-		}
-		else
-		{
-			result = nano::key_type::unknown;
-		}
-	}
-	return result;
+	auto dto{ value_a.to_dto () };
+	return static_cast<nano::key_type> (rsnano::rsn_lmdb_wallet_store_key_type (&dto));
 }
 
 bool nano::wallet_store::fetch (nano::transaction const & transaction_a, nano::account const & pub, nano::raw_key & prv)

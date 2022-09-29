@@ -14,8 +14,8 @@ use crate::{
 };
 
 use super::{
-    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_get, mdb_put, LmdbIterator,
-    MdbVal, OwnedMdbVal, MDB_CREATE, MDB_SUCCESS,
+    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_del, mdb_get, mdb_put,
+    LmdbIterator, MdbVal, OwnedMdbVal, MDB_CREATE, MDB_SUCCESS,
 };
 
 pub struct Fans {
@@ -71,6 +71,14 @@ impl TryFrom<&MdbVal> for WalletValue {
         let mut stream = StreamAdapter::new(value.as_slice());
         WalletValue::deserialize(&mut stream)
     }
+}
+
+#[derive(FromPrimitive)]
+pub enum KeyType {
+    NotAType,
+    Unknown,
+    Adhoc,
+    Deterministic,
 }
 
 pub struct LmdbWalletStore {
@@ -269,5 +277,45 @@ impl LmdbWalletStore {
         key: &Account,
     ) -> Box<dyn DbIterator<Account, WalletValue>> {
         Box::new(LmdbIterator::new(txn, self.db_handle(), Some(key), true))
+    }
+
+    pub fn erase(&self, txn: &dyn Transaction, account: &Account) {
+        let status = unsafe {
+            mdb_del(
+                get_raw_lmdb_txn(txn),
+                self.db_handle(),
+                &mut MdbVal::from(account),
+                None,
+            )
+        };
+        assert_success(status);
+    }
+
+    pub fn key_type(value: &WalletValue) -> KeyType {
+        let number = value.key.number();
+        if number > u64::MAX.into() {
+            KeyType::Adhoc
+        } else {
+            if (number >> 32).low_u32() == 1 {
+                KeyType::Deterministic
+            } else {
+                KeyType::Unknown
+            }
+        }
+    }
+
+    pub fn deterministic_clear(&self, txn: &dyn Transaction) {
+        let mut it = self.begin(txn);
+        while let Some((account, value)) = it.current() {
+            match Self::key_type(value) {
+                KeyType::Deterministic => {
+                    self.erase(txn, account);
+                    it = self.begin_at_account(txn, account);
+                }
+                _ => it.next(),
+            }
+        }
+
+        self.deterministic_index_set(txn, 0);
     }
 }

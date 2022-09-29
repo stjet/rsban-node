@@ -210,8 +210,7 @@ impl LmdbWalletStore {
         let iv = self.salt(txn).initialization_vector_high();
         let ciphertext = prv.encrypt(&password_l, &iv);
         self.entry_put_raw(txn, &Self::seed_special(), &WalletValue::new(ciphertext, 0));
-        //todo:
-        //deterministic_clear (transaction_a);
+        self.deterministic_clear(txn);
     }
 
     pub fn deterministic_index_set(&self, txn: &dyn Transaction, index: u32) {

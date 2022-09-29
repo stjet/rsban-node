@@ -42,12 +42,7 @@ void nano::wallet_store::seed (nano::raw_key & prv_a, nano::transaction const & 
 
 void nano::wallet_store::seed_set (nano::transaction const & transaction_a, nano::raw_key const & prv_a)
 {
-	nano::raw_key password_l;
-	wallet_key (password_l, transaction_a);
-	nano::raw_key ciphertext;
-	ciphertext.encrypt (prv_a, password_l, salt (transaction_a).owords[seed_iv_index]);
-	entry_put_raw (transaction_a, nano::wallet_store::seed_special, nano::wallet_value (ciphertext, 0));
-	deterministic_clear (transaction_a);
+	rsnano::rsn_lmdb_wallet_store_seed_set (rust_handle, transaction_a.get_rust_handle (), prv_a.bytes.data ());
 }
 
 nano::public_key nano::wallet_store::deterministic_insert (nano::transaction const & transaction_a)

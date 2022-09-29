@@ -7,15 +7,15 @@ use std::{
 };
 
 use crate::{
-    datastore::Transaction,
+    datastore::{DbIterator, Transaction},
     utils::{Deserialize, Serialize, Stream, StreamAdapter, StreamExt},
-    wallet::{self, KeyDerivationFunction},
+    wallet::KeyDerivationFunction,
     Account, Fan, RawKey,
 };
 
 use super::{
-    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_get, mdb_put, MdbVal,
-    OwnedMdbVal, MDB_CREATE, MDB_SUCCESS,
+    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_get, mdb_put, LmdbIterator,
+    MdbVal, OwnedMdbVal, MDB_CREATE, MDB_SUCCESS,
 };
 
 pub struct Fans {
@@ -111,6 +111,10 @@ impl LmdbWalletStore {
     /// Current key index for deterministic keys
     pub fn deterministic_index_special() -> Account {
         Account::from(6)
+    }
+
+    pub fn special_count() -> Account {
+        Account::from(7)
     }
 
     pub fn initialize(&self, txn: &dyn Transaction, path: &Path) -> anyhow::Result<()> {
@@ -209,18 +213,18 @@ impl LmdbWalletStore {
     }
 
     pub fn valid_password(&self, txn: &dyn Transaction) -> bool {
-        let zero = RawKey::new();
         let wallet_key = self.wallet_key(txn);
-        let salt = self.salt(txn);
-        let iv = salt.initialization_vector_low();
-        let check = zero.encrypt(&wallet_key, &iv);
-        self.check(txn) == check
+        self.check_wallet_key(txn, &wallet_key)
     }
 
     pub fn valid_password_locked(&self, guard: &MutexGuard<Fans>, txn: &dyn Transaction) -> bool {
-        let zero = RawKey::new();
         let wallet_key = self.wallet_key_locked(guard, txn);
-        let iv = self.salt(txn).initialization_vector_high();
+        self.check_wallet_key(txn, &wallet_key)
+    }
+
+    fn check_wallet_key(&self, txn: &dyn Transaction, wallet_key: &RawKey) -> bool {
+        let zero = RawKey::new();
+        let iv = self.salt(txn).initialization_vector_low();
         let check = zero.encrypt(&wallet_key, &iv);
         self.check(txn) == check
     }
@@ -248,5 +252,22 @@ impl LmdbWalletStore {
         } else {
             Err(anyhow!("invalid password"))
         }
+    }
+
+    pub fn begin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<Account, WalletValue>> {
+        Box::new(LmdbIterator::new(
+            txn,
+            self.db_handle(),
+            Some(&Self::special_count()),
+            true,
+        ))
+    }
+
+    pub fn begin_at_account(
+        &self,
+        txn: &dyn Transaction,
+        key: &Account,
+    ) -> Box<dyn DbIterator<Account, WalletValue>> {
+        Box::new(LmdbIterator::new(txn, self.db_handle(), Some(key), true))
     }
 }

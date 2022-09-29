@@ -2267,6 +2267,13 @@ int32_t version);
 
 uint32_t rsn_lmdb_version_store_table_handle (LmdbVersionStoreHandle * handle);
 
+LmdbIteratorHandle * rsn_lmdb_wallet_store_begin (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn);
+
+LmdbIteratorHandle * rsn_lmdb_wallet_store_begin_at_account (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account);
+
 void rsn_lmdb_wallet_store_check (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 uint8_t * result);

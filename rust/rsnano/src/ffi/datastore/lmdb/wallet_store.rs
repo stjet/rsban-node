@@ -11,7 +11,10 @@ use crate::{
     Account, RawKey,
 };
 
-use super::TransactionHandle;
+use super::{
+    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    TransactionHandle,
+};
 
 pub struct LmdbWalletStoreHandle(LmdbWalletStore);
 
@@ -238,4 +241,25 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_rekey(
 ) -> bool {
     let password = CStr::from_ptr(password).to_str().unwrap();
     (*handle).0.rekey((*txn).as_txn(), password).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_begin(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+) -> *mut LmdbIteratorHandle {
+    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    to_lmdb_iterator_handle(iterator.as_mut())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_begin_at_account(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+) -> *mut LmdbIteratorHandle {
+    let mut iterator = (*handle)
+        .0
+        .begin_at_account((*txn).as_txn(), &Account::from_ptr(account));
+    to_lmdb_iterator_handle(iterator.as_mut())
 }

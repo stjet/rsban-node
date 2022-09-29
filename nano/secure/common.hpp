@@ -8,6 +8,7 @@
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/rep_weights.hpp>
 #include <nano/lib/rsnano.hpp>
+#include <nano/lib/stats.hpp>
 #include <nano/lib/utility.hpp>
 
 #include <boost/iterator/transform_iterator.hpp>
@@ -383,6 +384,8 @@ enum class tally_result
 	changed,
 	confirm
 };
+
+nano::stat::detail to_stat_detail (process_result);
 
 class network_params;
 

@@ -97,6 +97,11 @@ impl LmdbWalletStore {
         }
     }
 
+    /// Wallet version number
+    pub fn version_special() -> Account {
+        Account::from(0)
+    }
+
     /// Random number used to salt private key encryption
     pub fn salt_special() -> Account {
         Account::from(1)
@@ -388,5 +393,27 @@ impl LmdbWalletStore {
         marker |= index as u64;
         self.entry_put_raw(txn, &result.into(), &&WalletValue::new(marker.into(), 0));
         result
+    }
+
+    pub fn version(&self, txn: &dyn Transaction) -> u32 {
+        let value = self.entry_get_raw(txn, &Self::version_special());
+        value.key.as_bytes()[31] as u32
+    }
+
+    pub fn attempt_password(&self, txn: &dyn Transaction, password: &str) -> bool {
+        let is_valid = {
+            let mut guard = self.fans.lock().unwrap();
+            let password_key = self.derive_key(txn, password);
+            guard.password.value_set(password_key);
+            self.valid_password(txn)
+        };
+
+        if is_valid {
+            if self.version(txn) != 4 {
+                panic!("invalid wallet store version!");
+            }
+        }
+
+        is_valid
     }
 }

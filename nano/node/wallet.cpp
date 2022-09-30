@@ -88,25 +88,7 @@ bool nano::wallet_store::valid_password (nano::transaction const & transaction_a
 
 bool nano::wallet_store::attempt_password (nano::transaction const & transaction_a, std::string const & password_a)
 {
-	bool result = false;
-	{
-		nano::lock_guard<std::recursive_mutex> lock (mutex);
-		nano::raw_key password_l;
-		derive_key (password_l, transaction_a, password_a);
-		rsnano::rsn_lmdb_wallet_store_set_password (rust_handle, password_l.bytes.data ());
-		result = !valid_password (transaction_a);
-	}
-	if (!result)
-	{
-		switch (version (transaction_a))
-		{
-			case version_4:
-				break;
-			default:
-				debug_assert (false);
-		}
-	}
-	return result;
+	return !rsnano::rsn_lmdb_wallet_store_attempt_password (rust_handle, transaction_a.get_rust_handle (), password_a.c_str ());
 }
 
 bool nano::wallet_store::rekey (nano::transaction const & transaction_a, std::string const & password_a)

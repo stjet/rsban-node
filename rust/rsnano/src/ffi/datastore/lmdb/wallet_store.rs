@@ -358,3 +358,21 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_insert_at(
     let result = (*handle).0.deterministic_insert_at((*txn).as_txn(), index);
     copy_public_key_bytes(&result, key);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_version(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+) -> u32 {
+    (*handle).0.version((*txn).as_txn())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_attempt_password(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    password: *const c_char,
+) -> bool {
+    let password = CStr::from_ptr(password).to_str().unwrap();
+    (*handle).0.attempt_password((*txn).as_txn(), password)
+}

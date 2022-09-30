@@ -2267,6 +2267,10 @@ int32_t version);
 
 uint32_t rsn_lmdb_version_store_table_handle (LmdbVersionStoreHandle * handle);
 
+bool rsn_lmdb_wallet_store_attempt_password (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const char * password);
+
 LmdbIteratorHandle * rsn_lmdb_wallet_store_begin (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn);
 
@@ -2368,6 +2372,8 @@ void rsn_lmdb_wallet_store_set_wallet_key_mem (LmdbWalletStoreHandle * handle, c
 bool rsn_lmdb_wallet_store_valid_password (LmdbWalletStoreHandle * handle, TransactionHandle * txn);
 
 bool rsn_lmdb_wallet_store_valid_public_key (LmdbWalletStoreHandle * handle, const uint8_t * key);
+
+uint32_t rsn_lmdb_wallet_store_version (LmdbWalletStoreHandle * handle, TransactionHandle * txn);
 
 void rsn_lmdb_wallet_store_wallet_key (LmdbWalletStoreHandle * handle,
 uint8_t * prv_key,

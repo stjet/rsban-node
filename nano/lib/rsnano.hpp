@@ -2318,6 +2318,10 @@ void rsn_lmdb_wallet_store_erase (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account);
 
+LmdbIteratorHandle * rsn_lmdb_wallet_store_find (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account);
+
 bool rsn_lmdb_wallet_store_initialize (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const char * path);

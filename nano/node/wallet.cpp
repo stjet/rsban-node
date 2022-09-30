@@ -1714,24 +1714,8 @@ nano::store_iterator<nano::account, nano::wallet_value> nano::wallet_store::begi
 
 nano::store_iterator<nano::account, nano::wallet_value> nano::wallet_store::find (nano::transaction const & transaction_a, nano::account const & key)
 {
-	auto result (begin (transaction_a, key));
-	nano::store_iterator<nano::account, nano::wallet_value> end (nullptr);
-	if (result != end)
-	{
-		if (result->first == key)
-		{
-			return result;
-		}
-		else
-		{
-			return end;
-		}
-	}
-	else
-	{
-		return end;
-	}
-	return result;
+	auto it_handle = rsnano::rsn_lmdb_wallet_store_find (rust_handle, transaction_a.get_rust_handle (), key.bytes.data ());
+	return to_iterator (it_handle);
 }
 
 nano::store_iterator<nano::account, nano::wallet_value> nano::wallet_store::end ()

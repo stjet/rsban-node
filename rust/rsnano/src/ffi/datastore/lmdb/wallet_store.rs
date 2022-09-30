@@ -306,3 +306,15 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_key(
     let result = (*handle).0.deterministic_key((*txn).as_txn(), index);
     copy_raw_key_bytes(result, key);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_find(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+) -> *mut LmdbIteratorHandle {
+    let mut iterator = (*handle)
+        .0
+        .find((*txn).as_txn(), &Account::from_ptr(account));
+    to_lmdb_iterator_handle(iterator.as_mut())
+}

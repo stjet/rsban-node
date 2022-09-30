@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    datastore::{DbIterator, Transaction},
+    datastore::{DbIterator, NullIterator, Transaction},
     deterministic_key,
     utils::{Deserialize, Serialize, Stream, StreamAdapter, StreamExt},
     wallet::KeyDerivationFunction,
@@ -288,6 +288,25 @@ impl LmdbWalletStore {
         key: &Account,
     ) -> Box<dyn DbIterator<Account, WalletValue>> {
         Box::new(LmdbIterator::new(txn, self.db_handle(), Some(key), true))
+    }
+
+    pub fn end(&self) -> Box<dyn DbIterator<Account, WalletValue>> {
+        Box::new(NullIterator::new())
+    }
+
+    pub fn find(
+        &self,
+        txn: &dyn Transaction,
+        account: &Account,
+    ) -> Box<dyn DbIterator<Account, WalletValue>> {
+        let result = self.begin_at_account(txn, account);
+        if let Some((key, _)) = result.current() {
+            if key == account {
+                return result;
+            }
+        }
+
+        self.end()
     }
 
     pub fn erase(&self, txn: &dyn Transaction, account: &Account) {

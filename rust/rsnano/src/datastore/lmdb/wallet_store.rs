@@ -356,4 +356,27 @@ impl LmdbWalletStore {
     pub fn exists(&self, txn: &dyn Transaction, key: &PublicKey) -> bool {
         self.valid_public_key(key) && !self.find(txn, &Account::from(key)).is_end()
     }
+
+    pub fn deterministic_insert(&self, txn: &dyn Transaction) -> PublicKey {
+        let mut index = self.deterministic_index_get(txn);
+        let mut prv = self.deterministic_key(txn, index);
+        let mut result = PublicKey::try_from(&prv).unwrap();
+        while self.exists(txn, &result) {
+            index += 1;
+            prv = self.deterministic_key(txn, index);
+            result = PublicKey::try_from(&prv).unwrap();
+        }
+
+        let mut marker = 1u64;
+        marker <<= 32;
+        marker |= index as u64;
+        self.entry_put_raw(
+            txn,
+            &Account::from(result),
+            &WalletValue::new(marker.into(), 0),
+        );
+        index += 1;
+        self.deterministic_index_set(txn, index);
+        return result;
+    }
 }

@@ -51,7 +51,7 @@ pub(crate) use websocket::*;
 
 use crate::{
     utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount,
-    MemoryIntensiveInstrumentationCallback, QualifiedRoot, RawKey, Root, Signature,
+    MemoryIntensiveInstrumentationCallback, PublicKey, QualifiedRoot, RawKey, Root, Signature,
     IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION,
 };
 pub use network::ChannelTcpObserverWeakPtr;
@@ -138,6 +138,11 @@ fn into_32_byte_array(ptr: *const u8) -> [u8; 32] {
     let mut bytes = [0; 32];
     bytes.copy_from_slice(unsafe { std::slice::from_raw_parts(ptr, 32) });
     bytes
+}
+
+pub(crate) unsafe fn copy_public_key_bytes(source: &PublicKey, target: *mut u8) {
+    let bytes = std::slice::from_raw_parts_mut(target, 32);
+    bytes.copy_from_slice(source.as_bytes());
 }
 
 pub(crate) unsafe fn copy_raw_key_bytes(source: RawKey, target: *mut u8) {

@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     datastore::lmdb::{LmdbWalletStore, WalletValue},
-    ffi::{copy_raw_key_bytes, wallet::kdf::KdfHandle},
+    ffi::{copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle},
     Account, PublicKey, RawKey,
 };
 
@@ -336,4 +336,14 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_exists(
     (*handle)
         .0
         .exists((*txn).as_txn(), &PublicKey::from_ptr(key))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_insert(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    key: *mut u8,
+) {
+    let result = (*handle).0.deterministic_insert((*txn).as_txn());
+    copy_public_key_bytes(&result, key);
 }

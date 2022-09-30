@@ -47,22 +47,9 @@ void nano::wallet_store::seed_set (nano::transaction const & transaction_a, nano
 
 nano::public_key nano::wallet_store::deterministic_insert (nano::transaction const & transaction_a)
 {
-	auto index (deterministic_index_get (transaction_a));
-	auto prv = deterministic_key (transaction_a, index);
-	nano::public_key result (nano::pub_key (prv));
-	while (exists (transaction_a, result))
-	{
-		++index;
-		prv = deterministic_key (transaction_a, index);
-		result = nano::pub_key (prv);
-	}
-	uint64_t marker (1);
-	marker <<= 32;
-	marker |= index;
-	entry_put_raw (transaction_a, result, nano::wallet_value (marker, 0));
-	++index;
-	deterministic_index_set (transaction_a, index);
-	return result;
+	nano::public_key key;
+	rsnano::rsn_lmdb_wallet_store_deterministic_insert (rust_handle, transaction_a.get_rust_handle (), key.bytes.data ());
+	return key;
 }
 
 nano::public_key nano::wallet_store::deterministic_insert (nano::transaction const & transaction_a, uint32_t const index)

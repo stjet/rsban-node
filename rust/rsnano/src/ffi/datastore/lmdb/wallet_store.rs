@@ -444,3 +444,15 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_insert_adhoc(
         .insert_adhoc((*txn).as_txn(), &RawKey::from_ptr(prv));
     copy_public_key_bytes(&public_key, pub_key);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_insert_watch(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    pub_key: *const u8,
+) -> bool {
+    (*handle)
+        .0
+        .insert_watch((*txn).as_txn(), &Account::from_ptr(pub_key))
+        .is_ok()
+}

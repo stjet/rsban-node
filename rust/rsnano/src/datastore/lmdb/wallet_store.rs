@@ -459,4 +459,13 @@ impl LmdbWalletStore {
         self.entry_put_raw(txn, &pub_key.into(), &WalletValue::new(ciphertext, 0));
         pub_key
     }
+
+    pub fn insert_watch(&self, txn: &dyn Transaction, pub_key: &Account) -> anyhow::Result<()> {
+        if !self.valid_public_key(&pub_key.public_key) {
+            bail!("invalid public key");
+        }
+
+        self.entry_put_raw(txn, pub_key, &WalletValue::new(RawKey::new(), 0));
+        Ok(())
+    }
 }

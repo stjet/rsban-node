@@ -2363,6 +2363,10 @@ TransactionHandle * txn,
 const uint8_t * prv,
 uint8_t * pub_key);
 
+bool rsn_lmdb_wallet_store_insert_watch (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * pub_key);
+
 uint8_t rsn_lmdb_wallet_store_key_type (const WalletValueDto * value);
 
 void rsn_lmdb_wallet_store_lock (LmdbWalletStoreHandle * handle);

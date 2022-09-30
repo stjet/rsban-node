@@ -299,12 +299,7 @@ nano::public_key nano::wallet_store::insert_adhoc (nano::transaction const & tra
 
 bool nano::wallet_store::insert_watch (nano::transaction const & transaction_a, nano::account const & pub_a)
 {
-	bool error (!valid_public_key (pub_a));
-	if (!error)
-	{
-		entry_put_raw (transaction_a, pub_a, nano::wallet_value (nano::raw_key (0), 0));
-	}
-	return error;
+	return !rsnano::rsn_lmdb_wallet_store_insert_watch (rust_handle, transaction_a.get_rust_handle (), pub_a.bytes.data ());
 }
 
 void nano::wallet_store::erase (nano::transaction const & transaction_a, nano::account const & pub)

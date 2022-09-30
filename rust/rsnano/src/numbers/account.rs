@@ -49,6 +49,10 @@ impl Account {
         self.public_key.as_bytes()
     }
 
+    pub fn number(&self) -> U256 {
+        U256::from_big_endian(self.as_bytes())
+    }
+
     pub fn encode_account(&self) -> String {
         let mut number = U512::from_big_endian(self.public_key.as_bytes());
         let check = U512::from_little_endian(&self.account_checksum());

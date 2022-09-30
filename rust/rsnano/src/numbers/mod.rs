@@ -62,6 +62,10 @@ impl PublicKey {
         }
     }
 
+    pub fn number(&self) -> U256 {
+        U256::from_big_endian(&self.value)
+    }
+
     pub const fn serialized_size() -> usize {
         32
     }

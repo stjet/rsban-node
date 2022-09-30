@@ -8,7 +8,7 @@ use std::{
 use crate::{
     datastore::lmdb::{LmdbWalletStore, WalletValue},
     ffi::{copy_raw_key_bytes, wallet::kdf::KdfHandle},
-    Account, RawKey,
+    Account, PublicKey, RawKey,
 };
 
 use super::{
@@ -317,4 +317,23 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_find(
         .0
         .find((*txn).as_txn(), &Account::from_ptr(account));
     to_lmdb_iterator_handle(iterator.as_mut())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_valid_public_key(
+    handle: *mut LmdbWalletStoreHandle,
+    key: *const u8,
+) -> bool {
+    (*handle).0.valid_public_key(&PublicKey::from_ptr(key))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_exists(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    key: *const u8,
+) -> bool {
+    (*handle)
+        .0
+        .exists((*txn).as_txn(), &PublicKey::from_ptr(key))
 }

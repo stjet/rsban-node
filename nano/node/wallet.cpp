@@ -424,12 +424,12 @@ bool nano::wallet_store::fetch (nano::transaction const & transaction_a, nano::a
 
 bool nano::wallet_store::valid_public_key (nano::public_key const & pub)
 {
-	return pub.number () >= special_count;
+	return rsnano::rsn_lmdb_wallet_store_valid_public_key (rust_handle, pub.bytes.data ());
 }
 
 bool nano::wallet_store::exists (nano::transaction const & transaction_a, nano::public_key const & pub)
 {
-	return valid_public_key (pub) && find (transaction_a, pub) != end ();
+	return rsnano::rsn_lmdb_wallet_store_exists (rust_handle, transaction_a.get_rust_handle (), pub.bytes.data ());
 }
 
 void nano::wallet_store::serialize_json (nano::transaction const & transaction_a, std::string & string_a)

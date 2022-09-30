@@ -11,7 +11,7 @@ use crate::{
     deterministic_key,
     utils::{Deserialize, Serialize, Stream, StreamAdapter, StreamExt},
     wallet::KeyDerivationFunction,
-    Account, Fan, RawKey,
+    Account, Fan, PublicKey, RawKey,
 };
 
 use super::{
@@ -347,5 +347,13 @@ impl LmdbWalletStore {
         }
 
         self.deterministic_index_set(txn, 0);
+    }
+
+    pub fn valid_public_key(&self, key: &PublicKey) -> bool {
+        key.number() >= Self::special_count().number()
+    }
+
+    pub fn exists(&self, txn: &dyn Transaction, key: &PublicKey) -> bool {
+        self.valid_public_key(key) && !self.find(txn, &Account::from(key)).is_end()
     }
 }

@@ -256,12 +256,17 @@ void nano::wallet_store::set_password (nano::raw_key const & password_a)
 
 std::vector<nano::account> nano::wallet_store::accounts (nano::transaction const & transaction_a)
 {
+	rsnano::AccountArrayDto dto;
+	rsnano::rsn_lmdb_wallet_store_accounts (rust_handle, transaction_a.get_rust_handle (), &dto);
 	std::vector<nano::account> result;
-	for (auto i (begin (transaction_a)), n (end ()); i != n; ++i)
+	result.reserve (dto.count);
+	for (int i = 0; i < dto.count; ++i)
 	{
-		nano::account const & account (i->first);
+		nano::account account;
+		std::copy (std::begin (dto.accounts[i]), std::end (dto.accounts[i]), std::begin (account.bytes));
 		result.push_back (account);
 	}
+	rsnano::rsn_account_array_destroy (&dto);
 	return result;
 }
 

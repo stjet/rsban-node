@@ -52,6 +52,8 @@ enum class MdbCursorOp
 	MdbPrevMultiple,
 };
 
+struct AccountArrayHandle;
+
 struct AccountInfoHandle;
 
 struct AsyncConnectCallbackHandle;
@@ -192,6 +194,13 @@ struct VoteUniquerHandle;
 struct WriteDatabaseQueueHandle;
 
 struct WriteGuardHandle;
+
+struct AccountArrayDto
+{
+	const uint8_t (*accounts)[32];
+	uintptr_t count;
+	AccountArrayHandle * handle;
+};
 
 struct AccountInfoDto
 {
@@ -1063,6 +1072,8 @@ struct VoteHashesDto
 };
 
 extern "C" {
+
+void rsn_account_array_destroy (AccountArrayDto * dto);
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
 
@@ -2267,6 +2278,10 @@ int32_t version);
 
 uint32_t rsn_lmdb_version_store_table_handle (LmdbVersionStoreHandle * handle);
 
+void rsn_lmdb_wallet_store_accounts (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+AccountArrayDto * result);
+
 bool rsn_lmdb_wallet_store_attempt_password (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const char * password);
@@ -2344,6 +2359,8 @@ TransactionHandle * txn,
 const char * path);
 
 uint8_t rsn_lmdb_wallet_store_key_type (const WalletValueDto * value);
+
+void rsn_lmdb_wallet_store_lock (LmdbWalletStoreHandle * handle);
 
 void rsn_lmdb_wallet_store_password (LmdbWalletStoreHandle * handle, uint8_t * password);
 

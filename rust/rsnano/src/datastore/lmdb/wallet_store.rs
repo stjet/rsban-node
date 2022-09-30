@@ -405,7 +405,7 @@ impl LmdbWalletStore {
             let mut guard = self.fans.lock().unwrap();
             let password_key = self.derive_key(txn, password);
             guard.password.value_set(password_key);
-            self.valid_password(txn)
+            self.valid_password_locked(&guard, txn)
         };
 
         if is_valid {
@@ -415,5 +415,20 @@ impl LmdbWalletStore {
         }
 
         is_valid
+    }
+
+    pub fn lock(&self) {
+        self.fans.lock().unwrap().password.value_set(RawKey::new());
+    }
+
+    pub fn accounts(&self, txn: &dyn Transaction) -> Vec<Account> {
+        let mut result = Vec::new();
+        let mut it = self.begin(txn);
+        while let Some((k, _)) = it.current() {
+            result.push(*k);
+            it.next();
+        }
+
+        result
     }
 }

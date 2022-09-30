@@ -376,3 +376,37 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_attempt_password(
     let password = CStr::from_ptr(password).to_str().unwrap();
     (*handle).0.attempt_password((*txn).as_txn(), password)
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_lock(handle: *mut LmdbWalletStoreHandle) {
+    (*handle).0.lock();
+}
+
+pub struct AccountArrayHandle(Box<Vec<[u8; 32]>>);
+
+#[repr(C)]
+pub struct AccountArrayDto {
+    pub accounts: *const [u8; 32],
+    pub count: usize,
+    pub handle: *mut AccountArrayHandle,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_account_array_destroy(dto: *mut AccountArrayDto) {
+    drop(Box::from_raw((*dto).handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_accounts(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    result: *mut AccountArrayDto,
+) {
+    let accounts = (*handle).0.accounts((*txn).as_txn());
+    let handle = Box::new(AccountArrayHandle(Box::new(
+        accounts.iter().map(|a| *a.as_bytes()).collect(),
+    )));
+    (*result).accounts = handle.0.as_ptr();
+    (*result).count = handle.0.len();
+    (*result).handle = Box::into_raw(handle);
+}

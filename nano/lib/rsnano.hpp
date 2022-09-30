@@ -2303,6 +2303,11 @@ void rsn_lmdb_wallet_store_deterministic_insert (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 uint8_t * key);
 
+void rsn_lmdb_wallet_store_deterministic_insert_at (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+uint32_t index,
+uint8_t * key);
+
 void rsn_lmdb_wallet_store_deterministic_key (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 uint32_t index,

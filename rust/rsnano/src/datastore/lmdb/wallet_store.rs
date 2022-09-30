@@ -379,4 +379,14 @@ impl LmdbWalletStore {
         self.deterministic_index_set(txn, index);
         return result;
     }
+
+    pub fn deterministic_insert_at(&self, txn: &dyn Transaction, index: u32) -> PublicKey {
+        let prv = self.deterministic_key(txn, index);
+        let result = PublicKey::try_from(&prv).unwrap();
+        let mut marker = 1u64;
+        marker <<= 32;
+        marker |= index as u64;
+        self.entry_put_raw(txn, &result.into(), &&WalletValue::new(marker.into(), 0));
+        result
+    }
 }

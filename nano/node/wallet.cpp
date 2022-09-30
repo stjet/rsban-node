@@ -54,13 +54,9 @@ nano::public_key nano::wallet_store::deterministic_insert (nano::transaction con
 
 nano::public_key nano::wallet_store::deterministic_insert (nano::transaction const & transaction_a, uint32_t const index)
 {
-	auto prv = deterministic_key (transaction_a, index);
-	nano::public_key result (nano::pub_key (prv));
-	uint64_t marker (1);
-	marker <<= 32;
-	marker |= index;
-	entry_put_raw (transaction_a, result, nano::wallet_value (marker, 0));
-	return result;
+	nano::public_key key;
+	rsnano::rsn_lmdb_wallet_store_deterministic_insert_at (rust_handle, transaction_a.get_rust_handle (), index, key.bytes.data ());
+	return key;
 }
 
 nano::raw_key nano::wallet_store::deterministic_key (nano::transaction const & transaction_a, uint32_t index_a)

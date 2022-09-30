@@ -347,3 +347,14 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_insert(
     let result = (*handle).0.deterministic_insert((*txn).as_txn());
     copy_public_key_bytes(&result, key);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_insert_at(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    index: u32,
+    key: *mut u8,
+) {
+    let result = (*handle).0.deterministic_insert_at((*txn).as_txn(), index);
+    copy_public_key_bytes(&result, key);
+}

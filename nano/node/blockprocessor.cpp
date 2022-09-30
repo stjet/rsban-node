@@ -530,7 +530,7 @@ nano::process_return nano::block_processor::process_one (nano::write_transaction
 		}
 	}
 
-	node.stats.inc (nano::stat::type::blockprocessor, nano::to_stat_detail (result.code));
+	stats.inc (nano::stat::type::blockprocessor, nano::to_stat_detail (result.code));
 
 	return result;
 }

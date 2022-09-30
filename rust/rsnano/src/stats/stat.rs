@@ -127,6 +127,7 @@ pub enum StatType {
     VoteGenerator,
     VoteCache,
     Hinting,
+    BlockProcessor,
 }
 
 impl StatType {
@@ -158,6 +159,7 @@ impl StatType {
             StatType::VoteGenerator => "vote_generator",
             StatType::VoteCache => "vote_cache",
             StatType::Hinting => "hinting",
+            StatType::BlockProcessor => "blockprocessor",
         }
     }
 }
@@ -192,6 +194,15 @@ pub enum DetailType {
     GapPrevious,
     GapSource,
     RollbackFailed,
+    Progress,
+    BadSignature,
+    NegativeSpend,
+    Unreceivable,
+    GapEpochOpenPending,
+    OpenedBurnAccount,
+    BalanceMismatch,
+    RepresentativeMismatch,
+    BlockPosition,
 
     // message specific
     NotAType,
@@ -364,6 +375,15 @@ impl DetailType {
             DetailType::GapPrevious => "gap_previous",
             DetailType::GapSource => "gap_source",
             DetailType::RollbackFailed => "rollback_failed",
+            DetailType::Progress => "progress",
+            DetailType::BadSignature => "bad_signature",
+            DetailType::NegativeSpend => "negative_spend",
+            DetailType::Unreceivable => "unreceivable",
+            DetailType::GapEpochOpenPending => "gap_epoch_open_pending",
+            DetailType::OpenedBurnAccount => "opened_burn_account",
+            DetailType::BalanceMismatch => "balance_mismatch",
+            DetailType::RepresentativeMismatch => "representative_mismatch",
+            DetailType::BlockPosition => "block_position",
             DetailType::FrontierConfirmationFailed => "frontier_confirmation_failed",
             DetailType::FrontierConfirmationSuccessful => "frontier_confirmation_successful",
             DetailType::FrontierReq => "frontier_req",

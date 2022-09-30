@@ -213,6 +213,11 @@ impl LmdbWalletStore {
         self.deterministic_clear(txn);
     }
 
+    pub fn deterministic_index_get(&self, txn: &dyn Transaction) -> u32 {
+        let value = self.entry_get_raw(txn, &Self::deterministic_index_special());
+        value.key.number().low_u32()
+    }
+
     pub fn deterministic_index_set(&self, txn: &dyn Transaction, index: u32) {
         let index = RawKey::from(index as u64);
         let value = WalletValue::new(index, 0);

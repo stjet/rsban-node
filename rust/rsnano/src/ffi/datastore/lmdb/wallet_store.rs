@@ -205,6 +205,14 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_seed_set(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_index_get(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+) -> u32 {
+    (*handle).0.deterministic_index_get((*txn).as_txn())
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_index_set(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,

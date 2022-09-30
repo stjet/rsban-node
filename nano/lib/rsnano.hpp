@@ -2368,6 +2368,14 @@ bool rsn_lmdb_wallet_store_rekey (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const char * password);
 
+void rsn_lmdb_wallet_store_representative (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+uint8_t * account);
+
+void rsn_lmdb_wallet_store_representative_set (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * representative);
+
 void rsn_lmdb_wallet_store_salt (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 uint8_t * result);

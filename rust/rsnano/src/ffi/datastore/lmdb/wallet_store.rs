@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     datastore::lmdb::{LmdbWalletStore, WalletValue},
-    ffi::{copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle},
+    ffi::{copy_account_bytes, copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle},
     Account, PublicKey, RawKey,
 };
 
@@ -409,4 +409,25 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_accounts(
     (*result).accounts = handle.0.as_ptr();
     (*result).count = handle.0.len();
     (*result).handle = Box::into_raw(handle);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_representative(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    account: *mut u8,
+) {
+    let rep = (*handle).0.representative((*txn).as_txn());
+    copy_account_bytes(rep, account);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_representative_set(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    representative: *const u8,
+) {
+    (*handle)
+        .0
+        .representative_set((*txn).as_txn(), &Account::from_ptr(representative));
 }

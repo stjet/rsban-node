@@ -239,9 +239,7 @@ bool nano::wallet_store::is_open () const
 
 void nano::wallet_store::lock ()
 {
-	nano::raw_key empty;
-	empty.clear ();
-	set_password (empty);
+	rsnano::rsn_lmdb_wallet_store_lock (rust_handle);
 }
 
 void nano::wallet_store::password (nano::raw_key & password_a) const
@@ -282,15 +280,14 @@ bool nano::wallet_store::is_representative (nano::transaction const & transactio
 
 void nano::wallet_store::representative_set (nano::transaction const & transaction_a, nano::account const & representative_a)
 {
-	nano::raw_key rep;
-	rep.bytes = representative_a.bytes;
-	entry_put_raw (transaction_a, nano::wallet_store::representative_special, nano::wallet_value (rep, 0));
+	rsnano::rsn_lmdb_wallet_store_representative_set (rust_handle, transaction_a.get_rust_handle (), representative_a.bytes.data ());
 }
 
 nano::account nano::wallet_store::representative (nano::transaction const & transaction_a)
 {
-	nano::wallet_value value (entry_get_raw (transaction_a, nano::wallet_store::representative_special));
-	return reinterpret_cast<nano::account const &> (value.key);
+	nano::account rep;
+	rsnano::rsn_lmdb_wallet_store_representative (rust_handle, transaction_a.get_rust_handle (), rep.bytes.data ());
+	return rep;
 }
 
 nano::public_key nano::wallet_store::insert_adhoc (nano::transaction const & transaction_a, nano::raw_key const & prv)

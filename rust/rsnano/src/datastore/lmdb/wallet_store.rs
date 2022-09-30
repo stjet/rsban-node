@@ -117,6 +117,11 @@ impl LmdbWalletStore {
         Account::from(3)
     }
 
+    /// Representative account to be used if we open a new account
+    pub fn representative_special() -> Account {
+        Account::from(4)
+    }
+
     /// Wallet seed for deterministic key generation
     pub fn seed_special() -> Account {
         Account::from(5)
@@ -430,5 +435,19 @@ impl LmdbWalletStore {
         }
 
         result
+    }
+
+    pub fn representative(&self, txn: &dyn Transaction) -> Account {
+        let value = self.entry_get_raw(txn, &Self::representative_special());
+        Account::from_bytes(*value.key.as_bytes())
+    }
+
+    pub fn representative_set(&self, txn: &dyn Transaction, representative: &Account) {
+        let rep = RawKey::from_bytes(*representative.as_bytes());
+        self.entry_put_raw(
+            txn,
+            &Self::representative_special(),
+            &&WalletValue::new(rep, 0),
+        );
     }
 }

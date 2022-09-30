@@ -292,13 +292,8 @@ nano::account nano::wallet_store::representative (nano::transaction const & tran
 
 nano::public_key nano::wallet_store::insert_adhoc (nano::transaction const & transaction_a, nano::raw_key const & prv)
 {
-	debug_assert (valid_password (transaction_a));
-	nano::public_key pub (nano::pub_key (prv));
-	nano::raw_key password_l;
-	wallet_key (password_l, transaction_a);
-	nano::raw_key ciphertext;
-	ciphertext.encrypt (prv, password_l, pub.owords[0].number ());
-	entry_put_raw (transaction_a, pub, nano::wallet_value (ciphertext, 0));
+	nano::public_key pub;
+	rsnano::rsn_lmdb_wallet_store_insert_adhoc (rust_handle, transaction_a.get_rust_handle (), prv.bytes.data (), pub.bytes.data ());
 	return pub;
 }
 

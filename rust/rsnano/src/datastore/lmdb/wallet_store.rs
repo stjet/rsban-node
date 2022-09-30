@@ -450,4 +450,13 @@ impl LmdbWalletStore {
             &&WalletValue::new(rep, 0),
         );
     }
+
+    pub fn insert_adhoc(&self, txn: &dyn Transaction, prv: &RawKey) -> PublicKey {
+        debug_assert!(self.valid_password(txn));
+        let pub_key = PublicKey::try_from(prv).unwrap();
+        let password = self.wallet_key(txn);
+        let ciphertext = prv.encrypt(&password, &pub_key.initialization_vector());
+        self.entry_put_raw(txn, &pub_key.into(), &WalletValue::new(ciphertext, 0));
+        pub_key
+    }
 }

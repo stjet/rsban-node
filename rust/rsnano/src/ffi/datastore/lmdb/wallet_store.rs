@@ -431,3 +431,16 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_representative_set(
         .0
         .representative_set((*txn).as_txn(), &Account::from_ptr(representative));
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_insert_adhoc(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    prv: *const u8,
+    pub_key: *mut u8,
+) {
+    let public_key = (*handle)
+        .0
+        .insert_adhoc((*txn).as_txn(), &RawKey::from_ptr(prv));
+    copy_public_key_bytes(&public_key, pub_key);
+}

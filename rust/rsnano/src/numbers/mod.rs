@@ -560,6 +560,10 @@ impl RawKey {
         Self { bytes }
     }
 
+    pub fn is_zero(&self) -> bool {
+        self.bytes == [0; 32]
+    }
+
     pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
         &self.bytes
     }

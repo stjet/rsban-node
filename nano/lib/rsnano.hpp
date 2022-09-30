@@ -2350,6 +2350,11 @@ bool rsn_lmdb_wallet_store_exists (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * key);
 
+bool rsn_lmdb_wallet_store_fetch (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * pub_key,
+uint8_t * prv_key);
+
 LmdbIteratorHandle * rsn_lmdb_wallet_store_find (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account);

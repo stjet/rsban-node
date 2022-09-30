@@ -468,4 +468,36 @@ impl LmdbWalletStore {
         self.entry_put_raw(txn, pub_key, &WalletValue::new(RawKey::new(), 0));
         Ok(())
     }
+
+    pub fn fetch(&self, txn: &dyn Transaction, pub_key: &Account) -> anyhow::Result<RawKey> {
+        if !self.valid_password(txn) {
+            bail!("invalid password");
+        }
+
+        let value = self.entry_get_raw(txn, pub_key);
+        if value.key.is_zero() {
+            bail!("pub key not found");
+        }
+
+        let prv = match Self::key_type(&value) {
+            KeyType::Deterministic => {
+                let index = value.key.number().low_u32();
+                self.deterministic_key(txn, index)
+            }
+            KeyType::Adhoc => {
+                // Ad-hoc keys
+                let password = self.wallet_key(txn);
+                value
+                    .key
+                    .decrypt(&password, &pub_key.public_key.initialization_vector())
+            }
+            _ => bail!("invalid key type"),
+        };
+
+        let compare = PublicKey::try_from(&prv)?;
+        if pub_key.public_key != compare {
+            bail!("expected pub key does not match");
+        }
+        Ok(prv)
+    }
 }

@@ -456,3 +456,22 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_insert_watch(
         .insert_watch((*txn).as_txn(), &Account::from_ptr(pub_key))
         .is_ok()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_fetch(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    pub_key: *const u8,
+    prv_key: *mut u8,
+) -> bool {
+    match (*handle)
+        .0
+        .fetch((*txn).as_txn(), &Account::from_ptr(pub_key))
+    {
+        Ok(prv) => {
+            copy_raw_key_bytes(prv, prv_key);
+            true
+        }
+        Err(_) => false,
+    }
+}

@@ -328,55 +328,7 @@ nano::key_type nano::wallet_store::key_type (nano::wallet_value const & value_a)
 
 bool nano::wallet_store::fetch (nano::transaction const & transaction_a, nano::account const & pub, nano::raw_key & prv)
 {
-	auto result (false);
-	if (valid_password (transaction_a))
-	{
-		nano::wallet_value value (entry_get_raw (transaction_a, pub));
-		if (!value.key.is_zero ())
-		{
-			switch (key_type (value))
-			{
-				case nano::key_type::deterministic:
-				{
-					nano::raw_key seed_l;
-					seed (seed_l, transaction_a);
-					uint32_t index (static_cast<uint32_t> (value.key.number () & static_cast<uint32_t> (-1)));
-					prv = deterministic_key (transaction_a, index);
-					break;
-				}
-				case nano::key_type::adhoc:
-				{
-					// Ad-hoc keys
-					nano::raw_key password_l;
-					wallet_key (password_l, transaction_a);
-					prv.decrypt (value.key, password_l, pub.owords[0].number ());
-					break;
-				}
-				default:
-				{
-					result = true;
-					break;
-				}
-			}
-		}
-		else
-		{
-			result = true;
-		}
-	}
-	else
-	{
-		result = true;
-	}
-	if (!result)
-	{
-		nano::public_key compare (nano::pub_key (prv));
-		if (!(pub == compare))
-		{
-			result = true;
-		}
-	}
-	return result;
+	return !rsnano::rsn_lmdb_wallet_store_fetch (rust_handle, transaction_a.get_rust_handle (), pub.bytes.data (), prv.bytes.data ());
 }
 
 bool nano::wallet_store::valid_public_key (nano::public_key const & pub)

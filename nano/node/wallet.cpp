@@ -78,10 +78,9 @@ nano::public_key nano::wallet_store::deterministic_insert (nano::transaction con
 
 nano::raw_key nano::wallet_store::deterministic_key (nano::transaction const & transaction_a, uint32_t index_a)
 {
-	debug_assert (valid_password (transaction_a));
-	nano::raw_key seed_l;
-	seed (seed_l, transaction_a);
-	return nano::deterministic_key (seed_l, index_a);
+	nano::raw_key key;
+	rsnano::rsn_lmdb_wallet_store_deterministic_key (rust_handle, transaction_a.get_rust_handle (), index_a, key.bytes.data ());
+	return key;
 }
 
 uint32_t nano::wallet_store::deterministic_index_get (nano::transaction const & transaction_a)

@@ -8,6 +8,7 @@ use std::{
 
 use crate::{
     datastore::{DbIterator, Transaction},
+    deterministic_key,
     utils::{Deserialize, Serialize, Stream, StreamAdapter, StreamExt},
     wallet::KeyDerivationFunction,
     Account, Fan, RawKey,
@@ -211,6 +212,12 @@ impl LmdbWalletStore {
         let ciphertext = prv.encrypt(&password_l, &iv);
         self.entry_put_raw(txn, &Self::seed_special(), &WalletValue::new(ciphertext, 0));
         self.deterministic_clear(txn);
+    }
+
+    pub fn deterministic_key(&self, txn: &dyn Transaction, index: u32) -> RawKey {
+        debug_assert!(self.valid_password(txn));
+        let seed = self.seed(txn);
+        deterministic_key(&seed, index)
     }
 
     pub fn deterministic_index_get(&self, txn: &dyn Transaction) -> u32 {

@@ -295,3 +295,14 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_clear(
 ) {
     (*handle).0.deterministic_clear((*txn).as_txn());
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_key(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    index: u32,
+    key: *mut u8,
+) {
+    let result = (*handle).0.deterministic_key((*txn).as_txn(), index);
+    copy_raw_key_bytes(result, key);
+}

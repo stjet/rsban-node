@@ -93,12 +93,19 @@ pub struct LmdbWalletStore {
 }
 
 impl LmdbWalletStore {
-    pub fn new(fanout: usize, kdf: KeyDerivationFunction) -> Self {
-        Self {
+    pub fn new(
+        fanout: usize,
+        kdf: KeyDerivationFunction,
+        txn: &dyn Transaction,
+        wallet: &Path,
+    ) -> anyhow::Result<Self> {
+        let store = Self {
             db_handle: AtomicU32::new(0),
             fans: Mutex::new(Fans::new(fanout)),
             kdf,
-        }
+        };
+        store.initialize(txn, wallet)?;
+        Ok(store)
     }
 
     /// Wallet version number

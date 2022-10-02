@@ -2297,7 +2297,10 @@ void rsn_lmdb_wallet_store_check (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 uint8_t * result);
 
-LmdbWalletStoreHandle * rsn_lmdb_wallet_store_create (uintptr_t fanout, const KdfHandle * kdf);
+LmdbWalletStoreHandle * rsn_lmdb_wallet_store_create (uintptr_t fanout,
+const KdfHandle * kdf,
+TransactionHandle * txn,
+const char * wallet);
 
 uint32_t rsn_lmdb_wallet_store_db_handle (LmdbWalletStoreHandle * handle);
 

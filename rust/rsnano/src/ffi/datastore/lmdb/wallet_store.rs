@@ -2,6 +2,7 @@ use std::{
     ffi::{c_char, CStr},
     ops::Deref,
     path::PathBuf,
+    ptr,
     str::FromStr,
 };
 
@@ -46,11 +47,18 @@ impl From<&WalletValueDto> for WalletValue {
 pub unsafe extern "C" fn rsn_lmdb_wallet_store_create(
     fanout: usize,
     kdf: *const KdfHandle,
+    txn: *mut TransactionHandle,
+    wallet: *const c_char,
 ) -> *mut LmdbWalletStoreHandle {
-    Box::into_raw(Box::new(LmdbWalletStoreHandle(LmdbWalletStore::new(
-        fanout,
-        (*kdf).deref().clone(),
-    ))))
+    let wallet = CStr::from_ptr(wallet).to_str().unwrap();
+    let wallet = PathBuf::from(wallet);
+    if let Ok(store) =
+        LmdbWalletStore::new(fanout, (*kdf).deref().clone(), (*txn).as_txn(), &wallet)
+    {
+        Box::into_raw(Box::new(LmdbWalletStoreHandle(store)))
+    } else {
+        ptr::null_mut()
+    }
 }
 
 #[no_mangle]

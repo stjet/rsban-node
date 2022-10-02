@@ -118,17 +118,15 @@ nano::account const nano::wallet_store::seed_special (5);
 nano::account const nano::wallet_store::deterministic_index_special (6);
 int const nano::wallet_store::special_count (7);
 std::size_t const nano::wallet_store::check_iv_index (0);
-std::size_t const nano::wallet_store::seed_iv_index (1);
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a, std::string const & json_a) :
 	kdf (kdf_a),
-	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle) },
+	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), wallet_a.c_str ()) },
 	fanout{ fanout_a }
 {
-	init_a = false;
-	initialize (transaction_a, init_a, wallet_a);
-	if (!init_a)
+	if (rust_handle != nullptr)
 	{
+		init_a = false;
 		auto handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
 		MDB_val junk;
 		debug_assert (mdb_get (tx (transaction_a), handle, nano::mdb_val (version_special), &junk) == MDB_NOTFOUND);
@@ -179,13 +177,12 @@ nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transa
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a) :
 	kdf (kdf_a),
-	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle) },
+	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), wallet_a.c_str ()) },
 	fanout{ fanout_a }
 {
-	init_a = false;
-	initialize (transaction_a, init_a, wallet_a);
-	if (!init_a)
+	if (rust_handle != nullptr)
 	{
+		init_a = false;
 		int version_status;
 		MDB_val version_value;
 		auto handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
@@ -267,11 +264,6 @@ std::vector<nano::account> nano::wallet_store::accounts (nano::transaction const
 	}
 	rsnano::rsn_account_array_destroy (&dto);
 	return result;
-}
-
-void nano::wallet_store::initialize (nano::transaction const & transaction_a, bool & init_a, std::string const & path_a)
-{
-	init_a = !rsnano::rsn_lmdb_wallet_store_initialize (rust_handle, transaction_a.get_rust_handle (), path_a.c_str ());
 }
 
 bool nano::wallet_store::is_representative (nano::transaction const & transaction_a)

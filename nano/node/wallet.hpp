@@ -51,7 +51,6 @@ public:
 	void password (nano::raw_key & password_a) const;
 	void set_password (nano::raw_key const & password_a);
 	std::vector<nano::account> accounts (nano::transaction const &);
-	void initialize (nano::transaction const &, bool &, std::string const &);
 	nano::uint256_union check (nano::transaction const &);
 	bool rekey (nano::transaction const &, std::string const &);
 	bool valid_password (nano::transaction const &);
@@ -92,9 +91,6 @@ public:
 	void work_put (nano::transaction const &, nano::public_key const &, uint64_t);
 	unsigned version (nano::transaction const &);
 	void version_put (nano::transaction const &, unsigned);
-	static unsigned const version_1 = 1;
-	static unsigned const version_2 = 2;
-	static unsigned const version_3 = 3;
 	static unsigned const version_4 = 4;
 	static unsigned constexpr version_current = version_4;
 	static nano::account const version_special;
@@ -105,7 +101,6 @@ public:
 	static nano::account const seed_special;
 	static nano::account const deterministic_index_special;
 	static std::size_t const check_iv_index;
-	static std::size_t const seed_iv_index;
 	static int const special_count;
 	nano::kdf & kdf;
 	std::recursive_mutex mutex;

@@ -121,7 +121,7 @@ std::size_t const nano::wallet_store::check_iv_index (0);
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a, std::string const & json_a) :
 	kdf (kdf_a),
-	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), wallet_a.c_str ()) },
+	rust_handle{ rsnano::rsn_lmdb_wallet_store_create2 (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), wallet_a.c_str (), json_a.c_str ()) },
 	fanout{ fanout_a }
 {
 	if (rust_handle != nullptr)
@@ -177,52 +177,9 @@ nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transa
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a) :
 	kdf (kdf_a),
-	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), wallet_a.c_str ()) },
+	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), representative_a.bytes.data (), wallet_a.c_str ()) },
 	fanout{ fanout_a }
 {
-	if (rust_handle != nullptr)
-	{
-		init_a = false;
-		int version_status;
-		MDB_val version_value;
-		auto handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
-		version_status = mdb_get (tx (transaction_a), handle, nano::mdb_val (version_special), &version_value);
-		if (version_status == MDB_NOTFOUND)
-		{
-			version_put (transaction_a, version_current);
-			nano::raw_key salt_l;
-			random_pool::generate_block (salt_l.bytes.data (), salt_l.bytes.size ());
-			entry_put_raw (transaction_a, nano::wallet_store::salt_special, nano::wallet_value (salt_l, 0));
-			// Wallet key is a fixed random key that encrypts all entries
-			nano::raw_key wallet_key;
-			random_pool::generate_block (wallet_key.bytes.data (), sizeof (wallet_key.bytes));
-			nano::raw_key password_l;
-			password_l.clear ();
-			rsnano::rsn_lmdb_wallet_store_set_password (rust_handle, password_l.bytes.data ());
-			nano::raw_key zero;
-			zero.clear ();
-			// Wallet key is encrypted by the user's password
-			nano::raw_key encrypted;
-			encrypted.encrypt (wallet_key, zero, salt_l.owords[0]);
-			entry_put_raw (transaction_a, nano::wallet_store::wallet_key_special, nano::wallet_value (encrypted, 0));
-			nano::raw_key wallet_key_enc;
-			wallet_key_enc = encrypted;
-			rsnano::rsn_lmdb_wallet_store_set_wallet_key_mem (rust_handle, wallet_key_enc.bytes.data ());
-			nano::raw_key check;
-			check.encrypt (zero, wallet_key, salt_l.owords[check_iv_index]);
-			entry_put_raw (transaction_a, nano::wallet_store::check_special, nano::wallet_value (check, 0));
-			nano::raw_key rep;
-			rep.bytes = representative_a.bytes;
-			entry_put_raw (transaction_a, nano::wallet_store::representative_special, nano::wallet_value (rep, 0));
-			nano::raw_key seed;
-			random_pool::generate_block (seed.bytes.data (), seed.bytes.size ());
-			seed_set (transaction_a, seed);
-			entry_put_raw (transaction_a, nano::wallet_store::deterministic_index_special, nano::wallet_value (0, 0));
-		}
-	}
-	nano::raw_key key;
-	key = entry_get_raw (transaction_a, nano::wallet_store::wallet_key_special).key;
-	rsnano::rsn_lmdb_wallet_store_set_wallet_key_mem (rust_handle, key.bytes.data ());
 }
 
 nano::wallet_store::~wallet_store ()

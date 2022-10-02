@@ -2300,7 +2300,14 @@ uint8_t * result);
 LmdbWalletStoreHandle * rsn_lmdb_wallet_store_create (uintptr_t fanout,
 const KdfHandle * kdf,
 TransactionHandle * txn,
+const uint8_t * representative,
 const char * wallet);
+
+LmdbWalletStoreHandle * rsn_lmdb_wallet_store_create2 (uintptr_t fanout,
+const KdfHandle * kdf,
+TransactionHandle * txn,
+const char * wallet,
+const char * json);
 
 uint32_t rsn_lmdb_wallet_store_db_handle (LmdbWalletStoreHandle * handle);
 

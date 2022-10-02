@@ -9,6 +9,8 @@ use std::{
     },
 };
 
+use rand::{thread_rng, Rng};
+
 use crate::{
     datastore::{DbIterator, NullIterator, Transaction},
     deterministic_key,
@@ -20,7 +22,7 @@ use crate::{
 
 use super::{
     assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_del, mdb_drop, mdb_get,
-    mdb_put, LmdbIterator, MdbVal, OwnedMdbVal, MDB_CREATE, MDB_SUCCESS,
+    mdb_put, LmdbIterator, MdbVal, OwnedMdbVal, MDB_CREATE, MDB_NOTFOUND, MDB_SUCCESS,
 };
 
 pub struct Fans {
@@ -86,6 +88,8 @@ pub enum KeyType {
     Deterministic,
 }
 
+const VERSION_CURRENT: u32 = 4;
+
 pub struct LmdbWalletStore {
     db_handle: AtomicU32,
     pub fans: Mutex<Fans>,
@@ -97,7 +101,75 @@ impl LmdbWalletStore {
         fanout: usize,
         kdf: KeyDerivationFunction,
         txn: &dyn Transaction,
+        representative: &Account,
         wallet: &Path,
+    ) -> anyhow::Result<Self> {
+        let store = Self {
+            db_handle: AtomicU32::new(0),
+            fans: Mutex::new(Fans::new(fanout)),
+            kdf,
+        };
+        store.initialize(txn, wallet)?;
+        let mut version_value = MdbVal::new();
+        let handle = store.db_handle();
+        let version_status = unsafe {
+            mdb_get(
+                get_raw_lmdb_txn(txn),
+                handle,
+                &mut MdbVal::from(&Self::version_special()),
+                &mut version_value,
+            )
+        };
+        if version_status == MDB_NOTFOUND {
+            store.version_put(txn, VERSION_CURRENT);
+            let salt = RawKey::random();
+            store.entry_put_raw(txn, &Self::salt_special(), &WalletValue::new(salt, 0));
+            // Wallet key is a fixed random key that encrypts all entries
+            let wallet_key = RawKey::random();
+            let password = RawKey::new();
+            let mut guard = store.fans.lock().unwrap();
+            guard.password.value_set(password);
+            let zero = RawKey::new();
+            // Wallet key is encrypted by the user's password
+            let encrypted = wallet_key.encrypt(&zero, &salt.initialization_vector_low());
+            store.entry_put_raw(
+                txn,
+                &Self::wallet_key_special(),
+                &WalletValue::new(encrypted, 0),
+            );
+            let wallet_key_enc = encrypted;
+            guard.wallet_key_mem.value_set(wallet_key_enc);
+            drop(guard);
+            let check = zero.encrypt(&wallet_key, &salt.initialization_vector_low());
+            store.entry_put_raw(txn, &Self::check_special(), &WalletValue::new(check, 0));
+            let rep = RawKey::from_bytes(representative.to_bytes());
+            store.entry_put_raw(
+                txn,
+                &Self::representative_special(),
+                &WalletValue::new(rep, 0),
+            );
+            let seed = RawKey::random();
+            store.set_seed(txn, &seed);
+            store.entry_put_raw(
+                txn,
+                &Self::deterministic_index_special(),
+                &WalletValue::new(RawKey::new(), 0),
+            );
+        }
+        {
+            let key = store.entry_get_raw(txn, &Self::wallet_key_special()).key;
+            let mut guard = store.fans.lock().unwrap();
+            guard.wallet_key_mem.value_set(key);
+        }
+        Ok(store)
+    }
+
+    pub fn new2(
+        fanout: usize,
+        kdf: KeyDerivationFunction,
+        txn: &dyn Transaction,
+        wallet: &Path,
+        json: &str,
     ) -> anyhow::Result<Self> {
         let store = Self {
             db_handle: AtomicU32::new(0),

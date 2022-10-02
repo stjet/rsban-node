@@ -560,6 +560,10 @@ impl RawKey {
         Self { bytes }
     }
 
+    pub fn random() -> Self {
+        Self::from_bytes(thread_rng().gen())
+    }
+
     pub fn is_zero(&self) -> bool {
         self.bytes == [0; 32]
     }

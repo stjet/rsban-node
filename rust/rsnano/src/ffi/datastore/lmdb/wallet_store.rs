@@ -545,3 +545,14 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_work_get(
         Err(_) => false,
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_work_put(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    pub_key: *const u8,
+    work: u64,
+) {
+    let pub_key = PublicKey::from_ptr(pub_key);
+    (*handle).0.work_put((*txn).as_txn(), &pub_key, work);
+}

@@ -371,10 +371,7 @@ bool nano::wallet_store::work_get (nano::transaction const & transaction_a, nano
 
 void nano::wallet_store::work_put (nano::transaction const & transaction_a, nano::public_key const & pub_a, uint64_t work_a)
 {
-	auto entry (entry_get_raw (transaction_a, pub_a));
-	debug_assert (!entry.key.is_zero ());
-	entry.work = work_a;
-	entry_put_raw (transaction_a, pub_a, entry);
+	rsnano::rsn_lmdb_wallet_store_work_put (rust_handle, transaction_a.get_rust_handle (), pub_a.bytes.data (), work_a);
 }
 
 unsigned nano::wallet_store::version (nano::transaction const & transaction_a)

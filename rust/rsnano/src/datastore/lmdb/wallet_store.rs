@@ -569,4 +569,11 @@ impl LmdbWalletStore {
             Err(anyhow!("not found"))
         }
     }
+
+    pub fn work_put(&self, txn: &dyn Transaction, pub_key: &PublicKey, work: u64) {
+        let mut entry = self.entry_get_raw(txn, &pub_key.into());
+        debug_assert!(!entry.key.is_zero());
+        entry.work = work;
+        self.entry_put_raw(txn, &pub_key.into(), &entry);
+    }
 }

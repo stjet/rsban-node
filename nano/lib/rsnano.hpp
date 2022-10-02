@@ -2439,6 +2439,11 @@ TransactionHandle * txn,
 const uint8_t * pub_key,
 uint64_t * work);
 
+void rsn_lmdb_wallet_store_work_put (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const uint8_t * pub_key,
+uint64_t work);
+
 void rsn_lmdb_wallet_store_write_backup (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const char * path);

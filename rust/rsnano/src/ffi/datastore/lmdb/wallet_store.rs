@@ -556,3 +556,12 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_work_put(
     let pub_key = PublicKey::from_ptr(pub_key);
     (*handle).0.work_put((*txn).as_txn(), &pub_key, work);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_version_put(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    version: u32,
+) {
+    (*handle).0.version_put((*txn).as_txn(), version);
+}

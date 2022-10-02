@@ -570,6 +570,11 @@ impl LmdbWalletStore {
         }
     }
 
+    pub fn version_put(&self, txn: &dyn Transaction, version: u32) {
+        let entry = RawKey::from(version as u64);
+        self.entry_put_raw(txn, &Self::version_special(), &WalletValue::new(entry, 0));
+    }
+
     pub fn work_put(&self, txn: &dyn Transaction, pub_key: &PublicKey, work: u64) {
         let mut entry = self.entry_get_raw(txn, &pub_key.into());
         debug_assert!(!entry.key.is_zero());

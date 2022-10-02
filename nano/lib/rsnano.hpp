@@ -2428,6 +2428,10 @@ bool rsn_lmdb_wallet_store_valid_public_key (LmdbWalletStoreHandle * handle, con
 
 uint32_t rsn_lmdb_wallet_store_version (LmdbWalletStoreHandle * handle, TransactionHandle * txn);
 
+void rsn_lmdb_wallet_store_version_put (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+uint32_t version);
+
 void rsn_lmdb_wallet_store_wallet_key (LmdbWalletStoreHandle * handle,
 uint8_t * prv_key,
 TransactionHandle * txn);

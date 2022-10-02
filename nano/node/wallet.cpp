@@ -376,16 +376,12 @@ void nano::wallet_store::work_put (nano::transaction const & transaction_a, nano
 
 unsigned nano::wallet_store::version (nano::transaction const & transaction_a)
 {
-	nano::wallet_value value (entry_get_raw (transaction_a, nano::wallet_store::version_special));
-	auto entry (value.key);
-	auto result (static_cast<unsigned> (entry.bytes[31]));
-	return result;
+	return rsnano::rsn_lmdb_wallet_store_version (rust_handle, transaction_a.get_rust_handle ());
 }
 
 void nano::wallet_store::version_put (nano::transaction const & transaction_a, unsigned version_a)
 {
-	nano::raw_key entry (version_a);
-	entry_put_raw (transaction_a, nano::wallet_store::version_special, nano::wallet_value (entry, 0));
+	rsnano::rsn_lmdb_wallet_store_version_put (rust_handle, transaction_a.get_rust_handle (), version_a);
 }
 
 nano::kdf::kdf (unsigned kdf_work) :

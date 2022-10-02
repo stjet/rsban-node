@@ -565,11 +565,7 @@ void nano::wallet::serialize (std::string & json_a)
 
 void nano::wallet_store::destroy (nano::transaction const & transaction_a)
 {
-	MDB_dbi handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
-	auto status (mdb_drop (tx (transaction_a), handle, 1));
-	(void)status;
-	debug_assert (status == 0);
-	handle = 0;
+	rsnano::rsn_lmdb_wallet_store_destroy2 (rust_handle, transaction_a.get_rust_handle ());
 }
 
 std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash const & send_hash_a, nano::account const & representative_a, nano::uint128_union const & amount_a, nano::account const & account_a, uint64_t work_a, bool generate_work_a)

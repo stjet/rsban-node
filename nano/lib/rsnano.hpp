@@ -2308,6 +2308,8 @@ const char * password);
 
 void rsn_lmdb_wallet_store_destroy (LmdbWalletStoreHandle * handle);
 
+void rsn_lmdb_wallet_store_destroy2 (LmdbWalletStoreHandle * handle, TransactionHandle * txn);
+
 void rsn_lmdb_wallet_store_deterministic_clear (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn);
 

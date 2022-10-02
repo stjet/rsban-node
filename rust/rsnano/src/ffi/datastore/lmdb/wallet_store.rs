@@ -565,3 +565,11 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_version_put(
 ) {
     (*handle).0.version_put((*txn).as_txn(), version);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_destroy2(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+) {
+    (*handle).0.destroy((*txn).as_txn());
+}

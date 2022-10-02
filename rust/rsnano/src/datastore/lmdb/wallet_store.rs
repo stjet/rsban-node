@@ -19,8 +19,8 @@ use crate::{
 };
 
 use super::{
-    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_del, mdb_get, mdb_put,
-    LmdbIterator, MdbVal, OwnedMdbVal, MDB_CREATE, MDB_SUCCESS,
+    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_del, mdb_drop, mdb_get,
+    mdb_put, LmdbIterator, MdbVal, OwnedMdbVal, MDB_CREATE, MDB_SUCCESS,
 };
 
 pub struct Fans {
@@ -580,5 +580,11 @@ impl LmdbWalletStore {
         debug_assert!(!entry.key.is_zero());
         entry.work = work;
         self.entry_put_raw(txn, &pub_key.into(), &entry);
+    }
+
+    pub fn destroy(&self, txn: &dyn Transaction) {
+        let status = unsafe { mdb_drop(get_raw_lmdb_txn(txn), self.db_handle(), 1) };
+        assert_success(status);
+        self.db_handle.store(0, Ordering::SeqCst)
     }
 }

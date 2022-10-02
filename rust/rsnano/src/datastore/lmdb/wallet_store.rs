@@ -524,4 +524,21 @@ impl LmdbWalletStore {
         write!(file, "{}", self.serialize_json(txn))?;
         Ok(())
     }
+
+    pub fn move_keys(
+        &self,
+        txn: &dyn Transaction,
+        other: &LmdbWalletStore,
+        keys: &[PublicKey],
+    ) -> anyhow::Result<()> {
+        debug_assert!(self.valid_password(txn));
+        debug_assert!(other.valid_password(txn));
+        for k in keys {
+            let prv = other.fetch(txn, &k.into())?;
+            self.insert_adhoc(txn, &prv);
+            other.erase(txn, &k.into());
+        }
+
+        Ok(())
+    }
 }

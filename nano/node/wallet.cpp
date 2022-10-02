@@ -356,21 +356,7 @@ void nano::wallet_store::write_backup (nano::transaction const & transaction_a, 
 
 bool nano::wallet_store::move (nano::transaction const & transaction_a, nano::wallet_store & other_a, std::vector<nano::public_key> const & keys)
 {
-	debug_assert (valid_password (transaction_a));
-	debug_assert (other_a.valid_password (transaction_a));
-	auto result (false);
-	for (auto i (keys.begin ()), n (keys.end ()); i != n; ++i)
-	{
-		nano::raw_key prv;
-		auto error (other_a.fetch (transaction_a, *i, prv));
-		result = result | error;
-		if (!result)
-		{
-			insert_adhoc (transaction_a, prv);
-			other_a.erase (transaction_a, *i);
-		}
-	}
-	return result;
+	return !rsnano::rsn_lmdb_wallet_store_move (rust_handle, transaction_a.get_rust_handle (), other_a.rust_handle, keys.data ());
 }
 
 bool nano::wallet_store::import (nano::transaction const & transaction_a, nano::wallet_store & other_a)

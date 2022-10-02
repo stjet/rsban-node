@@ -499,3 +499,23 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_write_backup(
     let path = PathBuf::from(path);
     let _ = (*handle).0.write_backup((*txn).as_txn(), &path);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_move(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    other: *mut LmdbWalletStoreHandle,
+    keys: *const u8,
+    count: usize,
+) -> bool {
+    let keys: *const [u8; 32] = std::mem::transmute(keys);
+    let keys = std::slice::from_raw_parts(keys, count);
+    let keys: Vec<_> = keys
+        .iter()
+        .map(|bytes| PublicKey::from_bytes(*bytes))
+        .collect();
+    (*handle)
+        .0
+        .move_keys((*txn).as_txn(), &(*other).0, &keys)
+        .is_ok()
+}

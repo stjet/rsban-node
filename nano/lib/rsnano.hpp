@@ -2376,6 +2376,12 @@ uint8_t rsn_lmdb_wallet_store_key_type (const WalletValueDto * value);
 
 void rsn_lmdb_wallet_store_lock (LmdbWalletStoreHandle * handle);
 
+bool rsn_lmdb_wallet_store_move (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+LmdbWalletStoreHandle * other,
+const uint8_t * keys,
+uintptr_t count);
+
 void rsn_lmdb_wallet_store_password (LmdbWalletStoreHandle * handle, uint8_t * password);
 
 bool rsn_lmdb_wallet_store_rekey (LmdbWalletStoreHandle * handle,

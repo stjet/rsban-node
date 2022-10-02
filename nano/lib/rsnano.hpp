@@ -2424,6 +2424,10 @@ TransactionHandle * txn);
 
 void rsn_lmdb_wallet_store_wallet_key_mem (LmdbWalletStoreHandle * handle, uint8_t * key);
 
+void rsn_lmdb_wallet_store_write_backup (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+const char * path);
+
 void rsn_lmdb_write_txn_commit (TransactionHandle * handle);
 
 TransactionHandle * rsn_lmdb_write_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);

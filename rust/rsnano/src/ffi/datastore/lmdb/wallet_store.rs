@@ -488,3 +488,14 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_serialize_json(
     let json = (*handle).0.serialize_json((*txn).as_txn());
     (*result) = json.into();
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_write_backup(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    path: *const c_char,
+) {
+    let path = CStr::from_ptr(path).to_str().unwrap();
+    let path = PathBuf::from(path);
+    let _ = (*handle).0.write_backup((*txn).as_txn(), &path);
+}

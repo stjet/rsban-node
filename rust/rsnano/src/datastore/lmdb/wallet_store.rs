@@ -1,4 +1,7 @@
 use std::{
+    fs::{set_permissions, File, Permissions},
+    io::Write,
+    os::unix::prelude::PermissionsExt,
     path::Path,
     sync::{
         atomic::{AtomicU32, Ordering},
@@ -513,5 +516,12 @@ impl LmdbWalletStore {
         }
 
         tree.to_json()
+    }
+
+    pub fn write_backup(&self, txn: &dyn Transaction, path: &Path) -> anyhow::Result<()> {
+        let mut file = File::create(path)?;
+        set_permissions(path, Permissions::from_mode(0o600))?;
+        write!(file, "{}", self.serialize_json(txn))?;
+        Ok(())
     }
 }

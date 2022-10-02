@@ -1,5 +1,6 @@
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/rsnano.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/election.hpp>
@@ -345,23 +346,12 @@ void nano::wallet_store::serialize_json (nano::transaction const & transaction_a
 {
 	rsnano::StringDto dto;
 	rsnano::rsn_lmdb_wallet_store_serialize_json (rust_handle, transaction_a.get_rust_handle (), &dto);
-	string_a = convert_dto_to_string (dto);
+	string_a = rsnano::convert_dto_to_string (dto);
 }
 
 void nano::wallet_store::write_backup (nano::transaction const & transaction_a, boost::filesystem::path const & path_a)
 {
-	std::ofstream backup_file;
-	backup_file.open (path_a.string ());
-	if (!backup_file.fail ())
-	{
-		// Set permissions to 600
-		boost::system::error_code ec;
-		nano::set_secure_perm_file (path_a, ec);
-
-		std::string json;
-		serialize_json (transaction_a, json);
-		backup_file << json;
-	}
+	rsnano::rsn_lmdb_wallet_store_write_backup (rust_handle, transaction_a.get_rust_handle (), path_a.c_str ());
 }
 
 bool nano::wallet_store::move (nano::transaction const & transaction_a, nano::wallet_store & other_a, std::vector<nano::public_key> const & keys)

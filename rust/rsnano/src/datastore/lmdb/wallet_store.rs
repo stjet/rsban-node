@@ -9,7 +9,8 @@ use std::{
 use crate::{
     datastore::{DbIterator, NullIterator, Transaction},
     deterministic_key,
-    utils::{Deserialize, Serialize, Stream, StreamAdapter, StreamExt},
+    ffi::create_ffi_property_tree,
+    utils::{Deserialize, PropertyTreeWriter, Serialize, Stream, StreamAdapter, StreamExt},
     wallet::KeyDerivationFunction,
     Account, Fan, PublicKey, RawKey,
 };
@@ -499,5 +500,18 @@ impl LmdbWalletStore {
             bail!("expected pub key does not match");
         }
         Ok(prv)
+    }
+
+    pub fn serialize_json(&self, txn: &dyn Transaction) -> String {
+        let mut tree = create_ffi_property_tree();
+        let mut it = LmdbIterator::<Account, WalletValue>::new(txn, self.db_handle(), None, true);
+
+        while let Some((k, v)) = it.current() {
+            tree.put_string(&k.encode_hex(), &v.key.encode_hex())
+                .unwrap();
+            it.next();
+        }
+
+        tree.to_json()
     }
 }

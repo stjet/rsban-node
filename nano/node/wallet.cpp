@@ -343,15 +343,9 @@ bool nano::wallet_store::exists (nano::transaction const & transaction_a, nano::
 
 void nano::wallet_store::serialize_json (nano::transaction const & transaction_a, std::string & string_a)
 {
-	MDB_dbi handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
-	boost::property_tree::ptree tree;
-	for (nano::store_iterator<nano::uint256_union, nano::wallet_value> i (std::make_unique<nano::mdb_iterator<nano::uint256_union, nano::wallet_value>> (transaction_a, handle)), n (nullptr); i != n; ++i)
-	{
-		tree.put (i->first.to_string (), i->second.key.to_string ());
-	}
-	std::stringstream ostream;
-	boost::property_tree::write_json (ostream, tree);
-	string_a = ostream.str ();
+	rsnano::StringDto dto;
+	rsnano::rsn_lmdb_wallet_store_serialize_json (rust_handle, transaction_a.get_rust_handle (), &dto);
+	string_a = convert_dto_to_string (dto);
 }
 
 void nano::wallet_store::write_backup (nano::transaction const & transaction_a, boost::filesystem::path const & path_a)

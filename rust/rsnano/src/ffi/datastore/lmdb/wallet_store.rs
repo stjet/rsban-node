@@ -7,7 +7,10 @@ use std::{
 
 use crate::{
     datastore::lmdb::{LmdbWalletStore, WalletValue},
-    ffi::{copy_account_bytes, copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle},
+    ffi::{
+        copy_account_bytes, copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle,
+        StringDto,
+    },
     Account, PublicKey, RawKey,
 };
 
@@ -474,4 +477,14 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_fetch(
         }
         Err(_) => false,
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_serialize_json(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    result: *mut StringDto,
+) {
+    let json = (*handle).0.serialize_json((*txn).as_txn());
+    (*result) = json.into();
 }

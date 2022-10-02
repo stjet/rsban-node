@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use super::PublicKey;
 use crate::utils::{Deserialize, Serialize, Stream};
 use anyhow::Result;
@@ -83,6 +85,14 @@ impl Account {
 
     pub fn decode_account(source: impl AsRef<str>) -> Result<Account> {
         EncodedAccountStr(source.as_ref()).to_u512()?.to_account()
+    }
+
+    pub fn encode_hex(&self) -> String {
+        let mut result = String::with_capacity(64);
+        for &byte in self.as_bytes() {
+            write!(&mut result, "{:02X}", byte).unwrap();
+        }
+        result
     }
 
     pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {

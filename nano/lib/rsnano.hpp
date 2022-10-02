@@ -2402,6 +2402,10 @@ void rsn_lmdb_wallet_store_seed_set (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * prv_key);
 
+void rsn_lmdb_wallet_store_serialize_json (LmdbWalletStoreHandle * handle,
+TransactionHandle * txn,
+StringDto * result);
+
 void rsn_lmdb_wallet_store_set_db_handle (LmdbWalletStoreHandle * handle, uint32_t dbi);
 
 void rsn_lmdb_wallet_store_set_password (LmdbWalletStoreHandle * handle, const uint8_t * password);

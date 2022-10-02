@@ -560,4 +560,13 @@ impl LmdbWalletStore {
 
         Ok(())
     }
+
+    pub fn work_get(&self, txn: &dyn Transaction, pub_key: &PublicKey) -> anyhow::Result<u64> {
+        let entry = self.entry_get_raw(txn, &pub_key.into());
+        if !entry.key.is_zero() {
+            Ok(entry.work)
+        } else {
+            Err(anyhow!("not found"))
+        }
+    }
 }

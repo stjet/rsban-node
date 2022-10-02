@@ -528,3 +528,20 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_import(
 ) -> bool {
     (*handle).0.import((*txn).as_txn(), &(*other).0).is_ok()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_work_get(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    pub_key: *const u8,
+    work: *mut u64,
+) -> bool {
+    let pub_key = PublicKey::from_ptr(pub_key);
+    match (*handle).0.work_get((*txn).as_txn(), &pub_key) {
+        Ok(w) => {
+            *work = w;
+            true
+        }
+        Err(_) => false,
+    }
+}

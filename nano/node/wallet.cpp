@@ -356,33 +356,12 @@ void nano::wallet_store::write_backup (nano::transaction const & transaction_a, 
 
 bool nano::wallet_store::move (nano::transaction const & transaction_a, nano::wallet_store & other_a, std::vector<nano::public_key> const & keys)
 {
-	return !rsnano::rsn_lmdb_wallet_store_move (rust_handle, transaction_a.get_rust_handle (), other_a.rust_handle, keys.data ());
+	return !rsnano::rsn_lmdb_wallet_store_move (rust_handle, transaction_a.get_rust_handle (), other_a.rust_handle, reinterpret_cast<const uint8_t *> (keys.data ()), keys.size ());
 }
 
 bool nano::wallet_store::import (nano::transaction const & transaction_a, nano::wallet_store & other_a)
 {
-	debug_assert (valid_password (transaction_a));
-	debug_assert (other_a.valid_password (transaction_a));
-	auto result (false);
-	for (auto i (other_a.begin (transaction_a)), n (end ()); i != n; ++i)
-	{
-		nano::raw_key prv;
-		auto error (other_a.fetch (transaction_a, i->first, prv));
-		result = result | error;
-		if (!result)
-		{
-			if (!prv.is_zero ())
-			{
-				insert_adhoc (transaction_a, prv);
-			}
-			else
-			{
-				insert_watch (transaction_a, i->first);
-			}
-			other_a.erase (transaction_a, i->first);
-		}
-	}
-	return result;
+	return !rsnano::rsn_lmdb_wallet_store_import (rust_handle, transaction_a.get_rust_handle (), other_a.rust_handle);
 }
 
 bool nano::wallet_store::work_get (nano::transaction const & transaction_a, nano::public_key const & pub_a, uint64_t & work_a)

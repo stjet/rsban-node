@@ -519,3 +519,12 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_move(
         .move_keys((*txn).as_txn(), &(*other).0, &keys)
         .is_ok()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_import(
+    handle: *mut LmdbWalletStoreHandle,
+    txn: *mut TransactionHandle,
+    other: *mut LmdbWalletStoreHandle,
+) -> bool {
+    (*handle).0.import((*txn).as_txn(), &(*other).0).is_ok()
+}

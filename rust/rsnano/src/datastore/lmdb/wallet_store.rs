@@ -541,4 +541,23 @@ impl LmdbWalletStore {
 
         Ok(())
     }
+
+    pub fn import(&self, txn: &dyn Transaction, other: &LmdbWalletStore) -> anyhow::Result<()> {
+        debug_assert!(self.valid_password(txn));
+        debug_assert!(other.valid_password(txn));
+        let mut it = other.begin(txn);
+        while let Some((k, _)) = it.current() {
+            let prv = other.fetch(txn, k)?;
+            if !prv.is_zero() {
+                self.insert_adhoc(txn, &prv);
+            } else {
+                self.insert_watch(txn, k)?;
+            }
+            other.erase(txn, k);
+
+            it.next();
+        }
+
+        Ok(())
+    }
 }

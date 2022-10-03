@@ -55,6 +55,7 @@ add_library(
   numbers.cpp
   observer_set.hpp
   optional_ptr.hpp
+  processing_queue.hpp
   rep_weights.hpp
   rep_weights.cpp
   rpc_handler_interface.hpp

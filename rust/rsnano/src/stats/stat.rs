@@ -170,6 +170,11 @@ impl StatType {
 pub enum DetailType {
     All = 0,
 
+    // processing queue
+    Queue,
+    Overfill,
+    Batch,
+
     // error specific
     BadSender,
     InsufficientWork,
@@ -352,6 +357,9 @@ impl DetailType {
     pub fn as_str(&self) -> &'static str {
         match self {
             DetailType::All => "all",
+            DetailType::Queue => "queue",
+            DetailType::Overfill => "overfill",
+            DetailType::Batch => "batch",
             DetailType::BadSender => "bad_sender",
             DetailType::BulkPull => "bulk_pull",
             DetailType::BulkPullAccount => "bulk_pull_account",

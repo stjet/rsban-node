@@ -43,7 +43,8 @@ namespace thread_role
 		election_scheduler,
 		unchecked,
 		backlog_population,
-		election_hinting
+		election_hinting,
+		vote_generator_queue,
 	};
 
 	/*

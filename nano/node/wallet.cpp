@@ -102,20 +102,6 @@ void nano::wallet_store::derive_key (nano::raw_key & prv_a, nano::transaction co
 	rsnano::rsn_lmdb_wallet_store_derive_key (rust_handle, prv_a.bytes.data (), transaction_a.get_rust_handle (), password_a.c_str ());
 }
 
-// Wallet version number
-nano::account const nano::wallet_store::version_special{};
-// Random number used to salt private key encryption
-nano::account const nano::wallet_store::salt_special (1);
-// Key used to encrypt wallet keys, encrypted itself by the user password
-nano::account const nano::wallet_store::wallet_key_special (2);
-// Check value used to see if password is valid
-nano::account const nano::wallet_store::check_special (3);
-// Representative account to be used if we open a new account
-nano::account const nano::wallet_store::representative_special (4);
-// Wallet seed for deterministic key generation
-nano::account const nano::wallet_store::seed_special (5);
-// Current key index for deterministic keys
-nano::account const nano::wallet_store::deterministic_index_special (6);
 int const nano::wallet_store::special_count (7);
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a, std::string const & json_a) :
@@ -279,14 +265,12 @@ void nano::kdf::phs (nano::raw_key & result_a, std::string const & password_a, n
 }
 
 nano::wallet::wallet (bool & init_a, nano::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a) :
-	lock_observer ([] (bool, bool) {}),
 	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a),
 	wallets (wallets_a)
 {
 }
 
 nano::wallet::wallet (bool & init_a, nano::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a, std::string const & json) :
-	lock_observer ([] (bool, bool) {}),
 	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a, json),
 	wallets (wallets_a)
 {
@@ -330,7 +314,6 @@ bool nano::wallet::enter_password (nano::transaction const & transaction_a, std:
 	{
 		wallets.node.logger->try_log ("Invalid password, wallet locked");
 	}
-	lock_observer (result, password_a.empty ());
 	return result;
 }
 
@@ -832,15 +815,6 @@ bool nano::wallet::search_receivable (nano::transaction const & wallet_transacti
 		wallets.node.logger->try_log ("Stopping search, wallet is locked");
 	}
 	return result;
-}
-
-void nano::wallet::init_free_accounts (nano::transaction const & transaction_a)
-{
-	free_accounts.clear ();
-	for (auto i (store.begin (transaction_a)), n (store.end ()); i != n; ++i)
-	{
-		free_accounts.insert (i->first);
-	}
 }
 
 uint32_t nano::wallet::deterministic_check (nano::transaction const & transaction_a, uint32_t index)

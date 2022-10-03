@@ -89,13 +89,6 @@ public:
 	unsigned version (nano::transaction const &);
 	static unsigned const version_4 = 4;
 	static unsigned constexpr version_current = version_4;
-	static nano::account const version_special;
-	static nano::account const wallet_key_special;
-	static nano::account const salt_special;
-	static nano::account const check_special;
-	static nano::account const representative_special;
-	static nano::account const seed_special;
-	static nano::account const deterministic_index_special;
 	static int const special_count;
 	nano::kdf & kdf;
 	std::recursive_mutex mutex;
@@ -136,14 +129,12 @@ public:
 	// Schedule work generation after a few seconds
 	void work_ensure (nano::account const &, nano::root const &);
 	bool search_receivable (nano::transaction const &);
-	void init_free_accounts (nano::transaction const &);
 	uint32_t deterministic_check (nano::transaction const & transaction_a, uint32_t index);
 	/** Changes the wallet seed and returns the first account */
 	nano::public_key change_seed (nano::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count = 0);
 	void deterministic_restore (nano::transaction const & transaction_a);
 	bool live ();
-	std::unordered_set<nano::account> free_accounts;
-	std::function<void (bool, bool)> lock_observer;
+
 	nano::wallet_store store;
 	nano::wallets & wallets;
 	nano::mutex representatives_mutex;

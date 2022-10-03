@@ -12,8 +12,7 @@ use std::{
 use crate::{
     datastore::{DbIterator, NullIterator, Transaction},
     deterministic_key,
-    ffi::create_ffi_property_tree,
-    utils::{Deserialize, PropertyTreeWriter, Serialize, Stream, StreamAdapter, StreamExt},
+    utils::{Deserialize, Serialize, Stream, StreamAdapter, StreamExt},
     wallet::KeyDerivationFunction,
     Account, Fan, PublicKey, RawKey,
 };
@@ -634,16 +633,18 @@ impl LmdbWalletStore {
     }
 
     pub fn serialize_json(&self, txn: &dyn Transaction) -> String {
-        let mut tree = create_ffi_property_tree();
+        let mut map = serde_json::Map::new();
         let mut it = LmdbIterator::<Account, WalletValue>::new(txn, self.db_handle(), None, true);
 
         while let Some((k, v)) = it.current() {
-            tree.put_string(&k.encode_hex(), &v.key.encode_hex())
-                .unwrap();
+            map.insert(
+                k.encode_hex(),
+                serde_json::Value::String(v.key.encode_hex()),
+            );
             it.next();
         }
 
-        tree.to_json()
+        serde_json::Value::Object(map).to_string()
     }
 
     pub fn write_backup(&self, txn: &dyn Transaction, path: &Path) -> anyhow::Result<()> {

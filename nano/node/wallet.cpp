@@ -940,9 +940,8 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	if (!error_a)
 	{
 		auto transaction (tx_begin_write ());
-		MDB_dbi handle;
-		auto status (mdb_dbi_open (env.tx (*transaction), nullptr, MDB_CREATE, &handle));
-		rsnano::rsn_lmdb_wallets_set_db_handle (rust_handle, handle);
+		int status = !rsnano::rsn_lmdb_wallets_init (rust_handle, transaction->get_rust_handle ());
+		auto handle = rsnano::rsn_lmdb_wallets_db_handle (rust_handle);
 		split_if_needed (*transaction, node.store);
 		status |= mdb_dbi_open (env.tx (*transaction), "send_action_ids", MDB_CREATE, &send_action_ids);
 		release_assert (status == 0);

@@ -52,7 +52,8 @@ impl LmdbBlockStore {
 
     pub fn open_db(&self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
         let mut handle = 0;
-        let status = unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), "blocks", flags, &mut handle) };
+        let status =
+            unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), Some("blocks"), flags, &mut handle) };
         let mut guard = self.db_handle.lock().unwrap();
         *guard = handle;
         ensure_success(status)

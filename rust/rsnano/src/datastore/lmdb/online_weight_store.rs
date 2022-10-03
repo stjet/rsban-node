@@ -29,8 +29,14 @@ impl LmdbOnlineWeightStore {
 
     pub fn open_db(&self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
         let mut handle = 0;
-        let status =
-            unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), "online_weight", flags, &mut handle) };
+        let status = unsafe {
+            mdb_dbi_open(
+                get_raw_lmdb_txn(txn),
+                Some("online_weight"),
+                flags,
+                &mut handle,
+            )
+        };
         *self.db_handle.lock().unwrap() = handle;
         ensure_success(status)
     }

@@ -273,8 +273,14 @@ impl LmdbWalletStore {
             .to_str()
             .ok_or_else(|| anyhow!("invalid path"))?;
         let mut handle = 0;
-        let status =
-            unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), path_str, MDB_CREATE, &mut handle) };
+        let status = unsafe {
+            mdb_dbi_open(
+                get_raw_lmdb_txn(txn),
+                Some(path_str),
+                MDB_CREATE,
+                &mut handle,
+            )
+        };
         self.db_handle.store(handle, Ordering::SeqCst);
         ensure_success(status)
     }

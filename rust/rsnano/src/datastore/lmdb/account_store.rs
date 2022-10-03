@@ -37,7 +37,7 @@ impl LmdbAccountStore {
     pub fn open_db(&self, transaction: &dyn Transaction, flags: u32) -> Result<()> {
         let txn = get_raw_lmdb_txn(transaction);
         let mut handle = 0;
-        let status = unsafe { mdb_dbi_open(txn, "accounts", flags, &mut handle) };
+        let status = unsafe { mdb_dbi_open(txn, Some("accounts"), flags, &mut handle) };
         *self.db_handle.lock().unwrap() = handle;
         if status != MDB_SUCCESS {
             bail!("could not open accounts database");

@@ -196,7 +196,7 @@ impl LmdbStore {
         for table in tables {
             let mut temp = 0;
             unsafe {
-                mdb_dbi_open(raw_txn, "temp_table", MDB_CREATE, &mut temp);
+                mdb_dbi_open(raw_txn, Some("temp_table"), MDB_CREATE, &mut temp);
             }
             // Copy all values to temporary table
 
@@ -231,7 +231,7 @@ impl LmdbStore {
         {
             let mut temp = 0;
             unsafe {
-                mdb_dbi_open(raw_txn, "temp_table", MDB_CREATE, &mut temp);
+                mdb_dbi_open(raw_txn, Some("temp_table"), MDB_CREATE, &mut temp);
             }
             // Copy all values to temporary table
             let mut i = LmdbRawIterator::new(

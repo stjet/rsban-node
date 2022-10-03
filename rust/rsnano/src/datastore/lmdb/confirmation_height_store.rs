@@ -37,7 +37,7 @@ impl LmdbConfirmationHeightStore {
         let status = unsafe {
             mdb_dbi_open(
                 get_raw_lmdb_txn(txn),
-                "confirmation_height",
+                Some("confirmation_height"),
                 flags,
                 &mut handle,
             )

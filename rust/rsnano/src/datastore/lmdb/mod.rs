@@ -483,9 +483,13 @@ pub unsafe fn mdb_cursor_close(cursor: *mut MdbCursor) {
     MDB_CURSOR_CLOSE.expect("MDB_CURSOR_CLOSE missing")(cursor);
 }
 
-pub unsafe fn mdb_dbi_open(txn: *mut MdbTxn, name: &str, flags: u32, dbi: &mut u32) -> i32 {
-    let name_cstr = CString::new(name).unwrap();
-    MDB_DBI_OPEN.expect("MDB_DBI_OPEN missing")(txn, name_cstr.as_ptr(), flags, dbi)
+pub unsafe fn mdb_dbi_open(txn: *mut MdbTxn, name: Option<&str>, flags: u32, dbi: &mut u32) -> i32 {
+    let name = name.map(|n| CString::new(n).unwrap());
+    let name_ptr = match &name {
+        Some(n) => n.as_ptr(),
+        None => ptr::null(),
+    };
+    MDB_DBI_OPEN.expect("MDB_DBI_OPEN missing")(txn, name_ptr, flags, dbi)
 }
 
 pub unsafe fn mdb_put(

@@ -1,5 +1,7 @@
 use crate::datastore::lmdb::LmdbWallets;
 
+use super::TransactionHandle;
+
 pub struct LmdbWalletsHandle(LmdbWallets);
 
 #[no_mangle]
@@ -23,4 +25,12 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_set_db_handle(
     db_handle: u32,
 ) {
     (*handle).0.handle = db_handle;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_init(
+    handle: *mut LmdbWalletsHandle,
+    txn: &mut TransactionHandle,
+) -> bool {
+    (*handle).0.initialize((*txn).as_txn()).is_ok()
 }

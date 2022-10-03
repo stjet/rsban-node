@@ -41,13 +41,6 @@ pub unsafe extern "C" fn rsn_lmdb_unchecked_store_destroy(handle: *mut LmdbUnche
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_unchecked_store_table_handle(
-    handle: *mut LmdbUncheckedStoreHandle,
-) -> u32 {
-    (*handle).0.db_handle()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_unchecked_store_clear(
     handle: *mut LmdbUncheckedStoreHandle,
     txn: *mut TransactionHandle,

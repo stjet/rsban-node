@@ -27,13 +27,6 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_destroy(handle: *mut LmdbFina
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_final_vote_store_table_handle(
-    handle: *mut LmdbFinalVoteStoreHandle,
-) -> u32 {
-    (*handle).0.db_handle()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_final_vote_store_put(
     handle: *mut LmdbFinalVoteStoreHandle,
     txn: *mut TransactionHandle,

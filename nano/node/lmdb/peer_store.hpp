@@ -26,8 +26,6 @@ namespace lmdb
 		void clear (nano::write_transaction const & transaction_a) override;
 		nano::store_iterator<nano::endpoint_key, nano::no_value> begin (nano::transaction const & transaction_a) const override;
 		nano::store_iterator<nano::endpoint_key, nano::no_value> end () const override;
-
-		MDB_dbi table_handle () const;
 	};
 }
 }

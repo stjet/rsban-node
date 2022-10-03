@@ -120,8 +120,3 @@ void nano::lmdb::pending_store::for_each_par (std::function<void (nano::read_tra
 	auto context = (void *)&action_a;
 	rsnano::rsn_lmdb_pending_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
 }
-
-MDB_dbi nano::lmdb::pending_store::table_handle () const
-{
-	return rsnano::rsn_lmdb_pending_store_table_handle (handle);
-}

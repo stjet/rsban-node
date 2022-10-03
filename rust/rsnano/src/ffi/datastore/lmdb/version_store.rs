@@ -16,13 +16,6 @@ pub unsafe extern "C" fn rsn_lmdb_version_store_destroy(handle: *mut LmdbVersion
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_version_store_table_handle(
-    handle: *mut LmdbVersionStoreHandle,
-) -> u32 {
-    (*handle).0.db_handle()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_version_store_open_db(
     handle: *mut LmdbVersionStoreHandle,
     txn: *mut TransactionHandle,

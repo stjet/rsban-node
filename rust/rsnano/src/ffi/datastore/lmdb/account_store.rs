@@ -31,13 +31,6 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_destroy(handle: *mut LmdbAccount
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_account_store_accounts_handle(
-    handle: *mut LmdbAccountStoreHandle,
-) -> u32 {
-    (*handle).0.db_handle()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_account_store_put(
     handle: *mut LmdbAccountStoreHandle,
     txn: *mut TransactionHandle,

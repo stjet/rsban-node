@@ -39,12 +39,6 @@ namespace lmdb
 		void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::block_hash, block_w_sideband>, nano::store_iterator<nano::block_hash, block_w_sideband>)> const & action_a) const override;
 		// Converts a block hash to a block height
 		uint64_t account_height (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
-
-		/**
-		 * Contains block_sideband and block for all block types (legacy send/change/open/receive & state blocks)
-		 * nano::block_hash -> nano::block_sideband, nano::block
-		 */
-		MDB_dbi get_blocks_handle () const;
 	};
 }
 }

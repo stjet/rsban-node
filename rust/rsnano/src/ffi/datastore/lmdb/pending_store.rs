@@ -27,13 +27,6 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_destroy(handle: *mut LmdbPending
     drop(Box::from_raw(handle))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_pending_store_table_handle(
-    handle: *mut LmdbPendingStoreHandle,
-) -> u32 {
-    (*handle).0.db_handle()
-}
-
 #[repr(C)]
 pub struct PendingKeyDto {
     pub account: [u8; 32],

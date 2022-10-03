@@ -120,7 +120,7 @@ int const nano::wallet_store::special_count (7);
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a, std::string const & json_a) :
 	kdf (kdf_a),
-	rust_handle{ rsnano::rsn_lmdb_wallet_store_create2 (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), representative_a.bytes.data (), wallet_a.c_str (), json_a.c_str ()) },
+	rust_handle{ rsnano::rsn_lmdb_wallet_store_create2 (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), wallet_a.c_str (), json_a.c_str ()) },
 	fanout{ fanout_a }
 {
 	init_a = rust_handle == nullptr;
@@ -142,7 +142,7 @@ nano::wallet_store::~wallet_store ()
 
 bool nano::wallet_store::is_open () const
 {
-	return rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle) != 0;
+	return rsnano::rsn_lmdb_wallet_store_is_open (rust_handle);
 }
 
 void nano::wallet_store::lock ()

@@ -1814,8 +1814,6 @@ LedgerHandle * rsn_ledger_create (void * handle);
 
 void rsn_ledger_destroy (LedgerHandle * handle);
 
-uint32_t rsn_lmdb_account_store_accounts_handle (LmdbAccountStoreHandle * handle);
-
 LmdbIteratorHandle * rsn_lmdb_account_store_begin (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn);
 
@@ -1877,8 +1875,6 @@ TransactionHandle * txn);
 LmdbIteratorHandle * rsn_lmdb_block_store_begin_at_hash (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash);
-
-uint32_t rsn_lmdb_block_store_blocks_handle (LmdbBlockStoreHandle * handle);
 
 uint64_t rsn_lmdb_block_store_count (LmdbBlockStoreHandle * handle, TransactionHandle * txn);
 
@@ -1971,8 +1967,6 @@ TransactionHandle * txn,
 const uint8_t * account,
 const ConfirmationHeightInfoDto * info);
 
-uint32_t rsn_lmdb_confirmation_height_store_table_handle (LmdbConfirmationHeightStoreHandle * handle);
-
 LmdbIteratorHandle * rsn_lmdb_final_vote_store_begin (LmdbFinalVoteStoreHandle * handle,
 TransactionHandle * txn);
 
@@ -2005,8 +1999,6 @@ TransactionHandle * txn,
 const uint8_t * root,
 const uint8_t * hash);
 
-uint32_t rsn_lmdb_final_vote_store_table_handle (LmdbFinalVoteStoreHandle * handle);
-
 LmdbIteratorHandle * rsn_lmdb_frontier_store_begin (LmdbFrontierStoreHandle * handle,
 TransactionHandle * txn);
 
@@ -2034,8 +2026,6 @@ void rsn_lmdb_frontier_store_put (LmdbFrontierStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,
 const uint8_t * account);
-
-uint32_t rsn_lmdb_frontier_store_table_handle (LmdbFrontierStoreHandle * handle);
 
 void rsn_lmdb_iterator_clear (LmdbIteratorHandle * handle);
 
@@ -2078,8 +2068,6 @@ const uint8_t * amount);
 LmdbIteratorHandle * rsn_lmdb_online_weight_store_rbegin (LmdbOnlineWeightStoreHandle * handle,
 TransactionHandle * txn);
 
-uint32_t rsn_lmdb_online_weight_store_table_handle (LmdbOnlineWeightStoreHandle * handle);
-
 LmdbIteratorHandle * rsn_lmdb_peer_store_begin (LmdbPeerStoreHandle * handle, TransactionHandle * txn);
 
 void rsn_lmdb_peer_store_clear (LmdbPeerStoreHandle * handle, TransactionHandle * txn);
@@ -2102,8 +2090,6 @@ void rsn_lmdb_peer_store_put (LmdbPeerStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * address,
 uint16_t port);
-
-uint32_t rsn_lmdb_peer_store_table_handle (LmdbPeerStoreHandle * handle);
 
 bool rsn_lmdb_pending_store_any (LmdbPendingStoreHandle * handle,
 TransactionHandle * txn,
@@ -2141,8 +2127,6 @@ TransactionHandle * txn,
 const PendingKeyDto * key,
 const PendingInfoDto * pending);
 
-uint32_t rsn_lmdb_pending_store_table_handle (LmdbPendingStoreHandle * handle);
-
 LmdbIteratorHandle * rsn_lmdb_pruned_store_begin (LmdbPrunedStoreHandle * handle,
 TransactionHandle * txn);
 
@@ -2176,8 +2160,6 @@ const uint8_t * hash);
 void rsn_lmdb_pruned_store_random (LmdbPrunedStoreHandle * handle,
 TransactionHandle * txn,
 uint8_t * hash);
-
-uint32_t rsn_lmdb_pruned_store_table_handle (LmdbPrunedStoreHandle * handle);
 
 TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);
 
@@ -2262,8 +2244,6 @@ TransactionHandle * txn,
 const uint8_t * dependency,
 UncheckedInfoHandle * info);
 
-uint32_t rsn_lmdb_unchecked_store_table_handle (LmdbUncheckedStoreHandle * handle);
-
 void rsn_lmdb_version_store_destroy (LmdbVersionStoreHandle * handle);
 
 int32_t rsn_lmdb_version_store_get (LmdbVersionStoreHandle * handle, TransactionHandle * txn);
@@ -2275,8 +2255,6 @@ uint32_t flags);
 void rsn_lmdb_version_store_put (LmdbVersionStoreHandle * handle,
 TransactionHandle * txn,
 int32_t version);
-
-uint32_t rsn_lmdb_version_store_table_handle (LmdbVersionStoreHandle * handle);
 
 void rsn_lmdb_wallet_store_accounts (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
@@ -2306,11 +2284,8 @@ const char * wallet);
 LmdbWalletStoreHandle * rsn_lmdb_wallet_store_create2 (uintptr_t fanout,
 const KdfHandle * kdf,
 TransactionHandle * txn,
-const uint8_t * representative,
 const char * wallet,
 const char * json);
-
-uint32_t rsn_lmdb_wallet_store_db_handle (LmdbWalletStoreHandle * handle);
 
 void rsn_lmdb_wallet_store_derive_key (LmdbWalletStoreHandle * handle,
 uint8_t * prv,
@@ -2345,16 +2320,6 @@ TransactionHandle * txn,
 uint32_t index,
 uint8_t * key);
 
-void rsn_lmdb_wallet_store_entry_get_raw (LmdbWalletStoreHandle * handle,
-TransactionHandle * txn,
-const uint8_t * account,
-WalletValueDto * result);
-
-void rsn_lmdb_wallet_store_entry_put_raw (LmdbWalletStoreHandle * handle,
-TransactionHandle * txn,
-const uint8_t * account,
-const WalletValueDto * entry);
-
 void rsn_lmdb_wallet_store_erase (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account);
@@ -2376,10 +2341,6 @@ bool rsn_lmdb_wallet_store_import (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 LmdbWalletStoreHandle * other);
 
-bool rsn_lmdb_wallet_store_initialize (LmdbWalletStoreHandle * handle,
-TransactionHandle * txn,
-const char * path);
-
 void rsn_lmdb_wallet_store_insert_adhoc (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * prv,
@@ -2388,6 +2349,8 @@ uint8_t * pub_key);
 bool rsn_lmdb_wallet_store_insert_watch (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * pub_key);
+
+bool rsn_lmdb_wallet_store_is_open (LmdbWalletStoreHandle * handle);
 
 uint8_t rsn_lmdb_wallet_store_key_type (const WalletValueDto * value);
 
@@ -2429,11 +2392,7 @@ void rsn_lmdb_wallet_store_serialize_json (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 StringDto * result);
 
-void rsn_lmdb_wallet_store_set_db_handle (LmdbWalletStoreHandle * handle, uint32_t dbi);
-
 void rsn_lmdb_wallet_store_set_password (LmdbWalletStoreHandle * handle, const uint8_t * password);
-
-void rsn_lmdb_wallet_store_set_wallet_key_mem (LmdbWalletStoreHandle * handle, const uint8_t * key);
 
 bool rsn_lmdb_wallet_store_valid_password (LmdbWalletStoreHandle * handle, TransactionHandle * txn);
 
@@ -2441,15 +2400,9 @@ bool rsn_lmdb_wallet_store_valid_public_key (LmdbWalletStoreHandle * handle, con
 
 uint32_t rsn_lmdb_wallet_store_version (LmdbWalletStoreHandle * handle, TransactionHandle * txn);
 
-void rsn_lmdb_wallet_store_version_put (LmdbWalletStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t version);
-
 void rsn_lmdb_wallet_store_wallet_key (LmdbWalletStoreHandle * handle,
 uint8_t * prv_key,
 TransactionHandle * txn);
-
-void rsn_lmdb_wallet_store_wallet_key_mem (LmdbWalletStoreHandle * handle, uint8_t * key);
 
 bool rsn_lmdb_wallet_store_work_get (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,

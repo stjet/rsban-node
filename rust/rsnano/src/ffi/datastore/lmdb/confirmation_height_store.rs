@@ -29,13 +29,6 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_destroy(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_table_handle(
-    handle: *mut LmdbConfirmationHeightStoreHandle,
-) -> u32 {
-    (*handle).0.db_handle()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_put(
     handle: *mut LmdbConfirmationHeightStoreHandle,
     txn: *mut TransactionHandle,

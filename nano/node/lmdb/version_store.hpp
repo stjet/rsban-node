@@ -20,7 +20,6 @@ namespace lmdb
 		version_store (version_store &&) = delete;
 		void put (nano::write_transaction const & transaction_a, int version_a) override;
 		int get (nano::transaction const & transaction_a) const override;
-		MDB_dbi table_handle () const;
 	};
 }
 }

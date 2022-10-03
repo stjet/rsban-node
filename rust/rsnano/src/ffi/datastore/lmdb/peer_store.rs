@@ -24,11 +24,6 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_destroy(handle: *mut LmdbPeerStoreH
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_peer_store_table_handle(handle: *mut LmdbPeerStoreHandle) -> u32 {
-    (*handle).0.db_handle()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_peer_store_put(
     handle: *mut LmdbPeerStoreHandle,
     txn: *mut TransactionHandle,

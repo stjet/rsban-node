@@ -94,8 +94,3 @@ void nano::lmdb::account_store::for_each_par (std::function<void (nano::read_tra
 	auto context = (void *)&action_a;
 	rsnano::rsn_lmdb_account_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
 }
-
-MDB_dbi nano::lmdb::account_store::get_accounts_handle () const
-{
-	return rsnano::rsn_lmdb_account_store_accounts_handle (handle);
-}

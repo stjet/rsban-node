@@ -162,11 +162,10 @@ impl LmdbWalletStore {
         Ok(store)
     }
 
-    pub fn new2(
+    pub fn new_from_json(
         fanout: usize,
         kdf: KeyDerivationFunction,
         txn: &dyn Transaction,
-        _representative: &Account,
         wallet: &Path,
         json: &str,
     ) -> anyhow::Result<Self> {
@@ -715,5 +714,9 @@ impl LmdbWalletStore {
         let status = unsafe { mdb_drop(get_raw_lmdb_txn(txn), self.db_handle(), 1) };
         assert_success(status);
         self.db_handle.store(0, Ordering::SeqCst)
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.db_handle() != 0
     }
 }

@@ -161,8 +161,3 @@ uint64_t nano::lmdb::block_store::account_height (nano::transaction const & tran
 {
 	return rsnano::rsn_lmdb_block_store_account_height (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
 }
-
-MDB_dbi nano::lmdb::block_store::get_blocks_handle () const
-{
-	return rsnano::rsn_lmdb_block_store_blocks_handle (handle);
-}

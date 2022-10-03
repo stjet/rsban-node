@@ -25,12 +25,6 @@ namespace lmdb
 		nano::store_iterator<nano::qualified_root, nano::block_hash> begin (nano::transaction const & transaction_a) const override;
 		nano::store_iterator<nano::qualified_root, nano::block_hash> end () const override;
 		void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::qualified_root, nano::block_hash>, nano::store_iterator<nano::qualified_root, nano::block_hash>)> const & action_a) const override;
-
-		/**
-		 * Maps root to block hash for generated final votes.
-		 * nano::qualified_root -> nano::block_hash
-		 */
-		MDB_dbi table_handle () const;
 		rsnano::LmdbFinalVoteStoreHandle * handle;
 	};
 }

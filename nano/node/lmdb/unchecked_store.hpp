@@ -27,8 +27,6 @@ namespace lmdb
 		nano::store_iterator<nano::unchecked_key, nano::unchecked_info> begin (nano::transaction const & transaction_a) const override;
 		nano::store_iterator<nano::unchecked_key, nano::unchecked_info> lower_bound (nano::transaction const & transaction_a, nano::unchecked_key const & key_a) const override;
 		size_t count (nano::transaction const & transaction_a) override;
-
-		MDB_dbi table_handle () const;
 	};
 }
 }

@@ -25,8 +25,6 @@ namespace lmdb
 		nano::store_iterator<nano::block_hash, nano::account> begin (nano::transaction const &, nano::block_hash const &) const override;
 		nano::store_iterator<nano::block_hash, nano::account> end () const override;
 		void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::block_hash, nano::account>, nano::store_iterator<nano::block_hash, nano::account>)> const & action_a) const override;
-
-		MDB_dbi table_handle () const;
 	};
 }
 }

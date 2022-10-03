@@ -70,8 +70,3 @@ size_t nano::lmdb::unchecked_store::count (nano::transaction const & transaction
 {
 	return rsnano::rsn_lmdb_unchecked_store_count (handle, transaction_a.get_rust_handle ());
 }
-
-MDB_dbi nano::lmdb::unchecked_store::table_handle () const
-{
-	return rsnano::rsn_lmdb_unchecked_store_table_handle (handle);
-}

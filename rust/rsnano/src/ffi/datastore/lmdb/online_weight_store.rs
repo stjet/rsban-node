@@ -26,13 +26,6 @@ pub unsafe extern "C" fn rsn_lmdb_online_weight_store_destroy(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_online_weight_store_table_handle(
-    handle: *mut LmdbOnlineWeightStoreHandle,
-) -> u32 {
-    (*handle).0.db_handle()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_online_weight_store_put(
     handle: *mut LmdbOnlineWeightStoreHandle,
     txn: *mut TransactionHandle,

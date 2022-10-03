@@ -27,13 +27,6 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_destroy(handle: *mut LmdbPrunedSt
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_pruned_store_table_handle(
-    handle: *mut LmdbPrunedStoreHandle,
-) -> u32 {
-    (*handle).0.db_handle()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_pruned_store_put(
     handle: *mut LmdbPrunedStoreHandle,
     txn: *mut TransactionHandle,

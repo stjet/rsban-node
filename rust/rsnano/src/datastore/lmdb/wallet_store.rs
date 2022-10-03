@@ -9,8 +9,6 @@ use std::{
     },
 };
 
-use rand::{thread_rng, Rng};
-
 use crate::{
     datastore::{DbIterator, NullIterator, Transaction},
     deterministic_key,
@@ -168,6 +166,7 @@ impl LmdbWalletStore {
         fanout: usize,
         kdf: KeyDerivationFunction,
         txn: &dyn Transaction,
+        _representative: &Account,
         wallet: &Path,
         json: &str,
     ) -> anyhow::Result<Self> {
@@ -177,7 +176,58 @@ impl LmdbWalletStore {
             kdf,
         };
         store.initialize(txn, wallet)?;
+        let handle = store.db_handle();
+        let mut junk = MdbVal::new();
+        debug_assert!(
+            unsafe {
+                mdb_get(
+                    get_raw_lmdb_txn(txn),
+                    handle,
+                    &mut MdbVal::from(&Self::version_special()),
+                    &mut junk,
+                )
+            } == MDB_NOTFOUND
+        );
+
+        let json: serde_json::Value = serde_json::from_str(json)?;
+        if let serde_json::Value::Object(map) = json {
+            for (k, v) in map.iter() {
+                if let serde_json::Value::String(v_str) = v {
+                    let key = Account::decode_hex(k)?;
+                    let value = RawKey::decode_hex(v_str)?;
+                    store.entry_put_raw(txn, &key, &WalletValue::new(value, 0));
+                } else {
+                    bail!("expected string value");
+                }
+            }
+        } else {
+            bail!("invalid json")
+        }
+
+        store.ensure_key_exists(txn, &Self::version_special())?;
+        store.ensure_key_exists(txn, &Self::wallet_key_special())?;
+        store.ensure_key_exists(txn, &Self::salt_special())?;
+        store.ensure_key_exists(txn, &Self::check_special())?;
+        store.ensure_key_exists(txn, &Self::representative_special())?;
+        let mut guard = store.fans.lock().unwrap();
+        guard.password.value_set(RawKey::new());
+        let key = store.entry_get_raw(txn, &Self::wallet_key_special()).key;
+        guard.wallet_key_mem.value_set(key);
+        drop(guard);
         Ok(store)
+    }
+
+    fn ensure_key_exists(&self, txn: &dyn Transaction, key: &Account) -> anyhow::Result<()> {
+        let mut junk = MdbVal::new();
+        let status = unsafe {
+            mdb_get(
+                get_raw_lmdb_txn(txn),
+                self.db_handle(),
+                &mut MdbVal::from(key),
+                &mut junk,
+            )
+        };
+        ensure_success(status)
     }
 
     /// Wallet version number

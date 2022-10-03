@@ -72,16 +72,19 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_create2(
     fanout: usize,
     kdf: *const KdfHandle,
     txn: *mut TransactionHandle,
+    representative: *const u8,
     wallet: *const c_char,
     json: *const c_char,
 ) -> *mut LmdbWalletStoreHandle {
     let wallet = CStr::from_ptr(wallet).to_str().unwrap();
     let json = CStr::from_ptr(json).to_str().unwrap();
     let wallet = PathBuf::from(wallet);
+    let representative = Account::from_ptr(representative);
     if let Ok(store) = LmdbWalletStore::new2(
         fanout,
         (*kdf).deref().clone(),
         (*txn).as_txn(),
+        &representative,
         &wallet,
         json,
     ) {

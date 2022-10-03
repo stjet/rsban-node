@@ -54,7 +54,6 @@ public:
 	nano::uint256_union check (nano::transaction const &);
 	bool rekey (nano::transaction const &, std::string const &);
 	bool valid_password (nano::transaction const &);
-	bool valid_public_key (nano::public_key const &);
 	bool attempt_password (nano::transaction const &, std::string const &);
 	void wallet_key (nano::raw_key &, nano::transaction const &);
 	void seed (nano::raw_key &, nano::transaction const &);
@@ -73,8 +72,6 @@ public:
 	nano::public_key insert_adhoc (nano::transaction const &, nano::raw_key const &);
 	bool insert_watch (nano::transaction const &, nano::account const &);
 	void erase (nano::transaction const &, nano::account const &);
-	nano::wallet_value entry_get_raw (nano::transaction const &, nano::account const &);
-	void entry_put_raw (nano::transaction const &, nano::account const &, nano::wallet_value const &);
 	bool fetch (nano::transaction const &, nano::account const &, nano::raw_key &);
 	bool exists (nano::transaction const &, nano::account const &);
 	void destroy (nano::transaction const &);
@@ -90,7 +87,6 @@ public:
 	bool work_get (nano::transaction const &, nano::public_key const &, uint64_t &);
 	void work_put (nano::transaction const &, nano::public_key const &, uint64_t);
 	unsigned version (nano::transaction const &);
-	void version_put (nano::transaction const &, unsigned);
 	static unsigned const version_4 = 4;
 	static unsigned constexpr version_current = version_4;
 	static nano::account const version_special;
@@ -100,7 +96,6 @@ public:
 	static nano::account const representative_special;
 	static nano::account const seed_special;
 	static nano::account const deterministic_index_special;
-	static std::size_t const check_iv_index;
 	static int const special_count;
 	nano::kdf & kdf;
 	std::recursive_mutex mutex;

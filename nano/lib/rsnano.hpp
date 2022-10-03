@@ -2306,6 +2306,7 @@ const char * wallet);
 LmdbWalletStoreHandle * rsn_lmdb_wallet_store_create2 (uintptr_t fanout,
 const KdfHandle * kdf,
 TransactionHandle * txn,
+const uint8_t * representative,
 const char * wallet,
 const char * json);
 

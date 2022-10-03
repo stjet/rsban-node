@@ -117,62 +117,13 @@ nano::account const nano::wallet_store::seed_special (5);
 // Current key index for deterministic keys
 nano::account const nano::wallet_store::deterministic_index_special (6);
 int const nano::wallet_store::special_count (7);
-std::size_t const nano::wallet_store::check_iv_index (0);
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a, std::string const & json_a) :
 	kdf (kdf_a),
-	rust_handle{ rsnano::rsn_lmdb_wallet_store_create2 (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), wallet_a.c_str (), json_a.c_str ()) },
+	rust_handle{ rsnano::rsn_lmdb_wallet_store_create2 (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), representative_a.bytes.data (), wallet_a.c_str (), json_a.c_str ()) },
 	fanout{ fanout_a }
 {
-	if (rust_handle != nullptr)
-	{
-		init_a = false;
-		auto handle = rsnano::rsn_lmdb_wallet_store_db_handle (rust_handle);
-		MDB_val junk;
-		debug_assert (mdb_get (tx (transaction_a), handle, nano::mdb_val (version_special), &junk) == MDB_NOTFOUND);
-		boost::property_tree::ptree wallet_l;
-		std::stringstream istream (json_a);
-		try
-		{
-			boost::property_tree::read_json (istream, wallet_l);
-		}
-		catch (...)
-		{
-			init_a = true;
-		}
-		for (auto i (wallet_l.begin ()), n (wallet_l.end ()); i != n; ++i)
-		{
-			nano::account key;
-			init_a = key.decode_hex (i->first);
-			if (!init_a)
-			{
-				nano::raw_key value;
-				init_a = value.decode_hex (wallet_l.get<std::string> (i->first));
-				if (!init_a)
-				{
-					entry_put_raw (transaction_a, key, nano::wallet_value (value, 0));
-				}
-				else
-				{
-					init_a = true;
-				}
-			}
-			else
-			{
-				init_a = true;
-			}
-		}
-		init_a |= mdb_get (tx (transaction_a), handle, nano::mdb_val (version_special), &junk) != 0;
-		init_a |= mdb_get (tx (transaction_a), handle, nano::mdb_val (wallet_key_special), &junk) != 0;
-		init_a |= mdb_get (tx (transaction_a), handle, nano::mdb_val (salt_special), &junk) != 0;
-		init_a |= mdb_get (tx (transaction_a), handle, nano::mdb_val (check_special), &junk) != 0;
-		init_a |= mdb_get (tx (transaction_a), handle, nano::mdb_val (representative_special), &junk) != 0;
-		nano::raw_key key;
-		key.clear ();
-		rsnano::rsn_lmdb_wallet_store_set_password (rust_handle, key.bytes.data ());
-		key = entry_get_raw (transaction_a, nano::wallet_store::wallet_key_special).key;
-		rsnano::rsn_lmdb_wallet_store_set_wallet_key_mem (rust_handle, key.bytes.data ());
-	}
+	init_a = rust_handle == nullptr;
 }
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a) :
@@ -180,11 +131,13 @@ nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transa
 	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), representative_a.bytes.data (), wallet_a.c_str ()) },
 	fanout{ fanout_a }
 {
+	init_a = rust_handle == nullptr;
 }
 
 nano::wallet_store::~wallet_store ()
 {
-	rsnano::rsn_lmdb_wallet_store_destroy (rust_handle);
+	if (rust_handle != nullptr)
+		rsnano::rsn_lmdb_wallet_store_destroy (rust_handle);
 }
 
 bool nano::wallet_store::is_open () const
@@ -257,19 +210,6 @@ void nano::wallet_store::erase (nano::transaction const & transaction_a, nano::a
 	rsnano::rsn_lmdb_wallet_store_erase (rust_handle, transaction_a.get_rust_handle (), pub.bytes.data ());
 }
 
-nano::wallet_value nano::wallet_store::entry_get_raw (nano::transaction const & transaction_a, nano::account const & pub_a)
-{
-	rsnano::WalletValueDto value;
-	rsnano::rsn_lmdb_wallet_store_entry_get_raw (rust_handle, transaction_a.get_rust_handle (), pub_a.bytes.data (), &value);
-	return nano::wallet_value (value);
-}
-
-void nano::wallet_store::entry_put_raw (nano::transaction const & transaction_a, nano::account const & pub_a, nano::wallet_value const & entry_a)
-{
-	auto entry_dto{ entry_a.to_dto () };
-	rsnano::rsn_lmdb_wallet_store_entry_put_raw (rust_handle, transaction_a.get_rust_handle (), pub_a.bytes.data (), &entry_dto);
-}
-
 nano::key_type nano::wallet_store::key_type (nano::wallet_value const & value_a)
 {
 	auto dto{ value_a.to_dto () };
@@ -279,11 +219,6 @@ nano::key_type nano::wallet_store::key_type (nano::wallet_value const & value_a)
 bool nano::wallet_store::fetch (nano::transaction const & transaction_a, nano::account const & pub, nano::raw_key & prv)
 {
 	return !rsnano::rsn_lmdb_wallet_store_fetch (rust_handle, transaction_a.get_rust_handle (), pub.bytes.data (), prv.bytes.data ());
-}
-
-bool nano::wallet_store::valid_public_key (nano::public_key const & pub)
-{
-	return rsnano::rsn_lmdb_wallet_store_valid_public_key (rust_handle, pub.bytes.data ());
 }
 
 bool nano::wallet_store::exists (nano::transaction const & transaction_a, nano::public_key const & pub)
@@ -326,11 +261,6 @@ void nano::wallet_store::work_put (nano::transaction const & transaction_a, nano
 unsigned nano::wallet_store::version (nano::transaction const & transaction_a)
 {
 	return rsnano::rsn_lmdb_wallet_store_version (rust_handle, transaction_a.get_rust_handle ());
-}
-
-void nano::wallet_store::version_put (nano::transaction const & transaction_a, unsigned version_a)
-{
-	rsnano::rsn_lmdb_wallet_store_version_put (rust_handle, transaction_a.get_rust_handle (), version_a);
 }
 
 nano::kdf::kdf (unsigned kdf_work) :
@@ -514,7 +444,8 @@ void nano::wallet::serialize (std::string & json_a)
 
 void nano::wallet_store::destroy (nano::transaction const & transaction_a)
 {
-	rsnano::rsn_lmdb_wallet_store_destroy2 (rust_handle, transaction_a.get_rust_handle ());
+	if (rust_handle != nullptr)
+		rsnano::rsn_lmdb_wallet_store_destroy2 (rust_handle, transaction_a.get_rust_handle ());
 }
 
 std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash const & send_hash_a, nano::account const & representative_a, nano::uint128_union const & amount_a, nano::account const & account_a, uint64_t work_a, bool generate_work_a)

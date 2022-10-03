@@ -13,6 +13,7 @@ mod store;
 mod unchecked_store;
 mod version_store;
 mod wallet_store;
+mod wallets;
 
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 

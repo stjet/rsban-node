@@ -201,7 +201,6 @@ public:
 	nano::mutex action_mutex;
 	nano::condition_variable condition;
 	nano::kdf kdf;
-	MDB_dbi handle;
 	MDB_dbi send_action_ids;
 	nano::node & node;
 	nano::mdb_env & env;
@@ -218,6 +217,7 @@ public:
 private:
 	mutable nano::mutex reps_cache_mutex;
 	nano::wallet_representatives representatives;
+	rsnano::LmdbWalletsHandle * rust_handle;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (wallets & wallets, std::string const & name);

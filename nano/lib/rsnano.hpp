@@ -132,6 +132,8 @@ struct LmdbVersionStoreHandle;
 
 struct LmdbWalletStoreHandle;
 
+struct LmdbWalletsHandle;
+
 struct LocalVoteHistoryHandle;
 
 struct LocalVotesResultHandle;
@@ -2417,6 +2419,14 @@ uint64_t work);
 void rsn_lmdb_wallet_store_write_backup (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const char * path);
+
+LmdbWalletsHandle * rsn_lmdb_wallets_create ();
+
+uint32_t rsn_lmdb_wallets_db_handle (LmdbWalletsHandle * handle);
+
+void rsn_lmdb_wallets_destroy (LmdbWalletsHandle * handle);
+
+void rsn_lmdb_wallets_set_db_handle (LmdbWalletsHandle * handle, uint32_t db_handle);
 
 void rsn_lmdb_write_txn_commit (TransactionHandle * handle);
 

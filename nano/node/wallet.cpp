@@ -933,13 +933,16 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	kdf{ node_a.config->network_params.kdf_work },
 	node (node_a),
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
-	stopped (false)
+	stopped (false),
+	rust_handle{ rsnano::rsn_lmdb_wallets_create () }
 {
 	nano::unique_lock<nano::mutex> lock (mutex);
 	if (!error_a)
 	{
 		auto transaction (tx_begin_write ());
+		MDB_dbi handle;
 		auto status (mdb_dbi_open (env.tx (*transaction), nullptr, MDB_CREATE, &handle));
+		rsnano::rsn_lmdb_wallets_set_db_handle (rust_handle, handle);
 		split_if_needed (*transaction, node.store);
 		status |= mdb_dbi_open (env.tx (*transaction), "send_action_ids", MDB_CREATE, &send_action_ids);
 		release_assert (status == 0);
@@ -1075,6 +1078,7 @@ void nano::wallets::reload ()
 	std::unordered_set<nano::uint256_union> stored_items;
 	std::string beginning (nano::uint256_union (0).to_string ());
 	std::string end ((nano::uint256_union (nano::uint256_t (0) - nano::uint256_t (1))).to_string ());
+	auto handle = rsnano::rsn_lmdb_wallets_db_handle (rust_handle);
 	nano::store_iterator<std::array<char, 64>, nano::no_value> i (std::make_unique<nano::mdb_iterator<std::array<char, 64>, nano::no_value>> (*transaction, handle, nano::mdb_val (beginning.size (), const_cast<char *> (beginning.c_str ()))));
 	nano::store_iterator<std::array<char, 64>, nano::no_value> n (std::make_unique<nano::mdb_iterator<std::array<char, 64>, nano::no_value>> (*transaction, handle, nano::mdb_val (end.size (), const_cast<char *> (end.c_str ()))));
 	for (; i != n; ++i)
@@ -1304,6 +1308,7 @@ void nano::wallets::split_if_needed (nano::transaction & transaction_destination
 			std::string beginning (nano::uint256_union (0).to_string ());
 			std::string end ((nano::uint256_union (nano::uint256_t (0) - nano::uint256_t (1))).to_string ());
 
+			auto handle = rsnano::rsn_lmdb_wallets_db_handle (rust_handle);
 			auto get_store_it = [&handle = handle] (nano::transaction const & transaction_source, std::string const & hash) {
 				return nano::store_iterator<std::array<char, 64>, nano::no_value> (std::make_unique<nano::mdb_iterator<std::array<char, 64>, nano::no_value>> (transaction_source, handle, nano::mdb_val (hash.size (), const_cast<char *> (hash.c_str ()))));
 			};

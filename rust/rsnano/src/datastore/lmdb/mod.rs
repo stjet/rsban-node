@@ -14,6 +14,7 @@ mod txn_tracker;
 mod unchecked_store;
 mod version_store;
 mod wallet_store;
+mod wallets;
 
 use std::{
     any::Any,
@@ -41,6 +42,7 @@ pub use txn_tracker::TxnTracker;
 pub use unchecked_store::LmdbUncheckedStore;
 pub use version_store::LmdbVersionStore;
 pub use wallet_store::{LmdbWalletStore, WalletValue};
+pub use wallets::LmdbWallets;
 
 use crate::{
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},

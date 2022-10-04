@@ -997,6 +997,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 nano::wallets::~wallets ()
 {
 	stop ();
+	rsnano::rsn_lmdb_wallets_destroy (rust_handle);
 }
 
 std::shared_ptr<nano::wallet> nano::wallets::open (nano::wallet_id const & id_a)

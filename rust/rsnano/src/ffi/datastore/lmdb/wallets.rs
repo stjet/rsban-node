@@ -21,19 +21,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_destroy(handle: *mut LmdbWalletsHandle
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_db_handle(handle: *mut LmdbWalletsHandle) -> u32 {
-    (*handle).0.handle
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_set_db_handle(
-    handle: *mut LmdbWalletsHandle,
-    db_handle: u32,
-) {
-    (*handle).0.handle = db_handle;
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallets_send_action_ids_handle(
     handle: *mut LmdbWalletsHandle,
 ) -> u32 {
@@ -55,18 +42,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_init(
     store: *mut LmdbStoreHandle,
 ) -> bool {
     (*handle).0.initialize((*txn).as_txn(), &*store).is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_get_store_it(
-    handle: *mut LmdbWalletsHandle,
-    txn: &mut TransactionHandle,
-    hash: *const c_char,
-) -> *mut LmdbIteratorHandle {
-    let mut it = (*handle)
-        .0
-        .get_store_it((*txn).as_txn(), CStr::from_ptr(hash).to_str().unwrap());
-    to_lmdb_iterator_handle(it.as_mut())
 }
 
 #[no_mangle]

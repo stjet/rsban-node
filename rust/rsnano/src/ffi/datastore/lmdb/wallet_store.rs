@@ -262,14 +262,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_find(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_valid_public_key(
-    handle: *mut LmdbWalletStoreHandle,
-    key: *const u8,
-) -> bool {
-    (*handle).0.valid_public_key(&PublicKey::from_ptr(key))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallet_store_exists(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,

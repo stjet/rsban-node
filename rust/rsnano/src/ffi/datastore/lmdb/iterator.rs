@@ -19,32 +19,8 @@ impl LmdbIteratorHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_iterator_create(
-    txn: *mut MdbTxn,
-    dbi: u32,
-    val: *const MdbVal,
-    direction_asc: bool,
-    expected_value_size: usize,
-) -> *mut LmdbIteratorHandle {
-    LmdbIteratorHandle::new(LmdbRawIterator::new(
-        txn,
-        dbi,
-        &*val,
-        direction_asc,
-        expected_value_size,
-    ))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_iterator_destroy(handle: *mut LmdbIteratorHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_iterator_cursor(
-    handle: *mut LmdbIteratorHandle,
-) -> *mut MdbCursor {
-    (*handle).0.cursor()
 }
 
 #[no_mangle]

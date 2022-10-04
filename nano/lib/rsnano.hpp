@@ -2029,15 +2029,7 @@ const uint8_t * account);
 
 void rsn_lmdb_iterator_clear (LmdbIteratorHandle * handle);
 
-LmdbIteratorHandle * rsn_lmdb_iterator_create (MdbTxn * txn,
-uint32_t dbi,
-const MdbVal * val,
-bool direction_asc,
-uintptr_t expected_value_size);
-
 void rsn_lmdb_iterator_current (LmdbIteratorHandle * handle, MdbVal * key, MdbVal * value);
-
-MdbCursor * rsn_lmdb_iterator_cursor (LmdbIteratorHandle * handle);
 
 void rsn_lmdb_iterator_destroy (LmdbIteratorHandle * handle);
 
@@ -2396,8 +2388,6 @@ void rsn_lmdb_wallet_store_set_password (LmdbWalletStoreHandle * handle, const u
 
 bool rsn_lmdb_wallet_store_valid_password (LmdbWalletStoreHandle * handle, TransactionHandle * txn);
 
-bool rsn_lmdb_wallet_store_valid_public_key (LmdbWalletStoreHandle * handle, const uint8_t * key);
-
 uint32_t rsn_lmdb_wallet_store_version (LmdbWalletStoreHandle * handle, TransactionHandle * txn);
 
 void rsn_lmdb_wallet_store_wallet_key (LmdbWalletStoreHandle * handle,
@@ -2420,13 +2410,7 @@ const char * path);
 
 LmdbWalletsHandle * rsn_lmdb_wallets_create ();
 
-uint32_t rsn_lmdb_wallets_db_handle (LmdbWalletsHandle * handle);
-
 void rsn_lmdb_wallets_destroy (LmdbWalletsHandle * handle);
-
-LmdbIteratorHandle * rsn_lmdb_wallets_get_store_it (LmdbWalletsHandle * handle,
-TransactionHandle * txn,
-const char * hash);
 
 void rsn_lmdb_wallets_get_wallet_ids (LmdbWalletsHandle * handle,
 TransactionHandle * txn,
@@ -2442,8 +2426,6 @@ TransactionHandle * txn_source,
 TransactionHandle * txn_destination);
 
 uint32_t rsn_lmdb_wallets_send_action_ids_handle (LmdbWalletsHandle * handle);
-
-void rsn_lmdb_wallets_set_db_handle (LmdbWalletsHandle * handle, uint32_t db_handle);
 
 void rsn_lmdb_wallets_set_send_action_ids_handle (LmdbWalletsHandle * handle, uint32_t db_handle);
 

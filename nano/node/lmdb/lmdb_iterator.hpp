@@ -10,12 +10,6 @@ template <typename T, typename U>
 class mdb_iterator : public store_iterator_impl<T, U>
 {
 public:
-	mdb_iterator (nano::transaction const & transaction_a, MDB_dbi db_a, MDB_val const & val_a = MDB_val{}, bool const direction_asc = true) :
-		handle{ rsnano::rsn_lmdb_iterator_create (static_cast<rsnano::MdbTxn *> (transaction_a.get_handle ()), db_a, reinterpret_cast<const rsnano::MdbVal *> (&val_a), direction_asc, sizeof (T)) }
-	{
-		load_current ();
-	}
-
 	mdb_iterator (rsnano::LmdbIteratorHandle * handle_a) :
 		handle{ handle_a }
 	{
@@ -112,14 +106,6 @@ public:
 	}
 
 	nano::store_iterator_impl<T, U> & operator= (nano::store_iterator_impl<T, U> const &) = delete;
-	MDB_cursor * get_cursor ()
-	{
-		return reinterpret_cast<MDB_cursor *> (rsnano::rsn_lmdb_iterator_cursor (handle));
-	}
-	std::pair<nano::db_val<MDB_val>, nano::db_val<MDB_val>> get_current ()
-	{
-		return current;
-	}
 
 private:
 	rsnano::LmdbIteratorHandle * handle{ nullptr };

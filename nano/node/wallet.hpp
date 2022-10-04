@@ -189,7 +189,6 @@ public:
 	bool check_rep (nano::account const &, nano::uint128_t const &, bool const = true);
 	void compute_reps ();
 	void ongoing_compute_reps ();
-	void split_if_needed (nano::transaction &, nano::store &);
 	std::vector<nano::wallet_id> get_wallet_ids (nano::transaction const & transaction_a);
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> get_wallets ();
 	nano::network_params & network_params;

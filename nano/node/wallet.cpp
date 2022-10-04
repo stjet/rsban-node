@@ -941,9 +941,8 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	if (!error_a)
 	{
 		auto transaction (tx_begin_write ());
-		int status = !rsnano::rsn_lmdb_wallets_init (rust_handle, transaction->get_rust_handle ());
-		split_if_needed (*transaction, node.store);
-		auto handle = rsnano::rsn_lmdb_wallets_db_handle (rust_handle);
+		auto store_l = dynamic_cast<nano::lmdb::store *> (&node.store);
+		int status = !rsnano::rsn_lmdb_wallets_init (rust_handle, transaction->get_rust_handle (), store_l->handle);
 		MDB_dbi send_action_ids;
 		status |= mdb_dbi_open (env.tx (*transaction), "send_action_ids", MDB_CREATE, &send_action_ids);
 		rsnano::rsn_lmdb_wallets_set_send_action_ids_handle (rust_handle, send_action_ids);
@@ -1291,18 +1290,6 @@ void nano::wallets::ongoing_compute_reps ()
 	node.workers->add_timed_task (std::chrono::steady_clock::now () + compute_delay, [&node_l] () {
 		node_l.wallets.ongoing_compute_reps ();
 	});
-}
-
-void nano::wallets::split_if_needed (nano::transaction & transaction_destination, nano::store & store_a)
-{
-	auto store_l = dynamic_cast<nano::lmdb::store *> (&store_a);
-	if (store_l != nullptr)
-	{
-		if (items.empty ())
-		{
-			rsnano::rsn_lmdb_wallets_split_if_needed (rust_handle, transaction_destination.get_rust_handle (), store_l->handle);
-		}
-	}
 }
 
 std::vector<nano::wallet_id> nano::wallets::get_wallet_ids (nano::transaction const & transaction_a)

@@ -2432,7 +2432,9 @@ void rsn_lmdb_wallets_get_wallet_ids (LmdbWalletsHandle * handle,
 TransactionHandle * txn,
 U256ArrayDto * result);
 
-bool rsn_lmdb_wallets_init (LmdbWalletsHandle * handle, TransactionHandle * txn);
+bool rsn_lmdb_wallets_init (LmdbWalletsHandle * handle,
+TransactionHandle * txn,
+LmdbStoreHandle * store);
 
 void rsn_lmdb_wallets_move_table (LmdbWalletsHandle * handle,
 const char * name,

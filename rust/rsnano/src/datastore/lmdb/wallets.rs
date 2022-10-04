@@ -24,10 +24,11 @@ impl LmdbWallets {
         }
     }
 
-    pub fn initialize(&mut self, txn: &dyn Transaction) -> anyhow::Result<()> {
+    pub fn initialize(&mut self, txn: &dyn Transaction, store: &LmdbStore) -> anyhow::Result<()> {
         let status =
             unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), None, MDB_CREATE, &mut self.handle) };
-        ensure_success(status)
+        ensure_success(status)?;
+        self.split_if_needed(txn, store)
     }
 
     pub fn get_store_it(

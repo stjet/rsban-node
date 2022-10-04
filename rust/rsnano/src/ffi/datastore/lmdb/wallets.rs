@@ -51,9 +51,10 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_set_send_action_ids_handle(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallets_init(
     handle: *mut LmdbWalletsHandle,
-    txn: &mut TransactionHandle,
+    txn: *mut TransactionHandle,
+    store: *mut LmdbStoreHandle,
 ) -> bool {
-    (*handle).0.initialize((*txn).as_txn()).is_ok()
+    (*handle).0.initialize((*txn).as_txn(), &*store).is_ok()
 }
 
 #[no_mangle]

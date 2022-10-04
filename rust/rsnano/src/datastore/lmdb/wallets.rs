@@ -3,7 +3,7 @@ use std::ptr;
 use crate::{
     datastore::{DbIterator, Transaction},
     utils::{Deserialize, Serialize, Stream},
-    NoValue, RawKey,
+    NoValue, RawKey, WalletId,
 };
 
 use super::{
@@ -114,12 +114,24 @@ impl LmdbWallets {
             let mut i = self.get_store_it(&txn_source, &beginning);
             while let Some((k, _)) = i.current() {
                 let text = std::str::from_utf8(k)?;
-                let _id = RawKey::decode_hex(text)?;
+                let _id = WalletId::decode_hex(text)?;
                 self.move_table(text, &txn_source, txn_destination)?;
                 i.next();
             }
         }
         Ok(())
+    }
+
+    pub fn get_wallet_ids(&self, txn: &dyn Transaction) -> Vec<WalletId> {
+        let mut wallet_ids = Vec::new();
+        let beginning = RawKey::from(0).encode_hex();
+        let mut i = self.get_store_it(txn, &beginning);
+        while let Some((k, _)) = i.current() {
+            let text = std::str::from_utf8(k).unwrap();
+            wallet_ids.push(WalletId::decode_hex(&text).unwrap());
+            i.next();
+        }
+        wallet_ids
     }
 }
 

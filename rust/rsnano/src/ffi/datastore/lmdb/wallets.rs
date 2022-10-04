@@ -1,6 +1,6 @@
 use std::ffi::{c_char, CStr};
 
-use crate::datastore::lmdb::LmdbWallets;
+use crate::{datastore::lmdb::LmdbWallets, ffi::U256ArrayDto};
 
 use super::{
     iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
@@ -95,4 +95,15 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_split_if_needed(
         .0
         .split_if_needed((*txn_destination).as_txn(), &(*store))
         .unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_get_wallet_ids(
+    handle: *mut LmdbWalletsHandle,
+    txn: *mut TransactionHandle,
+    result: *mut U256ArrayDto,
+) {
+    let wallet_ids = (*handle).0.get_wallet_ids((*txn).as_txn());
+    let data = Box::new(wallet_ids.iter().map(|i| *i.as_bytes()).collect());
+    (*result).initialize(data)
 }

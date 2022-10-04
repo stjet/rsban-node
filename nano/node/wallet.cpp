@@ -148,17 +148,17 @@ void nano::wallet_store::set_password (nano::raw_key const & password_a)
 
 std::vector<nano::account> nano::wallet_store::accounts (nano::transaction const & transaction_a)
 {
-	rsnano::AccountArrayDto dto;
+	rsnano::U256ArrayDto dto;
 	rsnano::rsn_lmdb_wallet_store_accounts (rust_handle, transaction_a.get_rust_handle (), &dto);
 	std::vector<nano::account> result;
 	result.reserve (dto.count);
 	for (int i = 0; i < dto.count; ++i)
 	{
 		nano::account account;
-		std::copy (std::begin (dto.accounts[i]), std::end (dto.accounts[i]), std::begin (account.bytes));
+		std::copy (std::begin (dto.items[i]), std::end (dto.items[i]), std::begin (account.bytes));
 		result.push_back (account);
 	}
-	rsnano::rsn_account_array_destroy (&dto);
+	rsnano::rsn_u256_array_destroy (&dto);
 	return result;
 }
 
@@ -1307,20 +1307,16 @@ void nano::wallets::split_if_needed (nano::transaction & transaction_destination
 
 std::vector<nano::wallet_id> nano::wallets::get_wallet_ids (nano::transaction const & transaction_a)
 {
+	rsnano::U256ArrayDto dto;
+	rsnano::rsn_lmdb_wallets_get_wallet_ids (rust_handle, transaction_a.get_rust_handle (), &dto);
 	std::vector<nano::wallet_id> wallet_ids;
-	std::string beginning (nano::uint256_union (0).to_string ());
-	std::string end ((nano::uint256_union (nano::uint256_t (0) - nano::uint256_t (1))).to_string ());
-	auto handle = rsnano::rsn_lmdb_wallets_db_handle (rust_handle);
-	nano::store_iterator<std::array<char, 64>, nano::no_value> i (std::make_unique<nano::mdb_iterator<std::array<char, 64>, nano::no_value>> (transaction_a, handle, nano::mdb_val (beginning.size (), const_cast<char *> (beginning.c_str ()))));
-	nano::store_iterator<std::array<char, 64>, nano::no_value> n (std::make_unique<nano::mdb_iterator<std::array<char, 64>, nano::no_value>> (transaction_a, handle, nano::mdb_val (end.size (), const_cast<char *> (end.c_str ()))));
-	for (; i != n; ++i)
+	for (int i = 0; i < dto.count; ++i)
 	{
 		nano::wallet_id id;
-		std::string text (i->first.data (), i->first.size ());
-		auto error (id.decode_hex (text));
-		release_assert (!error);
+		std::copy (std::begin (dto.items[i]), std::end (dto.items[i]), std::begin (id.bytes));
 		wallet_ids.push_back (id);
 	}
+	rsnano::rsn_u256_array_destroy (&dto);
 	return wallet_ids;
 }
 

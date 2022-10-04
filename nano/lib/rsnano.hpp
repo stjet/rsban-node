@@ -52,8 +52,6 @@ enum class MdbCursorOp
 	MdbPrevMultiple,
 };
 
-struct AccountArrayHandle;
-
 struct AccountInfoHandle;
 
 struct AsyncConnectCallbackHandle;
@@ -181,6 +179,8 @@ struct TelemetryDataHandle;
 
 struct TransactionHandle;
 
+struct U256ArrayHandle;
+
 struct UncheckedInfoHandle;
 
 struct VoidFnCallbackHandle;
@@ -196,13 +196,6 @@ struct VoteUniquerHandle;
 struct WriteDatabaseQueueHandle;
 
 struct WriteGuardHandle;
-
-struct AccountArrayDto
-{
-	const uint8_t (*accounts)[32];
-	uintptr_t count;
-	AccountArrayHandle * handle;
-};
 
 struct AccountInfoDto
 {
@@ -860,6 +853,13 @@ struct UncheckedKeyDto
 	uint8_t hash[32];
 };
 
+struct U256ArrayDto
+{
+	const uint8_t (*items)[32];
+	uintptr_t count;
+	U256ArrayHandle * handle;
+};
+
 struct WalletValueDto
 {
 	uint8_t key[32];
@@ -1074,8 +1074,6 @@ struct VoteHashesDto
 };
 
 extern "C" {
-
-void rsn_account_array_destroy (AccountArrayDto * dto);
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
 
@@ -2260,7 +2258,7 @@ int32_t version);
 
 void rsn_lmdb_wallet_store_accounts (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
-AccountArrayDto * result);
+U256ArrayDto * result);
 
 bool rsn_lmdb_wallet_store_attempt_password (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
@@ -2429,6 +2427,10 @@ void rsn_lmdb_wallets_destroy (LmdbWalletsHandle * handle);
 LmdbIteratorHandle * rsn_lmdb_wallets_get_store_it (LmdbWalletsHandle * handle,
 TransactionHandle * txn,
 const char * hash);
+
+void rsn_lmdb_wallets_get_wallet_ids (LmdbWalletsHandle * handle,
+TransactionHandle * txn,
+U256ArrayDto * result);
 
 bool rsn_lmdb_wallets_init (LmdbWalletsHandle * handle, TransactionHandle * txn);
 
@@ -3382,6 +3384,8 @@ uint16_t rsn_test_node_port ();
 uint8_t rsn_to_topic (const char * topic);
 
 void rsn_txn_tracking_config_create (TxnTrackingConfigDto * dto);
+
+void rsn_u256_array_destroy (U256ArrayDto * dto);
 
 void rsn_unchecked_info_account (const UncheckedInfoHandle * handle, uint8_t * result);
 

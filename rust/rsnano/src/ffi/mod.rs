@@ -214,3 +214,25 @@ pub unsafe extern "C" fn rsn_callback_is_sanitizer_build(
 ) {
     IS_SANITIZER_BUILD = Some(f);
 }
+
+pub struct U256ArrayHandle(Box<Vec<[u8; 32]>>);
+
+#[repr(C)]
+pub struct U256ArrayDto {
+    pub items: *const [u8; 32],
+    pub count: usize,
+    pub handle: *mut U256ArrayHandle,
+}
+
+impl U256ArrayDto {
+    pub fn initialize(&mut self, values: Box<Vec<[u8; 32]>>) {
+        self.items = values.as_ptr();
+        self.count = values.len();
+        self.handle = Box::into_raw(Box::new(U256ArrayHandle(values)))
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_u256_array_destroy(dto: *mut U256ArrayDto) {
+    drop(Box::from_raw((*dto).handle))
+}

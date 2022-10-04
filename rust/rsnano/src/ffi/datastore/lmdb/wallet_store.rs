@@ -9,7 +9,7 @@ use crate::{
     datastore::lmdb::{LmdbWalletStore, WalletValue},
     ffi::{
         copy_account_bytes, copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle,
-        StringDto,
+        StringDto, U256ArrayDto,
     },
     Account, PublicKey, RawKey,
 };
@@ -324,33 +324,15 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_lock(handle: *mut LmdbWalletStore
     (*handle).0.lock();
 }
 
-pub struct AccountArrayHandle(Box<Vec<[u8; 32]>>);
-
-#[repr(C)]
-pub struct AccountArrayDto {
-    pub accounts: *const [u8; 32],
-    pub count: usize,
-    pub handle: *mut AccountArrayHandle,
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_account_array_destroy(dto: *mut AccountArrayDto) {
-    drop(Box::from_raw((*dto).handle))
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallet_store_accounts(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,
-    result: *mut AccountArrayDto,
+    result: *mut U256ArrayDto,
 ) {
     let accounts = (*handle).0.accounts((*txn).as_txn());
-    let handle = Box::new(AccountArrayHandle(Box::new(
-        accounts.iter().map(|a| *a.as_bytes()).collect(),
-    )));
-    (*result).accounts = handle.0.as_ptr();
-    (*result).count = handle.0.len();
-    (*result).handle = Box::into_raw(handle);
+    let data = Box::new(accounts.iter().map(|a| *a.as_bytes()).collect());
+    (*result).initialize(data);
 }
 
 #[no_mangle]

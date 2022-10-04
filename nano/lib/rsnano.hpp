@@ -2437,7 +2437,11 @@ const char * name,
 TransactionHandle * txn_source,
 TransactionHandle * txn_destination);
 
+uint32_t rsn_lmdb_wallets_send_action_ids_handle (LmdbWalletsHandle * handle);
+
 void rsn_lmdb_wallets_set_db_handle (LmdbWalletsHandle * handle, uint32_t db_handle);
+
+void rsn_lmdb_wallets_set_send_action_ids_handle (LmdbWalletsHandle * handle, uint32_t db_handle);
 
 void rsn_lmdb_wallets_split_if_needed (LmdbWalletsHandle * handle,
 TransactionHandle * txn_destination,

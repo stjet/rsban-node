@@ -200,7 +200,6 @@ public:
 	nano::mutex action_mutex;
 	nano::condition_variable condition;
 	nano::kdf kdf;
-	MDB_dbi send_action_ids;
 	nano::node & node;
 	nano::mdb_env & env;
 	std::atomic<bool> stopped;
@@ -216,6 +215,7 @@ public:
 private:
 	mutable nano::mutex reps_cache_mutex;
 	nano::wallet_representatives representatives;
+public:
 	rsnano::LmdbWalletsHandle * rust_handle;
 };
 

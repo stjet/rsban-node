@@ -546,6 +546,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 	}
 
 	auto prepare_send = [&id_mdb_val, &wallets = this->wallets, &store = this->store, &source_a, &amount_a, &work_a, &account_a] (auto const & transaction) {
+		auto send_action_ids = rsnano::rsn_lmdb_wallets_send_action_ids_handle (wallets.rust_handle);
 		auto block_transaction (wallets.node.store.tx_begin_read ());
 		auto error (false);
 		auto cached_block (false);
@@ -554,7 +555,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 		if (id_mdb_val)
 		{
 			nano::mdb_val result;
-			auto status (mdb_get (wallets.env.tx (*transaction), wallets.node.wallets.send_action_ids, *id_mdb_val, result));
+			auto status (mdb_get (wallets.env.tx (*transaction), send_action_ids, *id_mdb_val, result));
 			if (status == 0)
 			{
 				nano::block_hash hash (result);
@@ -596,7 +597,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 						details = nano::block_details (info.epoch (), details.is_send (), details.is_receive (), details.is_epoch ());
 						if (id_mdb_val && block != nullptr)
 						{
-							auto status (mdb_put (wallets.env.tx (*transaction), wallets.node.wallets.send_action_ids, *id_mdb_val, nano::mdb_val (block->hash ()), 0));
+							auto status (mdb_put (wallets.env.tx (*transaction), send_action_ids, *id_mdb_val, nano::mdb_val (block->hash ()), 0));
 							if (status != 0)
 							{
 								block = nullptr;
@@ -943,7 +944,9 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 		int status = !rsnano::rsn_lmdb_wallets_init (rust_handle, transaction->get_rust_handle ());
 		split_if_needed (*transaction, node.store);
 		auto handle = rsnano::rsn_lmdb_wallets_db_handle (rust_handle);
+		MDB_dbi send_action_ids;
 		status |= mdb_dbi_open (env.tx (*transaction), "send_action_ids", MDB_CREATE, &send_action_ids);
+		rsnano::rsn_lmdb_wallets_set_send_action_ids_handle (rust_handle, send_action_ids);
 		release_assert (status == 0);
 		std::string beginning (nano::uint256_union (0).to_string ());
 		std::string end ((nano::uint256_union (nano::uint256_t (0) - nano::uint256_t (1))).to_string ());
@@ -1220,6 +1223,7 @@ std::unique_ptr<nano::read_transaction> nano::wallets::tx_begin_read ()
 
 void nano::wallets::clear_send_ids (nano::transaction const & transaction_a)
 {
+	auto send_action_ids = rsnano::rsn_lmdb_wallets_send_action_ids_handle (rust_handle);
 	auto status (mdb_drop (env.tx (transaction_a), send_action_ids, 0));
 	(void)status;
 	debug_assert (status == 0);

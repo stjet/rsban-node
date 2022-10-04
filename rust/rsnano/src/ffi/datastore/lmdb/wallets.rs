@@ -34,6 +34,21 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_set_db_handle(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_send_action_ids_handle(
+    handle: *mut LmdbWalletsHandle,
+) -> u32 {
+    (*handle).0.send_action_ids_handle
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_set_send_action_ids_handle(
+    handle: *mut LmdbWalletsHandle,
+    db_handle: u32,
+) {
+    (*handle).0.send_action_ids_handle = db_handle;
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallets_init(
     handle: *mut LmdbWalletsHandle,
     txn: &mut TransactionHandle,

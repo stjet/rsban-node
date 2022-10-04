@@ -13,11 +13,15 @@ use super::{
 
 pub struct LmdbWallets {
     pub handle: u32,
+    pub send_action_ids_handle: u32,
 }
 
 impl LmdbWallets {
     pub fn new() -> Self {
-        Self { handle: 0 }
+        Self {
+            handle: 0,
+            send_action_ids_handle: 0,
+        }
     }
 
     pub fn initialize(&mut self, txn: &dyn Transaction) -> anyhow::Result<()> {

@@ -1339,8 +1339,6 @@ void nano::wallets::split_if_needed (nano::transaction & transaction_destination
 				auto transaction_source (store_l->tx_begin_write ());
 				auto i = get_store_it (*transaction_source, beginning);
 				auto n = get_store_it (*transaction_source, end);
-				auto tx_source = static_cast<MDB_txn *> (transaction_source->get_handle ());
-				auto tx_destination = static_cast<MDB_txn *> (transaction_destination.get_handle ());
 				for (; i != n; ++i)
 				{
 					nano::uint256_union id;
@@ -1349,40 +1347,11 @@ void nano::wallets::split_if_needed (nano::transaction & transaction_destination
 					(void)error1;
 					debug_assert (!error1);
 					debug_assert (strlen (text.c_str ()) == text.size ());
-					move_table (text, tx_source, tx_destination);
+					rsnano::rsn_lmdb_wallets_move_table (rust_handle, text.c_str (), transaction_source->get_rust_handle (), transaction_destination.get_rust_handle ());
 				}
 			}
 		}
 	}
-}
-
-void nano::wallets::move_table (std::string const & name_a, MDB_txn * tx_source, MDB_txn * tx_destination)
-{
-	MDB_dbi handle_source;
-	auto error2 (mdb_dbi_open (tx_source, name_a.c_str (), MDB_CREATE, &handle_source));
-	(void)error2;
-	debug_assert (!error2);
-	MDB_dbi handle_destination;
-	auto error3 (mdb_dbi_open (tx_destination, name_a.c_str (), MDB_CREATE, &handle_destination));
-	(void)error3;
-	debug_assert (!error3);
-	MDB_cursor * cursor;
-	auto error4 (mdb_cursor_open (tx_source, handle_source, &cursor));
-	(void)error4;
-	debug_assert (!error4);
-	MDB_val val_key;
-	MDB_val val_value;
-	auto cursor_status (mdb_cursor_get (cursor, &val_key, &val_value, MDB_FIRST));
-	while (cursor_status == MDB_SUCCESS)
-	{
-		auto error5 (mdb_put (tx_destination, handle_destination, &val_key, &val_value, 0));
-		(void)error5;
-		debug_assert (!error5);
-		cursor_status = mdb_cursor_get (cursor, &val_key, &val_value, MDB_NEXT);
-	}
-	auto error6 (mdb_drop (tx_source, handle_source, 1));
-	(void)error6;
-	debug_assert (!error6);
 }
 
 std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> nano::wallets::get_wallets ()

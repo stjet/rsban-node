@@ -51,3 +51,20 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_get_store_it(
         .get_store_it((*txn).as_txn(), CStr::from_ptr(hash).to_str().unwrap());
     to_lmdb_iterator_handle(it.as_mut())
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_move_table(
+    handle: *mut LmdbWalletsHandle,
+    name: *const c_char,
+    txn_source: &mut TransactionHandle,
+    txn_destination: &mut TransactionHandle,
+) {
+    (*handle)
+        .0
+        .move_table(
+            CStr::from_ptr(name).to_str().unwrap(),
+            (*txn_source).as_txn(),
+            (*txn_destination).as_txn(),
+        )
+        .unwrap();
+}

@@ -943,10 +943,6 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 		auto transaction (tx_begin_write ());
 		auto store_l = dynamic_cast<nano::lmdb::store *> (&node.store);
 		int status = !rsnano::rsn_lmdb_wallets_init (rust_handle, transaction->get_rust_handle (), store_l->handle);
-		MDB_dbi send_action_ids;
-		status |= mdb_dbi_open (env.tx (*transaction), "send_action_ids", MDB_CREATE, &send_action_ids);
-		rsnano::rsn_lmdb_wallets_set_send_action_ids_handle (rust_handle, send_action_ids);
-		release_assert (status == 0);
 
 		auto wallet_ids{ get_wallet_ids (*transaction) };
 		for (auto id : wallet_ids)

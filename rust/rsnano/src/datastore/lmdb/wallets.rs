@@ -28,7 +28,17 @@ impl LmdbWallets {
         let status =
             unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), None, MDB_CREATE, &mut self.handle) };
         ensure_success(status)?;
-        self.split_if_needed(txn, store)
+        self.split_if_needed(txn, store)?;
+
+        let status = unsafe {
+            mdb_dbi_open(
+                get_raw_lmdb_txn(txn),
+                Some("send_action_ids"),
+                MDB_CREATE,
+                &mut self.send_action_ids_handle,
+            )
+        };
+        ensure_success(status)
     }
 
     pub fn get_store_it(

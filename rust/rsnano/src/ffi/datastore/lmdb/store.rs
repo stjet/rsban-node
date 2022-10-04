@@ -1,5 +1,6 @@
 use std::{
     ffi::{c_void, CStr},
+    ops::Deref,
     path::{Path, PathBuf},
     ptr,
     sync::Arc,
@@ -26,6 +27,14 @@ use super::{
 };
 
 pub struct LmdbStoreHandle(LmdbStore);
+
+impl Deref for LmdbStoreHandle {
+    type Target = LmdbStore;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_store_create(

@@ -47,7 +47,11 @@ namespace lmdb
 	{
 	private:
 		bool error{ false };
+
+	public:
 		rsnano::LmdbStoreHandle * handle;
+
+	private:
 		nano::mdb_env env_m;
 		nano::lmdb::account_store account_store;
 		nano::lmdb::block_store block_store;

@@ -2439,6 +2439,10 @@ TransactionHandle * txn_destination);
 
 void rsn_lmdb_wallets_set_db_handle (LmdbWalletsHandle * handle, uint32_t db_handle);
 
+void rsn_lmdb_wallets_split_if_needed (LmdbWalletsHandle * handle,
+TransactionHandle * txn_destination,
+LmdbStoreHandle * store);
+
 void rsn_lmdb_write_txn_commit (TransactionHandle * handle);
 
 TransactionHandle * rsn_lmdb_write_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);

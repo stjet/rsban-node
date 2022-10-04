@@ -4,6 +4,7 @@ use crate::datastore::lmdb::LmdbWallets;
 
 use super::{
     iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    store::LmdbStoreHandle,
     TransactionHandle,
 };
 
@@ -66,5 +67,17 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_move_table(
             (*txn_source).as_txn(),
             (*txn_destination).as_txn(),
         )
+        .unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_split_if_needed(
+    handle: *mut LmdbWalletsHandle,
+    txn_destination: &mut TransactionHandle,
+    store: &mut LmdbStoreHandle,
+) {
+    (*handle)
+        .0
+        .split_if_needed((*txn_destination).as_txn(), &(*store))
         .unwrap();
 }

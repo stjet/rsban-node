@@ -1317,39 +1317,7 @@ void nano::wallets::split_if_needed (nano::transaction & transaction_destination
 	{
 		if (items.empty ())
 		{
-			std::string beginning (nano::uint256_union (0).to_string ());
-			std::string end ((nano::uint256_union (nano::uint256_t (0) - nano::uint256_t (1))).to_string ());
-
-			auto get_store_it = [rust_handle = rust_handle] (nano::transaction const & transaction_source, std::string const & hash) {
-				auto it{ rsnano::rsn_lmdb_wallets_get_store_it (rust_handle, transaction_source.get_rust_handle (), hash.c_str ()) };
-				return to_wallets_iterator (it);
-			};
-
-			// First do a read pass to check if there are any wallets that need extracting (to save holding a write lock and potentially being blocked)
-			auto wallets_need_splitting (false);
-			{
-				auto transaction_source (store_l->tx_begin_read ());
-				auto i = get_store_it (*transaction_source, beginning);
-				auto n = get_store_it (*transaction_source, end);
-				wallets_need_splitting = (i != n);
-			}
-
-			if (wallets_need_splitting)
-			{
-				auto transaction_source (store_l->tx_begin_write ());
-				auto i = get_store_it (*transaction_source, beginning);
-				auto n = get_store_it (*transaction_source, end);
-				for (; i != n; ++i)
-				{
-					nano::uint256_union id;
-					std::string text (i->first.data (), i->first.size ());
-					auto error1 (id.decode_hex (text));
-					(void)error1;
-					debug_assert (!error1);
-					debug_assert (strlen (text.c_str ()) == text.size ());
-					rsnano::rsn_lmdb_wallets_move_table (rust_handle, text.c_str (), transaction_source->get_rust_handle (), transaction_destination.get_rust_handle ());
-				}
-			}
+			rsnano::rsn_lmdb_wallets_split_if_needed (rust_handle, transaction_destination.get_rust_handle (), store_l->handle);
 		}
 	}
 }

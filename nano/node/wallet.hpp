@@ -190,6 +190,7 @@ public:
 	void compute_reps ();
 	void ongoing_compute_reps ();
 	void split_if_needed (nano::transaction &, nano::store &);
+	std::vector<nano::wallet_id> get_wallet_ids (nano::transaction const & transaction_a);
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> get_wallets ();
 	nano::network_params & network_params;
 	std::function<void (bool)> observer;
@@ -215,6 +216,7 @@ public:
 private:
 	mutable nano::mutex reps_cache_mutex;
 	nano::wallet_representatives representatives;
+
 public:
 	rsnano::LmdbWalletsHandle * rust_handle;
 };

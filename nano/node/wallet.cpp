@@ -941,8 +941,8 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	{
 		auto transaction (tx_begin_write ());
 		int status = !rsnano::rsn_lmdb_wallets_init (rust_handle, transaction->get_rust_handle ());
-		auto handle = rsnano::rsn_lmdb_wallets_db_handle (rust_handle);
 		split_if_needed (*transaction, node.store);
+		auto handle = rsnano::rsn_lmdb_wallets_db_handle (rust_handle);
 		status |= mdb_dbi_open (env.tx (*transaction), "send_action_ids", MDB_CREATE, &send_action_ids);
 		release_assert (status == 0);
 		std::string beginning (nano::uint256_union (0).to_string ());
@@ -1296,6 +1296,19 @@ void nano::wallets::ongoing_compute_reps ()
 		node_l.wallets.ongoing_compute_reps ();
 	});
 }
+namespace
+{
+nano::store_iterator<std::array<char, 64>, nano::no_value> to_wallets_iterator (rsnano::LmdbIteratorHandle * it_handle)
+{
+	if (it_handle == nullptr)
+	{
+		return nano::store_iterator<std::array<char, 64>, nano::no_value> (nullptr);
+	}
+
+	return nano::store_iterator<std::array<char, 64>, nano::no_value> (
+	std::make_unique<nano::mdb_iterator<std::array<char, 64>, nano::no_value>> (it_handle));
+}
+}
 
 void nano::wallets::split_if_needed (nano::transaction & transaction_destination, nano::store & store_a)
 {
@@ -1307,9 +1320,9 @@ void nano::wallets::split_if_needed (nano::transaction & transaction_destination
 			std::string beginning (nano::uint256_union (0).to_string ());
 			std::string end ((nano::uint256_union (nano::uint256_t (0) - nano::uint256_t (1))).to_string ());
 
-			auto handle = rsnano::rsn_lmdb_wallets_db_handle (rust_handle);
-			auto get_store_it = [&handle = handle] (nano::transaction const & transaction_source, std::string const & hash) {
-				return nano::store_iterator<std::array<char, 64>, nano::no_value> (std::make_unique<nano::mdb_iterator<std::array<char, 64>, nano::no_value>> (transaction_source, handle, nano::mdb_val (hash.size (), const_cast<char *> (hash.c_str ()))));
+			auto get_store_it = [rust_handle = rust_handle] (nano::transaction const & transaction_source, std::string const & hash) {
+				auto it{ rsnano::rsn_lmdb_wallets_get_store_it (rust_handle, transaction_source.get_rust_handle (), hash.c_str ()) };
+				return to_wallets_iterator (it);
 			};
 
 			// First do a read pass to check if there are any wallets that need extracting (to save holding a write lock and potentially being blocked)

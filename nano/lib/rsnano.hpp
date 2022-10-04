@@ -2426,6 +2426,10 @@ uint32_t rsn_lmdb_wallets_db_handle (LmdbWalletsHandle * handle);
 
 void rsn_lmdb_wallets_destroy (LmdbWalletsHandle * handle);
 
+LmdbIteratorHandle * rsn_lmdb_wallets_get_store_it (LmdbWalletsHandle * handle,
+TransactionHandle * txn,
+const char * hash);
+
 bool rsn_lmdb_wallets_init (LmdbWalletsHandle * handle, TransactionHandle * txn);
 
 void rsn_lmdb_wallets_set_db_handle (LmdbWalletsHandle * handle, uint32_t db_handle);

@@ -1,6 +1,10 @@
-use crate::datastore::Transaction;
+use crate::{
+    datastore::{DbIterator, Transaction},
+    utils::{Deserialize, Serialize, Stream},
+    NoValue,
+};
 
-use super::{ensure_success, get_raw_lmdb_txn, mdb_dbi_open, MDB_CREATE};
+use super::{ensure_success, get_raw_lmdb_txn, mdb_dbi_open, LmdbIterator, MDB_CREATE};
 
 pub struct LmdbWallets {
     pub handle: u32,
@@ -15,5 +19,34 @@ impl LmdbWallets {
         let status =
             unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), None, MDB_CREATE, &mut self.handle) };
         ensure_success(status)
+    }
+
+    pub fn get_store_it(
+        &self,
+        txn: &dyn Transaction,
+        hash: &str,
+    ) -> Box<dyn DbIterator<[u8; 64], NoValue>> {
+        let hash_bytes: [u8; 64] = hash.as_bytes().try_into().unwrap();
+        Box::new(LmdbIterator::new(txn, self.handle, Some(&hash_bytes), true))
+    }
+}
+
+impl Serialize for [u8; 64] {
+    fn serialized_size() -> usize {
+        64
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        stream.write_bytes(self)
+    }
+}
+
+impl Deserialize for [u8; 64] {
+    type Target = Self;
+
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
+        let mut buffer = [0; 64];
+        stream.read_bytes(&mut buffer, 64)?;
+        Ok(buffer)
     }
 }

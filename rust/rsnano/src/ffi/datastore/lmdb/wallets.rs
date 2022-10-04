@@ -1,6 +1,11 @@
+use std::ffi::{c_char, CStr};
+
 use crate::datastore::lmdb::LmdbWallets;
 
-use super::TransactionHandle;
+use super::{
+    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
+    TransactionHandle,
+};
 
 pub struct LmdbWalletsHandle(LmdbWallets);
 
@@ -33,4 +38,16 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_init(
     txn: &mut TransactionHandle,
 ) -> bool {
     (*handle).0.initialize((*txn).as_txn()).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_get_store_it(
+    handle: *mut LmdbWalletsHandle,
+    txn: &mut TransactionHandle,
+    hash: *const c_char,
+) -> *mut LmdbIteratorHandle {
+    let mut it = (*handle)
+        .0
+        .get_store_it((*txn).as_txn(), CStr::from_ptr(hash).to_str().unwrap());
+    to_lmdb_iterator_handle(it.as_mut())
 }

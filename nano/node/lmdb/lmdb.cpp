@@ -1,4 +1,5 @@
 #include <nano/crypto_lib/random_pool.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/lmdb/lmdb.hpp>
@@ -92,7 +93,9 @@ std::unique_ptr<nano::read_transaction> nano::lmdb::store::tx_begin_read () cons
 
 std::string nano::lmdb::store::vendor_get () const
 {
-	return boost::str (boost::format ("LMDB %1%.%2%.%3%") % MDB_VERSION_MAJOR % MDB_VERSION_MINOR % MDB_VERSION_PATCH);
+	rsnano::StringDto dto;
+	rsnano::rsn_lmdb_store_vendor_get (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
 }
 
 bool nano::lmdb::store::copy_db (boost::filesystem::path const & destination_file)
@@ -107,7 +110,7 @@ void nano::lmdb::store::rebuild_db (nano::write_transaction const & transaction_
 
 bool nano::lmdb::store::init_error () const
 {
-	return error != MDB_SUCCESS;
+	return error;
 }
 
 unsigned nano::lmdb::store::max_block_write_batch_num () const

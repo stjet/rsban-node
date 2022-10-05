@@ -966,10 +966,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	}
 	if (backup_required)
 	{
-		char const * store_path;
-		mdb_env_get_path (env, &store_path);
-		boost::filesystem::path const path (store_path);
-		rsnano::rsn_lmdb_store_create_backup_file (env.handle, reinterpret_cast<const int8_t *> (path.native ().data ()), nano::to_logger_handle (node_a.logger));
+		rsnano::rsn_lmdb_store_create_backup_file (env.handle, nano::to_logger_handle (node_a.logger));
 	}
 	for (auto & item : items)
 	{

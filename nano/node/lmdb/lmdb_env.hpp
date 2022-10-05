@@ -60,10 +60,8 @@ public:
 	mdb_env (mdb_env &&) = delete;
 	~mdb_env ();
 	void init (bool &, boost::filesystem::path const &, nano::mdb_env::options options_a = nano::mdb_env::options::make ());
-	operator MDB_env * () const;
 	std::unique_ptr<nano::read_transaction> tx_begin_read () const;
 	std::unique_ptr<nano::write_transaction> tx_begin_write () const;
-	MDB_env * env () const;
 	void serialize_txn_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time);
 	rsnano::LmdbEnvHandle * handle;
 };

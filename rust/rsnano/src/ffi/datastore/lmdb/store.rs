@@ -12,7 +12,10 @@ use crate::{
         lmdb::{create_backup_file, EnvOptions, LmdbStore},
         Store,
     },
-    ffi::{FfiPropertyTreeWriter, LmdbConfigDto, LoggerHandle, LoggerMT, TxnTrackingConfigDto},
+    ffi::{
+        FfiPropertyTreeWriter, LmdbConfigDto, LoggerHandle, LoggerMT, StringDto,
+        TxnTrackingConfigDto,
+    },
     DiagnosticsConfig, LmdbConfig,
 };
 
@@ -217,12 +220,10 @@ pub unsafe extern "C" fn rsn_lmdb_store_version(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_store_create_backup_file(
     env: *mut LmdbEnvHandle,
-    path: *const i8,
     logger: *mut LoggerHandle,
 ) -> bool {
     let logger = LoggerMT::new(Box::from_raw(logger));
-    let path = CStr::from_ptr(path);
-    create_backup_file(&*env, &PathBuf::from(path.to_str().unwrap()), &logger).is_ok()
+    create_backup_file(&*env, &logger).is_ok()
 }
 
 #[no_mangle]
@@ -253,4 +254,12 @@ pub unsafe extern "C" fn rsn_lmdb_store_serialize_memory_stats(
     if let Err(e) = (*handle).0.serialize_memory_stats(&mut writer) {
         eprintln!("memory stat serialization failed: {:?}", e);
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_vendor_get(
+    handle: *mut LmdbStoreHandle,
+    result: *mut StringDto,
+) {
+    *result = (*handle).0.vendor().into()
 }

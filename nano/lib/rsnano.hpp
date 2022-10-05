@@ -656,6 +656,8 @@ using MdbEnvCopy2Callback = int32_t (*) (MdbEnv *, const int8_t *, uint32_t);
 
 using MdbEnvCreateCallback = int32_t (*) (MdbEnv **);
 
+using MdbEnvGetPathCallback = int32_t (*) (MdbEnv *, const char **);
+
 using MdbEnvOpenCallback = int32_t (*) (MdbEnv *, const int8_t *, uint32_t, uint32_t);
 
 using MdbEnvSetMapSizeCallback = int32_t (*) (MdbEnv *, uintptr_t);
@@ -1495,6 +1497,8 @@ void rsn_callback_mdb_env_copy2 (MdbEnvCopy2Callback f);
 
 void rsn_callback_mdb_env_create (MdbEnvCreateCallback f);
 
+void rsn_callback_mdb_env_get_path (MdbEnvGetPathCallback f);
+
 void rsn_callback_mdb_env_open (MdbEnvOpenCallback f);
 
 void rsn_callback_mdb_env_set_map_size (MdbEnvSetMapSizeCallback f);
@@ -2182,9 +2186,7 @@ const TxnTrackingConfigDto * txn_config,
 uint64_t block_processor_batch_max_time_ms,
 bool backup_before_upgrade);
 
-bool rsn_lmdb_store_create_backup_file (LmdbEnvHandle * env,
-const int8_t * path,
-LoggerHandle * logger);
+bool rsn_lmdb_store_create_backup_file (LmdbEnvHandle * env, LoggerHandle * logger);
 
 void rsn_lmdb_store_destroy (LmdbStoreHandle * handle);
 
@@ -2207,6 +2209,8 @@ void rsn_lmdb_store_rebuild_db (LmdbStoreHandle * handle, TransactionHandle * tx
 void rsn_lmdb_store_serialize_memory_stats (LmdbStoreHandle * handle, void * ptree);
 
 LmdbUncheckedStoreHandle * rsn_lmdb_store_unchecked (LmdbStoreHandle * handle);
+
+void rsn_lmdb_store_vendor_get (LmdbStoreHandle * handle, StringDto * result);
 
 LmdbVersionStoreHandle * rsn_lmdb_store_version (LmdbStoreHandle * handle);
 

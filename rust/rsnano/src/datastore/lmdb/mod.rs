@@ -21,7 +21,7 @@ use std::{
     convert::TryFrom,
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
-    path::Path,
+    path::{Path, PathBuf},
     ptr,
     sync::Arc,
 };
@@ -416,6 +416,7 @@ pub type MdbEnvCopyCallback = extern "C" fn(*mut MdbEnv, *const i8) -> i32;
 pub type MdbEnvCopy2Callback = extern "C" fn(*mut MdbEnv, *const i8, u32) -> i32;
 pub type MdbEnvStatCallback = extern "C" fn(*mut MdbEnv, *mut MdbStat) -> i32;
 pub type MdbDbiCloseCallback = extern "C" fn(*mut MdbEnv, u32);
+pub type MdbEnvGetPathCallback = extern "C" fn(*mut MdbEnv, *mut *const c_char) -> i32;
 
 pub static mut MDB_TXN_BEGIN: Option<MdbTxnBeginCallback> = None;
 pub static mut MDB_TXN_COMMIT: Option<MdbTxnCommitCallback> = None;
@@ -441,6 +442,7 @@ pub static mut MDB_ENV_COPY: Option<MdbEnvCopyCallback> = None;
 pub static mut MDB_ENV_COPY2: Option<MdbEnvCopy2Callback> = None;
 pub static mut MDB_ENV_STAT: Option<MdbEnvStatCallback> = None;
 pub static mut MDB_DBI_CLOSE: Option<MdbDbiCloseCallback> = None;
+pub static mut MDB_ENV_GET_PATH: Option<MdbEnvGetPathCallback> = None;
 
 pub unsafe fn mdb_txn_begin(
     env: *mut MdbEnv,
@@ -569,6 +571,12 @@ pub unsafe fn mdb_env_stat(env: *mut MdbEnv, stat: *mut MdbStat) -> i32 {
 
 pub unsafe fn mdb_dbi_close(env: *mut MdbEnv, dbi: u32) {
     MDB_DBI_CLOSE.expect("MDB_DBI_CLOSE missing")(env, dbi);
+}
+
+pub unsafe fn mdb_env_get_path(env: *mut MdbEnv) -> PathBuf {
+    let mut result = ptr::null();
+    MDB_ENV_GET_PATH.expect("MDB_ENV_GET_PATh missing")(env, &mut result);
+    CStr::from_ptr(result).to_str().unwrap().into()
 }
 
 /// Successful result

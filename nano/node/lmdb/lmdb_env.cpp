@@ -52,11 +52,6 @@ void nano::mdb_env::init (bool & error_a, boost::filesystem::path const & path_a
 	rsnano::rsn_mdb_env_init (handle, &error_a, reinterpret_cast<const int8_t *> (path_string.c_str ()), &config_dto, options_a.use_no_mem_init);
 }
 
-nano::mdb_env::operator MDB_env * () const
-{
-	return env ();
-}
-
 std::unique_ptr<nano::read_transaction> nano::mdb_env::tx_begin_read () const
 {
 	return std::make_unique<nano::read_mdb_txn> (rsnano::rsn_mdb_env_tx_begin_read (handle));
@@ -65,12 +60,4 @@ std::unique_ptr<nano::read_transaction> nano::mdb_env::tx_begin_read () const
 std::unique_ptr<nano::write_transaction> nano::mdb_env::tx_begin_write () const
 {
 	return std::make_unique<nano::write_mdb_txn> (rsnano::rsn_mdb_env_tx_begin_write (handle));
-}
-
-MDB_env * nano::mdb_env::env () const
-{
-	if (handle == nullptr)
-		return nullptr;
-
-	return static_cast<MDB_env *> (rsnano::rsn_mdb_env_get_env (handle));
 }

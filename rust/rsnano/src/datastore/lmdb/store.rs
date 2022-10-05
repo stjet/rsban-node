@@ -2,7 +2,7 @@ use std::{ffi::CString, path::Path, sync::Arc, time::Duration};
 
 use crate::{
     datastore::{
-        lmdb::{mdb_env_copy, MDB_SUCCESS},
+        lmdb::{mdb_env_copy, mdb_env_get_path, MDB_SUCCESS},
         Store, Transaction, VersionStore, WriteTransaction, STORE_VERSION_CURRENT,
         STORE_VERSION_MINIMUM,
     },
@@ -95,7 +95,7 @@ impl LmdbStore {
             if !is_fresh_db {
                 store.logger.always_log("Upgrade in progress...");
                 if backup_before_upgrade {
-                    create_backup_file(&store.env, path, store.logger.as_ref())?;
+                    create_backup_file(&store.env, store.logger.as_ref())?;
                 }
             }
             let vacuuming = {
@@ -297,6 +297,11 @@ impl LmdbStore {
         json.put_u64("page_size", stats.ms_psize as u64)?;
         Ok(())
     }
+
+    pub fn vendor(&self) -> String {
+        // fake version! todo: read version
+        format!("LMDB {}.{}.{}", 0, 9, 25)
+    }
 }
 
 impl Store for LmdbStore {
@@ -308,11 +313,8 @@ impl Store for LmdbStore {
 }
 
 /// Takes a filepath, appends '_backup_<timestamp>' to the end (but before any extension) and saves that file in the same directory
-pub fn create_backup_file(
-    env: &LmdbEnv,
-    source_path: &Path,
-    logger: &dyn Logger,
-) -> anyhow::Result<()> {
+pub fn create_backup_file(env: &LmdbEnv, logger: &dyn Logger) -> anyhow::Result<()> {
+    let source_path = unsafe { mdb_env_get_path(env.env()) };
     let extension = source_path
         .extension()
         .ok_or_else(|| anyhow!("no extension"))?

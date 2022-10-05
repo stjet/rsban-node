@@ -49,11 +49,6 @@ public:
 		return *this;
 	}
 
-	std::pair<nano::db_val<MDB_val>, nano::db_val<MDB_val>> * operator-> ()
-	{
-		return &current;
-	}
-
 	bool operator== (nano::store_iterator_impl<T, U> const & base_a) const override
 	{
 		auto const other_a (boost::polymorphic_downcast<nano::mdb_iterator<T, U> const *> (&base_a));

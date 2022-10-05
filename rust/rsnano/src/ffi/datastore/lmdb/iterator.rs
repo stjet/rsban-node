@@ -2,7 +2,7 @@ use std::{ffi::c_void, ptr};
 
 use crate::{
     datastore::{
-        lmdb::{LmdbRawIterator, LmdbReadTransaction, MdbCursor, MdbTxn, MdbVal},
+        lmdb::{LmdbRawIterator, LmdbReadTransaction, MdbVal},
         DbIterator, ReadTransaction,
     },
     ffi::VoidPointerCallback,

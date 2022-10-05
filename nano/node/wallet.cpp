@@ -539,37 +539,26 @@ std::shared_ptr<nano::block> nano::wallet::change_action (nano::account const & 
 
 std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
 {
-	boost::optional<nano::mdb_val> id_mdb_val;
-	if (id_a)
-	{
-		id_mdb_val = nano::mdb_val (id_a->size (), const_cast<char *> (id_a->data ()));
-	}
-
-	auto prepare_send = [&id_mdb_val, &wallets = this->wallets, &store = this->store, &source_a, &amount_a, &work_a, &account_a] (auto const & transaction) {
-		auto send_action_ids = rsnano::rsn_lmdb_wallets_send_action_ids_handle (wallets.rust_handle);
+	auto prepare_send = [&id_a, &wallets = this->wallets, &store = this->store, &source_a, &amount_a, &work_a, &account_a] (auto const & transaction) {
 		auto block_transaction (wallets.node.store.tx_begin_read ());
+
 		auto error (false);
-		auto cached_block (false);
 		std::shared_ptr<nano::block> block;
-		nano::block_details details = nano::block_details (nano::epoch::epoch_0, true, false, false);
-		if (id_mdb_val)
+		if (id_a)
 		{
-			nano::mdb_val result;
-			auto status (mdb_get (wallets.env.tx (*transaction), send_action_ids, *id_mdb_val, result));
-			if (status == 0)
+			auto hash{ wallets.get_block_hash (error, *transaction, *id_a) };
+			if (hash)
 			{
-				nano::block_hash hash (result);
-				block = wallets.node.store.block ().get (*block_transaction, hash);
-				if (block != nullptr)
-				{
-					cached_block = true;
-					wallets.node.network->flood_block (block, nano::buffer_drop_policy::no_limiter_drop);
-				}
+				block = wallets.node.store.block ().get (*block_transaction, *hash);
 			}
-			else if (status != MDB_NOTFOUND)
-			{
-				error = true;
-			}
+		}
+
+		nano::block_details details = nano::block_details (nano::epoch::epoch_0, true, false, false);
+		auto cached_block (false);
+		if (block != nullptr)
+		{
+			cached_block = true;
+			wallets.node.network->flood_block (block, nano::buffer_drop_policy::no_limiter_drop);
 		}
 		if (!error && block == nullptr)
 		{
@@ -595,13 +584,12 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 						}
 						block = std::make_shared<nano::state_block> (source_a, info.head (), info.representative (), balance - amount_a, account_a, prv, source_a, work_a);
 						details = nano::block_details (info.epoch (), details.is_send (), details.is_receive (), details.is_epoch ());
-						if (id_mdb_val && block != nullptr)
+						if (id_a && block != nullptr)
 						{
-							auto status (mdb_put (wallets.env.tx (*transaction), send_action_ids, *id_mdb_val, nano::mdb_val (block->hash ()), 0));
-							if (status != 0)
+							error = wallets.set_block_hash (*transaction, *id_a, block->hash ());
+							if (error)
 							{
 								block = nullptr;
-								error = true;
 							}
 						}
 					}
@@ -613,7 +601,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 
 	std::tuple<std::shared_ptr<nano::block>, bool, bool, nano::block_details> result;
 	{
-		if (id_mdb_val)
+		if (id_a)
 		{
 			result = prepare_send (wallets.tx_begin_write ());
 		}
@@ -1302,6 +1290,33 @@ std::vector<nano::wallet_id> nano::wallets::get_wallet_ids (nano::transaction co
 	}
 	rsnano::rsn_u256_array_destroy (&dto);
 	return wallet_ids;
+}
+
+boost::optional<nano::block_hash> nano::wallets::get_block_hash (bool & error_a, nano::transaction const & transaction_a, std::string const & id_a)
+{
+	auto id_mdb_val = nano::mdb_val (id_a.size (), const_cast<char *> (id_a.data ()));
+	nano::mdb_val result;
+	auto send_action_ids = rsnano::rsn_lmdb_wallets_send_action_ids_handle (rust_handle);
+	auto status (mdb_get (env.tx (transaction_a), send_action_ids, id_mdb_val, result));
+	if (status == 0)
+	{
+		nano::block_hash hash (result);
+		error_a = false;
+		return hash;
+	}
+	else if (status != MDB_NOTFOUND)
+	{
+		error_a = true;
+	}
+	return boost::none;
+}
+
+bool nano::wallets::set_block_hash (nano::transaction const & transaction_a, std::string const & id_a, nano::block_hash const & hash)
+{
+	auto id_mdb_val = nano::mdb_val (id_a.size (), const_cast<char *> (id_a.data ()));
+	auto send_action_ids = rsnano::rsn_lmdb_wallets_send_action_ids_handle (rust_handle);
+	auto status (mdb_put (env.tx (transaction_a), send_action_ids, id_mdb_val, nano::mdb_val (hash), 0));
+	return status != 0;
 }
 
 std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> nano::wallets::get_wallets ()

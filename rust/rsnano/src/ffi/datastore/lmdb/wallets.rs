@@ -1,9 +1,6 @@
 use crate::{datastore::lmdb::LmdbWallets, ffi::U256ArrayDto};
 
-use super::{
-    store::LmdbStoreHandle,
-    TransactionHandle,
-};
+use super::{store::LmdbStoreHandle, TransactionHandle};
 
 pub struct LmdbWalletsHandle(LmdbWallets);
 

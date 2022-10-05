@@ -191,6 +191,8 @@ public:
 	void ongoing_compute_reps ();
 	std::vector<nano::wallet_id> get_wallet_ids (nano::transaction const & transaction_a);
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> get_wallets ();
+	boost::optional<nano::block_hash> get_block_hash (bool & error_a, nano::transaction const & transaction_a, std::string const & id_a);
+	bool set_block_hash (nano::transaction const & transaction_a, std::string const & id_a, nano::block_hash const & hash);
 	nano::network_params & network_params;
 	std::function<void (bool)> observer;
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> items;

@@ -67,6 +67,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_get_block_hash(
         Err(_) => false,
     }
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallets_set_block_hash(
     handle: *mut LmdbWalletsHandle,
@@ -79,4 +80,12 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_set_block_hash(
         .0
         .set_block_hash((*txn).as_txn(), id, &BlockHash::from_ptr(hash))
         .is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_clear_send_ids(
+    handle: *mut LmdbWalletsHandle,
+    txn: *mut TransactionHandle,
+) {
+    (*handle).0.clear_send_ids((*txn).as_txn())
 }

@@ -7,9 +7,9 @@ use crate::{
 };
 
 use super::{
-    ensure_success, get_raw_lmdb_txn, mdb_cursor_get, mdb_cursor_open, mdb_dbi_open, mdb_drop,
-    mdb_get, mdb_put, LmdbIterator, LmdbStore, MdbCursorOp, MdbVal, MDB_CREATE, MDB_NOTFOUND,
-    MDB_SUCCESS,
+    assert_success, ensure_success, get_raw_lmdb_txn, mdb_cursor_get, mdb_cursor_open,
+    mdb_dbi_open, mdb_drop, mdb_get, mdb_put, LmdbIterator, LmdbStore, MdbCursorOp, MdbVal,
+    MDB_CREATE, MDB_NOTFOUND, MDB_SUCCESS,
 };
 
 pub struct LmdbWallets {
@@ -187,6 +187,11 @@ impl LmdbWallets {
             )
         };
         ensure_success(status)
+    }
+
+    pub fn clear_send_ids(&self, txn: &dyn Transaction) {
+        let status = unsafe { mdb_drop(get_raw_lmdb_txn(txn), self.send_action_ids_handle, 0) };
+        assert_success(status);
     }
 }
 

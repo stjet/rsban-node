@@ -6,7 +6,6 @@
 
 namespace nano
 {
-using mdb_val = db_val<MDB_val>;
 namespace lmdb
 {
 	class block_store : public nano::block_store

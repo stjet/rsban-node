@@ -95,7 +95,6 @@ public:
 	unsigned fanout;
 
 private:
-	MDB_txn * tx (nano::transaction const &) const;
 	rsnano::LmdbWalletStoreHandle * rust_handle;
 };
 // A wallet is a set of account keys encrypted by a common encryption key

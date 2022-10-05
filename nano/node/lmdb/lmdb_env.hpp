@@ -63,13 +63,8 @@ public:
 	operator MDB_env * () const;
 	std::unique_ptr<nano::read_transaction> tx_begin_read () const;
 	std::unique_ptr<nano::write_transaction> tx_begin_write () const;
-	MDB_txn * tx (nano::transaction const & transaction_a) const;
 	MDB_env * env () const;
-	void close_env ();
 	void serialize_txn_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time);
 	rsnano::LmdbEnvHandle * handle;
 };
-
-MDB_txn * to_mdb_txn (nano::transaction const & transaction_a);
-void assert_success (int const status);
 }

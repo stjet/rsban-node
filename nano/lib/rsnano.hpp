@@ -2408,6 +2408,8 @@ void rsn_lmdb_wallet_store_write_backup (LmdbWalletStoreHandle * handle,
 TransactionHandle * txn,
 const char * path);
 
+void rsn_lmdb_wallets_clear_send_ids (LmdbWalletsHandle * handle, TransactionHandle * txn);
+
 LmdbWalletsHandle * rsn_lmdb_wallets_create ();
 
 void rsn_lmdb_wallets_destroy (LmdbWalletsHandle * handle);

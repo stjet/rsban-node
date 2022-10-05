@@ -14,7 +14,6 @@ public:
 	wallet_value (nano::db_val<MDB_val> const &);
 	wallet_value (nano::raw_key const &, uint64_t);
 	explicit wallet_value (rsnano::WalletValueDto const & dto_a);
-	nano::db_val<MDB_val> val () const;
 	rsnano::WalletValueDto to_dto () const;
 	nano::raw_key key;
 	uint64_t work;

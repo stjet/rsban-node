@@ -29,11 +29,6 @@
 #endif
 #endif
 
-nano::read_mdb_txn::read_mdb_txn (uint64_t txn_id_a, MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
-	txn_handle{ rsnano::rsn_lmdb_read_txn_create (txn_id_a, reinterpret_cast<rsnano::MdbEnv *> (env_a), new nano::mdb_txn_callbacks{ txn_callbacks_a }) }
-{
-}
-
 nano::read_mdb_txn::read_mdb_txn (rsnano::TransactionHandle * handle_a) :
 	txn_handle{ handle_a }
 {
@@ -62,11 +57,6 @@ void nano::read_mdb_txn::refresh ()
 void * nano::read_mdb_txn::get_handle () const
 {
 	return rsnano::rsn_lmdb_read_txn_handle (txn_handle);
-}
-
-nano::write_mdb_txn::write_mdb_txn (uint64_t txn_id_a, MDB_env * env_a, nano::mdb_txn_callbacks txn_callbacks_a) :
-	txn_handle{ rsnano::rsn_lmdb_write_txn_create (txn_id_a, reinterpret_cast<rsnano::MdbEnv *> (env_a), new nano::mdb_txn_callbacks{ txn_callbacks_a }) }
-{
 }
 
 nano::write_mdb_txn::write_mdb_txn (rsnano::TransactionHandle * handle_a) :

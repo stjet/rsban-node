@@ -1199,10 +1199,7 @@ std::unique_ptr<nano::read_transaction> nano::wallets::tx_begin_read ()
 
 void nano::wallets::clear_send_ids (nano::transaction const & transaction_a)
 {
-	auto send_action_ids = rsnano::rsn_lmdb_wallets_send_action_ids_handle (rust_handle);
-	auto status (mdb_drop (env.tx (transaction_a), send_action_ids, 0));
-	(void)status;
-	debug_assert (status == 0);
+	rsnano::rsn_lmdb_wallets_clear_send_ids (rust_handle, transaction_a.get_rust_handle ());
 }
 
 nano::wallet_representatives nano::wallets::reps () const
@@ -1356,11 +1353,6 @@ nano::mdb_wallets_store::mdb_wallets_store (boost::filesystem::path const & path
 bool nano::mdb_wallets_store::init_error () const
 {
 	return error;
-}
-
-MDB_txn * nano::wallet_store::tx (nano::transaction const & transaction_a) const
-{
-	return static_cast<MDB_txn *> (transaction_a.get_handle ());
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (wallets & wallets, std::string const & name)

@@ -30,7 +30,6 @@ public:
 class read_mdb_txn final : public read_transaction
 {
 public:
-	read_mdb_txn (uint64_t txn_id_a, MDB_env * env_a, mdb_txn_callbacks mdb_txn_callbacks);
 	read_mdb_txn (read_mdb_txn const &) = delete;
 	read_mdb_txn (read_mdb_txn &&) = delete;
 	read_mdb_txn (rsnano::TransactionHandle * handle_a);
@@ -50,7 +49,6 @@ public:
 class write_mdb_txn final : public write_transaction
 {
 public:
-	write_mdb_txn (uint64_t tx_id_a, MDB_env * env_a, mdb_txn_callbacks mdb_txn_callbacks);
 	write_mdb_txn (write_mdb_txn const &) = delete;
 	write_mdb_txn (write_mdb_txn &&) = delete;
 	write_mdb_txn (rsnano::TransactionHandle * handle_a);

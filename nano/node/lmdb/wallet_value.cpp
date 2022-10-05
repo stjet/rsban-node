@@ -13,12 +13,6 @@ nano::wallet_value::wallet_value (nano::raw_key const & key_a, uint64_t work_a) 
 {
 }
 
-nano::db_val<MDB_val> nano::wallet_value::val () const
-{
-	static_assert (sizeof (*this) == sizeof (key) + sizeof (work), "Class not packed");
-	return nano::db_val<MDB_val> (sizeof (*this), const_cast<nano::wallet_value *> (this));
-}
-
 rsnano::WalletValueDto nano::wallet_value::to_dto () const
 {
 	rsnano::WalletValueDto result;

@@ -67,36 +67,10 @@ std::unique_ptr<nano::write_transaction> nano::mdb_env::tx_begin_write () const
 	return std::make_unique<nano::write_mdb_txn> (rsnano::rsn_mdb_env_tx_begin_write (handle));
 }
 
-MDB_txn * nano::mdb_env::tx (nano::transaction const & transaction_a) const
-{
-	return to_mdb_txn (transaction_a);
-}
-
 MDB_env * nano::mdb_env::env () const
 {
 	if (handle == nullptr)
 		return nullptr;
 
 	return static_cast<MDB_env *> (rsnano::rsn_mdb_env_get_env (handle));
-}
-
-void nano::mdb_env::close_env ()
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_mdb_env_close (handle);
-	}
-}
-
-MDB_txn * nano::to_mdb_txn (nano::transaction const & transaction_a)
-{
-	return static_cast<MDB_txn *> (transaction_a.get_handle ());
-}
-
-void nano::assert_success (int const status)
-{
-	if (status != MDB_SUCCESS)
-	{
-		release_assert (false, mdb_strerror (status));
-	}
 }

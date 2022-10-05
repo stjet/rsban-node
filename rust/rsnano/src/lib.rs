@@ -68,7 +68,12 @@ pub static mut MEMORY_INTENSIVE_INSTRUMENTATION: Option<MemoryIntensiveInstrumen
 pub static mut IS_SANITIZER_BUILD: Option<MemoryIntensiveInstrumentationCallback> = None;
 
 pub fn memory_intensive_instrumentation() -> bool {
-    unsafe { MEMORY_INTENSIVE_INSTRUMENTATION.expect("MEMORY_INTENSIVE_INSTRUMENTATION missing")() }
+    unsafe {
+        match MEMORY_INTENSIVE_INSTRUMENTATION {
+            Some(f) => f(),
+            None => false,
+        }
+    }
 }
 
 pub fn is_sanitizer_build() -> bool {

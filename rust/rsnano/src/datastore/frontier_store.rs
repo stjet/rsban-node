@@ -1,25 +1,25 @@
 use crate::{Account, BlockHash};
 
-use super::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
+use super::{DbIterator, Transaction};
 
 /// Maps head block to owning account
 /// BlockHash -> Account
-pub trait FrontierStore {
-    fn put(&self, txn: &dyn WriteTransaction, hash: &BlockHash, account: &Account);
-    fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account;
-    fn del(&self, txn: &dyn WriteTransaction, hash: &BlockHash);
-    fn begin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<BlockHash, Account>>;
+pub trait FrontierStore<R, W> {
+    fn put(&self, txn: &W, hash: &BlockHash, account: &Account);
+    fn get(&self, txn: &Transaction<R, W>, hash: &BlockHash) -> Account;
+    fn del(&self, txn: &W, hash: &BlockHash);
+    fn begin(&self, txn: &Transaction<R, W>) -> Box<dyn DbIterator<BlockHash, Account>>;
 
     fn begin_at_hash(
         &self,
-        txn: &dyn Transaction,
+        txn: &Transaction<R, W>,
         hash: &BlockHash,
     ) -> Box<dyn DbIterator<BlockHash, Account>>;
 
     fn for_each_par(
         &self,
         action: &(dyn Fn(
-            &dyn ReadTransaction,
+            &R,
             &mut dyn DbIterator<BlockHash, Account>,
             &mut dyn DbIterator<BlockHash, Account>,
         ) + Send

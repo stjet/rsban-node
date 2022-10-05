@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_exists(
 ) -> bool {
     (*handle)
         .0
-        .exists((*txn).as_txn(), &BlockHash::from_ptr(hash))
+        .exists(&(*txn).as_txn(), &BlockHash::from_ptr(hash))
 }
 
 #[no_mangle]
@@ -64,7 +64,7 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_begin(
     handle: *mut LmdbPrunedStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    let mut iterator = (*handle).0.begin(&(*txn).as_txn());
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -76,7 +76,7 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_begin_at_hash(
 ) -> *mut LmdbIteratorHandle {
     let mut iterator = (*handle)
         .0
-        .begin_at_hash((*txn).as_txn(), &BlockHash::from_ptr(hash));
+        .begin_at_hash(&(*txn).as_txn(), &BlockHash::from_ptr(hash));
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_random(
     txn: *mut TransactionHandle,
     hash: *mut u8,
 ) {
-    let random = (*handle).0.random((*txn).as_txn());
+    let random = (*handle).0.random(&(*txn).as_txn());
     copy_hash_bytes(random, hash);
 }
 
@@ -95,7 +95,7 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_count(
     handle: *mut LmdbPrunedStoreHandle,
     txn: *mut TransactionHandle,
 ) -> usize {
-    (*handle).0.count((*txn).as_txn())
+    (*handle).0.count(&(*txn).as_txn())
 }
 
 #[no_mangle]

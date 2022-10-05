@@ -91,36 +91,8 @@ pub unsafe extern "C" fn rsn_mdb_env_create2(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_mdb_env_init(
-    handle: *mut LmdbEnvHandle,
-    error: *mut bool,
-    path: *const i8,
-    lmdb_config: *const LmdbConfigDto,
-    use_no_mem_init: bool,
-) {
-    let config = LmdbConfig::from(&*lmdb_config);
-    let options = EnvOptions {
-        config,
-        use_no_mem_init,
-    };
-    let path_str = CStr::from_ptr(path).to_str().unwrap();
-    let path = Path::new(path_str);
-    *error = (*handle).init(path, &options).is_err();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_mdb_env_close(handle: *mut LmdbEnvHandle) {
-    (*handle).close();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_mdb_env_destroy(handle: *mut LmdbEnvHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_mdb_env_get_env(handle: *mut LmdbEnvHandle) -> *mut c_void {
-    (*handle).0.env() as *mut c_void
 }
 
 #[no_mangle]

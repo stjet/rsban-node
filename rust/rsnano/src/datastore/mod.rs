@@ -5,6 +5,7 @@ mod final_vote_store;
 mod frontier_store;
 mod ledger;
 pub mod lmdb;
+pub mod lmdb_rkv;
 mod online_weight_store;
 mod peer_store;
 mod pending_store;
@@ -14,10 +15,7 @@ mod unchecked_store;
 mod version_store;
 mod write_database_queue;
 
-use std::{
-    any::Any,
-    cmp::{max, min},
-};
+use std::cmp::{max, min};
 
 pub use account_store::AccountStore;
 pub use block_store::BlockStore;
@@ -39,14 +37,10 @@ use crate::utils::get_cpu_count;
 
 use self::lmdb::LmdbRawIterator;
 
-pub trait Transaction {
-    fn as_any(&self) -> &dyn Any;
-}
-
-pub trait ReadTransaction: Transaction {}
-
-pub trait WriteTransaction: Transaction {
-    fn as_transaction(&self) -> &dyn Transaction;
+#[derive(Clone, Copy)]
+pub enum Transaction<'a, R, W> {
+    Read(&'a R),
+    Write(&'a W),
 }
 
 pub trait DbIterator<K, V> {

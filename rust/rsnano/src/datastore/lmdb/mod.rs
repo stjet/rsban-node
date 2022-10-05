@@ -17,7 +17,6 @@ mod wallet_store;
 mod wallets;
 
 use std::{
-    any::Any,
     convert::TryFrom,
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
@@ -48,8 +47,6 @@ use crate::{
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
     Account, BlockHash,
 };
-
-use super::{ReadTransaction, Transaction, WriteTransaction};
 
 pub struct LmdbReadTransaction {
     env: *mut MdbEnv,
@@ -88,6 +85,10 @@ impl LmdbReadTransaction {
         self.reset();
         self.renew();
     }
+
+    pub fn as_txn(&self) -> Transaction {
+        super::Transaction::Read(self)
+    }
 }
 
 impl Drop for LmdbReadTransaction {
@@ -98,14 +99,6 @@ impl Drop for LmdbReadTransaction {
         self.callbacks.txn_end(self.txn_id, false);
     }
 }
-
-impl Transaction for LmdbReadTransaction {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-impl ReadTransaction for LmdbReadTransaction {}
 
 pub struct LmdbWriteTransaction {
     env: *mut MdbEnv,
@@ -157,23 +150,15 @@ impl LmdbWriteTransaction {
         self.commit();
         self.renew();
     }
+
+    pub fn as_txn(&self) -> Transaction {
+        super::Transaction::Write(self)
+    }
 }
 
 impl Drop for LmdbWriteTransaction {
     fn drop(&mut self) {
         self.commit();
-    }
-}
-
-impl Transaction for LmdbWriteTransaction {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-impl WriteTransaction for LmdbWriteTransaction {
-    fn as_transaction(&self) -> &dyn Transaction {
-        self
     }
 }
 
@@ -196,6 +181,23 @@ impl TxnCallbacks for NullTxnCallbacks {
     fn txn_end(&self, _txn_id: u64, _is_write: bool) {}
 }
 
+type Transaction<'a> = super::Transaction<'a, LmdbReadTransaction, LmdbWriteTransaction>;
+
+impl<'a> Transaction<'a> {
+    pub fn handle(&self) -> *mut MdbTxn {
+        match self {
+            super::Transaction::Read(r) => r.handle,
+            super::Transaction::Write(w) => w.handle,
+        }
+    }
+}
+
+impl<'a> From<&'a LmdbReadTransaction> for Transaction<'a> {
+    fn from(txn: &'a LmdbReadTransaction) -> Self {
+        Transaction::Read(txn)
+    }
+}
+
 pub fn assert_success(status: i32) {
     ensure_success(status).unwrap();
 }
@@ -213,9 +215,9 @@ pub fn ensure_success(status: i32) -> anyhow::Result<()> {
     }
 }
 
-pub fn exists(txn: &dyn Transaction, table: u32, key: &mut MdbVal) -> bool {
+pub fn exists(txn: &Transaction, table: u32, key: &mut MdbVal) -> bool {
     let mut junk = MdbVal::new();
-    let status = unsafe { mdb_get(get_raw_lmdb_txn(txn), table, key, &mut junk) };
+    let status = unsafe { mdb_get(txn.handle(), table, key, &mut junk) };
     assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
     status == MDB_SUCCESS
 }
@@ -342,17 +344,6 @@ where
         let mut stream = MemoryStream::new();
         value.serialize(&mut stream).unwrap();
         OwnedMdbVal::new(stream.to_vec())
-    }
-}
-
-pub fn get_raw_lmdb_txn(txn: &dyn Transaction) -> *mut MdbTxn {
-    let any = txn.as_any();
-    if let Some(t) = any.downcast_ref::<LmdbReadTransaction>() {
-        t.handle
-    } else if let Some(t) = any.downcast_ref::<LmdbWriteTransaction>() {
-        t.handle
-    } else {
-        panic!("not an LMDB transaction");
     }
 }
 

@@ -1,26 +1,26 @@
 use crate::{Account, PendingInfo, PendingKey};
 
-use super::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
+use super::{DbIterator, Transaction};
 
 /// Maps (destination account, pending block) to (source account, amount, version).
 /// nano::account, nano::block_hash -> nano::account, nano::amount, nano::epoch
-pub trait PendingStore {
-    fn put(&self, txn: &dyn WriteTransaction, key: &PendingKey, pending: &PendingInfo);
-    fn del(&self, txn: &dyn WriteTransaction, key: &PendingKey);
-    fn get(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo>;
-    fn begin(&self, txn: &dyn Transaction) -> Box<dyn DbIterator<PendingKey, PendingInfo>>;
+pub trait PendingStore<R, W> {
+    fn put(&self, txn: &W, key: &PendingKey, pending: &PendingInfo);
+    fn del(&self, txn: &W, key: &PendingKey);
+    fn get(&self, txn: &Transaction<R, W>, key: &PendingKey) -> Option<PendingInfo>;
+    fn begin(&self, txn: &Transaction<R, W>) -> Box<dyn DbIterator<PendingKey, PendingInfo>>;
     fn begin_at_key(
         &self,
-        txn: &dyn Transaction,
+        txn: &Transaction<R, W>,
         key: &PendingKey,
     ) -> Box<dyn DbIterator<PendingKey, PendingInfo>>;
     fn end(&self) -> Box<dyn DbIterator<PendingKey, PendingInfo>>;
-    fn exists(&self, txn: &dyn Transaction, key: &PendingKey) -> bool;
-    fn any(&self, txn: &dyn Transaction, account: &Account) -> bool;
+    fn exists(&self, txn: &Transaction<R, W>, key: &PendingKey) -> bool;
+    fn any(&self, txn: &Transaction<R, W>, account: &Account) -> bool;
     fn for_each_par(
         &self,
         action: &(dyn Fn(
-            &dyn ReadTransaction,
+            &R,
             &mut dyn DbIterator<PendingKey, PendingInfo>,
             &mut dyn DbIterator<PendingKey, PendingInfo>,
         ) + Send

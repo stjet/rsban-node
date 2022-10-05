@@ -3,7 +3,7 @@ use std::{ffi::c_void, ptr};
 use crate::{
     datastore::{
         lmdb::{LmdbRawIterator, LmdbReadTransaction, MdbVal},
-        DbIterator, ReadTransaction,
+        DbIterator,
     },
     ffi::VoidPointerCallback,
 };
@@ -73,13 +73,12 @@ pub struct ForEachParWrapper {
 impl ForEachParWrapper {
     pub fn execute<K, V>(
         &self,
-        txn: &dyn ReadTransaction,
+        txn: &LmdbReadTransaction,
         begin: &mut dyn DbIterator<K, V>,
         end: &mut dyn DbIterator<K, V>,
     ) {
-        let lmdb_txn = txn.as_any().downcast_ref::<LmdbReadTransaction>().unwrap();
         let lmdb_txn = unsafe {
-            std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(lmdb_txn)
+            std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(txn)
         };
         let txn_handle = TransactionHandle::new(TransactionType::ReadRef(lmdb_txn));
         let begin_handle = to_lmdb_iterator_handle(begin);

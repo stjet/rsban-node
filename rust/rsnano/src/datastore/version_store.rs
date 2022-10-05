@@ -1,6 +1,6 @@
-use super::{Transaction, WriteTransaction};
+use super::Transaction;
 
-pub trait VersionStore {
-    fn put(&self, txn: &dyn WriteTransaction, version: i32);
-    fn get(&self, txn: &dyn Transaction) -> i32;
+pub trait VersionStore<R, W> {
+    fn put(&self, txn: &mut W, version: i32);
+    fn get(&self, txn: &Transaction<R, W>) -> i32;
 }

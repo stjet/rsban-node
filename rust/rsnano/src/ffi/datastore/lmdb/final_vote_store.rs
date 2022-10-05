@@ -45,7 +45,7 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_begin(
     handle: *mut LmdbFinalVoteStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    let mut iterator = (*handle).0.begin(&(*txn).as_txn());
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_begin_at_root(
     root: *const u8,
 ) -> *mut LmdbIteratorHandle {
     let root = QualifiedRoot::from_ptr(root);
-    let mut iterator = (*handle).0.begin_at_root((*txn).as_txn(), &root);
+    let mut iterator = (*handle).0.begin_at_root(&(*txn).as_txn(), &root);
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -74,7 +74,7 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_get(
     root: *const u8,
     result: *mut BlockHashArrayDto,
 ) {
-    let hashes = (*handle).0.get((*txn).as_txn(), Root::from_ptr(root));
+    let hashes = (*handle).0.get(&(*txn).as_txn(), Root::from_ptr(root));
     let mut bytes = Box::new(Vec::with_capacity(hashes.len() * 32));
     for h in &hashes {
         for &b in h.as_bytes() {
@@ -106,7 +106,7 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_count(
     handle: *mut LmdbFinalVoteStoreHandle,
     txn: *mut TransactionHandle,
 ) -> usize {
-    (*handle).0.count((*txn).as_txn())
+    (*handle).0.count(&(*txn).as_txn())
 }
 
 #[no_mangle]

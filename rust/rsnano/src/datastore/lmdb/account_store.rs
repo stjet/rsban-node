@@ -1,18 +1,16 @@
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    datastore::{
-        lmdb::MDB_NOTFOUND, parallel_traversal, AccountStore, DbIterator, NullIterator,
-        ReadTransaction, Transaction, WriteTransaction,
-    },
+    datastore::{lmdb::MDB_NOTFOUND, parallel_traversal, AccountStore, DbIterator, NullIterator},
     utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
 };
 use anyhow::Result;
 
 use super::{
-    assert_success, get_raw_lmdb_txn, iterator::LmdbIterator, mdb_count, mdb_dbi_open, mdb_del,
-    mdb_get, mdb_put, LmdbEnv, MdbVal, OwnedMdbVal, MDB_SUCCESS,
+    assert_success, iterator::LmdbIterator, mdb_count, mdb_dbi_open, mdb_del, mdb_get, mdb_put,
+    LmdbEnv, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, OwnedMdbVal, Transaction,
+    MDB_SUCCESS,
 };
 
 pub struct LmdbAccountStore {
@@ -34,10 +32,10 @@ impl LmdbAccountStore {
         *self.db_handle.lock().unwrap()
     }
 
-    pub fn open_db(&self, transaction: &dyn Transaction, flags: u32) -> Result<()> {
-        let txn = get_raw_lmdb_txn(transaction);
+    pub fn open_db(&self, transaction: &Transaction, flags: u32) -> Result<()> {
         let mut handle = 0;
-        let status = unsafe { mdb_dbi_open(txn, Some("accounts"), flags, &mut handle) };
+        let status =
+            unsafe { mdb_dbi_open(transaction.handle(), Some("accounts"), flags, &mut handle) };
         *self.db_handle.lock().unwrap() = handle;
         if status != MDB_SUCCESS {
             bail!("could not open accounts database");
@@ -46,14 +44,14 @@ impl LmdbAccountStore {
     }
 }
 
-impl AccountStore for LmdbAccountStore {
-    fn put(&self, transaction: &dyn WriteTransaction, account: &Account, info: &AccountInfo) {
+impl AccountStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbAccountStore {
+    fn put(&self, transaction: &LmdbWriteTransaction, account: &Account, info: &AccountInfo) {
         let mut account_val = OwnedMdbVal::from(account);
         let mut info_val = OwnedMdbVal::from(info);
 
         let status = unsafe {
             mdb_put(
-                get_raw_lmdb_txn(transaction.as_transaction()),
+                transaction.handle,
                 self.db_handle(),
                 account_val.as_mdb_val(),
                 info_val.as_mdb_val(),
@@ -63,12 +61,12 @@ impl AccountStore for LmdbAccountStore {
         assert_success(status);
     }
 
-    fn get(&self, transaction: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
+    fn get(&self, transaction: &Transaction, account: &Account) -> Option<AccountInfo> {
         let mut account_val = OwnedMdbVal::from(account);
         let mut value = MdbVal::new();
         let status1 = unsafe {
             mdb_get(
-                get_raw_lmdb_txn(transaction),
+                transaction.handle(),
                 self.db_handle(),
                 account_val.as_mdb_val(),
                 &mut value,
@@ -85,11 +83,11 @@ impl AccountStore for LmdbAccountStore {
         }
     }
 
-    fn del(&self, transaction: &dyn WriteTransaction, account: &Account) {
+    fn del(&self, transaction: &LmdbWriteTransaction, account: &Account) {
         let mut key_val = OwnedMdbVal::from(account);
         let status = unsafe {
             mdb_del(
-                get_raw_lmdb_txn(transaction.as_transaction()),
+                transaction.handle,
                 self.db_handle(),
                 key_val.as_mdb_val(),
                 None,
@@ -100,7 +98,7 @@ impl AccountStore for LmdbAccountStore {
 
     fn begin_account(
         &self,
-        transaction: &dyn Transaction,
+        transaction: &Transaction,
         account: &Account,
     ) -> Box<dyn DbIterator<Account, AccountInfo>> {
         Box::new(LmdbIterator::new(
@@ -111,11 +109,11 @@ impl AccountStore for LmdbAccountStore {
         ))
     }
 
-    fn begin(&self, transaction: &dyn Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
+    fn begin(&self, transaction: &Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
         Box::new(LmdbIterator::new(transaction, self.db_handle(), None, true))
     }
 
-    fn rbegin(&self, transaction: &dyn Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
+    fn rbegin(&self, transaction: &Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
         Box::new(LmdbIterator::new(
             transaction,
             self.db_handle(),
@@ -131,7 +129,7 @@ impl AccountStore for LmdbAccountStore {
     fn for_each_par(
         &self,
         action: &(dyn Fn(
-            &dyn ReadTransaction,
+            &LmdbReadTransaction,
             &mut dyn DbIterator<Account, AccountInfo>,
             &mut dyn DbIterator<Account, AccountInfo>,
         ) + Send
@@ -139,9 +137,9 @@ impl AccountStore for LmdbAccountStore {
     ) {
         parallel_traversal(&|start, end, is_last| {
             let mut transaction = self.env.tx_begin_read();
-            let mut begin_it = self.begin_account(&transaction, &start.into());
+            let mut begin_it = self.begin_account(&transaction.as_txn(), &start.into());
             let mut end_it = if !is_last {
-                self.begin_account(&transaction, &end.into())
+                self.begin_account(&transaction.as_txn(), &end.into())
             } else {
                 self.end()
             };
@@ -149,7 +147,7 @@ impl AccountStore for LmdbAccountStore {
         });
     }
 
-    fn count(&self, txn: &dyn Transaction) -> usize {
-        unsafe { mdb_count(get_raw_lmdb_txn(txn), self.db_handle()) }
+    fn count(&self, txn: &Transaction) -> usize {
+        unsafe { mdb_count(txn.handle(), self.db_handle()) }
     }
 }

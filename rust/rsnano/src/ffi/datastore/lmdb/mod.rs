@@ -15,14 +15,14 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use std::{ffi::c_void, ops::Deref};
 
 use crate::{
     datastore::{
         lmdb::{
             LmdbReadTransaction, LmdbWriteTransaction, MdbCursorCloseCallback,
             MdbCursorGetCallback, MdbCursorOpenCallback, MdbDbiCloseCallback, MdbDbiOpenCallback,
-            MdbDelCallback, MdbDropCallback, MdbEnv, MdbEnvCloseCallback, MdbEnvCopy2Callback,
+            MdbDelCallback, MdbDropCallback, MdbEnvCloseCallback, MdbEnvCopy2Callback,
             MdbEnvCopyCallback, MdbEnvCreateCallback, MdbEnvGetPathCallback, MdbEnvOpenCallback,
             MdbEnvSetMapSizeCallback, MdbEnvSetMaxDbsCallback, MdbEnvStatCallback,
             MdbEnvSyncCallback, MdbGetCallback, MdbPutCallback, MdbStatCallback,
@@ -68,11 +68,11 @@ impl TransactionHandle {
         }
     }
 
-    pub fn as_txn(&self) -> &dyn Transaction {
+    pub fn as_txn(&self) -> Transaction<LmdbReadTransaction, LmdbWriteTransaction> {
         match &self.0 {
-            TransactionType::Read(t) => t,
-            TransactionType::ReadRef(t) => *t,
-            TransactionType::Write(t) => t,
+            TransactionType::Read(t) => Transaction::Read(t),
+            TransactionType::ReadRef(t) => Transaction::Read(*t),
+            TransactionType::Write(t) => Transaction::Write(t),
         }
     }
 }
@@ -89,18 +89,6 @@ pub enum TransactionType {
     Read(LmdbReadTransaction),
     ReadRef(&'static LmdbReadTransaction),
     Write(LmdbWriteTransaction),
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_read_txn_create(
-    txn_id: u64,
-    env: *mut MdbEnv,
-    callbacks: *mut c_void,
-) -> *mut TransactionHandle {
-    let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
-    Box::into_raw(Box::new(TransactionHandle(TransactionType::Read(
-        LmdbReadTransaction::new(txn_id, env, callbacks),
-    ))))
 }
 
 #[no_mangle]
@@ -126,18 +114,6 @@ pub unsafe extern "C" fn rsn_lmdb_read_txn_refresh(handle: *mut TransactionHandl
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_read_txn_handle(handle: *mut TransactionHandle) -> *mut MdbTxn {
     (*handle).as_read_txn().handle
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_lmdb_write_txn_create(
-    txn_id: u64,
-    env: *mut MdbEnv,
-    callbacks: *mut c_void,
-) -> *mut TransactionHandle {
-    let callbacks = Arc::new(FfiCallbacksWrapper::new(callbacks));
-    Box::into_raw(Box::new(TransactionHandle(TransactionType::Write(
-        unsafe { LmdbWriteTransaction::new(txn_id, env, callbacks) },
-    ))))
 }
 
 #[no_mangle]

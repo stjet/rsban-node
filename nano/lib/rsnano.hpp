@@ -2157,8 +2157,6 @@ void rsn_lmdb_pruned_store_random (LmdbPrunedStoreHandle * handle,
 TransactionHandle * txn,
 uint8_t * hash);
 
-TransactionHandle * rsn_lmdb_read_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);
-
 void rsn_lmdb_read_txn_destroy (TransactionHandle * handle);
 
 MdbTxn * rsn_lmdb_read_txn_handle (TransactionHandle * handle);
@@ -2431,16 +2429,12 @@ bool rsn_lmdb_wallets_init (LmdbWalletsHandle * handle,
 TransactionHandle * txn,
 LmdbStoreHandle * store);
 
-uint32_t rsn_lmdb_wallets_send_action_ids_handle (LmdbWalletsHandle * handle);
-
 bool rsn_lmdb_wallets_set_block_hash (LmdbWalletsHandle * handle,
 TransactionHandle * txn,
 const char * id,
 const uint8_t * hash);
 
 void rsn_lmdb_write_txn_commit (TransactionHandle * handle);
-
-TransactionHandle * rsn_lmdb_write_txn_create (uint64_t txn_id, MdbEnv * env, void * callbacks);
 
 void rsn_lmdb_write_txn_destroy (TransactionHandle * handle);
 
@@ -2482,8 +2476,6 @@ LoggerHandle * rsn_logger_create (void * logger);
 
 void rsn_logging_create (LoggingDto * dto);
 
-void rsn_mdb_env_close (LmdbEnvHandle * handle);
-
 LmdbEnvHandle * rsn_mdb_env_create (bool * error,
 const int8_t * path,
 const LmdbConfigDto * lmdb_config,
@@ -2498,14 +2490,6 @@ const TxnTrackingConfigDto * txn_config,
 uint64_t block_processor_batch_max_time_ms);
 
 void rsn_mdb_env_destroy (LmdbEnvHandle * handle);
-
-void * rsn_mdb_env_get_env (LmdbEnvHandle * handle);
-
-void rsn_mdb_env_init (LmdbEnvHandle * handle,
-bool * error,
-const int8_t * path,
-const LmdbConfigDto * lmdb_config,
-bool use_no_mem_init);
 
 void rsn_mdb_env_serialize_txn_tracker (LmdbEnvHandle * handle,
 void * ptree,

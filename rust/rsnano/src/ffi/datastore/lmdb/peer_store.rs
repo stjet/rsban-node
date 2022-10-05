@@ -53,7 +53,7 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_exists(
     port: u16,
 ) -> bool {
     let endpoint = to_endpoint_key(address, port);
-    (*handle).0.exists((*txn).as_txn(), &endpoint)
+    (*handle).0.exists(&(*txn).as_txn(), &endpoint)
 }
 
 #[no_mangle]
@@ -61,7 +61,7 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_count(
     handle: *mut LmdbPeerStoreHandle,
     txn: *mut TransactionHandle,
 ) -> usize {
-    (*handle).0.count((*txn).as_txn())
+    (*handle).0.count(&(*txn).as_txn())
 }
 
 #[no_mangle]
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_begin(
     handle: *mut LmdbPeerStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    let mut iterator = (*handle).0.begin(&(*txn).as_txn());
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 

@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_get(
 ) -> bool {
     let account = Account::from_ptr(account);
     let info = (*info).deref_mut();
-    match (*handle).0.get((*txn).as_txn(), &account) {
+    match (*handle).0.get(&(*txn).as_txn(), &account) {
         Some(i) => {
             *info = i;
             true
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_begin_account(
     account: *const u8,
 ) -> *mut LmdbIteratorHandle {
     let account = Account::from_ptr(account);
-    let mut iterator = (*handle).0.begin_account((*txn).as_txn(), &account);
+    let mut iterator = (*handle).0.begin_account(&(*txn).as_txn(), &account);
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_begin(
     handle: *mut LmdbAccountStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    let mut iterator = (*handle).0.begin(&(*txn).as_txn());
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -95,7 +95,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_rbegin(
     handle: *mut LmdbAccountStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.rbegin((*txn).as_txn());
+    let mut iterator = (*handle).0.rbegin(&(*txn).as_txn());
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_count(
     handle: *mut LmdbAccountStoreHandle,
     txn: *mut TransactionHandle,
 ) -> usize {
-    (*handle).0.count((*txn).as_txn())
+    (*handle).0.count(&(*txn).as_txn())
 }
 
 #[no_mangle]

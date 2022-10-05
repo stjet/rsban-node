@@ -3,15 +3,14 @@ use std::sync::{Arc, Mutex};
 use crate::{
     datastore::{
         lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        parallel_traversal, DbIterator, FrontierStore, NullIterator, ReadTransaction, Transaction,
-        WriteTransaction,
+        parallel_traversal, DbIterator, FrontierStore, NullIterator,
     },
     Account, BlockHash,
 };
 
 use super::{
-    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_del, mdb_get, mdb_put,
-    LmdbEnv, LmdbIterator, MdbVal,
+    assert_success, ensure_success, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbEnv, LmdbIterator,
+    LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
 };
 
 pub struct LmdbFrontierStore {
@@ -31,10 +30,9 @@ impl LmdbFrontierStore {
         *self.db_handle.lock().unwrap()
     }
 
-    pub fn open_db(&self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+    pub fn open_db(&self, txn: &Transaction, flags: u32) -> anyhow::Result<()> {
         let mut handle = 0;
-        let status =
-            unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), Some("frontiers"), flags, &mut handle) };
+        let status = unsafe { mdb_dbi_open(txn.handle(), Some("frontiers"), flags, &mut handle) };
 
         let mut guard = self.db_handle.lock().unwrap();
         *guard = handle;
@@ -43,11 +41,11 @@ impl LmdbFrontierStore {
     }
 }
 
-impl FrontierStore for LmdbFrontierStore {
-    fn put(&self, txn: &dyn WriteTransaction, hash: &BlockHash, account: &Account) {
+impl FrontierStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbFrontierStore {
+    fn put(&self, txn: &LmdbWriteTransaction, hash: &BlockHash, account: &Account) {
         let status = unsafe {
             mdb_put(
-                get_raw_lmdb_txn(txn.as_transaction()),
+                txn.handle,
                 self.db_handle(),
                 &mut MdbVal::from(hash),
                 &mut MdbVal::from(account),
@@ -57,11 +55,11 @@ impl FrontierStore for LmdbFrontierStore {
         assert_success(status);
     }
 
-    fn get(&self, txn: &dyn crate::datastore::Transaction, hash: &BlockHash) -> Account {
+    fn get(&self, txn: &Transaction, hash: &BlockHash) -> Account {
         let mut value = MdbVal::new();
         let status = unsafe {
             mdb_get(
-                get_raw_lmdb_txn(txn),
+                txn.handle(),
                 self.db_handle(),
                 &mut MdbVal::from(hash),
                 &mut value,
@@ -75,28 +73,22 @@ impl FrontierStore for LmdbFrontierStore {
         }
     }
 
-    fn del(&self, txn: &dyn WriteTransaction, hash: &BlockHash) {
-        let status = unsafe {
-            mdb_del(
-                get_raw_lmdb_txn(txn.as_transaction()),
-                self.db_handle(),
-                &mut MdbVal::from(hash),
-                None,
-            )
-        };
+    fn del(&self, txn: &LmdbWriteTransaction, hash: &BlockHash) {
+        let status =
+            unsafe { mdb_del(txn.handle, self.db_handle(), &mut MdbVal::from(hash), None) };
         assert_success(status);
     }
 
     fn begin(
         &self,
-        txn: &dyn crate::datastore::Transaction,
+        txn: &Transaction,
     ) -> Box<dyn crate::datastore::DbIterator<BlockHash, Account>> {
         Box::new(LmdbIterator::new(txn, self.db_handle(), None, true))
     }
 
     fn begin_at_hash(
         &self,
-        txn: &dyn crate::datastore::Transaction,
+        txn: &Transaction,
         hash: &BlockHash,
     ) -> Box<dyn crate::datastore::DbIterator<BlockHash, Account>> {
         Box::new(LmdbIterator::new(txn, self.db_handle(), Some(hash), true))
@@ -105,7 +97,7 @@ impl FrontierStore for LmdbFrontierStore {
     fn for_each_par(
         &self,
         action: &(dyn Fn(
-            &dyn ReadTransaction,
+            &LmdbReadTransaction,
             &mut dyn DbIterator<BlockHash, Account>,
             &mut dyn DbIterator<BlockHash, Account>,
         ) + Send
@@ -113,9 +105,9 @@ impl FrontierStore for LmdbFrontierStore {
     ) {
         parallel_traversal(&|start, end, is_last| {
             let mut transaction = self.env.tx_begin_read();
-            let mut begin_it = self.begin_at_hash(&transaction, &start.into());
+            let mut begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
             let mut end_it = if !is_last {
-                self.begin_at_hash(&transaction, &end.into())
+                self.begin_at_hash(&transaction.as_txn(), &end.into())
             } else {
                 self.end()
             };

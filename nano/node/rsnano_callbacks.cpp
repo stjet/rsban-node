@@ -13,11 +13,11 @@
 #include <nano/node/transport/tcp.hpp>
 #include <nano/node/websocket.hpp>
 
-#include <lmdb/libraries/liblmdb/lmdb.h>
-
 #include <boost/property_tree/json_parser.hpp>
 
 #include <iostream>
+
+#include <lmdb/libraries/liblmdb/lmdb.h>
 
 int32_t write_u8 (void * stream, const uint8_t value)
 {

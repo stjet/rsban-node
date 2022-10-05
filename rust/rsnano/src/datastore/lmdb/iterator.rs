@@ -1,8 +1,10 @@
-use super::{mdb_cursor_close, mdb_cursor_open, MdbCursor, MdbTxn, MdbVal, OwnedMdbVal};
+use super::{
+    mdb_cursor_close, mdb_cursor_open, MdbCursor, MdbTxn, MdbVal, OwnedMdbVal, Transaction,
+};
 use crate::{
     datastore::{
-        lmdb::{get_raw_lmdb_txn, mdb_cursor_get, MdbCursorOp, MDB_NOTFOUND, MDB_SUCCESS},
-        DbIterator, Transaction,
+        lmdb::{mdb_cursor_get, MdbCursorOp, MDB_NOTFOUND, MDB_SUCCESS},
+        DbIterator,
     },
     utils::{Deserialize, Serialize, StreamAdapter},
 };
@@ -150,13 +152,13 @@ where
     K: Serialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
 {
-    pub fn new(txn: &dyn Transaction, dbi: u32, key: Option<&K>, direction_asc: bool) -> Self {
+    pub fn new(txn: &Transaction, dbi: u32, key: Option<&K>, direction_asc: bool) -> Self {
         let mut key_val = match key {
             Some(key) => OwnedMdbVal::from(key),
             None => OwnedMdbVal::empty(),
         };
         let raw_iterator = LmdbRawIterator::new(
-            get_raw_lmdb_txn(txn),
+            txn.handle(),
             dbi,
             key_val.as_mdb_val(),
             direction_asc,

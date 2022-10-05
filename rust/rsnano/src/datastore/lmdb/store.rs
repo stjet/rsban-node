@@ -3,8 +3,7 @@ use std::{ffi::CString, path::Path, sync::Arc, time::Duration};
 use crate::{
     datastore::{
         lmdb::{mdb_env_copy, mdb_env_get_path, MDB_SUCCESS},
-        Store, Transaction, VersionStore, WriteTransaction, STORE_VERSION_CURRENT,
-        STORE_VERSION_MINIMUM,
+        Store, VersionStore, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM,
     },
     logger_mt::Logger,
     utils::{seconds_since_epoch, PropertyTreeWriter, Serialize},
@@ -12,11 +11,11 @@ use crate::{
 };
 
 use super::{
-    ensure_success, get_raw_lmdb_txn, mdb_count, mdb_dbi_close, mdb_dbi_open, mdb_drop,
-    mdb_env_copy2, mdb_env_stat, mdb_put, EnvOptions, LmdbAccountStore, LmdbBlockStore,
-    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
-    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbRawIterator,
-    LmdbUncheckedStore, LmdbVersionStore, MdbStat, MdbVal, MDB_APPEND, MDB_CP_COMPACT, MDB_CREATE,
+    ensure_success, mdb_count, mdb_dbi_close, mdb_dbi_open, mdb_drop, mdb_env_copy2, mdb_env_stat,
+    mdb_put, EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv,
+    LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
+    LmdbPrunedStore, LmdbRawIterator, LmdbUncheckedStore, LmdbVersionStore, LmdbWriteTransaction,
+    MdbStat, MdbVal, Transaction, MDB_APPEND, MDB_CP_COMPACT, MDB_CREATE,
 };
 
 #[derive(PartialEq, Eq)]
@@ -78,8 +77,13 @@ impl LmdbStore {
         let mut is_fresh_db = false;
         {
             let transaction = store.env.tx_begin_read();
-            if store.version_store.open_db(&transaction, 0).is_ok() {
-                is_fully_upgraded = store.version_store.get(&transaction) == STORE_VERSION_CURRENT;
+            if store
+                .version_store
+                .open_db(&transaction.as_txn(), 0)
+                .is_ok()
+            {
+                is_fully_upgraded =
+                    store.version_store.get(&transaction.as_txn()) == STORE_VERSION_CURRENT;
                 unsafe {
                     mdb_dbi_close(store.env.env(), store.version_store.db_handle());
                 }
@@ -100,7 +104,7 @@ impl LmdbStore {
             }
             let vacuuming = {
                 let transaction = store.env.tx_begin_write();
-                store.open_databases(&transaction, MDB_CREATE)?;
+                store.open_databases(&transaction.as_txn(), MDB_CREATE)?;
                 store.do_upgrades(&transaction)?
             };
 
@@ -113,13 +117,13 @@ impl LmdbStore {
             }
         } else {
             let transaction = store.env.tx_begin_read();
-            store.open_databases(&transaction, 0)?;
+            store.open_databases(&transaction.as_txn(), 0)?;
         }
 
         Ok(store)
     }
 
-    pub fn open_databases(&self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+    pub fn open_databases(&self, txn: &Transaction, flags: u32) -> anyhow::Result<()> {
         self.block_store.open_db(txn, flags)?;
         self.frontier_store.open_db(txn, flags)?;
         self.account_store.open_db(txn, flags)?;
@@ -133,8 +137,8 @@ impl LmdbStore {
         self.version_store.open_db(txn, flags)
     }
 
-    pub fn do_upgrades(&self, txn: &dyn WriteTransaction) -> anyhow::Result<Vacuuming> {
-        let version = self.version_store.get(txn.as_transaction());
+    pub fn do_upgrades(&self, txn: &LmdbWriteTransaction) -> anyhow::Result<Vacuuming> {
+        let version = self.version_store.get(&txn.as_txn());
         match version {
             1..=20 => {
                 self.logger.always_log(&format!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM));
@@ -174,7 +178,7 @@ impl LmdbStore {
                 };
                 self.env.init(path, &options)?;
                 let transaction = self.env.tx_begin_read();
-                self.open_databases(&transaction, 0)
+                self.open_databases(&transaction.as_txn(), 0)
             }
             Err(e) => {
                 // The vacuum file can be in an inconsistent state if there wasn't enough space to create it
@@ -184,8 +188,8 @@ impl LmdbStore {
         }
     }
 
-    pub fn rebuild_db(&self, txn: &dyn WriteTransaction) -> anyhow::Result<()> {
-        let raw_txn = get_raw_lmdb_txn(txn.as_transaction());
+    pub fn rebuild_db(&self, txn: &LmdbWriteTransaction) -> anyhow::Result<()> {
+        let raw_txn = txn.handle;
         // Tables with uint256_union key
         let tables = [
             self.account_store.db_handle(),

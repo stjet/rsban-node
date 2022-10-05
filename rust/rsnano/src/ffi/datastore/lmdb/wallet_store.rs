@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_create(
     if let Ok(store) = LmdbWalletStore::new(
         fanout,
         (*kdf).deref().clone(),
-        (*txn).as_txn(),
+        &(*txn).as_txn(),
         &representative,
         &wallet,
     ) {
@@ -80,7 +80,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_create2(
     if let Ok(store) = LmdbWalletStore::new_from_json(
         fanout,
         (*kdf).deref().clone(),
-        (*txn).as_txn(),
+        &(*txn).as_txn(),
         &wallet,
         json,
     ) {
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_check(
     txn: *mut TransactionHandle,
     result: *mut u8,
 ) {
-    let value = (*handle).0.check((*txn).as_txn());
+    let value = (*handle).0.check(&(*txn).as_txn());
     copy_raw_key_bytes(value, result);
 }
 
@@ -111,7 +111,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_salt(
     txn: *mut TransactionHandle,
     result: *mut u8,
 ) {
-    let value = (*handle).0.salt((*txn).as_txn());
+    let value = (*handle).0.salt(&(*txn).as_txn());
     copy_raw_key_bytes(value, result);
 }
 
@@ -121,7 +121,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_wallet_key(
     prv_key: *mut u8,
     txn: *mut TransactionHandle,
 ) {
-    let key = (*handle).0.wallet_key((*txn).as_txn());
+    let key = (*handle).0.wallet_key(&(*txn).as_txn());
     copy_raw_key_bytes(key, prv_key);
 }
 
@@ -131,7 +131,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_seed(
     prv_key: *mut u8,
     txn: *mut TransactionHandle,
 ) {
-    let key = (*handle).0.seed((*txn).as_txn());
+    let key = (*handle).0.seed(&(*txn).as_txn());
     copy_raw_key_bytes(key, prv_key);
 }
 
@@ -143,7 +143,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_seed_set(
 ) {
     (*handle)
         .0
-        .set_seed((*txn).as_txn(), &RawKey::from_ptr(prv_key));
+        .set_seed(&(*txn).as_txn(), &RawKey::from_ptr(prv_key));
 }
 
 #[no_mangle]
@@ -151,7 +151,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_index_get(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,
 ) -> u32 {
-    (*handle).0.deterministic_index_get((*txn).as_txn())
+    (*handle).0.deterministic_index_get(&(*txn).as_txn())
 }
 
 #[no_mangle]
@@ -160,7 +160,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_index_set(
     txn: *mut TransactionHandle,
     index: u32,
 ) {
-    (*handle).0.deterministic_index_set((*txn).as_txn(), index);
+    (*handle).0.deterministic_index_set(&(*txn).as_txn(), index);
 }
 
 #[no_mangle]
@@ -168,7 +168,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_valid_password(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,
 ) -> bool {
-    (*handle).0.valid_password((*txn).as_txn())
+    (*handle).0.valid_password(&(*txn).as_txn())
 }
 
 #[no_mangle]
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_derive_key(
     password: *const c_char,
 ) {
     let password = CStr::from_ptr(password).to_str().unwrap();
-    let key = (*handle).0.derive_key((*txn).as_txn(), password);
+    let key = (*handle).0.derive_key(&(*txn).as_txn(), password);
     copy_raw_key_bytes(key, prv);
 }
 
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_rekey(
     password: *const c_char,
 ) -> bool {
     let password = CStr::from_ptr(password).to_str().unwrap();
-    (*handle).0.rekey((*txn).as_txn(), password).is_ok()
+    (*handle).0.rekey(&(*txn).as_txn(), password).is_ok()
 }
 
 #[no_mangle]
@@ -198,7 +198,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_begin(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    let mut iterator = (*handle).0.begin(&(*txn).as_txn());
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -210,7 +210,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_begin_at_account(
 ) -> *mut LmdbIteratorHandle {
     let mut iterator = (*handle)
         .0
-        .begin_at_account((*txn).as_txn(), &Account::from_ptr(account));
+        .begin_at_account(&(*txn).as_txn(), &Account::from_ptr(account));
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -222,7 +222,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_erase(
 ) {
     (*handle)
         .0
-        .erase((*txn).as_txn(), &Account::from_ptr(account));
+        .erase(&(*txn).as_txn(), &Account::from_ptr(account));
 }
 
 #[no_mangle]
@@ -235,7 +235,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_clear(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,
 ) {
-    (*handle).0.deterministic_clear((*txn).as_txn());
+    (*handle).0.deterministic_clear(&(*txn).as_txn());
 }
 
 #[no_mangle]
@@ -245,7 +245,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_key(
     index: u32,
     key: *mut u8,
 ) {
-    let result = (*handle).0.deterministic_key((*txn).as_txn(), index);
+    let result = (*handle).0.deterministic_key(&(*txn).as_txn(), index);
     copy_raw_key_bytes(result, key);
 }
 
@@ -257,7 +257,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_find(
 ) -> *mut LmdbIteratorHandle {
     let mut iterator = (*handle)
         .0
-        .find((*txn).as_txn(), &Account::from_ptr(account));
+        .find(&(*txn).as_txn(), &Account::from_ptr(account));
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -269,7 +269,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_exists(
 ) -> bool {
     (*handle)
         .0
-        .exists((*txn).as_txn(), &PublicKey::from_ptr(key))
+        .exists(&(*txn).as_txn(), &PublicKey::from_ptr(key))
 }
 
 #[no_mangle]
@@ -278,7 +278,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_insert(
     txn: *mut TransactionHandle,
     key: *mut u8,
 ) {
-    let result = (*handle).0.deterministic_insert((*txn).as_txn());
+    let result = (*handle).0.deterministic_insert(&(*txn).as_txn());
     copy_public_key_bytes(&result, key);
 }
 
@@ -289,7 +289,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_insert_at(
     index: u32,
     key: *mut u8,
 ) {
-    let result = (*handle).0.deterministic_insert_at((*txn).as_txn(), index);
+    let result = (*handle).0.deterministic_insert_at(&(*txn).as_txn(), index);
     copy_public_key_bytes(&result, key);
 }
 
@@ -298,7 +298,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_version(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,
 ) -> u32 {
-    (*handle).0.version((*txn).as_txn())
+    (*handle).0.version(&(*txn).as_txn())
 }
 
 #[no_mangle]
@@ -308,7 +308,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_attempt_password(
     password: *const c_char,
 ) -> bool {
     let password = CStr::from_ptr(password).to_str().unwrap();
-    (*handle).0.attempt_password((*txn).as_txn(), password)
+    (*handle).0.attempt_password(&(*txn).as_txn(), password)
 }
 
 #[no_mangle]
@@ -322,7 +322,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_accounts(
     txn: *mut TransactionHandle,
     result: *mut U256ArrayDto,
 ) {
-    let accounts = (*handle).0.accounts((*txn).as_txn());
+    let accounts = (*handle).0.accounts(&(*txn).as_txn());
     let data = Box::new(accounts.iter().map(|a| *a.as_bytes()).collect());
     (*result).initialize(data);
 }
@@ -333,7 +333,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_representative(
     txn: *mut TransactionHandle,
     account: *mut u8,
 ) {
-    let rep = (*handle).0.representative((*txn).as_txn());
+    let rep = (*handle).0.representative(&(*txn).as_txn());
     copy_account_bytes(rep, account);
 }
 
@@ -345,7 +345,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_representative_set(
 ) {
     (*handle)
         .0
-        .representative_set((*txn).as_txn(), &Account::from_ptr(representative));
+        .representative_set(&(*txn).as_txn(), &Account::from_ptr(representative));
 }
 
 #[no_mangle]
@@ -357,7 +357,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_insert_adhoc(
 ) {
     let public_key = (*handle)
         .0
-        .insert_adhoc((*txn).as_txn(), &RawKey::from_ptr(prv));
+        .insert_adhoc(&(*txn).as_txn(), &RawKey::from_ptr(prv));
     copy_public_key_bytes(&public_key, pub_key);
 }
 
@@ -369,7 +369,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_insert_watch(
 ) -> bool {
     (*handle)
         .0
-        .insert_watch((*txn).as_txn(), &Account::from_ptr(pub_key))
+        .insert_watch(&(*txn).as_txn(), &Account::from_ptr(pub_key))
         .is_ok()
 }
 
@@ -382,7 +382,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_fetch(
 ) -> bool {
     match (*handle)
         .0
-        .fetch((*txn).as_txn(), &Account::from_ptr(pub_key))
+        .fetch(&(*txn).as_txn(), &Account::from_ptr(pub_key))
     {
         Ok(prv) => {
             copy_raw_key_bytes(prv, prv_key);
@@ -398,7 +398,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_serialize_json(
     txn: *mut TransactionHandle,
     result: *mut StringDto,
 ) {
-    let json = (*handle).0.serialize_json((*txn).as_txn());
+    let json = (*handle).0.serialize_json(&(*txn).as_txn());
     (*result) = json.into();
 }
 
@@ -410,7 +410,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_write_backup(
 ) {
     let path = CStr::from_ptr(path).to_str().unwrap();
     let path = PathBuf::from(path);
-    let _ = (*handle).0.write_backup((*txn).as_txn(), &path);
+    let _ = (*handle).0.write_backup(&(*txn).as_txn(), &path);
 }
 
 #[no_mangle]
@@ -429,7 +429,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_move(
         .collect();
     (*handle)
         .0
-        .move_keys((*txn).as_txn(), &(*other).0, &keys)
+        .move_keys(&(*txn).as_txn(), &(*other).0, &keys)
         .is_ok()
 }
 
@@ -439,7 +439,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_import(
     txn: *mut TransactionHandle,
     other: *mut LmdbWalletStoreHandle,
 ) -> bool {
-    (*handle).0.import((*txn).as_txn(), &(*other).0).is_ok()
+    (*handle).0.import(&(*txn).as_txn(), &(*other).0).is_ok()
 }
 
 #[no_mangle]
@@ -450,7 +450,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_work_get(
     work: *mut u64,
 ) -> bool {
     let pub_key = PublicKey::from_ptr(pub_key);
-    match (*handle).0.work_get((*txn).as_txn(), &pub_key) {
+    match (*handle).0.work_get(&(*txn).as_txn(), &pub_key) {
         Ok(w) => {
             *work = w;
             true
@@ -467,7 +467,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_work_put(
     work: u64,
 ) {
     let pub_key = PublicKey::from_ptr(pub_key);
-    (*handle).0.work_put((*txn).as_txn(), &pub_key, work);
+    (*handle).0.work_put(&(*txn).as_txn(), &pub_key, work);
 }
 
 #[no_mangle]
@@ -475,7 +475,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_destroy2(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,
 ) {
-    (*handle).0.destroy((*txn).as_txn());
+    (*handle).0.destroy(&(*txn).as_txn());
 }
 
 #[no_mangle]

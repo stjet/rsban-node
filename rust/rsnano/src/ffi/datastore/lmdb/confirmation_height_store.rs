@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_get(
 ) -> bool {
     let result = (*handle)
         .0
-        .get((*txn).as_txn(), &Account::from_ptr(account));
+        .get(&(*txn).as_txn(), &Account::from_ptr(account));
 
     match result {
         Some(i) => {
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_exists(
 ) -> bool {
     (*handle)
         .0
-        .exists((*txn).as_txn(), &Account::from_ptr(account))
+        .exists(&(*txn).as_txn(), &Account::from_ptr(account))
 }
 
 #[no_mangle]
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_del(
 ) {
     (*handle)
         .0
-        .del((*txn).as_txn(), &Account::from_ptr(account))
+        .del(&(*txn).as_txn(), &Account::from_ptr(account))
 }
 
 #[no_mangle]
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_count(
     handle: *mut LmdbConfirmationHeightStoreHandle,
     txn: *mut TransactionHandle,
 ) -> u64 {
-    (*handle).0.count((*txn).as_txn()) as u64
+    (*handle).0.count(&(*txn).as_txn()) as u64
 }
 
 #[no_mangle]
@@ -108,7 +108,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_begin(
     handle: *mut LmdbConfirmationHeightStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.begin((*txn).as_txn());
+    let mut iterator = (*handle).0.begin(&(*txn).as_txn());
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_begin_at_account(
 ) -> *mut LmdbIteratorHandle {
     let mut iterator = (*handle)
         .0
-        .begin_at_account((*txn).as_txn(), &Account::from_ptr(account));
+        .begin_at_account(&(*txn).as_txn(), &Account::from_ptr(account));
     to_lmdb_iterator_handle(iterator.as_mut())
 }
 

@@ -3,11 +3,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::datastore::{Transaction, VersionStore, WriteTransaction, STORE_VERSION_MINIMUM};
+use crate::datastore::{VersionStore, STORE_VERSION_MINIMUM};
 
 use super::{
-    assert_success, ensure_success, get_raw_lmdb_txn, mdb_dbi_open, mdb_get, mdb_put, LmdbEnv,
-    MdbVal, MDB_SUCCESS,
+    assert_success, ensure_success, mdb_dbi_open, mdb_get, mdb_put, LmdbEnv, LmdbReadTransaction,
+    LmdbWriteTransaction, MdbVal, Transaction, MDB_SUCCESS,
 };
 
 pub struct LmdbVersionStore {
@@ -29,23 +29,22 @@ impl LmdbVersionStore {
         *self.db_handle.lock().unwrap()
     }
 
-    pub fn open_db(&self, txn: &dyn Transaction, flags: u32) -> anyhow::Result<()> {
+    pub fn open_db(&self, txn: &Transaction, flags: u32) -> anyhow::Result<()> {
         let mut handle = 0;
-        let status =
-            unsafe { mdb_dbi_open(get_raw_lmdb_txn(txn), Some("meta"), flags, &mut handle) };
+        let status = unsafe { mdb_dbi_open(txn.handle(), Some("meta"), flags, &mut handle) };
         *self.db_handle.lock().unwrap() = handle;
         ensure_success(status)
     }
 }
 
-impl VersionStore for LmdbVersionStore {
-    fn put(&self, txn: &dyn WriteTransaction, version: i32) {
+impl VersionStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbVersionStore {
+    fn put(&self, txn: &mut LmdbWriteTransaction, version: i32) {
         let key_bytes = version_key();
         let value_bytes = value_bytes(version);
 
         let status = unsafe {
             mdb_put(
-                get_raw_lmdb_txn(txn.as_transaction()),
+                txn.handle,
                 self.db_handle(),
                 &mut MdbVal::from_slice(&key_bytes),
                 &mut MdbVal::from_slice(&value_bytes),
@@ -55,12 +54,12 @@ impl VersionStore for LmdbVersionStore {
         assert_success(status);
     }
 
-    fn get(&self, txn: &dyn Transaction) -> i32 {
+    fn get(&self, txn: &Transaction) -> i32 {
         let key_bytes = version_key();
         let mut data = MdbVal::new();
         let status = unsafe {
             mdb_get(
-                get_raw_lmdb_txn(txn),
+                txn.handle(),
                 self.db_handle(),
                 &mut MdbVal::from_slice(&key_bytes),
                 &mut data,

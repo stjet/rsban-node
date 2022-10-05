@@ -45,13 +45,6 @@ void nano::mdb_env::serialize_txn_tracker (boost::property_tree::ptree & json, s
 	rsnano::rsn_mdb_env_serialize_txn_tracker (handle, &json, min_read_time.count (), min_write_time.count ());
 }
 
-void nano::mdb_env::init (bool & error_a, boost::filesystem::path const & path_a, nano::mdb_env::options options_a)
-{
-	auto path_string{ path_a.string () };
-	auto config_dto{ options_a.config.to_dto () };
-	rsnano::rsn_mdb_env_init (handle, &error_a, reinterpret_cast<const int8_t *> (path_string.c_str ()), &config_dto, options_a.use_no_mem_init);
-}
-
 std::unique_ptr<nano::read_transaction> nano::mdb_env::tx_begin_read () const
 {
 	return std::make_unique<nano::read_mdb_txn> (rsnano::rsn_mdb_env_tx_begin_read (handle));

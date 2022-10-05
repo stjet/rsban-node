@@ -13,6 +13,8 @@
 #include <nano/node/transport/tcp.hpp>
 #include <nano/node/websocket.hpp>
 
+#include <lmdb/libraries/liblmdb/lmdb.h>
+
 #include <boost/property_tree/json_parser.hpp>
 
 #include <iostream>

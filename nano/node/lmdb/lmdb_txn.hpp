@@ -9,8 +9,6 @@
 
 #include <mutex>
 
-#include <lmdb/libraries/liblmdb/lmdb.h>
-
 namespace nano
 {
 class transaction;

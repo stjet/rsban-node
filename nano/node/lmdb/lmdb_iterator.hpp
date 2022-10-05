@@ -2,8 +2,6 @@
 
 #include <nano/secure/store.hpp>
 
-#include <lmdb/libraries/liblmdb/lmdb.h>
-
 namespace nano
 {
 template <typename T, typename U>
@@ -104,7 +102,7 @@ public:
 
 private:
 	rsnano::LmdbIteratorHandle * handle{ nullptr };
-	std::pair<nano::db_val<MDB_val>, nano::db_val<MDB_val>> current;
+	std::pair<nano::db_val<rsnano::MdbVal>, nano::db_val<rsnano::MdbVal>> current;
 
 	void load_current ()
 	{

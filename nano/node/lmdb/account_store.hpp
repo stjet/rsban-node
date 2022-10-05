@@ -3,8 +3,6 @@
 #include <nano/node/lmdb/lmdb_env.hpp>
 #include <nano/secure/store.hpp>
 
-#include <lmdb/libraries/liblmdb/lmdb.h>
-
 namespace nano
 {
 namespace lmdb

@@ -22,8 +22,6 @@
 
 #include <boost/optional.hpp>
 
-#include <lmdb/libraries/liblmdb/lmdb.h>
-
 namespace boost
 {
 namespace filesystem
@@ -34,7 +32,7 @@ namespace filesystem
 
 namespace nano
 {
-using mdb_val = db_val<MDB_val>;
+using mdb_val = db_val<rsnano::MdbVal>;
 
 class transaction;
 

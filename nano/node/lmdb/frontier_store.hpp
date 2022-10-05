@@ -1,8 +1,5 @@
 #pragma once
-
 #include <nano/secure/store.hpp>
-
-#include <lmdb/libraries/liblmdb/lmdb.h>
 
 namespace nano
 {

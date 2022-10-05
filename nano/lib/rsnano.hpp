@@ -2412,6 +2412,11 @@ LmdbWalletsHandle * rsn_lmdb_wallets_create ();
 
 void rsn_lmdb_wallets_destroy (LmdbWalletsHandle * handle);
 
+bool rsn_lmdb_wallets_get_block_hash (LmdbWalletsHandle * handle,
+TransactionHandle * txn,
+const char * id,
+uint8_t * hash);
+
 void rsn_lmdb_wallets_get_wallet_ids (LmdbWalletsHandle * handle,
 TransactionHandle * txn,
 U256ArrayDto * result);
@@ -2421,6 +2426,11 @@ TransactionHandle * txn,
 LmdbStoreHandle * store);
 
 uint32_t rsn_lmdb_wallets_send_action_ids_handle (LmdbWalletsHandle * handle);
+
+bool rsn_lmdb_wallets_set_block_hash (LmdbWalletsHandle * handle,
+TransactionHandle * txn,
+const char * id,
+const uint8_t * hash);
 
 void rsn_lmdb_write_txn_commit (TransactionHandle * handle);
 

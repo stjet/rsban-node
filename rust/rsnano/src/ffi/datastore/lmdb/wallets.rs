@@ -1,4 +1,10 @@
-use crate::{datastore::lmdb::LmdbWallets, ffi::U256ArrayDto};
+use std::ffi::{c_char, CStr};
+
+use crate::{
+    datastore::lmdb::LmdbWallets,
+    ffi::{copy_hash_bytes, U256ArrayDto},
+    BlockHash,
+};
 
 use super::{store::LmdbStoreHandle, TransactionHandle};
 
@@ -39,4 +45,38 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_get_wallet_ids(
     let wallet_ids = (*handle).0.get_wallet_ids((*txn).as_txn());
     let data = Box::new(wallet_ids.iter().map(|i| *i.as_bytes()).collect());
     (*result).initialize(data)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_get_block_hash(
+    handle: *mut LmdbWalletsHandle,
+    txn: *mut TransactionHandle,
+    id: *const c_char,
+    hash: *mut u8,
+) -> bool {
+    let id = CStr::from_ptr(id).to_str().unwrap();
+    match (*handle).0.get_block_hash((*txn).as_txn(), id) {
+        Ok(Some(h)) => {
+            copy_hash_bytes(h, hash);
+            true
+        }
+        Ok(None) => {
+            copy_hash_bytes(BlockHash::new(), hash);
+            true
+        }
+        Err(_) => false,
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_set_block_hash(
+    handle: *mut LmdbWalletsHandle,
+    txn: *mut TransactionHandle,
+    id: *const c_char,
+    hash: *const u8,
+) -> bool {
+    let id = CStr::from_ptr(id).to_str().unwrap();
+    (*handle)
+        .0
+        .set_block_hash((*txn).as_txn(), id, &BlockHash::from_ptr(hash))
+        .is_ok()
 }

@@ -3,12 +3,13 @@ use std::ptr;
 use crate::{
     datastore::{DbIterator, Transaction},
     utils::{Deserialize, Serialize, Stream},
-    NoValue, RawKey, WalletId,
+    BlockHash, NoValue, RawKey, WalletId,
 };
 
 use super::{
     ensure_success, get_raw_lmdb_txn, mdb_cursor_get, mdb_cursor_open, mdb_dbi_open, mdb_drop,
-    mdb_put, LmdbIterator, LmdbStore, MdbCursorOp, MdbVal, MDB_CREATE, MDB_SUCCESS,
+    mdb_get, mdb_put, LmdbIterator, LmdbStore, MdbCursorOp, MdbVal, MDB_CREATE, MDB_NOTFOUND,
+    MDB_SUCCESS,
 };
 
 pub struct LmdbWallets {
@@ -143,6 +144,49 @@ impl LmdbWallets {
             i.next();
         }
         wallet_ids
+    }
+
+    pub fn get_block_hash(
+        &self,
+        txn: &dyn Transaction,
+        id: &str,
+    ) -> anyhow::Result<Option<BlockHash>> {
+        let mut id_mdb_val = MdbVal::from(id);
+        let mut result = MdbVal::new();
+        let status = unsafe {
+            mdb_get(
+                get_raw_lmdb_txn(txn),
+                self.send_action_ids_handle,
+                &mut id_mdb_val,
+                &mut result,
+            )
+        };
+        if status == MDB_SUCCESS {
+            Ok(Some(BlockHash::try_from(&result)?))
+        } else if status == MDB_NOTFOUND {
+            Ok(None)
+        } else {
+            Err(anyhow!("get block hash failed"))
+        }
+    }
+
+    pub fn set_block_hash(
+        &self,
+        txn: &dyn Transaction,
+        id: &str,
+        hash: &BlockHash,
+    ) -> anyhow::Result<()> {
+        let mut id_mdb_val = MdbVal::from(id);
+        let status = unsafe {
+            mdb_put(
+                get_raw_lmdb_txn(txn),
+                self.send_action_ids_handle,
+                &mut id_mdb_val,
+                &mut MdbVal::from(hash),
+                0,
+            )
+        };
+        ensure_success(status)
     }
 }
 

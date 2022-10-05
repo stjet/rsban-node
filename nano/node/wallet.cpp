@@ -547,9 +547,9 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 		if (id_a)
 		{
 			auto hash{ wallets.get_block_hash (error, *transaction, *id_a) };
-			if (hash)
+			if (!hash.is_zero ())
 			{
-				block = wallets.node.store.block ().get (*block_transaction, *hash);
+				block = wallets.node.store.block ().get (*block_transaction, hash);
 			}
 		}
 
@@ -1292,31 +1292,16 @@ std::vector<nano::wallet_id> nano::wallets::get_wallet_ids (nano::transaction co
 	return wallet_ids;
 }
 
-boost::optional<nano::block_hash> nano::wallets::get_block_hash (bool & error_a, nano::transaction const & transaction_a, std::string const & id_a)
+nano::block_hash nano::wallets::get_block_hash (bool & error_a, nano::transaction const & transaction_a, std::string const & id_a)
 {
-	auto id_mdb_val = nano::mdb_val (id_a.size (), const_cast<char *> (id_a.data ()));
-	nano::mdb_val result;
-	auto send_action_ids = rsnano::rsn_lmdb_wallets_send_action_ids_handle (rust_handle);
-	auto status (mdb_get (env.tx (transaction_a), send_action_ids, id_mdb_val, result));
-	if (status == 0)
-	{
-		nano::block_hash hash (result);
-		error_a = false;
-		return hash;
-	}
-	else if (status != MDB_NOTFOUND)
-	{
-		error_a = true;
-	}
-	return boost::none;
+	nano::block_hash result;
+	error_a = !rsnano::rsn_lmdb_wallets_get_block_hash (rust_handle, transaction_a.get_rust_handle (), id_a.c_str (), result.bytes.data ());
+	return result;
 }
 
 bool nano::wallets::set_block_hash (nano::transaction const & transaction_a, std::string const & id_a, nano::block_hash const & hash)
 {
-	auto id_mdb_val = nano::mdb_val (id_a.size (), const_cast<char *> (id_a.data ()));
-	auto send_action_ids = rsnano::rsn_lmdb_wallets_send_action_ids_handle (rust_handle);
-	auto status (mdb_put (env.tx (transaction_a), send_action_ids, id_mdb_val, nano::mdb_val (hash), 0));
-	return status != 0;
+	return !rsnano::rsn_lmdb_wallets_set_block_hash (rust_handle, transaction_a.get_rust_handle (), id_a.c_str (), hash.bytes.data ());
 }
 
 std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> nano::wallets::get_wallets ()

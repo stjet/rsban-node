@@ -281,6 +281,12 @@ impl Default for MdbVal {
     }
 }
 
+impl From<&str> for MdbVal {
+    fn from(s: &str) -> Self {
+        Self::from_slice(s.as_bytes())
+    }
+}
+
 impl From<&Account> for MdbVal {
     fn from(a: &Account) -> Self {
         MdbVal::from_slice(a.as_bytes())

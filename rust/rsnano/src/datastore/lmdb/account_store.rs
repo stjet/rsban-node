@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    datastore::{lmdb::MDB_NOTFOUND, parallel_traversal, AccountStore},
+    datastore::{lmdb::MDB_NOTFOUND, parallel_traversal, AccountStore, DbIterator, NullIterator},
     utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
 };
@@ -44,9 +44,7 @@ impl LmdbAccountStore {
     }
 }
 
-impl AccountStore<LmdbReadTransaction, LmdbWriteTransaction, LmdbIterator<Account, AccountInfo>>
-    for LmdbAccountStore
-{
+impl AccountStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbAccountStore {
     fn put(&self, transaction: &LmdbWriteTransaction, account: &Account, info: &AccountInfo) {
         let mut account_val = OwnedMdbVal::from(account);
         let mut info_val = OwnedMdbVal::from(info);
@@ -102,28 +100,38 @@ impl AccountStore<LmdbReadTransaction, LmdbWriteTransaction, LmdbIterator<Accoun
         &self,
         transaction: &Transaction,
         account: &Account,
-    ) -> LmdbIterator<Account, AccountInfo> {
-        LmdbIterator::new(transaction, self.db_handle(), Some(account), true)
+    ) -> Box<dyn DbIterator<Account, AccountInfo>> {
+        Box::new(LmdbIterator::new(
+            transaction,
+            self.db_handle(),
+            Some(account),
+            true,
+        ))
     }
 
-    fn begin(&self, transaction: &Transaction) -> LmdbIterator<Account, AccountInfo> {
-        LmdbIterator::new(transaction, self.db_handle(), None, true)
+    fn begin(&self, transaction: &Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
+        Box::new(LmdbIterator::new(transaction, self.db_handle(), None, true))
     }
 
-    fn rbegin(&self, transaction: &Transaction) -> LmdbIterator<Account, AccountInfo> {
-        LmdbIterator::new(transaction, self.db_handle(), None, false)
+    fn rbegin(&self, transaction: &Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
+        Box::new(LmdbIterator::new(
+            transaction,
+            self.db_handle(),
+            None,
+            false,
+        ))
     }
 
-    fn end(&self) -> LmdbIterator<Account, AccountInfo> {
-        LmdbIterator::null()
+    fn end(&self) -> Box<dyn DbIterator<Account, AccountInfo>> {
+        Box::new(NullIterator::new())
     }
 
     fn for_each_par(
         &self,
         action: &(dyn Fn(
             &LmdbReadTransaction,
-            &mut LmdbIterator<Account, AccountInfo>,
-            &mut LmdbIterator<Account, AccountInfo>,
+            &mut dyn DbIterator<Account, AccountInfo>,
+            &mut dyn DbIterator<Account, AccountInfo>,
         ) + Send
               + Sync),
     ) {
@@ -135,7 +143,7 @@ impl AccountStore<LmdbReadTransaction, LmdbWriteTransaction, LmdbIterator<Accoun
             } else {
                 self.end()
             };
-            action(&mut transaction, &mut begin_it, &mut end_it);
+            action(&mut transaction, begin_it.as_mut(), end_it.as_mut());
         });
     }
 

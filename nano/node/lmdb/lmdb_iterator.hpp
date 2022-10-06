@@ -73,11 +73,6 @@ public:
 			value_a.second = U ();
 		}
 	}
-	void clear ()
-	{
-		rsnano::rsn_lmdb_iterator_clear (handle);
-		load_current ();
-	}
 
 	nano::mdb_iterator<T, U> & operator= (nano::mdb_iterator<T, U> && other_a)
 	{

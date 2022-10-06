@@ -91,15 +91,6 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_begin(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_account_store_rbegin(
-    handle: *mut LmdbAccountStoreHandle,
-    txn: *mut TransactionHandle,
-) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.rbegin(&(*txn).as_txn());
-    to_lmdb_iterator_handle(iterator.as_mut())
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_account_store_count(
     handle: *mut LmdbAccountStoreHandle,
     txn: *mut TransactionHandle,

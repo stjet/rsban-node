@@ -11,7 +11,6 @@ pub trait AccountStore<R, W> {
         account: &Account,
     ) -> Box<dyn DbIterator<Account, AccountInfo>>;
     fn begin(&self, transaction: &Transaction<R, W>) -> Box<dyn DbIterator<Account, AccountInfo>>;
-    fn rbegin(&self, transaction: &Transaction<R, W>) -> Box<dyn DbIterator<Account, AccountInfo>>;
     fn for_each_par(
         &self,
         action: &(dyn Fn(

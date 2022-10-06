@@ -113,15 +113,6 @@ impl AccountStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbAccountStor
         Box::new(LmdbIterator::new(transaction, self.db_handle(), None, true))
     }
 
-    fn rbegin(&self, transaction: &Transaction) -> Box<dyn DbIterator<Account, AccountInfo>> {
-        Box::new(LmdbIterator::new(
-            transaction,
-            self.db_handle(),
-            None,
-            false,
-        ))
-    }
-
     fn end(&self) -> Box<dyn DbIterator<Account, AccountInfo>> {
         Box::new(NullIterator::new())
     }

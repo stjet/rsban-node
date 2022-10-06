@@ -38,11 +38,6 @@ pub unsafe extern "C" fn rsn_lmdb_iterator_next(handle: *mut LmdbIteratorHandle)
     (*handle).0.next();
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_iterator_clear(handle: *mut LmdbIteratorHandle) {
-    (*handle).0.clear();
-}
-
 pub fn to_lmdb_iterator_handle<K, V>(
     iterator: &mut dyn DbIterator<K, V>,
 ) -> *mut LmdbIteratorHandle {

@@ -1848,9 +1848,6 @@ TransactionHandle * txn,
 const uint8_t * account,
 const AccountInfoHandle * info);
 
-LmdbIteratorHandle * rsn_lmdb_account_store_rbegin (LmdbAccountStoreHandle * handle,
-TransactionHandle * txn);
-
 void rsn_lmdb_block_store_account (LmdbBlockStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,
@@ -2030,8 +2027,6 @@ void rsn_lmdb_frontier_store_put (LmdbFrontierStoreHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,
 const uint8_t * account);
-
-void rsn_lmdb_iterator_clear (LmdbIteratorHandle * handle);
 
 void rsn_lmdb_iterator_current (LmdbIteratorHandle * handle, MdbVal * key, MdbVal * value);
 

@@ -86,7 +86,7 @@ impl LmdbRawIterator {
         }
     }
 
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.key = MdbVal::new();
         self.value = MdbVal::new();
     }

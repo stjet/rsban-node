@@ -1,9 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{
-    datastore::{DbIterator, PeerStore},
-    EndpointKey, NoValue,
-};
+use crate::{datastore::PeerStore, EndpointKey, NoValue};
 
 use super::{
     assert_success, ensure_success, exists, mdb_count, mdb_dbi_open, mdb_del, mdb_drop, mdb_put,
@@ -36,7 +33,9 @@ impl LmdbPeerStore {
     }
 }
 
-impl PeerStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbPeerStore {
+impl PeerStore<LmdbReadTransaction, LmdbWriteTransaction, LmdbIterator<EndpointKey, NoValue>>
+    for LmdbPeerStore
+{
     fn put(&self, txn: &LmdbWriteTransaction, endpoint: &EndpointKey) {
         let mut key = OwnedMdbVal::from(endpoint);
         let status = unsafe {
@@ -71,7 +70,7 @@ impl PeerStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbPeerStore {
         assert_success(status);
     }
 
-    fn begin(&self, txn: &Transaction) -> Box<dyn DbIterator<EndpointKey, NoValue>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle(), None, true))
+    fn begin(&self, txn: &Transaction) -> LmdbIterator<EndpointKey, NoValue> {
+        LmdbIterator::new(txn, self.db_handle(), None, true)
     }
 }

@@ -5,10 +5,7 @@ use crate::{
     EndpointKey,
 };
 
-use super::{
-    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
-    TransactionHandle,
-};
+use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 
 pub struct LmdbPeerStoreHandle(Arc<LmdbPeerStore>);
 
@@ -77,8 +74,8 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_begin(
     handle: *mut LmdbPeerStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.begin(&(*txn).as_txn());
-    to_lmdb_iterator_handle(iterator.as_mut())
+    let iterator = (*handle).0.begin(&(*txn).as_txn());
+    LmdbIteratorHandle::new(iterator.as_raw())
 }
 
 unsafe fn to_endpoint_key(address: *const u8, port: u16) -> EndpointKey {

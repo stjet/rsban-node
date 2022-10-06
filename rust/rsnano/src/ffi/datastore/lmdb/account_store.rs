@@ -11,9 +11,7 @@ use crate::{
 };
 
 use super::{
-    iterator::{
-        to_lmdb_iterator_handle, ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle,
-    },
+    iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},
     TransactionHandle,
 };
 
@@ -77,8 +75,8 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_begin_account(
     account: *const u8,
 ) -> *mut LmdbIteratorHandle {
     let account = Account::from_ptr(account);
-    let mut iterator = (*handle).0.begin_account(&(*txn).as_txn(), &account);
-    to_lmdb_iterator_handle(iterator.as_mut())
+    let iterator = (*handle).0.begin_account(&(*txn).as_txn(), &account);
+    LmdbIteratorHandle::new(iterator.as_raw())
 }
 
 #[no_mangle]
@@ -86,8 +84,8 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_begin(
     handle: *mut LmdbAccountStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.begin(&(*txn).as_txn());
-    to_lmdb_iterator_handle(iterator.as_mut())
+    let iterator = (*handle).0.begin(&(*txn).as_txn());
+    LmdbIteratorHandle::new(iterator.as_raw())
 }
 
 #[no_mangle]
@@ -95,8 +93,8 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_rbegin(
     handle: *mut LmdbAccountStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.rbegin(&(*txn).as_txn());
-    to_lmdb_iterator_handle(iterator.as_mut())
+    let iterator = (*handle).0.rbegin(&(*txn).as_txn());
+    LmdbIteratorHandle::new(iterator.as_raw())
 }
 
 #[no_mangle]

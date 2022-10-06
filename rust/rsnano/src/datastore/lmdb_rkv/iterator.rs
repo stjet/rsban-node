@@ -1,24 +1,21 @@
-use super::{
-    mdb_cursor_close, mdb_cursor_open, MdbCursor, MdbTxn, MdbVal, OwnedMdbVal, Transaction,
-};
+use lmdb::RoCursor;
+
 use crate::{
     datastore::{
-        lmdb::{mdb_cursor_get, MdbCursorOp, MDB_NOTFOUND, MDB_SUCCESS},
         DbIterator,
     },
     utils::{Deserialize, Serialize, StreamAdapter},
 };
 use std::ptr;
 
-#[derive(Clone)]
-pub struct LmdbRawIterator {
-    cursor: *mut MdbCursor,
-    pub key: MdbVal,
-    pub value: MdbVal,
+pub struct LmdbRawIterator<'a> {
+    cursor: RoCursor<'a>,
+    pub key: Option<&'a [u8]>,
+    pub value: Option<&'a [u8]>,
     expected_key_size: usize,
 }
 
-impl LmdbRawIterator {
+impl<'a> LmdbRawIterator<'a> {
     pub fn new(
         txn: *mut MdbTxn,
         dbi: u32,
@@ -34,15 +31,6 @@ impl LmdbRawIterator {
         };
         iterator.init(txn, dbi, val, direction_asc);
         iterator
-    }
-
-    pub fn null() -> Self {
-        Self {
-            cursor: ptr::null_mut(),
-            key: MdbVal::new(),
-            value: MdbVal::new(),
-            expected_key_size: 0,
-        }
     }
 
     pub fn take(&mut self) -> Self {
@@ -180,14 +168,6 @@ where
         };
         result.load_current();
         result
-    }
-
-    pub fn null() -> Self {
-        Self {
-            key: None,
-            value: None,
-            raw_iterator: LmdbRawIterator::null(),
-        }
     }
 
     pub fn as_raw(self) -> LmdbRawIterator {

@@ -63,12 +63,6 @@ nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_stor
 	return to_account_iterator (it_handle);
 }
 
-nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::rbegin (nano::transaction const & transaction_a) const
-{
-	auto it_handle{ rsnano::rsn_lmdb_account_store_rbegin (handle, transaction_a.get_rust_handle ()) };
-	return to_account_iterator (it_handle);
-}
-
 nano::store_iterator<nano::account, nano::account_info> nano::lmdb::account_store::end () const
 {
 	return nano::store_iterator<nano::account, nano::account_info> (nullptr);

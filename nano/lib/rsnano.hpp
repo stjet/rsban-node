@@ -2039,8 +2039,6 @@ void rsn_lmdb_iterator_destroy (LmdbIteratorHandle * handle);
 
 void rsn_lmdb_iterator_next (LmdbIteratorHandle * handle);
 
-void rsn_lmdb_iterator_previous (LmdbIteratorHandle * handle);
-
 LmdbIteratorHandle * rsn_lmdb_online_weight_store_begin (LmdbOnlineWeightStoreHandle * handle,
 TransactionHandle * txn);
 

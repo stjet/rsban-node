@@ -21,7 +21,6 @@ namespace lmdb
 		size_t count (nano::transaction const & transaction_a) override;
 		nano::store_iterator<nano::account, nano::account_info> begin (nano::transaction const & transaction_a, nano::account const & account_a) const override;
 		nano::store_iterator<nano::account, nano::account_info> begin (nano::transaction const & transaction_a) const override;
-		nano::store_iterator<nano::account, nano::account_info> rbegin (nano::transaction const & transaction_a) const override;
 		nano::store_iterator<nano::account, nano::account_info> end () const override;
 		void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::account, nano::account_info>, nano::store_iterator<nano::account, nano::account_info>)> const & action_a) const override;
 

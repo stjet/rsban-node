@@ -405,7 +405,6 @@ class store_iterator_impl
 public:
 	virtual ~store_iterator_impl () = default;
 	virtual nano::store_iterator_impl<T, U> & operator++ () = 0;
-	virtual nano::store_iterator_impl<T, U> & operator-- () = 0;
 	virtual bool operator== (nano::store_iterator_impl<T, U> const & other_a) const = 0;
 	virtual bool is_end_sentinal () const = 0;
 	virtual void fill (std::pair<T, U> &) const = 0;
@@ -442,12 +441,6 @@ public:
 	nano::store_iterator<T, U> & operator++ ()
 	{
 		++*impl;
-		impl->fill (current);
-		return *this;
-	}
-	nano::store_iterator<T, U> & operator-- ()
-	{
-		--*impl;
 		impl->fill (current);
 		return *this;
 	}
@@ -557,7 +550,6 @@ public:
 	virtual size_t count (nano::transaction const &) = 0;
 	virtual nano::store_iterator<nano::account, nano::account_info> begin (nano::transaction const &, nano::account const &) const = 0;
 	virtual nano::store_iterator<nano::account, nano::account_info> begin (nano::transaction const &) const = 0;
-	virtual nano::store_iterator<nano::account, nano::account_info> rbegin (nano::transaction const &) const = 0;
 	virtual nano::store_iterator<nano::account, nano::account_info> end () const = 0;
 	virtual void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::account, nano::account_info>, nano::store_iterator<nano::account, nano::account_info>)> const &) const = 0;
 };

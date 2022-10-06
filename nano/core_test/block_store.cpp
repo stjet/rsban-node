@@ -964,17 +964,6 @@ TEST (block_store, large_iteration)
 		previous = current;
 	}
 	ASSERT_EQ (accounts1, accounts2);
-	// Reverse iteration
-	std::unordered_set<nano::account> accounts3;
-	previous = std::numeric_limits<nano::uint256_t>::max ();
-	for (auto i (store->account ().rbegin (*transaction)), n (store->account ().end ()); i != n; --i)
-	{
-		nano::account current (i->first);
-		ASSERT_LT (current.number (), previous.number ());
-		accounts3.insert (current);
-		previous = current;
-	}
-	ASSERT_EQ (accounts1, accounts3);
 }
 
 TEST (block_store, frontier)

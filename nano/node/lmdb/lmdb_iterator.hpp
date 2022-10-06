@@ -40,13 +40,6 @@ public:
 		return *this;
 	}
 
-	nano::store_iterator_impl<T, U> & operator-- () override
-	{
-		rsnano::rsn_lmdb_iterator_previous (handle);
-		load_current ();
-		return *this;
-	}
-
 	bool operator== (nano::store_iterator_impl<T, U> const & base_a) const override
 	{
 		auto const other_a (boost::polymorphic_downcast<nano::mdb_iterator<T, U> const *> (&base_a));

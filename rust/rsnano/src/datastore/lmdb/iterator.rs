@@ -117,25 +117,6 @@ impl LmdbRawIterator {
             self.clear();
         }
     }
-
-    pub fn previous(&mut self) {
-        debug_assert!(!self.cursor.is_null());
-        let status = unsafe {
-            mdb_cursor_get(
-                self.cursor,
-                &mut self.key,
-                &mut self.value,
-                MdbCursorOp::MdbPrev,
-            )
-        };
-        assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
-        if status == MDB_NOTFOUND {
-            self.clear();
-        }
-        if self.key.mv_size != self.expected_key_size {
-            self.clear();
-        }
-    }
 }
 
 impl Drop for LmdbRawIterator {

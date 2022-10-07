@@ -7,14 +7,14 @@ use crate::datastore::iterator::DbIteratorImpl;
 
 use super::LmdbTransaction;
 
-pub struct LmdbIteratorImpl<'a> {
-    current: Option<(&'a [u8], &'a [u8])>,
-    cursor: Option<RoCursor<'a>>,
+pub struct LmdbIteratorImpl {
+    current: Option<(&'static [u8], &'static [u8])>,
+    cursor: Option<RoCursor<'static>>,
 }
 
-impl<'a> LmdbIteratorImpl<'a> {
+impl LmdbIteratorImpl {
     pub fn new(
-        txn: &'a LmdbTransaction<'a>,
+        txn: &LmdbTransaction,
         dbi: Database,
         key_val: Option<&[u8]>,
         direction_asc: bool,
@@ -30,6 +30,9 @@ impl<'a> LmdbIteratorImpl<'a> {
         };
 
         let cursor = txn.open_ro_cursor(dbi).unwrap();
+        //todo: dont use unsafe code:
+        let cursor =
+            unsafe { std::mem::transmute::<lmdb::RoCursor<'_>, lmdb::RoCursor<'static>>(cursor) };
         let mut result = Self {
             current: None,
             cursor: Some(cursor),
@@ -59,8 +62,8 @@ impl<'a> LmdbIteratorImpl<'a> {
     }
 }
 
-impl<'a> DbIteratorImpl for LmdbIteratorImpl<'a> {
-    fn current(&self) -> Option<(&'a [u8], &'a [u8])> {
+impl DbIteratorImpl for LmdbIteratorImpl {
+    fn current(&self) -> Option<(&[u8], &[u8])> {
         self.current
     }
 

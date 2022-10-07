@@ -73,10 +73,7 @@ impl LmdbEnv {
 
     pub fn init(path: impl AsRef<Path>, options: &EnvOptions) -> anyhow::Result<Environment> {
         let path = path.as_ref();
-        let parent = path.parent().ok_or_else(|| anyhow!("no parent path"))?;
-        create_dir_all(parent)?;
-        let perms = Permissions::from_mode(0o700);
-        set_permissions(parent, perms)?;
+        try_create_parent_dir(path)?;
         let mut map_size = options.config.map_size;
         let max_instrumented_map_size = 16 * 1024 * 1024;
         if memory_intensive_instrumentation() && map_size > max_instrumented_map_size {
@@ -145,6 +142,18 @@ impl LmdbEnv {
     }
 }
 
+fn try_create_parent_dir(path: &Path) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        if parent != Path::new("") {
+            if !parent.is_dir() {
+                create_dir_all(parent)?;
+                set_permissions(parent, Permissions::from_mode(0o700))?;
+            }
+        }
+    }
+    Ok(())
+}
+
 impl Drop for LmdbEnv {
     fn drop(&mut self) {
         let _ = self.environment.sync(true);
@@ -167,6 +176,14 @@ mod tests {
                 path: Path::new("/tmp").join(path),
             }
         }
+
+        fn random() -> Self {
+            Self::new(Self::temp_file_name())
+        }
+
+        fn temp_file_name() -> PathBuf {
+            PathBuf::from(format!("{}.ldb", uuid::Uuid::new_v4().to_simple()))
+        }
     }
 
     impl Drop for TestDbFile {
@@ -184,6 +201,13 @@ mod tests {
 
     mod test_db_file {
         use super::*;
+
+        #[test]
+        fn tmp_test() {
+            let path = Path::new("foo.tmp");
+            assert_eq!(path.parent(), Some(Path::new("")));
+            assert_eq!(Path::new(""), Path::new(""))
+        }
 
         #[test]
         fn dont_panic_when_file_not_found() {
@@ -210,10 +234,17 @@ mod tests {
             assert_eq!(path.exists(), false);
             assert_eq!(path.parent().unwrap().exists(), false);
         }
+
+        #[test]
+        fn tmp_file_name() {
+            let filename = TestDbFile::temp_file_name();
+            assert_eq!(filename.extension().unwrap(), "ldb");
+            assert_eq!(filename.file_stem().unwrap().len(), 32);
+            assert_ne!(TestDbFile::temp_file_name(), TestDbFile::temp_file_name());
+        }
     }
 
     #[test]
-    #[ignore]
     fn first_test() {
         let db_file = TestDbFile::new("foo.ldb");
         let env = LmdbEnv::new(&db_file.path).unwrap();

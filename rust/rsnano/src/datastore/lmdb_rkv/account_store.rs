@@ -25,7 +25,7 @@ impl LmdbAccountStore {
     }
 }
 
-impl<'a> AccountStore<LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl<'a>>
+impl<'a> AccountStore<LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
     for LmdbAccountStore
 {
     fn put(
@@ -53,27 +53,32 @@ impl<'a> AccountStore<LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIte
         &self,
         transaction: &LmdbTransaction,
         account: &Account,
-    ) -> DbIterator2<Account, AccountInfo, LmdbIteratorImpl<'a>> {
+    ) -> DbIterator2<Account, AccountInfo, LmdbIteratorImpl> {
         todo!()
     }
 
-    fn begin(&self, transaction: &LmdbTransaction) -> AccountIterator<LmdbIteratorImpl<'a>> {
-        todo!()
+    fn begin(&self, transaction: &LmdbTransaction) -> AccountIterator<LmdbIteratorImpl> {
+        AccountIterator::new(LmdbIteratorImpl::new(
+            transaction,
+            self.db_handle.lock().unwrap().unwrap(),
+            None,
+            true,
+        ))
     }
 
     fn for_each_par(
         &self,
         action: &(dyn Fn(
             &LmdbReadTransaction<'a>,
-            AccountIterator<LmdbIteratorImpl<'a>>,
-            AccountIterator<LmdbIteratorImpl<'a>>,
+            AccountIterator<LmdbIteratorImpl>,
+            AccountIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         todo!()
     }
 
-    fn end(&self) -> AccountIterator<LmdbIteratorImpl<'a>> {
+    fn end(&self) -> AccountIterator<LmdbIteratorImpl> {
         todo!()
     }
 

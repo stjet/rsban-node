@@ -13,7 +13,7 @@ use super::{TransactionHandle, TransactionType};
 
 enum IteratorType {
     Lmdb(LmdbRawIterator),
-    Rkv(crate::datastore::lmdb_rkv::LmdbIteratorImpl<'static>),
+    Rkv(crate::datastore::lmdb_rkv::LmdbIteratorImpl),
 }
 
 pub struct LmdbIteratorHandle(IteratorType);
@@ -24,13 +24,7 @@ impl LmdbIteratorHandle {
         Box::into_raw(Box::new(LmdbIteratorHandle(IteratorType::Lmdb(it))))
     }
 
-    pub fn new2<'a>(it: crate::datastore::lmdb_rkv::LmdbIteratorImpl<'a>) -> *mut Self {
-        let it = unsafe {
-            std::mem::transmute::<
-                crate::datastore::lmdb_rkv::LmdbIteratorImpl<'a>,
-                crate::datastore::lmdb_rkv::LmdbIteratorImpl<'static>,
-            >(it)
-        };
+    pub fn new2(it: crate::datastore::lmdb_rkv::LmdbIteratorImpl) -> *mut Self {
         Box::into_raw(Box::new(LmdbIteratorHandle(IteratorType::Rkv(it))))
     }
 }

@@ -30,7 +30,7 @@ pub use block_store::LmdbBlockStore;
 pub use confirmation_height_store::LmdbConfirmationHeightStore;
 pub use final_vote_store::LmdbFinalVoteStore;
 pub use frontier_store::LmdbFrontierStore;
-pub use iterator::{LmdbIterator, LmdbRawIterator};
+pub use iterator::{LmdbIterator, LmdbIteratorImpl, LmdbRawIterator};
 pub use lmdb_env::{EnvOptions, LmdbEnv};
 pub use online_weight_store::LmdbOnlineWeightStore;
 pub use peer_store::LmdbPeerStore;

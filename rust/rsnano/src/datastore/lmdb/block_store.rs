@@ -208,7 +208,7 @@ impl BlockStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbBlockStore {
             existing = self.begin(transaction);
         }
 
-        existing.value().map(|i| i.block.clone())
+        existing.current().map(|(_, v)| v.block.clone())
     }
 
     fn balance(&self, txn: &Transaction, hash: &BlockHash) -> Amount {

@@ -1,7 +1,12 @@
-use super::{DbIterator, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
 use crate::{Account, AccountInfo};
 
-pub trait AccountStore<R, W> {
+pub type AccountIterator<I> = DbIterator2<Account, AccountInfo, I>;
+
+pub trait AccountStore<R, W, I>
+where
+    I: DbIteratorImpl,
+{
     fn put(&self, transaction: &W, account: &Account, info: &AccountInfo);
     fn get(&self, transaction: &Transaction<R, W>, account: &Account) -> Option<AccountInfo>;
     fn del(&self, transaction: &W, account: &Account);
@@ -9,17 +14,14 @@ pub trait AccountStore<R, W> {
         &self,
         transaction: &Transaction<R, W>,
         account: &Account,
-    ) -> Box<dyn DbIterator<Account, AccountInfo>>;
-    fn begin(&self, transaction: &Transaction<R, W>) -> Box<dyn DbIterator<Account, AccountInfo>>;
+    ) -> DbIterator2<Account, AccountInfo, I>;
+    fn begin(&self, transaction: &Transaction<R, W>) -> AccountIterator<I>;
     fn for_each_par(
         &self,
-        action: &(dyn Fn(
-            &R,
-            &mut dyn DbIterator<Account, AccountInfo>,
-            &mut dyn DbIterator<Account, AccountInfo>,
-        ) + Send
+        action: &(dyn Fn(&R, AccountIterator<I>, AccountIterator<I>)
+              + Send
               + Sync),
     );
-    fn end(&self) -> Box<dyn DbIterator<Account, AccountInfo>>;
+    fn end(&self) -> AccountIterator<I>;
     fn count(&self, txn: &Transaction<R, W>) -> usize;
 }

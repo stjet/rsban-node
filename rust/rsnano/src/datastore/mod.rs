@@ -3,6 +3,7 @@ mod block_store;
 mod confirmation_height_store;
 mod final_vote_store;
 mod frontier_store;
+mod iterator;
 mod ledger;
 pub mod lmdb;
 pub mod lmdb_rkv;
@@ -17,11 +18,12 @@ mod write_database_queue;
 
 use std::cmp::{max, min};
 
-pub use account_store::AccountStore;
+pub use account_store::{AccountStore, AccountIterator};
 pub use block_store::BlockStore;
 pub use confirmation_height_store::ConfirmationHeightStore;
 pub use final_vote_store::FinalVoteStore;
 pub use frontier_store::FrontierStore;
+pub use iterator::{DbIterator, DbIterator2, NullIterator};
 pub use ledger::Ledger;
 pub use online_weight_store::OnlineWeightStore;
 pub use peer_store::PeerStore;
@@ -35,48 +37,10 @@ pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
 
 use crate::utils::get_cpu_count;
 
-use self::lmdb::LmdbRawIterator;
-
 #[derive(Clone, Copy)]
 pub enum Transaction<'a, R, W> {
     Read(&'a R),
     Write(&'a W),
-}
-
-pub trait DbIterator<K, V> {
-    fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator>;
-    fn current(&self) -> Option<(&K, &V)>;
-    fn value(&self) -> Option<&V>;
-    fn next(&mut self);
-    fn is_end(&self) -> bool;
-}
-
-pub struct NullIterator {}
-
-impl NullIterator {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl<K, V> DbIterator<K, V> for NullIterator {
-    fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator> {
-        None
-    }
-
-    fn is_end(&self) -> bool {
-        true
-    }
-
-    fn value(&self) -> Option<&V> {
-        None
-    }
-
-    fn current(&self) -> Option<(&K, &V)> {
-        None
-    }
-
-    fn next(&mut self) {}
 }
 
 pub fn parallel_traversal(action: &(impl Fn(U256, U256, bool) + Send + Sync)) {

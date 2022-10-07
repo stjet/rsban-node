@@ -3,6 +3,7 @@ use super::{
 };
 use crate::{
     datastore::{
+        iterator::DbIteratorImpl,
         lmdb::{mdb_cursor_get, MdbCursorOp, MDB_NOTFOUND, MDB_SUCCESS},
         DbIterator,
     },
@@ -206,10 +207,6 @@ where
         self.raw_iterator.key.mv_size == 0
     }
 
-    fn value(&self) -> Option<&V> {
-        self.value.as_ref()
-    }
-
     fn current(&self) -> Option<(&K, &V)> {
         if let Some(k) = self.key.as_ref() {
             Some((k, self.value.as_ref().unwrap()))
@@ -221,5 +218,51 @@ where
     fn next(&mut self) {
         self.raw_iterator.next();
         self.load_current();
+    }
+}
+
+pub struct LmdbIteratorImpl {
+    raw_iterator: LmdbRawIterator,
+}
+
+impl LmdbIteratorImpl {
+    pub fn new(
+        txn: &Transaction,
+        dbi: u32,
+        mut key_val: MdbVal,
+        key_size: usize,
+        direction_asc: bool,
+    ) -> Self {
+        let raw_iterator =
+            LmdbRawIterator::new(txn.handle(), dbi, &mut key_val, direction_asc, key_size);
+
+        Self { raw_iterator }
+    }
+
+    pub fn null() -> Self {
+        Self {
+            raw_iterator: LmdbRawIterator::null(),
+        }
+    }
+
+    pub fn take_raw_iterator(self) -> LmdbRawIterator {
+        self.raw_iterator
+    }
+}
+
+impl DbIteratorImpl for LmdbIteratorImpl {
+    fn current(&self) -> Option<(&[u8], &[u8])> {
+        if self.raw_iterator.key.mv_size > 0 {
+            Some((
+                self.raw_iterator.key.as_slice(),
+                self.raw_iterator.value.as_slice(),
+            ))
+        } else {
+            None
+        }
+    }
+
+    fn next(&mut self) {
+        self.raw_iterator.next();
     }
 }

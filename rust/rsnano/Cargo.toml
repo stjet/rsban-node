@@ -40,3 +40,4 @@ uuid = { version = "0.8.2", features = ["v4"] }
 scoped_threadpool = "0.1.*"
 backtrace = "0.3"
 lmdb-rkv = "0.14"
+lmdb-rkv-sys = "0.11"

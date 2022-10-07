@@ -18,7 +18,7 @@ mod write_database_queue;
 
 use std::cmp::{max, min};
 
-pub use account_store::{AccountStore, AccountIterator};
+pub use account_store::{AccountIterator, AccountStore};
 pub use block_store::BlockStore;
 pub use confirmation_height_store::ConfirmationHeightStore;
 pub use final_vote_store::FinalVoteStore;

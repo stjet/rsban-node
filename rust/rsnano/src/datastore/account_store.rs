@@ -18,9 +18,7 @@ where
     fn begin(&self, transaction: &Transaction<R, W>) -> AccountIterator<I>;
     fn for_each_par(
         &self,
-        action: &(dyn Fn(&R, AccountIterator<I>, AccountIterator<I>)
-              + Send
-              + Sync),
+        action: &(dyn Fn(&R, AccountIterator<I>, AccountIterator<I>) + Send + Sync),
     );
     fn end(&self) -> AccountIterator<I>;
     fn count(&self, txn: &Transaction<R, W>) -> usize;

@@ -1,8 +1,11 @@
+mod iterator;
 mod lmdb_env;
 mod version_store;
 
 use super::lmdb::TxnCallbacks;
-use lmdb::{Environment, InactiveTransaction, RoTransaction, RwTransaction, Transaction};
+use lmdb::{
+    Database, Environment, InactiveTransaction, RoCursor, RoTransaction, RwTransaction, Transaction,
+};
 pub use lmdb_env::LmdbEnv;
 use std::{mem, sync::Arc};
 
@@ -168,6 +171,13 @@ impl<'a> LmdbTransaction<'a> {
         match self {
             super::Transaction::Read(r) => r.txn().get(database, key),
             super::Transaction::Write(w) => w.txn().get(database, key),
+        }
+    }
+
+    fn open_ro_cursor<'txn>(&'txn self, database: Database) -> lmdb::Result<RoCursor> {
+        match self {
+            super::Transaction::Read(r) => r.txn().open_ro_cursor(database),
+            super::Transaction::Write(w) => w.txn().open_ro_cursor(database),
         }
     }
 }

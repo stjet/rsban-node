@@ -1,7 +1,9 @@
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    datastore::{lmdb::MDB_NOTFOUND, parallel_traversal, AccountStore, DbIterator2, AccountIterator},
+    datastore::{
+        lmdb::MDB_NOTFOUND, parallel_traversal, AccountIterator, AccountStore, DbIterator2,
+    },
     utils::{Deserialize, Serialize, StreamAdapter},
     Account, AccountInfo,
 };
@@ -113,10 +115,7 @@ impl AccountStore<LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
         ))
     }
 
-    fn begin(
-        &self,
-        transaction: &Transaction,
-    ) -> AccountIterator<LmdbIteratorImpl> {
+    fn begin(&self, transaction: &Transaction) -> AccountIterator<LmdbIteratorImpl> {
         DbIterator2::new(LmdbIteratorImpl::new(
             transaction,
             self.db_handle(),

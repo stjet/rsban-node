@@ -1296,6 +1296,7 @@ dependencies = [
  "hex",
  "indexmap",
  "lmdb-rkv",
+ "lmdb-rkv-sys",
  "mock_instant",
  "num",
  "num-derive",

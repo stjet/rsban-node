@@ -34,7 +34,7 @@ use crate::{
             MDB_GET, MDB_PUT, MDB_STAT, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW,
             MDB_TXN_RESET,
         },
-        Transaction,
+        lmdb_rkv, Transaction,
     },
     ffi::VoidPointerCallback,
 };
@@ -73,6 +73,14 @@ impl TransactionHandle {
             TransactionType::Read(t) => Transaction::Read(t),
             TransactionType::ReadRef(t) => Transaction::Read(*t),
             TransactionType::Write(t) => Transaction::Write(t),
+            _ => panic!("not a lmdb txn"),
+        }
+    }
+
+    pub fn as_rkv_txn(&self) -> lmdb_rkv::LmdbTransaction {
+        match &self.0 {
+            TransactionType::ReadRkv(t) => Transaction::Read(t),
+            _ => panic!("not a rkv txn"),
         }
     }
 }
@@ -89,6 +97,7 @@ pub enum TransactionType {
     Read(LmdbReadTransaction),
     ReadRef(&'static LmdbReadTransaction),
     Write(LmdbWriteTransaction),
+    ReadRkv(lmdb_rkv::LmdbReadTransaction<'static>),
 }
 
 #[no_mangle]

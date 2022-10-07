@@ -1,8 +1,11 @@
+mod account_store;
 mod iterator;
 mod lmdb_env;
 mod version_store;
 
 use super::lmdb::TxnCallbacks;
+pub use account_store::LmdbAccountStore;
+pub use iterator::LmdbIteratorImpl;
 use lmdb::{
     Database, Environment, InactiveTransaction, RoCursor, RoTransaction, RwTransaction, Transaction,
 };
@@ -160,7 +163,7 @@ impl<'a> Drop for LmdbWriteTransaction<'a> {
     }
 }
 
-type LmdbTransaction<'a> =
+pub type LmdbTransaction<'a> =
     super::Transaction<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>>;
 
 impl<'a> LmdbTransaction<'a> {

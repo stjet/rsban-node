@@ -102,6 +102,8 @@ struct LedgerHandle;
 
 struct LmdbAccountStoreHandle;
 
+struct LmdbAccountStoreHandle2;
+
 struct LmdbBlockStoreHandle;
 
 struct LmdbConfirmationHeightStoreHandle;
@@ -1819,6 +1821,9 @@ LedgerHandle * rsn_ledger_create (void * handle);
 void rsn_ledger_destroy (LedgerHandle * handle);
 
 LmdbIteratorHandle * rsn_lmdb_account_store_begin (LmdbAccountStoreHandle * handle,
+TransactionHandle * txn);
+
+LmdbIteratorHandle * rsn_lmdb_account_store_begin2 (LmdbAccountStoreHandle2 * handle,
 TransactionHandle * txn);
 
 LmdbIteratorHandle * rsn_lmdb_account_store_begin_account (LmdbAccountStoreHandle * handle,

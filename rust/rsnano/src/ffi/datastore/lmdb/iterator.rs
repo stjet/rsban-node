@@ -2,7 +2,7 @@ use std::{ffi::c_void, ptr};
 
 use crate::{
     datastore::{
-        lmdb::{LmdbIteratorImpl, LmdbRawIterator, LmdbReadTransaction, MdbVal},
+        lmdb::{LmdbRawIterator, LmdbReadTransaction, MdbVal},
         DbIterator, DbIterator2,
     },
     ffi::VoidPointerCallback,
@@ -11,22 +11,27 @@ use crate::{
 
 use super::{TransactionHandle, TransactionType};
 
-pub struct LmdbIteratorHandle(LmdbRawIterator);
+enum IteratorType {
+    Lmdb(LmdbRawIterator),
+    Rkv(crate::datastore::lmdb_rkv::LmdbIteratorImpl<'static>),
+}
+
+pub struct LmdbIteratorHandle(IteratorType);
 
 impl LmdbIteratorHandle {
     //todo delete
     pub fn new(it: LmdbRawIterator) -> *mut Self {
-        Box::into_raw(Box::new(LmdbIteratorHandle(it)))
+        Box::into_raw(Box::new(LmdbIteratorHandle(IteratorType::Lmdb(it))))
     }
 
-    pub fn new2<K, V>(it: DbIterator2<K, V, LmdbIteratorImpl>) -> *mut Self
-    where
-        K: Serialize + Deserialize<Target = K>,
-        V: Deserialize<Target = V>,
-    {
-        Box::into_raw(Box::new(LmdbIteratorHandle(
-            it.take_impl().take_raw_iterator(),
-        )))
+    pub fn new2<'a>(it: crate::datastore::lmdb_rkv::LmdbIteratorImpl<'a>) -> *mut Self {
+        let it = unsafe {
+            std::mem::transmute::<
+                crate::datastore::lmdb_rkv::LmdbIteratorImpl<'a>,
+                crate::datastore::lmdb_rkv::LmdbIteratorImpl<'static>,
+            >(it)
+        };
+        Box::into_raw(Box::new(LmdbIteratorHandle(IteratorType::Rkv(it))))
     }
 }
 
@@ -41,13 +46,21 @@ pub unsafe extern "C" fn rsn_lmdb_iterator_current(
     key: *mut MdbVal,
     value: *mut MdbVal,
 ) {
-    *key = (*handle).0.key.clone();
-    *value = (*handle).0.value.clone();
+    match &(*handle).0 {
+        IteratorType::Lmdb(h) => {
+            *key = h.key.clone();
+            *value = h.value.clone();
+        }
+        IteratorType::Rkv(_) => todo!(),
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_iterator_next(handle: *mut LmdbIteratorHandle) {
-    (*handle).0.next();
+    match &mut (*handle).0 {
+        IteratorType::Lmdb(h) => h.next(),
+        IteratorType::Rkv(_) => todo!(),
+    }
 }
 
 //todo delete
@@ -61,7 +74,7 @@ pub fn to_lmdb_iterator_handle<K, V>(
 }
 
 pub fn to_lmdb_iterator_handle2<K, V>(
-    iterator: DbIterator2<K, V, LmdbIteratorImpl>,
+    iterator: DbIterator2<K, V, crate::datastore::lmdb::LmdbIteratorImpl>,
 ) -> *mut LmdbIteratorHandle
 where
     K: Serialize + Deserialize<Target = K>,
@@ -103,8 +116,8 @@ impl ForEachParWrapper {
     pub fn execute2<K, V>(
         &self,
         txn: &LmdbReadTransaction,
-        begin: DbIterator2<K, V, LmdbIteratorImpl>,
-        end: DbIterator2<K, V, LmdbIteratorImpl>,
+        begin: DbIterator2<K, V, crate::datastore::lmdb::LmdbIteratorImpl>,
+        end: DbIterator2<K, V, crate::datastore::lmdb::LmdbIteratorImpl>,
     ) where
         K: Serialize + Deserialize<Target = K>,
         V: Deserialize<Target = V>,

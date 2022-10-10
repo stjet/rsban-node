@@ -266,3 +266,9 @@ impl DbIteratorImpl for LmdbIteratorImpl {
         self.raw_iterator.next();
     }
 }
+
+impl PartialEq for LmdbIteratorImpl {
+    fn eq(&self, other: &Self) -> bool {
+        self.raw_iterator.key.as_slice() == other.raw_iterator.key.as_slice()
+    }
+}

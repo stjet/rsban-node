@@ -1,8 +1,13 @@
 use crate::{Account, Amount, Block, BlockEnum, BlockHash, BlockWithSideband, Epoch};
 
-use super::{DbIterator, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 
-pub trait BlockStore<R, W> {
+pub trait BlockStore<'a, R, W, I>
+where
+    R: 'a,
+    W: 'a,
+    I: DbIteratorImpl,
+{
     fn put(&self, txn: &W, hash: &BlockHash, block: &dyn Block);
     fn exists(&self, txn: &Transaction<R, W>, hash: &BlockHash) -> bool;
     fn successor(&self, txn: &Transaction<R, W>, hash: &BlockHash) -> BlockHash;

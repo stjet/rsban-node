@@ -71,3 +71,9 @@ impl DbIteratorImpl for LmdbIteratorImpl {
         self.load_current(None, MDB_NEXT);
     }
 }
+
+impl PartialEq for LmdbIteratorImpl {
+    fn eq(&self, other: &Self) -> bool {
+        self.current.map(|(k, _)| k) == other.current.map(|(k, _)| k)
+    }
+}

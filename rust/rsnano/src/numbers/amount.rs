@@ -108,6 +108,20 @@ impl Deserialize for Amount {
     }
 }
 
+impl std::ops::AddAssign for Amount {
+    fn add_assign(&mut self, rhs: Self) {
+        self.value += rhs.value;
+    }
+}
+
+impl std::ops::Add for Amount {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Amount::new(self.value + rhs.value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

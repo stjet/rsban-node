@@ -16,7 +16,7 @@ use std::{
 
 use super::{
     assert_success, ensure_success, mdb_count, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbEnv,
-    LmdbIterator, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
+    LmdbIterator, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
 };
 
 pub struct LmdbBlockStore {
@@ -64,7 +64,9 @@ unsafe fn block_type_from_raw(data: *const c_void) -> Option<BlockType> {
     BlockType::from_u8(first_byte)
 }
 
-impl BlockStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbBlockStore {
+impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+    for LmdbBlockStore
+{
     fn put(&self, txn: &LmdbWriteTransaction, hash: &BlockHash, block: &dyn Block) {
         debug_assert!(
             block.sideband().unwrap().successor.is_zero()

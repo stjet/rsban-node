@@ -257,4 +257,34 @@ mod tests {
         it.next();
         assert_eq!(it.current(), None);
     }
+
+    #[test]
+    fn for_each_par() {
+        let sut = AccountStoreTestContext::new();
+        let mut txn = sut.env.tx_begin_write().unwrap();
+        let account_1 = Account::from(1);
+        let account_max = Account::from_bytes([0xFF; 32]);
+        let info_1 = AccountInfo {
+            balance: Amount::new(1),
+            ..Default::default()
+        };
+        let info_max = AccountInfo {
+            balance: Amount::new(3),
+            ..Default::default()
+        };
+        sut.store.put(&mut txn, &account_1, &info_1);
+        sut.store.put(&mut txn, &account_max, &info_max);
+        txn.commit();
+
+        let balance_sum = Mutex::new(Amount::zero());
+        sut.store.for_each_par(&|_, mut begin, end| {
+            while begin != end {
+                if let Some((_, v)) = begin.current() {
+                    *balance_sum.lock().unwrap() += v.balance
+                }
+                begin.next();
+            }
+        });
+        assert_eq!(*balance_sum.lock().unwrap(), Amount::new(4));
+    }
 }

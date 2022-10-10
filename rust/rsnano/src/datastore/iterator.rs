@@ -42,17 +42,28 @@ pub struct DbIterator2<K, V, I>
 where
     K: Serialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
-    I: DbIteratorImpl,
+    I: DbIteratorImpl + PartialEq,
 {
     iterator_impl: I,
     current: Option<(K, V)>,
+}
+
+impl<K, V, I> PartialEq for DbIterator2<K, V, I>
+where
+    K: Serialize + Deserialize<Target = K>,
+    V: Deserialize<Target = V>,
+    I: DbIteratorImpl + PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.iterator_impl == other.iterator_impl
+    }
 }
 
 impl<K, V, I> DbIterator2<K, V, I>
 where
     K: Serialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
-    I: DbIteratorImpl,
+    I: DbIteratorImpl + PartialEq,
 {
     pub fn new(iterator_impl: I) -> Self {
         let mut result = Self {

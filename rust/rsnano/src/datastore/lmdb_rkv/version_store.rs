@@ -41,7 +41,7 @@ impl<'a> VersionStore<LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>> for Lmd
         let key_bytes = version_key();
         let value_bytes = value_bytes(version);
 
-        txn.rw_txn()
+        txn.rw_txn_mut()
             .put(db, &key_bytes, &value_bytes, WriteFlags::empty())
             .unwrap();
     }

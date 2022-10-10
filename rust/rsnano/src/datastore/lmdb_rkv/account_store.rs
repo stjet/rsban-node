@@ -49,7 +49,7 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         info: &crate::AccountInfo,
     ) {
         transaction
-            .rw_txn()
+            .rw_txn_mut()
             .put(
                 self.db_handle(),
                 account.as_bytes(),
@@ -73,7 +73,7 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
 
     fn del(&self, transaction: &mut LmdbWriteTransaction, account: &Account) {
         transaction
-            .rw_txn()
+            .rw_txn_mut()
             .del(self.db_handle(), account.as_bytes(), None)
             .unwrap();
     }
@@ -127,5 +127,134 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
 
     fn count(&self, txn: &LmdbTransaction) -> usize {
         txn.count(self.db_handle())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{datastore::lmdb_rkv::TestLmdbEnv, Amount, BlockHash};
+
+    struct AccountStoreTestContext {
+        pub store: LmdbAccountStore,
+        pub env: TestLmdbEnv,
+    }
+
+    impl AccountStoreTestContext {
+        pub fn new() -> Self {
+            let env = TestLmdbEnv::new();
+            let store = LmdbAccountStore::new(env.env());
+            store.create_db().unwrap();
+            Self { store, env }
+        }
+    }
+
+    #[test]
+    fn create_db() {
+        let env = TestLmdbEnv::new();
+        let store = LmdbAccountStore::new(env.env());
+        assert_eq!(store.create_db(), Ok(()));
+    }
+
+    #[test]
+    fn account_not_found() {
+        let sut = AccountStoreTestContext::new();
+        let txn = sut.env.tx_begin_read().unwrap();
+        let result = sut.store.get(&txn.as_txn(), &Account::from(1));
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn put_and_get_account() {
+        let sut = AccountStoreTestContext::new();
+        let mut txn = sut.env.tx_begin_write().unwrap();
+        let account = Account::from(1);
+        let info = AccountInfo {
+            balance: Amount::new(123),
+            ..Default::default()
+        };
+        sut.store.put(&mut txn, &account, &info);
+        let result = sut.store.get(&txn.as_txn(), &account);
+        assert_eq!(result, Some(info));
+    }
+
+    #[test]
+    fn del() {
+        let sut = AccountStoreTestContext::new();
+        let mut txn = sut.env.tx_begin_write().unwrap();
+        let account = Account::from(1);
+        let info = AccountInfo {
+            balance: Amount::new(123),
+            ..Default::default()
+        };
+        sut.store.put(&mut txn, &account, &info);
+        sut.store.del(&mut txn, &account);
+        let result = sut.store.get(&txn.as_txn(), &account);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn count() {
+        let sut = AccountStoreTestContext::new();
+        let mut txn = sut.env.tx_begin_write().unwrap();
+        assert_eq!(sut.store.count(&txn.as_txn()), 0);
+
+        sut.store
+            .put(&mut txn, &Account::from(1), &AccountInfo::default());
+        assert_eq!(sut.store.count(&txn.as_txn()), 1);
+    }
+
+    #[test]
+    fn begin_empty_store() {
+        let sut = AccountStoreTestContext::new();
+        let txn = sut.env.tx_begin_read().unwrap();
+        let it = sut.store.begin(&txn.as_txn());
+        assert!(it.is_end())
+    }
+
+    #[test]
+    fn begin() {
+        let sut = AccountStoreTestContext::new();
+        let mut txn = sut.env.tx_begin_write().unwrap();
+        let account1 = Account::from(1);
+        let account2 = Account::from(2);
+        let info1 = AccountInfo {
+            head: BlockHash::from(1),
+            ..Default::default()
+        };
+        let info2 = AccountInfo {
+            head: BlockHash::from(2),
+            ..Default::default()
+        };
+        sut.store.put(&mut txn, &account1, &info1);
+        sut.store.put(&mut txn, &account2, &info2);
+        let mut it = sut.store.begin(&txn.as_txn());
+        assert_eq!(it.current(), Some((&account1, &info1)));
+        it.next();
+        assert_eq!(it.current(), Some((&account2, &info2)));
+        it.next();
+        assert_eq!(it.current(), None);
+    }
+
+    #[test]
+    fn begin_account() {
+        let sut = AccountStoreTestContext::new();
+        let mut txn = sut.env.tx_begin_write().unwrap();
+        let account1 = Account::from(1);
+        let account3 = Account::from(3);
+        let info1 = AccountInfo {
+            head: BlockHash::from(1),
+            ..Default::default()
+        };
+        let info3 = AccountInfo {
+            head: BlockHash::from(3),
+            ..Default::default()
+        };
+        sut.store.put(&mut txn, &account1, &info1);
+        sut.store.put(&mut txn, &account3, &info3);
+        let mut it = sut.store.begin_account(&txn.as_txn(), &Account::from(2));
+        assert_eq!(it.current(), Some((&account3, &info3)));
+        it.next();
+        assert_eq!(it.current(), None);
     }
 }

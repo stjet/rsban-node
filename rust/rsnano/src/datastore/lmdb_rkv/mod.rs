@@ -10,6 +10,8 @@ use lmdb::{
     Database, Environment, InactiveTransaction, RoCursor, RoTransaction, RwTransaction, Transaction,
 };
 pub use lmdb_env::LmdbEnv;
+#[cfg(test)]
+pub(crate) use lmdb_env::TestLmdbEnv;
 use std::{mem, sync::Arc};
 
 enum RoTxnState<'a> {
@@ -118,14 +120,18 @@ impl<'a> LmdbWriteTransaction<'a> {
         Ok(tx)
     }
 
-    pub fn txn(&self) -> &RwTransaction<'a> {
+    pub fn as_txn(&self) -> LmdbTransaction {
+        LmdbTransaction::Write(self)
+    }
+
+    pub fn rw_txn(&self) -> &RwTransaction<'a> {
         match &self.txn {
             RwTxnState::Active(t) => t,
             _ => panic!("txn not active"),
         }
     }
 
-    pub fn rw_txn(&mut self) -> &mut RwTransaction<'a> {
+    pub fn rw_txn_mut(&mut self) -> &mut RwTransaction<'a> {
         match &mut self.txn {
             RwTxnState::Active(t) => t,
             _ => panic!("txn not active"),
@@ -177,21 +183,21 @@ impl<'a> LmdbTransaction<'a> {
     {
         match self {
             super::Transaction::Read(r) => r.txn().get(database, key),
-            super::Transaction::Write(w) => w.txn().get(database, key),
+            super::Transaction::Write(w) => w.rw_txn().get(database, key),
         }
     }
 
     fn open_ro_cursor<'txn>(&'txn self, database: Database) -> lmdb::Result<RoCursor> {
         match self {
             super::Transaction::Read(r) => r.txn().open_ro_cursor(database),
-            super::Transaction::Write(w) => w.txn().open_ro_cursor(database),
+            super::Transaction::Write(w) => w.rw_txn().open_ro_cursor(database),
         }
     }
 
     fn count(&self, database: Database) -> usize {
         let stats = match self {
             super::Transaction::Read(r) => r.txn().stat(database),
-            super::Transaction::Write(w) => w.txn().stat(database),
+            super::Transaction::Write(w) => w.rw_txn().stat(database),
         };
 
         stats.unwrap().entries()

@@ -55,10 +55,12 @@ where
     I: DbIteratorImpl,
 {
     pub fn new(iterator_impl: I) -> Self {
-        Self {
+        let mut result = Self {
             iterator_impl,
             current: None,
-        }
+        };
+        result.load_current();
+        result
     }
 
     pub fn is_end(&self) -> bool {

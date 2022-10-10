@@ -89,10 +89,10 @@ impl<'a> ConfirmationHeightStore<'a, LmdbReadTransaction, LmdbWriteTransaction, 
         exists(txn, self.db_handle(), &mut MdbVal::from(account))
     }
 
-    fn del(&self, txn: &Transaction, account: &Account) {
+    fn del(&self, txn: &mut LmdbWriteTransaction, account: &Account) {
         let status = unsafe {
             mdb_del(
-                txn.handle(),
+                txn.handle,
                 self.db_handle(),
                 &mut MdbVal::from(account),
                 None,

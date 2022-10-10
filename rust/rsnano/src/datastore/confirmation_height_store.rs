@@ -12,7 +12,7 @@ where
     fn put(&self, txn: &mut W, account: &Account, info: &ConfirmationHeightInfo);
     fn get(&self, txn: &Transaction<R, W>, account: &Account) -> Option<ConfirmationHeightInfo>;
     fn exists(&self, txn: &Transaction<R, W>, account: &Account) -> bool;
-    fn del(&self, txn: &Transaction<R, W>, account: &Account);
+    fn del(&self, txn: &mut W, account: &Account);
     fn count(&self, txn: &Transaction<R, W>) -> usize;
     fn clear(&self, txn: &mut W);
     fn begin(&self, txn: &Transaction<R, W>) -> ConfirmationHeightIterator<I>;
@@ -23,7 +23,7 @@ where
     ) -> ConfirmationHeightIterator<I>;
     fn end(&self) -> ConfirmationHeightIterator<I>;
     fn for_each_par(
-        &self,
+        &'a self,
         action: &(dyn Fn(R, ConfirmationHeightIterator<I>, ConfirmationHeightIterator<I>)
               + Send
               + Sync),

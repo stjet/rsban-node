@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::{
-    utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
+    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
     Account, Amount, BlockHash, Epoch,
 };
 use anyhow::Result;
@@ -21,10 +21,11 @@ pub struct AccountInfo {
 }
 
 impl AccountInfo {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut stream = MemoryStream::new();
+    pub fn to_bytes(&self) -> [u8; 129] {
+        let mut buffer = [0; 129];
+        let mut stream = MutStreamAdapter::new(&mut buffer);
         self.serialize(&mut stream).unwrap();
-        stream.to_vec()
+        buffer
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    utils::{Deserialize, Serialize, Stream, StreamExt},
+    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
     BlockHash,
 };
 
@@ -24,6 +24,13 @@ pub struct ConfirmationHeightInfo {
 impl ConfirmationHeightInfo {
     pub fn new(height: u64, frontier: BlockHash) -> Self {
         Self { height, frontier }
+    }
+
+    pub fn to_bytes(&self) -> [u8; 40] {
+        let mut buffer = [0; 40];
+        let mut stream = MutStreamAdapter::new(&mut buffer);
+        self.serialize(&mut stream).unwrap();
+        buffer
     }
 }
 

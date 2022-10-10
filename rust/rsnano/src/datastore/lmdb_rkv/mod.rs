@@ -1,5 +1,6 @@
 mod account_store;
 mod block_store;
+mod confirmation_height_store;
 mod iterator;
 mod lmdb_env;
 mod version_store;
@@ -7,6 +8,7 @@ mod version_store;
 use super::lmdb::TxnCallbacks;
 pub use account_store::LmdbAccountStore;
 pub use block_store::LmdbBlockStore;
+pub use confirmation_height_store::LmdbConfirmationHeightStore;
 pub use iterator::LmdbIteratorImpl;
 use lmdb::{
     Database, Environment, InactiveTransaction, RoCursor, RoTransaction, RwTransaction, Transaction,
@@ -203,5 +205,13 @@ impl<'a> LmdbTransaction<'a> {
         };
 
         stats.unwrap().entries()
+    }
+}
+
+pub fn exists(txn: &LmdbTransaction, db: Database, key: &[u8]) -> bool {
+    match txn.get(db, &key) {
+        Ok(_) => true,
+        Err(lmdb::Error::NotFound) => false,
+        Err(e) => panic!("exists failed: {:?}", e),
     }
 }

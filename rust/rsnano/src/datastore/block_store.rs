@@ -27,7 +27,7 @@ pub trait BlockStore<R, W> {
     fn for_each_par(
         &self,
         action: &(dyn Fn(
-            &R,
+            R,
             &mut dyn DbIterator<BlockHash, BlockWithSideband>,
             &mut dyn DbIterator<BlockHash, BlockWithSideband>,
         ) + Send

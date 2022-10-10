@@ -22,7 +22,7 @@ pub trait PrunedStore<R, W> {
     fn for_each_par(
         &self,
         action: &(dyn Fn(
-            &R,
+            R,
             &mut dyn DbIterator<BlockHash, NoValue>,
             &mut dyn DbIterator<BlockHash, NoValue>,
         ) + Send

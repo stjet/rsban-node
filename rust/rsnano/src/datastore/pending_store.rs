@@ -20,7 +20,7 @@ pub trait PendingStore<R, W> {
     fn for_each_par(
         &self,
         action: &(dyn Fn(
-            &R,
+            R,
             &mut dyn DbIterator<PendingKey, PendingInfo>,
             &mut dyn DbIterator<PendingKey, PendingInfo>,
         ) + Send

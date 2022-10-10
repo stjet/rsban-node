@@ -94,12 +94,12 @@ impl ForEachParWrapper {
     //todo delete
     pub fn execute<K, V>(
         &self,
-        txn: &LmdbReadTransaction,
+        txn: LmdbReadTransaction,
         begin: &mut dyn DbIterator<K, V>,
         end: &mut dyn DbIterator<K, V>,
     ) {
         let lmdb_txn = unsafe {
-            std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(txn)
+            std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(&txn)
         };
         let txn_handle = TransactionHandle::new(TransactionType::ReadRef(lmdb_txn));
         let begin_handle = to_lmdb_iterator_handle(begin);
@@ -109,7 +109,7 @@ impl ForEachParWrapper {
 
     pub fn execute2<K, V>(
         &self,
-        txn: &LmdbReadTransaction,
+        txn: LmdbReadTransaction,
         begin: DbIterator2<K, V, crate::datastore::lmdb::LmdbIteratorImpl>,
         end: DbIterator2<K, V, crate::datastore::lmdb::LmdbIteratorImpl>,
     ) where
@@ -117,7 +117,7 @@ impl ForEachParWrapper {
         V: Deserialize<Target = V>,
     {
         let lmdb_txn = unsafe {
-            std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(txn)
+            std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(&txn)
         };
         let txn_handle = TransactionHandle::new(TransactionType::ReadRef(lmdb_txn));
         let begin_handle = to_lmdb_iterator_handle2(begin);

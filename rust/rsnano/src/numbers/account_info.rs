@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::{
-    utils::{Deserialize, Serialize, Stream, StreamExt},
+    utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
     Account, Amount, BlockHash, Epoch,
 };
 use anyhow::Result;
@@ -18,6 +18,14 @@ pub struct AccountInfo {
     pub modified: u64,
     pub block_count: u64,
     pub epoch: Epoch,
+}
+
+impl AccountInfo {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut stream = MemoryStream::new();
+        self.serialize(&mut stream).unwrap();
+        stream.to_vec()
+    }
 }
 
 impl Serialize for AccountInfo {

@@ -21,7 +21,7 @@ pub trait ConfirmationHeightStore<R, W> {
     fn for_each_par(
         &self,
         action: &(dyn Fn(
-            &R,
+            R,
             &mut dyn DbIterator<Account, ConfirmationHeightInfo>,
             &mut dyn DbIterator<Account, ConfirmationHeightInfo>,
         ) + Send

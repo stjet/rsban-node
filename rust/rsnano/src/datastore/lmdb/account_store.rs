@@ -46,10 +46,10 @@ impl LmdbAccountStore {
     }
 }
 
-impl AccountStore<LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+impl<'a> AccountStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
     for LmdbAccountStore
 {
-    fn put(&self, transaction: &LmdbWriteTransaction, account: &Account, info: &AccountInfo) {
+    fn put(&self, transaction: &mut LmdbWriteTransaction, account: &Account, info: &AccountInfo) {
         let mut account_val = OwnedMdbVal::from(account);
         let mut info_val = OwnedMdbVal::from(info);
 
@@ -87,7 +87,7 @@ impl AccountStore<LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
         }
     }
 
-    fn del(&self, transaction: &LmdbWriteTransaction, account: &Account) {
+    fn del(&self, transaction: &mut LmdbWriteTransaction, account: &Account) {
         let mut key_val = OwnedMdbVal::from(account);
         let status = unsafe {
             mdb_del(
@@ -130,23 +130,23 @@ impl AccountStore<LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
     }
 
     fn for_each_par(
-        &self,
+        &'a self,
         action: &(dyn Fn(
-            &LmdbReadTransaction,
+            LmdbReadTransaction,
             AccountIterator<LmdbIteratorImpl>,
             AccountIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
-            let mut transaction = self.env.tx_begin_read();
+            let transaction = self.env.tx_begin_read();
             let begin_it = self.begin_account(&transaction.as_txn(), &start.into());
             let end_it = if !is_last {
                 self.begin_account(&transaction.as_txn(), &end.into())
             } else {
                 self.end()
             };
-            action(&mut transaction, begin_it, end_it);
+            action(transaction, begin_it, end_it);
         });
     }
 

@@ -17,7 +17,7 @@ pub trait FinalVoteStore<R, W> {
     fn for_each_par(
         &self,
         action: &(dyn Fn(
-            &R,
+            R,
             &mut dyn DbIterator<QualifiedRoot, BlockHash>,
             &mut dyn DbIterator<QualifiedRoot, BlockHash>,
         ) + Send

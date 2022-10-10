@@ -71,6 +71,10 @@ impl<'a> LmdbReadTransaction<'a> {
             _ => panic!("LMDB read transaction not active"),
         }
     }
+
+    pub fn as_txn(&self) -> LmdbTransaction {
+        LmdbTransaction::Read(self)
+    }
 }
 
 impl<'a> Drop for LmdbReadTransaction<'a> {
@@ -182,5 +186,14 @@ impl<'a> LmdbTransaction<'a> {
             super::Transaction::Read(r) => r.txn().open_ro_cursor(database),
             super::Transaction::Write(w) => w.txn().open_ro_cursor(database),
         }
+    }
+
+    fn count(&self, database: Database) -> usize {
+        let stats = match self {
+            super::Transaction::Read(r) => r.txn().stat(database),
+            super::Transaction::Write(w) => w.txn().stat(database),
+        };
+
+        stats.unwrap().entries()
     }
 }

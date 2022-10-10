@@ -19,7 +19,7 @@ pub trait FrontierStore<R, W> {
     fn for_each_par(
         &self,
         action: &(dyn Fn(
-            &R,
+            R,
             &mut dyn DbIterator<BlockHash, Account>,
             &mut dyn DbIterator<BlockHash, Account>,
         ) + Send

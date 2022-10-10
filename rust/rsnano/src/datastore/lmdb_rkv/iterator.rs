@@ -42,15 +42,15 @@ impl LmdbIteratorImpl {
     }
 
     fn load_current(&mut self, key: Option<&[u8]>, operation: c_uint) {
-        let (k, v) = self
-            .cursor
-            .as_ref()
-            .unwrap()
-            .get(key, None, operation)
-            .unwrap();
-        self.current = match k {
-            Some(bytes) => Some((bytes, v)),
-            None => None,
+        let result = self.cursor.as_ref().unwrap().get(key, None, operation);
+        self.current = match result {
+            Err(lmdb::Error::NotFound) => None,
+            Ok((Some(k), v)) => Some((k, v)),
+            Ok(_) => unreachable!(),
+            Err(_) => {
+                result.unwrap();
+                unreachable!()
+            }
         };
     }
 

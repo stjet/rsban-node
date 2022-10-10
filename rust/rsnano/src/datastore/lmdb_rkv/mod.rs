@@ -1,10 +1,12 @@
 mod account_store;
+mod block_store;
 mod iterator;
 mod lmdb_env;
 mod version_store;
 
 use super::lmdb::TxnCallbacks;
 pub use account_store::LmdbAccountStore;
+pub use block_store::LmdbBlockStore;
 pub use iterator::LmdbIteratorImpl;
 use lmdb::{
     Database, Environment, InactiveTransaction, RoCursor, RoTransaction, RwTransaction, Transaction,

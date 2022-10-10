@@ -1,12 +1,12 @@
 use crate::{
     datastore::{
+        block_store::BlockIterator,
         lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        parallel_traversal, BlockStore, DbIterator, NullIterator,
+        parallel_traversal, BlockStore, DbIterator2,
     },
     deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
-    Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
-    BlockWithSideband, Epoch,
+    Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, Epoch,
 };
 use num_traits::FromPrimitive;
 use std::{
@@ -16,7 +16,7 @@ use std::{
 
 use super::{
     assert_success, ensure_success, mdb_count, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbEnv,
-    LmdbIterator, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
 };
 
 pub struct LmdbBlockStore {
@@ -67,7 +67,7 @@ unsafe fn block_type_from_raw(data: *const c_void) -> Option<BlockType> {
 impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
     for LmdbBlockStore
 {
-    fn put(&self, txn: &LmdbWriteTransaction, hash: &BlockHash, block: &dyn Block) {
+    fn put(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash, block: &dyn Block) {
         debug_assert!(
             block.sideband().unwrap().successor.is_zero()
                 || self.exists(&txn.as_txn(), &block.sideband().unwrap().successor)
@@ -110,7 +110,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
         }
     }
 
-    fn successor_clear(&self, txn: &LmdbWriteTransaction, hash: &BlockHash) {
+    fn successor_clear(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
         let mut value = MdbVal::new();
         self.block_raw_get(&txn.as_txn(), hash, &mut value);
         debug_assert!(value.mv_size != 0);
@@ -147,7 +147,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
         }
     }
 
-    fn del(&self, txn: &LmdbWriteTransaction, hash: &BlockHash) {
+    fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
         let status = unsafe {
             mdb_del(
                 txn.handle,
@@ -179,28 +179,33 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
         self.account_calculated(block.as_block())
     }
 
-    fn begin(
-        &self,
-        transaction: &Transaction,
-    ) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>> {
-        Box::new(LmdbIterator::new(transaction, self.db_handle(), None, true))
+    fn begin(&self, transaction: &Transaction) -> BlockIterator<LmdbIteratorImpl> {
+        DbIterator2::new(LmdbIteratorImpl::new(
+            transaction,
+            self.db_handle(),
+            MdbVal::new(),
+            BlockHash::serialized_size(),
+            true,
+        ))
     }
 
     fn begin_at_hash(
         &self,
         transaction: &Transaction,
         hash: &BlockHash,
-    ) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>> {
-        Box::new(LmdbIterator::new(
+    ) -> BlockIterator<LmdbIteratorImpl> {
+        let hash_val = MdbVal::from(hash);
+        DbIterator2::new(LmdbIteratorImpl::new(
             transaction,
             self.db_handle(),
-            Some(hash),
+            hash_val,
+            BlockHash::serialized_size(),
             true,
         ))
     }
 
-    fn end(&self) -> Box<dyn DbIterator<BlockHash, BlockWithSideband>> {
-        Box::new(NullIterator::new())
+    fn end(&self) -> BlockIterator<LmdbIteratorImpl> {
+        DbIterator2::new(LmdbIteratorImpl::null())
     }
 
     fn random(&self, transaction: &Transaction) -> Option<BlockEnum> {
@@ -247,20 +252,20 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
         &self,
         action: &(dyn Fn(
             LmdbReadTransaction,
-            &mut dyn DbIterator<BlockHash, BlockWithSideband>,
-            &mut dyn DbIterator<BlockHash, BlockWithSideband>,
+            BlockIterator<LmdbIteratorImpl>,
+            BlockIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read();
-            let mut begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
-            let mut end_it = if !is_last {
+            let begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
+            let end_it = if !is_last {
                 self.begin_at_hash(&transaction.as_txn(), &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it.as_mut(), end_it.as_mut());
+            action(transaction, begin_it, end_it);
         });
     }
 

@@ -33,7 +33,7 @@ impl<K, V> DbIterator<K, V> for NullIterator {
     fn next(&mut self) {}
 }
 
-pub trait DbIteratorImpl {
+pub trait DbIteratorImpl: PartialEq {
     fn current(&self) -> Option<(&[u8], &[u8])>;
     fn next(&mut self);
 }

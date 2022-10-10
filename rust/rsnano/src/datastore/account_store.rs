@@ -7,7 +7,7 @@ pub trait AccountStore<'a, R, W, I>
 where
     R: 'a,
     W: 'a,
-    I: DbIteratorImpl + PartialEq,
+    I: DbIteratorImpl,
 {
     fn put(&self, transaction: &mut W, account: &Account, info: &AccountInfo);
     fn get(&self, transaction: &Transaction<R, W>, account: &Account) -> Option<AccountInfo>;

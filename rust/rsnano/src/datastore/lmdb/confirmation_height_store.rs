@@ -2,17 +2,18 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     datastore::{
+        confirmation_height_store::ConfirmationHeightIterator,
         lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        parallel_traversal, ConfirmationHeightStore, DbIterator, NullIterator,
+        parallel_traversal, ConfirmationHeightStore, DbIterator2,
     },
-    utils::Deserialize,
+    utils::{Deserialize, Serialize},
     Account, ConfirmationHeightInfo,
 };
 
 use super::{
     assert_success, ensure_success, exists, mdb_count, mdb_dbi_open, mdb_del, mdb_drop, mdb_get,
-    mdb_put, LmdbEnv, LmdbIterator, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, OwnedMdbVal,
-    Transaction,
+    mdb_put, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal,
+    OwnedMdbVal, Transaction,
 };
 
 pub struct LmdbConfirmationHeightStore {
@@ -47,12 +48,12 @@ impl LmdbConfirmationHeightStore {
     }
 }
 
-impl ConfirmationHeightStore<LmdbReadTransaction, LmdbWriteTransaction>
+impl<'a> ConfirmationHeightStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
     for LmdbConfirmationHeightStore
 {
     fn put(
         &self,
-        txn: &LmdbWriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         account: &crate::Account,
         info: &ConfirmationHeightInfo,
     ) {
@@ -104,49 +105,56 @@ impl ConfirmationHeightStore<LmdbReadTransaction, LmdbWriteTransaction>
         unsafe { mdb_count(txn.handle(), self.db_handle()) }
     }
 
-    fn clear(&self, txn: &LmdbWriteTransaction) {
+    fn clear(&self, txn: &mut LmdbWriteTransaction) {
         unsafe { mdb_drop(txn.handle, self.db_handle(), 0) };
     }
 
-    fn begin(&self, txn: &Transaction) -> Box<dyn DbIterator<Account, ConfirmationHeightInfo>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle(), None, true))
+    fn begin(&self, txn: &Transaction) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
+        DbIterator2::new(LmdbIteratorImpl::new(
+            txn,
+            self.db_handle(),
+            MdbVal::new(),
+            Account::serialized_size(),
+            true,
+        ))
     }
 
     fn begin_at_account(
         &self,
         txn: &Transaction,
         account: &Account,
-    ) -> Box<dyn DbIterator<Account, ConfirmationHeightInfo>> {
-        Box::new(LmdbIterator::new(
+    ) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
+        DbIterator2::new(LmdbIteratorImpl::new(
             txn,
             self.db_handle(),
-            Some(account),
+            MdbVal::from(account),
+            Account::serialized_size(),
             true,
         ))
     }
 
-    fn end(&self) -> Box<dyn DbIterator<Account, ConfirmationHeightInfo>> {
-        Box::new(NullIterator::new())
+    fn end(&self) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
+        DbIterator2::new(LmdbIteratorImpl::null())
     }
 
     fn for_each_par(
         &self,
         action: &(dyn Fn(
             LmdbReadTransaction,
-            &mut dyn DbIterator<Account, ConfirmationHeightInfo>,
-            &mut dyn DbIterator<Account, ConfirmationHeightInfo>,
+            ConfirmationHeightIterator<LmdbIteratorImpl>,
+            ConfirmationHeightIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read();
-            let mut begin_it = self.begin_at_account(&transaction.as_txn(), &start.into());
-            let mut end_it = if !is_last {
+            let begin_it = self.begin_at_account(&transaction.as_txn(), &start.into());
+            let end_it = if !is_last {
                 self.begin_at_account(&transaction.as_txn(), &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it.as_mut(), end_it.as_mut());
+            action(transaction, begin_it, end_it);
         });
     }
 }

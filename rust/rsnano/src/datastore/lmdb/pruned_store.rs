@@ -3,13 +3,14 @@ use std::sync::{Arc, Mutex};
 use rand::{thread_rng, Rng};
 
 use crate::{
-    datastore::{parallel_traversal, DbIterator, NullIterator, PrunedStore},
-    BlockHash, NoValue,
+    datastore::{parallel_traversal, pruned_store::PrunedIterator, PrunedStore},
+    utils::Serialize,
+    BlockHash,
 };
 
 use super::{
     assert_success, ensure_success, exists, mdb_count, mdb_dbi_open, mdb_del, mdb_drop, mdb_put,
-    LmdbEnv, LmdbIterator, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
 };
 
 pub struct LmdbPrunedStore {
@@ -37,8 +38,10 @@ impl LmdbPrunedStore {
     }
 }
 
-impl PrunedStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbPrunedStore {
-    fn put(&self, txn: &LmdbWriteTransaction, hash: &BlockHash) {
+impl<'a> PrunedStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+    for LmdbPrunedStore
+{
+    fn put(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
         let status = unsafe {
             mdb_put(
                 txn.handle,
@@ -51,7 +54,7 @@ impl PrunedStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbPrunedStore 
         assert_success(status);
     }
 
-    fn del(&self, txn: &LmdbWriteTransaction, hash: &BlockHash) {
+    fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
         let status =
             unsafe { mdb_del(txn.handle, self.db_handle(), &mut MdbVal::from(hash), None) };
         assert_success(status);
@@ -61,16 +64,28 @@ impl PrunedStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbPrunedStore 
         exists(txn, self.db_handle(), &mut hash.into())
     }
 
-    fn begin(&self, txn: &Transaction) -> Box<dyn DbIterator<BlockHash, NoValue>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle(), None, true))
+    fn begin(&self, txn: &Transaction) -> PrunedIterator<LmdbIteratorImpl> {
+        PrunedIterator::new(LmdbIteratorImpl::new(
+            txn,
+            self.db_handle(),
+            MdbVal::new(),
+            BlockHash::serialized_size(),
+            true,
+        ))
     }
 
     fn begin_at_hash(
         &self,
         txn: &Transaction,
         hash: &BlockHash,
-    ) -> Box<dyn DbIterator<BlockHash, NoValue>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle(), Some(hash), true))
+    ) -> PrunedIterator<LmdbIteratorImpl> {
+        PrunedIterator::new(LmdbIteratorImpl::new(
+            txn,
+            self.db_handle(),
+            MdbVal::from(hash),
+            BlockHash::serialized_size(),
+            true,
+        ))
     }
 
     fn random(&self, txn: &Transaction) -> BlockHash {
@@ -88,33 +103,33 @@ impl PrunedStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbPrunedStore 
         unsafe { mdb_count(txn.handle(), self.db_handle()) }
     }
 
-    fn clear(&self, txn: &LmdbWriteTransaction) {
+    fn clear(&self, txn: &mut LmdbWriteTransaction) {
         let status = unsafe { mdb_drop(txn.handle, self.db_handle(), 0) };
         assert_success(status);
     }
 
-    fn end(&self) -> Box<dyn DbIterator<BlockHash, NoValue>> {
-        Box::new(NullIterator::new())
+    fn end(&self) -> PrunedIterator<LmdbIteratorImpl> {
+        PrunedIterator::new(LmdbIteratorImpl::null())
     }
 
     fn for_each_par(
         &self,
         action: &(dyn Fn(
             LmdbReadTransaction,
-            &mut dyn DbIterator<BlockHash, NoValue>,
-            &mut dyn DbIterator<BlockHash, NoValue>,
+            PrunedIterator<LmdbIteratorImpl>,
+            PrunedIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read();
-            let mut begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
-            let mut end_it = if !is_last {
+            let begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
+            let end_it = if !is_last {
                 self.begin_at_hash(&transaction.as_txn(), &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it.as_mut(), end_it.as_mut());
+            action(transaction, begin_it, end_it);
         });
     }
 }

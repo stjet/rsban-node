@@ -1,8 +1,8 @@
+use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
 use crate::{Account, PendingInfo, PendingKey};
 
-use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
-
 pub type PendingIterator<I> = DbIterator2<PendingKey, PendingInfo, I>;
+
 /// Maps (destination account, pending block) to (source account, amount, version).
 /// nano::account, nano::block_hash -> nano::account, nano::amount, nano::epoch
 pub trait PendingStore<'a, R, W, I>

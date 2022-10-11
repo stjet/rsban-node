@@ -1,31 +1,29 @@
-use super::{DbIterator, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
 use crate::{BlockHash, NoValue};
 
+pub type PrunedIterator<I> = DbIterator2<BlockHash, NoValue, I>;
+
 /// Pruned blocks hashes
-pub trait PrunedStore<R, W> {
-    fn put(&self, txn: &W, hash: &BlockHash);
-    fn del(&self, txn: &W, hash: &BlockHash);
+pub trait PrunedStore<'a, R, W, I>
+where
+    R: 'a,
+    W: 'a,
+    I: DbIteratorImpl,
+{
+    fn put(&self, txn: &mut W, hash: &BlockHash);
+    fn del(&self, txn: &mut W, hash: &BlockHash);
     fn exists(&self, txn: &Transaction<R, W>, hash: &BlockHash) -> bool;
-    fn begin(&self, txn: &Transaction<R, W>) -> Box<dyn DbIterator<BlockHash, NoValue>>;
+    fn begin(&self, txn: &Transaction<R, W>) -> PrunedIterator<I>;
 
-    fn begin_at_hash(
-        &self,
-        txn: &Transaction<R, W>,
-        hash: &BlockHash,
-    ) -> Box<dyn DbIterator<BlockHash, NoValue>>;
+    fn begin_at_hash(&self, txn: &Transaction<R, W>, hash: &BlockHash) -> PrunedIterator<I>;
 
-    fn end(&self) -> Box<dyn DbIterator<BlockHash, NoValue>>;
+    fn end(&self) -> PrunedIterator<I>;
 
     fn random(&self, txn: &Transaction<R, W>) -> BlockHash;
     fn count(&self, txn: &Transaction<R, W>) -> usize;
-    fn clear(&self, txn: &W);
+    fn clear(&self, txn: &mut W);
     fn for_each_par(
-        &self,
-        action: &(dyn Fn(
-            R,
-            &mut dyn DbIterator<BlockHash, NoValue>,
-            &mut dyn DbIterator<BlockHash, NoValue>,
-        ) + Send
-              + Sync),
+        &'a self,
+        action: &(dyn Fn(R, PrunedIterator<I>, PrunedIterator<I>) + Send + Sync),
     );
 }

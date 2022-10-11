@@ -817,6 +817,13 @@ impl EndpointKey {
     pub fn new(address: [u8; 16], port: u16) -> Self {
         Self { address, port }
     }
+
+    pub fn to_bytes(&self) -> [u8; 18] {
+        let mut buffer = [0; 18];
+        let mut stream = MutStreamAdapter::new(&mut buffer);
+        self.serialize(&mut stream).unwrap();
+        buffer
+    }
 }
 
 impl Serialize for EndpointKey {

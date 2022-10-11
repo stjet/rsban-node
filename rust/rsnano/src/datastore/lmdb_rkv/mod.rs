@@ -6,6 +6,7 @@ mod frontier_store;
 mod iterator;
 mod lmdb_env;
 mod online_weight_store;
+mod peer_store;
 mod version_store;
 
 use super::lmdb::TxnCallbacks;
@@ -22,6 +23,7 @@ pub use lmdb_env::LmdbEnv;
 #[cfg(test)]
 pub(crate) use lmdb_env::TestLmdbEnv;
 pub use online_weight_store::LmdbOnlineWeightStore;
+pub use peer_store::LmdbPeerStore;
 use std::{mem, sync::Arc};
 
 enum RoTxnState<'a> {

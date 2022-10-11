@@ -1,105 +1,87 @@
 use std::sync::{Arc, Mutex};
 
+use lmdb::{Database, DatabaseFlags, Transaction, WriteFlags};
+
 use crate::{
-    datastore::{
-        final_vote_store::FinalVoteIterator,
-        lmdb::{assert_success, mdb_put, MDB_NOTFOUND, MDB_SUCCESS},
-        parallel_traversal_u512, FinalVoteStore,
-    },
-    utils::Serialize,
+    datastore::{final_vote_store::FinalVoteIterator, parallel_traversal_u512, FinalVoteStore},
     BlockHash, QualifiedRoot, Root,
 };
 
 use super::{
-    ensure_success, mdb_count, mdb_dbi_open, mdb_del, mdb_drop, mdb_get, LmdbEnv, LmdbIteratorImpl,
-    LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
 };
 
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash
 pub struct LmdbFinalVoteStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<u32>,
+    db_handle: Mutex<Option<Database>>,
 }
 
 impl LmdbFinalVoteStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
         Self {
             env,
-            db_handle: Mutex::new(0),
+            db_handle: Mutex::new(None),
         }
     }
 
-    pub fn db_handle(&self) -> u32 {
-        *self.db_handle.lock().unwrap()
+    pub fn db_handle(&self) -> Database {
+        self.db_handle.lock().unwrap().unwrap()
     }
 
-    pub fn open_db(&self, txn: &Transaction, flags: u32) -> anyhow::Result<()> {
-        let mut handle = 0;
-        let status = unsafe { mdb_dbi_open(txn.handle(), Some("final_votes"), flags, &mut handle) };
-        *self.db_handle.lock().unwrap() = handle;
-        ensure_success(status)
+    pub fn create_db(&self) -> anyhow::Result<()> {
+        let handle = self
+            .env
+            .environment
+            .create_db(Some("final_votes"), DatabaseFlags::empty())
+            .unwrap();
+        *self.db_handle.lock().unwrap() = Some(handle);
+        Ok(())
     }
 }
 
-impl<'a> FinalVoteStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
     for LmdbFinalVoteStore
 {
     fn put(&self, txn: &mut LmdbWriteTransaction, root: &QualifiedRoot, hash: &BlockHash) -> bool {
-        let mut value = MdbVal::new();
         let root_bytes = root.to_bytes();
-        let status = unsafe {
-            mdb_get(
-                txn.handle,
-                self.db_handle(),
-                &mut MdbVal::from_slice(&root_bytes),
-                &mut value,
-            )
-        };
-        assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
-        if status == MDB_SUCCESS {
-            BlockHash::try_from(&value).unwrap() == *hash
-        } else {
-            let status = unsafe {
-                mdb_put(
-                    txn.as_txn().handle(),
+        match txn.rw_txn().get(self.db_handle(), &root_bytes) {
+            Err(lmdb::Error::NotFound) => {
+                txn.rw_txn().put(
                     self.db_handle(),
-                    &mut MdbVal::from_slice(&root_bytes),
-                    &mut MdbVal::from(hash),
-                    0,
-                )
-            };
-            assert_success(status);
-            true
+                    &root_bytes,
+                    hash.as_bytes(),
+                    WriteFlags::empty(),
+                );
+                true
+            }
+            Ok(bytes) => BlockHash::from_slice(bytes).unwrap() == *hash,
+            Err(e) => {
+                panic!("Could not get final vote: {:?}", e);
+            }
         }
     }
 
-    fn begin(&self, txn: &Transaction) -> FinalVoteIterator<LmdbIteratorImpl> {
-        FinalVoteIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.db_handle(),
-            MdbVal::new(),
-            QualifiedRoot::serialized_size(),
-            true,
-        ))
+    fn begin(&self, txn: &LmdbTransaction) -> FinalVoteIterator<LmdbIteratorImpl> {
+        FinalVoteIterator::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, true))
     }
 
     fn begin_at_root(
         &self,
-        txn: &Transaction,
+        txn: &LmdbTransaction,
         root: &QualifiedRoot,
     ) -> FinalVoteIterator<LmdbIteratorImpl> {
         let key_bytes = root.to_bytes();
         FinalVoteIterator::new(LmdbIteratorImpl::new(
             txn,
             self.db_handle(),
-            MdbVal::from_slice(&key_bytes),
-            QualifiedRoot::serialized_size(),
+            Some(&key_bytes),
             true,
         ))
     }
 
-    fn get(&self, txn: &Transaction, root: Root) -> Vec<BlockHash> {
+    fn get(&self, txn: &LmdbTransaction, root: Root) -> Vec<BlockHash> {
         let mut result = Vec::new();
         let key_start = QualifiedRoot {
             root,
@@ -139,39 +121,31 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbItera
 
         for qualified_root in final_vote_qualified_roots {
             let root_bytes = qualified_root.to_bytes();
-            let status = unsafe {
-                mdb_del(
-                    txn.as_txn().handle(),
-                    self.db_handle(),
-                    &mut MdbVal::from_slice(&root_bytes),
-                    None,
-                )
-            };
-            assert_success(status);
+            txn.rw_txn()
+                .del(self.db_handle(), &root_bytes, None)
+                .unwrap();
         }
     }
 
-    fn count(&self, txn: &Transaction) -> usize {
-        unsafe { mdb_count(txn.handle(), self.db_handle()) }
+    fn count(&self, txn: &LmdbTransaction) -> usize {
+        txn.count(self.db_handle())
     }
 
     fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        unsafe {
-            mdb_drop(txn.handle, self.db_handle(), 0);
-        }
+        txn.rw_txn().clear_db(self.db_handle()).unwrap();
     }
 
     fn for_each_par(
-        &self,
+        &'a self,
         action: &(dyn Fn(
-            LmdbReadTransaction,
+            LmdbReadTransaction<'a>,
             FinalVoteIterator<LmdbIteratorImpl>,
             FinalVoteIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read();
+            let transaction = self.env.tx_begin_read().unwrap();
             let mut begin_it = self.begin_at_root(&transaction.as_txn(), &start.into());
             let mut end_it = if !is_last {
                 self.begin_at_root(&transaction.as_txn(), &end.into())

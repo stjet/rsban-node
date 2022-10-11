@@ -13,7 +13,7 @@ use std::slice;
 use std::{convert::TryFrom, fmt::Display};
 
 use crate::hardened_constants::HardenedConstants;
-use crate::utils::{Deserialize, Serialize, Stream};
+use crate::utils::{Deserialize, MutStreamAdapter, Serialize, Stream};
 use crate::Epoch;
 use anyhow::Result;
 
@@ -514,6 +514,15 @@ pub struct QualifiedRoot {
     pub previous: BlockHash,
 }
 
+impl QualifiedRoot {
+    pub fn to_bytes(&self) -> [u8; 64] {
+        let mut buffer = [0; 64];
+        let mut stream = MutStreamAdapter::new(&mut buffer);
+        self.serialize(&mut stream).unwrap();
+        buffer
+    }
+}
+
 impl Serialize for QualifiedRoot {
     fn serialized_size() -> usize {
         Root::serialized_size() + BlockHash::serialized_size()
@@ -954,15 +963,6 @@ impl Deserialize for PendingInfo {
             amount,
             epoch,
         })
-    }
-}
-
-impl QualifiedRoot {
-    pub fn to_bytes(&self) -> [u8; 64] {
-        let mut result = [0; 64];
-        result[..32].copy_from_slice(self.root.as_bytes());
-        result[32..].copy_from_slice(self.previous.as_bytes());
-        result
     }
 }
 

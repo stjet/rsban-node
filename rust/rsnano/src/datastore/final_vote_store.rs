@@ -1,26 +1,24 @@
-use super::{DbIterator, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
 use crate::{BlockHash, QualifiedRoot, Root};
 
-pub trait FinalVoteStore<R, W> {
-    fn put(&self, txn: &W, root: &QualifiedRoot, hash: &BlockHash) -> bool;
-    fn begin(&self, txn: &Transaction<R, W>) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
-    fn begin_at_root(
-        &self,
-        txn: &Transaction<R, W>,
-        root: &QualifiedRoot,
-    ) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
-    fn end(&self) -> Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
+pub type FinalVoteIterator<I> = DbIterator2<QualifiedRoot, BlockHash, I>;
+
+pub trait FinalVoteStore<'a, R, W, I>
+where
+    R: 'a,
+    W: 'a,
+    I: DbIteratorImpl,
+{
+    fn put(&self, txn: &mut W, root: &QualifiedRoot, hash: &BlockHash) -> bool;
+    fn begin(&self, txn: &Transaction<R, W>) -> FinalVoteIterator<I>;
+    fn begin_at_root(&self, txn: &Transaction<R, W>, root: &QualifiedRoot) -> FinalVoteIterator<I>;
+    fn end(&self) -> FinalVoteIterator<I>;
     fn get(&self, txn: &Transaction<R, W>, root: Root) -> Vec<BlockHash>;
-    fn del(&self, txn: &W, root: Root);
+    fn del(&self, txn: &mut W, root: Root);
     fn count(&self, txn: &Transaction<R, W>) -> usize;
-    fn clear(&self, txn: &W);
+    fn clear(&self, txn: &mut W);
     fn for_each_par(
-        &self,
-        action: &(dyn Fn(
-            R,
-            &mut dyn DbIterator<QualifiedRoot, BlockHash>,
-            &mut dyn DbIterator<QualifiedRoot, BlockHash>,
-        ) + Send
-              + Sync),
+        &'a self,
+        action: &(dyn Fn(R, FinalVoteIterator<I>, FinalVoteIterator<I>) + Send + Sync),
     );
 }

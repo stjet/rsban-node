@@ -2,15 +2,17 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     datastore::{
+        frontier_store::FrontierIterator,
         lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        parallel_traversal, DbIterator, FrontierStore, NullIterator,
+        parallel_traversal, FrontierStore,
     },
+    utils::Serialize,
     Account, BlockHash,
 };
 
 use super::{
-    assert_success, ensure_success, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbEnv, LmdbIterator,
-    LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
+    assert_success, ensure_success, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
 };
 
 pub struct LmdbFrontierStore {
@@ -41,8 +43,10 @@ impl LmdbFrontierStore {
     }
 }
 
-impl FrontierStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbFrontierStore {
-    fn put(&self, txn: &LmdbWriteTransaction, hash: &BlockHash, account: &Account) {
+impl<'a> FrontierStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+    for LmdbFrontierStore
+{
+    fn put(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash, account: &Account) {
         let status = unsafe {
             mdb_put(
                 txn.handle,
@@ -73,49 +77,58 @@ impl FrontierStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbFrontierSt
         }
     }
 
-    fn del(&self, txn: &LmdbWriteTransaction, hash: &BlockHash) {
+    fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
         let status =
             unsafe { mdb_del(txn.handle, self.db_handle(), &mut MdbVal::from(hash), None) };
         assert_success(status);
     }
 
-    fn begin(
-        &self,
-        txn: &Transaction,
-    ) -> Box<dyn crate::datastore::DbIterator<BlockHash, Account>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle(), None, true))
+    fn begin(&self, txn: &Transaction) -> FrontierIterator<LmdbIteratorImpl> {
+        FrontierIterator::new(LmdbIteratorImpl::new(
+            txn,
+            self.db_handle(),
+            MdbVal::new(),
+            BlockHash::serialized_size(),
+            true,
+        ))
     }
 
     fn begin_at_hash(
         &self,
         txn: &Transaction,
         hash: &BlockHash,
-    ) -> Box<dyn crate::datastore::DbIterator<BlockHash, Account>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle(), Some(hash), true))
+    ) -> FrontierIterator<LmdbIteratorImpl> {
+        FrontierIterator::new(LmdbIteratorImpl::new(
+            txn,
+            self.db_handle(),
+            MdbVal::from(hash),
+            BlockHash::serialized_size(),
+            true,
+        ))
     }
 
     fn for_each_par(
-        &self,
+        &'a self,
         action: &(dyn Fn(
             LmdbReadTransaction,
-            &mut dyn DbIterator<BlockHash, Account>,
-            &mut dyn DbIterator<BlockHash, Account>,
+            FrontierIterator<LmdbIteratorImpl>,
+            FrontierIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read();
-            let mut begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
-            let mut end_it = if !is_last {
+            let begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
+            let end_it = if !is_last {
                 self.begin_at_hash(&transaction.as_txn(), &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it.as_mut(), end_it.as_mut());
+            action(transaction, begin_it, end_it);
         });
     }
 
-    fn end(&self) -> Box<dyn DbIterator<BlockHash, Account>> {
-        Box::new(NullIterator::new())
+    fn end(&self) -> FrontierIterator<LmdbIteratorImpl> {
+        FrontierIterator::new(LmdbIteratorImpl::null())
     }
 }

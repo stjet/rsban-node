@@ -141,6 +141,7 @@ impl<'a> Stream for MutStreamAdapter<'a> {
             bail!("buffer full");
         }
         self.bytes[self.write_index..self.write_index + bytes.len()].copy_from_slice(bytes);
+        self.write_index += bytes.len();
         Ok(())
     }
 

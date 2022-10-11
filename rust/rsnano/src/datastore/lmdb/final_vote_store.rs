@@ -172,8 +172,8 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbItera
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read();
-            let mut begin_it = self.begin_at_root(&transaction.as_txn(), &start.into());
-            let mut end_it = if !is_last {
+            let begin_it = self.begin_at_root(&transaction.as_txn(), &start.into());
+            let end_it = if !is_last {
                 self.begin_at_root(&transaction.as_txn(), &end.into())
             } else {
                 self.end()

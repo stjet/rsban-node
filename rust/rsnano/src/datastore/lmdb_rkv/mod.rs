@@ -4,6 +4,7 @@ mod confirmation_height_store;
 mod final_vote_store;
 mod iterator;
 mod lmdb_env;
+mod online_weight_store;
 mod version_store;
 
 use super::lmdb::TxnCallbacks;
@@ -18,6 +19,7 @@ use lmdb::{
 pub use lmdb_env::LmdbEnv;
 #[cfg(test)]
 pub(crate) use lmdb_env::TestLmdbEnv;
+pub use online_weight_store::LmdbOnlineWeightStore;
 use std::{mem, sync::Arc};
 
 enum RoTxnState<'a> {

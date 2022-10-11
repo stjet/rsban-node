@@ -52,7 +52,7 @@ impl<'a>
         account: &Account,
         info: &ConfirmationHeightInfo,
     ) {
-        txn.rw_txn()
+        txn.rw_txn_mut()
             .put(
                 self.db_handle(),
                 account.as_bytes(),
@@ -80,7 +80,7 @@ impl<'a>
     }
 
     fn del(&self, txn: &mut LmdbWriteTransaction, account: &Account) {
-        txn.rw_txn()
+        txn.rw_txn_mut()
             .del(self.db_handle(), account.as_bytes(), None)
             .unwrap();
     }
@@ -90,7 +90,7 @@ impl<'a>
     }
 
     fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn().clear_db(self.db_handle()).unwrap()
+        txn.rw_txn_mut().clear_db(self.db_handle()).unwrap()
     }
 
     fn begin(&self, txn: &LmdbTransaction) -> ConfirmationHeightIterator<LmdbIteratorImpl> {

@@ -48,12 +48,14 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         let root_bytes = root.to_bytes();
         match txn.rw_txn().get(self.db_handle(), &root_bytes) {
             Err(lmdb::Error::NotFound) => {
-                txn.rw_txn().put(
-                    self.db_handle(),
-                    &root_bytes,
-                    hash.as_bytes(),
-                    WriteFlags::empty(),
-                );
+                txn.rw_txn_mut()
+                    .put(
+                        self.db_handle(),
+                        &root_bytes,
+                        hash.as_bytes(),
+                        WriteFlags::empty(),
+                    )
+                    .unwrap();
                 true
             }
             Ok(bytes) => BlockHash::from_slice(bytes).unwrap() == *hash,
@@ -121,7 +123,7 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
 
         for qualified_root in final_vote_qualified_roots {
             let root_bytes = qualified_root.to_bytes();
-            txn.rw_txn()
+            txn.rw_txn_mut()
                 .del(self.db_handle(), &root_bytes, None)
                 .unwrap();
         }
@@ -132,7 +134,7 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
     }
 
     fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn().clear_db(self.db_handle()).unwrap();
+        txn.rw_txn_mut().clear_db(self.db_handle()).unwrap();
     }
 
     fn for_each_par(
@@ -146,8 +148,8 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();
-            let mut begin_it = self.begin_at_root(&transaction.as_txn(), &start.into());
-            let mut end_it = if !is_last {
+            let begin_it = self.begin_at_root(&transaction.as_txn(), &start.into());
+            let end_it = if !is_last {
                 self.begin_at_root(&transaction.as_txn(), &end.into())
             } else {
                 self.end()

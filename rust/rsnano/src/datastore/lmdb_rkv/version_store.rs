@@ -22,7 +22,7 @@ impl LmdbVersionStore {
     }
 
     // todo: two methods: open_db and create_db. One with RoTxn and one with RwTxn
-    pub fn open_db(&self, txn: &LmdbTransaction, flags: u32) -> anyhow::Result<()> {
+    pub fn create_db(&self) -> anyhow::Result<()> {
         let mut guard = self.db_handle.lock().unwrap();
         *guard = Some(
             self.env

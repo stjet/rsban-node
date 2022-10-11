@@ -82,7 +82,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_del(
 ) {
     (*handle)
         .0
-        .del(&(*txn).as_txn(), &Account::from_ptr(account))
+        .del(&mut (*txn).as_write_txn(), &Account::from_ptr(account))
 }
 
 #[no_mangle]

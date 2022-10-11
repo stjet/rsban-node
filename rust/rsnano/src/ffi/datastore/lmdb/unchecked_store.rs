@@ -7,10 +7,7 @@ use crate::{
     BlockHash, HashOrAccount,
 };
 
-use super::{
-    iterator::{to_lmdb_iterator_handle, LmdbIteratorHandle},
-    TransactionHandle,
-};
+use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 
 pub struct LmdbUncheckedStoreHandle(Arc<LmdbUncheckedStore>);
 
@@ -89,8 +86,8 @@ pub unsafe extern "C" fn rsn_lmdb_unchecked_store_begin(
     handle: *mut LmdbUncheckedStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let mut iterator = (*handle).0.begin(&(*txn).as_txn());
-    to_lmdb_iterator_handle(iterator.as_mut())
+    let iterator = (*handle).0.begin(&(*txn).as_txn());
+    LmdbIteratorHandle::new(iterator.take_impl().take_raw_iterator())
 }
 
 #[no_mangle]
@@ -100,8 +97,8 @@ pub unsafe extern "C" fn rsn_lmdb_unchecked_store_lower_bound(
     key: *const UncheckedKeyDto,
 ) -> *mut LmdbIteratorHandle {
     let key = UncheckedKey::from(&*key);
-    let mut iterator = (*handle).0.lower_bound(&(*txn).as_txn(), &key);
-    to_lmdb_iterator_handle(iterator.as_mut())
+    let iterator = (*handle).0.lower_bound(&(*txn).as_txn(), &key);
+    LmdbIteratorHandle::new(iterator.take_impl().take_raw_iterator())
 }
 
 #[no_mangle]

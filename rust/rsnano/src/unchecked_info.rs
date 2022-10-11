@@ -7,7 +7,7 @@ use num_traits::FromPrimitive;
 
 use crate::{
     deserialize_block_enum, serialize_block_enum,
-    utils::{Deserialize, Serialize, Stream, StreamExt},
+    utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
     Account, BlockEnum, BlockHash, SignatureVerification,
 };
 
@@ -47,6 +47,12 @@ impl UncheckedInfo {
             account: *Account::zero(),
             verified: SignatureVerification::Unknown,
         }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut stream = MemoryStream::new();
+        self.serialize(&mut stream).unwrap();
+        stream.to_vec()
     }
 }
 

@@ -12,7 +12,6 @@ mod pruned_store;
 mod unchecked_store;
 mod version_store;
 
-use super::lmdb::TxnCallbacks;
 pub use account_store::LmdbAccountStore;
 pub use block_store::LmdbBlockStore;
 pub use confirmation_height_store::LmdbConfirmationHeightStore;
@@ -31,6 +30,8 @@ pub use pending_store::LmdbPendingStore;
 pub use pruned_store::LmdbPrunedStore;
 use std::{mem, sync::Arc};
 pub use unchecked_store::LmdbUncheckedStore;
+
+use super::TxnCallbacks;
 
 enum RoTxnState<'a> {
     Inactive(InactiveTransaction<'a>),

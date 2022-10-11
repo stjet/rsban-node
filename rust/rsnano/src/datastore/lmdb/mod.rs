@@ -10,7 +10,6 @@ mod peer_store;
 mod pending_store;
 mod pruned_store;
 mod store;
-mod txn_tracker;
 mod unchecked_store;
 mod version_store;
 mod wallet_store;
@@ -37,16 +36,17 @@ pub use peer_store::LmdbPeerStore;
 pub use pending_store::LmdbPendingStore;
 pub use pruned_store::LmdbPrunedStore;
 pub use store::{create_backup_file, LmdbStore, Vacuuming};
-pub use txn_tracker::TxnTracker;
 pub use unchecked_store::LmdbUncheckedStore;
 pub use version_store::LmdbVersionStore;
-pub use wallet_store::{LmdbWalletStore, WalletValue};
+pub use wallet_store::LmdbWalletStore;
 pub use wallets::LmdbWallets;
 
 use crate::{
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
     Account, BlockHash,
 };
+
+use super::TxnCallbacks;
 
 pub struct LmdbReadTransaction {
     env: *mut MdbEnv,
@@ -160,25 +160,6 @@ impl Drop for LmdbWriteTransaction {
     fn drop(&mut self) {
         self.commit();
     }
-}
-
-pub trait TxnCallbacks {
-    fn txn_start(&self, txn_id: u64, is_write: bool);
-    fn txn_end(&self, txn_id: u64, is_write: bool);
-}
-
-pub struct NullTxnCallbacks {}
-
-impl NullTxnCallbacks {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl TxnCallbacks for NullTxnCallbacks {
-    fn txn_start(&self, _txn_id: u64, _is_write: bool) {}
-
-    fn txn_end(&self, _txn_id: u64, _is_write: bool) {}
 }
 
 type Transaction<'a> = super::Transaction<'a, LmdbReadTransaction, LmdbWriteTransaction>;

@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    datastore::lmdb::{LmdbWalletStore, WalletValue},
+    datastore::{lmdb::LmdbWalletStore, WalletValue},
     ffi::{
         copy_account_bytes, copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle,
         StringDto, U256ArrayDto,

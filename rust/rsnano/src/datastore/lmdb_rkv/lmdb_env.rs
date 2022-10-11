@@ -15,7 +15,7 @@ use std::{
 };
 
 use crate::{
-    datastore::lmdb::{NullTxnCallbacks, TxnCallbacks, TxnTracker},
+    datastore::{NullTxnCallbacks, TxnCallbacks, TxnTracker},
     logger_mt::Logger,
     memory_intensive_instrumentation,
     utils::PropertyTreeWriter,

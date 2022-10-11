@@ -12,8 +12,10 @@ mod peer_store;
 mod pending_store;
 mod pruned_store;
 mod store;
+mod txn_tracker;
 mod unchecked_store;
 mod version_store;
+mod wallet_store;
 mod write_database_queue;
 
 use std::cmp::{max, min};
@@ -31,8 +33,10 @@ pub use pending_store::PendingStore;
 use primitive_types::{U256, U512};
 pub use pruned_store::PrunedStore;
 pub use store::Store;
+pub use txn_tracker::{NullTxnCallbacks, TxnCallbacks, TxnTracker};
 pub use unchecked_store::UncheckedStore;
 pub use version_store::VersionStore;
+pub use wallet_store::{Fans, WalletValue};
 pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
 
 use crate::utils::get_cpu_count;

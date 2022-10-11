@@ -8,7 +8,24 @@ use backtrace::Backtrace;
 
 use crate::{logger_mt::Logger, utils::PropertyTreeWriter, TxnTrackingConfig};
 
-use super::TxnCallbacks;
+pub trait TxnCallbacks {
+    fn txn_start(&self, txn_id: u64, is_write: bool);
+    fn txn_end(&self, txn_id: u64, is_write: bool);
+}
+
+pub struct NullTxnCallbacks {}
+
+impl NullTxnCallbacks {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl TxnCallbacks for NullTxnCallbacks {
+    fn txn_start(&self, _txn_id: u64, _is_write: bool) {}
+
+    fn txn_end(&self, _txn_id: u64, _is_write: bool) {}
+}
 
 pub struct TxnTracker {
     stats: Mutex<HashMap<u64, TxnStats>>,

@@ -1,11 +1,14 @@
 use super::{
     assert_success, mdb_env_close, mdb_env_create, mdb_env_sync, LmdbReadTransaction,
-    LmdbWriteTransaction, MdbEnv, NullTxnCallbacks, TxnCallbacks, TxnTracker,
+    LmdbWriteTransaction, MdbEnv,
 };
 use crate::{
-    datastore::lmdb::{
-        mdb_env_open, mdb_env_set_mapsize, mdb_env_set_maxdbs, MDB_MAPASYNC, MDB_NOMEMINIT,
-        MDB_NOMETASYNC, MDB_NORDAHEAD, MDB_NOSUBDIR, MDB_NOSYNC, MDB_NOTLS, MDB_WRITEMAP,
+    datastore::{
+        lmdb::{
+            mdb_env_open, mdb_env_set_mapsize, mdb_env_set_maxdbs, MDB_MAPASYNC, MDB_NOMEMINIT,
+            MDB_NOMETASYNC, MDB_NORDAHEAD, MDB_NOSUBDIR, MDB_NOSYNC, MDB_NOTLS, MDB_WRITEMAP,
+        },
+        NullTxnCallbacks, TxnCallbacks, TxnTracker,
     },
     logger_mt::Logger,
     memory_intensive_instrumentation,

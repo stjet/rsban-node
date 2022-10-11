@@ -1,16 +1,15 @@
 use std::sync::{Arc, Mutex};
 
-use primitive_types::U512;
-
 use crate::{
-    datastore::{parallel_traversal_u512, DbIterator, NullIterator, PendingStore},
-    utils::{Deserialize, StreamAdapter},
+    datastore::{parallel_traversal_u512, pending_store::PendingIterator, PendingStore},
+    utils::{Deserialize, Serialize, StreamAdapter},
     Account, BlockHash, PendingInfo, PendingKey,
 };
 
 use super::{
-    assert_success, ensure_success, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbEnv, LmdbIterator,
-    LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction, MDB_NOTFOUND, MDB_SUCCESS,
+    assert_success, ensure_success, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction, MDB_NOTFOUND,
+    MDB_SUCCESS,
 };
 
 pub struct LmdbPendingStore {
@@ -38,8 +37,10 @@ impl LmdbPendingStore {
     }
 }
 
-impl PendingStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbPendingStore {
-    fn put(&self, txn: &LmdbWriteTransaction, key: &PendingKey, pending: &PendingInfo) {
+impl<'a> PendingStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+    for LmdbPendingStore
+{
+    fn put(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey, pending: &PendingInfo) {
         let key_bytes = key.to_bytes();
         let pending_bytes = pending.to_bytes();
         let status = unsafe {
@@ -54,7 +55,7 @@ impl PendingStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbPendingStor
         assert_success(status);
     }
 
-    fn del(&self, txn: &LmdbWriteTransaction, key: &PendingKey) {
+    fn del(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey) {
         let key_bytes = key.to_bytes();
         let status = unsafe {
             mdb_del(
@@ -87,16 +88,29 @@ impl PendingStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbPendingStor
         }
     }
 
-    fn begin(&self, txn: &Transaction) -> Box<dyn DbIterator<PendingKey, PendingInfo>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle(), None, true))
+    fn begin(&self, txn: &Transaction) -> PendingIterator<LmdbIteratorImpl> {
+        PendingIterator::new(LmdbIteratorImpl::new(
+            txn,
+            self.db_handle(),
+            MdbVal::new(),
+            PendingKey::serialized_size(),
+            true,
+        ))
     }
 
     fn begin_at_key(
         &self,
         txn: &Transaction,
         key: &PendingKey,
-    ) -> Box<dyn DbIterator<PendingKey, PendingInfo>> {
-        Box::new(LmdbIterator::new(txn, self.db_handle(), Some(key), true))
+    ) -> PendingIterator<LmdbIteratorImpl> {
+        let key_bytes = key.to_bytes();
+        PendingIterator::new(LmdbIteratorImpl::new(
+            txn,
+            self.db_handle(),
+            MdbVal::from_slice(&key_bytes),
+            PendingKey::serialized_size(),
+            true,
+        ))
     }
 
     fn exists(&self, txn: &Transaction, key: &PendingKey) -> bool {
@@ -114,38 +128,27 @@ impl PendingStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbPendingStor
     }
 
     fn for_each_par(
-        &self,
+        &'a self,
         action: &(dyn Fn(
             LmdbReadTransaction,
-            &mut dyn DbIterator<PendingKey, PendingInfo>,
-            &mut dyn DbIterator<PendingKey, PendingInfo>,
+            PendingIterator<LmdbIteratorImpl>,
+            PendingIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read();
-            let mut begin_it = self.begin_at_key(&transaction.as_txn(), &start.into());
-            let mut end_it = if !is_last {
+            let begin_it = self.begin_at_key(&transaction.as_txn(), &start.into());
+            let end_it = if !is_last {
                 self.begin_at_key(&transaction.as_txn(), &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it.as_mut(), end_it.as_mut());
+            action(transaction, begin_it, end_it);
         });
     }
 
-    fn end(&self) -> Box<dyn DbIterator<PendingKey, PendingInfo>> {
-        Box::new(NullIterator::new())
-    }
-}
-
-impl From<U512> for PendingKey {
-    fn from(value: U512) -> Self {
-        let mut buffer = [0; 64];
-        value.to_big_endian(&mut buffer);
-        PendingKey::new(
-            Account::from_slice(&buffer[..32]).unwrap(),
-            BlockHash::from_slice(&buffer[32..]).unwrap(),
-        )
+    fn end(&self) -> PendingIterator<LmdbIteratorImpl> {
+        PendingIterator::new(LmdbIteratorImpl::null())
     }
 }

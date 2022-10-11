@@ -1006,6 +1006,26 @@ pub fn deterministic_key(seed: &RawKey, index: u32) -> RawKey {
     result
 }
 
+impl Serialize for [u8; 64] {
+    fn serialized_size() -> usize {
+        64
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        stream.write_bytes(self)
+    }
+}
+
+impl Deserialize for [u8; 64] {
+    type Target = Self;
+
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
+        let mut buffer = [0; 64];
+        stream.read_bytes(&mut buffer, 64)?;
+        Ok(buffer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

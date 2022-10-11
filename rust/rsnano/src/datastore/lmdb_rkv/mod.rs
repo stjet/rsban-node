@@ -11,6 +11,7 @@ mod pending_store;
 mod pruned_store;
 mod unchecked_store;
 mod version_store;
+mod wallet_store;
 
 pub use account_store::LmdbAccountStore;
 pub use block_store::LmdbBlockStore;
@@ -30,6 +31,7 @@ pub use pending_store::LmdbPendingStore;
 pub use pruned_store::LmdbPrunedStore;
 use std::{mem, sync::Arc};
 pub use unchecked_store::LmdbUncheckedStore;
+pub use wallet_store::LmdbWalletStore;
 
 use super::TxnCallbacks;
 

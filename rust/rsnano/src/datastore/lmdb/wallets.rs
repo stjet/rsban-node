@@ -1,10 +1,6 @@
 use std::ptr;
 
-use crate::{
-    datastore::DbIterator,
-    utils::{Deserialize, Serialize, Stream},
-    BlockHash, NoValue, RawKey, WalletId,
-};
+use crate::{datastore::DbIterator, BlockHash, NoValue, RawKey, WalletId};
 
 use super::{
     assert_success, ensure_success, mdb_cursor_get, mdb_cursor_open, mdb_dbi_open, mdb_drop,
@@ -107,7 +103,6 @@ impl LmdbWallets {
         ensure_success(error6)
     }
 
-    /// WARNING: Not fully ported yet!
     pub fn split_if_needed(
         &self,
         txn_destination: &Transaction,
@@ -191,25 +186,5 @@ impl LmdbWallets {
     pub fn clear_send_ids(&self, txn: Transaction) {
         let status = unsafe { mdb_drop(txn.handle(), self.send_action_ids_handle, 0) };
         assert_success(status);
-    }
-}
-
-impl Serialize for [u8; 64] {
-    fn serialized_size() -> usize {
-        64
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_bytes(self)
-    }
-}
-
-impl Deserialize for [u8; 64] {
-    type Target = Self;
-
-    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
-        let mut buffer = [0; 64];
-        stream.read_bytes(&mut buffer, 64)?;
-        Ok(buffer)
     }
 }

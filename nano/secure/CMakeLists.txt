@@ -56,7 +56,6 @@ target_link_libraries(
   secure
   nano_lib
   crypto_lib
-  lmdb
   Boost::boost
   Boost::system
   Boost::filesystem)

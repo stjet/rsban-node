@@ -26,7 +26,7 @@ use super::{
     lmdb_env::LmdbEnvHandle, online_weight_store::LmdbOnlineWeightStoreHandle,
     peer_store::LmdbPeerStoreHandle, pending_store::LmdbPendingStoreHandle,
     pruned_store::LmdbPrunedStoreHandle, unchecked_store::LmdbUncheckedStoreHandle,
-    version_store::LmdbVersionStoreHandle, TransactionHandle,
+    version_store::LmdbVersionStoreHandle, TransactionHandle, TransactionType,
 };
 
 pub struct LmdbStoreHandle(LmdbStore);
@@ -262,4 +262,38 @@ pub unsafe extern "C" fn rsn_lmdb_store_vendor_get(
     result: *mut StringDto,
 ) {
     *result = (*handle).0.vendor().into()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_serialize_mdb_tracker(
+    handle: *mut LmdbStoreHandle,
+    ptree: *mut c_void,
+    min_read_time_ms: u64,
+    min_write_time_ms: u64,
+) {
+    let mut ptree = FfiPropertyTreeWriter::new_borrowed(ptree);
+    (*handle)
+        .0
+        .serialize_mdb_tracker(
+            &mut ptree,
+            Duration::from_millis(min_read_time_ms),
+            Duration::from_millis(min_write_time_ms),
+        )
+        .unwrap()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_tx_begin_read(
+    handle: *mut LmdbStoreHandle,
+) -> *mut TransactionHandle {
+    let txn = (*handle).0.tx_begin_read();
+    TransactionHandle::new(TransactionType::Read(txn))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_tx_begin_write(
+    handle: *mut LmdbStoreHandle,
+) -> *mut TransactionHandle {
+    let txn = (*handle).0.tx_begin_write();
+    TransactionHandle::new(TransactionType::Write(txn))
 }

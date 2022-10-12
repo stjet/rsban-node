@@ -14,8 +14,8 @@ use super::{
     ensure_success, mdb_count, mdb_dbi_close, mdb_dbi_open, mdb_drop, mdb_env_copy2, mdb_env_stat,
     mdb_put, EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv,
     LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
-    LmdbPrunedStore, LmdbRawIterator, LmdbUncheckedStore, LmdbVersionStore, LmdbWriteTransaction,
-    MdbStat, MdbVal, Transaction, MDB_APPEND, MDB_CP_COMPACT, MDB_CREATE,
+    LmdbPrunedStore, LmdbRawIterator, LmdbReadTransaction, LmdbUncheckedStore, LmdbVersionStore,
+    LmdbWriteTransaction, MdbStat, MdbVal, Transaction, MDB_APPEND, MDB_CP_COMPACT, MDB_CREATE,
 };
 
 #[derive(PartialEq, Eq)]
@@ -289,6 +289,16 @@ impl LmdbStore {
         Ok(())
     }
 
+    pub fn serialize_mdb_tracker(
+        &self,
+        json: &mut dyn PropertyTreeWriter,
+        min_read_time: Duration,
+        min_write_time: Duration,
+    ) -> anyhow::Result<()> {
+        self.env
+            .serialize_txn_tracker(json, min_read_time, min_write_time)
+    }
+
     pub fn serialize_memory_stats(&self, json: &mut dyn PropertyTreeWriter) -> anyhow::Result<()> {
         let mut stats = MdbStat::default();
         let status = unsafe { mdb_env_stat(self.env.env(), &mut stats) };
@@ -305,6 +315,14 @@ impl LmdbStore {
     pub fn vendor(&self) -> String {
         // fake version! todo: read version
         format!("LMDB {}.{}.{}", 0, 9, 25)
+    }
+
+    pub fn tx_begin_read(&self) -> LmdbReadTransaction {
+        self.env.tx_begin_read()
+    }
+
+    pub fn tx_begin_write(&self) -> LmdbWriteTransaction {
+        self.env.tx_begin_write()
     }
 }
 

@@ -48,7 +48,6 @@ rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, boost::filesystem
 
 nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
 	handle{ create_store_handle (error, path_a, nano::mdb_env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true), logger_a, txn_tracking_config_a, block_processor_batch_max_time_a, backup_before_upgrade_a) },
-	env_m{ rsnano::rsn_lmdb_store_env (handle) },
 	block_store{ rsnano::rsn_lmdb_store_block (handle) },
 	frontier_store{ rsnano::rsn_lmdb_store_frontier (handle) },
 	account_store{ rsnano::rsn_lmdb_store_account (handle) },
@@ -71,7 +70,7 @@ nano::lmdb::store::~store ()
 
 void nano::lmdb::store::serialize_mdb_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time)
 {
-	env_m.serialize_txn_tracker (json, min_read_time, min_write_time);
+	rsnano::rsn_lmdb_store_serialize_mdb_tracker (handle, &json, min_read_time.count (), min_write_time.count ());
 }
 
 void nano::lmdb::store::serialize_memory_stats (boost::property_tree::ptree & json)
@@ -81,12 +80,12 @@ void nano::lmdb::store::serialize_memory_stats (boost::property_tree::ptree & js
 
 std::unique_ptr<nano::write_transaction> nano::lmdb::store::tx_begin_write (std::vector<nano::tables> const &, std::vector<nano::tables> const &)
 {
-	return env_m.tx_begin_write ();
+	return std::make_unique<nano::write_mdb_txn> (rsnano::rsn_lmdb_store_tx_begin_write (handle));
 }
 
 std::unique_ptr<nano::read_transaction> nano::lmdb::store::tx_begin_read () const
 {
-	return env_m.tx_begin_read ();
+	return std::make_unique<nano::read_mdb_txn> (rsnano::rsn_lmdb_store_tx_begin_read (handle));
 }
 
 std::string nano::lmdb::store::vendor_get () const

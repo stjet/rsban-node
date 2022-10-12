@@ -50,7 +50,6 @@ namespace lmdb
 		rsnano::LmdbStoreHandle * handle;
 
 	private:
-		nano::mdb_env env_m;
 		nano::lmdb::account_store account_store;
 		nano::lmdb::block_store block_store;
 		nano::lmdb::confirmation_height_store confirmation_height_store;

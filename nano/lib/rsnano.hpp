@@ -2202,7 +2202,16 @@ LmdbPrunedStoreHandle * rsn_lmdb_store_pruned (LmdbStoreHandle * handle);
 
 void rsn_lmdb_store_rebuild_db (LmdbStoreHandle * handle, TransactionHandle * txn);
 
+void rsn_lmdb_store_serialize_mdb_tracker (LmdbStoreHandle * handle,
+void * ptree,
+uint64_t min_read_time_ms,
+uint64_t min_write_time_ms);
+
 void rsn_lmdb_store_serialize_memory_stats (LmdbStoreHandle * handle, void * ptree);
+
+TransactionHandle * rsn_lmdb_store_tx_begin_read (LmdbStoreHandle * handle);
+
+TransactionHandle * rsn_lmdb_store_tx_begin_write (LmdbStoreHandle * handle);
 
 LmdbUncheckedStoreHandle * rsn_lmdb_store_unchecked (LmdbStoreHandle * handle);
 

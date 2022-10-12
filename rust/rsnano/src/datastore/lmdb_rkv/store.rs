@@ -19,7 +19,8 @@ use crate::{
 use super::{
     EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv,
     LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
-    LmdbPrunedStore, LmdbUncheckedStore, LmdbVersionStore, LmdbWriteTransaction,
+    LmdbPrunedStore, LmdbReadTransaction, LmdbUncheckedStore, LmdbVersionStore,
+    LmdbWriteTransaction,
 };
 
 #[derive(PartialEq, Eq)]
@@ -159,6 +160,24 @@ impl LmdbStore {
     pub fn vendor(&self) -> String {
         // fake version! todo: read version
         format!("lmdb-rkv {}.{}.{}", 0, 14, 0)
+    }
+
+    pub fn serialize_mdb_tracker(
+        &self,
+        json: &mut dyn PropertyTreeWriter,
+        min_read_time: Duration,
+        min_write_time: Duration,
+    ) -> anyhow::Result<()> {
+        self.env
+            .serialize_txn_tracker(json, min_read_time, min_write_time)
+    }
+
+    pub fn tx_begin_read(&self) -> lmdb::Result<LmdbReadTransaction> {
+        self.env.tx_begin_read()
+    }
+
+    pub fn tx_begin_write(&self) -> lmdb::Result<LmdbWriteTransaction> {
+        self.env.tx_begin_write()
     }
 }
 

@@ -29,34 +29,6 @@ TEST (block_store, construction)
 	ASSERT_TRUE (!store->init_error ());
 }
 
-// already ported to rust
-TEST (block_store, block_details)
-{
-	nano::block_details details_send (nano::epoch::epoch_0, true, false, false);
-	ASSERT_TRUE (details_send.is_send ());
-	ASSERT_FALSE (details_send.is_receive ());
-	ASSERT_FALSE (details_send.is_epoch ());
-	ASSERT_EQ (nano::epoch::epoch_0, details_send.epoch ());
-
-	nano::block_details details_receive (nano::epoch::epoch_1, false, true, false);
-	ASSERT_FALSE (details_receive.is_send ());
-	ASSERT_TRUE (details_receive.is_receive ());
-	ASSERT_FALSE (details_receive.is_epoch ());
-	ASSERT_EQ (nano::epoch::epoch_1, details_receive.epoch ());
-
-	nano::block_details details_epoch (nano::epoch::epoch_2, false, false, true);
-	ASSERT_FALSE (details_epoch.is_send ());
-	ASSERT_FALSE (details_epoch.is_receive ());
-	ASSERT_TRUE (details_epoch.is_epoch ());
-	ASSERT_EQ (nano::epoch::epoch_2, details_epoch.epoch ());
-
-	nano::block_details details_none (nano::epoch::unspecified, false, false, false);
-	ASSERT_FALSE (details_none.is_send ());
-	ASSERT_FALSE (details_none.is_receive ());
-	ASSERT_FALSE (details_none.is_epoch ());
-	ASSERT_EQ (nano::epoch::unspecified, details_none.epoch ());
-}
-
 TEST (block_store, block_details_serialization)
 {
 	nano::block_details details1 (nano::epoch::epoch_2, false, true, false);

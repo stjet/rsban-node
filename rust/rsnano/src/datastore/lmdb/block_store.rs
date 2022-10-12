@@ -319,3 +319,7 @@ impl<'a, 'b> BlockVisitor for BlockPredecessorMdbSet<'a, 'b> {
 fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
     entry_size - BlockSideband::serialized_size(block_type)
 }
+
+#[cfg(test)]
+mod tests{
+}

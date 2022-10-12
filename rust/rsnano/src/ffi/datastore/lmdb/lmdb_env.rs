@@ -44,11 +44,17 @@ pub unsafe extern "C" fn rsn_mdb_env_create(
     };
     let path_str = CStr::from_ptr(path).to_str().unwrap();
     let path = Path::new(path_str);
-    let env = LmdbEnv::new(&mut *error, path, &options);
-    if *error {
-        eprintln!("Could not create LMDB env");
+    match LmdbEnv::with_options(path, &options) {
+        Ok(env) => {
+            *error = false;
+            Box::into_raw(Box::new(LmdbEnvHandle(Arc::new(env))))
+        }
+        Err(_) => {
+            eprintln!("Could not create LMDB env");
+            *error = true;
+            std::ptr::null_mut()
+        }
     }
-    Box::into_raw(Box::new(LmdbEnvHandle(Arc::new(env))))
 }
 
 #[no_mangle]
@@ -99,7 +105,7 @@ pub unsafe extern "C" fn rsn_mdb_env_destroy(handle: *mut LmdbEnvHandle) {
 pub unsafe extern "C" fn rsn_mdb_env_tx_begin_read(
     handle: *mut LmdbEnvHandle,
 ) -> *mut TransactionHandle {
-    let txn = (*handle).0.tx_begin_read();
+    let txn = (*handle).0.tx_begin_read().unwrap();
     TransactionHandle::new(TransactionType::Read(txn))
 }
 
@@ -107,7 +113,7 @@ pub unsafe extern "C" fn rsn_mdb_env_tx_begin_read(
 pub unsafe extern "C" fn rsn_mdb_env_tx_begin_write(
     handle: *mut LmdbEnvHandle,
 ) -> *mut TransactionHandle {
-    let txn = (*handle).0.tx_begin_write();
+    let txn = (*handle).0.tx_begin_write().unwrap();
     TransactionHandle::new(TransactionType::Write(txn))
 }
 

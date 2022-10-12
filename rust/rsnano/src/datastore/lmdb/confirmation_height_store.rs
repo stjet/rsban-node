@@ -1,134 +1,111 @@
 use std::sync::{Arc, Mutex};
 
+use lmdb::{Database, DatabaseFlags, WriteFlags};
+
 use crate::{
     datastore::{
-        confirmation_height_store::ConfirmationHeightIterator,
-        lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        parallel_traversal, ConfirmationHeightStore, DbIterator2,
+        confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
+        ConfirmationHeightStore, DbIterator2,
     },
-    utils::{Deserialize, Serialize},
+    utils::{Deserialize, StreamAdapter},
     Account, ConfirmationHeightInfo,
 };
 
 use super::{
-    assert_success, ensure_success, exists, mdb_count, mdb_dbi_open, mdb_del, mdb_drop, mdb_get,
-    mdb_put, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal,
-    OwnedMdbVal, Transaction,
+    exists, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
 };
 
 pub struct LmdbConfirmationHeightStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<u32>,
+    db_handle: Mutex<Option<Database>>,
 }
 
 impl LmdbConfirmationHeightStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
         Self {
             env,
-            db_handle: Mutex::new(0),
+            db_handle: Mutex::new(None),
         }
     }
 
-    pub fn db_handle(&self) -> u32 {
-        *self.db_handle.lock().unwrap()
+    pub fn db_handle(&self) -> Database {
+        self.db_handle.lock().unwrap().unwrap()
     }
 
-    pub fn open_db(&self, txn: &Transaction, flags: u32) -> anyhow::Result<()> {
-        let mut handle = 0;
-        let status = unsafe {
-            mdb_dbi_open(
-                txn.handle(),
-                Some("confirmation_height"),
-                flags,
-                &mut handle,
-            )
-        };
-        *self.db_handle.lock().unwrap() = handle;
-        ensure_success(status)
+    pub fn create_db(&self) -> anyhow::Result<()> {
+        let db = self
+            .env
+            .environment
+            .create_db(Some("confirmation_height"), DatabaseFlags::empty())?;
+        *self.db_handle.lock().unwrap() = Some(db);
+        Ok(())
     }
 }
 
-impl<'a> ConfirmationHeightStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+impl<'a>
+    ConfirmationHeightStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
     for LmdbConfirmationHeightStore
 {
     fn put(
         &self,
         txn: &mut LmdbWriteTransaction,
-        account: &crate::Account,
+        account: &Account,
         info: &ConfirmationHeightInfo,
     ) {
-        let mut key = MdbVal::from_slice(account.as_bytes());
-        let mut value = OwnedMdbVal::from(info);
-        let status = unsafe {
-            mdb_put(
-                txn.handle,
+        txn.rw_txn_mut()
+            .put(
                 self.db_handle(),
-                &mut key,
-                value.as_mdb_val(),
-                0,
+                account.as_bytes(),
+                &info.to_bytes(),
+                WriteFlags::empty(),
             )
-        };
-        assert_success(status);
+            .unwrap();
     }
 
-    fn get(&self, txn: &Transaction, account: &crate::Account) -> Option<ConfirmationHeightInfo> {
-        let mut key = MdbVal::from(account);
-        let mut data = MdbVal::new();
-        let status = unsafe { mdb_get(txn.handle(), self.db_handle(), &mut key, &mut data) };
-        assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
-
-        if status == MDB_SUCCESS {
-            let mut stream = data.as_stream();
-            ConfirmationHeightInfo::deserialize(&mut stream).ok()
-        } else {
-            None
+    fn get(&self, txn: &LmdbTransaction, account: &Account) -> Option<ConfirmationHeightInfo> {
+        match txn.get(self.db_handle(), account.as_bytes()) {
+            Err(lmdb::Error::NotFound) => None,
+            Ok(bytes) => {
+                let mut stream = StreamAdapter::new(bytes);
+                ConfirmationHeightInfo::deserialize(&mut stream).ok()
+            }
+            Err(e) => {
+                panic!("Could not load confirmation height info: {:?}", e);
+            }
         }
     }
 
-    fn exists(&self, txn: &Transaction, account: &Account) -> bool {
-        exists(txn, self.db_handle(), &mut MdbVal::from(account))
+    fn exists(&self, txn: &LmdbTransaction, account: &Account) -> bool {
+        exists(txn, self.db_handle(), account.as_bytes())
     }
 
     fn del(&self, txn: &mut LmdbWriteTransaction, account: &Account) {
-        let status = unsafe {
-            mdb_del(
-                txn.handle,
-                self.db_handle(),
-                &mut MdbVal::from(account),
-                None,
-            )
-        };
-        assert_success(status);
+        txn.rw_txn_mut()
+            .del(self.db_handle(), account.as_bytes(), None)
+            .unwrap();
     }
 
-    fn count(&self, txn: &Transaction) -> usize {
-        unsafe { mdb_count(txn.handle(), self.db_handle()) }
+    fn count(&self, txn: &LmdbTransaction) -> usize {
+        txn.count(self.db_handle())
     }
 
     fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        unsafe { mdb_drop(txn.handle, self.db_handle(), 0) };
+        txn.rw_txn_mut().clear_db(self.db_handle()).unwrap()
     }
 
-    fn begin(&self, txn: &Transaction) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
-        DbIterator2::new(LmdbIteratorImpl::new(
-            txn,
-            self.db_handle(),
-            MdbVal::new(),
-            Account::serialized_size(),
-            true,
-        ))
+    fn begin(&self, txn: &LmdbTransaction) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
+        DbIterator2::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, true))
     }
 
     fn begin_at_account(
         &self,
-        txn: &Transaction,
+        txn: &LmdbTransaction,
         account: &Account,
     ) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
         DbIterator2::new(LmdbIteratorImpl::new(
             txn,
             self.db_handle(),
-            MdbVal::from(account),
-            Account::serialized_size(),
+            Some(account.as_bytes()),
             true,
         ))
     }
@@ -138,16 +115,16 @@ impl<'a> ConfirmationHeightStore<'a, LmdbReadTransaction, LmdbWriteTransaction, 
     }
 
     fn for_each_par(
-        &self,
+        &'a self,
         action: &(dyn Fn(
-            LmdbReadTransaction,
+            LmdbReadTransaction<'a>,
             ConfirmationHeightIterator<LmdbIteratorImpl>,
             ConfirmationHeightIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read();
+            let transaction = self.env.tx_begin_read().unwrap();
             let begin_it = self.begin_at_account(&transaction.as_txn(), &start.into());
             let end_it = if !is_last {
                 self.begin_at_account(&transaction.as_txn(), &end.into())

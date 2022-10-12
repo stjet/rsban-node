@@ -1,9 +1,6 @@
 use crate::utils::{Deserialize, Serialize, StreamAdapter};
 
-use super::lmdb::LmdbRawIterator;
-
 pub trait DbIterator<K, V> {
-    fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator>;
     fn current(&self) -> Option<(&K, &V)>;
     fn next(&mut self);
     fn is_end(&self) -> bool;
@@ -18,10 +15,6 @@ impl NullIterator {
 }
 
 impl<K, V> DbIterator<K, V> for NullIterator {
-    fn take_lmdb_raw_iterator(&mut self) -> Option<LmdbRawIterator> {
-        None
-    }
-
     fn is_end(&self) -> bool {
         true
     }
@@ -90,9 +83,14 @@ where
     fn load_current(&mut self) {
         self.current = match self.iterator_impl.current() {
             Some((k, v)) => {
-                let key = K::deserialize(&mut StreamAdapter::new(k)).unwrap();
-                let value = V::deserialize(&mut StreamAdapter::new(v)).unwrap();
-                Some((key, value))
+                if k.len() < K::serialized_size(){
+                    None
+                }
+                else{
+                    let key = K::deserialize(&mut StreamAdapter::new(k)).unwrap();
+                    let value = V::deserialize(&mut StreamAdapter::new(v)).unwrap();
+                    Some((key, value))
+                }
             }
             None => None,
         };

@@ -26,7 +26,10 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_init(
     txn: *mut TransactionHandle,
     store: *mut LmdbStoreHandle,
 ) -> bool {
-    (*handle).0.initialize(&(*txn).as_txn(), &*store).is_ok()
+    (*handle)
+        .0
+        .initialize((*txn).as_write_txn(), &(*store).env)
+        .is_ok()
 }
 
 #[no_mangle]
@@ -71,7 +74,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_set_block_hash(
     let id = CStr::from_ptr(id).to_str().unwrap();
     (*handle)
         .0
-        .set_block_hash((*txn).as_txn(), id, &BlockHash::from_ptr(hash))
+        .set_block_hash((*txn).as_write_txn(), id, &BlockHash::from_ptr(hash))
         .is_ok()
 }
 
@@ -80,5 +83,5 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_clear_send_ids(
     handle: *mut LmdbWalletsHandle,
     txn: *mut TransactionHandle,
 ) {
-    (*handle).0.clear_send_ids((*txn).as_txn())
+    (*handle).0.clear_send_ids((*txn).as_write_txn())
 }

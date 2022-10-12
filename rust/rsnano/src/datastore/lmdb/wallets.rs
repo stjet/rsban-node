@@ -1,51 +1,40 @@
-use std::ptr;
-
-use crate::{datastore::DbIterator, BlockHash, NoValue, RawKey, WalletId};
-
-use super::{
-    assert_success, ensure_success, mdb_cursor_get, mdb_cursor_open, mdb_dbi_open, mdb_drop,
-    mdb_get, mdb_put, LmdbIterator, LmdbStore, MdbCursorOp, MdbVal, Transaction, MDB_CREATE,
-    MDB_NOTFOUND, MDB_SUCCESS,
-};
+use super::{LmdbEnv, LmdbIteratorImpl, LmdbTransaction, LmdbWriteTransaction};
+use crate::{datastore::DbIterator2, BlockHash, NoValue, RawKey, WalletId};
+use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
+pub type WalletsIterator = DbIterator2<[u8; 64], NoValue, LmdbIteratorImpl>;
 
 pub struct LmdbWallets {
-    pub handle: u32,
-    pub send_action_ids_handle: u32,
+    pub handle: Option<Database>,
+    pub send_action_ids_handle: Option<Database>,
 }
 
 impl LmdbWallets {
     pub fn new() -> Self {
         Self {
-            handle: 0,
-            send_action_ids_handle: 0,
+            handle: None,
+            send_action_ids_handle: None,
         }
     }
 
-    pub fn initialize(&mut self, txn: &Transaction, store: &LmdbStore) -> anyhow::Result<()> {
-        let status = unsafe { mdb_dbi_open(txn.handle(), None, MDB_CREATE, &mut self.handle) };
-        ensure_success(status)?;
-        self.split_if_needed(txn, store)?;
-
-        let status = unsafe {
-            mdb_dbi_open(
-                txn.handle(),
-                Some("send_action_ids"),
-                MDB_CREATE,
-                &mut self.send_action_ids_handle,
-            )
-        };
-        ensure_success(status)
+    pub fn initialize(
+        &mut self,
+        txn: &mut LmdbWriteTransaction,
+        env: &LmdbEnv,
+    ) -> anyhow::Result<()> {
+        self.handle = Some(unsafe { txn.rw_txn_mut().create_db(None, DatabaseFlags::empty())? });
+        self.split_if_needed(txn, env)?;
+        self.send_action_ids_handle = Some(unsafe {
+            txn.rw_txn_mut()
+                .create_db(Some("send_action_ids"), DatabaseFlags::empty())?
+        });
+        Ok(())
     }
 
-    pub fn get_store_it(
-        &self,
-        txn: &Transaction,
-        hash: &str,
-    ) -> Box<dyn DbIterator<[u8; 64], NoValue>> {
+    pub fn get_store_it(&self, txn: &LmdbTransaction, hash: &str) -> WalletsIterator {
         let hash_bytes: [u8; 64] = hash.as_bytes().try_into().unwrap();
-        Box::new(LmdbIterator::new(
-            &txn,
-            self.handle,
+        WalletsIterator::new(LmdbIteratorImpl::new(
+            txn,
+            self.handle.unwrap(),
             Some(&hash_bytes),
             true,
         ))
@@ -54,85 +43,57 @@ impl LmdbWallets {
     pub fn move_table(
         &self,
         name: &str,
-        txn_source: &Transaction,
-        txn_destination: &Transaction,
+        txn_source: &mut LmdbWriteTransaction,
+        txn_destination: &mut LmdbWriteTransaction,
     ) -> anyhow::Result<()> {
-        let mut handle_source = 0;
-        let error2 = unsafe {
-            mdb_dbi_open(
-                txn_source.handle(),
-                Some(name),
-                MDB_CREATE,
-                &mut handle_source,
-            )
-        };
-        ensure_success(error2)?;
-        let mut handle_destination = 0;
-        let error3 = unsafe {
-            mdb_dbi_open(
-                txn_destination.handle(),
-                Some(name),
-                MDB_CREATE,
-                &mut handle_destination,
-            )
-        };
-        ensure_success(error3)?;
-        let mut cursor = ptr::null_mut();
-        let error4 = unsafe { mdb_cursor_open(txn_source.handle(), handle_source, &mut cursor) };
-        ensure_success(error4)?;
-        let mut val_key = MdbVal::new();
-        let mut val_value = MdbVal::new();
-        let mut cursor_status =
-            unsafe { mdb_cursor_get(cursor, &mut val_key, &mut val_value, MdbCursorOp::MdbFirst) };
-        while cursor_status == MDB_SUCCESS {
-            let error5 = unsafe {
-                mdb_put(
-                    txn_destination.handle(),
-                    handle_destination,
-                    &mut val_key,
-                    &mut val_value,
-                    0,
-                )
-            };
-            ensure_success(error5)?;
-            cursor_status = unsafe {
-                mdb_cursor_get(cursor, &mut val_key, &mut val_value, MdbCursorOp::MdbNext)
-            };
+        let rw_txn_source = txn_source.rw_txn_mut();
+        let rw_txn_dest = txn_destination.rw_txn_mut();
+        let handle_source = unsafe { rw_txn_source.create_db(Some(name), DatabaseFlags::empty()) }?;
+        let handle_destination =
+            unsafe { rw_txn_dest.create_db(Some(name), DatabaseFlags::empty()) }?;
+
+        {
+            let mut cursor = rw_txn_source.open_ro_cursor(handle_source)?;
+            for x in cursor.iter_start() {
+                let (k, v) = x?;
+                rw_txn_dest.put(handle_destination, &k, &v, WriteFlags::empty())?;
+            }
         }
-        let error6 = unsafe { mdb_drop(txn_source.handle(), handle_source, 1) };
-        ensure_success(error6)
+
+        unsafe { rw_txn_source.drop_db(handle_source) }?;
+        Ok(())
     }
 
     pub fn split_if_needed(
         &self,
-        txn_destination: &Transaction,
-        store: &LmdbStore,
+        txn_destination: &mut LmdbWriteTransaction,
+        env: &LmdbEnv,
     ) -> anyhow::Result<()> {
         let beginning = RawKey::from(0).encode_hex();
         let end = RawKey::from_bytes([1; 32]).encode_hex();
 
         // First do a read pass to check if there are any wallets that need extracting (to save holding a write lock and potentially being blocked)
         let wallets_need_splitting = {
-            let transaction_source = store.env.tx_begin_read();
+            let transaction_source = env.tx_begin_read()?;
             let i = self.get_store_it(&transaction_source.as_txn(), &beginning);
             let n = self.get_store_it(&transaction_source.as_txn(), &end);
             i.current().map(|(k, _)| *k) != n.current().map(|(k, _)| *k)
         };
 
         if wallets_need_splitting {
-            let txn_source = store.env.tx_begin_write();
+            let mut txn_source = env.tx_begin_write().unwrap();
             let mut i = self.get_store_it(&txn_source.as_txn(), &beginning);
             while let Some((k, _)) = i.current() {
                 let text = std::str::from_utf8(k)?;
                 let _id = WalletId::decode_hex(text)?;
-                self.move_table(text, &txn_source.as_txn(), txn_destination)?;
+                self.move_table(text, &mut txn_source, txn_destination)?;
                 i.next();
             }
         }
         Ok(())
     }
 
-    pub fn get_wallet_ids(&self, txn: &Transaction) -> Vec<WalletId> {
+    pub fn get_wallet_ids(&self, txn: &LmdbTransaction) -> Vec<WalletId> {
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();
         let mut i = self.get_store_it(txn, &beginning);
@@ -144,47 +105,38 @@ impl LmdbWallets {
         wallet_ids
     }
 
-    pub fn get_block_hash(&self, txn: Transaction, id: &str) -> anyhow::Result<Option<BlockHash>> {
-        let mut id_mdb_val = MdbVal::from(id);
-        let mut result = MdbVal::new();
-        let status = unsafe {
-            mdb_get(
-                txn.handle(),
-                self.send_action_ids_handle,
-                &mut id_mdb_val,
-                &mut result,
-            )
-        };
-        if status == MDB_SUCCESS {
-            Ok(Some(BlockHash::try_from(&result)?))
-        } else if status == MDB_NOTFOUND {
-            Ok(None)
-        } else {
-            Err(anyhow!("get block hash failed"))
+    pub fn get_block_hash(
+        &self,
+        txn: LmdbTransaction,
+        id: &str,
+    ) -> anyhow::Result<Option<BlockHash>> {
+        match txn.get(self.send_action_ids_handle.unwrap(), &id.as_bytes()) {
+            Ok(bytes) => Ok(Some(
+                BlockHash::from_slice(bytes).ok_or_else(|| anyhow!("invalid block hash"))?,
+            )),
+            Err(lmdb::Error::NotFound) => Ok(None),
+            Err(e) => Err(e.into()),
         }
     }
 
     pub fn set_block_hash(
         &self,
-        txn: Transaction,
+        txn: &mut LmdbWriteTransaction,
         id: &str,
         hash: &BlockHash,
     ) -> anyhow::Result<()> {
-        let mut id_mdb_val = MdbVal::from(id);
-        let status = unsafe {
-            mdb_put(
-                txn.handle(),
-                self.send_action_ids_handle,
-                &mut id_mdb_val,
-                &mut MdbVal::from(hash),
-                0,
-            )
-        };
-        ensure_success(status)
+        txn.rw_txn_mut().put(
+            self.send_action_ids_handle.unwrap(),
+            &id.as_bytes(),
+            hash.as_bytes(),
+            WriteFlags::empty(),
+        )?;
+        Ok(())
     }
 
-    pub fn clear_send_ids(&self, txn: Transaction) {
-        let status = unsafe { mdb_drop(txn.handle(), self.send_action_ids_handle, 0) };
-        assert_success(status);
+    pub fn clear_send_ids(&self, txn: &mut LmdbWriteTransaction) {
+        txn.rw_txn_mut()
+            .clear_db(self.send_action_ids_handle.unwrap())
+            .unwrap();
     }
 }

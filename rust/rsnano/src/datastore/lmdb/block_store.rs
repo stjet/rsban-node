@@ -1,73 +1,70 @@
+use super::{
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
+};
 use crate::{
-    datastore::{
-        block_store::BlockIterator,
-        lmdb::{MDB_NOTFOUND, MDB_SUCCESS},
-        parallel_traversal, BlockStore, DbIterator2,
-    },
+    datastore::{block_store::BlockIterator, parallel_traversal, BlockStore, DbIterator2},
     deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
     Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, Epoch,
 };
+use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
-use std::{
-    ffi::c_void,
-    sync::{Arc, Mutex},
-};
-
-use super::{
-    assert_success, ensure_success, mdb_count, mdb_dbi_open, mdb_del, mdb_get, mdb_put, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
-};
+use std::sync::{Arc, Mutex};
 
 pub struct LmdbBlockStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<u32>,
+    db_handle: Mutex<Option<Database>>,
 }
 
 impl LmdbBlockStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
         Self {
             env,
-            db_handle: Mutex::new(0),
+            db_handle: Mutex::new(None),
         }
     }
 
-    pub fn db_handle(&self) -> u32 {
-        *self.db_handle.lock().unwrap()
+    pub fn db_handle(&self) -> Database {
+        self.db_handle.lock().unwrap().unwrap()
     }
 
-    pub fn raw_put(&self, txn: &LmdbWriteTransaction, data: &[u8], hash: &BlockHash) {
-        let mut key = MdbVal::from_slice(hash.as_bytes());
-        let mut data = MdbVal::from_slice(data);
-        let status = unsafe { mdb_put(txn.handle, self.db_handle(), &mut key, &mut data, 0) };
-        assert_success(status);
+    pub fn raw_put(&self, txn: &mut LmdbWriteTransaction, data: &[u8], hash: &BlockHash) {
+        txn.rw_txn_mut()
+            .put(
+                self.db_handle(),
+                hash.as_bytes(),
+                &data,
+                WriteFlags::empty(),
+            )
+            .unwrap();
     }
 
-    pub fn block_raw_get(&self, txn: &Transaction, hash: &BlockHash, value: &mut MdbVal) {
-        let mut key = MdbVal::from_slice(hash.as_bytes());
-        let status = unsafe { mdb_get(txn.handle(), self.db_handle(), &mut key, value) };
-        assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
+    pub fn block_raw_get<'txn>(
+        &'txn self,
+        txn: &'txn LmdbTransaction,
+        hash: &BlockHash,
+    ) -> Option<&[u8]> {
+        match txn.get(self.db_handle(), hash.as_bytes()) {
+            Err(lmdb::Error::NotFound) => None,
+            Ok(bytes) => Some(bytes),
+            Err(e) => panic!("Could not load block. {:?}", e),
+        }
     }
 
-    pub fn open_db(&self, txn: &Transaction, flags: u32) -> anyhow::Result<()> {
-        let mut handle = 0;
-        let status = unsafe { mdb_dbi_open(txn.handle(), Some("blocks"), flags, &mut handle) };
-        let mut guard = self.db_handle.lock().unwrap();
-        *guard = handle;
-        ensure_success(status)
+    pub fn create_db(&self) -> anyhow::Result<()> {
+        *self.db_handle.lock().unwrap() = Some(
+            self.env
+                .environment
+                .create_db(Some("blocks"), DatabaseFlags::empty())?,
+        );
+        Ok(())
     }
 }
 
-unsafe fn block_type_from_raw(data: *const c_void) -> Option<BlockType> {
-    // The block type is the first byte
-    let first_byte = *(data as *const u8);
-    BlockType::from_u8(first_byte)
-}
-
-impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
     for LmdbBlockStore
 {
-    fn put(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash, block: &dyn Block) {
+    fn put(&self, txn: &mut LmdbWriteTransaction<'a>, hash: &BlockHash, block: &dyn Block) {
         debug_assert!(
             block.sideband().unwrap().successor.is_zero()
                 || self.exists(&txn.as_txn(), &block.sideband().unwrap().successor)
@@ -82,85 +79,74 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
             .serialize(&mut stream, block.block_type())
             .unwrap();
         self.raw_put(txn, stream.as_bytes(), hash);
-        let mut predecessor = BlockPredecessorMdbSet::new(txn, self);
-        block.visit(&mut predecessor);
+        {
+            let mut predecessor = BlockPredecessorMdbSet::new(txn, self);
+            block.visit(&mut predecessor);
+        }
 
         debug_assert!(
             block.previous().is_zero() || self.successor(&txn.as_txn(), block.previous()) == *hash
         );
     }
 
-    fn exists(&self, transaction: &Transaction, hash: &BlockHash) -> bool {
-        let mut junk = MdbVal::new();
-        self.block_raw_get(transaction, hash, &mut junk);
-        junk.mv_size != 0
+    fn exists(&self, transaction: &LmdbTransaction, hash: &BlockHash) -> bool {
+        self.block_raw_get(transaction, hash).is_some()
     }
 
-    fn successor(&self, txn: &Transaction, hash: &BlockHash) -> BlockHash {
-        let mut value = MdbVal::new();
-        self.block_raw_get(txn, hash, &mut value);
-        let data = value.as_slice();
-        if data.len() != 0 {
-            debug_assert!(data.len() >= 32);
-            let block_type = BlockType::from_u8(data[0]).unwrap();
-            let offset = block_successor_offset(data.len(), block_type);
-            BlockHash::from_bytes(data[offset..offset + 32].try_into().unwrap())
-        } else {
-            BlockHash::new()
+    fn successor(&self, txn: &LmdbTransaction, hash: &BlockHash) -> BlockHash {
+        match self.block_raw_get(txn, hash) {
+            None => BlockHash::new(),
+            Some(data) => {
+                debug_assert!(data.len() >= 32);
+                let block_type = BlockType::from_u8(data[0]).unwrap();
+                let offset = block_successor_offset(data.len(), block_type);
+                BlockHash::from_bytes(data[offset..offset + 32].try_into().unwrap())
+            }
         }
     }
 
     fn successor_clear(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
-        let mut value = MdbVal::new();
-        self.block_raw_get(&txn.as_txn(), hash, &mut value);
-        debug_assert!(value.mv_size != 0);
-        let block_type = unsafe { block_type_from_raw(value.mv_data) }.unwrap();
+        let t = txn.as_txn();
+        let value = self.block_raw_get(&t, hash).unwrap();
+        let block_type = BlockType::from_u8(value[0]).unwrap();
 
-        let mut data = value.as_slice().to_vec();
-        let offset = block_successor_offset(value.mv_size, block_type);
+        let mut data = value.to_vec();
+        let offset = block_successor_offset(value.len(), block_type);
         data[offset..offset + BlockHash::serialized_size()].fill(0);
         self.raw_put(txn, &data, hash)
     }
 
-    fn get(&self, txn: &Transaction, hash: &BlockHash) -> Option<BlockEnum> {
-        let mut value = MdbVal::new();
-        self.block_raw_get(txn, hash, &mut value);
-        if value.mv_size != 0 {
-            let mut stream = StreamAdapter::new(value.as_slice());
-            let mut block = deserialize_block_enum(&mut stream).unwrap();
-            let sideband = BlockSideband::from_stream(&mut stream, block.block_type()).unwrap();
-            block.as_block_mut().set_sideband(sideband);
-            Some(block)
-        } else {
-            None
+    fn get(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Option<BlockEnum> {
+        match self.block_raw_get(txn, hash) {
+            None => None,
+            Some(bytes) => {
+                let mut stream = StreamAdapter::new(bytes);
+                let mut block = deserialize_block_enum(&mut stream).unwrap();
+                let sideband = BlockSideband::from_stream(&mut stream, block.block_type()).unwrap();
+                block.as_block_mut().set_sideband(sideband);
+                Some(block)
+            }
         }
     }
 
-    fn get_no_sideband(&self, txn: &Transaction, hash: &BlockHash) -> Option<BlockEnum> {
-        let mut value = MdbVal::new();
-        self.block_raw_get(txn, hash, &mut value);
-        if value.mv_size != 0 {
-            let mut stream = StreamAdapter::new(value.as_slice());
-            Some(deserialize_block_enum(&mut stream).unwrap())
-        } else {
-            None
+    fn get_no_sideband(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Option<BlockEnum> {
+        match self.block_raw_get(txn, hash) {
+            None => None,
+            Some(bytes) => {
+                let mut stream = StreamAdapter::new(bytes);
+                Some(deserialize_block_enum(&mut stream).unwrap())
+            }
         }
     }
 
     fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
-        let status = unsafe {
-            mdb_del(
-                txn.handle,
-                self.db_handle(),
-                &mut MdbVal::from_slice(hash.as_bytes()),
-                None,
-            )
-        };
-        assert_success(status);
+        txn.rw_txn_mut()
+            .del(self.db_handle(), hash.as_bytes(), None)
+            .unwrap();
     }
 
-    fn count(&self, txn: &Transaction) -> usize {
-        unsafe { mdb_count(txn.handle(), self.db_handle()) }
+    fn count(&self, txn: &LmdbTransaction) -> usize {
+        txn.count(self.db_handle())
     }
 
     fn account_calculated(&self, block: &dyn Block) -> Account {
@@ -174,32 +160,29 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
         result
     }
 
-    fn account(&self, txn: &Transaction, hash: &BlockHash) -> Account {
+    fn account(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Account {
         let block = self.get(txn, hash).unwrap();
         self.account_calculated(block.as_block())
     }
 
-    fn begin(&self, transaction: &Transaction) -> BlockIterator<LmdbIteratorImpl> {
+    fn begin(&self, transaction: &LmdbTransaction) -> BlockIterator<LmdbIteratorImpl> {
         DbIterator2::new(LmdbIteratorImpl::new(
             transaction,
             self.db_handle(),
-            MdbVal::new(),
-            BlockHash::serialized_size(),
+            None,
             true,
         ))
     }
 
     fn begin_at_hash(
         &self,
-        transaction: &Transaction,
+        transaction: &LmdbTransaction,
         hash: &BlockHash,
     ) -> BlockIterator<LmdbIteratorImpl> {
-        let hash_val = MdbVal::from(hash);
         DbIterator2::new(LmdbIteratorImpl::new(
             transaction,
             self.db_handle(),
-            hash_val,
-            BlockHash::serialized_size(),
+            Some(hash.as_bytes()),
             true,
         ))
     }
@@ -208,7 +191,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
         DbIterator2::new(LmdbIteratorImpl::null())
     }
 
-    fn random(&self, transaction: &Transaction) -> Option<BlockEnum> {
+    fn random(&self, transaction: &LmdbTransaction) -> Option<BlockEnum> {
         let hash = BlockHash::random();
         let mut existing = self.begin_at_hash(transaction, &hash);
         if existing.is_end() {
@@ -218,7 +201,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
         existing.current().map(|(_, v)| v.block.clone())
     }
 
-    fn balance(&self, txn: &Transaction, hash: &BlockHash) -> Amount {
+    fn balance(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Amount {
         match self.get(txn, hash) {
             Some(block) => self.balance_calculated(&block),
             None => Amount::zero(),
@@ -235,7 +218,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
         }
     }
 
-    fn version(&self, txn: &Transaction, hash: &BlockHash) -> crate::Epoch {
+    fn version(&self, txn: &LmdbTransaction, hash: &BlockHash) -> crate::Epoch {
         match self.get(txn, hash) {
             Some(block) => {
                 if let BlockEnum::State(b) = block {
@@ -249,16 +232,16 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
     }
 
     fn for_each_par(
-        &self,
+        &'a self,
         action: &(dyn Fn(
-            LmdbReadTransaction,
+            LmdbReadTransaction<'a>,
             BlockIterator<LmdbIteratorImpl>,
             BlockIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read();
+            let transaction = self.env.tx_begin_read().unwrap();
             let begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
             let end_it = if !is_last {
                 self.begin_at_hash(&transaction.as_txn(), &end.into())
@@ -269,7 +252,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
         });
     }
 
-    fn account_height(&self, txn: &Transaction, hash: &BlockHash) -> u64 {
+    fn account_height(&self, txn: &LmdbTransaction, hash: &BlockHash) -> u64 {
         match self.get(txn, hash) {
             Some(block) => block.as_block().sideband().unwrap().height,
             None => 0,
@@ -278,13 +261,13 @@ impl<'a> BlockStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorI
 }
 
 /// Fill in our predecessors
-struct BlockPredecessorMdbSet<'a> {
-    transaction: &'a LmdbWriteTransaction,
+struct BlockPredecessorMdbSet<'a, 'b> {
+    transaction: &'a mut LmdbWriteTransaction<'b>,
     block_store: &'a LmdbBlockStore,
 }
 
-impl<'a> BlockPredecessorMdbSet<'a> {
-    fn new(transaction: &'a LmdbWriteTransaction, block_store: &'a LmdbBlockStore) -> Self {
+impl<'a, 'b> BlockPredecessorMdbSet<'a, 'b> {
+    fn new(transaction: &'a mut LmdbWriteTransaction<'b>, block_store: &'a LmdbBlockStore) -> Self {
         Self {
             transaction,
             block_store,
@@ -293,11 +276,12 @@ impl<'a> BlockPredecessorMdbSet<'a> {
 
     fn fill_value(&mut self, block: &dyn Block) {
         let hash = block.hash();
-        let mut value = MdbVal::new();
-        self.block_store
-            .block_raw_get(&self.transaction.as_txn(), block.previous(), &mut value);
-        debug_assert!(value.mv_size != 0);
-        let mut data = value.as_slice().to_vec();
+        let t = self.transaction.as_txn();
+        let value = self
+            .block_store
+            .block_raw_get(&t, block.previous())
+            .unwrap();
+        let mut data = value.to_vec();
         let block_type = BlockType::from_u8(data[0]).unwrap();
 
         let offset = block_successor_offset(data.len(), block_type);
@@ -308,7 +292,7 @@ impl<'a> BlockPredecessorMdbSet<'a> {
     }
 }
 
-impl<'a> BlockVisitor for BlockPredecessorMdbSet<'a> {
+impl<'a, 'b> BlockVisitor for BlockPredecessorMdbSet<'a, 'b> {
     fn send_block(&mut self, block: &crate::SendBlock) {
         self.fill_value(block);
     }

@@ -29,29 +29,6 @@ static const int32_t STORE_VERSION_MINIMUM = 21;
 
 static const uint8_t SYSTEM = 1;
 
-enum class MdbCursorOp
-{
-	MdbFirst,
-	MdbFirstDup,
-	MdbGetBoth,
-	MdbGetBothRange,
-	MdbGetCurrent,
-	MdbGetMultiple,
-	MdbLast,
-	MdbLastDup,
-	MdbNext,
-	MdbNextDup,
-	MdbNextMultiple,
-	MdbNextNodup,
-	MdbPrev,
-	MdbPrevDup,
-	MdbPrevNodup,
-	MdbSet,
-	MdbSetKey,
-	MdbSetRange,
-	MdbPrevMultiple,
-};
-
 struct AccountInfoHandle;
 
 struct AsyncConnectCallbackHandle;
@@ -101,8 +78,6 @@ struct KdfHandle;
 struct LedgerHandle;
 
 struct LmdbAccountStoreHandle;
-
-struct LmdbAccountStoreHandle2;
 
 struct LmdbBlockStoreHandle;
 
@@ -618,91 +593,6 @@ struct MessageDto
 
 using ListenerBroadcastCallback = bool (*) (void *, const MessageDto *);
 
-struct MdbCursor
-{
-};
-
-using MdbCursorCloseCallback = void (*) (MdbCursor *);
-
-struct MdbVal
-{
-	uintptr_t mv_size;
-	void * mv_data;
-};
-
-using MdbCursorGetCallback = int32_t (*) (MdbCursor *, MdbVal *, MdbVal *, MdbCursorOp);
-
-struct MdbTxn
-{
-};
-
-using MdbCursorOpenCallback = int32_t (*) (MdbTxn *, uint32_t, MdbCursor **);
-
-struct MdbEnv
-{
-};
-
-using MdbDbiCloseCallback = void (*) (MdbEnv *, uint32_t);
-
-using MdbDbiOpenCallback = int32_t (*) (MdbTxn *, const int8_t *, uint32_t, uint32_t *);
-
-using MdbDelCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
-
-using MdbDropCallback = int32_t (*) (MdbTxn *, uint32_t, int32_t);
-
-using MdbEnvCloseCallback = void (*) (MdbEnv *);
-
-using MdbEnvCopyCallback = int32_t (*) (MdbEnv *, const int8_t *);
-
-using MdbEnvCopy2Callback = int32_t (*) (MdbEnv *, const int8_t *, uint32_t);
-
-using MdbEnvCreateCallback = int32_t (*) (MdbEnv **);
-
-using MdbEnvGetPathCallback = int32_t (*) (MdbEnv *, const char **);
-
-using MdbEnvOpenCallback = int32_t (*) (MdbEnv *, const int8_t *, uint32_t, uint32_t);
-
-using MdbEnvSetMapSizeCallback = int32_t (*) (MdbEnv *, uintptr_t);
-
-using MdbEnvSetMaxDbsCallback = int32_t (*) (MdbEnv *, uint32_t);
-
-/// @brief Statistics for a database in the environment
-struct MdbStat
-{
-	/// Size of a database page.  This is currently the same for all databases.
-	uint32_t ms_psize;
-	/// Depth (height) of the B-tree
-	uint32_t ms_depth;
-	/// Number of internal (non-leaf) pages
-	uintptr_t ms_branch_pages;
-	/// Number of leaf pages
-	uintptr_t ms_leaf_pages;
-	/// Number of overflow pages
-	uintptr_t ms_overflow_pages;
-	/// Number of data items
-	uintptr_t ms_entries;
-};
-
-using MdbEnvStatCallback = int32_t (*) (MdbEnv *, MdbStat *);
-
-using MdbEnvSyncCallback = int32_t (*) (MdbEnv *, int32_t);
-
-using MdbGetCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *);
-
-using MdbPutCallback = int32_t (*) (MdbTxn *, uint32_t, MdbVal *, MdbVal *, uint32_t);
-
-using MdbStatCallback = int32_t (*) (MdbTxn *, uint32_t, MdbStat *);
-
-using MdbStrerrorCallback = char * (*)(int32_t);
-
-using MdbTxnBeginCallback = int32_t (*) (MdbEnv *, MdbTxn *, uint32_t, MdbTxn **);
-
-using MdbTxnCommitCallback = int32_t (*) (MdbTxn *);
-
-using MdbTxnRenewCallback = int32_t (*) (MdbTxn *);
-
-using MdbTxnResetCallback = void (*) (MdbTxn *);
-
 using MessageVisitorFlagCallback = bool (*) (void *);
 
 using MessageVisitorCallback = void (*) (void *, MessageHandle *, uint8_t);
@@ -837,6 +727,12 @@ struct DaemonConfigDto
 };
 
 using ForEachParCallback = void (*) (void *, TransactionHandle *, LmdbIteratorHandle *, LmdbIteratorHandle *);
+
+struct MdbVal
+{
+	uintptr_t mv_size;
+	void * mv_data;
+};
 
 struct PendingKeyDto
 {
@@ -1477,56 +1373,6 @@ void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
 void rsn_callback_logger_destroy (VoidPointerCallback f);
 
-void rsn_callback_mdb_cursor_close (MdbCursorCloseCallback f);
-
-void rsn_callback_mdb_cursor_get (MdbCursorGetCallback f);
-
-void rsn_callback_mdb_cursor_open (MdbCursorOpenCallback f);
-
-void rsn_callback_mdb_dbi_close (MdbDbiCloseCallback f);
-
-void rsn_callback_mdb_dbi_open (MdbDbiOpenCallback f);
-
-void rsn_callback_mdb_del (MdbDelCallback f);
-
-void rsn_callback_mdb_drop (MdbDropCallback f);
-
-void rsn_callback_mdb_env_close (MdbEnvCloseCallback f);
-
-void rsn_callback_mdb_env_copy (MdbEnvCopyCallback f);
-
-void rsn_callback_mdb_env_copy2 (MdbEnvCopy2Callback f);
-
-void rsn_callback_mdb_env_create (MdbEnvCreateCallback f);
-
-void rsn_callback_mdb_env_get_path (MdbEnvGetPathCallback f);
-
-void rsn_callback_mdb_env_open (MdbEnvOpenCallback f);
-
-void rsn_callback_mdb_env_set_map_size (MdbEnvSetMapSizeCallback f);
-
-void rsn_callback_mdb_env_set_max_dbs (MdbEnvSetMaxDbsCallback f);
-
-void rsn_callback_mdb_env_stat (MdbEnvStatCallback f);
-
-void rsn_callback_mdb_env_sync (MdbEnvSyncCallback f);
-
-void rsn_callback_mdb_get (MdbGetCallback f);
-
-void rsn_callback_mdb_put (MdbPutCallback f);
-
-void rsn_callback_mdb_stat (MdbStatCallback f);
-
-void rsn_callback_mdb_strerror (MdbStrerrorCallback f);
-
-void rsn_callback_mdb_txn_begin (MdbTxnBeginCallback f);
-
-void rsn_callback_mdb_txn_commit (MdbTxnCommitCallback f);
-
-void rsn_callback_mdb_txn_renew (MdbTxnRenewCallback f);
-
-void rsn_callback_mdb_txn_reset (MdbTxnResetCallback f);
-
 void rsn_callback_memory_intensive_instrumentation (MemoryIntensiveInstrumentationCallback f);
 
 void rsn_callback_message_visitor_bootstrap_processed (MessageVisitorFlagCallback f);
@@ -1821,9 +1667,6 @@ LedgerHandle * rsn_ledger_create (void * handle);
 void rsn_ledger_destroy (LedgerHandle * handle);
 
 LmdbIteratorHandle * rsn_lmdb_account_store_begin (LmdbAccountStoreHandle * handle,
-TransactionHandle * txn);
-
-LmdbIteratorHandle * rsn_lmdb_account_store_begin2 (LmdbAccountStoreHandle2 * handle,
 TransactionHandle * txn);
 
 LmdbIteratorHandle * rsn_lmdb_account_store_begin_account (LmdbAccountStoreHandle * handle,
@@ -2157,8 +2000,6 @@ uint8_t * hash);
 
 void rsn_lmdb_read_txn_destroy (TransactionHandle * handle);
 
-MdbTxn * rsn_lmdb_read_txn_handle (TransactionHandle * handle);
-
 void rsn_lmdb_read_txn_refresh (TransactionHandle * handle);
 
 void rsn_lmdb_read_txn_renew (TransactionHandle * handle);
@@ -2248,10 +2089,6 @@ UncheckedInfoHandle * info);
 void rsn_lmdb_version_store_destroy (LmdbVersionStoreHandle * handle);
 
 int32_t rsn_lmdb_version_store_get (LmdbVersionStoreHandle * handle, TransactionHandle * txn);
-
-bool rsn_lmdb_version_store_open_db (LmdbVersionStoreHandle * handle,
-TransactionHandle * txn,
-uint32_t flags);
 
 void rsn_lmdb_version_store_put (LmdbVersionStoreHandle * handle,
 TransactionHandle * txn,
@@ -2444,8 +2281,6 @@ const uint8_t * hash);
 void rsn_lmdb_write_txn_commit (TransactionHandle * handle);
 
 void rsn_lmdb_write_txn_destroy (TransactionHandle * handle);
-
-MdbTxn * rsn_lmdb_write_txn_handle (TransactionHandle * handle);
 
 void rsn_lmdb_write_txn_refresh (TransactionHandle * handle);
 

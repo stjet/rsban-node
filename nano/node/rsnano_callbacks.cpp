@@ -17,8 +17,6 @@
 
 #include <iostream>
 
-#include <lmdb/libraries/liblmdb/lmdb.h>
-
 int32_t write_u8 (void * stream, const uint8_t value)
 {
 	auto s{ static_cast<nano::stream *> (stream) };
@@ -967,32 +965,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_message_visitor_bootstrap_processed (message_visitor_bootstrap_processed);
 	rsnano::rsn_callback_memory_intensive_instrumentation (nano::memory_intensive_instrumentation);
 	rsnano::rsn_callback_is_sanitizer_build (nano::is_sanitizer_build);
-
-	rsnano::rsn_callback_mdb_txn_begin (reinterpret_cast<rsnano::MdbTxnBeginCallback> (mdb_txn_begin));
-	rsnano::rsn_callback_mdb_txn_commit (reinterpret_cast<rsnano::MdbTxnCommitCallback> (mdb_txn_commit));
-	rsnano::rsn_callback_mdb_txn_reset (reinterpret_cast<rsnano::MdbTxnResetCallback> (mdb_txn_reset));
-	rsnano::rsn_callback_mdb_txn_renew (reinterpret_cast<rsnano::MdbTxnRenewCallback> (mdb_txn_renew));
-	rsnano::rsn_callback_mdb_strerror (mdb_strerror);
-	rsnano::rsn_callback_mdb_cursor_open (reinterpret_cast<rsnano::MdbCursorOpenCallback> (mdb_cursor_open));
-	rsnano::rsn_callback_mdb_cursor_get (reinterpret_cast<rsnano::MdbCursorGetCallback> (mdb_cursor_get));
-	rsnano::rsn_callback_mdb_cursor_close (reinterpret_cast<rsnano::MdbCursorCloseCallback> (mdb_cursor_close));
-	rsnano::rsn_callback_mdb_dbi_open (reinterpret_cast<rsnano::MdbDbiOpenCallback> (mdb_dbi_open));
-	rsnano::rsn_callback_mdb_put (reinterpret_cast<rsnano::MdbPutCallback> (mdb_put));
-	rsnano::rsn_callback_mdb_get (reinterpret_cast<rsnano::MdbGetCallback> (mdb_get));
-	rsnano::rsn_callback_mdb_del (reinterpret_cast<rsnano::MdbDelCallback> (mdb_del));
-	rsnano::rsn_callback_mdb_env_create (reinterpret_cast<rsnano::MdbEnvCreateCallback> (mdb_env_create));
-	rsnano::rsn_callback_mdb_env_set_max_dbs (reinterpret_cast<rsnano::MdbEnvSetMaxDbsCallback> (mdb_env_set_maxdbs));
-	rsnano::rsn_callback_mdb_env_set_map_size (reinterpret_cast<rsnano::MdbEnvSetMapSizeCallback> (mdb_env_set_mapsize));
-	rsnano::rsn_callback_mdb_env_open (reinterpret_cast<rsnano::MdbEnvOpenCallback> (mdb_env_open));
-	rsnano::rsn_callback_mdb_env_sync (reinterpret_cast<rsnano::MdbEnvSyncCallback> (mdb_env_sync));
-	rsnano::rsn_callback_mdb_env_close (reinterpret_cast<rsnano::MdbEnvCloseCallback> (mdb_env_close));
-	rsnano::rsn_callback_mdb_stat (reinterpret_cast<rsnano::MdbStatCallback> (mdb_stat));
-	rsnano::rsn_callback_mdb_drop (reinterpret_cast<rsnano::MdbDropCallback> (mdb_drop));
-	rsnano::rsn_callback_mdb_env_copy (reinterpret_cast<rsnano::MdbEnvCopyCallback> (mdb_env_copy));
-	rsnano::rsn_callback_mdb_env_copy2 (reinterpret_cast<rsnano::MdbEnvCopy2Callback> (mdb_env_copy2));
-	rsnano::rsn_callback_mdb_env_stat (reinterpret_cast<rsnano::MdbEnvStatCallback> (mdb_env_stat));
-	rsnano::rsn_callback_mdb_dbi_close (reinterpret_cast<rsnano::MdbDbiCloseCallback> (mdb_dbi_close));
-	rsnano::rsn_callback_mdb_env_get_path (reinterpret_cast<rsnano::MdbEnvGetPathCallback> (mdb_env_get_path));
 
 	callbacks_set = true;
 }

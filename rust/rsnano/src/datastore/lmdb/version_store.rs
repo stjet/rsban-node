@@ -1,74 +1,65 @@
-use std::{
-    convert::TryInto,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
+
+use lmdb::{Database, DatabaseFlags, Transaction, WriteFlags};
 
 use crate::datastore::{VersionStore, STORE_VERSION_MINIMUM};
 
-use super::{
-    assert_success, ensure_success, mdb_dbi_open, mdb_get, mdb_put, LmdbEnv, LmdbReadTransaction,
-    LmdbWriteTransaction, MdbVal, Transaction, MDB_SUCCESS,
-};
+use super::{LmdbEnv, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction};
 
 pub struct LmdbVersionStore {
     env: Arc<LmdbEnv>,
 
     /// U256 (arbitrary key) -> blob
-    db_handle: Mutex<u32>,
+    db_handle: Mutex<Option<Database>>,
 }
 
 impl LmdbVersionStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
         Self {
             env,
-            db_handle: Mutex::new(0),
+            db_handle: Mutex::new(None),
         }
     }
 
-    pub fn db_handle(&self) -> u32 {
-        *self.db_handle.lock().unwrap()
+    pub fn open_db(&self, txn: &LmdbReadTransaction) -> anyhow::Result<()> {
+        let mut guard = self.db_handle.lock().unwrap();
+        *guard = Some(unsafe { txn.txn().open_db(Some("meta")) }?);
+        Ok(())
     }
 
-    pub fn open_db(&self, txn: &Transaction, flags: u32) -> anyhow::Result<()> {
-        let mut handle = 0;
-        let status = unsafe { mdb_dbi_open(txn.handle(), Some("meta"), flags, &mut handle) };
-        *self.db_handle.lock().unwrap() = handle;
-        ensure_success(status)
+    pub fn create_db(&self) -> anyhow::Result<()> {
+        let mut guard = self.db_handle.lock().unwrap();
+        *guard = Some(
+            self.env
+                .environment
+                .create_db(Some("meta"), DatabaseFlags::empty())?,
+        );
+        Ok(())
+    }
+
+    pub fn db_handle(&self) -> Database {
+        self.db_handle.lock().unwrap().unwrap()
     }
 }
 
-impl VersionStore<LmdbReadTransaction, LmdbWriteTransaction> for LmdbVersionStore {
+impl<'a> VersionStore<LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>> for LmdbVersionStore {
     fn put(&self, txn: &mut LmdbWriteTransaction, version: i32) {
+        let db = self.db_handle();
+
         let key_bytes = version_key();
         let value_bytes = value_bytes(version);
 
-        let status = unsafe {
-            mdb_put(
-                txn.handle,
-                self.db_handle(),
-                &mut MdbVal::from_slice(&key_bytes),
-                &mut MdbVal::from_slice(&value_bytes),
-                0,
-            )
-        };
-        assert_success(status);
+        txn.rw_txn_mut()
+            .put(db, &key_bytes, &value_bytes, WriteFlags::empty())
+            .unwrap();
     }
 
-    fn get(&self, txn: &Transaction) -> i32 {
+    fn get(&self, txn: &LmdbTransaction) -> i32 {
+        let db = self.db_handle();
         let key_bytes = version_key();
-        let mut data = MdbVal::new();
-        let status = unsafe {
-            mdb_get(
-                txn.handle(),
-                self.db_handle(),
-                &mut MdbVal::from_slice(&key_bytes),
-                &mut data,
-            )
-        };
-        if status == MDB_SUCCESS {
-            i32::from_ne_bytes(data.as_slice()[28..].try_into().unwrap())
-        } else {
-            STORE_VERSION_MINIMUM
+        match txn.get(db, &key_bytes) {
+            Ok(value) => i32::from_ne_bytes(value[28..].try_into().unwrap()),
+            Err(_) => STORE_VERSION_MINIMUM,
         }
     }
 }

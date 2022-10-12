@@ -19,22 +19,8 @@ use std::{ffi::c_void, ops::Deref};
 
 use crate::{
     datastore::{
-        lmdb::{
-            LmdbReadTransaction, LmdbWriteTransaction, MdbCursorCloseCallback,
-            MdbCursorGetCallback, MdbCursorOpenCallback, MdbDbiCloseCallback, MdbDbiOpenCallback,
-            MdbDelCallback, MdbDropCallback, MdbEnvCloseCallback, MdbEnvCopy2Callback,
-            MdbEnvCopyCallback, MdbEnvCreateCallback, MdbEnvGetPathCallback, MdbEnvOpenCallback,
-            MdbEnvSetMapSizeCallback, MdbEnvSetMaxDbsCallback, MdbEnvStatCallback,
-            MdbEnvSyncCallback, MdbGetCallback, MdbPutCallback, MdbStatCallback,
-            MdbStrerrorCallback, MdbTxn, MdbTxnBeginCallback, MdbTxnCommitCallback,
-            MdbTxnRenewCallback, MdbTxnResetCallback, MDB_CURSOR_CLOSE, MDB_CURSOR_GET,
-            MDB_CURSOR_OPEN, MDB_DBI_CLOSE, MDB_DBI_OPEN, MDB_DEL, MDB_DROP, MDB_ENV_CLOSE,
-            MDB_ENV_COPY, MDB_ENV_COPY2, MDB_ENV_CREATE, MDB_ENV_GET_PATH, MDB_ENV_OPEN,
-            MDB_ENV_SET_MAP_SIZE, MDB_ENV_SET_MAX_DBS, MDB_ENV_STAT, MDB_ENV_SYNC, MDB_GET,
-            MDB_PUT, MDB_STAT, MDB_STRERROR, MDB_TXN_BEGIN, MDB_TXN_COMMIT, MDB_TXN_RENEW,
-            MDB_TXN_RESET,
-        },
-        lmdb_rkv, Transaction, TxnCallbacks,
+        lmdb::{LmdbReadTransaction, LmdbWriteTransaction},
+        Transaction, TxnCallbacks,
     },
     ffi::VoidPointerCallback,
 };
@@ -46,14 +32,14 @@ impl TransactionHandle {
         Box::into_raw(Box::new(TransactionHandle(txn_type)))
     }
 
-    pub fn as_read_txn_mut(&mut self) -> &mut LmdbReadTransaction {
+    pub fn as_read_txn_mut(&mut self) -> &mut LmdbReadTransaction<'static> {
         match &mut self.0 {
             TransactionType::Read(tx) => tx,
             _ => panic!("invalid tx type"),
         }
     }
 
-    pub fn as_read_txn(&mut self) -> &LmdbReadTransaction {
+    pub fn as_read_txn(&mut self) -> &LmdbReadTransaction<'static> {
         match &mut self.0 {
             TransactionType::Read(tx) => tx,
             TransactionType::ReadRef(tx) => *tx,
@@ -61,7 +47,7 @@ impl TransactionHandle {
         }
     }
 
-    pub fn as_write_txn(&mut self) -> &mut LmdbWriteTransaction {
+    pub fn as_write_txn(&mut self) -> &mut LmdbWriteTransaction<'static> {
         match &mut self.0 {
             TransactionType::Write(tx) => tx,
             _ => panic!("invalid tx type"),
@@ -73,14 +59,6 @@ impl TransactionHandle {
             TransactionType::Read(t) => Transaction::Read(t),
             TransactionType::ReadRef(t) => Transaction::Read(*t),
             TransactionType::Write(t) => Transaction::Write(t),
-            _ => panic!("not a lmdb txn"),
-        }
-    }
-
-    pub fn as_rkv_txn(&self) -> lmdb_rkv::LmdbTransaction {
-        match &self.0 {
-            TransactionType::ReadRkv(t) => Transaction::Read(t),
-            _ => panic!("not a rkv txn"),
         }
     }
 }
@@ -94,60 +72,9 @@ impl Deref for TransactionHandle {
 }
 
 pub enum TransactionType {
-    Read(LmdbReadTransaction),
-    ReadRef(&'static LmdbReadTransaction),
-    Write(LmdbWriteTransaction),
-    ReadRkv(lmdb_rkv::LmdbReadTransaction<'static>),
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_read_txn_destroy(handle: *mut TransactionHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_read_txn_reset(handle: *mut TransactionHandle) {
-    (*handle).as_read_txn_mut().reset();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_read_txn_renew(handle: *mut TransactionHandle) {
-    (*handle).as_read_txn_mut().renew();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_read_txn_refresh(handle: *mut TransactionHandle) {
-    (*handle).as_read_txn_mut().refresh();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_read_txn_handle(handle: *mut TransactionHandle) -> *mut MdbTxn {
-    (*handle).as_read_txn().handle
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_write_txn_destroy(handle: *mut TransactionHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_write_txn_commit(handle: *mut TransactionHandle) {
-    (*handle).as_write_txn().commit();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_write_txn_renew(handle: *mut TransactionHandle) {
-    (*handle).as_write_txn().renew();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh(handle: *mut TransactionHandle) {
-    (*handle).as_write_txn().refresh();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_write_txn_handle(handle: *mut TransactionHandle) -> *mut MdbTxn {
-    (*handle).as_write_txn().handle
+    Read(LmdbReadTransaction<'static>),
+    ReadRef(&'static LmdbReadTransaction<'static>),
+    Write(LmdbWriteTransaction<'static>),
 }
 
 struct FfiCallbacksWrapper {
@@ -198,126 +125,41 @@ pub unsafe extern "C" fn rsn_callback_txn_callbacks_end(f: TxnEndCallback) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_txn_begin(f: MdbTxnBeginCallback) {
-    MDB_TXN_BEGIN = Some(f);
+pub unsafe extern "C" fn rsn_lmdb_read_txn_destroy(handle: *mut TransactionHandle) {
+    drop(Box::from_raw(handle))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_txn_commit(f: MdbTxnCommitCallback) {
-    MDB_TXN_COMMIT = Some(f);
+pub unsafe extern "C" fn rsn_lmdb_read_txn_reset(handle: *mut TransactionHandle) {
+    (*handle).as_read_txn_mut().reset();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_txn_reset(f: MdbTxnResetCallback) {
-    MDB_TXN_RESET = Some(f);
+pub unsafe extern "C" fn rsn_lmdb_read_txn_renew(handle: *mut TransactionHandle) {
+    (*handle).as_read_txn_mut().renew();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_txn_renew(f: MdbTxnRenewCallback) {
-    MDB_TXN_RENEW = Some(f);
+pub unsafe extern "C" fn rsn_lmdb_read_txn_refresh(handle: *mut TransactionHandle) {
+    (*handle).as_read_txn_mut().refresh();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_strerror(f: MdbStrerrorCallback) {
-    MDB_STRERROR = Some(f);
+pub unsafe extern "C" fn rsn_lmdb_write_txn_destroy(handle: *mut TransactionHandle) {
+    drop(Box::from_raw(handle))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_cursor_open(f: MdbCursorOpenCallback) {
-    MDB_CURSOR_OPEN = Some(f);
+pub unsafe extern "C" fn rsn_lmdb_write_txn_commit(handle: *mut TransactionHandle) {
+    (*handle).as_write_txn().commit();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_cursor_get(f: MdbCursorGetCallback) {
-    MDB_CURSOR_GET = Some(f);
+pub unsafe extern "C" fn rsn_lmdb_write_txn_renew(handle: *mut TransactionHandle) {
+    (*handle).as_write_txn().renew();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_cursor_close(f: MdbCursorCloseCallback) {
-    MDB_CURSOR_CLOSE = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_dbi_open(f: MdbDbiOpenCallback) {
-    MDB_DBI_OPEN = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_put(f: MdbPutCallback) {
-    MDB_PUT = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_get(f: MdbGetCallback) {
-    MDB_GET = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_del(f: MdbDelCallback) {
-    MDB_DEL = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_env_create(f: MdbEnvCreateCallback) {
-    MDB_ENV_CREATE = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_env_set_map_size(f: MdbEnvSetMapSizeCallback) {
-    MDB_ENV_SET_MAP_SIZE = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_env_set_max_dbs(f: MdbEnvSetMaxDbsCallback) {
-    MDB_ENV_SET_MAX_DBS = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_env_open(f: MdbEnvOpenCallback) {
-    MDB_ENV_OPEN = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_env_sync(f: MdbEnvSyncCallback) {
-    MDB_ENV_SYNC = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_env_close(f: MdbEnvCloseCallback) {
-    MDB_ENV_CLOSE = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_stat(f: MdbStatCallback) {
-    MDB_STAT = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_drop(f: MdbDropCallback) {
-    MDB_DROP = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_env_copy(f: MdbEnvCopyCallback) {
-    MDB_ENV_COPY = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_env_copy2(f: MdbEnvCopy2Callback) {
-    MDB_ENV_COPY2 = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_env_stat(f: MdbEnvStatCallback) {
-    MDB_ENV_STAT = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_dbi_close(f: MdbDbiCloseCallback) {
-    MDB_DBI_CLOSE = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_mdb_env_get_path(f: MdbEnvGetPathCallback) {
-    MDB_ENV_GET_PATH = Some(f);
+pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh(handle: *mut TransactionHandle) {
+    (*handle).as_write_txn().refresh();
 }

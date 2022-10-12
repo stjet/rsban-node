@@ -1,7 +1,6 @@
-use std::{
-    mem::size_of,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
+
+use lmdb::{Database, DatabaseFlags, WriteFlags};
 
 use crate::{
     datastore::{online_weight_store::OnlineWeightIterator, OnlineWeightStore},
@@ -9,93 +8,72 @@ use crate::{
 };
 
 use super::{
-    assert_success, ensure_success, mdb_count, mdb_dbi_open, mdb_del, mdb_drop, mdb_put, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
 };
 
 pub struct LmdbOnlineWeightStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<u32>,
+    db_handle: Mutex<Option<Database>>,
 }
 
 impl LmdbOnlineWeightStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
         Self {
             env,
-            db_handle: Mutex::new(0),
+            db_handle: Mutex::new(None),
         }
     }
 
-    pub fn db_handle(&self) -> u32 {
-        *self.db_handle.lock().unwrap()
+    pub fn db_handle(&self) -> Database {
+        self.db_handle.lock().unwrap().unwrap()
     }
 
-    pub fn open_db(&self, txn: &Transaction, flags: u32) -> anyhow::Result<()> {
-        let mut handle = 0;
-        let status =
-            unsafe { mdb_dbi_open(txn.handle(), Some("online_weight"), flags, &mut handle) };
-        *self.db_handle.lock().unwrap() = handle;
-        ensure_success(status)
+    pub fn create_db(&self) -> anyhow::Result<()> {
+        let db = self
+            .env
+            .environment
+            .create_db(Some("online_weight"), DatabaseFlags::empty())?;
+        *self.db_handle.lock().unwrap() = Some(db);
+        Ok(())
     }
 }
 
-impl<'a> OnlineWeightStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+impl<'a> OnlineWeightStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
     for LmdbOnlineWeightStore
 {
     fn put(&self, txn: &mut LmdbWriteTransaction, time: u64, amount: &Amount) {
         let time_bytes = time.to_be_bytes();
         let amount_bytes = amount.to_be_bytes();
-        let status = unsafe {
-            mdb_put(
-                txn.handle,
+        txn.rw_txn_mut()
+            .put(
                 self.db_handle(),
-                &mut MdbVal::from_slice(&time_bytes),
-                &mut MdbVal::from_slice(&amount_bytes),
-                0,
+                &time_bytes,
+                &amount_bytes,
+                WriteFlags::empty(),
             )
-        };
-        assert_success(status);
+            .unwrap();
     }
 
     fn del(&self, txn: &mut LmdbWriteTransaction, time: u64) {
         let time_bytes = time.to_be_bytes();
-        let status = unsafe {
-            mdb_del(
-                txn.handle,
-                self.db_handle(),
-                &mut MdbVal::from_slice(&time_bytes),
-                None,
-            )
-        };
-        assert_success(status);
+        txn.rw_txn_mut()
+            .del(self.db_handle(), &time_bytes, None)
+            .unwrap();
     }
 
-    fn begin(&self, txn: &Transaction) -> OnlineWeightIterator<LmdbIteratorImpl> {
-        OnlineWeightIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.db_handle(),
-            MdbVal::new(),
-            size_of::<u64>(),
-            true,
-        ))
+    fn begin(&self, txn: &LmdbTransaction) -> OnlineWeightIterator<LmdbIteratorImpl> {
+        OnlineWeightIterator::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, true))
     }
 
-    fn rbegin(&self, txn: &Transaction) -> OnlineWeightIterator<LmdbIteratorImpl> {
-        OnlineWeightIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.db_handle(),
-            MdbVal::new(),
-            size_of::<u64>(),
-            false,
-        ))
+    fn rbegin(&self, txn: &LmdbTransaction) -> OnlineWeightIterator<LmdbIteratorImpl> {
+        OnlineWeightIterator::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, false))
     }
 
-    fn count(&self, txn: &Transaction) -> usize {
-        unsafe { mdb_count(txn.handle(), self.db_handle()) }
+    fn count(&self, txn: &LmdbTransaction) -> usize {
+        txn.count(self.db_handle())
     }
 
     fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        let status = unsafe { mdb_drop(txn.handle, self.db_handle(), 0) };
-        assert_success(status);
+        txn.rw_txn_mut().clear_db(self.db_handle()).unwrap();
     }
 }

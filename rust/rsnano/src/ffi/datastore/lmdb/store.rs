@@ -286,7 +286,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_serialize_mdb_tracker(
 pub unsafe extern "C" fn rsn_lmdb_store_tx_begin_read(
     handle: *mut LmdbStoreHandle,
 ) -> *mut TransactionHandle {
-    let txn = (*handle).0.tx_begin_read();
+    let txn = (*handle).0.tx_begin_read().unwrap();
     TransactionHandle::new(TransactionType::Read(txn))
 }
 
@@ -294,6 +294,6 @@ pub unsafe extern "C" fn rsn_lmdb_store_tx_begin_read(
 pub unsafe extern "C" fn rsn_lmdb_store_tx_begin_write(
     handle: *mut LmdbStoreHandle,
 ) -> *mut TransactionHandle {
-    let txn = (*handle).0.tx_begin_write();
+    let txn = (*handle).0.tx_begin_write().unwrap();
     TransactionHandle::new(TransactionType::Write(txn))
 }

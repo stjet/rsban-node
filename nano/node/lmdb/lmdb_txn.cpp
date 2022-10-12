@@ -54,11 +54,6 @@ void nano::read_mdb_txn::refresh ()
 	rsnano::rsn_lmdb_read_txn_refresh (txn_handle);
 }
 
-void * nano::read_mdb_txn::get_handle () const
-{
-	return rsnano::rsn_lmdb_read_txn_handle (txn_handle);
-}
-
 nano::write_mdb_txn::write_mdb_txn (rsnano::TransactionHandle * handle_a) :
 	txn_handle{ handle_a }
 {
@@ -82,11 +77,6 @@ void nano::write_mdb_txn::renew ()
 void nano::write_mdb_txn::refresh ()
 {
 	rsnano::rsn_lmdb_write_txn_refresh (txn_handle);
-}
-
-void * nano::write_mdb_txn::get_handle () const
-{
-	return rsnano::rsn_lmdb_write_txn_handle (txn_handle);
 }
 
 bool nano::write_mdb_txn::contains (nano::tables table_a) const

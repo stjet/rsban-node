@@ -106,7 +106,7 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_begin(
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
     let iterator = (*handle).0.begin(&(*txn).as_txn());
-    LmdbIteratorHandle::new(iterator.take_impl().take_raw_iterator())
+    LmdbIteratorHandle::new(iterator.take_impl())
 }
 
 #[no_mangle]
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_begin_at_key(
 ) -> *mut LmdbIteratorHandle {
     let key = PendingKey::from(&*key);
     let iterator = (*handle).0.begin_at_key(&(*txn).as_txn(), &key);
-    LmdbIteratorHandle::new(iterator.take_impl().take_raw_iterator())
+    LmdbIteratorHandle::new(iterator.take_impl())
 }
 
 #[no_mangle]
@@ -156,5 +156,5 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_for_each_par(
     };
     (*handle)
         .0
-        .for_each_par(&|txn, begin, end| wrapper.execute2(txn, begin, end));
+        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }

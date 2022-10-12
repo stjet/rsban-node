@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_begin(
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
     let iterator = (*handle).0.begin(&(*txn).as_txn());
-    LmdbIteratorHandle::new(iterator.take_impl().take_raw_iterator())
+    LmdbIteratorHandle::new(iterator.take_impl())
 }
 
 unsafe fn to_endpoint_key(address: *const u8, port: u16) -> EndpointKey {

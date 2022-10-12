@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    datastore::{lmdb::LmdbAccountStore, lmdb_rkv, AccountStore},
+    datastore::{lmdb::LmdbAccountStore, AccountStore},
     ffi::{AccountInfoHandle, VoidPointerCallback},
     Account,
 };
@@ -22,20 +22,6 @@ impl LmdbAccountStoreHandle {
         Box::into_raw(Box::new(LmdbAccountStoreHandle(store)))
     }
 }
-
-// spike for rkv impl -----------
-pub struct LmdbAccountStoreHandle2(Arc<lmdb_rkv::LmdbAccountStore>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_account_store_begin2(
-    handle: *mut LmdbAccountStoreHandle2,
-    txn: *mut TransactionHandle,
-) -> *mut LmdbIteratorHandle {
-    let iterator = (*handle).0.begin(&(*txn).as_rkv_txn());
-    LmdbIteratorHandle::new2(iterator.take_impl())
-}
-
-//------------------------------
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_account_store_destroy(handle: *mut LmdbAccountStoreHandle) {
@@ -90,7 +76,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_begin_account(
 ) -> *mut LmdbIteratorHandle {
     let account = Account::from_ptr(account);
     let iterator = (*handle).0.begin_account(&(*txn).as_txn(), &account);
-    LmdbIteratorHandle::new(iterator.take_impl().take_raw_iterator())
+    LmdbIteratorHandle::new(iterator.take_impl())
 }
 
 #[no_mangle]
@@ -99,7 +85,7 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_begin(
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
     let iterator = (*handle).0.begin(&(*txn).as_txn());
-    LmdbIteratorHandle::new(iterator.take_impl().take_raw_iterator())
+    LmdbIteratorHandle::new(iterator.take_impl())
 }
 
 #[no_mangle]
@@ -124,5 +110,5 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_for_each_par(
     };
     (*handle)
         .0
-        .for_each_par(&|txn, begin, end| wrapper.execute2(txn, begin, end));
+        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }

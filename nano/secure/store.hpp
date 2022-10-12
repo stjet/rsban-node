@@ -490,7 +490,6 @@ class transaction
 {
 public:
 	virtual ~transaction () = default;
-	virtual void * get_handle () const = 0;
 	virtual rsnano::TransactionHandle * get_rust_handle () const = 0;
 };
 

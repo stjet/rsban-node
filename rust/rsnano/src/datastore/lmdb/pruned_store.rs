@@ -1,94 +1,87 @@
 use std::sync::{Arc, Mutex};
 
+use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 
 use crate::{
     datastore::{parallel_traversal, pruned_store::PrunedIterator, PrunedStore},
-    utils::Serialize,
     BlockHash,
 };
 
 use super::{
-    assert_success, ensure_success, exists, mdb_count, mdb_dbi_open, mdb_del, mdb_drop, mdb_put,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, Transaction,
+    exists, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
 };
 
 pub struct LmdbPrunedStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<u32>,
+    db_handle: Mutex<Option<Database>>,
 }
 
 impl LmdbPrunedStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
         Self {
             env,
-            db_handle: Mutex::new(0),
+            db_handle: Mutex::new(None),
         }
     }
 
-    pub fn db_handle(&self) -> u32 {
-        *self.db_handle.lock().unwrap()
+    pub fn db_handle(&self) -> Database {
+        self.db_handle.lock().unwrap().unwrap()
     }
 
-    pub fn open_db(&self, txn: &Transaction, flags: u32) -> anyhow::Result<()> {
-        let mut handle = 0;
-        let status = unsafe { mdb_dbi_open(txn.handle(), Some("pruned"), flags, &mut handle) };
-        *self.db_handle.lock().unwrap() = handle;
-        ensure_success(status)
+    pub fn create_db(&self) -> anyhow::Result<()> {
+        let db = self
+            .env
+            .environment
+            .create_db(Some("pruned"), DatabaseFlags::empty())
+            .unwrap();
+        *self.db_handle.lock().unwrap() = Some(db);
+        Ok(())
     }
 }
 
-impl<'a> PrunedStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+impl<'a> PrunedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
     for LmdbPrunedStore
 {
     fn put(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
-        let status = unsafe {
-            mdb_put(
-                txn.handle,
+        txn.rw_txn_mut()
+            .put(
                 self.db_handle(),
-                &mut MdbVal::from(hash),
-                &mut MdbVal::new(),
-                0,
+                hash.as_bytes(),
+                &[0; 0],
+                WriteFlags::empty(),
             )
-        };
-        assert_success(status);
+            .unwrap();
     }
 
     fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
-        let status =
-            unsafe { mdb_del(txn.handle, self.db_handle(), &mut MdbVal::from(hash), None) };
-        assert_success(status);
+        txn.rw_txn_mut()
+            .del(self.db_handle(), hash.as_bytes(), None)
+            .unwrap();
     }
 
-    fn exists(&self, txn: &Transaction, hash: &BlockHash) -> bool {
-        exists(txn, self.db_handle(), &mut hash.into())
+    fn exists(&self, txn: &LmdbTransaction, hash: &BlockHash) -> bool {
+        exists(txn, self.db_handle(), hash.as_bytes())
     }
 
-    fn begin(&self, txn: &Transaction) -> PrunedIterator<LmdbIteratorImpl> {
-        PrunedIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.db_handle(),
-            MdbVal::new(),
-            BlockHash::serialized_size(),
-            true,
-        ))
+    fn begin(&self, txn: &LmdbTransaction) -> PrunedIterator<LmdbIteratorImpl> {
+        PrunedIterator::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, true))
     }
 
     fn begin_at_hash(
         &self,
-        txn: &Transaction,
+        txn: &LmdbTransaction,
         hash: &BlockHash,
     ) -> PrunedIterator<LmdbIteratorImpl> {
         PrunedIterator::new(LmdbIteratorImpl::new(
             txn,
             self.db_handle(),
-            MdbVal::from(hash),
-            BlockHash::serialized_size(),
+            Some(hash.as_bytes()),
             true,
         ))
     }
 
-    fn random(&self, txn: &Transaction) -> BlockHash {
+    fn random(&self, txn: &LmdbTransaction) -> BlockHash {
         let random_hash = BlockHash::from_bytes(thread_rng().gen());
         let mut existing = self.begin_at_hash(txn, &random_hash);
         if existing.is_end() {
@@ -99,13 +92,12 @@ impl<'a> PrunedStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIterator
         result
     }
 
-    fn count(&self, txn: &Transaction) -> usize {
-        unsafe { mdb_count(txn.handle(), self.db_handle()) }
+    fn count(&self, txn: &LmdbTransaction) -> usize {
+        txn.count(self.db_handle())
     }
 
     fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        let status = unsafe { mdb_drop(txn.handle, self.db_handle(), 0) };
-        assert_success(status);
+        txn.rw_txn_mut().clear_db(self.db_handle()).unwrap();
     }
 
     fn end(&self) -> PrunedIterator<LmdbIteratorImpl> {
@@ -113,16 +105,16 @@ impl<'a> PrunedStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIterator
     }
 
     fn for_each_par(
-        &self,
+        &'a self,
         action: &(dyn Fn(
-            LmdbReadTransaction,
+            LmdbReadTransaction<'a>,
             PrunedIterator<LmdbIteratorImpl>,
             PrunedIterator<LmdbIteratorImpl>,
         ) + Send
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read();
+            let transaction = self.env.tx_begin_read().unwrap();
             let begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
             let end_it = if !is_last {
                 self.begin_at_hash(&transaction.as_txn(), &end.into())

@@ -1,49 +1,50 @@
 use std::sync::{Arc, Mutex};
 
+use lmdb::{Database, DatabaseFlags, WriteFlags};
+
 use crate::{
-    datastore::{unchecked_store::UncheckedIterator, UncheckedStore},
+    datastore::{lmdb::exists, unchecked_store::UncheckedIterator, UncheckedStore},
     unchecked_info::{UncheckedInfo, UncheckedKey},
-    utils::Serialize,
     HashOrAccount,
 };
 
 use super::{
-    assert_success, ensure_success, mdb_count, mdb_dbi_open, mdb_del, mdb_drop, mdb_get, mdb_put,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, MdbVal, OwnedMdbVal,
-    Transaction, MDB_NOTFOUND, MDB_SUCCESS,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
 };
 
 pub struct LmdbUncheckedStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<u32>,
+    db_handle: Mutex<Option<Database>>,
 }
 
 impl LmdbUncheckedStore {
     pub fn new(env: Arc<LmdbEnv>) -> Self {
         Self {
             env,
-            db_handle: Mutex::new(0),
+            db_handle: Mutex::new(None),
         }
     }
 
-    pub fn db_handle(&self) -> u32 {
-        *self.db_handle.lock().unwrap()
+    pub fn db_handle(&self) -> Database {
+        self.db_handle.lock().unwrap().unwrap()
     }
 
-    pub fn open_db(&self, txn: &Transaction, flags: u32) -> anyhow::Result<()> {
-        let mut handle = 0;
-        let status = unsafe { mdb_dbi_open(txn.handle(), Some("unchecked"), flags, &mut handle) };
-        *self.db_handle.lock().unwrap() = handle;
-        ensure_success(status)
+    pub fn create_db(&self) -> anyhow::Result<()> {
+        let db = self
+            .env
+            .environment
+            .create_db(Some("unchecked"), DatabaseFlags::empty())
+            .unwrap();
+        *self.db_handle.lock().unwrap() = Some(db);
+        Ok(())
     }
 }
 
-impl<'a> UncheckedStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbIteratorImpl>
+impl<'a> UncheckedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
     for LmdbUncheckedStore
 {
     fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        let status = unsafe { mdb_drop(txn.handle, self.db_handle(), 0) };
-        assert_success(status);
+        txn.rw_txn_mut().clear_db(self.db_handle()).unwrap();
     }
 
     fn put(
@@ -64,73 +65,46 @@ impl<'a> UncheckedStore<'a, LmdbReadTransaction, LmdbWriteTransaction, LmdbItera
                 .hash(),
         };
         let key_bytes = key.to_bytes();
-        let mut value = OwnedMdbVal::from(info);
-        let status = unsafe {
-            mdb_put(
-                txn.handle,
+        let value_bytes = info.to_bytes();
+        txn.rw_txn_mut()
+            .put(
                 self.db_handle(),
-                &mut MdbVal::from_slice(&key_bytes),
-                value.as_mdb_val(),
-                0,
+                &key_bytes,
+                &value_bytes,
+                WriteFlags::empty(),
             )
-        };
-        assert_success(status);
+            .unwrap();
     }
 
-    fn exists(&self, txn: &Transaction, key: &UncheckedKey) -> bool {
-        let mut value = MdbVal::new();
-        let key_bytes = key.to_bytes();
-        let status = unsafe {
-            mdb_get(
-                txn.handle(),
-                self.db_handle(),
-                &mut MdbVal::from_slice(&key_bytes),
-                &mut value,
-            )
-        };
-        assert!(status == MDB_SUCCESS || status == MDB_NOTFOUND);
-        status == MDB_SUCCESS
+    fn exists(&self, txn: &LmdbTransaction, key: &UncheckedKey) -> bool {
+        exists(txn, self.db_handle(), &key.to_bytes())
     }
 
     fn del(&self, txn: &mut LmdbWriteTransaction, key: &UncheckedKey) {
-        let key_bytes = key.to_bytes();
-        let status = unsafe {
-            mdb_del(
-                txn.handle,
-                self.db_handle(),
-                &mut MdbVal::from_slice(&key_bytes),
-                None,
-            )
-        };
-        assert_success(status);
+        txn.rw_txn_mut()
+            .del(self.db_handle(), &key.to_bytes(), None)
+            .unwrap();
     }
 
-    fn begin(&self, txn: &Transaction) -> UncheckedIterator<LmdbIteratorImpl> {
-        UncheckedIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.db_handle(),
-            MdbVal::new(),
-            UncheckedKey::serialized_size(),
-            true,
-        ))
+    fn begin(&self, txn: &LmdbTransaction) -> UncheckedIterator<LmdbIteratorImpl> {
+        UncheckedIterator::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, true))
     }
 
     fn lower_bound(
         &self,
-        txn: &Transaction,
+        txn: &LmdbTransaction,
         key: &UncheckedKey,
     ) -> UncheckedIterator<LmdbIteratorImpl> {
         let key_bytes = key.to_bytes();
         UncheckedIterator::new(LmdbIteratorImpl::new(
             txn,
             self.db_handle(),
-            MdbVal::from_slice(&key_bytes),
-            UncheckedKey::serialized_size(),
+            Some(&key_bytes),
             true,
         ))
     }
 
-    fn count(&self, txn: &Transaction) -> usize {
-        unsafe { mdb_count(txn.handle(), self.db_handle()) }
+    fn count(&self, txn: &LmdbTransaction) -> usize {
+        txn.count(self.db_handle())
     }
 }

@@ -204,7 +204,6 @@ target_link_libraries(
   nano_lib
   libminiupnpc-static
   argon2
-  lmdb
   Boost::filesystem
   Boost::log_setup
   Boost::log

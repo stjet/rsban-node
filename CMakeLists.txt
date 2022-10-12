@@ -506,11 +506,8 @@ target_include_directories(argon2 PUBLIC crypto/phc-winner-argon2/include)
 target_include_directories(argon2 PUBLIC crypto/phc-winner-argon2/src)
 target_include_directories(argon2 PUBLIC crypto/blake2)
 
-add_library(lmdb lmdb/libraries/liblmdb/lmdb.h lmdb/libraries/liblmdb/mdb.c
-                 lmdb/libraries/liblmdb/midl.c)
-
 if(WIN32)
-  target_link_libraries(lmdb ntdll)
+  target_link_libraries(ntdll)
 endif()
 
 if(WIN32)

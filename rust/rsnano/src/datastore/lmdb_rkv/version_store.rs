@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use lmdb::{Database, DatabaseFlags, WriteFlags};
+use lmdb::{Database, DatabaseFlags, Transaction, WriteFlags};
 
 use crate::datastore::{VersionStore, STORE_VERSION_MINIMUM};
 
@@ -21,7 +21,12 @@ impl LmdbVersionStore {
         }
     }
 
-    // todo: two methods: open_db and create_db. One with RoTxn and one with RwTxn
+    pub fn open_db(&self, txn: &LmdbReadTransaction) -> anyhow::Result<()> {
+        let mut guard = self.db_handle.lock().unwrap();
+        *guard = Some(unsafe { txn.txn().open_db(Some("meta")) }?);
+        Ok(())
+    }
+
     pub fn create_db(&self) -> anyhow::Result<()> {
         let mut guard = self.db_handle.lock().unwrap();
         *guard = Some(
@@ -31,12 +36,15 @@ impl LmdbVersionStore {
         );
         Ok(())
     }
+
+    pub fn db_handle(&self) -> Database {
+        self.db_handle.lock().unwrap().unwrap()
+    }
 }
 
 impl<'a> VersionStore<LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>> for LmdbVersionStore {
     fn put(&self, txn: &mut LmdbWriteTransaction, version: i32) {
-        let guard = self.db_handle.lock().unwrap();
-        let db = guard.unwrap();
+        let db = self.db_handle();
 
         let key_bytes = version_key();
         let value_bytes = value_bytes(version);
@@ -47,8 +55,7 @@ impl<'a> VersionStore<LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>> for Lmd
     }
 
     fn get(&self, txn: &LmdbTransaction) -> i32 {
-        let guard = self.db_handle.lock().unwrap();
-        let db = guard.unwrap();
+        let db = self.db_handle();
         let key_bytes = version_key();
         match txn.get(db, &key_bytes) {
             Ok(value) => i32::from_ne_bytes(value[28..].try_into().unwrap()),

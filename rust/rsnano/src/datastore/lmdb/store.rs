@@ -57,14 +57,10 @@ impl LmdbStore {
         let mut is_fully_upgraded = false;
         let mut is_fresh_db = false;
         {
-            let env = Arc::new(LmdbEnv::new(path)?);
-            let version_store = LmdbVersionStore::new(env.clone());
-            let transaction = env.tx_begin_read()?;
-            if version_store.open_db(&transaction).is_ok() {
-                is_fully_upgraded =
-                    version_store.get(&transaction.as_txn()) == STORE_VERSION_CURRENT;
-            } else {
-                is_fresh_db = true;
+            let env = LmdbEnv::new(path)?;
+            match LmdbVersionStore::try_read_version(&env) {
+                Some(version) => is_fully_upgraded = version == STORE_VERSION_CURRENT,
+                None => is_fresh_db = true,
             }
         }
 
@@ -98,46 +94,30 @@ impl LmdbStore {
             logger.clone(),
         )?);
 
-        let store = Self {
-            block_store: Arc::new(LmdbBlockStore::new(env.clone())),
-            frontier_store: Arc::new(LmdbFrontierStore::new(env.clone())),
-            account_store: Arc::new(LmdbAccountStore::new(env.clone())),
-            pending_store: Arc::new(LmdbPendingStore::new(env.clone())),
-            online_weight_store: Arc::new(LmdbOnlineWeightStore::new(env.clone())),
-            pruned_store: Arc::new(LmdbPrunedStore::new(env.clone())),
-            peer_store: Arc::new(LmdbPeerStore::new(env.clone())),
-            confirmation_height_store: Arc::new(LmdbConfirmationHeightStore::new(env.clone())),
-            final_vote_store: Arc::new(LmdbFinalVoteStore::new(env.clone())),
-            unchecked_store: Arc::new(LmdbUncheckedStore::new(env.clone())),
-            version_store: Arc::new(LmdbVersionStore::new(env.clone())),
+        Ok(Self {
+            block_store: Arc::new(LmdbBlockStore::new(env.clone())?),
+            frontier_store: Arc::new(LmdbFrontierStore::new(env.clone())?),
+            account_store: Arc::new(LmdbAccountStore::new(env.clone())?),
+            pending_store: Arc::new(LmdbPendingStore::new(env.clone())?),
+            online_weight_store: Arc::new(LmdbOnlineWeightStore::new(env.clone())?),
+            pruned_store: Arc::new(LmdbPrunedStore::new(env.clone())?),
+            peer_store: Arc::new(LmdbPeerStore::new(env.clone())?),
+            confirmation_height_store: Arc::new(LmdbConfirmationHeightStore::new(env.clone())?),
+            final_vote_store: Arc::new(LmdbFinalVoteStore::new(env.clone())?),
+            unchecked_store: Arc::new(LmdbUncheckedStore::new(env.clone())?),
+            version_store: Arc::new(LmdbVersionStore::new(env.clone())?),
             logger,
             env,
-        };
-        store.open_databases()?;
-        Ok(store)
-    }
-
-    pub fn open_databases(&self) -> anyhow::Result<()> {
-        self.block_store.create_db()?;
-        self.frontier_store.create_db()?;
-        self.account_store.create_db()?;
-        self.pending_store.create_db()?;
-        self.online_weight_store.create_db()?;
-        self.pruned_store.create_db()?;
-        self.peer_store.create_db()?;
-        self.confirmation_height_store.create_db()?;
-        self.final_vote_store.create_db()?;
-        self.unchecked_store.create_db()?;
-        self.version_store.create_db()
+        })
     }
 
     pub fn rebuild_db(&self, txn: &mut LmdbWriteTransaction) -> anyhow::Result<()> {
         let tables = [
-            self.account_store.db_handle(),
-            self.block_store.db_handle(),
-            self.pruned_store.db_handle(),
-            self.confirmation_height_store.db_handle(),
-            self.pending_store.db_handle(),
+            self.account_store.database(),
+            self.block_store.database(),
+            self.pruned_store.database(),
+            self.confirmation_height_store.database(),
+            self.pending_store.database(),
         ];
         for table in tables {
             rebuild_table(&self.env, txn, table)?;
@@ -233,8 +213,7 @@ fn rebuild_table(
 }
 
 fn do_upgrades(env: Arc<LmdbEnv>, logger: &dyn Logger) -> anyhow::Result<Vacuuming> {
-    let version_store = LmdbVersionStore::new(env.clone());
-    version_store.create_db()?;
+    let version_store = LmdbVersionStore::new(env.clone())?;
     let txn = env.tx_begin_write()?;
     let version = version_store.get(&txn.as_txn());
     match version {

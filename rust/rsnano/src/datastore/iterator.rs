@@ -83,10 +83,9 @@ where
     fn load_current(&mut self) {
         self.current = match self.iterator_impl.current() {
             Some((k, v)) => {
-                if k.len() < K::serialized_size(){
+                if k.len() < K::serialized_size() {
                     None
-                }
-                else{
+                } else {
                     let key = K::deserialize(&mut StreamAdapter::new(k)).unwrap();
                     let value = V::deserialize(&mut StreamAdapter::new(v)).unwrap();
                     Some((key, value))

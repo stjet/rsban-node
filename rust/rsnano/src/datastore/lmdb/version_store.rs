@@ -1,44 +1,35 @@
-use std::sync::{Arc, Mutex};
-
-use lmdb::{Database, DatabaseFlags, Transaction, WriteFlags};
-
-use crate::datastore::{VersionStore, STORE_VERSION_MINIMUM};
-
 use super::{LmdbEnv, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction};
+use crate::datastore::{VersionStore, STORE_VERSION_MINIMUM};
+use lmdb::{Database, DatabaseFlags, WriteFlags};
+use std::sync::Arc;
 
 pub struct LmdbVersionStore {
     env: Arc<LmdbEnv>,
 
     /// U256 (arbitrary key) -> blob
-    db_handle: Mutex<Option<Database>>,
+    db_handle: Database,
 }
 
 impl LmdbVersionStore {
-    pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self {
-            env,
-            db_handle: Mutex::new(None),
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+        let db_handle = env
+            .environment
+            .create_db(Some("meta"), DatabaseFlags::empty())?;
+        Ok(Self { env, db_handle })
+    }
+
+    pub fn try_read_version(env: &LmdbEnv) -> Option<i32> {
+        match env.environment.open_db(Some("meta")) {
+            Ok(db) => {
+                let txn = env.tx_begin_read().unwrap();
+                Some(load_version(&txn.as_txn(), db))
+            }
+            Err(_) => None,
         }
     }
 
-    pub fn open_db(&self, txn: &LmdbReadTransaction) -> anyhow::Result<()> {
-        let mut guard = self.db_handle.lock().unwrap();
-        *guard = Some(unsafe { txn.txn().open_db(Some("meta")) }?);
-        Ok(())
-    }
-
-    pub fn create_db(&self) -> anyhow::Result<()> {
-        let mut guard = self.db_handle.lock().unwrap();
-        *guard = Some(
-            self.env
-                .environment
-                .create_db(Some("meta"), DatabaseFlags::empty())?,
-        );
-        Ok(())
-    }
-
     pub fn db_handle(&self) -> Database {
-        self.db_handle.lock().unwrap().unwrap()
+        self.db_handle
     }
 }
 
@@ -56,11 +47,15 @@ impl<'a> VersionStore<LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>> for Lmd
 
     fn get(&self, txn: &LmdbTransaction) -> i32 {
         let db = self.db_handle();
-        let key_bytes = version_key();
-        match txn.get(db, &key_bytes) {
-            Ok(value) => i32::from_ne_bytes(value[28..].try_into().unwrap()),
-            Err(_) => STORE_VERSION_MINIMUM,
-        }
+        load_version(txn, db)
+    }
+}
+
+fn load_version(txn: &LmdbTransaction, db: Database) -> i32 {
+    let key_bytes = version_key();
+    match txn.get(db, &key_bytes) {
+        Ok(value) => i32::from_ne_bytes(value[28..].try_into().unwrap()),
+        Err(_) => STORE_VERSION_MINIMUM,
     }
 }
 

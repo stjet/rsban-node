@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use lmdb::{Database, DatabaseFlags, Transaction, WriteFlags};
 
@@ -15,29 +15,19 @@ use super::{
 /// nano::qualified_root -> nano::block_hash
 pub struct LmdbFinalVoteStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<Option<Database>>,
+    database: Database,
 }
 
 impl LmdbFinalVoteStore {
-    pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self {
-            env,
-            db_handle: Mutex::new(None),
-        }
-    }
-
-    pub fn db_handle(&self) -> Database {
-        self.db_handle.lock().unwrap().unwrap()
-    }
-
-    pub fn create_db(&self) -> anyhow::Result<()> {
-        let handle = self
-            .env
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+        let database = env
             .environment
-            .create_db(Some("final_votes"), DatabaseFlags::empty())
-            .unwrap();
-        *self.db_handle.lock().unwrap() = Some(handle);
-        Ok(())
+            .create_db(Some("final_votes"), DatabaseFlags::empty())?;
+        Ok(Self { env, database })
+    }
+
+    pub fn database(&self) -> Database {
+        self.database
     }
 }
 
@@ -46,11 +36,11 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
 {
     fn put(&self, txn: &mut LmdbWriteTransaction, root: &QualifiedRoot, hash: &BlockHash) -> bool {
         let root_bytes = root.to_bytes();
-        match txn.rw_txn().get(self.db_handle(), &root_bytes) {
+        match txn.rw_txn().get(self.database, &root_bytes) {
             Err(lmdb::Error::NotFound) => {
                 txn.rw_txn_mut()
                     .put(
-                        self.db_handle(),
+                        self.database,
                         &root_bytes,
                         hash.as_bytes(),
                         WriteFlags::empty(),
@@ -66,7 +56,7 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
     }
 
     fn begin(&self, txn: &LmdbTransaction) -> FinalVoteIterator<LmdbIteratorImpl> {
-        FinalVoteIterator::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, true))
+        FinalVoteIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
     fn begin_at_root(
@@ -77,7 +67,7 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         let key_bytes = root.to_bytes();
         FinalVoteIterator::new(LmdbIteratorImpl::new(
             txn,
-            self.db_handle(),
+            self.database,
             Some(&key_bytes),
             true,
         ))
@@ -124,17 +114,17 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         for qualified_root in final_vote_qualified_roots {
             let root_bytes = qualified_root.to_bytes();
             txn.rw_txn_mut()
-                .del(self.db_handle(), &root_bytes, None)
+                .del(self.database, &root_bytes, None)
                 .unwrap();
         }
     }
 
     fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.db_handle())
+        txn.count(self.database)
     }
 
     fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn_mut().clear_db(self.db_handle()).unwrap();
+        txn.rw_txn_mut().clear_db(self.database).unwrap();
     }
 
     fn for_each_par(

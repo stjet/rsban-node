@@ -9,33 +9,28 @@ use crate::{
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub struct LmdbBlockStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<Option<Database>>,
+    database: Database,
 }
 
 impl LmdbBlockStore {
-    pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self {
-            env,
-            db_handle: Mutex::new(None),
-        }
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+        let database = env
+            .environment
+            .create_db(Some("blocks"), DatabaseFlags::empty())?;
+        Ok(Self { env, database })
     }
 
-    pub fn db_handle(&self) -> Database {
-        self.db_handle.lock().unwrap().unwrap()
+    pub fn database(&self) -> Database {
+        self.database
     }
 
     pub fn raw_put(&self, txn: &mut LmdbWriteTransaction, data: &[u8], hash: &BlockHash) {
         txn.rw_txn_mut()
-            .put(
-                self.db_handle(),
-                hash.as_bytes(),
-                &data,
-                WriteFlags::empty(),
-            )
+            .put(self.database, hash.as_bytes(), &data, WriteFlags::empty())
             .unwrap();
     }
 
@@ -44,20 +39,11 @@ impl LmdbBlockStore {
         txn: &'txn LmdbTransaction,
         hash: &BlockHash,
     ) -> Option<&[u8]> {
-        match txn.get(self.db_handle(), hash.as_bytes()) {
+        match txn.get(self.database, hash.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => Some(bytes),
             Err(e) => panic!("Could not load block. {:?}", e),
         }
-    }
-
-    pub fn create_db(&self) -> anyhow::Result<()> {
-        *self.db_handle.lock().unwrap() = Some(
-            self.env
-                .environment
-                .create_db(Some("blocks"), DatabaseFlags::empty())?,
-        );
-        Ok(())
     }
 }
 
@@ -141,12 +127,12 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
 
     fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
         txn.rw_txn_mut()
-            .del(self.db_handle(), hash.as_bytes(), None)
+            .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
 
     fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.db_handle())
+        txn.count(self.database)
     }
 
     fn account_calculated(&self, block: &dyn Block) -> Account {
@@ -168,7 +154,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
     fn begin(&self, transaction: &LmdbTransaction) -> BlockIterator<LmdbIteratorImpl> {
         DbIterator2::new(LmdbIteratorImpl::new(
             transaction,
-            self.db_handle(),
+            self.database,
             None,
             true,
         ))
@@ -181,7 +167,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
     ) -> BlockIterator<LmdbIteratorImpl> {
         DbIterator2::new(LmdbIteratorImpl::new(
             transaction,
-            self.db_handle(),
+            self.database,
             Some(hash.as_bytes()),
             true,
         ))
@@ -321,5 +307,4 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 }
 
 #[cfg(test)]
-mod tests{
-}
+mod tests {}

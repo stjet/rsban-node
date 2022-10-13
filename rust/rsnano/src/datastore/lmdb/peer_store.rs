@@ -1,6 +1,5 @@
-use std::sync::{Arc, Mutex};
-
 use lmdb::{Database, DatabaseFlags, WriteFlags};
+use std::sync::Arc;
 
 use crate::{
     datastore::{peer_store::PeerIterator, PeerStore},
@@ -13,29 +12,20 @@ use super::{
 
 pub struct LmdbPeerStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<Option<Database>>,
+    database: Database,
 }
 
 impl LmdbPeerStore {
-    pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self {
-            env,
-            db_handle: Mutex::new(None),
-        }
-    }
-
-    pub fn db_handle(&self) -> Database {
-        self.db_handle.lock().unwrap().unwrap()
-    }
-
-    pub fn create_db(&self) -> anyhow::Result<()> {
-        let db = self
-            .env
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+        let database = env
             .environment
-            .create_db(Some("peers"), DatabaseFlags::empty())
-            .unwrap();
-        *self.db_handle.lock().unwrap() = Some(db);
-        Ok(())
+            .create_db(Some("peers"), DatabaseFlags::empty())?;
+
+        Ok(Self { env, database })
+    }
+
+    pub fn database(&self) -> Database {
+        self.database
     }
 }
 
@@ -45,7 +35,7 @@ impl<'a> PeerStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIt
     fn put(&self, txn: &mut LmdbWriteTransaction, endpoint: &EndpointKey) {
         txn.rw_txn_mut()
             .put(
-                self.db_handle(),
+                self.database,
                 &endpoint.to_bytes(),
                 &[0; 0],
                 WriteFlags::empty(),
@@ -55,23 +45,23 @@ impl<'a> PeerStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIt
 
     fn del(&self, txn: &mut LmdbWriteTransaction, endpoint: &EndpointKey) {
         txn.rw_txn_mut()
-            .del(self.db_handle(), &endpoint.to_bytes(), None)
+            .del(self.database, &endpoint.to_bytes(), None)
             .unwrap();
     }
 
     fn exists(&self, txn: &LmdbTransaction, endpoint: &EndpointKey) -> bool {
-        exists(txn, self.db_handle(), &endpoint.to_bytes())
+        exists(txn, self.database, &endpoint.to_bytes())
     }
 
     fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.db_handle())
+        txn.count(self.database)
     }
 
     fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn_mut().clear_db(self.db_handle()).unwrap();
+        txn.rw_txn_mut().clear_db(self.database).unwrap();
     }
 
     fn begin(&self, txn: &LmdbTransaction) -> PeerIterator<LmdbIteratorImpl> {
-        PeerIterator::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, true))
+        PeerIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 }

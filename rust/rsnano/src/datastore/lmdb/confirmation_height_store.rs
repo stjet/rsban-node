@@ -1,6 +1,5 @@
-use std::sync::{Arc, Mutex};
-
 use lmdb::{Database, DatabaseFlags, WriteFlags};
+use std::sync::Arc;
 
 use crate::{
     datastore::{
@@ -17,28 +16,19 @@ use super::{
 
 pub struct LmdbConfirmationHeightStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<Option<Database>>,
+    database: Database,
 }
 
 impl LmdbConfirmationHeightStore {
-    pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self {
-            env,
-            db_handle: Mutex::new(None),
-        }
-    }
-
-    pub fn db_handle(&self) -> Database {
-        self.db_handle.lock().unwrap().unwrap()
-    }
-
-    pub fn create_db(&self) -> anyhow::Result<()> {
-        let db = self
-            .env
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+        let database = env
             .environment
             .create_db(Some("confirmation_height"), DatabaseFlags::empty())?;
-        *self.db_handle.lock().unwrap() = Some(db);
-        Ok(())
+        Ok(Self { env, database })
+    }
+
+    pub fn database(&self) -> Database {
+        self.database
     }
 }
 
@@ -54,7 +44,7 @@ impl<'a>
     ) {
         txn.rw_txn_mut()
             .put(
-                self.db_handle(),
+                self.database,
                 account.as_bytes(),
                 &info.to_bytes(),
                 WriteFlags::empty(),
@@ -63,7 +53,7 @@ impl<'a>
     }
 
     fn get(&self, txn: &LmdbTransaction, account: &Account) -> Option<ConfirmationHeightInfo> {
-        match txn.get(self.db_handle(), account.as_bytes()) {
+        match txn.get(self.database, account.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {
                 let mut stream = StreamAdapter::new(bytes);
@@ -76,25 +66,25 @@ impl<'a>
     }
 
     fn exists(&self, txn: &LmdbTransaction, account: &Account) -> bool {
-        exists(txn, self.db_handle(), account.as_bytes())
+        exists(txn, self.database, account.as_bytes())
     }
 
     fn del(&self, txn: &mut LmdbWriteTransaction, account: &Account) {
         txn.rw_txn_mut()
-            .del(self.db_handle(), account.as_bytes(), None)
+            .del(self.database, account.as_bytes(), None)
             .unwrap();
     }
 
     fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.db_handle())
+        txn.count(self.database)
     }
 
     fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn_mut().clear_db(self.db_handle()).unwrap()
+        txn.rw_txn_mut().clear_db(self.database).unwrap()
     }
 
     fn begin(&self, txn: &LmdbTransaction) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
-        DbIterator2::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, true))
+        DbIterator2::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
     fn begin_at_account(
@@ -104,7 +94,7 @@ impl<'a>
     ) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
         DbIterator2::new(LmdbIteratorImpl::new(
             txn,
-            self.db_handle(),
+            self.database,
             Some(account.as_bytes()),
             true,
         ))

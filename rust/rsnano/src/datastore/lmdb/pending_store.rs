@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 
@@ -14,29 +14,20 @@ use super::{
 
 pub struct LmdbPendingStore {
     env: Arc<LmdbEnv>,
-    db_handle: Mutex<Option<Database>>,
+    database: Database,
 }
 
 impl LmdbPendingStore {
-    pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self {
-            env,
-            db_handle: Mutex::new(None),
-        }
-    }
-
-    pub fn db_handle(&self) -> Database {
-        self.db_handle.lock().unwrap().unwrap()
-    }
-
-    pub fn create_db(&self) -> anyhow::Result<()> {
-        let db = self
-            .env
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+        let database = env
             .environment
-            .create_db(Some("pending"), DatabaseFlags::empty())
-            .unwrap();
-        *self.db_handle.lock().unwrap() = Some(db);
-        Ok(())
+            .create_db(Some("pending"), DatabaseFlags::empty())?;
+
+        Ok(Self { env, database })
+    }
+
+    pub fn database(&self) -> Database {
+        self.database
     }
 }
 
@@ -48,7 +39,7 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         let pending_bytes = pending.to_bytes();
         txn.rw_txn_mut()
             .put(
-                self.db_handle(),
+                self.database,
                 &key_bytes,
                 &pending_bytes,
                 WriteFlags::empty(),
@@ -59,13 +50,13 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     fn del(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey) {
         let key_bytes = key.to_bytes();
         txn.rw_txn_mut()
-            .del(self.db_handle(), &key_bytes, None)
+            .del(self.database, &key_bytes, None)
             .unwrap();
     }
 
     fn get(&self, txn: &LmdbTransaction, key: &PendingKey) -> Option<PendingInfo> {
         let key_bytes = key.to_bytes();
-        match txn.get(self.db_handle(), &key_bytes) {
+        match txn.get(self.database, &key_bytes) {
             Ok(bytes) => {
                 let mut stream = StreamAdapter::new(bytes);
                 PendingInfo::deserialize(&mut stream).ok()
@@ -78,7 +69,7 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     }
 
     fn begin(&self, txn: &LmdbTransaction) -> PendingIterator<LmdbIteratorImpl> {
-        PendingIterator::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, true))
+        PendingIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
     fn begin_at_key(
@@ -89,7 +80,7 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         let key_bytes = key.to_bytes();
         PendingIterator::new(LmdbIteratorImpl::new(
             txn,
-            self.db_handle(),
+            self.database,
             Some(&key_bytes),
             true,
         ))

@@ -4,7 +4,7 @@ use crate::{
     Account, AccountInfo,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use super::{
     iterator::LmdbIteratorImpl, LmdbEnv, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
@@ -14,28 +14,19 @@ pub struct LmdbAccountStore {
     env: Arc<LmdbEnv>,
 
     /// U256 (arbitrary key) -> blob
-    db_handle: Mutex<Option<Database>>,
+    database: Database,
 }
 
 impl LmdbAccountStore {
-    pub fn new(env: Arc<LmdbEnv>) -> Self {
-        Self {
-            env,
-            db_handle: Mutex::new(None),
-        }
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+        let database = env
+            .environment
+            .create_db(Some("accounts"), DatabaseFlags::empty())?;
+        Ok(Self { env, database })
     }
 
-    pub fn db_handle(&self) -> Database {
-        self.db_handle.lock().unwrap().unwrap()
-    }
-
-    pub fn create_db(&self) -> lmdb::Result<()> {
-        *self.db_handle.lock().unwrap() = Some(
-            self.env
-                .environment
-                .create_db(Some("accounts"), DatabaseFlags::empty())?,
-        );
-        Ok(())
+    pub fn database(&self) -> Database {
+        self.database
     }
 }
 
@@ -51,7 +42,7 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         transaction
             .rw_txn_mut()
             .put(
-                self.db_handle(),
+                self.database,
                 account.as_bytes(),
                 &info.to_bytes(),
                 WriteFlags::empty(),
@@ -60,7 +51,7 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     }
 
     fn get(&self, transaction: &LmdbTransaction, account: &Account) -> Option<AccountInfo> {
-        let result = transaction.get(self.db_handle(), account.as_bytes());
+        let result = transaction.get(self.database, account.as_bytes());
         match result {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {
@@ -74,7 +65,7 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     fn del(&self, transaction: &mut LmdbWriteTransaction, account: &Account) {
         transaction
             .rw_txn_mut()
-            .del(self.db_handle(), account.as_bytes(), None)
+            .del(self.database, account.as_bytes(), None)
             .unwrap();
     }
 
@@ -85,7 +76,7 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     ) -> DbIterator2<Account, AccountInfo, LmdbIteratorImpl> {
         DbIterator2::new(LmdbIteratorImpl::new(
             transaction,
-            self.db_handle(),
+            self.database,
             Some(account.as_bytes()),
             true,
         ))
@@ -94,7 +85,7 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     fn begin(&self, transaction: &LmdbTransaction) -> AccountIterator<LmdbIteratorImpl> {
         AccountIterator::new(LmdbIteratorImpl::new(
             transaction,
-            self.db_handle(),
+            self.database,
             None,
             true,
         ))
@@ -126,12 +117,14 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     }
 
     fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.db_handle())
+        txn.count(self.database)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
+
     use super::*;
     use crate::{datastore::lmdb::TestLmdbEnv, Amount, BlockHash};
 
@@ -143,17 +136,9 @@ mod tests {
     impl AccountStoreTestContext {
         pub fn new() -> Self {
             let env = TestLmdbEnv::new();
-            let store = LmdbAccountStore::new(env.env());
-            store.create_db().unwrap();
+            let store = LmdbAccountStore::new(env.env()).unwrap();
             Self { store, env }
         }
-    }
-
-    #[test]
-    fn create_db() {
-        let env = TestLmdbEnv::new();
-        let store = LmdbAccountStore::new(env.env());
-        assert_eq!(store.create_db(), Ok(()));
     }
 
     #[test]

@@ -22,37 +22,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (block_store, add_item)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-	nano::block_builder builder;
-	auto block = builder
-				 .open ()
-				 .source (0)
-				 .representative (1)
-				 .account (0)
-				 .sign (nano::keypair ().prv, 0)
-				 .work (0)
-				 .build ();
-	block->sideband_set ({});
-	auto hash1 (block->hash ());
-	auto transaction (store->tx_begin_write ());
-	auto latest1 (store->block ().get (*transaction, hash1));
-	ASSERT_EQ (nullptr, latest1);
-	ASSERT_FALSE (store->block ().exists (*transaction, hash1));
-	store->block ().put (*transaction, hash1, *block);
-	auto latest2 (store->block ().get (*transaction, hash1));
-	ASSERT_NE (nullptr, latest2);
-	ASSERT_EQ (*block, *latest2);
-	ASSERT_TRUE (store->block ().exists (*transaction, hash1));
-	ASSERT_FALSE (store->block ().exists (*transaction, hash1.number () - 1));
-	store->block ().del (*transaction, hash1);
-	auto latest3 (store->block ().get (*transaction, hash1));
-	ASSERT_EQ (nullptr, latest3);
-}
-
 TEST (block_store, clear_successor)
 {
 	auto logger{ std::make_shared<nano::logger_mt> () };

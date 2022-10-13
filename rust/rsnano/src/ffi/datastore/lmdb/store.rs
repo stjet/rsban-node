@@ -88,15 +88,6 @@ pub unsafe extern "C" fn rsn_lmdb_store_destroy(handle: *mut LmdbStoreHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_store_env(handle: *mut LmdbStoreHandle) -> *mut LmdbEnvHandle {
-    if handle.is_null() {
-        ptr::null_mut()
-    } else {
-        LmdbEnvHandle::new((*handle).0.env.clone())
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_store_block(
     handle: *mut LmdbStoreHandle,
 ) -> *mut LmdbBlockStoreHandle {

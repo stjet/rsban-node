@@ -307,4 +307,36 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use crate::{datastore::lmdb::TestLmdbEnv, BlockBuilder};
+
+    use super::*;
+
+    #[test]
+    fn block_not_found() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbBlockStore::new(env.env())?;
+        let txn = env.tx_begin_read()?;
+        assert!(store.get(&txn.as_txn(), &BlockHash::from(1)).is_none());
+        assert_eq!(store.exists(&txn.as_txn(), &BlockHash::from(1)), false);
+        Ok(())
+    }
+
+    #[test]
+    fn add_block() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbBlockStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let block = BlockBuilder::open().build()?;
+        let block_hash = block.hash();
+
+        store.put(&mut txn, &block_hash, &block);
+        let loaded = store
+            .get(&txn.as_txn(), &block.hash())
+            .expect("block not found");
+
+        assert_eq!(loaded, BlockEnum::Open(block));
+        assert!(store.exists(&txn.as_txn(), &block_hash));
+        Ok(())
+    }
+}

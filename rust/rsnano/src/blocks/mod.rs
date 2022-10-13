@@ -1,7 +1,7 @@
-#[cfg(test)]
-mod block_builder;
 mod block_details;
 mod block_sideband;
+#[cfg(test)]
+mod builders;
 mod change_block;
 mod open_block;
 mod receive_block;
@@ -11,10 +11,10 @@ mod state_block;
 use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
-#[cfg(test)]
-pub use block_builder::*;
 pub use block_details::*;
 pub use block_sideband::BlockSideband;
+#[cfg(test)]
+pub use builders::*;
 pub use change_block::*;
 use num::FromPrimitive;
 pub use open_block::*;
@@ -82,7 +82,7 @@ impl LazyBlockHash {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum BlockEnum {
     Send(SendBlock),
     Receive(ReceiveBlock),

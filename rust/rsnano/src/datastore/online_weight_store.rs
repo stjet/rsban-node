@@ -1,8 +1,8 @@
 use crate::Amount;
 
-use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 
-pub type OnlineWeightIterator<I> = DbIterator2<u64, Amount, I>;
+pub type OnlineWeightIterator<I> = DbIterator<u64, Amount, I>;
 
 /// Samples of online vote weight
 /// u64 -> Amount

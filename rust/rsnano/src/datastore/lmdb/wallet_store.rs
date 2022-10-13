@@ -9,7 +9,7 @@ use std::{
 use lmdb::{Database, DatabaseFlags, Transaction, WriteFlags};
 
 use crate::{
-    datastore::{DbIterator2, Fans, WalletValue},
+    datastore::{DbIterator, Fans, WalletValue},
     deterministic_key,
     utils::{Deserialize, StreamAdapter},
     wallet::KeyDerivationFunction,
@@ -28,7 +28,7 @@ pub enum KeyType {
 
 const VERSION_CURRENT: u32 = 4;
 
-pub type WalletIterator = DbIterator2<Account, WalletValue, LmdbIteratorImpl>;
+pub type WalletIterator = DbIterator<Account, WalletValue, LmdbIteratorImpl>;
 
 pub struct LmdbWalletStore {
     db_handle: Mutex<Option<Database>>,

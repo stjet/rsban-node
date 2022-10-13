@@ -1,8 +1,8 @@
 use crate::{Account, Amount, Block, BlockEnum, BlockHash, BlockWithSideband, Epoch};
 
-use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 
-pub type BlockIterator<I> = DbIterator2<BlockHash, BlockWithSideband, I>;
+pub type BlockIterator<I> = DbIterator<BlockHash, BlockWithSideband, I>;
 
 pub trait BlockStore<'a, R, W, I>
 where

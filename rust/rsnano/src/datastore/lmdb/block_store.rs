@@ -2,7 +2,7 @@ use super::{
     LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
 };
 use crate::{
-    datastore::{block_store::BlockIterator, parallel_traversal, BlockStore, DbIterator2},
+    datastore::{block_store::BlockIterator, parallel_traversal, BlockStore, DbIterator},
     deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
     Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, Epoch,
@@ -152,7 +152,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
     }
 
     fn begin(&self, transaction: &LmdbTransaction) -> BlockIterator<LmdbIteratorImpl> {
-        DbIterator2::new(LmdbIteratorImpl::new(
+        DbIterator::new(LmdbIteratorImpl::new(
             transaction,
             self.database,
             None,
@@ -165,7 +165,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         transaction: &LmdbTransaction,
         hash: &BlockHash,
     ) -> BlockIterator<LmdbIteratorImpl> {
-        DbIterator2::new(LmdbIteratorImpl::new(
+        DbIterator::new(LmdbIteratorImpl::new(
             transaction,
             self.database,
             Some(hash.as_bytes()),
@@ -174,7 +174,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
     }
 
     fn end(&self) -> BlockIterator<LmdbIteratorImpl> {
-        DbIterator2::new(LmdbIteratorImpl::null())
+        DbIterator::new(LmdbIteratorImpl::null())
     }
 
     fn random(&self, transaction: &LmdbTransaction) -> Option<BlockEnum> {

@@ -1,7 +1,7 @@
-use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 use crate::{Account, AccountInfo};
 
-pub type AccountIterator<I> = DbIterator2<Account, AccountInfo, I>;
+pub type AccountIterator<I> = DbIterator<Account, AccountInfo, I>;
 
 pub trait AccountStore<'a, R, W, I>
 where
@@ -16,7 +16,7 @@ where
         &self,
         transaction: &Transaction<R, W>,
         account: &Account,
-    ) -> DbIterator2<Account, AccountInfo, I>;
+    ) -> DbIterator<Account, AccountInfo, I>;
     fn begin(&self, transaction: &Transaction<R, W>) -> AccountIterator<I>;
     fn for_each_par(
         &'a self,

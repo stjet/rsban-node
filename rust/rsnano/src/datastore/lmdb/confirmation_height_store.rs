@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::{
     datastore::{
         confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
-        ConfirmationHeightStore, DbIterator2,
+        ConfirmationHeightStore, DbIterator,
     },
     utils::{Deserialize, StreamAdapter},
     Account, ConfirmationHeightInfo,
@@ -84,7 +84,7 @@ impl<'a>
     }
 
     fn begin(&self, txn: &LmdbTransaction) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
-        DbIterator2::new(LmdbIteratorImpl::new(txn, self.database, None, true))
+        DbIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
     fn begin_at_account(
@@ -92,7 +92,7 @@ impl<'a>
         txn: &LmdbTransaction,
         account: &Account,
     ) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
-        DbIterator2::new(LmdbIteratorImpl::new(
+        DbIterator::new(LmdbIteratorImpl::new(
             txn,
             self.database,
             Some(account.as_bytes()),
@@ -101,7 +101,7 @@ impl<'a>
     }
 
     fn end(&self) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
-        DbIterator2::new(LmdbIteratorImpl::null())
+        DbIterator::new(LmdbIteratorImpl::null())
     }
 
     fn for_each_par(

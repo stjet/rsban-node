@@ -1,7 +1,7 @@
-use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 use crate::{Account, BlockHash};
 
-pub type FrontierIterator<I> = DbIterator2<BlockHash, Account, I>;
+pub type FrontierIterator<I> = DbIterator<BlockHash, Account, I>;
 
 /// Maps head block to owning account
 /// BlockHash -> Account

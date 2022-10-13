@@ -1,7 +1,7 @@
-use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 use crate::{BlockHash, NoValue};
 
-pub type PrunedIterator<I> = DbIterator2<BlockHash, NoValue, I>;
+pub type PrunedIterator<I> = DbIterator<BlockHash, NoValue, I>;
 
 /// Pruned blocks hashes
 pub trait PrunedStore<'a, R, W, I>

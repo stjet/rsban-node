@@ -1,8 +1,8 @@
 use crate::{EndpointKey, NoValue};
 
-use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 
-pub type PeerIterator<I> = DbIterator2<EndpointKey, NoValue, I>;
+pub type PeerIterator<I> = DbIterator<EndpointKey, NoValue, I>;
 
 /// Endpoints for peers
 /// nano::endpoint_key -> no_value

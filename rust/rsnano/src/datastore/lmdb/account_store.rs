@@ -1,5 +1,5 @@
 use crate::{
-    datastore::{parallel_traversal, AccountIterator, AccountStore, DbIterator2},
+    datastore::{parallel_traversal, AccountIterator, AccountStore, DbIterator},
     utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
 };
@@ -73,8 +73,8 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         &self,
         transaction: &LmdbTransaction,
         account: &Account,
-    ) -> DbIterator2<Account, AccountInfo, LmdbIteratorImpl> {
-        DbIterator2::new(LmdbIteratorImpl::new(
+    ) -> DbIterator<Account, AccountInfo, LmdbIteratorImpl> {
+        DbIterator::new(LmdbIteratorImpl::new(
             transaction,
             self.database,
             Some(account.as_bytes()),
@@ -113,7 +113,7 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     }
 
     fn end(&self) -> AccountIterator<LmdbIteratorImpl> {
-        DbIterator2::new(LmdbIteratorImpl::null())
+        DbIterator::new(LmdbIteratorImpl::null())
     }
 
     fn count(&self, txn: &LmdbTransaction) -> usize {

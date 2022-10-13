@@ -1,7 +1,7 @@
-use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 use crate::{Account, ConfirmationHeightInfo};
 
-pub type ConfirmationHeightIterator<I> = DbIterator2<Account, ConfirmationHeightInfo, I>;
+pub type ConfirmationHeightIterator<I> = DbIterator<Account, ConfirmationHeightInfo, I>;
 
 pub trait ConfirmationHeightStore<'a, R, W, I>
 where

@@ -1,7 +1,7 @@
-use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 use crate::{BlockHash, QualifiedRoot, Root};
 
-pub type FinalVoteIterator<I> = DbIterator2<QualifiedRoot, BlockHash, I>;
+pub type FinalVoteIterator<I> = DbIterator<QualifiedRoot, BlockHash, I>;
 
 pub trait FinalVoteStore<'a, R, W, I>
 where

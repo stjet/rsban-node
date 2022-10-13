@@ -24,7 +24,7 @@ pub use block_store::BlockStore;
 pub use confirmation_height_store::ConfirmationHeightStore;
 pub use final_vote_store::FinalVoteStore;
 pub use frontier_store::FrontierStore;
-pub use iterator::{DbIterator, DbIterator2, DbIteratorImpl, NullIterator};
+pub use iterator::{DbIterator, DbIteratorImpl};
 pub use ledger::Ledger;
 pub use online_weight_store::OnlineWeightStore;
 pub use peer_store::PeerStore;

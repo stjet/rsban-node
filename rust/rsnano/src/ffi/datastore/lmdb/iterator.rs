@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use crate::{
     datastore::{
         lmdb::{LmdbIteratorImpl, LmdbReadTransaction},
-        DbIterator2, DbIteratorImpl,
+        DbIterator, DbIteratorImpl,
     },
     ffi::VoidPointerCallback,
     utils::{Deserialize, Serialize},
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn rsn_lmdb_iterator_next(handle: *mut LmdbIteratorHandle)
 }
 
 pub fn to_lmdb_iterator_handle2<K, V>(
-    iterator: DbIterator2<K, V, LmdbIteratorImpl>,
+    iterator: DbIterator<K, V, LmdbIteratorImpl>,
 ) -> *mut LmdbIteratorHandle
 where
     K: Serialize + Deserialize<Target = K>,
@@ -99,8 +99,8 @@ impl ForEachParWrapper {
     pub fn execute<K, V>(
         &self,
         txn: LmdbReadTransaction,
-        begin: DbIterator2<K, V, crate::datastore::lmdb::LmdbIteratorImpl>,
-        end: DbIterator2<K, V, crate::datastore::lmdb::LmdbIteratorImpl>,
+        begin: DbIterator<K, V, crate::datastore::lmdb::LmdbIteratorImpl>,
+        end: DbIterator<K, V, crate::datastore::lmdb::LmdbIteratorImpl>,
     ) where
         K: Serialize + Deserialize<Target = K>,
         V: Deserialize<Target = V>,

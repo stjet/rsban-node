@@ -1,37 +1,11 @@
 use crate::utils::{Deserialize, Serialize, StreamAdapter};
 
-pub trait DbIterator<K, V> {
-    fn current(&self) -> Option<(&K, &V)>;
-    fn next(&mut self);
-    fn is_end(&self) -> bool;
-}
-
-pub struct NullIterator {}
-
-impl NullIterator {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl<K, V> DbIterator<K, V> for NullIterator {
-    fn is_end(&self) -> bool {
-        true
-    }
-
-    fn current(&self) -> Option<(&K, &V)> {
-        None
-    }
-
-    fn next(&mut self) {}
-}
-
 pub trait DbIteratorImpl: PartialEq {
     fn current(&self) -> Option<(&[u8], &[u8])>;
     fn next(&mut self);
 }
 
-pub struct DbIterator2<K, V, I>
+pub struct DbIterator<K, V, I>
 where
     K: Serialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
@@ -41,7 +15,7 @@ where
     current: Option<(K, V)>,
 }
 
-impl<K, V, I> PartialEq for DbIterator2<K, V, I>
+impl<K, V, I> PartialEq for DbIterator<K, V, I>
 where
     K: Serialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
@@ -52,7 +26,7 @@ where
     }
 }
 
-impl<K, V, I> DbIterator2<K, V, I>
+impl<K, V, I> DbIterator<K, V, I>
 where
     K: Serialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,

@@ -3,9 +3,9 @@ use crate::{
     HashOrAccount,
 };
 
-use super::{iterator::DbIteratorImpl, DbIterator2, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 
-pub type UncheckedIterator<I> = DbIterator2<UncheckedKey, UncheckedInfo, I>;
+pub type UncheckedIterator<I> = DbIterator<UncheckedKey, UncheckedInfo, I>;
 
 /// Unchecked bootstrap blocks info.
 /// BlockHash -> UncheckedInfo

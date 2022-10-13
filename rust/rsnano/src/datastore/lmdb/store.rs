@@ -1,7 +1,6 @@
 use std::{
-    ffi::{c_char, CStr, CString},
+    ffi::CString,
     path::{Path, PathBuf},
-    ptr,
     sync::Arc,
     time::Duration,
 };
@@ -10,7 +9,7 @@ use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 
 use crate::{
-    datastore::{Store, VersionStore, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM},
+    datastore::{Store, VersionStore, STORE_VERSION_MINIMUM},
     logger_mt::Logger,
     utils::{seconds_since_epoch, PropertyTreeWriter},
     TxnTrackingConfig,
@@ -54,37 +53,7 @@ impl LmdbStore {
         logger: Arc<dyn Logger>,
         backup_before_upgrade: bool,
     ) -> anyhow::Result<Self> {
-        let mut is_fully_upgraded = false;
-        let mut is_fresh_db = false;
-        {
-            let env = LmdbEnv::new(path)?;
-            match LmdbVersionStore::try_read_version(&env) {
-                Some(version) => is_fully_upgraded = version == STORE_VERSION_CURRENT,
-                None => is_fresh_db = true,
-            }
-        }
-
-        // Only open a write lock when upgrades are needed. This is because CLI commands
-        // open inactive nodes which can otherwise be locked here if there is a long write
-        // (can be a few minutes with the --fast_bootstrap flag for instance)
-        if !is_fully_upgraded {
-            let env = Arc::new(LmdbEnv::new(path)?);
-            if !is_fresh_db {
-                logger.always_log("Upgrade in progress...");
-                if backup_before_upgrade {
-                    create_backup_file(&env, logger.as_ref())?;
-                }
-            }
-
-            let vacuuming = do_upgrades(env.clone(), logger.as_ref())?;
-            if vacuuming == Vacuuming::Needed {
-                logger.always_log("Preparing vacuum...");
-                match vacuum_after_upgrade (env, path){
-                    Ok(_) => logger.always_log("Vacuum succeeded."),
-                    Err(_) => logger.always_log("Failed to vacuum. (Optional) Ensure enough disk space is available for a copy of the database and try to vacuum after shutting down the node"),
-                }
-            }
-        }
+        upgrade_if_needed(path, &logger, backup_before_upgrade)?;
 
         let env = Arc::new(LmdbEnv::with_tracking(
             path,
@@ -161,54 +130,88 @@ impl LmdbStore {
     }
 }
 
+fn upgrade_if_needed(
+    path: &Path,
+    logger: &Arc<dyn Logger>,
+    backup_before_upgrade: bool,
+) -> Result<(), anyhow::Error> {
+    let upgrade_info = LmdbVersionStore::check_upgrade(path)?;
+    if upgrade_info.is_fully_upgraded {
+        return Ok(());
+    }
+
+    let env = Arc::new(LmdbEnv::new(path)?);
+    if !upgrade_info.is_fresh_db {
+        logger.always_log("Upgrade in progress...");
+        if backup_before_upgrade {
+            create_backup_file(&env, logger.as_ref())?;
+        }
+    }
+
+    let vacuuming = do_upgrades(env.clone(), logger.as_ref())?;
+
+    if vacuuming == Vacuuming::Needed {
+        logger.always_log("Preparing vacuum...");
+        match vacuum_after_upgrade (env, path){
+                Ok(_) => logger.always_log("Vacuum succeeded."),
+                Err(_) => logger.always_log("Failed to vacuum. (Optional) Ensure enough disk space is available for a copy of the database and try to vacuum after shutting down the node"),
+            }
+    }
+    Ok(())
+}
+
 fn rebuild_table(
     env: &LmdbEnv,
     rw_txn: &mut LmdbWriteTransaction,
     db: Database,
 ) -> anyhow::Result<()> {
-    let temp = {
-        let ro_txn = env.tx_begin_read()?;
-        let temp = unsafe {
-            rw_txn
-                .rw_txn_mut()
-                .create_db(Some("temp_table"), DatabaseFlags::empty())
-        }?;
-        // Copy all values to temporary table
-        {
-            {
-                let mut cursor = ro_txn.txn().open_ro_cursor(db)?;
-                for x in cursor.iter_start() {
-                    let (k, v) = x?;
-                    rw_txn.rw_txn_mut().put(temp, &k, &v, WriteFlags::APPEND)?;
-                }
-            }
-
-            if ro_txn.txn().stat(db)?.entries() != rw_txn.rw_txn_mut().stat(temp)?.entries() {
-                bail!("table count mismatch");
-            }
-        }
-        rw_txn.refresh();
-        temp
-    };
-
-    // Put values from copy
-    {
-        let ro_txn = env.tx_begin_read()?;
-        rw_txn.rw_txn_mut().clear_db(db)?;
-        {
-            let mut cursor = ro_txn.txn().open_ro_cursor(temp)?;
-            for x in cursor.iter_start() {
-                let (k, v) = x?;
-                rw_txn.rw_txn_mut().put(db, &k, &v, WriteFlags::APPEND)?;
-            }
-        }
-        if rw_txn.rw_txn_mut().stat(db)?.entries() != ro_txn.txn().stat(temp)?.entries() {
-            bail!("table count mismatch");
-        }
-    }
-
+    let temp = unsafe {
+        rw_txn
+            .rw_txn_mut()
+            .create_db(Some("temp_table"), DatabaseFlags::empty())
+    }?;
+    copy_table(env, rw_txn, db, temp)?;
+    rw_txn.refresh();
+    rw_txn.rw_txn_mut().clear_db(db)?;
+    copy_table(env, rw_txn, temp, db)?;
     unsafe { rw_txn.rw_txn_mut().drop_db(temp) }?;
     rw_txn.refresh();
+    Ok(())
+}
+
+fn copy_to_temp_table(
+    env: &LmdbEnv,
+    rw_txn: &mut LmdbWriteTransaction,
+    db: Database,
+) -> Result<Database, anyhow::Error> {
+    let temp = unsafe {
+        rw_txn
+            .rw_txn_mut()
+            .create_db(Some("temp_table"), DatabaseFlags::empty())
+    }?;
+    copy_table(env, rw_txn, db, temp)?;
+    Ok(temp)
+}
+
+fn copy_table(
+    env: &LmdbEnv,
+    rw_txn: &mut LmdbWriteTransaction,
+    source: Database,
+    target: Database,
+) -> anyhow::Result<()> {
+    let ro_txn = env.tx_begin_read()?;
+    {
+        let mut cursor = ro_txn.txn().open_ro_cursor(source)?;
+        for x in cursor.iter_start() {
+            let (k, v) = x?;
+            rw_txn
+                .rw_txn_mut()
+                .put(target, &k, &v, WriteFlags::APPEND)?;
+        }
+    }
+    if ro_txn.txn().stat(source)?.entries() != rw_txn.rw_txn_mut().stat(target)?.entries() {
+        bail!("table count mismatch");
+    }
     Ok(())
 }
 
@@ -280,38 +283,14 @@ fn ensure_success(status: i32) -> Result<(), anyhow::Error> {
 
 /// Takes a filepath, appends '_backup_<timestamp>' to the end (but before any extension) and saves that file in the same directory
 pub fn create_backup_file(env: &LmdbEnv, logger: &dyn Logger) -> anyhow::Result<()> {
-    let mut path: *const c_char = ptr::null();
-    let status = unsafe { lmdb_sys::mdb_env_get_path(env.environment.env(), &mut path) };
-    if status != MDB_SUCCESS {
-        bail!("could not get env path");
-    }
-    let source_path: PathBuf = unsafe { CStr::from_ptr(path) }.to_str()?.into();
+    let source_path = env.file_path()?;
 
-    let extension = source_path
-        .extension()
-        .ok_or_else(|| anyhow!("no extension"))?
-        .to_string_lossy();
-    let file_name = source_path
-        .file_name()
-        .ok_or_else(|| anyhow!("no file name"))?
-        .to_string_lossy();
-    let file_stem = source_path
-        .file_stem()
-        .ok_or_else(|| anyhow!("no file stem"))?
-        .to_string_lossy();
-    let mut backup_path = source_path
-        .parent()
-        .ok_or_else(|| anyhow!("no parent path"))?
-        .to_owned();
-    let backup_filename = format!(
-        "{}_backup_{}.{}",
-        file_stem,
-        seconds_since_epoch(),
-        extension
+    let backup_path = backup_file_path(&source_path)?;
+
+    let start_message = format!(
+        "Performing {:?} backup before database upgrade...",
+        source_path
     );
-    backup_path.push(&backup_filename);
-
-    let start_message = format!("Performing {} backup before database upgrade...", file_name);
     logger.always_log(&start_message);
     println!("{}", start_message);
 
@@ -324,14 +303,42 @@ pub fn create_backup_file(env: &LmdbEnv, logger: &dyn Logger) -> anyhow::Result<
     let status =
         unsafe { lmdb_sys::mdb_env_copy(env.environment.env(), backup_path_cstr.as_ptr()) };
     if status != MDB_SUCCESS {
-        let error_message = format!("{} backup failed", file_name);
+        let error_message = format!("{:?} backup failed", source_path);
         logger.always_log(&error_message);
         eprintln!("{}", error_message);
         Err(anyhow!(error_message))
     } else {
-        let success_message = format!("Backup created: {}", backup_filename);
+        let success_message = format!("Backup created: {:?}", backup_path);
         logger.always_log(&success_message);
         println!("{}", success_message);
         Ok(())
     }
+}
+
+fn backup_file_path(source_path: &Path) -> anyhow::Result<PathBuf> {
+    let extension = source_path
+        .extension()
+        .ok_or_else(|| anyhow!("no extension"))?
+        .to_str()
+        .ok_or_else(|| anyhow!("invalid extension"))?;
+
+    let mut backup_path = source_path
+        .parent()
+        .ok_or_else(|| anyhow!("no parent path"))?
+        .to_owned();
+
+    let file_stem = source_path
+        .file_stem()
+        .ok_or_else(|| anyhow!("no file stem"))?
+        .to_str()
+        .ok_or_else(|| anyhow!("invalid file stem"))?;
+
+    let backup_filename = format!(
+        "{}_backup_{}.{}",
+        file_stem,
+        seconds_since_epoch(),
+        extension
+    );
+    backup_path.push(&backup_filename);
+    Ok(backup_path)
 }

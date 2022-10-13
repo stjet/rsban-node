@@ -1,13 +1,18 @@
 use super::{LmdbEnv, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction};
-use crate::datastore::{VersionStore, STORE_VERSION_MINIMUM};
+use crate::datastore::{VersionStore, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 pub struct LmdbVersionStore {
     env: Arc<LmdbEnv>,
 
     /// U256 (arbitrary key) -> blob
     db_handle: Database,
+}
+
+pub struct UpgradeInfo {
+    pub is_fresh_db: bool,
+    pub is_fully_upgraded: bool,
 }
 
 impl LmdbVersionStore {
@@ -18,14 +23,29 @@ impl LmdbVersionStore {
         Ok(Self { env, db_handle })
     }
 
-    pub fn try_read_version(env: &LmdbEnv) -> Option<i32> {
+    pub fn try_read_version(env: &LmdbEnv) -> anyhow::Result<Option<i32>> {
         match env.environment.open_db(Some("meta")) {
             Ok(db) => {
-                let txn = env.tx_begin_read().unwrap();
-                Some(load_version(&txn.as_txn(), db))
+                let txn = env.tx_begin_read()?;
+                Ok(Some(load_version(&txn.as_txn(), db)))
             }
-            Err(_) => None,
+            Err(_) => Ok(None),
         }
+    }
+
+    pub fn check_upgrade(path: &Path) -> anyhow::Result<UpgradeInfo> {
+        let env = LmdbEnv::new(path)?;
+        let info = match LmdbVersionStore::try_read_version(&env)? {
+            Some(version) => UpgradeInfo {
+                is_fresh_db: false,
+                is_fully_upgraded: version == STORE_VERSION_CURRENT,
+            },
+            None => UpgradeInfo {
+                is_fresh_db: true,
+                is_fully_upgraded: false,
+            },
+        };
+        Ok(info)
     }
 
     pub fn db_handle(&self) -> Database {

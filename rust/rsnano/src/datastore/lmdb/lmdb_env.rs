@@ -1,9 +1,10 @@
 use lmdb::{Environment, EnvironmentFlags};
+use lmdb_sys::MDB_SUCCESS;
 #[cfg(test)]
 use std::ops::Deref;
-#[cfg(test)]
 use std::path::PathBuf;
 use std::{
+    ffi::{c_char, CStr},
     fs::{create_dir_all, set_permissions, Permissions},
     os::unix::prelude::PermissionsExt,
     path::Path,
@@ -124,6 +125,16 @@ impl LmdbEnv {
         debug_assert!(std::thread::current().name() != Some("I/O"));
         let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
         LmdbWriteTransaction::new(txn_id, &self.environment, self.create_txn_callbacks())
+    }
+
+    pub fn file_path(&self) -> anyhow::Result<PathBuf> {
+        let mut path: *const c_char = std::ptr::null();
+        let status = unsafe { lmdb_sys::mdb_env_get_path(self.environment.env(), &mut path) };
+        if status != MDB_SUCCESS {
+            bail!("could not get env path");
+        }
+        let source_path: PathBuf = unsafe { CStr::from_ptr(path) }.to_str()?.into();
+        Ok(source_path)
     }
 
     fn create_txn_callbacks(&self) -> Arc<dyn TxnCallbacks> {

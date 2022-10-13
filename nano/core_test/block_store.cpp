@@ -22,46 +22,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (block_store, construction)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-}
-
-TEST (block_store, block_details_serialization)
-{
-	nano::block_details details1 (nano::epoch::epoch_2, false, true, false);
-	std::vector<uint8_t> vector;
-	{
-		nano::vectorstream stream1 (vector);
-		details1.serialize (stream1);
-	}
-	nano::bufferstream stream2 (vector.data (), vector.size ());
-	nano::block_details details2;
-	ASSERT_FALSE (details2.deserialize (stream2));
-	ASSERT_EQ (details1, details2);
-}
-
-TEST (block_store, sideband_serialization)
-{
-	nano::block_details details;
-	nano::block_sideband sideband1 (nano::account{ 1 }, nano::block_hash{ 4 }, nano::amount{ 2 }, 5, 3, details, nano::epoch::epoch_0);
-	std::vector<uint8_t> vector;
-	{
-		nano::vectorstream stream1 (vector);
-		sideband1.serialize (stream1, nano::block_type::receive);
-	}
-	nano::bufferstream stream2 (vector.data (), vector.size ());
-	nano::block_sideband sideband2;
-	ASSERT_FALSE (sideband2.deserialize (stream2, nano::block_type::receive));
-	ASSERT_EQ (sideband1.account (), sideband2.account ());
-	ASSERT_EQ (sideband1.balance (), sideband2.balance ());
-	ASSERT_EQ (sideband1.height (), sideband2.height ());
-	ASSERT_EQ (sideband1.successor (), sideband2.successor ());
-	ASSERT_EQ (sideband1.timestamp (), sideband2.timestamp ());
-}
-
 TEST (block_store, add_item)
 {
 	auto logger{ std::make_shared<nano::logger_mt> () };

@@ -70,6 +70,8 @@ impl BlockDetails {
 
 #[cfg(test)]
 mod test {
+    use crate::utils::MemoryStream;
+
     use super::*;
 
     #[test]
@@ -128,5 +130,14 @@ mod test {
             BlockDetails::unpack(details_none.packed()).unwrap(),
             details_none
         );
+    }
+
+    #[test]
+    fn serialize() {
+        let details = BlockDetails::new(Epoch::Epoch2, false, true, false);
+        let mut stream = MemoryStream::new();
+        details.serialize(&mut stream).unwrap();
+        let deserialized = BlockDetails::deserialize(&mut stream).unwrap();
+        assert_eq!(deserialized, details);
     }
 }

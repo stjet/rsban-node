@@ -9,6 +9,7 @@ use crate::{
 pub struct BlockSideband {
     pub height: u64,
     pub timestamp: u64,
+    /// Successor to the current block
     pub successor: BlockHash,
     pub account: Account,
     pub balance: Amount,

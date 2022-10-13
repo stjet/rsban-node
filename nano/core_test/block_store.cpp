@@ -22,53 +22,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (block_store, clear_successor)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-	nano::block_builder builder;
-	auto block1 = builder
-				  .open ()
-				  .source (0)
-				  .representative (1)
-				  .account (0)
-				  .sign (nano::keypair ().prv, 0)
-				  .work (0)
-				  .build ();
-	block1->sideband_set ({});
-	auto transaction (store->tx_begin_write ());
-	store->block ().put (*transaction, block1->hash (), *block1);
-	auto block2 = builder
-				  .open ()
-				  .source (0)
-				  .representative (2)
-				  .account (0)
-				  .sign (nano::keypair ().prv, 0)
-				  .work (0)
-				  .build ();
-	block2->sideband_set ({});
-	store->block ().put (*transaction, block2->hash (), *block2);
-	auto block2_store (store->block ().get (*transaction, block1->hash ()));
-	ASSERT_NE (nullptr, block2_store);
-	ASSERT_EQ (0, block2_store->sideband ().successor ().number ());
-	auto modified_sideband = block2_store->sideband ();
-	modified_sideband.set_successor (block2->hash ());
-	block1->sideband_set (modified_sideband);
-	store->block ().put (*transaction, block1->hash (), *block1);
-	{
-		auto block1_store (store->block ().get (*transaction, block1->hash ()));
-		ASSERT_NE (nullptr, block1_store);
-		ASSERT_EQ (block2->hash (), block1_store->sideband ().successor ());
-	}
-	store->block ().successor_clear (*transaction, block1->hash ());
-	{
-		auto block1_store (store->block ().get (*transaction, block1->hash ()));
-		ASSERT_NE (nullptr, block1_store);
-		ASSERT_EQ (0, block1_store->sideband ().successor ().number ());
-	}
-}
-
 TEST (block_store, add_nonempty_block)
 {
 	auto logger{ std::make_shared<nano::logger_mt> () };

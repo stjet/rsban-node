@@ -308,9 +308,8 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::{datastore::lmdb::TestLmdbEnv, BlockBuilder};
-
     use super::*;
+    use crate::{datastore::lmdb::TestLmdbEnv, BlockBuilder};
 
     #[test]
     fn block_not_found() -> anyhow::Result<()> {
@@ -337,6 +336,41 @@ mod tests {
 
         assert_eq!(loaded, BlockEnum::Open(block));
         assert!(store.exists(&txn.as_txn(), &block_hash));
+        Ok(())
+    }
+
+    #[test]
+    fn clear_successor() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbBlockStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+
+        let mut block1 = BlockBuilder::open()
+            .account(Account::from(0))
+            .representative(Account::from(1))
+            .build()?;
+
+        let block2 = BlockBuilder::open()
+            .account(Account::from(0))
+            .representative(Account::from(2))
+            .build()?;
+
+        let mut sideband = block1.sideband().unwrap().clone();
+        sideband.successor = block2.hash();
+        block1.set_sideband(sideband);
+
+        store.put(&mut txn, &block2.hash(), &block2);
+        store.put(&mut txn, &block1.hash(), &block1);
+
+        store.successor_clear(&mut txn, &block1.hash());
+
+        let loaded = store
+            .get(&txn.as_txn(), &block1.hash())
+            .expect("block not found");
+        assert_eq!(
+            loaded.as_block().sideband().unwrap().successor,
+            *BlockHash::zero()
+        );
         Ok(())
     }
 }

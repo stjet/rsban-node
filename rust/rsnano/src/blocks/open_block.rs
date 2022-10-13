@@ -8,6 +8,7 @@ use anyhow::Result;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct OpenHashables {
+    /// Block with first send transaction to this account
     pub source: BlockHash,
     pub representative: Account,
     pub account: Account,

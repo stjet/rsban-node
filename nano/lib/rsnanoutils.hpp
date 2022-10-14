@@ -3,6 +3,7 @@
 #include <nano/boost/asio/ip/tcp.hpp>
 #include <nano/boost/asio/ip/udp.hpp>
 #include <nano/lib/rsnano.hpp>
+#include <nano/node/messages.hpp>
 
 namespace nano
 {

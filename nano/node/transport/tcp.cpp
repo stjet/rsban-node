@@ -791,7 +791,7 @@ void nano::transport::tcp_channels::host_unreachable ()
 
 void nano::transport::tcp_channels::message_sent (nano::message const & message_a)
 {
-	auto detail = nano::message_type_to_stat_detail (message_a.get_header ().get_type ());
+	auto detail = nano::to_stat_detail (message_a.get_header ().get_type ());
 	stats->inc (nano::stat::type::message, detail, nano::stat::dir::out);
 }
 

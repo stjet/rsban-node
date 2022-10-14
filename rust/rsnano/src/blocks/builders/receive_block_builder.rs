@@ -40,11 +40,14 @@ impl ReceiveBlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::BlockBuilder;
+    use crate::{BlockBuilder, BlockHash, Block};
 
     #[test]
     fn receive_block() {
-        let block = BlockBuilder::receive().build();
-        assert!(false)
+        let block = BlockBuilder::receive().build().unwrap();
+        assert_eq!(block.hashables.previous, BlockHash::from(1));
+        assert_eq!(block.hashables.source, BlockHash::from(2));
+        assert_eq!(block.work, 4);
+        assert!(block.sideband().is_some())
     }
 }

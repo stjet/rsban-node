@@ -373,4 +373,26 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn add_two_blocks() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbBlockStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let block1 = BlockBuilder::open().build()?;
+        let block2 = BlockBuilder::open().build()?;
+
+        store.put(&mut txn, &block1.hash(), &block1);
+        store.put(&mut txn, &block2.hash(), &block2);
+        let loaded1 = store
+            .get(&txn.as_txn(), &block1.hash())
+            .expect("block1 not found");
+        let loaded2 = store
+            .get(&txn.as_txn(), &block2.hash())
+            .expect("block2 not found");
+
+        assert_eq!(loaded1, BlockEnum::Open(block1));
+        assert_eq!(loaded2, BlockEnum::Open(block2));
+        Ok(())
+    }
 }

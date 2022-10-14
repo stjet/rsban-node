@@ -1590,7 +1590,7 @@ TEST (telemetry, cache_read_and_timeout)
 	nano::telemetry_data telemetry_data;
 	{
 		std::atomic<bool> done{ false };
-		auto channel = node_client->network->find_channel (node_server->network->endpoint ());
+		auto channel = node_client->network->find_node_id (node_server->get_node_id ());
 		node_client->telemetry->get_metrics_single_peer_async (channel, [&done, &telemetry_data] (nano::telemetry_data_response const & response_a) {
 			telemetry_data = response_a.telemetry_data;
 			done = true;
@@ -1620,7 +1620,7 @@ TEST (telemetry, cache_read_and_timeout)
 	// Request telemetry metrics again
 	{
 		std::atomic<bool> done{ false };
-		auto channel = node_client->network->find_channel (node_server->network->endpoint ());
+		auto channel = node_client->network->find_node_id (node_server->get_node_id ());
 		node_client->telemetry->get_metrics_single_peer_async (channel, [&done, &telemetry_data] (nano::telemetry_data_response const & response_a) {
 			telemetry_data = response_a.telemetry_data;
 			done = true;

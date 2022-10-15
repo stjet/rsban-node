@@ -44,6 +44,7 @@ public:
 };
 namespace transport
 {
+	class tcp_server;
 	class tcp_channels;
 
 	class channel_tcp_observer
@@ -99,11 +100,11 @@ namespace transport
 		void set_peering_endpoint (nano::endpoint endpoint) override;
 	};
 
-	class bootstrap_server_factory
+	class tcp_server_factory
 	{
 	public:
-		bootstrap_server_factory (nano::node & node_a);
-		std::shared_ptr<nano::bootstrap_server> create_bootstrap_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::socket> & socket_a);
+		tcp_server_factory (nano::node & node_a);
+		std::shared_ptr<nano::transport::tcp_server> create_tcp_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::socket> & socket_a);
 
 	private:
 		nano::node & node;
@@ -117,7 +118,7 @@ namespace transport
 		explicit tcp_channels (nano::node &, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();
-		bool insert (std::shared_ptr<nano::transport::channel_tcp> const &, std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::bootstrap_server> const &);
+		bool insert (std::shared_ptr<nano::transport::channel_tcp> const &, std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::transport::tcp_server> const &);
 		void erase (nano::tcp_endpoint const &);
 		void erase_temporary_channel (nano::tcp_endpoint const &);
 		std::size_t size () const;
@@ -189,11 +190,11 @@ namespace transport
 		class channel_tcp_wrapper final
 		{
 		public:
-			channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::bootstrap_server> server_a);
+			channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a);
 			channel_tcp_wrapper (channel_tcp_wrapper const &) = delete;
 			~channel_tcp_wrapper ();
 			std::shared_ptr<nano::transport::channel_tcp> get_channel () const;
-			std::shared_ptr<nano::bootstrap_server> get_response_server () const;
+			std::shared_ptr<nano::transport::tcp_server> get_response_server () const;
 			nano::tcp_endpoint endpoint () const
 			{
 				return get_channel ()->get_tcp_endpoint ();
@@ -232,7 +233,7 @@ namespace transport
 			// Keep shared_ptrs in C++ so that we don't have to return new shared_ptrs.
 			// New shared_ptrs would break unordered_maps of channels!
 			std::shared_ptr<nano::transport::channel_tcp> channel;
-			std::shared_ptr<nano::bootstrap_server> server;
+			std::shared_ptr<nano::transport::tcp_server> server;
 			rsnano::ChannelTcpWrapperHandle * handle;
 		};
 		class tcp_endpoint_attempt final
@@ -250,7 +251,7 @@ namespace transport
 			{
 			}
 		};
-		nano::transport::bootstrap_server_factory bootstrap_server_factory;
+		nano::transport::tcp_server_factory tcp_server_factory;
 		nano::keypair node_id;
 		nano::network_params & network_params;
 		std::shared_ptr<nano::syn_cookies> syn_cookies;

@@ -127,7 +127,7 @@ pub struct SocketImpl {
     pub silent_connection_tolerance_time: AtomicU64,
 
     /// Flag that is set when cleanup decides to close the socket due to timeout.
-    /// NOTE: Currently used by bootstrap_server::timeout() but I suspect that this and bootstrap_server::timeout() are not needed.
+    /// NOTE: Currently used by tcp_server::timeout() but I suspect that this and tcp_server::timeout() are not needed.
     timed_out: AtomicBool,
 
     /// Set by close() - completion handlers must check this. This is more reliable than checking

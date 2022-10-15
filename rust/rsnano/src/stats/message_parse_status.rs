@@ -1,4 +1,4 @@
-use crate::bootstrap::ParseStatus;
+use crate::transport::ParseStatus;
 
 use super::DetailType;
 

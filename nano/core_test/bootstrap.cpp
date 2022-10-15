@@ -9,16 +9,16 @@
 
 using namespace std::chrono_literals;
 
-std::shared_ptr<nano::bootstrap_server> create_bootstrap_server (const std::shared_ptr<nano::node> & node)
+std::shared_ptr<nano::transport::tcp_server> create_bootstrap_server (const std::shared_ptr<nano::node> & node)
 {
 	auto socket{ std::make_shared<nano::socket> (node->io_ctx, nano::socket::endpoint_type_t::server,
 	*node->stats, node->logger, node->workers, node->config->tcp_io_timeout, node->network_params.network.silent_connection_tolerance_time, node->config->logging.network_timeout_logging ()) };
 
-	auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (*node);
-	return std::make_shared<nano::bootstrap_server> (
+	auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (*node);
+	return std::make_shared<nano::transport::tcp_server> (
 	node->io_ctx, socket, node->logger,
 	*node->stats, node->flags, *node->config,
-	node->bootstrap, req_resp_visitor_factory, node->workers,
+	node->tcp_listener, req_resp_visitor_factory, node->workers,
 	*node->network->publish_filter, node->block_uniquer, node->vote_uniquer, node->network->tcp_message_manager, *node->network->syn_cookies, node->node_id);
 }
 
@@ -1640,11 +1640,11 @@ TEST (frontier_req_response, DISABLED_destruction)
 		{
 			nano::test::system system (1);
 			auto & node = *system.nodes[0];
-			auto req_resp_visitor_factory = std::make_shared<nano::request_response_visitor_factory> (node);
-			auto connection (std::make_shared<nano::bootstrap_server> (
+			auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (node);
+			auto connection (std::make_shared<nano::transport::tcp_server> (
 			node.io_ctx, nullptr, node.logger,
 			*node.stats, node.flags, *node.config,
-			node.bootstrap, req_resp_visitor_factory, node.workers,
+			node.tcp_listener, req_resp_visitor_factory, node.workers,
 			*node.network->publish_filter,
 			node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager, *node.network->syn_cookies, node.node_id));
 

@@ -57,8 +57,6 @@ struct BootstrapClientHandle;
 
 struct BootstrapInitiatorHandle;
 
-struct BootstrapServerHandle;
-
 struct BootstrapServerWeakHandle;
 
 struct BufferHandle;
@@ -151,6 +149,8 @@ struct TcpChannelsHandle;
 struct TcpMessageItemHandle;
 
 struct TcpMessageManagerHandle;
+
+struct TcpServerHandle;
 
 struct TelemetryDataHandle;
 
@@ -515,7 +515,7 @@ struct NetworkParamsDto
 	BootstrapConstantsDto bootstrap;
 };
 
-struct CreateBootstrapServerParams
+struct CreateTcpServerParams
 {
 	SocketHandle * socket;
 	const NodeConfigDto * config;
@@ -619,7 +619,7 @@ using ReadU8Callback = int32_t (*) (void *, uint8_t *);
 
 /// first arg is a `shared_ptr<request_response_visitor_factory> *`
 /// returns a `shared_ptr<message_visitor> *`
-using RequestResponseVisitorFactoryCreateCallback = void * (*)(void *, BootstrapServerHandle *);
+using RequestResponseVisitorFactoryCreateCallback = void * (*)(void *, TcpServerHandle *);
 
 using StringCharsCallback = const char * (*)(void *);
 
@@ -1271,31 +1271,31 @@ void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
 
 BootstrapServerWeakHandle * rsn_bootstrap_server_copy_weak (BootstrapServerWeakHandle * handle);
 
-BootstrapServerHandle * rsn_bootstrap_server_create (const CreateBootstrapServerParams * params);
+TcpServerHandle * rsn_bootstrap_server_create (const CreateTcpServerParams * params);
 
-void rsn_bootstrap_server_destroy (BootstrapServerHandle * handle);
+void rsn_bootstrap_server_destroy (TcpServerHandle * handle);
 
 void rsn_bootstrap_server_destroy_weak (BootstrapServerWeakHandle * handle);
 
-BootstrapServerWeakHandle * rsn_bootstrap_server_get_weak (BootstrapServerHandle * handle);
+BootstrapServerWeakHandle * rsn_bootstrap_server_get_weak (TcpServerHandle * handle);
 
-bool rsn_bootstrap_server_is_stopped (BootstrapServerHandle * handle);
+bool rsn_bootstrap_server_is_stopped (TcpServerHandle * handle);
 
-BootstrapServerHandle * rsn_bootstrap_server_lock_weak (BootstrapServerWeakHandle * handle);
+TcpServerHandle * rsn_bootstrap_server_lock_weak (BootstrapServerWeakHandle * handle);
 
-void rsn_bootstrap_server_remote_endpoint (BootstrapServerHandle * handle, EndpointDto * endpoint);
+void rsn_bootstrap_server_remote_endpoint (TcpServerHandle * handle, EndpointDto * endpoint);
 
-void rsn_bootstrap_server_set_remote_node_id (BootstrapServerHandle * handle, const uint8_t * node_id);
+void rsn_bootstrap_server_set_remote_node_id (TcpServerHandle * handle, const uint8_t * node_id);
 
-SocketHandle * rsn_bootstrap_server_socket (BootstrapServerHandle * handle);
+SocketHandle * rsn_bootstrap_server_socket (TcpServerHandle * handle);
 
-void rsn_bootstrap_server_start (BootstrapServerHandle * handle);
+void rsn_bootstrap_server_start (TcpServerHandle * handle);
 
-void rsn_bootstrap_server_stop (BootstrapServerHandle * handle);
+void rsn_bootstrap_server_stop (TcpServerHandle * handle);
 
-void rsn_bootstrap_server_timeout (BootstrapServerHandle * handle);
+void rsn_bootstrap_server_timeout (TcpServerHandle * handle);
 
-uintptr_t rsn_bootstrap_server_unique_id (BootstrapServerHandle * handle);
+uintptr_t rsn_bootstrap_server_unique_id (TcpServerHandle * handle);
 
 BufferHandle * rsn_buffer_create (uintptr_t len);
 
@@ -1554,7 +1554,7 @@ SocketHandle * rsn_channel_tcp_socket (ChannelHandle * handle);
 
 ChannelTcpWrapperHandle * rsn_channel_tcp_wrapper_create (ChannelHandle * channel,
 SocketHandle * socket,
-BootstrapServerHandle * response_server);
+TcpServerHandle * response_server);
 
 void rsn_channel_tcp_wrapper_destroy (ChannelTcpWrapperHandle * handle);
 
@@ -2026,8 +2026,6 @@ bool backup_before_upgrade);
 bool rsn_lmdb_store_create_backup_file (LmdbEnvHandle * env, LoggerHandle * logger);
 
 void rsn_lmdb_store_destroy (LmdbStoreHandle * handle);
-
-LmdbEnvHandle * rsn_lmdb_store_env (LmdbStoreHandle * handle);
 
 LmdbFinalVoteStoreHandle * rsn_lmdb_store_final_vote (LmdbStoreHandle * handle);
 

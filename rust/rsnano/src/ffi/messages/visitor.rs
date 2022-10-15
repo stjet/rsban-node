@@ -1,5 +1,5 @@
 use super::MessageHandle;
-use crate::{bootstrap::BootstrapMessageVisitor, ffi::VoidPointerCallback, messages::*};
+use crate::{ffi::VoidPointerCallback, messages::*, transport::BootstrapMessageVisitor};
 use std::ffi::c_void;
 use MessageVisitor;
 

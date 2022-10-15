@@ -40,7 +40,7 @@ impl ReceiveBlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BlockBuilder, BlockHash, Block};
+    use crate::{Block, BlockBuilder, BlockHash};
 
     #[test]
     fn receive_block() {

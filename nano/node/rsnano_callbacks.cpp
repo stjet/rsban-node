@@ -7,7 +7,7 @@
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/blockprocessor.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
-#include <nano/node/bootstrap/bootstrap_server.hpp>
+#include <nano/node/transport/tcp_server.hpp>
 #include <nano/node/lmdb/lmdb_txn.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
 #include <nano/node/transport/tcp.hpp>
@@ -686,52 +686,52 @@ void message_visitor_destroy (void * handle_a)
 
 void bootstrap_observer_destroy (void * handle_a)
 {
-	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	auto observer = static_cast<std::shared_ptr<nano::tcp_server_observer> *> (handle_a);
 	delete observer;
 }
 
 std::size_t bootstrap_observer_bootstrap_count (void * handle_a)
 {
-	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	auto observer = static_cast<std::shared_ptr<nano::tcp_server_observer> *> (handle_a);
 	return (*observer)->get_bootstrap_count ();
 }
 
 void bootstrap_observer_exited (void * handle_a, uint8_t socket_type_a, uintptr_t inner_ptr_a, const rsnano::EndpointDto * endpoint_a)
 {
-	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	auto observer = static_cast<std::shared_ptr<nano::tcp_server_observer> *> (handle_a);
 	auto socket_type = static_cast<nano::socket::type_t> (socket_type_a);
 	auto endpoint = rsnano::dto_to_endpoint (*endpoint_a);
-	(*observer)->boostrap_server_exited (socket_type, inner_ptr_a, endpoint);
+	(*observer)->tcp_server_exited (socket_type, inner_ptr_a, endpoint);
 }
 
 void bootstrap_observer_inc_bootstrap_count (void * handle_a)
 {
-	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	auto observer = static_cast<std::shared_ptr<nano::tcp_server_observer> *> (handle_a);
 	(*observer)->inc_bootstrap_count ();
 }
 
 void bootstrap_observer_inc_realtime_count (void * handle_a)
 {
-	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
+	auto observer = static_cast<std::shared_ptr<nano::tcp_server_observer> *> (handle_a);
 	(*observer)->inc_realtime_count ();
 }
 
 void bootstrap_observer_timeout (void * handle_a, uintptr_t inner_ptr_a)
 {
-	auto observer = static_cast<std::shared_ptr<nano::bootstrap_server_observer> *> (handle_a);
-	(*observer)->bootstrap_server_timeout (inner_ptr_a);
+	auto observer = static_cast<std::shared_ptr<nano::tcp_server_observer> *> (handle_a);
+	(*observer)->tcp_server_timeout (inner_ptr_a);
 }
 
 void request_response_visitor_factory_destroy (void * handle_a)
 {
-	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (handle_a);
+	auto factory = static_cast<std::shared_ptr<nano::transport::request_response_visitor_factory> *> (handle_a);
 	delete factory;
 }
 
-void * request_response_visitor_factory_bootstrap_visitor (void * factory_a, rsnano::BootstrapServerHandle * connection_a)
+void * request_response_visitor_factory_bootstrap_visitor (void * factory_a, rsnano::TcpServerHandle * connection_a)
 {
-	auto factory = static_cast<std::shared_ptr<nano::request_response_visitor_factory> *> (factory_a);
-	auto connection = std::make_shared<nano::bootstrap_server> (connection_a);
+	auto factory = static_cast<std::shared_ptr<nano::transport::request_response_visitor_factory> *> (factory_a);
+	auto connection = std::make_shared<nano::transport::tcp_server> (connection_a);
 	auto visitor{ (*factory)->create_bootstrap (connection) };
 	return new std::shared_ptr<nano::message_visitor> (visitor);
 }
@@ -859,7 +859,7 @@ void txn_callbacks_end (void * handle_a, uint64_t txn_id_a)
 bool message_visitor_bootstrap_processed (void * handle_a)
 {
 	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
-	return (static_cast<nano::bootstrap_server::bootstrap_message_visitor *> (visitor->get ()))->processed;
+	return (static_cast<nano::transport::tcp_server::bootstrap_message_visitor *> (visitor->get ()))->processed;
 }
 
 static bool callbacks_set = false;

@@ -125,19 +125,19 @@ void nano::transport::channel_tcp::set_peering_endpoint (nano::endpoint endpoint
 	rsnano::rsn_channel_tcp_set_peering_endpoint (handle, &dto);
 }
 
-nano::transport::bootstrap_server_factory::bootstrap_server_factory (nano::node & node) :
+nano::transport::tcp_server_factory::tcp_server_factory (nano::node & node) :
 	node{ node }
 {
 }
 
-std::shared_ptr<nano::bootstrap_server> nano::transport::bootstrap_server_factory::create_bootstrap_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::socket> & socket_a)
+std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory::create_tcp_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::socket> & socket_a)
 {
 	channel_a->set_last_packet_sent (std::chrono::steady_clock::now ());
 
-	auto response_server = std::make_shared<nano::bootstrap_server> (
+	auto response_server = std::make_shared<nano::transport::tcp_server> (
 	node.io_ctx, socket_a, node.logger,
 	*node.stats, node.flags, *node.config,
-	node.bootstrap, std::make_shared<nano::request_response_visitor_factory> (node),
+	node.tcp_listener, std::make_shared<nano::transport::request_response_visitor_factory> (node),
 	node.workers, *node.network->publish_filter, node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager,
 	*node.network->syn_cookies, node.node_id, true);
 
@@ -157,7 +157,7 @@ std::shared_ptr<nano::bootstrap_server> nano::transport::bootstrap_server_factor
 }
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
-	bootstrap_server_factory{ node },
+	tcp_server_factory{ node },
 	node_id{ node.node_id },
 	network_params{ node.network_params },
 	syn_cookies{ node.network->syn_cookies },
@@ -178,7 +178,7 @@ nano::transport::tcp_channels::~tcp_channels ()
 	rsnano::rsn_tcp_channels_destroy (handle);
 }
 
-bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::bootstrap_server> const & bootstrap_server_a)
+bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::tcp_server> const & server_a)
 {
 	auto endpoint (channel_a->get_tcp_endpoint ());
 	debug_assert (endpoint.address ().is_v6 ());
@@ -195,7 +195,7 @@ bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::cha
 			{
 				channels.get<node_id_tag> ().erase (node_id);
 			}
-			channels.get<endpoint_tag> ().emplace (channel_a, socket_a, bootstrap_server_a);
+			channels.get<endpoint_tag> ().emplace (channel_a, socket_a, server_a);
 			attempts.get<endpoint_tag> ().erase (endpoint);
 			error = false;
 			lock.unlock ();
@@ -738,7 +738,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 			return;
 		}
 		/* If node ID is known, don't establish new connection
-		   Exception: temporary channels from bootstrap_server */
+		   Exception: temporary channels from tcp_server */
 		auto existing_channel (this_l->find_node_id (node_id_l));
 		if (existing_channel && !existing_channel->is_temporary ())
 		{
@@ -773,7 +773,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 			{
 				return;
 			}
-			auto response_server = this_l->bootstrap_server_factory.create_bootstrap_server (channel_a, socket_l);
+			auto response_server = this_l->tcp_server_factory.create_tcp_server (channel_a, socket_l);
 			this_l->insert (channel_a, socket_l, response_server);
 		});
 	});
@@ -821,11 +821,11 @@ void nano::transport::tcp_channels::on_new_channel (std::function<void (std::sha
 	channel_observer = std::move (observer_a);
 }
 
-nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::bootstrap_server> server_a) :
+nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a) :
 	channel{ channel_a },
 	server{ server_a }
 {
-	rsnano::BootstrapServerHandle * server_handle = nullptr;
+	rsnano::TcpServerHandle * server_handle = nullptr;
 	if (server_a)
 		server_handle = server_a->handle;
 	handle = rsnano::rsn_channel_tcp_wrapper_create (channel_a->handle, socket_a->handle, server_handle);
@@ -840,7 +840,7 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::cha
 {
 	return channel;
 }
-std::shared_ptr<nano::bootstrap_server> nano::transport::tcp_channels::channel_tcp_wrapper::get_response_server () const
+std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_channels::channel_tcp_wrapper::get_response_server () const
 {
 	return server;
 }

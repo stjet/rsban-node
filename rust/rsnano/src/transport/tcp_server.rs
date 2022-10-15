@@ -9,7 +9,6 @@ use std::{
 };
 
 use crate::{
-    bootstrap::ParseStatus,
     logger_mt::Logger,
     messages::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
@@ -18,15 +17,14 @@ use crate::{
     network::{Socket, SocketImpl, SocketType, SynCookies, TcpMessageItem, TcpMessageManager},
     sign_message,
     stats::{DetailType, Direction, Stat, StatType},
+    transport::{MessageDeserializer, MessageDeserializerExt, ParseStatus},
     utils::{IoContext, MemoryStream, ThreadPool},
     voting::VoteUniquer,
     Account, BlockUniquer, KeyPair, NetworkConstants, NetworkFilter, NetworkParams, NodeConfig,
     TelemetryCacheCutoffs,
 };
 
-use super::{MessageDeserializer, MessageDeserializerExt};
-
-pub trait BootstrapServerObserver {
+pub trait TcpServerObserver {
     fn bootstrap_server_timeout(&self, inner_ptr: usize);
     fn boostrap_server_exited(
         &self,
@@ -39,12 +37,12 @@ pub trait BootstrapServerObserver {
     fn inc_realtime_count(&self);
 }
 
-pub struct BootstrapServer {
+pub struct TcpServer {
     pub socket: Arc<SocketImpl>,
     config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
     stopped: AtomicBool,
-    observer: Arc<dyn BootstrapServerObserver>,
+    observer: Arc<dyn TcpServerObserver>,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
 
@@ -69,12 +67,12 @@ pub struct BootstrapServer {
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 
-impl BootstrapServer {
+impl TcpServer {
     pub fn new(
         socket: Arc<SocketImpl>,
         config: Arc<NodeConfig>,
         logger: Arc<dyn Logger>,
-        observer: Arc<dyn BootstrapServerObserver>,
+        observer: Arc<dyn TcpServerObserver>,
         publish_filter: Arc<NetworkFilter>,
         workers: Arc<dyn ThreadPool>,
         io_ctx: Arc<dyn IoContext>,
@@ -218,7 +216,7 @@ impl BootstrapServer {
     }
 }
 
-impl Drop for BootstrapServer {
+impl Drop for TcpServer {
     fn drop(&mut self) {
         let remote_ep = { *self.remote_endpoint.lock().unwrap() };
         self.observer.boostrap_server_exited(
@@ -231,11 +229,11 @@ impl Drop for BootstrapServer {
 }
 
 pub trait RequestResponseVisitorFactory {
-    fn handshake_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn HandshakeMessageVisitor>;
+    fn handshake_visitor(&self, server: Arc<TcpServer>) -> Box<dyn HandshakeMessageVisitor>;
 
-    fn realtime_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn RealtimeMessageVisitor>;
+    fn realtime_visitor(&self, server: Arc<TcpServer>) -> Box<dyn RealtimeMessageVisitor>;
 
-    fn bootstrap_visitor(&self, server: Arc<BootstrapServer>) -> Box<dyn BootstrapMessageVisitor>;
+    fn bootstrap_visitor(&self, server: Arc<TcpServer>) -> Box<dyn BootstrapMessageVisitor>;
 
     fn handle(&self) -> *mut c_void;
 }
@@ -256,7 +254,7 @@ pub trait BootstrapMessageVisitor: MessageVisitor {
     fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor;
 }
 
-pub trait BootstrapServerExt {
+pub trait TcpServerExt {
     fn start(&self);
     fn timeout(&self);
 
@@ -265,7 +263,7 @@ pub trait BootstrapServerExt {
     fn process_message(&self, message: Box<dyn Message>) -> bool;
 }
 
-impl BootstrapServerExt for Arc<BootstrapServer> {
+impl TcpServerExt for Arc<TcpServer> {
     fn start(&self) {
         // Set remote_endpoint
         let mut guard = self.remote_endpoint.lock().unwrap();
@@ -340,7 +338,7 @@ impl BootstrapServerExt for Arc<BootstrapServer> {
 
     fn process_message(&self, message: Box<dyn Message>) -> bool {
         let _ = self.stats.inc(
-            StatType::BootstrapServer,
+            StatType::TcpServer,
             DetailType::from(message.header().message_type()),
             Direction::In,
         );
@@ -414,7 +412,7 @@ pub struct HandshakeMessageVisitorImpl {
     pub process: bool,
     pub bootstrap: bool,
     logger: Arc<dyn Logger>,
-    server: Arc<BootstrapServer>,
+    server: Arc<TcpServer>,
     syn_cookies: Arc<SynCookies>,
     stats: Arc<Stat>,
     node_id: Arc<KeyPair>,
@@ -425,7 +423,7 @@ pub struct HandshakeMessageVisitorImpl {
 
 impl HandshakeMessageVisitorImpl {
     pub fn new(
-        server: Arc<BootstrapServer>,
+        server: Arc<TcpServer>,
         logger: Arc<dyn Logger>,
         syn_cookies: Arc<SynCookies>,
         stats: Arc<Stat>,
@@ -583,13 +581,13 @@ impl HandshakeMessageVisitor for HandshakeMessageVisitorImpl {
 }
 
 pub struct RealtimeMessageVisitorImpl {
-    server: Arc<BootstrapServer>,
+    server: Arc<TcpServer>,
     stats: Arc<Stat>,
     process: bool,
 }
 
 impl RealtimeMessageVisitorImpl {
-    pub fn new(server: Arc<BootstrapServer>, stats: Arc<Stat>) -> Self {
+    pub fn new(server: Arc<TcpServer>, stats: Arc<Stat>) -> Self {
         Self {
             server,
             stats,

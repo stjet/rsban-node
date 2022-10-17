@@ -15,7 +15,7 @@ pub enum SignatureVerification {
     ValidEpoch = 3, // Valid for epoch blocks
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq, Debug)]
 pub struct ConfirmationHeightInfo {
     pub height: u64,
     pub frontier: BlockHash,

@@ -24,4 +24,5 @@ where
     );
     fn end(&self) -> AccountIterator<I>;
     fn count(&self, txn: &Transaction<R, W>) -> usize;
+    fn exists(&self, txn: &Transaction<R, W>, account: &Account) -> bool;
 }

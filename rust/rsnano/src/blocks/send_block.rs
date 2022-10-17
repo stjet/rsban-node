@@ -256,7 +256,6 @@ mod tests {
 
     use super::*;
 
-    // original test: transaction_block.empty
     #[test]
     fn create_send_block() -> Result<()> {
         let key = KeyPair::new();
@@ -268,6 +267,8 @@ mod tests {
             &key.public_key(),
             2,
         )?;
+
+        assert_eq!(block.root(), block.previous().into());
         let hash = block.hash().to_owned();
         assert!(validate_message(&key.public_key(), hash.as_bytes(), &block.signature).is_ok());
 

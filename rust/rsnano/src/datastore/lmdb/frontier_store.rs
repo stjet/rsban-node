@@ -102,3 +102,53 @@ impl<'a> FrontierStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lm
         FrontierIterator::new(LmdbIteratorImpl::null())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::datastore::lmdb::TestLmdbEnv;
+
+    use super::*;
+
+    #[test]
+    fn empty_store() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbFrontierStore::new(env.env())?;
+        let txn = env.tx_begin_read()?;
+        assert_eq!(
+            store.get(&txn.as_txn(), &BlockHash::from(1)),
+            *Account::zero()
+        );
+        assert!(store.begin(&txn.as_txn()).is_end());
+        Ok(())
+    }
+
+    #[test]
+    fn put() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbFrontierStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let block = BlockHash::from(1);
+        let account = Account::from(2);
+
+        store.put(&mut txn, &block, &account);
+        let loaded = store.get(&txn.as_txn(), &block);
+
+        assert_eq!(loaded, account);
+        Ok(())
+    }
+
+    #[test]
+    fn delete() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbFrontierStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let block = BlockHash::from(1);
+        store.put(&mut txn, &block, &Account::from(2));
+
+        store.del(&mut txn, &block);
+
+        let loaded = store.get(&txn.as_txn(), &block);
+        assert_eq!(loaded, Account::new());
+        Ok(())
+    }
+}

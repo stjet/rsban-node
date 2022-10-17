@@ -203,6 +203,26 @@ mod tests {
         utils::{MemoryStream, TestPropertyTree},
     };
 
+    #[test]
+    fn create_block() {
+        let key = KeyPair::new();
+        let source = BlockHash::from(1);
+        let representative = Account::from(2);
+        let account = Account::from(3);
+        let block = OpenBlock::new(
+            source,
+            representative,
+            account,
+            &key.private_key(),
+            &key.public_key(),
+            0,
+        )
+        .unwrap();
+
+        assert_eq!(block.account(), &account);
+        assert_eq!(block.root(), (&account).into());
+    }
+
     // original test: block.open_serialize_json
     #[test]
     fn serialize_json() -> Result<()> {

@@ -138,6 +138,7 @@ mod tests {
         let txn = env.tx_begin_read()?;
         let result = store.get(&txn.as_txn(), &test_key());
         assert!(result.is_none());
+        assert_eq!(store.exists(&txn.as_txn(), &test_key()), false);
         Ok(())
     }
 
@@ -151,6 +152,7 @@ mod tests {
         store.put(&mut txn, &pending_key, &pending);
         let result = store.get(&txn.as_txn(), &pending_key);
         assert_eq!(result, Some(pending));
+        assert!(store.exists(&txn.as_txn(), &pending_key));
         Ok(())
     }
 

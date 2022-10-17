@@ -125,3 +125,75 @@ impl<'a>
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{datastore::lmdb::TestLmdbEnv, BlockHash};
+
+    use super::*;
+
+    #[test]
+    fn empty_store() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbConfirmationHeightStore::new(env.env())?;
+        let txn = env.tx_begin_read()?;
+        assert!(store.get(&txn.as_txn(), &Account::from(0)).is_none());
+        assert_eq!(store.exists(&txn.as_txn(), &Account::from(0)), false);
+        assert!(store.begin(&txn.as_txn()).is_end());
+        assert!(store
+            .begin_at_account(&txn.as_txn(), &Account::from(0))
+            .is_end());
+        Ok(())
+    }
+
+    #[test]
+    fn add_account() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbConfirmationHeightStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let account = Account::from(1);
+        let info = ConfirmationHeightInfo::new(1, BlockHash::from(2));
+        store.put(&mut txn, &account, &info);
+        let loaded = store.get(&txn.as_txn(), &account);
+        assert_eq!(loaded, Some(info));
+        Ok(())
+    }
+
+    #[test]
+    fn iterate_one_account() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbConfirmationHeightStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let account = Account::from(1);
+        let info = ConfirmationHeightInfo::new(1, BlockHash::from(2));
+        store.put(&mut txn, &account, &info);
+
+        let mut it = store.begin(&txn.as_txn());
+        assert_eq!(it.current(), Some((&account, &info)));
+
+        it.next();
+        assert!(it.is_end());
+        Ok(())
+    }
+
+    #[test]
+    fn iterate_two_accounts() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbConfirmationHeightStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let account1 = Account::from(1);
+        let account2 = Account::from(2);
+        let info1 = ConfirmationHeightInfo::new(1, BlockHash::from(2));
+        let info2 = ConfirmationHeightInfo::new(3, BlockHash::from(4));
+        store.put(&mut txn, &account1, &info1);
+        store.put(&mut txn, &account2, &info2);
+
+        let mut it = store.begin(&txn.as_txn());
+        assert_eq!(it.current(), Some((&account1, &info1)));
+        it.next();
+        assert_eq!(it.current(), Some((&account2, &info2)));
+        it.next();
+        assert!(it.is_end());
+        Ok(())
+    }
+}

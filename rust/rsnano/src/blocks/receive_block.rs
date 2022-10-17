@@ -184,6 +184,22 @@ mod tests {
 
     use super::*;
 
+    #[test]
+    fn create_block() {
+        let key = KeyPair::new();
+        let previous = BlockHash::from(1);
+        let block = ReceiveBlock::new(
+            previous,
+            BlockHash::from(2),
+            &key.private_key(),
+            &key.public_key(),
+            4,
+        )
+        .unwrap();
+        assert_eq!(block.previous(), &previous);
+        assert_eq!(block.root(), (&previous).into());
+    }
+
     // original test: block.receive_serialize
     // original test: receive_block.deserialize
     #[test]

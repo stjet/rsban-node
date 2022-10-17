@@ -119,6 +119,10 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     fn count(&self, txn: &LmdbTransaction) -> usize {
         txn.count(self.database)
     }
+
+    fn exists(&self, txn: &LmdbTransaction, account: &Account) -> bool {
+        !self.begin_account(txn, account).is_end()
+    }
 }
 
 #[cfg(test)]
@@ -145,8 +149,10 @@ mod tests {
     fn account_not_found() {
         let sut = AccountStoreTestContext::new();
         let txn = sut.env.tx_begin_read().unwrap();
-        let result = sut.store.get(&txn.as_txn(), &Account::from(1));
+        let account = Account::from(1);
+        let result = sut.store.get(&txn.as_txn(), &account);
         assert_eq!(result, None);
+        assert_eq!(sut.store.exists(&txn.as_txn(), &account), false);
     }
 
     #[test]
@@ -159,6 +165,7 @@ mod tests {
             ..Default::default()
         };
         sut.store.put(&mut txn, &account, &info);
+        assert!(sut.store.exists(&txn.as_txn(), &account));
         let result = sut.store.get(&txn.as_txn(), &account);
         assert_eq!(result, Some(info));
     }

@@ -196,6 +196,22 @@ mod tests {
         utils::{MemoryStream, TestPropertyTree},
     };
 
+    #[test]
+    fn create_block() {
+        let key1 = KeyPair::new();
+        let previous = BlockHash::from(1);
+        let block = ChangeBlock::new(
+            previous.clone(),
+            Account::from(2),
+            &key1.private_key(),
+            &key1.public_key(),
+            5,
+        )
+        .unwrap();
+        assert_eq!(block.previous(), &previous);
+        assert_eq!(block.root(), block.previous().into());
+    }
+
     // original test: change_block.deserialize
     #[test]
     fn serialize() -> Result<()> {

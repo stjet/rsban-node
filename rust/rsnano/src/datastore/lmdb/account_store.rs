@@ -146,17 +146,18 @@ mod tests {
     }
 
     #[test]
-    fn account_not_found() {
+    fn empty_store() {
         let sut = AccountStoreTestContext::new();
         let txn = sut.env.tx_begin_read().unwrap();
         let account = Account::from(1);
         let result = sut.store.get(&txn.as_txn(), &account);
         assert_eq!(result, None);
         assert_eq!(sut.store.exists(&txn.as_txn(), &account), false);
+        assert_eq!(sut.store.count(&txn.as_txn()), 0);
     }
 
     #[test]
-    fn put_and_get_account() {
+    fn add_one_account() {
         let sut = AccountStoreTestContext::new();
         let mut txn = sut.env.tx_begin_write().unwrap();
         let account = Account::from(1);
@@ -168,6 +169,7 @@ mod tests {
         assert!(sut.store.exists(&txn.as_txn(), &account));
         let result = sut.store.get(&txn.as_txn(), &account);
         assert_eq!(result, Some(info));
+        assert_eq!(sut.store.count(&txn.as_txn()), 1);
     }
 
     #[test]
@@ -183,17 +185,6 @@ mod tests {
         sut.store.del(&mut txn, &account);
         let result = sut.store.get(&txn.as_txn(), &account);
         assert_eq!(result, None);
-    }
-
-    #[test]
-    fn count() {
-        let sut = AccountStoreTestContext::new();
-        let mut txn = sut.env.tx_begin_write().unwrap();
-        assert_eq!(sut.store.count(&txn.as_txn()), 0);
-
-        sut.store
-            .put(&mut txn, &Account::from(1), &AccountInfo::default());
-        assert_eq!(sut.store.count(&txn.as_txn()), 1);
     }
 
     #[test]

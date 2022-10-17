@@ -312,12 +312,13 @@ mod tests {
     use crate::{datastore::lmdb::TestLmdbEnv, BlockBuilder};
 
     #[test]
-    fn block_not_found() -> anyhow::Result<()> {
+    fn empty() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env())?;
         let txn = env.tx_begin_read()?;
         assert!(store.get(&txn.as_txn(), &BlockHash::from(1)).is_none());
         assert_eq!(store.exists(&txn.as_txn(), &BlockHash::from(1)), false);
+        assert_eq!(store.count(&txn.as_txn()), 0);
         Ok(())
     }
 
@@ -336,6 +337,7 @@ mod tests {
 
         assert_eq!(loaded, BlockEnum::Open(block));
         assert!(store.exists(&txn.as_txn(), &block_hash));
+        assert_eq!(store.count(&txn.as_txn()), 1);
         Ok(())
     }
 
@@ -409,6 +411,63 @@ mod tests {
             .get(&txn.as_txn(), &block2.hash())
             .expect("block not found");
         assert_eq!(loaded, BlockEnum::Receive(block2));
+        Ok(())
+    }
+
+    #[test]
+    fn add_state() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbBlockStore::new(env.env())?;
+        let block1 = BlockBuilder::open().build()?;
+        let block2 = BlockBuilder::state().previous(block1.hash()).build()?;
+        let mut txn = env.tx_begin_write()?;
+        store.put(&mut txn, &block1.hash(), &block1);
+        store.put(&mut txn, &block2.hash(), &block2);
+        let loaded = store
+            .get(&txn.as_txn(), &block2.hash())
+            .expect("block not found");
+        assert_eq!(loaded, BlockEnum::State(block2));
+        Ok(())
+    }
+
+    #[test]
+    fn replace_block() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbBlockStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let open = BlockBuilder::open().build()?;
+        let send1 = BlockBuilder::send().previous(open.hash()).build()?;
+        let mut send2 = send1.clone();
+        send2.set_work(12345);
+
+        store.put(&mut txn, &open.hash(), &open);
+        store.put(&mut txn, &send1.hash(), &send1);
+        store.put(&mut txn, &send2.hash(), &send2);
+
+        assert_eq!(store.count(&txn.as_txn()), 2);
+        assert_eq!(
+            store
+                .get(&txn.as_txn(), &send1.hash())
+                .unwrap()
+                .as_block()
+                .work(),
+            12345
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn random() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbBlockStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let block = BlockBuilder::open().build()?;
+        let block_hash = block.hash();
+
+        store.put(&mut txn, &block_hash, &block);
+        let random = store.random(&txn.as_txn()).expect("block not found");
+
+        assert_eq!(random, BlockEnum::Open(block));
         Ok(())
     }
 }

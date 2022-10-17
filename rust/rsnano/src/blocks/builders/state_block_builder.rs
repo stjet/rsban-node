@@ -1,4 +1,7 @@
-use crate::{Account, Amount, BlockHash, KeyPair, Link, PublicKey, RawKey, Signature, StateBlock};
+use crate::{
+    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, Link,
+    PublicKey, RawKey, Signature, StateBlock,
+};
 use anyhow::Result;
 
 pub struct StateBlockBuilder {
@@ -118,8 +121,8 @@ impl StateBlockBuilder {
     }
 
     pub fn build(self) -> Result<StateBlock> {
-        match self.signature {
-            Some(signature) => Ok(StateBlock::with_signature(
+        let mut state = match self.signature {
+            Some(signature) => StateBlock::with_signature(
                 self.account,
                 self.previous,
                 self.representative,
@@ -127,7 +130,7 @@ impl StateBlockBuilder {
                 self.link,
                 signature,
                 self.work,
-            )),
+            ),
             None => StateBlock::new(
                 self.account,
                 self.previous,
@@ -137,8 +140,21 @@ impl StateBlockBuilder {
                 &self.prv_key,
                 &self.pub_key,
                 self.work,
-            ),
-        }
+            )?,
+        };
+
+        let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
+        state.set_sideband(BlockSideband::new(
+            self.account,
+            BlockHash::new(),
+            self.balance,
+            5,
+            6,
+            details,
+            Epoch::Epoch0,
+        ));
+
+        Ok(state)
     }
 }
 

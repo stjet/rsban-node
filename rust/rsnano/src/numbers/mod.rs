@@ -803,7 +803,7 @@ pub static MXRB_RATIO: Lazy<u128> =
 pub static GXRB_RATIO: Lazy<u128> =
     Lazy::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq, Debug)]
 pub struct EndpointKey {
     /// The ipv6 address in network byte order
     address: [u8; 16],
@@ -852,6 +852,7 @@ impl Deserialize for EndpointKey {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub struct NoValue {}
 
 impl Serialize for NoValue {

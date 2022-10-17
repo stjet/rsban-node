@@ -301,79 +301,6 @@ namespace lmdb
 }
 }
 
-TEST (block_store, block_replace)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-	nano::block_builder builder;
-	auto send1 = builder
-				 .send ()
-				 .previous (0)
-				 .destination (0)
-				 .balance (0)
-				 .sign (nano::keypair ().prv, 0)
-				 .work (1)
-				 .build ();
-	send1->sideband_set ({});
-	auto send2 = builder
-				 .send ()
-				 .previous (0)
-				 .destination (0)
-				 .balance (0)
-				 .sign (nano::keypair ().prv, 0)
-				 .work (2)
-				 .build ();
-	send2->sideband_set ({});
-	auto transaction (store->tx_begin_write ());
-	store->block ().put (*transaction, 0, *send1);
-	store->block ().put (*transaction, 0, *send2);
-	auto block3 (store->block ().get (*transaction, 0));
-	ASSERT_NE (nullptr, block3);
-	ASSERT_EQ (2, block3->block_work ());
-}
-
-TEST (block_store, block_count)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-	{
-		auto transaction (store->tx_begin_write ());
-		ASSERT_EQ (0, store->block ().count (*transaction));
-		nano::block_builder builder;
-		auto block = builder
-					 .open ()
-					 .source (0)
-					 .representative (1)
-					 .account (0)
-					 .sign (nano::keypair ().prv, 0)
-					 .work (0)
-					 .build ();
-		block->sideband_set ({});
-		auto hash1 (block->hash ());
-		store->block ().put (*transaction, hash1, *block);
-	}
-	auto transaction (store->tx_begin_read ());
-	ASSERT_EQ (1, store->block ().count (*transaction));
-}
-
-TEST (block_store, account_count)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-	{
-		auto transaction (store->tx_begin_write ());
-		ASSERT_EQ (0, store->account ().count (*transaction));
-		nano::account account (200);
-		store->confirmation_height ().put (*transaction, account, { 0, nano::block_hash (0) });
-		store->account ().put (*transaction, account, nano::account_info ());
-	}
-	auto transaction (store->tx_begin_read ());
-	ASSERT_EQ (1, store->account ().count (*transaction));
-}
-
 TEST (block_store, cemented_count_cache)
 {
 	auto logger{ std::make_shared<nano::logger_mt> () };
@@ -384,22 +311,6 @@ TEST (block_store, cemented_count_cache)
 	nano::ledger_cache ledger_cache;
 	store->initialize (*transaction, ledger_cache, nano::dev::constants);
 	ASSERT_EQ (1, ledger_cache.cemented_count);
-}
-
-TEST (block_store, block_random)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	{
-		nano::ledger_cache ledger_cache;
-		auto transaction (store->tx_begin_write ());
-		store->initialize (*transaction, ledger_cache, nano::dev::constants);
-	}
-	auto transaction (store->tx_begin_read ());
-	auto block (store->block ().random (*transaction));
-	ASSERT_NE (nullptr, block);
-	ASSERT_EQ (*block, *nano::dev::genesis);
 }
 
 TEST (block_store, pruned_random)
@@ -428,49 +339,6 @@ TEST (block_store, pruned_random)
 	auto transaction (store->tx_begin_read ());
 	auto random_hash (store->pruned ().random (*transaction));
 	ASSERT_EQ (hash1, random_hash);
-}
-
-TEST (block_store, state_block)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_FALSE (store->init_error ());
-	nano::keypair key1;
-	nano::block_builder builder;
-	auto block1 = builder
-				  .state ()
-				  .account (1)
-				  .previous (nano::dev::genesis->hash ())
-				  .representative (3)
-				  .balance (4)
-				  .link (6)
-				  .sign (key1.prv, key1.pub)
-				  .work (7)
-				  .build ();
-
-	block1->sideband_set ({});
-	{
-		nano::ledger_cache ledger_cache;
-		auto transaction (store->tx_begin_write ());
-		store->initialize (*transaction, ledger_cache, nano::dev::constants);
-		ASSERT_EQ (nano::block_type::state, block1->type ());
-		store->block ().put (*transaction, block1->hash (), *block1);
-		ASSERT_TRUE (store->block ().exists (*transaction, block1->hash ()));
-		auto block2 (store->block ().get (*transaction, block1->hash ()));
-		ASSERT_NE (nullptr, block2);
-		ASSERT_EQ (*block1, *block2);
-	}
-	{
-		auto transaction (store->tx_begin_write ());
-		auto count (store->block ().count (*transaction));
-		ASSERT_EQ (2, count);
-		store->block ().del (*transaction, block1->hash ());
-		ASSERT_FALSE (store->block ().exists (*transaction, block1->hash ()));
-	}
-	auto transaction (store->tx_begin_read ());
-	auto count2 (store->block ().count (*transaction));
-	ASSERT_EQ (1, count2);
 }
 
 TEST (mdb_block_store, sideband_height)
@@ -625,72 +493,6 @@ TEST (mdb_block_store, sideband_height)
 	ASSERT_EQ (block11->sideband ().height (), 2);
 	auto block12 (store.block ().get (*transaction, open->hash ()));
 	ASSERT_EQ (block12->sideband ().height (), 1);
-}
-
-TEST (block_store, peers)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-
-	nano::endpoint_key endpoint (boost::asio::ip::address_v6::any ().to_bytes (), 100);
-	{
-		auto transaction (store->tx_begin_write ());
-
-		// Confirm that the store is empty
-		ASSERT_FALSE (store->peer ().exists (*transaction, endpoint));
-		ASSERT_EQ (store->peer ().count (*transaction), 0);
-
-		// Add one
-		store->peer ().put (*transaction, endpoint);
-		ASSERT_TRUE (store->peer ().exists (*transaction, endpoint));
-	}
-
-	// Confirm that it can be found
-	{
-		auto transaction (store->tx_begin_read ());
-		ASSERT_EQ (store->peer ().count (*transaction), 1);
-	}
-
-	// Add another one and check that it (and the existing one) can be found
-	nano::endpoint_key endpoint1 (boost::asio::ip::address_v6::any ().to_bytes (), 101);
-	{
-		auto transaction (store->tx_begin_write ());
-		store->peer ().put (*transaction, endpoint1);
-		ASSERT_TRUE (store->peer ().exists (*transaction, endpoint1)); // Check new peer is here
-		ASSERT_TRUE (store->peer ().exists (*transaction, endpoint)); // Check first peer is still here
-	}
-
-	{
-		auto transaction (store->tx_begin_read ());
-		ASSERT_EQ (store->peer ().count (*transaction), 2);
-	}
-
-	// Delete the first one
-	{
-		auto transaction (store->tx_begin_write ());
-		store->peer ().del (*transaction, endpoint1);
-		ASSERT_FALSE (store->peer ().exists (*transaction, endpoint1)); // Confirm it no longer exists
-		ASSERT_TRUE (store->peer ().exists (*transaction, endpoint)); // Check first peer is still here
-	}
-
-	{
-		auto transaction (store->tx_begin_read ());
-		ASSERT_EQ (store->peer ().count (*transaction), 1);
-	}
-
-	// Delete original one
-	{
-		auto transaction (store->tx_begin_write ());
-		store->peer ().del (*transaction, endpoint);
-		ASSERT_FALSE (store->peer ().exists (*transaction, endpoint));
-	}
-
-	{
-		auto transaction (store->tx_begin_read ());
-		ASSERT_EQ (store->peer ().count (*transaction), 0);
-	}
 }
 
 TEST (block_store, endpoint_key_byte_order)

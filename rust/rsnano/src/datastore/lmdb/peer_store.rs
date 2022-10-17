@@ -65,3 +65,79 @@ impl<'a> PeerStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIt
         PeerIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{datastore::lmdb::TestLmdbEnv, NoValue};
+
+    use super::*;
+
+    #[test]
+    fn empty_store() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPeerStore::new(env.env())?;
+        let txn = env.tx_begin_read()?;
+        assert_eq!(store.count(&txn.as_txn()), 0);
+        assert_eq!(store.exists(&txn.as_txn(), &test_endpoint_key()), false);
+        assert!(store.begin(&txn.as_txn()).is_end());
+        Ok(())
+    }
+
+    #[test]
+    fn add_one_endpoint() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPeerStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+
+        let key = test_endpoint_key();
+        store.put(&mut txn, &key);
+
+        assert_eq!(store.count(&txn.as_txn()), 1);
+        assert_eq!(store.exists(&txn.as_txn(), &key), true);
+        assert_eq!(
+            store.begin(&txn.as_txn()).current(),
+            Some((&key, &NoValue {}))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn add_two_endpoints() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPeerStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+
+        let key1 = test_endpoint_key();
+        let key2 = EndpointKey::new([2; 16], 123);
+        store.put(&mut txn, &key1);
+        store.put(&mut txn, &key2);
+
+        assert_eq!(store.count(&txn.as_txn()), 2);
+        assert_eq!(store.exists(&txn.as_txn(), &key1), true);
+        assert_eq!(store.exists(&txn.as_txn(), &key2), true);
+        Ok(())
+    }
+
+    #[test]
+    fn delete() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPeerStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+
+        let key1 = test_endpoint_key();
+        let key2 = EndpointKey::new([2; 16], 123);
+        store.put(&mut txn, &key1);
+        store.put(&mut txn, &key2);
+
+        store.del(&mut txn, &key1);
+
+        assert_eq!(store.count(&txn.as_txn()), 1);
+        assert_eq!(store.exists(&txn.as_txn(), &key1), false);
+        assert_eq!(store.exists(&txn.as_txn(), &key2), true);
+        Ok(())
+    }
+
+    fn test_endpoint_key() -> EndpointKey {
+        EndpointKey::new([1; 16], 123)
+    }
+}

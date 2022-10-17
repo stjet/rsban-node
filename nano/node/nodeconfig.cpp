@@ -7,8 +7,6 @@
 #include <nano/node/nodeconfig.hpp>
 #include <nano/node/transport/transport.hpp>
 
-#include <crypto/cryptopp/words.h>
-
 #include <boost/format.hpp>
 
 namespace
@@ -524,7 +522,7 @@ void nano::node_config::deserialize_address (std::string const & entry_a, std::v
 nano::account nano::node_config::random_representative () const
 {
 	debug_assert (!preconfigured_representatives.empty ());
-	std::size_t index (nano::random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (preconfigured_representatives.size () - 1)));
+	std::size_t index (nano::random_pool::generate_word32 (0, static_cast<uint32_t> (preconfigured_representatives.size () - 1)));
 	auto result (preconfigured_representatives[index]);
 	return result;
 }

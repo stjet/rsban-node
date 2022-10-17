@@ -3,8 +3,6 @@
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>
 
-#include <crypto/cryptopp/config.h>
-
 #include <boost/property_tree/json_parser.hpp>
 
 #include <cstdlib>
@@ -395,8 +393,8 @@ void nano::test::system::generate_usage_traffic (uint32_t count_a, uint32_t wait
 void nano::test::system::generate_rollback (nano::node & node_a, std::vector<nano::account> & accounts_a)
 {
 	auto transaction (node_a.store.tx_begin_write ());
-	debug_assert (std::numeric_limits<CryptoPP::word32>::max () > accounts_a.size ());
-	auto index (random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (accounts_a.size () - 1)));
+	debug_assert (std::numeric_limits<uint32_t>::max () > accounts_a.size ());
+	auto index (random_pool::generate_word32 (0, static_cast<uint32_t> (accounts_a.size () - 1)));
 	auto account (accounts_a[index]);
 	nano::account_info info;
 	auto error (node_a.store.account ().get (*transaction, account, info));
@@ -471,8 +469,8 @@ void nano::test::system::generate_activity (nano::node & node_a, std::vector<nan
 
 nano::account nano::test::system::get_random_account (std::vector<nano::account> & accounts_a)
 {
-	debug_assert (std::numeric_limits<CryptoPP::word32>::max () > accounts_a.size ());
-	auto index (random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (accounts_a.size () - 1)));
+	debug_assert (std::numeric_limits<uint32_t>::max () > accounts_a.size ());
+	auto index (random_pool::generate_word32 (0, static_cast<uint32_t> (accounts_a.size () - 1)));
 	auto result (accounts_a[index]);
 	return result;
 }

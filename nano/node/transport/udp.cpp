@@ -5,9 +5,6 @@
 #include <nano/node/messages.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/transport/udp.hpp>
-
-#include <crypto/cryptopp/config.h>
-
 #include <boost/format.hpp>
 
 nano::transport::channel_udp::channel_udp (nano::transport::udp_channels & channels_a, nano::endpoint const & endpoint_a, uint8_t protocol_version_a) :
@@ -211,7 +208,7 @@ std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::transport::u
 	{
 		for (auto i (0); i < random_cutoff && result.size () < count_a; ++i)
 		{
-			auto index (nano::random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (peers_size - 1)));
+			auto index (nano::random_pool::generate_word32 (0, static_cast<uint32_t> (peers_size - 1)));
 			auto channel = channels.get<random_access_tag> ()[index].channel;
 			if (channel->get_network_version () >= min_version)
 			{

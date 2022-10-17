@@ -4,8 +4,6 @@
 #include <nano/node/node.hpp>
 #include <nano/node/transport/tcp.hpp>
 
-#include <crypto/cryptopp/config.h>
-
 #include <boost/format.hpp>
 
 nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
@@ -257,7 +255,7 @@ std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::transport::t
 	{
 		for (auto i (0); i < random_cutoff && result.size () < count_a; ++i)
 		{
-			auto index (nano::random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (peers_size - 1)));
+			auto index (nano::random_pool::generate_word32 (0, static_cast<uint32_t> (peers_size - 1)));
 
 			auto channel = channels.get<random_access_tag> ()[index].get_channel ();
 			if (channel->get_network_version () >= min_version && (include_temporary_channels_a || !channel->is_temporary ()))

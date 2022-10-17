@@ -205,7 +205,6 @@ target_link_libraries(
   secure
   nano_lib
   libminiupnpc-static
-  argon2
   Boost::filesystem
   Boost::log_setup
   Boost::log

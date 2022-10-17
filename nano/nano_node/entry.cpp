@@ -22,8 +22,6 @@
 #include <numeric>
 #include <sstream>
 
-#include <argon2.h>
-
 // Some builds (mac) fail due to "Boost.Stacktrace requires `_Unwind_Backtrace` function".
 #ifndef _WIN32
 #ifdef NANO_STACKTRACE_BACKTRACE
@@ -464,21 +462,6 @@ int main (int argc, char * const * argv)
 			node_flags.set_generate_cache (gen_cache);
 			nano::inactive_node inactive_node (data_path, node_flags);
 			std::cout << boost::str (boost::format ("Frontier count: %1%\n") % inactive_node.node->ledger.cache.account_count);
-		}
-		else if (vm.count ("debug_profile_kdf"))
-		{
-			auto inactive_node = nano::default_inactive_node (data_path, vm);
-			nano::uint256_union result;
-			nano::uint256_union salt (0);
-			std::string password ("");
-			while (true)
-			{
-				auto begin1 (std::chrono::high_resolution_clock::now ());
-				auto success (argon2_hash (1, inactive_node->node->network_params.kdf_work, 1, password.data (), password.size (), salt.bytes.data (), salt.bytes.size (), result.bytes.data (), result.bytes.size (), NULL, 0, Argon2_d, 0x10));
-				(void)success;
-				auto end1 (std::chrono::high_resolution_clock::now ());
-				std::cerr << boost::str (boost::format ("Derivation time: %1%us\n") % std::chrono::duration_cast<std::chrono::microseconds> (end1 - begin1).count ());
-			}
 		}
 		else if (vm.count ("debug_profile_generate"))
 		{

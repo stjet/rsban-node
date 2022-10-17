@@ -1,9 +1,6 @@
 [submodule "miniupnp"]
 	path = miniupnp
 	url = https://github.com/miniupnp/miniupnp.git
-[submodule "crypto/phc-winner-argon2"]
-	path = crypto/phc-winner-argon2
-	url = https://github.com/nanocurrency/phc-winner-argon2.git
 [submodule "gtest"]
 	path = gtest
 	url = https://github.com/google/googletest.git

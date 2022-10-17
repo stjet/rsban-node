@@ -412,25 +412,6 @@ set(USE_INTERMEDIATE_OBJECTS_TARGET
     OFF
     CACHE BOOL "")
 
-if(WIN32 OR CMAKE_SYSTEM_PROCESSOR MATCHES "^(i.86|x86(_64)?)$")
-  set(ARGON_CORE crypto/phc-winner-argon2/src/opt.c)
-else()
-  set(ARGON_CORE crypto/phc-winner-argon2/src/ref.c)
-endif()
-
-add_library(
-  argon2
-  crypto/phc-winner-argon2/src/argon2.c
-  crypto/phc-winner-argon2/include/argon2.h
-  crypto/phc-winner-argon2/src/core.c
-  crypto/phc-winner-argon2/src/thread.c
-  crypto/phc-winner-argon2/src/encoding.c
-  ${ARGON_CORE})
-
-target_include_directories(argon2 PUBLIC crypto/phc-winner-argon2/include)
-target_include_directories(argon2 PUBLIC crypto/phc-winner-argon2/src)
-target_include_directories(argon2 PUBLIC crypto/blake2)
-
 if(WIN32)
   target_link_libraries(ntdll)
 endif()

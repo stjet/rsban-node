@@ -15,8 +15,6 @@
 
 #include <future>
 
-#include <argon2.h>
-
 nano::uint256_union nano::wallet_store::check (nano::transaction const & transaction_a)
 {
 	nano::uint256_union result;

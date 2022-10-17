@@ -7,10 +7,10 @@
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/blockprocessor.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
-#include <nano/node/transport/tcp_server.hpp>
 #include <nano/node/lmdb/lmdb_txn.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
 #include <nano/node/transport/tcp.hpp>
+#include <nano/node/transport/tcp_server.hpp>
 #include <nano/node/websocket.hpp>
 
 #include <boost/property_tree/json_parser.hpp>

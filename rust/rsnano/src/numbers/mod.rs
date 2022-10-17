@@ -871,7 +871,7 @@ impl Deserialize for NoValue {
     }
 }
 
-#[derive(Default, PartialEq, Eq)]
+#[derive(Default, PartialEq, Eq, Debug)]
 pub struct PendingKey {
     pub account: Account,
     pub hash: BlockHash,
@@ -922,6 +922,7 @@ impl From<U512> for PendingKey {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub struct PendingInfo {
     pub source: Account,
     pub amount: Amount,

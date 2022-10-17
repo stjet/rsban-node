@@ -395,4 +395,20 @@ mod tests {
         assert_eq!(loaded2, BlockEnum::Open(block2));
         Ok(())
     }
+
+    #[test]
+    fn add_receive() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbBlockStore::new(env.env())?;
+        let block1 = BlockBuilder::open().build()?;
+        let block2 = BlockBuilder::receive().previous(block1.hash()).build()?;
+        let mut txn = env.tx_begin_write()?;
+        store.put(&mut txn, &block1.hash(), &block1);
+        store.put(&mut txn, &block2.hash(), &block2);
+        let loaded = store
+            .get(&txn.as_txn(), &block2.hash())
+            .expect("block not found");
+        assert_eq!(loaded, BlockEnum::Receive(block2));
+        Ok(())
+    }
 }

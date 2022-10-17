@@ -125,3 +125,83 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         PendingIterator::new(LmdbIteratorImpl::null())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{datastore::lmdb::TestLmdbEnv, Amount, Epoch};
+
+    #[test]
+    fn not_found() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPendingStore::new(env.env())?;
+        let txn = env.tx_begin_read()?;
+        let result = store.get(&txn.as_txn(), &test_key());
+        assert!(result.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn add_pending() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPendingStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let pending_key = test_key();
+        let pending = test_pending_info();
+        store.put(&mut txn, &pending_key, &pending);
+        let result = store.get(&txn.as_txn(), &pending_key);
+        assert_eq!(result, Some(pending));
+        Ok(())
+    }
+
+    #[test]
+    fn delete() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPendingStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let pending_key = test_key();
+        let pending = test_pending_info();
+        store.put(&mut txn, &pending_key, &pending);
+        store.del(&mut txn, &pending_key);
+        let result = store.get(&txn.as_txn(), &pending_key);
+        assert!(result.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn iter_empty() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPendingStore::new(env.env())?;
+        let txn = env.tx_begin_read()?;
+        assert!(store.begin(&txn.as_txn()).is_end());
+        Ok(())
+    }
+
+    #[test]
+    fn iter() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPendingStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let pending_key = test_key();
+        let pending = test_pending_info();
+        store.put(&mut txn, &pending_key, &pending);
+
+        let mut it = store.begin(&txn.as_txn());
+        assert_eq!(it.is_end(), false);
+        let (k, v) = it.current().unwrap();
+        assert_eq!(k, &pending_key);
+        assert_eq!(v, &pending);
+
+        it.next();
+        assert!(it.is_end());
+        Ok(())
+    }
+
+    fn test_key() -> PendingKey {
+        PendingKey::new(Account::from(1), BlockHash::from(2))
+    }
+
+    fn test_pending_info() -> PendingInfo {
+        PendingInfo::new(Account::from(3), Amount::new(4), Epoch::Epoch2)
+    }
+}

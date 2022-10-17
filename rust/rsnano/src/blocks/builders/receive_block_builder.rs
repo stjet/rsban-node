@@ -1,17 +1,26 @@
 use crate::{Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, ReceiveBlock};
 
-pub struct ReceiveBlockBuilder {}
+#[derive(Default)]
+pub struct ReceiveBlockBuilder {
+    previous: Option<BlockHash>,
+}
 
 impl ReceiveBlockBuilder {
     pub fn new() -> Self {
-        Self {}
+        Default::default()
+    }
+
+    pub fn previous(mut self, previous: BlockHash) -> Self {
+        self.previous = Some(previous);
+        self
     }
 
     pub fn build(self) -> anyhow::Result<ReceiveBlock> {
         let key_pair = KeyPair::new();
 
+        let previous = self.previous.unwrap_or(BlockHash::from(1));
         let mut block = ReceiveBlock::new(
-            BlockHash::from(1),
+            previous,
             BlockHash::from(2),
             &key_pair.private_key(),
             &key_pair.public_key(),

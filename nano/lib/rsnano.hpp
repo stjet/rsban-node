@@ -2776,6 +2776,12 @@ uintptr_t rsn_pulls_cache_size (PullsCacheHandle * handle);
 
 void rsn_pulls_cache_update_pull (PullsCacheHandle * handle, PullInfoDto * pull);
 
+void rsn_random_pool_generate_block (uint8_t * output, uintptr_t len);
+
+uint8_t rsn_random_pool_generate_byte ();
+
+uint32_t rsn_random_pool_generate_word32 (uint32_t min, uint32_t max);
+
 void rsn_random_wallet_id (uint8_t * result);
 
 void rsn_raw_key_decrypt (uint8_t * value,

@@ -92,7 +92,6 @@ target_link_libraries(
   secure
   ipc_flatbuffers_lib
   rsnano
-  ${CRYPTOPP_LIBRARY}
   ${CMAKE_DL_LIBS}
   Boost::boost
   Boost::program_options)

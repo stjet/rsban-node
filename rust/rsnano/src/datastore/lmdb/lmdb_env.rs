@@ -176,7 +176,7 @@ impl Drop for LmdbEnv {
 }
 
 #[cfg(test)]
-struct TestDbFile {
+pub struct TestDbFile {
     pub path: PathBuf,
 }
 
@@ -188,7 +188,7 @@ impl TestDbFile {
         }
     }
 
-    fn random() -> Self {
+    pub fn random() -> Self {
         Self::new(Self::temp_file_name())
     }
 

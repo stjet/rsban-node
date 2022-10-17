@@ -470,4 +470,22 @@ mod tests {
         assert_eq!(random, BlockEnum::Open(block));
         Ok(())
     }
+
+    #[test]
+    fn reset_renew_existing_transaction() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbBlockStore::new(env.env())?;
+        let block = BlockBuilder::open().build()?;
+        let block_hash = block.hash();
+
+        let mut read_txn = env.tx_begin_read()?;
+        read_txn.reset();
+        {
+            let mut txn = env.tx_begin_write()?;
+            store.put(&mut txn, &block_hash, &block);
+        }
+        read_txn.renew();
+        assert!(store.exists(&read_txn.as_txn(), &block_hash));
+        Ok(())
+    }
 }

@@ -14,7 +14,7 @@ where
     fn begin_at_root(&self, txn: &Transaction<R, W>, root: &QualifiedRoot) -> FinalVoteIterator<I>;
     fn end(&self) -> FinalVoteIterator<I>;
     fn get(&self, txn: &Transaction<R, W>, root: Root) -> Vec<BlockHash>;
-    fn del(&self, txn: &mut W, root: Root);
+    fn del(&self, txn: &mut W, root: &Root);
     fn count(&self, txn: &Transaction<R, W>) -> usize;
     fn clear(&self, txn: &mut W);
     fn for_each_par(

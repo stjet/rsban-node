@@ -110,3 +110,77 @@ impl<'a> PrunedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmdb
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{datastore::lmdb::TestLmdbEnv, NoValue};
+
+    use super::*;
+
+    #[test]
+    fn empty_store() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPrunedStore::new(env.env())?;
+        let txn = env.tx_begin_read()?;
+
+        assert_eq!(store.count(&txn.as_txn()), 0);
+        assert_eq!(store.exists(&txn.as_txn(), &BlockHash::from(1)), false);
+        assert_eq!(store.begin(&txn.as_txn()).is_end(), true);
+        assert_eq!(store.random(&txn.as_txn()), BlockHash::new());
+        Ok(())
+    }
+
+    #[test]
+    fn add_one() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPrunedStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+
+        let hash = BlockHash::from(1);
+        store.put(&mut txn, &hash);
+
+        assert_eq!(store.count(&txn.as_txn()), 1);
+        assert_eq!(store.exists(&txn.as_txn(), &hash), true);
+        assert_eq!(
+            store.begin(&txn.as_txn()).current(),
+            Some((&hash, &NoValue {}))
+        );
+        assert_eq!(store.random(&txn.as_txn()), hash);
+        Ok(())
+    }
+
+    #[test]
+    fn add_two() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPrunedStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+
+        let hash1 = BlockHash::from(1);
+        let hash2 = BlockHash::from(2);
+        store.put(&mut txn, &hash1);
+        store.put(&mut txn, &hash2);
+
+        assert_eq!(store.count(&txn.as_txn()), 2);
+        assert_eq!(store.exists(&txn.as_txn(), &hash1), true);
+        assert_eq!(store.exists(&txn.as_txn(), &hash2), true);
+        Ok(())
+    }
+
+    #[test]
+    fn add_delete() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPrunedStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+
+        let hash1 = BlockHash::from(1);
+        let hash2 = BlockHash::from(2);
+        store.put(&mut txn, &hash1);
+        store.put(&mut txn, &hash2);
+        store.del(&mut txn, &hash1);
+
+        assert_eq!(store.count(&txn.as_txn()), 1);
+        assert_eq!(store.exists(&txn.as_txn(), &hash1), false);
+        assert_eq!(store.exists(&txn.as_txn(), &hash2), true);
+        Ok(())
+    }
+}

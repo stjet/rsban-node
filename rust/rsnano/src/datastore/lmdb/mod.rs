@@ -24,9 +24,9 @@ pub use iterator::LmdbIteratorImpl;
 use lmdb::{
     Database, Environment, InactiveTransaction, RoCursor, RoTransaction, RwTransaction, Transaction,
 };
-#[cfg(test)]
-pub(crate) use lmdb_env::TestLmdbEnv;
 pub use lmdb_env::{EnvOptions, LmdbEnv};
+#[cfg(test)]
+pub(crate) use lmdb_env::{TestDbFile, TestLmdbEnv};
 pub use online_weight_store::LmdbOnlineWeightStore;
 pub use peer_store::LmdbPeerStore;
 pub use pending_store::LmdbPendingStore;

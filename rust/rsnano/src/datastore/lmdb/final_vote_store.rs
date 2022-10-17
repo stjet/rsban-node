@@ -93,18 +93,18 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         result
     }
 
-    fn del(&self, txn: &mut LmdbWriteTransaction, root: Root) {
+    fn del(&self, txn: &mut LmdbWriteTransaction, root: &Root) {
         let mut final_vote_qualified_roots = Vec::new();
 
         let mut it = self.begin_at_root(
             &txn.as_txn(),
             &QualifiedRoot {
-                root,
+                root: *root,
                 previous: BlockHash::new(),
             },
         );
         while let Some((k, _)) = it.current() {
-            if k.root != root {
+            if k.root != *root {
                 break;
             }
             final_vote_qualified_roots.push(k.clone());
@@ -150,5 +150,62 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
 
     fn end(&self) -> FinalVoteIterator<LmdbIteratorImpl> {
         FinalVoteIterator::new(LmdbIteratorImpl::null())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use primitive_types::U512;
+
+    use crate::datastore::lmdb::TestLmdbEnv;
+
+    use super::*;
+
+    #[test]
+    fn del() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbFinalVoteStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let root1 = QualifiedRoot::from(U512::from(1));
+        let root2 = QualifiedRoot::from(U512::MAX);
+        store.put(&mut txn, &root1, &BlockHash::from(3));
+        store.put(&mut txn, &root2, &BlockHash::from(4));
+
+        store.del(&mut txn, &root1.root);
+
+        assert_eq!(store.count(&txn.as_txn()), 1);
+        assert_eq!(store.get(&txn.as_txn(), root1.root).len(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn del_unknown_root_should_not_remove() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbFinalVoteStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let root1 = QualifiedRoot::from(U512::from(1));
+        let root2 = QualifiedRoot::from(U512::MAX);
+        store.put(&mut txn, &root1, &BlockHash::from(3));
+
+        store.del(&mut txn, &root2.root);
+
+        assert_eq!(store.count(&txn.as_txn()), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn clear() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbFinalVoteStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let root1 = QualifiedRoot::from(U512::from(1));
+        let root2 = QualifiedRoot::from(U512::MAX);
+        store.put(&mut txn, &root1, &BlockHash::from(3));
+        store.put(&mut txn, &root2, &BlockHash::from(4));
+
+        store.clear(&mut txn);
+
+        assert_eq!(store.count(&txn.as_txn()), 0);
+        Ok(())
     }
 }

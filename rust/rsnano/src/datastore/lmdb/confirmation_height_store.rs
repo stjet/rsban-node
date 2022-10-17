@@ -196,4 +196,22 @@ mod tests {
         assert!(it.is_end());
         Ok(())
     }
+
+    #[test]
+    fn clear() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbConfirmationHeightStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+        let account1 = Account::from(1);
+        let account2 = Account::from(2);
+        let info1 = ConfirmationHeightInfo::new(1, BlockHash::from(2));
+        let info2 = ConfirmationHeightInfo::new(3, BlockHash::from(4));
+        store.put(&mut txn, &account1, &info1);
+        store.put(&mut txn, &account2, &info2);
+
+        store.clear(&mut txn);
+
+        assert_eq!(store.count(&txn.as_txn()), 0);
+        Ok(())
+    }
 }

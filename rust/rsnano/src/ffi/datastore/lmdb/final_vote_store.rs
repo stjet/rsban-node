@@ -96,7 +96,9 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_del(
     txn: *mut TransactionHandle,
     root: *const u8,
 ) {
-    (*handle).0.del((*txn).as_write_txn(), Root::from_ptr(root));
+    (*handle)
+        .0
+        .del((*txn).as_write_txn(), &Root::from_ptr(root));
 }
 
 #[no_mangle]

@@ -68,3 +68,87 @@ impl<'a> OnlineWeightStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>
         txn.rw_txn_mut().clear_db(self.database).unwrap();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::datastore::lmdb::TestLmdbEnv;
+
+    #[test]
+    fn empty_store() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbOnlineWeightStore::new(env.env())?;
+        let txn = env.tx_begin_read()?;
+        assert_eq!(store.count(&txn.as_txn()), 0);
+        assert!(store.begin(&txn.as_txn()).is_end());
+        assert!(store.rbegin(&txn.as_txn()).is_end());
+        Ok(())
+    }
+
+    #[test]
+    fn add_one() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbOnlineWeightStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+
+        let time = 1;
+        let amount = Amount::new(2);
+        store.put(&mut txn, time, &amount);
+
+        assert_eq!(store.count(&txn.as_txn()), 1);
+        assert_eq!(store.begin(&txn.as_txn()).current(), Some((&time, &amount)));
+        assert_eq!(
+            store.rbegin(&txn.as_txn()).current(),
+            Some((&time, &amount))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn add_two() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbOnlineWeightStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+
+        let time1 = 1;
+        let time2 = 2;
+        let amount1 = Amount::new(3);
+        let amount2 = Amount::new(4);
+        store.put(&mut txn, time1, &amount1);
+        store.put(&mut txn, time2, &amount2);
+
+        assert_eq!(store.count(&txn.as_txn()), 2);
+        assert_eq!(
+            store.begin(&txn.as_txn()).current(),
+            Some((&time1, &amount1))
+        );
+        assert_eq!(
+            store.rbegin(&txn.as_txn()).current(),
+            Some((&time2, &amount2))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn delete() -> anyhow::Result<()> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbOnlineWeightStore::new(env.env())?;
+        let mut txn = env.tx_begin_write()?;
+
+        let time1 = 1;
+        let time2 = 2;
+        let amount1 = Amount::new(3);
+        let amount2 = Amount::new(4);
+        store.put(&mut txn, time1, &amount1);
+        store.put(&mut txn, time2, &amount2);
+
+        store.del(&mut txn, time1);
+
+        assert_eq!(store.count(&txn.as_txn()), 1);
+        assert_eq!(
+            store.begin(&txn.as_txn()).current(),
+            Some((&time2, &amount2))
+        );
+        Ok(())
+    }
+}

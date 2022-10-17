@@ -2,6 +2,7 @@ mod account;
 mod account_info;
 mod amount;
 mod difficulty;
+mod endpoint_key;
 mod fan;
 
 use std::convert::TryInto;
@@ -25,6 +26,7 @@ use blake2::VarBlake2b;
 use ctr::cipher::KeyIvInit;
 use ctr::cipher::StreamCipher;
 pub use difficulty::*;
+pub use endpoint_key::EndpointKey;
 pub use fan::Fan;
 use num::FromPrimitive;
 use once_cell::sync::Lazy;
@@ -802,55 +804,6 @@ pub static MXRB_RATIO: Lazy<u128> =
     Lazy::new(|| str::parse("1000000000000000000000000000000").unwrap()); // 10^30
 pub static GXRB_RATIO: Lazy<u128> =
     Lazy::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
-
-#[derive(Default, PartialEq, Eq, Debug)]
-pub struct EndpointKey {
-    /// The ipv6 address in network byte order
-    address: [u8; 16],
-
-    /// The port in host byte order
-    port: u16,
-}
-
-impl EndpointKey {
-    /// address in network byte order, port in host byte order
-    pub fn new(address: [u8; 16], port: u16) -> Self {
-        Self { address, port }
-    }
-
-    pub fn to_bytes(&self) -> [u8; 18] {
-        let mut buffer = [0; 18];
-        let mut stream = MutStreamAdapter::new(&mut buffer);
-        self.serialize(&mut stream).unwrap();
-        buffer
-    }
-}
-
-impl Serialize for EndpointKey {
-    fn serialized_size() -> usize {
-        18
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_bytes(&self.address)?;
-        stream.write_bytes(&self.port.to_be_bytes())
-    }
-}
-
-impl Deserialize for EndpointKey {
-    type Target = Self;
-    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<EndpointKey> {
-        let mut result = EndpointKey {
-            address: Default::default(),
-            port: 0,
-        };
-        stream.read_bytes(&mut result.address, 16)?;
-        let mut buffer = [0; 2];
-        stream.read_bytes(&mut buffer, 2)?;
-        result.port = u16::from_be_bytes(buffer);
-        Ok(result)
-    }
-}
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct NoValue {}

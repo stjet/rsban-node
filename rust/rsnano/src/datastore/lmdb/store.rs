@@ -342,3 +342,55 @@ fn backup_file_path(source_path: &Path) -> anyhow::Result<PathBuf> {
     backup_path.push(&backup_filename);
     Ok(backup_path)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{datastore::lmdb::TestDbFile, logger_mt::NullLogger};
+
+    use super::*;
+
+    #[test]
+    fn create_store() -> anyhow::Result<()> {
+        let file = TestDbFile::random();
+        let logger = Arc::new(NullLogger::new());
+        let options = EnvOptions::default();
+        let tracking_cfg = TxnTrackingConfig::default();
+        let _ = LmdbStore::new(
+            &file.path,
+            &options,
+            tracking_cfg,
+            Duration::from_secs(1),
+            logger,
+            false,
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn incompatible_version() -> anyhow::Result<()> {
+        let file = TestDbFile::random();
+        {
+            let env = Arc::new(LmdbEnv::new(&file.path)?);
+            let version_store = LmdbVersionStore::new(env.clone())?;
+            let mut txn = env.tx_begin_write()?;
+            version_store.put(&mut txn, i32::MAX);
+        }
+        let logger = Arc::new(NullLogger::new());
+        let options = EnvOptions::default();
+        let tracking_cfg = TxnTrackingConfig::default();
+        match LmdbStore::new(
+            &file.path,
+            &options,
+            tracking_cfg,
+            Duration::from_secs(1),
+            logger,
+            false,
+        ) {
+            Ok(_) => panic!("store should not be created!"),
+            Err(e) => {
+                assert_eq!(e.to_string(), "version too high");
+                Ok(())
+            }
+        }
+    }
+}

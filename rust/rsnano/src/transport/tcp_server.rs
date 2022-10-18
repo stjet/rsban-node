@@ -14,15 +14,19 @@ use crate::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
         Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
     },
-    network::{Socket, SocketImpl, SocketType, SynCookies, TcpMessageItem, TcpMessageManager},
     sign_message,
     stats::{DetailType, Direction, Stat, StatType},
-    transport::{MessageDeserializer, MessageDeserializerExt, ParseStatus},
+    transport::{
+        MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketImpl, SocketType,
+        SynCookies, TcpMessageItem, TcpMessageManager,
+    },
     utils::{IoContext, MemoryStream, ThreadPool},
     voting::VoteUniquer,
-    Account, BlockUniquer, KeyPair, NetworkConstants, NetworkFilter, NetworkParams, NodeConfig,
+    Account, BlockUniquer, KeyPair, NetworkConstants, NetworkParams, NodeConfig,
     TelemetryCacheCutoffs,
 };
+
+use super::NetworkFilter;
 
 pub trait TcpServerObserver {
     fn bootstrap_server_timeout(&self, inner_ptr: usize);

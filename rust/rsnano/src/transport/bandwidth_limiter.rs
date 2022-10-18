@@ -1,6 +1,6 @@
+use super::TokenBucket;
 use std::sync::Mutex;
 
-use crate::TokenBucket;
 pub struct BandwidthLimiter {
     bucket: Mutex<TokenBucket>,
 }

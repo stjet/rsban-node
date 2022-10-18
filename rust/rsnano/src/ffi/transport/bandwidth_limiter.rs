@@ -1,5 +1,6 @@
-use crate::BandwidthLimiter;
 use std::{ops::Deref, sync::Arc};
+
+use crate::transport::BandwidthLimiter;
 
 pub struct BandwidthLimiterHandle(Arc<BandwidthLimiter>);
 

@@ -1,7 +1,7 @@
 use crate::{
     block_processor::BlockProcessor,
+    core::encode_hex,
     datastore::Ledger,
-    encode_hex,
     logger_mt::Logger,
     unchecked_info::UncheckedInfo,
     websocket::{Listener, MessageBuilder},

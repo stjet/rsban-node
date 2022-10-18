@@ -1,4 +1,4 @@
-use crate::network::TcpMessageManager;
+use crate::transport::TcpMessageManager;
 use std::{ops::Deref, sync::Arc};
 
 use super::TcpMessageItemHandle;

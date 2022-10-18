@@ -6,13 +6,13 @@ mod endpoint_key;
 mod fan;
 
 use std::convert::TryInto;
+use std::fmt::Display;
 use std::fmt::{Debug, Write};
 use std::mem::size_of;
 use std::net::Ipv6Addr;
-use std::ops::{BitXorAssign, Deref};
-use std::slice;
-use std::{convert::TryFrom, fmt::Display};
+use std::ops::Deref;
 
+use crate::core::{PublicKey, RawKey};
 use crate::hardened_constants::HardenedConstants;
 use crate::utils::{Deserialize, MutStreamAdapter, Serialize, Stream};
 use crate::Epoch;
@@ -23,8 +23,6 @@ pub use account_info::AccountInfo;
 pub use amount::*;
 use blake2::digest::{Update, VariableOutput};
 use blake2::VarBlake2b;
-use ctr::cipher::KeyIvInit;
-use ctr::cipher::StreamCipher;
 pub use difficulty::*;
 pub use endpoint_key::EndpointKey;
 pub use fan::Fan;
@@ -32,77 +30,6 @@ use num::FromPrimitive;
 use once_cell::sync::Lazy;
 use primitive_types::{U256, U512};
 use rand::{thread_rng, Rng};
-
-#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
-pub struct PublicKey {
-    value: [u8; 32], // big endian
-}
-
-impl PublicKey {
-    pub fn new() -> Self {
-        Self { value: [0; 32] }
-    }
-
-    pub fn is_zero(&self) -> bool {
-        self.value == [0; 32]
-    }
-
-    pub const fn from_bytes(value: [u8; 32]) -> Self {
-        Self { value }
-    }
-
-    pub fn from_slice(value: &[u8]) -> Option<Self> {
-        match value.try_into() {
-            Ok(value) => Some(Self { value }),
-            Err(_) => None,
-        }
-    }
-
-    pub unsafe fn from_ptr(data: *const u8) -> Self {
-        Self {
-            value: slice::from_raw_parts(data, 32).try_into().unwrap(),
-        }
-    }
-
-    pub fn number(&self) -> U256 {
-        U256::from_big_endian(&self.value)
-    }
-
-    pub const fn serialized_size() -> usize {
-        32
-    }
-
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        stream.write_bytes(&self.value)
-    }
-
-    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
-        let mut result = PublicKey::new();
-        stream.read_bytes(&mut result.value, 32)?;
-        Ok(result)
-    }
-
-    pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
-        &self.value
-    }
-
-    pub fn to_be_bytes(self) -> [u8; 32] {
-        self.value
-    }
-
-    /// IV for Key encryption
-    pub fn initialization_vector(&self) -> [u8; 16] {
-        self.value[..16].try_into().unwrap()
-    }
-}
-
-impl From<U256> for PublicKey {
-    fn from(value: U256) -> Self {
-        let mut key = Self::new();
-        value.to_big_endian(&mut key.value);
-        key
-    }
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug, Hash)]
 pub struct BlockHash {
@@ -574,130 +501,6 @@ impl WalletId {
     }
 }
 
-#[derive(Default, PartialEq, Eq, Debug, Copy, Clone)]
-pub struct RawKey {
-    bytes: [u8; 32],
-}
-
-type Aes256Ctr = ctr::Ctr64BE<aes::Aes256>;
-
-impl RawKey {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn from_bytes(bytes: [u8; 32]) -> Self {
-        Self { bytes }
-    }
-
-    pub fn random() -> Self {
-        Self::from_bytes(thread_rng().gen())
-    }
-
-    pub fn is_zero(&self) -> bool {
-        self.bytes == [0; 32]
-    }
-
-    pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
-        &self.bytes
-    }
-
-    pub fn encode_hex(&self) -> String {
-        let mut result = String::with_capacity(64);
-        for byte in self.bytes {
-            write!(&mut result, "{:02X}", byte).unwrap();
-        }
-        result
-    }
-
-    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
-        let mut bytes = [0u8; 32];
-        hex::decode_to_slice(s.as_ref(), &mut bytes)?;
-        Ok(RawKey::from_bytes(bytes))
-    }
-
-    pub fn encrypt(&self, key: &RawKey, iv: &[u8; 16]) -> Self {
-        let mut cipher = Aes256Ctr::new(&(*key.as_bytes()).into(), &(*iv).into());
-        let mut buf = self.bytes;
-        cipher.apply_keystream(&mut buf);
-        RawKey { bytes: buf }
-    }
-
-    pub fn decrypt(&self, key: &RawKey, iv: &[u8; 16]) -> Self {
-        self.encrypt(key, iv)
-    }
-
-    /// IV for Key encryption
-    pub fn initialization_vector_low(&self) -> [u8; 16] {
-        self.bytes[..16].try_into().unwrap()
-    }
-
-    /// IV for Key encryption
-    pub fn initialization_vector_high(&self) -> [u8; 16] {
-        self.bytes[16..].try_into().unwrap()
-    }
-
-    pub fn number(&self) -> U256 {
-        U256::from_big_endian(&self.bytes)
-    }
-}
-
-impl BitXorAssign for RawKey {
-    fn bitxor_assign(&mut self, rhs: Self) {
-        for (a, b) in self.bytes.iter_mut().zip(rhs.bytes) {
-            *a ^= b;
-        }
-    }
-}
-
-impl TryFrom<&RawKey> for PublicKey {
-    type Error = anyhow::Error;
-    fn try_from(prv: &RawKey) -> Result<Self, Self::Error> {
-        let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(prv.as_bytes())
-            .map_err(|_| anyhow!("could not extract secret key"))?;
-        let public = ed25519_dalek_blake2b::PublicKey::from(&secret);
-        Ok(PublicKey {
-            value: public.to_bytes(),
-        })
-    }
-}
-
-impl From<u64> for RawKey {
-    fn from(value: u64) -> Self {
-        let mut bytes = [0; 32];
-        bytes[24..].copy_from_slice(&value.to_be_bytes());
-        Self::from_bytes(bytes)
-    }
-}
-
-impl Serialize for RawKey {
-    fn serialized_size() -> usize {
-        32
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_bytes(self.as_bytes())
-    }
-}
-
-impl Deserialize for RawKey {
-    type Target = Self;
-
-    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
-        let mut buffer = [0; 32];
-        stream.read_bytes(&mut buffer, 32)?;
-        Ok(RawKey::from_bytes(buffer))
-    }
-}
-
-pub(crate) fn encode_hex(i: u128) -> String {
-    let mut result = String::with_capacity(32);
-    for byte in i.to_ne_bytes() {
-        write!(&mut result, "{:02X}", byte).unwrap();
-    }
-    result
-}
-
 pub struct KeyPair {
     keypair: ed25519_dalek_blake2b::Keypair,
 }
@@ -986,7 +789,7 @@ mod tests {
     use super::*;
 
     mod deterministic_key_tests {
-        use crate::{deterministic_key, RawKey};
+        use crate::{core::RawKey, deterministic_key};
 
         #[test]
         fn test_deterministic_key() {

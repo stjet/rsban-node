@@ -1,6 +1,6 @@
 use rand::{thread_rng, Rng};
 
-use crate::RawKey;
+use crate::core::RawKey;
 
 /// The fan spreads a key out over the heap to decrease the likelihood of it being recovered by memory inspection
 pub struct Fan {

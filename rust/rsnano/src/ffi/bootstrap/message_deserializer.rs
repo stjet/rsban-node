@@ -2,9 +2,10 @@ use std::{ffi::c_void, sync::Arc};
 
 use crate::{
     ffi::{
-        messages::MessageHandle, network::SocketHandle, voting::VoteUniquerHandle,
-        BlockUniquerHandle, ErrorCodeDto, NetworkConstantsDto, NetworkFilterHandle, StringDto,
-        VoidPointerCallback,
+        messages::MessageHandle,
+        transport::{NetworkFilterHandle, SocketHandle},
+        voting::VoteUniquerHandle,
+        BlockUniquerHandle, ErrorCodeDto, NetworkConstantsDto, StringDto, VoidPointerCallback,
     },
     messages::Message,
     stats::DetailType,

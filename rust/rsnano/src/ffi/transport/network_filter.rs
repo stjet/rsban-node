@@ -1,6 +1,6 @@
 use std::{ops::Deref, sync::Arc};
 
-use crate::NetworkFilter;
+use crate::transport::NetworkFilter;
 
 pub struct NetworkFilterHandle(Arc<NetworkFilter>);
 

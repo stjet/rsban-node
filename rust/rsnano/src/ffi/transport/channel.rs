@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    network::{Channel, ChannelFake, ChannelInProc, ChannelTcp, ChannelUdp},
+    transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp, ChannelUdp},
     Account,
 };
 

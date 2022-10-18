@@ -9,7 +9,7 @@ use std::{
 
 use crate::{
     messages::Message,
-    network::{BufferDropPolicy, ChannelTcp, Socket, SocketImpl},
+    transport::{BufferDropPolicy, ChannelTcp, Socket, SocketImpl},
     utils::ErrorCode,
 };
 

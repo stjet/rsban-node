@@ -1,4 +1,4 @@
-use crate::network::PeerExclusion;
+use crate::transport::PeerExclusion;
 use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},

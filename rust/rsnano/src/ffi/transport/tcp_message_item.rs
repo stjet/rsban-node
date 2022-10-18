@@ -2,7 +2,7 @@ use std::{net::SocketAddr, ops::Deref};
 
 use crate::{
     ffi::{copy_account_bytes, messages::MessageHandle},
-    network::TcpMessageItem,
+    transport::TcpMessageItem,
     Account,
 };
 

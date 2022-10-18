@@ -1,8 +1,9 @@
 use crate::{
+    core::{PublicKey, RawKey},
     from_string_hex, sign_message, to_string_hex,
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
     Account, Amount, Block, BlockHash, BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash,
-    Link, PublicKey, RawKey, Root, Signature,
+    Link, Root, Signature,
 };
 
 use anyhow::Result;

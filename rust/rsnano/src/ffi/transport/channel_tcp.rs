@@ -3,14 +3,11 @@ use num::FromPrimitive;
 use super::{
     channel::{as_tcp_channel, ChannelHandle, ChannelType},
     socket::SocketHandle,
-    ChannelTcpObserverWeakPtr, EndpointDto,
+    BandwidthLimiterHandle, ChannelTcpObserverWeakPtr, EndpointDto,
 };
 use crate::{
-    ffi::{
-        io_context::FfiIoContext, messages::MessageHandle, BandwidthLimiterHandle, ErrorCodeDto,
-        VoidPointerCallback,
-    },
-    network::{BufferDropPolicy, ChannelTcp},
+    ffi::{io_context::FfiIoContext, messages::MessageHandle, ErrorCodeDto, VoidPointerCallback},
+    transport::{BufferDropPolicy, ChannelTcp},
     utils::ErrorCode,
 };
 use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};

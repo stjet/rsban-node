@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     bootstrap::ChannelTcpWrapper,
-    ffi::network::{as_tcp_channel, ChannelHandle, SocketHandle},
+    ffi::transport::{as_tcp_channel, ChannelHandle, SocketHandle},
 };
 
 use super::bootstrap_server::TcpServerHandle;

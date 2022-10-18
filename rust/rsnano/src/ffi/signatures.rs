@@ -1,6 +1,6 @@
 use std::{ops::Deref, sync::Arc};
 
-use crate::{PublicKey, Signature, SignatureCheckSet, SignatureChecker};
+use crate::{core::PublicKey, Signature, SignatureCheckSet, SignatureChecker};
 
 #[repr(C)]
 pub struct SignatureCheckSetDto {

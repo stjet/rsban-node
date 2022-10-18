@@ -1,6 +1,7 @@
 use crate::{
+    core::{PublicKey, RawKey},
     Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, Link,
-    PublicKey, RawKey, Signature, StateBlock,
+    Signature, StateBlock,
 };
 use anyhow::Result;
 

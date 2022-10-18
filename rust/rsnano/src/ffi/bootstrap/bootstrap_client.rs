@@ -4,14 +4,14 @@ use crate::{
     bootstrap::{BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr},
     ffi::{
         messages::MessageHandle,
-        network::{
+        transport::{
             as_tcp_channel, ChannelHandle, ChannelTcpSendBufferCallback, ChannelTcpSendCallback,
             ChannelTcpSendCallbackWrapper, EndpointDto, ReadCallbackWrapper,
             SendBufferCallbackWrapper, SocketDestroyContext, SocketHandle, SocketReadCallback,
         },
         StringDto, VoidPointerCallback,
     },
-    network::BufferDropPolicy,
+    transport::BufferDropPolicy,
 };
 
 use num_traits::FromPrimitive;

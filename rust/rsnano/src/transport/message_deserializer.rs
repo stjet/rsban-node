@@ -5,11 +5,13 @@ use crate::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
         Message, MessageHeader, MessageType, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
     },
-    network::{Socket, SocketImpl},
+    transport::{Socket, SocketImpl},
     utils::{ErrorCode, Stream, StreamAdapter},
     voting::VoteUniquer,
-    BlockUniquer, NetworkConstants, NetworkFilter,
+    BlockUniquer, NetworkConstants,
 };
+
+use super::NetworkFilter;
 
 const MAX_MESSAGE_SIZE: usize = 1024 * 4;
 const HEADER_SIZE: usize = 8;

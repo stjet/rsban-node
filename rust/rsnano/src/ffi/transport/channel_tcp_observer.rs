@@ -3,7 +3,7 @@ use std::{ffi::c_void, net::SocketAddr, sync::Arc};
 use crate::{
     ffi::{messages::MessageHandle, VoidPointerCallback},
     messages::Message,
-    network::ChannelTcpObserver,
+    transport::ChannelTcpObserver,
 };
 
 use super::EndpointDto;

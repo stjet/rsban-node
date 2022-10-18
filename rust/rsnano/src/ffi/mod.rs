@@ -1,4 +1,3 @@
-mod bandwidth_limiter;
 mod block_arrival;
 mod block_processor;
 mod blocks;
@@ -11,7 +10,6 @@ mod io_context;
 mod ipc;
 mod logger_mt;
 mod messages;
-mod network;
 mod numbers;
 mod property_tree;
 mod secure;
@@ -21,6 +19,7 @@ mod stats;
 mod stream;
 mod thread_pool;
 mod toml;
+mod transport;
 mod unchecked_info;
 mod voting;
 mod wallet;
@@ -31,7 +30,6 @@ use std::{
     os::raw::c_char,
 };
 
-pub use bandwidth_limiter::*;
 pub(crate) use block_processor::*;
 pub use blocks::*;
 pub use config::*;
@@ -50,11 +48,12 @@ pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
 use crate::{
-    utils::ErrorCode, Account, Amount, BlockHash, HashOrAccount,
-    MemoryIntensiveInstrumentationCallback, PublicKey, QualifiedRoot, RawKey, Root, Signature,
-    IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION,
+    core::{PublicKey, RawKey},
+    utils::ErrorCode,
+    Account, Amount, BlockHash, HashOrAccount, MemoryIntensiveInstrumentationCallback,
+    QualifiedRoot, Root, Signature, IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION,
 };
-pub use network::ChannelTcpObserverWeakPtr;
+pub use transport::ChannelTcpObserverWeakPtr;
 
 pub struct StringHandle(CString);
 #[repr(C)]

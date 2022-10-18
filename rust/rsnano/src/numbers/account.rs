@@ -12,7 +12,7 @@ pub struct Account {
 }
 
 const ZERO_ACCOUNT: Account = Account {
-    public_key: PublicKey { value: [0; 32] },
+    public_key: PublicKey::new(),
 };
 
 impl Account {
@@ -298,9 +298,9 @@ fn account_decode(value: u8) -> u8 {
 
 impl From<u64> for Account {
     fn from(value: u64) -> Self {
-        let mut key = PublicKey::new();
-        key.value[24..].copy_from_slice(&value.to_be_bytes());
-        Account::from(key)
+        let mut bytes = [0; 32];
+        bytes[24..].copy_from_slice(&value.to_be_bytes());
+        Account::from(PublicKey::from_bytes(bytes))
     }
 }
 

@@ -1,8 +1,7 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use crate::{
-    network::{Channel, ChannelTcp, SocketImpl},
-    transport::TcpServer,
+    transport::{Channel, ChannelTcp, SocketImpl, TcpServer},
     Account,
 };
 

@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::{Account, BlockHash, FullHash, RawKey, Signature, Vote};
+use crate::{core::RawKey, Account, BlockHash, FullHash, Signature, Vote};
 
 use crate::ffi::{FfiPropertyTreeWriter, FfiStream, StringDto};
 

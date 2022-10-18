@@ -7,12 +7,12 @@ use std::{
     },
 };
 
-use super::{BufferDropPolicy, Channel, Socket, SocketImpl};
+use super::{BandwidthLimiter, BufferDropPolicy, Channel, Socket, SocketImpl};
 use crate::{
     ffi::ChannelTcpObserverWeakPtr,
     messages::Message,
     utils::{ErrorCode, IoContext},
-    Account, BandwidthLimiter,
+    Account,
 };
 
 pub trait ChannelTcpObserver {

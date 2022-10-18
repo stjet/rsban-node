@@ -1,6 +1,6 @@
 use argon2::{Variant, Version};
 
-use crate::RawKey;
+use crate::core::RawKey;
 
 /// Key derivation function
 #[derive(Clone)]

@@ -88,7 +88,6 @@ add_library(
 target_link_libraries(
   nano_lib
   crypto_lib
-  blake2
   secure
   ipc_flatbuffers_lib
   rsnano

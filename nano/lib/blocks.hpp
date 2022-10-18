@@ -1,6 +1,5 @@
 #pragma once
 
-#include <nano/crypto/blake2/blake2.h>
 #include <nano/lib/epoch.hpp>
 #include <nano/lib/errors.hpp>
 #include <nano/lib/numbers.hpp>

@@ -58,6 +58,30 @@ nano::work_pool::~work_pool ()
 	}
 }
 
+class blake2b_wrapper
+{
+public:
+	blake2b_wrapper (size_t size) :
+		handle{ rsnano::rsn_blake2b_create (size) }
+	{
+	}
+	~blake2b_wrapper ()
+	{
+		rsnano::rsn_blake2b_destroy (handle);
+	}
+	void update (const uint8_t * data, size_t size)
+	{
+		rsnano::rsn_blake2b_update (handle, data, size);
+	}
+	void final (uint8_t * output, size_t size)
+	{
+		rsnano::rsn_blake2b_final (handle, output, size);
+	}
+
+private:
+	rsnano::Blake2bHandle * handle;
+};
+
 void nano::work_pool::loop (uint64_t thread)
 {
 	// Quick RNG for work attempts.
@@ -65,8 +89,7 @@ void nano::work_pool::loop (uint64_t thread)
 	nano::random_pool::generate_block (reinterpret_cast<uint8_t *> (rng.s.data ()), rng.s.size () * sizeof (decltype (rng.s)::value_type));
 	uint64_t work;
 	uint64_t output;
-	blake2b_state hash;
-	blake2b_init (&hash, sizeof (output));
+	blake2b_wrapper hash (sizeof (output));
 	nano::unique_lock<nano::mutex> lock (mutex);
 	auto pow_sleep = pow_rate_limiter;
 	while (!done)
@@ -105,10 +128,9 @@ void nano::work_pool::loop (uint64_t thread)
 					while (iteration && output < current_l.difficulty)
 					{
 						work = rng.next ();
-						blake2b_update (&hash, reinterpret_cast<uint8_t *> (&work), sizeof (work));
-						blake2b_update (&hash, current_l.item.bytes.data (), current_l.item.bytes.size ());
-						blake2b_final (&hash, reinterpret_cast<uint8_t *> (&output), sizeof (output));
-						blake2b_init (&hash, sizeof (output));
+						hash.update (reinterpret_cast<uint8_t *> (&work), sizeof (work));
+						hash.update (current_l.item.bytes.data (), current_l.item.bytes.size ());
+						hash.final (reinterpret_cast<uint8_t *> (&output), sizeof (output));
 						iteration -= 1;
 					}
 

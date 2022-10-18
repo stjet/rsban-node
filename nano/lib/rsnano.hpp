@@ -39,6 +39,8 @@ struct AsyncWriteCallbackHandle;
 
 struct BandwidthLimiterHandle;
 
+struct Blake2bHandle;
+
 struct BlockArrivalHandle;
 
 struct BlockHandle;
@@ -1029,6 +1031,14 @@ uintptr_t limit);
 bool rsn_bandwidth_limiter_should_drop (const BandwidthLimiterHandle * limiter,
 uintptr_t message_size,
 int32_t * result);
+
+Blake2bHandle * rsn_blake2b_create (uintptr_t size);
+
+void rsn_blake2b_destroy (Blake2bHandle * handle);
+
+void rsn_blake2b_final (Blake2bHandle * handle, uint8_t * output, uintptr_t size);
+
+void rsn_blake2b_update (Blake2bHandle * handle, const uint8_t * data, uintptr_t size);
 
 bool rsn_block_arrival_add (BlockArrivalHandle * handle, const uint8_t * hash);
 

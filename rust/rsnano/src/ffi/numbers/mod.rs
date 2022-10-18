@@ -1,4 +1,5 @@
 mod account_info;
+mod blake2;
 mod random_pool;
 
 use std::{ffi::CStr, net::Ipv6Addr, os::raw::c_char, slice};

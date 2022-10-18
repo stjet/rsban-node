@@ -416,21 +416,6 @@ if(WIN32)
   target_link_libraries(ntdll)
 endif()
 
-if(WIN32)
-  set(BLAKE2_IMPLEMENTATION "crypto/blake2/blake2b.c")
-else()
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(i.86|x86(_64)?)$")
-    set(BLAKE2_IMPLEMENTATION "crypto/blake2/blake2b.c")
-  else()
-    set(BLAKE2_IMPLEMENTATION "crypto/blake2/blake2b-ref.c")
-  endif()
-endif()
-
-add_library(blake2 crypto/blake2/blake2-config.h crypto/blake2/blake2-impl.h
-                   crypto/blake2/blake2.h ${BLAKE2_IMPLEMENTATION})
-
-target_compile_definitions(blake2 PRIVATE -D__SSE2__)
-
 if(NANO_POW_SERVER)
   add_subdirectory(nano-pow-server)
 endif()

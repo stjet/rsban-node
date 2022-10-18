@@ -1,6 +1,5 @@
 #pragma once
 
-#include <nano/crypto/blake2/blake2.h>
 #include <nano/lib/blockbuilders.hpp>
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>

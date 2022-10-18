@@ -2,7 +2,8 @@ use std::sync::Mutex;
 
 use crate::{
     bootstrap::{PullInfo, PullsCache},
-    BlockHash, HashOrAccount,
+    core::BlockHash,
+    HashOrAccount,
 };
 
 pub struct PullsCacheHandle(Mutex<PullsCache>);

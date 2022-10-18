@@ -36,6 +36,7 @@ mod voting;
 pub mod wallet;
 mod websocket;
 
+use crate::core::BlockHash;
 pub(crate) use block_arrival::*;
 pub(crate) use block_processor::*;
 pub use blocks::*;

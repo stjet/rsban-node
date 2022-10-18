@@ -128,7 +128,7 @@ impl<'a>
 
 #[cfg(test)]
 mod tests {
-    use crate::{datastore::lmdb::TestLmdbEnv, BlockHash};
+    use crate::{core::BlockHash, datastore::lmdb::TestLmdbEnv};
 
     use super::*;
 

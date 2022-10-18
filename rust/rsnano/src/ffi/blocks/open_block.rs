@@ -1,8 +1,8 @@
 use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
-use crate::core::{PublicKey, RawKey};
-use crate::{Account, BlockEnum, BlockHash, LazyBlockHash, OpenBlock, OpenHashables, Signature};
+use crate::core::{BlockHash, PublicKey, RawKey};
+use crate::{Account, BlockEnum, LazyBlockHash, OpenBlock, OpenHashables, Signature};
 
 use crate::ffi::{FfiPropertyTreeReader, FfiStream};
 

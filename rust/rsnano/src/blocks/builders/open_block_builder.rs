@@ -1,5 +1,5 @@
 use crate::{
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, OpenBlock,
+    core::BlockHash, Account, Amount, Block, BlockDetails, BlockSideband, Epoch, KeyPair, OpenBlock,
 };
 
 #[derive(Default)]

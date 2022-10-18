@@ -3,6 +3,7 @@ mod block_processor;
 mod blocks;
 pub mod bootstrap;
 mod config;
+pub mod core;
 pub mod datastore;
 mod epoch;
 mod hardened_constants;
@@ -48,10 +49,10 @@ pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
 use crate::{
-    core::{PublicKey, RawKey},
+    core::{BlockHash, PublicKey, RawKey},
     utils::ErrorCode,
-    Account, Amount, BlockHash, HashOrAccount, MemoryIntensiveInstrumentationCallback,
-    QualifiedRoot, Root, Signature, IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION,
+    Account, Amount, HashOrAccount, MemoryIntensiveInstrumentationCallback, QualifiedRoot, Root,
+    Signature, IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION,
 };
 pub use transport::ChannelTcpObserverWeakPtr;
 

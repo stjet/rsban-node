@@ -70,7 +70,7 @@ fn cleanup<T>(mut cache: std::sync::MutexGuard<IndexMap<BlockHash, Weak<T>>>) {
 
 #[cfg(test)]
 mod tests {
-    use crate::BlockHashBuilder;
+    use crate::core::BlockHashBuilder;
 
     use super::*;
 

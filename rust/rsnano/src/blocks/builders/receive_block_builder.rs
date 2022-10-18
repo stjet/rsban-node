@@ -1,4 +1,6 @@
-use crate::{Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, ReceiveBlock};
+use crate::{
+    core::BlockHash, Amount, Block, BlockDetails, BlockSideband, Epoch, KeyPair, ReceiveBlock,
+};
 
 #[derive(Default)]
 pub struct ReceiveBlockBuilder {
@@ -49,7 +51,7 @@ impl ReceiveBlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Block, BlockBuilder, BlockHash};
+    use crate::{core::BlockHash, Block, BlockBuilder};
 
     #[test]
     fn receive_block() {

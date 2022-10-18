@@ -1,9 +1,9 @@
 use std::{ffi::c_void, sync::Arc};
 
 use crate::{
+    core::BlockHash,
     datastore::{lmdb::LmdbPrunedStore, PrunedStore},
     ffi::{copy_hash_bytes, VoidPointerCallback},
-    BlockHash,
 };
 
 use super::{

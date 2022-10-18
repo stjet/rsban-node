@@ -1,5 +1,9 @@
 use super::{LmdbEnv, LmdbIteratorImpl, LmdbTransaction, LmdbWriteTransaction};
-use crate::{core::RawKey, datastore::DbIterator, BlockHash, NoValue, WalletId};
+use crate::{
+    core::{BlockHash, RawKey},
+    datastore::DbIterator,
+    NoValue, WalletId,
+};
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 pub type WalletsIterator = DbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
 

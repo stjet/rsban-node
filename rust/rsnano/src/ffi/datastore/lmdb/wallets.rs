@@ -1,9 +1,9 @@
 use std::ffi::{c_char, CStr};
 
 use crate::{
+    core::BlockHash,
     datastore::lmdb::LmdbWallets,
     ffi::{copy_hash_bytes, U256ArrayDto},
-    BlockHash,
 };
 
 use super::{store::LmdbStoreHandle, TransactionHandle};

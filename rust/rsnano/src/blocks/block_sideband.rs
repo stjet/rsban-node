@@ -1,8 +1,9 @@
 use num::FromPrimitive;
 
 use crate::{
+    core::BlockHash,
     utils::{Deserialize, Serialize, Stream},
-    Account, Amount, BlockDetails, BlockHash, BlockType, Epoch,
+    Account, Amount, BlockDetails, BlockType, Epoch,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

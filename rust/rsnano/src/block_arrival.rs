@@ -1,4 +1,3 @@
-use crate::BlockHash;
 #[cfg(test)]
 use mock_instant::Instant;
 #[cfg(not(test))]
@@ -8,6 +7,8 @@ use std::{
     sync::Mutex,
     time::Duration,
 };
+
+use crate::core::BlockHash;
 
 pub(crate) struct BlockArrival {
     data: Mutex<BlockArrivalCache>,

@@ -4,8 +4,8 @@ use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 
 use crate::{
+    core::BlockHash,
     datastore::{parallel_traversal, pruned_store::PrunedIterator, PrunedStore},
-    BlockHash,
 };
 
 use super::{

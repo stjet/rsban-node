@@ -2,8 +2,9 @@ use lmdb::{Database, DatabaseFlags, WriteFlags};
 use std::sync::Arc;
 
 use crate::{
+    core::BlockHash,
     datastore::{frontier_store::FrontierIterator, parallel_traversal, FrontierStore},
-    Account, BlockHash,
+    Account,
 };
 
 use super::{

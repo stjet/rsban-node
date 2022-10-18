@@ -3,9 +3,10 @@ use std::sync::Arc;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 
 use crate::{
+    core::BlockHash,
     datastore::{parallel_traversal_u512, pending_store::PendingIterator, PendingStore},
     utils::{Deserialize, StreamAdapter},
-    Account, BlockHash, PendingInfo, PendingKey,
+    Account, PendingInfo, PendingKey,
 };
 
 use super::{

@@ -5,11 +5,11 @@ use std::{
 };
 
 use crate::{
+    core::BlockHash,
     datastore::{lmdb::LmdbBlockStore, BlockStore},
     ffi::{
         copy_account_bytes, copy_amount_bytes, copy_hash_bytes, BlockHandle, VoidPointerCallback,
     },
-    BlockHash,
 };
 
 use super::{

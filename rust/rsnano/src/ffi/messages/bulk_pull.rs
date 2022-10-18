@@ -1,9 +1,10 @@
 use std::ffi::c_void;
 
 use crate::{
+    core::BlockHash,
     ffi::{copy_hash_bytes, copy_hash_or_account_bytes, FfiStream, NetworkConstantsDto},
     messages::{BulkPull, Message},
-    BlockHash, HashOrAccount,
+    HashOrAccount,
 };
 
 use super::{

@@ -130,7 +130,7 @@ mod tests {
     use std::sync::Mutex;
 
     use super::*;
-    use crate::{datastore::lmdb::TestLmdbEnv, Amount, BlockHash};
+    use crate::{core::BlockHash, datastore::lmdb::TestLmdbEnv, Amount};
 
     struct AccountStoreTestContext {
         pub store: LmdbAccountStore,

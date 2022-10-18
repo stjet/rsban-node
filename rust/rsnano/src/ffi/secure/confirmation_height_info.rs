@@ -1,9 +1,10 @@
 use std::ffi::c_void;
 
 use crate::{
+    core::BlockHash,
     ffi::FfiStream,
     utils::{Deserialize, Serialize},
-    BlockHash, ConfirmationHeightInfo,
+    ConfirmationHeightInfo,
 };
 
 #[repr(C)]

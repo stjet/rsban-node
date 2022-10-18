@@ -1,9 +1,10 @@
 use std::{ffi::c_void, sync::Arc};
 
 use crate::{
+    core::BlockHash,
     datastore::{lmdb::LmdbFinalVoteStore, FinalVoteStore},
     ffi::VoidPointerCallback,
-    BlockHash, QualifiedRoot, Root,
+    QualifiedRoot, Root,
 };
 
 use super::{

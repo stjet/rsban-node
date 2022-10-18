@@ -4,9 +4,10 @@ use std::{
 };
 
 use crate::{
+    core::BlockHash,
     ffi::FfiStream,
     utils::{Deserialize, Serialize},
-    Account, AccountInfo, Amount, BlockHash, Epoch,
+    Account, AccountInfo, Amount, Epoch,
 };
 use num_traits::FromPrimitive;
 

@@ -2,10 +2,11 @@ use super::{
     LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
 };
 use crate::{
+    core::BlockHash,
     datastore::{block_store::BlockIterator, parallel_traversal, BlockStore, DbIterator},
     deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
-    Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, Epoch,
+    Account, Amount, Block, BlockEnum, BlockSideband, BlockType, BlockVisitor, Epoch,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;

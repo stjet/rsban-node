@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    core::{BlockHash, RawKey},
-    Account, FullHash, Signature, Vote,
+    core::{BlockHash, RawKey, Signature},
+    Account, FullHash, Vote,
 };
 
 use crate::ffi::{FfiPropertyTreeWriter, FfiStream, StringDto};

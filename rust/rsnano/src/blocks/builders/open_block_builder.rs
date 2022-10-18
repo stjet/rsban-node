@@ -60,7 +60,7 @@ impl OpenBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Block, BlockBuilder, Signature};
+    use crate::{core::Signature, Block, BlockBuilder};
 
     #[test]
     fn create_open_block() {

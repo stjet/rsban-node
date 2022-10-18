@@ -1,9 +1,8 @@
 use std::{sync::Arc, thread};
 
 use rsnano::{
-    core::{BlockHash, PublicKey},
-    Account, Amount, Block, KeyPair, Link, Signature, SignatureCheckSet, SignatureChecker,
-    StateBlock,
+    core::{BlockHash, PublicKey, Signature},
+    Account, Amount, Block, KeyPair, Link, SignatureCheckSet, SignatureChecker, StateBlock,
 };
 
 // original test: signature_checker.bulk_single_thread

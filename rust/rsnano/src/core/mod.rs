@@ -7,6 +7,9 @@ pub use raw_key::RawKey;
 mod block_hash;
 pub use block_hash::{BlockHash, BlockHashBuilder};
 
+mod signature;
+pub use signature::Signature;
+
 use std::fmt::Write;
 
 pub(crate) fn encode_hex(i: u128) -> String {

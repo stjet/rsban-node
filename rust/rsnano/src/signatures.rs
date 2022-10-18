@@ -1,7 +1,10 @@
 use anyhow::Result;
 use scoped_threadpool::Pool;
 
-use crate::{core::PublicKey, validate_message_batch, Signature};
+use crate::{
+    core::{PublicKey, Signature},
+    validate_message_batch,
+};
 use std::{
     hint::spin_loop,
     sync::{

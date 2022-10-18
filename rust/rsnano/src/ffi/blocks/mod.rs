@@ -24,7 +24,8 @@ pub use state_block::*;
 use super::{property_tree::FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
 use crate::{
     blocks::{deserialize_block_json, serialized_block_size, BlockEnum, BlockSideband},
-    deserialize_block, BlockType, Signature,
+    core::Signature,
+    deserialize_block, BlockType,
 };
 use num::FromPrimitive;
 

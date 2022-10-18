@@ -1,7 +1,6 @@
+use crate::core::Signature;
 use crate::utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt};
-use crate::{
-    sign_message, validate_message, Account, BlockHash, KeyPair, NetworkConstants, Signature,
-};
+use crate::{sign_message, validate_message, Account, BlockHash, KeyPair, NetworkConstants};
 use anyhow::Result;
 use std::any::Any;
 use std::mem::size_of;

@@ -2,8 +2,8 @@ use num::FromPrimitive;
 use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
-use crate::core::{BlockHash, PublicKey, RawKey};
-use crate::{Account, Amount, BlockEnum, LazyBlockHash, SendBlock, SendHashables, Signature};
+use crate::core::{BlockHash, PublicKey, RawKey, Signature};
+use crate::{Account, Amount, BlockEnum, LazyBlockHash, SendBlock, SendHashables};
 
 use crate::ffi::{FfiPropertyTreeReader, FfiStream};
 

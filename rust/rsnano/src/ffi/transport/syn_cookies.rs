@@ -1,4 +1,4 @@
-use crate::{transport::SynCookies, Account, Signature};
+use crate::{core::Signature, transport::SynCookies, Account};
 use std::{net::SocketAddr, ops::Deref, sync::Arc, time::Duration};
 
 use super::EndpointDto;

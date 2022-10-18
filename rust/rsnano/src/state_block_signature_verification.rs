@@ -6,8 +6,10 @@ use std::{
 };
 
 use crate::{
-    core::PublicKey, logger_mt::NullLogger, Account, BlockEnum, BlockHash, Epochs, Logger,
-    Signature, SignatureCheckSet, SignatureChecker, SignatureVerification,
+    core::{PublicKey, Signature},
+    logger_mt::NullLogger,
+    Account, BlockEnum, BlockHash, Epochs, Logger, SignatureCheckSet, SignatureChecker,
+    SignatureVerification,
 };
 
 #[derive(Default)]

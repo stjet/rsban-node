@@ -10,6 +10,9 @@ pub use block_hash::{BlockHash, BlockHashBuilder};
 mod signature;
 pub use signature::Signature;
 
+mod hash_or_account;
+pub use hash_or_account::HashOrAccount;
+
 use std::fmt::Write;
 
 pub(crate) fn encode_hex(i: u128) -> String {

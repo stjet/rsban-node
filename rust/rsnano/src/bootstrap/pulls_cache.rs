@@ -7,7 +7,7 @@ use std::{
     mem::size_of,
 };
 
-use crate::{core::BlockHash, HashOrAccount};
+use crate::core::{BlockHash, HashOrAccount};
 
 type AccountHead = [u8; 64];
 

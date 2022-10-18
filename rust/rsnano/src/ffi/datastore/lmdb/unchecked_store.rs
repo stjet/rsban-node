@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use crate::{
-    core::BlockHash,
+    core::{BlockHash, HashOrAccount},
     datastore::{lmdb::LmdbUncheckedStore, UncheckedStore},
     ffi::UncheckedInfoHandle,
     unchecked_info::UncheckedKey,
-    HashOrAccount,
 };
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};

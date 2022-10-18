@@ -1,7 +1,13 @@
 use super::MessageHandle;
-use crate::{ffi::VoidPointerCallback, messages::*, transport::BootstrapMessageVisitor};
+use crate::{
+    core::messages::{
+        BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
+        Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
+    },
+    ffi::VoidPointerCallback,
+    transport::BootstrapMessageVisitor,
+};
 use std::ffi::c_void;
-use MessageVisitor;
 
 type MessageVisitorCallback = unsafe extern "C" fn(*mut c_void, *mut MessageHandle, u8);
 static mut MESSAGE_VISITOR_VISIT: Option<MessageVisitorCallback> = None;

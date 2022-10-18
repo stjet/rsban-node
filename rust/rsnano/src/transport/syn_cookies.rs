@@ -5,10 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{
-    core::{validate_message, Signature},
-    Account,
-};
+use crate::core::{validate_message, Account, Signature};
 use anyhow::Result;
 use rand::Rng;
 

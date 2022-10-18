@@ -81,3 +81,6 @@ impl Epochs {
         epoch_id >= Epoch::Epoch0 as u8 && new_epoch_id == epoch_id + 1
     }
 }
+
+// Epoch is bit packed in BlockDetails. That's why it's max is limited to 4 bits
+const_assert!((Epoch::MAX as u8) < (1 << 5));

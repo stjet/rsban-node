@@ -1,6 +1,5 @@
-use crate::{
-    core::{BlockHash, KeyPair},
-    Amount, Block, BlockDetails, BlockSideband, Epoch, ReceiveBlock,
+use crate::core::{
+    Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, ReceiveBlock,
 };
 
 #[derive(Default)]
@@ -31,7 +30,7 @@ impl ReceiveBlockBuilder {
         )?;
 
         let details = BlockDetails {
-            epoch: crate::Epoch::Epoch0,
+            epoch: Epoch::Epoch0,
             is_send: false,
             is_receive: true,
             is_epoch: false,
@@ -52,7 +51,7 @@ impl ReceiveBlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{core::BlockHash, Block, BlockBuilder};
+    use crate::core::{Block, BlockBuilder, BlockHash};
 
     #[test]
     fn receive_block() {

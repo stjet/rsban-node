@@ -6,9 +6,9 @@ use std::{
 use num_traits::FromPrimitive;
 
 use crate::{
-    deserialize_block_enum, serialize_block_enum,
+    core::{deserialize_block_enum, serialize_block_enum, Account, BlockEnum},
     utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
-    Account, BlockEnum, BlockHash, SignatureVerification,
+    BlockHash, SignatureVerification,
 };
 
 /// Information on an unchecked block

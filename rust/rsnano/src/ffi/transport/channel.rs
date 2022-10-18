@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
+    core::Account,
     transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp, ChannelUdp},
-    Account,
 };
 
 pub enum ChannelType {

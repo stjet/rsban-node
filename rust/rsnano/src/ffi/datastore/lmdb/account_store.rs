@@ -5,9 +5,9 @@ use std::{
 };
 
 use crate::{
+    core::Account,
     datastore::{lmdb::LmdbAccountStore, AccountStore},
     ffi::{AccountInfoHandle, VoidPointerCallback},
-    Account,
 };
 
 use super::{

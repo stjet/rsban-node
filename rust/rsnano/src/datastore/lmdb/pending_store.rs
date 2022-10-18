@@ -3,10 +3,9 @@ use std::sync::Arc;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 
 use crate::{
-    core::BlockHash,
+    core::{Account, BlockHash, PendingInfo, PendingKey},
     datastore::{parallel_traversal_u512, pending_store::PendingIterator, PendingStore},
     utils::{Deserialize, StreamAdapter},
-    Account, PendingInfo, PendingKey,
 };
 
 use super::{
@@ -130,7 +129,10 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{datastore::lmdb::TestLmdbEnv, Amount, Epoch};
+    use crate::{
+        core::{Amount, Epoch},
+        datastore::lmdb::TestLmdbEnv,
+    };
 
     #[test]
     fn not_found() -> anyhow::Result<()> {

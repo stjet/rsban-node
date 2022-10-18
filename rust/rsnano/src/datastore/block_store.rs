@@ -1,4 +1,4 @@
-use crate::{core::BlockHash, Account, Amount, Block, BlockEnum, BlockWithSideband, Epoch};
+use crate::core::{Account, Amount, Block, BlockEnum, BlockHash, BlockWithSideband, Epoch};
 
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 

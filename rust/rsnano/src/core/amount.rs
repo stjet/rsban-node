@@ -1,6 +1,6 @@
 use crate::{
+    core::MXRB_RATIO,
     utils::{Deserialize, Serialize, Stream},
-    MXRB_RATIO,
 };
 use anyhow::Result;
 
@@ -124,8 +124,9 @@ impl std::ops::Add for Amount {
 
 #[cfg(test)]
 mod tests {
+    use crate::core::{KXRB_RATIO, XRB_RATIO};
+
     use super::*;
-    use crate::{KXRB_RATIO, MXRB_RATIO, XRB_RATIO};
 
     #[test]
     fn format_balance() {

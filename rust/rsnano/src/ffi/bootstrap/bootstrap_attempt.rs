@@ -10,9 +10,10 @@ use num::FromPrimitive;
 
 use crate::{
     bootstrap::BootstrapStrategy,
+    core::Account,
     ffi::{datastore::LedgerHandle, LoggerHandle},
     websocket::{Listener, NullListener},
-    Account, BootstrapAttempt,
+    BootstrapAttempt,
 };
 
 use crate::ffi::{

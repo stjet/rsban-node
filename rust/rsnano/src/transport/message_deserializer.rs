@@ -1,14 +1,18 @@
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    messages::{
-        BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
-        Message, MessageHeader, MessageType, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
+    core::{
+        messages::{
+            BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
+            Message, MessageHeader, MessageType, NodeIdHandshake, Publish, TelemetryAck,
+            TelemetryReq,
+        },
+        BlockUniquer,
     },
     transport::{Socket, SocketImpl},
     utils::{ErrorCode, Stream, StreamAdapter},
     voting::VoteUniquer,
-    BlockUniquer, NetworkConstants,
+    NetworkConstants,
 };
 
 use super::NetworkFilter;

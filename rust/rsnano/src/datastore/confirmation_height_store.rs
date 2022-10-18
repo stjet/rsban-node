@@ -1,5 +1,5 @@
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
-use crate::{Account, ConfirmationHeightInfo};
+use crate::{core::Account, ConfirmationHeightInfo};
 
 pub type ConfirmationHeightIterator<I> = DbIterator<Account, ConfirmationHeightInfo, I>;
 

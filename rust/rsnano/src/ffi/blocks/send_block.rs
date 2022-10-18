@@ -2,9 +2,10 @@ use num::FromPrimitive;
 use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
-use crate::core::{BlockHash, PublicKey, RawKey, Signature};
-use crate::{Account, Amount, BlockEnum, LazyBlockHash, SendBlock, SendHashables};
-
+use crate::core::{
+    Account, Amount, BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock,
+    SendHashables, Signature,
+};
 use crate::ffi::{FfiPropertyTreeReader, FfiStream};
 
 use super::BlockHandle;

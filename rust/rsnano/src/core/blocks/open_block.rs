@@ -1,10 +1,13 @@
 use crate::{
-    core::{sign_message, BlockHash, BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature},
-    from_string_hex, to_string_hex,
+    core::{
+        sign_message, to_hex_string, u64_from_hex_str, Account, BlockHash, BlockHashBuilder, Link,
+        PublicKey, RawKey, Root, Signature,
+    },
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
-    Account, Block, BlockSideband, BlockType, LazyBlockHash,
 };
 use anyhow::Result;
+
+use super::{Block, BlockSideband, BlockType, BlockVisitor, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct OpenHashables {
@@ -93,7 +96,7 @@ impl OpenBlock {
         let source = BlockHash::decode_hex(reader.get_string("source")?)?;
         let representative = Account::decode_account(reader.get_string("representative")?)?;
         let account = Account::decode_account(reader.get_string("account")?)?;
-        let work = from_string_hex(reader.get_string("work")?)?;
+        let work = u64_from_hex_str(reader.get_string("work")?)?;
         let signature = Signature::decode_hex(reader.get_string("signature")?)?;
         Ok(OpenBlock {
             work,
@@ -181,7 +184,7 @@ impl Block for OpenBlock {
             &self.hashables.representative.encode_account(),
         )?;
         writer.put_string("account", &self.hashables.account.encode_account())?;
-        writer.put_string("work", &to_string_hex(self.work))?;
+        writer.put_string("work", &to_hex_string(self.work))?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         Ok(())
     }
@@ -190,7 +193,7 @@ impl Block for OpenBlock {
         self.account().into()
     }
 
-    fn visit(&self, visitor: &mut dyn crate::BlockVisitor) {
+    fn visit(&self, visitor: &mut dyn BlockVisitor) {
         visitor.open_block(self);
     }
 }

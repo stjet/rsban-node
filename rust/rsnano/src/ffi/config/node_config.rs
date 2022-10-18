@@ -6,11 +6,12 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
+    core::{Account, Amount},
     ffi::{
         fill_ipc_config_dto, fill_stat_config_dto, FfiToml, IpcConfigDto, NetworkParamsDto,
         StatConfigDto, WebsocketConfigDto,
     },
-    Account, Amount, Logging, NetworkParams, NodeConfig, Peer,
+    Logging, NetworkParams, NodeConfig, Peer,
 };
 
 use super::{

@@ -1,4 +1,4 @@
-use crate::Amount;
+use crate::core::Amount;
 
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 

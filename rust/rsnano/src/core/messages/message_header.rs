@@ -1,4 +1,8 @@
-use crate::{serialized_block_size, utils::Stream, BlockType, NetworkConstants, Networks};
+use crate::{
+    core::{serialized_block_size, BlockType},
+    utils::Stream,
+    NetworkConstants, Networks,
+};
 use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;

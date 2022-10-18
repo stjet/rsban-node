@@ -113,7 +113,7 @@ impl<'a> PrunedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmdb
 
 #[cfg(test)]
 mod tests {
-    use crate::{datastore::lmdb::TestLmdbEnv, NoValue};
+    use crate::{core::NoValue, datastore::lmdb::TestLmdbEnv};
 
     use super::*;
 

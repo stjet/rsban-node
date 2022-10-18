@@ -1,8 +1,8 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use crate::{
+    core::Account,
     transport::{Channel, ChannelTcp, SocketImpl, TcpServer},
-    Account,
 };
 
 pub struct ChannelTcpWrapper {

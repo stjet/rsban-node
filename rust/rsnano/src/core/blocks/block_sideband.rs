@@ -1,10 +1,11 @@
 use num::FromPrimitive;
 
 use crate::{
-    core::BlockHash,
+    core::{Account, Amount, BlockHash, Epoch},
     utils::{Deserialize, Serialize, Stream},
-    Account, Amount, BlockDetails, BlockType, Epoch,
 };
+
+use super::{BlockDetails, BlockType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockSideband {

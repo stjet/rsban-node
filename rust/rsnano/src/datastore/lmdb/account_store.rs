@@ -1,7 +1,7 @@
 use crate::{
+    core::{Account, AccountInfo},
     datastore::{parallel_traversal, AccountIterator, AccountStore, DbIterator},
     utils::{Deserialize, StreamAdapter},
-    Account, AccountInfo,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use std::sync::Arc;
@@ -33,12 +33,7 @@ impl LmdbAccountStore {
 impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
     for LmdbAccountStore
 {
-    fn put(
-        &self,
-        transaction: &mut LmdbWriteTransaction,
-        account: &crate::Account,
-        info: &crate::AccountInfo,
-    ) {
+    fn put(&self, transaction: &mut LmdbWriteTransaction, account: &Account, info: &AccountInfo) {
         transaction
             .rw_txn_mut()
             .put(
@@ -130,7 +125,10 @@ mod tests {
     use std::sync::Mutex;
 
     use super::*;
-    use crate::{core::BlockHash, datastore::lmdb::TestLmdbEnv, Amount};
+    use crate::{
+        core::{Amount, BlockHash},
+        datastore::lmdb::TestLmdbEnv,
+    };
 
     struct AccountStoreTestContext {
         pub store: LmdbAccountStore,

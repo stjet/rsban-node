@@ -1,5 +1,5 @@
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
-use crate::{core::BlockHash, NoValue};
+use crate::core::{BlockHash, NoValue};
 
 pub type PrunedIterator<I> = DbIterator<BlockHash, NoValue, I>;
 

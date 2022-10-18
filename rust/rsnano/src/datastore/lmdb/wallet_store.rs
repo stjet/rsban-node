@@ -9,12 +9,10 @@ use std::{
 use lmdb::{Database, DatabaseFlags, Transaction, WriteFlags};
 
 use crate::{
-    core::{PublicKey, RawKey},
+    core::{deterministic_key, Account, PublicKey, RawKey},
     datastore::{DbIterator, Fans, WalletValue},
-    deterministic_key,
     utils::{Deserialize, StreamAdapter},
     wallet::KeyDerivationFunction,
-    Account,
 };
 
 use super::{LmdbIteratorImpl, LmdbTransaction, LmdbWriteTransaction};

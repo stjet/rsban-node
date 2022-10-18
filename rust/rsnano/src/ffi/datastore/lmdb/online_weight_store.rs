@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
+    core::Amount,
     datastore::{lmdb::LmdbOnlineWeightStore, OnlineWeightStore},
-    Amount,
 };
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};

@@ -89,3 +89,47 @@ pub fn validate_message_batch(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ed25519_signing() -> anyhow::Result<()> {
+        let secret_key = ed25519_dalek_blake2b::SecretKey::from_bytes(&[0u8; 32]).unwrap();
+        let public_key = ed25519_dalek_blake2b::PublicKey::from(&secret_key);
+        let message = [0u8; 32];
+        let expanded_prv_key = ed25519_dalek_blake2b::ExpandedSecretKey::from(&secret_key);
+        let signature = expanded_prv_key.sign(&message, &public_key);
+        public_key.verify_strict(&message, &signature).unwrap();
+
+        let mut sig_bytes = signature.to_bytes();
+        sig_bytes[32] ^= 0x1;
+        let signature = ed25519_dalek_blake2b::Signature::from_bytes(&sig_bytes).unwrap();
+        assert!(public_key.verify_strict(&message, &signature).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn sign_message_test() -> anyhow::Result<()> {
+        let keypair = KeyPair::new();
+        let data = [0u8; 32];
+        let signature = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+        validate_message(&keypair.public_key(), &data, &signature)?;
+        Ok(())
+    }
+
+    #[test]
+    fn signing_same_message_twice_produces_equal_signatures() -> anyhow::Result<()> {
+        // the C++ implementation adds random bytes and a padding when signing for extra security and for making side channel attacks more difficult.
+        // Currently the Rust impl does not do that.
+        // In C++ signing the same message twice will produce different signatures. In Rust we get the same signature.
+        let keypair = KeyPair::new();
+        let data = [1, 2, 3];
+        let signature_a = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+        let signature_b = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+        assert_eq!(signature_a, signature_b);
+        Ok(())
+    }
+}

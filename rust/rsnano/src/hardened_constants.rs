@@ -1,6 +1,7 @@
-use crate::Account;
 use once_cell::sync::Lazy;
 use rand::Rng;
+
+use crate::core::Account;
 
 pub(crate) struct HardenedConstants {
     pub not_an_account: Account,

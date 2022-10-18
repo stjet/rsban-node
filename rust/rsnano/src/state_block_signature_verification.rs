@@ -6,10 +6,9 @@ use std::{
 };
 
 use crate::{
-    core::{PublicKey, Signature},
+    core::{Account, BlockEnum, Epochs, PublicKey, Signature},
     logger_mt::NullLogger,
-    Account, BlockEnum, BlockHash, Epochs, Logger, SignatureCheckSet, SignatureChecker,
-    SignatureVerification,
+    BlockHash, Logger, SignatureCheckSet, SignatureChecker, SignatureVerification,
 };
 
 #[derive(Default)]
@@ -302,7 +301,7 @@ impl StateBlockSignatureVerificationThread {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{core::KeyPair, StateBlockBuilder};
+    use crate::core::{BlockEnum, KeyPair, StateBlockBuilder};
 
     #[test]
     fn verify_one_block() {

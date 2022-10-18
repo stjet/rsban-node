@@ -1,8 +1,8 @@
 use crate::{
-    messages::MessageType,
+    core::{messages::MessageType, BlockType},
     utils::Stream,
     voting::{Vote, VoteUniquer},
-    BlockType, NetworkConstants,
+    NetworkConstants,
 };
 use anyhow::Result;
 use std::{

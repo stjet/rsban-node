@@ -8,7 +8,7 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
-use crate::messages::MessageType;
+use crate::core::messages::MessageType;
 
 use super::histogram::StatHistogram;
 use super::{FileWriter, StatConfig, StatLogSink};

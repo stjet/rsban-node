@@ -1,10 +1,9 @@
 use std::{ffi::c_void, sync::Arc};
 
 use crate::{
-    core::BlockHash,
+    core::{Account, BlockHash},
     datastore::{lmdb::LmdbFrontierStore, FrontierStore},
     ffi::{copy_account_bytes, VoidPointerCallback},
-    Account,
 };
 
 use super::{

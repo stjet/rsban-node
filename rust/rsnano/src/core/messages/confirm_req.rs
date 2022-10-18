@@ -1,8 +1,7 @@
 use crate::{
-    core::Root,
-    deserialize_block, serialized_block_size,
+    core::{deserialize_block, serialized_block_size, BlockEnum, BlockType, BlockUniquer, Root},
     utils::{Deserialize, Serialize, Stream},
-    BlockEnum, BlockHash, BlockType, BlockUniquer, NetworkConstants,
+    BlockHash, NetworkConstants,
 };
 use anyhow::Result;
 use std::{
@@ -205,7 +204,7 @@ impl Debug for ConfirmReq {
 
 #[cfg(test)]
 mod tests {
-    use crate::{utils::MemoryStream, StateBlockBuilder};
+    use crate::{core::StateBlockBuilder, utils::MemoryStream};
 
     use super::*;
 

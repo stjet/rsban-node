@@ -5,11 +5,12 @@ use std::{
 };
 
 use crate::{
+    core::messages::ConfirmAck,
+    core::messages::Message,
     ffi::{
         voting::{VoteHandle, VoteUniquerHandle},
         FfiStream, NetworkConstantsDto,
     },
-    messages::{ConfirmAck, Message},
     voting::Vote,
     NetworkConstants,
 };

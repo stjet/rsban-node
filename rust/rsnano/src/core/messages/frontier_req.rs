@@ -1,6 +1,7 @@
 use crate::{
+    core::Account,
     utils::{Deserialize, Serialize, Stream},
-    Account, NetworkConstants,
+    NetworkConstants,
 };
 use anyhow::Result;
 use std::{any::Any, mem::size_of};

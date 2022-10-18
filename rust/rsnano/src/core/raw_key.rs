@@ -109,3 +109,54 @@ impl Deserialize for RawKey {
         Ok(RawKey::from_bytes(buffer))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::core::{KeyPair, PublicKey};
+
+    use super::*;
+
+    #[test]
+    fn encrypt() {
+        let clear_text = RawKey::from(1);
+        let key = RawKey::from(2);
+        let iv: u128 = 123;
+        let encrypted = RawKey::encrypt(&clear_text, &key, &iv.to_be_bytes());
+        let expected =
+            RawKey::decode_hex("3ED412A6F9840EA148EAEE236AFD10983D8E11326B07DFB33C5E1C47000AF3FD")
+                .unwrap();
+        assert_eq!(encrypted, expected)
+    }
+
+    #[test]
+    fn encrypt_and_decrypt() {
+        let clear_text = RawKey::from(1);
+        let key = RawKey::from(2);
+        let iv: u128 = 123;
+        let encrypted = clear_text.encrypt(&key, &iv.to_be_bytes());
+        let decrypted = encrypted.decrypt(&key, &iv.to_be_bytes());
+        assert_eq!(decrypted, clear_text)
+    }
+
+    #[test]
+    fn key_encryption() {
+        let keypair = KeyPair::new();
+        let secret_key = RawKey::new();
+        let iv = keypair.public_key().initialization_vector();
+        let encrypted = keypair.private_key().encrypt(&secret_key, &iv);
+        let decrypted = encrypted.decrypt(&secret_key, &iv);
+        assert_eq!(keypair.private_key(), decrypted);
+        let decrypted_pub = PublicKey::try_from(&decrypted).unwrap();
+        assert_eq!(keypair.public_key(), decrypted_pub);
+    }
+
+    #[test]
+    fn encrypt_produces_same_result_every_time() {
+        let secret = RawKey::new();
+        let number = RawKey::from(1);
+        let iv = [1; 16];
+        let encrypted1 = number.encrypt(&secret, &iv);
+        let encrypted2 = number.encrypt(&secret, &iv);
+        assert_eq!(encrypted1, encrypted2);
+    }
+}

@@ -1,10 +1,8 @@
 use num::FromPrimitive;
 use std::{ffi::c_void, ops::Deref};
 
-use crate::{
-    messages::{MessageHeader, MessageType},
-    NetworkConstants, Networks,
-};
+use crate::core::messages::{MessageHeader, MessageType};
+use crate::{NetworkConstants, Networks};
 
 use crate::ffi::{FfiStream, StringDto};
 #[no_mangle]

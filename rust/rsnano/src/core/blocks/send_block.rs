@@ -1,10 +1,13 @@
 use crate::{
-    core::{sign_message, BlockHash, BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature},
-    from_string_hex, to_string_hex,
+    core::{
+        sign_message, to_hex_string, u64_from_hex_str, Account, Amount, BlockHash,
+        BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature,
+    },
     utils::{PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
-    Account, Amount, Block, BlockSideband, BlockType, LazyBlockHash,
 };
 use anyhow::Result;
+
+use super::{Block, BlockSideband, BlockType, BlockVisitor, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct SendHashables {
@@ -152,7 +155,7 @@ impl SendBlock {
         let destination = Account::decode_account(reader.get_string("destination")?)?;
         let balance = Amount::decode_dec(reader.get_string("balance")?)?;
         let signature = Signature::decode_hex(reader.get_string("signature")?)?;
-        let work = from_string_hex(reader.get_string("work")?)?;
+        let work = u64_from_hex_str(reader.get_string("work")?)?;
         Ok(SendBlock {
             hashables: SendHashables {
                 previous,
@@ -233,7 +236,7 @@ impl Block for SendBlock {
         writer.put_string("previous", &self.hashables.previous.encode_hex())?;
         writer.put_string("destination", &self.hashables.destination.encode_account())?;
         writer.put_string("balance", &self.hashables.balance.to_string_dec())?;
-        writer.put_string("work", &to_string_hex(self.work))?;
+        writer.put_string("work", &to_hex_string(self.work))?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         Ok(())
     }
@@ -242,7 +245,7 @@ impl Block for SendBlock {
         self.previous().into()
     }
 
-    fn visit(&self, visitor: &mut dyn crate::BlockVisitor) {
+    fn visit(&self, visitor: &mut dyn BlockVisitor) {
         visitor.send_block(self);
     }
 }

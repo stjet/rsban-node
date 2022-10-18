@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Condvar, Mutex},
 };
 
-use crate::{messages::Message, Account};
+use crate::core::{messages::Message, Account};
 
 use super::SocketImpl;
 

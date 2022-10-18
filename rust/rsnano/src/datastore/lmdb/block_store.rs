@@ -2,11 +2,13 @@ use super::{
     LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
 };
 use crate::{
-    core::BlockHash,
+    core::{
+        deserialize_block_enum, Account, Amount, Block, BlockEnum, BlockHash, BlockSideband,
+        BlockType, BlockVisitor, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock,
+        StateBlock,
+    },
     datastore::{block_store::BlockIterator, parallel_traversal, BlockStore, DbIterator},
-    deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
-    Account, Amount, Block, BlockEnum, BlockSideband, BlockType, BlockVisitor, Epoch,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
@@ -205,7 +207,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         }
     }
 
-    fn version(&self, txn: &LmdbTransaction, hash: &BlockHash) -> crate::Epoch {
+    fn version(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Epoch {
         match self.get(txn, hash) {
             Some(block) => {
                 if let BlockEnum::State(b) = block {
@@ -280,23 +282,23 @@ impl<'a, 'b> BlockPredecessorMdbSet<'a, 'b> {
 }
 
 impl<'a, 'b> BlockVisitor for BlockPredecessorMdbSet<'a, 'b> {
-    fn send_block(&mut self, block: &crate::SendBlock) {
+    fn send_block(&mut self, block: &SendBlock) {
         self.fill_value(block);
     }
 
-    fn receive_block(&mut self, block: &crate::ReceiveBlock) {
+    fn receive_block(&mut self, block: &ReceiveBlock) {
         self.fill_value(block);
     }
 
-    fn open_block(&mut self, _block: &crate::OpenBlock) {
+    fn open_block(&mut self, _block: &OpenBlock) {
         // Open blocks don't have a predecessor
     }
 
-    fn change_block(&mut self, block: &crate::ChangeBlock) {
+    fn change_block(&mut self, block: &ChangeBlock) {
         self.fill_value(block);
     }
 
-    fn state_block(&mut self, block: &crate::StateBlock) {
+    fn state_block(&mut self, block: &StateBlock) {
         if !block.previous().is_zero() {
             self.fill_value(block);
         }
@@ -310,7 +312,7 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{datastore::lmdb::TestLmdbEnv, BlockBuilder};
+    use crate::{core::BlockBuilder, datastore::lmdb::TestLmdbEnv};
 
     #[test]
     fn empty() -> anyhow::Result<()> {

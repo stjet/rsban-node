@@ -1,7 +1,6 @@
 use crate::{
-    core::RawKey,
+    core::{Fan, RawKey},
     utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
-    Fan,
 };
 
 pub struct Fans {

@@ -9,12 +9,15 @@ use std::{
 };
 
 use crate::{
-    core::{sign_message, KeyPair},
-    logger_mt::Logger,
-    messages::{
-        BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
-        Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
+    core::{
+        messages::{
+            BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
+            Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
+        },
+        BlockUniquer,
     },
+    core::{sign_message, Account, KeyPair},
+    logger_mt::Logger,
     stats::{DetailType, Direction, Stat, StatType},
     transport::{
         MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketImpl, SocketType,
@@ -22,7 +25,7 @@ use crate::{
     },
     utils::{IoContext, MemoryStream, ThreadPool},
     voting::VoteUniquer,
-    Account, BlockUniquer, NetworkConstants, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
+    NetworkConstants, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
 };
 
 use super::NetworkFilter;

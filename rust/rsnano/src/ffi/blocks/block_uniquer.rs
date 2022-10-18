@@ -1,5 +1,6 @@
+use crate::core::BlockUniquer;
+
 use super::BlockHandle;
-use crate::BlockUniquer;
 use std::{ops::Deref, sync::Arc};
 
 pub struct BlockUniquerHandle(Arc<BlockUniquer>);

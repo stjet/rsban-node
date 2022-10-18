@@ -23,9 +23,9 @@ pub use send_block::*;
 pub use state_block::*;
 
 use crate::{
-    core::{BlockHash, BlockHashBuilder, Link, Root, Signature},
+    core::{Account, BlockHash, BlockHashBuilder, Link, Root, Signature},
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
-    Account, FullHash, Uniquer, WorkVersion,
+    FullHash, Uniquer, WorkVersion,
 };
 
 #[repr(u8)]

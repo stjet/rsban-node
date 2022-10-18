@@ -22,10 +22,9 @@ pub use send_block::*;
 pub use state_block::*;
 
 use super::{property_tree::FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
-use crate::{
-    blocks::{deserialize_block_json, serialized_block_size, BlockEnum, BlockSideband},
-    core::Signature,
-    deserialize_block, BlockType,
+use crate::core::{
+    deserialize_block, deserialize_block_json, serialized_block_size, BlockEnum, BlockSideband,
+    BlockType, Signature,
 };
 use num::FromPrimitive;
 

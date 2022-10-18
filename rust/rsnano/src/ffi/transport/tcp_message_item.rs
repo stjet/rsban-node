@@ -1,9 +1,9 @@
 use std::{net::SocketAddr, ops::Deref};
 
 use crate::{
+    core::Account,
     ffi::{copy_account_bytes, messages::MessageHandle},
     transport::TcpMessageItem,
-    Account,
 };
 
 use super::{EndpointDto, SocketHandle};

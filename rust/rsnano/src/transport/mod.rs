@@ -32,7 +32,7 @@ pub use tcp_server::{
 };
 use token_bucket::TokenBucket;
 
-use crate::Account;
+use crate::core::Account;
 
 pub trait Channel {
     fn is_temporary(&self) -> bool;

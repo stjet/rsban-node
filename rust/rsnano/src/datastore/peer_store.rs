@@ -1,6 +1,5 @@
-use crate::{EndpointKey, NoValue};
-
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
+use crate::core::{EndpointKey, NoValue};
 
 pub type PeerIterator<I> = DbIterator<EndpointKey, NoValue, I>;
 

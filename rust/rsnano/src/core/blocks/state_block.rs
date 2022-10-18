@@ -1,11 +1,14 @@
 use crate::{
-    core::{sign_message, BlockHash, BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature},
-    from_string_hex, to_string_hex,
+    core::{
+        sign_message, to_hex_string, u64_from_hex_str, Account, Amount, BlockHash,
+        BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature,
+    },
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
-    Account, Amount, Block, BlockSideband, BlockType, LazyBlockHash,
 };
 
 use anyhow::Result;
+
+use super::{Block, BlockSideband, BlockType, BlockVisitor, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct StateHashables {
@@ -172,7 +175,7 @@ impl StateBlock {
         let representative = Account::decode_account(reader.get_string("representative")?)?;
         let balance = Amount::decode_dec(reader.get_string("balance")?)?;
         let link = Link::decode_hex(reader.get_string("link")?)?;
-        let work = from_string_hex(reader.get_string("work")?)?;
+        let work = u64_from_hex_str(reader.get_string("work")?)?;
         let signature = Signature::decode_hex(reader.get_string("signature")?)?;
         Ok(StateBlock {
             work,
@@ -271,7 +274,7 @@ impl Block for StateBlock {
             &self.hashables.link.to_account().encode_account(),
         )?;
         writer.put_string("signature", &self.signature.encode_hex())?;
-        writer.put_string("work", &to_string_hex(self.work))?;
+        writer.put_string("work", &to_hex_string(self.work))?;
         Ok(())
     }
 
@@ -283,7 +286,7 @@ impl Block for StateBlock {
         }
     }
 
-    fn visit(&self, visitor: &mut dyn crate::BlockVisitor) {
+    fn visit(&self, visitor: &mut dyn BlockVisitor) {
         visitor.state_block(self)
     }
 }
@@ -291,7 +294,7 @@ impl Block for StateBlock {
 #[cfg(test)]
 mod tests {
     use crate::{
-        blocks::{BlockBuilder, StateBlockBuilder},
+        core::{BlockBuilder, StateBlockBuilder},
         utils::{MemoryStream, TestPropertyTree},
     };
 

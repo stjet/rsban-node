@@ -1,11 +1,14 @@
 use std::mem::size_of;
 
 use crate::{
+    core::{Account, Amount},
     utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
-    Account, Amount, BlockHash, Epoch,
+    BlockHash,
 };
 use anyhow::Result;
 use num_traits::FromPrimitive;
+
+use super::Epoch;
 
 /// Latest information about an account
 #[derive(PartialEq, Eq, Clone, Default, Debug)]

@@ -1,11 +1,11 @@
 use std::net::Ipv6Addr;
 
 use crate::{
+    core::{Account, Amount, GXRB_RATIO, XRB_RATIO},
     get_env_or_default_string, is_sanitizer_build,
     stats::StatConfig,
     utils::{get_cpu_count, TomlWriter},
-    Account, Amount, DiagnosticsConfig, IpcConfig, LmdbConfig, Logging, NetworkParams, Networks,
-    WebsocketConfig, GXRB_RATIO, XRB_RATIO,
+    DiagnosticsConfig, IpcConfig, LmdbConfig, Logging, NetworkParams, Networks, WebsocketConfig,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;

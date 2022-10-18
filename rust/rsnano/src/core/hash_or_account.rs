@@ -1,5 +1,6 @@
+use super::Account;
 use super::{write_hex_bytes, BlockHash};
-use crate::{utils::Stream, Account};
+use crate::utils::Stream;
 use std::fmt::Display;
 use std::fmt::Write;
 

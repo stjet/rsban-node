@@ -1,4 +1,8 @@
-use crate::{deserialize_block, utils::Stream, BlockEnum, BlockUniquer, NetworkConstants};
+use crate::{
+    core::{deserialize_block, BlockEnum, BlockUniquer},
+    utils::Stream,
+    NetworkConstants,
+};
 use anyhow::Result;
 use std::{
     any::Any,
@@ -131,7 +135,7 @@ impl Debug for Publish {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{utils::MemoryStream, BlockBuilder, DEV_NETWORK_PARAMS};
+    use crate::{core::BlockBuilder, utils::MemoryStream, DEV_NETWORK_PARAMS};
 
     #[test]
     fn serialize() -> Result<()> {

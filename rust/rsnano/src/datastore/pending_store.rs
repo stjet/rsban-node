@@ -1,5 +1,5 @@
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
-use crate::{Account, PendingInfo, PendingKey};
+use crate::core::{Account, PendingInfo, PendingKey};
 
 pub type PendingIterator<I> = DbIterator<PendingKey, PendingInfo, I>;
 

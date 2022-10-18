@@ -1,7 +1,7 @@
 use super::MessageHeaderHandle;
 use crate::{
+    core::messages::{Message, MessageHeader},
     ffi::NetworkConstantsDto,
-    messages::{Message, MessageHeader},
     NetworkConstants,
 };
 

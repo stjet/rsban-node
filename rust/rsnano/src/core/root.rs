@@ -1,5 +1,5 @@
-use super::{BlockHash, HashOrAccount};
-use crate::{utils::Stream, Account};
+use super::{Account, BlockHash, HashOrAccount};
+use crate::utils::Stream;
 use std::{fmt::Display, ops::Deref};
 
 #[derive(Clone, PartialEq, Eq, Default, Debug, Copy, Hash)]

@@ -49,10 +49,12 @@ pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
 use crate::{
-    core::{BlockHash, HashOrAccount, PublicKey, QualifiedRoot, RawKey, Root, Signature},
+    core::{
+        Account, Amount, BlockHash, HashOrAccount, PublicKey, QualifiedRoot, RawKey, Root,
+        Signature,
+    },
     utils::ErrorCode,
-    Account, Amount, MemoryIntensiveInstrumentationCallback, IS_SANITIZER_BUILD,
-    MEMORY_INTENSIVE_INSTRUMENTATION,
+    MemoryIntensiveInstrumentationCallback, IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION,
 };
 pub use transport::ChannelTcpObserverWeakPtr;
 

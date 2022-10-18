@@ -3,8 +3,8 @@ use std::sync::Arc;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 
 use crate::{
+    core::Amount,
     datastore::{online_weight_store::OnlineWeightIterator, OnlineWeightStore},
-    Amount,
 };
 
 use super::{

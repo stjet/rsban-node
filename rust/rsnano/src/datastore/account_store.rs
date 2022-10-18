@@ -1,5 +1,5 @@
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
-use crate::{Account, AccountInfo};
+use crate::core::{Account, AccountInfo};
 
 pub type AccountIterator<I> = DbIterator<Account, AccountInfo, I>;
 

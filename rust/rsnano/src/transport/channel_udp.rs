@@ -3,7 +3,7 @@ use std::sync::{
     Mutex,
 };
 
-use crate::Account;
+use crate::core::Account;
 
 use super::Channel;
 

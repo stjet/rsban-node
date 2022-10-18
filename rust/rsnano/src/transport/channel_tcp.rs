@@ -9,10 +9,9 @@ use std::{
 
 use super::{BandwidthLimiter, BufferDropPolicy, Channel, Socket, SocketImpl};
 use crate::{
+    core::{messages::Message, Account},
     ffi::ChannelTcpObserverWeakPtr,
-    messages::Message,
     utils::{ErrorCode, IoContext},
-    Account,
 };
 
 pub trait ChannelTcpObserver {

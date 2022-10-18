@@ -1,15 +1,17 @@
+use crate::core::messages::Message;
 use std::{
     ffi::c_void,
     time::{Duration, SystemTime},
 };
 
 use crate::{
-    core::{BlockHash, KeyPair, Signature},
+    core::{
+        messages::{TelemetryAck, TelemetryData},
+        Account, BlockHash, KeyPair, Signature,
+    },
     ffi::{
         copy_account_bytes, copy_hash_bytes, copy_signature_bytes, FfiStream, NetworkConstantsDto,
     },
-    messages::{Message, TelemetryAck, TelemetryData},
-    Account,
 };
 
 use super::{

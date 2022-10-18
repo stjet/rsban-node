@@ -1,9 +1,10 @@
 use std::{ffi::c_void, sync::Arc};
 
 use crate::{
+    core::Account,
     datastore::{lmdb::LmdbConfirmationHeightStore, ConfirmationHeightStore},
     ffi::{ConfirmationHeightInfoDto, VoidPointerCallback},
-    Account, ConfirmationHeightInfo,
+    ConfirmationHeightInfo,
 };
 
 use super::{

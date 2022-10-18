@@ -4,11 +4,13 @@ use anyhow::Result;
 use once_cell::sync::Lazy;
 
 use crate::{
-    core::{KeyPair, Link},
-    deserialize_block_json, get_env_or_default_string,
+    core::{
+        deserialize_block_json, Account, Amount, BlockDetails, BlockEnum, BlockSideband, Epoch,
+        Epochs, KeyPair, Link,
+    },
+    get_env_or_default_string,
     utils::{seconds_since_epoch, SerdePropertyTree},
-    Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, Networks,
-    WorkThresholds,
+    BlockHash, Networks, WorkThresholds,
 };
 
 static DEV_PRIVATE_KEY_DATA: &str =
@@ -89,7 +91,7 @@ fn parse_block_from_genesis_data(genesis_data: &str) -> Result<BlockEnum> {
 
 #[cfg(test)]
 mod tests {
-    use crate::BlockType;
+    use crate::core::BlockType;
 
     use super::*;
 

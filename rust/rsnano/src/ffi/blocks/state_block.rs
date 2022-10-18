@@ -1,9 +1,10 @@
 use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
-use crate::core::{BlockHash, Link, PublicKey, RawKey, Signature};
-use crate::{Account, Amount, BlockEnum, LazyBlockHash, StateBlock, StateHashables};
-
+use crate::core::{
+    Account, Amount, BlockEnum, BlockHash, LazyBlockHash, Link, PublicKey, RawKey, Signature,
+    StateBlock, StateHashables,
+};
 use crate::ffi::{FfiPropertyTreeReader, FfiStream};
 
 use super::BlockHandle;

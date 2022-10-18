@@ -3,8 +3,9 @@ use std::{ffi::c_void, ops::Deref};
 use num::FromPrimitive;
 
 use crate::{
+    core::Account,
     utils::{Deserialize, Serialize},
-    Account, UncheckedInfo,
+    UncheckedInfo,
 };
 
 use super::{BlockHandle, FfiStream};

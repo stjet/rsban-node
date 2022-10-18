@@ -1,10 +1,9 @@
 use std::ffi::c_void;
 
+use crate::core::messages::Message;
 use crate::{
-    core::Signature,
+    core::{messages::NodeIdHandshake, Account, Signature},
     ffi::{copy_account_bytes, copy_signature_bytes, FfiStream, NetworkConstantsDto},
-    messages::{Message, NodeIdHandshake},
-    Account,
 };
 
 use super::{

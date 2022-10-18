@@ -1,5 +1,5 @@
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
-use crate::{core::BlockHash, Account};
+use crate::core::{Account, BlockHash};
 
 pub type FrontierIterator<I> = DbIterator<BlockHash, Account, I>;
 

@@ -1,10 +1,13 @@
 use crate::{
-    core::{sign_message, BlockHash, BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature},
-    from_string_hex, to_string_hex,
+    core::{
+        sign_message, to_hex_string, u64_from_hex_str, Account, BlockHash, BlockHashBuilder, Link,
+        PublicKey, RawKey, Root, Signature,
+    },
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
-    Account, Block, BlockSideband, BlockType, LazyBlockHash,
 };
 use anyhow::Result;
+
+use super::{Block, BlockSideband, BlockType, BlockVisitor, LazyBlockHash};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ChangeHashables {
@@ -89,7 +92,7 @@ impl ChangeBlock {
     pub fn deserialize_json(reader: &impl PropertyTreeReader) -> Result<Self> {
         let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
         let representative = Account::decode_account(reader.get_string("representative")?)?;
-        let work = from_string_hex(reader.get_string("work")?)?;
+        let work = u64_from_hex_str(reader.get_string("work")?)?;
         let signature = Signature::decode_hex(reader.get_string("signature")?)?;
         Ok(Self {
             work,
@@ -174,7 +177,7 @@ impl Block for ChangeBlock {
             "representative",
             &self.hashables.representative.encode_account(),
         )?;
-        writer.put_string("work", &to_string_hex(self.work))?;
+        writer.put_string("work", &to_hex_string(self.work))?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         Ok(())
     }
@@ -183,7 +186,7 @@ impl Block for ChangeBlock {
         self.previous().into()
     }
 
-    fn visit(&self, visitor: &mut dyn crate::BlockVisitor) {
+    fn visit(&self, visitor: &mut dyn BlockVisitor) {
         visitor.change_block(self);
     }
 }

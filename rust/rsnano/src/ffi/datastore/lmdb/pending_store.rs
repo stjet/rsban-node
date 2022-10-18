@@ -2,10 +2,9 @@ use num::FromPrimitive;
 use std::{ffi::c_void, sync::Arc};
 
 use crate::{
-    core::BlockHash,
+    core::{Account, Amount, BlockHash, Epoch, PendingInfo, PendingKey},
     datastore::{lmdb::LmdbPendingStore, PendingStore},
     ffi::VoidPointerCallback,
-    Account, Amount, Epoch, PendingInfo, PendingKey,
 };
 
 use super::{

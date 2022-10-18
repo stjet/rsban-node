@@ -1,8 +1,9 @@
 use std::{ffi::c_void, net::SocketAddr};
 
+use crate::core::messages::Message;
 use crate::{
+    core::messages::Keepalive,
     ffi::{transport::EndpointDto, FfiStream, NetworkConstantsDto},
-    messages::{Keepalive, Message},
 };
 
 use super::{

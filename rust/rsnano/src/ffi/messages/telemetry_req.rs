@@ -5,8 +5,9 @@ use super::{
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use crate::{
+    core::messages::Message,
+    core::messages::TelemetryReq,
     ffi::{FfiStream, NetworkConstantsDto},
-    messages::{Message, TelemetryReq},
 };
 
 #[no_mangle]

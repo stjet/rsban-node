@@ -2,8 +2,8 @@ use lmdb::{Database, DatabaseFlags, WriteFlags};
 use std::sync::Arc;
 
 use crate::{
+    core::EndpointKey,
     datastore::{peer_store::PeerIterator, PeerStore},
-    EndpointKey,
 };
 
 use super::{
@@ -68,7 +68,7 @@ impl<'a> PeerStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIt
 
 #[cfg(test)]
 mod tests {
-    use crate::{datastore::lmdb::TestLmdbEnv, NoValue};
+    use crate::{core::NoValue, datastore::lmdb::TestLmdbEnv};
 
     use super::*;
 

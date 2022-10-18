@@ -1,8 +1,8 @@
 use std::{slice, sync::Arc};
 
 use crate::{
+    core::EndpointKey,
     datastore::{lmdb::LmdbPeerStore, PeerStore},
-    EndpointKey,
 };
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};

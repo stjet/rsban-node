@@ -1,6 +1,5 @@
-use crate::{
-    core::{BlockHash, KeyPair},
-    Account, Amount, Block, BlockDetails, BlockSideband, Epoch, OpenBlock,
+use crate::core::{
+    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, OpenBlock,
 };
 
 #[derive(Default)]
@@ -39,7 +38,7 @@ impl OpenBlockBuilder {
         )?;
 
         let details = BlockDetails {
-            epoch: crate::Epoch::Epoch0,
+            epoch: Epoch::Epoch0,
             is_send: false,
             is_receive: true,
             is_epoch: false,
@@ -61,7 +60,7 @@ impl OpenBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{core::Signature, Block, BlockBuilder};
+    use crate::core::{BlockBuilder, Signature};
 
     #[test]
     fn create_open_block() {

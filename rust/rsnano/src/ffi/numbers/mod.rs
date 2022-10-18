@@ -7,13 +7,9 @@ use std::{ffi::CStr, net::Ipv6Addr, os::raw::c_char, slice};
 pub use account_info::AccountInfoHandle;
 use rand::{thread_rng, Rng};
 
-use crate::{
-    core::{
-        sign_message, validate_message, validate_message_batch, KeyPair, PublicKey, RawKey,
-        Signature,
-    },
-    deterministic_key, ip_address_hash_raw,
-    numbers::{Account, Difficulty},
+use crate::core::{
+    deterministic_key, ip_address_hash_raw, sign_message, validate_message, validate_message_batch,
+    Account, Difficulty, KeyPair, PublicKey, RawKey, Signature,
 };
 
 use super::copy_raw_key_bytes;

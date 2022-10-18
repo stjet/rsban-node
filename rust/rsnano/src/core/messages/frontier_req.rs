@@ -1,7 +1,6 @@
 use crate::{
     core::Account,
-    utils::{Deserialize, Serialize, Stream},
-    NetworkConstants,
+    utils::{Deserialize, Serialize, Stream}, config::NetworkConstants,
 };
 use anyhow::Result;
 use std::{any::Any, mem::size_of};
@@ -105,7 +104,7 @@ impl Message for FrontierReq {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{utils::MemoryStream, NetworkConstants};
+    use crate::utils::MemoryStream;
 
     #[test]
     fn serialize() -> Result<()> {

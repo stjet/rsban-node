@@ -1,8 +1,7 @@
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
 use crate::{
     core::{Account, Amount},
-    utils::{Deserialize, Serialize, Stream},
-    NetworkConstants,
+    utils::{Deserialize, Serialize, Stream}, config::NetworkConstants,
 };
 use anyhow::Result;
 use num_traits::FromPrimitive;

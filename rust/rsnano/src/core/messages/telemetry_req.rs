@@ -1,5 +1,5 @@
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
-use crate::{utils::Stream, NetworkConstants};
+use crate::{utils::Stream, config::NetworkConstants};
 use anyhow::Result;
 use std::any::Any;
 

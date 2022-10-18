@@ -1,7 +1,6 @@
 use crate::{
     ffi::{fill_network_constants_dto, NetworkConstantsDto},
-    IpcConfig, IpcConfigDomainSocket, IpcConfigFlatbuffers, IpcConfigTcpSocket, IpcConfigTransport,
-    NetworkConstants,
+    IpcConfig, IpcConfigDomainSocket, IpcConfigFlatbuffers, IpcConfigTcpSocket, IpcConfigTransport, config::NetworkConstants,
 };
 use std::{
     convert::{TryFrom, TryInto},

@@ -3,10 +3,9 @@ use std::{sync::RwLock, time::Duration};
 
 use crate::{
     core::{
-        sign_message, validate_message, Account, BlockHash, BlockHashBuilder, RawKey, Signature,
+        sign_message, validate_message, Account, BlockHash, BlockHashBuilder, RawKey, Signature, FullHash,
     },
     utils::{Deserialize, PropertyTreeWriter, Serialize, Stream},
-    FullHash,
 };
 
 #[derive(Clone)]

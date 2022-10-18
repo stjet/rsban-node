@@ -1,8 +1,7 @@
 use super::MessageHeaderHandle;
 use crate::{
     core::messages::{Message, MessageHeader},
-    ffi::NetworkConstantsDto,
-    NetworkConstants,
+    ffi::NetworkConstantsDto, config::NetworkConstants,
 };
 
 use std::ops::Deref;

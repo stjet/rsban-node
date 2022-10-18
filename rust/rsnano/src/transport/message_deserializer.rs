@@ -11,8 +11,7 @@ use crate::{
     },
     transport::{Socket, SocketImpl},
     utils::{ErrorCode, Stream, StreamAdapter},
-    voting::VoteUniquer,
-    NetworkConstants,
+    voting::VoteUniquer, config::NetworkConstants,
 };
 
 use super::NetworkFilter;

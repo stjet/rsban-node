@@ -8,8 +8,7 @@ use std::{
 
 use crate::{
     datastore::lmdb::{EnvOptions, LmdbEnv},
-    ffi::{FfiPropertyTreeWriter, LmdbConfigDto, LoggerHandle, LoggerMT, TxnTrackingConfigDto},
-    DiagnosticsConfig, LmdbConfig,
+    ffi::{FfiPropertyTreeWriter, LmdbConfigDto, LoggerHandle, LoggerMT, TxnTrackingConfigDto}, config::{LmdbConfig, DiagnosticsConfig},
 };
 
 use super::{TransactionHandle, TransactionType};

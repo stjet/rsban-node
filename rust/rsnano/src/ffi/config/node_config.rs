@@ -11,7 +11,7 @@ use crate::{
         fill_ipc_config_dto, fill_stat_config_dto, FfiToml, IpcConfigDto, NetworkParamsDto,
         StatConfigDto, WebsocketConfigDto,
     },
-    Logging, NetworkParams, NodeConfig, Peer,
+    NetworkParams, config::{Logging, NodeConfig, Peer}, 
 };
 
 use super::{

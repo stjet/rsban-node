@@ -1,5 +1,5 @@
 use super::NetworkConstantsDto;
-use crate::{ffi::toml::FfiToml, NetworkConstants, RpcConfig, RpcLoggingConfig, RpcProcessConfig};
+use crate::{ffi::toml::FfiToml, config::{NetworkConstants, RpcConfig, RpcLoggingConfig, RpcProcessConfig}, };
 use std::{convert::TryFrom, ffi::c_void};
 
 #[repr(C)]

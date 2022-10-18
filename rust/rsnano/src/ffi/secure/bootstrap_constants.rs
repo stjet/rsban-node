@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::{ffi::config::NetworkConstantsDto, BootstrapConstants, NetworkConstants};
+use crate::{ffi::config::NetworkConstantsDto, BootstrapConstants, config::NetworkConstants, };
 
 #[repr(C)]
 pub struct BootstrapConstantsDto {

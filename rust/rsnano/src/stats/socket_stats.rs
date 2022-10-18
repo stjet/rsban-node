@@ -1,9 +1,8 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use crate::{
-    logger_mt::Logger,
     transport::{EndpointType, SocketObserver},
-    utils::ErrorCode,
+    utils::{ErrorCode, Logger},
 };
 
 use super::{DetailType, Direction, Stat, StatType};

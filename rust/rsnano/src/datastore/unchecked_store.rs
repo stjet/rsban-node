@@ -1,6 +1,5 @@
 use crate::{
-    core::HashOrAccount,
-    unchecked_info::{UncheckedInfo, UncheckedKey},
+    core::{HashOrAccount, UncheckedKey, UncheckedInfo},
 };
 
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};

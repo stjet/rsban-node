@@ -1,19 +1,5 @@
-use crate::{
-    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
-    BlockHash,
-};
-
-/**
- * Tag for block signature verification result
- */
-#[repr(u8)]
-#[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
-pub enum SignatureVerification {
-    Unknown = 0,
-    Invalid = 1,
-    Valid = 2,
-    ValidEpoch = 3, // Valid for epoch blocks
-}
+use crate::utils::{MutStreamAdapter, Serialize, Stream, Deserialize, StreamExt};
+use super::BlockHash;
 
 #[derive(Default, PartialEq, Eq, Debug)]
 pub struct ConfirmationHeightInfo {

@@ -1,8 +1,7 @@
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
 use crate::{
     core::{Account, Signature},
-    utils::{Deserialize, Serialize, Stream},
-    NetworkConstants,
+    utils::{Deserialize, Serialize, Stream}, config::NetworkConstants,
 };
 use anyhow::Result;
 use std::any::Any;

@@ -364,8 +364,7 @@ mod tests {
     mod signature_checker {
         use super::*;
         use crate::{
-            core::{Amount, Block, KeyPair, Link, StateBlock},
-            BlockHash,
+            core::{Amount, Block, KeyPair, Link, StateBlock, BlockHash},
         };
 
         // original test: signature_checker.empty

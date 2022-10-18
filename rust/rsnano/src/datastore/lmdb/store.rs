@@ -10,9 +10,7 @@ use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 
 use crate::{
     datastore::{Store, VersionStore, STORE_VERSION_MINIMUM},
-    logger_mt::Logger,
-    utils::{seconds_since_epoch, PropertyTreeWriter},
-    TxnTrackingConfig,
+    utils::{seconds_since_epoch, PropertyTreeWriter, Logger}, config::TxnTrackingConfig,
 };
 
 use super::{
@@ -345,7 +343,7 @@ fn backup_file_path(source_path: &Path) -> anyhow::Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{datastore::lmdb::TestDbFile, logger_mt::NullLogger};
+    use crate::{datastore::lmdb::TestDbFile, utils::NullLogger};
 
     use super::*;
 

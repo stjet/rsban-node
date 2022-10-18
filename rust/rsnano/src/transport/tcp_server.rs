@@ -17,15 +17,14 @@ use crate::{
         BlockUniquer,
     },
     core::{sign_message, Account, KeyPair},
-    logger_mt::Logger,
     stats::{DetailType, Direction, Stat, StatType},
     transport::{
         MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketImpl, SocketType,
         SynCookies, TcpMessageItem, TcpMessageManager,
     },
-    utils::{IoContext, MemoryStream, ThreadPool},
+    utils::{IoContext, MemoryStream, ThreadPool, Logger},
     voting::VoteUniquer,
-    NetworkConstants, NetworkParams, NodeConfig, TelemetryCacheCutoffs,
+    NetworkParams, config::{NodeConfig, TelemetryCacheCutoffs, NetworkConstants}, 
 };
 
 use super::NetworkFilter;

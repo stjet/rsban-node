@@ -5,6 +5,7 @@ mod json;
 mod stream;
 mod thread_pool;
 mod toml;
+mod logger_mt;
 
 pub use blake2b::*;
 pub use buffer::*;
@@ -13,8 +14,10 @@ pub use json::*;
 pub use stream::*;
 pub use thread_pool::*;
 pub use toml::*;
+pub use logger_mt::{Logger, NullLogger};
 
-use crate::get_env_or_default_string;
+use crate::config::get_env_or_default_string;
+
 
 pub fn seconds_since_epoch() -> u64 {
     chrono::Utc::now().timestamp() as u64

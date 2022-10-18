@@ -1,8 +1,7 @@
 use std::ffi::c_void;
 
 use crate::{
-    ffi::{UncheckedInfoHandle, BLOCKPROCESSOR_ADD_CALLBACK},
-    unchecked_info::UncheckedInfo,
+    ffi::{UncheckedInfoHandle, BLOCKPROCESSOR_ADD_CALLBACK}, core::UncheckedInfo,
 };
 
 pub struct BlockProcessor {

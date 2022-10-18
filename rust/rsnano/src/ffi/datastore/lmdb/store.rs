@@ -15,8 +15,7 @@ use crate::{
     ffi::{
         FfiPropertyTreeWriter, LmdbConfigDto, LoggerHandle, LoggerMT, StringDto,
         TxnTrackingConfigDto,
-    },
-    DiagnosticsConfig, LmdbConfig,
+    }, config::{LmdbConfig, DiagnosticsConfig},
 };
 
 use super::{

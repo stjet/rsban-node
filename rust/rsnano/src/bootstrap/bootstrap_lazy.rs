@@ -1,5 +1,5 @@
 use crate::{
-    block_processor::BlockProcessor, datastore::Ledger, logger_mt::Logger, websocket::Listener,
+    datastore::Ledger, websocket::Listener, utils::Logger, block_processing::BlockProcessor,
 };
 use anyhow::Result;
 use std::sync::{Arc, Weak};

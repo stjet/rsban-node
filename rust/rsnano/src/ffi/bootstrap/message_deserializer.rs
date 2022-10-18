@@ -10,8 +10,7 @@ use crate::{
     },
     stats::DetailType,
     transport::{MessageDeserializer, MessageDeserializerExt},
-    utils::ErrorCode,
-    NetworkConstants,
+    utils::ErrorCode, config::NetworkConstants,
 };
 
 pub struct MessageDeserializerHandle(Arc<MessageDeserializer>);

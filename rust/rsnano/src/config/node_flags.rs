@@ -1,4 +1,4 @@
-use crate::{ConfirmationHeightMode, GenerateCache};
+use super::{ConfirmationHeightMode, GenerateCache};
 
 #[derive(Clone)]
 pub struct NodeFlags {

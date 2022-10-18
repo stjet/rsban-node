@@ -2,13 +2,12 @@ use lmdb::{Database, DatabaseFlags, WriteFlags};
 use std::sync::Arc;
 
 use crate::{
-    core::Account,
+    core::{Account, ConfirmationHeightInfo},
     datastore::{
         confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
         ConfirmationHeightStore, DbIterator,
     },
-    utils::{Deserialize, StreamAdapter},
-    ConfirmationHeightInfo,
+    utils::{StreamAdapter, Deserialize},
 };
 
 use super::{

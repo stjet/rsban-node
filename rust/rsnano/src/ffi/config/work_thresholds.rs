@@ -3,8 +3,7 @@ use std::convert::TryFrom;
 
 use crate::{
     core::{BlockDetails, BlockType, Root},
-    ffi::{blocks::BlockDetailsDto, BlockHandle, StringDto},
-    Networks, WorkThresholds, WorkVersion,
+    ffi::{blocks::BlockDetailsDto, BlockHandle, StringDto}, config::{WorkThresholds, WorkVersion, Networks},
 };
 
 #[repr(C)]

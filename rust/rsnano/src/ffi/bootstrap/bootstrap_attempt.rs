@@ -9,11 +9,10 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
-    bootstrap::BootstrapStrategy,
+    bootstrap::{BootstrapStrategy, BootstrapAttempt},
     core::Account,
     ffi::{datastore::LedgerHandle, LoggerHandle},
     websocket::{Listener, NullListener},
-    BootstrapAttempt,
 };
 
 use crate::ffi::{

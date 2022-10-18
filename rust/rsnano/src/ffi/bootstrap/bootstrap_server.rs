@@ -12,14 +12,13 @@ use crate::{
         BlockUniquerHandle, LoggerHandle, LoggerMT, NetworkParamsDto, NodeConfigDto, StatHandle,
         VoidPointerCallback,
     },
-    logger_mt::Logger,
     stats::Stat,
     transport::{
         BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,
         RealtimeMessageVisitor, RealtimeMessageVisitorImpl, RequestResponseVisitorFactory,
         SocketType, SynCookies, TcpServer, TcpServerExt, TcpServerObserver,
     },
-    NetworkConstants, NetworkParams, NodeConfig,
+    NetworkParams, utils::Logger, config::{NodeConfig, NetworkConstants},
 };
 use std::{
     ffi::c_void,

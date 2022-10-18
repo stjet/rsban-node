@@ -2,13 +2,14 @@ use std::net::Ipv6Addr;
 
 use crate::{
     core::{Account, Amount, GXRB_RATIO, XRB_RATIO},
-    get_env_or_default_string, is_sanitizer_build,
+    is_sanitizer_build,
     stats::StatConfig,
     utils::{get_cpu_count, TomlWriter},
-    DiagnosticsConfig, IpcConfig, LmdbConfig, Logging, NetworkParams, Networks, WebsocketConfig,
-};
+    IpcConfig, NetworkParams, };
 use anyhow::Result;
 use once_cell::sync::Lazy;
+
+use super::{Logging, WebsocketConfig, DiagnosticsConfig, LmdbConfig, get_env_or_default_string, Networks};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]

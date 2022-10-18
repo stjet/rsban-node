@@ -11,8 +11,7 @@ use crate::{
         voting::{VoteHandle, VoteUniquerHandle},
         FfiStream, NetworkConstantsDto,
     },
-    voting::Vote,
-    NetworkConstants,
+    voting::Vote, config::NetworkConstants,
 };
 
 use super::{

@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use crate::Logger;
+use crate::utils::Logger;
 
 use super::VoidPointerCallback;
 

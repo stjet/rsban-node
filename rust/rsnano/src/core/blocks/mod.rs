@@ -24,9 +24,10 @@ pub use state_block::*;
 
 use crate::{
     core::{Account, BlockHash, BlockHashBuilder, Link, Root, Signature},
-    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
-    FullHash, Uniquer, WorkVersion,
+    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream}, config::WorkVersion,
 };
+
+use super::{Uniquer, FullHash};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]

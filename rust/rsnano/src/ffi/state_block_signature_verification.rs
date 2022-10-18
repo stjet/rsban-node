@@ -3,11 +3,7 @@ use std::{ffi::c_void, sync::Arc};
 use num::FromPrimitive;
 
 use crate::{
-    core::Account,
-    state_block_signature_verification::{
-        StateBlockSignatureVerificationResult, StateBlockSignatureVerificationValue,
-    },
-    StateBlockSignatureVerification,
+    core::Account, signatures::{StateBlockSignatureVerification, StateBlockSignatureVerificationResult, StateBlockSignatureVerificationValue},
 };
 
 use super::{BlockHandle, EpochsHandle, LoggerHandle, LoggerMT, SignatureCheckerHandle};

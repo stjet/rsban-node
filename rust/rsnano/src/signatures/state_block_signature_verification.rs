@@ -6,13 +6,14 @@ use std::{
 };
 
 use crate::{
-    core::{Account, BlockEnum, Epochs, PublicKey, Signature},
-    logger_mt::NullLogger,
-    BlockHash, Logger, SignatureCheckSet, SignatureChecker, SignatureVerification,
+    core::{Account, BlockEnum, Epochs, PublicKey, Signature, SignatureVerification, BlockHash},
+    utils::{Logger, NullLogger}, 
 };
 
+use super::{SignatureChecker, SignatureCheckSet};
+
 #[derive(Default)]
-pub(crate) struct Builder {
+pub struct Builder {
     signature_checker: Option<Arc<SignatureChecker>>,
     epochs: Option<Arc<Epochs>>,
     logger: Option<Arc<dyn Logger>>,
@@ -21,36 +22,36 @@ pub(crate) struct Builder {
 }
 
 impl Builder {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Default::default()
     }
 
-    pub(crate) fn signature_checker(mut self, checker: Arc<SignatureChecker>) -> Self {
+    pub fn signature_checker(mut self, checker: Arc<SignatureChecker>) -> Self {
         self.signature_checker = Some(checker);
         self
     }
 
-    pub(crate) fn epochs(mut self, epochs: Arc<Epochs>) -> Self {
+    pub fn epochs(mut self, epochs: Arc<Epochs>) -> Self {
         self.epochs = Some(epochs);
         self
     }
 
-    pub(crate) fn logger(mut self, logger: Arc<dyn Logger>) -> Self {
+    pub fn logger(mut self, logger: Arc<dyn Logger>) -> Self {
         self.logger = Some(logger);
         self
     }
 
-    pub(crate) fn verification_size(mut self, size: usize) -> Self {
+    pub fn verification_size(mut self, size: usize) -> Self {
         self.verification_size = Some(size);
         self
     }
 
-    pub(crate) fn enable_timing_logging(mut self, enable: bool) -> Self {
+    pub fn enable_timing_logging(mut self, enable: bool) -> Self {
         self.enable_timing_logging = enable;
         self
     }
 
-    pub(crate) fn spawn(self) -> std::io::Result<StateBlockSignatureVerification> {
+    pub fn spawn(self) -> std::io::Result<StateBlockSignatureVerification> {
         let thread = Arc::new(StateBlockSignatureVerificationThread {
             condition: Condvar::new(),
             verification_size: self.verification_size.unwrap_or(0),
@@ -85,20 +86,20 @@ impl Builder {
     }
 }
 
-pub(crate) struct StateBlockSignatureVerificationValue {
+pub struct StateBlockSignatureVerificationValue {
     pub block: Arc<RwLock<BlockEnum>>,
     pub account: Account,
     pub verification: SignatureVerification,
 }
 
-pub(crate) struct StateBlockSignatureVerificationResult {
+pub struct StateBlockSignatureVerificationResult {
     pub hashes: Vec<BlockHash>,
     pub signatures: Vec<Signature>,
     pub verifications: Vec<i32>,
     pub items: VecDeque<StateBlockSignatureVerificationValue>,
 }
 
-pub(crate) struct StateBlockSignatureVerification {
+pub struct StateBlockSignatureVerification {
     join_handle: Option<JoinHandle<()>>,
     thread: Arc<StateBlockSignatureVerificationThread>,
 }

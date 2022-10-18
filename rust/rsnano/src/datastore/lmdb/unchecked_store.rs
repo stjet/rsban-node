@@ -3,9 +3,8 @@ use std::sync::Arc;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 
 use crate::{
-    core::HashOrAccount,
+    core::{HashOrAccount, UncheckedInfo, UncheckedKey},
     datastore::{lmdb::exists, unchecked_store::UncheckedIterator, UncheckedStore},
-    unchecked_info::{UncheckedInfo, UncheckedKey},
 };
 
 use super::{

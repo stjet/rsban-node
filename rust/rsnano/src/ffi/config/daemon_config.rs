@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     ffi::{secure::NetworkParamsDto, toml::FfiToml},
-    DaemonConfig, NetworkParams,
+    NetworkParams, config::DaemonConfig,
 };
 use std::{
     convert::{TryFrom, TryInto},

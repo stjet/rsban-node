@@ -6,11 +6,9 @@ use once_cell::sync::Lazy;
 use crate::{
     core::{
         deserialize_block_json, Account, Amount, BlockDetails, BlockEnum, BlockSideband, Epoch,
-        Epochs, KeyPair, Link,
+        Epochs, KeyPair, Link, BlockHash,
     },
-    get_env_or_default_string,
-    utils::{seconds_since_epoch, SerdePropertyTree},
-    BlockHash, Networks, WorkThresholds,
+    utils::{seconds_since_epoch, SerdePropertyTree}, config::{get_env_or_default_string, WorkThresholds, Networks},
 };
 
 static DEV_PRIVATE_KEY_DATA: &str =

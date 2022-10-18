@@ -1,4 +1,5 @@
-use crate::NetworkConstants;
+use crate::config::NetworkConstants;
+
 
 pub struct BootstrapConstants {
     pub lazy_max_pull_blocks: u32,

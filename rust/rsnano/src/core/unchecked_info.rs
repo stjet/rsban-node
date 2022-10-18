@@ -8,8 +8,21 @@ use num_traits::FromPrimitive;
 use crate::{
     core::{deserialize_block_enum, serialize_block_enum, Account, BlockEnum},
     utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
-    BlockHash, SignatureVerification,
-};
+    };
+
+use super::BlockHash;
+
+/**
+ * Tag for block signature verification result
+ */
+#[repr(u8)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
+pub enum SignatureVerification {
+    Unknown = 0,
+    Invalid = 1,
+    Valid = 2,
+    ValidEpoch = 3, // Valid for epoch blocks
+}
 
 /// Information on an unchecked block
 #[derive(Clone)]

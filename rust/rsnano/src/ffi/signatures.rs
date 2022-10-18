@@ -1,8 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
 use crate::{
-    core::{PublicKey, Signature},
-    SignatureCheckSet, SignatureChecker,
+    core::{PublicKey, Signature}, signatures::{SignatureChecker, SignatureCheckSet},
 };
 
 #[repr(C)]

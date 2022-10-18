@@ -6,7 +6,7 @@ use std::{
 
 use backtrace::Backtrace;
 
-use crate::{logger_mt::Logger, utils::PropertyTreeWriter, TxnTrackingConfig};
+use crate::{utils::{PropertyTreeWriter, Logger}, config::TxnTrackingConfig};
 
 pub trait TxnCallbacks {
     fn txn_start(&self, txn_id: u64, is_write: bool);

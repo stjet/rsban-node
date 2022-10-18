@@ -62,13 +62,23 @@ pub use epoch::{Epoch, Epochs};
 mod blocks;
 pub use blocks::*;
 
+mod unchecked_info;
+pub use unchecked_info::{SignatureVerification, UncheckedInfo, UncheckedKey};
+
+mod confirmation_height_info;
+pub use confirmation_height_info::ConfirmationHeightInfo;
+
+mod uniquer;
+pub use uniquer::Uniquer;
+
 pub mod messages;
+mod hardened_constants;
+pub(crate) use hardened_constants::HardenedConstants;
 
 use once_cell::sync::Lazy;
 use std::{fmt::Write, net::Ipv6Addr, num::ParseIntError};
 
 use crate::{
-    hardened_constants::HardenedConstants,
     utils::{Deserialize, Serialize, Stream},
 };
 
@@ -105,6 +115,10 @@ pub static MXRB_RATIO: Lazy<u128> =
     Lazy::new(|| str::parse("1000000000000000000000000000000").unwrap()); // 10^30
 pub static GXRB_RATIO: Lazy<u128> =
     Lazy::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
+
+pub trait FullHash {
+    fn full_hash(&self) -> BlockHash;
+}
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct NoValue {}

@@ -15,12 +15,12 @@ use std::{
     time::Duration,
 };
 
+use crate::config::{SyncStrategy, LmdbConfig, TxnTrackingConfig};
+use crate::utils::Logger;
 use crate::{
     datastore::{NullTxnCallbacks, TxnCallbacks, TxnTracker},
-    logger_mt::Logger,
     memory_intensive_instrumentation,
     utils::PropertyTreeWriter,
-    LmdbConfig, SyncStrategy, TxnTrackingConfig,
 };
 
 use super::{LmdbReadTransaction, LmdbWriteTransaction};

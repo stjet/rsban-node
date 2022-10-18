@@ -1,11 +1,10 @@
 use std::ffi::c_void;
 
 use crate::{
-    core::BlockHash,
+    core::{BlockHash, ConfirmationHeightInfo},
     ffi::FfiStream,
-    utils::{Deserialize, Serialize},
-    ConfirmationHeightInfo,
 };
+use crate::utils::{Deserialize, Serialize};
 
 #[repr(C)]
 pub struct ConfirmationHeightInfoDto {

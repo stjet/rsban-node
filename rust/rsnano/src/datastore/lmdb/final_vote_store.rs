@@ -3,9 +3,8 @@ use std::sync::Arc;
 use lmdb::{Database, DatabaseFlags, Transaction, WriteFlags};
 
 use crate::{
-    core::{BlockHash, Root},
+    core::{BlockHash, QualifiedRoot, Root},
     datastore::{final_vote_store::FinalVoteIterator, parallel_traversal_u512, FinalVoteStore},
-    QualifiedRoot,
 };
 
 use super::{

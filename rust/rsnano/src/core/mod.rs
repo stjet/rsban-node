@@ -19,6 +19,9 @@ pub use link::Link;
 mod root;
 pub use root::Root;
 
+mod qualified_root;
+pub use qualified_root::QualifiedRoot;
+
 use std::fmt::Write;
 
 pub(crate) fn encode_hex(i: u128) -> String {

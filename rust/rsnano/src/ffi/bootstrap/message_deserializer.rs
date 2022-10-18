@@ -1,16 +1,17 @@
 use std::{ffi::c_void, sync::Arc};
 
 use crate::{
+    config::NetworkConstants,
     core::messages::Message,
     ffi::{
-        messages::MessageHandle,
+        core::messages::MessageHandle,
         transport::{NetworkFilterHandle, SocketHandle},
         voting::VoteUniquerHandle,
         BlockUniquerHandle, ErrorCodeDto, NetworkConstantsDto, StringDto, VoidPointerCallback,
     },
     stats::DetailType,
     transport::{MessageDeserializer, MessageDeserializerExt},
-    utils::ErrorCode, config::NetworkConstants,
+    utils::ErrorCode,
 };
 
 pub struct MessageDeserializerHandle(Arc<MessageDeserializer>);

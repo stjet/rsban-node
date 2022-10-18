@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     core::{Account, AccountInfo, Amount, BlockHash, Epoch},
-    ffi::FfiStream,
+    ffi::utils::FfiStream,
     utils::{Deserialize, Serialize},
 };
 use num_traits::FromPrimitive;

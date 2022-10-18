@@ -5,7 +5,10 @@ use std::{
 };
 
 use super::generate_cache::GenerateCacheHandle;
-use crate::{ffi::StringDto, config::{NodeFlags, ConfirmationHeightMode}};
+use crate::{
+    config::{ConfirmationHeightMode, NodeFlags},
+    ffi::StringDto,
+};
 use num_traits::FromPrimitive;
 
 pub struct NodeFlagsHandle(Arc<Mutex<NodeFlags>>);

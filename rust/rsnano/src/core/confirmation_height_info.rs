@@ -1,5 +1,5 @@
-use crate::utils::{MutStreamAdapter, Serialize, Stream, Deserialize, StreamExt};
 use super::BlockHash;
+use crate::utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt};
 
 #[derive(Default, PartialEq, Eq, Debug)]
 pub struct ConfirmationHeightInfo {

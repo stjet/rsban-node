@@ -7,7 +7,7 @@ use std::{
 use crate::{
     core::Account,
     datastore::{lmdb::LmdbAccountStore, AccountStore},
-    ffi::{AccountInfoHandle, VoidPointerCallback},
+    ffi::{core::AccountInfoHandle, VoidPointerCallback},
 };
 
 use super::{

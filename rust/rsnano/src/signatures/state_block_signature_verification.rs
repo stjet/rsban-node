@@ -6,11 +6,11 @@ use std::{
 };
 
 use crate::{
-    core::{Account, BlockEnum, Epochs, PublicKey, Signature, SignatureVerification, BlockHash},
-    utils::{Logger, NullLogger}, 
+    core::{Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature, SignatureVerification},
+    utils::{Logger, NullLogger},
 };
 
-use super::{SignatureChecker, SignatureCheckSet};
+use super::{SignatureCheckSet, SignatureChecker};
 
 #[derive(Default)]
 pub struct Builder {

@@ -1,8 +1,11 @@
 use crate::{
-    core::{encode_hex, Account, BlockEnum, UncheckedInfo, SignatureVerification, HardenedConstants},
+    block_processing::BlockProcessor,
+    core::{
+        encode_hex, Account, BlockEnum, HardenedConstants, SignatureVerification, UncheckedInfo,
+    },
     datastore::Ledger,
+    utils::Logger,
     websocket::{Listener, MessageBuilder},
-    utils::Logger, block_processing::BlockProcessor,
 };
 use anyhow::Result;
 use std::{

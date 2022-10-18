@@ -9,14 +9,14 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
-    bootstrap::{BootstrapStrategy, BootstrapAttempt},
+    bootstrap::{BootstrapAttempt, BootstrapStrategy},
     core::Account,
-    ffi::{datastore::LedgerHandle, LoggerHandle},
+    ffi::{datastore::LedgerHandle, utils::LoggerHandle},
     websocket::{Listener, NullListener},
 };
 
 use crate::ffi::{
-    BlockHandle, BlockProcessorHandle, FfiListener, LoggerMT, StringDto, StringHandle,
+    utils::LoggerMT, BlockHandle, BlockProcessorHandle, FfiListener, StringDto, StringHandle,
 };
 
 use super::bootstrap_initiator::BootstrapInitiatorHandle;

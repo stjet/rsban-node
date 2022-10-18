@@ -1,9 +1,10 @@
 use std::ffi::c_void;
 
 use crate::core::messages::Message;
+use crate::ffi::utils::FfiStream;
 use crate::{
     core::{messages::FrontierReq, Account},
-    ffi::{copy_account_bytes, FfiStream, NetworkConstantsDto},
+    ffi::{copy_account_bytes, NetworkConstantsDto},
 };
 
 use super::{

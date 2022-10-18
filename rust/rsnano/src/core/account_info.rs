@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Result;
 use num_traits::FromPrimitive;
 
-use super::{Epoch, BlockHash};
+use super::{BlockHash, Epoch};
 
 /// Latest information about an account
 #[derive(PartialEq, Eq, Clone, Default, Debug)]

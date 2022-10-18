@@ -1,4 +1,4 @@
-use crate::core::messages::Message;
+use crate::{core::messages::Message, ffi::utils::FfiStream};
 use std::ffi::c_void;
 
 use super::{
@@ -10,7 +10,7 @@ use crate::{
         messages::{BulkPullAccount, BulkPullAccountFlags},
         Account, Amount,
     },
-    ffi::{copy_account_bytes, copy_amount_bytes, FfiStream, NetworkConstantsDto},
+    ffi::{copy_account_bytes, copy_amount_bytes, NetworkConstantsDto},
 };
 use num_traits::FromPrimitive;
 

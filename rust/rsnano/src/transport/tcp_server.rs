@@ -9,6 +9,7 @@ use std::{
 };
 
 use crate::{
+    config::{NetworkConstants, NodeConfig, TelemetryCacheCutoffs},
     core::{
         messages::{
             BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
@@ -22,9 +23,9 @@ use crate::{
         MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketImpl, SocketType,
         SynCookies, TcpMessageItem, TcpMessageManager,
     },
-    utils::{IoContext, MemoryStream, ThreadPool, Logger},
+    utils::{IoContext, Logger, MemoryStream, ThreadPool},
     voting::VoteUniquer,
-    NetworkParams, config::{NodeConfig, TelemetryCacheCutoffs, NetworkConstants}, 
+    NetworkParams,
 };
 
 use super::NetworkFilter;

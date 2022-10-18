@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use crate::{
     core::messages::BulkPush,
     core::messages::Message,
-    ffi::{FfiStream, NetworkConstantsDto},
+    ffi::{utils::FfiStream, NetworkConstantsDto},
 };
 
 use super::{

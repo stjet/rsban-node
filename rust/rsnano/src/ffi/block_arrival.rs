@@ -1,4 +1,4 @@
-use crate::{core::BlockHash, block_processing::BlockArrival};
+use crate::{block_processing::BlockArrival, core::BlockHash};
 pub struct BlockArrivalHandle(BlockArrival);
 
 #[no_mangle]

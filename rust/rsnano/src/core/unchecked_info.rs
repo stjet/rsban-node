@@ -8,7 +8,7 @@ use num_traits::FromPrimitive;
 use crate::{
     core::{deserialize_block_enum, serialize_block_enum, Account, BlockEnum},
     utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
-    };
+};
 
 use super::BlockHash;
 

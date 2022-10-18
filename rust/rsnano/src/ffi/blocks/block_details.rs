@@ -1,5 +1,7 @@
-use super::FfiStream;
-use crate::core::{Account, Amount, BlockDetails, BlockHash, BlockSideband, BlockType, Epoch};
+use crate::{
+    core::{Account, Amount, BlockDetails, BlockHash, BlockSideband, BlockType, Epoch},
+    ffi::utils::FfiStream,
+};
 use num::FromPrimitive;
 use std::{convert::TryFrom, ffi::c_void};
 

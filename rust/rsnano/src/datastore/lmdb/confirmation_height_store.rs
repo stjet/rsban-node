@@ -7,7 +7,7 @@ use crate::{
         confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
         ConfirmationHeightStore, DbIterator,
     },
-    utils::{StreamAdapter, Deserialize},
+    utils::{Deserialize, StreamAdapter},
 };
 
 use super::{

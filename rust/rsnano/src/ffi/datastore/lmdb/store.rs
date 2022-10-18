@@ -8,14 +8,15 @@ use std::{
 };
 
 use crate::{
+    config::{DiagnosticsConfig, LmdbConfig},
     datastore::{
         lmdb::{create_backup_file, EnvOptions, LmdbStore},
         Store,
     },
     ffi::{
-        FfiPropertyTreeWriter, LmdbConfigDto, LoggerHandle, LoggerMT, StringDto,
-        TxnTrackingConfigDto,
-    }, config::{LmdbConfig, DiagnosticsConfig},
+        utils::{LoggerHandle, LoggerMT},
+        FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto,
+    },
 };
 
 use super::{

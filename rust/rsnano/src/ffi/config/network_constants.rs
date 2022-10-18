@@ -1,7 +1,7 @@
 use num::FromPrimitive;
 use std::{convert::TryFrom, ffi::CStr, os::raw::c_char};
 
-use crate::config::{TelemetryCacheCutoffs, NetworkConstants, WorkThresholds, test_node_port};
+use crate::config::{test_node_port, NetworkConstants, TelemetryCacheCutoffs, WorkThresholds};
 
 use super::{fill_work_thresholds_dto, WorkThresholdsDto};
 

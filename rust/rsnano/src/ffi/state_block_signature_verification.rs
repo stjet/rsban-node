@@ -3,10 +3,18 @@ use std::{ffi::c_void, sync::Arc};
 use num::FromPrimitive;
 
 use crate::{
-    core::Account, signatures::{StateBlockSignatureVerification, StateBlockSignatureVerificationResult, StateBlockSignatureVerificationValue},
+    core::Account,
+    signatures::{
+        StateBlockSignatureVerification, StateBlockSignatureVerificationResult,
+        StateBlockSignatureVerificationValue,
+    },
 };
 
-use super::{BlockHandle, EpochsHandle, LoggerHandle, LoggerMT, SignatureCheckerHandle};
+use super::{
+    core::EpochsHandle,
+    utils::{LoggerHandle, LoggerMT},
+    BlockHandle, SignatureCheckerHandle,
+};
 
 pub struct StateBlockSignatureVerificationHandle {
     verification: StateBlockSignatureVerification,

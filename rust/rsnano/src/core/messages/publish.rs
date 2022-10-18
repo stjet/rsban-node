@@ -1,6 +1,7 @@
 use crate::{
+    config::NetworkConstants,
     core::{deserialize_block, BlockEnum, BlockUniquer},
-    utils::Stream, config::NetworkConstants,
+    utils::Stream,
 };
 use anyhow::Result;
 use std::{

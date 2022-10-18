@@ -7,7 +7,7 @@ use crate::{
     utils::{Deserialize, Serialize},
 };
 
-use super::{BlockHandle, FfiStream};
+use super::{utils::FfiStream, BlockHandle};
 
 pub struct UncheckedInfoHandle(UncheckedInfo);
 

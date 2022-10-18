@@ -1,8 +1,6 @@
 use std::ffi::c_void;
 
-use crate::utils::Logger;
-
-use super::VoidPointerCallback;
+use crate::{ffi::VoidPointerCallback, utils::Logger};
 
 pub type TryLogCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> bool;
 pub static mut TRY_LOG_CALLBACK: Option<TryLogCallback> = None;

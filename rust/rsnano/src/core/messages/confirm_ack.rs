@@ -1,7 +1,8 @@
 use crate::{
+    config::NetworkConstants,
     core::{messages::MessageType, BlockType},
     utils::Stream,
-    voting::{Vote, VoteUniquer}, config::NetworkConstants,
+    voting::{Vote, VoteUniquer},
 };
 use anyhow::Result;
 use std::{
@@ -134,7 +135,11 @@ impl Debug for ConfirmAck {
 
 #[cfg(test)]
 mod tests {
-    use crate::{core::{KeyPair, BlockHash}, utils::MemoryStream, config::NetworkConstants};
+    use crate::{
+        config::NetworkConstants,
+        core::{BlockHash, KeyPair},
+        utils::MemoryStream,
+    };
 
     use super::*;
 

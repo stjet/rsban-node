@@ -7,7 +7,7 @@ use super::{
 use crate::{
     core::messages::Message,
     core::messages::TelemetryReq,
-    ffi::{FfiStream, NetworkConstantsDto},
+    ffi::{utils::FfiStream, NetworkConstantsDto},
 };
 
 #[no_mangle]

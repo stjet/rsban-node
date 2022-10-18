@@ -6,7 +6,7 @@ use super::{
     BandwidthLimiterHandle, ChannelTcpObserverWeakPtr, EndpointDto,
 };
 use crate::{
-    ffi::{io_context::FfiIoContext, messages::MessageHandle, ErrorCodeDto, VoidPointerCallback},
+    ffi::{core::messages::MessageHandle, utils::FfiIoContext, ErrorCodeDto, VoidPointerCallback},
     transport::{BufferDropPolicy, ChannelTcp},
     utils::ErrorCode,
 };

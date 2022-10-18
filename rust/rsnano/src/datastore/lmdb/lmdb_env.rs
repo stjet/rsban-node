@@ -15,7 +15,7 @@ use std::{
     time::Duration,
 };
 
-use crate::config::{SyncStrategy, LmdbConfig, TxnTrackingConfig};
+use crate::config::{LmdbConfig, SyncStrategy, TxnTrackingConfig};
 use crate::utils::Logger;
 use crate::{
     datastore::{NullTxnCallbacks, TxnCallbacks, TxnTracker},

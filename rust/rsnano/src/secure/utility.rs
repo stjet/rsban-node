@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use crate::config::{NetworkConstants, Networks};
 
-
 //todo refactor: this global state thing is not a good solution
 static ALL_UNIQUE_PATHS: Lazy<Mutex<Vec<PathBuf>>> = Lazy::new(|| Mutex::new(Vec::new()));
 

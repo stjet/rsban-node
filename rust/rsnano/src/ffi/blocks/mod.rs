@@ -21,7 +21,7 @@ pub use receive_block::*;
 pub use send_block::*;
 pub use state_block::*;
 
-use super::{property_tree::FfiPropertyTreeReader, FfiPropertyTreeWriter, FfiStream};
+use super::{property_tree::FfiPropertyTreeReader, utils::FfiStream, FfiPropertyTreeWriter};
 use crate::core::{
     deserialize_block, deserialize_block_json, serialized_block_size, BlockEnum, BlockSideband,
     BlockType, Signature,

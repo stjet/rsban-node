@@ -6,7 +6,8 @@ use crate::core::{
     Account, Amount, BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock,
     SendHashables, Signature,
 };
-use crate::ffi::{FfiPropertyTreeReader, FfiStream};
+use crate::ffi::utils::FfiStream;
+use crate::ffi::FfiPropertyTreeReader;
 
 use super::BlockHandle;
 

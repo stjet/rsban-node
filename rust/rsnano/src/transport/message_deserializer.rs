@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::{
+    config::NetworkConstants,
     core::{
         messages::{
             BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
@@ -11,7 +12,7 @@ use crate::{
     },
     transport::{Socket, SocketImpl},
     utils::{ErrorCode, Stream, StreamAdapter},
-    voting::VoteUniquer, config::NetworkConstants,
+    voting::VoteUniquer,
 };
 
 use super::NetworkFilter;

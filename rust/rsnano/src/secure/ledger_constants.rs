@@ -4,11 +4,12 @@ use anyhow::Result;
 use once_cell::sync::Lazy;
 
 use crate::{
+    config::{get_env_or_default_string, Networks, WorkThresholds},
     core::{
-        deserialize_block_json, Account, Amount, BlockDetails, BlockEnum, BlockSideband, Epoch,
-        Epochs, KeyPair, Link, BlockHash,
+        deserialize_block_json, Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband,
+        Epoch, Epochs, KeyPair, Link,
     },
-    utils::{seconds_since_epoch, SerdePropertyTree}, config::{get_env_or_default_string, WorkThresholds, Networks},
+    utils::{seconds_since_epoch, SerdePropertyTree},
 };
 
 static DEV_PRIVATE_KEY_DATA: &str =

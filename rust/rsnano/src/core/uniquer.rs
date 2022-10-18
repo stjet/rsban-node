@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, Weak};
 use indexmap::IndexMap;
 use rand::Rng;
 
-use super::{FullHash, BlockHash};
+use super::{BlockHash, FullHash};
 
 pub struct Uniquer<T>
 where

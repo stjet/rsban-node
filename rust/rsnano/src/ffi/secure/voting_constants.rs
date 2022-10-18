@@ -1,4 +1,4 @@
-use crate::{ffi::NetworkConstantsDto, VotingConstants, config::NetworkConstants};
+use crate::{config::NetworkConstants, ffi::NetworkConstantsDto, VotingConstants};
 use std::convert::TryFrom;
 
 #[repr(C)]

@@ -1,5 +1,5 @@
 use crate::config::NetworkConstants;
-use crate::core::{sign_message, validate_message, Account, KeyPair, Signature, BlockHash};
+use crate::core::{sign_message, validate_message, Account, BlockHash, KeyPair, Signature};
 use crate::utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt};
 use anyhow::Result;
 use std::any::Any;

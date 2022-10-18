@@ -1,6 +1,5 @@
 use crate::config::NetworkConstants;
 
-
 pub struct NodeConstants {
     pub backup_interval_m: i64,
     pub search_pending_interval_s: i64,

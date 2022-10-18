@@ -1,6 +1,5 @@
 use crate::config::NetworkConstants;
 
-
 pub struct VotingConstants {
     pub max_cache: usize,
     pub delay_s: i64,

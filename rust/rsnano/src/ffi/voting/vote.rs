@@ -5,10 +5,12 @@ use std::{
 };
 
 use crate::{
-    core::{Account, BlockHash, RawKey, Signature, FullHash}, voting::Vote,
+    core::{Account, BlockHash, FullHash, RawKey, Signature},
+    ffi::utils::FfiStream,
+    voting::Vote,
 };
 
-use crate::ffi::{FfiPropertyTreeWriter, FfiStream, StringDto};
+use crate::ffi::{FfiPropertyTreeWriter, StringDto};
 
 pub struct VoteHandle(Arc<RwLock<Vote>>);
 

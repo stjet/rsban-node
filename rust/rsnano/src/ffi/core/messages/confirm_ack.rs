@@ -5,13 +5,15 @@ use std::{
 };
 
 use crate::{
+    config::NetworkConstants,
     core::messages::ConfirmAck,
     core::messages::Message,
     ffi::{
+        utils::FfiStream,
         voting::{VoteHandle, VoteUniquerHandle},
-        FfiStream, NetworkConstantsDto,
+        NetworkConstantsDto,
     },
-    voting::Vote, config::NetworkConstants,
+    voting::Vote,
 };
 
 use super::{

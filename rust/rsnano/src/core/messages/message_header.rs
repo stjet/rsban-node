@@ -1,6 +1,7 @@
 use crate::{
+    config::{NetworkConstants, Networks},
     core::{serialized_block_size, BlockType},
-    utils::Stream, config::{Networks, NetworkConstants},
+    utils::Stream,
 };
 use anyhow::Result;
 use bitvec::prelude::*;

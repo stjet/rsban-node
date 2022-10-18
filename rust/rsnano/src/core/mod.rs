@@ -71,16 +71,14 @@ pub use confirmation_height_info::ConfirmationHeightInfo;
 mod uniquer;
 pub use uniquer::Uniquer;
 
-pub mod messages;
 mod hardened_constants;
+pub mod messages;
 pub(crate) use hardened_constants::HardenedConstants;
 
 use once_cell::sync::Lazy;
 use std::{fmt::Write, net::Ipv6Addr, num::ParseIntError};
 
-use crate::{
-    utils::{Deserialize, Serialize, Stream},
-};
+use crate::utils::{Deserialize, Serialize, Stream};
 
 pub(crate) fn encode_hex(i: u128) -> String {
     let mut result = String::with_capacity(32);

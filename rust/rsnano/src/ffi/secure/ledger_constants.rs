@@ -6,12 +6,13 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
+    config::WorkThresholds,
     core::{Account, Amount, BlockEnum, Epoch, Epochs, KeyPair, Link, PublicKey},
     ffi::{
         config::{fill_work_thresholds_dto, WorkThresholdsDto},
         BlockHandle,
     },
-    LedgerConstants, config::WorkThresholds, 
+    LedgerConstants,
 };
 
 #[repr(C)]

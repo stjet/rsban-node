@@ -1,4 +1,4 @@
-use crate::core::messages::Message;
+use crate::{core::messages::Message, ffi::utils::FfiStream};
 use std::{
     ffi::c_void,
     time::{Duration, SystemTime},
@@ -9,9 +9,7 @@ use crate::{
         messages::{TelemetryAck, TelemetryData},
         Account, BlockHash, KeyPair, Signature,
     },
-    ffi::{
-        copy_account_bytes, copy_hash_bytes, copy_signature_bytes, FfiStream, NetworkConstantsDto,
-    },
+    ffi::{copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto},
 };
 
 use super::{

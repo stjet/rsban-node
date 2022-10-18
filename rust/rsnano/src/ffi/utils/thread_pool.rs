@@ -1,8 +1,6 @@
 use std::{ffi::c_void, time::Duration};
 
-use crate::utils::ThreadPool;
-
-use super::VoidPointerCallback;
+use crate::{ffi::VoidPointerCallback, utils::ThreadPool};
 
 pub struct FfiThreadPool {
     handle: *mut c_void,

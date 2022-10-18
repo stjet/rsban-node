@@ -1,6 +1,4 @@
-use crate::{
-    core::{HashOrAccount, UncheckedKey, UncheckedInfo},
-};
+use crate::core::{HashOrAccount, UncheckedInfo, UncheckedKey};
 
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
 

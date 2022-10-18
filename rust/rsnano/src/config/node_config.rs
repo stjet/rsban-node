@@ -5,11 +5,14 @@ use crate::{
     is_sanitizer_build,
     stats::StatConfig,
     utils::{get_cpu_count, TomlWriter},
-    IpcConfig, NetworkParams, };
+    IpcConfig, NetworkParams,
+};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
-use super::{Logging, WebsocketConfig, DiagnosticsConfig, LmdbConfig, get_env_or_default_string, Networks};
+use super::{
+    get_env_or_default_string, DiagnosticsConfig, LmdbConfig, Logging, Networks, WebsocketConfig,
+};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]

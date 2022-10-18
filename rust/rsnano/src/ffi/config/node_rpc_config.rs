@@ -2,7 +2,6 @@ use std::os::unix::prelude::OsStrExt;
 
 use crate::config::{NodeRpcConfig, RpcChildProcessConfig};
 
-
 #[repr(C)]
 pub struct NodeRpcConfigDto {
     pub rpc_path: [u8; 512],

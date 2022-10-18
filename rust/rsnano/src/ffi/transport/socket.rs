@@ -1,7 +1,11 @@
 use num::FromPrimitive;
 
 use crate::{
-    ffi::{DispatchCallback, ErrorCodeDto, LoggerHandle, StringDto, VoidPointerCallback},
+    ffi::{
+        utils::{DispatchCallback, VoidFnCallbackHandle},
+        utils::{LoggerHandle, LoggerMT},
+        ErrorCodeDto, StringDto, VoidPointerCallback,
+    },
     stats::SocketStats,
     transport::{Socket, SocketBuilder, SocketImpl, SocketType, TcpSocketFacade},
     utils::{BufferHandle, BufferWrapper, ErrorCode},
@@ -14,10 +18,7 @@ use std::{
     time::Duration,
 };
 
-use crate::ffi::{
-    thread_pool::{FfiThreadPool, VoidFnCallbackHandle},
-    LoggerMT, StatHandle,
-};
+use crate::ffi::{utils::FfiThreadPool, StatHandle};
 
 pub struct SocketHandle(Arc<SocketImpl>);
 pub struct SocketWeakHandle(Weak<SocketImpl>);

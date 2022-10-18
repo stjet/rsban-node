@@ -9,8 +9,9 @@ use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 
 use crate::{
+    config::TxnTrackingConfig,
     datastore::{Store, VersionStore, STORE_VERSION_MINIMUM},
-    utils::{seconds_since_epoch, PropertyTreeWriter, Logger}, config::TxnTrackingConfig,
+    utils::{seconds_since_epoch, Logger, PropertyTreeWriter},
 };
 
 use super::{

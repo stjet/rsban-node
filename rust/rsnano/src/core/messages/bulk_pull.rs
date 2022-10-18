@@ -1,6 +1,7 @@
 use crate::{
-    core::{HashOrAccount, BlockHash},
-    utils::{Deserialize, Serialize, Stream}, config::NetworkConstants,
+    config::NetworkConstants,
+    core::{BlockHash, HashOrAccount},
+    utils::{Deserialize, Serialize, Stream},
 };
 use anyhow::Result;
 use std::{any::Any, mem::size_of};

@@ -4,7 +4,8 @@ use std::{ffi::c_void, ops::Deref};
 use crate::config::{NetworkConstants, Networks};
 use crate::core::messages::{MessageHeader, MessageType};
 
-use crate::ffi::{FfiStream, StringDto};
+use crate::ffi::utils::FfiStream;
+use crate::ffi::StringDto;
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_type_to_string(msg_type: u8, result: *mut StringDto) {
     (*result) = match MessageType::from_u8(msg_type) {

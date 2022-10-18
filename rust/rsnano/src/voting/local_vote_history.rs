@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex, RwLock},
 };
 
-use crate::core::{Root, BlockHash};
+use crate::core::{BlockHash, Root};
 
 use super::Vote;
 

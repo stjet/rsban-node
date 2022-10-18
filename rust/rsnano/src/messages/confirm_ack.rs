@@ -135,7 +135,7 @@ impl Debug for ConfirmAck {
 
 #[cfg(test)]
 mod tests {
-    use crate::{utils::MemoryStream, BlockHash, KeyPair};
+    use crate::{core::KeyPair, utils::MemoryStream, BlockHash};
 
     use super::*;
 

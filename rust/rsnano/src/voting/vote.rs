@@ -2,10 +2,9 @@ use anyhow::Result;
 use std::{sync::RwLock, time::Duration};
 
 use crate::{
-    core::{BlockHash, BlockHashBuilder, RawKey, Signature},
-    sign_message,
+    core::{sign_message, validate_message, BlockHash, BlockHashBuilder, RawKey, Signature},
     utils::{Deserialize, PropertyTreeWriter, Serialize, Stream},
-    validate_message, Account, FullHash,
+    Account, FullHash,
 };
 
 #[derive(Clone)]

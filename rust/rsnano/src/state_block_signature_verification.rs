@@ -302,7 +302,7 @@ impl StateBlockSignatureVerificationThread {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{KeyPair, StateBlockBuilder};
+    use crate::{core::KeyPair, StateBlockBuilder};
 
     #[test]
     fn verify_one_block() {

@@ -1,6 +1,6 @@
 use crate::{
-    core::{BlockHash, Link, PublicKey, RawKey, Signature},
-    Account, Amount, Block, BlockDetails, BlockSideband, Epoch, KeyPair, StateBlock,
+    core::{BlockHash, KeyPair, Link, PublicKey, RawKey, Signature},
+    Account, Amount, Block, BlockDetails, BlockSideband, Epoch, StateBlock,
 };
 use anyhow::Result;
 
@@ -161,7 +161,7 @@ impl StateBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{numbers::validate_message, Block, BlockBuilder};
+    use crate::{core::validate_message, Block, BlockBuilder};
 
     #[test]
     fn state_block() {

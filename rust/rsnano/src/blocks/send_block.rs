@@ -1,6 +1,6 @@
 use crate::{
-    core::{BlockHash, BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature},
-    from_string_hex, sign_message, to_string_hex,
+    core::{sign_message, BlockHash, BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature},
+    from_string_hex, to_string_hex,
     utils::{PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
     Account, Amount, Block, BlockSideband, BlockType, LazyBlockHash,
 };
@@ -250,7 +250,7 @@ impl Block for SendBlock {
 #[cfg(test)]
 mod tests {
     use crate::{
-        numbers::{validate_message, KeyPair},
+        core::{validate_message, KeyPair},
         utils::{MemoryStream, TestPropertyTree},
     };
 

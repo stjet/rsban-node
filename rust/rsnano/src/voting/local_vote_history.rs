@@ -168,7 +168,7 @@ fn clean(data: &mut LocalVoteHistoryData, max_cache: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Account, KeyPair};
+    use crate::{core::KeyPair, Account};
 
     #[test]
     fn empty_history() {

@@ -8,10 +8,12 @@ pub use account_info::AccountInfoHandle;
 use rand::{thread_rng, Rng};
 
 use crate::{
-    core::{PublicKey, RawKey, Signature},
+    core::{
+        sign_message, validate_message, validate_message_batch, KeyPair, PublicKey, RawKey,
+        Signature,
+    },
     deterministic_key, ip_address_hash_raw,
-    numbers::{sign_message, validate_message, validate_message_batch, Account, Difficulty},
-    KeyPair,
+    numbers::{Account, Difficulty},
 };
 
 use super::copy_raw_key_bytes;

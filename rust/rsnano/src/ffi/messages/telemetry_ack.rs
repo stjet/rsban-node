@@ -4,12 +4,12 @@ use std::{
 };
 
 use crate::{
-    core::{BlockHash, Signature},
+    core::{BlockHash, KeyPair, Signature},
     ffi::{
         copy_account_bytes, copy_hash_bytes, copy_signature_bytes, FfiStream, NetworkConstantsDto,
     },
     messages::{Message, TelemetryAck, TelemetryData},
-    Account, KeyPair,
+    Account,
 };
 
 use super::{

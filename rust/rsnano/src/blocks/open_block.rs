@@ -1,6 +1,6 @@
 use crate::{
-    core::{BlockHash, BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature},
-    from_string_hex, sign_message, to_string_hex,
+    core::{sign_message, BlockHash, BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature},
+    from_string_hex, to_string_hex,
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
     Account, Block, BlockSideband, BlockType, LazyBlockHash,
 };
@@ -199,7 +199,7 @@ impl Block for OpenBlock {
 mod tests {
     use super::*;
     use crate::{
-        numbers::KeyPair,
+        core::KeyPair,
         utils::{MemoryStream, TestPropertyTree},
     };
 

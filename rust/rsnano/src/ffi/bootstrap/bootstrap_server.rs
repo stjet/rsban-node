@@ -1,4 +1,5 @@
 use crate::{
+    core::KeyPair,
     ffi::{
         io_context::{FfiIoContext, IoContextHandle},
         messages::FfiMessageVisitor,
@@ -18,7 +19,7 @@ use crate::{
         RealtimeMessageVisitor, RealtimeMessageVisitorImpl, RequestResponseVisitorFactory,
         SocketType, SynCookies, TcpServer, TcpServerExt, TcpServerObserver,
     },
-    Account, KeyPair, NetworkConstants, NetworkParams, NodeConfig,
+    Account, NetworkConstants, NetworkParams, NodeConfig,
 };
 use std::{
     ffi::c_void,

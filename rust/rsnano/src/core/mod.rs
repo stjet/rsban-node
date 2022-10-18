@@ -22,6 +22,9 @@ pub use root::Root;
 mod qualified_root;
 pub use qualified_root::QualifiedRoot;
 
+mod key_pair;
+pub use key_pair::{sign_message, validate_message, validate_message_batch, KeyPair};
+
 use std::fmt::Write;
 
 pub(crate) fn encode_hex(i: u128) -> String {

@@ -1,8 +1,8 @@
 use crate::{
-    core::{BlockHash, BlockHashBuilder, PublicKey, RawKey, Signature},
+    core::{BlockHash, BlockHashBuilder, Link, PublicKey, RawKey, Signature},
     from_string_hex, sign_message, to_string_hex,
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
-    Account, Block, BlockSideband, BlockType, LazyBlockHash, Link, Root,
+    Account, Block, BlockSideband, BlockType, LazyBlockHash, Root,
 };
 use anyhow::Result;
 
@@ -125,7 +125,7 @@ impl Block for ReceiveBlock {
         self.hash.hash(&self.hashables)
     }
 
-    fn link(&self) -> crate::Link {
+    fn link(&self) -> Link {
         Link::new()
     }
 

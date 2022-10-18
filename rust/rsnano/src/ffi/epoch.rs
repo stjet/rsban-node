@@ -1,4 +1,7 @@
-use crate::{core::PublicKey, Epochs, Link};
+use crate::{
+    core::{Link, PublicKey},
+    Epochs,
+};
 use num::FromPrimitive;
 use std::convert::TryInto;
 

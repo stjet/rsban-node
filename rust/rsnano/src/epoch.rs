@@ -1,4 +1,4 @@
-use crate::{core::PublicKey, Link};
+use crate::core::{Link, PublicKey};
 use std::collections::HashMap;
 
 /**

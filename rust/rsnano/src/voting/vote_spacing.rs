@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{BlockHash, Root};
+use crate::{core::Root, BlockHash};
 
 pub struct VoteSpacing {
     delay: Duration,

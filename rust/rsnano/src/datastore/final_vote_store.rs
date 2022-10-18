@@ -1,5 +1,8 @@
 use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
-use crate::{core::BlockHash, QualifiedRoot, Root};
+use crate::{
+    core::{BlockHash, Root},
+    QualifiedRoot,
+};
 
 pub type FinalVoteIterator<I> = DbIterator<QualifiedRoot, BlockHash, I>;
 

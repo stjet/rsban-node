@@ -2,8 +2,9 @@ use num_traits::FromPrimitive;
 use std::convert::TryFrom;
 
 use crate::{
+    core::Root,
     ffi::{blocks::BlockDetailsDto, BlockHandle, StringDto},
-    BlockDetails, BlockType, Networks, Root, WorkThresholds, WorkVersion,
+    BlockDetails, BlockType, Networks, WorkThresholds, WorkVersion,
 };
 
 #[repr(C)]

@@ -16,6 +16,9 @@ pub use hash_or_account::HashOrAccount;
 mod link;
 pub use link::Link;
 
+mod root;
+pub use root::Root;
+
 use std::fmt::Write;
 
 pub(crate) fn encode_hex(i: u128) -> String {

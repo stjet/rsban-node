@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{core::BlockHash, voting::VoteSpacing, Root};
+use crate::{
+    core::{BlockHash, Root},
+    voting::VoteSpacing,
+};
 
 pub struct VoteSpacingHandle(VoteSpacing);
 

@@ -6,7 +6,7 @@ use anyhow::Result;
 use blake2::digest::{Update, VariableOutput};
 use primitive_types::{U256, U512};
 
-#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug, Hash)]
 pub struct Account {
     pub public_key: PublicKey,
 }

@@ -130,6 +130,10 @@ struct PeerExclusionHandle;
 
 struct PullsCacheHandle;
 
+struct RepAmountsRawData;
+
+struct RepWeightsHandle;
+
 struct SignatureCheckerHandle;
 
 struct SocketHandle;
@@ -871,6 +875,19 @@ struct ReceiveBlockDto2
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
 	uint64_t work;
+};
+
+struct RepAmountItemDto
+{
+	uint8_t account[32];
+	uint8_t amount[16];
+};
+
+struct RepAmountsDto
+{
+	const RepAmountItemDto * items;
+	uintptr_t count;
+	RepAmountsRawData * raw_data;
 };
 
 struct RpcProcessConfigDto
@@ -2821,6 +2838,38 @@ void rsn_receive_block_source (const BlockHandle * handle, uint8_t (*result)[32]
 void rsn_receive_block_source_set (BlockHandle * handle, const uint8_t (*previous)[32]);
 
 void rsn_remove_temporary_directories ();
+
+void rsn_rep_weights_copy_from (RepWeightsHandle * handle, const RepWeightsHandle * other);
+
+RepWeightsHandle * rsn_rep_weights_create ();
+
+void rsn_rep_weights_destroy (RepWeightsHandle * handle);
+
+void rsn_rep_weights_destroy_amounts_dto (RepAmountsDto * amounts);
+
+void rsn_rep_weights_get_rep_amounts (RepWeightsHandle * handle, RepAmountsDto * result);
+
+uintptr_t rsn_rep_weights_item_count (const RepWeightsHandle * handle);
+
+uintptr_t rsn_rep_weights_item_size ();
+
+void rsn_rep_weights_representation_add (RepWeightsHandle * handle,
+const uint8_t * source_rep,
+const uint8_t * amount);
+
+void rsn_rep_weights_representation_add_dual (RepWeightsHandle * handle,
+const uint8_t * source_rep_1,
+const uint8_t * amount_1,
+const uint8_t * source_rep_2,
+const uint8_t * amount_2);
+
+void rsn_rep_weights_representation_get (RepWeightsHandle * handle,
+const uint8_t * account,
+uint8_t * result);
+
+void rsn_rep_weights_representation_put (RepWeightsHandle * handle,
+const uint8_t * source_rep,
+const uint8_t * amount);
 
 int32_t rsn_rpc_config_create (RpcConfigDto * dto, const NetworkConstantsDto * network_constants);
 

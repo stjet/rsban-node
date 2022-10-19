@@ -55,6 +55,10 @@ impl Amount {
         self.value.to_string()
     }
 
+    pub fn number(&self) -> u128 {
+        self.value
+    }
+
     pub fn format_balance(&self, precision: usize) -> String {
         let precision = std::cmp::min(precision, 30);
         if self.value == 0 || self.value >= *MXRB_RATIO / num_traits::pow(10, precision) {

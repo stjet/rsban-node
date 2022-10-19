@@ -8,6 +8,7 @@ pub mod datastore;
 mod hardened_constants;
 mod ipc;
 mod property_tree;
+mod rep_weights;
 mod secure;
 mod signatures;
 mod state_block_signature_verification;

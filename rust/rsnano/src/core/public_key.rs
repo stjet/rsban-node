@@ -6,7 +6,7 @@ use crate::utils::Stream;
 
 use super::RawKey;
 
-#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug, Hash)]
 pub struct PublicKey {
     value: [u8; 32], // big endian
 }

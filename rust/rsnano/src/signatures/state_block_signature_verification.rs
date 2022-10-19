@@ -253,8 +253,8 @@ impl StateBlockSignatureVerificationThread {
             let guard = i.block.read().unwrap();
             let block = guard.as_block();
             hashes.push(block.hash());
-            messages.push(block.hash().to_bytes().to_vec());
-            let mut account_l = *block.account();
+            messages.push(block.hash().as_bytes().to_vec());
+            let mut account_l = block.account();
             if !block.link().is_zero() && self.epochs.is_epoch_link(&block.link()) {
                 account_l = self
                     .epochs
@@ -265,7 +265,7 @@ impl StateBlockSignatureVerificationThread {
                 account_l = i.account;
             }
             accounts.push(account_l);
-            pub_keys.push(account_l.public_key);
+            pub_keys.push(account_l.into());
             block_signatures.push(block.block_signature().clone())
         }
 

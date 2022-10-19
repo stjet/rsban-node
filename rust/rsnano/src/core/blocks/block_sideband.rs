@@ -101,8 +101,8 @@ impl BlockSideband {
         let mut result = Self {
             height: 0,
             timestamp: 0,
-            successor: BlockHash::new(),
-            account: Account::new(),
+            successor: BlockHash::zero(),
+            account: Account::zero(),
             balance: Amount::zero(),
             details: BlockDetails::new(Epoch::Epoch0, false, false, false),
             source_epoch: Epoch::Epoch0,

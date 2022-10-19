@@ -33,7 +33,7 @@ impl SendBlockBuilder {
         let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
         block.set_sideband(BlockSideband::new(
             Account::from(4),
-            BlockHash::new(),
+            BlockHash::zero(),
             balance,
             5,
             8,

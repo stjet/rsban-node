@@ -57,7 +57,7 @@ impl UncheckedInfo {
         Self {
             block: None,
             modified: 0,
-            account: *Account::zero(),
+            account: Account::zero(),
             verified: SignatureVerification::Unknown,
         }
     }

@@ -182,7 +182,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     }
     dto.preconfigured_peers_count = cfg.preconfigured_peers.len();
     for (i, rep) in cfg.preconfigured_representatives.iter().enumerate() {
-        dto.preconfigured_representatives[i] = rep.to_bytes();
+        dto.preconfigured_representatives[i] = *rep.as_bytes();
     }
     dto.preconfigured_representatives_count = cfg.preconfigured_representatives.len();
     dto.max_pruning_age_s = cfg.max_pruning_age_s;

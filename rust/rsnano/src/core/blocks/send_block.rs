@@ -49,8 +49,8 @@ impl SendHashables {
     }
 
     fn clear(&mut self) {
-        self.previous = BlockHash::new();
-        self.destination = Account::new();
+        self.previous = BlockHash::zero();
+        self.destination = Account::zero();
         self.balance = Amount::new(0);
     }
 }
@@ -193,7 +193,7 @@ impl Block for SendBlock {
         BlockType::Send
     }
 
-    fn account(&self) -> &Account {
+    fn account(&self) -> Account {
         Account::zero()
     }
 
@@ -202,7 +202,7 @@ impl Block for SendBlock {
     }
 
     fn link(&self) -> Link {
-        Link::new()
+        Link::zero()
     }
 
     fn block_signature(&self) -> &Signature {
@@ -221,8 +221,8 @@ impl Block for SendBlock {
         self.work
     }
 
-    fn previous(&self) -> &BlockHash {
-        &self.hashables.previous
+    fn previous(&self) -> BlockHash {
+        self.hashables.previous
     }
 
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {

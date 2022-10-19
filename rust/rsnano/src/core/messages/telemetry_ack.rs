@@ -42,7 +42,7 @@ impl TelemetryData {
     pub fn new() -> Self {
         Self {
             signature: Signature::new(),
-            node_id: Account::new(),
+            node_id: Account::zero(),
             block_count: 0,
             cemented_count: 0,
             unchecked_count: 0,
@@ -51,7 +51,7 @@ impl TelemetryData {
             uptime: 0,
             peer_count: 0,
             protocol_version: 0,
-            genesis_block: BlockHash::new(),
+            genesis_block: BlockHash::zero(),
             major_version: 0,
             minor_version: 0,
             patch_version: 0,
@@ -153,7 +153,7 @@ impl TelemetryData {
     }
 
     pub fn sign(&mut self, keys: &KeyPair) -> Result<()> {
-        debug_assert!(self.node_id.public_key == keys.public_key());
+        debug_assert!(keys.public_key() == self.node_id.into());
         let mut stream = MemoryStream::new();
         self.serialize_without_signature(&mut stream)?;
         self.signature = sign_message(&keys.private_key(), &keys.public_key(), stream.as_bytes())?;
@@ -163,7 +163,7 @@ impl TelemetryData {
     pub fn validate_signature(&self) -> bool {
         let mut stream = MemoryStream::new();
         if self.serialize_without_signature(&mut stream).is_ok() {
-            validate_message(&self.node_id.public_key, stream.as_bytes(), &self.signature).is_ok()
+            validate_message(&self.node_id.into(), stream.as_bytes(), &self.signature).is_ok()
         } else {
             false
         }

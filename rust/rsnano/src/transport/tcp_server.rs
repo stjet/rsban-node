@@ -103,7 +103,7 @@ impl TcpServer {
                 std::net::IpAddr::V6(Ipv6Addr::UNSPECIFIED),
                 0,
             )),
-            remote_node_id: Mutex::new(Account::new()),
+            remote_node_id: Mutex::new(Account::zero()),
             workers,
             io_ctx,
             last_telemetry_req: Mutex::new(None),

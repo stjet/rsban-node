@@ -80,8 +80,8 @@ pub struct BlockSidebandDto {
 pub unsafe fn set_block_sideband_dto(sideband: &BlockSideband, result: *mut BlockSidebandDto) {
     (*result).height = sideband.height;
     (*result).timestamp = sideband.timestamp;
-    (*result).successor = sideband.successor.to_bytes();
-    (*result).account = sideband.account.to_bytes();
+    (*result).successor = *sideband.successor.as_bytes();
+    (*result).account = *sideband.account.as_bytes();
     (*result).balance = sideband.balance.to_be_bytes();
     let details_ptr: *mut BlockDetailsDto = &mut (*result).details;
     set_block_details_dto(&sideband.details, details_ptr);

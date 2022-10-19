@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rsn_send_block_destination(
     handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = read_send_block(handle, |b| b.hashables.destination.to_bytes());
+    (*result) = read_send_block(handle, |b| *b.hashables.destination.as_bytes());
 }
 
 #[no_mangle]

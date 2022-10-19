@@ -387,7 +387,7 @@ mod tests {
             let verify_block = |block: &StateBlock, result: i32| {
                 let mut check = SignatureCheckSet {
                     messages: vec![block.hash().as_bytes().to_vec()],
-                    pub_keys: vec![block.hashables.account.public_key],
+                    pub_keys: vec![block.hashables.account.into()],
                     signatures: vec![block.signature.clone()],
                     verifications: vec![-1],
                 };
@@ -397,10 +397,10 @@ mod tests {
 
             let mut block = StateBlock::new(
                 key.public_key().into(),
-                BlockHash::new(),
+                BlockHash::zero(),
                 key.public_key().into(),
                 Amount::zero(),
-                Link::new(),
+                Link::zero(),
                 &key.private_key(),
                 &key.public_key(),
                 0,

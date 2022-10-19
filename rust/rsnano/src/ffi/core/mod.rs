@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rsn_sign_message(
     match sign_message(&private_key, &public_key, data) {
         Ok(sig) => {
             let signature = slice::from_raw_parts_mut(signature, 64);
-            signature.copy_from_slice(&sig.to_be_bytes());
+            signature.copy_from_slice(sig.as_bytes());
             0
         }
         Err(_) => -1,

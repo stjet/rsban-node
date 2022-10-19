@@ -57,7 +57,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_get_block_hash(
             true
         }
         Ok(None) => {
-            copy_hash_bytes(BlockHash::new(), hash);
+            copy_hash_bytes(BlockHash::zero(), hash);
             true
         }
         Err(_) => false,

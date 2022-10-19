@@ -44,8 +44,8 @@ impl OpenBlockBuilder {
             is_epoch: false,
         };
         block.set_sideband(BlockSideband::new(
-            *block.account(),
-            *BlockHash::zero(),
+            block.account(),
+            BlockHash::zero(),
             Amount::new(5),
             1,
             2,
@@ -67,12 +67,12 @@ mod tests {
         let block = BlockBuilder::open().build().unwrap();
         assert_eq!(block.hashables.source, BlockHash::from(1));
         assert_eq!(block.hashables.representative, Account::from(2));
-        assert_ne!(block.hashables.account, *Account::zero());
+        assert_ne!(block.hashables.account, Account::zero());
         assert_eq!(block.work, 4);
         assert_ne!(*block.block_signature(), Signature::new());
 
         let sideband = block.sideband().unwrap();
-        assert_eq!(sideband.account, *block.account());
+        assert_eq!(sideband.account, block.account());
         assert!(sideband.successor.is_zero());
         assert_eq!(sideband.balance, Amount::new(5));
         assert_eq!(sideband.height, 1);

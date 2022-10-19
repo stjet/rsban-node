@@ -1,62 +1,14 @@
-use std::fmt::Write;
-
 use super::PublicKey;
-use crate::utils::{Deserialize, Serialize, Stream};
+use crate::u256_struct;
 use anyhow::Result;
 use blake2::digest::{Update, VariableOutput};
-use primitive_types::{U256, U512};
+use primitive_types::U512;
 
-#[derive(Clone, Copy, PartialEq, Eq, Default, Debug, Hash)]
-pub struct Account {
-    pub public_key: PublicKey,
-}
-
-const ZERO_ACCOUNT: Account = Account {
-    public_key: PublicKey::new(),
-};
+u256_struct!(Account);
 
 impl Account {
-    pub fn new() -> Self {
-        Self {
-            public_key: PublicKey::new(),
-        }
-    }
-
-    pub fn zero() -> &'static Account {
-        &ZERO_ACCOUNT
-    }
-
-    pub fn is_zero(&self) -> bool {
-        self.public_key.is_zero()
-    }
-
-    pub const fn from_bytes(bytes: [u8; 32]) -> Account {
-        Self {
-            public_key: PublicKey::from_bytes(bytes),
-        }
-    }
-
-    pub fn from_slice(bytes: &[u8]) -> Option<Self> {
-        match PublicKey::from_slice(bytes) {
-            Some(key) => Some(Account { public_key: key }),
-            None => None,
-        }
-    }
-
-    pub fn to_bytes(self) -> [u8; 32] {
-        self.public_key.to_be_bytes()
-    }
-
-    pub fn as_bytes(&'_ self) -> &'_ [u8; 32] {
-        self.public_key.as_bytes()
-    }
-
-    pub fn number(&self) -> U256 {
-        U256::from_big_endian(self.as_bytes())
-    }
-
     pub fn encode_account(&self) -> String {
-        let mut number = U512::from_big_endian(self.public_key.as_bytes());
+        let mut number = U512::from_big_endian(&self.0);
         let check = U512::from_little_endian(&self.account_checksum());
         number <<= 40;
         number = number | check;
@@ -75,7 +27,7 @@ impl Account {
     fn account_checksum(&self) -> [u8; 5] {
         let mut check = [0u8; 5];
         let mut blake = blake2::VarBlake2b::new_keyed(&[], check.len());
-        blake.update(self.public_key.as_bytes());
+        blake.update(&self.0);
         blake.finalize_variable(|bytes| {
             check.copy_from_slice(bytes);
         });
@@ -86,69 +38,29 @@ impl Account {
     pub fn decode_account(source: impl AsRef<str>) -> Result<Account> {
         EncodedAccountStr(source.as_ref()).to_u512()?.to_account()
     }
+}
 
-    pub fn encode_hex(&self) -> String {
-        let mut result = String::with_capacity(64);
-        for &byte in self.as_bytes() {
-            write!(&mut result, "{:02X}", byte).unwrap();
-        }
-        result
-    }
-
-    pub fn decode_hex(s: impl AsRef<str>) -> Result<Self> {
-        let s = s.as_ref();
-        if s.is_empty() || s.len() > 64 {
-            bail!(
-                "Invalid account string length. Expected <= 64 but was {}",
-                s.len()
-            );
-        }
-
-        let mut padded_string = String::new();
-        let sanitized = if s.len() < 64 {
-            for _ in 0..(64 - s.len()) {
-                padded_string.push('0');
-            }
-            padded_string.push_str(s);
-            &padded_string
-        } else {
-            s
-        };
-
-        let mut bytes = [0u8; 32];
-        hex::decode_to_slice(sanitized, &mut bytes)?;
-        Ok(Account::from_bytes(bytes))
+impl From<Account> for PublicKey {
+    fn from(account: Account) -> Self {
+        PublicKey::from_bytes(*account.as_bytes())
     }
 }
 
-impl Serialize for Account {
-    fn serialized_size() -> usize {
-        PublicKey::serialized_size()
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.public_key.serialize(stream)
-    }
-}
-
-impl Deserialize for Account {
-    type Target = Self;
-    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Account> {
-        PublicKey::deserialize(stream).map(Self::from)
-    }
-}
-
-impl From<PublicKey> for Account {
-    fn from(public_key: PublicKey) -> Self {
-        Account { public_key }
+impl From<&Account> for PublicKey {
+    fn from(account: &Account) -> Self {
+        PublicKey::from_bytes(*account.as_bytes())
     }
 }
 
 impl From<&PublicKey> for Account {
-    fn from(public_key: &PublicKey) -> Self {
-        Account {
-            public_key: *public_key,
-        }
+    fn from(key: &PublicKey) -> Self {
+        Account::from_bytes(*key.as_bytes())
+    }
+}
+
+impl From<PublicKey> for Account {
+    fn from(key: PublicKey) -> Self {
+        Account::from_bytes(*key.as_bytes())
     }
 }
 
@@ -296,20 +208,6 @@ fn account_decode(value: u8) -> u8 {
     result
 }
 
-impl From<u64> for Account {
-    fn from(value: u64) -> Self {
-        let mut bytes = [0; 32];
-        bytes[24..].copy_from_slice(&value.to_be_bytes());
-        Account::from(PublicKey::from_bytes(bytes))
-    }
-}
-
-impl From<U256> for Account {
-    fn from(value: U256) -> Self {
-        PublicKey::from(value).into()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -317,7 +215,7 @@ mod tests {
     // original test: account.encode_zero
     #[test]
     fn encode_zero() {
-        let account = Account::new();
+        let account = Account::zero();
         let encoded = account.encode_account();
         assert_eq!(
             encoded,
@@ -343,7 +241,7 @@ mod tests {
     // original test: account.encode_fail
     #[test]
     fn encode_fail() {
-        let account = Account::new();
+        let account = Account::zero();
         let mut encoded = account.encode_account();
         encoded.replace_range(16..17, "x");
         assert!(Account::decode_account(&encoded).is_err());
@@ -369,7 +267,7 @@ mod tests {
     fn decode_less_than_64_chars() {
         let account = Account::decode_hex("AA").unwrap();
         assert_eq!(
-            account.to_bytes(),
+            *account.as_bytes(),
             [
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0xAA

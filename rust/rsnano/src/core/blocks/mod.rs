@@ -62,7 +62,7 @@ pub struct LazyBlockHash {
 impl LazyBlockHash {
     pub fn new() -> Self {
         Self {
-            hash: Arc::new(RwLock::new(BlockHash::new())),
+            hash: Arc::new(RwLock::new(BlockHash::zero())),
         }
     }
     pub fn hash(&'_ self, factory: impl Into<BlockHash>) -> BlockHash {
@@ -81,7 +81,7 @@ impl LazyBlockHash {
 
     pub(crate) fn clear(&self) {
         let mut x = self.hash.write().unwrap();
-        *x = BlockHash::new();
+        *x = BlockHash::zero();
     }
 }
 
@@ -122,7 +122,7 @@ impl BlockEnum {
 
 pub trait Block: FullHash {
     fn block_type(&self) -> BlockType;
-    fn account(&self) -> &Account;
+    fn account(&self) -> Account;
 
     /**
      * Contextual details about a block, some fields may or may not be set depending on block type.
@@ -137,7 +137,7 @@ pub trait Block: FullHash {
     fn set_block_signature(&mut self, signature: &Signature);
     fn work(&self) -> u64;
     fn set_work(&mut self, work: u64);
-    fn previous(&self) -> &BlockHash;
+    fn previous(&self) -> BlockHash;
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()>;
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()>;
     fn work_version(&self) -> WorkVersion {

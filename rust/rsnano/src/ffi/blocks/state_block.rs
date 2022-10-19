@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rsn_state_block_account(
     handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = read_state_block(handle, |b| b.hashables.account.to_bytes());
+    (*result) = read_state_block(handle, |b| *b.hashables.account.as_bytes());
 }
 
 #[no_mangle]
@@ -124,7 +124,7 @@ pub unsafe extern "C" fn rsn_state_block_representative(
     handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = read_state_block(handle, |b| b.hashables.representative.to_bytes());
+    (*result) = read_state_block(handle, |b| *b.hashables.representative.as_bytes());
 }
 
 #[no_mangle]
@@ -156,7 +156,7 @@ pub unsafe extern "C" fn rsn_state_block_balance_set(handle: *mut BlockHandle, b
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_state_block_link(handle: *const BlockHandle, result: *mut [u8; 32]) {
-    (*result) = read_state_block(handle, |b| b.hashables.link.to_bytes());
+    (*result) = read_state_block(handle, |b| *b.hashables.link.as_bytes());
 }
 
 #[no_mangle]

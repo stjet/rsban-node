@@ -24,8 +24,8 @@ impl BulkPull {
     pub fn new(constants: &NetworkConstants) -> Self {
         Self {
             header: MessageHeader::new(constants, MessageType::BulkPull),
-            start: HashOrAccount::new(),
-            end: BlockHash::new(),
+            start: HashOrAccount::zero(),
+            end: BlockHash::zero(),
             count: 0,
         }
     }
@@ -33,8 +33,8 @@ impl BulkPull {
     pub fn with_header(header: MessageHeader) -> Self {
         Self {
             header,
-            start: HashOrAccount::new(),
-            end: BlockHash::new(),
+            start: HashOrAccount::zero(),
+            end: BlockHash::zero(),
             count: 0,
         }
     }

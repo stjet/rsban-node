@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rsn_receive_block_source(
     handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = read_receive_block(handle, |b| b.hashables.source.to_bytes());
+    (*result) = read_receive_block(handle, |b| *b.hashables.source.as_bytes());
 }
 
 #[no_mangle]

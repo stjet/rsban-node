@@ -77,7 +77,7 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         let mut result = Vec::new();
         let key_start = QualifiedRoot {
             root,
-            previous: BlockHash::new(),
+            previous: BlockHash::zero(),
         };
 
         let mut i = self.begin_at_root(txn, &key_start);
@@ -100,7 +100,7 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
             &txn.as_txn(),
             &QualifiedRoot {
                 root: *root,
-                previous: BlockHash::new(),
+                previous: BlockHash::zero(),
             },
         );
         while let Some((k, _)) = it.current() {

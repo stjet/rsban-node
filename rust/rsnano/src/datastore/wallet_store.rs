@@ -11,8 +11,8 @@ pub struct Fans {
 impl Fans {
     pub fn new(fanout: usize) -> Self {
         Self {
-            password: Fan::new(RawKey::new(), fanout),
-            wallet_key_mem: Fan::new(RawKey::new(), fanout),
+            password: Fan::new(RawKey::zero(), fanout),
+            wallet_key_mem: Fan::new(RawKey::zero(), fanout),
         }
     }
 }

@@ -130,7 +130,7 @@ impl Block for ChangeBlock {
         BlockType::Change
     }
 
-    fn account(&self) -> &Account {
+    fn account(&self) -> Account {
         Account::zero()
     }
 
@@ -139,7 +139,7 @@ impl Block for ChangeBlock {
     }
 
     fn link(&self) -> Link {
-        Link::new()
+        Link::zero()
     }
 
     fn block_signature(&self) -> &Signature {
@@ -158,8 +158,8 @@ impl Block for ChangeBlock {
         self.signature = signature.clone();
     }
 
-    fn previous(&self) -> &BlockHash {
-        &self.hashables.previous
+    fn previous(&self) -> BlockHash {
+        self.hashables.previous
     }
 
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
@@ -211,7 +211,7 @@ mod tests {
             5,
         )
         .unwrap();
-        assert_eq!(block.previous(), &previous);
+        assert_eq!(block.previous(), previous);
         assert_eq!(block.root(), block.previous().into());
     }
 

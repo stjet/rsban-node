@@ -44,10 +44,6 @@ impl Signature {
         &self.bytes
     }
 
-    pub fn to_be_bytes(&self) -> [u8; 64] {
-        self.bytes
-    }
-
     #[cfg(test)]
     pub fn make_invalid(&mut self) {
         self.bytes[31] ^= 1;

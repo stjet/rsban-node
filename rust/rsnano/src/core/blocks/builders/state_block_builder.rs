@@ -110,11 +110,11 @@ impl StateBlockBuilder {
     }
 
     pub fn zero(mut self) -> Self {
-        self.account = Account::new();
-        self.previous = BlockHash::new();
-        self.representative = Account::new();
-        self.balance = Amount::new(0);
-        self.link = Link::new();
+        self.account = Account::zero();
+        self.previous = BlockHash::zero();
+        self.representative = Account::zero();
+        self.balance = Amount::zero();
+        self.link = Link::zero();
         self.signature = None;
         self.work = 0;
         self
@@ -146,7 +146,7 @@ impl StateBlockBuilder {
         let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
         state.set_sideband(BlockSideband::new(
             self.account,
-            BlockHash::new(),
+            BlockHash::zero(),
             self.balance,
             5,
             6,

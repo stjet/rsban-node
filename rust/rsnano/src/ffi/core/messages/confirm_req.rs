@@ -86,8 +86,8 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_hashes(
     let result_slice = std::slice::from_raw_parts_mut(result, req.roots_hashes().len());
     for (i, (hash, root)) in req.roots_hashes().iter().enumerate() {
         result_slice[i] = HashRootPair {
-            block_hash: hash.to_bytes(),
-            root: root.to_bytes(),
+            block_hash: *hash.as_bytes(),
+            root: *root.as_bytes(),
         };
     }
 }

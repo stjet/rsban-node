@@ -60,7 +60,7 @@ impl From<ConfirmationHeightInfo> for ConfirmationHeightInfoDto {
     fn from(info: ConfirmationHeightInfo) -> Self {
         ConfirmationHeightInfoDto {
             height: info.height,
-            frontier: info.frontier.to_bytes(),
+            frontier: *info.frontier.as_bytes(),
         }
     }
 }

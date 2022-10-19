@@ -135,7 +135,7 @@ impl LedgerConstants {
         let mut nano_live_genesis = parse_block_from_genesis_data(LIVE_GENESIS_DATA)?;
         let mut nano_test_genesis = parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str())?;
 
-        let beta_genesis_account = *nano_beta_genesis.as_block().account();
+        let beta_genesis_account = nano_beta_genesis.as_block().account();
         nano_beta_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -148,7 +148,7 @@ impl LedgerConstants {
                 Epoch::Epoch0,
             ));
 
-        let dev_genesis_account = *nano_dev_genesis.as_block().account();
+        let dev_genesis_account = nano_dev_genesis.as_block().account();
         nano_dev_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -161,7 +161,7 @@ impl LedgerConstants {
                 Epoch::Epoch0,
             ));
 
-        let live_genesis_account = *nano_live_genesis.as_block().account();
+        let live_genesis_account = nano_live_genesis.as_block().account();
         nano_live_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -174,7 +174,7 @@ impl LedgerConstants {
                 Epoch::Epoch0,
             ));
 
-        let test_genesis_account = *nano_test_genesis.as_block().account();
+        let test_genesis_account = nano_test_genesis.as_block().account();
         nano_test_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -216,7 +216,7 @@ impl LedgerConstants {
 
         let mut epochs = Epochs::new();
 
-        let epoch_1_signer = genesis.as_block().account().public_key;
+        let epoch_1_signer = genesis.as_block().account().into();
         let mut link_bytes = [0u8; 32];
         link_bytes[..14].copy_from_slice(b"epoch v1 block");
         let epoch_link_v1 = Link::from_bytes(link_bytes);
@@ -227,9 +227,9 @@ impl LedgerConstants {
         .unwrap();
         let epoch_2_signer = match network {
             Networks::NanoDevNetwork => DEV_GENESIS_KEY.public_key(),
-            Networks::NanoBetaNetwork => nano_beta_account.public_key,
-            Networks::NanoLiveNetwork => nano_live_epoch_v2_signer.public_key,
-            Networks::NanoTestNetwork => nano_test_account.public_key,
+            Networks::NanoBetaNetwork => nano_beta_account.into(),
+            Networks::NanoLiveNetwork => nano_live_epoch_v2_signer.into(),
+            Networks::NanoTestNetwork => nano_test_account.into(),
             _ => panic!("invalid network"),
         };
         link_bytes[..14].copy_from_slice(b"epoch v2 block");
@@ -250,7 +250,7 @@ impl LedgerConstants {
             nano_test_genesis: Arc::new(RwLock::new(nano_test_genesis)),
             genesis: Arc::new(RwLock::new(genesis)),
             genesis_amount: Amount::new(u128::MAX),
-            burn_account: *Account::zero(),
+            burn_account: Account::zero(),
             nano_dev_final_votes_canary_account,
             nano_beta_final_votes_canary_account,
             nano_live_final_votes_canary_account,

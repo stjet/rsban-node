@@ -49,7 +49,7 @@ impl<'a> FrontierStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lm
     fn get(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Account {
         match txn.get(self.database, hash.as_bytes()) {
             Ok(bytes) => Account::from_slice(bytes).unwrap_or_default(),
-            Err(lmdb::Error::NotFound) => Account::new(),
+            Err(lmdb::Error::NotFound) => Account::zero(),
             Err(e) => panic!("Could not load frontier: {:?}", e),
         }
     }
@@ -116,7 +116,7 @@ mod tests {
         let txn = env.tx_begin_read()?;
         assert_eq!(
             store.get(&txn.as_txn(), &BlockHash::from(1)),
-            *Account::zero()
+            Account::zero()
         );
         assert!(store.begin(&txn.as_txn()).is_end());
         Ok(())
@@ -148,7 +148,7 @@ mod tests {
         store.del(&mut txn, &block);
 
         let loaded = store.get(&txn.as_txn(), &block);
-        assert_eq!(loaded, Account::new());
+        assert_eq!(loaded, Account::zero());
         Ok(())
     }
 }

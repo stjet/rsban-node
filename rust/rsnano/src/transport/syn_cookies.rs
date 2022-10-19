@@ -68,7 +68,7 @@ impl SynCookies {
         debug_assert!(ip_addr.is_ipv6());
         let mut lock = self.data.lock().unwrap();
         if let Some(info) = lock.cookies.get(endpoint) {
-            validate_message(&node_id.public_key, &info.cookie, signature)?;
+            validate_message(&node_id.into(), &info.cookie, signature)?;
             lock.cookies.remove(endpoint);
             lock.dec_cookie_count(ip_addr);
         }

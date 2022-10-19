@@ -31,7 +31,7 @@ impl TcpMessageItem {
         Self {
             message: None,
             endpoint: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
-            node_id: Account::new(),
+            node_id: Account::zero(),
             socket: None,
         }
     }

@@ -59,10 +59,10 @@ impl<'a> LmdbWalletStore {
             store.entry_put_raw(txn, &Self::salt_special(), &WalletValue::new(salt, 0));
             // Wallet key is a fixed random key that encrypts all entries
             let wallet_key = RawKey::random();
-            let password = RawKey::new();
+            let password = RawKey::zero();
             let mut guard = store.fans.lock().unwrap();
             guard.password.value_set(password);
-            let zero = RawKey::new();
+            let zero = RawKey::zero();
             // Wallet key is encrypted by the user's password
             let encrypted = wallet_key.encrypt(&zero, &salt.initialization_vector_low());
             store.entry_put_raw(
@@ -75,7 +75,7 @@ impl<'a> LmdbWalletStore {
             drop(guard);
             let check = zero.encrypt(&wallet_key, &salt.initialization_vector_low());
             store.entry_put_raw(txn, &Self::check_special(), &WalletValue::new(check, 0));
-            let rep = RawKey::from_bytes(representative.to_bytes());
+            let rep = RawKey::from_bytes(*representative.as_bytes());
             store.entry_put_raw(
                 txn,
                 &Self::representative_special(),
@@ -86,7 +86,7 @@ impl<'a> LmdbWalletStore {
             store.entry_put_raw(
                 txn,
                 &Self::deterministic_index_special(),
-                &WalletValue::new(RawKey::new(), 0),
+                &WalletValue::new(RawKey::zero(), 0),
             );
         }
         {
@@ -144,7 +144,7 @@ impl<'a> LmdbWalletStore {
         store.ensure_key_exists(&tx, &Self::check_special())?;
         store.ensure_key_exists(&tx, &Self::representative_special())?;
         let mut guard = store.fans.lock().unwrap();
-        guard.password.value_set(RawKey::new());
+        guard.password.value_set(RawKey::zero());
         let key = store.entry_get_raw(&tx, &Self::wallet_key_special()).key;
         guard.wallet_key_mem.value_set(key);
         drop(guard);
@@ -218,7 +218,7 @@ impl<'a> LmdbWalletStore {
                 let mut stream = StreamAdapter::new(bytes);
                 WalletValue::deserialize(&mut stream).unwrap()
             }
-            _ => WalletValue::new(RawKey::new(), 0),
+            _ => WalletValue::new(RawKey::zero(), 0),
         }
     }
 
@@ -301,7 +301,7 @@ impl<'a> LmdbWalletStore {
     }
 
     fn check_wallet_key(&self, txn: &LmdbTransaction, wallet_key: &RawKey) -> bool {
-        let zero = RawKey::new();
+        let zero = RawKey::zero();
         let iv = self.salt(txn).initialization_vector_low();
         let check = zero.encrypt(&wallet_key, &iv);
         self.check(txn) == check
@@ -465,7 +465,7 @@ impl<'a> LmdbWalletStore {
     }
 
     pub fn lock(&self) {
-        self.fans.lock().unwrap().password.value_set(RawKey::new());
+        self.fans.lock().unwrap().password.value_set(RawKey::zero());
     }
 
     pub fn accounts(&self, txn: &LmdbTransaction) -> Vec<Account> {
@@ -507,11 +507,11 @@ impl<'a> LmdbWalletStore {
         txn: &mut LmdbWriteTransaction,
         pub_key: &Account,
     ) -> anyhow::Result<()> {
-        if !self.valid_public_key(&pub_key.public_key) {
+        if !self.valid_public_key(&pub_key.into()) {
             bail!("invalid public key");
         }
 
-        self.entry_put_raw(txn, pub_key, &WalletValue::new(RawKey::new(), 0));
+        self.entry_put_raw(txn, pub_key, &WalletValue::new(RawKey::zero(), 0));
         Ok(())
     }
 
@@ -533,15 +533,16 @@ impl<'a> LmdbWalletStore {
             KeyType::Adhoc => {
                 // Ad-hoc keys
                 let password = self.wallet_key(txn);
+                let pub_key = PublicKey::from(pub_key);
                 value
                     .key
-                    .decrypt(&password, &pub_key.public_key.initialization_vector())
+                    .decrypt(&password, &pub_key.initialization_vector())
             }
             _ => bail!("invalid key type"),
         };
 
         let compare = PublicKey::try_from(&prv)?;
-        if pub_key.public_key != compare {
+        if compare != pub_key.into() {
             bail!("expected pub key does not match");
         }
         Ok(prv)

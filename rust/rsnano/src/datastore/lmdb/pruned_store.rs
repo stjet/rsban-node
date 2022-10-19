@@ -126,7 +126,7 @@ mod tests {
         assert_eq!(store.count(&txn.as_txn()), 0);
         assert_eq!(store.exists(&txn.as_txn(), &BlockHash::from(1)), false);
         assert_eq!(store.begin(&txn.as_txn()).is_end(), true);
-        assert_eq!(store.random(&txn.as_txn()), BlockHash::new());
+        assert_eq!(store.random(&txn.as_txn()), BlockHash::zero());
         Ok(())
     }
 

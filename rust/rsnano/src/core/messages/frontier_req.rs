@@ -20,7 +20,7 @@ impl FrontierReq {
     pub fn new(constants: &NetworkConstants) -> Self {
         Self {
             header: MessageHeader::new(constants, MessageType::FrontierReq),
-            start: *Account::zero(),
+            start: Account::zero(),
             age: 0,
             count: 0,
         }
@@ -29,7 +29,7 @@ impl FrontierReq {
     pub fn with_header(header: MessageHeader) -> Self {
         Self {
             header,
-            start: *Account::zero(),
+            start: Account::zero(),
             age: 0,
             count: 0,
         }

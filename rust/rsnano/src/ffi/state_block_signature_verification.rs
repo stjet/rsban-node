@@ -92,7 +92,7 @@ pub extern "C" fn rsn_state_block_signature_verification_verified_callback(
     let context_handle = ContextHandle(context);
 
     let callback_adapter = Box::new(move |result: StateBlockSignatureVerificationResult| {
-        let hashes: Vec<_> = result.hashes.iter().map(|x| x.to_bytes()).collect();
+        let hashes: Vec<_> = result.hashes.iter().map(|x| *x.as_bytes()).collect();
         let signatures: Vec<_> = result.signatures.iter().map(|x| *x.as_bytes()).collect();
         let items: Vec<_> = result
             .items
@@ -183,7 +183,7 @@ impl From<&StateBlockSignatureVerificationValue> for StateBlockSignatureVerifica
             block: Box::into_raw(Box::new(BlockHandle {
                 block: value.block.clone(),
             })),
-            account: value.account.to_bytes(),
+            account: *value.account.as_bytes(),
             verification: value.verification as u8,
         }
     }

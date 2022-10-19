@@ -91,7 +91,7 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_get(
 ) -> bool {
     match (*handle).0.get(&(*txn).as_txn(), &PendingKey::from(&*key)) {
         Some(p) => {
-            (*pending).source = p.source.to_bytes();
+            (*pending).source = *p.source.as_bytes();
             (*pending).amount = p.amount.to_be_bytes();
             (*pending).epoch = p.epoch as u8;
             false

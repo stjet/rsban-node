@@ -75,26 +75,27 @@ fn block_to_block_handle(block: &Arc<RwLock<BlockEnum>>) -> *mut BlockHandle {
 
 pub fn fill_ledger_constants_dto(dto: &mut LedgerConstantsDto, ledger: &LedgerConstants) {
     fill_work_thresholds_dto(&mut dto.work, &ledger.work);
-    dto.pub_key = ledger.zero_key.public_key().to_be_bytes();
+    dto.pub_key = *ledger.zero_key.public_key().as_bytes();
     dto.priv_key = *ledger.zero_key.private_key().as_bytes();
-    dto.nano_beta_account = ledger.nano_beta_account.to_bytes();
-    dto.nano_live_account = ledger.nano_live_account.to_bytes();
-    dto.nano_test_account = ledger.nano_test_account.to_bytes();
+    dto.nano_beta_account = *ledger.nano_beta_account.as_bytes();
+    dto.nano_live_account = *ledger.nano_live_account.as_bytes();
+    dto.nano_test_account = *ledger.nano_test_account.as_bytes();
     dto.nano_dev_genesis = block_to_block_handle(&ledger.nano_dev_genesis);
     dto.nano_beta_genesis = block_to_block_handle(&ledger.nano_beta_genesis);
     dto.nano_live_genesis = block_to_block_handle(&ledger.nano_live_genesis);
     dto.nano_test_genesis = block_to_block_handle(&ledger.nano_test_genesis);
     dto.genesis = block_to_block_handle(&ledger.genesis);
     dto.genesis_amount = ledger.genesis_amount.to_be_bytes();
-    dto.burn_account = ledger.burn_account.to_bytes();
-    dto.nano_dev_final_votes_canary_account = ledger.nano_dev_final_votes_canary_account.to_bytes();
+    dto.burn_account = *ledger.burn_account.as_bytes();
+    dto.nano_dev_final_votes_canary_account =
+        *ledger.nano_dev_final_votes_canary_account.as_bytes();
     dto.nano_beta_final_votes_canary_account =
-        ledger.nano_beta_final_votes_canary_account.to_bytes();
+        *ledger.nano_beta_final_votes_canary_account.as_bytes();
     dto.nano_live_final_votes_canary_account =
-        ledger.nano_live_final_votes_canary_account.to_bytes();
+        *ledger.nano_live_final_votes_canary_account.as_bytes();
     dto.nano_test_final_votes_canary_account =
-        ledger.nano_test_final_votes_canary_account.to_bytes();
-    dto.final_votes_canary_account = ledger.final_votes_canary_account.to_bytes();
+        *ledger.nano_test_final_votes_canary_account.as_bytes();
+    dto.final_votes_canary_account = *ledger.final_votes_canary_account.as_bytes();
     dto.nano_dev_final_votes_canary_height = ledger.nano_dev_final_votes_canary_height;
     dto.nano_beta_final_votes_canary_height = ledger.nano_beta_final_votes_canary_height;
     dto.nano_live_final_votes_canary_height = ledger.nano_live_final_votes_canary_height;

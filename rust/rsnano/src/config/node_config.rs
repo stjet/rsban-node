@@ -126,7 +126,7 @@ impl NodeConfig {
             Networks::NanoDevNetwork => {
                 enable_voting = true;
                 preconfigured_representatives.push(
-                    *network_params
+                    network_params
                         .ledger
                         .genesis
                         .read()
@@ -198,7 +198,7 @@ impl NodeConfig {
             Networks::NanoTestNetwork => {
                 preconfigured_peers.push(DEFAULT_TEST_PEER_NETWORK.clone());
                 preconfigured_representatives.push(
-                    *network_params
+                    network_params
                         .ledger
                         .genesis
                         .read()

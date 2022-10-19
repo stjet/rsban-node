@@ -28,7 +28,7 @@ impl BulkPullAccount {
     pub fn new(constants: &NetworkConstants) -> Self {
         Self {
             header: MessageHeader::new(constants, MessageType::BulkPullAccount),
-            account: Account::new(),
+            account: Account::zero(),
             minimum_amount: Amount::zero(),
             flags: BulkPullAccountFlags::PendingHashAndAmount,
         }
@@ -37,7 +37,7 @@ impl BulkPullAccount {
     pub fn with_header(header: MessageHeader) -> Self {
         Self {
             header,
-            account: Account::new(),
+            account: Account::zero(),
             minimum_amount: Amount::zero(),
             flags: BulkPullAccountFlags::PendingHashAndAmount,
         }

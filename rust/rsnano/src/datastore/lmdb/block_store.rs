@@ -74,7 +74,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         }
 
         debug_assert!(
-            block.previous().is_zero() || self.successor(&txn.as_txn(), block.previous()) == *hash
+            block.previous().is_zero() || self.successor(&txn.as_txn(), &block.previous()) == *hash
         );
     }
 
@@ -84,7 +84,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
 
     fn successor(&self, txn: &LmdbTransaction, hash: &BlockHash) -> BlockHash {
         match self.block_raw_get(txn, hash) {
-            None => BlockHash::new(),
+            None => BlockHash::zero(),
             Some(data) => {
                 debug_assert!(data.len() >= 32);
                 let block_type = BlockType::from_u8(data[0]).unwrap();
@@ -142,7 +142,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         let result = if block.account().is_zero() {
             block.sideband().unwrap().account
         } else {
-            *block.account()
+            block.account()
         };
 
         debug_assert!(!result.is_zero());
@@ -268,7 +268,7 @@ impl<'a, 'b> BlockPredecessorMdbSet<'a, 'b> {
         let t = self.transaction.as_txn();
         let value = self
             .block_store
-            .block_raw_get(&t, block.previous())
+            .block_raw_get(&t, &block.previous())
             .unwrap();
         let mut data = value.to_vec();
         let block_type = BlockType::from_u8(data[0]).unwrap();
@@ -277,7 +277,7 @@ impl<'a, 'b> BlockPredecessorMdbSet<'a, 'b> {
         data[offset..offset + hash.as_bytes().len()].copy_from_slice(hash.as_bytes());
 
         self.block_store
-            .raw_put(self.transaction, &data, block.previous());
+            .raw_put(self.transaction, &data, &block.previous());
     }
 }
 
@@ -374,7 +374,7 @@ mod tests {
             .expect("block not found");
         assert_eq!(
             loaded.as_block().sideband().unwrap().successor,
-            *BlockHash::zero()
+            BlockHash::zero()
         );
         Ok(())
     }

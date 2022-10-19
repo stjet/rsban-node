@@ -69,42 +69,12 @@ pub unsafe extern "C" fn rsn_string_destroy(handle: *mut StringHandle) {
     drop(Box::from_raw(handle))
 }
 
-impl BlockHash {
-    unsafe fn from_ptr(ptr: *const u8) -> Self {
-        BlockHash::from_bytes(into_32_byte_array(ptr))
-    }
-}
-
-impl Account {
-    unsafe fn from_ptr(ptr: *const u8) -> Self {
-        Account::from_bytes(into_32_byte_array(ptr))
-    }
-}
-
-impl HashOrAccount {
-    unsafe fn from_ptr(ptr: *const u8) -> Self {
-        HashOrAccount::from_bytes(into_32_byte_array(ptr))
-    }
-}
-
-impl Root {
-    unsafe fn from_ptr(ptr: *const u8) -> Self {
-        Root::from_bytes(into_32_byte_array(ptr))
-    }
-}
-
 impl QualifiedRoot {
     unsafe fn from_ptr(ptr: *const u8) -> Self {
         QualifiedRoot {
             root: Root::from_ptr(ptr),
             previous: BlockHash::from_ptr(ptr.add(32)),
         }
-    }
-}
-
-impl RawKey {
-    unsafe fn from_ptr(ptr: *const u8) -> Self {
-        RawKey::from_bytes(into_32_byte_array(ptr))
     }
 }
 

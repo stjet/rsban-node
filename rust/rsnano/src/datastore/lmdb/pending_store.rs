@@ -92,7 +92,7 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     }
 
     fn any(&self, txn: &LmdbTransaction, account: &Account) -> bool {
-        let key = PendingKey::new(*account, BlockHash::new());
+        let key = PendingKey::new(*account, BlockHash::zero());
         let iterator = self.begin_at_key(txn, &key);
         iterator
             .current()

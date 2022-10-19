@@ -120,7 +120,7 @@ impl Block for ReceiveBlock {
         BlockType::Receive
     }
 
-    fn account(&self) -> &Account {
+    fn account(&self) -> Account {
         Account::zero()
     }
 
@@ -129,7 +129,7 @@ impl Block for ReceiveBlock {
     }
 
     fn link(&self) -> Link {
-        Link::new()
+        Link::zero()
     }
 
     fn block_signature(&self) -> &Signature {
@@ -148,8 +148,8 @@ impl Block for ReceiveBlock {
         self.work
     }
 
-    fn previous(&self) -> &BlockHash {
-        &self.hashables.previous
+    fn previous(&self) -> BlockHash {
+        self.hashables.previous
     }
 
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
@@ -199,8 +199,8 @@ mod tests {
             4,
         )
         .unwrap();
-        assert_eq!(block.previous(), &previous);
-        assert_eq!(block.root(), (&previous).into());
+        assert_eq!(block.previous(), previous);
+        assert_eq!(block.root(), previous.into());
     }
 
     // original test: block.receive_serialize

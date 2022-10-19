@@ -42,7 +42,7 @@ impl From<&StateHashables> for BlockHash {
             .update(hashables.previous.as_bytes())
             .update(hashables.representative.as_bytes())
             .update(&hashables.balance.to_be_bytes())
-            .update(&hashables.link.to_bytes())
+            .update(hashables.link.as_bytes())
             .build()
     }
 }
@@ -112,11 +112,11 @@ impl StateBlock {
         }
     }
 
-    pub fn source(&'_ self) -> &'_ BlockHash {
+    pub fn source(&self) -> BlockHash {
         BlockHash::zero()
     }
 
-    pub fn destination(&'_ self) -> &'_ Account {
+    pub fn destination(&self) -> Account {
         Account::zero()
     }
 
@@ -216,8 +216,8 @@ impl Block for StateBlock {
         BlockType::State
     }
 
-    fn account(&self) -> &Account {
-        &self.hashables.account
+    fn account(&self) -> Account {
+        self.hashables.account
     }
 
     fn hash(&self) -> BlockHash {
@@ -244,8 +244,8 @@ impl Block for StateBlock {
         self.work
     }
 
-    fn previous(&self) -> &BlockHash {
-        &self.hashables.previous
+    fn previous(&self) -> BlockHash {
+        self.hashables.previous
     }
 
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
@@ -271,7 +271,7 @@ impl Block for StateBlock {
         writer.put_string("link", &self.hashables.link.encode_hex())?;
         writer.put_string(
             "link_as_account",
-            &self.hashables.link.to_account().encode_account(),
+            &Account::from(&self.hashables.link).encode_account(),
         )?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         writer.put_string("work", &to_hex_string(self.work))?;

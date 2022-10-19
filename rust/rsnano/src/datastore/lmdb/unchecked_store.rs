@@ -43,7 +43,7 @@ impl<'a> UncheckedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         info: &UncheckedInfo,
     ) {
         let key = UncheckedKey {
-            previous: dependency.to_block_hash(),
+            previous: dependency.into(),
             hash: info
                 .block
                 .as_ref()

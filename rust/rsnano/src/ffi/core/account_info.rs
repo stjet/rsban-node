@@ -87,9 +87,9 @@ pub unsafe extern "C" fn rsn_account_info_values(
 ) {
     let info = &(*handle).0;
     let result = &mut (*values);
-    result.head = info.head.to_bytes();
-    result.representative = info.representative.to_bytes();
-    result.open_block = info.open_block.to_bytes();
+    result.head = *info.head.as_bytes();
+    result.representative = *info.representative.as_bytes();
+    result.open_block = *info.open_block.as_bytes();
     result.balance = info.balance.to_be_bytes();
     result.modified = info.modified;
     result.block_count = info.block_count;

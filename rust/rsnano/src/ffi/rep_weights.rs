@@ -110,7 +110,7 @@ pub unsafe extern "C" fn rsn_rep_weights_get_rep_amounts(
     let items = amounts
         .iter()
         .map(|(account, amount)| RepAmountItemDto {
-            account: account.to_bytes(),
+            account: *account.as_bytes(),
             amount: amount.to_be_bytes(),
         })
         .collect();

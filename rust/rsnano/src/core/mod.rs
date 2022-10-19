@@ -1,9 +1,7 @@
-mod public_key;
 use blake2::{
     digest::{Update, VariableOutput},
     VarBlake2b,
 };
-pub use public_key::PublicKey;
 
 mod raw_key;
 pub use raw_key::RawKey;
@@ -14,23 +12,11 @@ pub use block_hash::{BlockHash, BlockHashBuilder};
 mod signature;
 pub use signature::Signature;
 
-mod hash_or_account;
-pub use hash_or_account::HashOrAccount;
-
-mod link;
-pub use link::Link;
-
-mod root;
-pub use root::Root;
-
 mod qualified_root;
 pub use qualified_root::QualifiedRoot;
 
 mod key_pair;
 pub use key_pair::{sign_message, validate_message, validate_message_batch, KeyPair};
-
-mod wallet_id;
-pub use wallet_id::WalletId;
 
 mod pending_key;
 pub use pending_key::PendingKey;
@@ -75,10 +61,15 @@ mod hardened_constants;
 pub mod messages;
 pub(crate) use hardened_constants::HardenedConstants;
 
+mod u256_struct;
+
 use once_cell::sync::Lazy;
 use std::{fmt::Write, net::Ipv6Addr, num::ParseIntError};
 
-use crate::utils::{Deserialize, Serialize, Stream};
+use crate::{
+    u256_struct,
+    utils::{Deserialize, Serialize, Stream},
+};
 
 pub(crate) fn encode_hex(i: u128) -> String {
     let mut result = String::with_capacity(32);
@@ -175,9 +166,104 @@ pub fn deterministic_key(seed: &RawKey, index: u32) -> RawKey {
     let mut hasher = VarBlake2b::new(32).unwrap();
     hasher.update(seed.as_bytes());
     hasher.update(&index.to_be_bytes());
-    let mut result = RawKey::new();
+    let mut result = RawKey::zero();
     hasher.finalize_variable(|res| result = RawKey::from_bytes(res.try_into().unwrap()));
     result
+}
+
+u256_struct!(HashOrAccount);
+u256_struct!(Link);
+u256_struct!(PublicKey);
+u256_struct!(Root);
+u256_struct!(WalletId);
+
+impl From<HashOrAccount> for Account {
+    fn from(source: HashOrAccount) -> Self {
+        Account::from_bytes(*source.as_bytes())
+    }
+}
+
+impl From<&HashOrAccount> for Account {
+    fn from(source: &HashOrAccount) -> Self {
+        Account::from_bytes(*source.as_bytes())
+    }
+}
+
+impl From<HashOrAccount> for BlockHash {
+    fn from(source: HashOrAccount) -> Self {
+        BlockHash::from_bytes(*source.as_bytes())
+    }
+}
+
+impl From<&HashOrAccount> for BlockHash {
+    fn from(source: &HashOrAccount) -> Self {
+        BlockHash::from_bytes(*source.as_bytes())
+    }
+}
+
+impl From<Link> for HashOrAccount {
+    fn from(link: Link) -> Self {
+        HashOrAccount::from_bytes(*link.as_bytes())
+    }
+}
+
+impl From<&Link> for HashOrAccount {
+    fn from(link: &Link) -> Self {
+        HashOrAccount::from_bytes(*link.as_bytes())
+    }
+}
+
+impl From<Link> for Account {
+    fn from(link: Link) -> Self {
+        Account::from_bytes(*link.as_bytes())
+    }
+}
+
+impl From<&Link> for Account {
+    fn from(link: &Link) -> Self {
+        Account::from_bytes(*link.as_bytes())
+    }
+}
+
+impl From<&Account> for Root {
+    fn from(hash: &Account) -> Self {
+        Root::from_bytes(*hash.as_bytes())
+    }
+}
+
+impl From<Account> for Root {
+    fn from(hash: Account) -> Self {
+        Root::from_bytes(*hash.as_bytes())
+    }
+}
+
+impl From<BlockHash> for Root {
+    fn from(hash: BlockHash) -> Self {
+        Root::from_bytes(*hash.as_bytes())
+    }
+}
+
+impl From<&BlockHash> for Root {
+    fn from(hash: &BlockHash) -> Self {
+        Root::from_bytes(*hash.as_bytes())
+    }
+}
+
+impl PublicKey {
+    /// IV for Key encryption
+    pub fn initialization_vector(&self) -> [u8; 16] {
+        self.0[..16].try_into().unwrap()
+    }
+}
+
+impl TryFrom<&RawKey> for PublicKey {
+    type Error = anyhow::Error;
+    fn try_from(prv: &RawKey) -> Result<Self, Self::Error> {
+        let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(prv.as_bytes())
+            .map_err(|_| anyhow!("could not extract secret key"))?;
+        let public = ed25519_dalek_blake2b::PublicKey::from(&secret);
+        Ok(PublicKey::from_bytes(public.to_bytes()))
+    }
 }
 
 #[cfg(test)]

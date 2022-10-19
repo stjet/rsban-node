@@ -89,7 +89,7 @@ unsafe fn write_open_block<T>(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_open_block_source(handle: *const BlockHandle, result: *mut [u8; 32]) {
-    (*result) = read_open_block(handle, |b| b.hashables.source.to_bytes());
+    (*result) = read_open_block(handle, |b| *b.hashables.source.as_bytes());
 }
 
 #[no_mangle]
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rsn_open_block_representative(
     handle: *const BlockHandle,
     result: *mut [u8; 32],
 ) {
-    (*result) = read_open_block(handle, |b| b.hashables.representative.to_bytes());
+    (*result) = read_open_block(handle, |b| *b.hashables.representative.as_bytes());
 }
 
 #[no_mangle]
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rsn_open_block_representative_set(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_open_block_account(handle: *const BlockHandle, result: *mut [u8; 32]) {
-    (*result) = read_open_block(handle, |b| b.hashables.account.to_bytes());
+    (*result) = read_open_block(handle, |b| *b.hashables.account.as_bytes());
 }
 
 #[no_mangle]

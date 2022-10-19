@@ -36,8 +36,8 @@ impl ReceiveBlockBuilder {
             is_epoch: false,
         };
         block.set_sideband(BlockSideband::new(
-            *block.account(),
-            *BlockHash::zero(),
+            block.account(),
+            BlockHash::zero(),
             Amount::new(5),
             1,
             2,

@@ -135,8 +135,8 @@ impl Block for OpenBlock {
         BlockType::Open
     }
 
-    fn account(&self) -> &Account {
-        &self.hashables.account
+    fn account(&self) -> Account {
+        self.hashables.account
     }
 
     fn hash(&self) -> BlockHash {
@@ -144,7 +144,7 @@ impl Block for OpenBlock {
     }
 
     fn link(&self) -> Link {
-        Link::new()
+        Link::zero()
     }
 
     fn block_signature(&self) -> &Signature {
@@ -163,7 +163,7 @@ impl Block for OpenBlock {
         self.work
     }
 
-    fn previous(&self) -> &BlockHash {
+    fn previous(&self) -> BlockHash {
         BlockHash::zero()
     }
 
@@ -222,8 +222,8 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(block.account(), &account);
-        assert_eq!(block.root(), (&account).into());
+        assert_eq!(block.account(), account);
+        assert_eq!(block.root(), account.into());
     }
 
     // original test: block.open_serialize_json

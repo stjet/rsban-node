@@ -186,7 +186,7 @@ pub unsafe extern "C" fn rsn_block_equals(a: *const BlockHandle, b: *const Block
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = (*handle).block.read().unwrap().as_block().hash().to_bytes();
+    (*hash) = *(*handle).block.read().unwrap().as_block().hash().as_bytes();
 }
 
 #[no_mangle]

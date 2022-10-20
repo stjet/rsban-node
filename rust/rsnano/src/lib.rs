@@ -14,10 +14,9 @@ pub mod block_processing;
 pub mod bootstrap;
 pub mod config;
 pub mod core;
-pub mod datastore;
 pub mod ffi;
 mod ipc;
-mod rep_weights;
+pub mod ledger;
 mod secure;
 pub mod signatures;
 pub mod stats;
@@ -28,7 +27,6 @@ pub mod wallet;
 mod websocket;
 
 pub use ipc::*;
-pub use rep_weights::RepWeights;
 pub use secure::*;
 pub(crate) use websocket::*;
 

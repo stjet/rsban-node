@@ -666,17 +666,6 @@ TEST (ledger, open_fork)
 	ASSERT_EQ (nano::process_result::fork, ledger.process (*transaction, *block3).code);
 }
 
-TEST (ledger, representation_changes)
-{
-	nano::keypair key1;
-	nano::rep_weights rep_weights;
-	ASSERT_EQ (0, rep_weights.representation_get (key1.pub));
-	rep_weights.representation_put (key1.pub, 1);
-	ASSERT_EQ (1, rep_weights.representation_get (key1.pub));
-	rep_weights.representation_put (key1.pub, 2);
-	ASSERT_EQ (2, rep_weights.representation_get (key1.pub));
-}
-
 TEST (ledger, representation)
 {
 	auto ctx = nano::test::context::ledger_empty ();

@@ -2,14 +2,14 @@ use crate::{
     config::{NetworkConstants, NodeConfig},
     core::{Account, KeyPair},
     ffi::{
-        core::messages::FfiMessageVisitor,
+        core::{messages::FfiMessageVisitor, BlockUniquerHandle},
         transport::{
             EndpointDto, NetworkFilterHandle, SocketHandle, SynCookiesHandle,
             TcpMessageManagerHandle,
         },
         utils::{FfiIoContext, FfiThreadPool, IoContextHandle, LoggerHandle, LoggerMT},
         voting::VoteUniquerHandle,
-        BlockUniquerHandle, NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
+        NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
     },
     stats::Stat,
     transport::{

@@ -39,9 +39,6 @@ pub use account_info::AccountInfo;
 mod endpoint_key;
 pub use endpoint_key::EndpointKey;
 
-mod fan;
-pub use fan::Fan;
-
 mod epoch;
 pub use epoch::{Epoch, Epochs};
 

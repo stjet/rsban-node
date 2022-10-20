@@ -1,20 +1,15 @@
-mod block_arrival;
-mod block_processor;
-mod blocks;
+pub mod block_processing;
 pub mod bootstrap;
 mod config;
 pub mod core;
-pub mod datastore;
 mod hardened_constants;
 mod ipc;
+pub mod ledger;
 mod property_tree;
-mod rep_weights;
 mod secure;
 mod signatures;
-mod state_block_signature_verification;
 mod stats;
 mod transport;
-mod unchecked_info;
 mod utils;
 mod voting;
 mod wallet;
@@ -25,15 +20,12 @@ use std::{
     os::raw::c_char,
 };
 
-pub(crate) use block_processor::*;
-pub use blocks::*;
 pub use config::*;
 pub use ipc::*;
 pub use property_tree::*;
 pub use secure::*;
 pub use signatures::*;
 pub use stats::*;
-pub(crate) use unchecked_info::*;
 pub(crate) use websocket::*;
 
 use crate::{

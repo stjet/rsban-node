@@ -3,7 +3,7 @@ use crate::{
     core::{
         encode_hex, Account, BlockEnum, HardenedConstants, SignatureVerification, UncheckedInfo,
     },
-    datastore::Ledger,
+    ledger::Ledger,
     utils::Logger,
     websocket::{Listener, MessageBuilder},
 };

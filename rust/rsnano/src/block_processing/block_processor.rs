@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use crate::{
     core::UncheckedInfo,
-    ffi::{UncheckedInfoHandle, BLOCKPROCESSOR_ADD_CALLBACK},
+    ffi::{block_processing::BLOCKPROCESSOR_ADD_CALLBACK, core::UncheckedInfoHandle},
 };
 
 pub struct BlockProcessor {

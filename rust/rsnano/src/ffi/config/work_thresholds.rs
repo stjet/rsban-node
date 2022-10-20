@@ -4,7 +4,10 @@ use std::convert::TryFrom;
 use crate::{
     config::{Networks, WorkThresholds, WorkVersion},
     core::{BlockDetails, BlockType, Root},
-    ffi::{blocks::BlockDetailsDto, BlockHandle, StringDto},
+    ffi::{
+        core::{BlockDetailsDto, BlockHandle},
+        StringDto,
+    },
 };
 
 #[repr(C)]

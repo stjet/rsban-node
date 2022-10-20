@@ -1,6 +1,9 @@
 mod account_info;
 pub use account_info::AccountInfoHandle;
 
+mod blocks;
+pub use blocks::*;
+
 mod blake2;
 mod random_pool;
 
@@ -8,6 +11,9 @@ pub mod messages;
 
 mod epoch;
 pub use epoch::EpochsHandle;
+
+mod unchecked_info;
+pub(crate) use unchecked_info::*;
 
 use rand::{thread_rng, Rng};
 use std::{ffi::CStr, net::Ipv6Addr, os::raw::c_char, slice};

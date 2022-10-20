@@ -4,10 +4,10 @@ use crate::{
     config::NetworkConstants,
     core::messages::Message,
     ffi::{
-        core::messages::MessageHandle,
+        core::{messages::MessageHandle, BlockUniquerHandle},
         transport::{NetworkFilterHandle, SocketHandle},
         voting::VoteUniquerHandle,
-        BlockUniquerHandle, ErrorCodeDto, NetworkConstantsDto, StringDto, VoidPointerCallback,
+        ErrorCodeDto, NetworkConstantsDto, StringDto, VoidPointerCallback,
     },
     stats::DetailType,
     transport::{MessageDeserializer, MessageDeserializerExt},

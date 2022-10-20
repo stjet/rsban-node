@@ -10,7 +10,7 @@ use crate::{
     core::{Account, Amount, BlockEnum, Epoch, Epochs, KeyPair, Link, PublicKey},
     ffi::{
         config::{fill_work_thresholds_dto, WorkThresholdsDto},
-        BlockHandle,
+        core::BlockHandle,
     },
     LedgerConstants,
 };

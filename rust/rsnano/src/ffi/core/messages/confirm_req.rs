@@ -1,10 +1,11 @@
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::core::messages::Message;
+use crate::ffi::core::{BlockHandle, BlockUniquerHandle};
 use crate::ffi::utils::FfiStream;
 use crate::{
     core::{messages::ConfirmReq, BlockHash, BlockType, Root},
-    ffi::{BlockHandle, BlockUniquerHandle, NetworkConstantsDto, StringDto},
+    ffi::{NetworkConstantsDto, StringDto},
 };
 
 use super::{

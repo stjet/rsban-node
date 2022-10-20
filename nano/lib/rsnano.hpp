@@ -2090,6 +2090,11 @@ LmdbFinalVoteStoreHandle * rsn_lmdb_store_final_vote (LmdbStoreHandle * handle);
 
 LmdbFrontierStoreHandle * rsn_lmdb_store_frontier (LmdbStoreHandle * handle);
 
+void rsn_lmdb_store_initialize (LmdbStoreHandle * handle,
+TransactionHandle * txn,
+LedgerCacheHandle * cache,
+const LedgerConstantsDto * constants);
+
 LmdbOnlineWeightStoreHandle * rsn_lmdb_store_online_weight (LmdbStoreHandle * handle);
 
 LmdbPeerStoreHandle * rsn_lmdb_store_peer (LmdbStoreHandle * handle);

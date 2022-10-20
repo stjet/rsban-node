@@ -12,7 +12,7 @@ use crate::{
         config::{fill_work_thresholds_dto, WorkThresholdsDto},
         core::BlockHandle,
     },
-    LedgerConstants,
+    ledger::LedgerConstants,
 };
 
 #[repr(C)]

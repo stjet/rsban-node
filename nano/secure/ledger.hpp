@@ -72,6 +72,7 @@ public:
 	nano::link epoch_link (nano::epoch) const;
 	std::multimap<uint64_t, uncemented_info, std::greater<>> unconfirmed_frontiers () const;
 	bool bootstrap_weight_reached () const;
+	rsnano::LedgerHandle * get_handle () const;
 	static nano::uint128_t const unit;
 	nano::ledger_constants & constants;
 	nano::store & store;
@@ -82,7 +83,6 @@ public:
 	uint64_t bootstrap_weight_max_blocks{ 1 };
 	std::atomic<bool> check_bootstrap_weights;
 	bool pruning{ false };
-	rsnano::LedgerHandle * get_handle () const;
 
 private:
 	void initialize (nano::generate_cache const &);

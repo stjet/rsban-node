@@ -607,9 +607,9 @@ public:
 	void remove_accounts (uint64_t count);
 	bool final_votes_confirmation_canary () const;
 	void set_final_votes_confirmation_canary (bool canary);
+	rsnano::LedgerCacheHandle * handle;
 
 private:
-	rsnano::LedgerCacheHandle * handle;
 	nano::rep_weights rep_weights_m;
 };
 

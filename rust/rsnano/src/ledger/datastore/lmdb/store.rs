@@ -1,7 +1,7 @@
 use std::{
     ffi::CString,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{atomic::Ordering, Arc},
     time::Duration,
 };
 
@@ -10,7 +10,14 @@ use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 
 use crate::{
     config::TxnTrackingConfig,
-    ledger::datastore::{Store, VersionStore, STORE_VERSION_MINIMUM},
+    core::{AccountInfo, ConfirmationHeightInfo, Epoch},
+    ledger::{
+        datastore::{
+            AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, Store, VersionStore,
+            STORE_VERSION_MINIMUM,
+        },
+        LedgerCache, LedgerConstants,
+    },
     utils::{seconds_since_epoch, Logger, PropertyTreeWriter},
 };
 
@@ -126,6 +133,52 @@ impl LmdbStore {
 
     pub fn tx_begin_write(&self) -> lmdb::Result<LmdbWriteTransaction> {
         self.env.tx_begin_write()
+    }
+
+    pub fn initialize(
+        &self,
+        txn: &mut LmdbWriteTransaction,
+        cache: &LedgerCache,
+        constants: &LedgerConstants,
+    ) {
+        let genesis = constants.genesis.read().unwrap();
+        let genesis_block = genesis.as_block();
+        let genesis_hash = genesis_block.hash();
+        let genesis_account = genesis_block.account();
+
+        debug_assert!(self.account_store.begin(&txn.as_txn()).is_end());
+        self.block_store.put(txn, &genesis_hash, genesis_block);
+        cache.block_count.fetch_add(1, Ordering::SeqCst);
+        self.confirmation_height_store.put(
+            txn,
+            &genesis_account,
+            &ConfirmationHeightInfo::new(1, genesis_hash),
+        );
+        cache.cemented_count.fetch_add(1, Ordering::SeqCst);
+        cache.final_votes_confirmation_canary.store(
+            constants.final_votes_canary_account == genesis_account
+                && 1 >= constants.final_votes_canary_height,
+            Ordering::SeqCst,
+        );
+        self.account_store.put(
+            txn,
+            &genesis_account,
+            &AccountInfo {
+                head: genesis_hash,
+                representative: genesis_account,
+                open_block: genesis_hash,
+                balance: u128::MAX.into(),
+                modified: seconds_since_epoch(),
+                block_count: 1,
+                epoch: Epoch::Epoch0,
+            },
+        );
+        cache.account_count.fetch_add(1, Ordering::SeqCst);
+        cache
+            .rep_weights
+            .representation_put(genesis_account, u128::MAX);
+        self.frontier_store
+            .put(txn, &genesis_hash, &genesis_account);
     }
 }
 

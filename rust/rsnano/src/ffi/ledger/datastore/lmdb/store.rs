@@ -10,12 +10,16 @@ use std::{
 use crate::{
     config::{DiagnosticsConfig, LmdbConfig},
     ffi::{
+        ledger::{ledger_cache::LedgerCacheHandle, LedgerConstantsDto},
         utils::{LoggerHandle, LoggerMT},
         FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto,
     },
-    ledger::datastore::{
-        lmdb::{create_backup_file, EnvOptions, LmdbStore},
-        Store,
+    ledger::{
+        datastore::{
+            lmdb::{create_backup_file, EnvOptions, LmdbStore},
+            Store,
+        },
+        LedgerConstants,
     },
 };
 
@@ -287,4 +291,17 @@ pub unsafe extern "C" fn rsn_lmdb_store_tx_begin_write(
 ) -> *mut TransactionHandle {
     let txn = (*handle).0.tx_begin_write().unwrap();
     TransactionHandle::new(TransactionType::Write(txn))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_initialize(
+    handle: *mut LmdbStoreHandle,
+    txn: *mut TransactionHandle,
+    cache: *mut LedgerCacheHandle,
+    constants: *const LedgerConstantsDto,
+) {
+    let constants = LedgerConstants::try_from(&*constants).unwrap();
+    (*handle)
+        .0
+        .initialize((*txn).as_write_txn(), &*cache, &constants);
 }

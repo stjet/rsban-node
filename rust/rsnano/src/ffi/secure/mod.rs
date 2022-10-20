@@ -1,6 +1,5 @@
 mod bootstrap_constants;
 mod confirmation_height_info;
-mod ledger_constants;
 mod network_params;
 mod node_constants;
 mod portmapping_constants;

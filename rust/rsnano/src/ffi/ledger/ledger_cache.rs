@@ -1,10 +1,21 @@
-use std::sync::{atomic::Ordering, Arc};
+use std::{
+    ops::Deref,
+    sync::{atomic::Ordering, Arc},
+};
 
 use crate::ledger::LedgerCache;
 
 use super::RepWeightsHandle;
 
 pub struct LedgerCacheHandle(Arc<LedgerCache>);
+
+impl Deref for LedgerCacheHandle {
+    type Target = Arc<LedgerCache>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_ledger_cache_create() -> *mut LedgerCacheHandle {

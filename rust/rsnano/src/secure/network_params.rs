@@ -3,7 +3,8 @@ use std::sync::{Arc, RwLock};
 use crate::{
     config::{NetworkConstants, Networks, WorkThresholds},
     core::BlockEnum,
-    BootstrapConstants, LedgerConstants, NodeConstants, PortmappingConstants, VotingConstants,
+    ledger::LedgerConstants,
+    BootstrapConstants, NodeConstants, PortmappingConstants, VotingConstants,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;

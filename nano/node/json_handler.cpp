@@ -3354,7 +3354,7 @@ void nano::json_handler::pruned_exists ()
 	if (!ec)
 	{
 		auto transaction (node.store.tx_begin_read ());
-		if (node.ledger.pruning)
+		if (node.ledger.pruning_enabled ())
 		{
 			auto exists (node.store.pruned ().exists (*transaction, hash));
 			response_l.put ("exists", exists ? "1" : "0");

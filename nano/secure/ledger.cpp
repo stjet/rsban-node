@@ -14,9 +14,10 @@ namespace
 class rollback_visitor : public nano::block_visitor
 {
 public:
-	rollback_visitor (nano::write_transaction const & transaction_a, nano::ledger & ledger_a, std::vector<std::shared_ptr<nano::block>> & list_a) :
+	rollback_visitor (nano::write_transaction const & transaction_a, nano::ledger & ledger_a, nano::stat & stats_a, std::vector<std::shared_ptr<nano::block>> & list_a) :
 		transaction (transaction_a),
 		ledger (ledger_a),
+		stats (stats_a),
 		list (list_a)
 	{
 	}
@@ -43,7 +44,7 @@ public:
 			ledger.store.frontier ().del (transaction, hash);
 			ledger.store.frontier ().put (transaction, block_a.previous (), pending.source);
 			ledger.store.block ().successor_clear (transaction, block_a.previous ());
-			ledger.stats.inc (nano::stat::type::rollback, nano::stat::detail::send);
+			stats.inc (nano::stat::type::rollback, nano::stat::detail::send);
 		}
 	}
 	void receive_block (nano::receive_block const & block_a) override
@@ -65,7 +66,7 @@ public:
 		ledger.store.frontier ().del (transaction, hash);
 		ledger.store.frontier ().put (transaction, block_a.previous (), destination_account);
 		ledger.store.block ().successor_clear (transaction, block_a.previous ());
-		ledger.stats.inc (nano::stat::type::rollback, nano::stat::detail::receive);
+		stats.inc (nano::stat::type::rollback, nano::stat::detail::receive);
 	}
 	void open_block (nano::open_block const & block_a) override
 	{
@@ -81,7 +82,7 @@ public:
 		ledger.store.block ().del (transaction, hash);
 		ledger.store.pending ().put (transaction, nano::pending_key (destination_account, block_a.source ()), { source_account, amount, nano::epoch::epoch_0 });
 		ledger.store.frontier ().del (transaction, hash);
-		ledger.stats.inc (nano::stat::type::rollback, nano::stat::detail::open);
+		stats.inc (nano::stat::type::rollback, nano::stat::detail::open);
 	}
 	void change_block (nano::change_block const & block_a) override
 	{
@@ -102,7 +103,7 @@ public:
 		ledger.store.frontier ().del (transaction, hash);
 		ledger.store.frontier ().put (transaction, block_a.previous (), account);
 		ledger.store.block ().successor_clear (transaction, block_a.previous ());
-		ledger.stats.inc (nano::stat::type::rollback, nano::stat::detail::change);
+		stats.inc (nano::stat::type::rollback, nano::stat::detail::change);
 	}
 	void state_block (nano::state_block const & block_a) override
 	{
@@ -140,7 +141,7 @@ public:
 				error = ledger.rollback (transaction, ledger.latest (transaction, block_a.link ().as_account ()), list);
 			}
 			ledger.store.pending ().del (transaction, key);
-			ledger.stats.inc (nano::stat::type::rollback, nano::stat::detail::send);
+			stats.inc (nano::stat::type::rollback, nano::stat::detail::send);
 		}
 		else if (!block_a.link ().is_zero () && !ledger.is_epoch_link (block_a.link ()))
 		{
@@ -149,7 +150,7 @@ public:
 			auto source_account (ledger.account_safe (transaction, block_a.link ().as_block_hash (), is_pruned));
 			nano::pending_info pending_info (source_account, block_a.balance ().number () - balance, block_a.sideband ().source_epoch ());
 			ledger.store.pending ().put (transaction, nano::pending_key (block_a.account (), block_a.link ().as_block_hash ()), pending_info);
-			ledger.stats.inc (nano::stat::type::rollback, nano::stat::detail::receive);
+			stats.inc (nano::stat::type::rollback, nano::stat::detail::receive);
 		}
 
 		debug_assert (!error);
@@ -168,12 +169,13 @@ public:
 		}
 		else
 		{
-			ledger.stats.inc (nano::stat::type::rollback, nano::stat::detail::open);
+			stats.inc (nano::stat::type::rollback, nano::stat::detail::open);
 		}
 		ledger.store.block ().del (transaction, hash);
 	}
 	nano::write_transaction const & transaction;
 	nano::ledger & ledger;
+	nano::stat & stats;
 	std::vector<std::shared_ptr<nano::block>> & list;
 	bool error{ false };
 };
@@ -181,7 +183,7 @@ public:
 class ledger_processor : public nano::mutable_block_visitor
 {
 public:
-	ledger_processor (nano::ledger &, nano::write_transaction const &, nano::signature_verification = nano::signature_verification::unknown);
+	ledger_processor (nano::ledger &, nano::stat &, nano::ledger_constants &, nano::write_transaction const &, nano::signature_verification = nano::signature_verification::unknown);
 	virtual ~ledger_processor () = default;
 	void send_block (nano::send_block &) override;
 	void receive_block (nano::receive_block &) override;
@@ -191,6 +193,8 @@ public:
 	void state_block_impl (nano::state_block &);
 	void epoch_block_impl (nano::state_block &);
 	nano::ledger & ledger;
+	nano::stat & stats;
+	nano::ledger_constants & constants;
 	nano::write_transaction const & transaction;
 	nano::signature_verification verification;
 	nano::process_return result;
@@ -344,10 +348,10 @@ void ledger_processor::state_block_impl (nano::state_block & block_a)
 				if (result.code == nano::process_result::progress)
 				{
 					nano::block_details block_details (epoch, is_send, is_receive, false);
-					result.code = ledger.constants.work.difficulty (block_a) >= ledger.constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
+					result.code = constants.work.difficulty (block_a) >= constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
 					if (result.code == nano::process_result::progress)
 					{
-						ledger.stats.inc (nano::stat::type::ledger, nano::stat::detail::state_block);
+						stats.inc (nano::stat::type::ledger, nano::stat::detail::state_block);
 						block_a.sideband_set (nano::block_sideband (block_a.account () /* unused */, 0, 0 /* unused */, info.block_count () + 1, nano::seconds_since_epoch (), block_details, source_epoch));
 						ledger.store.block ().put (transaction, hash, block_a);
 
@@ -434,7 +438,7 @@ void ledger_processor::epoch_block_impl (nano::state_block & block_a)
 				}
 				if (result.code == nano::process_result::progress)
 				{
-					auto epoch = ledger.constants.epochs.epoch (block_a.link ());
+					auto epoch = constants.epochs.epoch (block_a.link ());
 					// Must be an epoch for an unopened account or the epoch upgrade must be sequential
 					auto is_valid_epoch_upgrade = account_error ? static_cast<std::underlying_type_t<nano::epoch>> (epoch) > 0 : nano::epochs::is_sequential (info.epoch (), epoch);
 					result.code = is_valid_epoch_upgrade ? nano::process_result::progress : nano::process_result::block_position;
@@ -444,10 +448,10 @@ void ledger_processor::epoch_block_impl (nano::state_block & block_a)
 						if (result.code == nano::process_result::progress)
 						{
 							nano::block_details block_details (epoch, false, false, true);
-							result.code = ledger.constants.work.difficulty (block_a) >= ledger.constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
+							result.code = constants.work.difficulty (block_a) >= constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
 							if (result.code == nano::process_result::progress)
 							{
-								ledger.stats.inc (nano::stat::type::ledger, nano::stat::detail::epoch_block);
+								stats.inc (nano::stat::type::ledger, nano::stat::detail::epoch_block);
 								block_a.sideband_set (nano::block_sideband (block_a.account () /* unused */, 0, 0 /* unused */, info.block_count () + 1, nano::seconds_since_epoch (), block_details, nano::epoch::epoch_0 /* unused */));
 								ledger.store.block ().put (transaction, hash, block_a);
 								nano::account_info new_info (hash, block_a.representative (), info.open_block ().is_zero () ? hash : info.open_block (), info.balance (), nano::seconds_since_epoch (), info.block_count () + 1, epoch);
@@ -496,7 +500,7 @@ void ledger_processor::change_block (nano::change_block & block_a)
 					if (result.code == nano::process_result::progress)
 					{
 						nano::block_details block_details (nano::epoch::epoch_0, false /* unused */, false /* unused */, false /* unused */);
-						result.code = ledger.constants.work.difficulty (block_a) >= ledger.constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
+						result.code = constants.work.difficulty (block_a) >= constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
 						if (result.code == nano::process_result::progress)
 						{
 							debug_assert (!validate_message (account, hash, block_a.block_signature ()));
@@ -510,7 +514,7 @@ void ledger_processor::change_block (nano::change_block & block_a)
 							ledger.store.frontier ().del (transaction, block_a.previous ());
 							ledger.store.frontier ().put (transaction, hash, account);
 							result.previous_balance = info.balance ();
-							ledger.stats.inc (nano::stat::type::ledger, nano::stat::detail::change);
+							stats.inc (nano::stat::type::ledger, nano::stat::detail::change);
 						}
 					}
 				}
@@ -545,7 +549,7 @@ void ledger_processor::send_block (nano::send_block & block_a)
 					if (result.code == nano::process_result::progress)
 					{
 						nano::block_details block_details (nano::epoch::epoch_0, false /* unused */, false /* unused */, false /* unused */);
-						result.code = ledger.constants.work.difficulty (block_a) >= ledger.constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
+						result.code = constants.work.difficulty (block_a) >= constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
 						if (result.code == nano::process_result::progress)
 						{
 							debug_assert (!validate_message (account, hash, block_a.block_signature ()));
@@ -568,7 +572,7 @@ void ledger_processor::send_block (nano::send_block & block_a)
 								ledger.store.frontier ().del (transaction, block_a.previous ());
 								ledger.store.frontier ().put (transaction, hash, account);
 								result.previous_balance = info.balance ();
-								ledger.stats.inc (nano::stat::type::ledger, nano::stat::detail::send);
+								stats.inc (nano::stat::type::ledger, nano::stat::detail::send);
 							}
 						}
 					}
@@ -622,7 +626,7 @@ void ledger_processor::receive_block (nano::receive_block & block_a)
 									if (result.code == nano::process_result::progress)
 									{
 										nano::block_details block_details (nano::epoch::epoch_0, false /* unused */, false /* unused */, false /* unused */);
-										result.code = ledger.constants.work.difficulty (block_a) >= ledger.constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
+										result.code = constants.work.difficulty (block_a) >= constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
 										if (result.code == nano::process_result::progress)
 										{
 											auto new_balance (info.balance ().number () + pending.amount.number ());
@@ -643,7 +647,7 @@ void ledger_processor::receive_block (nano::receive_block & block_a)
 											ledger.store.frontier ().del (transaction, block_a.previous ());
 											ledger.store.frontier ().put (transaction, hash, account);
 											result.previous_balance = info.balance ();
-											ledger.stats.inc (nano::stat::type::ledger, nano::stat::detail::receive);
+											stats.inc (nano::stat::type::ledger, nano::stat::detail::receive);
 										}
 									}
 								}
@@ -688,14 +692,14 @@ void ledger_processor::open_block (nano::open_block & block_a)
 					result.code = ledger.store.pending ().get (transaction, key, pending) ? nano::process_result::unreceivable : nano::process_result::progress; // Has this source already been received (Malformed)
 					if (result.code == nano::process_result::progress)
 					{
-						result.code = block_a.account () == ledger.constants.burn_account ? nano::process_result::opened_burn_account : nano::process_result::progress; // Is it burning 0 account? (Malicious)
+						result.code = block_a.account () == constants.burn_account ? nano::process_result::opened_burn_account : nano::process_result::progress; // Is it burning 0 account? (Malicious)
 						if (result.code == nano::process_result::progress)
 						{
 							result.code = pending.epoch == nano::epoch::epoch_0 ? nano::process_result::progress : nano::process_result::unreceivable; // Are we receiving a state-only send? (Malformed)
 							if (result.code == nano::process_result::progress)
 							{
 								nano::block_details block_details (nano::epoch::epoch_0, false /* unused */, false /* unused */, false /* unused */);
-								result.code = ledger.constants.work.difficulty (block_a) >= ledger.constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
+								result.code = constants.work.difficulty (block_a) >= constants.work.threshold (block_a.work_version (), block_details) ? nano::process_result::progress : nano::process_result::insufficient_work; // Does this block have sufficient work? (Malformed)
 								if (result.code == nano::process_result::progress)
 								{
 #ifdef NDEBUG
@@ -714,7 +718,7 @@ void ledger_processor::open_block (nano::open_block & block_a)
 									ledger.cache.rep_weights ().representation_add (block_a.representative (), pending.amount.number ());
 									ledger.store.frontier ().put (transaction, hash, block_a.account ());
 									result.previous_balance = 0;
-									ledger.stats.inc (nano::stat::type::ledger, nano::stat::detail::open);
+									stats.inc (nano::stat::type::ledger, nano::stat::detail::open);
 								}
 							}
 						}
@@ -725,8 +729,10 @@ void ledger_processor::open_block (nano::open_block & block_a)
 	}
 }
 
-ledger_processor::ledger_processor (nano::ledger & ledger_a, nano::write_transaction const & transaction_a, nano::signature_verification verification_a) :
+ledger_processor::ledger_processor (nano::ledger & ledger_a, nano::stat & stats_a, nano::ledger_constants & constants_a, nano::write_transaction const & transaction_a, nano::signature_verification verification_a) :
 	ledger (ledger_a),
+	stats (stats_a),
+	constants (constants_a),
 	transaction (transaction_a),
 	verification (verification_a)
 {
@@ -873,7 +879,7 @@ nano::uint128_t nano::ledger::account_receivable (nano::transaction const & tran
 nano::process_return nano::ledger::process (nano::write_transaction const & transaction_a, nano::block & block_a, nano::signature_verification verification)
 {
 	debug_assert (!constants.work.validate_entry (block_a) || constants.genesis == nano::dev::genesis);
-	ledger_processor processor (*this, transaction_a, verification);
+	ledger_processor processor (*this, stats, constants, transaction_a, verification);
 	block_a.visit (processor);
 	if (processor.result.code == nano::process_result::progress)
 	{
@@ -1058,7 +1064,7 @@ bool nano::ledger::rollback (nano::write_transaction const & transaction_a, nano
 	debug_assert (store.block ().exists (transaction_a, block_a));
 	auto account_l (account (transaction_a, block_a));
 	auto block_account_height (store.block ().account_height (transaction_a, block_a));
-	rollback_visitor rollback (transaction_a, *this, list_a);
+	rollback_visitor rollback (transaction_a, *this, stats, list_a);
 	nano::account_info account_info;
 	auto error (false);
 	while (!error && store.block ().exists (transaction_a, block_a))
@@ -1208,8 +1214,9 @@ bool nano::ledger::is_epoch_link (nano::link const & link_a) const
 class dependent_block_visitor : public nano::block_visitor
 {
 public:
-	dependent_block_visitor (nano::ledger const & ledger_a, nano::transaction const & transaction_a) :
+	dependent_block_visitor (nano::ledger const & ledger_a, nano::ledger_constants const & constants_a, nano::transaction const & transaction_a) :
 		ledger (ledger_a),
+		constants (constants_a),
 		transaction (transaction_a),
 		result ({ 0, 0 })
 	{
@@ -1225,7 +1232,7 @@ public:
 	}
 	void open_block (nano::open_block const & block_a) override
 	{
-		if (block_a.source () != ledger.constants.genesis->account ())
+		if (block_a.source () != constants.genesis->account ())
 		{
 			result[0] = block_a.source ();
 		}
@@ -1245,13 +1252,14 @@ public:
 		}
 	}
 	nano::ledger const & ledger;
+	nano::ledger_constants const & constants;
 	nano::transaction const & transaction;
 	std::array<nano::block_hash, 2> result;
 };
 
 std::array<nano::block_hash, 2> nano::ledger::dependent_blocks (nano::transaction const & transaction_a, nano::block const & block_a) const
 {
-	dependent_block_visitor visitor (*this, transaction_a);
+	dependent_block_visitor visitor (*this, constants, transaction_a);
 	block_a.visit (visitor);
 	return visitor.result;
 }
@@ -1476,6 +1484,56 @@ bool nano::ledger::bootstrap_weight_reached () const
 	return cache.block_count () >= bootstrap_weight_max_blocks;
 }
 
+void nano::ledger::write_confirmation_height (nano::write_transaction const & transaction_a, nano::account const & account_a, uint64_t num_blocks_cemented_a, uint64_t confirmation_height_a, nano::block_hash const & confirmed_frontier_a)
+{
+#ifndef NDEBUG
+	// Extra debug checks
+	nano::confirmation_height_info confirmation_height_info;
+	store.confirmation_height ().get (transaction_a, account_a, confirmation_height_info);
+	auto block (store.block ().get (transaction_a, confirmed_frontier_a));
+	debug_assert (block != nullptr);
+	debug_assert (block->sideband ().height () == confirmation_height_info.height () + num_blocks_cemented_a);
+#endif
+	store.confirmation_height ().put (transaction_a, account_a, nano::confirmation_height_info{ confirmation_height_a, confirmed_frontier_a });
+	cache.add_cemented (num_blocks_cemented_a);
+	stats.add (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in, num_blocks_cemented_a);
+	stats.add (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in, num_blocks_cemented_a);
+}
+
+size_t nano::ledger::get_bootstrap_weights_size () const
+{
+	return bootstrap_weights_size.load ();
+}
+
+void nano::ledger::enable_pruning ()
+{
+	pruning = true;
+}
+bool nano::ledger::pruning_enabled () const
+{
+	return pruning;
+}
+
+std::unordered_map<nano::account, nano::uint128_t> nano::ledger::get_bootstrap_weights () const
+{
+	return bootstrap_weights;
+}
+
+void nano::ledger::set_bootstrap_weights (std::unordered_map<nano::account, nano::uint128_t> const & weights_a)
+{
+	bootstrap_weights = weights_a;
+}
+
+uint64_t nano::ledger::get_bootstrap_weight_max_blocks () const
+{
+	return bootstrap_weight_max_blocks;
+}
+
+void nano::ledger::set_bootstrap_weight_max_blocks (uint64_t max_a)
+{
+	bootstrap_weight_max_blocks = max_a;
+}
+
 nano::uncemented_info::uncemented_info (nano::block_hash const & cemented_frontier, nano::block_hash const & frontier, nano::account const & account) :
 	cemented_frontier (cemented_frontier), frontier (frontier), account (account)
 {
@@ -1483,8 +1541,8 @@ nano::uncemented_info::uncemented_info (nano::block_hash const & cemented_fronti
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (ledger & ledger, std::string const & name)
 {
-	auto count = ledger.bootstrap_weights_size.load ();
-	auto sizeof_element = sizeof (decltype (ledger.bootstrap_weights)::value_type);
+	auto count = ledger.get_bootstrap_weights_size ();
+	auto sizeof_element = sizeof (nano::account) + sizeof (nano::uint128_t);
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "bootstrap_weights", count, sizeof_element }));
 	composite->add_component (collect_container_info (ledger.cache.rep_weights (), "rep_weights"));

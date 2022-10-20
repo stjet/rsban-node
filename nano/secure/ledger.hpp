@@ -73,16 +73,26 @@ public:
 	std::multimap<uint64_t, uncemented_info, std::greater<>> unconfirmed_frontiers () const;
 	bool bootstrap_weight_reached () const;
 	rsnano::LedgerHandle * get_handle () const;
+	void write_confirmation_height (nano::write_transaction const &, nano::account const &, uint64_t num_blocks_cemented, uint64_t confirmation_height, nano::block_hash const & confirmed_frontier);
+	size_t get_bootstrap_weights_size () const;
+	void enable_pruning ();
+	bool pruning_enabled () const;
+	std::unordered_map<nano::account, nano::uint128_t> get_bootstrap_weights () const;
+	void set_bootstrap_weights (std::unordered_map<nano::account, nano::uint128_t> const & weights_a);
+	void set_bootstrap_weight_max_blocks (uint64_t max_a);
+	uint64_t get_bootstrap_weight_max_blocks () const;
 	static nano::uint128_t const unit;
-	nano::ledger_constants & constants;
 	nano::store & store;
 	nano::ledger_cache cache;
-	nano::stat & stats;
-	std::unordered_map<nano::account, nano::uint128_t> bootstrap_weights;
+	nano::ledger_constants & constants;
+
+private:
 	std::atomic<size_t> bootstrap_weights_size{ 0 };
-	uint64_t bootstrap_weight_max_blocks{ 1 };
-	std::atomic<bool> check_bootstrap_weights;
+	std::unordered_map<nano::account, nano::uint128_t> bootstrap_weights;
 	bool pruning{ false };
+	uint64_t bootstrap_weight_max_blocks{ 1 };
+	nano::stat & stats;
+	std::atomic<bool> check_bootstrap_weights;
 
 private:
 	void initialize (nano::generate_cache const &);

@@ -2165,8 +2165,10 @@ TEST (ledger, bootstrap_rep_weight)
 	}
 	ASSERT_EQ (2, ledger.cache.block_count ());
 	{
-		ledger.bootstrap_weight_max_blocks = 3;
-		ledger.bootstrap_weights[key2.pub] = 1000;
+		ledger.set_bootstrap_weight_max_blocks (3);
+		auto weights = ledger.get_bootstrap_weights ();
+		weights[key2.pub] = 1000;
+		ledger.set_bootstrap_weights (weights);
 		ASSERT_EQ (1000, ledger.weight (key2.pub));
 	}
 	{
@@ -4741,7 +4743,7 @@ TEST (ledger, dependents_confirmed_pruning)
 	ASSERT_FALSE (store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.pruning = true;
+	ledger.enable_pruning ();
 	auto transaction (store->tx_begin_write ());
 	store->initialize (*transaction, ledger.cache, ledger.constants);
 	nano::block_builder builder;
@@ -4934,7 +4936,7 @@ TEST (ledger, pruning_action)
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.pruning = true;
+	ledger.enable_pruning ();
 	auto transaction (store->tx_begin_write ());
 	store->initialize (*transaction, ledger.cache, ledger.constants);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
@@ -4973,10 +4975,6 @@ TEST (ledger, pruning_action)
 	ASSERT_TRUE (store->pending ().exists (*transaction, nano::pending_key (nano::dev::genesis->account (), send1->hash ())));
 	ASSERT_FALSE (store->block ().exists (*transaction, send1->hash ()));
 	ASSERT_TRUE (ledger.block_or_pruned_exists (*transaction, send1->hash ()));
-	// Pruned ledger start without proper flags emulation
-	ledger.pruning = false;
-	ASSERT_TRUE (ledger.block_or_pruned_exists (*transaction, send1->hash ()));
-	ledger.pruning = true;
 	ASSERT_TRUE (store->pruned ().exists (*transaction, send1->hash ()));
 	ASSERT_TRUE (store->block ().exists (*transaction, nano::dev::genesis->hash ()));
 	ASSERT_TRUE (store->block ().exists (*transaction, send2->hash ()));
@@ -5018,7 +5016,7 @@ TEST (ledger, pruning_large_chain)
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.pruning = true;
+	ledger.enable_pruning ();
 	auto transaction (store->tx_begin_write ());
 	store->initialize (*transaction, ledger.cache, ledger.constants);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
@@ -5073,7 +5071,7 @@ TEST (ledger, pruning_source_rollback)
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.pruning = true;
+	ledger.enable_pruning ();
 	auto transaction (store->tx_begin_write ());
 	store->initialize (*transaction, ledger.cache, ledger.constants);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
@@ -5161,7 +5159,7 @@ TEST (ledger, pruning_source_rollback_legacy)
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.pruning = true;
+	ledger.enable_pruning ();
 	auto transaction (store->tx_begin_write ());
 	store->initialize (*transaction, ledger.cache, ledger.constants);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
@@ -5274,7 +5272,7 @@ TEST (ledger, pruning_process_error)
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.pruning = true;
+	ledger.enable_pruning ();
 	auto transaction (store->tx_begin_write ());
 	store->initialize (*transaction, ledger.cache, ledger.constants);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
@@ -5321,7 +5319,7 @@ TEST (ledger, pruning_legacy_blocks)
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.pruning = true;
+	ledger.enable_pruning ();
 	nano::keypair key1;
 	auto transaction (store->tx_begin_write ());
 	store->initialize (*transaction, ledger.cache, ledger.constants);
@@ -5407,7 +5405,7 @@ TEST (ledger, pruning_safe_functions)
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.pruning = true;
+	ledger.enable_pruning ();
 	auto transaction (store->tx_begin_write ());
 	store->initialize (*transaction, ledger.cache, ledger.constants);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
@@ -5468,7 +5466,7 @@ TEST (ledger, hash_root_random)
 	ASSERT_TRUE (!store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.pruning = true;
+	ledger.enable_pruning ();
 	auto transaction (store->tx_begin_write ());
 	store->initialize (*transaction, ledger.cache, ledger.constants);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };

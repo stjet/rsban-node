@@ -1439,7 +1439,7 @@ int main (int argc, char * const * argv)
 				nano::block_hash calculated_hash (0);
 				auto block (node->store.block ().get (transaction, hash)); // Block data
 				uint64_t height (0);
-				if (node->ledger.pruning && confirmation_height_info.height () != 0)
+				if (node->ledger.pruning_enabled () && confirmation_height_info.height () != 0)
 				{
 					hash = confirmation_height_info.frontier ();
 					block = node->store.block ().get (transaction, hash);
@@ -1524,7 +1524,7 @@ int main (int argc, char * const * argv)
 							}
 							if (node->ledger.is_epoch_link (state_block.link ()))
 							{
-								if ((state_block.balance () == prev_balance && !error_or_pruned) || (node->ledger.pruning && error_or_pruned && block->sideband ().details ().is_epoch ()))
+								if ((state_block.balance () == prev_balance && !error_or_pruned) || (node->ledger.pruning_enabled () && error_or_pruned && block->sideband ().details ().is_epoch ()))
 								{
 									invalid = validate_message (node->ledger.epoch_signer (block->link ()), hash, block->block_signature ());
 								}
@@ -1546,7 +1546,7 @@ int main (int argc, char * const * argv)
 					{
 						bool error_or_pruned (false);
 						auto prev_balance (node->ledger.balance_safe (transaction, block->previous (), error_or_pruned));
-						if (!node->ledger.pruning || !error_or_pruned)
+						if (!node->ledger.pruning_enabled () || !error_or_pruned)
 						{
 							if (block->balance () < prev_balance)
 							{
@@ -1583,7 +1583,7 @@ int main (int argc, char * const * argv)
 						print_error_message (boost::str (boost::format ("Incorrect sideband block details for block %1%\n") % hash.to_string ()));
 					}
 					// Check link epoch version
-					if (sideband.details ().is_receive () && (!node->ledger.pruning || !node->store.pruned ().exists (transaction, block->link ().as_block_hash ())))
+					if (sideband.details ().is_receive () && (!node->ledger.pruning_enabled () || !node->store.pruned ().exists (transaction, block->link ().as_block_hash ())))
 					{
 						if (sideband.source_epoch () != node->store.block ().version (transaction, block->link ().as_block_hash ()))
 						{
@@ -1706,7 +1706,7 @@ int main (int argc, char * const * argv)
 				bool pruned (false);
 				if (block == nullptr)
 				{
-					pruned = node->ledger.pruning && node->store.pruned ().exists (transaction, key.hash);
+					pruned = node->ledger.pruning_enabled () && node->store.pruned ().exists (transaction, key.hash);
 					if (!pruned)
 					{
 						print_error_message (boost::str (boost::format ("Pending block does not exist %1%\n") % key.hash.to_string ()));
@@ -1716,7 +1716,7 @@ int main (int argc, char * const * argv)
 				{
 					// Check if pending destination is correct
 					nano::account destination{};
-					bool previous_pruned = node->ledger.pruning && node->store.pruned ().exists (transaction, block->previous ());
+					bool previous_pruned = node->ledger.pruning_enabled () && node->store.pruned ().exists (transaction, block->previous ());
 					if (previous_pruned)
 					{
 						block = node->store.block ().get (transaction, key.hash);

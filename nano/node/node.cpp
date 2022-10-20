@@ -180,7 +180,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	online_reps (ledger, *config),
 	history{ config_a.network_params.voting },
 	vote_uniquer (block_uniquer),
-	confirmation_height_processor (ledger, write_database_queue, config_a.conf_height_processor_batch_min_time, config->logging, *logger, node_initialized_latch, flags.confirmation_height_processor_mode ()),
+	confirmation_height_processor (ledger, *stats, write_database_queue, config_a.conf_height_processor_batch_min_time, config->logging, *logger, node_initialized_latch, flags.confirmation_height_processor_mode ()),
 	inactive_vote_cache{ nano::nodeconfig_to_vote_cache_config (config_a, flags) },
 	generator{ *config, ledger, wallets, vote_processor, history, *network, *stats, /* non-final */ false },
 	final_generator{ *config, ledger, wallets, vote_processor, history, *network, *stats, /* final */ true },
@@ -485,13 +485,13 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 			const bool use_bootstrap_weight = ledger.cache.block_count () < bootstrap_weights.first;
 			if (use_bootstrap_weight)
 			{
-				ledger.bootstrap_weights = bootstrap_weights.second;
-				for (auto const & rep : ledger.bootstrap_weights)
+				ledger.set_bootstrap_weights (bootstrap_weights.second);
+				for (auto const & rep : ledger.get_bootstrap_weights ())
 				{
 					logger->always_log ("Using bootstrap rep weight: ", rep.first.to_account (), " -> ", nano::uint128_union (rep.second).format_balance (Mxrb_ratio, 0, true), " XRB");
 				}
 			}
-			ledger.bootstrap_weight_max_blocks = bootstrap_weights.first;
+			ledger.set_bootstrap_weight_max_blocks (bootstrap_weights.first);
 
 			// Drop unchecked blocks if initial bootstrap is completed
 			if (!flags.disable_unchecked_drop () && !use_bootstrap_weight && !flags.read_only ())
@@ -504,10 +504,13 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 
 		{
 			auto tx{ store.tx_begin_read () };
-			ledger.pruning = flags.enable_pruning () || store.pruned ().count (*tx) > 0;
+			if (flags.enable_pruning () || store.pruned ().count (*tx) > 0)
+			{
+				ledger.enable_pruning ();
+			};
 		}
 
-		if (ledger.pruning)
+		if (ledger.pruning_enabled ())
 		{
 			if (config->enable_voting && !flags.inactive_node ())
 			{
@@ -914,7 +917,7 @@ void nano::node::ongoing_bootstrap ()
 	}
 	// Differential bootstrap with max age (75% of all legacy attempts)
 	uint32_t frontiers_age (std::numeric_limits<uint32_t>::max ());
-	auto bootstrap_weight_reached (ledger.cache.block_count () >= ledger.bootstrap_weight_max_blocks);
+	auto bootstrap_weight_reached (ledger.cache.block_count () >= ledger.get_bootstrap_weight_max_blocks ());
 	auto previous_bootstrap_count (stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out) + stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out));
 	/*
 	- Maximum value for 25% of attempts or if block count is below preconfigured value (initial bootstrap not finished)
@@ -1046,7 +1049,7 @@ void nano::node::unchecked_cleanup ()
 	auto const attempt (bootstrap_initiator.current_attempt ());
 	const bool long_attempt (attempt != nullptr && attempt->duration ().count () > config->unchecked_cutoff_time.count ());
 	// Collect old unchecked keys
-	if (ledger.cache.block_count () >= ledger.bootstrap_weight_max_blocks && !long_attempt)
+	if (ledger.cache.block_count () >= ledger.get_bootstrap_weight_max_blocks () && !long_attempt)
 	{
 		auto const now (nano::seconds_since_epoch ());
 		auto const transaction (store.tx_begin_read ());
@@ -1197,7 +1200,7 @@ void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_wei
 
 void nano::node::ongoing_ledger_pruning ()
 {
-	auto bootstrap_weight_reached (ledger.cache.block_count () >= ledger.bootstrap_weight_max_blocks);
+	auto bootstrap_weight_reached (ledger.cache.block_count () >= ledger.get_bootstrap_weight_max_blocks ());
 	ledger_pruning (flags.block_processor_batch_size () != 0 ? flags.block_processor_batch_size () : 2 * 1024, bootstrap_weight_reached, false);
 	auto const ledger_pruning_interval (bootstrap_weight_reached ? config->max_pruning_age : std::min (config->max_pruning_age, std::chrono::seconds (15 * 60)));
 	auto this_l (shared ());
@@ -1797,7 +1800,7 @@ void nano::node::epoch_upgrader_impl (nano::raw_key const & prv_a, nano::epoch e
 	logger->always_log ("Epoch upgrade is completed");
 }
 
-std::pair<uint64_t, decltype (nano::ledger::bootstrap_weights)> nano::node::get_bootstrap_weights () const
+std::pair<uint64_t, std::unordered_map<nano::account, nano::uint128_t>> nano::node::get_bootstrap_weights () const
 {
 	std::unordered_map<nano::account, nano::uint128_t> weights;
 	uint8_t const * weight_buffer = network_params.network.is_live_network () ? nano_bootstrap_weights_live : nano_bootstrap_weights_beta;
@@ -1829,7 +1832,7 @@ std::pair<uint64_t, decltype (nano::ledger::bootstrap_weights)> nano::node::get_
 void nano::node::bootstrap_block (const nano::block_hash & hash)
 {
 	// If we are running pruning node check if block was not already pruned
-	if (!ledger.pruning || !store.pruned ().exists (*store.tx_begin_read (), hash))
+	if (!ledger.pruning_enabled () || !store.pruned ().exists (*store.tx_begin_read (), hash))
 	{
 		// We don't have the block, try to bootstrap it
 		gap_cache.bootstrap_start (hash);

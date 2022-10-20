@@ -310,7 +310,7 @@ TEST (block_store, cemented_count_cache)
 	auto transaction (store->tx_begin_write ());
 	nano::ledger_cache ledger_cache;
 	store->initialize (*transaction, ledger_cache, nano::dev::constants);
-	ASSERT_EQ (1, ledger_cache.cemented_count);
+	ASSERT_EQ (1, ledger_cache.cemented_count ());
 }
 
 TEST (block_store, pruned_random)

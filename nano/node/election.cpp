@@ -318,14 +318,14 @@ void nano::election::confirm_if_quorum (nano::unique_lock<nano::mutex> & lock_a)
 	}
 	if (have_quorum (tally_l))
 	{
-		if (node.ledger.cache.final_votes_confirmation_canary.load () && !is_quorum.exchange (true) && node.config->enable_voting && node.wallets.reps ().voting > 0)
+		if (node.ledger.cache.final_votes_confirmation_canary () && !is_quorum.exchange (true) && node.config->enable_voting && node.wallets.reps ().voting > 0)
 		{
 			auto hash = status.winner->hash ();
 			lock_a.unlock ();
 			node.final_generator.add (root, hash);
 			lock_a.lock ();
 		}
-		if (!node.ledger.cache.final_votes_confirmation_canary.load () || final_weight >= node.online_reps.delta ())
+		if (!node.ledger.cache.final_votes_confirmation_canary () || final_weight >= node.online_reps.delta ())
 		{
 			if (node.config->logging.vote_logging () || (node.config->logging.election_fork_tally_logging () && last_blocks.size () > 1))
 			{
@@ -621,7 +621,7 @@ std::vector<nano::vote_with_weight_info> nano::election::votes_with_weight () co
 	{
 		if (vote_l.first != nullptr)
 		{
-			auto amount (node.ledger.cache.rep_weights.representation_get (vote_l.first));
+			auto amount (node.ledger.cache.rep_weights ().representation_get (vote_l.first));
 			nano::vote_with_weight_info vote_info{ vote_l.first, vote_l.second.time, vote_l.second.timestamp, vote_l.second.hash, amount };
 			sorted_votes.emplace (std::move (amount), vote_info);
 		}

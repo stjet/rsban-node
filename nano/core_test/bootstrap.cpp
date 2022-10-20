@@ -657,8 +657,8 @@ TEST (bootstrap_processor, DISABLED_push_diamond_pruning)
 		ASSERT_TRUE (node1->store.pruned ().exists (*transaction, open->hash ()));
 		ASSERT_TRUE (node1->store.block ().exists (*transaction, send2->hash ()));
 		ASSERT_TRUE (node1->store.block ().exists (*transaction, receive->hash ()));
-		ASSERT_EQ (2, node1->ledger.cache.pruned_count);
-		ASSERT_EQ (5, node1->ledger.cache.block_count);
+		ASSERT_EQ (2, node1->ledger.cache.pruned_count ());
+		ASSERT_EQ (5, node1->ledger.cache.block_count ());
 	}
 	// 2nd bootstrap
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
@@ -941,7 +941,7 @@ TEST (bootstrap_processor, lazy_hash_pruning)
 	node0->block_processor.add (send3);
 	node0->block_processor.add (receive3);
 	node0->block_processor.flush ();
-	ASSERT_EQ (9, node0->ledger.cache.block_count);
+	ASSERT_EQ (9, node0->ledger.cache.block_count ());
 	// Processing chain to prune for node1
 	config.peering_port = nano::test::get_available_port ();
 	auto node1 (std::make_shared<nano::node> (system.io_ctx, nano::unique_path (), config, system.work, node_flags, 1));
@@ -952,19 +952,19 @@ TEST (bootstrap_processor, lazy_hash_pruning)
 	// Confirm last block to prune previous
 	nano::test::blocks_confirm (*node1, { send1, receive1, change1, change2 }, true);
 	ASSERT_TIMELY (10s, node1->block_confirmed (send1->hash ()) && node1->block_confirmed (receive1->hash ()) && node1->block_confirmed (change1->hash ()) && node1->block_confirmed (change2->hash ()) && node1->active.empty ());
-	ASSERT_EQ (5, node1->ledger.cache.block_count);
-	ASSERT_EQ (5, node1->ledger.cache.cemented_count);
+	ASSERT_EQ (5, node1->ledger.cache.block_count ());
+	ASSERT_EQ (5, node1->ledger.cache.cemented_count ());
 	// Pruning action
 	node1->ledger_pruning (2, false, false);
-	ASSERT_EQ (9, node0->ledger.cache.block_count);
-	ASSERT_EQ (0, node0->ledger.cache.pruned_count);
-	ASSERT_EQ (5, node1->ledger.cache.block_count);
-	ASSERT_EQ (3, node1->ledger.cache.pruned_count);
+	ASSERT_EQ (9, node0->ledger.cache.block_count ());
+	ASSERT_EQ (0, node0->ledger.cache.pruned_count ());
+	ASSERT_EQ (5, node1->ledger.cache.block_count ());
+	ASSERT_EQ (3, node1->ledger.cache.pruned_count ());
 	// Start lazy bootstrap with last block in chain known
 	nano::test::establish_tcp (system, *node1, node0->network->endpoint ());
 	node1->bootstrap_initiator.bootstrap_lazy (receive3->hash (), true);
 	// Check processed blocks
-	ASSERT_TIMELY (10s, node1->ledger.cache.block_count == 9);
+	ASSERT_TIMELY (10s, node1->ledger.cache.block_count () == 9);
 	ASSERT_TIMELY (10s, node1->balance (key2.pub) != 0);
 	ASSERT_TIMELY (10s, !node1->bootstrap_initiator.in_progress ());
 	node1->stop ();
@@ -1333,12 +1333,12 @@ TEST (bootstrap_processor, lazy_pruning_missing_block)
 	// Confirm last block to prune previous
 	nano::test::blocks_confirm (*node1, { send1, send2, open, state_open }, true);
 	ASSERT_TIMELY (10s, node1->block_confirmed (send1->hash ()) && node1->block_confirmed (send2->hash ()) && node1->block_confirmed (open->hash ()) && node1->block_confirmed (state_open->hash ()) && node1->active.empty ());
-	ASSERT_EQ (5, node1->ledger.cache.block_count);
-	ASSERT_EQ (5, node1->ledger.cache.cemented_count);
+	ASSERT_EQ (5, node1->ledger.cache.block_count ());
+	ASSERT_EQ (5, node1->ledger.cache.cemented_count ());
 	// Pruning action
 	node1->ledger_pruning (2, false, false);
-	ASSERT_EQ (5, node1->ledger.cache.block_count);
-	ASSERT_EQ (1, node1->ledger.cache.pruned_count);
+	ASSERT_EQ (5, node1->ledger.cache.block_count ());
+	ASSERT_EQ (1, node1->ledger.cache.pruned_count ());
 	ASSERT_TRUE (node1->ledger.block_or_pruned_exists (send1->hash ())); // true for pruned
 	ASSERT_TRUE (node1->ledger.block_or_pruned_exists (send2->hash ()));
 	ASSERT_TRUE (node1->ledger.block_or_pruned_exists (open->hash ()));
@@ -1354,7 +1354,7 @@ TEST (bootstrap_processor, lazy_pruning_missing_block)
 	ASSERT_TIMELY (5s, lazy_attempt == nullptr || lazy_attempt->get_stopped () || lazy_attempt->get_requeued_pulls () >= 4);
 	// Some blocks cannot be retrieved from pruned node
 	node2->block_processor.flush ();
-	ASSERT_EQ (1, node2->ledger.cache.block_count);
+	ASSERT_EQ (1, node2->ledger.cache.block_count ());
 	ASSERT_FALSE (node2->ledger.block_or_pruned_exists (send1->hash ()));
 	ASSERT_FALSE (node2->ledger.block_or_pruned_exists (send2->hash ()));
 	ASSERT_FALSE (node2->ledger.block_or_pruned_exists (open->hash ()));
@@ -1368,7 +1368,7 @@ TEST (bootstrap_processor, lazy_pruning_missing_block)
 	node2->block_processor.flush ();
 	ASSERT_TIMELY (10s, !node2->bootstrap_initiator.in_progress ());
 	node2->block_processor.flush ();
-	ASSERT_EQ (3, node2->ledger.cache.block_count);
+	ASSERT_EQ (3, node2->ledger.cache.block_count ());
 	ASSERT_TRUE (node2->ledger.block_or_pruned_exists (send1->hash ()));
 	ASSERT_TRUE (node2->ledger.block_or_pruned_exists (send2->hash ()));
 	ASSERT_FALSE (node2->ledger.block_or_pruned_exists (open->hash ()));
@@ -2045,14 +2045,14 @@ TEST (bulk, DISABLED_genesis_pruning)
 		election->force_confirm ();
 	}
 	ASSERT_TIMELY (2s, node1->block_confirmed (send1->hash ()) && node1->active.active (send2->qualified_root ()));
-	ASSERT_EQ (0, node1->ledger.cache.pruned_count);
+	ASSERT_EQ (0, node1->ledger.cache.pruned_count ());
 	{
 		auto election = node1->active.election (send2->qualified_root ());
 		ASSERT_NE (nullptr, election);
 		election->force_confirm ();
 	}
 	ASSERT_TIMELY (2s, node1->block_confirmed (send2->hash ()) && node1->active.active (send3->qualified_root ()));
-	ASSERT_EQ (0, node1->ledger.cache.pruned_count);
+	ASSERT_EQ (0, node1->ledger.cache.pruned_count ());
 	{
 		auto election = node1->active.election (send3->qualified_root ());
 		ASSERT_NE (nullptr, election);
@@ -2060,8 +2060,8 @@ TEST (bulk, DISABLED_genesis_pruning)
 	}
 	ASSERT_TIMELY (2s, node1->active.empty () && node1->block_confirmed (send3->hash ()));
 	node1->ledger_pruning (2, false, false);
-	ASSERT_EQ (2, node1->ledger.cache.pruned_count);
-	ASSERT_EQ (4, node1->ledger.cache.block_count);
+	ASSERT_EQ (2, node1->ledger.cache.pruned_count ());
+	ASSERT_EQ (4, node1->ledger.cache.block_count ());
 	ASSERT_TRUE (node1->ledger.block_or_pruned_exists (send1->hash ())); // true for pruned
 	ASSERT_TRUE (node1->ledger.block_or_pruned_exists (send2->hash ())); // true for pruned
 	ASSERT_TRUE (node1->ledger.block_or_pruned_exists (send3->hash ()));
@@ -2070,7 +2070,7 @@ TEST (bulk, DISABLED_genesis_pruning)
 	node2->network->merge_peer (node1->network->endpoint ());
 	ASSERT_TIMELY (25s, node2->stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out) >= 1 && !node2->bootstrap_initiator.in_progress ());
 	// node2 still missing blocks
-	ASSERT_EQ (1, node2->ledger.cache.block_count);
+	ASSERT_EQ (1, node2->ledger.cache.block_count ());
 	{
 		auto transaction (node2->store.tx_begin_write ());
 		node2->unchecked.clear (*transaction);
@@ -2079,7 +2079,7 @@ TEST (bulk, DISABLED_genesis_pruning)
 	node2->process_active (send1);
 	node2->process_active (send2);
 	node2->block_processor.flush ();
-	ASSERT_EQ (3, node2->ledger.cache.block_count);
+	ASSERT_EQ (3, node2->ledger.cache.block_count ());
 	// New bootstrap
 	ASSERT_TIMELY (5s, node2->bootstrap_initiator.connections->connections_count == 0);
 	node2->bootstrap_initiator.bootstrap (node1->network->endpoint (), false);

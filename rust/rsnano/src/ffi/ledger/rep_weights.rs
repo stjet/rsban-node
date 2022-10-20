@@ -1,15 +1,21 @@
-use std::slice;
+use std::{slice, sync::Arc};
 
 use crate::{
     core::{Account, Amount},
     ledger::RepWeights,
 };
 
-pub struct RepWeightsHandle(RepWeights);
+pub struct RepWeightsHandle(Arc<RepWeights>);
+
+impl RepWeightsHandle {
+    pub fn new(weights: Arc<RepWeights>) -> *mut RepWeightsHandle {
+        Box::into_raw(Box::new(RepWeightsHandle(weights)))
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_rep_weights_create() -> *mut RepWeightsHandle {
-    Box::into_raw(Box::new(RepWeightsHandle(RepWeights::new())))
+    RepWeightsHandle::new(Arc::new(RepWeights::new()))
 }
 
 #[no_mangle]

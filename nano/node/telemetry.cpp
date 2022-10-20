@@ -632,8 +632,8 @@ nano::telemetry_data nano::local_telemetry_data (nano::ledger const & ledger_a, 
 {
 	nano::telemetry_data telemetry_data;
 	telemetry_data.set_node_id (node_id_a.pub);
-	telemetry_data.set_block_count (ledger_a.cache.block_count);
-	telemetry_data.set_cemented_count (ledger_a.cache.cemented_count);
+	telemetry_data.set_block_count (ledger_a.cache.block_count ());
+	telemetry_data.set_cemented_count (ledger_a.cache.cemented_count ());
 	telemetry_data.set_bandwidth_cap (bandwidth_limit_a);
 	telemetry_data.set_protocol_version (network_params_a.network.protocol_version);
 	telemetry_data.set_uptime (std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - statup_time_a).count ());
@@ -643,7 +643,7 @@ nano::telemetry_data nano::local_telemetry_data (nano::ledger const & ledger_a, 
 	}
 	telemetry_data.set_genesis_block (network_params_a.ledger.genesis->hash ());
 	telemetry_data.set_peer_count (nano::narrow_cast<decltype (telemetry_data.get_peer_count ())> (network_a.size ()));
-	telemetry_data.set_account_count (ledger_a.cache.account_count);
+	telemetry_data.set_account_count (ledger_a.cache.account_count ());
 	telemetry_data.set_major_version (nano::get_major_node_version ());
 	telemetry_data.set_minor_version (nano::get_minor_node_version ());
 	telemetry_data.set_patch_version (nano::get_patch_node_version ());

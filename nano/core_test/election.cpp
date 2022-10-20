@@ -225,13 +225,13 @@ TEST (election, quorum_minimum_update_weight_before_quorum_checks)
 					   .work (*system.work.generate (open1->hash ()))
 					   .build_shared ();
 	ASSERT_EQ (nano::process_result::progress, node1.process (*send2).code);
-	ASSERT_TIMELY (5s, node1.ledger.cache.block_count == 4);
+	ASSERT_TIMELY (5s, node1.ledger.cache.block_count () == 4);
 
 	node_config.peering_port = nano::test::get_available_port ();
 	auto & node2 = *system.add_node (node_config);
 
 	system.wallet (1)->insert_adhoc (key1.prv);
-	ASSERT_TIMELY (10s, node2.ledger.cache.block_count == 4);
+	ASSERT_TIMELY (10s, node2.ledger.cache.block_count () == 4);
 
 	std::shared_ptr<nano::election> election{};
 	ASSERT_TIMELY (5s, (election = node1.active.election (send1->qualified_root ())) != nullptr);

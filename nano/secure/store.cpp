@@ -55,13 +55,13 @@ void nano::store::initialize (nano::write_transaction const & transaction_a, nan
 	debug_assert (account ().begin (transaction_a) == account ().end ());
 	auto hash_l (constants.genesis->hash ());
 	block ().put (transaction_a, hash_l, *constants.genesis);
-	++ledger_cache_a.block_count;
+	ledger_cache_a.add_blocks (1);
 	confirmation_height ().put (transaction_a, constants.genesis->account (), nano::confirmation_height_info{ 1, constants.genesis->hash () });
-	++ledger_cache_a.cemented_count;
-	ledger_cache_a.final_votes_confirmation_canary = (constants.final_votes_canary_account == constants.genesis->account () && 1 >= constants.final_votes_canary_height);
+	ledger_cache_a.add_cemented (1);
+	ledger_cache_a.set_final_votes_confirmation_canary (constants.final_votes_canary_account == constants.genesis->account () && 1 >= constants.final_votes_canary_height);
 	account ().put (transaction_a, constants.genesis->account (), { hash_l, constants.genesis->account (), constants.genesis->hash (), std::numeric_limits<nano::uint128_t>::max (), nano::seconds_since_epoch (), 1, nano::epoch::epoch_0 });
-	++ledger_cache_a.account_count;
-	ledger_cache_a.rep_weights.representation_put (constants.genesis->account (), std::numeric_limits<nano::uint128_t>::max ());
+	ledger_cache_a.add_accounts (1);
+	ledger_cache_a.rep_weights ().representation_put (constants.genesis->account (), std::numeric_limits<nano::uint128_t>::max ());
 	frontier ().put (transaction_a, hash_l, constants.genesis->account ());
 }
 

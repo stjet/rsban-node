@@ -402,7 +402,7 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 				ledger.stats.add (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_unbounded, nano::stat::dir::in, pending.height - confirmation_height);
 				debug_assert (pending.num_blocks_confirmed == pending.height - confirmation_height);
 				confirmation_height = pending.height;
-				ledger.cache.cemented_count += pending.num_blocks_confirmed;
+				ledger.cache.add_cemented (pending.num_blocks_confirmed);
 				ledger.store.confirmation_height ().put (*transaction, pending.account, { confirmation_height, pending.hash });
 
 				// Reverse it so that the callbacks start from the lowest newly cemented block and move upwards

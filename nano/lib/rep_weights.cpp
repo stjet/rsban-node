@@ -6,6 +6,9 @@ nano::rep_weights::rep_weights () :
 {
 }
 
+nano::rep_weights::rep_weights (rsnano::RepWeightsHandle * handle_a) :
+	handle{ handle_a } {};
+
 nano::rep_weights::~rep_weights ()
 {
 	rsnano::rsn_rep_weights_destroy (handle);

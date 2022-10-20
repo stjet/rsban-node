@@ -591,12 +591,26 @@ public:
 class ledger_cache
 {
 public:
-	nano::rep_weights rep_weights;
-	std::atomic<uint64_t> cemented_count{ 0 };
-	std::atomic<uint64_t> block_count{ 0 };
-	std::atomic<uint64_t> pruned_count{ 0 };
-	std::atomic<uint64_t> account_count{ 0 };
-	std::atomic<bool> final_votes_confirmation_canary{ false };
+	ledger_cache ();
+	~ledger_cache ();
+	ledger_cache (ledger_cache const &) = delete;
+	nano::rep_weights & rep_weights ();
+	uint64_t cemented_count () const;
+	void add_cemented (uint64_t count);
+	uint64_t block_count () const;
+	void add_blocks (uint64_t count);
+	void remove_blocks (uint64_t count);
+	uint64_t pruned_count () const;
+	void add_pruned (uint64_t count);
+	uint64_t account_count () const;
+	void add_accounts (uint64_t count);
+	void remove_accounts (uint64_t count);
+	bool final_votes_confirmation_canary () const;
+	void set_final_votes_confirmation_canary (bool canary);
+
+private:
+	rsnano::LedgerCacheHandle * handle;
+	nano::rep_weights rep_weights_m;
 };
 
 /* Defines the possible states for an election to stop in */

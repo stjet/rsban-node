@@ -1425,16 +1425,16 @@ void nano::json_handler::block_account ()
 
 void nano::json_handler::block_count ()
 {
-	response_l.put ("count", std::to_string (node.ledger.cache.block_count));
+	response_l.put ("count", std::to_string (node.ledger.cache.block_count ()));
 	{
 		auto tx{ node.store.tx_begin_read () };
 		response_l.put ("unchecked", std::to_string (node.unchecked.count (*tx)));
 	}
-	response_l.put ("cemented", std::to_string (node.ledger.cache.cemented_count));
+	response_l.put ("cemented", std::to_string (node.ledger.cache.cemented_count ()));
 	if (node.flags.enable_pruning ())
 	{
-		response_l.put ("full", std::to_string (node.ledger.cache.block_count - node.ledger.cache.pruned_count));
-		response_l.put ("pruned", std::to_string (node.ledger.cache.pruned_count));
+		response_l.put ("full", std::to_string (node.ledger.cache.block_count () - node.ledger.cache.pruned_count ()));
+		response_l.put ("pruned", std::to_string (node.ledger.cache.pruned_count ()));
 	}
 	response_errors ();
 }
@@ -2083,7 +2083,7 @@ void nano::json_handler::confirmation_info ()
 					{
 						if (block->hash () == vote.hash)
 						{
-							auto amount (node.ledger.cache.rep_weights.representation_get (representative));
+							auto amount (node.ledger.cache.rep_weights ().representation_get (representative));
 							representatives.emplace (std::move (amount), representative);
 						}
 					}
@@ -2346,7 +2346,7 @@ void nano::json_handler::frontiers ()
 
 void nano::json_handler::account_count ()
 {
-	auto size (node.ledger.cache.account_count.load ());
+	auto size (node.ledger.cache.account_count ());
 	response_l.put ("count", std::to_string (size));
 	response_errors ();
 }
@@ -3484,7 +3484,7 @@ void nano::json_handler::representatives ()
 	{
 		bool const sorting = request.get<bool> ("sorting", false);
 		boost::property_tree::ptree representatives;
-		auto rep_amounts = node.ledger.cache.rep_weights.get_rep_amounts ();
+		auto rep_amounts = node.ledger.cache.rep_weights ().get_rep_amounts ();
 		if (!sorting) // Simple
 		{
 			std::map<nano::account, nano::uint128_t> ordered (rep_amounts.begin (), rep_amounts.end ());

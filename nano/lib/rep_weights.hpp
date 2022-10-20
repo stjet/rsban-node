@@ -20,6 +20,7 @@ class rep_weights
 {
 public:
 	rep_weights ();
+	rep_weights (rsnano::RepWeightsHandle * handle_a);
 	rep_weights (rep_weights const &) = delete;
 	~rep_weights ();
 	void representation_add (nano::account const & source_rep_a, nano::uint128_t const & amount_a);

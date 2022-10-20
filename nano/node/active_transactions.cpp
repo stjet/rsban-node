@@ -117,13 +117,13 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 
 		auto account (!block_a->account ().is_zero () ? block_a->account () : block_a->sideband ().account ());
 		debug_assert (!account.is_zero ());
-		if (!node.ledger.cache.final_votes_confirmation_canary.load () && account == node.network_params.ledger.final_votes_canary_account && block_a->sideband ().height () >= node.network_params.ledger.final_votes_canary_height)
+		if (!node.ledger.cache.final_votes_confirmation_canary () && account == node.network_params.ledger.final_votes_canary_account && block_a->sideband ().height () >= node.network_params.ledger.final_votes_canary_height)
 		{
-			node.ledger.cache.final_votes_confirmation_canary.store (true);
+			node.ledger.cache.set_final_votes_confirmation_canary (true);
 		}
 
 		// Next-block activations are done after cementing hardcoded bootstrap count to allow confirming very large chains without interference
-		bool const cemented_bootstrap_count_reached{ node.ledger.cache.cemented_count >= node.ledger.bootstrap_weight_max_blocks };
+		bool const cemented_bootstrap_count_reached{ node.ledger.cache.cemented_count () >= node.ledger.bootstrap_weight_max_blocks };
 
 		// Next-block activations are only done for blocks with previously active elections
 		bool const was_active{ *election_status_type == nano::election_status_type::active_confirmed_quorum || *election_status_type == nano::election_status_type::active_confirmation_height };

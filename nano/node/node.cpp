@@ -482,7 +482,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		{
 			auto const bootstrap_weights = get_bootstrap_weights ();
 			// Use bootstrap weights if initial bootstrap is not completed
-			const bool use_bootstrap_weight = ledger.cache.block_count < bootstrap_weights.first;
+			const bool use_bootstrap_weight = ledger.cache.block_count () < bootstrap_weights.first;
 			if (use_bootstrap_weight)
 			{
 				ledger.bootstrap_weights = bootstrap_weights.second;
@@ -914,7 +914,7 @@ void nano::node::ongoing_bootstrap ()
 	}
 	// Differential bootstrap with max age (75% of all legacy attempts)
 	uint32_t frontiers_age (std::numeric_limits<uint32_t>::max ());
-	auto bootstrap_weight_reached (ledger.cache.block_count >= ledger.bootstrap_weight_max_blocks);
+	auto bootstrap_weight_reached (ledger.cache.block_count () >= ledger.bootstrap_weight_max_blocks);
 	auto previous_bootstrap_count (stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out) + stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out));
 	/*
 	- Maximum value for 25% of attempts or if block count is below preconfigured value (initial bootstrap not finished)
@@ -1046,7 +1046,7 @@ void nano::node::unchecked_cleanup ()
 	auto const attempt (bootstrap_initiator.current_attempt ());
 	const bool long_attempt (attempt != nullptr && attempt->duration ().count () > config->unchecked_cutoff_time.count ());
 	// Collect old unchecked keys
-	if (ledger.cache.block_count >= ledger.bootstrap_weight_max_blocks && !long_attempt)
+	if (ledger.cache.block_count () >= ledger.bootstrap_weight_max_blocks && !long_attempt)
 	{
 		auto const now (nano::seconds_since_epoch ());
 		auto const transaction (store.tx_begin_read ());
@@ -1197,7 +1197,7 @@ void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_wei
 
 void nano::node::ongoing_ledger_pruning ()
 {
-	auto bootstrap_weight_reached (ledger.cache.block_count >= ledger.bootstrap_weight_max_blocks);
+	auto bootstrap_weight_reached (ledger.cache.block_count () >= ledger.bootstrap_weight_max_blocks);
 	ledger_pruning (flags.block_processor_batch_size () != 0 ? flags.block_processor_batch_size () : 2 * 1024, bootstrap_weight_reached, false);
 	auto const ledger_pruning_interval (bootstrap_weight_reached ? config->max_pruning_age : std::min (config->max_pruning_age, std::chrono::seconds (15 * 60)));
 	auto this_l (shared ());

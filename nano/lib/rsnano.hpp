@@ -75,6 +75,8 @@ struct IoContextHandle;
 
 struct KdfHandle;
 
+struct LedgerCacheHandle;
+
 struct LedgerHandle;
 
 struct LmdbAccountStoreHandle;
@@ -1684,6 +1686,36 @@ void rsn_keypair_create (uint8_t * prv_key, uint8_t * pub_key);
 void rsn_keypair_create_from_hex_str (const char * prv_hex, uint8_t * prv_key, uint8_t * pub_key);
 
 void rsn_keypair_create_from_prv_key (const uint8_t * prv_key, uint8_t * pub_key);
+
+uint64_t rsn_ledger_cache_account_count (LedgerCacheHandle * handle);
+
+void rsn_ledger_cache_add_accounts (LedgerCacheHandle * handle, uint64_t count);
+
+void rsn_ledger_cache_add_blocks (LedgerCacheHandle * handle, uint64_t count);
+
+void rsn_ledger_cache_add_cemented (LedgerCacheHandle * handle, uint64_t count);
+
+void rsn_ledger_cache_add_pruned (LedgerCacheHandle * handle, uint64_t count);
+
+uint64_t rsn_ledger_cache_block_count (LedgerCacheHandle * handle);
+
+uint64_t rsn_ledger_cache_cemented_count (LedgerCacheHandle * handle);
+
+LedgerCacheHandle * rsn_ledger_cache_create ();
+
+void rsn_ledger_cache_destroy (LedgerCacheHandle * handle);
+
+bool rsn_ledger_cache_final_votes_confirmation_canary (LedgerCacheHandle * handle);
+
+uint64_t rsn_ledger_cache_pruned_count (LedgerCacheHandle * handle);
+
+void rsn_ledger_cache_remove_accounts (LedgerCacheHandle * handle, uint64_t count);
+
+void rsn_ledger_cache_remove_blocks (LedgerCacheHandle * handle, uint64_t count);
+
+void rsn_ledger_cache_set_final_votes_confirmation_canary (LedgerCacheHandle * handle, bool value);
+
+RepWeightsHandle * rsn_ledger_cache_weights (LedgerCacheHandle * handle);
 
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,

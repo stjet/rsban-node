@@ -279,7 +279,7 @@ TEST (request_aggregator, split)
 	auto election (node.active.election (blocks.back ()->qualified_root ()));
 	ASSERT_NE (nullptr, election);
 	election->force_confirm ();
-	ASSERT_TIMELY (5s, max_vbh + 2 == node.ledger.cache.cemented_count);
+	ASSERT_TIMELY (5s, max_vbh + 2 == node.ledger.cache.cemented_count ());
 	ASSERT_EQ (max_vbh + 1, request.size ());
 	auto client = nano::create_client_socket (node);
 	std::shared_ptr<nano::transport::channel> dummy_channel = create_dummy_channel (node, client);

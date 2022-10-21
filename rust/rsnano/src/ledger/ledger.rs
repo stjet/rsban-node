@@ -1,21 +1,36 @@
-use crate::{core::BlockHash, ffi::ledger::datastore::BLOCK_OR_PRUNED_EXISTS_CALLBACK};
-use std::{
-    ffi::c_void,
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
+use crate::{
+    core::{Account, BlockHash},
+    ffi::ledger::datastore::BLOCK_OR_PRUNED_EXISTS_CALLBACK,
 };
+use std::{
+    collections::HashMap,
+    ffi::c_void,
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc, Mutex,
+    },
+};
+
+use super::datastore::Store;
 
 pub struct Ledger {
     handle: *mut c_void,
+    store: Arc<dyn Store>,
     pruning: AtomicBool,
     bootstrap_weight_max_blocks: AtomicU64,
+    pub check_bootstrap_weights: AtomicBool,
+    pub bootstrap_weights: Mutex<HashMap<Account, u128>>,
 }
 
 impl Ledger {
-    pub fn new(handle: *mut c_void) -> Self {
+    pub fn new(handle: *mut c_void, store: Arc<dyn Store>) -> Self {
         Self {
             handle,
+            store,
             pruning: AtomicBool::new(false),
             bootstrap_weight_max_blocks: AtomicU64::new(1),
+            check_bootstrap_weights: AtomicBool::new(true),
+            bootstrap_weights: Mutex::new(HashMap::new()),
         }
     }
 

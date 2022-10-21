@@ -33,10 +33,10 @@ use super::{
     version_store::LmdbVersionStoreHandle, TransactionHandle, TransactionType,
 };
 
-pub struct LmdbStoreHandle(LmdbStore);
+pub struct LmdbStoreHandle(Arc<LmdbStore>);
 
 impl Deref for LmdbStoreHandle {
-    type Target = LmdbStore;
+    type Target = Arc<LmdbStore>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -76,7 +76,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_create(
     match store {
         Ok(s) => {
             *error = false;
-            Box::into_raw(Box::new(LmdbStoreHandle(s)))
+            Box::into_raw(Box::new(LmdbStoreHandle(Arc::new(s))))
         }
         Err(_) => {
             *error = true;

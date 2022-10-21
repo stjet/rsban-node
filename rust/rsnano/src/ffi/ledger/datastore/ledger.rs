@@ -1,5 +1,9 @@
-use crate::ledger::Ledger;
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use crate::{core::Account, ledger::Ledger};
+use std::{
+    ffi::c_void,
+    ops::Deref,
+    sync::{atomic::Ordering, Arc},
+};
 
 use super::lmdb::LmdbStoreHandle;
 
@@ -14,11 +18,11 @@ impl Deref for LedgerHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_ledger_create(
+pub unsafe extern "C" fn rsn_ledger_create(
     handle: *mut c_void,
-    _store: *mut LmdbStoreHandle,
+    store: *mut LmdbStoreHandle,
 ) -> *mut LedgerHandle {
-    let ledger = Ledger::new(handle);
+    let ledger = Ledger::new(handle, (*store).deref().to_owned());
     Box::into_raw(Box::new(LedgerHandle(Arc::new(ledger))))
 }
 
@@ -59,4 +63,79 @@ pub unsafe extern "C" fn rsn_ledger_set_bootstrap_weight_max_blocks(
     max: u64,
 ) {
     (*handle).0.set_bootstrap_weight_max_blocks(max)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_check_bootstrap_weights(handle: *mut LedgerHandle) -> bool {
+    (*handle).0.check_bootstrap_weights.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_check_bootstrap_weights(
+    handle: *mut LedgerHandle,
+    check: bool,
+) {
+    (*handle)
+        .0
+        .check_bootstrap_weights
+        .store(check, Ordering::SeqCst)
+}
+
+#[repr(C)]
+pub struct BootstrapWeightsItem {
+    pub account: [u8; 32],
+    pub weight: [u8; 16],
+}
+
+pub struct BootstrapWeightsRawPtr(Vec<BootstrapWeightsItem>);
+
+#[repr(C)]
+pub struct BootstrapWeightsDto {
+    pub accounts: *const BootstrapWeightsItem,
+    pub count: usize,
+    pub raw_ptr: *mut BootstrapWeightsRawPtr,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_bootstrap_weights(
+    handle: *mut LedgerHandle,
+    result: *mut BootstrapWeightsDto,
+) {
+    let weights = (*handle).0.bootstrap_weights.lock().unwrap().to_owned();
+    let items = weights
+        .iter()
+        .map(|(k, v)| BootstrapWeightsItem {
+            account: *k.as_bytes(),
+            weight: v.to_be_bytes(),
+        })
+        .collect();
+    let raw_ptr = Box::new(BootstrapWeightsRawPtr(items));
+
+    (*result).count = raw_ptr.0.len();
+    (*result).accounts = raw_ptr.0.as_ptr();
+    (*result).raw_ptr = Box::into_raw(raw_ptr);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_destroy_bootstrap_weights_dto(dto: *mut BootstrapWeightsDto) {
+    drop(Box::from_raw((*dto).raw_ptr))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_bootstrap_weights(
+    handle: *mut LedgerHandle,
+    accounts: *const BootstrapWeightsItem,
+    count: usize,
+) {
+    let dtos = std::slice::from_raw_parts(accounts, count);
+    let weights = dtos
+        .iter()
+        .map(|d| {
+            (
+                Account::from_bytes(d.account),
+                u128::from_be_bytes(d.weight),
+            )
+        })
+        .collect();
+    *(*handle).0.bootstrap_weights.lock().unwrap() = weights;
 }

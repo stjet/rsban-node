@@ -6,6 +6,8 @@
 #include <nano/secure/ledger.hpp>
 #include <nano/secure/store.hpp>
 
+#include <boost/multiprecision/cpp_int.hpp>
+
 namespace
 {
 /**
@@ -744,7 +746,6 @@ nano::ledger::ledger (nano::store & store_a, nano::stat & stat_a, nano::ledger_c
 	constants{ constants },
 	store{ store_a },
 	stats{ stat_a },
-	check_bootstrap_weights{ true },
 	handle{ rsnano::rsn_ledger_create (this, store_a.get_handle ()) }
 {
 	if (!store.init_error ())
@@ -1040,19 +1041,20 @@ std::pair<nano::block_hash, nano::block_hash> nano::ledger::hash_root_random (na
 // Vote weight of an account
 nano::uint128_t nano::ledger::weight (nano::account const & account_a)
 {
-	if (check_bootstrap_weights.load ())
+	if (rsnano::rsn_ledger_check_bootstrap_weights (handle))
 	{
 		if (cache.block_count () < get_bootstrap_weight_max_blocks ())
 		{
-			auto weight = bootstrap_weights.find (account_a);
-			if (weight != bootstrap_weights.end ())
+			auto weights = get_bootstrap_weights ();
+			auto weight = weights.find (account_a);
+			if (weight != weights.end ())
 			{
 				return weight->second;
 			}
 		}
 		else
 		{
-			check_bootstrap_weights = false;
+			rsnano::rsn_ledger_set_check_bootstrap_weights (handle, false);
 		}
 	}
 	return cache.rep_weights ().representation_get (account_a);
@@ -1502,7 +1504,7 @@ void nano::ledger::write_confirmation_height (nano::write_transaction const & tr
 
 size_t nano::ledger::get_bootstrap_weights_size () const
 {
-	return bootstrap_weights.size ();
+	return get_bootstrap_weights ().size ();
 }
 
 void nano::ledger::enable_pruning ()
@@ -1517,12 +1519,35 @@ bool nano::ledger::pruning_enabled () const
 
 std::unordered_map<nano::account, nano::uint128_t> nano::ledger::get_bootstrap_weights () const
 {
-	return bootstrap_weights;
+	std::unordered_map<nano::account, nano::uint128_t> weights;
+	rsnano::BootstrapWeightsDto dto;
+	rsnano::rsn_ledger_bootstrap_weights (handle, &dto);
+	for (int i = 0; i < dto.count; ++i)
+	{
+		nano::account account;
+		nano::uint128_t amount;
+		auto & item = dto.accounts[i];
+		std::copy (std::begin (item.account), std::end (item.account), std::begin (account.bytes));
+		boost::multiprecision::import_bits (amount, std::begin (item.weight), std::end (item.weight), 8, true);
+		weights.emplace (account, amount);
+	}
+	rsnano::rsn_ledger_destroy_bootstrap_weights_dto (&dto);
+	return weights;
 }
 
 void nano::ledger::set_bootstrap_weights (std::unordered_map<nano::account, nano::uint128_t> const & weights_a)
 {
-	bootstrap_weights = weights_a;
+	std::vector<rsnano::BootstrapWeightsItem> dtos;
+	dtos.reserve (weights_a.size ());
+	for (auto & it : weights_a)
+	{
+		rsnano::BootstrapWeightsItem dto;
+		std::copy (std::begin (it.first.bytes), std::end (it.first.bytes), std::begin (dto.account));
+		std::fill (std::begin (dto.weight), std::end (dto.weight), 0);
+		boost::multiprecision::export_bits (it.second, std::rbegin (dto.weight), 8, false);
+		dtos.push_back (dto);
+	}
+	rsnano::rsn_ledger_set_bootstrap_weights (handle, dtos.data (), dtos.size ());
 }
 
 uint64_t nano::ledger::get_bootstrap_weight_max_blocks () const

@@ -87,9 +87,7 @@ public:
 	nano::ledger_constants & constants;
 
 private:
-	std::unordered_map<nano::account, nano::uint128_t> bootstrap_weights;
 	nano::stat & stats;
-	std::atomic<bool> check_bootstrap_weights;
 
 private:
 	void initialize (nano::generate_cache const &);

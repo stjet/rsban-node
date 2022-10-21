@@ -61,6 +61,8 @@ struct BootstrapInitiatorHandle;
 
 struct BootstrapServerWeakHandle;
 
+struct BootstrapWeightsRawPtr;
+
 struct BufferHandle;
 
 struct ChannelHandle;
@@ -732,6 +734,19 @@ struct DaemonConfigDto
 	bool opencl_enable;
 	NodePowServerConfigDto pow_server;
 	NodeRpcConfigDto rpc;
+};
+
+struct BootstrapWeightsItem
+{
+	uint8_t account[32];
+	uint8_t weight[16];
+};
+
+struct BootstrapWeightsDto
+{
+	const BootstrapWeightsItem * accounts;
+	uintptr_t count;
+	BootstrapWeightsRawPtr * raw_ptr;
 };
 
 using ForEachParCallback = void (*) (void *, TransactionHandle *, LmdbIteratorHandle *, LmdbIteratorHandle *);
@@ -1689,6 +1704,8 @@ void rsn_keypair_create_from_prv_key (const uint8_t * prv_key, uint8_t * pub_key
 
 uint64_t rsn_ledger_bootstrap_weight_max_blocks (LedgerHandle * handle);
 
+void rsn_ledger_bootstrap_weights (LedgerHandle * handle, BootstrapWeightsDto * result);
+
 uint64_t rsn_ledger_cache_account_count (LedgerCacheHandle * handle);
 
 void rsn_ledger_cache_add_accounts (LedgerCacheHandle * handle, uint64_t count);
@@ -1719,19 +1736,29 @@ void rsn_ledger_cache_set_final_votes_confirmation_canary (LedgerCacheHandle * h
 
 RepWeightsHandle * rsn_ledger_cache_weights (LedgerCacheHandle * handle);
 
+bool rsn_ledger_check_bootstrap_weights (LedgerHandle * handle);
+
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
 
-LedgerHandle * rsn_ledger_create (void * handle, LmdbStoreHandle * _store);
+LedgerHandle * rsn_ledger_create (void * handle, LmdbStoreHandle * store);
 
 void rsn_ledger_destroy (LedgerHandle * handle);
+
+void rsn_ledger_destroy_bootstrap_weights_dto (BootstrapWeightsDto * dto);
 
 void rsn_ledger_enable_pruning (LedgerHandle * handle);
 
 bool rsn_ledger_pruning_enabled (LedgerHandle * handle);
 
 void rsn_ledger_set_bootstrap_weight_max_blocks (LedgerHandle * handle, uint64_t max);
+
+void rsn_ledger_set_bootstrap_weights (LedgerHandle * handle,
+const BootstrapWeightsItem * accounts,
+uintptr_t count);
+
+void rsn_ledger_set_check_bootstrap_weights (LedgerHandle * handle, bool check);
 
 LmdbIteratorHandle * rsn_lmdb_account_store_begin (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn);

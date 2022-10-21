@@ -1742,13 +1742,18 @@ int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
 
-LedgerHandle * rsn_ledger_create (void * handle, LmdbStoreHandle * store);
+LedgerHandle * rsn_ledger_create (void * handle,
+LmdbStoreHandle * store,
+const LedgerConstantsDto * constants,
+StatHandle * stats);
 
 void rsn_ledger_destroy (LedgerHandle * handle);
 
 void rsn_ledger_destroy_bootstrap_weights_dto (BootstrapWeightsDto * dto);
 
 void rsn_ledger_enable_pruning (LedgerHandle * handle);
+
+LedgerCacheHandle * rsn_ledger_get_cache (LedgerHandle * handle);
 
 bool rsn_ledger_pruning_enabled (LedgerHandle * handle);
 

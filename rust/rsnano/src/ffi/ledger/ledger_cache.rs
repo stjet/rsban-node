@@ -9,6 +9,12 @@ use super::RepWeightsHandle;
 
 pub struct LedgerCacheHandle(Arc<LedgerCache>);
 
+impl LedgerCacheHandle {
+    pub fn new(cache: Arc<LedgerCache>) -> *mut Self {
+        Box::into_raw(Box::new(LedgerCacheHandle(cache)))
+    }
+}
+
 impl Deref for LedgerCacheHandle {
     type Target = Arc<LedgerCache>;
 
@@ -19,7 +25,7 @@ impl Deref for LedgerCacheHandle {
 
 #[no_mangle]
 pub extern "C" fn rsn_ledger_cache_create() -> *mut LedgerCacheHandle {
-    Box::into_raw(Box::new(LedgerCacheHandle(Arc::new(LedgerCache::new()))))
+    LedgerCacheHandle::new(Arc::new(LedgerCache::new()))
 }
 
 #[no_mangle]

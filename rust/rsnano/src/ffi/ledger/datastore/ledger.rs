@@ -1,4 +1,11 @@
-use crate::{core::Account, ledger::Ledger};
+use crate::{
+    core::Account,
+    ffi::{
+        ledger::{LedgerCacheHandle, LedgerConstantsDto},
+        StatHandle,
+    },
+    ledger::Ledger,
+};
 use std::{
     ffi::c_void,
     ops::Deref,
@@ -21,9 +28,21 @@ impl Deref for LedgerHandle {
 pub unsafe extern "C" fn rsn_ledger_create(
     handle: *mut c_void,
     store: *mut LmdbStoreHandle,
+    constants: *const LedgerConstantsDto,
+    stats: *mut StatHandle,
 ) -> *mut LedgerHandle {
-    let ledger = Ledger::new(handle, (*store).deref().to_owned());
+    let ledger = Ledger::new(
+        handle,
+        (*store).deref().to_owned(),
+        (&*constants).try_into().unwrap(),
+        (*stats).deref().to_owned(),
+    );
     Box::into_raw(Box::new(LedgerHandle(Arc::new(ledger))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_get_cache(handle: *mut LedgerHandle) -> *mut LedgerCacheHandle {
+    LedgerCacheHandle::new((*handle).0.cache.clone())
 }
 
 #[no_mangle]

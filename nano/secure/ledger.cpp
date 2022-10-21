@@ -745,9 +745,10 @@ ledger_processor::ledger_processor (nano::ledger & ledger_a, nano::stat & stats_
 nano::ledger::ledger (nano::store & store_a, nano::stat & stat_a, nano::ledger_constants & constants, nano::generate_cache const & generate_cache_a) :
 	constants{ constants },
 	store{ store_a },
-	stats{ stat_a },
-	handle{ rsnano::rsn_ledger_create (this, store_a.get_handle ()) }
+	stats{ stat_a }
 {
+	auto constants_dto{ constants.to_dto () };
+	handle = rsnano::rsn_ledger_create (this, store_a.get_handle (), &constants_dto, stat_a.handle);
 	if (!store.init_error ())
 	{
 		initialize (generate_cache_a);

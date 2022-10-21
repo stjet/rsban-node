@@ -1,6 +1,7 @@
 use crate::{
     core::{Account, BlockHash},
     ffi::ledger::datastore::BLOCK_OR_PRUNED_EXISTS_CALLBACK,
+    stats::Stat,
 };
 use std::{
     collections::HashMap,
@@ -11,11 +12,14 @@ use std::{
     },
 };
 
-use super::datastore::Store;
+use super::{datastore::Store, LedgerCache, LedgerConstants};
 
 pub struct Ledger {
     handle: *mut c_void,
     store: Arc<dyn Store>,
+    pub cache: Arc<LedgerCache>,
+    constants: LedgerConstants,
+    stats: Arc<Stat>,
     pruning: AtomicBool,
     bootstrap_weight_max_blocks: AtomicU64,
     pub check_bootstrap_weights: AtomicBool,
@@ -23,10 +27,18 @@ pub struct Ledger {
 }
 
 impl Ledger {
-    pub fn new(handle: *mut c_void, store: Arc<dyn Store>) -> Self {
+    pub fn new(
+        handle: *mut c_void,
+        store: Arc<dyn Store>,
+        constants: LedgerConstants,
+        stats: Arc<Stat>,
+    ) -> Self {
         Self {
             handle,
             store,
+            cache: Arc::new(LedgerCache::new()),
+            constants,
+            stats,
             pruning: AtomicBool::new(false),
             bootstrap_weight_max_blocks: AtomicU64::new(1),
             check_bootstrap_weights: AtomicBool::new(true),

@@ -1721,7 +1721,7 @@ int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
 
-LedgerHandle * rsn_ledger_create (void * handle);
+LedgerHandle * rsn_ledger_create (void * handle, LmdbStoreHandle * _store);
 
 void rsn_ledger_destroy (LedgerHandle * handle);
 

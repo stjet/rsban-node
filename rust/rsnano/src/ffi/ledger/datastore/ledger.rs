@@ -1,6 +1,8 @@
 use crate::ledger::Ledger;
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
+use super::lmdb::LmdbStoreHandle;
+
 pub struct LedgerHandle(Arc<Ledger>);
 
 impl Deref for LedgerHandle {
@@ -12,7 +14,10 @@ impl Deref for LedgerHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_ledger_create(handle: *mut c_void) -> *mut LedgerHandle {
+pub extern "C" fn rsn_ledger_create(
+    handle: *mut c_void,
+    _store: *mut LmdbStoreHandle,
+) -> *mut LedgerHandle {
     let ledger = Ledger::new(handle);
     Box::into_raw(Box::new(LedgerHandle(Arc::new(ledger))))
 }

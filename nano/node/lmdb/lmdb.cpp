@@ -175,3 +175,8 @@ nano::version_store & nano::lmdb::store::version ()
 {
 	return version_store;
 }
+
+rsnano::LmdbStoreHandle * nano::lmdb::store::get_handle () const
+{
+	return handle;
+}

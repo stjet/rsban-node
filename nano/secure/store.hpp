@@ -764,6 +764,7 @@ public:
 	virtual std::unique_ptr<nano::read_transaction> tx_begin_read () const = 0;
 
 	virtual std::string vendor_get () const = 0;
+	virtual rsnano::LmdbStoreHandle * get_handle () const = 0;
 
 	friend class unchecked_map;
 };

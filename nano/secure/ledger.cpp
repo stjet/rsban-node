@@ -745,7 +745,7 @@ nano::ledger::ledger (nano::store & store_a, nano::stat & stat_a, nano::ledger_c
 	store{ store_a },
 	stats{ stat_a },
 	check_bootstrap_weights{ true },
-	handle{ rsnano::rsn_ledger_create (this) }
+	handle{ rsnano::rsn_ledger_create (this, store_a.get_handle ()) }
 {
 	if (!store.init_error ())
 	{

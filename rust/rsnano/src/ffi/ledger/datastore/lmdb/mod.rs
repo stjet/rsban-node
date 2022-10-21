@@ -16,6 +16,7 @@ mod wallet_store;
 mod wallets;
 
 use std::{ffi::c_void, ops::Deref};
+pub use store::LmdbStoreHandle;
 
 use crate::{
     ffi::VoidPointerCallback,

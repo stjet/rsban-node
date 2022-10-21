@@ -100,6 +100,7 @@ namespace lmdb
 		bool copy_db (boost::filesystem::path const & destination_file) override;
 		void rebuild_db (nano::write_transaction const & transaction_a) override;
 		bool init_error () const override;
+		rsnano::LmdbStoreHandle * get_handle () const override;
 
 	private:
 		friend class mdb_block_store_supported_version_upgrades_Test;

@@ -1687,6 +1687,8 @@ void rsn_keypair_create_from_hex_str (const char * prv_hex, uint8_t * prv_key, u
 
 void rsn_keypair_create_from_prv_key (const uint8_t * prv_key, uint8_t * pub_key);
 
+uint64_t rsn_ledger_bootstrap_weight_max_blocks (LedgerHandle * handle);
+
 uint64_t rsn_ledger_cache_account_count (LedgerCacheHandle * handle);
 
 void rsn_ledger_cache_add_accounts (LedgerCacheHandle * handle, uint64_t count);
@@ -1724,6 +1726,12 @@ uint16_t network);
 LedgerHandle * rsn_ledger_create (void * handle, LmdbStoreHandle * _store);
 
 void rsn_ledger_destroy (LedgerHandle * handle);
+
+void rsn_ledger_enable_pruning (LedgerHandle * handle);
+
+bool rsn_ledger_pruning_enabled (LedgerHandle * handle);
+
+void rsn_ledger_set_bootstrap_weight_max_blocks (LedgerHandle * handle, uint64_t max);
 
 LmdbIteratorHandle * rsn_lmdb_account_store_begin (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn);

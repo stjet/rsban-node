@@ -87,10 +87,7 @@ public:
 	nano::ledger_constants & constants;
 
 private:
-	std::atomic<size_t> bootstrap_weights_size{ 0 };
 	std::unordered_map<nano::account, nano::uint128_t> bootstrap_weights;
-	bool pruning{ false };
-	uint64_t bootstrap_weight_max_blocks{ 1 };
 	nano::stat & stats;
 	std::atomic<bool> check_bootstrap_weights;
 

@@ -818,7 +818,7 @@ nano::uint128_t nano::ledger::balance (nano::transaction const & transaction_a, 
 nano::uint128_t nano::ledger::balance_safe (nano::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
 {
 	nano::uint128_t result (0);
-	if (pruning && !hash_a.is_zero () && !store.block ().exists (transaction_a, hash_a))
+	if (pruning_enabled () && !hash_a.is_zero () && !store.block ().exists (transaction_a, hash_a))
 	{
 		error_a = true;
 		result = 0;
@@ -1011,7 +1011,7 @@ std::pair<nano::block_hash, nano::block_hash> nano::ledger::hash_root_random (na
 {
 	nano::block_hash hash (0);
 	nano::root root (0);
-	if (!pruning)
+	if (!pruning_enabled ())
 	{
 		auto block (store.block ().random (transaction_a));
 		hash = block->hash ();
@@ -1042,7 +1042,7 @@ nano::uint128_t nano::ledger::weight (nano::account const & account_a)
 {
 	if (check_bootstrap_weights.load ())
 	{
-		if (cache.block_count () < bootstrap_weight_max_blocks)
+		if (cache.block_count () < get_bootstrap_weight_max_blocks ())
 		{
 			auto weight = bootstrap_weights.find (account_a);
 			if (weight != bootstrap_weights.end ())
@@ -1106,7 +1106,7 @@ nano::account nano::ledger::account (nano::transaction const & transaction_a, na
 
 nano::account nano::ledger::account_safe (nano::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
 {
-	if (!pruning)
+	if (!pruning_enabled ())
 	{
 		return store.block ().account (transaction_a, hash_a);
 	}
@@ -1481,7 +1481,7 @@ std::multimap<uint64_t, nano::uncemented_info, std::greater<>> nano::ledger::unc
 
 bool nano::ledger::bootstrap_weight_reached () const
 {
-	return cache.block_count () >= bootstrap_weight_max_blocks;
+	return cache.block_count () >= get_bootstrap_weight_max_blocks ();
 }
 
 void nano::ledger::write_confirmation_height (nano::write_transaction const & transaction_a, nano::account const & account_a, uint64_t num_blocks_cemented_a, uint64_t confirmation_height_a, nano::block_hash const & confirmed_frontier_a)
@@ -1502,16 +1502,17 @@ void nano::ledger::write_confirmation_height (nano::write_transaction const & tr
 
 size_t nano::ledger::get_bootstrap_weights_size () const
 {
-	return bootstrap_weights_size.load ();
+	return bootstrap_weights.size ();
 }
 
 void nano::ledger::enable_pruning ()
 {
-	pruning = true;
+	rsnano::rsn_ledger_enable_pruning (handle);
 }
+
 bool nano::ledger::pruning_enabled () const
 {
-	return pruning;
+	return rsnano::rsn_ledger_pruning_enabled (handle);
 }
 
 std::unordered_map<nano::account, nano::uint128_t> nano::ledger::get_bootstrap_weights () const
@@ -1526,12 +1527,12 @@ void nano::ledger::set_bootstrap_weights (std::unordered_map<nano::account, nano
 
 uint64_t nano::ledger::get_bootstrap_weight_max_blocks () const
 {
-	return bootstrap_weight_max_blocks;
+	return rsnano::rsn_ledger_bootstrap_weight_max_blocks (handle);
 }
 
 void nano::ledger::set_bootstrap_weight_max_blocks (uint64_t max_a)
 {
-	bootstrap_weight_max_blocks = max_a;
+	rsnano::rsn_ledger_set_bootstrap_weight_max_blocks (handle, max_a);
 }
 
 nano::uncemented_info::uncemented_info (nano::block_hash const & cemented_frontier, nano::block_hash const & frontier, nano::account const & account) :

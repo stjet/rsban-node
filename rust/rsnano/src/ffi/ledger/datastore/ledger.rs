@@ -37,3 +37,26 @@ pub unsafe extern "C" fn rsn_callback_ledger_block_or_pruned_exists(
 type LedgerBlockOrPrunedExistsCallback = unsafe extern "C" fn(*mut c_void, *const u8) -> bool;
 pub(crate) static mut BLOCK_OR_PRUNED_EXISTS_CALLBACK: Option<LedgerBlockOrPrunedExistsCallback> =
     None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_pruning_enabled(handle: *mut LedgerHandle) -> bool {
+    (*handle).0.pruning_enabled()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_enable_pruning(handle: *mut LedgerHandle) {
+    (*handle).0.enable_pruning()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_bootstrap_weight_max_blocks(handle: *mut LedgerHandle) -> u64 {
+    (*handle).0.bootstrap_weight_max_blocks()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_bootstrap_weight_max_blocks(
+    handle: *mut LedgerHandle,
+    max: u64,
+) {
+    (*handle).0.set_bootstrap_weight_max_blocks(max)
+}

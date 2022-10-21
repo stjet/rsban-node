@@ -4,13 +4,14 @@ use lmdb::{Database, DatabaseFlags, WriteFlags};
 
 use crate::{
     core::{Account, BlockHash, PendingInfo, PendingKey},
-    ledger::datastore::{parallel_traversal_u512, pending_store::PendingIterator, PendingStore},
+    ledger::datastore::{
+        parallel_traversal_u512, pending_store::PendingIterator, PendingStore, ReadTransaction,
+        Transaction, WriteTransaction,
+    },
     utils::{Deserialize, StreamAdapter},
 };
 
-use super::{
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
-};
+use super::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl};
 
 pub struct LmdbPendingStore {
     env: Arc<LmdbEnv>,
@@ -31,13 +32,11 @@ impl LmdbPendingStore {
     }
 }
 
-impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
-    for LmdbPendingStore
-{
-    fn put(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey, pending: &PendingInfo) {
+impl PendingStore<LmdbIteratorImpl> for LmdbPendingStore {
+    fn put(&self, txn: &mut dyn WriteTransaction, key: &PendingKey, pending: &PendingInfo) {
         let key_bytes = key.to_bytes();
         let pending_bytes = pending.to_bytes();
-        txn.rw_txn_mut()
+        as_write_txn(txn)
             .put(
                 self.database,
                 &key_bytes,
@@ -47,16 +46,16 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
             .unwrap();
     }
 
-    fn del(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey) {
+    fn del(&self, txn: &mut dyn WriteTransaction, key: &PendingKey) {
         let key_bytes = key.to_bytes();
-        txn.rw_txn_mut()
+        as_write_txn(txn)
             .del(self.database, &key_bytes, None)
             .unwrap();
     }
 
-    fn get(&self, txn: &LmdbTransaction, key: &PendingKey) -> Option<PendingInfo> {
+    fn get(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
         let key_bytes = key.to_bytes();
-        match txn.get(self.database, &key_bytes) {
+        match get(txn, self.database, &key_bytes) {
             Ok(bytes) => {
                 let mut stream = StreamAdapter::new(bytes);
                 PendingInfo::deserialize(&mut stream).ok()
@@ -68,13 +67,13 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         }
     }
 
-    fn begin(&self, txn: &LmdbTransaction) -> PendingIterator<LmdbIteratorImpl> {
+    fn begin(&self, txn: &dyn Transaction) -> PendingIterator<LmdbIteratorImpl> {
         PendingIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
     fn begin_at_key(
         &self,
-        txn: &LmdbTransaction,
+        txn: &dyn Transaction,
         key: &PendingKey,
     ) -> PendingIterator<LmdbIteratorImpl> {
         let key_bytes = key.to_bytes();
@@ -86,12 +85,12 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         ))
     }
 
-    fn exists(&self, txn: &LmdbTransaction, key: &PendingKey) -> bool {
+    fn exists(&self, txn: &dyn Transaction, key: &PendingKey) -> bool {
         let iterator = self.begin_at_key(txn, key);
         iterator.current().map(|(k, _)| k == key).unwrap_or(false)
     }
 
-    fn any(&self, txn: &LmdbTransaction, account: &Account) -> bool {
+    fn any(&self, txn: &dyn Transaction, account: &Account) -> bool {
         let key = PendingKey::new(*account, BlockHash::zero());
         let iterator = self.begin_at_key(txn, &key);
         iterator
@@ -101,9 +100,9 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     }
 
     fn for_each_par(
-        &'a self,
+        &self,
         action: &(dyn Fn(
-            LmdbReadTransaction<'a>,
+            &dyn ReadTransaction,
             PendingIterator<LmdbIteratorImpl>,
             PendingIterator<LmdbIteratorImpl>,
         ) + Send
@@ -111,13 +110,13 @@ impl<'a> PendingStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();
-            let begin_it = self.begin_at_key(&transaction.as_txn(), &start.into());
+            let begin_it = self.begin_at_key(&transaction, &start.into());
             let end_it = if !is_last {
-                self.begin_at_key(&transaction.as_txn(), &end.into())
+                self.begin_at_key(&transaction, &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it, end_it);
+            action(&transaction, begin_it, end_it);
         });
     }
 
@@ -139,9 +138,9 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbPendingStore::new(env.env())?;
         let txn = env.tx_begin_read()?;
-        let result = store.get(&txn.as_txn(), &test_key());
+        let result = store.get(&txn, &test_key());
         assert!(result.is_none());
-        assert_eq!(store.exists(&txn.as_txn(), &test_key()), false);
+        assert_eq!(store.exists(&txn, &test_key()), false);
         Ok(())
     }
 
@@ -153,9 +152,9 @@ mod tests {
         let pending_key = test_key();
         let pending = test_pending_info();
         store.put(&mut txn, &pending_key, &pending);
-        let result = store.get(&txn.as_txn(), &pending_key);
+        let result = store.get(&txn, &pending_key);
         assert_eq!(result, Some(pending));
-        assert!(store.exists(&txn.as_txn(), &pending_key));
+        assert!(store.exists(&txn, &pending_key));
         Ok(())
     }
 
@@ -168,7 +167,7 @@ mod tests {
         let pending = test_pending_info();
         store.put(&mut txn, &pending_key, &pending);
         store.del(&mut txn, &pending_key);
-        let result = store.get(&txn.as_txn(), &pending_key);
+        let result = store.get(&txn, &pending_key);
         assert!(result.is_none());
         Ok(())
     }
@@ -178,7 +177,7 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbPendingStore::new(env.env())?;
         let txn = env.tx_begin_read()?;
-        assert!(store.begin(&txn.as_txn()).is_end());
+        assert!(store.begin(&txn).is_end());
         Ok(())
     }
 
@@ -191,7 +190,7 @@ mod tests {
         let pending = test_pending_info();
         store.put(&mut txn, &pending_key, &pending);
 
-        let mut it = store.begin(&txn.as_txn());
+        let mut it = store.begin(&txn);
         assert_eq!(it.is_end(), false);
         let (k, v) = it.current().unwrap();
         assert_eq!(k, &pending_key);

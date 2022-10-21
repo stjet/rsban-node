@@ -1,5 +1,7 @@
-use super::{LmdbEnv, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction};
-use crate::ledger::datastore::{VersionStore, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM};
+use super::{as_write_txn, get, LmdbEnv};
+use crate::ledger::datastore::{
+    Transaction, VersionStore, WriteTransaction, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM,
+};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use std::{path::Path, sync::Arc};
 
@@ -27,7 +29,7 @@ impl LmdbVersionStore {
         match env.environment.open_db(Some("meta")) {
             Ok(db) => {
                 let txn = env.tx_begin_read()?;
-                Ok(Some(load_version(&txn.as_txn(), db)))
+                Ok(Some(load_version(&txn, db)))
             }
             Err(_) => Ok(None),
         }
@@ -53,27 +55,27 @@ impl LmdbVersionStore {
     }
 }
 
-impl<'a> VersionStore<LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>> for LmdbVersionStore {
-    fn put(&self, txn: &mut LmdbWriteTransaction, version: i32) {
+impl VersionStore for LmdbVersionStore {
+    fn put(&self, txn: &mut dyn WriteTransaction, version: i32) {
         let db = self.db_handle();
 
         let key_bytes = version_key();
         let value_bytes = value_bytes(version);
 
-        txn.rw_txn_mut()
+        as_write_txn(txn)
             .put(db, &key_bytes, &value_bytes, WriteFlags::empty())
             .unwrap();
     }
 
-    fn get(&self, txn: &LmdbTransaction) -> i32 {
+    fn get(&self, txn: &dyn Transaction) -> i32 {
         let db = self.db_handle();
         load_version(txn, db)
     }
 }
 
-fn load_version(txn: &LmdbTransaction, db: Database) -> i32 {
+fn load_version(txn: &dyn Transaction, db: Database) -> i32 {
     let key_bytes = version_key();
-    match txn.get(db, &key_bytes) {
+    match get(txn, db, &key_bytes) {
         Ok(value) => i32::from_ne_bytes(value[28..].try_into().unwrap()),
         Err(_) => STORE_VERSION_MINIMUM,
     }

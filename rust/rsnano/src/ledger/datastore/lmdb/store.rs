@@ -14,7 +14,7 @@ use crate::{
     ledger::{
         datastore::{
             AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, Store, VersionStore,
-            STORE_VERSION_MINIMUM,
+            WriteTransaction, STORE_VERSION_MINIMUM,
         },
         LedgerCache, LedgerConstants,
     },
@@ -22,9 +22,9 @@ use crate::{
 };
 
 use super::{
-    EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv,
-    LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
-    LmdbPrunedStore, LmdbReadTransaction, LmdbUncheckedStore, LmdbVersionStore,
+    as_write_txn, EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
+    LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
+    LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbUncheckedStore, LmdbVersionStore,
     LmdbWriteTransaction,
 };
 
@@ -86,7 +86,7 @@ impl LmdbStore {
         })
     }
 
-    pub fn rebuild_db(&self, txn: &mut LmdbWriteTransaction) -> anyhow::Result<()> {
+    pub fn rebuild_db(&self, txn: &mut dyn WriteTransaction) -> anyhow::Result<()> {
         let tables = [
             self.account_store.database(),
             self.block_store.database(),
@@ -137,7 +137,7 @@ impl LmdbStore {
 
     pub fn initialize(
         &self,
-        txn: &mut LmdbWriteTransaction,
+        txn: &mut dyn WriteTransaction,
         cache: &LedgerCache,
         constants: &LedgerConstants,
     ) {
@@ -146,7 +146,7 @@ impl LmdbStore {
         let genesis_hash = genesis_block.hash();
         let genesis_account = genesis_block.account();
 
-        debug_assert!(self.account_store.begin(&txn.as_txn()).is_end());
+        debug_assert!(self.account_store.begin(txn.txn()).is_end());
         self.block_store.put(txn, &genesis_hash, genesis_block);
         cache.block_count.fetch_add(1, Ordering::SeqCst);
         self.confirmation_height_store.put(
@@ -214,19 +214,16 @@ fn upgrade_if_needed(
 
 fn rebuild_table(
     env: &LmdbEnv,
-    rw_txn: &mut LmdbWriteTransaction,
+    rw_txn: &mut dyn WriteTransaction,
     db: Database,
 ) -> anyhow::Result<()> {
-    let temp = unsafe {
-        rw_txn
-            .rw_txn_mut()
-            .create_db(Some("temp_table"), DatabaseFlags::empty())
-    }?;
+    let temp =
+        unsafe { as_write_txn(rw_txn).create_db(Some("temp_table"), DatabaseFlags::empty()) }?;
     copy_table(env, rw_txn, db, temp)?;
     rw_txn.refresh();
-    rw_txn.rw_txn_mut().clear_db(db)?;
+    as_write_txn(rw_txn).clear_db(db)?;
     copy_table(env, rw_txn, temp, db)?;
-    unsafe { rw_txn.rw_txn_mut().drop_db(temp) }?;
+    unsafe { as_write_txn(rw_txn).drop_db(temp) }?;
     rw_txn.refresh();
     Ok(())
 }
@@ -247,7 +244,7 @@ fn copy_to_temp_table(
 
 fn copy_table(
     env: &LmdbEnv,
-    rw_txn: &mut LmdbWriteTransaction,
+    rw_txn: &mut dyn WriteTransaction,
     source: Database,
     target: Database,
 ) -> anyhow::Result<()> {
@@ -256,12 +253,10 @@ fn copy_table(
         let mut cursor = ro_txn.txn().open_ro_cursor(source)?;
         for x in cursor.iter_start() {
             let (k, v) = x?;
-            rw_txn
-                .rw_txn_mut()
-                .put(target, &k, &v, WriteFlags::APPEND)?;
+            as_write_txn(rw_txn).put(target, &k, &v, WriteFlags::APPEND)?;
         }
     }
-    if ro_txn.txn().stat(source)?.entries() != rw_txn.rw_txn_mut().stat(target)?.entries() {
+    if ro_txn.txn().stat(source)?.entries() != as_write_txn(rw_txn).stat(target)?.entries() {
         bail!("table count mismatch");
     }
     Ok(())
@@ -270,7 +265,7 @@ fn copy_table(
 fn do_upgrades(env: Arc<LmdbEnv>, logger: &dyn Logger) -> anyhow::Result<Vacuuming> {
     let version_store = LmdbVersionStore::new(env.clone())?;
     let txn = env.tx_begin_write()?;
-    let version = version_store.get(&txn.as_txn());
+    let version = version_store.get(&txn);
     match version {
         1..=20 => {
             logger.always_log(&format!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM));

@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_exists(
 ) -> bool {
     (*handle)
         .0
-        .exists(&(*txn).as_txn(), &BlockHash::from_ptr(hash))
+        .exists((*txn).as_txn(), &BlockHash::from_ptr(hash))
 }
 
 #[no_mangle]
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_successor(
 ) {
     let successor = (*handle)
         .0
-        .successor(&(*txn).as_txn(), &BlockHash::from_ptr(hash));
+        .successor((*txn).as_txn(), &BlockHash::from_ptr(hash));
     copy_hash_bytes(successor, result);
 }
 
@@ -100,10 +100,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_get(
     txn: *mut TransactionHandle,
     hash: *const u8,
 ) -> *mut BlockHandle {
-    match (*handle)
-        .0
-        .get(&(*txn).as_txn(), &BlockHash::from_ptr(hash))
-    {
+    match (*handle).0.get((*txn).as_txn(), &BlockHash::from_ptr(hash)) {
         Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
         None => ptr::null_mut(),
     }
@@ -117,7 +114,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_get_no_sideband(
 ) -> *mut BlockHandle {
     match (*handle)
         .0
-        .get_no_sideband(&(*txn).as_txn(), &BlockHash::from_ptr(hash))
+        .get_no_sideband((*txn).as_txn(), &BlockHash::from_ptr(hash))
     {
         Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
         None => ptr::null_mut(),
@@ -140,7 +137,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_count(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,
 ) -> u64 {
-    (*handle).0.count(&(*txn).as_txn()) as u64
+    (*handle).0.count((*txn).as_txn()) as u64
 }
 
 #[no_mangle]
@@ -164,7 +161,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_account(
 ) {
     let account = (*handle)
         .0
-        .account(&(*txn).as_txn(), &BlockHash::from_ptr(hash));
+        .account((*txn).as_txn(), &BlockHash::from_ptr(hash));
     copy_account_bytes(account, result);
 }
 
@@ -173,7 +170,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_begin(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let iterator = (*handle).0.begin(&(*txn).as_txn());
+    let iterator = (*handle).0.begin((*txn).as_txn());
     LmdbIteratorHandle::new(iterator.take_impl())
 }
 
@@ -184,7 +181,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_begin_at_hash(
     hash: *const u8,
 ) -> *mut LmdbIteratorHandle {
     let hash = BlockHash::from_ptr(hash);
-    let iterator = (*handle).0.begin_at_hash(&(*txn).as_txn(), &hash);
+    let iterator = (*handle).0.begin_at_hash((*txn).as_txn(), &hash);
     LmdbIteratorHandle::new(iterator.take_impl())
 }
 
@@ -193,7 +190,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_random(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut BlockHandle {
-    match (*handle).0.random(&(*txn).as_txn()) {
+    match (*handle).0.random((*txn).as_txn()) {
         Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
         None => ptr::null_mut(),
     }
@@ -208,7 +205,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_balance(
 ) {
     let result = (*handle)
         .0
-        .balance(&(*txn).as_txn(), &BlockHash::from_ptr(hash));
+        .balance((*txn).as_txn(), &BlockHash::from_ptr(hash));
     copy_amount_bytes(result, balance);
 }
 
@@ -232,7 +229,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_version(
 ) -> u8 {
     (*handle)
         .0
-        .version(&(*txn).as_txn(), &BlockHash::from_ptr(hash)) as u8
+        .version((*txn).as_txn(), &BlockHash::from_ptr(hash)) as u8
 }
 
 #[no_mangle]
@@ -260,5 +257,5 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_account_height(
 ) -> u64 {
     (*handle)
         .0
-        .account_height(&(*txn).as_txn(), &BlockHash::from_ptr(hash))
+        .account_height((*txn).as_txn(), &BlockHash::from_ptr(hash))
 }

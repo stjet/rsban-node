@@ -5,12 +5,13 @@ use rand::{thread_rng, Rng};
 
 use crate::{
     core::BlockHash,
-    ledger::datastore::{parallel_traversal, pruned_store::PrunedIterator, PrunedStore},
+    ledger::datastore::{
+        parallel_traversal, pruned_store::PrunedIterator, PrunedStore, ReadTransaction,
+        Transaction, WriteTransaction,
+    },
 };
 
-use super::{
-    exists, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
-};
+use super::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};
 
 pub struct LmdbPrunedStore {
     env: Arc<LmdbEnv>,
@@ -30,32 +31,30 @@ impl LmdbPrunedStore {
     }
 }
 
-impl<'a> PrunedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
-    for LmdbPrunedStore
-{
-    fn put(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
-        txn.rw_txn_mut()
+impl PrunedStore<LmdbIteratorImpl> for LmdbPrunedStore {
+    fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
+        as_write_txn(txn)
             .put(self.database, hash.as_bytes(), &[0; 0], WriteFlags::empty())
             .unwrap();
     }
 
-    fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
-        txn.rw_txn_mut()
+    fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
+        as_write_txn(txn)
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
 
-    fn exists(&self, txn: &LmdbTransaction, hash: &BlockHash) -> bool {
+    fn exists(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
         exists(txn, self.database, hash.as_bytes())
     }
 
-    fn begin(&self, txn: &LmdbTransaction) -> PrunedIterator<LmdbIteratorImpl> {
+    fn begin(&self, txn: &dyn Transaction) -> PrunedIterator<LmdbIteratorImpl> {
         PrunedIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
     fn begin_at_hash(
         &self,
-        txn: &LmdbTransaction,
+        txn: &dyn Transaction,
         hash: &BlockHash,
     ) -> PrunedIterator<LmdbIteratorImpl> {
         PrunedIterator::new(LmdbIteratorImpl::new(
@@ -66,7 +65,7 @@ impl<'a> PrunedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmdb
         ))
     }
 
-    fn random(&self, txn: &LmdbTransaction) -> BlockHash {
+    fn random(&self, txn: &dyn Transaction) -> BlockHash {
         let random_hash = BlockHash::from_bytes(thread_rng().gen());
         let mut existing = self.begin_at_hash(txn, &random_hash);
         if existing.is_end() {
@@ -77,12 +76,12 @@ impl<'a> PrunedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmdb
         result
     }
 
-    fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.database)
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        count(txn, self.database)
     }
 
-    fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn_mut().clear_db(self.database).unwrap();
+    fn clear(&self, txn: &mut dyn WriteTransaction) {
+        as_write_txn(txn).clear_db(self.database).unwrap();
     }
 
     fn end(&self) -> PrunedIterator<LmdbIteratorImpl> {
@@ -90,9 +89,9 @@ impl<'a> PrunedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmdb
     }
 
     fn for_each_par(
-        &'a self,
+        &self,
         action: &(dyn Fn(
-            LmdbReadTransaction<'a>,
+            &dyn ReadTransaction,
             PrunedIterator<LmdbIteratorImpl>,
             PrunedIterator<LmdbIteratorImpl>,
         ) + Send
@@ -100,13 +99,13 @@ impl<'a> PrunedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmdb
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();
-            let begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
+            let begin_it = self.begin_at_hash(&transaction, &start.into());
             let end_it = if !is_last {
-                self.begin_at_hash(&transaction.as_txn(), &end.into())
+                self.begin_at_hash(&transaction, &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it, end_it);
+            action(&transaction, begin_it, end_it);
         });
     }
 }
@@ -123,10 +122,10 @@ mod tests {
         let store = LmdbPrunedStore::new(env.env())?;
         let txn = env.tx_begin_read()?;
 
-        assert_eq!(store.count(&txn.as_txn()), 0);
-        assert_eq!(store.exists(&txn.as_txn(), &BlockHash::from(1)), false);
-        assert_eq!(store.begin(&txn.as_txn()).is_end(), true);
-        assert_eq!(store.random(&txn.as_txn()), BlockHash::zero());
+        assert_eq!(store.count(&txn), 0);
+        assert_eq!(store.exists(&txn, &BlockHash::from(1)), false);
+        assert_eq!(store.begin(&txn).is_end(), true);
+        assert_eq!(store.random(&txn), BlockHash::zero());
         Ok(())
     }
 
@@ -139,13 +138,10 @@ mod tests {
         let hash = BlockHash::from(1);
         store.put(&mut txn, &hash);
 
-        assert_eq!(store.count(&txn.as_txn()), 1);
-        assert_eq!(store.exists(&txn.as_txn(), &hash), true);
-        assert_eq!(
-            store.begin(&txn.as_txn()).current(),
-            Some((&hash, &NoValue {}))
-        );
-        assert_eq!(store.random(&txn.as_txn()), hash);
+        assert_eq!(store.count(&txn), 1);
+        assert_eq!(store.exists(&txn, &hash), true);
+        assert_eq!(store.begin(&txn).current(), Some((&hash, &NoValue {})));
+        assert_eq!(store.random(&txn), hash);
         Ok(())
     }
 
@@ -160,9 +156,9 @@ mod tests {
         store.put(&mut txn, &hash1);
         store.put(&mut txn, &hash2);
 
-        assert_eq!(store.count(&txn.as_txn()), 2);
-        assert_eq!(store.exists(&txn.as_txn(), &hash1), true);
-        assert_eq!(store.exists(&txn.as_txn(), &hash2), true);
+        assert_eq!(store.count(&txn), 2);
+        assert_eq!(store.exists(&txn, &hash1), true);
+        assert_eq!(store.exists(&txn, &hash2), true);
         Ok(())
     }
 
@@ -178,9 +174,9 @@ mod tests {
         store.put(&mut txn, &hash2);
         store.del(&mut txn, &hash1);
 
-        assert_eq!(store.count(&txn.as_txn()), 1);
-        assert_eq!(store.exists(&txn.as_txn(), &hash1), false);
-        assert_eq!(store.exists(&txn.as_txn(), &hash2), true);
+        assert_eq!(store.count(&txn), 1);
+        assert_eq!(store.exists(&txn, &hash1), false);
+        assert_eq!(store.exists(&txn, &hash2), true);
         Ok(())
     }
 }

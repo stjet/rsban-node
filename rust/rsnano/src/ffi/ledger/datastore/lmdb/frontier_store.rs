@@ -45,9 +45,7 @@ pub unsafe extern "C" fn rsn_lmdb_frontier_store_get(
     hash: *const u8,
     account: *mut u8,
 ) {
-    let result = (*handle)
-        .0
-        .get(&(*txn).as_txn(), &BlockHash::from_ptr(hash));
+    let result = (*handle).0.get((*txn).as_txn(), &BlockHash::from_ptr(hash));
     copy_account_bytes(result, account);
 }
 
@@ -67,7 +65,7 @@ pub unsafe extern "C" fn rsn_lmdb_frontier_store_begin(
     handle: *mut LmdbFrontierStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let iterator = (*handle).0.begin(&(*txn).as_txn());
+    let iterator = (*handle).0.begin((*txn).as_txn());
     LmdbIteratorHandle::new(iterator.take_impl())
 }
 
@@ -78,7 +76,7 @@ pub unsafe extern "C" fn rsn_lmdb_frontier_store_begin_at_hash(
     hash: *const u8,
 ) -> *mut LmdbIteratorHandle {
     let hash = BlockHash::from_ptr(hash);
-    let iterator = (*handle).0.begin_at_hash(&(*txn).as_txn(), &hash);
+    let iterator = (*handle).0.begin_at_hash((*txn).as_txn(), &hash);
     LmdbIteratorHandle::new(iterator.take_impl())
 }
 

@@ -4,12 +4,12 @@ use lmdb::{Database, DatabaseFlags, WriteFlags};
 
 use crate::{
     core::{HashOrAccount, UncheckedInfo, UncheckedKey},
-    ledger::datastore::{lmdb::exists, unchecked_store::UncheckedIterator, UncheckedStore},
+    ledger::datastore::{
+        unchecked_store::UncheckedIterator, Transaction, UncheckedStore, WriteTransaction,
+    },
 };
 
-use super::{
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
-};
+use super::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};
 
 pub struct LmdbUncheckedStore {
     env: Arc<LmdbEnv>,
@@ -29,16 +29,14 @@ impl LmdbUncheckedStore {
     }
 }
 
-impl<'a> UncheckedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
-    for LmdbUncheckedStore
-{
-    fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn_mut().clear_db(self.database).unwrap();
+impl UncheckedStore<LmdbIteratorImpl> for LmdbUncheckedStore {
+    fn clear(&self, txn: &mut dyn WriteTransaction) {
+        as_write_txn(txn).clear_db(self.database).unwrap();
     }
 
     fn put(
         &self,
-        txn: &mut LmdbWriteTransaction,
+        txn: &mut dyn WriteTransaction,
         dependency: &HashOrAccount,
         info: &UncheckedInfo,
     ) {
@@ -55,28 +53,28 @@ impl<'a> UncheckedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         };
         let key_bytes = key.to_bytes();
         let value_bytes = info.to_bytes();
-        txn.rw_txn_mut()
+        as_write_txn(txn)
             .put(self.database, &key_bytes, &value_bytes, WriteFlags::empty())
             .unwrap();
     }
 
-    fn exists(&self, txn: &LmdbTransaction, key: &UncheckedKey) -> bool {
+    fn exists(&self, txn: &dyn Transaction, key: &UncheckedKey) -> bool {
         exists(txn, self.database, &key.to_bytes())
     }
 
-    fn del(&self, txn: &mut LmdbWriteTransaction, key: &UncheckedKey) {
-        txn.rw_txn_mut()
+    fn del(&self, txn: &mut dyn WriteTransaction, key: &UncheckedKey) {
+        as_write_txn(txn)
             .del(self.database, &key.to_bytes(), None)
             .unwrap();
     }
 
-    fn begin(&self, txn: &LmdbTransaction) -> UncheckedIterator<LmdbIteratorImpl> {
+    fn begin(&self, txn: &dyn Transaction) -> UncheckedIterator<LmdbIteratorImpl> {
         UncheckedIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
     fn lower_bound(
         &self,
-        txn: &LmdbTransaction,
+        txn: &dyn Transaction,
         key: &UncheckedKey,
     ) -> UncheckedIterator<LmdbIteratorImpl> {
         let key_bytes = key.to_bytes();
@@ -88,7 +86,7 @@ impl<'a> UncheckedStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         ))
     }
 
-    fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.database)
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        count(txn, self.database)
     }
 }

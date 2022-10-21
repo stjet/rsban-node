@@ -3,9 +3,9 @@ use std::ffi::c_uint;
 use lmdb::{Cursor, Database, RoCursor};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 
-use crate::ledger::datastore::iterator::DbIteratorImpl;
+use crate::ledger::datastore::{iterator::DbIteratorImpl, Transaction};
 
-use super::LmdbTransaction;
+use super::open_ro_cursor;
 
 pub struct LmdbIteratorImpl {
     current: Option<(&'static [u8], &'static [u8])>,
@@ -14,7 +14,7 @@ pub struct LmdbIteratorImpl {
 
 impl LmdbIteratorImpl {
     pub fn new(
-        txn: &LmdbTransaction,
+        txn: &dyn Transaction,
         dbi: Database,
         key_val: Option<&[u8]>,
         direction_asc: bool,
@@ -29,7 +29,7 @@ impl LmdbIteratorImpl {
             }
         };
 
-        let cursor = txn.open_ro_cursor(dbi).unwrap();
+        let cursor = open_ro_cursor(txn, dbi).unwrap();
         //todo: dont use unsafe code:
         let cursor =
             unsafe { std::mem::transmute::<lmdb::RoCursor<'_>, lmdb::RoCursor<'static>>(cursor) };

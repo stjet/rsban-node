@@ -1,30 +1,28 @@
-use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, ReadTransaction, Transaction, WriteTransaction};
 use crate::core::{Account, ConfirmationHeightInfo};
 
 pub type ConfirmationHeightIterator<I> = DbIterator<Account, ConfirmationHeightInfo, I>;
 
-pub trait ConfirmationHeightStore<'a, R, W, I>
+pub trait ConfirmationHeightStore<I>
 where
-    R: 'a,
-    W: 'a,
     I: DbIteratorImpl,
 {
-    fn put(&self, txn: &mut W, account: &Account, info: &ConfirmationHeightInfo);
-    fn get(&self, txn: &Transaction<R, W>, account: &Account) -> Option<ConfirmationHeightInfo>;
-    fn exists(&self, txn: &Transaction<R, W>, account: &Account) -> bool;
-    fn del(&self, txn: &mut W, account: &Account);
-    fn count(&self, txn: &Transaction<R, W>) -> usize;
-    fn clear(&self, txn: &mut W);
-    fn begin(&self, txn: &Transaction<R, W>) -> ConfirmationHeightIterator<I>;
+    fn put(&self, txn: &mut dyn WriteTransaction, account: &Account, info: &ConfirmationHeightInfo);
+    fn get(&self, txn: &dyn Transaction, account: &Account) -> Option<ConfirmationHeightInfo>;
+    fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool;
+    fn del(&self, txn: &mut dyn WriteTransaction, account: &Account);
+    fn count(&self, txn: &dyn Transaction) -> usize;
+    fn clear(&self, txn: &mut dyn WriteTransaction);
+    fn begin(&self, txn: &dyn Transaction) -> ConfirmationHeightIterator<I>;
     fn begin_at_account(
         &self,
-        txn: &Transaction<R, W>,
+        txn: &dyn Transaction,
         account: &Account,
     ) -> ConfirmationHeightIterator<I>;
     fn end(&self) -> ConfirmationHeightIterator<I>;
     fn for_each_par(
-        &'a self,
-        action: &(dyn Fn(R, ConfirmationHeightIterator<I>, ConfirmationHeightIterator<I>)
+        &self,
+        action: &(dyn Fn(&dyn ReadTransaction, ConfirmationHeightIterator<I>, ConfirmationHeightIterator<I>)
               + Send
               + Sync),
     );

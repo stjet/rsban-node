@@ -66,7 +66,7 @@ pub unsafe extern "C" fn rsn_lmdb_unchecked_store_exists(
 ) -> bool {
     (*handle)
         .0
-        .exists(&(*txn).as_txn(), &UncheckedKey::from(&*key))
+        .exists((*txn).as_txn(), &UncheckedKey::from(&*key))
 }
 
 #[no_mangle]
@@ -85,7 +85,7 @@ pub unsafe extern "C" fn rsn_lmdb_unchecked_store_begin(
     handle: *mut LmdbUncheckedStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let iterator = (*handle).0.begin(&(*txn).as_txn());
+    let iterator = (*handle).0.begin((*txn).as_txn());
     LmdbIteratorHandle::new(iterator.take_impl())
 }
 
@@ -96,7 +96,7 @@ pub unsafe extern "C" fn rsn_lmdb_unchecked_store_lower_bound(
     key: *const UncheckedKeyDto,
 ) -> *mut LmdbIteratorHandle {
     let key = UncheckedKey::from(&*key);
-    let iterator = (*handle).0.lower_bound(&(*txn).as_txn(), &key);
+    let iterator = (*handle).0.lower_bound((*txn).as_txn(), &key);
     LmdbIteratorHandle::new(iterator.take_impl())
 }
 
@@ -105,5 +105,5 @@ pub unsafe extern "C" fn rsn_lmdb_unchecked_store_count(
     handle: *mut LmdbUncheckedStoreHandle,
     txn: *mut TransactionHandle,
 ) -> usize {
-    (*handle).0.count(&(*txn).as_txn())
+    (*handle).0.count((*txn).as_txn())
 }

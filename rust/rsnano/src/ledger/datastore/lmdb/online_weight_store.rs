@@ -4,12 +4,12 @@ use lmdb::{Database, DatabaseFlags, WriteFlags};
 
 use crate::{
     core::Amount,
-    ledger::datastore::{online_weight_store::OnlineWeightIterator, OnlineWeightStore},
+    ledger::datastore::{
+        online_weight_store::OnlineWeightIterator, OnlineWeightStore, Transaction, WriteTransaction,
+    },
 };
 
-use super::{
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
-};
+use super::{as_write_txn, count, LmdbEnv, LmdbIteratorImpl};
 
 pub struct LmdbOnlineWeightStore {
     env: Arc<LmdbEnv>,
@@ -29,13 +29,11 @@ impl LmdbOnlineWeightStore {
     }
 }
 
-impl<'a> OnlineWeightStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
-    for LmdbOnlineWeightStore
-{
-    fn put(&self, txn: &mut LmdbWriteTransaction, time: u64, amount: &Amount) {
+impl OnlineWeightStore<LmdbIteratorImpl> for LmdbOnlineWeightStore {
+    fn put(&self, txn: &mut dyn WriteTransaction, time: u64, amount: &Amount) {
         let time_bytes = time.to_be_bytes();
         let amount_bytes = amount.to_be_bytes();
-        txn.rw_txn_mut()
+        as_write_txn(txn)
             .put(
                 self.database,
                 &time_bytes,
@@ -45,27 +43,27 @@ impl<'a> OnlineWeightStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>
             .unwrap();
     }
 
-    fn del(&self, txn: &mut LmdbWriteTransaction, time: u64) {
+    fn del(&self, txn: &mut dyn WriteTransaction, time: u64) {
         let time_bytes = time.to_be_bytes();
-        txn.rw_txn_mut()
+        as_write_txn(txn)
             .del(self.database, &time_bytes, None)
             .unwrap();
     }
 
-    fn begin(&self, txn: &LmdbTransaction) -> OnlineWeightIterator<LmdbIteratorImpl> {
+    fn begin(&self, txn: &dyn Transaction) -> OnlineWeightIterator<LmdbIteratorImpl> {
         OnlineWeightIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
-    fn rbegin(&self, txn: &LmdbTransaction) -> OnlineWeightIterator<LmdbIteratorImpl> {
+    fn rbegin(&self, txn: &dyn Transaction) -> OnlineWeightIterator<LmdbIteratorImpl> {
         OnlineWeightIterator::new(LmdbIteratorImpl::new(txn, self.database, None, false))
     }
 
-    fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.database)
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        count(txn, self.database)
     }
 
-    fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn_mut().clear_db(self.database).unwrap();
+    fn clear(&self, txn: &mut dyn WriteTransaction) {
+        as_write_txn(txn).clear_db(self.database).unwrap();
     }
 }
 
@@ -79,9 +77,9 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbOnlineWeightStore::new(env.env())?;
         let txn = env.tx_begin_read()?;
-        assert_eq!(store.count(&txn.as_txn()), 0);
-        assert!(store.begin(&txn.as_txn()).is_end());
-        assert!(store.rbegin(&txn.as_txn()).is_end());
+        assert_eq!(store.count(&txn), 0);
+        assert!(store.begin(&txn).is_end());
+        assert!(store.rbegin(&txn).is_end());
         Ok(())
     }
 
@@ -95,12 +93,9 @@ mod tests {
         let amount = Amount::new(2);
         store.put(&mut txn, time, &amount);
 
-        assert_eq!(store.count(&txn.as_txn()), 1);
-        assert_eq!(store.begin(&txn.as_txn()).current(), Some((&time, &amount)));
-        assert_eq!(
-            store.rbegin(&txn.as_txn()).current(),
-            Some((&time, &amount))
-        );
+        assert_eq!(store.count(&txn), 1);
+        assert_eq!(store.begin(&txn).current(), Some((&time, &amount)));
+        assert_eq!(store.rbegin(&txn).current(), Some((&time, &amount)));
         Ok(())
     }
 
@@ -117,15 +112,9 @@ mod tests {
         store.put(&mut txn, time1, &amount1);
         store.put(&mut txn, time2, &amount2);
 
-        assert_eq!(store.count(&txn.as_txn()), 2);
-        assert_eq!(
-            store.begin(&txn.as_txn()).current(),
-            Some((&time1, &amount1))
-        );
-        assert_eq!(
-            store.rbegin(&txn.as_txn()).current(),
-            Some((&time2, &amount2))
-        );
+        assert_eq!(store.count(&txn), 2);
+        assert_eq!(store.begin(&txn).current(), Some((&time1, &amount1)));
+        assert_eq!(store.rbegin(&txn).current(), Some((&time2, &amount2)));
         Ok(())
     }
 
@@ -144,11 +133,8 @@ mod tests {
 
         store.del(&mut txn, time1);
 
-        assert_eq!(store.count(&txn.as_txn()), 1);
-        assert_eq!(
-            store.begin(&txn.as_txn()).current(),
-            Some((&time2, &amount2))
-        );
+        assert_eq!(store.count(&txn), 1);
+        assert_eq!(store.begin(&txn).current(), Some((&time2, &amount2)));
         Ok(())
     }
 }

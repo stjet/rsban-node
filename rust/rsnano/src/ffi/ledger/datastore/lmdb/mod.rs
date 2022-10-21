@@ -22,7 +22,7 @@ use crate::{
     ffi::VoidPointerCallback,
     ledger::datastore::{
         lmdb::{LmdbReadTransaction, LmdbWriteTransaction},
-        Transaction, TxnCallbacks,
+        ReadTransaction, Transaction, TxnCallbacks, WriteTransaction,
     },
 };
 
@@ -33,14 +33,14 @@ impl TransactionHandle {
         Box::into_raw(Box::new(TransactionHandle(txn_type)))
     }
 
-    pub fn as_read_txn_mut(&mut self) -> &mut LmdbReadTransaction<'static> {
+    pub fn as_read_txn_mut(&mut self) -> &mut dyn ReadTransaction {
         match &mut self.0 {
             TransactionType::Read(tx) => tx,
             _ => panic!("invalid tx type"),
         }
     }
 
-    pub fn as_read_txn(&mut self) -> &LmdbReadTransaction<'static> {
+    pub fn as_read_txn(&mut self) -> &dyn ReadTransaction {
         match &mut self.0 {
             TransactionType::Read(tx) => tx,
             TransactionType::ReadRef(tx) => *tx,
@@ -48,18 +48,18 @@ impl TransactionHandle {
         }
     }
 
-    pub fn as_write_txn(&mut self) -> &mut LmdbWriteTransaction<'static> {
+    pub fn as_write_txn(&mut self) -> &mut dyn WriteTransaction {
         match &mut self.0 {
             TransactionType::Write(tx) => tx,
             _ => panic!("invalid tx type"),
         }
     }
 
-    pub fn as_txn(&self) -> Transaction<LmdbReadTransaction, LmdbWriteTransaction> {
+    pub fn as_txn(&self) -> &dyn Transaction {
         match &self.0 {
-            TransactionType::Read(t) => Transaction::Read(t),
-            TransactionType::ReadRef(t) => Transaction::Read(*t),
-            TransactionType::Write(t) => Transaction::Write(t),
+            TransactionType::Read(t) => t,
+            TransactionType::Write(t) => t,
+            TransactionType::ReadRef(t) => t.txn(),
         }
     }
 }
@@ -73,9 +73,9 @@ impl Deref for TransactionHandle {
 }
 
 pub enum TransactionType {
-    Read(LmdbReadTransaction<'static>),
-    ReadRef(&'static LmdbReadTransaction<'static>),
-    Write(LmdbWriteTransaction<'static>),
+    Read(LmdbReadTransaction),
+    ReadRef(&'static dyn ReadTransaction),
+    Write(LmdbWriteTransaction),
 }
 
 struct FfiCallbacksWrapper {

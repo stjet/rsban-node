@@ -3,12 +3,13 @@ use std::sync::Arc;
 
 use crate::{
     core::{Account, BlockHash},
-    ledger::datastore::{frontier_store::FrontierIterator, parallel_traversal, FrontierStore},
+    ledger::datastore::{
+        frontier_store::FrontierIterator, parallel_traversal, FrontierStore, ReadTransaction,
+        Transaction, WriteTransaction,
+    },
 };
 
-use super::{
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
-};
+use super::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl};
 
 pub struct LmdbFrontierStore {
     env: Arc<LmdbEnv>,
@@ -32,11 +33,9 @@ impl LmdbFrontierStore {
     }
 }
 
-impl<'a> FrontierStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
-    for LmdbFrontierStore
-{
-    fn put(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash, account: &Account) {
-        txn.rw_txn_mut()
+impl FrontierStore<LmdbIteratorImpl> for LmdbFrontierStore {
+    fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash, account: &Account) {
+        as_write_txn(txn)
             .put(
                 self.database,
                 hash.as_bytes(),
@@ -46,27 +45,27 @@ impl<'a> FrontierStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lm
             .unwrap();
     }
 
-    fn get(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Account {
-        match txn.get(self.database, hash.as_bytes()) {
+    fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account {
+        match get(txn, self.database, hash.as_bytes()) {
             Ok(bytes) => Account::from_slice(bytes).unwrap_or_default(),
             Err(lmdb::Error::NotFound) => Account::zero(),
             Err(e) => panic!("Could not load frontier: {:?}", e),
         }
     }
 
-    fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
-        txn.rw_txn_mut()
+    fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
+        as_write_txn(txn)
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
 
-    fn begin(&self, txn: &LmdbTransaction) -> FrontierIterator<LmdbIteratorImpl> {
+    fn begin(&self, txn: &dyn Transaction) -> FrontierIterator<LmdbIteratorImpl> {
         FrontierIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
     fn begin_at_hash(
         &self,
-        txn: &LmdbTransaction,
+        txn: &dyn Transaction,
         hash: &BlockHash,
     ) -> FrontierIterator<LmdbIteratorImpl> {
         FrontierIterator::new(LmdbIteratorImpl::new(
@@ -78,9 +77,9 @@ impl<'a> FrontierStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lm
     }
 
     fn for_each_par(
-        &'a self,
+        &self,
         action: &(dyn Fn(
-            LmdbReadTransaction<'a>,
+            &dyn ReadTransaction,
             FrontierIterator<LmdbIteratorImpl>,
             FrontierIterator<LmdbIteratorImpl>,
         ) + Send
@@ -88,13 +87,13 @@ impl<'a> FrontierStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lm
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();
-            let begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
+            let begin_it = self.begin_at_hash(&transaction, &start.into());
             let end_it = if !is_last {
-                self.begin_at_hash(&transaction.as_txn(), &end.into())
+                self.begin_at_hash(&transaction, &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it, end_it);
+            action(&transaction, begin_it, end_it);
         });
     }
 
@@ -114,11 +113,8 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbFrontierStore::new(env.env())?;
         let txn = env.tx_begin_read()?;
-        assert_eq!(
-            store.get(&txn.as_txn(), &BlockHash::from(1)),
-            Account::zero()
-        );
-        assert!(store.begin(&txn.as_txn()).is_end());
+        assert_eq!(store.get(&txn, &BlockHash::from(1)), Account::zero());
+        assert!(store.begin(&txn).is_end());
         Ok(())
     }
 
@@ -131,7 +127,7 @@ mod tests {
         let account = Account::from(2);
 
         store.put(&mut txn, &block, &account);
-        let loaded = store.get(&txn.as_txn(), &block);
+        let loaded = store.get(&txn, &block);
 
         assert_eq!(loaded, account);
         Ok(())
@@ -147,7 +143,7 @@ mod tests {
 
         store.del(&mut txn, &block);
 
-        let loaded = store.get(&txn.as_txn(), &block);
+        let loaded = store.get(&txn, &block);
         assert_eq!(loaded, Account::zero());
         Ok(())
     }

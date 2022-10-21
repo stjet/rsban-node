@@ -1,20 +1,18 @@
-use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, Transaction, WriteTransaction};
 use crate::core::{EndpointKey, NoValue};
 
 pub type PeerIterator<I> = DbIterator<EndpointKey, NoValue, I>;
 
 /// Endpoints for peers
 /// nano::endpoint_key -> no_value
-pub trait PeerStore<'a, R, W, I>
+pub trait PeerStore<I>
 where
-    R: 'a,
-    W: 'a,
     I: DbIteratorImpl,
 {
-    fn put(&self, txn: &mut W, endpoint: &EndpointKey);
-    fn del(&self, txn: &mut W, endpoint: &EndpointKey);
-    fn exists(&self, txn: &Transaction<R, W>, endpoint: &EndpointKey) -> bool;
-    fn count(&self, txn: &Transaction<R, W>) -> usize;
-    fn clear(&self, txn: &mut W);
-    fn begin(&self, txn: &Transaction<R, W>) -> PeerIterator<I>;
+    fn put(&self, txn: &mut dyn WriteTransaction, endpoint: &EndpointKey);
+    fn del(&self, txn: &mut dyn WriteTransaction, endpoint: &EndpointKey);
+    fn exists(&self, txn: &dyn Transaction, endpoint: &EndpointKey) -> bool;
+    fn count(&self, txn: &dyn Transaction) -> usize;
+    fn clear(&self, txn: &mut dyn WriteTransaction);
+    fn begin(&self, txn: &dyn Transaction) -> PeerIterator<I>;
 }

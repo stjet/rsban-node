@@ -48,7 +48,7 @@ pub unsafe extern "C" fn rsn_lmdb_online_weight_store_begin(
     handle: *mut LmdbOnlineWeightStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let iterator = (*handle).0.begin(&(*txn).as_txn());
+    let iterator = (*handle).0.begin((*txn).as_txn());
     LmdbIteratorHandle::new(iterator.take_impl())
 }
 
@@ -57,7 +57,7 @@ pub unsafe extern "C" fn rsn_lmdb_online_weight_store_rbegin(
     handle: *mut LmdbOnlineWeightStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let iterator = (*handle).0.rbegin(&(*txn).as_txn());
+    let iterator = (*handle).0.rbegin((*txn).as_txn());
     LmdbIteratorHandle::new(iterator.take_impl())
 }
 
@@ -66,7 +66,7 @@ pub unsafe extern "C" fn rsn_lmdb_online_weight_store_count(
     handle: *mut LmdbOnlineWeightStoreHandle,
     txn: *mut TransactionHandle,
 ) -> usize {
-    (*handle).0.count(&(*txn).as_txn())
+    (*handle).0.count((*txn).as_txn())
 }
 
 #[no_mangle]

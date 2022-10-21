@@ -1,26 +1,26 @@
-use super::{iterator::DbIteratorImpl, DbIterator, Transaction};
+use super::{iterator::DbIteratorImpl, DbIterator, ReadTransaction, Transaction, WriteTransaction};
 use crate::core::{Account, BlockHash};
 
 pub type FrontierIterator<I> = DbIterator<BlockHash, Account, I>;
 
 /// Maps head block to owning account
 /// BlockHash -> Account
-pub trait FrontierStore<'a, R, W, I>
+pub trait FrontierStore<I>
 where
-    R: 'a,
-    W: 'a,
     I: DbIteratorImpl,
 {
-    fn put(&self, txn: &mut W, hash: &BlockHash, account: &Account);
-    fn get(&self, txn: &Transaction<R, W>, hash: &BlockHash) -> Account;
-    fn del(&self, txn: &mut W, hash: &BlockHash);
-    fn begin(&self, txn: &Transaction<R, W>) -> FrontierIterator<I>;
+    fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash, account: &Account);
+    fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account;
+    fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash);
+    fn begin(&self, txn: &dyn Transaction) -> FrontierIterator<I>;
 
-    fn begin_at_hash(&self, txn: &Transaction<R, W>, hash: &BlockHash) -> FrontierIterator<I>;
+    fn begin_at_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> FrontierIterator<I>;
 
     fn for_each_par(
-        &'a self,
-        action: &(dyn Fn(R, FrontierIterator<I>, FrontierIterator<I>) + Send + Sync),
+        &self,
+        action: &(dyn Fn(&dyn ReadTransaction, FrontierIterator<I>, FrontierIterator<I>)
+              + Send
+              + Sync),
     );
 
     fn end(&self) -> FrontierIterator<I>;

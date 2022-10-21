@@ -1,14 +1,15 @@
 use crate::{
     core::{Account, AccountInfo},
-    ledger::datastore::{parallel_traversal, AccountIterator, AccountStore, DbIterator},
+    ledger::datastore::{
+        parallel_traversal, AccountIterator, AccountStore, DbIterator, ReadTransaction,
+        Transaction, WriteTransaction,
+    },
     utils::{Deserialize, StreamAdapter},
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use std::sync::Arc;
 
-use super::{
-    iterator::LmdbIteratorImpl, LmdbEnv, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
-};
+use super::{as_write_txn, count, get, iterator::LmdbIteratorImpl, LmdbEnv};
 
 pub struct LmdbAccountStore {
     env: Arc<LmdbEnv>,
@@ -30,12 +31,9 @@ impl LmdbAccountStore {
     }
 }
 
-impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
-    for LmdbAccountStore
-{
-    fn put(&self, transaction: &mut LmdbWriteTransaction, account: &Account, info: &AccountInfo) {
-        transaction
-            .rw_txn_mut()
+impl AccountStore<LmdbIteratorImpl> for LmdbAccountStore {
+    fn put(&self, transaction: &mut dyn WriteTransaction, account: &Account, info: &AccountInfo) {
+        as_write_txn(transaction)
             .put(
                 self.database,
                 account.as_bytes(),
@@ -45,8 +43,8 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
             .unwrap();
     }
 
-    fn get(&self, transaction: &LmdbTransaction, account: &Account) -> Option<AccountInfo> {
-        let result = transaction.get(self.database, account.as_bytes());
+    fn get(&self, transaction: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
+        let result = get(transaction, self.database, account.as_bytes());
         match result {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {
@@ -57,16 +55,15 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         }
     }
 
-    fn del(&self, transaction: &mut LmdbWriteTransaction, account: &Account) {
-        transaction
-            .rw_txn_mut()
+    fn del(&self, transaction: &mut dyn WriteTransaction, account: &Account) {
+        as_write_txn(transaction)
             .del(self.database, account.as_bytes(), None)
             .unwrap();
     }
 
     fn begin_account(
         &self,
-        transaction: &LmdbTransaction,
+        transaction: &dyn Transaction,
         account: &Account,
     ) -> DbIterator<Account, AccountInfo, LmdbIteratorImpl> {
         DbIterator::new(LmdbIteratorImpl::new(
@@ -77,7 +74,7 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         ))
     }
 
-    fn begin(&self, transaction: &LmdbTransaction) -> AccountIterator<LmdbIteratorImpl> {
+    fn begin(&self, transaction: &dyn Transaction) -> AccountIterator<LmdbIteratorImpl> {
         AccountIterator::new(LmdbIteratorImpl::new(
             transaction,
             self.database,
@@ -87,9 +84,9 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     }
 
     fn for_each_par(
-        &'a self,
+        &self,
         action: &(dyn Fn(
-            LmdbReadTransaction<'a>,
+            &dyn ReadTransaction,
             AccountIterator<LmdbIteratorImpl>,
             AccountIterator<LmdbIteratorImpl>,
         ) + Send
@@ -97,13 +94,13 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
     ) {
         parallel_traversal(&|start, end, is_last| {
             let txn = self.env.tx_begin_read().unwrap();
-            let begin_it = self.begin_account(&txn.as_txn(), &start.into());
+            let begin_it = self.begin_account(&txn, &start.into());
             let end_it = if !is_last {
-                self.begin_account(&txn.as_txn(), &end.into())
+                self.begin_account(&txn, &end.into())
             } else {
                 self.end()
             };
-            action(txn, begin_it, end_it);
+            action(&txn, begin_it, end_it);
         })
     }
 
@@ -111,11 +108,11 @@ impl<'a> AccountStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, Lmd
         DbIterator::new(LmdbIteratorImpl::null())
     }
 
-    fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.database)
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        count(txn, self.database)
     }
 
-    fn exists(&self, txn: &LmdbTransaction, account: &Account) -> bool {
+    fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
         !self.begin_account(txn, account).is_end()
     }
 }
@@ -148,10 +145,10 @@ mod tests {
         let sut = AccountStoreTestContext::new();
         let txn = sut.env.tx_begin_read().unwrap();
         let account = Account::from(1);
-        let result = sut.store.get(&txn.as_txn(), &account);
+        let result = sut.store.get(&txn, &account);
         assert_eq!(result, None);
-        assert_eq!(sut.store.exists(&txn.as_txn(), &account), false);
-        assert_eq!(sut.store.count(&txn.as_txn()), 0);
+        assert_eq!(sut.store.exists(&txn, &account), false);
+        assert_eq!(sut.store.count(&txn), 0);
     }
 
     #[test]
@@ -164,10 +161,10 @@ mod tests {
             ..Default::default()
         };
         sut.store.put(&mut txn, &account, &info);
-        assert!(sut.store.exists(&txn.as_txn(), &account));
-        let result = sut.store.get(&txn.as_txn(), &account);
+        assert!(sut.store.exists(&txn, &account));
+        let result = sut.store.get(&txn, &account);
         assert_eq!(result, Some(info));
-        assert_eq!(sut.store.count(&txn.as_txn()), 1);
+        assert_eq!(sut.store.count(&txn), 1);
     }
 
     #[test]
@@ -181,7 +178,7 @@ mod tests {
         };
         sut.store.put(&mut txn, &account, &info);
         sut.store.del(&mut txn, &account);
-        let result = sut.store.get(&txn.as_txn(), &account);
+        let result = sut.store.get(&txn, &account);
         assert_eq!(result, None);
     }
 
@@ -189,7 +186,7 @@ mod tests {
     fn begin_empty_store() {
         let sut = AccountStoreTestContext::new();
         let txn = sut.env.tx_begin_read().unwrap();
-        let it = sut.store.begin(&txn.as_txn());
+        let it = sut.store.begin(&txn);
         assert!(it.is_end())
     }
 
@@ -209,7 +206,7 @@ mod tests {
         };
         sut.store.put(&mut txn, &account1, &info1);
         sut.store.put(&mut txn, &account2, &info2);
-        let mut it = sut.store.begin(&txn.as_txn());
+        let mut it = sut.store.begin(&txn);
         assert_eq!(it.current(), Some((&account1, &info1)));
         it.next();
         assert_eq!(it.current(), Some((&account2, &info2)));
@@ -233,7 +230,7 @@ mod tests {
         };
         sut.store.put(&mut txn, &account1, &info1);
         sut.store.put(&mut txn, &account3, &info3);
-        let mut it = sut.store.begin_account(&txn.as_txn(), &Account::from(2));
+        let mut it = sut.store.begin_account(&txn, &Account::from(2));
         assert_eq!(it.current(), Some((&account3, &info3)));
         it.next();
         assert_eq!(it.current(), None);

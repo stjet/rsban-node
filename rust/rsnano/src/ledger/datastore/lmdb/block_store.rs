@@ -1,13 +1,14 @@
-use super::{
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
-};
+use super::{as_write_txn, count, get, LmdbEnv, LmdbIteratorImpl};
 use crate::{
     core::{
         deserialize_block_enum, Account, Amount, Block, BlockEnum, BlockHash, BlockSideband,
         BlockType, BlockVisitor, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock,
         StateBlock,
     },
-    ledger::datastore::{block_store::BlockIterator, parallel_traversal, BlockStore, DbIterator},
+    ledger::datastore::{
+        block_store::BlockIterator, parallel_traversal, BlockStore, DbIterator, ReadTransaction,
+        Transaction, WriteTransaction,
+    },
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -31,18 +32,18 @@ impl LmdbBlockStore {
         self.database
     }
 
-    pub fn raw_put(&self, txn: &mut LmdbWriteTransaction, data: &[u8], hash: &BlockHash) {
-        txn.rw_txn_mut()
+    pub fn raw_put(&self, txn: &mut dyn WriteTransaction, data: &[u8], hash: &BlockHash) {
+        as_write_txn(txn)
             .put(self.database, hash.as_bytes(), &data, WriteFlags::empty())
             .unwrap();
     }
 
-    pub fn block_raw_get<'txn>(
-        &'txn self,
-        txn: &'txn LmdbTransaction,
+    pub fn block_raw_get<'a>(
+        &self,
+        txn: &'a dyn Transaction,
         hash: &BlockHash,
-    ) -> Option<&[u8]> {
-        match txn.get(self.database, hash.as_bytes()) {
+    ) -> Option<&'a [u8]> {
+        match get(txn, self.database, hash.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => Some(bytes),
             Err(e) => panic!("Could not load block. {:?}", e),
@@ -50,13 +51,11 @@ impl LmdbBlockStore {
     }
 }
 
-impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
-    for LmdbBlockStore
-{
-    fn put(&self, txn: &mut LmdbWriteTransaction<'a>, hash: &BlockHash, block: &dyn Block) {
+impl BlockStore<LmdbIteratorImpl> for LmdbBlockStore {
+    fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash, block: &dyn Block) {
         debug_assert!(
             block.sideband().unwrap().successor.is_zero()
-                || self.exists(&txn.as_txn(), &block.sideband().unwrap().successor)
+                || self.exists(txn.txn(), &block.sideband().unwrap().successor)
         );
 
         let mut stream = MemoryStream::new();
@@ -74,15 +73,15 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         }
 
         debug_assert!(
-            block.previous().is_zero() || self.successor(&txn.as_txn(), &block.previous()) == *hash
+            block.previous().is_zero() || self.successor(txn.txn(), &block.previous()) == *hash
         );
     }
 
-    fn exists(&self, transaction: &LmdbTransaction, hash: &BlockHash) -> bool {
+    fn exists(&self, transaction: &dyn Transaction, hash: &BlockHash) -> bool {
         self.block_raw_get(transaction, hash).is_some()
     }
 
-    fn successor(&self, txn: &LmdbTransaction, hash: &BlockHash) -> BlockHash {
+    fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
         match self.block_raw_get(txn, hash) {
             None => BlockHash::zero(),
             Some(data) => {
@@ -94,9 +93,8 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         }
     }
 
-    fn successor_clear(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
-        let t = txn.as_txn();
-        let value = self.block_raw_get(&t, hash).unwrap();
+    fn successor_clear(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
+        let value = self.block_raw_get(txn.txn(), hash).unwrap();
         let block_type = BlockType::from_u8(value[0]).unwrap();
 
         let mut data = value.to_vec();
@@ -105,7 +103,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         self.raw_put(txn, &data, hash)
     }
 
-    fn get(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Option<BlockEnum> {
+    fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
         match self.block_raw_get(txn, hash) {
             None => None,
             Some(bytes) => {
@@ -118,7 +116,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         }
     }
 
-    fn get_no_sideband(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Option<BlockEnum> {
+    fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
         match self.block_raw_get(txn, hash) {
             None => None,
             Some(bytes) => {
@@ -128,14 +126,14 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         }
     }
 
-    fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
-        txn.rw_txn_mut()
+    fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
+        as_write_txn(txn)
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
 
-    fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.database)
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        count(txn, self.database)
     }
 
     fn account_calculated(&self, block: &dyn Block) -> Account {
@@ -149,12 +147,12 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         result
     }
 
-    fn account(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Account {
+    fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account {
         let block = self.get(txn, hash).unwrap();
         self.account_calculated(block.as_block())
     }
 
-    fn begin(&self, transaction: &LmdbTransaction) -> BlockIterator<LmdbIteratorImpl> {
+    fn begin(&self, transaction: &dyn Transaction) -> BlockIterator<LmdbIteratorImpl> {
         DbIterator::new(LmdbIteratorImpl::new(
             transaction,
             self.database,
@@ -165,7 +163,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
 
     fn begin_at_hash(
         &self,
-        transaction: &LmdbTransaction,
+        transaction: &dyn Transaction,
         hash: &BlockHash,
     ) -> BlockIterator<LmdbIteratorImpl> {
         DbIterator::new(LmdbIteratorImpl::new(
@@ -180,7 +178,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         DbIterator::new(LmdbIteratorImpl::null())
     }
 
-    fn random(&self, transaction: &LmdbTransaction) -> Option<BlockEnum> {
+    fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum> {
         let hash = BlockHash::random();
         let mut existing = self.begin_at_hash(transaction, &hash);
         if existing.is_end() {
@@ -190,7 +188,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         existing.current().map(|(_, v)| v.block.clone())
     }
 
-    fn balance(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Amount {
+    fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Amount {
         match self.get(txn, hash) {
             Some(block) => self.balance_calculated(&block),
             None => Amount::zero(),
@@ -207,7 +205,7 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
         }
     }
 
-    fn version(&self, txn: &LmdbTransaction, hash: &BlockHash) -> Epoch {
+    fn version(&self, txn: &dyn Transaction, hash: &BlockHash) -> Epoch {
         match self.get(txn, hash) {
             Some(block) => {
                 if let BlockEnum::State(b) = block {
@@ -221,9 +219,9 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
     }
 
     fn for_each_par(
-        &'a self,
+        &self,
         action: &(dyn Fn(
-            LmdbReadTransaction<'a>,
+            &dyn ReadTransaction,
             BlockIterator<LmdbIteratorImpl>,
             BlockIterator<LmdbIteratorImpl>,
         ) + Send
@@ -231,17 +229,17 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();
-            let begin_it = self.begin_at_hash(&transaction.as_txn(), &start.into());
+            let begin_it = self.begin_at_hash(&transaction, &start.into());
             let end_it = if !is_last {
-                self.begin_at_hash(&transaction.as_txn(), &end.into())
+                self.begin_at_hash(&transaction, &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it, end_it);
+            action(&transaction, begin_it, end_it);
         });
     }
 
-    fn account_height(&self, txn: &LmdbTransaction, hash: &BlockHash) -> u64 {
+    fn account_height(&self, txn: &dyn Transaction, hash: &BlockHash) -> u64 {
         match self.get(txn, hash) {
             Some(block) => block.as_block().sideband().unwrap().height,
             None => 0,
@@ -250,13 +248,13 @@ impl<'a> BlockStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbI
 }
 
 /// Fill in our predecessors
-struct BlockPredecessorMdbSet<'a, 'b> {
-    transaction: &'a mut LmdbWriteTransaction<'b>,
+struct BlockPredecessorMdbSet<'a> {
+    transaction: &'a mut dyn WriteTransaction,
     block_store: &'a LmdbBlockStore,
 }
 
-impl<'a, 'b> BlockPredecessorMdbSet<'a, 'b> {
-    fn new(transaction: &'a mut LmdbWriteTransaction<'b>, block_store: &'a LmdbBlockStore) -> Self {
+impl<'a, 'b> BlockPredecessorMdbSet<'a> {
+    fn new(transaction: &'a mut dyn WriteTransaction, block_store: &'a LmdbBlockStore) -> Self {
         Self {
             transaction,
             block_store,
@@ -265,10 +263,10 @@ impl<'a, 'b> BlockPredecessorMdbSet<'a, 'b> {
 
     fn fill_value(&mut self, block: &dyn Block) {
         let hash = block.hash();
-        let t = self.transaction.as_txn();
+        let t = self.transaction.txn();
         let value = self
             .block_store
-            .block_raw_get(&t, &block.previous())
+            .block_raw_get(t, &block.previous())
             .unwrap();
         let mut data = value.to_vec();
         let block_type = BlockType::from_u8(data[0]).unwrap();
@@ -281,7 +279,7 @@ impl<'a, 'b> BlockPredecessorMdbSet<'a, 'b> {
     }
 }
 
-impl<'a, 'b> BlockVisitor for BlockPredecessorMdbSet<'a, 'b> {
+impl<'a> BlockVisitor for BlockPredecessorMdbSet<'a> {
     fn send_block(&mut self, block: &SendBlock) {
         self.fill_value(block);
     }
@@ -319,9 +317,9 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env())?;
         let txn = env.tx_begin_read()?;
-        assert!(store.get(&txn.as_txn(), &BlockHash::from(1)).is_none());
-        assert_eq!(store.exists(&txn.as_txn(), &BlockHash::from(1)), false);
-        assert_eq!(store.count(&txn.as_txn()), 0);
+        assert!(store.get(&txn, &BlockHash::from(1)).is_none());
+        assert_eq!(store.exists(&txn, &BlockHash::from(1)), false);
+        assert_eq!(store.count(&txn), 0);
         Ok(())
     }
 
@@ -334,13 +332,11 @@ mod tests {
         let block_hash = block.hash();
 
         store.put(&mut txn, &block_hash, &block);
-        let loaded = store
-            .get(&txn.as_txn(), &block.hash())
-            .expect("block not found");
+        let loaded = store.get(&txn, &block.hash()).expect("block not found");
 
         assert_eq!(loaded, BlockEnum::Open(block));
-        assert!(store.exists(&txn.as_txn(), &block_hash));
-        assert_eq!(store.count(&txn.as_txn()), 1);
+        assert!(store.exists(&txn, &block_hash));
+        assert_eq!(store.count(&txn), 1);
         Ok(())
     }
 
@@ -369,9 +365,7 @@ mod tests {
 
         store.successor_clear(&mut txn, &block1.hash());
 
-        let loaded = store
-            .get(&txn.as_txn(), &block1.hash())
-            .expect("block not found");
+        let loaded = store.get(&txn, &block1.hash()).expect("block not found");
         assert_eq!(
             loaded.as_block().sideband().unwrap().successor,
             BlockHash::zero()
@@ -389,12 +383,8 @@ mod tests {
 
         store.put(&mut txn, &block1.hash(), &block1);
         store.put(&mut txn, &block2.hash(), &block2);
-        let loaded1 = store
-            .get(&txn.as_txn(), &block1.hash())
-            .expect("block1 not found");
-        let loaded2 = store
-            .get(&txn.as_txn(), &block2.hash())
-            .expect("block2 not found");
+        let loaded1 = store.get(&txn, &block1.hash()).expect("block1 not found");
+        let loaded2 = store.get(&txn, &block2.hash()).expect("block2 not found");
 
         assert_eq!(loaded1, BlockEnum::Open(block1));
         assert_eq!(loaded2, BlockEnum::Open(block2));
@@ -410,9 +400,7 @@ mod tests {
         let mut txn = env.tx_begin_write()?;
         store.put(&mut txn, &block1.hash(), &block1);
         store.put(&mut txn, &block2.hash(), &block2);
-        let loaded = store
-            .get(&txn.as_txn(), &block2.hash())
-            .expect("block not found");
+        let loaded = store.get(&txn, &block2.hash()).expect("block not found");
         assert_eq!(loaded, BlockEnum::Receive(block2));
         Ok(())
     }
@@ -426,9 +414,7 @@ mod tests {
         let mut txn = env.tx_begin_write()?;
         store.put(&mut txn, &block1.hash(), &block1);
         store.put(&mut txn, &block2.hash(), &block2);
-        let loaded = store
-            .get(&txn.as_txn(), &block2.hash())
-            .expect("block not found");
+        let loaded = store.get(&txn, &block2.hash()).expect("block not found");
         assert_eq!(loaded, BlockEnum::State(block2));
         Ok(())
     }
@@ -447,13 +433,9 @@ mod tests {
         store.put(&mut txn, &send1.hash(), &send1);
         store.put(&mut txn, &send2.hash(), &send2);
 
-        assert_eq!(store.count(&txn.as_txn()), 2);
+        assert_eq!(store.count(&txn), 2);
         assert_eq!(
-            store
-                .get(&txn.as_txn(), &send1.hash())
-                .unwrap()
-                .as_block()
-                .work(),
+            store.get(&txn, &send1.hash()).unwrap().as_block().work(),
             12345
         );
         Ok(())
@@ -468,7 +450,7 @@ mod tests {
         let block_hash = block.hash();
 
         store.put(&mut txn, &block_hash, &block);
-        let random = store.random(&txn.as_txn()).expect("block not found");
+        let random = store.random(&txn).expect("block not found");
 
         assert_eq!(random, BlockEnum::Open(block));
         Ok(())
@@ -488,7 +470,7 @@ mod tests {
             store.put(&mut txn, &block_hash, &block);
         }
         read_txn.renew();
-        assert!(store.exists(&read_txn.as_txn(), &block_hash));
+        assert!(store.exists(&read_txn, &block_hash));
         Ok(())
     }
 }

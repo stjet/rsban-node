@@ -5,14 +5,12 @@ use crate::{
     core::{Account, ConfirmationHeightInfo},
     ledger::datastore::{
         confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
-        ConfirmationHeightStore, DbIterator,
+        ConfirmationHeightStore, DbIterator, ReadTransaction, Transaction, WriteTransaction,
     },
     utils::{Deserialize, StreamAdapter},
 };
 
-use super::{
-    exists, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
-};
+use super::{as_write_txn, count, exists, get, LmdbEnv, LmdbIteratorImpl};
 
 pub struct LmdbConfirmationHeightStore {
     env: Arc<LmdbEnv>,
@@ -32,17 +30,14 @@ impl LmdbConfirmationHeightStore {
     }
 }
 
-impl<'a>
-    ConfirmationHeightStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
-    for LmdbConfirmationHeightStore
-{
+impl ConfirmationHeightStore<LmdbIteratorImpl> for LmdbConfirmationHeightStore {
     fn put(
         &self,
-        txn: &mut LmdbWriteTransaction,
+        txn: &mut dyn WriteTransaction,
         account: &Account,
         info: &ConfirmationHeightInfo,
     ) {
-        txn.rw_txn_mut()
+        as_write_txn(txn)
             .put(
                 self.database,
                 account.as_bytes(),
@@ -52,8 +47,8 @@ impl<'a>
             .unwrap();
     }
 
-    fn get(&self, txn: &LmdbTransaction, account: &Account) -> Option<ConfirmationHeightInfo> {
-        match txn.get(self.database, account.as_bytes()) {
+    fn get(&self, txn: &dyn Transaction, account: &Account) -> Option<ConfirmationHeightInfo> {
+        match get(txn, self.database, account.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {
                 let mut stream = StreamAdapter::new(bytes);
@@ -65,31 +60,31 @@ impl<'a>
         }
     }
 
-    fn exists(&self, txn: &LmdbTransaction, account: &Account) -> bool {
+    fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
         exists(txn, self.database, account.as_bytes())
     }
 
-    fn del(&self, txn: &mut LmdbWriteTransaction, account: &Account) {
-        txn.rw_txn_mut()
+    fn del(&self, txn: &mut dyn WriteTransaction, account: &Account) {
+        as_write_txn(txn)
             .del(self.database, account.as_bytes(), None)
             .unwrap();
     }
 
-    fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.database)
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        count(txn, self.database)
     }
 
-    fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn_mut().clear_db(self.database).unwrap()
+    fn clear(&self, txn: &mut dyn WriteTransaction) {
+        as_write_txn(txn).clear_db(self.database).unwrap()
     }
 
-    fn begin(&self, txn: &LmdbTransaction) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
+    fn begin(&self, txn: &dyn Transaction) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
         DbIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
     fn begin_at_account(
         &self,
-        txn: &LmdbTransaction,
+        txn: &dyn Transaction,
         account: &Account,
     ) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
         DbIterator::new(LmdbIteratorImpl::new(
@@ -105,9 +100,9 @@ impl<'a>
     }
 
     fn for_each_par(
-        &'a self,
+        &self,
         action: &(dyn Fn(
-            LmdbReadTransaction<'a>,
+            &dyn ReadTransaction,
             ConfirmationHeightIterator<LmdbIteratorImpl>,
             ConfirmationHeightIterator<LmdbIteratorImpl>,
         ) + Send
@@ -115,13 +110,13 @@ impl<'a>
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();
-            let begin_it = self.begin_at_account(&transaction.as_txn(), &start.into());
+            let begin_it = self.begin_at_account(&transaction, &start.into());
             let end_it = if !is_last {
-                self.begin_at_account(&transaction.as_txn(), &end.into())
+                self.begin_at_account(&transaction, &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it, end_it);
+            action(&transaction, begin_it, end_it);
         });
     }
 }
@@ -137,12 +132,10 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbConfirmationHeightStore::new(env.env())?;
         let txn = env.tx_begin_read()?;
-        assert!(store.get(&txn.as_txn(), &Account::from(0)).is_none());
-        assert_eq!(store.exists(&txn.as_txn(), &Account::from(0)), false);
-        assert!(store.begin(&txn.as_txn()).is_end());
-        assert!(store
-            .begin_at_account(&txn.as_txn(), &Account::from(0))
-            .is_end());
+        assert!(store.get(&txn, &Account::from(0)).is_none());
+        assert_eq!(store.exists(&txn, &Account::from(0)), false);
+        assert!(store.begin(&txn).is_end());
+        assert!(store.begin_at_account(&txn, &Account::from(0)).is_end());
         Ok(())
     }
 
@@ -154,7 +147,7 @@ mod tests {
         let account = Account::from(1);
         let info = ConfirmationHeightInfo::new(1, BlockHash::from(2));
         store.put(&mut txn, &account, &info);
-        let loaded = store.get(&txn.as_txn(), &account);
+        let loaded = store.get(&txn, &account);
         assert_eq!(loaded, Some(info));
         Ok(())
     }
@@ -168,7 +161,7 @@ mod tests {
         let info = ConfirmationHeightInfo::new(1, BlockHash::from(2));
         store.put(&mut txn, &account, &info);
 
-        let mut it = store.begin(&txn.as_txn());
+        let mut it = store.begin(&txn);
         assert_eq!(it.current(), Some((&account, &info)));
 
         it.next();
@@ -188,7 +181,7 @@ mod tests {
         store.put(&mut txn, &account1, &info1);
         store.put(&mut txn, &account2, &info2);
 
-        let mut it = store.begin(&txn.as_txn());
+        let mut it = store.begin(&txn);
         assert_eq!(it.current(), Some((&account1, &info1)));
         it.next();
         assert_eq!(it.current(), Some((&account2, &info2)));
@@ -211,7 +204,7 @@ mod tests {
 
         store.clear(&mut txn);
 
-        assert_eq!(store.count(&txn.as_txn()), 0);
+        assert_eq!(store.count(&txn), 0);
         Ok(())
     }
 }

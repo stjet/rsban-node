@@ -3,12 +3,10 @@ use std::sync::Arc;
 
 use crate::{
     core::EndpointKey,
-    ledger::datastore::{peer_store::PeerIterator, PeerStore},
+    ledger::datastore::{peer_store::PeerIterator, PeerStore, Transaction, WriteTransaction},
 };
 
-use super::{
-    exists, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
-};
+use super::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};
 
 pub struct LmdbPeerStore {
     env: Arc<LmdbEnv>,
@@ -29,11 +27,9 @@ impl LmdbPeerStore {
     }
 }
 
-impl<'a> PeerStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
-    for LmdbPeerStore
-{
-    fn put(&self, txn: &mut LmdbWriteTransaction, endpoint: &EndpointKey) {
-        txn.rw_txn_mut()
+impl PeerStore<LmdbIteratorImpl> for LmdbPeerStore {
+    fn put(&self, txn: &mut dyn WriteTransaction, endpoint: &EndpointKey) {
+        as_write_txn(txn)
             .put(
                 self.database,
                 &endpoint.to_bytes(),
@@ -43,25 +39,25 @@ impl<'a> PeerStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIt
             .unwrap();
     }
 
-    fn del(&self, txn: &mut LmdbWriteTransaction, endpoint: &EndpointKey) {
-        txn.rw_txn_mut()
+    fn del(&self, txn: &mut dyn WriteTransaction, endpoint: &EndpointKey) {
+        as_write_txn(txn)
             .del(self.database, &endpoint.to_bytes(), None)
             .unwrap();
     }
 
-    fn exists(&self, txn: &LmdbTransaction, endpoint: &EndpointKey) -> bool {
+    fn exists(&self, txn: &dyn Transaction, endpoint: &EndpointKey) -> bool {
         exists(txn, self.database, &endpoint.to_bytes())
     }
 
-    fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.database)
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        count(txn, self.database)
     }
 
-    fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn_mut().clear_db(self.database).unwrap();
+    fn clear(&self, txn: &mut dyn WriteTransaction) {
+        as_write_txn(txn).clear_db(self.database).unwrap();
     }
 
-    fn begin(&self, txn: &LmdbTransaction) -> PeerIterator<LmdbIteratorImpl> {
+    fn begin(&self, txn: &dyn Transaction) -> PeerIterator<LmdbIteratorImpl> {
         PeerIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 }
@@ -77,9 +73,9 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbPeerStore::new(env.env())?;
         let txn = env.tx_begin_read()?;
-        assert_eq!(store.count(&txn.as_txn()), 0);
-        assert_eq!(store.exists(&txn.as_txn(), &test_endpoint_key()), false);
-        assert!(store.begin(&txn.as_txn()).is_end());
+        assert_eq!(store.count(&txn), 0);
+        assert_eq!(store.exists(&txn, &test_endpoint_key()), false);
+        assert!(store.begin(&txn).is_end());
         Ok(())
     }
 
@@ -92,12 +88,9 @@ mod tests {
         let key = test_endpoint_key();
         store.put(&mut txn, &key);
 
-        assert_eq!(store.count(&txn.as_txn()), 1);
-        assert_eq!(store.exists(&txn.as_txn(), &key), true);
-        assert_eq!(
-            store.begin(&txn.as_txn()).current(),
-            Some((&key, &NoValue {}))
-        );
+        assert_eq!(store.count(&txn), 1);
+        assert_eq!(store.exists(&txn, &key), true);
+        assert_eq!(store.begin(&txn).current(), Some((&key, &NoValue {})));
         Ok(())
     }
 
@@ -112,9 +105,9 @@ mod tests {
         store.put(&mut txn, &key1);
         store.put(&mut txn, &key2);
 
-        assert_eq!(store.count(&txn.as_txn()), 2);
-        assert_eq!(store.exists(&txn.as_txn(), &key1), true);
-        assert_eq!(store.exists(&txn.as_txn(), &key2), true);
+        assert_eq!(store.count(&txn), 2);
+        assert_eq!(store.exists(&txn, &key1), true);
+        assert_eq!(store.exists(&txn, &key2), true);
         Ok(())
     }
 
@@ -131,9 +124,9 @@ mod tests {
 
         store.del(&mut txn, &key1);
 
-        assert_eq!(store.count(&txn.as_txn()), 1);
-        assert_eq!(store.exists(&txn.as_txn(), &key1), false);
-        assert_eq!(store.exists(&txn.as_txn(), &key2), true);
+        assert_eq!(store.count(&txn), 1);
+        assert_eq!(store.exists(&txn, &key1), false);
+        assert_eq!(store.exists(&txn, &key2), true);
         Ok(())
     }
 

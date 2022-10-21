@@ -2,10 +2,7 @@ use std::ffi::c_void;
 
 use crate::{
     ffi::VoidPointerCallback,
-    ledger::datastore::{
-        lmdb::{LmdbIteratorImpl, LmdbReadTransaction},
-        DbIterator, DbIteratorImpl,
-    },
+    ledger::datastore::{lmdb::LmdbIteratorImpl, DbIterator, DbIteratorImpl, ReadTransaction},
     utils::{Deserialize, Serialize},
 };
 
@@ -98,7 +95,7 @@ pub struct ForEachParWrapper {
 impl ForEachParWrapper {
     pub fn execute<K, V>(
         &self,
-        txn: LmdbReadTransaction,
+        txn: &dyn ReadTransaction,
         begin: DbIterator<K, V, LmdbIteratorImpl>,
         end: DbIterator<K, V, LmdbIteratorImpl>,
     ) where
@@ -106,7 +103,7 @@ impl ForEachParWrapper {
         V: Deserialize<Target = V>,
     {
         let lmdb_txn = unsafe {
-            std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(&txn)
+            std::mem::transmute::<&dyn ReadTransaction, &'static dyn ReadTransaction>(txn)
         };
         let txn_handle = TransactionHandle::new(TransactionType::ReadRef(lmdb_txn));
         let begin_handle = to_lmdb_iterator_handle2(begin);

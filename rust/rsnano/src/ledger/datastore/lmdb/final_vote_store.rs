@@ -1,17 +1,16 @@
 use std::sync::Arc;
 
-use lmdb::{Database, DatabaseFlags, Transaction, WriteFlags};
+use lmdb::{Database, DatabaseFlags, WriteFlags};
 
 use crate::{
     core::{BlockHash, QualifiedRoot, Root},
     ledger::datastore::{
         final_vote_store::FinalVoteIterator, parallel_traversal_u512, FinalVoteStore,
+        ReadTransaction, Transaction, WriteTransaction,
     },
 };
 
-use super::{
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbTransaction, LmdbWriteTransaction,
-};
+use super::{as_write_txn, count, get, LmdbEnv, LmdbIteratorImpl};
 
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash
@@ -33,14 +32,12 @@ impl LmdbFinalVoteStore {
     }
 }
 
-impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, LmdbIteratorImpl>
-    for LmdbFinalVoteStore
-{
-    fn put(&self, txn: &mut LmdbWriteTransaction, root: &QualifiedRoot, hash: &BlockHash) -> bool {
+impl FinalVoteStore<LmdbIteratorImpl> for LmdbFinalVoteStore {
+    fn put(&self, txn: &mut dyn WriteTransaction, root: &QualifiedRoot, hash: &BlockHash) -> bool {
         let root_bytes = root.to_bytes();
-        match txn.rw_txn().get(self.database, &root_bytes) {
+        match get(txn.txn(), self.database, &root_bytes) {
             Err(lmdb::Error::NotFound) => {
-                txn.rw_txn_mut()
+                as_write_txn(txn)
                     .put(
                         self.database,
                         &root_bytes,
@@ -57,13 +54,13 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         }
     }
 
-    fn begin(&self, txn: &LmdbTransaction) -> FinalVoteIterator<LmdbIteratorImpl> {
+    fn begin(&self, txn: &dyn Transaction) -> FinalVoteIterator<LmdbIteratorImpl> {
         FinalVoteIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
     }
 
     fn begin_at_root(
         &self,
-        txn: &LmdbTransaction,
+        txn: &dyn Transaction,
         root: &QualifiedRoot,
     ) -> FinalVoteIterator<LmdbIteratorImpl> {
         let key_bytes = root.to_bytes();
@@ -75,7 +72,7 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         ))
     }
 
-    fn get(&self, txn: &LmdbTransaction, root: Root) -> Vec<BlockHash> {
+    fn get(&self, txn: &dyn Transaction, root: Root) -> Vec<BlockHash> {
         let mut result = Vec::new();
         let key_start = QualifiedRoot {
             root,
@@ -95,11 +92,11 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
         result
     }
 
-    fn del(&self, txn: &mut LmdbWriteTransaction, root: &Root) {
+    fn del(&self, txn: &mut dyn WriteTransaction, root: &Root) {
         let mut final_vote_qualified_roots = Vec::new();
 
         let mut it = self.begin_at_root(
-            &txn.as_txn(),
+            txn.txn(),
             &QualifiedRoot {
                 root: *root,
                 previous: BlockHash::zero(),
@@ -115,24 +112,24 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
 
         for qualified_root in final_vote_qualified_roots {
             let root_bytes = qualified_root.to_bytes();
-            txn.rw_txn_mut()
+            as_write_txn(txn)
                 .del(self.database, &root_bytes, None)
                 .unwrap();
         }
     }
 
-    fn count(&self, txn: &LmdbTransaction) -> usize {
-        txn.count(self.database)
+    fn count(&self, txn: &dyn Transaction) -> usize {
+        count(txn, self.database)
     }
 
-    fn clear(&self, txn: &mut LmdbWriteTransaction) {
-        txn.rw_txn_mut().clear_db(self.database).unwrap();
+    fn clear(&self, txn: &mut dyn WriteTransaction) {
+        as_write_txn(txn).clear_db(self.database).unwrap();
     }
 
     fn for_each_par(
-        &'a self,
+        &self,
         action: &(dyn Fn(
-            LmdbReadTransaction<'a>,
+            &dyn ReadTransaction,
             FinalVoteIterator<LmdbIteratorImpl>,
             FinalVoteIterator<LmdbIteratorImpl>,
         ) + Send
@@ -140,13 +137,13 @@ impl<'a> FinalVoteStore<'a, LmdbReadTransaction<'a>, LmdbWriteTransaction<'a>, L
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();
-            let begin_it = self.begin_at_root(&transaction.as_txn(), &start.into());
+            let begin_it = self.begin_at_root(&transaction, &start.into());
             let end_it = if !is_last {
-                self.begin_at_root(&transaction.as_txn(), &end.into())
+                self.begin_at_root(&transaction, &end.into())
             } else {
                 self.end()
             };
-            action(transaction, begin_it, end_it);
+            action(&transaction, begin_it, end_it);
         });
     }
 
@@ -175,8 +172,8 @@ mod tests {
 
         store.del(&mut txn, &root1.root);
 
-        assert_eq!(store.count(&txn.as_txn()), 1);
-        assert_eq!(store.get(&txn.as_txn(), root1.root).len(), 0);
+        assert_eq!(store.count(&txn), 1);
+        assert_eq!(store.get(&txn, root1.root).len(), 0);
         Ok(())
     }
 
@@ -191,7 +188,7 @@ mod tests {
 
         store.del(&mut txn, &root2.root);
 
-        assert_eq!(store.count(&txn.as_txn()), 1);
+        assert_eq!(store.count(&txn), 1);
         Ok(())
     }
 
@@ -207,7 +204,7 @@ mod tests {
 
         store.clear(&mut txn);
 
-        assert_eq!(store.count(&txn.as_txn()), 0);
+        assert_eq!(store.count(&txn), 0);
         Ok(())
     }
 }

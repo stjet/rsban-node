@@ -89,7 +89,7 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_get(
     key: *const PendingKeyDto,
     pending: *mut PendingInfoDto,
 ) -> bool {
-    match (*handle).0.get(&(*txn).as_txn(), &PendingKey::from(&*key)) {
+    match (*handle).0.get((*txn).as_txn(), &PendingKey::from(&*key)) {
         Some(p) => {
             (*pending).source = *p.source.as_bytes();
             (*pending).amount = p.amount.to_be_bytes();
@@ -105,7 +105,7 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_begin(
     handle: *mut LmdbPendingStoreHandle,
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
-    let iterator = (*handle).0.begin(&(*txn).as_txn());
+    let iterator = (*handle).0.begin((*txn).as_txn());
     LmdbIteratorHandle::new(iterator.take_impl())
 }
 
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_begin_at_key(
     key: *const PendingKeyDto,
 ) -> *mut LmdbIteratorHandle {
     let key = PendingKey::from(&*key);
-    let iterator = (*handle).0.begin_at_key(&(*txn).as_txn(), &key);
+    let iterator = (*handle).0.begin_at_key((*txn).as_txn(), &key);
     LmdbIteratorHandle::new(iterator.take_impl())
 }
 
@@ -128,7 +128,7 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_exists(
 ) -> bool {
     (*handle)
         .0
-        .exists(&(*txn).as_txn(), &PendingKey::from(&*key))
+        .exists((*txn).as_txn(), &PendingKey::from(&*key))
 }
 
 #[no_mangle]
@@ -139,7 +139,7 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_any(
 ) -> bool {
     (*handle)
         .0
-        .any(&(*txn).as_txn(), &Account::from_ptr(account))
+        .any((*txn).as_txn(), &Account::from_ptr(account))
 }
 
 #[no_mangle]

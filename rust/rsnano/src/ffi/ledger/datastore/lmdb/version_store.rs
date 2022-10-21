@@ -29,5 +29,5 @@ pub unsafe extern "C" fn rsn_lmdb_version_store_get(
     handle: *mut LmdbVersionStoreHandle,
     txn: *mut TransactionHandle,
 ) -> i32 {
-    (*handle).0.get(&(*txn).as_txn())
+    (*handle).0.get((*txn).as_txn())
 }

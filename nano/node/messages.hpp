@@ -61,7 +61,7 @@ public:
 	void serialize (nano::stream &) const;
 	bool deserialize (nano::stream &);
 	nano::block_type block_type () const;
-	std::string to_string ();
+	std::string to_string () const;
 
 	void flag_set (uint8_t);
 	static uint8_t constexpr frontier_req_only_confirmed = 1;
@@ -153,6 +153,7 @@ public:
 	std::array<nano::endpoint, 8> get_peers () const;
 	void set_peers (std::array<nano::endpoint, 8> const & peers_a);
 	static std::size_t size ();
+	std::string to_string () const;
 };
 
 class publish final : public message

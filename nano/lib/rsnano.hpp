@@ -2650,6 +2650,8 @@ void rsn_message_keepalive_set_peers (MessageHandle * handle, const EndpointDto 
 
 uintptr_t rsn_message_keepalive_size ();
 
+void rsn_message_keepalive_to_string (MessageHandle * handle, StringDto * result);
+
 MessageHandle * rsn_message_node_id_handshake_clone (MessageHandle * handle);
 
 MessageHandle * rsn_message_node_id_handshake_create (NetworkConstantsDto * constants,

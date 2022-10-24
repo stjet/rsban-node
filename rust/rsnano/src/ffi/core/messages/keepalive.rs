@@ -2,6 +2,7 @@ use std::{ffi::c_void, net::SocketAddr};
 
 use crate::core::messages::Message;
 use crate::ffi::utils::FfiStream;
+use crate::ffi::StringDto;
 use crate::{
     core::messages::Keepalive,
     ffi::{transport::EndpointDto, NetworkConstantsDto},
@@ -94,4 +95,13 @@ pub unsafe extern "C" fn rsn_message_keepalive_deserialize(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_keepalive_size() -> usize {
     Keepalive::serialized_size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_keepalive_to_string(
+    handle: *mut MessageHandle,
+    result: *mut StringDto,
+) {
+    let s = downcast_message_mut::<Keepalive>(handle).to_string();
+    *result = s.into()
 }

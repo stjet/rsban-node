@@ -597,6 +597,13 @@ std::size_t nano::keepalive::size ()
 	return rsnano::rsn_message_keepalive_size ();
 }
 
+std::string nano::keepalive::to_string () const
+{
+	rsnano::StringDto dto;
+	rsnano::rsn_message_keepalive_to_string (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
+}
+
 /*
  * publish
  */

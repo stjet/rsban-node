@@ -1,19 +1,16 @@
 use crate::core::Amount;
 
-use super::{iterator::DbIteratorImpl, DbIterator, Transaction, WriteTransaction};
+use super::{DbIterator, Transaction, WriteTransaction};
 
-pub type OnlineWeightIterator<I> = DbIterator<u64, Amount, I>;
+pub type OnlineWeightIterator = Box<dyn DbIterator<u64, Amount>>;
 
 /// Samples of online vote weight
 /// u64 -> Amount
-pub trait OnlineWeightStore<I>
-where
-    I: DbIteratorImpl,
-{
+pub trait OnlineWeightStore {
     fn put(&self, txn: &mut dyn WriteTransaction, time: u64, amount: &Amount);
     fn del(&self, txn: &mut dyn WriteTransaction, time: u64);
-    fn begin(&self, txn: &dyn Transaction) -> OnlineWeightIterator<I>;
-    fn rbegin(&self, txn: &dyn Transaction) -> OnlineWeightIterator<I>;
+    fn begin(&self, txn: &dyn Transaction) -> OnlineWeightIterator;
+    fn rbegin(&self, txn: &dyn Transaction) -> OnlineWeightIterator;
     fn count(&self, txn: &dyn Transaction) -> usize;
     fn clear(&self, txn: &mut dyn WriteTransaction);
 }

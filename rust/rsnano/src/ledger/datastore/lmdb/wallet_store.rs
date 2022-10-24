@@ -10,7 +10,7 @@ use lmdb::{Database, DatabaseFlags, WriteFlags};
 
 use crate::{
     core::{deterministic_key, Account, PublicKey, RawKey},
-    ledger::datastore::{DbIterator, Fans, Transaction, WalletValue, WriteTransaction},
+    ledger::datastore::{iterator::DbIterator, Fans, Transaction, WalletValue, WriteTransaction},
     utils::{Deserialize, StreamAdapter},
     wallet::KeyDerivationFunction,
 };
@@ -27,7 +27,7 @@ pub enum KeyType {
 
 const VERSION_CURRENT: u32 = 4;
 
-pub type WalletIterator = DbIterator<Account, WalletValue, LmdbIteratorImpl>;
+pub type WalletIterator = Box<dyn DbIterator<Account, WalletValue>>;
 
 pub struct LmdbWalletStore {
     db_handle: Mutex<Option<Database>>,
@@ -327,25 +327,20 @@ impl<'a> LmdbWalletStore {
     }
 
     pub fn begin(&self, txn: &dyn Transaction) -> WalletIterator {
-        WalletIterator::new(LmdbIteratorImpl::new(
+        LmdbIteratorImpl::new_iterator(
             txn,
             self.db_handle(),
             Some(Self::special_count().as_bytes()),
             true,
-        ))
+        )
     }
 
     pub fn begin_at_account(&self, txn: &dyn Transaction, key: &Account) -> WalletIterator {
-        WalletIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.db_handle(),
-            Some(key.as_bytes()),
-            true,
-        ))
+        LmdbIteratorImpl::new_iterator(txn, self.db_handle(), Some(key.as_bytes()), true)
     }
 
     pub fn end(&self) -> WalletIterator {
-        WalletIterator::new(LmdbIteratorImpl::null())
+        LmdbIteratorImpl::null_iterator()
     }
 
     pub fn find(&self, txn: &dyn Transaction, account: &Account) -> WalletIterator {
@@ -543,7 +538,12 @@ impl<'a> LmdbWalletStore {
 
     pub fn serialize_json(&self, txn: &dyn Transaction) -> String {
         let mut map = serde_json::Map::new();
-        let mut it = WalletIterator::new(LmdbIteratorImpl::new(txn, self.db_handle(), None, true));
+        let mut it = LmdbIteratorImpl::new_iterator::<Account, WalletValue>(
+            txn,
+            self.db_handle(),
+            None,
+            true,
+        );
 
         while let Some((k, v)) = it.current() {
             map.insert(

@@ -31,7 +31,7 @@ impl LmdbPrunedStore {
     }
 }
 
-impl PrunedStore<LmdbIteratorImpl> for LmdbPrunedStore {
+impl PrunedStore for LmdbPrunedStore {
     fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
         as_write_txn(txn)
             .put(self.database, hash.as_bytes(), &[0; 0], WriteFlags::empty())
@@ -48,21 +48,12 @@ impl PrunedStore<LmdbIteratorImpl> for LmdbPrunedStore {
         exists(txn, self.database, hash.as_bytes())
     }
 
-    fn begin(&self, txn: &dyn Transaction) -> PrunedIterator<LmdbIteratorImpl> {
-        PrunedIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
+    fn begin(&self, txn: &dyn Transaction) -> PrunedIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    fn begin_at_hash(
-        &self,
-        txn: &dyn Transaction,
-        hash: &BlockHash,
-    ) -> PrunedIterator<LmdbIteratorImpl> {
-        PrunedIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.database,
-            Some(hash.as_bytes()),
-            true,
-        ))
+    fn begin_at_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> PrunedIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, Some(hash.as_bytes()), true)
     }
 
     fn random(&self, txn: &dyn Transaction) -> BlockHash {
@@ -84,18 +75,13 @@ impl PrunedStore<LmdbIteratorImpl> for LmdbPrunedStore {
         as_write_txn(txn).clear_db(self.database).unwrap();
     }
 
-    fn end(&self) -> PrunedIterator<LmdbIteratorImpl> {
-        PrunedIterator::new(LmdbIteratorImpl::null())
+    fn end(&self) -> PrunedIterator {
+        LmdbIteratorImpl::null_iterator()
     }
 
     fn for_each_par(
         &self,
-        action: &(dyn Fn(
-            &dyn ReadTransaction,
-            PrunedIterator<LmdbIteratorImpl>,
-            PrunedIterator<LmdbIteratorImpl>,
-        ) + Send
-              + Sync),
+        action: &(dyn Fn(&dyn ReadTransaction, PrunedIterator, PrunedIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();

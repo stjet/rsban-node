@@ -32,7 +32,7 @@ impl LmdbPendingStore {
     }
 }
 
-impl PendingStore<LmdbIteratorImpl> for LmdbPendingStore {
+impl PendingStore for LmdbPendingStore {
     fn put(&self, txn: &mut dyn WriteTransaction, key: &PendingKey, pending: &PendingInfo) {
         let key_bytes = key.to_bytes();
         let pending_bytes = pending.to_bytes();
@@ -67,22 +67,13 @@ impl PendingStore<LmdbIteratorImpl> for LmdbPendingStore {
         }
     }
 
-    fn begin(&self, txn: &dyn Transaction) -> PendingIterator<LmdbIteratorImpl> {
-        PendingIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
+    fn begin(&self, txn: &dyn Transaction) -> PendingIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    fn begin_at_key(
-        &self,
-        txn: &dyn Transaction,
-        key: &PendingKey,
-    ) -> PendingIterator<LmdbIteratorImpl> {
+    fn begin_at_key(&self, txn: &dyn Transaction, key: &PendingKey) -> PendingIterator {
         let key_bytes = key.to_bytes();
-        PendingIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.database,
-            Some(&key_bytes),
-            true,
-        ))
+        LmdbIteratorImpl::new_iterator(txn, self.database, Some(&key_bytes), true)
     }
 
     fn exists(&self, txn: &dyn Transaction, key: &PendingKey) -> bool {
@@ -101,12 +92,7 @@ impl PendingStore<LmdbIteratorImpl> for LmdbPendingStore {
 
     fn for_each_par(
         &self,
-        action: &(dyn Fn(
-            &dyn ReadTransaction,
-            PendingIterator<LmdbIteratorImpl>,
-            PendingIterator<LmdbIteratorImpl>,
-        ) + Send
-              + Sync),
+        action: &(dyn Fn(&dyn ReadTransaction, PendingIterator, PendingIterator) + Send + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();
@@ -120,8 +106,8 @@ impl PendingStore<LmdbIteratorImpl> for LmdbPendingStore {
         });
     }
 
-    fn end(&self) -> PendingIterator<LmdbIteratorImpl> {
-        PendingIterator::new(LmdbIteratorImpl::null())
+    fn end(&self) -> PendingIterator {
+        LmdbIteratorImpl::null_iterator()
     }
 }
 

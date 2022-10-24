@@ -44,7 +44,7 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_begin(
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
     let iterator = (*handle).0.begin((*txn).as_txn());
-    LmdbIteratorHandle::new(iterator.take_impl())
+    LmdbIteratorHandle::new2(iterator)
 }
 
 #[no_mangle]
@@ -55,7 +55,7 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_begin_at_root(
 ) -> *mut LmdbIteratorHandle {
     let root = QualifiedRoot::from_ptr(root);
     let iterator = (*handle).0.begin_at_root((*txn).as_txn(), &root);
-    LmdbIteratorHandle::new(iterator.take_impl())
+    LmdbIteratorHandle::new2(iterator)
 }
 
 #[repr(C)]

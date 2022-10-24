@@ -32,7 +32,7 @@ impl LmdbFinalVoteStore {
     }
 }
 
-impl FinalVoteStore<LmdbIteratorImpl> for LmdbFinalVoteStore {
+impl FinalVoteStore for LmdbFinalVoteStore {
     fn put(&self, txn: &mut dyn WriteTransaction, root: &QualifiedRoot, hash: &BlockHash) -> bool {
         let root_bytes = root.to_bytes();
         match get(txn.txn(), self.database, &root_bytes) {
@@ -54,22 +54,13 @@ impl FinalVoteStore<LmdbIteratorImpl> for LmdbFinalVoteStore {
         }
     }
 
-    fn begin(&self, txn: &dyn Transaction) -> FinalVoteIterator<LmdbIteratorImpl> {
-        FinalVoteIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
+    fn begin(&self, txn: &dyn Transaction) -> FinalVoteIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    fn begin_at_root(
-        &self,
-        txn: &dyn Transaction,
-        root: &QualifiedRoot,
-    ) -> FinalVoteIterator<LmdbIteratorImpl> {
+    fn begin_at_root(&self, txn: &dyn Transaction, root: &QualifiedRoot) -> FinalVoteIterator {
         let key_bytes = root.to_bytes();
-        FinalVoteIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.database,
-            Some(&key_bytes),
-            true,
-        ))
+        LmdbIteratorImpl::new_iterator(txn, self.database, Some(&key_bytes), true)
     }
 
     fn get(&self, txn: &dyn Transaction, root: Root) -> Vec<BlockHash> {
@@ -128,12 +119,7 @@ impl FinalVoteStore<LmdbIteratorImpl> for LmdbFinalVoteStore {
 
     fn for_each_par(
         &self,
-        action: &(dyn Fn(
-            &dyn ReadTransaction,
-            FinalVoteIterator<LmdbIteratorImpl>,
-            FinalVoteIterator<LmdbIteratorImpl>,
-        ) + Send
-              + Sync),
+        action: &(dyn Fn(&dyn ReadTransaction, FinalVoteIterator, FinalVoteIterator) + Send + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();
@@ -147,8 +133,8 @@ impl FinalVoteStore<LmdbIteratorImpl> for LmdbFinalVoteStore {
         });
     }
 
-    fn end(&self) -> FinalVoteIterator<LmdbIteratorImpl> {
-        FinalVoteIterator::new(LmdbIteratorImpl::null())
+    fn end(&self) -> FinalVoteIterator {
+        LmdbIteratorImpl::null_iterator()
     }
 }
 

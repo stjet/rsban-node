@@ -5,7 +5,7 @@ use crate::{
     core::{Account, ConfirmationHeightInfo},
     ledger::datastore::{
         confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
-        ConfirmationHeightStore, DbIterator, ReadTransaction, Transaction, WriteTransaction,
+        ConfirmationHeightStore, ReadTransaction, Transaction, WriteTransaction,
     },
     utils::{Deserialize, StreamAdapter},
 };
@@ -30,7 +30,7 @@ impl LmdbConfirmationHeightStore {
     }
 }
 
-impl ConfirmationHeightStore<LmdbIteratorImpl> for LmdbConfirmationHeightStore {
+impl ConfirmationHeightStore for LmdbConfirmationHeightStore {
     fn put(
         &self,
         txn: &mut dyn WriteTransaction,
@@ -78,34 +78,26 @@ impl ConfirmationHeightStore<LmdbIteratorImpl> for LmdbConfirmationHeightStore {
         as_write_txn(txn).clear_db(self.database).unwrap()
     }
 
-    fn begin(&self, txn: &dyn Transaction) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
-        DbIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
+    fn begin(&self, txn: &dyn Transaction) -> ConfirmationHeightIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
     fn begin_at_account(
         &self,
         txn: &dyn Transaction,
         account: &Account,
-    ) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
-        DbIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.database,
-            Some(account.as_bytes()),
-            true,
-        ))
+    ) -> ConfirmationHeightIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, Some(account.as_bytes()), true)
     }
 
-    fn end(&self) -> ConfirmationHeightIterator<LmdbIteratorImpl> {
-        DbIterator::new(LmdbIteratorImpl::null())
+    fn end(&self) -> ConfirmationHeightIterator {
+        LmdbIteratorImpl::null_iterator()
     }
 
     fn for_each_par(
         &self,
-        action: &(dyn Fn(
-            &dyn ReadTransaction,
-            ConfirmationHeightIterator<LmdbIteratorImpl>,
-            ConfirmationHeightIterator<LmdbIteratorImpl>,
-        ) + Send
+        action: &(dyn Fn(&dyn ReadTransaction, ConfirmationHeightIterator, ConfirmationHeightIterator)
+              + Send
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
@@ -123,9 +115,8 @@ impl ConfirmationHeightStore<LmdbIteratorImpl> for LmdbConfirmationHeightStore {
 
 #[cfg(test)]
 mod tests {
-    use crate::{core::BlockHash, ledger::datastore::lmdb::TestLmdbEnv};
-
     use super::*;
+    use crate::{core::BlockHash, ledger::datastore::lmdb::TestLmdbEnv};
 
     #[test]
     fn empty_store() -> anyhow::Result<()> {

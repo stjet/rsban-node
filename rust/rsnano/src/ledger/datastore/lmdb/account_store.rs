@@ -1,8 +1,8 @@
 use crate::{
     core::{Account, AccountInfo},
     ledger::datastore::{
-        parallel_traversal, AccountIterator, AccountStore, DbIterator, ReadTransaction,
-        Transaction, WriteTransaction,
+        parallel_traversal, AccountIterator, AccountStore, ReadTransaction, Transaction,
+        WriteTransaction,
     },
     utils::{Deserialize, StreamAdapter},
 };
@@ -31,7 +31,7 @@ impl LmdbAccountStore {
     }
 }
 
-impl AccountStore<LmdbIteratorImpl> for LmdbAccountStore {
+impl AccountStore for LmdbAccountStore {
     fn put(&self, transaction: &mut dyn WriteTransaction, account: &Account, info: &AccountInfo) {
         as_write_txn(transaction)
             .put(
@@ -61,36 +61,17 @@ impl AccountStore<LmdbIteratorImpl> for LmdbAccountStore {
             .unwrap();
     }
 
-    fn begin_account(
-        &self,
-        transaction: &dyn Transaction,
-        account: &Account,
-    ) -> DbIterator<Account, AccountInfo, LmdbIteratorImpl> {
-        DbIterator::new(LmdbIteratorImpl::new(
-            transaction,
-            self.database,
-            Some(account.as_bytes()),
-            true,
-        ))
+    fn begin_account(&self, transaction: &dyn Transaction, account: &Account) -> AccountIterator {
+        LmdbIteratorImpl::new_iterator(transaction, self.database, Some(account.as_bytes()), true)
     }
 
-    fn begin(&self, transaction: &dyn Transaction) -> AccountIterator<LmdbIteratorImpl> {
-        AccountIterator::new(LmdbIteratorImpl::new(
-            transaction,
-            self.database,
-            None,
-            true,
-        ))
+    fn begin(&self, transaction: &dyn Transaction) -> AccountIterator {
+        LmdbIteratorImpl::new_iterator(transaction, self.database, None, true)
     }
 
     fn for_each_par(
         &self,
-        action: &(dyn Fn(
-            &dyn ReadTransaction,
-            AccountIterator<LmdbIteratorImpl>,
-            AccountIterator<LmdbIteratorImpl>,
-        ) + Send
-              + Sync),
+        action: &(dyn Fn(&dyn ReadTransaction, AccountIterator, AccountIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let txn = self.env.tx_begin_read().unwrap();
@@ -104,8 +85,8 @@ impl AccountStore<LmdbIteratorImpl> for LmdbAccountStore {
         })
     }
 
-    fn end(&self) -> AccountIterator<LmdbIteratorImpl> {
-        DbIterator::new(LmdbIteratorImpl::null())
+    fn end(&self) -> AccountIterator {
+        LmdbIteratorImpl::null_iterator()
     }
 
     fn count(&self, txn: &dyn Transaction) -> usize {
@@ -256,7 +237,7 @@ mod tests {
 
         let balance_sum = Mutex::new(Amount::zero());
         sut.store.for_each_par(&|_, mut begin, end| {
-            while begin != end {
+            while !begin.eq(end.as_ref()) {
                 if let Some((_, v)) = begin.current() {
                     *balance_sum.lock().unwrap() += v.balance
                 }

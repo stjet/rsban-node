@@ -29,7 +29,7 @@ impl LmdbOnlineWeightStore {
     }
 }
 
-impl OnlineWeightStore<LmdbIteratorImpl> for LmdbOnlineWeightStore {
+impl OnlineWeightStore for LmdbOnlineWeightStore {
     fn put(&self, txn: &mut dyn WriteTransaction, time: u64, amount: &Amount) {
         let time_bytes = time.to_be_bytes();
         let amount_bytes = amount.to_be_bytes();
@@ -50,12 +50,12 @@ impl OnlineWeightStore<LmdbIteratorImpl> for LmdbOnlineWeightStore {
             .unwrap();
     }
 
-    fn begin(&self, txn: &dyn Transaction) -> OnlineWeightIterator<LmdbIteratorImpl> {
-        OnlineWeightIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
+    fn begin(&self, txn: &dyn Transaction) -> OnlineWeightIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    fn rbegin(&self, txn: &dyn Transaction) -> OnlineWeightIterator<LmdbIteratorImpl> {
-        OnlineWeightIterator::new(LmdbIteratorImpl::new(txn, self.database, None, false))
+    fn rbegin(&self, txn: &dyn Transaction) -> OnlineWeightIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, false)
     }
 
     fn count(&self, txn: &dyn Transaction) -> usize {

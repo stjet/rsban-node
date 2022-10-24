@@ -27,7 +27,7 @@ impl LmdbPeerStore {
     }
 }
 
-impl PeerStore<LmdbIteratorImpl> for LmdbPeerStore {
+impl PeerStore for LmdbPeerStore {
     fn put(&self, txn: &mut dyn WriteTransaction, endpoint: &EndpointKey) {
         as_write_txn(txn)
             .put(
@@ -57,8 +57,8 @@ impl PeerStore<LmdbIteratorImpl> for LmdbPeerStore {
         as_write_txn(txn).clear_db(self.database).unwrap();
     }
 
-    fn begin(&self, txn: &dyn Transaction) -> PeerIterator<LmdbIteratorImpl> {
-        PeerIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
+    fn begin(&self, txn: &dyn Transaction) -> PeerIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 }
 

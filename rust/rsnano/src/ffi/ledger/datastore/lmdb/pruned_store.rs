@@ -63,7 +63,7 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_begin(
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
     let iterator = (*handle).0.begin((*txn).as_txn());
-    LmdbIteratorHandle::new(iterator.take_impl())
+    LmdbIteratorHandle::new2(iterator)
 }
 
 #[no_mangle]
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_begin_at_hash(
     let iterator = (*handle)
         .0
         .begin_at_hash((*txn).as_txn(), &BlockHash::from_ptr(hash));
-    LmdbIteratorHandle::new(iterator.take_impl())
+    LmdbIteratorHandle::new2(iterator)
 }
 
 #[no_mangle]

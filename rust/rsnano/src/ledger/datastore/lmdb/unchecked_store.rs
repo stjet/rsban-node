@@ -29,7 +29,7 @@ impl LmdbUncheckedStore {
     }
 }
 
-impl UncheckedStore<LmdbIteratorImpl> for LmdbUncheckedStore {
+impl UncheckedStore for LmdbUncheckedStore {
     fn clear(&self, txn: &mut dyn WriteTransaction) {
         as_write_txn(txn).clear_db(self.database).unwrap();
     }
@@ -68,22 +68,13 @@ impl UncheckedStore<LmdbIteratorImpl> for LmdbUncheckedStore {
             .unwrap();
     }
 
-    fn begin(&self, txn: &dyn Transaction) -> UncheckedIterator<LmdbIteratorImpl> {
-        UncheckedIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
+    fn begin(&self, txn: &dyn Transaction) -> UncheckedIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    fn lower_bound(
-        &self,
-        txn: &dyn Transaction,
-        key: &UncheckedKey,
-    ) -> UncheckedIterator<LmdbIteratorImpl> {
+    fn lower_bound(&self, txn: &dyn Transaction, key: &UncheckedKey) -> UncheckedIterator {
         let key_bytes = key.to_bytes();
-        UncheckedIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.database,
-            Some(&key_bytes),
-            true,
-        ))
+        LmdbIteratorImpl::new_iterator(txn, self.database, Some(&key_bytes), true)
     }
 
     fn count(&self, txn: &dyn Transaction) -> usize {

@@ -107,7 +107,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_begin(
     txn: *mut TransactionHandle,
 ) -> *mut LmdbIteratorHandle {
     let iterator = (*handle).0.begin((*txn).as_txn());
-    LmdbIteratorHandle::new(iterator.take_impl())
+    LmdbIteratorHandle::new2(iterator)
 }
 
 #[no_mangle]
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_begin_at_account(
     let iterator = (*handle)
         .0
         .begin_at_account((*txn).as_txn(), &Account::from_ptr(account));
-    LmdbIteratorHandle::new(iterator.take_impl())
+    LmdbIteratorHandle::new2(iterator)
 }
 
 #[no_mangle]

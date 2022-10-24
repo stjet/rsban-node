@@ -6,8 +6,8 @@ use crate::{
         StateBlock,
     },
     ledger::datastore::{
-        block_store::BlockIterator, parallel_traversal, BlockStore, DbIterator, ReadTransaction,
-        Transaction, WriteTransaction,
+        block_store::BlockIterator, parallel_traversal, BlockStore, ReadTransaction, Transaction,
+        WriteTransaction,
     },
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
 };
@@ -51,7 +51,7 @@ impl LmdbBlockStore {
     }
 }
 
-impl BlockStore<LmdbIteratorImpl> for LmdbBlockStore {
+impl BlockStore for LmdbBlockStore {
     fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash, block: &dyn Block) {
         debug_assert!(
             block.sideband().unwrap().successor.is_zero()
@@ -152,30 +152,16 @@ impl BlockStore<LmdbIteratorImpl> for LmdbBlockStore {
         self.account_calculated(block.as_block())
     }
 
-    fn begin(&self, transaction: &dyn Transaction) -> BlockIterator<LmdbIteratorImpl> {
-        DbIterator::new(LmdbIteratorImpl::new(
-            transaction,
-            self.database,
-            None,
-            true,
-        ))
+    fn begin(&self, transaction: &dyn Transaction) -> BlockIterator {
+        LmdbIteratorImpl::new_iterator(transaction, self.database, None, true)
     }
 
-    fn begin_at_hash(
-        &self,
-        transaction: &dyn Transaction,
-        hash: &BlockHash,
-    ) -> BlockIterator<LmdbIteratorImpl> {
-        DbIterator::new(LmdbIteratorImpl::new(
-            transaction,
-            self.database,
-            Some(hash.as_bytes()),
-            true,
-        ))
+    fn begin_at_hash(&self, transaction: &dyn Transaction, hash: &BlockHash) -> BlockIterator {
+        LmdbIteratorImpl::new_iterator(transaction, self.database, Some(hash.as_bytes()), true)
     }
 
-    fn end(&self) -> BlockIterator<LmdbIteratorImpl> {
-        DbIterator::new(LmdbIteratorImpl::null())
+    fn end(&self) -> BlockIterator {
+        LmdbIteratorImpl::null_iterator()
     }
 
     fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum> {
@@ -220,12 +206,7 @@ impl BlockStore<LmdbIteratorImpl> for LmdbBlockStore {
 
     fn for_each_par(
         &self,
-        action: &(dyn Fn(
-            &dyn ReadTransaction,
-            BlockIterator<LmdbIteratorImpl>,
-            BlockIterator<LmdbIteratorImpl>,
-        ) + Send
-              + Sync),
+        action: &(dyn Fn(&dyn ReadTransaction, BlockIterator, BlockIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();

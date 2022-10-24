@@ -33,7 +33,7 @@ impl LmdbFrontierStore {
     }
 }
 
-impl FrontierStore<LmdbIteratorImpl> for LmdbFrontierStore {
+impl FrontierStore for LmdbFrontierStore {
     fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash, account: &Account) {
         as_write_txn(txn)
             .put(
@@ -59,31 +59,17 @@ impl FrontierStore<LmdbIteratorImpl> for LmdbFrontierStore {
             .unwrap();
     }
 
-    fn begin(&self, txn: &dyn Transaction) -> FrontierIterator<LmdbIteratorImpl> {
-        FrontierIterator::new(LmdbIteratorImpl::new(txn, self.database, None, true))
+    fn begin(&self, txn: &dyn Transaction) -> FrontierIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    fn begin_at_hash(
-        &self,
-        txn: &dyn Transaction,
-        hash: &BlockHash,
-    ) -> FrontierIterator<LmdbIteratorImpl> {
-        FrontierIterator::new(LmdbIteratorImpl::new(
-            txn,
-            self.database,
-            Some(hash.as_bytes()),
-            true,
-        ))
+    fn begin_at_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> FrontierIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, Some(hash.as_bytes()), true)
     }
 
     fn for_each_par(
         &self,
-        action: &(dyn Fn(
-            &dyn ReadTransaction,
-            FrontierIterator<LmdbIteratorImpl>,
-            FrontierIterator<LmdbIteratorImpl>,
-        ) + Send
-              + Sync),
+        action: &(dyn Fn(&dyn ReadTransaction, FrontierIterator, FrontierIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();
@@ -97,8 +83,8 @@ impl FrontierStore<LmdbIteratorImpl> for LmdbFrontierStore {
         });
     }
 
-    fn end(&self) -> FrontierIterator<LmdbIteratorImpl> {
-        FrontierIterator::new(LmdbIteratorImpl::null())
+    fn end(&self) -> FrontierIterator {
+        LmdbIteratorImpl::null_iterator()
     }
 }
 

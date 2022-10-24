@@ -28,7 +28,7 @@ pub use confirmation_height_store::ConfirmationHeightStore;
 pub use fan::Fan;
 pub use final_vote_store::FinalVoteStore;
 pub use frontier_store::FrontierStore;
-pub use iterator::{DbIterator, DbIteratorImpl};
+pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl};
 pub use online_weight_store::OnlineWeightStore;
 pub use peer_store::PeerStore;
 pub use pending_store::PendingStore;

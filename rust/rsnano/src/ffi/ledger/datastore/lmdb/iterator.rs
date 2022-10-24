@@ -2,7 +2,9 @@ use std::ffi::c_void;
 
 use crate::{
     ffi::VoidPointerCallback,
-    ledger::datastore::{lmdb::LmdbIteratorImpl, DbIterator, DbIteratorImpl, ReadTransaction},
+    ledger::datastore::{
+        lmdb::LmdbIteratorImpl, BinaryDbIterator, DbIterator, DbIteratorImpl, ReadTransaction,
+    },
     utils::{Deserialize, Serialize},
 };
 
@@ -32,6 +34,16 @@ pub struct LmdbIteratorHandle(IteratorType);
 impl LmdbIteratorHandle {
     pub fn new(it: LmdbIteratorImpl) -> *mut Self {
         Box::into_raw(Box::new(LmdbIteratorHandle(IteratorType::Lmdb(it))))
+    }
+
+    pub fn new2<K, V>(it: Box<dyn DbIterator<K, V>>) -> *mut Self
+    where
+        K: Serialize + Deserialize<Target = K> + 'static,
+        V: Deserialize<Target = V> + 'static,
+    {
+        Box::into_raw(Box::new(LmdbIteratorHandle(IteratorType::Lmdb(
+            take_iterator_impl(it),
+        ))))
     }
 }
 
@@ -69,14 +81,12 @@ pub unsafe extern "C" fn rsn_lmdb_iterator_next(handle: *mut LmdbIteratorHandle)
     }
 }
 
-pub fn to_lmdb_iterator_handle2<K, V>(
-    iterator: DbIterator<K, V, LmdbIteratorImpl>,
-) -> *mut LmdbIteratorHandle
+pub fn to_lmdb_iterator_handle<K, V>(iterator: Box<dyn DbIterator<K, V>>) -> *mut LmdbIteratorHandle
 where
-    K: Serialize + Deserialize<Target = K>,
-    V: Deserialize<Target = V>,
+    K: Serialize + Deserialize<Target = K> + 'static,
+    V: Deserialize<Target = V> + 'static,
 {
-    LmdbIteratorHandle::new(iterator.take_impl())
+    LmdbIteratorHandle::new(take_iterator_impl(iterator))
 }
 
 pub type ForEachParCallback = extern "C" fn(
@@ -96,18 +106,18 @@ impl ForEachParWrapper {
     pub fn execute<K, V>(
         &self,
         txn: &dyn ReadTransaction,
-        begin: DbIterator<K, V, LmdbIteratorImpl>,
-        end: DbIterator<K, V, LmdbIteratorImpl>,
+        begin: Box<dyn DbIterator<K, V>>,
+        end: Box<dyn DbIterator<K, V>>,
     ) where
-        K: Serialize + Deserialize<Target = K>,
-        V: Deserialize<Target = V>,
+        K: Serialize + Deserialize<Target = K> + 'static,
+        V: Deserialize<Target = V> + 'static,
     {
         let lmdb_txn = unsafe {
             std::mem::transmute::<&dyn ReadTransaction, &'static dyn ReadTransaction>(txn)
         };
         let txn_handle = TransactionHandle::new(TransactionType::ReadRef(lmdb_txn));
-        let begin_handle = to_lmdb_iterator_handle2(begin);
-        let end_handle = to_lmdb_iterator_handle2(end);
+        let begin_handle = to_lmdb_iterator_handle(begin);
+        let end_handle = to_lmdb_iterator_handle(end);
         (self.action)(self.context, txn_handle, begin_handle, end_handle);
     }
 }
@@ -119,4 +129,16 @@ impl Drop for ForEachParWrapper {
     fn drop(&mut self) {
         unsafe { (self.delete_context)(self.context) }
     }
+}
+
+pub(crate) fn take_iterator_impl<K, V>(mut it: Box<dyn DbIterator<K, V>>) -> LmdbIteratorImpl
+where
+    K: Serialize + Deserialize<Target = K> + 'static,
+    V: Deserialize<Target = V> + 'static,
+{
+    let it = it
+        .as_any_mut()
+        .downcast_mut::<BinaryDbIterator<K, V, LmdbIteratorImpl>>()
+        .unwrap();
+    it.take_impl()
 }

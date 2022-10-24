@@ -96,7 +96,7 @@ rsnano::LedgerConstantsDto nano::ledger_constants::to_dto () const
 	dto.nano_live_genesis = nano_live_genesis->clone_handle ();
 	dto.nano_test_genesis = nano_test_genesis->clone_handle ();
 	dto.genesis = genesis->clone_handle ();
-	boost::multiprecision::export_bits (genesis_amount, std::begin (dto.genesis_amount), 8);
+	boost::multiprecision::export_bits (genesis_amount, std::rbegin (dto.genesis_amount), 8, false);
 	std::copy (std::begin (burn_account.bytes), std::end (burn_account.bytes), std::begin (dto.burn_account));
 	std::copy (std::begin (nano_dev_final_votes_canary_account.bytes), std::end (nano_dev_final_votes_canary_account.bytes), std::begin (dto.nano_dev_final_votes_canary_account));
 	std::copy (std::begin (nano_beta_final_votes_canary_account.bytes), std::end (nano_beta_final_votes_canary_account.bytes), std::begin (dto.nano_beta_final_votes_canary_account));

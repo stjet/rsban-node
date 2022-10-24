@@ -610,9 +610,9 @@ std::string nano::keepalive::to_string () const
 
 rsnano::MessageHandle * create_publish_handle2 (nano::message_header const & header_a, nano::uint128_t const & digest_a)
 {
-	std::vector<uint8_t> bytes;
-	boost::multiprecision::export_bits (digest_a, std::back_inserter (bytes), 8);
-	return rsnano::rsn_message_publish_create2 (header_a.handle, bytes.data ());
+	uint8_t bytes[16] = { 0 };
+	boost::multiprecision::export_bits (digest_a, std::rbegin (bytes), 8, false);
+	return rsnano::rsn_message_publish_create2 (header_a.handle, &bytes[0]);
 }
 
 nano::publish::publish (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::uint128_t const & digest_a, nano::block_uniquer * uniquer_a) :
@@ -694,7 +694,7 @@ nano::uint128_t nano::publish::get_digest () const
 void nano::publish::set_digest (nano::uint128_t digest_a)
 {
 	std::uint8_t bytes[16];
-	boost::multiprecision::export_bits (digest_a, std::begin (bytes), 8);
+	boost::multiprecision::export_bits (digest_a, std::rbegin (bytes), 8, false);
 	rsnano::rsn_message_publish_set_digest (handle, &bytes[0]);
 }
 

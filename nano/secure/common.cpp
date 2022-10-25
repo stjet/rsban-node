@@ -176,15 +176,6 @@ nano::hardened_constants::hardened_constants () :
 	rsnano::rsn_hardened_constants_get (not_an_account.bytes.data (), random_128.bytes.data ());
 }
 
-nano::node_constants::node_constants (nano::network_constants & network_constants)
-{
-	rsnano::NodeConstantsDto dto;
-	auto network_dto{ network_constants.to_dto () };
-	if (rsnano::rsn_node_constants_create (&network_dto, &dto) < 0)
-		throw std::runtime_error ("could not create node constants");
-	read_dto (dto);
-}
-
 nano::node_constants::node_constants (rsnano::NodeConstantsDto const & dto)
 {
 	read_dto (dto);
@@ -210,16 +201,6 @@ rsnano::NodeConstantsDto nano::node_constants::to_dto () const
 	dto.max_weight_samples = max_weight_samples;
 	dto.weight_period = weight_period;
 	return dto;
-}
-
-nano::voting_constants::voting_constants (nano::network_constants & network_constants)
-{
-	auto network_dto{ network_constants.to_dto () };
-	rsnano::VotingConstantsDto dto;
-	if (rsnano::rsn_voting_constants_create (&network_dto, &dto) < 0)
-		throw std::runtime_error ("could not create voting constants");
-	max_cache = dto.max_cache;
-	delay = std::chrono::seconds (dto.delay_s);
 }
 
 nano::voting_constants::voting_constants (rsnano::VotingConstantsDto const & dto)
@@ -258,15 +239,6 @@ rsnano::PortmappingConstantsDto nano::portmapping_constants::to_dto () const
 	dto.lease_duration_s = lease_duration.count ();
 	dto.health_check_period_s = health_check_period.count ();
 	return dto;
-}
-
-nano::bootstrap_constants::bootstrap_constants (nano::network_constants & network_constants)
-{
-	auto network_dto{ network_constants.to_dto () };
-	rsnano::BootstrapConstantsDto dto;
-	if (rsnano::rsn_bootstrap_constants_create (&network_dto, &dto) < 0)
-		throw std::runtime_error ("could not create bootstrap constants");
-	read_dto (dto);
 }
 
 nano::bootstrap_constants::bootstrap_constants (rsnano::BootstrapConstantsDto const & dto)
@@ -687,15 +659,6 @@ void nano::vote::serialize_json (boost::property_tree::ptree & tree) const
 	rsnano::rsn_vote_serialize_json (handle, &tree);
 }
 
-std::string nano::vote::to_json () const
-{
-	std::stringstream stream;
-	boost::property_tree::ptree tree;
-	serialize_json (tree);
-	boost::property_tree::write_json (stream, tree);
-	return stream.str ();
-}
-
 /**
  * Returns the timestamp of the vote (with the duration bits masked, set to zero)
  * If it is a final vote, all the bits including duration bits are returned as they are, all FF
@@ -1015,10 +978,6 @@ void nano::generate_cache::enable_cemented_count (bool enable)
 {
 	rsnano::rsn_generate_cache_set_cemented_count (handle, enable);
 }
-bool nano::generate_cache::unchecked_count () const
-{
-	return rsnano::rsn_generate_cache_unchecked_count (handle);
-}
 void nano::generate_cache::enable_unchecked_count (bool enable)
 {
 	rsnano::rsn_generate_cache_set_unchecked_count (handle, enable);
@@ -1102,7 +1061,7 @@ nano::ledger_cache::ledger_cache (rsnano::LedgerCacheHandle * handle_a) :
 }
 
 nano::ledger_cache::ledger_cache (ledger_cache && other_a) :
-	handle{ other_a.handle}, rep_weights_m{ rsnano::rsn_ledger_cache_weights (handle) }
+	handle{ other_a.handle }, rep_weights_m{ rsnano::rsn_ledger_cache_weights (handle) }
 {
 	other_a.handle = nullptr;
 }
@@ -1113,13 +1072,13 @@ nano::ledger_cache::~ledger_cache ()
 		rsnano::rsn_ledger_cache_destroy (handle);
 }
 
-nano::ledger_cache& nano::ledger_cache::operator=(nano::ledger_cache && other_a)
+nano::ledger_cache & nano::ledger_cache::operator= (nano::ledger_cache && other_a)
 {
 	if (handle != nullptr)
 		rsnano::rsn_ledger_cache_destroy (handle);
 	handle = other_a.handle;
 	other_a.handle = nullptr;
-	rep_weights_m = std::move(other_a.rep_weights_m);
+	rep_weights_m = std::move (other_a.rep_weights_m);
 	return *this;
 }
 

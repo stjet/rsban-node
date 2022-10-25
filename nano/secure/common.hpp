@@ -304,7 +304,6 @@ public:
 	 */
 	bool deserialize (nano::stream &);
 	bool validate () const;
-	std::string to_json () const;
 	uint64_t timestamp () const;
 	uint8_t duration_bits () const;
 	nano::account account () const;
@@ -476,7 +475,6 @@ class node_constants
 {
 public:
 	node_constants () = default;
-	node_constants (nano::network_constants & network_constants);
 	node_constants (rsnano::NodeConstantsDto const &);
 	void read_dto (rsnano::NodeConstantsDto const &);
 	rsnano::NodeConstantsDto to_dto () const;
@@ -495,7 +493,6 @@ class voting_constants
 {
 public:
 	voting_constants () = default;
-	voting_constants (nano::network_constants & network_constants);
 	voting_constants (rsnano::VotingConstantsDto const & dto);
 	size_t max_cache;
 	std::chrono::seconds delay;
@@ -520,7 +517,6 @@ class bootstrap_constants
 {
 public:
 	bootstrap_constants () = default;
-	bootstrap_constants (nano::network_constants & network_constants);
 	bootstrap_constants (rsnano::BootstrapConstantsDto const & dto);
 	void read_dto (rsnano::BootstrapConstantsDto const & dto);
 	uint32_t lazy_max_pull_blocks;
@@ -577,7 +573,6 @@ public:
 	void enable_reps (bool enable);
 	bool cemented_count () const;
 	void enable_cemented_count (bool enable);
-	bool unchecked_count () const;
 	void enable_unchecked_count (bool enable);
 	bool account_count () const;
 	void enable_account_count (bool enable);
@@ -596,7 +591,7 @@ public:
 	ledger_cache (ledger_cache &&);
 	~ledger_cache ();
 	ledger_cache (ledger_cache const &) = delete;
-	ledger_cache& operator=(ledger_cache && other_a);
+	ledger_cache & operator= (ledger_cache && other_a);
 	nano::rep_weights & rep_weights ();
 	uint64_t cemented_count () const;
 	void add_cemented (uint64_t count);

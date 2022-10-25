@@ -52,18 +52,6 @@ pub unsafe extern "C" fn rsn_rep_weights_representation_add_dual(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_rep_weights_representation_put(
-    handle: *mut RepWeightsHandle,
-    source_rep: *const u8,
-    amount: *const u8,
-) {
-    (*handle).0.representation_put(
-        Account::from_ptr(source_rep),
-        Amount::from_ptr(amount).number(),
-    );
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_rep_weights_representation_get(
     handle: *mut RepWeightsHandle,
     account: *const u8,
@@ -72,14 +60,6 @@ pub unsafe extern "C" fn rsn_rep_weights_representation_get(
     let result = slice::from_raw_parts_mut(result, 16);
     let representation = (*handle).0.representation_get(&Account::from_ptr(account));
     result.copy_from_slice(&representation.to_be_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_rep_weights_copy_from(
-    handle: *mut RepWeightsHandle,
-    other: *const RepWeightsHandle,
-) {
-    (*handle).0.copy_from(&(*other).0);
 }
 
 #[no_mangle]

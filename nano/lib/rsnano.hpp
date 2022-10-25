@@ -250,49 +250,6 @@ using VoidPointerCallback = void (*) (void *);
 
 using ChannelTcpSendBufferCallback = void (*) (void *, const ErrorCodeDto *, uintptr_t);
 
-struct WorkThresholdsDto
-{
-	uint64_t epoch_1;
-	uint64_t epoch_2;
-	uint64_t epoch_2_receive;
-	uint64_t base;
-	uint64_t entry;
-};
-
-struct NetworkConstantsDto
-{
-	uint16_t current_network;
-	WorkThresholdsDto work;
-	uint32_t principal_weight_factor;
-	uint16_t default_node_port;
-	uint16_t default_rpc_port;
-	uint16_t default_ipc_port;
-	uint16_t default_websocket_port;
-	uint32_t request_interval_ms;
-	int64_t cleanup_period_s;
-	int64_t idle_timeout_s;
-	int64_t sync_cookie_cutoff_s;
-	int64_t bootstrap_interval_s;
-	uintptr_t max_peers_per_ip;
-	uintptr_t max_peers_per_subnetwork;
-	int64_t peer_dump_interval_s;
-	uint8_t protocol_version;
-	uint8_t protocol_version_min;
-	uintptr_t ipv6_subnetwork_prefix_for_limiting;
-	int64_t silent_connection_tolerance_time_s;
-};
-
-struct BootstrapConstantsDto
-{
-	uint32_t lazy_max_pull_blocks;
-	uint32_t lazy_min_pull_blocks;
-	uint32_t frontier_retry_limit;
-	uint32_t lazy_retry_limit;
-	uint32_t lazy_destinations_retry_limit;
-	int64_t gap_cache_bootstrap_start_interval_ms;
-	uint32_t default_frontiers_age_seconds;
-};
-
 struct PeerDto
 {
 	uint8_t address[128];
@@ -350,6 +307,38 @@ struct IpcConfigTransportDto
 	bool allow_unsafe;
 	uintptr_t io_timeout;
 	int64_t io_threads;
+};
+
+struct WorkThresholdsDto
+{
+	uint64_t epoch_1;
+	uint64_t epoch_2;
+	uint64_t epoch_2_receive;
+	uint64_t base;
+	uint64_t entry;
+};
+
+struct NetworkConstantsDto
+{
+	uint16_t current_network;
+	WorkThresholdsDto work;
+	uint32_t principal_weight_factor;
+	uint16_t default_node_port;
+	uint16_t default_rpc_port;
+	uint16_t default_ipc_port;
+	uint16_t default_websocket_port;
+	uint32_t request_interval_ms;
+	int64_t cleanup_period_s;
+	int64_t idle_timeout_s;
+	int64_t sync_cookie_cutoff_s;
+	int64_t bootstrap_interval_s;
+	uintptr_t max_peers_per_ip;
+	uintptr_t max_peers_per_subnetwork;
+	int64_t peer_dump_interval_s;
+	uint8_t protocol_version;
+	uint8_t protocol_version_min;
+	uintptr_t ipv6_subnetwork_prefix_for_limiting;
+	int64_t silent_connection_tolerance_time_s;
 };
 
 struct IpcConfigDto
@@ -511,6 +500,17 @@ struct PortmappingConstantsDto
 {
 	int64_t lease_duration_s;
 	int64_t health_check_period_s;
+};
+
+struct BootstrapConstantsDto
+{
+	uint32_t lazy_max_pull_blocks;
+	uint32_t lazy_min_pull_blocks;
+	uint32_t frontier_retry_limit;
+	uint32_t lazy_retry_limit;
+	uint32_t lazy_destinations_retry_limit;
+	int64_t gap_cache_bootstrap_start_interval_ms;
+	uint32_t default_frontiers_age_seconds;
 };
 
 struct NetworkParamsDto
@@ -1306,9 +1306,6 @@ void rsn_bootstrap_client_stop (BootstrapClientHandle * handle, bool force);
 
 void rsn_bootstrap_client_tcp_endpoint (BootstrapClientHandle * handle, EndpointDto * endpoint);
 
-int32_t rsn_bootstrap_constants_create (const NetworkConstantsDto * network_constants,
-BootstrapConstantsDto * dto);
-
 BootstrapInitiatorHandle * rsn_bootstrap_initiator_create (void * handle);
 
 void rsn_bootstrap_initiator_destroy (BootstrapInitiatorHandle * handle);
@@ -1673,8 +1670,6 @@ void rsn_generate_cache_set_reps (GenerateCacheHandle * handle, bool enable);
 
 void rsn_generate_cache_set_unchecked_count (GenerateCacheHandle * handle, bool enable);
 
-bool rsn_generate_cache_unchecked_count (GenerateCacheHandle * handle);
-
 void rsn_hardened_constants_get (uint8_t * not_an_account, uint8_t * random_128);
 
 /// handle is a `boost::asio::io_context *`
@@ -1753,8 +1748,6 @@ void rsn_ledger_destroy (LedgerHandle * handle);
 void rsn_ledger_destroy_bootstrap_weights_dto (BootstrapWeightsDto * dto);
 
 void rsn_ledger_enable_pruning (LedgerHandle * handle);
-
-LedgerCacheHandle * rsn_ledger_get_cache (LedgerHandle * handle);
 
 LedgerCacheHandle * rsn_ledger_get_cache_handle (LedgerHandle * handle);
 
@@ -2631,8 +2624,6 @@ void rsn_message_header_set_version_using (MessageHeaderHandle * handle, uint8_t
 
 uintptr_t rsn_message_header_size ();
 
-void rsn_message_header_to_string (MessageHeaderHandle * handle, StringDto * result);
-
 uint8_t rsn_message_header_type (MessageHeaderHandle * handle);
 
 uint8_t rsn_message_header_version_using (MessageHeaderHandle * handle);
@@ -2729,8 +2720,6 @@ uint8_t rsn_message_type (MessageHandle * handle);
 
 uint8_t rsn_message_type_to_stat_detail (uint8_t message_type);
 
-void rsn_message_type_to_string (uint8_t msg_type, StringDto * result);
-
 uint16_t rsn_network_constants_active_network ();
 
 void rsn_network_constants_active_network_set (uint16_t network);
@@ -2790,9 +2779,6 @@ const LoggingDto * logging,
 const NetworkParamsDto * network_params);
 
 int32_t rsn_node_config_serialize_toml (const NodeConfigDto * dto, void * toml);
-
-int32_t rsn_node_constants_create (const NetworkConstantsDto * network_constants,
-NodeConstantsDto * dto);
 
 NodeFlagsHandle * rsn_node_flags_clone (NodeFlagsHandle * handle);
 
@@ -2921,8 +2907,6 @@ void rsn_receive_block_source_set (BlockHandle * handle, const uint8_t (*previou
 
 void rsn_remove_temporary_directories ();
 
-void rsn_rep_weights_copy_from (RepWeightsHandle * handle, const RepWeightsHandle * other);
-
 RepWeightsHandle * rsn_rep_weights_create ();
 
 void rsn_rep_weights_destroy (RepWeightsHandle * handle);
@@ -2948,10 +2932,6 @@ const uint8_t * amount_2);
 void rsn_rep_weights_representation_get (RepWeightsHandle * handle,
 const uint8_t * account,
 uint8_t * result);
-
-void rsn_rep_weights_representation_put (RepWeightsHandle * handle,
-const uint8_t * source_rep,
-const uint8_t * amount);
 
 int32_t rsn_rpc_config_create (RpcConfigDto * dto, const NetworkConstantsDto * network_constants);
 
@@ -3455,9 +3435,6 @@ uintptr_t rsn_vote_uniquer_size (const VoteUniquerHandle * handle);
 VoteHandle * rsn_vote_uniquer_unique (VoteUniquerHandle * handle, VoteHandle * vote);
 
 bool rsn_vote_validate (const VoteHandle * handle);
-
-int32_t rsn_voting_constants_create (const NetworkConstantsDto * network_constants,
-VotingConstantsDto * dto);
 
 void rsn_weak_socket_destroy (SocketWeakHandle * handle);
 

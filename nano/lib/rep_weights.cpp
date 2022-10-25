@@ -10,22 +10,22 @@ nano::rep_weights::rep_weights (rsnano::RepWeightsHandle * handle_a) :
 	handle{ handle_a } {};
 
 nano::rep_weights::rep_weights (nano::rep_weights && other_a) :
-    handle{ other_a.handle }
+	handle{ other_a.handle }
 {
-    other_a.handle = nullptr;
+	other_a.handle = nullptr;
 };
 
 nano::rep_weights::~rep_weights ()
 {
-    if (handle != nullptr)
-        rsnano::rsn_rep_weights_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_rep_weights_destroy (handle);
 }
 
-nano::rep_weights & nano::rep_weights::operator=(nano::rep_weights && other_a)
+nano::rep_weights & nano::rep_weights::operator= (nano::rep_weights && other_a)
 {
-    if (handle != nullptr)
-        rsnano::rsn_rep_weights_destroy (handle);
-    handle = other_a.handle;
+	if (handle != nullptr)
+		rsnano::rsn_rep_weights_destroy (handle);
+	handle = other_a.handle;
 	other_a.handle = nullptr;
 	return *this;
 }
@@ -44,11 +44,6 @@ void nano::rep_weights::representation_add_dual (nano::account const & source_re
 	boost::multiprecision::export_bits (amount_1, std::rbegin (amount_1_bytes), 8, false);
 	boost::multiprecision::export_bits (amount_2, std::rbegin (amount_2_bytes), 8, false);
 	rsnano::rsn_rep_weights_representation_add_dual (handle, source_rep_1.bytes.data (), &amount_1_bytes[0], source_rep_2.bytes.data (), &amount_2_bytes[0]);
-}
-
-void nano::rep_weights::representation_put (nano::account const & account_a, nano::uint128_union const & representation_a)
-{
-	rsnano::rsn_rep_weights_representation_put (handle, account_a.bytes.data (), representation_a.bytes.data ());
 }
 
 nano::uint128_t nano::rep_weights::representation_get (nano::account const & account_a) const
@@ -81,11 +76,6 @@ std::unordered_map<nano::account, nano::uint128_t> nano::rep_weights::get_rep_am
 	rsnano::rsn_rep_weights_destroy_amounts_dto (&amounts_dto);
 
 	return result;
-}
-
-void nano::rep_weights::copy_from (nano::rep_weights & other_a)
-{
-	rsnano::rsn_rep_weights_copy_from (handle, other_a.handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (nano::rep_weights const & rep_weights, std::string const & name)

@@ -24,13 +24,11 @@ public:
 	rep_weights (rep_weights const &) = delete;
 	rep_weights (rep_weights &&);
 	~rep_weights ();
-	rep_weights & operator=(rep_weights && other_a);
+	rep_weights & operator= (rep_weights && other_a);
 	void representation_add (nano::account const & source_rep_a, nano::uint128_t const & amount_a);
 	void representation_add_dual (nano::account const & source_rep_1, nano::uint128_t const & amount_1, nano::account const & source_rep_2, nano::uint128_t const & amount_2);
 	nano::uint128_t representation_get (nano::account const & account_a) const;
-	void representation_put (nano::account const & account_a, nano::uint128_union const & representation_a);
 	std::unordered_map<nano::account, nano::uint128_t> get_rep_amounts () const;
-	void copy_from (rep_weights & other_a);
 
 private:
 	rsnano::RepWeightsHandle * handle;

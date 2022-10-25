@@ -69,13 +69,6 @@ pub unsafe extern "C" fn rsn_generate_cache_set_cemented_count(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_generate_cache_unchecked_count(
-    handle: *mut GenerateCacheHandle,
-) -> bool {
-    (*handle).0.unchecked_count
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_generate_cache_set_unchecked_count(
     handle: *mut GenerateCacheHandle,
     enable: bool,

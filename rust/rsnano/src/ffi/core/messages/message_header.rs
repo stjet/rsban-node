@@ -5,14 +5,7 @@ use crate::config::{NetworkConstants, Networks};
 use crate::core::messages::{MessageHeader, MessageType};
 
 use crate::ffi::utils::FfiStream;
-use crate::ffi::StringDto;
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_type_to_string(msg_type: u8, result: *mut StringDto) {
-    (*result) = match MessageType::from_u8(msg_type) {
-        Some(msg_type) => msg_type.as_str().into(),
-        None => "n/a".into(),
-    }
-}
+
 pub struct MessageHeaderHandle(MessageHeader);
 
 impl MessageHeaderHandle {
@@ -103,14 +96,6 @@ pub unsafe extern "C" fn rsn_message_header_serialize(
 ) -> bool {
     let mut stream = FfiStream::new(stream);
     (*handle).0.serialize(&mut stream).is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_header_to_string(
-    handle: *mut MessageHeaderHandle,
-    result: *mut StringDto,
-) {
-    (*result) = (*handle).0.to_string().into()
 }
 
 #[no_mangle]

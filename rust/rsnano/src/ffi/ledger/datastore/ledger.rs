@@ -44,11 +44,6 @@ pub unsafe extern "C" fn rsn_ledger_create(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_get_cache(handle: *mut LedgerHandle) -> *mut LedgerCacheHandle {
-    LedgerCacheHandle::new((*handle).0.cache.clone())
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_ledger_destroy(handle: *mut LedgerHandle) {
     drop(unsafe { Box::from_raw(handle) });
 }

@@ -1,6 +1,5 @@
 mod daemon_config;
 mod diagnostics_config;
-mod generate_cache;
 mod lmdb_config;
 mod logging;
 mod network_constants;
@@ -17,7 +16,6 @@ use std::path::{Path, PathBuf};
 
 pub use daemon_config::*;
 pub use diagnostics_config::*;
-pub use generate_cache::*;
 pub use lmdb_config::*;
 pub use logging::*;
 pub use network_constants::*;

@@ -13,8 +13,8 @@ use crate::{
     core::{AccountInfo, ConfirmationHeightInfo, Epoch},
     ledger::{
         datastore::{
-            AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, Store, VersionStore,
-            WriteTransaction, STORE_VERSION_MINIMUM,
+            AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PrunedStore, Store,
+            VersionStore, WriteTransaction, STORE_VERSION_MINIMUM,
         },
         LedgerCache, LedgerConstants,
     },
@@ -317,6 +317,28 @@ fn copy_db(env: &LmdbEnv, destination: &Path) -> anyhow::Result<()> {
 impl Store for LmdbStore {
     fn copy_db(&self, destination: &Path) -> anyhow::Result<()> {
         copy_db(&self.env, destination)
+    }
+
+    fn tx_begin_read(&self) -> anyhow::Result<Box<dyn crate::ledger::datastore::ReadTransaction>> {
+        let txn = self.env.tx_begin_read()?;
+        Ok(Box::new(txn))
+    }
+
+    fn tx_begin_write(&self) -> anyhow::Result<Box<dyn WriteTransaction>> {
+        let txn = self.env.tx_begin_write()?;
+        Ok(Box::new(txn))
+    }
+
+    fn account(&self) -> &dyn AccountStore {
+        self.account_store.as_ref()
+    }
+
+    fn confirmation_height(&self) -> &dyn ConfirmationHeightStore {
+        self.confirmation_height_store.as_ref()
+    }
+
+    fn pruned(&self) -> &dyn PrunedStore {
+        self.pruned_store.as_ref()
     }
 }
 

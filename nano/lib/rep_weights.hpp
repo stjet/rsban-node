@@ -22,7 +22,9 @@ public:
 	rep_weights ();
 	rep_weights (rsnano::RepWeightsHandle * handle_a);
 	rep_weights (rep_weights const &) = delete;
+	rep_weights (rep_weights &&);
 	~rep_weights ();
+	rep_weights & operator=(rep_weights && other_a);
 	void representation_add (nano::account const & source_rep_a, nano::uint128_t const & amount_a);
 	void representation_add_dual (nano::account const & source_rep_1, nano::uint128_t const & amount_1, nano::account const & source_rep_2, nano::uint128_t const & amount_2);
 	nano::uint128_t representation_get (nano::account const & account_a) const;

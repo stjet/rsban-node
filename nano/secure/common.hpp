@@ -592,8 +592,11 @@ class ledger_cache
 {
 public:
 	ledger_cache ();
+	ledger_cache (rsnano::LedgerCacheHandle * handle_a);
+	ledger_cache (ledger_cache &&);
 	~ledger_cache ();
 	ledger_cache (ledger_cache const &) = delete;
+	ledger_cache& operator=(ledger_cache && other_a);
 	nano::rep_weights & rep_weights ();
 	uint64_t cemented_count () const;
 	void add_cemented (uint64_t count);

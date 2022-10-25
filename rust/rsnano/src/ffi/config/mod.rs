@@ -1,6 +1,5 @@
 mod daemon_config;
 mod diagnostics_config;
-mod generate_cache;
 mod lmdb_config;
 mod logging;
 mod network_constants;

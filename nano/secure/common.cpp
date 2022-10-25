@@ -1096,9 +1096,31 @@ nano::ledger_cache::ledger_cache () :
 {
 }
 
+nano::ledger_cache::ledger_cache (rsnano::LedgerCacheHandle * handle_a) :
+	handle{ handle_a }, rep_weights_m{ rsnano::rsn_ledger_cache_weights (handle) }
+{
+}
+
+nano::ledger_cache::ledger_cache (ledger_cache && other_a) :
+	handle{ other_a.handle}, rep_weights_m{ rsnano::rsn_ledger_cache_weights (handle) }
+{
+	other_a.handle = nullptr;
+}
+
 nano::ledger_cache::~ledger_cache ()
 {
-	rsnano::rsn_ledger_cache_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_ledger_cache_destroy (handle);
+}
+
+nano::ledger_cache& nano::ledger_cache::operator=(nano::ledger_cache && other_a)
+{
+	if (handle != nullptr)
+		rsnano::rsn_ledger_cache_destroy (handle);
+	handle = other_a.handle;
+	other_a.handle = nullptr;
+	rep_weights_m = std::move(other_a.rep_weights_m);
+	return *this;
 }
 
 nano::rep_weights & nano::ledger_cache::rep_weights ()

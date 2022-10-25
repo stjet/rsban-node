@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::config::GenerateCache;
+use crate::ledger::GenerateCache;
 
 pub struct GenerateCacheHandle(GenerateCache);
 

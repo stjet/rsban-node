@@ -1,7 +1,7 @@
 use crate::{
     core::Account,
     ffi::{
-        ledger::{LedgerCacheHandle, LedgerConstantsDto},
+        ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
         StatHandle,
     },
     ledger::Ledger,
@@ -30,13 +30,16 @@ pub unsafe extern "C" fn rsn_ledger_create(
     store: *mut LmdbStoreHandle,
     constants: *const LedgerConstantsDto,
     stats: *mut StatHandle,
+    generate_cache: *mut GenerateCacheHandle,
 ) -> *mut LedgerHandle {
     let ledger = Ledger::new(
         handle,
         (*store).deref().to_owned(),
         (&*constants).try_into().unwrap(),
         (*stats).deref().to_owned(),
-    );
+        &*generate_cache,
+    )
+    .unwrap();
     Box::into_raw(Box::new(LedgerHandle(Arc::new(ledger))))
 }
 
@@ -157,4 +160,11 @@ pub unsafe extern "C" fn rsn_ledger_set_bootstrap_weights(
         })
         .collect();
     *(*handle).0.bootstrap_weights.lock().unwrap() = weights;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_get_cache_handle(
+    handle: *mut LedgerHandle,
+) -> *mut LedgerCacheHandle {
+    LedgerCacheHandle::new((*handle).0.cache.clone())
 }

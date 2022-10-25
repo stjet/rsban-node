@@ -748,11 +748,8 @@ nano::ledger::ledger (nano::store & store_a, nano::stat & stat_a, nano::ledger_c
 	stats{ stat_a }
 {
 	auto constants_dto{ constants.to_dto () };
-	handle = rsnano::rsn_ledger_create (this, store_a.get_handle (), &constants_dto, stat_a.handle);
-	if (!store.init_error ())
-	{
-		initialize (generate_cache_a);
-	}
+	handle = rsnano::rsn_ledger_create (this, store_a.get_handle (), &constants_dto, stat_a.handle, generate_cache_a.handle);
+	cache = nano::ledger_cache (rsnano::rsn_ledger_get_cache_handle (handle));
 }
 
 nano::ledger::~ledger ()
@@ -763,52 +760,6 @@ nano::ledger::~ledger ()
 rsnano::LedgerHandle * nano::ledger::get_handle () const
 {
 	return handle;
-}
-
-void nano::ledger::initialize (nano::generate_cache const & generate_cache_a)
-{
-	if (generate_cache_a.reps () || generate_cache_a.account_count () || generate_cache_a.block_count ())
-	{
-		store.account ().for_each_par (
-		[this] (nano::read_transaction const & /*unused*/, nano::store_iterator<nano::account, nano::account_info> i, nano::store_iterator<nano::account, nano::account_info> n) {
-			uint64_t block_count_l{ 0 };
-			uint64_t account_count_l{ 0 };
-			nano::rep_weights rep_weights_l;
-			for (; i != n; ++i)
-			{
-				nano::account_info const & info (i->second);
-				block_count_l += info.block_count ();
-				++account_count_l;
-				rep_weights_l.representation_add (info.representative (), info.balance ().number ());
-			}
-			this->cache.add_blocks (block_count_l);
-			this->cache.add_accounts (account_count_l);
-			this->cache.rep_weights ().copy_from (rep_weights_l);
-		});
-	}
-
-	if (generate_cache_a.cemented_count ())
-	{
-		store.confirmation_height ().for_each_par (
-		[this] (nano::read_transaction const & /*unused*/, nano::store_iterator<nano::account, nano::confirmation_height_info> i, nano::store_iterator<nano::account, nano::confirmation_height_info> n) {
-			uint64_t cemented_count_l (0);
-			for (; i != n; ++i)
-			{
-				cemented_count_l += i->second.height ();
-			}
-			this->cache.add_cemented (cemented_count_l);
-		});
-	}
-
-	auto transaction (store.tx_begin_read ());
-	cache.add_pruned (store.pruned ().count (*transaction));
-
-	// Final votes requirement for confirmation canary block
-	nano::confirmation_height_info confirmation_height_info;
-	if (!store.confirmation_height ().get (*transaction, constants.final_votes_canary_account, confirmation_height_info))
-	{
-		cache.set_final_votes_confirmation_canary (confirmation_height_info.height () >= constants.final_votes_canary_height);
-	}
 }
 
 // Balance for account containing hash

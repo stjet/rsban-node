@@ -4,10 +4,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use super::generate_cache::GenerateCacheHandle;
 use crate::{
     config::{ConfirmationHeightMode, NodeFlags},
-    ffi::StringDto,
+    ffi::{ledger::GenerateCacheHandle, StringDto},
 };
 use num_traits::FromPrimitive;
 

@@ -9,9 +9,25 @@ nano::rep_weights::rep_weights () :
 nano::rep_weights::rep_weights (rsnano::RepWeightsHandle * handle_a) :
 	handle{ handle_a } {};
 
+nano::rep_weights::rep_weights (nano::rep_weights && other_a) :
+    handle{ other_a.handle }
+{
+    other_a.handle = nullptr;
+};
+
 nano::rep_weights::~rep_weights ()
 {
-	rsnano::rsn_rep_weights_destroy (handle);
+    if (handle != nullptr)
+        rsnano::rsn_rep_weights_destroy (handle);
+}
+
+nano::rep_weights & nano::rep_weights::operator=(nano::rep_weights && other_a)
+{
+    if (handle != nullptr)
+        rsnano::rsn_rep_weights_destroy (handle);
+    handle = other_a.handle;
+	other_a.handle = nullptr;
+	return *this;
 }
 
 void nano::rep_weights::representation_add (nano::account const & source_rep_a, nano::uint128_t const & amount_a)

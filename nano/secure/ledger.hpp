@@ -29,6 +29,7 @@ class ledger final
 public:
 	ledger (nano::store &, nano::stat &, nano::ledger_constants & constants, nano::generate_cache const & = nano::generate_cache ());
 	ledger (nano::ledger const &) = delete;
+	ledger (nano::ledger &&) = delete;
 	~ledger ();
 	nano::account account (nano::transaction const &, nano::block_hash const &) const;
 	nano::account account_safe (nano::transaction const &, nano::block_hash const &, bool &) const;
@@ -90,7 +91,6 @@ private:
 	nano::stat & stats;
 
 private:
-	void initialize (nano::generate_cache const &);
 	rsnano::LedgerHandle * handle;
 };
 

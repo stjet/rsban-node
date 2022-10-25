@@ -43,7 +43,8 @@ impl RepWeights {
     pub fn representation_add(&self, source_rep: Account, amount: u128) {
         let mut guard = self.rep_amounts.lock().unwrap();
         let source_previous = self.get(&guard, &source_rep);
-        self.put(&mut guard, source_rep, source_previous.wrapping_add(amount))
+        let new_amount = source_previous.wrapping_add(amount);
+        self.put(&mut guard, source_rep, new_amount)
     }
 
     pub fn representation_put(&self, account: Account, representation: u128) {

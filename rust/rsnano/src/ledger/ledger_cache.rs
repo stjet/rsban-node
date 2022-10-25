@@ -16,8 +16,9 @@ pub struct LedgerCache {
 
 impl LedgerCache {
     pub fn new() -> Self {
+        let rep_weights = Arc::new(RepWeights::new());
         Self {
-            rep_weights: Arc::new(RepWeights::new()),
+            rep_weights,
             cemented_count: AtomicU64::new(0),
             block_count: AtomicU64::new(0),
             pruned_count: AtomicU64::new(0),

@@ -28,7 +28,7 @@ use crate::{
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
 };
 
-use super::{FullHash, Uniquer};
+use super::{Amount, FullHash, Uniquer};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -145,6 +145,8 @@ pub trait Block: FullHash {
     }
     fn root(&self) -> Root;
     fn visit(&self, visitor: &mut dyn BlockVisitor);
+    fn balance(&self) -> Amount;
+    fn source(&self) -> BlockHash;
 }
 
 impl<T: Block> FullHash for T {

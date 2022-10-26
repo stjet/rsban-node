@@ -126,6 +126,12 @@ impl std::ops::Add for Amount {
     }
 }
 
+impl std::cmp::PartialOrd for Amount {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.value.partial_cmp(&other.value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::core::{KXRB_RATIO, XRB_RATIO};

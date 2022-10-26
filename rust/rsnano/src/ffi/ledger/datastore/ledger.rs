@@ -1,7 +1,8 @@
 use crate::{
     core::{Account, Amount, BlockHash},
     ffi::{
-        copy_amount_bytes,
+        copy_account_bytes, copy_amount_bytes, copy_hash_bytes,
+        core::BlockHandle,
         ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
         StatHandle, StringDto,
     },
@@ -257,4 +258,56 @@ pub unsafe extern "C" fn rsn_ledger_block_text(
         Ok(s) => s.into(),
         Err(_) => "".into(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_is_send(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    block: *const BlockHandle,
+) -> bool {
+    (*handle)
+        .0
+        .is_send((*txn).as_txn(), (*block).block.read().unwrap().as_block())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_block_destination(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    block: *const BlockHandle,
+    result: *mut u8,
+) {
+    let destination = (*handle)
+        .0
+        .block_destination((*txn).as_txn(), &(*block).block.read().unwrap());
+    copy_account_bytes(destination, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_block_source(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    block: *const BlockHandle,
+    result: *mut u8,
+) {
+    let source = (*handle)
+        .0
+        .block_source((*txn).as_txn(), &(*block).block.read().unwrap());
+    copy_hash_bytes(source, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_hash_root_random(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    result_hash: *mut u8,
+    result_root: *mut u8,
+) {
+    let (hash, root) = (*handle)
+        .0
+        .hash_root_random((*txn).as_txn())
+        .unwrap_or_default();
+    copy_hash_bytes(hash, result_hash);
+    copy_hash_bytes(root, result_root);
 }

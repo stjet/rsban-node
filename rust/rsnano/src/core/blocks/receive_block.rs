@@ -1,7 +1,7 @@
 use crate::{
     core::{
-        sign_message, to_hex_string, u64_from_hex_str, Account, BlockHash, BlockHashBuilder, Link,
-        PublicKey, RawKey, Root, Signature,
+        sign_message, to_hex_string, u64_from_hex_str, Account, Amount, BlockHash,
+        BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature,
     },
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
 };
@@ -175,6 +175,14 @@ impl Block for ReceiveBlock {
 
     fn visit(&self, visitor: &mut dyn BlockVisitor) {
         visitor.receive_block(self);
+    }
+
+    fn balance(&self) -> Amount {
+        Amount::zero()
+    }
+
+    fn source(&self) -> BlockHash {
+        self.hashables.source
     }
 }
 

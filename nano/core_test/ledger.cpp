@@ -2269,13 +2269,13 @@ TEST (ledger, block_destination_source)
 	ASSERT_TRUE (ledger.block_source (*transaction, *block1).is_zero ());
 	ASSERT_EQ (nano::dev::genesis->account (), ledger.block_destination (*transaction, *block2));
 	ASSERT_TRUE (ledger.block_source (*transaction, *block2).is_zero ());
-	ASSERT_TRUE (ledger.block_destination (*transaction, *block3) == nullptr);
+	ASSERT_TRUE (ledger.block_destination (*transaction, *block3).is_zero ());
 	ASSERT_EQ (block2->hash (), ledger.block_source (*transaction, *block3));
 	ASSERT_EQ (dest.pub, ledger.block_destination (*transaction, *block4));
 	ASSERT_TRUE (ledger.block_source (*transaction, *block4).is_zero ());
 	ASSERT_EQ (nano::dev::genesis->account (), ledger.block_destination (*transaction, *block5));
 	ASSERT_TRUE (ledger.block_source (*transaction, *block5).is_zero ());
-	ASSERT_TRUE (ledger.block_destination (*transaction, *block6) == nullptr);
+	ASSERT_TRUE (ledger.block_destination (*transaction, *block6).is_zero ());
 	ASSERT_EQ (block5->hash (), ledger.block_source (*transaction, *block6));
 }
 

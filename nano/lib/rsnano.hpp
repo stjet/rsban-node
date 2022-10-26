@@ -1717,11 +1717,21 @@ uint8_t * result);
 
 bool rsn_ledger_block_confirmed (LedgerHandle * handle, TransactionHandle * txn, const uint8_t * hash);
 
+void rsn_ledger_block_destination (LedgerHandle * handle,
+TransactionHandle * txn,
+const BlockHandle * block,
+uint8_t * result);
+
 bool rsn_ledger_block_or_pruned_exists (LedgerHandle * handle, const uint8_t * hash);
 
 bool rsn_ledger_block_or_pruned_exists_txn (LedgerHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash);
+
+void rsn_ledger_block_source (LedgerHandle * handle,
+TransactionHandle * txn,
+const BlockHandle * block,
+uint8_t * result);
 
 void rsn_ledger_block_text (LedgerHandle * handle, const uint8_t * hash, StringDto * result);
 
@@ -1778,6 +1788,13 @@ void rsn_ledger_destroy_bootstrap_weights_dto (BootstrapWeightsDto * dto);
 void rsn_ledger_enable_pruning (LedgerHandle * handle);
 
 LedgerCacheHandle * rsn_ledger_get_cache_handle (LedgerHandle * handle);
+
+void rsn_ledger_hash_root_random (LedgerHandle * handle,
+TransactionHandle * txn,
+uint8_t * result_hash,
+uint8_t * result_root);
+
+bool rsn_ledger_is_send (LedgerHandle * handle, TransactionHandle * txn, const BlockHandle * block);
 
 bool rsn_ledger_pruning_enabled (LedgerHandle * handle);
 

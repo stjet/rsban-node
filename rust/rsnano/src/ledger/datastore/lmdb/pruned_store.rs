@@ -56,15 +56,14 @@ impl PrunedStore for LmdbPrunedStore {
         LmdbIteratorImpl::new_iterator(txn, self.database, Some(hash.as_bytes()), true)
     }
 
-    fn random(&self, txn: &dyn Transaction) -> BlockHash {
+    fn random(&self, txn: &dyn Transaction) -> Option<BlockHash> {
         let random_hash = BlockHash::from_bytes(thread_rng().gen());
         let mut existing = self.begin_at_hash(txn, &random_hash);
         if existing.is_end() {
             existing = self.begin(txn);
         }
 
-        let result = existing.current().map(|(k, _)| *k).unwrap_or_default();
-        result
+        existing.current().map(|(k, _)| *k)
     }
 
     fn count(&self, txn: &dyn Transaction) -> usize {
@@ -111,7 +110,7 @@ mod tests {
         assert_eq!(store.count(&txn), 0);
         assert_eq!(store.exists(&txn, &BlockHash::from(1)), false);
         assert_eq!(store.begin(&txn).is_end(), true);
-        assert_eq!(store.random(&txn), BlockHash::zero());
+        assert!(store.random(&txn).is_none());
         Ok(())
     }
 
@@ -127,7 +126,7 @@ mod tests {
         assert_eq!(store.count(&txn), 1);
         assert_eq!(store.exists(&txn, &hash), true);
         assert_eq!(store.begin(&txn).current(), Some((&hash, &NoValue {})));
-        assert_eq!(store.random(&txn), hash);
+        assert_eq!(store.random(&txn), Some(hash));
         Ok(())
     }
 

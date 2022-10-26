@@ -135,10 +135,6 @@ impl SendBlock {
         self.hashables.previous = previous;
     }
 
-    pub fn balance(&self) -> Amount {
-        self.hashables.balance
-    }
-
     pub fn set_balance(&mut self, balance: Amount) {
         self.hashables.balance = balance;
     }
@@ -247,6 +243,14 @@ impl Block for SendBlock {
 
     fn visit(&self, visitor: &mut dyn BlockVisitor) {
         visitor.send_block(self);
+    }
+
+    fn balance(&self) -> Amount {
+        self.hashables.balance
+    }
+
+    fn source(&self) -> BlockHash {
+        BlockHash::zero()
     }
 }
 

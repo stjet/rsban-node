@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_random(
     txn: *mut TransactionHandle,
     hash: *mut u8,
 ) {
-    let random = (*handle).0.random((*txn).as_txn());
+    let random = (*handle).0.random((*txn).as_txn()).unwrap_or_default();
     copy_hash_bytes(random, hash);
 }
 

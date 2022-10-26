@@ -1,5 +1,7 @@
+use rand::{thread_rng, Rng};
+
 use crate::{
-    core::{Account, Amount, BlockHash, PendingKey},
+    core::{Account, Amount, Block, BlockEnum, BlockHash, BlockType, PendingKey},
     stats::Stat,
     utils::create_property_tree,
 };
@@ -240,6 +242,97 @@ impl Ledger {
                 Ok(writer.to_json())
             }
             None => Ok(String::new()),
+        }
+    }
+
+    pub fn is_send(&self, txn: &dyn Transaction, block: &dyn Block) -> bool {
+        if block.block_type() != BlockType::State {
+            return block.block_type() == BlockType::Send;
+        }
+        let previous = block.previous();
+        /*
+         * if block_a does not have a sideband, then is_send()
+         * requires that the previous block exists in the database.
+         * This is because it must retrieve the balance of the previous block.
+         */
+        debug_assert!(
+            block.sideband().is_some()
+                || previous.is_zero()
+                || self.store.block().exists(txn, &previous)
+        );
+        match block.sideband() {
+            Some(sideband) => sideband.details.is_send,
+            None => {
+                if !previous.is_zero() {
+                    block.balance() < self.balance(txn, &previous)
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
+    pub fn block_destination(&self, txn: &dyn Transaction, block: &BlockEnum) -> Account {
+        match block {
+            BlockEnum::Send(send) => send.hashables.destination,
+            BlockEnum::State(state) => {
+                if self.is_send(txn, state) {
+                    state.link().into()
+                } else {
+                    Account::zero()
+                }
+            }
+            _ => Account::zero(),
+        }
+    }
+
+    pub fn block_source(&self, txn: &dyn Transaction, block: &BlockEnum) -> BlockHash {
+        /*
+         * block_source() requires that the previous block of the block
+         * passed in exist in the database.  This is because it will try
+         * to check account balances to determine if it is a send block.
+         */
+        debug_assert!(
+            block.as_block().previous().is_zero()
+                || self.store.block().exists(txn, &block.as_block().previous())
+        );
+
+        // If block_a.source () is nonzero, then we have our source.
+        // However, universal blocks will always return zero.
+        match block {
+            BlockEnum::State(state) => {
+                if !self.is_send(txn, state) {
+                    state.link().into()
+                } else {
+                    state.source()
+                }
+            }
+            _ => block.as_block().source(),
+        }
+    }
+
+    pub fn hash_root_random(&self, txn: &dyn Transaction) -> Option<(BlockHash, BlockHash)> {
+        if !self.pruning_enabled() {
+            self.store
+                .block()
+                .random(txn)
+                .map(|block| (block.as_block().hash(), block.as_block().root().into()))
+        } else {
+            let mut hash = BlockHash::zero();
+            let count = self.cache.block_count.load(Ordering::SeqCst);
+            let region = thread_rng().gen_range(0..count);
+            // Pruned cache cannot guarantee that pruned blocks are already commited
+            if region < self.cache.pruned_count.load(Ordering::SeqCst) {
+                hash = self.store.pruned().random(txn).unwrap_or_default();
+            }
+            if hash.is_zero() {
+                self.store
+                    .block()
+                    .random(txn)
+                    .map(|block| (block.as_block().hash(), block.as_block().root().into()))
+            } else {
+                Some((hash, BlockHash::zero()))
+            }
         }
     }
 }

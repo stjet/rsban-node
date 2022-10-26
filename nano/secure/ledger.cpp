@@ -1,8 +1,8 @@
 #include <nano/lib/rep_weights.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/lib/work.hpp>
-#include <nano/lib/rsnanoutils.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/secure/store.hpp>
@@ -844,100 +844,29 @@ std::string nano::ledger::block_text (nano::block_hash const & hash_a)
 
 bool nano::ledger::is_send (nano::transaction const & transaction_a, nano::block const & block_a) const
 {
-	if (block_a.type () != nano::block_type::state)
-	{
-		return block_a.type () == nano::block_type::send;
-	}
-	nano::block_hash previous = block_a.previous ();
-	/*
-	 * if block_a does not have a sideband, then is_send()
-	 * requires that the previous block exists in the database.
-	 * This is because it must retrieve the balance of the previous block.
-	 */
-	debug_assert (block_a.has_sideband () || previous.is_zero () || store.block ().exists (transaction_a, previous));
-
-	bool result (false);
-	if (block_a.has_sideband ())
-	{
-		result = block_a.sideband ().details ().is_send ();
-	}
-	else
-	{
-		if (!previous.is_zero ())
-		{
-			if (block_a.balance () < balance (transaction_a, previous))
-			{
-				result = true;
-			}
-		}
-	}
-	return result;
+	return rsnano::rsn_ledger_is_send (handle, transaction_a.get_rust_handle (), block_a.get_handle ());
 }
 
 nano::account nano::ledger::block_destination (nano::transaction const & transaction_a, nano::block const & block_a)
 {
-	nano::send_block const * send_block (dynamic_cast<nano::send_block const *> (&block_a));
-	nano::state_block const * state_block (dynamic_cast<nano::state_block const *> (&block_a));
-	if (send_block != nullptr)
-	{
-		return send_block->destination ();
-	}
-	else if (state_block != nullptr && is_send (transaction_a, *state_block))
-	{
-		return state_block->link ().as_account ();
-	}
-
-	return nano::account::null ();
+	nano::account destination_l;
+	rsnano::rsn_ledger_block_destination (handle, transaction_a.get_rust_handle (), block_a.get_handle (), destination_l.bytes.data ());
+	return destination_l;
 }
 
 nano::block_hash nano::ledger::block_source (nano::transaction const & transaction_a, nano::block const & block_a)
 {
-	/*
-	 * block_source() requires that the previous block of the block
-	 * passed in exist in the database.  This is because it will try
-	 * to check account balances to determine if it is a send block.
-	 */
-	debug_assert (block_a.previous ().is_zero () || store.block ().exists (transaction_a, block_a.previous ()));
-
-	// If block_a.source () is nonzero, then we have our source.
-	// However, universal blocks will always return zero.
-	nano::block_hash result (block_a.source ());
-	nano::state_block const * state_block (dynamic_cast<nano::state_block const *> (&block_a));
-	if (state_block != nullptr && !is_send (transaction_a, *state_block))
-	{
-		result = state_block->link ().as_block_hash ();
-	}
-	return result;
+	nano::block_hash source_l;
+	rsnano::rsn_ledger_block_source (handle, transaction_a.get_rust_handle (), block_a.get_handle (), source_l.bytes.data ());
+	return source_l;
 }
 
 std::pair<nano::block_hash, nano::block_hash> nano::ledger::hash_root_random (nano::transaction const & transaction_a) const
 {
-	nano::block_hash hash (0);
-	nano::root root (0);
-	if (!pruning_enabled ())
-	{
-		auto block (store.block ().random (transaction_a));
-		hash = block->hash ();
-		root = block->root ();
-	}
-	else
-	{
-		uint64_t count (cache.block_count ());
-		release_assert (std::numeric_limits<uint32_t>::max () > count);
-		auto region = static_cast<size_t> (nano::random_pool::generate_word32 (0, static_cast<uint32_t> (count - 1)));
-		// Pruned cache cannot guarantee that pruned blocks are already commited
-		if (region < cache.pruned_count ())
-		{
-			hash = store.pruned ().random (transaction_a);
-		}
-		if (hash.is_zero ())
-		{
-			auto block (store.block ().random (transaction_a));
-			hash = block->hash ();
-			root = block->root ();
-		}
-	}
-	return std::make_pair (hash, root.as_block_hash ());
+	nano::block_hash hash;
+	nano::block_hash root;
+	rsnano::rsn_ledger_hash_root_random (handle, transaction_a.get_rust_handle (), hash.bytes.data (), root.bytes.data ());
+	return std::make_pair (hash, root);
 }
 
 // Vote weight of an account

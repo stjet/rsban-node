@@ -197,6 +197,17 @@ impl From<&HashOrAccount> for BlockHash {
         BlockHash::from_bytes(*source.as_bytes())
     }
 }
+impl From<Link> for BlockHash {
+    fn from(link: Link) -> Self {
+        BlockHash::from_bytes(*link.as_bytes())
+    }
+}
+
+impl From<Root> for BlockHash {
+    fn from(root: Root) -> Self {
+        BlockHash::from_bytes(*root.as_bytes())
+    }
+}
 
 impl From<Link> for HashOrAccount {
     fn from(link: Link) -> Self {

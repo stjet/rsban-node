@@ -120,10 +120,6 @@ impl StateBlock {
         Account::zero()
     }
 
-    pub fn balance(&self) -> Amount {
-        self.hashables.balance
-    }
-
     fn sign(&mut self, prv_key: &RawKey, pub_key: &PublicKey) -> Result<()> {
         let signature = sign_message(prv_key, pub_key, self.hash().as_bytes())?;
         self.signature = signature;
@@ -288,6 +284,14 @@ impl Block for StateBlock {
 
     fn visit(&self, visitor: &mut dyn BlockVisitor) {
         visitor.state_block(self)
+    }
+
+    fn balance(&self) -> Amount {
+        self.hashables.balance
+    }
+
+    fn source(&self) -> BlockHash {
+        BlockHash::zero()
     }
 }
 

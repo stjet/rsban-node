@@ -2,6 +2,7 @@
 #include <nano/lib/stats.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/lib/work.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/secure/store.hpp>
@@ -821,22 +822,12 @@ nano::block_hash nano::ledger::representative_calculated (nano::transaction cons
 
 bool nano::ledger::block_or_pruned_exists (nano::block_hash const & hash_a) const
 {
-	auto tx = store.tx_begin_read ();
-	return block_or_pruned_exists (*tx, hash_a);
+	return rsnano::rsn_ledger_block_or_pruned_exists (handle, hash_a.bytes.data ());
 }
 
 bool nano::ledger::block_or_pruned_exists (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
-	if (store.pruned ().exists (transaction_a, hash_a))
-	{
-		return true;
-	}
-	return store.block ().exists (transaction_a, hash_a);
-}
-
-bool nano::ledger::root_exists (nano::transaction const & transaction_a, nano::root const & root_a)
-{
-	return store.block ().exists (transaction_a, root_a.as_block_hash ()) || store.account ().exists (transaction_a, root_a.as_account ());
+	return rsnano::rsn_ledger_block_or_pruned_exists_txn (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
 }
 
 std::string nano::ledger::block_text (char const * hash_a)
@@ -846,14 +837,9 @@ std::string nano::ledger::block_text (char const * hash_a)
 
 std::string nano::ledger::block_text (nano::block_hash const & hash_a)
 {
-	std::string result;
-	auto transaction (store.tx_begin_read ());
-	auto block (store.block ().get (*transaction, hash_a));
-	if (block != nullptr)
-	{
-		block->serialize_json (result);
-	}
-	return result;
+	rsnano::StringDto dto;
+	rsnano::rsn_ledger_block_text (handle, hash_a.bytes.data (), &dto);
+	return rsnano::convert_dto_to_string (dto);
 }
 
 bool nano::ledger::is_send (nano::transaction const & transaction_a, nano::block const & block_a) const

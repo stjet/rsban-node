@@ -593,8 +593,6 @@ using DispatchCallback = void (*) (void *, VoidFnCallbackHandle *);
 
 using MemoryIntensiveInstrumentationCallback = bool (*) ();
 
-using LedgerBlockOrPrunedExistsCallback = bool (*) (void *, const uint8_t *);
-
 struct MessageDto
 {
 	uint8_t topic;
@@ -1408,8 +1406,6 @@ void rsn_callback_io_ctx_post (DispatchCallback f);
 
 void rsn_callback_is_sanitizer_build (MemoryIntensiveInstrumentationCallback f);
 
-void rsn_callback_ledger_block_or_pruned_exists (LedgerBlockOrPrunedExistsCallback f);
-
 void rsn_callback_listener_broadcast (ListenerBroadcastCallback f);
 
 void rsn_callback_logger_destroy (VoidPointerCallback f);
@@ -1720,6 +1716,14 @@ const uint8_t * hash,
 uint8_t * result);
 
 bool rsn_ledger_block_confirmed (LedgerHandle * handle, TransactionHandle * txn, const uint8_t * hash);
+
+bool rsn_ledger_block_or_pruned_exists (LedgerHandle * handle, const uint8_t * hash);
+
+bool rsn_ledger_block_or_pruned_exists_txn (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash);
+
+void rsn_ledger_block_text (LedgerHandle * handle, const uint8_t * hash, StringDto * result);
 
 uint64_t rsn_ledger_bootstrap_weight_max_blocks (LedgerHandle * handle);
 

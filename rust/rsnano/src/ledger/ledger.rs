@@ -1,7 +1,7 @@
 use crate::{
     core::{Account, Amount, BlockHash, PendingKey},
-    ffi::ledger::datastore::BLOCK_OR_PRUNED_EXISTS_CALLBACK,
     stats::Stat,
+    utils::create_property_tree,
 };
 use std::{
     collections::HashMap,
@@ -129,12 +129,12 @@ impl Ledger {
     }
 
     pub fn block_or_pruned_exists(&self, block: &BlockHash) -> bool {
-        unsafe {
-            match BLOCK_OR_PRUNED_EXISTS_CALLBACK {
-                Some(f) => f(self.handle, block.as_bytes().as_ptr()),
-                None => panic!("BLOCK_OR_PRUNED_EXISTS_CALLBACK missing"),
-            }
-        }
+        let txn = self.store.tx_begin_read().unwrap();
+        self.block_or_pruned_exists_txn(txn.txn(), block)
+    }
+
+    pub fn block_or_pruned_exists_txn(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
+        self.store.pruned().exists(txn, hash) || self.store.block().exists(txn, hash)
     }
 
     /// Balance for account containing the given block at the time of the block.
@@ -228,6 +228,18 @@ impl Ledger {
                 confirmed
             }
             None => false,
+        }
+    }
+
+    pub fn block_text(&self, hash: &BlockHash) -> anyhow::Result<String> {
+        let txn = self.store.tx_begin_read()?;
+        match self.store.block().get(txn.txn(), hash) {
+            Some(block) => {
+                let mut writer = create_property_tree();
+                block.as_block().serialize_json(writer.as_mut())?;
+                Ok(writer.to_json())
+            }
+            None => Ok(String::new()),
         }
     }
 }

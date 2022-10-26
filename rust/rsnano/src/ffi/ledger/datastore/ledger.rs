@@ -3,7 +3,7 @@ use crate::{
     ffi::{
         copy_amount_bytes,
         ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
-        StatHandle,
+        StatHandle, StringDto,
     },
     ledger::Ledger,
 };
@@ -48,17 +48,6 @@ pub unsafe extern "C" fn rsn_ledger_create(
 pub extern "C" fn rsn_ledger_destroy(handle: *mut LedgerHandle) {
     drop(unsafe { Box::from_raw(handle) });
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_ledger_block_or_pruned_exists(
-    f: LedgerBlockOrPrunedExistsCallback,
-) {
-    BLOCK_OR_PRUNED_EXISTS_CALLBACK = Some(f);
-}
-
-type LedgerBlockOrPrunedExistsCallback = unsafe extern "C" fn(*mut c_void, *const u8) -> bool;
-pub(crate) static mut BLOCK_OR_PRUNED_EXISTS_CALLBACK: Option<LedgerBlockOrPrunedExistsCallback> =
-    None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_pruning_enabled(handle: *mut LedgerHandle) -> bool {
@@ -235,4 +224,37 @@ pub unsafe extern "C" fn rsn_ledger_block_confirmed(
     (*handle)
         .0
         .block_confirmed((*txn).as_txn(), &BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_block_or_pruned_exists(
+    handle: *mut LedgerHandle,
+    hash: *const u8,
+) -> bool {
+    (*handle)
+        .0
+        .block_or_pruned_exists(&BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_block_or_pruned_exists_txn(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+) -> bool {
+    (*handle)
+        .0
+        .block_or_pruned_exists_txn((*txn).as_txn(), &BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_block_text(
+    handle: *mut LedgerHandle,
+    hash: *const u8,
+    result: *mut StringDto,
+) {
+    *result = match (*handle).0.block_text(&BlockHash::from_ptr(hash)) {
+        Ok(s) => s.into(),
+        Err(_) => "".into(),
+    }
 }

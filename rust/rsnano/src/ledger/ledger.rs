@@ -1,5 +1,5 @@
 use crate::{
-    core::{Account, BlockHash},
+    core::{Account, Amount, BlockHash, PendingKey},
     ffi::ledger::datastore::BLOCK_OR_PRUNED_EXISTS_CALLBACK,
     stats::Stat,
 };
@@ -12,7 +12,10 @@ use std::{
     },
 };
 
-use super::{datastore::Store, GenerateCache, LedgerCache, LedgerConstants, RepWeights};
+use super::{
+    datastore::{Store, Transaction},
+    GenerateCache, LedgerCache, LedgerConstants, RepWeights,
+};
 
 pub struct Ledger {
     handle: *mut c_void,
@@ -131,6 +134,100 @@ impl Ledger {
                 Some(f) => f(self.handle, block.as_bytes().as_ptr()),
                 None => panic!("BLOCK_OR_PRUNED_EXISTS_CALLBACK missing"),
             }
+        }
+    }
+
+    /// Balance for account containing the given block at the time of the block.
+    /// Returns 0 if the block was not found
+    pub fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Amount {
+        if hash.is_zero() {
+            Amount::zero()
+        } else {
+            self.store.block().balance(txn, hash)
+        }
+    }
+
+    /// Balance for account containing the given block at the time of the block.
+    /// Returns Err if the pruning is enabled and the block was not found.
+    pub fn balance_safe(&self, txn: &dyn Transaction, hash: &BlockHash) -> anyhow::Result<Amount> {
+        if self.pruning_enabled() && !hash.is_zero() && !self.store.block().exists(txn, hash) {
+            bail!("block not found");
+        }
+
+        Ok(self.balance(txn, hash))
+    }
+
+    /// Balance for account by account number
+    pub fn account_balance(
+        &self,
+        txn: &dyn Transaction,
+        account: &Account,
+        only_confirmed: bool,
+    ) -> Amount {
+        if only_confirmed {
+            match self.store.confirmation_height().get(txn, account) {
+                Some(info) => self.balance(txn, &info.frontier),
+                None => Amount::zero(),
+            }
+        } else {
+            match self.store.account().get(txn, account) {
+                Some(info) => info.balance,
+                None => Amount::zero(),
+            }
+        }
+    }
+
+    pub fn account_receivable(
+        &self,
+        txn: &dyn Transaction,
+        account: &Account,
+        only_confirmed: bool,
+    ) -> Amount {
+        let mut result = Amount::zero();
+        let end = Account::from(account.number() + 1);
+        let mut i = self
+            .store
+            .pending()
+            .begin_at_key(txn, &PendingKey::new(*account, BlockHash::zero()));
+        let n = self
+            .store
+            .pending()
+            .begin_at_key(txn, &PendingKey::new(end, BlockHash::zero()));
+        while !i.eq(n.as_ref()) {
+            if let Some((key, info)) = i.current() {
+                if only_confirmed {
+                    if self.block_confirmed(txn, &key.hash) {
+                        result += info.amount;
+                    }
+                } else {
+                    result += info.amount;
+                }
+            };
+            i.next();
+        }
+
+        result
+    }
+
+    pub fn block_confirmed(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
+        if self.store.pruned().exists(txn, hash) {
+            return true;
+        }
+
+        match self.store.block().get(txn, hash) {
+            Some(block) => {
+                let mut account = block.as_block().account();
+                let sideband = &block.as_block().sideband().unwrap();
+                if account.is_zero() {
+                    account = sideband.account;
+                }
+                let confirmed = match self.store.confirmation_height().get(txn, &account) {
+                    Some(info) => info.height >= sideband.height,
+                    None => false,
+                };
+                confirmed
+            }
+            None => false,
         }
     }
 }

@@ -1,7 +1,8 @@
 use std::path::Path;
 
 use super::{
-    AccountStore, ConfirmationHeightStore, PrunedStore, ReadTransaction, WriteTransaction,
+    AccountStore, BlockStore, ConfirmationHeightStore, PendingStore, PrunedStore, ReadTransaction,
+    WriteTransaction,
 };
 
 pub trait Store {
@@ -11,4 +12,6 @@ pub trait Store {
     fn account(&self) -> &dyn AccountStore;
     fn confirmation_height(&self) -> &dyn ConfirmationHeightStore;
     fn pruned(&self) -> &dyn PrunedStore;
+    fn block(&self) -> &dyn BlockStore;
+    fn pending(&self) -> &dyn PendingStore;
 }

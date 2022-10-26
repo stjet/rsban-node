@@ -765,68 +765,32 @@ rsnano::LedgerHandle * nano::ledger::get_handle () const
 // Balance for account containing hash
 nano::uint128_t nano::ledger::balance (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
-	return hash_a.is_zero () ? 0 : store.block ().balance (transaction_a, hash_a);
+	nano::amount result;
+	rsnano::rsn_ledger_balance (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
+	return result.number ();
 }
 
 nano::uint128_t nano::ledger::balance_safe (nano::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
 {
-	nano::uint128_t result (0);
-	if (pruning_enabled () && !hash_a.is_zero () && !store.block ().exists (transaction_a, hash_a))
-	{
-		error_a = true;
-		result = 0;
-	}
-	else
-	{
-		result = balance (transaction_a, hash_a);
-	}
-	return result;
+	nano::amount result;
+	auto success = rsnano::rsn_ledger_balance_safe (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
+	error_a = !success;
+	return result.number ();
 }
 
 // Balance for an account by account number
 nano::uint128_t nano::ledger::account_balance (nano::transaction const & transaction_a, nano::account const & account_a, bool only_confirmed_a)
 {
-	nano::uint128_t result (0);
-	if (only_confirmed_a)
-	{
-		nano::confirmation_height_info info;
-		if (!store.confirmation_height ().get (transaction_a, account_a, info))
-		{
-			result = balance (transaction_a, info.frontier ());
-		}
-	}
-	else
-	{
-		nano::account_info info;
-		auto none (store.account ().get (transaction_a, account_a, info));
-		if (!none)
-		{
-			result = info.balance ().number ();
-		}
-	}
-	return result;
+	nano::amount result;
+	rsnano::rsn_ledger_account_balance (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), only_confirmed_a, result.bytes.data ());
+	return result.number ();
 }
 
 nano::uint128_t nano::ledger::account_receivable (nano::transaction const & transaction_a, nano::account const & account_a, bool only_confirmed_a)
 {
-	nano::uint128_t result (0);
-	nano::account end (account_a.number () + 1);
-	for (auto i (store.pending ().begin (transaction_a, nano::pending_key (account_a, 0))), n (store.pending ().begin (transaction_a, nano::pending_key (end, 0))); i != n; ++i)
-	{
-		nano::pending_info const & info (i->second);
-		if (only_confirmed_a)
-		{
-			if (block_confirmed (transaction_a, i->first.hash))
-			{
-				result += info.amount.number ();
-			}
-		}
-		else
-		{
-			result += info.amount.number ();
-		}
-	}
-	return result;
+	nano::amount result;
+	rsnano::rsn_ledger_account_receivable (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), only_confirmed_a, result.bytes.data ());
+	return result.number ();
 }
 
 nano::process_return nano::ledger::process (nano::write_transaction const & transaction_a, nano::block & block_a, nano::signature_verification verification)
@@ -1354,19 +1318,7 @@ std::shared_ptr<nano::block> nano::ledger::forked_block (nano::transaction const
 
 bool nano::ledger::block_confirmed (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
-	if (store.pruned ().exists (transaction_a, hash_a))
-	{
-		return true;
-	}
-	auto block = store.block ().get (transaction_a, hash_a);
-	if (block)
-	{
-		nano::confirmation_height_info confirmation_height_info;
-		store.confirmation_height ().get (transaction_a, block->account ().is_zero () ? block->sideband ().account () : block->account (), confirmation_height_info);
-		auto confirmed (confirmation_height_info.height () >= block->sideband ().height ());
-		return confirmed;
-	}
-	return false;
+	return rsnano::rsn_ledger_block_confirmed (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
 }
 
 uint64_t nano::ledger::pruning_action (nano::write_transaction & transaction_a, nano::block_hash const & hash_a, uint64_t const batch_size_a)

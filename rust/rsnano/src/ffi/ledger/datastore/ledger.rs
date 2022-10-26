@@ -1,6 +1,7 @@
 use crate::{
-    core::Account,
+    core::{Account, Amount, BlockHash},
     ffi::{
+        copy_amount_bytes,
         ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
         StatHandle,
     },
@@ -12,7 +13,7 @@ use std::{
     sync::{atomic::Ordering, Arc},
 };
 
-use super::lmdb::LmdbStoreHandle;
+use super::lmdb::{LmdbStoreHandle, TransactionHandle};
 
 pub struct LedgerHandle(Arc<Ledger>);
 
@@ -162,4 +163,76 @@ pub unsafe extern "C" fn rsn_ledger_get_cache_handle(
     handle: *mut LedgerHandle,
 ) -> *mut LedgerCacheHandle {
     LedgerCacheHandle::new((*handle).0.cache.clone())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_balance(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    result: *mut u8,
+) {
+    let balance = (*handle).balance((*txn).as_txn(), &BlockHash::from_ptr(hash));
+    copy_amount_bytes(balance, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_balance_safe(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    result: *mut u8,
+) -> bool {
+    match (*handle).balance_safe((*txn).as_txn(), &BlockHash::from_ptr(hash)) {
+        Ok(balance) => {
+            copy_amount_bytes(balance, result);
+            true
+        }
+        Err(_) => {
+            copy_amount_bytes(Amount::zero(), result);
+            false
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_account_balance(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    only_confirmed: bool,
+    result: *mut u8,
+) {
+    let balance =
+        (*handle)
+            .0
+            .account_balance((*txn).as_txn(), &Account::from_ptr(account), only_confirmed);
+    copy_amount_bytes(balance, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_account_receivable(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    only_confirmed: bool,
+    result: *mut u8,
+) {
+    let balance = (*handle).0.account_receivable(
+        (*txn).as_txn(),
+        &Account::from_ptr(account),
+        only_confirmed,
+    );
+    copy_amount_bytes(balance, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_block_confirmed(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+) -> bool {
+    (*handle)
+        .0
+        .block_confirmed((*txn).as_txn(), &BlockHash::from_ptr(hash))
 }

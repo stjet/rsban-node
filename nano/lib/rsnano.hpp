@@ -1697,6 +1697,30 @@ void rsn_keypair_create_from_hex_str (const char * prv_hex, uint8_t * prv_key, u
 
 void rsn_keypair_create_from_prv_key (const uint8_t * prv_key, uint8_t * pub_key);
 
+void rsn_ledger_account_balance (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account,
+bool only_confirmed,
+uint8_t * result);
+
+void rsn_ledger_account_receivable (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account,
+bool only_confirmed,
+uint8_t * result);
+
+void rsn_ledger_balance (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+uint8_t * result);
+
+bool rsn_ledger_balance_safe (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+uint8_t * result);
+
+bool rsn_ledger_block_confirmed (LedgerHandle * handle, TransactionHandle * txn, const uint8_t * hash);
+
 uint64_t rsn_ledger_bootstrap_weight_max_blocks (LedgerHandle * handle);
 
 void rsn_ledger_bootstrap_weights (LedgerHandle * handle, BootstrapWeightsDto * result);

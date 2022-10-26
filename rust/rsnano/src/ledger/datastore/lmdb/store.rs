@@ -13,8 +13,8 @@ use crate::{
     core::{AccountInfo, ConfirmationHeightInfo, Epoch},
     ledger::{
         datastore::{
-            AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PrunedStore, Store,
-            VersionStore, WriteTransaction, STORE_VERSION_MINIMUM,
+            AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore,
+            PrunedStore, Store, VersionStore, WriteTransaction, STORE_VERSION_MINIMUM,
         },
         LedgerCache, LedgerConstants,
     },
@@ -339,6 +339,14 @@ impl Store for LmdbStore {
 
     fn pruned(&self) -> &dyn PrunedStore {
         self.pruned_store.as_ref()
+    }
+
+    fn block(&self) -> &dyn BlockStore {
+        self.block_store.as_ref()
+    }
+
+    fn pending(&self) -> &dyn PendingStore {
+        self.pending_store.as_ref()
     }
 }
 

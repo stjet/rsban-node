@@ -1806,6 +1806,8 @@ uintptr_t count);
 
 void rsn_ledger_set_check_bootstrap_weights (LedgerHandle * handle, bool check);
 
+void rsn_ledger_weight (LedgerHandle * handle, const uint8_t * account, uint8_t * result);
+
 LmdbIteratorHandle * rsn_lmdb_account_store_begin (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn);
 

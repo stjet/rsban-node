@@ -872,23 +872,9 @@ std::pair<nano::block_hash, nano::block_hash> nano::ledger::hash_root_random (na
 // Vote weight of an account
 nano::uint128_t nano::ledger::weight (nano::account const & account_a)
 {
-	if (rsnano::rsn_ledger_check_bootstrap_weights (handle))
-	{
-		if (cache.block_count () < get_bootstrap_weight_max_blocks ())
-		{
-			auto weights = get_bootstrap_weights ();
-			auto weight = weights.find (account_a);
-			if (weight != weights.end ())
-			{
-				return weight->second;
-			}
-		}
-		else
-		{
-			rsnano::rsn_ledger_set_check_bootstrap_weights (handle, false);
-		}
-	}
-	return cache.rep_weights ().representation_get (account_a);
+	nano::amount result;
+	rsnano::rsn_ledger_weight (handle, account_a.bytes.data (), result.bytes.data ());
+	return result.number ();
 }
 
 // Rollback blocks until `block_a' doesn't exist or it tries to penetrate the confirmation height

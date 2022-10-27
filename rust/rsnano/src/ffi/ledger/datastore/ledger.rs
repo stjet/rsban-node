@@ -311,3 +311,13 @@ pub unsafe extern "C" fn rsn_ledger_hash_root_random(
     copy_hash_bytes(hash, result_hash);
     copy_hash_bytes(root, result_root);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_weight(
+    handle: *mut LedgerHandle,
+    account: *const u8,
+    result: *mut u8,
+) {
+    let weight = (*handle).0.weight(&Account::from_ptr(account));
+    copy_amount_bytes(weight, result);
+}

@@ -14,7 +14,7 @@ pub trait BlockStore {
     fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash);
     fn count(&self, txn: &dyn Transaction) -> usize;
     fn account_calculated(&self, block: &dyn Block) -> Account;
-    fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account;
+    fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account>;
     fn begin(&self, txn: &dyn Transaction) -> BlockIterator;
     fn begin_at_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockIterator;
     fn end(&self) -> BlockIterator;

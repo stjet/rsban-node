@@ -920,28 +920,20 @@ bool nano::ledger::rollback (nano::write_transaction const & transaction_a, nano
 // Return account containing hash
 nano::account nano::ledger::account (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
-	return store.block ().account (transaction_a, hash_a);
+	nano::account result;
+	rsnano::rsn_ledger_account (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
+	return result;
 }
 
 nano::account nano::ledger::account_safe (nano::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
 {
-	if (!pruning_enabled ())
+	nano::account result;
+	bool success = rsnano::rsn_ledger_account_safe (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
+	if (!success)
 	{
-		return store.block ().account (transaction_a, hash_a);
+		error_a = true;
 	}
-	else
-	{
-		auto block (store.block ().get (transaction_a, hash_a));
-		if (block != nullptr)
-		{
-			return store.block ().account_calculated (*block);
-		}
-		else
-		{
-			error_a = true;
-			return 0;
-		}
-	}
+	return result;
 }
 
 // Return amount decrease or increase for block

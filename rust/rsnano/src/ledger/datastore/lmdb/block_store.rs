@@ -147,9 +147,9 @@ impl BlockStore for LmdbBlockStore {
         result
     }
 
-    fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account {
-        let block = self.get(txn, hash).unwrap();
-        self.account_calculated(block.as_block())
+    fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
+        let block = self.get(txn, hash)?;
+        Some(self.account_calculated(block.as_block()))
     }
 
     fn begin(&self, transaction: &dyn Transaction) -> BlockIterator {

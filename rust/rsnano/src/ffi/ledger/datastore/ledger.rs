@@ -321,3 +321,39 @@ pub unsafe extern "C" fn rsn_ledger_weight(
     let weight = (*handle).0.weight(&Account::from_ptr(account));
     copy_amount_bytes(weight, result);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_account(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    result: *mut u8,
+) {
+    let account = (*handle)
+        .0
+        .account((*txn).as_txn(), &BlockHash::from_ptr(hash))
+        .unwrap_or_default();
+    copy_account_bytes(account, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_account_safe(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    result: *mut u8,
+) -> bool {
+    let account = (*handle)
+        .0
+        .account_safe((*txn).as_txn(), &BlockHash::from_ptr(hash));
+    match account {
+        Some(a) => {
+            copy_account_bytes(a, result);
+            true
+        }
+        None => {
+            copy_account_bytes(Account::zero(), result);
+            false
+        }
+    }
+}

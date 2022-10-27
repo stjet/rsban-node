@@ -161,7 +161,8 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_account(
 ) {
     let account = (*handle)
         .0
-        .account((*txn).as_txn(), &BlockHash::from_ptr(hash));
+        .account((*txn).as_txn(), &BlockHash::from_ptr(hash))
+        .unwrap_or_default();
     copy_account_bytes(account, result);
 }
 

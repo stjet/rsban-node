@@ -368,4 +368,39 @@ impl Ledger {
                 .map(|block| self.store.block().account_calculated(block.as_block()))
         }
     }
+
+    /// Return absolute amount decrease or increase for block
+    pub fn amount(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
+        self.store.block().get(txn, hash).map(|block| {
+            let block_balance = self.balance(txn, hash);
+            let previous_balance = self.balance(txn, &block.as_block().previous());
+            if block_balance > previous_balance {
+                block_balance - previous_balance
+            } else {
+                previous_balance - block_balance
+            }
+        })
+    }
+
+    /// Return absolute amount decrease or increase for block
+    pub fn amount_safe(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
+        self.store
+            .block()
+            .get(txn, hash)
+            .map(|block| {
+                let block_balance = self.balance(txn, hash);
+                let previous_balance = self.balance_safe(txn, &block.as_block().previous());
+                match previous_balance {
+                    Ok(previous) => {
+                        if block_balance > previous {
+                            Some(block_balance - previous)
+                        } else {
+                            Some(previous - block_balance)
+                        }
+                    }
+                    Err(_) => None,
+                }
+            })
+            .flatten()
+    }
 }

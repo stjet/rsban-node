@@ -357,3 +357,39 @@ pub unsafe extern "C" fn rsn_ledger_account_safe(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_amount(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    result: *mut u8,
+) {
+    let amount = (*handle)
+        .0
+        .amount((*txn).as_txn(), &BlockHash::from_ptr(hash))
+        .unwrap_or_default();
+    copy_amount_bytes(amount, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_amount_safe(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    result: *mut u8,
+) -> bool {
+    let amount = (*handle)
+        .0
+        .amount_safe((*txn).as_txn(), &BlockHash::from_ptr(hash));
+    match amount {
+        Some(a) => {
+            copy_amount_bytes(a, result);
+            true
+        }
+        None => {
+            copy_amount_bytes(Amount::zero(), result);
+            false
+        }
+    }
+}

@@ -1715,6 +1715,16 @@ TransactionHandle * txn,
 const uint8_t * hash,
 uint8_t * result);
 
+void rsn_ledger_amount (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+uint8_t * result);
+
+bool rsn_ledger_amount_safe (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+uint8_t * result);
+
 void rsn_ledger_balance (LedgerHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,

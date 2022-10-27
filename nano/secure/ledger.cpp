@@ -945,20 +945,20 @@ nano::uint128_t nano::ledger::amount (nano::transaction const & transaction_a, n
 
 nano::uint128_t nano::ledger::amount (nano::transaction const & transaction_a, nano::block_hash const & hash_a)
 {
-	auto block (store.block ().get (transaction_a, hash_a));
-	auto block_balance (balance (transaction_a, hash_a));
-	auto previous_balance (balance (transaction_a, block->previous ()));
-	return block_balance > previous_balance ? block_balance - previous_balance : previous_balance - block_balance;
+	nano::amount result;
+	rsnano::rsn_ledger_amount (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
+	return result.number ();
 }
 
 nano::uint128_t nano::ledger::amount_safe (nano::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
 {
-	auto block (store.block ().get (transaction_a, hash_a));
-	debug_assert (block);
-	auto block_balance (balance (transaction_a, hash_a));
-	auto previous_balance (balance_safe (transaction_a, block->previous (), error_a));
-	return error_a ? 0 : block_balance > previous_balance ? block_balance - previous_balance
-														  : previous_balance - block_balance;
+	nano::amount result;
+	auto success = rsnano::rsn_ledger_amount_safe (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
+	if (!success)
+	{
+		error_a = true;
+	}
+	return result.number ();
 }
 
 // Return latest block for account

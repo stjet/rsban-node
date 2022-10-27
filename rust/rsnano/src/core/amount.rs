@@ -10,7 +10,9 @@ pub struct Amount {
 }
 
 impl Amount {
-    pub fn new(value: u128) -> Self {
+    pub const MAX: Amount = Amount::new(u128::MAX);
+
+    pub const fn new(value: u128) -> Self {
         Self { value }
     }
 
@@ -83,6 +85,10 @@ impl Amount {
         } else {
             format!("< 0.{:0width$}", 1, width = precision)
         }
+    }
+
+    pub fn wrapping_add(&self, other: Amount) -> Amount {
+        self.value.wrapping_add(other.value).into()
     }
 }
 

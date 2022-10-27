@@ -28,7 +28,7 @@ pub struct Ledger {
     pruning: AtomicBool,
     bootstrap_weight_max_blocks: AtomicU64,
     pub check_bootstrap_weights: AtomicBool,
-    pub bootstrap_weights: Mutex<HashMap<Account, u128>>,
+    pub bootstrap_weights: Mutex<HashMap<Account, Amount>>,
 }
 
 impl Ledger {
@@ -66,7 +66,7 @@ impl Ledger {
                     let info = i.current().unwrap().1;
                     block_count += info.block_count;
                     account_count += 1;
-                    rep_weights.representation_add(info.representative, info.balance.number());
+                    rep_weights.representation_add(info.representative, info.balance);
                     i.next();
                 }
                 self.cache
@@ -342,13 +342,13 @@ impl Ledger {
             if self.cache.block_count.load(Ordering::SeqCst) < self.bootstrap_weight_max_blocks() {
                 let weights = self.bootstrap_weights.lock().unwrap();
                 if let Some(&weight) = weights.get(account) {
-                    return weight.into();
+                    return weight;
                 }
             } else {
                 self.check_bootstrap_weights.store(false, Ordering::SeqCst);
             }
         }
 
-        self.cache.rep_weights.representation_get(account).into()
+        self.cache.rep_weights.representation_get(account)
     }
 }

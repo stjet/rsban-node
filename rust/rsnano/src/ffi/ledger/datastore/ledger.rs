@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rsn_ledger_set_bootstrap_weights(
         .map(|d| {
             (
                 Account::from_bytes(d.account),
-                u128::from_be_bytes(d.weight),
+                Amount::from_be_bytes(d.weight),
             )
         })
         .collect();

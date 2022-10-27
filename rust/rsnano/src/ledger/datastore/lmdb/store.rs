@@ -10,7 +10,7 @@ use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 
 use crate::{
     config::TxnTrackingConfig,
-    core::{AccountInfo, ConfirmationHeightInfo, Epoch},
+    core::{AccountInfo, Amount, ConfirmationHeightInfo, Epoch},
     ledger::{
         datastore::{
             AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore,
@@ -176,7 +176,7 @@ impl LmdbStore {
         cache.account_count.fetch_add(1, Ordering::SeqCst);
         cache
             .rep_weights
-            .representation_put(genesis_account, u128::MAX);
+            .representation_put(genesis_account, Amount::MAX);
         self.frontier_store
             .put(txn, &genesis_hash, &genesis_account);
     }

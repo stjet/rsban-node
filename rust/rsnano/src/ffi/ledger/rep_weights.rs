@@ -29,7 +29,7 @@ pub unsafe extern "C" fn rsn_rep_weights_representation_add(
     source_rep: *const u8,
     amount: *const u8,
 ) {
-    let amount = Amount::from_ptr(amount).number();
+    let amount = Amount::from_ptr(amount);
     (*handle)
         .0
         .representation_add(Account::from_ptr(source_rep), amount);
@@ -45,9 +45,9 @@ pub unsafe extern "C" fn rsn_rep_weights_representation_add_dual(
 ) {
     (*handle).0.representation_add_dual(
         Account::from_ptr(source_rep_1),
-        Amount::from_ptr(amount_1).number(),
+        Amount::from_ptr(amount_1),
         Account::from_ptr(source_rep_2),
-        Amount::from_ptr(amount_2).number(),
+        Amount::from_ptr(amount_2),
     );
 }
 

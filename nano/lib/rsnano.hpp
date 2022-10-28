@@ -1824,6 +1824,12 @@ const LedgerConstantsDto * constants,
 StatHandle * stats,
 GenerateCacheHandle * generate_cache);
 
+void rsn_ledger_dependent_blocks (LedgerHandle * handle,
+TransactionHandle * txn,
+BlockHandle * block,
+uint8_t * result1,
+uint8_t * result2);
+
 void rsn_ledger_destroy (LedgerHandle * handle);
 
 void rsn_ledger_destroy_bootstrap_weights_dto (BootstrapWeightsDto * dto);

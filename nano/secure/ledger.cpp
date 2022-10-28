@@ -1003,57 +1003,11 @@ bool nano::ledger::is_epoch_link (nano::link const & link_a) const
 	return rsnano::rsn_ledger_is_epoch_link (handle, link_a.bytes.data ());
 }
 
-class dependent_block_visitor : public nano::block_visitor
-{
-public:
-	dependent_block_visitor (nano::ledger const & ledger_a, nano::ledger_constants const & constants_a, nano::transaction const & transaction_a) :
-		ledger (ledger_a),
-		constants (constants_a),
-		transaction (transaction_a),
-		result ({ 0, 0 })
-	{
-	}
-	void send_block (nano::send_block const & block_a) override
-	{
-		result[0] = block_a.previous ();
-	}
-	void receive_block (nano::receive_block const & block_a) override
-	{
-		result[0] = block_a.previous ();
-		result[1] = block_a.source ();
-	}
-	void open_block (nano::open_block const & block_a) override
-	{
-		if (block_a.source () != constants.genesis->account ())
-		{
-			result[0] = block_a.source ();
-		}
-	}
-	void change_block (nano::change_block const & block_a) override
-	{
-		result[0] = block_a.previous ();
-	}
-	void state_block (nano::state_block const & block_a) override
-	{
-		result[0] = block_a.previous ();
-		result[1] = block_a.link ().as_block_hash ();
-		// ledger.is_send will check the sideband first, if block_a has a loaded sideband the check that previous block exists can be skipped
-		if (ledger.is_epoch_link (block_a.link ()) || ((block_a.has_sideband () || ledger.store.block ().exists (transaction, block_a.previous ())) && ledger.is_send (transaction, block_a)))
-		{
-			result[1].clear ();
-		}
-	}
-	nano::ledger const & ledger;
-	nano::ledger_constants const & constants;
-	nano::transaction const & transaction;
-	std::array<nano::block_hash, 2> result;
-};
-
 std::array<nano::block_hash, 2> nano::ledger::dependent_blocks (nano::transaction const & transaction_a, nano::block const & block_a) const
 {
-	dependent_block_visitor visitor (*this, constants, transaction_a);
-	block_a.visit (visitor);
-	return visitor.result;
+	std::array<nano::block_hash, 2> result;
+	rsnano::rsn_ledger_dependent_blocks (handle, transaction_a.get_rust_handle (), block_a.get_handle (), result[0].bytes.data (), result[1].bytes.data ());
+	return result;
 }
 
 /** Given the block hash of a send block, find the associated receive block that receives that send.

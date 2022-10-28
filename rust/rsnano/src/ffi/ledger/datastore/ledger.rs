@@ -597,3 +597,18 @@ pub unsafe extern "C" fn rsn_ledger_write_confirmation_height(
         &BlockHash::from_ptr(confirmed_frontier),
     )
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_dependent_blocks(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    block: *mut BlockHandle,
+    result1: *mut u8,
+    result2: *mut u8,
+) {
+    let (dep1, dep2) = (*handle)
+        .0
+        .dependent_blocks((*txn).as_txn(), (*block).block.read().unwrap().as_block());
+    copy_hash_bytes(dep1, result1);
+    copy_hash_bytes(dep2, result2);
+}

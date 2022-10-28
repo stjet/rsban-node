@@ -5,6 +5,7 @@ use crate::{
         Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockType,
         ConfirmationHeightInfo, Epoch, Link, PendingKey, QualifiedRoot, Root,
     },
+    ffi::ledger::DependentBlockVisitor,
     stats::{DetailType, Direction, Stat, StatType},
     utils::create_property_tree,
 };
@@ -28,7 +29,7 @@ pub struct UncementedInfo {
 }
 
 pub struct Ledger {
-    store: Arc<dyn Store>,
+    pub store: Arc<dyn Store>,
     pub cache: Arc<LedgerCache>,
     constants: LedgerConstants,
     stats: Arc<Stat>,
@@ -642,5 +643,15 @@ impl Ledger {
             num_blocks_cemented,
             false,
         );
+    }
+
+    pub fn dependent_blocks(
+        &self,
+        txn: &dyn Transaction,
+        block: &dyn Block,
+    ) -> (BlockHash, BlockHash) {
+        let mut visitor = DependentBlockVisitor::new(self, &self.constants, txn);
+        block.visit(&mut visitor);
+        (visitor.result[0], visitor.result[1])
     }
 }

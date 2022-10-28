@@ -5,11 +5,19 @@ use rand::Rng;
 
 use crate::u256_struct;
 
+use super::Account;
+
 u256_struct!(BlockHash);
 
 impl BlockHash {
     pub fn random() -> Self {
         BlockHash::from_bytes(thread_rng().gen())
+    }
+}
+
+impl From<Account> for BlockHash {
+    fn from(account: Account) -> Self {
+        Self::from_bytes(*account.as_bytes())
     }
 }
 

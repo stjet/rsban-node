@@ -1837,6 +1837,11 @@ TransactionHandle * txn,
 const uint8_t * account,
 uint8_t * result);
 
+uint64_t rsn_ledger_pruning_action (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+uint64_t batch_size);
+
 bool rsn_ledger_pruning_enabled (LedgerHandle * handle);
 
 void rsn_ledger_set_bootstrap_weight_max_blocks (LedgerHandle * handle, uint64_t max);
@@ -1846,6 +1851,10 @@ const BootstrapWeightsItem * accounts,
 uintptr_t count);
 
 void rsn_ledger_set_check_bootstrap_weights (LedgerHandle * handle, bool check);
+
+BlockHandle * rsn_ledger_successor (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * root);
 
 void rsn_ledger_update_account (LedgerHandle * handle,
 TransactionHandle * txn,

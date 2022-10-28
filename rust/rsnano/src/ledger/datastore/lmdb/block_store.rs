@@ -73,7 +73,11 @@ impl BlockStore for LmdbBlockStore {
         }
 
         debug_assert!(
-            block.previous().is_zero() || self.successor(txn.txn(), &block.previous()) == *hash
+            block.previous().is_zero()
+                || self
+                    .successor(txn.txn(), &block.previous())
+                    .unwrap_or_default()
+                    == *hash
         );
     }
 
@@ -81,16 +85,13 @@ impl BlockStore for LmdbBlockStore {
         self.block_raw_get(transaction, hash).is_some()
     }
 
-    fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
-        match self.block_raw_get(txn, hash) {
-            None => BlockHash::zero(),
-            Some(data) => {
-                debug_assert!(data.len() >= 32);
-                let block_type = BlockType::from_u8(data[0]).unwrap();
-                let offset = block_successor_offset(data.len(), block_type);
-                BlockHash::from_bytes(data[offset..offset + 32].try_into().unwrap())
-            }
-        }
+    fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockHash> {
+        self.block_raw_get(txn, hash).map(|data| {
+            debug_assert!(data.len() >= 32);
+            let block_type = BlockType::from_u8(data[0]).unwrap();
+            let offset = block_successor_offset(data.len(), block_type);
+            BlockHash::from_bytes(data[offset..offset + 32].try_into().unwrap())
+        })
     }
 
     fn successor_clear(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {

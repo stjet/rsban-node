@@ -1087,54 +1087,8 @@ void nano::ledger::update_account (nano::write_transaction const & transaction_a
 
 std::shared_ptr<nano::block> nano::ledger::successor (nano::transaction const & transaction_a, nano::qualified_root const & root_a)
 {
-	nano::block_hash successor (0);
-	auto get_from_previous = false;
-	if (root_a.previous ().is_zero ())
-	{
-		nano::account_info info;
-		if (!store.account ().get (transaction_a, root_a.root ().as_account (), info))
-		{
-			successor = info.open_block ();
-		}
-		else
-		{
-			get_from_previous = true;
-		}
-	}
-	else
-	{
-		get_from_previous = true;
-	}
-
-	if (get_from_previous)
-	{
-		successor = store.block ().successor (transaction_a, root_a.previous ());
-	}
-	std::shared_ptr<nano::block> result;
-	if (!successor.is_zero ())
-	{
-		result = store.block ().get (transaction_a, successor);
-	}
-	debug_assert (successor.is_zero () || result != nullptr);
-	return result;
-}
-
-std::shared_ptr<nano::block> nano::ledger::forked_block (nano::transaction const & transaction_a, nano::block const & block_a)
-{
-	debug_assert (!store.block ().exists (transaction_a, block_a.hash ()));
-	auto root (block_a.root ());
-	debug_assert (store.block ().exists (transaction_a, root.as_block_hash ()) || store.account ().exists (transaction_a, root.as_account ()));
-	auto result (store.block ().get (transaction_a, store.block ().successor (transaction_a, root.as_block_hash ())));
-	if (result == nullptr)
-	{
-		nano::account_info info;
-		auto error (store.account ().get (transaction_a, root.as_account (), info));
-		(void)error;
-		debug_assert (!error);
-		result = store.block ().get (transaction_a, info.open_block ());
-		debug_assert (result != nullptr);
-	}
-	return result;
+	auto block_handle = rsnano::rsn_ledger_successor (handle, transaction_a.get_rust_handle (), root_a.bytes.data ());
+	return nano::block_handle_to_block (block_handle);
 }
 
 bool nano::ledger::block_confirmed (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
@@ -1144,35 +1098,7 @@ bool nano::ledger::block_confirmed (nano::transaction const & transaction_a, nan
 
 uint64_t nano::ledger::pruning_action (nano::write_transaction & transaction_a, nano::block_hash const & hash_a, uint64_t const batch_size_a)
 {
-	uint64_t pruned_count (0);
-	nano::block_hash hash (hash_a);
-	while (!hash.is_zero () && hash != constants.genesis->hash ())
-	{
-		auto block (store.block ().get (transaction_a, hash));
-		if (block != nullptr)
-		{
-			store.block ().del (transaction_a, hash);
-			store.pruned ().put (transaction_a, hash);
-			hash = block->previous ();
-			++pruned_count;
-			cache.add_pruned (1);
-			if (pruned_count % batch_size_a == 0)
-			{
-				transaction_a.commit ();
-				transaction_a.renew ();
-			}
-		}
-		else if (store.pruned ().exists (transaction_a, hash))
-		{
-			hash = 0;
-		}
-		else
-		{
-			hash = 0;
-			release_assert (false && "Error finding block for pruning");
-		}
-	}
-	return pruned_count;
+	return rsnano::rsn_ledger_pruning_action (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), batch_size_a);
 }
 
 std::multimap<uint64_t, nano::uncemented_info, std::greater<>> nano::ledger::unconfirmed_frontiers () const

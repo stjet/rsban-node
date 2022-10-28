@@ -1,5 +1,5 @@
 use crate::{
-    core::{Account, Amount, BlockHash, Epoch, Link},
+    core::{Account, Amount, BlockHash, Epoch, Link, QualifiedRoot},
     ffi::{
         copy_account_bytes, copy_amount_bytes, copy_hash_bytes, copy_link_bytes, copy_root_bytes,
         core::{AccountInfoHandle, BlockHandle},
@@ -490,4 +490,34 @@ pub unsafe extern "C" fn rsn_ledger_update_account(
         &*old_info,
         &*new_info,
     );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_successor(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    root: *const u8,
+) -> *mut BlockHandle {
+    let successor = (*handle)
+        .0
+        .successor((*txn).as_txn(), &QualifiedRoot::from_ptr(root));
+
+    match successor {
+        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
+        None => null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_pruning_action(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    batch_size: u64,
+) -> u64 {
+    (*handle).0.pruning_action(
+        (*txn).as_write_txn(),
+        &BlockHash::from_ptr(hash),
+        batch_size,
+    )
 }

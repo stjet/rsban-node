@@ -3,7 +3,7 @@ use rand::{thread_rng, Rng};
 use crate::{
     core::{
         Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockType, Epoch, Link,
-        PendingKey, Root,
+        PendingKey, QualifiedRoot, Root,
     },
     stats::Stat,
     utils::create_property_tree,
@@ -494,5 +494,55 @@ impl Ledger {
             debug_assert!(self.cache.account_count.load(Ordering::SeqCst) > 0);
             self.cache.account_count.fetch_sub(1, Ordering::SeqCst);
         }
+    }
+
+    pub fn successor(&self, txn: &dyn Transaction, root: &QualifiedRoot) -> Option<BlockEnum> {
+        let (mut successor, get_from_previous) = if root.previous.is_zero() {
+            match self.store.account().get(txn, &root.root.into()) {
+                Some(info) => (Some(info.open_block), false),
+                None => (None, true),
+            }
+        } else {
+            (None, true)
+        };
+
+        if get_from_previous {
+            successor = self.store.block().successor(txn, &root.previous);
+        }
+
+        successor
+            .map(|hash| self.store.block().get(txn, &hash))
+            .flatten()
+    }
+
+    pub fn pruning_action(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        hash: &BlockHash,
+        batch_size: u64,
+    ) -> u64 {
+        let mut pruned_count = 0;
+        let mut hash = *hash;
+        let genesis_hash = { self.constants.genesis.read().unwrap().as_block().hash() };
+
+        while !hash.is_zero() && hash != genesis_hash {
+            if let Some(block) = self.store.block().get(txn.txn(), &hash) {
+                self.store.block().del(txn, &hash);
+                self.store.pruned().put(txn, &hash);
+                hash = block.as_block().previous();
+                pruned_count += 1;
+                self.cache.pruned_count.fetch_add(1, Ordering::SeqCst);
+                if pruned_count % batch_size == 0 {
+                    txn.commit();
+                    txn.renew();
+                }
+            } else if self.store.pruned().exists(txn.txn(), &hash) {
+                hash = BlockHash::zero();
+            } else {
+                panic!("Error finding block for pruning");
+            }
+        }
+
+        pruned_count
     }
 }

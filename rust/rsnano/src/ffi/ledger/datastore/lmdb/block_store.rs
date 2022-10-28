@@ -79,7 +79,8 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_successor(
 ) {
     let successor = (*handle)
         .0
-        .successor((*txn).as_txn(), &BlockHash::from_ptr(hash));
+        .successor((*txn).as_txn(), &BlockHash::from_ptr(hash))
+        .unwrap_or_default();
     copy_hash_bytes(successor, result);
 }
 

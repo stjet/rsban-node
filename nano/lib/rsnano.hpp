@@ -1807,6 +1807,11 @@ void rsn_ledger_destroy_bootstrap_weights_dto (BootstrapWeightsDto * dto);
 
 void rsn_ledger_enable_pruning (LedgerHandle * handle);
 
+BlockHandle * rsn_ledger_find_receive_block_by_send_hash (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * destination,
+const uint8_t * send_block_hash);
+
 LedgerCacheHandle * rsn_ledger_get_cache_handle (LedgerHandle * handle);
 
 void rsn_ledger_hash_root_random (LedgerHandle * handle,
@@ -1814,7 +1819,19 @@ TransactionHandle * txn,
 uint8_t * result_hash,
 uint8_t * result_root);
 
+bool rsn_ledger_is_epoch_link (LedgerHandle * handle, const uint8_t * link);
+
 bool rsn_ledger_is_send (LedgerHandle * handle, TransactionHandle * txn, const BlockHandle * block);
+
+void rsn_ledger_latest (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account,
+uint8_t * result);
+
+void rsn_ledger_latest_root (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account,
+uint8_t * result);
 
 bool rsn_ledger_pruning_enabled (LedgerHandle * handle);
 

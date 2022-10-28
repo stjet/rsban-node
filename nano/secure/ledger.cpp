@@ -964,36 +964,17 @@ nano::uint128_t nano::ledger::amount_safe (nano::transaction const & transaction
 // Return latest block for account
 nano::block_hash nano::ledger::latest (nano::transaction const & transaction_a, nano::account const & account_a)
 {
-	nano::account_info info;
-	auto latest_error (store.account ().get (transaction_a, account_a, info));
-	return latest_error ? 0 : info.head ();
+	nano::block_hash latest_l;
+	rsnano::rsn_ledger_latest (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), latest_l.bytes.data ());
+	return latest_l;
 }
 
 // Return latest root for account, account number if there are no blocks for this account.
 nano::root nano::ledger::latest_root (nano::transaction const & transaction_a, nano::account const & account_a)
 {
-	nano::account_info info;
-	if (store.account ().get (transaction_a, account_a, info))
-	{
-		return account_a;
-	}
-	else
-	{
-		return info.head ();
-	}
-}
-
-void nano::ledger::dump_account_chain (nano::account const & account_a, std::ostream & stream)
-{
-	auto transaction (store.tx_begin_read ());
-	auto hash (latest (*transaction, account_a));
-	while (!hash.is_zero ())
-	{
-		auto block (store.block ().get (*transaction, hash));
-		debug_assert (block != nullptr);
-		stream << hash.to_string () << std::endl;
-		hash = block->previous ();
-	}
+	nano::root latest_l;
+	rsnano::rsn_ledger_latest_root (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), latest_l.bytes.data ());
+	return latest_l;
 }
 
 bool nano::ledger::could_fit (nano::transaction const & transaction_a, nano::block const & block_a) const
@@ -1019,7 +1000,7 @@ bool nano::ledger::dependents_confirmed (nano::transaction const & transaction_a
 
 bool nano::ledger::is_epoch_link (nano::link const & link_a) const
 {
-	return constants.epochs.is_epoch_link (link_a);
+	return rsnano::rsn_ledger_is_epoch_link (handle, link_a.bytes.data ());
 }
 
 class dependent_block_visitor : public nano::block_visitor
@@ -1081,46 +1062,8 @@ std::array<nano::block_hash, 2> nano::ledger::dependent_blocks (nano::transactio
  */
 std::shared_ptr<nano::block> nano::ledger::find_receive_block_by_send_hash (nano::transaction const & transaction, nano::account const & destination, nano::block_hash const & send_block_hash)
 {
-	std::shared_ptr<nano::block> result;
-	debug_assert (send_block_hash != 0);
-
-	// get the cemented frontier
-	nano::confirmation_height_info info;
-	if (store.confirmation_height ().get (transaction, destination, info))
-	{
-		return nullptr;
-	}
-	auto possible_receive_block = store.block ().get (transaction, info.frontier ());
-
-	// walk down the chain until the source field of a receive block matches the send block hash
-	while (possible_receive_block != nullptr)
-	{
-		// if source is non-zero then it is a legacy receive or open block
-		nano::block_hash source = possible_receive_block->source ();
-
-		// if source is zero then it could be a state block, which needs a different kind of access
-		auto state_block = dynamic_cast<nano::state_block const *> (possible_receive_block.get ());
-		if (state_block != nullptr)
-		{
-			// we read the block from the database, so we expect it to have sideband
-			debug_assert (state_block->has_sideband ());
-			if (state_block->sideband ().details ().is_receive ())
-			{
-				source = state_block->link ().as_block_hash ();
-			}
-		}
-
-		if (send_block_hash == source)
-		{
-			// we have a match
-			result = possible_receive_block;
-			break;
-		}
-
-		possible_receive_block = store.block ().get (transaction, possible_receive_block->previous ());
-	}
-
-	return result;
+	auto block_handle = rsnano::rsn_ledger_find_receive_block_by_send_hash (handle, transaction.get_rust_handle (), destination.bytes.data (), send_block_hash.bytes.data ());
+	return nano::block_handle_to_block (block_handle);
 }
 
 nano::account nano::ledger::epoch_signer (nano::link const & link_a) const

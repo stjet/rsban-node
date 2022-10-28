@@ -1,7 +1,7 @@
 use rand::{thread_rng, Rng};
 
 use crate::{
-    core::{Account, Amount, Block, BlockEnum, BlockHash, BlockType, PendingKey},
+    core::{Account, Amount, Block, BlockEnum, BlockHash, BlockType, Link, PendingKey, Root},
     stats::Stat,
     utils::create_property_tree,
 };
@@ -402,5 +402,56 @@ impl Ledger {
                 }
             })
             .flatten()
+    }
+
+    /// Return latest block for account
+    pub fn latest(&self, txn: &dyn Transaction, account: &Account) -> Option<BlockHash> {
+        self.store.account().get(txn, account).map(|info| info.head)
+    }
+
+    /// Return latest root for account, account number if there are no blocks for this account
+    pub fn latest_root(&self, txn: &dyn Transaction, account: &Account) -> Root {
+        match self.store.account().get(txn, account) {
+            Some(info) => info.head.into(),
+            None => account.into(),
+        }
+    }
+
+    pub fn is_epoch_link(&self, link: &Link) -> bool {
+        self.constants.epochs.is_epoch_link(link)
+    }
+
+    pub fn find_receive_block_by_send_hash(
+        &self,
+        txn: &dyn Transaction,
+        destination: &Account,
+        send_block_hash: &BlockHash,
+    ) -> Option<BlockEnum> {
+        // get the cemented frontier
+        let info = self.store.confirmation_height().get(txn, destination)?;
+        let mut possible_receive_block = self.store.block().get(txn, &info.frontier);
+
+        // walk down the chain until the source field of a receive block matches the send block hash
+        while let Some(current) = possible_receive_block {
+            // if source is non-zero then it is a legacy receive or open block
+            let mut source = current.as_block().source();
+
+            // if source is zero then it could be a state block, which needs a different kind of access
+            if let BlockEnum::State(state_block) = &current {
+                // we read the block from the database, so we expect it to have sideband
+                if state_block.sideband().unwrap().details.is_receive {
+                    source = state_block.link().into();
+                }
+            }
+
+            if *send_block_hash == source {
+                // we have a match
+                return Some(current);
+            }
+
+            possible_receive_block = self.store.block().get(txn, &current.as_block().previous());
+        }
+
+        None
     }
 }

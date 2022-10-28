@@ -1,7 +1,7 @@
 use crate::{
-    core::{Account, Amount, BlockHash},
+    core::{Account, Amount, BlockHash, Link},
     ffi::{
-        copy_account_bytes, copy_amount_bytes, copy_hash_bytes,
+        copy_account_bytes, copy_amount_bytes, copy_hash_bytes, copy_root_bytes,
         core::BlockHandle,
         ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
         StatHandle, StringDto,
@@ -11,7 +11,8 @@ use crate::{
 use std::{
     ffi::c_void,
     ops::Deref,
-    sync::{atomic::Ordering, Arc},
+    ptr::null_mut,
+    sync::{atomic::Ordering, Arc, RwLock},
 };
 
 use super::lmdb::{LmdbStoreHandle, TransactionHandle};
@@ -391,5 +392,58 @@ pub unsafe extern "C" fn rsn_ledger_amount_safe(
             copy_amount_bytes(Amount::zero(), result);
             false
         }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_latest(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    result: *mut u8,
+) {
+    let latest = (*handle)
+        .0
+        .latest((*txn).as_txn(), &Account::from_ptr(account))
+        .unwrap_or_default();
+    copy_hash_bytes(latest, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_latest_root(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    result: *mut u8,
+) {
+    let latest = (*handle)
+        .0
+        .latest_root((*txn).as_txn(), &Account::from_ptr(account));
+    copy_root_bytes(latest, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_is_epoch_link(
+    handle: *mut LedgerHandle,
+    link: *const u8,
+) -> bool {
+    (*handle).0.is_epoch_link(&Link::from_ptr(link))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_find_receive_block_by_send_hash(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    destination: *const u8,
+    send_block_hash: *const u8,
+) -> *mut BlockHandle {
+    let block = (*handle).0.find_receive_block_by_send_hash(
+        (*txn).as_txn(),
+        &Account::from_ptr(destination),
+        &BlockHash::from_ptr(send_block_hash),
+    );
+    match block {
+        Some(b) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(b))))),
+        None => null_mut(),
     }
 }

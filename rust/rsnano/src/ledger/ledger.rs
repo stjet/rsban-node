@@ -2,10 +2,10 @@ use rand::{thread_rng, Rng};
 
 use crate::{
     core::{
-        Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockType, Epoch, Link,
-        PendingKey, QualifiedRoot, Root,
+        Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockType,
+        ConfirmationHeightInfo, Epoch, Link, PendingKey, QualifiedRoot, Root,
     },
-    stats::Stat,
+    stats::{DetailType, Direction, Stat, StatType},
     utils::create_property_tree,
 };
 use std::{
@@ -585,5 +585,62 @@ impl Ledger {
         });
 
         result.into_inner().unwrap()
+    }
+
+    pub fn bootstrap_weight_reached(&self) -> bool {
+        self.cache.block_count.load(Ordering::SeqCst) >= self.bootstrap_weight_max_blocks()
+    }
+
+    pub fn write_confirmation_height(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        account: &Account,
+        num_blocks_cemented: u64,
+        confirmation_height: u64,
+        confirmed_frontier: &BlockHash,
+    ) {
+        #[cfg(debug_assertions)]
+        {
+            let conf_height = self
+                .store
+                .confirmation_height()
+                .get(txn.txn(), account)
+                .map(|i| i.height)
+                .unwrap_or_default();
+            let block = self
+                .store
+                .block()
+                .get(txn.txn(), confirmed_frontier)
+                .unwrap();
+            debug_assert!(
+                block.as_block().sideband().unwrap().height == conf_height + num_blocks_cemented
+            );
+        }
+
+        self.store.confirmation_height().put(
+            txn,
+            account,
+            &ConfirmationHeightInfo::new(confirmation_height, *confirmed_frontier),
+        );
+
+        self.cache
+            .cemented_count
+            .fetch_add(num_blocks_cemented, Ordering::SeqCst);
+
+        let _ = self.stats.add(
+            StatType::ConfirmationHeight,
+            DetailType::BlocksConfirmed,
+            Direction::In,
+            num_blocks_cemented,
+            false,
+        );
+
+        let _ = self.stats.add(
+            StatType::ConfirmationHeight,
+            DetailType::BlocksConfirmedBounded,
+            Direction::In,
+            num_blocks_cemented,
+            false,
+        );
     }
 }

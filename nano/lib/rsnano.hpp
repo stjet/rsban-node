@@ -1779,6 +1779,8 @@ void rsn_ledger_block_text (LedgerHandle * handle, const uint8_t * hash, StringD
 
 uint64_t rsn_ledger_bootstrap_weight_max_blocks (LedgerHandle * handle);
 
+bool rsn_ledger_bootstrap_weight_reached (LedgerHandle * handle);
+
 void rsn_ledger_bootstrap_weights (LedgerHandle * handle, BootstrapWeightsDto * result);
 
 uint64_t rsn_ledger_cache_account_count (LedgerCacheHandle * handle);
@@ -1886,6 +1888,13 @@ const AccountInfoHandle * old_info,
 const AccountInfoHandle * new_info);
 
 void rsn_ledger_weight (LedgerHandle * handle, const uint8_t * account, uint8_t * result);
+
+void rsn_ledger_write_confirmation_height (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account,
+uint64_t num_blocks_cemented,
+uint64_t confirmation_height,
+const uint8_t * confirmed_frontier);
 
 LmdbIteratorHandle * rsn_lmdb_account_store_begin (LmdbAccountStoreHandle * handle,
 TransactionHandle * txn);

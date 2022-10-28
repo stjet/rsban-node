@@ -574,3 +574,26 @@ pub unsafe extern "C" fn rsn_unconfirmed_frontiers_destroy(
 ) {
     drop(Box::from_raw((*result).raw_ptr))
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_bootstrap_weight_reached(handle: *mut LedgerHandle) -> bool {
+    (*handle).0.bootstrap_weight_reached()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_write_confirmation_height(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    num_blocks_cemented: u64,
+    confirmation_height: u64,
+    confirmed_frontier: *const u8,
+) {
+    (*handle).0.write_confirmation_height(
+        (*txn).as_write_txn(),
+        &Account::from_ptr(account),
+        num_blocks_cemented,
+        confirmation_height,
+        &BlockHash::from_ptr(confirmed_frontier),
+    )
+}

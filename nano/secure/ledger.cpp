@@ -1123,23 +1123,12 @@ std::multimap<uint64_t, nano::uncemented_info, std::greater<>> nano::ledger::unc
 
 bool nano::ledger::bootstrap_weight_reached () const
 {
-	return cache.block_count () >= get_bootstrap_weight_max_blocks ();
+	return rsnano::rsn_ledger_bootstrap_weight_reached (handle);
 }
 
 void nano::ledger::write_confirmation_height (nano::write_transaction const & transaction_a, nano::account const & account_a, uint64_t num_blocks_cemented_a, uint64_t confirmation_height_a, nano::block_hash const & confirmed_frontier_a)
 {
-#ifndef NDEBUG
-	// Extra debug checks
-	nano::confirmation_height_info confirmation_height_info;
-	store.confirmation_height ().get (transaction_a, account_a, confirmation_height_info);
-	auto block (store.block ().get (transaction_a, confirmed_frontier_a));
-	debug_assert (block != nullptr);
-	debug_assert (block->sideband ().height () == confirmation_height_info.height () + num_blocks_cemented_a);
-#endif
-	store.confirmation_height ().put (transaction_a, account_a, nano::confirmation_height_info{ confirmation_height_a, confirmed_frontier_a });
-	cache.add_cemented (num_blocks_cemented_a);
-	stats.add (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in, num_blocks_cemented_a);
-	stats.add (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in, num_blocks_cemented_a);
+	rsnano::rsn_ledger_write_confirmation_height (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), num_blocks_cemented_a, confirmation_height_a, confirmed_frontier_a.bytes.data ());
 }
 
 size_t nano::ledger::get_bootstrap_weights_size () const

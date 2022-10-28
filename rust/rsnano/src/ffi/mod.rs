@@ -30,7 +30,7 @@ pub(crate) use websocket::*;
 
 use crate::{
     core::{
-        Account, Amount, BlockHash, HashOrAccount, PublicKey, QualifiedRoot, RawKey, Root,
+        Account, Amount, BlockHash, HashOrAccount, Link, PublicKey, QualifiedRoot, RawKey, Root,
         Signature,
     },
     utils::ErrorCode,
@@ -128,6 +128,11 @@ pub(crate) unsafe fn copy_amount_bytes(source: Amount, target: *mut u8) {
 }
 
 pub(crate) unsafe fn copy_root_bytes(source: Root, target: *mut u8) {
+    let bytes = std::slice::from_raw_parts_mut(target, 32);
+    bytes.copy_from_slice(source.as_bytes());
+}
+
+pub(crate) unsafe fn copy_link_bytes(source: Link, target: *mut u8) {
     let bytes = std::slice::from_raw_parts_mut(target, 32);
     bytes.copy_from_slice(source.as_bytes());
 }

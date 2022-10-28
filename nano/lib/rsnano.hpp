@@ -1807,6 +1807,10 @@ void rsn_ledger_destroy_bootstrap_weights_dto (BootstrapWeightsDto * dto);
 
 void rsn_ledger_enable_pruning (LedgerHandle * handle);
 
+void rsn_ledger_epoch_link (LedgerHandle * handle, uint8_t epoch, uint8_t * result);
+
+void rsn_ledger_epoch_signer (LedgerHandle * handle, const uint8_t * link, uint8_t * result);
+
 BlockHandle * rsn_ledger_find_receive_block_by_send_hash (LedgerHandle * handle,
 TransactionHandle * txn,
 const uint8_t * destination,
@@ -1842,6 +1846,12 @@ const BootstrapWeightsItem * accounts,
 uintptr_t count);
 
 void rsn_ledger_set_check_bootstrap_weights (LedgerHandle * handle, bool check);
+
+void rsn_ledger_update_account (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * account,
+const AccountInfoHandle * old_info,
+const AccountInfoHandle * new_info);
 
 void rsn_ledger_weight (LedgerHandle * handle, const uint8_t * account, uint8_t * result);
 

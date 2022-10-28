@@ -1,8 +1,8 @@
 use crate::{
-    core::{Account, Amount, BlockHash, Link},
+    core::{Account, Amount, BlockHash, Epoch, Link},
     ffi::{
-        copy_account_bytes, copy_amount_bytes, copy_hash_bytes, copy_root_bytes,
-        core::BlockHandle,
+        copy_account_bytes, copy_amount_bytes, copy_hash_bytes, copy_link_bytes, copy_root_bytes,
+        core::{AccountInfoHandle, BlockHandle},
         ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
         StatHandle, StringDto,
     },
@@ -14,6 +14,8 @@ use std::{
     ptr::null_mut,
     sync::{atomic::Ordering, Arc, RwLock},
 };
+
+use num_traits::FromPrimitive;
 
 use super::lmdb::{LmdbStoreHandle, TransactionHandle};
 
@@ -446,4 +448,46 @@ pub unsafe extern "C" fn rsn_ledger_find_receive_block_by_send_hash(
         Some(b) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(b))))),
         None => null_mut(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_epoch_signer(
+    handle: *mut LedgerHandle,
+    link: *const u8,
+    result: *mut u8,
+) {
+    let signer = (*handle)
+        .0
+        .epoch_signer(&Link::from_ptr(link))
+        .unwrap_or_default();
+    copy_account_bytes(signer, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_epoch_link(
+    handle: *mut LedgerHandle,
+    epoch: u8,
+    result: *mut u8,
+) {
+    let link = (*handle)
+        .0
+        .epoch_link(Epoch::from_u8(epoch).unwrap())
+        .unwrap_or_default();
+    copy_link_bytes(link, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_update_account(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    account: *const u8,
+    old_info: *const AccountInfoHandle,
+    new_info: *const AccountInfoHandle,
+) {
+    (*handle).0.update_account(
+        (*txn).as_write_txn(),
+        &Account::from_ptr(account),
+        &*old_info,
+        &*new_info,
+    );
 }

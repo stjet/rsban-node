@@ -1,7 +1,10 @@
 use rand::{thread_rng, Rng};
 
 use crate::{
-    core::{Account, Amount, Block, BlockEnum, BlockHash, BlockType, Link, PendingKey, Root},
+    core::{
+        Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockType, Epoch, Link,
+        PendingKey, Root,
+    },
     stats::Stat,
     utils::create_property_tree,
 };
@@ -15,7 +18,7 @@ use std::{
 };
 
 use super::{
-    datastore::{Store, Transaction},
+    datastore::{Store, Transaction, WriteTransaction},
     GenerateCache, LedgerCache, LedgerConstants, RepWeights,
 };
 
@@ -421,6 +424,9 @@ impl Ledger {
         self.constants.epochs.is_epoch_link(link)
     }
 
+    /// Given the block hash of a send block, find the associated receive block that receives that send.
+    /// The send block hash is not checked in any way, it is assumed to be correct.
+    /// Return the receive block on success and None on failure
     pub fn find_receive_block_by_send_hash(
         &self,
         txn: &dyn Transaction,
@@ -453,5 +459,40 @@ impl Ledger {
         }
 
         None
+    }
+
+    pub fn epoch_signer(&self, link: &Link) -> Option<Account> {
+        self.constants
+            .epochs
+            .signer(self.constants.epochs.epoch(link)?)
+            .map(|key| key.into())
+    }
+
+    pub fn epoch_link(&self, epoch: Epoch) -> Option<Link> {
+        self.constants.epochs.link(epoch).cloned()
+    }
+
+    pub fn update_account(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        account: &Account,
+        old_info: &AccountInfo,
+        new_info: &AccountInfo,
+    ) {
+        if !new_info.head.is_zero() {
+            if old_info.head.is_zero() && new_info.open_block == new_info.head {
+                self.cache.account_count.fetch_add(1, Ordering::SeqCst);
+            }
+            if !old_info.head.is_zero() && old_info.epoch != new_info.epoch {
+                // store.account ().put won't erase existing entries if they're in different tables
+                self.store.account().del(txn, account);
+            }
+            self.store.account().put(txn, account, new_info);
+        } else {
+            debug_assert!(!self.store.confirmation_height().exists(txn.txn(), account));
+            self.store.account().del(txn, account);
+            debug_assert!(self.cache.account_count.load(Ordering::SeqCst) > 0);
+            self.cache.account_count.fetch_sub(1, Ordering::SeqCst);
+        }
     }
 }

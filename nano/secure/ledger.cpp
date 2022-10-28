@@ -1068,36 +1068,21 @@ std::shared_ptr<nano::block> nano::ledger::find_receive_block_by_send_hash (nano
 
 nano::account nano::ledger::epoch_signer (nano::link const & link_a) const
 {
-	return constants.epochs.signer (constants.epochs.epoch (link_a));
+	nano::account signer;
+	rsnano::rsn_ledger_epoch_signer (handle, link_a.bytes.data (), signer.bytes.data ());
+	return signer;
 }
 
 nano::link nano::ledger::epoch_link (nano::epoch epoch_a) const
 {
-	return constants.epochs.link (epoch_a);
+	nano::link link;
+	rsnano::rsn_ledger_epoch_link (handle, static_cast<uint8_t> (epoch_a), link.bytes.data ());
+	return link;
 }
 
 void nano::ledger::update_account (nano::write_transaction const & transaction_a, nano::account const & account_a, nano::account_info const & old_a, nano::account_info const & new_a)
 {
-	if (!new_a.head ().is_zero ())
-	{
-		if (old_a.head ().is_zero () && new_a.open_block () == new_a.head ())
-		{
-			cache.add_accounts (1);
-		}
-		if (!old_a.head ().is_zero () && old_a.epoch () != new_a.epoch ())
-		{
-			// store.account ().put won't erase existing entries if they're in different tables
-			store.account ().del (transaction_a, account_a);
-		}
-		store.account ().put (transaction_a, account_a, new_a);
-	}
-	else
-	{
-		debug_assert (!store.confirmation_height ().exists (transaction_a, account_a));
-		store.account ().del (transaction_a, account_a);
-		debug_assert (cache.account_count () > 0);
-		cache.remove_accounts (1);
-	}
+	rsnano::rsn_ledger_update_account (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), old_a.handle, new_a.handle);
 }
 
 std::shared_ptr<nano::block> nano::ledger::successor (nano::transaction const & transaction_a, nano::qualified_root const & root_a)

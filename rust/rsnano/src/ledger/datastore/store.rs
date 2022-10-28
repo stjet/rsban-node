@@ -5,7 +5,7 @@ use super::{
     WriteTransaction,
 };
 
-pub trait Store {
+pub trait Store: Send + Sync {
     fn tx_begin_read(&self) -> anyhow::Result<Box<dyn ReadTransaction>>;
     fn tx_begin_write(&self) -> anyhow::Result<Box<dyn WriteTransaction>>;
     fn copy_db(&self, destination: &Path) -> anyhow::Result<()>;

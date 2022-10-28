@@ -749,7 +749,7 @@ nano::ledger::ledger (nano::store & store_a, nano::stat & stat_a, nano::ledger_c
 	stats{ stat_a }
 {
 	auto constants_dto{ constants.to_dto () };
-	handle = rsnano::rsn_ledger_create (this, store_a.get_handle (), &constants_dto, stat_a.handle, generate_cache_a.handle);
+	handle = rsnano::rsn_ledger_create (store_a.get_handle (), &constants_dto, stat_a.handle, generate_cache_a.handle);
 	cache = nano::ledger_cache (rsnano::rsn_ledger_get_cache_handle (handle));
 }
 
@@ -1103,32 +1103,21 @@ uint64_t nano::ledger::pruning_action (nano::write_transaction & transaction_a, 
 
 std::multimap<uint64_t, nano::uncemented_info, std::greater<>> nano::ledger::unconfirmed_frontiers () const
 {
-	nano::locked<std::multimap<uint64_t, nano::uncemented_info, std::greater<>>> result;
-	using result_t = decltype (result)::value_type;
-
-	store.account ().for_each_par ([this, &result] (nano::read_transaction const & transaction_a, nano::store_iterator<nano::account, nano::account_info> i, nano::store_iterator<nano::account, nano::account_info> n) {
-		result_t unconfirmed_frontiers_l;
-		for (; i != n; ++i)
-		{
-			auto const & account (i->first);
-			auto const & account_info (i->second);
-
-			nano::confirmation_height_info conf_height_info;
-			this->store.confirmation_height ().get (transaction_a, account, conf_height_info);
-
-			if (account_info.block_count () != conf_height_info.height ())
-			{
-				// Always output as no confirmation height has been set on the account yet
-				auto height_delta = account_info.block_count () - conf_height_info.height ();
-				auto const & frontier = account_info.head ();
-				auto const cemented_frontier = conf_height_info.frontier ();
-				unconfirmed_frontiers_l.emplace (std::piecewise_construct, std::forward_as_tuple (height_delta), std::forward_as_tuple (cemented_frontier, frontier, i->first));
-			}
-		}
-		// Merge results
-		auto result_locked = result.lock ();
-		result_locked->insert (unconfirmed_frontiers_l.begin (), unconfirmed_frontiers_l.end ());
-	});
+	rsnano::UnconfirmedFrontierArrayDto array_dto;
+	rsnano::rsn_ledger_unconfirmed_frontiers (handle, &array_dto);
+	std::multimap<uint64_t, nano::uncemented_info, std::greater<>> result;
+	for (int i = 0; i < array_dto.count; ++i)
+	{
+		const auto & item_dto = array_dto.items[i].info;
+		nano::block_hash cemented_frontier;
+		nano::block_hash frontier;
+		nano::account account;
+		std::copy (std::begin (item_dto.cemented_frontier), std::end (item_dto.cemented_frontier), std::begin (cemented_frontier.bytes));
+		std::copy (std::begin (item_dto.frontier), std::end (item_dto.frontier), std::begin (frontier.bytes));
+		std::copy (std::begin (item_dto.account), std::end (item_dto.account), std::begin (account.bytes));
+		result.emplace (std::piecewise_construct, std::forward_as_tuple (array_dto.items[i].height_delta), std::forward_as_tuple (cemented_frontier, frontier, account));
+	}
+	rsnano::rsn_unconfirmed_frontiers_destroy (&array_dto);
 	return result;
 }
 

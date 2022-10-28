@@ -170,6 +170,8 @@ struct U256ArrayHandle;
 
 struct UncheckedInfoHandle;
 
+struct UnconfirmedFrontiersHandle;
+
 struct VoidFnCallbackHandle;
 
 struct VoteHandle;
@@ -745,6 +747,26 @@ struct BootstrapWeightsDto
 	const BootstrapWeightsItem * accounts;
 	uintptr_t count;
 	BootstrapWeightsRawPtr * raw_ptr;
+};
+
+struct UncementedInfoDto
+{
+	uint8_t cemented_frontier[32];
+	uint8_t frontier[32];
+	uint8_t account[32];
+};
+
+struct UnconfirmedFrontierDto
+{
+	uint64_t height_delta;
+	UncementedInfoDto info;
+};
+
+struct UnconfirmedFrontierArrayDto
+{
+	const UnconfirmedFrontierDto * items;
+	uintptr_t count;
+	UnconfirmedFrontiersHandle * raw_ptr;
 };
 
 using ForEachParCallback = void (*) (void *, TransactionHandle *, LmdbIteratorHandle *, LmdbIteratorHandle *);
@@ -1795,8 +1817,7 @@ int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
 
-LedgerHandle * rsn_ledger_create (void * handle,
-LmdbStoreHandle * store,
+LedgerHandle * rsn_ledger_create (LmdbStoreHandle * store,
 const LedgerConstantsDto * constants,
 StatHandle * stats,
 GenerateCacheHandle * generate_cache);
@@ -1855,6 +1876,8 @@ void rsn_ledger_set_check_bootstrap_weights (LedgerHandle * handle, bool check);
 BlockHandle * rsn_ledger_successor (LedgerHandle * handle,
 TransactionHandle * txn,
 const uint8_t * root);
+
+void rsn_ledger_unconfirmed_frontiers (LedgerHandle * handle, UnconfirmedFrontierArrayDto * result);
 
 void rsn_ledger_update_account (LedgerHandle * handle,
 TransactionHandle * txn,
@@ -3453,6 +3476,8 @@ bool rsn_unchecked_info_serialize (UncheckedInfoHandle * handle, void * stream);
 uint8_t rsn_unchecked_info_verified (const UncheckedInfoHandle * handle);
 
 void rsn_unchecked_info_verified_set (UncheckedInfoHandle * handle, uint8_t verified);
+
+void rsn_unconfirmed_frontiers_destroy (UnconfirmedFrontierArrayDto * result);
 
 int32_t rsn_unique_path (uint16_t network, uint8_t * result, uintptr_t size);
 

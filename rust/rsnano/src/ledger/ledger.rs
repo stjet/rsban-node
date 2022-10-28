@@ -9,8 +9,7 @@ use crate::{
     utils::create_property_tree,
 };
 use std::{
-    collections::HashMap,
-    ffi::c_void,
+    collections::{BTreeMap, HashMap},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
@@ -22,8 +21,13 @@ use super::{
     GenerateCache, LedgerCache, LedgerConstants, RepWeights,
 };
 
+pub struct UncementedInfo {
+    pub cemented_frontier: BlockHash,
+    pub frontier: BlockHash,
+    pub account: Account,
+}
+
 pub struct Ledger {
-    handle: *mut c_void,
     store: Arc<dyn Store>,
     pub cache: Arc<LedgerCache>,
     constants: LedgerConstants,
@@ -36,14 +40,12 @@ pub struct Ledger {
 
 impl Ledger {
     pub fn new(
-        handle: *mut c_void,
         store: Arc<dyn Store>,
         constants: LedgerConstants,
         stats: Arc<Stat>,
         generate_cache: &GenerateCache,
     ) -> anyhow::Result<Self> {
         let mut ledger = Self {
-            handle,
             store,
             cache: Arc::new(LedgerCache::new()),
             constants,
@@ -544,5 +546,44 @@ impl Ledger {
         }
 
         pruned_count
+    }
+
+    /// **Warning:** In C++ the result is sorted in reverse order!
+    pub fn unconfirmed_frontiers(&self) -> BTreeMap<u64, Vec<UncementedInfo>> {
+        let result = Mutex::new(BTreeMap::<u64, Vec<UncementedInfo>>::new());
+        self.store.account().for_each_par(&|txn, mut i, n| {
+            let mut unconfirmed_frontiers = Vec::new();
+            while !i.eq(n.as_ref()) {
+                if let Some((&account, account_info)) = i.current() {
+                    if let Some(conf_height_info) =
+                        self.store.confirmation_height().get(txn.txn(), &account)
+                    {
+                        if account_info.block_count != conf_height_info.height {
+                            // Always output as no confirmation height has been set on the account yet
+                            let height_delta = account_info.block_count - conf_height_info.height;
+                            let frontier = account_info.head;
+                            let cemented_frontier = conf_height_info.frontier;
+                            unconfirmed_frontiers.push((
+                                height_delta,
+                                UncementedInfo {
+                                    cemented_frontier,
+                                    frontier,
+                                    account,
+                                },
+                            ))
+                        }
+                    }
+                }
+                i.next()
+            }
+
+            // Merge results
+            let mut guard = result.lock().unwrap();
+            for (delta, info) in unconfirmed_frontiers {
+                guard.entry(delta).or_default().push(info);
+            }
+        });
+
+        result.into_inner().unwrap()
     }
 }

@@ -9,7 +9,6 @@ use crate::{
     ledger::Ledger,
 };
 use std::{
-    ffi::c_void,
     ops::Deref,
     ptr::null_mut,
     sync::{atomic::Ordering, Arc, RwLock},
@@ -31,14 +30,12 @@ impl Deref for LedgerHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_create(
-    handle: *mut c_void,
     store: *mut LmdbStoreHandle,
     constants: *const LedgerConstantsDto,
     stats: *mut StatHandle,
     generate_cache: *mut GenerateCacheHandle,
 ) -> *mut LedgerHandle {
     let ledger = Ledger::new(
-        handle,
         (*store).deref().to_owned(),
         (&*constants).try_into().unwrap(),
         (*stats).deref().to_owned(),
@@ -520,4 +517,60 @@ pub unsafe extern "C" fn rsn_ledger_pruning_action(
         &BlockHash::from_ptr(hash),
         batch_size,
     )
+}
+
+#[repr(C)]
+pub struct UncementedInfoDto {
+    pub cemented_frontier: [u8; 32],
+    pub frontier: [u8; 32],
+    pub account: [u8; 32],
+}
+
+#[repr(C)]
+pub struct UnconfirmedFrontierDto {
+    pub height_delta: u64,
+    pub info: UncementedInfoDto,
+}
+
+pub struct UnconfirmedFrontiersHandle(Vec<UnconfirmedFrontierDto>);
+
+#[repr(C)]
+pub struct UnconfirmedFrontierArrayDto {
+    pub items: *const UnconfirmedFrontierDto,
+    pub count: usize,
+    pub raw_ptr: *mut UnconfirmedFrontiersHandle,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_unconfirmed_frontiers(
+    handle: *mut LedgerHandle,
+    result: *mut UnconfirmedFrontierArrayDto,
+) {
+    let unconfirmed = (*handle).0.unconfirmed_frontiers();
+    let handle = Box::new(UnconfirmedFrontiersHandle(
+        unconfirmed
+            .iter()
+            .flat_map(|(&k, v)| {
+                v.iter().map(move |info| UnconfirmedFrontierDto {
+                    height_delta: k,
+                    info: UncementedInfoDto {
+                        cemented_frontier: *info.cemented_frontier.as_bytes(),
+                        frontier: *info.frontier.as_bytes(),
+                        account: *info.account.as_bytes(),
+                    },
+                })
+            })
+            .collect(),
+    ));
+
+    (*result).items = handle.0.as_ptr();
+    (*result).count = handle.0.len();
+    (*result).raw_ptr = Box::into_raw(handle);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_unconfirmed_frontiers_destroy(
+    result: *mut UnconfirmedFrontierArrayDto,
+) {
+    drop(Box::from_raw((*result).raw_ptr))
 }

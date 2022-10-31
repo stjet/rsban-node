@@ -4,14 +4,17 @@ use crate::{
     core::{
         Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockType,
         ConfirmationHeightInfo, Epoch, Link, PendingKey, QualifiedRoot, Root,
+        SignatureVerification,
     },
     ffi::ledger::DependentBlockVisitor,
-    ledger::RollbackVisitor,
+    ledger::{LedgerProcessor, RollbackVisitor},
     stats::{DetailType, Direction, Stat, StatType},
     utils::create_property_tree,
+    DEV_GENESIS,
 };
 use std::{
     collections::{BTreeMap, HashMap},
+    ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex, RwLock,
@@ -27,6 +30,31 @@ pub struct UncementedInfo {
     pub cemented_frontier: BlockHash,
     pub frontier: BlockHash,
     pub account: Account,
+}
+
+#[derive(PartialEq, Eq)]
+#[repr(u8)]
+pub enum ProcessResult {
+    Progress,               // Hasn't been seen before, signed correctly
+    BadSignature,           // Signature was bad, forged or transmission error
+    Old,                    // Already seen and was valid
+    NegativeSpend,          // Malicious attempt to spend a negative amount
+    Fork,                   // Malicious fork based on previous
+    Unreceivable, // Source block doesn't exist, has already been received, or requires an account upgrade (epoch blocks)
+    GapPrevious,  // Block marked as previous is unknown
+    GapSource,    // Block marked as source is unknown
+    GapEpochOpenPending, // Block marked as pending blocks required for epoch open block are unknown
+    OpenedBurnAccount, // Block attempts to open the burn account
+    BalanceMismatch, // Balance and amount delta don't match
+    RepresentativeMismatch, // Representative is changed when it is not allowed
+    BlockPosition, // This block cannot follow the previous block
+    InsufficientWork, // Insufficient work for this block, even though it passed the minimal validation
+}
+
+pub struct ProcessReturn {
+    pub code: ProcessResult,
+    pub verified: SignatureVerification,
+    pub previous_balance: Amount,
 }
 
 pub struct Ledger {
@@ -722,6 +750,26 @@ impl Ledger {
         let result = self.representative_calculated(txn, hash);
         debug_assert!(result.is_zero() || self.store.block().exists(txn, &result));
         result
+    }
+
+    pub fn process(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        block: &mut dyn Block,
+        verification: SignatureVerification,
+    ) -> ProcessReturn {
+        debug_assert!(
+            !self.constants.work.validate_entry_block(block)
+                || self.constants.genesis.read().unwrap().deref()
+                    == DEV_GENESIS.read().unwrap().deref()
+        );
+        let mut processor =
+            LedgerProcessor::new(self, &self.stats, &self.constants, txn, verification);
+        block.visit_mut(&mut processor);
+        if processor.result.code == ProcessResult::Progress {
+            self.cache.block_count.fetch_add(1, Ordering::SeqCst);
+        }
+        processor.result
     }
 }
 

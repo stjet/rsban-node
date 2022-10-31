@@ -95,6 +95,13 @@ impl ReceiveBlock {
             sideband: None,
         })
     }
+
+    pub fn valid_predecessor(predecessor: BlockType) -> bool {
+        match predecessor {
+            BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
+            _ => false,
+        }
+    }
 }
 
 impl PartialEq for ReceiveBlock {
@@ -187,6 +194,10 @@ impl Block for ReceiveBlock {
 
     fn representative(&self) -> Account {
         Account::zero()
+    }
+
+    fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
+        visitor.receive_block(self)
     }
 }
 

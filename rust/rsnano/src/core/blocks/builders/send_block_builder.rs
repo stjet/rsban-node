@@ -1,10 +1,13 @@
 use crate::core::{
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, SendBlock,
+    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, PublicKey,
+    SendBlock,
 };
 
 #[derive(Default)]
 pub struct SendBlockBuilder {
     previous: Option<BlockHash>,
+    destination: Option<Account>,
+    balance: Option<Amount>,
 }
 
 impl SendBlockBuilder {
@@ -17,11 +20,21 @@ impl SendBlockBuilder {
         self
     }
 
+    pub fn destination(mut self, destination: Account) -> Self {
+        self.destination = Some(destination);
+        self
+    }
+
+    pub fn balance(mut self, balance: Amount) -> Self {
+        self.balance = Some(balance);
+        self
+    }
+
     pub fn build(self) -> anyhow::Result<SendBlock> {
         let key_pair = KeyPair::new();
         let previous = self.previous.unwrap_or(BlockHash::from(1));
-        let destination = Account::from(2);
-        let balance = Amount::new(3);
+        let destination = self.destination.unwrap_or(Account::from(2));
+        let balance = self.balance.unwrap_or(Amount::new(3));
         let mut block = SendBlock::new(
             &previous,
             &destination,

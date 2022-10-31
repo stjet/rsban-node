@@ -297,6 +297,10 @@ impl Block for StateBlock {
     fn representative(&self) -> Account {
         self.hashables.representative
     }
+
+    fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
+        visitor.state_block(self);
+    }
 }
 
 #[cfg(test)]

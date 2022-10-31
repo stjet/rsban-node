@@ -145,6 +145,7 @@ pub trait Block: FullHash {
     }
     fn root(&self) -> Root;
     fn visit(&self, visitor: &mut dyn BlockVisitor);
+    fn visit_mut(&mut self, visitor: &mut dyn MutableBlockVisitor);
     fn balance(&self) -> Amount;
     fn source(&self) -> BlockHash;
     fn representative(&self) -> Account;
@@ -229,6 +230,14 @@ pub trait BlockVisitor {
     fn open_block(&mut self, block: &OpenBlock);
     fn change_block(&mut self, block: &ChangeBlock);
     fn state_block(&mut self, block: &StateBlock);
+}
+
+pub trait MutableBlockVisitor {
+    fn send_block(&mut self, block: &mut SendBlock);
+    fn receive_block(&mut self, block: &mut ReceiveBlock);
+    fn open_block(&mut self, block: &mut OpenBlock);
+    fn change_block(&mut self, block: &mut ChangeBlock);
+    fn state_block(&mut self, block: &mut StateBlock);
 }
 
 pub struct BlockWithSideband {

@@ -6,7 +6,7 @@ use crate::{
         ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
         StatHandle, StringDto,
     },
-    ledger::Ledger,
+    ledger::{Ledger, ProcessReturn},
 };
 use std::{
     ops::Deref,
@@ -699,4 +699,38 @@ pub unsafe extern "C" fn rsn_ledger_rollback(
     (*result).raw_ptr = Box::into_raw(raw_block_array);
 
     is_err
+}
+
+#[repr(C)]
+pub struct ProcessReturnDto {
+    pub previous_balance: [u8; 16],
+    pub code: u8,
+    pub verified: u8,
+}
+
+impl From<ProcessReturn> for ProcessReturnDto {
+    fn from(result: ProcessReturn) -> Self {
+        Self {
+            previous_balance: result.previous_balance.to_be_bytes(),
+            code: result.code as u8,
+            verified: result.verified as u8,
+        }
+    }
+}
+
+//pub fn process(&self, txn: &mut dyn WriteTransaction, block: &mut dyn Block, verification: SignatureVerification) -> ProcessReturn{
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_process(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    block: *mut BlockHandle,
+    verification: u8,
+    result: *mut ProcessReturnDto,
+) {
+    let res = (*handle).0.process(
+        (*txn).as_write_txn(),
+        (*block).block.write().unwrap().as_block_mut(),
+        FromPrimitive::from_u8(verification).unwrap(),
+    );
+    (*result) = res.into();
 }

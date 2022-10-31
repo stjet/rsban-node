@@ -341,6 +341,7 @@ TEST (block_store, pruned_random)
 	ASSERT_EQ (hash1, random_hash);
 }
 
+// already ported!
 TEST (mdb_block_store, sideband_height)
 {
 	auto logger{ std::make_shared<nano::logger_mt> () };

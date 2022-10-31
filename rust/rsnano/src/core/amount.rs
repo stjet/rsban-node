@@ -20,6 +20,10 @@ impl Amount {
         Self::new(0)
     }
 
+    pub fn is_zero(&self) -> bool {
+        *self == Self::zero()
+    }
+
     pub fn from_be_bytes(bytes: [u8; 16]) -> Self {
         Self {
             value: u128::from_be_bytes(bytes),

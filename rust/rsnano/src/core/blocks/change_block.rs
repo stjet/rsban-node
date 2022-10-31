@@ -105,6 +105,13 @@ impl ChangeBlock {
             sideband: None,
         })
     }
+
+    pub fn valid_predecessor(predecessor: BlockType) -> bool {
+        match predecessor {
+            BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
+            _ => false,
+        }
+    }
 }
 
 impl PartialEq for ChangeBlock {
@@ -200,6 +207,10 @@ impl Block for ChangeBlock {
 
     fn representative(&self) -> Account {
         self.hashables.representative
+    }
+
+    fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
+        visitor.change_block(self)
     }
 }
 

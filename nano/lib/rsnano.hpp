@@ -758,6 +758,13 @@ struct BootstrapWeightsDto
 	BootstrapWeightsRawPtr * raw_ptr;
 };
 
+struct ProcessReturnDto
+{
+	uint8_t previous_balance[16];
+	uint8_t code;
+	uint8_t verified;
+};
+
 struct UncementedInfoDto
 {
 	uint8_t cemented_frontier[32];
@@ -1882,6 +1889,12 @@ void rsn_ledger_latest_root (LedgerHandle * handle,
 TransactionHandle * txn,
 const uint8_t * account,
 uint8_t * result);
+
+void rsn_ledger_process (LedgerHandle * handle,
+TransactionHandle * txn,
+BlockHandle * block,
+uint8_t verification,
+ProcessReturnDto * result);
 
 uint64_t rsn_ledger_pruning_action (LedgerHandle * handle,
 TransactionHandle * txn,

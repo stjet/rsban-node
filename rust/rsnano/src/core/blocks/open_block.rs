@@ -208,6 +208,10 @@ impl Block for OpenBlock {
     fn representative(&self) -> Account {
         self.hashables.representative
     }
+
+    fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
+        visitor.open_block(self)
+    }
 }
 
 #[cfg(test)]

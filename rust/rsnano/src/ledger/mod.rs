@@ -1,7 +1,7 @@
 pub mod datastore;
 
 mod ledger;
-pub use ledger::Ledger;
+pub use ledger::{Ledger, ProcessResult, ProcessReturn};
 
 mod rep_weights;
 pub use rep_weights::RepWeights;
@@ -20,3 +20,6 @@ pub(crate) use rollback_visitor::RollbackVisitor;
 
 mod representative_visitor;
 pub(crate) use representative_visitor::RepresentativeVisitor;
+
+mod ledger_processor;
+pub(crate) use ledger_processor::LedgerProcessor;

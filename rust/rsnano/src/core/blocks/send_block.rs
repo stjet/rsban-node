@@ -256,6 +256,10 @@ impl Block for SendBlock {
     fn representative(&self) -> Account {
         Account::zero()
     }
+
+    fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
+        visitor.send_block(self);
+    }
 }
 
 #[cfg(test)]

@@ -90,6 +90,10 @@ impl Amount {
     pub fn wrapping_add(&self, other: Amount) -> Amount {
         self.value.wrapping_add(other.value).into()
     }
+
+    pub fn wrapping_sub(&self, other: Amount) -> Amount {
+        self.value.wrapping_sub(other.value).into()
+    }
 }
 
 impl From<u128> for Amount {

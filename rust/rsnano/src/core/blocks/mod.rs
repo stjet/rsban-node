@@ -147,6 +147,7 @@ pub trait Block: FullHash {
     fn visit(&self, visitor: &mut dyn BlockVisitor);
     fn balance(&self) -> Amount;
     fn source(&self) -> BlockHash;
+    fn representative(&self) -> Account;
 }
 
 impl<T: Block> FullHash for T {

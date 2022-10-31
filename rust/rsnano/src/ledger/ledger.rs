@@ -6,6 +6,7 @@ use crate::{
         ConfirmationHeightInfo, Epoch, Link, PendingKey, QualifiedRoot, Root,
     },
     ffi::ledger::DependentBlockVisitor,
+    ledger::RollbackVisitor,
     stats::{DetailType, Direction, Stat, StatType},
     utils::create_property_tree,
 };
@@ -13,13 +14,13 @@ use std::{
     collections::{BTreeMap, HashMap},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, RwLock,
     },
 };
 
 use super::{
     datastore::{Store, Transaction, WriteTransaction},
-    GenerateCache, LedgerCache, LedgerConstants, RepWeights,
+    GenerateCache, LedgerCache, LedgerConstants, RepWeights, RepresentativeVisitor,
 };
 
 pub struct UncementedInfo {
@@ -667,5 +668,59 @@ impl Ledger {
                 true
             }
         })
+    }
+
+    /// Rollback blocks until `block' doesn't exist or it tries to penetrate the confirmation height
+    pub fn rollback(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        block: &BlockHash,
+        list: &mut Vec<Arc<RwLock<BlockEnum>>>,
+    ) -> anyhow::Result<()> {
+        debug_assert!(self.store.block().exists(txn.txn(), block));
+        let account = self.account(txn.txn(), block).unwrap();
+        let block_account_height = self.store.block().account_height(txn.txn(), block);
+        let mut rollback = RollbackVisitor::new(txn, self, self.stats.as_ref(), list);
+        while self.store.block().exists(rollback.txn.txn(), block) {
+            let conf_height = self
+                .store
+                .confirmation_height()
+                .get(rollback.txn.txn(), &account)
+                .unwrap_or_default();
+            if block_account_height > conf_height.height {
+                let account_info = self
+                    .store
+                    .account()
+                    .get(rollback.txn.txn(), &account)
+                    .unwrap();
+                let block = self
+                    .store
+                    .block()
+                    .get(rollback.txn.txn(), &account_info.head)
+                    .unwrap();
+                rollback.list.push(Arc::new(RwLock::new(block.clone())));
+                block.as_block().visit(&mut rollback);
+                if rollback.result.is_err() {
+                    return rollback.result;
+                }
+                self.cache.block_count.fetch_sub(1, Ordering::SeqCst);
+            } else {
+                bail!("account height was bigger than conf height")
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn representative_calculated(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
+        let mut visitor = RepresentativeVisitor::new(txn, self.store.as_ref());
+        visitor.compute(*hash);
+        visitor.result
+    }
+
+    pub fn representative(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
+        let result = self.representative_calculated(txn, hash);
+        debug_assert!(result.is_zero() || self.store.block().exists(txn, &result));
+        result
     }
 }

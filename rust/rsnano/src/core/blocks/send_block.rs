@@ -252,6 +252,10 @@ impl Block for SendBlock {
     fn source(&self) -> BlockHash {
         BlockHash::zero()
     }
+
+    fn representative(&self) -> Account {
+        Account::zero()
+    }
 }
 
 #[cfg(test)]

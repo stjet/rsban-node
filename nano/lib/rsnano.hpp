@@ -41,6 +41,8 @@ struct BandwidthLimiterHandle;
 
 struct Blake2bHandle;
 
+struct BlockArrayRawPtr;
+
 struct BlockArrivalHandle;
 
 struct BlockHandle;
@@ -201,6 +203,13 @@ struct ErrorCodeDto
 {
 	int32_t val;
 	uint8_t category;
+};
+
+struct BlockArrayDto
+{
+	BlockHandle * const * blocks;
+	uintptr_t count;
+	BlockArrayRawPtr * raw_ptr;
 };
 
 struct BlockDetailsDto
@@ -1094,6 +1103,8 @@ void rsn_blake2b_final (Blake2bHandle * handle, uint8_t * output, uintptr_t size
 
 void rsn_blake2b_update (Blake2bHandle * handle, const uint8_t * data, uintptr_t size);
 
+void rsn_block_array_destroy (BlockArrayDto * dto);
+
 bool rsn_block_arrival_add (BlockArrivalHandle * handle, const uint8_t * hash);
 
 BlockArrivalHandle * rsn_block_arrival_create ();
@@ -1878,6 +1889,21 @@ const uint8_t * hash,
 uint64_t batch_size);
 
 bool rsn_ledger_pruning_enabled (LedgerHandle * handle);
+
+void rsn_ledger_representative (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+uint8_t * result);
+
+void rsn_ledger_representative_calculated (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+uint8_t * result);
+
+bool rsn_ledger_rollback (LedgerHandle * handle,
+TransactionHandle * txn,
+const uint8_t * hash,
+BlockArrayDto * result);
 
 void rsn_ledger_set_bootstrap_weight_max_blocks (LedgerHandle * handle, uint64_t max);
 

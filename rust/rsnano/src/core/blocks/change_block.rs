@@ -197,6 +197,10 @@ impl Block for ChangeBlock {
     fn source(&self) -> BlockHash {
         BlockHash::zero()
     }
+
+    fn representative(&self) -> Account {
+        self.hashables.representative
+    }
 }
 
 #[cfg(test)]

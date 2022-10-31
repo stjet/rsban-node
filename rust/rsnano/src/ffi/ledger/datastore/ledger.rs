@@ -634,3 +634,69 @@ pub unsafe extern "C" fn rsn_ledger_dependents_confirmed(
         .0
         .dependents_confirmed((*txn).as_txn(), (*block).block.read().unwrap().as_block())
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_representative(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    result: *mut u8,
+) {
+    let representative = (*handle)
+        .0
+        .representative((*txn).as_txn(), &BlockHash::from_ptr(hash));
+    copy_hash_bytes(representative, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_representative_calculated(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    result: *mut u8,
+) {
+    let representative = (*handle)
+        .0
+        .representative_calculated((*txn).as_txn(), &BlockHash::from_ptr(hash));
+    copy_hash_bytes(representative, result);
+}
+
+pub struct BlockArrayRawPtr(Vec<*mut BlockHandle>);
+
+#[repr(C)]
+pub struct BlockArrayDto {
+    pub blocks: *const *mut BlockHandle,
+    pub count: usize,
+    pub raw_ptr: *mut BlockArrayRawPtr,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_array_destroy(dto: *mut BlockArrayDto) {
+    drop(Box::from_raw((*dto).raw_ptr))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_rollback(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    hash: *const u8,
+    result: *mut BlockArrayDto,
+) -> bool {
+    let mut list = Vec::new();
+    let is_err = (*handle)
+        .0
+        .rollback((*txn).as_write_txn(), &BlockHash::from_ptr(hash), &mut list)
+        .is_err();
+
+    let mut raw_block_array = Box::new(BlockArrayRawPtr(Vec::new()));
+    for block in list {
+        raw_block_array
+            .0
+            .push(Box::into_raw(Box::new(BlockHandle::new(block))));
+    }
+    (*result).blocks = raw_block_array.0.as_ptr();
+    (*result).count = raw_block_array.0.len();
+    (*result).raw_ptr = Box::into_raw(raw_block_array);
+
+    is_err
+}

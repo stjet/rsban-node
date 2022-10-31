@@ -348,6 +348,10 @@ impl Store for LmdbStore {
     fn pending(&self) -> &dyn PendingStore {
         self.pending_store.as_ref()
     }
+
+    fn frontier(&self) -> &dyn FrontierStore {
+        self.frontier_store.as_ref()
+    }
 }
 
 fn ensure_success(status: i32) -> Result<(), anyhow::Error> {

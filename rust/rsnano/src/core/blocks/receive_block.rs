@@ -184,6 +184,10 @@ impl Block for ReceiveBlock {
     fn source(&self) -> BlockHash {
         self.hashables.source
     }
+
+    fn representative(&self) -> Account {
+        Account::zero()
+    }
 }
 
 #[cfg(test)]

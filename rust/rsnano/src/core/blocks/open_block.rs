@@ -204,6 +204,10 @@ impl Block for OpenBlock {
     fn source(&self) -> BlockHash {
         self.hashables.source
     }
+
+    fn representative(&self) -> Account {
+        self.hashables.representative
+    }
 }
 
 #[cfg(test)]

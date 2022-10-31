@@ -14,3 +14,9 @@ pub use ledger_constants::{LedgerConstants, DEV_GENESIS_KEY};
 
 mod generate_cache;
 pub use generate_cache::GenerateCache;
+
+mod rollback_visitor;
+pub(crate) use rollback_visitor::RollbackVisitor;
+
+mod representative_visitor;
+pub(crate) use representative_visitor::RepresentativeVisitor;

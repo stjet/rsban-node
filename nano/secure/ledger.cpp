@@ -11,178 +11,6 @@
 
 namespace
 {
-/**
- * Roll back the visited block
- */
-class rollback_visitor : public nano::block_visitor
-{
-public:
-	rollback_visitor (nano::write_transaction const & transaction_a, nano::ledger & ledger_a, nano::stat & stats_a, std::vector<std::shared_ptr<nano::block>> & list_a) :
-		transaction (transaction_a),
-		ledger (ledger_a),
-		stats (stats_a),
-		list (list_a)
-	{
-	}
-	virtual ~rollback_visitor () = default;
-	void send_block (nano::send_block const & block_a) override
-	{
-		auto hash (block_a.hash ());
-		nano::pending_info pending;
-		nano::pending_key key (block_a.destination (), hash);
-		while (!error && ledger.store.pending ().get (transaction, key, pending))
-		{
-			error = ledger.rollback (transaction, ledger.latest (transaction, block_a.destination ()), list);
-		}
-		if (!error)
-		{
-			nano::account_info info;
-			[[maybe_unused]] auto error (ledger.store.account ().get (transaction, pending.source, info));
-			debug_assert (!error);
-			ledger.store.pending ().del (transaction, key);
-			ledger.cache.rep_weights ().representation_add (info.representative (), pending.amount.number ());
-			nano::account_info new_info (block_a.previous (), info.representative (), info.open_block (), ledger.balance (transaction, block_a.previous ()), nano::seconds_since_epoch (), info.block_count () - 1, nano::epoch::epoch_0);
-			ledger.update_account (transaction, pending.source, info, new_info);
-			ledger.store.block ().del (transaction, hash);
-			ledger.store.frontier ().del (transaction, hash);
-			ledger.store.frontier ().put (transaction, block_a.previous (), pending.source);
-			ledger.store.block ().successor_clear (transaction, block_a.previous ());
-			stats.inc (nano::stat::type::rollback, nano::stat::detail::send);
-		}
-	}
-	void receive_block (nano::receive_block const & block_a) override
-	{
-		auto hash (block_a.hash ());
-		auto amount (ledger.amount (transaction, hash));
-		auto destination_account (ledger.account (transaction, hash));
-		// Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
-		[[maybe_unused]] bool is_pruned (false);
-		auto source_account (ledger.account_safe (transaction, block_a.source (), is_pruned));
-		nano::account_info info;
-		[[maybe_unused]] auto error (ledger.store.account ().get (transaction, destination_account, info));
-		debug_assert (!error);
-		ledger.cache.rep_weights ().representation_add (info.representative (), 0 - amount);
-		nano::account_info new_info (block_a.previous (), info.representative (), info.open_block (), ledger.balance (transaction, block_a.previous ()), nano::seconds_since_epoch (), info.block_count () - 1, nano::epoch::epoch_0);
-		ledger.update_account (transaction, destination_account, info, new_info);
-		ledger.store.block ().del (transaction, hash);
-		ledger.store.pending ().put (transaction, nano::pending_key (destination_account, block_a.source ()), { source_account, amount, nano::epoch::epoch_0 });
-		ledger.store.frontier ().del (transaction, hash);
-		ledger.store.frontier ().put (transaction, block_a.previous (), destination_account);
-		ledger.store.block ().successor_clear (transaction, block_a.previous ());
-		stats.inc (nano::stat::type::rollback, nano::stat::detail::receive);
-	}
-	void open_block (nano::open_block const & block_a) override
-	{
-		auto hash (block_a.hash ());
-		auto amount (ledger.amount (transaction, hash));
-		auto destination_account (ledger.account (transaction, hash));
-		// Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
-		[[maybe_unused]] bool is_pruned (false);
-		auto source_account (ledger.account_safe (transaction, block_a.source (), is_pruned));
-		ledger.cache.rep_weights ().representation_add (block_a.representative (), 0 - amount);
-		nano::account_info new_info;
-		ledger.update_account (transaction, destination_account, new_info, new_info);
-		ledger.store.block ().del (transaction, hash);
-		ledger.store.pending ().put (transaction, nano::pending_key (destination_account, block_a.source ()), { source_account, amount, nano::epoch::epoch_0 });
-		ledger.store.frontier ().del (transaction, hash);
-		stats.inc (nano::stat::type::rollback, nano::stat::detail::open);
-	}
-	void change_block (nano::change_block const & block_a) override
-	{
-		auto hash (block_a.hash ());
-		auto rep_block (ledger.representative (transaction, block_a.previous ()));
-		auto account (ledger.account (transaction, block_a.previous ()));
-		nano::account_info info;
-		[[maybe_unused]] auto error (ledger.store.account ().get (transaction, account, info));
-		debug_assert (!error);
-		auto balance (ledger.balance (transaction, block_a.previous ()));
-		auto block = ledger.store.block ().get (transaction, rep_block);
-		release_assert (block != nullptr);
-		auto representative = block->representative ();
-		ledger.cache.rep_weights ().representation_add_dual (block_a.representative (), 0 - balance, representative, balance);
-		ledger.store.block ().del (transaction, hash);
-		nano::account_info new_info (block_a.previous (), representative, info.open_block (), info.balance (), nano::seconds_since_epoch (), info.block_count () - 1, nano::epoch::epoch_0);
-		ledger.update_account (transaction, account, info, new_info);
-		ledger.store.frontier ().del (transaction, hash);
-		ledger.store.frontier ().put (transaction, block_a.previous (), account);
-		ledger.store.block ().successor_clear (transaction, block_a.previous ());
-		stats.inc (nano::stat::type::rollback, nano::stat::detail::change);
-	}
-	void state_block (nano::state_block const & block_a) override
-	{
-		auto hash (block_a.hash ());
-		nano::block_hash rep_block_hash (0);
-		if (!block_a.previous ().is_zero ())
-		{
-			rep_block_hash = ledger.representative (transaction, block_a.previous ());
-		}
-		auto balance (ledger.balance (transaction, block_a.previous ()));
-		auto is_send (block_a.balance () < balance);
-		nano::account representative{};
-		if (!rep_block_hash.is_zero ())
-		{
-			// Move existing representation & add in amount delta
-			auto block (ledger.store.block ().get (transaction, rep_block_hash));
-			debug_assert (block != nullptr);
-			representative = block->representative ();
-			ledger.cache.rep_weights ().representation_add_dual (representative, balance, block_a.representative (), 0 - block_a.balance ().number ());
-		}
-		else
-		{
-			// Add in amount delta only
-			ledger.cache.rep_weights ().representation_add (block_a.representative (), 0 - block_a.balance ().number ());
-		}
-
-		nano::account_info info;
-		auto error (ledger.store.account ().get (transaction, block_a.account (), info));
-
-		if (is_send)
-		{
-			nano::pending_key key (block_a.link ().as_account (), hash);
-			while (!error && !ledger.store.pending ().exists (transaction, key))
-			{
-				error = ledger.rollback (transaction, ledger.latest (transaction, block_a.link ().as_account ()), list);
-			}
-			ledger.store.pending ().del (transaction, key);
-			stats.inc (nano::stat::type::rollback, nano::stat::detail::send);
-		}
-		else if (!block_a.link ().is_zero () && !ledger.is_epoch_link (block_a.link ()))
-		{
-			// Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
-			[[maybe_unused]] bool is_pruned (false);
-			auto source_account (ledger.account_safe (transaction, block_a.link ().as_block_hash (), is_pruned));
-			nano::pending_info pending_info (source_account, block_a.balance ().number () - balance, block_a.sideband ().source_epoch ());
-			ledger.store.pending ().put (transaction, nano::pending_key (block_a.account (), block_a.link ().as_block_hash ()), pending_info);
-			stats.inc (nano::stat::type::rollback, nano::stat::detail::receive);
-		}
-
-		debug_assert (!error);
-		auto previous_version (ledger.store.block ().version (transaction, block_a.previous ()));
-		nano::account_info new_info (block_a.previous (), representative, info.open_block (), balance, nano::seconds_since_epoch (), info.block_count () - 1, previous_version);
-		ledger.update_account (transaction, block_a.account (), info, new_info);
-
-		auto previous (ledger.store.block ().get (transaction, block_a.previous ()));
-		if (previous != nullptr)
-		{
-			ledger.store.block ().successor_clear (transaction, block_a.previous ());
-			if (previous->type () < nano::block_type::state)
-			{
-				ledger.store.frontier ().put (transaction, block_a.previous (), block_a.account ());
-			}
-		}
-		else
-		{
-			stats.inc (nano::stat::type::rollback, nano::stat::detail::open);
-		}
-		ledger.store.block ().del (transaction, hash);
-	}
-	nano::write_transaction const & transaction;
-	nano::ledger & ledger;
-	nano::stat & stats;
-	std::vector<std::shared_ptr<nano::block>> & list;
-	bool error{ false };
-};
-
 class ledger_processor : public nano::mutable_block_visitor
 {
 public:
@@ -808,16 +636,9 @@ nano::process_return nano::ledger::process (nano::write_transaction const & tran
 
 nano::block_hash nano::ledger::representative (nano::transaction const & transaction_a, nano::block_hash const & hash_a)
 {
-	auto result (representative_calculated (transaction_a, hash_a));
-	debug_assert (result.is_zero () || store.block ().exists (transaction_a, result));
+	nano::block_hash result;
+	rsnano::rsn_ledger_representative (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
 	return result;
-}
-
-nano::block_hash nano::ledger::representative_calculated (nano::transaction const & transaction_a, nano::block_hash const & hash_a)
-{
-	representative_visitor visitor (transaction_a, store);
-	visitor.compute (hash_a);
-	return visitor.result;
 }
 
 bool nano::ledger::block_or_pruned_exists (nano::block_hash const & hash_a) const
@@ -880,34 +701,13 @@ nano::uint128_t nano::ledger::weight (nano::account const & account_a)
 // Rollback blocks until `block_a' doesn't exist or it tries to penetrate the confirmation height
 bool nano::ledger::rollback (nano::write_transaction const & transaction_a, nano::block_hash const & block_a, std::vector<std::shared_ptr<nano::block>> & list_a)
 {
-	debug_assert (store.block ().exists (transaction_a, block_a));
-	auto account_l (account (transaction_a, block_a));
-	auto block_account_height (store.block ().account_height (transaction_a, block_a));
-	rollback_visitor rollback (transaction_a, *this, stats, list_a);
-	nano::account_info account_info;
-	auto error (false);
-	while (!error && store.block ().exists (transaction_a, block_a))
+	rsnano::BlockArrayDto list_dto;
+	auto error = rsnano::rsn_ledger_rollback (handle, transaction_a.get_rust_handle (), block_a.bytes.data (), &list_dto);
+	for (int i = 0; i < list_dto.count; ++i)
 	{
-		nano::confirmation_height_info confirmation_height_info;
-		store.confirmation_height ().get (transaction_a, account_l, confirmation_height_info);
-		if (block_account_height > confirmation_height_info.height ())
-		{
-			auto latest_error = store.account ().get (transaction_a, account_l, account_info);
-			debug_assert (!latest_error);
-			auto block (store.block ().get (transaction_a, account_info.head ()));
-			list_a.push_back (block);
-			block->visit (rollback);
-			error = rollback.error;
-			if (!error)
-			{
-				cache.remove_blocks (1);
-			}
-		}
-		else
-		{
-			error = true;
-		}
+		list_a.push_back (nano::block_handle_to_block (list_dto.blocks[i]));
 	}
+	rsnano::rsn_block_array_destroy (&list_dto);
 	return error;
 }
 

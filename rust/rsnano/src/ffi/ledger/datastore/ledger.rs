@@ -606,9 +606,31 @@ pub unsafe extern "C" fn rsn_ledger_dependent_blocks(
     result1: *mut u8,
     result2: *mut u8,
 ) {
-    let (dep1, dep2) = (*handle)
+    let dependencies = (*handle)
         .0
         .dependent_blocks((*txn).as_txn(), (*block).block.read().unwrap().as_block());
-    copy_hash_bytes(dep1, result1);
-    copy_hash_bytes(dep2, result2);
+    copy_hash_bytes(dependencies[0], result1);
+    copy_hash_bytes(dependencies[1], result2);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_could_fit(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    block: *mut BlockHandle,
+) -> bool {
+    (*handle)
+        .0
+        .could_fit((*txn).as_txn(), (*block).block.read().unwrap().as_block())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_dependents_confirmed(
+    handle: *mut LedgerHandle,
+    txn: *mut TransactionHandle,
+    block: *mut BlockHandle,
+) -> bool {
+    (*handle)
+        .0
+        .dependents_confirmed((*txn).as_txn(), (*block).block.read().unwrap().as_block())
 }

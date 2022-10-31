@@ -1819,6 +1819,8 @@ int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
 
+bool rsn_ledger_could_fit (LedgerHandle * handle, TransactionHandle * txn, BlockHandle * block);
+
 LedgerHandle * rsn_ledger_create (LmdbStoreHandle * store,
 const LedgerConstantsDto * constants,
 StatHandle * stats,
@@ -1829,6 +1831,10 @@ TransactionHandle * txn,
 BlockHandle * block,
 uint8_t * result1,
 uint8_t * result2);
+
+bool rsn_ledger_dependents_confirmed (LedgerHandle * handle,
+TransactionHandle * txn,
+BlockHandle * block);
 
 void rsn_ledger_destroy (LedgerHandle * handle);
 

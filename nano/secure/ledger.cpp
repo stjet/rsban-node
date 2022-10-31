@@ -979,23 +979,12 @@ nano::root nano::ledger::latest_root (nano::transaction const & transaction_a, n
 
 bool nano::ledger::could_fit (nano::transaction const & transaction_a, nano::block const & block_a) const
 {
-	auto dependencies (dependent_blocks (transaction_a, block_a));
-	return std::all_of (dependencies.begin (), dependencies.end (), [this, &transaction_a] (nano::block_hash const & hash_a) {
-		return hash_a.is_zero () || store.block ().exists (transaction_a, hash_a);
-	});
+	return rsnano::rsn_ledger_could_fit (handle, transaction_a.get_rust_handle (), block_a.get_handle ());
 }
 
 bool nano::ledger::dependents_confirmed (nano::transaction const & transaction_a, nano::block const & block_a) const
 {
-	auto dependencies (dependent_blocks (transaction_a, block_a));
-	return std::all_of (dependencies.begin (), dependencies.end (), [this, &transaction_a] (nano::block_hash const & hash_a) {
-		auto result (hash_a.is_zero ());
-		if (!result)
-		{
-			result = block_confirmed (transaction_a, hash_a);
-		}
-		return result;
-	});
+	return rsnano::rsn_ledger_dependents_confirmed (handle, transaction_a.get_rust_handle (), block_a.get_handle ());
 }
 
 bool nano::ledger::is_epoch_link (nano::link const & link_a) const

@@ -645,13 +645,27 @@ impl Ledger {
         );
     }
 
-    pub fn dependent_blocks(
-        &self,
-        txn: &dyn Transaction,
-        block: &dyn Block,
-    ) -> (BlockHash, BlockHash) {
+    pub fn dependent_blocks(&self, txn: &dyn Transaction, block: &dyn Block) -> [BlockHash; 2] {
         let mut visitor = DependentBlockVisitor::new(self, &self.constants, txn);
         block.visit(&mut visitor);
-        (visitor.result[0], visitor.result[1])
+        [visitor.result[0], visitor.result[1]]
+    }
+
+    pub fn could_fit(&self, txn: &dyn Transaction, block: &dyn Block) -> bool {
+        let dependents = self.dependent_blocks(txn, block);
+        dependents
+            .iter()
+            .all(|dep| dep.is_zero() || self.store.block().exists(txn, dep))
+    }
+
+    pub fn dependents_confirmed(&self, txn: &dyn Transaction, block: &dyn Block) -> bool {
+        let dependencies = self.dependent_blocks(txn, block);
+        dependencies.iter().all(|dep| {
+            if !dep.is_zero() {
+                self.block_confirmed(txn, dep)
+            } else {
+                true
+            }
+        })
     }
 }

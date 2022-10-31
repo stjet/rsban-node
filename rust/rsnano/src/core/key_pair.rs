@@ -12,6 +12,12 @@ impl Default for KeyPair {
     }
 }
 
+impl Clone for KeyPair {
+    fn clone(&self) -> Self {
+        Self::from_priv_key_bytes(self.keypair.secret.as_bytes()).unwrap()
+    }
+}
+
 impl KeyPair {
     pub fn new() -> Self {
         Default::default()

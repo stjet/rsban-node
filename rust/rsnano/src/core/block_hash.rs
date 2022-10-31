@@ -15,6 +15,12 @@ impl BlockHash {
     }
 }
 
+impl From<&Account> for BlockHash {
+    fn from(account: &Account) -> Self {
+        Self::from_bytes(*account.as_bytes())
+    }
+}
+
 impl From<Account> for BlockHash {
     fn from(account: Account) -> Self {
         Self::from_bytes(*account.as_bytes())

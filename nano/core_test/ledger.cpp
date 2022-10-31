@@ -10,48 +10,6 @@
 
 using namespace std::chrono_literals;
 
-// Init returns an error if it can't open files at the path
-TEST (ledger, store_error)
-{
-	auto ctx = nano::test::context::ledger_empty ();
-}
-
-// Ledger can be initialized and returns a basic query for an empty account
-TEST (ledger, empty)
-{
-	auto ctx = nano::test::context::ledger_empty ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	auto transaction = store.tx_begin_read ();
-	nano::account account;
-	auto balance (ledger.account_balance (*transaction, account));
-	ASSERT_TRUE (balance.is_zero ());
-}
-
-// Genesis account should have the max balance on empty initialization
-TEST (ledger, genesis_balance)
-{
-	auto ctx = nano::test::context::ledger_empty ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	auto transaction = store.tx_begin_write ();
-	auto balance = ledger.account_balance (*transaction, nano::dev::genesis->account ());
-	ASSERT_EQ (nano::dev::constants.genesis_amount, balance);
-	auto amount = ledger.amount (*transaction, nano::dev::genesis->account ());
-	ASSERT_EQ (nano::dev::constants.genesis_amount, amount);
-	nano::account_info info;
-	ASSERT_FALSE (store.account ().get (*transaction, nano::dev::genesis->account (), info));
-	ASSERT_EQ (1, ledger.cache.account_count ());
-	// Frontier time should have been updated when genesis balance was added
-	ASSERT_GE (nano::seconds_since_epoch (), info.modified ());
-	ASSERT_LT (nano::seconds_since_epoch () - info.modified (), 10);
-	// Genesis block should be confirmed by default
-	nano::confirmation_height_info confirmation_height_info;
-	ASSERT_FALSE (store.confirmation_height ().get (*transaction, nano::dev::genesis->account (), confirmation_height_info));
-	ASSERT_EQ (confirmation_height_info.height (), 1);
-	ASSERT_EQ (confirmation_height_info.frontier (), nano::dev::genesis->hash ());
-}
-
 TEST (ledger, process_modifies_sideband)
 {
 	auto ctx = nano::test::context::ledger_empty ();

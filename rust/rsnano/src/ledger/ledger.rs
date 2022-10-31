@@ -724,3 +724,93 @@ impl Ledger {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use crate::{
+        config::TxnTrackingConfig,
+        ledger::datastore::lmdb::{EnvOptions, LmdbStore, TestDbFile},
+        stats::StatConfig,
+        utils::{seconds_since_epoch, NullLogger},
+        DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    };
+
+    use super::*;
+
+    struct LedgerContext {
+        pub(crate) ledger: Ledger,
+        db_file: TestDbFile,
+    }
+
+    impl LedgerContext {
+        pub fn empty() -> anyhow::Result<Self> {
+            let db_file = TestDbFile::random();
+            let store = Arc::new(LmdbStore::new(
+                &db_file.path,
+                &EnvOptions::default(),
+                TxnTrackingConfig::default(),
+                Duration::from_millis(5000),
+                Arc::new(NullLogger::new()),
+                false,
+            )?);
+
+            let ledger = Ledger::new(
+                store.clone(),
+                DEV_CONSTANTS.clone(),
+                Arc::new(Stat::new(StatConfig::default())),
+                &GenerateCache::new(),
+            )?;
+
+            let mut txn = store.tx_begin_write()?;
+            store.initialize(&mut txn, &ledger.cache, &DEV_CONSTANTS);
+
+            Ok(LedgerContext { ledger, db_file })
+        }
+    }
+
+    // Ledger can be initialized and returns a basic query for an empty account
+    #[test]
+    fn empty_ledger() -> anyhow::Result<()> {
+        let ctx = LedgerContext::empty()?;
+        let txn = ctx.ledger.store.tx_begin_read()?;
+        let balance = ctx
+            .ledger
+            .account_balance(txn.txn(), &Account::zero(), false);
+        assert_eq!(balance, Amount::zero());
+        Ok(())
+    }
+
+    // Genesis account should have the max balance on empty initialization
+    #[test]
+    fn genesis_balance() -> anyhow::Result<()> {
+        let ctx = LedgerContext::empty()?;
+        let txn = ctx.ledger.store.tx_begin_write()?;
+
+        let balance = ctx
+            .ledger
+            .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false);
+        assert_eq!(balance, DEV_CONSTANTS.genesis_amount);
+
+        let info = ctx
+            .ledger
+            .store
+            .account()
+            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+            .expect("genesis account not found");
+        assert_eq!(ctx.ledger.cache.account_count.load(Ordering::SeqCst), 1);
+        // Frontier time should have been updated when genesis balance was added
+        assert!(info.modified > 0 && info.modified <= seconds_since_epoch());
+        // Genesis block should be confirmed by default
+        let conf_info = ctx
+            .ledger
+            .store
+            .confirmation_height()
+            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+            .expect("conf height not found");
+        assert_eq!(conf_info.height, 1);
+        assert_eq!(conf_info.frontier, *DEV_GENESIS_HASH);
+        Ok(())
+    }
+}

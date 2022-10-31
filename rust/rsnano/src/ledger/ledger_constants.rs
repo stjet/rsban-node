@@ -102,6 +102,7 @@ mod tests {
     }
 }
 
+#[derive(Clone)]
 pub struct LedgerConstants {
     pub work: WorkThresholds,
     pub zero_key: KeyPair,

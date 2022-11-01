@@ -22,34 +22,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (block_store, genesis)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-	nano::ledger_cache ledger_cache;
-	auto transaction (store->tx_begin_write ());
-	store->initialize (*transaction, ledger_cache, nano::dev::constants);
-	nano::account_info info;
-	ASSERT_FALSE (store->account ().get (*transaction, nano::dev::genesis->account (), info));
-	ASSERT_EQ (nano::dev::genesis->hash (), info.head ());
-	auto block1 (store->block ().get (*transaction, info.head ()));
-	ASSERT_NE (nullptr, block1);
-	auto receive1 (dynamic_cast<nano::open_block *> (block1.get ()));
-	ASSERT_NE (nullptr, receive1);
-	ASSERT_LE (info.modified (), nano::seconds_since_epoch ());
-	ASSERT_EQ (info.block_count (), 1);
-	// Genesis block should be confirmed by default
-	nano::confirmation_height_info confirmation_height_info;
-	ASSERT_FALSE (store->confirmation_height ().get (*transaction, nano::dev::genesis->account (), confirmation_height_info));
-	ASSERT_EQ (confirmation_height_info.height (), 1);
-	ASSERT_EQ (confirmation_height_info.frontier (), nano::dev::genesis->hash ());
-	auto dev_pub_text (nano::dev::genesis_key.pub.to_string ());
-	auto dev_pub_account (nano::dev::genesis_key.pub.to_account ());
-	auto dev_prv_text (nano::dev::genesis_key.prv.to_string ());
-	ASSERT_EQ (nano::dev::genesis->account (), nano::dev::genesis_key.pub);
-}
-
 // This test checks for basic operations in the unchecked table such as putting a new block, retrieving it, and
 // deleting it from the database
 TEST (unchecked, simple)
@@ -273,75 +245,6 @@ TEST (block_store, empty_bootstrap)
 	ASSERT_EQ (count, 0);
 }
 
-namespace nano
-{
-namespace lmdb
-{
-	TEST (mdb_block_store, supported_version_upgrades)
-	{
-		// Check that upgrading from an unsupported version is not supported
-		auto path (nano::unique_path ());
-		auto logger{ std::make_shared<nano::logger_mt> () };
-		{
-			nano::lmdb::store store (logger, path, nano::dev::constants);
-			nano::stat stats;
-			nano::ledger ledger (store, stats, nano::dev::constants);
-			auto transaction (store.tx_begin_write ());
-			store.initialize (*transaction, ledger.cache, nano::dev::constants);
-			// Lower the database to the max version unsupported for upgrades
-			store.version ().put (*transaction, store.version_minimum - 1);
-		}
-
-		// Upgrade should fail
-		{
-			nano::lmdb::store store (logger, path, nano::dev::constants);
-			ASSERT_TRUE (store.init_error ());
-		}
-	}
-}
-}
-
-TEST (block_store, cemented_count_cache)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-	auto transaction (store->tx_begin_write ());
-	nano::ledger_cache ledger_cache;
-	store->initialize (*transaction, ledger_cache, nano::dev::constants);
-	ASSERT_EQ (1, ledger_cache.cemented_count ());
-}
-
-TEST (block_store, pruned_random)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-	nano::block_builder builder;
-	auto block = builder
-				 .open ()
-				 .source (0)
-				 .representative (1)
-				 .account (0)
-				 .sign (nano::keypair ().prv, 0)
-				 .work (0)
-				 .build ();
-	block->sideband_set ({});
-	auto hash1 (block->hash ());
-	{
-		nano::ledger_cache ledger_cache;
-		auto transaction (store->tx_begin_write ());
-		store->initialize (*transaction, ledger_cache, nano::dev::constants);
-		store->pruned ().put (*transaction, hash1);
-	}
-	auto transaction (store->tx_begin_read ());
-	auto random_hash (store->pruned ().random (*transaction));
-	ASSERT_EQ (hash1, random_hash);
-}
-
-// already ported!
 TEST (mdb_block_store, sideband_height)
 {
 	auto logger{ std::make_shared<nano::logger_mt> () };

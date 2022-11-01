@@ -448,19 +448,27 @@ mod tests {
     }
 
     #[test]
-    fn incompatible_version() -> anyhow::Result<()> {
+    fn version_too_high_for_upgrade() -> anyhow::Result<()> {
         let file = TestDbFile::random();
-        {
-            let env = Arc::new(LmdbEnv::new(&file.path)?);
-            let version_store = LmdbVersionStore::new(env.clone())?;
-            let mut txn = env.tx_begin_write()?;
-            version_store.put(&mut txn, i32::MAX);
-        }
+        set_store_version(&file, i32::MAX)?;
+        assert_upgrade_fails(&file.path, "version too high");
+        Ok(())
+    }
+
+    #[test]
+    fn version_too_low_for_upgrade() -> anyhow::Result<()> {
+        let file = TestDbFile::random();
+        set_store_version(&file, STORE_VERSION_MINIMUM - 1)?;
+        assert_upgrade_fails(&file.path, "version too low");
+        Ok(())
+    }
+
+    fn assert_upgrade_fails(path: &Path, error_msg: &str) {
         let logger = Arc::new(NullLogger::new());
         let options = EnvOptions::default();
         let tracking_cfg = TxnTrackingConfig::default();
         match LmdbStore::new(
-            &file.path,
+            path,
             &options,
             tracking_cfg,
             Duration::from_secs(1),
@@ -469,9 +477,16 @@ mod tests {
         ) {
             Ok(_) => panic!("store should not be created!"),
             Err(e) => {
-                assert_eq!(e.to_string(), "version too high");
-                Ok(())
+                assert_eq!(e.to_string(), error_msg);
             }
         }
+    }
+
+    fn set_store_version(file: &TestDbFile, current_version: i32) -> Result<(), anyhow::Error> {
+        let env = Arc::new(LmdbEnv::new(&file.path)?);
+        let version_store = LmdbVersionStore::new(env.clone())?;
+        let mut txn = env.tx_begin_write()?;
+        version_store.put(&mut txn, current_version);
+        Ok(())
     }
 }

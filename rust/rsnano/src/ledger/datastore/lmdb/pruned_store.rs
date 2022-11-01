@@ -97,14 +97,18 @@ impl PrunedStore for LmdbPrunedStore {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{core::NoValue, ledger::datastore::lmdb::TestLmdbEnv};
 
-    use super::*;
+    fn create_sut() -> anyhow::Result<(TestLmdbEnv, LmdbPrunedStore)> {
+        let env = TestLmdbEnv::new();
+        let store = LmdbPrunedStore::new(env.env())?;
+        Ok((env, store))
+    }
 
     #[test]
     fn empty_store() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPrunedStore::new(env.env())?;
+        let (env, store) = create_sut()?;
         let txn = env.tx_begin_read()?;
 
         assert_eq!(store.count(&txn), 0);
@@ -116,8 +120,7 @@ mod tests {
 
     #[test]
     fn add_one() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPrunedStore::new(env.env())?;
+        let (env, store) = create_sut()?;
         let mut txn = env.tx_begin_write()?;
 
         let hash = BlockHash::from(1);
@@ -132,8 +135,7 @@ mod tests {
 
     #[test]
     fn add_two() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPrunedStore::new(env.env())?;
+        let (env, store) = create_sut()?;
         let mut txn = env.tx_begin_write()?;
 
         let hash1 = BlockHash::from(1);
@@ -149,8 +151,7 @@ mod tests {
 
     #[test]
     fn add_delete() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPrunedStore::new(env.env())?;
+        let (env, store) = create_sut()?;
         let mut txn = env.tx_begin_write()?;
 
         let hash1 = BlockHash::from(1);
@@ -162,6 +163,17 @@ mod tests {
         assert_eq!(store.count(&txn), 1);
         assert_eq!(store.exists(&txn, &hash1), false);
         assert_eq!(store.exists(&txn, &hash2), true);
+        Ok(())
+    }
+
+    #[test]
+    fn pruned_random() -> anyhow::Result<()> {
+        let (env, store) = create_sut()?;
+        let mut txn = env.tx_begin_write()?;
+        let hash = BlockHash::random();
+        store.put(&mut txn, &hash);
+        let random_hash = store.random(txn.txn());
+        assert_eq!(random_hash, Some(hash));
         Ok(())
     }
 }

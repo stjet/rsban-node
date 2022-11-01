@@ -841,7 +841,7 @@ mod tests {
             .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false);
         assert_eq!(balance, DEV_CONSTANTS.genesis_amount);
 
-        let info = ctx
+        let account_info = ctx
             .ledger
             .store
             .account()
@@ -849,7 +849,9 @@ mod tests {
             .expect("genesis account not found");
         assert_eq!(ctx.ledger.cache.account_count.load(Ordering::SeqCst), 1);
         // Frontier time should have been updated when genesis balance was added
-        assert!(info.modified > 0 && info.modified <= seconds_since_epoch());
+        assert!(account_info.modified > 0 && account_info.modified <= seconds_since_epoch());
+        assert_eq!(account_info.block_count, 1);
+
         // Genesis block should be confirmed by default
         let conf_info = ctx
             .ledger
@@ -859,6 +861,21 @@ mod tests {
             .expect("conf height not found");
         assert_eq!(conf_info.height, 1);
         assert_eq!(conf_info.frontier, *DEV_GENESIS_HASH);
+
+        let block = ctx
+            .ledger
+            .store
+            .block()
+            .get(txn.txn(), &account_info.head)
+            .expect("genesis block not found");
+        assert_eq!(block.block_type(), BlockType::Open);
+        Ok(())
+    }
+
+    #[test]
+    fn cemented_count_cache() -> anyhow::Result<()> {
+        let ctx = LedgerContext::empty()?;
+        assert_eq!(ctx.ledger.cache.cemented_count.load(Ordering::SeqCst), 1);
         Ok(())
     }
 }

@@ -13,7 +13,9 @@ mod tcp_message_manager;
 mod tcp_server;
 mod token_bucket;
 
-pub use bandwidth_limiter::BandwidthLimiter;
+pub use bandwidth_limiter::{
+    BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
+};
 pub use channel_fake::ChannelFake;
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, TcpChannelData};

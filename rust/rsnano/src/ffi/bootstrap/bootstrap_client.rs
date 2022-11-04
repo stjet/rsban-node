@@ -11,7 +11,7 @@ use crate::{
         },
         StringDto, VoidPointerCallback,
     },
-    transport::BufferDropPolicy,
+    transport::{BandwidthLimitType, BufferDropPolicy},
 };
 
 use num_traits::FromPrimitive;
@@ -124,6 +124,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send(
     delete_callback: VoidPointerCallback,
     context: *mut c_void,
     policy: u8,
+    limit_type: u8,
 ) {
     let callback_wrapper = ChannelTcpSendCallbackWrapper::new(context, callback, delete_callback);
     let callback_box = Box::new(move |ec, size| {
@@ -133,6 +134,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send(
         (*msg).as_ref(),
         Some(callback_box),
         BufferDropPolicy::from_u8(policy).unwrap(),
+        BandwidthLimitType::from_u8(limit_type).unwrap(),
     );
 }
 

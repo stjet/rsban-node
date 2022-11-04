@@ -12,8 +12,8 @@ use std::{
 };
 
 use super::{
-    BulkPull, BulkPullAccount, ConfirmAck, ConfirmReq, FrontierReq, Keepalive, NodeIdHandshake,
-    TelemetryAck,
+    AscPullAck, AscPullReq, BulkPull, BulkPullAccount, ConfirmAck, ConfirmReq, FrontierReq,
+    Keepalive, NodeIdHandshake, TelemetryAck,
 };
 
 /// Message types are serialized to the network and existing values must thus never change as
@@ -35,6 +35,8 @@ pub enum MessageType {
     BulkPullAccount = 0x0b,
     TelemetryReq = 0x0c,
     TelemetryAck = 0x0d,
+    AscPullReq = 0x0e,
+    AscPullAck = 0x0f,
 }
 
 impl MessageType {
@@ -53,7 +55,15 @@ impl MessageType {
             MessageType::BulkPullAccount => "bulk_pull_account",
             MessageType::TelemetryReq => "telemetry_req",
             MessageType::TelemetryAck => "telemetry_ack",
+            MessageType::AscPullReq => "asc_pull_req",
+            MessageType::AscPullAck => "asc_pull_ack",
         }
+    }
+}
+
+impl Debug for MessageType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
     }
 }
 
@@ -237,6 +247,8 @@ impl MessageHeader {
             MessageType::NodeIdHandshake => NodeIdHandshake::serialized_size(self),
             MessageType::BulkPullAccount => BulkPullAccount::serialized_size(),
             MessageType::TelemetryAck => TelemetryAck::size_from_header(self),
+            MessageType::AscPullReq => AscPullReq::serialized_size(self),
+            MessageType::AscPullAck => AscPullAck::serialized_size(self),
             MessageType::Invalid | MessageType::NotAType => {
                 debug_assert!(false);
                 0

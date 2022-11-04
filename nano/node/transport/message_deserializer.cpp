@@ -45,15 +45,15 @@ void nano::transport::message_deserializer::read (std::shared_ptr<nano::socket> 
 	rsnano::rsn_message_deserializer_read (handle_m, socket->handle, read_callback_wrapper, destroy_read_callback, context);
 }
 
-nano::stat::detail nano::transport::message_deserializer::parse_status_to_stat_detail ()
+nano::stat::detail nano::transport::message_deserializer::to_stat_detail (parse_status status)
 {
-	auto detail = rsnano::rsn_message_deserializer_parse_status_to_stat_detail (handle_m);
+	auto detail = rsnano::rsn_message_deserializer_parse_status_to_stat_detail (static_cast<uint8_t> (status));
 	return static_cast<nano::stat::detail> (detail);
 }
 
-std::string nano::transport::message_deserializer::parse_status_to_string ()
+std::string nano::transport::message_deserializer::to_string (parse_status status)
 {
 	rsnano::StringDto result;
-	rsnano::rsn_message_deserializer_parse_status_to_string (handle_m, &result);
+	rsnano::rsn_message_deserializer_parse_status_to_string (static_cast<uint8_t> (status), &result);
 	return rsnano::convert_dto_to_string (result);
 }

@@ -139,11 +139,7 @@ bool nano::ledger::rollback (nano::write_transaction const & transaction_a, nano
 {
 	rsnano::BlockArrayDto list_dto;
 	auto error = rsnano::rsn_ledger_rollback (handle, transaction_a.get_rust_handle (), block_a.bytes.data (), &list_dto);
-	for (int i = 0; i < list_dto.count; ++i)
-	{
-		list_a.push_back (nano::block_handle_to_block (list_dto.blocks[i]));
-	}
-	rsnano::rsn_block_array_destroy (&list_dto);
+	rsnano::read_block_array_dto (list_dto, list_a);
 	return error;
 }
 
@@ -153,7 +149,6 @@ bool nano::ledger::rollback (nano::write_transaction const & transaction_a, nano
 	return rollback (transaction_a, block_a, rollback_list);
 }
 
-// Return account containing hash
 nano::account nano::ledger::account (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
 	nano::account result;
@@ -170,6 +165,12 @@ nano::account nano::ledger::account_safe (nano::transaction const & transaction_
 		error_a = true;
 	}
 	return result;
+}
+
+nano::account nano::ledger::account_safe (const nano::transaction & transaction, const nano::block_hash & hash) const
+{
+	bool ignored;
+	return account_safe (transaction, hash, ignored);
 }
 
 // Return amount decrease or increase for block

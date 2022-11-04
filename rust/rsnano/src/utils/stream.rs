@@ -72,6 +72,10 @@ impl MemoryStream {
     pub fn to_vec(self) -> Vec<u8> {
         self.bytes
     }
+
+    pub fn at_end(&self) -> bool {
+        self.bytes.len() - self.read_index == 0
+    }
 }
 
 impl Stream for MemoryStream {

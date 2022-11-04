@@ -128,6 +128,9 @@ pub enum StatType {
     VoteCache,
     Hinting,
     BlockProcessor,
+    BootstrapServer,
+    BootstrapServerRequests,
+    BootstrapServerResponses,
 }
 
 impl StatType {
@@ -160,6 +163,9 @@ impl StatType {
             StatType::VoteCache => "vote_cache",
             StatType::Hinting => "hinting",
             StatType::BlockProcessor => "blockprocessor",
+            StatType::BootstrapServer => "bootstrap_server",
+            StatType::BootstrapServerRequests => "bootstrap_server_requests",
+            StatType::BootstrapServerResponses => "bootstrap_server_responses",
         }
     }
 }
@@ -220,6 +226,8 @@ pub enum DetailType {
     NodeIdHandshake,
     TelemetryReq,
     TelemetryAck,
+    AscPullReq,
+    AscPullAck,
 
     // bootstrap, callback
     Initiate,
@@ -285,6 +293,8 @@ pub enum DetailType {
     InvalidBulkPullMessage,
     InvalidBulkPullAccountMessage,
     InvalidFrontierReqMessage,
+    InvalidAscPullReqMessage,
+    InvalidAscPullAckMessage,
     MessageTooBig,
     OutdatedVersion,
     UdpMaxPerIp,
@@ -351,6 +361,17 @@ pub enum DetailType {
     Hinted,
     InsertFailed,
     MissingBlock,
+
+    // bootstrap server
+    Response,
+    WriteDrop,
+    WriteError,
+    Blocks,
+    Drop,
+    BadCount,
+    ResponseBlocks,
+    ResponseAccountInfo,
+    ChannelFull,
 }
 
 impl DetailType {
@@ -413,6 +434,8 @@ impl DetailType {
             DetailType::Send => "send",
             DetailType::TelemetryReq => "telemetry_req",
             DetailType::TelemetryAck => "telemetry_ack",
+            DetailType::AscPullReq => "asc_pull_req",
+            DetailType::AscPullAck => "asc_pull_ack",
             DetailType::StateBlock => "state_block",
             DetailType::EpochBlock => "epoch_block",
             DetailType::VoteValid => "vote_valid",
@@ -466,6 +489,8 @@ impl DetailType {
             DetailType::InvalidBulkPullMessage => "invalid_bulk_pull_message",
             DetailType::InvalidBulkPullAccountMessage => "invalid_bulk_pull_account_message",
             DetailType::InvalidFrontierReqMessage => "invalid_frontier_req_message",
+            DetailType::InvalidAscPullReqMessage => "invalid_asc_pull_req_message",
+            DetailType::InvalidAscPullAckMessage => "invalid_asc_pull_ack_message",
             DetailType::MessageTooBig => "message_too_big",
             DetailType::OutdatedVersion => "outdated_version",
             DetailType::UdpMaxPerIp => "udp_max_per_ip",
@@ -499,6 +524,15 @@ impl DetailType {
             DetailType::Hinted => "hinted",
             DetailType::InsertFailed => "insert_failed",
             DetailType::MissingBlock => "missing_block",
+            DetailType::Response => "response",
+            DetailType::WriteDrop => "write_drop",
+            DetailType::WriteError => "write_error",
+            DetailType::Blocks => "blocks",
+            DetailType::Drop => "drop",
+            DetailType::BadCount => "bad_count",
+            DetailType::ResponseBlocks => "response_blocks",
+            DetailType::ResponseAccountInfo => "response_account_info",
+            DetailType::ChannelFull => "channel_full",
         }
     }
 }
@@ -921,6 +955,8 @@ impl From<MessageType> for DetailType {
             MessageType::BulkPullAccount => DetailType::BulkPullAccount,
             MessageType::TelemetryReq => DetailType::TelemetryReq,
             MessageType::TelemetryAck => DetailType::TelemetryAck,
+            MessageType::AscPullReq => DetailType::AscPullReq,
+            MessageType::AscPullAck => DetailType::AscPullAck,
         }
     }
 }

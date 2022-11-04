@@ -132,6 +132,8 @@ struct NetworkFilterHandle;
 
 struct NodeFlagsHandle;
 
+struct OutboundBandwidthLimiterHandle;
+
 struct PeerExclusionHandle;
 
 struct PullsCacheHandle;
@@ -431,6 +433,8 @@ struct NodeConfigDto
 	uintptr_t active_elections_hinted_limit_percentage;
 	uintptr_t bandwidth_limit;
 	double bandwidth_limit_burst_ratio;
+	uintptr_t bootstrap_bandwidth_limit;
+	double bootstrap_bandwidth_burst_ratio;
 	int64_t conf_height_processor_batch_min_time_ms;
 	bool backup_before_upgrade;
 	double max_work_generate_multiplier;
@@ -832,6 +836,16 @@ struct LocalVotesResult
 	LocalVotesResultHandle * handle;
 };
 
+struct AccountInfoAckPayloadDto
+{
+	uint8_t account[32];
+	uint8_t account_open[32];
+	uint8_t account_head[32];
+	uint64_t account_block_count;
+	uint8_t account_conf_frontier[32];
+	uint64_t account_conf_height;
+};
+
 struct HashRootPair
 {
 	uint8_t block_hash[32];
@@ -898,6 +912,14 @@ struct OpenBlockDto2
 	uint8_t priv_key[32];
 	uint8_t pub_key[32];
 	uint64_t work;
+};
+
+struct OutboundBandwidthLimiterConfigDto
+{
+	uintptr_t standard_limit;
+	double standard_burst_ratio;
+	uintptr_t bootstrap_limit;
+	double bootstrap_burst_ratio;
 };
 
 struct PullInfoDto
@@ -1098,9 +1120,8 @@ int32_t rsn_bandwidth_limiter_reset (const BandwidthLimiterHandle * limiter,
 double limit_burst_ratio,
 uintptr_t limit);
 
-bool rsn_bandwidth_limiter_should_drop (const BandwidthLimiterHandle * limiter,
-uintptr_t message_size,
-int32_t * result);
+bool rsn_bandwidth_limiter_should_pass (const BandwidthLimiterHandle * limiter,
+uintptr_t message_size);
 
 Blake2bHandle * rsn_blake2b_create (uintptr_t size);
 
@@ -1324,7 +1345,8 @@ MessageHandle * msg,
 ChannelTcpSendCallback callback,
 VoidPointerCallback delete_callback,
 void * context,
-uint8_t policy);
+uint8_t policy,
+uint8_t limit_type);
 
 void rsn_bootstrap_client_send_buffer (BootstrapClientHandle * handle,
 const uint8_t * buffer,
@@ -1593,7 +1615,7 @@ void rsn_channel_set_temporary (ChannelHandle * handle, bool temporary);
 ChannelHandle * rsn_channel_tcp_create (uint64_t now,
 SocketHandle * socket,
 void * observer,
-const BandwidthLimiterHandle * limiter,
+const OutboundBandwidthLimiterHandle * limiter,
 void * io_ctx);
 
 void rsn_channel_tcp_endpoint (ChannelHandle * handle, EndpointDto * endpoint);
@@ -1613,7 +1635,8 @@ MessageHandle * msg,
 ChannelTcpSendCallback callback,
 VoidPointerCallback delete_callback,
 void * context,
-uint8_t policy);
+uint8_t policy,
+uint8_t limit_type);
 
 void rsn_channel_tcp_send_buffer (ChannelHandle * handle,
 const uint8_t * buffer,
@@ -2626,6 +2649,72 @@ TransactionHandle * rsn_mdb_env_tx_begin_read (LmdbEnvHandle * handle);
 
 TransactionHandle * rsn_mdb_env_tx_begin_write (LmdbEnvHandle * handle);
 
+MessageHandle * rsn_message_asc_pull_ack_clone (MessageHandle * handle);
+
+MessageHandle * rsn_message_asc_pull_ack_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_asc_pull_ack_create2 (MessageHeaderHandle * header);
+
+bool rsn_message_asc_pull_ack_deserialize (MessageHandle * handle, void * stream);
+
+uint64_t rsn_message_asc_pull_ack_get_id (MessageHandle * handle);
+
+void rsn_message_asc_pull_ack_payload_account_info (MessageHandle * handle,
+AccountInfoAckPayloadDto * result);
+
+void rsn_message_asc_pull_ack_payload_blocks (MessageHandle * handle, BlockArrayDto * blocks);
+
+uint8_t rsn_message_asc_pull_ack_payload_type (MessageHandle * handle);
+
+uint8_t rsn_message_asc_pull_ack_pull_type (MessageHandle * handle);
+
+void rsn_message_asc_pull_ack_request_account_info (MessageHandle * handle,
+const AccountInfoAckPayloadDto * payload);
+
+void rsn_message_asc_pull_ack_request_blocks (MessageHandle * handle,
+const BlockHandle * const * blocks,
+uintptr_t count);
+
+void rsn_message_asc_pull_ack_request_invalid (MessageHandle * handle);
+
+bool rsn_message_asc_pull_ack_serialize (MessageHandle * handle, void * stream);
+
+void rsn_message_asc_pull_ack_set_id (MessageHandle * handle, uint64_t id);
+
+uintptr_t rsn_message_asc_pull_ack_size (MessageHeaderHandle * header);
+
+MessageHandle * rsn_message_asc_pull_req_clone (MessageHandle * handle);
+
+MessageHandle * rsn_message_asc_pull_req_create (NetworkConstantsDto * constants);
+
+MessageHandle * rsn_message_asc_pull_req_create2 (MessageHeaderHandle * header);
+
+bool rsn_message_asc_pull_req_deserialize (MessageHandle * handle, void * stream);
+
+uint64_t rsn_message_asc_pull_req_get_id (MessageHandle * handle);
+
+void rsn_message_asc_pull_req_payload_account_info (MessageHandle * handle, uint8_t * target);
+
+void rsn_message_asc_pull_req_payload_blocks (MessageHandle * handle, uint8_t * start, uint8_t * count);
+
+uint8_t rsn_message_asc_pull_req_payload_type (MessageHandle * handle);
+
+uint8_t rsn_message_asc_pull_req_pull_type (MessageHandle * handle);
+
+void rsn_message_asc_pull_req_request_account_info (MessageHandle * handle, const uint8_t * target);
+
+void rsn_message_asc_pull_req_request_blocks (MessageHandle * handle,
+const uint8_t * start,
+uint8_t count);
+
+void rsn_message_asc_pull_req_request_invalid (MessageHandle * handle);
+
+bool rsn_message_asc_pull_req_serialize (MessageHandle * handle, void * stream);
+
+void rsn_message_asc_pull_req_set_id (MessageHandle * handle, uint64_t id);
+
+uintptr_t rsn_message_asc_pull_req_size (MessageHeaderHandle * header);
+
 void rsn_message_builder_bootstrap_exited (const char * id,
 const char * mode,
 uint64_t duration_s,
@@ -2745,10 +2834,9 @@ VoteUniquerHandle * vote_uniquer);
 
 void rsn_message_deserializer_destroy (MessageDeserializerHandle * handle);
 
-uint8_t rsn_message_deserializer_parse_status_to_stat_detail (MessageDeserializerHandle * handle);
+uint8_t rsn_message_deserializer_parse_status_to_stat_detail (uint8_t parse_status);
 
-void rsn_message_deserializer_parse_status_to_string (MessageDeserializerHandle * handle,
-StringDto * result);
+void rsn_message_deserializer_parse_status_to_string (uint8_t parse_status, StringDto * result);
 
 void rsn_message_deserializer_read (MessageDeserializerHandle * handle,
 SocketHandle * socket,
@@ -3019,6 +3107,19 @@ uintptr_t rsn_open_block_size ();
 void rsn_open_block_source (const BlockHandle * handle, uint8_t (*result)[32]);
 
 void rsn_open_block_source_set (BlockHandle * handle, const uint8_t (*source)[32]);
+
+OutboundBandwidthLimiterHandle * rsn_outbound_bandwidth_limiter_create (const OutboundBandwidthLimiterConfigDto * config);
+
+void rsn_outbound_bandwidth_limiter_destroy (OutboundBandwidthLimiterHandle * limiter);
+
+void rsn_outbound_bandwidth_limiter_reset (const OutboundBandwidthLimiterHandle * limiter,
+double limit_burst_ratio,
+uintptr_t limit,
+uint8_t limit_type);
+
+bool rsn_outbound_bandwidth_limiter_should_pass (const OutboundBandwidthLimiterHandle * limiter,
+uintptr_t message_size,
+uint8_t limit_type);
 
 uint64_t rsn_peer_exclusion_add (PeerExclusionHandle * handle,
 const EndpointDto * endpoint,

@@ -7,7 +7,9 @@ use std::{
     },
 };
 
-use super::{BandwidthLimiter, BufferDropPolicy, Channel, Socket, SocketImpl};
+use super::{
+    BandwidthLimitType, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket, SocketImpl,
+};
 use crate::{
     core::{messages::Message, Account},
     ffi::ChannelTcpObserverWeakPtr,
@@ -41,7 +43,7 @@ pub struct ChannelTcp {
     temporary: AtomicBool,
     network_version: AtomicU8,
     pub observer: ChannelTcpObserverWeakPtr,
-    pub limiter: Arc<BandwidthLimiter>,
+    pub limiter: Arc<OutboundBandwidthLimiter>,
     pub io_ctx: Arc<dyn IoContext>,
 }
 
@@ -50,7 +52,7 @@ impl ChannelTcp {
         socket: &Arc<SocketImpl>,
         now: u64,
         observer: ChannelTcpObserverWeakPtr,
-        limiter: Arc<BandwidthLimiter>,
+        limiter: Arc<OutboundBandwidthLimiter>,
         io_ctx: Arc<dyn IoContext>,
     ) -> Self {
         Self {
@@ -171,11 +173,12 @@ impl ChannelTcp {
         message: &dyn Message,
         callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
         drop_policy: BufferDropPolicy,
+        limit_type: BandwidthLimitType,
     ) {
         let buffer = Arc::new(message.to_bytes());
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
-        let should_drop = self.limiter.should_drop(buffer.len());
-        if !is_droppable_by_limiter || !should_drop {
+        let should_pass = self.limiter.should_pass(buffer.len(), limit_type);
+        if !is_droppable_by_limiter || should_pass {
             self.send_buffer(&buffer, callback, drop_policy);
             if let Some(observer) = self.observer.lock() {
                 observer.message_sent(message);

@@ -9,7 +9,7 @@ use std::{
 
 use crate::{
     core::messages::Message,
-    transport::{BufferDropPolicy, ChannelTcp, Socket, SocketImpl},
+    transport::{BandwidthLimitType, BufferDropPolicy, ChannelTcp, Socket, SocketImpl},
     utils::ErrorCode,
 };
 
@@ -115,8 +115,10 @@ impl BootstrapClient {
         message: &dyn Message,
         callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
         drop_policy: BufferDropPolicy,
+        limit_type: BandwidthLimitType,
     ) {
-        self.channel.send(message, callback, drop_policy);
+        self.channel
+            .send(message, callback, drop_policy, limit_type);
     }
 
     pub fn inc_block_count(&self) -> u64 {

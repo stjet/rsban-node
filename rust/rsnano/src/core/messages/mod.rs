@@ -36,6 +36,12 @@ pub use telemetry_req::*;
 mod telemetry_ack;
 pub use telemetry_ack::*;
 
+mod asc_pull_req;
+pub use asc_pull_req::*;
+
+mod asc_pull_ack;
+pub use asc_pull_ack::*;
+
 use crate::utils::{MemoryStream, Stream};
 use anyhow::Result;
 
@@ -67,6 +73,8 @@ pub trait MessageVisitor {
     fn node_id_handshake(&mut self, _message: &NodeIdHandshake) {}
     fn telemetry_req(&mut self, _message: &TelemetryReq) {}
     fn telemetry_ack(&mut self, _message: &TelemetryAck) {}
+    fn asc_pull_req(&mut self, _message: &AscPullReq) {}
+    fn asc_pull_ack(&mut self, _message: &AscPullAck) {}
 }
 
 pub trait MessageExt {

@@ -12,6 +12,7 @@
 #include <nano/secure/network_filter.hpp>
 
 #include <bitset>
+#include <variant>
 
 namespace nano
 {
@@ -34,7 +35,9 @@ enum class message_type : uint8_t
 	node_id_handshake = 0x0a,
 	bulk_pull_account = 0x0b,
 	telemetry_req = 0x0c,
-	telemetry_ack = 0x0d
+	telemetry_ack = 0x0d,
+	asc_pull_req = 0x0e,
+	asc_pull_ack = 0x0f,
 };
 
 stat::detail to_stat_detail (message_type);
@@ -85,12 +88,14 @@ public:
 	virtual ~message ();
 	message & operator= (message const &) = delete;
 	message & operator= (message &&) = delete;
+
 	virtual void serialize (nano::stream &) const = 0;
 	virtual void visit (nano::message_visitor &) const = 0;
 	std::shared_ptr<std::vector<uint8_t>> to_bytes () const;
 	nano::shared_const_buffer to_shared_const_buffer () const;
 	nano::message_header get_header () const;
 	void set_header (nano::message_header const & header);
+	nano::message_type type () const;
 	rsnano::MessageHandle * handle;
 };
 
@@ -400,6 +405,116 @@ public:
 	boost::optional<std::pair<nano::account, nano::signature>> get_response () const;
 };
 
+/**
+ * Type of requested asc pull data
+ * - blocks:
+ * - account_info:
+ */
+enum class asc_pull_type : uint8_t
+{
+	invalid = 0x0,
+	blocks = 0x1,
+	account_info = 0x2,
+};
+
+class empty_payload
+{
+};
+
+/**
+ * Ascending bootstrap pull request
+ */
+class asc_pull_req final : public message
+{
+public:
+	using id_t = uint64_t;
+
+	explicit asc_pull_req (nano::network_constants const &);
+	asc_pull_req (bool & error, nano::stream &, nano::message_header const &);
+	asc_pull_req (rsnano::MessageHandle * handle_a);
+	asc_pull_req (asc_pull_req const & other_a);
+
+	uint64_t id () const;
+	void set_id (uint64_t id_a);
+	nano::asc_pull_type pull_type () const;
+
+	void serialize (nano::stream &) const override;
+	bool deserialize (nano::stream &);
+	void visit (nano::message_visitor &) const override;
+
+	static std::size_t size (nano::message_header const &);
+
+public: // Payload definitions
+	class blocks_payload
+	{
+	public:
+		nano::hash_or_account start{ 0 };
+		uint8_t count{ 0 };
+	};
+
+	class account_info_payload
+	{
+	public:
+		nano::hash_or_account target{ 0 };
+	};
+
+	void request_blocks (blocks_payload & payload_a);
+	void request_account_info (account_info_payload & payload_a);
+	void request_invalid ();
+	std::variant<empty_payload, blocks_payload, account_info_payload> payload () const;
+};
+
+/**
+ * Ascending bootstrap pull response
+ */
+class asc_pull_ack final : public message
+{
+public:
+	using id_t = asc_pull_req::id_t;
+
+	explicit asc_pull_ack (nano::network_constants const &);
+	asc_pull_ack (bool & error, nano::stream &, nano::message_header const &);
+	asc_pull_ack (rsnano::MessageHandle * handle_a);
+	asc_pull_ack (asc_pull_ack const & other_a);
+
+	uint64_t id () const;
+	void set_id (uint64_t id_a);
+	nano::asc_pull_type pull_type () const;
+
+	void serialize (nano::stream &) const override;
+	bool deserialize (nano::stream &);
+	void visit (nano::message_visitor &) const override;
+
+	static std::size_t size (nano::message_header const &);
+
+public: // Payload definitions
+	class blocks_payload
+	{
+	public:
+		std::vector<std::shared_ptr<nano::block>> blocks{};
+
+	public:
+		/* Header allows for 16 bit extensions; 65535 bytes / 500 bytes (block size with some future margin) ~ 131 */
+		constexpr static std::size_t max_blocks = 128;
+	};
+
+	class account_info_payload
+	{
+	public:
+		nano::account account{ 0 };
+		nano::block_hash account_open{ 0 };
+		nano::block_hash account_head{ 0 };
+		uint64_t account_block_count{ 0 };
+		nano::block_hash account_conf_frontier{ 0 };
+		uint64_t account_conf_height{ 0 };
+	};
+
+	void request_blocks (blocks_payload & payload_a);
+	void request_account_info (account_info_payload & payload_a);
+	void request_invalid ();
+	std::variant<empty_payload, blocks_payload, account_info_payload> payload () const;
+};
+
 class message_visitor
 {
 public:
@@ -444,6 +559,14 @@ public:
 		default_handler (message);
 	}
 	virtual void telemetry_ack (nano::telemetry_ack const & message)
+	{
+		default_handler (message);
+	}
+	virtual void asc_pull_req (nano::asc_pull_req const & message)
+	{
+		default_handler (message);
+	}
+	virtual void asc_pull_ack (nano::asc_pull_ack const & message)
 	{
 		default_handler (message);
 	}

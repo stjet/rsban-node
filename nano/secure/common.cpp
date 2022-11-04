@@ -301,12 +301,6 @@ nano::keypair::keypair (const nano::keypair & other_a) :
 {
 }
 
-// Serialize a block prefixed with an 8-bit typecode
-void nano::serialize_block (nano::stream & stream_a, nano::block const & block_a)
-{
-	write (stream_a, block_a.type ());
-	block_a.serialize (stream_a);
-}
 nano::account_info::account_info () :
 	account_info (0, 0, 0, 0, 0, 0, nano::epoch::epoch_0)
 {

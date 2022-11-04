@@ -175,6 +175,11 @@ void nano::message::set_header (nano::message_header const & header_a)
 	rsnano::rsn_message_set_header (handle, header_a.handle);
 }
 
+nano::message_type nano::message::type () const
+{
+	return get_header ().get_type ();
+}
+
 /*
  * message_parser
  */
@@ -1887,4 +1892,232 @@ std::size_t nano::node_id_handshake::size () const
 std::size_t nano::node_id_handshake::size (nano::message_header const & header_a)
 {
 	return rsnano::rsn_message_node_id_handshake_size (header_a.handle);
+}
+
+/*
+ * asc_pull_req
+ */
+rsnano::MessageHandle * create_asc_pull_req_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_asc_pull_req_create (&constants_dto);
+}
+
+nano::asc_pull_req::asc_pull_req (const nano::network_constants & constants) :
+	message (create_asc_pull_req_handle (constants))
+{
+}
+
+nano::asc_pull_req::asc_pull_req (bool & error_a, nano::stream & stream_a, const nano::message_header & header_a) :
+	message (rsnano::rsn_message_asc_pull_req_create2 (header_a.handle))
+{
+	if (!error_a)
+	{
+		error_a = deserialize (stream_a);
+	}
+}
+nano::asc_pull_req::asc_pull_req (nano::asc_pull_req const & other_a) :
+	message{ rsnano::rsn_message_asc_pull_req_clone (other_a.handle) }
+{
+}
+
+nano::asc_pull_req::asc_pull_req (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
+{
+}
+
+uint64_t nano::asc_pull_req::id () const
+{
+	return rsnano::rsn_message_asc_pull_req_get_id (handle);
+}
+
+void nano::asc_pull_req::set_id (uint64_t id_a)
+{
+	rsnano::rsn_message_asc_pull_req_set_id (handle, id_a);
+}
+
+nano::asc_pull_type nano::asc_pull_req::pull_type () const
+{
+	return static_cast<nano::asc_pull_type> (rsnano::rsn_message_asc_pull_req_pull_type (handle));
+}
+
+void nano::asc_pull_req::visit (nano::message_visitor & visitor) const
+{
+	visitor.asc_pull_req (*this);
+}
+
+void nano::asc_pull_req::serialize (nano::stream & stream_a) const
+{
+	if (!rsnano::rsn_message_asc_pull_req_serialize (handle, &stream_a))
+		throw std::runtime_error ("could not serialize asc_pull_req");
+}
+
+bool nano::asc_pull_req::deserialize (nano::stream & stream_a)
+{
+	bool error = !rsnano::rsn_message_asc_pull_req_deserialize (handle, &stream_a);
+	return error;
+}
+
+std::size_t nano::asc_pull_req::size (const nano::message_header & header)
+{
+	return rsnano::rsn_message_asc_pull_req_size (header.handle);
+}
+
+void nano::asc_pull_req::request_blocks (blocks_payload & payload_a)
+{
+	rsnano::rsn_message_asc_pull_req_request_blocks (handle, payload_a.start.bytes.data (), payload_a.count);
+}
+
+void nano::asc_pull_req::request_account_info (account_info_payload & payload_a)
+{
+	rsnano::rsn_message_asc_pull_req_request_account_info (handle, payload_a.target.bytes.data ());
+}
+
+void nano::asc_pull_req::request_invalid ()
+{
+	rsnano::rsn_message_asc_pull_req_request_invalid (handle);
+}
+
+std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_pull_req::account_info_payload> nano::asc_pull_req::payload () const
+{
+	std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_pull_req::account_info_payload> result;
+	auto payload_type = static_cast<nano::asc_pull_type> (rsnano::rsn_message_asc_pull_req_payload_type (handle));
+	if (payload_type == nano::asc_pull_type::blocks)
+	{
+		nano::asc_pull_req::blocks_payload blocks;
+		rsnano::rsn_message_asc_pull_req_payload_blocks (handle, blocks.start.bytes.data (), &blocks.count);
+		return blocks;
+	}
+	else if (payload_type == nano::asc_pull_type::account_info)
+	{
+		nano::asc_pull_req::account_info_payload account_info;
+		rsnano::rsn_message_asc_pull_req_payload_account_info (handle, account_info.target.bytes.data ());
+		return account_info;
+	}
+	return empty_payload{};
+}
+
+/*
+ * asc_pull_ack
+ */
+rsnano::MessageHandle * create_asc_pull_ack_handle (nano::network_constants const & constants)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_asc_pull_ack_create (&constants_dto);
+}
+
+nano::asc_pull_ack::asc_pull_ack (const nano::network_constants & constants) :
+	message (create_asc_pull_ack_handle (constants))
+{
+}
+
+nano::asc_pull_ack::asc_pull_ack (bool & error_a, nano::stream & stream_a, const nano::message_header & header_a) :
+	message (rsnano::rsn_message_asc_pull_ack_create2 (header_a.handle))
+{
+	if (!error_a)
+	{
+		error_a = deserialize (stream_a);
+	}
+}
+nano::asc_pull_ack::asc_pull_ack (nano::asc_pull_ack const & other_a) :
+	message{ rsnano::rsn_message_asc_pull_ack_clone (other_a.handle) }
+{
+}
+
+nano::asc_pull_ack::asc_pull_ack (rsnano::MessageHandle * handle_a) :
+	message (handle_a)
+{
+}
+
+uint64_t nano::asc_pull_ack::id () const
+{
+	return rsnano::rsn_message_asc_pull_ack_get_id (handle);
+}
+
+void nano::asc_pull_ack::set_id (uint64_t id_a)
+{
+	rsnano::rsn_message_asc_pull_ack_set_id (handle, id_a);
+}
+
+nano::asc_pull_type nano::asc_pull_ack::pull_type () const
+{
+	return static_cast<nano::asc_pull_type> (rsnano::rsn_message_asc_pull_ack_pull_type (handle));
+}
+
+void nano::asc_pull_ack::visit (nano::message_visitor & visitor) const
+{
+	visitor.asc_pull_ack (*this);
+}
+
+void nano::asc_pull_ack::serialize (nano::stream & stream) const
+{
+	if (!rsnano::rsn_message_asc_pull_ack_serialize (handle, &stream))
+		throw std::runtime_error ("could not serialize asc_pull_ack");
+}
+
+bool nano::asc_pull_ack::deserialize (nano::stream & stream)
+{
+	bool error = !rsnano::rsn_message_asc_pull_ack_deserialize (handle, &stream);
+	return error;
+}
+
+std::size_t nano::asc_pull_ack::size (const nano::message_header & header)
+{
+	return rsnano::rsn_message_asc_pull_ack_size (header.handle);
+}
+
+void nano::asc_pull_ack::request_blocks (blocks_payload & payload_a)
+{
+	std::vector<rsnano::BlockHandle *> block_handles;
+	block_handles.reserve (payload_a.blocks.size ());
+	for (const auto & block : payload_a.blocks)
+	{
+		block_handles.push_back (block->get_handle ());
+	}
+	rsnano::rsn_message_asc_pull_ack_request_blocks (handle, block_handles.data (), block_handles.size ());
+}
+
+void nano::asc_pull_ack::request_account_info (account_info_payload & payload_a)
+{
+	rsnano::AccountInfoAckPayloadDto dto;
+	std::copy (std::begin (payload_a.account.bytes), std::end (payload_a.account.bytes), std::begin (dto.account));
+	std::copy (std::begin (payload_a.account_open.bytes), std::end (payload_a.account_open.bytes), std::begin (dto.account_open));
+	std::copy (std::begin (payload_a.account_head.bytes), std::end (payload_a.account_head.bytes), std::begin (dto.account_head));
+	dto.account_block_count = payload_a.account_block_count;
+	std::copy (std::begin (payload_a.account_conf_frontier.bytes), std::end (payload_a.account_conf_frontier.bytes), std::begin (dto.account_conf_frontier));
+	dto.account_conf_height = payload_a.account_conf_height;
+	rsnano::rsn_message_asc_pull_ack_request_account_info (handle, &dto);
+}
+
+void nano::asc_pull_ack::request_invalid ()
+{
+	rsnano::rsn_message_asc_pull_ack_request_invalid (handle);
+}
+
+std::variant<nano::empty_payload, nano::asc_pull_ack::blocks_payload, nano::asc_pull_ack::account_info_payload> nano::asc_pull_ack::payload () const
+{
+	std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_pull_req::account_info_payload> result;
+	auto payload_type = static_cast<nano::asc_pull_type> (rsnano::rsn_message_asc_pull_ack_payload_type (handle));
+	if (payload_type == nano::asc_pull_type::blocks)
+	{
+		nano::asc_pull_ack::blocks_payload blocks;
+		rsnano::BlockArrayDto blocks_dto;
+		rsnano::rsn_message_asc_pull_ack_payload_blocks (handle, &blocks_dto);
+		rsnano::read_block_array_dto (blocks_dto, blocks.blocks);
+		return blocks;
+	}
+	else if (payload_type == nano::asc_pull_type::account_info)
+	{
+		rsnano::AccountInfoAckPayloadDto dto;
+		rsnano::rsn_message_asc_pull_ack_payload_account_info (handle, &dto);
+		nano::asc_pull_ack::account_info_payload account_info;
+		std::copy (std::begin (dto.account), std::end (dto.account), std::begin (account_info.account.bytes));
+		std::copy (std::begin (dto.account_open), std::end (dto.account_open), std::begin (account_info.account_open.bytes));
+		std::copy (std::begin (dto.account_head), std::end (dto.account_head), std::begin (account_info.account_head.bytes));
+		account_info.account_block_count = dto.account_block_count;
+		std::copy (std::begin (dto.account_conf_frontier), std::end (dto.account_conf_frontier), std::begin (account_info.account_conf_frontier.bytes));
+		account_info.account_conf_height = dto.account_conf_height;
+		return account_info;
+	}
+	return empty_payload{};
 }

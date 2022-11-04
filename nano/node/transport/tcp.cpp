@@ -6,7 +6,7 @@
 
 #include <boost/format.hpp>
 
-nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
+nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::outbound_bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
 	channel (rsnano::rsn_channel_tcp_create (
 	std::chrono::steady_clock::now ().time_since_epoch ().count (),
 	socket_a->handle,
@@ -72,10 +72,10 @@ void nano::transport::delete_send_buffer_callback (void * context_a)
 	delete callback_ptr;
 }
 
-void nano::transport::channel_tcp::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
+void nano::transport::channel_tcp::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a, nano::bandwidth_limit_type limiter_type)
 {
 	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
-	rsnano::rsn_channel_tcp_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a));
+	rsnano::rsn_channel_tcp_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (limiter_type));
 }
 
 void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)
@@ -158,6 +158,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<vo
 	tcp_server_factory{ node },
 	node_id{ node.node_id },
 	network_params{ node.network_params },
+	limiter{ node.outbound_limiter },
 	syn_cookies{ node.network->syn_cookies },
 	stats{ node.stats },
 	config{ node.config },
@@ -346,7 +347,7 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 				if (!node_id_a.is_zero ())
 				{
 					// Add temporary channel
-					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, network->limiter, config->network_params.network, socket_a, network->tcp_channels));
+					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket_a, network->tcp_channels));
 					temporary_channel->set_endpoint ();
 					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
 					temporary_channel->set_node_id (node_id_a);
@@ -582,7 +583,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 	config->tcp_io_timeout,
 	network_params.network.silent_connection_tolerance_time,
 	config->logging.network_timeout_logging ());
-	auto channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, network->limiter, config->network_params.network, socket, network->tcp_channels));
+	auto channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket, network->tcp_channels));
 	auto network_consts = network_params.network;
 	auto config_l = config;
 	auto logger_l = logger;

@@ -54,6 +54,8 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.active_elections_hinted_limit_percentage = config.active_elections_hinted_limit_percentage;
 	dto.bandwidth_limit = config.bandwidth_limit;
 	dto.bandwidth_limit_burst_ratio = config.bandwidth_limit_burst_ratio;
+	dto.bootstrap_bandwidth_limit = config.bootstrap_bandwidth_limit;
+	dto.bootstrap_bandwidth_burst_ratio = config.bootstrap_bandwidth_burst_ratio;
 	dto.conf_height_processor_batch_min_time_ms = config.conf_height_processor_batch_min_time.count ();
 	dto.backup_before_upgrade = config.backup_before_upgrade;
 	dto.max_work_generate_multiplier = config.max_work_generate_multiplier;
@@ -168,6 +170,8 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	active_elections_hinted_limit_percentage = dto.active_elections_hinted_limit_percentage;
 	bandwidth_limit = dto.bandwidth_limit;
 	bandwidth_limit_burst_ratio = dto.bandwidth_limit_burst_ratio;
+	bootstrap_bandwidth_limit = dto.bootstrap_bandwidth_limit;
+	bootstrap_bandwidth_burst_ratio = dto.bootstrap_bandwidth_burst_ratio;
 	conf_height_processor_batch_min_time = std::chrono::milliseconds (dto.conf_height_processor_batch_min_time_ms);
 	backup_before_upgrade = dto.backup_before_upgrade;
 	max_work_generate_multiplier = dto.max_work_generate_multiplier;
@@ -384,8 +388,13 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		toml.get<bool> ("use_memory_pools", use_memory_pools);
 		toml.get<std::size_t> ("confirmation_history_size", confirmation_history_size);
 		toml.get<std::size_t> ("active_elections_size", active_elections_size);
+
 		toml.get<std::size_t> ("bandwidth_limit", bandwidth_limit);
 		toml.get<double> ("bandwidth_limit_burst_ratio", bandwidth_limit_burst_ratio);
+
+		toml.get<std::size_t> ("bootstrap_bandwidth_limit", bootstrap_bandwidth_limit);
+		toml.get<double> ("bootstrap_bandwidth_burst_ratio", bootstrap_bandwidth_burst_ratio);
+
 		toml.get<bool> ("backup_before_upgrade", backup_before_upgrade);
 
 		auto conf_height_processor_batch_min_time_l (conf_height_processor_batch_min_time.count ());

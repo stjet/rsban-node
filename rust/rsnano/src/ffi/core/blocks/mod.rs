@@ -257,3 +257,39 @@ pub unsafe extern "C" fn rsn_deserialize_block(
         Err(_) => std::ptr::null_mut(),
     }
 }
+
+pub struct BlockArrayRawPtr(Vec<*mut BlockHandle>);
+
+pub(crate) unsafe fn copy_block_array_dto(
+    blocks: Vec<Arc<RwLock<BlockEnum>>>,
+    target: *mut BlockArrayDto,
+) {
+    let mut raw_block_array = Box::new(BlockArrayRawPtr(Vec::new()));
+    for block in blocks {
+        raw_block_array
+            .0
+            .push(Box::into_raw(Box::new(BlockHandle::new(block))));
+    }
+    (*target).blocks = raw_block_array.0.as_ptr();
+    (*target).count = raw_block_array.0.len();
+    (*target).raw_ptr = Box::into_raw(raw_block_array);
+}
+
+#[repr(C)]
+pub struct BlockArrayDto {
+    pub blocks: *const *mut BlockHandle,
+    pub count: usize,
+    pub raw_ptr: *mut BlockArrayRawPtr,
+}
+
+impl BlockArrayDto {
+    pub unsafe fn blocks(&self) -> impl Iterator<Item = &Arc<RwLock<BlockEnum>>> {
+        let dtos = std::slice::from_raw_parts(self.blocks, self.count);
+        dtos.iter().map(|&b| &(*b).block)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_array_destroy(dto: *mut BlockArrayDto) {
+    drop(Box::from_raw((*dto).raw_ptr))
+}

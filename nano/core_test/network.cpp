@@ -961,7 +961,7 @@ TEST (tcp_listener, tcp_listener_timeout_node_id_handshake)
 	auto socket (create_client_socket (*node0));
 	auto cookie (node0->network->syn_cookies->assign (nano::transport::map_tcp_to_endpoint (node0->tcp_listener->endpoint ())));
 	nano::node_id_handshake node_id_handshake{ nano::dev::network_params.network, cookie, boost::none };
-	auto channel = std::make_shared<nano::transport::channel_tcp> (node0->io_ctx, node0->network->limiter, node0->config->network_params.network, socket, node0->network->tcp_channels);
+	auto channel = std::make_shared<nano::transport::channel_tcp> (node0->io_ctx, node0->outbound_limiter, node0->config->network_params.network, socket, node0->network->tcp_channels);
 	socket->async_connect (node0->tcp_listener->endpoint (), [&node_id_handshake, channel] (boost::system::error_code const & ec) {
 		ASSERT_FALSE (ec);
 		channel->send (node_id_handshake, [] (boost::system::error_code const & ec, size_t size_a) {
@@ -1151,7 +1151,7 @@ TEST (network, bandwidth_limiter)
 	ASSERT_TIMELY (1s, 1 == node.stats->count (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::out));
 
 	// change the bandwidth settings, 2 packets will be dropped
-	node.network->set_bandwidth_params (1.1, message_size * 2);
+	node.set_bandwidth_params (message_size * 2, 1.1);
 	channel1->send (message);
 	channel2->send (message);
 	channel1->send (message);
@@ -1159,7 +1159,7 @@ TEST (network, bandwidth_limiter)
 	ASSERT_TIMELY (1s, 3 == node.stats->count (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::out));
 
 	// change the bandwidth settings, no packet will be dropped
-	node.network->set_bandwidth_params (4, message_size);
+	node.set_bandwidth_params (message_size, 4);
 	channel1->send (message);
 	channel2->send (message);
 	channel1->send (message);

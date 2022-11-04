@@ -2,7 +2,7 @@ use crate::{
     core::{Account, Amount, BlockHash, Epoch, Link, QualifiedRoot},
     ffi::{
         copy_account_bytes, copy_amount_bytes, copy_hash_bytes, copy_link_bytes, copy_root_bytes,
-        core::{AccountInfoHandle, BlockHandle},
+        core::{copy_block_array_dto, AccountInfoHandle, BlockArrayDto, BlockHandle},
         ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
         StatHandle, StringDto,
     },
@@ -661,20 +661,6 @@ pub unsafe extern "C" fn rsn_ledger_representative_calculated(
     copy_hash_bytes(representative, result);
 }
 
-pub struct BlockArrayRawPtr(Vec<*mut BlockHandle>);
-
-#[repr(C)]
-pub struct BlockArrayDto {
-    pub blocks: *const *mut BlockHandle,
-    pub count: usize,
-    pub raw_ptr: *mut BlockArrayRawPtr,
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_array_destroy(dto: *mut BlockArrayDto) {
-    drop(Box::from_raw((*dto).raw_ptr))
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_rollback(
     handle: *mut LedgerHandle,
@@ -688,16 +674,7 @@ pub unsafe extern "C" fn rsn_ledger_rollback(
         .rollback((*txn).as_write_txn(), &BlockHash::from_ptr(hash), &mut list)
         .is_err();
 
-    let mut raw_block_array = Box::new(BlockArrayRawPtr(Vec::new()));
-    for block in list {
-        raw_block_array
-            .0
-            .push(Box::into_raw(Box::new(BlockHandle::new(block))));
-    }
-    (*result).blocks = raw_block_array.0.as_ptr();
-    (*result).count = raw_block_array.0.len();
-    (*result).raw_ptr = Box::into_raw(raw_block_array);
-
+    copy_block_array_dto(list, result);
     is_err
 }
 

@@ -115,6 +115,9 @@ public:
 		vote_cache,
 		hinting,
 		blockprocessor,
+		bootstrap_server,
+		bootstrap_server_requests,
+		bootstrap_server_responses,
 	};
 
 	/** Optional detail type */
@@ -172,6 +175,8 @@ public:
 		node_id_handshake,
 		telemetry_req,
 		telemetry_ack,
+		asc_pull_req,
+		asc_pull_ack,
 
 		// bootstrap, callback
 		initiate,
@@ -237,6 +242,8 @@ public:
 		invalid_bulk_pull_message,
 		invalid_bulk_pull_account_message,
 		invalid_frontier_req_message,
+		invalid_asc_pull_req_message,
+		invalid_asc_pull_ack_message,
 		message_too_big,
 		outdated_version,
 		udp_max_per_ip,
@@ -303,6 +310,17 @@ public:
 		hinted,
 		insert_failed,
 		missing_block,
+
+		// bootstrap server
+		response,
+		write_drop,
+		write_error,
+		blocks,
+		drop,
+		bad_count,
+		response_blocks,
+		response_account_info,
+		channel_full,
 	};
 
 	/** Direction of the stat. If the direction is irrelevant, use in */

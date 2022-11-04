@@ -12,8 +12,9 @@ use crate::{
     config::{NetworkConstants, NodeConfig, TelemetryCacheCutoffs},
     core::{
         messages::{
-            BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
-            Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
+            AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
+            FrontierReq, Keepalive, Message, MessageVisitor, NodeIdHandshake, Publish,
+            TelemetryAck, TelemetryReq,
         },
         BlockUniquer,
     },
@@ -157,15 +158,25 @@ impl TcpServer {
     }
 
     pub fn to_bootstrap_connection(&self) -> bool {
-        if self.socket.socket_type() == SocketType::Undefined
-            && !self.disable_bootstrap_listener
-            && self.observer.get_bootstrap_count() < self.connections_max
-        {
-            self.observer.inc_bootstrap_count();
-            self.socket.set_socket_type(SocketType::Bootstrap);
+        if !self.allow_bootstrap {
+            return false;
         }
 
-        self.socket.socket_type() == SocketType::Bootstrap
+        if self.disable_bootstrap_listener {
+            return false;
+        }
+
+        if self.observer.get_bootstrap_count() >= self.connections_max {
+            return false;
+        }
+
+        if self.socket.socket_type() != SocketType::Undefined {
+            return false;
+        }
+
+        self.observer.inc_bootstrap_count();
+        self.socket.set_socket_type(SocketType::Bootstrap);
+        true
     }
 
     pub fn to_realtime_connection(&self, node_id: &Account) -> bool {
@@ -376,14 +387,7 @@ impl TcpServerExt for Arc<TcpServer> {
                 self.queue_realtime(message);
                 return true;
             } else if handshake_visitor.bootstrap() {
-                if self.allow_bootstrap {
-                    // Switch to bootstrap connection mode and handle message in subsequent bootstrap visitor
-                    if !self.to_bootstrap_connection() {
-                        self.stop();
-                        return false;
-                    }
-                } else {
-                    // Received bootstrap request in a connection that only allows for realtime traffic, abort
+                if !self.to_bootstrap_connection() {
                     self.stop();
                     return false;
                 }
@@ -632,6 +636,14 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
         }
     }
     fn telemetry_ack(&mut self, _message: &TelemetryAck) {
+        self.process = true;
+    }
+
+    fn asc_pull_ack(&mut self, _message: &AscPullAck) {
+        self.process = true;
+    }
+
+    fn asc_pull_req(&mut self, _message: &AscPullReq) {
         self.process = true;
     }
 }

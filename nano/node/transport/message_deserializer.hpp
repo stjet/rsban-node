@@ -35,6 +35,8 @@ namespace transport
 			invalid_bulk_pull_message,
 			invalid_bulk_pull_account_message,
 			invalid_frontier_req_message,
+			invalid_asc_pull_req_message,
+			invalid_asc_pull_ack_message,
 			invalid_network,
 			outdated_version,
 			duplicate_publish_message,
@@ -59,11 +61,12 @@ namespace transport
 		 */
 		void read (std::shared_ptr<nano::socket> socket, callback_type const && callback);
 
-		std::string parse_status_to_string ();
-		stat::detail parse_status_to_stat_detail ();
-
 	private: // Dependencies
 		rsnano::MessageDeserializerHandle * handle_m;
+
+		static stat::detail to_stat_detail (parse_status);
+		static std::string to_string (parse_status);
 	};
+
 }
 }

@@ -1,13 +1,14 @@
 use num::FromPrimitive;
 
 use super::{
+    bandwidth_limiter::OutboundBandwidthLimiterHandle,
     channel::{as_tcp_channel, ChannelHandle, ChannelType},
     socket::SocketHandle,
-    BandwidthLimiterHandle, ChannelTcpObserverWeakPtr, EndpointDto,
+    ChannelTcpObserverWeakPtr, EndpointDto,
 };
 use crate::{
     ffi::{core::messages::MessageHandle, utils::FfiIoContext, ErrorCodeDto, VoidPointerCallback},
-    transport::{BufferDropPolicy, ChannelTcp},
+    transport::{BandwidthLimitType, BufferDropPolicy, ChannelTcp},
     utils::ErrorCode,
 };
 use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};
@@ -19,7 +20,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
     now: u64,
     socket: *mut SocketHandle,
     observer: *mut c_void,
-    limiter: *const BandwidthLimiterHandle,
+    limiter: *const OutboundBandwidthLimiterHandle,
     io_ctx: *mut c_void,
 ) -> *mut ChannelHandle {
     let observer = ChannelTcpObserverWeakPtr::new(observer);
@@ -202,6 +203,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_send(
     delete_callback: VoidPointerCallback,
     context: *mut c_void,
     policy: u8,
+    limit_type: u8,
 ) {
     let callback_wrapper = ChannelTcpSendCallbackWrapper::new(context, callback, delete_callback);
     let callback_box = Box::new(move |ec, size| {
@@ -211,5 +213,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_send(
         (*msg).as_ref(),
         Some(callback_box),
         BufferDropPolicy::from_u8(policy).unwrap(),
+        BandwidthLimitType::from_u8(limit_type).unwrap(),
     );
 }

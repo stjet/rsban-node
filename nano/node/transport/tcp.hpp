@@ -66,7 +66,7 @@ namespace transport
 		friend class nano::transport::tcp_channels;
 
 	public:
-		channel_tcp (boost::asio::io_context & io_ctx_a, nano::bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a);
+		channel_tcp (boost::asio::io_context & io_ctx_a, nano::outbound_bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a);
 		channel_tcp (rsnano::ChannelHandle * handle_a) :
 			channel{ handle_a } {};
 
@@ -74,7 +74,7 @@ namespace transport
 		void set_network_version (uint8_t network_version_a) override;
 		std::size_t hash_code () const override;
 		bool operator== (nano::transport::channel const &) const override;
-		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter) override;
+		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter, nano::bandwidth_limit_type = nano::bandwidth_limit_type::standard) override;
 		// TODO: investigate clang-tidy warning about default parameters on virtual/override functions
 		//
 		void send_buffer (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr, nano::buffer_drop_policy = nano::buffer_drop_policy::limiter) override;
@@ -254,6 +254,7 @@ namespace transport
 		nano::transport::tcp_server_factory tcp_server_factory;
 		nano::keypair node_id;
 		nano::network_params & network_params;
+		nano::outbound_bandwidth_limiter & limiter;
 		std::shared_ptr<nano::syn_cookies> syn_cookies;
 		std::shared_ptr<nano::stat> stats;
 		std::shared_ptr<nano::node_config> config;

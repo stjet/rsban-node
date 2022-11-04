@@ -4,9 +4,9 @@ use crate::{
     config::NetworkConstants,
     core::{
         messages::{
-            BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
-            Message, MessageHeader, MessageType, NodeIdHandshake, Publish, TelemetryAck,
-            TelemetryReq,
+            AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
+            FrontierReq, Keepalive, Message, MessageHeader, MessageType, NodeIdHandshake, Publish,
+            TelemetryAck, TelemetryReq,
         },
         BlockUniquer,
     },
@@ -94,6 +94,8 @@ impl MessageDeserializer {
             MessageType::BulkPullAccount => self.deserialize_bulk_pull_account(&mut stream, header),
             MessageType::BulkPush => self.deserialize_bulk_push(&mut stream, header),
             MessageType::FrontierReq => self.deserialize_frontier_req(&mut stream, header),
+            MessageType::AscPullReq => self.deserialize_asc_pull_req(&mut stream, header),
+            MessageType::AscPullAck => self.deserialize_asc_pull_ack(&mut stream, header),
             MessageType::Invalid | MessageType::NotAType => {
                 self.set_status(ParseStatus::InvalidMessageType);
                 None
@@ -272,6 +274,36 @@ impl MessageDeserializer {
         // Message does not use stream payload (header only)
         Some(Box::new(BulkPush::with_header(header)))
     }
+
+    fn deserialize_asc_pull_req(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
+        match AscPullReq::from_stream(stream, header) {
+            Ok(msg) => Some(Box::new(msg)),
+            Err(_) => {
+                self.set_status(ParseStatus::InvalidAscPullReqMessage);
+                None
+            }
+        }
+    }
+
+    fn deserialize_asc_pull_ack(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
+        match AscPullAck::from_stream(stream, header) {
+            Ok(msg) => Some(Box::new(msg)),
+            Err(_) => {
+                self.set_status(ParseStatus::InvalidAscPullAckMessage);
+                None
+            }
+        }
+    }
 }
 
 pub type CallbackType = Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>)>;
@@ -397,6 +429,8 @@ pub enum ParseStatus {
     InvalidBulkPullMessage,
     InvalidBulkPullAccountMessage,
     InvalidFrontierReqMessage,
+    InvalidAscPullReqMessage,
+    InvalidAscPullAckMessage,
     InvalidNetwork,
     OutdatedVersion,
     DuplicatePublishMessage,
@@ -421,6 +455,8 @@ impl ParseStatus {
             Self::InvalidBulkPullMessage => "invalid_bulk_pull_message",
             Self::InvalidBulkPullAccountMessage => "invalid_bulk_pull_account_message",
             Self::InvalidFrontierReqMessage => "invalid_frontier_req_message",
+            Self::InvalidAscPullReqMessage => "invalid_asc_pull_req_message",
+            Self::InvalidAscPullAckMessage => "invalid_asc_pull_ack_message",
             Self::InvalidNetwork => "invalid_network",
             Self::OutdatedVersion => "outdated_version",
             Self::DuplicatePublishMessage => "duplicate_publish_message",

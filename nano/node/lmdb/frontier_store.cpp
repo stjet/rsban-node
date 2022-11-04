@@ -1,6 +1,5 @@
 #include <nano/node/lmdb/frontier_store.hpp>
 #include <nano/node/lmdb/lmdb.hpp>
-#include <nano/secure/parallel_traversal.hpp>
 
 nano::lmdb::frontier_store::frontier_store (rsnano::LmdbFrontierStoreHandle * handle_a) :
 	handle{ handle_a }

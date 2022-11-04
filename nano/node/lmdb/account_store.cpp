@@ -1,6 +1,5 @@
 #include <nano/node/lmdb/account_store.hpp>
 #include <nano/node/lmdb/lmdb.hpp>
-#include <nano/secure/parallel_traversal.hpp>
 
 nano::lmdb::account_store::account_store (rsnano::LmdbAccountStoreHandle * handle_a) :
 	handle{ handle_a }

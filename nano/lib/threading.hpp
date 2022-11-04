@@ -39,7 +39,6 @@ namespace thread_role
 		bootstrap_worker,
 		request_aggregator,
 		epoch_upgrader,
-		db_parallel_traversal,
 		election_scheduler,
 		unchecked,
 		backlog_population,

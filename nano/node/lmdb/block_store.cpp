@@ -1,6 +1,5 @@
 #include <nano/node/lmdb/block_store.hpp>
 #include <nano/node/lmdb/lmdb.hpp>
-#include <nano/secure/parallel_traversal.hpp>
 
 nano::store_iterator<nano::block_hash, nano::block_w_sideband> to_block_iterator (rsnano::LmdbIteratorHandle * it_handle)
 {

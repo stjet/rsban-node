@@ -1,6 +1,5 @@
 #include <nano/node/lmdb/final_vote_store.hpp>
 #include <nano/node/lmdb/lmdb.hpp>
-#include <nano/secure/parallel_traversal.hpp>
 
 namespace
 {

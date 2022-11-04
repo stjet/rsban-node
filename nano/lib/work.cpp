@@ -30,6 +30,8 @@ nano::work_pool::work_pool (nano::network_constants & network_constants, unsigne
 	pow_rate_limiter (pow_rate_limiter_a),
 	opencl (opencl_a)
 {
+	auto nw_constants_dto = network_constants.to_dto ();
+	handle = rsnano::rsn_work_pool_create (&nw_constants_dto, max_threads_a, pow_rate_limiter_a.count ());
 	static_assert (ATOMIC_INT_LOCK_FREE == 2, "Atomic int needed");
 	boost::thread::attributes attrs;
 	nano::thread_attributes::set (attrs);
@@ -56,6 +58,7 @@ nano::work_pool::~work_pool ()
 	{
 		i.join ();
 	}
+	rsnano::rsn_work_pool_destroy (handle);
 }
 
 class blake2b_wrapper

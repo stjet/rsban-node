@@ -186,6 +186,8 @@ struct VoteSpacingHandle;
 
 struct VoteUniquerHandle;
 
+struct WorkPoolHandle;
+
 struct WriteDatabaseQueueHandle;
 
 struct WriteGuardHandle;
@@ -3734,6 +3736,12 @@ SocketHandle * rsn_weak_socket_to_socket (SocketWeakHandle * handle);
 int32_t rsn_websocket_config_create (WebsocketConfigDto * dto, const NetworkConstantsDto * network);
 
 void rsn_websocket_set_common_fields (MessageDto * message);
+
+WorkPoolHandle * rsn_work_pool_create (const NetworkConstantsDto * network_constants,
+uint32_t max_threads,
+uint64_t pow_rate_limiter_ns);
+
+void rsn_work_pool_destroy (WorkPoolHandle * handle);
 
 void rsn_work_thresholds_create (WorkThresholdsDto * dto,
 uint64_t epoch_1,

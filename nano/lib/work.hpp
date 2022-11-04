@@ -12,6 +12,10 @@
 #include <atomic>
 #include <memory>
 
+namespace rsnano
+{
+class WorkPoolHandle;
+}
 namespace nano
 {
 std::string to_string (nano::work_version const version_a);
@@ -37,6 +41,8 @@ class work_pool final
 {
 public:
 	work_pool (nano::network_constants & network_constants, unsigned, std::chrono::nanoseconds = std::chrono::nanoseconds (0), std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const &, uint64_t, std::atomic<int> &)> = nullptr);
+	work_pool (work_pool const &) = delete;
+	work_pool (work_pool &&) = delete;
 	~work_pool ();
 	void loop (uint64_t);
 	void stop ();
@@ -66,6 +72,7 @@ private:
 	std::chrono::nanoseconds pow_rate_limiter;
 	std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const &, uint64_t, std::atomic<int> &)> opencl;
 	nano::observer_set<bool> work_observers;
+	rsnano::WorkPoolHandle * handle;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (work_pool & work_pool, std::string const & name);

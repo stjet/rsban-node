@@ -76,6 +76,8 @@ public:
 	std::unique_ptr<nano::container_info_component> collect_observer_info ();
 
 private:
+	nano::work_ticket create_work_ticket ();
+	void expire_work_tickets ();
 	nano::network_constants & network_constants;
 	std::atomic<int> ticket;
 	bool done;

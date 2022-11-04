@@ -106,13 +106,13 @@ void nano::work_pool::loop (uint64_t thread)
 		if (!empty)
 		{
 			auto current_l (pending.front ());
-			int ticket_l (ticket);
+			auto ticket_l{ create_work_ticket () };
 			lock.unlock ();
 			output = 0;
 			boost::optional<uint64_t> opt_work;
 			if (thread == 0 && opencl)
 			{
-				opt_work = opencl (current_l.version, current_l.item, current_l.difficulty, ticket);
+				opt_work = opencl (current_l.version, current_l.item, current_l.difficulty, ticket_l);
 			}
 			if (opt_work.is_initialized ())
 			{
@@ -122,7 +122,7 @@ void nano::work_pool::loop (uint64_t thread)
 			else
 			{
 				// ticket != ticket_l indicates a different thread found a solution and we should stop
-				while (ticket == ticket_l && output < current_l.difficulty)
+				while (!ticket_l.expired () && output < current_l.difficulty)
 				{
 					// Don't query main memory every iteration in order to reduce memory bus traffic
 					// All operations here operate on stack memory
@@ -145,13 +145,13 @@ void nano::work_pool::loop (uint64_t thread)
 				}
 			}
 			lock.lock ();
-			if (ticket == ticket_l)
+			if (!ticket_l.expired ())
 			{
 				// If the ticket matches what we started with, we're the ones that found the solution
 				debug_assert (output >= current_l.difficulty);
 				debug_assert (current_l.difficulty == 0 || network_constants.work.value (current_l.item, work) == output);
 				// Signal other threads to stop their work next time they check ticket
-				++ticket;
+				expire_work_tickets ();
 				pending.pop_front ();
 				lock.unlock ();
 				current_l.callback (work);
@@ -179,7 +179,7 @@ void nano::work_pool::cancel (nano::root const & root_a)
 		{
 			if (pending.front ().item == root_a)
 			{
-				++ticket;
+				expire_work_tickets ();
 			}
 		}
 		pending.remove_if ([&root_a] (decltype (pending)::value_type const & item_a) {
@@ -202,7 +202,7 @@ void nano::work_pool::stop ()
 	{
 		nano::lock_guard<nano::mutex> lock (mutex);
 		done = true;
-		++ticket;
+		expire_work_tickets ();
 	}
 	producer_condition.notify_all ();
 }
@@ -289,6 +289,14 @@ uint64_t nano::work_pool::threshold_base (const nano::work_version version_a) co
 uint64_t nano::work_pool::difficulty (const nano::work_version version_a, const nano::root & root_a, const uint64_t work_a) const
 {
 	return network_constants.work.difficulty (version_a, root_a, work_a);
+}
+nano::work_ticket nano::work_pool::create_work_ticket ()
+{
+	return nano::work_ticket (ticket);
+}
+void nano::work_pool::expire_work_tickets ()
+{
+	++ticket;
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (work_pool & work_pool, std::string const & name)

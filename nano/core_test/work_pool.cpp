@@ -105,7 +105,7 @@ TEST (work, opencl)
 		if (opencl != nullptr)
 		{
 			// 0 threads, should add 1 for managing OpenCL
-			nano::work_pool pool{ nano::dev::network_params.network, 0, std::chrono::nanoseconds (0), [&opencl] (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::atomic<int> & ticket_a) {
+			nano::work_pool pool{ nano::dev::network_params.network, 0, std::chrono::nanoseconds (0), [&opencl] (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, nano::work_ticket ticket_a) {
 									 return opencl->generate_work (version_a, root_a, difficulty_a);
 								 } };
 			ASSERT_TRUE (pool.has_opencl ());

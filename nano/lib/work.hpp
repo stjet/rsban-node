@@ -37,10 +37,24 @@ public:
 	uint64_t const difficulty;
 	std::function<void (boost::optional<uint64_t> const &)> const callback;
 };
+class work_ticket
+{
+public:
+	work_ticket (std::atomic<int> & ticket_a) :
+		ticket{ ticket_a }, ticket_copy{ ticket_a } {};
+	bool expired () const
+	{
+		return ticket_copy != ticket;
+	}
+
+private:
+	std::atomic<int> & ticket;
+	int ticket_copy;
+};
 class work_pool final
 {
 public:
-	work_pool (nano::network_constants & network_constants, unsigned, std::chrono::nanoseconds = std::chrono::nanoseconds (0), std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const &, uint64_t, std::atomic<int> &)> = nullptr);
+	work_pool (nano::network_constants & network_constants, unsigned, std::chrono::nanoseconds = std::chrono::nanoseconds (0), std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const &, uint64_t, nano::work_ticket)> = nullptr);
 	work_pool (work_pool const &) = delete;
 	work_pool (work_pool &&) = delete;
 	~work_pool ();
@@ -70,7 +84,7 @@ private:
 	nano::mutex mutex{ mutex_identifier (mutexes::work_pool) };
 	nano::condition_variable producer_condition;
 	std::chrono::nanoseconds pow_rate_limiter;
-	std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const &, uint64_t, std::atomic<int> &)> opencl;
+	std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const &, uint64_t, nano::work_ticket)> opencl;
 	nano::observer_set<bool> work_observers;
 	rsnano::WorkPoolHandle * handle;
 };

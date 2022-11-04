@@ -108,7 +108,7 @@ TEST (work, opencl)
 			nano::work_pool pool{ nano::dev::network_params.network, 0, std::chrono::nanoseconds (0), [&opencl] (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::atomic<int> & ticket_a) {
 									 return opencl->generate_work (version_a, root_a, difficulty_a);
 								 } };
-			ASSERT_NE (nullptr, pool.opencl);
+			ASSERT_TRUE (pool.has_opencl ());
 			nano::root root;
 			uint64_t difficulty (0xff00000000000000);
 			uint64_t difficulty_add (0x000f000000000000);

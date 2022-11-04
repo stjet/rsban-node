@@ -438,7 +438,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		auto const network_label = network_params.network.get_current_network_as_string ();
 		logger->always_log ("Active network: ", network_label);
 
-		logger->always_log (boost::str (boost::format ("Work pool running %1% threads %2%") % work.threads.size () % (work.opencl ? "(1 for OpenCL)" : "")));
+		logger->always_log (boost::str (boost::format ("Work pool running %1% threads %2%") % work.thread_count () % (work.has_opencl () ? "(1 for OpenCL)" : "")));
 		logger->always_log (boost::str (boost::format ("%1% work peers configured") % config->work_peers.size ()));
 		if (!work_generation_enabled ())
 		{
@@ -1284,7 +1284,7 @@ uint64_t nano::node::max_work_generate_difficulty (nano::work_version const vers
 
 bool nano::node::local_work_generation_enabled () const
 {
-	return config->work_threads > 0 || work.opencl;
+	return config->work_threads > 0 || work.has_opencl ();
 }
 
 bool nano::node::work_generation_enabled () const

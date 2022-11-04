@@ -227,7 +227,7 @@ uint64_t nano::test::system::work_generate_limited (nano::block_hash const & roo
 	do
 	{
 		result = *work.generate (root_a, min_a);
-	} while (work.network_constants.work.difficulty (nano::work_version::work_1, root_a, result) >= max_a);
+	} while (nano::dev::network_params.network.work.difficulty (nano::work_version::work_1, root_a, result) >= max_a);
 	return result;
 }
 
@@ -251,7 +251,7 @@ std::unique_ptr<nano::state_block> nano::test::upgrade_epoch (nano::work_pool & 
 				 .link (ledger_a.epoch_link (epoch_a))
 				 .representative (dev_genesis_key.pub)
 				 .sign (dev_genesis_key.prv, dev_genesis_key.pub)
-				 .work (*pool_a.generate (latest, pool_a.network_constants.work.threshold (nano::work_version::work_1, nano::block_details (epoch_a, false, false, true))))
+				 .work (*pool_a.generate (latest, nano::dev::network_params.network.work.threshold (nano::work_version::work_1, nano::block_details (epoch_a, false, false, true))))
 				 .build (ec);
 
 	bool error{ true };

@@ -254,16 +254,46 @@ size_t nano::work_pool::size ()
 	return pending.size ();
 }
 
+size_t nano::work_pool::pending_size ()
+{
+	nano::lock_guard<nano::mutex> guard (mutex);
+	return pending.size ();
+}
+
+std::unique_ptr<nano::container_info_component> nano::work_pool::collect_observer_info ()
+{
+	return work_observers.collect_container_info ("work_observers");
+}
+
+size_t nano::work_pool::pending_value_size () const
+{
+	return sizeof (decltype (pending)::value_type);
+}
+
+size_t nano::work_pool::thread_count () const
+{
+	return threads.size ();
+}
+
+bool nano::work_pool::has_opencl () const
+{
+	return opencl != nullptr;
+}
+uint64_t nano::work_pool::threshold_base (const nano::work_version version_a) const
+{
+	return network_constants.work.threshold_base (version_a);
+}
+uint64_t nano::work_pool::difficulty (const nano::work_version version_a, const nano::root & root_a, const uint64_t work_a) const
+{
+	return network_constants.work.difficulty (version_a, root_a, work_a);
+}
+
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (work_pool & work_pool, std::string const & name)
 {
-	size_t count;
-	{
-		nano::lock_guard<nano::mutex> guard (work_pool.mutex);
-		count = work_pool.pending.size ();
-	}
-	auto sizeof_element = sizeof (decltype (work_pool.pending)::value_type);
+	size_t count = work_pool.pending_size ();
+	auto sizeof_element = work_pool.pending_value_size ();
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending", count, sizeof_element }));
-	composite->add_component (work_pool.work_observers.collect_container_info ("work_observers"));
+	composite->add_component (work_pool.collect_observer_info ());
 	return composite;
 }

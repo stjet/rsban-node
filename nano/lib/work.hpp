@@ -47,6 +47,15 @@ public:
 	boost::optional<uint64_t> generate (nano::root const &);
 	boost::optional<uint64_t> generate (nano::root const &, uint64_t);
 	size_t size ();
+	size_t pending_size ();
+	size_t pending_value_size () const;
+	size_t thread_count () const;
+	bool has_opencl () const;
+	uint64_t threshold_base (nano::work_version const version_a) const;
+	uint64_t difficulty (nano::work_version const version_a, nano::root const & root_a, uint64_t const work_a) const;
+	std::unique_ptr<nano::container_info_component> collect_observer_info ();
+
+private:
 	nano::network_constants & network_constants;
 	std::atomic<int> ticket;
 	bool done;

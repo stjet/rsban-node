@@ -5,12 +5,19 @@ use std::{
 
 use crate::config::NetworkConstants;
 
+static NEVER_EXPIRES: AtomicI32 = AtomicI32::new(0);
+
+#[derive(Clone)]
 pub struct WorkTicket<'a> {
     ticket: &'a AtomicI32,
     ticket_copy: i32,
 }
 
 impl<'a> WorkTicket<'a> {
+    pub fn never_expires() -> Self {
+        Self::new(&NEVER_EXPIRES)
+    }
+
     pub fn new(ticket: &'a AtomicI32) -> Self {
         Self {
             ticket,

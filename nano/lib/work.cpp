@@ -8,6 +8,36 @@
 #include <future>
 #include <thread>
 
+nano::work_ticket::work_ticket () :
+	handle{ rsnano::rsn_work_ticket_create () }
+{
+}
+nano::work_ticket::work_ticket (rsnano::WorkTicketHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
+nano::work_ticket::work_ticket (nano::work_ticket const & other_a) :
+	handle{ rsnano::rsn_work_ticket_clone (other_a.handle) }
+{
+}
+
+nano::work_ticket::work_ticket (nano::work_ticket && other_a) :
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+}
+nano::work_ticket::~work_ticket ()
+{
+	if (handle != nullptr)
+		rsnano::rsn_work_ticket_destroy (handle);
+}
+
+bool nano::work_ticket::expired () const
+{
+	return rsnano::rsn_work_ticket_expired (handle);
+}
+
 std::string nano::to_string (nano::work_version const version_a)
 {
 	std::string result ("invalid");
@@ -292,11 +322,11 @@ uint64_t nano::work_pool::difficulty (const nano::work_version version_a, const 
 }
 nano::work_ticket nano::work_pool::create_work_ticket ()
 {
-	return nano::work_ticket (ticket);
+	return nano::work_ticket (rsnano::rsn_work_pool_create_work_ticket (handle));
 }
 void nano::work_pool::expire_work_tickets ()
 {
-	++ticket;
+	rsnano::rsn_work_pool_expire_work_tickets (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (work_pool & work_pool, std::string const & name)

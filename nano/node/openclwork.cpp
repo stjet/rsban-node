@@ -444,8 +444,7 @@ nano::opencl_work::~opencl_work ()
 
 boost::optional<uint64_t> nano::opencl_work::generate_work (nano::work_version const version_a, nano::root const & root_a, uint64_t const difficulty_a)
 {
-	std::atomic<int> ticket_l{ 0 };
-	nano::work_ticket ticket{ ticket_l };
+	nano::work_ticket ticket{};
 	return generate_work (version_a, root_a, difficulty_a, ticket);
 }
 

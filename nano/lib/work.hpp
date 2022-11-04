@@ -15,6 +15,7 @@
 namespace rsnano
 {
 class WorkPoolHandle;
+class WorkTicketHandle;
 }
 namespace nano
 {
@@ -40,16 +41,15 @@ public:
 class work_ticket
 {
 public:
-	work_ticket (std::atomic<int> & ticket_a) :
-		ticket{ ticket_a }, ticket_copy{ ticket_a } {};
-	bool expired () const
-	{
-		return ticket_copy != ticket;
-	}
+	work_ticket ();
+	work_ticket (rsnano::WorkTicketHandle * handle_a);
+	work_ticket (work_ticket const &);
+	work_ticket (work_ticket && other_a);
+	~work_ticket ();
+	bool expired () const;
 
 private:
-	std::atomic<int> & ticket;
-	int ticket_copy;
+	rsnano::WorkTicketHandle * handle;
 };
 class work_pool final
 {

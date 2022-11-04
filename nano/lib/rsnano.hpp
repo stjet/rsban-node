@@ -188,6 +188,8 @@ struct VoteUniquerHandle;
 
 struct WorkPoolHandle;
 
+struct WorkTicketHandle;
+
 struct WriteDatabaseQueueHandle;
 
 struct WriteGuardHandle;
@@ -3741,7 +3743,11 @@ WorkPoolHandle * rsn_work_pool_create (const NetworkConstantsDto * network_const
 uint32_t max_threads,
 uint64_t pow_rate_limiter_ns);
 
+WorkTicketHandle * rsn_work_pool_create_work_ticket (WorkPoolHandle * handle);
+
 void rsn_work_pool_destroy (WorkPoolHandle * handle);
+
+void rsn_work_pool_expire_work_tickets (WorkPoolHandle * handle);
 
 void rsn_work_thresholds_create (WorkThresholdsDto * dto,
 uint64_t epoch_1,
@@ -3795,6 +3801,14 @@ bool rsn_work_thresholds_validate_entry_block (const WorkThresholdsDto * dto, Bl
 uint64_t rsn_work_thresholds_value (const WorkThresholdsDto * dto,
 const uint8_t (*root)[32],
 uint64_t work);
+
+WorkTicketHandle * rsn_work_ticket_clone (WorkTicketHandle * handle);
+
+WorkTicketHandle * rsn_work_ticket_create ();
+
+void rsn_work_ticket_destroy (WorkTicketHandle * handle);
+
+bool rsn_work_ticket_expired (WorkTicketHandle * handle);
 
 int32_t rsn_working_path (uint16_t network, uint8_t * result, uintptr_t size);
 

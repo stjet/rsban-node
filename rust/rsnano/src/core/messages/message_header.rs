@@ -1,6 +1,6 @@
 use crate::{
-    config::{NetworkConstants, Networks},
-    core::{serialized_block_size, BlockType},
+    config::NetworkConstants,
+    core::{serialized_block_size, BlockType, Networks},
     utils::Stream,
 };
 use anyhow::Result;

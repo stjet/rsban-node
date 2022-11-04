@@ -23,12 +23,11 @@ pub use send_block::*;
 pub use state_block::*;
 
 use crate::{
-    config::WorkVersion,
     core::{Account, BlockHash, BlockHashBuilder, Link, Root, Signature},
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
 };
 
-use super::{Amount, FullHash, Uniquer};
+use super::{Amount, FullHash, Uniquer, WorkVersion};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]

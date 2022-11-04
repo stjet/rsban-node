@@ -8,9 +8,10 @@ use super::{
 };
 use crate::{
     ffi::{
-        fill_network_constants_dto, fill_work_thresholds_dto,
+        fill_network_constants_dto,
         ledger::{fill_ledger_constants_dto, LedgerConstantsDto},
-        NetworkConstantsDto, WorkThresholdsDto,
+        work::{fill_work_thresholds_dto, WorkThresholdsDto},
+        NetworkConstantsDto,
     },
     NetworkParams,
 };

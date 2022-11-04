@@ -10,7 +10,6 @@ mod node_rpc_config;
 mod opencl_config;
 mod rpc_config;
 mod websocket_config;
-mod work_thresholds;
 
 pub use diagnostics_config::*;
 pub use lmdb_config::LmdbConfigDto;
@@ -23,4 +22,3 @@ pub use node_rpc_config::*;
 pub use opencl_config::*;
 pub use rpc_config::*;
 pub use websocket_config::*;
-pub use work_thresholds::*;

@@ -2,12 +2,12 @@ use num_traits::FromPrimitive;
 use std::convert::TryFrom;
 
 use crate::{
-    config::{Networks, WorkThresholds, WorkVersion},
-    core::{BlockDetails, BlockType, Root},
+    core::{BlockDetails, BlockType, Networks, Root, WorkVersion},
     ffi::{
         core::{BlockDetailsDto, BlockHandle},
         StringDto,
     },
+    work::WorkThresholds,
 };
 
 #[repr(C)]

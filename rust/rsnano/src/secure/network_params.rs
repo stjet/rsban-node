@@ -1,9 +1,10 @@
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    config::{NetworkConstants, Networks, WorkThresholds},
-    core::{Account, BlockEnum, BlockHash},
+    config::NetworkConstants,
+    core::{Account, BlockEnum, BlockHash, Networks},
     ledger::LedgerConstants,
+    work::WorkThresholds,
     BootstrapConstants, NodeConstants, PortmappingConstants, VotingConstants,
 };
 use anyhow::Result;

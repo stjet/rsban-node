@@ -14,6 +14,7 @@ mod utils;
 mod voting;
 mod wallet;
 mod websocket;
+mod work;
 
 use std::{
     ffi::{c_void, CString},

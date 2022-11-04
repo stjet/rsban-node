@@ -1,9 +1,11 @@
 use num::FromPrimitive;
 use std::{convert::TryFrom, ffi::CStr, os::raw::c_char};
 
-use crate::config::{test_node_port, NetworkConstants, TelemetryCacheCutoffs, WorkThresholds};
-
-use super::{fill_work_thresholds_dto, WorkThresholdsDto};
+use crate::{
+    config::{test_node_port, NetworkConstants, TelemetryCacheCutoffs},
+    ffi::work::{fill_work_thresholds_dto, WorkThresholdsDto},
+    work::WorkThresholds,
+};
 
 #[repr(C)]
 pub struct NetworkConstantsDto {

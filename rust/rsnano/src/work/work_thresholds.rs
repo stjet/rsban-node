@@ -5,42 +5,7 @@ use std::{
     convert::TryInto,
 };
 
-use crate::core::{Block, BlockDetails, BlockType, Difficulty, Epoch, Root};
-
-/**
- * Network variants with different genesis blocks and network parameters
- */
-#[repr(u16)]
-#[derive(Clone, Copy, FromPrimitive, PartialEq, Eq)]
-pub enum Networks {
-    Invalid = 0x0,
-    // Low work parameters, publicly known genesis key, dev IP ports
-    NanoDevNetwork = 0x5241, // 'R', 'A'
-    // Normal work parameters, secret beta genesis key, beta IP ports
-    NanoBetaNetwork = 0x5242, // 'R', 'B'
-    // Normal work parameters, secret live key, live IP ports
-    NanoLiveNetwork = 0x5243, // 'R', 'C'
-    // Normal work parameters, secret test genesis key, test IP ports
-    NanoTestNetwork = 0x5258, // 'R', 'X'
-}
-
-impl Networks {
-    pub fn as_str(&self) -> &str {
-        match self {
-            Networks::Invalid => "invalid",
-            Networks::NanoDevNetwork => "dev",
-            Networks::NanoBetaNetwork => "beta",
-            Networks::NanoLiveNetwork => "live",
-            Networks::NanoTestNetwork => "test",
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-pub enum WorkVersion {
-    Unspecified,
-    Work1,
-}
+use crate::core::{Block, BlockDetails, BlockType, Difficulty, Epoch, Root, WorkVersion};
 
 #[derive(Clone)]
 pub struct WorkThresholds {

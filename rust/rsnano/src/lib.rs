@@ -25,6 +25,7 @@ pub mod utils;
 pub mod voting;
 pub mod wallet;
 mod websocket;
+pub mod work;
 
 pub use ipc::*;
 pub use secure::*;

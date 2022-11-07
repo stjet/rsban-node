@@ -160,10 +160,10 @@ impl WorkThresholds {
     pub fn value(&self, root: &Root, work: u64) -> u64 {
         let mut blake = blake2::VarBlake2b::new_keyed(&[], 8);
         let mut result = 0;
-        blake.update(&work.to_ne_bytes());
+        blake.update(&work.to_le_bytes());
         blake.update(root.as_bytes());
         blake.finalize_variable(|bytes| {
-            result = u64::from_ne_bytes(bytes.try_into().expect("invalid hash length"))
+            result = u64::from_le_bytes(bytes.try_into().expect("invalid hash length"))
         });
         result
     }

@@ -56,7 +56,6 @@ public:
 	work_pool (work_pool const &) = delete;
 	work_pool (work_pool &&) = delete;
 	~work_pool ();
-	void loop (uint64_t);
 	void stop ();
 	void cancel (nano::root const &);
 	void generate (nano::work_version const, nano::root const &, uint64_t, std::function<void (boost::optional<uint64_t> const &)>);
@@ -71,20 +70,8 @@ public:
 	bool has_opencl () const;
 	uint64_t threshold_base (nano::work_version const version_a) const;
 	uint64_t difficulty (nano::work_version const version_a, nano::root const & root_a, uint64_t const work_a) const;
-	std::unique_ptr<nano::container_info_component> collect_observer_info ();
 
 private:
-	nano::work_ticket create_work_ticket ();
-	void expire_work_tickets ();
-
-	nano::network_constants & network_constants;
-	bool done;
-	std::vector<boost::thread> threads;
-	std::list<nano::work_item> pending;
-	nano::mutex mutex{ mutex_identifier (mutexes::work_pool) };
-	nano::condition_variable producer_condition;
-	std::chrono::nanoseconds pow_rate_limiter;
-	nano::observer_set<bool> work_observers;
 	rsnano::WorkPoolHandle * handle;
 };
 

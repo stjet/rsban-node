@@ -1073,6 +1073,8 @@ struct VoteHashesDto
 
 using OpenclCallback = bool (*) (void *, uint8_t, const uint8_t *, uint64_t, WorkTicketHandle *, uint64_t *);
 
+using WorkPoolDoneCallback = void (*) (void *, uint64_t, bool);
+
 extern "C" {
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
@@ -3748,6 +3750,8 @@ uint64_t difficulty,
 WorkTicketHandle * ticket,
 uint64_t * result);
 
+void rsn_work_pool_cancel (WorkPoolHandle * handle, const uint8_t * root);
+
 WorkPoolHandle * rsn_work_pool_create (const NetworkConstantsDto * network_constants,
 uint32_t max_threads,
 uint64_t pow_rate_limiter_ns,
@@ -3759,9 +3763,45 @@ WorkTicketHandle * rsn_work_pool_create_work_ticket (WorkPoolHandle * handle);
 
 void rsn_work_pool_destroy (WorkPoolHandle * handle);
 
+uint64_t rsn_work_pool_difficulty (WorkPoolHandle * handle,
+uint8_t version,
+const uint8_t * root,
+uint64_t work);
+
 void rsn_work_pool_expire_work_tickets (WorkPoolHandle * handle);
 
+bool rsn_work_pool_generate (WorkPoolHandle * handle,
+uint8_t version,
+const uint8_t * root,
+uint64_t difficulty,
+uint64_t * result);
+
+void rsn_work_pool_generate_async (WorkPoolHandle * handle,
+uint8_t version,
+const uint8_t * root,
+uint64_t difficulty,
+WorkPoolDoneCallback done,
+void * context,
+VoidPointerCallback destroy_context);
+
+bool rsn_work_pool_generate_dev (WorkPoolHandle * handle,
+const uint8_t * root,
+uint64_t difficulty,
+uint64_t * result);
+
+bool rsn_work_pool_generate_dev2 (WorkPoolHandle * handle, const uint8_t * root, uint64_t * result);
+
 bool rsn_work_pool_has_opencl (WorkPoolHandle * handle);
+
+uintptr_t rsn_work_pool_pending_value_size ();
+
+uintptr_t rsn_work_pool_size (WorkPoolHandle * handle);
+
+void rsn_work_pool_stop (WorkPoolHandle * handle);
+
+uintptr_t rsn_work_pool_thread_count (WorkPoolHandle * handle);
+
+uint64_t rsn_work_pool_threshold_base (WorkPoolHandle * handle, uint8_t version);
 
 void rsn_work_thresholds_create (WorkThresholdsDto * dto,
 uint64_t epoch_1,

@@ -4,11 +4,11 @@ use std::{ffi::c_void, time::Duration};
 use crate::{
     config::NetworkConstants,
     core::{Root, WorkVersion},
-    ffi::NetworkConstantsDto,
+    ffi::{NetworkConstantsDto, VoidPointerCallback},
     work::{WorkPool, WorkTicket},
 };
 
-pub struct WorkPoolHandle(WorkPool<'static>);
+pub struct WorkPoolHandle(WorkPool);
 
 type OpenclCallback =
     unsafe extern "C" fn(*mut c_void, u8, *const u8, u64, *mut WorkTicketHandle, *mut u64) -> bool;
@@ -37,36 +37,21 @@ struct OpenclWrapper {
     context: *mut c_void,
 }
 
-impl Drop for OpenclWrapper {
-    fn drop(&mut self) {
-        unsafe {
-            (self.destroy_context)(self.context);
-        }
-    }
-}
-
-fn create_opencl_wrapper(
-    opencl: OpenclCallback,
-    context: *mut c_void,
-    destroy_context: unsafe extern "C" fn(*mut c_void),
-) -> Option<Box<dyn Fn(WorkVersion, Root, u64, WorkTicket) -> Option<u64>>> {
-    if context.is_null() {
-        return None;
-    }
-
-    let wrapper = OpenclWrapper {
-        callback: opencl,
-        destroy_context,
-        context,
-    };
-
-    Some(Box::new(move |version, root, difficulty, ticket| {
+impl OpenclWrapper {
+    fn callback(
+        &self,
+        version: WorkVersion,
+        root: Root,
+        difficulty: u64,
+        ticket: &WorkTicket,
+    ) -> Option<u64> {
         let mut work = 0;
-        let ticket = unsafe { std::mem::transmute::<WorkTicket, WorkTicket<'static>>(ticket) };
+        let ticket =
+            unsafe { std::mem::transmute::<WorkTicket, WorkTicket<'static>>(ticket.clone()) };
         let ticket_handle = Box::into_raw(Box::new(WorkTicketHandle(ticket)));
         let found = unsafe {
-            (wrapper.callback)(
-                wrapper.context,
+            (self.callback)(
+                self.context,
                 version as u8,
                 root.as_bytes().as_ptr(),
                 difficulty,
@@ -79,6 +64,37 @@ fn create_opencl_wrapper(
         } else {
             None
         }
+    }
+}
+
+impl Drop for OpenclWrapper {
+    fn drop(&mut self) {
+        unsafe {
+            (self.destroy_context)(self.context);
+        }
+    }
+}
+
+unsafe impl Send for OpenclWrapper {}
+unsafe impl Sync for OpenclWrapper {}
+
+fn create_opencl_wrapper(
+    opencl: OpenclCallback,
+    context: *mut c_void,
+    destroy_context: unsafe extern "C" fn(*mut c_void),
+) -> Option<Box<dyn Fn(WorkVersion, Root, u64, &WorkTicket) -> Option<u64> + Send + Sync>> {
+    if context.is_null() {
+        return None;
+    }
+
+    let wrapper = OpenclWrapper {
+        callback: opencl,
+        destroy_context,
+        context,
+    };
+
+    Some(Box::new(move |version, root, difficulty, ticket| {
+        wrapper.callback(version, root, difficulty, ticket)
     }))
 }
 
@@ -137,7 +153,7 @@ pub unsafe extern "C" fn rsn_work_pool_call_open_cl(
         WorkVersion::from_u8(version).unwrap(),
         Root::from_ptr(root),
         difficulty,
-        (*ticket).0.clone(),
+        &(*ticket).0,
     );
     match work {
         Some(w) => {
@@ -151,4 +167,156 @@ pub unsafe extern "C" fn rsn_work_pool_call_open_cl(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_work_pool_has_opencl(handle: *mut WorkPoolHandle) -> bool {
     (*handle).0.has_opencl()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_cancel(handle: *mut WorkPoolHandle, root: *const u8) {
+    (*handle).0.cancel(&Root::from_ptr(root));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_stop(handle: *mut WorkPoolHandle) {
+    (*handle).0.stop();
+}
+
+pub type WorkPoolDoneCallback = unsafe extern "C" fn(*mut c_void, u64, bool);
+
+struct WorkPoolDoneWrapper {
+    callback: WorkPoolDoneCallback,
+    context: *mut c_void,
+    destroy: VoidPointerCallback,
+}
+
+impl WorkPoolDoneWrapper {
+    pub fn done(&self, work: Option<u64>) {
+        unsafe { (self.callback)(self.context, work.unwrap_or_default(), work.is_some()) };
+    }
+}
+
+impl Drop for WorkPoolDoneWrapper {
+    fn drop(&mut self) {
+        unsafe { (self.destroy)(self.context) }
+    }
+}
+
+unsafe impl Send for WorkPoolDoneWrapper {}
+unsafe impl Sync for WorkPoolDoneWrapper {}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_generate_async(
+    handle: *mut WorkPoolHandle,
+    version: u8,
+    root: *const u8,
+    difficulty: u64,
+    done: WorkPoolDoneCallback,
+    context: *mut c_void,
+    destroy_context: VoidPointerCallback,
+) {
+    let done_callback: Option<Box<dyn Fn(Option<u64>) + Send + Sync>> = if context.is_null() {
+        None
+    } else {
+        let wrapper = WorkPoolDoneWrapper {
+            callback: done,
+            context,
+            destroy: destroy_context,
+        };
+        Some(Box::new(move |work| wrapper.done(work)))
+    };
+    (*handle).0.generate_async(
+        WorkVersion::from_u8(version).unwrap(),
+        Root::from_ptr(root),
+        difficulty,
+        done_callback,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_generate_dev(
+    handle: *mut WorkPoolHandle,
+    root: *const u8,
+    difficulty: u64,
+    result: *mut u64,
+) -> bool {
+    match (*handle).0.generate_dev(Root::from_ptr(root), difficulty) {
+        Some(work) => {
+            unsafe { *result = work };
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_generate_dev2(
+    handle: *mut WorkPoolHandle,
+    root: *const u8,
+    result: *mut u64,
+) -> bool {
+    match (*handle).0.generate_dev2(Root::from_ptr(root)) {
+        Some(work) => {
+            unsafe { *result = work };
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_generate(
+    handle: *mut WorkPoolHandle,
+    version: u8,
+    root: *const u8,
+    difficulty: u64,
+    result: *mut u64,
+) -> bool {
+    match (*handle).0.generate(
+        WorkVersion::from_u8(version).unwrap(),
+        Root::from_ptr(root),
+        difficulty,
+    ) {
+        Some(work) => {
+            unsafe { *result = work };
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_size(handle: *mut WorkPoolHandle) -> usize {
+    (*handle).0.size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_pending_value_size() -> usize {
+    WorkPool::pending_value_size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_thread_count(handle: *mut WorkPoolHandle) -> usize {
+    (*handle).0.thread_count()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_threshold_base(
+    handle: *mut WorkPoolHandle,
+    version: u8,
+) -> u64 {
+    (*handle)
+        .0
+        .threshold_base(WorkVersion::from_u8(version).unwrap())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_work_pool_difficulty(
+    handle: *mut WorkPoolHandle,
+    version: u8,
+    root: *const u8,
+    work: u64,
+) -> u64 {
+    (*handle).0.difficulty(
+        WorkVersion::from_u8(version).unwrap(),
+        &Root::from_ptr(root),
+        work,
+    )
 }

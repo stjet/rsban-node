@@ -47,8 +47,6 @@ public:
 	work_ticket (work_ticket && other_a);
 	~work_ticket ();
 	bool expired () const;
-
-private:
 	rsnano::WorkTicketHandle * handle;
 };
 class work_pool final
@@ -86,7 +84,6 @@ private:
 	nano::mutex mutex{ mutex_identifier (mutexes::work_pool) };
 	nano::condition_variable producer_condition;
 	std::chrono::nanoseconds pow_rate_limiter;
-	std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const, uint64_t, nano::work_ticket)> opencl;
 	nano::observer_set<bool> work_observers;
 	rsnano::WorkPoolHandle * handle;
 };

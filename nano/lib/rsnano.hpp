@@ -1071,6 +1071,8 @@ struct VoteHashesDto
 	const uint8_t (*hashes)[32];
 };
 
+using OpenclCallback = bool (*) (void *, uint8_t, const uint8_t *, uint64_t, WorkTicketHandle *, uint64_t *);
+
 extern "C" {
 
 int32_t rsn_account_decode (const char * input, uint8_t (*result)[32]);
@@ -3739,15 +3741,27 @@ int32_t rsn_websocket_config_create (WebsocketConfigDto * dto, const NetworkCons
 
 void rsn_websocket_set_common_fields (MessageDto * message);
 
+bool rsn_work_pool_call_open_cl (WorkPoolHandle * handle,
+uint8_t version,
+const uint8_t * root,
+uint64_t difficulty,
+WorkTicketHandle * ticket,
+uint64_t * result);
+
 WorkPoolHandle * rsn_work_pool_create (const NetworkConstantsDto * network_constants,
 uint32_t max_threads,
-uint64_t pow_rate_limiter_ns);
+uint64_t pow_rate_limiter_ns,
+OpenclCallback opencl,
+void * opencl_context,
+void (*destroy_context) (void *));
 
 WorkTicketHandle * rsn_work_pool_create_work_ticket (WorkPoolHandle * handle);
 
 void rsn_work_pool_destroy (WorkPoolHandle * handle);
 
 void rsn_work_pool_expire_work_tickets (WorkPoolHandle * handle);
+
+bool rsn_work_pool_has_opencl (WorkPoolHandle * handle);
 
 void rsn_work_thresholds_create (WorkThresholdsDto * dto,
 uint64_t epoch_1,

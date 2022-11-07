@@ -3,7 +3,10 @@ use std::{
     time::Duration,
 };
 
-use crate::config::NetworkConstants;
+use crate::{
+    config::NetworkConstants,
+    core::{Root, WorkVersion},
+};
 
 static NEVER_EXPIRES: AtomicI32 = AtomicI32::new(0);
 
@@ -30,24 +33,27 @@ impl<'a> WorkTicket<'a> {
     }
 }
 
-pub struct WorkPool {
+pub struct WorkPool<'a> {
     network_constants: NetworkConstants,
     max_threads: u32,
     pow_rate_limiter: Duration,
     ticket: AtomicI32,
+    opencl: Option<Box<dyn Fn(WorkVersion, Root, u64, WorkTicket<'a>) -> Option<u64>>>,
 }
 
-impl WorkPool {
-    pub fn new(
+impl<'a> WorkPool<'a> {
+    pub fn new<'r>(
         network_constants: NetworkConstants,
         max_threads: u32,
         pow_rate_limiter: Duration,
+        opencl: Option<Box<dyn Fn(WorkVersion, Root, u64, WorkTicket<'a>) -> Option<u64>>>,
     ) -> Self {
         Self {
             network_constants,
             max_threads,
             pow_rate_limiter,
             ticket: AtomicI32::new(0),
+            opencl,
         }
     }
 
@@ -57,5 +63,22 @@ impl WorkPool {
 
     pub fn expire_tickets(&self) {
         self.ticket.fetch_add(1, Ordering::SeqCst);
+    }
+
+    pub fn call_open_cl(
+        &self,
+        version: WorkVersion,
+        root: Root,
+        difficulty: u64,
+        ticket: WorkTicket<'a>,
+    ) -> Option<u64> {
+        match &self.opencl {
+            Some(callback) => callback(version, root, difficulty, ticket),
+            None => None,
+        }
+    }
+
+    pub fn has_opencl(&self) -> bool {
+        self.opencl.is_some()
     }
 }

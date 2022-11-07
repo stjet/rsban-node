@@ -309,7 +309,7 @@ impl Networks {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, FromPrimitive)]
 pub enum WorkVersion {
     Unspecified,
     Work1,

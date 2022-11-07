@@ -53,19 +53,44 @@ std::string nano::to_string (nano::work_version const version_a)
 	return result;
 }
 
+namespace
+{
+bool opencl_wrapper (void * context_a, uint8_t version_a, const uint8_t * root_a, uint64_t difficulty_a, rsnano::WorkTicketHandle * ticket_a, uint64_t * work_a)
+{
+	auto callback = static_cast<std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const, uint64_t, nano::work_ticket)> *> (context_a);
+	auto version = static_cast<nano::work_version> (version_a);
+	nano::root root;
+	std::copy (root_a, root_a + 32, std::begin (root.bytes));
+	nano::work_ticket ticket{ ticket_a };
+	auto work = (*callback) (version, root, difficulty_a, ticket);
+	if (work)
+	{
+		*work_a = *work;
+		return true;
+	}
+	return false;
+}
+
+void delete_opencl_context (void * context_a)
+{
+	auto callback = static_cast<std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const, uint64_t, nano::work_ticket)> *> (context_a);
+	delete callback;
+}
+}
+
 nano::work_pool::work_pool (nano::network_constants & network_constants, unsigned max_threads_a, std::chrono::nanoseconds pow_rate_limiter_a, std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const, uint64_t, nano::work_ticket)> opencl_a) :
 	network_constants{ network_constants },
 	done (false),
-	pow_rate_limiter (pow_rate_limiter_a),
-	opencl (opencl_a)
+	pow_rate_limiter (pow_rate_limiter_a)
 {
 	auto nw_constants_dto = network_constants.to_dto ();
-	handle = rsnano::rsn_work_pool_create (&nw_constants_dto, max_threads_a, pow_rate_limiter_a.count ());
+	auto opencl_context = opencl_a ? new std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const, uint64_t, nano::work_ticket)> (opencl_a) : nullptr;
+	handle = rsnano::rsn_work_pool_create (&nw_constants_dto, max_threads_a, pow_rate_limiter_a.count (), opencl_wrapper, opencl_context, delete_opencl_context);
 	static_assert (ATOMIC_INT_LOCK_FREE == 2, "Atomic int needed");
 	boost::thread::attributes attrs;
 	nano::thread_attributes::set (attrs);
 	auto count (network_constants.is_dev_network () ? std::min (max_threads_a, 1u) : std::min (max_threads_a, std::max (1u, nano::hardware_concurrency ())));
-	if (opencl)
+	if (has_opencl ())
 	{
 		// One thread to handle OpenCL
 		++count;
@@ -139,9 +164,11 @@ void nano::work_pool::loop (uint64_t thread)
 			lock.unlock ();
 			output = 0;
 			boost::optional<uint64_t> opt_work;
-			if (thread == 0 && opencl)
+			if (thread == 0 && has_opencl ())
 			{
-				opt_work = opencl (current_l.version, current_l.item, current_l.difficulty, ticket_l);
+				uint64_t opt_work_l;
+				auto has_result = rsnano::rsn_work_pool_call_open_cl (handle, static_cast<uint8_t> (current_l.version), current_l.item.bytes.data (), current_l.difficulty, ticket_l.handle, &opt_work_l);
+				opt_work = has_result ? boost::optional<uint64_t> (opt_work_l) : boost::none;
 			}
 			if (opt_work.is_initialized ())
 			{
@@ -309,7 +336,7 @@ size_t nano::work_pool::thread_count () const
 
 bool nano::work_pool::has_opencl () const
 {
-	return opencl != nullptr;
+	return rsnano::rsn_work_pool_has_opencl (handle);
 }
 uint64_t nano::work_pool::threshold_base (const nano::work_version version_a) const
 {

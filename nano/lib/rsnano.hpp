@@ -39,8 +39,6 @@ struct AsyncWriteCallbackHandle;
 
 struct BandwidthLimiterHandle;
 
-struct Blake2bHandle;
-
 struct BlockArrayRawPtr;
 
 struct BlockArrivalHandle;
@@ -1131,14 +1129,6 @@ uintptr_t limit);
 bool rsn_bandwidth_limiter_should_pass (const BandwidthLimiterHandle * limiter,
 uintptr_t message_size);
 
-Blake2bHandle * rsn_blake2b_create (uintptr_t size);
-
-void rsn_blake2b_destroy (Blake2bHandle * handle);
-
-void rsn_blake2b_final (Blake2bHandle * handle, uint8_t * output, uintptr_t size);
-
-void rsn_blake2b_update (Blake2bHandle * handle, const uint8_t * data, uintptr_t size);
-
 void rsn_block_array_destroy (BlockArrayDto * dto);
 
 bool rsn_block_arrival_add (BlockArrivalHandle * handle, const uint8_t * hash);
@@ -1862,8 +1852,6 @@ void rsn_ledger_cache_set_final_votes_confirmation_canary (LedgerCacheHandle * h
 
 RepWeightsHandle * rsn_ledger_cache_weights (LedgerCacheHandle * handle);
 
-bool rsn_ledger_check_bootstrap_weights (LedgerHandle * handle);
-
 int32_t rsn_ledger_constants_create (LedgerConstantsDto * dto,
 const WorkThresholdsDto * work,
 uint16_t network);
@@ -1939,11 +1927,6 @@ TransactionHandle * txn,
 const uint8_t * hash,
 uint8_t * result);
 
-void rsn_ledger_representative_calculated (LedgerHandle * handle,
-TransactionHandle * txn,
-const uint8_t * hash,
-uint8_t * result);
-
 bool rsn_ledger_rollback (LedgerHandle * handle,
 TransactionHandle * txn,
 const uint8_t * hash,
@@ -1954,8 +1937,6 @@ void rsn_ledger_set_bootstrap_weight_max_blocks (LedgerHandle * handle, uint64_t
 void rsn_ledger_set_bootstrap_weights (LedgerHandle * handle,
 const BootstrapWeightsItem * accounts,
 uintptr_t count);
-
-void rsn_ledger_set_check_bootstrap_weights (LedgerHandle * handle, bool check);
 
 BlockHandle * rsn_ledger_successor (LedgerHandle * handle,
 TransactionHandle * txn,
@@ -3743,13 +3724,6 @@ int32_t rsn_websocket_config_create (WebsocketConfigDto * dto, const NetworkCons
 
 void rsn_websocket_set_common_fields (MessageDto * message);
 
-bool rsn_work_pool_call_open_cl (WorkPoolHandle * handle,
-uint8_t version,
-const uint8_t * root,
-uint64_t difficulty,
-WorkTicketHandle * ticket,
-uint64_t * result);
-
 void rsn_work_pool_cancel (WorkPoolHandle * handle, const uint8_t * root);
 
 WorkPoolHandle * rsn_work_pool_create (const NetworkConstantsDto * network_constants,
@@ -3759,16 +3733,12 @@ OpenclCallback opencl,
 void * opencl_context,
 void (*destroy_context) (void *));
 
-WorkTicketHandle * rsn_work_pool_create_work_ticket (WorkPoolHandle * handle);
-
 void rsn_work_pool_destroy (WorkPoolHandle * handle);
 
 uint64_t rsn_work_pool_difficulty (WorkPoolHandle * handle,
 uint8_t version,
 const uint8_t * root,
 uint64_t work);
-
-void rsn_work_pool_expire_work_tickets (WorkPoolHandle * handle);
 
 bool rsn_work_pool_generate (WorkPoolHandle * handle,
 uint8_t version,

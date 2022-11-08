@@ -11,7 +11,7 @@ use crate::{
 use std::{
     ops::Deref,
     ptr::null_mut,
-    sync::{atomic::Ordering, Arc, RwLock},
+    sync::{Arc, RwLock},
 };
 
 use num_traits::FromPrimitive;
@@ -71,22 +71,6 @@ pub unsafe extern "C" fn rsn_ledger_set_bootstrap_weight_max_blocks(
     max: u64,
 ) {
     (*handle).0.set_bootstrap_weight_max_blocks(max)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_check_bootstrap_weights(handle: *mut LedgerHandle) -> bool {
-    (*handle).0.check_bootstrap_weights.load(Ordering::SeqCst)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_set_check_bootstrap_weights(
-    handle: *mut LedgerHandle,
-    check: bool,
-) {
-    (*handle)
-        .0
-        .check_bootstrap_weights
-        .store(check, Ordering::SeqCst)
 }
 
 #[repr(C)]
@@ -645,19 +629,6 @@ pub unsafe extern "C" fn rsn_ledger_representative(
     let representative = (*handle)
         .0
         .representative((*txn).as_txn(), &BlockHash::from_ptr(hash));
-    copy_hash_bytes(representative, result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_representative_calculated(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-    result: *mut u8,
-) {
-    let representative = (*handle)
-        .0
-        .representative_calculated((*txn).as_txn(), &BlockHash::from_ptr(hash));
     copy_hash_bytes(representative, result);
 }
 

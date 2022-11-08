@@ -106,14 +106,6 @@ pub unsafe extern "C" fn rsn_work_pool_destroy(handle: *mut WorkPoolHandle) {
 pub struct WorkTicketHandle(WorkTicket<'static>);
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_work_pool_create_work_ticket(
-    handle: *mut WorkPoolHandle,
-) -> *mut WorkTicketHandle {
-    let ticket = (*handle).0.create_work_ticket();
-    Box::into_raw(Box::new(WorkTicketHandle(ticket)))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_work_ticket_create() -> *mut WorkTicketHandle {
     Box::into_raw(Box::new(WorkTicketHandle(WorkTicket::never_expires())))
 }
@@ -133,35 +125,6 @@ pub unsafe extern "C" fn rsn_work_ticket_destroy(handle: *mut WorkTicketHandle) 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_work_ticket_expired(handle: *mut WorkTicketHandle) -> bool {
     (*handle).0.expired()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_work_pool_expire_work_tickets(handle: *mut WorkPoolHandle) {
-    (*handle).0.expire_tickets();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_work_pool_call_open_cl(
-    handle: *mut WorkPoolHandle,
-    version: u8,
-    root: *const u8,
-    difficulty: u64,
-    ticket: *mut WorkTicketHandle,
-    result: *mut u64,
-) -> bool {
-    let work = (*handle).0.call_open_cl(
-        WorkVersion::from_u8(version).unwrap(),
-        Root::from_ptr(root),
-        difficulty,
-        &(*ticket).0,
-    );
-    match work {
-        Some(w) => {
-            *result = w;
-            true
-        }
-        None => false,
-    }
 }
 
 #[no_mangle]

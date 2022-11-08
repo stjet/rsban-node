@@ -2,7 +2,7 @@ use std::{
     cmp::min,
     mem::{size_of, size_of_val},
     sync::{
-        atomic::{AtomicI32, Ordering},
+        atomic::{AtomicBool, AtomicI32, Ordering},
         Arc, Condvar, Mutex,
     },
     thread::{self, JoinHandle},
@@ -54,16 +54,79 @@ impl<'a> WorkTicket<'a> {
     }
 }
 
-struct WorkPoolSharedState {
-    opencl: Option<Box<dyn Fn(WorkVersion, Root, u64, &WorkTicket) -> Option<u64> + Send + Sync>>,
+struct WorkQueue(Vec<WorkItem>);
+
+impl WorkQueue {
+    pub fn new() -> Self {
+        WorkQueue(Vec::new())
+    }
+
+    pub fn first(&self) -> Option<&WorkItem> {
+        self.0.first()
+    }
+
+    pub fn is_first(&self, root: &Root) -> bool {
+        if let Some(front) = self.first() {
+            front.item == *root
+        } else {
+            false
+        }
+    }
+
+    pub fn cancel(&mut self, root: &Root) {
+        self.0.retain(|item| {
+            let retain = item.item != *root;
+            if !retain {
+                if let Some(callback) = &item.callback {
+                    (callback)(None);
+                }
+            }
+            retain
+        });
+    }
+
+    pub fn enqueue(&mut self, item: WorkItem) {
+        self.0.push(item);
+    }
+
+    pub fn dequeue(&mut self) -> WorkItem {
+        self.0.remove(0)
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+pub type OpenClWorkFunc = dyn Fn(WorkVersion, Root, u64, &WorkTicket) -> Option<u64> + Send + Sync;
+
+struct WorkPoolState {
+    opencl: Option<Box<OpenClWorkFunc>>,
     network_constants: NetworkConstants,
-    mutable_state: Mutex<WorkPoolMutableState>,
+    work_queue: Mutex<WorkQueue>,
+    should_stop: AtomicBool,
     producer_condition: Condvar,
     ticket: AtomicI32,
     pow_rate_limiter: Duration,
 }
 
-impl WorkPoolSharedState {
+impl WorkPoolState {
+    fn new(
+        opencl: Option<Box<OpenClWorkFunc>>,
+        network_constants: NetworkConstants,
+        pow_rate_limiter: Duration,
+    ) -> Self {
+        Self {
+            opencl,
+            network_constants,
+            work_queue: Mutex::new(WorkQueue::new()),
+            should_stop: AtomicBool::new(false),
+            producer_condition: Condvar::new(),
+            ticket: AtomicI32::new(0),
+            pow_rate_limiter,
+        }
+    }
+
     pub fn create_work_ticket(&'_ self) -> WorkTicket<'_> {
         WorkTicket::new(&self.ticket)
     }
@@ -72,20 +135,53 @@ impl WorkPoolSharedState {
         self.opencl.is_some()
     }
 
-    pub fn expire_tickets(&self) {
+    pub fn expire_work_tickets(&self) {
         self.ticket.fetch_add(1, Ordering::SeqCst);
     }
-}
 
-struct WorkPoolMutableState {
-    pending: Vec<WorkItem>,
-    done: bool,
+    fn worker_thread_count(&self, max_threads: u32) -> u32 {
+        let mut thread_count = if self.network_constants.is_dev_network() {
+            min(max_threads, 1)
+        } else {
+            min(max_threads, get_cpu_count() as u32)
+        };
+        if self.opencl.is_some() {
+            // One thread to handle OpenCL
+            thread_count += 1;
+        }
+        thread_count
+    }
+
+    fn enqueue(&self, work_item: WorkItem) {
+        {
+            let mut pending = self.work_queue.lock().unwrap();
+            pending.enqueue(work_item)
+        }
+        self.producer_condition.notify_all();
+    }
+
+    pub fn cancel(&self, root: &Root) {
+        let mut lock = self.work_queue.lock().unwrap();
+        if !self.should_stop.load(Ordering::Relaxed) {
+            if lock.is_first(root) {
+                self.expire_work_tickets();
+            }
+
+            lock.cancel(root);
+        }
+    }
+
+    pub fn stop(&self) {
+        self.should_stop.store(true, Ordering::Relaxed);
+        self.expire_work_tickets();
+        self.producer_condition.notify_all();
+    }
 }
 
 pub struct WorkPool {
     max_threads: u32,
     threads: Vec<JoinHandle<()>>,
-    shared_state: Arc<WorkPoolSharedState>,
+    shared_state: Arc<WorkPoolState>,
 }
 
 impl WorkPool {
@@ -93,72 +189,18 @@ impl WorkPool {
         network_constants: NetworkConstants,
         max_threads: u32,
         pow_rate_limiter: Duration,
-        opencl: Option<
-            Box<dyn Fn(WorkVersion, Root, u64, &WorkTicket) -> Option<u64> + Send + Sync>,
-        >,
+        opencl: Option<Box<OpenClWorkFunc>>,
     ) -> Self {
-        let mut count = if network_constants.is_dev_network() {
-            min(max_threads, 1)
-        } else {
-            min(max_threads, get_cpu_count() as u32)
-        };
-        if opencl.is_some() {
-            // One thread to handle OpenCL
-            count += 1;
-        }
-
-        let mutable_state = WorkPoolMutableState {
-            pending: Vec::new(),
-            done: false,
-        };
-
-        let shared_state = Arc::new(WorkPoolSharedState {
+        let shared_state = Arc::new(WorkPoolState::new(
             opencl,
             network_constants,
-            mutable_state: Mutex::new(mutable_state),
-            producer_condition: Condvar::new(),
-            ticket: AtomicI32::new(0),
             pow_rate_limiter,
-        });
-
-        let mut threads = Vec::new();
-        for i in 0..count {
-            let state = Arc::clone(&shared_state);
-            threads.push(
-                thread::Builder::new()
-                    .name("Work pool".to_string())
-                    .spawn(move || {
-                        work_loop(i, state);
-                    })
-                    .unwrap(),
-            )
-        }
+        ));
 
         Self {
             max_threads,
-            threads,
+            threads: create_worker_threads(&shared_state, max_threads),
             shared_state,
-        }
-    }
-
-    pub fn create_work_ticket(&'_ self) -> WorkTicket<'_> {
-        self.shared_state.create_work_ticket()
-    }
-
-    pub fn expire_tickets(&self) {
-        self.shared_state.expire_tickets();
-    }
-
-    pub fn call_open_cl(
-        &self,
-        version: WorkVersion,
-        root: Root,
-        difficulty: u64,
-        ticket: &WorkTicket,
-    ) -> Option<u64> {
-        match &self.shared_state.opencl {
-            Some(callback) => callback(version, root, difficulty, ticket),
-            None => None,
         }
     }
 
@@ -167,33 +209,11 @@ impl WorkPool {
     }
 
     pub fn cancel(&self, root: &Root) {
-        let mut lock = self.shared_state.mutable_state.lock().unwrap();
-        if !lock.done {
-            if let Some(front) = lock.pending.first() {
-                if front.item == *root {
-                    self.shared_state.expire_tickets();
-                }
-            }
-
-            lock.pending.retain(|item| {
-                let retain = item.item != *root;
-                if !retain {
-                    if let Some(callback) = &item.callback {
-                        (callback)(None);
-                    }
-                }
-                retain
-            });
-        }
+        self.shared_state.cancel(root);
     }
 
     pub fn stop(&self) {
-        {
-            let mut lock = self.shared_state.mutable_state.lock().unwrap();
-            lock.done = true;
-            self.shared_state.expire_tickets();
-        }
-        self.shared_state.producer_condition.notify_all();
+        self.shared_state.stop();
     }
 
     pub fn generate_async(
@@ -205,16 +225,12 @@ impl WorkPool {
     ) {
         debug_assert!(!root.is_zero());
         if !self.threads.is_empty() {
-            {
-                let mut lock = self.shared_state.mutable_state.lock().unwrap();
-                lock.pending.push(WorkItem {
-                    version,
-                    item: root,
-                    difficulty,
-                    callback: done,
-                })
-            }
-            self.shared_state.producer_condition.notify_all();
+            self.shared_state.enqueue(WorkItem {
+                version,
+                item: root,
+                difficulty,
+                callback: done,
+            });
         } else if let Some(callback) = done {
             callback(None);
         }
@@ -235,39 +251,27 @@ impl WorkPool {
     }
 
     pub fn generate(&self, version: WorkVersion, root: Root, difficulty: u64) -> Option<u64> {
-        let state = Arc::new((Mutex::new((None, false)), Condvar::new()));
-        let state_clone = Arc::clone(&state);
-        if !self.threads.is_empty() {
-            self.generate_async(
-                version,
-                root,
-                difficulty,
-                Some(Box::new(move |work| {
-                    {
-                        let mut lock = state_clone.0.lock().unwrap();
-                        lock.0 = work;
-                        lock.1 = true;
-                    }
-                    state_clone.1.notify_one();
-                })),
-            );
-
-            let mut lock = state.0.lock().unwrap();
-            loop {
-                let done_flag = lock.1;
-                if done_flag {
-                    return lock.0;
-                }
-                lock = state.1.wait(lock).unwrap();
-            }
+        if self.threads.is_empty() {
+            return None;
         }
 
-        None
+        let done_notifier = WorkDoneNotifier::new();
+        let done_notifier_clone = done_notifier.clone();
+
+        self.generate_async(
+            version,
+            root,
+            difficulty,
+            Some(Box::new(move |work| {
+                done_notifier_clone.signal_done(work);
+            })),
+        );
+
+        done_notifier.wait()
     }
 
     pub fn size(&self) -> usize {
-        let lock = self.shared_state.mutable_state.lock().unwrap();
-        lock.pending.len()
+        self.shared_state.work_queue.lock().unwrap().len()
     }
 
     pub fn pending_value_size() -> usize {
@@ -293,6 +297,64 @@ impl WorkPool {
     }
 }
 
+#[derive(Default)]
+struct WorkDoneState {
+    work: Option<u64>,
+    done: bool,
+}
+
+#[derive(Clone)]
+struct WorkDoneNotifier {
+    state: Arc<(Mutex<WorkDoneState>, Condvar)>,
+}
+
+impl WorkDoneNotifier {
+    fn new() -> Self {
+        Self {
+            state: Arc::new((Mutex::new(WorkDoneState::default()), Condvar::new())),
+        }
+    }
+
+    fn signal_done(&self, work: Option<u64>) {
+        {
+            let mut lock = self.state.0.lock().unwrap();
+            lock.work = work;
+            lock.done = true;
+        }
+        self.state.1.notify_one();
+    }
+
+    fn wait(&self) -> Option<u64> {
+        let mut lock = self.state.0.lock().unwrap();
+        loop {
+            if lock.done {
+                return lock.work;
+            }
+            lock = self.state.1.wait(lock).unwrap();
+        }
+    }
+}
+
+fn create_worker_threads(
+    shared_state: &Arc<WorkPoolState>,
+    max_threads: u32,
+) -> Vec<JoinHandle<()>> {
+    let thread_count = shared_state.worker_thread_count(max_threads);
+    (0..thread_count)
+        .map(|i| create_worker_thread(i, shared_state))
+        .collect()
+}
+
+fn create_worker_thread(thread_number: u32, shared_state: &Arc<WorkPoolState>) -> JoinHandle<()> {
+    let state = Arc::clone(&shared_state);
+    thread::Builder::new()
+        .name("Work pool".to_string())
+        .spawn(move || {
+            work_loop(thread_number, state);
+        })
+        .unwrap()
+}
+
 impl Drop for WorkPool {
     fn drop(&mut self) {
         self.stop();
@@ -302,22 +364,20 @@ impl Drop for WorkPool {
     }
 }
 
-fn work_loop(thread: u32, state: Arc<WorkPoolSharedState>) {
+fn work_loop(thread: u32, state: Arc<WorkPoolState>) {
     // Quick RNG for work attempts.
     let mut rng = XorShift1024Star::new();
     let mut work = 0;
     let mut output = 0;
     let mut hasher = VarBlake2b::new_keyed(&[], size_of_val(&output));
-    let mut lock = state.mutable_state.lock().unwrap();
-    while !lock.done {
-        let empty = lock.pending.is_empty();
-        if !empty {
-            let current_l = lock.pending.first().unwrap().clone();
-            let current_version = current_l.version;
-            let current_item = current_l.item;
-            let current_difficulty = current_l.difficulty;
+    let mut pending = state.work_queue.lock().unwrap();
+    while !state.should_stop.load(Ordering::Relaxed) {
+        if let Some(current) = pending.first() {
+            let current_version = current.version;
+            let current_item = current.item;
+            let current_difficulty = current.difficulty;
             let ticket_l = state.create_work_ticket();
-            drop(lock);
+            drop(pending);
             output = 0;
             let mut opt_work = None;
             if thread == 0 && state.has_opencl() {
@@ -353,7 +413,7 @@ fn work_loop(thread: u32, state: Arc<WorkPoolSharedState>) {
                     }
                 }
             }
-            lock = state.mutable_state.lock().unwrap();
+            pending = state.work_queue.lock().unwrap();
             if !ticket_l.expired() {
                 // If the ticket matches what we started with, we're the ones that found the solution
                 debug_assert!(output >= current_difficulty);
@@ -362,19 +422,19 @@ fn work_loop(thread: u32, state: Arc<WorkPoolSharedState>) {
                         || state.network_constants.work.value(&current_item, work) == output
                 );
                 // Signal other threads to stop their work next time they check ticket
-                state.expire_tickets();
-                let current_l = lock.pending.remove(0);
-                drop(lock);
+                state.expire_work_tickets();
+                let current_l = pending.dequeue();
+                drop(pending);
                 if let Some(callback) = current_l.callback {
                     (callback)(Some(work));
                 }
-                lock = state.mutable_state.lock().unwrap();
+                pending = state.work_queue.lock().unwrap();
             } else {
                 // A different thread found a solution
             }
         } else {
             // Wait for a work request
-            lock = state.producer_condition.wait(lock).unwrap();
+            pending = state.producer_condition.wait(pending).unwrap();
         }
     }
 }

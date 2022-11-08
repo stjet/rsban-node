@@ -4,7 +4,6 @@ pub use account_info::AccountInfoHandle;
 mod blocks;
 pub use blocks::*;
 
-mod blake2;
 mod random_pool;
 
 pub mod messages;

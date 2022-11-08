@@ -13,14 +13,15 @@ use blake2::{
     digest::{Update, VariableOutput},
     VarBlake2b,
 };
+#[cfg(test)]
+use once_cell::sync::Lazy;
 
 use crate::{
-    config::NetworkConstants,
     core::{Root, WorkVersion},
     utils::get_cpu_count,
 };
 
-use super::XorShift1024Star;
+use super::{WorkThresholds, XorShift1024Star};
 
 static NEVER_EXPIRES: AtomicI32 = AtomicI32::new(0);
 
@@ -102,7 +103,7 @@ pub type OpenClWorkFunc = dyn Fn(WorkVersion, Root, u64, &WorkTicket) -> Option<
 
 struct WorkPoolState {
     opencl: Option<Box<OpenClWorkFunc>>,
-    network_constants: NetworkConstants,
+    work_thresholds: WorkThresholds,
     work_queue: Mutex<WorkQueue>,
     should_stop: AtomicBool,
     producer_condition: Condvar,
@@ -113,12 +114,12 @@ struct WorkPoolState {
 impl WorkPoolState {
     fn new(
         opencl: Option<Box<OpenClWorkFunc>>,
-        network_constants: NetworkConstants,
+        work_thresholds: WorkThresholds,
         pow_rate_limiter: Duration,
     ) -> Self {
         Self {
             opencl,
-            network_constants,
+            work_thresholds,
             work_queue: Mutex::new(WorkQueue::new()),
             should_stop: AtomicBool::new(false),
             producer_condition: Condvar::new(),
@@ -140,11 +141,7 @@ impl WorkPoolState {
     }
 
     fn worker_thread_count(&self, max_threads: u32) -> u32 {
-        let mut thread_count = if self.network_constants.is_dev_network() {
-            min(max_threads, 1)
-        } else {
-            min(max_threads, get_cpu_count() as u32)
-        };
+        let mut thread_count = min(max_threads, get_cpu_count() as u32);
         if self.opencl.is_some() {
             // One thread to handle OpenCL
             thread_count += 1;
@@ -186,14 +183,14 @@ pub struct WorkPool {
 
 impl WorkPool {
     pub fn new(
-        network_constants: NetworkConstants,
+        work_thresholds: WorkThresholds,
         max_threads: u32,
         pow_rate_limiter: Duration,
         opencl: Option<Box<OpenClWorkFunc>>,
     ) -> Self {
         let shared_state = Arc::new(WorkPoolState::new(
             opencl,
-            network_constants,
+            work_thresholds,
             pow_rate_limiter,
         ));
 
@@ -237,16 +234,14 @@ impl WorkPool {
     }
 
     pub fn generate_dev(&self, root: Root, difficulty: u64) -> Option<u64> {
-        debug_assert!(self.shared_state.network_constants.is_dev_network());
         self.generate(WorkVersion::Work1, root, difficulty)
     }
 
     pub fn generate_dev2(&self, root: Root) -> Option<u64> {
-        debug_assert!(self.shared_state.network_constants.is_dev_network());
         self.generate(
             WorkVersion::Work1,
             root,
-            self.shared_state.network_constants.work.base,
+            self.shared_state.work_thresholds.base,
         )
     }
 
@@ -283,16 +278,12 @@ impl WorkPool {
     }
 
     pub fn threshold_base(&self, version: WorkVersion) -> u64 {
-        self.shared_state
-            .network_constants
-            .work
-            .threshold_base(version)
+        self.shared_state.work_thresholds.threshold_base(version)
     }
 
     pub fn difficulty(&self, version: WorkVersion, root: &Root, work: u64) -> u64 {
         self.shared_state
-            .network_constants
-            .work
+            .work_thresholds
             .difficulty(version, root, work)
     }
 }
@@ -390,7 +381,7 @@ fn work_loop(thread: u32, state: Arc<WorkPoolState>) {
             }
             if let Some(w) = opt_work {
                 work = w;
-                output = state.network_constants.work.value(&current_item, work);
+                output = state.work_thresholds.value(&current_item, work);
             } else {
                 while !ticket_l.expired() && output < current_difficulty {
                     // Don't query main memory every iteration in order to reduce memory bus traffic
@@ -419,7 +410,7 @@ fn work_loop(thread: u32, state: Arc<WorkPoolState>) {
                 debug_assert!(output >= current_difficulty);
                 debug_assert!(
                     current_difficulty == 0
-                        || state.network_constants.work.value(&current_item, work) == output
+                        || state.work_thresholds.value(&current_item, work) == output
                 );
                 // Signal other threads to stop their work next time they check ticket
                 state.expire_work_tickets();
@@ -440,6 +431,16 @@ fn work_loop(thread: u32, state: Arc<WorkPoolState>) {
 }
 
 #[cfg(test)]
+pub(crate) static DEV_WORK_POOL: Lazy<WorkPool> = Lazy::new(|| {
+    WorkPool::new(
+        crate::DEV_NETWORK_PARAMS.work.clone(),
+        u32::MAX,
+        Duration::ZERO,
+        None,
+    )
+});
+
+#[cfg(test)]
 mod tests {
     use std::sync::mpsc;
 
@@ -452,14 +453,19 @@ mod tests {
 
     #[test]
     fn work_disabled() {
-        let pool = WorkPool::new(DEV_NETWORK_PARAMS.network.clone(), 0, Duration::ZERO, None);
+        let pool = WorkPool::new(
+            DEV_NETWORK_PARAMS.network.work.clone(),
+            0,
+            Duration::ZERO,
+            None,
+        );
         let result = pool.generate_dev2(Root::from(1));
         assert_eq!(result, None);
     }
 
     #[test]
     fn work_one() {
-        let pool = create_dev_work_pool();
+        let pool = &DEV_WORK_POOL;
         let mut block = BlockBuilder::state().build().unwrap();
         block.set_work(pool.generate_dev2(block.root()).unwrap());
         assert!(pool.threshold_base(block.work_version()) < difficulty(&block));
@@ -467,7 +473,7 @@ mod tests {
 
     #[test]
     fn work_validate() {
-        let pool = create_dev_work_pool();
+        let pool = &DEV_WORK_POOL;
         let mut block = BlockBuilder::send().work(6).build().unwrap();
         assert!(difficulty(&block) < pool.threshold_base(block.work_version()));
         block.set_work(pool.generate_dev2(block.root()).unwrap());
@@ -476,10 +482,9 @@ mod tests {
 
     #[test]
     fn work_cancel() {
-        let pool = create_dev_work_pool();
         let (tx, rx) = mpsc::channel();
         let key = Root::from(1);
-        pool.generate_async(
+        DEV_WORK_POOL.generate_async(
             WorkVersion::Work1,
             key,
             DEV_NETWORK_PARAMS.network.work.base,
@@ -487,13 +492,13 @@ mod tests {
                 tx.send(()).unwrap();
             })),
         );
-        pool.cancel(&key);
+        DEV_WORK_POOL.cancel(&key);
         assert_eq!(rx.recv_timeout(Duration::from_secs(2)), Ok(()))
     }
 
     #[test]
     fn cancel_many() {
-        let pool = create_dev_work_pool();
+        let pool: &WorkPool = &DEV_WORK_POOL;
         let key1 = Root::from(1);
         let key2 = Root::from(2);
         let key3 = Root::from(1);
@@ -512,7 +517,6 @@ mod tests {
 
     #[test]
     fn work_difficulty() {
-        let pool = create_dev_work_pool();
         let root = Root::from(1);
         let difficulty1 = 0xff00000000000000;
         let difficulty2 = 0xfff0000000000000;
@@ -520,7 +524,7 @@ mod tests {
         let mut result_difficulty = u64::MAX;
 
         while result_difficulty > difficulty2 {
-            let work = pool
+            let work = DEV_WORK_POOL
                 .generate(WorkVersion::Work1, root, difficulty1)
                 .unwrap();
             result_difficulty = DEV_NETWORK_PARAMS
@@ -531,7 +535,7 @@ mod tests {
 
         result_difficulty = u64::MAX;
         while result_difficulty > difficulty3 {
-            let work = pool
+            let work = DEV_WORK_POOL
                 .generate(WorkVersion::Work1, root, difficulty2)
                 .unwrap();
             result_difficulty = DEV_NETWORK_PARAMS
@@ -539,15 +543,6 @@ mod tests {
                 .difficulty(WorkVersion::Work1, &root, work);
         }
         assert!(result_difficulty > difficulty2);
-    }
-
-    fn create_dev_work_pool() -> WorkPool {
-        WorkPool::new(
-            DEV_NETWORK_PARAMS.network.clone(),
-            u32::MAX,
-            Duration::ZERO,
-            None,
-        )
     }
 
     fn difficulty(block: &dyn Block) -> u64 {

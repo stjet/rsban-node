@@ -24,7 +24,7 @@ pub unsafe extern "C" fn rsn_work_pool_create(
 ) -> *mut WorkPoolHandle {
     let network_constants = NetworkConstants::try_from(&*network_constants).unwrap();
     Box::into_raw(Box::new(WorkPoolHandle(WorkPool::new(
-        network_constants,
+        network_constants.work,
         max_threads,
         Duration::from_nanos(pow_rate_limiter_ns),
         create_opencl_wrapper(opencl, opencl_context, destroy_context),

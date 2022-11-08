@@ -7,6 +7,7 @@ pub struct SendBlockBuilder {
     previous: Option<BlockHash>,
     destination: Option<Account>,
     balance: Option<Amount>,
+    work: Option<u64>,
 }
 
 impl SendBlockBuilder {
@@ -29,6 +30,11 @@ impl SendBlockBuilder {
         self
     }
 
+    pub fn work(mut self, work: u64) -> Self {
+        self.work = Some(work);
+        self
+    }
+
     pub fn build(self) -> anyhow::Result<SendBlock> {
         let key_pair = KeyPair::new();
         let previous = self.previous.unwrap_or(BlockHash::from(1));
@@ -40,7 +46,7 @@ impl SendBlockBuilder {
             &balance,
             &key_pair.private_key(),
             &key_pair.public_key(),
-            4,
+            self.work.unwrap_or(4),
         )?;
         let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
         block.set_sideband(BlockSideband::new(

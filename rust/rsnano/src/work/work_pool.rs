@@ -28,7 +28,7 @@ struct WorkItem {
     version: WorkVersion,
     item: Root,
     difficulty: u64,
-    callback: Option<Box<dyn Fn(Option<u64>) + Send + Sync>>,
+    callback: Option<Box<dyn Fn(Option<u64>) + Send>>,
 }
 
 #[derive(Clone)]
@@ -201,7 +201,7 @@ impl WorkPool {
         version: WorkVersion,
         root: Root,
         difficulty: u64,
-        done: Option<Box<dyn Fn(Option<u64>) + Send + Sync>>,
+        done: Option<Box<dyn Fn(Option<u64>) + Send>>,
     ) {
         debug_assert!(!root.is_zero());
         if !self.threads.is_empty() {
@@ -381,14 +381,116 @@ fn work_loop(thread: u32, state: Arc<WorkPoolSharedState>) {
 
 #[cfg(test)]
 mod tests {
-    use crate::DEV_NETWORK_PARAMS;
+    use std::sync::mpsc;
+
+    use crate::{
+        core::{Block, BlockBuilder},
+        DEV_NETWORK_PARAMS,
+    };
 
     use super::*;
 
     #[test]
-    fn disabled() {
+    fn work_disabled() {
         let pool = WorkPool::new(DEV_NETWORK_PARAMS.network.clone(), 0, Duration::ZERO, None);
         let result = pool.generate_dev2(Root::from(1));
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn work_one() {
+        let pool = create_dev_work_pool();
+        let mut block = BlockBuilder::state().build().unwrap();
+        block.set_work(pool.generate_dev2(block.root()).unwrap());
+        assert!(pool.threshold_base(block.work_version()) < difficulty(&block));
+    }
+
+    #[test]
+    fn work_validate() {
+        let pool = create_dev_work_pool();
+        let mut block = BlockBuilder::send().work(6).build().unwrap();
+        assert!(difficulty(&block) < pool.threshold_base(block.work_version()));
+        block.set_work(pool.generate_dev2(block.root()).unwrap());
+        assert!(difficulty(&block) > pool.threshold_base(block.work_version()));
+    }
+
+    #[test]
+    fn work_cancel() {
+        let pool = create_dev_work_pool();
+        let (tx, rx) = mpsc::channel();
+        let key = Root::from(1);
+        pool.generate_async(
+            WorkVersion::Work1,
+            key,
+            DEV_NETWORK_PARAMS.network.work.base,
+            Some(Box::new(move |_done| {
+                tx.send(()).unwrap();
+            })),
+        );
+        pool.cancel(&key);
+        assert_eq!(rx.recv_timeout(Duration::from_secs(2)), Ok(()))
+    }
+
+    #[test]
+    fn cancel_many() {
+        let pool = create_dev_work_pool();
+        let key1 = Root::from(1);
+        let key2 = Root::from(2);
+        let key3 = Root::from(1);
+        let key4 = Root::from(1);
+        let key5 = Root::from(3);
+        let key6 = Root::from(1);
+        let base = DEV_NETWORK_PARAMS.network.work.base;
+        pool.generate_async(WorkVersion::Work1, key1, base, None);
+        pool.generate_async(WorkVersion::Work1, key2, base, None);
+        pool.generate_async(WorkVersion::Work1, key3, base, None);
+        pool.generate_async(WorkVersion::Work1, key4, base, None);
+        pool.generate_async(WorkVersion::Work1, key5, base, None);
+        pool.generate_async(WorkVersion::Work1, key6, base, None);
+        pool.cancel(&key1);
+    }
+
+    #[test]
+    fn work_difficulty() {
+        let pool = create_dev_work_pool();
+        let root = Root::from(1);
+        let difficulty1 = 0xff00000000000000;
+        let difficulty2 = 0xfff0000000000000;
+        let difficulty3 = 0xffff000000000000;
+        let mut result_difficulty = u64::MAX;
+
+        while result_difficulty > difficulty2 {
+            let work = pool
+                .generate(WorkVersion::Work1, root, difficulty1)
+                .unwrap();
+            result_difficulty = DEV_NETWORK_PARAMS
+                .work
+                .difficulty(WorkVersion::Work1, &root, work);
+        }
+        assert!(result_difficulty > difficulty1);
+
+        result_difficulty = u64::MAX;
+        while result_difficulty > difficulty3 {
+            let work = pool
+                .generate(WorkVersion::Work1, root, difficulty2)
+                .unwrap();
+            result_difficulty = DEV_NETWORK_PARAMS
+                .work
+                .difficulty(WorkVersion::Work1, &root, work);
+        }
+        assert!(result_difficulty > difficulty2);
+    }
+
+    fn create_dev_work_pool() -> WorkPool {
+        WorkPool::new(
+            DEV_NETWORK_PARAMS.network.clone(),
+            u32::MAX,
+            Duration::ZERO,
+            None,
+        )
+    }
+
+    fn difficulty(block: &dyn Block) -> u64 {
+        DEV_NETWORK_PARAMS.network.work.difficulty_block(block)
     }
 }

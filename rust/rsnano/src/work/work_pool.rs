@@ -1,6 +1,6 @@
 use std::{
     cmp::min,
-    mem::{size_of, size_of_val},
+    mem::size_of,
     sync::{
         atomic::{AtomicBool, AtomicI32, Ordering},
         Arc, Condvar, Mutex,
@@ -341,7 +341,7 @@ fn create_worker_thread(thread_number: u32, shared_state: &Arc<WorkPoolState>) -
     thread::Builder::new()
         .name("Work pool".to_string())
         .spawn(move || {
-            work_loop(thread_number, state);
+            WorkThread::new(thread_number, state).work_loop();
         })
         .unwrap()
 }
@@ -355,77 +355,99 @@ impl Drop for WorkPool {
     }
 }
 
-fn work_loop(thread: u32, state: Arc<WorkPoolState>) {
-    // Quick RNG for work attempts.
-    let mut rng = XorShift1024Star::new();
-    let mut work = 0;
-    let mut output = 0;
-    let mut hasher = VarBlake2b::new_keyed(&[], size_of_val(&output));
-    let mut pending = state.work_queue.lock().unwrap();
-    while !state.should_stop.load(Ordering::Relaxed) {
-        if let Some(current) = pending.first() {
-            let current_version = current.version;
-            let current_item = current.item;
-            let current_difficulty = current.difficulty;
-            let ticket_l = state.create_work_ticket();
-            drop(pending);
-            output = 0;
-            let mut opt_work = None;
-            if thread == 0 && state.has_opencl() {
-                opt_work = (state.opencl.as_ref().unwrap())(
-                    current_version,
-                    current_item,
-                    current_difficulty,
-                    &ticket_l,
-                );
-            }
-            if let Some(w) = opt_work {
-                work = w;
-                output = state.work_thresholds.value(&current_item, work);
-            } else {
-                while !ticket_l.expired() && output < current_difficulty {
-                    // Don't query main memory every iteration in order to reduce memory bus traffic
-                    // All operations here operate on stack memory
-                    // Count iterations down to zero since comparing to zero is easier than comparing to another number
-                    let mut iteration = 256u32;
-                    while iteration > 0 && output < current_difficulty {
-                        work = rng.next();
-                        hasher.update(&work.to_le_bytes());
-                        hasher.update(current_item.as_bytes());
-                        hasher.finalize_variable_reset(|result| {
-                            output = u64::from_le_bytes(result.try_into().unwrap());
-                        });
-                        iteration -= 1;
-                    }
+struct WorkThread {
+    thread_number: u32,
+    state: Arc<WorkPoolState>,
 
-                    // Add a rate limiter (if specified) to the pow calculation to save some CPUs which don't want to operate at full throttle
-                    if !state.pow_rate_limiter.is_zero() {
-                        thread::sleep(state.pow_rate_limiter);
+    // Quick RNG for work attempts.
+    rng: XorShift1024Star,
+    work: u64,
+    output: u64,
+    hasher: VarBlake2b,
+}
+
+impl WorkThread {
+    fn new(thread_number: u32, state: Arc<WorkPoolState>) -> Self {
+        Self {
+            thread_number,
+            state,
+            rng: XorShift1024Star::new(),
+            work: 0,
+            output: 0,
+            hasher: VarBlake2b::new_keyed(&[], size_of::<u64>()),
+        }
+    }
+}
+
+impl WorkThread {
+    fn work_loop(mut self) {
+        let mut pending = self.state.work_queue.lock().unwrap();
+        while !self.state.should_stop.load(Ordering::Relaxed) {
+            if let Some(current) = pending.first() {
+                let current_version = current.version;
+                let current_item = current.item;
+                let current_difficulty = current.difficulty;
+                let ticket_l = self.state.create_work_ticket();
+                drop(pending);
+                self.output = 0;
+                let mut opt_work = None;
+                if self.thread_number == 0 && self.state.has_opencl() {
+                    opt_work = (self.state.opencl.as_ref().unwrap())(
+                        current_version,
+                        current_item,
+                        current_difficulty,
+                        &ticket_l,
+                    );
+                }
+                if let Some(w) = opt_work {
+                    self.work = w;
+                    self.output = self.state.work_thresholds.value(&current_item, self.work);
+                } else {
+                    while !ticket_l.expired() && self.output < current_difficulty {
+                        // Don't query main memory every iteration in order to reduce memory bus traffic
+                        // All operations here operate on stack memory
+                        // Count iterations down to zero since comparing to zero is easier than comparing to another number
+                        let mut iteration = 256u32;
+                        while iteration > 0 && self.output < current_difficulty {
+                            self.work = self.rng.next();
+                            self.hasher.update(&self.work.to_le_bytes());
+                            self.hasher.update(current_item.as_bytes());
+                            self.hasher.finalize_variable_reset(|result| {
+                                self.output = u64::from_le_bytes(result.try_into().unwrap());
+                            });
+                            iteration -= 1;
+                        }
+
+                        // Add a rate limiter (if specified) to the pow calculation to save some CPUs which don't want to operate at full throttle
+                        if !self.state.pow_rate_limiter.is_zero() {
+                            thread::sleep(self.state.pow_rate_limiter);
+                        }
                     }
                 }
-            }
-            pending = state.work_queue.lock().unwrap();
-            if !ticket_l.expired() {
-                // If the ticket matches what we started with, we're the ones that found the solution
-                debug_assert!(output >= current_difficulty);
-                debug_assert!(
-                    current_difficulty == 0
-                        || state.work_thresholds.value(&current_item, work) == output
-                );
-                // Signal other threads to stop their work next time they check ticket
-                state.expire_work_tickets();
-                let current_l = pending.dequeue();
-                drop(pending);
-                if let Some(callback) = current_l.callback {
-                    (callback)(Some(work));
+                pending = self.state.work_queue.lock().unwrap();
+                if !ticket_l.expired() {
+                    // If the ticket matches what we started with, we're the ones that found the solution
+                    debug_assert!(self.output >= current_difficulty);
+                    debug_assert!(
+                        current_difficulty == 0
+                            || self.state.work_thresholds.value(&current_item, self.work)
+                                == self.output
+                    );
+                    // Signal other threads to stop their work next time they check ticket
+                    self.state.expire_work_tickets();
+                    let current_l = pending.dequeue();
+                    drop(pending);
+                    if let Some(callback) = current_l.callback {
+                        (callback)(Some(self.work));
+                    }
+                    pending = self.state.work_queue.lock().unwrap();
+                } else {
+                    // A different thread found a solution
                 }
-                pending = state.work_queue.lock().unwrap();
             } else {
-                // A different thread found a solution
+                // Wait for a work request
+                pending = self.state.producer_condition.wait(pending).unwrap();
             }
-        } else {
-            // Wait for a work request
-            pending = state.producer_condition.wait(pending).unwrap();
         }
     }
 }
@@ -483,7 +505,7 @@ mod tests {
     #[test]
     fn work_cancel() {
         let (tx, rx) = mpsc::channel();
-        let key = Root::from(1);
+        let key = Root::from(12345);
         DEV_WORK_POOL.generate_async(
             WorkVersion::Work1,
             key,
@@ -494,25 +516,6 @@ mod tests {
         );
         DEV_WORK_POOL.cancel(&key);
         assert_eq!(rx.recv_timeout(Duration::from_secs(2)), Ok(()))
-    }
-
-    #[test]
-    fn cancel_many() {
-        let pool: &WorkPool = &DEV_WORK_POOL;
-        let key1 = Root::from(1);
-        let key2 = Root::from(2);
-        let key3 = Root::from(1);
-        let key4 = Root::from(1);
-        let key5 = Root::from(3);
-        let key6 = Root::from(1);
-        let base = DEV_NETWORK_PARAMS.network.work.base;
-        pool.generate_async(WorkVersion::Work1, key1, base, None);
-        pool.generate_async(WorkVersion::Work1, key2, base, None);
-        pool.generate_async(WorkVersion::Work1, key3, base, None);
-        pool.generate_async(WorkVersion::Work1, key4, base, None);
-        pool.generate_async(WorkVersion::Work1, key5, base, None);
-        pool.generate_async(WorkVersion::Work1, key6, base, None);
-        pool.cancel(&key1);
     }
 
     #[test]

@@ -235,8 +235,8 @@ impl WorkPool {
     }
 
     pub fn generate(&self, version: WorkVersion, root: Root, difficulty: u64) -> Option<u64> {
-        let done = Arc::new((Mutex::new((None, false)), Condvar::new()));
-        let done_clone = Arc::clone(&done);
+        let state = Arc::new((Mutex::new((None, false)), Condvar::new()));
+        let state_clone = Arc::clone(&state);
         if !self.threads.is_empty() {
             self.generate_async(
                 version,
@@ -244,21 +244,21 @@ impl WorkPool {
                 difficulty,
                 Some(Box::new(move |work| {
                     {
-                        let mut lock = done_clone.0.lock().unwrap();
+                        let mut lock = state_clone.0.lock().unwrap();
                         lock.0 = work;
                         lock.1 = true;
                     }
-                    done_clone.1.notify_one();
+                    state_clone.1.notify_one();
                 })),
             );
 
-            let mut lock = done.0.lock().unwrap();
+            let mut lock = state.0.lock().unwrap();
             loop {
-                lock = done.1.wait(lock).unwrap();
-                let done = lock.1;
-                if done {
+                let done_flag = lock.1;
+                if done_flag {
                     return lock.0;
                 }
+                lock = state.1.wait(lock).unwrap();
             }
         }
 

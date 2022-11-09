@@ -9,7 +9,7 @@ mod xorshift;
 pub(crate) use xorshift::XorShift1024Star;
 
 mod work_queue;
-pub(crate) use work_queue::{WorkItem, WorkQueue};
+pub(crate) use work_queue::{WorkItem, WorkQueueCoordinator};
 
 mod cpu_work_generator;
 pub(crate) use cpu_work_generator::CpuWorkGenerator;

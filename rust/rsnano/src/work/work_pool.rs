@@ -1,8 +1,8 @@
 use std::{
     mem::size_of,
     sync::{
-        atomic::{AtomicBool, AtomicI32, Ordering},
-        Arc, Condvar, Mutex, MutexGuard,
+        atomic::{AtomicI32, Ordering},
+        Arc, Condvar, Mutex,
     },
     thread::{self, JoinHandle},
     time::Duration,
@@ -12,8 +12,8 @@ use std::{
 use once_cell::sync::Lazy;
 
 use super::{
-    CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator, WorkItem, WorkQueue, WorkThread,
-    WorkThresholds,
+    work_queue::WorkQueueCoordinator, CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator,
+    WorkItem, WorkThread, WorkThresholds,
 };
 use crate::core::{Root, WorkVersion};
 
@@ -42,75 +42,9 @@ impl<'a> WorkTicket<'a> {
     }
 }
 
-pub(crate) struct WorkPoolState {
-    pub work_queue: Mutex<WorkQueue>,
-    should_stop: AtomicBool,
-    producer_condition: Condvar,
-    ticket: AtomicI32,
-}
-
-impl WorkPoolState {
-    fn new() -> Self {
-        Self {
-            work_queue: Mutex::new(WorkQueue::new()),
-            should_stop: AtomicBool::new(false),
-            producer_condition: Condvar::new(),
-            ticket: AtomicI32::new(0),
-        }
-    }
-
-    pub fn should_stop(&self) -> bool {
-        self.should_stop.load(Ordering::Relaxed)
-    }
-
-    pub fn lock_work_queue(&self) -> MutexGuard<WorkQueue> {
-        self.work_queue.lock().unwrap()
-    }
-
-    pub fn wait_for_new_work_item<'a>(
-        &'a self,
-        guard: MutexGuard<'a, WorkQueue>,
-    ) -> MutexGuard<'a, WorkQueue> {
-        self.producer_condition.wait(guard).unwrap()
-    }
-
-    pub fn create_work_ticket(&'_ self) -> WorkTicket<'_> {
-        WorkTicket::new(&self.ticket)
-    }
-
-    pub fn expire_work_tickets(&self) {
-        self.ticket.fetch_add(1, Ordering::SeqCst);
-    }
-
-    fn enqueue(&self, work_item: WorkItem) {
-        {
-            let mut pending = self.work_queue.lock().unwrap();
-            pending.enqueue(work_item)
-        }
-        self.producer_condition.notify_all();
-    }
-
-    pub fn cancel(&self, root: &Root) {
-        let mut lock = self.work_queue.lock().unwrap();
-        if !self.should_stop.load(Ordering::Relaxed) {
-            if lock.is_first(root) {
-                self.expire_work_tickets();
-            }
-
-            lock.cancel(root);
-        }
-    }
-
-    pub fn stop(&self) {
-        self.should_stop.store(true, Ordering::Relaxed);
-        self.expire_work_tickets();
-        self.producer_condition.notify_all();
-    }
-}
-
 pub struct WorkPool {
     threads: Vec<JoinHandle<()>>,
-    shared_state: Arc<WorkPoolState>,
+    work_queue: Arc<WorkQueueCoordinator>,
     work_thresholds: WorkThresholds,
     pow_rate_limiter: Duration,
     has_opencl: bool,
@@ -125,7 +59,7 @@ impl WorkPool {
     ) -> Self {
         let mut pool = Self {
             threads: Vec::new(),
-            shared_state: Arc::new(WorkPoolState::new()),
+            work_queue: Arc::new(WorkQueueCoordinator::new()),
             work_thresholds,
             has_opencl: false,
             pow_rate_limiter,
@@ -147,25 +81,22 @@ impl WorkPool {
     }
 
     fn spawn_open_cl_thread(&self, opencl: Box<OpenClWorkFunc>) -> JoinHandle<()> {
-        self.spawn_thread_for_work_generator(OpenClWorkGenerator::new(
-            self.pow_rate_limiter,
-            opencl,
-        ))
+        self.spawn_worker_thread(OpenClWorkGenerator::new(self.pow_rate_limiter, opencl))
     }
 
     fn spawn_cpu_worker_thread(&self) -> JoinHandle<()> {
-        self.spawn_thread_for_work_generator(CpuWorkGenerator::new(self.pow_rate_limiter))
+        self.spawn_worker_thread(CpuWorkGenerator::new(self.pow_rate_limiter))
     }
 
-    fn spawn_thread_for_work_generator<T>(&self, work_generator: T) -> JoinHandle<()>
+    fn spawn_worker_thread<T>(&self, work_generator: T) -> JoinHandle<()>
     where
         T: WorkGenerator + Send + Sync + 'static,
     {
-        let state = Arc::clone(&self.shared_state);
+        let work_queue = Arc::clone(&self.work_queue);
         thread::Builder::new()
             .name("Work pool".to_string())
             .spawn(move || {
-                WorkThread::new(work_generator, state).work_loop();
+                WorkThread::new(work_generator, work_queue).work_loop();
             })
             .unwrap()
     }
@@ -175,11 +106,11 @@ impl WorkPool {
     }
 
     pub fn cancel(&self, root: &Root) {
-        self.shared_state.cancel(root);
+        self.work_queue.cancel(root);
     }
 
     pub fn stop(&self) {
-        self.shared_state.stop();
+        self.work_queue.stop();
     }
 
     pub fn generate_async(
@@ -191,7 +122,7 @@ impl WorkPool {
     ) {
         debug_assert!(!root.is_zero());
         if !self.threads.is_empty() {
-            self.shared_state.enqueue(WorkItem {
+            self.work_queue.enqueue(WorkItem {
                 version,
                 item: root,
                 min_difficulty: difficulty,
@@ -231,7 +162,7 @@ impl WorkPool {
     }
 
     pub fn size(&self) -> usize {
-        self.shared_state.work_queue.lock().unwrap().len()
+        self.work_queue.lock_work_queue().len()
     }
 
     pub fn pending_value_size() -> usize {

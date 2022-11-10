@@ -1,10 +1,5 @@
-use blake2::digest::{Update, VariableOutput};
 use once_cell::sync::Lazy;
-use std::{
-    cmp::{max, min},
-    convert::TryInto,
-    mem::size_of,
-};
+use std::cmp::{max, min};
 
 use crate::core::{Block, BlockDetails, BlockType, Difficulty, Epoch, Root, WorkVersion};
 
@@ -158,17 +153,6 @@ impl WorkThresholds {
         }
     }
 
-    pub fn difficulty_v1(root: &Root, work: u64) -> u64 {
-        let mut blake = blake2::VarBlake2b::new_keyed(&[], size_of::<u64>());
-        let mut result = 0;
-        blake.update(&work.to_le_bytes());
-        blake.update(root.as_bytes());
-        blake.finalize_variable(|bytes| {
-            result = u64::from_le_bytes(bytes.try_into().expect("invalid hash length"))
-        });
-        result
-    }
-
     pub fn normalized_multiplier(&self, multiplier: f64, threshold: u64) -> f64 {
         debug_assert!(multiplier >= 1f64);
         /* Normalization rules
@@ -212,7 +196,7 @@ impl WorkThresholds {
 
     pub fn difficulty(&self, work_version: WorkVersion, root: &Root, work: u64) -> u64 {
         match work_version {
-            WorkVersion::Work1 => Self::difficulty_v1(root, work),
+            WorkVersion::Work1 => Difficulty::difficulty(root, work),
             _ => {
                 debug_assert!(false, "Invalid version specified to work_difficulty");
                 0

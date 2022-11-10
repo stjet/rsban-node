@@ -1,9 +1,6 @@
 use std::{
     mem::size_of,
-    sync::{
-        atomic::{AtomicI32, Ordering},
-        Arc, Condvar, Mutex,
-    },
+    sync::{Arc, Condvar, Mutex},
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -13,34 +10,9 @@ use once_cell::sync::Lazy;
 
 use super::{
     work_queue::WorkQueueCoordinator, CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator,
-    WorkItem, WorkThread, WorkThresholds,
+    WorkItem, WorkThread, WorkThresholds, WorkTicket,
 };
 use crate::core::{Root, WorkVersion};
-
-static NEVER_EXPIRES: AtomicI32 = AtomicI32::new(0);
-
-#[derive(Clone)]
-pub struct WorkTicket<'a> {
-    ticket: &'a AtomicI32,
-    ticket_copy: i32,
-}
-
-impl<'a> WorkTicket<'a> {
-    pub fn never_expires() -> Self {
-        Self::new(&NEVER_EXPIRES)
-    }
-
-    pub fn new(ticket: &'a AtomicI32) -> Self {
-        Self {
-            ticket,
-            ticket_copy: ticket.load(Ordering::SeqCst),
-        }
-    }
-
-    pub fn expired(&self) -> bool {
-        self.ticket_copy != self.ticket.load(Ordering::SeqCst)
-    }
-}
 
 pub struct WorkPool {
     threads: Vec<JoinHandle<()>>,

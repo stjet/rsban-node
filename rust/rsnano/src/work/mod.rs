@@ -3,13 +3,13 @@ pub use work_thresholds::WorkThresholds;
 
 mod work_pool;
 pub(crate) use work_pool::WorkGenerator;
-pub use work_pool::{WorkPool, WorkTicket};
+pub use work_pool::WorkPool;
 
 mod xorshift;
 pub(crate) use xorshift::XorShift1024Star;
 
 mod work_queue;
-pub(crate) use work_queue::{WorkItem, WorkQueueCoordinator};
+pub(crate) use work_queue::{WorkItem, WorkQueueCoordinator, WorkTicket};
 
 mod cpu_work_generator;
 pub(crate) use cpu_work_generator::CpuWorkGenerator;

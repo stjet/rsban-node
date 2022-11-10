@@ -1,15 +1,11 @@
 use super::{WorkGenerator, WorkTicket, XorShift1024Star};
-use crate::core::{Root, WorkVersion};
-use blake2::{
-    digest::{Update, VariableOutput},
-    VarBlake2b,
-};
-use std::{mem::size_of, thread, time::Duration};
+use crate::core::{Difficulty, Root, WorkVersion};
+use std::{thread, time::Duration};
 
 pub(crate) struct CpuWorkGenerator {
     // Quick RNG for work attempts.
     rng: XorShift1024Star,
-    hasher: VarBlake2b,
+    difficulty: Difficulty,
     rate_limiter: Duration,
 }
 
@@ -18,19 +14,14 @@ impl CpuWorkGenerator {
     pub fn new(rate_limiter: Duration) -> Self {
         Self {
             rng: XorShift1024Star::new(),
-            hasher: VarBlake2b::new_keyed(&[], size_of::<u64>()),
+            difficulty: Difficulty::new(),
             rate_limiter,
         }
     }
 
     fn next(&mut self, item: &Root) -> (u64, u64) {
         let work = self.rng.next();
-        let mut difficulty = 0;
-        self.hasher.update(&work.to_le_bytes());
-        self.hasher.update(item.as_bytes());
-        self.hasher.finalize_variable_reset(|result| {
-            difficulty = u64::from_le_bytes(result.try_into().unwrap());
-        });
+        let difficulty = self.difficulty.get_difficulty(item, work);
         (work, difficulty)
     }
 

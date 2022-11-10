@@ -1,6 +1,41 @@
-pub struct Difficulty {}
+use super::Root;
+use blake2::{
+    digest::{Update, VariableOutput},
+    VarBlake2b,
+};
+use std::mem::size_of;
+
+#[derive(Clone, Copy, FromPrimitive)]
+pub enum WorkVersion {
+    Unspecified,
+    Work1,
+}
+
+pub struct Difficulty {
+    hasher: VarBlake2b,
+}
 
 impl Difficulty {
+    pub fn new() -> Self {
+        Self {
+            hasher: VarBlake2b::new_keyed(&[], size_of::<u64>()),
+        }
+    }
+
+    pub fn get_difficulty(&mut self, root: &Root, work: u64) -> u64 {
+        let mut result = 0;
+        self.hasher.update(&work.to_le_bytes());
+        self.hasher.update(root.as_bytes());
+        self.hasher.finalize_variable_reset(|bytes| {
+            result = u64::from_le_bytes(bytes.try_into().expect("invalid hash length"))
+        });
+        result
+    }
+
+    pub fn difficulty(root: &Root, work: u64) -> u64 {
+        Self::new().get_difficulty(root, work)
+    }
+
     pub fn to_multiplier(difficulty: u64, base_difficulty: u64) -> f64 {
         debug_assert!(difficulty > 0);
         base_difficulty.wrapping_neg() as f64 / difficulty.wrapping_neg() as f64

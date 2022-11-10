@@ -31,7 +31,7 @@ mod account;
 pub use account::Account;
 
 mod difficulty;
-pub use difficulty::Difficulty;
+pub use difficulty::{Difficulty, WorkVersion};
 
 mod account_info;
 pub use account_info::AccountInfo;
@@ -307,12 +307,6 @@ impl Networks {
             Networks::NanoTestNetwork => "test",
         }
     }
-}
-
-#[derive(Clone, Copy, FromPrimitive)]
-pub enum WorkVersion {
-    Unspecified,
-    Work1,
 }
 
 #[cfg(test)]

@@ -4,6 +4,8 @@ pub use work_thresholds::WorkThresholds;
 mod work_pool;
 pub(crate) use work_pool::WorkGenerator;
 pub use work_pool::WorkPool;
+#[cfg(test)]
+pub(crate) use work_pool::DEV_WORK_POOL;
 
 mod xorshift;
 pub(crate) use xorshift::XorShift1024Star;

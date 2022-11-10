@@ -32,7 +32,7 @@ pub struct UncementedInfo {
     pub account: Account,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum ProcessResult {
     Progress,               // Hasn't been seen before, signed correctly
@@ -775,13 +775,18 @@ impl Ledger {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::{borrow::Borrow, time::Duration};
 
     use crate::{
         config::TxnTrackingConfig,
-        ledger::datastore::lmdb::{EnvOptions, LmdbStore, TestDbFile},
+        core::{BlockBuilder, GXRB_RATIO},
+        ledger::{
+            datastore::lmdb::{EnvOptions, LmdbStore, TestDbFile},
+            DEV_GENESIS_KEY,
+        },
         stats::StatConfig,
         utils::{seconds_since_epoch, NullLogger},
+        work::DEV_WORK_POOL,
         DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
     };
 
@@ -876,6 +881,41 @@ mod tests {
     fn cemented_count_cache() -> anyhow::Result<()> {
         let ctx = LedgerContext::empty()?;
         assert_eq!(ctx.ledger.cache.cemented_count.load(Ordering::SeqCst), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn process_modifies_sideband() -> anyhow::Result<()> {
+        let ctx = LedgerContext::empty()?;
+        let pool = &DEV_WORK_POOL;
+        let mut send = BlockBuilder::state()
+            .account(*DEV_GENESIS_ACCOUNT)
+            .previous(*DEV_GENESIS_HASH)
+            .representative(*DEV_GENESIS_ACCOUNT)
+            .balance(DEV_CONSTANTS.genesis_amount - Amount::new(*GXRB_RATIO))
+            .link(DEV_GENESIS_ACCOUNT.deref())
+            .sign(&DEV_GENESIS_KEY)
+            .work(pool.generate_dev2(DEV_GENESIS_HASH.deref().into()).unwrap())
+            .build()?;
+
+        let mut txn = ctx.ledger.store.tx_begin_write()?;
+        let result = ctx
+            .ledger
+            .process(txn.as_mut(), &mut send, SignatureVerification::Unknown);
+        assert_eq!(result.code, ProcessResult::Progress);
+        assert_eq!(
+            send.sideband().unwrap().timestamp,
+            ctx.ledger
+                .store
+                .block()
+                .get(txn.txn(), &send.hash())
+                .unwrap()
+                .as_block()
+                .sideband()
+                .unwrap()
+                .timestamp
+        );
+
         Ok(())
     }
 }

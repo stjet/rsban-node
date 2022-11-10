@@ -10,27 +10,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (ledger, process_modifies_sideband)
-{
-	auto ctx = nano::test::context::ledger_empty ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	nano::block_builder builder;
-	auto send1 = builder
-				 .state ()
-				 .account (nano::dev::genesis->account ())
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis->account ())
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (nano::dev::genesis->account ())
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*pool.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::process_result::progress, ledger.process (*store.tx_begin_write (), *send1).code);
-	ASSERT_EQ (send1->sideband ().timestamp (), store.block ().get (*store.tx_begin_read (), send1->hash ())->sideband ().timestamp ());
-}
-
 // Create a send block and publish it.
 TEST (ledger, process_send)
 {

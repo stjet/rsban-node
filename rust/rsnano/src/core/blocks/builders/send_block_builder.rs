@@ -4,6 +4,7 @@ use crate::core::{
 
 #[derive(Default)]
 pub struct SendBlockBuilder {
+    account: Option<Account>,
     previous: Option<BlockHash>,
     destination: Option<Account>,
     balance: Option<Amount>,
@@ -13,6 +14,11 @@ pub struct SendBlockBuilder {
 impl SendBlockBuilder {
     pub fn new() -> Self {
         Default::default()
+    }
+
+    pub fn account(mut self, account: Account) -> Self {
+        self.account = Some(account);
+        self
     }
 
     pub fn previous(mut self, hash: BlockHash) -> Self {
@@ -50,7 +56,7 @@ impl SendBlockBuilder {
         )?;
         let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
         block.set_sideband(BlockSideband::new(
-            Account::from(4),
+            self.account.unwrap_or(Account::from(4)),
             BlockHash::zero(),
             balance,
             5,

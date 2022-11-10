@@ -9,7 +9,7 @@ use std::{
 use once_cell::sync::Lazy;
 
 use super::{
-    work_queue::WorkQueueCoordinator, CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator,
+    WorkQueueCoordinator, CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator,
     WorkItem, WorkThread, WorkThresholds, WorkTicket,
 };
 use crate::core::{Root, WorkVersion};
@@ -33,7 +33,7 @@ impl WorkPool {
             threads: Vec::new(),
             work_queue: Arc::new(WorkQueueCoordinator::new()),
             work_thresholds,
-            has_opencl: false,
+            has_opencl: opencl.is_some(),
             pow_rate_limiter,
         };
 

@@ -1,5 +1,4 @@
 use rand::{thread_rng, Rng};
-
 use super::WorkRng;
 
 pub(crate) struct XorShift1024Star {

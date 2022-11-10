@@ -10,7 +10,7 @@ pub trait FinalVoteStore {
     fn end(&self) -> FinalVoteIterator;
     fn get(&self, txn: &dyn Transaction, root: Root) -> Vec<BlockHash>;
     fn del(&self, txn: &mut dyn WriteTransaction, root: &Root);
-    fn count(&self, txn: &dyn Transaction) -> usize;
+    fn count(&self, txn: &dyn Transaction) -> u64;
     fn clear(&self, txn: &mut dyn WriteTransaction);
     fn for_each_par(
         &self,

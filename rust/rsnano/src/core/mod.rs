@@ -206,13 +206,13 @@ impl From<Root> for Account {
     }
 }
 
-impl From<Account> for Link{
+impl From<Account> for Link {
     fn from(account: Account) -> Self {
         Link::from_bytes(*account.as_bytes())
     }
 }
 
-impl From<&Account> for Link{
+impl From<&Account> for Link {
     fn from(account: &Account) -> Self {
         Link::from_bytes(*account.as_bytes())
     }
@@ -250,6 +250,12 @@ impl From<Link> for HashOrAccount {
 impl From<&Link> for HashOrAccount {
     fn from(link: &Link) -> Self {
         HashOrAccount::from_bytes(*link.as_bytes())
+    }
+}
+
+impl From<PublicKey> for Root {
+    fn from(key: PublicKey) -> Self {
+        Root::from_bytes(*key.as_bytes())
     }
 }
 

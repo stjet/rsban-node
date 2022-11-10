@@ -77,7 +77,7 @@ impl UncheckedStore for LmdbUncheckedStore {
         LmdbIteratorImpl::new_iterator(txn, self.database, Some(&key_bytes), true)
     }
 
-    fn count(&self, txn: &dyn Transaction) -> usize {
+    fn count(&self, txn: &dyn Transaction) -> u64 {
         count(txn, self.database)
     }
 }

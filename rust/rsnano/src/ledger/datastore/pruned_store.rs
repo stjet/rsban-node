@@ -15,7 +15,7 @@ pub trait PrunedStore {
     fn end(&self) -> PrunedIterator;
 
     fn random(&self, txn: &dyn Transaction) -> Option<BlockHash>;
-    fn count(&self, txn: &dyn Transaction) -> usize;
+    fn count(&self, txn: &dyn Transaction) -> u64;
     fn clear(&self, txn: &mut dyn WriteTransaction);
     fn for_each_par(
         &self,

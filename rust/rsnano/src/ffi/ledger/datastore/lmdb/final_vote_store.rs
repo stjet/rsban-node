@@ -106,7 +106,7 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_count(
     handle: *mut LmdbFinalVoteStoreHandle,
     txn: *mut TransactionHandle,
 ) -> usize {
-    (*handle).0.count((*txn).as_txn())
+    (*handle).0.count((*txn).as_txn()) as usize
 }
 
 #[no_mangle]

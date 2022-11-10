@@ -133,7 +133,7 @@ impl BlockStore for LmdbBlockStore {
             .unwrap();
     }
 
-    fn count(&self, txn: &dyn Transaction) -> usize {
+    fn count(&self, txn: &dyn Transaction) -> u64 {
         count(txn, self.database)
     }
 

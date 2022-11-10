@@ -775,11 +775,11 @@ impl Ledger {
 
 #[cfg(test)]
 mod tests {
-    use std::{borrow::Borrow, time::Duration};
+    use std::time::Duration;
 
     use crate::{
         config::TxnTrackingConfig,
-        core::{BlockBuilder, GXRB_RATIO},
+        core::{BlockBuilder, KeyPair, GXRB_RATIO},
         ledger::{
             datastore::lmdb::{EnvOptions, LmdbStore, TestDbFile},
             DEV_GENESIS_KEY,
@@ -902,6 +902,7 @@ mod tests {
         let result = ctx
             .ledger
             .process(txn.as_mut(), &mut send, SignatureVerification::Unknown);
+
         assert_eq!(result.code, ProcessResult::Progress);
         assert_eq!(
             send.sideband().unwrap().timestamp,
@@ -916,6 +917,210 @@ mod tests {
                 .timestamp
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn process_send() -> anyhow::Result<()> {
+        let ctx = LedgerContext::empty()?;
+        let ledger = &ctx.ledger;
+        let store = &ledger.store;
+        let mut txn = store.tx_begin_write()?;
+        let pool = &DEV_WORK_POOL;
+        let info1 = store
+            .account()
+            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+            .expect("no genesis account");
+
+        let key2 = KeyPair::new();
+        let mut send = BlockBuilder::send()
+            .previous(info1.head)
+            .destination(key2.public_key().into())
+            .balance(Amount::new(50))
+            .sign(DEV_GENESIS_KEY.clone())
+            .work(pool.generate_dev2(info1.head.into()).unwrap())
+            .without_sideband()
+            .build()?;
+        let hash1 = send.hash();
+        assert_eq!(
+            DEV_GENESIS_KEY.public_key(),
+            store.frontier().get(txn.txn(), &info1.head).into()
+        );
+        assert_eq!(info1.block_count, 1);
+
+        // This was a valid block, it should progress.
+        let return1 = ledger.process(txn.as_mut(), &mut send, SignatureVerification::Unknown);
+        assert_eq!(send.sideband().unwrap().account, *DEV_GENESIS_ACCOUNT);
+        assert_eq!(send.sideband().unwrap().height, 2);
+        assert_eq!(
+            ledger.amount(txn.txn(), &hash1).unwrap(),
+            DEV_CONSTANTS.genesis_amount - Amount::new(50)
+        );
+        assert_eq!(
+            store.frontier().get(txn.txn(), &info1.head),
+            Account::zero()
+        );
+        assert_eq!(
+            store.frontier().get(txn.txn(), &hash1),
+            *DEV_GENESIS_ACCOUNT
+        );
+        assert_eq!(return1.code, ProcessResult::Progress);
+        assert_eq!(
+            store.block().account_calculated(&send),
+            *DEV_GENESIS_ACCOUNT
+        );
+        assert_eq!(
+            ledger.account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            Amount::new(50)
+        );
+        assert_eq!(
+            ledger.account_receivable(txn.txn(), &key2.public_key().into(), false),
+            DEV_CONSTANTS.genesis_amount - Amount::new(50)
+        );
+
+        let info2 = store
+            .account()
+            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+            .unwrap();
+        assert_eq!(info2.block_count, 2);
+        let latest6 = store.block().get(txn.txn(), &info2.head).unwrap();
+        let BlockEnum::Send(latest7) = latest6 else {panic!("not a send block")};
+        assert_eq!(latest7, send);
+
+        // Create an open block opening an account accepting the send we just created
+        let mut open = BlockBuilder::open()
+            .source(hash1)
+            .representative(key2.public_key().into())
+            .account(key2.public_key().into())
+            .sign(key2.clone())
+            .work(pool.generate_dev2(key2.public_key().into()).unwrap())
+            .without_sideband()
+            .build()?;
+        let hash2 = open.hash();
+        // This was a valid block, it should progress.
+        let return2 = ledger.process(txn.as_mut(), &mut open, SignatureVerification::Unknown);
+        assert_eq!(return2.code, ProcessResult::Progress);
+        assert_eq!(open.sideband().unwrap().account, key2.public_key().into());
+        assert_eq!(
+            open.sideband().unwrap().balance,
+            DEV_CONSTANTS.genesis_amount - Amount::new(50)
+        );
+        assert_eq!(open.sideband().unwrap().height, 1);
+        assert_eq!(
+            ledger.amount(txn.txn(), &hash2),
+            Some(DEV_CONSTANTS.genesis_amount - Amount::new(50))
+        );
+        assert_eq!(
+            store.block().account_calculated(&open),
+            key2.public_key().into()
+        );
+        assert_eq!(
+            store.frontier().get(txn.txn(), &hash2),
+            key2.public_key().into()
+        );
+        assert_eq!(
+            ledger.account_balance(txn.txn(), &key2.public_key().into(), false),
+            DEV_CONSTANTS.genesis_amount - Amount::new(50)
+        );
+        assert_eq!(
+            ledger.account_receivable(txn.txn(), &key2.public_key().into(), false),
+            Amount::zero()
+        );
+        assert_eq!(ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::new(50));
+        assert_eq!(
+            ledger.weight(&key2.public_key().into()),
+            DEV_CONSTANTS.genesis_amount - Amount::new(50)
+        );
+
+        let info3 = store
+            .account()
+            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+            .unwrap();
+        let latest2 = store.block().get(txn.txn(), &info3.head).unwrap();
+        let BlockEnum::Send(latest3) = latest2 else {panic!("not a send block")};
+        assert_eq!(latest3, send);
+
+        let info4 = store
+            .account()
+            .get(txn.txn(), &key2.public_key().into())
+            .unwrap();
+        let latest4 = store.block().get(txn.txn(), &info4.head).unwrap();
+        let BlockEnum::Open(latest5) = latest4 else{panic!("not an open block")};
+        assert_eq!(latest5, open);
+
+        ledger.rollback(txn.as_mut(), &hash2, &mut Vec::new())?;
+        assert_eq!(store.frontier().get(txn.txn(), &hash2), Account::zero());
+        let info5 = ledger
+            .store
+            .account()
+            .get(txn.txn(), &key2.public_key().into());
+        assert_eq!(info5, None);
+
+        let pending1 = ledger
+            .store
+            .pending()
+            .get(txn.txn(), &PendingKey::new(key2.public_key().into(), hash1))
+            .unwrap();
+
+        assert_eq!(pending1.source, *DEV_GENESIS_ACCOUNT);
+        assert_eq!(
+            pending1.amount,
+            DEV_CONSTANTS.genesis_amount - Amount::new(50)
+        );
+        assert_eq!(
+            ledger.account_balance(txn.txn(), &key2.public_key().into(), false),
+            Amount::zero()
+        );
+        assert_eq!(
+            ledger.account_receivable(txn.txn(), &key2.public_key().into(), false),
+            DEV_CONSTANTS.genesis_amount - Amount::new(50)
+        );
+        assert_eq!(
+            ledger.account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            Amount::new(50)
+        );
+        assert_eq!(ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::new(50));
+        assert_eq!(ledger.weight(&key2.public_key().into()), Amount::zero());
+
+        let info6 = ledger
+            .store
+            .account()
+            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+            .unwrap();
+        assert_eq!(info6.head, hash1);
+
+        ledger.rollback(txn.as_mut(), &info6.head, &mut Vec::new())?;
+        assert_eq!(
+            ledger.weight(&DEV_GENESIS_ACCOUNT),
+            DEV_CONSTANTS.genesis_amount
+        );
+        assert_eq!(
+            store.frontier().get(txn.txn(), &info1.head),
+            *DEV_GENESIS_ACCOUNT
+        );
+        assert_eq!(store.frontier().get(txn.txn(), &hash1), Account::zero());
+        let info7 = store
+            .account()
+            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+            .unwrap();
+        assert_eq!(info7.block_count, 1);
+        assert_eq!(info7.head, info1.head);
+        let pending2 = store
+            .pending()
+            .get(txn.txn(), &PendingKey::new(key2.public_key().into(), hash1));
+        assert_eq!(pending2, None);
+        assert_eq!(
+            ledger.account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            DEV_CONSTANTS.genesis_amount
+        );
+        assert_eq!(
+            ledger.account_receivable(txn.txn(), &key2.public_key().into(), false),
+            Amount::zero()
+        );
+        assert_eq!(
+            ledger.cache.account_count.load(Ordering::Relaxed),
+            store.account().count(txn.txn())
+        );
         Ok(())
     }
 }

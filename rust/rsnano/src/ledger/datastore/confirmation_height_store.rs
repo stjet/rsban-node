@@ -8,7 +8,7 @@ pub trait ConfirmationHeightStore {
     fn get(&self, txn: &dyn Transaction, account: &Account) -> Option<ConfirmationHeightInfo>;
     fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool;
     fn del(&self, txn: &mut dyn WriteTransaction, account: &Account);
-    fn count(&self, txn: &dyn Transaction) -> usize;
+    fn count(&self, txn: &dyn Transaction) -> u64;
     fn clear(&self, txn: &mut dyn WriteTransaction);
     fn begin(&self, txn: &dyn Transaction) -> ConfirmationHeightIterator;
     fn begin_at_account(

@@ -11,6 +11,6 @@ pub trait OnlineWeightStore {
     fn del(&self, txn: &mut dyn WriteTransaction, time: u64);
     fn begin(&self, txn: &dyn Transaction) -> OnlineWeightIterator;
     fn rbegin(&self, txn: &dyn Transaction) -> OnlineWeightIterator;
-    fn count(&self, txn: &dyn Transaction) -> usize;
+    fn count(&self, txn: &dyn Transaction) -> u64;
     fn clear(&self, txn: &mut dyn WriteTransaction);
 }

@@ -14,6 +14,6 @@ pub trait AccountStore {
         action: &(dyn Fn(&dyn ReadTransaction, AccountIterator, AccountIterator) + Send + Sync),
     );
     fn end(&self) -> AccountIterator;
-    fn count(&self, txn: &dyn Transaction) -> usize;
+    fn count(&self, txn: &dyn Transaction) -> u64;
     fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool;
 }

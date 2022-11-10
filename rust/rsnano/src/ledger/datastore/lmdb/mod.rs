@@ -275,7 +275,7 @@ pub(crate) fn open_ro_cursor<'a>(
     }
 }
 
-pub(crate) fn count<'a>(txn: &'a dyn super::Transaction, database: Database) -> usize {
+pub(crate) fn count<'a>(txn: &'a dyn super::Transaction, database: Database) -> u64 {
     let any = txn.as_any();
     let stat = if let Some(t) = any.downcast_ref::<LmdbWriteTransaction>() {
         t.rw_txn().stat(database)
@@ -285,5 +285,5 @@ pub(crate) fn count<'a>(txn: &'a dyn super::Transaction, database: Database) -> 
             .txn()
             .stat(database)
     };
-    stat.unwrap().entries()
+    stat.unwrap().entries() as u64
 }

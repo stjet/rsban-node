@@ -2,15 +2,30 @@ use crate::core::{
     Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, OpenBlock,
 };
 
-#[derive(Default)]
 pub struct OpenBlockBuilder {
     account: Option<Account>,
     representative: Option<Account>,
+    source: Option<BlockHash>,
+    keypair: Option<KeyPair>,
+    work: Option<u64>,
+    build_sideband: bool,
 }
 
 impl OpenBlockBuilder {
     pub fn new() -> Self {
-        Default::default()
+        Self {
+            account: None,
+            representative: None,
+            source: None,
+            keypair: None,
+            work: None,
+            build_sideband: true,
+        }
+    }
+
+    pub fn source(mut self, source: BlockHash) -> Self {
+        self.source = Some(source);
+        self
     }
 
     pub fn account(mut self, account: Account) -> Self {
@@ -23,18 +38,35 @@ impl OpenBlockBuilder {
         self
     }
 
+    pub fn sign(mut self, keypair: KeyPair) -> Self {
+        self.keypair = Some(keypair);
+        self
+    }
+
+    pub fn work(mut self, work: u64) -> Self {
+        self.work = Some(work);
+        self
+    }
+
+    pub fn without_sideband(mut self) -> Self {
+        self.build_sideband = false;
+        self
+    }
+
     pub fn build(self) -> anyhow::Result<OpenBlock> {
-        let key_pair = KeyPair::new();
+        let source = self.source.unwrap_or(BlockHash::from(1));
+        let key_pair = self.keypair.unwrap_or_default();
         let account = self.account.unwrap_or_else(|| key_pair.public_key().into());
         let representative = self.representative.unwrap_or(Account::from(2));
+        let work = self.work.unwrap_or(4);
 
         let mut block = OpenBlock::new(
-            BlockHash::from(1),
+            source,
             representative,
             account,
             &key_pair.private_key(),
             &key_pair.public_key(),
-            4,
+            work,
         )?;
 
         let details = BlockDetails {
@@ -43,15 +75,18 @@ impl OpenBlockBuilder {
             is_receive: true,
             is_epoch: false,
         };
-        block.set_sideband(BlockSideband::new(
-            block.account(),
-            BlockHash::zero(),
-            Amount::new(5),
-            1,
-            2,
-            details,
-            Epoch::Epoch0,
-        ));
+
+        if self.build_sideband {
+            block.set_sideband(BlockSideband::new(
+                block.account(),
+                BlockHash::zero(),
+                Amount::new(5),
+                1,
+                2,
+                details,
+                Epoch::Epoch0,
+            ));
+        }
 
         Ok(block)
     }

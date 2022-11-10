@@ -9,8 +9,8 @@ use std::{
 use once_cell::sync::Lazy;
 
 use super::{
-    WorkQueueCoordinator, CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator,
-    WorkItem, WorkThread, WorkThresholds, WorkTicket,
+    CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator, WorkItem, WorkQueueCoordinator,
+    WorkThread, WorkThresholds, WorkTicket,
 };
 use crate::core::{Root, WorkVersion};
 

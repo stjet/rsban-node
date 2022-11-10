@@ -58,7 +58,7 @@ impl OnlineWeightStore for LmdbOnlineWeightStore {
         LmdbIteratorImpl::new_iterator(txn, self.database, None, false)
     }
 
-    fn count(&self, txn: &dyn Transaction) -> usize {
+    fn count(&self, txn: &dyn Transaction) -> u64 {
         count(txn, self.database)
     }
 

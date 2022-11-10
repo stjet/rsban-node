@@ -66,7 +66,7 @@ pub unsafe extern "C" fn rsn_lmdb_online_weight_store_count(
     handle: *mut LmdbOnlineWeightStoreHandle,
     txn: *mut TransactionHandle,
 ) -> usize {
-    (*handle).0.count((*txn).as_txn())
+    (*handle).0.count((*txn).as_txn()) as usize
 }
 
 #[no_mangle]

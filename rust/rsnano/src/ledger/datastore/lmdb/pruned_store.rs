@@ -66,7 +66,7 @@ impl PrunedStore for LmdbPrunedStore {
         existing.current().map(|(k, _)| *k)
     }
 
-    fn count(&self, txn: &dyn Transaction) -> usize {
+    fn count(&self, txn: &dyn Transaction) -> u64 {
         count(txn, self.database)
     }
 

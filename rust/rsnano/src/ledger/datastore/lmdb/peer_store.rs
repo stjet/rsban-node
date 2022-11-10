@@ -49,7 +49,7 @@ impl PeerStore for LmdbPeerStore {
         exists(txn, self.database, &endpoint.to_bytes())
     }
 
-    fn count(&self, txn: &dyn Transaction) -> usize {
+    fn count(&self, txn: &dyn Transaction) -> u64 {
         count(txn, self.database)
     }
 

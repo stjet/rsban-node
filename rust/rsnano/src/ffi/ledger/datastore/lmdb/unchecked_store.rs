@@ -105,5 +105,5 @@ pub unsafe extern "C" fn rsn_lmdb_unchecked_store_count(
     handle: *mut LmdbUncheckedStoreHandle,
     txn: *mut TransactionHandle,
 ) -> usize {
-    (*handle).0.count((*txn).as_txn())
+    (*handle).0.count((*txn).as_txn()) as usize
 }

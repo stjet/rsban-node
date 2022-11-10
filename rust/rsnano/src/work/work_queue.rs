@@ -3,7 +3,7 @@ use std::sync::{
     Condvar, Mutex, MutexGuard,
 };
 
-use crate::core::{Difficulty, Root, WorkVersion};
+use crate::core::{DifficultyV1, Root, WorkVersion};
 
 static NEVER_EXPIRES: AtomicI32 = AtomicI32::new(0);
 
@@ -16,6 +16,13 @@ pub struct WorkTicket<'a> {
 impl<'a> WorkTicket<'a> {
     pub fn never_expires() -> Self {
         Self::new(&NEVER_EXPIRES)
+    }
+
+    pub fn already_expired() -> Self {
+        Self {
+            ticket: &NEVER_EXPIRES,
+            ticket_copy: 1,
+        }
     }
 
     pub fn new(ticket: &'a AtomicI32) -> Self {
@@ -42,7 +49,7 @@ impl WorkItem {
         // we're the ones that found the solution
         debug_assert!(difficulty >= self.min_difficulty);
         debug_assert!(
-            self.min_difficulty == 0 || Difficulty::difficulty(&self.item, work) == difficulty
+            self.min_difficulty == 0 || DifficultyV1::difficulty(&self.item, work) == difficulty
         );
         if let Some(callback) = &self.callback {
             (callback)(Some(work));

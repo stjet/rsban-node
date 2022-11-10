@@ -19,19 +19,19 @@ use std::{ffi::CStr, net::Ipv6Addr, os::raw::c_char, slice};
 
 use crate::core::{
     deterministic_key, ip_address_hash_raw, sign_message, validate_message, validate_message_batch,
-    Account, Difficulty, KeyPair, PublicKey, RawKey, Signature,
+    Account, DifficultyV1, KeyPair, PublicKey, RawKey, Signature,
 };
 
 use super::copy_raw_key_bytes;
 
 #[no_mangle]
 pub extern "C" fn rsn_difficulty_to_multiplier(difficulty: u64, base_difficulty: u64) -> f64 {
-    Difficulty::to_multiplier(difficulty, base_difficulty)
+    DifficultyV1::to_multiplier(difficulty, base_difficulty)
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_difficulty_from_multiplier(multiplier: f64, base_difficulty: u64) -> u64 {
-    Difficulty::from_multiplier(multiplier, base_difficulty)
+    DifficultyV1::from_multiplier(multiplier, base_difficulty)
 }
 
 #[no_mangle]

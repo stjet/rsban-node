@@ -19,3 +19,7 @@ pub(crate) use opencl_work_generator::{OpenClWorkFunc, OpenClWorkGenerator};
 
 mod work_thread;
 pub(crate) use work_thread::WorkThread;
+
+pub(crate) trait WorkRng {
+    fn next_work(&mut self) -> u64;
+}

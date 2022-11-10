@@ -2,7 +2,7 @@ use num_traits::FromPrimitive;
 use std::convert::TryFrom;
 
 use crate::{
-    core::{BlockDetails, BlockType, Difficulty, Networks, Root, WorkVersion},
+    core::{BlockDetails, BlockType, DifficultyV1, Networks, Root, WorkVersion},
     ffi::{
         core::{BlockDetailsDto, BlockHandle},
         StringDto,
@@ -110,7 +110,7 @@ pub extern "C" fn rsn_work_thresholds_value(
     work: u64,
 ) -> u64 {
     let root = Root::from_bytes(*root);
-    Difficulty::difficulty(&root, work)
+    DifficultyV1::difficulty(&root, work)
 }
 
 #[no_mangle]

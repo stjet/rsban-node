@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use std::cmp::{max, min};
 
-use crate::core::{Block, BlockDetails, BlockType, Difficulty, Epoch, Root, WorkVersion};
+use crate::core::{Block, BlockDetails, BlockType, DifficultyV1, Epoch, Root, WorkVersion};
 
 #[derive(Clone)]
 pub struct WorkThresholds {
@@ -171,7 +171,7 @@ impl WorkThresholds {
         241.0 		 | 4.0
         */
         if threshold == self.epoch_1 || threshold == self.epoch_2_receive {
-            let ratio = Difficulty::to_multiplier(self.epoch_2, threshold);
+            let ratio = DifficultyV1::to_multiplier(self.epoch_2, threshold);
             debug_assert!(ratio >= 1f64);
             let result = (multiplier + (ratio - 1f64)) / ratio;
             debug_assert!(result >= 1f64);
@@ -184,7 +184,7 @@ impl WorkThresholds {
     pub fn denormalized_multiplier(&self, multiplier: f64, threshold: u64) -> f64 {
         debug_assert!(multiplier >= 1f64);
         if threshold == self.epoch_1 || threshold == self.epoch_2_receive {
-            let ratio = Difficulty::to_multiplier(self.epoch_2, threshold);
+            let ratio = DifficultyV1::to_multiplier(self.epoch_2, threshold);
             debug_assert!(ratio >= 1f64);
             let result = multiplier * ratio + 1f64 - ratio;
             debug_assert!(result >= 1f64);
@@ -196,7 +196,7 @@ impl WorkThresholds {
 
     pub fn difficulty(&self, work_version: WorkVersion, root: &Root, work: u64) -> u64 {
         match work_version {
-            WorkVersion::Work1 => Difficulty::difficulty(root, work),
+            WorkVersion::Work1 => DifficultyV1::difficulty(root, work),
             _ => {
                 debug_assert!(false, "Invalid version specified to work_difficulty");
                 0

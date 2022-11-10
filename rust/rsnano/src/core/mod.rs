@@ -31,7 +31,9 @@ mod account;
 pub use account::Account;
 
 mod difficulty;
-pub use difficulty::{Difficulty, WorkVersion};
+#[cfg(test)]
+pub(crate) use difficulty::StubDifficulty;
+pub use difficulty::{Difficulty, DifficultyV1, WorkVersion};
 
 mod account_info;
 pub use account_info::AccountInfo;

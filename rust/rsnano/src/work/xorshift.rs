@@ -1,5 +1,7 @@
 use rand::{thread_rng, Rng};
 
+use super::WorkRng;
+
 pub(crate) struct XorShift1024Star {
     s: [u64; 16],
     p: u32,
@@ -24,5 +26,11 @@ impl XorShift1024Star {
         let x = s0 ^ s1;
         self.s[pn as usize] = x;
         x.wrapping_mul(1181783497276652981u64)
+    }
+}
+
+impl WorkRng for XorShift1024Star {
+    fn next_work(&mut self) -> u64 {
+        self.next()
     }
 }

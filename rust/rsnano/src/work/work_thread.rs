@@ -1,4 +1,4 @@
-use super::{work_queue::WorkQueue, WorkGenerator, WorkQueueCoordinator};
+use super::{work_queue::WorkQueue, WorkGenerator, WorkQueueCoordinator, WorkTicket};
 use std::sync::{Arc, MutexGuard};
 
 pub(crate) struct WorkThread<T>
@@ -37,20 +37,28 @@ where
                     self.work_generator
                         .create(version, &item, min_difficulty, &work_ticket);
 
-                queue_lock = self.work_queue.lock_work_queue();
-
-                if let Some((work, difficulty)) = result {
-                    if !work_ticket.expired() {
-                        queue_lock =
-                            Self::notify_work_found(&self.work_queue, queue_lock, work, difficulty);
-                    }
-                } else {
-                    // A different thread found a solution
-                }
+                queue_lock = Self::handle_work_result(result, &self.work_queue, &work_ticket);
             } else {
                 queue_lock = self.work_queue.wait_for_new_work_item(queue_lock);
             }
         }
+    }
+
+    fn handle_work_result<'a>(
+        result: Option<(u64, u64)>,
+        work_queue: &'a WorkQueueCoordinator,
+        work_ticket: &WorkTicket,
+    ) -> MutexGuard<'a, WorkQueue> {
+        let mut queue_lock = work_queue.lock_work_queue();
+        if let Some((work, difficulty)) = result {
+            if !work_ticket.expired() {
+                queue_lock = Self::notify_work_found(work_queue, queue_lock, work, difficulty);
+            }
+        } else {
+            // A different thread found a solution
+        }
+
+        queue_lock
     }
 
     fn notify_work_found<'a>(

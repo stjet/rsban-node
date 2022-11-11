@@ -25,36 +25,40 @@ pub(crate) struct LedgerContext {
 }
 
 impl LedgerContext {
-    pub fn empty() -> anyhow::Result<Self> {
+    pub fn empty() -> Self {
         let db_file = TestDbFile::random();
-        let store = Arc::new(LmdbStore::new(
-            &db_file.path,
-            &EnvOptions::default(),
-            TxnTrackingConfig::default(),
-            Duration::from_millis(5000),
-            Arc::new(NullLogger::new()),
-            false,
-        )?);
+        let store = Arc::new(
+            LmdbStore::new(
+                &db_file.path,
+                &EnvOptions::default(),
+                TxnTrackingConfig::default(),
+                Duration::from_millis(5000),
+                Arc::new(NullLogger::new()),
+                false,
+            )
+            .unwrap(),
+        );
 
         let ledger = Ledger::new(
             store.clone(),
             DEV_CONSTANTS.clone(),
             Arc::new(Stat::new(StatConfig::default())),
             &GenerateCache::new(),
-        )?;
+        )
+        .unwrap();
 
-        let mut txn = store.tx_begin_write()?;
+        let mut txn = store.tx_begin_write().unwrap();
         store.initialize(&mut txn, &ledger.cache, &DEV_CONSTANTS);
 
-        Ok(LedgerContext { ledger, db_file })
+        LedgerContext { ledger, db_file }
     }
 
-    pub fn read_txn(&self) -> anyhow::Result<Box<dyn ReadTransaction>> {
-        self.ledger.store.tx_begin_read()
+    pub fn read_txn(&self) -> Box<dyn ReadTransaction> {
+        self.ledger.store.tx_begin_read().unwrap()
     }
 
-    pub fn rw_txn(&self) -> anyhow::Result<Box<dyn WriteTransaction>> {
-        self.ledger.store.tx_begin_write()
+    pub fn rw_txn(&self) -> Box<dyn WriteTransaction> {
+        self.ledger.store.tx_begin_write().unwrap()
     }
 
     pub fn process_send_from_genesis(
@@ -62,7 +66,7 @@ impl LedgerContext {
         txn: &mut dyn WriteTransaction,
         receiver_account: &Account,
         amount: Amount,
-    ) -> anyhow::Result<SendBlock> {
+    ) -> SendBlock {
         let account_info = self
             .ledger
             .store
@@ -81,14 +85,15 @@ impl LedgerContext {
                     .unwrap(),
             )
             .without_sideband()
-            .build()?;
+            .build()
+            .unwrap();
 
         let result = self
             .ledger
             .process(txn, &mut send, SignatureVerification::Unknown);
 
         assert_eq!(result.code, ProcessResult::Progress);
-        Ok(send)
+        send
     }
 
     pub fn process_open(
@@ -96,7 +101,7 @@ impl LedgerContext {
         txn: &mut dyn WriteTransaction,
         send: &SendBlock,
         receiver_key: &KeyPair,
-    ) -> anyhow::Result<OpenBlock> {
+    ) -> OpenBlock {
         let receiver_account = receiver_key.public_key().into();
         let mut open = BlockBuilder::open()
             .source(send.hash())
@@ -109,13 +114,14 @@ impl LedgerContext {
                     .unwrap(),
             )
             .without_sideband()
-            .build()?;
+            .build()
+            .unwrap();
 
         let result = self
             .ledger
             .process(txn, &mut open, SignatureVerification::Unknown);
         assert_eq!(result.code, ProcessResult::Progress);
-        Ok(open)
+        open
     }
 
     pub fn process_receive(
@@ -123,7 +129,7 @@ impl LedgerContext {
         txn: &mut dyn WriteTransaction,
         send: &SendBlock,
         receiver_key: &KeyPair,
-    ) -> anyhow::Result<ReceiveBlock> {
+    ) -> ReceiveBlock {
         let receiver_account = receiver_key.public_key().into();
 
         let account_info = self
@@ -143,12 +149,13 @@ impl LedgerContext {
                     .unwrap(),
             )
             .without_sideband()
-            .build()?;
+            .build()
+            .unwrap();
 
         let result = self
             .ledger
             .process(txn, &mut receive, SignatureVerification::Unknown);
         assert_eq!(result.code, ProcessResult::Progress);
-        Ok(receive)
+        receive
     }
 }

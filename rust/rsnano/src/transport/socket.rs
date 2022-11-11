@@ -42,6 +42,7 @@ pub trait TcpSocketFacade: Send + Sync {
     fn dispatch(&self, f: Box<dyn FnOnce()>);
     fn close(&self) -> Result<(), ErrorCode>;
     fn as_any(&self) -> &dyn Any;
+    fn is_open(&self) -> bool;
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, FromPrimitive)]
@@ -70,15 +71,16 @@ impl SocketType {
 }
 
 pub trait SocketObserver: Send + Sync {
-    fn close_socket_failed(&self, ec: ErrorCode);
-    fn disconnect_due_to_timeout(&self, endpoint: SocketAddr);
-    fn connect_error(&self);
-    fn read_error(&self);
-    fn read_successful(&self, len: usize);
-    fn write_error(&self);
-    fn write_successful(&self, len: usize);
-    fn silent_connection_dropped(&self);
-    fn inactive_connection_dropped(&self, endpoint_type: EndpointType);
+    fn socket_connected(&self, _socket: Arc<SocketImpl>) {}
+    fn close_socket_failed(&self, _ec: ErrorCode) {}
+    fn disconnect_due_to_timeout(&self, _endpoint: SocketAddr) {}
+    fn connect_error(&self) {}
+    fn read_error(&self) {}
+    fn read_successful(&self, _len: usize) {}
+    fn write_error(&self) {}
+    fn write_successful(&self, _len: usize) {}
+    fn silent_connection_dropped(&self) {}
+    fn inactive_connection_dropped(&self, _endpoint_type: EndpointType) {}
 }
 
 #[derive(Default)]
@@ -90,16 +92,78 @@ impl NullSocketObserver {
     }
 }
 
-impl SocketObserver for NullSocketObserver {
-    fn close_socket_failed(&self, _ec: ErrorCode) {}
-    fn disconnect_due_to_timeout(&self, _endpoint: SocketAddr) {}
-    fn connect_error(&self) {}
-    fn read_error(&self) {}
-    fn read_successful(&self, _len: usize) {}
-    fn write_error(&self) {}
-    fn write_successful(&self, _len: usize) {}
-    fn silent_connection_dropped(&self) {}
-    fn inactive_connection_dropped(&self, _endpoint_type: EndpointType) {}
+impl SocketObserver for NullSocketObserver {}
+
+pub struct CompositeSocketObserver {
+    children: Vec<Arc<dyn SocketObserver>>,
+}
+
+impl CompositeSocketObserver {
+    pub fn new(children: Vec<Arc<dyn SocketObserver>>) -> Self {
+        Self { children }
+    }
+}
+
+impl SocketObserver for CompositeSocketObserver {
+    fn socket_connected(&self, socket: Arc<SocketImpl>) {
+        for child in &self.children {
+            child.socket_connected(Arc::clone(&socket));
+        }
+    }
+
+    fn close_socket_failed(&self, ec: ErrorCode) {
+        for child in &self.children {
+            child.close_socket_failed(ec);
+        }
+    }
+
+    fn disconnect_due_to_timeout(&self, endpoint: SocketAddr) {
+        for child in &self.children {
+            child.disconnect_due_to_timeout(endpoint);
+        }
+    }
+
+    fn connect_error(&self) {
+        for child in &self.children {
+            child.connect_error();
+        }
+    }
+
+    fn read_error(&self) {
+        for child in &self.children {
+            child.read_error();
+        }
+    }
+
+    fn read_successful(&self, len: usize) {
+        for child in &self.children {
+            child.read_successful(len);
+        }
+    }
+
+    fn write_error(&self) {
+        for child in &self.children {
+            child.write_error();
+        }
+    }
+
+    fn write_successful(&self, len: usize) {
+        for child in &self.children {
+            child.write_successful(len);
+        }
+    }
+
+    fn silent_connection_dropped(&self) {
+        for child in &self.children {
+            child.silent_connection_dropped();
+        }
+    }
+
+    fn inactive_connection_dropped(&self, endpoint_type: EndpointType) {
+        for child in &self.children {
+            child.inactive_connection_dropped(endpoint_type);
+        }
+    }
 }
 
 pub struct SocketImpl {
@@ -226,6 +290,10 @@ impl SocketImpl {
     pub fn default_timeout_value(&self) -> u64 {
         self.default_timeout.load(Ordering::SeqCst)
     }
+
+    pub fn is_alive(&self) -> bool {
+        !self.is_closed() && self.tcp_socket.is_open()
+    }
 }
 
 impl Drop for SocketImpl {
@@ -267,8 +335,10 @@ impl Socket for Arc<SocketImpl> {
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>) {
         let self_clone = self.clone();
         debug_assert!(self.endpoint_type == EndpointType::Client);
+
         self.checkup();
         self.set_default_timeout();
+
         self.tcp_socket.async_connect(
             endpoint,
             Box::new(move |ec| {
@@ -282,7 +352,11 @@ impl Socket for Arc<SocketImpl> {
 
                 if ec.is_err() {
                     self_clone.observer.connect_error();
+                    self_clone.close();
                 }
+                self_clone
+                    .observer
+                    .socket_connected(Arc::clone(&self_clone));
                 callback(ec);
             }),
         );
@@ -305,6 +379,7 @@ impl Socket for Arc<SocketImpl> {
                     Box::new(move |ec, len| {
                         if ec.is_err() {
                             self_clone.observer.read_error();
+                            self_clone.close();
                         } else {
                             self_clone.observer.read_successful(len);
                             self_clone.set_last_completion();
@@ -392,6 +467,7 @@ impl Socket for Arc<SocketImpl> {
 
                     if ec.is_err() {
                         self_clone_2.observer.write_error();
+                        self_clone_2.close();
                     } else {
                         self_clone_2.observer.write_successful(size);
                         self_clone_2.set_last_completion();
@@ -418,6 +494,12 @@ impl Socket for Arc<SocketImpl> {
             Duration::from_secs(2),
             Box::new(move || {
                 if let Some(socket) = socket.upgrade() {
+                    // If the socket is already dead, close just in case, and stop doing checkups
+                    if !socket.is_alive() {
+                        socket.close();
+                        return;
+                    }
+
                     let now = seconds_since_epoch();
                     let mut condition_to_disconnect = false;
 
@@ -443,8 +525,7 @@ impl Socket for Arc<SocketImpl> {
                     }
 
                     if condition_to_disconnect {
-                        // The remote end may have closed the connection before this side timing out, in which case the remote address is no longer available.
-                        if let Ok(ep) = socket.tcp_socket.remote_endpoint() {
+                        if let Some(ep) = socket.get_remote() {
                             socket.observer.disconnect_due_to_timeout(ep);
                         }
                         socket.timed_out.store(true, Ordering::SeqCst);

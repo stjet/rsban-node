@@ -1205,7 +1205,7 @@ void nano::json_handler::block_confirm ()
 						is_state_epoch = amount == 0 && node.ledger.is_epoch_link (state->link ());
 					}
 				}
-				node.observers.blocks.notify (status, {}, account, amount, is_state_send, is_state_epoch);
+				node.observers->blocks.notify (status, {}, account, amount, is_state_send, is_state_epoch);
 			}
 			response_l.put ("started", "1");
 		}
@@ -5117,7 +5117,7 @@ void nano::json_handler::work_cancel ()
 	auto hash (hash_impl ());
 	if (!ec)
 	{
-		node.observers.work_cancel.notify (hash);
+		node.observers->work_cancel.notify (hash);
 		response_l.put ("success", "");
 	}
 	response_errors ();

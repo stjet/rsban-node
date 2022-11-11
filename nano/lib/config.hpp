@@ -106,13 +106,10 @@ std::string get_env_or_default (char const * variable_name, std::string const de
  * Get environment variable as int or `default_value` if variable is not present
  */
 int get_env_int_or_default (char const * variable_name, int const default_value);
-uint64_t get_env_threshold_or_default (char const * variable_name, uint64_t const default_value);
 
 uint16_t test_node_port ();
-uint16_t test_rpc_port ();
 uint16_t test_ipc_port ();
 uint16_t test_websocket_port ();
-std::array<uint8_t, 2> test_magic_number ();
 /*
  * How often to scan for representatives in local wallet, in milliseconds
  */
@@ -155,10 +152,6 @@ public:
 	uint64_t get_epoch_2_receive () const;
 	uint64_t get_entry () const;
 	uint64_t get_epoch_1 () const;
-	// work_thresholds operator= (nano::work_thresholds const & other_a)
-	// {
-	// 	return other_a;
-	// }
 
 	uint64_t threshold_entry (nano::work_version const, nano::block_type const) const;
 	uint64_t threshold (nano::block_details const &) const;
@@ -207,6 +200,8 @@ public:
 	std::chrono::seconds cleanup_period;
 	std::chrono::milliseconds cleanup_period_half () const;
 	std::chrono::seconds cleanup_cutoff () const;
+	/** How often to send keepalive messages */
+	std::chrono::seconds keepalive_period;
 	/** Default maximum idle time for a socket before it's automatically closed */
 	std::chrono::seconds idle_timeout;
 	std::chrono::seconds silent_connection_tolerance_time;

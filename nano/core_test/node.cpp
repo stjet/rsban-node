@@ -1053,7 +1053,7 @@ TEST (node, coherent_observer)
 {
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
-	node1.observers.blocks.add ([&node1] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const &, nano::account const &, nano::uint128_t const &, bool, bool) {
+	node1.observers->blocks.add ([&node1] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const &, nano::account const &, nano::uint128_t const &, bool, bool) {
 		auto transaction (node1.store.tx_begin_read ());
 		ASSERT_TRUE (node1.store.block ().exists (*transaction, status_a.winner->hash ()));
 	});
@@ -1874,7 +1874,7 @@ TEST (node, rep_remove)
 	ASSERT_EQ (*channel_rep1, reps[0].channel_ref ());
 
 	// When rep1 disconnects then rep1 should not be found anymore
-	channel_rep1->disconnect ();
+	channel_rep1->close ();
 	ASSERT_TIMELY (5s, searching_node.rep_crawler.representative_count () == 0);
 
 	// Add working node for genesis representative
@@ -1907,7 +1907,7 @@ TEST (node, rep_remove)
 	// Now only genesisRep should be found:
 	reps = searching_node.rep_crawler.representatives (1);
 	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].account);
-	ASSERT_EQ (1, searching_node.network->size ());
+	ASSERT_TIMELY_EQ (5s, searching_node.network->size (), 1);
 	auto list (searching_node.network->list (1));
 	ASSERT_EQ (node_genesis_rep->network->endpoint (), list[0]->get_endpoint ());
 }
@@ -1967,7 +1967,7 @@ TEST (node, balance_observer)
 	auto & node1 (*system.nodes[0]);
 	std::atomic<int> balances (0);
 	nano::keypair key;
-	node1.observers.account_balance.add ([&key, &balances] (nano::account const & account_a, bool is_pending) {
+	node1.observers->account_balance.add ([&key, &balances] (nano::account const & account_a, bool is_pending) {
 		if (key.pub == account_a && is_pending)
 		{
 			balances++;
@@ -2524,7 +2524,7 @@ TEST (node, vote_by_hash_bundle)
 	nano::keypair key1;
 	system.wallet (0)->insert_adhoc (key1.prv);
 
-	system.nodes[0]->observers.vote.add ([&max_hashes] (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const &, nano::vote_code) {
+	system.nodes[0]->observers->vote.add ([&max_hashes] (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const &, nano::vote_code) {
 		if (vote_a->hashes ().size () > max_hashes)
 		{
 			max_hashes = vote_a->hashes ().size ();
@@ -3150,19 +3150,17 @@ TEST (node, peers)
 	auto list2 (node2->network->list (2));
 	ASSERT_EQ (node1->get_node_id (), list2[0]->get_node_id ());
 	ASSERT_EQ (nano::transport::transport_type::tcp, list2[0]->get_type ());
+
+	// Uncontactable peer should not be stored
+	ASSERT_TIMELY_EQ (5s, store.peer ().count (*store.tx_begin_read ()), 1);
+	ASSERT_TRUE (store.peer ().exists (*store.tx_begin_read (), endpoint_key));
+
 	// Stop the peer node and check that it is removed from the store
 	node1->stop ();
 
-	ASSERT_TIMELY (10s, node2->network->size () != 1);
-
-	ASSERT_TRUE (node2->network->empty ());
-
-	// Uncontactable peer should not be stored
-	auto transaction (store.tx_begin_read ());
-	ASSERT_EQ (store.peer ().count (*transaction), 1);
-	ASSERT_TRUE (store.peer ().exists (*transaction, endpoint_key));
-
-	node2->stop ();
+	// TODO: In `tcp_channels::store_all` we skip store operation when there are no peers present,
+	// so the best we can do here is check if network is empty
+	ASSERT_TIMELY (10s, node2->network->empty ());
 }
 
 TEST (node, peer_cache_restart)

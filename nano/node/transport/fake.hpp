@@ -8,7 +8,7 @@ namespace transport
 {
 	/**
 	 * Fake channel that connects to nothing and allows its attributes to be manipulated. Mostly useful for unit tests.
-	**/
+	 **/
 	namespace fake
 	{
 		class channel final : public nano::transport::channel
@@ -65,9 +65,14 @@ namespace transport
 			nano::endpoint get_peering_endpoint () const override;
 			void set_peering_endpoint (nano::endpoint endpoint) override;
 
-			void disconnect ()
+			void close ()
 			{
-				endpoint = nano::endpoint (boost::asio::ip::address_v6::any (), 0);
+				closed = true;
+			}
+
+			bool alive () const override
+			{
+				return !closed;
 			}
 
 		private:
@@ -75,6 +80,8 @@ namespace transport
 			std::atomic<uint8_t> network_version{ 0 };
 			std::optional<nano::endpoint> peering_endpoint{};
 			nano::endpoint endpoint;
+
+			std::atomic<bool> closed{ false };
 		};
 	} // namespace fake
 } // namespace transport

@@ -98,6 +98,7 @@ namespace transport
 		bool max () override;
 		nano::endpoint get_peering_endpoint () const override;
 		void set_peering_endpoint (nano::endpoint endpoint) override;
+		virtual bool alive () const override;
 	};
 
 	class tcp_server_factory
@@ -261,6 +262,7 @@ namespace transport
 		std::shared_ptr<nano::logger_mt> logger;
 		std::shared_ptr<nano::network> network;
 		std::shared_ptr<nano::thread_pool> workers;
+		std::shared_ptr<nano::node_observers> observers;
 		nano::node_flags flags;
 		boost::asio::io_context & io_ctx;
 		mutable nano::mutex mutex;

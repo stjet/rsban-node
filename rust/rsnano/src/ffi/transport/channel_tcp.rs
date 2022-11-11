@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     ffi::{core::messages::MessageHandle, utils::FfiIoContext, ErrorCodeDto, VoidPointerCallback},
-    transport::{BandwidthLimitType, BufferDropPolicy, ChannelTcp},
+    transport::{BandwidthLimitType, BufferDropPolicy, Channel, ChannelTcp},
     utils::ErrorCode,
 };
 use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};
@@ -156,6 +156,11 @@ pub unsafe extern "C" fn rsn_channel_tcp_eq(a: *mut ChannelHandle, b: *mut Chann
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_max(handle: *mut ChannelHandle) -> bool {
     as_tcp_channel(handle).max()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_is_alive(handle: *mut ChannelHandle) -> bool {
+    as_tcp_channel(handle).is_alive()
 }
 
 pub type ChannelTcpSendCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);

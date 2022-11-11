@@ -72,7 +72,7 @@ TEST (distributed_work, no_peers_cancel)
 	done = false;
 	ASSERT_FALSE (node.distributed_work.make (nano::work_version::work_1, hash, node.config->work_peers, nano::difficulty::from_multiplier (1e6, node.network_params.work.get_base ()), callback_to_cancel));
 	ASSERT_EQ (1, node.distributed_work.size ());
-	node.observers.work_cancel.notify (hash);
+	node.observers->work_cancel.notify (hash);
 	ASSERT_TIMELY (20s, done && node.distributed_work.size () == 0);
 }
 

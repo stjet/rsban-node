@@ -47,4 +47,5 @@ pub trait Channel {
     fn set_last_packet_sent(&self, instant: u64);
     fn get_node_id(&self) -> Option<Account>;
     fn set_node_id(&self, id: Account);
+    fn is_alive(&self) -> bool;
 }

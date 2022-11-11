@@ -18,6 +18,8 @@ pub struct NetworkConstants {
     pub default_websocket_port: u16,
     pub request_interval_ms: u32,
     pub cleanup_period_s: i64,
+    /** How often to send keepalive messages */
+    pub keepalive_period: Duration,
     /** Default maximum idle time for a socket before it's automatically closed */
     pub idle_timeout_s: i64,
     pub sync_cookie_cutoff_s: i64,
@@ -66,6 +68,7 @@ impl NetworkConstants {
             default_websocket_port: 7078,
             request_interval_ms: 500,
             cleanup_period_s,
+            keepalive_period: Duration::from_secs(15),
             idle_timeout_s: cleanup_period_s * 2,
             sync_cookie_cutoff_s: 5,
             bootstrap_interval_s: 15 * 60,
@@ -110,6 +113,7 @@ impl NetworkConstants {
             default_websocket_port: 47000,
             request_interval_ms: 20,
             cleanup_period_s,
+            keepalive_period: Duration::from_secs(1),
             idle_timeout_s: cleanup_period_s * 15,
             max_peers_per_ip,
             max_peers_per_subnetwork: max_peers_per_ip * 4,

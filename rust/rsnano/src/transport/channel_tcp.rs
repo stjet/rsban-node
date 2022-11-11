@@ -243,6 +243,10 @@ impl Channel for ChannelTcp {
     fn set_node_id(&self, id: Account) {
         self.channel_mutex.lock().unwrap().node_id = Some(id);
     }
+
+    fn is_alive(&self) -> bool {
+        self.socket().map(|s| s.is_alive()).unwrap_or(false)
+    }
 }
 
 impl Drop for ChannelTcp {

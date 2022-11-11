@@ -7,7 +7,10 @@ use crate::{
         ErrorCodeDto, StringDto, VoidPointerCallback,
     },
     stats::SocketStats,
-    transport::{Socket, SocketBuilder, SocketImpl, SocketType, TcpSocketFacade},
+    transport::{
+        CompositeSocketObserver, Socket, SocketBuilder, SocketImpl, SocketObserver, SocketType,
+        TcpSocketFacade,
+    },
     utils::{BufferHandle, BufferWrapper, ErrorCode},
 };
 use std::{
@@ -47,6 +50,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     silent_connection_tolerance_time_s: u64,
     network_timeout_logging: bool,
     logger: *mut LoggerHandle,
+    callback_handler: *mut c_void,
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
     let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
@@ -55,11 +59,15 @@ pub unsafe extern "C" fn rsn_socket_create(
     let stats = (*stats_handle).deref().clone();
 
     let socket_stats = Arc::new(SocketStats::new(stats, logger, network_timeout_logging));
+    let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
 
     let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool)
         .default_timeout(Duration::from_secs(default_timeout_s))
         .silent_connection_tolerance_time(Duration::from_secs(silent_connection_tolerance_time_s))
-        .observer(socket_stats)
+        .observer(Arc::new(CompositeSocketObserver::new(vec![
+            socket_stats,
+            ffi_observer,
+        ])))
         .build();
 
     SocketHandle::new(socket)
@@ -506,12 +514,33 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_destroy(f: VoidPointerCallback)
 }
 
 type SocketLocalEndpointCallback = unsafe extern "C" fn(*mut c_void, *mut EndpointDto);
-
 static mut LOCAL_ENDPOINT_CALLBACK: Option<SocketLocalEndpointCallback> = None;
+
+type SocketIsOpenCallback = unsafe extern "C" fn(*mut c_void) -> bool;
+static mut SOCKET_IS_OPEN_CALLBACK: Option<SocketIsOpenCallback> = None;
+
+type SocketConnectedCallback = unsafe extern "C" fn(*mut c_void, *mut SocketHandle);
+static mut SOCKET_CONNECTED_CALLBACK: Option<SocketConnectedCallback> = None;
+static mut DELETE_TCP_SOCKET_CALLBACK: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_tcp_socket_local_endpoint(f: SocketLocalEndpointCallback) {
     LOCAL_ENDPOINT_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_is_open(f: SocketIsOpenCallback) {
+    SOCKET_IS_OPEN_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_connected(f: SocketConnectedCallback) {
+    SOCKET_CONNECTED_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_delete_tcp_socket_callback(f: VoidPointerCallback) {
+    DELETE_TCP_SOCKET_CALLBACK = Some(f);
 }
 
 #[no_mangle]
@@ -568,6 +597,11 @@ pub unsafe extern "C" fn rsn_socket_is_bootstrap_connection(handle: *mut SocketH
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_default_timeout_value(handle: *mut SocketHandle) -> u64 {
     (*handle).default_timeout_value()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_is_alive(handle: *mut SocketHandle) -> bool {
+    (*handle).is_alive()
 }
 
 #[no_mangle]
@@ -719,6 +753,10 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn is_open(&self) -> bool {
+        unsafe { SOCKET_IS_OPEN_CALLBACK.expect("SOCKET_IS_OPEN_CALLBACK missing")(self.handle) }
+    }
 }
 
 unsafe impl Send for FfiTcpSocketFacade {}
@@ -795,5 +833,37 @@ impl BufferWrapper for FfiBufferWrapper {
 
     fn handle(&self) -> *mut c_void {
         self.handle
+    }
+}
+
+struct SocketFfiObserver {
+    handle: *mut c_void,
+}
+
+impl SocketFfiObserver {
+    fn new(handle: *mut c_void) -> Self {
+        Self { handle }
+    }
+}
+
+unsafe impl Send for SocketFfiObserver {}
+unsafe impl Sync for SocketFfiObserver {}
+
+impl SocketObserver for SocketFfiObserver {
+    fn socket_connected(&self, socket: Arc<SocketImpl>) {
+        unsafe {
+            SOCKET_CONNECTED_CALLBACK.expect("SOCKET_CONNECTED_CALLBACK missing")(
+                self.handle,
+                SocketHandle::new(socket),
+            )
+        }
+    }
+}
+
+impl Drop for SocketFfiObserver {
+    fn drop(&mut self) {
+        unsafe {
+            DELETE_TCP_SOCKET_CALLBACK.expect("DELETE_TCP_SOCKET_CALLBACK missing")(self.handle)
+        }
     }
 }

@@ -220,7 +220,8 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 	auto socket (std::make_shared<nano::socket> (node.io_ctx, nano::socket::endpoint_type_t::client, *node.stats, node.logger, node.workers,
 	node.config->tcp_io_timeout,
 	node.network_params.network.silent_connection_tolerance_time,
-	node.config->logging.network_timeout_logging ()));
+	node.config->logging.network_timeout_logging (),
+	node.observers));
 	auto this_l (shared_from_this ());
 	socket->async_connect (endpoint_a,
 	[this_l, socket, endpoint_a, push_front] (boost::system::error_code const & ec) {

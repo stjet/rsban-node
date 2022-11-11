@@ -43,6 +43,7 @@ class thread_pool;
 class stat;
 class logger_mt;
 class node;
+class node_observers;
 
 class buffer_wrapper
 {
@@ -115,7 +116,10 @@ public:
 	 * Constructor
 	 * @param endpoint_type_a The endpoint's type: either server or client
 	 */
-	explicit socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a, std::shared_ptr<nano::logger_mt> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a, std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a);
+	explicit socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a,
+	std::shared_ptr<nano::logger_mt> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a,
+	std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a,
+	std::shared_ptr<nano::node_observers>);
 	socket (rsnano::SocketHandle * handle_a);
 	socket (nano::socket const &) = delete;
 	socket (nano::socket &&) = delete;
@@ -147,6 +151,7 @@ public:
 	}
 	bool is_bootstrap_connection ();
 	bool is_closed ();
+	bool alive () const;
 
 protected:
 	/** Holds the buffer and callback for queued writes */

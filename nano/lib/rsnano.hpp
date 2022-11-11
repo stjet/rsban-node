@@ -344,6 +344,7 @@ struct NetworkConstantsDto
 	uint16_t default_websocket_port;
 	uint32_t request_interval_ms;
 	int64_t cleanup_period_s;
+	int64_t keepalive_period_s;
 	int64_t idle_timeout_s;
 	int64_t sync_cookie_cutoff_s;
 	int64_t bootstrap_interval_s;
@@ -659,6 +660,10 @@ using AsyncRead2Callback = void (*) (void *, BufferHandle *, uintptr_t, AsyncRea
 using AsyncWriteCallback = void (*) (void *, const uint8_t *, uintptr_t, AsyncWriteCallbackHandle *);
 
 using CloseSocketCallback = void (*) (void *, ErrorCodeDto *);
+
+using SocketConnectedCallback = void (*) (void *, SocketHandle *);
+
+using SocketIsOpenCallback = bool (*) (void *);
 
 using SocketLocalEndpointCallback = void (*) (void *, EndpointDto *);
 
@@ -1458,6 +1463,8 @@ void rsn_callback_channel_tcp_observer_no_socket_drop (ChannelTcpObserverCallbac
 
 void rsn_callback_channel_tcp_observer_write_drop (ChannelTcpObserverCallback f);
 
+void rsn_callback_delete_tcp_socket_callback (VoidPointerCallback f);
+
 void rsn_callback_destroy_thread_pool (VoidPointerCallback f);
 
 void rsn_callback_in_avail (InAvailCallback f);
@@ -1522,9 +1529,13 @@ void rsn_callback_tcp_socket_async_write (AsyncWriteCallback f);
 
 void rsn_callback_tcp_socket_close (CloseSocketCallback f);
 
+void rsn_callback_tcp_socket_connected (SocketConnectedCallback f);
+
 void rsn_callback_tcp_socket_destroy (VoidPointerCallback f);
 
 void rsn_callback_tcp_socket_dispatch (DispatchCallback f);
+
+void rsn_callback_tcp_socket_is_open (SocketIsOpenCallback f);
 
 void rsn_callback_tcp_socket_local_endpoint (SocketLocalEndpointCallback f);
 
@@ -1619,6 +1630,8 @@ void * io_ctx);
 void rsn_channel_tcp_endpoint (ChannelHandle * handle, EndpointDto * endpoint);
 
 bool rsn_channel_tcp_eq (ChannelHandle * a, ChannelHandle * b);
+
+bool rsn_channel_tcp_is_alive (ChannelHandle * handle);
 
 bool rsn_channel_tcp_max (ChannelHandle * handle);
 
@@ -3299,7 +3312,8 @@ void * thread_pool,
 uint64_t default_timeout_s,
 uint64_t silent_connection_tolerance_time_s,
 bool network_timeout_logging,
-LoggerHandle * logger);
+LoggerHandle * logger,
+void * callback_handler);
 
 uint64_t rsn_socket_default_timeout_value (SocketHandle * handle);
 
@@ -3318,6 +3332,8 @@ void rsn_socket_get_remote (SocketHandle * handle, EndpointDto * result);
 bool rsn_socket_has_timed_out (SocketHandle * handle);
 
 const void * rsn_socket_inner_ptr (SocketHandle * handle);
+
+bool rsn_socket_is_alive (SocketHandle * handle);
 
 bool rsn_socket_is_bootstrap_connection (SocketHandle * handle);
 
@@ -3822,7 +3838,7 @@ uint64_t work);
 
 bool rsn_work_thresholds_validate_entry_block (const WorkThresholdsDto * dto, BlockHandle * block);
 
-uint64_t rsn_work_thresholds_value (const WorkThresholdsDto * dto,
+uint64_t rsn_work_thresholds_value (const WorkThresholdsDto * _dto,
 const uint8_t (*root)[32],
 uint64_t work);
 

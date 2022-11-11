@@ -207,6 +207,7 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	default_websocket_port = dto.default_websocket_port;
 	request_interval_ms = dto.request_interval_ms;
 	cleanup_period = std::chrono::seconds (dto.cleanup_period_s);
+	keepalive_period = std::chrono::seconds (dto.keepalive_period_s);
 	idle_timeout = std::chrono::seconds (dto.idle_timeout_s);
 	syn_cookie_cutoff = std::chrono::seconds (dto.sync_cookie_cutoff_s);
 	bootstrap_interval = std::chrono::seconds (dto.bootstrap_interval_s);
@@ -287,6 +288,7 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.default_websocket_port = default_websocket_port;
 	dto.request_interval_ms = request_interval_ms;
 	dto.cleanup_period_s = cleanup_period.count ();
+	dto.keepalive_period_s = keepalive_period.count ();
 	dto.idle_timeout_s = idle_timeout.count ();
 	dto.sync_cookie_cutoff_s = syn_cookie_cutoff.count ();
 	dto.bootstrap_interval_s = bootstrap_interval.count ();
@@ -319,23 +321,9 @@ uint8_t get_pre_release_node_version ()
 	return boost::numeric_cast<uint8_t> (boost::lexical_cast<int> (NANO_PRE_RELEASE_VERSION_STRING));
 }
 
-uint64_t get_env_threshold_or_default (char const * variable_name, uint64_t const default_value)
-{
-	auto * value = getenv (variable_name);
-	return value ? boost::lexical_cast<HexTo<uint64_t>> (value) : default_value;
-}
-
 uint16_t test_node_port ()
 {
 	return rsnano::rsn_test_node_port ();
-}
-
-std::array<uint8_t, 2> test_magic_number ()
-{
-	auto test_env = get_env_or_default ("NANO_TEST_MAGIC_NUMBER", "RX");
-	std::array<uint8_t, 2> ret;
-	std::copy (test_env.begin (), test_env.end (), ret.data ());
-	return ret;
 }
 
 void force_nano_dev_network ()

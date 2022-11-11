@@ -6,6 +6,10 @@
 
 #include <boost/format.hpp>
 
+/*
+ * channel_tcp
+ */
+
 nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::outbound_bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
 	channel (rsnano::rsn_channel_tcp_create (
 	std::chrono::steady_clock::now ().time_since_epoch ().count (),
@@ -123,6 +127,11 @@ void nano::transport::channel_tcp::set_peering_endpoint (nano::endpoint endpoint
 	rsnano::rsn_channel_tcp_set_peering_endpoint (handle, &dto);
 }
 
+bool nano::transport::channel_tcp::alive () const
+{
+	return rsnano::rsn_channel_tcp_is_alive (handle);
+}
+
 nano::transport::tcp_server_factory::tcp_server_factory (nano::node & node) :
 	node{ node }
 {
@@ -154,6 +163,10 @@ std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory
 	return response_server;
 }
 
+/*
+ * tcp_channels
+ */
+
 nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
 	tcp_server_factory{ node },
 	node_id{ node.node_id },
@@ -167,6 +180,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<vo
 	workers{ node.workers },
 	flags{ node.flags },
 	io_ctx{ node.io_ctx },
+	observers{ node.observers },
 	sink{ std::move (sink) },
 	handle{ rsnano::rsn_tcp_channels_create () }
 {
@@ -487,8 +501,19 @@ std::unique_ptr<nano::container_info_component> nano::transport::tcp_channels::c
 void nano::transport::tcp_channels::purge (std::chrono::steady_clock::time_point const & cutoff_a)
 {
 	nano::lock_guard<nano::mutex> lock (mutex);
+
+	// Remove channels with dead underlying sockets
+	for (auto it = channels.begin (); it != channels.end (); ++it)
+	{
+		if (!it->get_channel ()->alive ())
+		{
+			it = channels.erase (it);
+		}
+	}
+
 	auto disconnect_cutoff (channels.get<last_packet_sent_tag> ().lower_bound (cutoff_a));
 	channels.get<last_packet_sent_tag> ().erase (channels.get<last_packet_sent_tag> ().begin (), disconnect_cutoff);
+
 	// Remove keepalive attempt tracking for attempts older than cutoff
 	auto attempts_cutoff (attempts.get<last_attempt_tag> ().lower_bound (cutoff_a));
 	attempts.get<last_attempt_tag> ().erase (attempts.get<last_attempt_tag> ().begin (), attempts_cutoff);
@@ -507,7 +532,7 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 	nano::unique_lock<nano::mutex> lock (mutex);
 	// Wake up channels
 	std::vector<std::shared_ptr<nano::transport::channel_tcp>> send_list;
-	auto keepalive_sent_cutoff (channels.get<last_packet_sent_tag> ().lower_bound (std::chrono::steady_clock::now () - network_params.network.cleanup_period));
+	auto keepalive_sent_cutoff (channels.get<last_packet_sent_tag> ().lower_bound (std::chrono::steady_clock::now () - network_params.network.keepalive_period));
 	for (auto i (channels.get<last_packet_sent_tag> ().begin ()); i != keepalive_sent_cutoff; ++i)
 	{
 		send_list.push_back (i->get_channel ());
@@ -532,7 +557,7 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 		}
 	}
 	std::weak_ptr<nano::transport::tcp_channels> this_w (shared_from_this ());
-	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.cleanup_period_half (), [this_w] () {
+	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.keepalive_period, [this_w] () {
 		if (auto this_l = this_w.lock ())
 		{
 			if (!this_l->stopped)
@@ -582,7 +607,8 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 	auto socket = std::make_shared<nano::socket> (io_ctx, nano::socket::endpoint_type_t::client, *stats, logger, workers,
 	config->tcp_io_timeout,
 	network_params.network.silent_connection_tolerance_time,
-	config->logging.network_timeout_logging ());
+	config->logging.network_timeout_logging (),
+	observers);
 	auto channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket, network->tcp_channels));
 	auto network_consts = network_params.network;
 	auto config_l = config;

@@ -8,6 +8,7 @@
 #include <nano/node/blockprocessor.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/lmdb/lmdb_txn.hpp>
+#include <nano/node/node_observers.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
 #include <nano/node/transport/tcp.hpp>
 #include <nano/node/transport/tcp_server.hpp>
@@ -600,6 +601,23 @@ void tcp_socket_local_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_
 	(*endpoint_a) = rsnano::endpoint_to_dto (ep);
 }
 
+bool tcp_socket_is_open (void * handle_a)
+{
+	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	return (*socket)->tcp_socket.is_open ();
+}
+
+void tcp_socket_connected (void * handle_a, rsnano::SocketHandle * socket_a)
+{
+	auto callback{ static_cast<std::shared_ptr<nano::node_observers> *> (handle_a) };
+	(*callback)->socket_connected.notify (std::make_shared<nano::socket> (socket_a));
+}
+
+void tcp_socket_delete_callback (void * handle_a)
+{
+	auto callback{ static_cast<std::shared_ptr<nano::node_observers> *> (handle_a) };
+	delete callback;
+};
 void tcp_socket_destroy (void * handle_a)
 {
 	auto ptr{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
@@ -915,6 +933,9 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_tcp_socket_close (tcp_socket_close);
 	rsnano::rsn_callback_tcp_socket_destroy (tcp_socket_destroy);
 	rsnano::rsn_callback_tcp_socket_local_endpoint (tcp_socket_local_endpoint);
+	rsnano::rsn_callback_tcp_socket_is_open (tcp_socket_is_open);
+	rsnano::rsn_callback_tcp_socket_connected (tcp_socket_connected);
+	rsnano::rsn_callback_delete_tcp_socket_callback (tcp_socket_delete_callback);
 
 	rsnano::rsn_callback_channel_tcp_observer_data_sent (channel_tcp_data_sent);
 	rsnano::rsn_callback_channel_tcp_observer_host_unreachable (channel_tcp_host_unreachable);

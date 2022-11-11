@@ -73,4 +73,8 @@ impl Channel for ChannelFake {
     fn set_node_id(&self, id: Account) {
         self.channel_mutex.lock().unwrap().node_id = Some(id);
     }
+
+    fn is_alive(&self) -> bool {
+        true
+    }
 }

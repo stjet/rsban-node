@@ -136,6 +136,7 @@ public:
 	nano::write_database_queue write_database_queue;
 	boost::asio::io_context & io_ctx;
 	boost::latch node_initialized_latch;
+	std::shared_ptr<nano::node_observers> observers;
 	std::shared_ptr<nano::node_config> config;
 	nano::network_params & network_params;
 	std::shared_ptr<nano::logger_mt> logger;
@@ -162,7 +163,6 @@ public:
 	nano::bootstrap_server bootstrap_server;
 	std::shared_ptr<nano::transport::tcp_listener> tcp_listener;
 	boost::filesystem::path application_path;
-	nano::node_observers observers;
 	nano::port_mapping port_mapping;
 	nano::online_reps online_reps;
 	nano::rep_crawler rep_crawler;

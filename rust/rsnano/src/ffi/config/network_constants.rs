@@ -1,5 +1,5 @@
 use num::FromPrimitive;
-use std::{convert::TryFrom, ffi::CStr, os::raw::c_char};
+use std::{convert::TryFrom, ffi::CStr, os::raw::c_char, time::Duration};
 
 use crate::{
     config::{test_node_port, NetworkConstants, TelemetryCacheCutoffs},
@@ -18,6 +18,7 @@ pub struct NetworkConstantsDto {
     pub default_websocket_port: u16,
     pub request_interval_ms: u32,
     pub cleanup_period_s: i64,
+    pub keepalive_period_s: i64,
     pub idle_timeout_s: i64,
     pub sync_cookie_cutoff_s: i64,
     pub bootstrap_interval_s: i64,
@@ -58,6 +59,7 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     dto.default_websocket_port = constants.default_websocket_port;
     dto.request_interval_ms = constants.request_interval_ms;
     dto.cleanup_period_s = constants.cleanup_period_s;
+    dto.keepalive_period_s = constants.keepalive_period.as_secs() as i64;
     dto.idle_timeout_s = constants.idle_timeout_s;
     dto.sync_cookie_cutoff_s = constants.sync_cookie_cutoff_s;
     dto.bootstrap_interval_s = constants.bootstrap_interval_s;
@@ -153,6 +155,7 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
             default_websocket_port: value.default_websocket_port,
             request_interval_ms: value.request_interval_ms,
             cleanup_period_s: value.cleanup_period_s,
+            keepalive_period: Duration::from_secs(value.keepalive_period_s as u64),
             idle_timeout_s: value.idle_timeout_s,
             sync_cookie_cutoff_s: value.sync_cookie_cutoff_s,
             bootstrap_interval_s: value.bootstrap_interval_s,

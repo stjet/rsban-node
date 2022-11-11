@@ -12,7 +12,9 @@ using namespace std::chrono_literals;
 std::shared_ptr<nano::transport::tcp_server> create_bootstrap_server (const std::shared_ptr<nano::node> & node)
 {
 	auto socket{ std::make_shared<nano::socket> (node->io_ctx, nano::socket::endpoint_type_t::server,
-	*node->stats, node->logger, node->workers, node->config->tcp_io_timeout, node->network_params.network.silent_connection_tolerance_time, node->config->logging.network_timeout_logging ()) };
+	*node->stats, node->logger, node->workers, node->config->tcp_io_timeout,
+	node->network_params.network.silent_connection_tolerance_time, node->config->logging.network_timeout_logging (),
+	node->observers) };
 
 	auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (*node);
 	return std::make_shared<nano::transport::tcp_server> (

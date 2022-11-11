@@ -156,6 +156,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	write_database_queue (!flags_a.force_use_write_database_queue ()),
 	io_ctx (io_ctx_a),
 	node_initialized_latch (1),
+	observers{ std::make_shared<nano::node_observers> () },
 	config{ std::make_shared<nano::node_config> (config_a) },
 	network_params{ config_a.network_params },
 	logger{ std::make_shared<nano::logger_mt> (config_a.logging.min_time_between_log_output) },
@@ -179,7 +180,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
 	//
 	network{ create_network (*this, config_a) },
-	telemetry (std::make_shared<nano::telemetry> (*network, *workers, observers.telemetry, *stats, network_params, flags.disable_ongoing_telemetry_requests ())),
+	telemetry (std::make_shared<nano::telemetry> (*network, *workers, observers->telemetry, *stats, network_params, flags.disable_ongoing_telemetry_requests ())),
 	bootstrap_initiator (*this),
 	bootstrap_server{ store, ledger, network_params.network, *stats },
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
@@ -193,7 +194,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	application_path (application_path_a),
 	port_mapping (*this),
 	rep_crawler (*this),
-	vote_processor (checker, active, observers, *stats, *config, flags, *logger, online_reps, rep_crawler, ledger, network_params),
+	vote_processor (checker, active, *observers, *stats, *config, flags, *logger, online_reps, rep_crawler, ledger, network_params),
 	warmed_up (0),
 	block_arrival{},
 	block_processor (*this, write_database_queue),
@@ -242,18 +243,18 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		}
 
 		wallets.observer = [this] (bool active) {
-			observers.wallet.notify (active);
+			observers->wallet.notify (active);
 		};
 		network->on_new_channel ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
 			debug_assert (channel_a != nullptr);
-			observers.endpoint.notify (channel_a);
+			observers->endpoint.notify (channel_a);
 		});
 		network->disconnect_observer = [this] () {
-			observers.disconnect.notify ();
+			observers->disconnect.notify ();
 		};
 		if (!config->callback_address.empty ())
 		{
-			observers.blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
+			observers->blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
 				auto block_a (status_a.winner);
 				if ((status_a.type == nano::election_status_type::active_confirmed_quorum || status_a.type == nano::election_status_type::active_confirmation_height) && this->block_arrival.recent (block_a->hash ()))
 				{
@@ -316,7 +317,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		}
 		if (websocket_server)
 		{
-			observers.blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
+			observers->blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
 				debug_assert (status_a.type != nano::election_status_type::ongoing);
 
 				if (this->websocket_server->any_subscriber (nano::websocket::topic::confirmation))
@@ -348,7 +349,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 				}
 			});
 
-			observers.active_started.add ([this] (nano::block_hash const & hash_a) {
+			observers->active_started.add ([this] (nano::block_hash const & hash_a) {
 				if (this->websocket_server->any_subscriber (nano::websocket::topic::started_election))
 				{
 					nano::websocket::message_builder builder;
@@ -356,7 +357,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 				}
 			});
 
-			observers.active_stopped.add ([this] (nano::block_hash const & hash_a) {
+			observers->active_stopped.add ([this] (nano::block_hash const & hash_a) {
 				if (this->websocket_server->any_subscriber (nano::websocket::topic::stopped_election))
 				{
 					nano::websocket::message_builder builder;
@@ -364,7 +365,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 				}
 			});
 
-			observers.telemetry.add ([this] (nano::telemetry_data const & telemetry_data, nano::endpoint const & endpoint) {
+			observers->telemetry.add ([this] (nano::telemetry_data const & telemetry_data, nano::endpoint const & endpoint) {
 				if (this->websocket_server->any_subscriber (nano::websocket::topic::telemetry))
 				{
 					nano::websocket::message_builder builder;
@@ -373,7 +374,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 			});
 		}
 		// Add block confirmation type stats regardless of http-callback and websocket subscriptions
-		observers.blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
+		observers->blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
 			debug_assert (status_a.type != nano::election_status_type::ongoing);
 			switch (status_a.type)
 			{
@@ -390,7 +391,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 					break;
 			}
 		});
-		observers.endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
+		observers->endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
 			if (channel_a->get_type () == nano::transport::transport_type::udp)
 			{
 				this->network->send_keepalive (channel_a);
@@ -400,7 +401,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 				this->network->send_keepalive_self (channel_a);
 			}
 		});
-		observers.vote.add ([this] (std::shared_ptr<nano::vote> vote_a, std::shared_ptr<nano::transport::channel> const & channel_a, nano::vote_code code_a) {
+		observers->vote.add ([this] (std::shared_ptr<nano::vote> vote_a, std::shared_ptr<nano::transport::channel> const & channel_a, nano::vote_code code_a) {
 			debug_assert (code_a != nano::vote_code::invalid);
 			// The vote_code::vote is handled inside the election
 			if (code_a == nano::vote_code::indeterminate)
@@ -416,7 +417,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		});
 		if (websocket_server)
 		{
-			observers.vote.add ([this] (std::shared_ptr<nano::vote> vote_a, std::shared_ptr<nano::transport::channel> const & channel_a, nano::vote_code code_a) {
+			observers->vote.add ([this] (std::shared_ptr<nano::vote> vote_a, std::shared_ptr<nano::transport::channel> const & channel_a, nano::vote_code code_a) {
 				if (this->websocket_server->any_subscriber (nano::websocket::topic::vote))
 				{
 					nano::websocket::message_builder builder;
@@ -426,7 +427,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 			});
 		}
 		// Cancelling local work generation
-		observers.work_cancel.add ([this] (nano::root const & root_a) {
+		observers->work_cancel.add ([this] (nano::root const & root_a) {
 			this->work.cancel (root_a);
 			this->distributed_work.cancel (root_a);
 		});
@@ -652,7 +653,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 		composite->add_component (collect_container_info (*node.telemetry, "telemetry"));
 	}
 	composite->add_component (collect_container_info (*node.workers, "workers"));
-	composite->add_component (collect_container_info (node.observers, "observers"));
+	composite->add_component (collect_container_info (*node.observers, "observers"));
 	composite->add_component (collect_container_info (node.wallets, "wallets"));
 	composite->add_component (collect_container_info (node.vote_processor, "vote_processor"));
 	composite->add_component (collect_container_info (node.rep_crawler, "rep_crawler"));

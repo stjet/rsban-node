@@ -70,7 +70,7 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 			bool is_state_epoch (false);
 			nano::account pending_account{};
 			node.process_confirmed_data (*transaction, block_a, block_a->hash (), account, amount, is_state_send, is_state_epoch, pending_account);
-			node.observers.blocks.notify (nano::election_status{ block_a, 0, 0, std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()), std::chrono::duration_values<std::chrono::milliseconds>::zero (), 0, 1, 0, nano::election_status_type::inactive_confirmation_height }, {}, account, amount, is_state_send, is_state_epoch);
+			node.observers->blocks.notify (nano::election_status{ block_a, 0, 0, std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()), std::chrono::duration_values<std::chrono::milliseconds>::zero (), 0, 1, 0, nano::election_status_type::inactive_confirmation_height }, {}, account, amount, is_state_send, is_state_epoch);
 		}
 		else
 		{
@@ -102,13 +102,13 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 					status_l = election->status;
 					election_lk.unlock ();
 					auto votes (election->votes_with_weight ());
-					node.observers.blocks.notify (status_l, votes, account, amount, is_state_send, is_state_epoch);
+					node.observers->blocks.notify (status_l, votes, account, amount, is_state_send, is_state_epoch);
 					if (amount > 0)
 					{
-						node.observers.account_balance.notify (account, false);
+						node.observers->account_balance.notify (account, false);
 						if (!pending_account.is_zero ())
 						{
-							node.observers.account_balance.notify (pending_account, true);
+							node.observers->account_balance.notify (pending_account, true);
 						}
 					}
 				}
@@ -283,7 +283,7 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 		// Notify observers about dropped elections & blocks lost confirmed elections
 		if (!election->confirmed () || hash != election->winner ()->hash ())
 		{
-			node.observers.active_stopped.notify (hash);
+			node.observers->active_stopped.notify (hash);
 		}
 
 		if (!election->confirmed ())
@@ -401,7 +401,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::un
 				{
 					cache->fill (result.election);
 				}
-				node.observers.active_started.notify (hash);
+				node.observers->active_started.notify (hash);
 				node.stats->inc (nano::stat::type::election, nano::stat::detail::election_start);
 				vacancy_update ();
 			}

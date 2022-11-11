@@ -118,7 +118,15 @@ impl BlockStore for LmdbBlockStore {
             Some(bytes) => {
                 let mut stream = StreamAdapter::new(bytes);
                 let mut block = deserialize_block_enum(&mut stream).unwrap();
-                let sideband = BlockSideband::from_stream(&mut stream, block.block_type()).unwrap();
+                let mut sideband =
+                    BlockSideband::from_stream(&mut stream, block.block_type()).unwrap();
+                // BlockSideband does not serialize all data depending on the block type.
+                // That's why we fill in the missing data here:
+                match block.block_type() {
+                    BlockType::Send => sideband.balance = block.as_block().balance(),
+                    BlockType::Open => sideband.account = block.as_block().account(),
+                    _ => {}
+                }
                 block.as_block_mut().set_sideband(sideband);
                 Some(block)
             }

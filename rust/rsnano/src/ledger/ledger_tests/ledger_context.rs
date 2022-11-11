@@ -9,7 +9,7 @@ use crate::{
     ledger::{
         datastore::{
             lmdb::{EnvOptions, LmdbStore, TestDbFile},
-            ReadTransaction, WriteTransaction,
+            WriteTransaction,
         },
         GenerateCache, Ledger, ProcessResult, DEV_GENESIS_KEY,
     },
@@ -51,14 +51,6 @@ impl LedgerContext {
         store.initialize(&mut txn, &ledger.cache, &DEV_CONSTANTS);
 
         LedgerContext { ledger, db_file }
-    }
-
-    pub fn read_txn(&self) -> Box<dyn ReadTransaction> {
-        self.ledger.store.tx_begin_read().unwrap()
-    }
-
-    pub fn rw_txn(&self) -> Box<dyn WriteTransaction> {
-        self.ledger.store.tx_begin_write().unwrap()
     }
 
     pub fn process_send_from_genesis(

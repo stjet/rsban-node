@@ -22,7 +22,7 @@ use std::{
 };
 
 use super::{
-    datastore::{Store, Transaction, WriteTransaction},
+    datastore::{ReadTransaction, Store, Transaction, WriteTransaction},
     GenerateCache, LedgerCache, LedgerConstants, RepWeights, RepresentativeVisitor,
 };
 
@@ -89,6 +89,14 @@ impl Ledger {
         ledger.initialize(generate_cache)?;
 
         Ok(ledger)
+    }
+
+    pub fn read_txn(&self) -> Box<dyn ReadTransaction> {
+        self.store.tx_begin_read().unwrap()
+    }
+
+    pub fn rw_txn(&self) -> Box<dyn WriteTransaction> {
+        self.store.tx_begin_write().unwrap()
     }
 
     fn initialize(&mut self, generate_cache: &GenerateCache) -> anyhow::Result<()> {
@@ -786,7 +794,7 @@ mod tests {
         let ctx = LedgerContext::empty();
         let ledger = &ctx.ledger;
         let store = &ledger.store;
-        let mut txn = ctx.rw_txn();
+        let mut txn = ledger.rw_txn();
 
         let orig_genesis_info = store
             .account()
@@ -845,7 +853,7 @@ mod tests {
         let ctx = LedgerContext::empty();
         let ledger = &ctx.ledger;
         let store = &ledger.store;
-        let mut txn = ctx.rw_txn();
+        let mut txn = ledger.rw_txn();
 
         let genesis_account_info = store
             .account()
@@ -905,7 +913,7 @@ mod tests {
         let ctx = LedgerContext::empty();
         let ledger = &ctx.ledger;
         let store = &ledger.store;
-        let mut txn = ctx.rw_txn();
+        let mut txn = ledger.rw_txn();
 
         let receiver_key = KeyPair::new();
         let receiver_account = Account::from(receiver_key.public_key());
@@ -974,7 +982,7 @@ mod tests {
         let ctx = LedgerContext::empty();
         let ledger = &ctx.ledger;
         let store = &ledger.store;
-        let mut txn = ctx.rw_txn();
+        let mut txn = ledger.rw_txn();
 
         let genesis_account_info = store
             .account()
@@ -1034,7 +1042,7 @@ mod tests {
         let ctx = LedgerContext::empty();
         let ledger = &ctx.ledger;
         let store = &ledger.store;
-        let mut txn = ctx.rw_txn();
+        let mut txn = ledger.rw_txn();
         let receiver_key = KeyPair::new();
         let receiver_account = Account::from(receiver_key.public_key());
 
@@ -1093,7 +1101,7 @@ mod tests {
         let ctx = LedgerContext::empty();
         let ledger = &ctx.ledger;
         let store = &ledger.store;
-        let mut txn = ctx.rw_txn();
+        let mut txn = ledger.rw_txn();
         let receiver_key = KeyPair::new();
         let receiver_account = Account::from(receiver_key.public_key());
 

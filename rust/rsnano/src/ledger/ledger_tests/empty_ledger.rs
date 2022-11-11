@@ -11,7 +11,7 @@ use super::LedgerContext;
 #[test]
 fn account_balance_is_zero_for_unknown_account() {
     let ctx = LedgerContext::empty();
-    let txn = ctx.read_txn();
+    let txn = ctx.ledger.read_txn();
 
     let balance = ctx
         .ledger
@@ -23,7 +23,7 @@ fn account_balance_is_zero_for_unknown_account() {
 #[test]
 fn genesis_block() {
     let ctx = LedgerContext::empty();
-    let txn = ctx.read_txn();
+    let txn = ctx.ledger.read_txn();
 
     let block = ctx
         .ledger
@@ -38,7 +38,7 @@ fn genesis_block() {
 #[test]
 fn genesis_account_balance() {
     let ctx = LedgerContext::empty();
-    let txn = ctx.read_txn();
+    let txn = ctx.ledger.read_txn();
 
     let balance = ctx
         .ledger
@@ -50,7 +50,7 @@ fn genesis_account_balance() {
 #[test]
 fn genesis_account_info() {
     let ctx = LedgerContext::empty();
-    let txn = ctx.read_txn();
+    let txn = ctx.ledger.read_txn();
 
     let account_info = ctx
         .ledger
@@ -68,7 +68,7 @@ fn genesis_account_info() {
 #[test]
 fn genesis_confirmation_height_info() {
     let ctx = LedgerContext::empty();
-    let txn = ctx.read_txn();
+    let txn = ctx.ledger.read_txn();
 
     // Genesis block should be confirmed by default
     let conf_info = ctx
@@ -85,7 +85,7 @@ fn genesis_confirmation_height_info() {
 #[test]
 fn genesis_frontier() {
     let ctx = LedgerContext::empty();
-    let txn = ctx.read_txn();
+    let txn = ctx.ledger.read_txn();
 
     assert_eq!(
         ctx.ledger

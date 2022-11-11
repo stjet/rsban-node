@@ -1111,30 +1111,23 @@ mod tests {
     }
 
     #[test]
-    fn rollback_open_and_send_block() -> anyhow::Result<()> {
+    fn rollback_open() -> anyhow::Result<()> {
         let ctx = LedgerContext::empty()?;
         let ledger = &ctx.ledger;
         let store = &ledger.store;
         let mut txn = store.tx_begin_write()?;
-
-        let genesis_account_info = store
-            .account()
-            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
-            .unwrap();
 
         let receiver_key = KeyPair::new();
         let receiver_account = Account::from(receiver_key.public_key());
         let new_genesis_balance = Amount::new(50);
         let amount_sent = DEV_CONSTANTS.genesis_amount - new_genesis_balance;
         let send = ctx.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent)?;
-
-        // Create an open block opening an account accepting the send we just created
         let open = ctx.process_open(txn.as_mut(), &send, &receiver_key)?;
 
         // --------------------------------
         // Rollback Open Block
-
         ledger.rollback(txn.as_mut(), &open.hash(), &mut Vec::new())?;
+
         assert_eq!(
             store.frontier().get(txn.txn(), &open.hash()),
             Account::zero()
@@ -1183,11 +1176,31 @@ mod tests {
             .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
             .unwrap();
         assert_eq!(info6.head, send.hash());
+        Ok(())
+    }
+
+    #[test]
+    fn rollback_send_block() -> anyhow::Result<()> {
+        let ctx = LedgerContext::empty()?;
+        let ledger = &ctx.ledger;
+        let store = &ledger.store;
+        let mut txn = store.tx_begin_write()?;
+
+        let genesis_account_info = store
+            .account()
+            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+            .unwrap();
+
+        let receiver_key = KeyPair::new();
+        let receiver_account = Account::from(receiver_key.public_key());
+        let new_genesis_balance = Amount::new(50);
+        let amount_sent = DEV_CONSTANTS.genesis_amount - new_genesis_balance;
+        let send = ctx.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent)?;
 
         // --------------------------------
         // Rollback Send Block
+        ledger.rollback(txn.as_mut(), &send.hash(), &mut Vec::new())?;
 
-        ledger.rollback(txn.as_mut(), &info6.head, &mut Vec::new())?;
         assert_eq!(
             ledger.weight(&DEV_GENESIS_ACCOUNT),
             DEV_CONSTANTS.genesis_amount

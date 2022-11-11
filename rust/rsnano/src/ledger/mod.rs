@@ -23,3 +23,6 @@ pub(crate) use representative_visitor::RepresentativeVisitor;
 
 mod ledger_processor;
 pub(crate) use ledger_processor::LedgerProcessor;
+
+#[cfg(test)]
+mod ledger_tests;

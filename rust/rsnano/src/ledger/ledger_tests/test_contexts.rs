@@ -1,5 +1,5 @@
 use crate::{
-    core::{Account, Amount, KeyPair, OpenBlock, ReceiveBlock, SendBlock},
+    core::{Account, Amount, Block, KeyPair, OpenBlock, ReceiveBlock, SendBlock},
     ledger::{datastore::WriteTransaction, Ledger},
     DEV_CONSTANTS,
 };
@@ -22,7 +22,7 @@ impl LedgerWithOpenBlock {
         let receiver_account = receiver_key.public_key().into();
         let ledger_context = LedgerContext::empty();
         let mut txn = ledger_context.ledger.rw_txn();
-        let amount_sent = Amount::new(50);
+        let amount_sent = DEV_CONSTANTS.genesis_amount - Amount::new(50);
         let send_block =
             ledger_context.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent);
         let open_block = ledger_context.process_open(txn.as_mut(), &send_block, &receiver_key);
@@ -40,6 +40,13 @@ impl LedgerWithOpenBlock {
 
     pub fn ledger(&self) -> &Ledger {
         &self.ledger_context.ledger
+    }
+
+    pub fn rollback(&mut self) {
+        self.ledger_context
+            .ledger
+            .rollback(self.txn.as_mut(), &self.open_block.hash(), &mut Vec::new())
+            .unwrap();
     }
 }
 
@@ -81,6 +88,13 @@ impl LedgerWithSendBlock {
 
     pub fn ledger(&self) -> &Ledger {
         &self.ledger_context.ledger
+    }
+
+    pub(crate) fn rollback(&mut self) {
+        self.ledger_context
+            .ledger
+            .rollback(self.txn.as_mut(), &self.send_block.hash(), &mut Vec::new())
+            .unwrap();
     }
 }
 

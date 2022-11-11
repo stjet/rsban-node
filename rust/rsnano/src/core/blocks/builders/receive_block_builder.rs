@@ -2,14 +2,23 @@ use crate::core::{
     Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, ReceiveBlock,
 };
 
-#[derive(Default)]
 pub struct ReceiveBlockBuilder {
     previous: Option<BlockHash>,
+    source: Option<BlockHash>,
+    key_pair: Option<KeyPair>,
+    work: Option<u64>,
+    build_sideband: bool,
 }
 
 impl ReceiveBlockBuilder {
     pub fn new() -> Self {
-        Default::default()
+        Self {
+            previous: None,
+            source: None,
+            key_pair: None,
+            work: None,
+            build_sideband: true,
+        }
     }
 
     pub fn previous(mut self, previous: BlockHash) -> Self {
@@ -17,16 +26,37 @@ impl ReceiveBlockBuilder {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<ReceiveBlock> {
-        let key_pair = KeyPair::new();
+    pub fn source(mut self, source: BlockHash) -> Self {
+        self.source = Some(source);
+        self
+    }
 
+    pub fn sign(mut self, key_pair: KeyPair) -> Self {
+        self.key_pair = Some(key_pair);
+        self
+    }
+
+    pub fn work(mut self, work: u64) -> Self {
+        self.work = Some(work);
+        self
+    }
+
+    pub fn without_sideband(mut self) -> Self {
+        self.build_sideband = false;
+        self
+    }
+
+    pub fn build(self) -> anyhow::Result<ReceiveBlock> {
+        let key_pair = self.key_pair.unwrap_or_default();
         let previous = self.previous.unwrap_or(BlockHash::from(1));
+        let source = self.source.unwrap_or(BlockHash::from(2));
+
         let mut block = ReceiveBlock::new(
             previous,
-            BlockHash::from(2),
+            source,
             &key_pair.private_key(),
             &key_pair.public_key(),
-            4,
+            self.work.unwrap_or(4),
         )?;
 
         let details = BlockDetails {
@@ -35,15 +65,18 @@ impl ReceiveBlockBuilder {
             is_receive: true,
             is_epoch: false,
         };
-        block.set_sideband(BlockSideband::new(
-            block.account(),
-            BlockHash::zero(),
-            Amount::new(5),
-            1,
-            2,
-            details,
-            Epoch::Epoch0,
-        ));
+
+        if self.build_sideband {
+            block.set_sideband(BlockSideband::new(
+                block.account(),
+                BlockHash::zero(),
+                Amount::new(5),
+                1,
+                2,
+                details,
+                Epoch::Epoch0,
+            ));
+        }
 
         Ok(block)
     }

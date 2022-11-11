@@ -1238,4 +1238,55 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn process_receive() -> anyhow::Result<()> {
+        let ctx = LedgerContext::empty()?;
+        let ledger = &ctx.ledger;
+        let store = &ledger.store;
+        let mut txn = store.tx_begin_write()?;
+
+        let genesis_account_info = store
+            .account()
+            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+            .unwrap();
+
+        let receiver_key = KeyPair::new();
+        let receiver_account = Account::from(receiver_key.public_key());
+        let new_genesis_balance = Amount::new(50);
+        let amount_sent = DEV_CONSTANTS.genesis_amount - new_genesis_balance;
+        let send = ctx.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent)?;
+        let open = ctx.process_open(txn.as_mut(), &send, &receiver_key)?;
+        let mut send2 = BlockBuilder::send()
+            .previous(send.hash())
+            .destination(receiver_account)
+            .balance(Amount::new(25))
+            .sign(DEV_GENESIS_KEY.clone())
+            .work(DEV_WORK_POOL.generate_dev2(send.hash().into()).unwrap())
+            .without_sideband()
+            .build()?;
+
+        assert_eq!(
+            ledger
+                .process(txn.as_mut(), &mut send2, SignatureVerification::Unknown)
+                .code,
+            ProcessResult::Progress
+        );
+
+        let mut receive = BlockBuilder::receive()
+            .previous(open.hash())
+            .source(send2.hash())
+            .sign(receiver_key)
+            .work(DEV_WORK_POOL.generate_dev2(open.hash().into()).unwrap())
+            .without_sideband()
+            .build()?;
+
+        assert_eq!(
+            ledger
+                .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown)
+                .code,
+            ProcessResult::Progress
+        );
+        Ok(())
+    }
 }

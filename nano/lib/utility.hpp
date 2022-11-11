@@ -100,9 +100,6 @@ private:
 	container_info info;
 };
 
-// Lower priority of calling work generating thread
-void work_thread_reprioritize ();
-
 /*
  * Functions for managing filesystem permissions, platform specific
  */

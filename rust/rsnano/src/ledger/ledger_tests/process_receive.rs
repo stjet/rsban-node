@@ -1,10 +1,8 @@
 use crate::{
-    core::{Account, Amount, Block, BlockEnum, KeyPair, OpenBlock, ReceiveBlock, SendBlock},
-    ledger::{datastore::WriteTransaction, Ledger},
-    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
+    core::{Account, Amount, Block, BlockEnum},
+    ledger::ledger_tests::LedgerWithReceiveBlock,
+    DEV_GENESIS_ACCOUNT,
 };
-
-use super::LedgerContext;
 
 #[test]
 fn updates_sideband() {
@@ -104,51 +102,4 @@ fn updates_latest_block() {
         ctx.ledger().latest(ctx.txn.txn(), &ctx.receiver_account),
         Some(ctx.receive_block.hash())
     );
-}
-
-struct LedgerWithReceiveBlock {
-    pub open_block: OpenBlock,
-    pub send_block: SendBlock,
-    pub receive_block: ReceiveBlock,
-    pub txn: Box<dyn WriteTransaction>,
-    pub receiver_key: KeyPair,
-    pub receiver_account: Account,
-    pub amount_sent: Amount,
-    pub expected_receiver_balance: Amount,
-    ledger_context: LedgerContext,
-}
-
-impl LedgerWithReceiveBlock {
-    fn new() -> Self {
-        let receiver_key = KeyPair::new();
-        let receiver_account = receiver_key.public_key().into();
-        let ledger_context = LedgerContext::empty();
-        let mut txn = ledger_context.ledger.rw_txn();
-
-        let amount_sent1 = DEV_CONSTANTS.genesis_amount - Amount::new(50);
-        let send1 =
-            ledger_context.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent1);
-        let open_block = ledger_context.process_open(txn.as_mut(), &send1, &receiver_key);
-        let amount_sent2 = Amount::new(25);
-        let send2 =
-            ledger_context.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent2);
-        let receive_block = ledger_context.process_receive(txn.as_mut(), &send2, &receiver_key);
-        let expected_receiver_balance = DEV_CONSTANTS.genesis_amount - Amount::new(25);
-
-        Self {
-            txn,
-            open_block,
-            send_block: send2,
-            receive_block,
-            ledger_context,
-            receiver_key,
-            amount_sent: amount_sent2,
-            receiver_account,
-            expected_receiver_balance,
-        }
-    }
-
-    fn ledger(&self) -> &Ledger {
-        &self.ledger_context.ledger
-    }
 }

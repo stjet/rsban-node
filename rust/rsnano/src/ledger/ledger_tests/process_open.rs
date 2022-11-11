@@ -1,10 +1,8 @@
 use crate::{
-    core::{Account, Amount, Block, BlockEnum, KeyPair, OpenBlock, SendBlock},
-    ledger::{datastore::WriteTransaction, Ledger},
+    core::{Amount, Block, BlockEnum},
+    ledger::ledger_tests::LedgerWithOpenBlock,
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
-
-use super::LedgerContext;
 
 #[test]
 fn updates_sideband() {
@@ -114,41 +112,4 @@ fn updates_receiver_account_info() {
         .get(ctx.txn.txn(), &ctx.receiver_account)
         .unwrap();
     assert_eq!(receiver_info.head, ctx.open_block.hash());
-}
-
-struct LedgerWithOpenBlock {
-    pub open_block: OpenBlock,
-    pub send_block: SendBlock,
-    pub txn: Box<dyn WriteTransaction>,
-    pub receiver_key: KeyPair,
-    pub receiver_account: Account,
-    pub amount_sent: Amount,
-    ledger_context: LedgerContext,
-}
-
-impl LedgerWithOpenBlock {
-    fn new() -> Self {
-        let receiver_key = KeyPair::new();
-        let receiver_account = receiver_key.public_key().into();
-        let ledger_context = LedgerContext::empty();
-        let mut txn = ledger_context.ledger.rw_txn();
-        let amount_sent = Amount::new(50);
-        let send_block =
-            ledger_context.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent);
-        let open_block = ledger_context.process_open(txn.as_mut(), &send_block, &receiver_key);
-
-        Self {
-            txn,
-            open_block,
-            send_block,
-            ledger_context,
-            receiver_key,
-            amount_sent,
-            receiver_account,
-        }
-    }
-
-    fn ledger(&self) -> &Ledger {
-        &self.ledger_context.ledger
-    }
 }

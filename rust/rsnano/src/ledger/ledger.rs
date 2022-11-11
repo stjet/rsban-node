@@ -779,7 +779,7 @@ mod tests {
 
     use crate::{
         config::TxnTrackingConfig,
-        core::{BlockBuilder, KeyPair, OpenBlock, SendBlock, GXRB_RATIO},
+        core::{BlockBuilder, KeyPair, OpenBlock, ReceiveBlock, SendBlock, GXRB_RATIO},
         ledger::{
             datastore::lmdb::{EnvOptions, LmdbStore, TestDbFile},
             DEV_GENESIS_KEY,
@@ -828,7 +828,7 @@ mod tests {
             receiver_account: &Account,
             amount: Amount,
         ) -> anyhow::Result<SendBlock> {
-            let orig_genesis_info = self
+            let account_info = self
                 .ledger
                 .store
                 .account()
@@ -836,13 +836,13 @@ mod tests {
                 .unwrap();
 
             let mut send = BlockBuilder::send()
-                .previous(orig_genesis_info.head)
+                .previous(account_info.head)
                 .destination(*receiver_account)
-                .balance(orig_genesis_info.balance - amount)
+                .balance(account_info.balance - amount)
                 .sign(DEV_GENESIS_KEY.clone())
                 .work(
                     DEV_WORK_POOL
-                        .generate_dev2(orig_genesis_info.head.into())
+                        .generate_dev2(account_info.head.into())
                         .unwrap(),
                 )
                 .without_sideband()
@@ -881,6 +881,40 @@ mod tests {
                 .process(txn, &mut open, SignatureVerification::Unknown);
             assert_eq!(result.code, ProcessResult::Progress);
             Ok(open)
+        }
+
+        pub fn process_receive(
+            &self,
+            txn: &mut dyn WriteTransaction,
+            send: &SendBlock,
+            receiver_key: &KeyPair,
+        ) -> anyhow::Result<ReceiveBlock> {
+            let receiver_account = receiver_key.public_key().into();
+
+            let account_info = self
+                .ledger
+                .store
+                .account()
+                .get(txn.txn(), &receiver_account)
+                .unwrap();
+
+            let mut receive = BlockBuilder::receive()
+                .previous(account_info.head)
+                .source(send.hash())
+                .sign(receiver_key.clone())
+                .work(
+                    DEV_WORK_POOL
+                        .generate_dev2(account_info.head.into())
+                        .unwrap(),
+                )
+                .without_sideband()
+                .build()?;
+
+            let result = self
+                .ledger
+                .process(txn, &mut receive, SignatureVerification::Unknown);
+            assert_eq!(result.code, ProcessResult::Progress);
+            Ok(receive)
         }
     }
 
@@ -1245,47 +1279,123 @@ mod tests {
         let ledger = &ctx.ledger;
         let store = &ledger.store;
         let mut txn = store.tx_begin_write()?;
-
-        let genesis_account_info = store
-            .account()
-            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
-            .unwrap();
-
         let receiver_key = KeyPair::new();
         let receiver_account = Account::from(receiver_key.public_key());
-        let new_genesis_balance = Amount::new(50);
-        let amount_sent = DEV_CONSTANTS.genesis_amount - new_genesis_balance;
-        let send = ctx.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent)?;
-        let open = ctx.process_open(txn.as_mut(), &send, &receiver_key)?;
-        let mut send2 = BlockBuilder::send()
-            .previous(send.hash())
-            .destination(receiver_account)
-            .balance(Amount::new(25))
-            .sign(DEV_GENESIS_KEY.clone())
-            .work(DEV_WORK_POOL.generate_dev2(send.hash().into()).unwrap())
-            .without_sideband()
-            .build()?;
 
+        let send = ctx.process_send_from_genesis(
+            txn.as_mut(),
+            &receiver_account,
+            DEV_CONSTANTS.genesis_amount - Amount::new(50),
+        )?;
+        let open = ctx.process_open(txn.as_mut(), &send, &receiver_key)?;
+        let send2 =
+            ctx.process_send_from_genesis(txn.as_mut(), &receiver_account, Amount::new(25))?;
+
+        let receive = ctx.process_receive(txn.as_mut(), &send2, &receiver_key)?;
+
+        let expected_receiver_balance = DEV_CONSTANTS.genesis_amount - Amount::new(25);
+        // Check sideband
+        let sideband = receive.sideband().unwrap();
+        assert_eq!(sideband.account, receiver_account);
+        assert_eq!(sideband.balance, expected_receiver_balance);
+        assert_eq!(sideband.height, 2);
+
+        // Check stores
         assert_eq!(
-            ledger
-                .process(txn.as_mut(), &mut send2, SignatureVerification::Unknown)
-                .code,
-            ProcessResult::Progress
+            ledger.amount(txn.txn(), &receive.hash()),
+            Some(Amount::new(25))
+        );
+        assert_eq!(
+            store.frontier().get(txn.txn(), &open.hash()),
+            Account::zero()
+        );
+        assert_eq!(
+            store.frontier().get(txn.txn(), &receive.hash()),
+            receiver_account
+        );
+        assert_eq!(store.block().account_calculated(&receive), receiver_account);
+        assert_eq!(
+            ledger.latest(txn.txn(), &receiver_account),
+            Some(receive.hash())
+        );
+        assert_eq!(
+            ledger.account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            Amount::new(25)
+        );
+        assert_eq!(
+            ledger.account_receivable(txn.txn(), &receiver_account, false),
+            Amount::zero()
+        );
+        assert_eq!(
+            ledger.account_balance(txn.txn(), &receiver_account, false),
+            expected_receiver_balance
+        );
+        assert_eq!(ledger.weight(&receiver_account), expected_receiver_balance);
+        Ok(())
+    }
+
+    #[test]
+    fn rollback_receive() -> anyhow::Result<()> {
+        let ctx = LedgerContext::empty()?;
+        let ledger = &ctx.ledger;
+        let store = &ledger.store;
+        let mut txn = store.tx_begin_write()?;
+        let receiver_key = KeyPair::new();
+        let receiver_account = Account::from(receiver_key.public_key());
+
+        let send = ctx.process_send_from_genesis(
+            txn.as_mut(),
+            &receiver_account,
+            DEV_CONSTANTS.genesis_amount - Amount::new(50),
+        )?;
+        let open = ctx.process_open(txn.as_mut(), &send, &receiver_key)?;
+        let send2 =
+            ctx.process_send_from_genesis(txn.as_mut(), &receiver_account, Amount::new(25))?;
+
+        let receive = ctx.process_receive(txn.as_mut(), &send2, &receiver_key)?;
+
+        // Rollback receive block
+        ledger.rollback(txn.as_mut(), &receive.hash(), &mut Vec::new())?;
+
+        assert_eq!(store.block().successor(txn.txn(), &open.hash()), None);
+        assert_eq!(
+            store.frontier().get(txn.txn(), &open.hash()),
+            receiver_account
+        );
+        assert_eq!(
+            store.frontier().get(txn.txn(), &receive.hash()),
+            Account::zero()
+        );
+        assert_eq!(
+            ledger.account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            Amount::new(25)
+        );
+        assert_eq!(
+            ledger.account_receivable(txn.txn(), &receiver_account, false),
+            Amount::new(25)
+        );
+        assert_eq!(
+            ledger.account_balance(txn.txn(), &receiver_account, false),
+            DEV_CONSTANTS.genesis_amount - Amount::new(50),
+        );
+        assert_eq!(
+            ledger.weight(&receiver_account),
+            DEV_CONSTANTS.genesis_amount - Amount::new(50),
+        );
+        assert_eq!(
+            ledger.latest(txn.txn(), &receiver_account),
+            Some(open.hash())
         );
 
-        let mut receive = BlockBuilder::receive()
-            .previous(open.hash())
-            .source(send2.hash())
-            .sign(receiver_key)
-            .work(DEV_WORK_POOL.generate_dev2(open.hash().into()).unwrap())
-            .without_sideband()
-            .build()?;
-
+        let pending = store
+            .pending()
+            .get(txn.txn(), &PendingKey::new(receiver_account, send2.hash()))
+            .unwrap();
+        assert_eq!(pending.source, *DEV_GENESIS_ACCOUNT);
+        assert_eq!(pending.amount, Amount::new(25));
         assert_eq!(
-            ledger
-                .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown)
-                .code,
-            ProcessResult::Progress
+            store.account().count(txn.txn()),
+            ledger.cache.account_count.load(Ordering::Relaxed)
         );
         Ok(())
     }

@@ -145,7 +145,6 @@ TEST (ledger, representative_change)
 	ASSERT_EQ (0, ledger.weight (key2.pub));
 }
 
-
 TEST (ledger, receive_fork)
 {
 	auto ctx = nano::test::context::ledger_empty ();

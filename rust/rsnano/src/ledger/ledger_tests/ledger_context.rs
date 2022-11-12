@@ -1,10 +1,10 @@
-use std::{sync::Arc, time::Duration};
+use std::{ops::Deref, sync::Arc, time::Duration};
 
 use crate::{
     config::TxnTrackingConfig,
     core::{
-        Account, Amount, Block, BlockBuilder, KeyPair, OpenBlock, ReceiveBlock, SendBlock,
-        SignatureVerification,
+        Account, Amount, Block, BlockBuilder, ChangeBlock, KeyPair, OpenBlock, ReceiveBlock,
+        SendBlock, SignatureVerification,
     },
     ledger::{
         datastore::{
@@ -16,7 +16,7 @@ use crate::{
     stats::{Stat, StatConfig},
     utils::NullLogger,
     work::DEV_WORK_POOL,
-    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
+    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
 pub(crate) struct LedgerContext {
@@ -149,5 +149,29 @@ impl LedgerContext {
             .process(txn, &mut receive, SignatureVerification::Unknown);
         assert_eq!(result.code, ProcessResult::Progress);
         receive
+    }
+
+    pub(crate) fn process_change(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        representative: Account,
+    ) -> ChangeBlock {
+        let mut change = BlockBuilder::change()
+            .previous(*DEV_GENESIS_HASH)
+            .representative(representative)
+            .sign(DEV_GENESIS_KEY.clone())
+            .work(
+                DEV_WORK_POOL
+                    .generate_dev2(DEV_GENESIS_HASH.deref().into())
+                    .unwrap(),
+            )
+            .build()
+            .unwrap();
+
+        let result = self
+            .ledger
+            .process(txn, &mut change, SignatureVerification::Unknown);
+        assert_eq!(result.code, ProcessResult::Progress);
+        change
     }
 }

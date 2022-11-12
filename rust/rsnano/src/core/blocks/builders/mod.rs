@@ -1,8 +1,10 @@
+mod change_block_builder;
 mod open_block_builder;
 mod receive_block_builder;
 mod send_block_builder;
 mod state_block_builder;
 
+pub use change_block_builder::ChangeBlockBuilder;
 pub use open_block_builder::OpenBlockBuilder;
 pub use receive_block_builder::ReceiveBlockBuilder;
 pub use send_block_builder::SendBlockBuilder;
@@ -25,5 +27,9 @@ impl BlockBuilder {
 
     pub fn send() -> SendBlockBuilder {
         SendBlockBuilder::new()
+    }
+
+    pub fn change() -> ChangeBlockBuilder {
+        ChangeBlockBuilder::new()
     }
 }

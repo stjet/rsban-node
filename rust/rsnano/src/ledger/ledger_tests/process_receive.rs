@@ -5,7 +5,7 @@ use crate::{
 };
 
 #[test]
-fn updates_sideband() {
+fn update_sideband() {
     let ctx = LedgerWithReceiveBlock::new();
     let sideband = ctx.receive_block.sideband().unwrap();
     assert_eq!(sideband.account, ctx.receiver_account);
@@ -14,7 +14,7 @@ fn updates_sideband() {
 }
 
 #[test]
-fn saves_block() {
+fn save_block() {
     let ctx = LedgerWithReceiveBlock::new();
 
     let loaded_block = ctx
@@ -33,7 +33,7 @@ fn saves_block() {
 }
 
 #[test]
-fn updates_block_amount() {
+fn update_block_amount() {
     let ctx = LedgerWithReceiveBlock::new();
     assert_eq!(
         ctx.ledger()
@@ -43,7 +43,7 @@ fn updates_block_amount() {
 }
 
 #[test]
-fn updates_frontier_store() {
+fn update_frontier_store() {
     let ctx = LedgerWithReceiveBlock::new();
     assert_eq!(
         ctx.ledger()
@@ -62,7 +62,7 @@ fn updates_frontier_store() {
 }
 
 #[test]
-fn updates_balance() {
+fn update_balance() {
     let ctx = LedgerWithReceiveBlock::new();
     assert_eq!(
         ctx.ledger()
@@ -77,7 +77,7 @@ fn updates_balance() {
 }
 
 #[test]
-fn updates_vote_weight() {
+fn update_vote_weight() {
     let ctx = LedgerWithReceiveBlock::new();
     assert_eq!(
         ctx.ledger().weight(&ctx.receiver_account),
@@ -86,7 +86,7 @@ fn updates_vote_weight() {
 }
 
 #[test]
-fn updates_account_receivable() {
+fn update_account_receivable() {
     let ctx = LedgerWithReceiveBlock::new();
     assert_eq!(
         ctx.ledger()
@@ -96,7 +96,7 @@ fn updates_account_receivable() {
 }
 
 #[test]
-fn updates_latest_block() {
+fn update_latest_block() {
     let ctx = LedgerWithReceiveBlock::new();
     assert_eq!(
         ctx.ledger().latest(ctx.txn.txn(), &ctx.receiver_account),

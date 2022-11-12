@@ -6,7 +6,7 @@ use crate::{
 use super::LedgerWithOpenBlock;
 
 #[test]
-fn clears_frontier_store() {
+fn remove_from_frontier_store() {
     let mut ctx = LedgerWithOpenBlock::new();
 
     ctx.rollback();
@@ -21,7 +21,7 @@ fn clears_frontier_store() {
 }
 
 #[test]
-fn clears_account_store() {
+fn remove_from_account_store() {
     let mut ctx = LedgerWithOpenBlock::new();
 
     ctx.rollback();
@@ -43,7 +43,7 @@ fn clears_account_store() {
 }
 
 #[test]
-fn updates_pending_store() {
+fn update_pending_store() {
     let mut ctx = LedgerWithOpenBlock::new();
 
     ctx.rollback();
@@ -63,7 +63,7 @@ fn updates_pending_store() {
 }
 
 #[test]
-fn updates_account_balance() {
+fn update_account_balance() {
     let mut ctx = LedgerWithOpenBlock::new();
 
     ctx.rollback();
@@ -81,7 +81,7 @@ fn updates_account_balance() {
 }
 
 #[test]
-fn updates_receivable() {
+fn update_receivable() {
     let mut ctx = LedgerWithOpenBlock::new();
 
     ctx.rollback();
@@ -94,7 +94,7 @@ fn updates_receivable() {
 }
 
 #[test]
-fn updates_vote_weight() {
+fn update_vote_weight() {
     let mut ctx = LedgerWithOpenBlock::new();
 
     ctx.rollback();

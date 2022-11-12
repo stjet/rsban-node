@@ -5,7 +5,7 @@ use crate::{
 };
 
 #[test]
-fn saves_block() {
+fn save_block() {
     let ctx = LedgerWithSendBlock::new();
 
     let loaded_send = ctx
@@ -24,7 +24,7 @@ fn saves_block() {
 }
 
 #[test]
-fn updates_sideband() {
+fn update_sideband() {
     let ctx = LedgerWithSendBlock::new();
     let sideband = ctx.send_block.sideband().unwrap();
     assert_eq!(sideband.account, *DEV_GENESIS_ACCOUNT);
@@ -33,7 +33,7 @@ fn updates_sideband() {
 }
 
 #[test]
-fn updates_block_amount() {
+fn update_block_amount() {
     let ctx = LedgerWithSendBlock::new();
     assert_eq!(
         ctx.ledger().amount(ctx.txn.txn(), &ctx.send_block.hash()),
@@ -42,7 +42,7 @@ fn updates_block_amount() {
 }
 
 #[test]
-fn updates_receivable() {
+fn update_receivable() {
     let ctx = LedgerWithSendBlock::new();
     assert_eq!(
         ctx.ledger()
@@ -52,7 +52,7 @@ fn updates_receivable() {
 }
 
 #[test]
-fn updates_frontier_store() {
+fn update_frontier_store() {
     let ctx = LedgerWithSendBlock::new();
     assert_eq!(
         ctx.ledger()
@@ -71,7 +71,7 @@ fn updates_frontier_store() {
 }
 
 #[test]
-fn updates_account_info() {
+fn update_account_info() {
     let ctx = LedgerWithSendBlock::new();
     let account_info = ctx
         .ledger()

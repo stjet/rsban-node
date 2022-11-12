@@ -5,7 +5,7 @@ use crate::{
 };
 
 #[test]
-fn updates_sideband() {
+fn update_sideband() {
     let ctx = LedgerWithOpenBlock::new();
     let sideband = ctx.open_block.sideband().unwrap();
     assert_eq!(sideband.account, ctx.receiver_account);
@@ -14,7 +14,7 @@ fn updates_sideband() {
 }
 
 #[test]
-fn saves_block() {
+fn save_block() {
     let ctx = LedgerWithOpenBlock::new();
 
     let loaded_open = ctx
@@ -33,7 +33,7 @@ fn saves_block() {
 }
 
 #[test]
-fn updates_block_amount() {
+fn update_block_amount() {
     let ctx = LedgerWithOpenBlock::new();
     assert_eq!(
         ctx.ledger().amount(ctx.txn.txn(), &ctx.open_block.hash()),
@@ -49,7 +49,7 @@ fn updates_block_amount() {
 }
 
 #[test]
-fn updates_frontier_store() {
+fn update_frontier_store() {
     let ctx = LedgerWithOpenBlock::new();
     assert_eq!(
         ctx.ledger()
@@ -61,7 +61,7 @@ fn updates_frontier_store() {
 }
 
 #[test]
-fn updates_account_balance() {
+fn update_account_balance() {
     let ctx = LedgerWithOpenBlock::new();
     assert_eq!(
         ctx.ledger()
@@ -71,7 +71,7 @@ fn updates_account_balance() {
 }
 
 #[test]
-fn updates_account_receivable() {
+fn update_account_receivable() {
     let ctx = LedgerWithOpenBlock::new();
     assert_eq!(
         ctx.ledger()
@@ -81,7 +81,7 @@ fn updates_account_receivable() {
 }
 
 #[test]
-fn updates_vote_weight() {
+fn update_vote_weight() {
     let ctx = LedgerWithOpenBlock::new();
     assert_eq!(
         ctx.ledger().weight(&DEV_GENESIS_ACCOUNT),
@@ -91,7 +91,7 @@ fn updates_vote_weight() {
 }
 
 #[test]
-fn updates_sender_account_info() {
+fn update_sender_account_info() {
     let ctx = LedgerWithOpenBlock::new();
     let sender_info = ctx
         .ledger()
@@ -103,7 +103,7 @@ fn updates_sender_account_info() {
 }
 
 #[test]
-fn updates_receiver_account_info() {
+fn update_receiver_account_info() {
     let ctx = LedgerWithOpenBlock::new();
     let receiver_info = ctx
         .ledger()

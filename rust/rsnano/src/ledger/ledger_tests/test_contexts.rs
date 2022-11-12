@@ -143,4 +143,15 @@ impl LedgerWithReceiveBlock {
     pub fn ledger(&self) -> &Ledger {
         &self.ledger_context.ledger
     }
+
+    pub(crate) fn rollback(&mut self) {
+        self.ledger_context
+            .ledger
+            .rollback(
+                self.txn.as_mut(),
+                &self.receive_block.hash(),
+                &mut Vec::new(),
+            )
+            .unwrap();
+    }
 }

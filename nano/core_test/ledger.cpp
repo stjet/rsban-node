@@ -10,57 +10,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (ledger, rollback_receiver)
-{
-	auto ctx = nano::test::context::ledger_empty ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	auto transaction = store.tx_begin_write ();
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	nano::account_info info1;
-	ASSERT_FALSE (store.account ().get (*transaction, nano::dev::genesis_key.pub, info1));
-	nano::keypair key2;
-	nano::block_builder builder;
-	auto send = builder
-				.send ()
-				.previous (info1.head ())
-				.destination (key2.pub)
-				.balance (50)
-				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*pool.generate (info1.head ()))
-				.build ();
-	nano::block_hash hash1 (send->hash ());
-	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send).code);
-	nano::keypair key3;
-	auto open = builder
-				.open ()
-				.source (hash1)
-				.representative (key3.pub)
-				.account (key2.pub)
-				.sign (key2.prv, key2.pub)
-				.work (*pool.generate (key2.pub))
-				.build ();
-	nano::block_hash hash2 (open->hash ());
-	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *open).code);
-	ASSERT_EQ (hash2, ledger.latest (*transaction, key2.pub));
-	ASSERT_EQ (50, ledger.account_balance (*transaction, nano::dev::genesis_key.pub));
-	ASSERT_EQ (nano::dev::constants.genesis_amount - 50, ledger.account_balance (*transaction, key2.pub));
-	ASSERT_EQ (50, ledger.weight (nano::dev::genesis_key.pub));
-	ASSERT_EQ (0, ledger.weight (key2.pub));
-	ASSERT_EQ (nano::dev::constants.genesis_amount - 50, ledger.weight (key3.pub));
-	ASSERT_FALSE (ledger.rollback (*transaction, hash1));
-	ASSERT_EQ (nano::dev::constants.genesis_amount, ledger.account_balance (*transaction, nano::dev::genesis_key.pub));
-	ASSERT_EQ (0, ledger.account_balance (*transaction, key2.pub));
-	ASSERT_EQ (nano::dev::constants.genesis_amount, ledger.weight (nano::dev::genesis_key.pub));
-	ASSERT_EQ (0, ledger.weight (key2.pub));
-	ASSERT_EQ (0, ledger.weight (key3.pub));
-	nano::account_info info2;
-	ASSERT_TRUE (store.account ().get (*transaction, key2.pub, info2));
-	ASSERT_EQ (store.account ().count (*transaction), ledger.cache.account_count ());
-	nano::pending_info pending1;
-	ASSERT_TRUE (store.pending ().get (*transaction, nano::pending_key{ key2.pub, info2.head () }, pending1));
-}
-
 TEST (ledger, rollback_representation)
 {
 	auto ctx = nano::test::context::ledger_empty ();

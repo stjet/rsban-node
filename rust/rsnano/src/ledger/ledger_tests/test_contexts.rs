@@ -13,7 +13,7 @@ pub(crate) struct LedgerWithOpenBlock {
     pub receiver_key: KeyPair,
     pub receiver_account: Account,
     pub amount_sent: Amount,
-    ledger_context: LedgerContext,
+    pub ledger_context: LedgerContext,
 }
 
 impl LedgerWithOpenBlock {

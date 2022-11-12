@@ -1,11 +1,11 @@
 use std::sync::atomic::Ordering;
 
 use crate::{
-    core::{Account, Block, PendingKey},
+    core::{Account, Amount, Block, PendingKey},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
-use super::LedgerWithSendBlock;
+use super::{LedgerWithOpenBlock, LedgerWithSendBlock};
 
 #[test]
 fn update_vote_weight() {
@@ -87,4 +87,40 @@ fn update_confirmation_height_store() {
 
     assert_eq!(conf_height.frontier, *DEV_GENESIS_HASH);
     assert_eq!(conf_height.height, 1);
+}
+
+#[test]
+fn rollback_dependent_blocks_too() {
+    let mut ctx = LedgerWithOpenBlock::new();
+
+    // Rollback send block. This requires the rollback of the open block first.
+    ctx.ledger_context
+        .ledger
+        .rollback(ctx.txn.as_mut(), &ctx.send_block.hash(), &mut Vec::new())
+        .unwrap();
+
+    assert_eq!(
+        ctx.ledger()
+            .account_balance(ctx.txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+        DEV_CONSTANTS.genesis_amount
+    );
+
+    assert_eq!(
+        ctx.ledger()
+            .account_balance(ctx.txn.txn(), &ctx.receiver_account, false),
+        Amount::zero()
+    );
+
+    assert!(ctx
+        .ledger()
+        .store
+        .account()
+        .get(ctx.txn.txn(), &ctx.receiver_account)
+        .is_none());
+
+    let pending = ctx.ledger().store.pending().get(
+        ctx.txn.txn(),
+        &PendingKey::new(ctx.receiver_account, *DEV_GENESIS_HASH),
+    );
+    assert_eq!(pending, None);
 }

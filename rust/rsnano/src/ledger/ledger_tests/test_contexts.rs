@@ -58,7 +58,7 @@ pub(crate) struct LedgerWithSendBlock {
     pub old_genesis_balance: Amount,
     pub new_genesis_balance: Amount,
     pub amount_sent: Amount,
-    ledger_context: LedgerContext,
+    pub ledger_context: LedgerContext,
 }
 
 impl LedgerWithSendBlock {

@@ -102,3 +102,22 @@ fn cache() {
     assert_eq!(ctx.ledger.cache.account_count.load(Ordering::SeqCst), 1);
     assert_eq!(ctx.ledger.cache.cemented_count.load(Ordering::SeqCst), 1);
 }
+
+#[test]
+fn genesis_representative() {
+    let ctx = LedgerContext::empty();
+    let txn = ctx.ledger.read_txn();
+    assert_eq!(
+        ctx.ledger.representative(txn.txn(), &DEV_GENESIS_HASH),
+        *DEV_GENESIS_HASH
+    );
+}
+
+#[test]
+fn genesis_vote_weight() {
+    let ctx = LedgerContext::empty();
+    assert_eq!(
+        ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
+        DEV_CONSTANTS.genesis_amount
+    );
+}

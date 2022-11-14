@@ -1,6 +1,5 @@
 use crate::{
-    core::{Account, Amount, Block, PendingKey, SignatureVerification},
-    ledger::ProcessResult,
+    core::{Account, Amount, Block, PendingKey},
     DEV_GENESIS_ACCOUNT,
 };
 
@@ -102,17 +101,4 @@ fn update_vote_weight() {
 
     assert_eq!(ctx.ledger().weight(&DEV_GENESIS_ACCOUNT), Amount::new(50));
     assert_eq!(ctx.ledger().weight(&ctx.receiver_account), Amount::zero());
-}
-
-#[test]
-fn process_duplicate_open_fails() {
-    let mut ctx = LedgerWithOpenBlock::new();
-
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut ctx.open_block,
-        SignatureVerification::Unknown,
-    );
-
-    assert_eq!(result.code, ProcessResult::Old);
 }

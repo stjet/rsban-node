@@ -107,7 +107,7 @@ pub(crate) struct LedgerWithReceiveBlock {
     pub receiver_account: Account,
     pub amount_sent: Amount,
     pub expected_receiver_balance: Amount,
-    ledger_context: LedgerContext,
+    pub ledger_context: LedgerContext,
 }
 
 impl LedgerWithReceiveBlock {

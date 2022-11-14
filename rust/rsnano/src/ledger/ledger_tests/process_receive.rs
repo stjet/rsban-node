@@ -1,6 +1,9 @@
 use crate::{
-    core::{Account, Amount, Block, BlockBuilder, BlockEnum},
-    ledger::{ledger_tests::LedgerWithReceiveBlock, ProcessResult},
+    core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
+    ledger::{
+        ledger_tests::{LedgerWithReceiveBlock, LedgerWithSendBlock},
+        ProcessResult,
+    },
     DEV_GENESIS_ACCOUNT,
 };
 
@@ -136,7 +139,7 @@ fn receive_fork() {
 }
 
 #[test]
-fn double_receive() {
+fn fail_double_receive() {
     let mut ctx = LedgerWithOpenBlock::new();
 
     let mut double_receive = BlockBuilder::receive()
@@ -151,4 +154,91 @@ fn double_receive() {
         .process(ctx.txn.as_mut(), &mut double_receive);
 
     assert_eq!(result, ProcessResult::Unreceivable);
+}
+
+#[test]
+fn fail_old() {
+    let mut ctx = LedgerWithReceiveBlock::new();
+
+    let result = ctx
+        .ledger_context
+        .process(ctx.txn.as_mut(), &mut ctx.receive_block);
+
+    assert_eq!(result, ProcessResult::Old);
+}
+
+#[test]
+fn fail_gap_source() {
+    let mut ctx = LedgerWithOpenBlock::new();
+
+    let mut receive = BlockBuilder::receive()
+        .previous(ctx.open_block.hash())
+        .source(BlockHash::from(1))
+        .sign(ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut receive);
+
+    assert_eq!(result, ProcessResult::GapSource);
+}
+
+#[test]
+fn fail_bad_signature() {
+    let mut ctx = LedgerWithOpenBlock::new();
+
+    let send = ctx.ledger_context.process_send_from_genesis(
+        ctx.txn.as_mut(),
+        &ctx.receiver_account,
+        Amount::new(1),
+    );
+
+    let mut receive = BlockBuilder::receive()
+        .previous(ctx.open_block.hash())
+        .source(send.hash())
+        .sign(KeyPair::new())
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut receive);
+
+    assert_eq!(result, ProcessResult::BadSignature);
+}
+
+#[test]
+fn fail_gap_previous_unopened() {
+    let mut ctx = LedgerWithSendBlock::new();
+
+    let mut receive = BlockBuilder::receive()
+        .previous(BlockHash::from(1))
+        .source(ctx.send_block.hash())
+        .sign(ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut receive);
+
+    assert_eq!(result, ProcessResult::GapPrevious);
+}
+
+#[test]
+fn fail_gap_previous_opened() {
+    let mut ctx = LedgerWithOpenBlock::new();
+
+    let send2 = ctx.ledger_context.process_send_from_genesis(
+        ctx.txn.as_mut(),
+        &ctx.receiver_account,
+        Amount::new(1),
+    );
+
+    let mut receive = BlockBuilder::receive()
+        .previous(BlockHash::from(1))
+        .source(send2.hash())
+        .sign(ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut receive);
+
+    assert_eq!(result, ProcessResult::GapPrevious);
 }

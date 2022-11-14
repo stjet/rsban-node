@@ -1,6 +1,9 @@
 use crate::{
-    core::{Account, Amount, Block, BlockBuilder, BlockEnum},
-    ledger::{ledger_tests::LedgerWithOpenBlock, ProcessResult},
+    core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
+    ledger::{
+        ledger_tests::{LedgerContext, LedgerWithOpenBlock, LedgerWithSendBlock},
+        ProcessResult,
+    },
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
 
@@ -115,7 +118,7 @@ fn update_receiver_account_info() {
 }
 
 #[test]
-fn open_fork() {
+fn fail_fork() {
     let mut ctx = LedgerWithOpenBlock::new();
     let mut open_fork = BlockBuilder::open()
         .source(ctx.send_block.hash())
@@ -128,4 +131,86 @@ fn open_fork() {
     let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut open_fork);
 
     assert_eq!(result, ProcessResult::Fork);
+}
+
+#[test]
+fn fail_fork_previous() {
+    let mut ctx = LedgerWithOpenBlock::new();
+
+    let send2 = ctx.ledger_context.process_send_from_genesis(
+        ctx.txn.as_mut(),
+        &ctx.receiver_account,
+        Amount::new(1),
+    );
+
+    let mut open_fork = BlockBuilder::open()
+        .source(send2.hash())
+        .account(ctx.receiver_account)
+        .sign(ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut open_fork);
+
+    assert_eq!(result, ProcessResult::Fork);
+}
+
+#[test]
+fn process_duplicate_open_fails() {
+    let mut ctx = LedgerWithOpenBlock::new();
+
+    let result = ctx
+        .ledger_context
+        .process(ctx.txn.as_mut(), &mut ctx.open_block);
+
+    assert_eq!(result, ProcessResult::Old);
+}
+
+#[test]
+fn fail_gap_source() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let keypair = KeyPair::new();
+
+    let mut open = BlockBuilder::open()
+        .source(BlockHash::from(1))
+        .account(keypair.public_key().into())
+        .sign(keypair)
+        .build()
+        .unwrap();
+
+    let result = ctx.process(txn.as_mut(), &mut open);
+    assert_eq!(result, ProcessResult::GapSource);
+}
+
+#[test]
+fn fail_bad_signature() {
+    let mut ctx = LedgerWithSendBlock::new();
+    let bad_keys = KeyPair::new();
+
+    let mut open = BlockBuilder::open()
+        .source(ctx.send_block.hash())
+        .account(ctx.receiver_account)
+        .sign(bad_keys)
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut open);
+    assert_eq!(result, ProcessResult::BadSignature);
+}
+
+#[test]
+fn fail_account_mismatch() {
+    let mut ctx = LedgerWithSendBlock::new();
+    let bad_key = KeyPair::new();
+
+    let mut open = BlockBuilder::open()
+        .source(ctx.send_block.hash())
+        .account(bad_key.public_key().into())
+        .sign(bad_key)
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut open);
+    assert_eq!(result, ProcessResult::Unreceivable);
 }

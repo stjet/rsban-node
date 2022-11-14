@@ -1,9 +1,10 @@
 use crate::{
-    core::{Account, Amount, Block, BlockEnum},
+    core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
+    ledger::{ProcessResult, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
-use super::LedgerWithChangeBlock;
+use super::{LedgerContext, LedgerWithChangeBlock};
 
 #[test]
 fn update_sideband() {
@@ -79,4 +80,62 @@ fn update_account_info() {
         account_info.representative,
         ctx.change_block.representative()
     );
+}
+
+#[test]
+fn fail_old() {
+    let mut ctx = LedgerWithChangeBlock::new();
+    let result = ctx
+        .ledger_context
+        .process(ctx.txn.as_mut(), &mut ctx.change_block);
+    assert_eq!(result, ProcessResult::Old);
+}
+
+#[test]
+fn fail_gap_previous() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let keypair = KeyPair::new();
+
+    let mut block = BlockBuilder::change()
+        .previous(BlockHash::from(1))
+        .sign(keypair)
+        .build()
+        .unwrap();
+
+    let result = ctx.process(txn.as_mut(), &mut block);
+
+    assert_eq!(result, ProcessResult::GapPrevious);
+}
+
+#[test]
+fn fail_bad_signature() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let wrong_keys = KeyPair::new();
+
+    let mut block = BlockBuilder::change()
+        .previous(*DEV_GENESIS_HASH)
+        .sign(wrong_keys)
+        .build()
+        .unwrap();
+
+    let result = ctx.process(txn.as_mut(), &mut block);
+
+    assert_eq!(result, ProcessResult::BadSignature);
+}
+
+#[test]
+fn fail_fork() {
+    let mut ctx = LedgerWithChangeBlock::new();
+    let mut block = BlockBuilder::change()
+        .previous(*DEV_GENESIS_HASH)
+        .representative(Account::from(12345))
+        .sign(DEV_GENESIS_KEY.clone())
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut block);
+
+    assert_eq!(result, ProcessResult::Fork);
 }

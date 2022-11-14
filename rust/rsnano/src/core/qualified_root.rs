@@ -9,6 +9,10 @@ pub struct QualifiedRoot {
 }
 
 impl QualifiedRoot {
+    pub fn new(root: Root, previous: BlockHash) -> Self {
+        Self { root, previous }
+    }
+
     pub fn to_bytes(&self) -> [u8; 64] {
         let mut buffer = [0; 64];
         let mut stream = MutStreamAdapter::new(&mut buffer);

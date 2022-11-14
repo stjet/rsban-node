@@ -1,6 +1,9 @@
 use crate::{
-    core::{Account, Amount, Block, BlockBuilder, BlockEnum},
-    ledger::{ledger_tests::LedgerWithSendBlock, ProcessResult},
+    core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
+    ledger::{
+        ledger_tests::{LedgerContext, LedgerWithSendBlock},
+        ProcessResult, DEV_GENESIS_KEY,
+    },
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -91,7 +94,7 @@ fn update_vote_weight() {
 }
 
 #[test]
-fn process_duplicate_send_fails() {
+fn fail_duplicate_send() {
     let mut ctx = LedgerWithSendBlock::new();
 
     let result = ctx
@@ -102,7 +105,7 @@ fn process_duplicate_send_fails() {
 }
 
 #[test]
-fn process_fork_fails() {
+fn fail_fork() {
     let mut ctx = LedgerWithSendBlock::new();
 
     let mut fork = BlockBuilder::send()
@@ -115,4 +118,55 @@ fn process_fork_fails() {
     let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut fork);
 
     assert_eq!(result, ProcessResult::Fork);
+}
+
+#[test]
+fn fail_gap_previous() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let mut block = BlockBuilder::send()
+        .previous(BlockHash::from(1))
+        .destination(Account::from(2))
+        .sign(DEV_GENESIS_KEY.clone())
+        .build()
+        .unwrap();
+
+    let result = ctx.process(txn.as_mut(), &mut block);
+
+    assert_eq!(result, ProcessResult::GapPrevious);
+}
+
+#[test]
+fn fail_bad_signature() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let wrong_keys = KeyPair::new();
+    let mut block = BlockBuilder::send()
+        .previous(*DEV_GENESIS_HASH)
+        .destination(Account::from(2))
+        .sign(wrong_keys)
+        .build()
+        .unwrap();
+
+    let result = ctx.process(txn.as_mut(), &mut block);
+
+    assert_eq!(result, ProcessResult::BadSignature);
+}
+
+#[test]
+fn fail_negative_spend() {
+    let mut ctx = LedgerWithSendBlock::new();
+
+    let mut block = BlockBuilder::send()
+        .previous(ctx.send_block.hash())
+        .destination(Account::from(2))
+        .balance(ctx.send_block.balance() + Amount::new(1))
+        .sign(DEV_GENESIS_KEY.clone())
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut block);
+    assert_eq!(result, ProcessResult::NegativeSpend);
 }

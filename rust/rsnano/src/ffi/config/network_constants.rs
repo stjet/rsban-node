@@ -16,7 +16,7 @@ pub struct NetworkConstantsDto {
     pub default_rpc_port: u16,
     pub default_ipc_port: u16,
     pub default_websocket_port: u16,
-    pub request_interval_ms: u32,
+    pub aec_loop_interval_ms: u32,
     pub cleanup_period_s: i64,
     pub keepalive_period_s: i64,
     pub idle_timeout_s: i64,
@@ -57,7 +57,7 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     dto.default_rpc_port = constants.default_rpc_port;
     dto.default_ipc_port = constants.default_ipc_port;
     dto.default_websocket_port = constants.default_websocket_port;
-    dto.request_interval_ms = constants.request_interval_ms;
+    dto.aec_loop_interval_ms = constants.aec_loop_interval_ms;
     dto.cleanup_period_s = constants.cleanup_period_s;
     dto.keepalive_period_s = constants.keepalive_period.as_secs() as i64;
     dto.idle_timeout_s = constants.idle_timeout_s;
@@ -153,7 +153,7 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
             default_rpc_port: value.default_rpc_port,
             default_ipc_port: value.default_ipc_port,
             default_websocket_port: value.default_websocket_port,
-            request_interval_ms: value.request_interval_ms,
+            aec_loop_interval_ms: value.aec_loop_interval_ms,
             cleanup_period_s: value.cleanup_period_s,
             keepalive_period: Duration::from_secs(value.keepalive_period_s as u64),
             idle_timeout_s: value.idle_timeout_s,

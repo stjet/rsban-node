@@ -344,7 +344,7 @@ struct NetworkConstantsDto
 	uint16_t default_rpc_port;
 	uint16_t default_ipc_port;
 	uint16_t default_websocket_port;
-	uint32_t request_interval_ms;
+	uint32_t aec_loop_interval_ms;
 	int64_t cleanup_period_s;
 	int64_t keepalive_period_s;
 	int64_t idle_timeout_s;

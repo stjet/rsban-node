@@ -195,7 +195,7 @@ public:
 	uint16_t default_rpc_port;
 	uint16_t default_ipc_port;
 	uint16_t default_websocket_port;
-	unsigned request_interval_ms;
+	unsigned aec_loop_interval_ms;
 
 	std::chrono::seconds cleanup_period;
 	std::chrono::milliseconds cleanup_period_half () const;

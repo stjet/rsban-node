@@ -205,7 +205,7 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	default_rpc_port = dto.default_rpc_port;
 	default_ipc_port = dto.default_ipc_port;
 	default_websocket_port = dto.default_websocket_port;
-	request_interval_ms = dto.request_interval_ms;
+	aec_loop_interval_ms = dto.aec_loop_interval_ms;
 	cleanup_period = std::chrono::seconds (dto.cleanup_period_s);
 	keepalive_period = std::chrono::seconds (dto.keepalive_period_s);
 	idle_timeout = std::chrono::seconds (dto.idle_timeout_s);
@@ -286,7 +286,7 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.default_ipc_port = default_ipc_port;
 	dto.protocol_version_min = protocol_version_min;
 	dto.default_websocket_port = default_websocket_port;
-	dto.request_interval_ms = request_interval_ms;
+	dto.aec_loop_interval_ms = aec_loop_interval_ms;
 	dto.cleanup_period_s = cleanup_period.count ();
 	dto.keepalive_period_s = keepalive_period.count ();
 	dto.idle_timeout_s = idle_timeout.count ();

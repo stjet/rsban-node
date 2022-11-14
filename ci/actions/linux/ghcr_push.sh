@@ -2,7 +2,7 @@
 set -e
 
 scripts="$PWD/ci"
-if [[ "$GITHUB_WORKFLOW" = "Develop" ]]; then
+if [[ "$GITHUB_WORKFLOW" = "Develop Branch Dockers Deploy" ]]; then
     "$scripts"/custom-timeout.sh 30 docker push "ghcr.io/${GITHUB_REPOSITORY}/rsnano-env:base"
     "$scripts"/custom-timeout.sh 30 docker push "ghcr.io/${GITHUB_REPOSITORY}/rsnano-env:gcc"
     "$scripts"/custom-timeout.sh 30 docker push "ghcr.io/${GITHUB_REPOSITORY}/rsnano-env:clang"

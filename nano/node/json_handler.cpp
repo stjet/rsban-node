@@ -1188,7 +1188,11 @@ void nano::json_handler::block_confirm ()
 			else
 			{
 				// Add record in confirmation history for confirmed block
-				nano::election_status status{ block_l, 0, 0, std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()), std::chrono::duration_values<std::chrono::milliseconds>::zero (), 0, 1, 0, nano::election_status_type::active_confirmation_height };
+				nano::election_status status{};
+				status.set_winner (block_l);
+				status.set_election_end (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()));
+				status.set_block_count (1);
+				status.set_election_status_type (nano::election_status_type::active_confirmation_height);
 				node.active.recently_cemented.put (status);
 				// Trigger callback for confirmed block
 				node.block_arrival.add (hash);
@@ -2012,20 +2016,20 @@ void nano::json_handler::confirmation_history ()
 	{
 		for (auto const & status : node.active.recently_cemented.list ())
 		{
-			if (hash.is_zero () || status.winner->hash () == hash)
+			if (hash.is_zero () || status.get_winner ()->hash () == hash)
 			{
 				boost::property_tree::ptree election;
-				election.put ("hash", status.winner->hash ().to_string ());
-				election.put ("duration", status.election_duration.count ());
-				election.put ("time", status.election_end.count ());
-				election.put ("tally", status.tally.to_string_dec ());
-				election.add ("final", status.final_tally.to_string_dec ());
-				election.put ("blocks", std::to_string (status.block_count));
-				election.put ("voters", std::to_string (status.voter_count));
-				election.put ("request_count", std::to_string (status.confirmation_request_count));
+				election.put ("hash", status.get_winner ()->hash ().to_string ());
+				election.put ("duration", status.get_election_duration ().count ());
+				election.put ("time", status.get_election_end ().count ());
+				election.put ("tally", status.get_tally ().to_string_dec ());
+				election.add ("final", status.get_final_tally ().to_string_dec ());
+				election.put ("blocks", std::to_string (status.get_block_count ()));
+				election.put ("voters", std::to_string (status.get_voter_count ()));
+				election.put ("request_count", std::to_string (status.get_confirmation_request_count ()));
 				elections.push_back (std::make_pair ("", election));
 			}
-			running_total += status.election_duration;
+			running_total += status.get_election_duration ();
 		}
 	}
 	confirmation_stats.put ("count", elections.size ());
@@ -2051,9 +2055,9 @@ void nano::json_handler::confirmation_info ()
 		if (election != nullptr && !election->confirmed ())
 		{
 			auto info = election->current_status ();
-			response_l.put ("announcements", std::to_string (info.status.confirmation_request_count));
+			response_l.put ("announcements", std::to_string (info.status.get_confirmation_request_count ()));
 			response_l.put ("voters", std::to_string (info.votes.size ()));
-			response_l.put ("last_winner", info.status.winner->hash ().to_string ());
+			response_l.put ("last_winner", info.status.get_winner ()->hash ().to_string ());
 			nano::uint128_t total (0);
 			boost::property_tree::ptree blocks;
 			for (auto const & [tally, block] : info.tally)
@@ -2097,7 +2101,7 @@ void nano::json_handler::confirmation_info ()
 				blocks.add_child ((block->hash ()).to_string (), entry);
 			}
 			response_l.put ("total_tally", total.convert_to<std::string> ());
-			response_l.put ("final_tally", info.status.final_tally.to_string_dec ());
+			response_l.put ("final_tally", info.status.get_final_tally ().to_string_dec ());
 			response_l.add_child ("blocks", blocks);
 		}
 		else

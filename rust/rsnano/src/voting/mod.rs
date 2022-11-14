@@ -10,3 +10,6 @@ use crate::core::Uniquer;
 use std::sync::RwLock;
 
 pub(crate) type VoteUniquer = Uniquer<RwLock<Vote>>;
+
+mod election_status;
+pub use election_status::{ElectionStatus, ElectionStatusType};

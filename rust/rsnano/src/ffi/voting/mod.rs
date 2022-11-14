@@ -5,3 +5,5 @@ mod vote_uniquer;
 
 pub use vote::VoteHandle;
 pub use vote_uniquer::VoteUniquerHandle;
+
+mod election_status;

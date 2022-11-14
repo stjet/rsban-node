@@ -625,15 +625,31 @@ enum class election_status_type : uint8_t
 class election_status final
 {
 public:
-	std::shared_ptr<nano::block> winner;
-	nano::amount tally;
-	nano::amount final_tally;
-	std::chrono::milliseconds election_end;
-	std::chrono::milliseconds election_duration;
-	unsigned confirmation_request_count;
-	unsigned block_count;
-	unsigned voter_count;
-	election_status_type type;
+	election_status ();
+	election_status (std::shared_ptr<nano::block> const & winner_a);
+	election_status (election_status &&) = delete;
+	election_status (election_status const &);
+	~election_status ();
+	nano::election_status & operator= (const nano::election_status &);
+	std::shared_ptr<nano::block> get_winner () const;
+	nano::amount get_tally () const;
+	nano::amount get_final_tally () const;
+	std::chrono::milliseconds get_election_end () const;
+	std::chrono::milliseconds get_election_duration () const;
+	unsigned get_confirmation_request_count () const;
+	unsigned get_block_count () const;
+	unsigned get_voter_count () const;
+	election_status_type get_election_status_type () const;
+	void set_winner (std::shared_ptr<nano::block>);
+	void set_tally (nano::amount);
+	void set_final_tally (nano::amount);
+	void set_election_end (std::chrono::milliseconds);
+	void set_election_duration (std::chrono::milliseconds);
+	void set_confirmation_request_count (uint32_t);
+	void set_block_count (uint32_t);
+	void set_voter_count (uint32_t);
+	void set_election_status_type (nano::election_status_type);
+	rsnano::ElectionStatusHandle * handle;
 };
 
 nano::wallet_id random_wallet_id ();

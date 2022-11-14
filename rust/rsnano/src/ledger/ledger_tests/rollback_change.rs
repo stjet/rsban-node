@@ -56,3 +56,28 @@ fn update_vote_weight() {
         Amount::zero(),
     );
 }
+
+#[test]
+fn rollback_dependent_blocks_too() {
+    let mut ctx = LedgerWithChangeBlock::new();
+    let send_block = ctx.ledger_context.process_send_from_genesis(
+        ctx.txn.as_mut(),
+        &Account::from(1000),
+        Amount::new(100),
+    );
+
+    ctx.rollback();
+
+    assert_eq!(
+        ctx.ledger()
+            .store
+            .block()
+            .get(ctx.txn.txn(), &send_block.hash()),
+        None
+    );
+
+    assert_eq!(
+        ctx.ledger().weight(&DEV_GENESIS_ACCOUNT),
+        DEV_CONSTANTS.genesis_amount
+    );
+}

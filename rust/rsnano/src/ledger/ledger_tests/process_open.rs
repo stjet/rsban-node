@@ -1,6 +1,7 @@
 use crate::{
-    core::{Amount, Block, BlockEnum},
-    ledger::ledger_tests::LedgerWithOpenBlock,
+    core::{Account, Amount, Block, BlockBuilder, BlockEnum, SignatureVerification},
+    ledger::{ledger_tests::LedgerWithOpenBlock, ProcessResult},
+    work::DEV_WORK_POOL,
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
 
@@ -112,4 +113,29 @@ fn update_receiver_account_info() {
         .get(ctx.txn.txn(), &ctx.receiver_account)
         .unwrap();
     assert_eq!(receiver_info.head, ctx.open_block.hash());
+}
+
+#[test]
+fn open_fork() {
+    let mut ctx = LedgerWithOpenBlock::new();
+    let mut open_fork = BlockBuilder::open()
+        .source(ctx.send_block.hash())
+        .representative(Account::from(1000))
+        .account(ctx.receiver_account)
+        .sign(ctx.receiver_key)
+        .work(
+            DEV_WORK_POOL
+                .generate_dev2(ctx.send_block.hash().into())
+                .unwrap(),
+        )
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut open_fork,
+        SignatureVerification::Unknown,
+    );
+
+    assert_eq!(result.code, ProcessResult::Fork);
 }

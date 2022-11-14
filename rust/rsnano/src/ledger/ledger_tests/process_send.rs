@@ -85,6 +85,13 @@ fn update_account_info() {
 }
 
 #[test]
+fn update_vote_weight() {
+    let ctx = LedgerWithSendBlock::new();
+    assert_eq!(ctx.ledger().weight(&ctx.receiver_account), Amount::zero());
+    assert_eq!(ctx.ledger().weight(&DEV_GENESIS_ACCOUNT), Amount::new(50));
+}
+
+#[test]
 fn process_duplicate_send_fails() {
     let mut ctx = LedgerWithSendBlock::new();
 

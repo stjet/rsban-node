@@ -1,6 +1,6 @@
 use crate::{
     core::{Account, Amount, Block, ChangeBlock, KeyPair, OpenBlock, ReceiveBlock, SendBlock},
-    ledger::{datastore::WriteTransaction, Ledger},
+    ledger::{datastore::WriteTransaction, Ledger, DEV_GENESIS_KEY},
     DEV_CONSTANTS,
 };
 
@@ -167,7 +167,8 @@ impl LedgerWithChangeBlock {
         let ledger_context = LedgerContext::empty();
         let mut txn = ledger_context.ledger.rw_txn();
         let representative = Account::from(1000);
-        let change_block = ledger_context.process_change(txn.as_mut(), representative);
+        let change_block =
+            ledger_context.process_change(txn.as_mut(), &DEV_GENESIS_KEY, representative);
 
         Self {
             txn,

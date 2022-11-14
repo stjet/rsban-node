@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use crate::{
     config::TxnTrackingConfig,
@@ -16,7 +16,7 @@ use crate::{
     stats::{Stat, StatConfig},
     utils::NullLogger,
     work::DEV_WORK_POOL,
-    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
 
 pub(crate) struct LedgerContext {
@@ -154,15 +154,25 @@ impl LedgerContext {
     pub(crate) fn process_change(
         &self,
         txn: &mut dyn WriteTransaction,
+        keypair: &KeyPair,
         representative: Account,
     ) -> ChangeBlock {
+        let account = keypair.public_key().into();
+
+        let account_info = self
+            .ledger
+            .store
+            .account()
+            .get(txn.txn(), &account)
+            .unwrap();
+
         let mut change = BlockBuilder::change()
-            .previous(*DEV_GENESIS_HASH)
+            .previous(account_info.head)
             .representative(representative)
-            .sign(DEV_GENESIS_KEY.clone())
+            .sign(keypair.clone())
             .work(
                 DEV_WORK_POOL
-                    .generate_dev2(DEV_GENESIS_HASH.deref().into())
+                    .generate_dev2(account_info.head.into())
                     .unwrap(),
             )
             .build()

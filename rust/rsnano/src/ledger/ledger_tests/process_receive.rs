@@ -1,8 +1,11 @@
 use crate::{
-    core::{Account, Amount, Block, BlockEnum},
-    ledger::ledger_tests::LedgerWithReceiveBlock,
+    core::{Account, Amount, Block, BlockBuilder, BlockEnum},
+    ledger::{ledger_tests::LedgerWithReceiveBlock, ProcessResult},
+    work::DEV_WORK_POOL,
     DEV_GENESIS_ACCOUNT,
 };
+
+use super::LedgerWithOpenBlock;
 
 #[test]
 fn update_sideband() {
@@ -83,6 +86,7 @@ fn update_vote_weight() {
         ctx.ledger().weight(&ctx.receiver_account),
         ctx.expected_receiver_balance
     );
+    assert_eq!(ctx.ledger().weight(&DEV_GENESIS_ACCOUNT), Amount::new(25));
 }
 
 #[test]
@@ -102,4 +106,39 @@ fn update_latest_block() {
         ctx.ledger().latest(ctx.txn.txn(), &ctx.receiver_account),
         Some(ctx.receive_block.hash())
     );
+}
+
+#[test]
+fn receive_fork() {
+    let mut ctx = LedgerWithOpenBlock::new();
+
+    let send = ctx.ledger_context.process_send_from_genesis(
+        ctx.txn.as_mut(),
+        &ctx.receiver_account,
+        Amount::new(1),
+    );
+
+    ctx.ledger_context
+        .process_change(ctx.txn.as_mut(), &ctx.receiver_key, Account::from(1000));
+
+    let mut receive_fork = BlockBuilder::receive()
+        .previous(ctx.open_block.hash())
+        .source(send.hash())
+        .sign(ctx.receiver_key.clone())
+        .work(
+            DEV_WORK_POOL
+                .generate_dev2(ctx.open_block.hash().into())
+                .unwrap(),
+        )
+        .without_sideband()
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut receive_fork,
+        crate::core::SignatureVerification::Unknown,
+    );
+
+    assert_eq!(result.code, ProcessResult::Fork);
 }

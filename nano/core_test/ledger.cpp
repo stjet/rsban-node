@@ -103,48 +103,6 @@ TEST (ledger, rollback_representation)
 	ASSERT_EQ (0, ledger.weight (key3.pub));
 }
 
-TEST (ledger, representative_change)
-{
-	auto ctx = nano::test::context::ledger_empty ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	auto transaction = store.tx_begin_write ();
-	nano::keypair key2;
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	ASSERT_EQ (nano::dev::constants.genesis_amount, ledger.weight (nano::dev::genesis_key.pub));
-	ASSERT_EQ (0, ledger.weight (key2.pub));
-	nano::account_info info1;
-	ASSERT_FALSE (store.account ().get (*transaction, nano::dev::genesis_key.pub, info1));
-	nano::block_builder builder;
-	auto block = builder
-				 .change ()
-				 .previous (info1.head ())
-				 .representative (key2.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*pool.generate (info1.head ()))
-				 .build ();
-	ASSERT_EQ (nano::dev::genesis_key.pub, store.frontier ().get (*transaction, info1.head ()));
-	auto return1 (ledger.process (*transaction, *block));
-	ASSERT_EQ (0, ledger.amount (*transaction, block->hash ()));
-	ASSERT_TRUE (store.frontier ().get (*transaction, info1.head ()).is_zero ());
-	ASSERT_EQ (nano::dev::genesis_key.pub, store.frontier ().get (*transaction, block->hash ()));
-	ASSERT_EQ (nano::process_result::progress, return1.code);
-	ASSERT_EQ (nano::dev::genesis_key.pub, store.block ().account_calculated (*block));
-	ASSERT_EQ (0, ledger.weight (nano::dev::genesis_key.pub));
-	ASSERT_EQ (nano::dev::constants.genesis_amount, ledger.weight (key2.pub));
-	nano::account_info info2;
-	ASSERT_FALSE (store.account ().get (*transaction, nano::dev::genesis_key.pub, info2));
-	ASSERT_EQ (block->hash (), info2.head ());
-	ASSERT_FALSE (ledger.rollback (*transaction, info2.head ()));
-	ASSERT_EQ (nano::dev::genesis_key.pub, store.frontier ().get (*transaction, info1.head ()));
-	ASSERT_TRUE (store.frontier ().get (*transaction, block->hash ()).is_zero ());
-	nano::account_info info3;
-	ASSERT_FALSE (store.account ().get (*transaction, nano::dev::genesis_key.pub, info3));
-	ASSERT_EQ (info1.head (), info3.head ());
-	ASSERT_EQ (nano::dev::constants.genesis_amount, ledger.weight (nano::dev::genesis_key.pub));
-	ASSERT_EQ (0, ledger.weight (key2.pub));
-}
-
 TEST (ledger, receive_fork)
 {
 	auto ctx = nano::test::context::ledger_empty ();

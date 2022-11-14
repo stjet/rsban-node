@@ -15,7 +15,6 @@ use crate::{
     },
     stats::{Stat, StatConfig},
     utils::NullLogger,
-    work::DEV_WORK_POOL,
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
 
@@ -53,6 +52,13 @@ impl LedgerContext {
         LedgerContext { ledger, db_file }
     }
 
+    pub fn process(&self, txn: &mut dyn WriteTransaction, block: &mut dyn Block) -> ProcessResult {
+        let result = self
+            .ledger
+            .process(txn, block, SignatureVerification::Unknown);
+        result.code
+    }
+
     pub fn process_send_from_genesis(
         &self,
         txn: &mut dyn WriteTransaction,
@@ -71,20 +77,11 @@ impl LedgerContext {
             .destination(*receiver_account)
             .balance(account_info.balance - amount)
             .sign(DEV_GENESIS_KEY.clone())
-            .work(
-                DEV_WORK_POOL
-                    .generate_dev2(account_info.head.into())
-                    .unwrap(),
-            )
             .without_sideband()
             .build()
             .unwrap();
 
-        let result = self
-            .ledger
-            .process(txn, &mut send, SignatureVerification::Unknown);
-
-        assert_eq!(result.code, ProcessResult::Progress);
+        assert_eq!(self.process(txn, &mut send), ProcessResult::Progress);
         send
     }
 
@@ -100,19 +97,11 @@ impl LedgerContext {
             .representative(receiver_account)
             .account(receiver_account)
             .sign(receiver_key.clone())
-            .work(
-                DEV_WORK_POOL
-                    .generate_dev2(receiver_key.public_key().into())
-                    .unwrap(),
-            )
             .without_sideband()
             .build()
             .unwrap();
 
-        let result = self
-            .ledger
-            .process(txn, &mut open, SignatureVerification::Unknown);
-        assert_eq!(result.code, ProcessResult::Progress);
+        assert_eq!(self.process(txn, &mut open), ProcessResult::Progress);
         open
     }
 
@@ -135,19 +124,11 @@ impl LedgerContext {
             .previous(account_info.head)
             .source(send.hash())
             .sign(receiver_key.clone())
-            .work(
-                DEV_WORK_POOL
-                    .generate_dev2(account_info.head.into())
-                    .unwrap(),
-            )
             .without_sideband()
             .build()
             .unwrap();
 
-        let result = self
-            .ledger
-            .process(txn, &mut receive, SignatureVerification::Unknown);
-        assert_eq!(result.code, ProcessResult::Progress);
+        assert_eq!(self.process(txn, &mut receive), ProcessResult::Progress);
         receive
     }
 
@@ -170,18 +151,10 @@ impl LedgerContext {
             .previous(account_info.head)
             .representative(representative)
             .sign(keypair.clone())
-            .work(
-                DEV_WORK_POOL
-                    .generate_dev2(account_info.head.into())
-                    .unwrap(),
-            )
             .build()
             .unwrap();
 
-        let result = self
-            .ledger
-            .process(txn, &mut change, SignatureVerification::Unknown);
-        assert_eq!(result.code, ProcessResult::Progress);
+        assert_eq!(self.process(txn, &mut change), ProcessResult::Progress);
         change
     }
 }

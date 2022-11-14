@@ -1,5 +1,8 @@
-use crate::core::{
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, ChangeBlock, Epoch, KeyPair,
+use crate::{
+    core::{
+        Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, ChangeBlock, Epoch, KeyPair,
+    },
+    work::DEV_WORK_POOL,
 };
 
 pub struct ChangeBlockBuilder {
@@ -57,7 +60,9 @@ impl ChangeBlockBuilder {
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let key_pair = self.keypair.unwrap_or_default();
         let representative = self.representative.unwrap_or(Account::from(2));
-        let work = self.work.unwrap_or(4);
+        let work = self
+            .work
+            .unwrap_or_else(|| DEV_WORK_POOL.generate_dev2(previous.into()).unwrap());
 
         let mut block = ChangeBlock::new(
             previous,
@@ -86,29 +91,5 @@ impl ChangeBlockBuilder {
         }
 
         Ok(block)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::{BlockBuilder, Signature};
-
-    #[test]
-    fn create_open_block() {
-        let block = BlockBuilder::open().build().unwrap();
-        assert_eq!(block.hashables.source, BlockHash::from(1));
-        assert_eq!(block.hashables.representative, Account::from(2));
-        assert_ne!(block.hashables.account, Account::zero());
-        assert_eq!(block.work, 4);
-        assert_ne!(*block.block_signature(), Signature::new());
-
-        let sideband = block.sideband().unwrap();
-        assert_eq!(sideband.account, block.account());
-        assert!(sideband.successor.is_zero());
-        assert_eq!(sideband.balance, Amount::new(5));
-        assert_eq!(sideband.height, 1);
-        assert_eq!(sideband.timestamp, 2);
-        assert_eq!(sideband.source_epoch, Epoch::Epoch0);
     }
 }

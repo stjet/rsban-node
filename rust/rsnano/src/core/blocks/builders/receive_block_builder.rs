@@ -1,5 +1,6 @@
-use crate::core::{
-    Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, ReceiveBlock,
+use crate::{
+    core::{Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, ReceiveBlock},
+    work::DEV_WORK_POOL,
 };
 
 pub struct ReceiveBlockBuilder {
@@ -50,13 +51,16 @@ impl ReceiveBlockBuilder {
         let key_pair = self.key_pair.unwrap_or_default();
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let source = self.source.unwrap_or(BlockHash::from(2));
+        let work = self
+            .work
+            .unwrap_or_else(|| DEV_WORK_POOL.generate_dev2(previous.into()).unwrap());
 
         let mut block = ReceiveBlock::new(
             previous,
             source,
             &key_pair.private_key(),
             &key_pair.public_key(),
-            self.work.unwrap_or(4),
+            work,
         )?;
 
         let details = BlockDetails {
@@ -84,14 +88,17 @@ impl ReceiveBlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::{Block, BlockBuilder, BlockHash};
+    use crate::{
+        core::{Block, BlockBuilder, BlockHash},
+        DEV_NETWORK_PARAMS,
+    };
 
     #[test]
     fn receive_block() {
         let block = BlockBuilder::receive().build().unwrap();
         assert_eq!(block.hashables.previous, BlockHash::from(1));
         assert_eq!(block.hashables.source, BlockHash::from(2));
-        assert_eq!(block.work, 4);
+        assert_eq!(DEV_NETWORK_PARAMS.work.validate_entry_block(&block), false);
         assert!(block.sideband().is_some())
     }
 }

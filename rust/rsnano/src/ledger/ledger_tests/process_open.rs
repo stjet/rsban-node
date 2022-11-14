@@ -1,7 +1,6 @@
 use crate::{
-    core::{Account, Amount, Block, BlockBuilder, BlockEnum, SignatureVerification},
+    core::{Account, Amount, Block, BlockBuilder, BlockEnum},
     ledger::{ledger_tests::LedgerWithOpenBlock, ProcessResult},
-    work::DEV_WORK_POOL,
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
 
@@ -123,19 +122,10 @@ fn open_fork() {
         .representative(Account::from(1000))
         .account(ctx.receiver_account)
         .sign(ctx.receiver_key)
-        .work(
-            DEV_WORK_POOL
-                .generate_dev2(ctx.send_block.hash().into())
-                .unwrap(),
-        )
         .build()
         .unwrap();
 
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut open_fork,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut open_fork);
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }

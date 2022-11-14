@@ -1,5 +1,8 @@
-use crate::core::{
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, OpenBlock,
+use crate::{
+    core::{
+        Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, OpenBlock,
+    },
+    work::DEV_WORK_POOL,
 };
 
 pub struct OpenBlockBuilder {
@@ -58,7 +61,9 @@ impl OpenBlockBuilder {
         let key_pair = self.keypair.unwrap_or_default();
         let account = self.account.unwrap_or_else(|| key_pair.public_key().into());
         let representative = self.representative.unwrap_or(Account::from(2));
-        let work = self.work.unwrap_or(4);
+        let work = self
+            .work
+            .unwrap_or_else(|| DEV_WORK_POOL.generate_dev2(account.into()).unwrap());
 
         let mut block = OpenBlock::new(
             source,
@@ -95,7 +100,10 @@ impl OpenBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::{BlockBuilder, Signature};
+    use crate::{
+        core::{BlockBuilder, Signature},
+        DEV_NETWORK_PARAMS,
+    };
 
     #[test]
     fn create_open_block() {
@@ -103,7 +111,7 @@ mod tests {
         assert_eq!(block.hashables.source, BlockHash::from(1));
         assert_eq!(block.hashables.representative, Account::from(2));
         assert_ne!(block.hashables.account, Account::zero());
-        assert_eq!(block.work, 4);
+        assert_eq!(DEV_NETWORK_PARAMS.work.validate_entry_block(&block), false);
         assert_ne!(*block.block_signature(), Signature::new());
 
         let sideband = block.sideband().unwrap();

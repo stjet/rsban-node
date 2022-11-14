@@ -1,7 +1,6 @@
 use crate::{
-    core::{Account, Amount, Block, BlockBuilder, BlockEnum, SignatureVerification},
+    core::{Account, Amount, Block, BlockBuilder, BlockEnum},
     ledger::{ledger_tests::LedgerWithSendBlock, ProcessResult},
-    work::DEV_WORK_POOL,
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -95,13 +94,11 @@ fn update_vote_weight() {
 fn process_duplicate_send_fails() {
     let mut ctx = LedgerWithSendBlock::new();
 
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut ctx.send_block,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx
+        .ledger_context
+        .process(ctx.txn.as_mut(), &mut ctx.send_block);
 
-    assert_eq!(result.code, ProcessResult::Old);
+    assert_eq!(result, ProcessResult::Old);
 }
 
 #[test]
@@ -112,19 +109,10 @@ fn process_fork_fails() {
         .previous(*DEV_GENESIS_HASH)
         .destination(Account::from(1000))
         .sign(ctx.receiver_key)
-        .work(
-            DEV_WORK_POOL
-                .generate_dev2((*DEV_GENESIS_HASH).into())
-                .unwrap(),
-        )
         .build()
         .unwrap();
 
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut fork,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut fork);
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }

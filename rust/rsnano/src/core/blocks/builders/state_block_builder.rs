@@ -1,6 +1,9 @@
-use crate::core::{
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, Link,
-    PublicKey, RawKey, Signature, StateBlock,
+use crate::{
+    core::{
+        Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, Link,
+        PublicKey, RawKey, Signature, StateBlock,
+    },
+    work::DEV_WORK_POOL,
 };
 use anyhow::Result;
 
@@ -12,7 +15,7 @@ pub struct StateBlockBuilder {
     link: Link,
     prv_key: RawKey,
     pub_key: PublicKey,
-    work: u64,
+    work: Option<u64>,
     signature: Option<Signature>,
 }
 
@@ -27,7 +30,7 @@ impl StateBlockBuilder {
             link: Link::from(5),
             prv_key: key.private_key(),
             pub_key: key.public_key(),
-            work: 6,
+            work: None,
             signature: None,
         }
     }
@@ -39,7 +42,7 @@ impl StateBlockBuilder {
         self.balance = other.hashables.balance;
         self.link = other.hashables.link;
         self.signature = Some(other.signature.clone());
-        self.work = other.work;
+        self.work = Some(other.work);
         self
     }
 
@@ -105,7 +108,7 @@ impl StateBlockBuilder {
     }
 
     pub fn work(mut self, work: u64) -> Self {
-        self.work = work;
+        self.work = Some(work);
         self
     }
 
@@ -116,11 +119,15 @@ impl StateBlockBuilder {
         self.balance = Amount::zero();
         self.link = Link::zero();
         self.signature = None;
-        self.work = 0;
+        self.work = Some(0);
         self
     }
 
     pub fn build(self) -> Result<StateBlock> {
+        let work = self
+            .work
+            .unwrap_or_else(|| DEV_WORK_POOL.generate_dev2(self.previous.into()).unwrap());
+
         let mut state = match self.signature {
             Some(signature) => StateBlock::with_signature(
                 self.account,
@@ -129,7 +136,7 @@ impl StateBlockBuilder {
                 self.balance,
                 self.link,
                 signature,
-                self.work,
+                work,
             ),
             None => StateBlock::new(
                 self.account,
@@ -139,7 +146,7 @@ impl StateBlockBuilder {
                 self.link,
                 &self.prv_key,
                 &self.pub_key,
-                self.work,
+                work,
             )?,
         };
 

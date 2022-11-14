@@ -1,7 +1,6 @@
 use crate::{
     core::{Account, Amount, Block, BlockBuilder, BlockEnum},
     ledger::{ledger_tests::LedgerWithReceiveBlock, ProcessResult},
-    work::DEV_WORK_POOL,
     DEV_GENESIS_ACCOUNT,
 };
 
@@ -125,20 +124,31 @@ fn receive_fork() {
         .previous(ctx.open_block.hash())
         .source(send.hash())
         .sign(ctx.receiver_key.clone())
-        .work(
-            DEV_WORK_POOL
-                .generate_dev2(ctx.open_block.hash().into())
-                .unwrap(),
-        )
         .without_sideband()
         .build()
         .unwrap();
 
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut receive_fork,
-        crate::core::SignatureVerification::Unknown,
-    );
+    let result = ctx
+        .ledger_context
+        .process(ctx.txn.as_mut(), &mut receive_fork);
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
+}
+
+#[test]
+fn double_receive() {
+    let mut ctx = LedgerWithOpenBlock::new();
+
+    let mut double_receive = BlockBuilder::receive()
+        .previous(ctx.open_block.hash())
+        .source(ctx.send_block.hash())
+        .sign(ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger_context
+        .process(ctx.txn.as_mut(), &mut double_receive);
+
+    assert_eq!(result, ProcessResult::Unreceivable);
 }

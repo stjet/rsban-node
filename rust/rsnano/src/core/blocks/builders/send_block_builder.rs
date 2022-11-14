@@ -1,5 +1,8 @@
-use crate::core::{
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, SendBlock,
+use crate::{
+    core::{
+        Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, SendBlock,
+    },
+    work::DEV_WORK_POOL,
 };
 
 pub struct SendBlockBuilder {
@@ -65,13 +68,16 @@ impl SendBlockBuilder {
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let destination = self.destination.unwrap_or(Account::from(2));
         let balance = self.balance.unwrap_or(Amount::new(3));
+        let work = self
+            .work
+            .unwrap_or_else(|| DEV_WORK_POOL.generate_dev2(previous.into()).unwrap());
         let mut block = SendBlock::new(
             &previous,
             &destination,
             &balance,
             &key_pair.private_key(),
             &key_pair.public_key(),
-            self.work.unwrap_or(4),
+            work,
         )?;
 
         if self.build_sideband {

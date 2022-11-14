@@ -345,13 +345,13 @@ mod tests {
         let mut txn = env.tx_begin_write()?;
 
         let mut block1 = BlockBuilder::open()
-            .account(Account::from(0))
-            .representative(Account::from(1))
+            .account(Account::from(1))
+            .representative(Account::from(2))
             .build()?;
 
         let block2 = BlockBuilder::open()
-            .account(Account::from(0))
-            .representative(Account::from(2))
+            .account(Account::from(1))
+            .representative(Account::from(3))
             .build()?;
 
         let mut sideband = block1.sideband().unwrap().clone();

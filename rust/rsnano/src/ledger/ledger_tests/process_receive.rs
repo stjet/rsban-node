@@ -242,3 +242,74 @@ fn fail_gap_previous_opened() {
 
     assert_eq!(result, ProcessResult::GapPrevious);
 }
+
+#[test]
+fn fail_fork_previous() {
+    let mut ctx = LedgerWithOpenBlock::new();
+
+    let receivable = ctx.ledger_context.process_send_from_genesis(
+        ctx.txn.as_mut(),
+        &ctx.receiver_account,
+        Amount::new(1),
+    );
+
+    let mut fork_send = BlockBuilder::send()
+        .previous(ctx.open_block.hash())
+        .destination(Account::from(1))
+        .balance(Amount::zero())
+        .sign(ctx.receiver_key.clone())
+        .without_sideband()
+        .build()
+        .unwrap();
+
+    assert_eq!(
+        ctx.ledger_context.process(ctx.txn.as_mut(), &mut fork_send),
+        ProcessResult::Progress
+    );
+
+    let mut fork_receive = BlockBuilder::receive()
+        .previous(ctx.open_block.hash())
+        .source(receivable.hash())
+        .sign(ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger_context
+        .process(ctx.txn.as_mut(), &mut fork_receive);
+
+    assert_eq!(result, ProcessResult::Fork);
+}
+
+#[test]
+fn fail_receive_received_source() {
+    let mut ctx = LedgerWithOpenBlock::new();
+
+    let receivable1 = ctx.ledger_context.process_send_from_genesis(
+        ctx.txn.as_mut(),
+        &ctx.receiver_account,
+        Amount::new(1),
+    );
+
+    let receivable2 = ctx.ledger_context.process_send_from_genesis(
+        ctx.txn.as_mut(),
+        &ctx.receiver_account,
+        Amount::new(1),
+    );
+
+    ctx.ledger_context
+        .process_receive(ctx.txn.as_mut(), &receivable1, &ctx.receiver_key);
+
+    let mut fork_receive = BlockBuilder::receive()
+        .previous(ctx.open_block.hash())
+        .source(receivable2.hash())
+        .sign(ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger_context
+        .process(ctx.txn.as_mut(), &mut fork_receive);
+
+    assert_eq!(result, ProcessResult::Fork);
+}

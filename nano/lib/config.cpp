@@ -216,6 +216,7 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	peer_dump_interval = std::chrono::seconds (dto.peer_dump_interval_s);
 	ipv6_subnetwork_prefix_for_limiting = dto.ipv6_subnetwork_prefix_for_limiting;
 	silent_connection_tolerance_time = std::chrono::seconds (dto.silent_connection_tolerance_time_s);
+	vote_broadcast_interval = dto.vote_broadcast_interval_ms;
 }
 
 bool nano::network_constants::set_active_network (std::string network_a)
@@ -297,6 +298,7 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.peer_dump_interval_s = peer_dump_interval.count ();
 	dto.protocol_version = protocol_version;
 	dto.protocol_version_min = protocol_version_min;
+	dto.vote_broadcast_interval_ms = vote_broadcast_interval;
 	return dto;
 }
 

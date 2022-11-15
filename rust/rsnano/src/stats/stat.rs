@@ -129,8 +129,7 @@ pub enum StatType {
     Hinting,
     BlockProcessor,
     BootstrapServer,
-    BootstrapServerRequests,
-    BootstrapServerResponses,
+    Active,
 }
 
 impl StatType {
@@ -164,8 +163,7 @@ impl StatType {
             StatType::Hinting => "hinting",
             StatType::BlockProcessor => "blockprocessor",
             StatType::BootstrapServer => "bootstrap_server",
-            StatType::BootstrapServerRequests => "bootstrap_server_requests",
-            StatType::BootstrapServerResponses => "bootstrap_server_responses",
+            StatType::Active => "active",
         }
     }
 }
@@ -175,6 +173,9 @@ impl StatType {
 #[derive(FromPrimitive)]
 pub enum DetailType {
     All = 0,
+
+    // common
+    Loop,
 
     // processing queue
     Queue,
@@ -277,6 +278,9 @@ pub enum DetailType {
     ElectionHintedStarted,
     ElectionHintedConfirmed,
     ElectionHintedDrop,
+    GenerateVote,
+    GenerateVoteNormal,
+    GenerateVoteFinal,
 
     // udp
     Blocking,
@@ -378,6 +382,7 @@ impl DetailType {
     pub fn as_str(&self) -> &'static str {
         match self {
             DetailType::All => "all",
+            DetailType::Loop => "loop",
             DetailType::Queue => "queue",
             DetailType::Overfill => "overfill",
             DetailType::Batch => "batch",
@@ -462,6 +467,9 @@ impl DetailType {
             DetailType::ElectionHintedStarted => "election_hinted_started",
             DetailType::ElectionHintedConfirmed => "election_hinted_confirmed",
             DetailType::ElectionHintedDrop => "election_hinted_drop",
+            DetailType::GenerateVote => "generate_vote",
+            DetailType::GenerateVoteNormal => "generate_vote_normal",
+            DetailType::GenerateVoteFinal => "generate_vote_final",
             DetailType::Blocking => "blocking",
             DetailType::Overflow => "overflow",
             DetailType::TcpAcceptSuccess => "accept_success",

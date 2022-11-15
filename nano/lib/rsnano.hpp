@@ -357,6 +357,7 @@ struct NetworkConstantsDto
 	uint8_t protocol_version_min;
 	uintptr_t ipv6_subnetwork_prefix_for_limiting;
 	int64_t silent_connection_tolerance_time_s;
+	int64_t vote_broadcast_interval_ms;
 };
 
 struct IpcConfigDto

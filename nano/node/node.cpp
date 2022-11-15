@@ -779,6 +779,7 @@ void nano::node::start ()
 		port_mapping.start ();
 	}
 	wallets.start ();
+	active.start ();
 	generator.start ();
 	final_generator.start ();
 	backlog.start ();

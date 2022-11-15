@@ -218,6 +218,12 @@ impl From<&Account> for Link {
     }
 }
 
+impl From<BlockHash> for Link {
+    fn from(hash: BlockHash) -> Self {
+        Link::from_bytes(*hash.as_bytes())
+    }
+}
+
 impl From<HashOrAccount> for BlockHash {
     fn from(source: HashOrAccount) -> Self {
         BlockHash::from_bytes(*source.as_bytes())

@@ -121,3 +121,10 @@ fn genesis_vote_weight() {
         DEV_CONSTANTS.genesis_amount
     );
 }
+
+#[test]
+fn latest_empty() {
+    let ctx = LedgerContext::empty();
+    let txn = ctx.ledger.read_txn();
+    assert_eq!(ctx.ledger.latest(txn.txn(), &Account::from(1)), None);
+}

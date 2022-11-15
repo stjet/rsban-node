@@ -1,6 +1,6 @@
 use crate::{
-    core::{Account, Amount, Block, ChangeBlock, KeyPair, OpenBlock, ReceiveBlock, SendBlock},
-    ledger::{datastore::WriteTransaction, Ledger, DEV_GENESIS_KEY},
+    core::{Account, Amount, Block, KeyPair, OpenBlock, ReceiveBlock, SendBlock},
+    ledger::{datastore::WriteTransaction, Ledger},
     DEV_CONSTANTS,
 };
 
@@ -150,43 +150,6 @@ impl LedgerWithReceiveBlock {
             .rollback(
                 self.txn.as_mut(),
                 &self.receive_block.hash(),
-                &mut Vec::new(),
-            )
-            .unwrap();
-    }
-}
-
-pub(crate) struct LedgerWithChangeBlock {
-    pub change_block: ChangeBlock,
-    pub txn: Box<dyn WriteTransaction>,
-    pub ledger_context: LedgerContext,
-}
-
-impl LedgerWithChangeBlock {
-    pub fn new() -> Self {
-        let ledger_context = LedgerContext::empty();
-        let mut txn = ledger_context.ledger.rw_txn();
-        let representative = Account::from(1000);
-        let change_block =
-            ledger_context.process_change(txn.as_mut(), &DEV_GENESIS_KEY, representative);
-
-        Self {
-            txn,
-            change_block,
-            ledger_context,
-        }
-    }
-
-    pub fn ledger(&self) -> &Ledger {
-        &self.ledger_context.ledger
-    }
-
-    pub(crate) fn rollback(&mut self) {
-        self.ledger_context
-            .ledger
-            .rollback(
-                self.txn.as_mut(),
-                &self.change_block.hash(),
                 &mut Vec::new(),
             )
             .unwrap();

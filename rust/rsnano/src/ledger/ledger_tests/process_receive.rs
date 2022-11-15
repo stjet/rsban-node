@@ -1,5 +1,7 @@
 use crate::{
-    core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
+    core::{
+        Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, SignatureVerification,
+    },
     ledger::{
         ledger_tests::{LedgerWithReceiveBlock, LedgerWithSendBlock},
         ProcessResult,
@@ -131,11 +133,13 @@ fn receive_fork() {
         .build()
         .unwrap();
 
-    let result = ctx
-        .ledger_context
-        .process(ctx.txn.as_mut(), &mut receive_fork);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut receive_fork,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::Fork);
+    assert_eq!(result.code, ProcessResult::Fork);
 }
 
 #[test]
@@ -149,22 +153,26 @@ fn fail_double_receive() {
         .build()
         .unwrap();
 
-    let result = ctx
-        .ledger_context
-        .process(ctx.txn.as_mut(), &mut double_receive);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut double_receive,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::Unreceivable);
+    assert_eq!(result.code, ProcessResult::Unreceivable);
 }
 
 #[test]
 fn fail_old() {
     let mut ctx = LedgerWithReceiveBlock::new();
 
-    let result = ctx
-        .ledger_context
-        .process(ctx.txn.as_mut(), &mut ctx.receive_block);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut ctx.receive_block,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::Old);
+    assert_eq!(result.code, ProcessResult::Old);
 }
 
 #[test]
@@ -178,9 +186,13 @@ fn fail_gap_source() {
         .build()
         .unwrap();
 
-    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut receive);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut receive,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::GapSource);
+    assert_eq!(result.code, ProcessResult::GapSource);
 }
 
 #[test]
@@ -200,9 +212,13 @@ fn fail_bad_signature() {
         .build()
         .unwrap();
 
-    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut receive);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut receive,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::BadSignature);
+    assert_eq!(result.code, ProcessResult::BadSignature);
 }
 
 #[test]
@@ -216,9 +232,13 @@ fn fail_gap_previous_unopened() {
         .build()
         .unwrap();
 
-    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut receive);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut receive,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::GapPrevious);
+    assert_eq!(result.code, ProcessResult::GapPrevious);
 }
 
 #[test]
@@ -238,9 +258,13 @@ fn fail_gap_previous_opened() {
         .build()
         .unwrap();
 
-    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut receive);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut receive,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::GapPrevious);
+    assert_eq!(result.code, ProcessResult::GapPrevious);
 }
 
 #[test]
@@ -263,7 +287,14 @@ fn fail_fork_previous() {
         .unwrap();
 
     assert_eq!(
-        ctx.ledger_context.process(ctx.txn.as_mut(), &mut fork_send),
+        ctx.ledger_context
+            .ledger
+            .process(
+                ctx.txn.as_mut(),
+                &mut fork_send,
+                SignatureVerification::Unknown
+            )
+            .code,
         ProcessResult::Progress
     );
 
@@ -274,11 +305,13 @@ fn fail_fork_previous() {
         .build()
         .unwrap();
 
-    let result = ctx
-        .ledger_context
-        .process(ctx.txn.as_mut(), &mut fork_receive);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut fork_receive,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::Fork);
+    assert_eq!(result.code, ProcessResult::Fork);
 }
 
 #[test]
@@ -307,9 +340,11 @@ fn fail_receive_received_source() {
         .build()
         .unwrap();
 
-    let result = ctx
-        .ledger_context
-        .process(ctx.txn.as_mut(), &mut fork_receive);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut fork_receive,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::Fork);
+    assert_eq!(result.code, ProcessResult::Fork);
 }

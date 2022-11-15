@@ -292,28 +292,6 @@ TEST (votes, add_cooldown)
 	ASSERT_EQ (*send1, *election1->winner ());
 }
 
-TEST (ledger, state_account)
-{
-	auto ctx = nano::test::context::ledger_empty ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	auto transaction = store.tx_begin_write ();
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	nano::block_builder builder;
-	auto send1 = builder
-				 .state ()
-				 .account (nano::dev::genesis->account ())
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis->account ())
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (nano::dev::genesis->account ())
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*pool.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send1).code);
-	ASSERT_EQ (nano::dev::genesis->account (), ledger.account (*transaction, send1->hash ()));
-}
-
 TEST (ledger, state_send_receive)
 {
 	auto ctx = nano::test::context::ledger_empty ();
@@ -322,6 +300,7 @@ TEST (ledger, state_send_receive)
 	auto transaction = store.tx_begin_write ();
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
 	nano::block_builder builder;
+
 	auto send1 = builder
 				 .state ()
 				 .account (nano::dev::genesis->account ())
@@ -334,6 +313,7 @@ TEST (ledger, state_send_receive)
 				 .build ();
 	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send1).code);
 	ASSERT_TRUE (store.block ().exists (*transaction, send1->hash ()));
+
 	auto send2 = store.block ().get (*transaction, send1->hash ());
 	ASSERT_NE (nullptr, send2);
 	ASSERT_EQ (*send1, *send2);

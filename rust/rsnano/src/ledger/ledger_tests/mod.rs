@@ -11,7 +11,6 @@ use crate::{
         Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
         GXRB_RATIO,
     },
-    ledger::ProcessResult,
     DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -22,6 +21,8 @@ mod process_change;
 mod process_open;
 mod process_receive;
 mod process_send;
+mod process_state_receive;
+mod process_state_send;
 mod rollback_change;
 mod rollback_open;
 mod rollback_receive;
@@ -208,10 +209,7 @@ fn block_destination_source() {
         .sign(&DEV_GENESIS_KEY)
         .build()
         .unwrap();
-    assert_eq!(
-        ctx.process(txn.as_mut(), &mut block4),
-        ProcessResult::Progress
-    );
+    ctx.process(txn.as_mut(), &mut block4);
 
     let mut block5 = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -221,10 +219,7 @@ fn block_destination_source() {
         .sign(&DEV_GENESIS_KEY)
         .build()
         .unwrap();
-    assert_eq!(
-        ctx.process(txn.as_mut(), &mut block5),
-        ProcessResult::Progress
-    );
+    ctx.process(txn.as_mut(), &mut block5);
 
     let mut block6 = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -234,10 +229,7 @@ fn block_destination_source() {
         .sign(&DEV_GENESIS_KEY)
         .build()
         .unwrap();
-    assert_eq!(
-        ctx.process(txn.as_mut(), &mut block6),
-        ProcessResult::Progress
-    );
+    ctx.process(txn.as_mut(), &mut block6);
 
     let block1 = BlockEnum::Send(block1);
     let block2 = BlockEnum::Send(block2);
@@ -284,5 +276,24 @@ fn block_destination_source() {
     assert_eq!(
         ledger.block_source(txn.txn(), &block6),
         block5.as_block().hash()
+    );
+}
+
+#[test]
+fn state_account() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let mut send = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(*GXRB_RATIO))
+        .link(*DEV_GENESIS_ACCOUNT)
+        .sign(&DEV_GENESIS_KEY)
+        .build()
+        .unwrap();
+    ctx.process(txn.as_mut(), &mut send);
+    assert_eq!(
+        ctx.ledger.account(txn.txn(), &send.hash()),
+        Some(*DEV_GENESIS_ACCOUNT)
     );
 }

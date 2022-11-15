@@ -4,7 +4,7 @@ use crate::{
     config::TxnTrackingConfig,
     core::{
         Account, Amount, Block, BlockBuilder, ChangeBlock, KeyPair, OpenBlock, ReceiveBlock,
-        SendBlock, SignatureVerification,
+        SendBlock, SignatureVerification, StateBlock,
     },
     ledger::{
         datastore::{
@@ -15,7 +15,7 @@ use crate::{
     },
     stats::{Stat, StatConfig},
     utils::NullLogger,
-    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
+    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
 pub(crate) struct LedgerContext {
@@ -52,11 +52,11 @@ impl LedgerContext {
         LedgerContext { ledger, db_file }
     }
 
-    pub fn process(&self, txn: &mut dyn WriteTransaction, block: &mut dyn Block) -> ProcessResult {
+    pub fn process(&self, txn: &mut dyn WriteTransaction, block: &mut dyn Block) {
         let result = self
             .ledger
             .process(txn, block, SignatureVerification::Unknown);
-        result.code
+        assert_eq!(result.code, ProcessResult::Progress);
     }
 
     pub fn process_send_from_genesis(
@@ -81,7 +81,7 @@ impl LedgerContext {
             .build()
             .unwrap();
 
-        assert_eq!(self.process(txn, &mut send), ProcessResult::Progress);
+        self.process(txn, &mut send);
         send
     }
 
@@ -101,7 +101,7 @@ impl LedgerContext {
             .build()
             .unwrap();
 
-        assert_eq!(self.process(txn, &mut open), ProcessResult::Progress);
+        self.process(txn, &mut open);
         open
     }
 
@@ -128,7 +128,7 @@ impl LedgerContext {
             .build()
             .unwrap();
 
-        assert_eq!(self.process(txn, &mut receive), ProcessResult::Progress);
+        self.process(txn, &mut receive);
         receive
     }
 
@@ -154,7 +154,42 @@ impl LedgerContext {
             .build()
             .unwrap();
 
-        assert_eq!(self.process(txn, &mut change), ProcessResult::Progress);
+        self.process(txn, &mut change);
         change
     }
+
+    pub(crate) fn process_state_send(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        sender_key: &KeyPair,
+        receiver: Account,
+        amount: Amount,
+    ) -> StateBlock {
+        let sender_account = self
+            .ledger
+            .store
+            .account()
+            .get(txn.txn(), &sender_key.public_key().into())
+            .unwrap();
+
+        let mut send_block = BlockBuilder::state()
+            .account(*DEV_GENESIS_ACCOUNT)
+            .previous(*DEV_GENESIS_HASH)
+            .balance(sender_account.balance - amount)
+            .link(receiver)
+            .sign(&sender_key)
+            .build()
+            .unwrap();
+
+        self.process(txn, &mut send_block);
+
+        send_block
+    }
+}
+
+pub(crate) struct SendStateBlockInfo {
+    pub send_block: StateBlock,
+    pub receiver_key: KeyPair,
+    pub receiver_account: Account,
+    pub amount_sent: Amount,
 }

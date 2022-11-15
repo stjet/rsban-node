@@ -1,38 +1,42 @@
 use crate::{
     core::{Account, Amount, Block},
+    ledger::{ledger_tests::LedgerContext, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
-use super::LedgerWithChangeBlock;
-
 #[test]
 fn update_frontier_store() {
-    let mut ctx = LedgerWithChangeBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
 
-    ctx.rollback();
+    ctx.ledger
+        .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
+        .unwrap();
 
-    let frontier = &ctx.ledger().store.frontier();
+    let frontier = &ctx.ledger.store.frontier();
+    assert_eq!(frontier.get(txn.txn(), &change.hash()), Account::zero());
     assert_eq!(
-        frontier.get(ctx.txn.txn(), &ctx.change_block.hash()),
-        Account::zero()
-    );
-    assert_eq!(
-        frontier.get(ctx.txn.txn(), &DEV_GENESIS_HASH),
+        frontier.get(txn.txn(), &DEV_GENESIS_HASH),
         *DEV_GENESIS_ACCOUNT
     );
 }
 
 #[test]
 fn update_account_info() {
-    let mut ctx = LedgerWithChangeBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
 
-    ctx.rollback();
+    ctx.ledger
+        .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
+        .unwrap();
 
     let account_info = ctx
-        .ledger()
+        .ledger
         .store
         .account()
-        .get(ctx.txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
 
     assert_eq!(account_info.head, *DEV_GENESIS_HASH);
@@ -43,41 +47,37 @@ fn update_account_info() {
 
 #[test]
 fn update_vote_weight() {
-    let mut ctx = LedgerWithChangeBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
 
-    ctx.rollback();
+    ctx.ledger
+        .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
+        .unwrap();
 
     assert_eq!(
-        ctx.ledger().weight(&DEV_GENESIS_ACCOUNT),
+        ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         DEV_CONSTANTS.genesis_amount
     );
-    assert_eq!(
-        ctx.ledger().weight(&ctx.change_block.representative()),
-        Amount::zero(),
-    );
+    assert_eq!(ctx.ledger.weight(&change.representative()), Amount::zero(),);
 }
 
 #[test]
 fn rollback_dependent_blocks_too() {
-    let mut ctx = LedgerWithChangeBlock::new();
-    let send_block = ctx.ledger_context.process_send_from_genesis(
-        ctx.txn.as_mut(),
-        &Account::from(1000),
-        Amount::new(100),
-    );
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
 
-    ctx.rollback();
+    let send = ctx.process_send_from_genesis(txn.as_mut(), &Account::from(1000), Amount::new(100));
 
-    assert_eq!(
-        ctx.ledger()
-            .store
-            .block()
-            .get(ctx.txn.txn(), &send_block.hash()),
-        None
-    );
+    ctx.ledger
+        .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
+        .unwrap();
+
+    assert_eq!(ctx.ledger.store.block().get(txn.txn(), &send.hash()), None);
 
     assert_eq!(
-        ctx.ledger().weight(&DEV_GENESIS_ACCOUNT),
+        ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         DEV_CONSTANTS.genesis_amount
     );
 }

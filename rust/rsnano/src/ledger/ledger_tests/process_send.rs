@@ -1,5 +1,7 @@
 use crate::{
-    core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
+    core::{
+        Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, SignatureVerification,
+    },
     ledger::{
         ledger_tests::{LedgerContext, LedgerWithSendBlock},
         ProcessResult, DEV_GENESIS_KEY,
@@ -97,11 +99,13 @@ fn update_vote_weight() {
 fn fail_duplicate_send() {
     let mut ctx = LedgerWithSendBlock::new();
 
-    let result = ctx
-        .ledger_context
-        .process(ctx.txn.as_mut(), &mut ctx.send_block);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut ctx.send_block,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::Old);
+    assert_eq!(result.code, ProcessResult::Old);
 }
 
 #[test]
@@ -115,9 +119,13 @@ fn fail_fork() {
         .build()
         .unwrap();
 
-    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut fork);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut fork,
+        SignatureVerification::Unknown,
+    );
 
-    assert_eq!(result, ProcessResult::Fork);
+    assert_eq!(result.code, ProcessResult::Fork);
 }
 
 #[test]
@@ -132,9 +140,11 @@ fn fail_gap_previous() {
         .build()
         .unwrap();
 
-    let result = ctx.process(txn.as_mut(), &mut block);
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut block, SignatureVerification::Unknown);
 
-    assert_eq!(result, ProcessResult::GapPrevious);
+    assert_eq!(result.code, ProcessResult::GapPrevious);
 }
 
 #[test]
@@ -150,9 +160,11 @@ fn fail_bad_signature() {
         .build()
         .unwrap();
 
-    let result = ctx.process(txn.as_mut(), &mut block);
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut block, SignatureVerification::Unknown);
 
-    assert_eq!(result, ProcessResult::BadSignature);
+    assert_eq!(result.code, ProcessResult::BadSignature);
 }
 
 #[test]
@@ -167,6 +179,10 @@ fn fail_negative_spend() {
         .build()
         .unwrap();
 
-    let result = ctx.ledger_context.process(ctx.txn.as_mut(), &mut block);
-    assert_eq!(result, ProcessResult::NegativeSpend);
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut block,
+        SignatureVerification::Unknown,
+    );
+    assert_eq!(result.code, ProcessResult::NegativeSpend);
 }

@@ -125,6 +125,7 @@ impl BlockStore for LmdbBlockStore {
                 match block.block_type() {
                     BlockType::Send => sideband.balance = block.as_block().balance(),
                     BlockType::Open => sideband.account = block.as_block().account(),
+                    BlockType::State => sideband.account = block.as_block().account(),
                     _ => {}
                 }
                 block.as_block_mut().set_sideband(sideband);

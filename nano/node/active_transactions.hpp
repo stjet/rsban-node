@@ -90,10 +90,15 @@ public:
 	using queue_t = std::deque<nano::election_status>;
 
 	explicit recently_cemented_cache (std::size_t max_size);
+	recently_cemented_cache (recently_cemented_cache &&) = delete;
+	explicit recently_cemented_cache (recently_cemented_cache const &);
+	~recently_cemented_cache ();
+	nano::recently_cemented_cache & operator= (const nano::recently_cemented_cache &);
 
 	void put (nano::election_status const &);
 	queue_t list () const;
 	std::size_t size () const;
+	rsnano::RecentlyCementedCacheHandle * handle;
 
 private:
 	queue_t cemented;

@@ -124,9 +124,14 @@ impl StateBlockBuilder {
     }
 
     pub fn build(self) -> Result<StateBlock> {
-        let work = self
-            .work
-            .unwrap_or_else(|| DEV_WORK_POOL.generate_dev2(self.previous.into()).unwrap());
+        let work = self.work.unwrap_or_else(|| {
+            let root = if self.previous.is_zero() {
+                self.account.into()
+            } else {
+                self.previous.into()
+            };
+            DEV_WORK_POOL.generate_dev2(root).unwrap()
+        });
 
         let mut state = match self.signature {
             Some(signature) => StateBlock::with_signature(

@@ -3,8 +3,8 @@ use std::{sync::Arc, time::Duration};
 use crate::{
     config::TxnTrackingConfig,
     core::{
-        Account, Amount, Block, BlockBuilder, ChangeBlock, KeyPair, OpenBlock, ReceiveBlock,
-        SendBlock, SignatureVerification, StateBlock,
+        Account, Amount, Block, BlockBuilder, BlockHash, ChangeBlock, KeyPair, Link, OpenBlock,
+        ReceiveBlock, SendBlock, SignatureVerification, StateBlock,
     },
     ledger::{
         datastore::{
@@ -216,6 +216,58 @@ impl LedgerContext {
         self.process(txn, &mut receive);
 
         receive
+    }
+
+    pub(crate) fn process_state_change(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        key: &KeyPair,
+        rep_account: Account,
+    ) -> StateBlock {
+        let account = key.public_key().into();
+        let account_info = self
+            .ledger
+            .store
+            .account()
+            .get(txn.txn(), &account)
+            .unwrap();
+
+        let mut change = BlockBuilder::state()
+            .account(account)
+            .previous(account_info.head)
+            .representative(rep_account)
+            .balance(account_info.balance)
+            .link(Link::zero())
+            .sign(key)
+            .build()
+            .unwrap();
+
+        self.process(txn, &mut change);
+        change
+    }
+
+    pub(crate) fn process_state_open(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        send: &dyn Block,
+        receiver_key: &KeyPair,
+    ) -> StateBlock {
+        let receiver_account: Account = receiver_key.public_key().into();
+        let amount = self.ledger.amount(txn.txn(), &send.hash()).unwrap();
+
+        let mut open_block = BlockBuilder::state()
+            .account(receiver_account)
+            .previous(BlockHash::zero())
+            .balance(amount)
+            .representative(receiver_account)
+            .link(send.hash())
+            .sign(&receiver_key)
+            .build()
+            .unwrap();
+
+        self.process(txn, &mut open_block);
+
+        open_block
     }
 }
 

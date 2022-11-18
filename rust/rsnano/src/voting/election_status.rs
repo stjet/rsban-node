@@ -20,6 +20,7 @@ pub enum ElectionStatusType {
 
 /// Information on the status of an election
 #[derive(Clone, Default)]
+#[repr(C)]
 pub struct ElectionStatus {
     pub winner: Option<Arc<RwLock<BlockEnum>>>,
     pub tally: Amount,

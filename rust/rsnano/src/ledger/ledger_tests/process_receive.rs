@@ -6,7 +6,7 @@ use crate::{
         ledger_tests::{LedgerWithReceiveBlock, LedgerWithSendBlock},
         ProcessResult, DEV_GENESIS_KEY,
     },
-    DEV_GENESIS_ACCOUNT,
+    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
 
 use super::{LedgerContext, LedgerWithOpenBlock};
@@ -374,4 +374,39 @@ fn receive_after_state_fail() {
         .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
+}
+
+#[test]
+fn receive_from_state_block() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let destination = KeyPair::new();
+    let destination_account = destination.public_key().into();
+
+    let send1 = ctx.process_state_send(
+        txn.as_mut(),
+        &DEV_GENESIS_KEY,
+        destination_account,
+        Amount::new(50),
+    );
+
+    let send2 = ctx.process_state_send(
+        txn.as_mut(),
+        &DEV_GENESIS_KEY,
+        destination_account,
+        Amount::new(50),
+    );
+
+    ctx.process_open(txn.as_mut(), &send1, &destination);
+    let receive = ctx.process_state_receive(txn.as_mut(), &send2, &destination);
+
+    assert_eq!(
+        ctx.ledger.balance(txn.txn(), &receive.hash()),
+        Amount::new(100)
+    );
+    assert_eq!(
+        ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
+        DEV_CONSTANTS.genesis_amount
+    )
 }

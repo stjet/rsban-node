@@ -263,7 +263,7 @@ fn state_open_fork() {
 }
 
 #[test]
-fn open_from_state_send() {
+fn open_from_state_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let destination = KeyPair::new();

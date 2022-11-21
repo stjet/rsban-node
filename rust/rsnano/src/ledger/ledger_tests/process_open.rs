@@ -238,3 +238,26 @@ fn fail_account_mismatch() {
 
     assert_eq!(result.code, ProcessResult::Unreceivable);
 }
+
+#[test]
+fn state_open_fork() {
+    let mut ctx = LedgerWithSendBlock::new();
+
+    ctx.ledger_context
+        .process_state_open(ctx.txn.as_mut(), &ctx.send_block, &ctx.receiver_key);
+
+    let mut open2 = BlockBuilder::open()
+        .source(ctx.send_block.hash())
+        .account(ctx.receiver_account)
+        .sign(ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut open2,
+        SignatureVerification::Unknown,
+    );
+
+    assert_eq!(result.code, ProcessResult::Fork);
+}

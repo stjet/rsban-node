@@ -1,7 +1,7 @@
 use crate::{
     core::{
-        Amount, Block, BlockBuilder, BlockDetails, BlockEnum, Epoch, Link, PendingKey,
-        SignatureVerification, StateBlock,
+        Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair, Link,
+        PendingKey, SignatureVerification, StateBlock,
     },
     ledger::{datastore::WriteTransaction, ProcessResult, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
@@ -130,6 +130,91 @@ fn state_unreceivable_fail() {
         .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
 
     assert_eq!(result.code, ProcessResult::GapSource);
+}
+
+#[test]
+fn bad_amount_fail() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = ctx.process_state_send(
+        txn.as_mut(),
+        &DEV_GENESIS_KEY,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::new(1),
+    );
+
+    let mut receive = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(send.hash())
+        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(1))
+        .link(send.hash())
+        .sign(&DEV_GENESIS_KEY)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
+
+    assert_eq!(result.code, ProcessResult::BalanceMismatch);
+}
+
+#[test]
+fn no_link_amount_fail() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = ctx.process_state_send(
+        txn.as_mut(),
+        &DEV_GENESIS_KEY,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::new(1),
+    );
+
+    let mut receive = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(send.hash())
+        .balance(DEV_CONSTANTS.genesis_amount)
+        .link(Link::zero())
+        .sign(&DEV_GENESIS_KEY)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
+
+    assert_eq!(result.code, ProcessResult::BalanceMismatch);
+}
+
+#[test]
+fn receive_wrong_account_fail() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = ctx.process_state_send(
+        txn.as_mut(),
+        &DEV_GENESIS_KEY,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::new(1),
+    );
+
+    let key = KeyPair::new();
+    let mut receive = BlockBuilder::state()
+        .account(key.public_key())
+        .previous(BlockHash::zero())
+        .balance(Amount::new(1))
+        .link(send.hash())
+        .sign(&key)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
+
+    assert_eq!(result.code, ProcessResult::Unreceivable);
 }
 
 fn receive_50_raw_into_genesis(

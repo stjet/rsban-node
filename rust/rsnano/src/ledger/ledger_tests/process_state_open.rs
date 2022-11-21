@@ -1,8 +1,11 @@
 use std::sync::atomic::Ordering;
 
 use crate::{
-    core::{Amount, Block, BlockDetails, BlockEnum, Epoch, KeyPair, PendingKey},
-    ledger::DEV_GENESIS_KEY,
+    core::{
+        Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
+        PendingKey, SignatureVerification,
+    },
+    ledger::{ledger_tests::LedgerWithSendBlock, ProcessResult, DEV_GENESIS_KEY},
 };
 
 use super::LedgerContext;
@@ -130,4 +133,29 @@ fn update_vote_weight() {
 
     let weight = ctx.ledger.weight(&receiver_account);
     assert_eq!(weight, amount_sent);
+}
+
+#[test]
+fn open_fork_fail() {
+    let mut ctx = LedgerWithSendBlock::new();
+
+    ctx.ledger_context
+        .process_state_open(ctx.txn.as_mut(), &ctx.send_block, &ctx.receiver_key);
+
+    let mut open2 = BlockBuilder::state()
+        .account(ctx.receiver_account)
+        .previous(BlockHash::zero())
+        .balance(ctx.amount_sent)
+        .link(ctx.send_block.hash())
+        .sign(&ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut open2,
+        SignatureVerification::Unknown,
+    );
+
+    assert_eq!(result.code, ProcessResult::Fork);
 }

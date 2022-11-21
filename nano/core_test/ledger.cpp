@@ -366,6 +366,8 @@ TEST (ledger, epoch_blocks_v1_general)
 	ASSERT_FALSE (send1->sideband ().details ().is_epoch ());
 	ASSERT_EQ (nano::epoch::epoch_1, send1->sideband ().details ().epoch ());
 	ASSERT_EQ (nano::epoch::epoch_0, send1->sideband ().source_epoch ()); // Not used for send blocks
+
+	// todo port this part:
 	auto open1 = builder
 				 .open ()
 				 .source (send1->hash ())

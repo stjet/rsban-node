@@ -770,37 +770,65 @@ std::unique_ptr<nano::container_info_component> nano::recently_confirmed_cache::
  */
 
 nano::recently_cemented_cache::recently_cemented_cache (std::size_t max_size_a) :
-	max_size{ max_size_a }
+	handle (rsnano::rsn_recently_cemented_cache_create1 (max_size_a))
 {
+}
+
+nano::recently_cemented_cache::recently_cemented_cache (nano::recently_cemented_cache const & other_a) :
+	handle (rsnano::rsn_recently_cemented_cache_clone (other_a.handle))
+{
+}
+
+nano::recently_cemented_cache::~recently_cemented_cache ()
+{
+	if (handle != nullptr)
+		rsnano::rsn_recently_cemented_cache_destroy (handle);
+}
+
+nano::recently_cemented_cache & nano::recently_cemented_cache::operator= (const nano::recently_cemented_cache & other_a)
+{
+	if (handle != nullptr)
+		rsnano::rsn_recently_cemented_cache_destroy (handle);
+
+	handle = rsnano::rsn_recently_cemented_cache_clone (other_a.handle);
+	return *this;
 }
 
 void nano::recently_cemented_cache::put (const nano::election_status & status)
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	cemented.push_back (status);
-	if (cemented.size () > max_size)
-	{
-		cemented.pop_front ();
-	}
+	rsnano::rsn_recently_cemented_cache_put (handle, status.handle);
 }
 
 nano::recently_cemented_cache::queue_t nano::recently_cemented_cache::list () const
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return cemented;
+	rsnano::RecentlyCementedCachedDto recently_cemented_cache_dto;
+	rsnano::rsn_recently_cemented_cache_list (handle, &recently_cemented_cache_dto);
+	nano::recently_cemented_cache::queue_t result;
+	rsnano::ElectionStatusHandle * const * current;
+	int i;
+	for (i = 0, current = recently_cemented_cache_dto.items; i < recently_cemented_cache_dto.count; ++i)
+	{
+		nano::election_status election_status (*current);
+		result.push_back (election_status);
+		current++;
+	}
+
+	rsnano::rsn_recently_cemented_cache_destroy_dto (&recently_cemented_cache_dto);
+
+	return result;
 }
 
 std::size_t nano::recently_cemented_cache::size () const
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return cemented.size ();
+	return rsn_recently_cemented_cache_size (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::recently_cemented_cache::collect_container_info (const std::string & name)
 {
-	nano::unique_lock<nano::mutex> lock{ mutex };
+	size_t size = rsnano::rsn_recently_cemented_cache_size (handle);
+	size_t size_of_type = rsnano::rsn_recently_cemented_cache_get_cemented_type_size ();
 
 	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "cemented", cemented.size (), sizeof (decltype (cemented)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "cemented", size, size_of_type }));
 	return composite;
 }

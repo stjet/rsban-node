@@ -126,7 +126,7 @@ fn fail_fork() {
         .source(ctx.send_block.hash())
         .representative(Account::from(1000))
         .account(ctx.receiver_account)
-        .sign(ctx.receiver_key)
+        .sign(&ctx.receiver_key)
         .build()
         .unwrap();
 
@@ -152,7 +152,7 @@ fn fail_fork_previous() {
     let mut open_fork = BlockBuilder::open()
         .source(send2.hash())
         .account(ctx.receiver_account)
-        .sign(ctx.receiver_key)
+        .sign(&ctx.receiver_key)
         .build()
         .unwrap();
 
@@ -187,7 +187,7 @@ fn fail_gap_source() {
     let mut open = BlockBuilder::open()
         .source(BlockHash::from(1))
         .account(keypair.public_key().into())
-        .sign(keypair)
+        .sign(&keypair)
         .build()
         .unwrap();
 
@@ -206,7 +206,7 @@ fn fail_bad_signature() {
     let mut open = BlockBuilder::open()
         .source(ctx.send_block.hash())
         .account(ctx.receiver_account)
-        .sign(bad_keys)
+        .sign(&bad_keys)
         .build()
         .unwrap();
 
@@ -226,7 +226,7 @@ fn fail_account_mismatch() {
     let mut open = BlockBuilder::open()
         .source(ctx.send_block.hash())
         .account(bad_key.public_key().into())
-        .sign(bad_key)
+        .sign(&bad_key)
         .build()
         .unwrap();
 
@@ -249,7 +249,7 @@ fn state_open_fork() {
     let mut open2 = BlockBuilder::open()
         .source(ctx.send_block.hash())
         .account(ctx.receiver_account)
-        .sign(ctx.receiver_key)
+        .sign(&ctx.receiver_key)
         .build()
         .unwrap();
 
@@ -280,7 +280,7 @@ fn open_from_state_block() {
         .source(send.hash())
         .account(destination_account)
         .representative(*DEV_GENESIS_ACCOUNT)
-        .sign(destination)
+        .sign(&destination)
         .build()
         .unwrap();
 

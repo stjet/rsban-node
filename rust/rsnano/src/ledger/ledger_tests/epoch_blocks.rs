@@ -1,6 +1,6 @@
 use crate::{
     core::{
-        Account, Amount, Block, BlockBuilder, BlockDetails, Epoch, KeyPair, SignatureVerification,
+        Amount, Block, BlockBuilder, BlockDetails, BlockHash, Epoch, KeyPair, SignatureVerification,
     },
     ledger::{ProcessResult, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
@@ -87,12 +87,13 @@ fn epoch_blocks_v1_general() {
 
     // test that state blocks can be appended
     let destination = KeyPair::new();
+    let destination_account = destination.public_key().into();
     let mut send1 = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(epoch1.hash())
         .representative(*DEV_GENESIS_ACCOUNT)
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
-        .link(Account::from(destination.public_key()))
+        .link(destination_account)
         .sign(&DEV_GENESIS_KEY)
         .build()
         .unwrap();
@@ -105,4 +106,82 @@ fn epoch_blocks_v1_general() {
     );
     // source_epoch is not used for send blocks
     assert_eq!(send1.sideband().unwrap().source_epoch, Epoch::Epoch0);
+
+    let mut open1 = BlockBuilder::open()
+        .source(send1.hash())
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .account(destination_account)
+        .sign(&destination)
+        .build()
+        .unwrap();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut open1, SignatureVerification::Unknown);
+    assert_eq!(result.code, ProcessResult::Unreceivable);
+
+    let mut epoch3 = BlockBuilder::state()
+        .account(destination_account)
+        .previous(BlockHash::zero())
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .balance(Amount::zero())
+        .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
+        .sign(&DEV_GENESIS_KEY)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut epoch3, SignatureVerification::Unknown);
+
+    assert_eq!(result.code, ProcessResult::RepresentativeMismatch);
+
+    let mut epoch4 = BlockBuilder::state()
+        .account(destination_account)
+        .previous(0)
+        .representative(0)
+        .balance(0)
+        .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
+        .sign(&DEV_GENESIS_KEY)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut epoch4, SignatureVerification::Unknown);
+
+    assert_eq!(result.code, ProcessResult::Progress);
+
+    let mut receive1 = BlockBuilder::receive()
+        .previous(epoch4.hash())
+        .source(send1.hash())
+        .sign(&destination)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut receive1, SignatureVerification::Unknown);
+
+    assert_eq!(result.code, ProcessResult::BlockPosition);
+
+    let mut receive2 = BlockBuilder::state()
+        .account(destination_account)
+        .previous(epoch4.hash())
+        .representative(destination_account)
+        .balance(Amount::new(50))
+        .link(send1.hash())
+        .sign(&destination)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut receive2, SignatureVerification::Unknown);
+
+    assert_eq!(result.code, ProcessResult::Progress);
+    assert_eq!(
+        receive2.sideband().unwrap().details,
+        BlockDetails::new(Epoch::Epoch1, false, true, false)
+    );
+    assert_eq!(receive2.sideband().unwrap().source_epoch, Epoch::Epoch1);
 }

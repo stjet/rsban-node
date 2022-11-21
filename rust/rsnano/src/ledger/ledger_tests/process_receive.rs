@@ -128,7 +128,7 @@ fn receive_fork() {
     let mut receive_fork = BlockBuilder::receive()
         .previous(ctx.open_block.hash())
         .source(send.hash())
-        .sign(ctx.receiver_key.clone())
+        .sign(&ctx.receiver_key)
         .without_sideband()
         .build()
         .unwrap();
@@ -149,7 +149,7 @@ fn fail_double_receive() {
     let mut double_receive = BlockBuilder::receive()
         .previous(ctx.open_block.hash())
         .source(ctx.send_block.hash())
-        .sign(ctx.receiver_key)
+        .sign(&ctx.receiver_key)
         .build()
         .unwrap();
 
@@ -182,7 +182,7 @@ fn fail_gap_source() {
     let mut receive = BlockBuilder::receive()
         .previous(ctx.open_block.hash())
         .source(BlockHash::from(1))
-        .sign(ctx.receiver_key)
+        .sign(&ctx.receiver_key)
         .build()
         .unwrap();
 
@@ -208,7 +208,7 @@ fn fail_bad_signature() {
     let mut receive = BlockBuilder::receive()
         .previous(ctx.open_block.hash())
         .source(send.hash())
-        .sign(KeyPair::new())
+        .sign(&KeyPair::new())
         .build()
         .unwrap();
 
@@ -228,7 +228,7 @@ fn fail_gap_previous_unopened() {
     let mut receive = BlockBuilder::receive()
         .previous(BlockHash::from(1))
         .source(ctx.send_block.hash())
-        .sign(ctx.receiver_key)
+        .sign(&ctx.receiver_key)
         .build()
         .unwrap();
 
@@ -254,7 +254,7 @@ fn fail_gap_previous_opened() {
     let mut receive = BlockBuilder::receive()
         .previous(BlockHash::from(1))
         .source(send2.hash())
-        .sign(ctx.receiver_key)
+        .sign(&ctx.receiver_key)
         .build()
         .unwrap();
 
@@ -301,7 +301,7 @@ fn fail_fork_previous() {
     let mut fork_receive = BlockBuilder::receive()
         .previous(ctx.open_block.hash())
         .source(receivable.hash())
-        .sign(ctx.receiver_key)
+        .sign(&ctx.receiver_key)
         .build()
         .unwrap();
 
@@ -336,7 +336,7 @@ fn fail_receive_received_source() {
     let mut fork_receive = BlockBuilder::receive()
         .previous(ctx.open_block.hash())
         .source(receivable2.hash())
-        .sign(ctx.receiver_key)
+        .sign(&ctx.receiver_key)
         .build()
         .unwrap();
 
@@ -365,7 +365,7 @@ fn receive_after_state_fail() {
     let mut receive = BlockBuilder::receive()
         .previous(send.hash())
         .source(send.hash())
-        .sign(DEV_GENESIS_KEY.clone())
+        .sign(&DEV_GENESIS_KEY.clone())
         .build()
         .unwrap();
 

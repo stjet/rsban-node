@@ -96,7 +96,7 @@ impl LedgerContext {
             .source(send.hash())
             .representative(receiver_account)
             .account(receiver_account)
-            .sign(receiver_key.clone())
+            .sign(&receiver_key)
             .without_sideband()
             .build()
             .unwrap();
@@ -123,7 +123,7 @@ impl LedgerContext {
         let mut receive = BlockBuilder::receive()
             .previous(account_info.head)
             .source(send.hash())
-            .sign(receiver_key.clone())
+            .sign(&receiver_key)
             .without_sideband()
             .build()
             .unwrap();

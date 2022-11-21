@@ -808,7 +808,7 @@ nano::recently_cemented_cache::queue_t nano::recently_cemented_cache::list () co
 	int i;
 	for (i = 0, current = recently_cemented_cache_dto.items; i < recently_cemented_cache_dto.count; ++i)
 	{
-		nano::election_status election_status (reinterpret_cast<const rsnano::ElectionStatusHandle *> (current));
+		nano::election_status election_status (*current);
 		result.push_back (election_status);
 		current++;
 	}

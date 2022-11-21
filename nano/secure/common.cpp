@@ -1134,8 +1134,8 @@ nano::election_status::election_status () :
 {
 }
 
-nano::election_status::election_status (rsnano::ElectionStatusHandle const * handle_a) :
-	handle (rsnano::rsn_election_status_clone (handle_a))
+nano::election_status::election_status (rsnano::ElectionStatusHandle * handle_a) :
+	handle (handle_a)
 {
 }
 

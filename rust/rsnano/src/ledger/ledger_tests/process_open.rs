@@ -4,7 +4,7 @@ use crate::{
     },
     ledger::{
         ledger_tests::{LedgerContext, LedgerWithOpenBlock, LedgerWithSendBlock},
-        ProcessResult,
+        ProcessResult, DEV_GENESIS_KEY,
     },
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
@@ -260,4 +260,35 @@ fn state_open_fork() {
     );
 
     assert_eq!(result.code, ProcessResult::Fork);
+}
+
+#[test]
+fn open_from_state_send() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let destination = KeyPair::new();
+    let destination_account = destination.public_key().into();
+    let amount_sent = Amount::new(50);
+    let send = ctx.process_state_send(
+        txn.as_mut(),
+        &DEV_GENESIS_KEY,
+        destination_account,
+        amount_sent,
+    );
+
+    let mut open = BlockBuilder::open()
+        .source(send.hash())
+        .account(destination_account)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .sign(destination)
+        .build()
+        .unwrap();
+
+    ctx.process(txn.as_mut(), &mut open);
+
+    assert_eq!(ctx.ledger.balance(txn.txn(), &open.hash()), amount_sent);
+    assert_eq!(
+        ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
+        DEV_CONSTANTS.genesis_amount
+    );
 }

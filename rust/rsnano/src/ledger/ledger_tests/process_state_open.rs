@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 
 use crate::{
     core::{
-        Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
+        Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair, Link,
         PendingKey, SignatureVerification,
     },
     ledger::{ledger_tests::LedgerWithSendBlock, ProcessResult, DEV_GENESIS_KEY},
@@ -158,4 +158,49 @@ fn open_fork_fail() {
     );
 
     assert_eq!(result.code, ProcessResult::Fork);
+}
+
+#[test]
+fn previous_fail() {
+    let mut ctx = LedgerWithSendBlock::new();
+
+    let invalid_previous = BlockHash::from(1);
+    let mut open = BlockBuilder::state()
+        .account(ctx.receiver_account)
+        .previous(invalid_previous)
+        .balance(ctx.amount_sent)
+        .link(ctx.send_block.hash())
+        .sign(&ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut open,
+        SignatureVerification::Unknown,
+    );
+
+    assert_eq!(result.code, ProcessResult::GapPrevious);
+}
+
+#[test]
+fn source_fail() {
+    let mut ctx = LedgerWithSendBlock::new();
+
+    let mut open = BlockBuilder::state()
+        .account(ctx.receiver_account)
+        .previous(BlockHash::zero())
+        .balance(Amount::zero())
+        .link(Link::zero())
+        .sign(&ctx.receiver_key)
+        .build()
+        .unwrap();
+
+    let result = ctx.ledger_context.ledger.process(
+        ctx.txn.as_mut(),
+        &mut open,
+        SignatureVerification::Unknown,
+    );
+
+    assert_eq!(result.code, ProcessResult::GapSource);
 }

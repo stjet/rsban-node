@@ -1,7 +1,10 @@
 use crate::{
-    core::{Amount, Block, BlockDetails, BlockEnum, Epoch, PendingKey, StateBlock},
-    ledger::{datastore::WriteTransaction, DEV_GENESIS_KEY},
-    DEV_GENESIS_ACCOUNT,
+    core::{
+        Amount, Block, BlockBuilder, BlockDetails, BlockEnum, Epoch, Link, PendingKey,
+        SignatureVerification, StateBlock,
+    },
+    ledger::{datastore::WriteTransaction, ProcessResult, DEV_GENESIS_KEY},
+    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
 
 use super::LedgerContext;
@@ -99,6 +102,34 @@ fn receive_old_send_block() {
         loaded_block.sideband().unwrap(),
         receive.sideband().unwrap()
     );
+}
+
+#[test]
+fn state_unreceivable_fail() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = ctx.process_state_send(
+        txn.as_mut(),
+        &DEV_GENESIS_KEY,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::new(1),
+    );
+
+    let mut receive = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(send.hash())
+        .balance(DEV_CONSTANTS.genesis_amount)
+        .link(Link::from(1))
+        .sign(&DEV_GENESIS_KEY)
+        .build()
+        .unwrap();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
+
+    assert_eq!(result.code, ProcessResult::GapSource);
 }
 
 fn receive_50_raw_into_genesis(

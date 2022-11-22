@@ -16,6 +16,7 @@ use crate::{
 
 use super::DEV_GENESIS_KEY;
 
+mod account_block_factory;
 mod empty_ledger;
 mod epoch_v1;
 mod epoch_v2;
@@ -32,6 +33,7 @@ mod rollback_open;
 mod rollback_receive;
 mod rollback_send;
 mod rollback_state;
+pub(crate) use account_block_factory::AccountBlockFactory;
 
 #[test]
 fn ledger_successor() {

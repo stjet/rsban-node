@@ -1,28 +1,21 @@
 use crate::{
     core::{
         Account, Amount, Block, BlockBuilder, BlockDetails, Epoch, KeyPair, PendingKey,
-        SignatureVerification, StateBlockBuilder,
+        SignatureVerification,
     },
-    ledger::{ProcessResult, DEV_GENESIS_KEY},
+    ledger::{ledger_tests::AccountBlockFactory, ProcessResult, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
 use super::LedgerContext;
 
-pub(crate) fn epoch_v1_block_for_genesis_account() -> StateBlockBuilder {
-    BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(*DEV_GENESIS_HASH)
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount)
-        .link(*DEV_CONSTANTS.epochs.link(Epoch::Epoch1).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-}
-
 fn epoch_block_upgrades_epoch() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch = epoch_v1_block_for_genesis_account().build().unwrap();
+    let mut epoch = AccountBlockFactory::genesis(&ctx.ledger)
+        .epoch_v1(txn.txn())
+        .build()
+        .unwrap();
 
     ctx.process(txn.as_mut(), &mut epoch);
 
@@ -45,13 +38,12 @@ fn epoch_block_upgrades_epoch() {
 fn adding_epoch_twice_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch1 = epoch_v1_block_for_genesis_account().build().unwrap();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+
+    let mut epoch1 = genesis.epoch_v1(txn.txn()).build().unwrap();
     ctx.process(txn.as_mut(), &mut epoch1);
 
-    let mut epoch2 = epoch_v1_block_for_genesis_account()
-        .previous(epoch1.hash())
-        .build()
-        .unwrap();
+    let mut epoch2 = genesis.epoch_v1(txn.txn()).build().unwrap();
 
     let result = ctx
         .ledger
@@ -63,13 +55,13 @@ fn adding_epoch_twice_fails() {
 fn adding_old_change_block_after_epoch1_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch = epoch_v1_block_for_genesis_account().build().unwrap();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+
+    let mut epoch = genesis.epoch_v1(txn.txn()).build().unwrap();
     ctx.process(txn.as_mut(), &mut epoch);
 
-    let mut change = BlockBuilder::change()
-        .previous(epoch.hash())
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .sign(&DEV_GENESIS_KEY)
+    let mut change = genesis
+        .change_representative(txn.txn(), *DEV_GENESIS_ACCOUNT)
         .build()
         .unwrap();
 
@@ -83,19 +75,15 @@ fn adding_old_change_block_after_epoch1_fails() {
 fn can_add_state_blocks_after_epoch1() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch = epoch_v1_block_for_genesis_account().build().unwrap();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+
+    let mut epoch = genesis.epoch_v1(txn.txn()).build().unwrap();
     ctx.process(txn.as_mut(), &mut epoch);
 
-    let mut send = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(epoch.hash())
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
-        .link(Account::from(1))
-        .sign(&DEV_GENESIS_KEY)
+    let mut send = genesis
+        .state_send(txn.txn(), Account::from(1), Amount::new(50))
         .build()
         .unwrap();
-
     ctx.process(txn.as_mut(), &mut send);
 
     assert_eq!(
@@ -110,7 +98,9 @@ fn can_add_state_blocks_after_epoch1() {
 fn rollback_epoch() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch = epoch_v1_block_for_genesis_account().build().unwrap();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+
+    let mut epoch = genesis.epoch_v1(txn.txn()).build().unwrap();
     ctx.process(txn.as_mut(), &mut epoch);
 
     ctx.ledger
@@ -131,7 +121,10 @@ fn rollback_epoch() {
 fn cannot_change_representative_with_epoch_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch = epoch_v1_block_for_genesis_account()
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+
+    let mut epoch = genesis
+        .epoch_v1(txn.txn())
         .representative(Account::from(1))
         .build()
         .unwrap();
@@ -147,22 +140,17 @@ fn cannot_change_representative_with_epoch_block() {
 fn cannot_use_old_open_block_after_epoch1() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut epoch = epoch_v1_block_for_genesis_account().build().unwrap();
+    let mut epoch = genesis.epoch_v1(txn.txn()).build().unwrap();
     ctx.process(txn.as_mut(), &mut epoch);
 
     let destination = KeyPair::new();
     let destination_account = destination.public_key().into();
-    let mut send = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(epoch.hash())
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
-        .link(destination_account)
-        .sign(&DEV_GENESIS_KEY)
+    let mut send = genesis
+        .state_send(txn.txn(), destination_account, Amount::new(50))
         .build()
         .unwrap();
-
     ctx.process(txn.as_mut(), &mut send);
 
     let mut open = BlockBuilder::open()

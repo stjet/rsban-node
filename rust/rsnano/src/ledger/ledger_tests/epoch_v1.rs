@@ -9,7 +9,7 @@ use crate::{
 
 use super::LedgerContext;
 
-fn epoch_block_for_genesis_account() -> StateBlockBuilder {
+pub(crate) fn epoch_v1_block_for_genesis_account() -> StateBlockBuilder {
     BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
@@ -22,7 +22,7 @@ fn epoch_block_for_genesis_account() -> StateBlockBuilder {
 fn epoch_block_upgrades_epoch() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch = epoch_block_for_genesis_account().build().unwrap();
+    let mut epoch = epoch_v1_block_for_genesis_account().build().unwrap();
 
     ctx.process(txn.as_mut(), &mut epoch);
 
@@ -45,10 +45,10 @@ fn epoch_block_upgrades_epoch() {
 fn adding_epoch_twice_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch1 = epoch_block_for_genesis_account().build().unwrap();
+    let mut epoch1 = epoch_v1_block_for_genesis_account().build().unwrap();
     ctx.process(txn.as_mut(), &mut epoch1);
 
-    let mut epoch2 = epoch_block_for_genesis_account()
+    let mut epoch2 = epoch_v1_block_for_genesis_account()
         .previous(epoch1.hash())
         .build()
         .unwrap();
@@ -63,13 +63,13 @@ fn adding_epoch_twice_fails() {
 fn cannot_add_old_change_block_after_epoch1() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch = epoch_block_for_genesis_account().build().unwrap();
+    let mut epoch = epoch_v1_block_for_genesis_account().build().unwrap();
     ctx.process(txn.as_mut(), &mut epoch);
 
     let mut change = BlockBuilder::change()
         .previous(epoch.hash())
         .representative(*DEV_GENESIS_ACCOUNT)
-        .sign(DEV_GENESIS_KEY.clone())
+        .sign(&DEV_GENESIS_KEY)
         .build()
         .unwrap();
 
@@ -83,7 +83,7 @@ fn cannot_add_old_change_block_after_epoch1() {
 fn can_add_state_blocks_after_epoch1() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch = epoch_block_for_genesis_account().build().unwrap();
+    let mut epoch = epoch_v1_block_for_genesis_account().build().unwrap();
     ctx.process(txn.as_mut(), &mut epoch);
 
     let mut send = BlockBuilder::state()
@@ -110,7 +110,7 @@ fn can_add_state_blocks_after_epoch1() {
 fn rollback_epoch() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch = epoch_block_for_genesis_account().build().unwrap();
+    let mut epoch = epoch_v1_block_for_genesis_account().build().unwrap();
     ctx.process(txn.as_mut(), &mut epoch);
 
     ctx.ledger
@@ -131,7 +131,7 @@ fn rollback_epoch() {
 fn cannot_change_representative_with_epoch_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut epoch = epoch_block_for_genesis_account()
+    let mut epoch = epoch_v1_block_for_genesis_account()
         .representative(Account::from(1))
         .build()
         .unwrap();
@@ -148,7 +148,7 @@ fn cannot_use_old_open_block_after_epoch1() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let mut epoch = epoch_block_for_genesis_account().build().unwrap();
+    let mut epoch = epoch_v1_block_for_genesis_account().build().unwrap();
     ctx.process(txn.as_mut(), &mut epoch);
 
     let destination = KeyPair::new();

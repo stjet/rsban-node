@@ -127,8 +127,7 @@ fn fail_fork() {
         .representative(Account::from(1000))
         .account(ctx.receiver_account)
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -153,8 +152,7 @@ fn fail_fork_previous() {
         .source(send2.hash())
         .account(ctx.receiver_account)
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -188,8 +186,7 @@ fn fail_gap_source() {
         .source(BlockHash::from(1))
         .account(keypair.public_key().into())
         .sign(&keypair)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -207,8 +204,7 @@ fn fail_bad_signature() {
         .source(ctx.send_block.hash())
         .account(ctx.receiver_account)
         .sign(&bad_keys)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -227,8 +223,7 @@ fn fail_account_mismatch() {
         .source(ctx.send_block.hash())
         .account(bad_key.public_key().into())
         .sign(&bad_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -250,8 +245,7 @@ fn state_open_fork() {
         .source(ctx.send_block.hash())
         .account(ctx.receiver_account)
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -281,8 +275,7 @@ fn open_from_state_block() {
         .account(destination_account)
         .representative(*DEV_GENESIS_ACCOUNT)
         .sign(&destination)
-        .build()
-        .unwrap();
+        .build();
 
     ctx.process(txn.as_mut(), &mut open);
 

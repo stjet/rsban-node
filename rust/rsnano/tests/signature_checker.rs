@@ -161,7 +161,6 @@ fn test_state_block(key: &KeyPair) -> StateBlock {
         &key.private_key(),
         &key.public_key(),
         0,
-    )
-    .unwrap();
+    );
     block
 }

@@ -67,19 +67,13 @@ pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut BlockH
 
 #[no_mangle]
 pub extern "C" fn rsn_receive_block_create2(dto: &ReceiveBlockDto2) -> *mut BlockHandle {
-    let block = match ReceiveBlock::new(
+    let block = ReceiveBlock::new(
         BlockHash::from_bytes(dto.previous),
         BlockHash::from_bytes(dto.source),
         &RawKey::from_bytes(dto.priv_key),
         &PublicKey::from_bytes(dto.pub_key),
         dto.work,
-    ) {
-        Ok(b) => b,
-        Err(e) => {
-            eprintln!("could not create receive block: {}", e);
-            return std::ptr::null_mut();
-        }
-    };
+    );
 
     Box::into_raw(Box::new(BlockHandle {
         block: Arc::new(RwLock::new(BlockEnum::Receive(block))),

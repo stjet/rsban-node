@@ -138,19 +138,18 @@ mod tests {
     use crate::{core::BlockBuilder, utils::MemoryStream, DEV_NETWORK_PARAMS};
 
     #[test]
-    fn serialize() -> Result<()> {
-        let block = BlockBuilder::state().build()?;
+    fn serialize() {
+        let block = BlockBuilder::state().build();
         let block = Arc::new(RwLock::new(BlockEnum::State(block)));
         let network = &DEV_NETWORK_PARAMS.network;
         let publish1 = Publish::new(network, block);
 
         let mut stream = MemoryStream::new();
-        publish1.serialize(&mut stream)?;
+        publish1.serialize(&mut stream).unwrap();
 
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::from_stream(&mut stream).unwrap();
         let mut publish2 = Publish::with_header(header, 0);
-        publish2.deserialize(&mut stream, None)?;
+        publish2.deserialize(&mut stream, None).unwrap();
         assert_eq!(publish1, publish2);
-        Ok(())
     }
 }

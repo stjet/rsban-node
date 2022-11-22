@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn work_one() {
         let pool = &DEV_WORK_POOL;
-        let mut block = BlockBuilder::state().build().unwrap();
+        let mut block = BlockBuilder::state().build();
         block.set_work(pool.generate_dev2(block.root()).unwrap());
         assert!(pool.threshold_base(block.work_version()) < difficulty(&block));
     }
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn work_validate() {
         let pool = &DEV_WORK_POOL;
-        let mut block = BlockBuilder::send().work(6).build().unwrap();
+        let mut block = BlockBuilder::send().work(6).build();
         assert!(difficulty(&block) < pool.threshold_base(block.work_version()));
         block.set_work(pool.generate_dev2(block.root()).unwrap());
         assert!(difficulty(&block) > pool.threshold_base(block.work_version()));

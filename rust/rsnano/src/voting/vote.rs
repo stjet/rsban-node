@@ -49,7 +49,7 @@ impl Vote {
             hashes,
         };
         result.signature =
-            sign_message(prv, &result.voting_account.into(), result.hash().as_bytes())?;
+            sign_message(prv, &result.voting_account.into(), result.hash().as_bytes());
         Ok(result)
     }
 

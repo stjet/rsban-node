@@ -51,18 +51,14 @@ impl KeyPair {
     }
 }
 
-pub fn sign_message(
-    private_key: &RawKey,
-    public_key: &PublicKey,
-    data: &[u8],
-) -> anyhow::Result<Signature> {
+pub fn sign_message(private_key: &RawKey, public_key: &PublicKey, data: &[u8]) -> Signature {
     let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(private_key.as_bytes())
-        .map_err(|_| anyhow!("could not extract secret key"))?;
+        .expect("could not extract secret key");
     let public = ed25519_dalek_blake2b::PublicKey::from_bytes(public_key.as_bytes())
-        .map_err(|_| anyhow!("could not extract public key"))?;
+        .expect("could not extract public key");
     let expanded = ed25519_dalek_blake2b::ExpandedSecretKey::from(&secret);
     let signature = expanded.sign(data, &public);
-    Ok(Signature::from_bytes(signature.to_bytes()))
+    Signature::from_bytes(signature.to_bytes())
 }
 
 pub fn validate_message(
@@ -121,21 +117,20 @@ mod tests {
     fn sign_message_test() -> anyhow::Result<()> {
         let keypair = KeyPair::new();
         let data = [0u8; 32];
-        let signature = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+        let signature = sign_message(&keypair.private_key(), &keypair.public_key(), &data);
         validate_message(&keypair.public_key(), &data, &signature)?;
         Ok(())
     }
 
     #[test]
-    fn signing_same_message_twice_produces_equal_signatures() -> anyhow::Result<()> {
+    fn signing_same_message_twice_produces_equal_signatures() {
         // the C++ implementation adds random bytes and a padding when signing for extra security and for making side channel attacks more difficult.
         // Currently the Rust impl does not do that.
         // In C++ signing the same message twice will produce different signatures. In Rust we get the same signature.
         let keypair = KeyPair::new();
         let data = [1, 2, 3];
-        let signature_a = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
-        let signature_b = sign_message(&keypair.private_key(), &keypair.public_key(), &data)?;
+        let signature_a = sign_message(&keypair.private_key(), &keypair.public_key(), &data);
+        let signature_b = sign_message(&keypair.private_key(), &keypair.public_key(), &data);
         assert_eq!(signature_a, signature_b);
-        Ok(())
     }
 }

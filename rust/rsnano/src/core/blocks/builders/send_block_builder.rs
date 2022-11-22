@@ -63,7 +63,7 @@ impl SendBlockBuilder {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<SendBlock> {
+    pub fn build(self) -> SendBlock {
         let key_pair = self.keypair.unwrap_or_default();
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let destination = self.destination.unwrap_or(Account::from(2));
@@ -78,7 +78,7 @@ impl SendBlockBuilder {
             &key_pair.private_key(),
             &key_pair.public_key(),
             work,
-        )?;
+        );
 
         if self.build_sideband {
             let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
@@ -92,6 +92,6 @@ impl SendBlockBuilder {
                 Epoch::Epoch0,
             ));
         }
-        Ok(block)
+        block
     }
 }

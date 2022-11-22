@@ -56,7 +56,7 @@ impl ChangeBlockBuilder {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<ChangeBlock> {
+    pub fn build(self) -> ChangeBlock {
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let key_pair = self.keypair.unwrap_or_default();
         let representative = self.representative.unwrap_or(Account::from(2));
@@ -70,7 +70,7 @@ impl ChangeBlockBuilder {
             &key_pair.private_key(),
             &key_pair.public_key(),
             work,
-        )?;
+        );
 
         if self.build_sideband {
             let details = BlockDetails {
@@ -90,6 +90,6 @@ impl ChangeBlockBuilder {
             ));
         }
 
-        Ok(block)
+        block
     }
 }

@@ -244,8 +244,7 @@ fn rollback_send_with_rep_change() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     ctx.process(txn.as_mut(), &mut send);
 
@@ -289,8 +288,7 @@ fn rollback_receive_with_rep_change() {
         .balance(DEV_CONSTANTS.genesis_amount)
         .link(send.hash())
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     ctx.process(txn.as_mut(), &mut receive);
 

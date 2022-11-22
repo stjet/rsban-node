@@ -46,22 +46,22 @@ impl ChangeBlock {
         prv_key: &RawKey,
         pub_key: &PublicKey,
         work: u64,
-    ) -> Result<Self> {
+    ) -> Self {
         let hashables = ChangeHashables {
             previous,
             representative,
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes())?;
+        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes());
 
-        Ok(Self {
+        Self {
             work,
             signature,
             hashables,
             hash,
             sideband: None,
-        })
+        }
     }
 
     pub fn serialized_size() -> usize {
@@ -232,15 +232,14 @@ mod tests {
             &key1.private_key(),
             &key1.public_key(),
             5,
-        )
-        .unwrap();
+        );
         assert_eq!(block.previous(), previous);
         assert_eq!(block.root(), block.previous().into());
     }
 
     // original test: change_block.deserialize
     #[test]
-    fn serialize() -> Result<()> {
+    fn serialize() {
         let key1 = KeyPair::new();
         let block1 = ChangeBlock::new(
             BlockHash::from(1),
@@ -248,19 +247,18 @@ mod tests {
             &key1.private_key(),
             &key1.public_key(),
             5,
-        )?;
+        );
         let mut stream = MemoryStream::new();
-        block1.serialize(&mut stream)?;
+        block1.serialize(&mut stream).unwrap();
         assert_eq!(ChangeBlock::serialized_size(), stream.bytes_written());
 
-        let block2 = ChangeBlock::deserialize(&mut stream)?;
+        let block2 = ChangeBlock::deserialize(&mut stream).unwrap();
         assert_eq!(block1, block2);
-        Ok(())
     }
 
     // original test: block.change_serialize_json
     #[test]
-    fn serialize_json() -> Result<()> {
+    fn serialize_json() {
         let key1 = KeyPair::new();
         let block1 = ChangeBlock::new(
             BlockHash::from(0),
@@ -268,12 +266,11 @@ mod tests {
             &key1.private_key(),
             &key1.public_key(),
             4,
-        )?;
+        );
         let mut ptree = TestPropertyTree::new();
-        block1.serialize_json(&mut ptree)?;
+        block1.serialize_json(&mut ptree).unwrap();
 
-        let block2 = ChangeBlock::deserialize_json(&ptree)?;
+        let block2 = ChangeBlock::deserialize_json(&ptree).unwrap();
         assert_eq!(block1, block2);
-        Ok(())
     }
 }

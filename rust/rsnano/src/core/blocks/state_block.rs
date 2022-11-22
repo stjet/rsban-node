@@ -67,7 +67,7 @@ impl StateBlock {
         prv_key: &RawKey,
         pub_key: &PublicKey,
         work: u64,
-    ) -> Result<Self> {
+    ) -> Self {
         let hashables = StateHashables {
             account,
             previous,
@@ -77,15 +77,15 @@ impl StateBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes())?;
+        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes());
 
-        Ok(Self {
+        Self {
             work,
             signature,
             hashables,
             hash,
             sideband: None,
-        })
+        }
     }
 
     pub fn with_signature(
@@ -120,10 +120,8 @@ impl StateBlock {
         Account::zero()
     }
 
-    fn sign(&mut self, prv_key: &RawKey, pub_key: &PublicKey) -> Result<()> {
-        let signature = sign_message(prv_key, pub_key, self.hash().as_bytes())?;
-        self.signature = signature;
-        Ok(())
+    fn sign(&mut self, prv_key: &RawKey, pub_key: &PublicKey) {
+        self.signature = sign_message(prv_key, pub_key, self.hash().as_bytes());
     }
 
     pub fn serialized_size() -> usize {
@@ -314,43 +312,39 @@ mod tests {
 
     // original test: state_block.serialization
     #[test]
-    fn serialization() -> Result<()> {
-        let block1 = BlockBuilder::state().work(5).build()?;
+    fn serialization() {
+        let block1 = BlockBuilder::state().work(5).build();
         let mut stream = MemoryStream::new();
-        block1.serialize(&mut stream)?;
+        block1.serialize(&mut stream).unwrap();
         assert_eq!(StateBlock::serialized_size(), stream.bytes_written());
         assert_eq!(stream.byte_at(215), 0x5); // Ensure work is serialized big-endian
 
-        let block2 = StateBlock::deserialize(&mut stream)?;
+        let block2 = StateBlock::deserialize(&mut stream).unwrap();
         assert_eq!(block1, block2);
-
-        Ok(())
     }
 
     // original test: state_block.serialization
     #[test]
-    fn json_serialization() -> Result<()> {
-        let block1 = BlockBuilder::state().build()?;
+    fn json_serialization() {
+        let block1 = BlockBuilder::state().build();
 
         let mut ptree = TestPropertyTree::new();
-        block1.serialize_json(&mut ptree)?;
+        block1.serialize_json(&mut ptree).unwrap();
 
-        let block2 = StateBlock::deserialize_json(&ptree)?;
+        let block2 = StateBlock::deserialize_json(&ptree).unwrap();
         assert_eq!(block1, block2);
-
-        Ok(())
     }
 
     // original test: state_block.hashing
     #[test]
     fn hashing() {
-        let block = BlockBuilder::state().build().unwrap();
+        let block = BlockBuilder::state().build();
         let hash = block.hash().clone();
         assert_eq!(hash, block.hash()); // check cache works
-        assert_eq!(hash, BlockBuilder::state().build().unwrap().hash());
+        assert_eq!(hash, BlockBuilder::state().build().hash());
 
         let assert_different_hash = |b: StateBlockBuilder| {
-            assert_ne!(hash, b.build().unwrap().hash());
+            assert_ne!(hash, b.build().hash());
         };
 
         assert_different_hash(BlockBuilder::state().account(Account::from(1000)));

@@ -47,7 +47,7 @@ impl ReceiveBlockBuilder {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<ReceiveBlock> {
+    pub fn build(self) -> ReceiveBlock {
         let key_pair = self.key_pair.unwrap_or_default();
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let source = self.source.unwrap_or(BlockHash::from(2));
@@ -61,7 +61,7 @@ impl ReceiveBlockBuilder {
             &key_pair.private_key(),
             &key_pair.public_key(),
             work,
-        )?;
+        );
 
         let details = BlockDetails {
             epoch: Epoch::Epoch0,
@@ -82,7 +82,7 @@ impl ReceiveBlockBuilder {
             ));
         }
 
-        Ok(block)
+        block
     }
 }
 
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn receive_block() {
-        let block = BlockBuilder::receive().build().unwrap();
+        let block = BlockBuilder::receive().build();
         assert_eq!(block.hashables.previous, BlockHash::from(1));
         assert_eq!(block.hashables.source, BlockHash::from(2));
         assert_eq!(DEV_NETWORK_PARAMS.work.validate_entry_block(&block), false);

@@ -460,8 +460,7 @@ impl HandshakeMessageVisitorImpl {
             &self.node_id.private_key(),
             &self.node_id.public_key(),
             query,
-        )
-        .unwrap();
+        );
         let response = Some((account, signature));
         let cookie = self.syn_cookies.assign(&self.server.remote_endpoint());
         let response_message = NodeIdHandshake::new(&self.network_constants, cookie, response);

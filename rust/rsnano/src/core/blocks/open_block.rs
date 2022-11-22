@@ -50,7 +50,7 @@ impl OpenBlock {
         prv_key: &RawKey,
         pub_key: &PublicKey,
         work: u64,
-    ) -> Result<Self> {
+    ) -> Self {
         let hashables = OpenHashables {
             source,
             representative,
@@ -58,15 +58,15 @@ impl OpenBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes())?;
+        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes());
 
-        Ok(Self {
+        Self {
             work,
             signature,
             hashables,
             hash,
             sideband: None,
-        })
+        }
     }
 
     pub fn serialized_size() -> usize {
@@ -235,8 +235,7 @@ mod tests {
             &key.private_key(),
             &key.public_key(),
             0,
-        )
-        .unwrap();
+        );
 
         assert_eq!(block.account(), account);
         assert_eq!(block.root(), account.into());
@@ -244,7 +243,7 @@ mod tests {
 
     // original test: block.open_serialize_json
     #[test]
-    fn serialize_json() -> Result<()> {
+    fn serialize_json() {
         let key1 = KeyPair::new();
         let block1 = OpenBlock::new(
             BlockHash::from(0),
@@ -253,18 +252,17 @@ mod tests {
             &key1.private_key(),
             &key1.public_key(),
             0,
-        )?;
+        );
         let mut ptree = TestPropertyTree::new();
-        block1.serialize_json(&mut ptree)?;
+        block1.serialize_json(&mut ptree).unwrap();
 
-        let block2 = OpenBlock::deserialize_json(&ptree)?;
+        let block2 = OpenBlock::deserialize_json(&ptree).unwrap();
         assert_eq!(block1, block2);
-        Ok(())
     }
 
     // original test: open_block.deserialize
     #[test]
-    fn serialize() -> Result<()> {
+    fn serialize() {
         let key1 = KeyPair::new();
         let block1 = OpenBlock::new(
             BlockHash::from(0),
@@ -273,13 +271,12 @@ mod tests {
             &key1.private_key(),
             &key1.public_key(),
             0,
-        )?;
+        );
         let mut stream = MemoryStream::new();
-        block1.serialize(&mut stream)?;
+        block1.serialize(&mut stream).unwrap();
         assert_eq!(OpenBlock::serialized_size(), stream.bytes_written());
 
-        let block2 = OpenBlock::deserialize(&mut stream)?;
+        let block2 = OpenBlock::deserialize(&mut stream).unwrap();
         assert_eq!(block1, block2);
-        Ok(())
     }
 }

@@ -214,8 +214,7 @@ fn block_destination_source() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(*GXRB_RATIO * 2))
         .link(dest_account)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut block4);
 
     let mut block5 = BlockBuilder::state()
@@ -224,8 +223,7 @@ fn block_destination_source() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(*GXRB_RATIO * 3))
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut block5);
 
     let mut block6 = BlockBuilder::state()
@@ -234,8 +232,7 @@ fn block_destination_source() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(*GXRB_RATIO * 2))
         .link(block5.hash())
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut block6);
 
     let block1 = BlockEnum::Send(block1);
@@ -296,8 +293,7 @@ fn state_account() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(*GXRB_RATIO))
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut send);
     assert_eq!(
         ctx.ledger.account(txn.txn(), &send.hash()),

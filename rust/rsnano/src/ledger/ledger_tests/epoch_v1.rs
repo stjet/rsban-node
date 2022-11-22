@@ -14,8 +14,7 @@ fn epoch_block_upgrades_epoch() {
     let mut txn = ctx.ledger.rw_txn();
     let mut epoch = AccountBlockFactory::genesis(&ctx.ledger)
         .epoch_v1(txn.txn())
-        .build()
-        .unwrap();
+        .build();
 
     ctx.process(txn.as_mut(), &mut epoch);
 
@@ -40,10 +39,10 @@ fn adding_epoch_twice_fails() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut epoch1 = genesis.epoch_v1(txn.txn()).build().unwrap();
+    let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch1);
 
-    let mut epoch2 = genesis.epoch_v1(txn.txn()).build().unwrap();
+    let mut epoch2 = genesis.epoch_v1(txn.txn()).build();
 
     let result = ctx
         .ledger
@@ -57,13 +56,12 @@ fn adding_old_change_block_after_epoch1_fails() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut epoch = genesis.epoch_v1(txn.txn()).build().unwrap();
+    let mut epoch = genesis.epoch_v1(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch);
 
     let mut change = genesis
         .change_representative(txn.txn(), *DEV_GENESIS_ACCOUNT)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -77,13 +75,12 @@ fn can_add_state_blocks_after_epoch1() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut epoch = genesis.epoch_v1(txn.txn()).build().unwrap();
+    let mut epoch = genesis.epoch_v1(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch);
 
     let mut send = genesis
         .state_send(txn.txn(), Account::from(1), Amount::new(50))
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut send);
 
     assert_eq!(
@@ -100,7 +97,7 @@ fn rollback_epoch() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut epoch = genesis.epoch_v1(txn.txn()).build().unwrap();
+    let mut epoch = genesis.epoch_v1(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch);
 
     ctx.ledger
@@ -126,8 +123,7 @@ fn cannot_change_representative_with_epoch_block() {
     let mut epoch = genesis
         .epoch_v1(txn.txn())
         .representative(Account::from(1))
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -142,15 +138,14 @@ fn cannot_use_old_open_block_after_epoch1() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut epoch = genesis.epoch_v1(txn.txn()).build().unwrap();
+    let mut epoch = genesis.epoch_v1(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch);
 
     let destination = KeyPair::new();
     let destination_account = destination.public_key().into();
     let mut send = genesis
         .state_send(txn.txn(), destination_account, Amount::new(50))
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut send);
 
     let mut open = BlockBuilder::open()
@@ -158,8 +153,7 @@ fn cannot_use_old_open_block_after_epoch1() {
         .representative(*DEV_GENESIS_ACCOUNT)
         .account(destination_account)
         .sign(&destination)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -183,8 +177,7 @@ fn cannot_use_old_receive_block_after_epoch1_open() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
         .link(destination_account)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     ctx.process(txn.as_mut(), &mut send);
 
@@ -195,8 +188,7 @@ fn cannot_use_old_receive_block_after_epoch1_open() {
         .balance(0)
         .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     ctx.process(txn.as_mut(), &mut epoch_open);
 
@@ -204,8 +196,7 @@ fn cannot_use_old_receive_block_after_epoch1_open() {
         .previous(epoch_open.hash())
         .source(send.hash())
         .sign(&destination)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -228,8 +219,7 @@ fn cannot_use_old_receive_block_after_sender_upgraded_to_epoch1() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
         .link(destination_account)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut send1);
 
     let mut epoch1 = BlockBuilder::state()
@@ -239,8 +229,7 @@ fn cannot_use_old_receive_block_after_sender_upgraded_to_epoch1() {
         .balance(send1.balance())
         .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut epoch1);
 
     let mut send2 = BlockBuilder::state()
@@ -250,8 +239,7 @@ fn cannot_use_old_receive_block_after_sender_upgraded_to_epoch1() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(100))
         .link(destination_account)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut send2);
 
     let mut open = BlockBuilder::open()
@@ -259,16 +247,14 @@ fn cannot_use_old_receive_block_after_sender_upgraded_to_epoch1() {
         .representative(destination_account)
         .account(destination_account)
         .sign(&destination)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut open);
 
     let mut old_receive = BlockBuilder::receive()
         .previous(open.hash())
         .source(send2.hash())
         .sign(&destination)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger.process(
         txn.as_mut(),
@@ -293,8 +279,7 @@ fn can_add_state_receive_block_after_epoch1() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
         .link(destination_account)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     ctx.process(txn.as_mut(), &mut send);
 
@@ -305,8 +290,7 @@ fn can_add_state_receive_block_after_epoch1() {
         .balance(0)
         .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     ctx.process(txn.as_mut(), &mut epoch_open);
 
@@ -317,8 +301,7 @@ fn can_add_state_receive_block_after_epoch1() {
         .balance(Amount::new(50))
         .link(send.hash())
         .sign(&destination)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -346,8 +329,7 @@ fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
         .link(destination_account)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut send1);
 
     // upgrade genesis to Epoch1
@@ -358,8 +340,7 @@ fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
         .balance(send1.balance())
         .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut epoch1);
 
     //lend 50 to destination
@@ -370,8 +351,7 @@ fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(100))
         .link(destination_account)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut send2);
 
     // open destination
@@ -380,8 +360,7 @@ fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
         .representative(destination_account)
         .account(destination_account)
         .sign(&destination)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut open1);
 
     let mut receive2 = BlockBuilder::state()
@@ -391,8 +370,7 @@ fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
         .balance(Amount::new(100))
         .link(send2.hash())
         .sign(&destination)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut receive2);
 
     assert_eq!(receive2.sideband().unwrap().details.epoch, Epoch::Epoch1);
@@ -422,8 +400,7 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
         .link(destination_account)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut send1);
 
     // upgrade genesis to Epoch1
@@ -434,8 +411,7 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
         .balance(send1.balance())
         .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut epoch1);
 
     //lend 50 to destination
@@ -446,8 +422,7 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(100))
         .link(destination_account)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut send2);
 
     // open destination
@@ -456,8 +431,7 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
         .representative(destination_account)
         .account(destination_account)
         .sign(&destination)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut open1);
 
     let mut receive2 = BlockBuilder::state()
@@ -467,8 +441,7 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
         .balance(Amount::new(100))
         .link(send2.hash())
         .sign(&destination)
-        .build()
-        .unwrap();
+        .build();
     ctx.process(txn.as_mut(), &mut receive2);
 
     ctx.ledger

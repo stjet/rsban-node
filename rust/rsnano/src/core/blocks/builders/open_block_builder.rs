@@ -56,7 +56,7 @@ impl OpenBlockBuilder {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<OpenBlock> {
+    pub fn build(self) -> OpenBlock {
         let source = self.source.unwrap_or(BlockHash::from(1));
         let key_pair = self.keypair.unwrap_or_default();
         let account = self.account.unwrap_or_else(|| key_pair.public_key().into());
@@ -72,7 +72,7 @@ impl OpenBlockBuilder {
             &key_pair.private_key(),
             &key_pair.public_key(),
             work,
-        )?;
+        );
 
         let details = BlockDetails {
             epoch: Epoch::Epoch0,
@@ -93,7 +93,7 @@ impl OpenBlockBuilder {
             ));
         }
 
-        Ok(block)
+        block
     }
 }
 
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn create_open_block() {
-        let block = BlockBuilder::open().build().unwrap();
+        let block = BlockBuilder::open().build();
         assert_eq!(block.hashables.source, BlockHash::from(1));
         assert_eq!(block.hashables.representative, Account::from(2));
         assert_ne!(block.hashables.account, Account::zero());

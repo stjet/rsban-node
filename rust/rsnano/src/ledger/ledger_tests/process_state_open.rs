@@ -148,8 +148,7 @@ fn open_fork_fail() {
         .balance(ctx.amount_sent)
         .link(ctx.send_block.hash())
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -171,8 +170,7 @@ fn previous_fail() {
         .balance(ctx.amount_sent)
         .link(ctx.send_block.hash())
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -193,8 +191,7 @@ fn source_fail() {
         .balance(Amount::zero())
         .link(Link::zero())
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),

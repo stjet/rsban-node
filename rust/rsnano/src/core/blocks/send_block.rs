@@ -82,7 +82,7 @@ impl SendBlock {
         private_key: &RawKey,
         public_key: &PublicKey,
         work: u64,
-    ) -> Result<Self> {
+    ) -> Self {
         let hashables = SendHashables {
             previous: *previous,
             destination: *destination,
@@ -90,15 +90,15 @@ impl SendBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(private_key, public_key, hash.hash(&hashables).as_bytes())?;
+        let signature = sign_message(private_key, public_key, hash.hash(&hashables).as_bytes());
 
-        Ok(Self {
+        Self {
             hashables,
             work,
             signature,
             hash,
             sideband: None,
-        })
+        }
     }
 
     pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
@@ -272,7 +272,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn create_send_block() -> Result<()> {
+    fn create_send_block() {
         let key = KeyPair::new();
         let mut block = SendBlock::new(
             &BlockHash::from(0),
@@ -281,7 +281,7 @@ mod tests {
             &key.private_key(),
             &key.public_key(),
             2,
-        )?;
+        );
 
         assert_eq!(block.root(), block.previous().into());
         let hash = block.hash().to_owned();
@@ -289,13 +289,12 @@ mod tests {
 
         block.signature.make_invalid();
         assert!(validate_message(&key.public_key(), hash.as_bytes(), &block.signature).is_err());
-        Ok(())
     }
 
     // original test: block.send_serialize
     // original test: send_block.deserialize
     #[test]
-    fn serialize() -> Result<()> {
+    fn serialize() {
         let key = KeyPair::new();
         let block1 = SendBlock::new(
             &BlockHash::from(0),
@@ -304,19 +303,18 @@ mod tests {
             &key.private_key(),
             &key.public_key(),
             5,
-        )?;
+        );
         let mut stream = MemoryStream::new();
-        block1.serialize(&mut stream)?;
+        block1.serialize(&mut stream).unwrap();
         assert_eq!(SendBlock::serialized_size(), stream.bytes_written());
 
-        let block2 = SendBlock::deserialize(&mut stream)?;
+        let block2 = SendBlock::deserialize(&mut stream).unwrap();
         assert_eq!(block1, block2);
-        Ok(())
     }
 
     // originial test: block.send_serialize_json
     #[test]
-    fn serialize_json() -> Result<()> {
+    fn serialize_json() {
         let key = KeyPair::new();
         let block1 = SendBlock::new(
             &BlockHash::from(0),
@@ -325,13 +323,12 @@ mod tests {
             &key.private_key(),
             &key.public_key(),
             5,
-        )?;
+        );
 
         let mut ptree = TestPropertyTree::new();
-        block1.serialize_json(&mut ptree)?;
+        block1.serialize_json(&mut ptree).unwrap();
 
-        let block2 = SendBlock::deserialize_json(&ptree)?;
+        let block2 = SendBlock::deserialize_json(&ptree).unwrap();
         assert_eq!(block1, block2);
-        Ok(())
     }
 }

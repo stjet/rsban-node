@@ -122,8 +122,7 @@ fn state_unreceivable_fail() {
         .balance(DEV_CONSTANTS.genesis_amount)
         .link(Link::from(1))
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -150,8 +149,7 @@ fn bad_amount_fail() {
         .balance(DEV_CONSTANTS.genesis_amount - Amount::new(1))
         .link(send.hash())
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -178,8 +176,7 @@ fn no_link_amount_fail() {
         .balance(DEV_CONSTANTS.genesis_amount)
         .link(Link::zero())
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -207,8 +204,7 @@ fn receive_wrong_account_fail() {
         .balance(Amount::new(1))
         .link(send.hash())
         .sign(&key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -238,8 +234,7 @@ fn receive_and_change_representative() {
         .link(send.hash())
         .representative(representative)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     ctx.process(txn.as_mut(), &mut receive);
 

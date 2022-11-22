@@ -78,8 +78,7 @@ impl LedgerContext {
             .balance(account_info.balance - amount)
             .sign(DEV_GENESIS_KEY.clone())
             .without_sideband()
-            .build()
-            .unwrap();
+            .build();
 
         self.process(txn, &mut send);
         send
@@ -98,8 +97,7 @@ impl LedgerContext {
             .account(receiver_account)
             .sign(&receiver_key)
             .without_sideband()
-            .build()
-            .unwrap();
+            .build();
 
         self.process(txn, &mut open);
         open
@@ -125,8 +123,7 @@ impl LedgerContext {
             .source(send.hash())
             .sign(&receiver_key)
             .without_sideband()
-            .build()
-            .unwrap();
+            .build();
 
         self.process(txn, &mut receive);
         receive
@@ -151,8 +148,7 @@ impl LedgerContext {
             .previous(account_info.head)
             .representative(representative)
             .sign(&keypair)
-            .build()
-            .unwrap();
+            .build();
 
         self.process(txn, &mut change);
         change
@@ -179,8 +175,7 @@ impl LedgerContext {
             .representative(*DEV_GENESIS_ACCOUNT)
             .link(receiver)
             .sign(&sender_key)
-            .build()
-            .unwrap();
+            .build();
 
         self.process(txn, &mut send_block);
 
@@ -210,8 +205,7 @@ impl LedgerContext {
             .representative(*DEV_GENESIS_ACCOUNT)
             .link(send.hash())
             .sign(&receiver_key)
-            .build()
-            .unwrap();
+            .build();
 
         self.process(txn, &mut receive);
 
@@ -239,8 +233,7 @@ impl LedgerContext {
             .balance(account_info.balance)
             .link(Link::zero())
             .sign(key)
-            .build()
-            .unwrap();
+            .build();
 
         self.process(txn, &mut change);
         change
@@ -262,8 +255,7 @@ impl LedgerContext {
             .representative(receiver_account)
             .link(send.hash())
             .sign(&receiver_key)
-            .build()
-            .unwrap();
+            .build();
 
         self.process(txn, &mut open_block);
 

@@ -130,8 +130,7 @@ fn receive_fork() {
         .source(send.hash())
         .sign(&ctx.receiver_key)
         .without_sideband()
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -150,8 +149,7 @@ fn fail_double_receive() {
         .previous(ctx.open_block.hash())
         .source(ctx.send_block.hash())
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -183,8 +181,7 @@ fn fail_gap_source() {
         .previous(ctx.open_block.hash())
         .source(BlockHash::from(1))
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -209,8 +206,7 @@ fn fail_bad_signature() {
         .previous(ctx.open_block.hash())
         .source(send.hash())
         .sign(&KeyPair::new())
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -229,8 +225,7 @@ fn fail_gap_previous_unopened() {
         .previous(BlockHash::from(1))
         .source(ctx.send_block.hash())
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -255,8 +250,7 @@ fn fail_gap_previous_opened() {
         .previous(BlockHash::from(1))
         .source(send2.hash())
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -283,8 +277,7 @@ fn fail_fork_previous() {
         .balance(Amount::zero())
         .sign(ctx.receiver_key.clone())
         .without_sideband()
-        .build()
-        .unwrap();
+        .build();
 
     assert_eq!(
         ctx.ledger_context
@@ -302,8 +295,7 @@ fn fail_fork_previous() {
         .previous(ctx.open_block.hash())
         .source(receivable.hash())
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -337,8 +329,7 @@ fn fail_receive_received_source() {
         .previous(ctx.open_block.hash())
         .source(receivable2.hash())
         .sign(&ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -366,8 +357,7 @@ fn receive_after_state_fail() {
         .previous(send.hash())
         .source(send.hash())
         .sign(&DEV_GENESIS_KEY.clone())
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger

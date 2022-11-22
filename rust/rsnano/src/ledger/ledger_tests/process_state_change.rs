@@ -53,5 +53,4 @@ fn change_genesis_representative(rep_account: Account) -> crate::core::StateBloc
         .link(Link::zero())
         .sign(&DEV_GENESIS_KEY)
         .build()
-        .unwrap()
 }

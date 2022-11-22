@@ -97,8 +97,7 @@ fn send_and_change_representative() {
         .balance(Amount::new(1))
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
-        .build()
-        .unwrap();
+        .build();
 
     ctx.process(txn.as_mut(), &mut send);
 

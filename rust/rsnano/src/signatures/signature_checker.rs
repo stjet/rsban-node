@@ -404,8 +404,7 @@ mod tests {
                 &key.private_key(),
                 &key.public_key(),
                 0,
-            )
-            .unwrap();
+            );
 
             // Check for success for a valid block
             verify_block(&block, 1);

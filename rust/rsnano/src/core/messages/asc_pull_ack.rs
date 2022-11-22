@@ -272,8 +272,8 @@ mod tests {
         original.id = 7;
         original.request_blocks(BlocksAckPayload {
             blocks: vec![
-                BlockEnum::State(BlockBuilder::state().build()?),
-                BlockEnum::State(BlockBuilder::state().build()?),
+                BlockEnum::State(BlockBuilder::state().build()),
+                BlockEnum::State(BlockBuilder::state().build()),
             ],
         })?;
 

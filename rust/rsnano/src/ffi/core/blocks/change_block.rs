@@ -45,20 +45,13 @@ pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut BlockHan
 
 #[no_mangle]
 pub extern "C" fn rsn_change_block_create2(dto: &ChangeBlockDto2) -> *mut BlockHandle {
-    let block = match ChangeBlock::new(
+    let block = ChangeBlock::new(
         BlockHash::from_bytes(dto.previous),
         Account::from_bytes(dto.representative),
         &RawKey::from_bytes(dto.priv_key),
         &PublicKey::from_bytes(dto.pub_key),
         dto.work,
-    ) {
-        Ok(b) => b,
-        Err(e) => {
-            eprintln!("could not create change block: {}", e);
-            return std::ptr::null_mut();
-        }
-    };
-
+    );
     Box::into_raw(Box::new(BlockHandle {
         block: Arc::new(RwLock::new(BlockEnum::Change(block))),
     }))

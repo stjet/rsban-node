@@ -63,20 +63,14 @@ pub extern "C" fn rsn_send_block_create2(dto: &SendBlockDto2) -> *mut BlockHandl
     let balance = Amount::from_be_bytes(dto.balance);
     let private_key = RawKey::from_bytes(dto.priv_key);
     let public_key = PublicKey::from_bytes(dto.pub_key);
-    let block = match SendBlock::new(
+    let block = SendBlock::new(
         &previous,
         &destination,
         &balance,
         &private_key,
         &public_key,
         dto.work,
-    ) {
-        Ok(b) => b,
-        Err(e) => {
-            eprintln!("could not create send block: {}", e);
-            return std::ptr::null_mut();
-        }
-    };
+    );
 
     Box::into_raw(Box::new(BlockHandle {
         block: Arc::new(RwLock::new(BlockEnum::Send(block))),

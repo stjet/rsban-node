@@ -116,8 +116,7 @@ fn fail_fork() {
         .previous(*DEV_GENESIS_HASH)
         .destination(Account::from(1000))
         .sign(ctx.receiver_key)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -137,8 +136,7 @@ fn fail_gap_previous() {
         .previous(BlockHash::from(1))
         .destination(Account::from(2))
         .sign(DEV_GENESIS_KEY.clone())
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -157,8 +155,7 @@ fn fail_bad_signature() {
         .previous(*DEV_GENESIS_HASH)
         .destination(Account::from(2))
         .sign(wrong_keys)
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger
@@ -176,8 +173,7 @@ fn fail_negative_spend() {
         .destination(Account::from(2))
         .balance(ctx.send_block.balance() + Amount::new(1))
         .sign(DEV_GENESIS_KEY.clone())
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx.ledger_context.ledger.process(
         ctx.txn.as_mut(),
@@ -205,8 +201,7 @@ fn send_after_state_fail() {
         .destination(*DEV_GENESIS_ACCOUNT)
         .balance(Amount::zero())
         .sign(DEV_GENESIS_KEY.clone())
-        .build()
-        .unwrap();
+        .build();
 
     let result = ctx
         .ledger

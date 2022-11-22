@@ -48,20 +48,14 @@ pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut BlockHandle 
 
 #[no_mangle]
 pub extern "C" fn rsn_open_block_create2(dto: &OpenBlockDto2) -> *mut BlockHandle {
-    let block = match OpenBlock::new(
+    let block = OpenBlock::new(
         BlockHash::from_bytes(dto.source),
         Account::from_bytes(dto.representative),
         Account::from_bytes(dto.account),
         &RawKey::from_bytes(dto.priv_key),
         &PublicKey::from_bytes(dto.pub_key),
         dto.work,
-    ) {
-        Ok(b) => b,
-        Err(e) => {
-            eprintln!("could not create open block: {}", e);
-            return std::ptr::null_mut();
-        }
-    };
+    );
 
     Box::into_raw(Box::new(BlockHandle {
         block: Arc::new(RwLock::new(BlockEnum::Open(block))),

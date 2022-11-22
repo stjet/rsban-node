@@ -156,7 +156,7 @@ impl TelemetryData {
         debug_assert!(keys.public_key() == self.node_id.into());
         let mut stream = MemoryStream::new();
         self.serialize_without_signature(&mut stream)?;
-        self.signature = sign_message(&keys.private_key(), &keys.public_key(), stream.as_bytes())?;
+        self.signature = sign_message(&keys.private_key(), &keys.public_key(), stream.as_bytes());
         Ok(())
     }
 

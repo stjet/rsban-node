@@ -1,23 +1,10 @@
 use crate::{
-    core::{
-        Account, Amount, Block, BlockBuilder, BlockDetails, Epoch, KeyPair, SignatureVerification,
-        StateBlockBuilder,
-    },
-    ledger::{ledger_tests::AccountBlockFactory, ProcessResult, DEV_GENESIS_KEY},
-    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    core::{Amount, Block, BlockDetails, Epoch, SignatureVerification},
+    ledger::{ledger_tests::AccountBlockFactory, ProcessResult},
+    DEV_GENESIS_ACCOUNT,
 };
 
 use super::LedgerContext;
-
-pub(crate) fn epoch_v2_block_for_genesis_account() -> StateBlockBuilder {
-    BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(*DEV_GENESIS_HASH)
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount)
-        .link(*DEV_CONSTANTS.epochs.link(Epoch::Epoch2).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-}
 
 #[test]
 fn upgrade_from_v0_to_v2_fails() {
@@ -111,15 +98,13 @@ fn rollback_epoch_v2() {
         .unwrap();
     assert_eq!(genesis_info.epoch, Epoch::Epoch1);
 
-    let mut old_change = BlockBuilder::change()
-        .previous(epoch1.hash())
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .sign(&DEV_GENESIS_KEY)
+    let mut legacy_change = genesis
+        .change_representative(txn.txn(), *DEV_GENESIS_ACCOUNT)
         .build();
 
     let result = ctx.ledger.process(
         txn.as_mut(),
-        &mut old_change,
+        &mut legacy_change,
         SignatureVerification::Unknown,
     );
 
@@ -131,87 +116,50 @@ fn upgrade_epoch_after_state_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
-    let destination = KeyPair::new();
-    let destination_account = Account::from(destination.public_key());
+    let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), destination_account, Amount::new(50))
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
         .build();
     ctx.process(txn.as_mut(), &mut send);
 
-    let mut state_open = BlockBuilder::state()
-        .account(destination_account)
-        .previous(0)
-        .representative(0)
-        .balance(0)
-        .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
-
+    let mut state_open = destination.epoch_v1_open().build();
     ctx.process(txn.as_mut(), &mut state_open);
 
-    let mut epoch = BlockBuilder::state()
-        .account(destination_account)
-        .previous(state_open.hash())
-        .representative(0)
-        .balance(0)
-        .link(ctx.ledger.epoch_link(Epoch::Epoch2).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
+    let mut epoch2 = destination.epoch_v2(txn.txn()).build();
+    ctx.process(txn.as_mut(), &mut epoch2);
 
-    ctx.process(txn.as_mut(), &mut epoch);
     assert_eq!(
-        epoch.sideband().unwrap().details,
+        epoch2.sideband().unwrap().details,
         BlockDetails::new(Epoch::Epoch2, false, false, true)
     );
     // source_epoch is not used for send blocks
-    assert_eq!(epoch.sideband().unwrap().source_epoch, Epoch::Epoch0);
+    assert_eq!(epoch2.sideband().unwrap().source_epoch, Epoch::Epoch0);
 }
 
 #[test]
-fn old_receive_block_after_epoch_v2_upgrade_fails() {
+fn legacy_receive_block_after_epoch_v2_upgrade_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
-    let destination = KeyPair::new();
-    let destination_account = Account::from(destination.public_key());
+    let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), destination_account, Amount::new(50))
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
         .build();
     ctx.process(txn.as_mut(), &mut send);
 
-    let mut epoch1 = BlockBuilder::state()
-        .account(destination_account)
-        .previous(0)
-        .representative(0)
-        .balance(0)
-        .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
-
+    let mut epoch1 = destination.epoch_v1_open().build();
     ctx.process(txn.as_mut(), &mut epoch1);
 
-    let mut epoch2 = BlockBuilder::state()
-        .account(destination_account)
-        .previous(epoch1.hash())
-        .representative(0)
-        .balance(0)
-        .link(ctx.ledger.epoch_link(Epoch::Epoch2).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
-
+    let mut epoch2 = destination.epoch_v2(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch2);
 
-    let mut old_receive = BlockBuilder::receive()
-        .previous(epoch2.hash())
-        .source(send.hash())
-        .sign(&destination)
-        .build();
+    let mut legacy_receive = destination.receive(txn.txn(), send.hash()).build();
 
     let result = ctx.ledger.process(
         txn.as_mut(),
-        &mut old_receive,
+        &mut legacy_receive,
         SignatureVerification::Unknown,
     );
 
@@ -219,12 +167,11 @@ fn old_receive_block_after_epoch_v2_upgrade_fails() {
 }
 
 #[test]
-fn cannot_use_old_open_block_with_epoch_v2_send() {
+fn cannot_use_legacy_open_block_with_epoch_v2_send() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
-    let destination = KeyPair::new();
-    let destination_account = Account::from(destination.public_key());
+    let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch1);
@@ -233,20 +180,17 @@ fn cannot_use_old_open_block_with_epoch_v2_send() {
     ctx.process(txn.as_mut(), &mut epoch2);
 
     let mut send = genesis
-        .state_send(txn.txn(), destination_account, Amount::new(50))
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
         .build();
     ctx.process(txn.as_mut(), &mut send);
 
     // Try to create an open block from an epoch 2 source block.
-    let mut old_open = BlockBuilder::open()
-        .source(send.hash())
-        .representative(destination_account)
-        .account(destination_account)
-        .sign(&destination)
-        .build();
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut old_open, SignatureVerification::Unknown);
+    let mut legacy_open = destination.open(send.hash()).build();
+    let result = ctx.ledger.process(
+        txn.as_mut(),
+        &mut legacy_open,
+        SignatureVerification::Unknown,
+    );
     assert_eq!(result.code, ProcessResult::Unreceivable);
 }
 
@@ -255,123 +199,63 @@ fn receive_after_epoch_v2() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
-    let destination = KeyPair::new();
-    let destination_account = Account::from(destination.public_key());
+    let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch1);
 
     let mut send = genesis
-        .state_send(txn.txn(), destination_account, Amount::new(50))
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
         .build();
     ctx.process(txn.as_mut(), &mut send);
 
-    let mut epoch1 = BlockBuilder::state()
-        .account(destination_account)
-        .previous(0)
-        .representative(0)
-        .balance(0)
-        .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
-
+    let mut epoch1 = destination.epoch_v1_open().build();
     ctx.process(txn.as_mut(), &mut epoch1);
 
-    let mut epoch2 = BlockBuilder::state()
-        .account(destination_account)
-        .previous(epoch1.hash())
-        .representative(0)
-        .balance(0)
-        .link(ctx.ledger.epoch_link(Epoch::Epoch2).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
-
+    let mut epoch2 = destination.epoch_v2(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch2);
 
-    let mut receive = BlockBuilder::state()
-        .account(destination_account)
-        .previous(epoch2.hash())
-        .representative(destination_account)
-        .balance(Amount::new(50))
-        .link(send.hash())
-        .sign(&destination)
+    let mut receive = destination
+        .state_receive(txn.txn(), send.hash())
+        .representative(destination.account())
         .build();
-
     ctx.process(txn.as_mut(), &mut receive);
+
     assert_eq!(
         receive.sideband().unwrap().details,
         BlockDetails::new(Epoch::Epoch2, false, true, false)
     );
     assert_eq!(receive.sideband().unwrap().source_epoch, Epoch::Epoch1);
-    assert_eq!(ctx.ledger.weight(&destination_account), Amount::new(50));
+    assert_eq!(ctx.ledger.weight(&destination.account()), Amount::new(50));
 }
 
 #[test]
 fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let destination = KeyPair::new();
-    let destination_account = Account::from(destination.public_key());
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    // send 50 to destination
-    let mut send1 = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(*DEV_GENESIS_HASH)
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
-        .link(destination_account)
-        .sign(&DEV_GENESIS_KEY)
+    let mut send1 = genesis
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
         .build();
     ctx.process(txn.as_mut(), &mut send1);
 
-    // open destination
-    let mut open1 = BlockBuilder::open()
-        .source(send1.hash())
-        .representative(destination_account)
-        .account(destination_account)
-        .sign(&destination)
-        .build();
+    let mut open1 = destination.open(send1.hash()).build();
     ctx.process(txn.as_mut(), &mut open1);
 
-    let mut epoch1 = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(send1.hash())
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
-        .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
+    let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch1);
 
-    let mut epoch2 = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(epoch1.hash())
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
-        .link(ctx.ledger.epoch_link(Epoch::Epoch2).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
+    let mut epoch2 = genesis.epoch_v2(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch2);
 
-    //lend 50 to destination
-    let mut send2 = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(epoch2.hash())
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(100))
-        .link(destination_account)
-        .sign(&DEV_GENESIS_KEY)
+    let mut send2 = genesis
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
         .build();
     ctx.process(txn.as_mut(), &mut send2);
 
-    let mut receive2 = BlockBuilder::state()
-        .account(destination_account)
-        .previous(open1.hash())
-        .representative(destination_account)
-        .balance(Amount::new(100))
-        .link(send2.hash())
-        .sign(&destination)
-        .build();
+    let mut receive2 = destination.state_receive(txn.txn(), send2.hash()).build();
     ctx.process(txn.as_mut(), &mut receive2);
 
     assert_eq!(receive2.sideband().unwrap().details.epoch, Epoch::Epoch2);
@@ -380,7 +264,7 @@ fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
         .ledger
         .store
         .account()
-        .get(txn.txn(), &destination_account)
+        .get(txn.txn(), &destination.account())
         .unwrap();
     assert_eq!(destination_info.epoch, Epoch::Epoch2);
 }
@@ -389,49 +273,23 @@ fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
 fn upgrade_new_account_straight_to_epoch_2() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let destination = KeyPair::new();
-    let destination_account = Account::from(destination.public_key());
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut epoch1 = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(*DEV_GENESIS_HASH)
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount)
-        .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
+    let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch1);
 
-    let mut epoch2 = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(epoch1.hash())
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount)
-        .link(ctx.ledger.epoch_link(Epoch::Epoch2).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
+    let mut epoch2 = genesis.epoch_v2(txn.txn()).build();
     ctx.process(txn.as_mut(), &mut epoch2);
 
-    //lend 50 to destination
-    let mut send = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(epoch2.hash())
-        .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
-        .link(destination_account)
-        .sign(&DEV_GENESIS_KEY)
+    let mut send = genesis
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
         .build();
     ctx.process(txn.as_mut(), &mut send);
 
-    let mut open = BlockBuilder::state()
-        .account(destination_account)
-        .previous(0)
-        .representative(0)
-        .balance(0)
-        .link(ctx.ledger.epoch_link(Epoch::Epoch2).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build();
+    let mut open = destination.epoch_v2_open().build();
     ctx.process(txn.as_mut(), &mut open);
+
     assert_eq!(open.sideband().unwrap().details.epoch, Epoch::Epoch2);
     assert_eq!(open.sideband().unwrap().source_epoch, Epoch::Epoch0); // Not used for epoch blocks
 }

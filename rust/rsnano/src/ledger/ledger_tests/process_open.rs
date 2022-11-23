@@ -1,7 +1,9 @@
 use crate::{
     core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
     ledger::{
-        ledger_tests::{LedgerContext, LedgerWithOpenBlock, LedgerWithSendBlock},
+        ledger_tests::{
+            AccountBlockFactory, LedgerContext, LedgerWithOpenBlock, LedgerWithSendBlock,
+        },
         ProcessResult, DEV_GENESIS_KEY,
     },
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
@@ -139,12 +141,15 @@ fn fail_fork() {
 #[test]
 fn fail_fork_previous() {
     let mut ctx = LedgerWithOpenBlock::new();
+    let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
-    let send2 = ctx.ledger_context.process_send_from_genesis(
-        ctx.txn.as_mut(),
-        &ctx.receiver_account,
-        Amount::new(1),
-    );
+    let mut send2 = genesis
+        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .build();
+    ctx.ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut send2)
+        .unwrap();
 
     let mut open_fork = BlockBuilder::open()
         .source(send2.hash())

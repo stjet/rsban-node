@@ -1,6 +1,6 @@
 use crate::{
     core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
-    ledger::{ProcessResult, DEV_GENESIS_KEY},
+    ledger::{ledger_tests::AccountBlockFactory, ProcessResult, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -10,8 +10,12 @@ use super::LedgerContext;
 fn update_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let sideband = change.sideband().unwrap();
     assert_eq!(sideband.account, *DEV_GENESIS_ACCOUNT);
@@ -23,8 +27,12 @@ fn update_sideband() {
 fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let loaded_block = ctx
         .ledger
@@ -42,8 +50,12 @@ fn save_block() {
 fn update_frontier_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let account = ctx.ledger.store.frontier().get(txn.txn(), &change.hash());
     assert_eq!(account, *DEV_GENESIS_ACCOUNT);
@@ -60,8 +72,12 @@ fn update_frontier_store() {
 fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
@@ -74,8 +90,12 @@ fn update_vote_weight() {
 fn update_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let account_info = ctx
         .ledger
@@ -94,8 +114,13 @@ fn update_account_info() {
 fn fail_old() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Old);
@@ -137,8 +162,12 @@ fn fail_bad_signature() {
 fn fail_fork() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let mut fork = BlockBuilder::change()
         .previous(*DEV_GENESIS_HASH)

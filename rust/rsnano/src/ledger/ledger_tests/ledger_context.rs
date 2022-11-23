@@ -3,15 +3,15 @@ use std::{sync::Arc, time::Duration};
 use crate::{
     config::TxnTrackingConfig,
     core::{
-        Account, Amount, Block, BlockBuilder, BlockHash, ChangeBlock, KeyPair, Link, OpenBlock,
-        ReceiveBlock, SendBlock, StateBlock,
+        Account, Amount, Block, BlockBuilder, BlockHash, KeyPair, Link, OpenBlock, ReceiveBlock,
+        SendBlock, StateBlock,
     },
     ledger::{
         datastore::{
             lmdb::{EnvOptions, LmdbStore, TestDbFile},
             WriteTransaction,
         },
-        GenerateCache, Ledger, DEV_GENESIS_KEY,
+        GenerateCache, Ledger,
     },
     stats::{Stat, StatConfig},
     utils::NullLogger,
@@ -50,31 +50,6 @@ impl LedgerContext {
         store.initialize(&mut txn, &ledger.cache, &DEV_CONSTANTS);
 
         LedgerContext { ledger, db_file }
-    }
-
-    pub fn process_send_from_genesis(
-        &self,
-        txn: &mut dyn WriteTransaction,
-        receiver_account: &Account,
-        amount: Amount,
-    ) -> SendBlock {
-        let account_info = self
-            .ledger
-            .store
-            .account()
-            .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
-            .unwrap();
-
-        let mut send = BlockBuilder::send()
-            .previous(account_info.head)
-            .destination(*receiver_account)
-            .balance(account_info.balance - amount)
-            .sign(DEV_GENESIS_KEY.clone())
-            .without_sideband()
-            .build();
-
-        self.ledger.process(txn, &mut send).unwrap();
-        send
     }
 
     pub fn process_open(
@@ -120,31 +95,6 @@ impl LedgerContext {
 
         self.ledger.process(txn, &mut receive).unwrap();
         receive
-    }
-
-    pub(crate) fn process_change(
-        &self,
-        txn: &mut dyn WriteTransaction,
-        keypair: &KeyPair,
-        representative: Account,
-    ) -> ChangeBlock {
-        let account = keypair.public_key().into();
-
-        let account_info = self
-            .ledger
-            .store
-            .account()
-            .get(txn.txn(), &account)
-            .unwrap();
-
-        let mut change = BlockBuilder::change()
-            .previous(account_info.head)
-            .representative(representative)
-            .sign(&keypair)
-            .build();
-
-        self.ledger.process(txn, &mut change).unwrap();
-        change
     }
 
     pub(crate) fn process_state_send(

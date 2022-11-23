@@ -1,7 +1,7 @@
 use crate::{
     core::{
         Account, AccountInfo, Amount, BlockBuilder, BlockHash, ChangeBlockBuilder, Epoch, KeyPair,
-        OpenBlockBuilder, ReceiveBlockBuilder, StateBlockBuilder,
+        OpenBlockBuilder, ReceiveBlockBuilder, SendBlockBuilder, StateBlockBuilder,
     },
     ledger::{datastore::Transaction, Ledger, DEV_GENESIS_KEY},
     DEV_CONSTANTS,
@@ -96,6 +96,21 @@ impl<'a> AccountBlockFactory<'a> {
             .previous(info.head)
             .representative(representative)
             .sign(&self.key)
+    }
+
+    pub(crate) fn send(
+        &self,
+        txn: &dyn Transaction,
+        receiver: Account,
+        amount: Amount,
+    ) -> SendBlockBuilder {
+        let info = self.info(txn).unwrap();
+        BlockBuilder::send()
+            .previous(info.head)
+            .destination(receiver)
+            .balance(info.balance - amount)
+            .sign(self.key.clone())
+            .without_sideband()
     }
 
     pub(crate) fn receive(

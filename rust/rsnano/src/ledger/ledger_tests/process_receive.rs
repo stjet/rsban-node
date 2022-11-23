@@ -1,7 +1,7 @@
 use crate::{
     core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
     ledger::{
-        ledger_tests::{LedgerWithReceiveBlock, LedgerWithSendBlock},
+        ledger_tests::{AccountBlockFactory, LedgerWithReceiveBlock, LedgerWithSendBlock},
         ProcessResult, DEV_GENESIS_KEY,
     },
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
@@ -112,28 +112,39 @@ fn update_latest_block() {
 
 #[test]
 fn receive_fork() {
-    let mut ctx = LedgerWithOpenBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let receiver = AccountBlockFactory::new(&ctx.ledger);
 
-    let send = ctx.ledger_context.process_send_from_genesis(
-        ctx.txn.as_mut(),
-        &ctx.receiver_account,
-        Amount::new(1),
-    );
+    let mut send1 = genesis
+        .send(txn.txn(), receiver.account(), Amount::new(50))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    ctx.ledger_context
-        .process_change(ctx.txn.as_mut(), &ctx.receiver_key, Account::from(1000));
+    let mut open = receiver.open(send1.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+
+    let mut send2 = genesis
+        .send(txn.txn(), receiver.account(), Amount::new(1))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+
+    let mut change = receiver
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let mut receive_fork = BlockBuilder::receive()
-        .previous(ctx.open_block.hash())
-        .source(send.hash())
-        .sign(&ctx.receiver_key)
+        .previous(open.hash())
+        .source(send2.hash())
+        .sign(&receiver.key)
         .without_sideband()
         .build();
 
     let result = ctx
-        .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut receive_fork)
+        .process(txn.as_mut(), &mut receive_fork)
         .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Fork);
@@ -193,12 +204,15 @@ fn fail_gap_source() {
 #[test]
 fn fail_bad_signature() {
     let mut ctx = LedgerWithOpenBlock::new();
+    let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
-    let send = ctx.ledger_context.process_send_from_genesis(
-        ctx.txn.as_mut(),
-        &ctx.receiver_account,
-        Amount::new(1),
-    );
+    let mut send = genesis
+        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .build();
+    ctx.ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut send)
+        .unwrap();
 
     let mut receive = BlockBuilder::receive()
         .previous(ctx.open_block.hash())
@@ -237,12 +251,15 @@ fn fail_gap_previous_unopened() {
 #[test]
 fn fail_gap_previous_opened() {
     let mut ctx = LedgerWithOpenBlock::new();
+    let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
-    let send2 = ctx.ledger_context.process_send_from_genesis(
-        ctx.txn.as_mut(),
-        &ctx.receiver_account,
-        Amount::new(1),
-    );
+    let mut send2 = genesis
+        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .build();
+    ctx.ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut send2)
+        .unwrap();
 
     let mut receive = BlockBuilder::receive()
         .previous(BlockHash::from(1))
@@ -262,12 +279,15 @@ fn fail_gap_previous_opened() {
 #[test]
 fn fail_fork_previous() {
     let mut ctx = LedgerWithOpenBlock::new();
+    let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
-    let receivable = ctx.ledger_context.process_send_from_genesis(
-        ctx.txn.as_mut(),
-        &ctx.receiver_account,
-        Amount::new(1),
-    );
+    let mut receivable = genesis
+        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .build();
+    ctx.ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut receivable)
+        .unwrap();
 
     let mut fork_send = BlockBuilder::send()
         .previous(ctx.open_block.hash())
@@ -300,18 +320,23 @@ fn fail_fork_previous() {
 #[test]
 fn fail_receive_received_source() {
     let mut ctx = LedgerWithOpenBlock::new();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger_context.ledger);
 
-    let receivable1 = ctx.ledger_context.process_send_from_genesis(
-        ctx.txn.as_mut(),
-        &ctx.receiver_account,
-        Amount::new(1),
-    );
+    let mut receivable1 = genesis
+        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .build();
+    ctx.ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut receivable1)
+        .unwrap();
 
-    let receivable2 = ctx.ledger_context.process_send_from_genesis(
-        ctx.txn.as_mut(),
-        &ctx.receiver_account,
-        Amount::new(1),
-    );
+    let mut receivable2 = genesis
+        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .build();
+    ctx.ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut receivable2)
+        .unwrap();
 
     ctx.ledger_context
         .process_receive(ctx.txn.as_mut(), &receivable1, &ctx.receiver_key);

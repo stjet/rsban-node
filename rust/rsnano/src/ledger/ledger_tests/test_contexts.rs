@@ -4,7 +4,7 @@ use crate::{
     DEV_CONSTANTS,
 };
 
-use super::LedgerContext;
+use super::{AccountBlockFactory, LedgerContext};
 
 pub(crate) struct LedgerWithOpenBlock {
     pub open_block: OpenBlock,
@@ -21,10 +21,18 @@ impl LedgerWithOpenBlock {
         let receiver_key = KeyPair::new();
         let receiver_account = receiver_key.public_key().into();
         let ledger_context = LedgerContext::empty();
+        let genesis = AccountBlockFactory::genesis(&ledger_context.ledger);
         let mut txn = ledger_context.ledger.rw_txn();
         let amount_sent = DEV_CONSTANTS.genesis_amount - Amount::new(50);
-        let send_block =
-            ledger_context.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent);
+
+        let mut send_block = genesis
+            .send(txn.txn(), receiver_account, amount_sent)
+            .build();
+        ledger_context
+            .ledger
+            .process(txn.as_mut(), &mut send_block)
+            .unwrap();
+
         let open_block = ledger_context.process_open(txn.as_mut(), &send_block, &receiver_key);
 
         Self {
@@ -70,9 +78,16 @@ impl LedgerWithSendBlock {
         let amount_sent = old_genesis_balance - new_genesis_balance;
 
         let ledger_context = LedgerContext::empty();
+        let genesis = AccountBlockFactory::genesis(&ledger_context.ledger);
         let mut txn = ledger_context.ledger.rw_txn();
-        let send_block =
-            ledger_context.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent);
+
+        let mut send_block = genesis
+            .send(txn.txn(), receiver_account, amount_sent)
+            .build();
+        ledger_context
+            .ledger
+            .process(txn.as_mut(), &mut send_block)
+            .unwrap();
 
         Self {
             txn,
@@ -116,14 +131,29 @@ impl LedgerWithReceiveBlock {
         let receiver_account = receiver_key.public_key().into();
         let ledger_context = LedgerContext::empty();
         let mut txn = ledger_context.ledger.rw_txn();
+        let genesis = AccountBlockFactory::genesis(&ledger_context.ledger);
 
         let amount_sent1 = DEV_CONSTANTS.genesis_amount - Amount::new(50);
-        let send1 =
-            ledger_context.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent1);
+
+        let mut send1 = genesis
+            .send(txn.txn(), receiver_account, amount_sent1)
+            .build();
+        ledger_context
+            .ledger
+            .process(txn.as_mut(), &mut send1)
+            .unwrap();
+
         let open_block = ledger_context.process_open(txn.as_mut(), &send1, &receiver_key);
         let amount_sent2 = Amount::new(25);
-        let send2 =
-            ledger_context.process_send_from_genesis(txn.as_mut(), &receiver_account, amount_sent2);
+
+        let mut send2 = genesis
+            .send(txn.txn(), receiver_account, amount_sent2)
+            .build();
+        ledger_context
+            .ledger
+            .process(txn.as_mut(), &mut send2)
+            .unwrap();
+
         let receive_block = ledger_context.process_receive(txn.as_mut(), &send2, &receiver_key);
         let expected_receiver_balance = DEV_CONSTANTS.genesis_amount - Amount::new(25);
 

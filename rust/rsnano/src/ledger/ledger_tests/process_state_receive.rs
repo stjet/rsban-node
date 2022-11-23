@@ -3,7 +3,10 @@ use crate::{
         Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
         Link, PendingKey, StateBlock,
     },
-    ledger::{datastore::WriteTransaction, ProcessResult, DEV_GENESIS_KEY},
+    ledger::{
+        datastore::WriteTransaction, ledger_tests::AccountBlockFactory, ProcessResult,
+        DEV_GENESIS_KEY,
+    },
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
 
@@ -77,7 +80,12 @@ fn remove_pending_info() {
 fn receive_old_send_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let send = ctx.process_send_from_genesis(txn.as_mut(), &DEV_GENESIS_ACCOUNT, Amount::new(50));
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+
+    let mut send = genesis
+        .send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(50))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let receive = ctx.process_state_receive(txn.as_mut(), &send, &DEV_GENESIS_KEY);
 

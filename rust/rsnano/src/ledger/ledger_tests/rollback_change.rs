@@ -1,6 +1,6 @@
 use crate::{
     core::{Account, Amount, Block},
-    ledger::{ledger_tests::LedgerContext, DEV_GENESIS_KEY},
+    ledger::ledger_tests::{AccountBlockFactory, LedgerContext},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -8,7 +8,12 @@ use crate::{
 fn update_frontier_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
@@ -26,7 +31,12 @@ fn update_frontier_store() {
 fn update_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
@@ -49,7 +59,12 @@ fn update_account_info() {
 fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
@@ -66,9 +81,17 @@ fn update_vote_weight() {
 fn rollback_dependent_blocks_too() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let send = ctx.process_send_from_genesis(txn.as_mut(), &Account::from(1000), Amount::new(100));
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1000))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+
+    let mut send = genesis
+        .send(txn.txn(), Account::from(1000), Amount::new(100))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())

@@ -7,7 +7,7 @@ use crate::{
         datastore::WriteTransaction, ledger_tests::AccountBlockFactory, ProcessResult,
         DEV_GENESIS_KEY,
     },
-    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
+    DEV_GENESIS_ACCOUNT,
 };
 
 use super::LedgerContext;
@@ -116,20 +116,16 @@ fn receive_old_send_block() {
 fn state_unreceivable_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        *DEV_GENESIS_ACCOUNT,
-        Amount::new(1),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut receive = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(send.hash())
-        .balance(DEV_CONSTANTS.genesis_amount)
+    let mut receive = genesis
+        .state_receive(txn.txn(), send.hash())
         .link(Link::from(1))
-        .sign(&DEV_GENESIS_KEY)
         .build();
 
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
@@ -141,22 +137,17 @@ fn state_unreceivable_fail() {
 fn bad_amount_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        *DEV_GENESIS_ACCOUNT,
-        Amount::new(1),
-    );
-
-    let mut receive = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(send.hash())
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(1))
-        .link(send.hash())
-        .sign(&DEV_GENESIS_KEY)
+    let mut send = genesis
+        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
         .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
+    let mut receive = genesis
+        .state_receive(txn.txn(), send.hash())
+        .balance(send.balance())
+        .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BalanceMismatch);
@@ -166,22 +157,17 @@ fn bad_amount_fail() {
 fn no_link_amount_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        *DEV_GENESIS_ACCOUNT,
-        Amount::new(1),
-    );
-
-    let mut receive = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(send.hash())
-        .balance(DEV_CONSTANTS.genesis_amount)
-        .link(Link::zero())
-        .sign(&DEV_GENESIS_KEY)
+    let mut send = genesis
+        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
         .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
+    let mut receive = genesis
+        .state_receive(txn.txn(), send.hash())
+        .link(Link::zero())
+        .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BalanceMismatch);
@@ -191,13 +177,12 @@ fn no_link_amount_fail() {
 fn receive_wrong_account_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        *DEV_GENESIS_ACCOUNT,
-        Amount::new(1),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let key = KeyPair::new();
     let mut receive = BlockBuilder::state()
@@ -217,25 +202,19 @@ fn receive_wrong_account_fail() {
 fn receive_and_change_representative() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let amount_sent = Amount::new(50);
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        *DEV_GENESIS_ACCOUNT,
-        amount_sent,
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, amount_sent)
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let representative = Account::from(1);
-    let mut receive = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(send.hash())
-        .balance(DEV_CONSTANTS.genesis_amount)
-        .link(send.hash())
+    let mut receive = genesis
+        .state_receive(txn.txn(), send.hash())
         .representative(representative)
-        .sign(&DEV_GENESIS_KEY)
         .build();
-
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     assert_eq!(
@@ -258,7 +237,14 @@ fn receive_50_raw_into_genesis(
     ctx: &LedgerContext,
     txn: &mut dyn WriteTransaction,
 ) -> (StateBlock, StateBlock) {
-    let send = ctx.process_state_send(txn, &DEV_GENESIS_KEY, *DEV_GENESIS_ACCOUNT, Amount::new(50));
-    let receive = ctx.process_state_receive(txn, &send, &DEV_GENESIS_KEY);
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let mut send = genesis
+        .state_send(txn.txn(), genesis.account(), Amount::new(50))
+        .build();
+    ctx.ledger.process(txn, &mut send).unwrap();
+
+    let mut receive = genesis.state_receive(txn.txn(), send.hash()).build();
+    ctx.ledger.process(txn, &mut receive).unwrap();
+
     (send, receive)
 }

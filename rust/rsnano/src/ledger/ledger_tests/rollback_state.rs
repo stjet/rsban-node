@@ -1,6 +1,6 @@
 use crate::{
-    core::{Account, Amount, Block, BlockBuilder, Epoch, KeyPair, PendingInfo, PendingKey},
-    ledger::DEV_GENESIS_KEY,
+    core::{Account, Amount, Block, Epoch, PendingInfo, PendingKey},
+    ledger::{ledger_tests::AccountBlockFactory, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -10,13 +10,12 @@ use super::LedgerContext;
 fn rollback_send() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        *DEV_GENESIS_ACCOUNT,
-        Amount::new(50),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), genesis.account(), Amount::new(50))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &send.hash(), &mut Vec::new())
@@ -55,13 +54,12 @@ fn rollback_send() {
 fn rollback_receive() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        *DEV_GENESIS_ACCOUNT,
-        Amount::new(50),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), genesis.account(), Amount::new(50))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let receive = ctx.process_state_receive(txn.as_mut(), &send, &DEV_GENESIS_KEY);
 
@@ -103,17 +101,16 @@ fn rollback_receive() {
 fn rollback_received_send() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let destination = KeyPair::new();
-    let destination_account = destination.public_key().into();
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        destination_account,
-        Amount::new(50),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let open = ctx.process_state_open(txn.as_mut(), &send, &destination);
+    let mut open = destination.state_open(txn.txn(), send.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &send.hash(), &mut Vec::new())
@@ -145,7 +142,7 @@ fn rollback_received_send() {
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &destination_account, false),
+            .account_balance(txn.txn(), &destination.account(), false),
         Amount::zero()
     );
     assert_eq!(ctx.ledger.store.account().count(txn.txn()), 1);
@@ -155,10 +152,11 @@ fn rollback_received_send() {
 fn rollback_rep_change() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let representative = Account::from(1);
 
-    let change = ctx.process_state_change(txn.as_mut(), &DEV_GENESIS_KEY, representative);
+    let mut change = genesis.state_change(txn.txn(), representative).build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
@@ -184,17 +182,16 @@ fn rollback_rep_change() {
 fn rollback_open() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let destination = KeyPair::new();
-    let destination_account = destination.public_key().into();
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        destination_account,
-        Amount::new(50),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let open = ctx.process_state_open(txn.as_mut(), &send, &destination);
+    let mut open = destination.state_open(txn.txn(), send.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &open.hash(), &mut Vec::new())
@@ -206,7 +203,7 @@ fn rollback_open() {
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &destination_account, false),
+            .account_balance(txn.txn(), &destination.account(), false),
         Amount::zero()
     );
     assert_eq!(
@@ -219,7 +216,7 @@ fn rollback_open() {
             .pending()
             .get(
                 txn.txn(),
-                &PendingKey::new(destination_account, send.hash())
+                &PendingKey::new(destination.account(), send.hash())
             )
             .unwrap(),
         PendingInfo {
@@ -235,17 +232,13 @@ fn rollback_open() {
 fn rollback_send_with_rep_change() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let representative = Account::from(1);
-    let mut send = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(*DEV_GENESIS_HASH)
+    let mut send = genesis
+        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(50))
         .representative(representative)
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(50))
-        .link(*DEV_GENESIS_ACCOUNT)
-        .sign(&DEV_GENESIS_KEY)
         .build();
-
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     ctx.ledger
@@ -272,24 +265,18 @@ fn rollback_send_with_rep_change() {
 fn rollback_receive_with_rep_change() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let representative = Account::from(1);
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        *DEV_GENESIS_ACCOUNT,
-        Amount::new(50),
-    );
-
-    let mut receive = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(send.hash())
-        .representative(representative)
-        .balance(DEV_CONSTANTS.genesis_amount)
-        .link(send.hash())
-        .sign(&DEV_GENESIS_KEY)
+    let mut send = genesis
+        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(50))
         .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
+    let mut receive = genesis
+        .state_receive(txn.txn(), send.hash())
+        .representative(representative)
+        .build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     ctx.ledger

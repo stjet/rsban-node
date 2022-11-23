@@ -1,25 +1,21 @@
 use crate::{
-    core::{
-        Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, Epoch, PendingInfo,
-        PendingKey,
-    },
-    ledger::{ledger_tests::LedgerContext, DEV_GENESIS_KEY},
-    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    core::{Account, Amount, Block, BlockDetails, BlockEnum, Epoch, PendingInfo, PendingKey},
+    ledger::ledger_tests::{AccountBlockFactory, LedgerContext},
+    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
 
 #[test]
 fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let receiver_account = Account::from(1);
     let amount_sent = Amount::new(1);
-    let block = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        receiver_account,
-        amount_sent,
-    );
+    let mut block = genesis
+        .state_send(txn.txn(), receiver_account, amount_sent)
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut block).unwrap();
 
     let BlockEnum::State(loaded_block) = ctx.ledger.store.block().get(txn.txn(), &block.hash()).unwrap() else {panic!("not a state block")};
     assert_eq!(loaded_block.sideband().unwrap(), block.sideband().unwrap());
@@ -34,15 +30,14 @@ fn save_block() {
 fn update_pending_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let receiver_account = Account::from(1);
     let amount_sent = Amount::new(1);
-    let block = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        receiver_account,
-        amount_sent,
-    );
+    let mut block = genesis
+        .state_send(txn.txn(), receiver_account, amount_sent)
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut block).unwrap();
 
     let pending_info = ctx
         .ledger
@@ -65,15 +60,14 @@ fn update_pending_store() {
 fn create_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let receiver_account = Account::from(1);
     let amount_sent = Amount::new(1);
-    let block = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        receiver_account,
-        amount_sent,
-    );
+    let mut block = genesis
+        .state_send(txn.txn(), receiver_account, amount_sent)
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut block).unwrap();
 
     let sideband = block.sideband().unwrap();
     assert_eq!(sideband.height, 2);
@@ -88,17 +82,17 @@ fn create_sideband() {
 fn send_and_change_representative() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let receiver_account = Account::from(1);
     let representative = Account::from(1);
-    let mut send = BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(*DEV_GENESIS_HASH)
+    let mut send = genesis
+        .state_send(
+            txn.txn(),
+            receiver_account,
+            DEV_CONSTANTS.genesis_amount - Amount::new(1),
+        )
         .representative(representative)
-        .balance(Amount::new(1))
-        .link(*DEV_GENESIS_ACCOUNT)
-        .sign(&DEV_GENESIS_KEY)
         .build();
-
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let amount_sent = DEV_CONSTANTS.genesis_amount - Amount::new(1);

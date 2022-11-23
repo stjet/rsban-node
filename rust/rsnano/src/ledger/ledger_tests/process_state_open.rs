@@ -2,10 +2,12 @@ use std::sync::atomic::Ordering;
 
 use crate::{
     core::{
-        Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair, Link,
-        PendingKey,
+        Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, Link, PendingKey,
     },
-    ledger::{ledger_tests::LedgerWithSendBlock, ProcessResult, DEV_GENESIS_KEY},
+    ledger::{
+        ledger_tests::{AccountBlockFactory, LedgerWithSendBlock},
+        ProcessResult,
+    },
 };
 
 use super::LedgerContext;
@@ -14,17 +16,16 @@ use super::LedgerContext;
 fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let receiver_key = KeyPair::new();
-    let receiver_account = receiver_key.public_key().into();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let receiver = AccountBlockFactory::new(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        receiver_account,
-        Amount::new(1),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), receiver.account(), Amount::new(1))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let open = ctx.process_state_open(txn.as_mut(), &send, &receiver_key);
+    let mut open = receiver.state_open(txn.txn(), send.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let BlockEnum::State(loaded_open) = ctx
         .ledger
@@ -41,17 +42,17 @@ fn save_block() {
 fn create_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let receiver_key = KeyPair::new();
-    let receiver_account = receiver_key.public_key().into();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let receiver = AccountBlockFactory::new(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        receiver_account,
-        Amount::new(1),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), receiver.account(), Amount::new(1))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let open = ctx.process_state_open(txn.as_mut(), &send, &receiver_key);
+    let mut open = receiver.state_open(txn.txn(), send.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+
     let sideband = open.sideband().unwrap();
 
     assert_eq!(sideband.height, 1);
@@ -65,23 +66,22 @@ fn create_sideband() {
 fn clear_pending() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let receiver_key = KeyPair::new();
-    let receiver_account = receiver_key.public_key().into();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let receiver = AccountBlockFactory::new(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        receiver_account,
-        Amount::new(1),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), receiver.account(), Amount::new(1))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    ctx.process_state_open(txn.as_mut(), &send, &receiver_key);
+    let mut open = receiver.state_open(txn.txn(), send.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let pending = ctx
         .ledger
         .store
         .pending()
-        .get(txn.txn(), &PendingKey::new(receiver_account, send.hash()));
+        .get(txn.txn(), &PendingKey::new(receiver.account(), send.hash()));
     assert_eq!(pending, None);
 }
 
@@ -89,23 +89,22 @@ fn clear_pending() {
 fn add_account() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let receiver_key = KeyPair::new();
-    let receiver_account = receiver_key.public_key().into();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let receiver = AccountBlockFactory::new(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        receiver_account,
-        Amount::new(1),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), receiver.account(), Amount::new(1))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let open = ctx.process_state_open(txn.as_mut(), &send, &receiver_key);
+    let mut open = receiver.state_open(txn.txn(), send.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let account_info = ctx
         .ledger
         .store
         .account()
-        .get(txn.txn(), &receiver_account)
+        .get(txn.txn(), &receiver.account())
         .unwrap();
     assert_eq!(ctx.ledger.cache.account_count.load(Ordering::Relaxed), 2);
     assert_eq!(account_info.balance, open.balance());
@@ -118,20 +117,19 @@ fn add_account() {
 fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let receiver_key = KeyPair::new();
-    let receiver_account = receiver_key.public_key().into();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let amount_sent = Amount::new(1);
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        receiver_account,
-        amount_sent,
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), receiver.account(), amount_sent)
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    ctx.process_state_open(txn.as_mut(), &send, &receiver_key);
+    let mut open = receiver.state_open(txn.txn(), send.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    let weight = ctx.ledger.weight(&receiver_account);
+    let weight = ctx.ledger.weight(&receiver.account());
     assert_eq!(weight, amount_sent);
 }
 

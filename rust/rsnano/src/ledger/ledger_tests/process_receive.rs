@@ -365,13 +365,12 @@ fn fail_receive_received_source() {
 fn receive_after_state_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        *DEV_GENESIS_ACCOUNT,
-        Amount::new(1),
-    );
+    let mut send = genesis
+        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut receive = BlockBuilder::receive()
         .previous(send.hash())
@@ -388,22 +387,18 @@ fn receive_after_state_fail() {
 fn receive_from_state_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let send1 = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        destination.account(),
-        Amount::new(50),
-    );
+    let mut send1 = genesis
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let send2 = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        destination.account(),
-        Amount::new(50),
-    );
+    let mut send2 = genesis
+        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     let mut open = destination.open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();

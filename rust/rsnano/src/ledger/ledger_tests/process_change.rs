@@ -185,19 +185,16 @@ fn fail_fork() {
 fn change_after_state_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let send = ctx.process_state_send(
-        txn.as_mut(),
-        &DEV_GENESIS_KEY,
-        *DEV_GENESIS_ACCOUNT,
-        Amount::new(1),
-    );
-
-    let mut change = BlockBuilder::change()
-        .previous(send.hash())
-        .sign(&DEV_GENESIS_KEY)
+    let mut send = genesis
+        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
         .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
+    let mut change = genesis
+        .change_representative(txn.txn(), Account::from(1))
+        .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BlockPosition);

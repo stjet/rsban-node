@@ -49,34 +49,6 @@ impl LedgerContext {
         LedgerContext { ledger, db_file }
     }
 
-    pub(crate) fn process_state_send(
-        &self,
-        txn: &mut dyn WriteTransaction,
-        sender_key: &KeyPair,
-        receiver: Account,
-        amount: Amount,
-    ) -> StateBlock {
-        let sender_account = self
-            .ledger
-            .store
-            .account()
-            .get(txn.txn(), &sender_key.public_key().into())
-            .unwrap();
-
-        let mut send_block = BlockBuilder::state()
-            .account(*DEV_GENESIS_ACCOUNT)
-            .previous(sender_account.head)
-            .balance(sender_account.balance - amount)
-            .representative(*DEV_GENESIS_ACCOUNT)
-            .link(receiver)
-            .sign(&sender_key)
-            .build();
-
-        self.ledger.process(txn, &mut send_block).unwrap();
-
-        send_block
-    }
-
     pub(crate) fn process_state_receive(
         &self,
         txn: &mut dyn WriteTransaction,

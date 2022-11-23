@@ -1,5 +1,5 @@
 use crate::{
-    core::{Account, Amount, Block, BlockDetails, Epoch, PendingKey, SignatureVerification},
+    core::{Account, Amount, Block, BlockDetails, Epoch, PendingKey},
     ledger::{ledger_tests::AccountBlockFactory, ProcessResult},
     DEV_GENESIS_ACCOUNT,
 };
@@ -41,9 +41,7 @@ fn adding_epoch_twice_fails() {
 
     let mut epoch2 = genesis.epoch_v1(txn.txn()).build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut epoch2, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut epoch2);
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
 }
@@ -60,9 +58,7 @@ fn adding_legacy_change_block_after_epoch1_fails() {
         .change_representative(txn.txn(), *DEV_GENESIS_ACCOUNT)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut change, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut change);
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
 }
@@ -112,7 +108,7 @@ fn rollback_epoch() {
 }
 
 #[test]
-fn cannot_change_representative_with_epoch_block() {
+fn epoch_block_with_changed_representative_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
@@ -122,9 +118,7 @@ fn cannot_change_representative_with_epoch_block() {
         .representative(Account::from(1))
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut epoch, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut epoch);
 
     assert_eq!(result.code, ProcessResult::RepresentativeMismatch);
 }
@@ -146,9 +140,7 @@ fn cannot_use_legacy_open_block_after_epoch1() {
 
     let mut open = destination.open(send.hash()).build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut open, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut open);
 
     assert_eq!(result.code, ProcessResult::Unreceivable);
 }
@@ -171,9 +163,7 @@ fn cannot_use_legacy_receive_block_after_epoch1_open() {
 
     let mut receive = destination.receive(txn.txn(), send.hash()).build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut receive);
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
 }
@@ -202,11 +192,7 @@ fn cannot_use_legacy_receive_block_after_sender_upgraded_to_epoch1() {
     ctx.process(txn.as_mut(), &mut open);
 
     let mut legacy_receive = destination.receive(txn.txn(), send2.hash()).build();
-    let result = ctx.ledger.process(
-        txn.as_mut(),
-        &mut legacy_receive,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx.ledger.process(txn.as_mut(), &mut legacy_receive);
 
     assert_eq!(result.code, ProcessResult::Unreceivable);
 }
@@ -227,9 +213,7 @@ fn can_add_state_receive_block_after_epoch1() {
     ctx.process(txn.as_mut(), &mut epoch_open);
 
     let mut receive = destination.state_receive(txn.txn(), send.hash()).build();
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut receive);
 
     assert_eq!(result.code, ProcessResult::Progress);
     assert_eq!(

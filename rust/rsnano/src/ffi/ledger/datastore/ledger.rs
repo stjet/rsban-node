@@ -675,7 +675,7 @@ pub unsafe extern "C" fn rsn_ledger_process(
     verification: u8,
     result: *mut ProcessReturnDto,
 ) {
-    let res = (*handle).0.process(
+    let res = (*handle).0.process_with_verifcation(
         (*txn).as_write_txn(),
         (*block).block.write().unwrap().as_block_mut(),
         FromPrimitive::from_u8(verification).unwrap(),

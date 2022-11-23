@@ -1,7 +1,5 @@
 use crate::{
-    core::{
-        Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, SignatureVerification,
-    },
+    core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
     ledger::{
         ledger_tests::{LedgerContext, LedgerWithOpenBlock, LedgerWithSendBlock},
         ProcessResult, DEV_GENESIS_KEY,
@@ -129,11 +127,10 @@ fn fail_fork() {
         .sign(&ctx.receiver_key)
         .build();
 
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut open_fork,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx
+        .ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut open_fork);
 
     assert_eq!(result.code, ProcessResult::Fork);
 }
@@ -154,11 +151,10 @@ fn fail_fork_previous() {
         .sign(&ctx.receiver_key)
         .build();
 
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut open_fork,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx
+        .ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut open_fork);
 
     assert_eq!(result.code, ProcessResult::Fork);
 }
@@ -167,11 +163,10 @@ fn fail_fork_previous() {
 fn process_duplicate_open_fails() {
     let mut ctx = LedgerWithOpenBlock::new();
 
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut ctx.open_block,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx
+        .ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut ctx.open_block);
 
     assert_eq!(result.code, ProcessResult::Old);
 }
@@ -188,9 +183,7 @@ fn fail_gap_source() {
         .sign(&keypair)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut open, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut open);
 
     assert_eq!(result.code, ProcessResult::GapSource);
 }
@@ -206,11 +199,10 @@ fn fail_bad_signature() {
         .sign(&bad_keys)
         .build();
 
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut open,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx
+        .ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut open);
     assert_eq!(result.code, ProcessResult::BadSignature);
 }
 
@@ -225,11 +217,10 @@ fn fail_account_mismatch() {
         .sign(&bad_key)
         .build();
 
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut open,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx
+        .ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut open);
 
     assert_eq!(result.code, ProcessResult::Unreceivable);
 }
@@ -247,11 +238,10 @@ fn state_open_fork() {
         .sign(&ctx.receiver_key)
         .build();
 
-    let result = ctx.ledger_context.ledger.process(
-        ctx.txn.as_mut(),
-        &mut open2,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx
+        .ledger_context
+        .ledger
+        .process(ctx.txn.as_mut(), &mut open2);
 
     assert_eq!(result.code, ProcessResult::Fork);
 }

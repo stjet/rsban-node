@@ -1,7 +1,7 @@
 use crate::{
     core::{
         Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
-        Link, PendingKey, SignatureVerification, StateBlock,
+        Link, PendingKey, StateBlock,
     },
     ledger::{datastore::WriteTransaction, ProcessResult, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
@@ -124,9 +124,7 @@ fn state_unreceivable_fail() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut receive);
 
     assert_eq!(result.code, ProcessResult::GapSource);
 }
@@ -151,9 +149,7 @@ fn bad_amount_fail() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut receive);
 
     assert_eq!(result.code, ProcessResult::BalanceMismatch);
 }
@@ -178,9 +174,7 @@ fn no_link_amount_fail() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut receive);
 
     assert_eq!(result.code, ProcessResult::BalanceMismatch);
 }
@@ -206,9 +200,7 @@ fn receive_wrong_account_fail() {
         .sign(&key)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut receive, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut receive);
 
     assert_eq!(result.code, ProcessResult::Unreceivable);
 }

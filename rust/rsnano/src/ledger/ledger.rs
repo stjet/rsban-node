@@ -761,7 +761,11 @@ impl Ledger {
         result
     }
 
-    pub fn process(
+    pub fn process(&self, txn: &mut dyn WriteTransaction, block: &mut dyn Block) -> ProcessReturn {
+        self.process_with_verifcation(txn, block, SignatureVerification::Unknown)
+    }
+
+    pub fn process_with_verifcation(
         &self,
         txn: &mut dyn WriteTransaction,
         block: &mut dyn Block,

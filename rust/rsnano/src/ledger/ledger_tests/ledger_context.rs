@@ -4,7 +4,7 @@ use crate::{
     config::TxnTrackingConfig,
     core::{
         Account, Amount, Block, BlockBuilder, BlockHash, ChangeBlock, KeyPair, Link, OpenBlock,
-        ReceiveBlock, SendBlock, SignatureVerification, StateBlock,
+        ReceiveBlock, SendBlock, StateBlock,
     },
     ledger::{
         datastore::{
@@ -53,9 +53,7 @@ impl LedgerContext {
     }
 
     pub fn process(&self, txn: &mut dyn WriteTransaction, block: &mut dyn Block) {
-        let result = self
-            .ledger
-            .process(txn, block, SignatureVerification::Unknown);
+        let result = self.ledger.process(txn, block);
         assert_eq!(result.code, ProcessResult::Progress);
     }
 

@@ -1,5 +1,5 @@
 use crate::{
-    core::{Amount, Block, BlockDetails, Epoch, SignatureVerification},
+    core::{Amount, Block, BlockDetails, Epoch},
     ledger::{ledger_tests::AccountBlockFactory, ProcessResult},
     DEV_GENESIS_ACCOUNT,
 };
@@ -13,10 +13,7 @@ fn upgrade_from_v0_to_v2_fails() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let mut epoch = genesis.epoch_v2(txn.txn()).build();
-
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut epoch, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut epoch);
 
     // Trying to upgrade from epoch 0 to epoch 2. It is a requirement epoch upgrades are sequential unless the account is unopened
     assert_eq!(result.code, ProcessResult::BlockPosition);
@@ -32,9 +29,7 @@ fn upgrade_to_epoch_v2() {
     ctx.process(txn.as_mut(), &mut epoch1);
 
     let mut epoch2 = genesis.epoch_v2(txn.txn()).build();
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut epoch2, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut epoch2);
 
     assert_eq!(result.code, ProcessResult::Progress);
 
@@ -67,9 +62,7 @@ fn upgrading_to_epoch_v2_twice_fails() {
     ctx.process(txn.as_mut(), &mut epoch2);
 
     let mut epoch3 = genesis.epoch_v2(txn.txn()).build();
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut epoch3, SignatureVerification::Unknown);
+    let result = ctx.ledger.process(txn.as_mut(), &mut epoch3);
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
 }
@@ -102,11 +95,7 @@ fn rollback_epoch_v2() {
         .change_representative(txn.txn(), *DEV_GENESIS_ACCOUNT)
         .build();
 
-    let result = ctx.ledger.process(
-        txn.as_mut(),
-        &mut legacy_change,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx.ledger.process(txn.as_mut(), &mut legacy_change);
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
 }
@@ -156,12 +145,7 @@ fn legacy_receive_block_after_epoch_v2_upgrade_fails() {
     ctx.process(txn.as_mut(), &mut epoch2);
 
     let mut legacy_receive = destination.receive(txn.txn(), send.hash()).build();
-
-    let result = ctx.ledger.process(
-        txn.as_mut(),
-        &mut legacy_receive,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx.ledger.process(txn.as_mut(), &mut legacy_receive);
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
 }
@@ -186,11 +170,7 @@ fn cannot_use_legacy_open_block_with_epoch_v2_send() {
 
     // Try to create an open block from an epoch 2 source block.
     let mut legacy_open = destination.open(send.hash()).build();
-    let result = ctx.ledger.process(
-        txn.as_mut(),
-        &mut legacy_open,
-        SignatureVerification::Unknown,
-    );
+    let result = ctx.ledger.process(txn.as_mut(), &mut legacy_open);
     assert_eq!(result.code, ProcessResult::Unreceivable);
 }
 

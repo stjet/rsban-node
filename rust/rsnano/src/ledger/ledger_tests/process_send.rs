@@ -100,7 +100,8 @@ fn fail_duplicate_send() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut ctx.send_block);
+        .process(ctx.txn.as_mut(), &mut ctx.send_block)
+        .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Old);
 }
@@ -118,7 +119,8 @@ fn fail_fork() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut fork);
+        .process(ctx.txn.as_mut(), &mut fork)
+        .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Fork);
 }
@@ -134,7 +136,7 @@ fn fail_gap_previous() {
         .sign(DEV_GENESIS_KEY.clone())
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut block);
+    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::GapPrevious);
 }
@@ -151,7 +153,7 @@ fn fail_bad_signature() {
         .sign(wrong_keys)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut block);
+    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BadSignature);
 }
@@ -170,7 +172,8 @@ fn fail_negative_spend() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut block);
+        .process(ctx.txn.as_mut(), &mut block)
+        .unwrap_err();
     assert_eq!(result.code, ProcessResult::NegativeSpend);
 }
 
@@ -194,7 +197,7 @@ fn send_after_state_fail() {
         .sign(DEV_GENESIS_KEY.clone())
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut send2);
+    let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
 }

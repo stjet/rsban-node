@@ -11,7 +11,7 @@ use crate::{
             lmdb::{EnvOptions, LmdbStore, TestDbFile},
             WriteTransaction,
         },
-        GenerateCache, Ledger, ProcessResult, DEV_GENESIS_KEY,
+        GenerateCache, Ledger, DEV_GENESIS_KEY,
     },
     stats::{Stat, StatConfig},
     utils::NullLogger,
@@ -52,11 +52,6 @@ impl LedgerContext {
         LedgerContext { ledger, db_file }
     }
 
-    pub fn process(&self, txn: &mut dyn WriteTransaction, block: &mut dyn Block) {
-        let result = self.ledger.process(txn, block);
-        assert_eq!(result.code, ProcessResult::Progress);
-    }
-
     pub fn process_send_from_genesis(
         &self,
         txn: &mut dyn WriteTransaction,
@@ -78,7 +73,7 @@ impl LedgerContext {
             .without_sideband()
             .build();
 
-        self.process(txn, &mut send);
+        self.ledger.process(txn, &mut send).unwrap();
         send
     }
 
@@ -97,7 +92,7 @@ impl LedgerContext {
             .without_sideband()
             .build();
 
-        self.process(txn, &mut open);
+        self.ledger.process(txn, &mut open).unwrap();
         open
     }
 
@@ -123,7 +118,7 @@ impl LedgerContext {
             .without_sideband()
             .build();
 
-        self.process(txn, &mut receive);
+        self.ledger.process(txn, &mut receive).unwrap();
         receive
     }
 
@@ -148,7 +143,7 @@ impl LedgerContext {
             .sign(&keypair)
             .build();
 
-        self.process(txn, &mut change);
+        self.ledger.process(txn, &mut change).unwrap();
         change
     }
 
@@ -175,7 +170,7 @@ impl LedgerContext {
             .sign(&sender_key)
             .build();
 
-        self.process(txn, &mut send_block);
+        self.ledger.process(txn, &mut send_block).unwrap();
 
         send_block
     }
@@ -205,7 +200,7 @@ impl LedgerContext {
             .sign(&receiver_key)
             .build();
 
-        self.process(txn, &mut receive);
+        self.ledger.process(txn, &mut receive).unwrap();
 
         receive
     }
@@ -233,7 +228,7 @@ impl LedgerContext {
             .sign(key)
             .build();
 
-        self.process(txn, &mut change);
+        self.ledger.process(txn, &mut change).unwrap();
         change
     }
 
@@ -255,7 +250,7 @@ impl LedgerContext {
             .sign(&receiver_key)
             .build();
 
-        self.process(txn, &mut open_block);
+        self.ledger.process(txn, &mut open_block).unwrap();
 
         open_block
     }

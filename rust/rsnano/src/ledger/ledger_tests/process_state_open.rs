@@ -153,7 +153,8 @@ fn open_fork_fail() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut open2);
+        .process(ctx.txn.as_mut(), &mut open2)
+        .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Fork);
 }
@@ -174,7 +175,8 @@ fn previous_fail() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut open);
+        .process(ctx.txn.as_mut(), &mut open)
+        .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::GapPrevious);
 }
@@ -194,7 +196,8 @@ fn source_fail() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut open);
+        .process(ctx.txn.as_mut(), &mut open)
+        .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::GapSource);
 }

@@ -99,7 +99,7 @@ fn send_and_change_representative() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    ctx.process(txn.as_mut(), &mut send);
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let amount_sent = DEV_CONSTANTS.genesis_amount - Amount::new(1);
     assert_eq!(

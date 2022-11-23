@@ -96,7 +96,7 @@ fn fail_old() {
     let mut txn = ctx.ledger.rw_txn();
 
     let mut change = ctx.process_change(txn.as_mut(), &DEV_GENESIS_KEY, Account::from(1000));
-    let result = ctx.ledger.process(txn.as_mut(), &mut change);
+    let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Old);
 }
@@ -112,7 +112,7 @@ fn fail_gap_previous() {
         .sign(&keypair)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut block);
+    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::GapPrevious);
 }
@@ -128,7 +128,7 @@ fn fail_bad_signature() {
         .sign(&wrong_keys)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut block);
+    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BadSignature);
 }
@@ -146,7 +146,7 @@ fn fail_fork() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut fork);
+    let result = ctx.ledger.process(txn.as_mut(), &mut fork).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Fork);
 }
@@ -169,7 +169,7 @@ fn change_after_state_fail() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut change);
+    let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
 }

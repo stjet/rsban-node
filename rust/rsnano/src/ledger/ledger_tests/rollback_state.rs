@@ -246,7 +246,7 @@ fn rollback_send_with_rep_change() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    ctx.process(txn.as_mut(), &mut send);
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &send.hash(), &mut Vec::new())
@@ -290,7 +290,7 @@ fn rollback_receive_with_rep_change() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    ctx.process(txn.as_mut(), &mut receive);
+    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &receive.hash(), &mut Vec::new())

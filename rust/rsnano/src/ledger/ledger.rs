@@ -52,6 +52,7 @@ pub enum ProcessResult {
     InsufficientWork, // Insufficient work for this block, even though it passed the minimal validation
 }
 
+#[derive(Debug)]
 pub struct ProcessReturn {
     pub code: ProcessResult,
     pub verified: SignatureVerification,
@@ -761,7 +762,11 @@ impl Ledger {
         result
     }
 
-    pub fn process(&self, txn: &mut dyn WriteTransaction, block: &mut dyn Block) -> ProcessReturn {
+    pub fn process(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        block: &mut dyn Block,
+    ) -> Result<ProcessReturn, ProcessReturn> {
         self.process_with_verifcation(txn, block, SignatureVerification::Unknown)
     }
 
@@ -770,7 +775,7 @@ impl Ledger {
         txn: &mut dyn WriteTransaction,
         block: &mut dyn Block,
         verification: SignatureVerification,
-    ) -> ProcessReturn {
+    ) -> Result<ProcessReturn, ProcessReturn> {
         debug_assert!(
             !self.constants.work.validate_entry_block(block)
                 || self.constants.genesis.read().unwrap().deref()
@@ -782,6 +787,10 @@ impl Ledger {
         if processor.result.code == ProcessResult::Progress {
             self.cache.block_count.fetch_add(1, Ordering::SeqCst);
         }
-        processor.result
+        if processor.result.code == ProcessResult::Progress {
+            Ok(processor.result)
+        } else {
+            Err(processor.result)
+        }
     }
 }

@@ -680,5 +680,9 @@ pub unsafe extern "C" fn rsn_ledger_process(
         (*block).block.write().unwrap().as_block_mut(),
         FromPrimitive::from_u8(verification).unwrap(),
     );
+    let res = match res {
+        Ok(res) => res,
+        Err(res) => res,
+    };
     (*result) = res.into();
 }

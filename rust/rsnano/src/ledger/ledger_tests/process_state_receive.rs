@@ -124,7 +124,7 @@ fn state_unreceivable_fail() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut receive);
+    let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::GapSource);
 }
@@ -149,7 +149,7 @@ fn bad_amount_fail() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut receive);
+    let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BalanceMismatch);
 }
@@ -174,7 +174,7 @@ fn no_link_amount_fail() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut receive);
+    let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BalanceMismatch);
 }
@@ -200,7 +200,7 @@ fn receive_wrong_account_fail() {
         .sign(&key)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut receive);
+    let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Unreceivable);
 }
@@ -228,7 +228,7 @@ fn receive_and_change_representative() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    ctx.process(txn.as_mut(), &mut receive);
+    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     assert_eq!(
         ctx.ledger.balance(txn.txn(), &receive.hash()),

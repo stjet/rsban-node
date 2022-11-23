@@ -130,7 +130,8 @@ fn fail_fork() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut open_fork);
+        .process(ctx.txn.as_mut(), &mut open_fork)
+        .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Fork);
 }
@@ -154,7 +155,8 @@ fn fail_fork_previous() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut open_fork);
+        .process(ctx.txn.as_mut(), &mut open_fork)
+        .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Fork);
 }
@@ -166,7 +168,8 @@ fn process_duplicate_open_fails() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut ctx.open_block);
+        .process(ctx.txn.as_mut(), &mut ctx.open_block)
+        .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Old);
 }
@@ -183,7 +186,7 @@ fn fail_gap_source() {
         .sign(&keypair)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut open);
+    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::GapSource);
 }
@@ -202,7 +205,8 @@ fn fail_bad_signature() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut open);
+        .process(ctx.txn.as_mut(), &mut open)
+        .unwrap_err();
     assert_eq!(result.code, ProcessResult::BadSignature);
 }
 
@@ -220,7 +224,8 @@ fn fail_account_mismatch() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut open);
+        .process(ctx.txn.as_mut(), &mut open)
+        .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Unreceivable);
 }
@@ -241,7 +246,8 @@ fn state_open_fork() {
     let result = ctx
         .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut open2);
+        .process(ctx.txn.as_mut(), &mut open2)
+        .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Fork);
 }
@@ -267,7 +273,7 @@ fn open_from_state_block() {
         .sign(&destination)
         .build();
 
-    ctx.process(txn.as_mut(), &mut open);
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     assert_eq!(ctx.ledger.balance(txn.txn(), &open.hash()), amount_sent);
     assert_eq!(

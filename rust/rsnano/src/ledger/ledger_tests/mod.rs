@@ -215,7 +215,7 @@ fn block_destination_source() {
         .link(dest_account)
         .sign(&DEV_GENESIS_KEY)
         .build();
-    ctx.process(txn.as_mut(), &mut block4);
+    ctx.ledger.process(txn.as_mut(), &mut block4).unwrap();
 
     let mut block5 = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -224,7 +224,7 @@ fn block_destination_source() {
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
         .build();
-    ctx.process(txn.as_mut(), &mut block5);
+    ctx.ledger.process(txn.as_mut(), &mut block5).unwrap();
 
     let mut block6 = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -233,7 +233,7 @@ fn block_destination_source() {
         .link(block5.hash())
         .sign(&DEV_GENESIS_KEY)
         .build();
-    ctx.process(txn.as_mut(), &mut block6);
+    ctx.ledger.process(txn.as_mut(), &mut block6).unwrap();
 
     let block1 = BlockEnum::Send(block1);
     let block2 = BlockEnum::Send(block2);
@@ -294,7 +294,7 @@ fn state_account() {
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
         .build();
-    ctx.process(txn.as_mut(), &mut send);
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
     assert_eq!(
         ctx.ledger.account(txn.txn(), &send.hash()),
         Some(*DEV_GENESIS_ACCOUNT)

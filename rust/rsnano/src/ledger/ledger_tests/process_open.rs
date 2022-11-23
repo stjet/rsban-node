@@ -238,9 +238,15 @@ fn fail_account_mismatch() {
 #[test]
 fn state_open_fork() {
     let mut ctx = LedgerWithSendBlock::new();
+    let destination = AccountBlockFactory::from_key(ctx.ledger(), ctx.receiver_key.clone());
 
+    let mut open = destination
+        .state_open(ctx.txn.txn(), ctx.send_block.hash())
+        .build();
     ctx.ledger_context
-        .process_state_open(ctx.txn.as_mut(), &ctx.send_block, &ctx.receiver_key);
+        .ledger
+        .process(ctx.txn.as_mut(), &mut open)
+        .unwrap();
 
     let mut open2 = BlockBuilder::open()
         .source(ctx.send_block.hash())

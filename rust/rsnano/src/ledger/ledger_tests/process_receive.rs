@@ -403,7 +403,11 @@ fn receive_from_state_block() {
     let mut open = destination.open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    let receive = ctx.process_state_receive(txn.as_mut(), &send2, &destination.key);
+    let mut receive = destination
+        .state_receive(txn.txn(), send2.hash())
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     assert_eq!(
         ctx.ledger.balance(txn.txn(), &receive.hash()),

@@ -1,6 +1,6 @@
 use crate::{
     core::{Account, Amount, Block, Epoch, PendingInfo, PendingKey},
-    ledger::{ledger_tests::AccountBlockFactory, DEV_GENESIS_KEY},
+    ledger::ledger_tests::AccountBlockFactory,
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -61,7 +61,8 @@ fn rollback_receive() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let receive = ctx.process_state_receive(txn.as_mut(), &send, &DEV_GENESIS_KEY);
+    let mut receive = genesis.state_receive(txn.txn(), send.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     ctx.ledger
         .rollback(txn.as_mut(), &receive.hash(), &mut Vec::new())

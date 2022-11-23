@@ -3,10 +3,7 @@ use crate::{
         Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
         Link, PendingKey, StateBlock,
     },
-    ledger::{
-        datastore::WriteTransaction, ledger_tests::AccountBlockFactory, ProcessResult,
-        DEV_GENESIS_KEY,
-    },
+    ledger::{datastore::WriteTransaction, ledger_tests::AccountBlockFactory, ProcessResult},
     DEV_GENESIS_ACCOUNT,
 };
 
@@ -87,7 +84,8 @@ fn receive_old_send_block() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let receive = ctx.process_state_receive(txn.as_mut(), &send, &DEV_GENESIS_KEY);
+    let mut receive = genesis.state_receive(txn.txn(), send.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     let sideband = receive.sideband().unwrap();
     assert_eq!(sideband.account, *DEV_GENESIS_ACCOUNT);

@@ -136,9 +136,15 @@ fn update_vote_weight() {
 #[test]
 fn open_fork_fail() {
     let mut ctx = LedgerWithSendBlock::new();
+    let receiver = AccountBlockFactory::from_key(ctx.ledger(), ctx.receiver_key.clone());
 
+    let mut open1 = receiver
+        .state_open(ctx.txn.txn(), ctx.send_block.hash())
+        .build();
     ctx.ledger_context
-        .process_state_open(ctx.txn.as_mut(), &ctx.send_block, &ctx.receiver_key);
+        .ledger
+        .process(ctx.txn.as_mut(), &mut open1)
+        .unwrap();
 
     let mut open2 = BlockBuilder::state()
         .account(ctx.receiver_account)

@@ -117,8 +117,6 @@ fn send_open_receive_rollback() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let receiver = AccountBlockFactory::new(&ctx.ledger);
-    let receiver_key = receiver.key.clone();
-    let receiver_account = receiver_key.public_key().into();
 
     let mut send1 = genesis
         .send(txn.txn(), receiver.account(), Amount::new(50))
@@ -130,8 +128,11 @@ fn send_open_receive_rollback() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let open = ctx.process_open(txn.as_mut(), &send1, &receiver_key);
-    let receive = ctx.process_receive(txn.as_mut(), &send2, &receiver_key);
+    let mut open = receiver.open(send1.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+
+    let mut receive = receiver.receive(txn.txn(), send2.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
     let rep_account = Account::from(1);
 
     let mut change = genesis
@@ -143,7 +144,7 @@ fn send_open_receive_rollback() {
         .rollback(txn.as_mut(), &receive.hash(), &mut Vec::new())
         .unwrap();
 
-    assert_eq!(ctx.ledger.weight(&receiver_account), Amount::new(50));
+    assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::new(50));
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&rep_account),
@@ -154,7 +155,7 @@ fn send_open_receive_rollback() {
         .rollback(txn.as_mut(), &open.hash(), &mut Vec::new())
         .unwrap();
 
-    assert_eq!(ctx.ledger.weight(&receiver_account), Amount::zero());
+    assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&rep_account),
@@ -165,7 +166,7 @@ fn send_open_receive_rollback() {
         .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
         .unwrap();
 
-    assert_eq!(ctx.ledger.weight(&receiver_account), Amount::zero());
+    assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
@@ -176,7 +177,7 @@ fn send_open_receive_rollback() {
         .rollback(txn.as_mut(), &send2.hash(), &mut Vec::new())
         .unwrap();
 
-    assert_eq!(ctx.ledger.weight(&receiver_account), Amount::zero());
+    assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
@@ -187,7 +188,7 @@ fn send_open_receive_rollback() {
         .rollback(txn.as_mut(), &send1.hash(), &mut Vec::new())
         .unwrap();
 
-    assert_eq!(ctx.ledger.weight(&receiver_account), Amount::zero());
+    assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),

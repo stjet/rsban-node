@@ -321,6 +321,7 @@ fn fail_fork_previous() {
 fn fail_receive_received_source() {
     let mut ctx = LedgerWithOpenBlock::new();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger_context.ledger);
+    let receiver = AccountBlockFactory::from_key(&ctx.ledger_context.ledger, ctx.receiver_key);
 
     let mut receivable1 = genesis
         .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
@@ -338,13 +339,16 @@ fn fail_receive_received_source() {
         .process(ctx.txn.as_mut(), &mut receivable2)
         .unwrap();
 
+    let mut receive = receiver.receive(ctx.txn.txn(), receivable1.hash()).build();
     ctx.ledger_context
-        .process_receive(ctx.txn.as_mut(), &receivable1, &ctx.receiver_key);
+        .ledger
+        .process(ctx.txn.as_mut(), &mut receive)
+        .unwrap();
 
     let mut fork_receive = BlockBuilder::receive()
         .previous(ctx.open_block.hash())
         .source(receivable2.hash())
-        .sign(&ctx.receiver_key)
+        .sign(&receiver.key)
         .build();
 
     let result = ctx
@@ -385,25 +389,26 @@ fn receive_from_state_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let destination = KeyPair::new();
-    let destination_account = destination.public_key().into();
+    let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let send1 = ctx.process_state_send(
         txn.as_mut(),
         &DEV_GENESIS_KEY,
-        destination_account,
+        destination.account(),
         Amount::new(50),
     );
 
     let send2 = ctx.process_state_send(
         txn.as_mut(),
         &DEV_GENESIS_KEY,
-        destination_account,
+        destination.account(),
         Amount::new(50),
     );
 
-    ctx.process_open(txn.as_mut(), &send1, &destination);
-    let receive = ctx.process_state_receive(txn.as_mut(), &send2, &destination);
+    let mut open = destination.open(send1.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+
+    let receive = ctx.process_state_receive(txn.as_mut(), &send2, &destination.key);
 
     assert_eq!(
         ctx.ledger.balance(txn.txn(), &receive.hash()),

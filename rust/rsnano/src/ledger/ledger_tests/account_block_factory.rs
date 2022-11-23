@@ -28,6 +28,10 @@ impl<'a> AccountBlockFactory<'a> {
         }
     }
 
+    pub(crate) fn from_key(ledger: &'a Ledger, key: KeyPair) -> Self {
+        Self { key, ledger }
+    }
+
     pub(crate) fn account(&self) -> Account {
         self.key.public_key().into()
     }

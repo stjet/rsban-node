@@ -2,10 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use crate::{
     config::TxnTrackingConfig,
-    core::{
-        Account, Amount, Block, BlockBuilder, BlockHash, KeyPair, Link, OpenBlock, ReceiveBlock,
-        SendBlock, StateBlock,
-    },
+    core::{Account, Amount, Block, BlockBuilder, BlockHash, KeyPair, Link, StateBlock},
     ledger::{
         datastore::{
             lmdb::{EnvOptions, LmdbStore, TestDbFile},
@@ -50,51 +47,6 @@ impl LedgerContext {
         store.initialize(&mut txn, &ledger.cache, &DEV_CONSTANTS);
 
         LedgerContext { ledger, db_file }
-    }
-
-    pub fn process_open(
-        &self,
-        txn: &mut dyn WriteTransaction,
-        send: &dyn Block,
-        receiver_key: &KeyPair,
-    ) -> OpenBlock {
-        let receiver_account = receiver_key.public_key().into();
-        let mut open = BlockBuilder::open()
-            .source(send.hash())
-            .representative(receiver_account)
-            .account(receiver_account)
-            .sign(&receiver_key)
-            .without_sideband()
-            .build();
-
-        self.ledger.process(txn, &mut open).unwrap();
-        open
-    }
-
-    pub fn process_receive(
-        &self,
-        txn: &mut dyn WriteTransaction,
-        send: &SendBlock,
-        receiver_key: &KeyPair,
-    ) -> ReceiveBlock {
-        let receiver_account = receiver_key.public_key().into();
-
-        let account_info = self
-            .ledger
-            .store
-            .account()
-            .get(txn.txn(), &receiver_account)
-            .unwrap();
-
-        let mut receive = BlockBuilder::receive()
-            .previous(account_info.head)
-            .source(send.hash())
-            .sign(&receiver_key)
-            .without_sideband()
-            .build();
-
-        self.ledger.process(txn, &mut receive).unwrap();
-        receive
     }
 
     pub(crate) fn process_state_send(

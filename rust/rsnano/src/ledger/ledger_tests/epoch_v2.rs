@@ -10,7 +10,7 @@ use super::LedgerContext;
 fn upgrade_from_v0_to_v2_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let mut epoch = genesis.epoch_v2(txn.txn()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap_err();
@@ -23,7 +23,7 @@ fn upgrade_from_v0_to_v2_fails() {
 fn upgrade_to_epoch_v2() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
@@ -51,7 +51,7 @@ fn upgrade_to_epoch_v2() {
 fn upgrading_to_epoch_v2_twice_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
@@ -69,7 +69,7 @@ fn upgrading_to_epoch_v2_twice_fails() {
 fn rollback_epoch_v2() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
@@ -103,7 +103,7 @@ fn rollback_epoch_v2() {
 fn upgrade_epoch_after_state_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis.send(txn.txn()).link(destination.account()).build();
@@ -127,7 +127,7 @@ fn upgrade_epoch_after_state_block() {
 fn legacy_receive_block_after_epoch_v2_upgrade_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis.send(txn.txn()).link(destination.account()).build();
@@ -152,7 +152,7 @@ fn legacy_receive_block_after_epoch_v2_upgrade_fails() {
 fn cannot_use_legacy_open_block_with_epoch_v2_send() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
@@ -177,7 +177,7 @@ fn cannot_use_legacy_open_block_with_epoch_v2_send() {
 fn receive_after_epoch_v2() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
@@ -214,7 +214,7 @@ fn receive_after_epoch_v2() {
 fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis.send(txn.txn()).link(destination.account()).build();
@@ -250,7 +250,7 @@ fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
 fn upgrade_new_account_straight_to_epoch_2() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();

@@ -1,106 +1,144 @@
 use crate::{
     core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
     ledger::{
-        ledger_tests::{LedgerContext, LedgerWithSendBlock},
+        ledger_tests::{setup_legacy_send_block, LedgerContext},
         ProcessResult, DEV_GENESIS_KEY,
     },
-    DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
 #[test]
 fn save_block() {
-    let ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
 
     let loaded_send = ctx
-        .ledger()
+        .ledger
         .store
         .block()
-        .get(ctx.txn.txn(), &ctx.send_block.hash())
+        .get(txn.txn(), &send.send_block.hash())
         .unwrap();
 
     let BlockEnum::Send(loaded_send) = loaded_send else {panic!("not a send block")};
-    assert_eq!(loaded_send, ctx.send_block);
+    assert_eq!(loaded_send, send.send_block);
     assert_eq!(
         loaded_send.sideband().unwrap(),
-        ctx.send_block.sideband().unwrap()
+        send.send_block.sideband().unwrap()
     );
 }
 
 #[test]
 fn update_sideband() {
-    let ctx = LedgerWithSendBlock::new();
-    let sideband = ctx.send_block.sideband().unwrap();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
+    let sideband = send.send_block.sideband().unwrap();
     assert_eq!(sideband.account, *DEV_GENESIS_ACCOUNT);
     assert_eq!(sideband.height, 2);
-    assert_eq!(sideband.balance, Amount::new(50));
+    assert_eq!(
+        sideband.balance,
+        DEV_CONSTANTS.genesis_amount - send.amount_sent
+    );
 }
 
 #[test]
 fn update_block_amount() {
-    let ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
     assert_eq!(
-        ctx.ledger().amount(ctx.txn.txn(), &ctx.send_block.hash()),
-        Some(ctx.amount_sent)
+        ctx.ledger.amount(txn.txn(), &send.send_block.hash()),
+        Some(send.amount_sent)
     );
 }
 
 #[test]
 fn update_receivable() {
-    let ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
     assert_eq!(
-        ctx.ledger()
-            .account_receivable(ctx.txn.txn(), &ctx.receiver_account, false),
-        ctx.amount_sent
+        ctx.ledger
+            .account_receivable(txn.txn(), &send.destination.account(), false),
+        send.amount_sent
     );
 }
 
 #[test]
 fn update_frontier_store() {
-    let ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
     assert_eq!(
-        ctx.ledger()
+        ctx.ledger
             .store
             .frontier()
-            .get(ctx.txn.txn(), &DEV_GENESIS_HASH),
+            .get(txn.txn(), &DEV_GENESIS_HASH),
         Account::zero()
     );
     assert_eq!(
-        ctx.ledger()
+        ctx.ledger
             .store
             .frontier()
-            .get(ctx.txn.txn(), &ctx.send_block.hash()),
+            .get(txn.txn(), &send.send_block.hash()),
         *DEV_GENESIS_ACCOUNT
     );
 }
 
 #[test]
 fn update_account_info() {
-    let ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
     let account_info = ctx
-        .ledger()
+        .ledger
         .store
         .account()
-        .get(ctx.txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(account_info.block_count, 2);
-    assert_eq!(account_info.head, ctx.send_block.hash());
+    assert_eq!(account_info.head, send.send_block.hash());
 }
 
 #[test]
 fn update_vote_weight() {
-    let ctx = LedgerWithSendBlock::new();
-    assert_eq!(ctx.ledger().weight(&ctx.receiver_account), Amount::zero());
-    assert_eq!(ctx.ledger().weight(&DEV_GENESIS_ACCOUNT), Amount::new(50));
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
+    assert_eq!(
+        ctx.ledger.weight(&send.destination.account()),
+        Amount::zero()
+    );
+    assert_eq!(
+        ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
+        DEV_CONSTANTS.genesis_amount - send.amount_sent
+    );
 }
 
 #[test]
 fn fail_duplicate_send() {
-    let mut ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let mut send = setup_legacy_send_block(&ctx, txn.as_mut());
 
     let result = ctx
-        .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut ctx.send_block)
+        .process(txn.as_mut(), &mut send.send_block)
         .unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Old);
@@ -108,19 +146,18 @@ fn fail_duplicate_send() {
 
 #[test]
 fn fail_fork() {
-    let mut ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
 
     let mut fork = BlockBuilder::send()
         .previous(*DEV_GENESIS_HASH)
         .destination(Account::from(1000))
-        .sign(ctx.receiver_key)
+        .sign(send.destination.key)
         .build();
 
-    let result = ctx
-        .ledger_context
-        .ledger
-        .process(ctx.txn.as_mut(), &mut fork)
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut fork).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Fork);
 }
@@ -160,19 +197,20 @@ fn fail_bad_signature() {
 
 #[test]
 fn fail_negative_spend() {
-    let mut ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let genesis = ctx.genesis_block_factory();
 
-    let mut block = BlockBuilder::send()
-        .previous(ctx.send_block.hash())
-        .destination(Account::from(2))
-        .balance(ctx.send_block.balance() + Amount::new(1))
-        .sign(DEV_GENESIS_KEY.clone())
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
+    let mut negative_spend = genesis
+        .legacy_send(txn.txn())
+        .balance(send.send_block.balance() + Amount::new(1))
         .build();
 
     let result = ctx
-        .ledger_context
         .ledger
-        .process(ctx.txn.as_mut(), &mut block)
+        .process(txn.as_mut(), &mut negative_spend)
         .unwrap_err();
     assert_eq!(result.code, ProcessResult::NegativeSpend);
 }

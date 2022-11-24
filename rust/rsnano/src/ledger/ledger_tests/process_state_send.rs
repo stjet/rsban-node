@@ -1,6 +1,6 @@
 use crate::{
     core::{Account, Amount, Block, BlockDetails, BlockEnum, Epoch, PendingInfo, PendingKey},
-    ledger::ledger_tests::{AccountBlockFactory, LedgerContext},
+    ledger::ledger_tests::LedgerContext,
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };
 
@@ -8,7 +8,7 @@ use crate::{
 fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let amount_sent = Amount::new(1);
     let mut block = genesis.send(txn.txn()).amount(amount_sent).build();
@@ -27,7 +27,7 @@ fn save_block() {
 fn update_pending_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let receiver_account = Account::from(1);
     let amount_sent = Amount::new(1);
@@ -59,7 +59,7 @@ fn update_pending_store() {
 fn create_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let mut block = genesis.send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut block).unwrap();
@@ -77,7 +77,7 @@ fn create_sideband() {
 fn send_and_change_representative() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let representative = Account::from(1);
     let amount_sent = DEV_CONSTANTS.genesis_amount - Amount::new(1);
     let mut send = genesis

@@ -10,7 +10,7 @@ use super::LedgerContext;
 fn rollback_send() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let mut send = genesis.send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
@@ -52,7 +52,7 @@ fn rollback_send() {
 fn rollback_receive() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let amount_sent = Amount::new(50);
     let mut send = genesis
@@ -103,7 +103,7 @@ fn rollback_receive() {
 fn rollback_received_send() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis.send(txn.txn()).link(destination.account()).build();
@@ -152,7 +152,7 @@ fn rollback_received_send() {
 fn rollback_rep_change() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let representative = Account::from(1);
 
     let mut change = genesis.change(txn.txn(), representative).build();
@@ -182,7 +182,7 @@ fn rollback_rep_change() {
 fn rollback_open() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let amount_sent = Amount::new(50);
@@ -235,7 +235,7 @@ fn rollback_open() {
 fn rollback_send_with_rep_change() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let representative = Account::from(1);
     let mut send = genesis
@@ -268,7 +268,7 @@ fn rollback_send_with_rep_change() {
 fn rollback_receive_with_rep_change() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let representative = Account::from(1);
     let mut send = genesis.send(txn.txn()).link(genesis.account()).build();

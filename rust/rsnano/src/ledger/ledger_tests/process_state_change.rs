@@ -1,6 +1,6 @@
 use crate::{
     core::{Account, Block, BlockBuilder, BlockDetails, BlockEnum, Epoch, Link},
-    ledger::{ledger_tests::AccountBlockFactory, DEV_GENESIS_KEY},
+    ledger::DEV_GENESIS_KEY,
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -10,7 +10,7 @@ use super::LedgerContext;
 fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let mut change = genesis.change(txn.txn(), Account::from(1)).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
@@ -24,7 +24,7 @@ fn save_block() {
 fn create_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let mut change = genesis.change(txn.txn(), Account::from(1)).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
@@ -41,7 +41,7 @@ fn create_sideband() {
 fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let rep_account = Account::from(1);
     let mut change = genesis.change(txn.txn(), rep_account).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();

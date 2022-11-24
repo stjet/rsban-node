@@ -51,7 +51,7 @@ impl LedgerContext {
         AccountBlockFactory::genesis(&self.ledger)
     }
 
-    pub fn new_block_factory(&self) -> AccountBlockFactory {
+    pub fn block_factory(&self) -> AccountBlockFactory {
         AccountBlockFactory::new(&self.ledger)
     }
 }

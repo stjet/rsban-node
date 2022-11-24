@@ -2,87 +2,93 @@ use std::sync::atomic::Ordering;
 
 use crate::{
     core::{Account, Amount, Block, PendingKey},
+    ledger::{datastore::WriteTransaction, ledger_tests::setup_legacy_open_block},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
-use super::{LedgerWithOpenBlock, LedgerWithSendBlock};
+use super::{setup_legacy_send_block, LedgerContext, LegacySendBlockResult};
 
 #[test]
 fn update_vote_weight() {
-    let mut ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
 
-    ctx.rollback();
+    rollback_send_block(&ctx, txn.as_mut());
 
     assert_eq!(
-        ctx.ledger().weight(&DEV_GENESIS_ACCOUNT),
+        ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         DEV_CONSTANTS.genesis_amount
     );
 }
 
 #[test]
 fn update_frontier_store() {
-    let mut ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
 
-    ctx.rollback();
+    let send = rollback_send_block(&ctx, txn.as_mut());
 
     assert_eq!(
-        ctx.ledger()
+        ctx.ledger
             .store
             .frontier()
-            .get(ctx.txn.txn(), &DEV_GENESIS_HASH),
+            .get(txn.txn(), &DEV_GENESIS_HASH),
         *DEV_GENESIS_ACCOUNT
     );
     assert_eq!(
-        ctx.ledger()
+        ctx.ledger
             .store
             .frontier()
-            .get(ctx.txn.txn(), &ctx.send_block.hash()),
+            .get(txn.txn(), &send.send_block.hash()),
         Account::zero()
     );
 }
 
 #[test]
 fn update_account_store() {
-    let mut ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
 
-    ctx.rollback();
+    rollback_send_block(&ctx, txn.as_mut());
 
     let account_info = ctx
-        .ledger()
+        .ledger
         .store
         .account()
-        .get(ctx.txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(account_info.block_count, 1);
     assert_eq!(account_info.head, *DEV_GENESIS_HASH);
     assert_eq!(account_info.balance, DEV_CONSTANTS.genesis_amount);
-    assert_eq!(ctx.ledger().cache.account_count.load(Ordering::Relaxed), 1);
+    assert_eq!(ctx.ledger.cache.account_count.load(Ordering::Relaxed), 1);
 }
 
 #[test]
 fn remove_from_pending_store() {
-    let mut ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
 
-    ctx.rollback();
+    let send = rollback_send_block(&ctx, txn.as_mut());
 
-    let pending = ctx.ledger().store.pending().get(
-        ctx.txn.txn(),
-        &PendingKey::new(ctx.receiver_key.public_key().into(), ctx.send_block.hash()),
+    let pending = ctx.ledger.store.pending().get(
+        txn.txn(),
+        &PendingKey::new(send.destination.account(), send.send_block.hash()),
     );
     assert_eq!(pending, None);
 }
 
 #[test]
 fn update_confirmation_height_store() {
-    let mut ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
 
-    ctx.rollback();
+    rollback_send_block(&ctx, txn.as_mut());
 
     let conf_height = ctx
-        .ledger()
+        .ledger
         .store
         .confirmation_height()
-        .get(ctx.txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
 
     assert_eq!(conf_height.frontier, *DEV_GENESIS_HASH);
@@ -91,36 +97,49 @@ fn update_confirmation_height_store() {
 
 #[test]
 fn rollback_dependent_blocks_too() {
-    let mut ctx = LedgerWithOpenBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let open = setup_legacy_open_block(&ctx, txn.as_mut());
 
     // Rollback send block. This requires the rollback of the open block first.
-    ctx.ledger_context
-        .ledger
-        .rollback(ctx.txn.as_mut(), &ctx.send_block.hash(), &mut Vec::new())
+    ctx.ledger
+        .rollback(txn.as_mut(), &open.send_block.hash(), &mut Vec::new())
         .unwrap();
 
     assert_eq!(
-        ctx.ledger()
-            .account_balance(ctx.txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+        ctx.ledger
+            .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
         DEV_CONSTANTS.genesis_amount
     );
 
     assert_eq!(
-        ctx.ledger()
-            .account_balance(ctx.txn.txn(), &ctx.receiver_account, false),
+        ctx.ledger
+            .account_balance(txn.txn(), &open.destination.account(), false),
         Amount::zero()
     );
 
     assert!(ctx
-        .ledger()
+        .ledger
         .store
         .account()
-        .get(ctx.txn.txn(), &ctx.receiver_account)
+        .get(txn.txn(), &open.destination.account())
         .is_none());
 
-    let pending = ctx.ledger().store.pending().get(
-        ctx.txn.txn(),
-        &PendingKey::new(ctx.receiver_account, *DEV_GENESIS_HASH),
+    let pending = ctx.ledger.store.pending().get(
+        txn.txn(),
+        &PendingKey::new(open.destination.account(), *DEV_GENESIS_HASH),
     );
     assert_eq!(pending, None);
+}
+
+fn rollback_send_block<'a>(
+    ctx: &'a LedgerContext,
+    txn: &mut dyn WriteTransaction,
+) -> LegacySendBlockResult<'a> {
+    let send = setup_legacy_send_block(ctx, txn);
+    ctx.ledger
+        .rollback(txn, &send.send_block.hash(), &mut Vec::new())
+        .unwrap();
+    send
 }

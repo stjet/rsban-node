@@ -5,7 +5,7 @@ use crate::{
         Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, Link, PendingKey,
     },
     ledger::{
-        ledger_tests::{AccountBlockFactory, LedgerWithSendBlock},
+        ledger_tests::{setup_legacy_send_block, AccountBlockFactory},
         ProcessResult,
     },
 };
@@ -16,7 +16,7 @@ use super::LedgerContext;
 fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis.send(txn.txn()).link(receiver.account()).build();
@@ -40,7 +40,7 @@ fn save_block() {
 fn create_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis.send(txn.txn()).link(receiver.account()).build();
@@ -62,7 +62,7 @@ fn create_sideband() {
 fn clear_pending() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis.send(txn.txn()).link(receiver.account()).build();
@@ -83,7 +83,7 @@ fn clear_pending() {
 fn add_account() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis.send(txn.txn()).link(receiver.account()).build();
@@ -109,8 +109,8 @@ fn add_account() {
 fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
-    let receiver = AccountBlockFactory::new(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
+    let receiver = ctx.block_factory();
 
     let amount_sent = Amount::new(1);
     let mut send = genesis
@@ -129,71 +129,65 @@ fn update_vote_weight() {
 
 #[test]
 fn open_fork_fail() {
-    let mut ctx = LedgerWithSendBlock::new();
-    let receiver = AccountBlockFactory::from_key(ctx.ledger(), ctx.receiver_key.clone());
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
 
-    let mut open1 = receiver.open(ctx.txn.txn(), ctx.send_block.hash()).build();
-    ctx.ledger_context
-        .ledger
-        .process(ctx.txn.as_mut(), &mut open1)
-        .unwrap();
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let receiver = send.destination;
+
+    let mut open1 = receiver.open(txn.txn(), send.send_block.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
 
     let mut open2 = BlockBuilder::state()
-        .account(ctx.receiver_account)
+        .account(receiver.account())
         .previous(BlockHash::zero())
-        .balance(ctx.amount_sent)
-        .link(ctx.send_block.hash())
-        .sign(&ctx.receiver_key)
+        .balance(send.amount_sent)
+        .link(send.send_block.hash())
+        .sign(&receiver.key)
         .build();
 
-    let result = ctx
-        .ledger_context
-        .ledger
-        .process(ctx.txn.as_mut(), &mut open2)
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut open2).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::Fork);
 }
 
 #[test]
 fn previous_fail() {
-    let mut ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
 
     let invalid_previous = BlockHash::from(1);
     let mut open = BlockBuilder::state()
-        .account(ctx.receiver_account)
+        .account(send.destination.account())
         .previous(invalid_previous)
-        .balance(ctx.amount_sent)
-        .link(ctx.send_block.hash())
-        .sign(&ctx.receiver_key)
+        .balance(send.amount_sent)
+        .link(send.send_block.hash())
+        .sign(&send.destination.key)
         .build();
 
-    let result = ctx
-        .ledger_context
-        .ledger
-        .process(ctx.txn.as_mut(), &mut open)
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::GapPrevious);
 }
 
 #[test]
 fn source_fail() {
-    let mut ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
 
     let mut open = BlockBuilder::state()
-        .account(ctx.receiver_account)
+        .account(send.destination.account())
         .previous(BlockHash::zero())
         .balance(Amount::zero())
         .link(Link::zero())
-        .sign(&ctx.receiver_key)
+        .sign(&send.destination.key)
         .build();
 
-    let result = ctx
-        .ledger_context
-        .ledger
-        .process(ctx.txn.as_mut(), &mut open)
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::GapSource);
 }

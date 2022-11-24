@@ -37,23 +37,31 @@ pub(crate) use account_block_factory::AccountBlockFactory;
 
 #[test]
 fn ledger_successor() {
-    let ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
     assert_eq!(
-        ctx.ledger().successor(
-            ctx.txn.txn(),
+        ctx.ledger.successor(
+            txn.txn(),
             &QualifiedRoot::new(Root::zero(), *DEV_GENESIS_HASH)
         ),
-        Some(BlockEnum::Send(ctx.send_block))
+        Some(BlockEnum::Send(send.send_block))
     );
 }
 
 #[test]
 fn ledger_successor_genesis() {
-    let ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    setup_legacy_send_block(&ctx, txn.as_mut());
     let genesis = DEV_GENESIS.read().unwrap().clone();
+
     assert_eq!(
-        ctx.ledger().successor(
-            ctx.txn.txn(),
+        ctx.ledger.successor(
+            txn.txn(),
             &QualifiedRoot::new(DEV_GENESIS_ACCOUNT.deref().into(), BlockHash::zero())
         ),
         Some(genesis)
@@ -72,12 +80,14 @@ fn latest_root_empty() {
 
 #[test]
 fn latest_root() {
-    let ctx = LedgerWithSendBlock::new();
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
 
     assert_eq!(
-        ctx.ledger()
-            .latest_root(ctx.txn.txn(), &DEV_GENESIS_ACCOUNT),
-        ctx.send_block.hash().into()
+        ctx.ledger.latest_root(txn.txn(), &DEV_GENESIS_ACCOUNT),
+        send.send_block.hash().into()
     );
 }
 
@@ -85,7 +95,7 @@ fn latest_root() {
 fn send_open_receive_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
@@ -119,7 +129,7 @@ fn send_open_receive_vote_weight() {
 fn send_open_receive_rollback() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
@@ -209,7 +219,7 @@ fn send_open_receive_rollback() {
 fn bootstrap_rep_weight() {
     let ctx = LedgerContext::empty();
     ctx.ledger.set_bootstrap_weight_max_blocks(3);
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let representative_key = KeyPair::new();
     let representative_account = representative_key.public_key().into();
     {
@@ -248,7 +258,7 @@ fn block_destination_source() {
     let ctx = LedgerContext::empty();
     let ledger = &ctx.ledger;
     let mut txn = ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
     let dest_account = Account::from(1000);
 
     let mut send_to_dest = genesis

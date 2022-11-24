@@ -1,10 +1,7 @@
-mod ledger_context;
 use std::{ops::Deref, sync::atomic::Ordering};
 
-pub(crate) use ledger_context::LedgerContext;
-
-mod ledger_helpers;
-pub(crate) use ledger_helpers::*;
+mod helpers;
+pub(crate) use helpers::*;
 
 use crate::{
     core::{
@@ -16,24 +13,22 @@ use crate::{
 
 use super::DEV_GENESIS_KEY;
 
-mod account_block_factory;
 mod empty_ledger;
 mod epoch_v1;
 mod epoch_v2;
 mod process_change;
+mod process_legacy_change;
+mod process_legacy_open;
+mod process_legacy_receive;
+mod process_legacy_send;
 mod process_open;
 mod process_receive;
 mod process_send;
-mod process_state_change;
-mod process_state_open;
-mod process_state_receive;
-mod process_state_send;
-mod rollback_change;
-mod rollback_open;
-mod rollback_receive;
-mod rollback_send;
+mod rollback_legacy_change;
+mod rollback_legacy_open;
+mod rollback_legacy_receive;
+mod rollback_legacy_send;
 mod rollback_state;
-pub(crate) use account_block_factory::AccountBlockFactory;
 
 #[test]
 fn ledger_successor() {

@@ -109,7 +109,8 @@ fn upgrade_epoch_after_state_block() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -135,7 +136,8 @@ fn legacy_receive_block_after_epoch_v2_upgrade_fails() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -168,7 +170,8 @@ fn cannot_use_legacy_open_block_with_epoch_v2_send() {
     ctx.ledger.process(txn.as_mut(), &mut epoch2).unwrap();
 
     let mut send = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -192,7 +195,9 @@ fn receive_after_epoch_v2() {
     ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
 
     let mut send = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .amount(Amount::new(50))
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -224,7 +229,8 @@ fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
@@ -238,7 +244,8 @@ fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
     ctx.ledger.process(txn.as_mut(), &mut epoch2).unwrap();
 
     let mut send2 = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
@@ -270,7 +277,8 @@ fn upgrade_new_account_straight_to_epoch_2() {
     ctx.ledger.process(txn.as_mut(), &mut epoch2).unwrap();
 
     let mut send = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 

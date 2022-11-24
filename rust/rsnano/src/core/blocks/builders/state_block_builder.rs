@@ -17,6 +17,7 @@ pub struct StateBlockBuilder {
     pub_key: PublicKey,
     work: Option<u64>,
     signature: Option<Signature>,
+    previous_balance: Option<Amount>,
 }
 
 impl StateBlockBuilder {
@@ -30,6 +31,7 @@ impl StateBlockBuilder {
             link: Link::from(5),
             prv_key: key.private_key(),
             pub_key: key.public_key(),
+            previous_balance: None,
             work: None,
             signature: None,
         }
@@ -43,6 +45,11 @@ impl StateBlockBuilder {
         self.link = other.hashables.link;
         self.signature = Some(other.signature.clone());
         self.work = Some(other.work);
+        self
+    }
+
+    pub fn previous_balance(mut self, balance: Amount) -> Self {
+        self.previous_balance = Some(balance);
         self
     }
 
@@ -80,6 +87,13 @@ impl StateBlockBuilder {
 
     pub fn balance_dec(self, balance: impl AsRef<str>) -> Result<Self> {
         Ok(self.balance(balance.as_ref().parse::<u128>()?))
+    }
+
+    pub fn amount(self, amount: Amount) -> Self {
+        let previous_balance = self
+            .previous_balance
+            .expect("previous balance not specified");
+        self.balance(previous_balance - amount)
     }
 
     pub fn link(mut self, link: impl Into<Link>) -> Self {

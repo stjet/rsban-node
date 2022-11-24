@@ -10,11 +10,8 @@ fn save_block() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let receiver_account = Account::from(1);
     let amount_sent = Amount::new(1);
-    let mut block = genesis
-        .state_send(txn.txn(), receiver_account, amount_sent)
-        .build();
+    let mut block = genesis.state_send(txn.txn()).amount(amount_sent).build();
     ctx.ledger.process(txn.as_mut(), &mut block).unwrap();
 
     let BlockEnum::State(loaded_block) = ctx.ledger.store.block().get(txn.txn(), &block.hash()).unwrap() else {panic!("not a state block")};
@@ -35,7 +32,9 @@ fn update_pending_store() {
     let receiver_account = Account::from(1);
     let amount_sent = Amount::new(1);
     let mut block = genesis
-        .state_send(txn.txn(), receiver_account, amount_sent)
+        .state_send(txn.txn())
+        .link(receiver_account)
+        .amount(amount_sent)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut block).unwrap();
 
@@ -62,11 +61,7 @@ fn create_sideband() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let receiver_account = Account::from(1);
-    let amount_sent = Amount::new(1);
-    let mut block = genesis
-        .state_send(txn.txn(), receiver_account, amount_sent)
-        .build();
+    let mut block = genesis.state_send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut block).unwrap();
 
     let sideband = block.sideband().unwrap();
@@ -83,19 +78,15 @@ fn send_and_change_representative() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
-    let receiver_account = Account::from(1);
     let representative = Account::from(1);
+    let amount_sent = DEV_CONSTANTS.genesis_amount - Amount::new(1);
     let mut send = genesis
-        .state_send(
-            txn.txn(),
-            receiver_account,
-            DEV_CONSTANTS.genesis_amount - Amount::new(1),
-        )
+        .state_send(txn.txn())
+        .amount(amount_sent)
         .representative(representative)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let amount_sent = DEV_CONSTANTS.genesis_amount - Amount::new(1);
     assert_eq!(
         ctx.ledger.amount(txn.txn(), &send.hash()).unwrap(),
         amount_sent,

@@ -1,5 +1,5 @@
 use crate::{
-    core::{Account, Amount, Block, BlockDetails, Epoch, PendingKey},
+    core::{Account, Block, BlockDetails, Epoch, PendingKey},
     ledger::{ledger_tests::AccountBlockFactory, ProcessResult},
     DEV_GENESIS_ACCOUNT,
 };
@@ -70,9 +70,7 @@ fn can_add_state_blocks_after_epoch1() {
     let mut epoch = genesis.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap();
 
-    let mut send = genesis
-        .state_send(txn.txn(), Account::from(1), Amount::new(50))
-        .build();
+    let mut send = genesis.state_send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     assert_eq!(
@@ -133,7 +131,8 @@ fn cannot_use_legacy_open_block_after_epoch1() {
     ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap();
 
     let mut send = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -153,7 +152,8 @@ fn cannot_use_legacy_receive_block_after_epoch1_open() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -175,7 +175,8 @@ fn cannot_use_legacy_receive_block_after_sender_upgraded_to_epoch1() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
@@ -183,7 +184,8 @@ fn cannot_use_legacy_receive_block_after_sender_upgraded_to_epoch1() {
     ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
 
     let mut send2 = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
@@ -207,7 +209,8 @@ fn can_add_state_receive_block_after_epoch1() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -231,7 +234,8 @@ fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
@@ -239,7 +243,8 @@ fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
     ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
 
     let mut send2 = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
@@ -270,7 +275,8 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
@@ -278,7 +284,8 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
     ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
 
     let mut send2 = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 

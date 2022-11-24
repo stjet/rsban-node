@@ -20,7 +20,8 @@ fn save_block() {
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), receiver.account(), Amount::new(1))
+        .state_send(txn.txn())
+        .link(receiver.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -46,7 +47,8 @@ fn create_sideband() {
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), receiver.account(), Amount::new(1))
+        .state_send(txn.txn())
+        .link(receiver.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -70,7 +72,8 @@ fn clear_pending() {
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), receiver.account(), Amount::new(1))
+        .state_send(txn.txn())
+        .link(receiver.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -93,7 +96,8 @@ fn add_account() {
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), receiver.account(), Amount::new(1))
+        .state_send(txn.txn())
+        .link(receiver.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -122,7 +126,9 @@ fn update_vote_weight() {
 
     let amount_sent = Amount::new(1);
     let mut send = genesis
-        .state_send(txn.txn(), receiver.account(), amount_sent)
+        .state_send(txn.txn())
+        .link(receiver.account())
+        .amount(amount_sent)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 

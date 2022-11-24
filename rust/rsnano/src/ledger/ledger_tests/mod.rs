@@ -251,15 +251,14 @@ fn block_destination_source() {
     let mut receive = genesis.receive(txn.txn(), send_to_self.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-    let mut send_to_dest_2 = genesis
-        .state_send(txn.txn(), dest_account, Amount::new(*GXRB_RATIO))
-        .build();
+    let mut send_to_dest_2 = genesis.state_send(txn.txn()).link(dest_account).build();
     ctx.ledger
         .process(txn.as_mut(), &mut send_to_dest_2)
         .unwrap();
 
     let mut send_to_self_2 = genesis
-        .state_send(txn.txn(), genesis.account(), Amount::new(*GXRB_RATIO))
+        .state_send(txn.txn())
+        .link(genesis.account())
         .build();
     ctx.ledger
         .process(txn.as_mut(), &mut send_to_self_2)

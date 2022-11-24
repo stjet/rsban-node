@@ -271,7 +271,9 @@ fn open_from_state_block() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
     let amount_sent = Amount::new(50);
     let mut send = genesis
-        .state_send(txn.txn(), destination.account(), amount_sent)
+        .state_send(txn.txn())
+        .link(destination.account())
+        .amount(amount_sent)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 

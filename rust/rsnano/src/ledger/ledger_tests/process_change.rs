@@ -188,7 +188,8 @@ fn change_after_state_fail() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
+        .state_send(txn.txn())
+        .link(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 

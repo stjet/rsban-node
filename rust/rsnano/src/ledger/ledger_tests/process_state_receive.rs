@@ -117,7 +117,8 @@ fn state_unreceivable_fail() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
+        .state_send(txn.txn())
+        .link(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -138,7 +139,8 @@ fn bad_amount_fail() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
+        .state_send(txn.txn())
+        .link(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -158,7 +160,8 @@ fn no_link_amount_fail() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
+        .state_send(txn.txn())
+        .link(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -178,7 +181,8 @@ fn receive_wrong_account_fail() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
+        .state_send(txn.txn())
+        .link(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -204,7 +208,9 @@ fn receive_and_change_representative() {
 
     let amount_sent = Amount::new(50);
     let mut send = genesis
-        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, amount_sent)
+        .state_send(txn.txn())
+        .link(genesis.account())
+        .amount(amount_sent)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -237,7 +243,8 @@ fn receive_50_raw_into_genesis(
 ) -> (StateBlock, StateBlock) {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let mut send = genesis
-        .state_send(txn.txn(), genesis.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(genesis.account())
         .build();
     ctx.ledger.process(txn, &mut send).unwrap();
 

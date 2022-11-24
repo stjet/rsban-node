@@ -368,7 +368,8 @@ fn receive_after_state_fail() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let mut send = genesis
-        .state_send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
+        .state_send(txn.txn())
+        .link(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -391,12 +392,14 @@ fn receive_from_state_block() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let mut send2 = genesis
-        .state_send(txn.txn(), destination.account(), Amount::new(50))
+        .state_send(txn.txn())
+        .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 

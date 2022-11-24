@@ -129,19 +129,15 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn state_send(
-        &self,
-        txn: &dyn Transaction,
-        destination: Account,
-        amount: Amount,
-    ) -> StateBlockBuilder {
+    pub(crate) fn state_send(&self, txn: &dyn Transaction) -> StateBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::state()
             .account(self.account())
             .previous(info.head)
+            .previous_balance(info.balance)
             .representative(info.representative)
-            .balance(info.balance - amount)
-            .link(destination)
+            .amount(Amount::new(50))
+            .link(Account::from(1))
             .sign(&self.key)
     }
 

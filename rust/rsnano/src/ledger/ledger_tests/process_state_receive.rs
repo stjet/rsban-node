@@ -16,12 +16,7 @@ fn save_block() {
 
     let (_, receive) = receive_50_raw_into_genesis(&ctx, txn.as_mut());
 
-    let loaded_block = ctx
-        .ledger
-        .store
-        .block()
-        .get(txn.txn(), &receive.hash())
-        .unwrap();
+    let loaded_block = ctx.ledger.get_block(txn.txn(), &receive.hash()).unwrap();
 
     let BlockEnum::State(loaded_block) = loaded_block else { panic!("not a state block")};
     assert_eq!(loaded_block, receive);
@@ -65,7 +60,7 @@ fn remove_pending_info() {
     let (send, _) = receive_50_raw_into_genesis(&ctx, txn.as_mut());
 
     assert_eq!(
-        ctx.ledger.store.pending().get(
+        ctx.ledger.get_pending(
             txn.txn(),
             &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())
         ),
@@ -96,12 +91,7 @@ fn receive_old_send_block() {
         BlockDetails::new(Epoch::Epoch0, false, true, false)
     );
 
-    let loaded_block = ctx
-        .ledger
-        .store
-        .block()
-        .get(txn.txn(), &receive.hash())
-        .unwrap();
+    let loaded_block = ctx.ledger.get_block(txn.txn(), &receive.hash()).unwrap();
 
     let BlockEnum::State(loaded_block) = loaded_block else { panic!("not a state block")};
     assert_eq!(loaded_block, receive);

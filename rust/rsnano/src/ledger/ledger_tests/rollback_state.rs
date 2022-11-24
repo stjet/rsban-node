@@ -15,9 +15,7 @@ fn rollback_send() {
     let mut send = genesis.send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &send.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &send.hash()).unwrap();
 
     assert_eq!(
         ctx.ledger.store.block().exists(txn.txn(), &send.hash()),
@@ -65,9 +63,7 @@ fn rollback_receive() {
     let mut receive = genesis.receive(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &receive.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &receive.hash()).unwrap();
 
     assert_eq!(
         ctx.ledger.store.block().exists(txn.txn(), &receive.hash()),
@@ -112,9 +108,7 @@ fn rollback_received_send() {
     let mut open = destination.open(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &send.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &send.hash()).unwrap();
 
     assert_eq!(
         ctx.ledger.store.pending().exists(
@@ -158,9 +152,7 @@ fn rollback_rep_change() {
     let mut change = genesis.change(txn.txn(), representative).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
 
     assert_eq!(
         ctx.ledger.store.block().exists(txn.txn(), &change.hash()),
@@ -196,9 +188,7 @@ fn rollback_open() {
     let mut open = destination.open(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &open.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &open.hash()).unwrap();
 
     assert_eq!(
         ctx.ledger.store.block().exists(txn.txn(), &open.hash()),
@@ -215,9 +205,7 @@ fn rollback_open() {
     );
     assert_eq!(
         ctx.ledger
-            .store
-            .pending()
-            .get(
+            .get_pending(
                 txn.txn(),
                 &PendingKey::new(destination.account(), send.hash())
             )
@@ -244,9 +232,7 @@ fn rollback_send_with_rep_change() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &send.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &send.hash()).unwrap();
 
     assert_eq!(
         ctx.ledger.store.block().exists(txn.txn(), &send.hash()),
@@ -280,9 +266,7 @@ fn rollback_receive_with_rep_change() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &receive.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &receive.hash()).unwrap();
 
     assert_eq!(
         ctx.ledger.store.block().exists(txn.txn(), &receive.hash()),

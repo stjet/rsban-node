@@ -3,7 +3,7 @@ use rand::{thread_rng, Rng};
 use crate::{
     core::{
         Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockType,
-        ConfirmationHeightInfo, Epoch, Link, PendingKey, QualifiedRoot, Root,
+        ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
         SignatureVerification,
     },
     ffi::ledger::DependentBlockVisitor,
@@ -714,12 +714,12 @@ impl Ledger {
         &self,
         txn: &mut dyn WriteTransaction,
         block: &BlockHash,
-        list: &mut Vec<Arc<RwLock<BlockEnum>>>,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Vec<Arc<RwLock<BlockEnum>>>> {
         debug_assert!(self.store.block().exists(txn.txn(), block));
         let account = self.account(txn.txn(), block).unwrap();
         let block_account_height = self.store.block().account_height(txn.txn(), block);
-        let mut rollback = RollbackVisitor::new(txn, self, self.stats.as_ref(), list);
+        let mut list = Vec::new();
+        let mut rollback = RollbackVisitor::new(txn, self, self.stats.as_ref(), &mut list);
         while self.store.block().exists(rollback.txn.txn(), block) {
             let conf_height = self
                 .store
@@ -739,8 +739,8 @@ impl Ledger {
                     .unwrap();
                 rollback.list.push(Arc::new(RwLock::new(block.clone())));
                 block.as_block().visit(&mut rollback);
-                if rollback.result.is_err() {
-                    return rollback.result;
+                if rollback.is_error {
+                    return Err(anyhow!("rollback failed"));
                 }
                 self.cache.block_count.fetch_sub(1, Ordering::SeqCst);
             } else {
@@ -748,7 +748,7 @@ impl Ledger {
             }
         }
 
-        Ok(())
+        Ok(list)
     }
 
     pub fn representative_calculated(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
@@ -817,5 +817,9 @@ impl Ledger {
 
     pub fn get_frontier(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account {
         self.store.frontier().get(txn, hash)
+    }
+
+    pub fn get_pending(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
+        self.store.pending().get(txn, key)
     }
 }

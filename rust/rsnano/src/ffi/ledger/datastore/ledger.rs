@@ -639,14 +639,16 @@ pub unsafe extern "C" fn rsn_ledger_rollback(
     hash: *const u8,
     result: *mut BlockArrayDto,
 ) -> bool {
-    let mut list = Vec::new();
-    let is_err = (*handle)
+    match (*handle)
         .0
-        .rollback((*txn).as_write_txn(), &BlockHash::from_ptr(hash), &mut list)
-        .is_err();
-
-    copy_block_array_dto(list, result);
-    is_err
+        .rollback((*txn).as_write_txn(), &BlockHash::from_ptr(hash))
+    {
+        Ok(block_list) => {
+            copy_block_array_dto(block_list, result);
+            false
+        }
+        Err(_) => true,
+    }
 }
 
 #[repr(C)]

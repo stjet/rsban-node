@@ -11,7 +11,7 @@ fn clear_successor() {
     let receive = setup_legacy_receive_block(&ctx, txn.as_mut());
 
     ctx.ledger
-        .rollback(txn.as_mut(), &receive.receive_block.hash(), &mut Vec::new())
+        .rollback(txn.as_mut(), &receive.receive_block.hash())
         .unwrap();
 
     assert_eq!(
@@ -30,21 +30,17 @@ fn rollback_frontiers() {
     let receive = setup_legacy_receive_block(&ctx, txn.as_mut());
 
     ctx.ledger
-        .rollback(txn.as_mut(), &receive.receive_block.hash(), &mut Vec::new())
+        .rollback(txn.as_mut(), &receive.receive_block.hash())
         .unwrap();
 
     assert_eq!(
         ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &receive.open_block.hash()),
+            .get_frontier(txn.txn(), &receive.open_block.hash()),
         receive.destination.account()
     );
     assert_eq!(
         ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &receive.receive_block.hash()),
+            .get_frontier(txn.txn(), &receive.receive_block.hash()),
         Account::zero()
     );
 }
@@ -56,14 +52,12 @@ fn update_account_info() {
     let receive = setup_legacy_receive_block(&ctx, txn.as_mut());
 
     ctx.ledger
-        .rollback(txn.as_mut(), &receive.receive_block.hash(), &mut Vec::new())
+        .rollback(txn.as_mut(), &receive.receive_block.hash())
         .unwrap();
 
     let account_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &receive.destination.account())
+        .get_account_info(txn.txn(), &receive.destination.account())
         .unwrap();
 
     assert_eq!(account_info.head, receive.open_block.hash());
@@ -81,14 +75,12 @@ fn rollback_pending_info() {
     let receive = setup_legacy_receive_block(&ctx, txn.as_mut());
 
     ctx.ledger
-        .rollback(txn.as_mut(), &receive.receive_block.hash(), &mut Vec::new())
+        .rollback(txn.as_mut(), &receive.receive_block.hash())
         .unwrap();
 
     let pending = ctx
         .ledger
-        .store
-        .pending()
-        .get(
+        .get_pending(
             txn.txn(),
             &PendingKey::new(receive.destination.account(), receive.send_block.hash()),
         )
@@ -105,7 +97,7 @@ fn rollback_vote_weight() {
     let receive = setup_legacy_receive_block(&ctx, txn.as_mut());
 
     ctx.ledger
-        .rollback(txn.as_mut(), &receive.receive_block.hash(), &mut Vec::new())
+        .rollback(txn.as_mut(), &receive.receive_block.hash())
         .unwrap();
 
     assert_eq!(

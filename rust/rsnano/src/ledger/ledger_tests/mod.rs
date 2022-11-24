@@ -96,7 +96,7 @@ fn send_open_receive_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
-    let receiver = AccountBlockFactory::new(&ctx.ledger);
+    let receiver = ctx.block_factory();
 
     let mut send1 = genesis
         .legacy_send(txn.txn())
@@ -159,9 +159,7 @@ fn send_open_receive_rollback() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &receive.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &receive.hash()).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::new(50));
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
@@ -170,9 +168,7 @@ fn send_open_receive_rollback() {
         DEV_CONSTANTS.genesis_amount - Amount::new(100)
     );
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &open.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &open.hash()).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
@@ -181,9 +177,7 @@ fn send_open_receive_rollback() {
         DEV_CONSTANTS.genesis_amount - Amount::new(100)
     );
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &change.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
@@ -192,9 +186,7 @@ fn send_open_receive_rollback() {
         DEV_CONSTANTS.genesis_amount - Amount::new(100)
     );
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &send2.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &send2.hash()).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
@@ -203,9 +195,7 @@ fn send_open_receive_rollback() {
         DEV_CONSTANTS.genesis_amount - Amount::new(50)
     );
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &send1.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &send1.hash()).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());

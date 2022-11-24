@@ -1,7 +1,6 @@
 use crate::{
-    core::{Account, Block, BlockBuilder, BlockDetails, BlockEnum, Epoch, Link},
-    ledger::DEV_GENESIS_KEY,
-    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    core::{Block, BlockDetails, BlockEnum, Epoch},
+    ledger::ledger_tests::setup_change_block,
 };
 
 use super::LedgerContext;
@@ -10,10 +9,8 @@ use super::LedgerContext;
 fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.change(txn.txn(), Account::from(1)).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let change = setup_change_block(&ctx, txn.as_mut());
 
     let BlockEnum::State(loaded_block) = ctx.ledger.store.block().get(txn.txn(), &change.hash()).unwrap() else { panic!("not a state block!")};
     assert_eq!(loaded_block, change);
@@ -24,10 +21,8 @@ fn save_block() {
 fn create_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.change(txn.txn(), Account::from(1)).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let change = setup_change_block(&ctx, txn.as_mut());
 
     let sideband = change.sideband().unwrap();
     assert_eq!(sideband.height, 2);
@@ -41,22 +36,9 @@ fn create_sideband() {
 fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
-    let rep_account = Account::from(1);
-    let mut change = genesis.change(txn.txn(), rep_account).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    let weight = ctx.ledger.weight(&rep_account);
+    let change = setup_change_block(&ctx, txn.as_mut());
+
+    let weight = ctx.ledger.weight(&change.representative());
     assert_eq!(weight, change.balance());
-}
-
-fn change_genesis_representative(rep_account: Account) -> crate::core::StateBlock {
-    BlockBuilder::state()
-        .account(*DEV_GENESIS_ACCOUNT)
-        .previous(*DEV_GENESIS_HASH)
-        .representative(rep_account)
-        .balance(DEV_CONSTANTS.genesis_amount)
-        .link(Link::zero())
-        .sign(&DEV_GENESIS_KEY)
-        .build()
 }

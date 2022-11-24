@@ -17,10 +17,7 @@ fn remove_from_frontier_store() {
     let open = rollback_open_block(&ctx, txn.as_mut());
 
     assert_eq!(
-        ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &open.open_block.hash()),
+        ctx.ledger.get_frontier(txn.txn(), &open.open_block.hash()),
         Account::zero()
     );
 }
@@ -34,16 +31,12 @@ fn remove_from_account_store() {
 
     let receiver_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &open.destination.account());
+        .get_account_info(txn.txn(), &open.destination.account());
     assert_eq!(receiver_info, None);
 
     let sender_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(sender_info.head, open.send_block.hash());
 }
@@ -57,9 +50,7 @@ fn update_pending_store() {
 
     let pending = ctx
         .ledger
-        .store
-        .pending()
-        .get(
+        .get_pending(
             txn.txn(),
             &PendingKey::new(open.destination.account(), open.send_block.hash()),
         )
@@ -124,8 +115,6 @@ fn rollback_open_block<'a>(
     txn: &mut dyn WriteTransaction,
 ) -> LegacyOpenBlockResult<'a> {
     let open = setup_legacy_open_block(ctx, txn);
-    ctx.ledger
-        .rollback(txn, &open.open_block.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn, &open.open_block.hash()).unwrap();
     open
 }

@@ -17,7 +17,7 @@ pub(crate) struct RollbackVisitor<'a> {
     ledger: &'a Ledger,
     stats: &'a Stat,
     pub list: &'a mut Vec<Arc<RwLock<BlockEnum>>>,
-    pub result: anyhow::Result<()>,
+    pub is_error: bool,
 }
 
 impl<'a> RollbackVisitor<'a> {
@@ -32,20 +32,20 @@ impl<'a> RollbackVisitor<'a> {
             ledger,
             stats,
             list,
-            result: Ok(()),
+            is_error: false,
         }
     }
 }
 
 impl<'a> BlockVisitor for RollbackVisitor<'a> {
     fn send_block(&mut self, block: &SendBlock) {
-        if self.result.is_err() {
+        if self.is_error {
             return;
         }
         let hash = block.hash();
         let key = PendingKey::new(block.hashables.destination, hash);
         let mut pending_info = PendingInfo::default();
-        while !self.result.is_err() {
+        while !self.is_error {
             match self.ledger.store.pending().get(self.txn.txn(), &key) {
                 Some(info) => {
                     pending_info = info;
@@ -61,8 +61,11 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 .latest(self.txn.txn(), &block.hashables.destination)
                 .unwrap();
 
-            self.result = self.ledger.rollback(self.txn, &latest_block, self.list);
-            if self.result.is_err() {
+            match self.ledger.rollback(self.txn, &latest_block) {
+                Ok(mut blocks) => self.list.append(&mut blocks),
+                Err(_) => self.is_error = true,
+            }
+            if self.is_error {
                 return;
             }
         }
@@ -322,7 +325,10 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                     .ledger
                     .latest(self.txn.txn(), &block.link().into())
                     .unwrap();
-                error = self.ledger.rollback(self.txn, &latest, self.list).is_err();
+                match self.ledger.rollback(self.txn, &latest) {
+                    Ok(mut list) => self.list.append(&mut list),
+                    Err(_) => error = true,
+                };
             }
             self.ledger.store.pending().del(self.txn, &key);
             let _ = self

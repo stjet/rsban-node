@@ -22,24 +22,18 @@ fn update_vote_weight() {
 }
 
 #[test]
-fn update_frontier_store() {
+fn rollback_frontiers() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
     let send = rollback_send_block(&ctx, txn.as_mut());
 
     assert_eq!(
-        ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &DEV_GENESIS_HASH),
+        ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH),
         *DEV_GENESIS_ACCOUNT
     );
     assert_eq!(
-        ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &send.send_block.hash()),
+        ctx.ledger.get_frontier(txn.txn(), &send.send_block.hash()),
         Account::zero()
     );
 }
@@ -53,9 +47,7 @@ fn update_account_store() {
 
     let account_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(account_info.block_count, 1);
     assert_eq!(account_info.head, *DEV_GENESIS_HASH);
@@ -86,9 +78,7 @@ fn update_confirmation_height_store() {
 
     let conf_height = ctx
         .ledger
-        .store
-        .confirmation_height()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_confirmation_height(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
 
     assert_eq!(conf_height.frontier, *DEV_GENESIS_HASH);
@@ -104,7 +94,7 @@ fn rollback_dependent_blocks_too() {
 
     // Rollback send block. This requires the rollback of the open block first.
     ctx.ledger
-        .rollback(txn.as_mut(), &open.send_block.hash(), &mut Vec::new())
+        .rollback(txn.as_mut(), &open.send_block.hash())
         .unwrap();
 
     assert_eq!(
@@ -121,9 +111,7 @@ fn rollback_dependent_blocks_too() {
 
     assert!(ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &open.destination.account())
+        .get_account_info(txn.txn(), &open.destination.account())
         .is_none());
 
     let pending = ctx.ledger.store.pending().get(
@@ -138,8 +126,6 @@ fn rollback_send_block<'a>(
     txn: &mut dyn WriteTransaction,
 ) -> LegacySendBlockResult<'a> {
     let send = setup_legacy_send_block(ctx, txn);
-    ctx.ledger
-        .rollback(txn, &send.send_block.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn, &send.send_block.hash()).unwrap();
     send
 }

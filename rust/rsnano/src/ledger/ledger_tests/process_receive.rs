@@ -33,9 +33,7 @@ fn save_block() {
 
     let loaded_block = ctx
         .ledger
-        .store
-        .block()
-        .get(txn.txn(), &result.receive_block.hash())
+        .get_block(txn.txn(), &result.receive_block.hash())
         .unwrap();
 
     let BlockEnum::Receive(loaded_block) = loaded_block else{panic!("not a receive block")};
@@ -68,16 +66,12 @@ fn update_frontier_store() {
 
     assert_eq!(
         ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &result.open_block.hash()),
+            .get_frontier(txn.txn(), &result.open_block.hash()),
         Account::zero()
     );
     assert_eq!(
         ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &result.receive_block.hash()),
+            .get_frontier(txn.txn(), &result.receive_block.hash()),
         result.destination.account()
     );
 }

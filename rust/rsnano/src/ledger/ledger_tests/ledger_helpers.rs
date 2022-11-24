@@ -1,9 +1,39 @@
 use crate::{
-    core::{Amount, Block, OpenBlock, ReceiveBlock, SendBlock},
+    core::{Account, Amount, Block, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock},
     ledger::datastore::WriteTransaction,
 };
 
 use super::{AccountBlockFactory, LedgerContext};
+
+pub(crate) fn upgrade_genesis_to_epoch_v1(
+    ctx: &LedgerContext,
+    txn: &mut dyn WriteTransaction,
+) -> StateBlock {
+    let mut epoch = ctx.genesis_block_factory().epoch_v1(txn.txn()).build();
+    ctx.ledger.process(txn, &mut epoch).unwrap();
+    epoch
+}
+
+pub(crate) fn setup_legacy_change_block(
+    ctx: &LedgerContext,
+    txn: &mut dyn WriteTransaction,
+) -> ChangeBlock {
+    let mut change = ctx.genesis_block_factory().legacy_change(txn.txn()).build();
+    ctx.ledger.process(txn, &mut change).unwrap();
+    change
+}
+
+pub(crate) fn setup_change_block(
+    ctx: &LedgerContext,
+    txn: &mut dyn WriteTransaction,
+) -> StateBlock {
+    let mut change = ctx
+        .genesis_block_factory()
+        .change(txn.txn(), Account::from(1))
+        .build();
+    ctx.ledger.process(txn, &mut change).unwrap();
+    change
+}
 
 pub(crate) struct LegacySendBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
@@ -92,5 +122,58 @@ pub(crate) fn setup_legacy_receive_block<'a>(
         receive_block,
         expected_balance: open.expected_balance + amount_sent2,
         amount_received: amount_sent2,
+    }
+}
+
+pub(crate) struct SendBlockResult<'a> {
+    pub destination: AccountBlockFactory<'a>,
+    pub send_block: StateBlock,
+    pub amount_sent: Amount,
+}
+pub(crate) fn setup_send_block<'a>(
+    ctx: &'a LedgerContext,
+    txn: &mut dyn WriteTransaction,
+) -> SendBlockResult<'a> {
+    let genesis = ctx.genesis_block_factory();
+    let destination = ctx.block_factory();
+
+    let amount_sent = Amount::new(50);
+    let mut send_block = genesis
+        .send(txn.txn())
+        .link(destination.account())
+        .amount(amount_sent)
+        .build();
+    ctx.ledger.process(txn, &mut send_block).unwrap();
+
+    SendBlockResult {
+        destination,
+        send_block,
+        amount_sent,
+    }
+}
+
+pub(crate) struct OpenBlockResult<'a> {
+    pub destination: AccountBlockFactory<'a>,
+    pub send_block: StateBlock,
+    pub open_block: StateBlock,
+    pub expected_balance: Amount,
+}
+pub(crate) fn setup_open_block<'a>(
+    ctx: &'a LedgerContext,
+    txn: &mut dyn WriteTransaction,
+) -> OpenBlockResult<'a> {
+    let send = setup_send_block(ctx, txn);
+
+    let mut open_block = send
+        .destination
+        .open(txn.txn(), send.send_block.hash())
+        .build();
+    ctx.ledger.process(txn, &mut open_block).unwrap();
+
+    OpenBlockResult {
+        destination: send.destination,
+        send_block: send.send_block,
+        open_block,
+        expected_balance: send.amount_sent,
     }
 }

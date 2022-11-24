@@ -1,6 +1,9 @@
 use crate::{
     core::{Amount, Block, BlockDetails, Epoch},
-    ledger::{ledger_tests::AccountBlockFactory, ProcessResult},
+    ledger::{
+        ledger_tests::{upgrade_genesis_to_epoch_v1, AccountBlockFactory},
+        ProcessResult,
+    },
     DEV_GENESIS_ACCOUNT,
 };
 
@@ -23,12 +26,9 @@ fn upgrade_from_v0_to_v2_fails() {
 fn upgrade_to_epoch_v2() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
+    upgrade_genesis_to_epoch_v1(&ctx, txn.as_mut());
 
-    let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
-
-    let mut epoch2 = genesis.epoch_v2(txn.txn()).build();
+    let mut epoch2 = ctx.genesis_block_factory().epoch_v2(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch2).unwrap();
 
     assert_eq!(
@@ -40,9 +40,7 @@ fn upgrade_to_epoch_v2() {
 
     let account_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(account_info.epoch, Epoch::Epoch2);
 }
@@ -51,10 +49,9 @@ fn upgrade_to_epoch_v2() {
 fn upgrading_to_epoch_v2_twice_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
+    upgrade_genesis_to_epoch_v1(&ctx, txn.as_mut());
 
-    let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
+    let genesis = ctx.genesis_block_factory();
 
     let mut epoch2 = genesis.epoch_v2(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch2).unwrap();
@@ -69,17 +66,13 @@ fn upgrading_to_epoch_v2_twice_fails() {
 fn rollback_epoch_v2() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
+    upgrade_genesis_to_epoch_v1(&ctx, txn.as_mut());
     let genesis = ctx.genesis_block_factory();
 
-    let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
+    let mut epoch = genesis.epoch_v2(txn.txn()).build();
+    ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap();
 
-    let mut epoch2 = genesis.epoch_v2(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut epoch2).unwrap();
-
-    ctx.ledger
-        .rollback(txn.as_mut(), &epoch2.hash(), &mut Vec::new())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &epoch.hash()).unwrap();
 
     let genesis_info = ctx
         .ledger
@@ -239,9 +232,7 @@ fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
     assert_eq!(receive2.sideband().unwrap().source_epoch, Epoch::Epoch2);
     let destination_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &destination.account())
+        .get_account_info(txn.txn(), &destination.account())
         .unwrap();
     assert_eq!(destination_info.epoch, Epoch::Epoch2);
 }

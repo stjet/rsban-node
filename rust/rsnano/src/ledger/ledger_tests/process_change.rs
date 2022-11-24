@@ -1,6 +1,6 @@
 use crate::{
     core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
-    ledger::{ProcessResult, DEV_GENESIS_KEY},
+    ledger::{ledger_tests::setup_legacy_change_block, ProcessResult, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -10,10 +10,8 @@ use super::LedgerContext;
 fn update_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let change = setup_legacy_change_block(&ctx, txn.as_mut());
 
     let sideband = change.sideband().unwrap();
     assert_eq!(sideband.account, *DEV_GENESIS_ACCOUNT);
@@ -25,17 +23,10 @@ fn update_sideband() {
 fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let change = setup_legacy_change_block(&ctx, txn.as_mut());
 
-    let loaded_block = ctx
-        .ledger
-        .store
-        .block()
-        .get(txn.txn(), &change.hash())
-        .unwrap();
+    let loaded_block = ctx.ledger.get_block(txn.txn(), &change.hash()).unwrap();
 
     let BlockEnum::Change(loaded_block) = loaded_block else{panic!("not a change block")};
     assert_eq!(loaded_block, change);
@@ -46,19 +37,13 @@ fn save_block() {
 fn update_frontier_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let change = setup_legacy_change_block(&ctx, txn.as_mut());
 
-    let account = ctx.ledger.store.frontier().get(txn.txn(), &change.hash());
+    let account = ctx.ledger.get_frontier(txn.txn(), &change.hash());
     assert_eq!(account, *DEV_GENESIS_ACCOUNT);
 
-    let account = ctx
-        .ledger
-        .store
-        .frontier()
-        .get(txn.txn(), &DEV_GENESIS_HASH);
+    let account = ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH);
     assert_eq!(account, Account::zero());
 }
 
@@ -66,10 +51,8 @@ fn update_frontier_store() {
 fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let change = setup_legacy_change_block(&ctx, txn.as_mut());
 
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
@@ -82,16 +65,12 @@ fn update_vote_weight() {
 fn update_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let change = setup_legacy_change_block(&ctx, txn.as_mut());
 
     let account_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
 
     assert_eq!(account_info.head, change.hash());
@@ -104,10 +83,7 @@ fn update_account_info() {
 fn fail_old() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = ctx.genesis_block_factory();
-
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let mut change = setup_legacy_change_block(&ctx, txn.as_mut());
 
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 

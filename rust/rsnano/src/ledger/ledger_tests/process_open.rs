@@ -29,9 +29,7 @@ fn save_block() {
 
     let loaded_open = ctx
         .ledger
-        .store
-        .block()
-        .get(txn.txn(), &open.open_block.hash())
+        .get_block(txn.txn(), &open.open_block.hash())
         .unwrap();
 
     let BlockEnum::Open(loaded_open) = loaded_open else{panic!("not an open block")};
@@ -70,10 +68,7 @@ fn update_frontier_store() {
     let open = setup_legacy_open_block(&ctx, txn.as_mut());
 
     assert_eq!(
-        ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &open.open_block.hash()),
+        ctx.ledger.get_frontier(txn.txn(), &open.open_block.hash()),
         open.destination.account()
     );
 }
@@ -132,9 +127,7 @@ fn update_sender_account_info() {
 
     let sender_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(sender_info.head, open.send_block.hash());
 }
@@ -148,9 +141,7 @@ fn update_receiver_account_info() {
 
     let receiver_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &open.destination.account())
+        .get_account_info(txn.txn(), &open.destination.account())
         .unwrap();
     assert_eq!(receiver_info.head, open.open_block.hash());
 }

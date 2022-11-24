@@ -12,7 +12,7 @@ fn rollback_send() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut send = genesis.state_send(txn.txn()).build();
+    let mut send = genesis.send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     ctx.ledger
@@ -56,13 +56,13 @@ fn rollback_receive() {
 
     let amount_sent = Amount::new(50);
     let mut send = genesis
-        .state_send(txn.txn())
+        .send(txn.txn())
         .amount(amount_sent)
         .link(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut receive = genesis.state_receive(txn.txn(), send.hash()).build();
+    let mut receive = genesis.receive(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     ctx.ledger
@@ -106,13 +106,10 @@ fn rollback_received_send() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut open = destination.state_open(txn.txn(), send.hash()).build();
+    let mut open = destination.open(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     ctx.ledger
@@ -158,7 +155,7 @@ fn rollback_rep_change() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let representative = Account::from(1);
 
-    let mut change = genesis.state_change(txn.txn(), representative).build();
+    let mut change = genesis.change(txn.txn(), representative).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     ctx.ledger
@@ -190,13 +187,13 @@ fn rollback_open() {
 
     let amount_sent = Amount::new(50);
     let mut send = genesis
-        .state_send(txn.txn())
+        .send(txn.txn())
         .link(destination.account())
         .amount(amount_sent)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut open = destination.state_open(txn.txn(), send.hash()).build();
+    let mut open = destination.open(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     ctx.ledger
@@ -242,7 +239,7 @@ fn rollback_send_with_rep_change() {
 
     let representative = Account::from(1);
     let mut send = genesis
-        .state_send(txn.txn())
+        .send(txn.txn())
         .representative(representative)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
@@ -274,14 +271,11 @@ fn rollback_receive_with_rep_change() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
     let representative = Account::from(1);
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(genesis.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut receive = genesis
-        .state_receive(txn.txn(), send.hash())
+        .receive(txn.txn(), send.hash())
         .representative(representative)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();

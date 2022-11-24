@@ -80,12 +80,12 @@ fn receive_old_send_block() {
     let genesis = ctx.genesis_block_factory();
 
     let mut send = genesis
-        .send(txn.txn())
+        .legacy_send(txn.txn())
         .destination(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut receive = genesis.state_receive(txn.txn(), send.hash()).build();
+    let mut receive = genesis.receive(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     let sideband = receive.sideband().unwrap();
@@ -117,14 +117,11 @@ fn state_unreceivable_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(genesis.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut receive = genesis
-        .state_receive(txn.txn(), send.hash())
+        .receive(txn.txn(), send.hash())
         .link(Link::from(1))
         .build();
 
@@ -139,14 +136,11 @@ fn bad_amount_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(genesis.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut receive = genesis
-        .state_receive(txn.txn(), send.hash())
+        .receive(txn.txn(), send.hash())
         .balance(send.balance())
         .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
@@ -160,14 +154,11 @@ fn no_link_amount_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(genesis.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut receive = genesis
-        .state_receive(txn.txn(), send.hash())
+        .receive(txn.txn(), send.hash())
         .link(Link::zero())
         .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
@@ -181,10 +172,7 @@ fn receive_wrong_account_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(genesis.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let key = KeyPair::new();
@@ -209,7 +197,7 @@ fn receive_and_change_representative() {
 
     let amount_sent = Amount::new(50);
     let mut send = genesis
-        .state_send(txn.txn())
+        .send(txn.txn())
         .link(genesis.account())
         .amount(amount_sent)
         .build();
@@ -217,7 +205,7 @@ fn receive_and_change_representative() {
 
     let representative = Account::from(1);
     let mut receive = genesis
-        .state_receive(txn.txn(), send.hash())
+        .receive(txn.txn(), send.hash())
         .representative(representative)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
@@ -243,13 +231,10 @@ fn receive_50_raw_into_genesis(
     txn: &mut dyn WriteTransaction,
 ) -> (StateBlock, StateBlock) {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(genesis.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn, &mut send).unwrap();
 
-    let mut receive = genesis.state_receive(txn.txn(), send.hash()).build();
+    let mut receive = genesis.receive(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn, &mut receive).unwrap();
 
     (send, receive)

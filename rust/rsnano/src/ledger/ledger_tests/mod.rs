@@ -89,23 +89,23 @@ fn send_open_receive_vote_weight() {
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
-        .send(txn.txn())
+        .legacy_send(txn.txn())
         .destination(receiver.account())
         .amount(Amount::new(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let mut send2 = genesis
-        .send(txn.txn())
+        .legacy_send(txn.txn())
         .destination(receiver.account())
         .amount(Amount::new(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open = receiver.open(send1.hash()).build();
+    let mut open = receiver.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    let mut receive = receiver.receive(txn.txn(), send2.hash()).build();
+    let mut receive = receiver.legacy_receive(txn.txn(), send2.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::new(100));
@@ -123,28 +123,29 @@ fn send_open_receive_rollback() {
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
-        .send(txn.txn())
+        .legacy_send(txn.txn())
         .destination(receiver.account())
         .amount(Amount::new(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let mut send2 = genesis
-        .send(txn.txn())
+        .legacy_send(txn.txn())
         .destination(receiver.account())
         .amount(Amount::new(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open = receiver.open(send1.hash()).build();
+    let mut open = receiver.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    let mut receive = receiver.receive(txn.txn(), send2.hash()).build();
+    let mut receive = receiver.legacy_receive(txn.txn(), send2.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
     let rep_account = Account::from(1);
 
     let mut change = genesis
-        .change_representative(txn.txn(), rep_account)
+        .legacy_change(txn.txn())
+        .representative(rep_account)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
@@ -214,7 +215,7 @@ fn bootstrap_rep_weight() {
     {
         let mut txn = ctx.ledger.rw_txn();
         let mut send = genesis
-            .send(txn.txn())
+            .legacy_send(txn.txn())
             .destination(representative_account)
             .amount(Amount::new(50))
             .build();
@@ -232,7 +233,7 @@ fn bootstrap_rep_weight() {
     {
         let mut txn = ctx.ledger.rw_txn();
         let mut send = genesis
-            .send(txn.txn())
+            .legacy_send(txn.txn())
             .destination(representative_account)
             .amount(Amount::new(50))
             .build();
@@ -250,34 +251,34 @@ fn block_destination_source() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let dest_account = Account::from(1000);
 
-    let mut send_to_dest = genesis.send(txn.txn()).destination(dest_account).build();
+    let mut send_to_dest = genesis
+        .legacy_send(txn.txn())
+        .destination(dest_account)
+        .build();
     ctx.ledger.process(txn.as_mut(), &mut send_to_dest).unwrap();
 
     let mut send_to_self = genesis
-        .send(txn.txn())
+        .legacy_send(txn.txn())
         .destination(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send_to_self).unwrap();
 
-    let mut receive = genesis.receive(txn.txn(), send_to_self.hash()).build();
+    let mut receive = genesis
+        .legacy_receive(txn.txn(), send_to_self.hash())
+        .build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-    let mut send_to_dest_2 = genesis.state_send(txn.txn()).link(dest_account).build();
+    let mut send_to_dest_2 = genesis.send(txn.txn()).link(dest_account).build();
     ctx.ledger
         .process(txn.as_mut(), &mut send_to_dest_2)
         .unwrap();
 
-    let mut send_to_self_2 = genesis
-        .state_send(txn.txn())
-        .link(genesis.account())
-        .build();
+    let mut send_to_self_2 = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger
         .process(txn.as_mut(), &mut send_to_self_2)
         .unwrap();
 
-    let mut receive2 = genesis
-        .state_receive(txn.txn(), send_to_self_2.hash())
-        .build();
+    let mut receive2 = genesis.receive(txn.txn(), send_to_self_2.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive2).unwrap();
 
     let block1 = BlockEnum::Send(send_to_dest);

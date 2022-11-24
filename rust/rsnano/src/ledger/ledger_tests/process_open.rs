@@ -144,7 +144,7 @@ fn fail_fork_previous() {
     let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
     let mut send2 = genesis
-        .send(ctx.txn.txn())
+        .legacy_send(ctx.txn.txn())
         .destination(ctx.receiver_account)
         .build();
     ctx.ledger_context
@@ -242,7 +242,7 @@ fn state_open_fork() {
     let destination = AccountBlockFactory::from_key(ctx.ledger(), ctx.receiver_key.clone());
 
     let mut open = destination
-        .state_open(ctx.txn.txn(), ctx.send_block.hash())
+        .open(ctx.txn.txn(), ctx.send_block.hash())
         .build();
     ctx.ledger_context
         .ledger
@@ -272,14 +272,14 @@ fn open_from_state_block() {
     let destination = AccountBlockFactory::new(&ctx.ledger);
     let amount_sent = Amount::new(50);
     let mut send = genesis
-        .state_send(txn.txn())
+        .send(txn.txn())
         .link(destination.account())
         .amount(amount_sent)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut open = destination
-        .open(send.hash())
+        .legacy_open(send.hash())
         .representative(*DEV_GENESIS_ACCOUNT)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();

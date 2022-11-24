@@ -118,23 +118,21 @@ fn receive_fork() {
     let receiver = ctx.new_block_factory();
 
     let mut send1 = genesis
-        .send(txn.txn())
+        .legacy_send(txn.txn())
         .destination(receiver.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let mut open = receiver.open(send1.hash()).build();
+    let mut open = receiver.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let mut send2 = genesis
-        .send(txn.txn())
+        .legacy_send(txn.txn())
         .destination(receiver.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut change = receiver
-        .change_representative(txn.txn(), Account::from(1000))
-        .build();
+    let mut change = receiver.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let mut receive_fork = BlockBuilder::receive()
@@ -209,7 +207,7 @@ fn fail_bad_signature() {
     let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
     let mut send = genesis
-        .send(ctx.txn.txn())
+        .legacy_send(ctx.txn.txn())
         .destination(ctx.receiver_account)
         .build();
     ctx.ledger_context
@@ -257,7 +255,7 @@ fn fail_gap_previous_opened() {
     let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
     let mut send2 = genesis
-        .send(ctx.txn.txn())
+        .legacy_send(ctx.txn.txn())
         .destination(ctx.receiver_account)
         .build();
     ctx.ledger_context
@@ -286,7 +284,7 @@ fn fail_fork_previous() {
     let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
     let mut receivable = genesis
-        .send(ctx.txn.txn())
+        .legacy_send(ctx.txn.txn())
         .destination(ctx.receiver_account)
         .build();
     ctx.ledger_context
@@ -329,7 +327,7 @@ fn fail_receive_received_source() {
     let receiver = AccountBlockFactory::from_key(&ctx.ledger_context.ledger, ctx.receiver_key);
 
     let mut receivable1 = genesis
-        .send(ctx.txn.txn())
+        .legacy_send(ctx.txn.txn())
         .destination(receiver.account())
         .amount(Amount::new(1))
         .build();
@@ -339,7 +337,7 @@ fn fail_receive_received_source() {
         .unwrap();
 
     let mut receivable2 = genesis
-        .send(ctx.txn.txn())
+        .legacy_send(ctx.txn.txn())
         .destination(receiver.account())
         .amount(Amount::new(1))
         .build();
@@ -348,7 +346,9 @@ fn fail_receive_received_source() {
         .process(ctx.txn.as_mut(), &mut receivable2)
         .unwrap();
 
-    let mut receive = receiver.receive(ctx.txn.txn(), receivable1.hash()).build();
+    let mut receive = receiver
+        .legacy_receive(ctx.txn.txn(), receivable1.hash())
+        .build();
     ctx.ledger_context
         .ledger
         .process(ctx.txn.as_mut(), &mut receive)
@@ -376,10 +376,7 @@ fn receive_after_state_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(genesis.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut receive = BlockBuilder::receive()
@@ -400,23 +397,17 @@ fn receive_from_state_block() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send1 = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send1 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let mut send2 = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open = destination.open(send1.hash()).build();
+    let mut open = destination.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let mut receive = destination
-        .state_receive(txn.txn(), send2.hash())
+        .receive(txn.txn(), send2.hash())
         .representative(*DEV_GENESIS_ACCOUNT)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();

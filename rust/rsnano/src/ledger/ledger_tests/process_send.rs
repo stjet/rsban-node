@@ -184,10 +184,10 @@ fn send_after_state_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut send1 = genesis.state_send(txn.txn()).build();
+    let mut send1 = genesis.send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let mut send2 = genesis.send(txn.txn()).build();
+    let mut send2 = genesis.legacy_send(txn.txn()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BlockPosition);

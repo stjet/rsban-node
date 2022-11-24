@@ -25,7 +25,7 @@ impl LedgerWithOpenBlock {
         let amount_sent = DEV_CONSTANTS.genesis_amount - Amount::new(50);
 
         let mut send_block = genesis
-            .send(txn.txn())
+            .legacy_send(txn.txn())
             .destination(receiver.account())
             .amount(amount_sent)
             .build();
@@ -34,7 +34,7 @@ impl LedgerWithOpenBlock {
             .process(txn.as_mut(), &mut send_block)
             .unwrap();
 
-        let mut open_block = receiver.open(send_block.hash()).build();
+        let mut open_block = receiver.legacy_open(send_block.hash()).build();
         ledger_context
             .ledger
             .process(txn.as_mut(), &mut open_block)
@@ -89,7 +89,7 @@ impl LedgerWithSendBlock {
         let mut txn = ledger_context.ledger.rw_txn();
 
         let mut send_block = genesis
-            .send(txn.txn())
+            .legacy_send(txn.txn())
             .destination(receiver_account)
             .amount(amount_sent)
             .build();
@@ -144,7 +144,7 @@ impl LedgerWithReceiveBlock {
         let amount_sent1 = DEV_CONSTANTS.genesis_amount - Amount::new(50);
 
         let mut send1 = genesis
-            .send(txn.txn())
+            .legacy_send(txn.txn())
             .destination(receiver.account())
             .amount(amount_sent1)
             .build();
@@ -153,7 +153,7 @@ impl LedgerWithReceiveBlock {
             .process(txn.as_mut(), &mut send1)
             .unwrap();
 
-        let mut open_block = receiver.open(send1.hash()).build();
+        let mut open_block = receiver.legacy_open(send1.hash()).build();
         ledger_context
             .ledger
             .process(txn.as_mut(), &mut open_block)
@@ -161,7 +161,7 @@ impl LedgerWithReceiveBlock {
         let amount_sent2 = Amount::new(25);
 
         let mut send2 = genesis
-            .send(txn.txn())
+            .legacy_send(txn.txn())
             .destination(receiver.account())
             .amount(amount_sent2)
             .build();
@@ -170,7 +170,7 @@ impl LedgerWithReceiveBlock {
             .process(txn.as_mut(), &mut send2)
             .unwrap();
 
-        let mut receive_block = receiver.receive(txn.txn(), send2.hash()).build();
+        let mut receive_block = receiver.legacy_receive(txn.txn(), send2.hash()).build();
         ledger_context
             .ledger
             .process(txn.as_mut(), &mut receive_block)

@@ -19,13 +19,10 @@ fn save_block() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(receiver.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(receiver.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut open = receiver.state_open(txn.txn(), send.hash()).build();
+    let mut open = receiver.open(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let BlockEnum::State(loaded_open) = ctx
@@ -46,13 +43,10 @@ fn create_sideband() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(receiver.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(receiver.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut open = receiver.state_open(txn.txn(), send.hash()).build();
+    let mut open = receiver.open(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let sideband = open.sideband().unwrap();
@@ -71,13 +65,10 @@ fn clear_pending() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(receiver.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(receiver.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut open = receiver.state_open(txn.txn(), send.hash()).build();
+    let mut open = receiver.open(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let pending = ctx
@@ -95,13 +86,10 @@ fn add_account() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(receiver.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(receiver.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut open = receiver.state_open(txn.txn(), send.hash()).build();
+    let mut open = receiver.open(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let account_info = ctx
@@ -126,13 +114,13 @@ fn update_vote_weight() {
 
     let amount_sent = Amount::new(1);
     let mut send = genesis
-        .state_send(txn.txn())
+        .send(txn.txn())
         .link(receiver.account())
         .amount(amount_sent)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut open = receiver.state_open(txn.txn(), send.hash()).build();
+    let mut open = receiver.open(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let weight = ctx.ledger.weight(&receiver.account());
@@ -144,9 +132,7 @@ fn open_fork_fail() {
     let mut ctx = LedgerWithSendBlock::new();
     let receiver = AccountBlockFactory::from_key(ctx.ledger(), ctx.receiver_key.clone());
 
-    let mut open1 = receiver
-        .state_open(ctx.txn.txn(), ctx.send_block.hash())
-        .build();
+    let mut open1 = receiver.open(ctx.txn.txn(), ctx.send_block.hash()).build();
     ctx.ledger_context
         .ledger
         .process(ctx.txn.as_mut(), &mut open1)

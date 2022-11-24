@@ -53,10 +53,7 @@ fn adding_legacy_change_block_after_epoch1_fails() {
     let mut epoch = genesis.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap();
 
-    let mut change = genesis
-        .change_representative(txn.txn(), *DEV_GENESIS_ACCOUNT)
-        .build();
-
+    let mut change = genesis.legacy_change(txn.txn()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
@@ -70,7 +67,7 @@ fn can_add_state_blocks_after_epoch1() {
     let mut epoch = genesis.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap();
 
-    let mut send = genesis.state_send(txn.txn()).build();
+    let mut send = genesis.send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     assert_eq!(
@@ -130,13 +127,10 @@ fn cannot_use_legacy_open_block_after_epoch1() {
     let mut epoch = genesis.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap();
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut open = destination.open(send.hash()).build();
+    let mut open = destination.legacy_open(send.hash()).build();
 
     let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
@@ -151,16 +145,13 @@ fn cannot_use_legacy_receive_block_after_epoch1_open() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut epoch_open = destination.epoch_v1_open().build();
     ctx.ledger.process(txn.as_mut(), &mut epoch_open).unwrap();
 
-    let mut receive = destination.receive(txn.txn(), send.hash()).build();
+    let mut receive = destination.legacy_receive(txn.txn(), send.hash()).build();
 
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
@@ -174,25 +165,19 @@ fn cannot_use_legacy_receive_block_after_sender_upgraded_to_epoch1() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send1 = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send1 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
 
-    let mut send2 = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open = destination.open(send1.hash()).build();
+    let mut open = destination.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    let mut legacy_receive = destination.receive(txn.txn(), send2.hash()).build();
+    let mut legacy_receive = destination.legacy_receive(txn.txn(), send2.hash()).build();
     let result = ctx
         .ledger
         .process(txn.as_mut(), &mut legacy_receive)
@@ -208,16 +193,13 @@ fn can_add_state_receive_block_after_epoch1() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut epoch_open = destination.epoch_v1_open().build();
     ctx.ledger.process(txn.as_mut(), &mut epoch_open).unwrap();
 
-    let mut receive = destination.state_receive(txn.txn(), send.hash()).build();
+    let mut receive = destination.receive(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     assert_eq!(
@@ -233,26 +215,20 @@ fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send1 = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send1 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
 
-    let mut send2 = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     // open destination
-    let mut open1 = destination.open(send1.hash()).build();
+    let mut open1 = destination.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
 
-    let mut receive2 = destination.state_receive(txn.txn(), send2.hash()).build();
+    let mut receive2 = destination.receive(txn.txn(), send2.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive2).unwrap();
 
     assert_eq!(receive2.sideband().unwrap().details.epoch, Epoch::Epoch1);
@@ -274,25 +250,19 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send1 = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send1 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let mut epoch1 = genesis.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
 
-    let mut send2 = genesis
-        .state_send(txn.txn())
-        .link(destination.account())
-        .build();
+    let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open1 = destination.open(send1.hash()).build();
+    let mut open1 = destination.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
 
-    let mut receive2 = destination.state_receive(txn.txn(), send2.hash()).build();
+    let mut receive2 = destination.receive(txn.txn(), send2.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive2).unwrap();
 
     ctx.ledger

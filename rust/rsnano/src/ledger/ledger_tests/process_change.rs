@@ -1,6 +1,6 @@
 use crate::{
     core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
-    ledger::{ledger_tests::AccountBlockFactory, ProcessResult, DEV_GENESIS_KEY},
+    ledger::{ProcessResult, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -10,11 +10,9 @@ use super::LedgerContext;
 fn update_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis
-        .change_representative(txn.txn(), Account::from(1000))
-        .build();
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let sideband = change.sideband().unwrap();
@@ -27,11 +25,9 @@ fn update_sideband() {
 fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis
-        .change_representative(txn.txn(), Account::from(1000))
-        .build();
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let loaded_block = ctx
@@ -50,11 +46,9 @@ fn save_block() {
 fn update_frontier_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis
-        .change_representative(txn.txn(), Account::from(1000))
-        .build();
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let account = ctx.ledger.store.frontier().get(txn.txn(), &change.hash());
@@ -72,11 +66,9 @@ fn update_frontier_store() {
 fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis
-        .change_representative(txn.txn(), Account::from(1000))
-        .build();
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
@@ -90,11 +82,9 @@ fn update_vote_weight() {
 fn update_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis
-        .change_representative(txn.txn(), Account::from(1000))
-        .build();
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let account_info = ctx
@@ -114,11 +104,9 @@ fn update_account_info() {
 fn fail_old() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis
-        .change_representative(txn.txn(), Account::from(1000))
-        .build();
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
@@ -162,11 +150,9 @@ fn fail_bad_signature() {
 fn fail_fork() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis
-        .change_representative(txn.txn(), Account::from(1000))
-        .build();
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     let mut fork = BlockBuilder::change()
@@ -185,17 +171,12 @@ fn fail_fork() {
 fn change_after_state_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
-    let mut send = genesis
-        .state_send(txn.txn())
-        .link(genesis.account())
-        .build();
+    let mut send = genesis.send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut change = genesis
-        .change_representative(txn.txn(), Account::from(1))
-        .build();
+    let mut change = genesis.legacy_change(txn.txn()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BlockPosition);

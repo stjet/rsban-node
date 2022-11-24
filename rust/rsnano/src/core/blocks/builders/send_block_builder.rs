@@ -10,6 +10,7 @@ pub struct SendBlockBuilder {
     previous: Option<BlockHash>,
     destination: Option<Account>,
     balance: Option<Amount>,
+    previous_balance: Option<Amount>,
     work: Option<u64>,
     keypair: Option<KeyPair>,
     build_sideband: bool,
@@ -22,6 +23,7 @@ impl SendBlockBuilder {
             previous: None,
             destination: None,
             balance: None,
+            previous_balance: None,
             work: None,
             keypair: None,
             build_sideband: true,
@@ -45,6 +47,19 @@ impl SendBlockBuilder {
 
     pub fn balance(mut self, balance: Amount) -> Self {
         self.balance = Some(balance);
+        self
+    }
+
+    pub fn previous_balance(mut self, balance: Amount) -> Self {
+        self.previous_balance = Some(balance);
+        self
+    }
+
+    pub fn amount(mut self, amount: Amount) -> Self {
+        let previous_balance = self
+            .previous_balance
+            .expect("no previous balance specified");
+        self.balance = Some(previous_balance - amount);
         self
     }
 

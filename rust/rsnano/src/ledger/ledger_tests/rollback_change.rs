@@ -88,9 +88,7 @@ fn rollback_dependent_blocks_too() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    let mut send = genesis
-        .send(txn.txn(), Account::from(1000), Amount::new(100))
-        .build();
+    let mut send = genesis.send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     ctx.ledger

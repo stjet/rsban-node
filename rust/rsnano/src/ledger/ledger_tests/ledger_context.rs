@@ -11,6 +11,8 @@ use crate::{
     DEV_CONSTANTS,
 };
 
+use super::AccountBlockFactory;
+
 pub(crate) struct LedgerContext {
     pub(crate) ledger: Ledger,
     db_file: TestDbFile,
@@ -43,5 +45,13 @@ impl LedgerContext {
         store.initialize(&mut txn, &ledger.cache, &DEV_CONSTANTS);
 
         LedgerContext { ledger, db_file }
+    }
+
+    pub fn genesis_block_factory(&self) -> AccountBlockFactory {
+        AccountBlockFactory::genesis(&self.ledger)
+    }
+
+    pub fn new_block_factory(&self) -> AccountBlockFactory {
+        AccountBlockFactory::new(&self.ledger)
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair},
     ledger::{
-        ledger_tests::{AccountBlockFactory, LedgerContext, LedgerWithSendBlock},
+        ledger_tests::{LedgerContext, LedgerWithSendBlock},
         ProcessResult, DEV_GENESIS_KEY,
     },
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
@@ -182,18 +182,12 @@ fn fail_negative_spend() {
 fn send_after_state_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
-    let mut send1 = genesis
-        .state_send(txn.txn())
-        .link(genesis.account())
-        .build();
+    let mut send1 = genesis.state_send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let mut send2 = genesis
-        .send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(1))
-        .build();
-
+    let mut send2 = genesis.send(txn.txn()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BlockPosition);

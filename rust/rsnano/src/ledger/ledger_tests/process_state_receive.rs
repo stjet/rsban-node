@@ -77,10 +77,11 @@ fn remove_pending_info() {
 fn receive_old_send_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
 
     let mut send = genesis
-        .send(txn.txn(), *DEV_GENESIS_ACCOUNT, Amount::new(50))
+        .send(txn.txn())
+        .destination(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
@@ -88,7 +89,7 @@ fn receive_old_send_block() {
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     let sideband = receive.sideband().unwrap();
-    assert_eq!(sideband.account, *DEV_GENESIS_ACCOUNT);
+    assert_eq!(sideband.account, genesis.account());
     assert_eq!(sideband.height, 3);
     assert_eq!(
         sideband.details,

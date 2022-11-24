@@ -89,12 +89,16 @@ fn send_open_receive_vote_weight() {
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
-        .send(txn.txn(), receiver.account(), Amount::new(50))
+        .send(txn.txn())
+        .destination(receiver.account())
+        .amount(Amount::new(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let mut send2 = genesis
-        .send(txn.txn(), receiver.account(), Amount::new(50))
+        .send(txn.txn())
+        .destination(receiver.account())
+        .amount(Amount::new(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
@@ -119,12 +123,16 @@ fn send_open_receive_rollback() {
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
-        .send(txn.txn(), receiver.account(), Amount::new(50))
+        .send(txn.txn())
+        .destination(receiver.account())
+        .amount(Amount::new(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let mut send2 = genesis
-        .send(txn.txn(), receiver.account(), Amount::new(50))
+        .send(txn.txn())
+        .destination(receiver.account())
+        .amount(Amount::new(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
@@ -206,7 +214,9 @@ fn bootstrap_rep_weight() {
     {
         let mut txn = ctx.ledger.rw_txn();
         let mut send = genesis
-            .send(txn.txn(), representative_account, Amount::new(50))
+            .send(txn.txn())
+            .destination(representative_account)
+            .amount(Amount::new(50))
             .build();
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
     }
@@ -222,7 +232,9 @@ fn bootstrap_rep_weight() {
     {
         let mut txn = ctx.ledger.rw_txn();
         let mut send = genesis
-            .send(txn.txn(), representative_account, Amount::new(50))
+            .send(txn.txn())
+            .destination(representative_account)
+            .amount(Amount::new(50))
             .build();
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
     }
@@ -238,13 +250,12 @@ fn block_destination_source() {
     let genesis = AccountBlockFactory::genesis(&ctx.ledger);
     let dest_account = Account::from(1000);
 
-    let mut send_to_dest = genesis
-        .send(txn.txn(), dest_account, Amount::new(*GXRB_RATIO))
-        .build();
+    let mut send_to_dest = genesis.send(txn.txn()).destination(dest_account).build();
     ctx.ledger.process(txn.as_mut(), &mut send_to_dest).unwrap();
 
     let mut send_to_self = genesis
-        .send(txn.txn(), genesis.account(), Amount::new(*GXRB_RATIO))
+        .send(txn.txn())
+        .destination(genesis.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send_to_self).unwrap();
 

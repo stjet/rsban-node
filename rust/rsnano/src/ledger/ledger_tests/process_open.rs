@@ -144,7 +144,8 @@ fn fail_fork_previous() {
     let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
     let mut send2 = genesis
-        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .send(ctx.txn.txn())
+        .destination(ctx.receiver_account)
         .build();
     ctx.ledger_context
         .ledger

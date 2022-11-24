@@ -114,11 +114,12 @@ fn update_latest_block() {
 fn receive_fork() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger);
-    let receiver = AccountBlockFactory::new(&ctx.ledger);
+    let genesis = ctx.genesis_block_factory();
+    let receiver = ctx.new_block_factory();
 
     let mut send1 = genesis
-        .send(txn.txn(), receiver.account(), Amount::new(50))
+        .send(txn.txn())
+        .destination(receiver.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
@@ -126,7 +127,8 @@ fn receive_fork() {
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let mut send2 = genesis
-        .send(txn.txn(), receiver.account(), Amount::new(1))
+        .send(txn.txn())
+        .destination(receiver.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
@@ -207,7 +209,8 @@ fn fail_bad_signature() {
     let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
     let mut send = genesis
-        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .send(ctx.txn.txn())
+        .destination(ctx.receiver_account)
         .build();
     ctx.ledger_context
         .ledger
@@ -254,7 +257,8 @@ fn fail_gap_previous_opened() {
     let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
     let mut send2 = genesis
-        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .send(ctx.txn.txn())
+        .destination(ctx.receiver_account)
         .build();
     ctx.ledger_context
         .ledger
@@ -282,7 +286,8 @@ fn fail_fork_previous() {
     let genesis = AccountBlockFactory::genesis(ctx.ledger());
 
     let mut receivable = genesis
-        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .send(ctx.txn.txn())
+        .destination(ctx.receiver_account)
         .build();
     ctx.ledger_context
         .ledger
@@ -320,11 +325,13 @@ fn fail_fork_previous() {
 #[test]
 fn fail_receive_received_source() {
     let mut ctx = LedgerWithOpenBlock::new();
-    let genesis = AccountBlockFactory::genesis(&ctx.ledger_context.ledger);
+    let genesis = ctx.ledger_context.genesis_block_factory();
     let receiver = AccountBlockFactory::from_key(&ctx.ledger_context.ledger, ctx.receiver_key);
 
     let mut receivable1 = genesis
-        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .send(ctx.txn.txn())
+        .destination(receiver.account())
+        .amount(Amount::new(1))
         .build();
     ctx.ledger_context
         .ledger
@@ -332,7 +339,9 @@ fn fail_receive_received_source() {
         .unwrap();
 
     let mut receivable2 = genesis
-        .send(ctx.txn.txn(), ctx.receiver_account, Amount::new(1))
+        .send(ctx.txn.txn())
+        .destination(receiver.account())
+        .amount(Amount::new(1))
         .build();
     ctx.ledger_context
         .ledger

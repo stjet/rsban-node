@@ -102,17 +102,13 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn send(
-        &self,
-        txn: &dyn Transaction,
-        receiver: Account,
-        amount: Amount,
-    ) -> SendBlockBuilder {
+    pub(crate) fn send(&self, txn: &dyn Transaction) -> SendBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::send()
             .previous(info.head)
-            .destination(receiver)
-            .balance(info.balance - amount)
+            .destination(Account::from(1))
+            .previous_balance(info.balance)
+            .amount(Amount::new(1))
             .sign(self.key.clone())
             .without_sideband()
     }

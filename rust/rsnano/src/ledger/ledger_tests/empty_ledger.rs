@@ -21,15 +21,13 @@ fn account_balance_is_zero_for_unknown_account() {
 }
 
 #[test]
-fn genesis_block() {
+fn get_genesis_block() {
     let ctx = LedgerContext::empty();
     let txn = ctx.ledger.read_txn();
 
     let block = ctx
         .ledger
-        .store
-        .block()
-        .get(txn.txn(), &DEV_GENESIS_HASH)
+        .get_block(txn.txn(), &DEV_GENESIS_HASH)
         .expect("genesis block not found");
 
     assert_eq!(block.block_type(), BlockType::Open);
@@ -54,9 +52,7 @@ fn genesis_account_info() {
 
     let account_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .expect("genesis account not found");
 
     // Frontier time should have been updated when genesis balance was added
@@ -73,9 +69,7 @@ fn genesis_confirmation_height_info() {
     // Genesis block should be confirmed by default
     let conf_info = ctx
         .ledger
-        .store
-        .confirmation_height()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_confirmation_height(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .expect("conf height not found");
 
     assert_eq!(conf_info.height, 1);
@@ -88,10 +82,7 @@ fn genesis_frontier() {
     let txn = ctx.ledger.read_txn();
 
     assert_eq!(
-        ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &DEV_GENESIS_HASH),
+        ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH),
         *DEV_GENESIS_ACCOUNT,
     );
 }

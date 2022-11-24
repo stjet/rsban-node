@@ -794,4 +794,28 @@ impl Ledger {
             Err(processor.result)
         }
     }
+
+    pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+        self.store.block().get(txn, hash)
+    }
+
+    pub fn get_account_info(
+        &self,
+        transaction: &dyn Transaction,
+        account: &Account,
+    ) -> Option<AccountInfo> {
+        self.store.account().get(transaction, account)
+    }
+
+    pub fn get_confirmation_height(
+        &self,
+        txn: &dyn Transaction,
+        account: &Account,
+    ) -> Option<ConfirmationHeightInfo> {
+        self.store.confirmation_height().get(txn, account)
+    }
+
+    pub fn get_frontier(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account {
+        self.store.frontier().get(txn, hash)
+    }
 }

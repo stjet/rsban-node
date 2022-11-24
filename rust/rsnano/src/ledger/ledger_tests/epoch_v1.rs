@@ -21,9 +21,7 @@ fn epoch_block_upgrades_epoch() {
     assert_eq!(epoch.sideband().unwrap().source_epoch, Epoch::Epoch0);
     let account_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
 
     assert_eq!(account_info.epoch, Epoch::Epoch1);

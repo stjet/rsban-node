@@ -647,7 +647,10 @@ pub unsafe extern "C" fn rsn_ledger_rollback(
             copy_block_array_dto(block_list, result);
             false
         }
-        Err(_) => true,
+        Err(_) => {
+            copy_block_array_dto(Vec::new(), result);
+            true
+        }
     }
 }
 

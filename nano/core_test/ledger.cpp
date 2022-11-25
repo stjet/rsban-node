@@ -696,47 +696,6 @@ TEST (ledger, unchecked_receive)
 	ASSERT_EQ (0, node1.unchecked.count (*node1.store.tx_begin_read ()));
 }
 
-TEST (ledger, confirmation_height_not_updated)
-{
-	auto ctx = nano::test::context::ledger_empty ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	auto transaction = store.tx_begin_write ();
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	nano::account_info account_info;
-	ASSERT_FALSE (store.account ().get (*transaction, nano::dev::genesis_key.pub, account_info));
-	nano::keypair key;
-	nano::block_builder builder;
-	auto send1 = builder
-				 .send ()
-				 .previous (account_info.head ())
-				 .destination (key.pub)
-				 .balance (50)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*pool.generate (account_info.head ()))
-				 .build ();
-	nano::confirmation_height_info confirmation_height_info;
-	ASSERT_FALSE (store.confirmation_height ().get (*transaction, nano::dev::genesis->account (), confirmation_height_info));
-	ASSERT_EQ (1, confirmation_height_info.height ());
-	ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier ());
-	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send1).code);
-	ASSERT_FALSE (store.confirmation_height ().get (*transaction, nano::dev::genesis->account (), confirmation_height_info));
-	ASSERT_EQ (1, confirmation_height_info.height ());
-	ASSERT_EQ (nano::dev::genesis->hash (), confirmation_height_info.frontier ());
-	auto open1 = builder
-				 .open ()
-				 .source (send1->hash ())
-				 .representative (nano::dev::genesis->account ())
-				 .account (key.pub)
-				 .sign (key.prv, key.pub)
-				 .work (*pool.generate (key.pub))
-				 .build ();
-	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *open1).code);
-	ASSERT_TRUE (store.confirmation_height ().get (*transaction, key.pub, confirmation_height_info));
-	ASSERT_EQ (0, confirmation_height_info.height ());
-	ASSERT_EQ (nano::block_hash (0), confirmation_height_info.frontier ());
-}
-
 TEST (ledger, zero_rep)
 {
 	nano::test::system system (1);

@@ -403,18 +403,6 @@ impl Ledger {
         self.store.block().account(txn, hash)
     }
 
-    /// Return account containing block hash
-    pub fn account_safe(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
-        if !self.pruning_enabled() {
-            self.store.block().account(txn, hash)
-        } else {
-            self.store
-                .block()
-                .get(txn, hash)
-                .map(|block| self.store.block().account_calculated(block.as_block()))
-        }
-    }
-
     /// Return absolute amount decrease or increase for block
     pub fn amount(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
         self.store.block().get(txn, hash).map(|block| {

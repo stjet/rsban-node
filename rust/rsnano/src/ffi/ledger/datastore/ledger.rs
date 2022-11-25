@@ -329,7 +329,7 @@ pub unsafe extern "C" fn rsn_ledger_account_safe(
 ) -> bool {
     let account = (*handle)
         .0
-        .account_safe((*txn).as_txn(), &BlockHash::from_ptr(hash));
+        .account((*txn).as_txn(), &BlockHash::from_ptr(hash));
     match account {
         Some(a) => {
             copy_account_bytes(a, result);

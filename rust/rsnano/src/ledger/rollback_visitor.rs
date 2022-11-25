@@ -122,7 +122,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
         // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
         let source_account = self
             .ledger
-            .account_safe(self.txn.txn(), &block.source())
+            .account(self.txn.txn(), &block.source())
             .unwrap_or_default();
 
         let account_info = self
@@ -181,7 +181,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
         // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
         let source_account = self
             .ledger
-            .account_safe(self.txn.txn(), &block.source())
+            .account(self.txn.txn(), &block.source())
             .unwrap_or_default();
 
         self.ledger.cache.rep_weights.representation_add(
@@ -338,7 +338,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
             let source_account = self
                 .ledger
-                .account_safe(self.txn.txn(), &block.link().into())
+                .account(self.txn.txn(), &block.link().into())
                 .unwrap_or_default();
             let pending_info = PendingInfo::new(
                 source_account,

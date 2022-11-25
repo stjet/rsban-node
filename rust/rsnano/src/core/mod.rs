@@ -271,12 +271,6 @@ impl From<&Account> for Root {
     }
 }
 
-impl From<Account> for Root {
-    fn from(hash: Account) -> Self {
-        Root::from_bytes(*hash.as_bytes())
-    }
-}
-
 impl From<BlockHash> for Root {
     fn from(hash: BlockHash) -> Self {
         Root::from_bytes(*hash.as_bytes())

@@ -1,10 +1,9 @@
 use super::PublicKey;
-use crate::u256_struct;
 use anyhow::Result;
 use blake2::digest::{Update, VariableOutput};
 use primitive_types::U512;
 
-u256_struct!(Account);
+pub type Account = PublicKey;
 
 impl Account {
     pub fn encode_account(&self) -> String {
@@ -37,30 +36,6 @@ impl Account {
 
     pub fn decode_account(source: impl AsRef<str>) -> Result<Account> {
         EncodedAccountStr(source.as_ref()).to_u512()?.to_account()
-    }
-}
-
-impl From<Account> for PublicKey {
-    fn from(account: Account) -> Self {
-        PublicKey::from_bytes(*account.as_bytes())
-    }
-}
-
-impl From<&Account> for PublicKey {
-    fn from(account: &Account) -> Self {
-        PublicKey::from_bytes(*account.as_bytes())
-    }
-}
-
-impl From<&PublicKey> for Account {
-    fn from(key: &PublicKey) -> Self {
-        Account::from_bytes(*key.as_bytes())
-    }
-}
-
-impl From<PublicKey> for Account {
-    fn from(key: PublicKey) -> Self {
-        Account::from_bytes(*key.as_bytes())
     }
 }
 

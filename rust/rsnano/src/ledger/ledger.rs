@@ -508,7 +508,7 @@ impl Ledger {
         self.constants
             .epochs
             .signer(self.constants.epochs.epoch(link)?)
-            .map(|key| key.into())
+            .cloned()
     }
 
     pub fn epoch_link(&self, epoch: Epoch) -> Option<Link> {

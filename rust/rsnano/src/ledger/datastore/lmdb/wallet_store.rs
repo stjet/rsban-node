@@ -393,7 +393,7 @@ impl<'a> LmdbWalletStore {
     }
 
     pub fn exists(&self, txn: &dyn Transaction, key: &PublicKey) -> bool {
-        self.valid_public_key(key) && !self.find(txn, &Account::from(key)).is_end()
+        self.valid_public_key(key) && !self.find(txn, key).is_end()
     }
 
     pub fn deterministic_insert(&self, txn: &mut dyn WriteTransaction) -> PublicKey {
@@ -495,7 +495,7 @@ impl<'a> LmdbWalletStore {
         txn: &mut dyn WriteTransaction,
         pub_key: &Account,
     ) -> anyhow::Result<()> {
-        if !self.valid_public_key(&pub_key.into()) {
+        if !self.valid_public_key(pub_key) {
             bail!("invalid public key");
         }
 
@@ -521,7 +521,6 @@ impl<'a> LmdbWalletStore {
             KeyType::Adhoc => {
                 // Ad-hoc keys
                 let password = self.wallet_key(txn);
-                let pub_key = PublicKey::from(pub_key);
                 value
                     .key
                     .decrypt(&password, &pub_key.initialization_vector())
@@ -530,7 +529,7 @@ impl<'a> LmdbWalletStore {
         };
 
         let compare = PublicKey::try_from(&prv)?;
-        if compare != pub_key.into() {
+        if compare != *pub_key {
             bail!("expected pub key does not match");
         }
         Ok(prv)
@@ -572,9 +571,9 @@ impl<'a> LmdbWalletStore {
         debug_assert!(self.valid_password(txn.txn()));
         debug_assert!(other.valid_password(txn.txn()));
         for k in keys {
-            let prv = other.fetch(txn.txn(), &k.into())?;
+            let prv = other.fetch(txn.txn(), k)?;
             self.insert_adhoc(txn, &prv);
-            other.erase(txn, &k.into());
+            other.erase(txn, k);
         }
 
         Ok(())
@@ -604,7 +603,7 @@ impl<'a> LmdbWalletStore {
     }
 
     pub fn work_get(&self, txn: &dyn Transaction, pub_key: &PublicKey) -> anyhow::Result<u64> {
-        let entry = self.entry_get_raw(txn, &pub_key.into());
+        let entry = self.entry_get_raw(txn, pub_key);
         if !entry.key.is_zero() {
             Ok(entry.work)
         } else {
@@ -618,10 +617,10 @@ impl<'a> LmdbWalletStore {
     }
 
     pub fn work_put(&self, txn: &mut dyn WriteTransaction, pub_key: &PublicKey, work: u64) {
-        let mut entry = self.entry_get_raw(txn.txn(), &pub_key.into());
+        let mut entry = self.entry_get_raw(txn.txn(), pub_key);
         debug_assert!(!entry.key.is_zero());
         entry.work = work;
-        self.entry_put_raw(txn, &pub_key.into(), &entry);
+        self.entry_put_raw(txn, pub_key, &entry);
     }
 
     pub fn destroy(&self, txn: &mut dyn WriteTransaction) {

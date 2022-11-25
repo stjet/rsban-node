@@ -45,7 +45,10 @@ pub unsafe extern "C" fn rsn_lmdb_frontier_store_get(
     hash: *const u8,
     account: *mut u8,
 ) {
-    let result = (*handle).0.get((*txn).as_txn(), &BlockHash::from_ptr(hash));
+    let result = (*handle)
+        .0
+        .get((*txn).as_txn(), &BlockHash::from_ptr(hash))
+        .unwrap_or_default();
     copy_account_bytes(result, account);
 }
 

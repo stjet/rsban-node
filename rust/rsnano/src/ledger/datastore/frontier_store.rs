@@ -7,7 +7,7 @@ pub type FrontierIterator = Box<dyn DbIterator<BlockHash, Account>>;
 /// BlockHash -> Account
 pub trait FrontierStore {
     fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash, account: &Account);
-    fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account;
+    fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account>;
     fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash);
     fn begin(&self, txn: &dyn Transaction) -> FrontierIterator;
 

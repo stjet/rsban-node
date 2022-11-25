@@ -79,19 +79,10 @@ fn update_frontier_store() {
 
     let send = setup_legacy_send_block(&ctx, txn.as_mut());
 
+    assert_eq!(ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH), None);
     assert_eq!(
-        ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &DEV_GENESIS_HASH),
-        Account::zero()
-    );
-    assert_eq!(
-        ctx.ledger
-            .store
-            .frontier()
-            .get(txn.txn(), &send.send_block.hash()),
-        *DEV_GENESIS_ACCOUNT
+        ctx.ledger.get_frontier(txn.txn(), &send.send_block.hash()),
+        Some(*DEV_GENESIS_ACCOUNT)
     );
 }
 

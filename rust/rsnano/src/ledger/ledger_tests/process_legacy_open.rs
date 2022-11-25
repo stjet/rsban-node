@@ -69,7 +69,7 @@ fn update_frontier_store() {
 
     assert_eq!(
         ctx.ledger.get_frontier(txn.txn(), &open.open_block.hash()),
-        open.destination.account()
+        Some(open.destination.account())
     );
 }
 

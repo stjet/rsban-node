@@ -41,10 +41,10 @@ fn update_frontier_store() {
     let change = setup_legacy_change_block(&ctx, txn.as_mut());
 
     let account = ctx.ledger.get_frontier(txn.txn(), &change.hash());
-    assert_eq!(account, *DEV_GENESIS_ACCOUNT);
+    assert_eq!(account, Some(*DEV_GENESIS_ACCOUNT));
 
     let account = ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH);
-    assert_eq!(account, Account::zero());
+    assert_eq!(account, None);
 }
 
 #[test]

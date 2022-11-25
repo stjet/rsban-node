@@ -319,12 +319,12 @@ impl<'a> LedgerProcessor<'a> {
                                 &account_info,
                                 &new_info,
                             );
-                            if !self
+                            if self
                                 .ledger
                                 .store
                                 .frontier()
                                 .get(self.txn.txn(), &account_info.head)
-                                .is_zero()
+                                .is_some()
                             {
                                 self.ledger
                                     .store
@@ -515,12 +515,12 @@ impl<'a> LedgerProcessor<'a> {
                                         &info,
                                         &new_info,
                                     );
-                                    if !self
+                                    if self
                                         .ledger
                                         .store
                                         .frontier()
                                         .get(self.txn.txn(), &info.head)
-                                        .is_zero()
+                                        .is_some()
                                     {
                                         self.ledger.store.frontier().del(self.txn, &info.head);
                                     }
@@ -565,17 +565,14 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                 ProcessResult::BlockPosition
             };
             if self.result.code == ProcessResult::Progress {
-                let account = self
-                    .ledger
-                    .store
-                    .frontier()
-                    .get(self.txn.txn(), &block.previous());
-                self.result.code = if account.is_zero() {
+                let account = self.ledger.get_frontier(self.txn.txn(), &block.previous());
+                self.result.code = if account.is_none() {
                     ProcessResult::Fork
                 } else {
                     ProcessResult::Progress
                 };
                 if self.result.code == ProcessResult::Progress {
+                    let account = account.unwrap();
                     // Validate block if not verified outside of ledger
                     if self.result.verified != SignatureVerification::Valid {
                         // Is this block signed correctly (Malformed)
@@ -708,18 +705,15 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                 ProcessResult::BlockPosition
             };
             if self.result.code == ProcessResult::Progress {
-                let account = self
-                    .ledger
-                    .store
-                    .frontier()
-                    .get(self.txn.txn(), &block.previous());
+                let account = self.ledger.get_frontier(self.txn.txn(), &block.previous());
                 // Have we seen the previous block? No entries for account at all (Harmless)
-                self.result.code = if account.is_zero() {
+                self.result.code = if account.is_none() {
                     ProcessResult::GapPrevious
                 } else {
                     ProcessResult::Progress
                 };
                 if self.result.code == ProcessResult::Progress {
+                    let account = account.unwrap();
                     // Validate block if not verified outside of ledger
                     if self.result.verified != SignatureVerification::Valid {
                         // Is the signature valid (Malformed)
@@ -1080,12 +1074,13 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                     .store
                     .frontier()
                     .get(self.txn.txn(), &block.previous());
-                self.result.code = if account.is_zero() {
+                self.result.code = if account.is_none() {
                     ProcessResult::Fork
                 } else {
                     ProcessResult::Progress
                 };
                 if self.result.code == ProcessResult::Progress {
+                    let account = account.unwrap();
                     let (info, latest_error) =
                         match self.ledger.store.account().get(self.txn.txn(), &account) {
                             Some(i) => (i, false),

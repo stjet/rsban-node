@@ -1,5 +1,5 @@
 use crate::{
-    core::{Account, Block, PendingKey},
+    core::{Block, PendingKey},
     ledger::ledger_tests::{setup_legacy_receive_block, LedgerContext},
     DEV_GENESIS_ACCOUNT,
 };
@@ -36,12 +36,12 @@ fn rollback_frontiers() {
     assert_eq!(
         ctx.ledger
             .get_frontier(txn.txn(), &receive.open_block.hash()),
-        receive.destination.account()
+        Some(receive.destination.account())
     );
     assert_eq!(
         ctx.ledger
             .get_frontier(txn.txn(), &receive.receive_block.hash()),
-        Account::zero()
+        None
     );
 }
 

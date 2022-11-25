@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering;
 
 use crate::{
-    core::{Account, Amount, Block, PendingKey},
+    core::{Amount, Block, PendingKey},
     ledger::{datastore::WriteTransaction, ledger_tests::setup_legacy_open_block},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
@@ -30,11 +30,11 @@ fn rollback_frontiers() {
 
     assert_eq!(
         ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH),
-        *DEV_GENESIS_ACCOUNT
+        Some(*DEV_GENESIS_ACCOUNT)
     );
     assert_eq!(
         ctx.ledger.get_frontier(txn.txn(), &send.send_block.hash()),
-        Account::zero()
+        None
     );
 }
 

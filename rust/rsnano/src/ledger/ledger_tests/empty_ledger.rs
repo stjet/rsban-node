@@ -83,7 +83,7 @@ fn genesis_frontier() {
 
     assert_eq!(
         ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH),
-        *DEV_GENESIS_ACCOUNT,
+        Some(*DEV_GENESIS_ACCOUNT),
     );
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    core::{Account, Amount, Block},
+    core::{Amount, Block},
     ledger::ledger_tests::LedgerContext,
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
@@ -16,10 +16,10 @@ fn update_frontier_store() {
     ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
 
     let frontier = &ctx.ledger.store.frontier();
-    assert_eq!(frontier.get(txn.txn(), &change.hash()), Account::zero());
+    assert_eq!(frontier.get(txn.txn(), &change.hash()), None);
     assert_eq!(
         frontier.get(txn.txn(), &DEV_GENESIS_HASH),
-        *DEV_GENESIS_ACCOUNT
+        Some(*DEV_GENESIS_ACCOUNT)
     );
 }
 

@@ -67,12 +67,12 @@ fn update_frontier_store() {
     assert_eq!(
         ctx.ledger
             .get_frontier(txn.txn(), &result.open_block.hash()),
-        Account::zero()
+        None
     );
     assert_eq!(
         ctx.ledger
             .get_frontier(txn.txn(), &result.receive_block.hash()),
-        result.destination.account()
+        Some(result.destination.account())
     );
 }
 

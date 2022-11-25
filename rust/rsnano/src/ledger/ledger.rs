@@ -815,7 +815,7 @@ impl Ledger {
         self.store.confirmation_height().get(txn, account)
     }
 
-    pub fn get_frontier(&self, txn: &dyn Transaction, hash: &BlockHash) -> Account {
+    pub fn get_frontier(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
         self.store.frontier().get(txn, hash)
     }
 

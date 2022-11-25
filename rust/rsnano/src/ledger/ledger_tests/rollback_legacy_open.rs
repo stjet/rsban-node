@@ -1,5 +1,5 @@
 use crate::{
-    core::{Account, Amount, Block, PendingKey},
+    core::{Amount, Block, PendingKey},
     ledger::{
         datastore::WriteTransaction,
         ledger_tests::{setup_legacy_open_block, LedgerContext},
@@ -18,7 +18,7 @@ fn remove_from_frontier_store() {
 
     assert_eq!(
         ctx.ledger.get_frontier(txn.txn(), &open.open_block.hash()),
-        Account::zero()
+        None
     );
 }
 

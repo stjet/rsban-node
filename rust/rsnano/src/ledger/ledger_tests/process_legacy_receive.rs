@@ -159,7 +159,6 @@ fn receive_fork() {
         .previous(result.open_block.hash())
         .source(send.hash())
         .sign(&result.destination.key)
-        .without_sideband()
         .build();
 
     let result = ctx
@@ -310,7 +309,6 @@ fn fail_fork_previous() {
         .destination(Account::from(1))
         .balance(Amount::zero())
         .sign(open.destination.key.clone())
-        .without_sideband()
         .build();
     ctx.ledger.process(txn.as_mut(), &mut fork_send).unwrap();
 

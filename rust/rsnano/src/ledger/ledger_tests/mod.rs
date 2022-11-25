@@ -417,7 +417,6 @@ mod could_fit {
             .balance(Amount::new(1))
             .link(send.hash())
             .sign(&destination.key)
-            .without_sideband()
             .build();
 
         assert_eq!(ctx.ledger.could_fit(txn.txn(), &open), false);
@@ -515,18 +514,13 @@ mod could_fit {
         let mut open = destination.legacy_open(send.hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-        let unknown_send = genesis
-            .send(txn.txn())
-            .link(destination.account())
-            .without_sideband()
-            .build();
+        let unknown_send = genesis.send(txn.txn()).link(destination.account()).build();
 
         let receive = BlockBuilder::state()
             .account(destination.account())
             .previous(open.hash())
             .link(unknown_send.hash())
             .sign(&destination.key)
-            .without_sideband()
             .build();
 
         assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), false);

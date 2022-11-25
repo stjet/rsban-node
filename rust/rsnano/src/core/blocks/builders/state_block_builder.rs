@@ -33,7 +33,7 @@ impl StateBlockBuilder {
             prv_key: key.private_key(),
             pub_key: key.public_key(),
             previous_balance: None,
-            build_sideband: true,
+            build_sideband: false,
             work: None,
             signature: None,
         }
@@ -123,8 +123,8 @@ impl StateBlockBuilder {
         self.signature(Signature::new())
     }
 
-    pub fn without_sideband(mut self) -> Self {
-        self.build_sideband = false;
+    pub fn with_sideband(mut self) -> Self {
+        self.build_sideband = true;
         self
     }
 

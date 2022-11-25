@@ -46,7 +46,6 @@ impl<'a> AccountBlockFactory<'a> {
             .source(source)
             .representative(self.account())
             .account(self.account())
-            .without_sideband()
             .sign(&self.key)
     }
 
@@ -108,7 +107,6 @@ impl<'a> AccountBlockFactory<'a> {
             .previous_balance(info.balance)
             .amount(Amount::new(1))
             .sign(self.key.clone())
-            .without_sideband()
     }
 
     pub(crate) fn legacy_receive(
@@ -132,7 +130,6 @@ impl<'a> AccountBlockFactory<'a> {
             .representative(info.representative)
             .amount(Amount::new(50))
             .link(Account::from(1))
-            .without_sideband()
             .sign(&self.key)
     }
 
@@ -166,7 +163,6 @@ impl<'a> AccountBlockFactory<'a> {
             .previous(0)
             .representative(self.account())
             .balance(amount_sent)
-            .without_sideband()
             .link(send_hash)
             .sign(&self.key)
     }

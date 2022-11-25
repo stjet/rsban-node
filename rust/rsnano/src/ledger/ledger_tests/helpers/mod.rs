@@ -5,7 +5,7 @@ pub(crate) use account_block_factory::AccountBlockFactory;
 pub(crate) use ledger_context::LedgerContext;
 
 use crate::{
-    core::{Account, Amount, Block, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock},
+    core::{Amount, Block, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock},
     ledger::datastore::WriteTransaction,
 };
 
@@ -31,10 +31,7 @@ pub(crate) fn setup_change_block(
     ctx: &LedgerContext,
     txn: &mut dyn WriteTransaction,
 ) -> StateBlock {
-    let mut change = ctx
-        .genesis_block_factory()
-        .change(txn.txn(), Account::from(1))
-        .build();
+    let mut change = ctx.genesis_block_factory().change(txn.txn()).build();
     ctx.ledger.process(txn, &mut change).unwrap();
     change
 }

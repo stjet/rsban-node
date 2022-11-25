@@ -45,6 +45,7 @@ impl<'a> AccountBlockFactory<'a> {
             .source(source)
             .representative(self.account())
             .account(self.account())
+            .without_sideband()
             .sign(&self.key)
     }
 
@@ -130,6 +131,7 @@ impl<'a> AccountBlockFactory<'a> {
             .representative(info.representative)
             .amount(Amount::new(50))
             .link(Account::from(1))
+            .without_sideband()
             .sign(&self.key)
     }
 
@@ -145,16 +147,12 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn change(
-        &self,
-        txn: &dyn Transaction,
-        representative: Account,
-    ) -> StateBlockBuilder {
+    pub(crate) fn change(&self, txn: &dyn Transaction) -> StateBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::state()
             .account(self.account())
             .previous(info.head)
-            .representative(representative)
+            .representative(Account::from(1))
             .balance(info.balance)
             .link(Link::zero())
             .sign(&self.key)
@@ -167,6 +165,7 @@ impl<'a> AccountBlockFactory<'a> {
             .previous(0)
             .representative(self.account())
             .balance(amount_sent)
+            .without_sideband()
             .link(send_hash)
             .sign(&self.key)
     }

@@ -149,7 +149,10 @@ fn rollback_rep_change() {
     let genesis = ctx.genesis_block_factory();
     let representative = Account::from(1);
 
-    let mut change = genesis.change(txn.txn(), representative).build();
+    let mut change = genesis
+        .change(txn.txn())
+        .representative(representative)
+        .build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();

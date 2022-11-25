@@ -27,7 +27,7 @@ use crate::{
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
 };
 
-use super::{Amount, FullHash, Uniquer, WorkVersion};
+use super::{Amount, FullHash, QualifiedRoot, Uniquer, WorkVersion};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -148,6 +148,9 @@ pub trait Block: FullHash {
     fn balance(&self) -> Amount;
     fn source(&self) -> BlockHash;
     fn representative(&self) -> Account;
+    fn qualified_root(&self) -> QualifiedRoot {
+        QualifiedRoot::new(self.root(), self.previous())
+    }
 }
 
 impl<T: Block> FullHash for T {

@@ -5,8 +5,8 @@ pub(crate) use helpers::*;
 
 use crate::{
     core::{
-        Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
-        GXRB_RATIO,
+        Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, Epoch, KeyPair, QualifiedRoot,
+        Root, GXRB_RATIO,
     },
     DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
@@ -340,4 +340,105 @@ fn state_account() {
         ctx.ledger.account(txn.txn(), &send.hash()),
         Some(*DEV_GENESIS_ACCOUNT)
     );
+}
+
+#[test]
+fn could_fit() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let genesis = ctx.genesis_block_factory();
+    let destination = ctx.block_factory();
+
+    // Test legacy and state change blocks could_fit
+    let mut change1 = genesis.legacy_change(txn.txn()).build();
+    let change2 = genesis.change(txn.txn()).build();
+    assert!(ctx.ledger.could_fit(txn.txn(), &change1));
+    assert!(ctx.ledger.could_fit(txn.txn(), &change2));
+
+    // Test legacy and state send
+    let send1 = genesis
+        .legacy_send(txn.txn())
+        .previous(change1.hash())
+        .destination(destination.account())
+        .build();
+    let mut send2 = genesis
+        .send(txn.txn())
+        .previous(change1.hash())
+        .amount(Amount::new(1))
+        .link(destination.account())
+        .build();
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &send1), false);
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &send2), false);
+
+    ctx.ledger.process(txn.as_mut(), &mut change1).unwrap();
+    assert!(ctx.ledger.could_fit(txn.txn(), &change1));
+    assert!(ctx.ledger.could_fit(txn.txn(), &change2));
+    assert!(ctx.ledger.could_fit(txn.txn(), &send1));
+    assert!(ctx.ledger.could_fit(txn.txn(), &send2));
+
+    // Test legacy and state open
+    let mut open1 = destination.legacy_open(send2.hash()).build();
+    let open2 = BlockBuilder::state()
+        .account(destination.account())
+        .previous(0)
+        .representative(genesis.account())
+        .balance(Amount::new(1))
+        .link(send2.hash())
+        .sign(&destination.key)
+        .without_sideband()
+        .build();
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &open1), false);
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &open2), false);
+
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+    assert!(ctx.ledger.could_fit(txn.txn(), &send1));
+    assert!(ctx.ledger.could_fit(txn.txn(), &send2));
+    assert!(ctx.ledger.could_fit(txn.txn(), &open1));
+    assert!(ctx.ledger.could_fit(txn.txn(), &open2));
+
+    ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
+    assert!(ctx.ledger.could_fit(txn.txn(), &open1));
+    assert!(ctx.ledger.could_fit(txn.txn(), &open2));
+
+    // Create another send to receive
+    let mut send3 = genesis
+        .send(txn.txn())
+        .link(destination.account())
+        .amount(Amount::new(1))
+        .build();
+
+    // Test legacy and state receive
+    let mut receive1 = destination.legacy_receive(txn.txn(), send3.hash()).build();
+    let receive2 = BlockBuilder::state()
+        .account(destination.account())
+        .previous(open1.hash())
+        .balance(Amount::new(2))
+        .link(send3.hash())
+        .sign(&destination.key)
+        .without_sideband()
+        .build();
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive1), false);
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive2), false);
+
+    ctx.ledger.process(txn.as_mut(), &mut send3).unwrap();
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive1), true);
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive2), true);
+
+    // Test epoch (state)
+    let mut epoch1 = BlockBuilder::state()
+        .account(destination.account())
+        .previous(receive1.hash())
+        .representative(open1.representative())
+        .balance(Amount::new(2))
+        .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
+        .sign(&genesis.key)
+        .build();
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &epoch1), false);
+    ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive1), true);
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive2), true);
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &epoch1), true);
+
+    ctx.ledger.process(txn.as_mut(), &mut epoch1).unwrap();
+    assert_eq!(ctx.ledger.could_fit(txn.txn(), &epoch1), true);
 }

@@ -1,6 +1,9 @@
 use crate::{
-    core::{Account, Block, BlockDetails, Epoch, PendingKey},
-    ledger::{ledger_tests::upgrade_genesis_to_epoch_v1, ProcessResult},
+    core::{Account, Block, BlockDetails, BlockEnum, Epoch, PendingKey},
+    ledger::{
+        ledger_tests::{setup_legacy_send_block, upgrade_genesis_to_epoch_v1},
+        ProcessResult,
+    },
     DEV_GENESIS_ACCOUNT,
 };
 
@@ -257,4 +260,61 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
         )
         .unwrap();
     assert_eq!(pending_send2.epoch, Epoch::Epoch1);
+}
+
+#[test]
+fn epoch_v1_fork() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
+    let mut epoch_fork = ctx
+        .genesis_block_factory()
+        .epoch_v1(txn.txn())
+        .previous(send.send_block.previous())
+        .build();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut epoch_fork)
+        .unwrap_err();
+
+    assert_eq!(result.code, ProcessResult::Fork);
+}
+
+#[test]
+fn successor_epoch() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let genesis = ctx.genesis_block_factory();
+    let destination = ctx.block_factory();
+
+    let mut send1 = genesis
+        .legacy_send(txn.txn())
+        .destination(destination.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+
+    let mut open = destination.open(txn.txn(), send1.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+
+    let mut change = destination.change(txn.txn()).build();
+    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+
+    let account = Account::from_bytes(*open.hash().as_bytes());
+    let mut send2 = genesis.legacy_send(txn.txn()).destination(account).build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+
+    let mut epoch_open = destination.epoch_v1_open().account(account).build();
+    ctx.ledger.process(txn.as_mut(), &mut epoch_open).unwrap();
+
+    assert_eq!(
+        ctx.ledger.successor(txn.txn(), &change.qualified_root()),
+        Some(BlockEnum::State(change))
+    );
+    assert_eq!(
+        ctx.ledger
+            .successor(txn.txn(), &epoch_open.qualified_root()),
+        Some(BlockEnum::State(epoch_open))
+    );
 }

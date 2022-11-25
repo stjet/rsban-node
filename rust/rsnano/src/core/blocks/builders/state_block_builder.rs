@@ -18,6 +18,7 @@ pub struct StateBlockBuilder {
     work: Option<u64>,
     signature: Option<Signature>,
     previous_balance: Option<Amount>,
+    build_sideband: bool,
 }
 
 impl StateBlockBuilder {
@@ -32,6 +33,7 @@ impl StateBlockBuilder {
             prv_key: key.private_key(),
             pub_key: key.public_key(),
             previous_balance: None,
+            build_sideband: true,
             work: None,
             signature: None,
         }
@@ -121,6 +123,11 @@ impl StateBlockBuilder {
         self.signature(Signature::new())
     }
 
+    pub fn without_sideband(mut self) -> Self {
+        self.build_sideband = false;
+        self
+    }
+
     pub fn work(mut self, work: u64) -> Self {
         self.work = Some(work);
         self
@@ -169,16 +176,18 @@ impl StateBlockBuilder {
             ),
         };
 
-        let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
-        state.set_sideband(BlockSideband::new(
-            self.account,
-            BlockHash::zero(),
-            self.balance,
-            5,
-            6,
-            details,
-            Epoch::Epoch0,
-        ));
+        if self.build_sideband {
+            let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
+            state.set_sideband(BlockSideband::new(
+                self.account,
+                BlockHash::zero(),
+                self.balance,
+                5,
+                6,
+                details,
+                Epoch::Epoch0,
+            ));
+        }
 
         state
     }

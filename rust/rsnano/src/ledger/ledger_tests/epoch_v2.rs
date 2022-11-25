@@ -1,7 +1,7 @@
 use crate::{
     core::{Amount, Block, BlockDetails, Epoch},
     ledger::{
-        ledger_tests::{upgrade_genesis_to_epoch_v1, AccountBlockFactory},
+        ledger_tests::{setup_legacy_send_block, upgrade_genesis_to_epoch_v1, AccountBlockFactory},
         ProcessResult,
     },
     DEV_GENESIS_ACCOUNT,
@@ -258,4 +258,45 @@ fn upgrade_new_account_straight_to_epoch_2() {
 
     assert_eq!(open.sideband().unwrap().details.epoch, Epoch::Epoch2);
     assert_eq!(open.sideband().unwrap().source_epoch, Epoch::Epoch0); // Not used for epoch blocks
+}
+
+#[test]
+fn epoch_v2_fork() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
+    let mut epoch_fork = ctx
+        .genesis_block_factory()
+        .epoch_v2(txn.txn())
+        .previous(send.send_block.previous())
+        .build();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut epoch_fork)
+        .unwrap_err();
+
+    assert_eq!(result.code, ProcessResult::Fork);
+}
+
+#[test]
+fn epoch_v2_fork_with_epoch_v1_block() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let epoch_v1 = upgrade_genesis_to_epoch_v1(&ctx, txn.as_mut());
+
+    let genesis = ctx.genesis_block_factory();
+    let mut epoch_v2_fork = genesis
+        .epoch_v2(txn.txn())
+        .previous(epoch_v1.previous())
+        .build();
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut epoch_v2_fork)
+        .unwrap_err();
+
+    assert_eq!(result.code, ProcessResult::Fork);
 }

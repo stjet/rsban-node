@@ -96,7 +96,7 @@ fn fail_gap_previous() {
     let mut txn = ctx.ledger.rw_txn();
     let keypair = KeyPair::new();
 
-    let mut block = BlockBuilder::change()
+    let mut block = BlockBuilder::legacy_change()
         .previous(BlockHash::from(1))
         .sign(&keypair)
         .build();
@@ -112,7 +112,7 @@ fn fail_bad_signature() {
     let mut txn = ctx.ledger.rw_txn();
     let wrong_keys = KeyPair::new();
 
-    let mut block = BlockBuilder::change()
+    let mut block = BlockBuilder::legacy_change()
         .previous(*DEV_GENESIS_HASH)
         .sign(&wrong_keys)
         .build();
@@ -131,7 +131,7 @@ fn fail_fork() {
     let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    let mut fork = BlockBuilder::change()
+    let mut fork = BlockBuilder::legacy_change()
         .previous(*DEV_GENESIS_HASH)
         .representative(Account::from(12345))
         .sign(&DEV_GENESIS_KEY)

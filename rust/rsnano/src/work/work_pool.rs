@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn work_validate() {
         let pool = &DEV_WORK_POOL;
-        let mut block = BlockBuilder::send().work(6).build();
+        let mut block = BlockBuilder::legacy_send().work(6).build();
         assert!(difficulty(&block) < pool.threshold_base(block.work_version()));
         block.set_work(pool.generate_dev2(block.root()).unwrap());
         assert!(difficulty(&block) > pool.threshold_base(block.work_version()));

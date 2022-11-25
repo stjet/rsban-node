@@ -327,7 +327,7 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env()).unwrap();
         let mut txn = env.tx_begin_write().unwrap();
-        let block = BlockBuilder::open().build();
+        let block = BlockBuilder::legacy_open().build();
         let block_hash = block.hash();
 
         store.put(&mut txn, &block_hash, &block);
@@ -344,12 +344,12 @@ mod tests {
         let store = LmdbBlockStore::new(env.env()).unwrap();
         let mut txn = env.tx_begin_write().unwrap();
 
-        let mut block1 = BlockBuilder::open()
+        let mut block1 = BlockBuilder::legacy_open()
             .account(Account::from(1))
             .representative(Account::from(2))
             .build();
 
-        let block2 = BlockBuilder::open()
+        let block2 = BlockBuilder::legacy_open()
             .account(Account::from(1))
             .representative(Account::from(3))
             .build();
@@ -375,8 +375,8 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env()).unwrap();
         let mut txn = env.tx_begin_write().unwrap();
-        let block1 = BlockBuilder::open().build();
-        let block2 = BlockBuilder::open().build();
+        let block1 = BlockBuilder::legacy_open().build();
+        let block2 = BlockBuilder::legacy_open().build();
 
         store.put(&mut txn, &block1.hash(), &block1);
         store.put(&mut txn, &block2.hash(), &block2);
@@ -391,8 +391,10 @@ mod tests {
     fn add_receive() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env())?;
-        let block1 = BlockBuilder::open().build();
-        let block2 = BlockBuilder::receive().previous(block1.hash()).build();
+        let block1 = BlockBuilder::legacy_open().build();
+        let block2 = BlockBuilder::legacy_receive()
+            .previous(block1.hash())
+            .build();
         let mut txn = env.tx_begin_write()?;
         store.put(&mut txn, &block1.hash(), &block1);
         store.put(&mut txn, &block2.hash(), &block2);
@@ -405,7 +407,7 @@ mod tests {
     fn add_state() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env())?;
-        let block1 = BlockBuilder::open().build();
+        let block1 = BlockBuilder::legacy_open().build();
         let block2 = BlockBuilder::state().previous(block1.hash()).build();
         let mut txn = env.tx_begin_write()?;
         store.put(&mut txn, &block1.hash(), &block1);
@@ -420,8 +422,8 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env())?;
         let mut txn = env.tx_begin_write()?;
-        let open = BlockBuilder::open().build();
-        let send1 = BlockBuilder::send().previous(open.hash()).build();
+        let open = BlockBuilder::legacy_open().build();
+        let send1 = BlockBuilder::legacy_send().previous(open.hash()).build();
         let mut send2 = send1.clone();
         send2.set_work(12345);
 
@@ -442,7 +444,7 @@ mod tests {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env())?;
         let mut txn = env.tx_begin_write()?;
-        let block = BlockBuilder::open().build();
+        let block = BlockBuilder::legacy_open().build();
         let block_hash = block.hash();
 
         store.put(&mut txn, &block_hash, &block);
@@ -456,7 +458,7 @@ mod tests {
     fn reset_renew_existing_transaction() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env())?;
-        let block = BlockBuilder::open().build();
+        let block = BlockBuilder::legacy_open().build();
         let block_hash = block.hash();
 
         let mut read_txn = env.tx_begin_read()?;

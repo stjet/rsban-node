@@ -149,7 +149,7 @@ fn fail_fork() {
 
     let send = setup_legacy_send_block(&ctx, txn.as_mut());
 
-    let mut fork = BlockBuilder::send()
+    let mut fork = BlockBuilder::legacy_send()
         .previous(*DEV_GENESIS_HASH)
         .destination(Account::from(1000))
         .sign(send.destination.key)
@@ -165,7 +165,7 @@ fn fail_gap_previous() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let mut block = BlockBuilder::send()
+    let mut block = BlockBuilder::legacy_send()
         .previous(BlockHash::from(1))
         .destination(Account::from(2))
         .sign(DEV_GENESIS_KEY.clone())
@@ -182,7 +182,7 @@ fn fail_bad_signature() {
     let mut txn = ctx.ledger.rw_txn();
 
     let wrong_keys = KeyPair::new();
-    let mut block = BlockBuilder::send()
+    let mut block = BlockBuilder::legacy_send()
         .previous(*DEV_GENESIS_HASH)
         .destination(Account::from(2))
         .sign(wrong_keys)

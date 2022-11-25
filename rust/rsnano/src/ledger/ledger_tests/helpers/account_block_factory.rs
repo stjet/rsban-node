@@ -1,7 +1,8 @@
 use crate::{
     core::{
-        Account, AccountInfo, Amount, BlockBuilder, BlockHash, ChangeBlockBuilder, Epoch, KeyPair,
-        Link, OpenBlockBuilder, ReceiveBlockBuilder, SendBlockBuilder, StateBlockBuilder,
+        Account, AccountInfo, Amount, BlockBuilder, BlockHash, Epoch, KeyPair,
+        LegacyChangeBlockBuilder, LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder,
+        LegacySendBlockBuilder, Link, StateBlockBuilder,
     },
     ledger::{datastore::Transaction, Ledger, DEV_GENESIS_KEY},
     DEV_CONSTANTS,
@@ -40,8 +41,8 @@ impl<'a> AccountBlockFactory<'a> {
         self.ledger.store.account().get(txn, &self.account())
     }
 
-    pub(crate) fn legacy_open(&self, source: BlockHash) -> OpenBlockBuilder {
-        BlockBuilder::open()
+    pub(crate) fn legacy_open(&self, source: BlockHash) -> LegacyOpenBlockBuilder {
+        BlockBuilder::legacy_open()
             .source(source)
             .representative(self.account())
             .account(self.account())
@@ -91,17 +92,17 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&DEV_GENESIS_KEY)
     }
 
-    pub(crate) fn legacy_change(&self, txn: &dyn Transaction) -> ChangeBlockBuilder {
+    pub(crate) fn legacy_change(&self, txn: &dyn Transaction) -> LegacyChangeBlockBuilder {
         let info = self.info(txn).unwrap();
-        BlockBuilder::change()
+        BlockBuilder::legacy_change()
             .previous(info.head)
             .representative(Account::from(1))
             .sign(&self.key)
     }
 
-    pub(crate) fn legacy_send(&self, txn: &dyn Transaction) -> SendBlockBuilder {
+    pub(crate) fn legacy_send(&self, txn: &dyn Transaction) -> LegacySendBlockBuilder {
         let info = self.info(txn).unwrap();
-        BlockBuilder::send()
+        BlockBuilder::legacy_send()
             .previous(info.head)
             .destination(Account::from(1))
             .previous_balance(info.balance)
@@ -114,9 +115,9 @@ impl<'a> AccountBlockFactory<'a> {
         &self,
         txn: &dyn Transaction,
         send_hash: BlockHash,
-    ) -> ReceiveBlockBuilder {
+    ) -> LegacyReceiveBlockBuilder {
         let receiver_info = self.info(txn).unwrap();
-        BlockBuilder::receive()
+        BlockBuilder::legacy_receive()
             .previous(receiver_info.head)
             .source(send_hash)
             .sign(&self.key)

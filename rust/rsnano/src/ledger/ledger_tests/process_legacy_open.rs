@@ -181,7 +181,7 @@ fn fail_fork_previous() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open_fork = BlockBuilder::open()
+    let mut open_fork = BlockBuilder::legacy_open()
         .source(send2.hash())
         .account(open.destination.account())
         .sign(&open.destination.key)
@@ -231,7 +231,7 @@ fn fail_bad_signature() {
 
     let bad_keys = KeyPair::new();
 
-    let mut open = BlockBuilder::open()
+    let mut open = BlockBuilder::legacy_open()
         .source(send.send_block.hash())
         .account(send.destination.account())
         .sign(&bad_keys)
@@ -262,7 +262,7 @@ fn state_open_fork() {
 
     let open = setup_legacy_open_block(&ctx, txn.as_mut());
 
-    let mut open2 = BlockBuilder::open()
+    let mut open2 = BlockBuilder::legacy_open()
         .source(open.send_block.hash())
         .account(open.destination.account())
         .sign(&open.destination.key)

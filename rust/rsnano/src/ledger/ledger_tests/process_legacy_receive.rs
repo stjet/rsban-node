@@ -155,7 +155,7 @@ fn receive_fork() {
     let mut change = result.destination.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    let mut receive_fork = BlockBuilder::receive()
+    let mut receive_fork = BlockBuilder::legacy_receive()
         .previous(result.open_block.hash())
         .source(send.hash())
         .sign(&result.destination.key)
@@ -176,7 +176,7 @@ fn fail_double_receive() {
     let mut txn = ctx.ledger.rw_txn();
     let open = setup_legacy_open_block(&ctx, txn.as_mut());
 
-    let mut double_receive = BlockBuilder::receive()
+    let mut double_receive = BlockBuilder::legacy_receive()
         .previous(open.open_block.hash())
         .source(open.send_block.hash())
         .sign(&open.destination.key)
@@ -212,7 +212,7 @@ fn fail_gap_source() {
 
     let open = setup_legacy_open_block(&ctx, txn.as_mut());
 
-    let mut receive = BlockBuilder::receive()
+    let mut receive = BlockBuilder::legacy_receive()
         .previous(open.open_block.hash())
         .source(BlockHash::from(1))
         .sign(&open.destination.key)
@@ -237,7 +237,7 @@ fn fail_bad_signature() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut receive = BlockBuilder::receive()
+    let mut receive = BlockBuilder::legacy_receive()
         .previous(open.open_block.hash())
         .source(send.hash())
         .sign(&KeyPair::new())
@@ -255,7 +255,7 @@ fn fail_gap_previous_unopened() {
 
     let send = setup_legacy_send_block(&ctx, txn.as_mut());
 
-    let mut receive = BlockBuilder::receive()
+    let mut receive = BlockBuilder::legacy_receive()
         .previous(BlockHash::from(1))
         .source(send.send_block.hash())
         .sign(&send.destination.key)
@@ -280,7 +280,7 @@ fn fail_gap_previous_opened() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut receive = BlockBuilder::receive()
+    let mut receive = BlockBuilder::legacy_receive()
         .previous(BlockHash::from(1))
         .source(send2.hash())
         .sign(&open.destination.key)
@@ -305,7 +305,7 @@ fn fail_fork_previous() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receivable).unwrap();
 
-    let mut fork_send = BlockBuilder::send()
+    let mut fork_send = BlockBuilder::legacy_send()
         .previous(open.open_block.hash())
         .destination(Account::from(1))
         .balance(Amount::zero())
@@ -314,7 +314,7 @@ fn fail_fork_previous() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut fork_send).unwrap();
 
-    let mut fork_receive = BlockBuilder::receive()
+    let mut fork_receive = BlockBuilder::legacy_receive()
         .previous(open.open_block.hash())
         .source(receivable.hash())
         .sign(&open.destination.key)
@@ -355,7 +355,7 @@ fn fail_receive_received_source() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-    let mut fork_receive = BlockBuilder::receive()
+    let mut fork_receive = BlockBuilder::legacy_receive()
         .previous(open.open_block.hash())
         .source(receivable2.hash())
         .sign(&open.destination.key)

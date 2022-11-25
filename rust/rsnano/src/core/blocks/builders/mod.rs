@@ -1,13 +1,13 @@
-mod change_block_builder;
-mod open_block_builder;
-mod receive_block_builder;
-mod send_block_builder;
+mod legacy_change_block_builder;
+mod legacy_open_block_builder;
+mod legacy_receive_block_builder;
+mod legacy_send_block_builder;
 mod state_block_builder;
 
-pub use change_block_builder::ChangeBlockBuilder;
-pub use open_block_builder::OpenBlockBuilder;
-pub use receive_block_builder::ReceiveBlockBuilder;
-pub use send_block_builder::SendBlockBuilder;
+pub use legacy_change_block_builder::LegacyChangeBlockBuilder;
+pub use legacy_open_block_builder::LegacyOpenBlockBuilder;
+pub use legacy_receive_block_builder::LegacyReceiveBlockBuilder;
+pub use legacy_send_block_builder::LegacySendBlockBuilder;
 pub use state_block_builder::StateBlockBuilder;
 
 pub struct BlockBuilder {}
@@ -17,19 +17,19 @@ impl BlockBuilder {
         StateBlockBuilder::new()
     }
 
-    pub fn open() -> OpenBlockBuilder {
-        OpenBlockBuilder::new()
+    pub fn legacy_open() -> LegacyOpenBlockBuilder {
+        LegacyOpenBlockBuilder::new()
     }
 
-    pub fn receive() -> ReceiveBlockBuilder {
-        ReceiveBlockBuilder::new()
+    pub fn legacy_receive() -> LegacyReceiveBlockBuilder {
+        LegacyReceiveBlockBuilder::new()
     }
 
-    pub fn send() -> SendBlockBuilder {
-        SendBlockBuilder::new()
+    pub fn legacy_send() -> LegacySendBlockBuilder {
+        LegacySendBlockBuilder::new()
     }
 
-    pub fn change() -> ChangeBlockBuilder {
-        ChangeBlockBuilder::new()
+    pub fn legacy_change() -> LegacyChangeBlockBuilder {
+        LegacyChangeBlockBuilder::new()
     }
 }

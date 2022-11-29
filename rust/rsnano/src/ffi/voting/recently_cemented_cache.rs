@@ -1,5 +1,4 @@
-use crate::ffi::voting::election_status::ElectionStatusHandle;
-use crate::voting::RecentlyCementedCache;
+use crate::{ffi::voting::election_status::ElectionStatusHandle, voting::RecentlyCementedCache};
 use std::sync::Arc;
 
 pub struct RecentlyCementedCacheHandle(Arc<RecentlyCementedCache>);

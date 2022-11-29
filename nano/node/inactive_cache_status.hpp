@@ -2,25 +2,43 @@
 
 #include <nano/lib/numbers.hpp>
 
+namespace rsnano
+{
+class InactiveCacheStatusHandle;
+}
+
 namespace nano
 {
 class inactive_cache_status final
 {
 public:
-	bool bootstrap_started{ false };
+	inactive_cache_status ();
+	inactive_cache_status (rsnano::InactiveCacheStatusHandle * handle_a);
+	~inactive_cache_status ();
+
+	bool get_bootstrap_started () const;
 
 	/** Did item reach config threshold to start an impromptu election? */
-	bool election_started{ false };
+	bool get_election_started () const;
 
 	/** Did item reach votes quorum? (minimum config value) */
-	bool confirmed{ false };
+	bool get_confirmed () const;
 
-	/** Last votes tally for block */
-	nano::uint128_t tally{ 0 };
+	nano::uint128_t get_tally () const;
+
+	void set_bootstrap_started (bool) const;
+
+	void set_election_started (bool) const;
+
+	void set_confirmed (bool) const;
+
+	void set_tally (nano::uint128_t) const;
 
 	bool operator!= (inactive_cache_status const other) const;
 
 	std::string to_string () const;
+
+	rsnano::InactiveCacheStatusHandle * handle;
 };
 
 }

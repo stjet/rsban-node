@@ -301,12 +301,14 @@ fn open_from_state_block() {
 }
 
 #[test]
-fn confirmation_height_not_updated(){
+fn confirmation_height_not_updated() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
     let open = setup_legacy_open_block(&ctx, txn.as_mut());
 
-    let confirmation_height_info = ctx.ledger.get_confirmation_height(txn.txn(), &open.open_block.account());
+    let confirmation_height_info = ctx
+        .ledger
+        .get_confirmation_height(txn.txn(), &open.open_block.account());
     assert_eq!(confirmation_height_info, None);
 }

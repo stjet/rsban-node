@@ -16,3 +16,8 @@ mod recently_cemented_cache;
 
 pub use election_status::{ElectionStatus, ElectionStatusType};
 pub use recently_cemented_cache::RecentlyCementedCache;
+mod inactive_cache_information;
+mod inactive_cache_status;
+
+pub use inactive_cache_information::InactiveCacheInformation;
+pub use inactive_cache_status::InactiveCacheStatus;

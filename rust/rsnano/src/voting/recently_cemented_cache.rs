@@ -1,7 +1,5 @@
-use crate::voting::ElectionStatus;
-use std::collections::VecDeque;
-use std::mem::size_of;
-use std::sync::Mutex;
+use super::ElectionStatus;
+use std::{collections::VecDeque, mem::size_of, sync::Mutex};
 
 pub struct RecentlyCementedCache {
     cemented: Mutex<VecDeque<ElectionStatus>>,

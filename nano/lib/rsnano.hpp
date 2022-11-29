@@ -11,33 +11,23 @@
 
 namespace rsnano
 {
-constexpr static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
+static const uintptr_t SignatureChecker_BATCH_SIZE = 256;
 
-constexpr static const double BOOTSTRAP_MINIMUM_ELAPSED_SECONDS_BLOCKRATE = 0.02;
+static const double BOOTSTRAP_MINIMUM_ELAPSED_SECONDS_BLOCKRATE = 0.02;
 
-constexpr static const uint8_t GENERIC = 0;
+static const uint8_t GENERIC = 0;
 
-constexpr static const uintptr_t ConfirmAck_HASHES_MAX = 12;
+static const uintptr_t ConfirmAck_HASHES_MAX = 12;
 
-constexpr static const uintptr_t FrontierReq_ONLY_CONFIRMED = 1;
+static const uintptr_t FrontierReq_ONLY_CONFIRMED = 1;
 
-constexpr static const uint64_t PULL_COUNT_PER_CHECK = (8 * 1024);
+static const uint64_t PULL_COUNT_PER_CHECK = (8 * 1024);
 
-constexpr static const int32_t STORE_VERSION_CURRENT = 21;
+static const int32_t STORE_VERSION_CURRENT = 21;
 
-constexpr static const int32_t STORE_VERSION_MINIMUM = 21;
+static const int32_t STORE_VERSION_MINIMUM = 21;
 
-constexpr static const uint8_t SYSTEM = 1;
-
-///  * Tag for which epoch an entry belongs to
-enum class Epoch : uint8_t
-{
-	Invalid = 0,
-	Unspecified = 1,
-	Epoch0 = 2,
-	Epoch1 = 3,
-	Epoch2 = 4,
-};
+static const uint8_t SYSTEM = 1;
 
 struct AccountInfoHandle;
 
@@ -84,6 +74,10 @@ struct ElectionStatusHandle;
 struct EpochsHandle;
 
 struct GenerateCacheHandle;
+
+struct InactiveCacheInformationHandle;
+
+struct InactiveCacheStatusHandle;
 
 struct IoContextHandle;
 
@@ -199,6 +193,8 @@ struct VoteHashesHandle;
 struct VoteSpacingHandle;
 
 struct VoteUniquerHandle;
+
+struct VotersRawData;
 
 struct WorkPoolHandle;
 
@@ -771,6 +767,19 @@ struct DaemonConfigDto
 	bool opencl_enable;
 	NodePowServerConfigDto pow_server;
 	NodeRpcConfigDto rpc;
+};
+
+struct VotersItemDto
+{
+	uint8_t account[32];
+	uint64_t timestamp;
+};
+
+struct VotersDto
+{
+	const VotersItemDto * items;
+	uintptr_t count;
+	VotersRawData * raw_data;
 };
 
 struct BootstrapWeightsItem
@@ -1814,6 +1823,61 @@ void rsn_generate_cache_set_reps (GenerateCacheHandle * handle, bool enable);
 void rsn_generate_cache_set_unchecked_count (GenerateCacheHandle * handle, bool enable);
 
 void rsn_hardened_constants_get (uint8_t * not_an_account, uint8_t * random_128);
+
+InactiveCacheInformationHandle * rsn_inactive_cache_information_clone (const InactiveCacheInformationHandle * handle);
+
+InactiveCacheInformationHandle * rsn_inactive_cache_information_create ();
+
+InactiveCacheInformationHandle * rsn_inactive_cache_information_create1 (int64_t arrival,
+const uint8_t * hash,
+const InactiveCacheStatusHandle * status,
+const uint8_t * initial_rep,
+uint64_t initial_timestamp);
+
+void rsn_inactive_cache_information_destroy (InactiveCacheInformationHandle * handle);
+
+void rsn_inactive_cache_information_destroy_dto (VotersDto * vector);
+
+int64_t rsn_inactive_cache_information_get_arrival (const InactiveCacheInformationHandle * handle);
+
+void rsn_inactive_cache_information_get_hash (const InactiveCacheInformationHandle * handle,
+uint8_t * result);
+
+InactiveCacheStatusHandle * rsn_inactive_cache_information_get_status (const InactiveCacheInformationHandle * handle);
+
+void rsn_inactive_cache_information_get_voters (const InactiveCacheInformationHandle * handle,
+VotersDto * vector);
+
+void rsn_inactive_cache_information_to_string (const InactiveCacheInformationHandle * handle,
+StringDto * result);
+
+bool rsn_inactive_cache_status_bootstrap_started (const InactiveCacheStatusHandle * handle);
+
+bool rsn_inactive_cache_status_confirmed (const InactiveCacheStatusHandle * handle);
+
+InactiveCacheStatusHandle * rsn_inactive_cache_status_create ();
+
+void rsn_inactive_cache_status_destroy (InactiveCacheStatusHandle * handle);
+
+bool rsn_inactive_cache_status_election_started (const InactiveCacheStatusHandle * handle);
+
+bool rsn_inactive_cache_status_eq (const InactiveCacheStatusHandle * first,
+const InactiveCacheStatusHandle * second);
+
+void rsn_inactive_cache_status_set_bootstrap_started (InactiveCacheStatusHandle * handle,
+bool bootstrap_started);
+
+void rsn_inactive_cache_status_set_confirmed (InactiveCacheStatusHandle * handle, bool confirmed);
+
+void rsn_inactive_cache_status_set_election_started (InactiveCacheStatusHandle * handle,
+bool election_started);
+
+void rsn_inactive_cache_status_set_tally (InactiveCacheStatusHandle * handle, const uint8_t * tally);
+
+void rsn_inactive_cache_status_tally (const InactiveCacheStatusHandle * handle, uint8_t * result);
+
+void rsn_inactive_cache_status_to_string (const InactiveCacheStatusHandle * handle,
+StringDto * result);
 
 /// handle is a `boost::asio::io_context *`
 IoContextHandle * rsn_io_ctx_create (void * handle);

@@ -9,6 +9,7 @@ use crate::{
 
 use super::LedgerContext;
 
+#[test]
 fn epoch_block_upgrades_epoch() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
@@ -29,6 +30,7 @@ fn epoch_block_upgrades_epoch() {
     assert_eq!(account_info.epoch, Epoch::Epoch1);
 }
 
+#[test]
 fn adding_epoch_twice_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
@@ -40,6 +42,7 @@ fn adding_epoch_twice_fails() {
     assert_eq!(result.code, ProcessResult::BlockPosition);
 }
 
+#[test]
 fn adding_legacy_change_block_after_epoch1_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
@@ -51,6 +54,7 @@ fn adding_legacy_change_block_after_epoch1_fails() {
     assert_eq!(result.code, ProcessResult::BlockPosition);
 }
 
+#[test]
 fn can_add_state_blocks_after_epoch1() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
@@ -167,12 +171,14 @@ fn cannot_use_legacy_receive_block_after_sender_upgraded_to_epoch1() {
     assert_eq!(result.code, ProcessResult::Unreceivable);
 }
 
+#[test]
 fn can_add_state_receive_block_after_epoch1() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-
     let genesis = ctx.genesis_block_factory();
     let destination = ctx.block_factory();
+
+    upgrade_genesis_to_epoch_v1(&ctx, txn.as_mut());
 
     let mut send = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
@@ -190,6 +196,7 @@ fn can_add_state_receive_block_after_epoch1() {
     assert_eq!(receive.sideband().unwrap().source_epoch, Epoch::Epoch1);
 }
 
+#[test]
 fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();

@@ -1,7 +1,7 @@
+use crate::utils::create_property_tree;
 use anyhow::Result;
+use rsnano_core::utils::PropertyTreeWriter;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
-use crate::utils::{create_property_tree, PropertyTreeWriter};
 
 #[derive(Clone, Copy, FromPrimitive)]
 pub enum Topic {

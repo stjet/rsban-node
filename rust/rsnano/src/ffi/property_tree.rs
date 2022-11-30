@@ -1,10 +1,9 @@
 use anyhow::Result;
+use rsnano_core::utils::{PropertyTreeReader, PropertyTreeWriter};
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
 };
-
-use crate::utils::{PropertyTreeReader, PropertyTreeWriter};
 
 type PropertyTreePutStringCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char, usize, *const c_char, usize);

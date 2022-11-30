@@ -1,8 +1,9 @@
 use anyhow::Result;
 use chrono::{DateTime, Local};
+use rsnano_core::utils::PropertyTreeWriter;
 use std::{any::Any, fs::File, io::Write, path::PathBuf, time::SystemTime};
 
-use crate::utils::{create_property_tree, PropertyTreeWriter};
+use crate::utils::create_property_tree;
 
 use super::histogram::StatHistogram;
 

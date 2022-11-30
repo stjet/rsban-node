@@ -1,4 +1,5 @@
 use anyhow::Result;
+use rsnano_core::utils::PropertyTreeWriter;
 use std::{sync::RwLock, time::Duration};
 
 use crate::{
@@ -6,7 +7,7 @@ use crate::{
         sign_message, validate_message, Account, BlockHash, BlockHashBuilder, FullHash, RawKey,
         Signature,
     },
-    utils::{Deserialize, PropertyTreeWriter, Serialize, Stream},
+    utils::{Deserialize, Serialize, Stream},
 };
 
 #[derive(Clone)]

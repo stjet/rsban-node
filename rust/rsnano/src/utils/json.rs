@@ -1,24 +1,9 @@
 use anyhow::Result;
+use rsnano_core::utils::{PropertyTreeReader, PropertyTreeWriter};
+#[cfg(test)]
 use std::any::Any;
 #[cfg(test)]
 use std::collections::HashMap;
-
-pub trait PropertyTreeReader {
-    fn get_string(&self, path: &str) -> Result<String>;
-}
-
-pub trait PropertyTreeWriter {
-    fn clear(&mut self) -> Result<()>;
-    fn put_string(&mut self, path: &str, value: &str) -> Result<()>;
-    fn put_u64(&mut self, path: &str, value: u64) -> Result<()>;
-    fn new_writer(&self) -> Box<dyn PropertyTreeWriter>;
-    fn push_back(&mut self, path: &str, value: &dyn PropertyTreeWriter);
-    fn add_child(&mut self, path: &str, value: &dyn PropertyTreeWriter);
-    fn put_child(&mut self, path: &str, value: &dyn PropertyTreeWriter);
-    fn add(&mut self, path: &str, value: &str) -> Result<()>;
-    fn as_any(&self) -> &dyn Any;
-    fn to_json(&self) -> String;
-}
 
 /// Note: Once FfiPropertyTree is not used anymore we can return
 /// the tree unboxed

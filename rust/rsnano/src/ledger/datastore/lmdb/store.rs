@@ -7,6 +7,7 @@ use std::{
 
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
+use rsnano_core::utils::PropertyTreeWriter;
 
 use crate::{
     config::TxnTrackingConfig,
@@ -18,7 +19,7 @@ use crate::{
         },
         LedgerCache, LedgerConstants,
     },
-    utils::{seconds_since_epoch, Logger, PropertyTreeWriter},
+    utils::{seconds_since_epoch, Logger},
 };
 
 use super::{

@@ -1,5 +1,6 @@
 use lmdb::{Environment, EnvironmentFlags};
 use lmdb_sys::MDB_SUCCESS;
+use rsnano_core::utils::PropertyTreeWriter;
 #[cfg(test)]
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -20,7 +21,6 @@ use crate::utils::Logger;
 use crate::{
     ledger::datastore::{NullTxnCallbacks, TxnCallbacks, TxnTracker},
     memory_intensive_instrumentation,
-    utils::PropertyTreeWriter,
 };
 
 use super::{LmdbReadTransaction, LmdbWriteTransaction};

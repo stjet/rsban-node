@@ -5,11 +5,9 @@ use std::{
 };
 
 use backtrace::Backtrace;
+use rsnano_core::utils::PropertyTreeWriter;
 
-use crate::{
-    config::TxnTrackingConfig,
-    utils::{Logger, PropertyTreeWriter},
-};
+use crate::{config::TxnTrackingConfig, utils::Logger};
 
 pub trait TxnCallbacks {
     fn txn_start(&self, txn_id: u64, is_write: bool);

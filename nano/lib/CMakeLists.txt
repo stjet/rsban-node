@@ -59,7 +59,6 @@ add_library(
   rpc_handler_interface.hpp
   rpcconfig.hpp
   rpcconfig.cpp
-  rsnano.hpp
   rsnanoutils.hpp
   rsnanoutils.cpp
   signal_manager.hpp

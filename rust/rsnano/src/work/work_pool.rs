@@ -7,13 +7,12 @@ use std::{
 
 #[cfg(test)]
 use once_cell::sync::Lazy;
-use rsnano_core::Root;
+use rsnano_core::{Root, WorkVersion};
 
 use super::{
     CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator, WorkItem, WorkQueueCoordinator,
     WorkThread, WorkThresholds, WorkTicket,
 };
-use crate::core::WorkVersion;
 
 pub struct WorkPool {
     threads: Vec<JoinHandle<()>>,

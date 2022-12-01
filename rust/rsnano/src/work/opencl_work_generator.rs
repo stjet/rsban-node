@@ -1,7 +1,6 @@
-use rsnano_core::Root;
+use rsnano_core::{DifficultyV1, Root, WorkVersion};
 
 use super::{CpuWorkGenerator, WorkGenerator, WorkTicket};
-use crate::core::{DifficultyV1, WorkVersion};
 use std::time::Duration;
 
 pub type OpenClWorkFunc = dyn Fn(WorkVersion, Root, u64, &WorkTicket) -> Option<u64> + Send + Sync;

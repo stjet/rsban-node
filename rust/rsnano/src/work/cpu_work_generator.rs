@@ -1,7 +1,6 @@
-use rsnano_core::Root;
+use rsnano_core::{Difficulty, DifficultyV1, Root, WorkVersion};
 
 use super::{WorkGenerator, WorkRng, WorkTicket, XorShift1024Star};
-use crate::core::{Difficulty, DifficultyV1, WorkVersion};
 #[cfg(test)]
 use std::sync::{Arc, Mutex};
 use std::{thread, time::Duration};
@@ -198,8 +197,9 @@ impl WorkRng for StubWorkRng {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::StubDifficulty;
+
     use super::*;
-    use crate::core::StubDifficulty;
 
     #[test]
     fn stub_work_rng() {

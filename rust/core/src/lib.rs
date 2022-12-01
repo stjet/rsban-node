@@ -48,6 +48,9 @@ pub use pending_key::PendingKey;
 mod pending_info;
 pub use pending_info::PendingInfo;
 
+mod difficulty;
+pub use difficulty::{Difficulty, DifficultyV1, StubDifficulty, WorkVersion};
+
 use std::fmt::Write;
 use std::num::ParseIntError;
 

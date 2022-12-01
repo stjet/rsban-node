@@ -8,11 +8,6 @@ use rsnano_core::{
     BlockHash, RawKey,
 };
 
-mod difficulty;
-#[cfg(test)]
-pub(crate) use difficulty::StubDifficulty;
-pub use difficulty::{Difficulty, DifficultyV1, WorkVersion};
-
 mod endpoint_key;
 pub use endpoint_key::EndpointKey;
 

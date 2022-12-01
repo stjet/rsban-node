@@ -13,15 +13,15 @@ pub use epoch::EpochsHandle;
 
 mod unchecked_info;
 use rsnano_core::{
-    sign_message, validate_message, validate_message_batch, Account, KeyPair, PublicKey, RawKey,
-    Signature,
+    sign_message, validate_message, validate_message_batch, Account, DifficultyV1, KeyPair,
+    PublicKey, RawKey, Signature,
 };
 pub(crate) use unchecked_info::*;
 
 use rand::{thread_rng, Rng};
 use std::{ffi::CStr, net::Ipv6Addr, os::raw::c_char, slice};
 
-use crate::core::{deterministic_key, ip_address_hash_raw, DifficultyV1};
+use crate::core::{deterministic_key, ip_address_hash_raw};
 
 use super::copy_raw_key_bytes;
 

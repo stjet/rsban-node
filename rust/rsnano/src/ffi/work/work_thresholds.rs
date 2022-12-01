@@ -1,9 +1,9 @@
 use num_traits::FromPrimitive;
-use rsnano_core::Root;
+use rsnano_core::{DifficultyV1, Root, WorkVersion};
 use std::convert::TryFrom;
 
 use crate::{
-    core::{BlockDetails, BlockType, DifficultyV1, Networks, WorkVersion},
+    core::{BlockDetails, BlockType, Networks},
     ffi::{
         core::{BlockDetailsDto, BlockHandle},
         StringDto,
@@ -186,18 +186,6 @@ pub fn fill_work_thresholds_dto(dto: &mut WorkThresholdsDto, thresholds: &WorkTh
     dto.epoch_2_receive = thresholds.epoch_2_receive;
     dto.base = thresholds.base;
     dto.entry = thresholds.entry;
-}
-
-impl TryFrom<u8> for WorkVersion {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(WorkVersion::Unspecified),
-            1 => Ok(WorkVersion::Work1),
-            _ => Err(anyhow!("unknown work version")),
-        }
-    }
 }
 
 impl From<WorkThresholdsDto> for WorkThresholds {

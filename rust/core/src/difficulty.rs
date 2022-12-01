@@ -2,15 +2,27 @@ use blake2::{
     digest::{Update, VariableOutput},
     VarBlake2b,
 };
-use rsnano_core::Root;
-#[cfg(test)]
 use std::collections::HashMap;
 use std::mem::size_of;
+
+use crate::Root;
 
 #[derive(Clone, Copy, FromPrimitive)]
 pub enum WorkVersion {
     Unspecified,
     Work1,
+}
+
+impl TryFrom<u8> for WorkVersion {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(WorkVersion::Unspecified),
+            1 => Ok(WorkVersion::Work1),
+            _ => Err(anyhow!("unknown work version")),
+        }
+    }
 }
 
 pub trait Difficulty {
@@ -69,25 +81,22 @@ impl Difficulty for DifficultyV1 {
     }
 }
 
-#[cfg(test)]
-pub(crate) struct StubDifficulty {
+pub struct StubDifficulty {
     preset_difficulties: HashMap<(Root, u64), u64>,
 }
 
-#[cfg(test)]
 impl StubDifficulty {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             preset_difficulties: HashMap::new(),
         }
     }
 
-    pub(crate) fn set_difficulty(&mut self, root: Root, work: u64, difficulty: u64) {
+    pub fn set_difficulty(&mut self, root: Root, work: u64, difficulty: u64) {
         self.preset_difficulties.insert((root, work), difficulty);
     }
 }
 
-#[cfg(test)]
 impl Difficulty for StubDifficulty {
     fn get_difficulty(&mut self, root: &Root, work: u64) -> u64 {
         self.preset_difficulties

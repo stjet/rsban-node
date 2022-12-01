@@ -3,9 +3,7 @@ use std::sync::{
     Condvar, Mutex, MutexGuard,
 };
 
-use rsnano_core::Root;
-
-use crate::core::{DifficultyV1, WorkVersion};
+use rsnano_core::{DifficultyV1, Root, WorkVersion};
 
 static NEVER_EXPIRES: AtomicI32 = AtomicI32::new(0);
 

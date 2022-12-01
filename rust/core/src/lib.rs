@@ -51,6 +51,9 @@ pub use pending_info::PendingInfo;
 mod difficulty;
 pub use difficulty::{Difficulty, DifficultyV1, StubDifficulty, WorkVersion};
 
+mod endpoint_key;
+pub use endpoint_key::EndpointKey;
+
 use std::fmt::Write;
 use std::num::ParseIntError;
 

@@ -1,9 +1,9 @@
 use lmdb::{Database, DatabaseFlags, WriteFlags};
+use rsnano_core::EndpointKey;
 use std::sync::Arc;
 
-use crate::{
-    core::EndpointKey,
-    ledger::datastore::{peer_store::PeerIterator, PeerStore, Transaction, WriteTransaction},
+use crate::ledger::datastore::{
+    peer_store::PeerIterator, PeerStore, Transaction, WriteTransaction,
 };
 
 use super::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};

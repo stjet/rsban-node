@@ -8,9 +8,6 @@ use rsnano_core::{
     BlockHash, RawKey,
 };
 
-mod endpoint_key;
-pub use endpoint_key::EndpointKey;
-
 mod blocks;
 pub use blocks::*;
 

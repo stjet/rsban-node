@@ -304,9 +304,11 @@ impl Block for StateBlock {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::TestPropertyTree;
+
     use crate::{
         core::{BlockBuilder, StateBlockBuilder},
-        utils::{MemoryStream, TestPropertyTree},
+        utils::MemoryStream,
     };
 
     use super::*;

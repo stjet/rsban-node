@@ -217,11 +217,10 @@ impl Block for OpenBlock {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::TestPropertyTree;
+
     use super::*;
-    use crate::{
-        core::KeyPair,
-        utils::{MemoryStream, TestPropertyTree},
-    };
+    use crate::{core::KeyPair, utils::MemoryStream};
 
     #[test]
     fn create_block() {

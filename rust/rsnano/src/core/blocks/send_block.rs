@@ -265,9 +265,11 @@ impl Block for SendBlock {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::TestPropertyTree;
+
     use crate::{
         core::{validate_message, KeyPair},
-        utils::{MemoryStream, TestPropertyTree},
+        utils::MemoryStream,
     };
 
     use super::*;

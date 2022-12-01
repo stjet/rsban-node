@@ -204,10 +204,9 @@ impl Block for ReceiveBlock {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        core::KeyPair,
-        utils::{MemoryStream, TestPropertyTree},
-    };
+    use rsnano_core::utils::TestPropertyTree;
+
+    use crate::{core::KeyPair, utils::MemoryStream};
 
     use super::*;
 

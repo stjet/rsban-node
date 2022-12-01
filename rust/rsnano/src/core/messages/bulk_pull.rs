@@ -1,9 +1,10 @@
 use crate::{
     config::NetworkConstants,
     core::{BlockHash, HashOrAccount},
-    utils::{Deserialize, Serialize, Stream},
+    utils::{Deserialize, Serialize},
 };
 use anyhow::Result;
+use rsnano_core::utils::Stream;
 use std::{any::Any, mem::size_of};
 
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
@@ -164,8 +165,10 @@ impl Message for BulkPull {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::MemoryStream;
+
     use super::*;
-    use crate::{utils::MemoryStream, DEV_NETWORK_PARAMS};
+    use crate::DEV_NETWORK_PARAMS;
 
     #[test]
     fn bulk_pull_serialization() -> Result<()> {

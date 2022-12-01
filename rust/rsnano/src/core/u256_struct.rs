@@ -76,14 +76,14 @@ macro_rules! u256_struct {
                 32
             }
 
-            fn serialize(&self, stream: &mut dyn crate::utils::Stream) -> anyhow::Result<()> {
+            fn serialize(&self, stream: &mut dyn rsnano_core::utils::Stream) -> anyhow::Result<()> {
                 stream.write_bytes(&self.0)
             }
         }
 
         impl crate::utils::Deserialize for $name {
             type Target = Self;
-            fn deserialize(stream: &mut dyn crate::utils::Stream) -> anyhow::Result<Self> {
+            fn deserialize(stream: &mut dyn rsnano_core::utils::Stream) -> anyhow::Result<Self> {
                 let mut result = Self::zero();
                 stream.read_bytes(&mut result.0, 32)?;
                 Ok(result)

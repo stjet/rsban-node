@@ -8,6 +8,8 @@ use std::{
     time::Instant,
 };
 
+use rsnano_core::utils::MemoryStream;
+
 use crate::{
     config::{NetworkConstants, NodeConfig, TelemetryCacheCutoffs},
     core::{
@@ -24,7 +26,7 @@ use crate::{
         MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketImpl, SocketType,
         SynCookies, TcpMessageItem, TcpMessageManager,
     },
-    utils::{IoContext, Logger, MemoryStream, ThreadPool},
+    utils::{IoContext, Logger, ThreadPool},
     voting::VoteUniquer,
     NetworkParams,
 };

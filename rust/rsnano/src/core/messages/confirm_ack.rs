@@ -1,10 +1,10 @@
 use crate::{
     config::NetworkConstants,
     core::{messages::MessageType, BlockType},
-    utils::Stream,
     voting::{Vote, VoteUniquer},
 };
 use anyhow::Result;
+use rsnano_core::utils::Stream;
 use std::{
     any::Any,
     fmt::Debug,
@@ -135,10 +135,11 @@ impl Debug for ConfirmAck {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::MemoryStream;
+
     use crate::{
         config::NetworkConstants,
         core::{BlockHash, KeyPair},
-        utils::MemoryStream,
     };
 
     use super::*;

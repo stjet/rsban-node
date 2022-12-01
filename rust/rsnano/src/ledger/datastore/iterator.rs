@@ -1,6 +1,8 @@
 use std::any::Any;
 
-use crate::utils::{Deserialize, Serialize, StreamAdapter};
+use rsnano_core::utils::StreamAdapter;
+
+use crate::utils::{Deserialize, Serialize};
 
 pub trait DbIterator<K, V> {
     fn is_end(&self) -> bool;

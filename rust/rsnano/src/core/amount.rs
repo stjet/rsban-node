@@ -1,8 +1,9 @@
 use crate::{
     core::MXRB_RATIO,
-    utils::{Deserialize, Serialize, Stream},
+    utils::{Deserialize, Serialize},
 };
 use anyhow::Result;
+use rsnano_core::utils::Stream;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct Amount {

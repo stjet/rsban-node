@@ -1,8 +1,9 @@
 use num::FromPrimitive;
+use rsnano_core::utils::Stream;
 
 use crate::{
     core::{Account, Amount, BlockHash, Epoch},
-    utils::{Deserialize, Serialize, Stream},
+    utils::{Deserialize, Serialize},
 };
 
 use super::{BlockDetails, BlockType};
@@ -152,8 +153,9 @@ impl BlockSideband {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::MemoryStream;
+
     use super::*;
-    use crate::utils::MemoryStream;
 
     #[test]
     fn serialize() {

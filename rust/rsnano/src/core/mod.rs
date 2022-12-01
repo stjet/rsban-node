@@ -10,6 +10,7 @@ mod block_hash;
 pub use block_hash::{BlockHash, BlockHashBuilder};
 
 mod signature;
+use rsnano_core::utils::Stream;
 pub use signature::Signature;
 
 mod qualified_root;
@@ -65,10 +66,8 @@ mod u256_struct;
 use once_cell::sync::Lazy;
 use std::{fmt::Write, net::Ipv6Addr, num::ParseIntError};
 
-use crate::{
-    u256_struct,
-    utils::{Deserialize, Serialize, Stream},
-};
+use crate::utils::Serialize;
+use crate::{u256_struct, utils::Deserialize};
 
 pub(crate) fn encode_hex(i: u128) -> String {
     let mut result = String::with_capacity(32);

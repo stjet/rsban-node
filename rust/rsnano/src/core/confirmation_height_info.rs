@@ -1,5 +1,7 @@
+use rsnano_core::utils::{MutStreamAdapter, Stream, StreamExt};
+
 use super::BlockHash;
-use crate::utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt};
+use crate::utils::{Deserialize, Serialize};
 
 #[derive(Default, PartialEq, Eq, Debug)]
 pub struct ConfirmationHeightInfo {

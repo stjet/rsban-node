@@ -2,10 +2,11 @@ use super::{Message, MessageHeader, MessageType, MessageVisitor};
 use crate::{
     config::NetworkConstants,
     core::{Account, Amount},
-    utils::{Deserialize, Serialize, Stream},
+    utils::{Deserialize, Serialize},
 };
 use anyhow::Result;
 use num_traits::FromPrimitive;
+use rsnano_core::utils::Stream;
 use std::{any::Any, mem::size_of};
 
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]

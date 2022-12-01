@@ -1,7 +1,8 @@
 use anyhow::Result;
 use num::FromPrimitive;
+use rsnano_core::utils::Stream;
 
-use crate::{core::Epoch, utils::Stream};
+use crate::core::Epoch;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BlockDetails {
@@ -67,7 +68,7 @@ impl BlockDetails {
 
 #[cfg(test)]
 mod test {
-    use crate::utils::MemoryStream;
+    use rsnano_core::utils::MemoryStream;
 
     use super::*;
 

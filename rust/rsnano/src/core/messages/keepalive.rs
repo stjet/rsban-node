@@ -1,6 +1,7 @@
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
-use crate::{config::NetworkConstants, utils::Stream};
+use crate::config::NetworkConstants;
 use anyhow::Result;
+use rsnano_core::utils::Stream;
 use std::{
     any::Any,
     fmt::Display,
@@ -141,11 +142,11 @@ impl Display for Keepalive {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::MemoryStream;
     use std::str::FromStr;
 
-    use crate::{utils::MemoryStream, DEV_NETWORK_PARAMS};
-
     use super::*;
+    use crate::DEV_NETWORK_PARAMS;
 
     #[test]
     fn serialize_no_peers() -> Result<()> {

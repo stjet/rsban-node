@@ -1,9 +1,6 @@
-use crate::{
-    config::NetworkConstants,
-    core::HashOrAccount,
-    utils::{Deserialize, MemoryStream, Stream, StreamExt},
-};
+use crate::{config::NetworkConstants, core::HashOrAccount, utils::Deserialize};
 use num_traits::FromPrimitive;
+use rsnano_core::utils::{MemoryStream, Stream, StreamExt};
 use std::{any::Any, mem::size_of};
 
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
@@ -215,6 +212,8 @@ impl Message for AscPullReq {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::MemoryStream;
+
     use super::*;
     use crate::DEV_NETWORK_PARAMS;
 

@@ -1,6 +1,8 @@
 use primitive_types::U512;
+use rsnano_core::utils::Stream;
 
-use crate::utils::{Deserialize, Serialize, Stream};
+use crate::utils::Deserialize;
+use crate::utils::Serialize;
 
 use super::{Account, BlockHash};
 

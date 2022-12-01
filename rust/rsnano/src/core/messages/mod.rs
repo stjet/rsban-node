@@ -31,6 +31,7 @@ mod bulk_push;
 pub use bulk_push::*;
 
 mod telemetry_req;
+use rsnano_core::utils::{MemoryStream, Stream};
 pub use telemetry_req::*;
 
 mod telemetry_ack;
@@ -42,7 +43,6 @@ pub use asc_pull_req::*;
 mod asc_pull_ack;
 pub use asc_pull_ack::*;
 
-use crate::utils::{MemoryStream, Stream};
 use anyhow::Result;
 
 pub trait Message: Send {

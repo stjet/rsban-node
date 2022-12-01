@@ -1,11 +1,11 @@
 use crate::{
     config::NetworkConstants,
     core::{serialized_block_size, BlockType, Networks},
-    utils::Stream,
 };
 use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
+use rsnano_core::utils::Stream;
 use std::{
     fmt::{Debug, Display},
     mem::size_of,
@@ -294,9 +294,10 @@ impl Debug for MessageHeader {
 
 #[cfg(test)]
 mod tests {
-    use crate::{utils::MemoryStream, DEV_NETWORK_PARAMS};
+    use rsnano_core::utils::MemoryStream;
 
     use super::*;
+    use crate::DEV_NETWORK_PARAMS;
 
     #[test]
     fn message_header_to_string() {

@@ -1,8 +1,10 @@
 use std::mem::size_of;
 
 use num::FromPrimitive;
+use rsnano_core::utils::Stream;
 
-use crate::utils::{Deserialize, Serialize, Stream};
+use crate::utils::Deserialize;
+use crate::utils::Serialize;
 
 use super::{Account, Amount, Epoch};
 

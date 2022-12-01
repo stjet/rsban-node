@@ -9,10 +9,11 @@ use crate::{
         block_store::BlockIterator, parallel_traversal, BlockStore, ReadTransaction, Transaction,
         WriteTransaction,
     },
-    utils::{MemoryStream, Serialize, Stream, StreamAdapter},
+    utils::Serialize,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
+use rsnano_core::utils::{MemoryStream, Stream, StreamAdapter};
 use std::sync::Arc;
 
 pub struct LmdbBlockStore {

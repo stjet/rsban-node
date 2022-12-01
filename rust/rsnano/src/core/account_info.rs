@@ -2,10 +2,11 @@ use std::mem::size_of;
 
 use crate::{
     core::{Account, Amount},
-    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
+    utils::{Deserialize, Serialize},
 };
 use anyhow::Result;
 use num_traits::FromPrimitive;
+use rsnano_core::utils::{MutStreamAdapter, Stream, StreamExt};
 
 use super::{BlockHash, Epoch};
 

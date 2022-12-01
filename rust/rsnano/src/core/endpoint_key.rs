@@ -1,4 +1,6 @@
-use crate::utils::{Deserialize, MutStreamAdapter, Serialize, Stream};
+use rsnano_core::utils::{MutStreamAdapter, Stream};
+
+use crate::utils::{Deserialize, Serialize};
 
 #[derive(Default, PartialEq, Eq, Debug)]
 pub struct EndpointKey {
@@ -51,9 +53,8 @@ impl Deserialize for EndpointKey {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::MemoryStream;
     use std::{net::Ipv6Addr, str::FromStr};
-
-    use crate::utils::MemoryStream;
 
     use super::*;
 

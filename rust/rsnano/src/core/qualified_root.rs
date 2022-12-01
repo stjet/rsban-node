@@ -1,6 +1,7 @@
 use super::{BlockHash, Root};
-use crate::utils::{Deserialize, MutStreamAdapter, Serialize, Stream};
+use crate::utils::{Deserialize, Serialize};
 use primitive_types::U512;
+use rsnano_core::utils::{MutStreamAdapter, Stream};
 
 #[derive(Default, Clone)]
 pub struct QualifiedRoot {

@@ -3,7 +3,6 @@ mod buffer;
 mod io_context;
 mod json;
 mod logger_mt;
-mod stream;
 mod thread_pool;
 mod toml;
 
@@ -12,7 +11,7 @@ pub use buffer::*;
 pub use io_context::*;
 pub use json::*;
 pub use logger_mt::{Logger, NullLogger};
-pub use stream::*;
+use rsnano_core::utils::{Stream, StreamExt};
 pub use thread_pool::*;
 pub use toml::*;
 

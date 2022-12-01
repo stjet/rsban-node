@@ -4,9 +4,10 @@ use crate::{
         parallel_traversal, AccountIterator, AccountStore, ReadTransaction, Transaction,
         WriteTransaction,
     },
-    utils::{Deserialize, StreamAdapter},
+    utils::Deserialize,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
+use rsnano_core::utils::StreamAdapter;
 use std::sync::Arc;
 
 use super::{as_write_txn, count, get, iterator::LmdbIteratorImpl, LmdbEnv};

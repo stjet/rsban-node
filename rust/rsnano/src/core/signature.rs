@@ -1,5 +1,6 @@
-use crate::utils::Stream;
 use std::fmt::Write;
+
+use rsnano_core::utils::Stream;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Signature {

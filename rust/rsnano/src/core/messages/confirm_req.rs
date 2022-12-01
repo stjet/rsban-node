@@ -4,9 +4,10 @@ use crate::{
         deserialize_block, serialized_block_size, BlockEnum, BlockHash, BlockType, BlockUniquer,
         Root,
     },
-    utils::{Deserialize, Serialize, Stream},
+    utils::{Deserialize, Serialize},
 };
 use anyhow::Result;
+use rsnano_core::utils::Stream;
 use std::{
     any::Any,
     fmt::{Debug, Write},
@@ -207,7 +208,9 @@ impl Debug for ConfirmReq {
 
 #[cfg(test)]
 mod tests {
-    use crate::{core::StateBlockBuilder, utils::MemoryStream};
+    use rsnano_core::utils::MemoryStream;
+
+    use crate::core::StateBlockBuilder;
 
     use super::*;
 

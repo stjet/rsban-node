@@ -1,5 +1,7 @@
 use std::sync::{Arc, Mutex};
 
+use rsnano_core::utils::{Stream, StreamAdapter};
+
 use crate::{
     config::NetworkConstants,
     core::{
@@ -11,7 +13,7 @@ use crate::{
         BlockUniquer,
     },
     transport::{Socket, SocketImpl},
-    utils::{ErrorCode, Stream, StreamAdapter},
+    utils::ErrorCode,
     voting::VoteUniquer,
 };
 

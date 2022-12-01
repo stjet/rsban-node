@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use crate::utils::Stream;
+use rsnano_core::utils::Stream;
 
 type WriteU8Callback = unsafe extern "C" fn(*mut c_void, u8) -> i32;
 type WriteBytesCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> i32;

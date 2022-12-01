@@ -3,10 +3,10 @@ use crate::{
         sign_message, to_hex_string, u64_from_hex_str, Account, Amount, BlockHash,
         BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature,
     },
-    utils::{Serialize, Stream},
+    utils::Serialize,
 };
 use anyhow::Result;
-use rsnano_core::utils::{PropertyTreeReader, PropertyTreeWriter};
+use rsnano_core::utils::{PropertyTreeReader, PropertyTreeWriter, Stream};
 
 use super::{Block, BlockSideband, BlockType, BlockVisitor, LazyBlockHash};
 
@@ -265,12 +265,9 @@ impl Block for SendBlock {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::TestPropertyTree;
+    use rsnano_core::utils::{MemoryStream, TestPropertyTree};
 
-    use crate::{
-        core::{validate_message, KeyPair},
-        utils::MemoryStream,
-    };
+    use crate::core::{validate_message, KeyPair};
 
     use super::*;
 

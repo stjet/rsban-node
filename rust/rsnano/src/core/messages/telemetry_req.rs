@@ -1,6 +1,7 @@
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
-use crate::{config::NetworkConstants, utils::Stream};
+use crate::config::NetworkConstants;
 use anyhow::Result;
+use rsnano_core::utils::Stream;
 use std::any::Any;
 
 #[derive(Clone)]

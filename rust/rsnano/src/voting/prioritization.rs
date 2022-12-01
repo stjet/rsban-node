@@ -1,4 +1,4 @@
-use crate::core::{BlockEnum, BlockType};
+use crate::core::{Amount, BlockEnum, BlockType};
 use std::{
     cmp::{max, Ordering},
     collections::BTreeSet,
@@ -48,8 +48,6 @@ impl ValueType {
     }
 }
 
-const BUCKET_COUNT: usize = 129;
-
 /// A container for holding blocks and their arrival/creation time.
 ///
 ///  The container consists of a number of buckets. Each bucket holds an ordered set of 'ValueType' items.
@@ -82,15 +80,27 @@ pub struct Prioritization {
 impl Prioritization {
     /// Prioritization constructor, construct a container containing approximately 'maximum' number of blocks.
     pub fn new(maximum: u64) -> Self {
-        let buckets = vec![BTreeSet::new(); BUCKET_COUNT];
-        let mut minimums = Vec::with_capacity(BUCKET_COUNT);
+        let mut minimums = Vec::new();
         minimums.push(0);
 
-        let mut minimum = 1;
-        for _ in 1..BUCKET_COUNT {
-            minimums.push(minimum);
-            minimum = minimum << 1;
-        }
+        let mut build_region = |begin: u128, end: u128, count: usize| {
+            let width = (end - begin) / (count as u128);
+            for i in 0..count {
+                minimums.push(begin + (i as u128 * width))
+            }
+        };
+
+        build_region(1 << 88, 1 << 92, 2);
+        build_region(1 << 92, 1 << 96, 4);
+        build_region(1 << 96, 1 << 100, 8);
+        build_region(1 << 100, 1 << 104, 16);
+        build_region(1 << 104, 1 << 108, 16);
+        build_region(1 << 108, 1 << 112, 8);
+        build_region(1 << 112, 1 << 116, 4);
+        build_region(1 << 116, 1 << 120, 2);
+        minimums.push(1 << 120);
+
+        let buckets = vec![BTreeSet::new(); minimums.len()];
 
         let mut schedule = Vec::with_capacity(buckets.len());
         for i in 0..buckets.len() {
@@ -164,21 +174,7 @@ impl Prioritization {
         };
         drop(block_lock);
 
-        let index = self
-            .minimums
-            .iter()
-            .enumerate()
-            .filter_map(|(i, min)| {
-                if balance.number() < *min {
-                    Some(i)
-                } else {
-                    None
-                }
-            })
-            .next()
-            .unwrap_or(self.minimums.len())
-            - 1;
-
+        let index = self.index(&balance);
         let bucket_count = self.buckets.len();
         let bucket = &mut self.buckets[index];
         bucket.insert(ValueType::new(time, block));
@@ -215,5 +211,21 @@ impl Prioritization {
             }
         }
         eprintln!("current: {}", self.schedule[self.current]);
+    }
+
+    pub fn index(&self, amount: &Amount) -> usize {
+        self.minimums
+            .iter()
+            .enumerate()
+            .filter_map(|(i, min)| {
+                if amount.number() < *min {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
+            .next()
+            .unwrap_or(self.minimums.len())
+            - 1
     }
 }

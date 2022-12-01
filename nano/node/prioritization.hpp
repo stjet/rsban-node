@@ -51,6 +51,7 @@ public:
 	bool empty () const;
 	void dump () const;
 	rsnano::PrioritizationHandle * handle;
+	std::size_t index (nano::uint128_t const & balance) const;
 
 	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const &);
 };

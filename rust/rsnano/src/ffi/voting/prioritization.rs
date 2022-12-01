@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 
+use crate::core::Amount;
 use crate::ffi::core::BlockHandle;
 use crate::voting::{Prioritization, ValueType};
 
@@ -103,4 +104,12 @@ pub unsafe extern "C" fn rsn_prioritization_top(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_prioritization_dump(handle: *mut PrioritizationHandle) {
     (*handle).0.dump()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_prioritization_index(
+    handle: *mut PrioritizationHandle,
+    amount: *const u8,
+) -> usize {
+    (*handle).0.index(&Amount::from_ptr(amount))
 }

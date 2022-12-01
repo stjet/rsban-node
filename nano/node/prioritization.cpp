@@ -44,6 +44,12 @@ nano::prioritization::prioritization (uint64_t maximum) :
 {
 }
 
+std::size_t nano::prioritization::index (nano::uint128_t const & balance) const
+{
+	nano::amount balance_amount{ balance };
+	return rsnano::rsn_prioritization_index (handle, balance_amount.bytes.data ());
+}
+
 /**
  * Push a block and its associated time into the prioritization container.
  * The time is given here because sideband might not exist in the case of state blocks.

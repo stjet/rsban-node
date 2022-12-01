@@ -171,7 +171,7 @@ void nano::election::broadcast_block (nano::confirmation_solicitor & solicitor_a
 void nano::election::broadcast_vote ()
 {
 	nano::unique_lock<nano::mutex> lock{ mutex };
-	if (last_vote + std::chrono::milliseconds (node.config.network_params.network.vote_broadcast_interval) < std::chrono::steady_clock::now ())
+	if (last_vote + std::chrono::milliseconds (node.config->network_params.network.vote_broadcast_interval) < std::chrono::steady_clock::now ())
 	{
 		broadcast_vote_impl ();
 		last_vote = std::chrono::steady_clock::now ();

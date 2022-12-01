@@ -1,9 +1,9 @@
 use std::sync::atomic::Ordering;
 
-use rsnano_core::Amount;
+use rsnano_core::{Amount, PendingKey};
 
 use crate::{
-    core::{Block, PendingKey},
+    core::Block,
     ledger::{datastore::WriteTransaction, ledger_tests::setup_legacy_open_block},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };

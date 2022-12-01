@@ -42,6 +42,12 @@ pub use epoch::{Epoch, Epochs};
 mod confirmation_height_info;
 pub use confirmation_height_info::ConfirmationHeightInfo;
 
+mod pending_key;
+pub use pending_key::PendingKey;
+
+mod pending_info;
+pub use pending_info::PendingInfo;
+
 use std::fmt::Write;
 use std::num::ParseIntError;
 

@@ -3,15 +3,12 @@ use std::sync::Arc;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
-    Account, BlockHash,
+    Account, BlockHash, PendingInfo, PendingKey,
 };
 
-use crate::{
-    core::{PendingInfo, PendingKey},
-    ledger::datastore::{
-        parallel_traversal_u512, pending_store::PendingIterator, PendingStore, ReadTransaction,
-        Transaction, WriteTransaction,
-    },
+use crate::ledger::datastore::{
+    parallel_traversal_u512, pending_store::PendingIterator, PendingStore, ReadTransaction,
+    Transaction, WriteTransaction,
 };
 
 use super::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl};

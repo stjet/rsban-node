@@ -1,7 +1,7 @@
-use rsnano_core::{Account, Amount, BlockHash, Epoch, KeyPair, Link};
+use rsnano_core::{Account, Amount, BlockHash, Epoch, KeyPair, Link, PendingKey};
 
 use crate::{
-    core::{Block, BlockBuilder, BlockDetails, BlockEnum, PendingKey, StateBlock},
+    core::{Block, BlockBuilder, BlockDetails, BlockEnum, StateBlock},
     ledger::{datastore::WriteTransaction, ProcessResult},
     DEV_GENESIS_ACCOUNT,
 };

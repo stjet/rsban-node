@@ -1,7 +1,7 @@
-use rsnano_core::Amount;
+use rsnano_core::{Amount, PendingKey};
 
 use crate::{
-    core::{Block, PendingKey},
+    core::Block,
     ledger::{
         datastore::WriteTransaction,
         ledger_tests::{setup_legacy_open_block, LedgerContext},

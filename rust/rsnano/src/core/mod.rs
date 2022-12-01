@@ -8,12 +8,6 @@ use rsnano_core::{
     BlockHash, RawKey,
 };
 
-mod pending_key;
-pub use pending_key::PendingKey;
-
-mod pending_info;
-pub use pending_info::PendingInfo;
-
 mod difficulty;
 #[cfg(test)]
 pub(crate) use difficulty::StubDifficulty;

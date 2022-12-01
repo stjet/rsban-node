@@ -1381,6 +1381,7 @@ dependencies = [
  "ctr",
  "ed25519-dalek-blake2b",
  "hex",
+ "num",
  "num-derive",
  "num-format",
  "num-traits",

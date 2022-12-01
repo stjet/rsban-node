@@ -1,11 +1,11 @@
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    Account, AccountInfo, Amount, BlockHash, ConfirmationHeightInfo, Epoch, Link, QualifiedRoot,
-    Root,
+    Account, AccountInfo, Amount, BlockHash, ConfirmationHeightInfo, Epoch, Link, PendingInfo,
+    PendingKey, QualifiedRoot, Root,
 };
 
 use crate::{
-    core::{Block, BlockEnum, BlockType, PendingInfo, PendingKey, SignatureVerification},
+    core::{Block, BlockEnum, BlockType, SignatureVerification},
     ffi::ledger::DependentBlockVisitor,
     ledger::{LedgerProcessor, RollbackVisitor},
     stats::{DetailType, Direction, Stat, StatType},

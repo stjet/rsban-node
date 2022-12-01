@@ -1,9 +1,8 @@
 use num::FromPrimitive;
-use rsnano_core::{Account, Amount, BlockHash, Epoch};
+use rsnano_core::{Account, Amount, BlockHash, Epoch, PendingInfo, PendingKey};
 use std::{ffi::c_void, sync::Arc};
 
 use crate::{
-    core::{PendingInfo, PendingKey},
     ffi::VoidPointerCallback,
     ledger::datastore::{lmdb::LmdbPendingStore, PendingStore},
 };

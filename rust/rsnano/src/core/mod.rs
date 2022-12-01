@@ -10,7 +10,7 @@ mod block_hash;
 pub use block_hash::{BlockHash, BlockHashBuilder};
 
 mod signature;
-use rsnano_core::utils::Stream;
+use rsnano_core::utils::{Deserialize, Serialize, Stream};
 pub use signature::Signature;
 
 mod qualified_root;
@@ -66,8 +66,7 @@ mod u256_struct;
 use once_cell::sync::Lazy;
 use std::{fmt::Write, net::Ipv6Addr, num::ParseIntError};
 
-use crate::utils::Serialize;
-use crate::{u256_struct, utils::Deserialize};
+use crate::u256_struct;
 
 pub(crate) fn encode_hex(i: u128) -> String {
     let mut result = String::with_capacity(32);
@@ -124,26 +123,6 @@ impl Deserialize for NoValue {
     type Target = Self;
     fn deserialize(_stream: &mut dyn Stream) -> anyhow::Result<NoValue> {
         Ok(NoValue {})
-    }
-}
-
-impl Serialize for [u8; 64] {
-    fn serialized_size() -> usize {
-        64
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_bytes(self)
-    }
-}
-
-impl Deserialize for [u8; 64] {
-    type Target = Self;
-
-    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
-        let mut buffer = [0; 64];
-        stream.read_bytes(&mut buffer, 64)?;
-        Ok(buffer)
     }
 }
 

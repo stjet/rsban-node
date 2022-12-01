@@ -1,10 +1,9 @@
 use crate::{
     config::NetworkConstants,
     core::{BlockHash, HashOrAccount},
-    utils::{Deserialize, Serialize},
 };
 use anyhow::Result;
-use rsnano_core::utils::Stream;
+use rsnano_core::utils::{Deserialize, Serialize, Stream};
 use std::{any::Any, mem::size_of};
 
 use super::{Message, MessageHeader, MessageType, MessageVisitor};

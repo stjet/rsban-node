@@ -1,6 +1,4 @@
-use rsnano_core::utils::{MutStreamAdapter, Stream};
-
-use crate::utils::{Deserialize, Serialize};
+use rsnano_core::utils::{Deserialize, MutStreamAdapter, Serialize, Stream};
 
 #[derive(Default, PartialEq, Eq, Debug)]
 pub struct EndpointKey {

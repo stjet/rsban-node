@@ -1,10 +1,6 @@
-use primitive_types::U512;
-use rsnano_core::utils::Stream;
-
-use crate::utils::Deserialize;
-use crate::utils::Serialize;
-
 use super::{Account, BlockHash};
+use primitive_types::U512;
+use rsnano_core::utils::{Deserialize, Serialize, Stream};
 
 #[derive(Default, PartialEq, Eq, Debug)]
 pub struct PendingKey {

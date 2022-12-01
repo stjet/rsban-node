@@ -71,7 +71,7 @@ macro_rules! u256_struct {
             }
         }
 
-        impl crate::utils::Serialize for $name {
+        impl rsnano_core::utils::Serialize for $name {
             fn serialized_size() -> usize {
                 32
             }
@@ -81,7 +81,7 @@ macro_rules! u256_struct {
             }
         }
 
-        impl crate::utils::Deserialize for $name {
+        impl rsnano_core::utils::Deserialize for $name {
             type Target = Self;
             fn deserialize(stream: &mut dyn rsnano_core::utils::Stream) -> anyhow::Result<Self> {
                 let mut result = Self::zero();

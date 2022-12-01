@@ -1,12 +1,8 @@
 use std::mem::size_of;
 
-use num::FromPrimitive;
-use rsnano_core::utils::Stream;
-
-use crate::utils::Deserialize;
-use crate::utils::Serialize;
-
 use super::{Account, Amount, Epoch};
+use num::FromPrimitive;
+use rsnano_core::utils::{Deserialize, Serialize, Stream};
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct PendingInfo {

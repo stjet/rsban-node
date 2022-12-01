@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_core::utils::StreamAdapter;
+use rsnano_core::utils::{Deserialize, StreamAdapter};
 
 use crate::{
     core::{Account, BlockHash, PendingInfo, PendingKey},
@@ -9,7 +9,6 @@ use crate::{
         parallel_traversal_u512, pending_store::PendingIterator, PendingStore, ReadTransaction,
         Transaction, WriteTransaction,
     },
-    utils::Deserialize,
 };
 
 use super::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl};

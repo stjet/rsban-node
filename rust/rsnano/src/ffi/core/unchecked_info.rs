@@ -1,11 +1,9 @@
 use std::{ffi::c_void, ops::Deref};
 
 use num::FromPrimitive;
+use rsnano_core::utils::{Deserialize, Serialize};
 
-use crate::{
-    core::{Account, UncheckedInfo},
-    utils::{Deserialize, Serialize},
-};
+use crate::core::{Account, UncheckedInfo};
 
 use crate::ffi::{core::BlockHandle, utils::FfiStream};
 

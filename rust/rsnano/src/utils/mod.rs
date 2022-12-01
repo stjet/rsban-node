@@ -11,7 +11,6 @@ pub use buffer::*;
 pub use io_context::*;
 pub use json::*;
 pub use logger_mt::{Logger, NullLogger};
-use rsnano_core::utils::{Stream, StreamExt};
 pub use thread_pool::*;
 pub use toml::*;
 
@@ -97,32 +96,5 @@ impl ErrorCode {
             val: 14,
             category: error_category::GENERIC,
         }
-    }
-}
-
-pub trait Serialize {
-    fn serialized_size() -> usize;
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;
-}
-
-pub trait Deserialize {
-    type Target;
-    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target>;
-}
-
-impl Serialize for u64 {
-    fn serialized_size() -> usize {
-        std::mem::size_of::<u64>()
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_u64_be(*self)
-    }
-}
-
-impl Deserialize for u64 {
-    type Target = Self;
-    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<u64> {
-        stream.read_u64_be()
     }
 }

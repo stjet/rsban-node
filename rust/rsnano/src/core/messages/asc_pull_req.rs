@@ -1,6 +1,6 @@
-use crate::{config::NetworkConstants, core::HashOrAccount, utils::Deserialize};
+use crate::{config::NetworkConstants, core::HashOrAccount};
 use num_traits::FromPrimitive;
-use rsnano_core::utils::{MemoryStream, Stream, StreamExt};
+use rsnano_core::utils::{Deserialize, MemoryStream, Stream, StreamExt};
 use std::{any::Any, mem::size_of};
 
 use super::{Message, MessageHeader, MessageType, MessageVisitor};

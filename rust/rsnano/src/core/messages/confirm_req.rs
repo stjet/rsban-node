@@ -4,10 +4,9 @@ use crate::{
         deserialize_block, serialized_block_size, BlockEnum, BlockHash, BlockType, BlockUniquer,
         Root,
     },
-    utils::{Deserialize, Serialize},
 };
 use anyhow::Result;
-use rsnano_core::utils::Stream;
+use rsnano_core::utils::{Deserialize, Serialize, Stream};
 use std::{
     any::Any,
     fmt::{Debug, Write},

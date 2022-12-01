@@ -1,6 +1,7 @@
 use std::ffi::c_void;
 
-use crate::utils::{Deserialize, Serialize};
+use rsnano_core::utils::{Deserialize, Serialize};
+
 use crate::{
     core::{BlockHash, ConfirmationHeightInfo},
     ffi::utils::FfiStream,

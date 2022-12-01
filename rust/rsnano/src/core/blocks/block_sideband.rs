@@ -1,10 +1,7 @@
 use num::FromPrimitive;
-use rsnano_core::utils::Stream;
+use rsnano_core::utils::{Deserialize, Serialize, Stream};
 
-use crate::{
-    core::{Account, Amount, BlockHash, Epoch},
-    utils::{Deserialize, Serialize},
-};
+use crate::core::{Account, Amount, BlockHash, Epoch};
 
 use super::{BlockDetails, BlockType};
 

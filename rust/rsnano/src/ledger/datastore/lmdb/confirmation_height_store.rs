@@ -1,5 +1,5 @@
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_core::utils::StreamAdapter;
+use rsnano_core::utils::{Deserialize, StreamAdapter};
 use std::sync::Arc;
 
 use crate::{
@@ -8,7 +8,6 @@ use crate::{
         confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
         ConfirmationHeightStore, ReadTransaction, Transaction, WriteTransaction,
     },
-    utils::Deserialize,
 };
 
 use super::{as_write_txn, count, exists, get, LmdbEnv, LmdbIteratorImpl};

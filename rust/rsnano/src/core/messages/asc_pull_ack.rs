@@ -3,10 +3,9 @@ use crate::{
     core::{
         deserialize_block_enum, serialize_block_enum, Account, BlockEnum, BlockHash, BlockType,
     },
-    utils::{Deserialize, Serialize},
 };
 use num_traits::FromPrimitive;
-use rsnano_core::utils::{MemoryStream, Stream, StreamExt};
+use rsnano_core::utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt};
 use std::{any::Any, mem::size_of};
 
 use super::{AscPullPayloadId, Message, MessageHeader, MessageType, MessageVisitor};

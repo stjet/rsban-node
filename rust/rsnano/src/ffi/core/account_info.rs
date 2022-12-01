@@ -6,9 +6,9 @@ use std::{
 use crate::{
     core::{Account, AccountInfo, Amount, BlockHash, Epoch},
     ffi::utils::FfiStream,
-    utils::{Deserialize, Serialize},
 };
 use num_traits::FromPrimitive;
+use rsnano_core::utils::{Deserialize, Serialize};
 
 pub struct AccountInfoHandle(AccountInfo);
 

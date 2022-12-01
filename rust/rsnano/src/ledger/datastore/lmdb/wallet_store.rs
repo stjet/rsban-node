@@ -7,12 +7,11 @@ use std::{
 };
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_core::utils::StreamAdapter;
+use rsnano_core::utils::{Deserialize, StreamAdapter};
 
 use crate::{
     core::{deterministic_key, Account, PublicKey, RawKey},
     ledger::datastore::{iterator::DbIterator, Fans, Transaction, WalletValue, WriteTransaction},
-    utils::Deserialize,
     wallet::KeyDerivationFunction,
 };
 

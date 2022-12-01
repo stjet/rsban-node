@@ -37,6 +37,7 @@ pub struct NetworkConstants {
     pub protocol_version_min: u8,
     pub ipv6_subnetwork_prefix_for_limiting: usize,
     pub silent_connection_tolerance_time_s: i64,
+    /// Time to wait before vote rebroadcasts for active elections (milliseconds)
     pub vote_broadcast_interval_ms: i64,
 }
 
@@ -78,7 +79,7 @@ impl NetworkConstants {
             peer_dump_interval_s: 5 * 60,
             ipv6_subnetwork_prefix_for_limiting: 64,
             silent_connection_tolerance_time_s: 120,
-            vote_broadcast_interval_ms: 1000,
+            vote_broadcast_interval_ms: 15 * 1000,
         }
     }
 
@@ -120,7 +121,7 @@ impl NetworkConstants {
             max_peers_per_ip,
             max_peers_per_subnetwork: max_peers_per_ip * 4,
             peer_dump_interval_s: 1,
-            vote_broadcast_interval_ms: 100,
+            vote_broadcast_interval_ms: 500,
             ..Self::live(work)
         }
     }

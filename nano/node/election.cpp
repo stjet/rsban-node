@@ -26,8 +26,7 @@ nano::election::election (nano::node & node_a, std::shared_ptr<nano::block> cons
 	status{},
 	height (block_a->sideband ().height ()),
 	root (block_a->root ()),
-	qualified_root (block_a->qualified_root ()),
-	vote_broadcast_interval{ node.config->network_params.network.vote_broadcast_interval }
+	qualified_root (block_a->qualified_root ())
 {
 	status.set_winner (block_a);
 	status.set_election_end (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()));
@@ -171,14 +170,11 @@ void nano::election::broadcast_block (nano::confirmation_solicitor & solicitor_a
 
 void nano::election::broadcast_vote ()
 {
-	debug_assert (vote_broadcast_interval > 0);
-
 	nano::unique_lock<nano::mutex> lock{ mutex };
-	if (last_vote + std::chrono::milliseconds (vote_broadcast_interval) < std::chrono::steady_clock::now ())
+	if (last_vote + std::chrono::milliseconds (node.config.network_params.network.vote_broadcast_interval) < std::chrono::steady_clock::now ())
 	{
 		broadcast_vote_impl ();
 		last_vote = std::chrono::steady_clock::now ();
-		vote_broadcast_interval = std::min (vote_broadcast_interval * 2, node.config->network_params.network.max_vote_broadcast_interval);
 	}
 }
 

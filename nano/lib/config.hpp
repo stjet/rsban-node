@@ -213,10 +213,8 @@ public:
 	size_t max_peers_per_subnetwork;
 	size_t ipv6_subnetwork_prefix_for_limiting;
 	std::chrono::seconds peer_dump_interval;
-	/** Time to wait before vote rebroadcasts for active elections, this is doubled for each broadcast, up to `max_vote_broadcast_interval` (milliseconds) */
+	/** Time to wait before vote rebroadcasts for active elections (milliseconds) */
 	uint64_t vote_broadcast_interval;
-	/** Maximum interval for vote broadcasts for active elections (milliseconds) */
-	static uint64_t constexpr max_vote_broadcast_interval{ 16 * 1000 };
 
 	/** Returns the network this object contains values for */
 	nano::networks network () const;

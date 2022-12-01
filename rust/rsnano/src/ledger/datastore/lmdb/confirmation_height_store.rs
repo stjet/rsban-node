@@ -1,16 +1,13 @@
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
-    Account,
+    Account, ConfirmationHeightInfo,
 };
 use std::sync::Arc;
 
-use crate::{
-    core::ConfirmationHeightInfo,
-    ledger::datastore::{
-        confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
-        ConfirmationHeightStore, ReadTransaction, Transaction, WriteTransaction,
-    },
+use crate::ledger::datastore::{
+    confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
+    ConfirmationHeightStore, ReadTransaction, Transaction, WriteTransaction,
 };
 
 use super::{as_write_txn, count, exists, get, LmdbEnv, LmdbIteratorImpl};

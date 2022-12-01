@@ -28,9 +28,6 @@ pub use blocks::*;
 mod unchecked_info;
 pub use unchecked_info::{SignatureVerification, UncheckedInfo, UncheckedKey};
 
-mod confirmation_height_info;
-pub use confirmation_height_info::ConfirmationHeightInfo;
-
 mod uniquer;
 pub use uniquer::Uniquer;
 

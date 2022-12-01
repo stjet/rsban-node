@@ -39,6 +39,9 @@ pub use account_info::AccountInfo;
 mod epoch;
 pub use epoch::{Epoch, Epochs};
 
+mod confirmation_height_info;
+pub use confirmation_height_info::ConfirmationHeightInfo;
+
 use std::fmt::Write;
 use std::num::ParseIntError;
 

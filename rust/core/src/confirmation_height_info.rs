@@ -1,4 +1,4 @@
-use rsnano_core::{
+use crate::{
     utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
     BlockHash,
 };

@@ -7,11 +7,10 @@ use std::{
 
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
-use rsnano_core::{utils::PropertyTreeWriter, AccountInfo, Amount, Epoch};
+use rsnano_core::{utils::PropertyTreeWriter, AccountInfo, Amount, ConfirmationHeightInfo, Epoch};
 
 use crate::{
     config::TxnTrackingConfig,
-    core::ConfirmationHeightInfo,
     ledger::{
         datastore::{
             AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore,

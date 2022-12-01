@@ -1,7 +1,6 @@
-use rsnano_core::Account;
+use rsnano_core::{Account, ConfirmationHeightInfo};
 
 use super::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
-use crate::core::ConfirmationHeightInfo;
 
 pub type ConfirmationHeightIterator = Box<dyn DbIterator<Account, ConfirmationHeightInfo>>;
 

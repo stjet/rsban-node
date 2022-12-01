@@ -1,9 +1,8 @@
 use std::{ffi::c_void, sync::Arc};
 
-use rsnano_core::Account;
+use rsnano_core::{Account, ConfirmationHeightInfo};
 
 use crate::{
-    core::ConfirmationHeightInfo,
     ffi::{ConfirmationHeightInfoDto, VoidPointerCallback},
     ledger::datastore::{lmdb::LmdbConfirmationHeightStore, ConfirmationHeightStore},
 };

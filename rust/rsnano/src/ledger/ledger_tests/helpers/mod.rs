@@ -3,9 +3,10 @@ mod ledger_context;
 
 pub(crate) use account_block_factory::AccountBlockFactory;
 pub(crate) use ledger_context::LedgerContext;
+use rsnano_core::Amount;
 
 use crate::{
-    core::{Amount, Block, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock},
+    core::{Block, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock},
     ledger::datastore::WriteTransaction,
 };
 

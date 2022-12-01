@@ -4,11 +4,14 @@ use std::{
 };
 
 use crate::{
-    core::{Account, AccountInfo, Amount, BlockHash, Epoch},
+    core::{AccountInfo, Epoch},
     ffi::utils::FfiStream,
 };
 use num_traits::FromPrimitive;
-use rsnano_core::utils::{Deserialize, Serialize};
+use rsnano_core::{
+    utils::{Deserialize, Serialize},
+    Account, Amount, BlockHash,
+};
 
 pub struct AccountInfoHandle(AccountInfo);
 

@@ -1,9 +1,12 @@
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_core::utils::{Deserialize, StreamAdapter};
+use rsnano_core::{
+    utils::{Deserialize, StreamAdapter},
+    Account,
+};
 use std::sync::Arc;
 
 use crate::{
-    core::{Account, ConfirmationHeightInfo},
+    core::ConfirmationHeightInfo,
     ledger::datastore::{
         confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
         ConfirmationHeightStore, ReadTransaction, Transaction, WriteTransaction,
@@ -115,8 +118,10 @@ impl ConfirmationHeightStore for LmdbConfirmationHeightStore {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::BlockHash;
+
     use super::*;
-    use crate::{core::BlockHash, ledger::datastore::lmdb::TestLmdbEnv};
+    use crate::ledger::datastore::lmdb::TestLmdbEnv;
 
     #[test]
     fn empty_store() -> anyhow::Result<()> {

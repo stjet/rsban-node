@@ -1,10 +1,10 @@
 use std::{ffi::c_void, sync::Arc};
 
 use crate::{
-    core::{Account, BlockHash},
     ffi::{copy_account_bytes, VoidPointerCallback},
     ledger::datastore::{lmdb::LmdbFrontierStore, FrontierStore},
 };
+use rsnano_core::{Account, BlockHash};
 
 use super::{
     iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},

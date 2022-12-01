@@ -1,5 +1,7 @@
+use rsnano_core::BlockHash;
+
 use crate::core::{
-    Block, BlockHash, BlockVisitor, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+    Block, BlockVisitor, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 
 use super::datastore::{Store, Transaction};

@@ -1,13 +1,12 @@
+use rsnano_core::{Account, BlockHash};
+
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use crate::{
-    core::{
-        messages::{
-            AccountInfoAckPayload, AscPullAck, AscPullAckPayload, BlocksAckPayload, Message,
-        },
-        Account, BlockHash,
+    core::messages::{
+        AccountInfoAckPayload, AscPullAck, AscPullAckPayload, BlocksAckPayload, Message,
     },
     ffi::{
         core::{copy_block_array_dto, BlockArrayDto, BlockHandle},

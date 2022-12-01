@@ -1,13 +1,12 @@
 #[cfg(test)]
 use mock_instant::Instant;
+use rsnano_core::{BlockHash, Root};
 #[cfg(not(test))]
 use std::time::Instant;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     time::Duration,
 };
-
-use crate::core::{BlockHash, Root};
 
 pub struct VoteSpacing {
     delay: Duration,

@@ -1,4 +1,4 @@
-use crate::core::Amount;
+use rsnano_core::Amount;
 
 use super::{DbIterator, Transaction, WriteTransaction};
 

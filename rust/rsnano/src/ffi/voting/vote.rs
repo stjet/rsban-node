@@ -4,11 +4,9 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::{
-    core::{Account, BlockHash, FullHash, RawKey, Signature},
-    ffi::utils::FfiStream,
-    voting::Vote,
-};
+use rsnano_core::{Account, BlockHash, RawKey, Signature};
+
+use crate::{core::FullHash, ffi::utils::FfiStream, voting::Vote};
 
 use crate::ffi::{FfiPropertyTreeWriter, StringDto};
 

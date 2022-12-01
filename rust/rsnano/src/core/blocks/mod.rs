@@ -19,12 +19,14 @@ pub use change_block::*;
 use num::FromPrimitive;
 pub use open_block::*;
 pub use receive_block::*;
-use rsnano_core::utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream};
+use rsnano_core::{
+    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
+    Account, Amount, BlockHash, BlockHashBuilder, Link, Root, Signature,
+};
 pub use send_block::*;
 pub use state_block::*;
 
-use super::{Amount, FullHash, QualifiedRoot, Uniquer, WorkVersion};
-use crate::core::{Account, BlockHash, BlockHashBuilder, Link, Root, Signature};
+use super::{FullHash, QualifiedRoot, Uniquer, WorkVersion};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]

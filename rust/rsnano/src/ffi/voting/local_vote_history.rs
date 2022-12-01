@@ -1,7 +1,5 @@
-use crate::{
-    core::{BlockHash, Root},
-    voting::LocalVoteHistory,
-};
+use crate::voting::LocalVoteHistory;
+use rsnano_core::{BlockHash, Root};
 
 use super::vote::VoteHandle;
 

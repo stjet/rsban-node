@@ -1,5 +1,7 @@
+use rsnano_core::Root;
+
 use super::{WorkGenerator, WorkRng, WorkTicket, XorShift1024Star};
-use crate::core::{Difficulty, DifficultyV1, Root, WorkVersion};
+use crate::core::{Difficulty, DifficultyV1, WorkVersion};
 #[cfg(test)]
 use std::sync::{Arc, Mutex};
 use std::{thread, time::Duration};

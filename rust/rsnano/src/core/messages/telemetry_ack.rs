@@ -1,7 +1,7 @@
 use crate::config::NetworkConstants;
-use crate::core::{sign_message, validate_message, Account, BlockHash, KeyPair, Signature};
 use anyhow::Result;
 use rsnano_core::utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt};
+use rsnano_core::{sign_message, validate_message, Account, BlockHash, KeyPair, Signature};
 use std::any::Any;
 use std::mem::size_of;
 use std::time::{Duration, SystemTime};

@@ -1,6 +1,6 @@
+
 use crate::{
     config::{NetworkConstants, NodeConfig},
-    core::{Account, KeyPair},
     ffi::{
         core::{messages::FfiMessageVisitor, BlockUniquerHandle},
         transport::{
@@ -20,6 +20,7 @@ use crate::{
     utils::Logger,
     NetworkParams,
 };
+use rsnano_core::{Account, KeyPair};
 use std::{
     ffi::c_void,
     net::SocketAddr,

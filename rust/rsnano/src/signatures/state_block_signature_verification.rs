@@ -5,8 +5,10 @@ use std::{
     time::Duration,
 };
 
+use rsnano_core::{Account, BlockHash, PublicKey, Signature};
+
 use crate::{
-    core::{Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature, SignatureVerification},
+    core::{BlockEnum, Epochs, SignatureVerification},
     utils::{Logger, NullLogger},
 };
 
@@ -301,8 +303,10 @@ impl StateBlockSignatureVerificationThread {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::KeyPair;
+
     use super::*;
-    use crate::core::{BlockEnum, KeyPair, StateBlockBuilder};
+    use crate::core::{BlockEnum, StateBlockBuilder};
 
     #[test]
     fn verify_one_block() {

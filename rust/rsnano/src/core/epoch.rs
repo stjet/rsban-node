@@ -1,5 +1,6 @@
-use crate::core::{Link, PublicKey};
 use std::collections::HashMap;
+
+use rsnano_core::{Link, PublicKey};
 
 /**
  * Tag for which epoch an entry belongs to

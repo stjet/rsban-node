@@ -1,3 +1,5 @@
+use rsnano_core::{Account, BlockHash, KeyPair, Signature};
+
 use crate::{core::messages::Message, ffi::utils::FfiStream};
 use std::{
     ffi::c_void,
@@ -5,10 +7,7 @@ use std::{
 };
 
 use crate::{
-    core::{
-        messages::{TelemetryAck, TelemetryData},
-        Account, BlockHash, KeyPair, Signature,
-    },
+    core::messages::{TelemetryAck, TelemetryData},
     ffi::{copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto},
 };
 

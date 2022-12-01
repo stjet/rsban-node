@@ -1,7 +1,7 @@
+use rsnano_core::BlockHash;
+
 use crate::{
-    core::{
-        Block, BlockHash, BlockVisitor, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
-    },
+    core::{Block, BlockVisitor, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock},
     ledger::{datastore::Transaction, Ledger, LedgerConstants},
 };
 

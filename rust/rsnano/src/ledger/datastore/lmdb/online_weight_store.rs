@@ -1,12 +1,10 @@
 use std::sync::Arc;
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
+use rsnano_core::Amount;
 
-use crate::{
-    core::Amount,
-    ledger::datastore::{
-        online_weight_store::OnlineWeightIterator, OnlineWeightStore, Transaction, WriteTransaction,
-    },
+use crate::ledger::datastore::{
+    online_weight_store::OnlineWeightIterator, OnlineWeightStore, Transaction, WriteTransaction,
 };
 
 use super::{as_write_txn, count, LmdbEnv, LmdbIteratorImpl};

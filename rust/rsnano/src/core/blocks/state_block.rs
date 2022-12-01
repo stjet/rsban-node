@@ -1,10 +1,9 @@
-use crate::core::{
-    sign_message, to_hex_string, u64_from_hex_str, Account, Amount, BlockHash, BlockHashBuilder,
-    Link, PublicKey, RawKey, Root, Signature,
-};
-
 use anyhow::Result;
-use rsnano_core::utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream};
+use rsnano_core::{
+    sign_message, to_hex_string, u64_from_hex_str,
+    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
+    Account, Amount, BlockHash, BlockHashBuilder, Link, PublicKey, RawKey, Root, Signature,
+};
 
 use super::{Block, BlockSideband, BlockType, BlockVisitor, LazyBlockHash};
 

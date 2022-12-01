@@ -1,11 +1,12 @@
 use anyhow::Result;
-use rsnano_core::utils::{Deserialize, PropertyTreeWriter, Serialize, Stream};
+use rsnano_core::{
+    sign_message,
+    utils::{Deserialize, PropertyTreeWriter, Serialize, Stream},
+    validate_message, Account, BlockHash, BlockHashBuilder, RawKey, Signature,
+};
 use std::{sync::RwLock, time::Duration};
 
-use crate::core::{
-    sign_message, validate_message, Account, BlockHash, BlockHashBuilder, FullHash, RawKey,
-    Signature,
-};
+use crate::core::FullHash;
 
 #[derive(Clone)]
 pub struct Vote {

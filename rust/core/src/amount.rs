@@ -1,6 +1,6 @@
-use crate::core::MXRB_RATIO;
+use crate::utils::{Deserialize, Serialize, Stream};
 use anyhow::Result;
-use rsnano_core::utils::{Deserialize, Serialize, Stream};
+use once_cell::sync::Lazy;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct Amount {
@@ -96,6 +96,12 @@ impl Amount {
     pub fn wrapping_sub(&self, other: Amount) -> Amount {
         self.value.wrapping_sub(other.value).into()
     }
+
+    pub unsafe fn from_ptr(ptr: *const u8) -> Self {
+        let mut bytes = [0; 16];
+        bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 16));
+        Amount::from_be_bytes(bytes)
+    }
 }
 
 impl From<u128> for Amount {
@@ -152,9 +158,17 @@ impl std::cmp::PartialOrd for Amount {
     }
 }
 
+pub static XRB_RATIO: Lazy<u128> = Lazy::new(|| str::parse("1000000000000000000000000").unwrap()); // 10^24
+pub static KXRB_RATIO: Lazy<u128> =
+    Lazy::new(|| str::parse("1000000000000000000000000000").unwrap()); // 10^27
+pub static MXRB_RATIO: Lazy<u128> =
+    Lazy::new(|| str::parse("1000000000000000000000000000000").unwrap()); // 10^30
+pub static GXRB_RATIO: Lazy<u128> =
+    Lazy::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
+
 #[cfg(test)]
 mod tests {
-    use crate::core::{KXRB_RATIO, XRB_RATIO};
+    use crate::{KXRB_RATIO, XRB_RATIO};
 
     use super::*;
 

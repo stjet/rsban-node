@@ -1375,7 +1375,17 @@ dependencies = [
 name = "rsnano_core"
 version = "0.1.0"
 dependencies = [
+ "aes",
  "anyhow",
+ "blake2",
+ "ctr",
+ "ed25519-dalek-blake2b",
+ "hex",
+ "num-format",
+ "num-traits",
+ "once_cell",
+ "primitive-types",
+ "rand",
 ]
 
 [[package]]

@@ -1,7 +1,8 @@
 use std::{net::SocketAddr, ops::Deref};
 
+use rsnano_core::Account;
+
 use crate::{
-    core::Account,
     ffi::{copy_account_bytes, core::messages::MessageHandle},
     transport::TcpMessageItem,
 };

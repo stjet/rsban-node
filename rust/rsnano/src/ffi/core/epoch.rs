@@ -1,5 +1,6 @@
-use crate::core::{Epochs, Link, PublicKey};
+use crate::core::Epochs;
 use num::FromPrimitive;
+use rsnano_core::{Link, PublicKey};
 use std::convert::TryInto;
 
 pub struct EpochsHandle {

@@ -1,7 +1,8 @@
 use std::{ffi::c_void, sync::Arc};
 
+use rsnano_core::BlockHash;
+
 use crate::{
-    core::BlockHash,
     ffi::{copy_hash_bytes, VoidPointerCallback},
     ledger::datastore::{lmdb::LmdbPrunedStore, PrunedStore},
 };

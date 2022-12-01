@@ -4,8 +4,9 @@ use std::{
     sync::Arc,
 };
 
+use rsnano_core::Account;
+
 use crate::{
-    core::Account,
     ffi::{core::AccountInfoHandle, VoidPointerCallback},
     ledger::datastore::{lmdb::LmdbAccountStore, AccountStore},
 };

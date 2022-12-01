@@ -45,7 +45,7 @@ impl BitXorAssign for RawKey {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::{KeyPair, PublicKey};
+    use crate::{KeyPair, PublicKey};
 
     use super::*;
 

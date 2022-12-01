@@ -4,9 +4,12 @@ use std::{
 };
 
 use num_traits::FromPrimitive;
-use rsnano_core::utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt};
+use rsnano_core::{
+    utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
+    Account,
+};
 
-use crate::core::{deserialize_block_enum, serialize_block_enum, Account, BlockEnum};
+use crate::core::{deserialize_block_enum, serialize_block_enum, BlockEnum};
 
 use super::BlockHash;
 

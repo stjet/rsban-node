@@ -1,13 +1,12 @@
 #[cfg(test)]
 use mock_instant::Instant;
+use rsnano_core::{BlockHash, HashOrAccount};
 #[cfg(not(test))]
 use std::time::Instant;
 use std::{
     collections::{BTreeMap, HashMap},
     mem::size_of,
 };
-
-use crate::core::{BlockHash, HashOrAccount};
 
 type AccountHead = [u8; 64];
 

@@ -1,10 +1,10 @@
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
-use crate::{
-    config::NetworkConstants,
-    core::{Account, Signature},
-};
+use crate::config::NetworkConstants;
 use anyhow::Result;
-use rsnano_core::utils::{Deserialize, Serialize, Stream};
+use rsnano_core::{
+    utils::{Deserialize, Serialize, Stream},
+    Account, Signature,
+};
 use std::any::Any;
 
 #[derive(Clone)]

@@ -6,13 +6,11 @@ use super::{
     MessageHandle, MessageHeaderHandle,
 };
 use crate::{
-    core::{
-        messages::{BulkPullAccount, BulkPullAccountFlags},
-        Account, Amount,
-    },
+    core::messages::{BulkPullAccount, BulkPullAccountFlags},
     ffi::{copy_account_bytes, copy_amount_bytes, NetworkConstantsDto},
 };
 use num_traits::FromPrimitive;
+use rsnano_core::{Account, Amount};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_account_create(

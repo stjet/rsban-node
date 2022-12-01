@@ -4,6 +4,7 @@ macro_rules! u256_struct {
         #[derive(PartialEq, Eq, Clone, Copy, Hash, Default, Debug)]
         pub struct $name([u8; 32]);
 
+        #[allow(dead_code)]
         impl $name {
             pub const fn zero() -> Self {
                 Self([0; 32])
@@ -71,19 +72,19 @@ macro_rules! u256_struct {
             }
         }
 
-        impl rsnano_core::utils::Serialize for $name {
+        impl crate::utils::Serialize for $name {
             fn serialized_size() -> usize {
                 32
             }
 
-            fn serialize(&self, stream: &mut dyn rsnano_core::utils::Stream) -> anyhow::Result<()> {
+            fn serialize(&self, stream: &mut dyn crate::utils::Stream) -> anyhow::Result<()> {
                 stream.write_bytes(&self.0)
             }
         }
 
-        impl rsnano_core::utils::Deserialize for $name {
+        impl crate::utils::Deserialize for $name {
             type Target = Self;
-            fn deserialize(stream: &mut dyn rsnano_core::utils::Stream) -> anyhow::Result<Self> {
+            fn deserialize(stream: &mut dyn crate::utils::Stream) -> anyhow::Result<Self> {
                 let mut result = Self::zero();
                 stream.read_bytes(&mut result.0, 32)?;
                 Ok(result)
@@ -108,7 +109,7 @@ macro_rules! u256_struct {
 
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                crate::core::write_hex_bytes(&self.0, f)
+                crate::write_hex_bytes(&self.0, f)
             }
         }
     };

@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_core::utils::{Deserialize, StreamAdapter};
+use rsnano_core::{
+    utils::{Deserialize, StreamAdapter},
+    Account, BlockHash,
+};
 
 use crate::{
-    core::{Account, BlockHash, PendingInfo, PendingKey},
+    core::{PendingInfo, PendingKey},
     ledger::datastore::{
         parallel_traversal_u512, pending_store::PendingIterator, PendingStore, ReadTransaction,
         Transaction, WriteTransaction,
@@ -113,11 +116,10 @@ impl PendingStore for LmdbPendingStore {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::Amount;
+
     use super::*;
-    use crate::{
-        core::{Amount, Epoch},
-        ledger::datastore::lmdb::TestLmdbEnv,
-    };
+    use crate::{core::Epoch, ledger::datastore::lmdb::TestLmdbEnv};
 
     #[test]
     fn not_found() -> anyhow::Result<()> {

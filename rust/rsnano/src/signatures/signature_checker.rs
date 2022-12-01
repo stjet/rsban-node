@@ -1,7 +1,7 @@
 use anyhow::Result;
 use scoped_threadpool::Pool;
 
-use crate::core::{validate_message_batch, PublicKey, Signature};
+use rsnano_core::{validate_message_batch, PublicKey, Signature};
 use std::{
     hint::spin_loop,
     sync::{
@@ -362,8 +362,10 @@ mod tests {
     }
 
     mod signature_checker {
+        use rsnano_core::{Amount, BlockHash, KeyPair, Link};
+
         use super::*;
-        use crate::core::{Amount, Block, BlockHash, KeyPair, Link, StateBlock};
+        use crate::core::{Block, StateBlock};
 
         // original test: signature_checker.empty
         #[test]

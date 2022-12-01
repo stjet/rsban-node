@@ -1,7 +1,7 @@
+use rsnano_core::{Account, Amount, KeyPair};
+
 use crate::{
-    core::{
-        Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, OpenBlock,
-    },
+    core::{Block, BlockDetails, BlockHash, BlockSideband, Epoch, OpenBlock},
     work::DEV_WORK_POOL,
 };
 
@@ -99,11 +99,10 @@ impl LegacyOpenBlockBuilder {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::Signature;
+
     use super::*;
-    use crate::{
-        core::{BlockBuilder, Signature},
-        DEV_NETWORK_PARAMS,
-    };
+    use crate::{core::BlockBuilder, DEV_NETWORK_PARAMS};
 
     #[test]
     fn create_open_block() {

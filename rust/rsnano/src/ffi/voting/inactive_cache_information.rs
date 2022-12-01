@@ -1,11 +1,8 @@
 use crate::{
-    core::{Account, BlockHash},
-    ffi::voting::inactive_cache_status::InactiveCacheStatusHandle,
-};
-use crate::{
-    ffi::{copy_hash_bytes, StringDto},
+    ffi::{copy_hash_bytes, voting::inactive_cache_status::InactiveCacheStatusHandle, StringDto},
     voting::InactiveCacheInformation,
 };
+use rsnano_core::{Account, BlockHash};
 
 pub struct InactiveCacheInformationHandle(InactiveCacheInformation);
 

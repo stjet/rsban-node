@@ -23,6 +23,7 @@ pub use channel_udp::ChannelUdp;
 pub use message_deserializer::{MessageDeserializer, MessageDeserializerExt, ParseStatus};
 pub use network_filter::NetworkFilter;
 pub use peer_exclusion::PeerExclusion;
+use rsnano_core::Account;
 pub use socket::*;
 pub use syn_cookies::SynCookies;
 pub use tcp_channels::TcpChannels;
@@ -33,8 +34,6 @@ pub use tcp_server::{
     TcpServerExt, TcpServerObserver,
 };
 use token_bucket::TokenBucket;
-
-use crate::core::Account;
 
 pub trait Channel {
     fn is_temporary(&self) -> bool;

@@ -1,13 +1,11 @@
 use std::{ffi::c_void, sync::Arc};
 
 use num::FromPrimitive;
+use rsnano_core::Account;
 
-use crate::{
-    core::Account,
-    signatures::{
-        StateBlockSignatureVerification, StateBlockSignatureVerificationResult,
-        StateBlockSignatureVerificationValue,
-    },
+use crate::signatures::{
+    StateBlockSignatureVerification, StateBlockSignatureVerificationResult,
+    StateBlockSignatureVerificationValue,
 };
 
 use crate::ffi::{

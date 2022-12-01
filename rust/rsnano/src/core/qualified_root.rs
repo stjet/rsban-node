@@ -1,6 +1,8 @@
-use super::{BlockHash, Root};
 use primitive_types::U512;
-use rsnano_core::utils::{Deserialize, MutStreamAdapter, Serialize, Stream};
+use rsnano_core::{
+    utils::{Deserialize, MutStreamAdapter, Serialize, Stream},
+    BlockHash, Root,
+};
 
 #[derive(Default, Clone)]
 pub struct QualifiedRoot {

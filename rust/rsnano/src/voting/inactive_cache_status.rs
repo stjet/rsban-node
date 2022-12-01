@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::core::Amount;
+use rsnano_core::Amount;
 
 /// Information on the status of the inactive cache
 #[derive(Clone, Default, PartialEq, Eq)]

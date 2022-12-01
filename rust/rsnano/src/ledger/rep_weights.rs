@@ -1,7 +1,8 @@
-use crate::core::{Account, Amount};
 use std::collections::HashMap;
 use std::mem::size_of;
 use std::sync::{Mutex, MutexGuard};
+
+use rsnano_core::{Account, Amount};
 
 pub struct RepWeights {
     rep_amounts: Mutex<HashMap<Account, Amount>>,

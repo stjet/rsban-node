@@ -1,11 +1,11 @@
 use std::ffi::c_void;
 
-use rsnano_core::utils::{Deserialize, Serialize};
-
-use crate::{
-    core::{BlockHash, ConfirmationHeightInfo},
-    ffi::utils::FfiStream,
+use rsnano_core::{
+    utils::{Deserialize, Serialize},
+    BlockHash,
 };
+
+use crate::{core::ConfirmationHeightInfo, ffi::utils::FfiStream};
 
 #[repr(C)]
 pub struct ConfirmationHeightInfoDto {

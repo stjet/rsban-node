@@ -4,7 +4,9 @@ use std::{
     sync::{Arc, Condvar, Mutex},
 };
 
-use crate::core::{messages::Message, Account};
+use rsnano_core::Account;
+
+use crate::core::messages::Message;
 
 use super::SocketImpl;
 
@@ -120,6 +122,8 @@ const MAX_ENTRIES_PER_CONNECTION: usize = 16;
 #[cfg(test)]
 mod tests {
     use std::thread::spawn;
+
+    use rsnano_core::Account;
 
     use super::*;
 

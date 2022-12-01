@@ -1,8 +1,9 @@
 use crate::{
-    core::{Account, Amount, BlockDetails, BlockHash, BlockSideband, BlockType, Epoch},
+    core::{BlockDetails, BlockSideband, BlockType, Epoch},
     ffi::utils::FfiStream,
 };
 use num::FromPrimitive;
+use rsnano_core::{Account, Amount, BlockHash};
 use std::{convert::TryFrom, ffi::c_void};
 
 #[repr(C)]

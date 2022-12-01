@@ -3,7 +3,7 @@ use std::sync::{
     Mutex,
 };
 
-use crate::core::Account;
+use rsnano_core::Account;
 
 use super::Channel;
 

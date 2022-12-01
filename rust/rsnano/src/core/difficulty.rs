@@ -1,8 +1,8 @@
-use super::Root;
 use blake2::{
     digest::{Update, VariableOutput},
     VarBlake2b,
 };
+use rsnano_core::Root;
 #[cfg(test)]
 use std::collections::HashMap;
 use std::mem::size_of;

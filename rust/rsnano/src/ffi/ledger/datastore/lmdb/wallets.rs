@@ -1,7 +1,8 @@
 use std::ffi::{c_char, CStr};
 
+use rsnano_core::BlockHash;
+
 use crate::{
-    core::BlockHash,
     ffi::{copy_hash_bytes, U256ArrayDto},
     ledger::datastore::lmdb::LmdbWallets,
 };

@@ -1,9 +1,10 @@
 use super::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl};
 use crate::{
-    core::{BlockHash, NoValue, RawKey, WalletId},
+    core::NoValue,
     ledger::datastore::{iterator::DbIterator, BinaryDbIterator, WriteTransaction},
 };
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
+use rsnano_core::{BlockHash, RawKey, WalletId};
 pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
 
 pub struct LmdbWallets {

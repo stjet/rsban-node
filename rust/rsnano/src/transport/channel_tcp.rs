@@ -7,11 +7,13 @@ use std::{
     },
 };
 
+use rsnano_core::Account;
+
 use super::{
     BandwidthLimitType, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket, SocketImpl,
 };
 use crate::{
-    core::{messages::Message, Account},
+    core::messages::Message,
     ffi::ChannelTcpObserverWeakPtr,
     utils::{ErrorCode, IoContext},
 };

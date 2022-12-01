@@ -1,9 +1,10 @@
 use num_traits::FromPrimitive;
+use rsnano_core::Root;
 use std::{cmp::min, ffi::c_void, time::Duration};
 
 use crate::{
     config::NetworkConstants,
-    core::{Root, WorkVersion},
+    core::WorkVersion,
     ffi::{NetworkConstantsDto, VoidPointerCallback},
     utils::get_cpu_count,
     work::{WorkPool, WorkTicket},

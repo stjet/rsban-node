@@ -1,5 +1,7 @@
+use rsnano_core::Account;
+
 use super::{iterator::DbIterator, ReadTransaction, Transaction, WriteTransaction};
-use crate::core::{Account, AccountInfo};
+use crate::core::AccountInfo;
 
 pub type AccountIterator = Box<dyn DbIterator<Account, AccountInfo>>;
 

@@ -1,6 +1,8 @@
 use super::Fan;
-use crate::core::RawKey;
-use rsnano_core::utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt};
+use rsnano_core::{
+    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
+    RawKey,
+};
 
 pub struct Fans {
     pub password: Fan,

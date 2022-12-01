@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use crate::{
-    core::Amount,
-    ledger::datastore::{lmdb::LmdbOnlineWeightStore, OnlineWeightStore},
-};
+use rsnano_core::Amount;
+
+use crate::ledger::datastore::{lmdb::LmdbOnlineWeightStore, OnlineWeightStore};
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 

@@ -1,7 +1,7 @@
-use crate::core::Amount;
 use crate::ffi::{copy_amount_bytes, core::BlockHandle};
 use crate::voting::ElectionStatus;
 use num_traits::FromPrimitive;
+use rsnano_core::Amount;
 use std::ops::Deref;
 use std::ptr;
 use std::time::{Duration, UNIX_EPOCH};

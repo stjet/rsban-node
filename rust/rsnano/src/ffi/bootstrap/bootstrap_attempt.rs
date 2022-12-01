@@ -7,10 +7,10 @@ use std::{
 };
 
 use num::FromPrimitive;
+use rsnano_core::Account;
 
 use crate::{
     bootstrap::{BootstrapAttempt, BootstrapStrategy},
-    core::Account,
     ffi::{
         block_processing::BlockProcessorHandle, core::BlockHandle, ledger::datastore::LedgerHandle,
         utils::LoggerHandle,

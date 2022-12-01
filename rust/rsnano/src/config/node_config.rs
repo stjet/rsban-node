@@ -1,7 +1,6 @@
 use std::net::Ipv6Addr;
 
 use crate::{
-    core::{Account, Amount, GXRB_RATIO, XRB_RATIO},
     is_sanitizer_build,
     stats::StatConfig,
     utils::{get_cpu_count, TomlWriter},
@@ -9,6 +8,7 @@ use crate::{
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;
+use rsnano_core::{Account, Amount, GXRB_RATIO, XRB_RATIO};
 
 use super::{
     get_env_or_default_string, DiagnosticsConfig, LmdbConfig, Logging, Networks, WebsocketConfig,

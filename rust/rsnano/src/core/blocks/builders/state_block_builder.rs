@@ -1,11 +1,9 @@
 use crate::{
-    core::{
-        Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, Link,
-        PublicKey, RawKey, Signature, StateBlock,
-    },
+    core::{Block, BlockDetails, BlockSideband, Epoch, StateBlock},
     work::DEV_WORK_POOL,
 };
 use anyhow::Result;
+use rsnano_core::{Account, Amount, BlockHash, KeyPair, Link, PublicKey, RawKey, Signature};
 
 pub struct StateBlockBuilder {
     account: Account,
@@ -195,8 +193,10 @@ impl StateBlockBuilder {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::validate_message;
+
     use super::*;
-    use crate::core::{validate_message, BlockBuilder, StateBlock};
+    use crate::core::{BlockBuilder, StateBlock};
 
     #[test]
     fn state_block() {

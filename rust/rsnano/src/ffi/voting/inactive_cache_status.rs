@@ -1,6 +1,6 @@
-use crate::core::Amount;
 use crate::ffi::{copy_amount_bytes, StringDto};
 use crate::voting::InactiveCacheStatus;
+use rsnano_core::Amount;
 
 pub struct InactiveCacheStatusHandle(pub(crate) InactiveCacheStatus);
 

@@ -1,13 +1,12 @@
+use rsnano_core::HashOrAccount;
+
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use crate::{
-    core::{
-        messages::{
-            AccountInfoReqPayload, AscPullReq, AscPullReqPayload, BlocksReqPayload, Message,
-        },
-        HashOrAccount,
+    core::messages::{
+        AccountInfoReqPayload, AscPullReq, AscPullReqPayload, BlocksReqPayload, Message,
     },
     ffi::{copy_hash_or_account_bytes, utils::FfiStream, NetworkConstantsDto},
 };

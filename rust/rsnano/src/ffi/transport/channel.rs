@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use crate::{
-    core::Account,
-    transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp, ChannelUdp},
-};
+use rsnano_core::Account;
+
+use crate::transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp, ChannelUdp};
 
 pub enum ChannelType {
     Tcp(Arc<ChannelTcp>),

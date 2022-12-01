@@ -8,7 +8,7 @@ use std::{
     time::Instant,
 };
 
-use rsnano_core::utils::MemoryStream;
+use rsnano_core::{sign_message, utils::MemoryStream, Account, KeyPair};
 
 use crate::{
     config::{NetworkConstants, NodeConfig, TelemetryCacheCutoffs},
@@ -20,7 +20,6 @@ use crate::{
         },
         BlockUniquer,
     },
-    core::{sign_message, Account, KeyPair},
     stats::{DetailType, Direction, Stat, StatType},
     transport::{
         MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketImpl, SocketType,

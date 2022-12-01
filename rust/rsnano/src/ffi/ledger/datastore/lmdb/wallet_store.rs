@@ -6,13 +6,13 @@ use std::{
 };
 
 use crate::{
-    core::{Account, PublicKey, RawKey},
     ffi::{
         copy_account_bytes, copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle,
         StringDto, U256ArrayDto,
     },
     ledger::datastore::{lmdb::LmdbWalletStore, WalletValue},
 };
+use rsnano_core::{Account, PublicKey, RawKey};
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 

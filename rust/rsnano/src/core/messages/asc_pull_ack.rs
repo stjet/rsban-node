@@ -1,11 +1,12 @@
 use crate::{
     config::NetworkConstants,
-    core::{
-        deserialize_block_enum, serialize_block_enum, Account, BlockEnum, BlockHash, BlockType,
-    },
+    core::{deserialize_block_enum, serialize_block_enum, BlockEnum, BlockType},
 };
 use num_traits::FromPrimitive;
-use rsnano_core::utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt};
+use rsnano_core::{
+    utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
+    Account, BlockHash,
+};
 use std::{any::Any, mem::size_of};
 
 use super::{AscPullPayloadId, Message, MessageHeader, MessageType, MessageVisitor};

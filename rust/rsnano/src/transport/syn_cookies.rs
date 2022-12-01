@@ -5,9 +5,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::core::{validate_message, Account, Signature};
 use anyhow::Result;
 use rand::Rng;
+use rsnano_core::{validate_message, Account, Signature};
 
 /// Node ID cookies for node ID handshakes
 pub struct SynCookies {

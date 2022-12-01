@@ -1,9 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
-use crate::{
-    core::{PublicKey, Signature},
-    signatures::{SignatureCheckSet, SignatureChecker},
-};
+use crate::signatures::{SignatureCheckSet, SignatureChecker};
+use rsnano_core::{PublicKey, Signature};
 
 #[repr(C)]
 pub struct SignatureCheckSetDto {

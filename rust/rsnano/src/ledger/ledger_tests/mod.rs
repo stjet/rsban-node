@@ -1,13 +1,12 @@
-use std::{ops::Deref, sync::atomic::Ordering};
+use std::ops::Deref;
+use std::sync::atomic::Ordering;
 
 mod helpers;
 pub(crate) use helpers::*;
+use rsnano_core::{Account, Amount, BlockHash, KeyPair, Root, GXRB_RATIO};
 
 use crate::{
-    core::{
-        Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, Epoch, KeyPair, QualifiedRoot,
-        Root, GXRB_RATIO,
-    },
+    core::{Block, BlockBuilder, BlockEnum, Epoch, QualifiedRoot},
     DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 

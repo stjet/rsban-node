@@ -1,8 +1,9 @@
 use num_traits::FromPrimitive;
+use rsnano_core::Root;
 use std::convert::TryFrom;
 
 use crate::{
-    core::{BlockDetails, BlockType, DifficultyV1, Networks, Root, WorkVersion},
+    core::{BlockDetails, BlockType, DifficultyV1, Networks, WorkVersion},
     ffi::{
         core::{BlockDetailsDto, BlockHandle},
         StringDto,

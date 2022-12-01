@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use rsnano_core::utils::Stream;
+use crate::utils::Stream;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Signature {
@@ -45,7 +45,6 @@ impl Signature {
         &self.bytes
     }
 
-    #[cfg(test)]
     pub fn make_invalid(&mut self) {
         self.bytes[31] ^= 1;
     }
@@ -62,5 +61,11 @@ impl Signature {
         let mut bytes = [0u8; 64];
         hex::decode_to_slice(s.as_ref(), &mut bytes)?;
         Ok(Signature::from_bytes(bytes))
+    }
+
+    pub unsafe fn from_ptr(ptr: *const u8) -> Self {
+        let mut bytes = [0; 64];
+        bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 64));
+        Signature::from_bytes(bytes)
     }
 }

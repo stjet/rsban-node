@@ -18,13 +18,14 @@ pub use block_uniquer::BlockUniquerHandle;
 pub use change_block::*;
 pub use open_block::*;
 pub use receive_block::*;
+use rsnano_core::Signature;
 pub use send_block::*;
 pub use state_block::*;
 
 use crate::{
     core::{
         deserialize_block, deserialize_block_json, serialized_block_size, BlockEnum, BlockSideband,
-        BlockType, Signature,
+        BlockType,
     },
     ffi::{utils::FfiStream, FfiPropertyTreeReader, FfiPropertyTreeWriter},
 };

@@ -24,18 +24,17 @@ use std::{
 pub use config::*;
 pub use ipc::*;
 pub use property_tree::*;
+use rsnano_core::{
+    Account, Amount, BlockHash, HashOrAccount, Link, PublicKey, RawKey, Root, Signature,
+};
 pub use secure::*;
 pub use signatures::*;
 pub use stats::*;
 pub(crate) use websocket::*;
 
 use crate::{
-    core::{
-        Account, Amount, BlockHash, HashOrAccount, Link, PublicKey, QualifiedRoot, RawKey, Root,
-        Signature,
-    },
-    utils::ErrorCode,
-    MemoryIntensiveInstrumentationCallback, IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION,
+    core::QualifiedRoot, utils::ErrorCode, MemoryIntensiveInstrumentationCallback,
+    IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION,
 };
 pub use transport::ChannelTcpObserverWeakPtr;
 
@@ -68,22 +67,6 @@ impl QualifiedRoot {
             root: Root::from_ptr(ptr),
             previous: BlockHash::from_ptr(ptr.add(32)),
         }
-    }
-}
-
-impl Signature {
-    unsafe fn from_ptr(ptr: *const u8) -> Self {
-        let mut bytes = [0; 64];
-        bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 64));
-        Signature::from_bytes(bytes)
-    }
-}
-
-impl Amount {
-    unsafe fn from_ptr(ptr: *const u8) -> Self {
-        let mut bytes = [0; 16];
-        bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 16));
-        Amount::from_be_bytes(bytes)
     }
 }
 

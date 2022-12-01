@@ -1,5 +1,6 @@
+use rsnano_core::{Account, BlockHash};
+
 use super::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
-use crate::core::{Account, BlockHash};
 
 pub type FrontierIterator = Box<dyn DbIterator<BlockHash, Account>>;
 

@@ -4,7 +4,7 @@ use crate::core::messages::Message;
 use crate::ffi::core::{BlockHandle, BlockUniquerHandle};
 use crate::ffi::utils::FfiStream;
 use crate::{
-    core::{messages::ConfirmReq, BlockHash, BlockType, Root},
+    core::{messages::ConfirmReq, BlockType},
     ffi::{NetworkConstantsDto, StringDto},
 };
 
@@ -13,6 +13,7 @@ use super::{
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use num_traits::FromPrimitive;
+use rsnano_core::{BlockHash, Root};
 
 #[repr(C)]
 pub struct HashRootPair {

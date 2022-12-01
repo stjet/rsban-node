@@ -1,12 +1,15 @@
 use crate::{
-    core::{Account, AccountInfo},
+    core::AccountInfo,
     ledger::datastore::{
         parallel_traversal, AccountIterator, AccountStore, ReadTransaction, Transaction,
         WriteTransaction,
     },
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_core::utils::{Deserialize, StreamAdapter};
+use rsnano_core::{
+    utils::{Deserialize, StreamAdapter},
+    Account,
+};
 use std::sync::Arc;
 
 use super::{as_write_txn, count, get, iterator::LmdbIteratorImpl, LmdbEnv};
@@ -102,11 +105,10 @@ impl AccountStore for LmdbAccountStore {
 mod tests {
     use std::sync::Mutex;
 
+    use rsnano_core::{Amount, BlockHash};
+
     use super::*;
-    use crate::{
-        core::{Amount, BlockHash},
-        ledger::datastore::lmdb::TestLmdbEnv,
-    };
+    use crate::ledger::datastore::lmdb::TestLmdbEnv;
 
     struct AccountStoreTestContext {
         pub store: LmdbAccountStore,

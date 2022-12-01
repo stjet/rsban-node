@@ -1,7 +1,5 @@
-use crate::{
-    core::{Account, Signature},
-    transport::SynCookies,
-};
+use crate::transport::SynCookies;
+use rsnano_core::{Account, Signature};
 use std::{net::SocketAddr, ops::Deref, sync::Arc, time::Duration};
 
 use super::EndpointDto;

@@ -1,11 +1,9 @@
 use num::FromPrimitive;
+use rsnano_core::{Account, Amount, BlockHash, PublicKey, RawKey, Signature};
 use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
-use crate::core::{
-    Account, Amount, BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock,
-    SendHashables, Signature,
-};
+use crate::core::{BlockEnum, LazyBlockHash, SendBlock, SendHashables};
 use crate::ffi::utils::FfiStream;
 use crate::ffi::FfiPropertyTreeReader;
 

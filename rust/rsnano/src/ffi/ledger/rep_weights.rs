@@ -1,9 +1,7 @@
 use std::{slice, sync::Arc};
 
-use crate::{
-    core::{Account, Amount},
-    ledger::RepWeights,
-};
+use crate::ledger::RepWeights;
+use rsnano_core::{Account, Amount};
 
 pub struct RepWeightsHandle(Arc<RepWeights>);
 

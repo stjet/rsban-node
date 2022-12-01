@@ -135,12 +135,9 @@ impl Debug for ConfirmAck {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::MemoryStream;
+    use rsnano_core::{utils::MemoryStream, BlockHash, KeyPair};
 
-    use crate::{
-        config::NetworkConstants,
-        core::{BlockHash, KeyPair},
-    };
+    use crate::config::NetworkConstants;
 
     use super::*;
 

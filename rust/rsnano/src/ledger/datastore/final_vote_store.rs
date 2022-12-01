@@ -1,5 +1,7 @@
+use rsnano_core::{BlockHash, Root};
+
 use super::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
-use crate::core::{BlockHash, QualifiedRoot, Root};
+use crate::core::QualifiedRoot;
 
 pub type FinalVoteIterator = Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
 

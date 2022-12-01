@@ -4,8 +4,9 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use rsnano_core::BlockHash;
+
 use crate::{
-    core::BlockHash,
     ffi::{
         copy_account_bytes, copy_amount_bytes, copy_hash_bytes, core::BlockHandle,
         VoidPointerCallback,

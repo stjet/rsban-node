@@ -33,8 +33,8 @@ pub use stats::*;
 pub(crate) use websocket::*;
 
 use crate::{
-    core::QualifiedRoot, utils::ErrorCode, MemoryIntensiveInstrumentationCallback,
-    IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION,
+    utils::ErrorCode, MemoryIntensiveInstrumentationCallback, IS_SANITIZER_BUILD,
+    MEMORY_INTENSIVE_INSTRUMENTATION,
 };
 pub use transport::ChannelTcpObserverWeakPtr;
 
@@ -59,15 +59,6 @@ impl<T: AsRef<str>> From<T> for StringDto {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_string_destroy(handle: *mut StringHandle) {
     drop(Box::from_raw(handle))
-}
-
-impl QualifiedRoot {
-    unsafe fn from_ptr(ptr: *const u8) -> Self {
-        QualifiedRoot {
-            root: Root::from_ptr(ptr),
-            previous: BlockHash::from_ptr(ptr.add(32)),
-        }
-    }
 }
 
 fn into_32_byte_array(ptr: *const u8) -> [u8; 32] {

@@ -2,25 +2,33 @@
 extern crate anyhow;
 
 mod account;
+pub use account::Account;
+
 mod amount;
+pub use amount::{Amount, GXRB_RATIO, KXRB_RATIO, MXRB_RATIO, XRB_RATIO};
+
 mod block_hash;
+pub use block_hash::{BlockHash, BlockHashBuilder};
+
 mod key_pair;
+pub use key_pair::{sign_message, validate_message, validate_message_batch, KeyPair};
+
 mod raw_key;
+pub use raw_key::RawKey;
+
 mod signature;
+pub use signature::Signature;
+
 mod u256_struct;
+pub use u256_struct::*;
+
 pub mod utils;
 
-pub use account::Account;
-pub use amount::{Amount, GXRB_RATIO, KXRB_RATIO, MXRB_RATIO, XRB_RATIO};
-pub use block_hash::{BlockHash, BlockHashBuilder};
-pub use key_pair::{sign_message, validate_message, validate_message_batch, KeyPair};
-pub use raw_key::RawKey;
-pub use signature::Signature;
+mod qualified_root;
+pub use qualified_root::QualifiedRoot;
 
 use std::fmt::Write;
 use std::num::ParseIntError;
-
-pub use u256_struct::*;
 
 pub fn encode_hex(i: u128) -> String {
     let mut result = String::with_capacity(32);

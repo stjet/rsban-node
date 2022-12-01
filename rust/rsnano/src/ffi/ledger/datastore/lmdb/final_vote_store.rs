@@ -1,9 +1,8 @@
 use std::{ffi::c_void, sync::Arc};
 
-use rsnano_core::{BlockHash, Root};
+use rsnano_core::{BlockHash, QualifiedRoot, Root};
 
 use crate::{
-    core::QualifiedRoot,
     ffi::VoidPointerCallback,
     ledger::datastore::{lmdb::LmdbFinalVoteStore, FinalVoteStore},
 };

@@ -1,8 +1,8 @@
-use primitive_types::U512;
-use rsnano_core::{
+use crate::{
     utils::{Deserialize, MutStreamAdapter, Serialize, Stream},
     BlockHash, Root,
 };
+use primitive_types::U512;
 
 #[derive(Default, Clone)]
 pub struct QualifiedRoot {
@@ -20,6 +20,13 @@ impl QualifiedRoot {
         let mut stream = MutStreamAdapter::new(&mut buffer);
         self.serialize(&mut stream).unwrap();
         buffer
+    }
+
+    pub unsafe fn from_ptr(ptr: *const u8) -> Self {
+        QualifiedRoot {
+            root: Root::from_ptr(ptr),
+            previous: BlockHash::from_ptr(ptr.add(32)),
+        }
     }
 }
 

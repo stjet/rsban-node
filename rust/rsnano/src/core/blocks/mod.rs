@@ -21,12 +21,12 @@ pub use open_block::*;
 pub use receive_block::*;
 use rsnano_core::{
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, Link, Root, Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, Link, QualifiedRoot, Root, Signature,
 };
 pub use send_block::*;
 pub use state_block::*;
 
-use super::{FullHash, QualifiedRoot, Uniquer, WorkVersion};
+use super::{FullHash, Uniquer, WorkVersion};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]

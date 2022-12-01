@@ -8,9 +8,6 @@ use rsnano_core::{
     BlockHash, RawKey,
 };
 
-mod qualified_root;
-pub use qualified_root::QualifiedRoot;
-
 mod pending_key;
 pub use pending_key::PendingKey;
 

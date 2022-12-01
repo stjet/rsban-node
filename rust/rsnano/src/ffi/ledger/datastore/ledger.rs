@@ -1,5 +1,5 @@
 use crate::{
-    core::{Epoch, QualifiedRoot},
+    core::Epoch,
     ffi::{
         copy_account_bytes, copy_amount_bytes, copy_hash_bytes, copy_link_bytes, copy_root_bytes,
         core::{copy_block_array_dto, AccountInfoHandle, BlockArrayDto, BlockHandle},
@@ -8,7 +8,7 @@ use crate::{
     },
     ledger::{Ledger, ProcessReturn},
 };
-use rsnano_core::{Account, Amount, BlockHash, Link};
+use rsnano_core::{Account, Amount, BlockHash, Link, QualifiedRoot};
 use std::{
     ops::Deref,
     ptr::null_mut,

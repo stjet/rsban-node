@@ -19,14 +19,8 @@ mod difficulty;
 pub(crate) use difficulty::StubDifficulty;
 pub use difficulty::{Difficulty, DifficultyV1, WorkVersion};
 
-mod account_info;
-pub use account_info::AccountInfo;
-
 mod endpoint_key;
 pub use endpoint_key::EndpointKey;
-
-mod epoch;
-pub use epoch::{Epoch, Epochs};
 
 mod blocks;
 pub use blocks::*;

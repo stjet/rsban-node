@@ -5,10 +5,10 @@ use std::{
     time::Duration,
 };
 
-use rsnano_core::{Account, BlockHash, PublicKey, Signature};
+use rsnano_core::{Account, BlockHash, Epochs, PublicKey, Signature};
 
 use crate::{
-    core::{BlockEnum, Epochs, SignatureVerification},
+    core::{BlockEnum, SignatureVerification},
     utils::{Logger, NullLogger},
 };
 

@@ -1,10 +1,9 @@
 use std::mem::size_of;
 
-use super::Epoch;
 use num::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, Serialize, Stream},
-    Account, Amount,
+    Account, Amount, Epoch,
 };
 
 #[derive(PartialEq, Eq, Debug)]

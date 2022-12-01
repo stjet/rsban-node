@@ -1,10 +1,9 @@
-use rsnano_core::{validate_message, Amount, BlockHash};
+use rsnano_core::{validate_message, AccountInfo, Amount, BlockHash, Epoch, Epochs};
 
 use crate::{
     core::{
-        AccountInfo, Block, BlockDetails, BlockSideband, ChangeBlock, Epoch, Epochs,
-        MutableBlockVisitor, OpenBlock, PendingInfo, PendingKey, ReceiveBlock, SendBlock,
-        SignatureVerification, StateBlock,
+        Block, BlockDetails, BlockSideband, ChangeBlock, MutableBlockVisitor, OpenBlock,
+        PendingInfo, PendingKey, ReceiveBlock, SendBlock, SignatureVerification, StateBlock,
     },
     stats::{DetailType, Direction, Stat, StatType},
     utils::seconds_since_epoch,

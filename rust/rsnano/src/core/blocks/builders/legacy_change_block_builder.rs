@@ -1,7 +1,7 @@
-use rsnano_core::{Account, Amount, KeyPair};
+use rsnano_core::{Account, Amount, Epoch, KeyPair};
 
 use crate::{
-    core::{Block, BlockDetails, BlockHash, BlockSideband, ChangeBlock, Epoch},
+    core::{Block, BlockDetails, BlockHash, BlockSideband, ChangeBlock},
     work::DEV_WORK_POOL,
 };
 

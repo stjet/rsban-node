@@ -1,9 +1,9 @@
 use crate::{
-    core::{BlockDetails, BlockSideband, BlockType, Epoch},
+    core::{BlockDetails, BlockSideband, BlockType},
     ffi::utils::FfiStream,
 };
 use num::FromPrimitive;
-use rsnano_core::{Account, Amount, BlockHash};
+use rsnano_core::{Account, Amount, BlockHash, Epoch};
 use std::{convert::TryFrom, ffi::c_void};
 
 #[repr(C)]
@@ -172,14 +172,6 @@ impl TryFrom<&BlockDetailsDto> for BlockDetails {
         let epoch = Epoch::try_from(value.epoch)?;
         let details = BlockDetails::new(epoch, value.is_send, value.is_receive, value.is_epoch);
         Ok(details)
-    }
-}
-
-impl TryFrom<u8> for Epoch {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        FromPrimitive::from_u8(value).ok_or_else(|| anyhow!("invalid epoch value"))
     }
 }
 

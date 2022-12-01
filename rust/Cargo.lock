@@ -1381,11 +1381,13 @@ dependencies = [
  "ctr",
  "ed25519-dalek-blake2b",
  "hex",
+ "num-derive",
  "num-format",
  "num-traits",
  "once_cell",
  "primitive-types",
  "rand",
+ "static_assertions",
 ]
 
 [[package]]

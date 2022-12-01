@@ -2,7 +2,7 @@ use super::{as_write_txn, count, get, LmdbEnv, LmdbIteratorImpl};
 use crate::{
     core::{
         deserialize_block_enum, Block, BlockEnum, BlockSideband, BlockType, BlockVisitor,
-        ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+        ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
     },
     ledger::datastore::{
         block_store::BlockIterator, parallel_traversal, BlockStore, ReadTransaction, Transaction,
@@ -13,7 +13,7 @@ use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
-    Account, Amount, BlockHash,
+    Account, Amount, BlockHash, Epoch,
 };
 use std::sync::Arc;
 

@@ -1,6 +1,12 @@
 #[macro_use]
 extern crate anyhow;
 
+#[macro_use]
+extern crate num_derive;
+
+#[macro_use]
+extern crate static_assertions;
+
 mod account;
 pub use account::Account;
 
@@ -26,6 +32,12 @@ pub mod utils;
 
 mod qualified_root;
 pub use qualified_root::QualifiedRoot;
+
+mod account_info;
+pub use account_info::AccountInfo;
+
+mod epoch;
+pub use epoch::{Epoch, Epochs};
 
 use std::fmt::Write;
 use std::num::ParseIntError;

@@ -1,10 +1,8 @@
 use num::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, Serialize, Stream},
-    Account, Amount, BlockHash,
+    Account, Amount, BlockHash, Epoch,
 };
-
-use crate::core::Epoch;
 
 use super::{BlockDetails, BlockType};
 

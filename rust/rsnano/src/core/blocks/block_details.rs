@@ -1,8 +1,6 @@
 use anyhow::Result;
 use num::FromPrimitive;
-use rsnano_core::utils::Stream;
-
-use crate::core::Epoch;
+use rsnano_core::{utils::Stream, Epoch};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BlockDetails {

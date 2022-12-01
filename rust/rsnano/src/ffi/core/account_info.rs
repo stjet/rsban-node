@@ -3,14 +3,11 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::{
-    core::{AccountInfo, Epoch},
-    ffi::utils::FfiStream,
-};
+use crate::ffi::utils::FfiStream;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, Serialize},
-    Account, Amount, BlockHash,
+    Account, AccountInfo, Amount, BlockHash, Epoch,
 };
 
 pub struct AccountInfoHandle(AccountInfo);

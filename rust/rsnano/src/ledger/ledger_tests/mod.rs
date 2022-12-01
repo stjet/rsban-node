@@ -6,7 +6,7 @@ pub(crate) use helpers::*;
 use rsnano_core::{Account, Amount, BlockHash, KeyPair, QualifiedRoot, Root, GXRB_RATIO};
 
 use crate::{
-    core::{Block, BlockBuilder, BlockEnum, Epoch},
+    core::{Block, BlockBuilder, BlockEnum},
     DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -342,6 +342,8 @@ fn state_account() {
 }
 
 mod could_fit {
+    use rsnano_core::Epoch;
+
     use super::*;
 
     #[test]

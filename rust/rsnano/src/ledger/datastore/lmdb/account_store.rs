@@ -1,14 +1,11 @@
-use crate::{
-    core::AccountInfo,
-    ledger::datastore::{
-        parallel_traversal, AccountIterator, AccountStore, ReadTransaction, Transaction,
-        WriteTransaction,
-    },
+use crate::ledger::datastore::{
+    parallel_traversal, AccountIterator, AccountStore, ReadTransaction, Transaction,
+    WriteTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
-    Account,
+    Account, AccountInfo,
 };
 use std::sync::Arc;
 

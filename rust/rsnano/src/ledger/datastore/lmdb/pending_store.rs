@@ -116,10 +116,10 @@ impl PendingStore for LmdbPendingStore {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::Amount;
+    use rsnano_core::{Amount, Epoch};
 
     use super::*;
-    use crate::{core::Epoch, ledger::datastore::lmdb::TestLmdbEnv};
+    use crate::ledger::datastore::lmdb::TestLmdbEnv;
 
     #[test]
     fn not_found() -> anyhow::Result<()> {

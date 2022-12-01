@@ -1,7 +1,7 @@
-use rsnano_core::Amount;
+use rsnano_core::{Amount, Epoch};
 
 use crate::{
-    core::{Block, BlockDetails, Epoch},
+    core::{Block, BlockDetails},
     ledger::{
         ledger_tests::{setup_legacy_send_block, upgrade_genesis_to_epoch_v1, AccountBlockFactory},
         ProcessResult,

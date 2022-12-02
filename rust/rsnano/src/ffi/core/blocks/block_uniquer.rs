@@ -1,4 +1,4 @@
-use crate::core::BlockUniquer;
+use crate::utils::BlockUniquer;
 
 use super::BlockHandle;
 use std::{ops::Deref, sync::Arc};

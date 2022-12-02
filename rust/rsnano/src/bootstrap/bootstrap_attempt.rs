@@ -1,8 +1,7 @@
 use crate::{
     block_processing::BlockProcessor,
-    core::HardenedConstants,
     ledger::Ledger,
-    utils::Logger,
+    utils::{HardenedConstants, Logger},
     websocket::{Listener, MessageBuilder},
 };
 use anyhow::Result;

@@ -1,12 +1,12 @@
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    config::NetworkConstants, core::Networks, ledger::LedgerConstants, BootstrapConstants,
-    NodeConstants, PortmappingConstants, VotingConstants,
+    config::NetworkConstants, ledger::LedgerConstants, BootstrapConstants, NodeConstants,
+    PortmappingConstants, VotingConstants,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;
-use rsnano_core::{work::WorkThresholds, Account, BlockEnum, BlockHash};
+use rsnano_core::{work::WorkThresholds, Account, BlockEnum, BlockHash, Networks};
 
 pub static DEV_NETWORK_PARAMS: Lazy<NetworkParams> =
     Lazy::new(|| NetworkParams::new(Networks::NanoDevNetwork).unwrap());

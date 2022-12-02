@@ -4,16 +4,13 @@ use rsnano_core::utils::{Stream, StreamAdapter};
 
 use crate::{
     config::NetworkConstants,
-    core::{
-        messages::{
-            AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
-            FrontierReq, Keepalive, Message, MessageHeader, MessageType, NodeIdHandshake, Publish,
-            TelemetryAck, TelemetryReq,
-        },
-        BlockUniquer,
+    core::messages::{
+        AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
+        FrontierReq, Keepalive, Message, MessageHeader, MessageType, NodeIdHandshake, Publish,
+        TelemetryAck, TelemetryReq,
     },
     transport::{Socket, SocketImpl},
-    utils::ErrorCode,
+    utils::{BlockUniquer, ErrorCode},
     voting::VoteUniquer,
 };
 

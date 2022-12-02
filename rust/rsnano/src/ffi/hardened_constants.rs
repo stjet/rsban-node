@@ -1,4 +1,4 @@
-use crate::core::HardenedConstants;
+use crate::utils::HardenedConstants;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_hardened_constants_get(not_an_account: *mut u8, random_128: *mut u8) {

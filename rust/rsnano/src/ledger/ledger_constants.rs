@@ -4,12 +4,11 @@ use anyhow::Result;
 use once_cell::sync::Lazy;
 use rsnano_core::{
     deserialize_block_json, work::WorkThresholds, Account, Amount, BlockDetails, BlockEnum,
-    BlockHash, BlockSideband, Epoch, Epochs, KeyPair, Link,
+    BlockHash, BlockSideband, Epoch, Epochs, KeyPair, Link, Networks,
 };
 
 use crate::{
     config::get_env_or_default_string,
-    core::Networks,
     utils::{seconds_since_epoch, SerdePropertyTree},
 };
 

@@ -95,8 +95,10 @@ impl PrunedStore for LmdbPrunedStore {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::NoValue;
+
     use super::*;
-    use crate::{core::NoValue, ledger::datastore::lmdb::TestLmdbEnv};
+    use crate::ledger::datastore::lmdb::TestLmdbEnv;
 
     fn create_sut() -> anyhow::Result<(TestLmdbEnv, LmdbPrunedStore)> {
         let env = TestLmdbEnv::new();

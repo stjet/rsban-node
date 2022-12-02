@@ -8,12 +8,12 @@ use std::{
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
+    deterministic_key,
     utils::{Deserialize, StreamAdapter},
     Account, PublicKey, RawKey,
 };
 
 use crate::{
-    core::deterministic_key,
     ledger::datastore::{iterator::DbIterator, Fans, Transaction, WalletValue, WriteTransaction},
     wallet::KeyDerivationFunction,
 };

@@ -25,8 +25,8 @@ pub use send_block::*;
 pub use state_block::*;
 
 use crate::{
-    core::deserialize_block,
     ffi::{utils::FfiStream, FfiPropertyTreeReader, FfiPropertyTreeWriter},
+    utils::deserialize_block,
 };
 use num::FromPrimitive;
 

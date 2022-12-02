@@ -24,9 +24,8 @@ pub use node_pow_server_config::*;
 pub use node_rpc_config::*;
 pub use opencl_config::*;
 pub use rpc_config::*;
+use rsnano_core::Networks;
 pub use websocket_config::*;
-
-use crate::core::Networks;
 
 pub fn get_node_toml_config_path(data_path: &Path) -> PathBuf {
     let mut node_toml = data_path.to_owned();

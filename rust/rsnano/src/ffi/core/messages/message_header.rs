@@ -1,11 +1,12 @@
 use num::FromPrimitive;
+use rsnano_core::Networks;
 use std::{ffi::c_void, ops::Deref};
 
-use crate::config::NetworkConstants;
-use crate::core::messages::{MessageHeader, MessageType};
-use crate::core::Networks;
-
-use crate::ffi::utils::FfiStream;
+use crate::{
+    config::NetworkConstants,
+    core::messages::{MessageHeader, MessageType},
+    ffi::utils::FfiStream,
+};
 
 pub struct MessageHeaderHandle(MessageHeader);
 

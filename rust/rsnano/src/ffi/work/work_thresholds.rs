@@ -1,13 +1,12 @@
 use num_traits::FromPrimitive;
-use rsnano_core::{work::WorkThresholds, BlockDetails, BlockType, DifficultyV1, Root, WorkVersion};
+use rsnano_core::{
+    work::WorkThresholds, BlockDetails, BlockType, DifficultyV1, Networks, Root, WorkVersion,
+};
 use std::convert::TryFrom;
 
-use crate::{
-    core::Networks,
-    ffi::{
-        core::{BlockDetailsDto, BlockHandle},
-        StringDto,
-    },
+use crate::ffi::{
+    core::{BlockDetailsDto, BlockHandle},
+    StringDto,
 };
 
 #[repr(C)]

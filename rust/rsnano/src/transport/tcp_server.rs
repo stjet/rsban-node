@@ -12,20 +12,17 @@ use rsnano_core::{sign_message, utils::MemoryStream, Account, KeyPair};
 
 use crate::{
     config::{NetworkConstants, NodeConfig, TelemetryCacheCutoffs},
-    core::{
-        messages::{
-            AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
-            FrontierReq, Keepalive, Message, MessageVisitor, NodeIdHandshake, Publish,
-            TelemetryAck, TelemetryReq,
-        },
-        BlockUniquer,
+    core::messages::{
+        AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
+        FrontierReq, Keepalive, Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
+        TelemetryReq,
     },
     stats::{DetailType, Direction, Stat, StatType},
     transport::{
         MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketImpl, SocketType,
         SynCookies, TcpMessageItem, TcpMessageManager,
     },
-    utils::{IoContext, Logger, ThreadPool},
+    utils::{BlockUniquer, IoContext, Logger, ThreadPool},
     voting::VoteUniquer,
     NetworkParams,
 };

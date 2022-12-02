@@ -1,7 +1,6 @@
-use rsnano_core::EndpointKey;
+use rsnano_core::{EndpointKey, NoValue};
 
 use super::{DbIterator, Transaction, WriteTransaction};
-use crate::core::NoValue;
 
 pub type PeerIterator = Box<dyn DbIterator<EndpointKey, NoValue>>;
 

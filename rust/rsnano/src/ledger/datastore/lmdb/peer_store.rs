@@ -64,7 +64,9 @@ impl PeerStore for LmdbPeerStore {
 
 #[cfg(test)]
 mod tests {
-    use crate::{core::NoValue, ledger::datastore::lmdb::TestLmdbEnv};
+    use rsnano_core::NoValue;
+
+    use crate::ledger::datastore::lmdb::TestLmdbEnv;
 
     use super::*;
 

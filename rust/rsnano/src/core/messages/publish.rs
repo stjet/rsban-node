@@ -1,6 +1,6 @@
 use crate::{
     config::NetworkConstants,
-    core::{deserialize_block, BlockUniquer},
+    utils::{deserialize_block, BlockUniquer},
 };
 use anyhow::Result;
 use rsnano_core::{utils::Stream, BlockEnum};

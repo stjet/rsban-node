@@ -6,8 +6,7 @@ pub(crate) use local_vote_history::*;
 pub(crate) use vote::*;
 pub use vote_spacing::VoteSpacing;
 
-use crate::core::Uniquer;
-pub(crate) type VoteUniquer = Uniquer<Vote>;
+pub(crate) type VoteUniquer = crate::utils::Uniquer<Vote>;
 
 mod election_status;
 mod recently_cemented_cache;

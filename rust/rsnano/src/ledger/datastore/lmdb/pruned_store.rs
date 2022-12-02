@@ -3,12 +3,10 @@ use std::sync::Arc;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 use rsnano_core::BlockHash;
-use rsnano_store_lmdb::{as_write_txn, count, exists, LmdbIteratorImpl};
+use rsnano_store_lmdb::{as_write_txn, count, exists, parallel_traversal, LmdbIteratorImpl};
 use rsnano_store_traits::{
     PrunedIterator, PrunedStore, ReadTransaction, Transaction, WriteTransaction,
 };
-
-use crate::ledger::datastore::parallel_traversal;
 
 use super::LmdbEnv;
 

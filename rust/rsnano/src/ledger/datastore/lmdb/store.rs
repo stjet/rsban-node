@@ -8,7 +8,9 @@ use std::{
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::{utils::PropertyTreeWriter, AccountInfo, Amount, ConfirmationHeightInfo, Epoch};
-use rsnano_store_lmdb::{as_write_txn, LmdbReadTransaction, LmdbWriteTransaction};
+use rsnano_store_lmdb::{
+    as_write_txn, LmdbReadTransaction, LmdbWriteTransaction, STORE_VERSION_MINIMUM,
+};
 use rsnano_store_traits::{
     AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore, PrunedStore,
     Store, VersionStore, WriteTransaction,
@@ -16,7 +18,7 @@ use rsnano_store_traits::{
 
 use crate::{
     config::TxnTrackingConfig,
-    ledger::{datastore::STORE_VERSION_MINIMUM, LedgerCache, LedgerConstants},
+    ledger::{LedgerCache, LedgerConstants},
     utils::{seconds_since_epoch, Logger},
 };
 

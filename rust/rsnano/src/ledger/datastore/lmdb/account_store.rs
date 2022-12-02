@@ -1,10 +1,9 @@
-use crate::ledger::datastore::parallel_traversal;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
 };
-use rsnano_store_lmdb::{as_write_txn, count, get, LmdbIteratorImpl};
+use rsnano_store_lmdb::{as_write_txn, count, get, parallel_traversal, LmdbIteratorImpl};
 use rsnano_store_traits::{
     AccountIterator, AccountStore, ReadTransaction, Transaction, WriteTransaction,
 };

@@ -16,6 +16,27 @@ pub use final_vote_store::{FinalVoteIterator, FinalVoteStore};
 mod frontier_store;
 pub use frontier_store::{FrontierIterator, FrontierStore};
 
+mod online_weight_store;
+pub use online_weight_store::{OnlineWeightIterator, OnlineWeightStore};
+
+mod peer_store;
+pub use peer_store::{PeerIterator, PeerStore};
+
+mod pending_store;
+pub use pending_store::{PendingIterator, PendingStore};
+
+mod pruned_store;
+pub use pruned_store::{PrunedIterator, PrunedStore};
+
+mod unchecked_store;
+pub use unchecked_store::{UncheckedIterator, UncheckedStore};
+
+mod version_store;
+pub use version_store::VersionStore;
+
+mod store;
+pub use store::Store;
+
 use std::any::Any;
 
 pub trait Transaction {

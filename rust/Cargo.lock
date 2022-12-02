@@ -1396,6 +1396,7 @@ dependencies = [
 name = "rsnano_store_traits"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "rsnano_core",
 ]
 

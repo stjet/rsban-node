@@ -1,10 +1,11 @@
 use std::{ffi::c_void, sync::Arc};
 
 use rsnano_core::BlockHash;
+use rsnano_store_traits::PrunedStore;
 
 use crate::{
     ffi::{copy_hash_bytes, VoidPointerCallback},
-    ledger::datastore::{lmdb::LmdbPrunedStore, PrunedStore},
+    ledger::datastore::lmdb::LmdbPrunedStore,
 };
 
 use super::{

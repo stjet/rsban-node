@@ -1,4 +1,4 @@
-use rsnano_store_traits::{Transaction, WriteTransaction};
+use crate::{Transaction, WriteTransaction};
 
 pub trait VersionStore {
     fn put(&self, txn: &mut dyn WriteTransaction, version: i32);

@@ -1,8 +1,9 @@
 use std::{slice, sync::Arc};
 
 use rsnano_core::EndpointKey;
+use rsnano_store_traits::PeerStore;
 
-use crate::ledger::datastore::{lmdb::LmdbPeerStore, PeerStore};
+use crate::ledger::datastore::lmdb::LmdbPeerStore;
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 

@@ -1,6 +1,6 @@
 use rsnano_core::{Account, PendingInfo, PendingKey};
 
-use rsnano_store_traits::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
+use crate::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
 
 pub type PendingIterator = Box<dyn DbIterator<PendingKey, PendingInfo>>;
 

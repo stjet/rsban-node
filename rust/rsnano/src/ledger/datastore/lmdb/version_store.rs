@@ -1,7 +1,7 @@
 use super::{as_write_txn, get, LmdbEnv};
-use crate::ledger::datastore::{VersionStore, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM};
+use crate::ledger::datastore::{STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_store_traits::{Transaction, WriteTransaction};
+use rsnano_store_traits::{Transaction, VersionStore, WriteTransaction};
 use std::{path::Path, sync::Arc};
 
 pub struct LmdbVersionStore {

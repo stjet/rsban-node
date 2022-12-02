@@ -1,6 +1,6 @@
 use rsnano_core::{BlockHash, NoValue};
 
-use rsnano_store_traits::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
+use crate::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
 
 pub type PrunedIterator = Box<dyn DbIterator<BlockHash, NoValue>>;
 

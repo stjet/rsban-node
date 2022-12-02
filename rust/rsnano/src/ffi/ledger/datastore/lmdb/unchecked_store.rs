@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use rsnano_core::{BlockHash, HashOrAccount, UncheckedKey};
+use rsnano_store_traits::UncheckedStore;
 
-use crate::{
-    ffi::core::UncheckedInfoHandle,
-    ledger::datastore::{lmdb::LmdbUncheckedStore, UncheckedStore},
-};
+use crate::{ffi::core::UncheckedInfoHandle, ledger::datastore::lmdb::LmdbUncheckedStore};
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 

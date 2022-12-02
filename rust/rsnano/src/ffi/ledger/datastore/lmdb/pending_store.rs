@@ -1,11 +1,9 @@
 use num::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockHash, Epoch, PendingInfo, PendingKey};
+use rsnano_store_traits::PendingStore;
 use std::{ffi::c_void, sync::Arc};
 
-use crate::{
-    ffi::VoidPointerCallback,
-    ledger::datastore::{lmdb::LmdbPendingStore, PendingStore},
-};
+use crate::{ffi::VoidPointerCallback, ledger::datastore::lmdb::LmdbPendingStore};
 
 use super::{
     iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},

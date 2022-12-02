@@ -9,15 +9,13 @@ use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::{utils::PropertyTreeWriter, AccountInfo, Amount, ConfirmationHeightInfo, Epoch};
 use rsnano_store_traits::{
-    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, WriteTransaction,
+    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore, PrunedStore,
+    Store, VersionStore, WriteTransaction,
 };
 
 use crate::{
     config::TxnTrackingConfig,
-    ledger::{
-        datastore::{PendingStore, PrunedStore, Store, VersionStore, STORE_VERSION_MINIMUM},
-        LedgerCache, LedgerConstants,
-    },
+    ledger::{datastore::STORE_VERSION_MINIMUM, LedgerCache, LedgerConstants},
     utils::{seconds_since_epoch, Logger},
 };
 

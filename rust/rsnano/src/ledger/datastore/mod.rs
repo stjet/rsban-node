@@ -17,10 +17,7 @@ mod version_store;
 mod wallet_store;
 mod write_database_queue;
 
-use std::{
-    any::Any,
-    cmp::{max, min},
-};
+use std::cmp::{max, min};
 
 pub use account_store::{AccountIterator, AccountStore};
 pub use block_store::BlockStore;
@@ -42,26 +39,6 @@ pub use wallet_store::{Fans, WalletValue};
 pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
 
 use rsnano_core::utils::get_cpu_count;
-
-pub trait Transaction {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-pub trait ReadTransaction {
-    fn txn(&self) -> &dyn Transaction;
-    fn reset(&mut self);
-    fn renew(&mut self);
-    fn refresh(&mut self);
-}
-
-pub trait WriteTransaction {
-    fn txn(&self) -> &dyn Transaction;
-    fn txn_mut(&mut self) -> &mut dyn Transaction;
-    fn refresh(&mut self);
-    fn renew(&mut self);
-    fn commit(&mut self);
-}
 
 pub fn parallel_traversal(action: &(impl Fn(U256, U256, bool) + Send + Sync)) {
     parallel_traversal_impl(U256::max_value(), action);

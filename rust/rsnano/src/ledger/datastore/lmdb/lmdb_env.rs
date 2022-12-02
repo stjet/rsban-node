@@ -254,7 +254,7 @@ impl Deref for TestLmdbEnv {
 
 #[cfg(test)]
 mod tests {
-    use crate::ledger::datastore::ReadTransaction;
+    use rsnano_store_traits::ReadTransaction;
 
     use super::*;
 

@@ -1,10 +1,10 @@
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash};
+use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 use std::sync::Arc;
 
 use crate::ledger::datastore::{
-    frontier_store::FrontierIterator, parallel_traversal, FrontierStore, ReadTransaction,
-    Transaction, WriteTransaction,
+    frontier_store::FrontierIterator, parallel_traversal, FrontierStore,
 };
 
 use super::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl};

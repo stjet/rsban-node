@@ -1,6 +1,7 @@
 [workspace]
 members = [
 	"core",
+	"store_traits",
 	"rsnano",
 	"load_test",
 ]

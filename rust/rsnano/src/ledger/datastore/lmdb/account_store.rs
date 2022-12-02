@@ -1,12 +1,10 @@
-use crate::ledger::datastore::{
-    parallel_traversal, AccountIterator, AccountStore, ReadTransaction, Transaction,
-    WriteTransaction,
-};
+use crate::ledger::datastore::{parallel_traversal, AccountIterator, AccountStore};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
 };
+use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 use std::sync::Arc;
 
 use super::{as_write_txn, count, get, iterator::LmdbIteratorImpl, LmdbEnv};

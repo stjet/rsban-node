@@ -1,7 +1,8 @@
 use super::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl};
-use crate::ledger::datastore::{iterator::DbIterator, BinaryDbIterator, WriteTransaction};
+use crate::ledger::datastore::{iterator::DbIterator, BinaryDbIterator};
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use rsnano_core::{BlockHash, NoValue, RawKey, WalletId};
+use rsnano_store_traits::WriteTransaction;
 pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
 
 pub struct LmdbWallets {
@@ -30,7 +31,11 @@ impl LmdbWallets {
         Ok(())
     }
 
-    pub fn get_store_it(&self, txn: &dyn super::super::Transaction, hash: &str) -> WalletsIterator {
+    pub fn get_store_it(
+        &self,
+        txn: &dyn rsnano_store_traits::Transaction,
+        hash: &str,
+    ) -> WalletsIterator {
         let hash_bytes: [u8; 64] = hash.as_bytes().try_into().unwrap();
         WalletsIterator::new(LmdbIteratorImpl::new(
             txn,
@@ -93,7 +98,7 @@ impl LmdbWallets {
         Ok(())
     }
 
-    pub fn get_wallet_ids(&self, txn: &dyn super::super::Transaction) -> Vec<WalletId> {
+    pub fn get_wallet_ids(&self, txn: &dyn rsnano_store_traits::Transaction) -> Vec<WalletId> {
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();
         let mut i = self.get_store_it(txn, &beginning);
@@ -107,7 +112,7 @@ impl LmdbWallets {
 
     pub fn get_block_hash(
         &self,
-        txn: &dyn super::super::Transaction,
+        txn: &dyn rsnano_store_traits::Transaction,
         id: &str,
     ) -> anyhow::Result<Option<BlockHash>> {
         match get(txn, self.send_action_ids_handle.unwrap(), &id.as_bytes()) {

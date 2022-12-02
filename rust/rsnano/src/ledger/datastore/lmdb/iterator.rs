@@ -3,10 +3,9 @@ use std::ffi::c_uint;
 use lmdb::{Cursor, Database, RoCursor};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{Deserialize, Serialize};
+use rsnano_store_traits::Transaction;
 
-use crate::ledger::datastore::{
-    iterator::DbIteratorImpl, BinaryDbIterator, DbIterator, Transaction,
-};
+use crate::ledger::datastore::{iterator::DbIteratorImpl, BinaryDbIterator, DbIterator};
 
 use super::open_ro_cursor;
 

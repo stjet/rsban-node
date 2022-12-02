@@ -1,8 +1,9 @@
 use std::path::Path;
 
+use rsnano_store_traits::{ReadTransaction, WriteTransaction};
+
 use super::{
     AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore, PrunedStore,
-    ReadTransaction, WriteTransaction,
 };
 
 pub trait Store: Send + Sync {

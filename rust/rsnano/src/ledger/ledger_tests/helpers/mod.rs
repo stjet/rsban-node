@@ -1,10 +1,10 @@
 mod account_block_factory;
 mod ledger_context;
 
-use crate::ledger::datastore::WriteTransaction;
 pub(crate) use account_block_factory::AccountBlockFactory;
 pub(crate) use ledger_context::LedgerContext;
 use rsnano_core::{Amount, Block, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock};
+use rsnano_store_traits::WriteTransaction;
 
 pub(crate) fn upgrade_genesis_to_epoch_v1(
     ctx: &LedgerContext,

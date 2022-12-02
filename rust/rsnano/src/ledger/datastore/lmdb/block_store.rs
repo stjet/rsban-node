@@ -1,8 +1,5 @@
 use super::{as_write_txn, count, get, LmdbEnv, LmdbIteratorImpl};
-use crate::ledger::datastore::{
-    block_store::BlockIterator, parallel_traversal, BlockStore, ReadTransaction, Transaction,
-    WriteTransaction,
-};
+use crate::ledger::datastore::{block_store::BlockIterator, parallel_traversal, BlockStore};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
@@ -11,6 +8,7 @@ use rsnano_core::{
     Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
     ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
+use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 use std::sync::Arc;
 
 pub struct LmdbBlockStore {

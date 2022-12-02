@@ -4,13 +4,14 @@ use rsnano_core::{
     Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockType, BlockVisitor,
     ChangeBlock, Epoch, OpenBlock, PendingInfo, PendingKey, ReceiveBlock, SendBlock, StateBlock,
 };
+use rsnano_store_traits::WriteTransaction;
 
 use crate::{
     stats::{DetailType, Direction, Stat, StatType},
     utils::seconds_since_epoch,
 };
 
-use super::{datastore::WriteTransaction, Ledger};
+use super::Ledger;
 
 pub(crate) struct RollbackVisitor<'a> {
     pub txn: &'a mut dyn WriteTransaction,

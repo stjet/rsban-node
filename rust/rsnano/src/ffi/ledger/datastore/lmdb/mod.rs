@@ -15,6 +15,7 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
+use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;
 
@@ -22,7 +23,7 @@ use crate::{
     ffi::VoidPointerCallback,
     ledger::datastore::{
         lmdb::{LmdbReadTransaction, LmdbWriteTransaction},
-        ReadTransaction, Transaction, TxnCallbacks, WriteTransaction,
+        TxnCallbacks,
     },
 };
 

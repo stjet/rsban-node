@@ -38,7 +38,8 @@ pub use version_store::LmdbVersionStore;
 pub use wallet_store::LmdbWalletStore;
 pub use wallets::LmdbWallets;
 
-use super::{ReadTransaction, TxnCallbacks, WriteTransaction};
+use super::TxnCallbacks;
+use rsnano_store_traits::{ReadTransaction, WriteTransaction};
 
 enum RoTxnState {
     Inactive(InactiveTransaction<'static>),
@@ -89,7 +90,7 @@ impl Drop for LmdbReadTransaction {
     }
 }
 
-impl super::Transaction for LmdbReadTransaction {
+impl rsnano_store_traits::Transaction for LmdbReadTransaction {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -100,7 +101,7 @@ impl super::Transaction for LmdbReadTransaction {
 }
 
 impl ReadTransaction for LmdbReadTransaction {
-    fn txn(&self) -> &dyn super::Transaction {
+    fn txn(&self) -> &dyn rsnano_store_traits::Transaction {
         self
     }
 
@@ -181,7 +182,7 @@ impl<'a> Drop for LmdbWriteTransaction {
     }
 }
 
-impl super::Transaction for LmdbWriteTransaction {
+impl rsnano_store_traits::Transaction for LmdbWriteTransaction {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -192,10 +193,10 @@ impl super::Transaction for LmdbWriteTransaction {
 }
 
 impl WriteTransaction for LmdbWriteTransaction {
-    fn txn(&self) -> &dyn super::Transaction {
+    fn txn(&self) -> &dyn rsnano_store_traits::Transaction {
         self
     }
-    fn txn_mut(&mut self) -> &mut dyn super::Transaction {
+    fn txn_mut(&mut self) -> &mut dyn rsnano_store_traits::Transaction {
         self
     }
 
@@ -228,7 +229,7 @@ impl WriteTransaction for LmdbWriteTransaction {
     }
 }
 
-pub(crate) fn exists(txn: &dyn super::Transaction, db: Database, key: &[u8]) -> bool {
+pub(crate) fn exists(txn: &dyn rsnano_store_traits::Transaction, db: Database, key: &[u8]) -> bool {
     match get(txn, db, &key) {
         Ok(_) => true,
         Err(lmdb::Error::NotFound) => false,
@@ -245,7 +246,7 @@ pub(crate) fn as_write_txn(txn: &mut dyn WriteTransaction) -> &mut RwTransaction
 }
 
 pub(crate) fn get<'a, K: AsRef<[u8]>>(
-    txn: &'a dyn super::Transaction,
+    txn: &'a dyn rsnano_store_traits::Transaction,
     database: Database,
     key: &K,
 ) -> lmdb::Result<&'a [u8]> {
@@ -261,7 +262,7 @@ pub(crate) fn get<'a, K: AsRef<[u8]>>(
 }
 
 pub(crate) fn open_ro_cursor<'a>(
-    txn: &'a dyn super::Transaction,
+    txn: &'a dyn rsnano_store_traits::Transaction,
     database: Database,
 ) -> lmdb::Result<RoCursor<'a>> {
     let any = txn.as_any();
@@ -275,7 +276,7 @@ pub(crate) fn open_ro_cursor<'a>(
     }
 }
 
-pub(crate) fn count<'a>(txn: &'a dyn super::Transaction, database: Database) -> u64 {
+pub(crate) fn count<'a>(txn: &'a dyn rsnano_store_traits::Transaction, database: Database) -> u64 {
     let any = txn.as_any();
     let stat = if let Some(t) = any.downcast_ref::<LmdbWriteTransaction>() {
         t.rw_txn().stat(database)

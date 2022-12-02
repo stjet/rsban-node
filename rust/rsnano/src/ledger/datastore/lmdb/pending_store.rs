@@ -5,10 +5,10 @@ use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, BlockHash, PendingInfo, PendingKey,
 };
+use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 
 use crate::ledger::datastore::{
-    parallel_traversal_u512, pending_store::PendingIterator, PendingStore, ReadTransaction,
-    Transaction, WriteTransaction,
+    parallel_traversal_u512, pending_store::PendingIterator, PendingStore,
 };
 
 use super::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl};

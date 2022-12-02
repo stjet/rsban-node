@@ -8,13 +8,14 @@ use std::{
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::{utils::PropertyTreeWriter, AccountInfo, Amount, ConfirmationHeightInfo, Epoch};
+use rsnano_store_traits::WriteTransaction;
 
 use crate::{
     config::TxnTrackingConfig,
     ledger::{
         datastore::{
             AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore,
-            PrunedStore, Store, VersionStore, WriteTransaction, STORE_VERSION_MINIMUM,
+            PrunedStore, Store, VersionStore, STORE_VERSION_MINIMUM,
         },
         LedgerCache, LedgerConstants,
     },
@@ -319,7 +320,7 @@ impl Store for LmdbStore {
         copy_db(&self.env, destination)
     }
 
-    fn tx_begin_read(&self) -> anyhow::Result<Box<dyn crate::ledger::datastore::ReadTransaction>> {
+    fn tx_begin_read(&self) -> anyhow::Result<Box<dyn rsnano_store_traits::ReadTransaction>> {
         let txn = self.env.tx_begin_read()?;
         Ok(Box::new(txn))
     }

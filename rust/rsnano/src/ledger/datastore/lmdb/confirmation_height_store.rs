@@ -3,11 +3,12 @@ use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, ConfirmationHeightInfo,
 };
+use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 use std::sync::Arc;
 
 use crate::ledger::datastore::{
     confirmation_height_store::ConfirmationHeightIterator, parallel_traversal,
-    ConfirmationHeightStore, ReadTransaction, Transaction, WriteTransaction,
+    ConfirmationHeightStore,
 };
 
 use super::{as_write_txn, count, exists, get, LmdbEnv, LmdbIteratorImpl};

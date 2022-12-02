@@ -1,8 +1,9 @@
 use rsnano_core::{
     Block, BlockHash, BlockVisitor, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
+use rsnano_store_traits::Transaction;
 
-use crate::ledger::{datastore::Transaction, Ledger, LedgerConstants};
+use crate::ledger::{Ledger, LedgerConstants};
 
 pub(crate) struct DependentBlockVisitor<'a> {
     ledger: &'a Ledger,

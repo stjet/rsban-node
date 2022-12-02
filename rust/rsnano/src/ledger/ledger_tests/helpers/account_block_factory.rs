@@ -1,7 +1,8 @@
 use rsnano_core::{Account, AccountInfo, Amount, BlockHash, Epoch, KeyPair, Link};
+use rsnano_store_traits::Transaction;
 
 use crate::{
-    ledger::{datastore::Transaction, Ledger, DEV_GENESIS_KEY},
+    ledger::{Ledger, DEV_GENESIS_KEY},
     DEV_CONSTANTS,
 };
 use rsnano_core::{

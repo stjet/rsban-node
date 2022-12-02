@@ -1,7 +1,8 @@
-use super::datastore::{Store, Transaction};
+use super::datastore::Store;
 use rsnano_core::{
     Block, BlockHash, BlockVisitor, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
+use rsnano_store_traits::Transaction;
 
 pub(crate) struct RepresentativeVisitor<'a> {
     txn: &'a dyn Transaction,

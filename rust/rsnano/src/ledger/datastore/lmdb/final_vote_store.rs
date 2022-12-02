@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
+use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 
 use crate::ledger::datastore::{
-    final_vote_store::FinalVoteIterator, parallel_traversal_u512, FinalVoteStore, ReadTransaction,
-    Transaction, WriteTransaction,
+    final_vote_store::FinalVoteIterator, parallel_traversal_u512, FinalVoteStore,
 };
 
 use super::{as_write_txn, count, get, LmdbEnv, LmdbIteratorImpl};

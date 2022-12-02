@@ -3,13 +3,14 @@ use rsnano_core::{
     ChangeBlock, Epoch, Epochs, MutableBlockVisitor, OpenBlock, PendingInfo, PendingKey,
     ReceiveBlock, SendBlock, SignatureVerification, StateBlock,
 };
+use rsnano_store_traits::WriteTransaction;
 
 use crate::{
     stats::{DetailType, Direction, Stat, StatType},
     utils::seconds_since_epoch,
 };
 
-use super::{datastore::WriteTransaction, Ledger, LedgerConstants, ProcessResult, ProcessReturn};
+use super::{Ledger, LedgerConstants, ProcessResult, ProcessReturn};
 
 pub(crate) struct LedgerProcessor<'a> {
     ledger: &'a Ledger,

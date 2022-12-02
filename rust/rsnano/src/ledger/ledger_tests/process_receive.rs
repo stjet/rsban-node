@@ -2,11 +2,9 @@ use rsnano_core::{
     Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair, Link,
     PendingKey, StateBlock,
 };
+use rsnano_store_traits::WriteTransaction;
 
-use crate::{
-    ledger::{datastore::WriteTransaction, ProcessResult},
-    DEV_GENESIS_ACCOUNT,
-};
+use crate::{ledger::ProcessResult, DEV_GENESIS_ACCOUNT};
 
 use super::LedgerContext;
 

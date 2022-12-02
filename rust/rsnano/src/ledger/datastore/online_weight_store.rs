@@ -1,6 +1,7 @@
 use rsnano_core::Amount;
 
-use super::{DbIterator, Transaction, WriteTransaction};
+use super::DbIterator;
+use rsnano_store_traits::{Transaction, WriteTransaction};
 
 pub type OnlineWeightIterator = Box<dyn DbIterator<u64, Amount>>;
 

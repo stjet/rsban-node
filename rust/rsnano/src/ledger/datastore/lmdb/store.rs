@@ -8,15 +8,14 @@ use std::{
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::{utils::PropertyTreeWriter, AccountInfo, Amount, ConfirmationHeightInfo, Epoch};
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_traits::{
+    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, WriteTransaction,
+};
 
 use crate::{
     config::TxnTrackingConfig,
     ledger::{
-        datastore::{
-            AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore,
-            PrunedStore, Store, VersionStore, STORE_VERSION_MINIMUM,
-        },
+        datastore::{PendingStore, PrunedStore, Store, VersionStore, STORE_VERSION_MINIMUM},
         LedgerCache, LedgerConstants,
     },
     utils::{seconds_since_epoch, Logger},

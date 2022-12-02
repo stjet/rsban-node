@@ -5,10 +5,11 @@ use std::{
 };
 
 use rsnano_core::Account;
+use rsnano_store_traits::AccountStore;
 
 use crate::{
     ffi::{core::AccountInfoHandle, VoidPointerCallback},
-    ledger::datastore::{lmdb::LmdbAccountStore, AccountStore},
+    ledger::datastore::lmdb::LmdbAccountStore,
 };
 
 use super::{

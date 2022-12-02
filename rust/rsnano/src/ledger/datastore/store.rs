@@ -1,10 +1,11 @@
 use std::path::Path;
 
-use rsnano_store_traits::{ReadTransaction, WriteTransaction};
-
-use super::{
-    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore, PrunedStore,
+use rsnano_store_traits::{
+    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, ReadTransaction,
+    WriteTransaction,
 };
+
+use super::{PendingStore, PrunedStore};
 
 pub trait Store: Send + Sync {
     fn tx_begin_read(&self) -> anyhow::Result<Box<dyn ReadTransaction>>;

@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
-use rsnano_store_lmdb::{as_write_txn, count, get};
+use rsnano_store_lmdb::{as_write_txn, count, get, LmdbIteratorImpl};
 use rsnano_store_traits::{
     FinalVoteIterator, FinalVoteStore, ReadTransaction, Transaction, WriteTransaction,
 };
 
 use crate::ledger::datastore::parallel_traversal_u512;
 
-use super::{LmdbEnv, LmdbIteratorImpl};
+use super::LmdbEnv;
 
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash

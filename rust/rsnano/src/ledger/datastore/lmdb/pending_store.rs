@@ -5,14 +5,14 @@ use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, BlockHash, PendingInfo, PendingKey,
 };
-use rsnano_store_lmdb::{as_write_txn, get};
+use rsnano_store_lmdb::{as_write_txn, get, LmdbIteratorImpl};
 use rsnano_store_traits::{
     PendingIterator, PendingStore, ReadTransaction, Transaction, WriteTransaction,
 };
 
 use crate::ledger::datastore::parallel_traversal_u512;
 
-use super::{LmdbEnv, LmdbIteratorImpl};
+use super::LmdbEnv;
 
 pub struct LmdbPendingStore {
     env: Arc<LmdbEnv>,

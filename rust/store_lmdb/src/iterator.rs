@@ -1,9 +1,9 @@
 use std::ffi::c_uint;
 
+use super::open_ro_cursor;
 use lmdb::{Cursor, Database, RoCursor};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{Deserialize, Serialize};
-use rsnano_store_lmdb::open_ro_cursor;
 use rsnano_store_traits::{BinaryDbIterator, DbIterator, DbIteratorImpl, Transaction};
 
 pub struct LmdbIteratorImpl {

@@ -3,7 +3,6 @@ mod block_store;
 mod confirmation_height_store;
 mod final_vote_store;
 mod frontier_store;
-mod iterator;
 mod lmdb_env;
 mod online_weight_store;
 mod peer_store;
@@ -20,7 +19,6 @@ pub use block_store::LmdbBlockStore;
 pub use confirmation_height_store::LmdbConfirmationHeightStore;
 pub use final_vote_store::LmdbFinalVoteStore;
 pub use frontier_store::LmdbFrontierStore;
-pub use iterator::LmdbIteratorImpl;
 pub use lmdb_env::{EnvOptions, LmdbEnv};
 #[cfg(test)]
 pub(crate) use lmdb_env::{TestDbFile, TestLmdbEnv};

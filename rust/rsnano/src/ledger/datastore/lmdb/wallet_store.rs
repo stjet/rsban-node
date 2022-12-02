@@ -12,15 +12,13 @@ use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, PublicKey, RawKey,
 };
-use rsnano_store_lmdb::{as_write_txn, get};
+use rsnano_store_lmdb::{as_write_txn, get, LmdbIteratorImpl};
 use rsnano_store_traits::{DbIterator, Transaction, WriteTransaction};
 
 use crate::{
     ledger::datastore::{Fans, WalletValue},
     wallet::KeyDerivationFunction,
 };
-
-use super::LmdbIteratorImpl;
 
 #[derive(FromPrimitive)]
 pub enum KeyType {

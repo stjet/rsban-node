@@ -1,3 +1,6 @@
+mod iterator;
+pub use iterator::LmdbIteratorImpl;
+
 use std::{mem, sync::Arc};
 
 use lmdb::{

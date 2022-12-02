@@ -3,7 +3,7 @@ use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, ConfirmationHeightInfo,
 };
-use rsnano_store_lmdb::{as_write_txn, count, exists, get};
+use rsnano_store_lmdb::{as_write_txn, count, exists, get, LmdbIteratorImpl};
 use rsnano_store_traits::{
     ConfirmationHeightIterator, ConfirmationHeightStore, ReadTransaction, Transaction,
     WriteTransaction,
@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use crate::ledger::datastore::parallel_traversal;
 
-use super::{LmdbEnv, LmdbIteratorImpl};
+use super::LmdbEnv;
 
 pub struct LmdbConfirmationHeightStore {
     env: Arc<LmdbEnv>,

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use super::{LmdbEnv, LmdbIteratorImpl};
+use super::LmdbEnv;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::Amount;
-use rsnano_store_lmdb::{as_write_txn, count};
+use rsnano_store_lmdb::{as_write_txn, count, LmdbIteratorImpl};
 use rsnano_store_traits::{OnlineWeightIterator, OnlineWeightStore, Transaction, WriteTransaction};
 
 pub struct LmdbOnlineWeightStore {

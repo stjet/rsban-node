@@ -1,9 +1,9 @@
 use std::sync::atomic::Ordering;
 
-use rsnano_core::{BlockHash, Epoch, Link, PendingKey};
+use rsnano_core::{BlockDetails, BlockHash, Epoch, Link, PendingKey};
 
 use crate::{
-    core::{Block, BlockBuilder, BlockDetails, BlockEnum},
+    core::{Block, BlockBuilder, BlockEnum},
     ledger::{
         ledger_tests::{setup_open_block, setup_send_block},
         ProcessResult,

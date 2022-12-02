@@ -1,9 +1,11 @@
 use crate::{
-    core::{Block, BlockDetails, BlockSideband, StateBlock},
+    core::{Block, BlockSideband, StateBlock},
     work::DEV_WORK_POOL,
 };
 use anyhow::Result;
-use rsnano_core::{Account, Amount, BlockHash, Epoch, KeyPair, Link, PublicKey, RawKey, Signature};
+use rsnano_core::{
+    Account, Amount, BlockDetails, BlockHash, Epoch, KeyPair, Link, PublicKey, RawKey, Signature,
+};
 
 pub struct StateBlockBuilder {
     account: Account,

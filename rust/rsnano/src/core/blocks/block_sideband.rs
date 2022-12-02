@@ -1,10 +1,10 @@
 use num::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, Serialize, Stream},
-    Account, Amount, BlockHash, Epoch,
+    Account, Amount, BlockDetails, BlockHash, Epoch,
 };
 
-use super::{BlockDetails, BlockType};
+use super::BlockType;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockSideband {

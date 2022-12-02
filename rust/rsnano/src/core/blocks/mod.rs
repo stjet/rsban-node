@@ -1,4 +1,3 @@
-mod block_details;
 mod block_sideband;
 #[cfg(test)]
 mod builders;
@@ -11,7 +10,6 @@ mod state_block;
 use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
-pub use block_details::*;
 pub use block_sideband::BlockSideband;
 #[cfg(test)]
 pub use builders::*;
@@ -21,25 +19,13 @@ pub use open_block::*;
 pub use receive_block::*;
 use rsnano_core::{
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, Link, QualifiedRoot, Root, Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, BlockType, Link, QualifiedRoot, Root, Signature,
     WorkVersion,
 };
 pub use send_block::*;
 pub use state_block::*;
 
 use super::{FullHash, Uniquer};
-
-#[repr(u8)]
-#[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
-pub enum BlockType {
-    Invalid = 0,
-    NotABlock = 1,
-    Send = 2,
-    Receive = 3,
-    Open = 4,
-    Change = 5,
-    State = 6,
-}
 
 pub fn serialized_block_size(block_type: BlockType) -> usize {
     match block_type {
@@ -49,38 +35,6 @@ pub fn serialized_block_size(block_type: BlockType) -> usize {
         BlockType::Open => OpenBlock::serialized_size(),
         BlockType::Change => ChangeBlock::serialized_size(),
         BlockType::State => StateBlock::serialized_size(),
-    }
-}
-
-#[derive(Clone, Default, Debug)]
-pub struct LazyBlockHash {
-    // todo: Remove Arc<RwLock>? Maybe remove lazy hash calculation?
-    hash: Arc<RwLock<BlockHash>>,
-}
-
-impl LazyBlockHash {
-    pub fn new() -> Self {
-        Self {
-            hash: Arc::new(RwLock::new(BlockHash::zero())),
-        }
-    }
-    pub fn hash(&'_ self, factory: impl Into<BlockHash>) -> BlockHash {
-        let mut value = self.hash.read().unwrap();
-        if value.is_zero() {
-            drop(value);
-            let mut x = self.hash.write().unwrap();
-            let block_hash: BlockHash = factory.into();
-            *x = block_hash;
-            drop(x);
-            value = self.hash.read().unwrap();
-        }
-
-        *value
-    }
-
-    pub(crate) fn clear(&self) {
-        let mut x = self.hash.write().unwrap();
-        *x = BlockHash::zero();
     }
 }
 

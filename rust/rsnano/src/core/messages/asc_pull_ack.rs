@@ -1,11 +1,11 @@
 use crate::{
     config::NetworkConstants,
-    core::{deserialize_block_enum, serialize_block_enum, BlockEnum, BlockType},
+    core::{deserialize_block_enum, serialize_block_enum, BlockEnum},
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
-    Account, BlockHash,
+    Account, BlockHash, BlockType,
 };
 use std::{any::Any, mem::size_of};
 

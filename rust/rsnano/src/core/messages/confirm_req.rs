@@ -1,11 +1,11 @@
 use crate::{
     config::NetworkConstants,
-    core::{deserialize_block, serialized_block_size, BlockEnum, BlockType, BlockUniquer},
+    core::{deserialize_block, serialized_block_size, BlockEnum, BlockUniquer},
 };
 use anyhow::Result;
 use rsnano_core::{
     utils::{Deserialize, Serialize, Stream},
-    BlockHash, Root,
+    BlockHash, BlockType, Root,
 };
 use std::{
     any::Any,

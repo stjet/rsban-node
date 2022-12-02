@@ -1,11 +1,8 @@
 use std::sync::atomic::Ordering;
 
-use rsnano_core::{Account, Amount};
+use rsnano_core::{Account, Amount, BlockType};
 
-use crate::{
-    core::BlockType, utils::seconds_since_epoch, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
-    DEV_GENESIS_HASH,
-};
+use crate::{utils::seconds_since_epoch, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 
 use super::LedgerContext;
 

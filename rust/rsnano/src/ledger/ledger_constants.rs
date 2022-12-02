@@ -2,11 +2,11 @@ use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
 use once_cell::sync::Lazy;
-use rsnano_core::{Account, Amount, BlockHash, Epoch, Epochs, KeyPair, Link};
+use rsnano_core::{Account, Amount, BlockDetails, BlockHash, Epoch, Epochs, KeyPair, Link};
 
 use crate::{
     config::get_env_or_default_string,
-    core::{deserialize_block_json, BlockDetails, BlockEnum, BlockSideband, Networks},
+    core::{deserialize_block_json, BlockEnum, BlockSideband, Networks},
     utils::{seconds_since_epoch, SerdePropertyTree},
     work::WorkThresholds,
 };
@@ -89,7 +89,7 @@ fn parse_block_from_genesis_data(genesis_data: &str) -> Result<BlockEnum> {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::BlockType;
+    use rsnano_core::BlockType;
 
     use super::*;
 

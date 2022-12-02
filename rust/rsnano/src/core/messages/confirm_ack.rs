@@ -1,10 +1,10 @@
 use crate::{
     config::NetworkConstants,
-    core::{messages::MessageType, BlockType},
+    core::messages::MessageType,
     voting::{Vote, VoteUniquer},
 };
 use anyhow::Result;
-use rsnano_core::utils::Stream;
+use rsnano_core::{utils::Stream, BlockType};
 use std::{
     any::Any,
     fmt::Debug,

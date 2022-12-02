@@ -1,8 +1,8 @@
 use once_cell::sync::Lazy;
-use rsnano_core::{DifficultyV1, Epoch, Root, WorkVersion};
+use rsnano_core::{BlockDetails, BlockType, DifficultyV1, Epoch, Root, WorkVersion};
 use std::cmp::{max, min};
 
-use crate::core::{Block, BlockDetails, BlockType};
+use crate::core::Block;
 
 #[derive(Clone)]
 pub struct WorkThresholds {

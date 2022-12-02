@@ -6,18 +6,18 @@ use std::{
 
 use backtrace::Backtrace;
 use rsnano_core::utils::PropertyTreeWriter;
-use rsnano_store_traits::TxnCallbacks;
+use rsnano_store_traits::TransactionTracker;
 
 use crate::{config::TxnTrackingConfig, utils::Logger};
 
-pub struct TxnTracker {
+pub struct LongRunningTransactionLogger {
     stats: Mutex<HashMap<u64, TxnStats>>,
     logger: Arc<dyn Logger>,
     config: TxnTrackingConfig,
     block_processor_batch_max_time: Duration,
 }
 
-impl TxnTracker {
+impl LongRunningTransactionLogger {
     pub fn new(
         logger: Arc<dyn Logger>,
         config: TxnTrackingConfig,
@@ -87,8 +87,27 @@ impl TxnTracker {
             ));
         }
     }
+}
 
-    pub fn serialize_json(
+#[derive(Clone)]
+struct TxnStats {
+    txn_id: u64,
+    is_write: bool,
+    thread_name: Option<String>,
+    start: Instant,
+    stacktrace: Backtrace,
+}
+
+impl TransactionTracker for LongRunningTransactionLogger {
+    fn txn_start(&self, txn_id: u64, is_write: bool) {
+        self.add(txn_id, is_write);
+    }
+
+    fn txn_end(&self, txn_id: u64, is_write: bool) {
+        self.erase(txn_id, is_write);
+    }
+
+    fn serialize_json(
         &self,
         json: &mut dyn PropertyTreeWriter,
         min_read_time: Duration,
@@ -159,24 +178,5 @@ impl TxnTracker {
             }
         }
         Ok(())
-    }
-}
-
-#[derive(Clone)]
-struct TxnStats {
-    txn_id: u64,
-    is_write: bool,
-    thread_name: Option<String>,
-    start: Instant,
-    stacktrace: Backtrace,
-}
-
-impl TxnCallbacks for TxnTracker {
-    fn txn_start(&self, txn_id: u64, is_write: bool) {
-        self.add(txn_id, is_write);
-    }
-
-    fn txn_end(&self, txn_id: u64, is_write: bool) {
-        self.erase(txn_id, is_write);
     }
 }

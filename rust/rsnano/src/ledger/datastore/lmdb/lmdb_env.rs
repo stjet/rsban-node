@@ -2,7 +2,7 @@ use lmdb::{Environment, EnvironmentFlags};
 use lmdb_sys::MDB_SUCCESS;
 use rsnano_core::utils::PropertyTreeWriter;
 use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction};
-use rsnano_store_traits::{NullTxnCallbacks, TxnCallbacks};
+use rsnano_store_traits::{NullTransactionTracker, TransactionTracker};
 #[cfg(test)]
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -18,9 +18,11 @@ use std::{
     time::Duration,
 };
 
-use crate::config::{LmdbConfig, SyncStrategy, TxnTrackingConfig};
+use crate::config::TxnTrackingConfig;
 use crate::utils::Logger;
-use crate::{ledger::datastore::TxnTracker, memory_intensive_instrumentation};
+use crate::{ledger::datastore::LongRunningTransactionLogger, memory_intensive_instrumentation};
+
+use super::{LmdbConfig, SyncStrategy};
 
 #[derive(Default)]
 pub struct EnvOptions {
@@ -31,7 +33,7 @@ pub struct EnvOptions {
 pub struct LmdbEnv {
     pub environment: Environment,
     next_txn_id: AtomicU64,
-    txn_tracker: Option<Arc<TxnTracker>>,
+    txn_tracker: Arc<dyn TransactionTracker>,
 }
 
 impl LmdbEnv {
@@ -43,7 +45,7 @@ impl LmdbEnv {
         let env = Self {
             environment: Self::init(path, options)?,
             next_txn_id: AtomicU64::new(0),
-            txn_tracker: None,
+            txn_tracker: Arc::new(NullTransactionTracker::new()),
         };
         Ok(env)
     }
@@ -55,14 +57,14 @@ impl LmdbEnv {
         block_processor_batch_max_time: Duration,
         logger: Arc<dyn Logger>,
     ) -> anyhow::Result<Self> {
-        let txn_tracker = if tracking_cfg.enable {
-            Some(Arc::new(TxnTracker::new(
+        let txn_tracker: Arc<dyn TransactionTracker> = if tracking_cfg.enable {
+            Arc::new(LongRunningTransactionLogger::new(
                 logger,
                 tracking_cfg,
                 block_processor_batch_max_time,
-            )))
+            ))
         } else {
-            None
+            Arc::new(NullTransactionTracker::new())
         };
 
         let result = Self {
@@ -134,11 +136,8 @@ impl LmdbEnv {
         Ok(source_path)
     }
 
-    fn create_txn_callbacks(&self) -> Arc<dyn TxnCallbacks> {
-        match &self.txn_tracker {
-            Some(tracker) => Arc::clone(tracker) as Arc<dyn TxnCallbacks>,
-            None => Arc::new(NullTxnCallbacks::new()),
-        }
+    fn create_txn_callbacks(&self) -> Arc<dyn TransactionTracker> {
+        Arc::clone(&self.txn_tracker)
     }
 
     pub fn serialize_txn_tracker(
@@ -147,10 +146,8 @@ impl LmdbEnv {
         min_read_time: Duration,
         min_write_time: Duration,
     ) -> anyhow::Result<()> {
-        match &self.txn_tracker {
-            Some(tracker) => tracker.serialize_json(json, min_read_time, min_write_time),
-            None => Ok(()),
-        }
+        self.txn_tracker
+            .serialize_json(json, min_read_time, min_write_time)
     }
 }
 

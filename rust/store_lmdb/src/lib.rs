@@ -12,7 +12,7 @@ use lmdb::{
 };
 use primitive_types::{U256, U512};
 use rsnano_core::utils::get_cpu_count;
-use rsnano_store_traits::{ReadTransaction, TxnCallbacks, WriteTransaction};
+use rsnano_store_traits::{ReadTransaction, TransactionTracker, WriteTransaction};
 
 enum RoTxnState {
     Inactive(InactiveTransaction<'static>),
@@ -22,7 +22,7 @@ enum RoTxnState {
 
 pub struct LmdbReadTransaction {
     txn_id: u64,
-    callbacks: Arc<dyn TxnCallbacks>,
+    callbacks: Arc<dyn TransactionTracker>,
     txn: RoTxnState,
 }
 
@@ -30,7 +30,7 @@ impl LmdbReadTransaction {
     pub fn new<'a>(
         txn_id: u64,
         env: &'a Environment,
-        callbacks: Arc<dyn TxnCallbacks>,
+        callbacks: Arc<dyn TransactionTracker>,
     ) -> lmdb::Result<Self> {
         let txn = env.begin_ro_txn()?;
         let txn = unsafe { std::mem::transmute::<RoTransaction<'a>, RoTransaction<'static>>(txn) };
@@ -113,7 +113,7 @@ enum RwTxnState<'a> {
 pub struct LmdbWriteTransaction {
     env: &'static Environment,
     txn_id: u64,
-    callbacks: Arc<dyn TxnCallbacks>,
+    callbacks: Arc<dyn TransactionTracker>,
     txn: RwTxnState<'static>,
 }
 
@@ -121,7 +121,7 @@ impl LmdbWriteTransaction {
     pub fn new<'a>(
         txn_id: u64,
         env: &'a Environment,
-        callbacks: Arc<dyn TxnCallbacks>,
+        callbacks: Arc<dyn TransactionTracker>,
     ) -> lmdb::Result<Self> {
         let env = unsafe { std::mem::transmute::<&'a Environment, &'static Environment>(env) };
         let mut tx = Self {

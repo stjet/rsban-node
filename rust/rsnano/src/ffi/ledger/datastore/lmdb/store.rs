@@ -10,14 +10,14 @@ use std::{
 use rsnano_store_traits::Store;
 
 use crate::{
-    config::{DiagnosticsConfig, LmdbConfig},
+    config::DiagnosticsConfig,
     ffi::{
         ledger::{ledger_cache::LedgerCacheHandle, LedgerConstantsDto},
         utils::{LoggerHandle, LoggerMT},
         FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto,
     },
     ledger::{
-        datastore::lmdb::{create_backup_file, EnvOptions, LmdbStore},
+        datastore::lmdb::{create_backup_file, EnvOptions, LmdbConfig, LmdbStore},
         LedgerConstants,
     },
 };

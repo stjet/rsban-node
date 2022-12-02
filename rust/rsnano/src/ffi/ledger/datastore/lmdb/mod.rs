@@ -16,7 +16,7 @@ mod wallet_store;
 mod wallets;
 
 use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction};
-use rsnano_store_traits::{ReadTransaction, Transaction, TxnCallbacks, WriteTransaction};
+use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;
 
@@ -72,32 +72,6 @@ pub enum TransactionType {
     Read(LmdbReadTransaction),
     ReadRef(&'static dyn ReadTransaction),
     Write(LmdbWriteTransaction),
-}
-
-struct FfiCallbacksWrapper {
-    handle: *mut c_void,
-}
-
-impl FfiCallbacksWrapper {
-    fn new(handle: *mut c_void) -> Self {
-        Self { handle }
-    }
-}
-
-impl TxnCallbacks for FfiCallbacksWrapper {
-    fn txn_start(&self, txn_id: u64, is_write: bool) {
-        unsafe { TXN_START.expect("TXN_START")(self.handle, txn_id, is_write) }
-    }
-
-    fn txn_end(&self, txn_id: u64, _is_write: bool) {
-        unsafe { TXN_END.expect("TXN_END")(self.handle, txn_id) }
-    }
-}
-
-impl Drop for FfiCallbacksWrapper {
-    fn drop(&mut self) {
-        unsafe { TXN_CALLBACKS_DESTROY.expect("TXN_CALLBACKS_DESTROY missing")(self.handle) }
-    }
 }
 
 static mut TXN_CALLBACKS_DESTROY: Option<VoidPointerCallback> = None;

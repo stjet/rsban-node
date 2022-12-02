@@ -29,6 +29,7 @@ mod pruned_store;
 pub use pruned_store::{PrunedIterator, PrunedStore};
 
 mod unchecked_store;
+use rsnano_core::utils::PropertyTreeWriter;
 pub use unchecked_store::{UncheckedIterator, UncheckedStore};
 
 mod version_store;
@@ -37,7 +38,7 @@ pub use version_store::VersionStore;
 mod store;
 pub use store::Store;
 
-use std::any::Any;
+use std::{any::Any, time::Duration};
 
 pub trait Transaction {
     fn as_any(&self) -> &dyn Any;
@@ -59,21 +60,36 @@ pub trait WriteTransaction {
     fn commit(&mut self);
 }
 
-pub trait TxnCallbacks {
+pub trait TransactionTracker: Send + Sync {
     fn txn_start(&self, txn_id: u64, is_write: bool);
     fn txn_end(&self, txn_id: u64, is_write: bool);
+    fn serialize_json(
+        &self,
+        json: &mut dyn PropertyTreeWriter,
+        min_read_time: Duration,
+        min_write_time: Duration,
+    ) -> anyhow::Result<()>;
 }
 
-pub struct NullTxnCallbacks {}
+pub struct NullTransactionTracker {}
 
-impl NullTxnCallbacks {
+impl NullTransactionTracker {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl TxnCallbacks for NullTxnCallbacks {
+impl TransactionTracker for NullTransactionTracker {
     fn txn_start(&self, _txn_id: u64, _is_write: bool) {}
 
     fn txn_end(&self, _txn_id: u64, _is_write: bool) {}
+
+    fn serialize_json(
+        &self,
+        _json: &mut dyn PropertyTreeWriter,
+        _min_read_time: Duration,
+        _min_write_time: Duration,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
 }

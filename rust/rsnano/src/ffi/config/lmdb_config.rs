@@ -1,4 +1,4 @@
-use crate::config::{LmdbConfig, SyncStrategy};
+use crate::ledger::datastore::lmdb::{LmdbConfig, SyncStrategy};
 
 #[repr(C)]
 pub struct LmdbConfigDto {

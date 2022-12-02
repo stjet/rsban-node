@@ -14,6 +14,9 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
+mod lmdb_config;
+pub use lmdb_config::{LmdbConfig, SyncStrategy};
+
 pub use account_store::LmdbAccountStore;
 pub use block_store::LmdbBlockStore;
 pub use confirmation_height_store::LmdbConfirmationHeightStore;

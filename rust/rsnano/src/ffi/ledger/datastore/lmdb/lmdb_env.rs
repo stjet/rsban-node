@@ -7,12 +7,12 @@ use std::{
 };
 
 use crate::{
-    config::{DiagnosticsConfig, LmdbConfig},
+    config::DiagnosticsConfig,
     ffi::{
         utils::{LoggerHandle, LoggerMT},
         FfiPropertyTreeWriter, LmdbConfigDto, TxnTrackingConfigDto,
     },
-    ledger::datastore::lmdb::{EnvOptions, LmdbEnv},
+    ledger::datastore::lmdb::{EnvOptions, LmdbConfig, LmdbEnv},
 };
 
 use super::{TransactionHandle, TransactionType};

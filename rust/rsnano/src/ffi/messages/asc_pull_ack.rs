@@ -5,14 +5,12 @@ use super::{
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use crate::{
-    core::messages::{
-        AccountInfoAckPayload, AscPullAck, AscPullAckPayload, BlocksAckPayload, Message,
-    },
     ffi::{
         core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
         utils::FfiStream,
         NetworkConstantsDto,
     },
+    messages::{AccountInfoAckPayload, AscPullAck, AscPullAckPayload, BlocksAckPayload, Message},
 };
 use std::{
     borrow::Borrow,

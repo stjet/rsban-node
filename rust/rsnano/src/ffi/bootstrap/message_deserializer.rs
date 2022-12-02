@@ -3,13 +3,14 @@ use std::{ffi::c_void, sync::Arc};
 
 use crate::{
     config::NetworkConstants,
-    core::messages::Message,
     ffi::{
-        core::{messages::MessageHandle, BlockUniquerHandle},
+        core::BlockUniquerHandle,
+        messages::MessageHandle,
         transport::{NetworkFilterHandle, SocketHandle},
         voting::VoteUniquerHandle,
         ErrorCodeDto, NetworkConstantsDto, StringDto, VoidPointerCallback,
     },
+    messages::Message,
     stats::DetailType,
     transport::{MessageDeserializer, MessageDeserializerExt, ParseStatus},
     utils::ErrorCode,

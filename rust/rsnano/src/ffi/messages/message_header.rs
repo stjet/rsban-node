@@ -4,8 +4,8 @@ use std::{ffi::c_void, ops::Deref};
 
 use crate::{
     config::NetworkConstants,
-    core::messages::{MessageHeader, MessageType},
     ffi::utils::FfiStream,
+    messages::{MessageHeader, MessageType},
 };
 
 pub struct MessageHeaderHandle(MessageHeader);

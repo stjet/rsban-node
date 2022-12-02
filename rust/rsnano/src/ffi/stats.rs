@@ -7,7 +7,7 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
-    core::messages::MessageType,
+    messages::MessageType,
     stats::{
         DetailType, Direction, FileWriter, JsonWriter, Stat, StatConfig, StatLogSink, StatType,
     },

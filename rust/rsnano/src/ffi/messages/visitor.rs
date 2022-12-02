@@ -1,10 +1,10 @@
 use super::MessageHandle;
 use crate::{
-    core::messages::{
+    ffi::VoidPointerCallback,
+    messages::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
         Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,
     },
-    ffi::VoidPointerCallback,
     transport::BootstrapMessageVisitor,
 };
 use std::ffi::c_void;

@@ -1,9 +1,8 @@
 use std::ffi::c_void;
 
 use crate::{
-    core::messages::BulkPush,
-    core::messages::Message,
     ffi::{utils::FfiStream, NetworkConstantsDto},
+    messages::{BulkPush, Message},
 };
 
 use super::{

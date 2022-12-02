@@ -1,6 +1,6 @@
 use crate::{
     config::NetworkConstants,
-    core::messages::MessageType,
+    messages::MessageType,
     voting::{Vote, VoteUniquer},
 };
 use anyhow::Result;

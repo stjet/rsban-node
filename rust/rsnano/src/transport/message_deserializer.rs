@@ -4,7 +4,7 @@ use rsnano_core::utils::{Stream, StreamAdapter};
 
 use crate::{
     config::NetworkConstants,
-    core::messages::{
+    messages::{
         AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
         FrontierReq, Keepalive, Message, MessageHeader, MessageType, NodeIdHandshake, Publish,
         TelemetryAck, TelemetryReq,

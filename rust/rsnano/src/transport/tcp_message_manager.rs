@@ -6,7 +6,7 @@ use std::{
 
 use rsnano_core::Account;
 
-use crate::core::messages::Message;
+use crate::messages::Message;
 
 use super::SocketImpl;
 

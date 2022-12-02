@@ -1,7 +1,8 @@
 use crate::{
     config::{NetworkConstants, NodeConfig},
     ffi::{
-        core::{messages::FfiMessageVisitor, BlockUniquerHandle},
+        core::BlockUniquerHandle,
+        messages::FfiMessageVisitor,
         transport::{
             EndpointDto, NetworkFilterHandle, SocketHandle, SynCookiesHandle,
             TcpMessageManagerHandle,

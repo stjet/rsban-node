@@ -12,7 +12,7 @@ use rsnano_core::{sign_message, utils::MemoryStream, Account, KeyPair};
 
 use crate::{
     config::{NetworkConstants, NodeConfig, TelemetryCacheCutoffs},
-    core::messages::{
+    messages::{
         AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
         FrontierReq, Keepalive, Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
         TelemetryReq,

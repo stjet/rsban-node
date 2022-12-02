@@ -6,8 +6,6 @@ pub use blocks::*;
 
 mod random_pool;
 
-pub mod messages;
-
 mod epoch;
 pub use epoch::EpochsHandle;
 

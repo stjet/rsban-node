@@ -3,7 +3,7 @@ use std::{ffi::c_void, ops::Deref, sync::Arc, time::Duration};
 use crate::{
     bootstrap::{BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr},
     ffi::{
-        core::messages::MessageHandle,
+        messages::MessageHandle,
         transport::{
             as_tcp_channel, ChannelHandle, ChannelTcpSendBufferCallback, ChannelTcpSendCallback,
             ChannelTcpSendCallbackWrapper, EndpointDto, ReadCallbackWrapper,

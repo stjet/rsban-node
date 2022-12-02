@@ -2,11 +2,9 @@ use std::ffi::c_void;
 
 use rsnano_core::{BlockHash, HashOrAccount};
 
-use crate::core::messages::Message;
-use crate::ffi::utils::FfiStream;
 use crate::{
-    core::messages::BulkPull,
-    ffi::{copy_hash_bytes, copy_hash_or_account_bytes, NetworkConstantsDto},
+    ffi::{copy_hash_bytes, copy_hash_or_account_bytes, utils::FfiStream, NetworkConstantsDto},
+    messages::{BulkPull, Message},
 };
 
 use super::{

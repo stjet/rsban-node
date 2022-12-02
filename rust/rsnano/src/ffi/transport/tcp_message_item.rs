@@ -3,7 +3,7 @@ use std::{net::SocketAddr, ops::Deref};
 use rsnano_core::Account;
 
 use crate::{
-    ffi::{copy_account_bytes, core::messages::MessageHandle},
+    ffi::{copy_account_bytes, messages::MessageHandle},
     transport::TcpMessageItem,
 };
 

@@ -1,8 +1,8 @@
 use std::{ffi::c_void, net::SocketAddr, sync::Arc};
 
 use crate::{
-    core::messages::Message,
-    ffi::{core::messages::MessageHandle, VoidPointerCallback},
+    ffi::{messages::MessageHandle, VoidPointerCallback},
+    messages::Message,
     transport::ChannelTcpObserver,
 };
 

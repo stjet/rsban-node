@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::{
-    core::messages::Message,
+    messages::Message,
     transport::{BandwidthLimitType, BufferDropPolicy, ChannelTcp, Socket, SocketImpl},
     utils::ErrorCode,
 };

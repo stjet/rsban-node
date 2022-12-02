@@ -1,9 +1,13 @@
 use std::{ffi::c_void, ops::Deref};
 
-use crate::core::messages::Message;
-use crate::ffi::core::{BlockHandle, BlockUniquerHandle};
-use crate::ffi::utils::FfiStream;
-use crate::{core::messages::Publish, ffi::NetworkConstantsDto};
+use crate::{
+    ffi::{
+        core::{BlockHandle, BlockUniquerHandle},
+        utils::FfiStream,
+        NetworkConstantsDto,
+    },
+    messages::{Message, Publish},
+};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,

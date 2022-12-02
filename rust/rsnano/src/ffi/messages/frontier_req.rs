@@ -2,11 +2,9 @@ use std::ffi::c_void;
 
 use rsnano_core::Account;
 
-use crate::core::messages::Message;
-use crate::ffi::utils::FfiStream;
 use crate::{
-    core::messages::FrontierReq,
-    ffi::{copy_account_bytes, NetworkConstantsDto},
+    ffi::{copy_account_bytes, utils::FfiStream, NetworkConstantsDto},
+    messages::{FrontierReq, Message},
 };
 
 use super::{

@@ -13,8 +13,8 @@ use super::{
     BandwidthLimitType, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket, SocketImpl,
 };
 use crate::{
-    core::messages::Message,
     ffi::ChannelTcpObserverWeakPtr,
+    messages::Message,
     utils::{ErrorCode, IoContext},
 };
 

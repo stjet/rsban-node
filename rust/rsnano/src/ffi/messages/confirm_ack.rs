@@ -6,13 +6,12 @@ use std::{
 
 use crate::{
     config::NetworkConstants,
-    core::messages::ConfirmAck,
-    core::messages::Message,
     ffi::{
         utils::FfiStream,
         voting::{VoteHandle, VoteUniquerHandle},
         NetworkConstantsDto,
     },
+    messages::{ConfirmAck, Message},
     voting::Vote,
 };
 

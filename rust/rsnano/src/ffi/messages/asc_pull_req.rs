@@ -5,10 +5,8 @@ use super::{
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use crate::{
-    core::messages::{
-        AccountInfoReqPayload, AscPullReq, AscPullReqPayload, BlocksReqPayload, Message,
-    },
     ffi::{copy_hash_or_account_bytes, utils::FfiStream, NetworkConstantsDto},
+    messages::{AccountInfoReqPayload, AscPullReq, AscPullReqPayload, BlocksReqPayload, Message},
 };
 use std::ffi::c_void;
 

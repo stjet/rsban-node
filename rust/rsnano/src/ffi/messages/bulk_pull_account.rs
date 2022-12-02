@@ -1,13 +1,12 @@
-use crate::{core::messages::Message, ffi::utils::FfiStream};
+use crate::{
+    ffi::{copy_account_bytes, copy_amount_bytes, utils::FfiStream, NetworkConstantsDto},
+    messages::{BulkPullAccount, BulkPullAccountFlags, Message},
+};
 use std::ffi::c_void;
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
     MessageHandle, MessageHeaderHandle,
-};
-use crate::{
-    core::messages::{BulkPullAccount, BulkPullAccountFlags},
-    ffi::{copy_account_bytes, copy_amount_bytes, NetworkConstantsDto},
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount};

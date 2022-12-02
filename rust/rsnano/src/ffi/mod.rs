@@ -5,6 +5,7 @@ pub mod core;
 mod hardened_constants;
 mod ipc;
 pub mod ledger;
+pub mod messages;
 mod property_tree;
 mod secure;
 mod signatures;

@@ -2,11 +2,9 @@ use std::ffi::c_void;
 
 use rsnano_core::{Account, Signature};
 
-use crate::core::messages::Message;
-use crate::ffi::utils::FfiStream;
 use crate::{
-    core::messages::NodeIdHandshake,
-    ffi::{copy_account_bytes, copy_signature_bytes, NetworkConstantsDto},
+    ffi::{copy_account_bytes, copy_signature_bytes, utils::FfiStream, NetworkConstantsDto},
+    messages::{Message, NodeIdHandshake},
 };
 
 use super::{

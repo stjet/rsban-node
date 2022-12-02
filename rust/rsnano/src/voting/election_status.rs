@@ -1,6 +1,5 @@
-use rsnano_core::Amount;
+use rsnano_core::{Amount, BlockEnum};
 
-use crate::core::BlockEnum;
 use std::{
     sync::{Arc, RwLock},
     time::{Duration, SystemTime},

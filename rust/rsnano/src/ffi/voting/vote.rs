@@ -4,11 +4,12 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use rsnano_core::{Account, BlockHash, RawKey, Signature};
+use rsnano_core::{Account, BlockHash, FullHash, RawKey, Signature};
 
-use crate::{core::FullHash, ffi::utils::FfiStream, voting::Vote};
-
-use crate::ffi::{FfiPropertyTreeWriter, StringDto};
+use crate::{
+    ffi::{utils::FfiStream, FfiPropertyTreeWriter, StringDto},
+    voting::Vote,
+};
 
 pub struct VoteHandle(Arc<RwLock<Vote>>);
 

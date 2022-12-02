@@ -1,9 +1,9 @@
 use crate::{
     config::NetworkConstants,
-    core::{deserialize_block, BlockEnum, BlockUniquer},
+    core::{deserialize_block, BlockUniquer},
 };
 use anyhow::Result;
-use rsnano_core::utils::Stream;
+use rsnano_core::{utils::Stream, BlockEnum};
 use std::{
     any::Any,
     fmt::Debug,
@@ -134,10 +134,10 @@ impl Debug for Publish {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::MemoryStream;
+    use rsnano_core::{utils::MemoryStream, BlockBuilder};
 
     use super::*;
-    use crate::{core::BlockBuilder, DEV_NETWORK_PARAMS};
+    use crate::DEV_NETWORK_PARAMS;
 
     #[test]
     fn serialize() {

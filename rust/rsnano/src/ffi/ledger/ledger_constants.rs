@@ -6,15 +6,15 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
-    core::BlockEnum,
     ffi::{
         core::BlockHandle,
         work::{fill_work_thresholds_dto, WorkThresholdsDto},
     },
     ledger::LedgerConstants,
-    work::WorkThresholds,
 };
-use rsnano_core::{Account, Amount, Epoch, Epochs, KeyPair, Link, PublicKey};
+use rsnano_core::{
+    work::WorkThresholds, Account, Amount, BlockEnum, Epoch, Epochs, KeyPair, Link, PublicKey,
+};
 
 #[repr(C)]
 pub struct LedgerConstantsDto {

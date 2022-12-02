@@ -1,10 +1,7 @@
-use rsnano_core::BlockHash;
-
-use crate::core::{
-    Block, BlockVisitor, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
-};
-
 use super::datastore::{Store, Transaction};
+use rsnano_core::{
+    Block, BlockHash, BlockVisitor, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+};
 
 pub(crate) struct RepresentativeVisitor<'a> {
     txn: &'a dyn Transaction,

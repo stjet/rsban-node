@@ -1,8 +1,6 @@
-use rsnano_core::{Account, Amount, BlockDetails, BlockSideband, Epoch, KeyPair};
-
 use crate::{
-    core::{Block, BlockHash, OpenBlock},
-    work::DEV_WORK_POOL,
+    work::DEV_WORK_POOL, Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch,
+    KeyPair, OpenBlock,
 };
 
 pub struct LegacyOpenBlockBuilder {
@@ -99,10 +97,8 @@ impl LegacyOpenBlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::Signature;
-
     use super::*;
-    use crate::{core::BlockBuilder, DEV_NETWORK_PARAMS};
+    use crate::{work::WorkThresholds, BlockBuilder, Signature};
 
     #[test]
     fn create_open_block() {
@@ -110,7 +106,10 @@ mod tests {
         assert_eq!(block.hashables.source, BlockHash::from(1));
         assert_eq!(block.hashables.representative, Account::from(2));
         assert_ne!(block.hashables.account, Account::zero());
-        assert_eq!(DEV_NETWORK_PARAMS.work.validate_entry_block(&block), false);
+        assert_eq!(
+            WorkThresholds::publish_dev().validate_entry_block(&block),
+            false
+        );
         assert_ne!(*block.block_signature(), Signature::new());
 
         let sideband = block.sideband().unwrap();

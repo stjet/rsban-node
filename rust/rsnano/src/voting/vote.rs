@@ -2,11 +2,9 @@ use anyhow::Result;
 use rsnano_core::{
     sign_message,
     utils::{Deserialize, PropertyTreeWriter, Serialize, Stream},
-    validate_message, Account, BlockHash, BlockHashBuilder, RawKey, Signature,
+    validate_message, Account, BlockHash, BlockHashBuilder, FullHash, RawKey, Signature,
 };
-use std::{sync::RwLock, time::Duration};
-
-use crate::core::FullHash;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct Vote {
@@ -164,12 +162,6 @@ impl FullHash for Vote {
             .update(self.voting_account.as_bytes())
             .update(self.signature.as_bytes())
             .build()
-    }
-}
-
-impl FullHash for RwLock<Vote> {
-    fn full_hash(&self) -> BlockHash {
-        self.read().unwrap().full_hash()
     }
 }
 

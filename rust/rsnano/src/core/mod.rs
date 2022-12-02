@@ -23,10 +23,6 @@ pub(crate) use hardened_constants::HardenedConstants;
 
 use std::net::Ipv6Addr;
 
-pub trait FullHash {
-    fn full_hash(&self) -> BlockHash;
-}
-
 #[derive(PartialEq, Eq, Debug)]
 pub struct NoValue {}
 

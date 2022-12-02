@@ -14,27 +14,8 @@ pub use logger_mt::{Logger, NullLogger};
 pub use thread_pool::*;
 pub use toml::*;
 
-use crate::config::get_env_or_default_string;
-
 pub fn seconds_since_epoch() -> u64 {
     chrono::Utc::now().timestamp() as u64
-}
-
-pub fn get_cpu_count() -> usize {
-    // Try to read overridden value from environment variable
-    let value = get_env_or_default_string("NANO_HARDWARE_CONCURRENCY", "0")
-        .parse::<usize>()
-        .unwrap_or_default();
-    if value > 0 {
-        return value;
-    }
-
-    //todo: use std::thread::available_concurrency once it's in stable
-    if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
-        cpuinfo.match_indices("processor").count()
-    } else {
-        1
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

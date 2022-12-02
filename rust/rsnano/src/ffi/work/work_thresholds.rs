@@ -1,5 +1,5 @@
 use num_traits::FromPrimitive;
-use rsnano_core::{BlockDetails, BlockType, DifficultyV1, Root, WorkVersion};
+use rsnano_core::{work::WorkThresholds, BlockDetails, BlockType, DifficultyV1, Root, WorkVersion};
 use std::convert::TryFrom;
 
 use crate::{
@@ -8,7 +8,6 @@ use crate::{
         core::{BlockDetailsDto, BlockHandle},
         StringDto,
     },
-    work::WorkThresholds,
 };
 
 #[repr(C)]

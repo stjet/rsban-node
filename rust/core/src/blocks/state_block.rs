@@ -1,10 +1,10 @@
-use anyhow::Result;
-use rsnano_core::{
+use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PublicKey, RawKey, Root,
     Signature,
 };
+use anyhow::Result;
 
 use super::{Block, BlockSideband, BlockType, BlockVisitor};
 
@@ -116,10 +116,6 @@ impl StateBlock {
 
     pub fn destination(&self) -> Account {
         Account::zero()
-    }
-
-    fn sign(&mut self, prv_key: &RawKey, pub_key: &PublicKey) {
-        self.signature = sign_message(prv_key, pub_key, self.hash().as_bytes());
     }
 
     pub fn serialized_size() -> usize {
@@ -301,9 +297,10 @@ impl Block for StateBlock {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::{MemoryStream, TestPropertyTree};
-
-    use crate::core::{BlockBuilder, StateBlockBuilder};
+    use crate::{
+        utils::{MemoryStream, TestPropertyTree},
+        BlockBuilder, StateBlockBuilder,
+    };
 
     use super::*;
 

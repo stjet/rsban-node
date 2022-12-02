@@ -1,8 +1,6 @@
-use rsnano_core::{Account, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair};
-
 use crate::{
-    core::{Block, SendBlock},
-    work::DEV_WORK_POOL,
+    work::DEV_WORK_POOL, Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch,
+    KeyPair, SendBlock,
 };
 
 pub struct LegacySendBlockBuilder {

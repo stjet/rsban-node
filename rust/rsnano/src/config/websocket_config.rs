@@ -41,7 +41,7 @@ impl WebsocketConfig {
 
 #[cfg(test)]
 mod tests {
-    use crate::work::WorkThresholds;
+    use rsnano_core::work::WorkThresholds;
 
     use super::*;
 

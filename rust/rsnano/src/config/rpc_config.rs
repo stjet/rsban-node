@@ -1,10 +1,11 @@
 use anyhow::Result;
+use rsnano_core::utils::get_cpu_count;
 use std::{
     net::Ipv6Addr,
     path::{Path, PathBuf},
 };
 
-use crate::utils::{get_cpu_count, TomlWriter};
+use crate::utils::TomlWriter;
 
 use super::NetworkConstants;
 

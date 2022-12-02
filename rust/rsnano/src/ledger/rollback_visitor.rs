@@ -1,13 +1,11 @@
 use std::sync::{Arc, RwLock};
 
 use rsnano_core::{
-    Account, AccountInfo, Amount, BlockHash, BlockType, Epoch, PendingInfo, PendingKey,
+    Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockType, BlockVisitor,
+    ChangeBlock, Epoch, OpenBlock, PendingInfo, PendingKey, ReceiveBlock, SendBlock, StateBlock,
 };
 
 use crate::{
-    core::{
-        Block, BlockEnum, BlockVisitor, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
-    },
     stats::{DetailType, Direction, Stat, StatType},
     utils::seconds_since_epoch,
 };

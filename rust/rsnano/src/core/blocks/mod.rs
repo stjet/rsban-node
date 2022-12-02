@@ -1,139 +1,16 @@
-#[cfg(test)]
-mod builders;
-mod change_block;
-mod open_block;
-mod receive_block;
-mod send_block;
-mod state_block;
-
 use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
-#[cfg(test)]
-pub use builders::*;
-pub use change_block::*;
 use num::FromPrimitive;
-pub use open_block::*;
-pub use receive_block::*;
 use rsnano_core::{
-    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, Link, QualifiedRoot,
-    Root, Signature, WorkVersion,
+    utils::{Deserialize, Stream},
+    BlockEnum, BlockSideband, BlockType, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock,
+    StateBlock,
 };
-pub use send_block::*;
-pub use state_block::*;
 
-use super::{FullHash, Uniquer};
+use super::Uniquer;
 
-pub fn serialized_block_size(block_type: BlockType) -> usize {
-    match block_type {
-        BlockType::Invalid | BlockType::NotABlock => 0,
-        BlockType::Send => SendBlock::serialized_size(),
-        BlockType::Receive => ReceiveBlock::serialized_size(),
-        BlockType::Open => OpenBlock::serialized_size(),
-        BlockType::Change => ChangeBlock::serialized_size(),
-        BlockType::State => StateBlock::serialized_size(),
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum BlockEnum {
-    Send(SendBlock),
-    Receive(ReceiveBlock),
-    Open(OpenBlock),
-    Change(ChangeBlock),
-    State(StateBlock),
-}
-
-impl BlockEnum {
-    pub fn block_type(&self) -> BlockType {
-        self.as_block().block_type()
-    }
-
-    pub fn as_block_mut(&mut self) -> &mut dyn Block {
-        match self {
-            BlockEnum::Send(b) => b,
-            BlockEnum::Receive(b) => b,
-            BlockEnum::Open(b) => b,
-            BlockEnum::Change(b) => b,
-            BlockEnum::State(b) => b,
-        }
-    }
-
-    pub fn as_block(&self) -> &dyn Block {
-        match self {
-            BlockEnum::Send(b) => b,
-            BlockEnum::Receive(b) => b,
-            BlockEnum::Open(b) => b,
-            BlockEnum::Change(b) => b,
-            BlockEnum::State(b) => b,
-        }
-    }
-}
-
-pub trait Block: FullHash {
-    fn block_type(&self) -> BlockType;
-    fn account(&self) -> Account;
-
-    /**
-     * Contextual details about a block, some fields may or may not be set depending on block type.
-     * This field is set via sideband_set in ledger processing or deserializing blocks from the database.
-     * Otherwise it may be null (for example, an old block or fork).
-     */
-    fn sideband(&'_ self) -> Option<&'_ BlockSideband>;
-    fn set_sideband(&mut self, sideband: BlockSideband);
-    fn hash(&self) -> BlockHash;
-    fn link(&self) -> Link;
-    fn block_signature(&self) -> &Signature;
-    fn set_block_signature(&mut self, signature: &Signature);
-    fn work(&self) -> u64;
-    fn set_work(&mut self, work: u64);
-    fn previous(&self) -> BlockHash;
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()>;
-    fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()>;
-    fn work_version(&self) -> WorkVersion {
-        WorkVersion::Work1
-    }
-    fn root(&self) -> Root;
-    fn visit(&self, visitor: &mut dyn BlockVisitor);
-    fn visit_mut(&mut self, visitor: &mut dyn MutableBlockVisitor);
-    fn balance(&self) -> Amount;
-    fn source(&self) -> BlockHash;
-    fn representative(&self) -> Account;
-    fn qualified_root(&self) -> QualifiedRoot {
-        QualifiedRoot::new(self.root(), self.previous())
-    }
-}
-
-impl<T: Block> FullHash for T {
-    fn full_hash(&self) -> BlockHash {
-        BlockHashBuilder::new()
-            .update(self.hash().as_bytes())
-            .update(self.block_signature().as_bytes())
-            .update(self.work().to_ne_bytes())
-            .build()
-    }
-}
-
-pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<BlockEnum> {
-    let block_type = ptree.get_string("type")?;
-    match block_type.as_str() {
-        "receive" => ReceiveBlock::deserialize_json(ptree).map(BlockEnum::Receive),
-        "send" => SendBlock::deserialize_json(ptree).map(BlockEnum::Send),
-        "open" => OpenBlock::deserialize_json(ptree).map(BlockEnum::Open),
-        "change" => ChangeBlock::deserialize_json(ptree).map(BlockEnum::Change),
-        "state" => StateBlock::deserialize_json(ptree).map(BlockEnum::State),
-        _ => Err(anyhow!("unsupported block type")),
-    }
-}
-
-impl FullHash for RwLock<BlockEnum> {
-    fn full_hash(&self) -> BlockHash {
-        self.read().unwrap().as_block().full_hash()
-    }
-}
-
-pub type BlockUniquer = Uniquer<RwLock<BlockEnum>>;
+pub type BlockUniquer = Uniquer<BlockEnum>;
 
 pub fn deserialize_block(
     block_type: BlockType,
@@ -176,22 +53,6 @@ pub fn deserialize_block_enum_with_type(
         BlockType::Invalid | BlockType::NotABlock => bail!("invalid block type"),
     };
     Ok(block)
-}
-
-pub trait BlockVisitor {
-    fn send_block(&mut self, block: &SendBlock);
-    fn receive_block(&mut self, block: &ReceiveBlock);
-    fn open_block(&mut self, block: &OpenBlock);
-    fn change_block(&mut self, block: &ChangeBlock);
-    fn state_block(&mut self, block: &StateBlock);
-}
-
-pub trait MutableBlockVisitor {
-    fn send_block(&mut self, block: &mut SendBlock);
-    fn receive_block(&mut self, block: &mut ReceiveBlock);
-    fn open_block(&mut self, block: &mut OpenBlock);
-    fn change_block(&mut self, block: &mut ChangeBlock);
-    fn state_block(&mut self, block: &mut StateBlock);
 }
 
 pub struct BlockWithSideband {

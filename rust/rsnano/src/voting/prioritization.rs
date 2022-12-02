@@ -1,6 +1,5 @@
-use rsnano_core::{Amount, BlockType};
+use rsnano_core::{Amount, BlockEnum, BlockType};
 
-use crate::core::BlockEnum;
 use std::{
     cmp::{max, Ordering},
     collections::BTreeSet,

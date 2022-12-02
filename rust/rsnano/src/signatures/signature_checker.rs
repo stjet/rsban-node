@@ -362,10 +362,9 @@ mod tests {
     }
 
     mod signature_checker {
-        use rsnano_core::{Amount, BlockHash, KeyPair, Link};
+        use rsnano_core::{Amount, Block, BlockHash, KeyPair, Link, StateBlock};
 
         use super::*;
-        use crate::core::{Block, StateBlock};
 
         // original test: signature_checker.empty
         #[test]

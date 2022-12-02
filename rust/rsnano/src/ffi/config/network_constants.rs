@@ -1,10 +1,10 @@
 use num::FromPrimitive;
+use rsnano_core::work::WorkThresholds;
 use std::{convert::TryFrom, ffi::CStr, os::raw::c_char, time::Duration};
 
 use crate::{
     config::{test_node_port, NetworkConstants, TelemetryCacheCutoffs},
     ffi::work::{fill_work_thresholds_dto, WorkThresholdsDto},
-    work::WorkThresholds,
 };
 
 #[repr(C)]

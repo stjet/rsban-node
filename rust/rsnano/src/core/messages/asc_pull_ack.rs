@@ -1,11 +1,11 @@
 use crate::{
     config::NetworkConstants,
-    core::{deserialize_block_enum, serialize_block_enum, BlockEnum},
+    core::{deserialize_block_enum, serialize_block_enum},
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
-    Account, BlockHash, BlockType,
+    Account, BlockEnum, BlockHash, BlockType,
 };
 use std::{any::Any, mem::size_of};
 
@@ -240,10 +240,10 @@ impl Message for AscPullAck {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::MemoryStream;
+    use rsnano_core::{utils::MemoryStream, BlockBuilder};
 
     use super::*;
-    use crate::{core::BlockBuilder, DEV_NETWORK_PARAMS};
+    use crate::DEV_NETWORK_PARAMS;
 
     #[test]
     fn serialize_header() -> anyhow::Result<()> {

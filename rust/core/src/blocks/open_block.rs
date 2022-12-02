@@ -1,10 +1,10 @@
-use anyhow::Result;
-use rsnano_core::{
+use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PublicKey, RawKey, Root,
     Signature,
 };
+use anyhow::Result;
 
 use super::{Block, BlockSideband, BlockType, BlockVisitor};
 
@@ -216,7 +216,7 @@ impl Block for OpenBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{
+    use crate::{
         utils::{MemoryStream, TestPropertyTree},
         KeyPair,
     };

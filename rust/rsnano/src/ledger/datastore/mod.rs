@@ -41,7 +41,7 @@ pub use version_store::VersionStore;
 pub use wallet_store::{Fans, WalletValue};
 pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
 
-use crate::utils::get_cpu_count;
+use rsnano_core::utils::get_cpu_count;
 
 pub trait Transaction {
     fn as_any(&self) -> &dyn Any;

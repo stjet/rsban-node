@@ -1,11 +1,8 @@
-use crate::{
-    config::NetworkConstants,
-    core::{serialized_block_size, Networks},
-};
+use crate::{config::NetworkConstants, core::Networks};
 use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
-use rsnano_core::{utils::Stream, BlockType};
+use rsnano_core::{serialized_block_size, utils::Stream, BlockType};
 use std::{
     fmt::{Debug, Display},
     mem::size_of,

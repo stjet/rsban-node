@@ -1,15 +1,14 @@
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex, RwLock, Weak};
 
 use indexmap::IndexMap;
 use rand::Rng;
-
-use super::{BlockHash, FullHash};
+use rsnano_core::{BlockHash, FullHash};
 
 pub struct Uniquer<T>
 where
     T: FullHash,
 {
-    cache: Mutex<IndexMap<BlockHash, Weak<T>>>,
+    cache: Mutex<IndexMap<BlockHash, Weak<RwLock<T>>>>,
 }
 
 impl<T> Uniquer<T>
@@ -22,8 +21,8 @@ where
         }
     }
 
-    pub(crate) fn unique(&self, original: &Arc<T>) -> Arc<T> {
-        let key = original.full_hash();
+    pub(crate) fn unique(&self, original: &Arc<RwLock<T>>) -> Arc<RwLock<T>> {
+        let key = { original.read().unwrap().full_hash() };
         let mut cache = self.cache.lock().unwrap();
 
         let result = match cache.get(&key) {
@@ -77,7 +76,7 @@ mod tests {
     #[test]
     fn new_item_gets_returned() {
         let uniquer = Uniquer::new();
-        let item1 = Arc::new(TestItem(1));
+        let item1 = Arc::new(RwLock::new(TestItem(1)));
         let item2 = uniquer.unique(&item1);
         assert_eq!(Arc::as_ptr(&item1), Arc::as_ptr(&item2));
     }
@@ -85,8 +84,8 @@ mod tests {
     #[test]
     fn when_hashes_are_equal_return_original_item() {
         let uniquer = Uniquer::new();
-        let item1 = Arc::new(TestItem(1));
-        let item2 = Arc::new(TestItem(1));
+        let item1 = Arc::new(RwLock::new(TestItem(1)));
+        let item2 = Arc::new(RwLock::new(TestItem(1)));
         uniquer.unique(&item1);
         let result = uniquer.unique(&item2);
         assert_eq!(Arc::as_ptr(&result), Arc::as_ptr(&item1));
@@ -95,7 +94,7 @@ mod tests {
     #[test]
     fn uniquer_holds_weak_references() {
         let uniquer = Uniquer::new();
-        let item = Arc::new(TestItem(1));
+        let item = Arc::new(RwLock::new(TestItem(1)));
         let weak = Arc::downgrade(&item);
         drop(uniquer.unique(&item));
         drop(item);
@@ -105,10 +104,10 @@ mod tests {
     #[test]
     fn cleanup() {
         let uniquer = Uniquer::new();
-        let item1 = Arc::new(TestItem(1));
+        let item1 = Arc::new(RwLock::new(TestItem(1)));
         uniquer.unique(&item1);
         {
-            let item2 = Arc::new(TestItem(2));
+            let item2 = Arc::new(RwLock::new(TestItem(2)));
             uniquer.unique(&item2);
         }
         assert_eq!(uniquer.size(), 2);

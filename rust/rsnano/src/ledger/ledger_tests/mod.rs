@@ -3,12 +3,12 @@ use std::sync::atomic::Ordering;
 
 mod helpers;
 pub(crate) use helpers::*;
-use rsnano_core::{Account, Amount, BlockHash, KeyPair, QualifiedRoot, Root, GXRB_RATIO};
-
-use crate::{
-    core::{Block, BlockBuilder, BlockEnum},
-    DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+use rsnano_core::{
+    Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
+    GXRB_RATIO,
 };
+
+use crate::{DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 
 use super::DEV_GENESIS_KEY;
 

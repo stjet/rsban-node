@@ -1,4 +1,4 @@
-use rsnano_core::{DifficultyV1, Root, WorkVersion};
+use crate::{DifficultyV1, Root, WorkVersion};
 
 use super::{CpuWorkGenerator, WorkGenerator, WorkTicket};
 use std::time::Duration;

@@ -1,7 +1,6 @@
-use rsnano_core::{Account, Amount, BlockHash, KeyPair};
+use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair};
 
 use crate::{
-    core::{Block, BlockBuilder, BlockEnum},
     ledger::{ledger_tests::setup_legacy_change_block, ProcessResult, DEV_GENESIS_KEY},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };

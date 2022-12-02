@@ -1,8 +1,9 @@
 use anyhow::Result;
 use once_cell::sync::Lazy;
+use rsnano_core::work::WorkThresholds;
 use std::{sync::Mutex, time::Duration};
 
-use crate::{core::Networks, work::WorkThresholds};
+use crate::core::Networks;
 
 //todo: make configurable in builld script again!
 static ACTIVE_NETWORK: Lazy<Mutex<Networks>> = Lazy::new(|| Mutex::new(Networks::NanoDevNetwork));

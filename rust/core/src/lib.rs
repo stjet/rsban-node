@@ -57,6 +57,8 @@ pub use endpoint_key::EndpointKey;
 mod blocks;
 pub use blocks::*;
 
+pub mod work;
+
 use std::fmt::Write;
 use std::num::ParseIntError;
 
@@ -211,4 +213,8 @@ impl TryFrom<&RawKey> for PublicKey {
         let public = ed25519_dalek_blake2b::PublicKey::from(&secret);
         Ok(PublicKey::from_bytes(public.to_bytes()))
     }
+}
+
+pub trait FullHash {
+    fn full_hash(&self) -> BlockHash;
 }

@@ -6,10 +6,10 @@ use std::{
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
-    Account,
+    Account, BlockEnum,
 };
 
-use crate::core::{deserialize_block_enum, serialize_block_enum, BlockEnum};
+use crate::core::{deserialize_block_enum, serialize_block_enum};
 
 use super::BlockHash;
 

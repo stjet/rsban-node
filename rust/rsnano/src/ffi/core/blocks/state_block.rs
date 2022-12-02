@@ -1,10 +1,11 @@
 use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
 
-use crate::core::{BlockEnum, StateBlock, StateHashables};
-use crate::ffi::utils::FfiStream;
-use crate::ffi::FfiPropertyTreeReader;
-use rsnano_core::{Account, Amount, BlockHash, LazyBlockHash, Link, PublicKey, RawKey, Signature};
+use crate::ffi::{utils::FfiStream, FfiPropertyTreeReader};
+use rsnano_core::{
+    Account, Amount, BlockEnum, BlockHash, LazyBlockHash, Link, PublicKey, RawKey, Signature,
+    StateBlock, StateHashables,
+};
 
 use super::BlockHandle;
 

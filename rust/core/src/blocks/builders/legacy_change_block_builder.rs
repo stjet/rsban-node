@@ -1,9 +1,6 @@
-use rsnano_core::{Account, Amount, BlockDetails, BlockSideband, Epoch, KeyPair};
+use crate::{Account, Amount, BlockDetails, BlockSideband, Epoch, KeyPair};
 
-use crate::{
-    core::{Block, BlockHash, ChangeBlock},
-    work::DEV_WORK_POOL,
-};
+use crate::{work::DEV_WORK_POOL, Block, BlockHash, ChangeBlock};
 
 pub struct LegacyChangeBlockBuilder {
     account: Option<Account>,

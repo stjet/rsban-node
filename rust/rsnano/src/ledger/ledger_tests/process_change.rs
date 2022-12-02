@@ -1,9 +1,6 @@
-use rsnano_core::{BlockDetails, Epoch};
+use rsnano_core::{Block, BlockDetails, BlockEnum, Epoch};
 
-use crate::{
-    core::{Block, BlockEnum},
-    ledger::ledger_tests::setup_change_block,
-};
+use crate::ledger::ledger_tests::setup_change_block;
 
 use super::LedgerContext;
 

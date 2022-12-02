@@ -1,7 +1,6 @@
-use rsnano_core::PendingKey;
+use rsnano_core::{Block, PendingKey};
 
 use crate::{
-    core::Block,
     ledger::ledger_tests::{setup_legacy_receive_block, LedgerContext},
     DEV_GENESIS_ACCOUNT,
 };

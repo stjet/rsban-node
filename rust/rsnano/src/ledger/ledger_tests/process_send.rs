@@ -1,7 +1,8 @@
-use rsnano_core::{Account, Amount, BlockDetails, Epoch, PendingInfo, PendingKey};
+use rsnano_core::{
+    Account, Amount, Block, BlockDetails, BlockEnum, Epoch, PendingInfo, PendingKey,
+};
 
 use crate::{
-    core::{Block, BlockEnum},
     ledger::ledger_tests::{setup_send_block, LedgerContext},
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
 };

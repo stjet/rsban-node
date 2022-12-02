@@ -1,7 +1,7 @@
-use rsnano_core::{Account, Amount, BlockHash, Epoch};
+use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, Epoch};
 
 use super::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
-use crate::core::{Block, BlockEnum, BlockWithSideband};
+use crate::core::BlockWithSideband;
 
 pub type BlockIterator = Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
 

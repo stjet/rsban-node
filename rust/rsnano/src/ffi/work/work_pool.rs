@@ -1,12 +1,14 @@
 use num_traits::FromPrimitive;
-use rsnano_core::{Root, WorkVersion};
+use rsnano_core::{
+    utils::get_cpu_count,
+    work::{WorkPool, WorkTicket},
+    Root, WorkVersion,
+};
 use std::{cmp::min, ffi::c_void, time::Duration};
 
 use crate::{
     config::NetworkConstants,
     ffi::{NetworkConstantsDto, VoidPointerCallback},
-    utils::get_cpu_count,
-    work::{WorkPool, WorkTicket},
 };
 
 pub struct WorkPoolHandle(WorkPool);

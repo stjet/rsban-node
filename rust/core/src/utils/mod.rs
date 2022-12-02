@@ -50,3 +50,22 @@ impl Deserialize for [u8; 64] {
         Ok(buffer)
     }
 }
+
+pub fn get_cpu_count() -> usize {
+    // Try to read overridden value from environment variable
+    let value = std::env::var("NANO_HARDWARE_CONCURRENCY")
+        .unwrap_or_else(|_| "0".into())
+        .parse::<usize>()
+        .unwrap_or_default();
+
+    if value > 0 {
+        return value;
+    }
+
+    //todo: use std::thread::available_concurrency once it's in stable
+    if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
+        cpuinfo.match_indices("processor").count()
+    } else {
+        1
+    }
+}

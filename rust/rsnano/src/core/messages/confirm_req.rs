@@ -1,11 +1,12 @@
 use crate::{
     config::NetworkConstants,
-    core::{deserialize_block, serialized_block_size, BlockEnum, BlockUniquer},
+    core::{deserialize_block, BlockUniquer},
 };
 use anyhow::Result;
 use rsnano_core::{
+    serialized_block_size,
     utils::{Deserialize, Serialize, Stream},
-    BlockHash, BlockType, Root,
+    BlockEnum, BlockHash, BlockType, Root,
 };
 use std::{
     any::Any,
@@ -207,11 +208,8 @@ impl Debug for ConfirmReq {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::MemoryStream;
-
-    use crate::core::StateBlockBuilder;
-
     use super::*;
+    use rsnano_core::{utils::MemoryStream, StateBlockBuilder};
 
     #[test]
     fn serialize_block() -> Result<()> {

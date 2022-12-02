@@ -1,12 +1,12 @@
 use rsnano_core::{Account, AccountInfo, Amount, BlockHash, Epoch, KeyPair, Link};
 
 use crate::{
-    core::{
-        BlockBuilder, LegacyChangeBlockBuilder, LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder,
-        LegacySendBlockBuilder, StateBlockBuilder,
-    },
     ledger::{datastore::Transaction, Ledger, DEV_GENESIS_KEY},
     DEV_CONSTANTS,
+};
+use rsnano_core::{
+    BlockBuilder, LegacyChangeBlockBuilder, LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder,
+    LegacySendBlockBuilder, StateBlockBuilder,
 };
 
 /// Test helper that creates blocks for a single account

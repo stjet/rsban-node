@@ -7,9 +7,7 @@ pub(crate) use vote::*;
 pub use vote_spacing::VoteSpacing;
 
 use crate::core::Uniquer;
-use std::sync::RwLock;
-
-pub(crate) type VoteUniquer = Uniquer<RwLock<Vote>>;
+pub(crate) type VoteUniquer = Uniquer<Vote>;
 
 mod election_status;
 mod recently_cemented_cache;

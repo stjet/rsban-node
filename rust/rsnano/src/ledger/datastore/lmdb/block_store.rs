@@ -1,9 +1,6 @@
 use super::{as_write_txn, count, get, LmdbEnv, LmdbIteratorImpl};
 use crate::{
-    core::{
-        deserialize_block_enum, Block, BlockEnum, BlockVisitor, ChangeBlock, OpenBlock,
-        ReceiveBlock, SendBlock, StateBlock,
-    },
+    core::deserialize_block_enum,
     ledger::datastore::{
         block_store::BlockIterator, parallel_traversal, BlockStore, ReadTransaction, Transaction,
         WriteTransaction,
@@ -13,7 +10,8 @@ use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
-    Account, Amount, BlockHash, BlockSideband, BlockType, Epoch,
+    Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
+    ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use std::sync::Arc;
 
@@ -310,8 +308,10 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::BlockBuilder;
+
     use super::*;
-    use crate::{core::BlockBuilder, ledger::datastore::lmdb::TestLmdbEnv};
+    use crate::ledger::datastore::lmdb::TestLmdbEnv;
 
     #[test]
     fn empty() -> anyhow::Result<()> {

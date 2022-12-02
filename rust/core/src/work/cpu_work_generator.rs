@@ -1,4 +1,4 @@
-use rsnano_core::{Difficulty, DifficultyV1, Root, WorkVersion};
+use crate::{Difficulty, DifficultyV1, Root, WorkVersion};
 
 use super::{WorkGenerator, WorkRng, WorkTicket, XorShift1024Star};
 #[cfg(test)]
@@ -197,7 +197,7 @@ impl WorkRng for StubWorkRng {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::StubDifficulty;
+    use crate::StubDifficulty;
 
     use super::*;
 

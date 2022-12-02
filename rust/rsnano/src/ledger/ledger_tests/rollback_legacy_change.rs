@@ -1,8 +1,7 @@
-use rsnano_core::Amount;
+use rsnano_core::{Amount, Block};
 
 use crate::{
-    core::Block, ledger::ledger_tests::LedgerContext, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
-    DEV_GENESIS_HASH,
+    ledger::ledger_tests::LedgerContext, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
 #[test]

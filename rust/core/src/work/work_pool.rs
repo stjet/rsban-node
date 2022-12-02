@@ -5,9 +5,8 @@ use std::{
     time::Duration,
 };
 
-#[cfg(test)]
+use crate::{Root, WorkVersion};
 use once_cell::sync::Lazy;
-use rsnano_core::{Root, WorkVersion};
 
 use super::{
     CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator, WorkItem, WorkQueueCoordinator,
@@ -211,10 +210,9 @@ pub(crate) trait WorkGenerator {
     ) -> Option<(u64, u64)>;
 }
 
-#[cfg(test)]
-pub(crate) static DEV_WORK_POOL: Lazy<WorkPool> = Lazy::new(|| {
+pub static DEV_WORK_POOL: Lazy<WorkPool> = Lazy::new(|| {
     WorkPool::new(
-        crate::DEV_NETWORK_PARAMS.work.clone(),
+        WorkThresholds::publish_dev().clone(),
         crate::utils::get_cpu_count(),
         Duration::ZERO,
         None,
@@ -225,17 +223,14 @@ pub(crate) static DEV_WORK_POOL: Lazy<WorkPool> = Lazy::new(|| {
 mod tests {
     use std::sync::mpsc;
 
-    use crate::{
-        core::{Block, BlockBuilder},
-        DEV_NETWORK_PARAMS,
-    };
+    use crate::{Block, BlockBuilder};
 
     use super::*;
 
     #[test]
     fn work_disabled() {
         let pool = WorkPool::new(
-            DEV_NETWORK_PARAMS.network.work.clone(),
+            WorkThresholds::publish_dev().clone(),
             0,
             Duration::ZERO,
             None,
@@ -268,7 +263,7 @@ mod tests {
         DEV_WORK_POOL.generate_async(
             WorkVersion::Work1,
             key,
-            DEV_NETWORK_PARAMS.network.work.base,
+            WorkThresholds::publish_dev().base,
             Some(Box::new(move |_done| {
                 tx.send(()).unwrap();
             })),
@@ -289,9 +284,8 @@ mod tests {
             let work = DEV_WORK_POOL
                 .generate(WorkVersion::Work1, root, difficulty1)
                 .unwrap();
-            result_difficulty = DEV_NETWORK_PARAMS
-                .work
-                .difficulty(WorkVersion::Work1, &root, work);
+            result_difficulty =
+                WorkThresholds::publish_dev().difficulty(WorkVersion::Work1, &root, work);
         }
         assert!(result_difficulty > difficulty1);
 
@@ -300,14 +294,13 @@ mod tests {
             let work = DEV_WORK_POOL
                 .generate(WorkVersion::Work1, root, difficulty2)
                 .unwrap();
-            result_difficulty = DEV_NETWORK_PARAMS
-                .work
-                .difficulty(WorkVersion::Work1, &root, work);
+            result_difficulty =
+                WorkThresholds::publish_dev().difficulty(WorkVersion::Work1, &root, work);
         }
         assert!(result_difficulty > difficulty2);
     }
 
     fn difficulty(block: &dyn Block) -> u64 {
-        DEV_NETWORK_PARAMS.network.work.difficulty_block(block)
+        WorkThresholds::publish_dev().difficulty_block(block)
     }
 }

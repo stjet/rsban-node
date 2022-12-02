@@ -38,8 +38,7 @@ pub use version_store::LmdbVersionStore;
 pub use wallet_store::LmdbWalletStore;
 pub use wallets::LmdbWallets;
 
-use super::TxnCallbacks;
-use rsnano_store_traits::{ReadTransaction, WriteTransaction};
+use rsnano_store_traits::{ReadTransaction, TxnCallbacks, WriteTransaction};
 
 enum RoTxnState {
     Inactive(InactiveTransaction<'static>),

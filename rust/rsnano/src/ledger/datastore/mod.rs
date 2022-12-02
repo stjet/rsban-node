@@ -8,7 +8,7 @@ use std::cmp::{max, min};
 
 pub use fan::Fan;
 use primitive_types::{U256, U512};
-pub use txn_tracker::{NullTxnCallbacks, TxnCallbacks, TxnTracker};
+pub use txn_tracker::TxnTracker;
 pub use wallet_store::{Fans, WalletValue};
 pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
 

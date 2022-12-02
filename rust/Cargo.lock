@@ -1362,6 +1362,7 @@ dependencies = [
  "primitive-types",
  "rand",
  "rsnano_core",
+ "rsnano_store_lmdb",
  "rsnano_store_traits",
  "rust-argon2",
  "scoped_threadpool",
@@ -1390,6 +1391,16 @@ dependencies = [
  "primitive-types",
  "rand",
  "static_assertions",
+]
+
+[[package]]
+name = "rsnano_store_lmdb"
+version = "0.1.0"
+dependencies = [
+ "lmdb-rkv",
+ "lmdb-rkv-sys",
+ "rsnano_core",
+ "rsnano_store_traits",
 ]
 
 [[package]]

@@ -16,6 +16,7 @@ mock_instant = "0.2.1"
 [dependencies]
 rsnano_core = { path = "../core" }
 rsnano_store_traits = { path = "../store_traits" }
+rsnano_store_lmdb = { path = "../store_lmdb" }
 ctr = "0.9.1"
 aes = "0.8.1"
 rust-argon2 = "1.0"

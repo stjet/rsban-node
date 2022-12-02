@@ -58,3 +58,22 @@ pub trait WriteTransaction {
     fn renew(&mut self);
     fn commit(&mut self);
 }
+
+pub trait TxnCallbacks {
+    fn txn_start(&self, txn_id: u64, is_write: bool);
+    fn txn_end(&self, txn_id: u64, is_write: bool);
+}
+
+pub struct NullTxnCallbacks {}
+
+impl NullTxnCallbacks {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl TxnCallbacks for NullTxnCallbacks {
+    fn txn_start(&self, _txn_id: u64, _is_write: bool) {}
+
+    fn txn_end(&self, _txn_id: u64, _is_write: bool) {}
+}

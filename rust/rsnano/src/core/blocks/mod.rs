@@ -1,4 +1,3 @@
-mod block_sideband;
 #[cfg(test)]
 mod builders;
 mod change_block;
@@ -10,7 +9,6 @@ mod state_block;
 use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
-pub use block_sideband::BlockSideband;
 #[cfg(test)]
 pub use builders::*;
 pub use change_block::*;
@@ -19,8 +17,8 @@ pub use open_block::*;
 pub use receive_block::*;
 use rsnano_core::{
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, BlockType, Link, QualifiedRoot, Root, Signature,
-    WorkVersion,
+    Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, Link, QualifiedRoot,
+    Root, Signature, WorkVersion,
 };
 pub use send_block::*;
 pub use state_block::*;

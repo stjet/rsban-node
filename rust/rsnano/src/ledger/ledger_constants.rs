@@ -2,11 +2,13 @@ use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
 use once_cell::sync::Lazy;
-use rsnano_core::{Account, Amount, BlockDetails, BlockHash, Epoch, Epochs, KeyPair, Link};
+use rsnano_core::{
+    Account, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, Epochs, KeyPair, Link,
+};
 
 use crate::{
     config::get_env_or_default_string,
-    core::{deserialize_block_json, BlockEnum, BlockSideband, Networks},
+    core::{deserialize_block_json, BlockEnum, Networks},
     utils::{seconds_since_epoch, SerdePropertyTree},
     work::WorkThresholds,
 };

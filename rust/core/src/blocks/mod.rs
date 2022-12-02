@@ -1,6 +1,9 @@
 mod block_details;
 pub use block_details::BlockDetails;
 
+mod block_sideband;
+pub use block_sideband::BlockSideband;
+
 use crate::BlockHash;
 use num::FromPrimitive;
 use std::sync::{Arc, RwLock};

@@ -1,10 +1,8 @@
-use num::FromPrimitive;
-use rsnano_core::{
+use crate::{
     utils::{Deserialize, Serialize, Stream},
-    Account, Amount, BlockDetails, BlockHash, Epoch,
+    Account, Amount, BlockDetails, BlockHash, BlockType, Epoch,
 };
-
-use super::BlockType;
+use num::FromPrimitive;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockSideband {
@@ -151,7 +149,7 @@ impl BlockSideband {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::MemoryStream;
+    use crate::utils::MemoryStream;
 
     use super::*;
 

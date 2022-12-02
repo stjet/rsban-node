@@ -2,11 +2,11 @@ use anyhow::Result;
 use rsnano_core::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PublicKey, RawKey, Root,
-    Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash, Link,
+    PublicKey, RawKey, Root, Signature,
 };
 
-use super::{Block, BlockSideband, BlockType, BlockVisitor};
+use super::{Block, BlockVisitor};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ChangeHashables {

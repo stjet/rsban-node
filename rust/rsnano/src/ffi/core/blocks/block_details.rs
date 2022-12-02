@@ -1,6 +1,6 @@
-use crate::{core::BlockSideband, ffi::utils::FfiStream};
+use crate::ffi::utils::FfiStream;
 use num::FromPrimitive;
-use rsnano_core::{Account, Amount, BlockDetails, BlockHash, BlockType, Epoch};
+use rsnano_core::{Account, Amount, BlockDetails, BlockHash, BlockSideband, BlockType, Epoch};
 use std::{convert::TryFrom, ffi::c_void};
 
 #[repr(C)]

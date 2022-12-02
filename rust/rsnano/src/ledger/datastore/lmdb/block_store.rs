@@ -1,4 +1,4 @@
-use super::{as_write_txn, count, get, LmdbEnv, LmdbIteratorImpl};
+use super::{LmdbEnv, LmdbIteratorImpl};
 use crate::ledger::datastore::parallel_traversal;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
@@ -8,6 +8,7 @@ use rsnano_core::{
     Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
     ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
+use rsnano_store_lmdb::{as_write_txn, count, get};
 use rsnano_store_traits::{
     BlockIterator, BlockStore, ReadTransaction, Transaction, WriteTransaction,
 };

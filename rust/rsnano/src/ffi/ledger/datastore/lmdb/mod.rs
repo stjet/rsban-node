@@ -15,14 +15,12 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction};
 use rsnano_store_traits::{ReadTransaction, Transaction, TxnCallbacks, WriteTransaction};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;
 
-use crate::{
-    ffi::VoidPointerCallback,
-    ledger::datastore::lmdb::{LmdbReadTransaction, LmdbWriteTransaction},
-};
+use crate::ffi::VoidPointerCallback;
 
 pub struct TransactionHandle(TransactionType);
 

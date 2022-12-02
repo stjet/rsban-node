@@ -1,6 +1,7 @@
-use super::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl};
+use super::{LmdbEnv, LmdbIteratorImpl};
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use rsnano_core::{BlockHash, NoValue, RawKey, WalletId};
+use rsnano_store_lmdb::{as_write_txn, get};
 use rsnano_store_traits::{BinaryDbIterator, DbIterator, WriteTransaction};
 pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
 

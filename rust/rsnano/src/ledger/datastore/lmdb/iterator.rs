@@ -3,9 +3,8 @@ use std::ffi::c_uint;
 use lmdb::{Cursor, Database, RoCursor};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{Deserialize, Serialize};
+use rsnano_store_lmdb::open_ro_cursor;
 use rsnano_store_traits::{BinaryDbIterator, DbIterator, DbIteratorImpl, Transaction};
-
-use super::open_ro_cursor;
 
 pub struct LmdbIteratorImpl {
     current: Option<(&'static [u8], &'static [u8])>,

@@ -2,9 +2,10 @@ use std::sync::Arc;
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{HashOrAccount, UncheckedInfo, UncheckedKey};
+use rsnano_store_lmdb::{as_write_txn, count, exists};
 use rsnano_store_traits::{Transaction, UncheckedIterator, UncheckedStore, WriteTransaction};
 
-use super::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};
+use super::{LmdbEnv, LmdbIteratorImpl};
 
 pub struct LmdbUncheckedStore {
     env: Arc<LmdbEnv>,

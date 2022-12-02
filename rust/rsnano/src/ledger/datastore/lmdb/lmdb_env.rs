@@ -1,6 +1,7 @@
 use lmdb::{Environment, EnvironmentFlags};
 use lmdb_sys::MDB_SUCCESS;
 use rsnano_core::utils::PropertyTreeWriter;
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction};
 use rsnano_store_traits::{NullTxnCallbacks, TxnCallbacks};
 #[cfg(test)]
 use std::ops::Deref;
@@ -20,8 +21,6 @@ use std::{
 use crate::config::{LmdbConfig, SyncStrategy, TxnTrackingConfig};
 use crate::utils::Logger;
 use crate::{ledger::datastore::TxnTracker, memory_intensive_instrumentation};
-
-use super::{LmdbReadTransaction, LmdbWriteTransaction};
 
 #[derive(Default)]
 pub struct EnvOptions {

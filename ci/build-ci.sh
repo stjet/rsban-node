@@ -1,7 +1,7 @@
 #!/bin/bash
 
 qt_dir=${1}
-build_target=${2:-build_tests slow_tests}
+build_target=${2:-build_tests slow_test}
 
 set -o errexit
 set -o nounset

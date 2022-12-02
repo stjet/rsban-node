@@ -1,12 +1,9 @@
 use std::ffi::c_void;
 
 use rsnano_core::utils::{Deserialize, Serialize};
-use rsnano_store_traits::ReadTransaction;
+use rsnano_store_traits::{BinaryDbIterator, DbIterator, DbIteratorImpl, ReadTransaction};
 
-use crate::{
-    ffi::VoidPointerCallback,
-    ledger::datastore::{lmdb::LmdbIteratorImpl, BinaryDbIterator, DbIterator, DbIteratorImpl},
-};
+use crate::{ffi::VoidPointerCallback, ledger::datastore::lmdb::LmdbIteratorImpl};
 
 use super::{TransactionHandle, TransactionType};
 #[repr(C)]

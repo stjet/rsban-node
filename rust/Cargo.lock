@@ -1395,6 +1395,9 @@ dependencies = [
 [[package]]
 name = "rsnano_store_traits"
 version = "0.1.0"
+dependencies = [
+ "rsnano_core",
+]
 
 [[package]]
 name = "rust-argon2"

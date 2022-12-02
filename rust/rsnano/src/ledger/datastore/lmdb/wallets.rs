@@ -1,8 +1,7 @@
 use super::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl};
-use crate::ledger::datastore::{iterator::DbIterator, BinaryDbIterator};
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use rsnano_core::{BlockHash, NoValue, RawKey, WalletId};
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_traits::{BinaryDbIterator, DbIterator, WriteTransaction};
 pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
 
 pub struct LmdbWallets {

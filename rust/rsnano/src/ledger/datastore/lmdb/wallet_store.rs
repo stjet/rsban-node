@@ -12,10 +12,10 @@ use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, PublicKey, RawKey,
 };
-use rsnano_store_traits::{Transaction, WriteTransaction};
+use rsnano_store_traits::{DbIterator, Transaction, WriteTransaction};
 
 use crate::{
-    ledger::datastore::{iterator::DbIterator, Fans, WalletValue},
+    ledger::datastore::{Fans, WalletValue},
     wallet::KeyDerivationFunction,
 };
 

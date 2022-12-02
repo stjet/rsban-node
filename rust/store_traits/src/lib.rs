@@ -1,3 +1,6 @@
+mod iterator;
+pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl};
+
 use std::any::Any;
 
 pub trait Transaction {

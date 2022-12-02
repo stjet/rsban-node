@@ -1,7 +1,6 @@
 use rsnano_core::{HashOrAccount, UncheckedInfo, UncheckedKey};
 
-use super::DbIterator;
-use rsnano_store_traits::{Transaction, WriteTransaction};
+use rsnano_store_traits::{DbIterator, Transaction, WriteTransaction};
 
 pub type UncheckedIterator = Box<dyn DbIterator<UncheckedKey, UncheckedInfo>>;
 

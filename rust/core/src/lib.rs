@@ -59,6 +59,9 @@ pub use blocks::*;
 
 pub mod work;
 
+mod unchecked_info;
+pub use unchecked_info::{SignatureVerification, UncheckedInfo, UncheckedKey};
+
 use std::fmt::Write;
 use std::num::ParseIntError;
 

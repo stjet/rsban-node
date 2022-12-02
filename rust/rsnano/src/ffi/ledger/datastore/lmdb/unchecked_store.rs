@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use rsnano_core::{BlockHash, HashOrAccount};
+use rsnano_core::{BlockHash, HashOrAccount, UncheckedKey};
 
 use crate::{
-    core::UncheckedKey,
     ffi::core::UncheckedInfoHandle,
     ledger::datastore::{lmdb::LmdbUncheckedStore, UncheckedStore},
 };

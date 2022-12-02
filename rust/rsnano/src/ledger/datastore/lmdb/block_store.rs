@@ -1,14 +1,12 @@
 use super::{as_write_txn, count, get, LmdbEnv, LmdbIteratorImpl};
-use crate::{
-    core::deserialize_block_enum,
-    ledger::datastore::{
-        block_store::BlockIterator, parallel_traversal, BlockStore, ReadTransaction, Transaction,
-        WriteTransaction,
-    },
+use crate::ledger::datastore::{
+    block_store::BlockIterator, parallel_traversal, BlockStore, ReadTransaction, Transaction,
+    WriteTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
+    deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
     Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
     ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,

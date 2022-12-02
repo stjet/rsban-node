@@ -1,9 +1,8 @@
 use std::ffi::c_void;
 
-use crate::{
-    core::UncheckedInfo,
-    ffi::{block_processing::BLOCKPROCESSOR_ADD_CALLBACK, core::UncheckedInfoHandle},
-};
+use rsnano_core::UncheckedInfo;
+
+use crate::ffi::{block_processing::BLOCKPROCESSOR_ADD_CALLBACK, core::UncheckedInfoHandle};
 
 pub struct BlockProcessor {
     handle: *mut c_void,

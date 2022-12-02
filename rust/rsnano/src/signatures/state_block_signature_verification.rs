@@ -5,12 +5,11 @@ use std::{
     time::Duration,
 };
 
-use rsnano_core::{Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature};
-
-use crate::{
-    core::SignatureVerification,
-    utils::{Logger, NullLogger},
+use rsnano_core::{
+    Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature, SignatureVerification,
 };
+
+use crate::utils::{Logger, NullLogger};
 
 use super::{SignatureCheckSet, SignatureChecker};
 

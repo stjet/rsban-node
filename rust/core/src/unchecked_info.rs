@@ -3,13 +3,12 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use num_traits::FromPrimitive;
-use rsnano_core::{
+use crate::{
+    deserialize_block_enum, serialize_block_enum,
     utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
     Account, BlockEnum,
 };
-
-use crate::core::{deserialize_block_enum, serialize_block_enum};
+use num_traits::FromPrimitive;
 
 use super::BlockHash;
 
@@ -38,7 +37,7 @@ pub struct UncheckedInfo {
 }
 
 impl UncheckedInfo {
-    pub(crate) fn new(
+    pub fn new(
         block: Arc<RwLock<BlockEnum>>,
         account: &Account,
         verified: SignatureVerification,
@@ -54,7 +53,7 @@ impl UncheckedInfo {
         }
     }
 
-    pub(crate) fn null() -> Self {
+    pub fn null() -> Self {
         Self {
             block: None,
             modified: 0,

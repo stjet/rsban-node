@@ -5,14 +5,11 @@ use blake2::{
 
 use rsnano_core::{
     utils::{Deserialize, Serialize, Stream},
-    BlockHash, RawKey,
+    RawKey,
 };
 
 mod blocks;
 pub use blocks::*;
-
-mod unchecked_info;
-pub use unchecked_info::{SignatureVerification, UncheckedInfo, UncheckedKey};
 
 mod uniquer;
 pub use uniquer::Uniquer;

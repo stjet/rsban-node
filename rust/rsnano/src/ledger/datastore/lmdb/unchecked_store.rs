@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_core::HashOrAccount;
+use rsnano_core::{HashOrAccount, UncheckedInfo, UncheckedKey};
 
-use crate::{
-    core::{UncheckedInfo, UncheckedKey},
-    ledger::datastore::{
-        unchecked_store::UncheckedIterator, Transaction, UncheckedStore, WriteTransaction,
-    },
+use crate::ledger::datastore::{
+    unchecked_store::UncheckedIterator, Transaction, UncheckedStore, WriteTransaction,
 };
 
 use super::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};

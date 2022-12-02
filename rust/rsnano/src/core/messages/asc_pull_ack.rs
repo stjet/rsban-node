@@ -1,9 +1,7 @@
-use crate::{
-    config::NetworkConstants,
-    core::{deserialize_block_enum, serialize_block_enum},
-};
+use crate::config::NetworkConstants;
 use num_traits::FromPrimitive;
 use rsnano_core::{
+    deserialize_block_enum, serialize_block_enum,
     utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
     Account, BlockEnum, BlockHash, BlockType,
 };

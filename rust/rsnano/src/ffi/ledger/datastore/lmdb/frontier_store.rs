@@ -1,10 +1,8 @@
 use std::{ffi::c_void, sync::Arc};
 
-use crate::{
-    ffi::{copy_account_bytes, VoidPointerCallback},
-    ledger::datastore::lmdb::LmdbFrontierStore,
-};
+use crate::ffi::{copy_account_bytes, VoidPointerCallback};
 use rsnano_core::{Account, BlockHash};
+use rsnano_store_lmdb::LmdbFrontierStore;
 use rsnano_store_traits::FrontierStore;
 
 use super::{

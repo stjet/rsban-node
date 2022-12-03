@@ -19,6 +19,9 @@ pub use confirmation_height_store::LmdbConfirmationHeightStore;
 mod final_vote_store;
 pub use final_vote_store::LmdbFinalVoteStore;
 
+mod frontier_store;
+pub use frontier_store::LmdbFrontierStore;
+
 use std::{
     cmp::{max, min},
     mem,

@@ -3,12 +3,12 @@ use std::sync::Arc;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 use rsnano_core::BlockHash;
-use rsnano_store_lmdb::{as_write_txn, count, exists, parallel_traversal, LmdbIteratorImpl};
+use rsnano_store_lmdb::{
+    as_write_txn, count, exists, parallel_traversal, LmdbEnv, LmdbIteratorImpl,
+};
 use rsnano_store_traits::{
     PrunedIterator, PrunedStore, ReadTransaction, Transaction, WriteTransaction,
 };
-
-use super::LmdbEnv;
 
 pub struct LmdbPrunedStore {
     env: Arc<LmdbEnv>,
@@ -95,9 +95,9 @@ impl PrunedStore for LmdbPrunedStore {
 #[cfg(test)]
 mod tests {
     use rsnano_core::NoValue;
+    use rsnano_store_lmdb::TestLmdbEnv;
 
     use super::*;
-    use crate::ledger::datastore::lmdb::TestLmdbEnv;
 
     fn create_sut() -> anyhow::Result<(TestLmdbEnv, LmdbPrunedStore)> {
         let env = TestLmdbEnv::new();

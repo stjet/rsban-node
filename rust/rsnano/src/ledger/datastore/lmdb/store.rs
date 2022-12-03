@@ -9,7 +9,8 @@ use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::{utils::PropertyTreeWriter, AccountInfo, Amount, ConfirmationHeightInfo, Epoch};
 use rsnano_store_lmdb::{
-    as_write_txn, LmdbReadTransaction, LmdbWriteTransaction, STORE_VERSION_MINIMUM,
+    as_write_txn, EnvOptions, LmdbEnv, LmdbReadTransaction, LmdbWriteTransaction,
+    STORE_VERSION_MINIMUM,
 };
 use rsnano_store_traits::{
     AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, NullTransactionTracker,
@@ -23,9 +24,9 @@ use crate::{
 };
 
 use super::{
-    EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv,
-    LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
-    LmdbPrunedStore, LmdbUncheckedStore, LmdbVersionStore,
+    LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbFinalVoteStore,
+    LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore,
+    LmdbUncheckedStore, LmdbVersionStore,
 };
 
 #[derive(PartialEq, Eq)]
@@ -430,7 +431,9 @@ fn backup_file_path(source_path: &Path) -> anyhow::Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ledger::datastore::lmdb::TestDbFile, utils::NullLogger};
+    use rsnano_store_lmdb::TestDbFile;
+
+    use crate::utils::NullLogger;
 
     use super::*;
 

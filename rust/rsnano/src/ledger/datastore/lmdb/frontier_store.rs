@@ -1,7 +1,6 @@
-use super::LmdbEnv;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash};
-use rsnano_store_lmdb::{as_write_txn, get, parallel_traversal, LmdbIteratorImpl};
+use rsnano_store_lmdb::{as_write_txn, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl};
 use rsnano_store_traits::{
     FrontierIterator, FrontierStore, ReadTransaction, Transaction, WriteTransaction,
 };
@@ -86,7 +85,7 @@ impl FrontierStore for LmdbFrontierStore {
 
 #[cfg(test)]
 mod tests {
-    use crate::ledger::datastore::lmdb::TestLmdbEnv;
+    use rsnano_store_lmdb::TestLmdbEnv;
 
     use super::*;
 

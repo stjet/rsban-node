@@ -3,14 +3,14 @@ use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, ConfirmationHeightInfo,
 };
-use rsnano_store_lmdb::{as_write_txn, count, exists, get, parallel_traversal, LmdbIteratorImpl};
+use rsnano_store_lmdb::{
+    as_write_txn, count, exists, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl,
+};
 use rsnano_store_traits::{
     ConfirmationHeightIterator, ConfirmationHeightStore, ReadTransaction, Transaction,
     WriteTransaction,
 };
 use std::sync::Arc;
-
-use super::LmdbEnv;
 
 pub struct LmdbConfirmationHeightStore {
     env: Arc<LmdbEnv>,
@@ -116,9 +116,9 @@ impl ConfirmationHeightStore for LmdbConfirmationHeightStore {
 #[cfg(test)]
 mod tests {
     use rsnano_core::BlockHash;
+    use rsnano_store_lmdb::TestLmdbEnv;
 
     use super::*;
-    use crate::ledger::datastore::lmdb::TestLmdbEnv;
 
     #[test]
     fn empty_store() -> anyhow::Result<()> {

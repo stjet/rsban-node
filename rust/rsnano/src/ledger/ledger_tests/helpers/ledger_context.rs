@@ -1,11 +1,10 @@
 use std::{sync::Arc, time::Duration};
 
+use rsnano_store_lmdb::{EnvOptions, TestDbFile};
+
 use crate::{
     config::TxnTrackingConfig,
-    ledger::{
-        datastore::lmdb::{EnvOptions, LmdbStore, TestDbFile},
-        GenerateCache, Ledger,
-    },
+    ledger::{datastore::lmdb::LmdbStore, GenerateCache, Ledger},
     stats::{Stat, StatConfig},
     utils::NullLogger,
     DEV_CONSTANTS,

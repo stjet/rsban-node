@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
-use rsnano_store_lmdb::{as_write_txn, count, get, parallel_traversal_u512, LmdbIteratorImpl};
+use rsnano_store_lmdb::{
+    as_write_txn, count, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl,
+};
 use rsnano_store_traits::{
     FinalVoteIterator, FinalVoteStore, ReadTransaction, Transaction, WriteTransaction,
 };
-
-use super::LmdbEnv;
 
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash
@@ -138,8 +138,7 @@ impl FinalVoteStore for LmdbFinalVoteStore {
 #[cfg(test)]
 mod tests {
     use primitive_types::U512;
-
-    use crate::ledger::datastore::lmdb::TestLmdbEnv;
+    use rsnano_store_lmdb::TestLmdbEnv;
 
     use super::*;
 

@@ -3,13 +3,11 @@ use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
 };
-use rsnano_store_lmdb::{as_write_txn, count, get, parallel_traversal, LmdbIteratorImpl};
+use rsnano_store_lmdb::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl};
 use rsnano_store_traits::{
     AccountIterator, AccountStore, ReadTransaction, Transaction, WriteTransaction,
 };
 use std::sync::Arc;
-
-use super::LmdbEnv;
 
 pub struct LmdbAccountStore {
     env: Arc<LmdbEnv>,
@@ -103,9 +101,9 @@ mod tests {
     use std::sync::Mutex;
 
     use rsnano_core::{Amount, BlockHash};
+    use rsnano_store_lmdb::TestLmdbEnv;
 
     use super::*;
-    use crate::ledger::datastore::lmdb::TestLmdbEnv;
 
     struct AccountStoreTestContext {
         pub store: LmdbAccountStore,

@@ -5,12 +5,10 @@ use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, BlockHash, PendingInfo, PendingKey,
 };
-use rsnano_store_lmdb::{as_write_txn, get, parallel_traversal_u512, LmdbIteratorImpl};
+use rsnano_store_lmdb::{as_write_txn, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl};
 use rsnano_store_traits::{
     PendingIterator, PendingStore, ReadTransaction, Transaction, WriteTransaction,
 };
-
-use super::LmdbEnv;
 
 pub struct LmdbPendingStore {
     env: Arc<LmdbEnv>,
@@ -113,9 +111,9 @@ impl PendingStore for LmdbPendingStore {
 #[cfg(test)]
 mod tests {
     use rsnano_core::{Amount, Epoch};
+    use rsnano_store_lmdb::TestLmdbEnv;
 
     use super::*;
-    use crate::ledger::datastore::lmdb::TestLmdbEnv;
 
     #[test]
     fn not_found() -> anyhow::Result<()> {

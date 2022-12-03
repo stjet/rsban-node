@@ -4,6 +4,9 @@ pub use iterator::LmdbIteratorImpl;
 mod lmdb_config;
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
 
+mod lmdb_env;
+pub use lmdb_env::{EnvOptions, LmdbEnv, TestDbFile, TestLmdbEnv};
+
 use std::{
     cmp::{max, min},
     mem,

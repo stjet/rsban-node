@@ -1,9 +1,9 @@
+use crate::{LmdbConfig, LmdbReadTransaction, LmdbWriteTransaction, SyncStrategy};
+use anyhow::bail;
 use lmdb::{Environment, EnvironmentFlags};
 use lmdb_sys::MDB_SUCCESS;
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
-use rsnano_store_lmdb::{LmdbConfig, LmdbReadTransaction, LmdbWriteTransaction, SyncStrategy};
 use rsnano_store_traits::{NullTransactionTracker, TransactionTracker};
-#[cfg(test)]
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::{
@@ -151,12 +151,10 @@ impl Drop for LmdbEnv {
     }
 }
 
-#[cfg(test)]
 pub struct TestDbFile {
     pub path: PathBuf,
 }
 
-#[cfg(test)]
 impl TestDbFile {
     fn new(path: impl AsRef<Path>) -> Self {
         Self {
@@ -181,7 +179,6 @@ impl TestDbFile {
     }
 }
 
-#[cfg(test)]
 impl Drop for TestDbFile {
     fn drop(&mut self) {
         if self.path.exists() {
@@ -200,26 +197,23 @@ impl Drop for TestDbFile {
     }
 }
 
-#[cfg(test)]
-pub(crate) struct TestLmdbEnv {
+pub struct TestLmdbEnv {
     env: Arc<LmdbEnv>,
-    file: TestDbFile,
+    _file: TestDbFile,
 }
 
-#[cfg(test)]
 impl TestLmdbEnv {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         let file = TestDbFile::random();
         let env = Arc::new(LmdbEnv::new(&file.path).unwrap());
-        Self { file, env }
+        Self { _file: file, env }
     }
 
-    pub(crate) fn env(&self) -> Arc<LmdbEnv> {
+    pub fn env(&self) -> Arc<LmdbEnv> {
         self.env.clone()
     }
 }
 
-#[cfg(test)]
 impl Deref for TestLmdbEnv {
     type Target = LmdbEnv;
 

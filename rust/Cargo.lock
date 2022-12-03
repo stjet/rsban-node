@@ -1403,6 +1403,7 @@ dependencies = [
  "primitive-types",
  "rsnano_core",
  "rsnano_store_traits",
+ "uuid",
 ]
 
 [[package]]

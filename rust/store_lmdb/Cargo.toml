@@ -12,3 +12,4 @@ lmdb-rkv = "0.14"
 lmdb-rkv-sys = "0.11"
 primitive-types = "0"
 anyhow = "1"
+uuid = { version = "0", features = ["v4"] }

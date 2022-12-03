@@ -1,4 +1,3 @@
-mod block_store;
 mod confirmation_height_store;
 mod final_vote_store;
 mod frontier_store;
@@ -12,7 +11,6 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
-pub use block_store::LmdbBlockStore;
 pub use confirmation_height_store::LmdbConfirmationHeightStore;
 pub use final_vote_store::LmdbFinalVoteStore;
 pub use frontier_store::LmdbFrontierStore;

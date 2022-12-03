@@ -10,6 +10,9 @@ pub use lmdb_env::{EnvOptions, LmdbEnv, TestDbFile, TestLmdbEnv};
 mod account_store;
 pub use account_store::LmdbAccountStore;
 
+mod block_store;
+pub use block_store::LmdbBlockStore;
+
 use std::{
     cmp::{max, min},
     mem,

@@ -1400,6 +1400,7 @@ dependencies = [
  "anyhow",
  "lmdb-rkv",
  "lmdb-rkv-sys",
+ "num-traits",
  "primitive-types",
  "rsnano_core",
  "rsnano_store_traits",

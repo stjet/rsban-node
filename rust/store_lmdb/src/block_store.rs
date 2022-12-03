@@ -1,3 +1,4 @@
+use crate::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
@@ -6,7 +7,6 @@ use rsnano_core::{
     Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
     ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
-use rsnano_store_lmdb::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl};
 use rsnano_store_traits::{
     BlockIterator, BlockStore, ReadTransaction, Transaction, WriteTransaction,
 };
@@ -305,8 +305,8 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use crate::TestLmdbEnv;
     use rsnano_core::BlockBuilder;
-    use rsnano_store_lmdb::TestLmdbEnv;
 
     use super::*;
 

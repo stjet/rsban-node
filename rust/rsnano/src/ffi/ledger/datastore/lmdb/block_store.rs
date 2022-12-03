@@ -5,14 +5,11 @@ use std::{
 };
 
 use rsnano_core::BlockHash;
+use rsnano_store_lmdb::LmdbBlockStore;
 use rsnano_store_traits::BlockStore;
 
-use crate::{
-    ffi::{
-        copy_account_bytes, copy_amount_bytes, copy_hash_bytes, core::BlockHandle,
-        VoidPointerCallback,
-    },
-    ledger::datastore::lmdb::LmdbBlockStore,
+use crate::ffi::{
+    copy_account_bytes, copy_amount_bytes, copy_hash_bytes, core::BlockHandle, VoidPointerCallback,
 };
 
 use super::{

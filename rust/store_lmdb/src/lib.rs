@@ -13,6 +13,9 @@ pub use account_store::LmdbAccountStore;
 mod block_store;
 pub use block_store::LmdbBlockStore;
 
+mod confirmation_height_store;
+pub use confirmation_height_store::LmdbConfirmationHeightStore;
+
 use std::{
     cmp::{max, min},
     mem,

@@ -1,10 +1,8 @@
+use crate::{as_write_txn, count, exists, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, ConfirmationHeightInfo,
-};
-use rsnano_store_lmdb::{
-    as_write_txn, count, exists, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl,
 };
 use rsnano_store_traits::{
     ConfirmationHeightIterator, ConfirmationHeightStore, ReadTransaction, Transaction,
@@ -115,8 +113,8 @@ impl ConfirmationHeightStore for LmdbConfirmationHeightStore {
 
 #[cfg(test)]
 mod tests {
+    use crate::TestLmdbEnv;
     use rsnano_core::BlockHash;
-    use rsnano_store_lmdb::TestLmdbEnv;
 
     use super::*;
 

@@ -1,12 +1,10 @@
 use std::{ffi::c_void, sync::Arc};
 
 use rsnano_core::{Account, ConfirmationHeightInfo};
+use rsnano_store_lmdb::LmdbConfirmationHeightStore;
 use rsnano_store_traits::ConfirmationHeightStore;
 
-use crate::{
-    ffi::{ConfirmationHeightInfoDto, VoidPointerCallback},
-    ledger::datastore::lmdb::LmdbConfirmationHeightStore,
-};
+use crate::ffi::{ConfirmationHeightInfoDto, VoidPointerCallback};
 
 use super::{
     iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},

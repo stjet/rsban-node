@@ -1,12 +1,13 @@
 use std::net::Ipv6Addr;
 
-use crate::{
-    is_sanitizer_build, ledger::datastore::lmdb::LmdbConfig, stats::StatConfig, utils::TomlWriter,
-    IpcConfig, NetworkParams,
-};
+use crate::{stats::StatConfig, IpcConfig, NetworkParams};
 use anyhow::Result;
 use once_cell::sync::Lazy;
-use rsnano_core::{utils::get_cpu_count, Account, Amount, GXRB_RATIO, XRB_RATIO};
+use rsnano_core::{
+    utils::{get_cpu_count, is_sanitizer_build, TomlWriter},
+    Account, Amount, GXRB_RATIO, XRB_RATIO,
+};
+use rsnano_store_lmdb::LmdbConfig;
 
 use super::{get_env_or_default_string, DiagnosticsConfig, Logging, Networks, WebsocketConfig};
 

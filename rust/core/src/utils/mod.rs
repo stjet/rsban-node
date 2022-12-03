@@ -4,6 +4,9 @@ pub use json::*;
 mod stream;
 pub use stream::*;
 
+mod toml;
+pub use toml::*;
+
 pub trait Serialize {
     fn serialized_size() -> usize;
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;
@@ -68,4 +71,23 @@ pub fn get_cpu_count() -> usize {
     } else {
         1
     }
+}
+
+pub type MemoryIntensiveInstrumentationCallback = extern "C" fn() -> bool;
+
+pub static mut MEMORY_INTENSIVE_INSTRUMENTATION: Option<MemoryIntensiveInstrumentationCallback> =
+    None;
+pub static mut IS_SANITIZER_BUILD: Option<MemoryIntensiveInstrumentationCallback> = None;
+
+pub fn memory_intensive_instrumentation() -> bool {
+    unsafe {
+        match MEMORY_INTENSIVE_INSTRUMENTATION {
+            Some(f) => f(),
+            None => false,
+        }
+    }
+}
+
+pub fn is_sanitizer_build() -> bool {
+    unsafe { IS_SANITIZER_BUILD.expect("IS_SANITIZER_BUILD missing")() }
 }

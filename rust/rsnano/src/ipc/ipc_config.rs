@@ -1,5 +1,6 @@
-use crate::{config::NetworkConstants, utils::TomlWriter};
+use crate::config::NetworkConstants;
 use anyhow::Result;
+use rsnano_core::utils::TomlWriter;
 use std::path::PathBuf;
 
 /** Base for transport configurations */

@@ -1,6 +1,5 @@
 use anyhow::Result;
-
-use crate::utils::TomlWriter;
+use rsnano_core::utils::TomlWriter;
 
 pub struct StatConfig {
     /** If true, sampling of counters is enabled */

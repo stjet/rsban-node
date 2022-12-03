@@ -1,5 +1,5 @@
-use crate::utils::{TomlArrayWriter, TomlWriter};
 use anyhow::Result;
+use rsnano_core::utils::{TomlArrayWriter, TomlWriter};
 use std::ffi::c_void;
 
 type TomlPutU64Callback =

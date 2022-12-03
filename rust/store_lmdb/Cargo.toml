@@ -11,3 +11,4 @@ rsnano_store_traits = { path = "../store_traits" }
 lmdb-rkv = "0.14"
 lmdb-rkv-sys = "0.11"
 primitive-types = "0"
+anyhow = "1"

@@ -1,6 +1,5 @@
 use anyhow::Result;
-
-use crate::utils::TomlWriter;
+use rsnano_core::utils::TomlWriter;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum SyncStrategy {

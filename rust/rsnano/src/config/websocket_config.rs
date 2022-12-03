@@ -1,7 +1,6 @@
-use crate::utils::TomlWriter;
-
 use super::NetworkConstants;
 use anyhow::Result;
+use rsnano_core::utils::TomlWriter;
 use std::net::Ipv6Addr;
 
 pub struct WebsocketConfig {

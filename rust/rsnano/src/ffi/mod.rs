@@ -26,6 +26,10 @@ pub use config::*;
 pub use ipc::*;
 pub use property_tree::*;
 use rsnano_core::{
+    utils::{
+        MemoryIntensiveInstrumentationCallback, IS_SANITIZER_BUILD,
+        MEMORY_INTENSIVE_INSTRUMENTATION,
+    },
     Account, Amount, BlockHash, HashOrAccount, Link, PublicKey, RawKey, Root, Signature,
 };
 pub use secure::*;
@@ -33,10 +37,7 @@ pub use signatures::*;
 pub use stats::*;
 pub(crate) use websocket::*;
 
-use crate::{
-    utils::ErrorCode, MemoryIntensiveInstrumentationCallback, IS_SANITIZER_BUILD,
-    MEMORY_INTENSIVE_INSTRUMENTATION,
-};
+use crate::utils::ErrorCode;
 pub use transport::ChannelTcpObserverWeakPtr;
 
 pub struct StringHandle(CString);

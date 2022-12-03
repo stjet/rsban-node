@@ -1,7 +1,6 @@
 use anyhow::Result;
+use rsnano_core::utils::TomlWriter;
 use std::path::PathBuf;
-
-use crate::utils::TomlWriter;
 
 use super::get_default_rpc_filepath;
 

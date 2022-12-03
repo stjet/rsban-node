@@ -1,7 +1,6 @@
 use anyhow::Result;
+use rsnano_core::utils::TomlWriter;
 use std::path::PathBuf;
-
-use crate::utils::TomlWriter;
 
 pub struct NodePowServerConfig {
     pub enable: bool,

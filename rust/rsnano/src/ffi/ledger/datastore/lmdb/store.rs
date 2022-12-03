@@ -7,6 +7,7 @@ use std::{
     time::Duration,
 };
 
+use rsnano_store_lmdb::LmdbConfig;
 use rsnano_store_traits::Store;
 
 use crate::{
@@ -17,7 +18,7 @@ use crate::{
         FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto,
     },
     ledger::{
-        datastore::lmdb::{create_backup_file, EnvOptions, LmdbConfig, LmdbStore},
+        datastore::lmdb::{create_backup_file, EnvOptions, LmdbStore},
         LedgerConstants,
     },
 };

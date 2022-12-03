@@ -1,6 +1,9 @@
 mod iterator;
 pub use iterator::LmdbIteratorImpl;
 
+mod lmdb_config;
+pub use lmdb_config::{LmdbConfig, SyncStrategy};
+
 use std::{
     cmp::{max, min},
     mem,

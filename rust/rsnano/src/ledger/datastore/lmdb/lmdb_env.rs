@@ -1,7 +1,7 @@
 use lmdb::{Environment, EnvironmentFlags};
 use lmdb_sys::MDB_SUCCESS;
-use rsnano_core::utils::PropertyTreeWriter;
-use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction};
+use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
+use rsnano_store_lmdb::{LmdbConfig, LmdbReadTransaction, LmdbWriteTransaction, SyncStrategy};
 use rsnano_store_traits::{NullTransactionTracker, TransactionTracker};
 #[cfg(test)]
 use std::ops::Deref;
@@ -17,12 +17,6 @@ use std::{
     },
     time::Duration,
 };
-
-use crate::config::TxnTrackingConfig;
-use crate::utils::Logger;
-use crate::{ledger::datastore::LongRunningTransactionLogger, memory_intensive_instrumentation};
-
-use super::{LmdbConfig, SyncStrategy};
 
 #[derive(Default)]
 pub struct EnvOptions {
@@ -50,29 +44,17 @@ impl LmdbEnv {
         Ok(env)
     }
 
-    pub fn with_tracking(
+    pub fn with_txn_tracker(
         path: &Path,
         options: &EnvOptions,
-        tracking_cfg: TxnTrackingConfig,
-        block_processor_batch_max_time: Duration,
-        logger: Arc<dyn Logger>,
+        txn_tracker: Arc<dyn TransactionTracker>,
     ) -> anyhow::Result<Self> {
-        let txn_tracker: Arc<dyn TransactionTracker> = if tracking_cfg.enable {
-            Arc::new(LongRunningTransactionLogger::new(
-                logger,
-                tracking_cfg,
-                block_processor_batch_max_time,
-            ))
-        } else {
-            Arc::new(NullTransactionTracker::new())
-        };
-
-        let result = Self {
+        let env = Self {
             environment: Self::init(path, options)?,
             next_txn_id: AtomicU64::new(0),
             txn_tracker,
         };
-        Ok(result)
+        Ok(env)
     }
 
     pub fn init(path: impl AsRef<Path>, options: &EnvOptions) -> anyhow::Result<Environment> {

@@ -6,13 +6,19 @@ use std::{
     time::Duration,
 };
 
+use rsnano_store_lmdb::LmdbConfig;
+use rsnano_store_traits::{NullTransactionTracker, TransactionTracker};
+
 use crate::{
     config::DiagnosticsConfig,
     ffi::{
         utils::{LoggerHandle, LoggerMT},
         FfiPropertyTreeWriter, LmdbConfigDto, TxnTrackingConfigDto,
     },
-    ledger::datastore::lmdb::{EnvOptions, LmdbConfig, LmdbEnv},
+    ledger::datastore::{
+        lmdb::{EnvOptions, LmdbEnv},
+        LongRunningTransactionLogger,
+    },
 };
 
 use super::{TransactionHandle, TransactionType};
@@ -80,13 +86,18 @@ pub unsafe extern "C" fn rsn_mdb_env_create2(
     let txn_config = DiagnosticsConfig::from(&*txn_config).txn_tracking;
     let block_processor_batch_max_time = Duration::from_millis(block_processor_batch_max_time_ms);
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
-    let env = LmdbEnv::with_tracking(
-        path,
-        &options,
-        txn_config,
-        block_processor_batch_max_time,
-        logger,
-    );
+
+    let txn_tracker: Arc<dyn TransactionTracker> = if txn_config.enable {
+        Arc::new(LongRunningTransactionLogger::new(
+            logger,
+            txn_config,
+            block_processor_batch_max_time,
+        ))
+    } else {
+        Arc::new(NullTransactionTracker::new())
+    };
+
+    let env = LmdbEnv::with_txn_tracker(path, &options, txn_tracker);
     match env {
         Ok(e) => {
             *error = false;

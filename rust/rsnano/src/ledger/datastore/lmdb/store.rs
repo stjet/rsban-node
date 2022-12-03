@@ -12,13 +12,13 @@ use rsnano_store_lmdb::{
     as_write_txn, LmdbReadTransaction, LmdbWriteTransaction, STORE_VERSION_MINIMUM,
 };
 use rsnano_store_traits::{
-    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore, PrunedStore,
-    Store, VersionStore, WriteTransaction,
+    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, NullTransactionTracker,
+    PendingStore, PrunedStore, Store, TransactionTracker, VersionStore, WriteTransaction,
 };
 
 use crate::{
     config::TxnTrackingConfig,
-    ledger::{LedgerCache, LedgerConstants},
+    ledger::{datastore::LongRunningTransactionLogger, LedgerCache, LedgerConstants},
     utils::{seconds_since_epoch, Logger},
 };
 
@@ -61,13 +61,17 @@ impl LmdbStore {
     ) -> anyhow::Result<Self> {
         upgrade_if_needed(path, &logger, backup_before_upgrade)?;
 
-        let env = Arc::new(LmdbEnv::with_tracking(
-            path,
-            options,
-            tracking_cfg,
-            block_processor_batch_max_time,
-            logger.clone(),
-        )?);
+        let txn_tracker: Arc<dyn TransactionTracker> = if tracking_cfg.enable {
+            Arc::new(LongRunningTransactionLogger::new(
+                logger.clone(),
+                tracking_cfg,
+                block_processor_batch_max_time,
+            ))
+        } else {
+            Arc::new(NullTransactionTracker::new())
+        };
+
+        let env = Arc::new(LmdbEnv::with_txn_tracker(path, options, txn_tracker)?);
 
         Ok(Self {
             block_store: Arc::new(LmdbBlockStore::new(env.clone())?),

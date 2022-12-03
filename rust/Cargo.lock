@@ -1397,6 +1397,7 @@ dependencies = [
 name = "rsnano_store_lmdb"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "lmdb-rkv",
  "lmdb-rkv-sys",
  "primitive-types",

@@ -1,5 +1,6 @@
-use crate::{utils::TomlWriter, NetworkParams};
+use crate::NetworkParams;
 use anyhow::Result;
+use rsnano_core::utils::TomlWriter;
 
 use super::{Logging, NodeConfig, NodePowServerConfig, NodeRpcConfig, OpenclConfig};
 

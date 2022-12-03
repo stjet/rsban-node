@@ -1,4 +1,3 @@
-mod online_weight_store;
 mod peer_store;
 mod pending_store;
 mod pruned_store;
@@ -8,7 +7,6 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
-pub use online_weight_store::LmdbOnlineWeightStore;
 pub use peer_store::LmdbPeerStore;
 pub use pending_store::LmdbPendingStore;
 pub use pruned_store::LmdbPrunedStore;

@@ -22,6 +22,9 @@ pub use final_vote_store::LmdbFinalVoteStore;
 mod frontier_store;
 pub use frontier_store::LmdbFrontierStore;
 
+mod online_weight_store;
+pub use online_weight_store::LmdbOnlineWeightStore;
+
 use std::{
     cmp::{max, min},
     mem,

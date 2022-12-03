@@ -1,9 +1,10 @@
 use std::{ffi::c_void, sync::Arc};
 
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
+use rsnano_store_lmdb::LmdbFinalVoteStore;
 use rsnano_store_traits::FinalVoteStore;
 
-use crate::{ffi::VoidPointerCallback, ledger::datastore::lmdb::LmdbFinalVoteStore};
+use crate::ffi::VoidPointerCallback;
 
 use super::{
     iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},

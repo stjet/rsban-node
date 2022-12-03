@@ -1,4 +1,3 @@
-mod final_vote_store;
 mod frontier_store;
 mod online_weight_store;
 mod peer_store;
@@ -10,7 +9,6 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
-pub use final_vote_store::LmdbFinalVoteStore;
 pub use frontier_store::LmdbFrontierStore;
 pub use online_weight_store::LmdbOnlineWeightStore;
 pub use peer_store::LmdbPeerStore;

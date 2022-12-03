@@ -7,6 +7,9 @@ pub use lmdb_config::{LmdbConfig, SyncStrategy};
 mod lmdb_env;
 pub use lmdb_env::{EnvOptions, LmdbEnv, TestDbFile, TestLmdbEnv};
 
+mod account_store;
+pub use account_store::LmdbAccountStore;
+
 use std::{
     cmp::{max, min},
     mem,

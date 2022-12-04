@@ -6,7 +6,7 @@ use rsnano_core::Amount;
 use rsnano_store_traits::{OnlineWeightIterator, OnlineWeightStore, Transaction, WriteTransaction};
 
 pub struct LmdbOnlineWeightStore {
-    env: Arc<LmdbEnv>,
+    _env: Arc<LmdbEnv>,
     database: Database,
 }
 
@@ -15,7 +15,10 @@ impl LmdbOnlineWeightStore {
         let database = env
             .environment
             .create_db(Some("online_weight"), DatabaseFlags::empty())?;
-        Ok(Self { env, database })
+        Ok(Self {
+            _env: env,
+            database,
+        })
     }
 
     pub fn database(&self) -> Database {

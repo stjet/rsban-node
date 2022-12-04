@@ -10,7 +10,8 @@ use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::{utils::PropertyTreeWriter, AccountInfo, Amount, ConfirmationHeightInfo, Epoch};
 use rsnano_store_lmdb::{
     as_write_txn, EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
-    LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbReadTransaction,
+    LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
+    LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbUncheckedStore, LmdbVersionStore,
     LmdbWriteTransaction, STORE_VERSION_MINIMUM,
 };
 use rsnano_store_traits::{
@@ -22,10 +23,6 @@ use crate::{
     config::TxnTrackingConfig,
     ledger::{datastore::LongRunningTransactionLogger, LedgerCache, LedgerConstants},
     utils::{seconds_since_epoch, Logger},
-};
-
-use super::{
-    LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbUncheckedStore, LmdbVersionStore,
 };
 
 #[derive(PartialEq, Eq)]

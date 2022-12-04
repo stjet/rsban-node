@@ -1402,6 +1402,7 @@ dependencies = [
  "lmdb-rkv-sys",
  "num-traits",
  "primitive-types",
+ "rand",
  "rsnano_core",
  "rsnano_store_traits",
  "uuid",

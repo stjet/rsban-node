@@ -1,10 +1,10 @@
+use crate::{as_write_txn, get, LmdbEnv, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_store_lmdb::{as_write_txn, get, LmdbEnv, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM};
 use rsnano_store_traits::{Transaction, VersionStore, WriteTransaction};
 use std::{path::Path, sync::Arc};
 
 pub struct LmdbVersionStore {
-    env: Arc<LmdbEnv>,
+    _env: Arc<LmdbEnv>,
 
     /// U256 (arbitrary key) -> blob
     db_handle: Database,
@@ -20,7 +20,10 @@ impl LmdbVersionStore {
         let db_handle = env
             .environment
             .create_db(Some("meta"), DatabaseFlags::empty())?;
-        Ok(Self { env, db_handle })
+        Ok(Self {
+            _env: env,
+            db_handle,
+        })
     }
 
     pub fn try_read_version(env: &LmdbEnv) -> anyhow::Result<Option<i32>> {

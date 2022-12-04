@@ -14,3 +14,4 @@ primitive-types = "0"
 anyhow = "1"
 uuid = { version = "0", features = ["v4"] }
 num-traits = "0"
+rand = {version="0" }

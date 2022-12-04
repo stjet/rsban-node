@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
+use crate::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{HashOrAccount, UncheckedInfo, UncheckedKey};
-use rsnano_store_lmdb::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};
 use rsnano_store_traits::{Transaction, UncheckedIterator, UncheckedStore, WriteTransaction};
 
 pub struct LmdbUncheckedStore {
-    env: Arc<LmdbEnv>,
+    _env: Arc<LmdbEnv>,
     database: Database,
 }
 
@@ -15,7 +15,10 @@ impl LmdbUncheckedStore {
         let database = env
             .environment
             .create_db(Some("unchecked"), DatabaseFlags::empty())?;
-        Ok(Self { env, database })
+        Ok(Self {
+            _env: env,
+            database,
+        })
     }
 
     pub fn database(&self) -> Database {

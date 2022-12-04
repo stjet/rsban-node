@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
+use crate::{as_write_txn, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, BlockHash, PendingInfo, PendingKey,
 };
-use rsnano_store_lmdb::{as_write_txn, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl};
 use rsnano_store_traits::{
     PendingIterator, PendingStore, ReadTransaction, Transaction, WriteTransaction,
 };
@@ -110,8 +110,8 @@ impl PendingStore for LmdbPendingStore {
 
 #[cfg(test)]
 mod tests {
+    use crate::TestLmdbEnv;
     use rsnano_core::{Amount, Epoch};
-    use rsnano_store_lmdb::TestLmdbEnv;
 
     use super::*;
 

@@ -25,6 +25,21 @@ pub use frontier_store::LmdbFrontierStore;
 mod online_weight_store;
 pub use online_weight_store::LmdbOnlineWeightStore;
 
+mod pending_store;
+pub use pending_store::LmdbPendingStore;
+
+mod peer_store;
+pub use peer_store::LmdbPeerStore;
+
+mod pruned_store;
+pub use pruned_store::LmdbPrunedStore;
+
+mod unchecked_store;
+pub use unchecked_store::LmdbUncheckedStore;
+
+mod version_store;
+pub use version_store::LmdbVersionStore;
+
 use std::{
     cmp::{max, min},
     mem,

@@ -1,7 +1,7 @@
+use rsnano_store_lmdb::LmdbVersionStore;
 use rsnano_store_traits::VersionStore;
 
 use super::TransactionHandle;
-use crate::ledger::datastore::lmdb::LmdbVersionStore;
 use std::sync::Arc;
 
 pub struct LmdbVersionStoreHandle(Arc<LmdbVersionStore>);

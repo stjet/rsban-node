@@ -1,11 +1,11 @@
+use crate::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::EndpointKey;
-use rsnano_store_lmdb::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};
 use rsnano_store_traits::{PeerIterator, PeerStore, Transaction, WriteTransaction};
 use std::sync::Arc;
 
 pub struct LmdbPeerStore {
-    env: Arc<LmdbEnv>,
+    _env: Arc<LmdbEnv>,
     database: Database,
 }
 
@@ -15,7 +15,10 @@ impl LmdbPeerStore {
             .environment
             .create_db(Some("peers"), DatabaseFlags::empty())?;
 
-        Ok(Self { env, database })
+        Ok(Self {
+            _env: env,
+            database,
+        })
     }
 
     pub fn database(&self) -> Database {
@@ -60,8 +63,8 @@ impl PeerStore for LmdbPeerStore {
 
 #[cfg(test)]
 mod tests {
+    use crate::TestLmdbEnv;
     use rsnano_core::NoValue;
-    use rsnano_store_lmdb::TestLmdbEnv;
 
     use super::*;
 

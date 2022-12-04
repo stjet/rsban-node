@@ -1,3 +1,9 @@
+#[macro_use]
+extern crate num_derive;
+
+#[macro_use]
+extern crate anyhow;
+
 mod iterator;
 pub use iterator::LmdbIteratorImpl;
 
@@ -39,6 +45,12 @@ pub use unchecked_store::LmdbUncheckedStore;
 
 mod version_store;
 pub use version_store::LmdbVersionStore;
+
+mod wallet_store;
+pub use wallet_store::{Fans, LmdbWalletStore, WalletValue};
+
+mod fan;
+pub use fan::Fan;
 
 use std::{
     cmp::{max, min},

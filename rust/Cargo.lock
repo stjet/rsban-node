@@ -1390,6 +1390,7 @@ dependencies = [
  "once_cell",
  "primitive-types",
  "rand",
+ "rust-argon2",
  "static_assertions",
 ]
 
@@ -1400,11 +1401,13 @@ dependencies = [
  "anyhow",
  "lmdb-rkv",
  "lmdb-rkv-sys",
+ "num-derive",
  "num-traits",
  "primitive-types",
  "rand",
  "rsnano_core",
  "rsnano_store_traits",
+ "serde_json",
  "uuid",
 ]
 

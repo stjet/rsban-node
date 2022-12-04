@@ -64,6 +64,9 @@ pub mod work;
 mod unchecked_info;
 pub use unchecked_info::{SignatureVerification, UncheckedInfo, UncheckedKey};
 
+mod kdf;
+pub use kdf::KeyDerivationFunction;
+
 use std::fmt::Write;
 use std::num::ParseIntError;
 

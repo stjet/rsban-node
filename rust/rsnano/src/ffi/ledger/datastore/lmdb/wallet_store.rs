@@ -5,14 +5,12 @@ use std::{
     ptr,
 };
 
-use crate::{
-    ffi::{
-        copy_account_bytes, copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle,
-        StringDto, U256ArrayDto,
-    },
-    ledger::datastore::{lmdb::LmdbWalletStore, WalletValue},
+use crate::ffi::{
+    copy_account_bytes, copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle,
+    StringDto, U256ArrayDto,
 };
 use rsnano_core::{Account, PublicKey, RawKey};
+use rsnano_store_lmdb::{LmdbWalletStore, WalletValue};
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 

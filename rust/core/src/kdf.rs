@@ -1,5 +1,5 @@
+use crate::RawKey;
 use argon2::{Variant, Version};
-use rsnano_core::RawKey;
 
 /// Key derivation function
 #[derive(Clone)]

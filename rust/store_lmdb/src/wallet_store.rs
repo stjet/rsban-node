@@ -1,24 +1,72 @@
+use crate::{as_write_txn, get, Fan, LmdbIteratorImpl};
+use anyhow::bail;
+use lmdb::{Database, DatabaseFlags, WriteFlags};
+use rsnano_core::{
+    deterministic_key,
+    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamAdapter, StreamExt},
+    Account, KeyDerivationFunction, PublicKey, RawKey,
+};
+use rsnano_store_traits::{DbIterator, Transaction, WriteTransaction};
+use std::io::Write;
 use std::{
     fs::{set_permissions, File, Permissions},
-    io::Write,
     os::unix::prelude::PermissionsExt,
     path::Path,
     sync::{Mutex, MutexGuard},
 };
 
-use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_core::{
-    deterministic_key,
-    utils::{Deserialize, StreamAdapter},
-    Account, PublicKey, RawKey,
-};
-use rsnano_store_lmdb::{as_write_txn, get, LmdbIteratorImpl};
-use rsnano_store_traits::{DbIterator, Transaction, WriteTransaction};
+pub struct Fans {
+    pub password: Fan,
+    pub wallet_key_mem: Fan,
+}
 
-use crate::{
-    ledger::datastore::{Fans, WalletValue},
-    wallet::KeyDerivationFunction,
-};
+impl Fans {
+    pub fn new(fanout: usize) -> Self {
+        Self {
+            password: Fan::new(RawKey::zero(), fanout),
+            wallet_key_mem: Fan::new(RawKey::zero(), fanout),
+        }
+    }
+}
+
+pub struct WalletValue {
+    pub key: RawKey,
+    pub work: u64,
+}
+
+impl WalletValue {
+    pub fn new(key: RawKey, work: u64) -> Self {
+        Self { key, work }
+    }
+
+    pub fn to_bytes(&self) -> [u8; 40] {
+        let mut buffer = [0; 40];
+        let mut stream = MutStreamAdapter::new(&mut buffer);
+        self.serialize(&mut stream).unwrap();
+        buffer
+    }
+}
+
+impl Serialize for WalletValue {
+    fn serialized_size() -> usize {
+        RawKey::serialized_size()
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        self.key.serialize(stream)?;
+        stream.write_u64_ne(self.work)
+    }
+}
+
+impl Deserialize for WalletValue {
+    type Target = Self;
+
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
+        let key = RawKey::deserialize(stream)?;
+        let work = stream.read_u64_ne()?;
+        Ok(WalletValue::new(key, work))
+    }
+}
 
 #[derive(FromPrimitive)]
 pub enum KeyType {

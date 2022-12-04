@@ -23,7 +23,6 @@ pub mod stats;
 pub mod transport;
 pub mod utils;
 pub mod voting;
-pub mod wallet;
 mod websocket;
 
 pub use ipc::*;

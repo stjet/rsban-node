@@ -4,7 +4,9 @@ use std::{
     slice,
 };
 
-use crate::{ffi::copy_raw_key_bytes, wallet::KeyDerivationFunction};
+use rsnano_core::KeyDerivationFunction;
+
+use crate::ffi::copy_raw_key_bytes;
 pub struct KdfHandle(KeyDerivationFunction);
 
 impl Deref for KdfHandle {

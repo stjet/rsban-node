@@ -52,6 +52,9 @@ pub use wallet_store::{Fans, LmdbWalletStore, WalletValue};
 mod fan;
 pub use fan::Fan;
 
+mod wallets;
+pub use wallets::LmdbWallets;
+
 use std::{
     cmp::{max, min},
     mem,

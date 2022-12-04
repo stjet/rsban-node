@@ -8,7 +8,7 @@ use std::{
 };
 
 use rsnano_store_lmdb::{EnvOptions, LmdbConfig};
-use rsnano_store_traits::Store;
+use rsnano_store_traits::{NullTransactionTracker, Store, TransactionTracker};
 
 use crate::{
     config::DiagnosticsConfig,
@@ -18,7 +18,10 @@ use crate::{
         FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto,
     },
     ledger::{
-        datastore::lmdb::{create_backup_file, LmdbStore},
+        datastore::{
+            lmdb::{create_backup_file, LmdbStore},
+            LongRunningTransactionLogger,
+        },
         LedgerConstants,
     },
 };
@@ -65,14 +68,17 @@ pub unsafe extern "C" fn rsn_lmdb_store_create(
     let block_processor_batch_max_time = Duration::from_millis(block_processor_batch_max_time_ms);
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
 
-    let store = LmdbStore::new(
-        path,
-        &options,
-        txn_config,
-        block_processor_batch_max_time,
-        logger,
-        backup_before_upgrade,
-    );
+    let txn_tracker: Arc<dyn TransactionTracker> = if txn_config.enable {
+        Arc::new(LongRunningTransactionLogger::new(
+            logger.clone(),
+            txn_config,
+            block_processor_batch_max_time,
+        ))
+    } else {
+        Arc::new(NullTransactionTracker::new())
+    };
+
+    let store = LmdbStore::new(path, &options, txn_tracker, logger, backup_before_upgrade);
     match store {
         Ok(s) => {
             *error = false;
@@ -301,7 +307,11 @@ pub unsafe extern "C" fn rsn_lmdb_store_initialize(
     constants: *const LedgerConstantsDto,
 ) {
     let constants = LedgerConstants::try_from(&*constants).unwrap();
-    (*handle)
-        .0
-        .initialize((*txn).as_write_txn(), &*cache, &constants);
+    (*handle).initialize(
+        (*txn).as_write_txn(),
+        &*cache,
+        &constants.genesis.read().unwrap(),
+        constants.final_votes_canary_account,
+        constants.final_votes_canary_height,
+    );
 }

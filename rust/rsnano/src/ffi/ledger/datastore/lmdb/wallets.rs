@@ -1,11 +1,9 @@
 use std::ffi::{c_char, CStr};
 
 use rsnano_core::BlockHash;
+use rsnano_store_lmdb::LmdbWallets;
 
-use crate::{
-    ffi::{copy_hash_bytes, U256ArrayDto},
-    ledger::datastore::lmdb::LmdbWallets,
-};
+use crate::ffi::{copy_hash_bytes, U256ArrayDto};
 
 use super::{store::LmdbStoreHandle, TransactionHandle};
 

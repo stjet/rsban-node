@@ -7,7 +7,10 @@ use std::{
 
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
-use rsnano_core::{utils::PropertyTreeWriter, AccountInfo, Amount, ConfirmationHeightInfo, Epoch};
+use rsnano_core::{
+    utils::{seconds_since_epoch, PropertyTreeWriter},
+    Account, AccountInfo, Amount, BlockEnum, ConfirmationHeightInfo, Epoch,
+};
 use rsnano_store_lmdb::{
     as_write_txn, EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
     LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
@@ -15,15 +18,11 @@ use rsnano_store_lmdb::{
     LmdbWriteTransaction, STORE_VERSION_MINIMUM,
 };
 use rsnano_store_traits::{
-    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, NullTransactionTracker,
-    PendingStore, PrunedStore, Store, TransactionTracker, VersionStore, WriteTransaction,
+    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore, PrunedStore,
+    Store, TransactionTracker, VersionStore, WriteTransaction,
 };
 
-use crate::{
-    config::TxnTrackingConfig,
-    ledger::{datastore::LongRunningTransactionLogger, LedgerCache, LedgerConstants},
-    utils::{seconds_since_epoch, Logger},
-};
+use crate::{ledger::LedgerCache, utils::Logger};
 
 #[derive(PartialEq, Eq)]
 pub enum Vacuuming {
@@ -51,22 +50,11 @@ impl LmdbStore {
     pub fn new(
         path: &Path,
         options: &EnvOptions,
-        tracking_cfg: TxnTrackingConfig,
-        block_processor_batch_max_time: Duration,
+        txn_tracker: Arc<dyn TransactionTracker>,
         logger: Arc<dyn Logger>,
         backup_before_upgrade: bool,
     ) -> anyhow::Result<Self> {
         upgrade_if_needed(path, &logger, backup_before_upgrade)?;
-
-        let txn_tracker: Arc<dyn TransactionTracker> = if tracking_cfg.enable {
-            Arc::new(LongRunningTransactionLogger::new(
-                logger.clone(),
-                tracking_cfg,
-                block_processor_batch_max_time,
-            ))
-        } else {
-            Arc::new(NullTransactionTracker::new())
-        };
 
         let env = Arc::new(LmdbEnv::with_txn_tracker(path, options, txn_tracker)?);
 
@@ -140,9 +128,10 @@ impl LmdbStore {
         &self,
         txn: &mut dyn WriteTransaction,
         cache: &LedgerCache,
-        constants: &LedgerConstants,
+        genesis: &BlockEnum,
+        final_votes_canary_account: Account,
+        final_votes_canary_height: u64,
     ) {
-        let genesis = constants.genesis.read().unwrap();
         let genesis_block = genesis.as_block();
         let genesis_hash = genesis_block.hash();
         let genesis_account = genesis_block.account();
@@ -157,8 +146,7 @@ impl LmdbStore {
         );
         cache.cemented_count.fetch_add(1, Ordering::SeqCst);
         cache.final_votes_confirmation_canary.store(
-            constants.final_votes_canary_account == genesis_account
-                && 1 >= constants.final_votes_canary_height,
+            final_votes_canary_account == genesis_account && 1 >= final_votes_canary_height,
             Ordering::SeqCst,
         );
         self.account_store.put(
@@ -428,6 +416,7 @@ fn backup_file_path(source_path: &Path) -> anyhow::Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use rsnano_store_lmdb::TestDbFile;
+    use rsnano_store_traits::NullTransactionTracker;
 
     use crate::utils::NullLogger;
 
@@ -438,12 +427,10 @@ mod tests {
         let file = TestDbFile::random();
         let logger = Arc::new(NullLogger::new());
         let options = EnvOptions::default();
-        let tracking_cfg = TxnTrackingConfig::default();
         let _ = LmdbStore::new(
             &file.path,
             &options,
-            tracking_cfg,
-            Duration::from_secs(1),
+            Arc::new(NullTransactionTracker::new()),
             logger,
             false,
         )?;
@@ -469,15 +456,8 @@ mod tests {
     fn assert_upgrade_fails(path: &Path, error_msg: &str) {
         let logger = Arc::new(NullLogger::new());
         let options = EnvOptions::default();
-        let tracking_cfg = TxnTrackingConfig::default();
-        match LmdbStore::new(
-            path,
-            &options,
-            tracking_cfg,
-            Duration::from_secs(1),
-            logger,
-            false,
-        ) {
+        let txn_tracker = Arc::new(NullTransactionTracker::new());
+        match LmdbStore::new(path, &options, txn_tracker, logger, false) {
             Ok(_) => panic!("store should not be created!"),
             Err(e) => {
                 assert_eq!(e.to_string(), error_msg);

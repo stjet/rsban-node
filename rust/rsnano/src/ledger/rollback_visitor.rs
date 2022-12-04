@@ -1,15 +1,13 @@
 use std::sync::{Arc, RwLock};
 
 use rsnano_core::{
-    Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockType, BlockVisitor,
-    ChangeBlock, Epoch, OpenBlock, PendingInfo, PendingKey, ReceiveBlock, SendBlock, StateBlock,
+    utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash,
+    BlockType, BlockVisitor, ChangeBlock, Epoch, OpenBlock, PendingInfo, PendingKey, ReceiveBlock,
+    SendBlock, StateBlock,
 };
 use rsnano_store_traits::WriteTransaction;
 
-use crate::{
-    stats::{DetailType, Direction, Stat, StatType},
-    utils::seconds_since_epoch,
-};
+use crate::stats::{DetailType, Direction, Stat, StatType};
 
 use super::Ledger;
 

@@ -1,9 +1,9 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use rsnano_store_lmdb::{EnvOptions, TestDbFile};
+use rsnano_store_traits::NullTransactionTracker;
 
 use crate::{
-    config::TxnTrackingConfig,
     ledger::{datastore::lmdb::LmdbStore, GenerateCache, Ledger},
     stats::{Stat, StatConfig},
     utils::NullLogger,
@@ -20,12 +20,12 @@ pub(crate) struct LedgerContext {
 impl LedgerContext {
     pub fn empty() -> Self {
         let db_file = TestDbFile::random();
+
         let store = Arc::new(
             LmdbStore::new(
                 &db_file.path,
                 &EnvOptions::default(),
-                TxnTrackingConfig::default(),
-                Duration::from_millis(5000),
+                Arc::new(NullTransactionTracker::new()),
                 Arc::new(NullLogger::new()),
                 false,
             )
@@ -41,7 +41,13 @@ impl LedgerContext {
         .unwrap();
 
         let mut txn = store.tx_begin_write().unwrap();
-        store.initialize(&mut txn, &ledger.cache, &DEV_CONSTANTS);
+        store.initialize(
+            &mut txn,
+            &ledger.cache,
+            &DEV_CONSTANTS.genesis.read().unwrap(),
+            DEV_CONSTANTS.final_votes_canary_account,
+            DEV_CONSTANTS.final_votes_canary_height,
+        );
 
         LedgerContext { ledger, db_file }
     }

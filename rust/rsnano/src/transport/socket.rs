@@ -1,5 +1,6 @@
-use crate::utils::{seconds_since_epoch, BufferWrapper, ErrorCode, ThreadPool};
+use crate::utils::{BufferWrapper, ErrorCode, ThreadPool};
 use num_traits::FromPrimitive;
+use rsnano_core::utils::seconds_since_epoch;
 use std::{
     any::Any,
     net::SocketAddr,

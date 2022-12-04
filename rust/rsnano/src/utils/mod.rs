@@ -28,10 +28,6 @@ pub use logger_mt::{Logger, NullLogger};
 pub use thread_pool::*;
 pub use toml::*;
 
-pub fn seconds_since_epoch() -> u64 {
-    chrono::Utc::now().timestamp() as u64
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ErrorCode {
     pub val: i32,

@@ -1,4 +1,6 @@
 mod json;
+use std::time::SystemTime;
+
 pub use json::*;
 
 mod stream;
@@ -90,4 +92,11 @@ pub fn memory_intensive_instrumentation() -> bool {
 
 pub fn is_sanitizer_build() -> bool {
     unsafe { IS_SANITIZER_BUILD.expect("IS_SANITIZER_BUILD missing")() }
+}
+
+pub fn seconds_since_epoch() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
 }

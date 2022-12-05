@@ -55,6 +55,9 @@ pub use fan::Fan;
 mod wallets;
 pub use wallets::LmdbWallets;
 
+mod store;
+pub use store::{create_backup_file, LmdbStore};
+
 use std::{
     cmp::{max, min},
     mem,

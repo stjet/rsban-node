@@ -38,6 +38,12 @@ pub use version_store::VersionStore;
 mod store;
 pub use store::Store;
 
+mod rep_weights;
+pub use rep_weights::RepWeights;
+
+mod ledger_cache;
+pub use ledger_cache::LedgerCache;
+
 use std::{any::Any, time::Duration};
 
 pub trait Transaction {

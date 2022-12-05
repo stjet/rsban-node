@@ -1,13 +1,5 @@
-pub mod datastore;
-
 mod ledger;
 pub use ledger::{Ledger, ProcessResult, ProcessReturn};
-
-mod rep_weights;
-pub use rep_weights::RepWeights;
-
-mod ledger_cache;
-pub use ledger_cache::LedgerCache;
 
 mod ledger_constants;
 pub use ledger_constants::{LedgerConstants, DEV_GENESIS_KEY};
@@ -23,6 +15,12 @@ pub(crate) use representative_visitor::RepresentativeVisitor;
 
 mod ledger_processor;
 pub(crate) use ledger_processor::LedgerProcessor;
+
+mod write_database_queue;
+pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
+
+mod long_running_transaction_logger;
+pub use long_running_transaction_logger::LongRunningTransactionLogger;
 
 #[cfg(test)]
 mod ledger_tests;

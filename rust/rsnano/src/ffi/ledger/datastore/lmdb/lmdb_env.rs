@@ -15,7 +15,7 @@ use crate::{
         utils::{LoggerHandle, LoggerMT},
         FfiPropertyTreeWriter, LmdbConfigDto, TxnTrackingConfigDto,
     },
-    ledger::datastore::LongRunningTransactionLogger,
+    ledger::LongRunningTransactionLogger,
 };
 
 use super::{TransactionHandle, TransactionType};

@@ -3,7 +3,7 @@ use std::{
     sync::{atomic::Ordering, Arc},
 };
 
-use crate::ledger::LedgerCache;
+use rsnano_store_traits::LedgerCache;
 
 use super::RepWeightsHandle;
 

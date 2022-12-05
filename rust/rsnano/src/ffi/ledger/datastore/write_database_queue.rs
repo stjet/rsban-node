@@ -1,4 +1,4 @@
-use crate::ledger::datastore::{WriteDatabaseQueue, WriteGuard, Writer};
+use crate::ledger::{WriteDatabaseQueue, WriteGuard, Writer};
 use num_traits::FromPrimitive;
 
 pub struct WriteDatabaseQueueHandle(WriteDatabaseQueue);

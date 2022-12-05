@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use rsnano_core::utils::NullLogger;
-use rsnano_store_lmdb::{EnvOptions, TestDbFile};
+use rsnano_store_lmdb::{EnvOptions, LmdbStore, TestDbFile};
 use rsnano_store_traits::NullTransactionTracker;
 
 use crate::{
-    ledger::{datastore::lmdb::LmdbStore, GenerateCache, Ledger},
+    ledger::{GenerateCache, Ledger},
     stats::{Stat, StatConfig},
     DEV_CONSTANTS,
 };

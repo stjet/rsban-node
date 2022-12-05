@@ -3,7 +3,7 @@ use std::sync::{
     Arc,
 };
 
-use super::RepWeights;
+use crate::RepWeights;
 
 pub struct LedgerCache {
     pub rep_weights: Arc<RepWeights>,

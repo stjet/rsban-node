@@ -26,10 +26,7 @@ pub use config::*;
 pub use ipc::*;
 pub use property_tree::*;
 use rsnano_core::{
-    utils::{
-        IS_SANITIZER_BUILD,
-        MEMORY_INTENSIVE_INSTRUMENTATION,
-    },
+    utils::{IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION},
     Account, Amount, BlockHash, HashOrAccount, Link, PublicKey, RawKey, Root, Signature,
 };
 pub type MemoryIntensiveInstrumentationCallback = extern "C" fn() -> bool;

@@ -5,24 +5,22 @@ use std::{
     time::Duration,
 };
 
+use crate::{
+    as_write_txn, EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
+    LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
+    LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbUncheckedStore, LmdbVersionStore,
+    LmdbWriteTransaction, STORE_VERSION_MINIMUM,
+};
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::{
     utils::{seconds_since_epoch, Logger, PropertyTreeWriter},
     Account, AccountInfo, Amount, BlockEnum, ConfirmationHeightInfo, Epoch,
 };
-use rsnano_store_lmdb::{
-    as_write_txn, EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
-    LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
-    LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbUncheckedStore, LmdbVersionStore,
-    LmdbWriteTransaction, STORE_VERSION_MINIMUM,
-};
 use rsnano_store_traits::{
-    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore, PrunedStore,
-    Store, TransactionTracker, VersionStore, WriteTransaction,
+    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, LedgerCache, PendingStore,
+    PrunedStore, Store, TransactionTracker, VersionStore, WriteTransaction,
 };
-
-use crate::ledger::LedgerCache;
 
 #[derive(PartialEq, Eq)]
 pub enum Vacuuming {
@@ -43,7 +41,6 @@ pub struct LmdbStore {
     pub final_vote_store: Arc<LmdbFinalVoteStore>,
     pub unchecked_store: Arc<LmdbUncheckedStore>,
     pub version_store: Arc<LmdbVersionStore>,
-    logger: Arc<dyn Logger>,
 }
 
 impl LmdbStore {
@@ -70,7 +67,6 @@ impl LmdbStore {
             final_vote_store: Arc::new(LmdbFinalVoteStore::new(env.clone())?),
             unchecked_store: Arc::new(LmdbUncheckedStore::new(env.clone())?),
             version_store: Arc::new(LmdbVersionStore::new(env.clone())?),
-            logger,
             env,
         })
     }
@@ -215,20 +211,6 @@ fn rebuild_table(
     unsafe { as_write_txn(rw_txn).drop_db(temp) }?;
     rw_txn.refresh();
     Ok(())
-}
-
-fn copy_to_temp_table(
-    env: &LmdbEnv,
-    rw_txn: &mut LmdbWriteTransaction,
-    db: Database,
-) -> Result<Database, anyhow::Error> {
-    let temp = unsafe {
-        rw_txn
-            .rw_txn_mut()
-            .create_db(Some("temp_table"), DatabaseFlags::empty())
-    }?;
-    copy_table(env, rw_txn, db, temp)?;
-    Ok(temp)
 }
 
 fn copy_table(
@@ -415,8 +397,8 @@ fn backup_file_path(source_path: &Path) -> anyhow::Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    use crate::TestDbFile;
     use rsnano_core::utils::NullLogger;
-    use rsnano_store_lmdb::TestDbFile;
     use rsnano_store_traits::NullTransactionTracker;
 
     use super::*;

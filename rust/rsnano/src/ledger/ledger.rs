@@ -20,8 +20,10 @@ use std::{
     },
 };
 
-use super::{GenerateCache, LedgerCache, LedgerConstants, RepWeights, RepresentativeVisitor};
-use rsnano_store_traits::{ReadTransaction, Store, Transaction, WriteTransaction};
+use super::{GenerateCache, LedgerConstants, RepresentativeVisitor};
+use rsnano_store_traits::{
+    LedgerCache, ReadTransaction, RepWeights, Store, Transaction, WriteTransaction,
+};
 
 pub struct UncementedInfo {
     pub cemented_frontier: BlockHash,

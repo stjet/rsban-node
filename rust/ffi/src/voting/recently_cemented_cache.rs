@@ -1,5 +1,5 @@
 use crate::voting::election_status::ElectionStatusHandle;
-use rsnano::voting::RecentlyCementedCache;
+use rsnano_node::voting::RecentlyCementedCache;
 use std::sync::Arc;
 
 pub struct RecentlyCementedCacheHandle(Arc<RecentlyCementedCache>);

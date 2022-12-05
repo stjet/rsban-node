@@ -4,7 +4,7 @@ use super::{
     OpenclConfigDto,
 };
 use crate::{secure::NetworkParamsDto, utils::FfiToml};
-use rsnano::{config::DaemonConfig, NetworkParams};
+use rsnano_node::{config::DaemonConfig, NetworkParams};
 use std::{
     convert::{TryFrom, TryInto},
     ffi::c_void,

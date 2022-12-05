@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use rsnano_core::{Account, Signature};
 
 use crate::{copy_account_bytes, copy_signature_bytes, utils::FfiStream, NetworkConstantsDto};
-use rsnano::messages::{Message, NodeIdHandshake};
+use rsnano_node::messages::{Message, NodeIdHandshake};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,

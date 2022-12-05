@@ -1,4 +1,4 @@
-use rsnano::config::OpenclConfig;
+use rsnano_node::config::OpenclConfig;
 
 #[repr(C)]
 pub struct OpenclConfigDto {

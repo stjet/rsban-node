@@ -1,7 +1,7 @@
 use crate::{Account, AccountInfo, RpcClient};
 use anyhow::Result;
 use rand::Rng;
-use rsnano::DEV_GENESIS;
+use rsnano_node::DEV_GENESIS;
 use std::{
     collections::HashMap,
     io::Write,

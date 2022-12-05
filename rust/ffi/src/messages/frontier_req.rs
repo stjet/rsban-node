@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use rsnano_core::Account;
 
-use rsnano::messages::{FrontierReq, Message};
+use rsnano_node::messages::{FrontierReq, Message};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,

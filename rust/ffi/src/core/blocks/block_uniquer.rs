@@ -1,4 +1,4 @@
-use rsnano::utils::BlockUniquer;
+use rsnano_node::utils::BlockUniquer;
 
 use super::BlockHandle;
 use std::{ops::Deref, sync::Arc};

@@ -3,7 +3,7 @@ members = [
 	"core",
 	"store_traits",
 	"store_lmdb",
-	"rsnano",
+	"node",
 	"ffi",
 	"load_test",
 ]

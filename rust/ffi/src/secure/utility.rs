@@ -1,7 +1,7 @@
 use num::FromPrimitive;
 use rsnano_core::Networks;
 
-use rsnano::{remove_temporary_directories, unique_path_for, working_path_for};
+use rsnano_node::{remove_temporary_directories, unique_path_for, working_path_for};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_working_path(network: u16, result: *mut u8, size: usize) -> i32 {

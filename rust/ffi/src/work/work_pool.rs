@@ -7,7 +7,7 @@ use rsnano_core::{
 };
 use std::{cmp::min, ffi::c_void, time::Duration};
 
-use rsnano::config::NetworkConstants;
+use rsnano_node::config::NetworkConstants;
 
 pub struct WorkPoolHandle(WorkPool);
 

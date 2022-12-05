@@ -2,7 +2,7 @@ use num::FromPrimitive;
 use rsnano_core::work::WorkThresholds;
 use std::{convert::TryFrom, ffi::CStr, os::raw::c_char, time::Duration};
 
-use rsnano::config::{test_node_port, NetworkConstants, TelemetryCacheCutoffs};
+use rsnano_node::config::{test_node_port, NetworkConstants, TelemetryCacheCutoffs};
 
 use crate::work::{fill_work_thresholds_dto, WorkThresholdsDto};
 

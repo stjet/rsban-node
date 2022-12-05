@@ -1,4 +1,4 @@
-use rsnano::BootstrapConstants;
+use rsnano_node::BootstrapConstants;
 
 #[repr(C)]
 pub struct BootstrapConstantsDto {

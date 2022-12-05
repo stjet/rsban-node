@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use rsnano_core::{BlockHash, HashOrAccount};
 
 use crate::{copy_hash_bytes, copy_hash_or_account_bytes, utils::FfiStream, NetworkConstantsDto};
-use rsnano::messages::{BulkPull, Message};
+use rsnano_node::messages::{BulkPull, Message};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,

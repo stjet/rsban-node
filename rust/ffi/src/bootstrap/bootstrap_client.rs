@@ -9,7 +9,7 @@ use crate::{
     },
     StringDto, VoidPointerCallback,
 };
-use rsnano::{
+use rsnano_node::{
     bootstrap::{BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr},
     transport::{BandwidthLimitType, BufferDropPolicy},
 };

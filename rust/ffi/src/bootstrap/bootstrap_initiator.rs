@@ -1,4 +1,4 @@
-use rsnano::bootstrap::{BootstrapInitiator, BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK};
+use rsnano_node::bootstrap::{BootstrapInitiator, BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct BootstrapInitiatorHandle(Arc<BootstrapInitiator>);

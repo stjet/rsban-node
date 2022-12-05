@@ -26,7 +26,7 @@ pub use state_block::*;
 
 use crate::{utils::FfiStream, FfiPropertyTreeReader, FfiPropertyTreeWriter};
 use num::FromPrimitive;
-use rsnano::utils::deserialize_block;
+use rsnano_node::utils::deserialize_block;
 
 #[no_mangle]
 pub extern "C" fn rsn_block_serialized_size(block_type: u8) -> usize {

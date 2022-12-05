@@ -8,7 +8,8 @@ use crate::{
     voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
 };
-use rsnano::{
+use rsnano_core::{utils::Logger, Account, KeyPair};
+use rsnano_node::{
     config::{NetworkConstants, NodeConfig},
     stats::Stat,
     transport::{
@@ -18,7 +19,6 @@ use rsnano::{
     },
     NetworkParams,
 };
-use rsnano_core::{utils::Logger, Account, KeyPair};
 use std::{
     ffi::c_void,
     net::SocketAddr,

@@ -19,7 +19,7 @@ pub use unchecked_info::*;
 use rand::{thread_rng, Rng};
 use std::{ffi::CStr, net::Ipv6Addr, os::raw::c_char, slice};
 
-use rsnano::utils::ip_address_hash_raw;
+use rsnano_node::utils::ip_address_hash_raw;
 
 use super::copy_raw_key_bytes;
 

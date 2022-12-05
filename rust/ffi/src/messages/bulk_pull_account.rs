@@ -1,5 +1,5 @@
 use crate::{copy_account_bytes, copy_amount_bytes, utils::FfiStream, NetworkConstantsDto};
-use rsnano::messages::{BulkPullAccount, BulkPullAccountFlags, Message};
+use rsnano_node::messages::{BulkPullAccount, BulkPullAccountFlags, Message};
 use std::ffi::c_void;
 
 use super::{

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rsnano::transport::TcpChannels;
+use rsnano_node::transport::TcpChannels;
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
 

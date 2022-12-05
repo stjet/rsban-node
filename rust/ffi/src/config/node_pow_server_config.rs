@@ -1,6 +1,6 @@
 use std::os::unix::prelude::OsStrExt;
 
-use rsnano::config::NodePowServerConfig;
+use rsnano_node::config::NodePowServerConfig;
 
 #[repr(C)]
 pub struct NodePowServerConfigDto {

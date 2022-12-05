@@ -1,4 +1,4 @@
-use rsnano::block_processing::{BlockProcessor, BLOCKPROCESSOR_ADD_CALLBACK};
+use rsnano_node::block_processing::{BlockProcessor, BLOCKPROCESSOR_ADD_CALLBACK};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::core::UncheckedInfoHandle;

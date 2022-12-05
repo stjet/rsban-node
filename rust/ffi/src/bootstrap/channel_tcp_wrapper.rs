@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::transport::{as_tcp_channel, ChannelHandle, SocketHandle};
-use rsnano::bootstrap::ChannelTcpWrapper;
+use rsnano_node::bootstrap::ChannelTcpWrapper;
 
 use super::bootstrap_server::TcpServerHandle;
 

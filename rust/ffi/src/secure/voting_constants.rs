@@ -1,4 +1,4 @@
-use rsnano::VotingConstants;
+use rsnano_node::VotingConstants;
 
 #[repr(C)]
 pub struct VotingConstantsDto {

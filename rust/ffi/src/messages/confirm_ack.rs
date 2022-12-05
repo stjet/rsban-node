@@ -9,7 +9,7 @@ use crate::{
     voting::{VoteHandle, VoteUniquerHandle},
     NetworkConstantsDto,
 };
-use rsnano::{
+use rsnano_node::{
     config::NetworkConstants,
     messages::{ConfirmAck, Message},
     voting::Vote,

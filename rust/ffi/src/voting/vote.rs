@@ -7,7 +7,7 @@ use std::{
 use rsnano_core::{Account, BlockHash, FullHash, RawKey, Signature};
 
 use crate::{utils::FfiStream, FfiPropertyTreeWriter, StringDto};
-use rsnano::voting::Vote;
+use rsnano_node::voting::Vote;
 
 pub struct VoteHandle(Arc<RwLock<Vote>>);
 

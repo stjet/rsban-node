@@ -1,7 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
-use rsnano::signatures::{SignatureCheckSet, SignatureChecker};
 use rsnano_core::{PublicKey, Signature};
+use rsnano_node::signatures::{SignatureCheckSet, SignatureChecker};
 
 #[repr(C)]
 pub struct SignatureCheckSetDto {

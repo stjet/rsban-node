@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use crate::NetworkConstantsDto;
-use rsnano::{config::NetworkConstants, PortmappingConstants};
+use rsnano_node::{config::NetworkConstants, PortmappingConstants};
 
 #[repr(C)]
 pub struct PortmappingConstantsDto {

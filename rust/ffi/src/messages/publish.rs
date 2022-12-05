@@ -1,6 +1,6 @@
 use std::{ffi::c_void, ops::Deref};
 
-use rsnano::messages::{Message, Publish};
+use rsnano_node::messages::{Message, Publish};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,

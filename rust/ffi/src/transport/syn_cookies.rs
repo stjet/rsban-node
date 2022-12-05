@@ -1,5 +1,5 @@
-use rsnano::transport::SynCookies;
 use rsnano_core::{Account, Signature};
+use rsnano_node::transport::SynCookies;
 use std::{net::SocketAddr, ops::Deref, sync::Arc, time::Duration};
 
 use super::EndpointDto;

@@ -9,7 +9,7 @@ use std::{
 };
 use tokio::time::sleep;
 
-use rsnano::{
+use rsnano_node::{
     config::{
         get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, NetworkConstants,
         RpcConfig,

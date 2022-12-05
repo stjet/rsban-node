@@ -5,7 +5,7 @@ use crate::{
     utils::FfiStream,
     NetworkConstantsDto, StringDto,
 };
-use rsnano::messages::{ConfirmReq, Message};
+use rsnano_node::messages::{ConfirmReq, Message};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,

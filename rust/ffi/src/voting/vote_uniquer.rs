@@ -1,7 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
 use super::vote::VoteHandle;
-use rsnano::voting::VoteUniquer;
+use rsnano_node::voting::VoteUniquer;
 
 pub struct VoteUniquerHandle(Arc<VoteUniquer>);
 

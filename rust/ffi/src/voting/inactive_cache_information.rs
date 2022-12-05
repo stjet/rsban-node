@@ -1,6 +1,6 @@
 use crate::{copy_hash_bytes, voting::inactive_cache_status::InactiveCacheStatusHandle, StringDto};
-use rsnano::voting::InactiveCacheInformation;
 use rsnano_core::{Account, BlockHash};
+use rsnano_node::voting::InactiveCacheInformation;
 
 pub struct InactiveCacheInformationHandle(InactiveCacheInformation);
 

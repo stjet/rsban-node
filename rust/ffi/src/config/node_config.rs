@@ -9,11 +9,11 @@ use crate::{
     fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml, IpcConfigDto, NetworkParamsDto,
     StatConfigDto, WebsocketConfigDto,
 };
-use rsnano::{
+use rsnano_core::{Account, Amount};
+use rsnano_node::{
     config::{Logging, NodeConfig, Peer},
     NetworkParams,
 };
-use rsnano_core::{Account, Amount};
 
 use super::{
     fill_logging_dto, fill_txn_tracking_config_dto, fill_websocket_config_dto,

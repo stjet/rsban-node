@@ -1,4 +1,4 @@
-use rsnano::config::{DiagnosticsConfig, TxnTrackingConfig};
+use rsnano_node::config::{DiagnosticsConfig, TxnTrackingConfig};
 
 #[repr(C)]
 pub struct TxnTrackingConfigDto {

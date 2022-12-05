@@ -9,7 +9,7 @@ use crate::{
     utils::FfiStream,
     NetworkConstantsDto,
 };
-use rsnano::messages::{
+use rsnano_node::messages::{
     AccountInfoAckPayload, AscPullAck, AscPullAckPayload, BlocksAckPayload, Message,
 };
 use std::{

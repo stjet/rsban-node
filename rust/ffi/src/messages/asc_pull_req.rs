@@ -5,7 +5,7 @@ use super::{
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use crate::{copy_hash_or_account_bytes, utils::FfiStream, NetworkConstantsDto};
-use rsnano::messages::{
+use rsnano_node::messages::{
     AccountInfoReqPayload, AscPullReq, AscPullReqPayload, BlocksReqPayload, Message,
 };
 use std::ffi::c_void;

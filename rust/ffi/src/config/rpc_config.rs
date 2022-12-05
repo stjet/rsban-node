@@ -1,6 +1,6 @@
 use super::NetworkConstantsDto;
 use crate::utils::FfiToml;
-use rsnano::config::{NetworkConstants, RpcConfig, RpcLoggingConfig, RpcProcessConfig};
+use rsnano_node::config::{NetworkConstants, RpcConfig, RpcLoggingConfig, RpcProcessConfig};
 use std::{convert::TryFrom, ffi::c_void};
 
 #[repr(C)]

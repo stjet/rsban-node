@@ -1,5 +1,5 @@
 use crate::VoidPointerCallback;
-use rsnano::{
+use rsnano_node::{
     messages::{
         BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Keepalive,
         Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck, TelemetryReq,

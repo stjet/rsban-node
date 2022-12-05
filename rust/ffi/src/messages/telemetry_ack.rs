@@ -9,7 +9,7 @@ use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, utils::FfiStream,
     NetworkConstantsDto,
 };
-use rsnano::messages::{Message, TelemetryAck, TelemetryData};
+use rsnano_node::messages::{Message, TelemetryAck, TelemetryData};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,

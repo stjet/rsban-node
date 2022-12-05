@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
 use crate::core::BlockHandle;
-use rsnano::voting::{Prioritization, ValueType};
 use rsnano_core::Amount;
+use rsnano_node::voting::{Prioritization, ValueType};
 
 pub struct ValueTypeHandle(ValueType);
 

@@ -1,6 +1,6 @@
 use rsnano_core::BlockHash;
 
-use rsnano::block_processing::BlockArrival;
+use rsnano_node::block_processing::BlockArrival;
 pub struct BlockArrivalHandle(BlockArrival);
 
 #[no_mangle]

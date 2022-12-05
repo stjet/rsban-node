@@ -1,4 +1,4 @@
-use rsnano::config::Logging;
+use rsnano_node::config::Logging;
 
 #[repr(C)]
 pub struct LoggingDto {

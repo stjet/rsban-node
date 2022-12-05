@@ -1,5 +1,5 @@
-use rsnano::voting::LocalVoteHistory;
 use rsnano_core::{BlockHash, Root};
+use rsnano_node::voting::LocalVoteHistory;
 
 use super::vote::VoteHandle;
 

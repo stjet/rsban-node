@@ -9,7 +9,7 @@ use std::{
 use num::FromPrimitive;
 use rsnano_core::Account;
 
-use rsnano::{
+use rsnano_node::{
     bootstrap::{BootstrapAttempt, BootstrapStrategy},
     websocket::{Listener, NullListener},
 };

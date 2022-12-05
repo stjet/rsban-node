@@ -1,6 +1,6 @@
 use anyhow::Result;
-use rsnano::utils::CREATE_PROPERTY_TREE;
 use rsnano_core::utils::{PropertyTreeReader, PropertyTreeWriter};
+use rsnano_node::utils::CREATE_PROPERTY_TREE;
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,

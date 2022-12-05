@@ -1,6 +1,6 @@
 use num::FromPrimitive;
 
-use rsnano::{
+use rsnano_node::{
     stats::SocketStats,
     transport::{
         CompositeSocketObserver, Socket, SocketBuilder, SocketImpl, SocketObserver, SocketType,

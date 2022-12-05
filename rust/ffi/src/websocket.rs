@@ -1,7 +1,7 @@
 use super::{FfiPropertyTreeWriter, StringDto, StringHandle};
 use anyhow::Result;
 use num::FromPrimitive;
-use rsnano::websocket::{from_topic, to_topic, Listener, Message, MessageBuilder};
+use rsnano_node::websocket::{from_topic, to_topic, Listener, Message, MessageBuilder};
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,

@@ -1,6 +1,6 @@
 use std::{ffi::c_void, net::SocketAddr};
 
-use rsnano::messages::{Keepalive, Message};
+use rsnano_node::messages::{Keepalive, Message};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,

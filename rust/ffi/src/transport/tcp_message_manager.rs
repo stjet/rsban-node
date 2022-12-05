@@ -1,4 +1,4 @@
-use rsnano::transport::TcpMessageManager;
+use rsnano_node::transport::TcpMessageManager;
 use std::{ops::Deref, sync::Arc};
 
 use super::TcpMessageItemHandle;

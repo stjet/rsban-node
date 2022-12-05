@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use rsnano::ledger::GenerateCache;
+use rsnano_node::ledger::GenerateCache;
 
 pub struct GenerateCacheHandle(GenerateCache);
 

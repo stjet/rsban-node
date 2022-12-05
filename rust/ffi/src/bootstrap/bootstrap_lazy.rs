@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use rsnano::{
+use rsnano_node::{
     bootstrap::{BootstrapAttemptLazy, BootstrapStrategy},
     websocket::{Listener, NullListener},
 };

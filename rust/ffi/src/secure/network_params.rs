@@ -13,7 +13,7 @@ use crate::{
     NetworkConstantsDto,
 };
 use num::FromPrimitive;
-use rsnano::NetworkParams;
+use rsnano_node::NetworkParams;
 
 #[repr(C)]
 pub struct NetworkParamsDto {

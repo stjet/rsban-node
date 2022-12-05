@@ -1,6 +1,6 @@
 use super::MessageHeaderHandle;
 use crate::NetworkConstantsDto;
-use rsnano::{
+use rsnano_node::{
     config::NetworkConstants,
     messages::{Message, MessageHeader},
 };

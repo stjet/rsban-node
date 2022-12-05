@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use rsnano_core::Account;
 
-use rsnano::transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp, ChannelUdp};
+use rsnano_node::transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp, ChannelUdp};
 
 pub enum ChannelType {
     Tcp(Arc<ChannelTcp>),

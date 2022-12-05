@@ -1,5 +1,5 @@
 use num_traits::FromPrimitive;
-use rsnano::ledger::{WriteDatabaseQueue, WriteGuard, Writer};
+use rsnano_node::ledger::{WriteDatabaseQueue, WriteGuard, Writer};
 
 pub struct WriteDatabaseQueueHandle(WriteDatabaseQueue);
 

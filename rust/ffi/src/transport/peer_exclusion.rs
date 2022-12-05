@@ -1,4 +1,4 @@
-use rsnano::transport::PeerExclusion;
+use rsnano_node::transport::PeerExclusion;
 use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},

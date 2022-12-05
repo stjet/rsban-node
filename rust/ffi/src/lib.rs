@@ -38,7 +38,7 @@ pub use signatures::*;
 pub use stats::*;
 pub(crate) use websocket::*;
 
-use rsnano::utils::ErrorCode;
+use rsnano_node::utils::ErrorCode;
 
 pub struct StringHandle(CString);
 #[repr(C)]

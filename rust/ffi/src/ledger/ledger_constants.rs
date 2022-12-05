@@ -9,10 +9,10 @@ use crate::{
     core::BlockHandle,
     work::{fill_work_thresholds_dto, WorkThresholdsDto},
 };
-use rsnano::ledger::LedgerConstants;
 use rsnano_core::{
     work::WorkThresholds, Account, Amount, BlockEnum, Epoch, Epochs, KeyPair, Link, PublicKey,
 };
+use rsnano_node::ledger::LedgerConstants;
 
 #[repr(C)]
 pub struct LedgerConstantsDto {

@@ -1,5 +1,5 @@
 use super::thread_pool::VoidFnCallbackHandle;
-use rsnano::utils::IoContext;
+use rsnano_node::utils::IoContext;
 use std::ffi::c_void;
 
 pub struct IoContextHandle(*mut c_void);

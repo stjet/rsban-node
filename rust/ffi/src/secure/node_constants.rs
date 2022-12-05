@@ -1,4 +1,4 @@
-use rsnano::NodeConstants;
+use rsnano_node::NodeConstants;
 
 #[repr(C)]
 pub struct NodeConstantsDto {

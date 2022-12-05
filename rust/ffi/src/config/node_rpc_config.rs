@@ -1,6 +1,6 @@
 use std::os::unix::prelude::OsStrExt;
 
-use rsnano::config::{NodeRpcConfig, RpcChildProcessConfig};
+use rsnano_node::config::{NodeRpcConfig, RpcChildProcessConfig};
 
 #[repr(C)]
 pub struct NodeRpcConfigDto {

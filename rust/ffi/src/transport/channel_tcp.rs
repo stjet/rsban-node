@@ -8,7 +8,7 @@ use super::{
     EndpointDto,
 };
 use crate::{messages::MessageHandle, utils::FfiIoContext, ErrorCodeDto, VoidPointerCallback};
-use rsnano::{
+use rsnano_node::{
     transport::{BandwidthLimitType, BufferDropPolicy, Channel, ChannelTcp},
     utils::ErrorCode,
 };

@@ -1,5 +1,5 @@
 use crate::{fill_network_constants_dto, NetworkConstantsDto};
-use rsnano::{
+use rsnano_node::{
     config::NetworkConstants, IpcConfig, IpcConfigDomainSocket, IpcConfigFlatbuffers,
     IpcConfigTcpSocket, IpcConfigTransport,
 };

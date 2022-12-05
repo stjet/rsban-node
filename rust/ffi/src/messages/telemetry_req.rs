@@ -5,7 +5,7 @@ use super::{
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use crate::{utils::FfiStream, NetworkConstantsDto};
-use rsnano::messages::{Message, TelemetryReq};
+use rsnano_node::messages::{Message, TelemetryReq};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_telemetry_req_create(

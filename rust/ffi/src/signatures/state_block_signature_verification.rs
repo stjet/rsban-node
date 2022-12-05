@@ -3,7 +3,7 @@ use std::{ffi::c_void, sync::Arc};
 use num::FromPrimitive;
 use rsnano_core::Account;
 
-use rsnano::signatures::{
+use rsnano_node::signatures::{
     StateBlockSignatureVerification, StateBlockSignatureVerificationResult,
     StateBlockSignatureVerificationValue,
 };

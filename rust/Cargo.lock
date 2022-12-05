@@ -821,7 +821,7 @@ dependencies = [
  "clap 2.33.3",
  "rand",
  "reqwest",
- "rsnano",
+ "rsnano_node",
  "serde_json",
  "tokio",
 ]
@@ -1335,7 +1335,43 @@ dependencies = [
 ]
 
 [[package]]
-name = "rsnano"
+name = "rsnano_core"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "anyhow",
+ "blake2",
+ "ctr",
+ "ed25519-dalek-blake2b",
+ "hex",
+ "num",
+ "num-derive",
+ "num-format",
+ "num-traits",
+ "once_cell",
+ "primitive-types",
+ "rand",
+ "rust-argon2",
+ "static_assertions",
+]
+
+[[package]]
+name = "rsnano_ffi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cbindgen",
+ "num",
+ "num-traits",
+ "rand",
+ "rsnano_core",
+ "rsnano_node",
+ "rsnano_store_lmdb",
+ "rsnano_store_traits",
+]
+
+[[package]]
+name = "rsnano_node"
 version = "0.1.0"
 dependencies = [
  "aes",
@@ -1370,42 +1406,6 @@ dependencies = [
  "static_assertions",
  "toml_edit",
  "uuid",
-]
-
-[[package]]
-name = "rsnano_core"
-version = "0.1.0"
-dependencies = [
- "aes",
- "anyhow",
- "blake2",
- "ctr",
- "ed25519-dalek-blake2b",
- "hex",
- "num",
- "num-derive",
- "num-format",
- "num-traits",
- "once_cell",
- "primitive-types",
- "rand",
- "rust-argon2",
- "static_assertions",
-]
-
-[[package]]
-name = "rsnano_ffi"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cbindgen",
- "num",
- "num-traits",
- "rand",
- "rsnano",
- "rsnano_core",
- "rsnano_store_lmdb",
- "rsnano_store_traits",
 ]
 
 [[package]]

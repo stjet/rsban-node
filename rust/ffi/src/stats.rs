@@ -6,7 +6,7 @@ use std::{
 
 use num::FromPrimitive;
 
-use rsnano::{
+use rsnano_node::{
     messages::MessageType,
     stats::{
         DetailType, Direction, FileWriter, JsonWriter, Stat, StatConfig, StatLogSink, StatType,

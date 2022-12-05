@@ -1,5 +1,5 @@
 use num_traits::FromPrimitive;
-use rsnano::transport::{
+use rsnano_node::transport::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
 };
 use std::{borrow::Borrow, ops::Deref, sync::Arc};

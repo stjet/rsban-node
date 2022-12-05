@@ -1,7 +1,7 @@
 use num_traits::FromPrimitive;
 use std::{ffi::c_void, sync::Arc};
 
-use rsnano::{
+use rsnano_node::{
     config::NetworkConstants,
     messages::Message,
     stats::DetailType,

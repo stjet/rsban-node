@@ -6,7 +6,7 @@ use std::{
 
 use crate::{ledger::GenerateCacheHandle, StringDto};
 use num_traits::FromPrimitive;
-use rsnano::config::{ConfirmationHeightMode, NodeFlags};
+use rsnano_node::config::{ConfirmationHeightMode, NodeFlags};
 
 pub struct NodeFlagsHandle(Arc<Mutex<NodeFlags>>);
 

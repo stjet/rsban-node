@@ -3,7 +3,7 @@ use rsnano_core::Networks;
 use std::{ffi::c_void, ops::Deref};
 
 use crate::utils::FfiStream;
-use rsnano::{
+use rsnano_node::{
     config::NetworkConstants,
     messages::{MessageHeader, MessageType},
 };

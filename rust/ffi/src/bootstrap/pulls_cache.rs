@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
-use rsnano::bootstrap::{PullInfo, PullsCache};
 use rsnano_core::{BlockHash, HashOrAccount};
+use rsnano_node::bootstrap::{PullInfo, PullsCache};
 
 pub struct PullsCacheHandle(Mutex<PullsCache>);
 

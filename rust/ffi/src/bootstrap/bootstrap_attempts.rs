@@ -1,4 +1,4 @@
-use rsnano::bootstrap::BootstrapAttempts;
+use rsnano_node::bootstrap::BootstrapAttempts;
 use std::sync::Mutex;
 pub struct BootstrapAttemptsHandle(Mutex<BootstrapAttempts>);
 

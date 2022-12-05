@@ -6,8 +6,8 @@ This folder contains all the Rust code of RsNano. The following diagram shows ho
 
 * `ffi`: Contains all the glue code to connect the C++ and the Rust part
 * `node`: Contains the node implementation
-* `ledger`: Contains the ledger implementation
+* `ledger`: *planned!* Contains the ledger implementation
 * `store_traits`: Contains traits for the data stores. These traits have to be implemented if you want to add a new type of data store.
 * `core`: Contains the basic types like `BlockHash`, `Account`, `KeyPair`,...
 * `store_lmdb`: Contains the LMDB data store implementation
-* `store_mem`: Contains the in-memory data store implementation which is used by unit tests
+* `store_mem`: *planned!* Contains the in-memory data store implementation which is used by unit tests

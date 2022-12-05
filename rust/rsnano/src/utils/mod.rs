@@ -16,7 +16,7 @@ use blake2::{
 pub use uniquer::Uniquer;
 
 mod hardened_constants;
-pub(crate) use hardened_constants::HardenedConstants;
+pub use hardened_constants::HardenedConstants;
 
 pub use blake2b::*;
 pub use blocks::*;

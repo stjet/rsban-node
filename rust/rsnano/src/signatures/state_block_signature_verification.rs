@@ -109,7 +109,7 @@ impl StateBlockSignatureVerification {
         Builder::new()
     }
 
-    pub(crate) fn set_blocks_verified_callback(
+    pub fn set_blocks_verified_callback(
         &self,
         callback: Box<dyn Fn(StateBlockSignatureVerificationResult) + Send + Sync>,
     ) {
@@ -117,12 +117,12 @@ impl StateBlockSignatureVerification {
         lk.blocks_verified_callback = Some(callback);
     }
 
-    pub(crate) fn set_transition_inactive_callback(&self, callback: Box<dyn Fn() + Send + Sync>) {
+    pub fn set_transition_inactive_callback(&self, callback: Box<dyn Fn() + Send + Sync>) {
         let mut lk = self.thread.callbacks.lock().unwrap();
         lk.transition_inactive_callback = Some(callback);
     }
 
-    pub(crate) fn stop(&mut self) -> std::thread::Result<()> {
+    pub fn stop(&mut self) -> std::thread::Result<()> {
         {
             let mut lk = self.thread.mutable.lock().unwrap();
             lk.stopped = true;
@@ -135,7 +135,7 @@ impl StateBlockSignatureVerification {
         Ok(())
     }
 
-    pub(crate) fn add(&self, block: StateBlockSignatureVerificationValue) {
+    pub fn add(&self, block: StateBlockSignatureVerificationValue) {
         {
             let mut lk = self.thread.mutable.lock().unwrap();
             lk.state_blocks.push_back(block);
@@ -143,12 +143,12 @@ impl StateBlockSignatureVerification {
         self.thread.condition.notify_one();
     }
 
-    pub(crate) fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         let lk = self.thread.mutable.lock().unwrap();
         lk.state_blocks.len()
     }
 
-    pub(crate) fn is_active(&self) -> bool {
+    pub fn is_active(&self) -> bool {
         let lk = self.thread.mutable.lock().unwrap();
         lk.active
     }

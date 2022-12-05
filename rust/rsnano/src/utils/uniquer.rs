@@ -15,13 +15,13 @@ impl<T> Uniquer<T>
 where
     T: FullHash,
 {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             cache: Mutex::new(IndexMap::new()),
         }
     }
 
-    pub(crate) fn unique(&self, original: &Arc<RwLock<T>>) -> Arc<RwLock<T>> {
+    pub fn unique(&self, original: &Arc<RwLock<T>>) -> Arc<RwLock<T>> {
         let key = { original.read().unwrap().full_hash() };
         let mut cache = self.cache.lock().unwrap();
 
@@ -44,7 +44,7 @@ where
         result
     }
 
-    pub(crate) fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.cache.lock().unwrap().len()
     }
 }

@@ -1344,7 +1344,6 @@ dependencies = [
  "bitvec 1.0.0",
  "blake2",
  "bounded-vec-deque",
- "cbindgen",
  "chrono",
  "ctr",
  "dirs",
@@ -1392,6 +1391,21 @@ dependencies = [
  "rand",
  "rust-argon2",
  "static_assertions",
+]
+
+[[package]]
+name = "rsnano_ffi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cbindgen",
+ "num",
+ "num-traits",
+ "rand",
+ "rsnano",
+ "rsnano_core",
+ "rsnano_store_lmdb",
+ "rsnano_store_traits",
 ]
 
 [[package]]

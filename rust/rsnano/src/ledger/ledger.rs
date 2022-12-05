@@ -5,7 +5,6 @@ use rsnano_core::{
 };
 
 use crate::{
-    ffi::ledger::DependentBlockVisitor,
     ledger::{LedgerProcessor, RollbackVisitor},
     stats::{DetailType, Direction, Stat, StatType},
     utils::create_property_tree,
@@ -20,7 +19,7 @@ use std::{
     },
 };
 
-use super::{GenerateCache, LedgerConstants, RepresentativeVisitor};
+use super::{DependentBlockVisitor, GenerateCache, LedgerConstants, RepresentativeVisitor};
 use rsnano_store_traits::{
     LedgerCache, ReadTransaction, RepWeights, Store, Transaction, WriteTransaction,
 };

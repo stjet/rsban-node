@@ -1,5 +1,5 @@
 mod block_arrival;
 mod block_processor;
 
-pub(crate) use block_arrival::*;
-pub(crate) use block_processor::*;
+pub use block_arrival::*;
+pub use block_processor::*;

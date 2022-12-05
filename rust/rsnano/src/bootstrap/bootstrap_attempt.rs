@@ -46,7 +46,7 @@ pub struct BootstrapAttempt {
 }
 
 impl BootstrapAttempt {
-    pub(crate) fn new(
+    pub fn new(
         logger: Arc<dyn Logger>,
         websocket_server: Arc<dyn Listener>,
         block_processor: Weak<BlockProcessor>,
@@ -97,7 +97,7 @@ impl BootstrapAttempt {
         Ok(())
     }
 
-    pub(crate) fn stop(&self) {
+    pub fn stop(&self) {
         let lock = self.mutex.lock().unwrap();
         self.stopped.store(true, Ordering::SeqCst);
         drop(lock);
@@ -107,7 +107,7 @@ impl BootstrapAttempt {
         }
     }
 
-    pub(crate) fn should_log(&self) -> bool {
+    pub fn should_log(&self) -> bool {
         let mut next_log = self.next_log.lock().unwrap();
         let now = Instant::now();
         if *next_log < now {
@@ -118,7 +118,7 @@ impl BootstrapAttempt {
         }
     }
 
-    pub(crate) fn mode_text(&self) -> &'static str {
+    pub fn mode_text(&self) -> &'static str {
         match self.mode {
             BootstrapMode::Legacy => "legacy",
             BootstrapMode::Lazy => "lazy",
@@ -126,7 +126,7 @@ impl BootstrapAttempt {
         }
     }
 
-    pub(crate) fn process_block(
+    pub fn process_block(
         &self,
         block: Arc<RwLock<BlockEnum>>,
         known_account: &Account,
@@ -153,7 +153,7 @@ impl BootstrapAttempt {
         stop_pull
     }
 
-    pub(crate) fn pull_started(&self) {
+    pub fn pull_started(&self) {
         {
             let _lock = self.mutex.lock().unwrap();
             self.pulling.fetch_add(1, Ordering::SeqCst);
@@ -161,7 +161,7 @@ impl BootstrapAttempt {
         self.condition.notify_all();
     }
 
-    pub(crate) fn pull_finished(&self) {
+    pub fn pull_finished(&self) {
         {
             let _lock = self.mutex.lock().unwrap();
             self.pulling.fetch_sub(1, Ordering::SeqCst);
@@ -169,22 +169,22 @@ impl BootstrapAttempt {
         self.condition.notify_all();
     }
 
-    pub(crate) fn stopped(&self) -> bool {
+    pub fn stopped(&self) -> bool {
         self.stopped.load(Ordering::SeqCst)
     }
 
-    pub(crate) fn set_stopped(&self) {
+    pub fn set_stopped(&self) {
         self.stopped.store(true, Ordering::SeqCst);
     }
 
-    pub(crate) fn still_pulling(&self) -> bool {
+    pub fn still_pulling(&self) -> bool {
         debug_assert!(self.mutex.try_lock().is_err());
         let running = !self.stopped.load(Ordering::SeqCst);
         let still_pulling = self.pulling.load(Ordering::SeqCst) > 0;
         running && still_pulling
     }
 
-    pub(crate) fn duration(&self) -> Duration {
+    pub fn duration(&self) -> Duration {
         self.attempt_start.elapsed()
     }
 }

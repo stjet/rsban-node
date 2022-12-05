@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-pub(crate) struct BlockArrival {
+pub struct BlockArrival {
     data: Mutex<BlockArrivalCache>,
     arrival_size_min: usize,
     arrival_time_min: Duration,
@@ -72,7 +72,7 @@ impl BlockArrivalCache {
 }
 
 impl BlockArrival {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             data: Default::default(),
             arrival_size_min: 8 * 1024,
@@ -81,21 +81,21 @@ impl BlockArrival {
     }
 
     /// Return true to indicated an error if the block has already been inserted
-    pub(crate) fn add(&self, hash: &BlockHash) -> bool {
+    pub fn add(&self, hash: &BlockHash) -> bool {
         self.data.lock().unwrap().add(hash, Instant::now())
     }
 
-    pub(crate) fn recent(&self, hash: &BlockHash) -> bool {
+    pub fn recent(&self, hash: &BlockHash) -> bool {
         let mut data_lk = self.data.lock().unwrap();
         data_lk.remove_old_entries(self.arrival_size_min, self.arrival_time_min);
         data_lk.contains(hash)
     }
 
-    pub(crate) fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.data.lock().unwrap().arrivals.len()
     }
 
-    pub(crate) fn size_of_element(&self) -> usize {
+    pub fn size_of_element(&self) -> usize {
         std::mem::size_of::<BlockArrivalInfo>()
     }
 }

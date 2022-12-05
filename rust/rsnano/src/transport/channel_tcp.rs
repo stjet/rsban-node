@@ -13,10 +13,13 @@ use super::{
     BandwidthLimitType, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket, SocketImpl,
 };
 use crate::{
-    ffi::ChannelTcpObserverWeakPtr,
     messages::Message,
     utils::{ErrorCode, IoContext},
 };
+
+pub trait IChannelTcpObserverWeakPtr {
+    fn lock(&self) -> Option<Arc<dyn ChannelTcpObserver>>;
+}
 
 pub trait ChannelTcpObserver {
     fn data_sent(&self, endpoint: &SocketAddr);
@@ -44,7 +47,7 @@ pub struct ChannelTcp {
     But if other side is behing NAT or firewall this connection can be pemanent. */
     temporary: AtomicBool,
     network_version: AtomicU8,
-    pub observer: ChannelTcpObserverWeakPtr,
+    pub observer: Arc<dyn IChannelTcpObserverWeakPtr>,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub io_ctx: Arc<dyn IoContext>,
 }
@@ -53,7 +56,7 @@ impl ChannelTcp {
     pub fn new(
         socket: &Arc<SocketImpl>,
         now: u64,
-        observer: ChannelTcpObserverWeakPtr,
+        observer: Arc<dyn IChannelTcpObserverWeakPtr>,
         limiter: Arc<OutboundBandwidthLimiter>,
         io_ctx: Arc<dyn IoContext>,
     ) -> Self {

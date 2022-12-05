@@ -35,11 +35,11 @@ pub struct Message {
 pub struct MessageBuilder {}
 
 impl MessageBuilder {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {}
     }
 
-    pub(crate) fn bootstrap_started(id: &str, mode: &str) -> Result<Message> {
+    pub fn bootstrap_started(id: &str, mode: &str) -> Result<Message> {
         let mut message = Self::new_message()?;
         // Bootstrap information
         let mut bootstrap = create_property_tree();
@@ -50,7 +50,7 @@ impl MessageBuilder {
         Ok(message)
     }
 
-    pub(crate) fn bootstrap_exited(
+    pub fn bootstrap_exited(
         id: &str,
         mode: &str,
         duration: Duration,
@@ -68,7 +68,7 @@ impl MessageBuilder {
         Ok(message)
     }
 
-    pub(crate) fn set_common_fields(message: &mut Message) -> Result<()> {
+    pub fn set_common_fields(message: &mut Message) -> Result<()> {
         message.contents.add("topic", from_topic(message.topic))?;
         message.contents.add(
             "time",
@@ -91,7 +91,7 @@ impl MessageBuilder {
     }
 }
 
-pub(crate) fn from_topic(topic: Topic) -> &'static str {
+pub fn from_topic(topic: Topic) -> &'static str {
     match topic {
         Topic::Ack => "ack",
         Topic::Confirmation => "confirmation",
@@ -106,7 +106,7 @@ pub(crate) fn from_topic(topic: Topic) -> &'static str {
     }
 }
 
-pub(crate) fn to_topic(topic: impl AsRef<str>) -> Topic {
+pub fn to_topic(topic: impl AsRef<str>) -> Topic {
     match topic.as_ref() {
         "confirmation" => Topic::Confirmation,
         "started_election" => Topic::StartedElection,
@@ -125,10 +125,10 @@ pub trait Listener {
     fn broadcast(&self, message: &Message) -> Result<()>;
 }
 
-pub(crate) struct NullListener {}
+pub struct NullListener {}
 
 impl NullListener {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {}
     }
 }

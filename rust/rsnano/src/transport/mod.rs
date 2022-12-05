@@ -18,7 +18,7 @@ pub use bandwidth_limiter::{
 };
 pub use channel_fake::ChannelFake;
 pub use channel_inproc::ChannelInProc;
-pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, TcpChannelData};
+pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, TcpChannelData};
 pub use channel_udp::ChannelUdp;
 pub use message_deserializer::{MessageDeserializer, MessageDeserializerExt, ParseStatus};
 pub use network_filter::NetworkFilter;

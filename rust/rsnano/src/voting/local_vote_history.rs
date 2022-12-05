@@ -7,7 +7,7 @@ use rsnano_core::{BlockHash, Root};
 
 use super::Vote;
 
-pub(crate) struct LocalVoteHistory {
+pub struct LocalVoteHistory {
     data: Mutex<LocalVoteHistoryData>,
     max_cache: usize,
 }
@@ -31,14 +31,14 @@ struct LocalVote {
 }
 
 impl LocalVoteHistory {
-    pub(crate) fn new(max_cache: usize) -> Self {
+    pub fn new(max_cache: usize) -> Self {
         Self {
             data: Mutex::new(LocalVoteHistoryData::new()),
             max_cache,
         }
     }
 
-    pub(crate) fn add(&self, root: &Root, hash: &BlockHash, vote: &Arc<RwLock<Vote>>) {
+    pub fn add(&self, root: &Root, hash: &BlockHash, vote: &Arc<RwLock<Vote>>) {
         let vote_lk = vote.read().unwrap();
         let mut data_lk = self.data.lock().unwrap();
         let data: &mut LocalVoteHistoryData = &mut data_lk;
@@ -98,7 +98,7 @@ impl LocalVoteHistory {
         }
     }
 
-    pub(crate) fn erase(&self, root: &Root) {
+    pub fn erase(&self, root: &Root) {
         let mut data_lk = self.data.lock().unwrap();
         if let Some(removed) = data_lk.history_by_root.remove(root) {
             for &id in &removed {
@@ -107,12 +107,7 @@ impl LocalVoteHistory {
         }
     }
 
-    pub(crate) fn votes(
-        &self,
-        root: &Root,
-        hash: &BlockHash,
-        is_final: bool,
-    ) -> Vec<Arc<RwLock<Vote>>> {
+    pub fn votes(&self, root: &Root, hash: &BlockHash, is_final: bool) -> Vec<Arc<RwLock<Vote>>> {
         let data_lk = self.data.lock().unwrap();
         let mut result = Vec::new();
         if let Some(ids) = data_lk.history_by_root.get(root) {
@@ -128,16 +123,16 @@ impl LocalVoteHistory {
         result
     }
 
-    pub(crate) fn exists(&self, root: &Root) -> bool {
+    pub fn exists(&self, root: &Root) -> bool {
         let data_lk = self.data.lock().unwrap();
         data_lk.history_by_root.contains_key(root)
     }
 
-    pub(crate) fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.data.lock().unwrap().history.len()
     }
 
-    pub(crate) fn container_info(&self) -> (usize, usize) {
+    pub fn container_info(&self) -> (usize, usize) {
         (
             std::mem::size_of::<LocalVote>(),
             self.data.lock().unwrap().history.len(),

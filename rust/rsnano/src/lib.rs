@@ -13,7 +13,6 @@ extern crate anyhow;
 pub mod block_processing;
 pub mod bootstrap;
 pub mod config;
-pub mod ffi;
 mod ipc;
 pub mod ledger;
 pub mod messages;
@@ -23,8 +22,7 @@ pub mod stats;
 pub mod transport;
 pub mod utils;
 pub mod voting;
-mod websocket;
+pub mod websocket;
 
 pub use ipc::*;
 pub use secure::*;
-pub(crate) use websocket::*;

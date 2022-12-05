@@ -24,7 +24,7 @@ project(nano-node)
 # Build the Rust part
 # ---------------------
 find_package(Corrosion REQUIRED)
-corrosion_import_crate(MANIFEST_PATH rust/rsnano/Cargo.toml)
+corrosion_import_crate(MANIFEST_PATH rust/ffi/Cargo.toml)
 # ---------------------
 
 # Get the latest abbreviated commit hash of the working branch

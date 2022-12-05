@@ -2,11 +2,11 @@ mod local_vote_history;
 mod vote;
 mod vote_spacing;
 
-pub(crate) use local_vote_history::*;
-pub(crate) use vote::*;
+pub use local_vote_history::*;
+pub use vote::*;
 pub use vote_spacing::VoteSpacing;
 
-pub(crate) type VoteUniquer = crate::utils::Uniquer<Vote>;
+pub type VoteUniquer = crate::utils::Uniquer<Vote>;
 
 mod election_status;
 mod recently_cemented_cache;

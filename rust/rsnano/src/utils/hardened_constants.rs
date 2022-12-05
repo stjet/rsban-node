@@ -2,13 +2,13 @@ use once_cell::sync::Lazy;
 use rand::Rng;
 use rsnano_core::Account;
 
-pub(crate) struct HardenedConstants {
+pub struct HardenedConstants {
     pub not_an_account: Account,
     pub random_128: u128,
 }
 
 impl HardenedConstants {
-    pub(crate) fn get() -> &'static HardenedConstants {
+    pub fn get() -> &'static HardenedConstants {
         &INSTANCE
     }
 }

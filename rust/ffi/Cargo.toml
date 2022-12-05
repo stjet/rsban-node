@@ -1,0 +1,23 @@
+[package]
+name = "rsnano_ffi"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[lib]
+crate-type = ["staticlib", "lib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rsnano_core = { path = "../core" }
+rsnano_store_traits = { path = "../store_traits" }
+rsnano_store_lmdb = { path = "../store_lmdb" }
+rsnano = { path = "../rsnano" }
+anyhow = "1"
+num = "0"
+num-traits = "0"
+rand = "0"
+
+[build-dependencies]
+cbindgen = "0.24.3"

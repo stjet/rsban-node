@@ -4,5 +4,6 @@ members = [
 	"store_traits",
 	"store_lmdb",
 	"rsnano",
+	"ffi",
 	"load_test",
 ]

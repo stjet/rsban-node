@@ -23,7 +23,7 @@ pub struct Vote {
 static HASH_PREFIX: &str = "vote ";
 
 impl Vote {
-    pub(crate) fn null() -> Self {
+    pub fn null() -> Self {
         Self {
             timestamp: 0,
             voting_account: Account::zero(),
@@ -32,7 +32,7 @@ impl Vote {
         }
     }
 
-    pub(crate) fn new(
+    pub fn new(
         account: Account,
         prv: &RawKey,
         timestamp: u64,
@@ -52,7 +52,7 @@ impl Vote {
 
     /// Returns the timestamp of the vote (with the duration bits masked, set to zero)
     /// If it is a final vote, all the bits including duration bits are returned as they are, all FF
-    pub(crate) fn timestamp(&self) -> u64 {
+    pub fn timestamp(&self) -> u64 {
         if self.timestamp == u64::MAX {
             self.timestamp //final vote
         } else {
@@ -60,7 +60,7 @@ impl Vote {
         }
     }
 
-    pub(crate) fn duration_bits(&self) -> u8 {
+    pub fn duration_bits(&self) -> u8 {
         // Duration field is specified in the 4 low-order bits of the timestamp.
         // This makes the timestamp have a minimum granularity of 16ms
         // The duration is specified as 2^(duration + 4) giving it a range of 16-524,288ms in power of two increments
@@ -68,11 +68,11 @@ impl Vote {
         result as u8
     }
 
-    pub(crate) fn duration(&self) -> Duration {
+    pub fn duration(&self) -> Duration {
         Duration::from_millis(1 << (self.duration_bits() + 4))
     }
 
-    pub(crate) fn vote_hashes_string(&self) -> String {
+    pub fn vote_hashes_string(&self) -> String {
         let mut result = String::new();
         for h in self.hashes.iter() {
             result.push_str(&h.to_string());
@@ -81,7 +81,7 @@ impl Vote {
         result
     }
 
-    pub(crate) fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {
+    pub fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {
         writer.put_string("account", &self.voting_account.encode_account())?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         writer.put_string("sequence", &self.timestamp().to_string())?;
@@ -97,7 +97,7 @@ impl Vote {
         Ok(())
     }
 
-    pub(crate) fn hash(&self) -> BlockHash {
+    pub fn hash(&self) -> BlockHash {
         let mut builder = BlockHashBuilder::new().update(HASH_PREFIX);
 
         for hash in &self.hashes {
@@ -107,7 +107,7 @@ impl Vote {
         builder.update(self.timestamp.to_ne_bytes()).build()
     }
 
-    pub(crate) fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.voting_account.serialize(stream)?;
         self.signature.serialize(stream)?;
         stream.write_bytes(&self.timestamp.to_le_bytes())?;
@@ -117,7 +117,7 @@ impl Vote {
         Ok(())
     }
 
-    pub(crate) fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
+    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
         self.voting_account = Account::deserialize(stream)?;
         self.signature = Signature::deserialize(stream)?;
         let mut buffer = [0; 8];
@@ -130,7 +130,7 @@ impl Vote {
         Ok(())
     }
 
-    pub(crate) fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<()> {
         validate_message(
             &self.voting_account.into(),
             self.hash().as_bytes(),

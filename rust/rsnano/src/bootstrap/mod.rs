@@ -6,8 +6,8 @@ mod bootstrap_lazy;
 mod channel_tcp_wrapper;
 mod pulls_cache;
 
-pub(crate) use bootstrap_attempt::*;
-pub(crate) use bootstrap_initiator::*;
+pub use bootstrap_attempt::*;
+pub use bootstrap_initiator::*;
 
 pub use bootstrap_client::{
     BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr,

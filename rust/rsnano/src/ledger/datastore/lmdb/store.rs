@@ -8,7 +8,7 @@ use std::{
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::{
-    utils::{seconds_since_epoch, PropertyTreeWriter},
+    utils::{seconds_since_epoch, Logger, PropertyTreeWriter},
     Account, AccountInfo, Amount, BlockEnum, ConfirmationHeightInfo, Epoch,
 };
 use rsnano_store_lmdb::{
@@ -22,7 +22,7 @@ use rsnano_store_traits::{
     Store, TransactionTracker, VersionStore, WriteTransaction,
 };
 
-use crate::{ledger::LedgerCache, utils::Logger};
+use crate::ledger::LedgerCache;
 
 #[derive(PartialEq, Eq)]
 pub enum Vacuuming {
@@ -415,10 +415,9 @@ fn backup_file_path(source_path: &Path) -> anyhow::Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::NullLogger;
     use rsnano_store_lmdb::TestDbFile;
     use rsnano_store_traits::NullTransactionTracker;
-
-    use crate::utils::NullLogger;
 
     use super::*;
 

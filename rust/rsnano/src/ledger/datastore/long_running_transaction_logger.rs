@@ -5,10 +5,10 @@ use std::{
 };
 
 use backtrace::Backtrace;
-use rsnano_core::utils::PropertyTreeWriter;
+use rsnano_core::utils::{Logger, PropertyTreeWriter};
 use rsnano_store_traits::TransactionTracker;
 
-use crate::{config::TxnTrackingConfig, utils::Logger};
+use crate::config::TxnTrackingConfig;
 
 pub struct LongRunningTransactionLogger {
     stats: Mutex<HashMap<u64, TxnStats>>,

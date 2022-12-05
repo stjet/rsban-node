@@ -1,8 +1,10 @@
 use std::{net::SocketAddr, sync::Arc};
 
+use rsnano_core::utils::Logger;
+
 use crate::{
     transport::{EndpointType, SocketObserver},
-    utils::{ErrorCode, Logger},
+    utils::ErrorCode,
 };
 
 use super::{DetailType, Direction, Stat, StatType};

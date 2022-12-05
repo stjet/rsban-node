@@ -9,6 +9,9 @@ pub use stream::*;
 mod toml;
 pub use toml::*;
 
+mod logger;
+pub use logger::{Logger, NullLogger};
+
 pub trait Serialize {
     fn serialized_size() -> usize;
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;

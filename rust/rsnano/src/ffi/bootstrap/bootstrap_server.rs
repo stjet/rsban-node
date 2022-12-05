@@ -17,10 +17,9 @@ use crate::{
         RealtimeMessageVisitor, RealtimeMessageVisitorImpl, RequestResponseVisitorFactory,
         SocketType, SynCookies, TcpServer, TcpServerExt, TcpServerObserver,
     },
-    utils::Logger,
     NetworkParams,
 };
-use rsnano_core::{Account, KeyPair};
+use rsnano_core::{utils::Logger, Account, KeyPair};
 use std::{
     ffi::c_void,
     net::SocketAddr,

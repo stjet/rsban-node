@@ -3,7 +3,6 @@ mod blocks;
 mod buffer;
 mod io_context;
 mod json;
-mod logger_mt;
 mod thread_pool;
 mod toml;
 
@@ -24,7 +23,6 @@ pub use blocks::*;
 pub use buffer::*;
 pub use io_context::*;
 pub use json::*;
-pub use logger_mt::{Logger, NullLogger};
 pub use thread_pool::*;
 pub use toml::*;
 

@@ -5,11 +5,10 @@ pub trait Logger: Send + Sync {
     fn always_log(&self, message: &str);
     fn handle(&self) -> *mut c_void;
 }
-
 pub struct NullLogger {}
 
 impl NullLogger {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {}
     }
 }

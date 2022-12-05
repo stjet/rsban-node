@@ -6,10 +6,9 @@ use std::{
 };
 
 use rsnano_core::{
+    utils::{Logger, NullLogger},
     Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature, SignatureVerification,
 };
-
-use crate::utils::{Logger, NullLogger};
 
 use super::{SignatureCheckSet, SignatureChecker};
 

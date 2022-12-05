@@ -1,5 +1,6 @@
-use crate::{block_processing::BlockProcessor, ledger::Ledger, utils::Logger, websocket::Listener};
+use crate::{block_processing::BlockProcessor, ledger::Ledger, websocket::Listener};
 use anyhow::Result;
+use rsnano_core::utils::Logger;
 use std::sync::{Arc, Weak};
 
 use super::{BootstrapAttempt, BootstrapInitiator, BootstrapMode};

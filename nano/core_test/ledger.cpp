@@ -696,38 +696,6 @@ TEST (ledger, unchecked_receive)
 	ASSERT_EQ (0, node1.unchecked.count (*node1.store.tx_begin_read ()));
 }
 
-TEST (ledger, zero_rep)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	nano::block_builder builder;
-	auto block1 = builder.state ()
-				  .account (nano::dev::genesis_key.pub)
-				  .previous (nano::dev::genesis->hash ())
-				  .representative (0)
-				  .balance (nano::dev::constants.genesis_amount)
-				  .link (0)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (*system.work.generate (nano::dev::genesis->hash ()))
-				  .build ();
-	auto transaction (node1.store.tx_begin_write ());
-	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*transaction, *block1).code);
-	ASSERT_EQ (0, node1.ledger.cache.rep_weights ().representation_get (nano::dev::genesis_key.pub));
-	ASSERT_EQ (nano::dev::constants.genesis_amount, node1.ledger.cache.rep_weights ().representation_get (0));
-	auto block2 = builder.state ()
-				  .account (nano::dev::genesis_key.pub)
-				  .previous (block1->hash ())
-				  .representative (nano::dev::genesis_key.pub)
-				  .balance (nano::dev::constants.genesis_amount)
-				  .link (0)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (*system.work.generate (block1->hash ()))
-				  .build ();
-	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*transaction, *block2).code);
-	ASSERT_EQ (nano::dev::constants.genesis_amount, node1.ledger.cache.rep_weights ().representation_get (nano::dev::genesis_key.pub));
-	ASSERT_EQ (0, node1.ledger.cache.rep_weights ().representation_get (0));
-}
-
 TEST (ledger, work_validation)
 {
 	auto ctx = nano::test::context::ledger_empty ();

@@ -69,6 +69,6 @@ else
 fi
 
 popd
-pushd rust/rsnano
+pushd rust
 ~/.cargo/bin/cargo test --no-run
 popd

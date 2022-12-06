@@ -62,7 +62,7 @@ pub struct Ledger {
     pub store: Arc<dyn Store>,
     pub cache: Arc<LedgerCache>,
     constants: LedgerConstants,
-    stats: Arc<Stat>,
+    pub stats: Arc<Stat>,
     pruning: AtomicBool,
     bootstrap_weight_max_blocks: AtomicU64,
     pub check_bootstrap_weights: AtomicBool,

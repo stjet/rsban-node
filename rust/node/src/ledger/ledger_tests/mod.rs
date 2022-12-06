@@ -7,8 +7,12 @@ use rsnano_core::{
     Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
     GXRB_RATIO,
 };
+use rsnano_store_traits::LedgerCache;
 
-use crate::{DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use crate::{
+    ledger::{GenerateCache, Ledger},
+    DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+};
 
 use super::DEV_GENESIS_KEY;
 
@@ -819,5 +823,147 @@ mod could_fit {
         let epoch = ctx.genesis_block_factory().epoch_v1(txn.txn()).build();
 
         assert_eq!(ctx.ledger.could_fit(txn.txn(), &epoch), true);
+    }
+}
+
+#[test]
+fn block_confirmed() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    assert_eq!(
+        ctx.ledger.block_confirmed(txn.txn(), &DEV_GENESIS_HASH),
+        true
+    );
+
+    let destination = ctx.block_factory();
+    let mut send = ctx
+        .genesis_block_factory()
+        .send(txn.txn())
+        .link(destination.account())
+        .build();
+
+    // Must be safe against non-existing blocks
+    assert_eq!(ctx.ledger.block_confirmed(txn.txn(), &send.hash()), false);
+
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    assert_eq!(ctx.ledger.block_confirmed(txn.txn(), &send.hash()), false);
+
+    ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+    assert_eq!(ctx.ledger.block_confirmed(txn.txn(), &send.hash()), true);
+}
+
+#[test]
+fn ledger_cache() {
+    let ctx = LedgerContext::empty();
+    let genesis = ctx.genesis_block_factory();
+    let total = 10u64;
+
+    struct ExpectedCache {
+        account_count: u64,
+        block_count: u64,
+        cemented_count: u64,
+        genesis_weight: Amount,
+        pruned_count: u64,
+    }
+
+    // Check existing ledger (incremental cache update) and reload on a new ledger
+    for i in 0..total {
+        let mut expected = ExpectedCache {
+            account_count: 1 + i,
+            block_count: 1 + 2 * (i + 1) - 2,
+            cemented_count: 1 + 2 * (i + 1) - 2,
+            genesis_weight: DEV_CONSTANTS.genesis_amount - Amount::new(i as u128),
+            pruned_count: i,
+        };
+
+        let check_impl = |cache: &LedgerCache, expected: &ExpectedCache| {
+            assert_eq!(
+                cache.account_count.load(Ordering::Relaxed),
+                expected.account_count
+            );
+            assert_eq!(
+                cache.block_count.load(Ordering::Relaxed),
+                expected.block_count
+            );
+            assert_eq!(
+                cache.cemented_count.load(Ordering::Relaxed),
+                expected.cemented_count
+            );
+            assert_eq!(
+                cache.rep_weights.representation_get(&DEV_GENESIS_ACCOUNT),
+                expected.genesis_weight
+            );
+            assert_eq!(
+                cache.pruned_count.load(Ordering::Relaxed),
+                expected.pruned_count
+            );
+        };
+
+        let cache_check = |cache: &LedgerCache, expected: &ExpectedCache| {
+            check_impl(cache, expected);
+
+            let new_ledger = Ledger::new(
+                ctx.ledger.store.clone(),
+                DEV_CONSTANTS.clone(),
+                ctx.ledger.stats.clone(),
+                &GenerateCache::new(),
+            )
+            .unwrap();
+            check_impl(&new_ledger.cache, expected);
+        };
+
+        let destination = ctx.block_factory();
+        let send = {
+            let mut txn = ctx.ledger.rw_txn();
+            let mut send = genesis.send(txn.txn()).link(destination.account()).build();
+            ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+            expected.block_count += 1;
+            expected.genesis_weight = send.balance();
+            send
+        };
+        cache_check(&ctx.ledger.cache, &expected);
+
+        let open = {
+            let mut txn = ctx.ledger.rw_txn();
+            let mut open = destination.open(txn.txn(), send.hash()).build();
+            ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+            expected.block_count += 1;
+            expected.account_count += 1;
+            open
+        };
+        cache_check(&ctx.ledger.cache, &expected);
+
+        {
+            let mut txn = ctx.ledger.rw_txn();
+            ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+            ctx.ledger
+                .cache
+                .cemented_count
+                .fetch_add(1, Ordering::Relaxed);
+            expected.cemented_count += 1;
+        }
+        cache_check(&ctx.ledger.cache, &expected);
+
+        {
+            let mut txn = ctx.ledger.rw_txn();
+            ctx.inc_confirmation_height(txn.as_mut(), &destination.account());
+            ctx.ledger
+                .cache
+                .cemented_count
+                .fetch_add(1, Ordering::Relaxed);
+            expected.cemented_count += 1;
+        }
+        cache_check(&ctx.ledger.cache, &expected);
+
+        {
+            let mut txn = ctx.ledger.rw_txn();
+            ctx.ledger.store.pruned().put(txn.as_mut(), &open.hash());
+            ctx.ledger
+                .cache
+                .pruned_count
+                .fetch_add(1, Ordering::Relaxed);
+            expected.pruned_count += 1;
+        }
+        cache_check(&ctx.ledger.cache, &expected);
     }
 }

@@ -4,10 +4,9 @@ use std::sync::atomic::Ordering;
 mod helpers;
 pub(crate) use helpers::*;
 use rsnano_core::{
-    Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, ConfirmationHeightInfo, KeyPair,
-    QualifiedRoot, Root, GXRB_RATIO,
+    Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
+    GXRB_RATIO,
 };
-use rsnano_store_traits::WriteTransaction;
 
 use crate::{DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 
@@ -342,50 +341,222 @@ fn state_account() {
     );
 }
 
-#[test]
-fn dependents_confirmed() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
+mod dependents_confirmed {
+    use super::*;
 
-    assert_eq!(
-        ctx.ledger
-            .dependents_confirmed(txn.txn(), DEV_GENESIS.read().unwrap().as_block()),
-        true
-    );
+    #[test]
+    fn genesis_is_confirmed() {
+        let ctx = LedgerContext::empty();
+        let txn = ctx.ledger.read_txn();
 
-    let destination = ctx.block_factory();
-    let mut send1 = ctx
-        .genesis_block_factory()
-        .send(txn.txn())
-        .link(destination.account())
-        .build();
-    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
-    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &send1), true);
+        assert_eq!(
+            ctx.ledger
+                .dependents_confirmed(txn.txn(), DEV_GENESIS.read().unwrap().as_block()),
+            true
+        );
+    }
 
-    let mut send2 = ctx
-        .genesis_block_factory()
-        .send(txn.txn())
-        .link(destination.account())
-        .build();
-    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
-    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &send2), false);
+    #[test]
+    fn send_dependents_are_confirmed_if_previous_block_is_confirmed() {
+        let ctx = LedgerContext::empty();
+        let mut txn = ctx.ledger.rw_txn();
+        let destination = ctx.block_factory();
 
-    let mut receive1 = destination.open(txn.txn(), send1.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
-    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive1), false);
+        let mut send = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
-    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive1), true);
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &send), true);
+    }
 
-    let mut receive2 = destination.receive(txn.txn(), send2.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut receive2).unwrap();
-    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive2), false);
+    #[test]
+    fn send_dependents_are_unconfirmed_if_previous_block_is_unconfirmed() {
+        let ctx = LedgerContext::empty();
+        let mut txn = ctx.ledger.rw_txn();
 
-    ctx.inc_confirmation_height(txn.as_mut(), &destination.account());
-    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive2), false);
+        let mut send1 = ctx.genesis_block_factory().send(txn.txn()).build();
+        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
-    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive2), true);
+        let mut send2 = ctx.genesis_block_factory().send(txn.txn()).build();
+        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &send2), false);
+    }
+
+    #[test]
+    fn open_dependents_are_unconfirmed_if_send_block_is_unconfirmed() {
+        let ctx = LedgerContext::empty();
+        let mut txn = ctx.ledger.rw_txn();
+        let destination = ctx.block_factory();
+
+        let mut send = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+
+        let mut open = destination.open(txn.txn(), send.hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &open), false);
+    }
+
+    #[test]
+    fn open_dependents_are_confirmed_if_send_block_is_confirmed() {
+        let ctx = LedgerContext::empty();
+        let mut txn = ctx.ledger.rw_txn();
+        let destination = ctx.block_factory();
+
+        let mut send = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+
+        let mut open = destination.open(txn.txn(), send.hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &open), true);
+    }
+
+    #[test]
+    fn receive_dependents_are_unconfirmed_if_send_block_is_unconfirmed() {
+        let ctx = LedgerContext::empty();
+        let mut txn = ctx.ledger.rw_txn();
+
+        let destination = ctx.block_factory();
+
+        let mut send1 = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+
+        let mut send2 = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+
+        let mut open = destination.open(txn.txn(), send1.hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+        ctx.inc_confirmation_height(txn.as_mut(), &destination.account());
+
+        let mut receive = destination.receive(txn.txn(), send2.hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive), false);
+    }
+
+    #[test]
+    fn receive_dependents_are_unconfirmed_if_previous_block_is_unconfirmed() {
+        let ctx = LedgerContext::empty();
+        let mut txn = ctx.ledger.rw_txn();
+
+        let destination = ctx.block_factory();
+
+        let mut send1 = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+
+        let mut send2 = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+
+        let mut open = destination.open(txn.txn(), send1.hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+
+        let mut receive = destination.receive(txn.txn(), send2.hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive), false);
+    }
+
+    #[test]
+    fn receive_dependents_are_confirmed_if_previous_block_and_send_block_are_confirmed() {
+        let ctx = LedgerContext::empty();
+        let mut txn = ctx.ledger.rw_txn();
+
+        let destination = ctx.block_factory();
+
+        let mut send1 = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+
+        let mut send2 = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+
+        let mut open = destination.open(txn.txn(), send1.hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+        ctx.inc_confirmation_height(txn.as_mut(), &destination.account());
+
+        let mut receive = destination.receive(txn.txn(), send2.hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive), true);
+    }
+
+    #[test]
+    fn dependents_confirmed_pruning() {
+        let ctx = LedgerContext::empty();
+        let mut txn = ctx.ledger.rw_txn();
+        ctx.ledger.enable_pruning();
+        let destination = ctx.block_factory();
+
+        let mut send1 = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .amount(Amount::new(1))
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+
+        let mut send2 = ctx
+            .genesis_block_factory()
+            .send(txn.txn())
+            .link(destination.account())
+            .build();
+        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+
+        assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send2.hash(), 1), 2);
+
+        let receive1 = BlockBuilder::state()
+            .account(destination.account())
+            .previous(0)
+            .balance(Amount::new(1))
+            .link(send1.hash())
+            .sign(&destination.key)
+            .build();
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive1), true);
+    }
 }
 
 mod could_fit {

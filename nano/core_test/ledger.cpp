@@ -696,57 +696,6 @@ TEST (ledger, unchecked_receive)
 	ASSERT_EQ (0, node1.unchecked.count (*node1.store.tx_begin_read ()));
 }
 
-TEST (ledger, dependents_confirmed_pruning)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_FALSE (store->init_error ());
-	nano::stat stats;
-	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.enable_pruning ();
-	auto transaction (store->tx_begin_write ());
-	store->initialize (*transaction, ledger.cache, ledger.constants);
-	nano::block_builder builder;
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	nano::keypair key1;
-	auto send1 = builder.state ()
-				 .account (nano::dev::genesis->account ())
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis->account ())
-				 .balance (nano::dev::constants.genesis_amount - 100)
-				 .link (key1.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*pool.generate (nano::dev::genesis->hash ()))
-				 .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send1).code);
-	auto send2 = builder.state ()
-				 .account (nano::dev::genesis->account ())
-				 .previous (send1->hash ())
-				 .representative (nano::dev::genesis->account ())
-				 .balance (nano::dev::constants.genesis_amount - 200)
-				 .link (key1.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*pool.generate (send1->hash ()))
-				 .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send2).code);
-	nano::confirmation_height_info height;
-	ASSERT_FALSE (ledger.store.confirmation_height ().get (*transaction, nano::dev::genesis->account (), height));
-	height = nano::confirmation_height_info (3, height.frontier ());
-	ledger.store.confirmation_height ().put (*transaction, nano::dev::genesis->account (), height);
-	ASSERT_TRUE (ledger.block_confirmed (*transaction, send1->hash ()));
-	ASSERT_EQ (2, ledger.pruning_action (*transaction, send2->hash (), 1));
-	auto receive1 = builder.state ()
-					.account (key1.pub)
-					.previous (0)
-					.representative (nano::dev::genesis->account ())
-					.balance (100)
-					.link (send1->hash ())
-					.sign (key1.prv, key1.pub)
-					.work (*pool.generate (key1.pub))
-					.build_shared ();
-	ASSERT_TRUE (ledger.dependents_confirmed (*transaction, *receive1));
-}
-
 TEST (ledger, block_confirmed)
 {
 	auto ctx = nano::test::context::ledger_empty ();

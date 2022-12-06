@@ -4,9 +4,10 @@ use std::sync::atomic::Ordering;
 mod helpers;
 pub(crate) use helpers::*;
 use rsnano_core::{
-    Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
-    GXRB_RATIO,
+    Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, ConfirmationHeightInfo, KeyPair,
+    QualifiedRoot, Root, GXRB_RATIO,
 };
+use rsnano_store_traits::WriteTransaction;
 
 use crate::{DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 
@@ -339,6 +340,52 @@ fn state_account() {
         ctx.ledger.account(txn.txn(), &send.hash()),
         Some(*DEV_GENESIS_ACCOUNT)
     );
+}
+
+#[test]
+fn dependents_confirmed() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    assert_eq!(
+        ctx.ledger
+            .dependents_confirmed(txn.txn(), DEV_GENESIS.read().unwrap().as_block()),
+        true
+    );
+
+    let destination = ctx.block_factory();
+    let mut send1 = ctx
+        .genesis_block_factory()
+        .send(txn.txn())
+        .link(destination.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &send1), true);
+
+    let mut send2 = ctx
+        .genesis_block_factory()
+        .send(txn.txn())
+        .link(destination.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &send2), false);
+
+    let mut receive1 = destination.open(txn.txn(), send1.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
+    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive1), false);
+
+    ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive1), true);
+
+    let mut receive2 = destination.receive(txn.txn(), send2.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut receive2).unwrap();
+    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive2), false);
+
+    ctx.inc_confirmation_height(txn.as_mut(), &destination.account());
+    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive2), false);
+
+    ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+    assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive2), true);
 }
 
 mod could_fit {

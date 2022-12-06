@@ -8,7 +8,7 @@ RsNano is in the process of moving to a hexagonal architecture. All I/O will be 
 
 The following diagram shows how the crates are organized. The crates will be split up more when the codebase grows.
 
-![crate diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.github.com/simpago/rsnano-node/develop/rust/doc/crates.puml)
+![crate diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.github.com/simpago/rsnano-node/develop/rust/doc/crates.puml)
 
 * `ffi`: Contains all the glue code to connect the C++ and the Rust part
 * `node`: Contains the node implementation

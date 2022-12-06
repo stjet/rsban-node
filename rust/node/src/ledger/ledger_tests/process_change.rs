@@ -1,6 +1,12 @@
 use rsnano_core::{Account, Amount, Block, BlockDetails, BlockEnum, Epoch};
 
-use crate::{ledger::ledger_tests::setup_change_block, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT};
+use crate::{
+    ledger::{
+        ledger_tests::{set_insufficient_work, setup_change_block, upgrade_genesis_to_epoch_v1},
+        ProcessResult,
+    },
+    DEV_GENESIS_ACCOUNT,
+};
 
 use super::LedgerContext;
 
@@ -107,4 +113,33 @@ fn change_from_zero_rep_to_real_rep() {
             .representation_get(&Account::zero()),
         Amount::zero()
     );
+}
+
+#[test]
+fn fail_insufficient_work_epoch_0() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let mut send = ctx.genesis_block_factory().send(txn.txn()).work(0).build();
+    set_insufficient_work(
+        &mut send,
+        BlockDetails::new(Epoch::Epoch0, true, false, false),
+    );
+    let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
+    assert_eq!(result.code, ProcessResult::InsufficientWork);
+}
+
+#[test]
+fn fail_insufficient_work_epoch_1() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    upgrade_genesis_to_epoch_v1(&ctx, txn.as_mut());
+    let mut send = ctx.genesis_block_factory().send(txn.txn()).work(0).build();
+    set_insufficient_work(
+        &mut send,
+        BlockDetails::new(Epoch::Epoch1, true, false, false),
+    );
+    let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
+    assert_eq!(result.code, ProcessResult::InsufficientWork);
 }

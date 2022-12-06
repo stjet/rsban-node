@@ -1,9 +1,12 @@
-use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair};
+use rsnano_core::{
+    Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
+};
 
 use crate::{
     ledger::{
         ledger_tests::{
-            setup_legacy_open_block, setup_legacy_receive_block, setup_legacy_send_block,
+            set_insufficient_work, setup_legacy_open_block, setup_legacy_receive_block,
+            setup_legacy_send_block,
         },
         ProcessResult,
     },
@@ -414,4 +417,36 @@ fn receive_from_state_block() {
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         DEV_CONSTANTS.genesis_amount
     )
+}
+
+#[test]
+fn fail_insufficient_work() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+
+    let mut send = ctx
+        .genesis_block_factory()
+        .legacy_send(txn.txn())
+        .destination(open.destination.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+
+    let mut receive_block = open
+        .destination
+        .legacy_receive(txn.txn(), send.hash())
+        .build();
+
+    set_insufficient_work(
+        &mut receive_block,
+        BlockDetails::new(Epoch::Epoch0, false, false, false),
+    );
+
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut receive_block)
+        .unwrap_err();
+
+    assert_eq!(result.code, ProcessResult::InsufficientWork);
 }

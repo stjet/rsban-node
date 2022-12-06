@@ -3,8 +3,12 @@ mod ledger_context;
 
 pub(crate) use account_block_factory::AccountBlockFactory;
 pub(crate) use ledger_context::LedgerContext;
-use rsnano_core::{Amount, Block, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock};
+use rsnano_core::{
+    Amount, Block, BlockDetails, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+};
 use rsnano_store_traits::WriteTransaction;
+
+use crate::DEV_NETWORK_PARAMS;
 
 pub(crate) fn upgrade_genesis_to_epoch_v1(
     ctx: &LedgerContext,
@@ -66,6 +70,7 @@ pub(crate) struct LegacyOpenBlockResult<'a> {
     pub open_block: OpenBlock,
     pub expected_balance: Amount,
 }
+
 pub(crate) fn setup_legacy_open_block<'a>(
     ctx: &'a LedgerContext,
     txn: &mut dyn WriteTransaction,
@@ -173,5 +178,15 @@ pub(crate) fn setup_open_block<'a>(
         send_block: send.send_block,
         open_block,
         expected_balance: send.amount_sent,
+    }
+}
+
+pub(crate) fn set_insufficient_work(block: &mut dyn Block, details: BlockDetails) {
+    let threshold = DEV_NETWORK_PARAMS
+        .work
+        .threshold2(block.work_version(), &details);
+    // Rarely failed with random work, so modify until it doesn't have enough difficulty
+    while DEV_NETWORK_PARAMS.work.difficulty_block(block) >= threshold {
+        block.set_work(block.work() + 1);
     }
 }

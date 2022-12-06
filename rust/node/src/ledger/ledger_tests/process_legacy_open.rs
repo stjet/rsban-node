@@ -1,8 +1,12 @@
-use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair};
+use rsnano_core::{
+    Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
+};
 
 use crate::{
     ledger::{
-        ledger_tests::{setup_legacy_open_block, setup_legacy_send_block, LedgerContext},
+        ledger_tests::{
+            set_insufficient_work, setup_legacy_open_block, setup_legacy_send_block, LedgerContext,
+        },
         ProcessResult,
     },
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
@@ -312,4 +316,26 @@ fn confirmation_height_not_updated() {
         .ledger
         .get_confirmation_height(txn.txn(), &open.open_block.account());
     assert_eq!(confirmation_height_info, None);
+}
+
+#[test]
+fn fail_insufficient_work() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+
+    let mut open = send
+        .destination
+        .legacy_open(send.send_block.hash())
+        .work(0)
+        .build();
+
+    set_insufficient_work(
+        &mut open,
+        BlockDetails::new(Epoch::Epoch0, false, false, false),
+    );
+    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+
+    assert_eq!(result.code, ProcessResult::InsufficientWork);
 }

@@ -1,7 +1,12 @@
-use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair};
+use rsnano_core::{
+    Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
+};
 
 use crate::{
-    ledger::{ledger_tests::setup_legacy_change_block, ProcessResult, DEV_GENESIS_KEY},
+    ledger::{
+        ledger_tests::{set_insufficient_work, setup_legacy_change_block},
+        ProcessResult, DEV_GENESIS_KEY,
+    },
     DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -157,4 +162,23 @@ fn change_after_state_fail() {
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::BlockPosition);
+}
+
+#[test]
+fn fail_insufficient_work() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let mut change = ctx
+        .genesis_block_factory()
+        .legacy_change(txn.txn())
+        .work(0)
+        .build();
+
+    set_insufficient_work(
+        &mut change,
+        BlockDetails::new(Epoch::Epoch0, false, false, false),
+    );
+    let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
+    assert_eq!(result.code, ProcessResult::InsufficientWork);
 }

@@ -362,3 +362,103 @@ fn pruning_process_error() {
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 1);
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 2);
 }
+
+#[test]
+fn pruning_legacy_blocks() {
+    let ctx = LedgerContext::empty();
+    ctx.ledger.enable_pruning();
+    let mut txn = ctx.ledger.rw_txn();
+    let genesis = ctx.genesis_block_factory();
+    let destination = ctx.block_factory();
+
+    let mut send1 = genesis
+        .legacy_send(txn.txn())
+        .destination(genesis.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+
+    let mut receive1 = genesis.legacy_receive(txn.txn(), send1.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
+
+    let mut change1 = genesis
+        .legacy_change(txn.txn())
+        .representative(destination.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut change1).unwrap();
+
+    let mut send2 = genesis
+        .legacy_send(txn.txn())
+        .destination(destination.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+
+    let mut open1 = destination.legacy_open(send2.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
+
+    let mut send3 = destination
+        .legacy_send(txn.txn())
+        .destination(genesis.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send3).unwrap();
+
+    // Pruning action
+    assert_eq!(
+        ctx.ledger.pruning_action(txn.as_mut(), &change1.hash(), 2),
+        3
+    );
+
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &open1.hash(), 1), 1);
+
+    assert!(ctx
+        .ledger
+        .store
+        .block()
+        .exists(txn.txn(), &DEV_GENESIS_HASH));
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &send1.hash()),
+        false
+    );
+    assert_eq!(
+        ctx.ledger.store.pruned().exists(txn.txn(), &send1.hash()),
+        true
+    );
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &receive1.hash()),
+        false
+    );
+    assert_eq!(
+        ctx.ledger
+            .store
+            .pruned()
+            .exists(txn.txn(), &receive1.hash()),
+        true
+    );
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &change1.hash()),
+        false
+    );
+    assert_eq!(
+        ctx.ledger.store.pruned().exists(txn.txn(), &change1.hash()),
+        true
+    );
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &send2.hash()),
+        true
+    );
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &open1.hash()),
+        false
+    );
+    assert_eq!(
+        ctx.ledger.store.pruned().exists(txn.txn(), &open1.hash()),
+        true
+    );
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &send3.hash()),
+        true
+    );
+    assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 4);
+    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 7);
+    assert_eq!(ctx.ledger.store.pruned().count(txn.txn()), 4);
+    assert_eq!(ctx.ledger.store.block().count(txn.txn()), 3);
+}

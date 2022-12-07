@@ -107,3 +107,57 @@ fn pruning_action() {
             - ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
     );
 }
+#[test]
+fn pruning_large_chain() {
+    let ctx = LedgerContext::empty();
+    ctx.ledger.enable_pruning();
+    let genesis = ctx.genesis_block_factory();
+    let mut txn = ctx.ledger.rw_txn();
+    let send_receive_pairs = 20;
+    let mut last_hash = *DEV_GENESIS_HASH;
+
+    for _ in 0..send_receive_pairs {
+        let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
+        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+
+        let mut receive = genesis.receive(txn.txn(), send.hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+
+        last_hash = receive.hash();
+    }
+    assert_eq!(
+        ctx.ledger.store.block().count(txn.txn()),
+        send_receive_pairs * 2 + 1
+    );
+
+    // Pruning action
+    assert_eq!(
+        ctx.ledger.pruning_action(txn.as_mut(), &last_hash, 5),
+        send_receive_pairs * 2
+    );
+
+    assert!(ctx.ledger.store.pruned().exists(txn.txn(), &last_hash));
+    assert!(ctx
+        .ledger
+        .store
+        .block()
+        .exists(txn.txn(), &DEV_GENESIS_HASH));
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &last_hash),
+        false
+    );
+    assert_eq!(
+        ctx.ledger.store.pruned().count(txn.txn()),
+        ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
+    );
+    assert_eq!(
+        ctx.ledger.store.block().count(txn.txn()),
+        ctx.ledger.cache.block_count.load(Ordering::Relaxed)
+            - ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
+    );
+    assert_eq!(
+        ctx.ledger.store.pruned().count(txn.txn()),
+        send_receive_pairs * 2
+    );
+    assert_eq!(ctx.ledger.store.block().count(txn.txn()), 1);
+}

@@ -24,6 +24,7 @@ use rsnano_store_traits::{
     LedgerCache, ReadTransaction, RepWeights, Store, Transaction, WriteTransaction,
 };
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct UncementedInfo {
     pub cemented_frontier: BlockHash,
     pub frontier: BlockHash,

@@ -10,7 +10,7 @@ use rsnano_core::{
 use rsnano_store_traits::LedgerCache;
 
 use crate::{
-    ledger::{GenerateCache, Ledger},
+    ledger::{ledger::UncementedInfo, GenerateCache, Ledger},
     DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
@@ -967,4 +967,33 @@ fn ledger_cache() {
         }
         cache_check(&ctx.ledger.cache, &expected);
     }
+}
+
+#[test]
+fn unconfirmed_frontiers() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+
+    assert!(ctx.ledger.unconfirmed_frontiers().is_empty());
+
+    let genesis = ctx.genesis_block_factory();
+    let destination = ctx.block_factory();
+    let latest = ctx.ledger.latest(txn.txn(), &genesis.account()).unwrap();
+
+    let mut send = genesis.send(txn.txn()).link(destination.account()).build();
+    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    txn.commit();
+
+    let unconfirmed_frontiers = ctx.ledger.unconfirmed_frontiers();
+    assert_eq!(unconfirmed_frontiers.len(), 1);
+    let (key, value) = unconfirmed_frontiers.iter().next().unwrap();
+    assert_eq!(*key, 1);
+    assert_eq!(
+        value.first().unwrap(),
+        &UncementedInfo {
+            cemented_frontier: latest,
+            frontier: send.hash(),
+            account: genesis.account()
+        }
+    )
 }

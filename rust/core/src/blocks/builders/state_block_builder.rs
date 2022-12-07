@@ -89,11 +89,11 @@ impl StateBlockBuilder {
         Ok(self.balance(balance.as_ref().parse::<u128>()?))
     }
 
-    pub fn amount(self, amount: Amount) -> Self {
+    pub fn amount(self, amount: impl Into<Amount>) -> Self {
         let previous_balance = self
             .previous_balance
             .expect("previous balance not specified");
-        self.balance(previous_balance - amount)
+        self.balance(previous_balance - amount.into())
     }
 
     pub fn link(mut self, link: impl Into<Link>) -> Self {

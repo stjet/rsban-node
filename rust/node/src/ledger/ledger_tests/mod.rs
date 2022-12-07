@@ -4,8 +4,8 @@ use std::sync::atomic::Ordering;
 mod helpers;
 pub(crate) use helpers::*;
 use rsnano_core::{
-    Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
-    GXRB_RATIO,
+    work::DEV_WORK_POOL, Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash,
+    Epoch, KeyPair, PendingKey, QualifiedRoot, Root, GXRB_RATIO,
 };
 use rsnano_store_traits::LedgerCache;
 
@@ -966,4 +966,106 @@ fn ledger_cache() {
         }
         cache_check(&ctx.ledger.cache, &expected);
     }
+}
+
+#[test]
+fn pruning_action() {
+    let ctx = LedgerContext::empty();
+    ctx.ledger.enable_pruning();
+    let mut txn = ctx.ledger.rw_txn();
+    let genesis = ctx.genesis_block_factory();
+
+    let mut send1 = genesis
+        .send(txn.txn())
+        .amount(100)
+        .link(genesis.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+
+    let mut send2 = genesis
+        .send(txn.txn())
+        .amount(100)
+        .link(genesis.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+
+    // Prune...
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send1.hash(), 1), 1);
+    assert_eq!(
+        ctx.ledger
+            .pruning_action(txn.as_mut(), &DEV_GENESIS_HASH, 1),
+        0
+    );
+    assert!(ctx
+        .ledger
+        .store
+        .pending()
+        .exists(txn.txn(), &PendingKey::new(genesis.account(), send1.hash())),);
+
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &send1.hash()),
+        false
+    );
+
+    assert!(ctx
+        .ledger
+        .block_or_pruned_exists_txn(txn.txn(), &send1.hash()),);
+
+    assert!(ctx.ledger.store.pruned().exists(txn.txn(), &send1.hash()),);
+
+    assert!(ctx
+        .ledger
+        .store
+        .block()
+        .exists(txn.txn(), &DEV_GENESIS_HASH));
+    assert!(ctx.ledger.store.block().exists(txn.txn(), &send2.hash()));
+
+    // Receiving pruned block
+    let mut receive1 = BlockBuilder::state()
+        .account(genesis.account())
+        .previous(send2.hash())
+        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(100))
+        .link(send1.hash())
+        .sign(&genesis.key)
+        .work(DEV_WORK_POOL.generate_dev2(send2.hash().into()).unwrap())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
+
+    assert!(ctx.ledger.store.block().exists(txn.txn(), &receive1.hash()));
+    assert_eq!(
+        ctx.ledger
+            .store
+            .pending()
+            .exists(txn.txn(), &PendingKey::new(genesis.account(), send1.hash())),
+        false
+    );
+    let BlockEnum::State(receive1_stored) = ctx.ledger.get_block(txn.txn(), &receive1.hash()).unwrap() else { panic!("not a state block")};
+    assert_eq!(receive1, receive1_stored);
+    assert_eq!(receive1_stored.sideband().unwrap().height, 4);
+    assert_eq!(
+        receive1_stored.sideband().unwrap().details,
+        BlockDetails::new(Epoch::Epoch0, false, true, false)
+    );
+
+    // Middle block pruning
+    assert!(ctx.ledger.store.block().exists(txn.txn(), &send2.hash()));
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send2.hash(), 1), 1);
+    assert!(ctx.ledger.store.pruned().exists(txn.txn(), &send2.hash()));
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &send2.hash()),
+        false
+    );
+    assert_eq!(
+        ctx.ledger.store.account().count(txn.txn()),
+        ctx.ledger.cache.account_count.load(Ordering::Relaxed)
+    );
+    assert_eq!(
+        ctx.ledger.store.pruned().count(txn.txn()),
+        ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
+    );
+    assert_eq!(
+        ctx.ledger.store.block().count(txn.txn()),
+        ctx.ledger.cache.block_count.load(Ordering::Relaxed)
+            - ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
+    );
 }

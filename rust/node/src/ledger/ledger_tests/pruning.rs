@@ -224,3 +224,106 @@ fn pruning_source_rollback() {
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 5);
 }
+
+#[test]
+fn pruning_source_rollback_legacy() {
+    let ctx = LedgerContext::empty();
+    ctx.ledger.enable_pruning();
+    let genesis = ctx.genesis_block_factory();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let mut send1 = genesis
+        .legacy_send(txn.txn())
+        .destination(genesis.account())
+        .amount(100)
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+
+    let destination = ctx.block_factory();
+    let mut send2 = genesis
+        .legacy_send(txn.txn())
+        .destination(destination.account())
+        .amount(100)
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+
+    let mut send3 = genesis
+        .legacy_send(txn.txn())
+        .destination(genesis.account())
+        .amount(100)
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send3).unwrap();
+
+    // Pruning action
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send2.hash(), 1), 2);
+
+    // Receiving pruned block
+    let mut receive1 = BlockBuilder::legacy_receive()
+        .previous(send3.hash())
+        .source(send1.hash())
+        .sign(&genesis.key)
+        .work(DEV_WORK_POOL.generate_dev2(send3.hash().into()).unwrap())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
+
+    // Rollback receive block
+    ctx.ledger.rollback(txn.as_mut(), &receive1.hash()).unwrap();
+
+    let info3 = ctx
+        .ledger
+        .get_pending(txn.txn(), &PendingKey::new(genesis.account(), send1.hash()))
+        .unwrap();
+    assert_ne!(info3.source, genesis.account()); // Tradeoff to not store pruned blocks accounts
+    assert_eq!(info3.amount, Amount::new(100));
+    assert_eq!(info3.epoch, Epoch::Epoch0);
+
+    // Process receive block again
+    ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
+
+    assert_eq!(
+        ctx.ledger
+            .get_pending(txn.txn(), &PendingKey::new(genesis.account(), send1.hash())),
+        None
+    );
+    assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
+    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 5);
+
+    // Receiving pruned block (open)
+    let mut open1 = BlockBuilder::legacy_open()
+        .source(send2.hash())
+        .account(destination.account())
+        .sign(&destination.key)
+        .work(
+            DEV_WORK_POOL
+                .generate_dev2(destination.account().into())
+                .unwrap(),
+        )
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
+
+    // Rollback open block
+    ctx.ledger.rollback(txn.as_mut(), &open1.hash()).unwrap();
+
+    let info4 = ctx
+        .ledger
+        .get_pending(
+            txn.txn(),
+            &PendingKey::new(destination.account(), send2.hash()),
+        )
+        .unwrap();
+    assert_ne!(info4.source, genesis.account()); // Tradeoff to not store pruned blocks accounts
+    assert_eq!(info4.amount, Amount::new(100));
+    assert_eq!(info4.epoch, Epoch::Epoch0);
+
+    // Process open block again
+    ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
+    assert_eq!(
+        ctx.ledger.get_pending(
+            txn.txn(),
+            &PendingKey::new(destination.account(), send2.hash())
+        ),
+        None
+    );
+    assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
+    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 6);
+}

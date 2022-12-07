@@ -53,11 +53,11 @@ impl LegacySendBlockBuilder {
         self
     }
 
-    pub fn amount(mut self, amount: Amount) -> Self {
+    pub fn amount(mut self, amount: impl Into<Amount>) -> Self {
         let previous_balance = self
             .previous_balance
             .expect("no previous balance specified");
-        self.balance = Some(previous_balance - amount);
+        self.balance = Some(previous_balance - amount.into());
         self
     }
 

@@ -695,32 +695,3 @@ TEST (ledger, unchecked_receive)
 	ASSERT_TIMELY (10s, node1.store.block ().exists (*node1.store.tx_begin_read (), receive1->hash ()));
 	ASSERT_EQ (0, node1.unchecked.count (*node1.store.tx_begin_read ()));
 }
-
-TEST (ledger, is_send_genesis)
-{
-	auto ctx = nano::test::context::ledger_empty ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	auto tx = store.tx_begin_read ();
-	ASSERT_FALSE (ledger.is_send (*tx, *nano::dev::genesis));
-}
-
-TEST (ledger, is_send_state)
-{
-	auto ctx = nano::test::context::ledger_send_receive ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	auto tx = store.tx_begin_read ();
-	ASSERT_TRUE (ledger.is_send (*tx, *ctx.blocks ()[0]));
-	ASSERT_FALSE (ledger.is_send (*tx, *ctx.blocks ()[1]));
-}
-
-TEST (ledger, is_send_legacy)
-{
-	auto ctx = nano::test::context::ledger_send_receive_legacy ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	auto tx = store.tx_begin_read ();
-	ASSERT_TRUE (ledger.is_send (*tx, *ctx.blocks ()[0]));
-	ASSERT_FALSE (ledger.is_send (*tx, *ctx.blocks ()[1]));
-}

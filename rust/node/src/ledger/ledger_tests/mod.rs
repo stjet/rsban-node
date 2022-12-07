@@ -997,3 +997,32 @@ fn unconfirmed_frontiers() {
         }
     )
 }
+
+#[test]
+fn is_send_genesis() {
+    let ctx = LedgerContext::empty();
+    let txn = ctx.ledger.read_txn();
+    assert_eq!(
+        ctx.ledger
+            .is_send(txn.txn(), DEV_GENESIS.read().unwrap().as_block()),
+        false
+    );
+}
+
+#[test]
+fn is_send_state() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let open = setup_open_block(&ctx, txn.as_mut());
+    assert_eq!(ctx.ledger.is_send(txn.txn(), &open.send_block), true);
+    assert_eq!(ctx.ledger.is_send(txn.txn(), &open.open_block), false);
+}
+
+#[test]
+fn is_send_legacy() {
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    assert_eq!(ctx.ledger.is_send(txn.txn(), &open.send_block), true);
+    assert_eq!(ctx.ledger.is_send(txn.txn(), &open.open_block), false);
+}

@@ -493,3 +493,30 @@ fn pruning_safe_functions() {
         Some(genesis.account())
     );
 }
+
+#[test]
+fn hash_root_random() {
+    let ctx = LedgerContext::empty();
+    ctx.ledger.enable_pruning();
+    let mut txn = ctx.ledger.rw_txn();
+    let genesis = ctx.genesis_block_factory();
+
+    let mut send1 = genesis.send(txn.txn()).link(genesis.account()).build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+
+    let mut send2 = genesis.send(txn.txn()).link(genesis.account()).build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+
+    // Pruning action
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send1.hash(), 1), 1);
+
+    // Test random block including pruned
+    let mut done = false;
+    let mut iteration = 0;
+    while !done {
+        iteration += 1;
+        let root_hash = ctx.ledger.hash_root_random(txn.txn()).unwrap();
+        done = (root_hash.0 == send1.hash()) && root_hash.1.is_zero();
+        assert!(iteration < 1000);
+    }
+}

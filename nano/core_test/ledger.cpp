@@ -696,68 +696,6 @@ TEST (ledger, unchecked_receive)
 	ASSERT_EQ (0, node1.unchecked.count (*node1.store.tx_begin_read ()));
 }
 
-TEST (ledger, hash_root_random)
-{
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	ASSERT_TRUE (!store->init_error ());
-	nano::stat stats;
-	nano::ledger ledger (*store, stats, nano::dev::constants);
-	ledger.enable_pruning ();
-	auto transaction (store->tx_begin_write ());
-	store->initialize (*transaction, ledger.cache, ledger.constants);
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	nano::block_builder builder;
-	auto send1 = builder
-				 .state ()
-				 .account (nano::dev::genesis->account ())
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis->account ())
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (nano::dev::genesis->account ())
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*pool.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send1).code);
-	ASSERT_TRUE (store->block ().exists (*transaction, send1->hash ()));
-	auto send2 = builder
-				 .state ()
-				 .account (nano::dev::genesis->account ())
-				 .previous (send1->hash ())
-				 .representative (nano::dev::genesis->account ())
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio * 2)
-				 .link (nano::dev::genesis->account ())
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*pool.generate (send1->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send2).code);
-	ASSERT_TRUE (store->block ().exists (*transaction, send2->hash ()));
-	// Pruning action
-	ASSERT_EQ (1, ledger.pruning_action (*transaction, send1->hash (), 1));
-	ASSERT_FALSE (store->block ().exists (*transaction, send1->hash ()));
-	ASSERT_TRUE (store->pruned ().exists (*transaction, send1->hash ()));
-	ASSERT_TRUE (store->block ().exists (*transaction, nano::dev::genesis->hash ()));
-	ASSERT_TRUE (store->block ().exists (*transaction, send2->hash ()));
-	// Test random block including pruned
-	bool done (false);
-	auto iteration (0);
-	while (!done)
-	{
-		++iteration;
-		auto root_hash (ledger.hash_root_random (*transaction));
-		done = (root_hash.first == send1->hash ()) && (root_hash.second.is_zero ());
-		ASSERT_LE (iteration, 1000);
-	}
-	done = false;
-	while (!done)
-	{
-		++iteration;
-		auto root_hash (ledger.hash_root_random (*transaction));
-		done = (root_hash.first == send2->hash ()) && (root_hash.second == send2->root ().as_block_hash ());
-		ASSERT_LE (iteration, 1000);
-	}
-}
-
 TEST (ledger, unconfirmed_frontiers)
 {
 	auto ctx = nano::test::context::ledger_empty ();

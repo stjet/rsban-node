@@ -6,6 +6,8 @@ use rsnano_core::{
 
 use crate::{ledger::ledger_tests::LedgerContext, DEV_CONSTANTS, DEV_GENESIS_HASH};
 
+use super::upgrade_genesis_to_epoch_v1;
+
 #[test]
 fn pruning_action() {
     let ctx = LedgerContext::empty();
@@ -160,4 +162,65 @@ fn pruning_large_chain() {
         send_receive_pairs * 2
     );
     assert_eq!(ctx.ledger.store.block().count(txn.txn()), 1);
+}
+
+#[test]
+fn pruning_source_rollback() {
+    let ctx = LedgerContext::empty();
+    ctx.ledger.enable_pruning();
+    let genesis = ctx.genesis_block_factory();
+    let mut txn = ctx.ledger.rw_txn();
+
+    upgrade_genesis_to_epoch_v1(&ctx, txn.as_mut());
+
+    let mut send1 = genesis
+        .send(txn.txn())
+        .amount(100)
+        .link(genesis.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+
+    let mut send2 = genesis
+        .send(txn.txn())
+        .amount(100)
+        .link(genesis.account())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+
+    // Pruning action
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send1.hash(), 1), 2);
+
+    // Receiving pruned block
+    let mut receive1 = BlockBuilder::state()
+        .account(genesis.account())
+        .previous(send2.hash())
+        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(100))
+        .link(send1.hash())
+        .sign(&genesis.key)
+        .work(DEV_WORK_POOL.generate_dev2(send2.hash().into()).unwrap())
+        .build();
+    ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
+
+    // Rollback receive block
+    ctx.ledger.rollback(txn.as_mut(), &receive1.hash()).unwrap();
+    let info2 = ctx
+        .ledger
+        .get_pending(txn.txn(), &PendingKey::new(genesis.account(), send1.hash()))
+        .unwrap();
+    assert_ne!(info2.source, genesis.account()); // Tradeoff to not store pruned blocks accounts
+    assert_eq!(info2.amount, Amount::new(100));
+    assert_eq!(info2.epoch, Epoch::Epoch1);
+
+    // Process receive block again
+    ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
+
+    assert_eq!(
+        ctx.ledger
+            .store
+            .pending()
+            .exists(txn.txn(), &PendingKey::new(genesis.account(), send1.hash())),
+        false
+    );
+    assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
+    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 5);
 }

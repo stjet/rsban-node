@@ -4,7 +4,10 @@ use rsnano_core::{
     work::DEV_WORK_POOL, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, Epoch, PendingKey,
 };
 
-use crate::{ledger::ledger_tests::LedgerContext, DEV_CONSTANTS, DEV_GENESIS_HASH};
+use crate::{
+    ledger::{ledger_tests::LedgerContext, ProcessResult},
+    DEV_CONSTANTS, DEV_GENESIS_HASH,
+};
 
 use super::upgrade_genesis_to_epoch_v1;
 
@@ -326,4 +329,36 @@ fn pruning_source_rollback_legacy() {
     );
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 6);
+}
+
+#[test]
+fn pruning_process_error() {
+    let ctx = LedgerContext::empty();
+    ctx.ledger.enable_pruning();
+    let genesis = ctx.genesis_block_factory();
+    let mut txn = ctx.ledger.rw_txn();
+
+    let mut send1 = genesis.send(txn.txn()).link(genesis.account()).build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+
+    // Pruning action for latest block (not valid action)
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send1.hash(), 1), 1);
+
+    // Attempt to process pruned block again
+    let result = ctx.ledger.process(txn.as_mut(), &mut send1).unwrap_err();
+    assert_eq!(result.code, ProcessResult::Old);
+
+    // Attept to process new block after pruned
+    let mut send2 = BlockBuilder::state()
+        .account(genesis.account())
+        .previous(send1.hash())
+        .balance(0)
+        .link(genesis.account())
+        .sign(&genesis.key)
+        .work(DEV_WORK_POOL.generate_dev2(send1.hash().into()).unwrap())
+        .build();
+    let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
+    assert_eq!(result.code, ProcessResult::GapPrevious);
+    assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 1);
+    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 2);
 }

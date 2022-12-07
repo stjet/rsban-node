@@ -462,3 +462,34 @@ fn pruning_legacy_blocks() {
     assert_eq!(ctx.ledger.store.pruned().count(txn.txn()), 4);
     assert_eq!(ctx.ledger.store.block().count(txn.txn()), 3);
 }
+
+#[test]
+fn pruning_safe_functions() {
+    let ctx = LedgerContext::empty();
+    ctx.ledger.enable_pruning();
+    let mut txn = ctx.ledger.rw_txn();
+    let genesis = ctx.genesis_block_factory();
+
+    let mut send1 = genesis.send(txn.txn()).link(genesis.account()).build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+
+    let mut send2 = genesis.send(txn.txn()).link(genesis.account()).build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+
+    // Pruning action
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send1.hash(), 1), 1);
+
+    // Safe ledger actions
+    assert!(ctx.ledger.balance_safe(txn.txn(), &send1.hash()).is_err());
+    assert_eq!(
+        ctx.ledger.balance_safe(txn.txn(), &send2.hash()).unwrap(),
+        send2.balance()
+    );
+
+    assert_eq!(ctx.ledger.amount_safe(txn.txn(), &send2.hash()), None);
+    assert_eq!(ctx.ledger.account(txn.txn(), &send1.hash()), None);
+    assert_eq!(
+        ctx.ledger.account(txn.txn(), &send2.hash()),
+        Some(genesis.account())
+    );
+}

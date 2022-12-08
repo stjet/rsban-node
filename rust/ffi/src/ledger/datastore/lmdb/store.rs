@@ -10,13 +10,9 @@ use std::{
 use rsnano_store_lmdb::{create_backup_file, EnvOptions, LmdbConfig, LmdbStore};
 use rsnano_store_traits::{NullTransactionTracker, Store, TransactionTracker};
 
-use rsnano_node::{
-    config::DiagnosticsConfig,
-    ledger::{LedgerConstants, LongRunningTransactionLogger},
-};
+use rsnano_node::{config::DiagnosticsConfig, ledger::LongRunningTransactionLogger};
 
 use crate::{
-    ledger::{ledger_cache::LedgerCacheHandle, LedgerConstantsDto},
     utils::{LoggerHandle, LoggerMT},
     FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto,
 };
@@ -292,21 +288,4 @@ pub unsafe extern "C" fn rsn_lmdb_store_tx_begin_write(
 ) -> *mut TransactionHandle {
     let txn = (*handle).0.tx_begin_write().unwrap();
     TransactionHandle::new(TransactionType::Write(txn))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_store_initialize(
-    handle: *mut LmdbStoreHandle,
-    txn: *mut TransactionHandle,
-    cache: *mut LedgerCacheHandle,
-    constants: *const LedgerConstantsDto,
-) {
-    let constants = LedgerConstants::try_from(&*constants).unwrap();
-    (*handle).initialize(
-        (*txn).as_write_txn(),
-        &*cache,
-        &constants.genesis.read().unwrap(),
-        constants.final_votes_canary_account,
-        constants.final_votes_canary_height,
-    );
 }

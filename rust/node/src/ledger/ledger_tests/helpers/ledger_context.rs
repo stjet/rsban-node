@@ -40,15 +40,6 @@ impl LedgerContext {
         )
         .unwrap();
 
-        let mut txn = store.tx_begin_write().unwrap();
-        store.initialize(
-            &mut txn,
-            &ledger.cache,
-            &DEV_CONSTANTS.genesis.read().unwrap(),
-            DEV_CONSTANTS.final_votes_canary_account,
-            DEV_CONSTANTS.final_votes_canary_height,
-        );
-
         LedgerContext { ledger, db_file }
     }
 

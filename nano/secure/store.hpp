@@ -713,7 +713,6 @@ class store
 {
 public:
 	virtual ~store () = default;
-	virtual void initialize (nano::write_transaction const & transaction_a, nano::ledger_cache & ledger_cache_a, nano::ledger_constants & constants) = 0;
 	virtual block_store & block () = 0;
 	virtual frontier_store & frontier () = 0;
 	virtual account_store & account () = 0;

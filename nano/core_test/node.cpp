@@ -72,17 +72,6 @@ TEST (node, block_store_path_failure)
 	ASSERT_TRUE (node->wallets.items.empty ());
 	node->stop ();
 }
-#if defined(__clang__) && defined(__linux__) && CI
-// Disable test due to instability with clang and actions
-TEST (node_DeathTest, DISABLED_readonly_block_store_not_exist)
-#else
-TEST (node_DeathTest, readonly_block_store_not_exist)
-#endif
-{
-	// This is a read-only node with no ledger file
-	nano::node_flags flags{ nano::inactive_node_flag_defaults () };
-	ASSERT_EXIT (nano::inactive_node node (nano::unique_path (), flags), ::testing::ExitedWithCode (1), "");
-}
 
 TEST (node, password_fanout)
 {
@@ -3259,11 +3248,6 @@ TEST (node, dont_write_lock_node)
 	std::thread ([&path, &write_lock_held_promise, &finished_promise] () {
 		auto logger{ std::make_shared<nano::logger_mt> () };
 		auto store = nano::make_store (logger, path, nano::dev::constants, false, true);
-		{
-			nano::ledger_cache ledger_cache;
-			auto transaction (store->tx_begin_write ());
-			store->initialize (*transaction, ledger_cache, nano::dev::constants);
-		}
 
 		// Hold write lock open until main thread is done needing it
 		auto transaction (store->tx_begin_write ());

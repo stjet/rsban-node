@@ -453,20 +453,6 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 
 		logger->always_log (boost::str (boost::format ("Outbound Voting Bandwidth limited to %1% bytes per second, burst ratio %2%") % config->bandwidth_limit % config->bandwidth_limit_burst_ratio));
 
-		// First do a pass with a read to see if any writing needs doing, this saves needing to open a write lock (and potentially blocking)
-		auto is_initialized (false);
-		{
-			auto const transaction (store.tx_begin_read ());
-			is_initialized = (store.account ().begin (*transaction) != store.account ().end ());
-		}
-
-		if (!is_initialized && !flags.read_only ())
-		{
-			auto const transaction (store.tx_begin_write ({ tables::accounts, tables::blocks, tables::confirmation_height, tables::frontiers }));
-			// Store was empty meaning we just created it, add the genesis block
-			store.initialize (*transaction, ledger.cache, ledger.constants);
-		}
-
 		if (!ledger.block_or_pruned_exists (config->network_params.ledger.genesis->hash ()))
 		{
 			std::stringstream ss;

@@ -81,7 +81,6 @@ namespace lmdb
 		store (store &&) = delete;
 		std::unique_ptr<nano::write_transaction> tx_begin_write (std::vector<nano::tables> const & tables_requiring_lock = {}, std::vector<nano::tables> const & tables_no_lock = {}) override;
 		std::unique_ptr<nano::read_transaction> tx_begin_read () const override;
-		void initialize (nano::write_transaction const & transaction_a, nano::ledger_cache & ledger_cache_a, nano::ledger_constants & constants) override;
 		std::string vendor_get () const override;
 		void serialize_mdb_tracker (boost::property_tree::ptree &, std::chrono::milliseconds, std::chrono::milliseconds) override;
 		void serialize_memory_stats (boost::property_tree::ptree &) override;

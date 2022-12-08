@@ -68,12 +68,6 @@ nano::lmdb::store::~store ()
 		rsnano::rsn_lmdb_store_destroy (handle);
 }
 
-void nano::lmdb::store::initialize (nano::write_transaction const & transaction_a, nano::ledger_cache & ledger_cache_a, nano::ledger_constants & constants)
-{
-	auto dto{ constants.to_dto () };
-	rsnano::rsn_lmdb_store_initialize (handle, transaction_a.get_rust_handle (), ledger_cache_a.handle, &dto);
-}
-
 void nano::lmdb::store::serialize_mdb_tracker (boost::property_tree::ptree & json, std::chrono::milliseconds min_read_time, std::chrono::milliseconds min_write_time)
 {
 	rsnano::rsn_lmdb_store_serialize_mdb_tracker (handle, &json, min_read_time.count (), min_write_time.count ());

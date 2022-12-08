@@ -1220,10 +1220,6 @@ TEST (confirmation_heightDeathTest, rollback_added_block)
 					.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 					.work (*pool.generate (nano::dev::genesis->hash ()))
 					.build_shared ();
-		{
-			auto transaction (store->tx_begin_write ());
-			store->initialize (*transaction, ledger.cache, constants);
-		}
 
 		uint64_t batch_write_size = 2048;
 		std::atomic<bool> stopped{ false };
@@ -1310,7 +1306,6 @@ TEST (confirmation_heightDeathTest, modified_chain)
 					.build_shared ();
 		{
 			auto transaction (store->tx_begin_write ());
-			store->initialize (*transaction, ledger.cache, constants);
 			ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send).code);
 		}
 
@@ -1393,7 +1388,6 @@ TEST (confirmation_heightDeathTest, modified_chain_account_removed)
 					.build_shared ();
 		{
 			auto transaction (store->tx_begin_write ());
-			store->initialize (*transaction, ledger.cache, constants);
 			ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send).code);
 			ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *open).code);
 		}
@@ -2103,7 +2097,6 @@ TEST (confirmation_height, unbounded_block_cache_iteration)
 				 .build_shared ();
 	{
 		auto transaction (store->tx_begin_write ());
-		store->initialize (*transaction, ledger.cache, nano::dev::constants);
 		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send).code);
 		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send1).code);
 	}
@@ -2201,7 +2194,6 @@ TEST (confirmation_height, pruned_source)
 				 .build_shared ();
 	{
 		auto transaction (store->tx_begin_write ());
-		store->initialize (*transaction, ledger.cache, nano::dev::constants);
 		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send1).code);
 		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *open1).code);
 		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send2).code);

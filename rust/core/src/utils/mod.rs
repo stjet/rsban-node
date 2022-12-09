@@ -103,3 +103,16 @@ pub fn seconds_since_epoch() -> u64 {
         .unwrap()
         .as_secs()
 }
+
+pub fn get_env_or_default<T>(variable_name: &str, default: T) -> T
+where
+    T: core::str::FromStr + Copy,
+{
+    std::env::var(variable_name)
+        .map(|v| v.parse::<T>().unwrap_or(default))
+        .unwrap_or(default)
+}
+
+pub fn get_env_or_default_string(variable_name: &str, default: impl Into<String>) -> String {
+    std::env::var(variable_name).unwrap_or_else(|_| default.into())
+}

@@ -3,11 +3,12 @@ use std::sync::{Arc, RwLock};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use rsnano_core::{
-    deserialize_block_json, utils::seconds_since_epoch, work::WorkThresholds, Account, Amount,
-    BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, KeyPair, Link, Networks,
+    deserialize_block_json,
+    utils::{get_env_or_default_string, seconds_since_epoch, SerdePropertyTree},
+    work::WorkThresholds,
+    Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, KeyPair,
+    Link, Networks,
 };
-
-use crate::{config::get_env_or_default_string, utils::SerdePropertyTree};
 
 static DEV_PRIVATE_KEY_DATA: &str =
     "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";

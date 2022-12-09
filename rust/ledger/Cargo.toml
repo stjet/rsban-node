@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 rsnano_core = { path = "../core" }
 anyhow = "1"
+once_cell = "1"

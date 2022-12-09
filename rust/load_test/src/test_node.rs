@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use reqwest::Url;
+use rsnano_ledger::DEV_GENESIS_KEY;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -14,7 +15,6 @@ use rsnano_node::{
         get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, NetworkConstants,
         RpcConfig,
     },
-    ledger::DEV_GENESIS_KEY,
     unique_path,
     utils::TomlConfig,
     NetworkParams, DEV_NETWORK_PARAMS,

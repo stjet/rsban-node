@@ -4,12 +4,12 @@ use crate::{stats::StatConfig, IpcConfig, NetworkParams};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use rsnano_core::{
-    utils::{get_cpu_count, is_sanitizer_build, TomlWriter},
+    utils::{get_cpu_count, get_env_or_default_string, is_sanitizer_build, TomlWriter},
     Account, Amount, GXRB_RATIO, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
 
-use super::{get_env_or_default_string, DiagnosticsConfig, Logging, Networks, WebsocketConfig};
+use super::{DiagnosticsConfig, Logging, Networks, WebsocketConfig};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]

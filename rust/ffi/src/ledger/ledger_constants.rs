@@ -4,6 +4,7 @@ use std::{
 };
 
 use num::FromPrimitive;
+use rsnano_ledger::LedgerConstants;
 
 use crate::{
     core::BlockHandle,
@@ -12,7 +13,6 @@ use crate::{
 use rsnano_core::{
     work::WorkThresholds, Account, Amount, BlockEnum, Epoch, Epochs, KeyPair, Link, PublicKey,
 };
-use rsnano_node::ledger::LedgerConstants;
 
 #[repr(C)]
 pub struct LedgerConstantsDto {

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use once_cell::sync::Lazy;
-use rsnano_core::{work::WorkThresholds, Networks};
+use rsnano_core::{utils::get_env_or_default, work::WorkThresholds, Networks};
 use std::{sync::Mutex, time::Duration};
 
 //todo: make configurable in builld script again!
@@ -190,19 +190,6 @@ impl NetworkConstants {
         }
     }
 }
-fn get_env_or_default<T>(variable_name: &str, default: T) -> T
-where
-    T: core::str::FromStr + Copy,
-{
-    std::env::var(variable_name)
-        .map(|v| v.parse::<T>().unwrap_or(default))
-        .unwrap_or(default)
-}
-
-pub fn get_env_or_default_string(variable_name: &str, default: impl Into<String>) -> String {
-    std::env::var(variable_name).unwrap_or_else(|_| default.into())
-}
-
 pub fn test_node_port() -> u16 {
     get_env_or_default("NANO_TEST_NODE_PORT", 17075)
 }

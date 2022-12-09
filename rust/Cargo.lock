@@ -881,6 +881,7 @@ dependencies = [
  "clap 2.33.3",
  "rand",
  "reqwest",
+ "rsnano_ledger",
  "rsnano_node",
  "serde_json",
  "tokio",
@@ -1359,6 +1360,7 @@ dependencies = [
  "primitive-types",
  "rand",
  "rust-argon2",
+ "serde_json",
  "static_assertions",
 ]
 
@@ -1383,6 +1385,7 @@ name = "rsnano_ledger"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "once_cell",
  "rsnano_core",
 ]
 

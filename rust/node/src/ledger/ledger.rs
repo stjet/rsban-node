@@ -4,7 +4,7 @@ use rsnano_core::{
     BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
     SignatureVerification,
 };
-use rsnano_ledger::{LedgerCache, RepWeights};
+use rsnano_ledger::{LedgerCache, LedgerConstants, RepWeights};
 
 use crate::{
     ledger::{LedgerProcessor, RollbackVisitor},
@@ -21,7 +21,7 @@ use std::{
     },
 };
 
-use super::{DependentBlockVisitor, GenerateCache, LedgerConstants, RepresentativeVisitor};
+use super::{DependentBlockVisitor, GenerateCache, RepresentativeVisitor};
 use rsnano_store_traits::{ReadTransaction, Store, Transaction, WriteTransaction};
 
 #[derive(Debug, PartialEq, Eq)]

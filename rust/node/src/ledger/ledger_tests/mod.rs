@@ -11,9 +11,7 @@ use rsnano_core::{
     Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
     GXRB_RATIO,
 };
-use rsnano_ledger::LedgerCache;
-
-use super::DEV_GENESIS_KEY;
+use rsnano_ledger::{LedgerCache, DEV_GENESIS_KEY};
 
 mod empty_ledger;
 mod epoch_v1;

@@ -1,9 +1,6 @@
 mod ledger;
 pub use ledger::{Ledger, ProcessResult, ProcessReturn};
 
-mod ledger_constants;
-pub use ledger_constants::{LedgerConstants, DEV_GENESIS_KEY};
-
 mod generate_cache;
 pub use generate_cache::GenerateCache;
 

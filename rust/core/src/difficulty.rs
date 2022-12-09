@@ -25,23 +25,14 @@ impl TryFrom<u8> for WorkVersion {
     }
 }
 
-pub trait Difficulty {
-    fn get_difficulty(&mut self, root: &Root, work: u64) -> u64;
+pub trait Difficulty: Send + Sync {
+    fn get_difficulty(&self, root: &Root, work: u64) -> u64;
+    fn clone(&self) -> Box<dyn Difficulty>;
 }
 
-pub struct DifficultyV1 {
-    hasher: VarBlake2b,
-}
-
+#[derive(Clone, Default)]
+pub struct DifficultyV1 {}
 impl DifficultyV1 {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn difficulty(root: &Root, work: u64) -> u64 {
-        Self::new().get_difficulty(root, work)
-    }
-
     pub fn to_multiplier(difficulty: u64, base_difficulty: u64) -> f64 {
         debug_assert!(difficulty > 0);
         base_difficulty.wrapping_neg() as f64 / difficulty.wrapping_neg() as f64
@@ -61,26 +52,24 @@ impl DifficultyV1 {
     }
 }
 
-impl Default for DifficultyV1 {
-    fn default() -> Self {
-        Self {
-            hasher: VarBlake2b::new_keyed(&[], size_of::<u64>()),
-        }
-    }
-}
-
 impl Difficulty for DifficultyV1 {
-    fn get_difficulty(&mut self, root: &Root, work: u64) -> u64 {
+    fn get_difficulty(&self, root: &Root, work: u64) -> u64 {
+        let mut hasher = VarBlake2b::new_keyed(&[], size_of::<u64>());
         let mut result = 0;
-        self.hasher.update(&work.to_le_bytes());
-        self.hasher.update(root.as_bytes());
-        self.hasher.finalize_variable_reset(|bytes| {
+        hasher.update(&work.to_le_bytes());
+        hasher.update(root.as_bytes());
+        hasher.finalize_variable_reset(|bytes| {
             result = u64::from_le_bytes(bytes.try_into().expect("invalid hash length"))
         });
         result
     }
+
+    fn clone(&self) -> Box<dyn Difficulty> {
+        Box::new(DifficultyV1::default())
+    }
 }
 
+#[derive(Clone, Default)]
 pub struct StubDifficulty {
     preset_difficulties: HashMap<(Root, u64), u64>,
 }
@@ -98,11 +87,17 @@ impl StubDifficulty {
 }
 
 impl Difficulty for StubDifficulty {
-    fn get_difficulty(&mut self, root: &Root, work: u64) -> u64 {
+    fn get_difficulty(&self, root: &Root, work: u64) -> u64 {
         self.preset_difficulties
             .get(&(*root, work))
             .cloned()
-            .unwrap_or_default()
+            .unwrap_or(work)
+    }
+
+    fn clone(&self) -> Box<dyn Difficulty> {
+        Box::new(StubDifficulty {
+            preset_difficulties: self.preset_difficulties.clone(),
+        })
     }
 }
 
@@ -113,7 +108,7 @@ mod tests {
     #[test]
     fn stub_difficulty() {
         let mut difficulty = StubDifficulty::new();
-        assert_eq!(difficulty.get_difficulty(&Root::from(1), 2), 0);
+        assert_eq!(difficulty.get_difficulty(&Root::from(1), 2), 2);
 
         difficulty.set_difficulty(Root::from(1), 2, 3);
         assert_eq!(difficulty.get_difficulty(&Root::from(1), 2), 3);

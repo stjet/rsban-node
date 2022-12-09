@@ -1,6 +1,6 @@
 use crate::{
-    work::DEV_WORK_POOL, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair,
-    ReceiveBlock,
+    work::{WorkPool, STUB_WORK_POOL},
+    Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, ReceiveBlock,
 };
 
 pub struct LegacyReceiveBlockBuilder {
@@ -53,7 +53,7 @@ impl LegacyReceiveBlockBuilder {
         let source = self.source.unwrap_or(BlockHash::from(2));
         let work = self
             .work
-            .unwrap_or_else(|| DEV_WORK_POOL.generate_dev2(previous.into()).unwrap());
+            .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(previous.into()).unwrap());
 
         let mut block = ReceiveBlock::new(
             previous,
@@ -88,17 +88,14 @@ impl LegacyReceiveBlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{work::WorkThresholds, Block, BlockBuilder, BlockHash};
+    use crate::{work::WORK_THRESHOLDS_STUB, Block, BlockBuilder, BlockHash};
 
     #[test]
     fn receive_block() {
         let block = BlockBuilder::legacy_receive().with_sideband().build();
         assert_eq!(block.hashables.previous, BlockHash::from(1));
         assert_eq!(block.hashables.source, BlockHash::from(2));
-        assert_eq!(
-            WorkThresholds::publish_dev().validate_entry_block(&block),
-            false
-        );
+        assert_eq!(WORK_THRESHOLDS_STUB.validate_entry_block(&block), false);
         assert!(block.sideband().is_some())
     }
 }

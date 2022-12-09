@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{GenerateCache, Ledger, DEV_CONSTANTS};
+use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, GenerateCache, Ledger};
 use rsnano_core::{utils::NullLogger, Account, ConfirmationHeightInfo};
 use rsnano_store_lmdb::{EnvOptions, LmdbStore, TestDbFile};
 use rsnano_store_traits::{NullTransactionTracker, WriteTransaction};
@@ -27,8 +27,12 @@ impl LedgerContext {
             .unwrap(),
         );
 
-        let ledger =
-            Ledger::new(store.clone(), DEV_CONSTANTS.clone(), &GenerateCache::new()).unwrap();
+        let ledger = Ledger::new(
+            store.clone(),
+            LEDGER_CONSTANTS_STUB.clone(),
+            &GenerateCache::new(),
+        )
+        .unwrap();
 
         LedgerContext {
             ledger,

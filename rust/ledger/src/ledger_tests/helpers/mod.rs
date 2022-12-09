@@ -3,10 +3,7 @@ mod ledger_context;
 
 pub(crate) use account_block_factory::AccountBlockFactory;
 pub(crate) use ledger_context::LedgerContext;
-use rsnano_core::{
-    work::WorkThresholds, Amount, Block, BlockDetails, ChangeBlock, OpenBlock, ReceiveBlock,
-    SendBlock, StateBlock,
-};
+use rsnano_core::{Amount, Block, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock};
 use rsnano_store_traits::WriteTransaction;
 
 pub(crate) fn upgrade_genesis_to_epoch_v1(
@@ -175,14 +172,5 @@ pub(crate) fn setup_open_block<'a>(
         destination: send.destination,
         send_block: send.send_block,
         open_block,
-    }
-}
-
-pub(crate) fn set_insufficient_work(block: &mut dyn Block, details: BlockDetails) {
-    let thresholds = WorkThresholds::publish_dev();
-    let threshold = thresholds.threshold2(block.work_version(), &details);
-    // Rarely failed with random work, so modify until it doesn't have enough difficulty
-    while thresholds.difficulty_block(block) >= threshold {
-        block.set_work(block.work() + 1);
     }
 }

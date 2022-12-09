@@ -1,4 +1,4 @@
-use crate::{DifficultyV1, Root, WorkVersion};
+use crate::{difficulty::DifficultyV1, Difficulty, Root, WorkVersion};
 
 use super::{CpuWorkGenerator, WorkGenerator, WorkTicket};
 use std::time::Duration;
@@ -27,7 +27,7 @@ impl OpenClWorkGenerator {
         work_ticket: &WorkTicket,
     ) -> Option<(u64, u64)> {
         let work = (self.opencl)(version, *item, min_difficulty, &work_ticket);
-        work.map(|work| (work, DifficultyV1::difficulty(item, work)))
+        work.map(|work| (work, DifficultyV1::default().get_difficulty(item, work)))
     }
 }
 

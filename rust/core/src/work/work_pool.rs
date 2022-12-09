@@ -9,11 +9,27 @@ use crate::{Root, WorkVersion};
 use once_cell::sync::Lazy;
 
 use super::{
-    CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator, WorkItem, WorkQueueCoordinator,
-    WorkThread, WorkThresholds, WorkTicket,
+    CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator, StubWorkPool, WorkItem,
+    WorkQueueCoordinator, WorkThread, WorkThresholds, WorkTicket,
 };
 
-pub struct WorkPool {
+pub trait WorkPool: Send + Sync {
+    fn generate_async(
+        &self,
+        version: WorkVersion,
+        root: Root,
+        difficulty: u64,
+        done: Option<Box<dyn Fn(Option<u64>) + Send>>,
+    );
+
+    fn generate_dev(&self, root: Root, difficulty: u64) -> Option<u64>;
+
+    fn generate_dev2(&self, root: Root) -> Option<u64>;
+
+    fn generate(&self, version: WorkVersion, root: Root, difficulty: u64) -> Option<u64>;
+}
+
+pub struct WorkPoolImpl {
     threads: Vec<JoinHandle<()>>,
     work_queue: Arc<WorkQueueCoordinator>,
     work_thresholds: WorkThresholds,
@@ -21,7 +37,7 @@ pub struct WorkPool {
     has_opencl: bool,
 }
 
-impl WorkPool {
+impl WorkPoolImpl {
     pub fn new(
         work_thresholds: WorkThresholds,
         thread_count: usize,
@@ -84,7 +100,29 @@ impl WorkPool {
         self.work_queue.stop();
     }
 
-    pub fn generate_async(
+    pub fn size(&self) -> usize {
+        self.work_queue.lock_work_queue().len()
+    }
+
+    pub fn pending_value_size() -> usize {
+        size_of::<WorkItem>()
+    }
+
+    pub fn thread_count(&self) -> usize {
+        self.threads.len()
+    }
+
+    pub fn threshold_base(&self, version: WorkVersion) -> u64 {
+        self.work_thresholds.threshold_base(version)
+    }
+
+    pub fn difficulty(&self, version: WorkVersion, root: &Root, work: u64) -> u64 {
+        self.work_thresholds.difficulty(version, root, work)
+    }
+}
+
+impl WorkPool for WorkPoolImpl {
+    fn generate_async(
         &self,
         version: WorkVersion,
         root: Root,
@@ -104,15 +142,15 @@ impl WorkPool {
         }
     }
 
-    pub fn generate_dev(&self, root: Root, difficulty: u64) -> Option<u64> {
+    fn generate_dev(&self, root: Root, difficulty: u64) -> Option<u64> {
         self.generate(WorkVersion::Work1, root, difficulty)
     }
 
-    pub fn generate_dev2(&self, root: Root) -> Option<u64> {
+    fn generate_dev2(&self, root: Root) -> Option<u64> {
         self.generate(WorkVersion::Work1, root, self.work_thresholds.base)
     }
 
-    pub fn generate(&self, version: WorkVersion, root: Root, difficulty: u64) -> Option<u64> {
+    fn generate(&self, version: WorkVersion, root: Root, difficulty: u64) -> Option<u64> {
         if self.threads.is_empty() {
             return None;
         }
@@ -130,26 +168,6 @@ impl WorkPool {
         );
 
         done_notifier.wait()
-    }
-
-    pub fn size(&self) -> usize {
-        self.work_queue.lock_work_queue().len()
-    }
-
-    pub fn pending_value_size() -> usize {
-        size_of::<WorkItem>()
-    }
-
-    pub fn thread_count(&self) -> usize {
-        self.threads.len()
-    }
-
-    pub fn threshold_base(&self, version: WorkVersion) -> u64 {
-        self.work_thresholds.threshold_base(version)
-    }
-
-    pub fn difficulty(&self, version: WorkVersion, root: &Root, work: u64) -> u64 {
-        self.work_thresholds.difficulty(version, root, work)
     }
 }
 
@@ -191,7 +209,7 @@ impl WorkDoneNotifier {
     }
 }
 
-impl Drop for WorkPool {
+impl Drop for WorkPoolImpl {
     fn drop(&mut self) {
         self.stop();
         for handle in self.threads.drain(..) {
@@ -210,14 +228,8 @@ pub(crate) trait WorkGenerator {
     ) -> Option<(u64, u64)>;
 }
 
-pub static DEV_WORK_POOL: Lazy<WorkPool> = Lazy::new(|| {
-    WorkPool::new(
-        WorkThresholds::publish_dev().clone(),
-        crate::utils::get_cpu_count(),
-        Duration::ZERO,
-        None,
-    )
-});
+pub static STUB_WORK_POOL: Lazy<StubWorkPool> =
+    Lazy::new(|| StubWorkPool::new(WorkThresholds::publish_dev().clone()));
 
 #[cfg(test)]
 mod tests {
@@ -227,9 +239,18 @@ mod tests {
 
     use super::*;
 
+    pub static WORK_POOL: Lazy<WorkPoolImpl> = Lazy::new(|| {
+        WorkPoolImpl::new(
+            WorkThresholds::publish_dev().clone(),
+            crate::utils::get_cpu_count(),
+            Duration::ZERO,
+            None,
+        )
+    });
+
     #[test]
     fn work_disabled() {
-        let pool = WorkPool::new(
+        let pool = WorkPoolImpl::new(
             WorkThresholds::publish_dev().clone(),
             0,
             Duration::ZERO,
@@ -241,7 +262,7 @@ mod tests {
 
     #[test]
     fn work_one() {
-        let pool = &DEV_WORK_POOL;
+        let pool = &WORK_POOL;
         let mut block = BlockBuilder::state().build();
         block.set_work(pool.generate_dev2(block.root()).unwrap());
         assert!(pool.threshold_base(block.work_version()) < difficulty(&block));
@@ -249,7 +270,7 @@ mod tests {
 
     #[test]
     fn work_validate() {
-        let pool = &DEV_WORK_POOL;
+        let pool = &WORK_POOL;
         let mut block = BlockBuilder::legacy_send().work(6).build();
         assert!(difficulty(&block) < pool.threshold_base(block.work_version()));
         block.set_work(pool.generate_dev2(block.root()).unwrap());
@@ -260,7 +281,7 @@ mod tests {
     fn work_cancel() {
         let (tx, rx) = mpsc::channel();
         let key = Root::from(12345);
-        DEV_WORK_POOL.generate_async(
+        WORK_POOL.generate_async(
             WorkVersion::Work1,
             key,
             WorkThresholds::publish_dev().base,
@@ -268,7 +289,7 @@ mod tests {
                 tx.send(()).unwrap();
             })),
         );
-        DEV_WORK_POOL.cancel(&key);
+        WORK_POOL.cancel(&key);
         assert_eq!(rx.recv_timeout(Duration::from_secs(2)), Ok(()))
     }
 
@@ -281,7 +302,7 @@ mod tests {
         let mut result_difficulty = u64::MAX;
 
         while result_difficulty > difficulty2 {
-            let work = DEV_WORK_POOL
+            let work = WORK_POOL
                 .generate(WorkVersion::Work1, root, difficulty1)
                 .unwrap();
             result_difficulty =
@@ -291,7 +312,7 @@ mod tests {
 
         result_difficulty = u64::MAX;
         while result_difficulty > difficulty3 {
-            let work = DEV_WORK_POOL
+            let work = WORK_POOL
                 .generate(WorkVersion::Work1, root, difficulty2)
                 .unwrap();
             result_difficulty =

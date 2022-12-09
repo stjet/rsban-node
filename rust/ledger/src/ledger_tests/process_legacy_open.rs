@@ -1,12 +1,9 @@
 use crate::{
-    ledger_tests::{
-        set_insufficient_work, setup_legacy_open_block, setup_legacy_send_block, LedgerContext,
-    },
-    ProcessResult, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
+    ledger_constants::LEDGER_CONSTANTS_STUB,
+    ledger_tests::{setup_legacy_open_block, setup_legacy_send_block, LedgerContext},
+    ProcessResult, DEV_GENESIS_ACCOUNT,
 };
-use rsnano_core::{
-    Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
-};
+use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair};
 
 #[test]
 fn update_sideband() {
@@ -111,7 +108,7 @@ fn update_vote_weight() {
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount - open.expected_balance
+        LEDGER_CONSTANTS_STUB.genesis_amount - open.expected_balance
     );
     assert_eq!(
         ctx.ledger.weight(&open.destination.account()),
@@ -297,7 +294,7 @@ fn open_from_state_block() {
     assert_eq!(ctx.ledger.balance(txn.txn(), &open.hash()), amount_sent);
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
 }
 
@@ -327,10 +324,10 @@ fn fail_insufficient_work() {
         .work(0)
         .build();
 
-    set_insufficient_work(
-        &mut open,
-        BlockDetails::new(Epoch::Epoch0, false, false, false),
-    );
+    {
+        let block: &mut dyn Block = &mut open;
+        block.set_work(0);
+    };
     let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
     assert_eq!(result.code, ProcessResult::InsufficientWork);

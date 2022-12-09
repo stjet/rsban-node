@@ -1,5 +1,5 @@
 use crate::{
-    ledger_tests::{set_insufficient_work, setup_change_block, upgrade_genesis_to_epoch_v1},
+    ledger_tests::{setup_change_block, upgrade_genesis_to_epoch_v1},
     ProcessResult, DEV_GENESIS_ACCOUNT,
 };
 use rsnano_core::{Account, Amount, Block, BlockDetails, BlockEnum, Epoch};
@@ -117,10 +117,10 @@ fn fail_insufficient_work_epoch_0() {
     let mut txn = ctx.ledger.rw_txn();
 
     let mut send = ctx.genesis_block_factory().send(txn.txn()).work(0).build();
-    set_insufficient_work(
-        &mut send,
-        BlockDetails::new(Epoch::Epoch0, true, false, false),
-    );
+    {
+        let block: &mut dyn Block = &mut send;
+        block.set_work(0);
+    };
     let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
     assert_eq!(result.code, ProcessResult::InsufficientWork);
 }
@@ -132,10 +132,10 @@ fn fail_insufficient_work_epoch_1() {
 
     upgrade_genesis_to_epoch_v1(&ctx, txn.as_mut());
     let mut send = ctx.genesis_block_factory().send(txn.txn()).work(0).build();
-    set_insufficient_work(
-        &mut send,
-        BlockDetails::new(Epoch::Epoch1, true, false, false),
-    );
+    {
+        let block: &mut dyn Block = &mut send;
+        block.set_work(0);
+    };
     let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
     assert_eq!(result.code, ProcessResult::InsufficientWork);
 }

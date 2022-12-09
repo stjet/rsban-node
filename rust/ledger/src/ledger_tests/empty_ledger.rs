@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 
 use rsnano_core::{utils::seconds_since_epoch, Account, Amount, BlockType};
 
-use crate::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 
 use super::LedgerContext;
 
@@ -40,7 +40,7 @@ fn genesis_account_balance() {
         .ledger
         .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false);
 
-    assert_eq!(balance, DEV_CONSTANTS.genesis_amount);
+    assert_eq!(balance, LEDGER_CONSTANTS_STUB.genesis_amount);
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn genesis_account_info() {
     // Frontier time should have been updated when genesis balance was added
     assert!(account_info.modified > 0 && account_info.modified <= seconds_since_epoch());
     assert_eq!(account_info.block_count, 1);
-    assert_eq!(account_info.balance, DEV_CONSTANTS.genesis_amount);
+    assert_eq!(account_info.balance, LEDGER_CONSTANTS_STUB.genesis_amount);
 }
 
 #[test]
@@ -107,7 +107,7 @@ fn genesis_vote_weight() {
     let ctx = LedgerContext::empty();
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
 }
 

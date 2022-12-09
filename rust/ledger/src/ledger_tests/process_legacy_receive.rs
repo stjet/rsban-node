@@ -1,13 +1,9 @@
 use crate::{
-    ledger_tests::{
-        set_insufficient_work, setup_legacy_open_block, setup_legacy_receive_block,
-        setup_legacy_send_block,
-    },
-    ProcessResult, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
+    ledger_constants::LEDGER_CONSTANTS_STUB,
+    ledger_tests::{setup_legacy_open_block, setup_legacy_receive_block, setup_legacy_send_block},
+    ProcessResult, DEV_GENESIS_ACCOUNT,
 };
-use rsnano_core::{
-    Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
-};
+use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair};
 
 use super::LedgerContext;
 
@@ -86,7 +82,7 @@ fn update_balance() {
     assert_eq!(
         ctx.ledger
             .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
-        DEV_CONSTANTS.genesis_amount - result.expected_balance
+        LEDGER_CONSTANTS_STUB.genesis_amount - result.expected_balance
     );
     assert_eq!(
         ctx.ledger
@@ -108,7 +104,7 @@ fn update_vote_weight() {
     );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount - result.expected_balance
+        LEDGER_CONSTANTS_STUB.genesis_amount - result.expected_balance
     );
 }
 
@@ -411,7 +407,7 @@ fn receive_from_state_block() {
     );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     )
 }
 
@@ -434,10 +430,10 @@ fn fail_insufficient_work() {
         .legacy_receive(txn.txn(), send.hash())
         .build();
 
-    set_insufficient_work(
-        &mut receive_block,
-        BlockDetails::new(Epoch::Epoch0, false, false, false),
-    );
+    {
+        let block: &mut dyn Block = &mut receive_block;
+        block.set_work(0);
+    };
 
     let result = ctx
         .ledger

@@ -1,8 +1,19 @@
-use crate::{Block, BlockDetails, BlockType, DifficultyV1, Epoch, Root, WorkVersion};
+use crate::{
+    Block, BlockDetails, BlockType, Difficulty, DifficultyV1, Epoch, Root, StubDifficulty,
+    WorkVersion,
+};
 use once_cell::sync::Lazy;
 use std::cmp::{max, min};
 
-#[derive(Clone)]
+pub static WORK_THRESHOLDS_STUB: Lazy<WorkThresholds> = Lazy::new(|| {
+    WorkThresholds::with_difficulty(
+        Box::new(StubDifficulty::new()),
+        0xfe00000000000000, // Very low for tests
+        0xffc0000000000000, // 8x higher than epoch_1
+        0xf000000000000000, // 8x lower than epoch_1
+    )
+});
+
 pub struct WorkThresholds {
     pub epoch_1: u64,
     pub epoch_2: u64,
@@ -13,6 +24,20 @@ pub struct WorkThresholds {
 
     // Automatically calculated. The entry threshold is the minimum of all thresholds and defines the required work to enter the node, but does not guarantee a block is processed
     pub entry: u64,
+    pub difficulty: Box<dyn Difficulty>,
+}
+
+impl Clone for WorkThresholds {
+    fn clone(&self) -> Self {
+        Self {
+            epoch_1: self.epoch_1.clone(),
+            epoch_2: self.epoch_2.clone(),
+            epoch_2_receive: self.epoch_2_receive.clone(),
+            base: self.base.clone(),
+            entry: self.entry.clone(),
+            difficulty: self.difficulty.clone(),
+        }
+    }
 }
 
 static PUBLISH_FULL: Lazy<WorkThresholds> = Lazy::new(|| {
@@ -72,16 +97,6 @@ mod tests {
 }
 
 impl WorkThresholds {
-    pub fn new(epoch_1: u64, epoch_2: u64, epoch_2_receive: u64) -> Self {
-        Self {
-            epoch_1,
-            epoch_2,
-            epoch_2_receive,
-            base: max(max(epoch_1, epoch_2), epoch_2_receive),
-            entry: min(min(epoch_1, epoch_2), epoch_2_receive),
-        }
-    }
-
     pub fn publish_full() -> &'static WorkThresholds {
         &PUBLISH_FULL
     }
@@ -96,6 +111,33 @@ impl WorkThresholds {
 
     pub fn publish_test() -> &'static WorkThresholds {
         &PUBLISH_TEST
+    }
+}
+
+impl WorkThresholds {
+    pub fn new(epoch_1: u64, epoch_2: u64, epoch_2_receive: u64) -> Self {
+        Self::with_difficulty(
+            Box::new(DifficultyV1::default()),
+            epoch_1,
+            epoch_2,
+            epoch_2_receive,
+        )
+    }
+
+    pub fn with_difficulty(
+        difficulty: Box<dyn Difficulty>,
+        epoch_1: u64,
+        epoch_2: u64,
+        epoch_2_receive: u64,
+    ) -> Self {
+        Self {
+            epoch_1,
+            epoch_2,
+            epoch_2_receive,
+            base: max(max(epoch_1, epoch_2), epoch_2_receive),
+            entry: min(min(epoch_1, epoch_2), epoch_2_receive),
+            difficulty,
+        }
     }
 
     pub fn threshold_entry(&self, block_type: BlockType, work_version: WorkVersion) -> u64 {
@@ -195,7 +237,7 @@ impl WorkThresholds {
 
     pub fn difficulty(&self, work_version: WorkVersion, root: &Root, work: u64) -> u64 {
         match work_version {
-            WorkVersion::Work1 => DifficultyV1::difficulty(root, work),
+            WorkVersion::Work1 => self.difficulty.get_difficulty(root, work),
             _ => {
                 debug_assert!(false, "Invalid version specified to work_difficulty");
                 0

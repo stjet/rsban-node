@@ -1,6 +1,6 @@
 use crate::{
-    work::DEV_WORK_POOL, Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch,
-    KeyPair, SendBlock,
+    work::{WorkPool, STUB_WORK_POOL},
+    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, SendBlock,
 };
 
 pub struct LegacySendBlockBuilder {
@@ -83,7 +83,7 @@ impl LegacySendBlockBuilder {
         let balance = self.balance.unwrap_or(Amount::new(3));
         let work = self
             .work
-            .unwrap_or_else(|| DEV_WORK_POOL.generate_dev2(previous.into()).unwrap());
+            .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(previous.into()).unwrap());
         let mut block = SendBlock::new(
             &previous,
             &destination,

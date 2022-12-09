@@ -3,7 +3,7 @@ use std::sync::{
     Condvar, Mutex, MutexGuard,
 };
 
-use crate::{DifficultyV1, Root, WorkVersion};
+use crate::{difficulty::DifficultyV1, Difficulty, Root, WorkVersion};
 
 static NEVER_EXPIRES: AtomicI32 = AtomicI32::new(0);
 
@@ -49,7 +49,8 @@ impl WorkItem {
         // we're the ones that found the solution
         debug_assert!(difficulty >= self.min_difficulty);
         debug_assert!(
-            self.min_difficulty == 0 || DifficultyV1::difficulty(&self.item, work) == difficulty
+            self.min_difficulty == 0
+                || DifficultyV1::default().get_difficulty(&self.item, work) == difficulty
         );
         if let Some(callback) = &self.callback {
             (callback)(Some(work));

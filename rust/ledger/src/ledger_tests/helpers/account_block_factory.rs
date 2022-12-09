@@ -1,4 +1,4 @@
-use crate::{Ledger, DEV_CONSTANTS, DEV_GENESIS_KEY};
+use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger, DEV_GENESIS_KEY};
 use rsnano_core::{Account, AccountInfo, Amount, BlockHash, Epoch, KeyPair, Link};
 use rsnano_store_traits::Transaction;
 
@@ -51,7 +51,7 @@ impl<'a> AccountBlockFactory<'a> {
             .previous(info.head)
             .representative(info.representative)
             .balance(info.balance)
-            .link(*DEV_CONSTANTS.epochs.link(Epoch::Epoch1).unwrap())
+            .link(*LEDGER_CONSTANTS_STUB.epochs.link(Epoch::Epoch1).unwrap())
             .sign(&DEV_GENESIS_KEY)
     }
 
@@ -72,7 +72,7 @@ impl<'a> AccountBlockFactory<'a> {
             .previous(info.head)
             .representative(info.representative)
             .balance(info.balance)
-            .link(*DEV_CONSTANTS.epochs.link(Epoch::Epoch2).unwrap())
+            .link(*LEDGER_CONSTANTS_STUB.epochs.link(Epoch::Epoch2).unwrap())
             .sign(&DEV_GENESIS_KEY)
     }
 
@@ -82,7 +82,7 @@ impl<'a> AccountBlockFactory<'a> {
             .previous(0)
             .representative(0)
             .balance(0)
-            .link(*DEV_CONSTANTS.epochs.link(Epoch::Epoch2).unwrap())
+            .link(*LEDGER_CONSTANTS_STUB.epochs.link(Epoch::Epoch2).unwrap())
             .sign(&DEV_GENESIS_KEY)
     }
 

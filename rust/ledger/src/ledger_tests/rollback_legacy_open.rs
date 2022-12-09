@@ -1,4 +1,4 @@
-use crate::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT};
+use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_ACCOUNT};
 use rsnano_core::{Amount, Block, PendingKey};
 use rsnano_store_traits::WriteTransaction;
 
@@ -72,7 +72,7 @@ fn update_account_balance() {
     assert_eq!(
         ctx.ledger
             .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
-        DEV_CONSTANTS.genesis_amount - open.expected_balance
+        LEDGER_CONSTANTS_STUB.genesis_amount - open.expected_balance
     );
 }
 
@@ -99,7 +99,7 @@ fn update_vote_weight() {
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount - open.expected_balance
+        LEDGER_CONSTANTS_STUB.genesis_amount - open.expected_balance
     );
     assert_eq!(
         ctx.ledger.weight(&open.destination.account()),

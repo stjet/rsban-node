@@ -1,6 +1,9 @@
 use rsnano_core::{Amount, Block};
 
-use crate::{ledger_tests::LedgerContext, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use crate::{
+    ledger_constants::LEDGER_CONSTANTS_STUB, ledger_tests::LedgerContext, DEV_GENESIS_ACCOUNT,
+    DEV_GENESIS_HASH,
+};
 
 #[test]
 fn update_frontier_store() {
@@ -40,7 +43,7 @@ fn update_account_info() {
         .unwrap();
 
     assert_eq!(account_info.head, *DEV_GENESIS_HASH);
-    assert_eq!(account_info.balance, DEV_CONSTANTS.genesis_amount);
+    assert_eq!(account_info.balance, LEDGER_CONSTANTS_STUB.genesis_amount);
     assert_eq!(account_info.block_count, 1);
     assert_eq!(account_info.representative, *DEV_GENESIS_ACCOUNT);
 }
@@ -58,7 +61,7 @@ fn update_vote_weight() {
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(ctx.ledger.weight(&change.representative()), Amount::zero(),);
 }
@@ -81,6 +84,6 @@ fn rollback_dependent_blocks_too() {
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
 }

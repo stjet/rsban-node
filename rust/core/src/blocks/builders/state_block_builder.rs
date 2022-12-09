@@ -1,4 +1,5 @@
-use crate::{work::DEV_WORK_POOL, Block, StateBlock};
+use crate::work::WorkPool;
+use crate::{work::STUB_WORK_POOL, Block, StateBlock};
 use crate::{
     Account, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, Link, PublicKey,
     RawKey, Signature,
@@ -149,7 +150,7 @@ impl StateBlockBuilder {
             } else {
                 self.previous.into()
             };
-            DEV_WORK_POOL.generate_dev2(root).unwrap()
+            STUB_WORK_POOL.generate_dev2(root).unwrap()
         });
 
         let mut state = match self.signature {

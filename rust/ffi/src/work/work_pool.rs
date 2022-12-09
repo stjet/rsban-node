@@ -2,14 +2,14 @@ use crate::{NetworkConstantsDto, VoidPointerCallback};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::get_cpu_count,
-    work::{WorkPool, WorkTicket},
+    work::{WorkPool, WorkPoolImpl, WorkTicket},
     Root, WorkVersion,
 };
 use std::{cmp::min, ffi::c_void, time::Duration};
 
 use rsnano_node::config::NetworkConstants;
 
-pub struct WorkPoolHandle(WorkPool);
+pub struct WorkPoolHandle(WorkPoolImpl);
 
 type OpenclCallback =
     unsafe extern "C" fn(*mut c_void, u8, *const u8, u64, *mut WorkTicketHandle, *mut u64) -> bool;
@@ -29,7 +29,7 @@ pub unsafe extern "C" fn rsn_work_pool_create(
     } else {
         min(max_threads as usize, get_cpu_count())
     };
-    Box::into_raw(Box::new(WorkPoolHandle(WorkPool::new(
+    Box::into_raw(Box::new(WorkPoolHandle(WorkPoolImpl::new(
         network_constants.work,
         thread_count,
         Duration::from_nanos(pow_rate_limiter_ns),
@@ -258,7 +258,7 @@ pub unsafe extern "C" fn rsn_work_pool_size(handle: *mut WorkPoolHandle) -> usiz
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_work_pool_pending_value_size() -> usize {
-    WorkPool::pending_value_size()
+    WorkPoolImpl::pending_value_size()
 }
 
 #[no_mangle]

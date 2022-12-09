@@ -1,4 +1,7 @@
-use crate::{Difficulty, DifficultyV1, Root, WorkVersion};
+use crate::{
+    difficulty::{Difficulty, DifficultyV1},
+    Root, WorkVersion,
+};
 
 use super::{WorkGenerator, WorkRng, WorkTicket, XorShift1024Star};
 #[cfg(test)]
@@ -101,7 +104,7 @@ impl CpuWorkGenerator {
     pub fn new(rate_limiter: Duration) -> Self {
         create_cpu_work_generator(
             XorShift1024Star::new(),
-            DifficultyV1::new(),
+            DifficultyV1::default(),
             ThreadSleeper::new(),
             rate_limiter,
         )

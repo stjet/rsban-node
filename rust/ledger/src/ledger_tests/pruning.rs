@@ -1,8 +1,9 @@
 use std::sync::atomic::Ordering;
 
-use crate::{ProcessResult, DEV_CONSTANTS, DEV_GENESIS_HASH};
+use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, ProcessResult, DEV_GENESIS_HASH};
 use rsnano_core::{
-    work::DEV_WORK_POOL, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, Epoch, PendingKey,
+    work::{WorkPool, STUB_WORK_POOL},
+    Amount, Block, BlockBuilder, BlockDetails, BlockEnum, Epoch, PendingKey,
 };
 
 use crate::ledger_tests::LedgerContext;
@@ -65,10 +66,10 @@ fn pruning_action() {
     let mut receive1 = BlockBuilder::state()
         .account(genesis.account())
         .previous(send2.hash())
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(100))
+        .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100))
         .link(send1.hash())
         .sign(&genesis.key)
-        .work(DEV_WORK_POOL.generate_dev2(send2.hash().into()).unwrap())
+        .work(STUB_WORK_POOL.generate_dev2(send2.hash().into()).unwrap())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
@@ -195,10 +196,10 @@ fn pruning_source_rollback() {
     let mut receive1 = BlockBuilder::state()
         .account(genesis.account())
         .previous(send2.hash())
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(100))
+        .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100))
         .link(send1.hash())
         .sign(&genesis.key)
-        .work(DEV_WORK_POOL.generate_dev2(send2.hash().into()).unwrap())
+        .work(STUB_WORK_POOL.generate_dev2(send2.hash().into()).unwrap())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
@@ -263,7 +264,7 @@ fn pruning_source_rollback_legacy() {
         .previous(send3.hash())
         .source(send1.hash())
         .sign(&genesis.key)
-        .work(DEV_WORK_POOL.generate_dev2(send3.hash().into()).unwrap())
+        .work(STUB_WORK_POOL.generate_dev2(send3.hash().into()).unwrap())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
@@ -295,7 +296,7 @@ fn pruning_source_rollback_legacy() {
         .account(destination.account())
         .sign(&destination.key)
         .work(
-            DEV_WORK_POOL
+            STUB_WORK_POOL
                 .generate_dev2(destination.account().into())
                 .unwrap(),
         )
@@ -353,7 +354,7 @@ fn pruning_process_error() {
         .balance(0)
         .link(genesis.account())
         .sign(&genesis.key)
-        .work(DEV_WORK_POOL.generate_dev2(send1.hash().into()).unwrap())
+        .work(STUB_WORK_POOL.generate_dev2(send1.hash().into()).unwrap())
         .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
     assert_eq!(result.code, ProcessResult::GapPrevious);

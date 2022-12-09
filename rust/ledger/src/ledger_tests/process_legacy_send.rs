@@ -1,10 +1,9 @@
-use rsnano_core::{
-    Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
-};
+use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair};
 
 use crate::{
-    ledger_tests::{set_insufficient_work, setup_legacy_send_block, LedgerContext},
-    ProcessResult, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_KEY,
+    ledger_constants::LEDGER_CONSTANTS_STUB,
+    ledger_tests::{setup_legacy_send_block, LedgerContext},
+    ProcessResult, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_KEY,
 };
 
 #[test]
@@ -41,7 +40,7 @@ fn update_sideband() {
     assert_eq!(sideband.height, 2);
     assert_eq!(
         sideband.balance,
-        DEV_CONSTANTS.genesis_amount - send.amount_sent
+        LEDGER_CONSTANTS_STUB.genesis_amount - send.amount_sent
     );
 }
 
@@ -114,7 +113,7 @@ fn update_vote_weight() {
     );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount - send.amount_sent
+        LEDGER_CONSTANTS_STUB.genesis_amount - send.amount_sent
     );
 }
 
@@ -228,10 +227,10 @@ fn fail_insufficient_work() {
     let genesis = ctx.genesis_block_factory();
 
     let mut send = genesis.legacy_send(txn.txn()).work(0).build();
-    set_insufficient_work(
-        &mut send,
-        BlockDetails::new(Epoch::Epoch0, false, false, false),
-    );
+    {
+        let block: &mut dyn Block = &mut send;
+        block.set_work(0);
+    };
     let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
     assert_eq!(result.code, ProcessResult::InsufficientWork);
 }

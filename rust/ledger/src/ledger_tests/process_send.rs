@@ -1,4 +1,4 @@
-use crate::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT};
+use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_ACCOUNT};
 use rsnano_core::{
     Account, Amount, Block, BlockDetails, BlockEnum, Epoch, PendingInfo, PendingKey,
 };
@@ -71,7 +71,7 @@ fn send_and_change_representative() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
     let representative = Account::from(1);
-    let amount_sent = DEV_CONSTANTS.genesis_amount - Amount::new(1);
+    let amount_sent = LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(1);
     let mut send = genesis
         .send(txn.txn())
         .amount(amount_sent)

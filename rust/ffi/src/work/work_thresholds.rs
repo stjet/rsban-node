@@ -1,6 +1,7 @@
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    work::WorkThresholds, BlockDetails, BlockType, DifficultyV1, Networks, Root, WorkVersion,
+    work::WorkThresholds, BlockDetails, BlockType, Difficulty, DifficultyV1, Networks, Root,
+    WorkVersion,
 };
 use std::convert::TryFrom;
 
@@ -109,7 +110,7 @@ pub extern "C" fn rsn_work_thresholds_value(
     work: u64,
 ) -> u64 {
     let root = Root::from_bytes(*root);
-    DifficultyV1::difficulty(&root, work)
+    DifficultyV1::default().get_difficulty(&root, work)
 }
 
 #[no_mangle]

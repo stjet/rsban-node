@@ -3,8 +3,8 @@ use std::sync::atomic::Ordering;
 
 mod helpers;
 use crate::{
-    GenerateCache, Ledger, LedgerCache, UncementedInfo, DEV_CONSTANTS, DEV_GENESIS,
-    DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_KEY,
+    ledger_constants::LEDGER_CONSTANTS_STUB, GenerateCache, Ledger, LedgerCache, UncementedInfo,
+    DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_KEY,
 };
 pub(crate) use helpers::*;
 use rsnano_core::{
@@ -116,7 +116,7 @@ fn send_open_receive_vote_weight() {
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::new(100));
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount - Amount::new(100)
+        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100)
     );
 }
 
@@ -160,7 +160,7 @@ fn send_open_receive_rollback() {
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&rep_account),
-        DEV_CONSTANTS.genesis_amount - Amount::new(100)
+        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100)
     );
 
     ctx.ledger.rollback(txn.as_mut(), &open.hash()).unwrap();
@@ -169,7 +169,7 @@ fn send_open_receive_rollback() {
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&rep_account),
-        DEV_CONSTANTS.genesis_amount - Amount::new(100)
+        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100)
     );
 
     ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
@@ -178,7 +178,7 @@ fn send_open_receive_rollback() {
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount - Amount::new(100)
+        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100)
     );
 
     ctx.ledger.rollback(txn.as_mut(), &send2.hash()).unwrap();
@@ -187,7 +187,7 @@ fn send_open_receive_rollback() {
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount - Amount::new(50)
+        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(50)
     );
 
     ctx.ledger.rollback(txn.as_mut(), &send1.hash()).unwrap();
@@ -196,7 +196,7 @@ fn send_open_receive_rollback() {
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
 }
 
@@ -331,7 +331,7 @@ fn state_account() {
     let mut send = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
-        .balance(DEV_CONSTANTS.genesis_amount - Amount::new(*GXRB_RATIO))
+        .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(*GXRB_RATIO))
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
         .build();
@@ -869,7 +869,7 @@ fn ledger_cache() {
             account_count: 1 + i,
             block_count: 1 + 2 * (i + 1) - 2,
             cemented_count: 1 + 2 * (i + 1) - 2,
-            genesis_weight: DEV_CONSTANTS.genesis_amount - Amount::new(i as u128),
+            genesis_weight: LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(i as u128),
             pruned_count: i,
         };
 
@@ -901,7 +901,7 @@ fn ledger_cache() {
 
             let new_ledger = Ledger::new(
                 ctx.ledger.store.clone(),
-                DEV_CONSTANTS.clone(),
+                LEDGER_CONSTANTS_STUB.clone(),
                 &GenerateCache::new(),
             )
             .unwrap();

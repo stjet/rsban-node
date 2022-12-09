@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 use rsnano_core::{
     deserialize_block_json,
     utils::{get_env_or_default_string, seconds_since_epoch, SerdePropertyTree},
-    work::WorkThresholds,
+    work::{WorkThresholds, WORK_THRESHOLDS_STUB},
     Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, KeyPair,
     Link, Networks,
 };
@@ -81,14 +81,12 @@ static TEST_CANARY_PUBLIC_KEY_DATA: Lazy<String> = Lazy::new(|| {
 pub static DEV_GENESIS_KEY: Lazy<KeyPair> =
     Lazy::new(|| KeyPair::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap());
 
-pub static DEV_CONSTANTS: Lazy<LedgerConstants> = Lazy::new(|| {
-    LedgerConstants::new(
-        WorkThresholds::publish_dev().clone(),
-        Networks::NanoDevNetwork,
-    )
-    .unwrap()
+pub static LEDGER_CONSTANTS_STUB: Lazy<LedgerConstants> = Lazy::new(|| {
+    LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork).unwrap()
 });
-pub static DEV_GENESIS: Lazy<Arc<RwLock<BlockEnum>>> = Lazy::new(|| DEV_CONSTANTS.genesis.clone());
+
+pub static DEV_GENESIS: Lazy<Arc<RwLock<BlockEnum>>> =
+    Lazy::new(|| LEDGER_CONSTANTS_STUB.genesis.clone());
 pub static DEV_GENESIS_ACCOUNT: Lazy<Account> =
     Lazy::new(|| DEV_GENESIS.read().unwrap().as_block().account());
 pub static DEV_GENESIS_HASH: Lazy<BlockHash> =

@@ -1,6 +1,7 @@
+use crate::work::WorkPool;
 use crate::{Account, Amount, BlockDetails, BlockSideband, Epoch, KeyPair};
 
-use crate::{work::DEV_WORK_POOL, Block, BlockHash, ChangeBlock};
+use crate::{work::STUB_WORK_POOL, Block, BlockHash, ChangeBlock};
 
 pub struct LegacyChangeBlockBuilder {
     account: Option<Account>,
@@ -59,7 +60,7 @@ impl LegacyChangeBlockBuilder {
         let representative = self.representative.unwrap_or(Account::from(2));
         let work = self
             .work
-            .unwrap_or_else(|| DEV_WORK_POOL.generate_dev2(previous.into()).unwrap());
+            .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(previous.into()).unwrap());
 
         let mut block = ChangeBlock::new(
             previous,

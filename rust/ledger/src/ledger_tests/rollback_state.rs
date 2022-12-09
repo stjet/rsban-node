@@ -1,5 +1,6 @@
 use crate::{
-    ledger_tests::AccountBlockFactory, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    ledger_constants::LEDGER_CONSTANTS_STUB, ledger_tests::AccountBlockFactory,
+    DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 use rsnano_core::{Account, Amount, Block, Epoch, PendingInfo, PendingKey};
 
@@ -23,11 +24,11 @@ fn rollback_send() {
     assert_eq!(
         ctx.ledger
             .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
         ctx.ledger.store.pending().get(
@@ -71,11 +72,11 @@ fn rollback_receive() {
     assert_eq!(
         ctx.ledger
             .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
-        DEV_CONSTANTS.genesis_amount - amount_sent
+        LEDGER_CONSTANTS_STUB.genesis_amount - amount_sent
     );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount - amount_sent
+        LEDGER_CONSTANTS_STUB.genesis_amount - amount_sent
     );
     assert_eq!(
         ctx.ledger.store.pending().get(
@@ -127,11 +128,11 @@ fn rollback_received_send() {
     assert_eq!(
         ctx.ledger
             .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
         ctx.ledger
@@ -163,11 +164,11 @@ fn rollback_rep_change() {
     assert_eq!(
         ctx.ledger
             .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(ctx.ledger.weight(&representative), Amount::zero());
 }
@@ -203,7 +204,7 @@ fn rollback_open() {
     );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount - amount_sent
+        LEDGER_CONSTANTS_STUB.genesis_amount - amount_sent
     );
     assert_eq!(
         ctx.ledger
@@ -243,11 +244,11 @@ fn rollback_send_with_rep_change() {
     assert_eq!(
         ctx.ledger
             .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(ctx.ledger.weight(&representative), Amount::zero());
 }

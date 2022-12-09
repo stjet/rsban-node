@@ -4,7 +4,8 @@ use rsnano_core::{Amount, Block, PendingKey};
 use rsnano_store_traits::WriteTransaction;
 
 use crate::{
-    ledger_tests::setup_legacy_open_block, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    ledger_constants::LEDGER_CONSTANTS_STUB, ledger_tests::setup_legacy_open_block,
+    DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
 use super::{setup_legacy_send_block, LedgerContext, LegacySendBlockResult};
@@ -18,7 +19,7 @@ fn update_vote_weight() {
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
 }
 
@@ -52,7 +53,7 @@ fn update_account_store() {
         .unwrap();
     assert_eq!(account_info.block_count, 1);
     assert_eq!(account_info.head, *DEV_GENESIS_HASH);
-    assert_eq!(account_info.balance, DEV_CONSTANTS.genesis_amount);
+    assert_eq!(account_info.balance, LEDGER_CONSTANTS_STUB.genesis_amount);
     assert_eq!(ctx.ledger.cache.account_count.load(Ordering::Relaxed), 1);
 }
 
@@ -101,7 +102,7 @@ fn rollback_dependent_blocks_too() {
     assert_eq!(
         ctx.ledger
             .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
-        DEV_CONSTANTS.genesis_amount
+        LEDGER_CONSTANTS_STUB.genesis_amount
     );
 
     assert_eq!(

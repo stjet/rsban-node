@@ -1,6 +1,6 @@
 use crate::{
-    work::DEV_WORK_POOL, Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch,
-    KeyPair, OpenBlock,
+    work::{WorkPool, STUB_WORK_POOL},
+    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, OpenBlock,
 };
 
 pub struct LegacyOpenBlockBuilder {
@@ -61,7 +61,7 @@ impl LegacyOpenBlockBuilder {
         let representative = self.representative.unwrap_or(Account::from(2));
         let work = self
             .work
-            .unwrap_or_else(|| DEV_WORK_POOL.generate_dev2(account.into()).unwrap());
+            .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(account.into()).unwrap());
 
         let mut block = OpenBlock::new(
             source,
@@ -98,7 +98,7 @@ impl LegacyOpenBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{work::WorkThresholds, BlockBuilder, Signature};
+    use crate::{work::WORK_THRESHOLDS_STUB, BlockBuilder, Signature};
 
     #[test]
     fn create_open_block() {
@@ -106,10 +106,7 @@ mod tests {
         assert_eq!(block.hashables.source, BlockHash::from(1));
         assert_eq!(block.hashables.representative, Account::from(2));
         assert_ne!(block.hashables.account, Account::zero());
-        assert_eq!(
-            WorkThresholds::publish_dev().validate_entry_block(&block),
-            false
-        );
+        assert_eq!(WORK_THRESHOLDS_STUB.validate_entry_block(&block), false);
         assert_ne!(*block.block_signature(), Signature::new());
 
         let sideband = block.sideband().unwrap();

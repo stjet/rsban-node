@@ -1,11 +1,12 @@
+use crate::{
+    ledger_tests::{
+        set_insufficient_work, setup_legacy_open_block, setup_legacy_receive_block,
+        setup_legacy_send_block,
+    },
+    ProcessResult, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
+};
 use rsnano_core::{
     Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
-};
-use rsnano_ledger::{ProcessResult, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT};
-
-use crate::ledger::ledger_tests::{
-    set_insufficient_work, setup_legacy_open_block, setup_legacy_receive_block,
-    setup_legacy_send_block,
 };
 
 use super::LedgerContext;

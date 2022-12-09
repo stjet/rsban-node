@@ -13,3 +13,6 @@ num-traits = "0"
 num-derive = "0"
 rsnano_store_traits = { path = "../store_traits" }
 rand = {version="0" }
+
+[dev-dependencies]
+rsnano_store_lmdb = { path = "../store_lmdb" }

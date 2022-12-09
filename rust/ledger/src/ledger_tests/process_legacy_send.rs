@@ -1,10 +1,11 @@
 use rsnano_core::{
     Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
 };
-use rsnano_ledger::{ProcessResult, DEV_GENESIS_KEY};
 
-use crate::ledger::ledger_tests::{set_insufficient_work, setup_legacy_send_block, LedgerContext};
-use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use crate::{
+    ledger_tests::{set_insufficient_work, setup_legacy_send_block, LedgerContext},
+    ProcessResult, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_KEY,
+};
 
 #[test]
 fn save_block() {

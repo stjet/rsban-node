@@ -1,7 +1,6 @@
 use rsnano_core::{Amount, Block};
 
-use crate::ledger::ledger_tests::LedgerContext;
-use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use crate::{ledger_tests::LedgerContext, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 
 #[test]
 fn update_frontier_store() {

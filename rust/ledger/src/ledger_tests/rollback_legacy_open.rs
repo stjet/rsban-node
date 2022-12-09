@@ -1,8 +1,8 @@
+use crate::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT};
 use rsnano_core::{Amount, Block, PendingKey};
-use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT};
 use rsnano_store_traits::WriteTransaction;
 
-use crate::ledger::ledger_tests::{setup_legacy_open_block, LedgerContext};
+use crate::ledger_tests::{setup_legacy_open_block, LedgerContext};
 
 use super::LegacyOpenBlockResult;
 

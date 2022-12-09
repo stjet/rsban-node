@@ -13,7 +13,7 @@ pub(crate) struct LedgerProcessor<'a> {
     observer: &'a dyn LedgerObserver,
     constants: &'a LedgerConstants,
     txn: &'a mut dyn WriteTransaction,
-    verification: SignatureVerification,
+    _verification: SignatureVerification,
     pub result: ProcessReturn,
 }
 
@@ -30,7 +30,7 @@ impl<'a> LedgerProcessor<'a> {
             observer,
             constants,
             txn,
-            verification,
+            _verification: verification,
             result: ProcessReturn {
                 code: ProcessResult::Progress,
                 verified: verification,

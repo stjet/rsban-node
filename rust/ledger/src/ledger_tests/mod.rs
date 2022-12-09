@@ -2,14 +2,14 @@ use std::ops::Deref;
 use std::sync::atomic::Ordering;
 
 mod helpers;
+use crate::{
+    GenerateCache, Ledger, LedgerCache, UncementedInfo, DEV_CONSTANTS, DEV_GENESIS,
+    DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_KEY,
+};
 pub(crate) use helpers::*;
 use rsnano_core::{
     Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
     GXRB_RATIO,
-};
-use rsnano_ledger::{
-    GenerateCache, Ledger, LedgerCache, UncementedInfo, DEV_CONSTANTS, DEV_GENESIS,
-    DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_KEY,
 };
 
 mod empty_ledger;

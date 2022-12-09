@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use crate::{GenerateCache, Ledger, DEV_CONSTANTS};
 use rsnano_core::{utils::NullLogger, Account, ConfirmationHeightInfo};
-use rsnano_ledger::{GenerateCache, Ledger, DEV_CONSTANTS};
 use rsnano_store_lmdb::{EnvOptions, LmdbStore, TestDbFile};
 use rsnano_store_traits::{NullTransactionTracker, WriteTransaction};
 
@@ -9,7 +9,7 @@ use super::AccountBlockFactory;
 
 pub(crate) struct LedgerContext {
     pub(crate) ledger: Ledger,
-    db_file: TestDbFile,
+    _db_file: TestDbFile,
 }
 
 impl LedgerContext {
@@ -30,7 +30,10 @@ impl LedgerContext {
         let ledger =
             Ledger::new(store.clone(), DEV_CONSTANTS.clone(), &GenerateCache::new()).unwrap();
 
-        LedgerContext { ledger, db_file }
+        LedgerContext {
+            ledger,
+            _db_file: db_file,
+        }
     }
 
     pub fn genesis_block_factory(&self) -> AccountBlockFactory {

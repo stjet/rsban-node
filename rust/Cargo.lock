@@ -1390,6 +1390,7 @@ dependencies = [
  "once_cell",
  "rand",
  "rsnano_core",
+ "rsnano_store_lmdb",
  "rsnano_store_traits",
 ]
 

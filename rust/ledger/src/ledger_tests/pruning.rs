@@ -1,11 +1,11 @@
 use std::sync::atomic::Ordering;
 
+use crate::{ProcessResult, DEV_CONSTANTS, DEV_GENESIS_HASH};
 use rsnano_core::{
     work::DEV_WORK_POOL, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, Epoch, PendingKey,
 };
-use rsnano_ledger::{ProcessResult, DEV_CONSTANTS, DEV_GENESIS_HASH};
 
-use crate::ledger::ledger_tests::LedgerContext;
+use crate::ledger_tests::LedgerContext;
 
 use super::upgrade_genesis_to_epoch_v1;
 

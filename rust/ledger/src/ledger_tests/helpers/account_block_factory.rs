@@ -1,5 +1,5 @@
+use crate::{Ledger, DEV_CONSTANTS, DEV_GENESIS_KEY};
 use rsnano_core::{Account, AccountInfo, Amount, BlockHash, Epoch, KeyPair, Link};
-use rsnano_ledger::{Ledger, DEV_CONSTANTS, DEV_GENESIS_KEY};
 use rsnano_store_traits::Transaction;
 
 use rsnano_core::{
@@ -26,10 +26,6 @@ impl<'a> AccountBlockFactory<'a> {
             key: DEV_GENESIS_KEY.clone(),
             ledger,
         }
-    }
-
-    pub(crate) fn from_key(ledger: &'a Ledger, key: KeyPair) -> Self {
-        Self { key, ledger }
     }
 
     pub(crate) fn account(&self) -> Account {

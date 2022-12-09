@@ -14,7 +14,6 @@ pub mod block_processing;
 pub mod bootstrap;
 pub mod config;
 mod ipc;
-pub mod ledger;
 pub mod messages;
 mod secure;
 pub mod signatures;

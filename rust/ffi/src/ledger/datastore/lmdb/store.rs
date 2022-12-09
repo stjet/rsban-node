@@ -10,7 +10,7 @@ use std::{
 use rsnano_store_lmdb::{create_backup_file, EnvOptions, LmdbConfig, LmdbStore};
 use rsnano_store_traits::{NullTransactionTracker, Store, TransactionTracker};
 
-use rsnano_node::{config::DiagnosticsConfig, ledger::LongRunningTransactionLogger};
+use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
 
 use crate::{
     utils::{LoggerHandle, LoggerMT},

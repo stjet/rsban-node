@@ -26,6 +26,9 @@ pub use json::*;
 pub use thread_pool::*;
 pub use toml::*;
 
+mod long_running_transaction_logger;
+pub use long_running_transaction_logger::{LongRunningTransactionLogger, TxnTrackingConfig};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ErrorCode {
     pub val: i32,

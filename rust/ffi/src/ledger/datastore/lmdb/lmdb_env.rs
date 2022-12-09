@@ -13,7 +13,7 @@ use crate::{
     utils::{LoggerHandle, LoggerMT},
     FfiPropertyTreeWriter, LmdbConfigDto, TxnTrackingConfigDto,
 };
-use rsnano_node::{config::DiagnosticsConfig, ledger::LongRunningTransactionLogger};
+use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
 
 use super::{TransactionHandle, TransactionType};
 

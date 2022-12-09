@@ -7,9 +7,6 @@ pub(crate) use rollback_visitor::RollbackVisitor;
 mod ledger_processor;
 pub(crate) use ledger_processor::LedgerProcessor;
 
-mod long_running_transaction_logger;
-pub use long_running_transaction_logger::LongRunningTransactionLogger;
-
 mod dependent_block_visitor;
 pub(crate) use dependent_block_visitor::DependentBlockVisitor;
 

@@ -2,8 +2,8 @@ use std::sync::{Arc, RwLock};
 
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash,
-    BlockType, BlockVisitor, ChangeBlock, Epoch, OpenBlock, PendingInfo, PendingKey, ReceiveBlock,
-    SendBlock, StateBlock,
+    BlockSubType, BlockType, BlockVisitor, ChangeBlock, Epoch, OpenBlock, PendingInfo, PendingKey,
+    ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_store_traits::WriteTransaction;
 
@@ -107,7 +107,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             .block()
             .successor_clear(self.txn, &block.previous());
 
-        self.observer.rollback_legacy_send();
+        self.observer.block_rolled_back(BlockSubType::Send);
     }
 
     fn receive_block(&mut self, block: &ReceiveBlock) {
@@ -164,7 +164,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             .block()
             .successor_clear(self.txn, &block.previous());
 
-        self.observer.rollback_legacy_receive();
+        self.observer.block_rolled_back(BlockSubType::Receive);
     }
 
     fn open_block(&mut self, block: &OpenBlock) {
@@ -198,7 +198,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
 
         self.ledger.store.frontier().del(self.txn, &hash);
 
-        self.observer.rollback_legacy_open();
+        self.observer.block_rolled_back(BlockSubType::Open);
     }
 
     fn change_block(&mut self, block: &ChangeBlock) {
@@ -260,7 +260,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             .block()
             .successor_clear(self.txn, &block.previous());
 
-        self.observer.rollback_legacy_change();
+        self.observer.block_rolled_back(BlockSubType::Change);
     }
 
     fn state_block(&mut self, block: &StateBlock) {
@@ -320,7 +320,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 };
             }
             self.ledger.store.pending().del(self.txn, &key);
-            self.observer.rollback_send();
+            self.observer.block_rolled_back(BlockSubType::Send);
         } else if !block.link().is_zero() && !self.ledger.is_epoch_link(&block.link()) {
             // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
             let source_account = self
@@ -337,7 +337,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 &PendingKey::new(block.account(), block.link().into()),
                 &pending_info,
             );
-            self.observer.rollback_receive();
+            self.observer.block_rolled_back(BlockSubType::Receive);
         }
         assert!(!error);
         let previous_version = self
@@ -383,7 +383,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 }
             }
             None => {
-                self.observer.rollback_open();
+                self.observer.block_rolled_back(BlockSubType::Open);
             }
         }
 

@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use rsnano_core::BlockSubType;
+
 use crate::ledger::LedgerObserver;
 
 use super::{DetailType, Direction, Stat, StatType};
@@ -33,70 +35,33 @@ impl LedgerObserver for LedgerStats {
         );
     }
 
-    fn rollback_legacy_send(&self) {
+    fn block_rolled_back(&self, block_type: BlockSubType) {
         let _ = self
             .stats
-            .inc(StatType::Rollback, DetailType::Send, Direction::In);
+            .inc(StatType::Rollback, block_type.into(), Direction::In);
     }
 
-    fn rollback_legacy_receive(&self) {
+    fn block_added(&self, block_type: BlockSubType) {
         let _ = self
             .stats
-            .inc(StatType::Rollback, DetailType::Receive, Direction::In);
+            .inc(StatType::Ledger, block_type.into(), Direction::In);
     }
-    fn rollback_legacy_open(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Rollback, DetailType::Open, Direction::In);
-    }
-    fn rollback_legacy_change(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Rollback, DetailType::Change, Direction::In);
-    }
-    fn rollback_send(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Rollback, DetailType::Send, Direction::In);
-    }
-    fn rollback_receive(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Rollback, DetailType::Receive, Direction::In);
-    }
-    fn rollback_open(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Rollback, DetailType::Open, Direction::In);
-    }
+
     fn state_block_added(&self) {
         let _ = self
             .stats
             .inc(StatType::Ledger, DetailType::StateBlock, Direction::In);
     }
-    fn epoch_block_added(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Ledger, DetailType::EpochBlock, Direction::In);
-    }
-    fn send_block_added(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Ledger, DetailType::Send, Direction::In);
-    }
-    fn receive_block_added(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Ledger, DetailType::Receive, Direction::In);
-    }
-    fn open_block_added(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Ledger, DetailType::Open, Direction::In);
-    }
-    fn change_block_added(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Ledger, DetailType::Change, Direction::In);
+}
+
+impl From<BlockSubType> for DetailType {
+    fn from(block_type: BlockSubType) -> Self {
+        match block_type {
+            BlockSubType::Send => DetailType::Send,
+            BlockSubType::Receive => DetailType::Receive,
+            BlockSubType::Open => DetailType::Open,
+            BlockSubType::Change => DetailType::Change,
+            BlockSubType::Epoch => DetailType::EpochBlock,
+        }
     }
 }

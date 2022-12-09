@@ -1,7 +1,7 @@
 use rsnano_core::{
     utils::seconds_since_epoch, validate_message, AccountInfo, Amount, Block, BlockDetails,
-    BlockHash, BlockSideband, ChangeBlock, Epoch, Epochs, MutableBlockVisitor, OpenBlock,
-    PendingInfo, PendingKey, ReceiveBlock, SendBlock, SignatureVerification, StateBlock,
+    BlockHash, BlockSideband, BlockSubType, ChangeBlock, Epoch, Epochs, MutableBlockVisitor,
+    OpenBlock, PendingInfo, PendingKey, ReceiveBlock, SendBlock, SignatureVerification, StateBlock,
 };
 use rsnano_ledger::LedgerConstants;
 use rsnano_store_traits::WriteTransaction;
@@ -475,7 +475,7 @@ impl<'a> LedgerProcessor<'a> {
                                     ProcessResult::InsufficientWork
                                 };
                                 if self.result.code == ProcessResult::Progress {
-                                    self.observer.epoch_block_added();
+                                    self.observer.block_added(BlockSubType::Epoch);
                                     block.set_sideband(BlockSideband::new(
                                         block.account(), /* unused */
                                         BlockHash::zero(),
@@ -652,7 +652,7 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                                     .del(self.txn, &block.previous());
                                 self.ledger.store.frontier().put(self.txn, &hash, &account);
                                 self.result.previous_balance = info.balance;
-                                self.observer.send_block_added();
+                                self.observer.block_added(BlockSubType::Send);
                             }
                         }
                     }
@@ -833,7 +833,7 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                                                 .frontier()
                                                 .put(self.txn, &hash, &account);
                                             self.result.previous_balance = info.balance;
-                                            self.observer.receive_block_added();
+                                            self.observer.block_added(BlockSubType::Receive);
                                         }
                                     }
                                 }
@@ -1005,7 +1005,7 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                                             &block.account(),
                                         );
                                         self.result.previous_balance = Amount::zero();
-                                        self.observer.open_block_added();
+                                        self.observer.block_added(BlockSubType::Open);
                                     }
                                 }
                             }
@@ -1138,7 +1138,7 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                                 .del(self.txn, &block.previous());
                             self.ledger.store.frontier().put(self.txn, &hash, &account);
                             self.result.previous_balance = info.balance;
-                            self.observer.change_block_added();
+                            self.observer.block_added(BlockSubType::Change);
                         }
                     }
                 }

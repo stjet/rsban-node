@@ -50,6 +50,15 @@ impl TryFrom<u8> for BlockType {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum BlockSubType {
+    Send,
+    Receive,
+    Open,
+    Change,
+    Epoch,
+}
+
 #[derive(Clone, Default, Debug)]
 pub struct LazyBlockHash {
     // todo: Remove Arc<RwLock>? Maybe remove lazy hash calculation?

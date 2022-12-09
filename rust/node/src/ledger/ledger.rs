@@ -1,8 +1,8 @@
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash,
-    BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
-    SignatureVerification,
+    BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey,
+    QualifiedRoot, Root, SignatureVerification,
 };
 use rsnano_ledger::{
     GenerateCache, LedgerCache, LedgerConstants, RepWeights, RepresentativeVisitor, DEV_GENESIS,
@@ -61,19 +61,9 @@ pub struct ProcessReturn {
 
 pub trait LedgerObserver: Send + Sync {
     fn blocks_cemented(&self, _cemented_count: u64) {}
-    fn rollback_legacy_send(&self) {}
-    fn rollback_legacy_receive(&self) {}
-    fn rollback_legacy_open(&self) {}
-    fn rollback_legacy_change(&self) {}
-    fn rollback_send(&self) {}
-    fn rollback_receive(&self) {}
-    fn rollback_open(&self) {}
+    fn block_rolled_back(&self, _block_type: BlockSubType) {}
+    fn block_added(&self, _block_type: BlockSubType) {}
     fn state_block_added(&self) {}
-    fn epoch_block_added(&self) {}
-    fn send_block_added(&self) {}
-    fn receive_block_added(&self) {}
-    fn open_block_added(&self) {}
-    fn change_block_added(&self) {}
 }
 
 pub struct NullLedgerObserver {}

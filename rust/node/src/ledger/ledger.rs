@@ -5,14 +5,13 @@ use rsnano_core::{
     SignatureVerification,
 };
 use rsnano_ledger::{
-    GenerateCache, LedgerCache, LedgerConstants, RepWeights, RepresentativeVisitor,
+    GenerateCache, LedgerCache, LedgerConstants, RepWeights, RepresentativeVisitor, DEV_GENESIS,
 };
 
 use crate::{
     ledger::{LedgerProcessor, RollbackVisitor},
     stats::{DetailType, Direction, Stat, StatType},
     utils::create_property_tree,
-    DEV_GENESIS,
 };
 use std::{
     collections::{BTreeMap, HashMap},

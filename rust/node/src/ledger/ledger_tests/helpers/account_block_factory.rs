@@ -1,8 +1,8 @@
 use rsnano_core::{Account, AccountInfo, Amount, BlockHash, Epoch, KeyPair, Link};
-use rsnano_ledger::DEV_GENESIS_KEY;
+use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_KEY};
 use rsnano_store_traits::Transaction;
 
-use crate::{ledger::Ledger, DEV_CONSTANTS};
+use crate::ledger::Ledger;
 use rsnano_core::{
     BlockBuilder, LegacyChangeBlockBuilder, LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder,
     LegacySendBlockBuilder, StateBlockBuilder,

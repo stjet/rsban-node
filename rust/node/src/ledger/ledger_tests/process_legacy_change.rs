@@ -3,13 +3,11 @@ use rsnano_core::{
 };
 use rsnano_ledger::DEV_GENESIS_KEY;
 
-use crate::{
-    ledger::{
-        ledger_tests::{set_insufficient_work, setup_legacy_change_block},
-        ProcessResult,
-    },
-    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+use crate::ledger::{
+    ledger_tests::{set_insufficient_work, setup_legacy_change_block},
+    ProcessResult,
 };
+use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 
 use super::LedgerContext;
 

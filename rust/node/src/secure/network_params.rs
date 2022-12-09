@@ -1,24 +1,14 @@
-use std::sync::{Arc, RwLock};
-
 use crate::{
     config::NetworkConstants, BootstrapConstants, NodeConstants, PortmappingConstants,
     VotingConstants,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;
-use rsnano_core::{work::WorkThresholds, Account, BlockEnum, BlockHash, Networks};
+use rsnano_core::{work::WorkThresholds, Networks};
 use rsnano_ledger::LedgerConstants;
 
 pub static DEV_NETWORK_PARAMS: Lazy<NetworkParams> =
     Lazy::new(|| NetworkParams::new(Networks::NanoDevNetwork).unwrap());
-
-pub static DEV_CONSTANTS: Lazy<&LedgerConstants> = Lazy::new(|| &DEV_NETWORK_PARAMS.ledger);
-
-pub static DEV_GENESIS: Lazy<Arc<RwLock<BlockEnum>>> = Lazy::new(|| DEV_CONSTANTS.genesis.clone());
-pub static DEV_GENESIS_ACCOUNT: Lazy<Account> =
-    Lazy::new(|| DEV_GENESIS.read().unwrap().as_block().account());
-pub static DEV_GENESIS_HASH: Lazy<BlockHash> =
-    Lazy::new(|| DEV_GENESIS.read().unwrap().as_block().hash());
 
 pub struct NetworkParams {
     pub kdf_work: u32,

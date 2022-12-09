@@ -1,12 +1,10 @@
 use std::sync::atomic::Ordering;
 
 use rsnano_core::{Amount, Block, PendingKey};
+use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_store_traits::WriteTransaction;
 
-use crate::{
-    ledger::ledger_tests::setup_legacy_open_block, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
-    DEV_GENESIS_HASH,
-};
+use crate::ledger::ledger_tests::setup_legacy_open_block;
 
 use super::{setup_legacy_send_block, LedgerContext, LegacySendBlockResult};
 

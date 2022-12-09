@@ -1,11 +1,9 @@
 use rsnano_core::{Amount, Block, BlockDetails, Epoch};
+use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 
-use crate::{
-    ledger::{
-        ledger_tests::{setup_legacy_send_block, upgrade_genesis_to_epoch_v1, AccountBlockFactory},
-        ProcessResult,
-    },
-    DEV_GENESIS_ACCOUNT,
+use crate::ledger::{
+    ledger_tests::{setup_legacy_send_block, upgrade_genesis_to_epoch_v1, AccountBlockFactory},
+    ProcessResult,
 };
 
 use super::LedgerContext;

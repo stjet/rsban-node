@@ -1,8 +1,7 @@
 use rsnano_core::{Account, Amount, Block, Epoch, PendingInfo, PendingKey};
+use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 
-use crate::{
-    ledger::ledger_tests::AccountBlockFactory, DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
-};
+use crate::ledger::ledger_tests::AccountBlockFactory;
 
 use super::LedgerContext;
 

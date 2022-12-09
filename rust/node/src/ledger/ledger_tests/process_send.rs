@@ -1,11 +1,9 @@
 use rsnano_core::{
     Account, Amount, Block, BlockDetails, BlockEnum, Epoch, PendingInfo, PendingKey,
 };
+use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT};
 
-use crate::{
-    ledger::ledger_tests::{setup_send_block, LedgerContext},
-    DEV_CONSTANTS, DEV_GENESIS_ACCOUNT,
-};
+use crate::ledger::ledger_tests::{setup_send_block, LedgerContext};
 
 #[test]
 fn save_block() {

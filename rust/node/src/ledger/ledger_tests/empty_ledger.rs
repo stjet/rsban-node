@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 
 use rsnano_core::{utils::seconds_since_epoch, Account, Amount, BlockType};
 
-use crate::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 
 use super::LedgerContext;
 

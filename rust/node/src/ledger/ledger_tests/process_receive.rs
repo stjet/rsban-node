@@ -2,9 +2,10 @@ use rsnano_core::{
     Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair, Link,
     PendingKey, StateBlock,
 };
+use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_store_traits::WriteTransaction;
 
-use crate::{ledger::ProcessResult, DEV_GENESIS_ACCOUNT};
+use crate::ledger::ProcessResult;
 
 use super::LedgerContext;
 

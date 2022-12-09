@@ -1,7 +1,7 @@
+use crate::LedgerConstants;
 use rsnano_core::{
     Block, BlockHash, BlockVisitor, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
-use rsnano_ledger::LedgerConstants;
 use rsnano_store_traits::Transaction;
 
 use crate::ledger::Ledger;

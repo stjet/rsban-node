@@ -5,10 +5,8 @@ use crate::{
     StatHandle, StringDto,
 };
 use rsnano_core::{Account, Amount, BlockHash, Epoch, Link, QualifiedRoot};
-use rsnano_node::{
-    ledger::{Ledger, ProcessReturn},
-    stats::LedgerStats,
-};
+use rsnano_ledger::{Ledger, ProcessReturn};
+use rsnano_node::stats::LedgerStats;
 use std::{
     ops::Deref,
     ptr::null_mut,

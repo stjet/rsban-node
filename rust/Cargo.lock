@@ -1388,6 +1388,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "once_cell",
+ "rand",
  "rsnano_core",
  "rsnano_store_traits",
 ]

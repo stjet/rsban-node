@@ -3,9 +3,9 @@ use std::sync::atomic::Ordering;
 use rsnano_core::{
     work::DEV_WORK_POOL, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, Epoch, PendingKey,
 };
-use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_HASH};
+use rsnano_ledger::{ProcessResult, DEV_CONSTANTS, DEV_GENESIS_HASH};
 
-use crate::ledger::{ledger_tests::LedgerContext, ProcessResult};
+use crate::ledger::ledger_tests::LedgerContext;
 
 use super::upgrade_genesis_to_epoch_v1;
 

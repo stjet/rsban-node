@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use rsnano_core::BlockSubType;
-
-use crate::ledger::LedgerObserver;
+use rsnano_ledger::LedgerObserver;
 
 use super::{DetailType, Direction, Stat, StatType};
 

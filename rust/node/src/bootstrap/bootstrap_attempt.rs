@@ -1,6 +1,5 @@
 use crate::{
     block_processing::BlockProcessor,
-    ledger::Ledger,
     utils::HardenedConstants,
     websocket::{Listener, MessageBuilder},
 };
@@ -8,6 +7,7 @@ use anyhow::Result;
 use rsnano_core::{
     encode_hex, utils::Logger, Account, BlockEnum, SignatureVerification, UncheckedInfo,
 };
+use rsnano_ledger::Ledger;
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},

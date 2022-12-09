@@ -1,12 +1,9 @@
 use rsnano_core::{
     Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair,
 };
-use rsnano_ledger::DEV_GENESIS_KEY;
+use rsnano_ledger::{ProcessResult, DEV_GENESIS_KEY};
 
-use crate::ledger::{
-    ledger_tests::{set_insufficient_work, setup_legacy_change_block},
-    ProcessResult,
-};
+use crate::ledger::ledger_tests::{set_insufficient_work, setup_legacy_change_block};
 use rsnano_ledger::{DEV_CONSTANTS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 
 use super::LedgerContext;

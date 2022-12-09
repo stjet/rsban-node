@@ -1,9 +1,9 @@
+use crate::LedgerConstants;
 use rsnano_core::{
     utils::seconds_since_epoch, validate_message, AccountInfo, Amount, Block, BlockDetails,
     BlockHash, BlockSideband, BlockSubType, ChangeBlock, Epoch, Epochs, MutableBlockVisitor,
     OpenBlock, PendingInfo, PendingKey, ReceiveBlock, SendBlock, SignatureVerification, StateBlock,
 };
-use rsnano_ledger::LedgerConstants;
 use rsnano_store_traits::WriteTransaction;
 
 use super::{Ledger, LedgerObserver, ProcessResult, ProcessReturn};

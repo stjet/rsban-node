@@ -1,17 +1,15 @@
-use rand::{thread_rng, Rng};
-use rsnano_core::{
-    utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash,
-    BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey,
-    QualifiedRoot, Root, SignatureVerification,
-};
-use rsnano_ledger::{
+use crate::{
     GenerateCache, LedgerCache, LedgerConstants, RepWeights, RepresentativeVisitor, DEV_GENESIS,
 };
-
-use crate::{
-    ledger::{LedgerProcessor, RollbackVisitor},
-    utils::create_property_tree,
+use rand::{thread_rng, Rng};
+use rsnano_core::{
+    utils::{seconds_since_epoch, PropertyTreeWriter, SerdePropertyTree},
+    Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockSubType, BlockType,
+    ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
+    SignatureVerification,
 };
+
+use crate::{LedgerProcessor, RollbackVisitor};
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Deref,
@@ -335,8 +333,8 @@ impl Ledger {
         let txn = self.store.tx_begin_read()?;
         match self.store.block().get(txn.txn(), hash) {
             Some(block) => {
-                let mut writer = create_property_tree();
-                block.as_block().serialize_json(writer.as_mut())?;
+                let mut writer = SerdePropertyTree::new();
+                block.as_block().serialize_json(&mut writer)?;
                 Ok(writer.to_json())
             }
             None => Ok(String::new()),

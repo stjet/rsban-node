@@ -3,11 +3,9 @@ use std::sync::atomic::Ordering;
 use rsnano_core::{
     Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, Link, PendingKey,
 };
+use rsnano_ledger::ProcessResult;
 
-use crate::ledger::{
-    ledger_tests::{setup_open_block, setup_send_block},
-    ProcessResult,
-};
+use crate::ledger::ledger_tests::{setup_open_block, setup_send_block};
 
 use super::LedgerContext;
 

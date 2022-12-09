@@ -23,4 +23,16 @@ mod generate_cache;
 pub use generate_cache::GenerateCache;
 
 mod representative_visitor;
-pub use representative_visitor::RepresentativeVisitor;
+pub(crate) use representative_visitor::RepresentativeVisitor;
+
+mod ledger;
+pub use ledger::{Ledger, LedgerObserver, ProcessResult, ProcessReturn, UncementedInfo};
+
+mod rollback_visitor;
+pub(crate) use rollback_visitor::RollbackVisitor;
+
+mod ledger_processor;
+pub(crate) use ledger_processor::LedgerProcessor;
+
+mod dependent_block_visitor;
+pub(crate) use dependent_block_visitor::DependentBlockVisitor;

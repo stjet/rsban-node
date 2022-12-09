@@ -1,6 +1,8 @@
 use std::any::Any;
 use std::collections::HashMap;
 
+use serde_json::{Map, Value};
+
 pub trait PropertyTreeReader {
     fn get_string(&self, path: &str) -> anyhow::Result<String>;
 }
@@ -83,10 +85,15 @@ impl PropertyTreeWriter for TestPropertyTree {
 }
 
 pub struct SerdePropertyTree {
-    value: serde_json::Value,
+    value: Value,
 }
 
 impl SerdePropertyTree {
+    pub fn new() -> Self {
+        Self {
+            value: Value::Object(Map::new()),
+        }
+    }
     pub fn parse(s: &str) -> anyhow::Result<Self> {
         Ok(Self {
             value: serde_json::from_str(s)?,
@@ -103,6 +110,53 @@ impl PropertyTreeReader for SerdePropertyTree {
             },
             None => Err(anyhow!("could not find path")),
         }
+    }
+}
+
+impl PropertyTreeWriter for SerdePropertyTree {
+    fn clear(&mut self) -> anyhow::Result<()> {
+        self.value = Value::Object(Map::new());
+        Ok(())
+    }
+
+    fn put_string(&mut self, path: &str, value: &str) -> anyhow::Result<()> {
+        let Value::Object(map) = &mut self.value else {bail!("not an object")};
+        map.insert(path.to_string(), Value::String(value.to_string()));
+        Ok(())
+    }
+
+    fn put_u64(&mut self, path: &str, value: u64) -> anyhow::Result<()> {
+        let Value::Object(map) = &mut self.value else {bail!("not an object")};
+        map.insert(path.to_string(), Value::Number(value.into()));
+        Ok(())
+    }
+
+    fn new_writer(&self) -> Box<dyn PropertyTreeWriter> {
+        Box::new(Self::new())
+    }
+
+    fn push_back(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+        todo!()
+    }
+
+    fn add_child(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+        todo!()
+    }
+
+    fn put_child(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+        todo!()
+    }
+
+    fn add(&mut self, _path: &str, _value: &str) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_json(&self) -> String {
+        self.value.to_string()
     }
 }
 

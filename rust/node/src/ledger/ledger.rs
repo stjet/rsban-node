@@ -10,7 +10,7 @@ use rsnano_ledger::{
 
 use crate::{
     ledger::{LedgerProcessor, RollbackVisitor},
-    stats::{DetailType, Direction, Stat, StatType},
+    stats::Stat,
     utils::create_property_tree,
 };
 use std::{
@@ -60,11 +60,33 @@ pub struct ProcessReturn {
     pub previous_balance: Amount,
 }
 
+pub trait LedgerObserver: Send + Sync {
+    fn blocks_cemented(&self, _cemented_count: u64) {}
+    fn rollback_legacy_send(&self) {}
+    fn rollback_legacy_receive(&self) {}
+    fn rollback_legacy_open(&self) {}
+    fn rollback_legacy_change(&self) {}
+    fn rollback_send(&self) {}
+    fn rollback_receive(&self) {}
+    fn rollback_open(&self) {}
+}
+
+pub struct NullLedgerObserver {}
+
+impl NullLedgerObserver {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl LedgerObserver for NullLedgerObserver {}
+
 pub struct Ledger {
     pub store: Arc<dyn Store>,
     pub cache: Arc<LedgerCache>,
     constants: LedgerConstants,
     pub stats: Arc<Stat>,
+    observer: Arc<dyn LedgerObserver>,
     pruning: AtomicBool,
     bootstrap_weight_max_blocks: AtomicU64,
     pub check_bootstrap_weights: AtomicBool,
@@ -83,6 +105,7 @@ impl Ledger {
             cache: Arc::new(LedgerCache::new()),
             constants,
             stats,
+            observer: Arc::new(NullLedgerObserver::new()),
             pruning: AtomicBool::new(false),
             bootstrap_weight_max_blocks: AtomicU64::new(1),
             check_bootstrap_weights: AtomicBool::new(true),
@@ -92,6 +115,10 @@ impl Ledger {
         ledger.initialize(generate_cache)?;
 
         Ok(ledger)
+    }
+
+    pub fn set_observer(&mut self, observer: Arc<dyn LedgerObserver>) {
+        self.observer = observer;
     }
 
     pub fn read_txn(&self) -> Box<dyn ReadTransaction> {
@@ -689,21 +716,7 @@ impl Ledger {
             .cemented_count
             .fetch_add(num_blocks_cemented, Ordering::SeqCst);
 
-        let _ = self.stats.add(
-            StatType::ConfirmationHeight,
-            DetailType::BlocksConfirmed,
-            Direction::In,
-            num_blocks_cemented,
-            false,
-        );
-
-        let _ = self.stats.add(
-            StatType::ConfirmationHeight,
-            DetailType::BlocksConfirmedBounded,
-            Direction::In,
-            num_blocks_cemented,
-            false,
-        );
+        self.observer.blocks_cemented(num_blocks_cemented);
     }
 
     pub fn dependent_blocks(&self, txn: &dyn Transaction, block: &dyn Block) -> [BlockHash; 2] {
@@ -740,7 +753,7 @@ impl Ledger {
         let account = self.account(txn.txn(), block).unwrap();
         let block_account_height = self.store.block().account_height(txn.txn(), block);
         let mut list = Vec::new();
-        let mut rollback = RollbackVisitor::new(txn, self, self.stats.as_ref(), &mut list);
+        let mut rollback = RollbackVisitor::new(txn, self, self.observer.as_ref(), &mut list);
         while self.store.block().exists(rollback.txn.txn(), block) {
             let conf_height = self
                 .store

@@ -5,6 +5,9 @@ mod stat;
 mod stat_config;
 mod stat_log_sink;
 
+mod ledger_stats;
+pub use ledger_stats::LedgerStats;
+
 pub use socket_stats::SocketStats;
 pub use stat::{stat_type_as_str, DetailType, Direction, Stat, StatType};
 pub use stat_config::StatConfig;

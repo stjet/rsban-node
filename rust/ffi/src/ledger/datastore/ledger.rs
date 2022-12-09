@@ -5,7 +5,10 @@ use crate::{
     StatHandle, StringDto,
 };
 use rsnano_core::{Account, Amount, BlockHash, Epoch, Link, QualifiedRoot};
-use rsnano_node::ledger::{Ledger, ProcessReturn};
+use rsnano_node::{
+    ledger::{Ledger, ProcessReturn},
+    stats::LedgerStats,
+};
 use std::{
     ops::Deref,
     ptr::null_mut,
@@ -33,13 +36,17 @@ pub unsafe extern "C" fn rsn_ledger_create(
     stats: *mut StatHandle,
     generate_cache: *mut GenerateCacheHandle,
 ) -> *mut LedgerHandle {
-    let ledger = Ledger::new(
+    let stats = (*stats).deref().to_owned();
+    let mut ledger = Ledger::new(
         (*store).deref().to_owned(),
         (&*constants).try_into().unwrap(),
-        (*stats).deref().to_owned(),
+        stats.clone(),
         &*generate_cache,
     )
     .unwrap();
+
+    ledger.set_observer(Arc::new(LedgerStats::new(stats)));
+
     Box::into_raw(Box::new(LedgerHandle(Arc::new(ledger))))
 }
 

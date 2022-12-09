@@ -7,14 +7,12 @@ use rsnano_core::{
 };
 use rsnano_store_traits::WriteTransaction;
 
-use crate::stats::{DetailType, Direction, Stat, StatType};
-
-use super::Ledger;
+use super::{Ledger, LedgerObserver};
 
 pub(crate) struct RollbackVisitor<'a> {
     pub txn: &'a mut dyn WriteTransaction,
     ledger: &'a Ledger,
-    stats: &'a Stat,
+    observer: &'a dyn LedgerObserver,
     pub list: &'a mut Vec<Arc<RwLock<BlockEnum>>>,
     pub is_error: bool,
 }
@@ -23,13 +21,13 @@ impl<'a> RollbackVisitor<'a> {
     pub(crate) fn new(
         txn: &'a mut dyn WriteTransaction,
         ledger: &'a Ledger,
-        stats: &'a Stat,
+        observer: &'a dyn LedgerObserver,
         list: &'a mut Vec<Arc<RwLock<BlockEnum>>>,
     ) -> Self {
         Self {
             txn,
             ledger,
-            stats,
+            observer,
             list,
             is_error: false,
         }
@@ -109,9 +107,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             .block()
             .successor_clear(self.txn, &block.previous());
 
-        let _ = self
-            .stats
-            .inc(StatType::Rollback, DetailType::Send, Direction::In);
+        self.observer.rollback_legacy_send();
     }
 
     fn receive_block(&mut self, block: &ReceiveBlock) {
@@ -168,9 +164,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             .block()
             .successor_clear(self.txn, &block.previous());
 
-        let _ = self
-            .stats
-            .inc(StatType::Rollback, DetailType::Receive, Direction::In);
+        self.observer.rollback_legacy_receive();
     }
 
     fn open_block(&mut self, block: &OpenBlock) {
@@ -204,9 +198,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
 
         self.ledger.store.frontier().del(self.txn, &hash);
 
-        let _ = self
-            .stats
-            .inc(StatType::Rollback, DetailType::Open, Direction::In);
+        self.observer.rollback_legacy_open();
     }
 
     fn change_block(&mut self, block: &ChangeBlock) {
@@ -268,9 +260,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             .block()
             .successor_clear(self.txn, &block.previous());
 
-        let _ = self
-            .stats
-            .inc(StatType::Rollback, DetailType::Change, Direction::In);
+        self.observer.rollback_legacy_change();
     }
 
     fn state_block(&mut self, block: &StateBlock) {
@@ -330,9 +320,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 };
             }
             self.ledger.store.pending().del(self.txn, &key);
-            let _ = self
-                .stats
-                .inc(StatType::Rollback, DetailType::Send, Direction::In);
+            self.observer.rollback_send();
         } else if !block.link().is_zero() && !self.ledger.is_epoch_link(&block.link()) {
             // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
             let source_account = self
@@ -349,9 +337,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 &PendingKey::new(block.account(), block.link().into()),
                 &pending_info,
             );
-            let _ = self
-                .stats
-                .inc(StatType::Rollback, DetailType::Receive, Direction::In);
+            self.observer.rollback_receive();
         }
         assert!(!error);
         let previous_version = self
@@ -397,9 +383,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 }
             }
             None => {
-                let _ = self
-                    .stats
-                    .inc(StatType::Rollback, DetailType::Open, Direction::In);
+                self.observer.rollback_open();
             }
         }
 

@@ -1,5 +1,5 @@
 mod ledger;
-pub use ledger::{Ledger, ProcessResult, ProcessReturn};
+pub use ledger::{Ledger, LedgerObserver, ProcessResult, ProcessReturn};
 
 mod rollback_visitor;
 pub(crate) use rollback_visitor::RollbackVisitor;

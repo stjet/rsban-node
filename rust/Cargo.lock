@@ -1385,8 +1385,11 @@ name = "rsnano_ledger"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "num-derive",
+ "num-traits",
  "once_cell",
  "rsnano_core",
+ "rsnano_store_traits",
 ]
 
 [[package]]

@@ -3,7 +3,7 @@ use rsnano_core::{
 };
 use rsnano_store_traits::{Store, Transaction};
 
-pub(crate) struct RepresentativeVisitor<'a> {
+pub struct RepresentativeVisitor<'a> {
     txn: &'a dyn Transaction,
     store: &'a dyn Store,
     current: BlockHash,
@@ -11,7 +11,7 @@ pub(crate) struct RepresentativeVisitor<'a> {
 }
 
 impl<'a> RepresentativeVisitor<'a> {
-    pub(crate) fn new(txn: &'a dyn Transaction, store: &'a dyn Store) -> Self {
+    pub fn new(txn: &'a dyn Transaction, store: &'a dyn Store) -> Self {
         Self {
             txn,
             store,
@@ -20,7 +20,7 @@ impl<'a> RepresentativeVisitor<'a> {
         }
     }
 
-    pub(crate) fn compute(&mut self, hash: BlockHash) {
+    pub fn compute(&mut self, hash: BlockHash) {
         self.current = hash;
         while self.result.is_zero() {
             let block = self.store.block().get(self.txn, &self.current).unwrap();

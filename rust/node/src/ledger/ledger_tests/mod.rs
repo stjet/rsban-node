@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 
 mod helpers;
 use crate::{
-    ledger::{ledger::UncementedInfo, GenerateCache, Ledger},
+    ledger::{ledger::UncementedInfo, Ledger},
     DEV_CONSTANTS, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 pub(crate) use helpers::*;
@@ -11,7 +11,7 @@ use rsnano_core::{
     Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
     GXRB_RATIO,
 };
-use rsnano_ledger::{LedgerCache, DEV_GENESIS_KEY};
+use rsnano_ledger::{GenerateCache, LedgerCache, DEV_GENESIS_KEY};
 
 mod empty_ledger;
 mod epoch_v1;

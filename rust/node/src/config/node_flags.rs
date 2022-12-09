@@ -1,4 +1,4 @@
-use crate::ledger::GenerateCache;
+use rsnano_ledger::GenerateCache;
 
 use super::ConfirmationHeightMode;
 

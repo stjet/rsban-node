@@ -69,4 +69,34 @@ impl LedgerObserver for LedgerStats {
             .stats
             .inc(StatType::Rollback, DetailType::Open, Direction::In);
     }
+    fn state_block_added(&self) {
+        let _ = self
+            .stats
+            .inc(StatType::Ledger, DetailType::StateBlock, Direction::In);
+    }
+    fn epoch_block_added(&self) {
+        let _ = self
+            .stats
+            .inc(StatType::Ledger, DetailType::EpochBlock, Direction::In);
+    }
+    fn send_block_added(&self) {
+        let _ = self
+            .stats
+            .inc(StatType::Ledger, DetailType::Send, Direction::In);
+    }
+    fn receive_block_added(&self) {
+        let _ = self
+            .stats
+            .inc(StatType::Ledger, DetailType::Receive, Direction::In);
+    }
+    fn open_block_added(&self) {
+        let _ = self
+            .stats
+            .inc(StatType::Ledger, DetailType::Open, Direction::In);
+    }
+    fn change_block_added(&self) {
+        let _ = self
+            .stats
+            .inc(StatType::Ledger, DetailType::Change, Direction::In);
+    }
 }

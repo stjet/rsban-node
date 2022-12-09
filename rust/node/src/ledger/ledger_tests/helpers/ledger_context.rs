@@ -5,10 +5,7 @@ use rsnano_ledger::{GenerateCache, DEV_CONSTANTS};
 use rsnano_store_lmdb::{EnvOptions, LmdbStore, TestDbFile};
 use rsnano_store_traits::{NullTransactionTracker, WriteTransaction};
 
-use crate::{
-    ledger::Ledger,
-    stats::{Stat, StatConfig},
-};
+use crate::ledger::Ledger;
 
 use super::AccountBlockFactory;
 
@@ -32,13 +29,8 @@ impl LedgerContext {
             .unwrap(),
         );
 
-        let ledger = Ledger::new(
-            store.clone(),
-            DEV_CONSTANTS.clone(),
-            Arc::new(Stat::new(StatConfig::default())),
-            &GenerateCache::new(),
-        )
-        .unwrap();
+        let ledger =
+            Ledger::new(store.clone(), DEV_CONSTANTS.clone(), &GenerateCache::new()).unwrap();
 
         LedgerContext { ledger, db_file }
     }

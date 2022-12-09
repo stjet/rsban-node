@@ -40,7 +40,6 @@ pub unsafe extern "C" fn rsn_ledger_create(
     let mut ledger = Ledger::new(
         (*store).deref().to_owned(),
         (&*constants).try_into().unwrap(),
-        stats.clone(),
         &*generate_cache,
     )
     .unwrap();

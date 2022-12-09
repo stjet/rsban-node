@@ -903,7 +903,6 @@ fn ledger_cache() {
             let new_ledger = Ledger::new(
                 ctx.ledger.store.clone(),
                 DEV_CONSTANTS.clone(),
-                ctx.ledger.stats.clone(),
                 &GenerateCache::new(),
             )
             .unwrap();

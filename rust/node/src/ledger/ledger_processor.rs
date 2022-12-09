@@ -6,13 +6,11 @@ use rsnano_core::{
 use rsnano_ledger::LedgerConstants;
 use rsnano_store_traits::WriteTransaction;
 
-use crate::stats::{DetailType, Direction, Stat, StatType};
-
-use super::{Ledger, ProcessResult, ProcessReturn};
+use super::{Ledger, LedgerObserver, ProcessResult, ProcessReturn};
 
 pub(crate) struct LedgerProcessor<'a> {
     ledger: &'a Ledger,
-    stats: &'a Stat,
+    observer: &'a dyn LedgerObserver,
     constants: &'a LedgerConstants,
     txn: &'a mut dyn WriteTransaction,
     verification: SignatureVerification,
@@ -22,14 +20,14 @@ pub(crate) struct LedgerProcessor<'a> {
 impl<'a> LedgerProcessor<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
-        stats: &'a Stat,
+        observer: &'a dyn LedgerObserver,
         constants: &'a LedgerConstants,
         txn: &'a mut dyn WriteTransaction,
         verification: SignatureVerification,
     ) -> Self {
         Self {
             ledger,
-            stats,
+            observer,
             constants,
             txn,
             verification,
@@ -257,11 +255,7 @@ impl<'a> LedgerProcessor<'a> {
                             ProcessResult::InsufficientWork
                         };
                         if self.result.code == ProcessResult::Progress {
-                            let _ = self.stats.inc(
-                                StatType::Ledger,
-                                DetailType::StateBlock,
-                                Direction::In,
-                            );
+                            self.observer.state_block_added();
                             block.set_sideband(BlockSideband::new(
                                 block.account(), /* unused */
                                 BlockHash::zero(),
@@ -481,11 +475,7 @@ impl<'a> LedgerProcessor<'a> {
                                     ProcessResult::InsufficientWork
                                 };
                                 if self.result.code == ProcessResult::Progress {
-                                    let _ = self.stats.inc(
-                                        StatType::Ledger,
-                                        DetailType::EpochBlock,
-                                        Direction::In,
-                                    );
+                                    self.observer.epoch_block_added();
                                     block.set_sideband(BlockSideband::new(
                                         block.account(), /* unused */
                                         BlockHash::zero(),
@@ -662,11 +652,7 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                                     .del(self.txn, &block.previous());
                                 self.ledger.store.frontier().put(self.txn, &hash, &account);
                                 self.result.previous_balance = info.balance;
-                                let _ = self.stats.inc(
-                                    StatType::Ledger,
-                                    DetailType::Send,
-                                    Direction::In,
-                                );
+                                self.observer.send_block_added();
                             }
                         }
                     }
@@ -847,11 +833,7 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                                                 .frontier()
                                                 .put(self.txn, &hash, &account);
                                             self.result.previous_balance = info.balance;
-                                            let _ = self.stats.inc(
-                                                StatType::Ledger,
-                                                DetailType::Receive,
-                                                Direction::In,
-                                            );
+                                            self.observer.receive_block_added();
                                         }
                                     }
                                 }
@@ -1023,11 +1005,7 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                                             &block.account(),
                                         );
                                         self.result.previous_balance = Amount::zero();
-                                        let _ = self.stats.inc(
-                                            StatType::Ledger,
-                                            DetailType::Open,
-                                            Direction::In,
-                                        );
+                                        self.observer.open_block_added();
                                     }
                                 }
                             }
@@ -1160,9 +1138,7 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                                 .del(self.txn, &block.previous());
                             self.ledger.store.frontier().put(self.txn, &hash, &account);
                             self.result.previous_balance = info.balance;
-                            let _ =
-                                self.stats
-                                    .inc(StatType::Ledger, DetailType::Change, Direction::In);
+                            self.observer.change_block_added();
                         }
                     }
                 }

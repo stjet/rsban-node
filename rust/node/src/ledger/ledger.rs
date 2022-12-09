@@ -10,7 +10,6 @@ use rsnano_ledger::{
 
 use crate::{
     ledger::{LedgerProcessor, RollbackVisitor},
-    stats::Stat,
     utils::create_property_tree,
 };
 use std::{
@@ -69,6 +68,12 @@ pub trait LedgerObserver: Send + Sync {
     fn rollback_send(&self) {}
     fn rollback_receive(&self) {}
     fn rollback_open(&self) {}
+    fn state_block_added(&self) {}
+    fn epoch_block_added(&self) {}
+    fn send_block_added(&self) {}
+    fn receive_block_added(&self) {}
+    fn open_block_added(&self) {}
+    fn change_block_added(&self) {}
 }
 
 pub struct NullLedgerObserver {}
@@ -85,7 +90,6 @@ pub struct Ledger {
     pub store: Arc<dyn Store>,
     pub cache: Arc<LedgerCache>,
     constants: LedgerConstants,
-    pub stats: Arc<Stat>,
     observer: Arc<dyn LedgerObserver>,
     pruning: AtomicBool,
     bootstrap_weight_max_blocks: AtomicU64,
@@ -97,14 +101,12 @@ impl Ledger {
     pub fn new(
         store: Arc<dyn Store>,
         constants: LedgerConstants,
-        stats: Arc<Stat>,
         generate_cache: &GenerateCache,
     ) -> anyhow::Result<Self> {
         let mut ledger = Self {
             store,
             cache: Arc::new(LedgerCache::new()),
             constants,
-            stats,
             observer: Arc::new(NullLedgerObserver::new()),
             pruning: AtomicBool::new(false),
             bootstrap_weight_max_blocks: AtomicU64::new(1),
@@ -816,8 +818,13 @@ impl Ledger {
                 || self.constants.genesis.read().unwrap().deref()
                     == DEV_GENESIS.read().unwrap().deref()
         );
-        let mut processor =
-            LedgerProcessor::new(self, &self.stats, &self.constants, txn, verification);
+        let mut processor = LedgerProcessor::new(
+            self,
+            self.observer.as_ref(),
+            &self.constants,
+            txn,
+            verification,
+        );
         block.visit_mut(&mut processor);
         if processor.result.code == ProcessResult::Progress {
             self.cache.block_count.fetch_add(1, Ordering::SeqCst);

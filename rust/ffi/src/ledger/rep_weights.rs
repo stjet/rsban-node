@@ -1,7 +1,7 @@
 use std::{slice, sync::Arc};
 
 use rsnano_core::{Account, Amount};
-use rsnano_store_traits::RepWeights;
+use rsnano_ledger::RepWeights;
 
 pub struct RepWeightsHandle(Arc<RepWeights>);
 

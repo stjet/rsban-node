@@ -12,6 +12,7 @@ The following diagram shows how the crates are organized. The crates will be spl
 
 * `ffi`: Contains all the glue code to connect the C++ and the Rust part
 * `node`: Contains the node implementation
+* `ledger`: Contains the ledger implementation. It is responsible for the consinstency of the data stores.
 * `store_traits`: Contains traits for the data stores. These traits have to be implemented if you want to add a new type of data store.
 * `core`: Contains the basic types like `BlockHash`, `Account`, `KeyPair`,...
 * `store_lmdb`: Contains the LMDB data store implementation

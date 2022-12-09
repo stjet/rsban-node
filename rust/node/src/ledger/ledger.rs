@@ -4,6 +4,7 @@ use rsnano_core::{
     BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
     SignatureVerification,
 };
+use rsnano_ledger::{LedgerCache, RepWeights};
 
 use crate::{
     ledger::{LedgerProcessor, RollbackVisitor},
@@ -21,9 +22,7 @@ use std::{
 };
 
 use super::{DependentBlockVisitor, GenerateCache, LedgerConstants, RepresentativeVisitor};
-use rsnano_store_traits::{
-    LedgerCache, ReadTransaction, RepWeights, Store, Transaction, WriteTransaction,
-};
+use rsnano_store_traits::{ReadTransaction, Store, Transaction, WriteTransaction};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UncementedInfo {

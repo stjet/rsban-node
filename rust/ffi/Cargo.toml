@@ -13,6 +13,7 @@ crate-type = ["staticlib", "lib"]
 rsnano_core = { path = "../core" }
 rsnano_store_traits = { path = "../store_traits" }
 rsnano_store_lmdb = { path = "../store_lmdb" }
+rsnano_ledger = { path = "../ledger" }
 rsnano_node = { path = "../node" }
 anyhow = "1"
 num = "0"

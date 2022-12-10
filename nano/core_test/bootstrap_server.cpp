@@ -170,6 +170,7 @@ TEST (bootstrap_server, serve_account_blocks)
 	nano::asc_pull_req::blocks_payload request_payload;
 	request_payload.start = first_account;
 	request_payload.count = nano::bootstrap_server::max_blocks;
+	request_payload.start_type = nano::asc_pull_req::hash_type::account;
 	request.request_blocks (request_payload);
 
 	node.network->inbound (request, nano::test::fake_channel (node));
@@ -213,6 +214,7 @@ TEST (bootstrap_server, serve_hash)
 	nano::asc_pull_req::blocks_payload request_payload;
 	request_payload.start = blocks.front ()->hash ();
 	request_payload.count = nano::bootstrap_server::max_blocks;
+	request_payload.start_type = nano::asc_pull_req::hash_type::block;
 	request.request_blocks (request_payload);
 
 	node.network->inbound (request, nano::test::fake_channel (node));
@@ -256,6 +258,7 @@ TEST (bootstrap_server, serve_hash_one)
 	nano::asc_pull_req::blocks_payload request_payload;
 	request_payload.start = blocks.front ()->hash ();
 	request_payload.count = 1;
+	request_payload.start_type = nano::asc_pull_req::hash_type::block;
 	request.request_blocks (request_payload);
 
 	node.network->inbound (request, nano::test::fake_channel (node));
@@ -293,6 +296,7 @@ TEST (bootstrap_server, serve_end_of_chain)
 	nano::asc_pull_req::blocks_payload request_payload;
 	request_payload.start = blocks.back ()->hash ();
 	request_payload.count = nano::bootstrap_server::max_blocks;
+	request_payload.start_type = nano::asc_pull_req::hash_type::block;
 	request.request_blocks (request_payload);
 
 	node.network->inbound (request, nano::test::fake_channel (node));
@@ -330,6 +334,7 @@ TEST (bootstrap_server, serve_missing)
 	nano::asc_pull_req::blocks_payload request_payload;
 	request_payload.start = nano::test::random_hash ();
 	request_payload.count = nano::bootstrap_server::max_blocks;
+	request_payload.start_type = nano::asc_pull_req::hash_type::block;
 	request.request_blocks (request_payload);
 
 	node.network->inbound (request, nano::test::fake_channel (node));
@@ -371,6 +376,7 @@ TEST (bootstrap_server, serve_multiple)
 			nano::asc_pull_req::blocks_payload request_payload;
 			request_payload.start = account;
 			request_payload.count = nano::bootstrap_server::max_blocks;
+			request_payload.start_type = nano::asc_pull_req::hash_type::account;
 			request.request_blocks (request_payload);
 
 			node.network->inbound (request, nano::test::fake_channel (node));
@@ -425,6 +431,7 @@ TEST (bootstrap_server, serve_account_info)
 
 	nano::asc_pull_req::account_info_payload request_payload;
 	request_payload.target = account;
+	request_payload.target_type = nano::asc_pull_req::hash_type::account;
 	request.request_account_info (request_payload);
 
 	node.network->inbound (request, nano::test::fake_channel (node));
@@ -469,6 +476,7 @@ TEST (bootstrap_server, serve_account_info_missing)
 
 	nano::asc_pull_req::account_info_payload request_payload;
 	request_payload.target = nano::test::random_account ();
+	request_payload.target_type = nano::asc_pull_req::hash_type::account;
 	request.request_account_info (request_payload);
 
 	node.network->inbound (request, nano::test::fake_channel (node));

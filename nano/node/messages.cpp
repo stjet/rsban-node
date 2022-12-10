@@ -1965,12 +1965,12 @@ std::size_t nano::asc_pull_req::size (const nano::message_header & header)
 
 void nano::asc_pull_req::request_blocks (blocks_payload & payload_a)
 {
-	rsnano::rsn_message_asc_pull_req_request_blocks (handle, payload_a.start.bytes.data (), payload_a.count);
+	rsnano::rsn_message_asc_pull_req_request_blocks (handle, payload_a.start.bytes.data (), payload_a.count, static_cast<uint8_t> (payload_a.start_type));
 }
 
 void nano::asc_pull_req::request_account_info (account_info_payload & payload_a)
 {
-	rsnano::rsn_message_asc_pull_req_request_account_info (handle, payload_a.target.bytes.data ());
+	rsnano::rsn_message_asc_pull_req_request_account_info (handle, payload_a.target.bytes.data (), static_cast<uint8_t> (payload_a.target_type));
 }
 
 void nano::asc_pull_req::request_invalid ()
@@ -1985,13 +1985,17 @@ std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_
 	if (payload_type == nano::asc_pull_type::blocks)
 	{
 		nano::asc_pull_req::blocks_payload blocks;
-		rsnano::rsn_message_asc_pull_req_payload_blocks (handle, blocks.start.bytes.data (), &blocks.count);
+		uint8_t start_type{ 0 };
+		rsnano::rsn_message_asc_pull_req_payload_blocks (handle, blocks.start.bytes.data (), &blocks.count, &start_type);
+		blocks.start_type = static_cast<nano::asc_pull_req::hash_type> (start_type);
 		return blocks;
 	}
 	else if (payload_type == nano::asc_pull_type::account_info)
 	{
 		nano::asc_pull_req::account_info_payload account_info;
-		rsnano::rsn_message_asc_pull_req_payload_account_info (handle, account_info.target.bytes.data ());
+		uint8_t target_type{ 0 };
+		rsnano::rsn_message_asc_pull_req_payload_account_info (handle, account_info.target.bytes.data (), &target_type);
+		account_info.target_type = static_cast<nano::asc_pull_req::hash_type> (target_type);
 		return account_info;
 	}
 	return empty_payload{};

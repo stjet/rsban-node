@@ -1,3 +1,4 @@
+use num::FromPrimitive;
 use rsnano_core::HashOrAccount;
 
 use super::{
@@ -83,11 +84,13 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_payload_blocks(
     handle: *mut MessageHandle,
     start: *mut u8,
     count: *mut u8,
+    start_type: *mut u8,
 ) {
     match downcast_message::<AscPullReq>(handle).payload() {
         AscPullReqPayload::Blocks(blocks) => {
             copy_hash_or_account_bytes(blocks.start, start);
             (*count) = blocks.count;
+            *start_type = blocks.start_type as u8;
         }
         _ => panic!("not a blocks payload"),
     }
@@ -97,10 +100,12 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_payload_blocks(
 pub unsafe extern "C" fn rsn_message_asc_pull_req_payload_account_info(
     handle: *mut MessageHandle,
     target: *mut u8,
+    target_type: *mut u8,
 ) {
     match downcast_message::<AscPullReq>(handle).payload() {
         AscPullReqPayload::AccountInfo(account_info) => {
             copy_hash_or_account_bytes(account_info.target, target);
+            *target_type = account_info.target_type as u8;
         }
         _ => panic!("not an account_info payload"),
     }
@@ -111,10 +116,12 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_request_blocks(
     handle: *mut MessageHandle,
     start: *const u8,
     count: u8,
+    start_type: u8,
 ) {
     let payload = BlocksReqPayload {
         start: HashOrAccount::from_ptr(start),
         count,
+        start_type: FromPrimitive::from_u8(start_type).unwrap(),
     };
     downcast_message_mut::<AscPullReq>(handle)
         .request_blocks(payload)
@@ -125,9 +132,11 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_request_blocks(
 pub unsafe extern "C" fn rsn_message_asc_pull_req_request_account_info(
     handle: *mut MessageHandle,
     target: *const u8,
+    target_type: u8,
 ) {
     let payload = AccountInfoReqPayload {
         target: HashOrAccount::from_ptr(target),
+        target_type: FromPrimitive::from_u8(target_type).unwrap(),
     };
     downcast_message_mut::<AscPullReq>(handle)
         .request_account_info(payload)

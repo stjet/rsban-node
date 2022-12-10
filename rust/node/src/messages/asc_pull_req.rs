@@ -28,22 +28,38 @@ pub enum AscPullReqPayload {
     AccountInfo(AccountInfoReqPayload),
 }
 
+#[derive(FromPrimitive, PartialEq, Eq, Clone, Copy, Debug, Default)]
+pub enum HashType {
+    #[default]
+    Account = 0,
+    Block = 1,
+}
+
+impl HashType {
+    fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
+        FromPrimitive::from_u8(stream.read_u8()?).ok_or_else(|| anyhow!("target_type missing"))
+    }
+}
+
 #[derive(Default, Clone, PartialEq, Eq, Debug)]
 pub struct BlocksReqPayload {
     pub start: HashOrAccount,
     pub count: u8,
+    pub start_type: HashType,
 }
 
 impl BlocksReqPayload {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         stream.write_bytes(self.start.as_bytes())?;
         stream.write_u8(self.count)?;
+        stream.write_u8(self.start_type as u8)?;
         Ok(())
     }
 
     fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.start = HashOrAccount::deserialize(stream)?;
         self.count = stream.read_u8()?;
+        self.start_type = HashType::deserialize(stream)?;
         Ok(())
     }
 }
@@ -51,15 +67,18 @@ impl BlocksReqPayload {
 #[derive(Default, Clone, PartialEq, Eq, Debug)]
 pub struct AccountInfoReqPayload {
     pub target: HashOrAccount,
+    pub target_type: HashType,
 }
 
 impl AccountInfoReqPayload {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_bytes(self.target.as_bytes())
+        stream.write_bytes(self.target.as_bytes())?;
+        stream.write_u8(self.target_type as u8)
     }
 
     fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.target = HashOrAccount::deserialize(stream)?;
+        self.target_type = HashType::deserialize(stream)?;
         Ok(())
     }
 }
@@ -226,6 +245,7 @@ mod tests {
         original.request_blocks(BlocksReqPayload {
             start: HashOrAccount::from(3),
             count: 111,
+            start_type: HashType::Block,
         })?;
 
         let mut stream = MemoryStream::new();
@@ -254,6 +274,7 @@ mod tests {
         original.request_blocks(BlocksReqPayload {
             start: HashOrAccount::from(3),
             count: 111,
+            start_type: HashType::Block,
         })?;
 
         let mut stream = MemoryStream::new();
@@ -273,6 +294,7 @@ mod tests {
         original.id = 7;
         original.request_account_info(AccountInfoReqPayload {
             target: HashOrAccount::from(123),
+            target_type: HashType::Block,
         })?;
 
         let mut stream = MemoryStream::new();

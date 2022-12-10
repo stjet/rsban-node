@@ -445,17 +445,25 @@ public:
 	static std::size_t size (nano::message_header const &);
 
 public: // Payload definitions
+	enum class hash_type : uint8_t
+	{
+		account = 0,
+		block = 1,
+	};
+
 	class blocks_payload
 	{
 	public:
 		nano::hash_or_account start{ 0 };
 		uint8_t count{ 0 };
+		asc_pull_req::hash_type start_type{ 0 };
 	};
 
 	class account_info_payload
 	{
 	public:
 		nano::hash_or_account target{ 0 };
+		asc_pull_req::hash_type target_type{ 0 };
 	};
 
 	void request_blocks (blocks_payload & payload_a);

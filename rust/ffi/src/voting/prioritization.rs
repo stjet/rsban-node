@@ -90,8 +90,11 @@ pub unsafe extern "C" fn rsn_prioritization_push(
     handle: *mut PrioritizationHandle,
     time: u64,
     block: *const BlockHandle,
+    priority: *const u8,
 ) {
-    (*handle).0.push(time, (*block).block.clone())
+    (*handle)
+        .0
+        .push(time, (*block).block.clone(), Amount::from_ptr(priority))
 }
 
 #[no_mangle]

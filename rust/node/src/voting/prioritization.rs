@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockEnum, BlockType};
+use rsnano_core::{Amount, BlockEnum};
 
 use std::{
     cmp::{max, Ordering},
@@ -161,21 +161,9 @@ impl Prioritization {
 
     /// Push a block and its associated time into the prioritization container.
     /// The time is given here because sideband might not exist in the case of state blocks.
-    pub fn push(&mut self, time: u64, block: Arc<RwLock<BlockEnum>>) {
+    pub fn push(&mut self, time: u64, block: Arc<RwLock<BlockEnum>>, priority: Amount) {
         let was_empty = self.empty();
-        let block_lock = block.read().unwrap();
-        let block_has_balance = block_lock.block_type() == BlockType::State
-            || block_lock.block_type() == BlockType::Send;
-        debug_assert!(block_has_balance || block_lock.as_block().sideband().is_some());
-
-        let balance = if block_has_balance {
-            block_lock.as_block().balance()
-        } else {
-            block_lock.as_block().sideband().unwrap().balance
-        };
-        drop(block_lock);
-
-        let index = self.index(&balance);
+        let index = self.index(&priority);
         let bucket_count = self.buckets.len();
         let bucket = &mut self.buckets[index];
         bucket.insert(ValueType::new(time, block));

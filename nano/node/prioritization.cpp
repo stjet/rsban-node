@@ -54,9 +54,9 @@ std::size_t nano::prioritization::index (nano::uint128_t const & balance) const
  * Push a block and its associated time into the prioritization container.
  * The time is given here because sideband might not exist in the case of state blocks.
  */
-void nano::prioritization::push (uint64_t time, std::shared_ptr<nano::block> block)
+void nano::prioritization::push (uint64_t time, std::shared_ptr<nano::block> block, nano::amount const & priority)
 {
-	rsnano::rsn_prioritization_push (handle, time, block->get_handle ());
+	rsnano::rsn_prioritization_push (handle, time, block->get_handle (), priority.bytes.data ());
 }
 
 /** Return the highest priority block of the current bucket */

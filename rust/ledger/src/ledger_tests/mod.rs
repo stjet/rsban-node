@@ -3,8 +3,8 @@ use std::sync::atomic::Ordering;
 
 mod helpers;
 use crate::{
-    ledger_constants::LEDGER_CONSTANTS_STUB, GenerateCache, Ledger, LedgerCache, UncementedInfo,
-    DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_KEY,
+    ledger_constants::LEDGER_CONSTANTS_STUB, Ledger, LedgerCache, UncementedInfo, DEV_GENESIS,
+    DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_KEY,
 };
 pub(crate) use helpers::*;
 use rsnano_core::{
@@ -899,12 +899,8 @@ fn ledger_cache() {
         let cache_check = |cache: &LedgerCache, expected: &ExpectedCache| {
             check_impl(cache, expected);
 
-            let new_ledger = Ledger::new(
-                ctx.ledger.store.clone(),
-                LEDGER_CONSTANTS_STUB.clone(),
-                &GenerateCache::new(),
-            )
-            .unwrap();
+            let new_ledger =
+                Ledger::new(ctx.ledger.store.clone(), LEDGER_CONSTANTS_STUB.clone()).unwrap();
             check_impl(&new_ledger.cache, expected);
         };
 

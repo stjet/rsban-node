@@ -13,10 +13,10 @@ use crate::{
 };
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
-use rsnano_core::utils::{seconds_since_epoch, Logger, PropertyTreeWriter};
+use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
 use rsnano_store_traits::{
-    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore, PrunedStore,
-    Store, TransactionTracker, VersionStore, WriteTransaction,
+    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, NullTransactionTracker,
+    PendingStore, PrunedStore, Store, TransactionTracker, VersionStore, WriteTransaction,
 };
 
 #[derive(PartialEq, Eq)]
@@ -66,6 +66,16 @@ impl LmdbStore {
             version_store: Arc::new(LmdbVersionStore::new(env.clone())?),
             env,
         })
+    }
+
+    pub fn open(path: &Path) -> anyhow::Result<Self> {
+        Self::new(
+            path,
+            &EnvOptions::default(),
+            Arc::new(NullTransactionTracker::new()),
+            Arc::new(NullLogger::new()),
+            false,
+        )
     }
 
     pub fn rebuild_db(&self, txn: &mut dyn WriteTransaction) -> anyhow::Result<()> {

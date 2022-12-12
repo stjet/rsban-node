@@ -84,7 +84,11 @@ pub struct Ledger {
 }
 
 impl Ledger {
-    pub fn new(
+    pub fn new(store: Arc<dyn Store>, constants: LedgerConstants) -> anyhow::Result<Self> {
+        Self::with_cache(store, constants, &GenerateCache::new())
+    }
+
+    pub fn with_cache(
         store: Arc<dyn Store>,
         constants: LedgerConstants,
         generate_cache: &GenerateCache,

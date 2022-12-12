@@ -274,4 +274,32 @@ impl LedgerConstants {
             epochs,
         })
     }
+
+    pub fn live() -> anyhow::Result<Self> {
+        Self::new(
+            WorkThresholds::publish_full().clone(),
+            Networks::NanoLiveNetwork,
+        )
+    }
+
+    pub fn beta() -> anyhow::Result<Self> {
+        Self::new(
+            WorkThresholds::publish_beta().clone(),
+            Networks::NanoBetaNetwork,
+        )
+    }
+
+    pub fn test() -> anyhow::Result<Self> {
+        Self::new(
+            WorkThresholds::publish_test().clone(),
+            Networks::NanoTestNetwork,
+        )
+    }
+
+    pub fn dev() -> anyhow::Result<Self> {
+        Self::new(
+            WorkThresholds::publish_dev().clone(),
+            Networks::NanoDevNetwork,
+        )
+    }
 }

@@ -35,7 +35,7 @@ pub unsafe extern "C" fn rsn_ledger_create(
     generate_cache: *mut GenerateCacheHandle,
 ) -> *mut LedgerHandle {
     let stats = (*stats).deref().to_owned();
-    let mut ledger = Ledger::new(
+    let mut ledger = Ledger::with_cache(
         (*store).deref().to_owned(),
         (&*constants).try_into().unwrap(),
         &*generate_cache,

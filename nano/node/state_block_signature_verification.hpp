@@ -21,7 +21,7 @@ class signature_checker;
 class state_block_signature_verification
 {
 public:
-	using value_type = std::tuple<std::shared_ptr<nano::block>, nano::account, nano::signature_verification>;
+	using value_type = std::tuple<std::shared_ptr<nano::block>>;
 
 	state_block_signature_verification (nano::signature_checker &, nano::epochs &, bool timing_logging, std::shared_ptr<nano::logger_mt> &, uint64_t);
 	~state_block_signature_verification ();

@@ -3,26 +3,12 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use super::BlockHash;
 use crate::{
     deserialize_block_enum, serialize_block_enum,
     utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
-    Account, BlockEnum,
+    BlockEnum,
 };
-use num_traits::FromPrimitive;
-
-use super::BlockHash;
-
-/**
- * Tag for block signature verification result
- */
-#[repr(u8)]
-#[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
-pub enum SignatureVerification {
-    Unknown = 0,
-    Invalid = 1,
-    Valid = 2,
-    ValidEpoch = 3, // Valid for epoch blocks
-}
 
 /// Information on an unchecked block
 #[derive(Clone)]
@@ -32,24 +18,16 @@ pub struct UncheckedInfo {
 
     /// Seconds since posix epoch
     pub modified: u64,
-    pub account: Account,
-    pub verified: SignatureVerification,
 }
 
 impl UncheckedInfo {
-    pub fn new(
-        block: Arc<RwLock<BlockEnum>>,
-        account: &Account,
-        verified: SignatureVerification,
-    ) -> Self {
+    pub fn new(block: Arc<RwLock<BlockEnum>>) -> Self {
         Self {
             block: Some(block),
             modified: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs(),
-            account: *account,
-            verified,
         }
     }
 
@@ -57,8 +35,6 @@ impl UncheckedInfo {
         Self {
             block: None,
             modified: 0,
-            account: Account::zero(),
-            verified: SignatureVerification::Unknown,
         }
     }
 
@@ -76,9 +52,7 @@ impl Serialize for UncheckedInfo {
 
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         serialize_block_enum(stream, &self.block.as_ref().unwrap().read().unwrap())?;
-        self.account.serialize(stream)?;
-        stream.write_u64_ne(self.modified)?;
-        stream.write_u8(self.verified as u8)
+        stream.write_u64_ne(self.modified)
     }
 }
 
@@ -87,15 +61,10 @@ impl Deserialize for UncheckedInfo {
 
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
         let block = deserialize_block_enum(stream)?;
-        let account = Account::deserialize(stream)?;
         let modified = stream.read_u64_ne()?;
-        let verified = SignatureVerification::from_u8(stream.read_u8()?)
-            .ok_or_else(|| anyhow!("unvalid verification state"))?;
         Ok(Self {
             block: Some(Arc::new(RwLock::new(block))),
             modified,
-            account,
-            verified,
         })
     }
 }

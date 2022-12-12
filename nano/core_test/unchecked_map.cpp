@@ -50,7 +50,7 @@ TEST (unchecked_map, construction)
 TEST (unchecked_map, put_one)
 {
 	context context;
-	nano::unchecked_info info{ block (), nano::dev::genesis_key.pub };
+	nano::unchecked_info info{ block () };
 	context.unchecked.put (info.get_block ()->previous (), info);
 }
 

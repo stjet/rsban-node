@@ -224,8 +224,7 @@ void nano::unchecked_map::insert_impl (nano::write_transaction const & transacti
 	if (entries == nullptr)
 	{
 		auto block{ info.get_block () };
-		auto account{ info.get_account () };
-		store.unchecked ().put (transaction, dependency, { block, account, info.get_verified () });
+		store.unchecked ().put (transaction, dependency, { block });
 	}
 	else
 	{

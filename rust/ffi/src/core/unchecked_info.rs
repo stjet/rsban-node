@@ -1,6 +1,5 @@
-use num::FromPrimitive;
 use rsnano_core::utils::{Deserialize, Serialize};
-use rsnano_core::{Account, UncheckedInfo};
+use rsnano_core::UncheckedInfo;
 use std::ffi::c_void;
 use std::ops::Deref;
 
@@ -31,14 +30,9 @@ pub extern "C" fn rsn_unchecked_info_create() -> *mut UncheckedInfoHandle {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_unchecked_info_create2(
     block: *const BlockHandle,
-    account: *const u8,
-    verified: u8,
 ) -> *mut UncheckedInfoHandle {
     let block = (*block).block.clone();
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(std::slice::from_raw_parts(account, 32));
-    let account = Account::from_bytes(bytes);
-    let info = UncheckedInfo::new(block, &account, FromPrimitive::from_u8(verified).unwrap());
+    let info = UncheckedInfo::new(block);
     Box::into_raw(Box::new(UncheckedInfoHandle::new(info)))
 }
 
@@ -66,27 +60,6 @@ pub unsafe extern "C" fn rsn_unchecked_info_block(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_unchecked_info_modified(handle: *const UncheckedInfoHandle) -> u64 {
     (*handle).0.modified
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_info_account(
-    handle: *const UncheckedInfoHandle,
-    result: *mut u8,
-) {
-    std::slice::from_raw_parts_mut(result, 32).copy_from_slice((*handle).0.account.as_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_info_verified(handle: *const UncheckedInfoHandle) -> u8 {
-    (*handle).0.verified as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_info_verified_set(
-    handle: *mut UncheckedInfoHandle,
-    verified: u8,
-) {
-    (*handle).0.verified = FromPrimitive::from_u8(verified).unwrap();
 }
 
 #[no_mangle]

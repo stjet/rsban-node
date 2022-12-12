@@ -2,7 +2,7 @@ use crate::LedgerConstants;
 use rsnano_core::{
     utils::seconds_since_epoch, validate_message, AccountInfo, Amount, Block, BlockDetails,
     BlockHash, BlockSideband, BlockSubType, ChangeBlock, Epoch, Epochs, MutableBlockVisitor,
-    OpenBlock, PendingInfo, PendingKey, ReceiveBlock, SendBlock, SignatureVerification, StateBlock,
+    OpenBlock, PendingInfo, PendingKey, ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_store_traits::WriteTransaction;
 
@@ -13,7 +13,6 @@ pub(crate) struct LedgerProcessor<'a> {
     observer: &'a dyn LedgerObserver,
     constants: &'a LedgerConstants,
     txn: &'a mut dyn WriteTransaction,
-    _verification: SignatureVerification,
     pub result: ProcessReturn,
 }
 
@@ -23,17 +22,14 @@ impl<'a> LedgerProcessor<'a> {
         observer: &'a dyn LedgerObserver,
         constants: &'a LedgerConstants,
         txn: &'a mut dyn WriteTransaction,
-        verification: SignatureVerification,
     ) -> Self {
         Self {
             ledger,
             observer,
             constants,
             txn,
-            _verification: verification,
             result: ProcessReturn {
                 code: ProcessResult::Progress,
-                verified: verification,
                 previous_balance: Amount::zero(),
             },
         }
@@ -56,14 +52,14 @@ impl<'a> LedgerProcessor<'a> {
 
             if self.result.code == ProcessResult::Progress {
                 prev_balance = self.ledger.balance(self.txn.txn(), &block.previous());
-            } else if self.result.verified == SignatureVerification::Unknown {
+            } else {
                 // Check for possible regular state blocks with epoch link (send subtype)
                 match validate_message(
                     &block.account().into(),
                     block.hash().as_bytes(),
                     &block.block_signature(),
                 ) {
-                    Ok(_) => self.result.verified = SignatureVerification::Valid,
+                    Ok(_) => {}
                     Err(_) => {
                         // Is epoch block signed correctly
                         match validate_message(
@@ -75,9 +71,8 @@ impl<'a> LedgerProcessor<'a> {
                             block.hash().as_bytes(),
                             block.block_signature(),
                         ) {
-                            Ok(_) => self.result.verified = SignatureVerification::ValidEpoch,
+                            Ok(_) => {}
                             Err(_) => {
-                                self.result.verified = SignatureVerification::Invalid;
                                 self.result.code = ProcessResult::BadSignature;
                             }
                         }
@@ -102,18 +97,15 @@ impl<'a> LedgerProcessor<'a> {
         };
 
         if self.result.code == ProcessResult::Progress {
-            // Validate block if not verified outside of ledger
-            if self.result.verified != SignatureVerification::Valid {
-                // Is this block signed correctly (Unambiguous)
-                self.result.code = match validate_message(
-                    &block.account().into(),
-                    hash.as_bytes(),
-                    block.block_signature(),
-                ) {
-                    Ok(_) => ProcessResult::Progress,
-                    Err(_) => ProcessResult::BadSignature,
-                };
-            }
+            // Is this block signed correctly (Unambiguous)
+            self.result.code = match validate_message(
+                &block.account().into(),
+                hash.as_bytes(),
+                block.block_signature(),
+            ) {
+                Ok(_) => ProcessResult::Progress,
+                Err(_) => ProcessResult::BadSignature,
+            };
             if self.result.code == ProcessResult::Progress {
                 debug_assert!(validate_message(
                     &block.account().into(),
@@ -121,7 +113,6 @@ impl<'a> LedgerProcessor<'a> {
                     block.block_signature()
                 )
                 .is_ok());
-                self.result.verified = SignatureVerification::Valid;
                 // Is this for the burn account? (Unambiguous)
                 self.result.code = if block.account().is_zero() {
                     ProcessResult::OpenedBurnAccount
@@ -344,22 +335,19 @@ impl<'a> LedgerProcessor<'a> {
             ProcessResult::Progress
         };
         if self.result.code == ProcessResult::Progress {
-            // Validate block if not verified outside of ledger
-            if self.result.verified != SignatureVerification::ValidEpoch {
-                // Is this block signed correctly (Unambiguous)
-                self.result.code = match validate_message(
-                    &self
-                        .ledger
-                        .epoch_signer(&block.link())
-                        .unwrap_or_default()
-                        .into(),
-                    hash.as_bytes(),
-                    block.block_signature(),
-                ) {
-                    Ok(_) => ProcessResult::Progress,
-                    Err(_) => ProcessResult::BadSignature,
-                };
-            }
+            // Is this block signed correctly (Unambiguous)
+            self.result.code = match validate_message(
+                &self
+                    .ledger
+                    .epoch_signer(&block.link())
+                    .unwrap_or_default()
+                    .into(),
+                hash.as_bytes(),
+                block.block_signature(),
+            ) {
+                Ok(_) => ProcessResult::Progress,
+                Err(_) => ProcessResult::BadSignature,
+            };
             if self.result.code == ProcessResult::Progress {
                 debug_assert!(validate_message(
                     &self
@@ -371,7 +359,6 @@ impl<'a> LedgerProcessor<'a> {
                     block.block_signature()
                 )
                 .is_ok());
-                self.result.verified = SignatureVerification::ValidEpoch;
                 // Is this for the burn account? (Unambiguous)
                 self.result.code = if block.account().is_zero() {
                     ProcessResult::OpenedBurnAccount
@@ -563,18 +550,15 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                 };
                 if self.result.code == ProcessResult::Progress {
                     let account = account.unwrap();
-                    // Validate block if not verified outside of ledger
-                    if self.result.verified != SignatureVerification::Valid {
-                        // Is this block signed correctly (Malformed)
-                        self.result.code = match validate_message(
-                            &account.into(),
-                            hash.as_bytes(),
-                            block.block_signature(),
-                        ) {
-                            Ok(_) => ProcessResult::Progress,
-                            Err(_) => ProcessResult::BadSignature,
-                        };
-                    }
+                    // Is this block signed correctly (Malformed)
+                    self.result.code = match validate_message(
+                        &account.into(),
+                        hash.as_bytes(),
+                        block.block_signature(),
+                    ) {
+                        Ok(_) => ProcessResult::Progress,
+                        Err(_) => ProcessResult::BadSignature,
+                    };
                     if self.result.code == ProcessResult::Progress {
                         let block_details = BlockDetails::new(
                             Epoch::Epoch0,
@@ -600,7 +584,6 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                                 block.block_signature()
                             )
                             .is_ok());
-                            self.result.verified = SignatureVerification::Valid;
                             let (info, latest_error) =
                                 match self.ledger.store.account().get(self.txn.txn(), &account) {
                                     Some(i) => (i, false),
@@ -700,18 +683,15 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                 };
                 if self.result.code == ProcessResult::Progress {
                     let account = account.unwrap();
-                    // Validate block if not verified outside of ledger
-                    if self.result.verified != SignatureVerification::Valid {
-                        // Is the signature valid (Malformed)
-                        self.result.code = match validate_message(
-                            &account.into(),
-                            hash.as_bytes(),
-                            block.block_signature(),
-                        ) {
-                            Ok(_) => ProcessResult::Progress,
-                            Err(_) => ProcessResult::BadSignature,
-                        };
-                    }
+                    // Is the signature valid (Malformed)
+                    self.result.code = match validate_message(
+                        &account.into(),
+                        hash.as_bytes(),
+                        block.block_signature(),
+                    ) {
+                        Ok(_) => ProcessResult::Progress,
+                        Err(_) => ProcessResult::BadSignature,
+                    };
                     if self.result.code == ProcessResult::Progress {
                         debug_assert!(validate_message(
                             &account.into(),
@@ -719,7 +699,6 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                             block.block_signature()
                         )
                         .is_ok());
-                        self.result.verified = SignatureVerification::Valid;
                         // Have we seen the source block already? (Harmless)
                         self.result.code = if self
                             .ledger
@@ -869,18 +848,15 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
             ProcessResult::Progress
         };
         if self.result.code == ProcessResult::Progress {
-            // Validate block if not verified outside of ledger
-            if self.result.verified != SignatureVerification::Valid {
-                // Is the signature valid (Malformed)
-                self.result.code = match validate_message(
-                    &block.account().into(),
-                    hash.as_bytes(),
-                    block.block_signature(),
-                ) {
-                    Ok(_) => ProcessResult::Progress,
-                    Err(_) => ProcessResult::BadSignature,
-                };
-            }
+            // Is the signature valid (Malformed)
+            self.result.code = match validate_message(
+                &block.account().into(),
+                hash.as_bytes(),
+                block.block_signature(),
+            ) {
+                Ok(_) => ProcessResult::Progress,
+                Err(_) => ProcessResult::BadSignature,
+            };
             if self.result.code == ProcessResult::Progress {
                 debug_assert!(validate_message(
                     &block.account().into(),
@@ -888,7 +864,6 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                     block.block_signature()
                 )
                 .is_ok());
-                self.result.verified = SignatureVerification::Valid;
                 // Have we seen the source block? (Harmless)
                 self.result.code = if self
                     .ledger
@@ -1066,18 +1041,15 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                         };
                     debug_assert!(!latest_error);
                     debug_assert!(info.head == block.previous());
-                    // Validate block if not verified outside of ledger
-                    if self.result.verified != SignatureVerification::Valid {
-                        // Is this block signed correctly (Malformed)
-                        self.result.code = match validate_message(
-                            &account.into(),
-                            hash.as_bytes(),
-                            block.block_signature(),
-                        ) {
-                            Ok(_) => ProcessResult::Progress,
-                            Err(_) => ProcessResult::BadSignature,
-                        };
-                    }
+                    // Is this block signed correctly (Malformed)
+                    self.result.code = match validate_message(
+                        &account.into(),
+                        hash.as_bytes(),
+                        block.block_signature(),
+                    ) {
+                        Ok(_) => ProcessResult::Progress,
+                        Err(_) => ProcessResult::BadSignature,
+                    };
                     if self.result.code == ProcessResult::Progress {
                         let block_details = BlockDetails::new(
                             Epoch::Epoch0,
@@ -1103,7 +1075,6 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
                                 block.block_signature()
                             )
                             .is_ok());
-                            self.result.verified = SignatureVerification::Valid;
                             block.set_sideband(BlockSideband::new(
                                 account,
                                 BlockHash::zero(),

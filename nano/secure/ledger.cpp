@@ -59,14 +59,13 @@ nano::uint128_t nano::ledger::account_receivable (nano::transaction const & tran
 	return result.number ();
 }
 
-nano::process_return nano::ledger::process (nano::write_transaction const & transaction_a, nano::block & block_a, nano::signature_verification verification)
+nano::process_return nano::ledger::process (nano::write_transaction const & transaction_a, nano::block & block_a)
 {
 	rsnano::ProcessReturnDto result_dto;
-	rsnano::rsn_ledger_process (handle, transaction_a.get_rust_handle (), block_a.get_handle (), static_cast<uint8_t> (verification), &result_dto);
+	rsnano::rsn_ledger_process (handle, transaction_a.get_rust_handle (), block_a.get_handle (), &result_dto);
 	nano::process_return result;
 	std::copy (std::begin (result_dto.previous_balance), std::end (result_dto.previous_balance), std::begin (result.previous_balance.bytes));
 	result.code = static_cast<nano::process_result> (result_dto.code);
-	result.verified = static_cast<nano::signature_verification> (result_dto.verified);
 	return result;
 }
 

@@ -62,7 +62,7 @@ pub use blocks::*;
 pub mod work;
 
 mod unchecked_info;
-pub use unchecked_info::{SignatureVerification, UncheckedInfo, UncheckedKey};
+pub use unchecked_info::{UncheckedInfo, UncheckedKey};
 
 mod kdf;
 pub use kdf::KeyDerivationFunction;

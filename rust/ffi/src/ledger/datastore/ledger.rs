@@ -660,7 +660,6 @@ pub unsafe extern "C" fn rsn_ledger_rollback(
 pub struct ProcessReturnDto {
     pub previous_balance: [u8; 16],
     pub code: u8,
-    pub verified: u8,
 }
 
 impl From<ProcessReturn> for ProcessReturnDto {
@@ -668,7 +667,6 @@ impl From<ProcessReturn> for ProcessReturnDto {
         Self {
             previous_balance: result.previous_balance.to_be_bytes(),
             code: result.code as u8,
-            verified: result.verified as u8,
         }
     }
 }
@@ -679,13 +677,11 @@ pub unsafe extern "C" fn rsn_ledger_process(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,
     block: *mut BlockHandle,
-    verification: u8,
     result: *mut ProcessReturnDto,
 ) {
-    let res = (*handle).0.process_with_verifcation(
+    let res = (*handle).0.process(
         (*txn).as_write_txn(),
         (*block).block.write().unwrap().as_block_mut(),
-        FromPrimitive::from_u8(verification).unwrap(),
     );
     let res = match res {
         Ok(res) => res,

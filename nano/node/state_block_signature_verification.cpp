@@ -12,18 +12,13 @@
 
 void item_to_dto (nano::state_block_signature_verification::value_type const & value, rsnano::StateBlockSignatureVerificationValueDto & result)
 {
-	auto const & [block, account, verification] = value;
+	auto const & [block] = value;
 	result.block = block->clone_handle ();
-	std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (result.account));
-	result.verification = static_cast<uint8_t> (verification);
 }
 
 void dto_to_value_type (rsnano::StateBlockSignatureVerificationValueDto const & dto, nano::state_block_signature_verification::value_type & result)
 {
-	nano::account account;
-	std::copy (std::begin (dto.account), std::end (dto.account), std::begin (account.bytes));
-	auto verification = static_cast<nano::signature_verification> (dto.verification);
-	result = nano::state_block_signature_verification::value_type (nano::block_handle_to_block (dto.block), account, verification);
+	result = nano::state_block_signature_verification::value_type (nano::block_handle_to_block (dto.block));
 }
 
 void blocks_verified_callback_adapter (void * context, const rsnano::StateBlockSignatureVerificationResultDto * result_dto)

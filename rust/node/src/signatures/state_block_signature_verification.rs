@@ -7,7 +7,7 @@ use std::{
 
 use rsnano_core::{
     utils::{Logger, NullLogger},
-    Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature, SignatureVerification,
+    Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature,
 };
 
 use super::{SignatureCheckSet, SignatureChecker};
@@ -88,8 +88,6 @@ impl Builder {
 
 pub struct StateBlockSignatureVerificationValue {
     pub block: Arc<RwLock<BlockEnum>>,
-    pub account: Account,
-    pub verification: SignatureVerification,
 }
 
 pub struct StateBlockSignatureVerificationResult {
@@ -261,8 +259,6 @@ impl StateBlockSignatureVerificationThread {
                     .signer(self.epochs.epoch(&block.link()).unwrap())
                     .unwrap()
                     .clone();
-            } else if !i.account.is_zero() {
-                account = i.account;
             }
             accounts.push(account);
             pub_keys.push(account.into());
@@ -329,20 +325,15 @@ mod tests {
             *inactive = true;
             cvar.notify_one();
         }));
-
         let keys = KeyPair::new();
-        let account = keys.public_key().into();
+
         let block = StateBlockBuilder::new()
-            .account(account)
+            .account(keys.public_key())
             .sign(&keys)
             .build();
         let block = Arc::new(RwLock::new(BlockEnum::State(block)));
 
-        verification.add(StateBlockSignatureVerificationValue {
-            block,
-            account,
-            verification: SignatureVerification::Unknown,
-        });
+        verification.add(StateBlockSignatureVerificationValue { block });
 
         let (lock, cvar) = &*verified_pair;
         let mut verified = lock.lock().unwrap();

@@ -1,8 +1,5 @@
 use std::{ffi::c_void, sync::Arc};
 
-use num::FromPrimitive;
-use rsnano_core::Account;
-
 use rsnano_node::signatures::{
     StateBlockSignatureVerification, StateBlockSignatureVerificationResult,
     StateBlockSignatureVerificationValue,
@@ -22,8 +19,6 @@ pub struct StateBlockSignatureVerificationHandle {
 #[repr(C)]
 pub struct StateBlockSignatureVerificationValueDto {
     pub block: *mut BlockHandle,
-    pub account: [u8; 32],
-    pub verification: u8,
 }
 
 #[repr(C)]
@@ -162,8 +157,6 @@ pub extern "C" fn rsn_state_block_signature_verification_add(
     let block = unsafe { &*block };
     let block = StateBlockSignatureVerificationValue {
         block: unsafe { &*block.block }.block.clone(),
-        account: Account::from_bytes(block.account),
-        verification: FromPrimitive::from_u8(block.verification).unwrap(),
     };
     verification.add(block);
 }
@@ -182,8 +175,6 @@ impl From<&StateBlockSignatureVerificationValue> for StateBlockSignatureVerifica
             block: Box::into_raw(Box::new(BlockHandle {
                 block: value.block.clone(),
             })),
-            account: *value.account.as_bytes(),
-            verification: value.verification as u8,
         }
     }
 }

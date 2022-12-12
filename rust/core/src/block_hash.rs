@@ -1,5 +1,6 @@
 use blake2::digest::Update;
 use blake2::digest::VariableOutput;
+use blake2::Blake2bVar;
 use rand::thread_rng;
 use rand::Rng;
 
@@ -28,13 +29,13 @@ impl From<Account> for BlockHash {
 }
 
 pub struct BlockHashBuilder {
-    blake: blake2::VarBlake2b,
+    blake: Blake2bVar,
 }
 
 impl Default for BlockHashBuilder {
     fn default() -> Self {
         Self {
-            blake: blake2::VarBlake2b::new_keyed(&[], 32),
+            blake: Blake2bVar::new(32).unwrap(),
         }
     }
 }
@@ -45,15 +46,13 @@ impl BlockHashBuilder {
     }
 
     pub fn update(mut self, data: impl AsRef<[u8]>) -> Self {
-        self.blake.update(data);
+        self.blake.update(data.as_ref());
         self
     }
 
     pub fn build(self) -> BlockHash {
         let mut hash_bytes = [0u8; 32];
-        self.blake.finalize_variable(|result| {
-            hash_bytes.copy_from_slice(result);
-        });
+        self.blake.finalize_variable(&mut hash_bytes).unwrap();
         BlockHash::from_bytes(hash_bytes)
     }
 }

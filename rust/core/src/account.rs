@@ -1,6 +1,9 @@
 use super::PublicKey;
 use anyhow::Result;
-use blake2::digest::{Update, VariableOutput};
+use blake2::{
+    digest::{Update, VariableOutput},
+    Blake2bVar,
+};
 use primitive_types::U512;
 
 pub type Account = PublicKey;
@@ -25,11 +28,9 @@ impl Account {
 
     fn account_checksum(&self) -> [u8; 5] {
         let mut check = [0u8; 5];
-        let mut blake = blake2::VarBlake2b::new_keyed(&[], check.len());
+        let mut blake = Blake2bVar::new(check.len()).unwrap();
         blake.update(&self.0);
-        blake.finalize_variable(|bytes| {
-            check.copy_from_slice(bytes);
-        });
+        blake.finalize_variable(&mut check).unwrap();
 
         check
     }

@@ -1,5 +1,8 @@
 use anyhow::Result;
-use blake2::digest::{Update, VariableOutput};
+use blake2::{
+    digest::{Update, VariableOutput},
+    Blake2bVar,
+};
 
 pub trait Blake2b {
     fn init(&mut self, outlen: usize) -> Result<()>;
@@ -9,7 +12,7 @@ pub trait Blake2b {
 
 #[derive(Default)]
 pub struct RustBlake2b {
-    instance: Option<blake2::VarBlake2b>,
+    instance: Option<Blake2bVar>,
 }
 
 impl RustBlake2b {
@@ -20,7 +23,7 @@ impl RustBlake2b {
 
 impl Blake2b for RustBlake2b {
     fn init(&mut self, outlen: usize) -> Result<()> {
-        self.instance = Some(blake2::VarBlake2b::new_keyed(&[], outlen));
+        self.instance = Some(Blake2bVar::new(outlen)?);
         Ok(())
     }
 
@@ -42,9 +45,7 @@ impl Blake2b for RustBlake2b {
             return Err(anyhow!("output size does not match"));
         }
 
-        i.finalize_variable(|bytes| {
-            out.copy_from_slice(bytes);
-        });
+        i.finalize_variable(out)?;
         Ok(())
     }
 }

@@ -16,7 +16,7 @@ rsnano_store_lmdb = { path = "../store_lmdb" }
 rsnano_ledger = { path = "../ledger" }
 anyhow = "1.0.40"
 bitvec = "1.0.0"
-blake2 = "0.9.1"
+blake2 = "0.10.5"
 bounded-vec-deque = "0.1.1"
 chrono = "0.4.19"
 dirs = "4.0.0"
@@ -29,7 +29,7 @@ rand = {version="0.8.4" }
 serde_json = "1.0.64"
 siphasher = "0.3.10"
 static_assertions = "1.1.0"
-toml_edit = "0.10.0"
-uuid = { version = "0.8.2", features = ["v4"] }
+toml_edit = "0.15.0"
+uuid = { version = "1.2.2", features = ["v4"] }
 scoped_threadpool = "0.1.*"
 backtrace = "0.3"

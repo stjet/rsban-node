@@ -11,7 +11,7 @@ use std::net::Ipv6Addr;
 
 use blake2::{
     digest::{Update, VariableOutput},
-    VarBlake2b,
+    Blake2bVar,
 };
 pub use uniquer::Uniquer;
 
@@ -93,13 +93,13 @@ impl ErrorCode {
 
 pub fn ip_address_hash_raw(address: &Ipv6Addr, port: u16) -> u64 {
     let address_bytes = address.octets();
-    let mut hasher = VarBlake2b::new(8).unwrap();
+    let mut hasher = Blake2bVar::new(8).unwrap();
     hasher.update(&HardenedConstants::get().random_128.to_be_bytes());
     if port != 0 {
-        hasher.update(port.to_ne_bytes());
+        hasher.update(&port.to_ne_bytes());
     }
-    hasher.update(address_bytes);
-    let mut result = 0;
-    hasher.finalize_variable(|res| result = u64::from_ne_bytes(res.try_into().unwrap()));
-    result
+    hasher.update(&address_bytes);
+    let mut result_bytes = [0; 8];
+    hasher.finalize_variable(&mut result_bytes).unwrap();
+    u64::from_ne_bytes(result_bytes)
 }

@@ -9,7 +9,7 @@ edition = "2021"
 anyhow = "1"
 primitive-types = "0"
 hex = "0"
-blake2 = "0"
+blake2 = "0.10"
 rand = {version="0" }
 ctr = "0"
 aes = "0"

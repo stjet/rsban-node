@@ -1,6 +1,6 @@
 use blake2::{
     digest::{Update, VariableOutput},
-    VarBlake2b,
+    Blake2bVar,
 };
 use std::collections::HashMap;
 use std::mem::size_of;
@@ -54,14 +54,12 @@ impl DifficultyV1 {
 
 impl Difficulty for DifficultyV1 {
     fn get_difficulty(&self, root: &Root, work: u64) -> u64 {
-        let mut hasher = VarBlake2b::new_keyed(&[], size_of::<u64>());
-        let mut result = 0;
+        let mut buffer = [0; size_of::<u64>()];
+        let mut hasher = Blake2bVar::new(buffer.len()).unwrap();
         hasher.update(&work.to_le_bytes());
         hasher.update(root.as_bytes());
-        hasher.finalize_variable_reset(|bytes| {
-            result = u64::from_le_bytes(bytes.try_into().expect("invalid hash length"))
-        });
-        result
+        hasher.finalize_variable(&mut buffer).unwrap();
+        u64::from_le_bytes(buffer)
     }
 
     fn clone(&self) -> Box<dyn Difficulty> {

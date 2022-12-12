@@ -14,8 +14,10 @@ mod amount;
 pub use amount::{Amount, GXRB_RATIO, KXRB_RATIO, MXRB_RATIO, XRB_RATIO};
 
 mod block_hash;
-use blake2::digest::{Update, VariableOutput};
-use blake2::VarBlake2b;
+use blake2::{
+    digest::{Update, VariableOutput},
+    Blake2bVar,
+};
 pub use block_hash::{BlockHash, BlockHashBuilder};
 
 mod key_pair;
@@ -248,12 +250,12 @@ impl utils::Deserialize for NoValue {
 }
 
 pub fn deterministic_key(seed: &RawKey, index: u32) -> RawKey {
-    let mut hasher = VarBlake2b::new(32).unwrap();
+    let mut buffer = [0; 32];
+    let mut hasher = Blake2bVar::new(buffer.len()).unwrap();
     hasher.update(seed.as_bytes());
     hasher.update(&index.to_be_bytes());
-    let mut result = RawKey::zero();
-    hasher.finalize_variable(|res| result = RawKey::from_bytes(res.try_into().unwrap()));
-    result
+    hasher.finalize_variable(&mut buffer).unwrap();
+    RawKey::from_bytes(buffer)
 }
 
 /**

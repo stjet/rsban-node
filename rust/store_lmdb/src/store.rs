@@ -42,12 +42,13 @@ pub struct LmdbStore {
 
 impl LmdbStore {
     pub fn new(
-        path: &Path,
+        path: impl AsRef<Path>,
         options: &EnvOptions,
         txn_tracker: Arc<dyn TransactionTracker>,
         logger: Arc<dyn Logger>,
         backup_before_upgrade: bool,
     ) -> anyhow::Result<Self> {
+        let path = path.as_ref();
         upgrade_if_needed(path, &logger, backup_before_upgrade)?;
 
         let env = Arc::new(LmdbEnv::with_txn_tracker(path, options, txn_tracker)?);
@@ -68,7 +69,7 @@ impl LmdbStore {
         })
     }
 
-    pub fn open(path: &Path) -> anyhow::Result<Self> {
+    pub fn open(path: impl AsRef<Path>) -> anyhow::Result<Self> {
         Self::new(
             path,
             &EnvOptions::default(),

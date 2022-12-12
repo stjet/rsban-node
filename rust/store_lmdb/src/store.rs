@@ -285,6 +285,22 @@ impl Store for LmdbStore {
     fn frontier(&self) -> &dyn FrontierStore {
         self.frontier_store.as_ref()
     }
+
+    fn online_weight(&self) -> &dyn rsnano_store_traits::OnlineWeightStore {
+        self.online_weight_store.as_ref()
+    }
+
+    fn peers(&self) -> &dyn rsnano_store_traits::PeerStore {
+        self.peer_store.as_ref()
+    }
+
+    fn final_votes(&self) -> &dyn rsnano_store_traits::FinalVoteStore {
+        self.final_vote_store.as_ref()
+    }
+
+    fn unchecked(&self) -> &dyn rsnano_store_traits::UncheckedStore {
+        self.unchecked_store.as_ref()
+    }
 }
 
 fn ensure_success(status: i32) -> Result<(), anyhow::Error> {

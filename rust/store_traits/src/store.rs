@@ -1,8 +1,9 @@
 use std::path::Path;
 
 use crate::{
-    AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, PendingStore, PrunedStore,
-    ReadTransaction, WriteTransaction,
+    AccountStore, BlockStore, ConfirmationHeightStore, FinalVoteStore, FrontierStore,
+    OnlineWeightStore, PeerStore, PendingStore, PrunedStore, ReadTransaction, UncheckedStore,
+    WriteTransaction,
 };
 
 pub trait Store: Send + Sync {
@@ -15,4 +16,8 @@ pub trait Store: Send + Sync {
     fn block(&self) -> &dyn BlockStore;
     fn pending(&self) -> &dyn PendingStore;
     fn frontier(&self) -> &dyn FrontierStore;
+    fn online_weight(&self) -> &dyn OnlineWeightStore;
+    fn peers(&self) -> &dyn PeerStore;
+    fn final_votes(&self) -> &dyn FinalVoteStore;
+    fn unchecked(&self) -> &dyn UncheckedStore;
 }

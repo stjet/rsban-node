@@ -872,7 +872,7 @@ struct StateBlockProcessor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut StateBlock,
-    previous_balance: Amount,
+    old_account_info: Option<AccountInfo>,
 }
 
 impl<'a> StateBlockProcessor<'a> {
@@ -885,7 +885,7 @@ impl<'a> StateBlockProcessor<'a> {
             ledger,
             txn,
             block,
-            previous_balance: Amount::zero(),
+            old_account_info: None,
         }
     }
 
@@ -915,65 +915,94 @@ impl<'a> StateBlockProcessor<'a> {
         }
     }
 
+    /// Does the previous block exist in the ledger? (Unambigious)
+    fn ensure_previous_block_exists(&self) -> Result<(), ProcessResult> {
+        if self.old_account_info.is_some() {
+            if self
+                .ledger
+                .store
+                .block()
+                .exists(self.txn.txn(), &self.block.previous())
+            {
+                Ok(())
+            } else {
+                Err(ProcessResult::GapPrevious)
+            }
+        } else {
+            // Does the first block in an account yield 0 for previous() ? (Unambigious)
+            if self.block.previous().is_zero() {
+                Ok(())
+            } else {
+                Err(ProcessResult::GapPrevious)
+            }
+        }
+    }
+
+    fn ensure_no_double_account_open(&self) -> Result<(), ProcessResult> {
+        if self.old_account_info.is_none() || !self.block.previous().is_zero() {
+            Ok(())
+        } else {
+            Err(ProcessResult::Fork)
+        }
+    }
+
+    fn ensure_new_account_has_link(&self) -> Result<(), ProcessResult> {
+        if self.old_account_info.is_some() || !self.block.link().is_zero() {
+            Ok(())
+        } else {
+            Err(ProcessResult::GapSource)
+        }
+    }
+
+    fn ensure_previous_block_is_account_head(&self) -> Result<(), ProcessResult> {
+        if let Some(info) = &self.old_account_info {
+            // Is the previous block the account's head block? (Ambigious)
+            if self.block.previous() != info.head {
+                return Err(ProcessResult::Fork);
+            }
+        }
+
+        Ok(())
+    }
+
     fn process(&mut self) -> Result<ProcessResult, ProcessResult> {
+        self.old_account_info = self
+            .ledger
+            .get_account_info(self.txn.txn(), &self.block.account());
+
         self.ensure_new_block()?;
         self.ensure_valid_block_signature()?;
         self.ensure_not_for_burn_account()?;
+        self.ensure_no_double_account_open()?;
+        self.ensure_previous_block_exists()?;
+        self.ensure_previous_block_is_account_head()?;
+        self.ensure_new_account_has_link()?;
 
         let hash = self.block.hash();
-        let mut epoch = Epoch::Epoch0;
-        let mut source_epoch = Epoch::Epoch0;
-        let mut amount = self.block.balance();
-        let mut is_send = false;
+        let mut epoch: Epoch;
+        let mut source_epoch: Epoch;
+        let amount: Amount;
+        let is_send: bool;
         let is_receive: bool;
-        let mut account_info = AccountInfo::default();
-        match self
-            .ledger
-            .store
-            .account()
-            .get(self.txn.txn(), &self.block.account())
-        {
+
+        match &self.old_account_info {
             Some(info) => {
-                // Has this account already been opened? (Ambigious)
-                if self.block.previous().is_zero() {
-                    return Err(ProcessResult::Fork);
-                }
-                account_info = info.clone();
                 epoch = info.epoch;
-                self.previous_balance = info.balance;
-                // Does the previous block exist in the ledger? (Unambigious)
-                if !self
-                    .ledger
-                    .store
-                    .block()
-                    .exists(self.txn.txn(), &self.block.previous())
-                {
-                    return Err(ProcessResult::GapPrevious);
-                }
+                source_epoch = Epoch::Epoch0;
                 is_send = self.block.balance() < info.balance;
-                is_receive = !is_send && !self.block.link().is_zero();
                 amount = if is_send {
-                    info.balance - amount
+                    info.balance - self.block.balance()
                 } else {
-                    amount - info.balance
+                    self.block.balance() - info.balance
                 };
-                // Is the previous block the account's head block? (Ambigious)
-                if self.block.previous() != info.head {
-                    return Err(ProcessResult::Fork);
-                }
+                is_receive = !is_send && !self.block.link().is_zero();
             }
             None => {
-                // Account does not yet exists
-                // Does the first block in an account yield 0 for previous() ? (Unambigious)
-                if !self.block.previous().is_zero() {
-                    return Err(ProcessResult::GapPrevious);
-                }
-
+                epoch = Epoch::Epoch0;
+                source_epoch = Epoch::Epoch0;
+                amount = self.block.balance();
+                is_send = false;
                 is_receive = true;
-                // Is the first block receiving from a send ? (Unambigious)
-                if self.block.link().is_zero() {
-                    return Err(ProcessResult::GapSource);
-                }
             }
         }
 
@@ -1026,18 +1055,22 @@ impl<'a> StateBlockProcessor<'a> {
             self.block.account(), /* unused */
             BlockHash::zero(),
             Amount::zero(), /* unused */
-            account_info.block_count + 1,
+            self.old_account_info
+                .as_ref()
+                .map(|i| i.block_count)
+                .unwrap_or_default()
+                + 1,
             seconds_since_epoch(),
             block_details,
             source_epoch,
         ));
         self.ledger.store.block().put(self.txn, &hash, self.block);
 
-        if !account_info.head.is_zero() {
+        if let Some(acc_info) = &self.old_account_info {
             // Move existing representation & add in amount delta
             self.ledger.cache.rep_weights.representation_add_dual(
-                account_info.representative,
-                Amount::zero().wrapping_sub(account_info.balance),
+                acc_info.representative,
+                Amount::zero().wrapping_sub(acc_info.balance),
                 self.block.representative(),
                 self.block.balance(),
             );
@@ -1063,31 +1096,39 @@ impl<'a> StateBlockProcessor<'a> {
         let new_info = AccountInfo {
             head: hash,
             representative: self.block.representative(),
-            open_block: if account_info.open_block.is_zero() {
-                hash
+            open_block: if let Some(acc_info) = &self.old_account_info {
+                acc_info.open_block
             } else {
-                account_info.open_block
+                hash
             },
             balance: self.block.balance(),
             modified: seconds_since_epoch(),
-            block_count: account_info.block_count + 1,
+            block_count: self
+                .old_account_info
+                .as_ref()
+                .map(|a| a.block_count)
+                .unwrap_or_default()
+                + 1,
             epoch,
         };
 
-        self.ledger
-            .update_account(self.txn, &self.block.account(), &account_info, &new_info);
+        self.ledger.update_account(
+            self.txn,
+            &self.block.account(),
+            &self.old_account_info.clone().unwrap_or_default(),
+            &new_info,
+        );
 
-        if self
-            .ledger
-            .store
-            .frontier()
-            .get(self.txn.txn(), &account_info.head)
-            .is_some()
-        {
-            self.ledger
+        if let Some(acc_info) = &self.old_account_info {
+            if self
+                .ledger
                 .store
                 .frontier()
-                .del(self.txn, &account_info.head);
+                .get(self.txn.txn(), &acc_info.head)
+                .is_some()
+            {
+                self.ledger.store.frontier().del(self.txn, &acc_info.head);
+            }
         }
 
         Ok(ProcessResult::Progress)

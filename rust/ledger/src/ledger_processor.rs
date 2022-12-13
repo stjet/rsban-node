@@ -1,8 +1,8 @@
-use crate::{state_block_processor::StateBlockProcessor, LedgerConstants, StateBlockProcessorImpl};
+use crate::{LedgerConstants, StateBlockProcessor};
 use rsnano_core::{
-    utils::seconds_since_epoch, validate_block_signature, validate_message, AccountInfo, Amount,
-    Block, BlockDetails, BlockHash, BlockSideband, BlockSubType, ChangeBlock, Epoch, Epochs,
-    MutableBlockVisitor, OpenBlock, PendingInfo, PendingKey, ReceiveBlock, SendBlock, StateBlock,
+    utils::seconds_since_epoch, validate_message, AccountInfo, Amount, Block, BlockDetails,
+    BlockHash, BlockSideband, BlockSubType, ChangeBlock, Epoch, MutableBlockVisitor, OpenBlock,
+    PendingInfo, PendingKey, ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_store_traits::WriteTransaction;
 

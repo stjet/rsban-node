@@ -11,6 +11,8 @@ pub(crate) struct StateBlockProcessor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut StateBlock,
+    old_account_info: Option<AccountInfo>,
+    pending_receive: Option<PendingInfo>,
 }
 
 impl<'a> StateBlockProcessor<'a> {
@@ -19,10 +21,30 @@ impl<'a> StateBlockProcessor<'a> {
         txn: &'a mut dyn WriteTransaction,
         block: &'a mut StateBlock,
     ) -> Self {
-        Self { ledger, txn, block }
+        Self {
+            ledger,
+            txn,
+            block,
+            old_account_info: None,
+            pending_receive: None,
+        }
+    }
+
+    fn initialize(&mut self) {
+        self.old_account_info = self.get_old_account_info();
+
+        if self.is_receive() {
+            self.pending_receive = self
+                .ledger
+                .store
+                .pending()
+                .get(self.txn.txn(), &PendingKey::for_receive_block(self.block));
+        }
     }
 
     pub(crate) fn process(&mut self) -> Result<(), ProcessResult> {
+        self.initialize();
+
         let is_epoch = if self.ledger.is_epoch_link(&self.block.link()) {
             if !self.block.previous().is_zero() {
                 if self
@@ -52,233 +74,114 @@ impl<'a> StateBlockProcessor<'a> {
         };
 
         if is_epoch {
-            self.epoch_block_impl()
+            self.process_epoch_block()
         } else {
-            StateBlockProcessorImpl::new(self.ledger, self.txn, self.block).process()
+            self.process_state_block()
         }
     }
 
-    fn epoch_block_impl(&mut self) -> Result<(), ProcessResult> {
-        let hash = self.block.hash();
-        let existing = self
+    fn ensure_valid_epoch_block_signature(&self) -> anyhow::Result<(), ProcessResult> {
+        validate_message(
+            &self
+                .ledger
+                .epoch_signer(&self.block.link())
+                .unwrap_or_default()
+                .into(),
+            self.block.hash().as_bytes(),
+            self.block.block_signature(),
+        )
+        .map_err(|_| ProcessResult::BadSignature)
+    }
+
+    fn process_epoch_block(&mut self) -> Result<(), ProcessResult> {
+        self.ensure_block_does_not_exist_yet()?;
+        self.ensure_valid_epoch_block_signature()?;
+        self.ensure_block_is_not_for_burn_account()?;
+        self.ensure_no_double_account_open()?;
+        self.ensure_previous_block_is_account_head()?;
+        self.ensure_representative_did_not_change()?;
+        self.ensure_epoch_open_has_burn_account_as_rep()?;
+        self.ensure_epoch_open_pending_entry()?;
+
+        let account_error = self.is_new_account();
+        let info = self.old_account_info.clone().unwrap_or_default();
+
+        let epoch = self
             .ledger
-            .block_or_pruned_exists_txn(self.txn.txn(), &hash);
-
-        let mut result = ProcessResult::Progress;
-
-        // Have we seen this block before? (Unambiguous)
-        result = if existing {
-            ProcessResult::Old
+            .constants
+            .epochs
+            .epoch(&self.block.link())
+            .unwrap_or(Epoch::Invalid);
+        // Must be an epoch for an unopened account or the epoch upgrade must be sequential
+        let is_valid_epoch_upgrade = if account_error {
+            epoch != Epoch::Invalid
         } else {
-            ProcessResult::Progress
+            Epochs::is_sequential(info.epoch, epoch)
         };
-        if result == ProcessResult::Progress {
-            // Is this block signed correctly (Unambiguous)
-            result = match validate_message(
-                &self
-                    .ledger
-                    .epoch_signer(&self.block.link())
-                    .unwrap_or_default()
-                    .into(),
-                hash.as_bytes(),
-                self.block.block_signature(),
-            ) {
-                Ok(_) => ProcessResult::Progress,
-                Err(_) => ProcessResult::BadSignature,
-            };
-            if result == ProcessResult::Progress {
-                debug_assert!(validate_message(
-                    &self
-                        .ledger
-                        .epoch_signer(&self.block.link())
-                        .unwrap_or_default()
-                        .into(),
-                    hash.as_bytes(),
-                    self.block.block_signature()
-                )
-                .is_ok());
-                // Is this for the burn account? (Unambiguous)
-                result = if self.block.account().is_zero() {
-                    ProcessResult::OpenedBurnAccount
-                } else {
-                    ProcessResult::Progress
-                };
-                if result == ProcessResult::Progress {
-                    let mut info = AccountInfo::default();
-                    let mut account_error = false;
-                    match self
-                        .ledger
-                        .store
-                        .account()
-                        .get(self.txn.txn(), &self.block.account())
-                    {
-                        Some(i) => {
-                            // Account already exists
-                            info = i;
-                            // Has this account already been opened? (Ambigious)
-                            result = if self.block.previous().is_zero() {
-                                ProcessResult::Fork
-                            } else {
-                                ProcessResult::Progress
-                            };
-                            if result == ProcessResult::Progress {
-                                // Is the previous block the account's head block? (Ambigious)
-                                result = if self.block.previous() == info.head {
-                                    ProcessResult::Progress
-                                } else {
-                                    ProcessResult::Fork
-                                };
-                                if result == ProcessResult::Progress {
-                                    result = if self.block.representative() == info.representative {
-                                        ProcessResult::Progress
-                                    } else {
-                                        ProcessResult::RepresentativeMismatch
-                                    };
-                                }
-                            }
-                        }
-                        None => {
-                            account_error = true;
-                            result = if self.block.representative().is_zero() {
-                                ProcessResult::Progress
-                            } else {
-                                ProcessResult::RepresentativeMismatch
-                            };
-                            // Non-exisitng account should have pending entries
-                            if result == ProcessResult::Progress {
-                                let pending_exists = self
-                                    .ledger
-                                    .store
-                                    .pending()
-                                    .any(self.txn.txn(), &self.block.account());
-                                result = if pending_exists {
-                                    ProcessResult::Progress
-                                } else {
-                                    ProcessResult::GapEpochOpenPending
-                                };
-                            }
-                        }
-                    }
+        if !is_valid_epoch_upgrade {
+            return Err(ProcessResult::BlockPosition);
+        };
 
-                    if result == ProcessResult::Progress {
-                        let epoch = self
-                            .ledger
-                            .constants
-                            .epochs
-                            .epoch(&self.block.link())
-                            .unwrap_or(Epoch::Invalid);
-                        // Must be an epoch for an unopened account or the epoch upgrade must be sequential
-                        let is_valid_epoch_upgrade = if account_error {
-                            epoch != Epoch::Invalid
-                        } else {
-                            Epochs::is_sequential(info.epoch, epoch)
-                        };
-                        result = if is_valid_epoch_upgrade {
-                            ProcessResult::Progress
-                        } else {
-                            ProcessResult::BlockPosition
-                        };
-                        if result == ProcessResult::Progress {
-                            result = if self.block.balance() == info.balance {
-                                ProcessResult::Progress
-                            } else {
-                                ProcessResult::BalanceMismatch
-                            };
-                            if result == ProcessResult::Progress {
-                                let block_details = BlockDetails::new(epoch, false, false, true);
-                                // Does this block have sufficient work (Malformed)
-                                result = if self.ledger.constants.work.difficulty_block(self.block)
-                                    >= self
-                                        .ledger
-                                        .constants
-                                        .work
-                                        .threshold2(self.block.work_version(), &block_details)
-                                {
-                                    ProcessResult::Progress
-                                } else {
-                                    ProcessResult::InsufficientWork
-                                };
-                                if result == ProcessResult::Progress {
-                                    self.ledger.observer.block_added(BlockSubType::Epoch);
-                                    self.block.set_sideband(BlockSideband::new(
-                                        self.block.account(), /* unused */
-                                        BlockHash::zero(),
-                                        Amount::zero(), /* unused */
-                                        info.block_count + 1,
-                                        seconds_since_epoch(),
-                                        block_details,
-                                        Epoch::Epoch0, /* unused */
-                                    ));
-                                    self.ledger.store.block().put(self.txn, &hash, self.block);
-                                    let new_info = AccountInfo {
-                                        head: hash,
-                                        representative: self.block.representative(),
-                                        open_block: if info.open_block.is_zero() {
-                                            hash
-                                        } else {
-                                            info.open_block
-                                        },
-                                        balance: info.balance,
-                                        modified: seconds_since_epoch(),
-                                        block_count: info.block_count + 1,
-                                        epoch,
-                                    };
-                                    self.ledger.update_account(
-                                        self.txn,
-                                        &self.block.account(),
-                                        &info,
-                                        &new_info,
-                                    );
-                                    if self
-                                        .ledger
-                                        .store
-                                        .frontier()
-                                        .get(self.txn.txn(), &info.head)
-                                        .is_some()
-                                    {
-                                        self.ledger.store.frontier().del(self.txn, &info.head);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        if self.block.balance() != info.balance {
+            return Err(ProcessResult::BalanceMismatch);
+        };
 
-        if result == ProcessResult::Progress {
-            Ok(())
+        let block_details = BlockDetails::new(epoch, false, false, true);
+        // Does this block have sufficient work (Malformed)
+        if self.ledger.constants.work.difficulty_block(self.block)
+            >= self
+                .ledger
+                .constants
+                .work
+                .threshold2(self.block.work_version(), &block_details)
+        {
         } else {
-            Err(result)
+            return Err(ProcessResult::InsufficientWork);
+        };
+
+        self.ledger.observer.block_added(BlockSubType::Epoch);
+        self.block.set_sideband(BlockSideband::new(
+            self.block.account(), /* unused */
+            BlockHash::zero(),
+            Amount::zero(), /* unused */
+            info.block_count + 1,
+            seconds_since_epoch(),
+            block_details,
+            Epoch::Epoch0, /* unused */
+        ));
+        self.ledger
+            .store
+            .block()
+            .put(self.txn, &self.block.hash(), self.block);
+        let new_info = AccountInfo {
+            head: self.block.hash(),
+            representative: self.block.representative(),
+            open_block: if info.open_block.is_zero() {
+                self.block.hash()
+            } else {
+                info.open_block
+            },
+            balance: info.balance,
+            modified: seconds_since_epoch(),
+            block_count: info.block_count + 1,
+            epoch,
+        };
+        self.ledger
+            .update_account(self.txn, &self.block.account(), &info, &new_info);
+        if self
+            .ledger
+            .store
+            .frontier()
+            .get(self.txn.txn(), &info.head)
+            .is_some()
+        {
+            self.ledger.store.frontier().del(self.txn, &info.head);
         }
-    }
-}
 
-// Processes state blocks that don't have an epoch link
-pub(crate) struct StateBlockProcessorImpl<'a> {
-    ledger: &'a Ledger,
-    txn: &'a mut dyn WriteTransaction,
-    block: &'a mut StateBlock,
-    old_account_info: Option<AccountInfo>,
-    pending_receive: Option<PendingInfo>,
-}
-
-impl<'a> StateBlockProcessorImpl<'a> {
-    pub(crate) fn new(
-        ledger: &'a Ledger,
-        txn: &'a mut dyn WriteTransaction,
-        block: &'a mut StateBlock,
-    ) -> Self {
-        Self {
-            ledger,
-            txn,
-            block,
-            old_account_info: None,
-            pending_receive: None,
-        }
+        Ok(())
     }
 
-    pub(crate) fn process(&mut self) -> Result<(), ProcessResult> {
+    pub(crate) fn process_state_block(&mut self) -> Result<(), ProcessResult> {
         self.initialize();
         self.ensure_valid_state_block()?;
         self.add_block();
@@ -287,18 +190,6 @@ impl<'a> StateBlockProcessorImpl<'a> {
         self.update_account_info();
         self.delete_frontier();
         Ok(())
-    }
-
-    fn initialize(&mut self) {
-        self.old_account_info = self.get_old_account_info();
-
-        if self.is_receive() {
-            self.pending_receive = self
-                .ledger
-                .store
-                .pending()
-                .get(self.txn.txn(), &PendingKey::for_receive_block(self.block));
-        }
     }
 
     fn ensure_valid_state_block(&self) -> Result<(), ProcessResult> {
@@ -431,6 +322,38 @@ impl<'a> StateBlockProcessorImpl<'a> {
             }
         }
 
+        Ok(())
+    }
+
+    fn ensure_representative_did_not_change(&self) -> Result<(), ProcessResult> {
+        if let Some(info) = &self.old_account_info {
+            if self.block.representative() != info.representative {
+                return Err(ProcessResult::RepresentativeMismatch);
+            };
+        }
+        Ok(())
+    }
+
+    fn ensure_epoch_open_has_burn_account_as_rep(&self) -> Result<(), ProcessResult> {
+        if self.is_new_account() && !self.block.representative().is_zero() {
+            Err(ProcessResult::RepresentativeMismatch)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn ensure_epoch_open_pending_entry(&self) -> Result<(), ProcessResult> {
+        if self.is_new_account() {
+            // Non-exisitng account should have pending entries
+            let pending_exists = self
+                .ledger
+                .store
+                .pending()
+                .any(self.txn.txn(), &self.block.account());
+            if !pending_exists {
+                return Err(ProcessResult::GapEpochOpenPending);
+            };
+        }
         Ok(())
     }
 

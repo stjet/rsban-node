@@ -36,5 +36,8 @@ pub(crate) use ledger_processor::LedgerProcessor;
 mod dependent_block_visitor;
 pub(crate) use dependent_block_visitor::DependentBlockVisitor;
 
+mod state_block_processor;
+pub(crate) use state_block_processor::StateBlockProcessor;
+
 #[cfg(test)]
 mod ledger_tests;

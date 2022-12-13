@@ -358,7 +358,6 @@ class process_return final
 {
 public:
 	nano::process_result code;
-	nano::amount previous_balance;
 };
 enum class tally_result
 {

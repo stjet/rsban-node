@@ -16,7 +16,7 @@ fn upgrade_from_v0_to_v2_fails() {
     let result = ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap_err();
 
     // Trying to upgrade from epoch 0 to epoch 2. It is a requirement epoch upgrades are sequential unless the account is unopened
-    assert_eq!(result.code, ProcessResult::BlockPosition);
+    assert_eq!(result, ProcessResult::BlockPosition);
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn upgrading_to_epoch_v2_twice_fails() {
     let mut epoch3 = genesis.epoch_v2(txn.txn()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut epoch3).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BlockPosition);
+    assert_eq!(result, ProcessResult::BlockPosition);
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn rollback_epoch_v2() {
         .process(txn.as_mut(), &mut legacy_change)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BlockPosition);
+    assert_eq!(result, ProcessResult::BlockPosition);
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn legacy_receive_block_after_epoch_v2_upgrade_fails() {
         .process(txn.as_mut(), &mut legacy_receive)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BlockPosition);
+    assert_eq!(result, ProcessResult::BlockPosition);
 }
 
 #[test]
@@ -160,7 +160,7 @@ fn cannot_use_legacy_open_block_with_epoch_v2_send() {
         .ledger
         .process(txn.as_mut(), &mut legacy_open)
         .unwrap_err();
-    assert_eq!(result.code, ProcessResult::Unreceivable);
+    assert_eq!(result, ProcessResult::Unreceivable);
 }
 
 #[test]
@@ -274,7 +274,7 @@ fn epoch_v2_fork() {
         .process(txn.as_mut(), &mut epoch_fork)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 #[test]
@@ -295,5 +295,5 @@ fn epoch_v2_fork_with_epoch_v1_block() {
         .process(txn.as_mut(), &mut epoch_v2_fork)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }

@@ -108,7 +108,7 @@ fn open_fork_fail() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut open2).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 #[test]
@@ -126,7 +126,7 @@ fn previous_fail() {
         .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::GapPrevious);
+    assert_eq!(result, ProcessResult::GapPrevious);
 }
 
 #[test]
@@ -144,5 +144,5 @@ fn source_fail() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::GapSource);
+    assert_eq!(result, ProcessResult::GapSource);
 }

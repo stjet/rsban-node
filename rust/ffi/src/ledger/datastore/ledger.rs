@@ -5,7 +5,7 @@ use crate::{
     StatHandle, StringDto,
 };
 use rsnano_core::{Account, Amount, BlockHash, Epoch, Link, QualifiedRoot};
-use rsnano_ledger::{Ledger, ProcessReturn};
+use rsnano_ledger::{Ledger, ProcessResult};
 use rsnano_node::stats::LedgerStats;
 use std::{
     ops::Deref,
@@ -658,16 +658,12 @@ pub unsafe extern "C" fn rsn_ledger_rollback(
 
 #[repr(C)]
 pub struct ProcessReturnDto {
-    pub previous_balance: [u8; 16],
     pub code: u8,
 }
 
-impl From<ProcessReturn> for ProcessReturnDto {
-    fn from(result: ProcessReturn) -> Self {
-        Self {
-            previous_balance: result.previous_balance.to_be_bytes(),
-            code: result.code as u8,
-        }
+impl From<ProcessResult> for ProcessReturnDto {
+    fn from(result: ProcessResult) -> Self {
+        Self { code: result as u8 }
     }
 }
 

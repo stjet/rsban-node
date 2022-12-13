@@ -25,7 +25,7 @@ mod representative_visitor;
 pub(crate) use representative_visitor::RepresentativeVisitor;
 
 mod ledger;
-pub use ledger::{Ledger, LedgerObserver, ProcessResult, ProcessReturn, UncementedInfo};
+pub use ledger::{Ledger, LedgerObserver, ProcessResult, UncementedInfo};
 
 mod rollback_visitor;
 pub(crate) use rollback_visitor::RollbackVisitor;

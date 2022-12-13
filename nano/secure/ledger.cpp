@@ -64,7 +64,6 @@ nano::process_return nano::ledger::process (nano::write_transaction const & tran
 	rsnano::ProcessReturnDto result_dto;
 	rsnano::rsn_ledger_process (handle, transaction_a.get_rust_handle (), block_a.get_handle (), &result_dto);
 	nano::process_return result;
-	std::copy (std::begin (result_dto.previous_balance), std::end (result_dto.previous_balance), std::begin (result.previous_balance.bytes));
 	result.code = static_cast<nano::process_result> (result_dto.code);
 	return result;
 }

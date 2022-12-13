@@ -49,21 +49,6 @@ pub enum ProcessResult {
     InsufficientWork, // Insufficient work for this block, even though it passed the minimal validation
 }
 
-#[derive(Debug)]
-pub struct ProcessReturn {
-    pub code: ProcessResult,
-    pub previous_balance: Amount,
-}
-
-impl ProcessReturn {
-    pub fn new(code: ProcessResult, previous_balance: Amount) -> Self {
-        Self {
-            code,
-            previous_balance,
-        }
-    }
-}
-
 pub trait LedgerObserver: Send + Sync {
     fn blocks_cemented(&self, _cemented_count: u64) {}
     fn block_rolled_back(&self, _block_type: BlockSubType) {}
@@ -813,7 +798,7 @@ impl Ledger {
         &self,
         txn: &mut dyn WriteTransaction,
         block: &mut dyn Block,
-    ) -> Result<ProcessReturn, ProcessReturn> {
+    ) -> Result<ProcessResult, ProcessResult> {
         debug_assert!(
             !self.constants.work.validate_entry_block(block)
                 || self.constants.genesis.read().unwrap().deref()
@@ -822,10 +807,10 @@ impl Ledger {
         let mut processor =
             LedgerProcessor::new(self, self.observer.as_ref(), &self.constants, txn);
         block.visit_mut(&mut processor);
-        if processor.result.code == ProcessResult::Progress {
+        if processor.result == ProcessResult::Progress {
             self.cache.block_count.fetch_add(1, Ordering::SeqCst);
         }
-        if processor.result.code == ProcessResult::Progress {
+        if processor.result == ProcessResult::Progress {
             Ok(processor.result)
         } else {
             Err(processor.result)

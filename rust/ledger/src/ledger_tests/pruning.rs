@@ -345,7 +345,7 @@ fn pruning_process_error() {
 
     // Attempt to process pruned block again
     let result = ctx.ledger.process(txn.as_mut(), &mut send1).unwrap_err();
-    assert_eq!(result.code, ProcessResult::Old);
+    assert_eq!(result, ProcessResult::Old);
 
     // Attept to process new block after pruned
     let mut send2 = BlockBuilder::state()
@@ -357,7 +357,7 @@ fn pruning_process_error() {
         .work(STUB_WORK_POOL.generate_dev2(send1.hash().into()).unwrap())
         .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
-    assert_eq!(result.code, ProcessResult::GapPrevious);
+    assert_eq!(result, ProcessResult::GapPrevious);
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 1);
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 2);
 }

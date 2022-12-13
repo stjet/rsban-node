@@ -129,7 +129,7 @@ fn fail_duplicate_send() {
         .process(txn.as_mut(), &mut send.send_block)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Old);
+    assert_eq!(result, ProcessResult::Old);
 }
 
 #[test]
@@ -147,7 +147,7 @@ fn fail_fork() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut fork).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn fail_gap_previous() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::GapPrevious);
+    assert_eq!(result, ProcessResult::GapPrevious);
 }
 
 #[test]
@@ -180,7 +180,7 @@ fn fail_bad_signature() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BadSignature);
+    assert_eq!(result, ProcessResult::BadSignature);
 }
 
 #[test]
@@ -200,7 +200,7 @@ fn fail_negative_spend() {
         .ledger
         .process(txn.as_mut(), &mut negative_spend)
         .unwrap_err();
-    assert_eq!(result.code, ProcessResult::NegativeSpend);
+    assert_eq!(result, ProcessResult::NegativeSpend);
 }
 
 // Make sure old block types can't be inserted after a state block.
@@ -216,7 +216,7 @@ fn send_after_state_fail() {
     let mut send2 = genesis.legacy_send(txn.txn()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BlockPosition);
+    assert_eq!(result, ProcessResult::BlockPosition);
 }
 
 #[test]
@@ -232,5 +232,5 @@ fn fail_insufficient_work() {
         block.set_work(0);
     };
     let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
-    assert_eq!(result.code, ProcessResult::InsufficientWork);
+    assert_eq!(result, ProcessResult::InsufficientWork);
 }

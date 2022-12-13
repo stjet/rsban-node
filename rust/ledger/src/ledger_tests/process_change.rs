@@ -122,7 +122,7 @@ fn fail_insufficient_work_epoch_0() {
         block.set_work(0);
     };
     let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
-    assert_eq!(result.code, ProcessResult::InsufficientWork);
+    assert_eq!(result, ProcessResult::InsufficientWork);
 }
 
 #[test]
@@ -137,5 +137,5 @@ fn fail_insufficient_work_epoch_1() {
         block.set_work(0);
     };
     let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
-    assert_eq!(result.code, ProcessResult::InsufficientWork);
+    assert_eq!(result, ProcessResult::InsufficientWork);
 }

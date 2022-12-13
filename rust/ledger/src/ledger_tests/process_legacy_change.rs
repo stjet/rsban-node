@@ -87,7 +87,7 @@ fn fail_old() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Old);
+    assert_eq!(result, ProcessResult::Old);
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn fail_gap_previous() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::GapPrevious);
+    assert_eq!(result, ProcessResult::GapPrevious);
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn fail_bad_signature() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BadSignature);
+    assert_eq!(result, ProcessResult::BadSignature);
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn fail_fork() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut fork).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 // Make sure old block types can't be inserted after a state block.
@@ -155,7 +155,7 @@ fn change_after_state_fail() {
     let mut change = genesis.legacy_change(txn.txn()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BlockPosition);
+    assert_eq!(result, ProcessResult::BlockPosition);
 }
 
 #[test]
@@ -174,5 +174,5 @@ fn fail_insufficient_work() {
         block.set_work(0);
     };
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
-    assert_eq!(result.code, ProcessResult::InsufficientWork);
+    assert_eq!(result, ProcessResult::InsufficientWork);
 }

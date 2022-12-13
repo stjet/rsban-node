@@ -162,7 +162,7 @@ fn receive_fork() {
         .process(txn.as_mut(), &mut receive_fork)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 #[test]
@@ -182,7 +182,7 @@ fn fail_double_receive() {
         .process(txn.as_mut(), &mut double_receive)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Unreceivable);
+    assert_eq!(result, ProcessResult::Unreceivable);
 }
 
 #[test]
@@ -197,7 +197,7 @@ fn fail_old() {
         .process(txn.as_mut(), &mut receive.receive_block)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Old);
+    assert_eq!(result, ProcessResult::Old);
 }
 
 #[test]
@@ -215,7 +215,7 @@ fn fail_gap_source() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::GapSource);
+    assert_eq!(result, ProcessResult::GapSource);
 }
 
 #[test]
@@ -240,7 +240,7 @@ fn fail_bad_signature() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BadSignature);
+    assert_eq!(result, ProcessResult::BadSignature);
 }
 
 #[test]
@@ -258,7 +258,7 @@ fn fail_gap_previous_unopened() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::GapPrevious);
+    assert_eq!(result, ProcessResult::GapPrevious);
 }
 
 #[test]
@@ -283,7 +283,7 @@ fn fail_gap_previous_opened() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::GapPrevious);
+    assert_eq!(result, ProcessResult::GapPrevious);
 }
 
 #[test]
@@ -318,7 +318,7 @@ fn fail_fork_previous() {
         .process(txn.as_mut(), &mut fork_receive)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 #[test]
@@ -360,7 +360,7 @@ fn fail_receive_received_source() {
         .process(txn.as_mut(), &mut fork_receive)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 // Make sure old block types can't be inserted after a state block.
@@ -376,7 +376,7 @@ fn receive_after_state_fail() {
     let mut receive = genesis.legacy_receive(txn.txn(), send.hash()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BlockPosition);
+    assert_eq!(result, ProcessResult::BlockPosition);
 }
 
 #[test]
@@ -440,5 +440,5 @@ fn fail_insufficient_work() {
         .process(txn.as_mut(), &mut receive_block)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::InsufficientWork);
+    assert_eq!(result, ProcessResult::InsufficientWork);
 }

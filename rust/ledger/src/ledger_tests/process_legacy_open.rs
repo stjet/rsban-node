@@ -162,7 +162,7 @@ fn fail_fork() {
         .process(txn.as_mut(), &mut open_fork)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 #[test]
@@ -190,7 +190,7 @@ fn fail_fork_previous() {
         .process(txn.as_mut(), &mut open_fork)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 #[test]
@@ -205,7 +205,7 @@ fn process_duplicate_open_fails() {
         .process(txn.as_mut(), &mut open.open_block)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Old);
+    assert_eq!(result, ProcessResult::Old);
 }
 
 #[test]
@@ -217,7 +217,7 @@ fn fail_gap_source() {
     let mut open = destination.legacy_open(BlockHash::from(1)).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::GapSource);
+    assert_eq!(result, ProcessResult::GapSource);
 }
 
 #[test]
@@ -236,7 +236,7 @@ fn fail_bad_signature() {
         .build();
 
     let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
-    assert_eq!(result.code, ProcessResult::BadSignature);
+    assert_eq!(result, ProcessResult::BadSignature);
 }
 
 #[test]
@@ -250,7 +250,7 @@ fn fail_account_mismatch() {
     let mut open = bad_key.legacy_open(send.send_block.hash()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Unreceivable);
+    assert_eq!(result, ProcessResult::Unreceivable);
 }
 
 #[test]
@@ -268,7 +268,7 @@ fn state_open_fork() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut open2).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 #[test]
@@ -330,5 +330,5 @@ fn fail_insufficient_work() {
     };
     let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::InsufficientWork);
+    assert_eq!(result, ProcessResult::InsufficientWork);
 }

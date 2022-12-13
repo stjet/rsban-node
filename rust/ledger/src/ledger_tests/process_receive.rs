@@ -115,7 +115,7 @@ fn state_unreceivable_fail() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::GapSource);
+    assert_eq!(result, ProcessResult::GapSource);
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn bad_amount_fail() {
         .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BalanceMismatch);
+    assert_eq!(result, ProcessResult::BalanceMismatch);
 }
 
 #[test]
@@ -151,7 +151,7 @@ fn no_link_amount_fail() {
         .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BalanceMismatch);
+    assert_eq!(result, ProcessResult::BalanceMismatch);
 }
 
 #[test]
@@ -174,7 +174,7 @@ fn receive_wrong_account_fail() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Unreceivable);
+    assert_eq!(result, ProcessResult::Unreceivable);
 }
 
 #[test]

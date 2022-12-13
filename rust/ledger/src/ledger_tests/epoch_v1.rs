@@ -36,7 +36,7 @@ fn adding_epoch_twice_fails() {
     let mut epoch = ctx.genesis_block_factory().epoch_v1(txn.txn()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BlockPosition);
+    assert_eq!(result, ProcessResult::BlockPosition);
 }
 
 #[test]
@@ -48,7 +48,7 @@ fn adding_legacy_change_block_after_epoch1_fails() {
     let mut change = ctx.genesis_block_factory().legacy_change(txn.txn()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BlockPosition);
+    assert_eq!(result, ProcessResult::BlockPosition);
 }
 
 #[test]
@@ -97,7 +97,7 @@ fn epoch_block_with_changed_representative_fails() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::RepresentativeMismatch);
+    assert_eq!(result, ProcessResult::RepresentativeMismatch);
 }
 
 #[test]
@@ -117,7 +117,7 @@ fn cannot_use_legacy_open_block_after_epoch1() {
     let mut open = destination.legacy_open(send.hash()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Unreceivable);
+    assert_eq!(result, ProcessResult::Unreceivable);
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn cannot_use_legacy_receive_block_after_epoch1_open() {
 
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::BlockPosition);
+    assert_eq!(result, ProcessResult::BlockPosition);
 }
 
 #[test]
@@ -165,7 +165,7 @@ fn cannot_use_legacy_receive_block_after_sender_upgraded_to_epoch1() {
         .process(txn.as_mut(), &mut legacy_receive)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Unreceivable);
+    assert_eq!(result, ProcessResult::Unreceivable);
 }
 
 #[test]
@@ -283,7 +283,7 @@ fn epoch_v1_fork() {
         .process(txn.as_mut(), &mut epoch_fork)
         .unwrap_err();
 
-    assert_eq!(result.code, ProcessResult::Fork);
+    assert_eq!(result, ProcessResult::Fork);
 }
 
 #[test]

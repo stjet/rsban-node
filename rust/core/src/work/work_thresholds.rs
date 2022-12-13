@@ -260,4 +260,8 @@ impl WorkThresholds {
         self.difficulty_block(block)
             < self.threshold_entry(block.block_type(), block.work_version())
     }
+
+    pub fn is_valid_pow(&self, block: &dyn Block, details: &BlockDetails) -> bool {
+        self.difficulty_block(block) >= self.threshold2(block.work_version(), details)
+    }
 }

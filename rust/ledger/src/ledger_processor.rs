@@ -873,6 +873,7 @@ struct StateBlockProcessor<'a> {
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut StateBlock,
     old_account_info: Option<AccountInfo>,
+    pending_receive: Option<PendingInfo>,
 }
 
 impl<'a> StateBlockProcessor<'a> {
@@ -886,19 +887,71 @@ impl<'a> StateBlockProcessor<'a> {
             txn,
             block,
             old_account_info: None,
+            pending_receive: None,
         }
     }
 
+    fn account_exists(&self) -> bool {
+        self.old_account_info.is_some()
+    }
+
+    fn is_new_account(&self) -> bool {
+        self.old_account_info.is_none()
+    }
+
+    fn is_send(&self) -> bool {
+        match &self.old_account_info {
+            Some(info) => self.block.balance() < info.balance,
+            None => false,
+        }
+    }
+
+    fn is_receive(&self) -> bool {
+        match &self.old_account_info {
+            Some(info) => self.block.balance() >= info.balance && !self.block.link().is_zero(),
+            None => true,
+        }
+    }
+
+    fn amount(&self) -> Amount {
+        match &self.old_account_info {
+            Some(info) => {
+                if self.is_send() {
+                    info.balance - self.block.balance()
+                } else {
+                    self.block.balance() - info.balance
+                }
+            }
+            None => self.block.balance(),
+        }
+    }
+
+    fn epoch(&self) -> Epoch {
+        let epoch = self
+            .old_account_info
+            .as_ref()
+            .map(|i| i.epoch)
+            .unwrap_or(Epoch::Epoch0);
+
+        std::cmp::max(epoch, self.source_epoch())
+    }
+
+    fn source_epoch(&self) -> Epoch {
+        self.pending_receive
+            .as_ref()
+            .map(|p| p.epoch)
+            .unwrap_or(Epoch::Epoch0)
+    }
+
     /// Have we seen this block before? (Unambiguous)
-    fn ensure_new_block(&self) -> Result<(), ProcessResult> {
+    fn ensure_block_does_not_exist_yet(&self) -> Result<(), ProcessResult> {
         if self
             .ledger
             .block_or_pruned_exists_txn(self.txn.txn(), &self.block.hash())
         {
-            Err(ProcessResult::Old)
-        } else {
-            Ok(())
+            return Err(ProcessResult::Old);
         }
+        Ok(())
     }
 
     /// Is this block signed correctly (Unambiguous)
@@ -907,7 +960,7 @@ impl<'a> StateBlockProcessor<'a> {
     }
 
     /// Is this for the burn account? (Unambiguous)
-    fn ensure_not_for_burn_account(&self) -> Result<(), ProcessResult> {
+    fn ensure_block_is_not_for_burn_account(&self) -> Result<(), ProcessResult> {
         if self.block.account().is_zero() {
             Err(ProcessResult::OpenedBurnAccount)
         } else {
@@ -917,46 +970,42 @@ impl<'a> StateBlockProcessor<'a> {
 
     /// Does the previous block exist in the ledger? (Unambigious)
     fn ensure_previous_block_exists(&self) -> Result<(), ProcessResult> {
-        if self.old_account_info.is_some() {
-            if self
+        if self.account_exists()
+            && !self
                 .ledger
                 .store
                 .block()
                 .exists(self.txn.txn(), &self.block.previous())
-            {
-                Ok(())
-            } else {
-                Err(ProcessResult::GapPrevious)
-            }
-        } else {
-            // Does the first block in an account yield 0 for previous() ? (Unambigious)
-            if self.block.previous().is_zero() {
-                Ok(())
-            } else {
-                Err(ProcessResult::GapPrevious)
-            }
+        {
+            return Err(ProcessResult::GapPrevious);
         }
+
+        if self.is_new_account() && !self.block.previous().is_zero() {
+            return Err(ProcessResult::GapPrevious);
+        }
+
+        Ok(())
     }
 
     fn ensure_no_double_account_open(&self) -> Result<(), ProcessResult> {
-        if self.old_account_info.is_none() || !self.block.previous().is_zero() {
-            Ok(())
-        } else {
+        if self.account_exists() && self.block.previous().is_zero() {
             Err(ProcessResult::Fork)
+        } else {
+            Ok(())
         }
     }
 
     fn ensure_new_account_has_link(&self) -> Result<(), ProcessResult> {
-        if self.old_account_info.is_some() || !self.block.link().is_zero() {
-            Ok(())
-        } else {
+        if self.is_new_account() && self.block.link().is_zero() {
             Err(ProcessResult::GapSource)
+        } else {
+            Ok(())
         }
     }
 
+    /// Is the previous block the account's head block? (Ambigious)
     fn ensure_previous_block_is_account_head(&self) -> Result<(), ProcessResult> {
         if let Some(info) = &self.old_account_info {
-            // Is the previous block the account's head block? (Ambigious)
             if self.block.previous() != info.head {
                 return Err(ProcessResult::Fork);
             }
@@ -965,107 +1014,144 @@ impl<'a> StateBlockProcessor<'a> {
         Ok(())
     }
 
-    fn process(&mut self) -> Result<ProcessResult, ProcessResult> {
-        self.old_account_info = self
+    fn ensure_link_block_exists(&self) -> Result<(), ProcessResult> {
+        if !self
             .ledger
-            .get_account_info(self.txn.txn(), &self.block.account());
+            .block_or_pruned_exists_txn(self.txn.txn(), &self.block.link().into())
+        {
+            Err(ProcessResult::GapSource)
+        } else {
+            Ok(())
+        }
+    }
 
-        self.ensure_new_block()?;
-        self.ensure_valid_block_signature()?;
-        self.ensure_not_for_burn_account()?;
-        self.ensure_no_double_account_open()?;
-        self.ensure_previous_block_exists()?;
-        self.ensure_previous_block_is_account_head()?;
-        self.ensure_new_account_has_link()?;
-
-        let hash = self.block.hash();
-        let mut epoch: Epoch;
-        let mut source_epoch: Epoch;
-        let amount: Amount;
-        let is_send: bool;
-        let is_receive: bool;
-
-        match &self.old_account_info {
-            Some(info) => {
-                epoch = info.epoch;
-                source_epoch = Epoch::Epoch0;
-                is_send = self.block.balance() < info.balance;
-                amount = if is_send {
-                    info.balance - self.block.balance()
-                } else {
-                    self.block.balance() - info.balance
-                };
-                is_receive = !is_send && !self.block.link().is_zero();
-            }
-            None => {
-                epoch = Epoch::Epoch0;
-                source_epoch = Epoch::Epoch0;
-                amount = self.block.balance();
-                is_send = false;
-                is_receive = true;
+    /// If there's no link, the balance must remain the same, only the representative can change
+    fn ensure_no_receive_balance_change_without_link(&self) -> Result<(), ProcessResult> {
+        if !self.is_send() && self.block.link().is_zero() {
+            if !self.amount().is_zero() {
+                return Err(ProcessResult::BalanceMismatch);
             }
         }
 
-        if !is_send {
-            if !self.block.link().is_zero() {
-                // Have we seen the source block already? (Harmless)
-                if !self
-                    .ledger
-                    .block_or_pruned_exists_txn(self.txn.txn(), &self.block.link().into())
-                {
-                    return Err(ProcessResult::GapSource);
-                }
+        Ok(())
+    }
 
-                let key = PendingKey::new(self.block.account(), self.block.link().into());
-                // Has this source already been received (Malformed)
-                match self.ledger.store.pending().get(self.txn.txn(), &key) {
-                    Some(pending) => {
-                        if amount != pending.amount {
-                            return Err(ProcessResult::BalanceMismatch);
-                        }
-                        source_epoch = pending.epoch;
-                        epoch = std::cmp::max(epoch, source_epoch);
+    fn ensure_receive_block_links_to_existing_block(&self) -> Result<(), ProcessResult> {
+        if self.is_receive() {
+            self.ensure_link_block_exists()?;
+        }
+        Ok(())
+    }
+
+    fn ensure_receive_block_receives_pending_amount(&self) -> Result<(), ProcessResult> {
+        if self.is_receive() {
+            match &self.pending_receive {
+                Some(pending) => {
+                    if self.amount() != pending.amount {
+                        return Err(ProcessResult::BalanceMismatch);
                     }
-                    None => {
-                        return Err(ProcessResult::Unreceivable);
-                    }
-                };
-            } else {
-                // If there's no link, the balance must remain the same, only the representative can change
-                if !amount.is_zero() {
-                    return Err(ProcessResult::BalanceMismatch);
                 }
-            }
+                None => {
+                    return Err(ProcessResult::Unreceivable);
+                }
+            };
         }
 
-        let block_details = BlockDetails::new(epoch, is_send, is_receive, false);
-        // Does this block have sufficient work? (Malformed)
+        Ok(())
+    }
+
+    fn ensure_sufficient_work(&self) -> Result<(), ProcessResult> {
         if self.ledger.constants.work.difficulty_block(self.block)
             < self
                 .ledger
                 .constants
                 .work
-                .threshold2(self.block.work_version(), &block_details)
+                .threshold2(self.block.work_version(), &self.block_details())
         {
-            return Err(ProcessResult::InsufficientWork);
+            Err(ProcessResult::InsufficientWork)
+        } else {
+            Ok(())
         }
+    }
+
+    fn ensure_valid_state_block(&self) -> Result<(), ProcessResult> {
+        self.ensure_block_does_not_exist_yet()?;
+        self.ensure_valid_block_signature()?;
+        self.ensure_block_is_not_for_burn_account()?;
+        self.ensure_no_double_account_open()?;
+        self.ensure_previous_block_exists()?;
+        self.ensure_previous_block_is_account_head()?;
+        self.ensure_new_account_has_link()?;
+        self.ensure_no_receive_balance_change_without_link()?;
+        self.ensure_receive_block_links_to_existing_block()?;
+        self.ensure_receive_block_receives_pending_amount()?;
+        self.ensure_sufficient_work()
+    }
+
+    fn process(&mut self) -> Result<ProcessResult, ProcessResult> {
+        self.initialize();
+        self.ensure_valid_state_block()?;
 
         self.ledger.observer.state_block_added();
-        self.block.set_sideband(BlockSideband::new(
-            self.block.account(), /* unused */
-            BlockHash::zero(),
-            Amount::zero(), /* unused */
-            self.old_account_info
-                .as_ref()
-                .map(|i| i.block_count)
-                .unwrap_or_default()
-                + 1,
-            seconds_since_epoch(),
-            block_details,
-            source_epoch,
-        ));
-        self.ledger.store.block().put(self.txn, &hash, self.block);
 
+        self.block.set_sideband(self.create_sideband());
+
+        self.ledger
+            .store
+            .block()
+            .put(self.txn, &self.block.hash(), self.block);
+
+        self.update_representative_cache();
+
+        if self.is_send() {
+            self.add_pending_receive();
+        } else if self.is_receive() {
+            self.delete_pending_receive();
+        }
+
+        self.update_account_info();
+        self.delete_frontier();
+        Ok(ProcessResult::Progress)
+    }
+
+    fn delete_frontier(&mut self) {
+        if let Some(acc_info) = &self.old_account_info {
+            if self
+                .ledger
+                .store
+                .frontier()
+                .get(self.txn.txn(), &acc_info.head)
+                .is_some()
+            {
+                self.ledger.store.frontier().del(self.txn, &acc_info.head);
+            }
+        }
+    }
+
+    fn update_account_info(&mut self) {
+        let new_account_info = self.create_account_info();
+        self.ledger.update_account(
+            self.txn,
+            &self.block.account(),
+            &self.old_account_info.clone().unwrap_or_default(),
+            &new_account_info,
+        );
+    }
+
+    fn add_pending_receive(&mut self) {
+        let key = PendingKey::for_send_block(self.block);
+        let info = PendingInfo::new(self.block.account(), self.amount(), self.epoch());
+        self.ledger.store.pending().put(self.txn, &key, &info);
+    }
+
+    fn delete_pending_receive(&mut self) {
+        self.ledger
+            .store
+            .pending()
+            .del(self.txn, &PendingKey::for_receive_block(self.block));
+    }
+
+    fn update_representative_cache(&mut self) {
         if let Some(acc_info) = &self.old_account_info {
             // Move existing representation & add in amount delta
             self.ledger.cache.rep_weights.representation_add_dual(
@@ -1081,25 +1167,16 @@ impl<'a> StateBlockProcessor<'a> {
                 .rep_weights
                 .representation_add(self.block.representative(), self.block.balance());
         }
+    }
 
-        if is_send {
-            let key = PendingKey::new(self.block.link().into(), hash);
-            let info = PendingInfo::new(self.block.account(), amount, epoch);
-            self.ledger.store.pending().put(self.txn, &key, &info);
-        } else if !self.block.link().is_zero() {
-            self.ledger.store.pending().del(
-                self.txn,
-                &PendingKey::new(self.block.account(), self.block.link().into()),
-            );
-        }
-
-        let new_info = AccountInfo {
-            head: hash,
+    fn create_account_info(&self) -> AccountInfo {
+        AccountInfo {
+            head: self.block.hash(),
             representative: self.block.representative(),
             open_block: if let Some(acc_info) = &self.old_account_info {
                 acc_info.open_block
             } else {
-                hash
+                self.block.hash()
             },
             balance: self.block.balance(),
             modified: seconds_since_epoch(),
@@ -1109,28 +1186,44 @@ impl<'a> StateBlockProcessor<'a> {
                 .map(|a| a.block_count)
                 .unwrap_or_default()
                 + 1,
-            epoch,
-        };
+            epoch: self.epoch(),
+        }
+    }
 
-        self.ledger.update_account(
-            self.txn,
-            &self.block.account(),
-            &self.old_account_info.clone().unwrap_or_default(),
-            &new_info,
-        );
+    fn create_sideband(&self) -> BlockSideband {
+        BlockSideband::new(
+            self.block.account(), /* unused */
+            BlockHash::zero(),
+            Amount::zero(), /* unused */
+            self.old_account_info
+                .as_ref()
+                .map(|i| i.block_count)
+                .unwrap_or_default()
+                + 1,
+            seconds_since_epoch(),
+            self.block_details(),
+            self.source_epoch(),
+        )
+    }
 
-        if let Some(acc_info) = &self.old_account_info {
-            if self
+    fn block_details(&self) -> BlockDetails {
+        BlockDetails::new(self.epoch(), self.is_send(), self.is_receive(), false)
+    }
+
+    fn initialize(&mut self) {
+        self.old_account_info = self.get_old_account_info();
+
+        if self.is_receive() {
+            self.pending_receive = self
                 .ledger
                 .store
-                .frontier()
-                .get(self.txn.txn(), &acc_info.head)
-                .is_some()
-            {
-                self.ledger.store.frontier().del(self.txn, &acc_info.head);
-            }
+                .pending()
+                .get(self.txn.txn(), &PendingKey::for_receive_block(self.block));
         }
+    }
 
-        Ok(ProcessResult::Progress)
+    fn get_old_account_info(&mut self) -> Option<AccountInfo> {
+        self.ledger
+            .get_account_info(self.txn.txn(), &self.block.account())
     }
 }

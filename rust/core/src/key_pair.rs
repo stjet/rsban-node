@@ -1,3 +1,5 @@
+use crate::Block;
+
 use super::{PublicKey, RawKey, Signature};
 
 pub struct KeyPair {
@@ -90,6 +92,14 @@ pub fn validate_message_batch(
             Err(_) => 0,
         }
     }
+}
+
+pub fn validate_block_signature(block: &dyn Block) -> anyhow::Result<()> {
+    validate_message(
+        &block.account().into(),
+        block.hash().as_bytes(),
+        &block.block_signature(),
+    )
 }
 
 #[cfg(test)]

@@ -4,8 +4,8 @@ use crate::{
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{seconds_since_epoch, PropertyTreeWriter, SerdePropertyTree},
-    Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockSubType, BlockType,
-    ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
+    validate_message, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockSubType,
+    BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
 };
 
 use crate::{LedgerProcessor, RollbackVisitor};
@@ -55,6 +55,15 @@ pub struct ProcessReturn {
     pub previous_balance: Amount,
 }
 
+impl ProcessReturn {
+    pub fn new(code: ProcessResult, previous_balance: Amount) -> Self {
+        Self {
+            code,
+            previous_balance,
+        }
+    }
+}
+
 pub trait LedgerObserver: Send + Sync {
     fn blocks_cemented(&self, _cemented_count: u64) {}
     fn block_rolled_back(&self, _block_type: BlockSubType) {}
@@ -75,8 +84,8 @@ impl LedgerObserver for NullLedgerObserver {}
 pub struct Ledger {
     pub store: Arc<dyn Store>,
     pub cache: Arc<LedgerCache>,
-    constants: LedgerConstants,
-    observer: Arc<dyn LedgerObserver>,
+    pub constants: LedgerConstants,
+    pub observer: Arc<dyn LedgerObserver>,
     pruning: AtomicBool,
     bootstrap_weight_max_blocks: AtomicU64,
     pub check_bootstrap_weights: AtomicBool,
@@ -549,6 +558,17 @@ impl Ledger {
             .epochs
             .signer(self.constants.epochs.epoch(link)?)
             .cloned()
+    }
+
+    pub fn validate_epoch_signature(&self, block: &dyn Block) -> anyhow::Result<()> {
+        validate_message(
+            &self
+                .epoch_signer(&block.link())
+                .ok_or_else(|| anyhow!("not an epoch link!"))?
+                .into(),
+            block.hash().as_bytes(),
+            block.block_signature(),
+        )
     }
 
     pub fn epoch_link(&self, epoch: Epoch) -> Option<Link> {

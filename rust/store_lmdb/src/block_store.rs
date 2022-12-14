@@ -191,18 +191,8 @@ impl BlockStore for LmdbBlockStore {
 
     fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Amount {
         match self.get(txn, hash) {
-            Some(block) => self.balance_calculated(&block),
+            Some(block) => block.balance_calculated(),
             None => Amount::zero(),
-        }
-    }
-
-    fn balance_calculated(&self, block: &BlockEnum) -> Amount {
-        match block {
-            BlockEnum::Send(b) => b.balance(),
-            BlockEnum::Receive(b) => b.sideband().unwrap().balance,
-            BlockEnum::Open(b) => b.sideband().unwrap().balance,
-            BlockEnum::Change(b) => b.sideband().unwrap().balance,
-            BlockEnum::State(b) => b.balance(),
         }
     }
 

@@ -212,13 +212,11 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_balance(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_block_store_balance_calculated(
-    handle: *mut LmdbBlockStoreHandle,
+    _handle: *mut LmdbBlockStoreHandle,
     block: *const BlockHandle,
     balance: *mut u8,
 ) {
-    let result = (*handle)
-        .0
-        .balance_calculated(&(*block).block.read().unwrap());
+    let result = (*block).block.read().unwrap().balance_calculated();
     copy_amount_bytes(result, balance);
 }
 

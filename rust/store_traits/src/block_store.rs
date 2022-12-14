@@ -20,7 +20,6 @@ pub trait BlockStore {
     fn end(&self) -> BlockIterator;
     fn random(&self, txn: &dyn Transaction) -> Option<BlockEnum>;
     fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Amount;
-    fn balance_calculated(&self, block: &BlockEnum) -> Amount;
     fn version(&self, txn: &dyn Transaction, hash: &BlockHash) -> Epoch;
     fn for_each_par(
         &self,

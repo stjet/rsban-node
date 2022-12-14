@@ -195,6 +195,16 @@ impl BlockEnum {
             BlockEnum::State(b) => b,
         }
     }
+
+    pub fn balance_calculated(&self) -> Amount {
+        match self {
+            BlockEnum::Send(b) => b.balance(),
+            BlockEnum::Receive(b) => b.sideband().unwrap().balance,
+            BlockEnum::Open(b) => b.sideband().unwrap().balance,
+            BlockEnum::Change(b) => b.sideband().unwrap().balance,
+            BlockEnum::State(b) => b.balance(),
+        }
+    }
 }
 
 impl FullHash for BlockEnum {

@@ -1,7 +1,7 @@
 use rsnano_core::{
-    utils::seconds_since_epoch, validate_block_signature, validate_message, AccountInfo, Amount,
-    Block, BlockDetails, BlockHash, BlockSideband, BlockSubType, Epoch, Epochs, PendingInfo,
-    PendingKey, StateBlock,
+    utils::seconds_since_epoch, validate_block_signature, AccountInfo, Amount, Block, BlockDetails,
+    BlockEnum, BlockHash, BlockSideband, BlockSubType, Epoch, Epochs, PendingInfo, PendingKey,
+    StateBlock,
 };
 use rsnano_store_traits::WriteTransaction;
 
@@ -14,6 +14,7 @@ pub(crate) struct SingleBlockProcessor<'a> {
     block: &'a mut dyn Block,
     old_account_info: Option<AccountInfo>,
     pending_receive: Option<PendingInfo>,
+    previous_block: Option<BlockEnum>,
 }
 
 impl<'a> SingleBlockProcessor<'a> {
@@ -28,6 +29,7 @@ impl<'a> SingleBlockProcessor<'a> {
             block,
             old_account_info: None,
             pending_receive: None,
+            previous_block: None,
         }
     }
 
@@ -41,86 +43,90 @@ impl<'a> SingleBlockProcessor<'a> {
                 .pending()
                 .get(self.txn.txn(), &PendingKey::for_receive_block(self.block));
         }
+
+        if !self.block.previous().is_zero() {
+            self.previous_block = self
+                .ledger
+                .get_block(self.txn.txn(), &self.block.previous());
+        }
     }
 
     pub(crate) fn process(&mut self) -> Result<(), ProcessResult> {
         self.initialize();
+        // Epoch block pre-checks for early return
+        self.ensure_block_signature_for_epoch_block_candidate_is_maybe_valid()?;
+        self.ensure_previous_block_exists_for_epoch_block_candidate()?;
 
-        let is_epoch = if self.ledger.is_epoch_link(&self.block.link()) {
-            if !self.block.previous().is_zero() {
-                if self
-                    .ledger
-                    .store
-                    .block()
-                    .exists(self.txn.txn(), &self.block.previous())
-                {
-                    let previous_balance =
-                        self.ledger.balance(self.txn.txn(), &self.block.previous());
-                    self.block.balance() == previous_balance
-                } else {
-                    // Check for possible regular state blocks with epoch link (send subtype)
-                    if validate_block_signature(self.block).is_err()
-                        && self.ledger.validate_epoch_signature(self.block).is_err()
-                    {
-                        return Err(ProcessResult::BadSignature);
-                    } else {
-                        return Err(ProcessResult::GapPrevious);
-                    }
-                }
-            } else {
-                self.block.balance() == Amount::zero()
-            }
-        } else {
-            false
-        };
+        // Common rules
+        self.ensure_block_does_not_exist_yet()?;
+        self.ensure_valid_block_signature()?;
+        self.ensure_block_is_not_for_burn_account()?;
+        self.ensure_no_double_account_open()?;
+        self.ensure_previous_block_exists()?;
+        self.ensure_previous_block_is_account_head()?;
 
-        if is_epoch {
-            self.process_epoch_block()
+        // Epoch block rules
+        self.ensure_epoch_block_does_not_change_representative()?;
+        self.ensure_epoch_open_has_burn_account_as_rep()?;
+        self.ensure_epoch_open_has_pending_entry()?;
+        self.ensure_valid_epoch_for_unopened_account()?;
+        self.ensure_epoch_upgrade_is_sequential_for_existing_account()?;
+        self.ensure_epoch_block_does_not_change_balance()?;
+
+        if self.is_epoch_block() {
+            self.ensure_valid_epoch_block()?;
+
+            self.add_epoch_block();
+            self.update_account_info_for_epoch_block();
+            self.delete_frontier();
         } else {
-            self.process_state_block()
+            self.ensure_valid_state_block()?;
+
+            self.add_block();
+            self.update_representative_cache();
+            self.update_pending_store();
+            self.update_account_info();
+            self.delete_frontier();
         }
-    }
-
-    fn ensure_valid_epoch_block_signature(&self) -> anyhow::Result<(), ProcessResult> {
-        validate_message(
-            &self
-                .ledger
-                .epoch_signer(&self.block.link())
-                .unwrap_or_default()
-                .into(),
-            self.block.hash().as_bytes(),
-            self.block.block_signature(),
-        )
-        .map_err(|_| ProcessResult::BadSignature)
-    }
-
-    fn process_epoch_block(&mut self) -> Result<(), ProcessResult> {
-        self.ensure_valid_epoch_block()?;
-        self.add_epoch_block();
-        self.update_account_info_for_epoch_block();
-        self.delete_frontier();
         Ok(())
     }
 
     fn ensure_valid_epoch_block(&mut self) -> Result<(), ProcessResult> {
-        self.ensure_block_does_not_exist_yet()?;
-        self.ensure_valid_epoch_block_signature()?;
-        self.ensure_block_is_not_for_burn_account()?;
-        self.ensure_no_double_account_open()?;
-        self.ensure_previous_block_is_account_head()?;
-        self.ensure_representative_did_not_change()?;
-        self.ensure_epoch_open_has_burn_account_as_rep()?;
-        self.ensure_epoch_open_pending_entry()?;
-        self.ensure_valid_epoch_for_unopened_account()?;
-        self.ensure_epoch_upgrade_is_sequential_for_existing_account()?;
-        self.ensure_epoch_block_does_not_change_balance()?;
         self.ensure_sufficient_work_for_epoch_block()?;
         Ok(())
     }
 
-    fn epoch_block_details(&self) -> BlockDetails {
-        let epoch = self.block_epoch_version();
-        BlockDetails::new(epoch, false, false, true)
+    fn ensure_valid_state_block(&self) -> Result<(), ProcessResult> {
+        self.ensure_new_account_has_link()?;
+        self.ensure_no_receive_balance_change_without_link()?;
+        self.ensure_receive_block_links_to_existing_block()?;
+        self.ensure_receive_block_receives_pending_amount()?;
+        self.ensure_sufficient_work()
+    }
+
+    fn ensure_valid_block_signature(&self) -> Result<(), ProcessResult> {
+        let result = if self.is_epoch_block() {
+            self.ledger.validate_epoch_signature(self.block)
+        } else {
+            validate_block_signature(self.block)
+        };
+        result.map_err(|_| ProcessResult::BadSignature)
+    }
+
+    /// This check only makes sense after ensure_previous_block_exists_for_epoch_block_candidate!
+    fn is_epoch_block(&self) -> bool {
+        self.has_epoch_link() && self.block.balance() == self.previous_balance()
+    }
+
+    fn previous_balance(&self) -> Amount {
+        self.previous_block
+            .as_ref()
+            .map(|b| b.balance_calculated())
+            .unwrap_or_default()
+    }
+
+    fn has_epoch_link(&self) -> bool {
+        self.ledger.is_epoch_link(&self.block.link())
     }
 
     fn block_epoch_version(&self) -> Epoch {
@@ -129,31 +135,6 @@ impl<'a> SingleBlockProcessor<'a> {
             .epochs
             .epoch(&self.block.link())
             .unwrap_or(Epoch::Invalid)
-    }
-
-    pub(crate) fn process_state_block(&mut self) -> Result<(), ProcessResult> {
-        self.initialize();
-        self.ensure_valid_state_block()?;
-        self.add_block();
-        self.update_representative_cache();
-        self.update_pending_store();
-        self.update_account_info();
-        self.delete_frontier();
-        Ok(())
-    }
-
-    fn ensure_valid_state_block(&self) -> Result<(), ProcessResult> {
-        self.ensure_block_does_not_exist_yet()?;
-        self.ensure_valid_block_signature()?;
-        self.ensure_block_is_not_for_burn_account()?;
-        self.ensure_no_double_account_open()?;
-        self.ensure_previous_block_exists()?;
-        self.ensure_previous_block_is_account_head()?;
-        self.ensure_new_account_has_link()?;
-        self.ensure_no_receive_balance_change_without_link()?;
-        self.ensure_receive_block_links_to_existing_block()?;
-        self.ensure_receive_block_receives_pending_amount()?;
-        self.ensure_sufficient_work()
     }
 
     fn account_exists(&self) -> bool {
@@ -172,6 +153,10 @@ impl<'a> SingleBlockProcessor<'a> {
     }
 
     fn is_receive(&self) -> bool {
+        if self.is_epoch_block() {
+            return false;
+        }
+
         match &self.old_account_info {
             Some(info) => self.block.balance() >= info.balance && !self.block.link().is_zero(),
             None => true,
@@ -192,13 +177,17 @@ impl<'a> SingleBlockProcessor<'a> {
     }
 
     fn epoch(&self) -> Epoch {
-        let epoch = self
-            .old_account_info
-            .as_ref()
-            .map(|i| i.epoch)
-            .unwrap_or(Epoch::Epoch0);
+        if self.is_epoch_block() {
+            self.block_epoch_version()
+        } else {
+            let epoch = self
+                .old_account_info
+                .as_ref()
+                .map(|i| i.epoch)
+                .unwrap_or(Epoch::Epoch0);
 
-        std::cmp::max(epoch, self.source_epoch())
+            std::cmp::max(epoch, self.source_epoch())
+        }
     }
 
     fn source_epoch(&self) -> Epoch {
@@ -218,8 +207,33 @@ impl<'a> SingleBlockProcessor<'a> {
         Ok(())
     }
 
-    fn ensure_valid_block_signature(&self) -> Result<(), ProcessResult> {
-        validate_block_signature(self.block).map_err(|_| ProcessResult::BadSignature)
+    /// This is a precheck that allows for an early return if a block with an epoch link
+    /// is not signed by the account owner or the epoch signer.
+    /// It is not sure yet, if the block is an epoch block, because it could just be
+    /// a send to the epoch account.
+    fn ensure_block_signature_for_epoch_block_candidate_is_maybe_valid(
+        &self,
+    ) -> Result<(), ProcessResult> {
+        // Check for possible regular state blocks with epoch link (send subtype)
+        if self.has_epoch_link()
+            && (validate_block_signature(self.block).is_err()
+                && self.ledger.validate_epoch_signature(self.block).is_err())
+        {
+            return Err(ProcessResult::BadSignature);
+        } else {
+            Ok(())
+        }
+    }
+
+    fn ensure_previous_block_exists_for_epoch_block_candidate(&self) -> Result<(), ProcessResult> {
+        if self.has_epoch_link()
+            && !self.block.previous().is_zero()
+            && self.previous_block.is_none()
+        {
+            Err(ProcessResult::GapPrevious)
+        } else {
+            Ok(())
+        }
     }
 
     fn ensure_block_is_not_for_burn_account(&self) -> Result<(), ProcessResult> {
@@ -231,13 +245,7 @@ impl<'a> SingleBlockProcessor<'a> {
     }
 
     fn ensure_previous_block_exists(&self) -> Result<(), ProcessResult> {
-        if self.account_exists()
-            && !self
-                .ledger
-                .store
-                .block()
-                .exists(self.txn.txn(), &self.block.previous())
-        {
+        if self.account_exists() && self.previous_block.is_none() {
             return Err(ProcessResult::GapPrevious);
         }
 
@@ -275,25 +283,28 @@ impl<'a> SingleBlockProcessor<'a> {
         Ok(())
     }
 
-    fn ensure_representative_did_not_change(&self) -> Result<(), ProcessResult> {
-        if let Some(info) = &self.old_account_info {
-            if self.block.representative() != info.representative {
-                return Err(ProcessResult::RepresentativeMismatch);
-            };
+    fn ensure_epoch_block_does_not_change_representative(&self) -> Result<(), ProcessResult> {
+        if self.is_epoch_block() {
+            if let Some(info) = &self.old_account_info {
+                if self.block.representative() != info.representative {
+                    return Err(ProcessResult::RepresentativeMismatch);
+                };
+            }
         }
         Ok(())
     }
 
     fn ensure_epoch_open_has_burn_account_as_rep(&self) -> Result<(), ProcessResult> {
-        if self.is_new_account() && !self.block.representative().is_zero() {
+        if self.is_epoch_block() && self.is_new_account() && !self.block.representative().is_zero()
+        {
             Err(ProcessResult::RepresentativeMismatch)
         } else {
             Ok(())
         }
     }
 
-    fn ensure_epoch_open_pending_entry(&self) -> Result<(), ProcessResult> {
-        if self.is_new_account() {
+    fn ensure_epoch_open_has_pending_entry(&self) -> Result<(), ProcessResult> {
+        if self.is_new_account() && self.is_epoch_block() {
             // Non-exisitng account should have pending entries
             let pending_exists = self
                 .ledger
@@ -308,7 +319,10 @@ impl<'a> SingleBlockProcessor<'a> {
     }
 
     fn ensure_valid_epoch_for_unopened_account(&self) -> Result<(), ProcessResult> {
-        if self.is_new_account() && self.block_epoch_version() == Epoch::Invalid {
+        if self.is_new_account()
+            && self.is_epoch_block()
+            && self.block_epoch_version() == Epoch::Invalid
+        {
             Err(ProcessResult::BlockPosition)
         } else {
             Ok(())
@@ -316,19 +330,23 @@ impl<'a> SingleBlockProcessor<'a> {
     }
 
     fn ensure_epoch_upgrade_is_sequential_for_existing_account(&self) -> Result<(), ProcessResult> {
-        if let Some(info) = &self.old_account_info {
-            if !Epochs::is_sequential(info.epoch, self.block_epoch_version()) {
-                return Err(ProcessResult::BlockPosition);
+        if self.is_epoch_block() {
+            if let Some(info) = &self.old_account_info {
+                if !Epochs::is_sequential(info.epoch, self.block_epoch_version()) {
+                    return Err(ProcessResult::BlockPosition);
+                }
             }
         }
         Ok(())
     }
 
     fn ensure_epoch_block_does_not_change_balance(&self) -> Result<(), ProcessResult> {
-        if let Some(info) = &self.old_account_info {
-            if self.block.balance() != info.balance {
-                return Err(ProcessResult::BalanceMismatch);
-            };
+        if self.is_epoch_block() {
+            if let Some(info) = &self.old_account_info {
+                if self.block.balance() != info.balance {
+                    return Err(ProcessResult::BalanceMismatch);
+                };
+            }
         }
         Ok(())
     }
@@ -384,7 +402,7 @@ impl<'a> SingleBlockProcessor<'a> {
             .ledger
             .constants
             .work
-            .is_valid_pow(self.block, &&self.epoch_block_details())
+            .is_valid_pow(self.block, &&self.block_details())
         {
             Err(ProcessResult::InsufficientWork)
         } else {
@@ -555,13 +573,18 @@ impl<'a> SingleBlockProcessor<'a> {
             Amount::zero(), /* unused */
             self.new_block_count(),
             seconds_since_epoch(),
-            self.epoch_block_details(),
+            self.block_details(),
             self.source_epoch(),
         )
     }
 
     fn block_details(&self) -> BlockDetails {
-        BlockDetails::new(self.epoch(), self.is_send(), self.is_receive(), false)
+        BlockDetails::new(
+            self.epoch(),
+            self.is_send(),
+            self.is_receive(),
+            self.is_epoch_block(),
+        )
     }
 
     fn get_old_account_info(&mut self) -> Option<AccountInfo> {

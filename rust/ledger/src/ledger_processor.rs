@@ -634,9 +634,10 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
     }
 
     fn state_block(&mut self, block: &mut StateBlock) {
-        self.result = match SingleBlockProcessor::new(self.ledger, self.txn, block).process() {
-            Ok(()) => ProcessResult::Progress,
-            Err(res) => res,
-        }
+        self.result =
+            match SingleBlockProcessor::new(self.ledger, self.txn, block).process_state_block() {
+                Ok(()) => ProcessResult::Progress,
+                Err(res) => res,
+            }
     }
 }

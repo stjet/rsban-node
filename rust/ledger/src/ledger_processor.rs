@@ -1,4 +1,6 @@
-use crate::{LedgerConstants, SingleBlockProcessor};
+use crate::{
+    legacy_send_block_processor::LegacySendBlockProcessor, LedgerConstants, StateBlockProcessor,
+};
 use rsnano_core::{
     utils::seconds_since_epoch, validate_message, AccountInfo, Amount, Block, BlockDetails,
     BlockHash, BlockSideband, BlockSubType, ChangeBlock, Epoch, MutableBlockVisitor, OpenBlock,
@@ -35,132 +37,101 @@ impl<'a> LedgerProcessor<'a> {
 
 impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
     fn send_block(&mut self, block: &mut SendBlock) {
-        let hash = block.hash();
-        let existing = self
-            .ledger
-            .block_or_pruned_exists_txn(self.txn.txn(), &hash);
-        self.result = if existing {
-            ProcessResult::Old
-        } else {
+        self.result = match LegacySendBlockProcessor::new(self.ledger, self.txn, block)
+            .process_legacy_send()
+        {
+            Ok(()) => ProcessResult::Progress,
+            Err(res) => res,
+        };
+
+        if self.result != ProcessResult::Progress {
+            return;
+        }
+
+        let account = self.ledger.get_frontier(self.txn.txn(), &block.previous());
+        let account = account.unwrap();
+
+        let block_details = BlockDetails::new(
+            Epoch::Epoch0,
+            false, /* unused */
+            false, /* unused */
+            false, /* unused */
+        );
+        // Does this block have sufficient work? (Malformed)
+        self.result = if self.constants.work.difficulty_block(block)
+            >= self
+                .constants
+                .work
+                .threshold2(block.work_version(), &block_details)
+        {
             ProcessResult::Progress
-        }; // Have we seen this block before? (Harmless)
+        } else {
+            ProcessResult::InsufficientWork
+        };
         if self.result == ProcessResult::Progress {
-            let previous = self
-                .ledger
-                .store
-                .block()
-                .get(self.txn.txn(), &block.previous());
-            // Have we seen the previous block already? (Harmless)
-            let previous = match previous {
-                Some(b) => b,
-                None => {
-                    self.result = ProcessResult::GapPrevious;
-                    return;
-                }
-            };
-            self.result = if SendBlock::valid_predecessor(previous.block_type()) {
+            debug_assert!(validate_message(
+                &account.into(),
+                block.hash().as_bytes(),
+                block.block_signature()
+            )
+            .is_ok());
+            let (info, latest_error) =
+                match self.ledger.store.account().get(self.txn.txn(), &account) {
+                    Some(i) => (i, false),
+                    None => (AccountInfo::default(), true),
+                };
+            debug_assert!(!latest_error);
+            debug_assert!(info.head == block.previous());
+            // Is this trying to spend a negative amount (Malicious)
+            self.result = if info.balance >= block.balance() {
                 ProcessResult::Progress
             } else {
-                ProcessResult::BlockPosition
+                ProcessResult::NegativeSpend
             };
             if self.result == ProcessResult::Progress {
-                let account = self.ledger.get_frontier(self.txn.txn(), &block.previous());
-                self.result = if account.is_none() {
-                    ProcessResult::Fork
-                } else {
-                    ProcessResult::Progress
+                let amount = info.balance - block.balance();
+                self.ledger
+                    .cache
+                    .rep_weights
+                    .representation_add(info.representative, Amount::zero().wrapping_sub(amount));
+                block.set_sideband(BlockSideband::new(
+                    account,
+                    BlockHash::zero(),
+                    block.balance(), /* unused */
+                    info.block_count + 1,
+                    seconds_since_epoch(),
+                    block_details,
+                    Epoch::Epoch0, /* unused */
+                ));
+                self.ledger
+                    .store
+                    .block()
+                    .put(self.txn, &block.hash(), block);
+                let new_info = AccountInfo {
+                    head: block.hash(),
+                    representative: info.representative,
+                    open_block: info.open_block,
+                    balance: block.balance(),
+                    modified: seconds_since_epoch(),
+                    block_count: info.block_count + 1,
+                    epoch: Epoch::Epoch0,
                 };
-                if self.result == ProcessResult::Progress {
-                    let account = account.unwrap();
-                    // Is this block signed correctly (Malformed)
-                    self.result = match validate_message(
-                        &account.into(),
-                        hash.as_bytes(),
-                        block.block_signature(),
-                    ) {
-                        Ok(_) => ProcessResult::Progress,
-                        Err(_) => ProcessResult::BadSignature,
-                    };
-                    if self.result == ProcessResult::Progress {
-                        let block_details = BlockDetails::new(
-                            Epoch::Epoch0,
-                            false, /* unused */
-                            false, /* unused */
-                            false, /* unused */
-                        );
-                        // Does this block have sufficient work? (Malformed)
-                        self.result = if self.constants.work.difficulty_block(block)
-                            >= self
-                                .constants
-                                .work
-                                .threshold2(block.work_version(), &block_details)
-                        {
-                            ProcessResult::Progress
-                        } else {
-                            ProcessResult::InsufficientWork
-                        };
-                        if self.result == ProcessResult::Progress {
-                            debug_assert!(validate_message(
-                                &account.into(),
-                                hash.as_bytes(),
-                                block.block_signature()
-                            )
-                            .is_ok());
-                            let (info, latest_error) =
-                                match self.ledger.store.account().get(self.txn.txn(), &account) {
-                                    Some(i) => (i, false),
-                                    None => (AccountInfo::default(), true),
-                                };
-                            debug_assert!(!latest_error);
-                            debug_assert!(info.head == block.previous());
-                            // Is this trying to spend a negative amount (Malicious)
-                            self.result = if info.balance >= block.balance() {
-                                ProcessResult::Progress
-                            } else {
-                                ProcessResult::NegativeSpend
-                            };
-                            if self.result == ProcessResult::Progress {
-                                let amount = info.balance - block.balance();
-                                self.ledger.cache.rep_weights.representation_add(
-                                    info.representative,
-                                    Amount::zero().wrapping_sub(amount),
-                                );
-                                block.set_sideband(BlockSideband::new(
-                                    account,
-                                    BlockHash::zero(),
-                                    block.balance(), /* unused */
-                                    info.block_count + 1,
-                                    seconds_since_epoch(),
-                                    block_details,
-                                    Epoch::Epoch0, /* unused */
-                                ));
-                                self.ledger.store.block().put(self.txn, &hash, block);
-                                let new_info = AccountInfo {
-                                    head: hash,
-                                    representative: info.representative,
-                                    open_block: info.open_block,
-                                    balance: block.balance(),
-                                    modified: seconds_since_epoch(),
-                                    block_count: info.block_count + 1,
-                                    epoch: Epoch::Epoch0,
-                                };
-                                self.ledger
-                                    .update_account(self.txn, &account, &info, &new_info);
-                                self.ledger.store.pending().put(
-                                    self.txn,
-                                    &PendingKey::new(block.hashables.destination, hash),
-                                    &PendingInfo::new(account, amount, Epoch::Epoch0),
-                                );
-                                self.ledger
-                                    .store
-                                    .frontier()
-                                    .del(self.txn, &block.previous());
-                                self.ledger.store.frontier().put(self.txn, &hash, &account);
-                                self.observer.block_added(BlockSubType::Send);
-                            }
-                        }
-                    }
-                }
+                self.ledger
+                    .update_account(self.txn, &account, &info, &new_info);
+                self.ledger.store.pending().put(
+                    self.txn,
+                    &PendingKey::new(block.hashables.destination, block.hash()),
+                    &PendingInfo::new(account, amount, Epoch::Epoch0),
+                );
+                self.ledger
+                    .store
+                    .frontier()
+                    .del(self.txn, &block.previous());
+                self.ledger
+                    .store
+                    .frontier()
+                    .put(self.txn, &block.hash(), &account);
+                self.observer.block_added(BlockSubType::Send);
             }
         }
     }
@@ -635,7 +606,7 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
 
     fn state_block(&mut self, block: &mut StateBlock) {
         self.result =
-            match SingleBlockProcessor::new(self.ledger, self.txn, block).process_state_block() {
+            match StateBlockProcessor::new(self.ledger, self.txn, block).process_state_block() {
                 Ok(()) => ProcessResult::Progress,
                 Err(res) => res,
             }

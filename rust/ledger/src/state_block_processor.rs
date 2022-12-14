@@ -6,8 +6,8 @@ use rsnano_store_traits::WriteTransaction;
 
 use crate::{Ledger, ProcessResult};
 
-/// Processes a single block
-pub(crate) struct SingleBlockProcessor<'a> {
+/// Processes a single state block
+pub(crate) struct StateBlockProcessor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut dyn Block,
@@ -16,7 +16,7 @@ pub(crate) struct SingleBlockProcessor<'a> {
     previous_block: Option<BlockEnum>,
 }
 
-impl<'a> SingleBlockProcessor<'a> {
+impl<'a> StateBlockProcessor<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
         txn: &'a mut dyn WriteTransaction,

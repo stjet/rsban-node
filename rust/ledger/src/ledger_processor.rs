@@ -1,6 +1,4 @@
-use crate::{
-    legacy_send_block_processor::LegacySendBlockProcessor, LedgerConstants, StateBlockProcessor,
-};
+use crate::{LedgerConstants, LegacySendBlockProcessor, StateBlockProcessor};
 use rsnano_core::{
     utils::seconds_since_epoch, validate_message, AccountInfo, Amount, Block, BlockDetails,
     BlockHash, BlockSideband, BlockSubType, ChangeBlock, Epoch, MutableBlockVisitor, OpenBlock,
@@ -43,97 +41,6 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
             Ok(()) => ProcessResult::Progress,
             Err(res) => res,
         };
-
-        if self.result != ProcessResult::Progress {
-            return;
-        }
-
-        let account = self.ledger.get_frontier(self.txn.txn(), &block.previous());
-        let account = account.unwrap();
-
-        let block_details = BlockDetails::new(
-            Epoch::Epoch0,
-            false, /* unused */
-            false, /* unused */
-            false, /* unused */
-        );
-        // Does this block have sufficient work? (Malformed)
-        self.result = if self.constants.work.difficulty_block(block)
-            >= self
-                .constants
-                .work
-                .threshold2(block.work_version(), &block_details)
-        {
-            ProcessResult::Progress
-        } else {
-            ProcessResult::InsufficientWork
-        };
-        if self.result == ProcessResult::Progress {
-            debug_assert!(validate_message(
-                &account.into(),
-                block.hash().as_bytes(),
-                block.block_signature()
-            )
-            .is_ok());
-            let (info, latest_error) =
-                match self.ledger.store.account().get(self.txn.txn(), &account) {
-                    Some(i) => (i, false),
-                    None => (AccountInfo::default(), true),
-                };
-            debug_assert!(!latest_error);
-            debug_assert!(info.head == block.previous());
-            // Is this trying to spend a negative amount (Malicious)
-            self.result = if info.balance >= block.balance() {
-                ProcessResult::Progress
-            } else {
-                ProcessResult::NegativeSpend
-            };
-            if self.result == ProcessResult::Progress {
-                let amount = info.balance - block.balance();
-                self.ledger
-                    .cache
-                    .rep_weights
-                    .representation_add(info.representative, Amount::zero().wrapping_sub(amount));
-                block.set_sideband(BlockSideband::new(
-                    account,
-                    BlockHash::zero(),
-                    block.balance(), /* unused */
-                    info.block_count + 1,
-                    seconds_since_epoch(),
-                    block_details,
-                    Epoch::Epoch0, /* unused */
-                ));
-                self.ledger
-                    .store
-                    .block()
-                    .put(self.txn, &block.hash(), block);
-                let new_info = AccountInfo {
-                    head: block.hash(),
-                    representative: info.representative,
-                    open_block: info.open_block,
-                    balance: block.balance(),
-                    modified: seconds_since_epoch(),
-                    block_count: info.block_count + 1,
-                    epoch: Epoch::Epoch0,
-                };
-                self.ledger
-                    .update_account(self.txn, &account, &info, &new_info);
-                self.ledger.store.pending().put(
-                    self.txn,
-                    &PendingKey::new(block.hashables.destination, block.hash()),
-                    &PendingInfo::new(account, amount, Epoch::Epoch0),
-                );
-                self.ledger
-                    .store
-                    .frontier()
-                    .del(self.txn, &block.previous());
-                self.ledger
-                    .store
-                    .frontier()
-                    .put(self.txn, &block.hash(), &account);
-                self.observer.block_added(BlockSubType::Send);
-            }
-        }
     }
 
     fn receive_block(&mut self, block: &mut ReceiveBlock) {

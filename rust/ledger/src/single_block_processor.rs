@@ -7,15 +7,16 @@ use rsnano_store_traits::WriteTransaction;
 
 use crate::{Ledger, ProcessResult};
 
-pub(crate) struct StateBlockProcessor<'a> {
+/// Processes a single block
+pub(crate) struct SingleBlockProcessor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
-    block: &'a mut StateBlock,
+    block: &'a mut dyn Block,
     old_account_info: Option<AccountInfo>,
     pending_receive: Option<PendingInfo>,
 }
 
-impl<'a> StateBlockProcessor<'a> {
+impl<'a> SingleBlockProcessor<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
         txn: &'a mut dyn WriteTransaction,
@@ -94,6 +95,14 @@ impl<'a> StateBlockProcessor<'a> {
     }
 
     fn process_epoch_block(&mut self) -> Result<(), ProcessResult> {
+        self.ensure_valid_epoch_block()?;
+        self.add_epoch_block();
+        self.update_account_info_for_epoch_block();
+        self.delete_frontier();
+        Ok(())
+    }
+
+    fn ensure_valid_epoch_block(&mut self) -> Result<(), ProcessResult> {
         self.ensure_block_does_not_exist_yet()?;
         self.ensure_valid_epoch_block_signature()?;
         self.ensure_block_is_not_for_burn_account()?;
@@ -102,83 +111,24 @@ impl<'a> StateBlockProcessor<'a> {
         self.ensure_representative_did_not_change()?;
         self.ensure_epoch_open_has_burn_account_as_rep()?;
         self.ensure_epoch_open_pending_entry()?;
+        self.ensure_valid_epoch_for_unopened_account()?;
+        self.ensure_epoch_upgrade_is_sequential_for_existing_account()?;
+        self.ensure_epoch_block_does_not_change_balance()?;
+        self.ensure_sufficient_work_for_epoch_block()?;
+        Ok(())
+    }
 
-        let account_error = self.is_new_account();
-        let info = self.old_account_info.clone().unwrap_or_default();
+    fn epoch_block_details(&self) -> BlockDetails {
+        let epoch = self.block_epoch_version();
+        BlockDetails::new(epoch, false, false, true)
+    }
 
-        let epoch = self
-            .ledger
+    fn block_epoch_version(&self) -> Epoch {
+        self.ledger
             .constants
             .epochs
             .epoch(&self.block.link())
-            .unwrap_or(Epoch::Invalid);
-        // Must be an epoch for an unopened account or the epoch upgrade must be sequential
-        let is_valid_epoch_upgrade = if account_error {
-            epoch != Epoch::Invalid
-        } else {
-            Epochs::is_sequential(info.epoch, epoch)
-        };
-        if !is_valid_epoch_upgrade {
-            return Err(ProcessResult::BlockPosition);
-        };
-
-        if self.block.balance() != info.balance {
-            return Err(ProcessResult::BalanceMismatch);
-        };
-
-        let block_details = BlockDetails::new(epoch, false, false, true);
-        // Does this block have sufficient work (Malformed)
-        if self.ledger.constants.work.difficulty_block(self.block)
-            >= self
-                .ledger
-                .constants
-                .work
-                .threshold2(self.block.work_version(), &block_details)
-        {
-        } else {
-            return Err(ProcessResult::InsufficientWork);
-        };
-
-        self.ledger.observer.block_added(BlockSubType::Epoch);
-        self.block.set_sideband(BlockSideband::new(
-            self.block.account(), /* unused */
-            BlockHash::zero(),
-            Amount::zero(), /* unused */
-            info.block_count + 1,
-            seconds_since_epoch(),
-            block_details,
-            Epoch::Epoch0, /* unused */
-        ));
-        self.ledger
-            .store
-            .block()
-            .put(self.txn, &self.block.hash(), self.block);
-        let new_info = AccountInfo {
-            head: self.block.hash(),
-            representative: self.block.representative(),
-            open_block: if info.open_block.is_zero() {
-                self.block.hash()
-            } else {
-                info.open_block
-            },
-            balance: info.balance,
-            modified: seconds_since_epoch(),
-            block_count: info.block_count + 1,
-            epoch,
-        };
-        self.ledger
-            .update_account(self.txn, &self.block.account(), &info, &new_info);
-        if self
-            .ledger
-            .store
-            .frontier()
-            .get(self.txn.txn(), &info.head)
-            .is_some()
-        {
-            self.ledger.store.frontier().del(self.txn, &info.head);
-        }
-
-        Ok(())
+            .unwrap_or(Epoch::Invalid)
     }
 
     pub(crate) fn process_state_block(&mut self) -> Result<(), ProcessResult> {
@@ -357,6 +307,32 @@ impl<'a> StateBlockProcessor<'a> {
         Ok(())
     }
 
+    fn ensure_valid_epoch_for_unopened_account(&self) -> Result<(), ProcessResult> {
+        if self.is_new_account() && self.block_epoch_version() == Epoch::Invalid {
+            Err(ProcessResult::BlockPosition)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn ensure_epoch_upgrade_is_sequential_for_existing_account(&self) -> Result<(), ProcessResult> {
+        if let Some(info) = &self.old_account_info {
+            if !Epochs::is_sequential(info.epoch, self.block_epoch_version()) {
+                return Err(ProcessResult::BlockPosition);
+            }
+        }
+        Ok(())
+    }
+
+    fn ensure_epoch_block_does_not_change_balance(&self) -> Result<(), ProcessResult> {
+        if let Some(info) = &self.old_account_info {
+            if self.block.balance() != info.balance {
+                return Err(ProcessResult::BalanceMismatch);
+            };
+        }
+        Ok(())
+    }
+
     fn ensure_link_block_exists(&self) -> Result<(), ProcessResult> {
         if !self
             .ledger
@@ -403,6 +379,19 @@ impl<'a> StateBlockProcessor<'a> {
         Ok(())
     }
 
+    fn ensure_sufficient_work_for_epoch_block(&self) -> Result<(), ProcessResult> {
+        if !self
+            .ledger
+            .constants
+            .work
+            .is_valid_pow(self.block, &&self.epoch_block_details())
+        {
+            Err(ProcessResult::InsufficientWork)
+        } else {
+            Ok(())
+        }
+    }
+
     fn ensure_sufficient_work(&self) -> Result<(), ProcessResult> {
         if !self
             .ledger
@@ -419,6 +408,16 @@ impl<'a> StateBlockProcessor<'a> {
     fn add_block(&mut self) {
         self.ledger.observer.state_block_added();
         self.block.set_sideband(self.create_sideband());
+        self.ledger
+            .store
+            .block()
+            .put(self.txn, &self.block.hash(), self.block);
+    }
+
+    fn add_epoch_block(&mut self) {
+        self.ledger.observer.block_added(BlockSubType::Epoch);
+        self.block
+            .set_sideband(self.create_sideband_for_epoch_block());
         self.ledger
             .store
             .block()
@@ -449,6 +448,16 @@ impl<'a> StateBlockProcessor<'a> {
 
     fn update_account_info(&mut self) {
         let new_account_info = self.create_account_info();
+        self.ledger.update_account(
+            self.txn,
+            &self.block.account(),
+            &self.old_account_info.clone().unwrap_or_default(),
+            &new_account_info,
+        );
+    }
+
+    fn update_account_info_for_epoch_block(&mut self) {
+        let new_account_info = self.create_account_info_from_epoch_block();
         self.ledger.update_account(
             self.txn,
             &self.block.account(),
@@ -500,6 +509,18 @@ impl<'a> StateBlockProcessor<'a> {
         }
     }
 
+    fn create_account_info_from_epoch_block(&self) -> AccountInfo {
+        AccountInfo {
+            head: self.block.hash(),
+            representative: self.block.representative(),
+            open_block: self.open_block(),
+            balance: self.block.balance(),
+            modified: seconds_since_epoch(),
+            block_count: self.new_block_count(),
+            epoch: self.block_epoch_version(),
+        }
+    }
+
     fn new_block_count(&self) -> u64 {
         self.old_account_info
             .as_ref()
@@ -509,13 +530,12 @@ impl<'a> StateBlockProcessor<'a> {
     }
 
     fn open_block(&self) -> BlockHash {
-        if let Some(acc_info) = &self.old_account_info {
-            acc_info.open_block
+        if let Some(info) = &self.old_account_info {
+            info.open_block
         } else {
             self.block.hash()
         }
     }
-
     fn create_sideband(&self) -> BlockSideband {
         BlockSideband::new(
             self.block.account(), /* unused */
@@ -524,6 +544,18 @@ impl<'a> StateBlockProcessor<'a> {
             self.new_block_count(),
             seconds_since_epoch(),
             self.block_details(),
+            self.source_epoch(),
+        )
+    }
+
+    fn create_sideband_for_epoch_block(&self) -> BlockSideband {
+        BlockSideband::new(
+            self.block.account(), /* unused */
+            BlockHash::zero(),
+            Amount::zero(), /* unused */
+            self.new_block_count(),
+            seconds_since_epoch(),
+            self.epoch_block_details(),
             self.source_epoch(),
         )
     }

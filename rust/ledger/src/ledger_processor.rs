@@ -1,4 +1,4 @@
-use crate::{LedgerConstants, StateBlockProcessor};
+use crate::{LedgerConstants, SingleBlockProcessor};
 use rsnano_core::{
     utils::seconds_since_epoch, validate_message, AccountInfo, Amount, Block, BlockDetails,
     BlockHash, BlockSideband, BlockSubType, ChangeBlock, Epoch, MutableBlockVisitor, OpenBlock,
@@ -634,7 +634,7 @@ impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
     }
 
     fn state_block(&mut self, block: &mut StateBlock) {
-        self.result = match StateBlockProcessor::new(self.ledger, self.txn, block).process() {
+        self.result = match SingleBlockProcessor::new(self.ledger, self.txn, block).process() {
             Ok(()) => ProcessResult::Progress,
             Err(res) => res,
         }

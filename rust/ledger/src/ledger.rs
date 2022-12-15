@@ -798,7 +798,7 @@ impl Ledger {
         &self,
         txn: &mut dyn WriteTransaction,
         block: &mut dyn Block,
-    ) -> Result<ProcessResult, ProcessResult> {
+    ) -> Result<(), ProcessResult> {
         debug_assert!(
             !self.constants.work.validate_entry_block(block)
                 || self.constants.genesis.read().unwrap().deref()
@@ -806,14 +806,11 @@ impl Ledger {
         );
         let mut processor = LedgerProcessor::new(self, txn);
         block.visit_mut(&mut processor);
-        if processor.result == ProcessResult::Progress {
+        if processor.result.is_ok() {
             self.cache.block_count.fetch_add(1, Ordering::SeqCst);
         }
-        if processor.result == ProcessResult::Progress {
-            Ok(processor.result)
-        } else {
-            Err(processor.result)
-        }
+
+        processor.result
     }
 
     pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {

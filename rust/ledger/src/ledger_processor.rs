@@ -1,7 +1,4 @@
-use crate::{
-    LegacyChangeBlockProcessor, LegacyOpenBlockProcessor, LegacyReceiveBlockProcessor,
-    LegacySendBlockProcessor, StateBlockProcessor,
-};
+use crate::{LegacyBlockProcessor, StateBlockProcessor};
 use rsnano_core::{
     ChangeBlock, MutableBlockVisitor, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
@@ -12,7 +9,7 @@ use super::{Ledger, ProcessResult};
 pub(crate) struct LedgerProcessor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
-    pub result: ProcessResult,
+    pub result: Result<(), ProcessResult>,
 }
 
 impl<'a> LedgerProcessor<'a> {
@@ -20,48 +17,29 @@ impl<'a> LedgerProcessor<'a> {
         Self {
             ledger,
             txn,
-            result: ProcessResult::Progress,
+            result: Ok(()),
         }
     }
 }
 
 impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
     fn send_block(&mut self, block: &mut SendBlock) {
-        self.result = match LegacySendBlockProcessor::new(self.ledger, self.txn, block)
-            .process_legacy_send()
-        {
-            Ok(()) => ProcessResult::Progress,
-            Err(res) => res,
-        };
+        self.result = LegacyBlockProcessor::send_block(self.ledger, self.txn, block).process();
     }
 
     fn receive_block(&mut self, block: &mut ReceiveBlock) {
-        self.result = match LegacyReceiveBlockProcessor::new(self.ledger, self.txn, block).process()
-        {
-            Ok(()) => ProcessResult::Progress,
-            Err(res) => res,
-        };
+        self.result = LegacyBlockProcessor::receive_block(self.ledger, self.txn, block).process();
     }
 
     fn open_block(&mut self, block: &mut OpenBlock) {
-        self.result = match LegacyOpenBlockProcessor::new(self.ledger, self.txn, block).process() {
-            Ok(()) => ProcessResult::Progress,
-            Err(res) => res,
-        };
+        self.result = LegacyBlockProcessor::open_block(self.ledger, self.txn, block).process();
     }
 
     fn change_block(&mut self, block: &mut ChangeBlock) {
-        self.result = match LegacyChangeBlockProcessor::new(self.ledger, self.txn, block).process()
-        {
-            Ok(()) => ProcessResult::Progress,
-            Err(res) => res,
-        };
+        self.result = LegacyBlockProcessor::change_block(self.ledger, self.txn, block).process();
     }
 
     fn state_block(&mut self, block: &mut StateBlock) {
-        self.result = match StateBlockProcessor::new(self.ledger, self.txn, block).process() {
-            Ok(()) => ProcessResult::Progress,
-            Err(res) => res,
-        }
+        self.result = StateBlockProcessor::new(self.ledger, self.txn, block).process();
     }
 }

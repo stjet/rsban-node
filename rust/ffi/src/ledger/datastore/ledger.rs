@@ -680,7 +680,7 @@ pub unsafe extern "C" fn rsn_ledger_process(
         (*block).block.write().unwrap().as_block_mut(),
     );
     let res = match res {
-        Ok(res) => res,
+        Ok(()) => ProcessResult::Progress,
         Err(res) => res,
     };
     (*result) = res.into();

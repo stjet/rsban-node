@@ -1,6 +1,7 @@
 use rsnano_core::{
     utils::seconds_since_epoch, validate_block_signature, AccountInfo, Amount, Block, BlockDetails,
     BlockEnum, BlockHash, BlockSideband, BlockSubType, Epoch, Epochs, PendingInfo, PendingKey,
+    StateBlock,
 };
 use rsnano_store_traits::WriteTransaction;
 
@@ -10,7 +11,7 @@ use crate::{Ledger, ProcessResult};
 pub(crate) struct StateBlockProcessor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
-    block: &'a mut dyn Block,
+    block: &'a mut StateBlock,
     old_account_info: Option<AccountInfo>,
     pending_receive: Option<PendingInfo>,
     previous_block: Option<BlockEnum>,
@@ -20,7 +21,7 @@ impl<'a> StateBlockProcessor<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
         txn: &'a mut dyn WriteTransaction,
-        block: &'a mut dyn Block,
+        block: &'a mut StateBlock,
     ) -> Self {
         Self {
             ledger,
@@ -50,7 +51,7 @@ impl<'a> StateBlockProcessor<'a> {
         }
     }
 
-    pub(crate) fn process_state_block(&mut self) -> Result<(), ProcessResult> {
+    pub(crate) fn process(&mut self) -> Result<(), ProcessResult> {
         self.initialize();
 
         // Epoch block pre-checks for early return

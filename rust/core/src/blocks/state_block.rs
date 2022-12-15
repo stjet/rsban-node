@@ -293,6 +293,10 @@ impl Block for StateBlock {
     fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
         visitor.state_block(self);
     }
+
+    fn valid_predecessor(&self, _block_type: BlockType) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

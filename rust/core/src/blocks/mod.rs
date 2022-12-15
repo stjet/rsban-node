@@ -5,16 +5,16 @@ mod block_sideband;
 pub use block_sideband::BlockSideband;
 
 mod change_block;
-pub use change_block::{ChangeBlock, ChangeHashables};
+pub use change_block::{valid_change_block_predecessor, ChangeBlock, ChangeHashables};
 
 mod open_block;
 pub use open_block::{OpenBlock, OpenHashables};
 
 mod receive_block;
-pub use receive_block::{ReceiveBlock, ReceiveHashables};
+pub use receive_block::{valid_receive_block_predecessor, ReceiveBlock, ReceiveHashables};
 
 mod send_block;
-pub use send_block::{SendBlock, SendHashables};
+pub use send_block::{valid_send_block_predecessor, SendBlock, SendHashables};
 
 mod state_block;
 pub use state_block::{StateBlock, StateHashables};
@@ -123,6 +123,7 @@ pub trait Block: FullHash {
     fn qualified_root(&self) -> QualifiedRoot {
         QualifiedRoot::new(self.root(), self.previous())
     }
+    fn valid_predecessor(&self, block_type: BlockType) -> bool;
 }
 
 impl<T: Block> FullHash for T {

@@ -104,12 +104,12 @@ impl ChangeBlock {
             sideband: None,
         })
     }
+}
 
-    pub fn valid_predecessor(predecessor: BlockType) -> bool {
-        match predecessor {
-            BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
-            _ => false,
-        }
+pub fn valid_change_block_predecessor(predecessor: BlockType) -> bool {
+    match predecessor {
+        BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
+        _ => false,
     }
 }
 
@@ -210,6 +210,10 @@ impl Block for ChangeBlock {
 
     fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
         visitor.change_block(self)
+    }
+
+    fn valid_predecessor(&self, block_type: BlockType) -> bool {
+        valid_change_block_predecessor(block_type)
     }
 }
 

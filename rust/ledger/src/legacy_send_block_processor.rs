@@ -7,11 +7,17 @@ use rsnano_store_traits::WriteTransaction;
 
 use crate::{Ledger, ProcessResult};
 
-/// Processes a single state block
+/// Processes a single legacy send block
 pub(crate) struct LegacySendBlockProcessor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut SendBlock,
+}
+
+pub(crate) struct LegacyBlockValidationResult {
+    account: Account,
+    account_info: AccountInfo,
+    amount: Amount,
 }
 
 impl<'a> LegacySendBlockProcessor<'a> {
@@ -31,27 +37,36 @@ impl<'a> LegacySendBlockProcessor<'a> {
         self.ensure_valid_signature(account)?;
         self.ensure_sufficient_work()?;
         let account_info = self.ensure_account_exists(&account)?;
-        debug_assert!(account_info.head == self.block.previous());
+        self.ensure_previous_block_is_account_head(&account_info)?;
+
+        //specific for send block:
         self.ensure_no_negative_amount(&account_info)?;
         let amount = account_info.balance - self.block.balance();
+
         self.update_representative_cache(&account_info, amount);
 
+        let result = LegacyBlockValidationResult {
+            account,
+            account_info,
+            amount,
+        };
+
         self.block
-            .set_sideband(self.create_sideband(account, &account_info));
+            .set_sideband(self.create_sideband(result.account, &result.account_info));
 
         self.ledger
             .store
             .block()
             .put(self.txn, &self.block.hash(), self.block);
 
-        let new_info = self.new_account_info(&account_info);
+        let new_info = self.new_account_info(&result.account_info);
         self.ledger
-            .update_account(self.txn, &account, &account_info, &new_info);
+            .update_account(self.txn, &result.account, &result.account_info, &new_info);
 
         self.ledger.store.pending().put(
             self.txn,
             &PendingKey::new(self.block.hashables.destination, self.block.hash()),
-            &PendingInfo::new(account, amount, Epoch::Epoch0),
+            &PendingInfo::new(result.account, result.amount, Epoch::Epoch0),
         );
 
         self.ledger
@@ -62,7 +77,7 @@ impl<'a> LegacySendBlockProcessor<'a> {
         self.ledger
             .store
             .frontier()
-            .put(self.txn, &self.block.hash(), &account);
+            .put(self.txn, &self.block.hash(), &result.account);
 
         self.ledger.observer.block_added(BlockSubType::Send);
         Ok(())
@@ -161,8 +176,20 @@ impl<'a> LegacySendBlockProcessor<'a> {
     }
 
     fn ensure_valid_predecessor(&self, previous: &BlockEnum) -> Result<(), ProcessResult> {
-        if !SendBlock::valid_predecessor(previous.block_type()) {
+        if !self.block.valid_predecessor(previous.block_type()) {
             Err(ProcessResult::BlockPosition)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn ensure_previous_block_is_account_head(
+        &self,
+        account_info: &AccountInfo,
+    ) -> Result<(), ProcessResult> {
+        // Block doesn't immediately follow latest block (Harmless)
+        if account_info.head != self.block.previous() {
+            Err(ProcessResult::GapPrevious)
         } else {
             Ok(())
         }

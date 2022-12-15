@@ -211,6 +211,18 @@ impl Block for OpenBlock {
     fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
         visitor.open_block(self)
     }
+
+    fn valid_predecessor(&self, _block_type: BlockType) -> bool {
+        false
+    }
+
+    fn work_version(&self) -> crate::WorkVersion {
+        crate::WorkVersion::Work1
+    }
+
+    fn qualified_root(&self) -> crate::QualifiedRoot {
+        crate::QualifiedRoot::new(self.root(), self.previous())
+    }
 }
 
 #[cfg(test)]

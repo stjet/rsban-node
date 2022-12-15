@@ -40,7 +40,12 @@ mod state_block_processor;
 pub(crate) use state_block_processor::StateBlockProcessor;
 
 mod legacy_send_block_processor;
-pub(crate) use legacy_send_block_processor::LegacySendBlockProcessor;
+pub(crate) use legacy_send_block_processor::{
+    LegacyBlockValidationResult, LegacySendBlockProcessor,
+};
+
+mod legacy_receive_block_processor;
+pub(crate) use legacy_receive_block_processor::LegacyReceiveBlockProcessor;
 
 #[cfg(test)]
 mod ledger_tests;

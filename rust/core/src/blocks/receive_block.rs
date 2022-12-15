@@ -94,12 +94,12 @@ impl ReceiveBlock {
             sideband: None,
         })
     }
+}
 
-    pub fn valid_predecessor(predecessor: BlockType) -> bool {
-        match predecessor {
-            BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
-            _ => false,
-        }
+pub fn valid_receive_block_predecessor(predecessor: BlockType) -> bool {
+    match predecessor {
+        BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
+        _ => false,
     }
 }
 
@@ -197,6 +197,10 @@ impl Block for ReceiveBlock {
 
     fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
         visitor.receive_block(self)
+    }
+
+    fn valid_predecessor(&self, block_type: BlockType) -> bool {
+        valid_receive_block_predecessor(block_type)
     }
 }
 

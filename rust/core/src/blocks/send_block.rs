@@ -138,13 +138,6 @@ impl SendBlock {
         self.hashables.balance = balance;
     }
 
-    pub fn valid_predecessor(block_type: BlockType) -> bool {
-        match block_type {
-            BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
-            BlockType::NotABlock | BlockType::State | BlockType::Invalid => false,
-        }
-    }
-
     pub fn deserialize_json(reader: &impl PropertyTreeReader) -> Result<Self> {
         let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
         let destination = Account::decode_account(reader.get_string("destination")?)?;
@@ -162,6 +155,13 @@ impl SendBlock {
             hash: LazyBlockHash::new(),
             sideband: None,
         })
+    }
+}
+
+pub fn valid_send_block_predecessor(block_type: BlockType) -> bool {
+    match block_type {
+        BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
+        BlockType::NotABlock | BlockType::State | BlockType::Invalid => false,
     }
 }
 
@@ -258,6 +258,10 @@ impl Block for SendBlock {
 
     fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
         visitor.send_block(self);
+    }
+
+    fn valid_predecessor(&self, block_type: BlockType) -> bool {
+        valid_send_block_predecessor(block_type)
     }
 }
 

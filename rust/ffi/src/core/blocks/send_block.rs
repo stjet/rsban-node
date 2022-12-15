@@ -1,7 +1,7 @@
 use num::FromPrimitive;
 use rsnano_core::{
-    Account, Amount, BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, SendBlock,
-    SendHashables, Signature,
+    valid_send_block_predecessor, Account, Amount, BlockEnum, BlockHash, LazyBlockHash, PublicKey,
+    RawKey, SendBlock, SendHashables, Signature,
 };
 use std::ffi::c_void;
 use std::sync::{Arc, RwLock};
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn rsn_send_block_balance_set(handle: *mut BlockHandle, ba
 #[no_mangle]
 pub extern "C" fn rsn_send_block_valid_predecessor(block_type: u8) -> bool {
     if let Some(block_type) = FromPrimitive::from_u8(block_type) {
-        SendBlock::valid_predecessor(block_type)
+        valid_send_block_predecessor(block_type)
     } else {
         false
     }

@@ -1,6 +1,6 @@
 use crate::{
     utils::{Deserialize, Serialize, Stream},
-    Account, Block, BlockHash,
+    Account, Block, BlockHash, StateBlock,
 };
 use primitive_types::U512;
 
@@ -22,11 +22,11 @@ impl PendingKey {
         result
     }
 
-    pub fn for_send_block(block: &dyn Block) -> Self {
+    pub fn for_send_block(block: &StateBlock) -> Self {
         Self::new(block.link().into(), block.hash())
     }
 
-    pub fn for_receive_block(block: &dyn Block) -> Self {
+    pub fn for_receive_block(block: &StateBlock) -> Self {
         Self::new(block.account(), block.link().into())
     }
 }

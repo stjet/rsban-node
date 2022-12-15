@@ -804,8 +804,7 @@ impl Ledger {
                 || self.constants.genesis.read().unwrap().deref()
                     == DEV_GENESIS.read().unwrap().deref()
         );
-        let mut processor =
-            LedgerProcessor::new(self, self.observer.as_ref(), &self.constants, txn);
+        let mut processor = LedgerProcessor::new(self, txn);
         block.visit_mut(&mut processor);
         if processor.result == ProcessResult::Progress {
             self.cache.block_count.fetch_add(1, Ordering::SeqCst);

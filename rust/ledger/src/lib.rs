@@ -40,15 +40,16 @@ mod state_block_processor;
 pub(crate) use state_block_processor::StateBlockProcessor;
 
 mod legacy_send_block_processor;
-pub(crate) use legacy_send_block_processor::{
-    LegacyBlockValidationResult, LegacySendBlockProcessor,
-};
+pub(crate) use legacy_send_block_processor::LegacySendBlockProcessor;
 
 mod legacy_receive_block_processor;
 pub(crate) use legacy_receive_block_processor::LegacyReceiveBlockProcessor;
 
 mod legacy_open_block_processor;
 pub(crate) use legacy_open_block_processor::LegacyOpenBlockProcessor;
+
+mod legacy_change_block_processor;
+pub(crate) use legacy_change_block_processor::LegacyChangeBlockProcessor;
 
 #[cfg(test)]
 mod ledger_tests;

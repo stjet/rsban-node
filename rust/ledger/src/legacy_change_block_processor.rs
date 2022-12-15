@@ -1,23 +1,22 @@
 use rsnano_core::{
-    utils::seconds_since_epoch, validate_message, Account, AccountInfo, Block, BlockDetails,
-    BlockEnum, BlockHash, BlockSideband, BlockSubType, Epoch, PendingInfo, PendingKey, PublicKey,
-    ReceiveBlock,
+    utils::seconds_since_epoch, validate_message, Account, AccountInfo, Amount, Block,
+    BlockDetails, BlockEnum, BlockHash, BlockSideband, BlockSubType, ChangeBlock, Epoch, PublicKey,
 };
 use rsnano_store_traits::WriteTransaction;
 
 use crate::{Ledger, ProcessResult};
 
-pub(crate) struct LegacyReceiveBlockProcessor<'a> {
+pub(crate) struct LegacyChangeBlockProcessor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
-    block: &'a mut ReceiveBlock,
+    block: &'a mut ChangeBlock,
 }
 
-impl<'a> LegacyReceiveBlockProcessor<'a> {
+impl<'a> LegacyChangeBlockProcessor<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
         txn: &'a mut dyn WriteTransaction,
-        block: &'a mut ReceiveBlock,
+        block: &'a mut ChangeBlock,
     ) -> Self {
         Self { ledger, txn, block }
     }
@@ -27,46 +26,44 @@ impl<'a> LegacyReceiveBlockProcessor<'a> {
         let previous = self.ensure_previous_block_exists()?;
         self.ensure_valid_predecessor(&previous)?;
         let account = self.ensure_frontier()?;
-        self.ensure_valid_signature(account)?;
-        self.ensure_source_block_exists()?;
         let account_info = self.ensure_account_exists(&account)?;
         self.ensure_previous_block_is_account_head(&account_info)?;
-        let pending_info = self.ensure_source_not_received_yet(&account)?;
-        self.ensure_source_is_epoch_0(&pending_info)?;
+        self.ensure_valid_signature(&account)?;
         self.ensure_sufficient_work()?;
 
-        let new_balance = account_info.balance + pending_info.amount;
-        let key = PendingKey::new(account, self.block.source());
-        self.ledger.store.pending().del(self.txn, &key);
         self.block.set_sideband(BlockSideband::new(
             account,
             BlockHash::zero(),
-            new_balance,
+            account_info.balance,
             account_info.block_count + 1,
             seconds_since_epoch(),
             unused_block_details(),
             Epoch::Epoch0, /* unused */
         ));
+
         self.ledger
             .store
             .block()
             .put(self.txn, &self.block.hash(), self.block);
 
+        let balance = self.ledger.balance(self.txn.txn(), &self.block.previous());
+        self.ledger.cache.rep_weights.representation_add_dual(
+            self.block.representative(),
+            balance,
+            account_info.representative,
+            Amount::zero().wrapping_sub(balance),
+        );
         let new_info = AccountInfo {
             head: self.block.hash(),
-            representative: account_info.representative,
+            representative: self.block.representative(),
             open_block: account_info.open_block,
-            balance: new_balance,
+            balance: account_info.balance,
             modified: seconds_since_epoch(),
             block_count: account_info.block_count + 1,
             epoch: Epoch::Epoch0,
         };
         self.ledger
             .update_account(self.txn, &account, &account_info, &new_info);
-        self.ledger
-            .cache
-            .rep_weights
-            .representation_add(account_info.representative, pending_info.amount);
         self.ledger
             .store
             .frontier()
@@ -75,8 +72,7 @@ impl<'a> LegacyReceiveBlockProcessor<'a> {
             .store
             .frontier()
             .put(self.txn, &self.block.hash(), &account);
-        self.ledger.observer.block_added(BlockSubType::Receive);
-
+        self.ledger.observer.block_added(BlockSubType::Change);
         Ok(())
     }
 
@@ -111,27 +107,6 @@ impl<'a> LegacyReceiveBlockProcessor<'a> {
             .ok_or(ProcessResult::Fork)
     }
 
-    fn ensure_valid_signature(&self, account: PublicKey) -> Result<(), ProcessResult> {
-        validate_message(
-            &account.into(),
-            self.block.hash().as_bytes(),
-            self.block.block_signature(),
-        )
-        .map_err(|_| ProcessResult::BadSignature)?;
-        Ok(())
-    }
-
-    fn ensure_source_block_exists(&self) -> Result<(), ProcessResult> {
-        if !self
-            .ledger
-            .block_or_pruned_exists_txn(self.txn.txn(), &self.block.source())
-        {
-            Err(ProcessResult::GapSource)
-        } else {
-            Ok(())
-        }
-    }
-
     fn ensure_account_exists(&self, account: &Account) -> Result<AccountInfo, ProcessResult> {
         self.ledger
             .get_account_info(self.txn.txn(), account)
@@ -150,24 +125,14 @@ impl<'a> LegacyReceiveBlockProcessor<'a> {
         }
     }
 
-    fn ensure_source_not_received_yet(
-        &self,
-        account: &Account,
-    ) -> Result<PendingInfo, ProcessResult> {
-        let key = PendingKey::new(*account, self.block.source());
-        self.ledger
-            .store
-            .pending()
-            .get(self.txn.txn(), &key)
-            .ok_or(ProcessResult::Unreceivable)
-    }
-
-    fn ensure_source_is_epoch_0(&self, pending_info: &PendingInfo) -> Result<(), ProcessResult> {
-        if pending_info.epoch != Epoch::Epoch0 {
-            Err(ProcessResult::Unreceivable)
-        } else {
-            Ok(())
-        }
+    fn ensure_valid_signature(&self, account: &PublicKey) -> Result<(), ProcessResult> {
+        validate_message(
+            account,
+            self.block.hash().as_bytes(),
+            self.block.block_signature(),
+        )
+        .map_err(|_| ProcessResult::BadSignature)?;
+        Ok(())
     }
 
     fn ensure_sufficient_work(&self) -> Result<(), ProcessResult> {

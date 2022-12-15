@@ -47,5 +47,8 @@ pub(crate) use legacy_send_block_processor::{
 mod legacy_receive_block_processor;
 pub(crate) use legacy_receive_block_processor::LegacyReceiveBlockProcessor;
 
+mod legacy_open_block_processor;
+pub(crate) use legacy_open_block_processor::LegacyOpenBlockProcessor;
+
 #[cfg(test)]
 mod ledger_tests;

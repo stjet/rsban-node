@@ -48,12 +48,11 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_raw_put(
 pub unsafe extern "C" fn rsn_lmdb_block_store_put(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,
-    hash: *const u8,
+    _hash: *const u8,
     block: *mut BlockHandle,
 ) {
     (*handle).0.put(
         (*txn).as_write_txn(),
-        &BlockHash::from_ptr(hash),
         (*block).block.read().unwrap().as_block(),
     );
 }

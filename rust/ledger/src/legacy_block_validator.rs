@@ -11,11 +11,27 @@ pub(crate) struct BlockValidation {
     pub account: Account,
     pub old_account_info: AccountInfo,
     pub new_account_info: AccountInfo,
-    pub amount_received: Amount,
-    pub amount_sent: Amount,
     pub pending_received: Option<PendingKey>,
     pub new_pending: Option<(PendingKey, PendingInfo)>,
     pub new_sideband: BlockSideband,
+}
+
+impl BlockValidation {
+    pub fn amount_sent(&self) -> Amount {
+        if self.new_account_info.balance < self.old_account_info.balance {
+            self.old_account_info.balance - self.new_account_info.balance
+        } else {
+            Amount::zero()
+        }
+    }
+
+    pub fn amount_received(&self) -> Amount {
+        if self.new_account_info.balance > self.old_account_info.balance {
+            self.new_account_info.balance - self.old_account_info.balance
+        } else {
+            Amount::zero()
+        }
+    }
 }
 
 pub(crate) struct LegacyBlockValidator<'a> {
@@ -56,11 +72,7 @@ impl<'a> LegacyBlockValidator<'a> {
         self.ensure_sufficient_work()?;
         self.ensure_no_negative_amount_spend(&old_account_info)?;
 
-        let amount_sent = if self.block.block_type() == BlockType::Send {
-            old_account_info.balance - self.block.balance()
-        } else {
-            Amount::zero()
-        };
+        let amount_sent = self.amount_sent(&old_account_info);
 
         let new_balance = old_account_info.balance + amount_received - amount_sent;
 
@@ -106,12 +118,18 @@ impl<'a> LegacyBlockValidator<'a> {
             account,
             old_account_info,
             new_account_info,
-            amount_received,
-            amount_sent,
             pending_received,
             new_sideband,
             new_pending,
         })
+    }
+
+    fn amount_sent(&self, old_account_info: &AccountInfo) -> Amount {
+        if self.block.block_type() == BlockType::Send {
+            old_account_info.balance - self.block.balance()
+        } else {
+            Amount::zero()
+        }
     }
 
     fn ensure_block_does_not_exist_yet(&self) -> Result<(), ProcessResult> {

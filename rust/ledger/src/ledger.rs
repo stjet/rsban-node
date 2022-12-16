@@ -180,7 +180,7 @@ impl Ledger {
         let genesis_block = genesis_block_enum.as_block();
         let genesis_hash = genesis_block.hash();
         let genesis_account = genesis_block.account();
-        self.store.block().put(txn, &genesis_hash, genesis_block);
+        self.store.block().put(txn, genesis_block);
         self.store.confirmation_height().put(
             txn,
             &genesis_account,

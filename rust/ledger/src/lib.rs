@@ -39,11 +39,11 @@ pub(crate) use dependent_block_visitor::DependentBlockVisitor;
 mod state_block_processor;
 pub(crate) use state_block_processor::StateBlockProcessor;
 
-mod legacy_block_processor;
-pub(crate) use legacy_block_processor::LegacyBlockProcessor;
+mod legacy_block_inserter;
+pub(crate) use legacy_block_inserter::LegacyBlockInserter;
 
 mod legacy_block_validator;
-pub(crate) use legacy_block_validator::{BlockValidation, LegacyBlockValidator};
+pub(crate) use legacy_block_validator::LegacyBlockValidator;
 
 #[cfg(test)]
 mod ledger_tests;

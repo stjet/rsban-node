@@ -406,10 +406,7 @@ impl<'a> StateBlockProcessor<'a> {
             .observer
             .block_added(self.block, self.is_epoch_block());
         self.block.set_sideband(self.create_sideband());
-        self.ledger
-            .store
-            .block()
-            .put(self.txn, &self.block.hash(), self.block);
+        self.ledger.store.block().put(self.txn, self.block);
     }
 
     fn update_pending_store(&mut self) {

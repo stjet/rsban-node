@@ -1,6 +1,6 @@
-use crate::{LegacyBlockProcessor, StateBlockProcessor};
+use crate::{LegacyBlockInserter, LegacyBlockValidator, StateBlockProcessor};
 use rsnano_core::{
-    ChangeBlock, MutableBlockVisitor, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+    Block, ChangeBlock, MutableBlockVisitor, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_store_traits::WriteTransaction;
 
@@ -20,23 +20,36 @@ impl<'a> LedgerProcessor<'a> {
             result: Ok(()),
         }
     }
+
+    fn process(&mut self, block: &mut dyn Block) {
+        let validation = LegacyBlockValidator::new(self.ledger, self.txn.txn(), block).validate();
+        self.result = match validation {
+            Ok(validation) => {
+                let mut block_inserter =
+                    LegacyBlockInserter::new(self.ledger, self.txn, block, &validation);
+                block_inserter.insert();
+                Ok(())
+            }
+            Err(x) => Err(x),
+        };
+    }
 }
 
 impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
     fn send_block(&mut self, block: &mut SendBlock) {
-        self.result = LegacyBlockProcessor::new(self.ledger, self.txn, block).process();
+        self.process(block);
     }
 
     fn receive_block(&mut self, block: &mut ReceiveBlock) {
-        self.result = LegacyBlockProcessor::new(self.ledger, self.txn, block).process();
+        self.process(block);
     }
 
     fn open_block(&mut self, block: &mut OpenBlock) {
-        self.result = LegacyBlockProcessor::new(self.ledger, self.txn, block).process();
+        self.process(block);
     }
 
     fn change_block(&mut self, block: &mut ChangeBlock) {
-        self.result = LegacyBlockProcessor::new(self.ledger, self.txn, block).process();
+        self.process(block);
     }
 
     fn state_block(&mut self, block: &mut StateBlock) {

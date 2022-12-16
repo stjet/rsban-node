@@ -11,7 +11,6 @@ pub(crate) struct LegacyBlockProcessor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut dyn Block,
-    previous: Option<BlockHash>,
     destination: Option<Account>,
     block_type: BlockSubType,
 }
@@ -25,7 +24,6 @@ impl<'a> LegacyBlockProcessor<'a> {
         Self {
             block_type: BlockSubType::Open,
             destination: None,
-            previous: None,
             block,
             ledger,
             txn,
@@ -40,7 +38,6 @@ impl<'a> LegacyBlockProcessor<'a> {
         Self {
             block_type: BlockSubType::Receive,
             destination: None,
-            previous: Some(block.previous()),
             block,
             ledger,
             txn,
@@ -55,7 +52,6 @@ impl<'a> LegacyBlockProcessor<'a> {
         Self {
             block_type: BlockSubType::Send,
             destination: Some(block.hashables.destination),
-            previous: Some(block.previous()),
             block,
             ledger,
             txn,
@@ -70,7 +66,6 @@ impl<'a> LegacyBlockProcessor<'a> {
         Self {
             block_type: BlockSubType::Change,
             destination: None,
-            previous: Some(block.previous()),
             block,
             ledger,
             txn,
@@ -79,16 +74,16 @@ impl<'a> LegacyBlockProcessor<'a> {
 
     pub(crate) fn process(&mut self) -> Result<(), ProcessResult> {
         self.ensure_block_does_not_exist_yet()?;
-        self.ensure_valid_previous_block(self.previous)?;
-        let (account, account_info) = if let Some(prev) = &self.previous {
-            let account = self.ensure_frontier(prev)?;
-            let account_info = self.ensure_account_exists(&account)?;
-            self.ensure_previous_block_is_account_head(prev, &account_info)?;
-            (account, account_info)
-        } else {
+        self.ensure_valid_previous_block()?;
+        let (account, account_info) = if self.block.block_type() == BlockType::Open {
             let account = self.block.account();
             self.ensure_account_not_opened_yet(&account)?;
             (account, AccountInfo::default())
+        } else {
+            let account = self.ensure_frontier(&self.block.previous())?;
+            let account_info = self.ensure_account_exists(&account)?;
+            self.ensure_previous_block_is_account_head(&self.block.previous(), &account_info)?;
+            (account, account_info)
         };
         self.ensure_valid_signature(&account)?;
         let (amount_received, pending_key) = if let Some(source) = self.block.source() {
@@ -177,8 +172,11 @@ impl<'a> LegacyBlockProcessor<'a> {
             );
         }
 
-        if let Some(previous) = &self.previous {
-            self.ledger.store.frontier().del(self.txn, previous);
+        if self.block.block_type() != BlockType::Open {
+            self.ledger
+                .store
+                .frontier()
+                .del(self.txn, &self.block.previous());
         }
 
         self.ledger
@@ -201,12 +199,9 @@ impl<'a> LegacyBlockProcessor<'a> {
         }
     }
 
-    fn ensure_valid_previous_block(
-        &self,
-        previous: Option<BlockHash>,
-    ) -> Result<(), ProcessResult> {
-        if let Some(hash) = previous {
-            let previous = self.ensure_previous_block_exists(&hash)?;
+    fn ensure_valid_previous_block(&self) -> Result<(), ProcessResult> {
+        if self.block.block_type() != BlockType::Open {
+            let previous = self.ensure_previous_block_exists(&self.block.previous())?;
             self.ensure_valid_predecessor(&previous)?;
         }
         Ok(())

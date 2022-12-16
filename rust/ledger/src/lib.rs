@@ -42,5 +42,8 @@ pub(crate) use state_block_processor::StateBlockProcessor;
 mod legacy_block_processor;
 pub(crate) use legacy_block_processor::LegacyBlockProcessor;
 
+mod legacy_block_validator;
+pub(crate) use legacy_block_validator::{BlockValidation, LegacyBlockValidator};
+
 #[cfg(test)]
 mod ledger_tests;

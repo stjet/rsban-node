@@ -24,19 +24,19 @@ impl<'a> LedgerProcessor<'a> {
 
 impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
     fn send_block(&mut self, block: &mut SendBlock) {
-        self.result = LegacyBlockProcessor::send_block(self.ledger, self.txn, block).process();
+        self.result = LegacyBlockProcessor::new(self.ledger, self.txn, block).process();
     }
 
     fn receive_block(&mut self, block: &mut ReceiveBlock) {
-        self.result = LegacyBlockProcessor::receive_block(self.ledger, self.txn, block).process();
+        self.result = LegacyBlockProcessor::new(self.ledger, self.txn, block).process();
     }
 
     fn open_block(&mut self, block: &mut OpenBlock) {
-        self.result = LegacyBlockProcessor::open_block(self.ledger, self.txn, block).process();
+        self.result = LegacyBlockProcessor::new(self.ledger, self.txn, block).process();
     }
 
     fn change_block(&mut self, block: &mut ChangeBlock) {
-        self.result = LegacyBlockProcessor::change_block(self.ledger, self.txn, block).process();
+        self.result = LegacyBlockProcessor::new(self.ledger, self.txn, block).process();
     }
 
     fn state_block(&mut self, block: &mut StateBlock) {

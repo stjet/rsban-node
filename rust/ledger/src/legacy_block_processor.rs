@@ -11,7 +11,6 @@ pub(crate) struct LegacyBlockProcessor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut dyn Block,
-    destination: Option<Account>,
     block_type: BlockSubType,
 }
 
@@ -23,7 +22,6 @@ impl<'a> LegacyBlockProcessor<'a> {
     ) -> Self {
         Self {
             block_type: BlockSubType::Open,
-            destination: None,
             block,
             ledger,
             txn,
@@ -37,7 +35,6 @@ impl<'a> LegacyBlockProcessor<'a> {
     ) -> Self {
         Self {
             block_type: BlockSubType::Receive,
-            destination: None,
             block,
             ledger,
             txn,
@@ -51,7 +48,6 @@ impl<'a> LegacyBlockProcessor<'a> {
     ) -> Self {
         Self {
             block_type: BlockSubType::Send,
-            destination: Some(block.hashables.destination),
             block,
             ledger,
             txn,
@@ -65,7 +61,6 @@ impl<'a> LegacyBlockProcessor<'a> {
     ) -> Self {
         Self {
             block_type: BlockSubType::Change,
-            destination: None,
             block,
             ledger,
             txn,
@@ -164,7 +159,7 @@ impl<'a> LegacyBlockProcessor<'a> {
             );
         }
 
-        if let Some(destination) = self.destination {
+        if let Some(destination) = self.block.destination() {
             self.ledger.store.pending().put(
                 self.txn,
                 &PendingKey::new(destination, self.block.hash()),

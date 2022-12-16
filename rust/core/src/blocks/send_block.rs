@@ -263,6 +263,10 @@ impl Block for SendBlock {
     fn valid_predecessor(&self, block_type: BlockType) -> bool {
         valid_send_block_predecessor(block_type)
     }
+
+    fn destination(&self) -> Option<Account> {
+        Some(self.hashables.destination)
+    }
 }
 
 #[cfg(test)]

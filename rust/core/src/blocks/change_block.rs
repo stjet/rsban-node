@@ -219,6 +219,10 @@ impl Block for ChangeBlock {
     fn valid_predecessor(&self, block_type: BlockType) -> bool {
         valid_change_block_predecessor(block_type)
     }
+
+    fn destination(&self) -> Option<Account> {
+        None
+    }
 }
 
 #[cfg(test)]

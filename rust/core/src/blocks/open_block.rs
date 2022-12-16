@@ -227,6 +227,10 @@ impl Block for OpenBlock {
     fn qualified_root(&self) -> crate::QualifiedRoot {
         crate::QualifiedRoot::new(self.root(), self.previous())
     }
+
+    fn destination(&self) -> Option<Account> {
+        None
+    }
 }
 
 #[cfg(test)]

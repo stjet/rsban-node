@@ -120,6 +120,7 @@ pub trait Block: FullHash {
     fn balance(&self) -> Amount;
     fn source(&self) -> Option<BlockHash>;
     fn representative(&self) -> Option<Account>;
+    fn destination(&self) -> Option<Account>;
     fn qualified_root(&self) -> QualifiedRoot {
         QualifiedRoot::new(self.root(), self.previous())
     }

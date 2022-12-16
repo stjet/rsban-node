@@ -207,6 +207,10 @@ impl Block for ReceiveBlock {
     fn valid_predecessor(&self, block_type: BlockType) -> bool {
         valid_receive_block_predecessor(block_type)
     }
+
+    fn destination(&self) -> Option<Account> {
+        None
+    }
 }
 
 #[cfg(test)]

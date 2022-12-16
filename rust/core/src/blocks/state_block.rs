@@ -301,6 +301,10 @@ impl Block for StateBlock {
     fn valid_predecessor(&self, _block_type: BlockType) -> bool {
         true
     }
+
+    fn destination(&self) -> Option<Account> {
+        None
+    }
 }
 
 #[cfg(test)]

@@ -3,7 +3,7 @@ use rsnano_core::{
     BlockDetails, BlockEnum, BlockHash, BlockSideband, BlockType, Epoch, PendingInfo, PendingKey,
     PublicKey,
 };
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_traits::{Transaction, WriteTransaction};
 
 use crate::{Ledger, ProcessResult};
 
@@ -13,19 +13,32 @@ pub(crate) struct LegacyBlockProcessor<'a> {
     block: &'a mut dyn Block,
 }
 
-impl<'a> LegacyBlockProcessor<'a> {
-    pub(crate) fn new(
-        ledger: &'a Ledger,
-        txn: &'a mut dyn WriteTransaction,
-        block: &'a mut dyn Block,
-    ) -> Self {
-        Self { block, ledger, txn }
+pub(crate) struct BlockValidation {
+    pub account: Account,
+    pub old_account_info: AccountInfo,
+    pub new_account_info: AccountInfo,
+    pub amount_received: Amount,
+    pub amount_sent: Amount,
+    pub pending_received: Option<PendingKey>,
+    pub new_pending: Option<(PendingKey, PendingInfo)>,
+    pub new_sideband: BlockSideband,
+}
+
+pub(crate) struct LegacyBlockValidator<'a> {
+    ledger: &'a Ledger,
+    txn: &'a dyn Transaction,
+    block: &'a dyn Block,
+}
+
+impl<'a> LegacyBlockValidator<'a> {
+    pub(crate) fn new(ledger: &'a Ledger, txn: &'a dyn Transaction, block: &'a dyn Block) -> Self {
+        Self { ledger, txn, block }
     }
 
-    pub(crate) fn process(&mut self) -> Result<(), ProcessResult> {
+    fn validate(&mut self) -> Result<BlockValidation, ProcessResult> {
         self.ensure_block_does_not_exist_yet()?;
         self.ensure_valid_previous_block()?;
-        let (account, account_info) = if self.block.block_type() == BlockType::Open {
+        let (account, old_account_info) = if self.block.block_type() == BlockType::Open {
             let account = self.block.account();
             self.ensure_account_not_opened_yet(&account)?;
             (account, AccountInfo::default())
@@ -36,7 +49,7 @@ impl<'a> LegacyBlockProcessor<'a> {
             (account, account_info)
         };
         self.ensure_valid_signature(&account)?;
-        let (amount_received, pending_key) = if let Some(source) = self.block.source() {
+        let (amount_received, pending_received) = if let Some(source) = self.block.source() {
             self.ensure_source_block_exists(&source)?;
             let pending_key = PendingKey::new(account, source);
             let pending_info = self.ensure_source_not_received_yet(&pending_key)?;
@@ -47,101 +60,70 @@ impl<'a> LegacyBlockProcessor<'a> {
         };
         self.ensure_block_is_not_for_burn_account(&account)?;
         self.ensure_sufficient_work()?;
-        self.ensure_no_negative_amount_spend(&account_info)?;
-
-        if let Some(key) = &pending_key {
-            self.ledger.store.pending().del(self.txn, key);
-        }
+        self.ensure_no_negative_amount_spend(&old_account_info)?;
 
         let amount_sent = if self.block.block_type() == BlockType::Send {
-            account_info.balance - self.block.balance()
+            old_account_info.balance - self.block.balance()
         } else {
             Amount::zero()
         };
-        let new_balance = account_info.balance + amount_received - amount_sent;
 
-        self.block.set_sideband(BlockSideband::new(
-            account,
-            BlockHash::zero(),
-            new_balance,
-            account_info.block_count + 1,
-            seconds_since_epoch(),
-            unused_block_details(),
-            Epoch::Epoch0, /* unused */
-        ));
+        let new_balance = old_account_info.balance + amount_received - amount_sent;
 
-        self.ledger
-            .store
-            .block()
-            .put(self.txn, &self.block.hash(), self.block);
-
-        let open_block = if account_info.head.is_zero() {
+        let open_block = if old_account_info.head.is_zero() {
             self.block.hash()
         } else {
-            account_info.open_block
+            old_account_info.open_block
         };
-        let new_info = AccountInfo {
+
+        let new_account_info = AccountInfo {
             head: self.block.hash(),
             representative: self
                 .block
                 .representative()
-                .unwrap_or(account_info.representative),
+                .unwrap_or(old_account_info.representative),
             open_block,
             balance: new_balance,
             modified: seconds_since_epoch(),
-            block_count: account_info.block_count + 1,
+            block_count: old_account_info.block_count + 1,
             epoch: Epoch::Epoch0,
         };
-        self.ledger
-            .update_account(self.txn, &account, &account_info, &new_info);
 
-        if !amount_received.is_zero() {
-            self.ledger
-                .cache
-                .rep_weights
-                .representation_add(new_info.representative, amount_received);
-        } else if !amount_sent.is_zero() {
-            self.ledger.cache.rep_weights.representation_add(
-                account_info.representative,
-                Amount::zero().wrapping_sub(amount_sent),
-            );
+        let new_sideband = BlockSideband::new(
+            account,
+            BlockHash::zero(),
+            new_balance,
+            old_account_info.block_count + 1,
+            seconds_since_epoch(),
+            unused_block_details(),
+            Epoch::Epoch0, /* unused */
+        );
+
+        let new_pending = if let Some(destination) = self.block.destination() {
+            Some((
+                PendingKey::new(destination, self.block.hash()),
+                PendingInfo::new(account, amount_sent, Epoch::Epoch0),
+            ))
         } else {
-            self.ledger.cache.rep_weights.representation_add_dual(
-                new_info.representative,
-                new_balance,
-                account_info.representative,
-                Amount::zero().wrapping_sub(new_balance),
-            );
-        }
+            None
+        };
 
-        if let Some(destination) = self.block.destination() {
-            self.ledger.store.pending().put(
-                self.txn,
-                &PendingKey::new(destination, self.block.hash()),
-                &PendingInfo::new(account, amount_sent, Epoch::Epoch0),
-            );
-        }
-
-        if self.block.block_type() != BlockType::Open {
-            self.ledger
-                .store
-                .frontier()
-                .del(self.txn, &self.block.previous());
-        }
-
-        self.ledger
-            .store
-            .frontier()
-            .put(self.txn, &self.block.hash(), &account);
-
-        self.ledger.observer.block_added(self.block, false);
-        Ok(())
+        Ok(BlockValidation {
+            account,
+            old_account_info,
+            new_account_info,
+            amount_received,
+            amount_sent,
+            pending_received,
+            new_sideband,
+            new_pending,
+        })
     }
 
     fn ensure_block_does_not_exist_yet(&self) -> Result<(), ProcessResult> {
         if self
             .ledger
-            .block_or_pruned_exists_txn(self.txn.txn(), &self.block.hash())
+            .block_or_pruned_exists_txn(self.txn, &self.block.hash())
         {
             Err(ProcessResult::Old)
         } else {
@@ -162,7 +144,7 @@ impl<'a> LegacyBlockProcessor<'a> {
         previous: &BlockHash,
     ) -> Result<BlockEnum, ProcessResult> {
         self.ledger
-            .get_block(self.txn.txn(), previous)
+            .get_block(self.txn, previous)
             .ok_or(ProcessResult::GapPrevious)
     }
 
@@ -176,13 +158,13 @@ impl<'a> LegacyBlockProcessor<'a> {
 
     fn ensure_frontier(&self, previous: &BlockHash) -> Result<Account, ProcessResult> {
         self.ledger
-            .get_frontier(self.txn.txn(), &previous)
+            .get_frontier(self.txn, &previous)
             .ok_or(ProcessResult::Fork)
     }
 
     fn ensure_account_exists(&self, account: &Account) -> Result<AccountInfo, ProcessResult> {
         self.ledger
-            .get_account_info(self.txn.txn(), account)
+            .get_account_info(self.txn, account)
             .ok_or(ProcessResult::GapPrevious)
     }
 
@@ -197,10 +179,7 @@ impl<'a> LegacyBlockProcessor<'a> {
     }
 
     fn ensure_source_block_exists(&self, source: &BlockHash) -> Result<(), ProcessResult> {
-        if !self
-            .ledger
-            .block_or_pruned_exists_txn(self.txn.txn(), &source)
-        {
+        if !self.ledger.block_or_pruned_exists_txn(self.txn, &source) {
             Err(ProcessResult::GapSource)
         } else {
             Ok(())
@@ -221,7 +200,7 @@ impl<'a> LegacyBlockProcessor<'a> {
     }
 
     fn ensure_account_not_opened_yet(&self, account: &Account) -> Result<(), ProcessResult> {
-        match self.ledger.store.account().get(self.txn.txn(), account) {
+        match self.ledger.store.account().get(self.txn, account) {
             Some(_) => Err(ProcessResult::Fork),
             None => Ok(()),
         }
@@ -234,7 +213,7 @@ impl<'a> LegacyBlockProcessor<'a> {
         self.ledger
             .store
             .pending()
-            .get(self.txn.txn(), &pending_key)
+            .get(self.txn, &pending_key)
             .ok_or(ProcessResult::Unreceivable)
     }
 
@@ -277,11 +256,77 @@ impl<'a> LegacyBlockProcessor<'a> {
     }
 }
 
+impl<'a> LegacyBlockProcessor<'a> {
+    pub(crate) fn new(
+        ledger: &'a Ledger,
+        txn: &'a mut dyn WriteTransaction,
+        block: &'a mut dyn Block,
+    ) -> Self {
+        Self { block, ledger, txn }
+    }
+
+    pub(crate) fn process(&'a mut self) -> Result<(), ProcessResult> {
+        let validation =
+            LegacyBlockValidator::new(self.ledger, self.txn.txn(), self.block).validate()?;
+
+        if let Some(key) = &validation.pending_received {
+            self.ledger.store.pending().del(self.txn, key);
+        }
+
+        self.block.set_sideband(validation.new_sideband);
+
+        self.ledger
+            .store
+            .block()
+            .put(self.txn, &self.block.hash(), self.block);
+
+        self.ledger.update_account(
+            self.txn,
+            &validation.account,
+            &validation.old_account_info,
+            &validation.new_account_info,
+        );
+
+        if !validation.amount_received.is_zero() {
+            self.ledger.cache.rep_weights.representation_add(
+                validation.new_account_info.representative,
+                validation.amount_received,
+            );
+        } else if !validation.amount_sent.is_zero() {
+            self.ledger.cache.rep_weights.representation_add(
+                validation.old_account_info.representative,
+                Amount::zero().wrapping_sub(validation.amount_sent),
+            );
+        } else {
+            self.ledger.cache.rep_weights.representation_add_dual(
+                validation.new_account_info.representative,
+                validation.new_account_info.balance,
+                validation.old_account_info.representative,
+                Amount::zero().wrapping_sub(validation.new_account_info.balance),
+            );
+        }
+
+        if let Some((key, info)) = validation.new_pending {
+            self.ledger.store.pending().put(self.txn, &key, &info);
+        }
+
+        if self.block.block_type() != BlockType::Open {
+            self.ledger
+                .store
+                .frontier()
+                .del(self.txn, &self.block.previous());
+        }
+
+        self.ledger
+            .store
+            .frontier()
+            .put(self.txn, &self.block.hash(), &validation.account);
+
+        self.ledger.observer.block_added(self.block, false);
+        Ok(())
+    }
+}
+
 fn unused_block_details() -> BlockDetails {
-    BlockDetails::new(
-        Epoch::Epoch0,
-        false, /* unused */
-        false, /* unused */
-        false, /* unused */
-    )
+    BlockDetails::new(Epoch::Epoch0, false, false, false)
 }

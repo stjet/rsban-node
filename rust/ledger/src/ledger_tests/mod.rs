@@ -803,7 +803,7 @@ mod could_fit {
         let epoch = BlockBuilder::state()
             .account(genesis.account())
             .previous(unknown_send.hash())
-            .representative(unknown_send.representative())
+            .representative(unknown_send.mandatory_representative())
             .balance(unknown_send.balance())
             .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
             .sign(&genesis.key)

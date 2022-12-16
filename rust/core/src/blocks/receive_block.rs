@@ -196,8 +196,8 @@ impl Block for ReceiveBlock {
         Some(self.hashables.source)
     }
 
-    fn representative(&self) -> Account {
-        Account::zero()
+    fn representative(&self) -> Option<Account> {
+        None
     }
 
     fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {

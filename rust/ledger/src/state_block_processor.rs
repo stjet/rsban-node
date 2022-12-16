@@ -276,7 +276,7 @@ impl<'a> StateBlockProcessor<'a> {
     fn ensure_epoch_block_does_not_change_representative(&self) -> Result<(), ProcessResult> {
         if self.is_epoch_block() {
             if let Some(info) = &self.old_account_info {
-                if self.block.representative() != info.representative {
+                if self.block.mandatory_representative() != info.representative {
                     return Err(ProcessResult::RepresentativeMismatch);
                 };
             }
@@ -285,7 +285,9 @@ impl<'a> StateBlockProcessor<'a> {
     }
 
     fn ensure_epoch_open_has_burn_account_as_rep(&self) -> Result<(), ProcessResult> {
-        if self.is_epoch_block() && self.is_new_account() && !self.block.representative().is_zero()
+        if self.is_epoch_block()
+            && self.is_new_account()
+            && !self.block.mandatory_representative().is_zero()
         {
             Err(ProcessResult::RepresentativeMismatch)
         } else {
@@ -465,7 +467,7 @@ impl<'a> StateBlockProcessor<'a> {
             self.ledger.cache.rep_weights.representation_add_dual(
                 acc_info.representative,
                 Amount::zero().wrapping_sub(acc_info.balance),
-                self.block.representative(),
+                self.block.mandatory_representative(),
                 self.block.balance(),
             );
         } else {
@@ -473,14 +475,14 @@ impl<'a> StateBlockProcessor<'a> {
             self.ledger
                 .cache
                 .rep_weights
-                .representation_add(self.block.representative(), self.block.balance());
+                .representation_add(self.block.mandatory_representative(), self.block.balance());
         }
     }
 
     fn create_account_info(&self) -> AccountInfo {
         AccountInfo {
             head: self.block.hash(),
-            representative: self.block.representative(),
+            representative: self.block.mandatory_representative(),
             open_block: self.open_block(),
             balance: self.block.balance(),
             modified: seconds_since_epoch(),

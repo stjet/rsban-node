@@ -63,6 +63,10 @@ impl ChangeBlock {
         }
     }
 
+    pub fn mandatory_representative(&self) -> Account {
+        self.hashables.representative
+    }
+
     pub fn serialized_size() -> usize {
         ChangeHashables::serialized_size()
             + Signature::serialized_size()
@@ -204,8 +208,8 @@ impl Block for ChangeBlock {
         None
     }
 
-    fn representative(&self) -> Account {
-        self.hashables.representative
+    fn representative(&self) -> Option<Account> {
+        Some(self.hashables.representative)
     }
 
     fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {

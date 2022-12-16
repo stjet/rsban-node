@@ -83,7 +83,9 @@ fn update_vote_weight() {
 
     let open = setup_open_block(&ctx, txn.as_mut());
 
-    let weight = ctx.ledger.weight(&open.open_block.representative());
+    let weight = ctx
+        .ledger
+        .weight(&open.open_block.mandatory_representative());
     assert_eq!(weight, open.open_block.balance());
 }
 

@@ -40,7 +40,7 @@ fn update_vote_weight() {
 
     let change = setup_change_block(&ctx, txn.as_mut());
 
-    let weight = ctx.ledger.weight(&change.representative());
+    let weight = ctx.ledger.weight(&change.mandatory_representative());
     assert_eq!(weight, change.balance());
 }
 

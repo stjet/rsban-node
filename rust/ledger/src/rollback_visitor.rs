@@ -226,9 +226,9 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             .get(self.txn.txn(), &rep_block)
             .unwrap();
 
-        let representative = rep_block.as_block().representative();
+        let representative = rep_block.as_block().representative().unwrap_or_default();
         self.ledger.cache.rep_weights.representation_add_dual(
-            block.representative(),
+            block.mandatory_representative(),
             Amount::zero().wrapping_sub(balance),
             representative,
             balance,
@@ -282,17 +282,17 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 .block()
                 .get(self.txn.txn(), &rep_block_hash)
                 .unwrap();
-            representative = rep_block.as_block().representative();
+            representative = rep_block.as_block().representative().unwrap_or_default();
             self.ledger.cache.rep_weights.representation_add_dual(
                 representative,
                 balance,
-                block.representative(),
+                block.mandatory_representative(),
                 Amount::zero().wrapping_sub(block.balance()),
             );
         } else {
             // Add in amount delta only
             self.ledger.cache.rep_weights.representation_add(
-                block.representative(),
+                block.mandatory_representative(),
                 Amount::zero().wrapping_sub(block.balance()),
             );
         }

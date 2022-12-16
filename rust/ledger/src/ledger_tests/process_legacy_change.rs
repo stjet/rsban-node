@@ -56,7 +56,7 @@ fn update_vote_weight() {
 
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
-        ctx.ledger.weight(&change.representative()),
+        ctx.ledger.weight(&change.mandatory_representative()),
         LEDGER_CONSTANTS_STUB.genesis_amount
     );
 }
@@ -76,7 +76,10 @@ fn update_account_info() {
     assert_eq!(account_info.head, change.hash());
     assert_eq!(account_info.block_count, 2);
     assert_eq!(account_info.balance, LEDGER_CONSTANTS_STUB.genesis_amount);
-    assert_eq!(account_info.representative, change.representative());
+    assert_eq!(
+        account_info.representative,
+        change.mandatory_representative()
+    );
 }
 
 #[test]

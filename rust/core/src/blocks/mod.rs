@@ -119,7 +119,7 @@ pub trait Block: FullHash {
     fn visit_mut(&mut self, visitor: &mut dyn MutableBlockVisitor);
     fn balance(&self) -> Amount;
     fn source(&self) -> Option<BlockHash>;
-    fn representative(&self) -> Account;
+    fn representative(&self) -> Option<Account>;
     fn qualified_root(&self) -> QualifiedRoot {
         QualifiedRoot::new(self.root(), self.previous())
     }

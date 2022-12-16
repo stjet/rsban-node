@@ -63,7 +63,10 @@ fn update_vote_weight() {
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         LEDGER_CONSTANTS_STUB.genesis_amount
     );
-    assert_eq!(ctx.ledger.weight(&change.representative()), Amount::zero(),);
+    assert_eq!(
+        ctx.ledger.weight(&change.mandatory_representative()),
+        Amount::zero(),
+    );
 }
 
 #[test]

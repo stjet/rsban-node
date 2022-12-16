@@ -12,7 +12,6 @@ pub(crate) struct LegacyBlockProcessor<'a> {
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut dyn Block,
     previous: Option<BlockHash>,
-    representative: Option<Account>,
     destination: Option<Account>,
     block_type: BlockSubType,
 }
@@ -27,7 +26,6 @@ impl<'a> LegacyBlockProcessor<'a> {
             block_type: BlockSubType::Open,
             destination: None,
             previous: None,
-            representative: Some(block.representative()),
             block,
             ledger,
             txn,
@@ -43,7 +41,6 @@ impl<'a> LegacyBlockProcessor<'a> {
             block_type: BlockSubType::Receive,
             destination: None,
             previous: Some(block.previous()),
-            representative: None,
             block,
             ledger,
             txn,
@@ -59,7 +56,6 @@ impl<'a> LegacyBlockProcessor<'a> {
             block_type: BlockSubType::Send,
             destination: Some(block.hashables.destination),
             previous: Some(block.previous()),
-            representative: None,
             block,
             ledger,
             txn,
@@ -75,7 +71,6 @@ impl<'a> LegacyBlockProcessor<'a> {
             block_type: BlockSubType::Change,
             destination: None,
             previous: Some(block.previous()),
-            representative: Some(block.representative()),
             block,
             ledger,
             txn,
@@ -142,7 +137,10 @@ impl<'a> LegacyBlockProcessor<'a> {
         };
         let new_info = AccountInfo {
             head: self.block.hash(),
-            representative: self.representative.unwrap_or(account_info.representative),
+            representative: self
+                .block
+                .representative()
+                .unwrap_or(account_info.representative),
             open_block,
             balance: new_balance,
             modified: seconds_since_epoch(),

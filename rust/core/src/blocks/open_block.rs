@@ -208,8 +208,8 @@ impl Block for OpenBlock {
         Some(self.hashables.source)
     }
 
-    fn representative(&self) -> Account {
-        self.hashables.representative
+    fn representative(&self) -> Option<Account> {
+        Some(self.hashables.representative)
     }
 
     fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {

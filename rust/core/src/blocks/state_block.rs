@@ -114,6 +114,10 @@ impl StateBlock {
         BlockHash::zero()
     }
 
+    pub fn mandatory_representative(&self) -> Account {
+        self.hashables.representative
+    }
+
     pub fn destination(&self) -> Account {
         Account::zero()
     }
@@ -286,8 +290,8 @@ impl Block for StateBlock {
         None
     }
 
-    fn representative(&self) -> Account {
-        self.hashables.representative
+    fn representative(&self) -> Option<Account> {
+        Some(self.hashables.representative)
     }
 
     fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {

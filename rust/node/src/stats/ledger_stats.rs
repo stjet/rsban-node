@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rsnano_core::BlockSubType;
+use rsnano_core::{Block, BlockSubType, BlockType};
 use rsnano_ledger::LedgerObserver;
 
 use super::{DetailType, Direction, Stat, StatType};
@@ -40,16 +40,29 @@ impl LedgerObserver for LedgerStats {
             .inc(StatType::Rollback, block_type.into(), Direction::In);
     }
 
-    fn block_added(&self, block_type: BlockSubType) {
-        let _ = self
-            .stats
-            .inc(StatType::Ledger, block_type.into(), Direction::In);
+    fn block_added(&self, block: &dyn Block, is_epoch: bool) {
+        let _ = self.stats.inc(
+            StatType::Ledger,
+            block_detail_type(block, is_epoch),
+            Direction::In,
+        );
     }
+}
 
-    fn state_block_added(&self) {
-        let _ = self
-            .stats
-            .inc(StatType::Ledger, DetailType::StateBlock, Direction::In);
+fn block_detail_type(block: &dyn Block, is_epoch: bool) -> DetailType {
+    match block.block_type() {
+        BlockType::Send => DetailType::Send,
+        BlockType::Receive => DetailType::Receive,
+        BlockType::Open => DetailType::Open,
+        BlockType::Change => DetailType::Change,
+        BlockType::State => {
+            if is_epoch {
+                DetailType::EpochBlock
+            } else {
+                DetailType::StateBlock
+            }
+        }
+        BlockType::Invalid | BlockType::NotABlock => unreachable!(),
     }
 }
 

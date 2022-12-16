@@ -1,7 +1,7 @@
 use rsnano_core::{
     utils::seconds_since_epoch, validate_message, Account, AccountInfo, Amount, Block,
-    BlockDetails, BlockEnum, BlockHash, BlockSideband, BlockSubType, BlockType, Epoch, PendingInfo,
-    PendingKey, PublicKey,
+    BlockDetails, BlockEnum, BlockHash, BlockSideband, BlockType, Epoch, PendingInfo, PendingKey,
+    PublicKey,
 };
 use rsnano_store_traits::WriteTransaction;
 
@@ -134,14 +134,7 @@ impl<'a> LegacyBlockProcessor<'a> {
             .frontier()
             .put(self.txn, &self.block.hash(), &account);
 
-        let block_type = match self.block.block_type() {
-            BlockType::Send => BlockSubType::Send,
-            BlockType::Receive => BlockSubType::Receive,
-            BlockType::Open => BlockSubType::Open,
-            BlockType::Change => BlockSubType::Change,
-            _ => unreachable!(),
-        };
-        self.ledger.observer.block_added(block_type);
+        self.ledger.observer.block_added(self.block, false);
         Ok(())
     }
 

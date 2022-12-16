@@ -1,7 +1,6 @@
 use rsnano_core::{
     utils::seconds_since_epoch, validate_block_signature, AccountInfo, Amount, Block, BlockDetails,
-    BlockEnum, BlockHash, BlockSideband, BlockSubType, Epoch, Epochs, PendingInfo, PendingKey,
-    StateBlock,
+    BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, PendingInfo, PendingKey, StateBlock,
 };
 use rsnano_store_traits::WriteTransaction;
 
@@ -403,12 +402,9 @@ impl<'a> StateBlockProcessor<'a> {
     }
 
     fn add_block(&mut self) {
-        if self.is_epoch_block() {
-            self.ledger.observer.block_added(BlockSubType::Epoch);
-        } else {
-            self.ledger.observer.state_block_added();
-        }
-
+        self.ledger
+            .observer
+            .block_added(self.block, self.is_epoch_block());
         self.block.set_sideband(self.create_sideband());
         self.ledger
             .store

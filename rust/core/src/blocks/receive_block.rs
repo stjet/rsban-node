@@ -59,6 +59,11 @@ impl ReceiveBlock {
         }
     }
 
+    // Receive blocks always have a source
+    pub fn mandatory_source(&self) -> BlockHash {
+        self.hashables.source
+    }
+
     pub fn serialized_size() -> usize {
         ReceiveHashables::serialized_size()
             + Signature::serialized_size()
@@ -187,8 +192,8 @@ impl Block for ReceiveBlock {
         Amount::zero()
     }
 
-    fn source(&self) -> BlockHash {
-        self.hashables.source
+    fn source(&self) -> Option<BlockHash> {
+        Some(self.hashables.source)
     }
 
     fn representative(&self) -> Account {

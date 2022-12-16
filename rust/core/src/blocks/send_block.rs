@@ -248,8 +248,8 @@ impl Block for SendBlock {
         self.hashables.balance
     }
 
-    fn source(&self) -> BlockHash {
-        BlockHash::zero()
+    fn source(&self) -> Option<BlockHash> {
+        None
     }
 
     fn representative(&self) -> Account {

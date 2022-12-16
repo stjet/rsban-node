@@ -200,8 +200,8 @@ impl Block for ChangeBlock {
         Amount::zero()
     }
 
-    fn source(&self) -> BlockHash {
-        BlockHash::zero()
+    fn source(&self) -> Option<BlockHash> {
+        None
     }
 
     fn representative(&self) -> Account {

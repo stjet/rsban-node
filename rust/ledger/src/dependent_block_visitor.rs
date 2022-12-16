@@ -35,7 +35,7 @@ impl<'a> BlockVisitor for DependentBlockVisitor<'a> {
 
     fn receive_block(&mut self, block: &ReceiveBlock) {
         self.result[0] = block.previous();
-        self.result[1] = block.source();
+        self.result[1] = block.mandatory_source();
     }
 
     fn open_block(&mut self, block: &OpenBlock) {
@@ -49,7 +49,7 @@ impl<'a> BlockVisitor for DependentBlockVisitor<'a> {
                 .account()
                 .into()
         {
-            self.result[0] = block.source();
+            self.result[0] = block.mandatory_source();
         }
     }
 

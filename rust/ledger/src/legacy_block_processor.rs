@@ -12,7 +12,6 @@ pub(crate) struct LegacyBlockProcessor<'a> {
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut dyn Block,
     previous: Option<BlockHash>,
-    source: Option<BlockHash>,
     representative: Option<Account>,
     destination: Option<Account>,
     block_type: BlockSubType,
@@ -29,7 +28,6 @@ impl<'a> LegacyBlockProcessor<'a> {
             destination: None,
             previous: None,
             representative: Some(block.representative()),
-            source: Some(block.source()),
             block,
             ledger,
             txn,
@@ -46,7 +44,6 @@ impl<'a> LegacyBlockProcessor<'a> {
             destination: None,
             previous: Some(block.previous()),
             representative: None,
-            source: Some(block.source()),
             block,
             ledger,
             txn,
@@ -63,7 +60,6 @@ impl<'a> LegacyBlockProcessor<'a> {
             destination: Some(block.hashables.destination),
             previous: Some(block.previous()),
             representative: None,
-            source: None,
             block,
             ledger,
             txn,
@@ -80,7 +76,6 @@ impl<'a> LegacyBlockProcessor<'a> {
             destination: None,
             previous: Some(block.previous()),
             representative: Some(block.representative()),
-            source: None,
             block,
             ledger,
             txn,
@@ -101,7 +96,7 @@ impl<'a> LegacyBlockProcessor<'a> {
             (account, AccountInfo::default())
         };
         self.ensure_valid_signature(&account)?;
-        let (amount_received, pending_key) = if let Some(source) = self.source {
+        let (amount_received, pending_key) = if let Some(source) = self.block.source() {
             self.ensure_source_block_exists(&source)?;
             let pending_key = PendingKey::new(account, source);
             let pending_info = self.ensure_source_not_received_yet(&pending_key)?;

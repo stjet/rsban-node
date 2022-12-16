@@ -118,7 +118,7 @@ pub trait Block: FullHash {
     fn visit(&self, visitor: &mut dyn BlockVisitor);
     fn visit_mut(&mut self, visitor: &mut dyn MutableBlockVisitor);
     fn balance(&self) -> Amount;
-    fn source(&self) -> BlockHash;
+    fn source(&self) -> Option<BlockHash>;
     fn representative(&self) -> Account;
     fn qualified_root(&self) -> QualifiedRoot {
         QualifiedRoot::new(self.root(), self.previous())

@@ -117,7 +117,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
         // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
         let source_account = self
             .ledger
-            .account(self.txn.txn(), &block.source())
+            .account(self.txn.txn(), &block.mandatory_source())
             .unwrap_or_default();
 
         let account_info = self
@@ -148,7 +148,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
 
         self.ledger.store.pending().put(
             self.txn,
-            &PendingKey::new(destination_account, block.source()),
+            &PendingKey::new(destination_account, block.mandatory_source()),
             &PendingInfo::new(source_account, amount, Epoch::Epoch0),
         );
 
@@ -174,7 +174,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
         // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
         let source_account = self
             .ledger
-            .account(self.txn.txn(), &block.source())
+            .account(self.txn.txn(), &block.mandatory_source())
             .unwrap_or_default();
 
         self.ledger.cache.rep_weights.representation_add(
@@ -192,7 +192,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
         self.ledger.store.block().del(self.txn, &hash);
         self.ledger.store.pending().put(
             self.txn,
-            &PendingKey::new(destination_account, block.source()),
+            &PendingKey::new(destination_account, block.mandatory_source()),
             &PendingInfo::new(source_account, amount, Epoch::Epoch0),
         );
 

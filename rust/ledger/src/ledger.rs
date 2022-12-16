@@ -399,7 +399,7 @@ impl Ledger {
                     state.source()
                 }
             }
-            _ => block.as_block().source(),
+            _ => block.as_block().source().unwrap_or_default(),
         }
     }
 
@@ -517,7 +517,7 @@ impl Ledger {
         // walk down the chain until the source field of a receive block matches the send block hash
         while let Some(current) = possible_receive_block {
             // if source is non-zero then it is a legacy receive or open block
-            let mut source = current.as_block().source();
+            let mut source = current.as_block().source().unwrap_or_default();
 
             // if source is zero then it could be a state block, which needs a different kind of access
             if let BlockEnum::State(state_block) = &current {

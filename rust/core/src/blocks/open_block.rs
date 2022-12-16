@@ -68,6 +68,10 @@ impl OpenBlock {
         }
     }
 
+    pub fn mandatory_source(&self) -> BlockHash {
+        self.hashables.source
+    }
+
     pub fn serialized_size() -> usize {
         OpenHashables::serialized_size() + Signature::serialized_size() + std::mem::size_of::<u64>()
     }
@@ -200,8 +204,8 @@ impl Block for OpenBlock {
         Amount::zero()
     }
 
-    fn source(&self) -> BlockHash {
-        self.hashables.source
+    fn source(&self) -> Option<BlockHash> {
+        Some(self.hashables.source)
     }
 
     fn representative(&self) -> Account {

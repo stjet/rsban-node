@@ -3,14 +3,14 @@ use rsnano_store_traits::WriteTransaction;
 
 use crate::{legacy_block_validator::BlockValidation, Ledger};
 
-pub(crate) struct LegacyBlockInserter<'a> {
+pub(crate) struct BlockInserter<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut dyn Block,
     validation: &'a BlockValidation,
 }
 
-impl<'a> LegacyBlockInserter<'a> {
+impl<'a> BlockInserter<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
         txn: &'a mut dyn WriteTransaction,
@@ -26,17 +26,17 @@ impl<'a> LegacyBlockInserter<'a> {
     }
 
     pub(crate) fn insert(&mut self) {
-        self.delete_received_pending_entry();
         self.set_sideband();
-
         self.ledger.store.block().put(self.txn, self.block);
-
         self.update_account();
-        self.update_representative_cache();
+        self.delete_received_pending_entry();
         self.insert_pending_receive();
         self.delete_old_frontier();
         self.insert_frontier();
-        self.ledger.observer.block_added(self.block, false);
+        self.update_representative_cache();
+        self.ledger
+            .observer
+            .block_added(self.block, self.validation.is_epoch_block);
     }
 
     fn set_sideband(&mut self) {
@@ -45,18 +45,27 @@ impl<'a> LegacyBlockInserter<'a> {
     }
 
     fn insert_frontier(&mut self) {
-        self.ledger
-            .store
-            .frontier()
-            .put(self.txn, &self.block.hash(), &self.validation.account);
+        if self.block.block_type() != BlockType::State {
+            self.ledger.store.frontier().put(
+                self.txn,
+                &self.block.hash(),
+                &self.validation.account,
+            );
+        }
     }
 
     fn delete_old_frontier(&mut self) {
-        if self.block.block_type() != BlockType::Open {
+        if self
+            .ledger
+            .store
+            .frontier()
+            .get(self.txn.txn(), &self.validation.old_account_info.head)
+            .is_some()
+        {
             self.ledger
                 .store
                 .frontier()
-                .del(self.txn, &self.block.previous());
+                .del(self.txn, &self.validation.old_account_info.head);
         }
     }
 
@@ -76,22 +85,19 @@ impl<'a> LegacyBlockInserter<'a> {
     }
 
     fn update_representative_cache(&mut self) {
-        if !self.validation.amount_received().is_zero() {
-            self.ledger.cache.rep_weights.representation_add(
-                self.validation.new_account_info.representative,
-                self.validation.amount_received(),
-            );
-        } else if !self.validation.amount_sent().is_zero() {
-            self.ledger.cache.rep_weights.representation_add(
-                self.validation.old_account_info.representative,
-                Amount::zero().wrapping_sub(self.validation.amount_sent()),
-            );
-        } else {
+        if !self.validation.old_account_info.head.is_zero() {
+            // Move existing representation & add in amount delta
             self.ledger.cache.rep_weights.representation_add_dual(
+                self.validation.old_account_info.representative,
+                Amount::zero().wrapping_sub(self.validation.old_account_info.balance),
                 self.validation.new_account_info.representative,
                 self.validation.new_account_info.balance,
-                self.validation.old_account_info.representative,
-                Amount::zero().wrapping_sub(self.validation.new_account_info.balance),
+            );
+        } else {
+            // Add in amount delta only
+            self.ledger.cache.rep_weights.representation_add(
+                self.validation.new_account_info.representative,
+                self.validation.new_account_info.balance,
             );
         }
     }

@@ -4,7 +4,9 @@ use rsnano_core::{
 };
 use rsnano_store_traits::WriteTransaction;
 
-use crate::{Ledger, ProcessResult};
+use crate::{
+    block_inserter::BlockInserter, legacy_block_validator::BlockValidation, Ledger, ProcessResult,
+};
 
 /// Processes a single state block
 pub(crate) struct StateBlockProcessor<'a> {
@@ -50,7 +52,7 @@ impl<'a> StateBlockProcessor<'a> {
         }
     }
 
-    pub(crate) fn process(&mut self) -> Result<(), ProcessResult> {
+    pub(crate) fn process(&mut self) -> Result<BlockValidation, ProcessResult> {
         self.initialize();
 
         // Epoch block pre-checks for early return
@@ -78,13 +80,31 @@ impl<'a> StateBlockProcessor<'a> {
         self.ensure_epoch_upgrade_is_sequential_for_existing_account()?;
         self.ensure_epoch_block_does_not_change_balance()?;
 
-        self.add_block();
-        self.update_representative_cache();
-        self.update_pending_store();
-        self.update_account_info();
-        self.delete_frontier();
+        let pending_received = if self.is_receive() {
+            Some(PendingKey::for_receive_block(self.block))
+        } else {
+            None
+        };
 
-        Ok(())
+        let new_pending = if self.is_send() {
+            let key = PendingKey::for_send_block(self.block);
+            let info = PendingInfo::new(self.block.account(), self.amount(), self.epoch());
+            Some((key, info))
+        } else {
+            None
+        };
+
+        let block_validation = BlockValidation {
+            account: self.block.account(),
+            old_account_info: self.old_account_info.clone().unwrap_or_default(),
+            new_account_info: self.create_account_info(),
+            pending_received,
+            new_pending,
+            new_sideband: self.create_sideband(),
+            is_epoch_block: self.is_epoch_block(),
+        };
+
+        Ok(block_validation)
     }
 
     fn ensure_valid_block_signature(&self) -> Result<(), ProcessResult> {
@@ -398,77 +418,6 @@ impl<'a> StateBlockProcessor<'a> {
             Err(ProcessResult::InsufficientWork)
         } else {
             Ok(())
-        }
-    }
-
-    fn add_block(&mut self) {
-        self.ledger
-            .observer
-            .block_added(self.block, self.is_epoch_block());
-        self.block.set_sideband(self.create_sideband());
-        self.ledger.store.block().put(self.txn, self.block);
-    }
-
-    fn update_pending_store(&mut self) {
-        if self.is_send() {
-            self.add_pending_receive();
-        } else if self.is_receive() {
-            self.delete_pending_receive();
-        }
-    }
-
-    fn delete_frontier(&mut self) {
-        if let Some(info) = &self.old_account_info {
-            if self
-                .ledger
-                .store
-                .frontier()
-                .get(self.txn.txn(), &info.head)
-                .is_some()
-            {
-                self.ledger.store.frontier().del(self.txn, &info.head);
-            }
-        }
-    }
-
-    fn update_account_info(&mut self) {
-        let new_account_info = self.create_account_info();
-        self.ledger.update_account(
-            self.txn,
-            &self.block.account(),
-            &self.old_account_info.clone().unwrap_or_default(),
-            &new_account_info,
-        );
-    }
-
-    fn add_pending_receive(&mut self) {
-        let key = PendingKey::for_send_block(self.block);
-        let info = PendingInfo::new(self.block.account(), self.amount(), self.epoch());
-        self.ledger.store.pending().put(self.txn, &key, &info);
-    }
-
-    fn delete_pending_receive(&mut self) {
-        self.ledger
-            .store
-            .pending()
-            .del(self.txn, &PendingKey::for_receive_block(self.block));
-    }
-
-    fn update_representative_cache(&mut self) {
-        if let Some(acc_info) = &self.old_account_info {
-            // Move existing representation & add in amount delta
-            self.ledger.cache.rep_weights.representation_add_dual(
-                acc_info.representative,
-                Amount::zero().wrapping_sub(acc_info.balance),
-                self.block.mandatory_representative(),
-                self.block.balance(),
-            );
-        } else {
-            // Add in amount delta only
-            self.ledger
-                .cache
-                .rep_weights
-                .representation_add(self.block.mandatory_representative(), self.block.balance());
         }
     }
 

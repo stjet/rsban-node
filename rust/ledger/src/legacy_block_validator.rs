@@ -14,24 +14,7 @@ pub(crate) struct BlockValidation {
     pub pending_received: Option<PendingKey>,
     pub new_pending: Option<(PendingKey, PendingInfo)>,
     pub new_sideband: BlockSideband,
-}
-
-impl BlockValidation {
-    pub fn amount_sent(&self) -> Amount {
-        if self.new_account_info.balance < self.old_account_info.balance {
-            self.old_account_info.balance - self.new_account_info.balance
-        } else {
-            Amount::zero()
-        }
-    }
-
-    pub fn amount_received(&self) -> Amount {
-        if self.new_account_info.balance > self.old_account_info.balance {
-            self.new_account_info.balance - self.old_account_info.balance
-        } else {
-            Amount::zero()
-        }
-    }
+    pub is_epoch_block: bool,
 }
 
 pub(crate) struct LegacyBlockValidator<'a> {
@@ -121,6 +104,7 @@ impl<'a> LegacyBlockValidator<'a> {
             pending_received,
             new_sideband,
             new_pending,
+            is_epoch_block: false,
         })
     }
 

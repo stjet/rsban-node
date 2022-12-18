@@ -39,8 +39,8 @@ pub(crate) use dependent_block_visitor::DependentBlockVisitor;
 mod state_block_processor;
 pub(crate) use state_block_processor::StateBlockProcessor;
 
-mod legacy_block_inserter;
-pub(crate) use legacy_block_inserter::LegacyBlockInserter;
+mod block_inserter;
+pub(crate) use block_inserter::BlockInserter;
 
 mod legacy_block_validator;
 pub(crate) use legacy_block_validator::LegacyBlockValidator;

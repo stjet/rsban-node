@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn serialize() {
         let block = BlockBuilder::state().build();
-        let block = Arc::new(RwLock::new(BlockEnum::State(block)));
+        let block = Arc::new(RwLock::new(block));
         let network = &DEV_NETWORK_PARAMS.network;
         let publish1 = Publish::new(network, block);
 

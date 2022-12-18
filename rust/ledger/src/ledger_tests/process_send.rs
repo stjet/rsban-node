@@ -1,7 +1,5 @@
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_ACCOUNT};
-use rsnano_core::{
-    Account, Amount, Block, BlockDetails, BlockEnum, Epoch, PendingInfo, PendingKey,
-};
+use rsnano_core::{Account, Amount, BlockDetails, BlockEnum, Epoch, PendingInfo, PendingKey};
 
 use crate::ledger_tests::{setup_send_block, LedgerContext};
 
@@ -12,7 +10,12 @@ fn save_block() {
 
     let send = setup_send_block(&ctx, txn.as_mut());
 
-    let BlockEnum::State(loaded_block) = ctx.ledger.store.block().get(txn.txn(), &send.send_block.hash()).unwrap() else {panic!("not a state block")};
+    let loaded_block = ctx
+        .ledger
+        .store
+        .block()
+        .get(txn.txn(), &send.send_block.hash())
+        .unwrap();
     assert_eq!(
         loaded_block.sideband().unwrap(),
         send.send_block.sideband().unwrap()
@@ -72,12 +75,11 @@ fn send_and_change_representative() {
     let genesis = ctx.genesis_block_factory();
     let representative = Account::from(1);
     let amount_sent = LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(1);
-    let send = genesis
+    let mut send = genesis
         .send(txn.txn())
         .amount(amount_sent)
         .representative(representative)
         .build();
-    let mut send = BlockEnum::State(send);
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     assert_eq!(

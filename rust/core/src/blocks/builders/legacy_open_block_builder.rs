@@ -1,6 +1,7 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, OpenBlock,
+    Account, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair,
+    OpenBlock,
 };
 
 pub struct LegacyOpenBlockBuilder {
@@ -54,7 +55,7 @@ impl LegacyOpenBlockBuilder {
         self
     }
 
-    pub fn build(self) -> OpenBlock {
+    pub fn build(self) -> BlockEnum {
         let source = self.source.unwrap_or(BlockHash::from(1));
         let key_pair = self.keypair.unwrap_or_default();
         let account = self.account.unwrap_or_else(|| key_pair.public_key().into());
@@ -91,7 +92,7 @@ impl LegacyOpenBlockBuilder {
             ));
         }
 
-        block
+        BlockEnum::Open(block)
     }
 }
 
@@ -102,7 +103,7 @@ mod tests {
 
     #[test]
     fn create_open_block() {
-        let block = BlockBuilder::legacy_open().with_sideband().build();
+        let BlockEnum::Open(block) = BlockBuilder::legacy_open().with_sideband().build() else {panic!("not an open block")};
         assert_eq!(block.hashables.source, BlockHash::from(1));
         assert_eq!(block.hashables.representative, Account::from(2));
         assert_ne!(block.hashables.account, Account::zero());

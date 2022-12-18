@@ -1,5 +1,5 @@
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_ACCOUNT};
-use rsnano_core::{Amount, Block, PendingKey};
+use rsnano_core::{Amount, PendingKey};
 use rsnano_store_traits::WriteTransaction;
 
 use crate::ledger_tests::{setup_legacy_open_block, LedgerContext};

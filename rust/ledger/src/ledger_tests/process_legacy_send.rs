@@ -20,7 +20,6 @@ fn save_block() {
         .get(txn.txn(), &send.send_block.hash())
         .unwrap();
 
-    let BlockEnum::Send(loaded_send) = loaded_send else {panic!("not a send block")};
     assert_eq!(loaded_send, send.send_block);
     assert_eq!(
         loaded_send.sideband().unwrap(),
@@ -122,11 +121,11 @@ fn fail_duplicate_send() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let mut send = setup_legacy_send_block(&ctx, txn.as_mut());
 
     let result = ctx
         .ledger
-        .process(txn.as_mut(), &mut BlockEnum::Send(send.send_block))
+        .process(txn.as_mut(), &mut send.send_block)
         .unwrap_err();
 
     assert_eq!(result, ProcessResult::Old);
@@ -139,16 +138,13 @@ fn fail_fork() {
 
     let send = setup_legacy_send_block(&ctx, txn.as_mut());
 
-    let fork = BlockBuilder::legacy_send()
+    let mut fork = BlockBuilder::legacy_send()
         .previous(*DEV_GENESIS_HASH)
         .destination(Account::from(1000))
         .sign(send.destination.key)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut BlockEnum::Send(fork))
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut fork).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -158,16 +154,13 @@ fn fail_gap_previous() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let block = BlockBuilder::legacy_send()
+    let mut block = BlockBuilder::legacy_send()
         .previous(BlockHash::from(1))
         .destination(Account::from(2))
         .sign(DEV_GENESIS_KEY.clone())
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut BlockEnum::Send(block))
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
 
     assert_eq!(result, ProcessResult::GapPrevious);
 }
@@ -178,16 +171,13 @@ fn fail_bad_signature() {
     let mut txn = ctx.ledger.rw_txn();
 
     let wrong_keys = KeyPair::new();
-    let block = BlockBuilder::legacy_send()
+    let mut block = BlockBuilder::legacy_send()
         .previous(*DEV_GENESIS_HASH)
         .destination(Account::from(2))
         .sign(wrong_keys)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut BlockEnum::Send(block))
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
 
     assert_eq!(result, ProcessResult::BadSignature);
 }
@@ -200,14 +190,14 @@ fn fail_negative_spend() {
 
     let send = setup_legacy_send_block(&ctx, txn.as_mut());
 
-    let negative_spend = genesis
+    let mut negative_spend = genesis
         .legacy_send(txn.txn())
         .balance(send.send_block.balance() + Amount::new(1))
         .build();
 
     let result = ctx
         .ledger
-        .process(txn.as_mut(), &mut BlockEnum::Send(negative_spend))
+        .process(txn.as_mut(), &mut negative_spend)
         .unwrap_err();
     assert_eq!(result, ProcessResult::NegativeSpend);
 }
@@ -219,16 +209,11 @@ fn send_after_state_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let send1 = genesis.send(txn.txn()).build();
-    ctx.ledger
-        .process(txn.as_mut(), &mut BlockEnum::State(send1))
-        .unwrap();
+    let mut send1 = genesis.send(txn.txn()).build();
+    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let send2 = genesis.legacy_send(txn.txn()).build();
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut BlockEnum::Send(send2))
-        .unwrap_err();
+    let mut send2 = genesis.legacy_send(txn.txn()).build();
+    let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
 
     assert_eq!(result, ProcessResult::BlockPosition);
 }
@@ -242,12 +227,9 @@ fn fail_insufficient_work() {
 
     let mut send = genesis.legacy_send(txn.txn()).work(0).build();
     {
-        let block: &mut dyn Block = &mut send;
+        let block: &mut dyn Block = send.as_block_mut();
         block.set_work(0);
     };
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut BlockEnum::Send(send))
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
     assert_eq!(result, ProcessResult::InsufficientWork);
 }

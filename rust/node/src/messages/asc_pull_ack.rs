@@ -272,10 +272,7 @@ mod tests {
         let mut original = AscPullAck::new(&DEV_NETWORK_PARAMS.network);
         original.id = 7;
         original.request_blocks(BlocksAckPayload {
-            blocks: vec![
-                BlockEnum::State(BlockBuilder::state().build()),
-                BlockEnum::State(BlockBuilder::state().build()),
-            ],
+            blocks: vec![BlockBuilder::state().build(), BlockBuilder::state().build()],
         })?;
 
         let mut stream = MemoryStream::new();

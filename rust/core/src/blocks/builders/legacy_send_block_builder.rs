@@ -1,6 +1,7 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, SendBlock,
+    Account, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair,
+    SendBlock,
 };
 
 pub struct LegacySendBlockBuilder {
@@ -76,7 +77,7 @@ impl LegacySendBlockBuilder {
         self
     }
 
-    pub fn build(self) -> SendBlock {
+    pub fn build(self) -> BlockEnum {
         let key_pair = self.keypair.unwrap_or_default();
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let destination = self.destination.unwrap_or(Account::from(2));
@@ -105,6 +106,6 @@ impl LegacySendBlockBuilder {
                 Epoch::Epoch0,
             ));
         }
-        block
+        BlockEnum::Send(block)
     }
 }

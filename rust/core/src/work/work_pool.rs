@@ -264,17 +264,23 @@ mod tests {
     fn work_one() {
         let pool = &WORK_POOL;
         let mut block = BlockBuilder::state().build();
-        block.set_work(pool.generate_dev2(block.root()).unwrap());
-        assert!(pool.threshold_base(block.work_version()) < difficulty(&block));
+        let root = block.root();
+        block
+            .as_block_mut()
+            .set_work(pool.generate_dev2(root).unwrap());
+        assert!(pool.threshold_base(block.work_version()) < difficulty(block.as_block()));
     }
 
     #[test]
     fn work_validate() {
         let pool = &WORK_POOL;
         let mut block = BlockBuilder::legacy_send().work(6).build();
-        assert!(difficulty(&block) < pool.threshold_base(block.work_version()));
-        block.set_work(pool.generate_dev2(block.root()).unwrap());
-        assert!(difficulty(&block) > pool.threshold_base(block.work_version()));
+        assert!(difficulty(block.as_block()) < pool.threshold_base(block.work_version()));
+        let root = block.root();
+        block
+            .as_block_mut()
+            .set_work(pool.generate_dev2(root).unwrap());
+        assert!(difficulty(block.as_block()) > pool.threshold_base(block.work_version()));
     }
 
     #[test]

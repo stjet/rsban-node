@@ -1,6 +1,6 @@
 use std::sync::atomic::Ordering;
 
-use rsnano_core::{Amount, Block, PendingKey};
+use rsnano_core::{Amount, PendingKey};
 use rsnano_store_traits::WriteTransaction;
 
 use crate::{

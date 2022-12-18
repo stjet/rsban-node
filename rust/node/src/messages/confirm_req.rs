@@ -213,9 +213,7 @@ mod tests {
 
     #[test]
     fn serialize_block() -> Result<()> {
-        let block = Arc::new(RwLock::new(BlockEnum::State(
-            StateBlockBuilder::new().build(),
-        )));
+        let block = Arc::new(RwLock::new(StateBlockBuilder::new().build()));
         let constants = NetworkConstants::empty();
         let confirm_req1 = ConfirmReq::with_block(&constants, block);
         let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;

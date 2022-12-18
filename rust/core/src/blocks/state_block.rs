@@ -311,7 +311,7 @@ impl Block for StateBlock {
 mod tests {
     use crate::{
         utils::{MemoryStream, TestPropertyTree},
-        BlockBuilder, StateBlockBuilder,
+        BlockBuilder, BlockEnum, StateBlockBuilder,
     };
 
     use super::*;
@@ -326,7 +326,7 @@ mod tests {
         assert_eq!(stream.byte_at(215), 0x5); // Ensure work is serialized big-endian
 
         let block2 = StateBlock::deserialize(&mut stream).unwrap();
-        assert_eq!(block1, block2);
+        assert_eq!(block1, BlockEnum::State(block2));
     }
 
     // original test: state_block.serialization
@@ -338,7 +338,7 @@ mod tests {
         block1.serialize_json(&mut ptree).unwrap();
 
         let block2 = StateBlock::deserialize_json(&ptree).unwrap();
-        assert_eq!(block1, block2);
+        assert_eq!(block1, BlockEnum::State(block2));
     }
 
     // original test: state_block.hashing

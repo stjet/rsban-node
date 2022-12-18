@@ -2,7 +2,7 @@ use crate::{
     ledger_tests::{setup_legacy_receive_block, LedgerContext},
     DEV_GENESIS_ACCOUNT,
 };
-use rsnano_core::{Block, PendingKey};
+use rsnano_core::PendingKey;
 
 #[test]
 fn clear_successor() {

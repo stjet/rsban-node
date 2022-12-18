@@ -4,9 +4,7 @@ use crate::{
     ledger_tests::{setup_open_block, setup_send_block},
     ProcessResult,
 };
-use rsnano_core::{
-    Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, Link, PendingKey,
-};
+use rsnano_core::{BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, Link, PendingKey};
 
 use super::LedgerContext;
 
@@ -17,10 +15,10 @@ fn save_block() {
 
     let open = setup_open_block(&ctx, txn.as_mut());
 
-    let BlockEnum::State(loaded_open) = ctx
+    let loaded_open = ctx
         .ledger
         .get_block(txn.txn(), &open.open_block.hash())
-        .unwrap() else { panic!("not a state block!")};
+        .unwrap();
 
     assert_eq!(loaded_open, open.open_block);
     assert_eq!(
@@ -85,7 +83,7 @@ fn update_vote_weight() {
 
     let weight = ctx
         .ledger
-        .weight(&open.open_block.mandatory_representative());
+        .weight(&open.open_block.representative().unwrap());
     assert_eq!(weight, open.open_block.balance());
 }
 
@@ -97,12 +95,10 @@ fn open_fork_fail() {
     let send = setup_send_block(&ctx, txn.as_mut());
     let receiver = send.destination;
 
-    let open1 = receiver.open(txn.txn(), send.send_block.hash()).build();
-    ctx.ledger
-        .process(txn.as_mut(), &mut BlockEnum::State(open1))
-        .unwrap();
+    let mut open1 = receiver.open(txn.txn(), send.send_block.hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
 
-    let open2 = BlockBuilder::state()
+    let mut open2 = BlockBuilder::state()
         .account(receiver.account())
         .previous(BlockHash::zero())
         .balance(send.amount_sent)
@@ -110,10 +106,7 @@ fn open_fork_fail() {
         .sign(&receiver.key)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut BlockEnum::State(open2))
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut open2).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -126,15 +119,12 @@ fn previous_fail() {
     let send = setup_send_block(&ctx, txn.as_mut());
 
     let invalid_previous = BlockHash::from(1);
-    let open = send
+    let mut open = send
         .destination
         .open(txn.txn(), send.send_block.hash())
         .previous(invalid_previous)
         .build();
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut BlockEnum::State(open))
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
     assert_eq!(result, ProcessResult::GapPrevious);
 }
@@ -146,16 +136,13 @@ fn source_fail() {
 
     let send = setup_send_block(&ctx, txn.as_mut());
 
-    let open = send
+    let mut open = send
         .destination
         .open(txn.txn(), send.send_block.hash())
         .link(Link::zero())
         .build();
 
-    let result = ctx
-        .ledger
-        .process(txn.as_mut(), &mut BlockEnum::State(open))
-        .unwrap_err();
+    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
     assert_eq!(result, ProcessResult::GapSource);
 }

@@ -331,7 +331,7 @@ mod tests {
             .account(keys.public_key())
             .sign(&keys)
             .build();
-        let block = Arc::new(RwLock::new(BlockEnum::State(block)));
+        let block = Arc::new(RwLock::new(block));
 
         verification.add(StateBlockSignatureVerificationValue { block });
 

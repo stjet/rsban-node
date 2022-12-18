@@ -1,8 +1,8 @@
 use crate::work::WorkPool;
 use crate::{work::STUB_WORK_POOL, Block, StateBlock};
 use crate::{
-    Account, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, Link, PublicKey,
-    RawKey, Signature,
+    Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair, Link,
+    PublicKey, RawKey, Signature,
 };
 use anyhow::Result;
 
@@ -143,7 +143,7 @@ impl StateBlockBuilder {
         self
     }
 
-    pub fn build(self) -> StateBlock {
+    pub fn build(self) -> BlockEnum {
         let work = self.work.unwrap_or_else(|| {
             let root = if self.previous.is_zero() {
                 self.account.into()
@@ -188,7 +188,7 @@ impl StateBlockBuilder {
             ));
         }
 
-        state
+        BlockEnum::State(state)
     }
 }
 
@@ -199,14 +199,14 @@ mod tests {
 
     #[test]
     fn state_block() {
-        let block1 = BlockBuilder::state()
+        let BlockEnum::State(block1) = BlockBuilder::state()
             .account(3)
             .previous(1)
             .representative(6)
             .balance(2)
             .link(4)
             .work(5)
-            .build();
+            .build() else {panic!("not a state block")};
 
         assert_eq!(block1.hashables.account, Account::from(3));
         assert_eq!(block1.hashables.previous, BlockHash::from(1));
@@ -233,17 +233,14 @@ mod tests {
             "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F"
         );
 
-        let block2 = BlockBuilder::state().from(&block).build();
+        let BlockEnum::State(b) = &block else { panic!("not a state block")};
+        let block2 = BlockBuilder::state().from(&b).build();
         assert_eq!(
             block2.hash().to_string(),
             "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F"
         );
 
-        let block3 = BlockBuilder::state()
-            .from(&block)
-            .sign_zero()
-            .work(0)
-            .build();
+        let block3 = BlockBuilder::state().from(&b).sign_zero().work(0).build();
         assert_eq!(
             block3.hash().to_string(),
             "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F"
@@ -271,7 +268,7 @@ mod tests {
         validate_message(
             &key.public_key(),
             zero_block_build.hash().as_bytes(),
-            &zero_block_build.signature,
+            zero_block_build.signature(),
         )
         .unwrap();
     }
@@ -293,8 +290,8 @@ mod tests {
             block.hash().to_string(),
             "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F"
         );
-        assert!(block.source().is_zero());
-        assert!(block.destination().is_zero());
+        assert!(block.source().is_none());
+        assert!(block.destination().is_none());
         assert_eq!(
             block.link().encode_hex(),
             "E16DD58C1EFA8B521545B0A74375AA994D9FC43828A4266D75ECF57F07A7EE86"
@@ -329,6 +326,6 @@ mod tests {
             .build();
 
         assert_eq!(block1.hash(), block2.hash());
-        assert_eq!(block1.work, block2.work);
+        assert_eq!(block1.work, block2.work());
     }
 }

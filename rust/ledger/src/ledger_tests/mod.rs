@@ -8,8 +8,7 @@ use crate::{
 };
 pub(crate) use helpers::*;
 use rsnano_core::{
-    Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, QualifiedRoot, Root,
-    GXRB_RATIO,
+    Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, GXRB_RATIO,
 };
 
 mod empty_ledger;
@@ -42,7 +41,7 @@ fn ledger_successor() {
             txn.txn(),
             &QualifiedRoot::new(Root::zero(), *DEV_GENESIS_HASH)
         ),
-        Some(BlockEnum::Send(send.send_block))
+        Some(send.send_block)
     );
 }
 
@@ -93,33 +92,27 @@ fn send_open_receive_vote_weight() {
     let genesis = ctx.genesis_block_factory();
     let receiver = ctx.block_factory();
 
-    let send1 = genesis
+    let mut send1 = genesis
         .legacy_send(txn.txn())
         .destination(receiver.account())
         .amount(Amount::new(50))
         .build();
-    let mut send1 = BlockEnum::Send(send1);
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let send2 = genesis
+    let mut send2 = genesis
         .legacy_send(txn.txn())
         .destination(receiver.account())
         .amount(Amount::new(50))
         .build();
-    let mut send2 = BlockEnum::Send(send2);
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let open = receiver.legacy_open(send1.as_block().hash()).build();
-    ctx.ledger
-        .process(txn.as_mut(), &mut BlockEnum::Open(open))
-        .unwrap();
+    let mut open = receiver.legacy_open(send1.as_block().hash()).build();
+    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    let receive = receiver
+    let mut receive = receiver
         .legacy_receive(txn.txn(), send2.as_block().hash())
         .build();
-    ctx.ledger
-        .process(txn.as_mut(), &mut BlockEnum::Receive(receive))
-        .unwrap();
+    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::new(100));
     assert_eq!(
@@ -135,38 +128,33 @@ fn send_open_receive_rollback() {
     let genesis = ctx.genesis_block_factory();
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
-    let send1 = genesis
+    let mut send1 = genesis
         .legacy_send(txn.txn())
         .destination(receiver.account())
         .amount(Amount::new(50))
         .build();
-    let mut send1 = BlockEnum::Send(send1);
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let send2 = genesis
+    let mut send2 = genesis
         .legacy_send(txn.txn())
         .destination(receiver.account())
         .amount(Amount::new(50))
         .build();
-    let mut send2 = BlockEnum::Send(send2);
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let open = receiver.legacy_open(send1.as_block().hash()).build();
-    let mut open = BlockEnum::Open(open);
+    let mut open = receiver.legacy_open(send1.as_block().hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    let receive = receiver
+    let mut receive = receiver
         .legacy_receive(txn.txn(), send2.as_block().hash())
         .build();
-    let mut receive = BlockEnum::Receive(receive);
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
     let rep_account = Account::from(1);
 
-    let change = genesis
+    let mut change = genesis
         .legacy_change(txn.txn())
         .representative(rep_account)
         .build();
-    let mut change = BlockEnum::Change(change);
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     ctx.ledger
@@ -234,14 +222,12 @@ fn bootstrap_rep_weight() {
     let representative_account = representative_key.public_key().into();
     {
         let mut txn = ctx.ledger.rw_txn();
-        let send = genesis
+        let mut send = genesis
             .legacy_send(txn.txn())
             .destination(representative_account)
             .amount(Amount::new(50))
             .build();
-        ctx.ledger
-            .process(txn.as_mut(), &mut BlockEnum::Send(send))
-            .unwrap();
+        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
     }
     {
         let mut weights = ctx.ledger.bootstrap_weights.lock().unwrap();
@@ -254,14 +240,12 @@ fn bootstrap_rep_weight() {
     );
     {
         let mut txn = ctx.ledger.rw_txn();
-        let send = genesis
+        let mut send = genesis
             .legacy_send(txn.txn())
             .destination(representative_account)
             .amount(Amount::new(50))
             .build();
-        ctx.ledger
-            .process(txn.as_mut(), &mut BlockEnum::Send(send))
-            .unwrap();
+        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
     }
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 3);
     assert_eq!(ctx.ledger.weight(&representative_account), Amount::zero());
@@ -275,42 +259,36 @@ fn block_destination_source() {
     let genesis = ctx.genesis_block_factory();
     let dest_account = Account::from(1000);
 
-    let send_to_dest = genesis
+    let mut send_to_dest = genesis
         .legacy_send(txn.txn())
         .destination(dest_account)
         .build();
-    let mut send_to_dest = BlockEnum::Send(send_to_dest);
     ctx.ledger.process(txn.as_mut(), &mut send_to_dest).unwrap();
 
-    let send_to_self = genesis
+    let mut send_to_self = genesis
         .legacy_send(txn.txn())
         .destination(genesis.account())
         .build();
-    let mut send_to_self = BlockEnum::Send(send_to_self);
     ctx.ledger.process(txn.as_mut(), &mut send_to_self).unwrap();
 
-    let receive = genesis
+    let mut receive = genesis
         .legacy_receive(txn.txn(), send_to_self.as_block().hash())
         .build();
-    let mut receive = BlockEnum::Receive(receive);
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-    let send_to_dest_2 = genesis.send(txn.txn()).link(dest_account).build();
-    let mut send_to_dest_2 = BlockEnum::State(send_to_dest_2);
+    let mut send_to_dest_2 = genesis.send(txn.txn()).link(dest_account).build();
     ctx.ledger
         .process(txn.as_mut(), &mut send_to_dest_2)
         .unwrap();
 
-    let send_to_self_2 = genesis.send(txn.txn()).link(genesis.account()).build();
-    let mut send_to_self_2 = BlockEnum::State(send_to_self_2);
+    let mut send_to_self_2 = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger
         .process(txn.as_mut(), &mut send_to_self_2)
         .unwrap();
 
-    let receive2 = genesis
+    let mut receive2 = genesis
         .receive(txn.txn(), send_to_self_2.as_block().hash())
         .build();
-    let mut receive2 = BlockEnum::State(receive2);
     ctx.ledger.process(txn.as_mut(), &mut receive2).unwrap();
 
     let block1 = send_to_dest;
@@ -365,14 +343,13 @@ fn block_destination_source() {
 fn state_account() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let send = BlockBuilder::state()
+    let mut send = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(*GXRB_RATIO))
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
         .build();
-    let mut send = BlockEnum::State(send);
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
     assert_eq!(
         ctx.ledger.account(txn.txn(), &send.as_block().hash()),
@@ -401,12 +378,11 @@ mod dependents_confirmed {
         let mut txn = ctx.ledger.rw_txn();
         let destination = ctx.block_factory();
 
-        let send = ctx
+        let mut send = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send = BlockEnum::State(send);
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
         assert_eq!(
@@ -420,13 +396,10 @@ mod dependents_confirmed {
         let ctx = LedgerContext::empty();
         let mut txn = ctx.ledger.rw_txn();
 
-        let send1 = ctx.genesis_block_factory().send(txn.txn()).build();
-        ctx.ledger
-            .process(txn.as_mut(), &mut BlockEnum::State(send1))
-            .unwrap();
+        let mut send1 = ctx.genesis_block_factory().send(txn.txn()).build();
+        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-        let send2 = ctx.genesis_block_factory().send(txn.txn()).build();
-        let mut send2 = BlockEnum::State(send2);
+        let mut send2 = ctx.genesis_block_factory().send(txn.txn()).build();
         ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
         assert_eq!(
@@ -441,16 +414,14 @@ mod dependents_confirmed {
         let mut txn = ctx.ledger.rw_txn();
         let destination = ctx.block_factory();
 
-        let send = ctx
+        let mut send = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send = BlockEnum::State(send);
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-        let open = destination.open(txn.txn(), send.as_block().hash()).build();
-        let mut open = BlockEnum::State(open);
+        let mut open = destination.open(txn.txn(), send.as_block().hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
         assert_eq!(
@@ -465,17 +436,15 @@ mod dependents_confirmed {
         let mut txn = ctx.ledger.rw_txn();
         let destination = ctx.block_factory();
 
-        let send = ctx
+        let mut send = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send = BlockEnum::State(send);
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
         ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
 
-        let open = destination.open(txn.txn(), send.as_block().hash()).build();
-        let mut open = BlockEnum::State(open);
+        let mut open = destination.open(txn.txn(), send.as_block().hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
         assert_eq!(
@@ -491,33 +460,28 @@ mod dependents_confirmed {
 
         let destination = ctx.block_factory();
 
-        let send1 = ctx
+        let mut send1 = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send1 = BlockEnum::State(send1);
         ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
         ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
 
-        let send2 = ctx
+        let mut send2 = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send2 = BlockEnum::State(send2);
         ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-        let open = destination.open(txn.txn(), send1.as_block().hash()).build();
-        ctx.ledger
-            .process(txn.as_mut(), &mut BlockEnum::State(open))
-            .unwrap();
+        let mut open = destination.open(txn.txn(), send1.as_block().hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
         ctx.inc_confirmation_height(txn.as_mut(), &destination.account());
 
-        let receive = destination
+        let mut receive = destination
             .receive(txn.txn(), send2.as_block().hash())
             .build();
-        let mut receive = BlockEnum::State(receive);
         ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
         assert_eq!(
@@ -534,33 +498,28 @@ mod dependents_confirmed {
 
         let destination = ctx.block_factory();
 
-        let send1 = ctx
+        let mut send1 = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send1 = BlockEnum::State(send1);
         ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
         ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
 
-        let send2 = ctx
+        let mut send2 = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send2 = BlockEnum::State(send2);
         ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
         ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
 
-        let open = destination.open(txn.txn(), send1.as_block().hash()).build();
-        ctx.ledger
-            .process(txn.as_mut(), &mut BlockEnum::State(open))
-            .unwrap();
+        let mut open = destination.open(txn.txn(), send1.as_block().hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-        let receive = destination
+        let mut receive = destination
             .receive(txn.txn(), send2.as_block().hash())
             .build();
-        let mut receive = BlockEnum::State(receive);
         ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
         assert_eq!(
@@ -577,34 +536,29 @@ mod dependents_confirmed {
 
         let destination = ctx.block_factory();
 
-        let send1 = ctx
+        let mut send1 = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send1 = BlockEnum::State(send1);
         ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
         ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
 
-        let send2 = ctx
+        let mut send2 = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send2 = BlockEnum::State(send2);
         ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
         ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
 
-        let open = destination.open(txn.txn(), send1.as_block().hash()).build();
-        ctx.ledger
-            .process(txn.as_mut(), &mut BlockEnum::State(open))
-            .unwrap();
+        let mut open = destination.open(txn.txn(), send1.as_block().hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
         ctx.inc_confirmation_height(txn.as_mut(), &destination.account());
 
-        let receive = destination
+        let mut receive = destination
             .receive(txn.txn(), send2.as_block().hash())
             .build();
-        let mut receive = BlockEnum::State(receive);
         ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
         assert_eq!(
@@ -621,22 +575,20 @@ mod dependents_confirmed {
         ctx.ledger.enable_pruning();
         let destination = ctx.block_factory();
 
-        let send1 = ctx
+        let mut send1 = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .amount(Amount::new(1))
             .link(destination.account())
             .build();
-        let mut send1 = BlockEnum::State(send1);
         ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
         ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
 
-        let send2 = ctx
+        let mut send2 = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send2 = BlockEnum::State(send2);
         ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
         ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
 
@@ -653,7 +605,11 @@ mod dependents_confirmed {
             .link(send1.as_block().hash())
             .sign(&destination.key)
             .build();
-        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive1), true);
+        assert_eq!(
+            ctx.ledger
+                .dependents_confirmed(txn.txn(), receive1.as_block()),
+            true
+        );
     }
 }
 
@@ -667,7 +623,7 @@ mod could_fit {
         let ctx = LedgerContext::empty();
         let txn = ctx.ledger.read_txn();
         let change = ctx.genesis_block_factory().legacy_change(txn.txn()).build();
-        assert!(ctx.ledger.could_fit(txn.txn(), &change));
+        assert!(ctx.ledger.could_fit(txn.txn(), change.as_block()));
     }
 
     #[test]
@@ -675,7 +631,7 @@ mod could_fit {
         let ctx = LedgerContext::empty();
         let txn = ctx.ledger.read_txn();
         let change2 = ctx.genesis_block_factory().change(txn.txn()).build();
-        assert!(ctx.ledger.could_fit(txn.txn(), &change2));
+        assert!(ctx.ledger.could_fit(txn.txn(), change2.as_block()));
     }
 
     #[test]
@@ -691,7 +647,7 @@ mod could_fit {
             .previous(unknown_previous.hash())
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &send), false);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), send.as_block()), false);
     }
 
     #[test]
@@ -700,8 +656,7 @@ mod could_fit {
         let mut txn = ctx.ledger.rw_txn();
         let genesis = ctx.genesis_block_factory();
 
-        let known_previous = genesis.legacy_change(txn.txn()).build();
-        let mut known_previous = BlockEnum::Change(known_previous);
+        let mut known_previous = genesis.legacy_change(txn.txn()).build();
         ctx.ledger
             .process(txn.as_mut(), &mut known_previous)
             .unwrap();
@@ -712,7 +667,7 @@ mod could_fit {
             .build();
 
         assert!(ctx.ledger.could_fit(txn.txn(), known_previous.as_block()));
-        assert!(ctx.ledger.could_fit(txn.txn(), &send));
+        assert!(ctx.ledger.could_fit(txn.txn(), send.as_block()));
     }
 
     #[test]
@@ -737,7 +692,7 @@ mod could_fit {
             .sign(&destination.key)
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &open), false);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), open.as_block()), false);
     }
 
     #[test]
@@ -754,7 +709,7 @@ mod could_fit {
 
         let open = destination.legacy_open(unknown_send.hash()).build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &open), false);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), open.as_block()), false);
     }
 
     #[test]
@@ -763,17 +718,16 @@ mod could_fit {
         let mut txn = ctx.ledger.rw_txn();
         let destination = ctx.block_factory();
 
-        let send = ctx
+        let mut send = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send = BlockEnum::State(send);
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
         let open = destination.open(txn.txn(), send.as_block().hash()).build();
 
-        assert!(ctx.ledger.could_fit(txn.txn(), &open));
+        assert!(ctx.ledger.could_fit(txn.txn(), open.as_block()));
     }
 
     #[test]
@@ -782,17 +736,16 @@ mod could_fit {
         let mut txn = ctx.ledger.rw_txn();
         let destination = ctx.block_factory();
 
-        let send = ctx
+        let mut send = ctx
             .genesis_block_factory()
             .send(txn.txn())
             .link(destination.account())
             .build();
-        let mut send = BlockEnum::State(send);
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
         let open = destination.legacy_open(send.as_block().hash()).build();
 
-        assert!(ctx.ledger.could_fit(txn.txn(), &open));
+        assert!(ctx.ledger.could_fit(txn.txn(), open.as_block()));
     }
 
     #[test]
@@ -802,14 +755,11 @@ mod could_fit {
         let genesis = ctx.genesis_block_factory();
         let destination = ctx.block_factory();
 
-        let send1 = genesis.send(txn.txn()).link(destination.account()).build();
-        let mut send1 = BlockEnum::State(send1);
+        let mut send1 = genesis.send(txn.txn()).link(destination.account()).build();
         ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-        let open = destination.legacy_open(send1.as_block().hash()).build();
-        ctx.ledger
-            .process(txn.as_mut(), &mut BlockEnum::Open(open))
-            .unwrap();
+        let mut open = destination.legacy_open(send1.as_block().hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
         let unknown_send = genesis.send(txn.txn()).link(destination.account()).build();
 
@@ -817,7 +767,7 @@ mod could_fit {
             .legacy_receive(txn.txn(), unknown_send.hash())
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), false);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), receive.as_block()), false);
     }
 
     #[test]
@@ -827,16 +777,14 @@ mod could_fit {
         let genesis = ctx.genesis_block_factory();
         let destination = ctx.block_factory();
 
-        let send = genesis
+        let mut send = genesis
             .send(txn.txn())
             .amount(Amount::new(1))
             .link(destination.account())
             .build();
-        let mut send = BlockEnum::State(send);
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-        let open = destination.legacy_open(send.as_block().hash()).build();
-        let mut open = BlockEnum::Open(open);
+        let mut open = destination.legacy_open(send.as_block().hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
         let unknown_send = genesis.send(txn.txn()).link(destination.account()).build();
@@ -848,7 +796,7 @@ mod could_fit {
             .sign(&destination.key)
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), false);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), receive.as_block()), false);
     }
 
     #[test]
@@ -858,28 +806,24 @@ mod could_fit {
         let genesis = ctx.genesis_block_factory();
         let destination = ctx.block_factory();
 
-        let send = genesis
+        let mut send = genesis
             .send(txn.txn())
             .amount(Amount::new(1))
             .link(destination.account())
             .build();
-        let mut send = BlockEnum::State(send);
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-        let open = destination.legacy_open(send.as_block().hash()).build();
-        ctx.ledger
-            .process(txn.as_mut(), &mut BlockEnum::Open(open))
-            .unwrap();
+        let mut open = destination.legacy_open(send.as_block().hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-        let send2 = genesis.send(txn.txn()).link(destination.account()).build();
-        let mut send2 = BlockEnum::State(send2);
+        let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
         ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
         let receive = destination
             .legacy_receive(txn.txn(), send2.as_block().hash())
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), true);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), receive.as_block()), true);
     }
 
     #[test]
@@ -889,24 +833,20 @@ mod could_fit {
         let genesis = ctx.genesis_block_factory();
         let destination = ctx.block_factory();
 
-        let send = genesis.send(txn.txn()).link(destination.account()).build();
-        let mut send = BlockEnum::State(send);
+        let mut send = genesis.send(txn.txn()).link(destination.account()).build();
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-        let open = destination.legacy_open(send.as_block().hash()).build();
-        ctx.ledger
-            .process(txn.as_mut(), &mut BlockEnum::Open(open))
-            .unwrap();
+        let mut open = destination.legacy_open(send.as_block().hash()).build();
+        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-        let send2 = genesis.send(txn.txn()).link(destination.account()).build();
-        let mut send2 = BlockEnum::State(send2);
+        let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
         ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
         let receive = destination
             .receive(txn.txn(), send2.as_block().hash())
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), true);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), receive.as_block()), true);
     }
 
     #[test]
@@ -920,13 +860,13 @@ mod could_fit {
         let epoch = BlockBuilder::state()
             .account(genesis.account())
             .previous(unknown_send.hash())
-            .representative(unknown_send.mandatory_representative())
+            .representative(unknown_send.representative().unwrap())
             .balance(unknown_send.balance())
             .link(ctx.ledger.epoch_link(Epoch::Epoch1).unwrap())
             .sign(&genesis.key)
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &epoch), false);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), epoch.as_block()), false);
     }
 
     #[test]
@@ -936,7 +876,7 @@ mod could_fit {
 
         let epoch = ctx.genesis_block_factory().epoch_v1(txn.txn()).build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &epoch), true);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), epoch.as_block()), true);
     }
 }
 
@@ -950,7 +890,7 @@ fn block_confirmed() {
     );
 
     let destination = ctx.block_factory();
-    let send = ctx
+    let mut send = ctx
         .genesis_block_factory()
         .send(txn.txn())
         .link(destination.account())
@@ -959,7 +899,6 @@ fn block_confirmed() {
     // Must be safe against non-existing blocks
     assert_eq!(ctx.ledger.block_confirmed(txn.txn(), &send.hash()), false);
 
-    let mut send = BlockEnum::State(send);
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
     assert_eq!(
         ctx.ledger
@@ -1033,8 +972,7 @@ fn ledger_cache() {
         let destination = ctx.block_factory();
         let send = {
             let mut txn = ctx.ledger.rw_txn();
-            let send = genesis.send(txn.txn()).link(destination.account()).build();
-            let mut send = BlockEnum::State(send);
+            let mut send = genesis.send(txn.txn()).link(destination.account()).build();
             ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
             expected.block_count += 1;
             expected.genesis_weight = send.as_block().balance();
@@ -1044,8 +982,7 @@ fn ledger_cache() {
 
         let open = {
             let mut txn = ctx.ledger.rw_txn();
-            let open = destination.open(txn.txn(), send.as_block().hash()).build();
-            let mut open = BlockEnum::State(open);
+            let mut open = destination.open(txn.txn(), send.as_block().hash()).build();
             ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
             expected.block_count += 1;
             expected.account_count += 1;
@@ -1102,8 +1039,7 @@ fn unconfirmed_frontiers() {
     let destination = ctx.block_factory();
     let latest = ctx.ledger.latest(txn.txn(), &genesis.account()).unwrap();
 
-    let send = genesis.send(txn.txn()).link(destination.account()).build();
-    let mut send = BlockEnum::State(send);
+    let mut send = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
     txn.commit();
 
@@ -1137,8 +1073,14 @@ fn is_send_state() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let open = setup_open_block(&ctx, txn.as_mut());
-    assert_eq!(ctx.ledger.is_send(txn.txn(), &open.send_block), true);
-    assert_eq!(ctx.ledger.is_send(txn.txn(), &open.open_block), false);
+    assert_eq!(
+        ctx.ledger.is_send(txn.txn(), open.send_block.as_block()),
+        true
+    );
+    assert_eq!(
+        ctx.ledger.is_send(txn.txn(), open.open_block.as_block()),
+        false
+    );
 }
 
 #[test]
@@ -1146,8 +1088,14 @@ fn is_send_legacy() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let open = setup_legacy_open_block(&ctx, txn.as_mut());
-    assert_eq!(ctx.ledger.is_send(txn.txn(), &open.send_block), true);
-    assert_eq!(ctx.ledger.is_send(txn.txn(), &open.open_block), false);
+    assert_eq!(
+        ctx.ledger.is_send(txn.txn(), open.send_block.as_block()),
+        true
+    );
+    assert_eq!(
+        ctx.ledger.is_send(txn.txn(), open.open_block.as_block()),
+        false
+    );
 }
 
 #[test]
@@ -1159,57 +1107,46 @@ fn sideband_height() {
     let dest2 = ctx.block_factory();
     let dest3 = ctx.block_factory();
 
-    let send = genesis
+    let mut send = genesis
         .legacy_send(txn.txn())
         .destination(genesis.account())
         .build();
-    let mut send = BlockEnum::Send(send);
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let receive = genesis
+    let mut receive = genesis
         .legacy_receive(txn.txn(), send.as_block().hash())
         .build();
-    let mut receive = BlockEnum::Receive(receive);
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-    let change = genesis.legacy_change(txn.txn()).build();
-    let mut change = BlockEnum::Change(change);
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    let state_send1 = genesis.send(txn.txn()).link(dest1.account()).build();
-    let mut state_send1 = BlockEnum::State(state_send1);
+    let mut state_send1 = genesis.send(txn.txn()).link(dest1.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut state_send1).unwrap();
 
-    let state_send2 = genesis.send(txn.txn()).link(dest2.account()).build();
-    let mut state_send2 = BlockEnum::State(state_send2);
+    let mut state_send2 = genesis.send(txn.txn()).link(dest2.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut state_send2).unwrap();
 
-    let state_send3 = genesis.send(txn.txn()).link(dest3.account()).build();
-    let mut state_send3 = BlockEnum::State(state_send3);
+    let mut state_send3 = genesis.send(txn.txn()).link(dest3.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut state_send3).unwrap();
 
-    let state_open = dest1.open(txn.txn(), state_send1.as_block().hash()).build();
-    let mut state_open = BlockEnum::State(state_open);
+    let mut state_open = dest1.open(txn.txn(), state_send1.as_block().hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut state_open).unwrap();
 
-    let epoch = dest1.epoch_v1(txn.txn()).build();
-    let mut epoch = BlockEnum::State(epoch);
+    let mut epoch = dest1.epoch_v1(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap();
 
-    let epoch_open = dest2.epoch_v1_open().build();
-    let mut epoch_open = BlockEnum::State(epoch_open);
+    let mut epoch_open = dest2.epoch_v1_open().build();
     ctx.ledger.process(txn.as_mut(), &mut epoch_open).unwrap();
 
-    let state_receive = dest2
+    let mut state_receive = dest2
         .receive(txn.txn(), state_send2.as_block().hash())
         .build();
-    let mut state_receive = BlockEnum::State(state_receive);
     ctx.ledger
         .process(txn.as_mut(), &mut state_receive)
         .unwrap();
 
-    let open = dest3.legacy_open(state_send3.as_block().hash()).build();
-    let mut open = BlockEnum::Open(open);
+    let mut open = dest3.legacy_open(state_send3.as_block().hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let assert_sideband_height = |hash: &BlockHash, expected_height: u64| {

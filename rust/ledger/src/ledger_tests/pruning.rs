@@ -17,20 +17,18 @@ fn pruning_action() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let send1 = genesis
+    let mut send1 = genesis
         .send(txn.txn())
         .amount(100)
         .link(genesis.account())
         .build();
-    let mut send1 = BlockEnum::State(send1);
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let send2 = genesis
+    let mut send2 = genesis
         .send(txn.txn())
         .amount(100)
         .link(genesis.account())
         .build();
-    let mut send2 = BlockEnum::State(send2);
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     // Prune...
@@ -79,7 +77,7 @@ fn pruning_action() {
         .exists(txn.txn(), &send2.as_block().hash()));
 
     // Receiving pruned block
-    let receive1 = BlockBuilder::state()
+    let mut receive1 = BlockBuilder::state()
         .account(genesis.account())
         .previous(send2.as_block().hash())
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100))
@@ -91,7 +89,6 @@ fn pruning_action() {
                 .unwrap(),
         )
         .build();
-    let mut receive1 = BlockEnum::State(receive1);
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
     assert!(ctx
@@ -164,12 +161,10 @@ fn pruning_large_chain() {
     let mut last_hash = *DEV_GENESIS_HASH;
 
     for _ in 0..send_receive_pairs {
-        let send = genesis.send(txn.txn()).link(genesis.account()).build();
-        let mut send = BlockEnum::State(send);
+        let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-        let receive = genesis.receive(txn.txn(), send.as_block().hash()).build();
-        let mut receive = BlockEnum::State(receive);
+        let mut receive = genesis.receive(txn.txn(), send.as_block().hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
         last_hash = receive.as_block().hash();
@@ -220,20 +215,18 @@ fn pruning_source_rollback() {
 
     upgrade_genesis_to_epoch_v1(&ctx, txn.as_mut());
 
-    let send1 = genesis
+    let mut send1 = genesis
         .send(txn.txn())
         .amount(100)
         .link(genesis.account())
         .build();
-    let mut send1 = BlockEnum::State(send1);
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let send2 = genesis
+    let mut send2 = genesis
         .send(txn.txn())
         .amount(100)
         .link(genesis.account())
         .build();
-    let mut send2 = BlockEnum::State(send2);
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     // Pruning action
@@ -244,7 +237,7 @@ fn pruning_source_rollback() {
     );
 
     // Receiving pruned block
-    let receive1 = BlockBuilder::state()
+    let mut receive1 = BlockBuilder::state()
         .account(genesis.account())
         .previous(send2.as_block().hash())
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100))
@@ -256,7 +249,6 @@ fn pruning_source_rollback() {
                 .unwrap(),
         )
         .build();
-    let mut receive1 = BlockEnum::State(receive1);
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
     // Rollback receive block
@@ -295,29 +287,26 @@ fn pruning_source_rollback_legacy() {
     let genesis = ctx.genesis_block_factory();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send1 = genesis
+    let mut send1 = genesis
         .legacy_send(txn.txn())
         .destination(genesis.account())
         .amount(100)
         .build();
-    let mut send1 = BlockEnum::Send(send1);
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let destination = ctx.block_factory();
-    let send2 = genesis
+    let mut send2 = genesis
         .legacy_send(txn.txn())
         .destination(destination.account())
         .amount(100)
         .build();
-    let mut send2 = BlockEnum::Send(send2);
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let send3 = genesis
+    let mut send3 = genesis
         .legacy_send(txn.txn())
         .destination(genesis.account())
         .amount(100)
         .build();
-    let mut send3 = BlockEnum::Send(send3);
     ctx.ledger.process(txn.as_mut(), &mut send3).unwrap();
 
     // Pruning action
@@ -328,7 +317,7 @@ fn pruning_source_rollback_legacy() {
     );
 
     // Receiving pruned block
-    let receive1 = BlockBuilder::legacy_receive()
+    let mut receive1 = BlockBuilder::legacy_receive()
         .previous(send3.as_block().hash())
         .source(send1.as_block().hash())
         .sign(&genesis.key)
@@ -338,7 +327,6 @@ fn pruning_source_rollback_legacy() {
                 .unwrap(),
         )
         .build();
-    let mut receive1 = BlockEnum::Receive(receive1);
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
     // Rollback receive block
@@ -371,7 +359,7 @@ fn pruning_source_rollback_legacy() {
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 5);
 
     // Receiving pruned block (open)
-    let open1 = BlockBuilder::legacy_open()
+    let mut open1 = BlockBuilder::legacy_open()
         .source(send2.as_block().hash())
         .account(destination.account())
         .sign(&destination.key)
@@ -381,7 +369,6 @@ fn pruning_source_rollback_legacy() {
                 .unwrap(),
         )
         .build();
-    let mut open1 = BlockEnum::Open(open1);
     ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
 
     // Rollback open block
@@ -420,8 +407,7 @@ fn pruning_process_error() {
     let genesis = ctx.genesis_block_factory();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send1 = genesis.send(txn.txn()).link(genesis.account()).build();
-    let mut send1 = BlockEnum::State(send1);
+    let mut send1 = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     // Pruning action for latest block (not valid action)
@@ -436,7 +422,7 @@ fn pruning_process_error() {
     assert_eq!(result, ProcessResult::Old);
 
     // Attept to process new block after pruned
-    let send2 = BlockBuilder::state()
+    let mut send2 = BlockBuilder::state()
         .account(genesis.account())
         .previous(send1.as_block().hash())
         .balance(0)
@@ -448,7 +434,6 @@ fn pruning_process_error() {
                 .unwrap(),
         )
         .build();
-    let mut send2 = BlockEnum::State(send2);
     let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
     assert_eq!(result, ProcessResult::GapPrevious);
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 1);
@@ -463,42 +448,36 @@ fn pruning_legacy_blocks() {
     let genesis = ctx.genesis_block_factory();
     let destination = ctx.block_factory();
 
-    let send1 = genesis
+    let mut send1 = genesis
         .legacy_send(txn.txn())
         .destination(genesis.account())
         .build();
-    let mut send1 = BlockEnum::Send(send1);
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let receive1 = genesis
+    let mut receive1 = genesis
         .legacy_receive(txn.txn(), send1.as_block().hash())
         .build();
-    let mut receive1 = BlockEnum::Receive(receive1);
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
-    let change1 = genesis
+    let mut change1 = genesis
         .legacy_change(txn.txn())
         .representative(destination.account())
         .build();
-    let mut change1 = BlockEnum::Change(change1);
     ctx.ledger.process(txn.as_mut(), &mut change1).unwrap();
 
-    let send2 = genesis
+    let mut send2 = genesis
         .legacy_send(txn.txn())
         .destination(destination.account())
         .build();
-    let mut send2 = BlockEnum::Send(send2);
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let open1 = destination.legacy_open(send2.as_block().hash()).build();
-    let mut open1 = BlockEnum::Open(open1);
+    let mut open1 = destination.legacy_open(send2.as_block().hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
 
-    let send3 = destination
+    let mut send3 = destination
         .legacy_send(txn.txn())
         .destination(genesis.account())
         .build();
-    let mut send3 = BlockEnum::Send(send3);
     ctx.ledger.process(txn.as_mut(), &mut send3).unwrap();
 
     // Pruning action
@@ -602,12 +581,10 @@ fn pruning_safe_functions() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let send1 = genesis.send(txn.txn()).link(genesis.account()).build();
-    let mut send1 = BlockEnum::State(send1);
+    let mut send1 = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let send2 = genesis.send(txn.txn()).link(genesis.account()).build();
-    let mut send2 = BlockEnum::State(send2);
+    let mut send2 = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     // Pruning action
@@ -650,14 +627,11 @@ fn hash_root_random() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let send1 = genesis.send(txn.txn()).link(genesis.account()).build();
-    let mut send1 = BlockEnum::State(send1);
+    let mut send1 = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let send2 = genesis.send(txn.txn()).link(genesis.account()).build();
-    ctx.ledger
-        .process(txn.as_mut(), &mut BlockEnum::State(send2))
-        .unwrap();
+    let mut send2 = genesis.send(txn.txn()).link(genesis.account()).build();
+    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     // Pruning action
     assert_eq!(

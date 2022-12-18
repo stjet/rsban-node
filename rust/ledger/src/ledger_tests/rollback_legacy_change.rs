@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockEnum};
+use rsnano_core::Amount;
 
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB, ledger_tests::LedgerContext, DEV_GENESIS_ACCOUNT,
@@ -11,8 +11,7 @@ fn update_frontier_store() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let change = genesis.legacy_change(txn.txn()).build();
-    let mut change = BlockEnum::Change(change);
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     ctx.ledger
@@ -33,8 +32,7 @@ fn update_account_info() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let change = genesis.legacy_change(txn.txn()).build();
-    let mut change = BlockEnum::Change(change);
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     ctx.ledger
@@ -60,8 +58,7 @@ fn update_vote_weight() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let change = genesis.legacy_change(txn.txn()).build();
-    let mut change = BlockEnum::Change(change);
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     ctx.ledger
@@ -85,12 +82,10 @@ fn rollback_dependent_blocks_too() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let change = genesis.legacy_change(txn.txn()).build();
-    let mut change = BlockEnum::Change(change);
+    let mut change = genesis.legacy_change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    let send = genesis.legacy_send(txn.txn()).build();
-    let mut send = BlockEnum::Send(send);
+    let mut send = genesis.legacy_send(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     ctx.ledger

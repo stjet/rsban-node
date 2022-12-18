@@ -19,11 +19,7 @@ impl Ord for ValueType {
         if result == Ordering::Equal {
             let block1 = self.block.read().unwrap();
             let block2 = other.block.read().unwrap();
-            result = block1
-                .as_block()
-                .hash()
-                .number()
-                .cmp(&block2.as_block().hash().number())
+            result = block1.hash().number().cmp(&block2.hash().number())
         }
         result
     }
@@ -196,7 +192,7 @@ impl Prioritization {
     pub fn dump(&self) {
         for i in &self.buckets {
             for j in i.iter() {
-                eprintln!("{} {}", j.time, j.block.read().unwrap().as_block().hash());
+                eprintln!("{} {}", j.time, j.block.read().unwrap().hash());
             }
         }
         eprintln!("current: {}", self.schedule[self.current]);

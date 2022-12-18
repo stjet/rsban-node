@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    ops::Deref,
     sync::{Arc, Condvar, Mutex, RwLock},
     thread::JoinHandle,
     time::Duration,
@@ -7,7 +8,7 @@ use std::{
 
 use rsnano_core::{
     utils::{Logger, NullLogger},
-    Account, BlockEnum, BlockHash, Epochs, PublicKey, Signature,
+    Account, Block, BlockEnum, BlockHash, Epochs, PublicKey, Signature,
 };
 
 use super::{SignatureCheckSet, SignatureChecker};
@@ -249,7 +250,7 @@ impl StateBlockSignatureVerificationThread {
 
         for i in &items {
             let guard = i.block.read().unwrap();
-            let block = guard.as_block();
+            let block: &dyn Block = guard.deref().deref();
             hashes.push(block.hash());
             messages.push(block.hash().as_bytes().to_vec());
             let mut account = block.account();

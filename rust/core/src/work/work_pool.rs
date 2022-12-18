@@ -233,7 +233,7 @@ pub static STUB_WORK_POOL: Lazy<StubWorkPool> =
 
 #[cfg(test)]
 mod tests {
-    use std::sync::mpsc;
+    use std::{ops::Deref, sync::mpsc};
 
     use crate::{Block, BlockBuilder};
 
@@ -265,22 +265,20 @@ mod tests {
         let pool = &WORK_POOL;
         let mut block = BlockBuilder::state().build();
         let root = block.root();
-        block
-            .as_block_mut()
-            .set_work(pool.generate_dev2(root).unwrap());
-        assert!(pool.threshold_base(block.work_version()) < difficulty(block.as_block()));
+        block.set_work(pool.generate_dev2(root).unwrap());
+        assert!(pool.threshold_base(block.work_version()) < difficulty(block.deref()));
     }
 
     #[test]
     fn work_validate() {
         let pool = &WORK_POOL;
         let mut block = BlockBuilder::legacy_send().work(6).build();
-        assert!(difficulty(block.as_block()) < pool.threshold_base(block.work_version()));
+        assert!(difficulty(block.deref()) < pool.threshold_base(block.work_version()));
         let root = block.root();
         block
             .as_block_mut()
             .set_work(pool.generate_dev2(root).unwrap());
-        assert!(difficulty(block.as_block()) > pool.threshold_base(block.work_version()));
+        assert!(difficulty(block.deref()) > pool.threshold_base(block.work_version()));
     }
 
     #[test]

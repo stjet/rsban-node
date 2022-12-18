@@ -39,16 +39,7 @@ impl<'a> BlockVisitor for DependentBlockVisitor<'a> {
     }
 
     fn open_block(&mut self, block: &OpenBlock) {
-        if block.hashables.source
-            != self
-                .constants
-                .genesis
-                .read()
-                .unwrap()
-                .as_block()
-                .account()
-                .into()
-        {
+        if block.hashables.source != self.constants.genesis.read().unwrap().account().into() {
             self.result[0] = block.mandatory_source();
         }
     }

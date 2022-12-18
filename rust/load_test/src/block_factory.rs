@@ -92,12 +92,7 @@ impl BlockFactory {
             .acquire_owned()
             .await?;
         let destination_account = self.get_destination_account(send_no);
-        let genesis_account = DEV_GENESIS
-            .read()
-            .unwrap()
-            .as_block()
-            .account()
-            .encode_account();
+        let genesis_account = DEV_GENESIS.read().unwrap().account().encode_account();
 
         let res = self
             .node_client

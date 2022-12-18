@@ -61,14 +61,11 @@ fn can_add_state_blocks_after_epoch1() {
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     assert_eq!(
-        send.as_block().sideband().unwrap().details,
+        send.sideband().unwrap().details,
         BlockDetails::new(Epoch::Epoch1, true, false, false)
     );
     // source_epoch is not used for send blocks
-    assert_eq!(
-        send.as_block().sideband().unwrap().source_epoch,
-        Epoch::Epoch0
-    );
+    assert_eq!(send.sideband().unwrap().source_epoch, Epoch::Epoch0);
 }
 
 #[test]
@@ -81,7 +78,7 @@ fn rollback_epoch() {
 
     let account_info = ctx
         .ledger
-        .get_account_info(txn.txn(), &epoch.as_block().account())
+        .get_account_info(txn.txn(), &epoch.account())
         .unwrap();
 
     assert_eq!(account_info.epoch, Epoch::Epoch0);
@@ -117,7 +114,7 @@ fn cannot_use_legacy_open_block_after_epoch1() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut open = destination.legacy_open(send.as_block().hash()).build();
+    let mut open = destination.legacy_open(send.hash()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
 
     assert_eq!(result, ProcessResult::Unreceivable);
@@ -136,9 +133,7 @@ fn cannot_use_legacy_receive_block_after_epoch1_open() {
     let mut epoch_open = destination.epoch_v1_open().build();
     ctx.ledger.process(txn.as_mut(), &mut epoch_open).unwrap();
 
-    let mut receive = destination
-        .legacy_receive(txn.txn(), send.as_block().hash())
-        .build();
+    let mut receive = destination.legacy_receive(txn.txn(), send.hash()).build();
 
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
@@ -161,12 +156,10 @@ fn cannot_use_legacy_receive_block_after_sender_upgraded_to_epoch1() {
     let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open = destination.legacy_open(send1.as_block().hash()).build();
+    let mut open = destination.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    let mut legacy_receive = destination
-        .legacy_receive(txn.txn(), send2.as_block().hash())
-        .build();
+    let mut legacy_receive = destination.legacy_receive(txn.txn(), send2.hash()).build();
     let result = ctx
         .ledger
         .process(txn.as_mut(), &mut legacy_receive)
@@ -190,19 +183,14 @@ fn can_add_state_receive_block_after_epoch1() {
     let mut epoch_open = destination.epoch_v1_open().build();
     ctx.ledger.process(txn.as_mut(), &mut epoch_open).unwrap();
 
-    let mut receive = destination
-        .receive(txn.txn(), send.as_block().hash())
-        .build();
+    let mut receive = destination.receive(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     assert_eq!(
-        receive.as_block().sideband().unwrap().details,
+        receive.sideband().unwrap().details,
         BlockDetails::new(Epoch::Epoch1, false, true, false)
     );
-    assert_eq!(
-        receive.as_block().sideband().unwrap().source_epoch,
-        Epoch::Epoch1
-    );
+    assert_eq!(receive.sideband().unwrap().source_epoch, Epoch::Epoch1);
 }
 
 #[test]
@@ -222,22 +210,14 @@ fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     // open destination
-    let mut open1 = destination.legacy_open(send1.as_block().hash()).build();
+    let mut open1 = destination.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
 
-    let mut receive2 = destination
-        .receive(txn.txn(), send2.as_block().hash())
-        .build();
+    let mut receive2 = destination.receive(txn.txn(), send2.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive2).unwrap();
 
-    assert_eq!(
-        receive2.as_block().sideband().unwrap().details.epoch,
-        Epoch::Epoch1
-    );
-    assert_eq!(
-        receive2.as_block().sideband().unwrap().source_epoch,
-        Epoch::Epoch1
-    );
+    assert_eq!(receive2.sideband().unwrap().details.epoch, Epoch::Epoch1);
+    assert_eq!(receive2.sideband().unwrap().source_epoch, Epoch::Epoch1);
 
     let destination_info = ctx
         .ledger
@@ -262,17 +242,13 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
     let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open1 = destination.legacy_open(send1.as_block().hash()).build();
+    let mut open1 = destination.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
 
-    let mut receive2 = destination
-        .receive(txn.txn(), send2.as_block().hash())
-        .build();
+    let mut receive2 = destination.receive(txn.txn(), send2.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive2).unwrap();
 
-    ctx.ledger
-        .rollback(txn.as_mut(), &receive2.as_block().hash())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &receive2.hash()).unwrap();
 
     let destination_info = ctx
         .ledger
@@ -284,7 +260,7 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
         .ledger
         .get_pending(
             txn.txn(),
-            &PendingKey::new(destination.account(), send2.as_block().hash()),
+            &PendingKey::new(destination.account(), send2.hash()),
         )
         .unwrap();
     assert_eq!(pending_send2.epoch, Epoch::Epoch1);
@@ -323,13 +299,13 @@ fn successor_epoch() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let mut open = destination.open(txn.txn(), send1.as_block().hash()).build();
+    let mut open = destination.open(txn.txn(), send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let mut change = destination.change(txn.txn()).build();
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    let account = Account::from_bytes(*open.as_block().hash().as_bytes());
+    let account = Account::from_bytes(*open.hash().as_bytes());
     let mut send2 = genesis.legacy_send(txn.txn()).destination(account).build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
@@ -337,13 +313,12 @@ fn successor_epoch() {
     ctx.ledger.process(txn.as_mut(), &mut epoch_open).unwrap();
 
     assert_eq!(
-        ctx.ledger
-            .successor(txn.txn(), &change.as_block().qualified_root()),
+        ctx.ledger.successor(txn.txn(), &change.qualified_root()),
         Some(change)
     );
     assert_eq!(
         ctx.ledger
-            .successor(txn.txn(), &epoch_open.as_block().qualified_root()),
+            .successor(txn.txn(), &epoch_open.qualified_root()),
         Some(epoch_open)
     );
 }

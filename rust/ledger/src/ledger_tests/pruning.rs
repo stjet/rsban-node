@@ -32,109 +32,69 @@ fn pruning_action() {
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     // Prune...
-    assert_eq!(
-        ctx.ledger
-            .pruning_action(txn.as_mut(), &send1.as_block().hash(), 1),
-        1
-    );
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send1.hash(), 1), 1);
     assert_eq!(
         ctx.ledger
             .pruning_action(txn.as_mut(), &DEV_GENESIS_HASH, 1),
         0
     );
-    assert!(ctx.ledger.store.pending().exists(
-        txn.txn(),
-        &PendingKey::new(genesis.account(), send1.as_block().hash())
-    ),);
+    assert!(ctx
+        .ledger
+        .store
+        .pending()
+        .exists(txn.txn(), &PendingKey::new(genesis.account(), send1.hash())),);
 
     assert_eq!(
-        ctx.ledger
-            .store
-            .block()
-            .exists(txn.txn(), &send1.as_block().hash()),
+        ctx.ledger.store.block().exists(txn.txn(), &send1.hash()),
         false
     );
 
     assert!(ctx
         .ledger
-        .block_or_pruned_exists_txn(txn.txn(), &send1.as_block().hash()),);
+        .block_or_pruned_exists_txn(txn.txn(), &send1.hash()),);
 
-    assert!(ctx
-        .ledger
-        .store
-        .pruned()
-        .exists(txn.txn(), &send1.as_block().hash()),);
+    assert!(ctx.ledger.store.pruned().exists(txn.txn(), &send1.hash()),);
 
     assert!(ctx
         .ledger
         .store
         .block()
         .exists(txn.txn(), &DEV_GENESIS_HASH));
-    assert!(ctx
-        .ledger
-        .store
-        .block()
-        .exists(txn.txn(), &send2.as_block().hash()));
+    assert!(ctx.ledger.store.block().exists(txn.txn(), &send2.hash()));
 
     // Receiving pruned block
     let mut receive1 = BlockBuilder::state()
         .account(genesis.account())
-        .previous(send2.as_block().hash())
+        .previous(send2.hash())
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100))
-        .link(send1.as_block().hash())
+        .link(send1.hash())
         .sign(&genesis.key)
-        .work(
-            STUB_WORK_POOL
-                .generate_dev2(send2.as_block().hash().into())
-                .unwrap(),
-        )
+        .work(STUB_WORK_POOL.generate_dev2(send2.hash().into()).unwrap())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
-    assert!(ctx
-        .ledger
-        .store
-        .block()
-        .exists(txn.txn(), &receive1.as_block().hash()));
+    assert!(ctx.ledger.store.block().exists(txn.txn(), &receive1.hash()));
     assert_eq!(
-        ctx.ledger.store.pending().exists(
-            txn.txn(),
-            &PendingKey::new(genesis.account(), send1.as_block().hash())
-        ),
+        ctx.ledger
+            .store
+            .pending()
+            .exists(txn.txn(), &PendingKey::new(genesis.account(), send1.hash())),
         false
     );
-    let receive1_stored = ctx
-        .ledger
-        .get_block(txn.txn(), &receive1.as_block().hash())
-        .unwrap();
+    let receive1_stored = ctx.ledger.get_block(txn.txn(), &receive1.hash()).unwrap();
     assert_eq!(receive1, receive1_stored);
-    assert_eq!(receive1_stored.as_block().sideband().unwrap().height, 4);
+    assert_eq!(receive1_stored.sideband().unwrap().height, 4);
     assert_eq!(
-        receive1_stored.as_block().sideband().unwrap().details,
+        receive1_stored.sideband().unwrap().details,
         BlockDetails::new(Epoch::Epoch0, false, true, false)
     );
 
     // Middle block pruning
-    assert!(ctx
-        .ledger
-        .store
-        .block()
-        .exists(txn.txn(), &send2.as_block().hash()));
+    assert!(ctx.ledger.store.block().exists(txn.txn(), &send2.hash()));
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send2.hash(), 1), 1);
+    assert!(ctx.ledger.store.pruned().exists(txn.txn(), &send2.hash()));
     assert_eq!(
-        ctx.ledger
-            .pruning_action(txn.as_mut(), &send2.as_block().hash(), 1),
-        1
-    );
-    assert!(ctx
-        .ledger
-        .store
-        .pruned()
-        .exists(txn.txn(), &send2.as_block().hash()));
-    assert_eq!(
-        ctx.ledger
-            .store
-            .block()
-            .exists(txn.txn(), &send2.as_block().hash()),
+        ctx.ledger.store.block().exists(txn.txn(), &send2.hash()),
         false
     );
     assert_eq!(
@@ -164,10 +124,10 @@ fn pruning_large_chain() {
         let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-        let mut receive = genesis.receive(txn.txn(), send.as_block().hash()).build();
+        let mut receive = genesis.receive(txn.txn(), send.hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-        last_hash = receive.as_block().hash();
+        last_hash = receive.hash();
     }
     assert_eq!(
         ctx.ledger.store.block().count(txn.txn()),
@@ -230,37 +190,24 @@ fn pruning_source_rollback() {
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     // Pruning action
-    assert_eq!(
-        ctx.ledger
-            .pruning_action(txn.as_mut(), &send1.as_block().hash(), 1),
-        2
-    );
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send1.hash(), 1), 2);
 
     // Receiving pruned block
     let mut receive1 = BlockBuilder::state()
         .account(genesis.account())
-        .previous(send2.as_block().hash())
+        .previous(send2.hash())
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100))
-        .link(send1.as_block().hash())
+        .link(send1.hash())
         .sign(&genesis.key)
-        .work(
-            STUB_WORK_POOL
-                .generate_dev2(send2.as_block().hash().into())
-                .unwrap(),
-        )
+        .work(STUB_WORK_POOL.generate_dev2(send2.hash().into()).unwrap())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
     // Rollback receive block
-    ctx.ledger
-        .rollback(txn.as_mut(), &receive1.as_block().hash())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &receive1.hash()).unwrap();
     let info2 = ctx
         .ledger
-        .get_pending(
-            txn.txn(),
-            &PendingKey::new(genesis.account(), send1.as_block().hash()),
-        )
+        .get_pending(txn.txn(), &PendingKey::new(genesis.account(), send1.hash()))
         .unwrap();
     assert_ne!(info2.source, genesis.account()); // Tradeoff to not store pruned blocks accounts
     assert_eq!(info2.amount, Amount::new(100));
@@ -270,10 +217,10 @@ fn pruning_source_rollback() {
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
     assert_eq!(
-        ctx.ledger.store.pending().exists(
-            txn.txn(),
-            &PendingKey::new(genesis.account(), send1.as_block().hash())
-        ),
+        ctx.ledger
+            .store
+            .pending()
+            .exists(txn.txn(), &PendingKey::new(genesis.account(), send1.hash())),
         false
     );
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
@@ -310,36 +257,23 @@ fn pruning_source_rollback_legacy() {
     ctx.ledger.process(txn.as_mut(), &mut send3).unwrap();
 
     // Pruning action
-    assert_eq!(
-        ctx.ledger
-            .pruning_action(txn.as_mut(), &send2.as_block().hash(), 1),
-        2
-    );
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send2.hash(), 1), 2);
 
     // Receiving pruned block
     let mut receive1 = BlockBuilder::legacy_receive()
-        .previous(send3.as_block().hash())
-        .source(send1.as_block().hash())
+        .previous(send3.hash())
+        .source(send1.hash())
         .sign(&genesis.key)
-        .work(
-            STUB_WORK_POOL
-                .generate_dev2(send3.as_block().hash().into())
-                .unwrap(),
-        )
+        .work(STUB_WORK_POOL.generate_dev2(send3.hash().into()).unwrap())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
     // Rollback receive block
-    ctx.ledger
-        .rollback(txn.as_mut(), &receive1.as_block().hash())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &receive1.hash()).unwrap();
 
     let info3 = ctx
         .ledger
-        .get_pending(
-            txn.txn(),
-            &PendingKey::new(genesis.account(), send1.as_block().hash()),
-        )
+        .get_pending(txn.txn(), &PendingKey::new(genesis.account(), send1.hash()))
         .unwrap();
     assert_ne!(info3.source, genesis.account()); // Tradeoff to not store pruned blocks accounts
     assert_eq!(info3.amount, Amount::new(100));
@@ -349,10 +283,8 @@ fn pruning_source_rollback_legacy() {
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
     assert_eq!(
-        ctx.ledger.get_pending(
-            txn.txn(),
-            &PendingKey::new(genesis.account(), send1.as_block().hash())
-        ),
+        ctx.ledger
+            .get_pending(txn.txn(), &PendingKey::new(genesis.account(), send1.hash())),
         None
     );
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
@@ -360,7 +292,7 @@ fn pruning_source_rollback_legacy() {
 
     // Receiving pruned block (open)
     let mut open1 = BlockBuilder::legacy_open()
-        .source(send2.as_block().hash())
+        .source(send2.hash())
         .account(destination.account())
         .sign(&destination.key)
         .work(
@@ -372,15 +304,13 @@ fn pruning_source_rollback_legacy() {
     ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
 
     // Rollback open block
-    ctx.ledger
-        .rollback(txn.as_mut(), &open1.as_block().hash())
-        .unwrap();
+    ctx.ledger.rollback(txn.as_mut(), &open1.hash()).unwrap();
 
     let info4 = ctx
         .ledger
         .get_pending(
             txn.txn(),
-            &PendingKey::new(destination.account(), send2.as_block().hash()),
+            &PendingKey::new(destination.account(), send2.hash()),
         )
         .unwrap();
     assert_ne!(info4.source, genesis.account()); // Tradeoff to not store pruned blocks accounts
@@ -392,7 +322,7 @@ fn pruning_source_rollback_legacy() {
     assert_eq!(
         ctx.ledger.get_pending(
             txn.txn(),
-            &PendingKey::new(destination.account(), send2.as_block().hash())
+            &PendingKey::new(destination.account(), send2.hash())
         ),
         None
     );
@@ -411,11 +341,7 @@ fn pruning_process_error() {
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     // Pruning action for latest block (not valid action)
-    assert_eq!(
-        ctx.ledger
-            .pruning_action(txn.as_mut(), &send1.as_block().hash(), 1),
-        1
-    );
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send1.hash(), 1), 1);
 
     // Attempt to process pruned block again
     let result = ctx.ledger.process(txn.as_mut(), &mut send1).unwrap_err();
@@ -424,15 +350,11 @@ fn pruning_process_error() {
     // Attept to process new block after pruned
     let mut send2 = BlockBuilder::state()
         .account(genesis.account())
-        .previous(send1.as_block().hash())
+        .previous(send1.hash())
         .balance(0)
         .link(genesis.account())
         .sign(&genesis.key)
-        .work(
-            STUB_WORK_POOL
-                .generate_dev2(send1.as_block().hash().into())
-                .unwrap(),
-        )
+        .work(STUB_WORK_POOL.generate_dev2(send1.hash().into()).unwrap())
         .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
     assert_eq!(result, ProcessResult::GapPrevious);
@@ -454,9 +376,7 @@ fn pruning_legacy_blocks() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
-    let mut receive1 = genesis
-        .legacy_receive(txn.txn(), send1.as_block().hash())
-        .build();
+    let mut receive1 = genesis.legacy_receive(txn.txn(), send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive1).unwrap();
 
     let mut change1 = genesis
@@ -471,7 +391,7 @@ fn pruning_legacy_blocks() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open1 = destination.legacy_open(send2.as_block().hash()).build();
+    let mut open1 = destination.legacy_open(send2.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
 
     let mut send3 = destination
@@ -482,16 +402,11 @@ fn pruning_legacy_blocks() {
 
     // Pruning action
     assert_eq!(
-        ctx.ledger
-            .pruning_action(txn.as_mut(), &change1.as_block().hash(), 2),
+        ctx.ledger.pruning_action(txn.as_mut(), &change1.hash(), 2),
         3
     );
 
-    assert_eq!(
-        ctx.ledger
-            .pruning_action(txn.as_mut(), &open1.as_block().hash(), 1),
-        1
-    );
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &open1.hash(), 1), 1);
 
     assert!(ctx
         .ledger
@@ -499,73 +414,46 @@ fn pruning_legacy_blocks() {
         .block()
         .exists(txn.txn(), &DEV_GENESIS_HASH));
     assert_eq!(
-        ctx.ledger
-            .store
-            .block()
-            .exists(txn.txn(), &send1.as_block().hash()),
+        ctx.ledger.store.block().exists(txn.txn(), &send1.hash()),
+        false
+    );
+    assert_eq!(
+        ctx.ledger.store.pruned().exists(txn.txn(), &send1.hash()),
+        true
+    );
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &receive1.hash()),
         false
     );
     assert_eq!(
         ctx.ledger
             .store
             .pruned()
-            .exists(txn.txn(), &send1.as_block().hash()),
+            .exists(txn.txn(), &receive1.hash()),
         true
     );
     assert_eq!(
-        ctx.ledger
-            .store
-            .block()
-            .exists(txn.txn(), &receive1.as_block().hash()),
+        ctx.ledger.store.block().exists(txn.txn(), &change1.hash()),
         false
     );
     assert_eq!(
-        ctx.ledger
-            .store
-            .pruned()
-            .exists(txn.txn(), &receive1.as_block().hash()),
+        ctx.ledger.store.pruned().exists(txn.txn(), &change1.hash()),
         true
     );
     assert_eq!(
-        ctx.ledger
-            .store
-            .block()
-            .exists(txn.txn(), &change1.as_block().hash()),
+        ctx.ledger.store.block().exists(txn.txn(), &send2.hash()),
+        true
+    );
+    assert_eq!(
+        ctx.ledger.store.block().exists(txn.txn(), &open1.hash()),
         false
     );
     assert_eq!(
-        ctx.ledger
-            .store
-            .pruned()
-            .exists(txn.txn(), &change1.as_block().hash()),
+        ctx.ledger.store.pruned().exists(txn.txn(), &open1.hash()),
         true
     );
     assert_eq!(
-        ctx.ledger
-            .store
-            .block()
-            .exists(txn.txn(), &send2.as_block().hash()),
-        true
-    );
-    assert_eq!(
-        ctx.ledger
-            .store
-            .block()
-            .exists(txn.txn(), &open1.as_block().hash()),
-        false
-    );
-    assert_eq!(
-        ctx.ledger
-            .store
-            .pruned()
-            .exists(txn.txn(), &open1.as_block().hash()),
-        true
-    );
-    assert_eq!(
-        ctx.ledger
-            .store
-            .block()
-            .exists(txn.txn(), &send3.as_block().hash()),
+        ctx.ledger.store.block().exists(txn.txn(), &send3.hash()),
         true
     );
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 4);
@@ -588,34 +476,19 @@ fn pruning_safe_functions() {
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     // Pruning action
-    assert_eq!(
-        ctx.ledger
-            .pruning_action(txn.as_mut(), &send1.as_block().hash(), 1),
-        1
-    );
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send1.hash(), 1), 1);
 
     // Safe ledger actions
-    assert!(ctx
-        .ledger
-        .balance_safe(txn.txn(), &send1.as_block().hash())
-        .is_err());
+    assert!(ctx.ledger.balance_safe(txn.txn(), &send1.hash()).is_err());
     assert_eq!(
-        ctx.ledger
-            .balance_safe(txn.txn(), &send2.as_block().hash())
-            .unwrap(),
-        send2.as_block().balance()
+        ctx.ledger.balance_safe(txn.txn(), &send2.hash()).unwrap(),
+        send2.balance()
     );
 
+    assert_eq!(ctx.ledger.amount_safe(txn.txn(), &send2.hash()), None);
+    assert_eq!(ctx.ledger.account(txn.txn(), &send1.hash()), None);
     assert_eq!(
-        ctx.ledger.amount_safe(txn.txn(), &send2.as_block().hash()),
-        None
-    );
-    assert_eq!(
-        ctx.ledger.account(txn.txn(), &send1.as_block().hash()),
-        None
-    );
-    assert_eq!(
-        ctx.ledger.account(txn.txn(), &send2.as_block().hash()),
+        ctx.ledger.account(txn.txn(), &send2.hash()),
         Some(genesis.account())
     );
 }
@@ -634,11 +507,7 @@ fn hash_root_random() {
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     // Pruning action
-    assert_eq!(
-        ctx.ledger
-            .pruning_action(txn.as_mut(), &send1.as_block().hash(), 1),
-        1
-    );
+    assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send1.hash(), 1), 1);
 
     // Test random block including pruned
     let mut done = false;
@@ -646,7 +515,7 @@ fn hash_root_random() {
     while !done {
         iteration += 1;
         let root_hash = ctx.ledger.hash_root_random(txn.txn()).unwrap();
-        done = (root_hash.0 == send1.as_block().hash()) && root_hash.1.is_zero();
+        done = (root_hash.0 == send1.hash()) && root_hash.1.is_zero();
         assert!(iteration < 1000);
     }
 }

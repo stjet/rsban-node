@@ -9,6 +9,7 @@ use rsnano_core::{
 use crate::{LedgerProcessor, RollbackVisitor};
 use std::{
     collections::{BTreeMap, HashMap},
+    ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex, RwLock,
@@ -174,7 +175,7 @@ impl Ledger {
 
     fn add_genesis_block(&self, txn: &mut dyn WriteTransaction) {
         let genesis_block_enum = self.constants.genesis.read().unwrap();
-        let genesis_block = genesis_block_enum.as_block();
+        let genesis_block = genesis_block_enum.deref().deref();
         let genesis_hash = genesis_block.hash();
         let genesis_account = genesis_block.account();
         self.store.block().put(txn, genesis_block);
@@ -306,8 +307,8 @@ impl Ledger {
 
         match self.store.block().get(txn, hash) {
             Some(block) => {
-                let mut account = block.as_block().account();
-                let sideband = &block.as_block().sideband().unwrap();
+                let mut account = block.account();
+                let sideband = &block.sideband().unwrap();
                 if account.is_zero() {
                     account = sideband.account;
                 }
@@ -326,7 +327,7 @@ impl Ledger {
         match self.store.block().get(txn.txn(), hash) {
             Some(block) => {
                 let mut writer = SerdePropertyTree::new();
-                block.as_block().serialize_json(&mut writer)?;
+                block.serialize_json(&mut writer)?;
                 Ok(writer.to_json())
             }
             None => Ok(String::new()),
@@ -381,8 +382,7 @@ impl Ledger {
          * to check account balances to determine if it is a send block.
          */
         debug_assert!(
-            block.as_block().previous().is_zero()
-                || self.store.block().exists(txn, &block.as_block().previous())
+            block.previous().is_zero() || self.store.block().exists(txn, &block.previous())
         );
 
         // If block_a.source () is nonzero, then we have our source.
@@ -395,7 +395,7 @@ impl Ledger {
                     state.source()
                 }
             }
-            _ => block.as_block().source().unwrap_or_default(),
+            _ => block.source().unwrap_or_default(),
         }
     }
 
@@ -404,7 +404,7 @@ impl Ledger {
             self.store
                 .block()
                 .random(txn)
-                .map(|block| (block.as_block().hash(), block.as_block().root().into()))
+                .map(|block| (block.hash(), block.root().into()))
         } else {
             let mut hash = BlockHash::zero();
             let count = self.cache.block_count.load(Ordering::SeqCst);
@@ -417,7 +417,7 @@ impl Ledger {
                 self.store
                     .block()
                     .random(txn)
-                    .map(|block| (block.as_block().hash(), block.as_block().root().into()))
+                    .map(|block| (block.hash(), block.root().into()))
             } else {
                 Some((hash, BlockHash::zero()))
             }
@@ -449,7 +449,7 @@ impl Ledger {
     pub fn amount(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
         self.store.block().get(txn, hash).map(|block| {
             let block_balance = self.balance(txn, hash);
-            let previous_balance = self.balance(txn, &block.as_block().previous());
+            let previous_balance = self.balance(txn, &block.previous());
             if block_balance > previous_balance {
                 block_balance - previous_balance
             } else {
@@ -465,7 +465,7 @@ impl Ledger {
             .get(txn, hash)
             .map(|block| {
                 let block_balance = self.balance(txn, hash);
-                let previous_balance = self.balance_safe(txn, &block.as_block().previous());
+                let previous_balance = self.balance_safe(txn, &block.previous());
                 match previous_balance {
                     Ok(previous) => {
                         if block_balance > previous {
@@ -513,7 +513,7 @@ impl Ledger {
         // walk down the chain until the source field of a receive block matches the send block hash
         while let Some(current) = possible_receive_block {
             // if source is non-zero then it is a legacy receive or open block
-            let mut source = current.as_block().source().unwrap_or_default();
+            let mut source = current.source().unwrap_or_default();
 
             // if source is zero then it could be a state block, which needs a different kind of access
             if let BlockEnum::State(state_block) = &current {
@@ -528,7 +528,7 @@ impl Ledger {
                 return Some(current);
             }
 
-            possible_receive_block = self.store.block().get(txn, &current.as_block().previous());
+            possible_receive_block = self.store.block().get(txn, &current.previous());
         }
 
         None
@@ -607,13 +607,13 @@ impl Ledger {
     ) -> u64 {
         let mut pruned_count = 0;
         let mut hash = *hash;
-        let genesis_hash = { self.constants.genesis.read().unwrap().as_block().hash() };
+        let genesis_hash = { self.constants.genesis.read().unwrap().hash() };
 
         while !hash.is_zero() && hash != genesis_hash {
             if let Some(block) = self.store.block().get(txn.txn(), &hash) {
                 self.store.block().del(txn, &hash);
                 self.store.pruned().put(txn, &hash);
-                hash = block.as_block().previous();
+                hash = block.previous();
                 pruned_count += 1;
                 self.cache.pruned_count.fetch_add(1, Ordering::SeqCst);
                 if pruned_count % batch_size == 0 {
@@ -694,9 +694,7 @@ impl Ledger {
                 .block()
                 .get(txn.txn(), confirmed_frontier)
                 .unwrap();
-            debug_assert!(
-                block.as_block().sideband().unwrap().height == conf_height + num_blocks_cemented
-            );
+            debug_assert!(block.sideband().unwrap().height == conf_height + num_blocks_cemented);
         }
 
         self.store.confirmation_height().put(
@@ -765,7 +763,7 @@ impl Ledger {
                     .get(rollback.txn.txn(), &account_info.head)
                     .unwrap();
                 rollback.list.push(Arc::new(RwLock::new(block.clone())));
-                block.as_block().visit(&mut rollback);
+                block.visit(&mut rollback);
                 if rollback.is_error {
                     return Err(anyhow!("rollback failed"));
                 }
@@ -795,9 +793,7 @@ impl Ledger {
         txn: &mut dyn WriteTransaction,
         block: &mut BlockEnum,
     ) -> Result<(), ProcessResult> {
-        let mut processor = LedgerProcessor::new(self, txn);
-        processor.process(block);
-        processor.result
+        LedgerProcessor::new(self, txn).process(block)
     }
 
     pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {

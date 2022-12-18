@@ -1,5 +1,6 @@
 use std::{
     ffi::c_void,
+    ops::Deref,
     ptr, slice,
     sync::{Arc, RwLock},
 };
@@ -53,7 +54,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_put(
 ) {
     (*handle).0.put(
         (*txn).as_write_txn(),
-        (*block).block.read().unwrap().as_block(),
+        (*block).block.read().unwrap().deref().deref(),
     );
 }
 
@@ -147,7 +148,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_account_calculated(
 ) {
     let account = (*handle)
         .0
-        .account_calculated((*block).block.read().unwrap().as_block());
+        .account_calculated((*block).block.read().unwrap().deref().deref());
     copy_account_bytes(account, result);
 }
 

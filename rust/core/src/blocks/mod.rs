@@ -28,7 +28,10 @@ use crate::{
     WorkVersion,
 };
 use num::FromPrimitive;
-use std::sync::{Arc, RwLock};
+use std::{
+    ops::{Deref, DerefMut},
+    sync::{Arc, RwLock},
+};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -207,70 +210,37 @@ impl BlockEnum {
             BlockEnum::State(b) => b.balance(),
         }
     }
-
-    pub fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
-        self.as_block().sideband()
-    }
-
-    pub fn hash(&self) -> BlockHash {
-        self.as_block().hash()
-    }
-
-    pub fn previous(&self) -> BlockHash {
-        self.as_block().previous()
-    }
-
-    pub fn representative(&self) -> Option<Account> {
-        self.as_block().representative()
-    }
-
-    pub fn balance(&self) -> Amount {
-        self.as_block().balance()
-    }
-
-    pub fn account(&self) -> Account {
-        self.as_block().account()
-    }
-
-    pub fn root(&self) -> Root {
-        self.as_block().root()
-    }
-
-    pub fn work_version(&self) -> WorkVersion {
-        self.as_block().work_version()
-    }
-
-    pub fn signature(&self) -> &Signature {
-        self.as_block().block_signature()
-    }
-
-    pub fn source(&self) -> Option<BlockHash> {
-        self.as_block().source()
-    }
-
-    pub fn destination(&self) -> Option<Account> {
-        self.as_block().destination()
-    }
-
-    pub fn link(&self) -> Link {
-        self.as_block().link()
-    }
-    pub fn work(&self) -> u64 {
-        self.as_block().work()
-    }
-
-    pub fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.as_block().serialize(stream)
-    }
-
-    pub fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> anyhow::Result<()> {
-        self.as_block().serialize_json(writer)
-    }
 }
 
 impl FullHash for BlockEnum {
     fn full_hash(&self) -> BlockHash {
         self.as_block().full_hash()
+    }
+}
+
+impl Deref for BlockEnum {
+    type Target = dyn Block;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            BlockEnum::LegacySend(b) => b,
+            BlockEnum::LegacyReceive(b) => b,
+            BlockEnum::LegacyOpen(b) => b,
+            BlockEnum::LegacyChange(b) => b,
+            BlockEnum::State(b) => b,
+        }
+    }
+}
+
+impl DerefMut for BlockEnum {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            BlockEnum::LegacySend(b) => b,
+            BlockEnum::LegacyReceive(b) => b,
+            BlockEnum::LegacyOpen(b) => b,
+            BlockEnum::LegacyChange(b) => b,
+            BlockEnum::State(b) => b,
+        }
     }
 }
 
@@ -289,7 +259,7 @@ pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result
 pub fn serialize_block_enum(stream: &mut dyn Stream, block: &BlockEnum) -> anyhow::Result<()> {
     let block_type = block.block_type() as u8;
     stream.write_u8(block_type)?;
-    block.as_block().serialize(stream)
+    block.serialize(stream)
 }
 
 pub fn deserialize_block_enum(stream: &mut dyn Stream) -> anyhow::Result<BlockEnum> {

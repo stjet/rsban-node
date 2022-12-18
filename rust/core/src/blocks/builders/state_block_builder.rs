@@ -268,7 +268,7 @@ mod tests {
         validate_message(
             &key.public_key(),
             zero_block_build.hash().as_bytes(),
-            zero_block_build.signature(),
+            zero_block_build.block_signature(),
         )
         .unwrap();
     }

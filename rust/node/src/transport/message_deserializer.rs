@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    ops::Deref,
+    sync::{Arc, Mutex},
+};
 
 use rsnano_core::utils::{Stream, StreamAdapter};
 
@@ -129,7 +132,7 @@ impl MessageDeserializer {
                         if !self
                             .network_constants
                             .work
-                            .validate_entry_block(block.read().unwrap().as_block())
+                            .validate_entry_block(block.read().unwrap().deref().deref())
                         {
                             return Some(Box::new(msg));
                         } else {
@@ -157,7 +160,7 @@ impl MessageDeserializer {
                     Some(block) => !self
                         .network_constants
                         .work
-                        .validate_entry_block(block.read().unwrap().as_block()),
+                        .validate_entry_block(block.read().unwrap().deref().deref()),
                     None => true,
                 };
                 if work_ok {

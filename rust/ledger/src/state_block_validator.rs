@@ -52,6 +52,8 @@ impl<'a> StateBlockValidator<'a> {
         self.initialize();
 
         // Epoch block pre-checks for early return
+        // It's important to abort with BadSignature first, so that the block does
+        // not get added to the unchecked map!
         self.ensure_block_signature_for_epoch_block_candidate_is_maybe_valid()?;
         self.ensure_previous_block_exists_for_epoch_block_candidate()?;
 

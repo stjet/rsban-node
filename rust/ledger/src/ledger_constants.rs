@@ -87,10 +87,8 @@ pub static LEDGER_CONSTANTS_STUB: Lazy<LedgerConstants> = Lazy::new(|| {
 
 pub static DEV_GENESIS: Lazy<Arc<RwLock<BlockEnum>>> =
     Lazy::new(|| LEDGER_CONSTANTS_STUB.genesis.clone());
-pub static DEV_GENESIS_ACCOUNT: Lazy<Account> =
-    Lazy::new(|| DEV_GENESIS.read().unwrap().as_block().account());
-pub static DEV_GENESIS_HASH: Lazy<BlockHash> =
-    Lazy::new(|| DEV_GENESIS.read().unwrap().as_block().hash());
+pub static DEV_GENESIS_ACCOUNT: Lazy<Account> = Lazy::new(|| DEV_GENESIS.read().unwrap().account());
+pub static DEV_GENESIS_HASH: Lazy<BlockHash> = Lazy::new(|| DEV_GENESIS.read().unwrap().hash());
 
 fn parse_block_from_genesis_data(genesis_data: &str) -> Result<BlockEnum> {
     let ptree = SerdePropertyTree::parse(genesis_data)?;
@@ -145,7 +143,7 @@ impl LedgerConstants {
         let mut nano_live_genesis = parse_block_from_genesis_data(LIVE_GENESIS_DATA)?;
         let mut nano_test_genesis = parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str())?;
 
-        let beta_genesis_account = nano_beta_genesis.as_block().account();
+        let beta_genesis_account = nano_beta_genesis.account();
         nano_beta_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -158,7 +156,7 @@ impl LedgerConstants {
                 Epoch::Epoch0,
             ));
 
-        let dev_genesis_account = nano_dev_genesis.as_block().account();
+        let dev_genesis_account = nano_dev_genesis.account();
         nano_dev_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -171,7 +169,7 @@ impl LedgerConstants {
                 Epoch::Epoch0,
             ));
 
-        let live_genesis_account = nano_live_genesis.as_block().account();
+        let live_genesis_account = nano_live_genesis.account();
         nano_live_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -184,7 +182,7 @@ impl LedgerConstants {
                 Epoch::Epoch0,
             ));
 
-        let test_genesis_account = nano_test_genesis.as_block().account();
+        let test_genesis_account = nano_test_genesis.account();
         nano_test_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -226,7 +224,7 @@ impl LedgerConstants {
 
         let mut epochs = Epochs::new();
 
-        let epoch_1_signer = genesis.as_block().account().into();
+        let epoch_1_signer = genesis.account().into();
         let mut link_bytes = [0u8; 32];
         link_bytes[..14].copy_from_slice(b"epoch v1 block");
         let epoch_link_v1 = Link::from_bytes(link_bytes);

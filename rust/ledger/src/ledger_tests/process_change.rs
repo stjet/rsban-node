@@ -73,7 +73,7 @@ fn change_to_zero_rep() {
             .cache
             .rep_weights
             .representation_get(&Account::zero()),
-        change.as_block().balance()
+        change.balance()
     );
 }
 
@@ -105,7 +105,7 @@ fn change_from_zero_rep_to_real_rep() {
             .cache
             .rep_weights
             .representation_get(&DEV_GENESIS_ACCOUNT),
-        change_to_genesis.as_block().balance()
+        change_to_genesis.balance()
     );
     assert_eq!(
         ctx.ledger

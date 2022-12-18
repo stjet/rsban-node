@@ -42,8 +42,7 @@ pub unsafe extern "C" fn rsn_block_sideband(
     sideband: *mut BlockSidebandDto,
 ) -> i32 {
     let b = (*block).block.read().unwrap();
-    let block = (&*b).as_block();
-    match block.sideband() {
+    match b.sideband() {
         Some(sb) => {
             set_block_sideband_dto(sb, sideband);
             0
@@ -99,8 +98,7 @@ pub unsafe extern "C" fn rsn_block_sideband_set(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_has_sideband(block: *const BlockHandle) -> bool {
-    let block = (*block).block.read().unwrap();
-    block.as_block().sideband().is_some()
+    (*block).block.read().unwrap().sideband().is_some()
 }
 
 pub struct BlockHandle {
@@ -126,7 +124,7 @@ pub unsafe extern "C" fn rsn_deserialize_block_json(ptree: *const c_void) -> *mu
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_type(handle: *const BlockHandle) -> u8 {
-    (*handle).block.read().unwrap().as_block().block_type() as u8
+    (*handle).block.read().unwrap().block_type() as u8
 }
 
 #[no_mangle]
@@ -141,18 +139,12 @@ pub unsafe extern "C" fn rsn_block_work_set(handle: *mut BlockHandle, work: u64)
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_work(handle: *const BlockHandle) -> u64 {
-    (*handle).block.read().unwrap().as_block().work()
+    (*handle).block.read().unwrap().work()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_signature(handle: *const BlockHandle, result: *mut [u8; 64]) {
-    (*result) = *(*handle)
-        .block
-        .read()
-        .unwrap()
-        .as_block()
-        .block_signature()
-        .as_bytes();
+    (*result) = *(*handle).block.read().unwrap().block_signature().as_bytes();
 }
 
 #[no_mangle]
@@ -161,19 +153,12 @@ pub unsafe extern "C" fn rsn_block_signature_set(handle: *mut BlockHandle, signa
         .block
         .write()
         .unwrap()
-        .as_block_mut()
         .set_block_signature(&Signature::from_bytes(*signature));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_previous(handle: &BlockHandle, result: *mut [u8; 32]) {
-    (*result) = *(*handle)
-        .block
-        .read()
-        .unwrap()
-        .as_block()
-        .previous()
-        .as_bytes();
+    (*result) = *(*handle).block.read().unwrap().previous().as_bytes();
 }
 
 #[no_mangle]
@@ -186,13 +171,13 @@ pub unsafe extern "C" fn rsn_block_equals(a: *const BlockHandle, b: *const Block
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = *(*handle).block.read().unwrap().as_block().hash().as_bytes();
+    (*hash) = *(*handle).block.read().unwrap().hash().as_bytes();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_full_hash(handle: *const BlockHandle, hash: *mut u8) {
     let result = std::slice::from_raw_parts_mut(hash, 32);
-    let hash = (*handle).block.read().unwrap().as_block().full_hash();
+    let hash = (*handle).block.read().unwrap().full_hash();
 
     result.copy_from_slice(hash.as_bytes());
 }
@@ -204,7 +189,6 @@ pub unsafe extern "C" fn rsn_block_serialize(handle: *mut BlockHandle, stream: *
         .block
         .read()
         .unwrap()
-        .as_block()
         .serialize(&mut stream)
         .is_ok()
     {
@@ -220,13 +204,7 @@ pub unsafe extern "C" fn rsn_block_serialize_json(
     ptree: *mut c_void,
 ) -> i32 {
     let mut writer = FfiPropertyTreeWriter::new_borrowed(ptree);
-    match (*handle)
-        .block
-        .read()
-        .unwrap()
-        .as_block()
-        .serialize_json(&mut writer)
-    {
+    match (*handle).block.read().unwrap().serialize_json(&mut writer) {
         Ok(_) => 0,
         Err(_) => -1,
     }

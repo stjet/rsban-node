@@ -83,15 +83,13 @@ fn send_and_change_representative() {
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     assert_eq!(
-        ctx.ledger
-            .amount(txn.txn(), &send.as_block().hash())
-            .unwrap(),
+        ctx.ledger.amount(txn.txn(), &send.hash()).unwrap(),
         amount_sent,
     );
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(ctx.ledger.weight(&representative), Amount::new(1));
     assert_eq!(
-        send.as_block().sideband().unwrap().details,
+        send.sideband().unwrap().details,
         BlockDetails::new(Epoch::Epoch0, true, false, false)
     );
 }

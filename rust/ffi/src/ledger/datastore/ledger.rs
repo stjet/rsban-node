@@ -252,9 +252,10 @@ pub unsafe extern "C" fn rsn_ledger_is_send(
     txn: *mut TransactionHandle,
     block: *const BlockHandle,
 ) -> bool {
-    (*handle)
-        .0
-        .is_send((*txn).as_txn(), (*block).block.read().unwrap().as_block())
+    (*handle).0.is_send(
+        (*txn).as_txn(),
+        (*block).block.read().unwrap().deref().deref(),
+    )
 }
 
 #[no_mangle]
@@ -592,9 +593,10 @@ pub unsafe extern "C" fn rsn_ledger_dependent_blocks(
     result1: *mut u8,
     result2: *mut u8,
 ) {
-    let dependencies = (*handle)
-        .0
-        .dependent_blocks((*txn).as_txn(), (*block).block.read().unwrap().as_block());
+    let dependencies = (*handle).0.dependent_blocks(
+        (*txn).as_txn(),
+        (*block).block.read().unwrap().deref().deref(),
+    );
     copy_hash_bytes(dependencies[0], result1);
     copy_hash_bytes(dependencies[1], result2);
 }
@@ -605,9 +607,10 @@ pub unsafe extern "C" fn rsn_ledger_could_fit(
     txn: *mut TransactionHandle,
     block: *mut BlockHandle,
 ) -> bool {
-    (*handle)
-        .0
-        .could_fit((*txn).as_txn(), (*block).block.read().unwrap().as_block())
+    (*handle).0.could_fit(
+        (*txn).as_txn(),
+        (*block).block.read().unwrap().deref().deref(),
+    )
 }
 
 #[no_mangle]
@@ -616,9 +619,10 @@ pub unsafe extern "C" fn rsn_ledger_dependents_confirmed(
     txn: *mut TransactionHandle,
     block: *mut BlockHandle,
 ) -> bool {
-    (*handle)
-        .0
-        .dependents_confirmed((*txn).as_txn(), (*block).block.read().unwrap().as_block())
+    (*handle).0.dependents_confirmed(
+        (*txn).as_txn(),
+        (*block).block.read().unwrap().deref().deref(),
+    )
 }
 
 #[no_mangle]

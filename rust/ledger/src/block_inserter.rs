@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use rsnano_core::{Amount, Block, BlockType};
 use rsnano_store_traits::WriteTransaction;
 
@@ -37,6 +39,7 @@ impl<'a> BlockInserter<'a> {
         self.ledger
             .observer
             .block_added(self.block, self.validation.is_epoch_block);
+        self.ledger.cache.block_count.fetch_add(1, Ordering::SeqCst);
     }
 
     fn set_sideband(&mut self) {

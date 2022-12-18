@@ -158,7 +158,7 @@ impl Message for ConfirmReq {
         } else {
             match self.block() {
                 Some(block) => {
-                    block.read().unwrap().as_block().serialize(stream)?;
+                    block.read().unwrap().serialize(stream)?;
                 }
                 None => bail!("block not set"),
             }

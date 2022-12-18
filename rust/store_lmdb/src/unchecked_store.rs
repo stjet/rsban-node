@@ -39,14 +39,7 @@ impl UncheckedStore for LmdbUncheckedStore {
     ) {
         let key = UncheckedKey {
             previous: dependency.into(),
-            hash: info
-                .block
-                .as_ref()
-                .unwrap()
-                .read()
-                .unwrap()
-                .as_block()
-                .hash(),
+            hash: info.block.as_ref().unwrap().read().unwrap().hash(),
         };
         let key_bytes = key.to_bytes();
         let value_bytes = info.to_bytes();

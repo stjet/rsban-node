@@ -24,7 +24,7 @@ impl<'a> RepresentativeVisitor<'a> {
         self.current = hash;
         while self.result.is_zero() {
             let block = self.store.block().get(self.txn, &self.current).unwrap();
-            block.as_block().visit(self);
+            block.visit(self);
         }
     }
 }

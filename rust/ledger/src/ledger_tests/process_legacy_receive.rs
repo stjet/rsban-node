@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB,
     ledger_tests::{setup_legacy_open_block, setup_legacy_receive_block, setup_legacy_send_block},
@@ -152,7 +154,7 @@ fn receive_fork() {
 
     let mut receive_fork = BlockBuilder::legacy_receive()
         .previous(result.open_block.hash())
-        .source(send.as_block().hash())
+        .source(send.hash())
         .sign(&result.destination.key)
         .build();
 
@@ -233,7 +235,7 @@ fn fail_bad_signature() {
 
     let mut receive = BlockBuilder::legacy_receive()
         .previous(open.open_block.hash())
-        .source(send.as_block().hash())
+        .source(send.hash())
         .sign(&KeyPair::new())
         .build();
 
@@ -276,7 +278,7 @@ fn fail_gap_previous_opened() {
 
     let mut receive = BlockBuilder::legacy_receive()
         .previous(BlockHash::from(1))
-        .source(send2.as_block().hash())
+        .source(send2.hash())
         .sign(&open.destination.key)
         .build();
 
@@ -309,7 +311,7 @@ fn fail_fork_previous() {
 
     let mut fork_receive = BlockBuilder::legacy_receive()
         .previous(open.open_block.hash())
-        .source(receivable.as_block().hash())
+        .source(receivable.hash())
         .sign(&open.destination.key)
         .build();
     let result = ctx
@@ -344,13 +346,13 @@ fn fail_receive_received_source() {
 
     let mut receive = open
         .destination
-        .legacy_receive(txn.txn(), receivable1.as_block().hash())
+        .legacy_receive(txn.txn(), receivable1.deref().deref().hash())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     let mut fork_receive = BlockBuilder::legacy_receive()
         .previous(open.open_block.hash())
-        .source(receivable2.as_block().hash())
+        .source(receivable2.hash())
         .sign(&open.destination.key)
         .build();
 
@@ -372,9 +374,7 @@ fn receive_after_state_fail() {
     let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut receive = genesis
-        .legacy_receive(txn.txn(), send.as_block().hash())
-        .build();
+    let mut receive = genesis.legacy_receive(txn.txn(), send.hash()).build();
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
     assert_eq!(result, ProcessResult::BlockPosition);
@@ -393,17 +393,17 @@ fn receive_from_state_block() {
     let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open = destination.legacy_open(send1.as_block().hash()).build();
+    let mut open = destination.legacy_open(send1.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
     let mut receive = destination
-        .receive(txn.txn(), send2.as_block().hash())
+        .receive(txn.txn(), send2.hash())
         .representative(*DEV_GENESIS_ACCOUNT)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     assert_eq!(
-        ctx.ledger.balance(txn.txn(), &receive.as_block().hash()),
+        ctx.ledger.balance(txn.txn(), &receive.hash()),
         Amount::new(100)
     );
     assert_eq!(
@@ -428,7 +428,7 @@ fn fail_insufficient_work() {
 
     let mut receive_block = open
         .destination
-        .legacy_receive(txn.txn(), send.as_block().hash())
+        .legacy_receive(txn.txn(), send.hash())
         .build();
 
     {

@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB,
     ledger_tests::{setup_legacy_open_block, setup_legacy_send_block, LedgerContext},
@@ -52,7 +54,7 @@ fn update_block_amount() {
         ctx.ledger
             .store
             .block()
-            .account_calculated(open.open_block.as_block()),
+            .account_calculated(open.open_block.deref().deref()),
         open.destination.account()
     );
 }
@@ -179,7 +181,7 @@ fn fail_fork_previous() {
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
     let mut open_fork = BlockBuilder::legacy_open()
-        .source(send2.as_block().hash())
+        .source(send2.hash())
         .account(open.destination.account())
         .sign(&open.destination.key)
         .build();
@@ -285,15 +287,12 @@ fn open_from_state_block() {
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut open = destination
-        .legacy_open(send.as_block().hash())
+        .legacy_open(send.hash())
         .representative(*DEV_GENESIS_ACCOUNT)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    assert_eq!(
-        ctx.ledger.balance(txn.txn(), &open.as_block().hash()),
-        amount_sent
-    );
+    assert_eq!(ctx.ledger.balance(txn.txn(), &open.hash()), amount_sent);
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         LEDGER_CONSTANTS_STUB.genesis_amount

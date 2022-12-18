@@ -78,10 +78,10 @@ fn receive_old_send_block() {
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut receive = genesis.receive(txn.txn(), send.as_block().hash()).build();
+    let mut receive = genesis.receive(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-    let sideband = receive.as_block().sideband().unwrap();
+    let sideband = receive.sideband().unwrap();
     assert_eq!(sideband.account, genesis.account());
     assert_eq!(sideband.height, 3);
     assert_eq!(
@@ -89,14 +89,11 @@ fn receive_old_send_block() {
         BlockDetails::new(Epoch::Epoch0, false, true, false)
     );
 
-    let loaded_block = ctx
-        .ledger
-        .get_block(txn.txn(), &receive.as_block().hash())
-        .unwrap();
+    let loaded_block = ctx.ledger.get_block(txn.txn(), &receive.hash()).unwrap();
     assert_eq!(loaded_block, receive);
     assert_eq!(
-        loaded_block.as_block().sideband().unwrap(),
-        receive.as_block().sideband().unwrap()
+        loaded_block.sideband().unwrap(),
+        receive.sideband().unwrap()
     );
 }
 
@@ -110,7 +107,7 @@ fn state_unreceivable_fail() {
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut receive = genesis
-        .receive(txn.txn(), send.as_block().hash())
+        .receive(txn.txn(), send.hash())
         .link(Link::from(1))
         .build();
 
@@ -129,8 +126,8 @@ fn bad_amount_fail() {
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut receive = genesis
-        .receive(txn.txn(), send.as_block().hash())
-        .balance(send.as_block().balance())
+        .receive(txn.txn(), send.hash())
+        .balance(send.balance())
         .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
 
@@ -147,7 +144,7 @@ fn no_link_amount_fail() {
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
     let mut receive = genesis
-        .receive(txn.txn(), send.as_block().hash())
+        .receive(txn.txn(), send.hash())
         .link(Link::zero())
         .build();
     let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
@@ -169,7 +166,7 @@ fn receive_wrong_account_fail() {
         .account(key.public_key())
         .previous(BlockHash::zero())
         .balance(Amount::new(1))
-        .link(send.as_block().hash())
+        .link(send.hash())
         .sign(&key)
         .build();
 
@@ -194,28 +191,23 @@ fn receive_and_change_representative() {
 
     let representative = Account::from(1);
     let mut receive = genesis
-        .receive(txn.txn(), send.as_block().hash())
+        .receive(txn.txn(), send.hash())
         .representative(representative)
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
     assert_eq!(
-        ctx.ledger.balance(txn.txn(), &receive.as_block().hash()),
-        receive.as_block().balance()
+        ctx.ledger.balance(txn.txn(), &receive.hash()),
+        receive.balance()
     );
     assert_eq!(
-        ctx.ledger
-            .amount(txn.txn(), &receive.as_block().hash())
-            .unwrap(),
+        ctx.ledger.amount(txn.txn(), &receive.hash()).unwrap(),
         amount_sent,
     );
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
+    assert_eq!(ctx.ledger.weight(&representative), receive.balance());
     assert_eq!(
-        ctx.ledger.weight(&representative),
-        receive.as_block().balance()
-    );
-    assert_eq!(
-        receive.as_block().sideband().unwrap().details,
+        receive.sideband().unwrap().details,
         BlockDetails::new(Epoch::Epoch0, false, true, false)
     );
 }
@@ -228,7 +220,7 @@ fn receive_50_raw_into_genesis(
     let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
     ctx.ledger.process(txn, &mut send).unwrap();
 
-    let mut receive = genesis.receive(txn.txn(), send.as_block().hash()).build();
+    let mut receive = genesis.receive(txn.txn(), send.hash()).build();
     ctx.ledger.process(txn, &mut receive).unwrap();
 
     let BlockEnum::State(send) = send else {unreachable!()};

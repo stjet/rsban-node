@@ -40,17 +40,17 @@ impl BlockSideband {
     pub fn serialized_size(block_type: BlockType) -> usize {
         let mut size = BlockHash::serialized_size(); // successor
 
-        if block_type != BlockType::State && block_type != BlockType::Open {
+        if block_type != BlockType::State && block_type != BlockType::LegacyOpen {
             size += Account::serialized_size(); // account
         }
 
-        if block_type != BlockType::Open {
+        if block_type != BlockType::LegacyOpen {
             size += std::mem::size_of::<u64>(); // height
         }
 
-        if block_type == BlockType::Receive
-            || block_type == BlockType::Change
-            || block_type == BlockType::Open
+        if block_type == BlockType::LegacyReceive
+            || block_type == BlockType::LegacyChange
+            || block_type == BlockType::LegacyOpen
         {
             size += Amount::serialized_size(); // balance
         }
@@ -69,17 +69,17 @@ impl BlockSideband {
     pub fn serialize(&self, stream: &mut impl Stream, block_type: BlockType) -> anyhow::Result<()> {
         self.successor.serialize(stream)?;
 
-        if block_type != BlockType::State && block_type != BlockType::Open {
+        if block_type != BlockType::State && block_type != BlockType::LegacyOpen {
             self.account.serialize(stream)?;
         }
 
-        if block_type != BlockType::Open {
+        if block_type != BlockType::LegacyOpen {
             stream.write_bytes(&self.height.to_be_bytes())?;
         }
 
-        if block_type == BlockType::Receive
-            || block_type == BlockType::Change
-            || block_type == BlockType::Open
+        if block_type == BlockType::LegacyReceive
+            || block_type == BlockType::LegacyChange
+            || block_type == BlockType::LegacyOpen
         {
             self.balance.serialize(stream)?;
         }
@@ -115,21 +115,21 @@ impl BlockSideband {
     ) -> anyhow::Result<()> {
         self.successor = BlockHash::deserialize(stream)?;
 
-        if block_type != BlockType::State && block_type != BlockType::Open {
+        if block_type != BlockType::State && block_type != BlockType::LegacyOpen {
             self.account = Account::deserialize(stream)?;
         }
 
         let mut buffer = [0u8; 8];
-        if block_type != BlockType::Open {
+        if block_type != BlockType::LegacyOpen {
             stream.read_bytes(&mut buffer, 8)?;
             self.height = u64::from_be_bytes(buffer);
         } else {
             self.height = 1;
         }
 
-        if block_type == BlockType::Receive
-            || block_type == BlockType::Change
-            || block_type == BlockType::Open
+        if block_type == BlockType::LegacyReceive
+            || block_type == BlockType::LegacyChange
+            || block_type == BlockType::LegacyOpen
         {
             self.balance = Amount::deserialize(stream)?;
         }
@@ -166,8 +166,11 @@ mod tests {
             Epoch::Epoch0,
         );
         let mut stream = MemoryStream::new();
-        sideband.serialize(&mut stream, BlockType::Receive).unwrap();
-        let deserialized = BlockSideband::from_stream(&mut stream, BlockType::Receive).unwrap();
+        sideband
+            .serialize(&mut stream, BlockType::LegacyReceive)
+            .unwrap();
+        let deserialized =
+            BlockSideband::from_stream(&mut stream, BlockType::LegacyReceive).unwrap();
         assert_eq!(deserialized, sideband);
     }
 }

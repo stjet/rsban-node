@@ -372,7 +372,10 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                     .successor_clear(self.txn, &block.previous());
                 match previous.block_type() {
                     BlockType::Invalid | BlockType::NotABlock => unreachable!(),
-                    BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => {
+                    BlockType::LegacySend
+                    | BlockType::LegacyReceive
+                    | BlockType::LegacyOpen
+                    | BlockType::LegacyChange => {
                         self.ledger.store.frontier().put(
                             self.txn,
                             &block.previous(),

@@ -160,7 +160,10 @@ impl SendBlock {
 
 pub fn valid_send_block_predecessor(block_type: BlockType) -> bool {
     match block_type {
-        BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
+        BlockType::LegacySend
+        | BlockType::LegacyReceive
+        | BlockType::LegacyOpen
+        | BlockType::LegacyChange => true,
         BlockType::NotABlock | BlockType::State | BlockType::Invalid => false,
     }
 }
@@ -185,7 +188,7 @@ impl Block for SendBlock {
     }
 
     fn block_type(&self) -> BlockType {
-        BlockType::Send
+        BlockType::LegacySend
     }
 
     fn account(&self) -> Account {

@@ -33,7 +33,7 @@ unsafe fn read_receive_block<T>(
 ) -> T {
     let block = (*handle).block.read().unwrap();
     match &*block {
-        BlockEnum::Receive(b) => f(b),
+        BlockEnum::LegacyReceive(b) => f(b),
         _ => panic!("expected receive block"),
     }
 }
@@ -44,7 +44,7 @@ unsafe fn write_receive_block<T>(
 ) -> T {
     let mut block = (*handle).block.write().unwrap();
     match &mut *block {
-        BlockEnum::Receive(b) => f(b),
+        BlockEnum::LegacyReceive(b) => f(b),
         _ => panic!("expected receive block"),
     }
 }
@@ -52,7 +52,7 @@ unsafe fn write_receive_block<T>(
 #[no_mangle]
 pub extern "C" fn rsn_receive_block_create(dto: &ReceiveBlockDto) -> *mut BlockHandle {
     Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(BlockEnum::Receive(ReceiveBlock {
+        block: Arc::new(RwLock::new(BlockEnum::LegacyReceive(ReceiveBlock {
             work: dto.work,
             signature: Signature::from_bytes(dto.signature),
             hashables: ReceiveHashables {
@@ -76,7 +76,7 @@ pub extern "C" fn rsn_receive_block_create2(dto: &ReceiveBlockDto2) -> *mut Bloc
     );
 
     Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(BlockEnum::Receive(block))),
+        block: Arc::new(RwLock::new(BlockEnum::LegacyReceive(block))),
     }))
 }
 
@@ -116,7 +116,7 @@ pub extern "C" fn rsn_receive_block_deserialize_json(ptree: *const c_void) -> *m
     let reader = FfiPropertyTreeReader::new(ptree);
     match ReceiveBlock::deserialize_json(&reader) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(BlockEnum::Receive(block))),
+            block: Arc::new(RwLock::new(BlockEnum::LegacyReceive(block))),
         })),
         Err(_) => std::ptr::null_mut(),
     }
@@ -127,7 +127,7 @@ pub unsafe extern "C" fn rsn_receive_block_deserialize(stream: *mut c_void) -> *
     let mut stream = FfiStream::new(stream);
     match ReceiveBlock::deserialize(&mut stream) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(BlockEnum::Receive(block))),
+            block: Arc::new(RwLock::new(BlockEnum::LegacyReceive(block))),
         })),
         Err(_) => std::ptr::null_mut(),
     }

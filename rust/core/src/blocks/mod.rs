@@ -35,10 +35,10 @@ use std::sync::{Arc, RwLock};
 pub enum BlockType {
     Invalid = 0,
     NotABlock = 1,
-    Send = 2,
-    Receive = 3,
-    Open = 4,
-    Change = 5,
+    LegacySend = 2,
+    LegacyReceive = 3,
+    LegacyOpen = 4,
+    LegacyChange = 5,
     State = 6,
 }
 
@@ -156,20 +156,20 @@ pub trait MutableBlockVisitor {
 pub fn serialized_block_size(block_type: BlockType) -> usize {
     match block_type {
         BlockType::Invalid | BlockType::NotABlock => 0,
-        BlockType::Send => SendBlock::serialized_size(),
-        BlockType::Receive => ReceiveBlock::serialized_size(),
-        BlockType::Open => OpenBlock::serialized_size(),
-        BlockType::Change => ChangeBlock::serialized_size(),
+        BlockType::LegacySend => SendBlock::serialized_size(),
+        BlockType::LegacyReceive => ReceiveBlock::serialized_size(),
+        BlockType::LegacyOpen => OpenBlock::serialized_size(),
+        BlockType::LegacyChange => ChangeBlock::serialized_size(),
         BlockType::State => StateBlock::serialized_size(),
     }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum BlockEnum {
-    Send(SendBlock),
-    Receive(ReceiveBlock),
-    Open(OpenBlock),
-    Change(ChangeBlock),
+    LegacySend(SendBlock),
+    LegacyReceive(ReceiveBlock),
+    LegacyOpen(OpenBlock),
+    LegacyChange(ChangeBlock),
     State(StateBlock),
 }
 
@@ -180,30 +180,30 @@ impl BlockEnum {
 
     pub fn as_block_mut(&mut self) -> &mut dyn Block {
         match self {
-            BlockEnum::Send(b) => b,
-            BlockEnum::Receive(b) => b,
-            BlockEnum::Open(b) => b,
-            BlockEnum::Change(b) => b,
+            BlockEnum::LegacySend(b) => b,
+            BlockEnum::LegacyReceive(b) => b,
+            BlockEnum::LegacyOpen(b) => b,
+            BlockEnum::LegacyChange(b) => b,
             BlockEnum::State(b) => b,
         }
     }
 
     pub fn as_block(&self) -> &dyn Block {
         match self {
-            BlockEnum::Send(b) => b,
-            BlockEnum::Receive(b) => b,
-            BlockEnum::Open(b) => b,
-            BlockEnum::Change(b) => b,
+            BlockEnum::LegacySend(b) => b,
+            BlockEnum::LegacyReceive(b) => b,
+            BlockEnum::LegacyOpen(b) => b,
+            BlockEnum::LegacyChange(b) => b,
             BlockEnum::State(b) => b,
         }
     }
 
     pub fn balance_calculated(&self) -> Amount {
         match self {
-            BlockEnum::Send(b) => b.balance(),
-            BlockEnum::Receive(b) => b.sideband().unwrap().balance,
-            BlockEnum::Open(b) => b.sideband().unwrap().balance,
-            BlockEnum::Change(b) => b.sideband().unwrap().balance,
+            BlockEnum::LegacySend(b) => b.balance(),
+            BlockEnum::LegacyReceive(b) => b.sideband().unwrap().balance,
+            BlockEnum::LegacyOpen(b) => b.sideband().unwrap().balance,
+            BlockEnum::LegacyChange(b) => b.sideband().unwrap().balance,
             BlockEnum::State(b) => b.balance(),
         }
     }
@@ -277,10 +277,10 @@ impl FullHash for BlockEnum {
 pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<BlockEnum> {
     let block_type = ptree.get_string("type")?;
     match block_type.as_str() {
-        "receive" => ReceiveBlock::deserialize_json(ptree).map(BlockEnum::Receive),
-        "send" => SendBlock::deserialize_json(ptree).map(BlockEnum::Send),
-        "open" => OpenBlock::deserialize_json(ptree).map(BlockEnum::Open),
-        "change" => ChangeBlock::deserialize_json(ptree).map(BlockEnum::Change),
+        "receive" => ReceiveBlock::deserialize_json(ptree).map(BlockEnum::LegacyReceive),
+        "send" => SendBlock::deserialize_json(ptree).map(BlockEnum::LegacySend),
+        "open" => OpenBlock::deserialize_json(ptree).map(BlockEnum::LegacyOpen),
+        "change" => ChangeBlock::deserialize_json(ptree).map(BlockEnum::LegacyChange),
         "state" => StateBlock::deserialize_json(ptree).map(BlockEnum::State),
         _ => Err(anyhow!("unsupported block type")),
     }
@@ -303,11 +303,11 @@ pub fn deserialize_block_enum_with_type(
     stream: &mut dyn Stream,
 ) -> anyhow::Result<BlockEnum> {
     let block = match block_type {
-        BlockType::Receive => BlockEnum::Receive(ReceiveBlock::deserialize(stream)?),
-        BlockType::Open => BlockEnum::Open(OpenBlock::deserialize(stream)?),
-        BlockType::Change => BlockEnum::Change(ChangeBlock::deserialize(stream)?),
+        BlockType::LegacyReceive => BlockEnum::LegacyReceive(ReceiveBlock::deserialize(stream)?),
+        BlockType::LegacyOpen => BlockEnum::LegacyOpen(OpenBlock::deserialize(stream)?),
+        BlockType::LegacyChange => BlockEnum::LegacyChange(ChangeBlock::deserialize(stream)?),
         BlockType::State => BlockEnum::State(StateBlock::deserialize(stream)?),
-        BlockType::Send => BlockEnum::Send(SendBlock::deserialize(stream)?),
+        BlockType::LegacySend => BlockEnum::LegacySend(SendBlock::deserialize(stream)?),
         BlockType::Invalid | BlockType::NotABlock => bail!("invalid block type"),
     };
     Ok(block)

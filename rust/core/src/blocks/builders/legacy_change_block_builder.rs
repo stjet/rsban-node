@@ -88,6 +88,6 @@ impl LegacyChangeBlockBuilder {
             ));
         }
 
-        BlockEnum::Change(block)
+        BlockEnum::LegacyChange(block)
     }
 }

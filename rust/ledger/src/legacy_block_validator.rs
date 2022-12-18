@@ -31,7 +31,7 @@ impl<'a> LegacyBlockValidator<'a> {
     pub(crate) fn validate(&mut self) -> Result<BlockValidation, ProcessResult> {
         self.ensure_block_does_not_exist_yet()?;
         self.ensure_valid_previous_block()?;
-        let (account, old_account_info) = if self.block.block_type() == BlockType::Open {
+        let (account, old_account_info) = if self.block.block_type() == BlockType::LegacyOpen {
             let account = self.block.account();
             self.ensure_account_not_opened_yet(&account)?;
             (account, AccountInfo::default())
@@ -109,7 +109,7 @@ impl<'a> LegacyBlockValidator<'a> {
     }
 
     fn amount_sent(&self, old_account_info: &AccountInfo) -> Amount {
-        if self.block.block_type() == BlockType::Send {
+        if self.block.block_type() == BlockType::LegacySend {
             old_account_info.balance - self.block.balance()
         } else {
             Amount::zero()
@@ -128,7 +128,7 @@ impl<'a> LegacyBlockValidator<'a> {
     }
 
     fn ensure_valid_previous_block(&self) -> Result<(), ProcessResult> {
-        if self.block.block_type() != BlockType::Open {
+        if self.block.block_type() != BlockType::LegacyOpen {
             let previous = self.ensure_previous_block_exists(&self.block.previous())?;
             self.ensure_valid_predecessor(&previous)?;
         }
@@ -244,7 +244,7 @@ impl<'a> LegacyBlockValidator<'a> {
 
     fn ensure_no_negative_amount_spend(&self, info: &AccountInfo) -> Result<(), ProcessResult> {
         // Is this trying to spend a negative amount (Malicious)
-        if self.block.block_type() == BlockType::Send && info.balance < self.block.balance() {
+        if self.block.block_type() == BlockType::LegacySend && info.balance < self.block.balance() {
             return Err(ProcessResult::NegativeSpend);
         };
 

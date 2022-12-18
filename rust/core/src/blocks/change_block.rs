@@ -112,7 +112,10 @@ impl ChangeBlock {
 
 pub fn valid_change_block_predecessor(predecessor: BlockType) -> bool {
     match predecessor {
-        BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
+        BlockType::LegacySend
+        | BlockType::LegacyReceive
+        | BlockType::LegacyOpen
+        | BlockType::LegacyChange => true,
         _ => false,
     }
 }
@@ -137,7 +140,7 @@ impl Block for ChangeBlock {
     }
 
     fn block_type(&self) -> BlockType {
-        BlockType::Change
+        BlockType::LegacyChange
     }
 
     fn account(&self) -> Account {

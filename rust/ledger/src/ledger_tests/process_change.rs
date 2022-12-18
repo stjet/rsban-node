@@ -2,7 +2,7 @@ use crate::{
     ledger_tests::{setup_change_block, upgrade_genesis_to_epoch_v1},
     ProcessResult, DEV_GENESIS_ACCOUNT,
 };
-use rsnano_core::{Account, Amount, Block, BlockDetails, BlockEnum, Epoch};
+use rsnano_core::{Account, Amount, Block, BlockDetails, Epoch};
 
 use super::LedgerContext;
 

@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair};
+use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockHash, KeyPair};
 
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB,

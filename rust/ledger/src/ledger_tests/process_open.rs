@@ -4,7 +4,7 @@ use crate::{
     ledger_tests::{setup_open_block, setup_send_block},
     ProcessResult,
 };
-use rsnano_core::{BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, Link, PendingKey};
+use rsnano_core::{BlockBuilder, BlockDetails, BlockHash, Epoch, Link, PendingKey};
 
 use super::LedgerContext;
 

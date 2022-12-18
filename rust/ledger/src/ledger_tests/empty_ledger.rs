@@ -28,7 +28,7 @@ fn get_genesis_block() {
         .get_block(txn.txn(), &DEV_GENESIS_HASH)
         .expect("genesis block not found");
 
-    assert_eq!(block.block_type(), BlockType::Open);
+    assert_eq!(block.block_type(), BlockType::LegacyOpen);
 }
 
 #[test]

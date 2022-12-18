@@ -3,7 +3,7 @@ use crate::{
     ledger_tests::{setup_legacy_open_block, setup_legacy_receive_block, setup_legacy_send_block},
     ProcessResult, DEV_GENESIS_ACCOUNT,
 };
-use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair};
+use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockHash, KeyPair};
 
 use super::LedgerContext;
 

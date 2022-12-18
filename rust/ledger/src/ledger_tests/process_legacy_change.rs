@@ -51,7 +51,7 @@ fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let BlockEnum::Change(change) = setup_legacy_change_block(&ctx, txn.as_mut()) else {panic!("not a change block!")};
+    let BlockEnum::LegacyChange(change) = setup_legacy_change_block(&ctx, txn.as_mut()) else {panic!("not a change block!")};
 
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
@@ -65,7 +65,7 @@ fn update_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let BlockEnum::Change(change) = setup_legacy_change_block(&ctx, txn.as_mut()) else {panic!("not a change block!")};
+    let BlockEnum::LegacyChange(change) = setup_legacy_change_block(&ctx, txn.as_mut()) else {panic!("not a change block!")};
 
     let account_info = ctx
         .ledger

@@ -30,7 +30,7 @@ pub struct ChangeBlockDto2 {
 #[no_mangle]
 pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut BlockHandle {
     Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(BlockEnum::Change(ChangeBlock {
+        block: Arc::new(RwLock::new(BlockEnum::LegacyChange(ChangeBlock {
             work: dto.work,
             signature: Signature::from_bytes(dto.signature),
             hashables: ChangeHashables {
@@ -53,14 +53,14 @@ pub extern "C" fn rsn_change_block_create2(dto: &ChangeBlockDto2) -> *mut BlockH
         dto.work,
     );
     Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(BlockEnum::Change(block))),
+        block: Arc::new(RwLock::new(BlockEnum::LegacyChange(block))),
     }))
 }
 
 unsafe fn read_change_block<T>(handle: *const BlockHandle, f: impl FnOnce(&ChangeBlock) -> T) -> T {
     let block = (*handle).block.read().unwrap();
     match &*block {
-        BlockEnum::Change(b) => f(b),
+        BlockEnum::LegacyChange(b) => f(b),
         _ => panic!("expected change block"),
     }
 }
@@ -71,7 +71,7 @@ unsafe fn write_change_block<T>(
 ) -> T {
     let mut block = (*handle).block.write().unwrap();
     match &mut *block {
-        BlockEnum::Change(b) => f(b),
+        BlockEnum::LegacyChange(b) => f(b),
         _ => panic!("expected change block"),
     }
 }
@@ -114,7 +114,7 @@ pub unsafe extern "C" fn rsn_change_block_deserialize(stream: *mut c_void) -> *m
     let mut stream = FfiStream::new(stream);
     match ChangeBlock::deserialize(&mut stream) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(BlockEnum::Change(block))),
+            block: Arc::new(RwLock::new(BlockEnum::LegacyChange(block))),
         })),
         Err(_) => std::ptr::null_mut(),
     }
@@ -125,7 +125,7 @@ pub extern "C" fn rsn_change_block_deserialize_json(ptree: *const c_void) -> *mu
     let reader = FfiPropertyTreeReader::new(ptree);
     match ChangeBlock::deserialize_json(&reader) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(BlockEnum::Change(block))),
+            block: Arc::new(RwLock::new(BlockEnum::LegacyChange(block))),
         })),
         Err(_) => std::ptr::null_mut(),
     }

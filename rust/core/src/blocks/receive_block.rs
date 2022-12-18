@@ -103,7 +103,10 @@ impl ReceiveBlock {
 
 pub fn valid_receive_block_predecessor(predecessor: BlockType) -> bool {
     match predecessor {
-        BlockType::Send | BlockType::Receive | BlockType::Open | BlockType::Change => true,
+        BlockType::LegacySend
+        | BlockType::LegacyReceive
+        | BlockType::LegacyOpen
+        | BlockType::LegacyChange => true,
         _ => false,
     }
 }
@@ -128,7 +131,7 @@ impl Block for ReceiveBlock {
     }
 
     fn block_type(&self) -> BlockType {
-        BlockType::Receive
+        BlockType::LegacyReceive
     }
 
     fn account(&self) -> Account {

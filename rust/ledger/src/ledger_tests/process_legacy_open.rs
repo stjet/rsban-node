@@ -3,7 +3,7 @@ use crate::{
     ledger_tests::{setup_legacy_open_block, setup_legacy_send_block, LedgerContext},
     ProcessResult, DEV_GENESIS_ACCOUNT,
 };
-use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair};
+use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockHash, KeyPair};
 
 #[test]
 fn update_sideband() {

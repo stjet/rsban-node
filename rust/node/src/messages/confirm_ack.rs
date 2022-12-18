@@ -83,10 +83,10 @@ impl Message for ConfirmAck {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         debug_assert!(
             self.header().block_type() == BlockType::NotABlock
-                || self.header().block_type() == BlockType::Send
-                || self.header().block_type() == BlockType::Receive
-                || self.header().block_type() == BlockType::Open
-                || self.header.block_type() == BlockType::Change
+                || self.header().block_type() == BlockType::LegacySend
+                || self.header().block_type() == BlockType::LegacyReceive
+                || self.header().block_type() == BlockType::LegacyOpen
+                || self.header.block_type() == BlockType::LegacyChange
                 || self.header.block_type() == BlockType::State
         );
         self.header().serialize(stream)?;

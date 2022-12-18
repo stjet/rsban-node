@@ -32,7 +32,7 @@ pub struct SendBlockDto2 {
 unsafe fn read_send_block<T>(handle: *const BlockHandle, f: impl FnOnce(&SendBlock) -> T) -> T {
     let block = (*handle).block.read().unwrap();
     match &*block {
-        BlockEnum::Send(b) => f(b),
+        BlockEnum::LegacySend(b) => f(b),
         _ => panic!("expected send block"),
     }
 }
@@ -43,7 +43,7 @@ unsafe fn write_send_block<T>(
 ) -> T {
     let mut block = (*handle).block.write().unwrap();
     match &mut *block {
-        BlockEnum::Send(b) => f(b),
+        BlockEnum::LegacySend(b) => f(b),
         _ => panic!("expected send block"),
     }
 }
@@ -51,7 +51,7 @@ unsafe fn write_send_block<T>(
 #[no_mangle]
 pub extern "C" fn rsn_send_block_create(dto: &SendBlockDto) -> *mut BlockHandle {
     Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(BlockEnum::Send(SendBlock::from(dto)))),
+        block: Arc::new(RwLock::new(BlockEnum::LegacySend(SendBlock::from(dto)))),
     }))
 }
 
@@ -72,7 +72,7 @@ pub extern "C" fn rsn_send_block_create2(dto: &SendBlockDto2) -> *mut BlockHandl
     );
 
     Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(BlockEnum::Send(block))),
+        block: Arc::new(RwLock::new(BlockEnum::LegacySend(block))),
     }))
 }
 
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rsn_send_block_deserialize(stream: *mut c_void) -> *mut
     let mut stream = FfiStream::new(stream);
     match SendBlock::deserialize(&mut stream) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(BlockEnum::Send(block))),
+            block: Arc::new(RwLock::new(BlockEnum::LegacySend(block))),
         })),
         Err(_) => std::ptr::null_mut(),
     }
@@ -143,7 +143,7 @@ pub extern "C" fn rsn_send_block_deserialize_json(ptree: *const c_void) -> *mut 
     let reader = FfiPropertyTreeReader::new(ptree);
     match SendBlock::deserialize_json(&reader) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(BlockEnum::Send(block))),
+            block: Arc::new(RwLock::new(BlockEnum::LegacySend(block))),
         })),
         Err(_) => std::ptr::null_mut(),
     }

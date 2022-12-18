@@ -82,7 +82,7 @@ impl LegacyReceiveBlockBuilder {
             ));
         }
 
-        BlockEnum::Receive(block)
+        BlockEnum::LegacyReceive(block)
     }
 }
 
@@ -92,7 +92,7 @@ mod tests {
 
     #[test]
     fn receive_block() {
-        let BlockEnum::Receive(block) = BlockBuilder::legacy_receive().with_sideband().build() else {panic!("not a receive block!")};
+        let BlockEnum::LegacyReceive(block) = BlockBuilder::legacy_receive().with_sideband().build() else {panic!("not a receive block!")};
         assert_eq!(block.hashables.previous, BlockHash::from(1));
         assert_eq!(block.hashables.source, BlockHash::from(2));
         assert_eq!(WORK_THRESHOLDS_STUB.validate_entry_block(&block), false);

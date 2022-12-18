@@ -92,7 +92,7 @@ impl LegacyOpenBlockBuilder {
             ));
         }
 
-        BlockEnum::Open(block)
+        BlockEnum::LegacyOpen(block)
     }
 }
 
@@ -103,7 +103,7 @@ mod tests {
 
     #[test]
     fn create_open_block() {
-        let BlockEnum::Open(block) = BlockBuilder::legacy_open().with_sideband().build() else {panic!("not an open block")};
+        let BlockEnum::LegacyOpen(block) = BlockBuilder::legacy_open().with_sideband().build() else {panic!("not an open block")};
         assert_eq!(block.hashables.source, BlockHash::from(1));
         assert_eq!(block.hashables.representative, Account::from(2));
         assert_ne!(block.hashables.account, Account::zero());

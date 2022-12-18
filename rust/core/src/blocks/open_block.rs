@@ -135,7 +135,7 @@ impl Block for OpenBlock {
     }
 
     fn block_type(&self) -> BlockType {
-        BlockType::Open
+        BlockType::LegacyOpen
     }
 
     fn account(&self) -> Account {

@@ -318,8 +318,8 @@ mod tests {
     fn block_type() {
         let mut header = test_header();
         assert_eq!(header.block_type(), BlockType::Invalid);
-        header.set_block_type(BlockType::Receive);
-        assert_eq!(header.block_type(), BlockType::Receive);
+        header.set_block_type(BlockType::LegacyReceive);
+        assert_eq!(header.block_type(), BlockType::LegacyReceive);
     }
 
     fn test_header() -> MessageHeader {

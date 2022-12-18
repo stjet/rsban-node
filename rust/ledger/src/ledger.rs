@@ -335,7 +335,7 @@ impl Ledger {
 
     pub fn is_send(&self, txn: &dyn Transaction, block: &dyn Block) -> bool {
         if block.block_type() != BlockType::State {
-            return block.block_type() == BlockType::Send;
+            return block.block_type() == BlockType::LegacySend;
         }
         let previous = block.previous();
         /*
@@ -362,7 +362,7 @@ impl Ledger {
 
     pub fn block_destination(&self, txn: &dyn Transaction, block: &BlockEnum) -> Account {
         match block {
-            BlockEnum::Send(send) => send.hashables.destination,
+            BlockEnum::LegacySend(send) => send.hashables.destination,
             BlockEnum::State(state) => {
                 if self.is_send(txn, state) {
                     state.link().into()

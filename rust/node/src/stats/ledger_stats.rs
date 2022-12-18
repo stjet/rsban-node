@@ -51,10 +51,10 @@ impl LedgerObserver for LedgerStats {
 
 fn block_detail_type(block: &dyn Block, is_epoch: bool) -> DetailType {
     match block.block_type() {
-        BlockType::Send => DetailType::Send,
-        BlockType::Receive => DetailType::Receive,
-        BlockType::Open => DetailType::Open,
-        BlockType::Change => DetailType::Change,
+        BlockType::LegacySend => DetailType::Send,
+        BlockType::LegacyReceive => DetailType::Receive,
+        BlockType::LegacyOpen => DetailType::Open,
+        BlockType::LegacyChange => DetailType::Change,
         BlockType::State => {
             if is_epoch {
                 DetailType::EpochBlock

@@ -121,8 +121,8 @@ impl BlockStore for LmdbBlockStore {
                 // BlockSideband does not serialize all data depending on the block type.
                 // That's why we fill in the missing data here:
                 match block.block_type() {
-                    BlockType::Send => sideband.balance = block.as_block().balance(),
-                    BlockType::Open => sideband.account = block.as_block().account(),
+                    BlockType::LegacySend => sideband.balance = block.as_block().balance(),
+                    BlockType::LegacyOpen => sideband.account = block.as_block().account(),
                     BlockType::State => sideband.account = block.as_block().account(),
                     _ => {}
                 }

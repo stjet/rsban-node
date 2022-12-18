@@ -106,6 +106,6 @@ impl LegacySendBlockBuilder {
                 Epoch::Epoch0,
             ));
         }
-        BlockEnum::Send(block)
+        BlockEnum::LegacySend(block)
     }
 }

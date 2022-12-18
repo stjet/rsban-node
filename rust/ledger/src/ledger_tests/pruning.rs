@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, ProcessResult, DEV_GENESIS_HASH};
 use rsnano_core::{
     work::{WorkPool, STUB_WORK_POOL},
-    Amount, BlockBuilder, BlockDetails, BlockEnum, Epoch, PendingKey,
+    Amount, BlockBuilder, BlockDetails, Epoch, PendingKey,
 };
 
 use crate::ledger_tests::LedgerContext;

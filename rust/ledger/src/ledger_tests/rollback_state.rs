@@ -2,7 +2,7 @@ use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB, ledger_tests::AccountBlockFactory,
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
-use rsnano_core::{Account, Amount, BlockEnum, Epoch, PendingInfo, PendingKey};
+use rsnano_core::{Account, Amount, Epoch, PendingInfo, PendingKey};
 
 use super::LedgerContext;
 

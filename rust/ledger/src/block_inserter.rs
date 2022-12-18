@@ -1,7 +1,7 @@
 use rsnano_core::{Amount, Block, BlockType};
 use rsnano_store_traits::WriteTransaction;
 
-use crate::{legacy_block_validator::BlockValidation, Ledger};
+use crate::{BlockValidation, Ledger};
 
 pub(crate) struct BlockInserter<'a> {
     ledger: &'a Ledger,

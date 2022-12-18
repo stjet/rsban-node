@@ -1,10 +1,7 @@
-use crate::{
-    legacy_block_validator::BlockValidation, BlockInserter, LegacyBlockValidator,
-    StateBlockProcessor,
-};
-use rsnano_core::{
-    Block, ChangeBlock, MutableBlockVisitor, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
-};
+use std::sync::atomic::Ordering;
+
+use crate::{BlockInserter, BlockValidation, LegacyBlockValidator, StateBlockValidator};
+use rsnano_core::{Block, BlockEnum, StateBlock};
 use rsnano_store_traits::WriteTransaction;
 
 use super::{Ledger, ProcessResult};
@@ -24,7 +21,7 @@ impl<'a> LedgerProcessor<'a> {
         }
     }
 
-    fn process_legacy(&mut self, block: &mut dyn Block) {
+    fn process_legacy_block(&mut self, block: &mut dyn Block) {
         let validation = LegacyBlockValidator::new(self.ledger, self.txn.txn(), block).validate();
         self.apply(validation, block);
     }
@@ -40,27 +37,19 @@ impl<'a> LedgerProcessor<'a> {
             Err(x) => Err(x),
         };
     }
-}
 
-impl<'a> MutableBlockVisitor for LedgerProcessor<'a> {
-    fn send_block(&mut self, block: &mut SendBlock) {
-        self.process_legacy(block);
+    pub(crate) fn process(&mut self, block: &mut BlockEnum) {
+        match block {
+            BlockEnum::State(state_block) => self.process_state_block(state_block),
+            _ => self.process_legacy_block(block.as_block_mut()),
+        };
+        if self.result.is_ok() {
+            self.ledger.cache.block_count.fetch_add(1, Ordering::SeqCst);
+        }
     }
 
-    fn receive_block(&mut self, block: &mut ReceiveBlock) {
-        self.process_legacy(block);
-    }
-
-    fn open_block(&mut self, block: &mut OpenBlock) {
-        self.process_legacy(block);
-    }
-
-    fn change_block(&mut self, block: &mut ChangeBlock) {
-        self.process_legacy(block);
-    }
-
-    fn state_block(&mut self, block: &mut StateBlock) {
-        let validation = StateBlockProcessor::new(self.ledger, self.txn, block).process();
+    fn process_state_block(&mut self, block: &mut StateBlock) {
+        let validation = StateBlockValidator::new(self.ledger, self.txn.txn(), block).process();
         self.apply(validation, block);
     }
 }

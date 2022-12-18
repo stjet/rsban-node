@@ -22,11 +22,11 @@ impl PendingKey {
         result
     }
 
-    pub fn for_send_block(block: &StateBlock) -> Self {
+    pub fn for_send_state_block(block: &StateBlock) -> Self {
         Self::new(block.link().into(), block.hash())
     }
 
-    pub fn for_receive_block(block: &StateBlock) -> Self {
+    pub fn for_receive_state_block(block: &StateBlock) -> Self {
         Self::new(block.account(), block.link().into())
     }
 }

@@ -86,9 +86,12 @@ fn update_account_info() {
 fn fail_old() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut change = setup_legacy_change_block(&ctx, txn.as_mut());
+    let change = setup_legacy_change_block(&ctx, txn.as_mut());
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Change(change))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::Old);
 }
@@ -99,12 +102,15 @@ fn fail_gap_previous() {
     let mut txn = ctx.ledger.rw_txn();
     let keypair = KeyPair::new();
 
-    let mut block = BlockBuilder::legacy_change()
+    let block = BlockBuilder::legacy_change()
         .previous(BlockHash::from(1))
         .sign(&keypair)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Change(block))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::GapPrevious);
 }
@@ -115,12 +121,15 @@ fn fail_bad_signature() {
     let mut txn = ctx.ledger.rw_txn();
     let wrong_keys = KeyPair::new();
 
-    let mut block = BlockBuilder::legacy_change()
+    let block = BlockBuilder::legacy_change()
         .previous(*DEV_GENESIS_HASH)
         .sign(&wrong_keys)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Change(block))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::BadSignature);
 }
@@ -131,16 +140,21 @@ fn fail_fork() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let change = genesis.legacy_change(txn.txn()).build();
+    ctx.ledger
+        .process(txn.as_mut(), &mut BlockEnum::Change(change))
+        .unwrap();
 
-    let mut fork = BlockBuilder::legacy_change()
+    let fork = BlockBuilder::legacy_change()
         .previous(*DEV_GENESIS_HASH)
         .representative(Account::from(12345))
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut fork).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Change(fork))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -152,11 +166,16 @@ fn change_after_state_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut send = genesis.send(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    let send = genesis.send(txn.txn()).build();
+    ctx.ledger
+        .process(txn.as_mut(), &mut BlockEnum::State(send))
+        .unwrap();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
+    let change = genesis.legacy_change(txn.txn()).build();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Change(change))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::BlockPosition);
 }
@@ -176,6 +195,9 @@ fn fail_insufficient_work() {
         let block: &mut dyn Block = &mut change;
         block.set_work(0);
     };
-    let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Change(change))
+        .unwrap_err();
     assert_eq!(result, ProcessResult::InsufficientWork);
 }

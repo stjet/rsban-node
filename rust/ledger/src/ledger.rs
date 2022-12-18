@@ -1,6 +1,4 @@
-use crate::{
-    GenerateCache, LedgerCache, LedgerConstants, RepWeights, RepresentativeVisitor, DEV_GENESIS,
-};
+use crate::{GenerateCache, LedgerCache, LedgerConstants, RepWeights, RepresentativeVisitor};
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{seconds_since_epoch, PropertyTreeWriter, SerdePropertyTree},
@@ -11,7 +9,6 @@ use rsnano_core::{
 use crate::{LedgerProcessor, RollbackVisitor};
 use std::{
     collections::{BTreeMap, HashMap},
-    ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex, RwLock,
@@ -796,19 +793,10 @@ impl Ledger {
     pub fn process(
         &self,
         txn: &mut dyn WriteTransaction,
-        block: &mut dyn Block,
+        block: &mut BlockEnum,
     ) -> Result<(), ProcessResult> {
-        debug_assert!(
-            !self.constants.work.validate_entry_block(block)
-                || self.constants.genesis.read().unwrap().deref()
-                    == DEV_GENESIS.read().unwrap().deref()
-        );
         let mut processor = LedgerProcessor::new(self, txn);
-        block.visit_mut(&mut processor);
-        if processor.result.is_ok() {
-            self.cache.block_count.fetch_add(1, Ordering::SeqCst);
-        }
-
+        processor.process(block);
         processor.result
     }
 

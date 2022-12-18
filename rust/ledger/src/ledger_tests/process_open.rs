@@ -97,10 +97,12 @@ fn open_fork_fail() {
     let send = setup_send_block(&ctx, txn.as_mut());
     let receiver = send.destination;
 
-    let mut open1 = receiver.open(txn.txn(), send.send_block.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
+    let open1 = receiver.open(txn.txn(), send.send_block.hash()).build();
+    ctx.ledger
+        .process(txn.as_mut(), &mut BlockEnum::State(open1))
+        .unwrap();
 
-    let mut open2 = BlockBuilder::state()
+    let open2 = BlockBuilder::state()
         .account(receiver.account())
         .previous(BlockHash::zero())
         .balance(send.amount_sent)
@@ -108,7 +110,10 @@ fn open_fork_fail() {
         .sign(&receiver.key)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut open2).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::State(open2))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -121,12 +126,15 @@ fn previous_fail() {
     let send = setup_send_block(&ctx, txn.as_mut());
 
     let invalid_previous = BlockHash::from(1);
-    let mut open = send
+    let open = send
         .destination
         .open(txn.txn(), send.send_block.hash())
         .previous(invalid_previous)
         .build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::State(open))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::GapPrevious);
 }
@@ -138,13 +146,16 @@ fn source_fail() {
 
     let send = setup_send_block(&ctx, txn.as_mut());
 
-    let mut open = send
+    let open = send
         .destination
         .open(txn.txn(), send.send_block.hash())
         .link(Link::zero())
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::State(open))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::GapSource);
 }

@@ -49,11 +49,12 @@ fn change_to_zero_rep() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let mut change = ctx
+    let change = ctx
         .genesis_block_factory()
         .change(txn.txn())
         .representative(0)
         .build();
+    let mut change = BlockEnum::State(change);
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
     assert_eq!(
@@ -68,7 +69,7 @@ fn change_to_zero_rep() {
             .cache
             .rep_weights
             .representation_get(&Account::zero()),
-        change.balance()
+        change.as_block().balance()
     );
 }
 
@@ -77,20 +78,21 @@ fn change_from_zero_rep_to_real_rep() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let mut change_to_zero_rep = ctx
+    let change_to_zero_rep = ctx
         .genesis_block_factory()
         .change(txn.txn())
         .representative(0)
         .build();
     ctx.ledger
-        .process(txn.as_mut(), &mut change_to_zero_rep)
+        .process(txn.as_mut(), &mut BlockEnum::State(change_to_zero_rep))
         .unwrap();
 
-    let mut change_to_genesis = ctx
+    let change_to_genesis = ctx
         .genesis_block_factory()
         .change(txn.txn())
         .representative(*DEV_GENESIS_ACCOUNT)
         .build();
+    let mut change_to_genesis = BlockEnum::State(change_to_genesis);
     ctx.ledger
         .process(txn.as_mut(), &mut change_to_genesis)
         .unwrap();
@@ -100,7 +102,7 @@ fn change_from_zero_rep_to_real_rep() {
             .cache
             .rep_weights
             .representation_get(&DEV_GENESIS_ACCOUNT),
-        change_to_genesis.balance()
+        change_to_genesis.as_block().balance()
     );
     assert_eq!(
         ctx.ledger
@@ -121,7 +123,10 @@ fn fail_insufficient_work_epoch_0() {
         let block: &mut dyn Block = &mut send;
         block.set_work(0);
     };
-    let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::State(send))
+        .unwrap_err();
     assert_eq!(result, ProcessResult::InsufficientWork);
 }
 
@@ -136,6 +141,9 @@ fn fail_insufficient_work_epoch_1() {
         let block: &mut dyn Block = &mut send;
         block.set_work(0);
     };
-    let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::State(send))
+        .unwrap_err();
     assert_eq!(result, ProcessResult::InsufficientWork);
 }

@@ -675,10 +675,9 @@ pub unsafe extern "C" fn rsn_ledger_process(
     block: *mut BlockHandle,
     result: *mut ProcessReturnDto,
 ) {
-    let res = (*handle).0.process(
-        (*txn).as_write_txn(),
-        (*block).block.write().unwrap().as_block_mut(),
-    );
+    let res = (*handle)
+        .0
+        .process((*txn).as_write_txn(), &mut (*block).block.write().unwrap());
     let res = match res {
         Ok(()) => ProcessResult::Progress,
         Err(res) => res,

@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, Block};
+use rsnano_core::{Amount, BlockEnum};
 
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB, ledger_tests::LedgerContext, DEV_GENESIS_ACCOUNT,
@@ -11,13 +11,16 @@ fn update_frontier_store() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
+    let change = genesis.legacy_change(txn.txn()).build();
+    let mut change = BlockEnum::Change(change);
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
+    ctx.ledger
+        .rollback(txn.as_mut(), &change.as_block().hash())
+        .unwrap();
 
     let frontier = &ctx.ledger.store.frontier();
-    assert_eq!(frontier.get(txn.txn(), &change.hash()), None);
+    assert_eq!(frontier.get(txn.txn(), &change.as_block().hash()), None);
     assert_eq!(
         frontier.get(txn.txn(), &DEV_GENESIS_HASH),
         Some(*DEV_GENESIS_ACCOUNT)
@@ -30,10 +33,13 @@ fn update_account_info() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
+    let change = genesis.legacy_change(txn.txn()).build();
+    let mut change = BlockEnum::Change(change);
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
+    ctx.ledger
+        .rollback(txn.as_mut(), &change.as_block().hash())
+        .unwrap();
 
     let account_info = ctx
         .ledger
@@ -54,17 +60,21 @@ fn update_vote_weight() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
+    let change = genesis.legacy_change(txn.txn()).build();
+    let mut change = BlockEnum::Change(change);
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
+    ctx.ledger
+        .rollback(txn.as_mut(), &change.as_block().hash())
+        .unwrap();
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
-        ctx.ledger.weight(&change.mandatory_representative()),
+        ctx.ledger
+            .weight(&change.as_block().representative().unwrap()),
         Amount::zero(),
     );
 }
@@ -75,15 +85,25 @@ fn rollback_dependent_blocks_too() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
+    let change = genesis.legacy_change(txn.txn()).build();
+    let mut change = BlockEnum::Change(change);
     ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
 
-    let mut send = genesis.legacy_send(txn.txn()).build();
+    let send = genesis.legacy_send(txn.txn()).build();
+    let mut send = BlockEnum::Send(send);
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
+    ctx.ledger
+        .rollback(txn.as_mut(), &change.as_block().hash())
+        .unwrap();
 
-    assert_eq!(ctx.ledger.store.block().get(txn.txn(), &send.hash()), None);
+    assert_eq!(
+        ctx.ledger
+            .store
+            .block()
+            .get(txn.txn(), &send.as_block().hash()),
+        None
+    );
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),

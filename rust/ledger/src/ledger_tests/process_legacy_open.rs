@@ -151,7 +151,7 @@ fn fail_fork() {
 
     let open = setup_legacy_open_block(&ctx, txn.as_mut());
 
-    let mut open_fork = open
+    let open_fork = open
         .destination
         .legacy_open(open.send_block.hash())
         .representative(Account::from(1000))
@@ -159,7 +159,7 @@ fn fail_fork() {
 
     let result = ctx
         .ledger
-        .process(txn.as_mut(), &mut open_fork)
+        .process(txn.as_mut(), &mut BlockEnum::Open(open_fork))
         .unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
@@ -173,21 +173,22 @@ fn fail_fork_previous() {
 
     let open = setup_legacy_open_block(&ctx, txn.as_mut());
 
-    let mut send2 = genesis
+    let send2 = genesis
         .legacy_send(txn.txn())
         .destination(open.destination.account())
         .build();
+    let mut send2 = BlockEnum::Send(send2);
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-    let mut open_fork = BlockBuilder::legacy_open()
-        .source(send2.hash())
+    let open_fork = BlockBuilder::legacy_open()
+        .source(send2.as_block().hash())
         .account(open.destination.account())
         .sign(&open.destination.key)
         .build();
 
     let result = ctx
         .ledger
-        .process(txn.as_mut(), &mut open_fork)
+        .process(txn.as_mut(), &mut BlockEnum::Open(open_fork))
         .unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
@@ -198,11 +199,11 @@ fn process_duplicate_open_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let mut open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, txn.as_mut());
 
     let result = ctx
         .ledger
-        .process(txn.as_mut(), &mut open.open_block)
+        .process(txn.as_mut(), &mut BlockEnum::Open(open.open_block))
         .unwrap_err();
 
     assert_eq!(result, ProcessResult::Old);
@@ -214,8 +215,11 @@ fn fail_gap_source() {
     let mut txn = ctx.ledger.rw_txn();
     let destination = ctx.block_factory();
 
-    let mut open = destination.legacy_open(BlockHash::from(1)).build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let open = destination.legacy_open(BlockHash::from(1)).build();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Open(open))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::GapSource);
 }
@@ -229,13 +233,16 @@ fn fail_bad_signature() {
 
     let bad_keys = KeyPair::new();
 
-    let mut open = BlockBuilder::legacy_open()
+    let open = BlockBuilder::legacy_open()
         .source(send.send_block.hash())
         .account(send.destination.account())
         .sign(&bad_keys)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Open(open))
+        .unwrap_err();
     assert_eq!(result, ProcessResult::BadSignature);
 }
 
@@ -247,8 +254,11 @@ fn fail_account_mismatch() {
     let send = setup_legacy_send_block(&ctx, txn.as_mut());
     let bad_key = ctx.block_factory();
 
-    let mut open = bad_key.legacy_open(send.send_block.hash()).build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let open = bad_key.legacy_open(send.send_block.hash()).build();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Open(open))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::Unreceivable);
 }
@@ -260,13 +270,16 @@ fn state_open_fork() {
 
     let open = setup_legacy_open_block(&ctx, txn.as_mut());
 
-    let mut open2 = BlockBuilder::legacy_open()
+    let open2 = BlockBuilder::legacy_open()
         .source(open.send_block.hash())
         .account(open.destination.account())
         .sign(&open.destination.key)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut open2).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Open(open2))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -278,20 +291,25 @@ fn open_from_state_block() {
     let genesis = ctx.genesis_block_factory();
     let destination = ctx.block_factory();
     let amount_sent = Amount::new(50);
-    let mut send = genesis
+    let send = genesis
         .send(txn.txn())
         .link(destination.account())
         .amount(amount_sent)
         .build();
+    let mut send = BlockEnum::State(send);
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-    let mut open = destination
-        .legacy_open(send.hash())
+    let open = destination
+        .legacy_open(send.as_block().hash())
         .representative(*DEV_GENESIS_ACCOUNT)
         .build();
+    let mut open = BlockEnum::Open(open);
     ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-    assert_eq!(ctx.ledger.balance(txn.txn(), &open.hash()), amount_sent);
+    assert_eq!(
+        ctx.ledger.balance(txn.txn(), &open.as_block().hash()),
+        amount_sent
+    );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         LEDGER_CONSTANTS_STUB.genesis_amount
@@ -328,7 +346,10 @@ fn fail_insufficient_work() {
         let block: &mut dyn Block = &mut open;
         block.set_work(0);
     };
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let result = ctx
+        .ledger
+        .process(txn.as_mut(), &mut BlockEnum::Open(open))
+        .unwrap_err();
 
     assert_eq!(result, ProcessResult::InsufficientWork);
 }

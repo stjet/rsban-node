@@ -2,26 +2,24 @@ use rsnano_core::{
     utils::seconds_since_epoch, validate_block_signature, AccountInfo, Amount, Block, BlockDetails,
     BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, PendingInfo, PendingKey, StateBlock,
 };
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_traits::Transaction;
 
-use crate::{
-    block_inserter::BlockInserter, legacy_block_validator::BlockValidation, Ledger, ProcessResult,
-};
+use crate::{BlockValidation, Ledger, ProcessResult};
 
 /// Processes a single state block
-pub(crate) struct StateBlockProcessor<'a> {
+pub(crate) struct StateBlockValidator<'a> {
     ledger: &'a Ledger,
-    txn: &'a mut dyn WriteTransaction,
+    txn: &'a dyn Transaction,
     block: &'a mut StateBlock,
     old_account_info: Option<AccountInfo>,
     pending_receive: Option<PendingInfo>,
     previous_block: Option<BlockEnum>,
 }
 
-impl<'a> StateBlockProcessor<'a> {
+impl<'a> StateBlockValidator<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
-        txn: &'a mut dyn WriteTransaction,
+        txn: &'a dyn Transaction,
         block: &'a mut StateBlock,
     ) -> Self {
         Self {
@@ -42,13 +40,11 @@ impl<'a> StateBlockProcessor<'a> {
                 .ledger
                 .store
                 .pending()
-                .get(self.txn.txn(), &PendingKey::for_receive_block(self.block));
+                .get(self.txn, &PendingKey::for_receive_state_block(self.block));
         }
 
         if !self.block.previous().is_zero() {
-            self.previous_block = self
-                .ledger
-                .get_block(self.txn.txn(), &self.block.previous());
+            self.previous_block = self.ledger.get_block(self.txn, &self.block.previous());
         }
     }
 
@@ -81,13 +77,13 @@ impl<'a> StateBlockProcessor<'a> {
         self.ensure_epoch_block_does_not_change_balance()?;
 
         let pending_received = if self.is_receive() {
-            Some(PendingKey::for_receive_block(self.block))
+            Some(PendingKey::for_receive_state_block(self.block))
         } else {
             None
         };
 
         let new_pending = if self.is_send() {
-            let key = PendingKey::for_send_block(self.block);
+            let key = PendingKey::for_send_state_block(self.block);
             let info = PendingInfo::new(self.block.account(), self.amount(), self.epoch());
             Some((key, info))
         } else {
@@ -209,7 +205,7 @@ impl<'a> StateBlockProcessor<'a> {
     fn ensure_block_does_not_exist_yet(&self) -> Result<(), ProcessResult> {
         if self
             .ledger
-            .block_or_pruned_exists_txn(self.txn.txn(), &self.block.hash())
+            .block_or_pruned_exists_txn(self.txn, &self.block.hash())
         {
             return Err(ProcessResult::Old);
         }
@@ -321,7 +317,7 @@ impl<'a> StateBlockProcessor<'a> {
                 .ledger
                 .store
                 .pending()
-                .any(self.txn.txn(), &self.block.account());
+                .any(self.txn, &self.block.account());
             if !pending_exists {
                 return Err(ProcessResult::GapEpochOpenPending);
             };
@@ -365,7 +361,7 @@ impl<'a> StateBlockProcessor<'a> {
     fn ensure_link_block_exists(&self) -> Result<(), ProcessResult> {
         if !self
             .ledger
-            .block_or_pruned_exists_txn(self.txn.txn(), &self.block.link().into())
+            .block_or_pruned_exists_txn(self.txn, &self.block.link().into())
         {
             Err(ProcessResult::GapSource)
         } else {
@@ -471,6 +467,6 @@ impl<'a> StateBlockProcessor<'a> {
 
     fn get_old_account_info(&mut self) -> Option<AccountInfo> {
         self.ledger
-            .get_account_info(self.txn.txn(), &self.block.account())
+            .get_account_info(self.txn, &self.block.account())
     }
 }

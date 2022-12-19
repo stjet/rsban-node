@@ -49,7 +49,6 @@ impl<'a> BlockValidator<'a> {
         // not get added to the unchecked map!
         self.ensure_epoch_block_candidate_is_signed_by_owner_or_epoch_account()?;
         self.ensure_previous_block_exists_for_epoch_block_candidate()?;
-
         self.ensure_block_does_not_exist_yet()?;
 
         self.load_related_block_data()?;
@@ -69,7 +68,7 @@ impl<'a> BlockValidator<'a> {
         self.ensure_source_not_received_yet()?;
         self.ensure_legacy_source_is_epoch_0()?;
         self.ensure_sufficient_work()?;
-        self.ensure_no_negative_amount_spend((&&self.old_account_info).as_ref())?;
+        self.ensure_no_negative_amount_spend()?;
 
         // Epoch block rules
         self.ensure_epoch_block_does_not_change_representative()?;
@@ -173,14 +172,10 @@ impl<'a> BlockValidator<'a> {
     fn is_epoch_block(&self) -> bool {
         match self.block {
             BlockEnum::State(state_block) => {
-                self.has_epoch_link(state_block) && !self.balance_changed()
+                self.has_epoch_link(state_block) && self.previous_balance() == self.block.balance()
             }
             _ => false,
         }
-    }
-
-    fn balance_changed(&self) -> bool {
-        self.previous_balance() != self.block.balance()
     }
 
     fn previous_balance(&self) -> Amount {
@@ -452,13 +447,10 @@ impl<'a> BlockValidator<'a> {
             .unwrap_or(Epoch::Epoch0)
     }
 
-    fn ensure_no_negative_amount_spend(
-        &self,
-        info: Option<&AccountInfo>,
-    ) -> Result<(), ProcessResult> {
+    fn ensure_no_negative_amount_spend(&self) -> Result<(), ProcessResult> {
         // Is this trying to spend a negative amount (Malicious)
         if self.block.block_type() == BlockType::LegacySend
-            && info.map(|x| x.balance).unwrap_or_default() < self.block.balance()
+            && self.previous_balance() < self.block.balance()
         {
             return Err(ProcessResult::NegativeSpend);
         };

@@ -52,10 +52,9 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_put(
     _hash: *const u8,
     block: *mut BlockHandle,
 ) {
-    (*handle).0.put(
-        (*txn).as_write_txn(),
-        (*block).block.read().unwrap().deref().deref(),
-    );
+    (*handle)
+        .0
+        .put((*txn).as_write_txn(), &(*block).block.read().unwrap());
 }
 
 #[no_mangle]

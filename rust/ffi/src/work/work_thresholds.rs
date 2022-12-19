@@ -3,7 +3,7 @@ use rsnano_core::{
     work::WorkThresholds, BlockDetails, BlockType, Difficulty, DifficultyV1, Networks, Root,
     WorkVersion,
 };
-use std::{convert::TryFrom, ops::Deref};
+use std::convert::TryFrom;
 
 use crate::{
     core::{BlockDetailsDto, BlockHandle},
@@ -153,7 +153,7 @@ pub unsafe extern "C" fn rsn_work_thresholds_difficulty_block(
 ) -> u64 {
     let thresholds = WorkThresholds::from(dto);
     let block = (*block).block.read().unwrap();
-    thresholds.difficulty_block(block.deref().deref())
+    thresholds.difficulty_block(&block)
 }
 
 #[no_mangle]
@@ -176,7 +176,7 @@ pub unsafe extern "C" fn rsn_work_thresholds_validate_entry_block(
 ) -> bool {
     let thresholds = WorkThresholds::from(dto);
     let lk = (*block).block.read().unwrap();
-    thresholds.validate_entry_block(lk.deref().deref())
+    thresholds.validate_entry_block(&lk)
 }
 
 pub fn fill_work_thresholds_dto(dto: &mut WorkThresholdsDto, thresholds: &WorkThresholds) {

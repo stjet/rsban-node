@@ -5,7 +5,7 @@ use crate::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
 pub type BlockIterator = Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
 
 pub trait BlockStore {
-    fn put(&self, txn: &mut dyn WriteTransaction, block: &dyn Block);
+    fn put(&self, txn: &mut dyn WriteTransaction, block: &BlockEnum);
     fn exists(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool;
     fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockHash>;
     fn successor_clear(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash);

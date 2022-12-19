@@ -50,7 +50,7 @@ pub enum ProcessResult {
 pub trait LedgerObserver: Send + Sync {
     fn blocks_cemented(&self, _cemented_count: u64) {}
     fn block_rolled_back(&self, _block_type: BlockSubType) {}
-    fn block_added(&self, _block: &dyn Block, _is_epoch: bool) {}
+    fn block_added(&self, _block: &BlockEnum, _is_epoch: bool) {}
 }
 
 pub struct NullLedgerObserver {}
@@ -175,7 +175,7 @@ impl Ledger {
 
     fn add_genesis_block(&self, txn: &mut dyn WriteTransaction) {
         let genesis_block_enum = self.constants.genesis.read().unwrap();
-        let genesis_block = genesis_block_enum.deref().deref();
+        let genesis_block = genesis_block_enum.deref();
         let genesis_hash = genesis_block.hash();
         let genesis_account = genesis_block.account();
         self.store.block().put(txn, genesis_block);
@@ -541,7 +541,7 @@ impl Ledger {
             .cloned()
     }
 
-    pub fn validate_epoch_signature(&self, block: &dyn Block) -> anyhow::Result<()> {
+    pub fn validate_epoch_signature(&self, block: &BlockEnum) -> anyhow::Result<()> {
         validate_message(
             &self
                 .epoch_signer(&block.link())

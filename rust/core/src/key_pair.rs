@@ -1,4 +1,4 @@
-use crate::Block;
+use crate::BlockEnum;
 
 use super::{PublicKey, RawKey, Signature};
 
@@ -94,7 +94,7 @@ pub fn validate_message_batch(
     }
 }
 
-pub fn validate_block_signature(block: &dyn Block) -> anyhow::Result<()> {
+pub fn validate_block_signature(block: &BlockEnum) -> anyhow::Result<()> {
     validate_message(
         &block.account().into(),
         block.hash().as_bytes(),

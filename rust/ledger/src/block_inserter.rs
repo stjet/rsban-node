@@ -1,14 +1,15 @@
 use std::sync::atomic::Ordering;
 
-use rsnano_core::{Amount, Block, BlockType};
+use rsnano_core::{Amount, BlockEnum, BlockType};
 use rsnano_store_traits::WriteTransaction;
 
 use crate::{BlockValidation, Ledger};
 
+/// Inserts a new block into the ledger
 pub(crate) struct BlockInserter<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
-    block: &'a mut dyn Block,
+    block: &'a mut BlockEnum,
     validation: &'a BlockValidation,
 }
 
@@ -16,7 +17,7 @@ impl<'a> BlockInserter<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
         txn: &'a mut dyn WriteTransaction,
-        block: &'a mut dyn Block,
+        block: &'a mut BlockEnum,
         validation: &'a BlockValidation,
     ) -> Self {
         Self {

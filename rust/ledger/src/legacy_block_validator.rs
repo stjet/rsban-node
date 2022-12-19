@@ -1,7 +1,6 @@
 use rsnano_core::{
-    utils::seconds_since_epoch, validate_message, Account, AccountInfo, Amount, Block,
-    BlockDetails, BlockEnum, BlockHash, BlockSideband, BlockType, Epoch, PendingInfo, PendingKey,
-    PublicKey,
+    utils::seconds_since_epoch, validate_message, Account, AccountInfo, Amount, BlockDetails,
+    BlockEnum, BlockHash, BlockSideband, BlockType, Epoch, PendingInfo, PendingKey, PublicKey,
 };
 use rsnano_store_traits::Transaction;
 
@@ -20,11 +19,11 @@ pub(crate) struct BlockValidation {
 pub(crate) struct LegacyBlockValidator<'a> {
     ledger: &'a Ledger,
     txn: &'a dyn Transaction,
-    block: &'a dyn Block,
+    block: &'a BlockEnum,
 }
 
 impl<'a> LegacyBlockValidator<'a> {
-    pub(crate) fn new(ledger: &'a Ledger, txn: &'a dyn Transaction, block: &'a dyn Block) -> Self {
+    pub(crate) fn new(ledger: &'a Ledger, txn: &'a dyn Transaction, block: &'a BlockEnum) -> Self {
         Self { ledger, txn, block }
     }
 

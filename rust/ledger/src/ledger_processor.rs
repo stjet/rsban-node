@@ -1,5 +1,5 @@
 use crate::{BlockInserter, BlockValidation, LegacyBlockValidator, StateBlockValidator};
-use rsnano_core::{Block, BlockEnum, StateBlock};
+use rsnano_core::BlockEnum;
 use rsnano_store_traits::WriteTransaction;
 
 use super::{Ledger, ProcessResult};
@@ -16,18 +16,18 @@ impl<'a> LedgerProcessor<'a> {
 
     pub(crate) fn process(&mut self, block: &mut BlockEnum) -> Result<(), ProcessResult> {
         match block {
-            BlockEnum::State(state_block) => self.process_state_block(state_block)?,
-            _ => self.process_legacy_block(block.as_block_mut())?,
+            BlockEnum::State(_) => self.process_state_block(block)?,
+            _ => self.process_legacy_block(block)?,
         };
         Ok(())
     }
 
-    fn process_state_block(&mut self, block: &mut StateBlock) -> Result<(), ProcessResult> {
+    fn process_state_block(&mut self, block: &mut BlockEnum) -> Result<(), ProcessResult> {
         let validation = StateBlockValidator::new(self.ledger, self.txn.txn(), block).process();
         self.apply(validation, block)
     }
 
-    fn process_legacy_block(&mut self, block: &mut dyn Block) -> Result<(), ProcessResult> {
+    fn process_legacy_block(&mut self, block: &mut BlockEnum) -> Result<(), ProcessResult> {
         let validation = LegacyBlockValidator::new(self.ledger, self.txn.txn(), block).validate();
         self.apply(validation, block)
     }
@@ -35,7 +35,7 @@ impl<'a> LedgerProcessor<'a> {
     fn apply(
         &mut self,
         validation: Result<BlockValidation, ProcessResult>,
-        block: &mut dyn Block,
+        block: &mut BlockEnum,
     ) -> Result<(), ProcessResult> {
         match validation {
             Ok(validation) => {

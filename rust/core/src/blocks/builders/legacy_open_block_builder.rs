@@ -103,15 +103,16 @@ mod tests {
 
     #[test]
     fn create_open_block() {
-        let BlockEnum::LegacyOpen(block) = BlockBuilder::legacy_open().with_sideband().build() else {panic!("not an open block")};
-        assert_eq!(block.hashables.source, BlockHash::from(1));
-        assert_eq!(block.hashables.representative, Account::from(2));
-        assert_ne!(block.hashables.account, Account::zero());
+        let block = BlockBuilder::legacy_open().with_sideband().build();
+        let BlockEnum::LegacyOpen(open) =  &block else {panic!("not an open block")};
+        assert_eq!(open.hashables.source, BlockHash::from(1));
+        assert_eq!(open.hashables.representative, Account::from(2));
+        assert_ne!(open.hashables.account, Account::zero());
         assert_eq!(WORK_THRESHOLDS_STUB.validate_entry_block(&block), false);
-        assert_ne!(*block.block_signature(), Signature::new());
+        assert_ne!(*open.block_signature(), Signature::new());
 
-        let sideband = block.sideband().unwrap();
-        assert_eq!(sideband.account, block.account());
+        let sideband = open.sideband().unwrap();
+        assert_eq!(sideband.account, open.account());
         assert!(sideband.successor.is_zero());
         assert_eq!(sideband.balance, Amount::new(5));
         assert_eq!(sideband.height, 1);

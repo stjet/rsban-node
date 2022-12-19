@@ -1,6 +1,6 @@
 use rsnano_core::{
-    utils::seconds_since_epoch, validate_block_signature, AccountInfo, Amount, Block, BlockDetails,
-    BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, PendingInfo, PendingKey, StateBlock,
+    utils::seconds_since_epoch, validate_block_signature, AccountInfo, Amount, BlockDetails,
+    BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, PendingInfo, PendingKey,
 };
 use rsnano_store_traits::Transaction;
 
@@ -10,18 +10,14 @@ use crate::{BlockValidation, Ledger, ProcessResult};
 pub(crate) struct StateBlockValidator<'a> {
     ledger: &'a Ledger,
     txn: &'a dyn Transaction,
-    block: &'a mut StateBlock,
+    block: &'a BlockEnum,
     old_account_info: Option<AccountInfo>,
     pending_receive: Option<PendingInfo>,
     previous_block: Option<BlockEnum>,
 }
 
 impl<'a> StateBlockValidator<'a> {
-    pub(crate) fn new(
-        ledger: &'a Ledger,
-        txn: &'a dyn Transaction,
-        block: &'a mut StateBlock,
-    ) -> Self {
+    pub(crate) fn new(ledger: &'a Ledger, txn: &'a dyn Transaction, block: &'a BlockEnum) -> Self {
         Self {
             ledger,
             txn,
@@ -32,24 +28,22 @@ impl<'a> StateBlockValidator<'a> {
         }
     }
 
-    fn initialize(&mut self) {
+    pub(crate) fn process(&mut self) -> Result<BlockValidation, ProcessResult> {
         self.old_account_info = self.get_old_account_info();
 
-        if self.is_receive() {
-            self.pending_receive = self
-                .ledger
-                .store
-                .pending()
-                .get(self.txn, &PendingKey::for_receive_state_block(self.block));
+        if let BlockEnum::State(state) = &self.block {
+            if self.is_receive() {
+                self.pending_receive = self
+                    .ledger
+                    .store
+                    .pending()
+                    .get(self.txn, &PendingKey::for_receive_state_block(state));
+            }
         }
 
         if !self.block.previous().is_zero() {
             self.previous_block = self.ledger.get_block(self.txn, &self.block.previous());
         }
-    }
-
-    pub(crate) fn process(&mut self) -> Result<BlockValidation, ProcessResult> {
-        self.initialize();
 
         // Epoch block pre-checks for early return
         // It's important to abort with BadSignature first, so that the block does
@@ -78,19 +72,19 @@ impl<'a> StateBlockValidator<'a> {
         self.ensure_epoch_upgrade_is_sequential_for_existing_account()?;
         self.ensure_epoch_block_does_not_change_balance()?;
 
-        let pending_received = if self.is_receive() {
-            Some(PendingKey::for_receive_state_block(self.block))
-        } else {
-            None
-        };
+        let mut pending_received = None;
+        let mut new_pending = None;
+        if let BlockEnum::State(state) = &self.block {
+            if self.is_receive() {
+                pending_received = Some(PendingKey::for_receive_state_block(state));
+            }
 
-        let new_pending = if self.is_send() {
-            let key = PendingKey::for_send_state_block(self.block);
-            let info = PendingInfo::new(self.block.account(), self.amount(), self.epoch());
-            Some((key, info))
-        } else {
-            None
-        };
+            if self.is_send() {
+                let key = PendingKey::for_send_state_block(state);
+                let info = PendingInfo::new(self.block.account(), self.amount(), self.epoch());
+                new_pending = Some((key, info))
+            }
+        }
 
         let block_validation = BlockValidation {
             account: self.block.account(),
@@ -291,25 +285,28 @@ impl<'a> StateBlockValidator<'a> {
     }
 
     fn ensure_epoch_block_does_not_change_representative(&self) -> Result<(), ProcessResult> {
-        if self.is_epoch_block() {
-            if let Some(info) = &self.old_account_info {
-                if self.block.mandatory_representative() != info.representative {
-                    return Err(ProcessResult::RepresentativeMismatch);
-                };
+        if let BlockEnum::State(state) = self.block {
+            if self.is_epoch_block() {
+                if let Some(info) = &self.old_account_info {
+                    if state.mandatory_representative() != info.representative {
+                        return Err(ProcessResult::RepresentativeMismatch);
+                    };
+                }
             }
         }
         Ok(())
     }
 
     fn ensure_epoch_open_has_burn_account_as_rep(&self) -> Result<(), ProcessResult> {
-        if self.is_epoch_block()
-            && self.is_new_account()
-            && !self.block.mandatory_representative().is_zero()
-        {
-            Err(ProcessResult::RepresentativeMismatch)
-        } else {
-            Ok(())
+        if let BlockEnum::State(state) = self.block {
+            if self.is_epoch_block()
+                && self.is_new_account()
+                && !state.mandatory_representative().is_zero()
+            {
+                return Err(ProcessResult::RepresentativeMismatch);
+            }
         }
+        Ok(())
     }
 
     fn ensure_epoch_open_has_pending_entry(&self) -> Result<(), ProcessResult> {
@@ -422,7 +419,7 @@ impl<'a> StateBlockValidator<'a> {
     fn create_account_info(&self) -> AccountInfo {
         AccountInfo {
             head: self.block.hash(),
-            representative: self.block.mandatory_representative(),
+            representative: self.block.representative().unwrap_or_default(),
             open_block: self.open_block(),
             balance: self.block.balance(),
             modified: seconds_since_epoch(),

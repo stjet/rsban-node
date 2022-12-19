@@ -49,7 +49,7 @@ impl LmdbBlockStore {
 }
 
 impl BlockStore for LmdbBlockStore {
-    fn put(&self, txn: &mut dyn WriteTransaction, block: &dyn Block) {
+    fn put(&self, txn: &mut dyn WriteTransaction, block: &BlockEnum) {
         let hash = block.hash();
         debug_assert!(
             block.sideband().unwrap().successor.is_zero()
@@ -320,7 +320,7 @@ mod tests {
         let block = BlockBuilder::legacy_open().with_sideband().build();
         let block_hash = block.hash();
 
-        store.put(&mut txn, block.deref().deref());
+        store.put(&mut txn, &block);
         let loaded = store.get(&txn, &block.hash()).expect("block not found");
 
         assert_eq!(loaded, block);
@@ -350,8 +350,8 @@ mod tests {
         sideband.successor = block2.hash();
         block1.as_block_mut().set_sideband(sideband);
 
-        store.put(&mut txn, block2.deref().deref());
-        store.put(&mut txn, block1.deref().deref());
+        store.put(&mut txn, &block2);
+        store.put(&mut txn, &block1);
 
         store.successor_clear(&mut txn, &block1.hash());
 
@@ -367,8 +367,8 @@ mod tests {
         let block1 = BlockBuilder::legacy_open().with_sideband().build();
         let block2 = BlockBuilder::legacy_open().with_sideband().build();
 
-        store.put(&mut txn, block1.deref().deref());
-        store.put(&mut txn, block2.deref().deref());
+        store.put(&mut txn, &block1);
+        store.put(&mut txn, &block2);
         let loaded1 = store.get(&txn, &block1.hash()).expect("block1 not found");
         let loaded2 = store.get(&txn, &block2.hash()).expect("block2 not found");
 
@@ -386,8 +386,8 @@ mod tests {
             .with_sideband()
             .build();
         let mut txn = env.tx_begin_write()?;
-        store.put(&mut txn, block1.deref().deref());
-        store.put(&mut txn, block2.deref().deref());
+        store.put(&mut txn, &block1);
+        store.put(&mut txn, &block2);
         let loaded = store.get(&txn, &block2.hash()).expect("block not found");
         assert_eq!(loaded, block2);
         Ok(())
@@ -403,8 +403,8 @@ mod tests {
             .with_sideband()
             .build();
         let mut txn = env.tx_begin_write()?;
-        store.put(&mut txn, block1.deref().deref());
-        store.put(&mut txn, block2.deref().deref());
+        store.put(&mut txn, &block1);
+        store.put(&mut txn, &block2);
         let loaded = store.get(&txn, &block2.hash()).expect("block not found");
         assert_eq!(loaded, block2);
         Ok(())
@@ -423,9 +423,9 @@ mod tests {
         let mut send2 = send1.clone();
         send2.as_block_mut().set_work(12345);
 
-        store.put(&mut txn, open.deref().deref());
-        store.put(&mut txn, send1.deref().deref());
-        store.put(&mut txn, send2.deref().deref());
+        store.put(&mut txn, &open);
+        store.put(&mut txn, &send1);
+        store.put(&mut txn, &send2);
 
         assert_eq!(store.count(&txn), 2);
         assert_eq!(store.get(&txn, &send1.hash()).unwrap().work(), 12345);
@@ -439,7 +439,7 @@ mod tests {
         let mut txn = env.tx_begin_write()?;
         let block = BlockBuilder::legacy_open().with_sideband().build();
 
-        store.put(&mut txn, block.deref().deref());
+        store.put(&mut txn, &block);
         let random = store.random(&txn).expect("block not found");
 
         assert_eq!(random, block);
@@ -457,7 +457,7 @@ mod tests {
         read_txn.reset();
         {
             let mut txn = env.tx_begin_write()?;
-            store.put(&mut txn, block.deref().deref());
+            store.put(&mut txn, &block);
         }
         read_txn.renew();
         assert!(store.exists(&read_txn, &block_hash));

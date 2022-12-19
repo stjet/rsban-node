@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rsnano_core::{Block, BlockSubType, BlockType};
+use rsnano_core::{BlockEnum, BlockSubType};
 use rsnano_ledger::LedgerObserver;
 
 use super::{DetailType, Direction, Stat, StatType};
@@ -40,7 +40,7 @@ impl LedgerObserver for LedgerStats {
             .inc(StatType::Rollback, block_type.into(), Direction::In);
     }
 
-    fn block_added(&self, block: &dyn Block, is_epoch: bool) {
+    fn block_added(&self, block: &BlockEnum, is_epoch: bool) {
         let _ = self.stats.inc(
             StatType::Ledger,
             block_detail_type(block, is_epoch),
@@ -49,20 +49,19 @@ impl LedgerObserver for LedgerStats {
     }
 }
 
-fn block_detail_type(block: &dyn Block, is_epoch: bool) -> DetailType {
-    match block.block_type() {
-        BlockType::LegacySend => DetailType::Send,
-        BlockType::LegacyReceive => DetailType::Receive,
-        BlockType::LegacyOpen => DetailType::Open,
-        BlockType::LegacyChange => DetailType::Change,
-        BlockType::State => {
+fn block_detail_type(block: &BlockEnum, is_epoch: bool) -> DetailType {
+    match block {
+        BlockEnum::LegacySend(_) => DetailType::Send,
+        BlockEnum::LegacyReceive(_) => DetailType::Receive,
+        BlockEnum::LegacyOpen(_) => DetailType::Open,
+        BlockEnum::LegacyChange(_) => DetailType::Change,
+        BlockEnum::State(_) => {
             if is_epoch {
                 DetailType::EpochBlock
             } else {
                 DetailType::StateBlock
             }
         }
-        BlockType::Invalid | BlockType::NotABlock => unreachable!(),
     }
 }
 

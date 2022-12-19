@@ -1,5 +1,5 @@
 use crate::{
-    Block, BlockDetails, BlockType, Difficulty, DifficultyV1, Epoch, Root, StubDifficulty,
+    BlockDetails, BlockEnum, BlockType, Difficulty, DifficultyV1, Epoch, Root, StubDifficulty,
     WorkVersion,
 };
 use once_cell::sync::Lazy;
@@ -245,7 +245,7 @@ impl WorkThresholds {
         }
     }
 
-    pub fn difficulty_block(&self, block: &dyn Block) -> u64 {
+    pub fn difficulty_block(&self, block: &BlockEnum) -> u64 {
         self.difficulty(block.work_version(), &block.root(), block.work())
     }
 
@@ -256,12 +256,12 @@ impl WorkThresholds {
     }
 
     //todo return true if valid!
-    pub fn validate_entry_block(&self, block: &dyn Block) -> bool {
+    pub fn validate_entry_block(&self, block: &BlockEnum) -> bool {
         self.difficulty_block(block)
             < self.threshold_entry(block.block_type(), block.work_version())
     }
 
-    pub fn is_valid_pow(&self, block: &dyn Block, details: &BlockDetails) -> bool {
+    pub fn is_valid_pow(&self, block: &BlockEnum, details: &BlockDetails) -> bool {
         self.difficulty_block(block) >= self.threshold2(block.work_version(), details)
     }
 }

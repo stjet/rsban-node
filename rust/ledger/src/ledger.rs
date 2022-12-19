@@ -1,4 +1,7 @@
-use crate::{GenerateCache, LedgerCache, LedgerConstants, RepWeights, RepresentativeVisitor};
+use crate::{
+    BlockInserter, BlockValidator, GenerateCache, LedgerCache, LedgerConstants, RepWeights,
+    RepresentativeVisitor,
+};
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{seconds_since_epoch, PropertyTreeWriter, SerdePropertyTree},
@@ -6,7 +9,7 @@ use rsnano_core::{
     BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
 };
 
-use crate::{LedgerProcessor, RollbackVisitor};
+use crate::RollbackVisitor;
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Deref,
@@ -793,7 +796,9 @@ impl Ledger {
         txn: &mut dyn WriteTransaction,
         block: &mut BlockEnum,
     ) -> Result<(), ProcessResult> {
-        LedgerProcessor::new(self, txn).process(block)
+        let validation = BlockValidator::new(self, txn.txn(), block).validate()?;
+        BlockInserter::new(self, txn, block, &validation).insert();
+        Ok(())
     }
 
     pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {

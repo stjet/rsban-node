@@ -1,4 +1,4 @@
-use crate::{BlockInserter, BlockValidation, LegacyBlockValidator, StateBlockValidator};
+use crate::{BlockInserter, BlockValidation, BlockValidator};
 use rsnano_core::BlockEnum;
 use rsnano_store_traits::WriteTransaction;
 
@@ -23,12 +23,12 @@ impl<'a> LedgerProcessor<'a> {
     }
 
     fn process_state_block(&mut self, block: &mut BlockEnum) -> Result<(), ProcessResult> {
-        let validation = StateBlockValidator::new(self.ledger, self.txn.txn(), block).process();
+        let validation = BlockValidator::new(self.ledger, self.txn.txn(), block).validate();
         self.apply(validation, block)
     }
 
     fn process_legacy_block(&mut self, block: &mut BlockEnum) -> Result<(), ProcessResult> {
-        let validation = LegacyBlockValidator::new(self.ledger, self.txn.txn(), block).validate();
+        let validation = BlockValidator::new(self.ledger, self.txn.txn(), block).validate();
         self.apply(validation, block)
     }
 

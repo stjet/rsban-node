@@ -4,8 +4,8 @@ use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
-    Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
-    ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+    Account, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, BlockType,
+    BlockVisitor, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_store_traits::{
     BlockIterator, BlockStore, ReadTransaction, Transaction, WriteTransaction,
@@ -120,11 +120,25 @@ impl BlockStore for LmdbBlockStore {
                     BlockSideband::from_stream(&mut stream, block.block_type()).unwrap();
                 // BlockSideband does not serialize all data depending on the block type.
                 // That's why we fill in the missing data here:
-                match block.block_type() {
-                    BlockType::LegacySend => sideband.balance = block.balance(),
-                    BlockType::LegacyOpen => sideband.account = block.account(),
-                    BlockType::State => sideband.account = block.account(),
-                    _ => {}
+                match &block {
+                    BlockEnum::LegacySend(_) => {
+                        sideband.balance = block.balance();
+                        sideband.details = BlockDetails::new(Epoch::Epoch0, true, false, false)
+                    }
+                    BlockEnum::LegacyOpen(_) => {
+                        sideband.account = block.account();
+                        sideband.details = BlockDetails::new(Epoch::Epoch0, false, false, false)
+                    }
+                    BlockEnum::LegacyReceive(_) => {
+                        sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
+                    }
+                    BlockEnum::LegacyChange(_) => {
+                        sideband.details = BlockDetails::new(Epoch::Epoch0, false, false, false)
+                    }
+                    BlockEnum::State(_) => {
+                        sideband.account = block.account();
+                        sideband.balance = block.balance();
+                    }
                 }
                 block.as_block_mut().set_sideband(sideband);
                 Some(block)

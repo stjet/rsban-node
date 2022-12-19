@@ -6,7 +6,7 @@ use crate::{
 };
 use num::FromPrimitive;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct PendingInfo {
     pub source: Account,
     pub amount: Amount,

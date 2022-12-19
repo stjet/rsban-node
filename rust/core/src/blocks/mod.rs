@@ -210,6 +210,14 @@ impl BlockEnum {
             BlockEnum::State(b) => b.balance(),
         }
     }
+
+    pub fn is_open(&self) -> bool {
+        match &self {
+            BlockEnum::LegacyOpen(_) => true,
+            BlockEnum::State(state) => state.previous().is_zero(),
+            _ => false,
+        }
+    }
 }
 
 impl FullHash for BlockEnum {

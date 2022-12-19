@@ -4,7 +4,7 @@ use crate::{
 };
 use primitive_types::U512;
 
-#[derive(Default, PartialEq, Eq, Debug)]
+#[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub struct PendingKey {
     pub account: Account,
     pub hash: BlockHash,

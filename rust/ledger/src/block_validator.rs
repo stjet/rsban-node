@@ -53,32 +53,39 @@ impl<'a> BlockValidator<'a> {
 
         self.load_related_block_data()?;
 
-        // Common rules
         self.ensure_valid_signature()?;
         self.ensure_block_is_not_for_burn_account()?;
         self.ensure_account_exists()?;
         self.ensure_no_double_account_open()?;
-        self.ensure_previous_block_exists()?;
-        self.ensure_previous_block_is_account_head()?;
+        self.ensure_previous_block_is_correct()?;
         self.ensure_open_block_has_link()?;
-        self.ensure_no_receive_balance_change_without_link()?;
-        self.ensure_receive_block_links_to_existing_block()?;
-        self.ensure_receive_block_receives_pending_amount()?;
-        self.ensure_legacy_source_block_exists()?;
-        self.ensure_source_not_received_yet()?;
-        self.ensure_legacy_source_is_epoch_0()?;
+        self.ensure_corresponding_send_is_correct()?;
         self.ensure_sufficient_work()?;
         self.ensure_no_negative_amount_spend()?;
+        self.ensure_valid_epoch_block()?;
 
-        // Epoch block rules
+        Ok(self.create_validation())
+    }
+
+    fn ensure_previous_block_is_correct(&self) -> Result<(), ProcessResult> {
+        self.ensure_previous_block_exists()?;
+        self.ensure_previous_block_is_account_head()
+    }
+
+    fn ensure_valid_epoch_block(&self) -> Result<(), ProcessResult> {
         self.ensure_epoch_block_does_not_change_representative()?;
         self.ensure_epoch_open_has_burn_account_as_rep()?;
         self.ensure_epoch_open_has_pending_entry()?;
         self.ensure_valid_epoch_for_unopened_account()?;
         self.ensure_epoch_upgrade_is_sequential_for_existing_account()?;
-        self.ensure_epoch_block_does_not_change_balance()?;
+        self.ensure_epoch_block_does_not_change_balance()
+    }
 
-        Ok(self.create_validation())
+    fn ensure_corresponding_send_is_correct(&self) -> Result<(), ProcessResult> {
+        self.ensure_no_receive_balance_change_without_link()?;
+        self.ensure_source_block_exists()?;
+        self.ensure_receive_block_receives_pending_amount()?;
+        self.ensure_legacy_source_is_epoch_0()
     }
 
     /// This is a precheck that allows for an early return if a block with an epoch link
@@ -113,7 +120,6 @@ impl<'a> BlockValidator<'a> {
                     .store
                     .block()
                     .exists(self.txn, &state_block.previous())
-            // && self.previous_block.is_none()
             {
                 return Err(ProcessResult::GapPrevious);
             }
@@ -289,7 +295,7 @@ impl<'a> BlockValidator<'a> {
     fn ensure_no_receive_balance_change_without_link(&self) -> Result<(), ProcessResult> {
         if let BlockEnum::State(state) = self.block {
             if !self.is_send() && state.link().is_zero() {
-                if !self.amount(state).is_zero() {
+                if !self.amount().is_zero() {
                     return Err(ProcessResult::BalanceMismatch);
                 }
             }
@@ -298,75 +304,55 @@ impl<'a> BlockValidator<'a> {
         Ok(())
     }
 
-    fn amount(&self, state_block: &StateBlock) -> Amount {
-        match &self.old_account_info {
-            Some(info) => {
-                if self.is_send() {
-                    info.balance - state_block.balance()
-                } else {
-                    state_block.balance() - info.balance
-                }
-            }
-            None => state_block.balance(),
-        }
-    }
+    fn amount(&self) -> Amount {
+        let old_balance = self
+            .old_account_info
+            .as_ref()
+            .map(|x| x.balance)
+            .unwrap_or_default();
 
-    fn ensure_link_block_exists(&self) -> Result<(), ProcessResult> {
-        if !self
-            .ledger
-            .block_or_pruned_exists_txn(self.txn, &self.block.link().into())
-        {
-            Err(ProcessResult::GapSource)
+        let new_balance = self.new_balance();
+
+        if old_balance > new_balance {
+            old_balance - new_balance
         } else {
-            Ok(())
+            new_balance - old_balance
         }
-    }
-
-    fn ensure_receive_block_links_to_existing_block(&self) -> Result<(), ProcessResult> {
-        if let BlockEnum::State(_) = self.block {
-            if self.is_receive() {
-                self.ensure_link_block_exists()?;
-            }
-        }
-        Ok(())
     }
 
     fn ensure_receive_block_receives_pending_amount(&self) -> Result<(), ProcessResult> {
-        if let BlockEnum::State(state) = self.block {
-            if self.is_receive() {
-                match &self.pending_receive_info {
-                    Some(pending) => {
-                        if self.amount(state) != pending.amount {
-                            return Err(ProcessResult::BalanceMismatch);
-                        }
+        if self.is_receive() {
+            match &self.pending_receive_info {
+                Some(pending) => {
+                    if self.amount() != pending.amount {
+                        return Err(ProcessResult::BalanceMismatch);
                     }
-                    None => {
-                        return Err(ProcessResult::Unreceivable);
-                    }
-                };
-            }
+                }
+                None => {
+                    return Err(ProcessResult::Unreceivable);
+                }
+            };
         }
 
         Ok(())
     }
 
-    fn ensure_legacy_source_block_exists(&self) -> Result<(), ProcessResult> {
+    fn ensure_source_block_exists(&self) -> Result<(), ProcessResult> {
         let source = match self.block {
             BlockEnum::LegacyReceive(receive) => receive.mandatory_source(),
             BlockEnum::LegacyOpen(open) => open.mandatory_source(),
+            BlockEnum::State(_) => {
+                if self.is_receive() {
+                    self.block.link().into()
+                } else {
+                    return Ok(());
+                }
+            }
             _ => return Ok(()),
         };
 
         if !self.ledger.block_or_pruned_exists_txn(self.txn, &source) {
             Err(ProcessResult::GapSource)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn ensure_source_not_received_yet(&self) -> Result<(), ProcessResult> {
-        if self.pending_receive_key.is_some() && self.pending_receive_info.is_none() {
-            Err(ProcessResult::Unreceivable)
         } else {
             Ok(())
         }
@@ -531,20 +517,6 @@ impl<'a> BlockValidator<'a> {
         Ok(())
     }
 
-    fn amount_sent(&self) -> Amount {
-        if let Some(info) = &self.old_account_info {
-            match self.block {
-                BlockEnum::LegacySend(_) | BlockEnum::State(_) => {
-                    if self.block.balance() < info.balance {
-                        return info.balance - self.block.balance();
-                    }
-                }
-                _ => {}
-            }
-        }
-        Amount::zero()
-    }
-
     fn new_block_count(&self) -> u64 {
         self.old_account_info
             .as_ref()
@@ -599,10 +571,36 @@ impl<'a> BlockValidator<'a> {
     }
 
     fn amount_received(&self) -> Amount {
-        self.pending_receive_info
-            .as_ref()
-            .map(|i| i.amount)
-            .unwrap_or_default()
+        match &self.block {
+            BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_) => self
+                .pending_receive_info
+                .as_ref()
+                .map(|i| i.amount)
+                .unwrap_or_default(),
+            BlockEnum::State(state) => {
+                let previous = self.previous_balance();
+                if previous < state.balance() {
+                    state.balance() - previous
+                } else {
+                    Amount::zero()
+                }
+            }
+            _ => Amount::zero(),
+        }
+    }
+
+    fn amount_sent(&self) -> Amount {
+        if let Some(info) = &self.old_account_info {
+            match self.block {
+                BlockEnum::LegacySend(_) | BlockEnum::State(_) => {
+                    if self.block.balance() < info.balance {
+                        return info.balance - self.block.balance();
+                    }
+                }
+                _ => {}
+            }
+        }
+        Amount::zero()
     }
 
     fn open_block(&self) -> BlockHash {
@@ -627,7 +625,7 @@ impl<'a> BlockValidator<'a> {
             BlockEnum::State(state) => {
                 if self.is_send() {
                     let key = PendingKey::for_send_state_block(state);
-                    let info = PendingInfo::new(self.account, self.amount(state), self.epoch());
+                    let info = PendingInfo::new(self.account, self.amount(), self.epoch());
                     Some((key, info))
                 } else {
                     None

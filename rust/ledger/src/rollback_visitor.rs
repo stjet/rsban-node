@@ -32,9 +32,9 @@ impl<'a> BlockRollbackPerformer<'a> {
         match block {
             BlockEnum::LegacySend(send) => self.rollback_legacy_send(block, send),
             BlockEnum::LegacyReceive(receive) => self.rollback_legacy_receive(block, receive),
-            BlockEnum::LegacyOpen(open) => self.rollback_legacy_open(open),
-            BlockEnum::LegacyChange(change) => self.rollback_legacy_change(change),
-            BlockEnum::State(state) => self.rollback_state_block(state),
+            BlockEnum::LegacyOpen(open) => self.rollback_legacy_open(block, open),
+            BlockEnum::LegacyChange(change) => self.rollback_legacy_change(block, change),
+            BlockEnum::State(state) => self.rollback_state_block(block, state),
         }
     }
 
@@ -44,23 +44,24 @@ impl<'a> BlockRollbackPerformer<'a> {
         send: &SendBlock,
     ) -> anyhow::Result<()> {
         let pending_info =
-            self.rollback_destination_account_until_send_block_is_unreceived(send)?;
+            self.roll_back_destination_account_until_send_block_is_unreceived(send)?;
 
         let account = &pending_info.source;
-        let old_account_info = self.load_account(account)?;
+        let current_account_info = self.load_account(account)?;
         self.delete_pending(send);
 
         self.roll_back_send_in_representative_cache(
-            &old_account_info.representative,
+            &current_account_info.representative,
             &pending_info.amount,
         );
 
         self.do_roll_back(
             block,
-            &old_account_info,
+            &current_account_info,
             account,
             &Account::zero(),
             &pending_info.amount,
+            None,
         );
 
         self.ledger.observer.block_rolled_back(BlockSubType::Send);
@@ -72,23 +73,24 @@ impl<'a> BlockRollbackPerformer<'a> {
         block: &BlockEnum,
         receive: &ReceiveBlock,
     ) -> anyhow::Result<()> {
-        let amount = self.ledger.amount(self.txn.txn(), &receive.hash()).unwrap();
-        let destination_account = self
-            .ledger
-            .account(self.txn.txn(), &receive.hash())
-            .unwrap();
+        let amount = self.ledger.amount(self.txn.txn(), &block.hash()).unwrap();
+        let account = self.ledger.account(self.txn.txn(), &block.hash()).unwrap();
         // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
-        let source_account = self.get_source_account(receive);
-        let old_account_info = self.load_account(&destination_account)?;
+        let linked_account = self.get_source_account(receive);
+        let current_account_info = self.load_account(&account)?;
 
-        self.roll_back_receive_in_representative_cache(&old_account_info.representative, amount);
+        self.roll_back_receive_in_representative_cache(
+            &current_account_info.representative,
+            amount,
+        );
 
         self.do_roll_back(
             block,
-            &old_account_info,
-            &destination_account,
-            &source_account,
+            &current_account_info,
+            &account,
+            &linked_account,
             &amount,
+            None,
         );
 
         self.ledger
@@ -97,135 +99,85 @@ impl<'a> BlockRollbackPerformer<'a> {
         Ok(())
     }
 
-    pub(crate) fn rollback_legacy_open(&mut self, block: &OpenBlock) -> anyhow::Result<()> {
-        let hash = block.hash();
-        let amount = self.ledger.amount(self.txn.txn(), &hash).unwrap();
-        let destination_account = self.ledger.account(self.txn.txn(), &hash).unwrap();
+    pub(crate) fn rollback_legacy_open(
+        &mut self,
+        block: &BlockEnum,
+        open: &OpenBlock,
+    ) -> anyhow::Result<()> {
+        let current_account_info = AccountInfo::default();
+
+        let amount = self.ledger.amount(self.txn.txn(), &block.hash()).unwrap();
+        let account = self.ledger.account(self.txn.txn(), &block.hash()).unwrap();
         // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
-        let source_account = self
+        let linked_account = self
             .ledger
-            .account(self.txn.txn(), &block.mandatory_source())
+            .account(self.txn.txn(), &open.mandatory_source())
             .unwrap_or_default();
 
-        self.ledger.cache.rep_weights.representation_add(
-            block.hashables.representative,
-            Amount::zero().wrapping_sub(amount),
-        );
+        self.roll_back_receive_in_representative_cache(&open.hashables.representative, amount);
 
-        self.ledger.update_account(
-            self.txn,
-            &destination_account,
-            &AccountInfo::default(),
-            &AccountInfo::default(),
+        self.do_roll_back(
+            block,
+            &current_account_info,
+            &account,
+            &linked_account,
+            &amount,
+            None,
         );
-
-        self.ledger.store.block().del(self.txn, &hash);
-        self.ledger.store.pending().put(
-            self.txn,
-            &PendingKey::new(destination_account, block.mandatory_source()),
-            &PendingInfo::new(source_account, amount, Epoch::Epoch0),
-        );
-
-        self.ledger.store.frontier().del(self.txn, &hash);
 
         self.ledger.observer.block_rolled_back(BlockSubType::Open);
         Ok(())
     }
 
-    pub(crate) fn rollback_legacy_change(&mut self, block: &ChangeBlock) -> anyhow::Result<()> {
-        let hash = block.hash();
-        let rep_block = self
-            .ledger
-            .representative_block(self.txn.txn(), &block.previous());
-        let account = self
-            .ledger
-            .account(self.txn.txn(), &block.previous())
-            .unwrap();
+    pub(crate) fn rollback_legacy_change(
+        &mut self,
+        block: &BlockEnum,
+        change: &ChangeBlock,
+    ) -> anyhow::Result<()> {
+        let amount = Amount::zero();
+        let account = self.ledger.account(self.txn.txn(), &change.hash()).unwrap();
 
-        let account_info = self
-            .ledger
-            .store
-            .account()
-            .get(self.txn.txn(), &account)
-            .unwrap();
+        let linked_account = Account::zero();
+        let current_account_info = self.load_account(&account)?;
 
-        let balance = self.ledger.balance(self.txn.txn(), &block.previous());
-        let rep_block = self
-            .ledger
-            .store
-            .block()
-            .get(self.txn.txn(), &rep_block)
-            .unwrap();
+        let previous_representative = self.get_previous_representative(block)?.unwrap();
 
-        let representative = rep_block.representative().unwrap_or_default();
-        self.ledger.cache.rep_weights.representation_add_dual(
-            block.mandatory_representative(),
-            Amount::zero().wrapping_sub(balance),
-            representative,
-            balance,
+        self.roll_back_change_in_representative_cache(change, previous_representative);
+
+        self.do_roll_back(
+            block,
+            &current_account_info,
+            &account,
+            &linked_account,
+            &amount,
+            Some(previous_representative),
         );
-
-        self.ledger.store.block().del(self.txn, &hash);
-        let new_info = AccountInfo {
-            head: block.previous(),
-            representative,
-            open_block: account_info.open_block,
-            balance: account_info.balance,
-            modified: seconds_since_epoch(),
-            block_count: account_info.block_count - 1,
-            epoch: Epoch::Epoch0,
-        };
-
-        self.ledger
-            .update_account(self.txn, &account, &account_info, &new_info);
-
-        self.ledger.store.frontier().del(self.txn, &hash);
-
-        self.ledger
-            .store
-            .frontier()
-            .put(self.txn, &block.previous(), &account);
-
-        self.ledger
-            .store
-            .block()
-            .successor_clear(self.txn, &block.previous());
 
         self.ledger.observer.block_rolled_back(BlockSubType::Change);
         Ok(())
     }
 
-    pub(crate) fn rollback_state_block(&mut self, block: &StateBlock) -> anyhow::Result<()> {
-        let hash = block.hash();
-        let mut rep_block_hash = BlockHash::zero();
-        if !block.previous().is_zero() {
-            rep_block_hash = self
-                .ledger
-                .representative_block(self.txn.txn(), &block.previous());
-        }
-        let balance = self.ledger.balance(self.txn.txn(), &block.previous());
-        let is_send = block.balance() < balance;
-        let mut representative = Account::zero();
-        if !rep_block_hash.is_zero() {
-            // Move existing representation & add in amount delta
-            let rep_block = self
-                .ledger
-                .store
-                .block()
-                .get(self.txn.txn(), &rep_block_hash)
-                .unwrap();
-            representative = rep_block.representative().unwrap_or_default();
+    pub(crate) fn rollback_state_block(
+        &mut self,
+        block: &BlockEnum,
+        state: &StateBlock,
+    ) -> anyhow::Result<()> {
+        let previous_rep = self.get_previous_representative(block)?;
+
+        let previous_balance = self.ledger.balance(self.txn.txn(), &block.previous());
+        let is_send = state.balance() < previous_balance;
+        if let Some(previous_rep) = previous_rep {
             self.ledger.cache.rep_weights.representation_add_dual(
-                representative,
-                balance,
-                block.mandatory_representative(),
-                Amount::zero().wrapping_sub(block.balance()),
+                previous_rep,
+                previous_balance,
+                state.mandatory_representative(),
+                Amount::zero().wrapping_sub(state.balance()),
             );
         } else {
             // Add in amount delta only
             self.ledger.cache.rep_weights.representation_add(
-                block.mandatory_representative(),
-                Amount::zero().wrapping_sub(block.balance()),
+                state.mandatory_representative(),
+                Amount::zero().wrapping_sub(state.balance()),
             );
         }
 
@@ -233,18 +185,18 @@ impl<'a> BlockRollbackPerformer<'a> {
             .ledger
             .store
             .account()
-            .get(self.txn.txn(), &block.account())
+            .get(self.txn.txn(), &state.account())
         {
             Some(info) => (false, info),
             None => (true, AccountInfo::default()),
         };
 
         if is_send {
-            let key = PendingKey::new(block.link().into(), hash);
+            let key = PendingKey::new(state.link().into(), state.hash());
             while !error && !self.ledger.store.pending().exists(self.txn.txn(), &key) {
                 let latest = self
                     .ledger
-                    .latest(self.txn.txn(), &block.link().into())
+                    .latest(self.txn.txn(), &state.link().into())
                     .unwrap();
                 match self.ledger.rollback(self.txn, &latest) {
                     Ok(mut list) => self.rolled_back.append(&mut list),
@@ -253,20 +205,20 @@ impl<'a> BlockRollbackPerformer<'a> {
             }
             self.ledger.store.pending().del(self.txn, &key);
             self.ledger.observer.block_rolled_back(BlockSubType::Send);
-        } else if !block.link().is_zero() && !self.ledger.is_epoch_link(&block.link()) {
+        } else if !state.link().is_zero() && !self.ledger.is_epoch_link(&state.link()) {
             // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
             let source_account = self
                 .ledger
-                .account(self.txn.txn(), &block.link().into())
+                .account(self.txn.txn(), &state.link().into())
                 .unwrap_or_default();
             let pending_info = PendingInfo::new(
                 source_account,
-                block.balance() - balance,
-                block.sideband().unwrap().source_epoch,
+                state.balance() - previous_balance,
+                state.sideband().unwrap().source_epoch,
             );
             self.ledger.store.pending().put(
                 self.txn,
-                &PendingKey::new(block.account(), block.link().into()),
+                &PendingKey::new(state.account(), state.link().into()),
                 &pending_info,
             );
             self.ledger
@@ -278,32 +230,32 @@ impl<'a> BlockRollbackPerformer<'a> {
             .ledger
             .store
             .block()
-            .version(self.txn.txn(), &block.previous());
+            .version(self.txn.txn(), &state.previous());
 
         let new_info = AccountInfo {
-            head: block.previous(),
-            representative,
+            head: state.previous(),
+            representative: previous_rep.unwrap_or_default(),
             open_block: account_info.open_block,
-            balance,
+            balance: previous_balance,
             modified: seconds_since_epoch(),
             block_count: account_info.block_count - 1,
             epoch: previous_version,
         };
 
         self.ledger
-            .update_account(self.txn, &block.account(), &account_info, &new_info);
+            .update_account(self.txn, &state.account(), &account_info, &new_info);
 
         match self
             .ledger
             .store
             .block()
-            .get(self.txn.txn(), &block.previous())
+            .get(self.txn.txn(), &state.previous())
         {
             Some(previous) => {
                 self.ledger
                     .store
                     .block()
-                    .successor_clear(self.txn, &block.previous());
+                    .successor_clear(self.txn, &state.previous());
                 match previous.block_type() {
                     BlockType::Invalid | BlockType::NotABlock => unreachable!(),
                     BlockType::LegacySend
@@ -312,8 +264,8 @@ impl<'a> BlockRollbackPerformer<'a> {
                     | BlockType::LegacyChange => {
                         self.ledger.store.frontier().put(
                             self.txn,
-                            &block.previous(),
-                            &block.account(),
+                            &state.previous(),
+                            &state.account(),
                         );
                     }
                     BlockType::State => {}
@@ -324,7 +276,7 @@ impl<'a> BlockRollbackPerformer<'a> {
             }
         }
 
-        self.ledger.store.block().del(self.txn, &hash);
+        self.ledger.store.block().del(self.txn, &state.hash());
         Ok(())
     }
 
@@ -339,7 +291,7 @@ impl<'a> BlockRollbackPerformer<'a> {
             .get(self.txn.txn(), &block.pending_key())
     }
 
-    fn rollback_destination_account_until_send_block_is_unreceived(
+    fn roll_back_destination_account_until_send_block_is_unreceived(
         &mut self,
         block: &SendBlock,
     ) -> anyhow::Result<PendingInfo> {
@@ -384,38 +336,68 @@ impl<'a> BlockRollbackPerformer<'a> {
             .representation_add(*representative, Amount::zero().wrapping_sub(amount));
     }
 
+    fn roll_back_change_in_representative_cache(
+        &self,
+        change: &ChangeBlock,
+        previous_representative: Account,
+    ) {
+        let previous_balance = self.ledger.balance(self.txn.txn(), &change.previous());
+
+        self.ledger.cache.rep_weights.representation_add_dual(
+            change.mandatory_representative(),
+            Amount::zero().wrapping_sub(previous_balance),
+            previous_representative,
+            previous_balance,
+        );
+    }
+
     fn do_roll_back(
         &mut self,
         block: &BlockEnum,
-        old_account_info: &AccountInfo,
+        current_account_info: &AccountInfo,
         account: &Account,
         linked_account: &Account,
         amount: &Amount,
+        previous_representative: Option<Account>,
     ) {
-        let new_account_info = self.new_account_info(block, old_account_info);
-        self.ledger
-            .update_account(self.txn, account, old_account_info, &new_account_info);
+        let previous_account_info =
+            self.previous_account_info(block, current_account_info, previous_representative);
+
+        self.ledger.update_account(
+            self.txn,
+            account,
+            current_account_info,
+            &previous_account_info,
+        );
+
         self.ledger.store.block().del(self.txn, &block.hash());
 
-        if let BlockEnum::LegacyReceive(receive) = block {
+        let receive_source_block = match block {
+            BlockEnum::LegacyReceive(receive) => Some(receive.mandatory_source()),
+            BlockEnum::LegacyOpen(open) => Some(open.mandatory_source()),
+            _ => None,
+        };
+        if let Some(source) = receive_source_block {
             self.ledger.store.pending().put(
                 self.txn,
-                &PendingKey::new(*account, receive.mandatory_source()),
+                &PendingKey::new(*account, source),
                 &PendingInfo::new(*linked_account, *amount, Epoch::Epoch0),
             );
         }
 
         self.ledger.store.frontier().del(self.txn, &block.hash());
 
-        self.ledger
-            .store
-            .frontier()
-            .put(self.txn, &block.previous(), account);
+        if !block.previous().is_zero() {
+            self.ledger
+                .store
+                .frontier()
+                .put(self.txn, &block.previous(), account);
 
-        self.ledger
-            .store
-            .block()
-            .successor_clear(self.txn, &block.previous());
+            self.ledger
+                .store
+                .block()
+                .successor_clear(self.txn, &block.previous());
+        }
     }
 
     fn delete_pending(&mut self, block: &SendBlock) {
@@ -425,15 +407,24 @@ impl<'a> BlockRollbackPerformer<'a> {
             .del(self.txn, &block.pending_key());
     }
 
-    fn new_account_info(&self, block: &BlockEnum, account_info: &AccountInfo) -> AccountInfo {
-        AccountInfo {
-            head: block.previous(),
-            representative: account_info.representative,
-            open_block: account_info.open_block,
-            balance: self.ledger.balance(self.txn.txn(), &block.previous()),
-            modified: seconds_since_epoch(),
-            block_count: account_info.block_count - 1,
-            epoch: Epoch::Epoch0,
+    fn previous_account_info(
+        &self,
+        block: &BlockEnum,
+        current_info: &AccountInfo,
+        previous_rep: Option<Account>,
+    ) -> AccountInfo {
+        if block.block_type() == BlockType::LegacyOpen {
+            Default::default()
+        } else {
+            AccountInfo {
+                head: block.previous(),
+                representative: previous_rep.unwrap_or(current_info.representative),
+                open_block: current_info.open_block,
+                balance: self.ledger.balance(self.txn.txn(), &block.previous()),
+                modified: seconds_since_epoch(),
+                block_count: current_info.block_count - 1,
+                epoch: Epoch::Epoch0,
+            }
         }
     }
 
@@ -443,5 +434,30 @@ impl<'a> BlockRollbackPerformer<'a> {
             .account()
             .get(self.txn.txn(), account)
             .ok_or_else(|| anyhow!("account not found"))
+    }
+
+    fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<BlockEnum> {
+        self.ledger
+            .store
+            .block()
+            .get(self.txn.txn(), block_hash)
+            .ok_or_else(|| anyhow!("block not found"))
+    }
+
+    fn get_previous_representative(&self, block: &BlockEnum) -> anyhow::Result<Option<Account>> {
+        let rep_block_hash = if !block.previous().is_zero() {
+            self.ledger
+                .representative_block_hash(self.txn.txn(), &block.previous())
+        } else {
+            BlockHash::zero()
+        };
+
+        let previous_rep = if !rep_block_hash.is_zero() {
+            let rep_block = self.load_block(&rep_block_hash)?;
+            Some(rep_block.representative().unwrap_or_default())
+        } else {
+            None
+        };
+        Ok(previous_rep)
     }
 }

@@ -98,7 +98,7 @@ fn genesis_representative() {
     let txn = ctx.ledger.read_txn();
     assert_eq!(
         ctx.ledger
-            .representative_block(txn.txn(), &DEV_GENESIS_HASH),
+            .representative_block_hash(txn.txn(), &DEV_GENESIS_HASH),
         *DEV_GENESIS_HASH
     );
 }

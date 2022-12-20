@@ -784,7 +784,7 @@ impl Ledger {
     }
 
     /// Returns the latest block with representative information
-    pub fn representative_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
+    pub fn representative_block_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
         let hash = RepresentativeBlockFinder::new(txn, self.store.as_ref()).find_rep_block(*hash);
         debug_assert!(hash.is_zero() || self.store.block().exists(txn, &hash));
         hash

@@ -28,7 +28,7 @@ mod ledger;
 pub use ledger::{Ledger, LedgerObserver, ProcessResult, UncementedInfo};
 
 mod rollback_visitor;
-pub(crate) use rollback_visitor::RollbackVisitor;
+pub(crate) use rollback_visitor::BlockRollbackPerformer;
 
 mod dependent_blocks_finder;
 pub(crate) use dependent_blocks_finder::DependentBlocksFinder;

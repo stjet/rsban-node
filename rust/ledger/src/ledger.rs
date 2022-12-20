@@ -1,6 +1,6 @@
 use crate::{
-    BlockInserter, BlockValidator, GenerateCache, LedgerCache, LedgerConstants, RepWeights,
-    RepresentativeBlockFinder,
+    BlockInserter, BlockRollbackPerformer, BlockValidator, GenerateCache, LedgerCache,
+    LedgerConstants, RepWeights, RepresentativeBlockFinder,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
@@ -9,7 +9,6 @@ use rsnano_core::{
     BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
 };
 
-use crate::RollbackVisitor;
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Deref,
@@ -753,7 +752,7 @@ impl Ledger {
         let account = self.account(txn.txn(), block).unwrap();
         let block_account_height = self.store.block().account_height(txn.txn(), block);
         let mut list = Vec::new();
-        let mut rollback = RollbackVisitor::new(txn, self, &mut list);
+        let mut rollback = BlockRollbackPerformer::new(self, txn, &mut list);
         while self.store.block().exists(rollback.txn.txn(), block) {
             let conf_height = self
                 .store
@@ -771,11 +770,10 @@ impl Ledger {
                     .block()
                     .get(rollback.txn.txn(), &account_info.head)
                     .unwrap();
-                rollback.list.push(Arc::new(RwLock::new(block.clone())));
-                block.visit(&mut rollback);
-                if rollback.is_error {
-                    return Err(anyhow!("rollback failed"));
-                }
+                rollback
+                    .rolled_back
+                    .push(Arc::new(RwLock::new(block.clone())));
+                rollback.roll_back(&block)?;
                 self.cache.block_count.fetch_sub(1, Ordering::SeqCst);
             } else {
                 bail!("account height was bigger than conf height")

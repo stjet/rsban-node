@@ -1,8 +1,8 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PublicKey, RawKey, Root,
-    Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PendingKey, PublicKey,
+    RawKey, Root, Signature,
 };
 use anyhow::Result;
 
@@ -155,6 +155,10 @@ impl SendBlock {
             hash: LazyBlockHash::new(),
             sideband: None,
         })
+    }
+
+    pub fn pending_key(&self) -> PendingKey {
+        PendingKey::new(self.hashables.destination, self.hash())
     }
 }
 

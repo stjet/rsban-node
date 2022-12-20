@@ -95,7 +95,7 @@ fn send_and_change_representative() {
 }
 
 #[test]
-fn send_to_burn_account(){
+fn send_to_burn_account() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();

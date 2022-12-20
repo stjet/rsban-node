@@ -5,20 +5,10 @@ mod open_block_rules;
 mod receive_block_rules;
 mod send_block_rules;
 
-use rsnano_core::{Account, AccountInfo, BlockEnum, BlockSideband, PendingInfo, PendingKey};
+use rsnano_core::{Account, AccountInfo, BlockEnum, PendingInfo, PendingKey};
 use rsnano_store_traits::Transaction;
 
-use crate::{Ledger, ProcessResult};
-
-pub(crate) struct BlockValidation {
-    pub account: Account,
-    pub old_account_info: AccountInfo,
-    pub new_account_info: AccountInfo,
-    pub pending_received: Option<PendingKey>,
-    pub new_pending: Option<(PendingKey, PendingInfo)>,
-    pub new_sideband: BlockSideband,
-    pub is_epoch_block: bool,
-}
+use crate::{BlockInsertInstructions, Ledger, ProcessResult};
 
 /// Validates a single block before it gets inserted into the ledger
 pub(crate) struct BlockValidator<'a> {
@@ -46,7 +36,7 @@ impl<'a> BlockValidator<'a> {
         }
     }
 
-    pub(crate) fn validate(&mut self) -> Result<BlockValidation, ProcessResult> {
+    pub(crate) fn validate(&mut self) -> Result<BlockInsertInstructions, ProcessResult> {
         self.epoch_block_pre_checks()?;
         self.ensure_block_does_not_exist_yet()?;
 
@@ -64,11 +54,11 @@ impl<'a> BlockValidator<'a> {
         self.ensure_no_negative_amount_send()?;
         self.ensure_valid_epoch_block()?;
 
-        Ok(self.create_validation())
+        Ok(self.create_instructions())
     }
 
-    fn create_validation(&self) -> BlockValidation {
-        BlockValidation {
+    fn create_instructions(&self) -> BlockInsertInstructions {
+        BlockInsertInstructions {
             account: self.account,
             old_account_info: self.old_account_info.clone().unwrap_or_default(),
             new_account_info: self.new_account_info(),

@@ -1,16 +1,28 @@
 use std::sync::atomic::Ordering;
 
-use rsnano_core::{Amount, BlockEnum, BlockType};
+use rsnano_core::{
+    Account, AccountInfo, Amount, BlockEnum, BlockSideband, BlockType, PendingInfo, PendingKey,
+};
 use rsnano_store_traits::WriteTransaction;
 
-use crate::{BlockValidation, Ledger};
+use crate::Ledger;
+
+pub(crate) struct BlockInsertInstructions {
+    pub account: Account,
+    pub old_account_info: AccountInfo,
+    pub new_account_info: AccountInfo,
+    pub pending_received: Option<PendingKey>,
+    pub new_pending: Option<(PendingKey, PendingInfo)>,
+    pub new_sideband: BlockSideband,
+    pub is_epoch_block: bool,
+}
 
 /// Inserts a new block into the ledger
 pub(crate) struct BlockInserter<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut BlockEnum,
-    validation: &'a BlockValidation,
+    validation: &'a BlockInsertInstructions,
 }
 
 impl<'a> BlockInserter<'a> {
@@ -18,7 +30,7 @@ impl<'a> BlockInserter<'a> {
         ledger: &'a Ledger,
         txn: &'a mut dyn WriteTransaction,
         block: &'a mut BlockEnum,
-        validation: &'a BlockValidation,
+        validation: &'a BlockInsertInstructions,
     ) -> Self {
         Self {
             ledger,

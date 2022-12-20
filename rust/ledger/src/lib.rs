@@ -34,10 +34,10 @@ mod dependent_blocks_finder;
 pub(crate) use dependent_blocks_finder::DependentBlocksFinder;
 
 mod block_validator;
-pub(crate) use block_validator::{BlockValidation, BlockValidator};
+pub(crate) use block_validator::BlockValidator;
 
 mod block_inserter;
-pub(crate) use block_inserter::BlockInserter;
+pub(crate) use block_inserter::{BlockInsertInstructions, BlockInserter};
 
 #[cfg(test)]
 mod ledger_tests;

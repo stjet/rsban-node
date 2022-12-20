@@ -753,7 +753,7 @@ impl Ledger {
         let account = self.account(txn.txn(), block).unwrap();
         let block_account_height = self.store.block().account_height(txn.txn(), block);
         let mut list = Vec::new();
-        let mut rollback = RollbackVisitor::new(txn, self, self.observer.as_ref(), &mut list);
+        let mut rollback = RollbackVisitor::new(txn, self, &mut list);
         while self.store.block().exists(rollback.txn.txn(), block) {
             let conf_height = self
                 .store

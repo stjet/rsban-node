@@ -7,49 +7,54 @@ use rsnano_core::{
 };
 use rsnano_store_traits::WriteTransaction;
 
-use super::{Ledger, LedgerObserver};
+use super::Ledger;
 
 pub(crate) struct RollbackVisitor<'a> {
     pub txn: &'a mut dyn WriteTransaction,
     ledger: &'a Ledger,
-    observer: &'a dyn LedgerObserver,
     pub list: &'a mut Vec<Arc<RwLock<BlockEnum>>>,
     pub is_error: bool,
 }
 
-impl<'a> RollbackVisitor<'a> {
-    pub(crate) fn new(
-        txn: &'a mut dyn WriteTransaction,
+struct BlockRollbackPerformer<'a> {
+    ledger: &'a Ledger,
+    txn: &'a mut dyn WriteTransaction,
+    list: &'a mut Vec<Arc<RwLock<BlockEnum>>>,
+    pending_key: PendingKey,
+    pending_info: PendingInfo,
+}
+
+impl<'a> BlockRollbackPerformer<'a> {
+    fn new(
         ledger: &'a Ledger,
-        observer: &'a dyn LedgerObserver,
+        txn: &'a mut dyn WriteTransaction,
         list: &'a mut Vec<Arc<RwLock<BlockEnum>>>,
     ) -> Self {
         Self {
-            txn,
             ledger,
-            observer,
+            txn,
             list,
-            is_error: false,
+            pending_key: Default::default(),
+            pending_info: Default::default(),
         }
     }
-}
 
-impl<'a> BlockVisitor for RollbackVisitor<'a> {
-    fn send_block(&mut self, block: &SendBlock) {
-        if self.is_error {
-            return;
-        }
-        let hash = block.hash();
-        let key = PendingKey::new(block.hashables.destination, hash);
-        let mut pending_info = PendingInfo::default();
-        while !self.is_error {
-            match self.ledger.store.pending().get(self.txn.txn(), &key) {
+    pub(crate) fn rollback_legacy_send(&mut self, block: &'a SendBlock) -> anyhow::Result<()> {
+        self.pending_key = PendingKey::new(block.hashables.destination, block.hash());
+        self.pending_info = PendingInfo::default();
+        loop {
+            match self
+                .ledger
+                .store
+                .pending()
+                .get(self.txn.txn(), &self.pending_key)
+            {
                 Some(info) => {
-                    pending_info = info;
+                    self.pending_info = info;
                     break;
                 }
                 None => {
-                    pending_info = PendingInfo::default();
+                    self.pending_info = PendingInfo::default();
                 }
             }
 
@@ -58,28 +63,23 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 .latest(self.txn.txn(), &block.hashables.destination)
                 .unwrap();
 
-            match self.ledger.rollback(self.txn, &latest_block) {
-                Ok(mut blocks) => self.list.append(&mut blocks),
-                Err(_) => self.is_error = true,
-            }
-            if self.is_error {
-                return;
-            }
+            let mut blocks = self.ledger.rollback(self.txn, &latest_block)?;
+            self.list.append(&mut blocks);
         }
 
         let account_info = self
             .ledger
             .store
             .account()
-            .get(self.txn.txn(), &pending_info.source)
+            .get(self.txn.txn(), &self.pending_info.source)
             .unwrap();
 
-        self.ledger.store.pending().del(self.txn, &key);
+        self.ledger.store.pending().del(self.txn, &self.pending_key);
 
         self.ledger
             .cache
             .rep_weights
-            .representation_add(account_info.representative, pending_info.amount);
+            .representation_add(account_info.representative, self.pending_info.amount);
 
         let new_info = AccountInfo {
             head: block.previous(),
@@ -91,29 +91,36 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             epoch: Epoch::Epoch0,
         };
 
-        self.ledger
-            .update_account(self.txn, &pending_info.source, &account_info, &new_info);
+        self.ledger.update_account(
+            self.txn,
+            &self.pending_info.source,
+            &account_info,
+            &new_info,
+        );
 
-        self.ledger.store.block().del(self.txn, &hash);
-        self.ledger.store.frontier().del(self.txn, &hash);
+        self.ledger.store.block().del(self.txn, &block.hash());
+        self.ledger.store.frontier().del(self.txn, &block.hash());
 
         self.ledger
             .store
             .frontier()
-            .put(self.txn, &block.previous(), &pending_info.source);
+            .put(self.txn, &block.previous(), &self.pending_info.source);
 
         self.ledger
             .store
             .block()
             .successor_clear(self.txn, &block.previous());
 
-        self.observer.block_rolled_back(BlockSubType::Send);
+        self.ledger.observer.block_rolled_back(BlockSubType::Send);
+        Ok(())
     }
 
-    fn receive_block(&mut self, block: &ReceiveBlock) {
-        let hash = block.hash();
-        let amount = self.ledger.amount(self.txn.txn(), &hash).unwrap();
-        let destination_account = self.ledger.account(self.txn.txn(), &hash).unwrap();
+    pub(crate) fn rollback_legacy_receive(
+        &mut self,
+        block: &'a ReceiveBlock,
+    ) -> anyhow::Result<()> {
+        let amount = self.ledger.amount(self.txn.txn(), &block.hash()).unwrap();
+        let destination_account = self.ledger.account(self.txn.txn(), &block.hash()).unwrap();
         // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
         let source_account = self
             .ledger
@@ -144,7 +151,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
         self.ledger
             .update_account(self.txn, &destination_account, &account_info, &new_info);
 
-        self.ledger.store.block().del(self.txn, &hash);
+        self.ledger.store.block().del(self.txn, &block.hash());
 
         self.ledger.store.pending().put(
             self.txn,
@@ -152,7 +159,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             &PendingInfo::new(source_account, amount, Epoch::Epoch0),
         );
 
-        self.ledger.store.frontier().del(self.txn, &hash);
+        self.ledger.store.frontier().del(self.txn, &block.hash());
 
         self.ledger
             .store
@@ -164,10 +171,13 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             .block()
             .successor_clear(self.txn, &block.previous());
 
-        self.observer.block_rolled_back(BlockSubType::Receive);
+        self.ledger
+            .observer
+            .block_rolled_back(BlockSubType::Receive);
+        Ok(())
     }
 
-    fn open_block(&mut self, block: &OpenBlock) {
+    pub(crate) fn rollback_legacy_open(&mut self, block: &'a OpenBlock) -> anyhow::Result<()> {
         let hash = block.hash();
         let amount = self.ledger.amount(self.txn.txn(), &hash).unwrap();
         let destination_account = self.ledger.account(self.txn.txn(), &hash).unwrap();
@@ -198,10 +208,11 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
 
         self.ledger.store.frontier().del(self.txn, &hash);
 
-        self.observer.block_rolled_back(BlockSubType::Open);
+        self.ledger.observer.block_rolled_back(BlockSubType::Open);
+        Ok(())
     }
 
-    fn change_block(&mut self, block: &ChangeBlock) {
+    pub(crate) fn rollback_legacy_change(&mut self, block: &'a ChangeBlock) -> anyhow::Result<()> {
         let hash = block.hash();
         let rep_block = self
             .ledger
@@ -260,10 +271,11 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
             .block()
             .successor_clear(self.txn, &block.previous());
 
-        self.observer.block_rolled_back(BlockSubType::Change);
+        self.ledger.observer.block_rolled_back(BlockSubType::Change);
+        Ok(())
     }
 
-    fn state_block(&mut self, block: &StateBlock) {
+    pub(crate) fn rollback_state_block(&mut self, block: &'a StateBlock) -> anyhow::Result<()> {
         let hash = block.hash();
         let mut rep_block_hash = BlockHash::zero();
         if !block.previous().is_zero() {
@@ -320,7 +332,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 };
             }
             self.ledger.store.pending().del(self.txn, &key);
-            self.observer.block_rolled_back(BlockSubType::Send);
+            self.ledger.observer.block_rolled_back(BlockSubType::Send);
         } else if !block.link().is_zero() && !self.ledger.is_epoch_link(&block.link()) {
             // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
             let source_account = self
@@ -337,7 +349,9 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 &PendingKey::new(block.account(), block.link().into()),
                 &pending_info,
             );
-            self.observer.block_rolled_back(BlockSubType::Receive);
+            self.ledger
+                .observer
+                .block_rolled_back(BlockSubType::Receive);
         }
         assert!(!error);
         let previous_version = self
@@ -386,10 +400,70 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
                 }
             }
             None => {
-                self.observer.block_rolled_back(BlockSubType::Open);
+                self.ledger.observer.block_rolled_back(BlockSubType::Open);
             }
         }
 
         self.ledger.store.block().del(self.txn, &hash);
+        Ok(())
+    }
+}
+
+impl<'a> RollbackVisitor<'a> {
+    pub(crate) fn new(
+        txn: &'a mut dyn WriteTransaction,
+        ledger: &'a Ledger,
+        list: &'a mut Vec<Arc<RwLock<BlockEnum>>>,
+    ) -> Self {
+        Self {
+            txn,
+            ledger,
+            list,
+            is_error: false,
+        }
+    }
+}
+
+impl<'a> BlockVisitor for RollbackVisitor<'a> {
+    fn send_block(&mut self, block: &SendBlock) {
+        if self.is_error {
+            return;
+        }
+
+        let mut performer = BlockRollbackPerformer::new(self.ledger, self.txn, self.list);
+        self.is_error = performer.rollback_legacy_send(block).is_err();
+    }
+
+    fn receive_block(&mut self, block: &ReceiveBlock) {
+        if self.is_error {
+            return;
+        }
+
+        let mut performer = BlockRollbackPerformer::new(self.ledger, self.txn, self.list);
+        self.is_error = performer.rollback_legacy_receive(block).is_err();
+    }
+
+    fn open_block(&mut self, block: &OpenBlock) {
+        if self.is_error {
+            return;
+        }
+        let mut performer = BlockRollbackPerformer::new(self.ledger, self.txn, self.list);
+        self.is_error = performer.rollback_legacy_open(block).is_err();
+    }
+
+    fn change_block(&mut self, block: &ChangeBlock) {
+        if self.is_error {
+            return;
+        }
+        let mut performer = BlockRollbackPerformer::new(self.ledger, self.txn, self.list);
+        self.is_error = performer.rollback_legacy_change(block).is_err();
+    }
+
+    fn state_block(&mut self, block: &StateBlock) {
+        if self.is_error {
+            return;
+        }
+        let mut performer = BlockRollbackPerformer::new(self.ledger, self.txn, self.list);
+        self.is_error = performer.rollback_state_block(block).is_err();
     }
 }

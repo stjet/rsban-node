@@ -97,7 +97,8 @@ fn genesis_representative() {
     let ctx = LedgerContext::empty();
     let txn = ctx.ledger.read_txn();
     assert_eq!(
-        ctx.ledger.representative(txn.txn(), &DEV_GENESIS_HASH),
+        ctx.ledger
+            .representative_block(txn.txn(), &DEV_GENESIS_HASH),
         *DEV_GENESIS_HASH
     );
 }

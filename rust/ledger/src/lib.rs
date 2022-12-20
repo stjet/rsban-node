@@ -21,8 +21,8 @@ pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
 mod generate_cache;
 pub use generate_cache::GenerateCache;
 
-mod representative_visitor;
-pub(crate) use representative_visitor::RepresentativeVisitor;
+mod representative_block_finder;
+pub(crate) use representative_block_finder::RepresentativeBlockFinder;
 
 mod ledger;
 pub use ledger::{Ledger, LedgerObserver, ProcessResult, UncementedInfo};

@@ -1,6 +1,6 @@
 use crate::{
     BlockInserter, BlockValidator, GenerateCache, LedgerCache, LedgerConstants, RepWeights,
-    RepresentativeVisitor,
+    RepresentativeBlockFinder,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
@@ -785,16 +785,11 @@ impl Ledger {
         Ok(list)
     }
 
-    pub fn representative_calculated(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
-        let mut visitor = RepresentativeVisitor::new(txn, self.store.as_ref());
-        visitor.compute(*hash);
-        visitor.result
-    }
-
-    pub fn representative(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
-        let result = self.representative_calculated(txn, hash);
-        debug_assert!(result.is_zero() || self.store.block().exists(txn, &result));
-        result
+    /// Returns the latest block with representative information
+    pub fn representative_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
+        let hash = RepresentativeBlockFinder::new(txn, self.store.as_ref()).find_rep_block(*hash);
+        debug_assert!(hash.is_zero() || self.store.block().exists(txn, &hash));
+        hash
     }
 
     pub fn process(

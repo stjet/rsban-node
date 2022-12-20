@@ -205,7 +205,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
         let hash = block.hash();
         let rep_block = self
             .ledger
-            .representative(self.txn.txn(), &block.previous());
+            .representative_block(self.txn.txn(), &block.previous());
         let account = self
             .ledger
             .account(self.txn.txn(), &block.previous())
@@ -269,7 +269,7 @@ impl<'a> BlockVisitor for RollbackVisitor<'a> {
         if !block.previous().is_zero() {
             rep_block_hash = self
                 .ledger
-                .representative(self.txn.txn(), &block.previous());
+                .representative_block(self.txn.txn(), &block.previous());
         }
         let balance = self.ledger.balance(self.txn.txn(), &block.previous());
         let is_send = block.balance() < balance;

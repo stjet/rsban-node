@@ -631,7 +631,7 @@ pub unsafe extern "C" fn rsn_ledger_representative(
 ) {
     let representative = (*handle)
         .0
-        .representative((*txn).as_txn(), &BlockHash::from_ptr(hash));
+        .representative_block((*txn).as_txn(), &BlockHash::from_ptr(hash));
     copy_hash_bytes(representative, result);
 }
 

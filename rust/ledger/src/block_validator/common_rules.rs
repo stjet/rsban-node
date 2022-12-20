@@ -1,8 +1,6 @@
-use rsnano_core::{validate_message, Account, Block, BlockEnum, BlockHash};
-
-use crate::ProcessResult;
-
 use super::BlockValidator;
+use crate::ProcessResult;
+use rsnano_core::{validate_message, Account, Block, BlockEnum, BlockHash};
 
 impl<'a> BlockValidator<'a> {
     pub(crate) fn ensure_block_does_not_exist_yet(&self) -> Result<(), ProcessResult> {
@@ -42,11 +40,11 @@ impl<'a> BlockValidator<'a> {
     }
 
     fn ensure_previous_block_exists(&self) -> Result<(), ProcessResult> {
-        if self.old_account_info.is_some() && self.previous_block.is_none() {
+        if self.account_exists() && self.previous_block.is_none() {
             return Err(ProcessResult::GapPrevious);
         }
 
-        if self.old_account_info.is_none() && !self.block.previous().is_zero() {
+        if self.is_new_account() && !self.block.previous().is_zero() {
             return Err(ProcessResult::GapPrevious);
         }
 

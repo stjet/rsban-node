@@ -34,7 +34,7 @@ impl<'a> BlockValidator<'a> {
         if self.is_receive() {
             match &self.pending_receive_info {
                 Some(pending) => {
-                    if self.amount() != pending.amount {
+                    if self.amount_received() != pending.amount {
                         return Err(ProcessResult::BalanceMismatch);
                     }
                 }

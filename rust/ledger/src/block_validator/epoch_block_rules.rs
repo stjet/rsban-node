@@ -30,7 +30,7 @@ impl<'a> BlockValidator<'a> {
     fn ensure_epoch_open_has_burn_account_as_rep(&self) -> Result<(), ProcessResult> {
         if let BlockEnum::State(state) = self.block {
             if self.is_epoch_block()
-                && self.old_account_info.is_none()
+                && self.block.is_open()
                 && !state.mandatory_representative().is_zero()
             {
                 return Err(ProcessResult::RepresentativeMismatch);
@@ -40,14 +40,8 @@ impl<'a> BlockValidator<'a> {
     }
 
     fn ensure_epoch_open_has_pending_entry(&self) -> Result<(), ProcessResult> {
-        if self.old_account_info.is_none() && self.is_epoch_block() {
-            // Non-exisitng account should have pending entries
-            let pending_exists = self
-                .ledger
-                .store
-                .pending()
-                .any(self.txn, &self.block.account());
-            if !pending_exists {
+        if self.block.is_open() && self.is_epoch_block() {
+            if !self.pending_exists() {
                 return Err(ProcessResult::GapEpochOpenPending);
             };
         }
@@ -55,7 +49,7 @@ impl<'a> BlockValidator<'a> {
     }
 
     fn ensure_valid_epoch_for_unopened_account(&self) -> Result<(), ProcessResult> {
-        if self.old_account_info.is_none()
+        if self.block.is_open()
             && self.is_epoch_block()
             && self.block_epoch_version() == Epoch::Invalid
         {

@@ -12,7 +12,7 @@ impl<'a> BlockValidator<'a> {
     }
 
     pub(crate) fn ensure_no_double_account_open(&self) -> Result<(), ProcessResult> {
-        if self.old_account_info.is_some() && self.block.is_open() {
+        if self.account_exists() && self.block.is_open() {
             Err(ProcessResult::Fork)
         } else {
             Ok(())
@@ -21,7 +21,7 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn ensure_open_block_has_link(&self) -> Result<(), ProcessResult> {
         if let BlockEnum::State(state) = self.block {
-            if self.old_account_info.is_none() && state.link().is_zero() {
+            if self.block.is_open() && state.link().is_zero() {
                 return Err(ProcessResult::GapSource);
             }
         }

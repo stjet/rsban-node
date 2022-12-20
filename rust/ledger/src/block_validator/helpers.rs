@@ -1,12 +1,20 @@
 use rsnano_core::{
-    utils::seconds_since_epoch, AccountInfo, Amount, Block, BlockDetails, BlockEnum, BlockHash,
-    BlockSideband, Epoch, PendingInfo, PendingKey, StateBlock,
+    utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockDetails, BlockEnum,
+    BlockHash, BlockSideband, Epoch, PendingInfo, PendingKey, StateBlock,
 };
 
 use super::BlockValidator;
 use crate::ProcessResult;
 
 impl<'a> BlockValidator<'a> {
+    pub(crate) fn account_exists(&self) -> bool {
+        self.old_account_info.is_some()
+    }
+
+    pub(crate) fn is_new_account(&self) -> bool {
+        self.old_account_info.is_none()
+    }
+
     pub(crate) fn previous_balance(&self) -> Amount {
         self.previous_block
             .as_ref()
@@ -54,11 +62,7 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn amount_received(&self) -> Amount {
         match &self.block {
-            BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_) => self
-                .pending_receive_info
-                .as_ref()
-                .map(|i| i.amount)
-                .unwrap_or_default(),
+            BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_) => self.pending_amount(),
             BlockEnum::State(state) => {
                 let previous = self.previous_balance();
                 if previous < state.balance() {
@@ -69,6 +73,13 @@ impl<'a> BlockValidator<'a> {
             }
             _ => Amount::zero(),
         }
+    }
+
+    pub fn pending_amount(&self) -> Amount {
+        self.pending_receive_info
+            .as_ref()
+            .map(|i| i.amount)
+            .unwrap_or_default()
     }
 
     pub(crate) fn amount_sent(&self) -> Amount {
@@ -86,12 +97,14 @@ impl<'a> BlockValidator<'a> {
     }
 
     pub(crate) fn new_balance(&self) -> Amount {
+        self.old_balance() + self.amount_received() - self.amount_sent()
+    }
+
+    fn old_balance(&self) -> Amount {
         self.old_account_info
             .as_ref()
             .map(|i| i.balance)
             .unwrap_or_default()
-            + self.amount_received()
-            - self.amount_sent()
     }
 
     pub(crate) fn has_epoch_link(&self, state_block: &StateBlock) -> bool {
@@ -125,40 +138,39 @@ impl<'a> BlockValidator<'a> {
         if self.is_epoch_block() {
             self.block_epoch_version()
         } else {
-            let epoch = self
-                .old_account_info
-                .as_ref()
-                .map(|i| i.epoch)
-                .unwrap_or(Epoch::Epoch0);
-
-            std::cmp::max(epoch, self.source_epoch())
+            std::cmp::max(self.old_epoch_version(), self.source_epoch())
         }
     }
 
-    pub(crate) fn open_block(&self) -> BlockHash {
-        let open_block = match &self.old_account_info {
-            Some(info) => info.open_block,
-            None => self.block.hash(),
-        };
-        open_block
+    fn old_epoch_version(&self) -> Epoch {
+        self.old_account_info
+            .as_ref()
+            .map(|i| i.epoch)
+            .unwrap_or(Epoch::Epoch0)
     }
 
-    pub(crate) fn new_representative(&self) -> rsnano_core::PublicKey {
-        self.block.representative().unwrap_or(
-            self.old_account_info
-                .as_ref()
-                .map(|x| x.representative)
-                .unwrap_or_default(),
-        )
+    pub(crate) fn open_block(&self) -> BlockHash {
+        match &self.old_account_info {
+            Some(info) => info.open_block,
+            None => self.block.hash(),
+        }
+    }
+
+    pub(crate) fn new_representative(&self) -> Account {
+        self.block
+            .representative()
+            .unwrap_or(self.old_representative())
+    }
+
+    fn old_representative(&self) -> Account {
+        self.old_account_info
+            .as_ref()
+            .map(|x| x.representative)
+            .unwrap_or_default()
     }
 
     pub(crate) fn amount(&self) -> Amount {
-        let old_balance = self
-            .old_account_info
-            .as_ref()
-            .map(|x| x.balance)
-            .unwrap_or_default();
-
+        let old_balance = self.old_balance();
         let new_balance = self.new_balance();
 
         if old_balance > new_balance {
@@ -281,5 +293,12 @@ impl<'a> BlockValidator<'a> {
         } else {
             None
         }
+    }
+
+    pub(crate) fn pending_exists(&self) -> bool {
+        self.ledger
+            .store
+            .pending()
+            .any(self.txn, &self.block.account())
     }
 }

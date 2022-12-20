@@ -505,7 +505,9 @@ bool nano::active_transactions::active (nano::qualified_root const & root_a) con
 bool nano::active_transactions::active (nano::block const & block_a) const
 {
 	nano::lock_guard<nano::mutex> guard (mutex);
-	return roots.get<tag_root> ().find (block_a.qualified_root ()) != roots.get<tag_root> ().end () && blocks.find (block_a.hash ()) != blocks.end ();
+	auto root {block_a.qualified_root ()};
+	auto hash{block_a.hash ()};
+	return roots.get<tag_root> ().find (root) != roots.get<tag_root> ().end () && blocks.find (hash) != blocks.end ();
 }
 
 bool nano::active_transactions::active (const nano::block_hash & hash) const

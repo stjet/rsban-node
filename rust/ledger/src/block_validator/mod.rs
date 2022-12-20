@@ -58,7 +58,7 @@ impl<'a> BlockValidator<'a> {
         self.ensure_no_double_account_open()?;
         self.ensure_previous_block_is_correct()?;
         self.ensure_open_block_has_link()?;
-        self.ensure_no_balance_change_without_link()?;
+        self.ensure_no_reveive_balance_change_without_link()?;
         self.ensure_pending_receive_is_correct()?;
         self.ensure_sufficient_work()?;
         self.ensure_no_negative_amount_send()?;

@@ -93,3 +93,13 @@ fn send_and_change_representative() {
         BlockDetails::new(Epoch::Epoch0, true, false, false)
     );
 }
+
+#[test]
+fn send_to_burn_account(){
+    let ctx = LedgerContext::empty();
+    let mut txn = ctx.ledger.rw_txn();
+    let genesis = ctx.genesis_block_factory();
+    let mut send = genesis.send(txn.txn()).amount(100).link(0).build();
+    let result = ctx.ledger.process(txn.as_mut(), &mut send);
+    assert_eq!(result, Ok(()))
+}

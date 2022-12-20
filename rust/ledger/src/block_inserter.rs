@@ -22,7 +22,7 @@ pub(crate) struct BlockInserter<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
     block: &'a mut BlockEnum,
-    validation: &'a BlockInsertInstructions,
+    instructions: &'a BlockInsertInstructions,
 }
 
 impl<'a> BlockInserter<'a> {
@@ -30,13 +30,13 @@ impl<'a> BlockInserter<'a> {
         ledger: &'a Ledger,
         txn: &'a mut dyn WriteTransaction,
         block: &'a mut BlockEnum,
-        validation: &'a BlockInsertInstructions,
+        instructions: &'a BlockInsertInstructions,
     ) -> Self {
         Self {
             ledger,
             txn,
             block,
-            validation,
+            instructions,
         }
     }
 
@@ -51,13 +51,13 @@ impl<'a> BlockInserter<'a> {
         self.update_representative_cache();
         self.ledger
             .observer
-            .block_added(self.block, self.validation.is_epoch_block);
+            .block_added(self.block, self.instructions.is_epoch_block);
         self.ledger.cache.block_count.fetch_add(1, Ordering::SeqCst);
     }
 
     fn set_sideband(&mut self) {
         self.block
-            .set_sideband(self.validation.new_sideband.clone());
+            .set_sideband(self.instructions.new_sideband.clone());
     }
 
     fn insert_frontier(&mut self) {
@@ -65,7 +65,7 @@ impl<'a> BlockInserter<'a> {
             self.ledger.store.frontier().put(
                 self.txn,
                 &self.block.hash(),
-                &self.validation.account,
+                &self.instructions.account,
             );
         }
     }
@@ -75,18 +75,18 @@ impl<'a> BlockInserter<'a> {
             .ledger
             .store
             .frontier()
-            .get(self.txn.txn(), &self.validation.old_account_info.head)
+            .get(self.txn.txn(), &self.instructions.old_account_info.head)
             .is_some()
         {
             self.ledger
                 .store
                 .frontier()
-                .del(self.txn, &self.validation.old_account_info.head);
+                .del(self.txn, &self.instructions.old_account_info.head);
         }
     }
 
     fn insert_pending_receive(&mut self) {
-        if let Some((key, info)) = &self.validation.new_pending {
+        if let Some((key, info)) = &self.instructions.new_pending {
             self.ledger.store.pending().put(self.txn, key, info);
         }
     }
@@ -94,32 +94,32 @@ impl<'a> BlockInserter<'a> {
     fn update_account(&mut self) {
         self.ledger.update_account(
             self.txn,
-            &self.validation.account,
-            &self.validation.old_account_info,
-            &self.validation.new_account_info,
+            &self.instructions.account,
+            &self.instructions.old_account_info,
+            &self.instructions.new_account_info,
         );
     }
 
     fn update_representative_cache(&mut self) {
-        if !self.validation.old_account_info.head.is_zero() {
+        if !self.instructions.old_account_info.head.is_zero() {
             // Move existing representation & add in amount delta
             self.ledger.cache.rep_weights.representation_add_dual(
-                self.validation.old_account_info.representative,
-                Amount::zero().wrapping_sub(self.validation.old_account_info.balance),
-                self.validation.new_account_info.representative,
-                self.validation.new_account_info.balance,
+                self.instructions.old_account_info.representative,
+                Amount::zero().wrapping_sub(self.instructions.old_account_info.balance),
+                self.instructions.new_account_info.representative,
+                self.instructions.new_account_info.balance,
             );
         } else {
             // Add in amount delta only
             self.ledger.cache.rep_weights.representation_add(
-                self.validation.new_account_info.representative,
-                self.validation.new_account_info.balance,
+                self.instructions.new_account_info.representative,
+                self.instructions.new_account_info.balance,
             );
         }
     }
 
     fn delete_received_pending_entry(&mut self) {
-        if let Some(key) = &self.validation.pending_received {
+        if let Some(key) = &self.instructions.pending_received {
             self.ledger.store.pending().del(self.txn, key);
         }
     }

@@ -121,6 +121,7 @@ pub struct LedgerConstants {
     pub nano_live_genesis: Arc<RwLock<BlockEnum>>,
     pub nano_test_genesis: Arc<RwLock<BlockEnum>>,
     pub genesis: Arc<RwLock<BlockEnum>>,
+    pub genesis_account: Account,
     pub genesis_amount: Amount,
     pub burn_account: Account,
     pub nano_dev_final_votes_canary_account: Account,
@@ -202,6 +203,7 @@ impl LedgerConstants {
             Networks::NanoLiveNetwork => nano_live_genesis.clone(),
             Networks::Invalid => bail!("invalid network"),
         };
+        let genesis_account = genesis.account();
 
         let nano_dev_final_votes_canary_account = Account::decode_hex(DEV_PUBLIC_KEY_DATA)?;
         let nano_beta_final_votes_canary_account =
@@ -257,6 +259,7 @@ impl LedgerConstants {
             nano_live_genesis: Arc::new(RwLock::new(nano_live_genesis)),
             nano_test_genesis: Arc::new(RwLock::new(nano_test_genesis)),
             genesis: Arc::new(RwLock::new(genesis)),
+            genesis_account,
             genesis_amount: Amount::new(u128::MAX),
             burn_account: Account::zero(),
             nano_dev_final_votes_canary_account,

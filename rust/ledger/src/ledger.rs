@@ -19,7 +19,7 @@ use std::{
     },
 };
 
-use super::DependentBlockVisitor;
+use super::DependentBlocksFinder;
 use rsnano_store_traits::{ReadTransaction, Store, Transaction, WriteTransaction};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -713,28 +713,34 @@ impl Ledger {
         self.observer.blocks_cemented(num_blocks_cemented);
     }
 
-    pub fn dependent_blocks(&self, txn: &dyn Transaction, block: &dyn Block) -> [BlockHash; 2] {
-        let mut visitor = DependentBlockVisitor::new(self, &self.constants, txn);
-        block.visit(&mut visitor);
-        [visitor.result[0], visitor.result[1]]
+    pub fn dependent_blocks(
+        &self,
+        txn: &dyn Transaction,
+        block: &BlockEnum,
+    ) -> (BlockHash, BlockHash) {
+        DependentBlocksFinder::new(self, txn).find_dependent_blocks(block)
     }
 
-    pub fn could_fit(&self, txn: &dyn Transaction, block: &dyn Block) -> bool {
-        let dependents = self.dependent_blocks(txn, block);
-        dependents
-            .iter()
-            .all(|dep| dep.is_zero() || self.store.block().exists(txn, dep))
+    pub fn could_fit(&self, txn: &dyn Transaction, block: &BlockEnum) -> bool {
+        let (first, second) = self.dependent_blocks(txn, block);
+        self.is_dependency_satisfied(txn, &first) && self.is_dependency_satisfied(txn, &second)
     }
 
-    pub fn dependents_confirmed(&self, txn: &dyn Transaction, block: &dyn Block) -> bool {
-        let dependencies = self.dependent_blocks(txn, block);
-        dependencies.iter().all(|dep| {
-            if !dep.is_zero() {
-                self.block_confirmed(txn, dep)
-            } else {
-                true
-            }
-        })
+    fn is_dependency_satisfied(&self, txn: &dyn Transaction, dependency: &BlockHash) -> bool {
+        dependency.is_zero() || self.store.block().exists(txn, dependency)
+    }
+
+    pub fn dependents_confirmed(&self, txn: &dyn Transaction, block: &BlockEnum) -> bool {
+        let (first, second) = self.dependent_blocks(txn, block);
+        self.is_dependency_confirmed(txn, &first) && self.is_dependency_confirmed(txn, &second)
+    }
+
+    fn is_dependency_confirmed(&self, txn: &dyn Transaction, dependency: &BlockHash) -> bool {
+        if !dependency.is_zero() {
+            self.block_confirmed(txn, dependency)
+        } else {
+            true
+        }
     }
 
     /// Rollback blocks until `block' doesn't exist or it tries to penetrate the confirmation height

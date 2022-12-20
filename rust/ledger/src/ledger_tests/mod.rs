@@ -342,7 +342,7 @@ mod dependents_confirmed {
 
         assert_eq!(
             ctx.ledger
-                .dependents_confirmed(txn.txn(), DEV_GENESIS.read().unwrap().deref().deref()),
+                .dependents_confirmed(txn.txn(), &DEV_GENESIS.read().unwrap()),
             true
         );
     }
@@ -360,11 +360,7 @@ mod dependents_confirmed {
             .build();
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
 
-        assert_eq!(
-            ctx.ledger
-                .dependents_confirmed(txn.txn(), send.deref().deref()),
-            true
-        );
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &send), true);
     }
 
     #[test]
@@ -378,11 +374,7 @@ mod dependents_confirmed {
         let mut send2 = ctx.genesis_block_factory().send(txn.txn()).build();
         ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
-        assert_eq!(
-            ctx.ledger
-                .dependents_confirmed(txn.txn(), send2.deref().deref()),
-            false
-        );
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &send2), false);
     }
 
     #[test]
@@ -401,11 +393,7 @@ mod dependents_confirmed {
         let mut open = destination.open(txn.txn(), send.hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-        assert_eq!(
-            ctx.ledger
-                .dependents_confirmed(txn.txn(), open.deref().deref()),
-            false
-        );
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &open), false);
     }
 
     #[test]
@@ -425,11 +413,7 @@ mod dependents_confirmed {
         let mut open = destination.open(txn.txn(), send.hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
 
-        assert_eq!(
-            ctx.ledger
-                .dependents_confirmed(txn.txn(), open.deref().deref()),
-            true
-        );
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &open), true);
     }
 
     #[test]
@@ -461,11 +445,7 @@ mod dependents_confirmed {
         let mut receive = destination.receive(txn.txn(), send2.hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-        assert_eq!(
-            ctx.ledger
-                .dependents_confirmed(txn.txn(), receive.deref().deref()),
-            false
-        );
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive), false);
     }
 
     #[test]
@@ -497,11 +477,7 @@ mod dependents_confirmed {
         let mut receive = destination.receive(txn.txn(), send2.hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-        assert_eq!(
-            ctx.ledger
-                .dependents_confirmed(txn.txn(), receive.deref().deref()),
-            false
-        );
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive), false);
     }
 
     #[test]
@@ -534,11 +510,7 @@ mod dependents_confirmed {
         let mut receive = destination.receive(txn.txn(), send2.hash()).build();
         ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-        assert_eq!(
-            ctx.ledger
-                .dependents_confirmed(txn.txn(), receive.deref().deref()),
-            true
-        );
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive), true);
     }
 
     #[test]
@@ -574,11 +546,7 @@ mod dependents_confirmed {
             .link(send1.hash())
             .sign(&destination.key)
             .build();
-        assert_eq!(
-            ctx.ledger
-                .dependents_confirmed(txn.txn(), receive1.deref().deref()),
-            true
-        );
+        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive1), true);
     }
 }
 
@@ -592,7 +560,7 @@ mod could_fit {
         let ctx = LedgerContext::empty();
         let txn = ctx.ledger.read_txn();
         let change = ctx.genesis_block_factory().legacy_change(txn.txn()).build();
-        assert!(ctx.ledger.could_fit(txn.txn(), change.deref().deref()));
+        assert!(ctx.ledger.could_fit(txn.txn(), &change));
     }
 
     #[test]
@@ -600,7 +568,7 @@ mod could_fit {
         let ctx = LedgerContext::empty();
         let txn = ctx.ledger.read_txn();
         let change2 = ctx.genesis_block_factory().change(txn.txn()).build();
-        assert!(ctx.ledger.could_fit(txn.txn(), change2.deref().deref()));
+        assert!(ctx.ledger.could_fit(txn.txn(), &change2));
     }
 
     #[test]
@@ -616,7 +584,7 @@ mod could_fit {
             .previous(unknown_previous.hash())
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), send.deref().deref()), false);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), &send), false);
     }
 
     #[test]
@@ -635,10 +603,8 @@ mod could_fit {
             .previous(known_previous.hash())
             .build();
 
-        assert!(ctx
-            .ledger
-            .could_fit(txn.txn(), known_previous.deref().deref()));
-        assert!(ctx.ledger.could_fit(txn.txn(), send.deref().deref()));
+        assert!(ctx.ledger.could_fit(txn.txn(), &known_previous));
+        assert!(ctx.ledger.could_fit(txn.txn(), &send));
     }
 
     #[test]
@@ -663,7 +629,7 @@ mod could_fit {
             .sign(&destination.key)
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), open.deref().deref()), false);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), &open), false);
     }
 
     #[test]
@@ -680,7 +646,7 @@ mod could_fit {
 
         let open = destination.legacy_open(unknown_send.hash()).build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), open.deref().deref()), false);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), &open), false);
     }
 
     #[test]
@@ -698,7 +664,7 @@ mod could_fit {
 
         let open = destination.open(txn.txn(), send.hash()).build();
 
-        assert!(ctx.ledger.could_fit(txn.txn(), open.deref().deref()));
+        assert!(ctx.ledger.could_fit(txn.txn(), &open));
     }
 
     #[test]
@@ -716,7 +682,7 @@ mod could_fit {
 
         let open = destination.legacy_open(send.hash()).build();
 
-        assert!(ctx.ledger.could_fit(txn.txn(), open.deref().deref()));
+        assert!(ctx.ledger.could_fit(txn.txn(), &open));
     }
 
     #[test]
@@ -738,10 +704,7 @@ mod could_fit {
             .legacy_receive(txn.txn(), unknown_send.hash())
             .build();
 
-        assert_eq!(
-            ctx.ledger.could_fit(txn.txn(), receive.deref().deref()),
-            false
-        );
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), false);
     }
 
     #[test]
@@ -770,10 +733,7 @@ mod could_fit {
             .sign(&destination.key)
             .build();
 
-        assert_eq!(
-            ctx.ledger.could_fit(txn.txn(), receive.deref().deref()),
-            false
-        );
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), false);
     }
 
     #[test]
@@ -798,10 +758,7 @@ mod could_fit {
 
         let receive = destination.legacy_receive(txn.txn(), send2.hash()).build();
 
-        assert_eq!(
-            ctx.ledger.could_fit(txn.txn(), receive.deref().deref()),
-            true
-        );
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), true);
     }
 
     #[test]
@@ -822,10 +779,7 @@ mod could_fit {
 
         let receive = destination.receive(txn.txn(), send2.hash()).build();
 
-        assert_eq!(
-            ctx.ledger.could_fit(txn.txn(), receive.deref().deref()),
-            true
-        );
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), true);
     }
 
     #[test]
@@ -845,10 +799,7 @@ mod could_fit {
             .sign(&genesis.key)
             .build();
 
-        assert_eq!(
-            ctx.ledger.could_fit(txn.txn(), epoch.deref().deref()),
-            false
-        );
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), &epoch), false);
     }
 
     #[test]
@@ -858,7 +809,7 @@ mod could_fit {
 
         let epoch = ctx.genesis_block_factory().epoch_v1(txn.txn()).build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), epoch.deref().deref()), true);
+        assert_eq!(ctx.ledger.could_fit(txn.txn(), &epoch), true);
     }
 }
 

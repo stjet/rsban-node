@@ -122,6 +122,8 @@ impl TryFrom<&LedgerConstantsDto> for LedgerConstants {
             Link::from_bytes(value.epoch_2_link),
         );
 
+        let genesis = unsafe { &*value.genesis }.block.clone();
+        let genesis_account = genesis.read().unwrap().account();
         let ledger = LedgerConstants {
             work: (&value.work).into(),
             zero_key: KeyPair::from_priv_key_bytes(&value.priv_key)?,
@@ -132,7 +134,8 @@ impl TryFrom<&LedgerConstantsDto> for LedgerConstants {
             nano_beta_genesis: unsafe { &*value.nano_beta_genesis }.block.clone(),
             nano_live_genesis: unsafe { &*value.nano_live_genesis }.block.clone(),
             nano_test_genesis: unsafe { &*value.nano_test_genesis }.block.clone(),
-            genesis: unsafe { &*value.genesis }.block.clone(),
+            genesis_account,
+            genesis,
             genesis_amount: Amount::from_be_bytes(value.genesis_amount),
             burn_account: Account::from_bytes(value.burn_account),
             nano_dev_final_votes_canary_account: Account::from_bytes(

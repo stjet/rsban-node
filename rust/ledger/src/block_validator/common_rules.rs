@@ -27,7 +27,7 @@ impl<'a> BlockValidator<'a> {
     }
 
     pub(crate) fn ensure_account_exists_for_none_open_block(&self) -> Result<(), ProcessResult> {
-        if !self.block.is_open() && self.old_account_info.is_none() {
+        if !self.block.is_open() && self.is_new_account() {
             Err(ProcessResult::GapPrevious)
         } else {
             Ok(())

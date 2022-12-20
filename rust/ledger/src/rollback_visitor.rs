@@ -2,8 +2,8 @@ use std::sync::{Arc, RwLock};
 
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash,
-    BlockSubType, BlockType, ChangeBlock, Epoch, OpenBlock, PendingInfo, PendingKey, ReceiveBlock,
-    SendBlock, StateBlock,
+    BlockSubType, ChangeBlock, Epoch, OpenBlock, PendingInfo, PendingKey, ReceiveBlock, SendBlock,
+    StateBlock,
 };
 use rsnano_store_traits::WriteTransaction;
 
@@ -170,47 +170,33 @@ impl<'a> BlockRollbackPerformer<'a> {
     ) -> anyhow::Result<()> {
         let previous_rep = self.get_previous_representative(block)?;
         let previous_balance = self.ledger.balance(self.txn.txn(), &block.previous());
-        let is_send = state.balance() < previous_balance;
+        let is_send = block.balance() < previous_balance;
         if let Some(previous_rep) = previous_rep {
             self.roll_back_change_in_representative_cache(
                 &state.mandatory_representative(),
-                &state.balance(),
+                &block.balance(),
                 &previous_rep,
                 &previous_balance,
             );
         } else {
             self.roll_back_receive_in_representative_cache(
                 &state.mandatory_representative(),
-                state.balance(),
+                block.balance(),
             )
         }
 
-        let current_account_info = self.load_account(&state.account())?;
+        let current_account_info = self.load_account(&block.account())?;
 
         if is_send {
-            let key = PendingKey::new(state.link().into(), state.hash());
+            let key = PendingKey::new(block.link().into(), block.hash());
             while !self.ledger.store.pending().exists(self.txn.txn(), &key) {
-                let latest = self.latest_block_for_account(&state.link().into())?;
+                let latest = self.latest_block_for_account(&block.link().into())?;
                 self.recurse_roll_back(&latest)?;
             }
             self.ledger.store.pending().del(self.txn, &key);
             self.ledger.observer.block_rolled_back(BlockSubType::Send);
-        } else if !state.link().is_zero() && !self.ledger.is_epoch_link(&state.link()) {
-            // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
-            let source_account = self
-                .ledger
-                .account(self.txn.txn(), &state.link().into())
-                .unwrap_or_default();
-            let pending_info = PendingInfo::new(
-                source_account,
-                state.balance() - previous_balance,
-                state.sideband().unwrap().source_epoch,
-            );
-            self.ledger.store.pending().put(
-                self.txn,
-                &PendingKey::new(state.account(), state.link().into()),
-                &pending_info,
-            );
+        } else if !block.link().is_zero() && !self.ledger.is_epoch_link(&block.link()) {
+            self.add_pending_receive(block, previous_balance);
             self.ledger
                 .observer
                 .block_rolled_back(BlockSubType::Receive);
@@ -221,7 +207,7 @@ impl<'a> BlockRollbackPerformer<'a> {
 
         self.ledger.update_account(
             self.txn,
-            &state.account(),
+            &block.account(),
             &current_account_info,
             &previous_account_info,
         );
@@ -229,30 +215,50 @@ impl<'a> BlockRollbackPerformer<'a> {
         if block.is_open() {
             self.ledger.observer.block_rolled_back(BlockSubType::Open);
         } else {
-            let previous = self.load_block(&state.previous())?;
+            let previous = self.load_block(&block.previous())?;
 
             self.ledger
                 .store
                 .block()
-                .successor_clear(self.txn, &state.previous());
+                .successor_clear(self.txn, &block.previous());
 
-            match previous.block_type() {
-                BlockType::Invalid | BlockType::NotABlock => unreachable!(),
-                BlockType::LegacySend
-                | BlockType::LegacyReceive
-                | BlockType::LegacyOpen
-                | BlockType::LegacyChange => {
-                    self.ledger
-                        .store
-                        .frontier()
-                        .put(self.txn, &state.previous(), &state.account());
-                }
-                BlockType::State => {}
-            }
+            let account = &block.account();
+            self.add_frontier(&previous, account);
         }
 
-        self.ledger.store.block().del(self.txn, &state.hash());
+        self.ledger.store.block().del(self.txn, &block.hash());
         Ok(())
+    }
+
+    fn add_frontier(&mut self, block: &BlockEnum, account: &Account) {
+        match block {
+            BlockEnum::State(_) => {}
+            _ => self
+                .ledger
+                .store
+                .frontier()
+                .put(self.txn, &block.hash(), account),
+        }
+    }
+
+    fn add_pending_receive(&mut self, block: &BlockEnum, previous_balance: Amount) {
+        // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
+        let linked_account = self
+            .ledger
+            .account(self.txn.txn(), &block.link().into())
+            .unwrap_or_default();
+
+        let pending_info = PendingInfo::new(
+            linked_account,
+            block.balance() - previous_balance,
+            block.sideband().unwrap().source_epoch,
+        );
+
+        self.ledger.store.pending().put(
+            self.txn,
+            &PendingKey::new(block.account(), block.link().into()),
+            &pending_info,
+        );
     }
 
     /*************************************************************

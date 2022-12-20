@@ -141,8 +141,14 @@ impl<'a> BlockRollbackPerformer<'a> {
         let current_account_info = self.load_account(&account)?;
 
         let previous_representative = self.get_previous_representative(block)?.unwrap();
+        let previous_balance = self.ledger.balance(self.txn.txn(), &block.previous());
 
-        self.roll_back_change_in_representative_cache(change, previous_representative);
+        self.roll_back_change_in_representative_cache(
+            &change.mandatory_representative(),
+            &previous_balance,
+            &previous_representative,
+            &previous_balance,
+        );
 
         self.do_roll_back(
             block,
@@ -163,45 +169,29 @@ impl<'a> BlockRollbackPerformer<'a> {
         state: &StateBlock,
     ) -> anyhow::Result<()> {
         let previous_rep = self.get_previous_representative(block)?;
-
         let previous_balance = self.ledger.balance(self.txn.txn(), &block.previous());
         let is_send = state.balance() < previous_balance;
         if let Some(previous_rep) = previous_rep {
-            self.ledger.cache.rep_weights.representation_add_dual(
-                previous_rep,
-                previous_balance,
-                state.mandatory_representative(),
-                Amount::zero().wrapping_sub(state.balance()),
+            self.roll_back_change_in_representative_cache(
+                &state.mandatory_representative(),
+                &state.balance(),
+                &previous_rep,
+                &previous_balance,
             );
         } else {
-            // Add in amount delta only
-            self.ledger.cache.rep_weights.representation_add(
-                state.mandatory_representative(),
-                Amount::zero().wrapping_sub(state.balance()),
-            );
+            self.roll_back_receive_in_representative_cache(
+                &state.mandatory_representative(),
+                state.balance(),
+            )
         }
 
-        let (mut error, account_info) = match self
-            .ledger
-            .store
-            .account()
-            .get(self.txn.txn(), &state.account())
-        {
-            Some(info) => (false, info),
-            None => (true, AccountInfo::default()),
-        };
+        let current_account_info = self.load_account(&state.account())?;
 
         if is_send {
             let key = PendingKey::new(state.link().into(), state.hash());
-            while !error && !self.ledger.store.pending().exists(self.txn.txn(), &key) {
-                let latest = self
-                    .ledger
-                    .latest(self.txn.txn(), &state.link().into())
-                    .unwrap();
-                match self.ledger.rollback(self.txn, &latest) {
-                    Ok(mut list) => self.rolled_back.append(&mut list),
-                    Err(_) => error = true,
-                };
+            while !self.ledger.store.pending().exists(self.txn.txn(), &key) {
+                let latest = self.latest_block_for_account(&state.link().into())?;
+                self.recurse_roll_back(&latest)?;
             }
             self.ledger.store.pending().del(self.txn, &key);
             self.ledger.observer.block_rolled_back(BlockSubType::Send);
@@ -225,54 +215,39 @@ impl<'a> BlockRollbackPerformer<'a> {
                 .observer
                 .block_rolled_back(BlockSubType::Receive);
         }
-        assert!(!error);
-        let previous_version = self
-            .ledger
-            .store
-            .block()
-            .version(self.txn.txn(), &state.previous());
 
-        let new_info = AccountInfo {
-            head: state.previous(),
-            representative: previous_rep.unwrap_or_default(),
-            open_block: account_info.open_block,
-            balance: previous_balance,
-            modified: seconds_since_epoch(),
-            block_count: account_info.block_count - 1,
-            epoch: previous_version,
-        };
+        let previous_account_info =
+            self.previous_account_info(block, &current_account_info, previous_rep);
 
-        self.ledger
-            .update_account(self.txn, &state.account(), &account_info, &new_info);
+        self.ledger.update_account(
+            self.txn,
+            &state.account(),
+            &current_account_info,
+            &previous_account_info,
+        );
 
-        match self
-            .ledger
-            .store
-            .block()
-            .get(self.txn.txn(), &state.previous())
-        {
-            Some(previous) => {
-                self.ledger
-                    .store
-                    .block()
-                    .successor_clear(self.txn, &state.previous());
-                match previous.block_type() {
-                    BlockType::Invalid | BlockType::NotABlock => unreachable!(),
-                    BlockType::LegacySend
-                    | BlockType::LegacyReceive
-                    | BlockType::LegacyOpen
-                    | BlockType::LegacyChange => {
-                        self.ledger.store.frontier().put(
-                            self.txn,
-                            &state.previous(),
-                            &state.account(),
-                        );
-                    }
-                    BlockType::State => {}
+        if block.is_open() {
+            self.ledger.observer.block_rolled_back(BlockSubType::Open);
+        } else {
+            let previous = self.load_block(&state.previous())?;
+
+            self.ledger
+                .store
+                .block()
+                .successor_clear(self.txn, &state.previous());
+
+            match previous.block_type() {
+                BlockType::Invalid | BlockType::NotABlock => unreachable!(),
+                BlockType::LegacySend
+                | BlockType::LegacyReceive
+                | BlockType::LegacyOpen
+                | BlockType::LegacyChange => {
+                    self.ledger
+                        .store
+                        .frontier()
+                        .put(self.txn, &state.previous(), &state.account());
                 }
-            }
-            None => {
-                self.ledger.observer.block_rolled_back(BlockSubType::Open);
+                BlockType::State => {}
             }
         }
 
@@ -300,7 +275,7 @@ impl<'a> BlockRollbackPerformer<'a> {
                 return Ok(info);
             }
 
-            self.recurse_roll_back(&self.latest_block_for_destination(block)?)?;
+            self.recurse_roll_back(&self.latest_block_for_account(&block.hashables.destination)?)?;
         }
     }
 
@@ -310,9 +285,9 @@ impl<'a> BlockRollbackPerformer<'a> {
         Ok(())
     }
 
-    fn latest_block_for_destination(&self, block: &SendBlock) -> anyhow::Result<BlockHash> {
+    fn latest_block_for_account(&self, account: &Account) -> anyhow::Result<BlockHash> {
         self.ledger
-            .latest(self.txn.txn(), &block.hashables.destination)
+            .latest(self.txn.txn(), account)
             .ok_or_else(|| anyhow!("no latest block found"))
     }
 
@@ -338,16 +313,16 @@ impl<'a> BlockRollbackPerformer<'a> {
 
     fn roll_back_change_in_representative_cache(
         &self,
-        change: &ChangeBlock,
-        previous_representative: Account,
+        current_representative: &Account,
+        current_balance: &Amount,
+        previous_representative: &Account,
+        previous_balance: &Amount,
     ) {
-        let previous_balance = self.ledger.balance(self.txn.txn(), &change.previous());
-
         self.ledger.cache.rep_weights.representation_add_dual(
-            change.mandatory_representative(),
-            Amount::zero().wrapping_sub(previous_balance),
-            previous_representative,
-            previous_balance,
+            *current_representative,
+            Amount::zero().wrapping_sub(*current_balance),
+            *previous_representative,
+            *previous_balance,
         );
     }
 
@@ -413,7 +388,7 @@ impl<'a> BlockRollbackPerformer<'a> {
         current_info: &AccountInfo,
         previous_rep: Option<Account>,
     ) -> AccountInfo {
-        if block.block_type() == BlockType::LegacyOpen {
+        if block.previous().is_zero() {
             Default::default()
         } else {
             AccountInfo {
@@ -423,7 +398,7 @@ impl<'a> BlockRollbackPerformer<'a> {
                 balance: self.ledger.balance(self.txn.txn(), &block.previous()),
                 modified: seconds_since_epoch(),
                 block_count: current_info.block_count - 1,
-                epoch: Epoch::Epoch0,
+                epoch: self.get_block_version(&block.previous()),
             }
         }
     }
@@ -459,5 +434,12 @@ impl<'a> BlockRollbackPerformer<'a> {
             None
         };
         Ok(previous_rep)
+    }
+
+    fn get_block_version(&self, block_hash: &BlockHash) -> Epoch {
+        self.ledger
+            .store
+            .block()
+            .version(self.txn.txn(), block_hash)
     }
 }

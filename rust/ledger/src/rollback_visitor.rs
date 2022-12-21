@@ -43,12 +43,13 @@ impl<'a> BlockRollbackPerformer<'a> {
         block: &BlockEnum,
         send: &SendBlock,
     ) -> anyhow::Result<()> {
+        let pending_key = send.pending_key();
         let pending_info =
-            self.roll_back_destination_account_until_send_block_is_unreceived(send)?;
+            self.roll_back_destination_account_until_send_block_is_unreceived(&pending_key)?;
 
         let account = &pending_info.source;
         let current_account_info = self.load_account(account)?;
-        self.delete_pending(send);
+        self.ledger.store.pending().del(self.txn, &pending_key);
 
         self.roll_back_send_in_representative_cache(
             &current_account_info.representative,
@@ -189,10 +190,7 @@ impl<'a> BlockRollbackPerformer<'a> {
 
         if is_send {
             let key = PendingKey::new(block.link().into(), block.hash());
-            while !self.ledger.store.pending().exists(self.txn.txn(), &key) {
-                let latest = self.latest_block_for_account(&block.link().into())?;
-                self.recurse_roll_back(&latest)?;
-            }
+            self.roll_back_destination_account_until_send_block_is_unreceived(&key)?;
             self.ledger.store.pending().del(self.txn, &key);
             self.ledger.observer.block_rolled_back(BlockSubType::Send);
         } else if !block.link().is_zero() && !self.ledger.is_epoch_link(&block.link()) {
@@ -222,13 +220,16 @@ impl<'a> BlockRollbackPerformer<'a> {
                 .block()
                 .successor_clear(self.txn, &block.previous());
 
-            let account = &block.account();
-            self.add_frontier(&previous, account);
+            self.add_frontier(&previous, &block.account());
         }
 
         self.ledger.store.block().del(self.txn, &block.hash());
         Ok(())
     }
+
+    /*************************************************************
+     * Helper Functions
+     *************************************************************/
 
     fn add_frontier(&mut self, block: &BlockEnum, account: &Account) {
         match block {
@@ -261,27 +262,16 @@ impl<'a> BlockRollbackPerformer<'a> {
         );
     }
 
-    /*************************************************************
-     * Helper Functions
-     *************************************************************/
-
-    fn load_pending_info_for_send_block(&self, block: &SendBlock) -> Option<PendingInfo> {
-        self.ledger
-            .store
-            .pending()
-            .get(self.txn.txn(), &block.pending_key())
-    }
-
     fn roll_back_destination_account_until_send_block_is_unreceived(
         &mut self,
-        block: &SendBlock,
+        pending_key: &PendingKey,
     ) -> anyhow::Result<PendingInfo> {
         loop {
-            if let Some(info) = self.load_pending_info_for_send_block(block) {
+            if let Some(info) = self.ledger.store.pending().get(self.txn.txn(), pending_key) {
                 return Ok(info);
             }
 
-            self.recurse_roll_back(&self.latest_block_for_account(&block.hashables.destination)?)?;
+            self.recurse_roll_back(&self.latest_block_for_account(&pending_key.account)?)?;
         }
     }
 
@@ -379,13 +369,6 @@ impl<'a> BlockRollbackPerformer<'a> {
                 .block()
                 .successor_clear(self.txn, &block.previous());
         }
-    }
-
-    fn delete_pending(&mut self, block: &SendBlock) {
-        self.ledger
-            .store
-            .pending()
-            .del(self.txn, &block.pending_key());
     }
 
     fn previous_account_info(

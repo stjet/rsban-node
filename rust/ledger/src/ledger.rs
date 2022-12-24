@@ -52,6 +52,7 @@ pub enum ProcessResult {
 pub trait LedgerObserver: Send + Sync {
     fn blocks_cemented(&self, _cemented_count: u64) {}
     fn block_rolled_back(&self, _block_type: BlockSubType) {}
+    fn block_rolled_back2(&self, _block: &BlockEnum, _is_epoch: bool) {}
     fn block_added(&self, _block: &BlockEnum, _is_epoch: bool) {}
 }
 

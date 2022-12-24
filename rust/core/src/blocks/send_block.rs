@@ -160,6 +160,10 @@ impl SendBlock {
     pub fn pending_key(&self) -> PendingKey {
         PendingKey::new(self.hashables.destination, self.hash())
     }
+
+    pub fn mandatory_destination(&self) -> &Account {
+        &self.hashables.destination
+    }
 }
 
 pub fn valid_send_block_predecessor(block_type: BlockType) -> bool {

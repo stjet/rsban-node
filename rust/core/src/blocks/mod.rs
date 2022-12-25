@@ -218,6 +218,13 @@ impl BlockEnum {
             _ => false,
         }
     }
+
+    pub fn is_legacy(&self) -> bool {
+        match self {
+            BlockEnum::State(_) => false,
+            _ => true,
+        }
+    }
 }
 
 impl FullHash for BlockEnum {

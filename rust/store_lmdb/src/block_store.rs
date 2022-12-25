@@ -10,7 +10,7 @@ use rsnano_core::{
 use rsnano_store_traits::{
     BlockIterator, BlockStore, ReadTransaction, Transaction, WriteTransaction,
 };
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 pub struct LmdbBlockStore {
     env: Arc<LmdbEnv>,
@@ -166,20 +166,9 @@ impl BlockStore for LmdbBlockStore {
         count(txn, self.database)
     }
 
-    fn account_calculated(&self, block: &dyn Block) -> Account {
-        let result = if block.account().is_zero() {
-            block.sideband().unwrap().account
-        } else {
-            block.account()
-        };
-
-        debug_assert!(!result.is_zero());
-        result
-    }
-
     fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
         let block = self.get(txn, hash)?;
-        Some(self.account_calculated(block.deref().deref()))
+        Some(block.account_calculated())
     }
 
     fn begin(&self, transaction: &dyn Transaction) -> BlockIterator {

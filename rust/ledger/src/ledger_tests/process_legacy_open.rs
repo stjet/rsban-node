@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB,
     ledger_tests::{setup_legacy_open_block, setup_legacy_send_block, LedgerContext},
@@ -51,10 +49,7 @@ fn update_block_amount() {
         Some(open.expected_balance)
     );
     assert_eq!(
-        ctx.ledger
-            .store
-            .block()
-            .account_calculated(open.open_block.deref().deref()),
+        open.open_block.account_calculated(),
         open.destination.account()
     );
 }

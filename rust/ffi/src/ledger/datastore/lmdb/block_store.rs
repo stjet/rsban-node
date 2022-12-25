@@ -1,6 +1,5 @@
 use std::{
     ffi::c_void,
-    ops::Deref,
     ptr, slice,
     sync::{Arc, RwLock},
 };
@@ -141,13 +140,11 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_count(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_block_store_account_calculated(
-    handle: *mut LmdbBlockStoreHandle,
+    _handle: *mut LmdbBlockStoreHandle,
     block: *const BlockHandle,
     result: *mut u8,
 ) {
-    let account = (*handle)
-        .0
-        .account_calculated((*block).block.read().unwrap().deref().deref());
+    let account = (*block).block.read().unwrap().account_calculated();
     copy_account_bytes(account, result);
 }
 

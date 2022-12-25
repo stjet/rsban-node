@@ -749,7 +749,7 @@ impl Ledger {
         txn: &mut dyn WriteTransaction,
         block: &BlockHash,
     ) -> anyhow::Result<Vec<BlockEnum>> {
-        BlockRollbackPerformer::new(self, txn).roll_back_hash(block)
+        BlockRollbackPerformer::new(self, txn).roll_back_block_hash(block)
     }
 
     /// Returns the latest block with representative information

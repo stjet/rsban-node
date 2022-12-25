@@ -225,6 +225,16 @@ impl BlockEnum {
             _ => true,
         }
     }
+
+    pub fn account_calculated(&self) -> Account {
+        let result = if self.account().is_zero() {
+            self.sideband().unwrap().account
+        } else {
+            self.account()
+        };
+
+        result
+    }
 }
 
 impl FullHash for BlockEnum {

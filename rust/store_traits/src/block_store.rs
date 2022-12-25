@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockWithSideband, Epoch};
+use rsnano_core::{Account, Amount, BlockEnum, BlockHash, BlockWithSideband, Epoch};
 
 use crate::{DbIterator, ReadTransaction, Transaction, WriteTransaction};
 
@@ -13,7 +13,6 @@ pub trait BlockStore {
     fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum>;
     fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash);
     fn count(&self, txn: &dyn Transaction) -> u64;
-    fn account_calculated(&self, block: &dyn Block) -> Account;
     fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account>;
     fn begin(&self, txn: &dyn Transaction) -> BlockIterator;
     fn begin_at_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockIterator;

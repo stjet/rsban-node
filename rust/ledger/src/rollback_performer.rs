@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType,
-    Epoch, PendingInfo, PendingKey,
+    ConfirmationHeightInfo, Epoch, PendingInfo, PendingKey,
 };
 use rsnano_store_traits::WriteTransaction;
 
@@ -23,57 +23,65 @@ impl<'a> BlockRollbackPerformer<'a> {
         }
     }
 
-    pub(crate) fn roll_back_hash(
+    pub(crate) fn roll_back_block_hash(
         mut self,
         block_hash: &BlockHash,
     ) -> anyhow::Result<Vec<BlockEnum>> {
-        debug_assert!(self.ledger.store.block().exists(self.txn.txn(), block_hash));
-        let account = self.ledger.account(self.txn.txn(), block_hash).unwrap();
-        let block_account_height = self
-            .ledger
-            .store
-            .block()
-            .account_height(self.txn.txn(), block_hash);
-        while self.ledger.store.block().exists(self.txn.txn(), block_hash) {
-            let conf_height = self
-                .ledger
-                .store
-                .confirmation_height()
-                .get(self.txn.txn(), &account)
-                .unwrap_or_default();
-            if block_account_height > conf_height.height {
-                let account_info = self
-                    .ledger
-                    .store
-                    .account()
-                    .get(self.txn.txn(), &account)
-                    .unwrap();
-                let block = self
-                    .ledger
-                    .store
-                    .block()
-                    .get(self.txn.txn(), &account_info.head)
-                    .unwrap();
-                self.rolled_back.push(block.clone());
-                self.roll_back_block(&block)?;
-                self.ledger.cache.block_count.fetch_sub(1, Ordering::SeqCst);
-            } else {
-                bail!("account height was bigger than conf height")
-            }
+        let block = self.load_block(block_hash)?;
+        while self.block_exists(block_hash) {
+            self.ensure_block_is_not_confirmed(&block)?;
+            let head_block = self.load_account_head(&block)?;
+            self.roll_back_head_block(&head_block)?;
+            self.rolled_back.push(head_block.clone());
         }
 
         Ok(self.rolled_back)
     }
 
-    pub(crate) fn roll_back_block(&mut self, block: &BlockEnum) -> anyhow::Result<()> {
-        let account = self.get_account(block)?;
-        let current_account_info = self.load_account(&account);
-        let previous_representative = self.get_representative(&block.previous())?;
+    fn load_account_head(&self, block: &BlockEnum) -> anyhow::Result<BlockEnum> {
+        let account_info = self.get_account_info(block);
+        self.load_block(&account_info.head)
+    }
 
-        let previous = if block.previous().is_zero() {
+    fn get_account_info(&self, block: &BlockEnum) -> AccountInfo {
+        self.ledger
+            .store
+            .account()
+            .get(self.txn.txn(), &block.account_calculated())
+            .unwrap()
+    }
+
+    fn ensure_block_is_not_confirmed(&self, block: &BlockEnum) -> anyhow::Result<()> {
+        let conf_height = self.account_confirmation_height(block);
+
+        if block.sideband().unwrap().height <= conf_height.height {
+            bail!("Only unconfirmed blocks can be rolled back")
+        }
+
+        Ok(())
+    }
+
+    fn account_confirmation_height(&self, block: &BlockEnum) -> ConfirmationHeightInfo {
+        self.ledger
+            .store
+            .confirmation_height()
+            .get(self.txn.txn(), &block.account_calculated())
+            .unwrap_or_default()
+    }
+
+    fn block_exists(&self, block_hash: &BlockHash) -> bool {
+        self.ledger.store.block().exists(self.txn.txn(), block_hash)
+    }
+
+    pub(crate) fn roll_back_head_block(&mut self, head_block: &BlockEnum) -> anyhow::Result<()> {
+        let account = self.get_account(head_block)?;
+        let current_account_info = self.load_account(&account);
+        let previous_representative = self.get_representative(&head_block.previous())?;
+
+        let previous = if head_block.previous().is_zero() {
             None
         } else {
-            Some(self.load_block(&block.previous())?)
+            Some(self.load_block(&head_block.previous())?)
         };
 
         let previous_balance = previous
@@ -84,12 +92,12 @@ impl<'a> BlockRollbackPerformer<'a> {
         let sub_type = if current_account_info.balance < previous_balance {
             BlockSubType::Send
         } else if current_account_info.balance > previous_balance {
-            if block.is_open() {
+            if head_block.is_open() {
                 BlockSubType::Open
             } else {
                 BlockSubType::Receive
             }
-        } else if self.ledger.is_epoch_link(&block.link()) {
+        } else if self.ledger.is_epoch_link(&head_block.link()) {
             BlockSubType::Epoch
         } else {
             BlockSubType::Change
@@ -97,17 +105,17 @@ impl<'a> BlockRollbackPerformer<'a> {
 
         match sub_type {
             BlockSubType::Send => {
-                let destination = block.destination().unwrap_or(block.link().into());
+                let destination = head_block.destination().unwrap_or(head_block.link().into());
                 self.roll_back_destination_account_until_send_block_is_unreceived(
                     destination,
-                    block.hash(),
+                    head_block.hash(),
                 )?;
 
-                let pending_key = PendingKey::new(destination, block.hash());
+                let pending_key = PendingKey::new(destination, head_block.hash());
                 self.ledger.store.pending().del(self.txn, &pending_key);
             }
             BlockSubType::Receive | BlockSubType::Open => {
-                let source_hash = block.source().unwrap_or(block.link().into());
+                let source_hash = head_block.source().unwrap_or(head_block.link().into());
                 // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
                 let linked_account = self
                     .ledger
@@ -120,7 +128,7 @@ impl<'a> BlockRollbackPerformer<'a> {
                     &PendingInfo::new(
                         linked_account,
                         current_account_info.balance - previous_balance,
-                        block.sideband().unwrap().source_epoch,
+                        head_block.sideband().unwrap().source_epoch,
                     ),
                 );
             }
@@ -128,7 +136,7 @@ impl<'a> BlockRollbackPerformer<'a> {
         }
 
         let previous_account_info =
-            self.previous_account_info(block, &current_account_info, previous_representative);
+            self.previous_account_info(head_block, &current_account_info, previous_representative);
 
         self.ledger.update_account(
             self.txn,
@@ -137,10 +145,13 @@ impl<'a> BlockRollbackPerformer<'a> {
             &previous_account_info,
         );
 
-        self.ledger.store.block().del(self.txn, &block.hash());
+        self.ledger.store.block().del(self.txn, &head_block.hash());
 
-        if block.is_legacy() {
-            self.ledger.store.frontier().del(self.txn, &block.hash());
+        if head_block.is_legacy() {
+            self.ledger
+                .store
+                .frontier()
+                .del(self.txn, &head_block.hash());
             if let Some(previous) = &previous {
                 self.ledger
                     .store
@@ -163,6 +174,7 @@ impl<'a> BlockRollbackPerformer<'a> {
             previous_balance,
         );
 
+        self.ledger.cache.block_count.fetch_sub(1, Ordering::SeqCst);
         self.ledger.observer.block_rolled_back(sub_type);
         Ok(())
     }

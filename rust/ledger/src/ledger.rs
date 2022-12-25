@@ -14,7 +14,7 @@ use std::{
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc, Mutex, RwLock,
+        Arc, Mutex,
     },
 };
 
@@ -748,7 +748,7 @@ impl Ledger {
         &self,
         txn: &mut dyn WriteTransaction,
         block: &BlockHash,
-    ) -> anyhow::Result<Vec<Arc<RwLock<BlockEnum>>>> {
+    ) -> anyhow::Result<Vec<BlockEnum>> {
         BlockRollbackPerformer::new(self, txn).roll_back_hash(block)
     }
 

@@ -1,4 +1,4 @@
-use std::sync::{atomic::Ordering, Arc, RwLock};
+use std::sync::atomic::Ordering;
 
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType,
@@ -11,7 +11,7 @@ use super::Ledger;
 pub(crate) struct BlockRollbackPerformer<'a> {
     ledger: &'a Ledger,
     pub txn: &'a mut dyn WriteTransaction,
-    pub rolled_back: Vec<Arc<RwLock<BlockEnum>>>,
+    pub rolled_back: Vec<BlockEnum>,
 }
 
 impl<'a> BlockRollbackPerformer<'a> {
@@ -24,9 +24,9 @@ impl<'a> BlockRollbackPerformer<'a> {
     }
 
     pub(crate) fn roll_back_hash(
-        &mut self,
+        mut self,
         block_hash: &BlockHash,
-    ) -> anyhow::Result<Vec<Arc<RwLock<BlockEnum>>>> {
+    ) -> anyhow::Result<Vec<BlockEnum>> {
         debug_assert!(self.ledger.store.block().exists(self.txn.txn(), block_hash));
         let account = self.ledger.account(self.txn.txn(), block_hash).unwrap();
         let block_account_height = self
@@ -34,7 +34,6 @@ impl<'a> BlockRollbackPerformer<'a> {
             .store
             .block()
             .account_height(self.txn.txn(), block_hash);
-        let mut list = Vec::new();
         while self.ledger.store.block().exists(self.txn.txn(), block_hash) {
             let conf_height = self
                 .ledger
@@ -55,7 +54,7 @@ impl<'a> BlockRollbackPerformer<'a> {
                     .block()
                     .get(self.txn.txn(), &account_info.head)
                     .unwrap();
-                self.rolled_back.push(Arc::new(RwLock::new(block.clone())));
+                self.rolled_back.push(block.clone());
                 self.roll_back_block(&block)?;
                 self.ledger.cache.block_count.fetch_sub(1, Ordering::SeqCst);
             } else {
@@ -63,7 +62,7 @@ impl<'a> BlockRollbackPerformer<'a> {
             }
         }
 
-        Ok(list)
+        Ok(self.rolled_back)
     }
 
     pub(crate) fn roll_back_block(&mut self, block: &BlockEnum) -> anyhow::Result<()> {

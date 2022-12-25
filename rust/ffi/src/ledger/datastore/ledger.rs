@@ -646,7 +646,11 @@ pub unsafe extern "C" fn rsn_ledger_rollback(
         .0
         .rollback((*txn).as_write_txn(), &BlockHash::from_ptr(hash))
     {
-        Ok(block_list) => {
+        Ok(mut block_list) => {
+            let block_list = block_list
+                .drain(..)
+                .map(|b| Arc::new(RwLock::new(b)))
+                .collect();
             copy_block_array_dto(block_list, result);
             false
         }

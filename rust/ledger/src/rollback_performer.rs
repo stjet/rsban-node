@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{atomic::Ordering, Arc, RwLock};
 
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType,
@@ -11,32 +11,76 @@ use super::Ledger;
 pub(crate) struct BlockRollbackPerformer<'a> {
     ledger: &'a Ledger,
     pub txn: &'a mut dyn WriteTransaction,
-    pub rolled_back: &'a mut Vec<Arc<RwLock<BlockEnum>>>,
+    pub rolled_back: Vec<Arc<RwLock<BlockEnum>>>,
 }
 
 impl<'a> BlockRollbackPerformer<'a> {
-    pub(crate) fn new(
-        ledger: &'a Ledger,
-        txn: &'a mut dyn WriteTransaction,
-        list: &'a mut Vec<Arc<RwLock<BlockEnum>>>,
-    ) -> Self {
+    pub(crate) fn new(ledger: &'a Ledger, txn: &'a mut dyn WriteTransaction) -> Self {
         Self {
             ledger,
             txn,
-            rolled_back: list,
+            rolled_back: Vec::new(),
         }
     }
 
-    pub(crate) fn roll_back(&mut self, block: &BlockEnum) -> anyhow::Result<()> {
-        self.rollback_legacy_block(block)
+    pub(crate) fn roll_back_hash(
+        &mut self,
+        block_hash: &BlockHash,
+    ) -> anyhow::Result<Vec<Arc<RwLock<BlockEnum>>>> {
+        debug_assert!(self.ledger.store.block().exists(self.txn.txn(), block_hash));
+        let account = self.ledger.account(self.txn.txn(), block_hash).unwrap();
+        let block_account_height = self
+            .ledger
+            .store
+            .block()
+            .account_height(self.txn.txn(), block_hash);
+        let mut list = Vec::new();
+        while self.ledger.store.block().exists(self.txn.txn(), block_hash) {
+            let conf_height = self
+                .ledger
+                .store
+                .confirmation_height()
+                .get(self.txn.txn(), &account)
+                .unwrap_or_default();
+            if block_account_height > conf_height.height {
+                let account_info = self
+                    .ledger
+                    .store
+                    .account()
+                    .get(self.txn.txn(), &account)
+                    .unwrap();
+                let block = self
+                    .ledger
+                    .store
+                    .block()
+                    .get(self.txn.txn(), &account_info.head)
+                    .unwrap();
+                self.rolled_back.push(Arc::new(RwLock::new(block.clone())));
+                self.roll_back_block(&block)?;
+                self.ledger.cache.block_count.fetch_sub(1, Ordering::SeqCst);
+            } else {
+                bail!("account height was bigger than conf height")
+            }
+        }
+
+        Ok(list)
     }
 
-    pub(crate) fn rollback_legacy_block(&mut self, block: &BlockEnum) -> anyhow::Result<()> {
+    pub(crate) fn roll_back_block(&mut self, block: &BlockEnum) -> anyhow::Result<()> {
         let account = self.get_account(block)?;
-        let amount = self.get_amount(block)?;
         let current_account_info = self.load_account(&account);
         let previous_representative = self.get_representative(&block.previous())?;
-        let previous_balance = self.ledger.balance(self.txn.txn(), &block.previous());
+
+        let previous = if block.previous().is_zero() {
+            None
+        } else {
+            Some(self.load_block(&block.previous())?)
+        };
+
+        let previous_balance = previous
+            .as_ref()
+            .map(|b| b.balance_calculated())
+            .unwrap_or_default();
 
         let sub_type = if current_account_info.balance < previous_balance {
             BlockSubType::Send
@@ -52,34 +96,36 @@ impl<'a> BlockRollbackPerformer<'a> {
             BlockSubType::Change
         };
 
-        let destination = block.destination().unwrap_or(block.link().into());
-        if sub_type == BlockSubType::Send {
-            self.roll_back_destination_account_until_send_block_is_unreceived(
-                destination,
-                block.hash(),
-            )?;
+        match sub_type {
+            BlockSubType::Send => {
+                let destination = block.destination().unwrap_or(block.link().into());
+                self.roll_back_destination_account_until_send_block_is_unreceived(
+                    destination,
+                    block.hash(),
+                )?;
 
-            let pending_key = PendingKey::new(destination, block.hash());
-            self.ledger.store.pending().del(self.txn, &pending_key);
-        }
+                let pending_key = PendingKey::new(destination, block.hash());
+                self.ledger.store.pending().del(self.txn, &pending_key);
+            }
+            BlockSubType::Receive | BlockSubType::Open => {
+                let source_hash = block.source().unwrap_or(block.link().into());
+                // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
+                let linked_account = self
+                    .ledger
+                    .account(self.txn.txn(), &source_hash)
+                    .unwrap_or_default();
 
-        if sub_type == BlockSubType::Receive || sub_type == BlockSubType::Open {
-            let source_hash = block.source().unwrap_or(block.link().into());
-            // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
-            let linked_account = self
-                .ledger
-                .account(self.txn.txn(), &source_hash)
-                .unwrap_or_default();
-
-            self.ledger.store.pending().put(
-                self.txn,
-                &PendingKey::new(account, source_hash),
-                &PendingInfo::new(
-                    linked_account,
-                    amount,
-                    block.sideband().unwrap().source_epoch,
-                ),
-            );
+                self.ledger.store.pending().put(
+                    self.txn,
+                    &PendingKey::new(account, source_hash),
+                    &PendingInfo::new(
+                        linked_account,
+                        current_account_info.balance - previous_balance,
+                        block.sideband().unwrap().source_epoch,
+                    ),
+                );
+            }
+            _ => {}
         }
 
         let previous_account_info =
@@ -96,23 +142,19 @@ impl<'a> BlockRollbackPerformer<'a> {
 
         if block.is_legacy() {
             self.ledger.store.frontier().del(self.txn, &block.hash());
-        }
-
-        if !block.is_open() {
-            let previous = self.load_block(&block.previous())?;
-
-            if previous.is_legacy() {
-                // only update frontier for legacy blocks
+            if let Some(previous) = &previous {
                 self.ledger
                     .store
                     .frontier()
                     .put(self.txn, &previous.hash(), &account)
             }
+        }
 
+        if let Some(previous) = &previous {
             self.ledger
                 .store
                 .block()
-                .successor_clear(self.txn, &block.previous());
+                .successor_clear(self.txn, &previous.hash());
         }
 
         self.roll_back_representative_cache(
@@ -134,12 +176,6 @@ impl<'a> BlockRollbackPerformer<'a> {
         self.ledger
             .account(self.txn.txn(), &block.hash())
             .ok_or_else(|| anyhow!("account not found"))
-    }
-
-    fn get_amount(&self, block: &BlockEnum) -> anyhow::Result<Amount> {
-        self.ledger
-            .amount(self.txn.txn(), &block.hash())
-            .ok_or_else(|| anyhow!("amount not found"))
     }
 
     fn roll_back_destination_account_until_send_block_is_unreceived(

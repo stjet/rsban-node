@@ -749,39 +749,7 @@ impl Ledger {
         txn: &mut dyn WriteTransaction,
         block: &BlockHash,
     ) -> anyhow::Result<Vec<Arc<RwLock<BlockEnum>>>> {
-        debug_assert!(self.store.block().exists(txn.txn(), block));
-        let account = self.account(txn.txn(), block).unwrap();
-        let block_account_height = self.store.block().account_height(txn.txn(), block);
-        let mut list = Vec::new();
-        let mut rollback = BlockRollbackPerformer::new(self, txn, &mut list);
-        while self.store.block().exists(rollback.txn.txn(), block) {
-            let conf_height = self
-                .store
-                .confirmation_height()
-                .get(rollback.txn.txn(), &account)
-                .unwrap_or_default();
-            if block_account_height > conf_height.height {
-                let account_info = self
-                    .store
-                    .account()
-                    .get(rollback.txn.txn(), &account)
-                    .unwrap();
-                let block = self
-                    .store
-                    .block()
-                    .get(rollback.txn.txn(), &account_info.head)
-                    .unwrap();
-                rollback
-                    .rolled_back
-                    .push(Arc::new(RwLock::new(block.clone())));
-                rollback.roll_back(&block)?;
-                self.cache.block_count.fetch_sub(1, Ordering::SeqCst);
-            } else {
-                bail!("account height was bigger than conf height")
-            }
-        }
-
-        Ok(list)
+        BlockRollbackPerformer::new(self, txn).roll_back_hash(block)
     }
 
     /// Returns the latest block with representative information

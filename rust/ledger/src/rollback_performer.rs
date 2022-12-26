@@ -2,16 +2,36 @@ use std::sync::atomic::Ordering;
 
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType,
-    ConfirmationHeightInfo, Epoch, PendingInfo, PendingKey,
+    ConfirmationHeightInfo, Epoch, Epochs, PendingInfo, PendingKey,
 };
 use rsnano_store_traits::WriteTransaction;
 
 use super::Ledger;
 
+pub(crate) enum RollbackStep {
+    RollBackBlock(RollbackInstructions),
+    RequestDependencyRollback(BlockHash),
+}
+
+#[derive(Default)]
+pub(crate) struct RollbackInstructions {
+    block_hash: BlockHash,
+    account: Account,
+    remove_pending: Option<PendingKey>,
+    add_pending: Option<(PendingKey, PendingInfo)>,
+    set_account_info: AccountInfo,
+    old_account_info: AccountInfo,
+    delete_frontier: Option<BlockHash>,
+    add_frontier: Option<(BlockHash, Account)>,
+    clear_successor: Option<BlockHash>,
+}
+
 pub(crate) struct BlockRollbackPerformer<'a> {
     ledger: &'a Ledger,
     pub txn: &'a mut dyn WriteTransaction,
     pub rolled_back: Vec<BlockEnum>,
+
+    planner: RollbackPlanner<'a>,
 }
 
 impl<'a> BlockRollbackPerformer<'a> {
@@ -20,22 +40,86 @@ impl<'a> BlockRollbackPerformer<'a> {
             ledger,
             txn,
             rolled_back: Vec::new(),
+            planner: RollbackPlanner {
+                epochs: &ledger.constants.epochs,
+                account: Account::zero(),
+                current_account_info: Default::default(),
+                previous_representative: Default::default(),
+                previous: Default::default(),
+                linked_account: Account::zero(),
+                pending_receive: None,
+                latest_block_for_destination: None,
+            },
         }
     }
 
-    pub(crate) fn roll_back_block_hash(
-        mut self,
-        block_hash: &BlockHash,
-    ) -> anyhow::Result<Vec<BlockEnum>> {
+    pub(crate) fn roll_back(mut self, block_hash: &BlockHash) -> anyhow::Result<Vec<BlockEnum>> {
         let block = self.load_block(block_hash)?;
         while self.block_exists(block_hash) {
             self.ensure_block_is_not_confirmed(&block)?;
             let head_block = self.load_account_head(&block)?;
-            self.roll_back_head_block(&head_block)?;
-            self.rolled_back.push(head_block.clone());
+            self.planner.account = self.get_account(&head_block)?;
+            self.planner.current_account_info = self.load_account(&self.planner.account);
+            self.planner.previous_representative =
+                self.get_representative(&head_block.previous())?;
+
+            self.planner.previous = if head_block.previous().is_zero() {
+                None
+            } else {
+                Some(self.load_block(&head_block.previous())?)
+            };
+
+            self.planner.linked_account = self
+                .ledger
+                .account(self.txn.txn(), &head_block.source_or_link())
+                .unwrap_or_default();
+
+            self.planner.pending_receive = self.ledger.store.pending().get(
+                self.txn.txn(),
+                &PendingKey::new(head_block.destination_or_link(), head_block.hash()),
+            );
+            self.planner.latest_block_for_destination = self
+                .ledger
+                .latest(self.txn.txn(), &head_block.destination_or_link());
+
+            match self.roll_back_head_block(&head_block)? {
+                RollbackStep::RollBackBlock(instructions) => {
+                    self.apply(instructions);
+                    self.rolled_back.push(head_block.clone());
+                }
+                RollbackStep::RequestDependencyRollback(hash) => self.recurse_roll_back(&hash)?,
+            }
         }
 
         Ok(self.rolled_back)
+    }
+
+    fn apply(&mut self, instructions: RollbackInstructions) {
+        if let Some(pending_key) = instructions.remove_pending {
+            self.ledger.store.pending().del(self.txn, &pending_key);
+        }
+        if let Some((key, info)) = instructions.add_pending {
+            self.ledger.store.pending().put(self.txn, &key, &info);
+        }
+        self.ledger.update_account(
+            self.txn,
+            &instructions.account,
+            &instructions.old_account_info,
+            &instructions.set_account_info,
+        );
+        self.ledger
+            .store
+            .block()
+            .del(self.txn, &instructions.block_hash);
+        if let Some(hash) = instructions.delete_frontier {
+            self.ledger.store.frontier().del(self.txn, &hash);
+        }
+        if let Some((hash, account)) = instructions.add_frontier {
+            self.ledger.store.frontier().put(self.txn, &hash, &account)
+        }
+        if let Some(hash) = instructions.clear_successor {
+            self.ledger.store.block().successor_clear(self.txn, &hash);
+        }
     }
 
     fn load_account_head(&self, block: &BlockEnum) -> anyhow::Result<BlockEnum> {
@@ -73,31 +157,33 @@ impl<'a> BlockRollbackPerformer<'a> {
         self.ledger.store.block().exists(self.txn.txn(), block_hash)
     }
 
-    pub(crate) fn roll_back_head_block(&mut self, head_block: &BlockEnum) -> anyhow::Result<()> {
-        let account = self.get_account(head_block)?;
-        let current_account_info = self.load_account(&account);
-        let previous_representative = self.get_representative(&head_block.previous())?;
-
-        let previous = if head_block.previous().is_zero() {
-            None
-        } else {
-            Some(self.load_block(&head_block.previous())?)
+    pub(crate) fn roll_back_head_block(
+        &mut self,
+        head_block: &BlockEnum,
+    ) -> anyhow::Result<RollbackStep> {
+        let mut instructions = RollbackInstructions {
+            block_hash: head_block.hash(),
+            account: self.planner.account,
+            old_account_info: self.planner.current_account_info.clone(),
+            ..Default::default()
         };
 
-        let previous_balance = previous
+        let previous_balance = self
+            .planner
+            .previous
             .as_ref()
             .map(|b| b.balance_calculated())
             .unwrap_or_default();
 
-        let sub_type = if current_account_info.balance < previous_balance {
+        let sub_type = if self.planner.current_account_info.balance < previous_balance {
             BlockSubType::Send
-        } else if current_account_info.balance > previous_balance {
+        } else if self.planner.current_account_info.balance > previous_balance {
             if head_block.is_open() {
                 BlockSubType::Open
             } else {
                 BlockSubType::Receive
             }
-        } else if self.ledger.is_epoch_link(&head_block.link()) {
+        } else if self.planner.epochs.is_epoch_link(&head_block.link()) {
             BlockSubType::Epoch
         } else {
             BlockSubType::Change
@@ -105,78 +191,56 @@ impl<'a> BlockRollbackPerformer<'a> {
 
         match sub_type {
             BlockSubType::Send => {
-                let destination = head_block.destination().unwrap_or(head_block.link().into());
-                self.roll_back_destination_account_until_send_block_is_unreceived(
-                    destination,
-                    head_block.hash(),
-                )?;
-
-                let pending_key = PendingKey::new(destination, head_block.hash());
-                self.ledger.store.pending().del(self.txn, &pending_key);
+                let destination = head_block.destination_or_link();
+                match self.roll_back_destination_account_if_send_block_is_received()? {
+                    Some(step) => return Ok(step),
+                    None => {
+                        instructions.remove_pending =
+                            Some(PendingKey::new(destination, head_block.hash()));
+                    }
+                }
             }
             BlockSubType::Receive | BlockSubType::Open => {
-                let source_hash = head_block.source().unwrap_or(head_block.link().into());
+                let source_hash = head_block.source_or_link();
                 // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
-                let linked_account = self
-                    .ledger
-                    .account(self.txn.txn(), &source_hash)
-                    .unwrap_or_default();
 
-                self.ledger.store.pending().put(
-                    self.txn,
-                    &PendingKey::new(account, source_hash),
-                    &PendingInfo::new(
-                        linked_account,
-                        current_account_info.balance - previous_balance,
+                instructions.add_pending = Some((
+                    PendingKey::new(self.planner.account, source_hash),
+                    PendingInfo::new(
+                        self.planner.linked_account,
+                        self.planner.current_account_info.balance - previous_balance,
                         head_block.sideband().unwrap().source_epoch,
                     ),
-                );
+                ));
             }
             _ => {}
         }
 
-        let previous_account_info =
-            self.previous_account_info(head_block, &current_account_info, previous_representative);
-
-        self.ledger.update_account(
-            self.txn,
-            &account,
-            &current_account_info,
-            &previous_account_info,
+        instructions.set_account_info = self.previous_account_info(
+            head_block,
+            &self.planner.current_account_info,
+            self.planner.previous_representative,
         );
 
-        self.ledger.store.block().del(self.txn, &head_block.hash());
-
         if head_block.is_legacy() {
-            self.ledger
-                .store
-                .frontier()
-                .del(self.txn, &head_block.hash());
-            if let Some(previous) = &previous {
-                self.ledger
-                    .store
-                    .frontier()
-                    .put(self.txn, &previous.hash(), &account)
+            instructions.delete_frontier = Some(head_block.hash());
+            if let Some(previous) = &self.planner.previous {
+                instructions.add_frontier = Some((previous.hash(), self.planner.account));
             }
         }
 
-        if let Some(previous) = &previous {
-            self.ledger
-                .store
-                .block()
-                .successor_clear(self.txn, &previous.hash());
-        }
+        instructions.clear_successor = self.planner.previous.as_ref().map(|b| b.hash());
 
         self.roll_back_representative_cache(
-            &current_account_info.representative,
-            &current_account_info.balance,
-            previous_representative,
+            &self.planner.current_account_info.representative,
+            &self.planner.current_account_info.balance,
+            self.planner.previous_representative,
             previous_balance,
         );
 
         self.ledger.cache.block_count.fetch_sub(1, Ordering::SeqCst);
         self.ledger.observer.block_rolled_back(sub_type);
-        Ok(())
+        Ok(RollbackStep::RollBackBlock(instructions))
     }
 
     /*************************************************************
@@ -189,25 +253,21 @@ impl<'a> BlockRollbackPerformer<'a> {
             .ok_or_else(|| anyhow!("account not found"))
     }
 
-    fn roll_back_destination_account_until_send_block_is_unreceived(
+    fn roll_back_destination_account_if_send_block_is_received(
         &mut self,
-        destination_account: Account,
-        send_block: BlockHash,
-    ) -> anyhow::Result<()> {
-        let pending_key = PendingKey::new(destination_account, send_block);
-        loop {
-            if self
-                .ledger
-                .store
-                .pending()
-                .get(self.txn.txn(), &pending_key)
-                .is_some()
-            {
-                return Ok(());
-            }
-
-            self.recurse_roll_back(&self.latest_block_for_account(&pending_key.account)?)?;
+    ) -> anyhow::Result<Option<RollbackStep>> {
+        if self.planner.pending_receive.is_some() {
+            return Ok(None);
         }
+
+        let latest_destination_block = self
+            .planner
+            .latest_block_for_destination
+            .ok_or_else(|| anyhow!("no latest block for destination"))?;
+
+        Ok(Some(RollbackStep::RequestDependencyRollback(
+            latest_destination_block,
+        )))
     }
 
     fn recurse_roll_back(&mut self, block_hash: &BlockHash) -> anyhow::Result<()> {
@@ -272,14 +332,24 @@ impl<'a> BlockRollbackPerformer<'a> {
         if block.previous().is_zero() {
             Default::default()
         } else {
+            let balance = match &self.planner.previous {
+                Some(previous) => previous.balance_calculated(),
+                None => Amount::zero(),
+            };
+
+            let epoch = match &self.planner.previous {
+                Some(previous) => previous.sideband().unwrap().details.epoch,
+                None => Epoch::Epoch0,
+            };
+
             AccountInfo {
                 head: block.previous(),
                 representative: previous_rep.unwrap_or(current_info.representative),
                 open_block: current_info.open_block,
-                balance: self.ledger.balance(self.txn.txn(), &block.previous()),
+                balance,
                 modified: seconds_since_epoch(),
                 block_count: current_info.block_count - 1,
-                epoch: self.get_block_version(&block.previous()),
+                epoch,
             }
         }
     }
@@ -316,11 +386,15 @@ impl<'a> BlockRollbackPerformer<'a> {
         };
         Ok(previous_rep)
     }
+}
 
-    fn get_block_version(&self, block_hash: &BlockHash) -> Epoch {
-        self.ledger
-            .store
-            .block()
-            .version(self.txn.txn(), block_hash)
-    }
+pub(crate) struct RollbackPlanner<'a> {
+    pub epochs: &'a Epochs,
+    pub account: Account,
+    pub current_account_info: AccountInfo,
+    pub previous_representative: Option<Account>,
+    pub previous: Option<BlockEnum>,
+    pub linked_account: Account,
+    pub pending_receive: Option<PendingInfo>,
+    pub latest_block_for_destination: Option<BlockHash>,
 }

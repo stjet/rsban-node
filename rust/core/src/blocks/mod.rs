@@ -226,6 +226,14 @@ impl BlockEnum {
         }
     }
 
+    pub fn source_or_link(&self) -> BlockHash {
+        self.source().unwrap_or_else(|| self.link().into())
+    }
+
+    pub fn destination_or_link(&self) -> Account {
+        self.destination().unwrap_or_else(|| self.link().into())
+    }
+
     pub fn account_calculated(&self) -> Account {
         let result = if self.account().is_zero() {
             self.sideband().unwrap().account

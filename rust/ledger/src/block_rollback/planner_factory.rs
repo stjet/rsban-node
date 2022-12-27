@@ -5,7 +5,7 @@ use rsnano_store_traits::Transaction;
 
 use crate::Ledger;
 
-use super::planner::RollbackPlanner;
+use super::rollback_planner::RollbackPlanner;
 
 pub(crate) struct RollbackPlannerFactory<'a> {
     ledger: &'a Ledger,

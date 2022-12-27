@@ -4,7 +4,7 @@ use rsnano_store_traits::WriteTransaction;
 use crate::Ledger;
 
 use super::{
-    applier::RollbackInstructionsApplier, planner::RollbackStep,
+    instructions_executor::RollbackInstructionsExecutor, rollback_planner::RollbackStep,
     planner_factory::RollbackPlannerFactory,
 };
 
@@ -48,7 +48,7 @@ impl<'a> BlockRollbackPerformer<'a> {
     fn execute(&mut self, step: RollbackStep, head_block: BlockEnum) -> Result<(), anyhow::Error> {
         Ok(match step {
             RollbackStep::RollBackBlock(instructions) => {
-                RollbackInstructionsApplier::new(self.ledger, self.txn, &instructions).apply();
+                RollbackInstructionsExecutor::new(self.ledger, self.txn, &instructions).apply();
                 self.rolled_back.push(head_block);
             }
             RollbackStep::RequestDependencyRollback(dependency_hash) => {

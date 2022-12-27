@@ -5,16 +5,16 @@ use rsnano_store_traits::WriteTransaction;
 
 use crate::Ledger;
 
-use super::planner::RollbackInstructions;
+use super::rollback_planner::RollbackInstructions;
 
 /// Updates the ledger according to the RollbackInstructions
-pub(crate) struct RollbackInstructionsApplier<'a> {
+pub(crate) struct RollbackInstructionsExecutor<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,
     instructions: &'a RollbackInstructions,
 }
 
-impl<'a> RollbackInstructionsApplier<'a> {
+impl<'a> RollbackInstructionsExecutor<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
         txn: &'a mut dyn WriteTransaction,

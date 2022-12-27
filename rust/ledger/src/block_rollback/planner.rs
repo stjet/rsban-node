@@ -9,6 +9,7 @@ pub(crate) enum RollbackStep {
     RequestDependencyRollback(BlockHash),
 }
 
+/// Describes how to roll back a block
 pub(crate) struct RollbackInstructions {
     pub block_hash: BlockHash,
     pub block_sub_type: BlockSubType,
@@ -24,6 +25,7 @@ pub(crate) struct RollbackInstructions {
     pub new_representative: Option<Account>,
 }
 
+/// Create RollbackInstructions for a given block
 pub(crate) struct RollbackPlanner<'a> {
     pub epochs: &'a Epochs,
     pub head_block: &'a BlockEnum,
@@ -64,6 +66,30 @@ impl<'a> RollbackPlanner<'a> {
         };
 
         Ok(RollbackStep::RollBackBlock(instructions))
+    }
+
+    fn ensure_block_is_not_confirmed(&self) -> anyhow::Result<()> {
+        if self.head_block.sideband().unwrap().height <= self.confirmation_height.height {
+            bail!("Only unconfirmed blocks can be rolled back")
+        }
+
+        Ok(())
+    }
+
+    fn roll_back_destination_account_if_send_block_is_received(
+        &self,
+    ) -> anyhow::Result<Option<RollbackStep>> {
+        if self.pending_receive.is_some() {
+            return Ok(None);
+        }
+
+        let latest_destination_block = self
+            .latest_block_for_destination
+            .ok_or_else(|| anyhow!("no latest block for destination"))?;
+
+        Ok(Some(RollbackStep::RequestDependencyRollback(
+            latest_destination_block,
+        )))
     }
 
     fn add_frontier(&self) -> Option<(BlockHash, rsnano_core::PublicKey)> {
@@ -161,29 +187,5 @@ impl<'a> RollbackPlanner<'a> {
             Some(previous) => previous.balance_calculated(),
             None => Amount::zero(),
         }
-    }
-
-    fn roll_back_destination_account_if_send_block_is_received(
-        &self,
-    ) -> anyhow::Result<Option<RollbackStep>> {
-        if self.pending_receive.is_some() {
-            return Ok(None);
-        }
-
-        let latest_destination_block = self
-            .latest_block_for_destination
-            .ok_or_else(|| anyhow!("no latest block for destination"))?;
-
-        Ok(Some(RollbackStep::RequestDependencyRollback(
-            latest_destination_block,
-        )))
-    }
-
-    fn ensure_block_is_not_confirmed(&self) -> anyhow::Result<()> {
-        if self.head_block.sideband().unwrap().height <= self.confirmation_height.height {
-            bail!("Only unconfirmed blocks can be rolled back")
-        }
-
-        Ok(())
     }
 }

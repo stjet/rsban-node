@@ -7,6 +7,7 @@ use crate::Ledger;
 
 use super::planner::RollbackInstructions;
 
+/// Updates the ledger according to the RollbackInstructions
 pub(crate) struct RollbackInstructionsApplier<'a> {
     ledger: &'a Ledger,
     txn: &'a mut dyn WriteTransaction,

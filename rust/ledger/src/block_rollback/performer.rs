@@ -24,11 +24,11 @@ impl<'a> BlockRollbackPerformer<'a> {
     }
 
     pub(crate) fn roll_back(mut self, block_hash: &BlockHash) -> anyhow::Result<Vec<BlockEnum>> {
-        self.recurse_roll_back(block_hash)?;
+        self.roll_back_block_and_successors(block_hash)?;
         Ok(self.rolled_back)
     }
 
-    fn recurse_roll_back(&mut self, block_hash: &BlockHash) -> anyhow::Result<()> {
+    fn roll_back_block_and_successors(&mut self, block_hash: &BlockHash) -> anyhow::Result<()> {
         let block = self.load_block(block_hash)?;
         while self.block_exists(block_hash) {
             let head_block = self.load_account_head(&block)?;
@@ -51,7 +51,9 @@ impl<'a> BlockRollbackPerformer<'a> {
                 RollbackInstructionsApplier::new(self.ledger, self.txn, &instructions).apply();
                 self.rolled_back.push(head_block);
             }
-            RollbackStep::RequestDependencyRollback(hash) => self.recurse_roll_back(&hash)?,
+            RollbackStep::RequestDependencyRollback(dependency_hash) => {
+                self.roll_back_block_and_successors(&dependency_hash)?
+            }
         })
     }
 

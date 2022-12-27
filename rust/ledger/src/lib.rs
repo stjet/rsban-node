@@ -27,17 +27,17 @@ pub(crate) use representative_block_finder::RepresentativeBlockFinder;
 mod ledger;
 pub use ledger::{Ledger, LedgerObserver, ProcessResult, UncementedInfo};
 
-mod rollback_performer;
-pub(crate) use rollback_performer::BlockRollbackPerformer;
-
 mod dependent_blocks_finder;
 pub(crate) use dependent_blocks_finder::DependentBlocksFinder;
 
-mod block_validator;
-pub(crate) use block_validator::BlockValidator;
+mod block_validation;
+pub(crate) use block_validation::BlockValidator;
 
 mod block_inserter;
 pub(crate) use block_inserter::{BlockInsertInstructions, BlockInserter};
+
+mod block_rollback;
+pub(crate) use block_rollback::BlockRollbackPerformer;
 
 #[cfg(test)]
 mod ledger_tests;

@@ -4,8 +4,8 @@ use rsnano_store_traits::WriteTransaction;
 use crate::Ledger;
 
 use super::{
-    instructions_executor::RollbackInstructionsExecutor, rollback_planner::RollbackStep,
-    planner_factory::RollbackPlannerFactory,
+    instructions_executor::RollbackInstructionsExecutor, planner_factory::RollbackPlannerFactory,
+    rollback_planner::RollbackStep,
 };
 
 pub(crate) struct BlockRollbackPerformer<'a> {

@@ -1,16 +1,22 @@
 use super::BlockValidator;
 use crate::ProcessResult;
-use rsnano_core::{validate_message, Account, Block, BlockEnum, BlockHash};
+use rsnano_core::{validate_message, Account, BlockEnum};
 
 impl<'a> BlockValidator<'a> {
-    pub(crate) fn ensure_block_does_not_exist_yet(&self) -> Result<(), ProcessResult> {
-        if self
-            .ledger
-            .block_or_pruned_exists_txn(self.txn, &self.block.hash())
-        {
-            return Err(ProcessResult::Old);
+    pub(crate) fn ensure_frontier_not_missing(&self) -> Result<(), ProcessResult> {
+        if self.frontier_missing {
+            Err(ProcessResult::Fork)
+        } else {
+            Ok(())
         }
-        Ok(())
+    }
+
+    pub(crate) fn ensure_block_does_not_exist_yet(&self) -> Result<(), ProcessResult> {
+        if self.block_exists {
+            Err(ProcessResult::Old)
+        } else {
+            Ok(())
+        }
     }
 
     pub(crate) fn ensure_valid_signature(&self) -> Result<(), ProcessResult> {
@@ -74,33 +80,27 @@ impl<'a> BlockValidator<'a> {
         }
     }
 
-    pub(crate) fn get_account(&self) -> Result<Account, ProcessResult> {
-        let account = match self.block {
-            BlockEnum::LegacyOpen(open) => open.account(),
-            BlockEnum::State(state) => state.account(),
-            BlockEnum::LegacySend(_) | BlockEnum::LegacyReceive(_) | BlockEnum::LegacyChange(_) => {
-                self.get_account_from_frontier_table()?
-            }
-        };
-        Ok(account)
+    pub(crate) fn get_account(&self) -> Option<Account> {
+        match self.block {
+            BlockEnum::LegacyOpen(_) | BlockEnum::State(_) => Some(self.block.account()),
+            _ => self.get_account_from_frontier_table(),
+        }
     }
 
-    fn get_account_from_frontier_table(&self) -> Result<rsnano_core::PublicKey, ProcessResult> {
+    fn get_account_from_frontier_table(&self) -> Option<Account> {
+        self.ledger.get_frontier(self.txn, &self.block.previous())
+    }
+
+    pub(crate) fn ensure_valid_predecessor(&self) -> Result<(), ProcessResult> {
+        if self.block.previous().is_zero() {
+            return Ok(());
+        }
+
         let previous = self
-            .ledger
-            .get_block(self.txn, &self.block.previous())
+            .previous_block
+            .as_ref()
             .ok_or(ProcessResult::GapPrevious)?;
-        self.ensure_valid_predecessor(&previous)?;
-        Ok(self.ensure_frontier(&self.block.previous())?)
-    }
 
-    fn ensure_frontier(&self, previous: &BlockHash) -> Result<Account, ProcessResult> {
-        self.ledger
-            .get_frontier(self.txn, &previous)
-            .ok_or(ProcessResult::Fork)
-    }
-
-    fn ensure_valid_predecessor(&self, previous: &BlockEnum) -> Result<(), ProcessResult> {
         if !self.block.valid_predecessor(previous.block_type()) {
             Err(ProcessResult::BlockPosition)
         } else {

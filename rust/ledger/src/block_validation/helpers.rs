@@ -4,7 +4,6 @@ use rsnano_core::{
 };
 
 use super::BlockValidator;
-use crate::ProcessResult;
 
 impl<'a> BlockValidator<'a> {
     pub(crate) fn account_exists(&self) -> bool {
@@ -268,15 +267,6 @@ impl<'a> BlockValidator<'a> {
         } else {
             false
         }
-    }
-
-    pub(crate) fn load_related_block_data(&mut self) -> Result<(), ProcessResult> {
-        self.account = self.get_account()?;
-        self.old_account_info = self.ledger.get_account_info(self.txn, &self.account);
-        self.previous_block = self.load_previous_block();
-        self.pending_receive_key = self.get_pending_receive_key();
-        self.pending_receive_info = self.load_pending_receive_info();
-        Ok(())
     }
 
     pub fn load_pending_receive_info(&self) -> Option<PendingInfo> {

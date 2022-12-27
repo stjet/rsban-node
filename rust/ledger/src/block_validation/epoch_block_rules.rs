@@ -1,4 +1,4 @@
-use rsnano_core::{validate_block_signature, Block, BlockEnum, Epoch, Epochs};
+use rsnano_core::{validate_block_signature, BlockEnum, Epoch, Epochs};
 
 use crate::ProcessResult;
 
@@ -113,11 +113,7 @@ impl<'a> BlockValidator<'a> {
         if let BlockEnum::State(state_block) = self.block {
             if self.has_epoch_link(state_block)
                 && !self.block.previous().is_zero()
-                && !self
-                    .ledger
-                    .store
-                    .block()
-                    .exists(self.txn, &state_block.previous())
+                && self.previous_block.is_none()
             {
                 return Err(ProcessResult::GapPrevious);
             }

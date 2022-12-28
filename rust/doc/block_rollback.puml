@@ -1,0 +1,43 @@
+@startuml Block Rollback
+package Logik <<Rectangle>>{
+    enum RollbackStep{
+        RollBackBlock
+        RequestDependencyRollback
+    }
+    struct RollbackInstructions
+    enum BlockEnum
+    class RollbackPlanner{
+        roll_back_head_block()
+    }
+}
+
+package Infrastructure <<Rectangle>>{
+    class RollbackInstructionsExecutor{
+        execute()
+    }
+    class Ledger
+}
+
+package Application <<Rectangle>>{
+    class BlockRollbackPerformer{
+        roll_back(hash)
+    }
+    class RollbackPlannerFactory{
+        create_planner()
+    }
+
+}
+
+RollbackInstructionsExecutor --> Ledger
+RollbackInstructionsExecutor --> RollbackInstructions
+RollbackPlannerFactory --> Ledger
+RollbackPlannerFactory --> BlockEnum
+RollbackPlannerFactory ..> RollbackPlanner: creates
+RollbackStep --> RollbackInstructions
+RollbackPlanner ..> RollbackStep: creates
+RollbackPlanner --> BlockEnum
+BlockRollbackPerformer --> Ledger
+BlockRollbackPerformer ..> RollbackPlannerFactory
+BlockRollbackPerformer ..> RollbackInstructionsExecutor
+
+@enduml

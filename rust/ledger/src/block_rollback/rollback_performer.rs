@@ -48,7 +48,7 @@ impl<'a> BlockRollbackPerformer<'a> {
     fn execute(&mut self, step: RollbackStep, head_block: BlockEnum) -> Result<(), anyhow::Error> {
         Ok(match step {
             RollbackStep::RollBackBlock(instructions) => {
-                RollbackInstructionsExecutor::new(self.ledger, self.txn, &instructions).apply();
+                RollbackInstructionsExecutor::new(self.ledger, self.txn, &instructions).execute();
                 self.rolled_back.push(head_block);
             }
             RollbackStep::RequestDependencyRollback(dependency_hash) => {

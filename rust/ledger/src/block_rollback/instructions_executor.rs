@@ -27,7 +27,7 @@ impl<'a> RollbackInstructionsExecutor<'a> {
         }
     }
 
-    pub(crate) fn apply(&mut self) {
+    pub(crate) fn execute(&mut self) {
         self.update_pending_table();
         self.update_account_table();
         self.update_frontier_table();

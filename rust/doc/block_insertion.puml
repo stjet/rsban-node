@@ -1,0 +1,32 @@
+@startuml Block Insertion
+package Logik <<Rectangle>>{
+    enum BlockEnum
+    enum ProcessResult
+    class BlockValidator{
+        validate()
+    }
+    struct BlockInsertInstructions
+}
+
+package Application <<Rectangle>>{
+    class BlockValidatorFactory{
+        create_validator()
+    }
+}
+
+package Infrastructure <<Rectangle>>{
+class Ledger
+class BlockInserter{
+    insert()
+}
+}
+
+BlockValidatorFactory --> Ledger
+BlockValidatorFactory ..> BlockValidator: creates
+BlockValidator --> BlockEnum
+BlockValidator ..> BlockInsertInstructions: returns
+BlockValidator ..> ProcessResult: returns
+BlockInserter --> BlockInsertInstructions
+BlockInserter --> Ledger
+BlockInserter --> BlockEnum
+@enduml

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use num_traits::FromPrimitive;
 
-use crate::{Link, PublicKey};
+use crate::{validate_message, Account, BlockEnum, Link, PublicKey};
 
 /**
  * Tag for which epoch an entry belongs to
@@ -82,6 +82,21 @@ impl Epochs {
         let epoch_id = epoch as u8;
         let new_epoch_id = new_epoch as u8;
         epoch_id >= Epoch::Epoch0 as u8 && new_epoch_id == epoch_id + 1
+    }
+
+    pub fn validate_epoch_signature(&self, block: &BlockEnum) -> anyhow::Result<()> {
+        validate_message(
+            &self
+                .epoch_signer(&block.link())
+                .ok_or_else(|| anyhow!("not an epoch link!"))?
+                .into(),
+            block.hash().as_bytes(),
+            block.block_signature(),
+        )
+    }
+
+    pub fn epoch_signer(&self, link: &Link) -> Option<Account> {
+        self.signer(self.epoch(link)?).cloned()
     }
 }
 

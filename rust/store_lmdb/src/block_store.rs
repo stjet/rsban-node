@@ -127,7 +127,7 @@ impl BlockStore for LmdbBlockStore {
                     }
                     BlockEnum::LegacyOpen(_) => {
                         sideband.account = block.account();
-                        sideband.details = BlockDetails::new(Epoch::Epoch0, false, false, false)
+                        sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
                     }
                     BlockEnum::LegacyReceive(_) => {
                         sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)

@@ -1,6 +1,6 @@
 use super::BlockValidator;
 use crate::ProcessResult;
-use rsnano_core::{validate_message, Account, BlockEnum};
+use rsnano_core::validate_message;
 
 impl<'a> BlockValidator<'a> {
     pub(crate) fn ensure_frontier_not_missing(&self) -> Result<(), ProcessResult> {
@@ -21,7 +21,7 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn ensure_valid_signature(&self) -> Result<(), ProcessResult> {
         let result = if self.is_epoch_block() {
-            self.ledger.validate_epoch_signature(self.block)
+            self.epochs.validate_epoch_signature(self.block)
         } else {
             validate_message(
                 &self.account,
@@ -68,27 +68,11 @@ impl<'a> BlockValidator<'a> {
     }
 
     pub(crate) fn ensure_sufficient_work(&self) -> Result<(), ProcessResult> {
-        if !self
-            .ledger
-            .constants
-            .work
-            .is_valid_pow(self.block, &self.block_details())
-        {
+        if !self.work.is_valid_pow(self.block, &self.block_details()) {
             Err(ProcessResult::InsufficientWork)
         } else {
             Ok(())
         }
-    }
-
-    pub(crate) fn get_account(&self) -> Option<Account> {
-        match self.block {
-            BlockEnum::LegacyOpen(_) | BlockEnum::State(_) => Some(self.block.account()),
-            _ => self.get_account_from_frontier_table(),
-        }
-    }
-
-    fn get_account_from_frontier_table(&self) -> Option<Account> {
-        self.ledger.get_frontier(self.txn, &self.block.previous())
     }
 
     pub(crate) fn ensure_valid_predecessor(&self) -> Result<(), ProcessResult> {

@@ -41,7 +41,7 @@ impl<'a> BlockValidator<'a> {
 
     fn ensure_epoch_open_has_pending_entry(&self) -> Result<(), ProcessResult> {
         if self.block.is_open() && self.is_epoch_block() {
-            if !self.pending_exists() {
+            if !self.any_pending_exists {
                 return Err(ProcessResult::GapEpochOpenPending);
             };
         }
@@ -99,7 +99,7 @@ impl<'a> BlockValidator<'a> {
             // Check for possible regular state blocks with epoch link (send subtype)
             if self.has_epoch_link(state_block)
                 && (validate_block_signature(self.block).is_err()
-                    && self.ledger.validate_epoch_signature(self.block).is_err())
+                    && self.epochs.validate_epoch_signature(self.block).is_err())
             {
                 return Err(ProcessResult::BadSignature);
             }

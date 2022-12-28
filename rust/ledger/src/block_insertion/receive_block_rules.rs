@@ -10,20 +10,7 @@ impl<'a> BlockValidator<'a> {
     }
 
     fn ensure_source_block_exists(&self) -> Result<(), ProcessResult> {
-        let source = match self.block {
-            BlockEnum::LegacyReceive(receive) => receive.mandatory_source(),
-            BlockEnum::LegacyOpen(open) => open.mandatory_source(),
-            BlockEnum::State(_) => {
-                if self.is_receive() {
-                    self.block.link().into()
-                } else {
-                    return Ok(());
-                }
-            }
-            _ => return Ok(()),
-        };
-
-        if !self.ledger.block_or_pruned_exists_txn(self.txn, &source) {
+        if self.is_receive() && !self.source_block_exists {
             Err(ProcessResult::GapSource)
         } else {
             Ok(())

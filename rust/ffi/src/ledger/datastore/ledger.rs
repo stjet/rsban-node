@@ -442,6 +442,8 @@ pub unsafe extern "C" fn rsn_ledger_epoch_signer(
 ) {
     let signer = (*handle)
         .0
+        .constants
+        .epochs
         .epoch_signer(&Link::from_ptr(link))
         .unwrap_or_default();
     copy_account_bytes(signer, result);

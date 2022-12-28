@@ -30,11 +30,7 @@ pub use ledger::{Ledger, LedgerObserver, ProcessResult, UncementedInfo};
 mod dependent_blocks_finder;
 pub(crate) use dependent_blocks_finder::DependentBlocksFinder;
 
-mod block_validation;
-pub(crate) use block_validation::BlockValidator;
-
-mod block_inserter;
-pub(crate) use block_inserter::{BlockInsertInstructions, BlockInserter};
+mod block_insertion;
 
 mod block_rollback;
 pub(crate) use block_rollback::BlockRollbackPerformer;

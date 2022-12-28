@@ -1,12 +1,13 @@
 use crate::{
-    BlockInserter, BlockRollbackPerformer, BlockValidator, GenerateCache, LedgerCache,
-    LedgerConstants, RepWeights, RepresentativeBlockFinder,
+    block_insertion::{BlockInserter, BlockValidatorFactory},
+    BlockRollbackPerformer, GenerateCache, LedgerCache, LedgerConstants, RepWeights,
+    RepresentativeBlockFinder,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{seconds_since_epoch, PropertyTreeWriter, SerdePropertyTree},
-    validate_message, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockSubType,
-    BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
+    Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockSubType, BlockType,
+    ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
 };
 
 use std::{
@@ -537,24 +538,6 @@ impl Ledger {
         None
     }
 
-    pub fn epoch_signer(&self, link: &Link) -> Option<Account> {
-        self.constants
-            .epochs
-            .signer(self.constants.epochs.epoch(link)?)
-            .cloned()
-    }
-
-    pub fn validate_epoch_signature(&self, block: &BlockEnum) -> anyhow::Result<()> {
-        validate_message(
-            &self
-                .epoch_signer(&block.link())
-                .ok_or_else(|| anyhow!("not an epoch link!"))?
-                .into(),
-            block.hash().as_bytes(),
-            block.block_signature(),
-        )
-    }
-
     pub fn epoch_link(&self, epoch: Epoch) -> Option<Link> {
         self.constants.epochs.link(epoch).cloned()
     }
@@ -764,8 +747,9 @@ impl Ledger {
         txn: &mut dyn WriteTransaction,
         block: &mut BlockEnum,
     ) -> Result<(), ProcessResult> {
-        let validation = BlockValidator::new(self, txn.txn(), block).validate()?;
-        BlockInserter::new(self, txn, block, &validation).insert();
+        let validator = BlockValidatorFactory::new(self, txn.txn(), block).create_validator();
+        let instructions = validator.validate()?;
+        BlockInserter::new(self, txn, block, &instructions).insert();
         Ok(())
     }
 

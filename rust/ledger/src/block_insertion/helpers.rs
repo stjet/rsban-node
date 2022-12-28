@@ -34,7 +34,7 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn is_receive(&self) -> bool {
         match self.block {
-            BlockEnum::LegacyReceive(_) => true,
+            BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_) => true,
             BlockEnum::State(state_block) => {
                 // receives from the epoch account are forbidden
                 if self.has_epoch_link(state_block) {
@@ -107,7 +107,7 @@ impl<'a> BlockValidator<'a> {
     }
 
     pub(crate) fn has_epoch_link(&self, state_block: &StateBlock) -> bool {
-        self.ledger.is_epoch_link(&state_block.link())
+        self.epochs.is_epoch_link(&state_block.link())
     }
 
     /// This check only makes sense after ensure_previous_block_exists_for_epoch_block_candidate,
@@ -123,12 +123,7 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn block_epoch_version(&self) -> Epoch {
         match self.block {
-            BlockEnum::State(state) => self
-                .ledger
-                .constants
-                .epochs
-                .epoch(&state.link())
-                .unwrap_or(Epoch::Invalid),
+            BlockEnum::State(state) => self.epochs.epoch(&state.link()).unwrap_or(Epoch::Invalid),
             _ => Epoch::Epoch0,
         }
     }
@@ -201,25 +196,6 @@ impl<'a> BlockValidator<'a> {
         }
     }
 
-    pub(crate) fn get_pending_receive_key(&self) -> Option<PendingKey> {
-        match &self.block {
-            BlockEnum::State(state) => {
-                if self.is_receive() {
-                    Some(PendingKey::for_receive_state_block(state))
-                } else {
-                    None
-                }
-            }
-            BlockEnum::LegacyOpen(open) => {
-                Some(PendingKey::new(self.account, open.mandatory_source()))
-            }
-            BlockEnum::LegacyReceive(open) => {
-                Some(PendingKey::new(self.account, open.mandatory_source()))
-            }
-            _ => None,
-        }
-    }
-
     pub(crate) fn new_sideband(&self) -> BlockSideband {
         BlockSideband::new(
             self.account,
@@ -267,28 +243,5 @@ impl<'a> BlockValidator<'a> {
         } else {
             false
         }
-    }
-
-    pub fn load_pending_receive_info(&self) -> Option<PendingInfo> {
-        if let Some(key) = &self.pending_receive_key {
-            self.ledger.store.pending().get(self.txn, &key)
-        } else {
-            None
-        }
-    }
-
-    pub fn load_previous_block(&self) -> Option<BlockEnum> {
-        if !self.block.previous().is_zero() {
-            self.ledger.get_block(self.txn, &self.block.previous())
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn pending_exists(&self) -> bool {
-        self.ledger
-            .store
-            .pending()
-            .any(self.txn, &self.block.account())
     }
 }

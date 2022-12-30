@@ -172,7 +172,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		auto should_output = finished_iterating && (no_pending || min_time_exceeded);
 
 		auto total_pending_write_block_count = std::accumulate (pending_writes.cbegin (), pending_writes.cend (), uint64_t (0), [] (uint64_t total, conf_height_details const & receive_details_a) {
-			return total += receive_details_a.num_blocks_confirmed;
+			return total += receive_details_a.get_num_blocks_confirmed ();
 		});
 		auto force_write = total_pending_write_block_count > batch_write_size;
 
@@ -236,7 +236,7 @@ void nano::confirmation_height_unbounded::collect_unconfirmed_receive_and_source
 					// Add the callbacks to the associated receive to retrieve later
 					debug_assert (!receive_source_pairs_a.empty ());
 					auto & last_receive_details = receive_source_pairs_a.back ().receive_details;
-					last_receive_details->source_block_callback_data.assign (block_callback_data_a.begin (), block_callback_data_a.end ());
+					last_receive_details->set_source_block_callback_data (block_callback_data_a);
 					block_callback_data_a.clear ();
 				}
 
@@ -261,8 +261,8 @@ void nano::confirmation_height_unbounded::collect_unconfirmed_receive_and_source
 				{
 					// We have hit a receive before, add the block to it
 					auto & last_receive_details = receive_source_pairs_a.back ().receive_details;
-					++last_receive_details->num_blocks_confirmed;
-					last_receive_details->block_callback_data.push_back (hash);
+					last_receive_details->set_num_blocks_confirmed (last_receive_details->get_num_blocks_confirmed () + 1);
+					last_receive_details->add_block_callback_data (hash);
 
 					implicit_receive_cemented_mapping[hash] = std::weak_ptr<conf_height_details> (last_receive_details);
 					implicit_receive_cemented_mapping_size = implicit_receive_cemented_mapping.size ();
@@ -310,28 +310,29 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 			{
 				debug_assert (receive_details);
 
-				if (preparation_data_a.already_traversed && receive_details->source_block_callback_data.empty ())
+				if (preparation_data_a.already_traversed && receive_details->get_source_block_callback_data ().empty ())
 				{
 					// We are confirming a block which has already been traversed and found no associated receive details for it.
 					auto & above_receive_details_w = implicit_receive_cemented_mapping[preparation_data_a.current];
 					debug_assert (!above_receive_details_w.expired ());
 					auto above_receive_details = above_receive_details_w.lock ();
 
-					auto num_blocks_already_confirmed = above_receive_details->num_blocks_confirmed - (above_receive_details->height - preparation_data_a.confirmation_height);
+					auto num_blocks_already_confirmed = above_receive_details->get_num_blocks_confirmed () - (above_receive_details->get_height () - preparation_data_a.confirmation_height);
 
-					auto end_it = above_receive_details->block_callback_data.begin () + above_receive_details->block_callback_data.size () - (num_blocks_already_confirmed);
+					auto block_data{ above_receive_details->get_block_callback_data () };
+					auto end_it = block_data.begin () + block_data.size () - (num_blocks_already_confirmed);
 					auto start_it = end_it - num_blocks_confirmed;
 
 					block_callback_data.assign (start_it, end_it);
 				}
 				else
 				{
-					block_callback_data = receive_details->source_block_callback_data;
+					block_callback_data = receive_details->get_source_block_callback_data ();
 				}
 
 				auto num_to_remove = block_callback_data.size () - num_blocks_confirmed;
 				block_callback_data.erase (std::next (block_callback_data.rbegin (), num_to_remove).base (), block_callback_data.end ());
-				receive_details->source_block_callback_data.clear ();
+				receive_details->set_source_block_callback_data (std::vector<nano::block_hash>{});
 			}
 		}
 
@@ -342,24 +343,26 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 	if (receive_details)
 	{
 		// Check whether the previous block has been seen. If so, the rest of sends below have already been seen so don't count them
-		auto const & receive_account = receive_details->account;
+		auto receive_account = receive_details->get_account ();
 		auto receive_account_it = confirmed_iterated_pairs.find (receive_account);
 		if (receive_account_it != confirmed_iterated_pairs.cend ())
 		{
 			// Get current height
 			auto current_height = receive_account_it->second.confirmed_height;
-			receive_account_it->second.confirmed_height = receive_details->height;
-			auto const orig_num_blocks_confirmed = receive_details->num_blocks_confirmed;
-			receive_details->num_blocks_confirmed = receive_details->height - current_height;
+			receive_account_it->second.confirmed_height = receive_details->get_height ();
+			auto const orig_num_blocks_confirmed = receive_details->get_num_blocks_confirmed ();
+			receive_details->set_num_blocks_confirmed (receive_details->get_height () - current_height);
 
 			// Get the difference and remove the callbacks
-			auto block_callbacks_to_remove = orig_num_blocks_confirmed - receive_details->num_blocks_confirmed;
-			receive_details->block_callback_data.erase (std::next (receive_details->block_callback_data.rbegin (), block_callbacks_to_remove).base (), receive_details->block_callback_data.end ());
-			debug_assert (receive_details->block_callback_data.size () == receive_details->num_blocks_confirmed);
+			auto block_callbacks_to_remove = orig_num_blocks_confirmed - receive_details->get_num_blocks_confirmed ();
+			auto tmp_blocks{ receive_details->get_block_callback_data () };
+			tmp_blocks.erase (std::next (tmp_blocks.rbegin (), block_callbacks_to_remove).base (), tmp_blocks.end ());
+			receive_details->set_block_callback_data (tmp_blocks);
+			debug_assert (receive_details->get_block_callback_data ().size () == receive_details->get_num_blocks_confirmed ());
 		}
 		else
 		{
-			confirmed_iterated_pairs.emplace (std::piecewise_construct, std::forward_as_tuple (receive_account), std::forward_as_tuple (receive_details->height, receive_details->height));
+			confirmed_iterated_pairs.emplace (std::piecewise_construct, std::forward_as_tuple (receive_account), std::forward_as_tuple (receive_details->get_height (), receive_details->get_height ()));
 			++confirmed_iterated_pairs_size;
 		}
 
@@ -380,17 +383,17 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 		{
 			auto & pending = pending_writes.front ();
 			nano::confirmation_height_info confirmation_height_info;
-			ledger.store.confirmation_height ().get (*transaction, pending.account, confirmation_height_info);
+			ledger.store.confirmation_height ().get (*transaction, pending.get_account (), confirmation_height_info);
 			auto confirmation_height = confirmation_height_info.height ();
-			if (pending.height > confirmation_height)
+			if (pending.get_height () > confirmation_height)
 			{
-				auto block = ledger.store.block ().get (*transaction, pending.hash);
+				auto block = ledger.store.block ().get (*transaction, pending.get_hash ());
 				debug_assert (ledger.pruning_enabled () || block != nullptr);
-				debug_assert (ledger.pruning_enabled () || block->sideband ().height () == pending.height);
+				debug_assert (ledger.pruning_enabled () || block->sideband ().height () == pending.get_height ());
 
 				if (!block)
 				{
-					if (ledger.pruning_enabled () && ledger.store.pruned ().exists (*transaction, pending.hash))
+					if (ledger.pruning_enabled () && ledger.store.pruned ().exists (*transaction, pending.get_hash ()))
 					{
 						pending_writes.erase (pending_writes.begin ());
 						--pending_writes_size;
@@ -398,25 +401,28 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 					}
 					else
 					{
-						auto error_str = (boost::format ("Failed to write confirmation height for block %1% (unbounded processor)") % pending.hash.to_string ()).str ();
+						auto error_str = (boost::format ("Failed to write confirmation height for block %1% (unbounded processor)") % pending.get_hash ().to_string ()).str ();
 						logger.always_log (error_str);
 						std::cerr << error_str << std::endl;
 						error = true;
 						break;
 					}
 				}
-				stats.add (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in, pending.height - confirmation_height);
-				stats.add (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_unbounded, nano::stat::dir::in, pending.height - confirmation_height);
-				debug_assert (pending.num_blocks_confirmed == pending.height - confirmation_height);
-				confirmation_height = pending.height;
-				ledger.cache.add_cemented (pending.num_blocks_confirmed);
-				ledger.store.confirmation_height ().put (*transaction, pending.account, { confirmation_height, pending.hash });
+				stats.add (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in, pending.get_height () - confirmation_height);
+				stats.add (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_unbounded, nano::stat::dir::in, pending.get_height () - confirmation_height);
+				debug_assert (pending.get_num_blocks_confirmed () == pending.get_height () - confirmation_height);
+				confirmation_height = pending.get_height ();
+				ledger.cache.add_cemented (pending.get_num_blocks_confirmed ());
+				ledger.store.confirmation_height ().put (*transaction, pending.get_account (), { confirmation_height, pending.get_hash () });
 
 				// Reverse it so that the callbacks start from the lowest newly cemented block and move upwards
-				std::reverse (pending.block_callback_data.begin (), pending.block_callback_data.end ());
+				auto tmp_blocks{ pending.get_block_callback_data () };
+				std::reverse (tmp_blocks.begin (), tmp_blocks.end ());
+				pending.set_block_callback_data (tmp_blocks);
 
 				nano::lock_guard<nano::mutex> guard (block_cache_mutex);
-				std::transform (pending.block_callback_data.begin (), pending.block_callback_data.end (), std::back_inserter (cemented_blocks), [&block_cache = block_cache] (auto const & hash_a) {
+				tmp_blocks = pending.get_block_callback_data ();
+				std::transform (tmp_blocks.begin (), tmp_blocks.end (), std::back_inserter (cemented_blocks), [&block_cache = block_cache] (auto const & hash_a) {
 					debug_assert (block_cache.count (hash_a) == 1);
 					return block_cache.at (hash_a);
 				});
@@ -530,6 +536,47 @@ nano::confirmation_height_unbounded::conf_height_details & nano::confirmation_he
 	block_callback_data = other_a.block_callback_data;
 	source_block_callback_data = other_a.source_block_callback_data;
 	return *this;
+}
+
+nano::account nano::confirmation_height_unbounded::conf_height_details::get_account () const
+{
+	return account;
+}
+nano::block_hash nano::confirmation_height_unbounded::conf_height_details::get_hash () const
+{
+	return hash;
+}
+uint64_t nano::confirmation_height_unbounded::conf_height_details::get_height () const
+{
+	return height;
+}
+uint64_t nano::confirmation_height_unbounded::conf_height_details::get_num_blocks_confirmed () const
+{
+	return num_blocks_confirmed;
+}
+void nano::confirmation_height_unbounded::conf_height_details::set_num_blocks_confirmed (uint64_t num)
+{
+	num_blocks_confirmed = num;
+}
+std::vector<nano::block_hash> nano::confirmation_height_unbounded::conf_height_details::get_block_callback_data () const
+{
+	return block_callback_data;
+}
+void nano::confirmation_height_unbounded::conf_height_details::set_block_callback_data (std::vector<nano::block_hash> const & data_a)
+{
+	block_callback_data.assign (data_a.begin (), data_a.end ());
+}
+void nano::confirmation_height_unbounded::conf_height_details::add_block_callback_data (nano::block_hash const & hash)
+{
+	block_callback_data.push_back (hash);
+}
+std::vector<nano::block_hash> nano::confirmation_height_unbounded::conf_height_details::get_source_block_callback_data () const
+{
+	return source_block_callback_data;
+}
+void nano::confirmation_height_unbounded::conf_height_details::set_source_block_callback_data (std::vector<nano::block_hash> const & data_a)
+{
+	source_block_callback_data.assign (data_a.begin (), data_a.end ());
 }
 
 nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (std::shared_ptr<conf_height_details> const & receive_details_a, const block_hash & source_a) :

@@ -1,5 +1,5 @@
 @startuml Block Rollback
-package Logik <<Rectangle>>{
+package Logic <<Rectangle>>{
     enum RollbackStep{
         RollBackBlock
         RequestDependencyRollback

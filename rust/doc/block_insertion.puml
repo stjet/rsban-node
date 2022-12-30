@@ -1,5 +1,5 @@
 @startuml Block Insertion
-package Logik <<Rectangle>>{
+package Logic <<Rectangle>>{
     enum BlockEnum
     enum ProcessResult
     class BlockValidator{

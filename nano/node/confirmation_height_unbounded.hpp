@@ -50,7 +50,11 @@ private:
 	{
 	public:
 		conf_height_details (nano::account const &, nano::block_hash const &, uint64_t, uint64_t, std::vector<nano::block_hash> const &);
-
+		conf_height_details (conf_height_details const &);
+		conf_height_details (conf_height_details &&) = delete;
+		~conf_height_details ();
+		conf_height_details & operator= (conf_height_details const &);
+		rsnano::ConfHeightDetailsHandle * handle;
 		nano::account account;
 		nano::block_hash hash;
 		uint64_t height;

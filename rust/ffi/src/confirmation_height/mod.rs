@@ -1,3 +1,5 @@
+mod conf_height_details;
+
 use rsnano_node::confirmation_height::ConfirmationHeightUnbounded;
 
 pub struct ConfirmationHeightUnboundedHandle(ConfirmationHeightUnbounded);

@@ -1224,7 +1224,7 @@ TEST (confirmation_heightDeathTest, rollback_added_block)
 		uint64_t batch_write_size = 2048;
 		std::atomic<bool> stopped{ false };
 		nano::confirmation_height_unbounded unbounded_processor (
-		ledger, stats, write_database_queue, 10ms, logging, *logger, stopped, batch_write_size, [] (auto const &) {}, [] (auto const &) {}, [] () { return 0; });
+		ledger, stats, write_database_queue, 10ms, logging, *logger, batch_write_size, [] (auto const &) {}, [] (auto const &) {}, [] () { return 0; });
 
 		// Processing a block which doesn't exist should bail
 		ASSERT_DEATH_IF_SUPPORTED (unbounded_processor.process (send), "");
@@ -1331,7 +1331,7 @@ TEST (confirmation_heightDeathTest, modified_chain)
 		store->confirmation_height ().put (*store->tx_begin_write (), nano::dev::genesis->account (), { 1, nano::dev::genesis->hash () });
 
 		nano::confirmation_height_unbounded unbounded_processor (
-		ledger, stats, write_database_queue, 10ms, logging, *logger, stopped, batch_write_size, [] (auto const &) {}, [] (auto const &) {}, [] () { return 0; });
+		ledger, stats, write_database_queue, 10ms, logging, *logger, batch_write_size, [] (auto const &) {}, [] (auto const &) {}, [] () { return 0; });
 
 		{
 			// This reads the blocks in the account, but prevents any writes from occuring yet
@@ -1395,7 +1395,7 @@ TEST (confirmation_heightDeathTest, modified_chain_account_removed)
 		uint64_t batch_write_size = 2048;
 		std::atomic<bool> stopped{ false };
 		nano::confirmation_height_unbounded unbounded_processor (
-		ledger, stats, write_database_queue, 10ms, logging, *logger, stopped, batch_write_size, [] (auto const &) {}, [] (auto const &) {}, [] () { return 0; });
+		ledger, stats, write_database_queue, 10ms, logging, *logger, batch_write_size, [] (auto const &) {}, [] (auto const &) {}, [] () { return 0; });
 
 		{
 			// This reads the blocks in the account, but prevents any writes from occuring yet

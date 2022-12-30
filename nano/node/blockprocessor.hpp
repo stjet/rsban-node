@@ -105,7 +105,6 @@ private:
 	std::deque<std::shared_ptr<nano::block>> forced;
 	nano::condition_variable condition;
 
-	// already ported to Rust:
 	nano::logger_mt & logger;
 	nano::signature_checker & checker;
 	nano::node_config & config;
@@ -116,19 +115,18 @@ private:
 
 	rsnano::BlockProcessorHandle * handle;
 
-	// not yet ported:
 	nano::ledger & ledger;
 	nano::node_flags & flags;
-	nano::network & network;
+	nano::network & network; // not yet ported to Rust
 	nano::store & store;
 	nano::stat & stats;
-	nano::active_transactions & active_transactions;
-	nano::vote_cache & inactive_vote_cache;
-	nano::election_scheduler & scheduler;
-	std::shared_ptr<nano::websocket::listener> & websocket_server;
-	nano::unchecked_map & unchecked;
-	nano::gap_cache & gap_cache;
-	nano::bootstrap_initiator & bootstrap_initiator;
+	nano::active_transactions & active_transactions; // not yet ported to Rust
+	nano::vote_cache & inactive_vote_cache; // not yet ported to Rust
+	nano::election_scheduler & scheduler; // not yet ported to Rust
+	std::shared_ptr<nano::websocket::listener> & websocket_server; // not yet ported to Rust
+	nano::unchecked_map & unchecked; // not yet ported to Rust
+	nano::gap_cache & gap_cache; // not yet ported to Rust
+	nano::bootstrap_initiator & bootstrap_initiator; // not yet ported to Rust
 	nano::write_database_queue & write_database_queue;
 	nano::mutex mutex{ mutex_identifier (mutexes::block_processor) };
 	std::thread processing_thread;

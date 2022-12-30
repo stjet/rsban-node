@@ -13,6 +13,7 @@ extern crate anyhow;
 pub mod block_processing;
 pub mod bootstrap;
 pub mod config;
+pub mod confirmation_height;
 mod ipc;
 pub mod messages;
 mod secure;

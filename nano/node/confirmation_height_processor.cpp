@@ -15,7 +15,7 @@ nano::confirmation_height_processor::confirmation_height_processor (nano::ledger
 	ledger (ledger_a),
 	write_database_queue (write_database_queue_a),
 	unbounded_processor (
-	ledger_a, stats_a, write_database_queue_a, batch_separate_pending_min_time_a, logging_a, logger_a, stopped, batch_write_size,
+	ledger_a, stats_a, write_database_queue_a, batch_separate_pending_min_time_a, logging_a, logger_a, batch_write_size,
 	/* cemented_callback */ [this] (auto & cemented_blocks) { this->notify_cemented (cemented_blocks); },
 	/* already cemented_callback */ [this] (auto const & block_hash_a) { this->notify_already_cemented (block_hash_a); },
 	/* awaiting_processing_size_query */ [this] () { return this->awaiting_processing_size (); }),
@@ -43,6 +43,7 @@ void nano::confirmation_height_processor::stop ()
 	{
 		nano::lock_guard<nano::mutex> guard (mutex);
 		stopped = true;
+		unbounded_processor.stop ();
 	}
 	condition.notify_one ();
 	if (thread.joinable ())

@@ -8,6 +8,10 @@
 #include <chrono>
 #include <unordered_map>
 
+namespace rsnano
+{
+class ConfirmationHeightUnboundedHandle;
+}
 namespace nano
 {
 class ledger;
@@ -20,12 +24,18 @@ class write_guard;
 class confirmation_height_unbounded final
 {
 public:
-	confirmation_height_unbounded (nano::ledger &, nano::stat &, nano::write_database_queue &, std::chrono::milliseconds batch_separate_pending_min_time, nano::logging const &, nano::logger_mt &, std::atomic<bool> & stopped, uint64_t & batch_write_size, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & cemented_callback, std::function<void (nano::block_hash const &)> const & already_cemented_callback, std::function<uint64_t ()> const & awaiting_processing_size_query);
+	confirmation_height_unbounded (nano::ledger &, nano::stat &, nano::write_database_queue &, std::chrono::milliseconds batch_separate_pending_min_time, nano::logging const &, nano::logger_mt &, uint64_t & batch_write_size, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & cemented_callback, std::function<void (nano::block_hash const &)> const & already_cemented_callback, std::function<uint64_t ()> const & awaiting_processing_size_query);
+	confirmation_height_unbounded (confirmation_height_unbounded const &) = delete;
+	confirmation_height_unbounded (confirmation_height_unbounded &&) = delete;
+	~confirmation_height_unbounded ();
 	bool pending_empty () const;
 	void clear_process_vars ();
 	void process (std::shared_ptr<nano::block> original_block);
 	void cement_blocks (nano::write_guard &);
 	bool has_iterated_over_block (nano::block_hash const &) const;
+	void stop ();
+
+	rsnano::ConfirmationHeightUnboundedHandle * handle;
 
 private:
 	class confirmed_iterated_pair
@@ -100,7 +110,7 @@ private:
 	nano::write_database_queue & write_database_queue;
 	std::chrono::milliseconds batch_separate_pending_min_time;
 	nano::logger_mt & logger;
-	std::atomic<bool> & stopped;
+	std::atomic<bool> stopped{ false };
 	uint64_t & batch_write_size;
 	nano::logging const & logging;
 

@@ -4,6 +4,7 @@ extern crate anyhow;
 pub mod block_processing;
 pub mod bootstrap;
 mod config;
+mod confirmation_height;
 pub mod core;
 mod hardened_constants;
 mod ipc;

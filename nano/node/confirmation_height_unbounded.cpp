@@ -1,3 +1,4 @@
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/node/confirmation_height_unbounded.hpp>
 #include <nano/node/logging.hpp>
@@ -8,19 +9,24 @@
 
 #include <numeric>
 
-nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger & ledger_a, nano::stat & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, nano::logger_mt & logger_a, std::atomic<bool> & stopped_a, uint64_t & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
+nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger & ledger_a, nano::stat & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, nano::logger_mt & logger_a, uint64_t & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
+	handle{ rsnano::rsn_conf_height_unbounded_create () },
 	ledger (ledger_a),
 	stats (stats_a),
 	write_database_queue (write_database_queue_a),
 	batch_separate_pending_min_time (batch_separate_pending_min_time_a),
 	logging (logging_a),
 	logger (logger_a),
-	stopped (stopped_a),
 	batch_write_size (batch_write_size_a),
 	notify_observers_callback (notify_observers_callback_a),
 	notify_block_already_cemented_observers_callback (notify_block_already_cemented_observers_callback_a),
 	awaiting_processing_size_callback (awaiting_processing_size_callback_a)
 {
+}
+
+nano::confirmation_height_unbounded::~confirmation_height_unbounded ()
+{
+	rsnano::rsn_conf_height_unbounded_destroy (handle);
 }
 
 void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> original_block)
@@ -474,6 +480,11 @@ bool nano::confirmation_height_unbounded::has_iterated_over_block (nano::block_h
 {
 	nano::lock_guard<nano::mutex> guard (block_cache_mutex);
 	return block_cache.count (hash_a) == 1;
+}
+
+void nano::confirmation_height_unbounded::stop ()
+{
+	stopped = true;
 }
 
 uint64_t nano::confirmation_height_unbounded::block_cache_size () const

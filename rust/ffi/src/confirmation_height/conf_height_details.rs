@@ -130,11 +130,11 @@ pub unsafe extern "C" fn rsn_conf_height_details_source_block_callback_data(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_details_set_source_block_callback_data(
     handle: *mut ConfHeightDetailsHandle,
-    data: *const [u8; 32],
+    data: *const *const u8,
     len: usize,
 ) {
     (*handle).0.source_block_callback_data = std::slice::from_raw_parts(data, len)
         .iter()
-        .map(|&bytes| BlockHash::from_bytes(bytes))
+        .map(|&bytes| BlockHash::from_ptr(bytes))
         .collect();
 }

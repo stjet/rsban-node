@@ -65,13 +65,6 @@ private:
 		void add_block_callback_data (nano::block_hash const & hash);
 		std::vector<nano::block_hash> get_source_block_callback_data () const;
 		void set_source_block_callback_data (std::vector<nano::block_hash> const &);
-
-	private:
-		nano::account account;
-		nano::block_hash hash;
-		uint64_t height;
-		uint64_t num_blocks_confirmed;
-		std::vector<nano::block_hash> source_block_callback_data;
 	};
 
 	class receive_source_pair final

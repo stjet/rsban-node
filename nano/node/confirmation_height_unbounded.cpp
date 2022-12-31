@@ -500,13 +500,16 @@ uint64_t nano::confirmation_height_unbounded::block_cache_size () const
 }
 
 nano::confirmation_height_unbounded::conf_height_details::conf_height_details (nano::account const & account_a, nano::block_hash const & hash_a, uint64_t height_a, uint64_t num_blocks_confirmed_a, std::vector<nano::block_hash> const & block_callback_data_a) :
-	handle{ rsnano::rsn_conf_height_details_create () },
+	handle{ rsnano::rsn_conf_height_details_create (account_a.bytes.data (), hash_a.bytes.data (), height_a, num_blocks_confirmed_a) },
 	account (account_a),
 	hash (hash_a),
 	height (height_a),
-	num_blocks_confirmed (num_blocks_confirmed_a),
-	block_callback_data (block_callback_data_a)
+	num_blocks_confirmed (num_blocks_confirmed_a)
 {
+	for (auto b : block_callback_data_a)
+	{
+		add_block_callback_data (b);
+	}
 }
 
 nano::confirmation_height_unbounded::conf_height_details::conf_height_details (nano::confirmation_height_unbounded::conf_height_details const & other_a) :
@@ -515,7 +518,6 @@ nano::confirmation_height_unbounded::conf_height_details::conf_height_details (n
 	hash{ other_a.hash },
 	height{ other_a.height },
 	num_blocks_confirmed{ other_a.num_blocks_confirmed },
-	block_callback_data{ other_a.block_callback_data },
 	source_block_callback_data{ other_a.source_block_callback_data }
 {
 }
@@ -533,7 +535,6 @@ nano::confirmation_height_unbounded::conf_height_details & nano::confirmation_he
 	hash = other_a.hash;
 	height = other_a.height;
 	num_blocks_confirmed = other_a.num_blocks_confirmed;
-	block_callback_data = other_a.block_callback_data;
 	source_block_callback_data = other_a.source_block_callback_data;
 	return *this;
 }
@@ -557,18 +558,35 @@ uint64_t nano::confirmation_height_unbounded::conf_height_details::get_num_block
 void nano::confirmation_height_unbounded::conf_height_details::set_num_blocks_confirmed (uint64_t num)
 {
 	num_blocks_confirmed = num;
+	rsnano::rsn_conf_height_details_set_num_blocks_confirmed (handle, num);
 }
 std::vector<nano::block_hash> nano::confirmation_height_unbounded::conf_height_details::get_block_callback_data () const
 {
-	return block_callback_data;
+	std::vector<nano::block_hash> result;
+	rsnano::U256ArrayDto dto;
+	rsnano::rsn_conf_height_details_block_callback_data (handle, &dto);
+	for (int i = 0; i < dto.count; ++i)
+	{
+		nano::block_hash hash;
+		std::copy (std::begin (dto.items[i]), std::end (dto.items[i]), std::begin (hash.bytes));
+		result.push_back (hash);
+	}
+	rsnano::rsn_u256_array_destroy (&dto);
+
+	return result;
 }
 void nano::confirmation_height_unbounded::conf_height_details::set_block_callback_data (std::vector<nano::block_hash> const & data_a)
 {
-	block_callback_data.assign (data_a.begin (), data_a.end ());
+	std::vector<uint8_t const *> tmp;
+	for (const auto & i : data_a)
+	{
+		tmp.push_back (i.bytes.data ());
+	}
+	rsnano::rsn_conf_height_details_set_block_callback_data (handle, tmp.data (), tmp.size ());
 }
 void nano::confirmation_height_unbounded::conf_height_details::add_block_callback_data (nano::block_hash const & hash)
 {
-	block_callback_data.push_back (hash);
+	rsnano::rsn_conf_height_details_add_block_callback_data (handle, hash.bytes.data ());
 }
 std::vector<nano::block_hash> nano::confirmation_height_unbounded::conf_height_details::get_source_block_callback_data () const
 {

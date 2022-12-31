@@ -71,7 +71,6 @@ private:
 		nano::block_hash hash;
 		uint64_t height;
 		uint64_t num_blocks_confirmed;
-		std::vector<nano::block_hash> block_callback_data;
 		std::vector<nano::block_hash> source_block_callback_data;
 	};
 

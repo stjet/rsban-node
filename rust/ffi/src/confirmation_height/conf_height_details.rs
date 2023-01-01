@@ -3,7 +3,7 @@ use rsnano_node::confirmation_height::ConfHeightDetails;
 
 use crate::{copy_account_bytes, copy_hash_bytes, U256ArrayDto};
 
-pub struct ConfHeightDetailsHandle(ConfHeightDetails);
+pub struct ConfHeightDetailsHandle(pub ConfHeightDetails);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_details_create(
@@ -137,4 +137,9 @@ pub unsafe extern "C" fn rsn_conf_height_details_set_source_block_callback_data(
         .iter()
         .map(|&bytes| BlockHash::from_ptr(bytes))
         .collect();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_details_size() -> usize {
+    std::mem::size_of::<ConfHeightDetails>()
 }

@@ -163,7 +163,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 			}
 		}
 
-		auto max_write_size_reached = (pending_writes.size () >= confirmation_height::unbounded_cutoff);
+		auto max_write_size_reached = (rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) >= confirmation_height::unbounded_cutoff);
 		// When there are a lot of pending confirmation height blocks, it is more efficient to
 		// bulk some of them up to enable better write performance which becomes the bottleneck.
 		auto min_time_exceeded = (timer.since_start () >= batch_separate_pending_min_time);
@@ -171,12 +171,10 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		auto no_pending = awaiting_processing_size_callback () == 0;
 		auto should_output = finished_iterating && (no_pending || min_time_exceeded);
 
-		auto total_pending_write_block_count = std::accumulate (pending_writes.cbegin (), pending_writes.cend (), uint64_t (0), [] (uint64_t total, conf_height_details const & receive_details_a) {
-			return total += receive_details_a.get_num_blocks_confirmed ();
-		});
+		auto total_pending_write_block_count = rsnano::rsn_conf_height_unbounded_total_pending_write_block_count (handle);
 		auto force_write = total_pending_write_block_count > batch_write_size;
 
-		if ((max_write_size_reached || should_output || force_write) && !pending_writes.empty ())
+		if ((max_write_size_reached || should_output || force_write) && rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) > 0)
 		{
 			if (write_database_queue.process (nano::writer::confirmation_height))
 			{
@@ -336,7 +334,8 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 			}
 		}
 
-		pending_writes.emplace_back (preparation_data_a.account, preparation_data_a.current, block_height, num_blocks_confirmed, block_callback_data);
+		nano::confirmation_height_unbounded::conf_height_details details{ preparation_data_a.account, preparation_data_a.current, block_height, num_blocks_confirmed, block_callback_data };
+		rsnano::rsn_conf_height_unbounded_pending_writes_add (handle, details.handle);
 		++pending_writes_size;
 	}
 
@@ -366,7 +365,7 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 			++confirmed_iterated_pairs_size;
 		}
 
-		pending_writes.push_back (*receive_details);
+		rsnano::rsn_conf_height_unbounded_pending_writes_add (handle, receive_details->handle);
 		++pending_writes_size;
 	}
 }
@@ -379,9 +378,9 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 	{
 		auto transaction (ledger.store.tx_begin_write ({}, { nano::tables::confirmation_height }));
 		cemented_batch_timer.start ();
-		while (!pending_writes.empty ())
+		while (rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) > 0)
 		{
-			auto & pending = pending_writes.front ();
+			nano::confirmation_height_unbounded::conf_height_details pending{ rsnano::rsn_conf_height_unbounded_pending_writes_front (handle) };
 			nano::confirmation_height_info confirmation_height_info;
 			ledger.store.confirmation_height ().get (*transaction, pending.get_account (), confirmation_height_info);
 			auto confirmation_height = confirmation_height_info.height ();
@@ -395,7 +394,7 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 				{
 					if (ledger.pruning_enabled () && ledger.store.pruned ().exists (*transaction, pending.get_hash ()))
 					{
-						pending_writes.erase (pending_writes.begin ());
+						rsnano::rsn_conf_height_unbounded_pending_writes_erase_first (handle);
 						--pending_writes_size;
 						continue;
 					}
@@ -427,7 +426,7 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 					return block_cache.at (hash_a);
 				});
 			}
-			pending_writes.erase (pending_writes.begin ());
+			rsnano::rsn_conf_height_unbounded_pending_writes_erase_first (handle);
 			--pending_writes_size;
 		}
 	}
@@ -442,7 +441,7 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 	notify_observers_callback (cemented_blocks);
 	release_assert (!error);
 
-	debug_assert (pending_writes.empty ());
+	debug_assert (rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) == 0);
 	debug_assert (pending_writes_size == 0);
 	timer.restart ();
 }
@@ -465,7 +464,7 @@ std::shared_ptr<nano::block> nano::confirmation_height_unbounded::get_block_and_
 
 bool nano::confirmation_height_unbounded::pending_empty () const
 {
-	return pending_writes.empty ();
+	return rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) == 0;
 }
 
 void nano::confirmation_height_unbounded::clear_process_vars ()
@@ -618,7 +617,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "confirmed_iterated_pairs", confirmation_height_unbounded.confirmed_iterated_pairs_size, sizeof (decltype (confirmation_height_unbounded.confirmed_iterated_pairs)::value_type) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", confirmation_height_unbounded.pending_writes_size, sizeof (decltype (confirmation_height_unbounded.pending_writes)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", confirmation_height_unbounded.pending_writes_size, rsnano::rsn_conf_height_details_size () }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "implicit_receive_cemented_mapping", confirmation_height_unbounded.implicit_receive_cemented_mapping_size, sizeof (decltype (confirmation_height_unbounded.implicit_receive_cemented_mapping)::value_type) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_cache", confirmation_height_unbounded.block_cache_size (), sizeof (decltype (confirmation_height_unbounded.block_cache)::value_type) }));
 	return composite;

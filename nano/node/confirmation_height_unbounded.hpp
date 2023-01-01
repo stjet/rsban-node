@@ -50,6 +50,10 @@ private:
 	{
 	public:
 		conf_height_details (nano::account const &, nano::block_hash const &, uint64_t, uint64_t, std::vector<nano::block_hash> const &);
+		conf_height_details (rsnano::ConfHeightDetailsHandle * handle_a) :
+			handle{ handle_a }
+		{
+		}
 		conf_height_details (conf_height_details const &);
 		conf_height_details (conf_height_details &&) = delete;
 		~conf_height_details ();
@@ -84,7 +88,6 @@ private:
 	std::unordered_map<account, confirmed_iterated_pair> confirmed_iterated_pairs;
 	nano::relaxed_atomic_integral<uint64_t> confirmed_iterated_pairs_size{ 0 };
 	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);
-	std::deque<conf_height_details> pending_writes;
 	nano::relaxed_atomic_integral<uint64_t> pending_writes_size{ 0 };
 	std::unordered_map<nano::block_hash, std::weak_ptr<conf_height_details>> implicit_receive_cemented_mapping;
 	nano::relaxed_atomic_integral<uint64_t> implicit_receive_cemented_mapping_size{ 0 };

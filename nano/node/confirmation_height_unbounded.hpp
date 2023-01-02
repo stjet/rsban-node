@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nano/lib/numbers.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/secure/store.hpp>
@@ -8,10 +9,6 @@
 #include <chrono>
 #include <unordered_map>
 
-namespace rsnano
-{
-class ConfirmationHeightUnboundedHandle;
-}
 namespace nano
 {
 class ledger;
@@ -86,6 +83,7 @@ private:
 	// upon in any way (does not synchronize with any other data).
 	// This allows the load and stores to use relaxed atomic memory ordering.
 	std::unordered_map<account, confirmed_iterated_pair> confirmed_iterated_pairs;
+
 	nano::relaxed_atomic_integral<uint64_t> confirmed_iterated_pairs_size{ 0 };
 	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);
 	nano::relaxed_atomic_integral<uint64_t> pending_writes_size{ 0 };
@@ -104,7 +102,7 @@ private:
 		uint64_t block_height;
 		uint64_t confirmation_height;
 		uint64_t iterated_height;
-		decltype (confirmed_iterated_pairs.begin ()) account_it;
+		rsnano::ConfirmedIteratedPairsIteratorDto account_it;
 		nano::account const & account;
 		std::shared_ptr<conf_height_details> receive_details;
 		bool already_traversed;

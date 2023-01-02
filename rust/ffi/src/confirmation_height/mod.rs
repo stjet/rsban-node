@@ -1,6 +1,7 @@
 mod conf_height_details;
 
-use rsnano_node::confirmation_height::ConfirmationHeightUnbounded;
+use rsnano_core::Account;
+use rsnano_node::confirmation_height::{ConfirmationHeightUnbounded, ConfirmedIteratedPair};
 
 use self::conf_height_details::ConfHeightDetailsHandle;
 
@@ -56,4 +57,96 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_total_pending_write_block_cou
     handle: *mut ConfirmationHeightUnboundedHandle,
 ) -> u64 {
     (*handle).0.total_pending_write_block_count()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_empty(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+) -> bool {
+    (*handle).0.pending_empty()
+}
+
+#[repr(C)]
+pub struct ConfirmedIteratedPairsIteratorDto {
+    pub is_end: bool,
+    pub account: [u8; 32],
+    pub confirmed_height: u64,
+    pub iterated_height: u64,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_clear(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+) {
+    (*handle).0.confirmed_iterated_pairs.clear();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_insert(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    account: *const u8,
+    confirmed_height: u64,
+    iterated_height: u64,
+) {
+    (*handle).0.confirmed_iterated_pairs.insert(
+        Account::from_ptr(account),
+        ConfirmedIteratedPair {
+            confirmed_height,
+            iterated_height,
+        },
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_iterated_pair_size() -> usize {
+    std::mem::size_of::<ConfirmedIteratedPair>()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_find(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    account: *const u8,
+    result: *mut ConfirmedIteratedPairsIteratorDto,
+) {
+    let account = Account::from_ptr(account);
+    let res = &mut *result;
+    match (*handle).0.confirmed_iterated_pairs.get(&account) {
+        Some(pair) => {
+            res.is_end = false;
+            res.account = *account.as_bytes();
+            res.confirmed_height = pair.confirmed_height;
+            res.iterated_height = pair.iterated_height;
+        }
+        None => res.is_end = true,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_set_confirmed_height(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    account: *const u8,
+    height: u64,
+) {
+    let account = Account::from_ptr(account);
+    let pair = (*handle)
+        .0
+        .confirmed_iterated_pairs
+        .get_mut(&account)
+        .unwrap();
+    pair.confirmed_height = height;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_set_iterated_height(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    account: *const u8,
+    height: u64,
+) {
+    let account = Account::from_ptr(account);
+    let pair = (*handle)
+        .0
+        .confirmed_iterated_pairs
+        .get_mut(&account)
+        .unwrap();
+    pair.iterated_height = height;
 }

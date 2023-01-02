@@ -1,4 +1,3 @@
-#include <nano/lib/rsnano.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/node/confirmation_height_unbounded.hpp>
 #include <nano/node/logging.hpp>
@@ -94,10 +93,11 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 
 		auto block_height = block->sideband ().height ();
 		uint64_t confirmation_height = 0;
-		auto account_it = confirmed_iterated_pairs.find (account);
-		if (account_it != confirmed_iterated_pairs.cend ())
+		rsnano::ConfirmedIteratedPairsIteratorDto account_it;
+		rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_find (handle, account.bytes.data (), &account_it);
+		if (!account_it.is_end)
 		{
-			confirmation_height = account_it->second.confirmed_height;
+			confirmation_height = account_it.confirmed_height;
 		}
 		else
 		{
@@ -113,9 +113,9 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 			}
 		}
 		auto iterated_height = confirmation_height;
-		if (account_it != confirmed_iterated_pairs.cend () && account_it->second.iterated_height > iterated_height)
+		if (!account_it.is_end && account_it.iterated_height > iterated_height)
 		{
-			iterated_height = account_it->second.iterated_height;
+			iterated_height = account_it.iterated_height;
 		}
 
 		auto count_before_receive = receive_source_pairs.size ();
@@ -152,13 +152,14 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		}
 		else if (block_height > iterated_height)
 		{
-			if (account_it != confirmed_iterated_pairs.cend ())
+			if (!account_it.is_end)
 			{
-				account_it->second.iterated_height = block_height;
+				rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_set_iterated_height (handle, &account_it.account[0], block_height);
 			}
 			else
 			{
 				confirmed_iterated_pairs.emplace (std::piecewise_construct, std::forward_as_tuple (account), std::forward_as_tuple (confirmation_height, block_height));
+				rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_insert (handle, account.bytes.data (), confirmation_height, block_height);
 				++confirmed_iterated_pairs_size;
 			}
 		}
@@ -282,17 +283,18 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 	if (block_height > preparation_data_a.confirmation_height)
 	{
 		// Check whether the previous block has been seen. If so, the rest of sends below have already been seen so don't count them
-		if (preparation_data_a.account_it != confirmed_iterated_pairs.cend ())
+		if (!preparation_data_a.account_it.is_end)
 		{
-			preparation_data_a.account_it->second.confirmed_height = block_height;
+			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_set_confirmed_height (handle, &preparation_data_a.account_it.account[0], block_height);
 			if (block_height > preparation_data_a.iterated_height)
 			{
-				preparation_data_a.account_it->second.iterated_height = block_height;
+				rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_set_iterated_height (handle, &preparation_data_a.account_it.account[0], block_height);
 			}
 		}
 		else
 		{
 			confirmed_iterated_pairs.emplace (std::piecewise_construct, std::forward_as_tuple (preparation_data_a.account), std::forward_as_tuple (block_height, block_height));
+			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_insert (handle, preparation_data_a.account.bytes.data (), block_height, block_height);
 			++confirmed_iterated_pairs_size;
 		}
 
@@ -343,12 +345,13 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 	{
 		// Check whether the previous block has been seen. If so, the rest of sends below have already been seen so don't count them
 		auto receive_account = receive_details->get_account ();
-		auto receive_account_it = confirmed_iterated_pairs.find (receive_account);
-		if (receive_account_it != confirmed_iterated_pairs.cend ())
+		rsnano::ConfirmedIteratedPairsIteratorDto receive_account_it;
+		rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_find (handle, receive_account.bytes.data (), &receive_account_it);
+		if (!receive_account_it.is_end)
 		{
 			// Get current height
-			auto current_height = receive_account_it->second.confirmed_height;
-			receive_account_it->second.confirmed_height = receive_details->get_height ();
+			auto current_height = receive_account_it.confirmed_height;
+			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_set_confirmed_height (handle, receive_account.bytes.data (), receive_details->get_height ());
 			auto const orig_num_blocks_confirmed = receive_details->get_num_blocks_confirmed ();
 			receive_details->set_num_blocks_confirmed (receive_details->get_height () - current_height);
 
@@ -362,6 +365,7 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 		else
 		{
 			confirmed_iterated_pairs.emplace (std::piecewise_construct, std::forward_as_tuple (receive_account), std::forward_as_tuple (receive_details->get_height (), receive_details->get_height ()));
+			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_insert (handle, receive_account.bytes.data (), receive_details->get_height (), receive_details->get_height ());
 			++confirmed_iterated_pairs_size;
 		}
 
@@ -464,7 +468,7 @@ std::shared_ptr<nano::block> nano::confirmation_height_unbounded::get_block_and_
 
 bool nano::confirmation_height_unbounded::pending_empty () const
 {
-	return rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) == 0;
+	return rsnano::rsn_conf_height_unbounded_pending_empty (handle);
 }
 
 void nano::confirmation_height_unbounded::clear_process_vars ()
@@ -472,6 +476,7 @@ void nano::confirmation_height_unbounded::clear_process_vars ()
 	// Separate blocks which are pending confirmation height can be batched by a minimum processing time (to improve lmdb disk write performance),
 	// so make sure the slate is clean when a new batch is starting.
 	confirmed_iterated_pairs.clear ();
+	rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_clear (handle);
 	confirmed_iterated_pairs_size = 0;
 	implicit_receive_cemented_mapping.clear ();
 	implicit_receive_cemented_mapping_size = 0;
@@ -616,7 +621,7 @@ nano::confirmation_height_unbounded::confirmed_iterated_pair::confirmed_iterated
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_unbounded & confirmation_height_unbounded, std::string const & name_a)
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "confirmed_iterated_pairs", confirmation_height_unbounded.confirmed_iterated_pairs_size, sizeof (decltype (confirmation_height_unbounded.confirmed_iterated_pairs)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "confirmed_iterated_pairs", confirmation_height_unbounded.confirmed_iterated_pairs_size, rsnano::rsn_conf_iterated_pair_size () }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", confirmation_height_unbounded.pending_writes_size, rsnano::rsn_conf_height_details_size () }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "implicit_receive_cemented_mapping", confirmation_height_unbounded.implicit_receive_cemented_mapping_size, sizeof (decltype (confirmation_height_unbounded.implicit_receive_cemented_mapping)::value_type) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_cache", confirmation_height_unbounded.block_cache_size (), sizeof (decltype (confirmation_height_unbounded.block_cache)::value_type) }));

@@ -1,5 +1,7 @@
 mod conf_height_details;
 
+use std::sync::atomic::Ordering;
+
 use rsnano_core::Account;
 use rsnano_node::confirmation_height::{ConfirmationHeightUnbounded, ConfirmedIteratedPair};
 
@@ -78,7 +80,7 @@ pub struct ConfirmedIteratedPairsIteratorDto {
 pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_clear(
     handle: *mut ConfirmationHeightUnboundedHandle,
 ) {
-    (*handle).0.confirmed_iterated_pairs.clear();
+    (*handle).0.clear_confirmed_iterated_pairs();
 }
 
 #[no_mangle]
@@ -88,13 +90,21 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_insert(
     confirmed_height: u64,
     iterated_height: u64,
 ) {
-    (*handle).0.confirmed_iterated_pairs.insert(
+    (*handle).0.add_confirmed_iterated_pair(
         Account::from_ptr(account),
-        ConfirmedIteratedPair {
-            confirmed_height,
-            iterated_height,
-        },
+        confirmed_height,
+        iterated_height,
     );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_iterated_pairs_len(
+    handle: *const ConfirmationHeightUnboundedHandle,
+) -> usize {
+    (*handle)
+        .0
+        .confirmed_iterated_pairs_size
+        .load(Ordering::Relaxed)
 }
 
 #[no_mangle]

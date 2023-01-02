@@ -35,14 +35,6 @@ public:
 	rsnano::ConfirmationHeightUnboundedHandle * handle;
 
 private:
-	class confirmed_iterated_pair
-	{
-	public:
-		confirmed_iterated_pair (uint64_t confirmed_height_a, uint64_t iterated_height_a);
-		uint64_t confirmed_height;
-		uint64_t iterated_height;
-	};
-
 	class conf_height_details final
 	{
 	public:
@@ -82,9 +74,6 @@ private:
 	// for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
 	// upon in any way (does not synchronize with any other data).
 	// This allows the load and stores to use relaxed atomic memory ordering.
-	std::unordered_map<account, confirmed_iterated_pair> confirmed_iterated_pairs;
-
-	nano::relaxed_atomic_integral<uint64_t> confirmed_iterated_pairs_size{ 0 };
 	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);
 	nano::relaxed_atomic_integral<uint64_t> pending_writes_size{ 0 };
 	std::unordered_map<nano::block_hash, std::weak_ptr<conf_height_details>> implicit_receive_cemented_mapping;

@@ -334,7 +334,6 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 
 		nano::confirmation_height_unbounded::conf_height_details details{ preparation_data_a.account, preparation_data_a.current, block_height, num_blocks_confirmed, block_callback_data };
 		rsnano::rsn_conf_height_unbounded_pending_writes_add (handle, details.handle);
-		++pending_writes_size;
 	}
 
 	if (receive_details)
@@ -364,7 +363,6 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 		}
 
 		rsnano::rsn_conf_height_unbounded_pending_writes_add (handle, receive_details->handle);
-		++pending_writes_size;
 	}
 }
 
@@ -393,7 +391,6 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 					if (ledger.pruning_enabled () && ledger.store.pruned ().exists (*transaction, pending.get_hash ()))
 					{
 						rsnano::rsn_conf_height_unbounded_pending_writes_erase_first (handle);
-						--pending_writes_size;
 						continue;
 					}
 					else
@@ -425,7 +422,6 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 				});
 			}
 			rsnano::rsn_conf_height_unbounded_pending_writes_erase_first (handle);
-			--pending_writes_size;
 		}
 	}
 
@@ -440,7 +436,7 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 	release_assert (!error);
 
 	debug_assert (rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) == 0);
-	debug_assert (pending_writes_size == 0);
+	debug_assert (rsnano::rsn_conf_height_unbounded_pending_writes_len (handle) == 0);
 	timer.restart ();
 }
 
@@ -607,8 +603,8 @@ nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (s
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_unbounded & confirmation_height_unbounded, std::string const & name_a)
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "confirmed_iterated_pairs", rsnano::rsn_conf_iterated_pairs_len (confirmation_height_unbounded.handle), rsnano::rsn_conf_iterated_pair_size () }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", confirmation_height_unbounded.pending_writes_size, rsnano::rsn_conf_height_details_size () }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "confirmed_iterated_pairs", rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_len (confirmation_height_unbounded.handle), rsnano::rsn_conf_iterated_pair_size () }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", rsnano::rsn_conf_height_unbounded_pending_writes_len (confirmation_height_unbounded.handle), rsnano::rsn_conf_height_details_size () }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "implicit_receive_cemented_mapping", confirmation_height_unbounded.implicit_receive_cemented_mapping_size, sizeof (decltype (confirmation_height_unbounded.implicit_receive_cemented_mapping)::value_type) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_cache", confirmation_height_unbounded.block_cache_size (), sizeof (decltype (confirmation_height_unbounded.block_cache)::value_type) }));
 	return composite;

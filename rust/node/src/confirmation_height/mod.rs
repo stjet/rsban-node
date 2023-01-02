@@ -7,7 +7,14 @@ use std::{
 pub struct ConfirmationHeightUnbounded {
     pub pending_writes: VecDeque<ConfHeightDetails>,
     pub confirmed_iterated_pairs: HashMap<Account, ConfirmedIteratedPair>,
+
+    // All of the atomic variables here just track the size for use in collect_container_info.
+    // This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
+    // for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
+    // upon in any way (does not synchronize with any other data).
+    // This allows the load and stores to use relaxed atomic memory ordering.
     pub confirmed_iterated_pairs_size: AtomicUsize,
+    pub pending_writes_size: AtomicUsize,
 }
 
 impl ConfirmationHeightUnbounded {
@@ -16,6 +23,7 @@ impl ConfirmationHeightUnbounded {
             pending_writes: VecDeque::new(),
             confirmed_iterated_pairs: HashMap::new(),
             confirmed_iterated_pairs_size: AtomicUsize::new(0),
+            pending_writes_size: AtomicUsize::new(0),
         }
     }
 
@@ -38,6 +46,16 @@ impl ConfirmationHeightUnbounded {
         );
         self.confirmed_iterated_pairs_size
             .fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn add_pending_write(&mut self, details: ConfHeightDetails) {
+        self.pending_writes.push_back(details);
+        self.pending_writes_size.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn erase_first_pending_write(&mut self) {
+        self.pending_writes.pop_front();
+        self.pending_writes_size.fetch_sub(1, Ordering::Relaxed);
     }
 
     pub fn clear_confirmed_iterated_pairs(&mut self) {

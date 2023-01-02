@@ -75,7 +75,6 @@ private:
 	// upon in any way (does not synchronize with any other data).
 	// This allows the load and stores to use relaxed atomic memory ordering.
 	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);
-	nano::relaxed_atomic_integral<uint64_t> pending_writes_size{ 0 };
 	std::unordered_map<nano::block_hash, std::weak_ptr<conf_height_details>> implicit_receive_cemented_mapping;
 	nano::relaxed_atomic_integral<uint64_t> implicit_receive_cemented_mapping_size{ 0 };
 

@@ -28,14 +28,14 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_add(
     handle: *mut ConfirmationHeightUnboundedHandle,
     details: *const ConfHeightDetailsHandle,
 ) {
-    (*handle).0.pending_writes.push_back((*details).0.clone());
+    (*handle).0.add_pending_write((*details).0.clone());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_erase_first(
     handle: *mut ConfirmationHeightUnboundedHandle,
 ) {
-    (*handle).0.pending_writes.pop_front();
+    (*handle).0.erase_first_pending_write();
 }
 
 #[no_mangle]
@@ -98,13 +98,20 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_insert(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_conf_iterated_pairs_len(
+pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_len(
     handle: *const ConfirmationHeightUnboundedHandle,
 ) -> usize {
     (*handle)
         .0
         .confirmed_iterated_pairs_size
         .load(Ordering::Relaxed)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_len(
+    handle: *const ConfirmationHeightUnboundedHandle,
+) -> usize {
+    (*handle).0.pending_writes_size.load(Ordering::Relaxed)
 }
 
 #[no_mangle]

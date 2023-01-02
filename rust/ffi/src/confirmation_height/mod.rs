@@ -5,7 +5,7 @@ use std::sync::atomic::Ordering;
 use rsnano_core::Account;
 use rsnano_node::confirmation_height::{ConfirmationHeightUnbounded, ConfirmedIteratedPair};
 
-use self::conf_height_details::ConfHeightDetailsHandle;
+use self::conf_height_details::{ConfHeightDetailsHandle, ConfHeightDetailsSharedPtrHandle};
 
 pub struct ConfirmationHeightUnboundedHandle(ConfirmationHeightUnbounded);
 
@@ -29,6 +29,16 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_add(
     details: *const ConfHeightDetailsHandle,
 ) {
     (*handle).0.add_pending_write((*details).0.clone());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_add2(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    details: *const ConfHeightDetailsSharedPtrHandle,
+) {
+    (*handle)
+        .0
+        .add_pending_write((*details).0.lock().unwrap().clone());
 }
 
 #[no_mangle]

@@ -35,6 +35,194 @@ public:
 	rsnano::ConfirmationHeightUnboundedHandle * handle;
 
 private:
+	class conf_height_details_shared_ptr
+	{
+	public:
+		conf_height_details_shared_ptr () :
+			handle{ nullptr }
+		{
+		}
+		conf_height_details_shared_ptr (rsnano::ConfHeightDetailsSharedPtrHandle * handle_a) :
+			handle{ handle_a }
+		{
+		}
+		conf_height_details_shared_ptr (conf_height_details_shared_ptr const & other_a)
+		{
+			if (other_a.handle == nullptr)
+			{
+				handle = nullptr;
+			}
+			else
+			{
+				handle = rsnano::rsn_conf_height_details_shared_ptr_clone (other_a.handle);
+			}
+		}
+		conf_height_details_shared_ptr (conf_height_details_shared_ptr &&) = delete;
+		~conf_height_details_shared_ptr ()
+		{
+			if (handle != nullptr)
+			{
+				rsnano::rsn_conf_height_details_shared_ptr_destroy (handle);
+			}
+		}
+		conf_height_details_shared_ptr & operator= (conf_height_details_shared_ptr const & other_a)
+		{
+			if (handle != nullptr)
+			{
+				rsnano::rsn_conf_height_details_shared_ptr_destroy (handle);
+			}
+			if (other_a.handle == nullptr)
+			{
+				handle = nullptr;
+			}
+			else
+			{
+				handle = rsnano::rsn_conf_height_details_shared_ptr_clone (other_a.handle);
+			}
+			return *this;
+		}
+
+		std::vector<nano::block_hash> get_source_block_callback_data () const
+		{
+			std::vector<nano::block_hash> result;
+			rsnano::U256ArrayDto dto;
+			rsnano::rsn_conf_height_details_shared_source_block_callback_data (handle, &dto);
+			for (int i = 0; i < dto.count; ++i)
+			{
+				nano::block_hash hash;
+				std::copy (std::begin (dto.items[i]), std::end (dto.items[i]), std::begin (hash.bytes));
+				result.push_back (hash);
+			}
+			rsnano::rsn_u256_array_destroy (&dto);
+
+			return result;
+		}
+		void set_source_block_callback_data (std::vector<nano::block_hash> const & data_a)
+		{
+			std::vector<uint8_t const *> tmp;
+			for (const auto & i : data_a)
+			{
+				tmp.push_back (i.bytes.data ());
+			}
+			rsnano::rsn_conf_height_details_shared_set_source_block_callback_data (handle, tmp.data (), tmp.size ());
+		}
+
+		uint64_t get_num_blocks_confirmed () const
+		{
+			return rsnano::rsn_conf_height_details_shared_num_blocks_confirmed (handle);
+		}
+
+		void set_num_blocks_confirmed (uint64_t num)
+		{
+			rsnano::rsn_conf_height_details_shared_set_num_blocks_confirmed (handle, num);
+		}
+
+		std::vector<nano::block_hash> get_block_callback_data () const
+		{
+			std::vector<nano::block_hash> result;
+			rsnano::U256ArrayDto dto;
+			rsnano::rsn_conf_height_details_shared_block_callback_data (handle, &dto);
+			for (int i = 0; i < dto.count; ++i)
+			{
+				nano::block_hash hash;
+				std::copy (std::begin (dto.items[i]), std::end (dto.items[i]), std::begin (hash.bytes));
+				result.push_back (hash);
+			}
+			rsnano::rsn_u256_array_destroy (&dto);
+
+			return result;
+		}
+
+		void add_block_callback_data (nano::block_hash const & hash)
+		{
+			rsnano::rsn_conf_height_details_shared_add_block_callback_data (handle, hash.bytes.data ());
+		}
+
+		void set_block_callback_data (std::vector<nano::block_hash> const & data_a)
+		{
+			std::vector<uint8_t const *> tmp;
+			for (const auto & i : data_a)
+			{
+				tmp.push_back (i.bytes.data ());
+			}
+			rsnano::rsn_conf_height_details_shared_set_block_callback_data (handle, tmp.data (), tmp.size ());
+		}
+
+		uint64_t get_height () const
+		{
+			return rsnano::rsn_conf_height_details_shared_height (handle);
+		}
+
+		nano::account get_account () const
+		{
+			nano::account account;
+			rsnano::rsn_conf_height_details_shared_account (handle, account.bytes.data ());
+			return account;
+		}
+
+		bool is_null ()
+		{
+			return handle == nullptr;
+		}
+
+		void destroy ()
+		{
+			if (handle != nullptr)
+			{
+				rsnano::rsn_conf_height_details_shared_ptr_destroy (handle);
+			}
+			handle = nullptr;
+		}
+		rsnano::ConfHeightDetailsSharedPtrHandle * handle;
+	};
+
+	class conf_height_details_weak_ptr
+	{
+	public:
+		conf_height_details_weak_ptr () :
+			handle{ nullptr }
+		{
+		}
+		conf_height_details_weak_ptr (rsnano::ConfHeightDetailsWeakPtrHandle * handle_a) :
+			handle{ handle_a }
+		{
+		}
+		conf_height_details_weak_ptr (conf_height_details_weak_ptr const & other_a) :
+			handle{ rsnano::rsn_conf_height_details_weak_ptr_clone (other_a.handle) }
+		{
+		}
+		conf_height_details_weak_ptr (conf_height_details_shared_ptr const & ptr) :
+			handle{ rsnano::rsn_conf_height_details_shared_ptr_to_weak (ptr.handle) }
+		{
+		}
+		conf_height_details_weak_ptr (conf_height_details_weak_ptr &&) = delete;
+		~conf_height_details_weak_ptr ()
+		{
+			if (handle != nullptr)
+			{
+				rsnano::rsn_conf_height_details_weak_ptr_destroy (handle);
+			}
+		}
+		conf_height_details_weak_ptr & operator= (conf_height_details_weak_ptr const & other_a)
+		{
+			if (handle != nullptr)
+			{
+				rsnano::rsn_conf_height_details_weak_ptr_destroy (handle);
+			}
+			handle = rsnano::rsn_conf_height_details_weak_ptr_clone (other_a.handle);
+			return *this;
+		}
+		bool expired ()
+		{
+			return rsnano::rsn_conf_height_details_weak_expired (handle);
+		}
+		conf_height_details_shared_ptr upgrade ()
+		{
+			return conf_height_details_shared_ptr{ rsnano::rsn_conf_height_details_weak_upgrade (handle) };
+		}
+		rsnano::ConfHeightDetailsWeakPtrHandle * handle;
+	};
+
 	class conf_height_details final
 	{
 	public:
@@ -52,37 +240,19 @@ private:
 		nano::block_hash get_hash () const;
 		uint64_t get_height () const;
 		uint64_t get_num_blocks_confirmed () const;
-		void set_num_blocks_confirmed (uint64_t num);
 		std::vector<nano::block_hash> get_block_callback_data () const;
 		void set_block_callback_data (std::vector<nano::block_hash> const &);
 		void add_block_callback_data (nano::block_hash const & hash);
-		std::vector<nano::block_hash> get_source_block_callback_data () const;
-		void set_source_block_callback_data (std::vector<nano::block_hash> const &);
 	};
 
 	class receive_source_pair final
 	{
 	public:
-		receive_source_pair (std::shared_ptr<conf_height_details> const &, nano::block_hash const &);
+		receive_source_pair (conf_height_details_shared_ptr const &, nano::block_hash const &);
 
-		std::shared_ptr<conf_height_details> receive_details;
+		conf_height_details_shared_ptr receive_details;
 		nano::block_hash source_hash;
 	};
-
-	// All of the atomic variables here just track the size for use in collect_container_info.
-	// This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
-	// for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
-	// upon in any way (does not synchronize with any other data).
-	// This allows the load and stores to use relaxed atomic memory ordering.
-	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);
-	std::unordered_map<nano::block_hash, std::weak_ptr<conf_height_details>> implicit_receive_cemented_mapping;
-	nano::relaxed_atomic_integral<uint64_t> implicit_receive_cemented_mapping_size{ 0 };
-
-	mutable nano::mutex block_cache_mutex;
-	std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> block_cache;
-	uint64_t block_cache_size () const;
-
-	nano::timer<std::chrono::milliseconds> timer;
 
 	class preparation_data final
 	{
@@ -92,7 +262,7 @@ private:
 		uint64_t iterated_height;
 		rsnano::ConfirmedIteratedPairsIteratorDto account_it;
 		nano::account const & account;
-		std::shared_ptr<conf_height_details> receive_details;
+		conf_height_details_shared_ptr receive_details;
 		bool already_traversed;
 		nano::block_hash const & current;
 		std::vector<nano::block_hash> const & block_callback_data;
@@ -101,6 +271,23 @@ private:
 
 	void collect_unconfirmed_receive_and_sources_for_account (uint64_t, uint64_t, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account const &, nano::read_transaction const &, std::vector<receive_source_pair> &, std::vector<nano::block_hash> &, std::vector<nano::block_hash> &, std::shared_ptr<nano::block> original_block);
 	void prepare_iterated_blocks_for_cementing (preparation_data &);
+	uint64_t block_cache_size () const;
+	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);
+
+	// Fields:
+
+	// All of the atomic variables here just track the size for use in collect_container_info.
+	// This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
+	// for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
+	// upon in any way (does not synchronize with any other data).
+	// This allows the load and stores to use relaxed atomic memory ordering.
+	std::unordered_map<nano::block_hash, conf_height_details_weak_ptr> implicit_receive_cemented_mapping;
+	nano::relaxed_atomic_integral<uint64_t> implicit_receive_cemented_mapping_size{ 0 };
+
+	mutable nano::mutex block_cache_mutex;
+	std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> block_cache;
+
+	nano::timer<std::chrono::milliseconds> timer;
 
 	nano::ledger & ledger;
 	nano::stat & stats;

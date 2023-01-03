@@ -68,7 +68,7 @@ impl From<&StatConfigDto> for StatConfig {
     }
 }
 
-pub struct StatHandle(Arc<Stat>);
+pub struct StatHandle(pub Arc<Stat>);
 
 impl StatHandle {
     pub fn new(stat: &Arc<Stat>) -> *mut Self {

@@ -9,6 +9,7 @@ use crate::{
 pub trait Store: Send + Sync {
     fn tx_begin_read(&self) -> anyhow::Result<Box<dyn ReadTransaction>>;
     fn tx_begin_write(&self) -> anyhow::Result<Box<dyn WriteTransaction>>;
+    fn tx_begin_write_for(&self, to_lock: &[Table]) -> anyhow::Result<Box<dyn WriteTransaction>>;
     fn copy_db(&self, destination: &Path) -> anyhow::Result<()>;
     fn account(&self) -> &dyn AccountStore;
     fn confirmation_height(&self) -> &dyn ConfirmationHeightStore;
@@ -20,4 +21,8 @@ pub trait Store: Send + Sync {
     fn peers(&self) -> &dyn PeerStore;
     fn final_votes(&self) -> &dyn FinalVoteStore;
     fn unchecked(&self) -> &dyn UncheckedStore;
+}
+
+pub enum Table {
+    ConfirmationHeight,
 }

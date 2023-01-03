@@ -1,6 +1,6 @@
-use rsnano_core::{Account, BlockEnum, BlockHash};
-use rsnano_ledger::Ledger;
-use rsnano_store_traits::Transaction;
+use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, ConfirmationHeightInfo};
+use rsnano_ledger::{Ledger, WriteGuard};
+use rsnano_store_traits::{Table, Transaction};
 use std::{
     collections::{HashMap, VecDeque},
     sync::{
@@ -10,8 +10,16 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::{
+    config::Logging,
+    stats::{DetailType, Direction, Stat, StatType},
+};
+
 pub struct ConfirmationHeightUnbounded {
     ledger: Arc<Ledger>,
+    logger: Arc<dyn Logger>,
+    logging: Logging,
+    stats: Arc<Stat>,
     pub pending_writes: VecDeque<ConfHeightDetails>,
     pub confirmed_iterated_pairs: HashMap<Account, ConfirmedIteratedPair>,
 
@@ -35,11 +43,17 @@ pub struct ConfirmationHeightUnbounded {
 impl ConfirmationHeightUnbounded {
     pub fn new(
         ledger: Arc<Ledger>,
+        logger: Arc<dyn Logger>,
+        logging: Logging,
+        stats: Arc<Stat>,
         batch_separate_pending_min_time: Duration,
         notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
     ) -> Self {
         Self {
             ledger,
+            logger,
+            logging,
+            stats,
             pending_writes: VecDeque::new(),
             confirmed_iterated_pairs: HashMap::new(),
             implicit_receive_cemented_mapping: HashMap::new(),
@@ -169,6 +183,116 @@ impl ConfirmationHeightUnbounded {
             .store(0, Ordering::Relaxed);
 
         self.block_cache.lock().unwrap().clear();
+    }
+
+    pub fn cement_blocks(&mut self, scoped_write_guard_a: &mut WriteGuard) {
+        let mut cemented_batch_timer = Instant::now();
+        let mut cemented_blocks: Vec<Arc<BlockEnum>> = Vec::new();
+        let mut error = false;
+        {
+            let mut transaction = self
+                .ledger
+                .store
+                .tx_begin_write_for(&[Table::ConfirmationHeight])
+                .unwrap();
+            cemented_batch_timer = Instant::now();
+            while !self.pending_writes.is_empty() {
+                let mut pending = self.pending_writes.front().unwrap().clone(); //todo: remove unwrap
+
+                let confirmation_height_info = self
+                    .ledger
+                    .store
+                    .confirmation_height()
+                    .get(transaction.txn(), &pending.account)
+                    .unwrap_or_default();
+                let mut confirmation_height = confirmation_height_info.height;
+
+                if pending.height > confirmation_height {
+                    let block = self
+                        .ledger
+                        .store
+                        .block()
+                        .get(transaction.txn(), &pending.hash);
+
+                    debug_assert!(self.ledger.pruning_enabled() || block.is_some());
+                    debug_assert!(
+                        self.ledger.pruning_enabled()
+                            || block.as_ref().unwrap().sideband().unwrap().height == pending.height
+                    );
+
+                    if block.is_none() {
+                        if self.ledger.pruning_enabled()
+                            && self
+                                .ledger
+                                .store
+                                .pruned()
+                                .exists(transaction.txn(), &pending.hash)
+                        {
+                            self.erase_first_pending_write();
+                            continue;
+                        } else {
+                            let error_str = format!("Failed to write confirmation height for block {} (unbounded processor)", pending.hash);
+                            self.logger.always_log(&error_str);
+                            eprintln!("{}", error_str);
+                            error = true;
+                            break;
+                        }
+                    }
+                    let _ = self.stats.add(
+                        StatType::ConfirmationHeight,
+                        DetailType::BlocksConfirmed,
+                        Direction::In,
+                        pending.height - confirmation_height,
+                        false,
+                    );
+                    let _ = self.stats.add(
+                        StatType::ConfirmationHeight,
+                        DetailType::BlocksConfirmedUnbounded,
+                        Direction::In,
+                        pending.height - confirmation_height,
+                        false,
+                    );
+
+                    debug_assert!(
+                        pending.num_blocks_confirmed == pending.height - confirmation_height
+                    );
+                    confirmation_height = pending.height;
+                    self.ledger
+                        .cache
+                        .cemented_count
+                        .fetch_add(pending.num_blocks_confirmed, Ordering::SeqCst);
+
+                    self.ledger.store.confirmation_height().put(
+                        transaction.as_mut(),
+                        &pending.account,
+                        &ConfirmationHeightInfo::new(confirmation_height, pending.hash),
+                    );
+
+                    // Reverse it so that the callbacks start from the lowest newly cemented block and move upwards
+                    pending.block_callback_data.reverse();
+
+                    cemented_blocks.append(&mut self.get_blocks(&pending));
+                }
+                self.erase_first_pending_write();
+            }
+        }
+
+        let time_spent_cementing = cemented_batch_timer.elapsed();
+        if self.logging.timing_logging_value && time_spent_cementing > Duration::from_millis(50) {
+            self.logger.always_log(&format!(
+                "Cemented {} blocks in {} ms (unbounded processor)",
+                cemented_blocks.len(),
+                time_spent_cementing.as_millis()
+            ));
+        }
+
+        scoped_write_guard_a.release();
+        (self.notify_observers_callback)(&cemented_blocks);
+        assert!(!error);
+
+        debug_assert!(self.pending_writes.len() == 0);
+        debug_assert!(self.pending_writes_size.load(Ordering::Relaxed) == 0);
+        self.restart_timer();
     }
 }
 

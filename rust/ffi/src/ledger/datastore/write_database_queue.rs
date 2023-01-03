@@ -47,7 +47,7 @@ pub unsafe extern "C" fn rsn_write_database_queue_pop(
     WriteGuardHandle::new((*handle).0.pop())
 }
 
-pub struct WriteGuardHandle(WriteGuard);
+pub struct WriteGuardHandle(pub WriteGuard);
 impl WriteGuardHandle {
     pub fn new(guard: WriteGuard) -> *mut WriteGuardHandle {
         Box::into_raw(Box::new(WriteGuardHandle(guard)))

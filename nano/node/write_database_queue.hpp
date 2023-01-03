@@ -29,8 +29,9 @@ public:
 	write_guard & operator= (write_guard &&) noexcept;
 	bool is_owned () const;
 
-private:
 	rsnano::WriteGuardHandle * handle;
+
+private:
 	bool owns{ true };
 };
 

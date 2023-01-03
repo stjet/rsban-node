@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rsn_callback_always_log(f: AlwaysLogCallback) {
 
 /// points to a shared_ptr<logger_mt>
 #[derive(Copy, Clone)]
-pub struct LoggerHandle(*mut c_void);
+pub struct LoggerHandle(pub *mut c_void);
 
 /// logger is a pointer to a shared_ptr<logger_mt>
 #[no_mangle]

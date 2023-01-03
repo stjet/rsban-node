@@ -201,7 +201,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	online_reps (ledger, *config),
 	history{ config_a.network_params.voting },
 	vote_uniquer (block_uniquer),
-	confirmation_height_processor (ledger, *stats, write_database_queue, config_a.conf_height_processor_batch_min_time, config->logging, *logger, node_initialized_latch, flags.confirmation_height_processor_mode ()),
+	confirmation_height_processor (ledger, *stats, write_database_queue, config_a.conf_height_processor_batch_min_time, config->logging, logger, node_initialized_latch, flags.confirmation_height_processor_mode ()),
 	inactive_vote_cache{ nano::nodeconfig_to_vote_cache_config (config_a, flags) },
 	generator{ *config, ledger, wallets, vote_processor, history, *network, *stats, /* non-final */ false },
 	final_generator{ *config, ledger, wallets, vote_processor, history, *network, *stats, /* final */ true },

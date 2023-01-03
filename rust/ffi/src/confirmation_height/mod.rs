@@ -8,14 +8,16 @@ use std::{
 };
 
 use rsnano_core::{Account, BlockEnum, BlockHash};
-use rsnano_node::confirmation_height::{
-    ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair,
+use rsnano_node::{
+    config::Logging,
+    confirmation_height::{ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair},
 };
 
 use crate::{
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
-    ledger::datastore::{LedgerHandle, TransactionHandle},
-    VoidPointerCallback,
+    ledger::datastore::{LedgerHandle, TransactionHandle, WriteGuardHandle},
+    utils::{LoggerHandle, LoggerMT},
+    LoggingDto, StatHandle, VoidPointerCallback,
 };
 
 use self::conf_height_details::{
@@ -30,6 +32,9 @@ pub type ConfHeightUnboundedNotifyObserversCallback =
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
     ledger: *const LedgerHandle,
+    logger: *mut LoggerHandle,
+    logging: *const LoggingDto,
+    stats: *const StatHandle,
     batch_separate_pending_min_time_ms: u64,
     notify_observers: ConfHeightUnboundedNotifyObserversCallback,
     notify_observers_context: *mut c_void,
@@ -41,13 +46,17 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
         drop_notify_observers_context,
     );
 
-    Box::into_raw(Box::new(ConfirmationHeightUnboundedHandle(
+    let result = Box::into_raw(Box::new(ConfirmationHeightUnboundedHandle(
         ConfirmationHeightUnbounded::new(
             Arc::clone(&(*ledger).0),
+            Arc::new(LoggerMT::new(Box::from_raw(logger))),
+            Logging::from(&*logging),
+            Arc::clone(&(*stats).0),
             Duration::from_millis(batch_separate_pending_min_time_ms),
             notify_observers_callback,
         ),
-    )))
+    )));
+    result
 }
 
 struct NotifyObserversCallbackContextWrapper {
@@ -61,6 +70,10 @@ impl NotifyObserversCallbackContextWrapper {
             context,
             drop_context,
         }
+    }
+
+    fn get_context(&self) -> *mut c_void {
+        self.context
     }
 }
 
@@ -90,7 +103,7 @@ unsafe fn wrap_notify_observers_callback(
             .collect::<Vec<_>>();
 
         callback(
-            context_wrapper.context,
+            context_wrapper.get_context(),
             block_handles.as_ptr(),
             block_handles.len(),
         );
@@ -372,4 +385,12 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_clear_process_vars(
     handle: *mut ConfirmationHeightUnboundedHandle,
 ) {
     (*handle).0.clear_process_vars()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_cement_blocks(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    write_guard: *mut WriteGuardHandle,
+) {
+    (*handle).0.cement_blocks(&mut (*write_guard).0);
 }

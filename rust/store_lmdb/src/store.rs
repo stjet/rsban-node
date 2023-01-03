@@ -16,7 +16,7 @@ use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
 use rsnano_store_traits::{
     AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, NullTransactionTracker,
-    PendingStore, PrunedStore, Store, TransactionTracker, VersionStore, WriteTransaction,
+    PendingStore, PrunedStore, Store, Table, TransactionTracker, VersionStore, WriteTransaction,
 };
 
 #[derive(PartialEq, Eq)]
@@ -258,6 +258,12 @@ impl Store for LmdbStore {
     }
 
     fn tx_begin_write(&self) -> anyhow::Result<Box<dyn WriteTransaction>> {
+        let txn = self.env.tx_begin_write()?;
+        Ok(Box::new(txn))
+    }
+
+    fn tx_begin_write_for(&self, _to_lock: &[Table]) -> anyhow::Result<Box<dyn WriteTransaction>> {
+        // locking tables is not needed for LMDB because there can only ever be one write transaction at a time
         let txn = self.env.tx_begin_write()?;
         Ok(Box::new(txn))
     }

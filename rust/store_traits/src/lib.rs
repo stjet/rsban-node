@@ -36,7 +36,7 @@ mod version_store;
 pub use version_store::VersionStore;
 
 mod store;
-pub use store::Store;
+pub use store::{Store, Table};
 
 use std::{any::Any, time::Duration};
 

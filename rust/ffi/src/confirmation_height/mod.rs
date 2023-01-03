@@ -1,6 +1,7 @@
 mod conf_height_details;
 
 use std::{
+    ffi::c_void,
     ops::Deref,
     sync::{atomic::Ordering, Arc, Mutex, RwLock, Weak},
     time::Duration,
@@ -14,6 +15,7 @@ use rsnano_node::confirmation_height::{
 use crate::{
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
     ledger::datastore::{LedgerHandle, TransactionHandle},
+    VoidPointerCallback,
 };
 
 use self::conf_height_details::{
@@ -22,17 +24,81 @@ use self::conf_height_details::{
 
 pub struct ConfirmationHeightUnboundedHandle(ConfirmationHeightUnbounded);
 
+pub type ConfHeightUnboundedNotifyObserversCallback =
+    unsafe extern "C" fn(*mut c_void, *const *mut BlockHandle, usize);
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
     ledger: *const LedgerHandle,
     batch_separate_pending_min_time_ms: u64,
+    notify_observers: ConfHeightUnboundedNotifyObserversCallback,
+    notify_observers_context: *mut c_void,
+    drop_notify_observers_context: VoidPointerCallback,
 ) -> *mut ConfirmationHeightUnboundedHandle {
+    let notify_observers_callback = wrap_notify_observers_callback(
+        notify_observers,
+        notify_observers_context,
+        drop_notify_observers_context,
+    );
+
     Box::into_raw(Box::new(ConfirmationHeightUnboundedHandle(
         ConfirmationHeightUnbounded::new(
             Arc::clone(&(*ledger).0),
             Duration::from_millis(batch_separate_pending_min_time_ms),
+            notify_observers_callback,
         ),
     )))
+}
+
+struct NotifyObserversCallbackContextWrapper {
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+}
+
+impl NotifyObserversCallbackContextWrapper {
+    fn new(context: *mut c_void, drop_context: VoidPointerCallback) -> Self {
+        Self {
+            context,
+            drop_context,
+        }
+    }
+}
+
+impl Drop for NotifyObserversCallbackContextWrapper {
+    fn drop(&mut self) {
+        unsafe {
+            (self.drop_context)(self.context);
+        }
+    }
+}
+
+unsafe fn wrap_notify_observers_callback(
+    callback: ConfHeightUnboundedNotifyObserversCallback,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+) -> Box<dyn Fn(&Vec<Arc<BlockEnum>>)> {
+    let context_wrapper = NotifyObserversCallbackContextWrapper::new(context, drop_context);
+
+    Box::new(move |blocks| {
+        let block_handles = blocks
+            .iter()
+            .map(|b| {
+                Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(
+                    b.deref().clone(),
+                )))))
+            })
+            .collect::<Vec<_>>();
+
+        callback(
+            context_wrapper.context,
+            block_handles.as_ptr(),
+            block_handles.len(),
+        );
+
+        for handle in block_handles {
+            drop(Box::from_raw(handle))
+        }
+    })
 }
 
 #[no_mangle]

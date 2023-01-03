@@ -29,10 +29,15 @@ pub struct ConfirmationHeightUnbounded {
     pub implicit_receive_cemented_mapping_size: AtomicUsize,
     timer: Instant,
     batch_separate_pending_min_time: Duration,
+    notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
 }
 
 impl ConfirmationHeightUnbounded {
-    pub fn new(ledger: Arc<Ledger>, batch_separate_pending_min_time: Duration) -> Self {
+    pub fn new(
+        ledger: Arc<Ledger>,
+        batch_separate_pending_min_time: Duration,
+        notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
+    ) -> Self {
         Self {
             ledger,
             pending_writes: VecDeque::new(),
@@ -44,6 +49,7 @@ impl ConfirmationHeightUnbounded {
             implicit_receive_cemented_mapping_size: AtomicUsize::new(0),
             timer: Instant::now(),
             batch_separate_pending_min_time,
+            notify_observers_callback,
         }
     }
 

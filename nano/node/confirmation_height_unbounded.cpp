@@ -10,8 +10,29 @@
 
 #include <numeric>
 
+namespace
+{
+void notify_observers_callback_wrapper (void * context, rsnano::BlockHandle * const * block_handles, size_t len)
+{
+	auto fn = static_cast<std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> *> (context);
+	std::vector<std::shared_ptr<nano::block>> blocks;
+	for (int i = 0; i < len; ++i)
+	{
+		blocks.push_back (nano::block_handle_to_block (block_handles[i]));
+	}
+
+	(*fn) (blocks);
+}
+
+void drop_notify_observers_callback (void * context)
+{
+	auto fn = static_cast<std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> *> (context);
+	delete fn;
+}
+}
+
 nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger & ledger_a, nano::stat & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, nano::logger_mt & logger_a, uint64_t & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
-	handle{ rsnano::rsn_conf_height_unbounded_create (ledger_a.handle, batch_separate_pending_min_time_a.count ()) },
+	handle{ rsnano::rsn_conf_height_unbounded_create (ledger_a.handle, batch_separate_pending_min_time_a.count (), notify_observers_callback_wrapper, new std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> (notify_observers_callback_a), drop_notify_observers_callback) },
 	ledger (ledger_a),
 	stats (stats_a),
 	write_database_queue (write_database_queue_a),

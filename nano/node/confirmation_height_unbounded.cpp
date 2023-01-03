@@ -1,3 +1,5 @@
+#include "nano/lib/rsnanoutils.hpp"
+
 #include <nano/lib/stats.hpp>
 #include <nano/node/confirmation_height_unbounded.hpp>
 #include <nano/node/logging.hpp>
@@ -9,7 +11,7 @@
 #include <numeric>
 
 nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger & ledger_a, nano::stat & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, nano::logger_mt & logger_a, uint64_t & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
-	handle{ rsnano::rsn_conf_height_unbounded_create () },
+	handle{ rsnano::rsn_conf_height_unbounded_create (ledger_a.handle) },
 	ledger (ledger_a),
 	stats (stats_a),
 	write_database_queue (write_database_queue_a),
@@ -70,8 +72,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 			debug_assert (current == original_block->hash ());
 			// This is the original block passed so can use it directly
 			block = original_block;
-			nano::lock_guard<nano::mutex> guard (block_cache_mutex);
-			block_cache[original_block->hash ()] = original_block;
+			rsnano::rsn_conf_height_unbounded_cache_block (handle, original_block->get_handle ());
 		}
 		else
 		{
@@ -210,8 +211,7 @@ void nano::confirmation_height_unbounded::collect_unconfirmed_receive_and_source
 		{
 			debug_assert (hash == hash_a);
 			block = block_a;
-			nano::lock_guard<nano::mutex> guard (block_cache_mutex);
-			block_cache[hash] = block_a;
+			rsnano::rsn_conf_height_unbounded_cache_block (handle, block_a->get_handle ());
 		}
 		else
 		{
@@ -413,12 +413,9 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 				std::reverse (tmp_blocks.begin (), tmp_blocks.end ());
 				pending.set_block_callback_data (tmp_blocks);
 
-				nano::lock_guard<nano::mutex> guard (block_cache_mutex);
-				tmp_blocks = pending.get_block_callback_data ();
-				std::transform (tmp_blocks.begin (), tmp_blocks.end (), std::back_inserter (cemented_blocks), [&block_cache = block_cache] (auto const & hash_a) {
-					debug_assert (block_cache.count (hash_a) == 1);
-					return block_cache.at (hash_a);
-				});
+				rsnano::BlockArrayDto blocks_dto;
+				rsnano::rsn_conf_height_unbounded_get_blocks (handle, pending.handle, &blocks_dto);
+				rsnano::read_block_array_dto (blocks_dto, cemented_blocks);
 			}
 			rsnano::rsn_conf_height_unbounded_pending_writes_erase_first (handle);
 		}
@@ -441,18 +438,8 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 
 std::shared_ptr<nano::block> nano::confirmation_height_unbounded::get_block_and_sideband (nano::block_hash const & hash_a, nano::transaction const & transaction_a)
 {
-	nano::lock_guard<nano::mutex> guard (block_cache_mutex);
-	auto block_cache_it = block_cache.find (hash_a);
-	if (block_cache_it != block_cache.cend ())
-	{
-		return block_cache_it->second;
-	}
-	else
-	{
-		auto block (ledger.store.block ().get (transaction_a, hash_a));
-		block_cache.emplace (hash_a, block);
-		return block;
-	}
+	auto block_handle{ rsnano::rsn_conf_height_unbounded_get_block_and_sideband (handle, hash_a.bytes.data (), transaction_a.get_rust_handle ()) };
+	return nano::block_handle_to_block (block_handle);
 }
 
 bool nano::confirmation_height_unbounded::pending_empty () const
@@ -466,16 +453,12 @@ void nano::confirmation_height_unbounded::clear_process_vars ()
 	// so make sure the slate is clean when a new batch is starting.
 	rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_clear (handle);
 	rsnano::rsn_conf_height_unbounded_implicit_receive_cemented_mapping_clear (handle);
-	{
-		nano::lock_guard<nano::mutex> guard (block_cache_mutex);
-		block_cache.clear ();
-	}
+	rsnano::rsn_conf_height_unbounded_clear_block_cache (handle);
 }
 
 bool nano::confirmation_height_unbounded::has_iterated_over_block (nano::block_hash const & hash_a) const
 {
-	nano::lock_guard<nano::mutex> guard (block_cache_mutex);
-	return block_cache.count (hash_a) == 1;
+	return rsnano::rsn_conf_height_unbounded_has_iterated_over_block (handle, hash_a.bytes.data ());
 }
 
 void nano::confirmation_height_unbounded::stop ()
@@ -485,8 +468,7 @@ void nano::confirmation_height_unbounded::stop ()
 
 uint64_t nano::confirmation_height_unbounded::block_cache_size () const
 {
-	nano::lock_guard<nano::mutex> guard (block_cache_mutex);
-	return block_cache.size ();
+	return rsnano::rsn_conf_height_unbounded_block_cache_size (handle);
 }
 
 nano::confirmation_height_unbounded::conf_height_details::conf_height_details (nano::account const & account_a, nano::block_hash const & hash_a, uint64_t height_a, uint64_t num_blocks_confirmed_a, std::vector<nano::block_hash> const & block_callback_data_a) :
@@ -576,6 +558,6 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "confirmed_iterated_pairs", rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_len (confirmation_height_unbounded.handle), rsnano::rsn_conf_iterated_pair_size () }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", rsnano::rsn_conf_height_unbounded_pending_writes_len (confirmation_height_unbounded.handle), rsnano::rsn_conf_height_details_size () }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "implicit_receive_cemented_mapping", rsnano::rsn_conf_height_unbounded_implicit_receive_cemented_mapping_size (confirmation_height_unbounded.handle), rsnano::rsn_implicit_receive_cemented_mapping_value_size () }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_cache", confirmation_height_unbounded.block_cache_size (), sizeof (decltype (confirmation_height_unbounded.block_cache)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_cache", confirmation_height_unbounded.block_cache_size (), rsnano::rsn_conf_height_unbounded_block_cache_element_size () }));
 	return composite;
 }

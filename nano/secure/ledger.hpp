@@ -97,7 +97,7 @@ public:
 private:
 	nano::stat & stats;
 
-private:
+public:
 	rsnano::LedgerHandle * handle;
 };
 

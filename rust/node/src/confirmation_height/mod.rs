@@ -1,4 +1,6 @@
-use rsnano_core::{Account, BlockHash};
+use rsnano_core::{Account, BlockEnum, BlockHash};
+use rsnano_ledger::Ledger;
+use rsnano_store_traits::Transaction;
 use std::{
     collections::{HashMap, VecDeque},
     sync::{
@@ -8,11 +10,13 @@ use std::{
 };
 
 pub struct ConfirmationHeightUnbounded {
+    ledger: Arc<Ledger>,
     pub pending_writes: VecDeque<ConfHeightDetails>,
     pub confirmed_iterated_pairs: HashMap<Account, ConfirmedIteratedPair>,
 
     //todo: Remove Mutex
     pub implicit_receive_cemented_mapping: HashMap<BlockHash, Weak<Mutex<ConfHeightDetails>>>,
+    pub block_cache: Mutex<HashMap<BlockHash, Arc<BlockEnum>>>,
 
     // All of the atomic variables here just track the size for use in collect_container_info.
     // This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
@@ -25,11 +29,13 @@ pub struct ConfirmationHeightUnbounded {
 }
 
 impl ConfirmationHeightUnbounded {
-    pub fn new() -> Self {
+    pub fn new(ledger: Arc<Ledger>) -> Self {
         Self {
+            ledger,
             pending_writes: VecDeque::new(),
             confirmed_iterated_pairs: HashMap::new(),
             implicit_receive_cemented_mapping: HashMap::new(),
+            block_cache: Mutex::new(HashMap::new()),
             confirmed_iterated_pairs_size: AtomicUsize::new(0),
             pending_writes_size: AtomicUsize::new(0),
             implicit_receive_cemented_mapping_size: AtomicUsize::new(0),
@@ -104,6 +110,48 @@ impl ConfirmationHeightUnbounded {
         self.implicit_receive_cemented_mapping.clear();
         self.implicit_receive_cemented_mapping_size
             .store(0, Ordering::Relaxed);
+    }
+
+    pub fn cache_block(&self, block: Arc<BlockEnum>) {
+        self.block_cache.lock().unwrap().insert(block.hash(), block);
+    }
+
+    pub fn get_blocks(&self, details: &ConfHeightDetails) -> Vec<Arc<BlockEnum>> {
+        let cache = self.block_cache.lock().unwrap();
+        details
+            .block_callback_data
+            .iter()
+            .map(|hash| Arc::clone(cache.get(hash).unwrap()))
+            .collect()
+    }
+
+    pub fn get_block_and_sideband(
+        &self,
+        hash: &BlockHash,
+        txn: &dyn Transaction,
+    ) -> Arc<BlockEnum> {
+        let mut cache = self.block_cache.lock().unwrap();
+        match cache.get(hash) {
+            Some(block) => Arc::clone(block),
+            None => {
+                let block = self.ledger.get_block(txn, hash).unwrap(); //todo: remove unwrap
+                let block = Arc::new(block);
+                cache.insert(*hash, Arc::clone(&block));
+                block
+            }
+        }
+    }
+
+    pub fn clear_block_cache(&self) {
+        self.block_cache.lock().unwrap().clear();
+    }
+
+    pub fn has_iterated_over_block(&self, hash: &BlockHash) -> bool {
+        self.block_cache.lock().unwrap().contains_key(hash)
+    }
+
+    pub fn block_cache_size(&self) -> usize {
+        self.block_cache.lock().unwrap().len()
     }
 }
 

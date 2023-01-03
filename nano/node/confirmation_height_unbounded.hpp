@@ -282,9 +282,6 @@ private:
 	// upon in any way (does not synchronize with any other data).
 	// This allows the load and stores to use relaxed atomic memory ordering.
 
-	mutable nano::mutex block_cache_mutex;
-	std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> block_cache;
-
 	nano::timer<std::chrono::milliseconds> timer;
 
 	nano::ledger & ledger;

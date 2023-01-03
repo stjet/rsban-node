@@ -17,7 +17,7 @@ use num_traits::FromPrimitive;
 
 use super::lmdb::{LmdbStoreHandle, TransactionHandle};
 
-pub struct LedgerHandle(Arc<Ledger>);
+pub struct LedgerHandle(pub Arc<Ledger>);
 
 impl Deref for LedgerHandle {
     type Target = Arc<Ledger>;

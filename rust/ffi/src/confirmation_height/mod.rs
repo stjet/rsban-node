@@ -1,10 +1,18 @@
 mod conf_height_details;
 
-use std::sync::{atomic::Ordering, Mutex, Weak};
+use std::{
+    ops::Deref,
+    sync::{atomic::Ordering, Arc, Mutex, RwLock, Weak},
+};
 
-use rsnano_core::{Account, BlockHash};
+use rsnano_core::{Account, BlockEnum, BlockHash};
 use rsnano_node::confirmation_height::{
     ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair,
+};
+
+use crate::{
+    core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
+    ledger::datastore::{LedgerHandle, TransactionHandle},
 };
 
 use self::conf_height_details::{
@@ -14,9 +22,11 @@ use self::conf_height_details::{
 pub struct ConfirmationHeightUnboundedHandle(ConfirmationHeightUnbounded);
 
 #[no_mangle]
-pub extern "C" fn rsn_conf_height_unbounded_create() -> *mut ConfirmationHeightUnboundedHandle {
+pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
+    ledger: *const LedgerHandle,
+) -> *mut ConfirmationHeightUnboundedHandle {
     Box::into_raw(Box::new(ConfirmationHeightUnboundedHandle(
-        ConfirmationHeightUnbounded::new(),
+        ConfirmationHeightUnbounded::new(Arc::clone(&(*ledger).0)),
     )))
 }
 
@@ -224,4 +234,71 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_implicit_receive_cemented_map
 #[no_mangle]
 pub extern "C" fn rsn_implicit_receive_cemented_mapping_value_size() -> usize {
     std::mem::size_of::<Weak<Mutex<ConfHeightDetails>>>()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_cache_block(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    block: *const BlockHandle,
+) {
+    (*handle)
+        .0
+        .cache_block(Arc::new((*block).block.read().unwrap().clone()))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_get_blocks(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    details: *const ConfHeightDetailsHandle,
+    result: *mut BlockArrayDto,
+) {
+    let blocks = (*handle).0.get_blocks(&(*details).0);
+    let blocks = blocks
+        .iter()
+        .map(|b| Arc::new(RwLock::new(b.deref().clone())))
+        .collect();
+    copy_block_array_dto(blocks, result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_get_block_and_sideband(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    hash: *const u8,
+    txn: *const TransactionHandle,
+) -> *mut BlockHandle {
+    let block = (*handle)
+        .0
+        .get_block_and_sideband(&BlockHash::from_ptr(hash), (*txn).as_txn());
+    Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(
+        block.deref().clone(),
+    )))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_clear_block_cache(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+) {
+    (*handle).0.clear_block_cache();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_has_iterated_over_block(
+    handle: *const ConfirmationHeightUnboundedHandle,
+    hash: *const u8,
+) -> bool {
+    (*handle)
+        .0
+        .has_iterated_over_block(&BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_block_cache_size(
+    handle: *const ConfirmationHeightUnboundedHandle,
+) -> usize {
+    (*handle).0.block_cache_size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_block_cache_element_size() -> usize {
+    std::mem::size_of::<Arc<BlockEnum>>()
 }

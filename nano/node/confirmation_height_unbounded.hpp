@@ -281,8 +281,6 @@ private:
 	// for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
 	// upon in any way (does not synchronize with any other data).
 	// This allows the load and stores to use relaxed atomic memory ordering.
-	std::unordered_map<nano::block_hash, conf_height_details_weak_ptr> implicit_receive_cemented_mapping;
-	nano::relaxed_atomic_integral<uint64_t> implicit_receive_cemented_mapping_size{ 0 };
 
 	mutable nano::mutex block_cache_mutex;
 	std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> block_cache;

@@ -1,11 +1,15 @@
 mod conf_height_details;
 
-use std::sync::atomic::Ordering;
+use std::sync::{atomic::Ordering, Mutex, Weak};
 
-use rsnano_core::Account;
-use rsnano_node::confirmation_height::{ConfirmationHeightUnbounded, ConfirmedIteratedPair};
+use rsnano_core::{Account, BlockHash};
+use rsnano_node::confirmation_height::{
+    ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair,
+};
 
-use self::conf_height_details::{ConfHeightDetailsHandle, ConfHeightDetailsSharedPtrHandle};
+use self::conf_height_details::{
+    ConfHeightDetailsHandle, ConfHeightDetailsSharedPtrHandle, ConfHeightDetailsWeakPtrHandle,
+};
 
 pub struct ConfirmationHeightUnboundedHandle(ConfirmationHeightUnbounded);
 
@@ -176,4 +180,48 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_set_itera
         .get_mut(&account)
         .unwrap();
     pair.iterated_height = height;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_implicit_receive_cemented_mapping_add(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    hash: *const u8,
+    details: *const ConfHeightDetailsSharedPtrHandle,
+) {
+    let hash = BlockHash::from_ptr(hash);
+    (*handle)
+        .0
+        .add_implicit_receive_cemented(hash, &(*details).0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_get_implicit_receive_cemented(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    hash: *const u8,
+) -> *mut ConfHeightDetailsWeakPtrHandle {
+    let hash = BlockHash::from_ptr(hash);
+    let weak = (*handle).0.get_implicit_receive_cemented(&hash).unwrap();
+    Box::into_raw(Box::new(ConfHeightDetailsWeakPtrHandle(Weak::clone(weak))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_implicit_receive_cemented_mapping_clear(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+) {
+    (*handle).0.clear_implicit_receive_cemented_mapping();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_implicit_receive_cemented_mapping_size(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+) -> usize {
+    (*handle)
+        .0
+        .implicit_receive_cemented_mapping_size
+        .load(Ordering::Relaxed)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_implicit_receive_cemented_mapping_value_size() -> usize {
+    std::mem::size_of::<Weak<Mutex<ConfHeightDetails>>>()
 }

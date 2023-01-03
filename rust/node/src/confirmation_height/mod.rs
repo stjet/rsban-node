@@ -1,12 +1,18 @@
 use rsnano_core::{Account, BlockHash};
 use std::{
     collections::{HashMap, VecDeque},
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex, Weak,
+    },
 };
 
 pub struct ConfirmationHeightUnbounded {
     pub pending_writes: VecDeque<ConfHeightDetails>,
     pub confirmed_iterated_pairs: HashMap<Account, ConfirmedIteratedPair>,
+
+    //todo: Remove Mutex
+    pub implicit_receive_cemented_mapping: HashMap<BlockHash, Weak<Mutex<ConfHeightDetails>>>,
 
     // All of the atomic variables here just track the size for use in collect_container_info.
     // This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
@@ -15,6 +21,7 @@ pub struct ConfirmationHeightUnbounded {
     // This allows the load and stores to use relaxed atomic memory ordering.
     pub confirmed_iterated_pairs_size: AtomicUsize,
     pub pending_writes_size: AtomicUsize,
+    pub implicit_receive_cemented_mapping_size: AtomicUsize,
 }
 
 impl ConfirmationHeightUnbounded {
@@ -22,8 +29,10 @@ impl ConfirmationHeightUnbounded {
         Self {
             pending_writes: VecDeque::new(),
             confirmed_iterated_pairs: HashMap::new(),
+            implicit_receive_cemented_mapping: HashMap::new(),
             confirmed_iterated_pairs_size: AtomicUsize::new(0),
             pending_writes_size: AtomicUsize::new(0),
+            implicit_receive_cemented_mapping_size: AtomicUsize::new(0),
         }
     }
 
@@ -69,6 +78,32 @@ impl ConfirmationHeightUnbounded {
             .iter()
             .map(|x| x.num_blocks_confirmed)
             .sum()
+    }
+
+    pub fn add_implicit_receive_cemented(
+        &mut self,
+        hash: BlockHash,
+        details: &Arc<Mutex<ConfHeightDetails>>,
+    ) {
+        let details = Arc::downgrade(&details);
+        self.implicit_receive_cemented_mapping.insert(hash, details);
+        self.implicit_receive_cemented_mapping_size.store(
+            self.implicit_receive_cemented_mapping.len(),
+            Ordering::Relaxed,
+        );
+    }
+
+    pub fn get_implicit_receive_cemented(
+        &self,
+        hash: &BlockHash,
+    ) -> Option<&Weak<Mutex<ConfHeightDetails>>> {
+        self.implicit_receive_cemented_mapping.get(hash)
+    }
+
+    pub fn clear_implicit_receive_cemented_mapping(&mut self) {
+        self.implicit_receive_cemented_mapping.clear();
+        self.implicit_receive_cemented_mapping_size
+            .store(0, Ordering::Relaxed);
     }
 }
 

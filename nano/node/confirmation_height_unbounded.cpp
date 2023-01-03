@@ -263,8 +263,7 @@ void nano::confirmation_height_unbounded::collect_unconfirmed_receive_and_source
 					last_receive_details.set_num_blocks_confirmed (last_receive_details.get_num_blocks_confirmed () + 1);
 					last_receive_details.add_block_callback_data (hash);
 
-					implicit_receive_cemented_mapping[hash] = conf_height_details_weak_ptr (last_receive_details);
-					implicit_receive_cemented_mapping_size = implicit_receive_cemented_mapping.size ();
+					rsnano::rsn_conf_height_unbounded_implicit_receive_cemented_mapping_add (handle, hash.bytes.data (), last_receive_details.handle);
 				}
 			}
 
@@ -309,7 +308,7 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 				if (preparation_data_a.already_traversed && receive_details.get_source_block_callback_data ().empty ())
 				{
 					// We are confirming a block which has already been traversed and found no associated receive details for it.
-					auto & above_receive_details_w = implicit_receive_cemented_mapping[preparation_data_a.current];
+					conf_height_details_weak_ptr above_receive_details_w{ rsnano::rsn_conf_height_unbounded_get_implicit_receive_cemented (handle, preparation_data_a.current.bytes.data ()) };
 					debug_assert (!above_receive_details_w.expired ());
 					auto above_receive_details = above_receive_details_w.upgrade ();
 
@@ -466,8 +465,7 @@ void nano::confirmation_height_unbounded::clear_process_vars ()
 	// Separate blocks which are pending confirmation height can be batched by a minimum processing time (to improve lmdb disk write performance),
 	// so make sure the slate is clean when a new batch is starting.
 	rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_clear (handle);
-	implicit_receive_cemented_mapping.clear ();
-	implicit_receive_cemented_mapping_size = 0;
+	rsnano::rsn_conf_height_unbounded_implicit_receive_cemented_mapping_clear (handle);
 	{
 		nano::lock_guard<nano::mutex> guard (block_cache_mutex);
 		block_cache.clear ();
@@ -577,7 +575,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 	auto composite = std::make_unique<container_info_composite> (name_a);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "confirmed_iterated_pairs", rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_len (confirmation_height_unbounded.handle), rsnano::rsn_conf_iterated_pair_size () }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", rsnano::rsn_conf_height_unbounded_pending_writes_len (confirmation_height_unbounded.handle), rsnano::rsn_conf_height_details_size () }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "implicit_receive_cemented_mapping", confirmation_height_unbounded.implicit_receive_cemented_mapping_size, sizeof (decltype (confirmation_height_unbounded.implicit_receive_cemented_mapping)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "implicit_receive_cemented_mapping", rsnano::rsn_conf_height_unbounded_implicit_receive_cemented_mapping_size (confirmation_height_unbounded.handle), rsnano::rsn_implicit_receive_cemented_mapping_value_size () }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_cache", confirmation_height_unbounded.block_cache_size (), sizeof (decltype (confirmation_height_unbounded.block_cache)::value_type) }));
 	return composite;
 }

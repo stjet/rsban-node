@@ -11,11 +11,10 @@
 #include <numeric>
 
 nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger & ledger_a, nano::stat & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, nano::logger_mt & logger_a, uint64_t & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
-	handle{ rsnano::rsn_conf_height_unbounded_create (ledger_a.handle) },
+	handle{ rsnano::rsn_conf_height_unbounded_create (ledger_a.handle, batch_separate_pending_min_time_a.count ()) },
 	ledger (ledger_a),
 	stats (stats_a),
 	write_database_queue (write_database_queue_a),
-	batch_separate_pending_min_time (batch_separate_pending_min_time_a),
 	logging (logging_a),
 	logger (logger_a),
 	batch_write_size (batch_write_size_a),
@@ -35,7 +34,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 	if (pending_empty ())
 	{
 		clear_process_vars ();
-		timer.restart ();
+		rsnano::rsn_conf_height_unbounded_restart_timer (handle);
 	}
 	conf_height_details_shared_ptr receive_details;
 	auto current = original_block->hash ();
@@ -166,7 +165,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		auto max_write_size_reached = (rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) >= confirmation_height::unbounded_cutoff);
 		// When there are a lot of pending confirmation height blocks, it is more efficient to
 		// bulk some of them up to enable better write performance which becomes the bottleneck.
-		auto min_time_exceeded = (timer.since_start () >= batch_separate_pending_min_time);
+		auto min_time_exceeded = rsnano::rsn_conf_height_unbounded_min_time_exceeded (handle);
 		auto finished_iterating = receive_source_pairs.empty ();
 		auto no_pending = awaiting_processing_size_callback () == 0;
 		auto should_output = finished_iterating && (no_pending || min_time_exceeded);
@@ -433,7 +432,7 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 
 	debug_assert (rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) == 0);
 	debug_assert (rsnano::rsn_conf_height_unbounded_pending_writes_len (handle) == 0);
-	timer.restart ();
+	rsnano::rsn_conf_height_unbounded_restart_timer (handle);
 }
 
 std::shared_ptr<nano::block> nano::confirmation_height_unbounded::get_block_and_sideband (nano::block_hash const & hash_a, nano::transaction const & transaction_a)

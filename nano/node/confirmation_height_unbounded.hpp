@@ -275,19 +275,9 @@ private:
 	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);
 
 	// Fields:
-
-	// All of the atomic variables here just track the size for use in collect_container_info.
-	// This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
-	// for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
-	// upon in any way (does not synchronize with any other data).
-	// This allows the load and stores to use relaxed atomic memory ordering.
-
-	nano::timer<std::chrono::milliseconds> timer;
-
 	nano::ledger & ledger;
 	nano::stat & stats;
 	nano::write_database_queue & write_database_queue;
-	std::chrono::milliseconds batch_separate_pending_min_time;
 	nano::logger_mt & logger;
 	std::atomic<bool> stopped{ false };
 	uint64_t & batch_write_size;

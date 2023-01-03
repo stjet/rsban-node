@@ -7,6 +7,7 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
+    time::{Duration, Instant},
 };
 
 pub struct ConfirmationHeightUnbounded {
@@ -26,10 +27,12 @@ pub struct ConfirmationHeightUnbounded {
     pub confirmed_iterated_pairs_size: AtomicUsize,
     pub pending_writes_size: AtomicUsize,
     pub implicit_receive_cemented_mapping_size: AtomicUsize,
+    timer: Instant,
+    batch_separate_pending_min_time: Duration,
 }
 
 impl ConfirmationHeightUnbounded {
-    pub fn new(ledger: Arc<Ledger>) -> Self {
+    pub fn new(ledger: Arc<Ledger>, batch_separate_pending_min_time: Duration) -> Self {
         Self {
             ledger,
             pending_writes: VecDeque::new(),
@@ -39,6 +42,8 @@ impl ConfirmationHeightUnbounded {
             confirmed_iterated_pairs_size: AtomicUsize::new(0),
             pending_writes_size: AtomicUsize::new(0),
             implicit_receive_cemented_mapping_size: AtomicUsize::new(0),
+            timer: Instant::now(),
+            batch_separate_pending_min_time,
         }
     }
 
@@ -152,6 +157,14 @@ impl ConfirmationHeightUnbounded {
 
     pub fn block_cache_size(&self) -> usize {
         self.block_cache.lock().unwrap().len()
+    }
+
+    pub fn restart_timer(&mut self) {
+        self.timer = Instant::now();
+    }
+
+    pub fn min_time_exceeded(&self) -> bool {
+        self.timer.elapsed() >= self.batch_separate_pending_min_time
     }
 }
 

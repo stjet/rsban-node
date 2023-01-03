@@ -3,6 +3,7 @@ mod conf_height_details;
 use std::{
     ops::Deref,
     sync::{atomic::Ordering, Arc, Mutex, RwLock, Weak},
+    time::Duration,
 };
 
 use rsnano_core::{Account, BlockEnum, BlockHash};
@@ -24,9 +25,13 @@ pub struct ConfirmationHeightUnboundedHandle(ConfirmationHeightUnbounded);
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
     ledger: *const LedgerHandle,
+    batch_separate_pending_min_time_ms: u64,
 ) -> *mut ConfirmationHeightUnboundedHandle {
     Box::into_raw(Box::new(ConfirmationHeightUnboundedHandle(
-        ConfirmationHeightUnbounded::new(Arc::clone(&(*ledger).0)),
+        ConfirmationHeightUnbounded::new(
+            Arc::clone(&(*ledger).0),
+            Duration::from_millis(batch_separate_pending_min_time_ms),
+        ),
     )))
 }
 
@@ -301,4 +306,18 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_block_cache_size(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_block_cache_element_size() -> usize {
     std::mem::size_of::<Arc<BlockEnum>>()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_restart_timer(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+) {
+    (*handle).0.restart_timer();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_min_time_exceeded(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+) -> bool {
+    (*handle).0.min_time_exceeded()
 }

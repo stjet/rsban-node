@@ -78,12 +78,6 @@ impl ConfirmationHeightUnbounded {
         self.pending_writes_size.fetch_sub(1, Ordering::Relaxed);
     }
 
-    pub fn clear_confirmed_iterated_pairs(&mut self) {
-        self.confirmed_iterated_pairs.clear();
-        self.confirmed_iterated_pairs_size
-            .store(0, Ordering::Relaxed);
-    }
-
     pub fn total_pending_write_block_count(&self) -> u64 {
         self.pending_writes
             .iter()
@@ -109,12 +103,6 @@ impl ConfirmationHeightUnbounded {
         hash: &BlockHash,
     ) -> Option<&Weak<Mutex<ConfHeightDetails>>> {
         self.implicit_receive_cemented_mapping.get(hash)
-    }
-
-    pub fn clear_implicit_receive_cemented_mapping(&mut self) {
-        self.implicit_receive_cemented_mapping.clear();
-        self.implicit_receive_cemented_mapping_size
-            .store(0, Ordering::Relaxed);
     }
 
     pub fn cache_block(&self, block: Arc<BlockEnum>) {
@@ -147,10 +135,6 @@ impl ConfirmationHeightUnbounded {
         }
     }
 
-    pub fn clear_block_cache(&self) {
-        self.block_cache.lock().unwrap().clear();
-    }
-
     pub fn has_iterated_over_block(&self, hash: &BlockHash) -> bool {
         self.block_cache.lock().unwrap().contains_key(hash)
     }
@@ -165,6 +149,20 @@ impl ConfirmationHeightUnbounded {
 
     pub fn min_time_exceeded(&self) -> bool {
         self.timer.elapsed() >= self.batch_separate_pending_min_time
+    }
+
+    pub fn clear_process_vars(&mut self) {
+        // Separate blocks which are pending confirmation height can be batched by a minimum processing time (to improve lmdb disk write performance),
+        // so make sure the slate is clean when a new batch is starting.
+        self.confirmed_iterated_pairs.clear();
+        self.confirmed_iterated_pairs_size
+            .store(0, Ordering::Relaxed);
+
+        self.implicit_receive_cemented_mapping.clear();
+        self.implicit_receive_cemented_mapping_size
+            .store(0, Ordering::Relaxed);
+
+        self.block_cache.lock().unwrap().clear();
     }
 }
 

@@ -448,11 +448,7 @@ bool nano::confirmation_height_unbounded::pending_empty () const
 
 void nano::confirmation_height_unbounded::clear_process_vars ()
 {
-	// Separate blocks which are pending confirmation height can be batched by a minimum processing time (to improve lmdb disk write performance),
-	// so make sure the slate is clean when a new batch is starting.
-	rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_clear (handle);
-	rsnano::rsn_conf_height_unbounded_implicit_receive_cemented_mapping_clear (handle);
-	rsnano::rsn_conf_height_unbounded_clear_block_cache (handle);
+	rsnano::rsn_conf_height_unbounded_clear_process_vars (handle);
 }
 
 bool nano::confirmation_height_unbounded::has_iterated_over_block (nano::block_hash const & hash_a) const

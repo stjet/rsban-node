@@ -106,13 +106,6 @@ pub struct ConfirmedIteratedPairsIteratorDto {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_clear(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-) {
-    (*handle).0.clear_confirmed_iterated_pairs();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_insert(
     handle: *mut ConfirmationHeightUnboundedHandle,
     account: *const u8,
@@ -220,13 +213,6 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_get_implicit_receive_cemented
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_implicit_receive_cemented_mapping_clear(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-) {
-    (*handle).0.clear_implicit_receive_cemented_mapping();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_implicit_receive_cemented_mapping_size(
     handle: *mut ConfirmationHeightUnboundedHandle,
 ) -> usize {
@@ -280,13 +266,6 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_get_block_and_sideband(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_clear_block_cache(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-) {
-    (*handle).0.clear_block_cache();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_has_iterated_over_block(
     handle: *const ConfirmationHeightUnboundedHandle,
     hash: *const u8,
@@ -320,4 +299,11 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_min_time_exceeded(
     handle: *mut ConfirmationHeightUnboundedHandle,
 ) -> bool {
     (*handle).0.min_time_exceeded()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_clear_process_vars(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+) {
+    (*handle).0.clear_process_vars()
 }

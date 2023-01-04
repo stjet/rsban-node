@@ -57,13 +57,6 @@ pub unsafe extern "C" fn rsn_election_status_get_winner(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_status_confirmation_request_count(
-    handle: *const ElectionStatusHandle,
-) -> u32 {
-    (*handle).0.confirmation_request_count
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_election_status_get_tally(
     handle: *const ElectionStatusHandle,
     result: *mut u8,

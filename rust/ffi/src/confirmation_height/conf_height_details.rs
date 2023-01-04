@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, Weak};
 use rsnano_core::{Account, BlockHash};
 use rsnano_node::confirmation_height::ConfHeightDetails;
 
-use crate::{copy_account_bytes, copy_hash_bytes, U256ArrayDto};
+use crate::{copy_account_bytes, U256ArrayDto};
 
 pub struct ConfHeightDetailsHandle(pub ConfHeightDetails);
 
@@ -37,52 +37,6 @@ pub unsafe extern "C" fn rsn_conf_height_details_destroy(handle: *mut ConfHeight
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_details_account(
-    handle: *const ConfHeightDetailsHandle,
-    account: *mut u8,
-) {
-    copy_account_bytes((*handle).0.account, account);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_details_hash(
-    handle: *const ConfHeightDetailsHandle,
-    hash: *mut u8,
-) {
-    copy_hash_bytes((*handle).0.hash, hash);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_details_height(
-    handle: *const ConfHeightDetailsHandle,
-) -> u64 {
-    (*handle).0.height
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_details_num_blocks_confirmed(
-    handle: *const ConfHeightDetailsHandle,
-) -> u64 {
-    (*handle).0.num_blocks_confirmed
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_details_block_callback_data(
-    handle: *const ConfHeightDetailsHandle,
-    result: *mut U256ArrayDto,
-) {
-    let data = Box::new(
-        (*handle)
-            .0
-            .block_callback_data
-            .iter()
-            .map(|a| *a.as_bytes())
-            .collect(),
-    );
-    (*result).initialize(data);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_details_add_block_callback_data(
     handle: *mut ConfHeightDetailsHandle,
     data: *const u8,
@@ -91,18 +45,6 @@ pub unsafe extern "C" fn rsn_conf_height_details_add_block_callback_data(
         .0
         .block_callback_data
         .push(BlockHash::from_ptr(data));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_details_set_block_callback_data(
-    handle: *mut ConfHeightDetailsHandle,
-    data: *const *const u8,
-    len: usize,
-) {
-    (*handle).0.block_callback_data = std::slice::from_raw_parts(data, len)
-        .iter()
-        .map(|&bytes| BlockHash::from_ptr(bytes))
-        .collect();
 }
 
 #[no_mangle]

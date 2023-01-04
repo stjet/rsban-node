@@ -140,26 +140,10 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_add2(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_erase_first(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-) {
-    (*handle).0.erase_first_pending_write();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_size(
     handle: *mut ConfirmationHeightUnboundedHandle,
 ) -> usize {
     (*handle).0.pending_writes.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_front(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-) -> *mut ConfHeightDetailsHandle {
-    Box::into_raw(Box::new(ConfHeightDetailsHandle(
-        (*handle).0.pending_writes.front().unwrap().clone(),
-    )))
 }
 
 #[no_mangle]
@@ -314,20 +298,6 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_cache_block(
     (*handle)
         .0
         .cache_block(Arc::new((*block).block.read().unwrap().clone()))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_get_blocks(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-    details: *const ConfHeightDetailsHandle,
-    result: *mut BlockArrayDto,
-) {
-    let blocks = (*handle).0.get_blocks(&(*details).0);
-    let blocks = blocks
-        .iter()
-        .map(|b| Arc::new(RwLock::new(b.deref().clone())))
-        .collect();
-    copy_block_array_dto(blocks, result);
 }
 
 #[no_mangle]

@@ -236,12 +236,6 @@ private:
 		~conf_height_details ();
 		conf_height_details & operator= (conf_height_details const &);
 		rsnano::ConfHeightDetailsHandle * handle;
-		nano::account get_account () const;
-		nano::block_hash get_hash () const;
-		uint64_t get_height () const;
-		uint64_t get_num_blocks_confirmed () const;
-		std::vector<nano::block_hash> get_block_callback_data () const;
-		void set_block_callback_data (std::vector<nano::block_hash> const &);
 		void add_block_callback_data (nano::block_hash const & hash);
 	};
 

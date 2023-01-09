@@ -1,4 +1,6 @@
-use crate::{copy_account_bytes, copy_amount_bytes, utils::FfiStream, NetworkConstantsDto};
+use crate::{
+    copy_account_bytes, copy_amount_bytes, utils::FfiStream, NetworkConstantsDto, StringDto,
+};
 use rsnano_node::messages::{BulkPullAccount, BulkPullAccountFlags, Message};
 use std::ffi::c_void;
 
@@ -104,4 +106,14 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_deserialize(
     downcast_message_mut::<BulkPullAccount>(handle)
         .deserialize(&mut stream)
         .is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_bulk_pull_account_to_string(
+    handle: *mut MessageHandle,
+    result: *mut StringDto,
+) {
+    (*result) = downcast_message_mut::<BulkPullAccount>(handle)
+        .to_string()
+        .into();
 }

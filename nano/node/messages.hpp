@@ -378,6 +378,7 @@ public:
 	void set_account (nano::account account_a);
 	void set_minimum_amount (nano::amount amount_a);
 	void set_flags (bulk_pull_account_flags flags_a);
+	std::string to_string () const;
 };
 
 class bulk_push final : public message

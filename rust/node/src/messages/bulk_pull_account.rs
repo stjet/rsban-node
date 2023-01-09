@@ -6,7 +6,7 @@ use rsnano_core::{
     utils::{Deserialize, Serialize, Stream},
     Account, Amount,
 };
-use std::{any::Any, mem::size_of};
+use std::{any::Any, fmt::Display, mem::size_of};
 
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
 #[repr(u8)]
@@ -97,5 +97,25 @@ impl Message for BulkPullAccount {
 
     fn message_type(&self) -> MessageType {
         MessageType::BulkPullAccount
+    }
+}
+
+impl Display for BulkPullAccount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.header.fmt(f)?;
+        write!(
+            f,
+            "\nacc={} min={}",
+            self.account.encode_hex(),
+            self.minimum_amount.to_string_dec()
+        )?;
+
+        let flag_str = match self.flags {
+            BulkPullAccountFlags::PendingHashAndAmount => "pending_hash_and_amount",
+            BulkPullAccountFlags::PendingAddressOnly => "pending_address_only",
+            BulkPullAccountFlags::PendingHashAmountAndAddress => "pending_hash_amount_and_address",
+        };
+
+        write!(f, " {}", flag_str)
     }
 }

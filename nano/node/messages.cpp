@@ -1218,6 +1218,13 @@ bool nano::bulk_pull_account::deserialize (nano::stream & stream_a)
 	return error;
 }
 
+std::string nano::bulk_pull_account::to_string () const
+{
+	rsnano::StringDto dto;
+	rsnano::rsn_message_bulk_pull_account_to_string (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
+}
+
 /*
  * bulk_push
  */

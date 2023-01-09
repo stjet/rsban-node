@@ -186,7 +186,7 @@ impl ConfirmationHeightUnbounded {
     }
 
     pub fn cement_blocks(&mut self, scoped_write_guard_a: &mut WriteGuard) {
-        let mut cemented_batch_timer = Instant::now();
+        let cemented_batch_timer: Instant;
         let mut cemented_blocks: Vec<Arc<BlockEnum>> = Vec::new();
         let mut error = false;
         {
@@ -309,4 +309,18 @@ pub struct ConfHeightDetails {
 pub struct ConfirmedIteratedPair {
     pub confirmed_height: u64,
     pub iterated_height: u64,
+}
+
+pub struct ReceiveSourcePair {
+    pub receive_details: Arc<Mutex<ConfHeightDetails>>,
+    pub source_hash: BlockHash,
+}
+
+impl ReceiveSourcePair {
+    pub fn new(receive_details: Arc<Mutex<ConfHeightDetails>>, source_hash: BlockHash) -> Self {
+        Self {
+            receive_details,
+            source_hash,
+        }
+    }
 }

@@ -10,7 +10,9 @@ use std::{
 use rsnano_core::{Account, BlockEnum, BlockHash};
 use rsnano_node::{
     config::Logging,
-    confirmation_height::{ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair},
+    confirmation_height::{
+        ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair, ReceiveSourcePair,
+    },
 };
 
 use crate::{
@@ -363,4 +365,23 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_cement_blocks(
     write_guard: *mut WriteGuardHandle,
 ) {
     (*handle).0.cement_blocks(&mut (*write_guard).0);
+}
+
+pub struct ReceiveSourcePairHandle(ReceiveSourcePair);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_create(
+    details: *mut ConfHeightDetailsSharedPtrHandle,
+    hash: *const u8,
+) -> *mut ReceiveSourcePairHandle {
+    let details = Arc::clone(&(*details).0);
+    let hash = BlockHash::from_ptr(hash);
+    Box::into_raw(Box::new(ReceiveSourcePairHandle(ReceiveSourcePair::new(
+        details, hash,
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_destroy(handle: *mut ReceiveSourcePairHandle) {
+    drop(Box::from_raw(handle))
 }

@@ -243,9 +243,13 @@ private:
 	{
 	public:
 		receive_source_pair (conf_height_details_shared_ptr const &, nano::block_hash const &);
+		conf_height_details_shared_ptr receive_details () const;
+		nano::block_hash source_hash () const;
 
-		conf_height_details_shared_ptr receive_details;
-		nano::block_hash source_hash;
+	private:
+		rsnano::ReceiveSourcePairHandle * handle;
+		conf_height_details_shared_ptr _receive_details;
+		nano::block_hash _source_hash;
 	};
 
 	class preparation_data final

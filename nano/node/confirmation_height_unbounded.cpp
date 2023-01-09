@@ -76,8 +76,8 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 	{
 		if (!receive_source_pairs.empty ())
 		{
-			receive_details = receive_source_pairs.back ().receive_details;
-			current = receive_source_pairs.back ().source_hash;
+			receive_details = receive_source_pairs.back ().receive_details ();
+			current = receive_source_pairs.back ().source_hash ();
 		}
 		else
 		{
@@ -257,7 +257,7 @@ void nano::confirmation_height_unbounded::collect_unconfirmed_receive_and_source
 				{
 					// Add the callbacks to the associated receive to retrieve later
 					debug_assert (!receive_source_pairs_a.empty ());
-					auto & last_receive_details = receive_source_pairs_a.back ().receive_details;
+					auto last_receive_details = receive_source_pairs_a.back ().receive_details ();
 					last_receive_details.set_source_block_callback_data (block_callback_data_a);
 					block_callback_data_a.clear ();
 				}
@@ -284,7 +284,7 @@ void nano::confirmation_height_unbounded::collect_unconfirmed_receive_and_source
 				else
 				{
 					// We have hit a receive before, add the block to it
-					auto & last_receive_details = receive_source_pairs_a.back ().receive_details;
+					auto last_receive_details = receive_source_pairs_a.back ().receive_details ();
 					last_receive_details.set_num_blocks_confirmed (last_receive_details.get_num_blocks_confirmed () + 1);
 					last_receive_details.add_block_callback_data (hash);
 
@@ -458,9 +458,18 @@ void nano::confirmation_height_unbounded::conf_height_details::add_block_callbac
 }
 
 nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (conf_height_details_shared_ptr const & receive_details_a, const block_hash & source_a) :
-	receive_details (receive_details_a),
-	source_hash (source_a)
+	_receive_details (receive_details_a),
+	_source_hash (source_a)
 {
+}
+
+nano::confirmation_height_unbounded::conf_height_details_shared_ptr nano::confirmation_height_unbounded::receive_source_pair::receive_details () const
+{
+	return _receive_details;
+}
+nano::block_hash nano::confirmation_height_unbounded::receive_source_pair::source_hash () const
+{
+	return _source_hash;
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_unbounded & confirmation_height_unbounded, std::string const & name_a)

@@ -4,7 +4,7 @@ use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
-use crate::{utils::FfiStream, NetworkConstantsDto};
+use crate::{utils::FfiStream, NetworkConstantsDto, StringDto};
 use rsnano_node::messages::{Message, TelemetryReq};
 
 #[no_mangle]
@@ -48,4 +48,14 @@ pub unsafe extern "C" fn rsn_message_telemetry_req_serialize(
     downcast_message::<TelemetryReq>(handle)
         .serialize(&mut stream)
         .is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_req_to_string(
+    handle: *mut MessageHandle,
+    result: *mut StringDto,
+) {
+    (*result) = downcast_message_mut::<TelemetryReq>(handle)
+        .to_string()
+        .into();
 }

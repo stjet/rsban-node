@@ -1300,6 +1300,13 @@ void nano::telemetry_req::visit (nano::message_visitor & visitor_a) const
 	visitor_a.telemetry_req (*this);
 }
 
+std::string nano::telemetry_req::to_string () const
+{
+	rsnano::StringDto dto;
+	rsnano::rsn_message_telemetry_req_to_string (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
+}
+
 /*
  * telemetry_ack
  */

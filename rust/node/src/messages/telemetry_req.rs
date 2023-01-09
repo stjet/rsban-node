@@ -2,7 +2,7 @@ use super::{Message, MessageHeader, MessageType, MessageVisitor};
 use crate::config::NetworkConstants;
 use anyhow::Result;
 use rsnano_core::utils::Stream;
-use std::any::Any;
+use std::{any::Any, fmt::Display};
 
 #[derive(Clone)]
 pub struct TelemetryReq {
@@ -57,5 +57,11 @@ impl Message for TelemetryReq {
 
     fn message_type(&self) -> MessageType {
         MessageType::TelemetryReq
+    }
+}
+
+impl Display for TelemetryReq {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.header, f)
     }
 }

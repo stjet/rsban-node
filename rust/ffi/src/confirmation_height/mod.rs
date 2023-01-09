@@ -14,7 +14,7 @@ use rsnano_node::{
 };
 
 use crate::{
-    core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
+    core::BlockHandle,
     ledger::datastore::{LedgerHandle, TransactionHandle, WriteGuardHandle},
     utils::{LoggerHandle, LoggerMT},
     LoggingDto, StatHandle, VoidPointerCallback,

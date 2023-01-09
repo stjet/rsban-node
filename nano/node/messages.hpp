@@ -408,6 +408,7 @@ public:
 	static std::size_t size (nano::message_header const &);
 	boost::optional<nano::uint256_union> get_query () const;
 	boost::optional<std::pair<nano::account, nano::signature>> get_response () const;
+	std::string to_string () const;
 };
 
 /**

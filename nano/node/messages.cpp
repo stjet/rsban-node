@@ -1929,6 +1929,13 @@ std::size_t nano::node_id_handshake::size (nano::message_header const & header_a
 	return rsnano::rsn_message_node_id_handshake_size (header_a.handle);
 }
 
+std::string nano::node_id_handshake::to_string () const
+{
+	rsnano::StringDto dto;
+	rsnano::rsn_message_node_id_handshake_to_string (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
+}
+
 /*
  * asc_pull_req
  */

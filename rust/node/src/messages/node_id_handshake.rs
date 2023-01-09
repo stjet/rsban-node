@@ -3,9 +3,9 @@ use crate::config::NetworkConstants;
 use anyhow::Result;
 use rsnano_core::{
     utils::{Deserialize, Serialize, Stream},
-    Account, Signature,
+    write_hex_bytes, Account, Signature,
 };
-use std::any::Any;
+use std::{any::Any, fmt::Display};
 
 #[derive(Clone)]
 pub struct NodeIdHandshake {
@@ -132,5 +132,26 @@ impl Message for NodeIdHandshake {
 
     fn message_type(&self) -> MessageType {
         MessageType::NodeIdHandshake
+    }
+}
+
+impl Display for NodeIdHandshake {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.header.fmt(f)?;
+        if let Some(query) = &self.query {
+            write!(f, "\ncookie=")?;
+            write_hex_bytes(query, f)?;
+        }
+
+        if let Some((account, signature)) = &self.response {
+            write!(
+                f,
+                "\nresp_node_id={}\nresp_sig={}",
+                account,
+                signature.encode_hex()
+            )?;
+        }
+
+        Ok(())
     }
 }

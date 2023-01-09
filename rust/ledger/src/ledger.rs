@@ -5,9 +5,9 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{seconds_since_epoch, PropertyTreeWriter, SerdePropertyTree},
-    Account, AccountInfo, Amount, Block, BlockEnum, BlockHash, BlockSubType, BlockType,
-    ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
+    utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash,
+    BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey,
+    QualifiedRoot, Root,
 };
 
 use std::{

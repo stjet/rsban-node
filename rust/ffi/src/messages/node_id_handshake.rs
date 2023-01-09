@@ -2,7 +2,9 @@ use std::ffi::c_void;
 
 use rsnano_core::{Account, Signature};
 
-use crate::{copy_account_bytes, copy_signature_bytes, utils::FfiStream, NetworkConstantsDto};
+use crate::{
+    copy_account_bytes, copy_signature_bytes, utils::FfiStream, NetworkConstantsDto, StringDto,
+};
 use rsnano_node::messages::{Message, NodeIdHandshake};
 
 use super::{
@@ -106,4 +108,14 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_serialize(
     downcast_message::<NodeIdHandshake>(handle)
         .serialize(&mut stream)
         .is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_node_id_handshake_to_string(
+    handle: *mut MessageHandle,
+    result: *mut StringDto,
+) {
+    (*result) = downcast_message_mut::<NodeIdHandshake>(handle)
+        .to_string()
+        .into();
 }

@@ -703,6 +703,13 @@ void nano::publish::set_digest (nano::uint128_t digest_a)
 	rsnano::rsn_message_publish_set_digest (handle, &bytes[0]);
 }
 
+std::string nano::publish::to_string () const
+{
+	rsnano::StringDto string_dto;
+	rsnano::rsn_message_publish_to_string (handle, &string_dto);
+	return rsnano::convert_dto_to_string (string_dto);
+}
+
 /*
  * confirm_req
  */

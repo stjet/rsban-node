@@ -6,7 +6,7 @@ use anyhow::Result;
 use rsnano_core::{utils::Stream, BlockEnum};
 use std::{
     any::Any,
-    fmt::Debug,
+    fmt::{Debug, Display},
     ops::Deref,
     sync::{Arc, RwLock},
 };
@@ -129,6 +129,24 @@ impl Debug for Publish {
             .field("header", &self.header)
             .field("digest", &self.digest)
             .finish()
+    }
+}
+
+impl Display for Publish {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.header, f)?;
+        if let Some(block) = &self.block {
+            write!(
+                f,
+                "\n{}",
+                block
+                    .read()
+                    .unwrap()
+                    .to_json()
+                    .map_err(|_| std::fmt::Error)?
+            )?;
+        }
+        Ok(())
     }
 }
 

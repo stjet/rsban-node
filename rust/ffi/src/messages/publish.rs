@@ -9,7 +9,7 @@ use super::{
 use crate::{
     core::{BlockHandle, BlockUniquerHandle},
     utils::FfiStream,
-    NetworkConstantsDto,
+    NetworkConstantsDto, StringDto,
 };
 
 #[no_mangle]
@@ -90,4 +90,12 @@ pub unsafe extern "C" fn rsn_message_publish_set_digest(
     let bytes = std::slice::from_raw_parts(digest, 16);
     let digest = u128::from_be_bytes(bytes.try_into().unwrap());
     downcast_message_mut::<Publish>(handle).digest = digest;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_publish_to_string(
+    handle: *mut MessageHandle,
+    result: *mut StringDto,
+) {
+    (*result) = downcast_message_mut::<Publish>(handle).to_string().into();
 }

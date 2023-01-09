@@ -175,6 +175,7 @@ public:
 	std::shared_ptr<nano::block> get_block () const;
 	nano::uint128_t get_digest () const;
 	void set_digest (nano::uint128_t digest_a);
+	std::string to_string () const;
 };
 
 class confirm_req final : public message

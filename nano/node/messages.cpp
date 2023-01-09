@@ -1128,6 +1128,13 @@ void nano::bulk_pull::set_ascending ()
 	rsnano::rsn_message_bulk_pull_set_ascending (handle);
 }
 
+std::string nano::bulk_pull::to_string () const
+{
+	rsnano::StringDto dto;
+	rsnano::rsn_message_bulk_pull_to_string (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
+}
+
 /*
  * bulk_pull_account
  */

@@ -4,7 +4,7 @@ use rsnano_core::{
     utils::{Deserialize, Serialize, Stream},
     BlockHash, HashOrAccount,
 };
-use std::{any::Any, mem::size_of};
+use std::{any::Any, fmt::Display, mem::size_of};
 
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
 
@@ -159,6 +159,17 @@ impl Message for BulkPull {
 
     fn message_type(&self) -> MessageType {
         MessageType::BulkPull
+    }
+}
+
+impl Display for BulkPull {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.header.fmt(f)?;
+        write!(
+            f,
+            "\nstart={} end={} cnt={}",
+            self.start, self.end, self.count
+        )
     }
 }
 

@@ -2,7 +2,9 @@ use std::ffi::c_void;
 
 use rsnano_core::{BlockHash, HashOrAccount};
 
-use crate::{copy_hash_bytes, copy_hash_or_account_bytes, utils::FfiStream, NetworkConstantsDto};
+use crate::{
+    copy_hash_bytes, copy_hash_or_account_bytes, utils::FfiStream, NetworkConstantsDto, StringDto,
+};
 use rsnano_node::messages::{BulkPull, Message};
 
 use super::{
@@ -109,4 +111,12 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_set_count_present(
     present: bool,
 ) {
     downcast_message_mut::<BulkPull>(handle).set_count_present(present)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_bulk_pull_to_string(
+    handle: *mut MessageHandle,
+    result: *mut StringDto,
+) {
+    (*result) = downcast_message_mut::<BulkPull>(handle).to_string().into();
 }

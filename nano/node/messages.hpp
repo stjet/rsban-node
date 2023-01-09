@@ -359,6 +359,7 @@ public:
 	void set_start (nano::hash_or_account start_a);
 	void set_end (nano::block_hash end_a);
 	void set_count (count_t count_a);
+	std::string to_string () const;
 };
 
 class bulk_pull_account final : public message

@@ -1798,11 +1798,9 @@ nano::error nano::telemetry_data::deserialize_json (nano::jsonconfig & json, boo
 
 std::string nano::telemetry_data::to_string () const
 {
-	nano::jsonconfig jc;
-	serialize_json (jc, true);
-	std::stringstream ss;
-	jc.write (ss);
-	return ss.str ();
+	rsnano::StringDto string_dto;
+	rsnano::rsn_telemetry_data_to_json (handle, &string_dto);
+	return rsnano::convert_dto_to_string (string_dto);
 }
 
 bool nano::telemetry_data::operator== (nano::telemetry_data const & data_a) const

@@ -231,6 +231,7 @@ public:
 	void set_age (uint32_t age);
 	uint32_t get_count () const;
 	void set_count (uint32_t count);
+	std::string to_string () const;
 };
 
 enum class telemetry_maker : uint8_t

@@ -1023,6 +1023,13 @@ std::size_t nano::frontier_req::size ()
 	return rsnano::rsn_message_frontier_size ();
 }
 
+std::string nano::frontier_req::to_string () const
+{
+	rsnano::StringDto dto;
+	rsnano::rsn_message_frontier_req_to_string (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
+}
+
 /*
  * bulk_pull
  */

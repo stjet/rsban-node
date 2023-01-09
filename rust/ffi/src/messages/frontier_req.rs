@@ -8,7 +8,7 @@ use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
     MessageHandle, MessageHeaderHandle,
 };
-use crate::{copy_account_bytes, utils::FfiStream, NetworkConstantsDto};
+use crate::{copy_account_bytes, utils::FfiStream, NetworkConstantsDto, StringDto};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_create(
@@ -103,4 +103,14 @@ pub unsafe extern "C" fn rsn_message_frontier_req_is_confirmed_present(
     handle: *mut MessageHandle,
 ) -> bool {
     downcast_message::<FrontierReq>(handle).is_confirmed_present()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_frontier_req_to_string(
+    handle: *mut MessageHandle,
+    result: *mut StringDto,
+) {
+    (*result) = downcast_message_mut::<FrontierReq>(handle)
+        .to_string()
+        .into();
 }

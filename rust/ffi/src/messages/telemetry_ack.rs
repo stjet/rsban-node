@@ -452,3 +452,13 @@ pub unsafe extern "C" fn rsn_message_telemetry_ack_is_empty_payload(
 ) -> bool {
     downcast_message::<TelemetryAck>(handle).is_empty_payload()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_telemetry_ack_to_string(
+    handle: *mut MessageHandle,
+    result: *mut StringDto,
+) {
+    (*result) = downcast_message_mut::<TelemetryAck>(handle)
+        .to_string()
+        .into();
+}

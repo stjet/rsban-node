@@ -1425,6 +1425,13 @@ bool nano::telemetry_ack::is_empty_payload () const
 	return rsnano::rsn_message_telemetry_ack_is_empty_payload (handle);
 }
 
+std::string nano::telemetry_ack::to_string () const
+{
+	rsnano::StringDto dto;
+	rsnano::rsn_message_telemetry_ack_to_string (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
+}
+
 /*
  * telemetry_data
  */

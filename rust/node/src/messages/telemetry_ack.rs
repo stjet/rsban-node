@@ -6,6 +6,7 @@ use rsnano_core::{
 };
 use serde_derive::Serialize;
 use std::any::Any;
+use std::fmt::Display;
 use std::mem::size_of;
 use std::time::{Duration, SystemTime};
 
@@ -337,6 +338,19 @@ impl Message for TelemetryAck {
 
     fn message_type(&self) -> MessageType {
         MessageType::TelemetryAck
+    }
+}
+
+impl Display for TelemetryAck {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.header.fmt(f)?;
+        write!(f, "\n")?;
+        if self.is_empty_payload() {
+            write!(f, "empty telemetry payload")?;
+        } else {
+            write!(f, "{}", self.data.to_json().map_err(|_| std::fmt::Error)?)?;
+        }
+        Ok(())
     }
 }
 

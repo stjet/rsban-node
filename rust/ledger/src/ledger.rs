@@ -329,11 +329,7 @@ impl Ledger {
     pub fn block_text(&self, hash: &BlockHash) -> anyhow::Result<String> {
         let txn = self.store.tx_begin_read()?;
         match self.store.block().get(txn.txn(), hash) {
-            Some(block) => {
-                let mut writer = SerdePropertyTree::new();
-                block.serialize_json(&mut writer)?;
-                Ok(writer.to_json())
-            }
+            Some(block) => block.to_json(),
             None => Ok(String::new()),
         }
     }

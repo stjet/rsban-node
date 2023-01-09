@@ -23,7 +23,7 @@ mod builders;
 pub use builders::*;
 
 use crate::{
-    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Stream},
+    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, SerdePropertyTree, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, FullHash, Link, QualifiedRoot, Root, Signature,
     WorkVersion,
 };
@@ -114,6 +114,11 @@ pub trait Block: FullHash {
     fn previous(&self) -> BlockHash;
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> anyhow::Result<()>;
+    fn to_json(&self) -> anyhow::Result<String> {
+        let mut writer = SerdePropertyTree::new();
+        self.serialize_json(&mut writer)?;
+        Ok(writer.to_json())
+    }
     fn work_version(&self) -> WorkVersion {
         WorkVersion::Work1
     }

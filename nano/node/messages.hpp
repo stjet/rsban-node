@@ -194,6 +194,7 @@ public:
 	static std::size_t size (nano::block_type, std::size_t = 0);
 	std::shared_ptr<nano::block> get_block () const;
 	std::vector<std::pair<nano::block_hash, nano::root>> get_roots_hashes () const;
+	std::string to_string () const;
 };
 
 class confirm_ack final : public message

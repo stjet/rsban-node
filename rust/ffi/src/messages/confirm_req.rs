@@ -144,3 +144,13 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_string(
 pub unsafe extern "C" fn rsn_message_confirm_req_size(block_type: u8, count: usize) -> usize {
     ConfirmReq::serialized_size(BlockType::from_u8(block_type).unwrap(), count as u8)
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_confirm_req_to_string(
+    handle: *mut MessageHandle,
+    result: *mut StringDto,
+) {
+    (*result) = downcast_message_mut::<ConfirmReq>(handle)
+        .to_string()
+        .into();
+}

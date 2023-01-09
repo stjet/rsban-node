@@ -836,6 +836,13 @@ std::size_t nano::confirm_req::size (nano::block_type type_a, std::size_t count)
 	return rsnano::rsn_message_confirm_req_size (static_cast<uint8_t> (type_a), count);
 }
 
+std::string nano::confirm_req::to_string () const
+{
+	rsnano::StringDto string_dto;
+	rsnano::rsn_message_confirm_req_to_string (handle, &string_dto);
+	return rsnano::convert_dto_to_string (string_dto);
+}
+
 /*
  * confirm_ack
  */

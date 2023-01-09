@@ -10,7 +10,7 @@ use rsnano_core::{
 };
 use std::{
     any::Any,
-    fmt::{Debug, Write},
+    fmt::{Debug, Display, Write},
     sync::{Arc, RwLock},
 };
 
@@ -203,6 +203,30 @@ impl Debug for ConfirmReq {
             .field("header", &self.header)
             .field("roots_hashes", &self.roots_hashes)
             .finish()
+    }
+}
+
+impl Display for ConfirmReq {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.header, f)?;
+        if self.header.block_type() == BlockType::NotABlock {
+            for (hash, root) in &self.roots_hashes {
+                write!(f, "\n{}:{}", hash, root)?;
+            }
+        } else {
+            if let Some(block) = &self.block {
+                write!(
+                    f,
+                    "\n{}",
+                    block
+                        .read()
+                        .unwrap()
+                        .to_json()
+                        .map_err(|_| std::fmt::Error)?
+                )?;
+            }
+        }
+        Ok(())
     }
 }
 

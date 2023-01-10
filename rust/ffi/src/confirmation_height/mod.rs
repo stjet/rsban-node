@@ -347,6 +347,13 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_restart_timer(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_size_safe(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+) -> usize {
+    (*handle).0.pending_writes_size.load(Ordering::Relaxed)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_min_time_exceeded(
     handle: *mut ConfirmationHeightUnboundedHandle,
 ) -> bool {

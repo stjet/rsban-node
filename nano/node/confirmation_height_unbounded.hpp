@@ -31,6 +31,7 @@ public:
 	void cement_blocks (nano::write_guard &);
 	bool has_iterated_over_block (nano::block_hash const &) const;
 	void stop ();
+	size_t pending_writes_size () const;
 
 	rsnano::ConfirmationHeightUnboundedHandle * handle;
 

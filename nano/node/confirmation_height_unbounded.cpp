@@ -418,6 +418,11 @@ bool nano::confirmation_height_unbounded::pending_empty () const
 	return rsnano::rsn_conf_height_unbounded_pending_empty (handle);
 }
 
+size_t nano::confirmation_height_unbounded::pending_writes_size () const
+{
+	return rsnano::rsn_conf_height_unbounded_pending_writes_size_safe (handle);
+}
+
 void nano::confirmation_height_unbounded::clear_process_vars ()
 {
 	rsnano::rsn_conf_height_unbounded_clear_process_vars (handle);

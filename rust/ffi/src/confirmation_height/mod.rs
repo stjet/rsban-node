@@ -16,6 +16,7 @@ use rsnano_node::{
 };
 
 use crate::{
+    copy_hash_bytes,
     core::BlockHandle,
     ledger::datastore::{LedgerHandle, TransactionHandle, WriteGuardHandle},
     utils::{LoggerHandle, LoggerMT},
@@ -391,4 +392,21 @@ pub unsafe extern "C" fn rsn_receive_source_pair_clone(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_receive_source_pair_destroy(handle: *mut ReceiveSourcePairHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_receive_details(
+    handle: *const ReceiveSourcePairHandle,
+) -> *mut ConfHeightDetailsSharedPtrHandle {
+    Box::into_raw(Box::new(ConfHeightDetailsSharedPtrHandle(Arc::clone(
+        &(*handle).0.receive_details,
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_source_hash(
+    handle: *const ReceiveSourcePairHandle,
+    result: *mut u8,
+) {
+    copy_hash_bytes((*handle).0.source_hash, result)
 }

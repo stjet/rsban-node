@@ -252,8 +252,6 @@ private:
 
 	private:
 		rsnano::ReceiveSourcePairHandle * handle;
-		conf_height_details_shared_ptr _receive_details;
-		nano::block_hash _source_hash;
 	};
 
 	class preparation_data final

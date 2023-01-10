@@ -458,16 +458,12 @@ void nano::confirmation_height_unbounded::conf_height_details::add_block_callbac
 }
 
 nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (conf_height_details_shared_ptr const & receive_details_a, const block_hash & source_a) :
-	handle{ rsnano::rsn_receive_source_pair_create (receive_details_a.handle, source_a.bytes.data ()) },
-	_receive_details (receive_details_a),
-	_source_hash (source_a)
+	handle{ rsnano::rsn_receive_source_pair_create (receive_details_a.handle, source_a.bytes.data ()) }
 {
 }
 
 nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (nano::confirmation_height_unbounded::receive_source_pair const & other_a) :
-	handle{ rsnano::rsn_receive_source_pair_clone (other_a.handle) },
-	_receive_details (other_a._receive_details),
-	_source_hash (other_a._source_hash)
+	handle{ rsnano::rsn_receive_source_pair_clone (other_a.handle) }
 {
 }
 
@@ -479,18 +475,18 @@ nano::confirmation_height_unbounded::receive_source_pair & nano::confirmation_he
 {
 	rsnano::rsn_receive_source_pair_destroy (handle);
 	handle = rsnano::rsn_receive_source_pair_clone (other_a.handle);
-	_receive_details = other_a._receive_details;
-	_source_hash = other_a._source_hash;
 	return *this;
 }
 
 nano::confirmation_height_unbounded::conf_height_details_shared_ptr nano::confirmation_height_unbounded::receive_source_pair::receive_details () const
 {
-	return _receive_details;
+	return nano::confirmation_height_unbounded::conf_height_details_shared_ptr(rsnano::rsn_receive_source_pair_receive_details (handle));
 }
 nano::block_hash nano::confirmation_height_unbounded::receive_source_pair::source_hash () const
 {
-	return _source_hash;
+	nano::block_hash hash;
+	rsnano::rsn_receive_source_pair_source_hash (handle, hash.bytes.data ());
+	return hash;
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_unbounded & confirmation_height_unbounded, std::string const & name_a)

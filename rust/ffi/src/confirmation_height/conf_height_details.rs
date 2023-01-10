@@ -3,7 +3,9 @@ use std::sync::{Arc, Mutex, Weak};
 use rsnano_core::{Account, BlockHash};
 use rsnano_node::confirmation_height::ConfHeightDetails;
 
-use crate::{copy_account_bytes, U256ArrayDto};
+use crate::copy_account_bytes;
+
+use super::BlockHashVecHandle;
 
 pub struct ConfHeightDetailsHandle(pub ConfHeightDetails);
 
@@ -13,13 +15,14 @@ pub unsafe extern "C" fn rsn_conf_height_details_create(
     hash: *const u8,
     height: u64,
     num_blocks_confirmed: u64,
+    block_callback_data: *const BlockHashVecHandle,
 ) -> *mut ConfHeightDetailsHandle {
     Box::into_raw(Box::new(ConfHeightDetailsHandle(ConfHeightDetails {
         account: Account::from_ptr(account),
         hash: BlockHash::from_ptr(hash),
         height,
         num_blocks_confirmed,
-        block_callback_data: Vec::new(),
+        block_callback_data: (*block_callback_data).0.clone(),
         source_block_callback_data: Vec::new(),
     })))
 }
@@ -85,31 +88,23 @@ pub unsafe extern "C" fn rsn_conf_height_details_shared_ptr_destroy(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_details_shared_source_block_callback_data(
     handle: *const ConfHeightDetailsSharedPtrHandle,
-    result: *mut U256ArrayDto,
-) {
-    let data = Box::new(
+) -> *mut BlockHashVecHandle {
+    Box::into_raw(Box::new(BlockHashVecHandle(
         (*handle)
             .0
             .lock()
             .unwrap()
             .source_block_callback_data
-            .iter()
-            .map(|a| *a.as_bytes())
-            .collect(),
-    );
-    (*result).initialize(data);
+            .clone(),
+    )))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_details_shared_set_source_block_callback_data(
     handle: *mut ConfHeightDetailsSharedPtrHandle,
-    data: *const *const u8,
-    len: usize,
+    data: *const BlockHashVecHandle,
 ) {
-    (*handle).0.lock().unwrap().source_block_callback_data = std::slice::from_raw_parts(data, len)
-        .iter()
-        .map(|&bytes| BlockHash::from_ptr(bytes))
-        .collect();
+    (*handle).0.lock().unwrap().source_block_callback_data = (*data).0.clone();
 }
 
 #[no_mangle]
@@ -143,31 +138,18 @@ pub unsafe extern "C" fn rsn_conf_height_details_shared_add_block_callback_data(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_details_shared_set_block_callback_data(
     handle: *mut ConfHeightDetailsSharedPtrHandle,
-    data: *const *const u8,
-    len: usize,
+    data: *const BlockHashVecHandle,
 ) {
-    (*handle).0.lock().unwrap().block_callback_data = std::slice::from_raw_parts(data, len)
-        .iter()
-        .map(|&bytes| BlockHash::from_ptr(bytes))
-        .collect();
+    (*handle).0.lock().unwrap().block_callback_data = (*data).0.clone();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_details_shared_block_callback_data(
     handle: *const ConfHeightDetailsSharedPtrHandle,
-    result: *mut U256ArrayDto,
-) {
-    let data = Box::new(
-        (*handle)
-            .0
-            .lock()
-            .unwrap()
-            .block_callback_data
-            .iter()
-            .map(|a| *a.as_bytes())
-            .collect(),
-    );
-    (*result).initialize(data);
+) -> *mut BlockHashVecHandle {
+    Box::into_raw(Box::new(BlockHashVecHandle(
+        (*handle).0.lock().unwrap().block_callback_data.clone(),
+    )))
 }
 
 #[no_mangle]

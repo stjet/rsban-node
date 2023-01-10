@@ -64,7 +64,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 	}
 	conf_height_details_shared_ptr receive_details;
 	auto current = original_block->hash ();
-	std::vector<nano::block_hash> orig_block_callback_data;
+	nano::block_hash_vec orig_block_callback_data;
 
 	nano::confirmation_height_unbounded::receive_source_pair_vec receive_source_pairs;
 
@@ -144,7 +144,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		}
 
 		auto count_before_receive = receive_source_pairs.size ();
-		std::vector<nano::block_hash> block_callback_datas_required;
+		nano::block_hash_vec block_callback_datas_required;
 		auto already_traversed = iterated_height >= block_height;
 		if (!already_traversed)
 		{
@@ -169,7 +169,18 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		auto confirmed_receives_pending = (count_before_receive != receive_source_pairs.size ());
 		if (!confirmed_receives_pending)
 		{
-			preparation_data preparation_data{ block_height, confirmation_height, iterated_height, account_it, account, receive_details, already_traversed, current, block_callback_datas_required, orig_block_callback_data };
+			preparation_data preparation_data{
+				block_height,
+				confirmation_height,
+				iterated_height,
+				account_it,
+				account,
+				receive_details,
+				already_traversed,
+				current,
+				block_callback_datas_required,
+				orig_block_callback_data
+			};
 			prepare_iterated_blocks_for_cementing (preparation_data);
 
 			if (!receive_source_pairs.empty ())
@@ -229,8 +240,8 @@ nano::block_hash const & hash_a,
 nano::account const & account_a,
 nano::read_transaction const & transaction_a,
 nano::confirmation_height_unbounded::receive_source_pair_vec & receive_source_pairs_a,
-std::vector<nano::block_hash> & block_callback_data_a,
-std::vector<nano::block_hash> & orig_block_callback_data_a,
+nano::block_hash_vec & block_callback_data_a,
+nano::block_hash_vec & orig_block_callback_data_a,
 std::shared_ptr<nano::block> original_block)
 {
 	debug_assert (block_a->hash () == hash_a);
@@ -278,7 +289,9 @@ std::shared_ptr<nano::block> original_block)
 				hit_receive = true;
 
 				auto block_height = confirmation_height_a + num_to_confirm;
-				conf_height_details details (account_a, hash, block_height, 1, std::vector<nano::block_hash>{ hash });
+				nano::block_hash_vec callback_data{};
+				callback_data.push_back (hash);
+				conf_height_details details (account_a, hash, block_height, 1, callback_data);
 				auto shared_details = rsnano::rsn_conf_height_details_shared_ptr_create (details.handle);
 				receive_source_pairs_a.push (nano::confirmation_height_unbounded::receive_source_pair{ shared_details, source });
 			}
@@ -352,10 +365,10 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 					auto num_blocks_already_confirmed = above_receive_details.get_num_blocks_confirmed () - (above_receive_details.get_height () - preparation_data_a.confirmation_height);
 
 					auto block_data{ above_receive_details.get_block_callback_data () };
-					auto end_it = block_data.begin () + block_data.size () - (num_blocks_already_confirmed);
-					auto start_it = end_it - num_blocks_confirmed;
+					auto end = block_data.size () - (num_blocks_already_confirmed);
+					auto start = end - num_blocks_confirmed;
 
-					block_callback_data.assign (start_it, end_it);
+					block_callback_data.assign (block_data, start, end);
 				}
 				else
 				{
@@ -363,8 +376,8 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 				}
 
 				auto num_to_remove = block_callback_data.size () - num_blocks_confirmed;
-				block_callback_data.erase (std::next (block_callback_data.rbegin (), num_to_remove).base (), block_callback_data.end ());
-				receive_details.set_source_block_callback_data (std::vector<nano::block_hash>{});
+				block_callback_data.truncate (block_callback_data.size () - num_to_remove);
+				receive_details.set_source_block_callback_data (nano::block_hash_vec{});
 			}
 		}
 
@@ -389,7 +402,7 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 			// Get the difference and remove the callbacks
 			auto block_callbacks_to_remove = orig_num_blocks_confirmed - receive_details.get_num_blocks_confirmed ();
 			auto tmp_blocks{ receive_details.get_block_callback_data () };
-			tmp_blocks.erase (std::next (tmp_blocks.rbegin (), block_callbacks_to_remove).base (), tmp_blocks.end ());
+			tmp_blocks.truncate (tmp_blocks.size () - block_callbacks_to_remove);
 			receive_details.set_block_callback_data (tmp_blocks);
 			debug_assert (receive_details.get_block_callback_data ().size () == receive_details.get_num_blocks_confirmed ());
 		}
@@ -443,13 +456,9 @@ uint64_t nano::confirmation_height_unbounded::block_cache_size () const
 	return rsnano::rsn_conf_height_unbounded_block_cache_size (handle);
 }
 
-nano::confirmation_height_unbounded::conf_height_details::conf_height_details (nano::account const & account_a, nano::block_hash const & hash_a, uint64_t height_a, uint64_t num_blocks_confirmed_a, std::vector<nano::block_hash> const & block_callback_data_a) :
-	handle{ rsnano::rsn_conf_height_details_create (account_a.bytes.data (), hash_a.bytes.data (), height_a, num_blocks_confirmed_a) }
+nano::confirmation_height_unbounded::conf_height_details::conf_height_details (nano::account const & account_a, nano::block_hash const & hash_a, uint64_t height_a, uint64_t num_blocks_confirmed_a, nano::block_hash_vec const & block_callback_data_a) :
+	handle{ rsnano::rsn_conf_height_details_create (account_a.bytes.data (), hash_a.bytes.data (), height_a, num_blocks_confirmed_a, block_callback_data_a.handle) }
 {
-	for (auto b : block_callback_data_a)
-	{
-		add_block_callback_data (b);
-	}
 }
 
 nano::confirmation_height_unbounded::conf_height_details::conf_height_details (nano::confirmation_height_unbounded::conf_height_details const & other_a) :
@@ -551,4 +560,54 @@ void nano::confirmation_height_unbounded::receive_source_pair_vec::pop ()
 nano::confirmation_height_unbounded::receive_source_pair nano::confirmation_height_unbounded::receive_source_pair_vec::back () const
 {
 	return nano::confirmation_height_unbounded::receive_source_pair{ rsnano::rsn_receive_source_pair_vec_back (handle) };
+}
+
+nano::block_hash_vec::block_hash_vec () :
+	handle{ rsnano::rsn_block_hash_vec_create () }
+{
+}
+
+nano::block_hash_vec::block_hash_vec (rsnano::BlockHashVecHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
+nano::block_hash_vec::block_hash_vec (nano::block_hash_vec const & other_a) :
+	handle{ rsnano::rsn_block_hash_vec_clone (other_a.handle) }
+{
+}
+
+nano::block_hash_vec::~block_hash_vec ()
+{
+	rsnano::rsn_block_hash_vec_destroy (handle);
+}
+nano::block_hash_vec & nano::block_hash_vec::operator= (block_hash_vec const & other_a)
+{
+	rsnano::rsn_block_hash_vec_destroy (handle);
+	handle = rsnano::rsn_block_hash_vec_clone (other_a.handle);
+	return *this;
+}
+bool nano::block_hash_vec::empty () const
+{
+	return size () == 0;
+}
+size_t nano::block_hash_vec::size () const
+{
+	return rsnano::rsn_block_hash_vec_size (handle);
+}
+void nano::block_hash_vec::push_back (const nano::block_hash & hash)
+{
+	rsnano::rsn_block_hash_vec_push (handle, hash.bytes.data ());
+}
+void nano::block_hash_vec::clear ()
+{
+	rsnano::rsn_block_hash_vec_clear (handle);
+}
+void nano::block_hash_vec::assign (block_hash_vec const & source_a, size_t start, size_t end)
+{
+	rsnano::rsn_block_hash_vec_assign_range (handle, source_a.handle, start, end);
+}
+void nano::block_hash_vec::truncate (size_t new_size_a)
+{
+	rsnano::rsn_block_hash_vec_truncate (handle, new_size_a);
 }

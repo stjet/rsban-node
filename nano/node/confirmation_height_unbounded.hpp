@@ -243,6 +243,10 @@ private:
 	{
 	public:
 		receive_source_pair (conf_height_details_shared_ptr const &, nano::block_hash const &);
+		receive_source_pair (receive_source_pair const &);
+		receive_source_pair (receive_source_pair &&) = delete;
+		~receive_source_pair ();
+		receive_source_pair & operator= (receive_source_pair const &);
 		conf_height_details_shared_ptr receive_details () const;
 		nano::block_hash source_hash () const;
 

@@ -382,6 +382,13 @@ pub unsafe extern "C" fn rsn_receive_source_pair_create(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_clone(
+    other: *const ReceiveSourcePairHandle,
+) -> *mut ReceiveSourcePairHandle {
+    Box::into_raw(Box::new(ReceiveSourcePairHandle((*other).0.clone())))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_receive_source_pair_destroy(handle: *mut ReceiveSourcePairHandle) {
     drop(Box::from_raw(handle))
 }

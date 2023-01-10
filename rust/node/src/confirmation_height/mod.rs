@@ -311,6 +311,7 @@ pub struct ConfirmedIteratedPair {
     pub iterated_height: u64,
 }
 
+#[derive(Clone)]
 pub struct ReceiveSourcePair {
     pub receive_details: Arc<Mutex<ConfHeightDetails>>,
     pub source_hash: BlockHash,

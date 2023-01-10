@@ -243,15 +243,29 @@ private:
 	{
 	public:
 		receive_source_pair (conf_height_details_shared_ptr const &, nano::block_hash const &);
+		receive_source_pair (rsnano::ReceiveSourcePairHandle *);
 		receive_source_pair (receive_source_pair const &);
 		receive_source_pair (receive_source_pair &&) = delete;
 		~receive_source_pair ();
 		receive_source_pair & operator= (receive_source_pair const &);
 		conf_height_details_shared_ptr receive_details () const;
 		nano::block_hash source_hash () const;
-
-	private:
 		rsnano::ReceiveSourcePairHandle * handle;
+	};
+
+	class receive_source_pair_vec
+	{
+	public:
+		receive_source_pair_vec ();
+		receive_source_pair_vec (receive_source_pair_vec const &) = delete;
+		receive_source_pair_vec (receive_source_pair_vec &&) = delete;
+		~receive_source_pair_vec ();
+		bool empty () const;
+		size_t size () const;
+		void push (receive_source_pair const & pair);
+		void pop ();
+		receive_source_pair back () const;
+		rsnano::ReceiveSourcePairVecHandle * handle;
 	};
 
 	class preparation_data final
@@ -269,7 +283,7 @@ private:
 		std::vector<nano::block_hash> const & orig_block_callback_data;
 	};
 
-	void collect_unconfirmed_receive_and_sources_for_account (uint64_t, uint64_t, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account const &, nano::read_transaction const &, std::vector<receive_source_pair> &, std::vector<nano::block_hash> &, std::vector<nano::block_hash> &, std::shared_ptr<nano::block> original_block);
+	void collect_unconfirmed_receive_and_sources_for_account (uint64_t, uint64_t, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account const &, nano::read_transaction const &, receive_source_pair_vec &, std::vector<nano::block_hash> &, std::vector<nano::block_hash> &, std::shared_ptr<nano::block> original_block);
 	void prepare_iterated_blocks_for_cementing (preparation_data &);
 	uint64_t block_cache_size () const;
 	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);

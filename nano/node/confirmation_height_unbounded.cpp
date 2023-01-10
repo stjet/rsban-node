@@ -66,8 +66,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 	auto current = original_block->hash ();
 	std::vector<nano::block_hash> orig_block_callback_data;
 
-	std::vector<receive_source_pair> receive_source_pairs;
-	release_assert (receive_source_pairs.empty ());
+	nano::confirmation_height_unbounded::receive_source_pair_vec receive_source_pairs;
 
 	bool first_iter = true;
 	auto read_transaction (ledger.store.tx_begin_read ());
@@ -149,7 +148,10 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		auto already_traversed = iterated_height >= block_height;
 		if (!already_traversed)
 		{
-			collect_unconfirmed_receive_and_sources_for_account (block_height, iterated_height, block, current, account, *read_transaction, receive_source_pairs, block_callback_datas_required, orig_block_callback_data, original_block);
+			collect_unconfirmed_receive_and_sources_for_account (
+			block_height, iterated_height, block, current, account,
+			*read_transaction, receive_source_pairs, block_callback_datas_required,
+			orig_block_callback_data, original_block);
 		}
 
 		// Exit early when the processor has been stopped, otherwise this function may take a
@@ -173,7 +175,7 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 			if (!receive_source_pairs.empty ())
 			{
 				// Pop from the end
-				receive_source_pairs.erase (receive_source_pairs.end () - 1);
+				receive_source_pairs.pop ();
 			}
 		}
 		else if (block_height > iterated_height)
@@ -219,7 +221,17 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 	} while ((!receive_source_pairs.empty () || current != original_block->hash ()) && !stopped);
 }
 
-void nano::confirmation_height_unbounded::collect_unconfirmed_receive_and_sources_for_account (uint64_t block_height_a, uint64_t confirmation_height_a, std::shared_ptr<nano::block> const & block_a, nano::block_hash const & hash_a, nano::account const & account_a, nano::read_transaction const & transaction_a, std::vector<receive_source_pair> & receive_source_pairs_a, std::vector<nano::block_hash> & block_callback_data_a, std::vector<nano::block_hash> & orig_block_callback_data_a, std::shared_ptr<nano::block> original_block)
+void nano::confirmation_height_unbounded::collect_unconfirmed_receive_and_sources_for_account (
+uint64_t block_height_a,
+uint64_t confirmation_height_a,
+std::shared_ptr<nano::block> const & block_a,
+nano::block_hash const & hash_a,
+nano::account const & account_a,
+nano::read_transaction const & transaction_a,
+nano::confirmation_height_unbounded::receive_source_pair_vec & receive_source_pairs_a,
+std::vector<nano::block_hash> & block_callback_data_a,
+std::vector<nano::block_hash> & orig_block_callback_data_a,
+std::shared_ptr<nano::block> original_block)
 {
 	debug_assert (block_a->hash () == hash_a);
 	auto hash (hash_a);
@@ -268,7 +280,7 @@ void nano::confirmation_height_unbounded::collect_unconfirmed_receive_and_source
 				auto block_height = confirmation_height_a + num_to_confirm;
 				conf_height_details details (account_a, hash, block_height, 1, std::vector<nano::block_hash>{ hash });
 				auto shared_details = rsnano::rsn_conf_height_details_shared_ptr_create (details.handle);
-				receive_source_pairs_a.emplace_back (shared_details, source);
+				receive_source_pairs_a.push (nano::confirmation_height_unbounded::receive_source_pair{ shared_details, source });
 			}
 			else if (is_original_block)
 			{
@@ -462,6 +474,11 @@ nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (c
 {
 }
 
+nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (rsnano::ReceiveSourcePairHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (nano::confirmation_height_unbounded::receive_source_pair const & other_a) :
 	handle{ rsnano::rsn_receive_source_pair_clone (other_a.handle) }
 {
@@ -480,7 +497,7 @@ nano::confirmation_height_unbounded::receive_source_pair & nano::confirmation_he
 
 nano::confirmation_height_unbounded::conf_height_details_shared_ptr nano::confirmation_height_unbounded::receive_source_pair::receive_details () const
 {
-	return nano::confirmation_height_unbounded::conf_height_details_shared_ptr(rsnano::rsn_receive_source_pair_receive_details (handle));
+	return nano::confirmation_height_unbounded::conf_height_details_shared_ptr (rsnano::rsn_receive_source_pair_receive_details (handle));
 }
 nano::block_hash nano::confirmation_height_unbounded::receive_source_pair::source_hash () const
 {
@@ -497,4 +514,36 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "implicit_receive_cemented_mapping", rsnano::rsn_conf_height_unbounded_implicit_receive_cemented_mapping_size (confirmation_height_unbounded.handle), rsnano::rsn_implicit_receive_cemented_mapping_value_size () }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_cache", confirmation_height_unbounded.block_cache_size (), rsnano::rsn_conf_height_unbounded_block_cache_element_size () }));
 	return composite;
+}
+
+nano::confirmation_height_unbounded::receive_source_pair_vec::receive_source_pair_vec () :
+	handle{ rsnano::rsn_receive_source_pair_vec_create () }
+{
+}
+nano::confirmation_height_unbounded::receive_source_pair_vec::~receive_source_pair_vec ()
+{
+	rsnano::rsn_receive_source_pair_vec_destroy (handle);
+}
+bool nano::confirmation_height_unbounded::receive_source_pair_vec::empty () const
+{
+	return size () == 0;
+}
+size_t nano::confirmation_height_unbounded::receive_source_pair_vec::size () const
+{
+	return rsnano::rsn_receive_source_pair_vec_size (handle);
+}
+
+void nano::confirmation_height_unbounded::receive_source_pair_vec::push (nano::confirmation_height_unbounded::receive_source_pair const & pair)
+{
+	rsnano::rsn_receive_source_pair_vec_push (handle, pair.handle);
+}
+
+void nano::confirmation_height_unbounded::receive_source_pair_vec::pop ()
+{
+	rsnano::rsn_receive_source_pair_vec_pop (handle);
+}
+
+nano::confirmation_height_unbounded::receive_source_pair nano::confirmation_height_unbounded::receive_source_pair_vec::back () const
+{
+	return nano::confirmation_height_unbounded::receive_source_pair{ rsnano::rsn_receive_source_pair_vec_back (handle) };
 }

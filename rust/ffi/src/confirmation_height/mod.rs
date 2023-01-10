@@ -368,7 +368,7 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_cement_blocks(
     (*handle).0.cement_blocks(&mut (*write_guard).0);
 }
 
-pub struct ReceiveSourcePairHandle(ReceiveSourcePair);
+pub struct ReceiveSourcePairHandle(Arc<ReceiveSourcePair>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_receive_source_pair_create(
@@ -377,8 +377,8 @@ pub unsafe extern "C" fn rsn_receive_source_pair_create(
 ) -> *mut ReceiveSourcePairHandle {
     let details = Arc::clone(&(*details).0);
     let hash = BlockHash::from_ptr(hash);
-    Box::into_raw(Box::new(ReceiveSourcePairHandle(ReceiveSourcePair::new(
-        details, hash,
+    Box::into_raw(Box::new(ReceiveSourcePairHandle(Arc::new(
+        ReceiveSourcePair::new(details, hash),
     ))))
 }
 
@@ -409,4 +409,47 @@ pub unsafe extern "C" fn rsn_receive_source_pair_source_hash(
     result: *mut u8,
 ) {
     copy_hash_bytes((*handle).0.source_hash, result)
+}
+
+pub struct ReceiveSourcePairVecHandle(Vec<Arc<ReceiveSourcePair>>);
+
+#[no_mangle]
+pub extern "C" fn rsn_receive_source_pair_vec_create() -> *mut ReceiveSourcePairVecHandle {
+    Box::into_raw(Box::new(ReceiveSourcePairVecHandle(Vec::new())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_vec_destroy(
+    handle: *mut ReceiveSourcePairVecHandle,
+) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_vec_size(
+    handle: *mut ReceiveSourcePairVecHandle,
+) -> usize {
+    (*handle).0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_vec_push(
+    handle: *mut ReceiveSourcePairVecHandle,
+    pair: *const ReceiveSourcePairHandle,
+) {
+    (*handle).0.push(Arc::clone(&(*pair).0));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_vec_pop(handle: *mut ReceiveSourcePairVecHandle) {
+    (*handle).0.pop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_vec_back(
+    handle: *mut ReceiveSourcePairVecHandle,
+) -> *mut ReceiveSourcePairHandle {
+    Box::into_raw(Box::new(ReceiveSourcePairHandle(Arc::clone(
+        (*handle).0.last().unwrap(),
+    ))))
 }

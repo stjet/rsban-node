@@ -88,7 +88,8 @@ void nano::backlog_population::populate_backlog ()
 		for (; !stopped && i != end && count < chunk_size; ++i, ++count, ++total)
 		{
 			auto const & account = i->first;
-			scheduler.activate (account, *transaction);
+			rsnano::rsn_election_scheduler_activate (scheduler.handle, account.bytes.data (), transaction->get_rust_handle ());
+			//			scheduler.activate (account, *transaction);
 			next = account.number () + 1;
 		}
 		done = store_m.account ().begin (*transaction, next) == end;

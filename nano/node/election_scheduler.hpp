@@ -10,7 +10,10 @@
 #include <deque>
 #include <memory>
 #include <thread>
-
+namespace rsnano
+{
+class ElectionSchedulerHandle;
+}
 namespace nano
 {
 class block;
@@ -47,5 +50,8 @@ private:
 	nano::condition_variable condition;
 	mutable nano::mutex mutex;
 	std::thread thread;
+
+public:
+	rsnano::ElectionSchedulerHandle * handle;
 };
 }

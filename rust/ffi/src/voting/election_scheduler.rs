@@ -64,4 +64,5 @@ fn forward_scheduler_activate(
     unsafe {
         callback(cpp_scheduler, account.as_bytes().as_ptr(), txn_handle);
     }
+    drop(unsafe { Box::from_raw(txn_handle) });
 }

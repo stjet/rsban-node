@@ -18,6 +18,24 @@ class logger_mt;
 class write_database_queue;
 class write_guard;
 
+class block_hash_vec
+{
+public:
+	block_hash_vec ();
+	block_hash_vec (rsnano::BlockHashVecHandle * handle_a);
+	block_hash_vec (block_hash_vec const &);
+	block_hash_vec (block_hash_vec &&) = delete;
+	~block_hash_vec ();
+	block_hash_vec & operator= (block_hash_vec const & other_a);
+	bool empty () const;
+	size_t size () const;
+	void push_back (nano::block_hash const & hash);
+	void clear ();
+	void assign (block_hash_vec const & source_a, size_t start, size_t end);
+	void truncate (size_t new_size_a);
+	rsnano::BlockHashVecHandle * handle;
+};
+
 class confirmation_height_unbounded final
 {
 public:
@@ -83,29 +101,14 @@ private:
 			return *this;
 		}
 
-		std::vector<nano::block_hash> get_source_block_callback_data () const
+		block_hash_vec get_source_block_callback_data () const
 		{
-			std::vector<nano::block_hash> result;
-			rsnano::U256ArrayDto dto;
-			rsnano::rsn_conf_height_details_shared_source_block_callback_data (handle, &dto);
-			for (int i = 0; i < dto.count; ++i)
-			{
-				nano::block_hash hash;
-				std::copy (std::begin (dto.items[i]), std::end (dto.items[i]), std::begin (hash.bytes));
-				result.push_back (hash);
-			}
-			rsnano::rsn_u256_array_destroy (&dto);
-
-			return result;
+			auto vec_handle = rsnano::rsn_conf_height_details_shared_source_block_callback_data (handle);
+			return block_hash_vec{ vec_handle };
 		}
-		void set_source_block_callback_data (std::vector<nano::block_hash> const & data_a)
+		void set_source_block_callback_data (block_hash_vec const & data_a)
 		{
-			std::vector<uint8_t const *> tmp;
-			for (const auto & i : data_a)
-			{
-				tmp.push_back (i.bytes.data ());
-			}
-			rsnano::rsn_conf_height_details_shared_set_source_block_callback_data (handle, tmp.data (), tmp.size ());
+			rsnano::rsn_conf_height_details_shared_set_source_block_callback_data (handle, data_a.handle);
 		}
 
 		uint64_t get_num_blocks_confirmed () const
@@ -118,20 +121,9 @@ private:
 			rsnano::rsn_conf_height_details_shared_set_num_blocks_confirmed (handle, num);
 		}
 
-		std::vector<nano::block_hash> get_block_callback_data () const
+		nano::block_hash_vec get_block_callback_data () const
 		{
-			std::vector<nano::block_hash> result;
-			rsnano::U256ArrayDto dto;
-			rsnano::rsn_conf_height_details_shared_block_callback_data (handle, &dto);
-			for (int i = 0; i < dto.count; ++i)
-			{
-				nano::block_hash hash;
-				std::copy (std::begin (dto.items[i]), std::end (dto.items[i]), std::begin (hash.bytes));
-				result.push_back (hash);
-			}
-			rsnano::rsn_u256_array_destroy (&dto);
-
-			return result;
+			return nano::block_hash_vec{ rsnano::rsn_conf_height_details_shared_block_callback_data (handle) };
 		}
 
 		void add_block_callback_data (nano::block_hash const & hash)
@@ -139,14 +131,9 @@ private:
 			rsnano::rsn_conf_height_details_shared_add_block_callback_data (handle, hash.bytes.data ());
 		}
 
-		void set_block_callback_data (std::vector<nano::block_hash> const & data_a)
+		void set_block_callback_data (block_hash_vec const & data_a)
 		{
-			std::vector<uint8_t const *> tmp;
-			for (const auto & i : data_a)
-			{
-				tmp.push_back (i.bytes.data ());
-			}
-			rsnano::rsn_conf_height_details_shared_set_block_callback_data (handle, tmp.data (), tmp.size ());
+			rsnano::rsn_conf_height_details_shared_set_block_callback_data (handle, data_a.handle);
 		}
 
 		uint64_t get_height () const
@@ -227,7 +214,7 @@ private:
 	class conf_height_details final
 	{
 	public:
-		conf_height_details (nano::account const &, nano::block_hash const &, uint64_t, uint64_t, std::vector<nano::block_hash> const &);
+		conf_height_details (nano::account const &, nano::block_hash const &, uint64_t, uint64_t, nano::block_hash_vec const &);
 		conf_height_details (rsnano::ConfHeightDetailsHandle * handle_a) :
 			handle{ handle_a }
 		{
@@ -280,11 +267,22 @@ private:
 		conf_height_details_shared_ptr receive_details;
 		bool already_traversed;
 		nano::block_hash const & current;
-		std::vector<nano::block_hash> const & block_callback_data;
-		std::vector<nano::block_hash> const & orig_block_callback_data;
+		block_hash_vec const & block_callback_data;
+		block_hash_vec const & orig_block_callback_data;
 	};
 
-	void collect_unconfirmed_receive_and_sources_for_account (uint64_t, uint64_t, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account const &, nano::read_transaction const &, receive_source_pair_vec &, std::vector<nano::block_hash> &, std::vector<nano::block_hash> &, std::shared_ptr<nano::block> original_block);
+	void collect_unconfirmed_receive_and_sources_for_account (
+	uint64_t,
+	uint64_t,
+	std::shared_ptr<nano::block> const &,
+	nano::block_hash const &,
+	nano::account const &,
+	nano::read_transaction const &,
+	receive_source_pair_vec &,
+	block_hash_vec &,
+	block_hash_vec &,
+	std::shared_ptr<nano::block> original_block);
+
 	void prepare_iterated_blocks_for_cementing (preparation_data &);
 	uint64_t block_cache_size () const;
 	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);

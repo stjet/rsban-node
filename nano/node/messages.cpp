@@ -925,6 +925,13 @@ std::shared_ptr<nano::vote> nano::confirm_ack::get_vote () const
 	return result;
 }
 
+std::string nano::confirm_ack::to_string () const
+{
+	rsnano::StringDto string_dto;
+	rsnano::rsn_message_confirm_ack_to_string (handle, &string_dto);
+	return rsnano::convert_dto_to_string (string_dto);
+}
+
 /*
  * frontier_req
  */

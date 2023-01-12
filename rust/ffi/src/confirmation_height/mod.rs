@@ -11,7 +11,8 @@ use rsnano_core::{Account, BlockEnum, BlockHash};
 use rsnano_node::{
     config::Logging,
     confirmation_height::{
-        ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair, ReceiveSourcePair,
+        ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair, PreparationData,
+        ReceiveSourcePair,
     },
 };
 
@@ -374,6 +375,58 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_cement_blocks(
 ) {
     (*handle).0.cement_blocks(&mut (*write_guard).0);
 }
+
+#[repr(C)]
+pub struct PreparationDataDto {
+    pub block_height: u64,
+    pub confirmation_height: u64,
+    pub iterated_height: u64,
+    pub account_it: ConfirmedIteratedPairsIteratorDto,
+    pub account: [u8; 32],
+    pub receive_details: *mut ConfHeightDetailsSharedPtrHandle,
+    pub already_traversed: bool,
+    pub current: [u8; 32],
+    pub block_callback_data: *mut BlockHashVecHandle,
+    pub orig_block_callback_data: *mut BlockHashVecHandle,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_prepare_iterated_blocks_for_cementing(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    preparation_data: *mut PreparationDataDto,
+) {
+    let dto = &*preparation_data;
+    let mut data = PreparationData {
+        block_height: dto.block_height,
+        confirmation_height: dto.confirmation_height,
+        iterated_height: dto.iterated_height,
+        account_it: if dto.account_it.is_end {
+            None
+        } else {
+            Some((
+                Account::from_bytes(dto.account_it.account),
+                ConfirmedIteratedPair {
+                    confirmed_height: dto.account_it.confirmed_height,
+                    iterated_height: dto.account_it.iterated_height,
+                },
+            ))
+        },
+        account: Account::from_bytes(dto.account),
+        receive_details: if dto.receive_details.is_null() {
+            None
+        } else {
+            Some(Arc::clone(&(*dto.receive_details).0))
+        },
+        already_traversed: dto.already_traversed,
+        current: BlockHash::from_bytes(dto.current),
+        block_callback_data: &mut (*dto.block_callback_data).0,
+        orig_block_callback_data: &mut (*dto.block_callback_data).0,
+    };
+    (*handle).0.prepare_iterated_blocks_for_cementing(&mut data);
+}
+//
+// ReceiveSourcePair
+//
 
 pub struct ReceiveSourcePairHandle(Arc<ReceiveSourcePair>);
 

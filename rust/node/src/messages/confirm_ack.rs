@@ -137,7 +137,14 @@ impl Display for ConfirmAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.header, f)?;
         if let Some(vote) = &self.vote {
-            write!(f, "\n{}", vote.read().unwrap().to_json())?;
+            write!(
+                f,
+                "\n{}",
+                vote.read()
+                    .unwrap()
+                    .to_json()
+                    .map_err(|_| std::fmt::Error)?
+            )?;
         }
         Ok(())
     }

@@ -327,6 +327,20 @@ std::shared_ptr<nano::block> original_block)
 
 void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing (preparation_data & preparation_data_a)
 {
+	rsnano::PreparationDataDto preparation_data_dto;
+	preparation_data_dto.block_height = preparation_data_a.block_height;
+	preparation_data_dto.confirmation_height = preparation_data_a.confirmation_height;
+	preparation_data_dto.iterated_height = preparation_data_a.iterated_height;
+	preparation_data_dto.account_it = preparation_data_a.account_it;
+	std::copy (std::begin (preparation_data_a.account.bytes), std::end (preparation_data_a.account.bytes), std::begin (preparation_data_dto.account));
+	preparation_data_dto.receive_details = preparation_data_a.receive_details.handle;
+	preparation_data_dto.already_traversed = preparation_data_a.already_traversed;
+	std::copy (std::begin (preparation_data_a.current.bytes), std::end (preparation_data_a.current.bytes), std::begin (preparation_data_dto.current));
+	preparation_data_dto.block_callback_data = preparation_data_a.block_callback_data.handle;
+	preparation_data_dto.orig_block_callback_data = preparation_data_a.orig_block_callback_data.handle;
+
+	rsnano::rsn_conf_height_unbounded_prepare_iterated_blocks_for_cementing (handle, &preparation_data_dto);
+
 	auto receive_details = preparation_data_a.receive_details;
 	auto block_height = preparation_data_a.block_height;
 	if (block_height > preparation_data_a.confirmation_height)

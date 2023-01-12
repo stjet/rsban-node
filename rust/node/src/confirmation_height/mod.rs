@@ -185,6 +185,9 @@ impl ConfirmationHeightUnbounded {
         self.block_cache.lock().unwrap().clear();
     }
 
+    pub fn prepare_iterated_blocks_for_cementing(&self, _preparation_data_a: &mut PreparationData) {
+    }
+
     pub fn cement_blocks(&mut self, scoped_write_guard_a: &mut WriteGuard) {
         let cemented_batch_timer: Instant;
         let mut cemented_blocks: Vec<Arc<BlockEnum>> = Vec::new();
@@ -324,4 +327,17 @@ impl ReceiveSourcePair {
             source_hash,
         }
     }
+}
+
+pub struct PreparationData<'a> {
+    pub block_height: u64,
+    pub confirmation_height: u64,
+    pub iterated_height: u64,
+    pub account_it: Option<(Account, ConfirmedIteratedPair)>,
+    pub account: Account,
+    pub receive_details: Option<Arc<Mutex<ConfHeightDetails>>>,
+    pub already_traversed: bool,
+    pub current: BlockHash,
+    pub block_callback_data: &'a mut Vec<BlockHash>,
+    pub orig_block_callback_data: &'a mut Vec<BlockHash>,
 }

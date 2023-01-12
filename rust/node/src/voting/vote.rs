@@ -97,10 +97,10 @@ impl Vote {
         Ok(())
     }
 
-    pub fn to_json(&self) -> String {
+    pub fn to_json(&self) -> anyhow::Result<String> {
         let mut ptree = SerdePropertyTree::new();
-        self.serialize_json(&mut ptree);
-        ptree.to_json()
+        self.serialize_json(&mut ptree)?;
+        Ok(ptree.to_json())
     }
 
     pub fn hash(&self) -> BlockHash {

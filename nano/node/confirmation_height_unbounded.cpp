@@ -169,19 +169,19 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		auto confirmed_receives_pending = (count_before_receive != receive_source_pairs.size ());
 		if (!confirmed_receives_pending)
 		{
-			preparation_data preparation_data{
-				block_height,
-				confirmation_height,
-				iterated_height,
-				account_it,
-				account,
-				receive_details,
-				already_traversed,
-				current,
-				block_callback_datas_required,
-				orig_block_callback_data
-			};
-			prepare_iterated_blocks_for_cementing (preparation_data);
+			rsnano::PreparationDataDto preparation_data_dto;
+			preparation_data_dto.block_height = block_height;
+			preparation_data_dto.confirmation_height = confirmation_height;
+			preparation_data_dto.iterated_height = iterated_height;
+			preparation_data_dto.account_it = account_it;
+			std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (preparation_data_dto.account));
+			preparation_data_dto.receive_details = receive_details.handle;
+			preparation_data_dto.already_traversed = already_traversed;
+			std::copy (std::begin (current.bytes), std::end (current.bytes), std::begin (preparation_data_dto.current));
+			preparation_data_dto.block_callback_data = block_callback_datas_required.handle;
+			preparation_data_dto.orig_block_callback_data = orig_block_callback_data.handle;
+
+			rsnano::rsn_conf_height_unbounded_prepare_iterated_blocks_for_cementing (handle, &preparation_data_dto);
 
 			if (!receive_source_pairs.empty ())
 			{
@@ -323,23 +323,6 @@ std::shared_ptr<nano::block> original_block)
 		--num_to_confirm;
 		first_iter = false;
 	}
-}
-
-void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing (preparation_data & preparation_data_a)
-{
-	rsnano::PreparationDataDto preparation_data_dto;
-	preparation_data_dto.block_height = preparation_data_a.block_height;
-	preparation_data_dto.confirmation_height = preparation_data_a.confirmation_height;
-	preparation_data_dto.iterated_height = preparation_data_a.iterated_height;
-	preparation_data_dto.account_it = preparation_data_a.account_it;
-	std::copy (std::begin (preparation_data_a.account.bytes), std::end (preparation_data_a.account.bytes), std::begin (preparation_data_dto.account));
-	preparation_data_dto.receive_details = preparation_data_a.receive_details.handle;
-	preparation_data_dto.already_traversed = preparation_data_a.already_traversed;
-	std::copy (std::begin (preparation_data_a.current.bytes), std::end (preparation_data_a.current.bytes), std::begin (preparation_data_dto.current));
-	preparation_data_dto.block_callback_data = preparation_data_a.block_callback_data.handle;
-	preparation_data_dto.orig_block_callback_data = preparation_data_a.orig_block_callback_data.handle;
-
-	rsnano::rsn_conf_height_unbounded_prepare_iterated_blocks_for_cementing (handle, &preparation_data_dto);
 }
 
 void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & scoped_write_guard_a)

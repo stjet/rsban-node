@@ -256,21 +256,6 @@ private:
 		rsnano::ReceiveSourcePairVecHandle * handle;
 	};
 
-	class preparation_data final
-	{
-	public:
-		uint64_t block_height;
-		uint64_t confirmation_height;
-		uint64_t iterated_height;
-		rsnano::ConfirmedIteratedPairsIteratorDto account_it;
-		nano::account const & account;
-		conf_height_details_shared_ptr receive_details;
-		bool already_traversed;
-		nano::block_hash const & current;
-		block_hash_vec const & block_callback_data;
-		block_hash_vec const & orig_block_callback_data;
-	};
-
 	void collect_unconfirmed_receive_and_sources_for_account (
 	uint64_t,
 	uint64_t,
@@ -283,7 +268,6 @@ private:
 	block_hash_vec &,
 	std::shared_ptr<nano::block> original_block);
 
-	void prepare_iterated_blocks_for_cementing (preparation_data &);
 	uint64_t block_cache_size () const;
 	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);
 

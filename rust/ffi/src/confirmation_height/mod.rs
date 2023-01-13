@@ -424,6 +424,39 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_prepare_iterated_blocks_for_c
     };
     (*handle).0.prepare_iterated_blocks_for_cementing(&mut data);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_collect_unconfirmed_receive_and_sources_for_account(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    block_height_a: u64,
+    confirmation_height_a: u64,
+    block_a: *const BlockHandle,
+    hash_a: *const u8,
+    account_a: *const u8,
+    transaction_a: *mut TransactionHandle,
+    receive_source_pairs_a: *mut ReceiveSourcePairVecHandle,
+    block_callback_data_a: *mut BlockHashVecHandle,
+    orig_block_callback_data_a: *mut BlockHashVecHandle,
+    original_block: *const BlockHandle,
+) {
+    let block = (*block_a).block.read().unwrap();
+    let original_block = (*original_block).block.read().unwrap();
+    (*handle)
+        .0
+        .collect_unconfirmed_receive_and_sources_for_account(
+            block_height_a,
+            confirmation_height_a,
+            &block,
+            &BlockHash::from_ptr(hash_a),
+            &Account::from_ptr(account_a),
+            (*transaction_a).as_read_txn(),
+            &mut (*receive_source_pairs_a).0,
+            &mut (*block_callback_data_a).0,
+            &mut (*orig_block_callback_data_a).0,
+            &original_block,
+        )
+}
+
 //
 // ReceiveSourcePair
 //

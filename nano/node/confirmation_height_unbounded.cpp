@@ -244,6 +244,19 @@ nano::block_hash_vec & block_callback_data_a,
 nano::block_hash_vec & orig_block_callback_data_a,
 std::shared_ptr<nano::block> original_block)
 {
+	rsnano::rsn_conf_height_unbounded_collect_unconfirmed_receive_and_sources_for_account (
+	handle,
+	block_height_a,
+	confirmation_height_a,
+	block_a->get_handle (),
+	hash_a.bytes.data (),
+	account_a.bytes.data (),
+	transaction_a.get_rust_handle (),
+	receive_source_pairs_a.handle,
+	block_callback_data_a.handle,
+	orig_block_callback_data_a.handle,
+	original_block->get_handle ());
+
 	debug_assert (block_a->hash () == hash_a);
 	auto hash (hash_a);
 	auto num_to_confirm = block_height_a - confirmation_height_a;

@@ -185,7 +185,65 @@ impl ConfirmationHeightUnbounded {
         self.block_cache.lock().unwrap().clear();
     }
 
-    pub fn prepare_iterated_blocks_for_cementing(&self, _preparation_data_a: &mut PreparationData) {
+    pub fn prepare_iterated_blocks_for_cementing(
+        &mut self,
+        preparation_data_a: &mut PreparationData,
+    ) {
+        let receive_details = &preparation_data_a.receive_details;
+        let block_height = preparation_data_a.block_height;
+        if block_height > preparation_data_a.confirmation_height {
+            // Check whether the previous block has been seen. If so, the rest of sends below have already been seen so don't count them
+            if let Some((account, _)) = &preparation_data_a.account_it {
+                let pair = self.confirmed_iterated_pairs.get_mut(account).unwrap();
+                pair.confirmed_height = block_height;
+                if block_height > preparation_data_a.iterated_height {
+                    pair.iterated_height = block_height;
+                }
+            } else {
+                self.add_confirmed_iterated_pair(
+                    preparation_data_a.account,
+                    block_height,
+                    block_height,
+                );
+            }
+
+            let num_blocks_confirmed = block_height - preparation_data_a.confirmation_height;
+            let block_callback_data = preparation_data_a.block_callback_data.clone();
+            if block_callback_data.is_empty() {
+                // if receive_details.is_null() {
+                // 	block_callback_data = preparation_data_a.orig_block_callback_data;
+                // }
+                // 		else
+                // 		{
+                // 			if (preparation_data_a.already_traversed && receive_details.get_source_block_callback_data ().empty ())
+                // 			{
+                // 				// We are confirming a block which has already been traversed and found no associated receive details for it.
+                // 				conf_height_details_weak_ptr above_receive_details_w{ rsnano::rsn_conf_height_unbounded_get_implicit_receive_cemented (handle, preparation_data_a.current.bytes.data ()) };
+                // 				debug_assert (!above_receive_details_w.expired ());
+                // 				auto above_receive_details = above_receive_details_w.upgrade ();
+
+                // 				auto num_blocks_already_confirmed = above_receive_details.get_num_blocks_confirmed () - (above_receive_details.get_height () - preparation_data_a.confirmation_height);
+
+                // 				auto block_data{ above_receive_details.get_block_callback_data () };
+                // 				auto end = block_data.size () - (num_blocks_already_confirmed);
+                // 				auto start = end - num_blocks_confirmed;
+
+                // 				block_callback_data.assign (block_data, start, end);
+                // 			}
+                // 			else
+                // 			{
+                // 				block_callback_data = receive_details.get_source_block_callback_data ();
+                // 			}
+
+                // 			auto num_to_remove = block_callback_data.size () - num_blocks_confirmed;
+                // 			block_callback_data.truncate (block_callback_data.size () - num_to_remove);
+                // 			receive_details.set_source_block_callback_data (nano::block_hash_vec{});
+                // 		}
+            }
+
+            // 	nano::confirmation_height_unbounded::conf_height_details details{ preparation_data_a.account, preparation_data_a.current, block_height, num_blocks_confirmed, block_callback_data };
+            // 	rsnano::rsn_conf_height_unbounded_pending_writes_add (handle, details.handle);
+        }
     }
 
     pub fn cement_blocks(&mut self, scoped_write_guard_a: &mut WriteGuard) {

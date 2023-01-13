@@ -345,19 +345,9 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 	auto block_height = preparation_data_a.block_height;
 	if (block_height > preparation_data_a.confirmation_height)
 	{
-		// Check whether the previous block has been seen. If so, the rest of sends below have already been seen so don't count them
-		if (!preparation_data_a.account_it.is_end)
-		{
-			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_set_confirmed_height (handle, &preparation_data_a.account_it.account[0], block_height);
-			if (block_height > preparation_data_a.iterated_height)
-			{
-				rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_set_iterated_height (handle, &preparation_data_a.account_it.account[0], block_height);
-			}
-		}
-		else
-		{
-			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_insert (handle, preparation_data_a.account.bytes.data (), block_height, block_height);
-		}
+		//--------------------------
+		// This here was ported...
+		//--------------------------
 
 		auto num_blocks_confirmed = block_height - preparation_data_a.confirmation_height;
 		auto block_callback_data = preparation_data_a.block_callback_data;
@@ -398,6 +388,9 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 		nano::confirmation_height_unbounded::conf_height_details details{ preparation_data_a.account, preparation_data_a.current, block_height, num_blocks_confirmed, block_callback_data };
 		rsnano::rsn_conf_height_unbounded_pending_writes_add (handle, details.handle);
 	}
+
+	//--------------------------
+	// The following was not copied to Rust
 
 	if (!receive_details.is_null ())
 	{

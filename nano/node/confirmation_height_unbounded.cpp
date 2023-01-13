@@ -339,41 +339,7 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 	preparation_data_dto.block_callback_data = preparation_data_a.block_callback_data.handle;
 	preparation_data_dto.orig_block_callback_data = preparation_data_a.orig_block_callback_data.handle;
 
-	auto receive_details = preparation_data_a.receive_details;
-
 	rsnano::rsn_conf_height_unbounded_prepare_iterated_blocks_for_cementing (handle, &preparation_data_dto);
-
-	//--------------------------
-	// The following was not copied to Rust yet
-
-	if (!receive_details.is_null ())
-	{
-		// Check whether the previous block has been seen. If so, the rest of sends below have already been seen so don't count them
-		auto receive_account = receive_details.get_account ();
-		rsnano::ConfirmedIteratedPairsIteratorDto receive_account_it;
-		rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_find (handle, receive_account.bytes.data (), &receive_account_it);
-		if (!receive_account_it.is_end)
-		{
-			// Get current height
-			auto current_height = receive_account_it.confirmed_height;
-			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_set_confirmed_height (handle, receive_account.bytes.data (), receive_details.get_height ());
-			auto const orig_num_blocks_confirmed = receive_details.get_num_blocks_confirmed ();
-			receive_details.set_num_blocks_confirmed (receive_details.get_height () - current_height);
-
-			// Get the difference and remove the callbacks
-			auto block_callbacks_to_remove = orig_num_blocks_confirmed - receive_details.get_num_blocks_confirmed ();
-			auto tmp_blocks{ receive_details.get_block_callback_data () };
-			tmp_blocks.truncate (tmp_blocks.size () - block_callbacks_to_remove);
-			receive_details.set_block_callback_data (tmp_blocks);
-			debug_assert (receive_details.get_block_callback_data ().size () == receive_details.get_num_blocks_confirmed ());
-		}
-		else
-		{
-			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_insert (handle, receive_account.bytes.data (), receive_details.get_height (), receive_details.get_height ());
-		}
-
-		rsnano::rsn_conf_height_unbounded_pending_writes_add2 (handle, receive_details.handle);
-	}
 }
 
 void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & scoped_write_guard_a)

@@ -300,6 +300,47 @@ impl ConfirmationHeightUnbounded {
                 self.add_pending_write(details);
             }
         }
+
+        if let Some(receive_details) = receive_details {
+            let mut receive_details_lock = receive_details.lock().unwrap();
+            // Check whether the previous block has been seen. If so, the rest of sends below have already been seen so don't count them
+            let receive_account = receive_details_lock.account;
+            let receive_account_it = self.confirmed_iterated_pairs.get(&receive_account);
+            match receive_account_it {
+                Some(receive_account_it) => {
+                    // Get current height
+                    let current_height = receive_account_it.confirmed_height;
+                    let pair = self
+                        .confirmed_iterated_pairs
+                        .get_mut(&receive_account)
+                        .unwrap();
+                    pair.confirmed_height = receive_details_lock.height;
+                    let orig_num_blocks_confirmed = receive_details_lock.num_blocks_confirmed;
+                    receive_details_lock.num_blocks_confirmed =
+                        receive_details_lock.height - current_height;
+
+                    // Get the difference and remove the callbacks
+                    let block_callbacks_to_remove =
+                        orig_num_blocks_confirmed - receive_details_lock.num_blocks_confirmed;
+                    let mut tmp_blocks = receive_details_lock.block_callback_data.clone();
+                    tmp_blocks.truncate(tmp_blocks.len() - block_callbacks_to_remove as usize);
+                    receive_details_lock.block_callback_data = tmp_blocks;
+                    debug_assert!(
+                        receive_details_lock.block_callback_data.len()
+                            == receive_details_lock.num_blocks_confirmed as usize
+                    );
+                }
+                None => {
+                    self.add_confirmed_iterated_pair(
+                        receive_account,
+                        receive_details_lock.height,
+                        receive_details_lock.height,
+                    );
+                }
+            }
+
+            self.add_pending_write(receive_details_lock.clone())
+        }
     }
 
     pub fn cement_blocks(&mut self, scoped_write_guard_a: &mut WriteGuard) {

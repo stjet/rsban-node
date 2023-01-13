@@ -148,10 +148,18 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		auto already_traversed = iterated_height >= block_height;
 		if (!already_traversed)
 		{
-			collect_unconfirmed_receive_and_sources_for_account (
-			block_height, iterated_height, block, current, account,
-			*read_transaction, receive_source_pairs, block_callback_datas_required,
-			orig_block_callback_data, original_block);
+			rsnano::rsn_conf_height_unbounded_collect_unconfirmed_receive_and_sources_for_account (
+			handle,
+			block_height,
+			iterated_height,
+			block->get_handle (),
+			current.bytes.data (),
+			account.bytes.data (),
+			read_transaction->get_rust_handle (),
+			receive_source_pairs.handle,
+			block_callback_datas_required.handle,
+			orig_block_callback_data.handle,
+			original_block->get_handle ());
 		}
 
 		// Exit early when the processor has been stopped, otherwise this function may take a
@@ -230,32 +238,6 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 		first_iter = false;
 		read_transaction->renew ();
 	} while ((!receive_source_pairs.empty () || current != original_block->hash ()) && !stopped);
-}
-
-void nano::confirmation_height_unbounded::collect_unconfirmed_receive_and_sources_for_account (
-uint64_t block_height_a,
-uint64_t confirmation_height_a,
-std::shared_ptr<nano::block> const & block_a,
-nano::block_hash const & hash_a,
-nano::account const & account_a,
-nano::read_transaction const & transaction_a,
-nano::confirmation_height_unbounded::receive_source_pair_vec & receive_source_pairs_a,
-nano::block_hash_vec & block_callback_data_a,
-nano::block_hash_vec & orig_block_callback_data_a,
-std::shared_ptr<nano::block> original_block)
-{
-	rsnano::rsn_conf_height_unbounded_collect_unconfirmed_receive_and_sources_for_account (
-	handle,
-	block_height_a,
-	confirmation_height_a,
-	block_a->get_handle (),
-	hash_a.bytes.data (),
-	account_a.bytes.data (),
-	transaction_a.get_rust_handle (),
-	receive_source_pairs_a.handle,
-	block_callback_data_a.handle,
-	orig_block_callback_data_a.handle,
-	original_block->get_handle ());
 }
 
 void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & scoped_write_guard_a)

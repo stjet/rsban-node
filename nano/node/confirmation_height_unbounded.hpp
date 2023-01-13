@@ -101,53 +101,6 @@ private:
 			return *this;
 		}
 
-		block_hash_vec get_source_block_callback_data () const
-		{
-			auto vec_handle = rsnano::rsn_conf_height_details_shared_source_block_callback_data (handle);
-			return block_hash_vec{ vec_handle };
-		}
-		void set_source_block_callback_data (block_hash_vec const & data_a)
-		{
-			rsnano::rsn_conf_height_details_shared_set_source_block_callback_data (handle, data_a.handle);
-		}
-
-		uint64_t get_num_blocks_confirmed () const
-		{
-			return rsnano::rsn_conf_height_details_shared_num_blocks_confirmed (handle);
-		}
-
-		void set_num_blocks_confirmed (uint64_t num)
-		{
-			rsnano::rsn_conf_height_details_shared_set_num_blocks_confirmed (handle, num);
-		}
-
-		nano::block_hash_vec get_block_callback_data () const
-		{
-			return nano::block_hash_vec{ rsnano::rsn_conf_height_details_shared_block_callback_data (handle) };
-		}
-
-		void add_block_callback_data (nano::block_hash const & hash)
-		{
-			rsnano::rsn_conf_height_details_shared_add_block_callback_data (handle, hash.bytes.data ());
-		}
-
-		void set_block_callback_data (block_hash_vec const & data_a)
-		{
-			rsnano::rsn_conf_height_details_shared_set_block_callback_data (handle, data_a.handle);
-		}
-
-		uint64_t get_height () const
-		{
-			return rsnano::rsn_conf_height_details_shared_height (handle);
-		}
-
-		nano::account get_account () const
-		{
-			nano::account account;
-			rsnano::rsn_conf_height_details_shared_account (handle, account.bytes.data ());
-			return account;
-		}
-
 		bool is_null ()
 		{
 			return handle == nullptr;
@@ -255,18 +208,6 @@ private:
 		receive_source_pair back () const;
 		rsnano::ReceiveSourcePairVecHandle * handle;
 	};
-
-	void collect_unconfirmed_receive_and_sources_for_account (
-	uint64_t,
-	uint64_t,
-	std::shared_ptr<nano::block> const &,
-	nano::block_hash const &,
-	nano::account const &,
-	nano::read_transaction const &,
-	receive_source_pair_vec &,
-	block_hash_vec &,
-	block_hash_vec &,
-	std::shared_ptr<nano::block> original_block);
 
 	uint64_t block_cache_size () const;
 	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);

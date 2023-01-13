@@ -420,7 +420,7 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_prepare_iterated_blocks_for_c
         already_traversed: dto.already_traversed,
         current: BlockHash::from_bytes(dto.current),
         block_callback_data: &mut (*dto.block_callback_data).0,
-        orig_block_callback_data: &mut (*dto.block_callback_data).0,
+        orig_block_callback_data: &mut (*dto.orig_block_callback_data).0,
     };
     (*handle).0.prepare_iterated_blocks_for_cementing(&mut data);
 }

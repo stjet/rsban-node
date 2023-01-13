@@ -339,58 +339,12 @@ void nano::confirmation_height_unbounded::prepare_iterated_blocks_for_cementing 
 	preparation_data_dto.block_callback_data = preparation_data_a.block_callback_data.handle;
 	preparation_data_dto.orig_block_callback_data = preparation_data_a.orig_block_callback_data.handle;
 
+	auto receive_details = preparation_data_a.receive_details;
+
 	rsnano::rsn_conf_height_unbounded_prepare_iterated_blocks_for_cementing (handle, &preparation_data_dto);
 
-	auto receive_details = preparation_data_a.receive_details;
-	auto block_height = preparation_data_a.block_height;
-	if (block_height > preparation_data_a.confirmation_height)
-	{
-		//--------------------------
-		// This here was ported...
-		//--------------------------
-
-		auto num_blocks_confirmed = block_height - preparation_data_a.confirmation_height;
-		auto block_callback_data = preparation_data_a.block_callback_data;
-		if (block_callback_data.empty ())
-		{
-			if (receive_details.is_null ())
-			{
-				block_callback_data = preparation_data_a.orig_block_callback_data;
-			}
-			else
-			{
-				if (preparation_data_a.already_traversed && receive_details.get_source_block_callback_data ().empty ())
-				{
-					// We are confirming a block which has already been traversed and found no associated receive details for it.
-					conf_height_details_weak_ptr above_receive_details_w{ rsnano::rsn_conf_height_unbounded_get_implicit_receive_cemented (handle, preparation_data_a.current.bytes.data ()) };
-					debug_assert (!above_receive_details_w.expired ());
-					auto above_receive_details = above_receive_details_w.upgrade ();
-
-					auto num_blocks_already_confirmed = above_receive_details.get_num_blocks_confirmed () - (above_receive_details.get_height () - preparation_data_a.confirmation_height);
-
-					auto block_data{ above_receive_details.get_block_callback_data () };
-					auto end = block_data.size () - (num_blocks_already_confirmed);
-					auto start = end - num_blocks_confirmed;
-
-					block_callback_data.assign (block_data, start, end);
-				}
-				else
-				{
-					block_callback_data = receive_details.get_source_block_callback_data ();
-				}
-
-				auto num_to_remove = block_callback_data.size () - num_blocks_confirmed;
-				block_callback_data.truncate (block_callback_data.size () - num_to_remove);
-				receive_details.set_source_block_callback_data (nano::block_hash_vec{});
-			}
-		}
-
-		nano::confirmation_height_unbounded::conf_height_details details{ preparation_data_a.account, preparation_data_a.current, block_height, num_blocks_confirmed, block_callback_data };
-		rsnano::rsn_conf_height_unbounded_pending_writes_add (handle, details.handle);
-	}
-
 	//--------------------------
-	// The following was not copied to Rust
+	// The following was not copied to Rust yet
 
 	if (!receive_details.is_null ())
 	{

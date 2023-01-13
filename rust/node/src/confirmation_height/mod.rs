@@ -208,41 +208,97 @@ impl ConfirmationHeightUnbounded {
             }
 
             let num_blocks_confirmed = block_height - preparation_data_a.confirmation_height;
-            let block_callback_data = preparation_data_a.block_callback_data.clone();
+            let mut block_callback_data = preparation_data_a.block_callback_data.clone();
             if block_callback_data.is_empty() {
-                // if receive_details.is_null() {
-                // 	block_callback_data = preparation_data_a.orig_block_callback_data;
-                // }
-                // 		else
-                // 		{
-                // 			if (preparation_data_a.already_traversed && receive_details.get_source_block_callback_data ().empty ())
-                // 			{
-                // 				// We are confirming a block which has already been traversed and found no associated receive details for it.
-                // 				conf_height_details_weak_ptr above_receive_details_w{ rsnano::rsn_conf_height_unbounded_get_implicit_receive_cemented (handle, preparation_data_a.current.bytes.data ()) };
-                // 				debug_assert (!above_receive_details_w.expired ());
-                // 				auto above_receive_details = above_receive_details_w.upgrade ();
+                match receive_details {
+                    Some(receive_details) => {
+                        let mut receive_details_lock = receive_details.lock().unwrap();
+                        if preparation_data_a.already_traversed
+                            && receive_details_lock.source_block_callback_data.is_empty()
+                        {
+                            drop(receive_details_lock);
+                            // We are confirming a block which has already been traversed and found no associated receive details for it.
+                            let above_receive_details_w = self
+                                .get_implicit_receive_cemented(&preparation_data_a.current)
+                                .unwrap();
+                            debug_assert!(above_receive_details_w.strong_count() > 0);
+                            let above_receive_details = above_receive_details_w.upgrade().unwrap();
+                            let above_receive_details_lock = above_receive_details.lock().unwrap();
 
-                // 				auto num_blocks_already_confirmed = above_receive_details.get_num_blocks_confirmed () - (above_receive_details.get_height () - preparation_data_a.confirmation_height);
+                            let num_blocks_already_confirmed = above_receive_details_lock
+                                .num_blocks_confirmed
+                                - (above_receive_details_lock.height
+                                    - preparation_data_a.confirmation_height);
 
-                // 				auto block_data{ above_receive_details.get_block_callback_data () };
-                // 				auto end = block_data.size () - (num_blocks_already_confirmed);
-                // 				auto start = end - num_blocks_confirmed;
+                            let block_data = above_receive_details_lock.block_callback_data.clone();
+                            drop(above_receive_details_lock);
+                            let end = block_data.len() - (num_blocks_already_confirmed as usize);
+                            let start = end - num_blocks_confirmed as usize;
 
-                // 				block_callback_data.assign (block_data, start, end);
-                // 			}
-                // 			else
-                // 			{
-                // 				block_callback_data = receive_details.get_source_block_callback_data ();
-                // 			}
+                            block_callback_data.clear();
+                            block_callback_data.extend_from_slice(&block_data[start..end]);
 
-                // 			auto num_to_remove = block_callback_data.size () - num_blocks_confirmed;
-                // 			block_callback_data.truncate (block_callback_data.size () - num_to_remove);
-                // 			receive_details.set_source_block_callback_data (nano::block_hash_vec{});
-                // 		}
+                            let num_to_remove =
+                                block_callback_data.len() - num_blocks_confirmed as usize;
+                            block_callback_data.truncate(block_callback_data.len() - num_to_remove);
+                            receive_details_lock = receive_details.lock().unwrap();
+                            receive_details_lock.source_block_callback_data.clear();
+
+                            let details = ConfHeightDetails {
+                                account: preparation_data_a.account,
+                                hash: preparation_data_a.current,
+                                height: block_height,
+                                num_blocks_confirmed,
+                                block_callback_data,
+                                source_block_callback_data: Vec::new(),
+                            };
+                            self.add_pending_write(details);
+                        } else {
+                            block_callback_data =
+                                receive_details_lock.source_block_callback_data.clone();
+
+                            let num_to_remove =
+                                block_callback_data.len() - num_blocks_confirmed as usize;
+                            block_callback_data.truncate(block_callback_data.len() - num_to_remove);
+                            // receive_details_lock = receive_details.lock().unwrap();
+                            receive_details_lock.source_block_callback_data.clear();
+
+                            let details = ConfHeightDetails {
+                                account: preparation_data_a.account,
+                                hash: preparation_data_a.current,
+                                height: block_height,
+                                num_blocks_confirmed,
+                                block_callback_data,
+                                source_block_callback_data: Vec::new(),
+                            };
+                            self.add_pending_write(details);
+                        }
+                    }
+                    None => {
+                        block_callback_data = preparation_data_a.orig_block_callback_data.clone();
+
+                        let details = ConfHeightDetails {
+                            account: preparation_data_a.account,
+                            hash: preparation_data_a.current,
+                            height: block_height,
+                            num_blocks_confirmed,
+                            block_callback_data,
+                            source_block_callback_data: Vec::new(),
+                        };
+                        self.add_pending_write(details);
+                    }
+                }
+            } else {
+                let details = ConfHeightDetails {
+                    account: preparation_data_a.account,
+                    hash: preparation_data_a.current,
+                    height: block_height,
+                    num_blocks_confirmed,
+                    block_callback_data,
+                    source_block_callback_data: Vec::new(),
+                };
+                self.add_pending_write(details);
             }
-
-            // 	nano::confirmation_height_unbounded::conf_height_details details{ preparation_data_a.account, preparation_data_a.current, block_height, num_blocks_confirmed, block_callback_data };
-            // 	rsnano::rsn_conf_height_unbounded_pending_writes_add (handle, details.handle);
         }
     }
 
@@ -357,7 +413,7 @@ impl ConfirmationHeightUnbounded {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ConfHeightDetails {
     pub account: Account,
     pub hash: BlockHash,

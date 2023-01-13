@@ -313,9 +313,13 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_get_block_and_sideband(
     let block = (*handle)
         .0
         .get_block_and_sideband(&BlockHash::from_ptr(hash), (*txn).as_txn());
-    Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(
-        block.deref().clone(),
-    )))))
+
+    match block {
+        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(
+            block.deref().clone(),
+        ))))),
+        None => std::ptr::null_mut(),
+    }
 }
 
 #[no_mangle]
@@ -374,6 +378,13 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_cement_blocks(
     write_guard: *mut WriteGuardHandle,
 ) {
     (*handle).0.cement_blocks(&mut (*write_guard).0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_stop(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+) {
+    (*handle).0.stop();
 }
 
 #[repr(C)]
@@ -439,7 +450,7 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_collect_unconfirmed_receive_a
     orig_block_callback_data_a: *mut BlockHashVecHandle,
     original_block: *const BlockHandle,
 ) {
-    let block = (*block_a).block.read().unwrap();
+    let block = Arc::new((*block_a).block.read().unwrap().clone());
     let original_block = (*original_block).block.read().unwrap();
     (*handle)
         .0

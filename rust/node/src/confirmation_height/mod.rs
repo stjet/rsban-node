@@ -4,7 +4,7 @@ use rsnano_store_traits::{ReadTransaction, Table, Transaction};
 use std::{
     collections::{HashMap, VecDeque},
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicUsize, Ordering, AtomicBool},
         Arc, Mutex, Weak,
     },
     time::{Duration, Instant},
@@ -38,6 +38,7 @@ pub struct ConfirmationHeightUnbounded {
     timer: Instant,
     batch_separate_pending_min_time: Duration,
     notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
+    stopped: AtomicBool,
 }
 
 impl ConfirmationHeightUnbounded {
@@ -64,7 +65,12 @@ impl ConfirmationHeightUnbounded {
             timer: Instant::now(),
             batch_separate_pending_min_time,
             notify_observers_callback,
+            stopped: AtomicBool::new(false),
         }
+    }
+
+    pub fn stop(&self){
+        self.stopped.store(true, Ordering::SeqCst);
     }
 
     pub fn pending_empty(&self) -> bool {
@@ -142,15 +148,15 @@ impl ConfirmationHeightUnbounded {
         &self,
         hash: &BlockHash,
         txn: &dyn Transaction,
-    ) -> Arc<BlockEnum> {
+    ) -> Option<Arc<BlockEnum>> {
         let mut cache = self.block_cache.lock().unwrap();
         match cache.get(hash) {
-            Some(block) => Arc::clone(block),
+            Some(block) => Some(Arc::clone(block)),
             None => {
-                let block = self.ledger.get_block(txn, hash).unwrap(); //todo: remove unwrap
+                let block = self.ledger.get_block(txn, hash)?; //todo: remove unwrap
                 let block = Arc::new(block);
                 cache.insert(*hash, Arc::clone(&block));
-                block
+                Some(block)
             }
         }
     }
@@ -347,7 +353,7 @@ impl ConfirmationHeightUnbounded {
         &self,
         block_height_a: u64,
         confirmation_height_a: u64,
-        block_a: &BlockEnum,
+        block_a: &Arc<BlockEnum>,
         hash_a: &BlockHash,
         account_a: &Account,
         transaction_a: &dyn ReadTransaction,
@@ -356,22 +362,28 @@ impl ConfirmationHeightUnbounded {
         orig_block_callback_data_a: &mut Vec<BlockHash>,
         original_block: &BlockEnum,
     ) {
-        // debug_assert (block_a->hash () == hash_a);
-        // auto hash (hash_a);
-        // auto num_to_confirm = block_height_a - confirmation_height_a;
+        return;
 
-        // // Handle any sends above a receive
-        // auto is_original_block = (hash == original_block->hash ());
-        // auto hit_receive = false;
-        // auto first_iter = true;
-        // while ((num_to_confirm > 0) && !hash.is_zero () && !stopped)
-        // {
-        // 	std::shared_ptr<nano::block> block;
+        debug_assert!(block_a.hash () == *hash_a);
+        let hash = *hash_a;
+        let num_to_confirm = block_height_a - confirmation_height_a;
+
+        // Handle any sends above a receive
+        let is_original_block = hash == original_block.hash ();
+        let mut hit_receive = false;
+        let mut first_iter = true;
+        while (num_to_confirm > 0) && !hash.is_zero () && !self.stopped.load(Ordering::SeqCst) {
+            let block = if first_iter{
+         		debug_assert! (hash == *hash_a);
+                self.cache_block(Arc::clone(&block_a));
+         		Some(Arc::clone(block_a))
+            } else{
+                self.get_block_and_sideband(&hash, transaction_a.txn())
+            };
+
+        	// std::shared_ptr<nano::block> block;
         // 	if (first_iter)
         // 	{
-        // 		debug_assert (hash == hash_a);
-        // 		block = block_a;
-        // 		rsnano::rsn_conf_height_unbounded_cache_block (handle, block_a->get_handle ());
         // 	}
         // 	else
         // 	{
@@ -434,7 +446,7 @@ impl ConfirmationHeightUnbounded {
 
         // 	--num_to_confirm;
         // 	first_iter = false;
-        // }
+        }
     }
 
     pub fn cement_blocks(&mut self, scoped_write_guard_a: &mut WriteGuard) {

@@ -346,6 +346,10 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 std::shared_ptr<nano::block> nano::confirmation_height_unbounded::get_block_and_sideband (nano::block_hash const & hash_a, nano::transaction const & transaction_a)
 {
 	auto block_handle{ rsnano::rsn_conf_height_unbounded_get_block_and_sideband (handle, hash_a.bytes.data (), transaction_a.get_rust_handle ()) };
+	if (block_handle == nullptr)
+	{
+		return nullptr;
+	}
 	return nano::block_handle_to_block (block_handle);
 }
 
@@ -372,6 +376,7 @@ bool nano::confirmation_height_unbounded::has_iterated_over_block (nano::block_h
 void nano::confirmation_height_unbounded::stop ()
 {
 	stopped = true;
+	rsnano::rsn_conf_height_unbounded_stop(handle);
 }
 
 uint64_t nano::confirmation_height_unbounded::block_cache_size () const

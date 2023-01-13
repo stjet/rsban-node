@@ -57,6 +57,8 @@ nano::confirmation_height_unbounded::~confirmation_height_unbounded ()
 
 void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> original_block)
 {
+	rsnano::rsn_conf_height_unbounded_process (handle, original_block->get_handle ());
+
 	if (pending_empty ())
 	{
 		clear_process_vars ();

@@ -191,6 +191,192 @@ impl ConfirmationHeightUnbounded {
         self.block_cache.lock().unwrap().clear();
     }
 
+    pub fn process(&mut self, original_block: Arc<BlockEnum>) {
+        return; // todo
+
+        if self.pending_empty() {
+            self.clear_process_vars();
+            self.restart_timer();
+        }
+        // conf_height_details_shared_ptr receive_details;
+        let mut receive_details: Option<Arc<Mutex<ConfHeightDetails>>> = None;
+        let mut current = original_block.hash();
+        let orig_block_callback_data: Vec<BlockHash> = Vec::new();
+        let receive_source_pairs: Vec<ReceiveSourcePair> = Vec::new();
+
+        let mut first_iter = true;
+        let read_transaction = self.ledger.read_txn();
+
+        loop {
+            if !receive_source_pairs.is_empty() {
+                receive_details = Some(Arc::clone(
+                    &receive_source_pairs.last().unwrap().receive_details,
+                ));
+                current = receive_source_pairs.last().unwrap().source_hash;
+            } else {
+                // If receive_details is set then this is the final iteration and we are back to the original chain.
+                // We need to confirm any blocks below the original hash (incl self) and the first receive block
+                // (if the original block is not already a receive)
+                if receive_details.is_some() {
+                    current = original_block.hash();
+                    receive_details = None;
+                }
+            }
+
+            let block: Option<Arc<BlockEnum>>;
+            if first_iter {
+                debug_assert!(current == original_block.hash());
+                // This is the original block passed so can use it directly
+                block = Some(Arc::clone(&original_block));
+                self.cache_block(Arc::clone(&original_block));
+            } else {
+                block = self.get_block_and_sideband(&current, read_transaction.txn());
+            }
+
+            let Some(block) = block else{
+            		let error_str = format!("Ledger mismatch trying to set confirmation height for block {} (unbounded processor)", current);
+                    self.logger.always_log(&error_str);
+                    eprintln!("{}", error_str);
+                    panic!("{}", error_str);
+                };
+
+            let mut account = block.account();
+            if account.is_zero() {
+                account = block.sideband().unwrap().account;
+            }
+
+            let block_height = block.sideband().unwrap().height;
+            let mut confirmation_height = 0;
+            let account_it = self.confirmed_iterated_pairs.get(&account);
+            match account_it {
+                Some(account_it) => {
+                    confirmation_height = account_it.confirmed_height;
+                }
+                None => {
+                    let confirmation_height_info = self
+                        .ledger
+                        .store
+                        .confirmation_height()
+                        .get(read_transaction.txn(), &account)
+                        .unwrap_or_default();
+                    confirmation_height = confirmation_height_info.height;
+
+                    // This block was added to the confirmation height processor but is already confirmed
+                    if first_iter && confirmation_height >= block_height {
+                        debug_assert!(current == original_block.hash());
+                        // 			notify_block_already_cemented_observers_callback (original_block->hash ());
+                    }
+                }
+            }
+
+            // 	auto iterated_height = confirmation_height;
+            // 	if (!account_it.is_end && account_it.iterated_height > iterated_height)
+            // 	{
+            // 		iterated_height = account_it.iterated_height;
+            // 	}
+
+            // 	auto count_before_receive = receive_source_pairs.size ();
+            // 	nano::block_hash_vec block_callback_datas_required;
+            // 	auto already_traversed = iterated_height >= block_height;
+            // 	if (!already_traversed)
+            // 	{
+            // 		rsnano::rsn_conf_height_unbounded_collect_unconfirmed_receive_and_sources_for_account (
+            // 		handle,
+            // 		block_height,
+            // 		iterated_height,
+            // 		block->get_handle (),
+            // 		current.bytes.data (),
+            // 		account.bytes.data (),
+            // 		read_transaction->get_rust_handle (),
+            // 		receive_source_pairs.handle,
+            // 		block_callback_datas_required.handle,
+            // 		orig_block_callback_data.handle,
+            // 		original_block->get_handle ());
+            // 	}
+
+            // 	// Exit early when the processor has been stopped, otherwise this function may take a
+            // 	// while (and hence keep the process running) if updating a long chain.
+            // 	if (stopped)
+            // 	{
+            // 		break;
+            // 	}
+
+            // 	// No longer need the read transaction
+            // 	read_transaction->reset ();
+
+            // 	// If this adds no more open or receive blocks, then we can now confirm this account as well as the linked open/receive block
+            // 	// Collect as pending any writes to the database and do them in bulk after a certain time.
+            // 	auto confirmed_receives_pending = (count_before_receive != receive_source_pairs.size ());
+            // 	if (!confirmed_receives_pending)
+            // 	{
+            // 		rsnano::PreparationDataDto preparation_data_dto;
+            // 		preparation_data_dto.block_height = block_height;
+            // 		preparation_data_dto.confirmation_height = confirmation_height;
+            // 		preparation_data_dto.iterated_height = iterated_height;
+            // 		preparation_data_dto.account_it = account_it;
+            // 		std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (preparation_data_dto.account));
+            // 		preparation_data_dto.receive_details = receive_details.handle;
+            // 		preparation_data_dto.already_traversed = already_traversed;
+            // 		std::copy (std::begin (current.bytes), std::end (current.bytes), std::begin (preparation_data_dto.current));
+            // 		preparation_data_dto.block_callback_data = block_callback_datas_required.handle;
+            // 		preparation_data_dto.orig_block_callback_data = orig_block_callback_data.handle;
+
+            // 		rsnano::rsn_conf_height_unbounded_prepare_iterated_blocks_for_cementing (handle, &preparation_data_dto);
+
+            // 		if (!receive_source_pairs.empty ())
+            // 		{
+            // 			// Pop from the end
+            // 			receive_source_pairs.pop ();
+            // 		}
+            // 	}
+            // 	else if (block_height > iterated_height)
+            // 	{
+            // 		if (!account_it.is_end)
+            // 		{
+            // 			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_set_iterated_height (handle, &account_it.account[0], block_height);
+            // 		}
+            // 		else
+            // 		{
+            // 			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_insert (handle, account.bytes.data (), confirmation_height, block_height);
+            // 		}
+            // 	}
+
+            // 	auto max_write_size_reached = (rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) >= confirmation_height::unbounded_cutoff);
+            // 	// When there are a lot of pending confirmation height blocks, it is more efficient to
+            // 	// bulk some of them up to enable better write performance which becomes the bottleneck.
+            // 	auto min_time_exceeded = rsnano::rsn_conf_height_unbounded_min_time_exceeded (handle);
+            // 	auto finished_iterating = receive_source_pairs.empty ();
+            // 	auto no_pending = awaiting_processing_size_callback () == 0;
+            // 	auto should_output = finished_iterating && (no_pending || min_time_exceeded);
+
+            // 	auto total_pending_write_block_count = rsnano::rsn_conf_height_unbounded_total_pending_write_block_count (handle);
+            // 	auto force_write = total_pending_write_block_count > batch_write_size;
+
+            // 	if ((max_write_size_reached || should_output || force_write) && rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) > 0)
+            // 	{
+            // 		if (write_database_queue.process (nano::writer::confirmation_height))
+            // 		{
+            // 			auto scoped_write_guard = write_database_queue.pop ();
+            // 			cement_blocks (scoped_write_guard);
+            // 		}
+            // 		else if (force_write)
+            // 		{
+            // 			// Unbounded processor has grown too large, force a write
+            // 			auto scoped_write_guard = write_database_queue.wait (nano::writer::confirmation_height);
+            // 			cement_blocks (scoped_write_guard);
+            // 		}
+            // 	}
+
+            // 	first_iter = false;
+            // 	read_transaction->renew ();
+            if !((!receive_source_pairs.is_empty() || current != original_block.hash())
+                && !self.stopped.load(Ordering::SeqCst))
+            {
+                break;
+            }
+        }
+    }
+
     pub fn prepare_iterated_blocks_for_cementing(
         &mut self,
         preparation_data_a: &mut PreparationData,

@@ -164,6 +164,16 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_empty(
     (*handle).0.pending_empty()
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_process(
+    handle: *mut ConfirmationHeightUnboundedHandle,
+    original_block: *mut BlockHandle,
+) {
+    (*handle)
+        .0
+        .process(Arc::new((*original_block).block.read().unwrap().clone()));
+}
+
 #[repr(C)]
 pub struct ConfirmedIteratedPairsIteratorDto {
     pub is_end: bool,

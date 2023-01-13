@@ -256,86 +256,6 @@ std::shared_ptr<nano::block> original_block)
 	block_callback_data_a.handle,
 	orig_block_callback_data_a.handle,
 	original_block->get_handle ());
-
-	debug_assert (block_a->hash () == hash_a);
-	auto hash (hash_a);
-	auto num_to_confirm = block_height_a - confirmation_height_a;
-
-	// Handle any sends above a receive
-	auto is_original_block = (hash == original_block->hash ());
-	auto hit_receive = false;
-	auto first_iter = true;
-	while ((num_to_confirm > 0) && !hash.is_zero () && !stopped)
-	{
-		std::shared_ptr<nano::block> block;
-		if (first_iter)
-		{
-			debug_assert (hash == hash_a);
-			block = block_a;
-			rsnano::rsn_conf_height_unbounded_cache_block (handle, block_a->get_handle ());
-		}
-		else
-		{
-			block = get_block_and_sideband (hash, transaction_a);
-		}
-
-		if (block)
-		{
-			auto source (block->source ());
-			if (source.is_zero ())
-			{
-				source = block->link ().as_block_hash ();
-			}
-
-			if (!source.is_zero () && !ledger.is_epoch_link (source) && ledger.store.block ().exists (transaction_a, source))
-			{
-				if (!hit_receive && !block_callback_data_a.empty ())
-				{
-					// Add the callbacks to the associated receive to retrieve later
-					debug_assert (!receive_source_pairs_a.empty ());
-					auto last_receive_details = receive_source_pairs_a.back ().receive_details ();
-					last_receive_details.set_source_block_callback_data (block_callback_data_a);
-					block_callback_data_a.clear ();
-				}
-
-				is_original_block = false;
-				hit_receive = true;
-
-				auto block_height = confirmation_height_a + num_to_confirm;
-				nano::block_hash_vec callback_data{};
-				callback_data.push_back (hash);
-				conf_height_details details (account_a, hash, block_height, 1, callback_data);
-				auto shared_details = rsnano::rsn_conf_height_details_shared_ptr_create (details.handle);
-				receive_source_pairs_a.push (nano::confirmation_height_unbounded::receive_source_pair{ shared_details, source });
-			}
-			else if (is_original_block)
-			{
-				orig_block_callback_data_a.push_back (hash);
-			}
-			else
-			{
-				if (!hit_receive)
-				{
-					// This block is cemented via a recieve, as opposed to below a receive being cemented
-					block_callback_data_a.push_back (hash);
-				}
-				else
-				{
-					// We have hit a receive before, add the block to it
-					auto last_receive_details = receive_source_pairs_a.back ().receive_details ();
-					last_receive_details.set_num_blocks_confirmed (last_receive_details.get_num_blocks_confirmed () + 1);
-					last_receive_details.add_block_callback_data (hash);
-
-					rsnano::rsn_conf_height_unbounded_implicit_receive_cemented_mapping_add (handle, hash.bytes.data (), last_receive_details.handle);
-				}
-			}
-
-			hash = block->previous ();
-		}
-
-		--num_to_confirm;
-		first_iter = false;
-	}
 }
 
 void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & scoped_write_guard_a)
@@ -376,7 +296,7 @@ bool nano::confirmation_height_unbounded::has_iterated_over_block (nano::block_h
 void nano::confirmation_height_unbounded::stop ()
 {
 	stopped = true;
-	rsnano::rsn_conf_height_unbounded_stop(handle);
+	rsnano::rsn_conf_height_unbounded_stop (handle);
 }
 
 uint64_t nano::confirmation_height_unbounded::block_cache_size () const

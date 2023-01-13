@@ -4,7 +4,7 @@ use rsnano_store_traits::{ReadTransaction, Table, Transaction};
 use std::{
     collections::{HashMap, VecDeque},
     sync::{
-        atomic::{AtomicUsize, Ordering, AtomicBool},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
     time::{Duration, Instant},
@@ -69,7 +69,7 @@ impl ConfirmationHeightUnbounded {
         }
     }
 
-    pub fn stop(&self){
+    pub fn stop(&self) {
         self.stopped.store(true, Ordering::SeqCst);
     }
 
@@ -350,7 +350,7 @@ impl ConfirmationHeightUnbounded {
     }
 
     pub fn collect_unconfirmed_receive_and_sources_for_account(
-        &self,
+        &mut self,
         block_height_a: u64,
         confirmation_height_a: u64,
         block_a: &Arc<BlockEnum>,
@@ -362,90 +362,89 @@ impl ConfirmationHeightUnbounded {
         orig_block_callback_data_a: &mut Vec<BlockHash>,
         original_block: &BlockEnum,
     ) {
-        return;
-
-        debug_assert!(block_a.hash () == *hash_a);
-        let hash = *hash_a;
-        let num_to_confirm = block_height_a - confirmation_height_a;
+        debug_assert!(block_a.hash() == *hash_a);
+        let mut hash = *hash_a;
+        let mut num_to_confirm = block_height_a - confirmation_height_a;
 
         // Handle any sends above a receive
-        let is_original_block = hash == original_block.hash ();
+        let mut is_original_block = hash == original_block.hash();
         let mut hit_receive = false;
         let mut first_iter = true;
-        while (num_to_confirm > 0) && !hash.is_zero () && !self.stopped.load(Ordering::SeqCst) {
-            let block = if first_iter{
-         		debug_assert! (hash == *hash_a);
+        while (num_to_confirm > 0) && !hash.is_zero() && !self.stopped.load(Ordering::SeqCst) {
+            let block = if first_iter {
+                debug_assert!(hash == *hash_a);
                 self.cache_block(Arc::clone(&block_a));
-         		Some(Arc::clone(block_a))
-            } else{
+                Some(Arc::clone(block_a))
+            } else {
                 self.get_block_and_sideband(&hash, transaction_a.txn())
             };
 
-        	// std::shared_ptr<nano::block> block;
-        // 	if (first_iter)
-        // 	{
-        // 	}
-        // 	else
-        // 	{
-        // 		block = get_block_and_sideband (hash, transaction_a);
-        // 	}
+            if let Some(block) = &block {
+                let source = block.source_or_link();
 
-        // 	if (block)
-        // 	{
-        // 		auto source (block->source ());
-        // 		if (source.is_zero ())
-        // 		{
-        // 			source = block->link ().as_block_hash ();
-        // 		}
+                if !source.is_zero()
+                    && !self.ledger.is_epoch_link(&source.into())
+                    && self
+                        .ledger
+                        .store
+                        .block()
+                        .exists(transaction_a.txn(), &source)
+                {
+                    if !hit_receive && !block_callback_data_a.is_empty() {
+                        // Add the callbacks to the associated receive to retrieve later
+                        debug_assert!(!receive_source_pairs_a.is_empty());
+                        let last_pair = receive_source_pairs_a.last().unwrap();
+                        last_pair
+                            .receive_details
+                            .lock()
+                            .unwrap()
+                            .source_block_callback_data = block_callback_data_a.clone();
+                        block_callback_data_a.clear();
+                    }
 
-        // 		if (!source.is_zero () && !ledger.is_epoch_link (source) && ledger.store.block ().exists (transaction_a, source))
-        // 		{
-        // 			if (!hit_receive && !block_callback_data_a.empty ())
-        // 			{
-        // 				// Add the callbacks to the associated receive to retrieve later
-        // 				debug_assert (!receive_source_pairs_a.empty ());
-        // 				auto last_receive_details = receive_source_pairs_a.back ().receive_details ();
-        // 				last_receive_details.set_source_block_callback_data (block_callback_data_a);
-        // 				block_callback_data_a.clear ();
-        // 			}
+                    is_original_block = false;
+                    hit_receive = true;
 
-        // 			is_original_block = false;
-        // 			hit_receive = true;
+                    let block_height = confirmation_height_a + num_to_confirm;
+                    let mut callback_data = Vec::new();
+                    callback_data.push(hash);
+                    let details = ConfHeightDetails {
+                        account: *account_a,
+                        hash,
+                        height: block_height,
+                        num_blocks_confirmed: 1,
+                        block_callback_data: callback_data,
+                        source_block_callback_data: Vec::new(),
+                    };
+                    let shared_details = Arc::new(Mutex::new(details));
+                    receive_source_pairs_a.push(Arc::new(ReceiveSourcePair {
+                        receive_details: shared_details,
+                        source_hash: source,
+                    }));
+                } else if is_original_block {
+                    orig_block_callback_data_a.push(hash);
+                } else {
+                    if !hit_receive {
+                        // This block is cemented via a recieve, as opposed to below a receive being cemented
+                        block_callback_data_a.push(hash);
+                    } else {
+                        // We have hit a receive before, add the block to it
+                        let last_pair = receive_source_pairs_a.last().unwrap();
+                        let last_receive_details = &last_pair.receive_details;
+                        let mut last_receive_details_lock = last_receive_details.lock().unwrap();
+                        last_receive_details_lock.num_blocks_confirmed += 1;
+                        last_receive_details_lock.block_callback_data.push(hash);
+                        drop(last_receive_details_lock);
 
-        // 			auto block_height = confirmation_height_a + num_to_confirm;
-        // 			nano::block_hash_vec callback_data{};
-        // 			callback_data.push_back (hash);
-        // 			conf_height_details details (account_a, hash, block_height, 1, callback_data);
-        // 			auto shared_details = rsnano::rsn_conf_height_details_shared_ptr_create (details.handle);
-        // 			receive_source_pairs_a.push (nano::confirmation_height_unbounded::receive_source_pair{ shared_details, source });
-        // 		}
-        // 		else if (is_original_block)
-        // 		{
-        // 			orig_block_callback_data_a.push_back (hash);
-        // 		}
-        // 		else
-        // 		{
-        // 			if (!hit_receive)
-        // 			{
-        // 				// This block is cemented via a recieve, as opposed to below a receive being cemented
-        // 				block_callback_data_a.push_back (hash);
-        // 			}
-        // 			else
-        // 			{
-        // 				// We have hit a receive before, add the block to it
-        // 				auto last_receive_details = receive_source_pairs_a.back ().receive_details ();
-        // 				last_receive_details.set_num_blocks_confirmed (last_receive_details.get_num_blocks_confirmed () + 1);
-        // 				last_receive_details.add_block_callback_data (hash);
+                        self.add_implicit_receive_cemented(hash, last_receive_details);
+                    }
+                }
 
-        // 				rsnano::rsn_conf_height_unbounded_implicit_receive_cemented_mapping_add (handle, hash.bytes.data (), last_receive_details.handle);
-        // 			}
-        // 		}
+                hash = block.previous();
+            }
 
-        // 		hash = block->previous ();
-        // 	}
-
-        // 	--num_to_confirm;
-        // 	first_iter = false;
+            num_to_confirm -= 1;
+            first_iter = false;
         }
     }
 

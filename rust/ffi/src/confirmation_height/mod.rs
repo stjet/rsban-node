@@ -33,6 +33,9 @@ pub struct ConfirmationHeightUnboundedHandle(ConfirmationHeightUnbounded);
 pub type ConfHeightUnboundedNotifyObserversCallback =
     unsafe extern "C" fn(*mut c_void, *const *mut BlockHandle, usize);
 
+pub type ConfHeightUnboundedNotifyBlockAlreadyCementedCallback =
+    unsafe extern "C" fn(*mut c_void, *const u8);
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
     ledger: *const LedgerHandle,
@@ -43,11 +46,20 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
     notify_observers: ConfHeightUnboundedNotifyObserversCallback,
     notify_observers_context: *mut c_void,
     drop_notify_observers_context: VoidPointerCallback,
+    notify_block_already_cemented: ConfHeightUnboundedNotifyBlockAlreadyCementedCallback,
+    notify_block_already_cemented_context: *mut c_void,
+    drop_notify_block_already_cemented_context: VoidPointerCallback,
 ) -> *mut ConfirmationHeightUnboundedHandle {
     let notify_observers_callback = wrap_notify_observers_callback(
         notify_observers,
         notify_observers_context,
         drop_notify_observers_context,
+    );
+
+    let notify_block_already_cemented_callback = wrap_notify_block_already_cemented_callback(
+        notify_block_already_cemented,
+        notify_block_already_cemented_context,
+        drop_notify_block_already_cemented_context,
     );
 
     let result = Box::into_raw(Box::new(ConfirmationHeightUnboundedHandle(
@@ -58,17 +70,18 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
             Arc::clone(&(*stats).0),
             Duration::from_millis(batch_separate_pending_min_time_ms),
             notify_observers_callback,
+            notify_block_already_cemented_callback,
         ),
     )));
     result
 }
 
-struct NotifyObserversCallbackContextWrapper {
+struct ContextWrapper {
     context: *mut c_void,
     drop_context: VoidPointerCallback,
 }
 
-impl NotifyObserversCallbackContextWrapper {
+impl ContextWrapper {
     fn new(context: *mut c_void, drop_context: VoidPointerCallback) -> Self {
         Self {
             context,
@@ -81,7 +94,7 @@ impl NotifyObserversCallbackContextWrapper {
     }
 }
 
-impl Drop for NotifyObserversCallbackContextWrapper {
+impl Drop for ContextWrapper {
     fn drop(&mut self) {
         unsafe {
             (self.drop_context)(self.context);
@@ -94,7 +107,7 @@ unsafe fn wrap_notify_observers_callback(
     context: *mut c_void,
     drop_context: VoidPointerCallback,
 ) -> Box<dyn Fn(&Vec<Arc<BlockEnum>>)> {
-    let context_wrapper = NotifyObserversCallbackContextWrapper::new(context, drop_context);
+    let context_wrapper = ContextWrapper::new(context, drop_context);
 
     Box::new(move |blocks| {
         let block_handles = blocks
@@ -115,6 +128,21 @@ unsafe fn wrap_notify_observers_callback(
         for handle in block_handles {
             drop(Box::from_raw(handle))
         }
+    })
+}
+
+unsafe fn wrap_notify_block_already_cemented_callback(
+    callback: ConfHeightUnboundedNotifyBlockAlreadyCementedCallback,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+) -> Box<dyn Fn(&BlockHash)> {
+    let context_wrapper = ContextWrapper::new(context, drop_context);
+
+    Box::new(move |block_hash| {
+        callback(
+            context_wrapper.get_context(),
+            block_hash.as_bytes().as_ptr(),
+        );
     })
 }
 

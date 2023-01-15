@@ -38,6 +38,7 @@ pub struct ConfirmationHeightUnbounded {
     timer: Instant,
     batch_separate_pending_min_time: Duration,
     notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
+    notify_block_already_cemented_callback: Box<dyn Fn(&BlockHash)>,
     stopped: AtomicBool,
 }
 
@@ -49,6 +50,7 @@ impl ConfirmationHeightUnbounded {
         stats: Arc<Stat>,
         batch_separate_pending_min_time: Duration,
         notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
+        notify_block_already_cemented_callback: Box<dyn Fn(&BlockHash)>,
     ) -> Self {
         Self {
             ledger,
@@ -65,6 +67,7 @@ impl ConfirmationHeightUnbounded {
             timer: Instant::now(),
             batch_separate_pending_min_time,
             notify_observers_callback,
+            notify_block_already_cemented_callback,
             stopped: AtomicBool::new(false),
         }
     }

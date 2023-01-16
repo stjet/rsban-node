@@ -47,7 +47,7 @@ public:
 	bool pending_empty () const;
 	void clear_process_vars ();
 	void process (std::shared_ptr<nano::block> original_block);
-	void cement_blocks (nano::write_guard &);
+	void cement_blocks ();
 	bool has_iterated_over_block (nano::block_hash const &) const;
 	void stop ();
 	size_t pending_writes_size () const;

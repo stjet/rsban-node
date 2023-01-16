@@ -211,7 +211,6 @@ impl ConfirmationHeightUnbounded {
             self.clear_process_vars();
             self.restart_timer();
         }
-        // conf_height_details_shared_ptr receive_details;
         let mut receive_details: Option<Arc<Mutex<ConfHeightDetails>>> = None;
         let mut current = original_block.hash();
         let mut orig_block_callback_data: Vec<BlockHash> = Vec::new();
@@ -221,44 +220,44 @@ impl ConfirmationHeightUnbounded {
         let mut read_transaction = self.ledger.read_txn();
 
         loop {
-            if !receive_source_pairs.is_empty() {
-                receive_details = Some(Arc::clone(
-                    &receive_source_pairs.last().unwrap().receive_details,
-                ));
-                current = receive_source_pairs.last().unwrap().source_hash;
-            } else {
-                // If receive_details is set then this is the final iteration and we are back to the original chain.
-                // We need to confirm any blocks below the original hash (incl self) and the first receive block
-                // (if the original block is not already a receive)
-                if receive_details.is_some() {
-                    current = original_block.hash();
-                    receive_details = None;
+            match receive_source_pairs.last() {
+                Some(pair) => {
+                    receive_details = Some(Arc::clone(&pair.receive_details));
+                    current = pair.source_hash;
+                }
+                None => {
+                    // If receive_details is set then this is the final iteration and we are back to the original chain.
+                    // We need to confirm any blocks below the original hash (incl self) and the first receive block
+                    // (if the original block is not already a receive)
+                    if receive_details.is_some() {
+                        current = original_block.hash();
+                        receive_details = None;
+                    }
                 }
             }
 
-            let block: Option<Arc<BlockEnum>>;
-            if first_iter {
+            let block = if first_iter {
                 debug_assert!(current == original_block.hash());
                 // This is the original block passed so can use it directly
-                block = Some(Arc::clone(&original_block));
                 self.cache_block(Arc::clone(&original_block));
+                Some(Arc::clone(&original_block))
             } else {
-                block = self.get_block_and_sideband(&current, read_transaction.txn());
-            }
+                self.get_block_and_sideband(&current, read_transaction.txn())
+            };
 
             let Some(block) = block else{
             		let error_str = format!("Ledger mismatch trying to set confirmation height for block {} (unbounded processor)", current);
                     self.logger.always_log(&error_str);
-                    eprintln!("{}", error_str);
                     panic!("{}", error_str);
                 };
 
             let mut account = block.account();
+            let sideband = block.sideband().unwrap();
             if account.is_zero() {
-                account = block.sideband().unwrap().account;
+                account = sideband.account;
             }
 
-            let block_height = block.sideband().unwrap().height;
+            let block_height = sideband.height;
             let confirmation_height;
             let account_it = self.confirmed_iterated_pairs.get(&account).cloned();
             match &account_it {
@@ -334,10 +333,7 @@ impl ConfirmationHeightUnbounded {
                 };
                 self.prepare_iterated_blocks_for_cementing(&mut preparation_data);
 
-                if !receive_source_pairs.is_empty() {
-                    // Pop from the end
-                    receive_source_pairs.pop();
-                }
+                receive_source_pairs.pop();
             } else if block_height > iterated_height {
                 match &account_it {
                     Some(_) => {
@@ -368,21 +364,12 @@ impl ConfirmationHeightUnbounded {
             let force_write =
                 total_pending_write_block_count > self.batch_write_size.load(Ordering::Relaxed);
 
-            if (max_write_size_reached || should_output || force_write)
-                && self.pending_writes.len() > 0
-            {
-                if self
-                    .write_database_queue
-                    .process(Writer::ConfirmationHeight)
-                {
-                    let mut scoped_write_guard = self.write_database_queue.pop();
-                    self.cement_blocks(&mut scoped_write_guard);
-                } else if force_write {
-                    // Unbounded processor has grown too large, force a write
-                    let mut scoped_write_guard =
-                        self.write_database_queue.wait(Writer::ConfirmationHeight);
-                    self.cement_blocks(&mut scoped_write_guard);
-                }
+            let should_cement_pending_blocks =
+                (max_write_size_reached || should_output || force_write)
+                    && self.pending_writes.len() > 0;
+
+            if should_cement_pending_blocks {
+                self.cement_pending_blocks();
             }
 
             first_iter = false;
@@ -655,7 +642,8 @@ impl ConfirmationHeightUnbounded {
         }
     }
 
-    pub fn cement_blocks(&mut self, scoped_write_guard_a: &mut WriteGuard) {
+    pub fn cement_pending_blocks(&mut self) {
+        let mut scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
         let cemented_batch_timer: Instant;
         let mut cemented_blocks: Vec<Arc<BlockEnum>> = Vec::new();
         let mut error = false;
@@ -756,7 +744,7 @@ impl ConfirmationHeightUnbounded {
             ));
         }
 
-        scoped_write_guard_a.release();
+        scoped_write_guard.release();
         (self.notify_observers_callback)(&cemented_blocks);
         assert!(!error);
 

@@ -1341,8 +1341,7 @@ TEST (DISABLED_confirmation_heightDeathTest, modified_chain)
 		// Rollback the block and now try to write, the block no longer exists so should bail
 		ledger.rollback (*store->tx_begin_write (), send->hash ());
 		{
-			auto scoped_write_guard = write_database_queue.wait (nano::writer::confirmation_height);
-			ASSERT_DEATH_IF_SUPPORTED (unbounded_processor.cement_blocks (scoped_write_guard), "");
+			ASSERT_DEATH_IF_SUPPORTED (unbounded_processor.cement_blocks (), "");
 		}
 	}
 }
@@ -1406,8 +1405,7 @@ TEST (DISABLED_confirmation_heightDeathTest, modified_chain_account_removed)
 		// Rollback the block and now try to write, the send should be cemented but the account which the open block belongs no longer exists so should bail
 		ledger.rollback (*store->tx_begin_write (), open->hash ());
 		{
-			auto scoped_write_guard = write_database_queue.wait (nano::writer::confirmation_height);
-			ASSERT_DEATH_IF_SUPPORTED (unbounded_processor.cement_blocks (scoped_write_guard), "");
+			ASSERT_DEATH_IF_SUPPORTED (unbounded_processor.cement_blocks (), "");
 		}
 
 		// Reset conditions and test with the bounded processor

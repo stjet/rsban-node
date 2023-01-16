@@ -373,9 +373,8 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_clear_process_vars(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_cement_blocks(
     handle: *mut ConfirmationHeightUnboundedHandle,
-    write_guard: *mut WriteGuardHandle,
 ) {
-    (*handle).0.cement_blocks(&mut (*write_guard).0);
+    (*handle).0.cement_pending_blocks();
 }
 
 #[no_mangle]

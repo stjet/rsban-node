@@ -89,9 +89,9 @@ void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> 
 	rsnano::rsn_conf_height_unbounded_process (handle, original_block->get_handle ());
 }
 
-void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & scoped_write_guard_a)
+void nano::confirmation_height_unbounded::cement_blocks ()
 {
-	rsnano::rsn_conf_height_unbounded_cement_blocks (handle, scoped_write_guard_a.handle);
+	rsnano::rsn_conf_height_unbounded_cement_blocks (handle);
 }
 
 bool nano::confirmation_height_unbounded::pending_empty () const

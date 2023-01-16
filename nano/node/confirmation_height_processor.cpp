@@ -117,8 +117,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 				{
 					debug_assert (bounded_processor.pending_empty ());
 					{
-						auto scoped_write_guard = write_database_queue.wait (nano::writer::confirmation_height);
-						unbounded_processor.cement_blocks (scoped_write_guard);
+						unbounded_processor.cement_blocks ();
 					}
 					lock_and_cleanup ();
 				}

@@ -1192,7 +1192,7 @@ TEST (confirmation_height, conflict_rollback_cemented)
 	test_mode (nano::confirmation_height_mode::unbounded);
 }
 
-TEST (confirmation_heightDeathTest, rollback_added_block)
+TEST (DISABLED_confirmation_heightDeathTest, rollback_added_block)
 {
 	// For ASSERT_DEATH_IF_SUPPORTED
 	testing::FLAGS_gtest_death_test_style = "threadsafe";

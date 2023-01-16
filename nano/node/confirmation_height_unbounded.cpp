@@ -43,6 +43,18 @@ void drop_notify_block_already_cemented_callback (void * context_a)
 	auto fn = static_cast<std::function<void (nano::block_hash const &)> *> (context_a);
 	delete fn;
 }
+
+uint64_t awaiting_processing_size_callback_wrapper (void * context_a)
+{
+	auto fn = static_cast<std::function<uint64_t ()> *> (context_a);
+	return (*fn) ();
+}
+
+void drop_awaiting_processing_size_callback (void * context_a)
+{
+	auto fn = static_cast<std::function<uint64_t ()> *> (context_a);
+	delete fn;
+}
 }
 
 nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger & ledger_a, nano::stat & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, uint64_t & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
@@ -57,14 +69,23 @@ nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger
 	awaiting_processing_size_callback (awaiting_processing_size_callback_a)
 {
 	auto logging_dto{ logging_a.to_dto () };
-	handle = rsnano::rsn_conf_height_unbounded_create (ledger_a.handle, nano::to_logger_handle (logger_a), &logging_dto, stats_a.handle,
+	handle = rsnano::rsn_conf_height_unbounded_create (
+	ledger_a.handle,
+	nano::to_logger_handle (logger_a),
+	&logging_dto,
+	stats_a.handle,
 	static_cast<uint64_t> (batch_separate_pending_min_time_a.count ()),
+	batch_write_size_a,
+	write_database_queue_a.handle,
 	notify_observers_callback_wrapper,
 	new std::function<void (std::vector<std::shared_ptr<nano::block>> const &)>{ notify_observers_callback_a },
 	drop_notify_observers_callback,
 	notify_block_already_cemented_callback_wrapper,
 	new std::function<void (nano::block_hash const &)>{ notify_block_already_cemented_observers_callback_a },
-	drop_notify_block_already_cemented_callback);
+	drop_notify_block_already_cemented_callback,
+	awaiting_processing_size_callback_wrapper,
+	new std::function<uint64_t ()>{ awaiting_processing_size_callback_a },
+	drop_awaiting_processing_size_callback);
 }
 
 nano::confirmation_height_unbounded::~confirmation_height_unbounded ()
@@ -75,188 +96,6 @@ nano::confirmation_height_unbounded::~confirmation_height_unbounded ()
 void nano::confirmation_height_unbounded::process (std::shared_ptr<nano::block> original_block)
 {
 	rsnano::rsn_conf_height_unbounded_process (handle, original_block->get_handle ());
-
-	if (pending_empty ())
-	{
-		clear_process_vars ();
-		rsnano::rsn_conf_height_unbounded_restart_timer (handle);
-	}
-	conf_height_details_shared_ptr receive_details;
-	auto current = original_block->hash ();
-	nano::block_hash_vec orig_block_callback_data;
-
-	nano::confirmation_height_unbounded::receive_source_pair_vec receive_source_pairs;
-
-	bool first_iter = true;
-	auto read_transaction (ledger.store.tx_begin_read ());
-
-	do
-	{
-		if (!receive_source_pairs.empty ())
-		{
-			receive_details = receive_source_pairs.back ().receive_details ();
-			current = receive_source_pairs.back ().source_hash ();
-		}
-		else
-		{
-			// If receive_details is set then this is the final iteration and we are back to the original chain.
-			// We need to confirm any blocks below the original hash (incl self) and the first receive block
-			// (if the original block is not already a receive)
-			if (!receive_details.is_null ())
-			{
-				current = original_block->hash ();
-				receive_details.destroy ();
-			}
-		}
-
-		std::shared_ptr<nano::block> block;
-		if (first_iter)
-		{
-			debug_assert (current == original_block->hash ());
-			// This is the original block passed so can use it directly
-			block = original_block;
-			rsnano::rsn_conf_height_unbounded_cache_block (handle, original_block->get_handle ());
-		}
-		else
-		{
-			block = get_block_and_sideband (current, *read_transaction);
-		}
-		if (!block)
-		{
-			auto error_str = (boost::format ("Ledger mismatch trying to set confirmation height for block %1% (unbounded processor)") % current.to_string ()).str ();
-			logger->always_log (error_str);
-			std::cerr << error_str << std::endl;
-		}
-		release_assert (block);
-
-		nano::account account (block->account ());
-		if (account.is_zero ())
-		{
-			account = block->sideband ().account ();
-		}
-
-		auto block_height = block->sideband ().height ();
-		uint64_t confirmation_height = 0;
-		rsnano::ConfirmedIteratedPairsIteratorDto account_it;
-		rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_find (handle, account.bytes.data (), &account_it);
-		if (!account_it.is_end)
-		{
-			confirmation_height = account_it.confirmed_height;
-		}
-		else
-		{
-			nano::confirmation_height_info confirmation_height_info;
-			ledger.store.confirmation_height ().get (*read_transaction, account, confirmation_height_info);
-			confirmation_height = confirmation_height_info.height ();
-
-			// This block was added to the confirmation height processor but is already confirmed
-			if (first_iter && confirmation_height >= block_height)
-			{
-				debug_assert (current == original_block->hash ());
-				notify_block_already_cemented_observers_callback (original_block->hash ());
-			}
-		}
-		auto iterated_height = confirmation_height;
-		if (!account_it.is_end && account_it.iterated_height > iterated_height)
-		{
-			iterated_height = account_it.iterated_height;
-		}
-
-		auto count_before_receive = receive_source_pairs.size ();
-		nano::block_hash_vec block_callback_datas_required;
-		auto already_traversed = iterated_height >= block_height;
-		if (!already_traversed)
-		{
-			rsnano::rsn_conf_height_unbounded_collect_unconfirmed_receive_and_sources_for_account (
-			handle,
-			block_height,
-			iterated_height,
-			block->get_handle (),
-			current.bytes.data (),
-			account.bytes.data (),
-			read_transaction->get_rust_handle (),
-			receive_source_pairs.handle,
-			block_callback_datas_required.handle,
-			orig_block_callback_data.handle,
-			original_block->get_handle ());
-		}
-
-		// Exit early when the processor has been stopped, otherwise this function may take a
-		// while (and hence keep the process running) if updating a long chain.
-		if (stopped)
-		{
-			break;
-		}
-
-		// No longer need the read transaction
-		read_transaction->reset ();
-
-		// If this adds no more open or receive blocks, then we can now confirm this account as well as the linked open/receive block
-		// Collect as pending any writes to the database and do them in bulk after a certain time.
-		auto confirmed_receives_pending = (count_before_receive != receive_source_pairs.size ());
-		if (!confirmed_receives_pending)
-		{
-			rsnano::PreparationDataDto preparation_data_dto;
-			preparation_data_dto.block_height = block_height;
-			preparation_data_dto.confirmation_height = confirmation_height;
-			preparation_data_dto.iterated_height = iterated_height;
-			preparation_data_dto.account_it = account_it;
-			std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (preparation_data_dto.account));
-			preparation_data_dto.receive_details = receive_details.handle;
-			preparation_data_dto.already_traversed = already_traversed;
-			std::copy (std::begin (current.bytes), std::end (current.bytes), std::begin (preparation_data_dto.current));
-			preparation_data_dto.block_callback_data = block_callback_datas_required.handle;
-			preparation_data_dto.orig_block_callback_data = orig_block_callback_data.handle;
-
-			rsnano::rsn_conf_height_unbounded_prepare_iterated_blocks_for_cementing (handle, &preparation_data_dto);
-
-			if (!receive_source_pairs.empty ())
-			{
-				// Pop from the end
-				receive_source_pairs.pop ();
-			}
-		}
-		else if (block_height > iterated_height)
-		{
-			if (!account_it.is_end)
-			{
-				rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_set_iterated_height (handle, &account_it.account[0], block_height);
-			}
-			else
-			{
-				rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_insert (handle, account.bytes.data (), confirmation_height, block_height);
-			}
-		}
-
-		auto max_write_size_reached = (rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) >= confirmation_height::unbounded_cutoff);
-		// When there are a lot of pending confirmation height blocks, it is more efficient to
-		// bulk some of them up to enable better write performance which becomes the bottleneck.
-		auto min_time_exceeded = rsnano::rsn_conf_height_unbounded_min_time_exceeded (handle);
-		auto finished_iterating = receive_source_pairs.empty ();
-		auto no_pending = awaiting_processing_size_callback () == 0;
-		auto should_output = finished_iterating && (no_pending || min_time_exceeded);
-
-		auto total_pending_write_block_count = rsnano::rsn_conf_height_unbounded_total_pending_write_block_count (handle);
-		auto force_write = total_pending_write_block_count > batch_write_size;
-
-		if ((max_write_size_reached || should_output || force_write) && rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) > 0)
-		{
-			if (write_database_queue.process (nano::writer::confirmation_height))
-			{
-				auto scoped_write_guard = write_database_queue.pop ();
-				cement_blocks (scoped_write_guard);
-			}
-			else if (force_write)
-			{
-				// Unbounded processor has grown too large, force a write
-				auto scoped_write_guard = write_database_queue.wait (nano::writer::confirmation_height);
-				cement_blocks (scoped_write_guard);
-			}
-		}
-
-		first_iter = false;
-		read_transaction->renew ();
-	} while ((!receive_source_pairs.empty () || current != original_block->hash ()) && !stopped);
 }
 
 void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & scoped_write_guard_a)

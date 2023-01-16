@@ -19,7 +19,9 @@ use rsnano_node::{
 use crate::{
     copy_hash_bytes,
     core::BlockHandle,
-    ledger::datastore::{LedgerHandle, TransactionHandle, WriteGuardHandle},
+    ledger::datastore::{
+        LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle,
+    },
     utils::{LoggerHandle, LoggerMT},
     LoggingDto, StatHandle, VoidPointerCallback,
 };
@@ -36,6 +38,8 @@ pub type ConfHeightUnboundedNotifyObserversCallback =
 pub type ConfHeightUnboundedNotifyBlockAlreadyCementedCallback =
     unsafe extern "C" fn(*mut c_void, *const u8);
 
+pub type AwaitingProcessingSizeCallback = unsafe extern "C" fn(*mut c_void) -> u64;
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
     ledger: *const LedgerHandle,
@@ -43,12 +47,20 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
     logging: *const LoggingDto,
     stats: *const StatHandle,
     batch_separate_pending_min_time_ms: u64,
+    batch_write_size: u64,
+    write_database_queue: *const WriteDatabaseQueueHandle,
+
     notify_observers: ConfHeightUnboundedNotifyObserversCallback,
     notify_observers_context: *mut c_void,
     drop_notify_observers_context: VoidPointerCallback,
+
     notify_block_already_cemented: ConfHeightUnboundedNotifyBlockAlreadyCementedCallback,
     notify_block_already_cemented_context: *mut c_void,
     drop_notify_block_already_cemented_context: VoidPointerCallback,
+
+    awaiting_processing_size: AwaitingProcessingSizeCallback,
+    awaiting_processing_size_context: *mut c_void,
+    drop_awaiting_processing_size_context: VoidPointerCallback,
 ) -> *mut ConfirmationHeightUnboundedHandle {
     let notify_observers_callback = wrap_notify_observers_callback(
         notify_observers,
@@ -62,6 +74,12 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
         drop_notify_block_already_cemented_context,
     );
 
+    let awaiting_processing_size_callback = wrap_awaiting_processing_size_callback(
+        awaiting_processing_size,
+        awaiting_processing_size_context,
+        drop_awaiting_processing_size_context,
+    );
+
     let result = Box::into_raw(Box::new(ConfirmationHeightUnboundedHandle(
         ConfirmationHeightUnbounded::new(
             Arc::clone(&(*ledger).0),
@@ -69,8 +87,11 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
             Logging::from(&*logging),
             Arc::clone(&(*stats).0),
             Duration::from_millis(batch_separate_pending_min_time_ms),
+            batch_write_size,
+            Arc::clone(&(*write_database_queue).0),
             notify_observers_callback,
             notify_block_already_cemented_callback,
+            awaiting_processing_size_callback,
         ),
     )));
     result
@@ -144,6 +165,15 @@ unsafe fn wrap_notify_block_already_cemented_callback(
             block_hash.as_bytes().as_ptr(),
         );
     })
+}
+
+unsafe fn wrap_awaiting_processing_size_callback(
+    callback: AwaitingProcessingSizeCallback,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+) -> Box<dyn Fn() -> u64> {
+    let context_wrapper = ContextWrapper::new(context, drop_context);
+    Box::new(move || callback(context_wrapper.get_context()))
 }
 
 #[no_mangle]
@@ -445,21 +475,19 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_prepare_iterated_blocks_for_c
     preparation_data: *mut PreparationDataDto,
 ) {
     let dto = &*preparation_data;
+    let account_it = if dto.account_it.is_end {
+        None
+    } else {
+        Some(ConfirmedIteratedPair {
+            confirmed_height: dto.account_it.confirmed_height,
+            iterated_height: dto.account_it.iterated_height,
+        })
+    };
     let mut data = PreparationData {
         block_height: dto.block_height,
         confirmation_height: dto.confirmation_height,
         iterated_height: dto.iterated_height,
-        account_it: if dto.account_it.is_end {
-            None
-        } else {
-            Some((
-                Account::from_bytes(dto.account_it.account),
-                ConfirmedIteratedPair {
-                    confirmed_height: dto.account_it.confirmed_height,
-                    iterated_height: dto.account_it.iterated_height,
-                },
-            ))
-        },
+        account_it,
         account: Account::from_bytes(dto.account),
         receive_details: if dto.receive_details.is_null() {
             None

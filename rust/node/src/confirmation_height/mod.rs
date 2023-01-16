@@ -1,5 +1,5 @@
 use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, ConfirmationHeightInfo};
-use rsnano_ledger::{Ledger, WriteGuard};
+use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::{ReadTransaction, Table, Transaction};
 use std::{
     collections::{HashMap, VecDeque},
@@ -14,6 +14,9 @@ use crate::{
     config::Logging,
     stats::{DetailType, Direction, Stat, StatType},
 };
+
+/// When the uncemented count (block count - cemented count) is less than this use the unbounded processor
+const UNBOUNDED_CUTOFF: usize = 16384;
 
 pub struct ConfirmationHeightUnbounded {
     ledger: Arc<Ledger>,
@@ -35,10 +38,13 @@ pub struct ConfirmationHeightUnbounded {
     pub confirmed_iterated_pairs_size: AtomicUsize,
     pub pending_writes_size: AtomicUsize,
     pub implicit_receive_cemented_mapping_size: AtomicUsize,
+    batch_write_size: u64,
+    write_database_queue: Arc<WriteDatabaseQueue>,
     timer: Instant,
     batch_separate_pending_min_time: Duration,
     notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
     notify_block_already_cemented_callback: Box<dyn Fn(&BlockHash)>,
+    awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
     stopped: AtomicBool,
 }
 
@@ -49,8 +55,11 @@ impl ConfirmationHeightUnbounded {
         logging: Logging,
         stats: Arc<Stat>,
         batch_separate_pending_min_time: Duration,
+        batch_write_size: u64,
+        write_database_queue: Arc<WriteDatabaseQueue>,
         notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
         notify_block_already_cemented_callback: Box<dyn Fn(&BlockHash)>,
+        awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
     ) -> Self {
         Self {
             ledger,
@@ -66,8 +75,11 @@ impl ConfirmationHeightUnbounded {
             implicit_receive_cemented_mapping_size: AtomicUsize::new(0),
             timer: Instant::now(),
             batch_separate_pending_min_time,
+            batch_write_size,
+            write_database_queue,
             notify_observers_callback,
             notify_block_already_cemented_callback,
+            awaiting_processing_size_callback,
             stopped: AtomicBool::new(false),
         }
     }
@@ -195,8 +207,6 @@ impl ConfirmationHeightUnbounded {
     }
 
     pub fn process(&mut self, original_block: Arc<BlockEnum>) {
-        return; // todo
-
         if self.pending_empty() {
             self.clear_process_vars();
             self.restart_timer();
@@ -204,11 +214,11 @@ impl ConfirmationHeightUnbounded {
         // conf_height_details_shared_ptr receive_details;
         let mut receive_details: Option<Arc<Mutex<ConfHeightDetails>>> = None;
         let mut current = original_block.hash();
-        let orig_block_callback_data: Vec<BlockHash> = Vec::new();
-        let receive_source_pairs: Vec<ReceiveSourcePair> = Vec::new();
+        let mut orig_block_callback_data: Vec<BlockHash> = Vec::new();
+        let mut receive_source_pairs: Vec<Arc<ReceiveSourcePair>> = Vec::new();
 
         let mut first_iter = true;
-        let read_transaction = self.ledger.read_txn();
+        let mut read_transaction = self.ledger.read_txn();
 
         loop {
             if !receive_source_pairs.is_empty() {
@@ -249,9 +259,9 @@ impl ConfirmationHeightUnbounded {
             }
 
             let block_height = block.sideband().unwrap().height;
-            let mut confirmation_height = 0;
-            let account_it = self.confirmed_iterated_pairs.get(&account);
-            match account_it {
+            let confirmation_height;
+            let account_it = self.confirmed_iterated_pairs.get(&account).cloned();
+            match &account_it {
                 Some(account_it) => {
                     confirmation_height = account_it.confirmed_height;
                 }
@@ -267,111 +277,115 @@ impl ConfirmationHeightUnbounded {
                     // This block was added to the confirmation height processor but is already confirmed
                     if first_iter && confirmation_height >= block_height {
                         debug_assert!(current == original_block.hash());
-                        // 			notify_block_already_cemented_observers_callback (original_block->hash ());
+                        (self.notify_block_already_cemented_callback)(&original_block.hash());
                     }
                 }
             }
 
-            // 	auto iterated_height = confirmation_height;
-            // 	if (!account_it.is_end && account_it.iterated_height > iterated_height)
-            // 	{
-            // 		iterated_height = account_it.iterated_height;
-            // 	}
+            let mut iterated_height = confirmation_height;
+            if let Some(account_it) = &account_it {
+                if account_it.iterated_height > iterated_height {
+                    iterated_height = account_it.iterated_height;
+                }
+            }
 
-            // 	auto count_before_receive = receive_source_pairs.size ();
-            // 	nano::block_hash_vec block_callback_datas_required;
-            // 	auto already_traversed = iterated_height >= block_height;
-            // 	if (!already_traversed)
-            // 	{
-            // 		rsnano::rsn_conf_height_unbounded_collect_unconfirmed_receive_and_sources_for_account (
-            // 		handle,
-            // 		block_height,
-            // 		iterated_height,
-            // 		block->get_handle (),
-            // 		current.bytes.data (),
-            // 		account.bytes.data (),
-            // 		read_transaction->get_rust_handle (),
-            // 		receive_source_pairs.handle,
-            // 		block_callback_datas_required.handle,
-            // 		orig_block_callback_data.handle,
-            // 		original_block->get_handle ());
-            // 	}
+            let count_before_receive = receive_source_pairs.len();
+            let mut block_callback_datas_required = Vec::new();
+            let already_traversed = iterated_height >= block_height;
+            if !already_traversed {
+                self.collect_unconfirmed_receive_and_sources_for_account(
+                    block_height,
+                    iterated_height,
+                    &block,
+                    &current,
+                    &account,
+                    read_transaction.as_ref(),
+                    &mut receive_source_pairs,
+                    &mut block_callback_datas_required,
+                    &mut orig_block_callback_data,
+                    &original_block,
+                )
+            }
 
-            // 	// Exit early when the processor has been stopped, otherwise this function may take a
-            // 	// while (and hence keep the process running) if updating a long chain.
-            // 	if (stopped)
-            // 	{
-            // 		break;
-            // 	}
+            // Exit early when the processor has been stopped, otherwise this function may take a
+            // while (and hence keep the process running) if updating a long chain.
+            if self.stopped.load(Ordering::SeqCst) {
+                break;
+            }
 
-            // 	// No longer need the read transaction
-            // 	read_transaction->reset ();
+            // No longer need the read transaction
+            read_transaction.reset();
 
-            // 	// If this adds no more open or receive blocks, then we can now confirm this account as well as the linked open/receive block
-            // 	// Collect as pending any writes to the database and do them in bulk after a certain time.
-            // 	auto confirmed_receives_pending = (count_before_receive != receive_source_pairs.size ());
-            // 	if (!confirmed_receives_pending)
-            // 	{
-            // 		rsnano::PreparationDataDto preparation_data_dto;
-            // 		preparation_data_dto.block_height = block_height;
-            // 		preparation_data_dto.confirmation_height = confirmation_height;
-            // 		preparation_data_dto.iterated_height = iterated_height;
-            // 		preparation_data_dto.account_it = account_it;
-            // 		std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (preparation_data_dto.account));
-            // 		preparation_data_dto.receive_details = receive_details.handle;
-            // 		preparation_data_dto.already_traversed = already_traversed;
-            // 		std::copy (std::begin (current.bytes), std::end (current.bytes), std::begin (preparation_data_dto.current));
-            // 		preparation_data_dto.block_callback_data = block_callback_datas_required.handle;
-            // 		preparation_data_dto.orig_block_callback_data = orig_block_callback_data.handle;
+            // If this adds no more open or receive blocks, then we can now confirm this account as well as the linked open/receive block
+            // Collect as pending any writes to the database and do them in bulk after a certain time.
+            let confirmed_receives_pending = count_before_receive != receive_source_pairs.len();
+            if !confirmed_receives_pending {
+                let mut preparation_data = PreparationData {
+                    block_height,
+                    confirmation_height,
+                    iterated_height,
+                    account_it,
+                    account,
+                    receive_details: receive_details.clone(),
+                    already_traversed,
+                    current,
+                    block_callback_data: &mut block_callback_datas_required,
+                    orig_block_callback_data: &mut orig_block_callback_data,
+                };
+                self.prepare_iterated_blocks_for_cementing(&mut preparation_data);
 
-            // 		rsnano::rsn_conf_height_unbounded_prepare_iterated_blocks_for_cementing (handle, &preparation_data_dto);
+                if !receive_source_pairs.is_empty() {
+                    // Pop from the end
+                    receive_source_pairs.pop();
+                }
+            } else if block_height > iterated_height {
+                match &account_it {
+                    Some(_) => {
+                        self.confirmed_iterated_pairs
+                            .get_mut(&account)
+                            .unwrap()
+                            .iterated_height = block_height;
+                    }
+                    None => {
+                        self.add_confirmed_iterated_pair(
+                            account,
+                            confirmation_height,
+                            block_height,
+                        );
+                    }
+                }
+            }
 
-            // 		if (!receive_source_pairs.empty ())
-            // 		{
-            // 			// Pop from the end
-            // 			receive_source_pairs.pop ();
-            // 		}
-            // 	}
-            // 	else if (block_height > iterated_height)
-            // 	{
-            // 		if (!account_it.is_end)
-            // 		{
-            // 			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_set_iterated_height (handle, &account_it.account[0], block_height);
-            // 		}
-            // 		else
-            // 		{
-            // 			rsnano::rsn_conf_height_unbounded_conf_iterated_pairs_insert (handle, account.bytes.data (), confirmation_height, block_height);
-            // 		}
-            // 	}
+            let max_write_size_reached = self.pending_writes.len() >= UNBOUNDED_CUTOFF;
+            // When there are a lot of pending confirmation height blocks, it is more efficient to
+            // bulk some of them up to enable better write performance which becomes the bottleneck.
+            let min_time_exceeded = self.min_time_exceeded();
+            let finished_iterating = receive_source_pairs.is_empty();
+            let no_pending = (self.awaiting_processing_size_callback)() == 0;
+            let should_output = finished_iterating && (no_pending || min_time_exceeded);
 
-            // 	auto max_write_size_reached = (rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) >= confirmation_height::unbounded_cutoff);
-            // 	// When there are a lot of pending confirmation height blocks, it is more efficient to
-            // 	// bulk some of them up to enable better write performance which becomes the bottleneck.
-            // 	auto min_time_exceeded = rsnano::rsn_conf_height_unbounded_min_time_exceeded (handle);
-            // 	auto finished_iterating = receive_source_pairs.empty ();
-            // 	auto no_pending = awaiting_processing_size_callback () == 0;
-            // 	auto should_output = finished_iterating && (no_pending || min_time_exceeded);
+            let total_pending_write_block_count = self.total_pending_write_block_count();
+            let force_write = total_pending_write_block_count > self.batch_write_size;
 
-            // 	auto total_pending_write_block_count = rsnano::rsn_conf_height_unbounded_total_pending_write_block_count (handle);
-            // 	auto force_write = total_pending_write_block_count > batch_write_size;
+            if (max_write_size_reached || should_output || force_write)
+                && self.pending_writes.len() > 0
+            {
+                if self
+                    .write_database_queue
+                    .process(Writer::ConfirmationHeight)
+                {
+                    let mut scoped_write_guard = self.write_database_queue.pop();
+                    self.cement_blocks(&mut scoped_write_guard);
+                } else if force_write {
+                    // Unbounded processor has grown too large, force a write
+                    let mut scoped_write_guard =
+                        self.write_database_queue.wait(Writer::ConfirmationHeight);
+                    self.cement_blocks(&mut scoped_write_guard);
+                }
+            }
 
-            // 	if ((max_write_size_reached || should_output || force_write) && rsnano::rsn_conf_height_unbounded_pending_writes_size (handle) > 0)
-            // 	{
-            // 		if (write_database_queue.process (nano::writer::confirmation_height))
-            // 		{
-            // 			auto scoped_write_guard = write_database_queue.pop ();
-            // 			cement_blocks (scoped_write_guard);
-            // 		}
-            // 		else if (force_write)
-            // 		{
-            // 			// Unbounded processor has grown too large, force a write
-            // 			auto scoped_write_guard = write_database_queue.wait (nano::writer::confirmation_height);
-            // 			cement_blocks (scoped_write_guard);
-            // 		}
-            // 	}
-
-            // 	first_iter = false;
-            // 	read_transaction->renew ();
+            first_iter = false;
+            read_transaction.renew();
             if !((!receive_source_pairs.is_empty() || current != original_block.hash())
                 && !self.stopped.load(Ordering::SeqCst))
             {
@@ -388,8 +402,11 @@ impl ConfirmationHeightUnbounded {
         let block_height = preparation_data_a.block_height;
         if block_height > preparation_data_a.confirmation_height {
             // Check whether the previous block has been seen. If so, the rest of sends below have already been seen so don't count them
-            if let Some((account, _)) = &preparation_data_a.account_it {
-                let pair = self.confirmed_iterated_pairs.get_mut(account).unwrap();
+            if let Some(_) = &preparation_data_a.account_it {
+                let pair = self
+                    .confirmed_iterated_pairs
+                    .get_mut(&preparation_data_a.account)
+                    .unwrap();
                 pair.confirmed_height = block_height;
                 if block_height > preparation_data_a.iterated_height {
                     pair.iterated_height = block_height;
@@ -758,6 +775,7 @@ pub struct ConfHeightDetails {
     pub source_block_callback_data: Vec<BlockHash>,
 }
 
+#[derive(Clone)]
 pub struct ConfirmedIteratedPair {
     pub confirmed_height: u64,
     pub iterated_height: u64,
@@ -782,7 +800,7 @@ pub struct PreparationData<'a> {
     pub block_height: u64,
     pub confirmation_height: u64,
     pub iterated_height: u64,
-    pub account_it: Option<(Account, ConfirmedIteratedPair)>,
+    pub account_it: Option<ConfirmedIteratedPair>,
     pub account: Account,
     pub receive_details: Option<Arc<Mutex<ConfHeightDetails>>>,
     pub already_traversed: bool,

@@ -3,7 +3,10 @@ mod conf_height_details;
 use std::{
     ffi::c_void,
     ops::Deref,
-    sync::{atomic::Ordering, Arc, Mutex, RwLock, Weak},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex, RwLock, Weak,
+    },
     time::Duration,
 };
 
@@ -47,7 +50,7 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
     logging: *const LoggingDto,
     stats: *const StatHandle,
     batch_separate_pending_min_time_ms: u64,
-    batch_write_size: u64,
+    batch_write_size: *mut AtomicU64Handle,
     write_database_queue: *const WriteDatabaseQueueHandle,
 
     notify_observers: ConfHeightUnboundedNotifyObserversCallback,
@@ -87,7 +90,7 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
             Logging::from(&*logging),
             Arc::clone(&(*stats).0),
             Duration::from_millis(batch_separate_pending_min_time_ms),
-            batch_write_size,
+            Arc::clone(&(*batch_write_size).0),
             Arc::clone(&(*write_database_queue).0),
             notify_observers_callback,
             notify_block_already_cemented_callback,
@@ -683,4 +686,31 @@ pub unsafe extern "C" fn rsn_block_hash_vec_truncate(
     new_size: usize,
 ) {
     (*handle).0.truncate(new_size);
+}
+
+pub struct AtomicU64Handle(pub Arc<AtomicU64>);
+
+#[no_mangle]
+pub extern "C" fn rsn_atomic_u64_create(value: u64) -> *mut AtomicU64Handle {
+    Box::into_raw(Box::new(AtomicU64Handle(Arc::new(AtomicU64::new(value)))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_atomic_u64_destroy(handle: *mut AtomicU64Handle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_atomic_u64_load(handle: *mut AtomicU64Handle) -> u64 {
+    (*handle).0.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_atomic_u64_store(handle: *mut AtomicU64Handle, value: u64) {
+    (*handle).0.store(value, Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_atomic_u64_add(handle: *mut AtomicU64Handle, value: u64) {
+    (*handle).0.fetch_add(value, Ordering::SeqCst);
 }

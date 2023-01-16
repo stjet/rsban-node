@@ -2,6 +2,7 @@
 
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/timer.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/confirmation_height_bounded.hpp>
 #include <nano/node/confirmation_height_unbounded.hpp>
 #include <nano/secure/common.hpp>
@@ -99,7 +100,7 @@ private:
 	nano::ledger & ledger;
 	nano::write_database_queue & write_database_queue;
 	/** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
-	uint64_t batch_write_size{ 16384 };
+	rsnano::AtomicU64Wrapper batch_write_size{ 16384 };
 
 	confirmation_height_unbounded unbounded_processor;
 	confirmation_height_bounded bounded_processor;

@@ -2,6 +2,7 @@
 
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/rsnano.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/secure/store.hpp>
@@ -39,7 +40,7 @@ public:
 class confirmation_height_unbounded final
 {
 public:
-	confirmation_height_unbounded (nano::ledger &, nano::stat &, nano::write_database_queue &, std::chrono::milliseconds batch_separate_pending_min_time, nano::logging const &, std::shared_ptr<nano::logger_mt> &, uint64_t & batch_write_size, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & cemented_callback, std::function<void (nano::block_hash const &)> const & already_cemented_callback, std::function<uint64_t ()> const & awaiting_processing_size_query);
+	confirmation_height_unbounded (nano::ledger &, nano::stat &, nano::write_database_queue &, std::chrono::milliseconds batch_separate_pending_min_time, nano::logging const &, std::shared_ptr<nano::logger_mt> &, rsnano::AtomicU64Wrapper & batch_write_size, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & cemented_callback, std::function<void (nano::block_hash const &)> const & already_cemented_callback, std::function<uint64_t ()> const & awaiting_processing_size_query);
 	confirmation_height_unbounded (confirmation_height_unbounded const &) = delete;
 	confirmation_height_unbounded (confirmation_height_unbounded &&) = delete;
 	~confirmation_height_unbounded ();
@@ -194,31 +195,9 @@ private:
 		rsnano::ReceiveSourcePairHandle * handle;
 	};
 
-	class receive_source_pair_vec
-	{
-	public:
-		receive_source_pair_vec ();
-		receive_source_pair_vec (receive_source_pair_vec const &) = delete;
-		receive_source_pair_vec (receive_source_pair_vec &&) = delete;
-		~receive_source_pair_vec ();
-		bool empty () const;
-		size_t size () const;
-		void push (receive_source_pair const & pair);
-		void pop ();
-		receive_source_pair back () const;
-		rsnano::ReceiveSourcePairVecHandle * handle;
-	};
-
 	uint64_t block_cache_size () const;
-	std::shared_ptr<nano::block> get_block_and_sideband (nano::block_hash const &, nano::transaction const &);
 
 	// Fields:
-	nano::ledger & ledger;
-	nano::stat & stats;
-	nano::write_database_queue & write_database_queue;
-	std::shared_ptr<nano::logger_mt> & logger;
-	std::atomic<bool> stopped{ false };
-	uint64_t & batch_write_size;
 	nano::logging const & logging;
 
 	std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> notify_observers_callback;

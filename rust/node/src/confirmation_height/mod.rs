@@ -4,7 +4,7 @@ use rsnano_store_traits::{ReadTransaction, Table, Transaction};
 use std::{
     collections::{HashMap, VecDeque},
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering, AtomicU64},
         Arc, Mutex, Weak,
     },
     time::{Duration, Instant},
@@ -38,7 +38,7 @@ pub struct ConfirmationHeightUnbounded {
     pub confirmed_iterated_pairs_size: AtomicUsize,
     pub pending_writes_size: AtomicUsize,
     pub implicit_receive_cemented_mapping_size: AtomicUsize,
-    batch_write_size: u64,
+    batch_write_size: Arc<AtomicU64>,
     write_database_queue: Arc<WriteDatabaseQueue>,
     timer: Instant,
     batch_separate_pending_min_time: Duration,
@@ -55,7 +55,7 @@ impl ConfirmationHeightUnbounded {
         logging: Logging,
         stats: Arc<Stat>,
         batch_separate_pending_min_time: Duration,
-        batch_write_size: u64,
+        batch_write_size: Arc<AtomicU64>,
         write_database_queue: Arc<WriteDatabaseQueue>,
         notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
         notify_block_already_cemented_callback: Box<dyn Fn(&BlockHash)>,
@@ -365,7 +365,7 @@ impl ConfirmationHeightUnbounded {
             let should_output = finished_iterating && (no_pending || min_time_exceeded);
 
             let total_pending_write_block_count = self.total_pending_write_block_count();
-            let force_write = total_pending_write_block_count > self.batch_write_size;
+            let force_write = total_pending_write_block_count > self.batch_write_size.load(Ordering::Relaxed);
 
             if (max_write_size_reached || should_output || force_write)
                 && self.pending_writes.len() > 0

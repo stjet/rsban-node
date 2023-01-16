@@ -57,13 +57,8 @@ void drop_awaiting_processing_size_callback (void * context_a)
 }
 }
 
-nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger & ledger_a, nano::stat & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, uint64_t & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
-	ledger (ledger_a),
-	stats (stats_a),
-	write_database_queue (write_database_queue_a),
+nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger & ledger_a, nano::stat & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
 	logging (logging_a),
-	logger (logger_a),
-	batch_write_size (batch_write_size_a),
 	notify_observers_callback (notify_observers_callback_a),
 	notify_block_already_cemented_observers_callback (notify_block_already_cemented_observers_callback_a),
 	awaiting_processing_size_callback (awaiting_processing_size_callback_a)
@@ -75,7 +70,7 @@ nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger
 	&logging_dto,
 	stats_a.handle,
 	static_cast<uint64_t> (batch_separate_pending_min_time_a.count ()),
-	batch_write_size_a,
+	batch_write_size_a.handle,
 	write_database_queue_a.handle,
 	notify_observers_callback_wrapper,
 	new std::function<void (std::vector<std::shared_ptr<nano::block>> const &)>{ notify_observers_callback_a },
@@ -103,16 +98,6 @@ void nano::confirmation_height_unbounded::cement_blocks (nano::write_guard & sco
 	rsnano::rsn_conf_height_unbounded_cement_blocks (handle, scoped_write_guard_a.handle);
 }
 
-std::shared_ptr<nano::block> nano::confirmation_height_unbounded::get_block_and_sideband (nano::block_hash const & hash_a, nano::transaction const & transaction_a)
-{
-	auto block_handle{ rsnano::rsn_conf_height_unbounded_get_block_and_sideband (handle, hash_a.bytes.data (), transaction_a.get_rust_handle ()) };
-	if (block_handle == nullptr)
-	{
-		return nullptr;
-	}
-	return nano::block_handle_to_block (block_handle);
-}
-
 bool nano::confirmation_height_unbounded::pending_empty () const
 {
 	return rsnano::rsn_conf_height_unbounded_pending_empty (handle);
@@ -135,7 +120,6 @@ bool nano::confirmation_height_unbounded::has_iterated_over_block (nano::block_h
 
 void nano::confirmation_height_unbounded::stop ()
 {
-	stopped = true;
 	rsnano::rsn_conf_height_unbounded_stop (handle);
 }
 
@@ -216,38 +200,6 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "implicit_receive_cemented_mapping", rsnano::rsn_conf_height_unbounded_implicit_receive_cemented_mapping_size (confirmation_height_unbounded.handle), rsnano::rsn_implicit_receive_cemented_mapping_value_size () }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_cache", confirmation_height_unbounded.block_cache_size (), rsnano::rsn_conf_height_unbounded_block_cache_element_size () }));
 	return composite;
-}
-
-nano::confirmation_height_unbounded::receive_source_pair_vec::receive_source_pair_vec () :
-	handle{ rsnano::rsn_receive_source_pair_vec_create () }
-{
-}
-nano::confirmation_height_unbounded::receive_source_pair_vec::~receive_source_pair_vec ()
-{
-	rsnano::rsn_receive_source_pair_vec_destroy (handle);
-}
-bool nano::confirmation_height_unbounded::receive_source_pair_vec::empty () const
-{
-	return size () == 0;
-}
-size_t nano::confirmation_height_unbounded::receive_source_pair_vec::size () const
-{
-	return rsnano::rsn_receive_source_pair_vec_size (handle);
-}
-
-void nano::confirmation_height_unbounded::receive_source_pair_vec::push (nano::confirmation_height_unbounded::receive_source_pair const & pair)
-{
-	rsnano::rsn_receive_source_pair_vec_push (handle, pair.handle);
-}
-
-void nano::confirmation_height_unbounded::receive_source_pair_vec::pop ()
-{
-	rsnano::rsn_receive_source_pair_vec_pop (handle);
-}
-
-nano::confirmation_height_unbounded::receive_source_pair nano::confirmation_height_unbounded::receive_source_pair_vec::back () const
-{
-	return nano::confirmation_height_unbounded::receive_source_pair{ rsnano::rsn_receive_source_pair_vec_back (handle) };
 }
 
 nano::block_hash_vec::block_hash_vec () :

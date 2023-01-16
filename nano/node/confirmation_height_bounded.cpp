@@ -450,7 +450,7 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 						if (time_spent_cementing > maximum_batch_write_time)
 						{
 							// Reduce (unless we have hit a floor)
-							batch_write_size.store (std::max<uint64_t> (minimum_batch_write_size, batch_write_size.load() - amount_to_change));
+							batch_write_size.store (std::max<uint64_t> (minimum_batch_write_size, batch_write_size.load () - amount_to_change));
 						}
 						else if (time_spent_cementing < maximum_batch_write_time_increase_cutoff)
 						{
@@ -526,7 +526,7 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 	if (time_spent_cementing > maximum_batch_write_time)
 	{
 		// Reduce (unless we have hit a floor)
-		batch_write_size.store (std::max<uint64_t> (minimum_batch_write_size, batch_write_size.load() - amount_to_change));
+		batch_write_size.store (std::max<uint64_t> (minimum_batch_write_size, batch_write_size.load () - amount_to_change));
 	}
 
 	debug_assert (pending_writes.empty ());

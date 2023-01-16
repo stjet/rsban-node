@@ -1221,7 +1221,7 @@ TEST (DISABLED_confirmation_heightDeathTest, rollback_added_block)
 					.work (*pool.generate (nano::dev::genesis->hash ()))
 					.build_shared ();
 
-		rsnano::AtomicU64Wrapper batch_write_size {2048};
+		rsnano::AtomicU64Wrapper batch_write_size{ 2048 };
 		std::atomic<bool> stopped{ false };
 		nano::confirmation_height_unbounded unbounded_processor (
 		ledger, stats, write_database_queue, 10ms, logging, logger, batch_write_size, [] (auto const &) {}, [] (auto const &) {}, [] () { return 0; });
@@ -1309,7 +1309,7 @@ TEST (DISABLED_confirmation_heightDeathTest, modified_chain)
 			ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send).code);
 		}
 
-		rsnano::AtomicU64Wrapper batch_write_size {2048};
+		rsnano::AtomicU64Wrapper batch_write_size{ 2048 };
 		std::atomic<bool> stopped{ false };
 		nano::confirmation_height_bounded bounded_processor (
 		ledger, write_database_queue, 10ms, logging, logger, stopped, batch_write_size, [] (auto const &) {}, [] (auto const &) {}, [] () { return 0; });
@@ -1392,7 +1392,7 @@ TEST (DISABLED_confirmation_heightDeathTest, modified_chain_account_removed)
 			ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *open).code);
 		}
 
-		rsnano::AtomicU64Wrapper batch_write_size {2048};
+		rsnano::AtomicU64Wrapper batch_write_size{ 2048 };
 		std::atomic<bool> stopped{ false };
 		nano::confirmation_height_unbounded unbounded_processor (
 		ledger, stats, write_database_queue, 10ms, logging, logger, batch_write_size, [] (auto const &) {}, [] (auto const &) {}, [] () { return 0; });
@@ -2200,7 +2200,7 @@ TEST (confirmation_height, pruned_source)
 		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send3).code);
 		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *open2).code);
 	}
-	rsnano::AtomicU64Wrapper batch_write_size {2};
+	rsnano::AtomicU64Wrapper batch_write_size{ 2 };
 	std::atomic<bool> stopped{ false };
 	bool first_time{ true };
 	nano::confirmation_height_bounded bounded_processor (

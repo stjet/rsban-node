@@ -1,8 +1,8 @@
 #pragma once
 
 #include <nano/lib/numbers.hpp>
-#include <nano/lib/timer.hpp>
 #include <nano/lib/rsnanoutils.hpp>
+#include <nano/lib/timer.hpp>
 #include <nano/node/confirmation_height_bounded.hpp>
 #include <nano/node/confirmation_height_unbounded.hpp>
 #include <nano/secure/common.hpp>

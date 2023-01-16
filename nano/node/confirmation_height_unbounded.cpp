@@ -57,11 +57,7 @@ void drop_awaiting_processing_size_callback (void * context_a)
 }
 }
 
-nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger & ledger_a, nano::stat & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
-	logging (logging_a),
-	notify_observers_callback (notify_observers_callback_a),
-	notify_block_already_cemented_observers_callback (notify_block_already_cemented_observers_callback_a),
-	awaiting_processing_size_callback (awaiting_processing_size_callback_a)
+nano::confirmation_height_unbounded::confirmation_height_unbounded (nano::ledger & ledger_a, nano::stat & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a)
 {
 	auto logging_dto{ logging_a.to_dto () };
 	handle = rsnano::rsn_conf_height_unbounded_create (
@@ -126,70 +122,6 @@ void nano::confirmation_height_unbounded::stop ()
 uint64_t nano::confirmation_height_unbounded::block_cache_size () const
 {
 	return rsnano::rsn_conf_height_unbounded_block_cache_size (handle);
-}
-
-nano::confirmation_height_unbounded::conf_height_details::conf_height_details (nano::account const & account_a, nano::block_hash const & hash_a, uint64_t height_a, uint64_t num_blocks_confirmed_a, nano::block_hash_vec const & block_callback_data_a) :
-	handle{ rsnano::rsn_conf_height_details_create (account_a.bytes.data (), hash_a.bytes.data (), height_a, num_blocks_confirmed_a, block_callback_data_a.handle) }
-{
-}
-
-nano::confirmation_height_unbounded::conf_height_details::conf_height_details (nano::confirmation_height_unbounded::conf_height_details const & other_a) :
-	handle{ rsnano::rsn_conf_height_details_clone (other_a.handle) }
-{
-}
-
-nano::confirmation_height_unbounded::conf_height_details::~conf_height_details ()
-{
-	rsnano::rsn_conf_height_details_destroy (handle);
-}
-
-nano::confirmation_height_unbounded::conf_height_details & nano::confirmation_height_unbounded::conf_height_details::operator= (nano::confirmation_height_unbounded::conf_height_details const & other_a)
-{
-	rsnano::rsn_conf_height_details_destroy (handle);
-	handle = rsnano::rsn_conf_height_details_clone (other_a.handle);
-	return *this;
-}
-
-void nano::confirmation_height_unbounded::conf_height_details::add_block_callback_data (nano::block_hash const & hash)
-{
-	rsnano::rsn_conf_height_details_add_block_callback_data (handle, hash.bytes.data ());
-}
-
-nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (conf_height_details_shared_ptr const & receive_details_a, const block_hash & source_a) :
-	handle{ rsnano::rsn_receive_source_pair_create (receive_details_a.handle, source_a.bytes.data ()) }
-{
-}
-
-nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (rsnano::ReceiveSourcePairHandle * handle_a) :
-	handle{ handle_a }
-{
-}
-
-nano::confirmation_height_unbounded::receive_source_pair::receive_source_pair (nano::confirmation_height_unbounded::receive_source_pair const & other_a) :
-	handle{ rsnano::rsn_receive_source_pair_clone (other_a.handle) }
-{
-}
-
-nano::confirmation_height_unbounded::receive_source_pair::~receive_source_pair ()
-{
-	rsnano::rsn_receive_source_pair_destroy (handle);
-}
-nano::confirmation_height_unbounded::receive_source_pair & nano::confirmation_height_unbounded::receive_source_pair::operator= (receive_source_pair const & other_a)
-{
-	rsnano::rsn_receive_source_pair_destroy (handle);
-	handle = rsnano::rsn_receive_source_pair_clone (other_a.handle);
-	return *this;
-}
-
-nano::confirmation_height_unbounded::conf_height_details_shared_ptr nano::confirmation_height_unbounded::receive_source_pair::receive_details () const
-{
-	return nano::confirmation_height_unbounded::conf_height_details_shared_ptr (rsnano::rsn_receive_source_pair_receive_details (handle));
-}
-nano::block_hash nano::confirmation_height_unbounded::receive_source_pair::source_hash () const
-{
-	nano::block_hash hash;
-	rsnano::rsn_receive_source_pair_source_hash (handle, hash.bytes.data ());
-	return hash;
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_unbounded & confirmation_height_unbounded, std::string const & name_a)

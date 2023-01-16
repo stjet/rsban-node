@@ -1,9 +1,9 @@
 #pragma once
 
 #include <nano/lib/numbers.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/timer.hpp>
-#include <nano/lib/rsnanoutils.hpp>
 #include <nano/secure/store.hpp>
 
 #include <boost/circular_buffer.hpp>

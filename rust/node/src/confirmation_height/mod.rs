@@ -4,7 +4,7 @@ use rsnano_store_traits::{ReadTransaction, Table, Transaction};
 use std::{
     collections::{HashMap, VecDeque},
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering, AtomicU64},
+        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
     time::{Duration, Instant},
@@ -365,7 +365,8 @@ impl ConfirmationHeightUnbounded {
             let should_output = finished_iterating && (no_pending || min_time_exceeded);
 
             let total_pending_write_block_count = self.total_pending_write_block_count();
-            let force_write = total_pending_write_block_count > self.batch_write_size.load(Ordering::Relaxed);
+            let force_write =
+                total_pending_write_block_count > self.batch_write_size.load(Ordering::Relaxed);
 
             if (max_write_size_reached || should_output || force_write)
                 && self.pending_writes.len() > 0

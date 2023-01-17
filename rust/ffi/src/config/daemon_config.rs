@@ -1,7 +1,6 @@
 use super::{
-    fill_node_config_dto, fill_node_rpc_config_dto,
-    fill_opencl_config_dto, NodeConfigDto, NodeRpcConfigDto,
-    OpenclConfigDto,
+    fill_node_config_dto, fill_node_rpc_config_dto, fill_opencl_config_dto, NodeConfigDto,
+    NodeRpcConfigDto, OpenclConfigDto,
 };
 use crate::{secure::NetworkParamsDto, utils::FfiToml};
 use rsnano_node::{config::DaemonConfig, NetworkParams};

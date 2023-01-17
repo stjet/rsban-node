@@ -11,7 +11,6 @@ use rsnano_node::{
 
 use crate::{
     core::BlockUniquerHandle,
-
     messages::MessageHandle,
     transport::{NetworkFilterHandle, SocketHandle},
     voting::VoteUniquerHandle,

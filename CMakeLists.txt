@@ -86,9 +86,6 @@ set(NANO_TEST
 set(NANO_SECURE_RPC
     OFF
     CACHE BOOL "")
-set(NANO_POW_SERVER
-    OFF
-    CACHE BOOL "")
 set(NANO_WARN_TO_ERR
     OFF
     CACHE BOOL "")
@@ -416,9 +413,6 @@ if(WIN32)
   target_link_libraries(ntdll)
 endif()
 
-if(NANO_POW_SERVER)
-  add_subdirectory(nano-pow-server)
-endif()
 add_subdirectory(nano/crypto_lib)
 add_subdirectory(nano/secure)
 add_subdirectory(nano/lib)

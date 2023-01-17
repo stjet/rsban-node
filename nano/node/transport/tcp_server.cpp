@@ -8,7 +8,6 @@
 #include <nano/node/transport/tcp_server.hpp>
 
 #include <boost/format.hpp>
-#include <boost/variant/get.hpp>
 
 nano::tcp_server_weak_wrapper::tcp_server_weak_wrapper (std::shared_ptr<nano::transport::tcp_server> const & server) :
 	handle{ rsnano::rsn_bootstrap_server_get_weak (server->handle) }

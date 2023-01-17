@@ -64,5 +64,4 @@ target_link_libraries(
   gtest
   libminiupnpc-static
   Boost::log_setup
-  Boost::log
-  Boost::boost)
+  Boost::log)

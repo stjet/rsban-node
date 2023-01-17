@@ -215,7 +215,6 @@ target_link_libraries(
   Boost::program_options
   Boost::system
   Boost::thread
-  Boost::boost
   ${DISKHASH}
   ${CMAKE_DL_LIBS}
   ${psapi_lib})

@@ -1,6 +1,6 @@
 add_executable(nano_node daemon.cpp daemon.hpp entry.cpp)
 
-target_link_libraries(nano_node node rpc secure Boost::boost ${PLATFORM_LIBS})
+target_link_libraries(nano_node node rpc secure ${PLATFORM_LIBS})
 
 if(NANO_STACKTRACE_BACKTRACE)
   target_link_libraries(nano_node backtrace)

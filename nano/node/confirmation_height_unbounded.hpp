@@ -49,14 +49,13 @@ public:
 	void process (std::shared_ptr<nano::block> original_block);
 	void cement_blocks ();
 	bool has_iterated_over_block (nano::block_hash const &) const;
+	uint64_t block_cache_size () const;
 	void stop ();
 	size_t pending_writes_size () const;
 
 	rsnano::ConfirmationHeightUnboundedHandle * handle;
 
 private:
-	uint64_t block_cache_size () const;
-
 	friend class confirmation_height_dynamic_algorithm_no_transition_while_pending_Test;
 	friend std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_unbounded &, std::string const & name_a);
 };

@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use rsnano_core::{Account, BlockEnum, BlockHash};
+use rsnano_core::{BlockEnum, BlockHash};
 use rsnano_node::{
     config::Logging,
     confirmation_height::{ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair},
@@ -16,9 +16,7 @@ use rsnano_node::{
 
 use crate::{
     core::BlockHandle,
-    ledger::datastore::{
-        LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle,
-    },
+    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
     utils::{LoggerHandle, LoggerMT},
     LoggingDto, StatHandle, VoidPointerCallback,
 };
@@ -198,28 +196,6 @@ pub extern "C" fn rsn_conf_height_details_size() -> usize {
     std::mem::size_of::<ConfHeightDetails>()
 }
 
-#[repr(C)]
-pub struct ConfirmedIteratedPairsIteratorDto {
-    pub is_end: bool,
-    pub account: [u8; 32],
-    pub confirmed_height: u64,
-    pub iterated_height: u64,
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_insert(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-    account: *const u8,
-    confirmed_height: u64,
-    iterated_height: u64,
-) {
-    (*handle).0.add_confirmed_iterated_pair(
-        Account::from_ptr(account),
-        confirmed_height,
-        iterated_height,
-    );
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_len(
     handle: *const ConfirmationHeightUnboundedHandle,
@@ -234,61 +210,12 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_len(
 pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_len(
     handle: *const ConfirmationHeightUnboundedHandle,
 ) -> usize {
-    (*handle).0.pending_writes_size.load(Ordering::Relaxed)
+    (*handle).0.pending_writes_size().load(Ordering::Relaxed)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_conf_iterated_pair_size() -> usize {
     std::mem::size_of::<ConfirmedIteratedPair>()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_find(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-    account: *const u8,
-    result: *mut ConfirmedIteratedPairsIteratorDto,
-) {
-    let account = Account::from_ptr(account);
-    let res = &mut *result;
-    match (*handle).0.confirmed_iterated_pairs.get(&account) {
-        Some(pair) => {
-            res.is_end = false;
-            res.account = *account.as_bytes();
-            res.confirmed_height = pair.confirmed_height;
-            res.iterated_height = pair.iterated_height;
-        }
-        None => res.is_end = true,
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_set_confirmed_height(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-    account: *const u8,
-    height: u64,
-) {
-    let account = Account::from_ptr(account);
-    let pair = (*handle)
-        .0
-        .confirmed_iterated_pairs
-        .get_mut(&account)
-        .unwrap();
-    pair.confirmed_height = height;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_set_iterated_height(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-    account: *const u8,
-    height: u64,
-) {
-    let account = Account::from_ptr(account);
-    let pair = (*handle)
-        .0
-        .confirmed_iterated_pairs
-        .get_mut(&account)
-        .unwrap();
-    pair.iterated_height = height;
 }
 
 #[no_mangle]
@@ -304,34 +231,6 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_implicit_receive_cemented_map
 #[no_mangle]
 pub extern "C" fn rsn_implicit_receive_cemented_mapping_value_size() -> usize {
     std::mem::size_of::<Weak<Mutex<ConfHeightDetails>>>()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_cache_block(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-    block: *const BlockHandle,
-) {
-    (*handle)
-        .0
-        .cache_block(Arc::new((*block).block.read().unwrap().clone()))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_get_block_and_sideband(
-    handle: *mut ConfirmationHeightUnboundedHandle,
-    hash: *const u8,
-    txn: *const TransactionHandle,
-) -> *mut BlockHandle {
-    let block = (*handle)
-        .0
-        .get_block_and_sideband(&BlockHash::from_ptr(hash), (*txn).as_txn());
-
-    match block {
-        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(
-            block.deref().clone(),
-        ))))),
-        None => std::ptr::null_mut(),
-    }
 }
 
 #[no_mangle]
@@ -360,7 +259,7 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_block_cache_element_size() ->
 pub unsafe extern "C" fn rsn_conf_height_unbounded_pending_writes_size_safe(
     handle: *mut ConfirmationHeightUnboundedHandle,
 ) -> usize {
-    (*handle).0.pending_writes_size.load(Ordering::Relaxed)
+    (*handle).0.pending_writes_size().load(Ordering::Relaxed)
 }
 
 #[no_mangle]

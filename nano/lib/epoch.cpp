@@ -1,6 +1,7 @@
 #include <nano/lib/epoch.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/utility.hpp>
+#include <algorithm>
 
 nano::epochs::epochs () :
 	handle (rsnano::rsn_epochs_create ())

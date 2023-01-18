@@ -191,7 +191,7 @@ impl ConfirmationHeightUnbounded {
     pub fn process(&mut self, original_block: Arc<BlockEnum>) {
         if self.pending_empty() {
             self.clear_process_vars();
-            self.cementor.restart_timer();
+            self.cementor.set_last_cementation();
         }
         let mut receive_details: Option<Arc<Mutex<ConfHeightDetails>>> = None;
         let mut current = original_block.hash();
@@ -409,7 +409,7 @@ impl ConfirmationHeightUnbounded {
 
                             let num_blocks_already_confirmed = above_receive_details_lock
                                 .num_blocks_confirmed
-                                - (above_receive_details_lock.height
+                                - (above_receive_details_lock.new_height
                                     - preparation_data_a.confirmation_height);
 
                             let block_data = above_receive_details_lock.block_callback_data.clone();
@@ -429,7 +429,7 @@ impl ConfirmationHeightUnbounded {
                             let details = ConfHeightDetails {
                                 account: preparation_data_a.account,
                                 hash: preparation_data_a.current,
-                                height: block_height,
+                                new_height: block_height,
                                 num_blocks_confirmed,
                                 block_callback_data,
                                 source_block_callback_data: Vec::new(),
@@ -448,7 +448,7 @@ impl ConfirmationHeightUnbounded {
                             let details = ConfHeightDetails {
                                 account: preparation_data_a.account,
                                 hash: preparation_data_a.current,
-                                height: block_height,
+                                new_height: block_height,
                                 num_blocks_confirmed,
                                 block_callback_data,
                                 source_block_callback_data: Vec::new(),
@@ -462,7 +462,7 @@ impl ConfirmationHeightUnbounded {
                         let details = ConfHeightDetails {
                             account: preparation_data_a.account,
                             hash: preparation_data_a.current,
-                            height: block_height,
+                            new_height: block_height,
                             num_blocks_confirmed,
                             block_callback_data,
                             source_block_callback_data: Vec::new(),
@@ -474,7 +474,7 @@ impl ConfirmationHeightUnbounded {
                 let details = ConfHeightDetails {
                     account: preparation_data_a.account,
                     hash: preparation_data_a.current,
-                    height: block_height,
+                    new_height: block_height,
                     num_blocks_confirmed,
                     block_callback_data,
                     source_block_callback_data: Vec::new(),
@@ -496,10 +496,10 @@ impl ConfirmationHeightUnbounded {
                         .confirmed_iterated_pairs
                         .get_mut(&receive_account)
                         .unwrap();
-                    pair.confirmed_height = receive_details_lock.height;
+                    pair.confirmed_height = receive_details_lock.new_height;
                     let orig_num_blocks_confirmed = receive_details_lock.num_blocks_confirmed;
                     receive_details_lock.num_blocks_confirmed =
-                        receive_details_lock.height - current_height;
+                        receive_details_lock.new_height - current_height;
 
                     // Get the difference and remove the callbacks
                     let block_callbacks_to_remove =
@@ -515,8 +515,8 @@ impl ConfirmationHeightUnbounded {
                 None => {
                     self.add_confirmed_iterated_pair(
                         receive_account,
-                        receive_details_lock.height,
-                        receive_details_lock.height,
+                        receive_details_lock.new_height,
+                        receive_details_lock.new_height,
                     );
                 }
             }
@@ -587,7 +587,7 @@ impl ConfirmationHeightUnbounded {
                     let details = ConfHeightDetails {
                         account: *account_a,
                         hash,
-                        height: block_height,
+                        new_height: block_height,
                         num_blocks_confirmed: 1,
                         block_callback_data: callback_data,
                         source_block_callback_data: Vec::new(),
@@ -625,7 +625,7 @@ impl ConfirmationHeightUnbounded {
     }
 
     pub fn cement_pending_blocks(&mut self) {
-        self.cementor.cement_pending_blocks(
+        self.cementor.cement_blocks(
             &mut self.cement_queue,
             self.block_cache.read().unwrap().deref(),
         );
@@ -636,7 +636,7 @@ impl ConfirmationHeightUnbounded {
 pub struct ConfHeightDetails {
     pub account: Account,
     pub hash: BlockHash,
-    pub height: u64,
+    pub new_height: u64,
     pub num_blocks_confirmed: u64,
     pub block_callback_data: Vec<BlockHash>,
     pub source_block_callback_data: Vec<BlockHash>,

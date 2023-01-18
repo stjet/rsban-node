@@ -87,6 +87,8 @@ pub struct NodeConfigDto {
     pub diagnostics_config: TxnTrackingConfigDto,
     pub stat_config: StatConfigDto,
     pub lmdb_config: LmdbConfigDto,
+    pub backlog_scan_batch_size: u32,
+    pub backlog_scan_frequency: u32,
 }
 
 #[repr(C)]
@@ -207,6 +209,8 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     );
     fill_stat_config_dto(&mut dto.stat_config, &cfg.stat_config);
     fill_lmdb_config_dto(&mut dto.lmdb_config, &cfg.lmdb_config);
+    dto.backlog_scan_frequency = cfg.backlog_scan_frequency;
+    dto.backlog_scan_batch_size = cfg.backlog_scan_batch_size;
 }
 
 #[no_mangle]
@@ -325,6 +329,8 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             diagnostics_config: (&value.diagnostics_config).into(),
             stat_config: (&value.stat_config).into(),
             lmdb_config: (&value.lmdb_config).into(),
+            backlog_scan_batch_size: value.backlog_scan_batch_size,
+            backlog_scan_frequency: value.backlog_scan_frequency,
         };
 
         Ok(cfg)

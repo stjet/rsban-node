@@ -77,6 +77,10 @@ pub struct NodeConfig {
     pub diagnostics_config: DiagnosticsConfig,
     pub stat_config: StatConfig,
     pub lmdb_config: LmdbConfig,
+    /// Number of accounts per second to process when doing backlog population scan
+    pub backlog_scan_batch_size: u32,
+    /// Number of times per second to run backlog population batches. Number of accounts per single batch is `backlog_scan_batch_size / backlog_scan_frequency`
+    pub backlog_scan_frequency: u32,
 }
 
 pub struct Peer {
@@ -270,6 +274,8 @@ impl NodeConfig {
             diagnostics_config: DiagnosticsConfig::new(),
             stat_config: StatConfig::new(),
             lmdb_config: LmdbConfig::new(),
+            backlog_scan_batch_size: 10 * 1000,
+            backlog_scan_frequency: 10,
         }
     }
 
@@ -349,6 +355,9 @@ impl NodeConfig {
         )?;
         toml.put_u32("max_queued_requests", self.max_queued_requests, "Limit for number of queued confirmation requests for one channel, after which new requests are dropped until the queue drops below this value.\ntype:uint32")?;
         toml.put_str("rep_crawler_weight_minimum", &self.rep_crawler_weight_minimum.to_string_dec (), "Rep crawler minimum weight, if this is less than minimum principal weight then this is taken as the minimum weight a rep must have to be tracked. If you want to track all reps set this to 0. If you do not want this to influence anything then set it to max value. This is only useful for debugging or for people who really know what they are doing.\ntype:string,amount,raw")?;
+
+        toml.put_u32 ("backlog_scan_batch_size", self.backlog_scan_batch_size, "Number of accounts per second to process when doing backlog population scan. Increasing this value will help unconfirmed frontiers get into election prioritization queue faster, however it will also increase resource usage. \ntype:uint")?;
+        toml.put_u32 ("backlog_scan_frequency", self.backlog_scan_frequency, "Backlog scan divides the scan into smaller batches, number of which is controlled by this value. Higher frequency helps to utilize resources more uniformly, however it also introduces more overhead. The resulting number of accounts per single batch is `backlog_scan_batch_size / backlog_scan_frequency` \ntype:uint")?;
 
         toml.create_array(
             "work_peers",

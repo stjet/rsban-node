@@ -4,8 +4,8 @@
 #include <nano/node/lmdb/lmdb_iterator.hpp>
 
 #include <boost/filesystem.hpp>
-#include <boost/polymorphic_cast.hpp>
 #include <boost/format.hpp>
+#include <boost/polymorphic_cast.hpp>
 
 #include <queue>
 

@@ -1,19 +1,21 @@
 mod block_cementor;
+mod cement_queue;
 use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use rsnano_store_traits::{ReadTransaction, Transaction};
 use std::{
     collections::HashMap,
+    ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
+        Arc, Mutex, RwLock, Weak,
     },
     time::Duration,
 };
 
 use crate::{config::Logging, stats::Stat};
 
-use self::block_cementor::BlockCementor;
+use self::{block_cementor::BlockCementor, cement_queue::CementQueue};
 
 /// When the uncemented count (block count - cemented count) is less than this use the unbounded processor
 const UNBOUNDED_CUTOFF: usize = 16384;
@@ -26,7 +28,7 @@ pub struct ConfirmationHeightUnbounded {
 
     //todo: Remove Mutex
     implicit_receive_cemented_mapping: HashMap<BlockHash, Weak<Mutex<ConfHeightDetails>>>,
-    block_cache: Mutex<HashMap<BlockHash, Arc<BlockEnum>>>,
+    block_cache: RwLock<HashMap<BlockHash, Arc<BlockEnum>>>,
 
     // All of the atomic variables here just track the size for use in collect_container_info.
     // This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
@@ -39,6 +41,7 @@ pub struct ConfirmationHeightUnbounded {
     notify_block_already_cemented_callback: Box<dyn Fn(&BlockHash)>,
     awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
     stopped: AtomicBool,
+    cement_queue: CementQueue,
     cementor: BlockCementor,
 }
 
@@ -61,13 +64,14 @@ impl ConfirmationHeightUnbounded {
             stats: Arc::clone(&stats),
             confirmed_iterated_pairs: HashMap::new(),
             implicit_receive_cemented_mapping: HashMap::new(),
-            block_cache: Mutex::new(HashMap::new()),
+            block_cache: RwLock::new(HashMap::new()),
             confirmed_iterated_pairs_size: AtomicUsize::new(0),
             implicit_receive_cemented_mapping_size: AtomicUsize::new(0),
             batch_write_size,
             notify_block_already_cemented_callback,
             awaiting_processing_size_callback,
             stopped: AtomicBool::new(false),
+            cement_queue: CementQueue::new(),
             cementor: BlockCementor::new(
                 batch_separate_pending_min_time,
                 write_database_queue,
@@ -85,11 +89,11 @@ impl ConfirmationHeightUnbounded {
     }
 
     pub fn pending_empty(&self) -> bool {
-        self.cementor.pending_empty()
+        self.cement_queue.is_empty()
     }
 
     pub fn pending_writes_size(&self) -> &AtomicUsize {
-        &&self.cementor.pending_writes_size
+        &&self.cement_queue.atomic_len()
     }
 
     pub fn add_confirmed_iterated_pair(
@@ -130,11 +134,14 @@ impl ConfirmationHeightUnbounded {
     }
 
     pub fn cache_block(&self, block: Arc<BlockEnum>) {
-        self.block_cache.lock().unwrap().insert(block.hash(), block);
+        self.block_cache
+            .write()
+            .unwrap()
+            .insert(block.hash(), block);
     }
 
     pub fn get_blocks(&self, details: &ConfHeightDetails) -> Vec<Arc<BlockEnum>> {
-        let cache = self.block_cache.lock().unwrap();
+        let cache = self.block_cache.read().unwrap();
         details
             .block_callback_data
             .iter()
@@ -147,7 +154,7 @@ impl ConfirmationHeightUnbounded {
         hash: &BlockHash,
         txn: &dyn Transaction,
     ) -> Option<Arc<BlockEnum>> {
-        let mut cache = self.block_cache.lock().unwrap();
+        let mut cache = self.block_cache.write().unwrap();
         match cache.get(hash) {
             Some(block) => Some(Arc::clone(block)),
             None => {
@@ -160,11 +167,11 @@ impl ConfirmationHeightUnbounded {
     }
 
     pub fn has_iterated_over_block(&self, hash: &BlockHash) -> bool {
-        self.block_cache.lock().unwrap().contains_key(hash)
+        self.block_cache.read().unwrap().contains_key(hash)
     }
 
     pub fn block_cache_size(&self) -> usize {
-        self.block_cache.lock().unwrap().len()
+        self.block_cache.read().unwrap().len()
     }
 
     pub fn clear_process_vars(&mut self) {
@@ -178,7 +185,7 @@ impl ConfirmationHeightUnbounded {
         self.implicit_receive_cemented_mapping_size
             .store(0, Ordering::Relaxed);
 
-        self.block_cache.lock().unwrap().clear();
+        self.block_cache.write().unwrap().clear();
     }
 
     pub fn process(&mut self, original_block: Arc<BlockEnum>) {
@@ -327,7 +334,7 @@ impl ConfirmationHeightUnbounded {
                 }
             }
 
-            let max_write_size_reached = self.cementor.pending_writes.len() >= UNBOUNDED_CUTOFF;
+            let max_write_size_reached = self.cement_queue.len() >= UNBOUNDED_CUTOFF;
             // When there are a lot of pending confirmation height blocks, it is more efficient to
             // bulk some of them up to enable better write performance which becomes the bottleneck.
             let min_time_exceeded = self.cementor.min_time_exceeded();
@@ -335,13 +342,13 @@ impl ConfirmationHeightUnbounded {
             let no_pending = (self.awaiting_processing_size_callback)() == 0;
             let should_output = finished_iterating && (no_pending || min_time_exceeded);
 
-            let total_pending_write_block_count = self.cementor.total_pending_write_block_count();
+            let total_pending_write_block_count = self.cement_queue.total_block_count();
             let force_write =
                 total_pending_write_block_count > self.batch_write_size.load(Ordering::Relaxed);
 
             let should_cement_pending_blocks =
                 (max_write_size_reached || should_output || force_write)
-                    && self.cementor.pending_writes.len() > 0;
+                    && self.cement_queue.len() > 0;
 
             if should_cement_pending_blocks {
                 self.cement_pending_blocks();
@@ -427,7 +434,7 @@ impl ConfirmationHeightUnbounded {
                                 block_callback_data,
                                 source_block_callback_data: Vec::new(),
                             };
-                            self.cementor.add_pending_write(details);
+                            self.cement_queue.push(details);
                         } else {
                             block_callback_data =
                                 receive_details_lock.source_block_callback_data.clone();
@@ -446,7 +453,7 @@ impl ConfirmationHeightUnbounded {
                                 block_callback_data,
                                 source_block_callback_data: Vec::new(),
                             };
-                            self.cementor.add_pending_write(details);
+                            self.cement_queue.push(details);
                         }
                     }
                     None => {
@@ -460,7 +467,7 @@ impl ConfirmationHeightUnbounded {
                             block_callback_data,
                             source_block_callback_data: Vec::new(),
                         };
-                        self.cementor.add_pending_write(details);
+                        self.cement_queue.push(details);
                     }
                 }
             } else {
@@ -472,7 +479,7 @@ impl ConfirmationHeightUnbounded {
                     block_callback_data,
                     source_block_callback_data: Vec::new(),
                 };
-                self.cementor.add_pending_write(details);
+                self.cement_queue.push(details);
             }
         }
 
@@ -514,8 +521,7 @@ impl ConfirmationHeightUnbounded {
                 }
             }
 
-            self.cementor
-                .add_pending_write(receive_details_lock.clone())
+            self.cement_queue.push(receive_details_lock.clone())
         }
     }
 
@@ -619,7 +625,10 @@ impl ConfirmationHeightUnbounded {
     }
 
     pub fn cement_pending_blocks(&mut self) {
-        self.cementor.cement_pending_blocks(&self.block_cache);
+        self.cementor.cement_pending_blocks(
+            &mut self.cement_queue,
+            self.block_cache.read().unwrap().deref(),
+        );
     }
 }
 

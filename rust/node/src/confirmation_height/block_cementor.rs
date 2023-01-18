@@ -1,22 +1,19 @@
 use std::{
-    collections::{HashMap, VecDeque},
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc, Mutex,
-    },
+    collections::HashMap,
+    sync::{atomic::Ordering, Arc, Mutex},
     time::{Duration, Instant},
 };
 
 use rsnano_core::{utils::Logger, BlockEnum, BlockHash, ConfirmationHeightInfo};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, Writer};
-use rsnano_store_traits::Table;
+use rsnano_store_traits::{Table, WriteTransaction};
 
 use crate::{
     config::Logging,
     stats::{DetailType, Direction, Stat, StatType},
 };
 
-use super::ConfHeightDetails;
+use super::{cement_queue::CementQueue, ConfHeightDetails};
 
 // Cements blocks. That means it increases the confirmation_height of the account
 pub(crate) struct BlockCementor {
@@ -27,8 +24,6 @@ pub(crate) struct BlockCementor {
     logger: Arc<dyn Logger>,
     pub logging: Logging,
     stats: Arc<Stat>,
-    pub pending_writes: VecDeque<ConfHeightDetails>,
-    pub pending_writes_size: AtomicUsize,
     notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
     block_cache: Mutex<HashMap<BlockHash, Arc<BlockEnum>>>,
 }
@@ -51,8 +46,6 @@ impl BlockCementor {
             logger,
             logging,
             stats,
-            pending_writes: VecDeque::new(),
-            pending_writes_size: AtomicUsize::new(0),
             notify_observers_callback,
             block_cache: Mutex::new(HashMap::new()),
         }
@@ -66,59 +59,33 @@ impl BlockCementor {
         self.timer.elapsed() >= self.batch_separate_pending_min_time
     }
 
-    pub fn pending_empty(&self) -> bool {
-        self.pending_writes.is_empty()
-    }
-
-    pub fn add_pending_write(&mut self, details: ConfHeightDetails) {
-        self.pending_writes.push_back(details);
-        self.pending_writes_size.fetch_add(1, Ordering::Relaxed);
-    }
-
-    pub fn erase_first_pending_write(&mut self) {
-        self.pending_writes.pop_front();
-        self.pending_writes_size.fetch_sub(1, Ordering::Relaxed);
-    }
-
-    pub fn total_pending_write_block_count(&self) -> u64 {
-        self.pending_writes
-            .iter()
-            .map(|x| x.num_blocks_confirmed)
-            .sum()
-    }
-
     pub fn cement_pending_blocks(
         &mut self,
-        block_cache: &Mutex<HashMap<BlockHash, Arc<BlockEnum>>>,
+        cement_queue: &mut CementQueue,
+        block_cache: &HashMap<BlockHash, Arc<BlockEnum>>,
     ) {
         let mut scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
         let cemented_batch_timer: Instant;
         let mut cemented_blocks: Vec<Arc<BlockEnum>> = Vec::new();
-        let mut error = false;
         {
-            let mut transaction = self
+            let mut txn = self
                 .ledger
                 .store
                 .tx_begin_write_for(&[Table::ConfirmationHeight])
                 .unwrap();
-            cemented_batch_timer = Instant::now();
-            while !self.pending_writes.is_empty() {
-                let mut pending = self.pending_writes.front().unwrap().clone(); //todo: remove unwrap
 
-                let confirmation_height_info = self
+            cemented_batch_timer = Instant::now();
+
+            while let Some(mut pending) = cement_queue.pop() {
+                let old_conf_height = self
                     .ledger
                     .store
                     .confirmation_height()
-                    .get(transaction.txn(), &pending.account)
+                    .get(txn.txn(), &pending.account)
                     .unwrap_or_default();
-                let mut confirmation_height = confirmation_height_info.height;
 
-                if pending.height > confirmation_height {
-                    let block = self
-                        .ledger
-                        .store
-                        .block()
-                        .get(transaction.txn(), &pending.hash);
+                if pending.height > old_conf_height.height {
+                    let block = self.ledger.store.block().get(txn.txn(), &pending.hash);
 
                     debug_assert!(self.ledger.pruning_enabled() || block.is_some());
                     debug_assert!(
@@ -128,61 +95,30 @@ impl BlockCementor {
 
                     if block.is_none() {
                         if self.ledger.pruning_enabled()
-                            && self
-                                .ledger
-                                .store
-                                .pruned()
-                                .exists(transaction.txn(), &pending.hash)
+                            && self.ledger.store.pruned().exists(txn.txn(), &pending.hash)
                         {
-                            self.erase_first_pending_write();
                             continue;
                         } else {
                             let error_str = format!("Failed to write confirmation height for block {} (unbounded processor)", pending.hash);
                             self.logger.always_log(&error_str);
-                            eprintln!("{}", error_str);
-                            error = true;
-                            break;
+                            panic!("{}", error_str);
                         }
                     }
-                    let _ = self.stats.add(
-                        StatType::ConfirmationHeight,
-                        DetailType::BlocksConfirmed,
-                        Direction::In,
-                        pending.height - confirmation_height,
-                        false,
-                    );
-                    let _ = self.stats.add(
-                        StatType::ConfirmationHeight,
-                        DetailType::BlocksConfirmedUnbounded,
-                        Direction::In,
-                        pending.height - confirmation_height,
-                        false,
-                    );
 
                     debug_assert!(
-                        pending.num_blocks_confirmed == pending.height - confirmation_height
+                        pending.num_blocks_confirmed == pending.height - old_conf_height.height
                     );
-                    confirmation_height = pending.height;
-                    self.ledger
-                        .cache
-                        .cemented_count
-                        .fetch_add(pending.num_blocks_confirmed, Ordering::SeqCst);
 
-                    self.ledger.store.confirmation_height().put(
-                        transaction.as_mut(),
-                        &pending.account,
-                        &ConfirmationHeightInfo::new(confirmation_height, pending.hash),
-                    );
+                    self.write_confirmation_height(txn.as_mut(), &pending);
+                    self.notify_num_blocks_confirmed(&pending);
 
                     // Reverse it so that the callbacks start from the lowest newly cemented block and move upwards
                     pending.block_callback_data.reverse();
 
-                    let cache = block_cache.lock().unwrap();
                     for hash in &pending.block_callback_data {
-                        cemented_blocks.push(Arc::clone(cache.get(hash).unwrap()));
+                        cemented_blocks.push(Arc::clone(block_cache.get(hash).unwrap()));
                     }
                 }
-                self.erase_first_pending_write();
             }
         }
 
@@ -197,10 +133,43 @@ impl BlockCementor {
 
         scoped_write_guard.release();
         (self.notify_observers_callback)(&cemented_blocks);
-        assert!(!error);
 
-        debug_assert!(self.pending_writes.len() == 0);
-        debug_assert!(self.pending_writes_size.load(Ordering::Relaxed) == 0);
+        debug_assert!(cement_queue.len() == 0);
+        debug_assert!(cement_queue.atomic_len().load(Ordering::Relaxed) == 0);
         self.restart_timer();
+    }
+
+    fn write_confirmation_height(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        conf_height: &ConfHeightDetails,
+    ) {
+        self.ledger
+            .cache
+            .cemented_count
+            .fetch_add(conf_height.num_blocks_confirmed, Ordering::SeqCst);
+
+        self.ledger.store.confirmation_height().put(
+            txn,
+            &conf_height.account,
+            &ConfirmationHeightInfo::new(conf_height.height, conf_height.hash),
+        );
+    }
+
+    fn notify_num_blocks_confirmed(&self, pending: &super::ConfHeightDetails) {
+        let _ = self.stats.add(
+            StatType::ConfirmationHeight,
+            DetailType::BlocksConfirmed,
+            Direction::In,
+            pending.num_blocks_confirmed,
+            false,
+        );
+        let _ = self.stats.add(
+            StatType::ConfirmationHeight,
+            DetailType::BlocksConfirmedUnbounded,
+            Direction::In,
+            pending.num_blocks_confirmed,
+            false,
+        );
     }
 }

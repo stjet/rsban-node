@@ -166,7 +166,10 @@ impl BlockCementor {
         self.ledger.store.confirmation_height().put(
             txn,
             &conf_height.account,
-            &ConfirmationHeightInfo::new(conf_height.new_height, conf_height.latest_confirmed_block),
+            &ConfirmationHeightInfo::new(
+                conf_height.new_height,
+                conf_height.latest_confirmed_block,
+            ),
         );
 
         self.ledger

@@ -3,6 +3,7 @@ use rsnano_core::{Account, BlockHash};
 mod block_cementor;
 mod cement_queue;
 mod confirmation_height_unbounded;
+mod implicit_receive_cemented_mapping;
 
 pub use confirmation_height_unbounded::ConfirmationHeightUnbounded;
 

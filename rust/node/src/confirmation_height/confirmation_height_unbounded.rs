@@ -1,12 +1,12 @@
 use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
-use rsnano_store_traits::{ReadTransaction, Transaction};
+use rsnano_store_traits::Transaction;
 use std::{
     collections::HashMap,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, Mutex, RwLock, Weak,
+        Arc, Mutex, RwLock,
     },
     time::Duration,
 };
@@ -14,7 +14,8 @@ use std::{
 use crate::{config::Logging, stats::Stat};
 
 use super::{
-    block_cementor::BlockCementor, cement_queue::CementQueue, ConfHeightDetails,
+    block_cementor::BlockCementor, cement_queue::CementQueue,
+    implicit_receive_cemented_mapping::ImplictReceiveCementedMapping, ConfHeightDetails,
     ConfirmedIteratedPair,
 };
 
@@ -26,8 +27,7 @@ pub struct ConfirmationHeightUnbounded {
     logger: Arc<dyn Logger>,
     pub confirmed_iterated_pairs: HashMap<Account, ConfirmedIteratedPair>,
 
-    //todo: Remove Mutex
-    implicit_receive_cemented_mapping: HashMap<BlockHash, Weak<Mutex<ConfHeightDetails>>>,
+    implicit_receive_cemented_mapping: ImplictReceiveCementedMapping,
     block_cache: RwLock<HashMap<BlockHash, Arc<BlockEnum>>>,
 
     // All of the atomic variables here just track the size for use in collect_container_info.
@@ -36,7 +36,6 @@ pub struct ConfirmationHeightUnbounded {
     // upon in any way (does not synchronize with any other data).
     // This allows the load and stores to use relaxed atomic memory ordering.
     pub confirmed_iterated_pairs_size: AtomicUsize,
-    pub implicit_receive_cemented_mapping_size: AtomicUsize,
     batch_write_size: Arc<AtomicU64>,
     notify_block_already_cemented_callback: Box<dyn Fn(&BlockHash)>,
     awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
@@ -62,10 +61,9 @@ impl ConfirmationHeightUnbounded {
             ledger: Arc::clone(&ledger),
             logger: Arc::clone(&logger),
             confirmed_iterated_pairs: HashMap::new(),
-            implicit_receive_cemented_mapping: HashMap::new(),
+            implicit_receive_cemented_mapping: ImplictReceiveCementedMapping::new(),
             block_cache: RwLock::new(HashMap::new()),
             confirmed_iterated_pairs_size: AtomicUsize::new(0),
-            implicit_receive_cemented_mapping_size: AtomicUsize::new(0),
             batch_write_size,
             notify_block_already_cemented_callback,
             awaiting_processing_size_callback,
@@ -112,26 +110,6 @@ impl ConfirmationHeightUnbounded {
             .fetch_add(1, Ordering::Relaxed);
     }
 
-    pub fn add_implicit_receive_cemented(
-        &mut self,
-        hash: BlockHash,
-        details: &Arc<Mutex<ConfHeightDetails>>,
-    ) {
-        let details = Arc::downgrade(&details);
-        self.implicit_receive_cemented_mapping.insert(hash, details);
-        self.implicit_receive_cemented_mapping_size.store(
-            self.implicit_receive_cemented_mapping.len(),
-            Ordering::Relaxed,
-        );
-    }
-
-    pub fn get_implicit_receive_cemented(
-        &self,
-        hash: &BlockHash,
-    ) -> Option<&Weak<Mutex<ConfHeightDetails>>> {
-        self.implicit_receive_cemented_mapping.get(hash)
-    }
-
     pub fn cache_block(&self, block: Arc<BlockEnum>) {
         self.block_cache
             .write()
@@ -148,7 +126,7 @@ impl ConfirmationHeightUnbounded {
             .collect()
     }
 
-    pub fn get_block_and_sideband(
+    fn get_block_and_sideband(
         &self,
         hash: &BlockHash,
         txn: &dyn Transaction,
@@ -181,9 +159,6 @@ impl ConfirmationHeightUnbounded {
             .store(0, Ordering::Relaxed);
 
         self.implicit_receive_cemented_mapping.clear();
-        self.implicit_receive_cemented_mapping_size
-            .store(0, Ordering::Relaxed);
-
         self.block_cache.write().unwrap().clear();
     }
 
@@ -198,7 +173,7 @@ impl ConfirmationHeightUnbounded {
         let mut receive_source_pairs: Vec<Arc<ReceiveSourcePair>> = Vec::new();
 
         let mut first_iter = true;
-        let mut read_transaction = self.ledger.read_txn();
+        let mut txn = self.ledger.read_txn();
 
         loop {
             match receive_source_pairs.last() {
@@ -223,7 +198,7 @@ impl ConfirmationHeightUnbounded {
                 self.cache_block(Arc::clone(&original_block));
                 Some(Arc::clone(&original_block))
             } else {
-                self.get_block_and_sideband(&current_block_hash, read_transaction.txn())
+                self.get_block_and_sideband(&current_block_hash, txn.txn())
             };
 
             let Some(block) = block else{
@@ -234,43 +209,22 @@ impl ConfirmationHeightUnbounded {
 
             let account = block.account_calculated();
             let block_height = block.sideband().unwrap().height;
-            let confirmed_and_iterated = self.confirmed_iterated_pairs.get(&account).cloned();
-            let confirmation_height = match &confirmed_and_iterated {
-                Some(conf_it) => conf_it.confirmed_height,
-                None => {
-                    let confirmation_height_info = self
-                        .ledger
-                        .store
-                        .confirmation_height()
-                        .get(read_transaction.txn(), &account)
-                        .unwrap_or_default();
+            let heights = self.get_confirmed_and_iterated_heights(&account, txn.txn());
 
-                    // This block was added to the confirmation height processor but is already confirmed
-                    if first_iter && confirmation_height_info.height >= block_height {
-                        debug_assert!(current_block_hash == original_block.hash());
-                        (self.notify_block_already_cemented_callback)(&original_block.hash());
-                    }
-                    confirmation_height_info.height
-                }
-            };
-
-            let iterated_height = if let Some(conf_it) = &confirmed_and_iterated {
-                std::cmp::max(conf_it.iterated_height, confirmation_height)
-            } else {
-                confirmation_height
-            };
+            if first_iter && heights.confirmed_height >= block_height {
+                // This block was added to the confirmation height processor but is already confirmed
+                debug_assert!(current_block_hash == original_block.hash());
+                (self.notify_block_already_cemented_callback)(&original_block.hash());
+            }
 
             let count_before_receive = receive_source_pairs.len();
             let mut block_callback_datas_required = Vec::new();
-            let already_traversed = iterated_height >= block_height;
+            let already_traversed = heights.iterated_height >= block_height;
             if !already_traversed {
                 self.collect_unconfirmed_receive_and_sources_for_account(
-                    block_height,
-                    iterated_height,
+                    txn.txn(),
                     &block,
-                    &current_block_hash,
-                    &account,
-                    read_transaction.as_ref(),
+                    heights.iterated_height,
                     &mut receive_source_pairs,
                     &mut block_callback_datas_required,
                     &mut orig_block_callback_data,
@@ -285,7 +239,7 @@ impl ConfirmationHeightUnbounded {
             }
 
             // No longer need the read transaction
-            read_transaction.reset();
+            txn.reset();
 
             // If this adds no more open or receive blocks, then we can now confirm this account as well as the linked open/receive block
             // Collect as pending any writes to the database and do them in bulk after a certain time.
@@ -293,9 +247,9 @@ impl ConfirmationHeightUnbounded {
             if !confirmed_receives_pending {
                 let mut preparation_data = PreparationData {
                     block_height,
-                    confirmation_height,
-                    iterated_height,
-                    account_it: confirmed_and_iterated,
+                    confirmation_height: heights.confirmed_height,
+                    iterated_height: heights.iterated_height,
+                    account_it: self.confirmed_iterated_pairs.get(&account).cloned(),
                     account,
                     receive_details: receive_details.clone(),
                     already_traversed,
@@ -306,21 +260,18 @@ impl ConfirmationHeightUnbounded {
                 self.prepare_iterated_blocks_for_cementing(&mut preparation_data);
 
                 receive_source_pairs.pop();
-            } else if block_height > iterated_height {
-                match &confirmed_and_iterated {
-                    Some(_) => {
-                        self.confirmed_iterated_pairs
-                            .get_mut(&account)
-                            .unwrap()
-                            .iterated_height = block_height;
-                    }
-                    None => {
-                        self.add_confirmed_iterated_pair(
-                            account,
-                            confirmation_height,
-                            block_height,
-                        );
-                    }
+            } else if block_height > heights.iterated_height {
+                if self.confirmed_iterated_pairs.contains_key(&account) {
+                    self.confirmed_iterated_pairs
+                        .get_mut(&account)
+                        .unwrap()
+                        .iterated_height = block_height;
+                } else {
+                    self.add_confirmed_iterated_pair(
+                        account,
+                        heights.confirmed_height,
+                        block_height,
+                    );
                 }
             }
 
@@ -340,13 +291,40 @@ impl ConfirmationHeightUnbounded {
             }
 
             first_iter = false;
-            read_transaction.renew();
+            txn.renew();
             if (receive_source_pairs.is_empty() && current_block_hash == original_block.hash())
                 || self.stopped.load(Ordering::SeqCst)
             {
                 break;
             }
         }
+    }
+
+    fn get_confirmed_and_iterated_heights(
+        &self,
+        account: &Account,
+        txn: &dyn Transaction,
+    ) -> ConfirmedIteratedPair {
+        let confirmed_and_iterated = match self.confirmed_iterated_pairs.get(account) {
+            Some(conf_it) => ConfirmedIteratedPair {
+                confirmed_height: conf_it.confirmed_height,
+                iterated_height: std::cmp::max(conf_it.iterated_height, conf_it.confirmed_height),
+            },
+            None => {
+                let height_info = self
+                    .ledger
+                    .store
+                    .confirmation_height()
+                    .get(txn, account)
+                    .unwrap_or_default();
+
+                ConfirmedIteratedPair {
+                    confirmed_height: height_info.height,
+                    iterated_height: height_info.height,
+                }
+            }
+        };
+        confirmed_and_iterated
     }
 
     fn should_force_write(&mut self) -> bool {
@@ -394,7 +372,8 @@ impl ConfirmationHeightUnbounded {
                             drop(receive_details_lock);
                             // We are confirming a block which has already been traversed and found no associated receive details for it.
                             let above_receive_details_w = self
-                                .get_implicit_receive_cemented(&preparation_data_a.current)
+                                .implicit_receive_cemented_mapping
+                                .get(&preparation_data_a.current)
                                 .unwrap();
                             debug_assert!(above_receive_details_w.strong_count() > 0);
                             let above_receive_details = above_receive_details_w.upgrade().unwrap();
@@ -488,32 +467,28 @@ impl ConfirmationHeightUnbounded {
 
     pub fn collect_unconfirmed_receive_and_sources_for_account(
         &mut self,
-        block_height_a: u64,
-        confirmation_height_a: u64,
+        txn: &dyn Transaction,
         block_a: &Arc<BlockEnum>,
-        hash_a: &BlockHash,
-        account_a: &Account,
-        transaction_a: &dyn ReadTransaction,
-        receive_source_pairs_a: &mut Vec<Arc<ReceiveSourcePair>>,
-        block_callback_data_a: &mut Vec<BlockHash>,
-        orig_block_callback_data_a: &mut Vec<BlockHash>,
+        confirmation_height: u64,
+        receive_source_pairs: &mut Vec<Arc<ReceiveSourcePair>>,
+        block_callback_data: &mut Vec<BlockHash>,
+        orig_block_callback_data: &mut Vec<BlockHash>,
         original_block: &BlockEnum,
     ) {
-        debug_assert!(block_a.hash() == *hash_a);
-        let mut hash = *hash_a;
-        let mut num_to_confirm = block_height_a - confirmation_height_a;
+        let mut block_hash = block_a.hash();
+        let mut num_to_confirm = block_a.sideband().unwrap().height - confirmation_height;
 
         // Handle any sends above a receive
-        let mut is_original_block = hash == original_block.hash();
+        let mut is_original_block = block_hash == original_block.hash();
         let mut hit_receive = false;
         let mut first_iter = true;
-        while (num_to_confirm > 0) && !hash.is_zero() && !self.stopped.load(Ordering::SeqCst) {
+        while (num_to_confirm > 0) && !block_hash.is_zero() && !self.stopped.load(Ordering::SeqCst)
+        {
             let block = if first_iter {
-                debug_assert!(hash == *hash_a);
                 self.cache_block(Arc::clone(&block_a));
                 Some(Arc::clone(block_a))
             } else {
-                self.get_block_and_sideband(&hash, transaction_a.txn())
+                self.get_block_and_sideband(&block_hash, txn)
             };
 
             if let Some(block) = &block {
@@ -521,63 +496,57 @@ impl ConfirmationHeightUnbounded {
 
                 if !source.is_zero()
                     && !self.ledger.is_epoch_link(&source.into())
-                    && self
-                        .ledger
-                        .store
-                        .block()
-                        .exists(transaction_a.txn(), &source)
+                    && self.ledger.store.block().exists(txn, &source)
                 {
-                    if !hit_receive && !block_callback_data_a.is_empty() {
+                    if !hit_receive && !block_callback_data.is_empty() {
                         // Add the callbacks to the associated receive to retrieve later
-                        debug_assert!(!receive_source_pairs_a.is_empty());
-                        let last_pair = receive_source_pairs_a.last().unwrap();
+                        let last_pair = receive_source_pairs.last().unwrap();
                         last_pair
                             .receive_details
                             .lock()
                             .unwrap()
-                            .source_block_callback_data = block_callback_data_a.clone();
-                        block_callback_data_a.clear();
+                            .source_block_callback_data = block_callback_data.clone();
+                        block_callback_data.clear();
                     }
 
                     is_original_block = false;
                     hit_receive = true;
 
-                    let block_height = confirmation_height_a + num_to_confirm;
-                    let mut callback_data = Vec::new();
-                    callback_data.push(hash);
                     let details = ConfHeightDetails {
-                        account: *account_a,
-                        latest_confirmed_block: hash,
-                        new_height: block_height,
+                        account: block_a.account_calculated(),
+                        latest_confirmed_block: block_hash,
+                        new_height: confirmation_height + num_to_confirm,
                         num_blocks_confirmed: 1,
-                        block_callback_data: callback_data,
+                        block_callback_data: vec![block_hash],
                         source_block_callback_data: Vec::new(),
                     };
-                    let shared_details = Arc::new(Mutex::new(details));
-                    receive_source_pairs_a.push(Arc::new(ReceiveSourcePair {
-                        receive_details: shared_details,
+                    receive_source_pairs.push(Arc::new(ReceiveSourcePair {
+                        receive_details: Arc::new(Mutex::new(details)),
                         source_hash: source,
                     }));
                 } else if is_original_block {
-                    orig_block_callback_data_a.push(hash);
+                    orig_block_callback_data.push(block_hash);
                 } else {
                     if !hit_receive {
                         // This block is cemented via a recieve, as opposed to below a receive being cemented
-                        block_callback_data_a.push(hash);
+                        block_callback_data.push(block_hash);
                     } else {
                         // We have hit a receive before, add the block to it
-                        let last_pair = receive_source_pairs_a.last().unwrap();
+                        let last_pair = receive_source_pairs.last().unwrap();
                         let last_receive_details = &last_pair.receive_details;
                         let mut last_receive_details_lock = last_receive_details.lock().unwrap();
                         last_receive_details_lock.num_blocks_confirmed += 1;
-                        last_receive_details_lock.block_callback_data.push(hash);
+                        last_receive_details_lock
+                            .block_callback_data
+                            .push(block_hash);
                         drop(last_receive_details_lock);
 
-                        self.add_implicit_receive_cemented(hash, last_receive_details);
+                        self.implicit_receive_cemented_mapping
+                            .add(block_hash, last_receive_details);
                     }
                 }
 
-                hash = block.previous();
+                block_hash = block.previous();
             }
 
             num_to_confirm -= 1;
@@ -590,6 +559,10 @@ impl ConfirmationHeightUnbounded {
             &mut self.cement_queue,
             self.block_cache.read().unwrap().deref(),
         );
+    }
+
+    pub fn implicit_receive_cemented_mapping_size(&self) -> usize {
+        self.implicit_receive_cemented_mapping.size_atomic()
     }
 }
 

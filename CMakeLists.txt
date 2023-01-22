@@ -14,6 +14,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET
     10.14
     CACHE STRING "")
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(nano-node)
 
 # Build the Rust part

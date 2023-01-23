@@ -84,7 +84,9 @@ util/build_prep/*/prep.sh
 
 .cargo
 cargo
-build_*
 cmake-build-debug/
 rust/target
 nano/lib/rsnano.hpp
+build/
+.cache/
+

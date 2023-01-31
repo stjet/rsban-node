@@ -70,11 +70,6 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 
 nano::block_processor::~block_processor ()
 {
-	stop ();
-	if (processing_thread.joinable ())
-	{
-		processing_thread.join ();
-	}
 	rsnano::rsn_block_processor_destroy (handle);
 }
 
@@ -91,6 +86,7 @@ void nano::block_processor::stop ()
 	}
 	condition.notify_all ();
 	state_block_signature_verification.stop ();
+	nano::join_or_pass (processing_thread);
 }
 
 void nano::block_processor::flush ()

@@ -1484,7 +1484,7 @@ void nano::node::process_confirmed_data (nano::transaction const & transaction_a
 void nano::node::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
 {
 	auto hash (status_a.get_winner ()->hash ());
-	auto const num_iters = (config->block_processor_batch_max_time / network_params.node.process_confirmed_interval) * 4;
+	decltype (iteration_a) const num_iters = (config->block_processor_batch_max_time / network_params.node.process_confirmed_interval) * 4;
 	std::shared_ptr<nano::block> block_l;
 	{
 		auto tx{ ledger.store.tx_begin_read () };

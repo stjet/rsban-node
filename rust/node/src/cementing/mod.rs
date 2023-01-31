@@ -3,9 +3,11 @@ use rsnano_core::{Account, BlockHash};
 mod block_cementor;
 mod cement_queue;
 mod confirmation_height_unbounded;
+mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
 
 pub use confirmation_height_unbounded::ConfirmationHeightUnbounded;
+pub use confirmed_iterated_pairs::ConfirmedIteratedPair;
 
 /// We need these details whenever we want to write the new
 /// confirmation height to the ledger
@@ -17,10 +19,4 @@ pub struct ConfHeightDetails {
     pub num_blocks_confirmed: u64,
     pub block_callback_data: Vec<BlockHash>,
     pub source_block_callback_data: Vec<BlockHash>,
-}
-
-#[derive(Clone)]
-pub struct ConfirmedIteratedPair {
-    pub confirmed_height: u64,
-    pub iterated_height: u64,
 }

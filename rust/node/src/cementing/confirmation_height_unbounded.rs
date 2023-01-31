@@ -14,9 +14,11 @@ use std::{
 use crate::{config::Logging, stats::Stat};
 
 use super::{
-    block_cementor::BlockCementor, cement_queue::CementQueue,
-    implicit_receive_cemented_mapping::ImplictReceiveCementedMapping, ConfHeightDetails,
-    ConfirmedIteratedPair,
+    block_cementor::BlockCementor,
+    cement_queue::CementQueue,
+    confirmed_iterated_pairs::{ConfirmedIteratedPair, ConfirmedIteratedPairMap},
+    implicit_receive_cemented_mapping::ImplictReceiveCementedMapping,
+    ConfHeightDetails,
 };
 
 /// When the uncemented count (block count - cemented count) is less than this use the unbounded processor
@@ -25,17 +27,10 @@ const UNBOUNDED_CUTOFF: usize = 16384;
 pub struct ConfirmationHeightUnbounded {
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
-    pub confirmed_iterated_pairs: HashMap<Account, ConfirmedIteratedPair>,
-
+    confirmed_iterated_pairs: ConfirmedIteratedPairMap,
     implicit_receive_cemented_mapping: ImplictReceiveCementedMapping,
     block_cache: RwLock<HashMap<BlockHash, Arc<BlockEnum>>>,
 
-    // All of the atomic variables here just track the size for use in collect_container_info.
-    // This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
-    // for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
-    // upon in any way (does not synchronize with any other data).
-    // This allows the load and stores to use relaxed atomic memory ordering.
-    pub confirmed_iterated_pairs_size: AtomicUsize,
     batch_write_size: Arc<AtomicU64>,
     notify_block_already_cemented_callback: Box<dyn Fn(&BlockHash)>,
     awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
@@ -60,10 +55,9 @@ impl ConfirmationHeightUnbounded {
         Self {
             ledger: Arc::clone(&ledger),
             logger: Arc::clone(&logger),
-            confirmed_iterated_pairs: HashMap::new(),
+            confirmed_iterated_pairs: ConfirmedIteratedPairMap::new(),
             implicit_receive_cemented_mapping: ImplictReceiveCementedMapping::new(),
             block_cache: RwLock::new(HashMap::new()),
-            confirmed_iterated_pairs_size: AtomicUsize::new(0),
             batch_write_size,
             notify_block_already_cemented_callback,
             awaiting_processing_size_callback,
@@ -99,15 +93,8 @@ impl ConfirmationHeightUnbounded {
         confirmed_height: u64,
         iterated_height: u64,
     ) {
-        self.confirmed_iterated_pairs.insert(
-            account,
-            ConfirmedIteratedPair {
-                confirmed_height,
-                iterated_height,
-            },
-        );
-        self.confirmed_iterated_pairs_size
-            .fetch_add(1, Ordering::Relaxed);
+        self.confirmed_iterated_pairs
+            .insert(account, confirmed_height, iterated_height);
     }
 
     pub fn cache_block(&self, block: Arc<BlockEnum>) {
@@ -155,9 +142,6 @@ impl ConfirmationHeightUnbounded {
         // Separate blocks which are pending confirmation height can be batched by a minimum processing time (to improve lmdb disk write performance),
         // so make sure the slate is clean when a new batch is starting.
         self.confirmed_iterated_pairs.clear();
-        self.confirmed_iterated_pairs_size
-            .store(0, Ordering::Relaxed);
-
         self.implicit_receive_cemented_mapping.clear();
         self.block_cache.write().unwrap().clear();
     }
@@ -261,18 +245,11 @@ impl ConfirmationHeightUnbounded {
 
                 receive_source_pairs.pop();
             } else if block_height > heights.iterated_height {
-                if self.confirmed_iterated_pairs.contains_key(&account) {
-                    self.confirmed_iterated_pairs
-                        .get_mut(&account)
-                        .unwrap()
-                        .iterated_height = block_height;
-                } else {
-                    self.add_confirmed_iterated_pair(
-                        account,
-                        heights.confirmed_height,
-                        block_height,
-                    );
-                }
+                self.confirmed_iterated_pairs.update_iterated_height(
+                    &account,
+                    heights.confirmed_height,
+                    block_height,
+                );
             }
 
             // When there are a lot of pending confirmation height blocks, it is more efficient to
@@ -337,7 +314,7 @@ impl ConfirmationHeightUnbounded {
 
     /// Walks backwards through the accounts blocks (starting at current_block)
     /// and finds all unconfirmed receives and adds them to receive_source_pairs
-    pub fn collect_unconfirmed_receive_and_sources_for_account(
+    fn collect_unconfirmed_receive_and_sources_for_account(
         &mut self,
         txn: &dyn Transaction,
         current_block: &Arc<BlockEnum>,
@@ -571,6 +548,10 @@ impl ConfirmationHeightUnbounded {
 
     pub fn implicit_receive_cemented_mapping_size(&self) -> usize {
         self.implicit_receive_cemented_mapping.size_atomic()
+    }
+
+    pub fn confirmed_iterated_pairs_size_atomic(&self) -> usize {
+        self.confirmed_iterated_pairs.size_atomic()
     }
 }
 

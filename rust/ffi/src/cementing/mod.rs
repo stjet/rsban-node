@@ -10,8 +10,8 @@ use std::{
 
 use rsnano_core::{BlockEnum, BlockHash};
 use rsnano_node::{
+    cementing::{ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair},
     config::Logging,
-    confirmation_height::{ConfHeightDetails, ConfirmationHeightUnbounded, ConfirmedIteratedPair},
 };
 
 use crate::{
@@ -200,10 +200,7 @@ pub extern "C" fn rsn_conf_height_details_size() -> usize {
 pub unsafe extern "C" fn rsn_conf_height_unbounded_conf_iterated_pairs_len(
     handle: *const ConfirmationHeightUnboundedHandle,
 ) -> usize {
-    (*handle)
-        .0
-        .confirmed_iterated_pairs_size
-        .load(Ordering::Relaxed)
+    (*handle).0.confirmed_iterated_pairs_size_atomic()
 }
 
 #[no_mangle]

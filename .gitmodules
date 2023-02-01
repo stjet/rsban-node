@@ -1,18 +1,18 @@
-[submodule "miniupnp"]
-	path = miniupnp
+[submodule "submodules/miniupnp"]
+	path = submodules/miniupnp
 	url = https://github.com/miniupnp/miniupnp.git
-[submodule "gtest"]
-	path = gtest
+[submodule "submodules/gtest"]
+	path = submodules/gtest
 	url = https://github.com/google/googletest.git
-[submodule "cpptoml"]
-	path = cpptoml
+[submodule "submodules/cpptoml"]
+	path = submodules/cpptoml
 	url = https://github.com/cryptocode/cpptoml.git
-[submodule "flatbuffers"]
-	path = flatbuffers
+[submodule "submodules/flatbuffers"]
+	path = submodules/flatbuffers
 	url = https://github.com/google/flatbuffers.git
-[submodule "diskhash"]
-	path = diskhash
+[submodule "submodules/diskhash"]
+	path = submodules/diskhash
 	url = https://github.com/nanocurrency/diskhash.git
 [submodule "boost"]
-	path = boost
+	path = submodules/boost
 	url = https://github.com/boostorg/boost.git

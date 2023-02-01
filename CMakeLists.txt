@@ -340,7 +340,7 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR})
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
-set(Boost_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/boost/libs/config/include)
+set(Boost_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/submodules/boost/libs/config/include)
 set(BOOST_MODULE_LIBS
     algorithm
     align
@@ -428,7 +428,7 @@ set(BOOST_MODULE_LIBS
 
 add_definitions(-DBOOST_ALL_NO_LIB) # Disable automatic boost linking
 foreach(lib IN LISTS BOOST_MODULE_LIBS)
-  add_subdirectory(boost/libs/${lib} EXCLUDE_FROM_ALL)
+  add_subdirectory(submodules/boost/libs/${lib} EXCLUDE_FROM_ALL)
 endforeach()
 include_directories(${BOOST_LIBRARY_INCLUDES})
 add_library(Boost::stacktrace ALIAS boost_stacktrace_basic)
@@ -445,8 +445,9 @@ target_link_libraries(boost_property_tree INTERFACE Boost::multi_index)
 
 # diskhash
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_library(diskhash STATIC ${CMAKE_SOURCE_DIR}/diskhash/src/diskhash.c)
-  include_directories(diskhash/src)
+  add_library(diskhash STATIC
+              ${CMAKE_SOURCE_DIR}/submodules/diskhash/src/diskhash.c)
+  include_directories(submodules/diskhash/src)
 endif()
 
 include_directories(cpptoml/include)
@@ -457,7 +458,7 @@ add_subdirectory(nano/ipc_flatbuffers_test)
 set(UPNPC_BUILD_SHARED
     OFF
     CACHE BOOL "")
-add_subdirectory(miniupnp/miniupnpc EXCLUDE_FROM_ALL)
+add_subdirectory(submodules/miniupnp/miniupnpc EXCLUDE_FROM_ALL)
 
 set(BUILD_SHARED
     OFF
@@ -504,13 +505,13 @@ if(NANO_TEST OR RAIBLOCKS_TEST)
 
   # FIXME: This fixes googletest GOOGLETEST_VERSION requirement
   set(GOOGLETEST_VERSION 1.11.0)
-  add_subdirectory(gtest/googletest)
+  add_subdirectory(submodules/gtest/googletest)
   # FIXME: This fixes gtest include directories without modifying gtest's
   # CMakeLists.txt. Ideally we should use GTest::GTest and GTest::Main as
   # dependencies but it requires building gtest differently
   set_target_properties(
     gtest PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-                     "${CMAKE_SOURCE_DIR}/gtest/googletest/include")
+                     "${CMAKE_SOURCE_DIR}/submodules/gtest/googletest/include")
 
   add_subdirectory(nano/test_common)
   add_subdirectory(nano/core_test)

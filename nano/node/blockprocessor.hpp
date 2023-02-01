@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/node/websocket.hpp"
+
 #include <nano/lib/blocks.hpp>
 #include <nano/node/state_block_signature_verification.hpp>
 #include <nano/secure/common.hpp>

@@ -13,7 +13,7 @@ constexpr double nano::bootstrap_limits::lazy_batch_pull_count_resize_ratio;
 constexpr std::size_t nano::bootstrap_limits::lazy_blocks_restart_limit;
 
 nano::bootstrap_attempt_lazy::bootstrap_attempt_lazy (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a) :
-	nano::bootstrap_attempt (rsnano::rsn_bootstrap_attempt_lazy_create (nano::to_logger_handle (node_a->logger), node_a->websocket_server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), incremental_id_a)),
+	nano::bootstrap_attempt (rsnano::rsn_bootstrap_attempt_lazy_create (nano::to_logger_handle (node_a->logger), node_a->websocket.server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), incremental_id_a)),
 	node (node_a)
 {
 }

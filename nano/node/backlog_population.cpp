@@ -13,7 +13,6 @@ nano::backlog_population::backlog_population (const config & config_a, nano::sto
 
 nano::backlog_population::~backlog_population ()
 {
-	stop ();
 	// Thread must be stopped before destruction
 	debug_assert (!thread.joinable ());
 }
@@ -30,7 +29,9 @@ void nano::backlog_population::start ()
 
 void nano::backlog_population::stop ()
 {
+	nano::unique_lock<nano::mutex> lock{ mutex };
 	stopped = true;
+	lock.unlock ();
 	notify ();
 	nano::join_or_pass (thread);
 }
@@ -64,9 +65,7 @@ void nano::backlog_population::run ()
 			stats.inc (nano::stat::type::backlog, nano::stat::detail::loop);
 
 			triggered = false;
-			lock.unlock ();
-			populate_backlog ();
-			lock.lock ();
+			populate_backlog (lock);
 		}
 
 		condition.wait (lock, [this] () {
@@ -75,7 +74,7 @@ void nano::backlog_population::run ()
 	}
 }
 
-void nano::backlog_population::populate_backlog ()
+void nano::backlog_population::populate_backlog (nano::unique_lock<nano::mutex> & lock)
 {
 	debug_assert (config_m.frequency > 0);
 
@@ -85,13 +84,14 @@ void nano::backlog_population::populate_backlog ()
 	uint64_t total = 0;
 	while (!stopped && !done)
 	{
+		lock.unlock ();
 		{
 			auto transaction = store.tx_begin_read ();
 
 			auto count = 0u;
 			auto i = store.account ().begin (*transaction, next);
-			const auto end = store.account ().end ();
-			for (; !stopped && i != end && count < chunk_size; ++i, ++count, ++total)
+			auto const end = store.account ().end ();
+			for (; i != end && count < chunk_size; ++i, ++count, ++total)
 			{
 				stats.inc (nano::stat::type::backlog, nano::stat::detail::total);
 
@@ -101,7 +101,7 @@ void nano::backlog_population::populate_backlog ()
 			}
 			done = store.account ().begin (*transaction, next) == end;
 		}
-
+		lock.lock ();
 		// Give the rest of the node time to progress without holding database lock
 		std::this_thread::sleep_for (std::chrono::milliseconds (1000 / config_m.frequency));
 	}

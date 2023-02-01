@@ -257,7 +257,7 @@ namespace transport
 		nano::network_params & network_params;
 		nano::outbound_bandwidth_limiter & limiter;
 		std::shared_ptr<nano::syn_cookies> syn_cookies;
-		std::shared_ptr<nano::stat> stats;
+		std::shared_ptr<nano::stats> stats;
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;
 		std::shared_ptr<nano::network> network;

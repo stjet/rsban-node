@@ -8,7 +8,7 @@
 
 #include <ctime>
 
-void nano::stat_config::load_dto (rsnano::StatConfigDto & dto)
+void nano::stats_config::load_dto (rsnano::StatConfigDto & dto)
 {
 	sampling_enabled = dto.sampling_enabled;
 	capacity = dto.capacity;
@@ -21,7 +21,7 @@ void nano::stat_config::load_dto (rsnano::StatConfigDto & dto)
 	log_samples_filename = std::string (reinterpret_cast<const char *> (dto.log_samples_filename), dto.log_samples_filename_len);
 }
 
-rsnano::StatConfigDto nano::stat_config::to_dto () const
+rsnano::StatConfigDto nano::stats_config::to_dto () const
 {
 	rsnano::StatConfigDto dto{};
 	dto.sampling_enabled = sampling_enabled;
@@ -39,7 +39,7 @@ rsnano::StatConfigDto nano::stat_config::to_dto () const
 	return dto;
 }
 
-nano::error nano::stat_config::deserialize_toml (nano::tomlconfig & toml)
+nano::error nano::stats_config::deserialize_toml (nano::tomlconfig & toml)
 {
 	auto sampling_l (toml.get_optional_child ("sampling"));
 	if (sampling_l)
@@ -104,79 +104,79 @@ public:
 	}
 };
 
-nano::stat::stat () :
-	stat (nano::stat_config ())
+nano::stats::stats () :
+	stats (nano::stats_config ())
 {
 }
 
-nano::stat::stat (rsnano::StatHandle * handle_a) :
+nano::stats::stats (rsnano::StatHandle * handle_a) :
 	handle{ handle_a }
 {
 }
 
-nano::stat::stat (nano::stat_config config)
+nano::stats::stats (nano::stats_config config)
 {
 	auto config_dto{ config.to_dto () };
 	handle = rsnano::rsn_stat_create (&config_dto);
 }
 
-nano::stat::~stat ()
+nano::stats::~stats ()
 {
 	rsnano::rsn_stat_destroy (handle);
 }
 
-std::unique_ptr<nano::stat_log_sink> nano::stat::log_sink_json () const
+std::unique_ptr<nano::stat_log_sink> nano::stats::log_sink_json () const
 {
 	return std::make_unique<json_writer> ();
 }
 
-void nano::stat::log_counters (stat_log_sink & sink)
+void nano::stats::log_counters (stat_log_sink & sink)
 {
 	rsnano::rsn_stat_log_counters (handle, sink.handle);
 }
 
-void nano::stat::log_samples (stat_log_sink & sink)
+void nano::stats::log_samples (stat_log_sink & sink)
 {
 	rsnano::rsn_stat_log_samples (handle, sink.handle);
 }
 
-std::chrono::seconds nano::stat::last_reset ()
+std::chrono::seconds nano::stats::last_reset ()
 {
 	return std::chrono::seconds{ rsnano::rsn_stat_last_reset_s (handle) };
 }
 
-void nano::stat::stop ()
+void nano::stats::stop ()
 {
 	rsnano::rsn_stat_stop (handle);
 }
 
-void nano::stat::clear ()
+void nano::stats::clear ()
 {
 	rsnano::rsn_stat_clear (handle);
 }
 
-std::string nano::stat::type_to_string (stat::type type)
+std::string nano::stats::type_to_string (stat::type type)
 {
 	uint8_t const * ptr;
 	auto len = rsnano::rsn_stat_type_to_string (static_cast<uint8_t> (type), &ptr);
 	return std::string (reinterpret_cast<const char *> (ptr), len);
 }
 
-std::string nano::stat::detail_to_string (stat::detail detail)
+std::string nano::stats::detail_to_string (stat::detail detail)
 {
 	uint8_t const * ptr;
 	auto len = rsnano::rsn_stat_detail_to_string (static_cast<uint8_t> (detail), &ptr);
 	return std::string (reinterpret_cast<const char *> (ptr), len);
 }
 
-std::string nano::stat::dir_to_string (stat::dir detail)
+std::string nano::stats::dir_to_string (stat::dir detail)
 {
 	uint8_t const * ptr;
 	auto len = rsnano::rsn_stat_dir_to_string (static_cast<uint8_t> (detail), &ptr);
 	return std::string (reinterpret_cast<const char *> (ptr), len);
 }
 
-void nano::stat::configure (stat::type type, stat::detail detail, stat::dir dir, size_t interval, size_t capacity)
+void nano::stats::configure (stat::type type, stat::detail detail, stat::dir dir, size_t interval, size_t capacity)
 {
 	rsnano::rsn_stat_configure (
 	handle,
@@ -187,27 +187,27 @@ void nano::stat::configure (stat::type type, stat::detail detail, stat::dir dir,
 	capacity);
 }
 
-void nano::stat::inc (stat::type type, stat::dir dir)
+void nano::stats::inc (stat::type type, stat::dir dir)
 {
 	add (type, dir, 1);
 }
 
-void nano::stat::inc_detail_only (stat::type type, stat::detail detail, stat::dir dir)
+void nano::stats::inc_detail_only (stat::type type, stat::detail detail, stat::dir dir)
 {
 	add (type, detail, dir, 1, true);
 }
 
-void nano::stat::inc (stat::type type, stat::detail detail, stat::dir dir)
+void nano::stats::inc (stat::type type, stat::detail detail, stat::dir dir)
 {
 	add (type, detail, dir, 1);
 }
 
-void nano::stat::add (stat::type type, stat::dir dir, uint64_t value)
+void nano::stats::add (stat::type type, stat::dir dir, uint64_t value)
 {
-	add (type, detail::all, dir, value);
+	add (type, stat::detail::all, dir, value);
 }
 
-void nano::stat::add (stat::type type, stat::detail detail, stat::dir dir, uint64_t value, bool detail_only)
+void nano::stats::add (stat::type type, stat::detail detail, stat::dir dir, uint64_t value, bool detail_only)
 {
 	rsnano::rsn_stat_add (handle,
 	static_cast<uint8_t> (type),
@@ -217,12 +217,12 @@ void nano::stat::add (stat::type type, stat::detail detail, stat::dir dir, uint6
 	detail_only);
 }
 
-uint64_t nano::stat::count (stat::type type, stat::dir dir)
+uint64_t nano::stats::count (stat::type type, stat::dir dir)
 {
 	return count (type, stat::detail::all, dir);
 }
 
-uint64_t nano::stat::count (stat::type type, stat::detail detail, stat::dir dir)
+uint64_t nano::stats::count (stat::type type, stat::detail detail, stat::dir dir)
 {
 	return rsnano::rsn_stat_count (handle,
 	static_cast<uint8_t> (type),

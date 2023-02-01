@@ -160,7 +160,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	network_params{ config_a.network_params },
 	logger{ std::make_shared<nano::logger_mt> (config_a.logging.min_time_between_log_output) },
 	node_id{ nano::load_or_create_node_id (application_path_a, *logger) },
-	stats{ std::make_shared<nano::stat> (config_a.stat_config) },
+	stats{ std::make_shared<nano::stats> (config_a.stats_config) },
 	workers{ std::make_shared<nano::thread_pool> (std::max (3u, config_a.io_threads / 4), nano::thread_role::name::worker) },
 	bootstrap_workers{ config->bootstrap_serving_threads, nano::thread_role::name::bootstrap_worker },
 	flags (flags_a),

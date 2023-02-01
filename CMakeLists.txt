@@ -452,6 +452,9 @@ endif()
 
 include_directories(cpptoml/include)
 
+# magic_enum
+include_directories(submodules/magic_enum/include)
+
 add_subdirectory(nano/ipc_flatbuffers_lib)
 add_subdirectory(nano/ipc_flatbuffers_test)
 

@@ -60,7 +60,7 @@ namespace transport
 
 		private:
 			boost::asio::io_context & io_ctx;
-			nano::stat & stats;
+			nano::stats & stats;
 			nano::logger_mt & logger;
 			nano::outbound_bandwidth_limiter & limiter;
 			bool network_packet_logging;

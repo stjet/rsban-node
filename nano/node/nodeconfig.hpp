@@ -78,7 +78,7 @@ public:
 	uint16_t callback_port;
 	std::string callback_target;
 	bool allow_local_peers;
-	nano::stat_config stat_config;
+	nano::stats_config stats_config;
 	nano::ipc::ipc_config ipc_config;
 	std::string external_address;
 	uint16_t external_port;

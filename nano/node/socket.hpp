@@ -37,7 +37,7 @@ enum class buffer_drop_policy
 
 class server_socket;
 class thread_pool;
-class stat;
+class stats;
 class logger_mt;
 class node;
 class node_observers;
@@ -113,7 +113,7 @@ public:
 	 * Constructor
 	 * @param endpoint_type_a The endpoint's type: either server or client
 	 */
-	explicit socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stat & stats_a,
+	explicit socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stats & stats_a,
 	std::shared_ptr<nano::logger_mt> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a,
 	std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a,
 	std::shared_ptr<nano::node_observers>);
@@ -226,7 +226,7 @@ public:
 private:
 	boost::asio::strand<boost::asio::io_context::executor_type> strand;
 	nano::logger_mt & logger;
-	nano::stat & stats;
+	nano::stats & stats;
 	nano::socket socket;
 	nano::thread_pool & workers;
 	nano::node & node;

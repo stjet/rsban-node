@@ -3518,7 +3518,7 @@ TEST (rpc, accounts_balances_unopened_account_with_receivables)
 				.build_shared ();
 	{
 		auto transaction = node->store.tx_begin_write ();
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (transaction, *send).code);
+		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send).code);
 	}
 	ASSERT_TIMELY (5s, node->block (send->hash ()));
 

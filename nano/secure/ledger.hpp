@@ -9,7 +9,7 @@
 namespace nano
 {
 class store;
-class stat;
+class stats;
 class write_transaction;
 
 // map of vote weight per block, ordered greater first
@@ -27,7 +27,7 @@ public:
 class ledger final
 {
 public:
-	ledger (nano::store &, nano::stat &, nano::ledger_constants & constants, nano::generate_cache const & = nano::generate_cache ());
+	ledger (nano::store &, nano::stats &, nano::ledger_constants & constants, nano::generate_cache const & = nano::generate_cache ());
 	ledger (nano::ledger const &) = delete;
 	ledger (nano::ledger &&) = delete;
 	~ledger ();
@@ -95,7 +95,7 @@ public:
 	nano::ledger_constants & constants;
 
 private:
-	nano::stat & stats;
+	nano::stats & stats;
 
 public:
 	rsnano::LedgerHandle * handle;

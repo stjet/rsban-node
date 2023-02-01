@@ -122,7 +122,7 @@ public:
 	boost::asio::io_context & io_ctx_a,
 	std::shared_ptr<nano::socket> const & socket_a,
 	std::shared_ptr<nano::logger_mt> const & logger_a,
-	nano::stat const & stats_a,
+	nano::stats const & stats_a,
 	nano::node_flags const & flags_a,
 	nano::node_config const & config_a,
 	std::shared_ptr<nano::tcp_server_observer> const & observer_a,

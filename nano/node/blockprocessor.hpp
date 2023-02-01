@@ -21,7 +21,7 @@ class node_config;
 class ledger;
 class node_flags;
 class network;
-class stat;
+class stats;
 class local_vote_history;
 class active_transactions;
 class election_scheduler;
@@ -114,7 +114,7 @@ private:
 	nano::node_flags & flags;
 	nano::network & network; // not yet ported to Rust
 	nano::store & store;
-	nano::stat & stats;
+	nano::stats & stats;
 	nano::active_transactions & active_transactions; // not yet ported to Rust
 	nano::vote_cache & inactive_vote_cache; // not yet ported to Rust
 	nano::election_scheduler & scheduler; // not yet ported to Rust

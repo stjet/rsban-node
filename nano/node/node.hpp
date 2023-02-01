@@ -140,7 +140,7 @@ public:
 	nano::network_params & network_params;
 	std::shared_ptr<nano::logger_mt> logger;
 	nano::keypair node_id;
-	std::shared_ptr<nano::stat> stats;
+	std::shared_ptr<nano::stats> stats;
 	std::shared_ptr<nano::thread_pool> workers;
 	nano::thread_pool bootstrap_workers;
 	nano::node_flags flags;

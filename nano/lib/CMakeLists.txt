@@ -65,6 +65,7 @@ add_library(
   signal_manager.cpp
   stats.hpp
   stats.cpp
+  stats_enums.hpp
   stream.hpp
   stream.cpp
   threading.hpp

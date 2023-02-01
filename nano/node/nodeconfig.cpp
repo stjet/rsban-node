@@ -101,7 +101,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.websocket_config = config.websocket_config.to_dto ();
 	dto.ipc_config = config.ipc_config.to_dto ();
 	dto.diagnostics_config = config.diagnostics_config.to_dto ();
-	dto.stat_config = config.stat_config.to_dto ();
+	dto.stat_config = config.stats_config.to_dto ();
 	dto.lmdb_config = config.lmdb_config.to_dto ();
 	return dto;
 }
@@ -213,7 +213,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	websocket_config.load_dto (dto.websocket_config);
 	ipc_config.load_dto (dto.ipc_config);
 	diagnostics_config.load_dto (dto.diagnostics_config);
-	stat_config.load_dto (dto.stat_config);
+	stats_config.load_dto (dto.stat_config);
 	lmdb_config.load_dto (dto.lmdb_config);
 	backlog_scan_batch_size = dto.backlog_scan_batch_size;
 	backlog_scan_frequency = dto.backlog_scan_frequency;
@@ -266,8 +266,8 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 
 		if (toml.has_key ("statistics"))
 		{
-			auto stat_config_l (toml.get_required_child ("statistics"));
-			stat_config.deserialize_toml (stat_config_l);
+			auto stats_config_l (toml.get_required_child ("statistics"));
+			stats_config.deserialize_toml (stats_config_l);
 		}
 
 		if (toml.has_key ("work_peers"))

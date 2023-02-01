@@ -3,14 +3,14 @@ use std::sync::Arc;
 use rsnano_core::{BlockEnum, BlockSubType};
 use rsnano_ledger::LedgerObserver;
 
-use super::{DetailType, Direction, Stat, StatType};
+use super::{DetailType, Direction, StatType, Stats};
 
 pub struct LedgerStats {
-    stats: Arc<Stat>,
+    stats: Arc<Stats>,
 }
 
 impl LedgerStats {
-    pub fn new(stats: Arc<Stat>) -> Self {
+    pub fn new(stats: Arc<Stats>) -> Self {
         Self { stats }
     }
 }

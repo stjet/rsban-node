@@ -9,7 +9,7 @@ use num::FromPrimitive;
 use rsnano_node::{
     messages::MessageType,
     stats::{
-        DetailType, Direction, FileWriter, JsonWriter, Stat, StatConfig, StatLogSink, StatType,
+        DetailType, Direction, FileWriter, JsonWriter, StatType, Stats, StatsConfig, StatsLogSink,
     },
 };
 
@@ -30,7 +30,7 @@ pub struct StatConfigDto {
     pub log_samples_filename_len: usize,
 }
 
-pub fn fill_stat_config_dto(dto: &mut StatConfigDto, config: &StatConfig) {
+pub fn fill_stat_config_dto(dto: &mut StatConfigDto, config: &StatsConfig) {
     dto.sampling_enabled = config.sampling_enabled;
     dto.capacity = config.capacity;
     dto.interval = config.interval;
@@ -46,7 +46,7 @@ pub fn fill_stat_config_dto(dto: &mut StatConfigDto, config: &StatConfig) {
     dto.log_samples_filename_len = bytes.len();
 }
 
-impl From<&StatConfigDto> for StatConfig {
+impl From<&StatConfigDto> for StatsConfig {
     fn from(dto: &StatConfigDto) -> Self {
         Self {
             sampling_enabled: dto.sampling_enabled,
@@ -68,16 +68,16 @@ impl From<&StatConfigDto> for StatConfig {
     }
 }
 
-pub struct StatHandle(pub Arc<Stat>);
+pub struct StatHandle(pub Arc<Stats>);
 
 impl StatHandle {
-    pub fn new(stat: &Arc<Stat>) -> *mut Self {
+    pub fn new(stat: &Arc<Stats>) -> *mut Self {
         Box::into_raw(Box::new(StatHandle(Arc::clone(stat))))
     }
 }
 
 impl Deref for StatHandle {
-    type Target = Arc<Stat>;
+    type Target = Arc<Stats>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -86,9 +86,9 @@ impl Deref for StatHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_stat_create(config: *const StatConfigDto) -> *mut StatHandle {
-    Box::into_raw(Box::new(StatHandle(Arc::new(Stat::new(StatConfig::from(
-        &*config,
-    ))))))
+    Box::into_raw(Box::new(StatHandle(Arc::new(Stats::new(
+        StatsConfig::from(&*config),
+    )))))
 }
 
 #[no_mangle]
@@ -96,7 +96,7 @@ pub unsafe extern "C" fn rsn_stat_destroy(handle: *mut StatHandle) {
     drop(Box::from_raw(handle))
 }
 
-pub struct StatLogSinkHandle(Box<dyn StatLogSink>);
+pub struct StatLogSinkHandle(Box<dyn StatsLogSink>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_file_writer_create(filename: *const i8) -> *mut StatLogSinkHandle {

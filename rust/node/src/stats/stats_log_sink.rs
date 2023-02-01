@@ -7,7 +7,7 @@ use crate::utils::create_property_tree;
 
 use super::histogram::StatHistogram;
 
-pub trait StatLogSink {
+pub trait StatsLogSink {
     /// Called before logging starts
     fn begin(&mut self) -> Result<()>;
 
@@ -63,7 +63,7 @@ impl FileWriter {
     }
 }
 
-impl StatLogSink for FileWriter {
+impl StatsLogSink for FileWriter {
     fn begin(&mut self) -> Result<()> {
         Ok(())
     }
@@ -137,7 +137,7 @@ impl Default for JsonWriter {
     }
 }
 
-impl StatLogSink for JsonWriter {
+impl StatsLogSink for JsonWriter {
     fn begin(&mut self) -> Result<()> {
         self.tree.clear()
     }

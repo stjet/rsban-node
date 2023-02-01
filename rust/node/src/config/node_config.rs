@@ -1,6 +1,6 @@
 use std::net::Ipv6Addr;
 
-use crate::{stats::StatConfig, IpcConfig, NetworkParams};
+use crate::{stats::StatsConfig, IpcConfig, NetworkParams};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use rsnano_core::{
@@ -75,7 +75,7 @@ pub struct NodeConfig {
     pub websocket_config: WebsocketConfig,
     pub ipc_config: IpcConfig,
     pub diagnostics_config: DiagnosticsConfig,
-    pub stat_config: StatConfig,
+    pub stat_config: StatsConfig,
     pub lmdb_config: LmdbConfig,
     /// Number of accounts per second to process when doing backlog population scan
     pub backlog_scan_batch_size: u32,
@@ -272,7 +272,7 @@ impl NodeConfig {
             websocket_config: WebsocketConfig::new(&network_params.network),
             ipc_config: IpcConfig::new(&network_params.network),
             diagnostics_config: DiagnosticsConfig::new(),
-            stat_config: StatConfig::new(),
+            stat_config: StatsConfig::new(),
             lmdb_config: LmdbConfig::new(),
             backlog_scan_batch_size: 10 * 1000,
             backlog_scan_frequency: 10,

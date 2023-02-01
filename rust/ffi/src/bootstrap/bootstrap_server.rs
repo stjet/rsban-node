@@ -11,7 +11,7 @@ use crate::{
 use rsnano_core::{utils::Logger, Account, KeyPair};
 use rsnano_node::{
     config::{NetworkConstants, NodeConfig},
-    stats::Stat,
+    stats::Stats,
     transport::{
         BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,
         RealtimeMessageVisitor, RealtimeMessageVisitorImpl, RequestResponseVisitorFactory,
@@ -346,7 +346,7 @@ pub struct FfiRequestResponseVisitorFactory {
     handle: *mut c_void,
     logger: Arc<dyn Logger>,
     syn_cookies: Arc<SynCookies>,
-    stats: Arc<Stat>,
+    stats: Arc<Stats>,
     node_id: Arc<KeyPair>,
     network_constants: NetworkConstants,
     pub disable_tcp_realtime: bool,
@@ -358,7 +358,7 @@ impl FfiRequestResponseVisitorFactory {
         handle: *mut c_void,
         logger: Arc<dyn Logger>,
         syn_cookies: Arc<SynCookies>,
-        stats: Arc<Stat>,
+        stats: Arc<Stats>,
         network_constants: NetworkConstants,
         node_id: Arc<KeyPair>,
     ) -> Self {

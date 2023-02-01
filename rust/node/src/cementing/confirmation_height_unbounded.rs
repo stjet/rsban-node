@@ -11,7 +11,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{config::Logging, stats::Stat};
+use crate::{config::Logging, stats::Stats};
 
 use super::{
     block_cementor::BlockCementor,
@@ -44,7 +44,7 @@ impl ConfirmationHeightUnbounded {
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
         logging: Logging,
-        stats: Arc<Stat>,
+        stats: Arc<Stats>,
         batch_separate_pending_min_time: Duration,
         batch_write_size: Arc<AtomicU64>,
         write_database_queue: Arc<WriteDatabaseQueue>,

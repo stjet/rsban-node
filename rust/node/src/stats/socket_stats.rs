@@ -7,16 +7,16 @@ use crate::{
     utils::ErrorCode,
 };
 
-use super::{DetailType, Direction, Stat, StatType};
+use super::{DetailType, Direction, StatType, Stats};
 
 pub struct SocketStats {
-    stats: Arc<Stat>,
+    stats: Arc<Stats>,
     logger: Arc<dyn Logger>,
     enable_timeout_logging: bool,
 }
 
 impl SocketStats {
-    pub fn new(stats: Arc<Stat>, logger: Arc<dyn Logger>, enable_timeout_logging: bool) -> Self {
+    pub fn new(stats: Arc<Stats>, logger: Arc<dyn Logger>, enable_timeout_logging: bool) -> Self {
         Self {
             stats,
             logger,

@@ -11,7 +11,7 @@ use std::{
 use crate::messages::MessageType;
 
 use super::histogram::StatHistogram;
-use super::{FileWriter, StatConfig, StatLogSink};
+use super::{FileWriter, StatsConfig, StatsLogSink};
 
 /// Value and wall time of measurement
 #[derive(Clone)]
@@ -573,13 +573,13 @@ impl Direction {
 static LOG_COUNT: Lazy<Mutex<Option<FileWriter>>> = Lazy::new(|| Mutex::new(None));
 static LOG_SAMPLE: Lazy<Mutex<Option<FileWriter>>> = Lazy::new(|| Mutex::new(None));
 
-pub struct Stat {
-    config: StatConfig,
+pub struct Stats {
+    config: StatsConfig,
     mutables: Mutex<StatMutables>,
 }
 
-impl Stat {
-    pub fn new(config: StatConfig) -> Self {
+impl Stats {
+    pub fn new(config: StatsConfig) -> Self {
         let default_interval = config.interval;
         let default_capacity = config.capacity;
         Self {
@@ -713,13 +713,13 @@ impl Stat {
     }
 
     /// Log counters to the given log link
-    pub fn log_counters(&self, sink: &mut dyn StatLogSink) -> Result<()> {
+    pub fn log_counters(&self, sink: &mut dyn StatsLogSink) -> Result<()> {
         let lock = self.mutables.lock().unwrap();
         lock.log_counters_impl(sink, &self.config)
     }
 
     /// Log samples to the given log sink
-    pub fn log_samples(&self, sink: &mut dyn StatLogSink) -> Result<()> {
+    pub fn log_samples(&self, sink: &mut dyn StatsLogSink) -> Result<()> {
         let lock = self.mutables.lock().unwrap();
         lock.log_samples_impl(sink, &self.config)
     }
@@ -894,7 +894,7 @@ impl StatMutables {
     }
 
     /// Unlocked implementation of log_samples() to avoid using recursive locking
-    fn log_samples_impl(&self, sink: &mut dyn StatLogSink, config: &StatConfig) -> Result<()> {
+    fn log_samples_impl(&self, sink: &mut dyn StatsLogSink, config: &StatsConfig) -> Result<()> {
         sink.begin()?;
         if sink.entries() >= config.log_rotation_count {
             sink.rotate()?;
@@ -923,7 +923,7 @@ impl StatMutables {
     }
 
     /// Unlocked implementation of log_counters() to avoid using recursive locking
-    fn log_counters_impl(&self, sink: &mut dyn StatLogSink, config: &StatConfig) -> Result<()> {
+    fn log_counters_impl(&self, sink: &mut dyn StatsLogSink, config: &StatsConfig) -> Result<()> {
         sink.begin()?;
         if sink.entries() >= config.log_rotation_count {
             sink.rotate()?;
@@ -983,7 +983,7 @@ mod tests {
 
     #[test]
     fn specific_bins() {
-        let stats = Stat::new(StatConfig::new());
+        let stats = Stats::new(StatsConfig::new());
         stats.define_histogram(
             StatType::Vote,
             DetailType::ConfirmReq,
@@ -1001,7 +1001,7 @@ mod tests {
     #[test]
     fn uniform_distribution_and_clamping() {
         // Uniform distribution (12 bins, width 1); also test clamping 100 to the last bin
-        let stats = Stat::new(StatConfig::new());
+        let stats = Stats::new(StatsConfig::new());
         stats.define_histogram(
             StatType::Vote,
             DetailType::ConfirmAck,
@@ -1030,7 +1030,7 @@ mod tests {
     #[test]
     fn uniform_distribution() {
         // Uniform distribution (2 bins, width 5); add 1 to each bin
-        let stats = Stat::new(StatConfig::new());
+        let stats = Stats::new(StatsConfig::new());
         stats.define_histogram(
             StatType::Vote,
             DetailType::ConfirmAck,

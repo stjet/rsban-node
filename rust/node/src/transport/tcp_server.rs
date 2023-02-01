@@ -21,7 +21,7 @@ use crate::{
         FrontierReq, Keepalive, Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
         TelemetryReq,
     },
-    stats::{DetailType, Direction, Stat, StatType},
+    stats::{DetailType, Direction, StatType, Stats},
     transport::{
         MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketImpl, SocketType,
         SynCookies, TcpMessageItem, TcpMessageManager,
@@ -64,7 +64,7 @@ pub struct TcpServer {
     network: NetworkParams,
     last_telemetry_req: Mutex<Option<Instant>>,
     unique_id: usize,
-    stats: Arc<Stat>,
+    stats: Arc<Stats>,
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
     handshake_query_received: AtomicBool,
@@ -86,7 +86,7 @@ impl TcpServer {
         workers: Arc<dyn ThreadPool>,
         io_ctx: Arc<dyn IoContext>,
         network: NetworkParams,
-        stats: Arc<Stat>,
+        stats: Arc<Stats>,
         request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
         block_uniquer: Arc<BlockUniquer>,
         vote_uniquer: Arc<VoteUniquer>,
@@ -426,7 +426,7 @@ pub struct HandshakeMessageVisitorImpl {
     logger: Arc<dyn Logger>,
     server: Arc<TcpServer>,
     syn_cookies: Arc<SynCookies>,
-    stats: Arc<Stat>,
+    stats: Arc<Stats>,
     node_id: Arc<KeyPair>,
     network_constants: NetworkConstants,
     pub handshake_logging: bool,
@@ -438,7 +438,7 @@ impl HandshakeMessageVisitorImpl {
         server: Arc<TcpServer>,
         logger: Arc<dyn Logger>,
         syn_cookies: Arc<SynCookies>,
-        stats: Arc<Stat>,
+        stats: Arc<Stats>,
         node_id: Arc<KeyPair>,
         network_constants: NetworkConstants,
     ) -> Self {
@@ -593,12 +593,12 @@ impl HandshakeMessageVisitor for HandshakeMessageVisitorImpl {
 
 pub struct RealtimeMessageVisitorImpl {
     server: Arc<TcpServer>,
-    stats: Arc<Stat>,
+    stats: Arc<Stats>,
     process: bool,
 }
 
 impl RealtimeMessageVisitorImpl {
-    pub fn new(server: Arc<TcpServer>, stats: Arc<Stat>) -> Self {
+    pub fn new(server: Arc<TcpServer>, stats: Arc<Stats>) -> Self {
         Self {
             server,
             stats,

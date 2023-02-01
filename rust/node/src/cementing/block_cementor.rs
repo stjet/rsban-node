@@ -10,7 +10,7 @@ use rsnano_store_traits::{Table, Transaction, WriteTransaction};
 
 use crate::{
     config::Logging,
-    stats::{DetailType, Direction, Stat, StatType},
+    stats::{DetailType, Direction, StatType, Stats},
 };
 
 use super::{cement_queue::CementQueue, ConfHeightDetails};
@@ -24,7 +24,7 @@ pub(crate) struct BlockCementor {
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
     logging: Logging,
-    stats: Arc<Stat>,
+    stats: Arc<Stats>,
     notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
 }
 
@@ -35,7 +35,7 @@ impl BlockCementor {
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
         logging: Logging,
-        stats: Arc<Stat>,
+        stats: Arc<Stats>,
         notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
     ) -> Self {
         Self {

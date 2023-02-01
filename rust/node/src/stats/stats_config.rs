@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
 
-pub struct StatConfig {
+pub struct StatsConfig {
     /** If true, sampling of counters is enabled */
     pub sampling_enabled: bool,
 
@@ -30,7 +30,7 @@ pub struct StatConfig {
     pub log_samples_filename: String,
 }
 
-impl Default for StatConfig {
+impl Default for StatsConfig {
     fn default() -> Self {
         Self {
             sampling_enabled: false,
@@ -46,7 +46,7 @@ impl Default for StatConfig {
     }
 }
 
-impl StatConfig {
+impl StatsConfig {
     pub fn new() -> Self {
         Default::default()
     }

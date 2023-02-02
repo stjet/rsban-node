@@ -140,6 +140,8 @@ protected:
 	rsnano::BlockHandle * handle;
 };
 
+using block_list_t = std::vector<std::shared_ptr<nano::block>>;
+
 class send_block final : public nano::block
 {
 public:

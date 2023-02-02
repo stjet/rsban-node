@@ -474,9 +474,9 @@ TEST (ledger, unchecked_epoch)
 	{
 		// Waits for the last blocks to pass through block_processor and unchecked.put queues
 		ASSERT_TIMELY (10s, 0 == node1.unchecked.count (*node1.store.tx_begin_read ()));
-		nano::account_info info{};
-		ASSERT_FALSE (node1.store.account ().get (*node1.store.tx_begin_read (), destination.pub, info));
-		ASSERT_EQ (info.epoch (), nano::epoch::epoch_1);
+		auto info = node1.ledger.account_info (*node1.store.tx_begin_read (), destination.pub);
+		ASSERT_TRUE (info);
+		ASSERT_EQ (info->epoch (), nano::epoch::epoch_1);
 	}
 }
 
@@ -552,9 +552,9 @@ TEST (ledger, unchecked_epoch_invalid)
 		auto unchecked_count = node1.unchecked.count (*transaction);
 		ASSERT_EQ (unchecked_count, 0);
 		ASSERT_EQ (unchecked_count, node1.unchecked.count (*transaction));
-		nano::account_info info{};
-		ASSERT_FALSE (node1.store.account ().get (*transaction, destination.pub, info));
-		ASSERT_NE (info.epoch (), nano::epoch::epoch_1);
+		auto info = node1.ledger.account_info (*transaction, destination.pub);
+		ASSERT_TRUE (info);
+		ASSERT_NE (info->epoch (), nano::epoch::epoch_1);
 		auto epoch2_store = node1.store.block ().get (*transaction, epoch2->hash ());
 		ASSERT_NE (nullptr, epoch2_store);
 		ASSERT_EQ (nano::epoch::epoch_0, epoch2_store->sideband ().details ().epoch ());

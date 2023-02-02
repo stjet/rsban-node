@@ -36,7 +36,7 @@ fn update_pending_store() {
 
     let pending_info = ctx
         .ledger
-        .get_pending(
+        .pending_info(
             txn.txn(),
             &PendingKey::new(send.destination.account(), send.send_block.hash()),
         )

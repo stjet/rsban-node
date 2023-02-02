@@ -80,7 +80,7 @@ fn rollback_pending_info() {
 
     let pending = ctx
         .ledger
-        .get_pending(
+        .pending_info(
             txn.txn(),
             &PendingKey::new(receive.destination.account(), receive.send_block.hash()),
         )

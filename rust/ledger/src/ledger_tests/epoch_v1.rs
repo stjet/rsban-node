@@ -258,7 +258,7 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
 
     let pending_send2 = ctx
         .ledger
-        .get_pending(
+        .pending_info(
             txn.txn(),
             &PendingKey::new(destination.account(), send2.hash()),
         )

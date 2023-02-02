@@ -75,9 +75,7 @@ impl<'a> BlockValidatorFactory<'a> {
         source: BlockHash,
     ) -> Option<PendingInfo> {
         self.ledger
-            .store
-            .pending()
-            .get(self.txn, &PendingKey::new(account, source))
+            .pending_info(self.txn, &PendingKey::new(account, source))
     }
 
     fn any_pending_exists(&self, account: &Account) -> bool {

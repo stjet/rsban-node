@@ -207,7 +207,7 @@ fn pruning_source_rollback() {
     ctx.ledger.rollback(txn.as_mut(), &receive1.hash()).unwrap();
     let info2 = ctx
         .ledger
-        .get_pending(txn.txn(), &PendingKey::new(genesis.account(), send1.hash()))
+        .pending_info(txn.txn(), &PendingKey::new(genesis.account(), send1.hash()))
         .unwrap();
     assert_ne!(info2.source, genesis.account()); // Tradeoff to not store pruned blocks accounts
     assert_eq!(info2.amount, Amount::new(100));
@@ -273,7 +273,7 @@ fn pruning_source_rollback_legacy() {
 
     let info3 = ctx
         .ledger
-        .get_pending(txn.txn(), &PendingKey::new(genesis.account(), send1.hash()))
+        .pending_info(txn.txn(), &PendingKey::new(genesis.account(), send1.hash()))
         .unwrap();
     assert_ne!(info3.source, genesis.account()); // Tradeoff to not store pruned blocks accounts
     assert_eq!(info3.amount, Amount::new(100));
@@ -284,7 +284,7 @@ fn pruning_source_rollback_legacy() {
 
     assert_eq!(
         ctx.ledger
-            .get_pending(txn.txn(), &PendingKey::new(genesis.account(), send1.hash())),
+            .pending_info(txn.txn(), &PendingKey::new(genesis.account(), send1.hash())),
         None
     );
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
@@ -308,7 +308,7 @@ fn pruning_source_rollback_legacy() {
 
     let info4 = ctx
         .ledger
-        .get_pending(
+        .pending_info(
             txn.txn(),
             &PendingKey::new(destination.account(), send2.hash()),
         )
@@ -320,7 +320,7 @@ fn pruning_source_rollback_legacy() {
     // Process open block again
     ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
     assert_eq!(
-        ctx.ledger.get_pending(
+        ctx.ledger.pending_info(
             txn.txn(),
             &PendingKey::new(destination.account(), send2.hash())
         ),

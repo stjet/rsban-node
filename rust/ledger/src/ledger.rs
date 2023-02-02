@@ -773,7 +773,7 @@ impl Ledger {
         self.store.frontier().get(txn, hash)
     }
 
-    pub fn get_pending(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
+    pub fn pending_info(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
         self.store.pending().get(txn, key)
     }
 }

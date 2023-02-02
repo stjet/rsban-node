@@ -58,7 +58,7 @@ fn remove_pending_info() {
     let (send, _) = receive_50_raw_into_genesis(&ctx, txn.as_mut());
 
     assert_eq!(
-        ctx.ledger.get_pending(
+        ctx.ledger.pending_info(
             txn.txn(),
             &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())
         ),

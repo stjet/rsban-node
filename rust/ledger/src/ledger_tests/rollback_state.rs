@@ -31,7 +31,7 @@ fn rollback_send() {
         LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
-        ctx.ledger.store.pending().get(
+        ctx.ledger.pending_info(
             txn.txn(),
             &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())
         ),
@@ -79,7 +79,7 @@ fn rollback_receive() {
         LEDGER_CONSTANTS_STUB.genesis_amount - amount_sent
     );
     assert_eq!(
-        ctx.ledger.store.pending().get(
+        ctx.ledger.pending_info(
             txn.txn(),
             &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())
         ),
@@ -208,7 +208,7 @@ fn rollback_open() {
     );
     assert_eq!(
         ctx.ledger
-            .get_pending(
+            .pending_info(
                 txn.txn(),
                 &PendingKey::new(destination.account(), send.hash())
             )

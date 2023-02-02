@@ -49,7 +49,7 @@ fn clear_pending() {
 
     let open = setup_open_block(&ctx, txn.as_mut());
 
-    let pending = ctx.ledger.get_pending(
+    let pending = ctx.ledger.pending_info(
         txn.txn(),
         &PendingKey::new(open.destination.account(), open.send_block.hash()),
     );

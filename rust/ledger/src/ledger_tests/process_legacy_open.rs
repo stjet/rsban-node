@@ -121,7 +121,7 @@ fn update_sender_account_info() {
 
     let sender_info = ctx
         .ledger
-        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(sender_info.head, open.send_block.hash());
 }
@@ -135,7 +135,7 @@ fn update_receiver_account_info() {
 
     let receiver_info = ctx
         .ledger
-        .get_account_info(txn.txn(), &open.destination.account())
+        .account_info(txn.txn(), &open.destination.account())
         .unwrap();
     assert_eq!(receiver_info.head, open.open_block.hash());
 }

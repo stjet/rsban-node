@@ -171,6 +171,11 @@ nano::account nano::ledger::account_safe (const nano::transaction & transaction,
 	return account_safe (transaction, hash, ignored);
 }
 
+std::optional<nano::account_info> nano::ledger::account_info (nano::transaction const & transaction, nano::account const & account) const
+{
+	return store.account ().get (transaction, account);
+}
+
 // Return amount decrease or increase for block
 nano::uint128_t nano::ledger::amount (nano::transaction const & transaction_a, nano::account const & account_a)
 {

@@ -57,7 +57,7 @@ fn update_account_info() {
 
     let account_info = ctx
         .ledger
-        .get_account_info(txn.txn(), &receive.destination.account())
+        .account_info(txn.txn(), &receive.destination.account())
         .unwrap();
 
     assert_eq!(account_info.head, receive.open_block.hash());

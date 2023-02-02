@@ -51,13 +51,7 @@ impl LedgerContext {
             .get(txn.txn(), account)
             .unwrap_or_else(|| ConfirmationHeightInfo {
                 height: 0,
-                frontier: self
-                    .ledger
-                    .store
-                    .account()
-                    .get(txn.txn(), account)
-                    .unwrap()
-                    .head,
+                frontier: self.ledger.account_info(txn.txn(), account).unwrap().head,
             });
         height.height = height.height + 1;
         self.ledger

@@ -37,7 +37,7 @@ fn upgrade_to_epoch_v2() {
 
     let account_info = ctx
         .ledger
-        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(account_info.epoch, Epoch::Epoch2);
 }
@@ -73,9 +73,7 @@ fn rollback_epoch_v2() {
 
     let genesis_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(genesis_info.epoch, Epoch::Epoch1);
 
@@ -229,7 +227,7 @@ fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
     assert_eq!(receive2.sideband().unwrap().source_epoch, Epoch::Epoch2);
     let destination_info = ctx
         .ledger
-        .get_account_info(txn.txn(), &destination.account())
+        .account_info(txn.txn(), &destination.account())
         .unwrap();
     assert_eq!(destination_info.epoch, Epoch::Epoch2);
 }

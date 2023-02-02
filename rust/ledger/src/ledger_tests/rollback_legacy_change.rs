@@ -37,9 +37,7 @@ fn update_account_info() {
 
     let account_info = ctx
         .ledger
-        .store
-        .account()
-        .get(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
 
     assert_eq!(account_info.head, *DEV_GENESIS_HASH);

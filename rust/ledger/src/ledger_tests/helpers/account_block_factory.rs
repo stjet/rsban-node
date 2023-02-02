@@ -33,7 +33,7 @@ impl<'a> AccountBlockFactory<'a> {
     }
 
     pub(crate) fn info(&self, txn: &dyn Transaction) -> Option<AccountInfo> {
-        self.ledger.store.account().get(txn, &self.account())
+        self.ledger.account_info(txn, &self.account())
     }
 
     pub(crate) fn legacy_open(&self, source: BlockHash) -> LegacyOpenBlockBuilder {

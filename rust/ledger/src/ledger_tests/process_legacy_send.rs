@@ -93,7 +93,7 @@ fn update_account_info() {
 
     let account_info = ctx
         .ledger
-        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(account_info.block_count, 2);
     assert_eq!(account_info.head, send.send_block.hash());

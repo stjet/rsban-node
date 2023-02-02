@@ -89,9 +89,7 @@ impl<'a> RollbackPlannerFactory<'a> {
 
     fn load_account(&self, account: &Account) -> AccountInfo {
         self.ledger
-            .store
-            .account()
-            .get(self.txn, account)
+            .account_info(self.txn, account)
             .unwrap_or_default()
     }
 

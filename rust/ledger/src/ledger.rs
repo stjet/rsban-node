@@ -265,7 +265,7 @@ impl Ledger {
                 None => Amount::zero(),
             }
         } else {
-            match self.store.account().get(txn, account) {
+            match self.account_info(txn, account) {
                 Some(info) => info.balance,
                 None => Amount::zero(),
             }
@@ -482,12 +482,12 @@ impl Ledger {
 
     /// Return latest block for account
     pub fn latest(&self, txn: &dyn Transaction, account: &Account) -> Option<BlockHash> {
-        self.store.account().get(txn, account).map(|info| info.head)
+        self.account_info(txn, account).map(|info| info.head)
     }
 
     /// Return latest root for account, account number if there are no blocks for this account
     pub fn latest_root(&self, txn: &dyn Transaction, account: &Account) -> Root {
-        match self.store.account().get(txn, account) {
+        match self.account_info(txn, account) {
             Some(info) => info.head.into(),
             None => account.into(),
         }
@@ -564,7 +564,7 @@ impl Ledger {
 
     pub fn successor(&self, txn: &dyn Transaction, root: &QualifiedRoot) -> Option<BlockEnum> {
         let (mut successor, get_from_previous) = if root.previous.is_zero() {
-            match self.store.account().get(txn, &root.root.into()) {
+            match self.account_info(txn, &root.root.into()) {
                 Some(info) => (Some(info.open_block), false),
                 None => (None, true),
             }
@@ -753,7 +753,7 @@ impl Ledger {
         self.store.block().get(txn, hash)
     }
 
-    pub fn get_account_info(
+    pub fn account_info(
         &self,
         transaction: &dyn Transaction,
         account: &Account,

@@ -387,9 +387,8 @@ void nano::bulk_pull_server::set_current_end ()
 	}
 	else
 	{
-		nano::account_info info;
-		auto no_address (node->store.account ().get (*transaction, request->get_start ().as_account (), info));
-		if (no_address)
+		auto info = node->ledger.account_info (*transaction, request->get_start ().as_account ());
+		if (!info)
 		{
 			if (node->config->logging.bulk_pull_logging ())
 			{
@@ -399,7 +398,7 @@ void nano::bulk_pull_server::set_current_end ()
 		}
 		else
 		{
-			current = ascending () ? info.open_block () : info.head ();
+			current = ascending () ? info->open_block () : info->head ();
 			if (!request->get_end ().is_zero ())
 			{
 				auto account (node->ledger.account (*transaction, request->get_end ()));

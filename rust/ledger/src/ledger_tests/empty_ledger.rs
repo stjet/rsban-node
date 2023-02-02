@@ -50,7 +50,7 @@ fn genesis_account_info() {
 
     let account_info = ctx
         .ledger
-        .get_account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
         .expect("genesis account not found");
 
     // Frontier time should have been updated when genesis balance was added

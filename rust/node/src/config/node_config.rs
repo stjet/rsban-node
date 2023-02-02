@@ -370,7 +370,7 @@ impl NodeConfig {
             },
         )?;
 
-        toml.create_array ("preconfigured_peers", "A list of \"address\" (hostname or ipv6 notation ip address) entries to identify preconfigured peers.",
+        toml.create_array ("preconfigured_peers", "A list of \"address\" (hostname or ipv6 notation ip address) entries to identify preconfigured peers.\nThe contents of the NANO_DEFAULT_PEER environment variable are added to preconfigured_peers.",
         &mut |peers| {
             for peer in &self.preconfigured_peers {
                 peers.push_back_str(peer)?;

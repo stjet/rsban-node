@@ -4,17 +4,35 @@
 
 nano::election_scheduler::election_scheduler (nano::node & node) :
 	handle{ rsnano::rsn_election_scheduler_create (this) },
-	node{ node },
-	stopped{ false },
-	thread{ [this] () { run (); } }
+	node{ node }
 {
 }
 
 nano::election_scheduler::~election_scheduler ()
 {
-	stop ();
-	thread.join ();
+	// Thread must be stopped before destruction
+	debug_assert (!thread.joinable ());
 	rsnano::rsn_election_scheduler_destroy (handle);
+}
+
+void nano::election_scheduler::start ()
+{
+	debug_assert (!thread.joinable ());
+
+	thread = std::thread{ [this] () {
+		nano::thread_role::set (nano::thread_role::name::election_scheduler);
+		run ();
+	} };
+}
+
+void nano::election_scheduler::stop ()
+{
+	{
+		nano::lock_guard<nano::mutex> lock{ mutex };
+		stopped = true;
+	}
+	notify ();
+	nano::join_or_pass (thread);
 }
 
 void nano::election_scheduler::manual (std::shared_ptr<nano::block> const & block_a, boost::optional<nano::uint128_t> const & previous_balance_a, nano::election_behavior election_behavior_a, std::function<void (std::shared_ptr<nano::block> const &)> const & confirmation_action_a)
@@ -50,13 +68,6 @@ bool nano::election_scheduler::activate (nano::account const & account_a, nano::
 		}
 	}
 	return false; // Not activated
-}
-
-void nano::election_scheduler::stop ()
-{
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	stopped = true;
-	notify ();
 }
 
 void nano::election_scheduler::flush ()
@@ -116,7 +127,6 @@ bool nano::election_scheduler::overfill_predicate () const
 
 void nano::election_scheduler::run ()
 {
-	nano::thread_role::set (nano::thread_role::name::election_scheduler);
 	nano::unique_lock<nano::mutex> lock{ mutex };
 	while (!stopped)
 	{

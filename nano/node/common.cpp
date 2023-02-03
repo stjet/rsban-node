@@ -99,6 +99,16 @@ bool nano::parse_endpoint (std::string const & string, nano::endpoint & endpoint
 	return result;
 }
 
+std::optional<nano::endpoint> nano::parse_endpoint (const std::string & str)
+{
+	nano::endpoint endpoint;
+	if (!parse_endpoint (str, endpoint))
+	{
+		return endpoint; // Success
+	}
+	return {};
+}
+
 bool nano::parse_tcp_endpoint (std::string const & string, nano::tcp_endpoint & endpoint_a)
 {
 	boost::asio::ip::address address;
@@ -109,17 +119,6 @@ bool nano::parse_tcp_endpoint (std::string const & string, nano::tcp_endpoint & 
 		endpoint_a = nano::tcp_endpoint (address, port);
 	}
 	return result;
-}
-
-std::chrono::seconds nano::telemetry_cache_cutoffs::dev ()
-{
-	return std::chrono::seconds (rsnano::rsn_telemetry_cache_cutoffs_dev ());
-}
-
-std::chrono::seconds nano::telemetry_cache_cutoffs::network_to_time (network_constants const & network_constants)
-{
-	auto dto = network_constants.to_dto ();
-	return std::chrono::seconds{ rsnano::rsn_telemetry_cache_cutoffs_network_to_time_s (&dto) };
 }
 
 nano::node_singleton_memory_pool_purge_guard::node_singleton_memory_pool_purge_guard () :

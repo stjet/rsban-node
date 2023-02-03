@@ -3,7 +3,6 @@ use mock_instant::Instant;
 #[cfg(not(test))]
 use std::time::Instant;
 use std::{
-    cmp::min,
     collections::{BTreeMap, HashMap},
     net::{IpAddr, SocketAddr},
     time::Duration,
@@ -14,21 +13,26 @@ use std::{
 pub struct PeerExclusion {
     ordered_by_date: PeersOrderedByExclusionDate,
     by_ip: HashMap<IpAddr, Peer>,
+    max_size: usize,
 }
 
 impl PeerExclusion {
     pub fn new() -> Self {
+        Self::with_max_size(5000)
+    }
+
+    pub fn with_max_size(max_size: usize) -> Self {
         Self {
             ordered_by_date: PeersOrderedByExclusionDate::new(),
             by_ip: HashMap::new(),
+            max_size,
         }
     }
 
     /// Excludes the given `endpoint` for a while. If the endpoint was already
     /// excluded its exclusion duration gets increased.
     /// Returns the new score for the peer.
-    pub fn peer_misbehaved(&mut self, endpoint: &SocketAddr, network_peers_count: usize) -> u64 {
-        self.clean_old_peers(network_peers_count);
+    pub fn peer_misbehaved(&mut self, endpoint: &SocketAddr) -> u64 {
         if let Some(peer) = self.by_ip.get_mut(&endpoint.ip()) {
             let old_exclution_end = peer.exclude_until;
             peer.misbehaved();
@@ -38,10 +42,18 @@ impl PeerExclusion {
             }
             peer.score
         } else {
+            self.clean_old_peers();
             let peer = Peer::new(*endpoint);
             self.insert(&peer);
             peer.score
         }
+    }
+
+    pub fn score(&self, endpoint: &SocketAddr) -> u64 {
+        self.by_ip
+            .get(&endpoint.ip())
+            .map(|peer| peer.score)
+            .unwrap_or_default()
     }
 
     pub fn contains(&self, endpoint: &SocketAddr) -> bool {
@@ -81,9 +93,8 @@ impl PeerExclusion {
         std::mem::size_of::<Peer>()
     }
 
-    fn clean_old_peers(&mut self, network_peers_count: usize) {
-        let limited = limited_size(network_peers_count);
-        while self.by_ip.len() > 1 && self.by_ip.len() > limited {
+    fn clean_old_peers(&mut self) {
+        while self.by_ip.len() > 1 && self.by_ip.len() > self.max_size {
             let ip = self.ordered_by_date.pop().unwrap();
             self.by_ip.remove(&ip);
         }
@@ -100,13 +111,6 @@ impl Default for PeerExclusion {
     fn default() -> Self {
         Self::new()
     }
-}
-
-pub fn limited_size(network_peers_count: usize) -> usize {
-    min(
-        SIZE_MAX,
-        (network_peers_count as f64 * PEERS_PERCENTAGE_LIMIT) as usize,
-    )
 }
 
 /// Information about a peer and its exclusion status
@@ -190,7 +194,6 @@ impl PeersOrderedByExclusionDate {
     }
 }
 
-const SIZE_MAX: usize = 5000;
 const PEERS_PERCENTAGE_LIMIT: f64 = 0.5;
 
 /// When `SCORE_LIMIT` is reached then a peer will be excluded
@@ -215,7 +218,7 @@ mod tests {
     fn misbehaving_once_is_allowed() {
         let mut excluded_peers = PeerExclusion::new();
         let endpoint = test_endpoint(1);
-        excluded_peers.peer_misbehaved(&endpoint, 10);
+        excluded_peers.peer_misbehaved(&endpoint);
         assert_eq!(excluded_peers.is_excluded(&endpoint), false);
     }
 
@@ -223,8 +226,8 @@ mod tests {
     fn misbehaving_twice_leads_to_a_ban() {
         let mut excluded_peers = PeerExclusion::new();
         let endpoint = test_endpoint(1);
-        excluded_peers.peer_misbehaved(&endpoint, 10);
-        excluded_peers.peer_misbehaved(&endpoint, 10);
+        excluded_peers.peer_misbehaved(&endpoint);
+        excluded_peers.peer_misbehaved(&endpoint);
         assert_eq!(excluded_peers.is_excluded(&endpoint), true);
         assert_eq!(
             excluded_peers.excluded_until(&endpoint),
@@ -236,18 +239,18 @@ mod tests {
     fn misbehaving_more_than_twice_increases_exclusion_time() {
         let mut excluded_peers = PeerExclusion::new();
         let endpoint = test_endpoint(1);
-        excluded_peers.peer_misbehaved(&endpoint, 10);
-        excluded_peers.peer_misbehaved(&endpoint, 10);
+        excluded_peers.peer_misbehaved(&endpoint);
+        excluded_peers.peer_misbehaved(&endpoint);
         assert_eq!(
             excluded_peers.excluded_until(&endpoint),
             Some(Instant::now() + EXCLUDE_TIME_HOURS)
         );
-        excluded_peers.peer_misbehaved(&endpoint, 10);
+        excluded_peers.peer_misbehaved(&endpoint);
         assert_eq!(
             excluded_peers.excluded_until(&endpoint),
             Some(Instant::now() + EXCLUDE_TIME_HOURS * 6)
         );
-        excluded_peers.peer_misbehaved(&endpoint, 10);
+        excluded_peers.peer_misbehaved(&endpoint);
         assert_eq!(
             excluded_peers.excluded_until(&endpoint),
             Some(Instant::now() + EXCLUDE_TIME_HOURS * 8)
@@ -255,27 +258,14 @@ mod tests {
     }
 
     #[test]
-    fn test_limited_size() {
-        assert_eq!(limited_size(0), 0);
-        assert_eq!(limited_size(1), 0);
-        assert_eq!(limited_size(2), 1);
-        assert_eq!(limited_size(3), 1);
-        assert_eq!(limited_size(4), 2);
-        assert_eq!(limited_size(1000), 500);
-        assert_eq!(limited_size(10000), 5000);
-        assert_eq!(limited_size(20000), 5000);
-    }
-
-    #[test]
     fn remove_oldest_entry() {
         let mut excluded_peers = PeerExclusion::new();
-        let peers_count = 10;
         for i in 0..6 {
-            excluded_peers.peer_misbehaved(&test_endpoint(i), peers_count);
+            excluded_peers.peer_misbehaved(&test_endpoint(i));
             MockClock::advance(Duration::from_millis(1));
         }
         assert_eq!(excluded_peers.size(), 6);
-        excluded_peers.peer_misbehaved(&test_endpoint(6), peers_count);
+        excluded_peers.peer_misbehaved(&test_endpoint(6));
         assert_eq!(excluded_peers.size(), 6);
         assert_eq!(excluded_peers.contains(&test_endpoint(0)), false);
         assert_eq!(excluded_peers.contains(&test_endpoint(1)), true);
@@ -284,13 +274,12 @@ mod tests {
     #[test]
     fn remove_many_old_entries() {
         let mut excluded_peers = PeerExclusion::new();
-        let peers_count = 10;
         for i in 0..6 {
-            excluded_peers.peer_misbehaved(&test_endpoint(i), peers_count);
+            excluded_peers.peer_misbehaved(&test_endpoint(i));
             MockClock::advance(Duration::from_millis(1));
         }
 
-        excluded_peers.peer_misbehaved(&test_endpoint(6), 0);
+        excluded_peers.peer_misbehaved(&test_endpoint(6));
         assert_eq!(excluded_peers.size(), 2);
         assert_eq!(excluded_peers.contains(&test_endpoint(4)), false);
         assert_eq!(excluded_peers.contains(&test_endpoint(5)), true);

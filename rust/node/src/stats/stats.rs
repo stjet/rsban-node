@@ -152,6 +152,11 @@ pub enum DetailType {
     // common
     Loop,
     Total,
+    Process,
+    Update,
+    Insert,
+    Request,
+    Broadcast,
 
     // processing queue
     Queue,
@@ -326,10 +331,14 @@ pub enum DetailType {
     InvalidSignature,
     DifferentGenesisHash,
     NodeIdMismatch,
+    GenesisMismatch,
     RequestWithinProtectionCacheZone,
     NoResponseReceived,
     UnsolicitedTelemetryAck,
     FailedSendTelemetryReq,
+    EmptyPayload,
+    CleanupOutdated,
+    CleanupDead,
 
     // vote generator
     GeneratorBroadcasts,

@@ -157,6 +157,9 @@ public:
 	float size_sqrt () const;
 	bool empty () const;
 	void erase (nano::transport::channel const &);
+	/** Disconnects and adds peer to exclusion list */
+	void exclude (std::shared_ptr<nano::transport::channel> const & channel);
+
 	static std::string to_string (nano::networks);
 	void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 	void notify_new_channel (std::shared_ptr<nano::transport::channel> channel_a);

@@ -9,6 +9,11 @@ nano::epochs::epochs () :
 {
 }
 
+nano::epochs::epochs (nano::epochs const & other_a) :
+	handle{ rsnano::rsn_epochs_clone (other_a.handle) }
+{
+}
+
 nano::epochs::epochs (nano::epochs && other) :
 	handle (other.handle)
 {
@@ -19,6 +24,14 @@ nano::epochs::~epochs ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_epochs_destroy (handle);
+}
+
+nano::epochs & nano::epochs::operator= (nano::epochs const & other_a)
+{
+	if (handle != nullptr)
+		rsnano::rsn_epochs_destroy (handle);
+	handle = rsnano::rsn_epochs_clone (other_a.handle);
+	return *this;
 }
 
 nano::epochs & nano::epochs::operator= (nano::epochs && other)

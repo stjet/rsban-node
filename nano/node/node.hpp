@@ -47,7 +47,6 @@
 namespace nano
 {
 class node;
-class telemetry;
 class work_pool;
 
 std::unique_ptr<container_info_component> collect_container_info (rep_crawler & rep_crawler, std::string const & name);
@@ -132,12 +131,15 @@ public:
 	 */
 	void bootstrap_block (nano::block_hash const &);
 	nano::account get_node_id () const;
+	nano::telemetry_data local_telemetry () const;
+
+public:
 	nano::write_database_queue write_database_queue;
 	boost::asio::io_context & io_ctx;
 	boost::latch node_initialized_latch;
 	std::shared_ptr<nano::node_observers> observers;
 	std::shared_ptr<nano::node_config> config;
-	nano::network_params & network_params;
+	nano::network_params network_params;
 	std::shared_ptr<nano::logger_mt> logger;
 	nano::keypair node_id;
 	std::shared_ptr<nano::stats> stats;

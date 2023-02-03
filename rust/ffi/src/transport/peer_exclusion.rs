@@ -9,9 +9,9 @@ use super::EndpointDto;
 pub struct PeerExclusionHandle(Arc<Mutex<PeerExclusion>>);
 
 #[no_mangle]
-pub extern "C" fn rsn_peer_exclusion_create() -> *mut PeerExclusionHandle {
+pub extern "C" fn rsn_peer_exclusion_create(max_size: usize) -> *mut PeerExclusionHandle {
     Box::into_raw(Box::new(PeerExclusionHandle(Arc::new(Mutex::new(
-        PeerExclusion::new(),
+        PeerExclusion::with_max_size(max_size),
     )))))
 }
 
@@ -24,13 +24,12 @@ pub unsafe extern "C" fn rsn_peer_exclusion_destroy(handle: *mut PeerExclusionHa
 pub unsafe extern "C" fn rsn_peer_exclusion_add(
     handle: *mut PeerExclusionHandle,
     endpoint: *const EndpointDto,
-    network_peers_count: usize,
 ) -> u64 {
     (*handle)
         .0
         .lock()
         .unwrap()
-        .peer_misbehaved(&SocketAddr::from(&*endpoint), network_peers_count)
+        .peer_misbehaved(&SocketAddr::from(&*endpoint))
 }
 
 #[no_mangle]
@@ -43,6 +42,18 @@ pub unsafe extern "C" fn rsn_peer_exclusion_check(
         .lock()
         .unwrap()
         .is_excluded(&SocketAddr::from(&*endpoint))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_peer_exclusion_score(
+    handle: *mut PeerExclusionHandle,
+    endpoint: *const EndpointDto,
+) -> u64 {
+    (*handle)
+        .0
+        .lock()
+        .unwrap()
+        .score(&SocketAddr::from(&*endpoint))
 }
 
 #[no_mangle]

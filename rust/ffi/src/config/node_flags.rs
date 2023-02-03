@@ -133,7 +133,6 @@ pub struct NodeFlagsDto {
     pub disable_unchecked_drop: bool,
     pub disable_providing_telemetry_metrics: bool,
     pub disable_ongoing_telemetry_requests: bool,
-    pub disable_initial_telemetry_requests: bool,
     pub disable_block_processor_unchecked_deletion: bool,
     pub disable_block_processor_republishing: bool,
     pub allow_bootstrap_peers_duplicates: bool,
@@ -179,7 +178,6 @@ pub unsafe extern "C" fn rsn_node_flags_get(
     result.disable_unchecked_drop = lock.disable_unchecked_drop;
     result.disable_providing_telemetry_metrics = lock.disable_providing_telemetry_metrics;
     result.disable_ongoing_telemetry_requests = lock.disable_ongoing_telemetry_requests;
-    result.disable_initial_telemetry_requests = lock.disable_initial_telemetry_requests;
     result.disable_block_processor_unchecked_deletion =
         lock.disable_block_processor_unchecked_deletion;
     result.disable_block_processor_republishing = lock.disable_block_processor_republishing;
@@ -226,7 +224,6 @@ pub unsafe extern "C" fn rsn_node_flags_set(
     lock.disable_unchecked_drop = flags.disable_unchecked_drop;
     lock.disable_providing_telemetry_metrics = flags.disable_providing_telemetry_metrics;
     lock.disable_ongoing_telemetry_requests = flags.disable_ongoing_telemetry_requests;
-    lock.disable_initial_telemetry_requests = flags.disable_initial_telemetry_requests;
     lock.disable_block_processor_unchecked_deletion =
         flags.disable_block_processor_unchecked_deletion;
     lock.disable_block_processor_republishing = flags.disable_block_processor_republishing;

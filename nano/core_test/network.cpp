@@ -1114,8 +1114,8 @@ TEST (peer_exclusion, container_info)
 {
 	nano::peer_exclusion excluded_peers;
 	nano::tcp_endpoint endpoint (boost::asio::ip::address_v6::v4_mapped (boost::asio::ip::address_v4 (0x1)), 0);
-	ASSERT_EQ (1, excluded_peers.add (endpoint, 10));
-	auto component (nano::collect_container_info (excluded_peers, ""));
+	ASSERT_EQ (1, excluded_peers.add (endpoint));
+	auto component{ excluded_peers.collect_container_info ("") };
 	auto composite (dynamic_cast<nano::container_info_composite *> (component.get ()));
 	ASSERT_NE (nullptr, component);
 	auto & children (composite->get_children ());
@@ -1140,7 +1140,7 @@ TEST (network, tcp_no_connect_excluded_peers)
 	auto endpoint1_tcp (nano::transport::map_endpoint_to_tcp (node1->network->endpoint ()));
 	while (!node0->network->excluded_peers.check (endpoint1_tcp))
 	{
-		node0->network->excluded_peers.add (endpoint1_tcp, 1);
+		node0->network->excluded_peers.add (endpoint1_tcp);
 	}
 	ASSERT_EQ (0, node0->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_excluded));
 	node1->network->merge_peer (node0->network->endpoint ());

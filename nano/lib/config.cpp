@@ -5,6 +5,8 @@
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <chrono>
+
 #include <valgrind/valgrind.h>
 
 namespace
@@ -217,6 +219,10 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	ipv6_subnetwork_prefix_for_limiting = dto.ipv6_subnetwork_prefix_for_limiting;
 	silent_connection_tolerance_time = std::chrono::seconds (dto.silent_connection_tolerance_time_s);
 	vote_broadcast_interval = dto.vote_broadcast_interval_ms;
+	telemetry_request_cooldown = std::chrono::milliseconds (dto.telemetry_request_cooldown_ms);
+	telemetry_request_interval = std::chrono::milliseconds (dto.telemetry_request_interval_ms);
+	telemetry_broadcast_interval = std::chrono::milliseconds (dto.telemetry_broadcast_interval_ms);
+	telemetry_cache_cutoff = std::chrono::milliseconds (dto.telemetry_cache_cutoff_ms);
 }
 
 bool nano::network_constants::set_active_network (std::string network_a)
@@ -299,6 +305,10 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.protocol_version = protocol_version;
 	dto.protocol_version_min = protocol_version_min;
 	dto.vote_broadcast_interval_ms = vote_broadcast_interval;
+	dto.telemetry_request_cooldown_ms = telemetry_request_cooldown.count ();
+	dto.telemetry_request_interval_ms = telemetry_request_interval.count ();
+	dto.telemetry_broadcast_interval_ms = telemetry_broadcast_interval.count ();
+	dto.telemetry_cache_cutoff_ms = telemetry_cache_cutoff.count ();
 	return dto;
 }
 

@@ -782,14 +782,6 @@ void nano::node_flags::set_disable_ongoing_telemetry_requests (bool value)
 {
 	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_ongoing_telemetry_requests = value; });
 }
-bool nano::node_flags::disable_initial_telemetry_requests () const
-{
-	return flags_dto ().disable_initial_telemetry_requests;
-}
-void nano::node_flags::set_disable_initial_telemetry_requests (bool value)
-{
-	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_initial_telemetry_requests = value; });
-}
 bool nano::node_flags::disable_block_processor_unchecked_deletion () const
 {
 	return flags_dto ().disable_block_processor_unchecked_deletion;

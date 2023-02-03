@@ -2,7 +2,7 @@ use num::FromPrimitive;
 use rsnano_core::work::WorkThresholds;
 use std::{convert::TryFrom, ffi::CStr, os::raw::c_char, time::Duration};
 
-use rsnano_node::config::{test_node_port, NetworkConstants, TelemetryCacheCutoffs};
+use rsnano_node::config::{test_node_port, NetworkConstants};
 
 use crate::work::{fill_work_thresholds_dto, WorkThresholdsDto};
 
@@ -29,6 +29,10 @@ pub struct NetworkConstantsDto {
     pub ipv6_subnetwork_prefix_for_limiting: usize,
     pub silent_connection_tolerance_time_s: i64,
     pub vote_broadcast_interval_ms: i64,
+    pub telemetry_request_cooldown_ms: i64,
+    pub telemetry_request_interval_ms: i64,
+    pub telemetry_broadcast_interval_ms: i64,
+    pub telemetry_cache_cutoff_ms: i64,
 }
 
 #[no_mangle]
@@ -69,6 +73,10 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     dto.ipv6_subnetwork_prefix_for_limiting = constants.ipv6_subnetwork_prefix_for_limiting;
     dto.silent_connection_tolerance_time_s = constants.silent_connection_tolerance_time_s;
     dto.vote_broadcast_interval_ms = constants.vote_broadcast_interval_ms;
+    dto.telemetry_request_cooldown_ms = constants.telemetry_request_cooldown_ms;
+    dto.telemetry_request_interval_ms = constants.telemetry_request_interval_ms;
+    dto.telemetry_broadcast_interval_ms = constants.telemetry_broadcast_interval_ms;
+    dto.telemetry_cache_cutoff_ms = constants.telemetry_cache_cutoff_ms;
 }
 
 #[no_mangle]
@@ -166,19 +174,10 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
             ipv6_subnetwork_prefix_for_limiting: value.ipv6_subnetwork_prefix_for_limiting,
             silent_connection_tolerance_time_s: value.silent_connection_tolerance_time_s,
             vote_broadcast_interval_ms: value.vote_broadcast_interval_ms,
+            telemetry_request_cooldown_ms: value.telemetry_request_cooldown_ms,
+            telemetry_request_interval_ms: value.telemetry_request_interval_ms,
+            telemetry_broadcast_interval_ms: value.telemetry_broadcast_interval_ms,
+            telemetry_cache_cutoff_ms: value.telemetry_cache_cutoff_ms,
         })
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_telemetry_cache_cutoffs_dev() -> u64 {
-    TelemetryCacheCutoffs::DEV.as_secs()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_telemetry_cache_cutoffs_network_to_time_s(
-    network: *const NetworkConstantsDto,
-) -> u64 {
-    let network = NetworkConstants::try_from(&*network).unwrap();
-    TelemetryCacheCutoffs::network_to_time(&network).as_secs()
 }

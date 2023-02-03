@@ -5,7 +5,7 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex,
     },
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use rsnano_core::{
@@ -15,7 +15,7 @@ use rsnano_core::{
 };
 
 use crate::{
-    config::{NetworkConstants, NodeConfig, TelemetryCacheCutoffs},
+    config::{NetworkConstants, NodeConfig},
     messages::{
         AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
         FrontierReq, Keepalive, Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
@@ -150,11 +150,15 @@ impl TcpServer {
         *self.remote_endpoint.lock().unwrap()
     }
 
-    pub fn is_telemetry_cutoff_exceeded(&self) -> bool {
-        let cutoff = TelemetryCacheCutoffs::network_to_time(&self.network.network);
+    pub fn is_outside_cooldown_period(&self) -> bool {
         let lock = self.last_telemetry_req.lock().unwrap();
         match *lock {
-            Some(last_req) => last_req.elapsed() >= cutoff,
+            Some(last_req) => {
+                last_req.elapsed()
+                    >= Duration::from_millis(
+                        self.network.network.telemetry_request_cooldown_ms as u64,
+                    )
+            }
             None => true,
         }
     }
@@ -198,15 +202,6 @@ impl TcpServer {
     pub fn set_last_telemetry_req(&self) {
         let mut lk = self.last_telemetry_req.lock().unwrap();
         *lk = Some(Instant::now());
-    }
-
-    pub fn cache_exceeded(&self) -> bool {
-        let lk = self.last_telemetry_req.lock().unwrap();
-        if let Some(last_req) = lk.as_ref() {
-            last_req.elapsed() >= TelemetryCacheCutoffs::network_to_time(&self.network.network)
-        } else {
-            true
-        }
     }
 
     pub fn unique_id(&self) -> usize {
@@ -624,8 +619,8 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
         self.process = true;
     }
     fn telemetry_req(&mut self, _message: &TelemetryReq) {
-        // Only handle telemetry requests if they are outside of the cutoff time
-        if self.server.is_telemetry_cutoff_exceeded() {
+        // Only handle telemetry requests if they are outside of the cooldown period
+        if self.server.is_outside_cooldown_period() {
             self.server.set_last_telemetry_req();
             self.process = true;
         } else {

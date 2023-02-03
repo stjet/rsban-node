@@ -406,6 +406,7 @@ public:
 	ledger_constants () = delete;
 	ledger_constants (nano::work_thresholds work, nano::networks network_a);
 	ledger_constants (rsnano::LedgerConstantsDto const & dto);
+	ledger_constants (ledger_constants const & other_a);
 	void read_dto (rsnano::LedgerConstantsDto const & dto);
 	nano::work_thresholds work;
 	nano::keypair zero_key;
@@ -519,6 +520,7 @@ class network_params
 public:
 	network_params () = delete;
 	/** Populate values based on \p network_a */
+	network_params (network_params const & other_a);
 	network_params (nano::networks network_a);
 	network_params (rsnano::NetworkParamsDto const & dto);
 

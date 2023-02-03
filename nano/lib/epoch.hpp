@@ -54,7 +54,7 @@ class epochs
 {
 public:
 	epochs ();
-	epochs (nano::epochs const &) = delete;
+	epochs (nano::epochs const & other_a);
 	epochs (nano::epochs && other);
 	~epochs ();
 
@@ -78,7 +78,7 @@ public:
 	/** Checks that new_epoch is 1 version higher than epoch */
 	static bool is_sequential (nano::epoch epoch_a, nano::epoch new_epoch_a);
 
-	nano::epochs & operator= (nano::epochs const &) = delete;
+	nano::epochs & operator= (nano::epochs const &);
 	nano::epochs & operator= (nano::epochs &&);
 
 private:

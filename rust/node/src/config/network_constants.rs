@@ -38,6 +38,15 @@ pub struct NetworkConstants {
     pub silent_connection_tolerance_time_s: i64,
     /// Time to wait before vote rebroadcasts for active elections (milliseconds)
     pub vote_broadcast_interval_ms: i64,
+
+    /** We do not reply to telemetry requests made within cooldown period */
+    pub telemetry_request_cooldown_ms: i64,
+    /** How often to request telemetry from peers */
+    pub telemetry_request_interval_ms: i64,
+    /** How often to broadcast telemetry to peers */
+    pub telemetry_broadcast_interval_ms: i64,
+    /** Telemetry data older than this value is considered stale */
+    pub telemetry_cache_cutoff_ms: i64, // 2 * `telemetry_broadcast_interval` + some margin
 }
 
 impl NetworkConstants {
@@ -79,6 +88,10 @@ impl NetworkConstants {
             ipv6_subnetwork_prefix_for_limiting: 64,
             silent_connection_tolerance_time_s: 120,
             vote_broadcast_interval_ms: 15 * 1000,
+            telemetry_request_cooldown_ms: 1000 * 15,
+            telemetry_request_interval_ms: 1000 * 60,
+            telemetry_broadcast_interval_ms: 1000 * 60,
+            telemetry_cache_cutoff_ms: 1000 * 130, //  2 * `telemetry_broadcast_interval` + some margin
         }
     }
 
@@ -121,6 +134,10 @@ impl NetworkConstants {
             max_peers_per_subnetwork: max_peers_per_ip * 4,
             peer_dump_interval_s: 1,
             vote_broadcast_interval_ms: 500,
+            telemetry_request_cooldown_ms: 500,
+            telemetry_cache_cutoff_ms: 2000,
+            telemetry_request_interval_ms: 500,
+            telemetry_broadcast_interval_ms: 500,
             ..Self::live(work)
         }
     }
@@ -204,24 +221,6 @@ fn test_ipc_port() -> u16 {
 
 fn test_websocket_port() -> u16 {
     get_env_or_default("NANO_TEST_WEBSOCKET_PORT", 17078)
-}
-
-pub struct TelemetryCacheCutoffs {}
-
-impl TelemetryCacheCutoffs {
-    pub const DEV: Duration = Duration::from_secs(3);
-    pub const BETA: Duration = Duration::from_secs(15);
-    pub const LIVE: Duration = Duration::from_secs(60);
-
-    pub fn network_to_time(network: &NetworkConstants) -> Duration {
-        if network.is_live_network() || network.is_test_network() {
-            TelemetryCacheCutoffs::LIVE
-        } else if network.is_beta_network() {
-            TelemetryCacheCutoffs::BETA
-        } else {
-            TelemetryCacheCutoffs::DEV
-        }
-    }
 }
 
 #[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]

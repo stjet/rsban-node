@@ -1,3 +1,5 @@
+#include "nano/secure/common.hpp"
+
 #include <nano/lib/threading.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/lib/utility.hpp>
@@ -29,7 +31,7 @@ extern std::size_t nano_bootstrap_weights_beta_size;
 }
 
 /*
- * Configs
+ * configs
  */
 
 nano::backlog_population::config nano::backlog_population_config (const nano::node_config & config)
@@ -43,21 +45,21 @@ nano::backlog_population::config nano::backlog_population_config (const nano::no
 
 nano::vote_cache::config nano::nodeconfig_to_vote_cache_config (node_config const & config, node_flags const & flags)
 {
-	vote_cache::config cfg;
+	vote_cache::config cfg{};
 	cfg.max_size = flags.inactive_votes_cache_size ();
 	return cfg;
 }
 
 nano::hinted_scheduler::config nano::nodeconfig_to_hinted_scheduler_config (const nano::node_config & config)
 {
-	hinted_scheduler::config cfg;
+	hinted_scheduler::config cfg{};
 	cfg.vote_cache_check_interval_ms = config.network_params.network.is_dev_network () ? 100u : 1000u;
 	return cfg;
 }
 
 nano::outbound_bandwidth_limiter::config nano::outbound_bandwidth_limiter_config (const nano::node_config & config)
 {
-	outbound_bandwidth_limiter::config cfg;
+	outbound_bandwidth_limiter::config cfg{};
 	cfg.standard_limit = config.bandwidth_limit;
 	cfg.standard_burst_ratio = config.bandwidth_limit_burst_ratio;
 	cfg.bootstrap_limit = config.bootstrap_bandwidth_limit;
@@ -179,7 +181,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
 	//
 	network{ create_network (*this, config_a) },
-	telemetry (std::make_shared<nano::telemetry> (*network, *workers, observers->telemetry, *stats, network_params, flags.disable_ongoing_telemetry_requests ())),
+	telemetry (std::make_shared<nano::telemetry> (nano::telemetry::config{ *config, flags }, *this, *network, *observers, network_params, *stats)),
 	bootstrap_initiator (*this),
 	bootstrap_server{ store, ledger, network_params.network, *stats },
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
@@ -232,8 +234,6 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 
 	if (!init_error ())
 	{
-		telemetry->start ();
-
 		// Notify election schedulers when AEC frees election slot
 		active.vacancy_update = [this] () {
 			scheduler.notify ();
@@ -565,10 +565,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	composite->add_component (collect_container_info (node.bootstrap_initiator, "bootstrap_initiator"));
 	composite->add_component (collect_container_info (*node.tcp_listener, "tcp_listener"));
 	composite->add_component (collect_container_info (*node.network, "network"));
-	if (node.telemetry)
-	{
-		composite->add_component (collect_container_info (*node.telemetry, "telemetry"));
-	}
+	composite->add_component (node.telemetry->collect_container_info ("telemetry"));
 	composite->add_component (collect_container_info (*node.workers, "workers"));
 	composite->add_component (collect_container_info (*node.observers, "observers"));
 	composite->add_component (collect_container_info (node.wallets, "wallets"));
@@ -701,6 +698,7 @@ void nano::node::start ()
 	hinting.start ();
 	bootstrap_server.start ();
 	websocket.start ();
+	telemetry->start ();
 }
 
 void nano::node::stop ()
@@ -1515,6 +1513,35 @@ nano::account nano::node::get_node_id () const
 	return node_id.pub;
 };
 
+nano::telemetry_data nano::node::local_telemetry () const
+{
+	nano::telemetry_data telemetry_data;
+	telemetry_data.set_node_id (node_id.pub);
+	telemetry_data.set_block_count (ledger.cache.block_count ());
+	telemetry_data.set_cemented_count (ledger.cache.cemented_count ());
+	telemetry_data.set_bandwidth_cap (config->bandwidth_limit);
+	telemetry_data.set_protocol_version (network_params.network.protocol_version);
+	telemetry_data.set_uptime (std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - startup_time).count ());
+	telemetry_data.set_unchecked_count (unchecked.count (*ledger.store.tx_begin_read ()));
+	telemetry_data.set_genesis_block (network_params.ledger.genesis->hash ());
+	telemetry_data.set_peer_count (nano::narrow_cast<decltype (telemetry_data.get_peer_count ())> (network->size ()));
+	telemetry_data.set_account_count (ledger.cache.account_count ());
+	telemetry_data.set_major_version (nano::get_major_node_version ());
+	telemetry_data.set_minor_version (nano::get_minor_node_version ());
+	telemetry_data.set_patch_version (nano::get_patch_node_version ());
+	telemetry_data.set_pre_release_version (nano::get_pre_release_node_version ());
+	telemetry_data.set_maker (static_cast<std::underlying_type_t<telemetry_maker>> (ledger.pruning_enabled () ? telemetry_maker::nf_pruned_node : telemetry_maker::nf_node));
+	telemetry_data.set_timestamp (std::chrono::system_clock::now ());
+	telemetry_data.set_active_difficulty (default_difficulty (nano::work_version::work_1));
+	// Make sure this is the final operation!
+	telemetry_data.sign (node_id);
+	return telemetry_data;
+}
+
+/*
+ * node_wrapper
+ */
+
 nano::node_wrapper::node_wrapper (boost::filesystem::path const & path_a, boost::filesystem::path const & config_path_a, nano::node_flags & node_flags_a) :
 	network_params{ nano::network_constants::active_network () },
 	io_context (std::make_shared<boost::asio::io_context> ()),
@@ -1555,6 +1582,10 @@ nano::node_wrapper::~node_wrapper ()
 {
 	node->stop ();
 }
+
+/*
+ * inactive_node
+ */
 
 nano::inactive_node::inactive_node (boost::filesystem::path const & path_a, boost::filesystem::path const & config_path_a, nano::node_flags & node_flags_a) :
 	node_wrapper (path_a, config_path_a, node_flags_a),

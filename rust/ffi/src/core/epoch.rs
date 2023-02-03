@@ -14,6 +14,13 @@ pub extern "C" fn rsn_epochs_create() -> *mut EpochsHandle {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_epochs_clone(handle: *mut EpochsHandle) -> *mut EpochsHandle {
+    Box::into_raw(Box::new(EpochsHandle {
+        epochs: (*handle).epochs.clone(),
+    }))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_epochs_destroy(handle: *mut EpochsHandle) {
     drop(Box::from_raw(handle));
 }

@@ -153,13 +153,6 @@ std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory
 	response_server->set_remote_node_id (channel_a->get_node_id ());
 	response_server->start ();
 
-	if (!node.flags.disable_initial_telemetry_requests ())
-	{
-		node.telemetry->get_metrics_single_peer_async (channel_a, [] (nano::telemetry_data_response const &) {
-			// Intentionally empty, starts the telemetry request cycle to more quickly disconnect from invalid peers
-		});
-	}
-
 	return response_server;
 }
 

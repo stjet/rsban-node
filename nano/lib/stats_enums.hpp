@@ -254,6 +254,6 @@ enum class detail : uint8_t
 enum class dir : uint8_t
 {
 	in,
-	out
+	out,
 };
 }

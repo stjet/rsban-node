@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     sync::{atomic::Ordering, Arc},
     time::{Duration, Instant},
 };
@@ -13,7 +12,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
 };
 
-use super::{cement_queue::CementQueue, ConfHeightDetails};
+use super::{block_cache::BlockCache, cement_queue::CementQueue, ConfHeightDetails};
 
 // Cements blocks. That means it increases the confirmation_height of the account
 pub(crate) struct BlockCementor {
@@ -59,11 +58,7 @@ impl BlockCementor {
         self.last_cementation.elapsed() >= self.batch_separate_pending_min_time
     }
 
-    pub fn cement_blocks(
-        &mut self,
-        cement_queue: &mut CementQueue,
-        block_cache: &HashMap<BlockHash, Arc<BlockEnum>>,
-    ) {
+    pub fn cement_blocks(&mut self, cement_queue: &mut CementQueue, block_cache: &BlockCache) {
         let mut cemented_blocks = Vec::new();
         {
             let _write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
@@ -106,7 +101,7 @@ impl BlockCementor {
         &self,
         txn: &mut dyn WriteTransaction,
         pending: ConfHeightDetails,
-        block_cache: &HashMap<BlockHash, Arc<BlockEnum>>,
+        block_cache: &BlockCache,
         cemented_blocks: &mut Vec<Arc<BlockEnum>>,
     ) {
         let old_conf_height = self.get_confirmation_height(txn.txn(), &pending.account);
@@ -130,8 +125,8 @@ impl BlockCementor {
         self.notify_num_blocks_confirmed(&pending);
 
         // Reverse it so that the callbacks start from the lowest newly cemented block and move upwards
-        for hash in pending.block_callback_data.iter().rev() {
-            cemented_blocks.push(Arc::clone(block_cache.get(hash).unwrap()));
+        for hash in pending.cemented_in_current_account.iter().rev() {
+            cemented_blocks.push(block_cache.get_cached(hash).unwrap());
         }
     }
 

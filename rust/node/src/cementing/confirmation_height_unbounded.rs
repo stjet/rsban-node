@@ -186,23 +186,19 @@ impl ConfirmationHeightUnbounded {
             let already_traversed = heights.iterated_height >= block_height;
             if !already_traversed {
                 {
-                    let mut collector = UnconfirmedReceiveAndSourcesCollector {
-                        txn: txn.txn(),
+                    let mut collector = UnconfirmedReceiveAndSourcesCollector::new(
+                        txn.txn(),
                         current_block,
-                        confirmation_height: heights.iterated_height,
-                        receive_source_pairs: &mut receive_source_pairs,
-                        cemented_by_current_block: &mut cemented_by_current_block,
-                        cemented_by_original_block: &mut cemented_by_original_block,
-                        original_block: &original_block,
-                        block_cache: &self.block_cache,
-                        stopped: &self.stopped,
-                        ledger: &self.ledger,
-                        implicit_receive_cemented_mapping: &mut self
-                            .implicit_receive_cemented_mapping,
-                        first_iter: true,
-                        hit_receive: false,
-                    };
-                    collector.collect();
+                        heights.iterated_height,
+                        &mut receive_source_pairs,
+                        &mut cemented_by_current_block,
+                        &mut cemented_by_original_block,
+                        &original_block,
+                        &self.block_cache,
+                        &self.ledger,
+                        &mut self.implicit_receive_cemented_mapping,
+                    );
+                    collector.collect(&self.stopped);
                 }
             }
 

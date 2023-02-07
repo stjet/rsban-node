@@ -15,45 +15,54 @@ use super::{
 /// Walks backwards through the accounts blocks (starting at current_block)
 /// and finds all unconfirmed receives and adds them to receive_source_pairs
 pub(crate) struct UnconfirmedReceiveAndSourcesCollector<'a> {
-    pub txn: &'a dyn Transaction,
-    pub current_block: Arc<BlockEnum>,
-    pub confirmation_height: u64,
-    pub receive_source_pairs: &'a mut Vec<Arc<ReceiveSourcePair>>,
-    pub cemented_by_current_block: &'a mut Vec<BlockHash>,
-    pub cemented_by_original_block: &'a mut Vec<BlockHash>,
-    pub original_block: &'a BlockEnum,
-    pub block_cache: &'a BlockCache,
-    pub stopped: &'a AtomicBool,
-    pub ledger: &'a Ledger,
-    pub implicit_receive_cemented_mapping: &'a mut ImplictReceiveCementedMapping,
-    pub first_iter: bool,
-    pub hit_receive: bool,
+    txn: &'a dyn Transaction,
+    current_block: Arc<BlockEnum>,
+    confirmation_height: u64,
+    receive_source_pairs: &'a mut Vec<Arc<ReceiveSourcePair>>,
+    cemented_by_current_block: &'a mut Vec<BlockHash>,
+    cemented_by_original_block: &'a mut Vec<BlockHash>,
+    original_block: &'a BlockEnum,
+    block_cache: &'a BlockCache,
+    ledger: &'a Ledger,
+    implicit_receive_cemented_mapping: &'a mut ImplictReceiveCementedMapping,
+    hit_receive: bool,
+    num_to_confirm: u64,
 }
 
 impl<'a> UnconfirmedReceiveAndSourcesCollector<'a> {
-    pub(crate) fn collect(&mut self) {
-        let account = self.current_block.account_calculated();
-        let mut block_hash = self.current_block.hash();
-        let mut num_to_confirm =
-            self.current_block.sideband().unwrap().height - self.confirmation_height;
+    pub(crate) fn new(
+        txn: &'a dyn Transaction,
+        current_block: Arc<BlockEnum>,
+        confirmation_height: u64,
+        receive_source_pairs: &'a mut Vec<Arc<ReceiveSourcePair>>,
+        cemented_by_current_block: &'a mut Vec<BlockHash>,
+        cemented_by_original_block: &'a mut Vec<BlockHash>,
+        original_block: &'a BlockEnum,
+        block_cache: &'a BlockCache,
+        ledger: &'a Ledger,
+        implicit_receive_cemented_mapping: &'a mut ImplictReceiveCementedMapping,
+    ) -> Self {
+        let num_to_confirm = current_block.sideband().unwrap().height - confirmation_height;
+        Self {
+            txn,
+            current_block,
+            confirmation_height,
+            receive_source_pairs,
+            cemented_by_current_block,
+            cemented_by_original_block,
+            original_block,
+            block_cache,
+            ledger,
+            implicit_receive_cemented_mapping,
+            hit_receive: false,
+            num_to_confirm,
+        }
+    }
 
-        // Handle any sends above a receive
-        let mut is_original_block = block_hash == self.original_block.hash();
-        while (num_to_confirm > 0) && !block_hash.is_zero() && !self.stopped.load(Ordering::SeqCst)
-        {
-            if self.first_iter {
-                self.block_cache.add(Arc::clone(&self.current_block));
-            } else {
-                match self.block_cache.load_block(&block_hash, self.txn) {
-                    Some(block) => {
-                        self.current_block = block;
-                    }
-                    None => {
-                        continue;
-                    }
-                }
-            };
+    pub(crate) fn collect(&mut self, stopped: &AtomicBool) {
+        self.block_cache.add(Arc::clone(&self.current_block));
 
+        while self.num_to_confirm > 0 && !stopped.load(Ordering::SeqCst) {
             if self.is_receive_block() {
                 if !self.hit_receive && !self.cemented_by_current_block.is_empty() {
                     // Add the callbacks to the associated receive to retrieve later
@@ -63,27 +72,17 @@ impl<'a> UnconfirmedReceiveAndSourcesCollector<'a> {
                     self.cemented_by_current_block.clear();
                 }
 
-                is_original_block = false;
                 self.hit_receive = true;
 
-                let details = ConfHeightDetails {
-                    account,
-                    latest_confirmed_block: block_hash,
-                    new_height: self.confirmation_height + num_to_confirm,
-                    num_blocks_confirmed: 1,
-                    cemented_in_current_account: vec![block_hash],
-                    cemented_in_source: Vec::new(),
-                };
-                self.receive_source_pairs.push(Arc::new(ReceiveSourcePair {
-                    receive_details: Arc::new(Mutex::new(details)),
-                    source_hash: self.current_block.source_or_link(),
-                }));
-            } else if is_original_block {
-                self.cemented_by_original_block.push(block_hash);
+                self.add_receive_source_pair();
+            } else if self.current_block.hash() == self.original_block.hash() {
+                self.cemented_by_original_block
+                    .push(self.current_block.hash());
             } else {
                 if !self.hit_receive {
                     // This block is cemented via a receive, as opposed to below a receive being cemented
-                    self.cemented_by_current_block.push(block_hash);
+                    self.cemented_by_current_block
+                        .push(self.current_block.hash());
                 } else {
                     // We have hit a receive before, add the block to it
                     let last_pair = self.receive_source_pairs.last().unwrap();
@@ -92,18 +91,45 @@ impl<'a> UnconfirmedReceiveAndSourcesCollector<'a> {
                     last_receive_details_lock.num_blocks_confirmed += 1;
                     last_receive_details_lock
                         .cemented_in_current_account
-                        .push(block_hash);
+                        .push(self.current_block.hash());
                     drop(last_receive_details_lock);
 
                     self.implicit_receive_cemented_mapping
-                        .add(block_hash, last_receive_details);
+                        .add(self.current_block.hash(), last_receive_details);
                 }
             }
 
-            block_hash = self.current_block.previous();
+            self.load_previous_block();
+        }
+    }
 
-            num_to_confirm -= 1;
-            self.first_iter = false;
+    fn add_receive_source_pair(&mut self) {
+        let details = self.create_conf_height_details();
+        self.receive_source_pairs.push(Arc::new(ReceiveSourcePair {
+            receive_details: Arc::new(Mutex::new(details)),
+            source_hash: self.current_block.source_or_link(),
+        }));
+    }
+
+    fn create_conf_height_details(&mut self) -> ConfHeightDetails {
+        ConfHeightDetails {
+            account: self.current_block.account_calculated(),
+            latest_confirmed_block: self.current_block.hash(),
+            new_height: self.confirmation_height + self.num_to_confirm,
+            num_blocks_confirmed: 1,
+            cemented_in_current_account: vec![self.current_block.hash()],
+            cemented_in_source: Vec::new(),
+        }
+    }
+
+    fn load_previous_block(&mut self) {
+        let previous = self.current_block.previous();
+        match self.block_cache.load_block(&previous, self.txn) {
+            Some(block) => {
+                self.current_block = block;
+                self.num_to_confirm -= 1;
+            }
+            None => self.num_to_confirm = 0,
         }
     }
 

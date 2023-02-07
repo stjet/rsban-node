@@ -94,7 +94,7 @@ impl PeerExclusion {
     }
 
     fn clean_old_peers(&mut self) {
-        while self.by_ip.len() > 1 && self.by_ip.len() > self.max_size {
+        while self.by_ip.len() > 1 && self.by_ip.len() >= self.max_size {
             let ip = self.ordered_by_date.pop().unwrap();
             self.by_ip.remove(&ip);
         }
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn remove_oldest_entry() {
-        let mut excluded_peers = PeerExclusion::new();
+        let mut excluded_peers = PeerExclusion::with_max_size(6);
         for i in 0..6 {
             excluded_peers.peer_misbehaved(&test_endpoint(i));
             MockClock::advance(Duration::from_millis(1));
@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn remove_many_old_entries() {
-        let mut excluded_peers = PeerExclusion::new();
+        let mut excluded_peers = PeerExclusion::with_max_size(2);
         for i in 0..6 {
             excluded_peers.peer_misbehaved(&test_endpoint(i));
             MockClock::advance(Duration::from_millis(1));

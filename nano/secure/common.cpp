@@ -345,6 +345,11 @@ nano::account_info::account_info () :
 {
 }
 
+nano::account_info::account_info (rsnano::AccountInfoHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 nano::account_info::account_info (nano::block_hash const & head_a, nano::account const & representative_a, nano::block_hash const & open_block_a, nano::amount const & balance_a, uint64_t modified_a, uint64_t block_count_a, nano::epoch epoch_a) :
 	handle{ rsnano::rsn_account_info_create (head_a.bytes.data (), representative_a.bytes.data (), open_block_a.bytes.data (), balance_a.bytes.data (), modified_a, block_count_a, static_cast<uint8_t> (epoch_a)) }
 {
@@ -603,6 +608,11 @@ uint16_t nano::endpoint_key::port () const
 nano::confirmation_height_info::confirmation_height_info ()
 {
 	rsnano::rsn_confirmation_height_info_create (&dto);
+}
+
+nano::confirmation_height_info::confirmation_height_info (rsnano::ConfirmationHeightInfoDto dto_a) :
+	dto{ dto_a }
+{
 }
 
 uint64_t nano::confirmation_height_info::height () const

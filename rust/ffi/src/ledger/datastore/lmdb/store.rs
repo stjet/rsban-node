@@ -27,7 +27,7 @@ use super::{
     version_store::LmdbVersionStoreHandle, TransactionHandle, TransactionType,
 };
 
-pub struct LmdbStoreHandle(Arc<LmdbStore>);
+pub struct LmdbStoreHandle(pub Arc<LmdbStore>);
 
 impl Deref for LmdbStoreHandle {
     type Target = Arc<LmdbStore>;

@@ -111,6 +111,7 @@ class account_info final
 {
 public:
 	account_info ();
+	account_info (rsnano::AccountInfoHandle * handle_a);
 	account_info (nano::block_hash const &, nano::account const &, nano::block_hash const &, nano::amount const &, uint64_t, uint64_t, epoch);
 	account_info (account_info const &);
 	account_info (account_info &&);
@@ -239,6 +240,7 @@ class confirmation_height_info final
 {
 public:
 	confirmation_height_info ();
+	confirmation_height_info (rsnano::ConfirmationHeightInfoDto dto_a);
 	confirmation_height_info (uint64_t, nano::block_hash const &);
 
 	void serialize (nano::stream &) const;

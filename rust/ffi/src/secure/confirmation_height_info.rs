@@ -57,6 +57,15 @@ pub unsafe extern "C" fn rsn_confirmation_height_info_deserialize(
     }
 }
 
+impl From<&ConfirmationHeightInfo> for ConfirmationHeightInfoDto {
+    fn from(info: &ConfirmationHeightInfo) -> Self {
+        ConfirmationHeightInfoDto {
+            height: info.height,
+            frontier: *info.frontier.as_bytes(),
+        }
+    }
+}
+
 impl From<ConfirmationHeightInfo> for ConfirmationHeightInfoDto {
     fn from(info: ConfirmationHeightInfo) -> Self {
         ConfirmationHeightInfoDto {

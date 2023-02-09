@@ -10,7 +10,7 @@ use rsnano_core::{
     Account, AccountInfo, Amount, BlockHash, Epoch,
 };
 
-pub struct AccountInfoHandle(AccountInfo);
+pub struct AccountInfoHandle(pub AccountInfo);
 
 impl Deref for AccountInfoHandle {
     type Target = AccountInfo;

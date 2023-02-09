@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/locks.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/observer_set.hpp>
@@ -31,6 +33,8 @@ public:
 	};
 
 	backlog_population (const config &, nano::store &, nano::stats &);
+	backlog_population (backlog_population const &) = delete;
+	backlog_population (backlog_population &&) = delete;
 	~backlog_population ();
 
 	void start ();
@@ -42,7 +46,9 @@ public:
 	/** Notify about AEC vacancy */
 	void notify ();
 
-public:
+	void set_activate_callback (std::function<void (nano::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)>);
+
+private:
 	/**
 	 * Callback called for each backlogged account
 	 */
@@ -73,5 +79,6 @@ private:
 	/** Thread that runs the backlog implementation logic. The thread always runs, even if
 	 *  backlog population is disabled, so that it can service a manual trigger (e.g. via RPC). */
 	std::thread thread;
+	rsnano::BacklogPopulationHandle * handle;
 };
 }

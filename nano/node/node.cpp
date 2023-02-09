@@ -228,7 +228,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 		return ledger.weight (rep);
 	};
 
-	backlog.activate_callback.add ([this] (nano::transaction const & transaction, nano::account const & account, nano::account_info const & account_info, nano::confirmation_height_info const & conf_info) {
+	backlog.set_activate_callback ([this] (nano::transaction const & transaction, nano::account const & account, nano::account_info const & account_info, nano::confirmation_height_info const & conf_info) {
 		scheduler.activate (account, transaction);
 	});
 

@@ -61,6 +61,7 @@ impl<'a> UnconfirmedReceiveAndSourcesCollector<'a> {
 
     pub(crate) fn collect(&mut self, stopped: &AtomicBool) {
         self.block_cache.add(Arc::clone(&self.current_block));
+        let mut is_original_block = self.current_block.hash() == self.original_block.hash();
 
         while self.num_to_confirm > 0 && !stopped.load(Ordering::SeqCst) {
             if self.is_receive_block() {
@@ -72,10 +73,11 @@ impl<'a> UnconfirmedReceiveAndSourcesCollector<'a> {
                     self.cemented_by_current_block.clear();
                 }
 
+                is_original_block = false;
                 self.hit_receive = true;
 
                 self.add_receive_source_pair();
-            } else if self.current_block.hash() == self.original_block.hash() {
+            } else if is_original_block {
                 self.cemented_by_original_block
                     .push(self.current_block.hash());
             } else {

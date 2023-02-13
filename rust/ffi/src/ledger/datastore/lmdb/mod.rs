@@ -135,3 +135,12 @@ pub unsafe extern "C" fn rsn_lmdb_write_txn_renew(handle: *mut TransactionHandle
 pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh(handle: *mut TransactionHandle) {
     (*handle).as_write_txn().refresh();
 }
+
+pub(crate) unsafe fn into_read_txn_handle(txn: &dyn Transaction) -> *mut TransactionHandle {
+    TransactionHandle::new(TransactionType::ReadRef(std::mem::transmute::<
+        &LmdbReadTransaction,
+        &'static LmdbReadTransaction,
+    >(
+        txn.as_any().downcast_ref::<LmdbReadTransaction>().unwrap(),
+    )))
+}

@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use crate::stats::{DetailType, Direction, StatType, Stats};
 use rsnano_core::{Account, AccountInfo, ConfirmationHeightInfo};
-use rsnano_store_lmdb::LmdbStore;
-use rsnano_store_traits::{Store, Transaction};
+use rsnano_ledger::Ledger;
+use rsnano_store_traits::Transaction;
 
 pub struct BacklogPopulation {
-    store: Arc<LmdbStore>,
+    ledger: Arc<Ledger>,
     stats: Arc<Stats>,
     activate_callback: Option<ActivateCallback>,
 }
@@ -15,9 +15,9 @@ pub type ActivateCallback =
     Box<dyn Fn(&dyn Transaction, &Account, &AccountInfo, &ConfirmationHeightInfo)>;
 
 impl BacklogPopulation {
-    pub fn new(store: Arc<LmdbStore>, stats: Arc<Stats>) -> Self {
+    pub fn new(ledger: Arc<Ledger>, stats: Arc<Stats>) -> Self {
         Self {
-            store,
+            ledger,
             stats,
             activate_callback: None,
         }
@@ -28,7 +28,7 @@ impl BacklogPopulation {
     }
 
     pub fn activate(&self, txn: &dyn Transaction, account: &Account) {
-        let account_info = match self.store.account().get(txn, account) {
+        let account_info = match self.ledger.store.account().get(txn, account) {
             Some(info) => info,
             None => {
                 return;
@@ -36,6 +36,7 @@ impl BacklogPopulation {
         };
 
         let conf_info = self
+            .ledger
             .store
             .confirmation_height()
             .get(txn, account)

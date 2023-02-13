@@ -14,7 +14,7 @@
 namespace nano
 {
 class stats;
-class store;
+class ledger;
 class election_scheduler;
 
 class backlog_population final
@@ -32,7 +32,7 @@ public:
 		unsigned frequency;
 	};
 
-	backlog_population (const config &, nano::store &, nano::stats &);
+	backlog_population (const config &, nano::ledger &, nano::stats &);
 	backlog_population (backlog_population const &) = delete;
 	backlog_population (backlog_population &&) = delete;
 	~backlog_population ();
@@ -56,7 +56,7 @@ private:
 	callback_t activate_callback;
 
 private: // Dependencies
-	nano::store & store;
+	nano::ledger & ledger;
 	nano::stats & stats;
 
 	config config_m;

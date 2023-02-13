@@ -3,7 +3,8 @@ use std::ffi::c_void;
 use rsnano_core::Account;
 use rsnano_store_traits::Transaction;
 
-pub type ElectionSchedulerActivateInternalCallback = fn(*mut c_void, &Account, &dyn Transaction);
+pub type ElectionSchedulerActivateInternalCallback =
+    unsafe fn(*mut c_void, &Account, &dyn Transaction);
 pub static mut ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK: Option<
     ElectionSchedulerActivateInternalCallback,
 > = None;
@@ -20,10 +21,10 @@ impl ElectionScheduler {
     }
 
     pub fn activate(&self, account: &Account, txn: &dyn Transaction) {
-        let callback = unsafe {
-            ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK
-                .expect("ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK not defined")
-        };
-        callback(self.cpp_election_scheduler, account, txn);
+        unsafe {
+            let callback = ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK
+                .expect("ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK not defined");
+            callback(self.cpp_election_scheduler, account, txn);
+        }
     }
 }

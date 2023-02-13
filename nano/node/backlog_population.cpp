@@ -7,11 +7,11 @@
 #include <nano/node/nodeconfig.hpp>
 #include <nano/secure/store.hpp>
 
-nano::backlog_population::backlog_population (const config & config_a, nano::store & store_a, nano::stats & stats_a) :
+nano::backlog_population::backlog_population (const config & config_a, nano::ledger & ledger_a, nano::stats & stats_a) :
 	config_m{ config_a },
-	store{ store_a },
+	ledger{ ledger_a },
 	stats{ stats_a },
-	handle{ rsnano::rsn_backlog_population_create (store.get_handle (), stats.handle) }
+	handle{ rsnano::rsn_backlog_population_create (ledger_a.get_handle (), stats_a.handle) }
 {
 }
 
@@ -122,11 +122,11 @@ void nano::backlog_population::populate_backlog (nano::unique_lock<nano::mutex> 
 	{
 		lock.unlock ();
 		{
-			auto transaction = store.tx_begin_read ();
+			auto transaction = ledger.store.tx_begin_read ();
 
 			auto count = 0u;
-			auto i = store.account ().begin (*transaction, next);
-			auto const end = store.account ().end ();
+			auto i = ledger.store.account ().begin (*transaction, next);
+			auto const end = ledger.store.account ().end ();
 			for (; i != end && count < chunk_size; ++i, ++count, ++total)
 			{
 				stats.inc (nano::stat::type::backlog, nano::stat::detail::total);
@@ -135,7 +135,7 @@ void nano::backlog_population::populate_backlog (nano::unique_lock<nano::mutex> 
 				activate (*transaction, account);
 				next = account.number () + 1;
 			}
-			done = store.account ().begin (*transaction, next) == end;
+			done = ledger.store.account ().begin (*transaction, next) == end;
 		}
 		lock.lock ();
 		// Give the rest of the node time to progress without holding database lock

@@ -2,23 +2,22 @@ use std::{ffi::c_void, sync::Arc};
 
 use crate::{
     core::AccountInfoHandle,
-    ledger::datastore::{LmdbStoreHandle, TransactionHandle, TransactionType},
+    ledger::datastore::{into_read_txn_handle, LedgerHandle, TransactionHandle},
     utils::ContextWrapper,
     ConfirmationHeightInfoDto, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::Account;
 use rsnano_node::block_processing::BacklogPopulation;
-use rsnano_store_lmdb::LmdbReadTransaction;
 
 pub struct BacklogPopulationHandle(BacklogPopulation);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_backlog_population_create(
-    store_handle: *mut LmdbStoreHandle,
+    ledger_handle: *mut LedgerHandle,
     stats_handle: *mut StatHandle,
 ) -> *mut BacklogPopulationHandle {
     Box::into_raw(Box::new(BacklogPopulationHandle(BacklogPopulation::new(
-        Arc::clone(&(*store_handle).0),
+        Arc::clone(&(*ledger_handle).0),
         Arc::clone(&(*stats_handle).0),
     ))))
 }
@@ -47,15 +46,12 @@ pub unsafe extern "C" fn rsn_backlog_population_set_activate_callback(
     (*handle)
         .0
         .set_activate_callback(Box::new(move |txn, account, account_info, conf_height| {
-            let txn_handle = TransactionHandle::new(TransactionType::ReadRef(unsafe {
-                std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(
-                    txn.as_any().downcast_ref::<LmdbReadTransaction>().unwrap(),
-                )
-            }));
+            let txn_handle = into_read_txn_handle(txn);
 
             let account_info_handle =
                 Box::into_raw(Box::new(AccountInfoHandle(account_info.clone())));
             let conf_height_dto = conf_height.into();
+
             callback(
                 context_wrapper.get_context(),
                 txn_handle,

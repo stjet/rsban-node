@@ -2,10 +2,9 @@ use std::ffi::c_void;
 
 use rsnano_core::Account;
 use rsnano_node::voting::{ElectionScheduler, ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK};
-use rsnano_store_lmdb::LmdbReadTransaction;
 use rsnano_store_traits::Transaction;
 
-use crate::ledger::datastore::{TransactionHandle, TransactionType};
+use crate::ledger::datastore::{into_read_txn_handle, TransactionHandle};
 
 pub struct ElectionSchedulerHandle(ElectionScheduler);
 
@@ -56,11 +55,7 @@ fn forward_scheduler_activate(
         ELECTION_SCHEDULER_ACTIVATE_CALLBACK.expect("ELECTION_SCHEDULER_ACTIVATE_CALLBACK missing")
     };
 
-    let txn_handle = TransactionHandle::new(TransactionType::ReadRef(unsafe {
-        std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(
-            txn.as_any().downcast_ref::<LmdbReadTransaction>().unwrap(),
-        )
-    }));
+    let txn_handle = unsafe { into_read_txn_handle(txn) };
     unsafe {
         callback(cpp_scheduler, account.as_bytes().as_ptr(), txn_handle);
     }

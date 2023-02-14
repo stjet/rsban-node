@@ -6,17 +6,35 @@ use crate::{
     utils::ContextWrapper,
     ConfirmationHeightInfoDto, StatHandle, VoidPointerCallback,
 };
-use rsnano_core::Account;
-use rsnano_node::block_processing::BacklogPopulation;
+use rsnano_node::block_processing::{BacklogPopulation, BacklogPopulationConfig};
+
+#[repr(C)]
+pub struct BacklogPopulationConfigDto {
+    pub enabled: bool,
+    pub batch_size: u32,
+    pub frequency: u32,
+}
+
+impl From<&BacklogPopulationConfigDto> for BacklogPopulationConfig {
+    fn from(value: &BacklogPopulationConfigDto) -> Self {
+        Self {
+            enabled: value.enabled,
+            batch_size: value.batch_size,
+            frequency: value.frequency,
+        }
+    }
+}
 
 pub struct BacklogPopulationHandle(BacklogPopulation);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_backlog_population_create(
+    config_dto: *const BacklogPopulationConfigDto,
     ledger_handle: *mut LedgerHandle,
     stats_handle: *mut StatHandle,
 ) -> *mut BacklogPopulationHandle {
     Box::into_raw(Box::new(BacklogPopulationHandle(BacklogPopulation::new(
+        (&*config_dto).into(),
         Arc::clone(&(*ledger_handle).0),
         Arc::clone(&(*stats_handle).0),
     ))))
@@ -52,7 +70,7 @@ pub unsafe extern "C" fn rsn_backlog_population_set_activate_callback(
                 Box::into_raw(Box::new(AccountInfoHandle(account_info.clone())));
             let conf_height_dto = conf_height.into();
 
-            callback(
+            (callback)(
                 context_wrapper.get_context(),
                 txn_handle,
                 account.as_bytes().as_ptr(),
@@ -63,15 +81,4 @@ pub unsafe extern "C" fn rsn_backlog_population_set_activate_callback(
             drop(Box::from_raw(txn_handle));
             drop(Box::from_raw(account_info_handle));
         }));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_backlog_population_activate(
-    handle: *mut BacklogPopulationHandle,
-    txn: *mut TransactionHandle,
-    account: *const u8,
-) {
-    (*handle)
-        .0
-        .activate((*txn).as_txn(), &Account::from_ptr(account));
 }

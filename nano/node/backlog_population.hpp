@@ -64,9 +64,9 @@ private: // Dependencies
 private:
 	void run ();
 	bool predicate () const;
+	void activate (nano::transaction const & transaction, nano::account const & account);
 
 	void populate_backlog (nano::unique_lock<nano::mutex> & lock);
-	void activate (nano::transaction const &, nano::account const &);
 
 	/** This is a manual trigger, the ongoing backlog population does not use this.
 	 *  It can be triggered even when backlog population (frontiers confirmation) is disabled. */

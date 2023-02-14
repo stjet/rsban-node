@@ -1,30 +1,191 @@
-use std::sync::Arc;
+use std::{
+    ops::Deref,
+    sync::{Arc, Condvar, Mutex},
+    thread::{self, sleep, JoinHandle},
+    time::Duration,
+};
 
 use crate::stats::{DetailType, Direction, StatType, Stats};
 use rsnano_core::{Account, AccountInfo, ConfirmationHeightInfo};
 use rsnano_ledger::Ledger;
 use rsnano_store_traits::Transaction;
 
+#[derive(Clone)]
+pub struct BacklogPopulationConfig {
+    /** Control if ongoing backlog population is enabled. If not, backlog population can still be triggered by RPC */
+    pub enabled: bool,
+
+    /** Number of accounts per second to process. Number of accounts per single batch is this value divided by `frequency` */
+    pub batch_size: u32,
+
+    /** Number of batches to run per second. Batches run in 1 second / `frequency` intervals */
+    pub frequency: u32,
+}
+
+struct BacklogPopulationFlags {
+    stopped: bool,
+    triggered: bool,
+}
+
 pub struct BacklogPopulation {
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
-    activate_callback: Option<ActivateCallback>,
+    activate_callback: Arc<Mutex<Option<ActivateCallback>>>,
+    config: BacklogPopulationConfig,
+    mutex: Arc<Mutex<BacklogPopulationFlags>>,
+    condition: Arc<Condvar>,
+    thread: Option<JoinHandle<()>>,
 }
 
 pub type ActivateCallback =
-    Box<dyn Fn(&dyn Transaction, &Account, &AccountInfo, &ConfirmationHeightInfo)>;
+    Box<dyn Fn(&dyn Transaction, &Account, &AccountInfo, &ConfirmationHeightInfo) + Send + Sync>;
 
 impl BacklogPopulation {
-    pub fn new(ledger: Arc<Ledger>, stats: Arc<Stats>) -> Self {
+    pub fn new(config: BacklogPopulationConfig, ledger: Arc<Ledger>, stats: Arc<Stats>) -> Self {
         Self {
+            config,
             ledger,
             stats,
-            activate_callback: None,
+            activate_callback: Arc::new(Mutex::new(None)),
+            mutex: Arc::new(Mutex::new(BacklogPopulationFlags {
+                stopped: false,
+                triggered: false,
+            })),
+            condition: Arc::new(Condvar::new()),
+            thread: None,
         }
     }
 
     pub fn set_activate_callback(&mut self, callback: ActivateCallback) {
-        self.activate_callback = Some(callback);
+        let mut lock = self.activate_callback.lock().unwrap();
+        *lock = Some(callback);
+    }
+
+    pub fn start(&mut self) {
+        debug_assert!(self.thread.is_none());
+
+        let thread = BacklogPopulationThread {
+            ledger: Arc::clone(&self.ledger),
+            stats: Arc::clone(&self.stats),
+            activate_callback: Arc::clone(&self.activate_callback),
+            config: self.config.clone(),
+            mutex: Arc::clone(&self.mutex),
+            condition: Arc::clone(&self.condition),
+        };
+
+        self.thread = Some(
+            thread::Builder::new()
+                .name("Backlog".to_owned())
+                .spawn(move || {
+                    thread.run();
+                })
+                .unwrap(),
+        );
+    }
+
+    pub fn stop(&mut self) {
+        let mut lock = self.mutex.lock().unwrap();
+        lock.stopped = true;
+        drop(lock);
+        self.notify();
+        if let Some(handle) = self.thread.take() {
+            handle.join().unwrap()
+        }
+    }
+
+    pub fn trigger(&self) {
+        {
+            let mut lock = self.mutex.lock().unwrap();
+            lock.triggered = true;
+        }
+        self.notify();
+    }
+
+    pub fn notify(&self) {
+        self.condition.notify_all();
+    }
+}
+
+struct BacklogPopulationThread {
+    ledger: Arc<Ledger>,
+    stats: Arc<Stats>,
+    activate_callback: Arc<Mutex<Option<ActivateCallback>>>,
+    config: BacklogPopulationConfig,
+    mutex: Arc<Mutex<BacklogPopulationFlags>>,
+    condition: Arc<Condvar>,
+}
+
+impl BacklogPopulationThread {
+    fn run(&self) {
+        let mut lock = self.mutex.lock().unwrap();
+        while !lock.stopped {
+            if self.predicate(&lock) {
+                let _ = self
+                    .stats
+                    .inc(StatType::Backlog, DetailType::Loop, Direction::In);
+
+                lock.triggered = false;
+                drop(lock);
+                self.populate_backlog();
+                lock = self.mutex.lock().unwrap();
+            }
+
+            lock = self
+                .condition
+                .wait_while(lock, |l| l.stopped || self.predicate(&l))
+                .unwrap();
+        }
+    }
+
+    fn predicate(&self, lock: &BacklogPopulationFlags) -> bool {
+        lock.triggered || self.config.enabled
+    }
+
+    fn populate_backlog(&self) {
+        debug_assert!(self.config.frequency > 0);
+        let mut lock = self.mutex.lock().unwrap();
+
+        let chunk_size = self.config.batch_size / self.config.frequency;
+        let mut done = false;
+        let mut next = Account::zero();
+        while !lock.stopped && !done {
+            drop(lock);
+            {
+                let transaction = self.ledger.store.tx_begin_read().unwrap();
+
+                let mut count = 0u32;
+                let mut i = self
+                    .ledger
+                    .store
+                    .account()
+                    .begin_account(transaction.txn(), &next);
+                // 			auto const end = ledger.store.account ().end ();
+                while let Some((account, _)) = i.current() {
+                    if count >= chunk_size {
+                        break;
+                    }
+
+                    let _ = self
+                        .stats
+                        .inc(StatType::Backlog, DetailType::Total, Direction::In);
+
+                    self.activate(transaction.txn(), account);
+                    next = (account.number() + 1).into();
+
+                    i.next();
+                    count += 1;
+                }
+                done = self
+                    .ledger
+                    .store
+                    .account()
+                    .begin_account(transaction.txn(), &next)
+                    .is_end();
+            }
+            lock = self.mutex.lock().unwrap();
+            // Give the rest of the node time to progress without holding database lock
+            sleep(Duration::from_millis(1000 / self.config.frequency as u64));
+        }
     }
 
     pub fn activate(&self, txn: &dyn Transaction, account: &Account) {
@@ -47,7 +208,9 @@ impl BacklogPopulation {
             let _ = self
                 .stats
                 .inc(StatType::Backlog, DetailType::Activated, Direction::In);
-            match &self.activate_callback {
+
+            let callback_lock = self.activate_callback.lock().unwrap();
+            match callback_lock.deref() {
                 Some(callback) => callback(txn, account, &account_info, &conf_info),
                 None => {
                     debug_assert!(false)

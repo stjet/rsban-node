@@ -33,6 +33,9 @@ impl ContextWrapper {
     }
 }
 
+unsafe impl Send for ContextWrapper {}
+unsafe impl Sync for ContextWrapper {}
+
 impl Drop for ContextWrapper {
     fn drop(&mut self) {
         unsafe {

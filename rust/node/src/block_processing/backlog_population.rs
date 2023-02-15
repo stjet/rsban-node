@@ -151,7 +151,7 @@ impl BacklogPopulationThread {
         while !lock.stopped && !done {
             drop(lock);
             {
-                let transaction = self.ledger.store.tx_begin_read().unwrap();
+                let transaction = self.ledger.store.tx_begin_read();
 
                 let mut count = 0u32;
                 let mut i = self

@@ -66,8 +66,7 @@ impl BlockCementor {
             let mut txn = self
                 .ledger
                 .store
-                .tx_begin_write_for(&[Table::ConfirmationHeight])
-                .unwrap();
+                .tx_begin_write_for(&[Table::ConfirmationHeight]);
 
             while let Some(pending) = cement_queue.pop() {
                 self.process_pending_entry(

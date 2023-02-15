@@ -430,33 +430,26 @@ impl Stats {
         dir: Direction,
         value: u64,
         detail_only: bool,
-    ) -> Result<()> {
+    ) {
         if value == 0 {
-            return Ok(());
+            return;
         }
 
         const NO_DETAIL_MASK: u32 = 0xffff00ff;
         let key = key_of(stat_type, detail, dir);
-        self.update(key, value)?;
+        let _ = self.update(key, value);
 
         // Optionally update at type-level as well
         if !detail_only && (key & NO_DETAIL_MASK) != key {
-            self.update(key & NO_DETAIL_MASK, value)?;
+            let _ = self.update(key & NO_DETAIL_MASK, value);
         }
-
-        Ok(())
     }
 
-    pub fn inc(&self, stat_type: StatType, detail: DetailType, dir: Direction) -> Result<()> {
+    pub fn inc(&self, stat_type: StatType, detail: DetailType, dir: Direction) {
         self.add(stat_type, detail, dir, 1, false)
     }
 
-    pub fn inc_detail_only(
-        &self,
-        stat_type: StatType,
-        detail: DetailType,
-        dir: Direction,
-    ) -> Result<()> {
+    pub fn inc_detail_only(&self, stat_type: StatType, detail: DetailType, dir: Direction) {
         self.add(stat_type, detail, dir, 1, true)
     }
 
@@ -465,7 +458,7 @@ impl Stats {
     /// # Arguments
     /// * `key` a key constructor from `StatType`, `DetailType` and `Direction`
     /// * `value` Amount to add to the counter
-    fn update(&self, key: u32, value: u64) -> Result<()> {
+    fn update(&self, key: u32, value: u64) -> anyhow::Result<()> {
         let now = Instant::now();
 
         let mut lock = self.mutables.lock().unwrap();
@@ -528,6 +521,7 @@ impl Stats {
                 }
             }
         }
+
         Ok(())
     }
 

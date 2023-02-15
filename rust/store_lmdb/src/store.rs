@@ -252,20 +252,29 @@ impl Store for LmdbStore {
         copy_db(&self.env, destination)
     }
 
-    fn tx_begin_read(&self) -> anyhow::Result<Box<dyn rsnano_store_traits::ReadTransaction>> {
-        let txn = self.env.tx_begin_read()?;
-        Ok(Box::new(txn))
+    fn tx_begin_read(&self) -> Box<dyn rsnano_store_traits::ReadTransaction> {
+        let txn = self
+            .env
+            .tx_begin_read()
+            .expect("Could not create LMDB read transaction");
+        Box::new(txn)
     }
 
-    fn tx_begin_write(&self) -> anyhow::Result<Box<dyn WriteTransaction>> {
-        let txn = self.env.tx_begin_write()?;
-        Ok(Box::new(txn))
+    fn tx_begin_write(&self) -> Box<dyn WriteTransaction> {
+        let txn = self
+            .env
+            .tx_begin_write()
+            .expect("Could not create LMDB read/write transaction");
+        Box::new(txn)
     }
 
-    fn tx_begin_write_for(&self, _to_lock: &[Table]) -> anyhow::Result<Box<dyn WriteTransaction>> {
+    fn tx_begin_write_for(&self, _to_lock: &[Table]) -> Box<dyn WriteTransaction> {
         // locking tables is not needed for LMDB because there can only ever be one write transaction at a time
-        let txn = self.env.tx_begin_write()?;
-        Ok(Box::new(txn))
+        let txn = self
+            .env
+            .tx_begin_write()
+            .expect("Could not create LMDB read/write transaction");
+        Box::new(txn)
     }
 
     fn account(&self) -> &dyn AccountStore {

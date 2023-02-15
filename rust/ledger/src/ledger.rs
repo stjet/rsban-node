@@ -109,11 +109,11 @@ impl Ledger {
     }
 
     pub fn read_txn(&self) -> Box<dyn ReadTransaction> {
-        self.store.tx_begin_read().unwrap()
+        self.store.tx_begin_read()
     }
 
     pub fn rw_txn(&self) -> Box<dyn WriteTransaction> {
-        self.store.tx_begin_write().unwrap()
+        self.store.tx_begin_write()
     }
 
     fn initialize(&mut self, generate_cache: &GenerateCache) -> anyhow::Result<()> {
@@ -158,7 +158,7 @@ impl Ledger {
                 });
         }
 
-        let transaction = self.store.tx_begin_read()?;
+        let transaction = self.store.tx_begin_read();
         self.cache.pruned_count.fetch_add(
             self.store.pruned().count(transaction.txn()) as u64,
             Ordering::SeqCst,
@@ -224,7 +224,7 @@ impl Ledger {
     }
 
     pub fn block_or_pruned_exists(&self, block: &BlockHash) -> bool {
-        let txn = self.store.tx_begin_read().unwrap();
+        let txn = self.store.tx_begin_read();
         self.block_or_pruned_exists_txn(txn.txn(), block)
     }
 
@@ -327,7 +327,7 @@ impl Ledger {
     }
 
     pub fn block_text(&self, hash: &BlockHash) -> anyhow::Result<String> {
-        let txn = self.store.tx_begin_read()?;
+        let txn = self.store.tx_begin_read();
         match self.store.block().get(txn.txn(), hash) {
             Some(block) => block.to_json(),
             None => Ok(String::new()),

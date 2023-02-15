@@ -41,7 +41,7 @@ impl DaemonConfig {
             opencl.put_bool(
                 "enable",
                 self.opencl_enable,
-                "Enable or disable OpenCL work generation\ntype:bool",
+                "Enable or disable OpenCL work generation\nIf enabled, consider freeing up CPU resources by setting [work_threads] to zero\ntype:bool",
             )?;
             Ok(())
         })?;

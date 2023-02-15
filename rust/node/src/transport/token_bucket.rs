@@ -91,14 +91,16 @@ impl TokenBucket {
     fn refill(&mut self) {
         let tokens_to_add =
             (self.elapsed().as_nanos() as f64 / 1e9_f64 * self.refill_rate as f64) as usize;
-        self.current_size = std::cmp::min(self.current_size + tokens_to_add, self.max_token_count);
+        // Only update if there are any tokens to add
+        if tokens_to_add > 0 {
+            self.current_size =
+                std::cmp::min(self.current_size + tokens_to_add, self.max_token_count);
+            self.last_refill = Instant::now();
+        }
     }
 
     fn elapsed(&mut self) -> Duration {
-        let now = Instant::now();
-        let elapsed = now.duration_since(self.last_refill);
-        self.last_refill = now;
-        elapsed
+        Instant::now().duration_since(self.last_refill)
     }
 }
 
@@ -190,5 +192,27 @@ mod tests {
         // With unlimited tokens, consuming always succeed
         assert_eq!(bucket.try_consume(1_000_000_000), true);
         assert_eq!(bucket.largest_burst(), 1_000_000_000);
+    }
+
+    #[test]
+    fn busy_spin() {
+        // Bucket should refill at a rate of 1 token per second
+        let mut bucket = TokenBucket::new(1, 1);
+
+        // Run a very tight loop for 5 seconds + a bit of wiggle room
+        let mut counter = 0;
+        let start = Instant::now();
+        let mut now = start;
+        while now < start + Duration::from_millis(5500) {
+            if bucket.try_consume(1) {
+                counter += 1;
+            }
+
+            MockClock::advance(Duration::from_millis(250));
+            now = Instant::now();
+        }
+
+        // Bucket starts fully refilled, therefore we see 1 additional request
+        assert_eq!(counter, 6);
     }
 }

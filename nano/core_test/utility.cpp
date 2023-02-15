@@ -79,7 +79,7 @@ TEST (thread_pool_alarm, one)
 		}
 		condition.notify_one ();
 	});
-	nano::unique_lock<nano::mutex> unique (mutex);
+	nano::unique_lock<nano::mutex> unique{ mutex };
 	condition.wait (unique, [&] () { return !!done; });
 }
 
@@ -99,7 +99,7 @@ TEST (thread_pool_alarm, many)
 			condition.notify_one ();
 		});
 	}
-	nano::unique_lock<nano::mutex> unique (mutex);
+	nano::unique_lock<nano::mutex> unique{ mutex };
 	condition.wait (unique, [&] () { return count == 50; });
 }
 

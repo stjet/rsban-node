@@ -29,10 +29,6 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 	port (port_a),
 	disconnect_observer ([] () {})
 {
-	if (!node.flags.disable_udp ())
-	{
-		port = udp_channels.get_local_endpoint ().port ();
-	}
 }
 
 nano::network::~network ()
@@ -46,41 +42,6 @@ void nano::network::start_threads ()
 	boost::thread::attributes attrs;
 	nano::thread_attributes::set (attrs);
 	auto this_l = shared_from_this ();
-	// UDP
-	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_udp (); ++i)
-	{
-		packet_processing_threads.emplace_back (attrs, [this_l] () {
-			nano::thread_role::set (nano::thread_role::name::packet_processing);
-			try
-			{
-				this_l->udp_channels.process_packets ();
-			}
-			catch (boost::system::error_code & ec)
-			{
-				this_l->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
-				release_assert (false);
-			}
-			catch (std::error_code & ec)
-			{
-				this_l->node.logger->always_log (FATAL_LOG_PREFIX, ec.message ());
-				release_assert (false);
-			}
-			catch (std::runtime_error & err)
-			{
-				this_l->node.logger->always_log (FATAL_LOG_PREFIX, err.what ());
-				release_assert (false);
-			}
-			catch (...)
-			{
-				this_l->node.logger->always_log (FATAL_LOG_PREFIX, "Unknown exception");
-				release_assert (false);
-			}
-			if (this_l->node.config->logging.network_packet_logging ())
-			{
-				this_l->node.logger->try_log ("Exiting UDP packet processing thread");
-			}
-		});
-	}
 	// TCP
 	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_tcp_realtime (); ++i)
 	{
@@ -659,17 +620,7 @@ std::size_t nano::network::fanout (float scale) const
 
 std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::network::random_set (std::size_t count_a, uint8_t min_version_a, bool include_temporary_channels_a) const
 {
-	std::unordered_set<std::shared_ptr<nano::transport::channel>> result (tcp_channels->random_set (count_a, min_version_a, include_temporary_channels_a));
-	std::unordered_set<std::shared_ptr<nano::transport::channel>> udp_random (udp_channels.random_set (count_a, min_version_a));
-	for (auto i (udp_random.begin ()), n (udp_random.end ()); i != n && result.size () < count_a * 1.5; ++i)
-	{
-		result.insert (*i);
-	}
-	while (result.size () > count_a)
-	{
-		result.erase (result.begin ());
-	}
-	return result;
+	return tcp_channels->random_set (count_a, min_version_a, include_temporary_channels_a);
 }
 
 void nano::network::random_fill (std::array<nano::endpoint, 8> & target_a) const

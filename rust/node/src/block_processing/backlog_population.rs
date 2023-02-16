@@ -1,7 +1,7 @@
 use std::{
     ops::Deref,
     sync::{Arc, Condvar, Mutex},
-    thread::{self, sleep, JoinHandle},
+    thread::{self, JoinHandle},
     time::Duration,
 };
 
@@ -184,7 +184,14 @@ impl BacklogPopulationThread {
             }
             lock = self.mutex.lock().unwrap();
             // Give the rest of the node time to progress without holding database lock
-            sleep(Duration::from_millis(1000 / self.config.frequency as u64));
+            lock = self
+                .condition
+                .wait_timeout(
+                    lock,
+                    Duration::from_millis(1000 / self.config.frequency as u64),
+                )
+                .unwrap()
+                .0;
         }
     }
 

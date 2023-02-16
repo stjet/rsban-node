@@ -154,8 +154,6 @@ public:
 	void set_disable_request_loop (bool value);
 	bool disable_tcp_realtime () const;
 	void set_disable_tcp_realtime (bool value);
-	bool disable_udp () const;
-	void set_disable_udp (bool value);
 	bool disable_unchecked_cleanup () const;
 	void set_disable_unchecked_cleanup (bool value);
 	bool disable_unchecked_drop () const;

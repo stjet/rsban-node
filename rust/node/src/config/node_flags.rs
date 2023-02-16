@@ -18,7 +18,6 @@ pub struct NodeFlags {
     pub disable_rep_crawler: bool,
     pub disable_request_loop: bool, // For testing only
     pub disable_tcp_realtime: bool,
-    pub disable_udp: bool,
     pub disable_unchecked_cleanup: bool,
     pub disable_unchecked_drop: bool,
     pub disable_providing_telemetry_metrics: bool,
@@ -62,7 +61,6 @@ impl NodeFlags {
             disable_rep_crawler: false,
             disable_request_loop: false,
             disable_tcp_realtime: false,
-            disable_udp: true,
             disable_unchecked_cleanup: false,
             disable_unchecked_drop: true,
             disable_providing_telemetry_metrics: false,

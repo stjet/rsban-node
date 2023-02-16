@@ -3,7 +3,6 @@
 #include <nano/node/common.hpp>
 #include <nano/node/peer_exclusion.hpp>
 #include <nano/node/transport/tcp.hpp>
-#include <nano/node/transport/udp.hpp>
 #include <nano/secure/network_filter.hpp>
 
 #include <boost/thread/thread.hpp>
@@ -176,7 +175,6 @@ public:
 	nano::tcp_message_manager tcp_message_manager;
 	nano::node & node;
 	std::shared_ptr<nano::network_filter> publish_filter;
-	nano::transport::udp_channels udp_channels;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 	std::atomic<uint16_t> port{ 0 };
 	std::function<void ()> disconnect_observer;

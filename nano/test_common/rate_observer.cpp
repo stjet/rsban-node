@@ -4,10 +4,6 @@
 
 #include <sstream>
 
-#include <magic_enum.hpp>
-
-using namespace magic_enum::ostream_operators;
-
 /*
  * rate_observer::counter
  */
@@ -51,7 +47,7 @@ uint64_t nano::test::rate_observer::stat_counter::count ()
 std::string nano::test::rate_observer::stat_counter::name ()
 {
 	std::stringstream ss;
-	ss << type << "::" << detail << "::" << dir;
+	ss << nano::stats::type_to_string (type) << "::" << nano::stats::detail_to_string (detail) << "::" << nano::stats::dir_to_string (dir);
 	return ss.str ();
 }
 

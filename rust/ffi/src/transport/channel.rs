@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use rsnano_core::Account;
 
-use rsnano_node::transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp, ChannelUdp};
+use rsnano_node::transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp};
 
 pub enum ChannelType {
     Tcp(Arc<ChannelTcp>),
     InProc(ChannelInProc),
-    Udp(ChannelUdp),
     Fake(ChannelFake),
 }
 
@@ -30,7 +29,6 @@ pub unsafe fn as_channel(handle: *mut ChannelHandle) -> &'static dyn Channel {
     match (*handle).0.as_ref() {
         ChannelType::Tcp(tcp) => tcp.as_ref(),
         ChannelType::InProc(inproc) => inproc,
-        ChannelType::Udp(udp) => udp,
         ChannelType::Fake(fake) => fake,
     }
 }
@@ -111,13 +109,6 @@ pub unsafe extern "C" fn rsn_channel_set_node_id(handle: *mut ChannelHandle, id:
 #[no_mangle]
 pub extern "C" fn rsn_channel_inproc_create(now: u64) -> *mut ChannelHandle {
     ChannelHandle::new(Arc::new(ChannelType::InProc(ChannelInProc::new(now))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_channel_udp_create(now: u64) -> *mut ChannelHandle {
-    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Udp(
-        ChannelUdp::new(now),
-    )))))
 }
 
 #[no_mangle]

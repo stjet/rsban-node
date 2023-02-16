@@ -2,7 +2,6 @@ mod bandwidth_limiter;
 mod channel_fake;
 mod channel_inproc;
 mod channel_tcp;
-mod channel_udp;
 mod message_deserializer;
 mod network_filter;
 mod peer_exclusion;
@@ -19,7 +18,6 @@ pub use bandwidth_limiter::{
 pub use channel_fake::ChannelFake;
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, TcpChannelData};
-pub use channel_udp::ChannelUdp;
 pub use message_deserializer::{MessageDeserializer, MessageDeserializerExt, ParseStatus};
 pub use network_filter::NetworkFilter;
 pub use peer_exclusion::PeerExclusion;

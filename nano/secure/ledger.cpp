@@ -284,6 +284,16 @@ std::shared_ptr<nano::block> nano::ledger::successor (nano::transaction const & 
 	return nano::block_handle_to_block (block_handle);
 }
 
+std::shared_ptr<nano::block> nano::ledger::head_block (nano::transaction const & transaction, nano::account const & account)
+{
+	auto info = store.account ().get (transaction, account);
+	if (info)
+	{
+		return store.block ().get (transaction, info->head ());
+	}
+	return nullptr;
+}
+
 bool nano::ledger::block_confirmed (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
 	return rsnano::rsn_ledger_block_confirmed (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());

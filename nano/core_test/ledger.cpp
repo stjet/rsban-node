@@ -688,3 +688,12 @@ TEST (ledger, unchecked_receive)
 	ASSERT_TIMELY (10s, node1.store.block ().exists (*node1.store.tx_begin_read (), receive1->hash ()));
 	ASSERT_EQ (0, node1.unchecked.count (*node1.store.tx_begin_read ()));
 }
+
+TEST (ledger, head_block)
+{
+	auto ctx = nano::test::context::ledger_empty ();
+	auto & ledger = ctx.ledger ();
+	auto & store = ctx.store ();
+	auto tx = store.tx_begin_read ();
+	ASSERT_EQ (*nano::dev::genesis, *ledger.head_block (tx, nano::dev::genesis->account ()));
+}

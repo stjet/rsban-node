@@ -132,7 +132,7 @@ impl BacklogPopulationThread {
 
             lock = self
                 .condition
-                .wait_while(lock, |l| l.stopped || self.predicate(&l))
+                .wait_while(lock, |l| !l.stopped && !self.predicate(&l))
                 .unwrap();
         }
     }

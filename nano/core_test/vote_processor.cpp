@@ -67,7 +67,7 @@ TEST (vote_processor, invalid_signature)
 	vote_invalid->flip_signature_bit_0 ();
 	auto channel = std::make_shared<nano::transport::inproc::channel> (node, node);
 
-	auto election = nano::test::start_election (system, node, nano::dev::genesis);
+	auto election = nano::test::start_election (system, node, nano::dev::genesis->hash ());
 	ASSERT_NE (election, nullptr);
 	ASSERT_EQ (1, election->votes ().size ());
 

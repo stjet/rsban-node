@@ -172,6 +172,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<vo
 	network{ node.network },
 	workers{ node.workers },
 	flags{ node.flags },
+	store{ node.store },
 	io_ctx{ node.io_ctx },
 	observers{ node.observers },
 	sink{ std::move (sink) },
@@ -267,6 +268,35 @@ std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::transport::t
 				result.insert (channel);
 			}
 		}
+	}
+	return result;
+}
+
+bool nano::transport::tcp_channels::store_all (bool clear_peers)
+{
+	// We can't hold the mutex while starting a write transaction, so
+	// we collect endpoints to be saved and then relase the lock.
+	std::vector<nano::endpoint> endpoints;
+	{
+		nano::lock_guard<nano::mutex> lock{ mutex };
+		endpoints.reserve (channels.size ());
+		std::transform (channels.begin (), channels.end (),
+		std::back_inserter (endpoints), [] (auto const & channel) { return nano::transport::map_tcp_to_endpoint (channel.endpoint ()); });
+	}
+	bool result (false);
+	if (!endpoints.empty ())
+	{
+		// Clear all peers then refresh with the current list of peers
+		auto transaction (store.tx_begin_write ({ tables::peers }));
+		if (clear_peers)
+		{
+			store.peer ().clear (*transaction);
+		}
+		for (auto const & endpoint : endpoints)
+		{
+			store.peer ().put (*transaction, nano::endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () });
+		}
+		result = true;
 	}
 	return result;
 }

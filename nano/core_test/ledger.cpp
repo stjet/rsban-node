@@ -695,5 +695,5 @@ TEST (ledger, head_block)
 	auto & ledger = ctx.ledger ();
 	auto & store = ctx.store ();
 	auto tx = store.tx_begin_read ();
-	ASSERT_EQ (*nano::dev::genesis, *ledger.head_block (tx, nano::dev::genesis->account ()));
+	ASSERT_EQ (*nano::dev::genesis, *ledger.head_block (*tx, nano::dev::genesis->account ()));
 }

@@ -535,7 +535,7 @@ TEST (confirmation_height, gap_live)
 		}
 
 		// Vote and confirm all existing blocks
-		nano::test::start_election (system, *node, send1->hash());
+		nano::test::start_election (system, *node, send1->hash ());
 		ASSERT_TIMELY (10s, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out) == 3);
 
 		// Now complete the chain where the block comes in on the live network

@@ -22,7 +22,7 @@ nano::election::election (nano::node & node_a, std::shared_ptr<nano::block> cons
 	confirmation_action (confirmation_action_a),
 	live_vote_action (live_vote_action_a),
 	node (node_a),
-	behavior (election_behavior_a),
+	behavior_m (election_behavior_a),
 	status{},
 	height (block_a->sideband ().height ()),
 	root (block_a->root ()),
@@ -224,7 +224,7 @@ bool nano::election::transition_time (nano::confirmation_solicitor & solicitor_a
 
 std::chrono::milliseconds nano::election::time_to_live () const
 {
-	switch (behavior)
+	switch (behavior ())
 	{
 		case election_behavior::normal:
 			return std::chrono::milliseconds (5 * 60 * 1000);
@@ -639,4 +639,9 @@ std::vector<nano::vote_with_weight_info> nano::election::votes_with_weight () co
 	result.reserve (sorted_votes.size ());
 	std::transform (sorted_votes.begin (), sorted_votes.end (), std::back_inserter (result), [] (auto const & entry) { return entry.second; });
 	return result;
+}
+
+nano::election_behavior nano::election::behavior () const
+{
+	return behavior_m;
 }

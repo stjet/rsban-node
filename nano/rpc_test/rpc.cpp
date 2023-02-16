@@ -6519,7 +6519,7 @@ TEST (rpc, block_confirmed)
 	ASSERT_TIMELY (5s, nano::test::confirm (*node, { send }));
 
 	// Wait until the confirmation height has been set
-	ASSERT_TIMELY (5, node->ledger.block_confirmed (*node->store.tx_begin_read (), send->hash ()) && !node->confirmation_height_processor.is_processing_block (send->hash ()));
+	ASSERT_TIMELY (5s, node->ledger.block_confirmed (*node->store.tx_begin_read (), send->hash ()) && !node->confirmation_height_processor.is_processing_block (send->hash ()));
 
 	// Requesting confirmation for this should now succeed
 	request.put ("hash", send->hash ().to_string ());

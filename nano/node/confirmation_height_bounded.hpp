@@ -31,6 +31,8 @@ public:
 
 	bool empty () const;
 	nano::block_hash back () const;
+	void push_back (nano::block_hash const &);
+	void truncate_after (nano::block_hash const &);
 
 	boost::circular_buffer_space_optimized<nano::block_hash> buffer;
 	rsnano::HashCircularBufferHandle * handle;
@@ -115,7 +117,7 @@ private:
 		nano::transaction const & transaction;
 		nano::block_hash const & top_most_non_receive_block_hash;
 		bool already_cemented;
-		boost::circular_buffer_space_optimized<nano::block_hash> & checkpoints;
+		nano::hash_circular_buffer & checkpoints;
 		decltype (accounts_confirmed_info.begin ()) account_it;
 		nano::confirmation_height_info const & confirmation_height_info;
 		nano::account const & account;
@@ -139,7 +141,16 @@ private:
 	top_and_next_hash get_next_block (boost::optional<top_and_next_hash> const &, nano::hash_circular_buffer const &, boost::circular_buffer_space_optimized<receive_source_pair> const & receive_source_pairs, boost::optional<receive_chain_details> &, nano::block const & original_block);
 	nano::block_hash get_least_unconfirmed_hash_from_top_level (nano::transaction const &, nano::block_hash const &, nano::account const &, nano::confirmation_height_info const &, uint64_t &);
 	void prepare_iterated_blocks_for_cementing (preparation_data &);
-	bool iterate (nano::read_transaction &, uint64_t, nano::block_hash const &, boost::circular_buffer_space_optimized<nano::block_hash> &, nano::block_hash &, nano::block_hash const &, boost::circular_buffer_space_optimized<receive_source_pair> &, nano::account const &);
+
+	bool iterate (
+	nano::read_transaction &,
+	uint64_t,
+	nano::block_hash const &,
+	nano::hash_circular_buffer &,
+	nano::block_hash &,
+	nano::block_hash const &,
+	boost::circular_buffer_space_optimized<receive_source_pair> &,
+	nano::account const &);
 
 	nano::ledger & ledger;
 	nano::write_database_queue & write_database_queue;

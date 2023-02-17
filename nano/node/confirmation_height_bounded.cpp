@@ -1,3 +1,4 @@
+#include "nano/lib/numbers.hpp"
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/lib/logger_mt.hpp>
@@ -25,6 +26,11 @@ nano::hash_circular_buffer::~hash_circular_buffer ()
 bool nano::hash_circular_buffer::empty () const
 {
 	return buffer.empty ();
+}
+
+nano::block_hash nano::hash_circular_buffer::back () const
+{
+	return buffer.back ();
 }
 
 nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, std::atomic<bool> & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
@@ -55,7 +61,7 @@ nano::confirmation_height_bounded::~confirmation_height_bounded ()
 //     or all other blocks have been processed.
 nano::confirmation_height_bounded::top_and_next_hash nano::confirmation_height_bounded::get_next_block (
 boost::optional<top_and_next_hash> const & next_in_receive_chain_a,
-boost::circular_buffer_space_optimized<nano::block_hash> const & checkpoints_a,
+nano::hash_circular_buffer const & checkpoints_a,
 boost::circular_buffer_space_optimized<receive_source_pair> const & receive_source_pairs,
 boost::optional<receive_chain_details> & receive_details_a,
 nano::block const & original_block)
@@ -100,7 +106,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 	do
 	{
 		boost::optional<receive_chain_details> receive_details;
-		auto hash_to_process = get_next_block (next_in_receive_chain, checkpoints.buffer, receive_source_pairs, receive_details, *original_block);
+		auto hash_to_process = get_next_block (next_in_receive_chain, checkpoints, receive_source_pairs, receive_details, *original_block);
 		current = hash_to_process.top;
 
 		auto top_level_hash = current;

@@ -3,11 +3,13 @@ use rsnano_core::{Account, BlockHash};
 mod block_cache;
 mod block_cementor;
 mod cement_queue;
+mod confirmation_height_bounded;
 mod confirmation_height_unbounded;
 mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
 mod unconfirmed_receive_and_sources_collector;
 
+pub use confirmation_height_bounded::ConfirmationHeightBounded;
 pub use confirmation_height_unbounded::ConfirmationHeightUnbounded;
 pub use confirmed_iterated_pairs::ConfirmedIteratedPair;
 

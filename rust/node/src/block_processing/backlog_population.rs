@@ -24,16 +24,23 @@ pub struct BacklogPopulationConfig {
 
 struct BacklogPopulationFlags {
     stopped: bool,
+    /** This is a manual trigger, the ongoing backlog population does not use this.
+     *  It can be triggered even when backlog population (frontiers confirmation) is disabled. */
     triggered: bool,
 }
 
 pub struct BacklogPopulation {
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
+    /**
+     * Callback called for each backlogged account
+     */
     activate_callback: Arc<Mutex<Option<ActivateCallback>>>,
     config: BacklogPopulationConfig,
     mutex: Arc<Mutex<BacklogPopulationFlags>>,
     condition: Arc<Condvar>,
+    /** Thread that runs the backlog implementation logic. The thread always runs, even if
+     *  backlog population is disabled, so that it can service a manual trigger (e.g. via RPC). */
     thread: Option<JoinHandle<()>>,
 }
 
@@ -93,6 +100,7 @@ impl BacklogPopulation {
         }
     }
 
+    /** Manually trigger backlog population */
     pub fn trigger(&self) {
         {
             let mut lock = self.mutex.lock().unwrap();
@@ -101,8 +109,15 @@ impl BacklogPopulation {
         self.notify();
     }
 
+    /** Notify about AEC vacancy */
     pub fn notify(&self) {
         self.condition.notify_all();
+    }
+}
+
+impl Drop for BacklogPopulation {
+    fn drop(&mut self) {
+        self.stop();
     }
 }
 

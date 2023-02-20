@@ -49,36 +49,6 @@ public:
 	void set_activate_callback (std::function<void (nano::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)>);
 
 private:
-	/**
-	 * Callback called for each backlogged account
-	 */
-	using callback_t = nano::observer_set<nano::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &>;
-	callback_t activate_callback;
-
-private: // Dependencies
-	nano::ledger & ledger;
-	nano::stats & stats;
-
-	config config_m;
-
-private:
-	void run ();
-	bool predicate () const;
-	void activate (nano::transaction const & transaction, nano::account const & account);
-
-	void populate_backlog (nano::unique_lock<nano::mutex> & lock);
-
-	/** This is a manual trigger, the ongoing backlog population does not use this.
-	 *  It can be triggered even when backlog population (frontiers confirmation) is disabled. */
-	bool triggered{ false };
-
-	bool stopped{ false };
-	nano::condition_variable condition;
-	mutable nano::mutex mutex;
-
-	/** Thread that runs the backlog implementation logic. The thread always runs, even if
-	 *  backlog population is disabled, so that it can service a manual trigger (e.g. via RPC). */
-	std::thread thread;
 	rsnano::BacklogPopulationHandle * handle;
 };
 }

@@ -45,6 +45,26 @@ pub unsafe extern "C" fn rsn_backlog_population_destroy(handle: *mut BacklogPopu
     drop(Box::from_raw(handle))
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_backlog_population_start(handle: *mut BacklogPopulationHandle) {
+    (*handle).0.start();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_backlog_population_stop(handle: *mut BacklogPopulationHandle) {
+    (*handle).0.stop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_backlog_population_trigger(handle: *mut BacklogPopulationHandle) {
+    (*handle).0.trigger();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_backlog_population_notify(handle: *mut BacklogPopulationHandle) {
+    (*handle).0.notify();
+}
+
 pub type BacklogPopulationActivateCallback = unsafe extern "C" fn(
     *mut c_void,
     *mut TransactionHandle,

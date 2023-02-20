@@ -104,7 +104,6 @@ impl StatEntry {
 #[derive(FromPrimitive, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StatType {
-    TrafficUdp,
     TrafficTcp,
     Error,
     Message,
@@ -119,7 +118,6 @@ pub enum StatType {
     Peering,
     Ipc,
     Tcp,
-    Udp,
     ConfirmationHeight,
     ConfirmationObserver,
     Drop,
@@ -263,9 +261,7 @@ pub enum DetailType {
     GenerateVoteNormal,
     GenerateVoteFinal,
 
-    // udp
-    Blocking,
-    Overflow,
+    // received messages
     InvalidHeader,
     InvalidMessageType,
     InvalidKeepaliveMessage,
@@ -282,8 +278,6 @@ pub enum DetailType {
     InvalidAscPullAckMessage,
     MessageTooBig,
     OutdatedVersion,
-    UdpMaxPerIp,
-    UdpMaxPerSubnetwork,
 
     // tcp
     TcpAcceptSuccess,

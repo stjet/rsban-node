@@ -1317,6 +1317,7 @@ name = "rsnano_ffi"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bounded-vec-deque",
  "cbindgen",
  "num",
  "num-traits",

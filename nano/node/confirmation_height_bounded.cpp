@@ -14,7 +14,7 @@
 
 nano::hash_circular_buffer::hash_circular_buffer (size_t max_items) :
 	buffer{ max_items },
-	handle{ rsnano::rsn_hash_circular_buffer_create () }
+	handle{ rsnano::rsn_hash_circular_buffer_create (max_items) }
 {
 }
 
@@ -25,24 +25,24 @@ nano::hash_circular_buffer::~hash_circular_buffer ()
 
 bool nano::hash_circular_buffer::empty () const
 {
-	return buffer.empty ();
+	return rsnano::rsn_hash_circular_buffer_empty (handle);
 }
 
 nano::block_hash nano::hash_circular_buffer::back () const
 {
-	return buffer.back ();
+	nano::block_hash result;
+	rsnano::rsn_hash_circular_buffer_back (handle, result.bytes.data ());
+	return result;
 }
 
 void nano::hash_circular_buffer::push_back (nano::block_hash const & hash)
 {
-	buffer.push_back (hash);
+	rsnano::rsn_hash_circular_buffer_push_back (handle, hash.bytes.data ());
 }
 
 void nano::hash_circular_buffer::truncate_after (nano::block_hash const & hash)
 {
-	buffer.erase (
-	std::remove (buffer.begin (), buffer.end (), hash),
-	buffer.end ());
+	rsnano::rsn_hash_circular_buffer_truncate_after (handle, hash.bytes.data ());
 }
 
 nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, std::atomic<bool> & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :

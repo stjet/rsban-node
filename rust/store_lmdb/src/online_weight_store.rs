@@ -88,7 +88,7 @@ mod tests {
         let mut txn = env.tx_begin_write()?;
 
         let time = 1;
-        let amount = Amount::new(2);
+        let amount = Amount::raw(2);
         store.put(&mut txn, time, &amount);
 
         assert_eq!(store.count(&txn), 1);
@@ -105,8 +105,8 @@ mod tests {
 
         let time1 = 1;
         let time2 = 2;
-        let amount1 = Amount::new(3);
-        let amount2 = Amount::new(4);
+        let amount1 = Amount::raw(3);
+        let amount2 = Amount::raw(4);
         store.put(&mut txn, time1, &amount1);
         store.put(&mut txn, time2, &amount2);
 
@@ -124,8 +124,8 @@ mod tests {
 
         let time1 = 1;
         let time2 = 2;
-        let amount1 = Amount::new(3);
-        let amount2 = Amount::new(4);
+        let amount1 = Amount::raw(3);
+        let amount2 = Amount::raw(4);
         store.put(&mut txn, time1, &amount1);
         store.put(&mut txn, time2, &amount2);
 

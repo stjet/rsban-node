@@ -192,7 +192,7 @@ fn fail_negative_spend() {
 
     let mut negative_spend = genesis
         .legacy_send(txn.txn())
-        .balance(send.send_block.balance() + Amount::new(1))
+        .balance(send.send_block.balance() + Amount::raw(1))
         .build();
 
     let result = ctx

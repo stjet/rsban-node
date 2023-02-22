@@ -173,7 +173,7 @@ fn receive_after_epoch_v2() {
 
     let mut send = genesis
         .send(txn.txn())
-        .amount(Amount::new(50))
+        .amount(Amount::raw(50))
         .link(destination.account())
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
@@ -195,7 +195,7 @@ fn receive_after_epoch_v2() {
         BlockDetails::new(Epoch::Epoch2, false, true, false)
     );
     assert_eq!(receive.sideband().unwrap().source_epoch, Epoch::Epoch1);
-    assert_eq!(ctx.ledger.weight(&destination.account()), Amount::new(50));
+    assert_eq!(ctx.ledger.weight(&destination.account()), Amount::raw(50));
 }
 
 #[test]

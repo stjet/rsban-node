@@ -74,7 +74,7 @@ fn send_and_change_representative() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
     let representative = Account::from(1);
-    let amount_sent = LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(1);
+    let amount_sent = LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(1);
     let mut send = genesis
         .send(txn.txn())
         .amount(amount_sent)
@@ -87,7 +87,7 @@ fn send_and_change_representative() {
         amount_sent,
     );
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
-    assert_eq!(ctx.ledger.weight(&representative), Amount::new(1));
+    assert_eq!(ctx.ledger.weight(&representative), Amount::raw(1));
     assert_eq!(
         send.sideband().unwrap().details,
         BlockDetails::new(Epoch::Epoch0, true, false, false)

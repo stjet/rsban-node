@@ -38,7 +38,7 @@ impl SendHashables {
         let destination = Account::from_bytes(buffer_32);
 
         stream.read_bytes(&mut buffer_16, 16)?;
-        let balance = Amount::new(u128::from_be_bytes(buffer_16));
+        let balance = Amount::raw(u128::from_be_bytes(buffer_16));
 
         Ok(Self {
             previous,
@@ -50,7 +50,7 @@ impl SendHashables {
     fn clear(&mut self) {
         self.previous = BlockHash::zero();
         self.destination = Account::zero();
-        self.balance = Amount::new(0);
+        self.balance = Amount::raw(0);
     }
 }
 
@@ -294,7 +294,7 @@ mod tests {
         let mut block = SendBlock::new(
             &BlockHash::from(0),
             &Account::from(1),
-            &Amount::new(13),
+            &Amount::raw(13),
             &key.private_key(),
             &key.public_key(),
             2,
@@ -316,7 +316,7 @@ mod tests {
         let block1 = SendBlock::new(
             &BlockHash::from(0),
             &Account::from(1),
-            &Amount::new(2),
+            &Amount::raw(2),
             &key.private_key(),
             &key.public_key(),
             5,
@@ -336,7 +336,7 @@ mod tests {
         let block1 = SendBlock::new(
             &BlockHash::from(0),
             &Account::from(1),
-            &Amount::new(2),
+            &Amount::raw(2),
             &key.private_key(),
             &key.public_key(),
             5,

@@ -333,14 +333,14 @@ fn fail_receive_received_source() {
     let mut receivable1 = genesis
         .legacy_send(txn.txn())
         .destination(open.destination.account())
-        .amount(Amount::new(1))
+        .amount(Amount::raw(1))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receivable1).unwrap();
 
     let mut receivable2 = genesis
         .legacy_send(txn.txn())
         .destination(open.destination.account())
-        .amount(Amount::new(1))
+        .amount(Amount::raw(1))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut receivable2).unwrap();
 
@@ -404,7 +404,7 @@ fn receive_from_state_block() {
 
     assert_eq!(
         ctx.ledger.balance(txn.txn(), &receive.hash()),
-        Amount::new(100)
+        Amount::raw(100)
     );
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),

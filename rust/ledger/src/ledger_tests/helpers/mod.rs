@@ -42,7 +42,7 @@ pub(crate) fn setup_legacy_send_block<'a>(
     let genesis = ctx.genesis_block_factory();
     let destination = ctx.block_factory();
 
-    let amount_sent = Amount::new(50);
+    let amount_sent = Amount::raw(50);
     let mut send_block = genesis
         .legacy_send(txn.txn())
         .destination(destination.account())
@@ -96,7 +96,7 @@ pub(crate) fn setup_legacy_receive_block<'a>(
 
     let open = setup_legacy_open_block(ctx, txn);
 
-    let amount_sent2 = Amount::new(25);
+    let amount_sent2 = Amount::raw(25);
     let mut send2 = genesis
         .legacy_send(txn.txn())
         .destination(open.destination.account())
@@ -132,7 +132,7 @@ pub(crate) fn setup_send_block<'a>(
     let genesis = ctx.genesis_block_factory();
     let destination = ctx.block_factory();
 
-    let amount_sent = Amount::new(50);
+    let amount_sent = Amount::raw(50);
     let mut send_block = genesis
         .send(txn.txn())
         .link(destination.account())

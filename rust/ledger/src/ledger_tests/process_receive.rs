@@ -165,7 +165,7 @@ fn receive_wrong_account_fail() {
     let mut receive = BlockBuilder::state()
         .account(key.public_key())
         .previous(BlockHash::zero())
-        .balance(Amount::new(1))
+        .balance(Amount::raw(1))
         .link(send.hash())
         .sign(&key)
         .build();
@@ -181,7 +181,7 @@ fn receive_and_change_representative() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let amount_sent = Amount::new(50);
+    let amount_sent = Amount::raw(50);
     let mut send = genesis
         .send(txn.txn())
         .link(genesis.account())

@@ -211,7 +211,7 @@ mod tests {
         assert_eq!(block1.hashables.account, Account::from(3));
         assert_eq!(block1.hashables.previous, BlockHash::from(1));
         assert_eq!(block1.hashables.representative, Account::from(6).into());
-        assert_eq!(block1.hashables.balance, Amount::new(2));
+        assert_eq!(block1.hashables.balance, Amount::raw(2));
         assert_eq!(block1.hashables.link, Link::from(4));
     }
 
@@ -308,7 +308,7 @@ mod tests {
             Account::from(key1.public_key()),
             BlockHash::from(1),
             Account::from(key2.public_key()),
-            Amount::new(2),
+            Amount::raw(2),
             Link::from(4),
             &key1.private_key(),
             &key1.public_key(),

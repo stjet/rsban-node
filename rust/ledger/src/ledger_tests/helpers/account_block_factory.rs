@@ -100,7 +100,7 @@ impl<'a> AccountBlockFactory<'a> {
             .previous(info.head)
             .destination(Account::from(1))
             .previous_balance(info.balance)
-            .amount(Amount::new(1))
+            .amount(Amount::raw(1))
             .sign(self.key.clone())
     }
 
@@ -123,7 +123,7 @@ impl<'a> AccountBlockFactory<'a> {
             .previous(info.head)
             .previous_balance(info.balance)
             .representative(info.representative)
-            .amount(Amount::new(50))
+            .amount(Amount::raw(50))
             .link(Account::from(1))
             .sign(&self.key)
     }

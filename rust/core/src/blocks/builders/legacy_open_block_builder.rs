@@ -84,7 +84,7 @@ impl LegacyOpenBlockBuilder {
             block.set_sideband(BlockSideband::new(
                 block.account(),
                 BlockHash::zero(),
-                Amount::new(5),
+                Amount::raw(5),
                 1,
                 2,
                 details,
@@ -114,7 +114,7 @@ mod tests {
         let sideband = open.sideband().unwrap();
         assert_eq!(sideband.account, open.account());
         assert!(sideband.successor.is_zero());
-        assert_eq!(sideband.balance, Amount::new(5));
+        assert_eq!(sideband.balance, Amount::raw(5));
         assert_eq!(sideband.height, 1);
         assert_eq!(sideband.timestamp, 2);
         assert_eq!(sideband.source_epoch, Epoch::Epoch0);

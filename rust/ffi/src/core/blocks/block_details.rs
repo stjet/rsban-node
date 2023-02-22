@@ -146,7 +146,7 @@ impl TryFrom<&BlockSidebandDto> for BlockSideband {
     fn try_from(value: &BlockSidebandDto) -> Result<Self, Self::Error> {
         let account = Account::from_bytes(value.account);
         let successor = BlockHash::from_bytes(value.successor);
-        let balance = Amount::new(u128::from_be_bytes(value.balance));
+        let balance = Amount::raw(u128::from_be_bytes(value.balance));
         let details = BlockDetails::try_from(&value.details)?;
         let source_epoch = Epoch::try_from(value.source_epoch)?;
         let sideband = BlockSideband::new(

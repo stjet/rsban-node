@@ -74,7 +74,7 @@ impl LegacyReceiveBlockBuilder {
             block.set_sideband(BlockSideband::new(
                 block.account(),
                 BlockHash::zero(),
-                Amount::new(5),
+                Amount::raw(5),
                 1,
                 2,
                 details,

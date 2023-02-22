@@ -150,7 +150,7 @@ impl LedgerConstants {
             .set_sideband(BlockSideband::new(
                 beta_genesis_account,
                 BlockHash::from(0),
-                Amount::new(u128::MAX),
+                Amount::raw(u128::MAX),
                 1,
                 seconds_since_epoch(),
                 BlockDetails::new(Epoch::Epoch0, false, false, false),
@@ -163,7 +163,7 @@ impl LedgerConstants {
             .set_sideband(BlockSideband::new(
                 dev_genesis_account,
                 BlockHash::from(0),
-                Amount::new(u128::MAX),
+                Amount::raw(u128::MAX),
                 1,
                 seconds_since_epoch(),
                 BlockDetails::new(Epoch::Epoch0, false, false, false),
@@ -176,7 +176,7 @@ impl LedgerConstants {
             .set_sideband(BlockSideband::new(
                 live_genesis_account,
                 BlockHash::from(0),
-                Amount::new(u128::MAX),
+                Amount::raw(u128::MAX),
                 1,
                 seconds_since_epoch(),
                 BlockDetails::new(Epoch::Epoch0, false, false, false),
@@ -189,7 +189,7 @@ impl LedgerConstants {
             .set_sideband(BlockSideband::new(
                 test_genesis_account,
                 BlockHash::from(0),
-                Amount::new(u128::MAX),
+                Amount::raw(u128::MAX),
                 1,
                 seconds_since_epoch(),
                 BlockDetails::new(Epoch::Epoch0, false, false, false),
@@ -260,7 +260,7 @@ impl LedgerConstants {
             nano_test_genesis: Arc::new(RwLock::new(nano_test_genesis)),
             genesis: Arc::new(RwLock::new(genesis)),
             genesis_account,
-            genesis_amount: Amount::new(u128::MAX),
+            genesis_amount: Amount::raw(u128::MAX),
             burn_account: Account::zero(),
             nano_dev_final_votes_canary_account,
             nano_beta_final_votes_canary_account,

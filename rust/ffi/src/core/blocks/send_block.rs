@@ -166,7 +166,7 @@ impl From<&SendBlockDto> for SendHashables {
         SendHashables {
             previous: BlockHash::from_bytes(value.previous),
             destination: Account::from_bytes(value.destination),
-            balance: Amount::new(u128::from_be_bytes(value.balance)),
+            balance: Amount::raw(u128::from_be_bytes(value.balance)),
         }
     }
 }

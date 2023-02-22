@@ -135,7 +135,7 @@ mod tests {
         let mut txn = sut.env.tx_begin_write().unwrap();
         let account = Account::from(1);
         let info = AccountInfo {
-            balance: Amount::new(123),
+            balance: Amount::raw(123),
             ..Default::default()
         };
         sut.store.put(&mut txn, &account, &info);
@@ -151,7 +151,7 @@ mod tests {
         let mut txn = sut.env.tx_begin_write().unwrap();
         let account = Account::from(1);
         let info = AccountInfo {
-            balance: Amount::new(123),
+            balance: Amount::raw(123),
             ..Default::default()
         };
         sut.store.put(&mut txn, &account, &info);
@@ -221,11 +221,11 @@ mod tests {
         let account_1 = Account::from(1);
         let account_max = Account::from_bytes([0xFF; 32]);
         let info_1 = AccountInfo {
-            balance: Amount::new(1),
+            balance: Amount::raw(1),
             ..Default::default()
         };
         let info_max = AccountInfo {
-            balance: Amount::new(3),
+            balance: Amount::raw(3),
             ..Default::default()
         };
         sut.store.put(&mut txn, &account_1, &info_1);
@@ -241,6 +241,6 @@ mod tests {
                 begin.next();
             }
         });
-        assert_eq!(*balance_sum.lock().unwrap(), Amount::new(4));
+        assert_eq!(*balance_sum.lock().unwrap(), Amount::raw(4));
     }
 }

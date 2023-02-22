@@ -159,7 +159,7 @@ mod tests {
         let sideband = BlockSideband::new(
             Account::from(1),
             BlockHash::from(2),
-            Amount::new(3),
+            Amount::raw(3),
             4,
             5,
             details,

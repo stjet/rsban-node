@@ -95,14 +95,14 @@ fn send_open_receive_vote_weight() {
     let mut send1 = genesis
         .legacy_send(txn.txn())
         .destination(receiver.account())
-        .amount(Amount::new(50))
+        .amount(Amount::raw(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let mut send2 = genesis
         .legacy_send(txn.txn())
         .destination(receiver.account())
-        .amount(Amount::new(50))
+        .amount(Amount::raw(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
@@ -112,10 +112,10 @@ fn send_open_receive_vote_weight() {
     let mut receive = receiver.legacy_receive(txn.txn(), send2.hash()).build();
     ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
 
-    assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::new(100));
+    assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::raw(100));
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100)
+        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100)
     );
 }
 
@@ -129,14 +129,14 @@ fn send_open_receive_rollback() {
     let mut send1 = genesis
         .legacy_send(txn.txn())
         .destination(receiver.account())
-        .amount(Amount::new(50))
+        .amount(Amount::raw(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
 
     let mut send2 = genesis
         .legacy_send(txn.txn())
         .destination(receiver.account())
-        .amount(Amount::new(50))
+        .amount(Amount::raw(50))
         .build();
     ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
 
@@ -155,11 +155,11 @@ fn send_open_receive_rollback() {
 
     ctx.ledger.rollback(txn.as_mut(), &receive.hash()).unwrap();
 
-    assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::new(50));
+    assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::raw(50));
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&rep_account),
-        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100)
+        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100)
     );
 
     ctx.ledger.rollback(txn.as_mut(), &open.hash()).unwrap();
@@ -168,7 +168,7 @@ fn send_open_receive_rollback() {
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&rep_account),
-        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100)
+        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100)
     );
 
     ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
@@ -177,7 +177,7 @@ fn send_open_receive_rollback() {
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(100)
+        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100)
     );
 
     ctx.ledger.rollback(txn.as_mut(), &send2.hash()).unwrap();
@@ -186,7 +186,7 @@ fn send_open_receive_rollback() {
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
-        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(50)
+        LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(50)
     );
 
     ctx.ledger.rollback(txn.as_mut(), &send1.hash()).unwrap();
@@ -211,25 +211,25 @@ fn bootstrap_rep_weight() {
         let mut send = genesis
             .legacy_send(txn.txn())
             .destination(representative_account)
-            .amount(Amount::new(50))
+            .amount(Amount::raw(50))
             .build();
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
     }
     {
         let mut weights = ctx.ledger.bootstrap_weights.lock().unwrap();
-        weights.insert(representative_account, Amount::new(1000));
+        weights.insert(representative_account, Amount::raw(1000));
     }
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 2);
     assert_eq!(
         ctx.ledger.weight(&representative_account),
-        Amount::new(1000)
+        Amount::raw(1000)
     );
     {
         let mut txn = ctx.ledger.rw_txn();
         let mut send = genesis
             .legacy_send(txn.txn())
             .destination(representative_account)
-            .amount(Amount::new(50))
+            .amount(Amount::raw(50))
             .build();
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
     }
@@ -321,7 +321,7 @@ fn state_account() {
     let mut send = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
-        .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(*GXRB_RATIO))
+        .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(*GXRB_RATIO))
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
         .build();
@@ -523,7 +523,7 @@ mod dependents_confirmed {
         let mut send1 = ctx
             .genesis_block_factory()
             .send(txn.txn())
-            .amount(Amount::new(1))
+            .amount(Amount::raw(1))
             .link(destination.account())
             .build();
         ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
@@ -542,7 +542,7 @@ mod dependents_confirmed {
         let receive1 = BlockBuilder::state()
             .account(destination.account())
             .previous(0)
-            .balance(Amount::new(1))
+            .balance(Amount::raw(1))
             .link(send1.hash())
             .sign(&destination.key)
             .build();
@@ -616,7 +616,7 @@ mod could_fit {
 
         let send = genesis
             .send(txn.txn())
-            .amount(Amount::new(1))
+            .amount(Amount::raw(1))
             .link(destination.account())
             .build();
 
@@ -624,7 +624,7 @@ mod could_fit {
             .account(destination.account())
             .previous(0)
             .representative(genesis.account())
-            .balance(Amount::new(1))
+            .balance(Amount::raw(1))
             .link(send.hash())
             .sign(&destination.key)
             .build();
@@ -716,7 +716,7 @@ mod could_fit {
 
         let mut send = genesis
             .send(txn.txn())
-            .amount(Amount::new(1))
+            .amount(Amount::raw(1))
             .link(destination.account())
             .build();
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
@@ -745,7 +745,7 @@ mod could_fit {
 
         let mut send = genesis
             .send(txn.txn())
-            .amount(Amount::new(1))
+            .amount(Amount::raw(1))
             .link(destination.account())
             .build();
         ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
@@ -859,7 +859,7 @@ fn ledger_cache() {
             account_count: 1 + i,
             block_count: 1 + 2 * (i + 1) - 2,
             cemented_count: 1 + 2 * (i + 1) - 2,
-            genesis_weight: LEDGER_CONSTANTS_STUB.genesis_amount - Amount::new(i as u128),
+            genesis_weight: LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(i as u128),
             pruned_count: i,
         };
 

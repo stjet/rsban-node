@@ -188,6 +188,6 @@ mod tests {
     }
 
     fn test_pending_info() -> PendingInfo {
-        PendingInfo::new(Account::from(3), Amount::new(4), Epoch::Epoch2)
+        PendingInfo::new(Account::from(3), Amount::raw(4), Epoch::Epoch2)
     }
 }

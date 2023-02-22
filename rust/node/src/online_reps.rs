@@ -82,7 +82,7 @@ impl OnlineReps {
 
         let delta =
             U256::from(weight.number()) * U256::from(ONLINE_WEIGHT_QUORUM) / U256::from(100);
-        return Amount::new(delta.as_u128());
+        return Amount::raw(delta.as_u128());
     }
 
     /** List of online representatives, both the currently sampling ones and the ones observed in the previous sampling period */

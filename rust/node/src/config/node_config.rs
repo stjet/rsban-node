@@ -200,8 +200,8 @@ impl NodeConfig {
         Self {
             peering_port,
             bootstrap_fraction_numerator: 1,
-            receive_minimum: Amount::new(*XRB_RATIO),
-            online_weight_minimum: Amount::new(60000 * *GXRB_RATIO),
+            receive_minimum: Amount::raw(*XRB_RATIO),
+            online_weight_minimum: Amount::raw(60000 * *GXRB_RATIO),
             election_hint_weight_percent: 50,
             password_fanout: 1024,
             io_threads: std::cmp::max(get_cpu_count() as u32, 4),
@@ -222,7 +222,7 @@ impl NodeConfig {
             },
             allow_local_peers: !(network_params.network.is_live_network()
                 || network_params.network.is_test_network()), // disable by default for live network
-            vote_minimum: Amount::new(*GXRB_RATIO),
+            vote_minimum: Amount::raw(*GXRB_RATIO),
             vote_generator_delay_ms: 100,
             vote_generator_threshold: 3,
             unchecked_cutoff_time_s: 4 * 60 * 60, // 4 hours

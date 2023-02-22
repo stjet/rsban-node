@@ -81,7 +81,7 @@ impl LegacySendBlockBuilder {
         let key_pair = self.keypair.unwrap_or_default();
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let destination = self.destination.unwrap_or(Account::from(2));
-        let balance = self.balance.unwrap_or(Amount::new(3));
+        let balance = self.balance.unwrap_or(Amount::raw(3));
         let work = self
             .work
             .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(previous.into()).unwrap());

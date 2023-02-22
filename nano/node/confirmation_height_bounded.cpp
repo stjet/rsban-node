@@ -13,7 +13,6 @@
 #include <numeric>
 
 nano::hash_circular_buffer::hash_circular_buffer (size_t max_items) :
-	buffer{ max_items },
 	handle{ rsnano::rsn_hash_circular_buffer_create (max_items) }
 {
 }

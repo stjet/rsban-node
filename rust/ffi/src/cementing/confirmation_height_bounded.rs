@@ -1,6 +1,6 @@
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::BlockHash;
-use rsnano_node::cementing::ConfirmationHeightBounded;
+use rsnano_node::cementing::{truncate_after, ConfirmationHeightBounded};
 
 use crate::copy_hash_bytes;
 
@@ -19,6 +19,9 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_destroy(
 ) {
     drop(Box::from_raw(handle))
 }
+
+// ----------------------------------
+// HashCircularBuffer:
 
 pub struct HashCircularBufferHandle(BoundedVecDeque<BlockHash>);
 
@@ -65,8 +68,5 @@ pub unsafe extern "C" fn rsn_hash_circular_buffer_truncate_after(
     handle: *mut HashCircularBufferHandle,
     hash: *const u8,
 ) {
-    let hash = BlockHash::from_ptr(hash);
-    if let Some((index, _)) = (*handle).0.iter().enumerate().find(|(_, &h)| h != hash) {
-        (*handle).0.truncate(index);
-    }
+    truncate_after(&mut (*handle).0, &BlockHash::from_ptr(hash));
 }

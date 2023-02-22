@@ -34,7 +34,6 @@ public:
 	void push_back (nano::block_hash const &);
 	void truncate_after (nano::block_hash const &);
 
-	boost::circular_buffer_space_optimized<nano::block_hash> buffer;
 	rsnano::HashCircularBufferHandle * handle;
 };
 

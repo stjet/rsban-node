@@ -33,6 +33,7 @@ enum class type : uint8_t
 	bootstrap_server,
 	active,
 	backlog,
+	unchecked,
 };
 
 /** Optional detail type */
@@ -251,6 +252,12 @@ enum class detail : uint8_t
 
 	// backlog
 	activated,
+
+	// unchecked
+	put,
+	satisfied,
+	trigger,
+
 };
 
 /** Direction of the stat. If the direction is irrelevant, use in */

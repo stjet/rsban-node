@@ -132,6 +132,7 @@ pub enum StatType {
     BootstrapServer,
     Active,
     Backlog,
+    Unchecked,
 }
 
 impl StatType {
@@ -358,6 +359,11 @@ pub enum DetailType {
 
     // backlog
     Activated,
+
+    // unchecked
+    Put,
+    Satisfied,
+    Trigger,
 }
 
 impl DetailType {

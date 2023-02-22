@@ -59,4 +59,5 @@ jobs:
       - name: Build Tests
         run: docker run -e RELEASE -v ${PWD}:/workspace simpago/rsnano-env:${{ matrix.COMPILER }} /bin/bash -c "cd /workspace && ./ci/build-ci.sh /usr/lib/x86_64-linux-gnu/cmake/Qt5"
       - name: Run Tests
-        run: docker run  -e RELEASE -e RUST_BACKTRACE=1 -v ${PWD}:/workspace simpago/rsnano-env:${{ matrix.COMPILER }} /bin/bash -c "cd /workspace/build && ../ci/test.sh ."
+        run: docker run -e RELEASE -e RUST_BACKTRACE=1 -v ${PWD}:/workspace simpago/rsnano-env:${{ matrix.COMPILER }} /bin/bash -c "cd /workspace/build && ../ci/test.sh ."
+

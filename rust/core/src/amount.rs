@@ -2,7 +2,7 @@ use crate::utils::{Deserialize, Serialize, Stream};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
-#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug, Ord)]
 pub struct Amount {
     value: u128, // native endian!
 }
@@ -12,6 +12,12 @@ impl Amount {
 
     pub const fn new(value: u128) -> Self {
         Self { value }
+    }
+
+    pub const fn nano(value: u128) -> Self {
+        Self {
+            value: value * 10u128.pow(30),
+        }
     }
 
     pub fn zero() -> Self {
@@ -171,6 +177,14 @@ mod tests {
     use crate::{KXRB_RATIO, XRB_RATIO};
 
     use super::*;
+
+    #[test]
+    fn construct_amount_in_nano() {
+        assert_eq!(
+            Amount::nano(1).to_string_dec(),
+            "1000000000000000000000000000000"
+        );
+    }
 
     #[test]
     fn format_balance() {

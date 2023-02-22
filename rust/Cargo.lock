@@ -1360,6 +1360,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "once_cell",
+ "primitive-types",
  "rand",
  "rsnano_core",
  "rsnano_ledger",

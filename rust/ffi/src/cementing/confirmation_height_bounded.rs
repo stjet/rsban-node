@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::BlockHash;
 use rsnano_node::cementing::ConfirmationHeightBounded;

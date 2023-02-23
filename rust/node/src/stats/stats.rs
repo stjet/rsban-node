@@ -131,6 +131,10 @@ pub enum StatType {
     BlockProcessor,
     BootstrapServer,
     Active,
+    ActiveStarted,
+    ActiveConfirmed,
+    ActiveDropped,
+    ActiveTimeout,
     Backlog,
     Unchecked,
 }
@@ -244,23 +248,19 @@ pub enum DetailType {
     VoteCached,
     LateBlock,
     LateBlockSeconds,
-    ElectionStart,
-    ElectionConfirmedAll,
     ElectionBlockConflict,
-    ElectionDifficultyUpdate,
-    ElectionDropExpired,
-    ElectionDropOverflow,
-    ElectionDropAll,
     ElectionRestart,
-    ElectionConfirmed,
     ElectionNotConfirmed,
     ElectionHintedOverflow,
-    ElectionHintedStarted,
     ElectionHintedConfirmed,
     ElectionHintedDrop,
     GenerateVote,
     GenerateVoteNormal,
     GenerateVoteFinal,
+
+    // election types
+    Normal,
+    Hinted,
 
     // received messages
     InvalidHeader,
@@ -342,7 +342,6 @@ pub enum DetailType {
     GeneratorSpacing,
 
     // hinting
-    Hinted,
     InsertFailed,
     MissingBlock,
 

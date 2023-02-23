@@ -50,7 +50,6 @@ enum class detail : uint8_t
 	total,
 	process,
 	update,
-	insert,
 	request,
 	broadcast,
 
@@ -235,7 +234,6 @@ enum class detail : uint8_t
 	generator_spacing,
 
 	// hinting
-	insert_failed,
 	missing_block,
 
 	// bootstrap server
@@ -251,6 +249,10 @@ enum class detail : uint8_t
 
 	// backlog
 	activated,
+
+	// active
+	insert,
+	insert_failed,
 
 	// unchecked
 	put,

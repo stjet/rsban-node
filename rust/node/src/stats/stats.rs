@@ -157,7 +157,6 @@ pub enum DetailType {
     Total,
     Process,
     Update,
-    Insert,
     Request,
     Broadcast,
 
@@ -342,7 +341,6 @@ pub enum DetailType {
     GeneratorSpacing,
 
     // hinting
-    InsertFailed,
     MissingBlock,
 
     // bootstrap server
@@ -358,6 +356,10 @@ pub enum DetailType {
 
     // backlog
     Activated,
+
+    // active
+    Insert,
+    InsertFailed,
 
     // unchecked
     Put,

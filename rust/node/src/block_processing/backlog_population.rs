@@ -6,6 +6,7 @@ use std::{
 };
 
 use crate::stats::{DetailType, Direction, StatType, Stats};
+use primitive_types::U256;
 use rsnano_core::{Account, AccountInfo, ConfirmationHeightInfo};
 use rsnano_ledger::Ledger;
 use rsnano_store_traits::Transaction;
@@ -185,17 +186,18 @@ impl BacklogPopulationThread {
                         .inc(StatType::Backlog, DetailType::Total, Direction::In);
 
                     self.activate(transaction.txn(), account);
-                    next = (account.number() + 1).into();
+                    next = (account.number().overflowing_add(U256::from(1)).0).into();
 
                     i.next();
                     count += 1;
                 }
-                done = self
-                    .ledger
-                    .store
-                    .account()
-                    .begin_account(transaction.txn(), &next)
-                    .is_end();
+                done = next == Account::zero()
+                    || self
+                        .ledger
+                        .store
+                        .account()
+                        .begin_account(transaction.txn(), &next)
+                        .is_end();
             }
             lock = self.mutex.lock().unwrap();
             // Give the rest of the node time to progress without holding database lock

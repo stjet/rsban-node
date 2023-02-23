@@ -102,12 +102,13 @@ TEST (unchecked, simple)
 	nano::unchecked_map unchecked{ *store, system.stats, false };
 	ASSERT_TRUE (!store->init_error ());
 	nano::block_builder builder;
+	nano::keypair key;
 	auto block = builder
 				 .send ()
 				 .previous (0)
 				 .destination (1)
 				 .balance (2)
-				 .sign (nano::keypair ().prv, 4)
+				 .sign (key.prv, key.pub)
 				 .work (5)
 				 .build_shared ();
 	// Asserts the block wasn't added yet to the unchecked table
@@ -142,12 +143,13 @@ TEST (unchecked, multiple)
 	nano::unchecked_map unchecked{ *store, system.stats, false };
 	ASSERT_TRUE (!store->init_error ());
 	nano::block_builder builder;
+	nano::keypair key;
 	auto block = builder
 				 .send ()
 				 .previous (4)
 				 .destination (1)
 				 .balance (2)
-				 .sign (nano::keypair ().prv, 4)
+				 .sign (key.prv, key.pub)
 				 .work (5)
 				 .build_shared ();
 	// Asserts the block wasn't added yet to the unchecked table
@@ -175,12 +177,13 @@ TEST (unchecked, double_put)
 	nano::unchecked_map unchecked{ *store, system.stats, false };
 	ASSERT_TRUE (!store->init_error ());
 	nano::block_builder builder;
+	nano::keypair key;
 	auto block = builder
 				 .send ()
 				 .previous (4)
 				 .destination (1)
 				 .balance (2)
-				 .sign (nano::keypair ().prv, 4)
+				 .sign (key.prv, key.pub)
 				 .work (5)
 				 .build_shared ();
 	// Asserts the block wasn't added yet to the unchecked table
@@ -210,28 +213,31 @@ TEST (unchecked, multiple_get)
 	ASSERT_TRUE (!store->init_error ());
 	// Instantiates three blocks
 	nano::block_builder builder;
+	nano::keypair key1;
 	auto block1 = builder
 				  .send ()
 				  .previous (4)
 				  .destination (1)
 				  .balance (2)
-				  .sign (nano::keypair ().prv, 4)
+				  .sign (key1.prv, key1.pub)
 				  .work (5)
 				  .build_shared ();
+	nano::keypair key2;
 	auto block2 = builder
 				  .send ()
 				  .previous (3)
 				  .destination (1)
 				  .balance (2)
-				  .sign (nano::keypair ().prv, 4)
+				  .sign (key2.prv, key2.pub)
 				  .work (5)
 				  .build_shared ();
+	nano::keypair key3;
 	auto block3 = builder
 				  .send ()
 				  .previous (5)
 				  .destination (1)
 				  .balance (2)
-				  .sign (nano::keypair ().prv, 4)
+				  .sign (key3.prv, key3.pub)
 				  .work (5)
 				  .build_shared ();
 	// Add the blocks' info to the unchecked table

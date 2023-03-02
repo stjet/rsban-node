@@ -38,6 +38,7 @@ enum class type : uint8_t
 	active_timeout,
 	backlog,
 	unchecked,
+	election_scheduler,
 };
 
 /** Optional detail type */
@@ -258,6 +259,12 @@ enum class detail : uint8_t
 	put,
 	satisfied,
 	trigger,
+
+	// election scheduler
+	insert_manual,
+	insert_priority,
+	insert_priority_success,
+	erase_oldest,
 
 };
 

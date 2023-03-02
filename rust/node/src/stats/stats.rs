@@ -137,6 +137,7 @@ pub enum StatType {
     ActiveTimeout,
     Backlog,
     Unchecked,
+    ElectionScheduler,
 }
 
 impl StatType {
@@ -365,6 +366,12 @@ pub enum DetailType {
     Put,
     Satisfied,
     Trigger,
+
+    // election scheduler
+    InsertManual,
+    InsertPriority,
+    InsertPrioritySuccess,
+    EraseOldest,
 }
 
 impl DetailType {

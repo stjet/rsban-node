@@ -9,7 +9,7 @@ use rsnano_core::{
 };
 use rsnano_store_lmdb::LmdbConfig;
 
-use super::{DiagnosticsConfig, Logging, Networks, WebsocketConfig};
+use super::{DiagnosticsConfig, Logging, Networks, OptimisticSchedulerConfig, WebsocketConfig};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -22,6 +22,7 @@ pub enum FrontiersConfirmationMode {
 
 pub struct NodeConfig {
     pub peering_port: Option<u16>,
+    pub optimistic_scheduler: OptimisticSchedulerConfig,
     pub bootstrap_fraction_numerator: u32,
     pub receive_minimum: Amount,
     pub online_weight_minimum: Amount,
@@ -51,7 +52,12 @@ pub struct NodeConfig {
     pub use_memory_pools: bool,
     pub confirmation_history_size: usize,
     pub active_elections_size: usize,
-    pub active_elections_hinted_limit_percentage: usize, // Limit of hinted elections as percentage of active_elections_size
+
+    /// Limit of hinted elections as percentage of active_elections_size
+    pub active_elections_hinted_limit_percentage: usize,
+
+    /// Limit of optimistic elections as percentage of `active_elections_size`
+    pub active_elections_optimistic_limit_percentage: usize,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
     pub bootstrap_bandwidth_limit: usize,
@@ -240,6 +246,7 @@ impl NodeConfig {
             confirmation_history_size: 2048,
             active_elections_size: 5000,
             active_elections_hinted_limit_percentage: 20,
+            active_elections_optimistic_limit_percentage: 10,
             /** Default outbound traffic shaping is 10MB/s */
             bandwidth_limit: 10 * 1024 * 1024,
             /** By default, allow bursts of 15MB/s (not sustainable) */
@@ -276,6 +283,7 @@ impl NodeConfig {
             lmdb_config: LmdbConfig::new(),
             backlog_scan_batch_size: 10 * 1000,
             backlog_scan_frequency: 10,
+            optimistic_scheduler: OptimisticSchedulerConfig::new(),
         }
     }
 
@@ -437,6 +445,10 @@ impl NodeConfig {
         })?;
 
         toml.put_child("lmdb", &mut |lmdb| self.lmdb_config.serialize_toml(lmdb))?;
+
+        toml.put_child("optimistic_scheduler", &mut |opt| {
+            self.optimistic_scheduler.serialize_toml(opt)
+        })?;
 
         Ok(())
     }

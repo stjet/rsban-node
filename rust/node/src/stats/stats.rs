@@ -138,6 +138,7 @@ pub enum StatType {
     Backlog,
     Unchecked,
     ElectionScheduler,
+    OptimisticScheduler,
 }
 
 impl StatType {
@@ -261,6 +262,7 @@ pub enum DetailType {
     // election types
     Normal,
     Hinted,
+    Optimistic,
 
     // received messages
     InvalidHeader,

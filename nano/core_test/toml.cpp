@@ -259,6 +259,10 @@ TEST (toml, daemon_config_deserialize_defaults)
 	ASSERT_EQ (conf.node.lmdb_config.sync, defaults.node.lmdb_config.sync);
 	ASSERT_EQ (conf.node.lmdb_config.max_databases, defaults.node.lmdb_config.max_databases);
 	ASSERT_EQ (conf.node.lmdb_config.map_size, defaults.node.lmdb_config.map_size);
+
+	ASSERT_EQ (conf.node.optimistic_scheduler.enabled, defaults.node.optimistic_scheduler.enabled);
+	ASSERT_EQ (conf.node.optimistic_scheduler.gap_threshold, defaults.node.optimistic_scheduler.gap_threshold);
+	ASSERT_EQ (conf.node.optimistic_scheduler.max_size, defaults.node.optimistic_scheduler.max_size);
 }
 
 TEST (toml, optional_child)
@@ -514,6 +518,11 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	max_databases = 999
 	map_size = 999
 
+	[node.optimistic_scheduler]
+	enabled = false
+	gap_threshold = 999
+	max_size = 999
+
 	[node.experimental]
 	secondary_work_peers = ["dev.org:998"]
 	max_pruning_age = 999
@@ -667,6 +676,10 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	ASSERT_NE (conf.node.lmdb_config.sync, defaults.node.lmdb_config.sync);
 	ASSERT_NE (conf.node.lmdb_config.max_databases, defaults.node.lmdb_config.max_databases);
 	ASSERT_NE (conf.node.lmdb_config.map_size, defaults.node.lmdb_config.map_size);
+
+	ASSERT_NE (conf.node.optimistic_scheduler.enabled, defaults.node.optimistic_scheduler.enabled);
+	ASSERT_NE (conf.node.optimistic_scheduler.gap_threshold, defaults.node.optimistic_scheduler.gap_threshold);
+	ASSERT_NE (conf.node.optimistic_scheduler.max_size, defaults.node.optimistic_scheduler.max_size);
 }
 
 /** There should be no required values **/

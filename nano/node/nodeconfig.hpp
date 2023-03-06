@@ -9,6 +9,7 @@
 #include <nano/lib/threading.hpp>
 #include <nano/node/ipc/ipc_config.hpp>
 #include <nano/node/logging.hpp>
+#include <nano/node/optimistic_scheduler.hpp>
 #include <nano/node/websocketconfig.hpp>
 #include <nano/secure/common.hpp>
 
@@ -47,6 +48,7 @@ public:
 	nano::account random_representative () const;
 	nano::network_params network_params;
 	std::optional<uint16_t> peering_port{};
+	nano::optimistic_scheduler_config optimistic_scheduler;
 	nano::logging logging;
 	std::vector<std::pair<std::string, uint16_t>> work_peers;
 	std::vector<std::pair<std::string, uint16_t>> secondary_work_peers;
@@ -88,8 +90,12 @@ public:
 	/** Timeout for initiated async operations */
 	std::chrono::seconds tcp_io_timeout;
 	std::chrono::nanoseconds pow_sleep_interval;
+	// TODO: Move related settings to `active_transactions_config` class
 	std::size_t active_elections_size;
-	std::size_t active_elections_hinted_limit_percentage; // Limit of hinted elections as percentage of active_elections_size
+	/** Limit of hinted elections as percentage of `active_elections_size` */
+	std::size_t active_elections_hinted_limit_percentage;
+	/** Limit of optimistic elections as percentage of `active_elections_size` */
+	std::size_t active_elections_optimistic_limit_percentage;
 	/** Default maximum incoming TCP connections, including realtime network & bootstrap */
 	unsigned tcp_incoming_connections_max;
 	bool use_memory_pools;

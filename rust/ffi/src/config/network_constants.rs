@@ -33,6 +33,7 @@ pub struct NetworkConstantsDto {
     pub telemetry_request_interval_ms: i64,
     pub telemetry_broadcast_interval_ms: i64,
     pub telemetry_cache_cutoff_ms: i64,
+    pub optimistic_activation_delay_s: i64,
 }
 
 #[no_mangle]
@@ -77,6 +78,7 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     dto.telemetry_request_interval_ms = constants.telemetry_request_interval_ms;
     dto.telemetry_broadcast_interval_ms = constants.telemetry_broadcast_interval_ms;
     dto.telemetry_cache_cutoff_ms = constants.telemetry_cache_cutoff_ms;
+    dto.optimistic_activation_delay_s = constants.optimistic_activation_delay.as_secs() as i64;
 }
 
 #[no_mangle]
@@ -178,6 +180,9 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
             telemetry_request_interval_ms: value.telemetry_request_interval_ms,
             telemetry_broadcast_interval_ms: value.telemetry_broadcast_interval_ms,
             telemetry_cache_cutoff_ms: value.telemetry_cache_cutoff_ms,
+            optimistic_activation_delay: Duration::from_secs(
+                value.optimistic_activation_delay_s as u64,
+            ),
         })
     }
 }

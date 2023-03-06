@@ -7,7 +7,7 @@ use num::FromPrimitive;
 
 use crate::{
     fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml, IpcConfigDto, NetworkParamsDto,
-    StatConfigDto, WebsocketConfigDto,
+    OptimisticSchedulerConfigDto, StatConfigDto, WebsocketConfigDto,
 };
 use rsnano_core::{Account, Amount};
 use rsnano_node::{
@@ -24,6 +24,7 @@ use super::{
 #[repr(C)]
 pub struct NodeConfigDto {
     pub peering_port: u16,
+    pub optimistic_scheduler: OptimisticSchedulerConfigDto,
     pub peering_port_defined: bool,
     pub bootstrap_fraction_numerator: u32,
     pub receive_minimum: [u8; 16],
@@ -56,6 +57,7 @@ pub struct NodeConfigDto {
     pub confirmation_history_size: usize,
     pub active_elections_size: usize,
     pub active_elections_hinted_limit_percentage: usize,
+    pub active_elections_optimistic_limit_percentage: usize,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
     pub bootstrap_bandwidth_limit: usize,
@@ -124,6 +126,7 @@ pub unsafe extern "C" fn rsn_node_config_create(
 
 pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.peering_port = cfg.peering_port.unwrap_or_default();
+    dto.optimistic_scheduler = (&cfg.optimistic_scheduler).into();
     dto.peering_port_defined = cfg.peering_port.is_some();
     dto.bootstrap_fraction_numerator = cfg.bootstrap_fraction_numerator;
     dto.receive_minimum = cfg.receive_minimum.to_be_bytes();
@@ -157,6 +160,8 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.confirmation_history_size = cfg.confirmation_history_size;
     dto.active_elections_size = cfg.active_elections_size;
     dto.active_elections_hinted_limit_percentage = cfg.active_elections_hinted_limit_percentage;
+    dto.active_elections_optimistic_limit_percentage =
+        cfg.active_elections_optimistic_limit_percentage;
     dto.bandwidth_limit = cfg.bandwidth_limit;
     dto.bandwidth_limit_burst_ratio = cfg.bandwidth_limit_burst_ratio;
     dto.bootstrap_bandwidth_limit = cfg.bootstrap_bandwidth_limit;
@@ -263,6 +268,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             } else {
                 None
             },
+            optimistic_scheduler: (&value.optimistic_scheduler).into(),
             bootstrap_fraction_numerator: value.bootstrap_fraction_numerator,
             receive_minimum: Amount::from_be_bytes(value.receive_minimum),
             online_weight_minimum: Amount::from_be_bytes(value.online_weight_minimum),
@@ -297,6 +303,8 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             active_elections_size: value.active_elections_size,
             active_elections_hinted_limit_percentage: value
                 .active_elections_hinted_limit_percentage,
+            active_elections_optimistic_limit_percentage: value
+                .active_elections_optimistic_limit_percentage,
             bandwidth_limit: value.bandwidth_limit,
             bandwidth_limit_burst_ratio: value.bandwidth_limit_burst_ratio,
             bootstrap_bandwidth_limit: value.bootstrap_bandwidth_limit,

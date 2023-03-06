@@ -7,6 +7,7 @@ mod node_config;
 mod node_flags;
 mod node_rpc_config;
 mod opencl_config;
+mod optimistic_scheduler_config;
 mod rpc_config;
 mod websocket_config;
 
@@ -18,5 +19,6 @@ pub use node_config::*;
 pub use node_flags::NodeFlagsHandle;
 pub use node_rpc_config::*;
 pub use opencl_config::*;
+pub use optimistic_scheduler_config::*;
 pub use rpc_config::*;
 pub use websocket_config::*;

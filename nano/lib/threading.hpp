@@ -46,6 +46,7 @@ namespace thread_role
 		vote_generator_queue,
 		bootstrap_server,
 		telemetry,
+		optimistic_scheduler,
 	};
 
 	/*

@@ -227,6 +227,9 @@ public:
 	/** Telemetry data older than this value is considered stale */
 	std::chrono::milliseconds telemetry_cache_cutoff; // 2 * `telemetry_broadcast_interval` + some margin
 
+	/** How much to delay activation of optimistic elections to avoid interfering with election scheduler */
+	std::chrono::seconds optimistic_activation_delay;
+
 	/** Returns the network this object contains values for */
 	nano::networks network () const;
 

@@ -39,6 +39,7 @@ enum class type : uint8_t
 	backlog,
 	unchecked,
 	election_scheduler,
+	optimistic_scheduler,
 };
 
 /** Optional detail type */
@@ -154,6 +155,7 @@ enum class detail : uint8_t
 	// election types
 	normal,
 	hinted,
+	optimistic,
 
 	// received messages
 	invalid_header,

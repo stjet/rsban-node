@@ -52,6 +52,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.confirmation_history_size = config.confirmation_history_size;
 	dto.active_elections_size = config.active_elections_size;
 	dto.active_elections_hinted_limit_percentage = config.active_elections_hinted_limit_percentage;
+	dto.active_elections_optimistic_limit_percentage = config.active_elections_optimistic_limit_percentage;
 	dto.bandwidth_limit = config.bandwidth_limit;
 	dto.bandwidth_limit_burst_ratio = config.bandwidth_limit_burst_ratio;
 	dto.bootstrap_bandwidth_limit = config.bootstrap_bandwidth_limit;
@@ -139,7 +140,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	{
 		peering_port = std::nullopt;
 	}
-
+	optimistic_scheduler.load_dto (dto.optimistic_scheduler);
 	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
 	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin (receive_minimum.bytes));
 	std::copy (std::begin (dto.online_weight_minimum), std::end (dto.online_weight_minimum), std::begin (online_weight_minimum.bytes));
@@ -170,6 +171,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	confirmation_history_size = dto.confirmation_history_size;
 	active_elections_size = dto.active_elections_size;
 	active_elections_hinted_limit_percentage = dto.active_elections_hinted_limit_percentage;
+	active_elections_optimistic_limit_percentage = dto.active_elections_optimistic_limit_percentage;
 	bandwidth_limit = dto.bandwidth_limit;
 	bandwidth_limit_burst_ratio = dto.bandwidth_limit_burst_ratio;
 	bootstrap_bandwidth_limit = dto.bootstrap_bandwidth_limit;
@@ -268,6 +270,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto stats_config_l (toml.get_required_child ("statistics"));
 			stats_config.deserialize_toml (stats_config_l);
+		}
+
+		if (toml.has_key ("optimistic_scheduler"))
+		{
+			auto config_l = toml.get_required_child ("optimistic_scheduler");
+			optimistic_scheduler.deserialize (config_l);
 		}
 
 		if (toml.has_key ("work_peers"))

@@ -1205,7 +1205,7 @@ nano::block_sideband::block_sideband (rsnano::BlockSidebandDto const & dto_a) :
 {
 }
 
-nano::block_sideband::block_sideband (nano::account const & account_a, nano::block_hash const & successor_a, nano::amount const & balance_a, uint64_t const height_a, uint64_t const timestamp_a, nano::block_details const & details_a, nano::epoch const source_epoch_a)
+nano::block_sideband::block_sideband (nano::account const & account_a, nano::block_hash const & successor_a, nano::amount const & balance_a, uint64_t const height_a, nano::seconds_t const timestamp_a, nano::block_details const & details_a, nano::epoch const source_epoch_a)
 {
 	dto.source_epoch = static_cast<uint8_t> (source_epoch_a);
 	dto.height = height_a;

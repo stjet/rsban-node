@@ -8,6 +8,7 @@
 #include <nano/lib/rep_weights.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/stats.hpp>
+#include <nano/lib/timer.hpp>
 #include <nano/lib/utility.hpp>
 
 #include <boost/iterator/transform_iterator.hpp>
@@ -112,7 +113,7 @@ class account_info final
 public:
 	account_info ();
 	account_info (rsnano::AccountInfoHandle * handle_a);
-	account_info (nano::block_hash const &, nano::account const &, nano::block_hash const &, nano::amount const &, uint64_t, uint64_t, epoch);
+	account_info (nano::block_hash const &, nano::account const &, nano::block_hash const &, nano::amount const &, nano::seconds_t modified, uint64_t, epoch);
 	account_info (account_info const &);
 	account_info (account_info &&);
 	~account_info ();
@@ -127,7 +128,7 @@ public:
 	nano::account representative () const;
 	nano::block_hash open_block () const;
 	nano::amount balance () const;
-	uint64_t modified () const;
+	nano::seconds_t modified () const;
 	uint64_t block_count () const;
 	rsnano::AccountInfoHandle * handle;
 };
@@ -222,7 +223,7 @@ public:
 	nano::unchecked_info & operator= (const nano::unchecked_info &);
 	void serialize (nano::stream &) const;
 	bool deserialize (nano::stream &);
-	uint64_t modified () const;
+	nano::seconds_t modified () const;
 	std::shared_ptr<nano::block> get_block () const;
 	rsnano::UncheckedInfoHandle * handle;
 };
@@ -277,7 +278,7 @@ public:
 	vote (nano::vote const &);
 	vote (nano::vote &&);
 	vote (bool &, nano::stream &);
-	vote (nano::account const &, nano::raw_key const &, uint64_t timestamp, uint8_t duration, std::vector<nano::block_hash> const &);
+	vote (nano::account const &, nano::raw_key const &, nano::millis_t timestamp, uint8_t duration, std::vector<nano::block_hash> const &);
 	~vote ();
 	std::string hashes_string () const;
 	nano::block_hash hash () const;
@@ -302,7 +303,7 @@ public:
 	rsnano::VoteHandle * get_handle () const;
 	// gets the pointer to the block data within Rust;
 	const void * get_rust_data_pointer () const;
-	static uint64_t constexpr timestamp_max = { 0xffff'ffff'ffff'fff0ULL };
+	static nano::seconds_t constexpr timestamp_max = { 0xffff'ffff'ffff'fff0ULL };
 	static uint64_t constexpr timestamp_min = { 0x0000'0000'0000'0010ULL };
 	static uint8_t constexpr duration_max = { 0x0fu };
 

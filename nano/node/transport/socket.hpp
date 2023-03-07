@@ -3,6 +3,7 @@
 #include <nano/boost/asio/ip/tcp.hpp>
 #include <nano/boost/asio/strand.hpp>
 #include <nano/lib/asio.hpp>
+#include <nano/lib/timer.hpp>
 
 #include <chrono>
 #include <map>

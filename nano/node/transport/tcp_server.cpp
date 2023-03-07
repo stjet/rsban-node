@@ -62,7 +62,7 @@ void nano::transport::tcp_listener::start ()
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
 	on = true;
-	listening_socket = std::make_shared<nano::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), config->tcp_incoming_connections_max);
+	listening_socket = std::make_shared<nano::transport::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), config->tcp_incoming_connections_max);
 	boost::system::error_code ec;
 	listening_socket->start (ec);
 	if (ec)
@@ -94,7 +94,7 @@ void nano::transport::tcp_listener::start ()
 		}
 	}
 
-	listening_socket->on_connection ([this] (std::shared_ptr<nano::socket> const & new_connection, boost::system::error_code const & ec_a) {
+	listening_socket->on_connection ([this] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 		if (!ec_a)
 		{
 			accept_action (ec_a, new_connection);
@@ -172,17 +172,17 @@ void nano::transport::tcp_listener::tcp_server_timeout (std::uintptr_t inner_ptr
 	}
 }
 
-void nano::transport::tcp_listener::tcp_server_exited (nano::socket::type_t type_a, std::uintptr_t inner_ptr_a, nano::tcp_endpoint const & endpoint_a)
+void nano::transport::tcp_listener::tcp_server_exited (nano::transport::socket::type_t type_a, std::uintptr_t inner_ptr_a, nano::tcp_endpoint const & endpoint_a)
 {
 	if (config->logging.bulk_pull_logging ())
 	{
 		logger->try_log ("Exiting incoming TCP/bootstrap server");
 	}
-	if (type_a == nano::socket::type_t::bootstrap)
+	if (type_a == nano::transport::socket::type_t::bootstrap)
 	{
 		dec_bootstrap_count ();
 	}
-	else if (type_a == nano::socket::type_t::realtime)
+	else if (type_a == nano::transport::socket::type_t::realtime)
 	{
 		dec_realtime_count ();
 		// Clear temporary channel
@@ -191,7 +191,7 @@ void nano::transport::tcp_listener::tcp_server_exited (nano::socket::type_t type
 	erase_connection (inner_ptr_a);
 }
 
-void nano::transport::tcp_listener::accept_action (boost::system::error_code const & ec, std::shared_ptr<nano::socket> const & socket_a)
+void nano::transport::tcp_listener::accept_action (boost::system::error_code const & ec, std::shared_ptr<nano::transport::socket> const & socket_a)
 {
 	if (!network->excluded_peers.check (socket_a->remote_endpoint ()))
 	{
@@ -240,7 +240,7 @@ std::unique_ptr<nano::container_info_component> nano::transport::collect_contain
 
 nano::transport::tcp_server::tcp_server (
 boost::asio::io_context & io_ctx_a,
-std::shared_ptr<nano::socket> const & socket_a,
+std::shared_ptr<nano::transport::socket> const & socket_a,
 std::shared_ptr<nano::logger_mt> const & logger_a,
 nano::stats const & stats_a,
 nano::node_flags const & flags_a,
@@ -425,8 +425,8 @@ nano::tcp_endpoint nano::transport::tcp_server::get_remote_endpoint () const
 	return rsnano::dto_to_endpoint (dto);
 }
 
-std::shared_ptr<nano::socket> const nano::transport::tcp_server::get_socket () const
+std::shared_ptr<nano::transport::socket> const nano::transport::tcp_server::get_socket () const
 {
 	auto socket_handle = rsnano::rsn_bootstrap_server_socket (handle);
-	return std::make_shared<nano::socket> (socket_handle);
+	return std::make_shared<nano::transport::socket> (socket_handle);
 }

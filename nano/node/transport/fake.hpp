@@ -20,13 +20,13 @@ namespace transport
 			std::string to_string () const override;
 			std::size_t hash_code () const override;
 
-			void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter, nano::bandwidth_limit_type = nano::bandwidth_limit_type::standard) override;
+			void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter, nano::bandwidth_limit_type = nano::bandwidth_limit_type::standard) override;
 
 			// clang-format off
 			void send_buffer (
 				nano::shared_const_buffer const &,
 				std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr,
-				nano::buffer_drop_policy = nano::buffer_drop_policy::limiter
+				nano::transport::buffer_drop_policy = nano::transport::buffer_drop_policy::limiter
 			) override;
 			// clang-format on
 

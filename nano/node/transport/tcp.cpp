@@ -10,7 +10,7 @@
  * channel_tcp
  */
 
-nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::outbound_bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
+nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::outbound_bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::transport::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a) :
 	channel (rsnano::rsn_channel_tcp_create (
 	std::chrono::steady_clock::now ().time_since_epoch ().count (),
 	socket_a->handle,
@@ -76,13 +76,13 @@ void nano::transport::delete_send_buffer_callback (void * context_a)
 	delete callback_ptr;
 }
 
-void nano::transport::channel_tcp::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a, nano::bandwidth_limit_type limiter_type)
+void nano::transport::channel_tcp::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::bandwidth_limit_type limiter_type)
 {
 	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
 	rsnano::rsn_channel_tcp_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (limiter_type));
 }
 
-void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)
+void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy policy_a)
 {
 	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
 	rsnano::rsn_channel_tcp_send_buffer (handle, buffer_a.data (), buffer_a.size (), nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (policy_a));
@@ -98,13 +98,13 @@ bool nano::transport::channel_tcp::operator== (nano::transport::channel_tcp cons
 	return rsnano::rsn_channel_tcp_eq (handle, other_a.handle);
 }
 
-std::shared_ptr<nano::socket> nano::transport::channel_tcp::try_get_socket () const
+std::shared_ptr<nano::transport::socket> nano::transport::channel_tcp::try_get_socket () const
 {
 	auto socket_handle{ rsnano::rsn_channel_tcp_socket (handle) };
-	std::shared_ptr<nano::socket> socket;
+	std::shared_ptr<nano::transport::socket> socket;
 	if (socket_handle)
 	{
-		socket = std::make_shared<nano::socket> (socket_handle);
+		socket = std::make_shared<nano::transport::socket> (socket_handle);
 	}
 	return socket;
 }
@@ -137,7 +137,7 @@ nano::transport::tcp_server_factory::tcp_server_factory (nano::node & node) :
 {
 }
 
-std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory::create_tcp_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::socket> & socket_a)
+std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory::create_tcp_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::transport::socket> & socket_a)
 {
 	channel_a->set_last_packet_sent (std::chrono::steady_clock::now ());
 
@@ -149,7 +149,7 @@ std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory
 	*node.network->syn_cookies, node.node_id, true);
 
 	// Listen for possible responses
-	response_server->get_socket ()->type_set (nano::socket::type_t::realtime_response_server);
+	response_server->get_socket ()->type_set (nano::transport::socket::type_t::realtime_response_server);
 	response_server->set_remote_node_id (channel_a->get_node_id ());
 	response_server->start ();
 
@@ -185,7 +185,7 @@ nano::transport::tcp_channels::~tcp_channels ()
 	rsnano::rsn_tcp_channels_destroy (handle);
 }
 
-bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::tcp_server> const & server_a)
+bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::transport::socket> const & socket_a, std::shared_ptr<nano::transport::tcp_server> const & server_a)
 {
 	auto endpoint (channel_a->get_tcp_endpoint ());
 	debug_assert (endpoint.address ().is_v6 ());
@@ -358,7 +358,7 @@ void nano::transport::tcp_channels::process_messages ()
 	}
 }
 
-void nano::transport::tcp_channels::process_message (nano::message const & message_a, nano::tcp_endpoint const & endpoint_a, nano::account const & node_id_a, std::shared_ptr<nano::socket> const & socket_a)
+void nano::transport::tcp_channels::process_message (nano::message const & message_a, nano::tcp_endpoint const & endpoint_a, nano::account const & node_id_a, std::shared_ptr<nano::transport::socket> const & socket_a)
 {
 	auto type_a = socket_a->type ();
 	if (!stopped && message_a.get_header ().get_version_using () >= network_params.network.protocol_version_min)
@@ -386,9 +386,9 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 					temporary_channel->set_node_id (node_id_a);
 					temporary_channel->set_network_version (message_a.get_header ().get_version_using ());
 					temporary_channel->set_temporary (true);
-					debug_assert (type_a == nano::socket::type_t::realtime || type_a == nano::socket::type_t::realtime_response_server);
+					debug_assert (type_a == nano::transport::socket::type_t::realtime || type_a == nano::transport::socket::type_t::realtime_response_server);
 					// Don't insert temporary channels for response_server
-					if (type_a == nano::socket::type_t::realtime)
+					if (type_a == nano::transport::socket::type_t::realtime)
 					{
 						insert (temporary_channel, socket_a, nullptr);
 					}
@@ -609,7 +609,7 @@ void nano::transport::tcp_channels::update (nano::tcp_endpoint const & endpoint_
 
 void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a)
 {
-	auto socket = std::make_shared<nano::socket> (io_ctx, nano::socket::endpoint_type_t::client, *stats, logger, workers,
+	auto socket = std::make_shared<nano::transport::socket> (io_ctx, nano::transport::socket::endpoint_type_t::client, *stats, logger, workers,
 	config->tcp_io_timeout,
 	network_params.network.silent_connection_tolerance_time,
 	config->logging.network_timeout_logging (),
@@ -851,7 +851,7 @@ void nano::transport::tcp_channels::on_new_channel (std::function<void (std::sha
 	channel_observer = std::move (observer_a);
 }
 
-nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a) :
+nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::transport::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a) :
 	channel{ channel_a },
 	server{ server_a }
 {
@@ -886,7 +886,7 @@ nano::tcp_message_item::~tcp_message_item ()
 		rsnano::rsn_tcp_message_item_destroy (handle);
 }
 
-nano::tcp_message_item::tcp_message_item (std::shared_ptr<nano::message> message_a, nano::tcp_endpoint endpoint_a, nano::account node_id_a, std::shared_ptr<nano::socket> socket_a)
+nano::tcp_message_item::tcp_message_item (std::shared_ptr<nano::message> message_a, nano::tcp_endpoint endpoint_a, nano::account node_id_a, std::shared_ptr<nano::transport::socket> socket_a)
 {
 	rsnano::MessageHandle * message_handle = nullptr;
 	if (message_a)
@@ -939,10 +939,10 @@ nano::account nano::tcp_message_item::get_node_id () const
 	return node_id;
 }
 
-std::shared_ptr<nano::socket> nano::tcp_message_item::get_socket () const
+std::shared_ptr<nano::transport::socket> nano::tcp_message_item::get_socket () const
 {
 	auto socket_handle = rsnano::rsn_tcp_message_item_socket (handle);
-	return std::make_shared<nano::socket> (socket_handle);
+	return std::make_shared<nano::transport::socket> (socket_handle);
 }
 
 nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item const & other_a)

@@ -2,7 +2,7 @@
 
 #include <nano/lib/rsnano.hpp>
 #include <nano/node/messages.hpp>
-#include <nano/node/socket.hpp>
+#include <nano/node/transport/socket.hpp>
 
 #include <unordered_set>
 

@@ -471,7 +471,7 @@ bool nano::election::publish (std::shared_ptr<nano::block> const & block_a)
 			if (status.get_winner ()->hash () == block_a->hash ())
 			{
 				status.set_winner (block_a);
-				node.network->flood_block (block_a, nano::buffer_drop_policy::no_limiter_drop);
+				node.network->flood_block (block_a, nano::transport::buffer_drop_policy::no_limiter_drop);
 			}
 		}
 	}

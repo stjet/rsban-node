@@ -2,7 +2,7 @@
 
 #include <nano/node/common.hpp>
 #include <nano/node/messages.hpp>
-#include <nano/node/socket.hpp>
+#include <nano/node/transport/socket.hpp>
 
 #include <memory>
 #include <vector>
@@ -57,7 +57,7 @@ namespace transport
 		 * If message is received successfully, error code won't be set and message will be non-null. `status` field will be set to `success`.
 		 * Should not be called until the previous invocation finishes and calls the callback.
 		 */
-		void read (std::shared_ptr<nano::socket> socket, callback_type const && callback);
+		void read (std::shared_ptr<nano::transport::socket> socket, callback_type const && callback);
 
 	private: // Dependencies
 		rsnano::MessageDeserializerHandle * handle_m;

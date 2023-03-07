@@ -53,11 +53,11 @@ public:
 	}
 };
 
-void nano::transport::inproc::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a, nano::bandwidth_limit_type limiter_type)
+void nano::transport::inproc::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::bandwidth_limit_type limiter_type)
 {
 	auto buffer (message_a.to_shared_const_buffer ());
 	auto detail = nano::to_stat_detail (message_a.get_header ().get_type ());
-	auto is_droppable_by_limiter = drop_policy_a == nano::buffer_drop_policy::limiter;
+	auto is_droppable_by_limiter = drop_policy_a == nano::transport::buffer_drop_policy::limiter;
 	auto should_pass (limiter.should_pass (buffer.size (), limiter_type));
 	if (!is_droppable_by_limiter || should_pass)
 	{
@@ -85,7 +85,7 @@ void nano::transport::inproc::channel::send (nano::message & message_a, std::fun
  * Send the buffer to the peer and call the callback function when done. The call never fails.
  * Note that the inbound message visitor will be called before the callback because it is called directly whereas the callback is spawned in the background.
  */
-void nano::transport::inproc::channel::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
+void nano::transport::inproc::channel::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a)
 {
 	// we create a temporary channel for the reply path, in case the receiver of the message wants to reply
 	auto remote_channel = std::make_shared<nano::transport::inproc::channel> (destination, node);

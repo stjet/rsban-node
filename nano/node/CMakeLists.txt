@@ -159,8 +159,6 @@ add_library(
   rsnano_callbacks.cpp
   signatures.hpp
   signatures.cpp
-  socket.hpp
-  socket.cpp
   state_block_signature_verification.hpp
   state_block_signature_verification.cpp
   telemetry.hpp
@@ -173,6 +171,8 @@ add_library(
   transport/inproc.cpp
   transport/message_deserializer.hpp
   transport/message_deserializer.cpp
+  transport/socket.hpp
+  transport/socket.cpp
   transport/tcp.hpp
   transport/tcp.cpp
   transport/tcp_server.hpp

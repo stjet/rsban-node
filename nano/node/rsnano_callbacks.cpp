@@ -473,7 +473,7 @@ void tcp_socket_async_connect (void * handle_a, rsnano::EndpointDto const * endp
 {
 	auto callback_wrapper = std::make_shared<async_connect_callback_wrapper> (callback_a);
 	auto endpoint{ rsnano::dto_to_endpoint (*endpoint_a) };
-	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	(*socket)->async_connect (endpoint, [callback = std::move (callback_wrapper)] (const boost::system::error_code & ec) {
 		callback->execute (ec);
 	});
@@ -506,7 +506,7 @@ private:
 
 void tcp_socket_async_read (void * handle_a, void * buffer_a, std::size_t size_a, rsnano::AsyncReadCallbackHandle * callback_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	auto buffer{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (buffer_a) };
 	auto buffer_copy = *buffer;
 	auto callback_wrapper{ std::make_shared<async_read_callback_wrapper> (callback_a) };
@@ -517,9 +517,9 @@ void tcp_socket_async_read (void * handle_a, void * buffer_a, std::size_t size_a
 
 void tcp_socket_async_read2 (void * handle_a, rsnano::BufferHandle * buffer_a, std::size_t size_a, rsnano::AsyncReadCallbackHandle * callback_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	auto callback_wrapper{ std::make_shared<async_read_callback_wrapper> (callback_a) };
-	auto buffer{ std::make_shared<nano::buffer_wrapper> (buffer_a) };
+	auto buffer{ std::make_shared<nano::transport::buffer_wrapper> (buffer_a) };
 	(*socket)->async_read (buffer, size_a, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
 		callback_wrapper->execute (ec, size);
 	});
@@ -552,7 +552,7 @@ private:
 
 void tcp_socket_async_write (void * handle_a, const uint8_t * buffer_a, std::size_t len_a, rsnano::AsyncWriteCallbackHandle * callback_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	nano::shared_const_buffer buffer{ buffer_a, len_a };
 	auto callback_wrapper{ std::make_shared<async_write_callback_wrapper> (callback_a) };
 	(*socket)->async_write (buffer, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
@@ -562,7 +562,7 @@ void tcp_socket_async_write (void * handle_a, const uint8_t * buffer_a, std::siz
 
 void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a, rsnano::ErrorCodeDto * ec_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	boost::system::error_code ec;
 	auto endpoint{ (*socket)->remote_endpoint (ec) };
 	*endpoint_a = rsnano::endpoint_to_dto (endpoint);
@@ -571,7 +571,7 @@ void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint
 
 void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
 	(*socket)->dispatch ([callback_wrapper] () {
 		callback_wrapper->execute ();
@@ -580,7 +580,7 @@ void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callba
 
 void tcp_socket_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
 	(*socket)->post ([callback_wrapper] () {
 		callback_wrapper->execute ();
@@ -589,7 +589,7 @@ void tcp_socket_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a
 
 void tcp_socket_close (void * handle_a, rsnano::ErrorCodeDto * ec_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	boost::system::error_code ec;
 	(*socket)->close (ec);
 	*ec_a = rsnano::error_code_to_dto (ec);
@@ -597,21 +597,21 @@ void tcp_socket_close (void * handle_a, rsnano::ErrorCodeDto * ec_a)
 
 void tcp_socket_local_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	auto ep{ (*socket)->tcp_socket.local_endpoint () };
 	(*endpoint_a) = rsnano::endpoint_to_dto (ep);
 }
 
 bool tcp_socket_is_open (void * handle_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	return (*socket)->tcp_socket.is_open ();
 }
 
 void tcp_socket_connected (void * handle_a, rsnano::SocketHandle * socket_a)
 {
 	auto callback{ static_cast<std::shared_ptr<nano::node_observers> *> (handle_a) };
-	(*callback)->socket_connected.notify (std::make_shared<nano::socket> (socket_a));
+	(*callback)->socket_connected.notify (std::make_shared<nano::transport::socket> (socket_a));
 }
 
 void tcp_socket_delete_callback (void * handle_a)
@@ -621,7 +621,7 @@ void tcp_socket_delete_callback (void * handle_a)
 };
 void tcp_socket_destroy (void * handle_a)
 {
-	auto ptr{ static_cast<std::shared_ptr<nano::tcp_socket_facade> *> (handle_a) };
+	auto ptr{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	delete ptr;
 }
 
@@ -710,7 +710,7 @@ std::size_t bootstrap_observer_bootstrap_count (void * handle_a)
 void bootstrap_observer_exited (void * handle_a, uint8_t socket_type_a, uintptr_t inner_ptr_a, const rsnano::EndpointDto * endpoint_a)
 {
 	auto observer = static_cast<std::shared_ptr<nano::tcp_server_observer> *> (handle_a);
-	auto socket_type = static_cast<nano::socket::type_t> (socket_type_a);
+	auto socket_type = static_cast<nano::transport::socket::type_t> (socket_type_a);
 	auto endpoint = rsnano::dto_to_endpoint (*endpoint_a);
 	(*observer)->tcp_server_exited (socket_type, inner_ptr_a, endpoint);
 }

@@ -18,7 +18,7 @@ constexpr double nano::bootstrap_limits::bootstrap_minimum_termination_time_sec;
 constexpr unsigned nano::bootstrap_limits::bootstrap_max_new_connections;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_processed_blocks_factor;
 
-nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a) :
+nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::transport::socket> const & socket_a) :
 	handle{ rsnano::rsn_bootstrap_client_create (new std::shared_ptr<nano::bootstrap_client_observer> (observer_a), channel_a->handle, socket_a->handle) }
 {
 }
@@ -53,7 +53,7 @@ void nano::bootstrap_client::async_read (std::size_t size_a, std::function<void 
 	auto cb_wrapper = new std::function<void (boost::system::error_code const &, std::size_t)> ([callback = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code const & ec, std::size_t size) {
 		callback (ec, size);
 	});
-	rsnano::rsn_bootstrap_client_read (handle, size_a, nano::async_read_adapter, nano::async_read_delete_context, cb_wrapper);
+	rsnano::rsn_bootstrap_client_read (handle, size_a, nano::transport::async_read_adapter, nano::transport::async_read_delete_context, cb_wrapper);
 }
 
 uint8_t * nano::bootstrap_client::get_receive_buffer ()
@@ -77,13 +77,13 @@ std::string nano::bootstrap_client::channel_string () const
 	return rsnano::convert_dto_to_string (dto);
 }
 
-void nano::bootstrap_client::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a, nano::bandwidth_limit_type limit_type_a)
+void nano::bootstrap_client::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::bandwidth_limit_type limit_type_a)
 {
 	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
 	rsnano::rsn_bootstrap_client_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (limit_type_a));
 }
 
-void nano::bootstrap_client::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::buffer_drop_policy policy_a)
+void nano::bootstrap_client::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy policy_a)
 {
 	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
 	rsnano::rsn_bootstrap_client_send_buffer (handle, buffer_a.data (), buffer_a.size (), nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (policy_a));
@@ -106,9 +106,9 @@ void nano::bootstrap_client::set_timeout (std::chrono::seconds timeout_a)
 	rsnano::rsn_bootstrap_client_set_timeout (handle, timeout_a.count ());
 }
 
-std::shared_ptr<nano::socket> nano::bootstrap_client::get_socket () const
+std::shared_ptr<nano::transport::socket> nano::bootstrap_client::get_socket () const
 {
-	return std::make_shared<nano::socket> (rsnano::rsn_bootstrap_client_socket (handle));
+	return std::make_shared<nano::transport::socket> (rsnano::rsn_bootstrap_client_socket (handle));
 }
 
 uint64_t nano::bootstrap_client::inc_block_count ()
@@ -217,7 +217,7 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::find_connec
 void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & endpoint_a, bool push_front)
 {
 	++connections_count;
-	auto socket (std::make_shared<nano::socket> (node.io_ctx, nano::socket::endpoint_type_t::client, *node.stats, node.logger, node.workers,
+	auto socket (std::make_shared<nano::transport::socket> (node.io_ctx, nano::transport::socket::endpoint_type_t::client, *node.stats, node.logger, node.workers,
 	node.config->tcp_io_timeout,
 	node.network_params.network.silent_connection_tolerance_time,
 	node.config->logging.network_timeout_logging (),

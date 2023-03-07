@@ -39,7 +39,7 @@ void destroy_read_callback (void * context_a)
 	delete callback;
 }
 
-void nano::transport::message_deserializer::read (std::shared_ptr<nano::socket> socket, const nano::transport::message_deserializer::callback_type && callback)
+void nano::transport::message_deserializer::read (std::shared_ptr<nano::transport::socket> socket, const nano::transport::message_deserializer::callback_type && callback)
 {
 	auto context = new nano::transport::message_deserializer::callback_type (callback);
 	rsnano::rsn_message_deserializer_read (handle_m, socket->handle, read_callback_wrapper, destroy_read_callback, context);

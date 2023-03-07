@@ -4,7 +4,7 @@
 
 #include <nano/node/bootstrap/bootstrap_bulk_pull.hpp>
 #include <nano/node/common.hpp>
-#include <nano/node/socket.hpp>
+#include <nano/node/transport/socket.hpp>
 
 #include <atomic>
 
@@ -33,7 +33,7 @@ public:
 class bootstrap_client final : public std::enable_shared_from_this<bootstrap_client>
 {
 public:
-	bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::socket> const & socket_a);
+	bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::transport::socket> const & socket_a);
 	~bootstrap_client ();
 	void stop (bool force);
 	double sample_block_rate ();
@@ -45,10 +45,10 @@ public:
 	uint8_t * get_receive_buffer ();
 	nano::tcp_endpoint remote_endpoint () const;
 	std::string channel_string () const;
-	void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy drop_policy_a = nano::buffer_drop_policy::limiter, nano::bandwidth_limit_type limit_type_a = nano::bandwidth_limit_type::standard);
-	void send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter);
+	void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy drop_policy_a = nano::transport::buffer_drop_policy::limiter, nano::bandwidth_limit_type limit_type_a = nano::bandwidth_limit_type::standard);
+	void send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter);
 	nano::tcp_endpoint get_tcp_endpoint () const;
-	std::shared_ptr<nano::socket> get_socket () const;
+	std::shared_ptr<nano::transport::socket> get_socket () const;
 	uint64_t get_block_count () const;
 	uint64_t inc_block_count (); // returns the previous block count
 	double get_block_rate () const;

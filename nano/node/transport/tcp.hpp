@@ -31,7 +31,7 @@ class tcp_message_item final
 public:
 	tcp_message_item ();
 	explicit tcp_message_item (rsnano::TcpMessageItemHandle * handle_a);
-	tcp_message_item (std::shared_ptr<nano::message> message_a, nano::tcp_endpoint endpoint_a, nano::account node_id_a, std::shared_ptr<nano::socket> socket_a);
+	tcp_message_item (std::shared_ptr<nano::message> message_a, nano::tcp_endpoint endpoint_a, nano::account node_id_a, std::shared_ptr<nano::transport::socket> socket_a);
 	tcp_message_item (nano::tcp_message_item const & other_a);
 	tcp_message_item (nano::tcp_message_item && other_a) noexcept;
 	~tcp_message_item ();
@@ -40,7 +40,7 @@ public:
 	std::shared_ptr<nano::message> get_message () const;
 	nano::tcp_endpoint get_endpoint () const;
 	nano::account get_node_id () const;
-	std::shared_ptr<nano::socket> get_socket () const;
+	std::shared_ptr<nano::transport::socket> get_socket () const;
 	rsnano::TcpMessageItemHandle * handle;
 };
 namespace transport
@@ -67,7 +67,7 @@ namespace transport
 		friend class nano::transport::tcp_channels;
 
 	public:
-		channel_tcp (boost::asio::io_context & io_ctx_a, nano::outbound_bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a);
+		channel_tcp (boost::asio::io_context & io_ctx_a, nano::outbound_bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::transport::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a);
 		channel_tcp (rsnano::ChannelHandle * handle_a) :
 			channel{ handle_a } {};
 
@@ -75,13 +75,13 @@ namespace transport
 		void set_network_version (uint8_t network_version_a) override;
 		std::size_t hash_code () const override;
 		bool operator== (nano::transport::channel const &) const override;
-		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::buffer_drop_policy policy_a = nano::buffer_drop_policy::limiter, nano::bandwidth_limit_type = nano::bandwidth_limit_type::standard) override;
+		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter, nano::bandwidth_limit_type = nano::bandwidth_limit_type::standard) override;
 		// TODO: investigate clang-tidy warning about default parameters on virtual/override functions
 		//
-		void send_buffer (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr, nano::buffer_drop_policy = nano::buffer_drop_policy::limiter) override;
+		void send_buffer (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr, nano::transport::buffer_drop_policy = nano::transport::buffer_drop_policy::limiter) override;
 		std::string to_string () const override;
 		bool operator== (nano::transport::channel_tcp const & other_a) const;
-		std::shared_ptr<nano::socket> try_get_socket () const;
+		std::shared_ptr<nano::transport::socket> try_get_socket () const;
 
 		void set_endpoint ();
 
@@ -106,7 +106,7 @@ namespace transport
 	{
 	public:
 		tcp_server_factory (nano::node & node_a);
-		std::shared_ptr<nano::transport::tcp_server> create_tcp_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::socket> & socket_a);
+		std::shared_ptr<nano::transport::tcp_server> create_tcp_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::transport::socket> & socket_a);
 
 	private:
 		nano::node & node;
@@ -120,7 +120,7 @@ namespace transport
 		explicit tcp_channels (nano::node &, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();
-		bool insert (std::shared_ptr<nano::transport::channel_tcp> const &, std::shared_ptr<nano::socket> const &, std::shared_ptr<nano::transport::tcp_server> const &);
+		bool insert (std::shared_ptr<nano::transport::channel_tcp> const &, std::shared_ptr<nano::transport::socket> const &, std::shared_ptr<nano::transport::tcp_server> const &);
 		void erase (nano::tcp_endpoint const &);
 		void erase_temporary_channel (nano::tcp_endpoint const &);
 		std::size_t size () const;
@@ -135,7 +135,7 @@ namespace transport
 		void start ();
 		void stop ();
 		void process_messages ();
-		void process_message (nano::message const &, nano::tcp_endpoint const &, nano::account const &, std::shared_ptr<nano::socket> const &);
+		void process_message (nano::message const &, nano::tcp_endpoint const &, nano::account const &, std::shared_ptr<nano::transport::socket> const &);
 		bool max_ip_connections (nano::tcp_endpoint const & endpoint_a);
 		bool max_subnetwork_connections (nano::tcp_endpoint const & endpoint_a);
 		bool max_ip_or_subnetwork_connections (nano::tcp_endpoint const & endpoint_a);
@@ -193,7 +193,7 @@ namespace transport
 		class channel_tcp_wrapper final
 		{
 		public:
-			channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a);
+			channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::transport::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a);
 			channel_tcp_wrapper (channel_tcp_wrapper const &) = delete;
 			~channel_tcp_wrapper ();
 			std::shared_ptr<nano::transport::channel_tcp> get_channel () const;
@@ -210,7 +210,7 @@ namespace transport
 			{
 				return get_channel ()->get_last_bootstrap_attempt ();
 			}
-			std::shared_ptr<nano::socket> try_get_socket () const
+			std::shared_ptr<nano::transport::socket> try_get_socket () const
 			{
 				return get_channel ()->try_get_socket ();
 			}

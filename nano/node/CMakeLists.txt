@@ -169,8 +169,6 @@ add_library(
   transport/fake.cpp
   transport/inproc.hpp
   transport/inproc.cpp
-  transport/message_deserializer.hpp
-  transport/message_deserializer.cpp
   transport/socket.hpp
   transport/socket.cpp
   transport/tcp.hpp

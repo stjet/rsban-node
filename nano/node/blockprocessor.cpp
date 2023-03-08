@@ -125,6 +125,11 @@ void nano::block_processor::add (std::shared_ptr<nano::block> const & block_a)
 
 void nano::block_processor::add (nano::unchecked_info const & info_a)
 {
+	if (full ())
+	{
+		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::drop);
+		return;
+	}
 	auto block = info_a.get_block ();
 	debug_assert (!network_params.work.validate_entry (*block));
 	if (block->type () == nano::block_type::state || block->type () == nano::block_type::open)
@@ -143,6 +148,11 @@ void nano::block_processor::add (nano::unchecked_info const & info_a)
 
 void nano::block_processor::add_local (nano::unchecked_info const & info_a)
 {
+	if (full ())
+	{
+		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::drop);
+		return;
+	}
 	debug_assert (!network_params.work.validate_entry (*info_a.get_block ()));
 	state_block_signature_verification.add ({ info_a.get_block () });
 }

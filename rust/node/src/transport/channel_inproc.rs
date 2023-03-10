@@ -1,11 +1,20 @@
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Mutex,
+    atomic::{AtomicBool, AtomicUsize, Ordering},
+    Arc, Mutex,
 };
 
+use message_deserializer::MessageDeserializer;
 use rsnano_core::Account;
 
-use super::Channel;
+use crate::{
+    config::NetworkConstants,
+    messages::Message,
+    transport::message_deserializer,
+    utils::{BlockUniquer, ErrorCode},
+    voting::VoteUniquer,
+};
+
+use super::{message_deserializer::ReadQuery, Channel, MessageDeserializerExt, NetworkFilter};
 
 pub struct InProcChannelData {
     last_bootstrap_attempt: u64,
@@ -17,10 +26,20 @@ pub struct InProcChannelData {
 pub struct ChannelInProc {
     temporary: AtomicBool,
     channel_mutex: Mutex<InProcChannelData>,
+    network_constants: NetworkConstants,
+    network_filter: Arc<NetworkFilter>,
+    block_uniquer: Arc<BlockUniquer>,
+    vote_uniquer: Arc<VoteUniquer>,
 }
 
 impl ChannelInProc {
-    pub fn new(now: u64) -> Self {
+    pub fn new(
+        now: u64,
+        network_constants: NetworkConstants,
+        network_filter: Arc<NetworkFilter>,
+        block_uniquer: Arc<BlockUniquer>,
+        vote_uniquer: Arc<VoteUniquer>,
+    ) -> Self {
         Self {
             temporary: AtomicBool::new(false),
             channel_mutex: Mutex::new(InProcChannelData {
@@ -29,7 +48,39 @@ impl ChannelInProc {
                 last_packet_sent: now,
                 node_id: None,
             }),
+            network_constants,
+            network_filter,
+            block_uniquer,
+            vote_uniquer,
         }
+    }
+
+    pub fn send_buffer(
+        &self,
+        buffer: &[u8],
+        callback_msg: Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>)>,
+    ) {
+        let offset = AtomicUsize::new(0);
+        let buffer_copy = buffer.to_vec();
+        let buffer_read_fn: ReadQuery = Box::new(move |data, size, callback| {
+            let os = offset.load(Ordering::SeqCst);
+            debug_assert!(buffer_copy.len() >= (os + size));
+            let mut data_lock = data.lock().unwrap();
+            data_lock.resize(size, 0);
+            data_lock.copy_from_slice(&buffer_copy[os..(os + size)]);
+            drop(data_lock);
+            offset.fetch_add(size, Ordering::SeqCst);
+            callback(ErrorCode::new(), size);
+        });
+
+        let message_deserializer = Arc::new(MessageDeserializer::new(
+            self.network_constants.clone(),
+            self.network_filter.clone(),
+            self.block_uniquer.clone(),
+            self.vote_uniquer.clone(),
+            buffer_read_fn,
+        ));
+        message_deserializer.read(callback_msg);
     }
 }
 

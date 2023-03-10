@@ -120,7 +120,8 @@ public:
 	 */
 	explicit socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stats & stats_a,
 	std::shared_ptr<nano::logger_mt> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a,
-	std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a, bool network_timeout_logging_a,
+	std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
+	std::chrono::seconds idle_timeout_a, bool network_timeout_logging_a,
 	std::shared_ptr<nano::node_observers>);
 	socket (rsnano::SocketHandle * handle_a);
 	socket (nano::transport::socket const &) = delete;

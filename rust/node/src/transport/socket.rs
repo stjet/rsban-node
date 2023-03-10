@@ -185,6 +185,8 @@ pub struct SocketImpl {
     /// activity is any successful connect, send or receive event
     timeout_seconds: AtomicU64,
 
+    idle_timeout: Duration,
+
     pub tcp_socket: Arc<dyn TcpSocketFacade>,
     thread_pool: Arc<dyn ThreadPool>,
     endpoint_type: EndpointType,
@@ -330,6 +332,12 @@ pub trait Socket {
     fn has_timed_out(&self) -> bool;
     fn get_queue_size(&self) -> usize;
     fn set_silent_connection_tolerance_time(&self, time_s: u64);
+    fn read_impl(
+        &self,
+        data: Arc<Mutex<Vec<u8>>>,
+        size: usize,
+        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+    );
 }
 
 impl Socket for Arc<SocketImpl> {
@@ -564,6 +572,27 @@ impl Socket for Arc<SocketImpl> {
                 .store(time_s, Ordering::SeqCst);
         }));
     }
+
+    fn read_impl(
+        &self,
+        data: Arc<Mutex<Vec<u8>>>,
+        size: usize,
+        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+    ) {
+        // Increase timeout to receive TCP header (idle server socket)
+        let prev_timeout = self.default_timeout_value();
+        self.set_default_timeout_value(self.idle_timeout.as_secs());
+
+        let self_clone = Arc::clone(self);
+        self.async_read2(
+            data,
+            size,
+            Box::new(move |ec, s| {
+                self_clone.set_default_timeout_value(prev_timeout);
+                callback(ec, s);
+            }),
+        );
+    }
 }
 
 pub struct SocketBuilder {
@@ -572,6 +601,7 @@ pub struct SocketBuilder {
     thread_pool: Arc<dyn ThreadPool>,
     default_timeout: Duration,
     silent_connection_tolerance_time: Duration,
+    idle_timeout: Duration,
     observer: Option<Arc<dyn SocketObserver>>,
 }
 
@@ -587,6 +617,7 @@ impl SocketBuilder {
             thread_pool,
             default_timeout: Duration::from_secs(15),
             silent_connection_tolerance_time: Duration::from_secs(120),
+            idle_timeout: Duration::from_secs(120),
             observer: None,
         }
     }
@@ -598,6 +629,11 @@ impl SocketBuilder {
 
     pub fn silent_connection_tolerance_time(mut self, timeout: Duration) -> Self {
         self.silent_connection_tolerance_time = timeout;
+        self
+    }
+
+    pub fn idle_timeout(mut self, timeout: Duration) -> Self {
+        self.idle_timeout = timeout;
         self
     }
 
@@ -618,6 +654,7 @@ impl SocketBuilder {
                 tcp_socket: self.tcp_facade,
                 default_timeout: AtomicU64::new(self.default_timeout.as_secs()),
                 timeout_seconds: AtomicU64::new(u64::MAX),
+                idle_timeout: self.idle_timeout,
                 thread_pool: self.thread_pool,
                 endpoint_type: self.endpoint_type,
                 silent_connection_tolerance_time: AtomicU64::new(

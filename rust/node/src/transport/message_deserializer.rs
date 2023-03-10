@@ -9,7 +9,6 @@ use crate::{
         FrontierReq, Keepalive, Message, MessageHeader, MessageType, NodeIdHandshake, Publish,
         TelemetryAck, TelemetryReq,
     },
-    transport::{Socket, SocketImpl},
     utils::{BlockUniquer, ErrorCode},
     voting::VoteUniquer,
 };
@@ -19,6 +18,8 @@ use super::NetworkFilter;
 const MAX_MESSAGE_SIZE: usize = 1024 * 4;
 const HEADER_SIZE: usize = 8;
 
+pub type ReadQuery = Box<dyn Fn(Arc<Mutex<Vec<u8>>>, usize, Box<dyn FnOnce(ErrorCode, usize)>)>;
+
 pub struct MessageDeserializer {
     network_constants: NetworkConstants,
     publish_filter: Arc<NetworkFilter>,
@@ -26,6 +27,7 @@ pub struct MessageDeserializer {
     vote_uniquer: Arc<VoteUniquer>,
     read_buffer: Arc<Mutex<Vec<u8>>>,
     status: Mutex<ParseStatus>,
+    read_op: ReadQuery,
 }
 
 impl MessageDeserializer {
@@ -34,6 +36,7 @@ impl MessageDeserializer {
         network_filter: Arc<NetworkFilter>,
         block_uniquer: Arc<BlockUniquer>,
         vote_uniquer: Arc<VoteUniquer>,
+        read_op: ReadQuery,
     ) -> Self {
         Self {
             network_constants,
@@ -42,6 +45,7 @@ impl MessageDeserializer {
             vote_uniquer,
             status: Mutex::new(ParseStatus::None),
             read_buffer: Arc::new(Mutex::new(vec![0; MAX_MESSAGE_SIZE])),
+            read_op,
         }
     }
 
@@ -308,29 +312,25 @@ impl MessageDeserializer {
 pub type CallbackType = Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>)>;
 
 pub trait MessageDeserializerExt {
-    /// Asynchronously read next message from socket.
+    /// Asynchronously read next message from channel_read_fn.
     /// If an irrecoverable error is encountered callback will be called with an error code set and `None` message.
     /// If a 'soft' error is encountered (eg. duplicate block publish) error won't be set but message will be `None`. In that case, `status` field will be set to code indicating reason for failure.
     /// If message is received successfully, error code won't be set and message will be non-null. `status` field will be set to `success`.
     /// Should not be called until the previous invocation finishes and calls the callback.
-    fn read(&self, socket: Arc<SocketImpl>, callback: CallbackType);
+    fn read(&self, callback: CallbackType);
 
     /// Deserializes message using data in `read_buffer`.
     /// # Return
     /// If successful returns non-null message, otherwise sets `status` to error appropriate code and returns `None`
-    fn received_header(&self, socket: Arc<SocketImpl>, callback: CallbackType);
+    fn received_header(&self, callback: CallbackType);
 }
 
 impl MessageDeserializerExt for Arc<MessageDeserializer> {
-    fn read(&self, socket: Arc<SocketImpl>, callback: CallbackType) {
+    fn read(&self, callback: CallbackType) {
         self.set_status(ParseStatus::None);
-        // Increase timeout to receive TCP header (idle server socket)
-        let prev_timeout = socket.default_timeout_value();
-        socket.set_default_timeout_value(self.network_constants.idle_timeout_s as u64);
 
         let self_clone = Arc::clone(self);
-        let socket_clone = Arc::clone(&socket);
-        socket.async_read2(
+        (self.read_op)(
             Arc::clone(&self.read_buffer),
             HEADER_SIZE,
             Box::new(move |ec, size| {
@@ -343,15 +343,12 @@ impl MessageDeserializerExt for Arc<MessageDeserializer> {
                     return;
                 }
 
-                // Decrease timeout to default
-                socket_clone.set_default_timeout_value(prev_timeout);
-
-                self_clone.received_header(socket_clone, callback);
+                self_clone.received_header(callback);
             }),
         );
     }
 
-    fn received_header(&self, socket: Arc<SocketImpl>, callback: CallbackType) {
+    fn received_header(&self, callback: CallbackType) {
         let buffer = self.read_buffer.lock().unwrap();
         let mut stream = StreamAdapter::new(&buffer[..HEADER_SIZE]);
         let header = match MessageHeader::from_stream(&mut stream) {
@@ -384,7 +381,7 @@ impl MessageDeserializerExt for Arc<MessageDeserializer> {
             callback(ErrorCode::fault(), None);
             return;
         }
-        debug_assert!(payload_size <= buffer.len());
+        debug_assert!(payload_size <= buffer.capacity());
         drop(buffer);
 
         if payload_size == 0 {
@@ -392,7 +389,7 @@ impl MessageDeserializerExt for Arc<MessageDeserializer> {
             self.received_message(header, 0, callback);
         } else {
             let self_clone = Arc::clone(self);
-            socket.async_read2(
+            (self.read_op)(
                 Arc::clone(&self.read_buffer),
                 payload_size,
                 Box::new(move |ec, size| {

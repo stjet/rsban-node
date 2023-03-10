@@ -45,6 +45,11 @@ pub unsafe extern "C" fn rsn_message_set_header(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_clone(handle: *mut MessageHandle) -> *mut MessageHandle {
+    MessageHandle::new((*handle).0.clone_box())
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_destroy(handle: *mut MessageHandle) {
     drop(Box::from_raw(handle))
 }

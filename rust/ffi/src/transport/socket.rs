@@ -83,6 +83,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     thread_pool: *mut c_void,
     default_timeout_s: u64,
     silent_connection_tolerance_time_s: u64,
+    idle_timeout_s: u64,
     network_timeout_logging: bool,
     logger: *mut LoggerHandle,
     callback_handler: *mut c_void,
@@ -99,6 +100,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool)
         .default_timeout(Duration::from_secs(default_timeout_s))
         .silent_connection_tolerance_time(Duration::from_secs(silent_connection_tolerance_time_s))
+        .idle_timeout(Duration::from_secs(idle_timeout_s))
         .observer(Arc::new(CompositeSocketObserver::new(vec![
             socket_stats,
             ffi_observer,

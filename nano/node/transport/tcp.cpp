@@ -1,4 +1,5 @@
 #include "nano/lib/rsnanoutils.hpp"
+#include "nano/secure/common.hpp"
 
 #include <nano/lib/stats.hpp>
 #include <nano/node/node.hpp>
@@ -612,6 +613,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 	auto socket = std::make_shared<nano::transport::socket> (io_ctx, nano::transport::socket::endpoint_type_t::client, *stats, logger, workers,
 	config->tcp_io_timeout,
 	network_params.network.silent_connection_tolerance_time,
+	network_params.network.idle_timeout,
 	config->logging.network_timeout_logging (),
 	observers);
 	auto channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket, network->tcp_channels));

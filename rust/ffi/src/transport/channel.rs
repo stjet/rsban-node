@@ -1,8 +1,18 @@
-use std::sync::Arc;
+use crate::{
+    core::BlockUniquerHandle, messages::MessageHandle, voting::VoteUniquerHandle, ErrorCodeDto,
+    NetworkConstantsDto, VoidPointerCallback,
+};
 
 use rsnano_core::Account;
+use rsnano_node::{
+    config::NetworkConstants,
+    messages::Message,
+    transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp},
+    utils::ErrorCode,
+};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
-use rsnano_node::transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp};
+use super::NetworkFilterHandle;
 
 pub enum ChannelType {
     Tcp(Arc<ChannelTcp>),
@@ -15,6 +25,13 @@ pub struct ChannelHandle(Arc<ChannelType>);
 impl ChannelHandle {
     pub fn new(channel: Arc<ChannelType>) -> *mut Self {
         Box::into_raw(Box::new(Self(channel)))
+    }
+}
+
+pub unsafe fn as_inproc_channel(handle: *mut ChannelHandle) -> &'static ChannelInProc {
+    match (*handle).0.as_ref() {
+        ChannelType::InProc(inproc) => inproc,
+        _ => panic!("expected inproc channel"),
     }
 }
 
@@ -107,8 +124,24 @@ pub unsafe extern "C" fn rsn_channel_set_node_id(handle: *mut ChannelHandle, id:
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_channel_inproc_create(now: u64) -> *mut ChannelHandle {
-    ChannelHandle::new(Arc::new(ChannelType::InProc(ChannelInProc::new(now))))
+pub unsafe extern "C" fn rsn_channel_inproc_create(
+    now: u64,
+    network_constants: *const NetworkConstantsDto,
+    network_filter: *mut NetworkFilterHandle,
+    block_uniquer: *mut BlockUniquerHandle,
+    vote_uniquer: *mut VoteUniquerHandle,
+) -> *mut ChannelHandle {
+    let network_constants = NetworkConstants::try_from(&*network_constants).unwrap();
+    let network_filter = (*network_filter).deref().clone();
+    let block_uniquer = (*block_uniquer).deref().clone();
+    let vote_uniquer = (*vote_uniquer).deref().clone();
+    ChannelHandle::new(Arc::new(ChannelType::InProc(ChannelInProc::new(
+        now,
+        network_constants,
+        network_filter,
+        block_uniquer,
+        vote_uniquer,
+    ))))
 }
 
 #[no_mangle]
@@ -116,4 +149,73 @@ pub extern "C" fn rsn_channel_fake_create(now: u64) -> *mut ChannelHandle {
     Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Fake(
         ChannelFake::new(now),
     )))))
+}
+
+pub type MessageReceivedCallback =
+    unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, *mut MessageHandle);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_inproc_send_buffer(
+    handle: *mut ChannelHandle,
+    buffer: *const u8,
+    buffer_len: usize,
+    message_callback: MessageReceivedCallback,
+    message_callback_context: *mut c_void,
+    delete_callback_context: VoidPointerCallback,
+) {
+    let buffer = std::slice::from_raw_parts(buffer, buffer_len);
+
+    let message_callback_wrapper = MessageCallbackWrapper::new(
+        message_callback,
+        message_callback_context,
+        delete_callback_context,
+    );
+
+    let message_received = Box::new(move |ec, msg| {
+        message_callback_wrapper.call(ec, msg);
+    });
+
+    as_inproc_channel(handle).send_buffer(buffer, message_received);
+}
+
+struct MessageCallbackWrapper {
+    callback: MessageReceivedCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+}
+
+impl MessageCallbackWrapper {
+    fn new(
+        callback: MessageReceivedCallback,
+        context: *mut c_void,
+        delete_context: VoidPointerCallback,
+    ) -> Self {
+        Self {
+            callback,
+            context,
+            delete_context,
+        }
+    }
+
+    fn call(&self, ec: ErrorCode, msg: Option<Box<dyn Message>>) {
+        let ec_dto = ErrorCodeDto::from(&ec);
+        let message_handle = match msg {
+            Some(m) => MessageHandle::new(m),
+            None => std::ptr::null_mut(),
+        };
+        unsafe {
+            (self.callback)(self.context, &ec_dto, message_handle);
+            if !message_handle.is_null() {
+                drop(Box::from_raw(message_handle));
+            }
+        }
+    }
+}
+
+impl Drop for MessageCallbackWrapper {
+    fn drop(&mut self) {
+        unsafe {
+            (self.delete_context)(self.context);
+        }
+    }
 }

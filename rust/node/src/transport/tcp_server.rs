@@ -94,6 +94,7 @@ impl TcpServer {
         allow_bootstrap: bool,
     ) -> Self {
         let network_constants = network.network.clone();
+        let socket_clone = Arc::clone(&socket);
         Self {
             socket,
             config,
@@ -122,6 +123,9 @@ impl TcpServer {
                 publish_filter,
                 block_uniquer,
                 vote_uniquer,
+                Box::new(move |data, size, callback| {
+                    socket_clone.read_impl(data, size, callback);
+                }),
             )),
             tcp_message_manager,
             allow_bootstrap,
@@ -303,22 +307,19 @@ impl TcpServerExt for Arc<TcpServer> {
         }
 
         let self_clone = Arc::clone(self);
-        self.message_deserializer.read(
-            Arc::clone(&self.socket),
-            Box::new(move |ec, msg| {
-                if ec.is_err() {
-                    // IO error or critical error when deserializing message
-                    let _ = self_clone.stats.inc(
-                        StatType::Error,
-                        DetailType::from(self_clone.message_deserializer.status()),
-                        Direction::In,
-                    );
-                    self_clone.stop();
-                    return;
-                }
-                self_clone.received_message(msg);
-            }),
-        );
+        self.message_deserializer.read(Box::new(move |ec, msg| {
+            if ec.is_err() {
+                // IO error or critical error when deserializing message
+                let _ = self_clone.stats.inc(
+                    StatType::Error,
+                    DetailType::from(self_clone.message_deserializer.status()),
+                    Direction::In,
+                );
+                self_clone.stop();
+                return;
+            }
+            self_clone.received_message(msg);
+        }));
     }
 
     fn received_message(&self, message: Option<Box<dyn Message>>) {

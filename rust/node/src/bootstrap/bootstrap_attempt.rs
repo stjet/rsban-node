@@ -4,7 +4,7 @@ use crate::{
     websocket::{Listener, MessageBuilder},
 };
 use anyhow::Result;
-use rsnano_core::{encode_hex, utils::Logger, Account, BlockEnum, UncheckedInfo};
+use rsnano_core::{encode_hex, utils::Logger, Account, BlockEnum};
 use rsnano_ledger::Ledger;
 use std::{
     sync::{
@@ -141,9 +141,8 @@ impl BootstrapAttempt {
         {
             stop_pull = true;
         } else {
-            let unchecked_info = UncheckedInfo::new(block);
             if let Some(p) = self.block_processor.upgrade() {
-                p.add(&unchecked_info);
+                p.add(block);
             }
         }
 

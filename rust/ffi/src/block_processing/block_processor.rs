@@ -1,7 +1,6 @@
+use crate::core::BlockHandle;
 use rsnano_node::block_processing::{BlockProcessor, BLOCKPROCESSOR_ADD_CALLBACK};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
-
-use crate::core::UncheckedInfoHandle;
 
 pub struct BlockProcessorHandle(Arc<BlockProcessor>);
 
@@ -24,16 +23,16 @@ pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle)
     drop(unsafe { Box::from_raw(handle) });
 }
 
-pub type BlockProcessorAddCallback = unsafe extern "C" fn(*mut c_void, *mut UncheckedInfoHandle);
+pub type BlockProcessorAddCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
 static mut ADD_CALLBACK: Option<BlockProcessorAddCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_block_processor_add(f: BlockProcessorAddCallback) {
     ADD_CALLBACK = Some(f);
-    BLOCKPROCESSOR_ADD_CALLBACK = Some(|handle, info| {
+    BLOCKPROCESSOR_ADD_CALLBACK = Some(|handle, block| {
         ADD_CALLBACK.expect("ADD_CALLBACK missing")(
             handle,
-            Box::into_raw(Box::new(UncheckedInfoHandle::new(info.clone()))),
+            Box::into_raw(Box::new(BlockHandle::new(block))),
         )
     });
 }

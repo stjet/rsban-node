@@ -1,3 +1,5 @@
+#include "nano/lib/blocks.hpp"
+
 #include <nano/lib/config.hpp>
 #include <nano/lib/logger_mt.hpp>
 #include <nano/lib/rsnano.hpp>
@@ -377,11 +379,11 @@ bool listener_broadcast (void * handle_a, rsnano::MessageDto const * message_a)
 	}
 }
 
-void blockprocessor_add (void * handle_a, rsnano::UncheckedInfoHandle * info_a)
+void blockprocessor_add (void * handle_a, rsnano::BlockHandle * block_a)
 {
 	auto processor = static_cast<nano::block_processor *> (handle_a);
-	nano::unchecked_info info{ info_a };
-	processor->add (info);
+	auto block{ nano::block_handle_to_block (block_a) };
+	processor->add (block);
 }
 
 void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)

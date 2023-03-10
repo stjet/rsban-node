@@ -221,11 +221,7 @@ impl NodeConfig {
             bootstrap_initiator_threads: 1,
             bootstrap_serving_threads: std::cmp::max(get_cpu_count() as u32 / 2, 2),
             bootstrap_frontier_request_count: 1024 * 1024,
-            block_processor_batch_max_time_ms: if network_params.network.is_dev_network() {
-                500
-            } else {
-                5000
-            },
+            block_processor_batch_max_time_ms: 500,
             allow_local_peers: !(network_params.network.is_live_network()
                 || network_params.network.is_test_network()), // disable by default for live network
             vote_minimum: Amount::raw(*GXRB_RATIO),

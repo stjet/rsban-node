@@ -127,11 +127,17 @@ void nano::block_processor::add (nano::unchecked_info const & info_a)
 {
 	if (full ())
 	{
-		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::drop);
+		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::overfill);
 		return;
 	}
+	if (network_params.work.validate_entry (*info_a.get_block())) // true => error
+	{
+		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::insufficient_work);
+		return;
+	}
+
 	auto block = info_a.get_block ();
-	debug_assert (!network_params.work.validate_entry (*block));
+
 	if (block->type () == nano::block_type::state || block->type () == nano::block_type::open)
 	{
 		state_block_signature_verification.add ({ block });
@@ -150,11 +156,16 @@ void nano::block_processor::add_local (nano::unchecked_info const & info_a)
 {
 	if (full ())
 	{
-		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::drop);
+		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::overfill);
 		return;
 	}
-	debug_assert (!network_params.work.validate_entry (*info_a.get_block ()));
-	state_block_signature_verification.add ({ info_a.get_block () });
+	if (network_params.work.validate_entry (*info_a.get_block())) // true => error
+	{
+		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::insufficient_work);
+		return;
+	}
+
+	state_block_signature_verification.add ({ info_a.get_block() });
 }
 
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)

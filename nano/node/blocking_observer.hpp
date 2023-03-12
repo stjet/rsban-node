@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/numbers.hpp"
 #include <nano/lib/locks.hpp>
 #include <nano/secure/common.hpp>
 
@@ -24,7 +25,7 @@ public:
 	bool exists (std::shared_ptr<nano::block> block);
 
 private:
-	std::unordered_multimap<std::shared_ptr<nano::block>, std::promise<nano::process_return>> blocking;
+	std::unordered_multimap<nano::block_hash, std::promise<nano::process_return>> blocking;
 	bool stopped{ false };
 	nano::mutex mutex;
 };

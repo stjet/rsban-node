@@ -21,7 +21,7 @@ void nano::blocking_observer::stop ()
 void nano::blocking_observer::observe (nano::process_return const & result, std::shared_ptr<nano::block> block)
 {
 	nano::unique_lock<nano::mutex> lock{ mutex };
-	auto existing = blocking.find (block->hash());
+	auto existing = blocking.find (block->hash ());
 	if (existing != blocking.end ())
 	{
 		auto promise = std::move (existing->second);
@@ -40,13 +40,13 @@ std::future<nano::process_return> nano::blocking_observer::insert (std::shared_p
 		std::promise<nano::process_return> promise;
 		return promise.get_future (); // ~promise future_error
 	}
-	auto iterator = blocking.emplace (block->hash(), std::promise<nano::process_return>{});
+	auto iterator = blocking.emplace (block->hash (), std::promise<nano::process_return>{});
 	return iterator->second.get_future ();
 }
 
 bool nano::blocking_observer::exists (std::shared_ptr<nano::block> block)
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	auto existing = blocking.find (block->hash());
+	auto existing = blocking.find (block->hash ());
 	return existing != blocking.end ();
 }

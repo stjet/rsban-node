@@ -71,7 +71,7 @@ public:
 	nano::block_type block_type () const;
 	std::string to_string () const;
 
-	void flag_set (uint8_t);
+	void flag_set (uint8_t, bool enable = true);
 	static uint8_t constexpr frontier_req_only_confirmed = 1;
 
 	nano::networks get_network () const;
@@ -373,8 +373,15 @@ public: // Payload definitions
 	class response_payload
 	{
 	public:
+		struct v2_payload
+		{
+			nano::uint256_union salt;
+			nano::block_hash genesis;
+		};
+
 		nano::account node_id;
 		nano::signature signature;
+		std::optional<v2_payload> v2;
 	};
 
 public:
@@ -392,6 +399,7 @@ public:
 	std::optional<query_payload> get_query () const;
 	std::optional<response_payload> get_response () const;
 	std::string to_string () const;
+	bool is_v2 () const;
 };
 
 /**

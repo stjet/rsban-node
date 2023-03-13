@@ -23,7 +23,7 @@ pub use network_filter::NetworkFilter;
 pub use peer_exclusion::PeerExclusion;
 use rsnano_core::Account;
 pub use socket::*;
-pub use syn_cookies::SynCookies;
+pub use syn_cookies::{Cookie, SynCookies};
 pub use tcp_channels::TcpChannels;
 pub use tcp_message_manager::{TcpMessageItem, TcpMessageManager};
 pub use tcp_server::{

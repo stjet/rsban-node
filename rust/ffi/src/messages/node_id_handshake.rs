@@ -31,7 +31,11 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
     let response = if !resp_account.is_null() && !resp_signature.is_null() {
         let node_id = Account::from_ptr(resp_account);
         let signature = Signature::from_ptr(resp_signature);
-        Some(NodeIdHandshakeResponse { node_id, signature })
+        Some(NodeIdHandshakeResponse {
+            node_id,
+            signature,
+            v2: None,
+        })
     } else {
         None
     };
@@ -93,6 +97,11 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_deserialize(
     downcast_message_mut::<NodeIdHandshake>(handle)
         .deserialize(&mut stream)
         .is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_node_id_handshake_is_v2(handle: *mut MessageHandle) -> bool {
+    downcast_message::<NodeIdHandshake>(handle).is_v2()
 }
 
 #[no_mangle]

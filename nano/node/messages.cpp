@@ -101,11 +101,11 @@ nano::block_type nano::message_header::block_type () const
 	return static_cast<nano::block_type> (rsnano::rsn_message_header_block_type (handle));
 }
 
-void nano::message_header::flag_set (uint8_t flag_a)
+void nano::message_header::flag_set (uint8_t flag_a, bool enable)
 {
 	// Flags from 8 are block_type & count
 	debug_assert (flag_a < 8);
-	set_extension (flag_a, true);
+	set_extension (flag_a, enable);
 }
 
 nano::networks nano::message_header::get_network () const
@@ -1662,6 +1662,11 @@ std::optional<nano::node_id_handshake::response_payload> nano::node_id_handshake
 		return payload;
 	}
 	return std::nullopt;
+}
+
+bool nano::node_id_handshake::is_v2 () const
+{
+	return rsnano::rsn_message_node_id_handshake_is_v2 (handle);
 }
 
 void nano::node_id_handshake::visit (nano::message_visitor & visitor_a) const

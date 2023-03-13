@@ -464,6 +464,7 @@ impl HandshakeMessageVisitorImpl {
         let response = Some(NodeIdHandshakeResponse {
             node_id: account,
             signature,
+            v2: None,
         });
 
         let own_query = self

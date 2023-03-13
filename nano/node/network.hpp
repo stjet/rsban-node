@@ -28,6 +28,7 @@ public:
 	void stop ();
 	rsnano::TcpMessageManagerHandle * handle;
 };
+
 /**
  * Node ID cookies for node ID handshakes
  */
@@ -38,12 +39,16 @@ public:
 	syn_cookies (nano::syn_cookies const &) = delete;
 	~syn_cookies ();
 	void purge (std::chrono::seconds const &);
+
 	// Returns boost::none if the IP is rate capped on syn cookie requests,
 	// or if the endpoint already has a syn cookie query
 	boost::optional<nano::uint256_union> assign (nano::endpoint const &);
 	// Returns false if valid, true if invalid (true on error convention)
 	// Also removes the syn cookie from the store if valid
 	bool validate (nano::endpoint const &, nano::account const &, nano::signature const &);
+	/** Get cookie associated with endpoint and erases that cookie from this container */
+	std::optional<nano::uint256_union> cookie (nano::endpoint const &);
+
 	std::unique_ptr<container_info_component> collect_container_info (std::string const &);
 	std::size_t cookies_size ();
 	rsnano::SynCookiesHandle * handle;

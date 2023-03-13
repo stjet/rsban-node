@@ -64,6 +64,23 @@ pub unsafe extern "C" fn rsn_syn_cookies_purge(handle: *mut SynCookiesHandle, cu
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_syn_cookies_cookie(
+    handle: *mut SynCookiesHandle,
+    endpoint: *const EndpointDto,
+    result: *mut u8,
+) -> bool {
+    let endpoint = SocketAddr::from(&*endpoint);
+    match (*handle).0.cookie(&endpoint) {
+        Some(cookie) => {
+            let result = std::slice::from_raw_parts_mut(result, 32);
+            result.copy_from_slice(&cookie);
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_syn_cookies_cookies_count(handle: *mut SynCookiesHandle) -> usize {
     (*handle).0.cookies_count()
 }

@@ -799,6 +799,10 @@ void nano::tcp_message_manager::stop ()
 	rsnano::rsn_tcp_message_manager_stop (handle);
 }
 
+/*
+ * syn_cookies
+ */
+
 nano::syn_cookies::syn_cookies (std::size_t max_cookies_per_ip_a) :
 	handle{ rsnano::rsn_syn_cookies_create (max_cookies_per_ip_a) }
 {
@@ -830,6 +834,17 @@ bool nano::syn_cookies::validate (nano::endpoint const & endpoint_a, nano::accou
 void nano::syn_cookies::purge (std::chrono::seconds const & cutoff_a)
 {
 	rsnano::rsn_syn_cookies_purge (handle, cutoff_a.count ());
+}
+
+std::optional<nano::uint256_union> nano::syn_cookies::cookie (const nano::endpoint & endpoint_a)
+{
+	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
+	nano::uint256_union cookie;
+	if (rsnano::rsn_syn_cookies_cookie (handle, &endpoint_dto, cookie.bytes.data ()))
+	{
+		return cookie;
+	}
+	return std::nullopt;
 }
 
 std::size_t nano::syn_cookies::cookies_size ()

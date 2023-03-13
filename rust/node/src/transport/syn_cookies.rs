@@ -94,6 +94,18 @@ impl SynCookies {
         }
     }
 
+    /// Get cookie associated with endpoint and erases that cookie from this container
+    pub fn cookie(&self, endpoint: &SocketAddr) -> Option<Cookie> {
+        let ip_addr = endpoint.ip();
+        debug_assert!(ip_addr.is_ipv6());
+        let mut lock = self.data.lock().unwrap();
+        let info = lock.cookies.remove(endpoint);
+        if info.is_some() {
+            lock.dec_cookie_count(ip_addr);
+        }
+        info.map(|i| i.cookie)
+    }
+
     pub fn cookies_count(&self) -> usize {
         self.data.lock().unwrap().cookies.len()
     }

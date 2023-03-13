@@ -1927,7 +1927,7 @@ boost::optional<std::pair<nano::account, nano::signature>> nano::node_id_handsha
 
 bool nano::node_id_handshake::operator== (nano::node_id_handshake const & other_a) const
 {
-	auto result (*get_query () == *other_a.get_query () && *get_response () == *other_a.get_response ());
+	auto result = *get_query () == *other_a.get_query () && *get_response () == *other_a.get_response ();
 	return result;
 }
 
@@ -1941,9 +1941,9 @@ std::size_t nano::node_id_handshake::size () const
 	return size (get_header ());
 }
 
-std::size_t nano::node_id_handshake::size (nano::message_header const & header_a)
+std::size_t nano::node_id_handshake::size (nano::message_header const & header)
 {
-	return rsnano::rsn_message_node_id_handshake_size (header_a.handle);
+	return rsnano::rsn_message_node_id_handshake_size (header.handle);
 }
 
 std::string nano::node_id_handshake::to_string () const

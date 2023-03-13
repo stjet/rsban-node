@@ -627,12 +627,20 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 			if (!ec && channel)
 			{
 				// TCP node ID handshake
-				auto cookie (this_l->syn_cookies->assign (endpoint_a));
-				nano::node_id_handshake message (network_consts, cookie, boost::none);
+				std::optional<nano::node_id_handshake::query_payload> query;
+				if (auto cookie = this_l->syn_cookies->assign (endpoint_a); cookie)
+				{
+					nano::node_id_handshake::query_payload pld{ *cookie };
+					query = pld;
+				}
+
+				nano::node_id_handshake message{ network_consts, query };
+
 				if (config_l->logging.network_node_id_handshake_logging ())
 				{
-					logger_l->try_log (boost::str (boost::format ("Node ID handshake request sent with node ID %1% to %2%: query %3%") % this_l->node_id.pub.to_node_id () % endpoint_a % (cookie.has_value () ? cookie->to_string () : "not set")));
+					logger_l->try_log (boost::str (boost::format ("Node ID handshake request sent with node ID %1% to %2%: query %3%") % this_l->node_id.pub.to_node_id () % endpoint_a % (query ? query->cookie.to_string () : "not set")));
 				}
+
 				channel->set_endpoint ();
 				std::shared_ptr<std::vector<uint8_t>> receive_buffer (std::make_shared<std::vector<uint8_t>> ());
 				receive_buffer->resize (256);
@@ -762,12 +770,17 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 			return;
 		}
 		channel_a->set_network_version (header.get_version_using ());
-		auto node_id_l (message.get_response ()->first);
-		bool process (!this_l->syn_cookies->validate (endpoint_a, node_id_l, message.get_response ()->second) && node_id_l != this_l->node_id.pub);
+
+		debug_assert (message.get_query ());
+		debug_assert (message.get_response ());
+
+		auto node_id_l (message.get_response ()->node_id);
+		bool process (!this_l->syn_cookies->validate (endpoint_a, node_id_l, message.get_response ()->signature) && node_id_l != this_l->node_id.pub);
 		if (!process)
 		{
 			return;
 		}
+
 		/* If node ID is known, don't establish new connection
 		   Exception: temporary channels from tcp_server */
 		auto existing_channel (this_l->find_node_id (node_id_l));
@@ -777,13 +790,16 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 		}
 		channel_a->set_node_id (node_id_l);
 		channel_a->set_last_packet_received (std::chrono::steady_clock::now ());
-		boost::optional<std::pair<nano::account, nano::signature>> response (std::make_pair (this_l->node_id.pub, nano::sign_message (this_l->node_id.prv, this_l->node_id.pub, *message.get_query ())));
-		nano::node_id_handshake response_message (network_consts, boost::none, response);
+
+		nano::node_id_handshake::response_payload response{ this_l->node_id.pub, nano::sign_message (this_l->node_id.prv, this_l->node_id.pub, message.get_query ()->cookie) };
+		nano::node_id_handshake handshake_response (network_consts, std::nullopt, response);
+
 		if (config_l->logging.network_node_id_handshake_logging ())
 		{
-			logger_l->try_log (boost::str (boost::format ("Node ID handshake response sent with node ID %1% to %2%: query %3%") % this_l->node_id.pub.to_node_id () % endpoint_a % (*message.get_query ()).to_string ()));
+			logger_l->try_log (boost::str (boost::format ("Node ID handshake response sent with node ID %1% to %2%: query %3%") % this_l->node_id.pub.to_node_id () % endpoint_a % message.get_query ()->cookie.to_string ()));
 		}
-		channel_a->send (response_message, [this_w, channel_a, endpoint_a, cleanup_node_id_handshake_socket, config_l, logger_l, flags_l] (boost::system::error_code const & ec, std::size_t size_a) {
+
+		channel_a->send (handshake_response, [this_w, channel_a, endpoint_a, cleanup_node_id_handshake_socket, config_l, logger_l, flags_l] (boost::system::error_code const & ec, std::size_t size_a) {
 			auto this_l = this_w.lock ();
 			if (!this_l)
 			{

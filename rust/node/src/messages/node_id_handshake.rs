@@ -8,17 +8,28 @@ use rsnano_core::{
 use std::{any::Any, fmt::Display};
 
 #[derive(Clone)]
+pub struct NodeIdHandshakeQuery {
+    pub cookie: [u8; 32],
+}
+
+#[derive(Clone)]
+pub struct NodeIdHandshakeResponse {
+    pub node_id: Account,
+    pub signature: Signature,
+}
+
+#[derive(Clone)]
 pub struct NodeIdHandshake {
     header: MessageHeader,
-    pub query: Option<[u8; 32]>,
-    pub response: Option<(Account, Signature)>,
+    pub query: Option<NodeIdHandshakeQuery>,
+    pub response: Option<NodeIdHandshakeResponse>,
 }
 
 impl NodeIdHandshake {
     pub fn new(
         constants: &NetworkConstants,
-        query: Option<[u8; 32]>,
-        response: Option<(Account, Signature)>,
+        query: Option<NodeIdHandshakeQuery>,
+        response: Option<NodeIdHandshakeResponse>,
     ) -> Self {
         let mut header = MessageHeader::new(constants, MessageType::NodeIdHandshake);
 
@@ -67,15 +78,15 @@ impl NodeIdHandshake {
     pub fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
         debug_assert!(self.header.message_type() == MessageType::NodeIdHandshake);
         if Self::is_query(&self.header) {
-            let mut buffer = [0u8; 32];
-            stream.read_bytes(&mut buffer, 32)?;
-            self.query = Some(buffer);
+            let mut cookie = [0u8; 32];
+            stream.read_bytes(&mut cookie, 32)?;
+            self.query = Some(NodeIdHandshakeQuery { cookie });
         }
 
         if Self::is_response(&self.header) {
-            let response_account = Account::deserialize(stream)?;
-            let response_signature = Signature::deserialize(stream)?;
-            self.response = Some((response_account, response_signature));
+            let node_id = Account::deserialize(stream)?;
+            let signature = Signature::deserialize(stream)?;
+            self.response = Some(NodeIdHandshakeResponse { node_id, signature });
         }
 
         Ok(())
@@ -113,11 +124,11 @@ impl Message for NodeIdHandshake {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.header.serialize(stream)?;
         if let Some(query) = &self.query {
-            stream.write_bytes(query)?;
+            stream.write_bytes(&query.cookie)?;
         }
-        if let Some((acc, sig)) = &self.response {
-            acc.serialize(stream)?;
-            sig.serialize(stream)?;
+        if let Some(response) = &self.response {
+            response.node_id.serialize(stream)?;
+            response.signature.serialize(stream)?;
         }
         Ok(())
     }
@@ -140,15 +151,15 @@ impl Display for NodeIdHandshake {
         self.header.fmt(f)?;
         if let Some(query) = &self.query {
             write!(f, "\ncookie=")?;
-            write_hex_bytes(query, f)?;
+            write_hex_bytes(&query.cookie, f)?;
         }
 
-        if let Some((account, signature)) = &self.response {
+        if let Some(response) = &self.response {
             write!(
                 f,
                 "\nresp_node_id={}\nresp_sig={}",
-                account,
-                signature.encode_hex()
+                response.node_id,
+                response.signature.encode_hex()
             )?;
         }
 

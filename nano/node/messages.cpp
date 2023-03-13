@@ -16,6 +16,7 @@
 #include <boost/format.hpp>
 #include <boost/pool/pool_alloc.hpp>
 
+#include <optional>
 #include <sstream>
 
 /*
@@ -1852,24 +1853,28 @@ std::size_t nano::telemetry_data::size ()
  * node_id_handshake
  */
 
-rsnano::MessageHandle * create_node_id_handshake_handle (nano::network_constants const & constants, boost::optional<nano::uint256_union> query, boost::optional<std::pair<nano::account, nano::signature>> response)
+namespace
+{
+rsnano::MessageHandle * create_node_id_handshake_handle (nano::network_constants const & constants, std::optional<nano::node_id_handshake::query_payload> query, std::optional<nano::node_id_handshake::response_payload> response)
 {
 	auto constants_dto{ constants.to_dto () };
 	const uint8_t * query_bytes = nullptr;
 	if (query)
 	{
-		query_bytes = query->bytes.data ();
+		query_bytes = query->cookie.bytes.data ();
 	}
 
 	const uint8_t * acc_bytes = nullptr;
 	const uint8_t * sig_bytes = nullptr;
 	if (response)
 	{
-		acc_bytes = response->first.bytes.data ();
-		sig_bytes = response->second.bytes.data ();
+		acc_bytes = response->node_id.bytes.data ();
+		sig_bytes = response->signature.bytes.data ();
 	}
 
 	return rsnano::rsn_message_node_id_handshake_create (&constants_dto, query_bytes, acc_bytes, sig_bytes);
+}
+
 }
 
 nano::node_id_handshake::node_id_handshake (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
@@ -1883,8 +1888,8 @@ nano::node_id_handshake::node_id_handshake (node_id_handshake const & other_a) :
 {
 }
 
-nano::node_id_handshake::node_id_handshake (nano::network_constants const & constants, boost::optional<nano::uint256_union> query, boost::optional<std::pair<nano::account, nano::signature>> response) :
-	message (create_node_id_handshake_handle (constants, query, response))
+nano::node_id_handshake::node_id_handshake (nano::network_constants const & constants, std::optional<query_payload> query_a, std::optional<response_payload> response_a) :
+	message (create_node_id_handshake_handle (constants, query_a, response_a))
 {
 }
 
@@ -1893,42 +1898,43 @@ nano::node_id_handshake::node_id_handshake (rsnano::MessageHandle * handle_a) :
 {
 }
 
-void nano::node_id_handshake::serialize (nano::stream & stream_a) const
+void nano::node_id_handshake::serialize (nano::stream & stream) const
 {
-	if (!rsnano::rsn_message_node_id_handshake_serialize (handle, &stream_a))
+	if (!rsnano::rsn_message_node_id_handshake_serialize (handle, &stream))
 		throw std::runtime_error ("could not serialize node_id_handshake");
 }
 
-bool nano::node_id_handshake::deserialize (nano::stream & stream_a)
+bool nano::node_id_handshake::deserialize (nano::stream & stream)
 {
-	bool error = !rsnano::rsn_message_node_id_handshake_deserialize (handle, &stream_a);
+	bool error = !rsnano::rsn_message_node_id_handshake_deserialize (handle, &stream);
 	return error;
 }
 
-boost::optional<nano::uint256_union> nano::node_id_handshake::get_query () const
+std::optional<nano::node_id_handshake::query_payload> nano::node_id_handshake::get_query () const
 {
 	nano::uint256_union data;
 	if (rsnano::rsn_message_node_id_handshake_query (handle, data.bytes.data ()))
-		return boost::optional<nano::uint256_union> (data);
+	{
+		nano::node_id_handshake::query_payload payload;
+		payload.cookie = data;
+		return payload;
+	}
 
-	return boost::none;
+	return std::nullopt;
 }
 
-boost::optional<std::pair<nano::account, nano::signature>> nano::node_id_handshake::get_response () const
+std::optional<nano::node_id_handshake::response_payload> nano::node_id_handshake::get_response () const
 {
 	nano::account account;
 	nano::signature signature;
 	if (rsnano::rsn_message_node_id_handshake_response (handle, account.bytes.data (), signature.bytes.data ()))
 	{
-		return boost::optional<std::pair<nano::account, nano::signature>> (std::make_pair (account, signature));
+		nano::node_id_handshake::response_payload payload;
+		payload.node_id = account;
+		payload.signature = signature;
+		return payload;
 	}
-	return boost::none;
-}
-
-bool nano::node_id_handshake::operator== (nano::node_id_handshake const & other_a) const
-{
-	auto result = *get_query () == *other_a.get_query () && *get_response () == *other_a.get_response ();
-	return result;
+	return std::nullopt;
 }
 
 void nano::node_id_handshake::visit (nano::message_visitor & visitor_a) const

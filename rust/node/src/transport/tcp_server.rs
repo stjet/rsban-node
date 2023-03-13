@@ -18,8 +18,8 @@ use crate::{
     config::{NetworkConstants, NodeConfig},
     messages::{
         AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
-        FrontierReq, Keepalive, Message, MessageVisitor, NodeIdHandshake, Publish, TelemetryAck,
-        TelemetryReq,
+        FrontierReq, Keepalive, Message, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
+        NodeIdHandshakeResponse, Publish, TelemetryAck, TelemetryReq,
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
@@ -452,19 +452,29 @@ impl HandshakeMessageVisitorImpl {
         }
     }
 
-    fn send_handshake_response(&self, query: &[u8; 32]) {
+    fn send_handshake_response(&self, query: &NodeIdHandshakeQuery) {
         let account = Account::from(self.node_id.public_key());
+
         let signature = sign_message(
             &self.node_id.private_key(),
             &self.node_id.public_key(),
-            query,
+            &query.cookie,
         );
-        let response = Some((account, signature));
-        let cookie = self.syn_cookies.assign(&self.server.remote_endpoint());
-        let response_message = NodeIdHandshake::new(&self.network_constants, cookie, response);
+
+        let response = Some(NodeIdHandshakeResponse {
+            node_id: account,
+            signature,
+        });
+
+        let own_query = self
+            .syn_cookies
+            .assign(&self.server.remote_endpoint())
+            .map(|cookie| NodeIdHandshakeQuery { cookie });
+
+        let handshake_response = NodeIdHandshake::new(&self.network_constants, own_query, response);
 
         let mut stream = MemoryStream::new();
-        response_message.serialize(&mut stream).unwrap();
+        handshake_response.serialize(&mut stream).unwrap();
 
         let shared_const_buffer = Arc::new(stream.to_vec());
         let server_weak = Arc::downgrade(&self.server);
@@ -550,19 +560,18 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
         if let Some(query) = &message.query {
             self.send_handshake_response(query);
         } else if let Some(response) = &message.response {
-            let response_node_id = &response.0;
             let local_node_id = Account::from(self.node_id.public_key());
             if self
                 .syn_cookies
                 .validate(
                     &self.server.remote_endpoint(),
-                    response_node_id,
-                    &response.1,
+                    &response.node_id,
+                    &response.signature,
                 )
                 .is_ok()
-                && response_node_id != &local_node_id
+                && response.node_id != local_node_id
             {
-                self.server.to_realtime_connection(response_node_id);
+                self.server.to_realtime_connection(&response.node_id);
             } else {
                 // Stop invalid handshake
                 self.server.stop();

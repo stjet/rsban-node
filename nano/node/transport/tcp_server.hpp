@@ -142,7 +142,6 @@ public:
 	void start ();
 	void stop ();
 	void timeout ();
-	void send_handshake_response (nano::uint256_union query);
 	bool is_stopped () const;
 	std::size_t unique_id () const;
 	void set_remote_node_id (nano::account account_a);

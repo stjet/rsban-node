@@ -470,7 +470,9 @@ mod tests {
     use super::*;
     use crate::{
         config::STUB_NETWORK_CONSTANTS,
-        messages::{AccountInfoAckPayload, AccountInfoReqPayload, TelemetryData},
+        messages::{
+            AccountInfoAckPayload, AccountInfoReqPayload, NodeIdHandshakeQuery, TelemetryData,
+        },
         voting::Vote,
     };
     use rsnano_core::{BlockBuilder, BlockHash, KeyPair};
@@ -537,7 +539,7 @@ mod tests {
     fn exact_node_id_handshake() {
         test_deserializer(&NodeIdHandshake::new(
             &STUB_NETWORK_CONSTANTS,
-            Some([1; 32]),
+            Some(NodeIdHandshakeQuery { cookie: [1; 32] }),
             None,
         ));
     }

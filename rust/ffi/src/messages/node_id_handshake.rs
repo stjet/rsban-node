@@ -5,7 +5,9 @@ use rsnano_core::{Account, Signature};
 use crate::{
     copy_account_bytes, copy_signature_bytes, utils::FfiStream, NetworkConstantsDto, StringDto,
 };
-use rsnano_node::messages::{Message, NodeIdHandshake};
+use rsnano_node::messages::{
+    Message, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
+};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
@@ -20,15 +22,16 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
     resp_signature: *const u8,
 ) -> *mut MessageHandle {
     let query = if !query.is_null() {
-        Some(std::slice::from_raw_parts(query, 32).try_into().unwrap())
+        let cookie = std::slice::from_raw_parts(query, 32).try_into().unwrap();
+        Some(NodeIdHandshakeQuery { cookie })
     } else {
         None
     };
 
     let response = if !resp_account.is_null() && !resp_signature.is_null() {
-        let account = Account::from_ptr(resp_account);
+        let node_id = Account::from_ptr(resp_account);
         let signature = Signature::from_ptr(resp_signature);
-        Some((account, signature))
+        Some(NodeIdHandshakeResponse { node_id, signature })
     } else {
         None
     };
@@ -57,8 +60,8 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_query(
     result: *mut u8,
 ) -> bool {
     match &downcast_message::<NodeIdHandshake>(handle).query {
-        Some(bytes) => {
-            std::slice::from_raw_parts_mut(result, 32).copy_from_slice(bytes);
+        Some(query) => {
+            std::slice::from_raw_parts_mut(result, 32).copy_from_slice(&query.cookie);
             true
         }
         None => false,
@@ -72,9 +75,9 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_response(
     signature: *mut u8,
 ) -> bool {
     match &downcast_message::<NodeIdHandshake>(handle).response {
-        Some((acc, sig)) => {
-            copy_account_bytes(*acc, account);
-            copy_signature_bytes(sig, signature);
+        Some(response) => {
+            copy_account_bytes(response.node_id, account);
+            copy_signature_bytes(&response.signature, signature);
             true
         }
         None => false,

@@ -398,19 +398,34 @@ public:
 
 class node_id_handshake final : public message
 {
+public: // Payload definitions
+	class query_payload
+	{
+	public:
+		nano::uint256_union cookie;
+	};
+
+	class response_payload
+	{
+	public:
+		nano::account node_id;
+		nano::signature signature;
+	};
+
 public:
+	explicit node_id_handshake (nano::network_constants const &, std::optional<query_payload> query = std::nullopt, std::optional<response_payload> response = std::nullopt);
 	node_id_handshake (bool &, nano::stream &, nano::message_header const &);
-	node_id_handshake (nano::network_constants const & constants, boost::optional<nano::uint256_union>, boost::optional<std::pair<nano::account, nano::signature>>);
 	node_id_handshake (node_id_handshake const &);
 	node_id_handshake (rsnano::MessageHandle * handle_a);
+
 	void serialize (nano::stream &) const override;
 	bool deserialize (nano::stream &);
+
 	void visit (nano::message_visitor &) const override;
-	bool operator== (nano::node_id_handshake const &) const;
 	std::size_t size () const;
 	static std::size_t size (nano::message_header const &);
-	boost::optional<nano::uint256_union> get_query () const;
-	boost::optional<std::pair<nano::account, nano::signature>> get_response () const;
+	std::optional<query_payload> get_query () const;
+	std::optional<response_payload> get_response () const;
 	std::string to_string () const;
 };
 

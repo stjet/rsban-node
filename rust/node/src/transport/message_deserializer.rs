@@ -408,7 +408,7 @@ impl MessageDeserializerExt for Arc<MessageDeserializer> {
     }
 }
 
-#[derive(FromPrimitive, Clone, Copy, PartialEq, Eq)]
+#[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ParseStatus {
     None,
     Success,
@@ -463,4 +463,159 @@ impl ParseStatus {
 
 fn at_end(stream: &mut impl Stream) -> bool {
     stream.read_u8().is_err()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        config::STUB_NETWORK_CONSTANTS,
+        messages::{AccountInfoAckPayload, AccountInfoReqPayload, TelemetryData},
+        voting::Vote,
+    };
+    use rsnano_core::{BlockBuilder, BlockHash, KeyPair};
+    use std::{cell::RefCell, rc::Rc, sync::RwLock};
+
+    #[test]
+    fn exact_confirm_ack() {
+        test_deserializer(&create_test_confirm_ack());
+    }
+
+    #[test]
+    fn exact_confirm_req() {
+        let block = Arc::new(RwLock::new(BlockBuilder::legacy_send().build()));
+        let message = ConfirmReq::with_block(&STUB_NETWORK_CONSTANTS, block);
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_publish() {
+        let block = Arc::new(RwLock::new(BlockBuilder::legacy_send().build()));
+        let message = Publish::new(&STUB_NETWORK_CONSTANTS, block);
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_keepalive() {
+        test_deserializer(&Keepalive::new(&STUB_NETWORK_CONSTANTS));
+    }
+
+    #[test]
+    fn exact_frontier_req() {
+        test_deserializer(&FrontierReq::new(&STUB_NETWORK_CONSTANTS));
+    }
+
+    #[test]
+    fn exact_telemetry_req() {
+        test_deserializer(&TelemetryReq::new(&STUB_NETWORK_CONSTANTS));
+    }
+
+    #[test]
+    fn exact_telemetry_ack() {
+        let mut data = TelemetryData::default();
+        data.unknown_data.push(0xFF);
+
+        test_deserializer(&TelemetryAck::new(&STUB_NETWORK_CONSTANTS, data));
+    }
+
+    #[test]
+    fn exact_bulk_pull() {
+        test_deserializer(&BulkPull::new(&STUB_NETWORK_CONSTANTS));
+    }
+
+    #[test]
+    fn exact_bulk_pull_account() {
+        test_deserializer(&BulkPullAccount::new(&STUB_NETWORK_CONSTANTS));
+    }
+
+    #[test]
+    fn exact_bulk_push() {
+        test_deserializer(&BulkPush::new(&STUB_NETWORK_CONSTANTS));
+    }
+
+    #[test]
+    fn exact_node_id_handshake() {
+        test_deserializer(&NodeIdHandshake::new(
+            &STUB_NETWORK_CONSTANTS,
+            Some([1; 32]),
+            None,
+        ));
+    }
+
+    #[test]
+    fn exact_asc_pull_req() {
+        let mut message = AscPullReq::new(&STUB_NETWORK_CONSTANTS);
+        message
+            .request_account_info(AccountInfoReqPayload::test_data())
+            .unwrap();
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_asc_pull_ack() {
+        let mut message = AscPullAck::new(&STUB_NETWORK_CONSTANTS);
+        message
+            .request_account_info(AccountInfoAckPayload::test_data())
+            .unwrap();
+        test_deserializer(&message);
+    }
+
+    fn test_deserializer(original_message: &dyn Message) {
+        let deserializer = create_message_deserializer(original_message.to_bytes());
+        let success = Rc::new(RefCell::new(false));
+        let success_clone = Rc::clone(&success);
+        let original_bytes = original_message.to_bytes();
+        deserializer.read(Box::new(move |ec, msg| {
+            assert!(ec.is_ok());
+            let Some(deserialized_msg) = msg else { panic!("no message read")};
+            assert_eq!(deserialized_msg.to_bytes(), original_bytes);
+            *success_clone.borrow_mut() = true;
+        }));
+        assert_eq!(deserializer.status(), ParseStatus::Success);
+        assert!(*success.borrow());
+    }
+
+    fn create_message_deserializer(input_source: Vec<u8>) -> Arc<MessageDeserializer> {
+        let read_op = create_read_op(input_source);
+        let network_filter = Arc::new(NetworkFilter::new(1));
+        let block_uniquer = Arc::new(BlockUniquer::new());
+        let vote_uniquer = Arc::new(VoteUniquer::new());
+
+        Arc::new(MessageDeserializer::new(
+            STUB_NETWORK_CONSTANTS.clone(),
+            network_filter,
+            block_uniquer,
+            vote_uniquer,
+            read_op,
+        ))
+    }
+
+    fn create_test_confirm_ack() -> ConfirmAck {
+        let key = KeyPair::new();
+
+        let vote = Vote::new(
+            key.public_key(),
+            &key.private_key(),
+            1,
+            2,
+            vec![BlockHash::from(5)],
+        );
+
+        ConfirmAck::new(&STUB_NETWORK_CONSTANTS, Arc::new(RwLock::new(vote)))
+    }
+
+    fn create_read_op(input_source: Vec<u8>) -> ReadQuery {
+        let offset = RefCell::new(0);
+        Box::new(move |buffer, size, callback| {
+            {
+                let mut os = offset.borrow_mut();
+                let mut buffer_lock = buffer.lock().unwrap();
+                buffer_lock.resize(size, 0);
+                buffer_lock.copy_from_slice(&input_source[*os..(*os + size)]);
+                *os = *os + size;
+            }
+
+            callback(ErrorCode::default(), size);
+        })
+    }
 }

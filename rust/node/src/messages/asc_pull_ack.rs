@@ -70,6 +70,17 @@ impl AccountInfoAckPayload {
         self.account_conf_height = stream.read_u64_be()?;
         Ok(())
     }
+
+    pub(crate) fn test_data() -> AccountInfoAckPayload {
+        Self {
+            account: Account::from(1),
+            account_open: BlockHash::from(2),
+            account_head: BlockHash::from(3),
+            account_block_count: 4,
+            account_conf_frontier: BlockHash::from(5),
+            account_conf_height: 3,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

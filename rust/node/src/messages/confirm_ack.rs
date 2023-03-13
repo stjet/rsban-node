@@ -8,6 +8,7 @@ use rsnano_core::{utils::Stream, BlockType};
 use std::{
     any::Any,
     fmt::{Debug, Display},
+    ops::Deref,
     sync::{Arc, RwLock},
 };
 
@@ -127,9 +128,19 @@ impl PartialEq for ConfirmAck {
 
 impl Debug for ConfirmAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ConfirmAck")
-            .field("header", &self.header)
-            .finish()
+        let mut builder = f.debug_struct("ConfirmAck");
+        builder.field("header", &self.header);
+
+        match &self.vote {
+            Some(v) => {
+                let lck = v.read().map_err(|_| std::fmt::Error)?;
+                builder.field("vote", lck.deref());
+            }
+            None => {
+                builder.field("vote", &"None");
+            }
+        };
+        builder.finish()
     }
 }
 
@@ -166,7 +177,7 @@ mod tests {
         for i in 0..ConfirmAck::HASHES_MAX {
             hashes.push(BlockHash::from(i as u64))
         }
-        let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes)?;
+        let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes);
         let vote = Arc::new(RwLock::new(vote));
         let confirm1 = ConfirmAck::new(constants, vote);
 

@@ -81,6 +81,13 @@ impl AccountInfoReqPayload {
         self.target_type = HashType::deserialize(stream)?;
         Ok(())
     }
+
+    pub fn test_data() -> Self {
+        Self {
+            target: HashOrAccount::from(42),
+            target_type: HashType::Account,
+        }
+    }
 }
 
 /// Ascending bootstrap pull request

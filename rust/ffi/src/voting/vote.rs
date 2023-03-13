@@ -47,9 +47,9 @@ pub unsafe extern "C" fn rsn_vote_create2(
     let hashes = std::slice::from_raw_parts(hashes, hash_count);
     let hashes = hashes.iter().map(|&h| BlockHash::from_bytes(h)).collect();
 
-    Box::into_raw(Box::new(VoteHandle::new(Arc::new(RwLock::new(
-        Vote::new(account, &key, timestamp, duration, hashes).unwrap(),
-    )))))
+    Box::into_raw(Box::new(VoteHandle::new(Arc::new(RwLock::new(Vote::new(
+        account, &key, timestamp, duration, hashes,
+    ))))))
 }
 
 #[no_mangle]

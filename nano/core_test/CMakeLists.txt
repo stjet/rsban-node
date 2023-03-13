@@ -26,7 +26,6 @@ add_executable(
   ledger_walker.cpp
   locks.cpp
   logger.cpp
-  message_parser.cpp
   memory_pool.cpp
   network.cpp
   network_filter.cpp

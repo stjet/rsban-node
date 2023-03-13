@@ -6,7 +6,7 @@ use rsnano_core::{
 };
 use std::time::Duration;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Vote {
     pub timestamp: u64,
 
@@ -38,7 +38,7 @@ impl Vote {
         timestamp: u64,
         duration: u8,
         hashes: Vec<BlockHash>,
-    ) -> Result<Self> {
+    ) -> Self {
         let mut result = Self {
             voting_account: account,
             timestamp: packed_timestamp(timestamp, duration),
@@ -47,7 +47,7 @@ impl Vote {
         };
         result.signature =
             sign_message(prv, &result.voting_account.into(), result.hash().as_bytes());
-        Ok(result)
+        result
     }
 
     /// Returns the timestamp of the vote (with the duration bits masked, set to zero)
@@ -128,7 +128,7 @@ impl Vote {
         self.signature = Signature::deserialize(stream)?;
         let mut buffer = [0; 8];
         stream.read_bytes(&mut buffer, 8)?;
-        self.timestamp = u64::from_ne_bytes(buffer);
+        self.timestamp = u64::from_le_bytes(buffer);
         self.hashes = Vec::new();
         while stream.in_avail()? > 0 {
             self.hashes.push(BlockHash::deserialize(stream)?);

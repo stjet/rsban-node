@@ -1,10 +1,17 @@
 use anyhow::Result;
 use once_cell::sync::Lazy;
-use rsnano_core::{utils::get_env_or_default, work::WorkThresholds, Networks};
+use rsnano_core::{
+    utils::get_env_or_default,
+    work::{WorkThresholds, WORK_THRESHOLDS_STUB},
+    Networks,
+};
 use std::{sync::Mutex, time::Duration};
 
 //todo: make configurable in builld script again!
 static ACTIVE_NETWORK: Lazy<Mutex<Networks>> = Lazy::new(|| Mutex::new(Networks::NanoDevNetwork));
+
+pub static STUB_NETWORK_CONSTANTS: Lazy<NetworkConstants> =
+    Lazy::new(|| NetworkConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));
 
 #[derive(Clone)]
 pub struct NetworkConstants {

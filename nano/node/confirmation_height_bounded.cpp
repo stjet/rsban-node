@@ -56,7 +56,7 @@ nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & l
 	notify_observers_callback (notify_observers_callback_a),
 	notify_block_already_cemented_observers_callback (notify_block_already_cemented_observers_callback_a),
 	awaiting_processing_size_callback (awaiting_processing_size_callback_a),
-	handle{ rsnano::rsn_confirmation_height_bounded_create () }
+	handle{ rsnano::rsn_confirmation_height_bounded_create (write_database_queue_a.handle) }
 {
 }
 
@@ -523,10 +523,9 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 							scoped_write_guard_a = write_database_queue.wait (nano::writer::confirmation_height);
 							transaction->renew ();
 						}
-						cemented_batch_timer.restart ();
 
 						// todo: move code into this function:
-						rsnano::rsn_confirmation_height_bounded_cement_blocks (handle);
+						rsnano::rsn_confirmation_height_bounded_cement_blocks (handle, cemented_batch_timer.handle, transaction->get_rust_handle ());
 					}
 
 					// Get the next block in the chain until we have reached the final desired one

@@ -2,14 +2,20 @@ use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::BlockHash;
 use rsnano_node::cementing::{truncate_after, ConfirmationHeightBounded};
 
-use crate::copy_hash_bytes;
+use crate::{
+    copy_hash_bytes,
+    ledger::datastore::{TransactionHandle, WriteDatabaseQueueHandle},
+    utils::TimerHandle,
+};
 
 pub struct ConfirmationHeightBoundedHandle(ConfirmationHeightBounded);
 
 #[no_mangle]
-pub extern "C" fn rsn_confirmation_height_bounded_create() -> *mut ConfirmationHeightBoundedHandle {
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
+    write_db_queue: *mut WriteDatabaseQueueHandle,
+) -> *mut ConfirmationHeightBoundedHandle {
     Box::into_raw(Box::new(ConfirmationHeightBoundedHandle(
-        ConfirmationHeightBounded::new(),
+        ConfirmationHeightBounded::new((*write_db_queue).0.clone()),
     )))
 }
 
@@ -23,8 +29,11 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_destroy(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     handle: *mut ConfirmationHeightBoundedHandle,
+    timer: *mut TimerHandle,
+    txn: *mut TransactionHandle,
 ) {
-    (*handle).0.cement_blocks();
+    let new_timer = (*handle).0.cement_blocks((*timer).0, (*txn).as_write_txn());
+    (*timer).0 = new_timer;
 }
 
 // ----------------------------------

@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-pub struct TimerHandle(Instant);
+pub struct TimerHandle(pub Instant);
 
 #[no_mangle]
 pub extern "C" fn rsn_timer_create() -> *mut TimerHandle {

@@ -13,6 +13,9 @@ pub use io_context::{DispatchCallback, FfiIoContext, IoContextHandle};
 mod logger_mt;
 pub use logger_mt::*;
 
+mod timer;
+pub use timer::*;
+
 use crate::VoidPointerCallback;
 
 pub struct ContextWrapper {

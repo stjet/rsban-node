@@ -20,6 +20,13 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_destroy(
     drop(Box::from_raw(handle))
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
+    handle: *mut ConfirmationHeightBoundedHandle,
+) {
+    (*handle).0.cement_blocks();
+}
+
 // ----------------------------------
 // HashCircularBuffer:
 

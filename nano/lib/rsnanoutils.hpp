@@ -5,6 +5,8 @@
 #include <nano/lib/rsnano.hpp>
 #include <nano/node/messages.hpp>
 
+#include <cstdint>
+
 namespace nano
 {
 class message;
@@ -68,6 +70,30 @@ public:
 	}
 
 	rsnano::AtomicU64Handle * handle;
+};
+
+class RsNanoTimer
+{
+public:
+	RsNanoTimer () :
+		handle{ rsnano::rsn_timer_create () }
+	{
+	}
+	~RsNanoTimer ()
+	{
+		rsnano::rsn_timer_destroy (handle);
+	}
+	RsNanoTimer (RsNanoTimer const &) = delete;
+	RsNanoTimer (RsNanoTimer &&) = delete;
+	uint64_t elapsed_ms ()
+	{
+		return rsnano::rsn_timer_elapsed_ms (handle);
+	}
+	void restart ()
+	{
+		rsnano::rsn_timer_restart (handle);
+	}
+	rsnano::TimerHandle * handle;
 };
 
 }

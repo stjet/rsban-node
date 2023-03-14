@@ -7,6 +7,8 @@ impl ConfirmationHeightBounded {
     pub fn new() -> Self {
         Self {}
     }
+
+    pub fn cement_blocks(&self) {}
 }
 
 pub fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {

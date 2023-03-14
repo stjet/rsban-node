@@ -1,5 +1,6 @@
 #include "nano/lib/numbers.hpp"
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 
 #include <nano/lib/logger_mt.hpp>
 #include <nano/lib/stats.hpp>
@@ -421,12 +422,12 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 	auto const maximum_batch_write_time_increase_cutoff = maximum_batch_write_time - (maximum_batch_write_time / 5);
 	auto const amount_to_change = batch_write_size.load () / 10; // 10%
 	auto const minimum_batch_write_size = 16384u;
-	nano::timer<> cemented_batch_timer;
+	rsnano::RsNanoTimer cemented_batch_timer;
 	auto error = false;
 	{
 		// This only writes to the confirmation_height table and is the only place to do so in a single process
 		auto transaction (ledger.store.tx_begin_write ({}, { nano::tables::confirmation_height }));
-		cemented_batch_timer.start ();
+		cemented_batch_timer.restart ();
 		// Cement all pending entries, each entry is specific to an account and contains the least amount
 		// of blocks to retain consistent cementing across all account chains to genesis.
 		while (!error && !pending_writes.empty ())
@@ -490,14 +491,14 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 					// Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
 					if (cemented_blocks.size () > batch_write_size.load () + (batch_write_size.load () / 10))
 					{
-						auto time_spent_cementing = cemented_batch_timer.since_start ().count ();
+						auto time_spent_cementing = cemented_batch_timer.elapsed_ms ();
 						auto num_blocks_cemented = num_blocks_iterated - total_blocks_cemented + 1;
 						total_blocks_cemented += num_blocks_cemented;
 						write_confirmation_height (num_blocks_cemented, start_height + total_blocks_cemented - 1, new_cemented_frontier);
 						transaction->commit ();
 						if (logging.timing_logging ())
 						{
-							logger->always_log (boost::str (boost::format ("Cemented %1% blocks in %2% %3% (bounded processor)") % cemented_blocks.size () % time_spent_cementing % cemented_batch_timer.unit ()));
+							logger->always_log (boost::str (boost::format ("Cemented %1% blocks in %2% ms (bounded processor)") % cemented_blocks.size () % time_spent_cementing));
 						}
 
 						// Update the maximum amount of blocks to write next time based on the time it took to cement this batch.
@@ -523,6 +524,9 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 							transaction->renew ();
 						}
 						cemented_batch_timer.restart ();
+
+						// todo: move code into this function:
+						rsnano::rsn_confirmation_height_bounded_cement_blocks (handle);
 					}
 
 					// Get the next block in the chain until we have reached the final desired one
@@ -561,10 +565,10 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 			--pending_writes_size;
 		}
 	}
-	auto time_spent_cementing = cemented_batch_timer.since_start ().count ();
+	auto time_spent_cementing = cemented_batch_timer.elapsed_ms ();
 	if (logging.timing_logging () && time_spent_cementing > 50)
 	{
-		logger->always_log (boost::str (boost::format ("Cemented %1% blocks in %2% %3% (bounded processor)") % cemented_blocks.size () % time_spent_cementing % cemented_batch_timer.unit ()));
+		logger->always_log (boost::str (boost::format ("Cemented %1% blocks in %2% ms (bounded processor)") % cemented_blocks.size () % time_spent_cementing));
 	}
 
 	// Scope guard could have been released earlier (0 cemented_blocks would indicate that)

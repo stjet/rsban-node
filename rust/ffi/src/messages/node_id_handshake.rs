@@ -1,12 +1,13 @@
 use std::ffi::c_void;
 
-use rsnano_core::{Account, Signature};
+use rsnano_core::{Account, BlockHash, KeyPair, Signature};
 
 use crate::{
-    copy_account_bytes, copy_signature_bytes, utils::FfiStream, NetworkConstantsDto, StringDto,
+    copy_account_bytes, copy_hash_bytes, copy_signature_bytes, utils::FfiStream,
+    NetworkConstantsDto, StringDto,
 };
 use rsnano_node::messages::{
-    Message, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
+    Message, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse, V2Payload,
 };
 
 use super::{
@@ -18,8 +19,10 @@ use super::{
 pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
     constants: *mut NetworkConstantsDto,
     query: *const u8,
-    resp_account: *const u8,
+    resp_node_id: *const u8,
     resp_signature: *const u8,
+    resp_salt: *const u8,
+    resp_genesis: *const u8,
 ) -> *mut MessageHandle {
     let query = if !query.is_null() {
         let cookie = std::slice::from_raw_parts(query, 32).try_into().unwrap();
@@ -28,13 +31,23 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
         None
     };
 
-    let response = if !resp_account.is_null() && !resp_signature.is_null() {
-        let node_id = Account::from_ptr(resp_account);
+    let response = if !resp_node_id.is_null() && !resp_signature.is_null() {
+        let node_id = Account::from_ptr(resp_node_id);
         let signature = Signature::from_ptr(resp_signature);
+        let v2 = if resp_salt.is_null() {
+            None
+        } else {
+            Some(V2Payload {
+                salt: std::slice::from_raw_parts(resp_salt, 32)
+                    .try_into()
+                    .unwrap(),
+                genesis: BlockHash::from_ptr(resp_genesis),
+            })
+        };
         Some(NodeIdHandshakeResponse {
             node_id,
             signature,
-            v2: None,
+            v2,
         })
     } else {
         None
@@ -77,11 +90,25 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_response(
     handle: *mut MessageHandle,
     account: *mut u8,
     signature: *mut u8,
+    is_v2: *mut bool,
+    salt: *mut u8,
+    genesis: *mut u8,
 ) -> bool {
     match &downcast_message::<NodeIdHandshake>(handle).response {
         Some(response) => {
             copy_account_bytes(response.node_id, account);
             copy_signature_bytes(&response.signature, signature);
+            match &response.v2 {
+                Some(v2) => {
+                    let salt_slice = std::slice::from_raw_parts_mut(salt, 32);
+                    salt_slice.copy_from_slice(&v2.salt);
+                    copy_hash_bytes(v2.genesis, genesis);
+                    *is_v2 = true;
+                }
+                None => {
+                    *is_v2 = false;
+                }
+            }
             true
         }
         None => false,
@@ -102,6 +129,68 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_deserialize(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_node_id_handshake_is_v2(handle: *mut MessageHandle) -> bool {
     downcast_message::<NodeIdHandshake>(handle).is_v2()
+}
+
+#[repr(C)]
+pub struct HandshakeResponseDto {
+    pub node_id: [u8; 32],
+    pub signature: [u8; 64],
+    pub v2: bool,
+    pub salt: [u8; 32],
+    pub genesis: [u8; 32],
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_node_id_handshake_response_create(
+    cookie: *const u8,
+    priv_key: *const u8,
+    genesis: *const u8,
+    result: *mut HandshakeResponseDto,
+) {
+    let cookie = std::slice::from_raw_parts(cookie, 32).try_into().unwrap();
+    let key = KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(priv_key, 32)).unwrap();
+    let response = if genesis.is_null() {
+        NodeIdHandshakeResponse::new_v1(cookie, &key)
+    } else {
+        let genesis = BlockHash::from_ptr(genesis);
+        NodeIdHandshakeResponse::new_v2(cookie, &key, genesis)
+    };
+    (*result).node_id = *response.node_id.as_bytes();
+    (*result).signature = *response.signature.as_bytes();
+    (*result).v2 = response.v2.is_some();
+    if let Some(v2) = response.v2 {
+        (*result).salt = v2.salt;
+        (*result).genesis = *v2.genesis.as_bytes();
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_node_id_handshake_response_validate(
+    cookie: *const u8,
+    node_id: *const u8,
+    signature: *const u8,
+    salt: *const u8,
+    genesis: *const u8,
+) -> bool {
+    let node_id = Account::from_ptr(node_id);
+    let signature = Signature::from_ptr(signature);
+    let cookie = std::slice::from_raw_parts(cookie, 32).try_into().unwrap();
+
+    let v2 = if !salt.is_null() {
+        Some(V2Payload {
+            salt: std::slice::from_raw_parts(salt, 32).try_into().unwrap(),
+            genesis: BlockHash::from_ptr(genesis),
+        })
+    } else {
+        None
+    };
+
+    let response = NodeIdHandshakeResponse {
+        node_id,
+        signature,
+        v2,
+    };
+    response.validate(&cookie).is_ok()
 }
 
 #[no_mangle]

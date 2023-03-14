@@ -139,6 +139,7 @@ pub enum StatType {
     Unchecked,
     ElectionScheduler,
     OptimisticScheduler,
+    Handshake,
 }
 
 impl StatType {
@@ -155,6 +156,7 @@ pub enum DetailType {
     All = 0,
 
     // common
+    Ok,
     Loop,
     Total,
     Process,
@@ -374,6 +376,11 @@ pub enum DetailType {
     InsertPriority,
     InsertPrioritySuccess,
     EraseOldest,
+
+    // handshake
+    InvalidNodeId,
+    MissingCookie,
+    InvalidGenesis,
 }
 
 impl DetailType {

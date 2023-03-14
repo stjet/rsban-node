@@ -1,3 +1,4 @@
+#include "nano/lib/numbers.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 
@@ -1593,13 +1594,20 @@ rsnano::MessageHandle * create_node_id_handshake_handle (nano::network_constants
 
 	const uint8_t * acc_bytes = nullptr;
 	const uint8_t * sig_bytes = nullptr;
+	const uint8_t * salt_bytes = nullptr;
+	const uint8_t * genesis_bytes = nullptr;
 	if (response)
 	{
 		acc_bytes = response->node_id.bytes.data ();
 		sig_bytes = response->signature.bytes.data ();
+		if (response->v2)
+		{
+			salt_bytes = response->v2->salt.bytes.data ();
+			genesis_bytes = response->v2->genesis.bytes.data ();
+		}
 	}
 
-	return rsnano::rsn_message_node_id_handshake_create (&constants_dto, query_bytes, acc_bytes, sig_bytes);
+	return rsnano::rsn_message_node_id_handshake_create (&constants_dto, query_bytes, acc_bytes, sig_bytes, salt_bytes, genesis_bytes);
 }
 
 }
@@ -1654,11 +1662,25 @@ std::optional<nano::node_id_handshake::response_payload> nano::node_id_handshake
 {
 	nano::account account;
 	nano::signature signature;
-	if (rsnano::rsn_message_node_id_handshake_response (handle, account.bytes.data (), signature.bytes.data ()))
+	nano::uint256_union salt;
+	nano::block_hash genesis;
+	bool is_v2;
+	if (rsnano::rsn_message_node_id_handshake_response (handle, account.bytes.data (), signature.bytes.data (), &is_v2, salt.bytes.data (), genesis.bytes.data ()))
 	{
 		nano::node_id_handshake::response_payload payload;
 		payload.node_id = account;
 		payload.signature = signature;
+		if (is_v2)
+		{
+			nano::node_id_handshake::response_payload::v2_payload v2_payload{};
+			v2_payload.genesis = genesis;
+			v2_payload.salt = salt;
+			payload.v2 = v2_payload;
+		}
+		else
+		{
+			payload.v2 = std::nullopt;
+		}
 		return payload;
 	}
 	return std::nullopt;

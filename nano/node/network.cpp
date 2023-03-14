@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/crypto_lib/random_pool_shuffle.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/threading.hpp>
@@ -773,6 +775,82 @@ void nano::network::exclude (std::shared_ptr<nano::transport::channel> const & c
 	// Disconnect
 	erase (*channel);
 }
+
+bool nano::network::verify_handshake_response (const nano::node_id_handshake::response_payload & response, const nano::endpoint & remote_endpoint)
+{
+	// Prevent connection with ourselves
+	if (response.node_id == node.node_id.pub)
+	{
+		node.stats->inc (nano::stat::type::handshake, nano::stat::detail::invalid_node_id);
+		return false; // Fail
+	}
+
+	// Prevent mismatched genesis
+	if (response.v2 && response.v2->genesis != node.network_params.ledger.genesis->hash ())
+	{
+		node.stats->inc (nano::stat::type::handshake, nano::stat::detail::invalid_genesis);
+		return false; // Fail
+	}
+
+	auto cookie = syn_cookies->cookie (remote_endpoint);
+	if (!cookie)
+	{
+		node.stats->inc (nano::stat::type::handshake, nano::stat::detail::missing_cookie);
+		return false; // Fail
+	}
+
+	if (!rsnano::rsn_message_node_id_handshake_response_validate (
+		cookie->bytes.data (),
+		response.node_id.bytes.data (),
+		response.signature.bytes.data (),
+		response.v2 ? response.v2->salt.bytes.data () : nullptr,
+		response.v2 ? response.v2->genesis.bytes.data () : nullptr))
+	{
+		node.stats->inc (nano::stat::type::handshake, nano::stat::detail::invalid_signature);
+		return false; // Fail
+	}
+
+	node.stats->inc (nano::stat::type::handshake, nano::stat::detail::ok);
+	return true; // OK
+}
+
+std::optional<nano::node_id_handshake::query_payload> nano::network::prepare_handshake_query (const nano::endpoint & remote_endpoint)
+{
+	if (auto cookie = syn_cookies->assign (remote_endpoint); cookie)
+	{
+		nano::node_id_handshake::query_payload query{ *cookie };
+		return query;
+	}
+	return std::nullopt;
+}
+
+nano::node_id_handshake::response_payload nano::network::prepare_handshake_response (const nano::node_id_handshake::query_payload & query, bool v2) const
+{
+	auto genesis{ node.network_params.ledger.genesis->hash () };
+	rsnano::HandshakeResponseDto result;
+	rsnano::rsn_message_node_id_handshake_response_create (
+	query.cookie.bytes.data (),
+	node.node_id.prv.bytes.data (),
+	genesis.bytes.data (),
+	&result);
+
+	nano::node_id_handshake::response_payload response{};
+	std::copy (std::begin (result.node_id), std::end (result.node_id), std::begin (response.node_id.bytes));
+	std::copy (std::begin (result.signature), std::end (result.signature), std::begin (response.signature.bytes));
+	if (result.v2)
+	{
+		nano::node_id_handshake::response_payload::v2_payload response_v2{};
+		std::copy (std::begin (result.salt), std::end (result.salt), std::begin (response_v2.salt.bytes));
+		std::copy (std::begin (result.genesis), std::end (result.genesis), std::begin (response_v2.genesis.bytes));
+		response.v2 = response_v2;
+	}
+
+	return response;
+}
+
+/*
+ * tcp_message_manager
+ */
 
 nano::tcp_message_manager::tcp_message_manager (unsigned incoming_connections_max_a) :
 	handle{ rsnano::rsn_tcp_message_manager_create (incoming_connections_max_a) }

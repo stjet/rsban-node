@@ -1,3 +1,4 @@
+#include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/secure/common.hpp"
 
@@ -177,6 +178,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<vo
 	io_ctx{ node.io_ctx },
 	observers{ node.observers },
 	sink{ std::move (sink) },
+	node{ node },
 	handle{ rsnano::rsn_tcp_channels_create () }
 {
 }
@@ -619,21 +621,16 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 	auto network_consts = network_params.network;
 	auto config_l = config;
 	auto logger_l = logger;
+	auto network_l = network;
 	std::weak_ptr<nano::transport::tcp_channels> this_w = shared_from_this ();
 	socket->async_connect (nano::transport::map_endpoint_to_tcp (endpoint_a),
-	[channel, socket, endpoint_a, network_consts, config_l, logger_l, this_w] (boost::system::error_code const & ec) {
+	[channel, socket, endpoint_a, network_consts, config_l, logger_l, this_w, network_l] (boost::system::error_code const & ec) {
 		if (auto this_l = this_w.lock ())
 		{
 			if (!ec && channel)
 			{
 				// TCP node ID handshake
-				std::optional<nano::node_id_handshake::query_payload> query;
-				if (auto cookie = this_l->syn_cookies->assign (endpoint_a); cookie)
-				{
-					nano::node_id_handshake::query_payload pld{ *cookie };
-					query = pld;
-				}
-
+				auto query = network_l->prepare_handshake_query (endpoint_a);
 				nano::node_id_handshake message{ network_consts, query };
 
 				if (config_l->logging.network_node_id_handshake_logging ())
@@ -683,6 +680,27 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 	});
 }
 
+namespace
+{
+void message_received_callback (void * context, const rsnano::ErrorCodeDto * ec_dto, rsnano::MessageHandle * msg_handle)
+{
+	auto callback = static_cast<std::function<void (boost::system::error_code, std::unique_ptr<nano::message>)> *> (context);
+	auto ec = rsnano::dto_to_error_code (*ec_dto);
+	std::unique_ptr<nano::message> message;
+	if (msg_handle != nullptr)
+	{
+		message = rsnano::message_handle_to_message (rsnano::rsn_message_clone (msg_handle));
+	}
+	(*callback) (ec, std::move (message));
+}
+
+void delete_callback_context (void * context)
+{
+	auto callback = static_cast<std::function<void (boost::system::error_code, std::unique_ptr<nano::message>)> *> (context);
+	delete callback;
+}
+}
+
 void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, nano::endpoint const & endpoint_a, std::shared_ptr<std::vector<uint8_t>> const & receive_buffer_a)
 {
 	std::weak_ptr<nano::transport::tcp_channels> this_w (shared_from_this ());
@@ -705,50 +723,47 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 		}
 	};
 
-	auto network_consts = network_params.network;
-	auto stats_l = stats;
-	auto config_l = config;
-	auto logger_l = logger;
-	auto flags_l = flags;
-	socket_l->async_read (receive_buffer_a, 8 + sizeof (nano::account) + sizeof (nano::account) + sizeof (nano::signature), [this_w, channel_a, endpoint_a, receive_buffer_a, cleanup_node_id_handshake_socket, network_consts, stats_l, config_l, logger_l, flags_l] (boost::system::error_code const & ec, std::size_t size_a) {
-		auto this_l{ this_w.lock () };
+	auto callback_context = new std::function<void (boost::system::error_code ec, std::unique_ptr<nano::message>)> (
+	[this_w, socket_l, channel_a, endpoint_a, cleanup_node_id_handshake_socket] (boost::system::error_code ec, std::unique_ptr<nano::message> message) {
+		auto this_l = this_w.lock ();
 		if (!this_l)
 		{
 			return;
 		}
 		if (ec || !channel_a)
 		{
-			if (config_l->logging.network_node_id_handshake_logging ())
+			if (this_l->config->logging.network_node_id_handshake_logging ())
 			{
-				logger_l->try_log (boost::str (boost::format ("Error reading node_id_handshake from %1%") % endpoint_a));
+				this_l->logger->try_log (boost::str (boost::format ("Error reading node_id_handshake from %1%") % endpoint_a));
 			}
 			cleanup_node_id_handshake_socket (endpoint_a);
 			return;
 		}
-		stats_l->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
+		this_l->stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
 		auto error (false);
-		nano::bufferstream stream (receive_buffer_a->data (), size_a);
-		nano::message_header header (error, stream);
+
 		// the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
-		if (error || header.get_type () != nano::message_type::node_id_handshake)
+		if (error || message->type () != nano::message_type::node_id_handshake)
 		{
-			if (config_l->logging.network_node_id_handshake_logging ())
+			if (this_l->config->logging.network_node_id_handshake_logging ())
 			{
-				logger_l->try_log (boost::str (boost::format ("Error reading node_id_handshake message header from %1%") % endpoint_a));
+				this_l->logger->try_log (boost::str (boost::format ("Error reading node_id_handshake message header from %1%") % endpoint_a));
 			}
 			cleanup_node_id_handshake_socket (endpoint_a);
 			return;
 		}
-		if (header.get_network () != network_consts.current_network || header.get_version_using () < network_consts.protocol_version_min)
+		auto & handshake = static_cast<nano::node_id_handshake &> (*message);
+
+		if (message->get_header ().get_network () != this_l->network_params.network.current_network || message->get_header ().get_version_using () < this_l->network_params.network.protocol_version_min)
 		{
 			// error handling, either the networks bytes or the version is wrong
-			if (header.get_network () == network_consts.current_network)
+			if (message->get_header ().get_network () == this_l->network_params.network.current_network)
 			{
-				stats_l->inc (nano::stat::type::message, nano::stat::detail::invalid_network);
+				this_l->stats->inc (nano::stat::type::message, nano::stat::detail::invalid_network);
 			}
 			else
 			{
-				stats_l->inc (nano::stat::type::message, nano::stat::detail::outdated_version);
+				this_l->stats->inc (nano::stat::type::message, nano::stat::detail::outdated_version);
 			}
 
 			cleanup_node_id_handshake_socket (endpoint_a);
@@ -759,47 +774,50 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 			}
 			return;
 		}
-		nano::node_id_handshake message (error, stream, header);
-		if (error || !message.get_response () || !message.get_query ())
+
+		if (error || !handshake.get_response () || !handshake.get_query ())
 		{
-			if (config_l->logging.network_node_id_handshake_logging ())
+			if (this_l->config->logging.network_node_id_handshake_logging ())
 			{
-				logger_l->try_log (boost::str (boost::format ("Error reading node_id_handshake from %1%") % endpoint_a));
+				this_l->logger->try_log (boost::str (boost::format ("Error reading node_id_handshake from %1%") % endpoint_a));
 			}
 			cleanup_node_id_handshake_socket (endpoint_a);
 			return;
 		}
-		channel_a->set_network_version (header.get_version_using ());
+		channel_a->set_network_version (handshake.get_header ().get_version_using ());
 
-		debug_assert (message.get_query ());
-		debug_assert (message.get_response ());
+		debug_assert (handshake.get_query ());
+		debug_assert (handshake.get_response ());
 
-		auto node_id_l (message.get_response ()->node_id);
-		bool process (!this_l->syn_cookies->validate (endpoint_a, node_id_l, message.get_response ()->signature) && node_id_l != this_l->node_id.pub);
-		if (!process)
+		auto const node_id = handshake.get_response ()->node_id;
+
+		if (!this_l->network->verify_handshake_response (*handshake.get_response (), endpoint_a))
 		{
+			cleanup_node_id_handshake_socket (endpoint_a);
 			return;
 		}
 
 		/* If node ID is known, don't establish new connection
 		   Exception: temporary channels from tcp_server */
-		auto existing_channel (this_l->find_node_id (node_id_l));
+		auto existing_channel (this_l->find_node_id (node_id));
 		if (existing_channel && !existing_channel->is_temporary ())
 		{
+			cleanup_node_id_handshake_socket (endpoint_a);
 			return;
 		}
-		channel_a->set_node_id (node_id_l);
+		channel_a->set_node_id (node_id);
 		channel_a->set_last_packet_received (std::chrono::steady_clock::now ());
 
-		nano::node_id_handshake::response_payload response{ this_l->node_id.pub, nano::sign_message (this_l->node_id.prv, this_l->node_id.pub, message.get_query ()->cookie) };
-		nano::node_id_handshake handshake_response (network_consts, std::nullopt, response);
+		debug_assert (handshake.get_query ());
+		auto response = this_l->network->prepare_handshake_response (*handshake.get_query (), handshake.is_v2 ());
+		nano::node_id_handshake handshake_response (this_l->network_params.network, std::nullopt, response);
 
-		if (config_l->logging.network_node_id_handshake_logging ())
+		if (this_l->config->logging.network_node_id_handshake_logging ())
 		{
-			logger_l->try_log (boost::str (boost::format ("Node ID handshake response sent with node ID %1% to %2%: query %3%") % this_l->node_id.pub.to_node_id () % endpoint_a % message.get_query ()->cookie.to_string ()));
+			this_l->logger->try_log (boost::str (boost::format ("Node ID handshake response sent with node ID %1% to %2%: query %3%") % this_l->node_id.pub.to_node_id () % endpoint_a % handshake.get_query ()->cookie.to_string ()));
 		}
 
-		channel_a->send (handshake_response, [this_w, channel_a, endpoint_a, cleanup_node_id_handshake_socket, config_l, logger_l, flags_l] (boost::system::error_code const & ec, std::size_t size_a) {
+		channel_a->send (handshake_response, [this_w, channel_a, endpoint_a, cleanup_node_id_handshake_socket] (boost::system::error_code const & ec, std::size_t size_a) {
 			auto this_l = this_w.lock ();
 			if (!this_l)
 			{
@@ -807,9 +825,9 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 			}
 			if (ec || !channel_a)
 			{
-				if (config_l->logging.network_node_id_handshake_logging ())
+				if (this_l->config->logging.network_node_id_handshake_logging ())
 				{
-					logger_l->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % endpoint_a % ec.message ()));
+					this_l->logger->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % endpoint_a % ec.message ()));
 				}
 				cleanup_node_id_handshake_socket (endpoint_a);
 				return;
@@ -824,6 +842,17 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 			this_l->insert (channel_a, socket_l, response_server);
 		});
 	});
+
+	auto network_constants_dto{ network_params.network.to_dto () };
+	rsnano::rsn_message_deserializer_read_socket (
+	&network_constants_dto,
+	network->publish_filter->handle,
+	node.block_uniquer.handle,
+	node.vote_uniquer.handle,
+	socket_l->handle,
+	message_received_callback,
+	callback_context,
+	delete_callback_context);
 }
 
 void nano::transport::tcp_channels::data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a)

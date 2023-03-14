@@ -1,18 +1,15 @@
 use crate::{
-    core::BlockUniquerHandle, messages::MessageHandle, voting::VoteUniquerHandle, ErrorCodeDto,
-    NetworkConstantsDto, VoidPointerCallback,
+    core::BlockUniquerHandle, voting::VoteUniquerHandle, NetworkConstantsDto, VoidPointerCallback,
 };
 
 use rsnano_core::Account;
 use rsnano_node::{
     config::NetworkConstants,
-    messages::Message,
     transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp},
-    utils::ErrorCode,
 };
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
-use super::NetworkFilterHandle;
+use super::{MessageCallbackWrapper, MessageReceivedCallback, NetworkFilterHandle};
 
 pub enum ChannelType {
     Tcp(Arc<ChannelTcp>),
@@ -151,9 +148,6 @@ pub extern "C" fn rsn_channel_fake_create(now: u64) -> *mut ChannelHandle {
     )))))
 }
 
-pub type MessageReceivedCallback =
-    unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, *mut MessageHandle);
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_inproc_send_buffer(
     handle: *mut ChannelHandle,
@@ -176,46 +170,4 @@ pub unsafe extern "C" fn rsn_channel_inproc_send_buffer(
     });
 
     as_inproc_channel(handle).send_buffer(buffer, message_received);
-}
-
-struct MessageCallbackWrapper {
-    callback: MessageReceivedCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-}
-
-impl MessageCallbackWrapper {
-    fn new(
-        callback: MessageReceivedCallback,
-        context: *mut c_void,
-        delete_context: VoidPointerCallback,
-    ) -> Self {
-        Self {
-            callback,
-            context,
-            delete_context,
-        }
-    }
-
-    fn call(&self, ec: ErrorCode, msg: Option<Box<dyn Message>>) {
-        let ec_dto = ErrorCodeDto::from(&ec);
-        let message_handle = match msg {
-            Some(m) => MessageHandle::new(m),
-            None => std::ptr::null_mut(),
-        };
-        unsafe {
-            (self.callback)(self.context, &ec_dto, message_handle);
-            if !message_handle.is_null() {
-                drop(Box::from_raw(message_handle));
-            }
-        }
-    }
-}
-
-impl Drop for MessageCallbackWrapper {
-    fn drop(&mut self) {
-        unsafe {
-            (self.delete_context)(self.context);
-        }
-    }
 }

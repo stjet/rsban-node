@@ -18,7 +18,9 @@ pub use bandwidth_limiter::{
 pub use channel_fake::ChannelFake;
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, TcpChannelData};
-pub use message_deserializer::{MessageDeserializer, MessageDeserializerExt, ParseStatus};
+pub use message_deserializer::{
+    MessageDeserializer, MessageDeserializerExt, ParseStatus, ReadQuery,
+};
 pub use network_filter::NetworkFilter;
 pub use peer_exclusion::PeerExclusion;
 use rsnano_core::Account;

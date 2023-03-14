@@ -48,6 +48,10 @@ std::shared_ptr<nano::transport::tcp_server> nano::tcp_server_weak_wrapper::lock
 	return {};
 }
 
+/*
+ * tcp_listener
+ */
+
 nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_a) :
 	config{ node_a.config },
 	logger{ node_a.logger },

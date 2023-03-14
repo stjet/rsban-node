@@ -4,6 +4,7 @@ use crate::{
     transport::Cookie,
 };
 use anyhow::Result;
+use rand::{thread_rng, Rng};
 use rsnano_core::{
     sign_message,
     utils::{Deserialize, MemoryStream, Serialize, Stream},
@@ -24,6 +25,29 @@ pub struct NodeIdHandshakeResponse {
 }
 
 impl NodeIdHandshakeResponse {
+    pub fn new_v1(cookie: &Cookie, node_id: &KeyPair) -> Self {
+        let mut response = Self {
+            node_id: node_id.public_key(),
+            signature: Signature::default(),
+            v2: None,
+        };
+        response.sign(cookie, node_id);
+        response
+    }
+
+    pub fn new_v2(cookie: &Cookie, node_id: &KeyPair, genesis: BlockHash) -> Self {
+        let mut salt = [0; 32];
+        thread_rng().fill(&mut salt);
+
+        let mut response = Self {
+            node_id: node_id.public_key(),
+            signature: Signature::default(),
+            v2: Some(V2Payload { salt, genesis }),
+        };
+        response.sign(cookie, node_id);
+        response
+    }
+
     pub fn sign(&mut self, cookie: &Cookie, key: &KeyPair) {
         debug_assert!(key.public_key() == self.node_id);
         let data = self.data_to_sign(cookie);

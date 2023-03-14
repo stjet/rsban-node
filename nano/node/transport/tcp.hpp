@@ -267,6 +267,7 @@ namespace transport
 		std::shared_ptr<nano::node_observers> observers;
 		nano::store & store;
 		nano::node_flags flags;
+		nano::node & node;
 		boost::asio::io_context & io_ctx;
 		mutable nano::mutex mutex;
 

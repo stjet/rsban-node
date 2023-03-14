@@ -2,6 +2,7 @@ mod bandwidth_limiter;
 mod channel;
 mod channel_tcp;
 mod channel_tcp_observer;
+mod message_deserializer;
 mod network_filter;
 mod peer_exclusion;
 mod socket;
@@ -16,6 +17,7 @@ pub use channel_tcp::{
     ChannelTcpSendBufferCallback, ChannelTcpSendCallback, ChannelTcpSendCallbackWrapper,
     SendBufferCallbackWrapper,
 };
+pub use message_deserializer::*;
 pub use network_filter::NetworkFilterHandle;
 pub use socket::{
     EndpointDto, ReadCallbackWrapper, SocketDestroyContext, SocketHandle, SocketReadCallback,

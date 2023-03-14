@@ -9,7 +9,6 @@ use std::{
 };
 
 use rsnano_core::{
-    sign_message,
     utils::{Logger, MemoryStream},
     Account, KeyPair,
 };
@@ -452,27 +451,33 @@ impl HandshakeMessageVisitorImpl {
         }
     }
 
-    fn send_handshake_response(&self, query: &NodeIdHandshakeQuery) {
-        let account = Account::from(self.node_id.public_key());
+    fn prepare_handshake_response(
+        &self,
+        query: &NodeIdHandshakeQuery,
+        v2: bool,
+    ) -> NodeIdHandshakeResponse {
+        if v2 {
+            let genesis = self.server.network.ledger.genesis.read().unwrap().hash();
+            NodeIdHandshakeResponse::new_v2(&query.cookie, &self.node_id, genesis)
+        } else {
+            NodeIdHandshakeResponse::new_v1(&query.cookie, &self.node_id)
+        }
+    }
 
-        let signature = sign_message(
-            &self.node_id.private_key(),
-            &self.node_id.public_key(),
-            &query.cookie,
-        );
+    fn prepare_handshake_query(
+        &self,
+        remote_endpoint: &SocketAddr,
+    ) -> Option<NodeIdHandshakeQuery> {
+        self.syn_cookies
+            .assign(remote_endpoint)
+            .map(|cookie| NodeIdHandshakeQuery { cookie })
+    }
 
-        let response = Some(NodeIdHandshakeResponse {
-            node_id: account,
-            signature,
-            v2: None,
-        });
-
-        let own_query = self
-            .syn_cookies
-            .assign(&self.server.remote_endpoint())
-            .map(|cookie| NodeIdHandshakeQuery { cookie });
-
-        let handshake_response = NodeIdHandshake::new(&self.network_constants, own_query, response);
+    fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
+        let response = self.prepare_handshake_response(query, v2);
+        let own_query = self.prepare_handshake_query(&self.server.remote_endpoint());
+        let handshake_response =
+            NodeIdHandshake::new(&self.network_constants, own_query, Some(response));
 
         let mut stream = MemoryStream::new();
         handshake_response.serialize(&mut stream).unwrap();
@@ -507,6 +512,52 @@ impl HandshakeMessageVisitorImpl {
             })),
         );
     }
+
+    fn verify_handshake_response(
+        &self,
+        response: &NodeIdHandshakeResponse,
+        remote_endpoint: &SocketAddr,
+    ) -> bool {
+        // Prevent connection with ourselves
+        if response.node_id == self.node_id.public_key() {
+            self.stats.inc(
+                StatType::Handshake,
+                DetailType::InvalidNodeId,
+                Direction::In,
+            );
+            return false; // Fail
+        }
+
+        // Prevent mismatched genesis
+        if let Some(v2) = &response.v2 {
+            if v2.genesis != self.server.network.ledger.genesis.read().unwrap().hash() {
+                self.stats.inc(
+                    StatType::Handshake,
+                    DetailType::InvalidGenesis,
+                    Direction::In,
+                );
+                return false; // Fail
+            }
+        }
+
+        let Some(cookie) = self.syn_cookies.cookie (remote_endpoint) else{
+            self.stats.inc (StatType::Handshake, DetailType::MissingCookie, Direction::In);
+            return false; // Fail
+        };
+
+        if response.validate(&cookie).is_err() {
+            self.stats.inc(
+                StatType::Handshake,
+                DetailType::InvalidSignature,
+                Direction::In,
+            );
+            return false; // Fail
+        }
+
+        self.stats
+            .inc(StatType::Handshake, DetailType::Ok, Direction::In);
+        return true; // OK
+    }
 }
 
 impl MessageVisitor for HandshakeMessageVisitorImpl {
@@ -534,6 +585,7 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
                     self.server.remote_endpoint()
                 ));
             }
+            // Stop invalid handshake
             self.server.stop();
             return;
         }
@@ -545,6 +597,7 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
                     self.server.remote_endpoint()
                 ));
             }
+            // Stop invalid handshake
             self.server.stop();
             return;
         }
@@ -559,23 +612,14 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
         }
 
         if let Some(query) = &message.query {
-            self.send_handshake_response(query);
+            self.send_handshake_response(query, message.is_v2());
         } else if let Some(response) = &message.response {
-            let local_node_id = Account::from(self.node_id.public_key());
-            if self
-                .syn_cookies
-                .validate(
-                    &self.server.remote_endpoint(),
-                    &response.node_id,
-                    &response.signature,
-                )
-                .is_ok()
-                && response.node_id != local_node_id
-            {
+            if self.verify_handshake_response(response, &self.server.remote_endpoint()) {
                 self.server.to_realtime_connection(&response.node_id);
             } else {
                 // Stop invalid handshake
                 self.server.stop();
+                return;
             }
         }
 

@@ -40,6 +40,7 @@ enum class type : uint8_t
 	unchecked,
 	election_scheduler,
 	optimistic_scheduler,
+	handshake,
 };
 
 /** Optional detail type */
@@ -48,6 +49,7 @@ enum class detail : uint8_t
 	all = 0,
 
 	// common
+	ok,
 	loop,
 	total,
 	process,
@@ -268,6 +270,10 @@ enum class detail : uint8_t
 	insert_priority_success,
 	erase_oldest,
 
+	// handshake
+	invalid_node_id,
+	missing_cookie,
+	invalid_genesis,
 };
 
 /** Direction of the stat. If the direction is irrelevant, use in */

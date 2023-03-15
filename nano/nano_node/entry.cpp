@@ -432,7 +432,7 @@ int main (int argc, char * const * argv)
 			}
 
 			// Check all unchecked keys for matching frontier hashes. Indicates an issue with process_batch algorithm
-			node->unchecked.for_each (*transaction, [&frontier_hashes] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
+			node->unchecked.for_each ([&frontier_hashes] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 				auto it = frontier_hashes.find (key.key ());
 				if (it != frontier_hashes.cend ())
 				{
@@ -996,8 +996,7 @@ int main (int argc, char * const * argv)
 				if (timer_l.after_deadline (std::chrono::seconds (15)))
 				{
 					timer_l.restart ();
-					auto tx{ node->store.tx_begin_read () };
-					std::cout << boost::str (boost::format ("%1% (%2%) blocks processed (unchecked), %3% remaining") % node->ledger.cache.block_count () % node->unchecked.count (*tx) % node->block_processor.size ()) << std::endl;
+					std::cout << boost::str (boost::format ("%1% (%2%) blocks processed (unchecked), %3% remaining") % node->ledger.cache.block_count () % node->unchecked.count () % node->block_processor.size ()) << std::endl;
 				}
 			}
 
@@ -1851,8 +1850,7 @@ int main (int argc, char * const * argv)
 				if (timer_l.after_deadline (std::chrono::seconds (60)))
 				{
 					timer_l.restart ();
-					auto tx{ node.node->store.tx_begin_read () };
-					std::cout << boost::str (boost::format ("%1% (%2%) blocks processed (unchecked)") % node.node->ledger.cache.block_count () % node.node->unchecked.count (*tx)) << std::endl;
+					std::cout << boost::str (boost::format ("%1% (%2%) blocks processed (unchecked)") % node.node->ledger.cache.block_count () % node.node->unchecked.count ()) << std::endl;
 				}
 			}
 

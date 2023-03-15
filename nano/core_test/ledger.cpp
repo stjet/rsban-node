@@ -312,10 +312,10 @@ TEST (ledger, epoch_open_pending)
 	ASSERT_EQ (nano::process_result::gap_epoch_open_pending, process_result.code);
 	node1.block_processor.add (epoch_open);
 	// Waits for the block to get saved in the database
-	ASSERT_TIMELY (10s, 1 == node1.unchecked.count (*node1.store.tx_begin_read ()));
+	ASSERT_TIMELY (10s, 1 == node1.unchecked.count ());
 	ASSERT_FALSE (node1.ledger.block_or_pruned_exists (epoch_open->hash ()));
 	// Open block should be inserted into unchecked
-	auto blocks = node1.unchecked.get (*node1.store.tx_begin_read (), nano::hash_or_account (epoch_open->account ()).hash);
+	auto blocks = node1.unchecked.get (nano::hash_or_account (epoch_open->account ()).hash);
 	ASSERT_EQ (blocks.size (), 1);
 	ASSERT_EQ (blocks[0].get_block ()->full_hash (), epoch_open->full_hash ());
 	// New block to process epoch open
@@ -464,8 +464,8 @@ TEST (ledger, unchecked_epoch)
 	node1.block_processor.add (epoch1);
 	{
 		// Waits for the epoch1 block to pass through block_processor and unchecked.put queues
-		ASSERT_TIMELY (10s, 1 == node1.unchecked.count (*node1.store.tx_begin_read ()));
-		auto blocks = node1.unchecked.get (*node1.store.tx_begin_read (), epoch1->previous ());
+		ASSERT_TIMELY (10s, 1 == node1.unchecked.count ());
+		auto blocks = node1.unchecked.get (epoch1->previous ());
 		ASSERT_EQ (blocks.size (), 1);
 	}
 	node1.block_processor.add (send1);
@@ -473,7 +473,7 @@ TEST (ledger, unchecked_epoch)
 	ASSERT_TIMELY (5s, node1.store.block ().exists (*node1.store.tx_begin_read (), epoch1->hash ()));
 	{
 		// Waits for the last blocks to pass through block_processor and unchecked.put queues
-		ASSERT_TIMELY (10s, 0 == node1.unchecked.count (*node1.store.tx_begin_read ()));
+		ASSERT_TIMELY (10s, 0 == node1.unchecked.count ());
 		auto info = node1.ledger.account_info (*node1.store.tx_begin_read (), destination.pub);
 		ASSERT_TRUE (info);
 		ASSERT_EQ (info->epoch (), nano::epoch::epoch_1);
@@ -538,8 +538,8 @@ TEST (ledger, unchecked_epoch_invalid)
 	node1.block_processor.add (epoch2);
 	{
 		// Waits for the last blocks to pass through block_processor and unchecked.put queues
-		ASSERT_TIMELY (10s, 2 == node1.unchecked.count (*node1.store.tx_begin_read ()));
-		auto blocks = node1.unchecked.get (*node1.store.tx_begin_read (), epoch1->previous ());
+		ASSERT_TIMELY (10s, 2 == node1.unchecked.count ());
+		auto blocks = node1.unchecked.get (epoch1->previous ());
 		ASSERT_EQ (blocks.size (), 2);
 	}
 	node1.block_processor.add (send1);
@@ -549,9 +549,9 @@ TEST (ledger, unchecked_epoch_invalid)
 	{
 		auto transaction = node1.store.tx_begin_read ();
 		ASSERT_FALSE (node1.store.block ().exists (*transaction, epoch1->hash ()));
-		auto unchecked_count = node1.unchecked.count (*transaction);
+		auto unchecked_count = node1.unchecked.count ();
 		ASSERT_EQ (unchecked_count, 0);
-		ASSERT_EQ (unchecked_count, node1.unchecked.count (*transaction));
+		ASSERT_EQ (unchecked_count, node1.unchecked.count ());
 		auto info = node1.ledger.account_info (*transaction, destination.pub);
 		ASSERT_TRUE (info);
 		ASSERT_NE (info->epoch (), nano::epoch::epoch_1);
@@ -607,15 +607,15 @@ TEST (ledger, unchecked_open)
 	node1.block_processor.add (open1);
 	{
 		// Waits for the last blocks to pass through block_processor and unchecked.put queues
-		ASSERT_TIMELY (5s, 1 == node1.unchecked.count (*node1.store.tx_begin_read ()));
+		ASSERT_TIMELY (5s, 1 == node1.unchecked.count ());
 		// When open1 existists in unchecked, we know open2 has been processed.
-		auto blocks = node1.unchecked.get (*node1.store.tx_begin_read (), open1->source ());
+		auto blocks = node1.unchecked.get (open1->source ());
 		ASSERT_EQ (blocks.size (), 1);
 	}
 	node1.block_processor.add (send1);
 	// Waits for the send1 block to pass through block_processor and unchecked.put queues
 	ASSERT_TIMELY (5s, node1.store.block ().exists (*node1.store.tx_begin_read (), open1->hash ()));
-	ASSERT_EQ (0, node1.unchecked.count (*node1.store.tx_begin_read ()));
+	ASSERT_EQ (0, node1.unchecked.count ());
 }
 
 TEST (ledger, unchecked_receive)
@@ -666,13 +666,13 @@ TEST (ledger, unchecked_receive)
 	node1.block_processor.add (send1);
 	node1.block_processor.add (receive1);
 	auto check_block_is_listed = [&] (nano::transaction const & transaction_a, nano::block_hash const & block_hash_a) {
-		return !node1.unchecked.get (transaction_a, block_hash_a).empty ();
+		return !node1.unchecked.get (block_hash_a).empty ();
 	};
 	// Previous block for receive1 is unknown, signature cannot be validated
 	{
 		// Waits for the last blocks to pass through block_processor and unchecked.put queues
 		ASSERT_TIMELY (15s, check_block_is_listed (*node1.store.tx_begin_read (), receive1->previous ()));
-		auto blocks = node1.unchecked.get (*node1.store.tx_begin_read (), receive1->previous ());
+		auto blocks = node1.unchecked.get (receive1->previous ());
 		ASSERT_EQ (blocks.size (), 1);
 	}
 	// Waits for the open1 block to pass through block_processor and unchecked.put queues
@@ -681,12 +681,12 @@ TEST (ledger, unchecked_receive)
 	// Previous block for receive1 is known, signature was validated
 	{
 		auto transaction = node1.store.tx_begin_read ();
-		auto blocks (node1.unchecked.get (*transaction, receive1->source ()));
+		auto blocks (node1.unchecked.get (receive1->source ()));
 		ASSERT_EQ (blocks.size (), 1);
 	}
 	node1.block_processor.add (send2);
 	ASSERT_TIMELY (10s, node1.store.block ().exists (*node1.store.tx_begin_read (), receive1->hash ()));
-	ASSERT_EQ (0, node1.unchecked.count (*node1.store.tx_begin_read ()));
+	ASSERT_EQ (0, node1.unchecked.count ());
 }
 
 TEST (ledger, head_block)

@@ -211,8 +211,7 @@ bool copy_database (boost::filesystem::path const & data_path, boost::program_op
 		auto & store (node.node->store);
 		if (vm.count ("unchecked_clear"))
 		{
-			auto tx{ store.tx_begin_write () };
-			node.node->unchecked.clear (*tx);
+			node.node->unchecked.clear ();
 		}
 		if (vm.count ("clear_send_ids"))
 		{
@@ -434,7 +433,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
-			node.node->unchecked.clear (*transaction);
+			node.node->unchecked.clear ();
 			std::cout << "Unchecked blocks deleted" << std::endl;
 		}
 		else

@@ -1428,10 +1428,7 @@ void nano::json_handler::block_account ()
 void nano::json_handler::block_count ()
 {
 	response_l.put ("count", std::to_string (node.ledger.cache.block_count ()));
-	{
-		auto tx{ node.store.tx_begin_read () };
-		response_l.put ("unchecked", std::to_string (node.unchecked.count (*tx)));
-	}
+	response_l.put ("unchecked", std::to_string (node.unchecked.count ()));
 	response_l.put ("cemented", std::to_string (node.ledger.cache.cemented_count ()));
 	if (node.flags.enable_pruning ())
 	{
@@ -4124,7 +4121,7 @@ void nano::json_handler::unchecked ()
 		boost::property_tree::ptree unchecked;
 		auto transaction (node.store.tx_begin_read ());
 		node.unchecked.for_each (
-		*transaction, [&unchecked, &json_block_l] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
+		[&unchecked, &json_block_l] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 			auto block = info.get_block ();
 			if (json_block_l)
 			{
@@ -4147,7 +4144,7 @@ void nano::json_handler::unchecked_clear ()
 {
 	node.workers->push_task (create_worker_task ([] (std::shared_ptr<nano::json_handler> const & rpc_l) {
 		auto transaction (rpc_l->node.store.tx_begin_write ({ tables::unchecked }));
-		rpc_l->node.unchecked.clear (*transaction);
+		rpc_l->node.unchecked.clear ();
 		rpc_l->response_l.put ("success", "");
 		rpc_l->response_errors ();
 	}));
@@ -4160,9 +4157,8 @@ void nano::json_handler::unchecked_get ()
 	if (!ec)
 	{
 		bool done = false;
-		auto tx{ node.store.tx_begin_read () };
 		node.unchecked.for_each (
-		*tx, [&] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
+		[&] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 			if (key.hash == hash)
 			{
 				response_l.put ("modified_timestamp", std::to_string (info.modified ()));
@@ -4208,7 +4204,8 @@ void nano::json_handler::unchecked_keys ()
 		boost::property_tree::ptree unchecked;
 		auto transaction (node.store.tx_begin_read ());
 		node.unchecked.for_each (
-		*transaction, key, [&unchecked, json_block_l] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
+		key,
+		[&unchecked, json_block_l] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 			boost::property_tree::ptree entry;
 			auto block = info.get_block ();
 			entry.put ("key", key.key ().to_string ());

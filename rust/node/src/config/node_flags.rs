@@ -59,7 +59,7 @@ impl NodeFlags {
             disable_bootstrap_bulk_pull_server: false,
             disable_bootstrap_bulk_push_client: false,
             disable_ongoing_bootstrap: false,
-            disable_ascending_bootstrap: true,
+            disable_ascending_bootstrap: false,
             disable_rep_crawler: false,
             disable_request_loop: false,
             disable_tcp_realtime: false,

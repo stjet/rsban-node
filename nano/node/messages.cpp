@@ -233,8 +233,14 @@ std::unique_ptr<nano::message> nano::message_handle_to_message (rsnano::MessageH
 		case nano::message_type::telemetry_ack:
 			result = std::make_unique<nano::telemetry_ack> (handle_a);
 			break;
-		default:
+		case nano::message_type::asc_pull_req:
+			result = std::make_unique<nano::asc_pull_req> (handle_a);
 			break;
+		case nano::message_type::asc_pull_ack:
+			result = std::make_unique<nano::asc_pull_ack> (handle_a);
+			break;
+		default:
+			throw std::runtime_error ("Cannot convert MessageHandle to message");
 	}
 	return result;
 }

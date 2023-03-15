@@ -154,6 +154,8 @@ public:
 	void set_disable_bootstrap_bulk_push_client (bool value);
 	bool disable_ongoing_bootstrap () const; // For testing only
 	void set_disable_ongoing_bootstrap (bool value);
+	bool disable_ascending_bootstrap () const;
+	void set_disable_ascending_bootstrap (bool value);
 	bool disable_rep_crawler () const;
 	void set_disable_rep_crawler (bool value);
 	bool disable_request_loop () const; // For testing only

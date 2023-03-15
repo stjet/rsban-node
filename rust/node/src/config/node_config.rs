@@ -247,8 +247,8 @@ impl NodeConfig {
             bandwidth_limit: 10 * 1024 * 1024,
             /** By default, allow bursts of 15MB/s (not sustainable) */
             bandwidth_limit_burst_ratio: 3_f64,
-            /** Default boostrap outbound traffic limit is 16MB/s ~ 128Mbit/s */
-            bootstrap_bandwidth_limit: 16 * 1024 * 1024,
+            /** Default boostrap outbound traffic limit is 5MB/s */
+            bootstrap_bandwidth_limit: 5 * 1024 * 1024,
             /** Bootstrap traffic does not need bursts */
             bootstrap_bandwidth_burst_ratio: 1.,
             conf_height_processor_batch_min_time_ms: 50,

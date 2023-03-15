@@ -125,6 +125,7 @@ pub struct NodeFlagsDto {
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_bootstrap_bulk_push_client: bool,
     pub disable_ongoing_bootstrap: bool,
+    pub disable_ascending_bootstrap: bool,
     pub disable_rep_crawler: bool,
     pub disable_request_loop: bool,
     pub disable_tcp_realtime: bool,
@@ -169,6 +170,7 @@ pub unsafe extern "C" fn rsn_node_flags_get(
     result.disable_bootstrap_bulk_pull_server = lock.disable_bootstrap_bulk_pull_server;
     result.disable_bootstrap_bulk_push_client = lock.disable_bootstrap_bulk_push_client;
     result.disable_ongoing_bootstrap = lock.disable_ongoing_bootstrap;
+    result.disable_ascending_bootstrap = lock.disable_ascending_bootstrap;
     result.disable_rep_crawler = lock.disable_rep_crawler;
     result.disable_request_loop = lock.disable_request_loop;
     result.disable_tcp_realtime = lock.disable_tcp_realtime;
@@ -214,6 +216,7 @@ pub unsafe extern "C" fn rsn_node_flags_set(
     lock.disable_bootstrap_bulk_pull_server = flags.disable_bootstrap_bulk_pull_server;
     lock.disable_bootstrap_bulk_push_client = flags.disable_bootstrap_bulk_push_client;
     lock.disable_ongoing_bootstrap = flags.disable_ongoing_bootstrap;
+    lock.disable_ascending_bootstrap = flags.disable_ascending_bootstrap;
     lock.disable_rep_crawler = flags.disable_rep_crawler;
     lock.disable_request_loop = flags.disable_request_loop;
     lock.disable_tcp_realtime = flags.disable_tcp_realtime;

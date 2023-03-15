@@ -726,6 +726,13 @@ void nano::node_flags::set_disable_ongoing_bootstrap (bool value)
 {
 	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_ongoing_bootstrap = value; });
 }
+bool nano::node_flags::disable_ascending_bootstrap () const
+{
+	return flags_dto ().disable_ascending_bootstrap;
+}
+void nano::node_flags::set_disable_ascending_bootstrap (bool value){
+	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_ascending_bootstrap = value; });
+}
 bool nano::node_flags::disable_rep_crawler () const
 {
 	return flags_dto ().disable_rep_crawler;

@@ -3,6 +3,7 @@
 #include <nano/crypto_lib/random_pool_shuffle.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/threading.hpp>
+#include <nano/node/bootstrap/bootstrap_ascending.hpp>
 #include <nano/node/network.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/telemetry.hpp>
@@ -528,7 +529,7 @@ public:
 
 	void asc_pull_ack (nano::asc_pull_ack const & message) override
 	{
-		// TODO: Process in ascending bootstrap client
+		node.ascendboot.process (message);
 	}
 
 private:

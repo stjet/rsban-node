@@ -15,6 +15,7 @@ pub struct NodeFlags {
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_bootstrap_bulk_push_client: bool,
     pub disable_ongoing_bootstrap: bool, // For testing only
+    pub disable_ascending_bootstrap: bool,
     pub disable_rep_crawler: bool,
     pub disable_request_loop: bool, // For testing only
     pub disable_tcp_realtime: bool,
@@ -58,6 +59,7 @@ impl NodeFlags {
             disable_bootstrap_bulk_pull_server: false,
             disable_bootstrap_bulk_push_client: false,
             disable_ongoing_bootstrap: false,
+            disable_ascending_bootstrap: true,
             disable_rep_crawler: false,
             disable_request_loop: false,
             disable_tcp_realtime: false,

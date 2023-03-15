@@ -73,11 +73,11 @@ TEST (bootstrap_ascending, profile)
 	config_server.preconfigured_peers.clear ();
 	config_server.bandwidth_limit = 0; // Unlimited server bandwidth
 	nano::node_flags flags_server;
-	flags_server.disable_legacy_bootstrap = true;
-	flags_server.disable_wallet_bootstrap = true;
-	flags_server.disable_add_initial_peers = true;
-	flags_server.disable_ongoing_bootstrap = true;
-	flags_server.disable_ascending_bootstrap = true;
+	flags_server.set_disable_legacy_bootstrap (true);
+	flags_server.set_disable_wallet_bootstrap (true);
+	flags_server.set_disable_add_initial_peers (true);
+	flags_server.set_disable_ongoing_bootstrap (true);
+	flags_server.set_disable_ascending_bootstrap (true);
 	auto data_path_server = nano::working_path (network);
 	//auto data_path_server = "";
 	auto server = std::make_shared<nano::node> (system.io_ctx, data_path_server, config_server, system.work, flags_server);
@@ -88,10 +88,10 @@ TEST (bootstrap_ascending, profile)
 	config_client.preconfigured_peers.clear ();
 	config_client.bandwidth_limit = 0; // Unlimited server bandwidth
 	nano::node_flags flags_client;
-	flags_client.disable_legacy_bootstrap = true;
-	flags_client.disable_wallet_bootstrap = true;
-	flags_client.disable_add_initial_peers = true;
-	flags_client.disable_ongoing_bootstrap = true;
+	flags_client.set_disable_legacy_bootstrap (true);
+	flags_client.set_disable_wallet_bootstrap (true);
+	flags_client.set_disable_add_initial_peers (true);
+	flags_client.set_disable_ongoing_bootstrap (true);
 	config_client.ipc_config.transport_tcp.enabled = true;
 	// Disable database integrity safety for higher throughput
 	config_client.lmdb_config.sync = nano::lmdb_config::sync_strategy::nosync_unsafe;
@@ -124,14 +124,14 @@ TEST (bootstrap_ascending, profile)
 	server->bootstrap_server.on_response.add ([&] (auto & response, auto & channel) {
 		nano::lock_guard<nano::mutex> lock{ mutex };
 
-		if (requests.count (response.id))
+		if (requests.count (response.id ()))
 		{
-			requests[response.id].replied = true;
-			requests[response.id].reply_channel = channel;
+			requests[response.id ()].replied = true;
+			requests[response.id ()].reply_channel = channel;
 		}
 		else
 		{
-			std::cerr << "unknown response: " << response.id << std::endl;
+			std::cerr << "unknown response: " << response.id () << std::endl;
 		}
 	});
 
@@ -170,10 +170,10 @@ TEST (bootstrap_ascending, profile)
 		}
 	});*/
 
-	std::cout << "server count: " << server->ledger.cache.block_count << std::endl;
+	std::cout << "server count: " << server->ledger.cache.block_count () << std::endl;
 
 	nano::test::rate_observer rate;
-	rate.observe ("count", [&] () { return client->ledger.cache.block_count.load (); });
+	rate.observe ("count", [&] () { return client->ledger.cache.block_count (); });
 	rate.observe ("unchecked", [&] () { return client->unchecked.count (); });
 	rate.observe ("block_processor", [&] () { return client->block_processor.size (); });
 	rate.observe ("priority", [&] () { return client->ascendboot.priority_size (); });
@@ -191,7 +191,7 @@ TEST (bootstrap_ascending, profile)
 	//wait_for_key ();
 	while (true)
 	{
-		nano::test::establish_tcp (system, *client, server->network.endpoint ());
+		nano::test::establish_tcp (system, *client, server->network->endpoint ());
 		std::this_thread::sleep_for (10s);
 	}
 

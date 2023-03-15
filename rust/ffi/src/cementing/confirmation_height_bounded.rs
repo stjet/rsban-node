@@ -1,6 +1,8 @@
+use std::collections::VecDeque;
+
 use bounded_vec_deque::BoundedVecDeque;
-use rsnano_core::BlockHash;
-use rsnano_node::cementing::{truncate_after, ConfirmationHeightBounded};
+use rsnano_core::{Account, BlockHash};
+use rsnano_node::cementing::{truncate_after, ConfirmationHeightBounded, WriteDetails};
 
 use crate::{
     copy_hash_bytes,
@@ -31,9 +33,89 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     handle: *mut ConfirmationHeightBoundedHandle,
     timer: *mut TimerHandle,
     txn: *mut TransactionHandle,
+    last_iteration: bool,
 ) {
-    let new_timer = (*handle).0.cement_blocks((*timer).0, (*txn).as_write_txn());
+    let new_timer = (*handle)
+        .0
+        .cement_blocks((*timer).0, (*txn).as_write_txn(), last_iteration);
     (*timer).0 = new_timer;
+}
+
+// ----------------------------------
+// PendingWritesQueue:
+
+#[repr(C)]
+pub struct WriteDetailsDto {
+    pub account: [u8; 32],
+    pub bottom_height: u64,
+    pub bottom_hash: [u8; 32],
+    pub top_height: u64,
+    pub top_hash: [u8; 32],
+}
+
+impl From<&WriteDetailsDto> for WriteDetails {
+    fn from(value: &WriteDetailsDto) -> Self {
+        Self {
+            account: Account::from_bytes(value.account),
+            bottom_height: value.bottom_height,
+            bottom_hash: BlockHash::from_bytes(value.bottom_hash),
+            top_height: value.top_height,
+            top_hash: BlockHash::from_bytes(value.top_hash),
+        }
+    }
+}
+
+impl From<&WriteDetails> for WriteDetailsDto {
+    fn from(value: &WriteDetails) -> Self {
+        Self {
+            account: value.account.as_bytes().clone(),
+            bottom_height: value.bottom_height,
+            bottom_hash: value.bottom_hash.as_bytes().clone(),
+            top_height: value.top_height,
+            top_hash: value.top_hash.as_bytes().clone(),
+        }
+    }
+}
+
+pub struct PendingWritesQueueHandle(VecDeque<WriteDetails>);
+
+#[no_mangle]
+pub extern "C" fn rsn_pending_writes_queue_create() -> *mut PendingWritesQueueHandle {
+    Box::into_raw(Box::new(PendingWritesQueueHandle(VecDeque::new())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_pending_writes_queue_destroy(handle: *mut PendingWritesQueueHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_pending_writes_queue_size(
+    handle: *mut PendingWritesQueueHandle,
+) -> usize {
+    (*handle).0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_pending_writes_queue_push_back(
+    handle: *mut PendingWritesQueueHandle,
+    details: *const WriteDetailsDto,
+) {
+    (*handle).0.push_back(WriteDetails::from(&*details))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_pending_writes_queue_front(
+    handle: *mut PendingWritesQueueHandle,
+    result: *mut WriteDetailsDto,
+) {
+    let details = (*handle).0.front().unwrap();
+    (*result) = details.into();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_pending_writes_queue_pop_front(handle: *mut PendingWritesQueueHandle) {
+    (*handle).0.pop_front();
 }
 
 // ----------------------------------

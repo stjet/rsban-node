@@ -70,6 +70,7 @@ private:
 	{
 	public:
 		write_details (nano::account const &, uint64_t, nano::block_hash const &, uint64_t, nano::block_hash const &);
+		write_details (rsnano::WriteDetailsDto const & dto);
 		nano::account account;
 		// This is the first block hash (bottom most) which is not cemented
 		uint64_t bottom_height;
@@ -77,6 +78,22 @@ private:
 		// Desired cemented frontier
 		uint64_t top_height;
 		nano::block_hash top_hash;
+
+		rsnano::WriteDetailsDto to_dto () const;
+	};
+
+	class pending_writes_queue
+	{
+	public:
+		pending_writes_queue ();
+		pending_writes_queue (pending_writes_queue const &) = delete;
+		~pending_writes_queue ();
+		size_t size () const;
+		bool empty () const;
+		void push_back (write_details const & details);
+		write_details front () const;
+		void pop_front ();
+		rsnano::PendingWritesQueueHandle * handle;
 	};
 
 	/** The maximum number of blocks to be read in while iterating over a long account chain */

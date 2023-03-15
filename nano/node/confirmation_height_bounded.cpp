@@ -11,6 +11,7 @@
 
 #include <boost/format.hpp>
 
+#include <iterator>
 #include <numeric>
 
 nano::hash_circular_buffer::hash_circular_buffer (size_t max_items) :
@@ -525,7 +526,11 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 						}
 
 						// todo: move code into this function:
-						rsnano::rsn_confirmation_height_bounded_cement_blocks (handle, cemented_batch_timer.handle, transaction->get_rust_handle ());
+						rsnano::rsn_confirmation_height_bounded_cement_blocks (
+						handle,
+						cemented_batch_timer.handle,
+						transaction->get_rust_handle (),
+						last_iteration);
 					}
 
 					// Get the next block in the chain until we have reached the final desired one
@@ -622,6 +627,26 @@ nano::confirmation_height_bounded::write_details::write_details (nano::account c
 {
 }
 
+nano::confirmation_height_bounded::write_details::write_details (rsnano::WriteDetailsDto const & dto) :
+	bottom_height (dto.bottom_height),
+	top_height (dto.top_height)
+{
+	std::copy (std::begin (dto.account), std::end (dto.account), std::begin (account.bytes));
+	std::copy (std::begin (dto.bottom_hash), std::end (dto.bottom_hash), std::begin (bottom_hash.bytes));
+	std::copy (std::begin (dto.top_hash), std::end (dto.top_hash), std::begin (top_hash.bytes));
+}
+
+rsnano::WriteDetailsDto nano::confirmation_height_bounded::write_details::to_dto () const
+{
+	rsnano::WriteDetailsDto dto;
+	std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (dto.account));
+	std::copy (std::begin (bottom_hash.bytes), std::end (bottom_hash.bytes), std::begin (dto.bottom_hash));
+	std::copy (std::begin (top_hash.bytes), std::end (top_hash.bytes), std::begin (dto.top_hash));
+	dto.bottom_height = bottom_height;
+	dto.top_height = top_height;
+	return dto;
+}
+
 nano::confirmation_height_bounded::receive_source_pair::receive_source_pair (confirmation_height_bounded::receive_chain_details const & receive_details_a, const block_hash & source_a) :
 	receive_details (receive_details_a),
 	source_hash (source_a)
@@ -640,4 +665,42 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", confirmation_height_bounded.pending_writes_size, sizeof (decltype (confirmation_height_bounded.pending_writes)::value_type) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", confirmation_height_bounded.accounts_confirmed_info_size, sizeof (decltype (confirmation_height_bounded.accounts_confirmed_info)::value_type) }));
 	return composite;
+}
+
+nano::confirmation_height_bounded::pending_writes_queue::pending_writes_queue () :
+	handle{ rsnano::rsn_pending_writes_queue_create () }
+{
+}
+
+nano::confirmation_height_bounded::pending_writes_queue::~pending_writes_queue ()
+{
+	rsnano::rsn_pending_writes_queue_destroy (handle);
+}
+
+size_t nano::confirmation_height_bounded::pending_writes_queue::size () const
+{
+	return rsnano::rsn_pending_writes_queue_size (handle);
+}
+
+bool nano::confirmation_height_bounded::pending_writes_queue::empty () const
+{
+	return size () == 0;
+}
+
+void nano::confirmation_height_bounded::pending_writes_queue::push_back (nano::confirmation_height_bounded::write_details const & details)
+{
+	auto dto{ details.to_dto () };
+	rsnano::rsn_pending_writes_queue_push_back (handle, &dto);
+}
+
+nano::confirmation_height_bounded::write_details nano::confirmation_height_bounded::pending_writes_queue::front () const
+{
+	rsnano::WriteDetailsDto details_dto;
+	rsnano::rsn_pending_writes_queue_front (handle, &details_dto);
+	return nano::confirmation_height_bounded::write_details{ details_dto };
+}
+
+void nano::confirmation_height_bounded::pending_writes_queue::pop_front ()
+{
+	rsnano::rsn_pending_writes_queue_pop_front (handle);
 }

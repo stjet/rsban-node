@@ -260,6 +260,8 @@ public:
 	uint8_t protocol_version;
 	/** Minimum accepted protocol version */
 	uint8_t protocol_version_min;
+	/** Minimum accepted protocol version used when bootstrapping */
+	uint8_t bootstrap_protocol_version_min;
 
 	rsnano::NetworkConstantsDto to_dto () const;
 };

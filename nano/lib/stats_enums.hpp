@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 namespace nano::stat
 {
 /** Primary statistics type */
@@ -41,6 +43,13 @@ enum class type : uint8_t
 	election_scheduler,
 	optimistic_scheduler,
 	handshake,
+
+	bootstrap_server_requests,
+	bootstrap_server_responses,
+	bootstrap_ascending,
+	bootstrap_ascending_connections,
+	bootstrap_ascending_thread,
+	bootstrap_ascending_accounts,
 };
 
 /** Optional detail type */
@@ -274,6 +283,54 @@ enum class detail : uint8_t
 	invalid_node_id,
 	missing_cookie,
 	invalid_genesis,
+
+	// bootstrap ascending
+	missing_tag,
+	reply,
+	track,
+	timeout,
+	nothing_new,
+
+	// bootstrap ascending connections
+	connect,
+	connect_missing,
+	connect_failed,
+	connect_success,
+	reuse,
+
+	// bootstrap ascending thread
+	read_block,
+	read_block_done,
+	read_block_end,
+	read_block_error,
+
+	// bootstrap ascending accounts
+	prioritize,
+	prioritize_failed,
+	block,
+	unblock,
+	unblock_failed,
+
+	next_priority,
+	next_database,
+	next_none,
+
+	blocking_insert,
+	blocking_erase_overflow,
+	priority_insert,
+	priority_erase_threshold,
+	priority_erase_block,
+	priority_erase_overflow,
+	deprioritize,
+	deprioritize_failed,
+
+	// active
+	started_hinted,
+	started_optimistic,
+
+	// optimistic
+	pop_gap,
+	pop_leaf,
 };
 
 /** Direction of the stat. If the direction is irrelevant, use in */

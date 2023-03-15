@@ -41,6 +41,8 @@ pub struct NetworkConstants {
     pub protocol_version: u8,
     /** Minimum accepted protocol version */
     pub protocol_version_min: u8,
+    /** Minimum accepted protocol version used when bootstrapping */
+    pub bootstrap_protocol_version_min: u8,
     pub ipv6_subnetwork_prefix_for_limiting: usize,
     pub silent_connection_tolerance_time_s: i64,
     /// Time to wait before vote rebroadcasts for active elections (milliseconds)
@@ -80,6 +82,7 @@ impl NetworkConstants {
             current_network: Networks::NanoLiveNetwork,
             protocol_version: 0x13,
             protocol_version_min: 0x12,
+            bootstrap_protocol_version_min: 0x13,
             principal_weight_factor: 1000, // 0.1%
             default_node_port: 7075,
             default_rpc_port: 7076,

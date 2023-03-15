@@ -28,6 +28,7 @@ pub enum BootstrapMode {
     Legacy,
     Lazy,
     WalletLazy,
+    Ascending,
 }
 
 pub enum BootstrapStrategy {

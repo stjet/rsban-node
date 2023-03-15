@@ -202,6 +202,7 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	current_network = static_cast<nano::networks> (dto.current_network);
 	protocol_version = dto.protocol_version;
 	protocol_version_min = dto.protocol_version_min;
+	bootstrap_protocol_version_min = dto.bootstrap_protocol_version_min;
 	principal_weight_factor = dto.principal_weight_factor;
 	default_node_port = dto.default_node_port;
 	default_rpc_port = dto.default_rpc_port;
@@ -293,6 +294,7 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.default_rpc_port = default_rpc_port;
 	dto.default_ipc_port = default_ipc_port;
 	dto.protocol_version_min = protocol_version_min;
+	dto.bootstrap_protocol_version_min = bootstrap_protocol_version_min;
 	dto.default_websocket_port = default_websocket_port;
 	dto.aec_loop_interval_ms = aec_loop_interval_ms;
 	dto.cleanup_period_s = cleanup_period.count ();
@@ -304,7 +306,6 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.max_peers_per_subnetwork = max_peers_per_subnetwork;
 	dto.peer_dump_interval_s = peer_dump_interval.count ();
 	dto.protocol_version = protocol_version;
-	dto.protocol_version_min = protocol_version_min;
 	dto.vote_broadcast_interval_ms = vote_broadcast_interval;
 	dto.telemetry_request_cooldown_ms = telemetry_request_cooldown.count ();
 	dto.telemetry_request_interval_ms = telemetry_request_interval.count ();

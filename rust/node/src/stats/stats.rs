@@ -140,6 +140,13 @@ pub enum StatType {
     ElectionScheduler,
     OptimisticScheduler,
     Handshake,
+
+    BootstrapServerRequests,
+    BootstrapServerResponses,
+    BootstrapAscending,
+    BootstrapAscendingConnections,
+    BootstrapAscendingThread,
+    BootstrapAscendingAccounts,
 }
 
 impl StatType {
@@ -381,6 +388,54 @@ pub enum DetailType {
     InvalidNodeId,
     MissingCookie,
     InvalidGenesis,
+
+    // bootstrap ascending
+    MissingTag,
+    Reply,
+    Track,
+    Timeout,
+    NothingNew,
+
+    // bootstrap ascending connections
+    Connect,
+    ConnectMissing,
+    ConnectFailed,
+    ConnectSuccess,
+    Reuse,
+
+    // bootstrap ascending thread
+    ReadBlock,
+    ReadBlockDone,
+    ReadBlockEnd,
+    ReadBlockError,
+
+    // bootstrap ascending accounts
+    Prioritize,
+    PrioritizeFailed,
+    Block,
+    Unblock,
+    UnblockFailed,
+
+    NextPriority,
+    NextDatabase,
+    NextNone,
+
+    BlockingInsert,
+    BlockingEraseOverflow,
+    PriorityInsert,
+    PriorityEraseThreshold,
+    PriorityEraseBlock,
+    PriorityEraseOverflow,
+    Deprioritize,
+    DeprioritizeFailed,
+
+    // active
+    StartedHinted,
+    StartedOptimistic,
+
+    // optimistic
+    PopGap,
+    PopLeaf,
 }
 
 impl DetailType {

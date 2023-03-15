@@ -121,6 +121,7 @@ impl BootstrapAttempt {
             BootstrapMode::Legacy => "legacy",
             BootstrapMode::Lazy => "lazy",
             BootstrapMode::WalletLazy => "wallet_lazy",
+            BootstrapMode::Ascending => "ascending",
         }
     }
 

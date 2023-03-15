@@ -26,6 +26,7 @@ pub struct NetworkConstantsDto {
     pub peer_dump_interval_s: i64,
     pub protocol_version: u8,
     pub protocol_version_min: u8,
+    pub bootstrap_protocol_version_min: u8,
     pub ipv6_subnetwork_prefix_for_limiting: usize,
     pub silent_connection_tolerance_time_s: i64,
     pub vote_broadcast_interval_ms: i64,
@@ -57,6 +58,7 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     fill_work_thresholds_dto(&mut dto.work, &constants.work);
     dto.protocol_version = constants.protocol_version;
     dto.protocol_version_min = constants.protocol_version_min;
+    dto.bootstrap_protocol_version_min = constants.bootstrap_protocol_version_min;
     dto.principal_weight_factor = constants.principal_weight_factor;
     dto.default_node_port = constants.default_node_port;
     dto.default_rpc_port = constants.default_rpc_port;
@@ -160,6 +162,7 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
                 .ok_or_else(|| anyhow!("invalid current network"))?,
             protocol_version: value.protocol_version,
             protocol_version_min: value.protocol_version_min,
+            bootstrap_protocol_version_min: value.bootstrap_protocol_version_min,
             default_node_port: value.default_node_port,
             default_rpc_port: value.default_rpc_port,
             default_ipc_port: value.default_ipc_port,

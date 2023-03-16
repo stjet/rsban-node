@@ -28,6 +28,9 @@ use crate::{utils::FfiStream, FfiPropertyTreeReader, FfiPropertyTreeWriter};
 use num::FromPrimitive;
 use rsnano_node::utils::deserialize_block;
 
+mod block_vec;
+pub use block_vec::BlockVecHandle;
+
 #[no_mangle]
 pub extern "C" fn rsn_block_serialized_size(block_type: u8) -> usize {
     match FromPrimitive::from_u8(block_type) {

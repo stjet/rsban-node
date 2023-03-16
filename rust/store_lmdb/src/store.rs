@@ -189,18 +189,20 @@ fn upgrade_if_needed(
 ) -> Result<(), anyhow::Error> {
     let upgrade_info = LmdbVersionStore::check_upgrade(path)?;
     if upgrade_info.is_fully_upgraded {
+        logger.always_log("No database upgrade needed");
         return Ok(());
     }
 
     let env = Arc::new(LmdbEnv::new(path)?);
     if !upgrade_info.is_fresh_db {
-        logger.always_log("Upgrade in progress...");
         if backup_before_upgrade {
             create_backup_file(&env, logger.as_ref())?;
         }
     }
 
+    logger.always_log("Upgrade in progress...");
     let vacuuming = do_upgrades(env.clone(), logger.as_ref())?;
+    logger.always_log("Upgrade done!");
 
     if vacuuming == Vacuuming::Needed {
         logger.always_log("Preparing vacuum...");
@@ -255,8 +257,10 @@ fn do_upgrades(env: Arc<LmdbEnv>, logger: &dyn Logger) -> anyhow::Result<Vacuumi
     let version = match version_store.get(&txn) {
         Some(v) => v,
         None => {
-            version_store.put(&mut txn, STORE_VERSION_MINIMUM);
-            STORE_VERSION_MINIMUM
+            let new_version = STORE_VERSION_MINIMUM;
+            logger.always_log(&format!("Setting db version to {}", new_version));
+            version_store.put(&mut txn, new_version);
+            new_version
         }
     };
 

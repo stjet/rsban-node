@@ -118,6 +118,17 @@ pub unsafe extern "C" fn rsn_pending_writes_queue_pop_front(handle: *mut Pending
     (*handle).0.pop_front();
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_pending_writes_queue_total_pending_write_block_count(
+    handle: *mut PendingWritesQueueHandle,
+) -> u64 {
+    (*handle)
+        .0
+        .iter()
+        .map(|i| i.top_height - i.bottom_height + 1)
+        .sum()
+}
+
 // ----------------------------------
 // HashCircularBuffer:
 

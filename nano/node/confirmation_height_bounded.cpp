@@ -232,9 +232,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 				receive_source_pairs.pop_back ();
 			}
 
-			auto total_pending_write_block_count = std::accumulate (pending_writes.cbegin (), pending_writes.cend (), uint64_t (0), [] (uint64_t total, auto const & write_details_a) {
-				return total += write_details_a.top_height - write_details_a.bottom_height + 1;
-			});
+			auto total_pending_write_block_count = pending_writes.total_pending_write_block_count ();
 
 			auto max_batch_write_size_reached = (total_pending_write_block_count >= batch_write_size.load ());
 			// When there are a lot of pending confirmation height blocks, it is more efficient to
@@ -378,7 +376,14 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 
 			preparation_data_a.checkpoints.truncate_after (preparation_data_a.top_most_non_receive_block_hash);
 
-			pending_writes.emplace_back (preparation_data_a.account, preparation_data_a.bottom_height, preparation_data_a.bottom_most, block_height, preparation_data_a.top_most_non_receive_block_hash);
+			nano::confirmation_height_bounded::write_details details{
+				preparation_data_a.account,
+				preparation_data_a.bottom_height,
+				preparation_data_a.bottom_most,
+				block_height,
+				preparation_data_a.top_most_non_receive_block_hash
+			};
+			pending_writes.push_back (details);
 			++pending_writes_size;
 		}
 	}
@@ -409,7 +414,14 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 			preparation_data_a.checkpoints.truncate_after (receive_details->hash);
 		}
 
-		pending_writes.emplace_back (receive_details->account, receive_details->bottom_height, receive_details->bottom_most, receive_details->height, receive_details->hash);
+		nano::confirmation_height_bounded::write_details details{
+			receive_details->account,
+			receive_details->bottom_height,
+			receive_details->bottom_most,
+			receive_details->height,
+			receive_details->hash
+		};
+		pending_writes.push_back (details);
 		++pending_writes_size;
 	}
 }
@@ -433,7 +445,7 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 		// of blocks to retain consistent cementing across all account chains to genesis.
 		while (!error && !pending_writes.empty ())
 		{
-			auto const & pending = pending_writes.front ();
+			auto pending = pending_writes.front ();
 			auto const & account = pending.account;
 
 			auto write_confirmation_height = [&account, &ledger = ledger, &transaction] (uint64_t num_blocks_cemented, uint64_t confirmation_height, nano::block_hash const & confirmed_frontier) {
@@ -662,7 +674,7 @@ nano::confirmation_height_bounded::confirmed_info::confirmed_info (uint64_t conf
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_bounded & confirmation_height_bounded, std::string const & name_a)
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", confirmation_height_bounded.pending_writes_size, sizeof (decltype (confirmation_height_bounded.pending_writes)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", confirmation_height_bounded.pending_writes_size, sizeof (nano::confirmation_height_bounded::write_details) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", confirmation_height_bounded.accounts_confirmed_info_size, sizeof (decltype (confirmation_height_bounded.accounts_confirmed_info)::value_type) }));
 	return composite;
 }
@@ -703,4 +715,9 @@ nano::confirmation_height_bounded::write_details nano::confirmation_height_bound
 void nano::confirmation_height_bounded::pending_writes_queue::pop_front ()
 {
 	rsnano::rsn_pending_writes_queue_pop_front (handle);
+}
+
+uint64_t nano::confirmation_height_bounded::pending_writes_queue::total_pending_write_block_count () const
+{
+	return rsnano::rsn_pending_writes_queue_total_pending_write_block_count (handle);
 }

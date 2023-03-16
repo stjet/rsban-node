@@ -11,6 +11,7 @@
 #include <boost/circular_buffer.hpp>
 
 #include <cstddef>
+#include <cstdint>
 
 namespace nano
 {
@@ -93,6 +94,7 @@ private:
 		void push_back (write_details const & details);
 		write_details front () const;
 		void pop_front ();
+		uint64_t total_pending_write_block_count () const;
 		rsnano::PendingWritesQueueHandle * handle;
 	};
 
@@ -107,7 +109,7 @@ private:
 	// for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
 	// upon in any way (does not synchronize with any other data).
 	// This allows the load and stores to use relaxed atomic memory ordering.
-	std::deque<write_details> pending_writes;
+	pending_writes_queue pending_writes;
 	nano::relaxed_atomic_integral<uint64_t> pending_writes_size{ 0 };
 	uint32_t const pending_writes_max_size{ max_items };
 	/* Holds confirmation height/cemented frontier in memory for accounts while iterating */

@@ -47,6 +47,8 @@ void nano::hash_circular_buffer::truncate_after (nano::block_hash const & hash)
 }
 
 nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, std::atomic<bool> & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
+	handle{ rsnano::rsn_confirmation_height_bounded_create (write_database_queue_a.handle) },
+	pending_writes{ handle },
 	ledger (ledger_a),
 	write_database_queue (write_database_queue_a),
 	batch_separate_pending_min_time (batch_separate_pending_min_time_a),
@@ -56,8 +58,7 @@ nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & l
 	batch_write_size (batch_write_size_a),
 	notify_observers_callback (notify_observers_callback_a),
 	notify_block_already_cemented_observers_callback (notify_block_already_cemented_observers_callback_a),
-	awaiting_processing_size_callback (awaiting_processing_size_callback_a),
-	handle{ rsnano::rsn_confirmation_height_bounded_create (write_database_queue_a.handle) }
+	awaiting_processing_size_callback (awaiting_processing_size_callback_a)
 {
 }
 
@@ -679,14 +680,9 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 	return composite;
 }
 
-nano::confirmation_height_bounded::pending_writes_queue::pending_writes_queue () :
-	handle{ rsnano::rsn_pending_writes_queue_create () }
+nano::confirmation_height_bounded::pending_writes_queue::pending_writes_queue (rsnano::ConfirmationHeightBoundedHandle * handle_a) :
+	handle{ handle_a }
 {
-}
-
-nano::confirmation_height_bounded::pending_writes_queue::~pending_writes_queue ()
-{
-	rsnano::rsn_pending_writes_queue_destroy (handle);
 }
 
 size_t nano::confirmation_height_bounded::pending_writes_queue::size () const

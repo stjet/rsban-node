@@ -86,16 +86,14 @@ private:
 	class pending_writes_queue
 	{
 	public:
-		pending_writes_queue ();
-		pending_writes_queue (pending_writes_queue const &) = delete;
-		~pending_writes_queue ();
+		pending_writes_queue (rsnano::ConfirmationHeightBoundedHandle * handle);
 		size_t size () const;
 		bool empty () const;
 		void push_back (write_details const & details);
 		write_details front () const;
 		void pop_front ();
 		uint64_t total_pending_write_block_count () const;
-		rsnano::PendingWritesQueueHandle * handle;
+		rsnano::ConfirmationHeightBoundedHandle * handle;
 	};
 
 	/** The maximum number of blocks to be read in while iterating over a long account chain */
@@ -103,6 +101,8 @@ private:
 
 	/** The maximum number of various containers to keep the memory bounded */
 	uint32_t const max_items{ 131072 };
+
+	rsnano::ConfirmationHeightBoundedHandle * handle;
 
 	// All of the atomic variables here just track the size for use in collect_container_info.
 	// This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
@@ -180,7 +180,6 @@ private:
 	std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> notify_observers_callback;
 	std::function<void (nano::block_hash const &)> notify_block_already_cemented_observers_callback;
 	std::function<uint64_t ()> awaiting_processing_size_callback;
-	rsnano::ConfirmationHeightBoundedHandle * handle;
 
 	friend std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_bounded &, std::string const & name_a);
 };

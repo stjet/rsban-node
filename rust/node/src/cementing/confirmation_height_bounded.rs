@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Instant};
+use std::{collections::VecDeque, sync::Arc, time::Instant};
 
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockHash};
@@ -7,12 +7,14 @@ use rsnano_store_traits::WriteTransaction;
 
 pub struct ConfirmationHeightBounded {
     write_database_queue: Arc<WriteDatabaseQueue>,
+    pub pending_writes: VecDeque<WriteDetails>,
 }
 
 impl ConfirmationHeightBounded {
     pub fn new(write_database_queue: Arc<WriteDatabaseQueue>) -> Self {
         Self {
             write_database_queue,
+            pending_writes: VecDeque::new(),
         }
     }
 

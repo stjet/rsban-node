@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockHash};
 use rsnano_node::cementing::{truncate_after, ConfirmationHeightBounded, WriteDetails};
@@ -77,53 +75,47 @@ impl From<&WriteDetails> for WriteDetailsDto {
     }
 }
 
-pub struct PendingWritesQueueHandle(VecDeque<WriteDetails>);
-
-#[no_mangle]
-pub extern "C" fn rsn_pending_writes_queue_create() -> *mut PendingWritesQueueHandle {
-    Box::into_raw(Box::new(PendingWritesQueueHandle(VecDeque::new())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_pending_writes_queue_destroy(handle: *mut PendingWritesQueueHandle) {
-    drop(Box::from_raw(handle))
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_pending_writes_queue_size(
-    handle: *mut PendingWritesQueueHandle,
+    handle: *mut ConfirmationHeightBoundedHandle,
 ) -> usize {
-    (*handle).0.len()
+    (*handle).0.pending_writes.len()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_pending_writes_queue_push_back(
-    handle: *mut PendingWritesQueueHandle,
+    handle: *mut ConfirmationHeightBoundedHandle,
     details: *const WriteDetailsDto,
 ) {
-    (*handle).0.push_back(WriteDetails::from(&*details))
+    (*handle)
+        .0
+        .pending_writes
+        .push_back(WriteDetails::from(&*details))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_pending_writes_queue_front(
-    handle: *mut PendingWritesQueueHandle,
+    handle: *mut ConfirmationHeightBoundedHandle,
     result: *mut WriteDetailsDto,
 ) {
-    let details = (*handle).0.front().unwrap();
+    let details = (*handle).0.pending_writes.front().unwrap();
     (*result) = details.into();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_pending_writes_queue_pop_front(handle: *mut PendingWritesQueueHandle) {
-    (*handle).0.pop_front();
+pub unsafe extern "C" fn rsn_pending_writes_queue_pop_front(
+    handle: *mut ConfirmationHeightBoundedHandle,
+) {
+    (*handle).0.pending_writes.pop_front();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_pending_writes_queue_total_pending_write_block_count(
-    handle: *mut PendingWritesQueueHandle,
+    handle: *mut ConfirmationHeightBoundedHandle,
 ) -> u64 {
     (*handle)
         .0
+        .pending_writes
         .iter()
         .map(|i| i.top_height - i.bottom_height + 1)
         .sum()

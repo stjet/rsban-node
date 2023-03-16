@@ -431,7 +431,7 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 {
 	// Will contain all blocks that have been cemented (bounded by batch_write_size)
 	// and will get run through the cemented observer callback
-	std::vector<std::shared_ptr<nano::block>> cemented_blocks;
+	rsnano::block_vec cemented_blocks;
 	auto const maximum_batch_write_time = 250; // milliseconds
 	auto const maximum_batch_write_time_increase_cutoff = maximum_batch_write_time - (maximum_batch_write_time / 5);
 	auto const amount_to_change = batch_write_size.load () / 10; // 10%
@@ -492,14 +492,14 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 						logger->always_log (error_str);
 						std::cerr << error_str << std::endl;
 						// Undo any blocks about to be cemented from this account for this pending write.
-						cemented_blocks.erase (cemented_blocks.end () - num_blocks_iterated, cemented_blocks.end ());
+						cemented_blocks.erase_last (num_blocks_iterated);
 						error = true;
 						break;
 					}
 
 					auto last_iteration = (num_blocks_confirmed - num_blocks_iterated) == 1;
 
-					cemented_blocks.emplace_back (block);
+					cemented_blocks.push_back (*block);
 
 					// Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
 					// Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
@@ -528,7 +528,8 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 						}
 
 						scoped_write_guard_a.release ();
-						notify_observers_callback (cemented_blocks);
+						auto block_vector{ cemented_blocks.to_vector () };
+						notify_observers_callback (block_vector);
 						cemented_blocks.clear ();
 
 						// todo: move code into this function:
@@ -590,7 +591,8 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 	if (scoped_write_guard_a.is_owned () && !cemented_blocks.empty ())
 	{
 		scoped_write_guard_a.release ();
-		notify_observers_callback (cemented_blocks);
+		auto block_vector{ cemented_blocks.to_vector () };
+		notify_observers_callback (block_vector);
 	}
 
 	// Bail if there was an error. This indicates that there was a fatal issue with the ledger

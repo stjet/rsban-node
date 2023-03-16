@@ -38,3 +38,12 @@ pub unsafe extern "C" fn rsn_block_vec_size(handle: *mut BlockVecHandle) -> usiz
 pub unsafe extern "C" fn rsn_block_vec_clear(handle: *mut BlockVecHandle) {
     (*handle).0.clear();
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_vec_get_block(
+    handle: *mut BlockVecHandle,
+    index: usize,
+) -> *mut BlockHandle {
+    let block = (*handle).0.get(index).unwrap().clone();
+    Box::into_raw(Box::new(BlockHandle::new(block)))
+}

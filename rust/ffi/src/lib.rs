@@ -147,7 +147,7 @@ pub unsafe extern "C" fn rsn_callback_memory_intensive_instrumentation(
 pub unsafe extern "C" fn rsn_callback_is_sanitizer_build(
     f: MemoryIntensiveInstrumentationCallback,
 ) {
-    IS_SANITIZER_BUILD = Some(f);
+    IS_SANITIZER_BUILD = f;
 }
 
 pub struct U256ArrayHandle(Box<Vec<[u8; 32]>>);

@@ -82,7 +82,12 @@ pub type MemoryIntensiveInstrumentationCallback = extern "C" fn() -> bool;
 
 pub static mut MEMORY_INTENSIVE_INSTRUMENTATION: Option<MemoryIntensiveInstrumentationCallback> =
     None;
-pub static mut IS_SANITIZER_BUILD: Option<MemoryIntensiveInstrumentationCallback> = None;
+
+extern "C" fn default_is_sanitizer_build_callback() -> bool {
+    false
+}
+pub static mut IS_SANITIZER_BUILD: MemoryIntensiveInstrumentationCallback =
+    default_is_sanitizer_build_callback;
 
 pub fn memory_intensive_instrumentation() -> bool {
     unsafe {
@@ -94,7 +99,7 @@ pub fn memory_intensive_instrumentation() -> bool {
 }
 
 pub fn is_sanitizer_build() -> bool {
-    unsafe { IS_SANITIZER_BUILD.expect("IS_SANITIZER_BUILD missing")() }
+    unsafe { IS_SANITIZER_BUILD() }
 }
 
 pub fn seconds_since_epoch() -> u64 {

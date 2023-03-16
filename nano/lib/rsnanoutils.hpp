@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nano/lib/blocks.hpp"
+
 #include <nano/boost/asio/ip/tcp.hpp>
 #include <nano/boost/asio/ip/udp.hpp>
 #include <nano/lib/rsnano.hpp>
@@ -98,16 +99,38 @@ public:
 	rsnano::TimerHandle * handle;
 };
 
-class block_vec{
+class block_vec
+{
 public:
-	block_vec() : handle {rsnano::rsn_block_vec_create()}{}
-	block_vec(block_vec const &) = delete;
-	~block_vec(){rsnano::rsn_block_vec_destroy(handle);}
-	void erase_last (size_t count) { rsnano::rsn_block_vec_erase_last(handle, count);}
-	void push_back (nano::block const & block){rsnano::rsn_block_vec_push_back(handle, block.get_handle());}
-	size_t size () const { return rsnano::rsn_block_vec_size(handle);}
-	bool empty () const { return size () == 0;}
-	void clear () { rsnano::rsn_block_vec_clear(handle);}
+	block_vec () :
+		handle{ rsnano::rsn_block_vec_create () }
+	{
+	}
+	block_vec (block_vec const &) = delete;
+	~block_vec ()
+	{
+		rsnano::rsn_block_vec_destroy (handle);
+	}
+	void erase_last (size_t count)
+	{
+		rsnano::rsn_block_vec_erase_last (handle, count);
+	}
+	void push_back (nano::block const & block)
+	{
+		rsnano::rsn_block_vec_push_back (handle, block.get_handle ());
+	}
+	size_t size () const
+	{
+		return rsnano::rsn_block_vec_size (handle);
+	}
+	bool empty () const
+	{
+		return size () == 0;
+	}
+	void clear ()
+	{
+		rsnano::rsn_block_vec_clear (handle);
+	}
 	rsnano::BlockVecHandle * handle;
 };
 

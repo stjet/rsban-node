@@ -1,4 +1,5 @@
-use crate::{as_write_txn, get, LmdbEnv, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM};
+use crate::{as_write_txn, get, LmdbEnv, STORE_VERSION_CURRENT};
+use core::panic;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_store_traits::{Transaction, VersionStore, WriteTransaction};
 use std::{path::Path, sync::Arc};
@@ -30,7 +31,7 @@ impl LmdbVersionStore {
         match env.environment.open_db(Some("meta")) {
             Ok(db) => {
                 let txn = env.tx_begin_read()?;
-                Ok(Some(load_version(&txn, db)))
+                Ok(load_version(&txn, db))
             }
             Err(_) => Ok(None),
         }
@@ -68,17 +69,18 @@ impl VersionStore for LmdbVersionStore {
             .unwrap();
     }
 
-    fn get(&self, txn: &dyn Transaction) -> i32 {
+    fn get(&self, txn: &dyn Transaction) -> Option<i32> {
         let db = self.db_handle();
         load_version(txn, db)
     }
 }
 
-fn load_version(txn: &dyn Transaction, db: Database) -> i32 {
+fn load_version(txn: &dyn Transaction, db: Database) -> Option<i32> {
     let key_bytes = version_key();
     match get(txn, db, &key_bytes) {
-        Ok(value) => i32::from_ne_bytes(value[28..].try_into().unwrap()),
-        Err(_) => STORE_VERSION_MINIMUM,
+        Ok(value) => Some(i32::from_ne_bytes(value[28..].try_into().unwrap())),
+        Err(lmdb::Error::NotFound) => None,
+        Err(_) => panic!("Error while loading db version"),
     }
 }
 

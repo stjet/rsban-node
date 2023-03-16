@@ -1,4 +1,4 @@
-use rsnano_store_lmdb::LmdbVersionStore;
+use rsnano_store_lmdb::{LmdbVersionStore, STORE_VERSION_MINIMUM};
 use rsnano_store_traits::VersionStore;
 
 use super::TransactionHandle;
@@ -31,5 +31,8 @@ pub unsafe extern "C" fn rsn_lmdb_version_store_get(
     handle: *mut LmdbVersionStoreHandle,
     txn: *mut TransactionHandle,
 ) -> i32 {
-    (*handle).0.get((*txn).as_txn())
+    (*handle)
+        .0
+        .get((*txn).as_txn())
+        .unwrap_or(STORE_VERSION_MINIMUM)
 }

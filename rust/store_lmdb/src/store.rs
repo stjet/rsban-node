@@ -40,8 +40,71 @@ pub struct LmdbStore {
     pub version_store: Arc<LmdbVersionStore>,
 }
 
+pub struct LmdbStoreBuilder<'a> {
+    path: &'a Path,
+    options: Option<&'a EnvOptions>,
+    tracker: Option<Arc<dyn TransactionTracker>>,
+    logger: Option<Arc<dyn Logger>>,
+    backup_before_upgrade: bool,
+}
+
+impl<'a> LmdbStoreBuilder<'a> {
+    fn new(path: &'a Path) -> Self {
+        Self {
+            path,
+            options: None,
+            tracker: None,
+            logger: None,
+            backup_before_upgrade: false,
+        }
+    }
+
+    pub fn options(mut self, options: &'a EnvOptions) -> Self {
+        self.options = Some(options);
+        self
+    }
+
+    pub fn txn_tracker(mut self, tracker: Arc<dyn TransactionTracker>) -> Self {
+        self.tracker = Some(tracker);
+        self
+    }
+
+    pub fn logger(mut self, logger: Arc<dyn Logger>) -> Self {
+        self.logger = Some(logger);
+        self
+    }
+
+    pub fn backup_before_upgrade(mut self, backup: bool) -> Self {
+        self.backup_before_upgrade = backup;
+        self
+    }
+
+    pub fn build(self) -> anyhow::Result<LmdbStore> {
+        let default_options = Default::default();
+        let options = self.options.unwrap_or(&default_options);
+
+        let txn_tracker = self
+            .tracker
+            .unwrap_or_else(|| Arc::new(NullTransactionTracker::new()));
+
+        let logger = self.logger.unwrap_or_else(|| Arc::new(NullLogger::new()));
+
+        LmdbStore::new(
+            self.path,
+            options,
+            txn_tracker,
+            logger,
+            self.backup_before_upgrade,
+        )
+    }
+}
+
 impl LmdbStore {
-    pub fn new(
+    pub fn open<'a>(path: &'a Path) -> LmdbStoreBuilder<'a> {
+        LmdbStoreBuilder::new(path)
+    }
+
+    fn new(
         path: impl AsRef<Path>,
         options: &EnvOptions,
         txn_tracker: Arc<dyn TransactionTracker>,
@@ -67,16 +130,6 @@ impl LmdbStore {
             version_store: Arc::new(LmdbVersionStore::new(env.clone())?),
             env,
         })
-    }
-
-    pub fn open(path: impl AsRef<Path>) -> anyhow::Result<Self> {
-        Self::new(
-            path,
-            &EnvOptions::default(),
-            Arc::new(NullTransactionTracker::new()),
-            Arc::new(NullLogger::new()),
-            false,
-        )
     }
 
     pub fn rebuild_db(&self, txn: &mut dyn WriteTransaction) -> anyhow::Result<()> {
@@ -197,8 +250,16 @@ fn copy_table(
 
 fn do_upgrades(env: Arc<LmdbEnv>, logger: &dyn Logger) -> anyhow::Result<Vacuuming> {
     let version_store = LmdbVersionStore::new(env.clone())?;
-    let txn = env.tx_begin_write()?;
-    let version = version_store.get(&txn);
+    let mut txn = env.tx_begin_write()?;
+
+    let version = match version_store.get(&txn) {
+        Some(v) => v,
+        None => {
+            version_store.put(&mut txn, STORE_VERSION_MINIMUM);
+            STORE_VERSION_MINIMUM
+        }
+    };
+
     match version {
         1..=20 => {
             logger.always_log(&format!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM));
@@ -390,24 +451,13 @@ fn backup_file_path(source_path: &Path) -> anyhow::Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use crate::TestDbFile;
-    use rsnano_core::utils::NullLogger;
-    use rsnano_store_traits::NullTransactionTracker;
-
     use super::*;
+    use crate::TestDbFile;
 
     #[test]
     fn create_store() -> anyhow::Result<()> {
         let file = TestDbFile::random();
-        let logger = Arc::new(NullLogger::new());
-        let options = EnvOptions::default();
-        let _ = LmdbStore::new(
-            &file.path,
-            &options,
-            Arc::new(NullTransactionTracker::new()),
-            logger,
-            false,
-        )?;
+        let _ = LmdbStore::open(&file.path).build()?;
         Ok(())
     }
 
@@ -427,11 +477,16 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn writes_db_version_for_new_store() {
+        let file = TestDbFile::random();
+        let store = LmdbStore::open(&file.path).build().unwrap();
+        let txn = store.tx_begin_read().unwrap();
+        assert_eq!(store.version_store.get(&txn), Some(STORE_VERSION_MINIMUM));
+    }
+
     fn assert_upgrade_fails(path: &Path, error_msg: &str) {
-        let logger = Arc::new(NullLogger::new());
-        let options = EnvOptions::default();
-        let txn_tracker = Arc::new(NullTransactionTracker::new());
-        match LmdbStore::new(path, &options, txn_tracker, logger, false) {
+        match LmdbStore::open(path).build() {
             Ok(_) => panic!("store should not be created!"),
             Err(e) => {
                 assert_eq!(e.to_string(), error_msg);

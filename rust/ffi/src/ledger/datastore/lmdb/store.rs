@@ -69,7 +69,13 @@ pub unsafe extern "C" fn rsn_lmdb_store_create(
         Arc::new(NullTransactionTracker::new())
     };
 
-    let store = LmdbStore::new(path, &options, txn_tracker, logger, backup_before_upgrade);
+    let store = LmdbStore::open(path)
+        .options(&options)
+        .txn_tracker(txn_tracker)
+        .logger(logger)
+        .backup_before_upgrade(backup_before_upgrade)
+        .build();
+
     match store {
         Ok(s) => {
             *error = false;

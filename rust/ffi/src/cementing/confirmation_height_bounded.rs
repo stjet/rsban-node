@@ -4,7 +4,7 @@ use rsnano_node::cementing::{truncate_after, ConfirmationHeightBounded, WriteDet
 
 use crate::{
     copy_hash_bytes,
-    ledger::datastore::{TransactionHandle, WriteDatabaseQueueHandle},
+    ledger::datastore::{TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle},
     utils::TimerHandle,
 };
 
@@ -32,11 +32,17 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     timer: *mut TimerHandle,
     txn: *mut TransactionHandle,
     last_iteration: bool,
-) {
-    let new_timer = (*handle)
-        .0
-        .cement_blocks((*timer).0, (*txn).as_write_txn(), last_iteration);
+) -> *mut WriteGuardHandle {
+    let (new_timer, write_guard) =
+        (*handle)
+            .0
+            .cement_blocks((*timer).0, (*txn).as_write_txn(), last_iteration);
     (*timer).0 = new_timer;
+
+    match write_guard {
+        Some(guard) => Box::into_raw(Box::new(WriteGuardHandle(guard))),
+        None => std::ptr::null_mut(),
+    }
 }
 
 // ----------------------------------

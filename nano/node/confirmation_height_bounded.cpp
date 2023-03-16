@@ -531,19 +531,17 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 						notify_observers_callback (cemented_blocks);
 						cemented_blocks.clear ();
 
-						// Only aquire transaction if there are blocks left
-						if (!(last_iteration && pending_writes.size () == 1))
-						{
-							scoped_write_guard_a = write_database_queue.wait (nano::writer::confirmation_height);
-							transaction->renew ();
-						}
-
 						// todo: move code into this function:
-						rsnano::rsn_confirmation_height_bounded_cement_blocks (
+						auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
 						handle,
 						cemented_batch_timer.handle,
 						transaction->get_rust_handle (),
 						last_iteration);
+
+						if (write_guard_handle != nullptr)
+						{
+							scoped_write_guard_a = nano::write_guard{ write_guard_handle };
+						}
 					}
 
 					// Get the next block in the chain until we have reached the final desired one

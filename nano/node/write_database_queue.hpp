@@ -27,12 +27,12 @@ class write_guard final
 {
 public:
 	write_guard (rsnano::WriteGuardHandle * handle_a);
-	void release ();
 	~write_guard ();
 	write_guard (write_guard const &) = delete;
 	write_guard & operator= (write_guard const &) = delete;
 	write_guard (write_guard &&) noexcept;
 	write_guard & operator= (write_guard &&) noexcept;
+	void release ();
 	bool is_owned () const;
 
 	rsnano::WriteGuardHandle * handle;

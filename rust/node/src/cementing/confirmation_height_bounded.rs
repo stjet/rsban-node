@@ -2,7 +2,7 @@ use std::{collections::VecDeque, sync::Arc, time::Instant};
 
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockHash};
-use rsnano_ledger::WriteDatabaseQueue;
+use rsnano_ledger::{WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::WriteTransaction;
 
 pub struct ConfirmationHeightBounded {
@@ -21,10 +21,17 @@ impl ConfirmationHeightBounded {
     pub fn cement_blocks(
         &self,
         _timer: Instant,
-        _txn: &mut dyn WriteTransaction,
-        _last_iteration: bool,
-    ) -> Instant {
-        Instant::now()
+        txn: &mut dyn WriteTransaction,
+        last_iteration: bool,
+    ) -> (Instant, Option<WriteGuard>) {
+        let mut scoped_write_guard = None;
+        // Only aquire transaction if there are blocks left
+        if !(last_iteration && self.pending_writes.len() == 1) {
+            scoped_write_guard = Some(self.write_database_queue.wait(Writer::ConfirmationHeight));
+            txn.renew();
+        }
+
+        (Instant::now(), scoped_write_guard)
     }
 }
 

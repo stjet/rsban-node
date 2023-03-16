@@ -78,7 +78,7 @@ impl VersionStore for LmdbVersionStore {
 fn load_version(txn: &dyn Transaction, db: Database) -> Option<i32> {
     let key_bytes = version_key();
     match get(txn, db, &key_bytes) {
-        Ok(value) => Some(i32::from_ne_bytes(value[28..].try_into().unwrap())),
+        Ok(value) => Some(i32::from_be_bytes(value[28..].try_into().unwrap())),
         Err(lmdb::Error::NotFound) => None,
         Err(_) => panic!("Error while loading db version"),
     }
@@ -86,7 +86,7 @@ fn load_version(txn: &dyn Transaction, db: Database) -> Option<i32> {
 
 fn value_bytes(version: i32) -> [u8; 32] {
     let mut value_bytes = [0; 32];
-    value_bytes[28..].copy_from_slice(&version.to_ne_bytes());
+    value_bytes[28..].copy_from_slice(&version.to_be_bytes());
     value_bytes
 }
 

@@ -54,70 +54,83 @@ impl ConfirmationHeightBounded {
 
     pub fn cement_blocks(
         &self,
-        _timer: Instant,
+        cemented_batch_timer: Instant,
         txn: &mut dyn WriteTransaction,
         last_iteration: bool,
         cemented_blocks: &mut Vec<Arc<RwLock<BlockEnum>>>,
         scoped_write_guard: &mut WriteGuard,
         amount_to_change: u64,
-        time_spent_cementing: u64,
         num_blocks_iterated: u64,
         total_blocks_cemented: &mut u64,
         start_height: u64,
         new_cemented_frontier: &BlockHash,
         account: &Account,
     ) -> (Instant, Option<WriteGuard>) {
-        let num_blocks_cemented = num_blocks_iterated - *total_blocks_cemented + 1;
-        *total_blocks_cemented += num_blocks_cemented;
+        let mut new_scoped_write_guard = None;
+        let mut new_timer = cemented_batch_timer;
 
-        self.ledger.write_confirmation_height(
-            txn,
-            account,
-            num_blocks_cemented,
-            start_height + *total_blocks_cemented - 1,
-            new_cemented_frontier,
-        );
+        // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
+        // Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
+        if cemented_blocks.len() as u64
+            > self.batch_write_size.load(Ordering::SeqCst)
+                + (self.batch_write_size.load(Ordering::SeqCst) / 10)
+        {
+            let time_spent_cementing = cemented_batch_timer.elapsed().as_millis() as u64;
 
-        txn.commit();
+            let num_blocks_cemented = num_blocks_iterated - *total_blocks_cemented + 1;
+            *total_blocks_cemented += num_blocks_cemented;
 
-        if self.logging.timing_logging_value {
-            self.logger.always_log(&format!(
-                "Cemented {} blocks in {} ms (bounded processor)",
-                cemented_blocks.len(),
-                time_spent_cementing
-            ));
-        }
-
-        // Update the maximum amount of blocks to write next time based on the time it took to cement this batch.
-        if time_spent_cementing > MAXIMUM_BATCH_WRITE_TIME {
-            // Reduce (unless we have hit a floor)
-            self.batch_write_size.store(
-                max(
-                    MINIMUM_BATCH_WRITE_SIZE,
-                    self.batch_write_size.load(Ordering::SeqCst) - amount_to_change,
-                ),
-                Ordering::SeqCst,
+            self.ledger.write_confirmation_height(
+                txn,
+                account,
+                num_blocks_cemented,
+                start_height + *total_blocks_cemented - 1,
+                new_cemented_frontier,
             );
-        } else if time_spent_cementing < MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF {
-            // Increase amount of blocks written for next batch if the time for writing this one is sufficiently lower than the max time to warrant changing
-            self.batch_write_size
-                .fetch_add(amount_to_change, Ordering::SeqCst);
+
+            txn.commit();
+
+            if self.logging.timing_logging_value {
+                self.logger.always_log(&format!(
+                    "Cemented {} blocks in {} ms (bounded processor)",
+                    cemented_blocks.len(),
+                    time_spent_cementing
+                ));
+            }
+
+            // Update the maximum amount of blocks to write next time based on the time it took to cement this batch.
+            if time_spent_cementing > MAXIMUM_BATCH_WRITE_TIME {
+                // Reduce (unless we have hit a floor)
+                self.batch_write_size.store(
+                    max(
+                        MINIMUM_BATCH_WRITE_SIZE,
+                        self.batch_write_size.load(Ordering::SeqCst) - amount_to_change,
+                    ),
+                    Ordering::SeqCst,
+                );
+            } else if time_spent_cementing < MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF {
+                // Increase amount of blocks written for next batch if the time for writing this one is sufficiently lower than the max time to warrant changing
+                self.batch_write_size
+                    .fetch_add(amount_to_change, Ordering::SeqCst);
+            }
+
+            scoped_write_guard.release();
+
+            (self.notify_observers_callback)(&cemented_blocks);
+
+            cemented_blocks.clear();
+
+            // Only aquire transaction if there are blocks left
+            if !(last_iteration && self.pending_writes.len() == 1) {
+                new_scoped_write_guard =
+                    Some(self.write_database_queue.wait(Writer::ConfirmationHeight));
+                txn.renew();
+            }
+
+            new_timer = Instant::now();
         }
 
-        scoped_write_guard.release();
-
-        (self.notify_observers_callback)(&cemented_blocks);
-
-        cemented_blocks.clear();
-
-        let mut scoped_write_guard = None;
-        // Only aquire transaction if there are blocks left
-        if !(last_iteration && self.pending_writes.len() == 1) {
-            scoped_write_guard = Some(self.write_database_queue.wait(Writer::ConfirmationHeight));
-            txn.renew();
-        }
-
-        (Instant::now(), scoped_write_guard)
+        (new_timer, new_scoped_write_guard)
     }
 }
 

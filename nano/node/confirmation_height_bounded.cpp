@@ -539,33 +539,27 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 
 					cemented_blocks.push_back (*block);
 
-					// Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
-					// Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
-					if (cemented_blocks.size () > batch_write_size.load () + (batch_write_size.load () / 10))
+					//------------------------------
+					// todo: move code into this function:
+					auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
+					handle,
+					cemented_batch_timer.handle,
+					transaction->get_rust_handle (),
+					last_iteration,
+					cemented_blocks.handle,
+					scoped_write_guard_a.handle,
+					amount_to_change,
+					num_blocks_iterated,
+					&total_blocks_cemented,
+					start_height,
+					new_cemented_frontier.bytes.data (),
+					account.bytes.data ());
+
+					if (write_guard_handle != nullptr)
 					{
-						auto time_spent_cementing = cemented_batch_timer.elapsed_ms ();
-
-						// todo: move code into this function:
-						auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
-						handle,
-						cemented_batch_timer.handle,
-						transaction->get_rust_handle (),
-						last_iteration,
-						cemented_blocks.handle,
-						scoped_write_guard_a.handle,
-						amount_to_change,
-						time_spent_cementing,
-						num_blocks_iterated,
-						&total_blocks_cemented,
-						start_height,
-						new_cemented_frontier.bytes.data (),
-						account.bytes.data ());
-
-						if (write_guard_handle != nullptr)
-						{
-							scoped_write_guard_a = nano::write_guard{ write_guard_handle };
-						}
+						scoped_write_guard_a = nano::write_guard{ write_guard_handle };
 					}
+					//------------------------------
 
 					// Get the next block in the chain until we have reached the final desired one
 					if (!last_iteration)

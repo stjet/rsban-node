@@ -1,4 +1,4 @@
-use std::ffi::c_void;
+use std::{ffi::c_void, sync::Arc};
 
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockHash};
@@ -14,6 +14,8 @@ use crate::{
     VoidPointerCallback,
 };
 
+use super::confirmation_height_unbounded::AtomicU64Handle;
+
 pub struct ConfirmationHeightBoundedHandle(ConfirmationHeightBounded);
 
 pub type BlockVecCallback = extern "C" fn(*mut c_void, *mut BlockVecHandle);
@@ -24,6 +26,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
     notify_observers_callback: BlockVecCallback,
     notify_observers_context: *mut c_void,
     notify_observers_drop_context: VoidPointerCallback,
+    batch_write_size: *const AtomicU64Handle,
 ) -> *mut ConfirmationHeightBoundedHandle {
     let notify_observers_context =
         ContextWrapper::new(notify_observers_context, notify_observers_drop_context);
@@ -34,8 +37,14 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
         notify_observers_callback(notify_observers_context.get_context(), block_vec_handle);
     });
 
+    let batch_write_size = Arc::clone(&(*batch_write_size).0);
+
     Box::into_raw(Box::new(ConfirmationHeightBoundedHandle(
-        ConfirmationHeightBounded::new((*write_db_queue).0.clone(), notify_observers),
+        ConfirmationHeightBounded::new(
+            (*write_db_queue).0.clone(),
+            notify_observers,
+            batch_write_size,
+        ),
     )))
 }
 
@@ -53,12 +62,18 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     txn: *mut TransactionHandle,
     last_iteration: bool,
     cemented_blocks: *mut BlockVecHandle,
+    write_guard: *mut WriteGuardHandle,
+    amount_to_change: u64,
+    time_spent_cementing: u64,
 ) -> *mut WriteGuardHandle {
     let (new_timer, write_guard) = (*handle).0.cement_blocks(
         (*timer).0,
         (*txn).as_write_txn(),
         last_iteration,
         &mut (*cemented_blocks).0,
+        &mut (*write_guard).0,
+        amount_to_change,
+        time_spent_cementing,
     );
     (*timer).0 = new_timer;
 

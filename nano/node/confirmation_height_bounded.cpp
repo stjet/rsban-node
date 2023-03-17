@@ -65,20 +65,27 @@ void notify_observers_delete_context (void * context)
 rsnano::ConfirmationHeightBoundedHandle * create_conf_height_bounded_handle (
 nano::write_database_queue & write_database_queue_a,
 std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a,
-rsnano::AtomicU64Wrapper & batch_write_size_a)
+rsnano::AtomicU64Wrapper & batch_write_size_a,
+std::shared_ptr<nano::logger_mt> & logger_a,
+nano::logging const & logging_a,
+nano::ledger & ledger_a)
 {
 	auto notify_observers_context = new std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> (notify_observers_callback_a);
+	auto logging_dto{ logging_a.to_dto () };
 	return rsnano::rsn_confirmation_height_bounded_create (
 	write_database_queue_a.handle,
 	notify_observers_callback_wrapper,
 	notify_observers_context,
 	notify_observers_delete_context,
-	batch_write_size_a.handle);
+	batch_write_size_a.handle,
+	nano::to_logger_handle (logger_a),
+	&logging_dto,
+	ledger_a.handle);
 }
 }
 
 nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, std::atomic<bool> & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
-	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a) },
+	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a, logger_a, logging_a, ledger_a) },
 	pending_writes{ handle },
 	ledger (ledger_a),
 	write_database_queue (write_database_queue_a),
@@ -510,7 +517,7 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 					start_height = confirmation_height_info.height () + 1;
 				}
 
-				auto total_blocks_cemented = 0;
+				uint64_t total_blocks_cemented = 0;
 				auto block = ledger.store.block ().get (*transaction, new_cemented_frontier);
 
 				// Cementing starts from the bottom of the chain and works upwards. This is because chains can have effectively
@@ -537,14 +544,6 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 					if (cemented_blocks.size () > batch_write_size.load () + (batch_write_size.load () / 10))
 					{
 						auto time_spent_cementing = cemented_batch_timer.elapsed_ms ();
-						auto num_blocks_cemented = num_blocks_iterated - total_blocks_cemented + 1;
-						total_blocks_cemented += num_blocks_cemented;
-						write_confirmation_height (num_blocks_cemented, start_height + total_blocks_cemented - 1, new_cemented_frontier);
-						transaction->commit ();
-						if (logging.timing_logging ())
-						{
-							logger->always_log (boost::str (boost::format ("Cemented %1% blocks in %2% ms (bounded processor)") % cemented_blocks.size () % time_spent_cementing));
-						}
 
 						// todo: move code into this function:
 						auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
@@ -555,7 +554,12 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 						cemented_blocks.handle,
 						scoped_write_guard_a.handle,
 						amount_to_change,
-						time_spent_cementing);
+						time_spent_cementing,
+						num_blocks_iterated,
+						&total_blocks_cemented,
+						start_height,
+						new_cemented_frontier.bytes.data (),
+						account.bytes.data ());
 
 						if (write_guard_handle != nullptr)
 						{

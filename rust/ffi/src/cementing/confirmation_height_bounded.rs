@@ -2,16 +2,19 @@ use std::{ffi::c_void, sync::Arc};
 
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockHash};
-use rsnano_node::cementing::{
-    truncate_after, ConfirmationHeightBounded, NotifyObserversCallback, WriteDetails,
+use rsnano_node::{
+    cementing::{truncate_after, ConfirmationHeightBounded, NotifyObserversCallback, WriteDetails},
+    config::Logging,
 };
 
 use crate::{
     copy_hash_bytes,
     core::BlockVecHandle,
-    ledger::datastore::{TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle},
-    utils::{ContextWrapper, TimerHandle},
-    VoidPointerCallback,
+    ledger::datastore::{
+        LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle,
+    },
+    utils::{ContextWrapper, LoggerHandle, LoggerMT, TimerHandle},
+    LoggingDto, VoidPointerCallback,
 };
 
 use super::confirmation_height_unbounded::AtomicU64Handle;
@@ -27,6 +30,9 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
     notify_observers_context: *mut c_void,
     notify_observers_drop_context: VoidPointerCallback,
     batch_write_size: *const AtomicU64Handle,
+    logger: *mut LoggerHandle,
+    logging: *const LoggingDto,
+    ledger: *mut LedgerHandle,
 ) -> *mut ConfirmationHeightBoundedHandle {
     let notify_observers_context =
         ContextWrapper::new(notify_observers_context, notify_observers_drop_context);
@@ -38,12 +44,16 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
     });
 
     let batch_write_size = Arc::clone(&(*batch_write_size).0);
+    let logging = Logging::from(&*logging);
 
     Box::into_raw(Box::new(ConfirmationHeightBoundedHandle(
         ConfirmationHeightBounded::new(
             (*write_db_queue).0.clone(),
             notify_observers,
             batch_write_size,
+            Arc::new(LoggerMT::new(Box::from_raw(logger))),
+            logging,
+            (*ledger).0.clone(),
         ),
     )))
 }
@@ -65,7 +75,14 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     write_guard: *mut WriteGuardHandle,
     amount_to_change: u64,
     time_spent_cementing: u64,
+    num_blocks_iterated: u64,
+    total_blocks_cemented: *mut u64,
+    start_height: u64,
+    new_cemented_frontier: *const u8,
+    account: *const u8,
 ) -> *mut WriteGuardHandle {
+    let new_cemented_frontier = BlockHash::from_ptr(new_cemented_frontier);
+
     let (new_timer, write_guard) = (*handle).0.cement_blocks(
         (*timer).0,
         (*txn).as_write_txn(),
@@ -74,6 +91,11 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
         &mut (*write_guard).0,
         amount_to_change,
         time_spent_cementing,
+        num_blocks_iterated,
+        &mut *total_blocks_cemented,
+        start_height,
+        &new_cemented_frontier,
+        &Account::from_ptr(account),
     );
     (*timer).0 = new_timer;
 

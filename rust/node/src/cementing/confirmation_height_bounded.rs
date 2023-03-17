@@ -9,9 +9,11 @@ use std::{
 };
 
 use bounded_vec_deque::BoundedVecDeque;
-use rsnano_core::{Account, BlockEnum, BlockHash};
-use rsnano_ledger::{WriteDatabaseQueue, WriteGuard, Writer};
+use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash};
+use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::WriteTransaction;
+
+use crate::config::Logging;
 
 pub type NotifyObserversCallback = Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)>;
 
@@ -20,6 +22,9 @@ pub struct ConfirmationHeightBounded {
     pub pending_writes: VecDeque<WriteDetails>,
     notify_observers_callback: NotifyObserversCallback,
     batch_write_size: Arc<AtomicU64>,
+    logger: Arc<dyn Logger>,
+    logging: Logging,
+    ledger: Arc<Ledger>,
 }
 
 const MAXIMUM_BATCH_WRITE_TIME: u64 = 250; // milliseconds
@@ -32,12 +37,18 @@ impl ConfirmationHeightBounded {
         write_database_queue: Arc<WriteDatabaseQueue>,
         notify_observers_callback: NotifyObserversCallback,
         batch_write_size: Arc<AtomicU64>,
+        logger: Arc<dyn Logger>,
+        logging: Logging,
+        ledger: Arc<Ledger>,
     ) -> Self {
         Self {
             write_database_queue,
             pending_writes: VecDeque::new(),
             notify_observers_callback,
             batch_write_size,
+            logger,
+            logging,
+            ledger,
         }
     }
 
@@ -50,7 +61,33 @@ impl ConfirmationHeightBounded {
         scoped_write_guard: &mut WriteGuard,
         amount_to_change: u64,
         time_spent_cementing: u64,
+        num_blocks_iterated: u64,
+        total_blocks_cemented: &mut u64,
+        start_height: u64,
+        new_cemented_frontier: &BlockHash,
+        account: &Account,
     ) -> (Instant, Option<WriteGuard>) {
+        let num_blocks_cemented = num_blocks_iterated - *total_blocks_cemented + 1;
+        *total_blocks_cemented += num_blocks_cemented;
+
+        self.ledger.write_confirmation_height(
+            txn,
+            account,
+            num_blocks_cemented,
+            start_height + *total_blocks_cemented - 1,
+            new_cemented_frontier,
+        );
+
+        txn.commit();
+
+        if self.logging.timing_logging_value {
+            self.logger.always_log(&format!(
+                "Cemented {} blocks in {} ms (bounded processor)",
+                cemented_blocks.len(),
+                time_spent_cementing
+            ));
+        }
+
         // Update the maximum amount of blocks to write next time based on the time it took to cement this batch.
         if time_spent_cementing > MAXIMUM_BATCH_WRITE_TIME {
             // Reduce (unless we have hit a floor)

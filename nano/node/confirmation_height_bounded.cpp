@@ -46,8 +46,37 @@ void nano::hash_circular_buffer::truncate_after (nano::block_hash const & hash)
 	rsnano::rsn_hash_circular_buffer_truncate_after (handle, hash.bytes.data ());
 }
 
+namespace
+{
+void notify_observers_callback_wrapper (void * context, rsnano::BlockVecHandle * blocks_handle)
+{
+	auto callback = static_cast<std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> *> (context);
+	rsnano::block_vec block_vec{ blocks_handle };
+	auto blocks = block_vec.to_vector ();
+	(*callback) (blocks);
+}
+
+void notify_observers_delete_context (void * context)
+{
+	auto callback = static_cast<std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> *> (context);
+	delete callback;
+}
+
+rsnano::ConfirmationHeightBoundedHandle * create_conf_height_bounded_handle (
+nano::write_database_queue & write_database_queue_a,
+std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a)
+{
+	auto notify_observers_context = new std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> (notify_observers_callback_a);
+	return rsnano::rsn_confirmation_height_bounded_create (
+	write_database_queue_a.handle,
+	notify_observers_callback_wrapper,
+	notify_observers_context,
+	notify_observers_delete_context);
+}
+}
+
 nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, std::atomic<bool> & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
-	handle{ rsnano::rsn_confirmation_height_bounded_create (write_database_queue_a.handle) },
+	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a) },
 	pending_writes{ handle },
 	ledger (ledger_a),
 	write_database_queue (write_database_queue_a),
@@ -528,16 +557,14 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 						}
 
 						scoped_write_guard_a.release ();
-						auto block_vector{ cemented_blocks.to_vector () };
-						notify_observers_callback (block_vector);
-						cemented_blocks.clear ();
 
 						// todo: move code into this function:
 						auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
 						handle,
 						cemented_batch_timer.handle,
 						transaction->get_rust_handle (),
-						last_iteration);
+						last_iteration,
+						cemented_blocks.handle);
 
 						if (write_guard_handle != nullptr)
 						{

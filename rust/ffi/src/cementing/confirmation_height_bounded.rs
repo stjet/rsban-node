@@ -1,21 +1,41 @@
+use std::ffi::c_void;
+
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockHash};
-use rsnano_node::cementing::{truncate_after, ConfirmationHeightBounded, WriteDetails};
+use rsnano_node::cementing::{
+    truncate_after, ConfirmationHeightBounded, NotifyObserversCallback, WriteDetails,
+};
 
 use crate::{
     copy_hash_bytes,
+    core::BlockVecHandle,
     ledger::datastore::{TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle},
-    utils::TimerHandle,
+    utils::{ContextWrapper, TimerHandle},
+    VoidPointerCallback,
 };
 
 pub struct ConfirmationHeightBoundedHandle(ConfirmationHeightBounded);
 
+pub type BlockVecCallback = extern "C" fn(*mut c_void, *mut BlockVecHandle);
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
     write_db_queue: *mut WriteDatabaseQueueHandle,
+    notify_observers_callback: BlockVecCallback,
+    notify_observers_context: *mut c_void,
+    notify_observers_drop_context: VoidPointerCallback,
 ) -> *mut ConfirmationHeightBoundedHandle {
+    let notify_observers_context =
+        ContextWrapper::new(notify_observers_context, notify_observers_drop_context);
+
+    let notify_observers: NotifyObserversCallback = Box::new(move |blocks| {
+        let cloned_blocks = blocks.clone();
+        let block_vec_handle = Box::into_raw(Box::new(BlockVecHandle(cloned_blocks)));
+        notify_observers_callback(notify_observers_context.get_context(), block_vec_handle);
+    });
+
     Box::into_raw(Box::new(ConfirmationHeightBoundedHandle(
-        ConfirmationHeightBounded::new((*write_db_queue).0.clone()),
+        ConfirmationHeightBounded::new((*write_db_queue).0.clone(), notify_observers),
     )))
 }
 
@@ -32,11 +52,14 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     timer: *mut TimerHandle,
     txn: *mut TransactionHandle,
     last_iteration: bool,
+    cemented_blocks: *mut BlockVecHandle,
 ) -> *mut WriteGuardHandle {
-    let (new_timer, write_guard) =
-        (*handle)
-            .0
-            .cement_blocks((*timer).0, (*txn).as_write_txn(), last_iteration);
+    let (new_timer, write_guard) = (*handle).0.cement_blocks(
+        (*timer).0,
+        (*txn).as_write_txn(),
+        last_iteration,
+        &mut (*cemented_blocks).0,
+    );
     (*timer).0 = new_timer;
 
     match write_guard {

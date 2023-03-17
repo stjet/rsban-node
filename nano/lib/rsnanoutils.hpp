@@ -109,6 +109,11 @@ public:
 	{
 	}
 
+	block_vec (rsnano::BlockVecHandle * handle_a) :
+		handle{ handle_a }
+	{
+	}
+
 	block_vec (block_vec const &) = delete;
 
 	~block_vec ()

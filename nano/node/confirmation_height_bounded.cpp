@@ -1,3 +1,4 @@
+#include "nano/lib/blocks.hpp"
 #include "nano/lib/numbers.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
@@ -541,6 +542,9 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 
 					//------------------------------
 					// todo: move code into this function:
+					rsnano::BlockHandle * new_block_handle = nullptr;
+					bool has_new_block = false;
+
 					auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
 					handle,
 					cemented_batch_timer.handle,
@@ -553,25 +557,28 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 					&total_blocks_cemented,
 					start_height,
 					new_cemented_frontier.bytes.data (),
-					account.bytes.data ());
+					account.bytes.data (),
+					block->get_handle (),
+					&new_block_handle,
+					&has_new_block);
+
+					if (has_new_block)
+					{
+						if (new_block_handle != nullptr)
+						{
+							block = nano::block_handle_to_block (new_block_handle);
+						}
+						else
+						{
+							block = nullptr;
+						}
+					}
 
 					if (write_guard_handle != nullptr)
 					{
 						scoped_write_guard_a = nano::write_guard{ write_guard_handle };
 					}
 					//------------------------------
-
-					// Get the next block in the chain until we have reached the final desired one
-					if (!last_iteration)
-					{
-						new_cemented_frontier = block->sideband ().successor ();
-						block = ledger.store.block ().get (*transaction, new_cemented_frontier);
-					}
-					else
-					{
-						// Confirm it is indeed the last one
-						debug_assert (new_cemented_frontier == pending.top_hash);
-					}
 				}
 
 				if (error)

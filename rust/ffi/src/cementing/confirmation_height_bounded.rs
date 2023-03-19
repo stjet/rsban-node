@@ -9,7 +9,7 @@ use rsnano_node::{
 
 use crate::{
     copy_hash_bytes,
-    core::BlockVecHandle,
+    core::{BlockHandle, BlockVecHandle},
     ledger::datastore::{
         LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle,
     },
@@ -77,12 +77,20 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     num_blocks_iterated: u64,
     total_blocks_cemented: *mut u64,
     start_height: u64,
-    new_cemented_frontier: *const u8,
+    new_cemented_frontier_bytes: *mut u8,
     account: *const u8,
+    block: *mut BlockHandle,
+    new_block: *mut *mut BlockHandle,
+    has_new_block: *mut bool,
 ) -> *mut WriteGuardHandle {
-    let new_cemented_frontier = BlockHash::from_ptr(new_cemented_frontier);
+    let mut new_cemented_frontier = BlockHash::from_ptr(new_cemented_frontier_bytes);
+    let mut block = if block.is_null() {
+        None
+    } else {
+        Some((*block).block.clone())
+    };
 
-    let (new_timer, write_guard) = (*handle).0.cement_blocks(
+    let (new_timer, write_guard, block_changed) = (*handle).0.cement_blocks(
         (*timer).0,
         (*txn).as_write_txn(),
         last_iteration,
@@ -92,10 +100,21 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
         num_blocks_iterated,
         &mut *total_blocks_cemented,
         start_height,
-        &new_cemented_frontier,
+        &mut new_cemented_frontier,
         &Account::from_ptr(account),
+        &mut block,
     );
     (*timer).0 = new_timer;
+
+    if block_changed {
+        *new_block = match block {
+            Some(b) => Box::into_raw(Box::new(BlockHandle::new(b))),
+            None => std::ptr::null_mut(),
+        };
+    }
+    *has_new_block = block_changed;
+
+    copy_hash_bytes(new_cemented_frontier, new_cemented_frontier_bytes);
 
     match write_guard {
         Some(guard) => Box::into_raw(Box::new(WriteGuardHandle(guard))),

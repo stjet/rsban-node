@@ -63,9 +63,10 @@ impl ConfirmationHeightBounded {
         num_blocks_iterated: u64,
         total_blocks_cemented: &mut u64,
         start_height: u64,
-        new_cemented_frontier: &BlockHash,
+        new_cemented_frontier: &mut BlockHash,
         account: &Account,
-    ) -> (Instant, Option<WriteGuard>) {
+        block: &mut Option<Arc<RwLock<BlockEnum>>>,
+    ) -> (Instant, Option<WriteGuard>, bool) {
         let mut new_scoped_write_guard = None;
         let mut new_timer = cemented_batch_timer;
 
@@ -130,7 +131,31 @@ impl ConfirmationHeightBounded {
             new_timer = Instant::now();
         }
 
-        (new_timer, new_scoped_write_guard)
+        let mut block_changed = false;
+
+        // Get the next block in the chain until we have reached the final desired one
+        if !last_iteration {
+            *new_cemented_frontier = block
+                .as_ref()
+                .unwrap()
+                .read()
+                .unwrap()
+                .sideband()
+                .unwrap()
+                .successor;
+            *block = self
+                .ledger
+                .store
+                .block()
+                .get(txn.txn(), new_cemented_frontier)
+                .map(|b| Arc::new(RwLock::new(b)));
+            block_changed = true;
+        } else {
+            // Confirm it is indeed the last one
+            debug_assert!(*new_cemented_frontier == self.pending_writes.front().unwrap().top_hash);
+        }
+
+        (new_timer, new_scoped_write_guard, block_changed)
     }
 }
 

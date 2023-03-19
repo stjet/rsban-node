@@ -56,19 +56,38 @@ impl ConfirmationHeightBounded {
         &self,
         cemented_batch_timer: Instant,
         txn: &mut dyn WriteTransaction,
-        last_iteration: bool,
         cemented_blocks: &mut Vec<Arc<RwLock<BlockEnum>>>,
         scoped_write_guard: &mut WriteGuard,
         amount_to_change: u64,
+        num_blocks_confirmed: u64,
         num_blocks_iterated: u64,
         total_blocks_cemented: &mut u64,
         start_height: u64,
         new_cemented_frontier: &mut BlockHash,
         account: &Account,
         block: &mut Option<Arc<RwLock<BlockEnum>>>,
+        error: &mut bool,
     ) -> (Instant, Option<WriteGuard>, bool) {
         let mut new_scoped_write_guard = None;
         let mut new_timer = cemented_batch_timer;
+
+        if block.is_none() {
+            let error_str = format!(
+                "Failed to write confirmation height for block {} (bounded processor)",
+                new_cemented_frontier
+            );
+            self.logger.always_log(&error_str);
+            eprintln!("{}", error_str);
+            // Undo any blocks about to be cemented from this account for this pending write.
+            cemented_blocks.truncate(cemented_blocks.len() - num_blocks_iterated as usize);
+            *error = true;
+            // todo: break;
+            return (new_timer, new_scoped_write_guard, false);
+        }
+
+        let last_iteration = (num_blocks_confirmed - num_blocks_iterated) == 1;
+
+        cemented_blocks.push(block.as_ref().unwrap().clone());
 
         // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
         // Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.

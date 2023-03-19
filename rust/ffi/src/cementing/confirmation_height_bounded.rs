@@ -70,10 +70,10 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     handle: *mut ConfirmationHeightBoundedHandle,
     timer: *mut TimerHandle,
     txn: *mut TransactionHandle,
-    last_iteration: bool,
     cemented_blocks: *mut BlockVecHandle,
     write_guard: *mut WriteGuardHandle,
     amount_to_change: u64,
+    num_blocks_confirmed: u64,
     num_blocks_iterated: u64,
     total_blocks_cemented: *mut u64,
     start_height: u64,
@@ -82,6 +82,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     block: *mut BlockHandle,
     new_block: *mut *mut BlockHandle,
     has_new_block: *mut bool,
+    error: *mut bool,
 ) -> *mut WriteGuardHandle {
     let mut new_cemented_frontier = BlockHash::from_ptr(new_cemented_frontier_bytes);
     let mut block = if block.is_null() {
@@ -93,16 +94,17 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     let (new_timer, write_guard, block_changed) = (*handle).0.cement_blocks(
         (*timer).0,
         (*txn).as_write_txn(),
-        last_iteration,
         &mut (*cemented_blocks).0,
         &mut (*write_guard).0,
         amount_to_change,
+        num_blocks_confirmed,
         num_blocks_iterated,
         &mut *total_blocks_cemented,
         start_height,
         &mut new_cemented_frontier,
         &Account::from_ptr(account),
         &mut block,
+        &mut *error,
     );
     (*timer).0 = new_timer;
 

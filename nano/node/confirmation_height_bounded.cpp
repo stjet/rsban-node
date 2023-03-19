@@ -525,21 +525,6 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 				// an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
 				for (auto num_blocks_iterated = 0; num_blocks_confirmed - num_blocks_iterated != 0; ++num_blocks_iterated)
 				{
-					if (!block)
-					{
-						auto error_str = (boost::format ("Failed to write confirmation height for block %1% (bounded processor)") % new_cemented_frontier.to_string ()).str ();
-						logger->always_log (error_str);
-						std::cerr << error_str << std::endl;
-						// Undo any blocks about to be cemented from this account for this pending write.
-						cemented_blocks.erase_last (num_blocks_iterated);
-						error = true;
-						break;
-					}
-
-					auto last_iteration = (num_blocks_confirmed - num_blocks_iterated) == 1;
-
-					cemented_blocks.push_back (*block);
-
 					//------------------------------
 					// todo: move code into this function:
 					rsnano::BlockHandle * new_block_handle = nullptr;
@@ -549,10 +534,10 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 					handle,
 					cemented_batch_timer.handle,
 					transaction->get_rust_handle (),
-					last_iteration,
 					cemented_blocks.handle,
 					scoped_write_guard_a.handle,
 					amount_to_change,
+					num_blocks_confirmed,
 					num_blocks_iterated,
 					&total_blocks_cemented,
 					start_height,
@@ -560,7 +545,13 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 					account.bytes.data (),
 					block->get_handle (),
 					&new_block_handle,
-					&has_new_block);
+					&has_new_block,
+					&error);
+
+					if (error)
+					{
+						break;
+					}
 
 					if (has_new_block)
 					{

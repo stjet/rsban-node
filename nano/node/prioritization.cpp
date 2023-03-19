@@ -77,7 +77,7 @@ std::size_t nano::prioritization::size () const
 	return rsnano::rsn_prioritization_size (handle);
 }
 
-/** Returns number of buckets, 129 by default */
+/** Returns number of buckets, 62 by default */
 std::size_t nano::prioritization::bucket_count () const
 {
 	return rsnano::rsn_prioritization_bucket_count (handle);

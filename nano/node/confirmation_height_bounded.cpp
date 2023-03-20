@@ -470,51 +470,13 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 
 void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scoped_write_guard_a)
 {
-	// Will contain all blocks that have been cemented (bounded by batch_write_size)
-	// and will get run through the cemented observer callback
-	rsnano::block_vec cemented_blocks;
-	auto const maximum_batch_write_time = 250; // milliseconds
-	auto const maximum_batch_write_time_increase_cutoff = maximum_batch_write_time - (maximum_batch_write_time / 5);
-	auto const amount_to_change = batch_write_size.load () / 10; // 10%
-	auto const minimum_batch_write_size = 16384u;
-	rsnano::RsNanoTimer cemented_batch_timer;
-	auto error = false;
-	//------------------------------
-	// todo: move code into this function:
-	auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
-	handle,
-	cemented_batch_timer.handle,
-	cemented_blocks.handle,
-	scoped_write_guard_a.handle,
-	amount_to_change,
-	&error);
+	auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (handle, scoped_write_guard_a.handle);
 
 	if (write_guard_handle != nullptr)
 	{
 		scoped_write_guard_a = nano::write_guard{ write_guard_handle };
 	}
-	//------------------------------
-	auto time_spent_cementing = cemented_batch_timer.elapsed_ms ();
 
-	// Scope guard could have been released earlier (0 cemented_blocks would indicate that)
-	if (scoped_write_guard_a.is_owned () && !cemented_blocks.empty ())
-	{
-		scoped_write_guard_a.release ();
-		auto block_vector{ cemented_blocks.to_vector () };
-		notify_observers_callback (block_vector);
-	}
-
-	// Bail if there was an error. This indicates that there was a fatal issue with the ledger
-	// (the blocks probably got rolled back when they shouldn't have).
-	release_assert (!error);
-	if (time_spent_cementing > maximum_batch_write_time)
-	{
-		// Reduce (unless we have hit a floor)
-		batch_write_size.store (std::max<uint64_t> (minimum_batch_write_size, batch_write_size.load () - amount_to_change));
-	}
-
-	debug_assert (pending_writes.empty ());
-	debug_assert (rsnano::rsn_confirmation_height_bounded_pending_writes_size (handle) == 0);
 	timer.restart ();
 }
 

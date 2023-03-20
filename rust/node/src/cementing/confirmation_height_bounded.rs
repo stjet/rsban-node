@@ -62,26 +62,24 @@ impl ConfirmationHeightBounded {
         }
     }
 
-    pub fn cement_blocks(
-        &mut self,
-        mut cemented_batch_timer: Instant,
-        cemented_blocks: &mut Vec<Arc<RwLock<BlockEnum>>>,
-        scoped_write_guard: &mut WriteGuard,
-        amount_to_change: u64,
-        error: &mut bool,
-    ) -> (Instant, Option<WriteGuard>) {
+    pub fn cement_blocks(&mut self, scoped_write_guard: &mut WriteGuard) -> Option<WriteGuard> {
         let mut new_scoped_write_guard = None;
-        let mut new_timer;
+        let mut cemented_batch_timer: Instant;
+        let mut error = false;
+        let amount_to_change = self.batch_write_size.load(Ordering::SeqCst) / 10; // 10%
+
+        // Will contain all blocks that have been cemented (bounded by batch_write_size)
+        // and will get run through the cemented observer callback
+        let mut cemented_blocks: Vec<Arc<RwLock<BlockEnum>>> = Vec::new();
 
         {
             // This only writes to the confirmation_height table and is the only place to do so in a single process
             let mut txn = self.ledger.store.tx_begin_write();
             cemented_batch_timer = Instant::now();
-            new_timer = cemented_batch_timer;
 
             // Cement all pending entries, each entry is specific to an account and contains the least amount
             // of blocks to retain consistent cementing across all account chains to genesis.
-            while !*error && !self.pending_writes.is_empty() {
+            while !error && !self.pending_writes.is_empty() {
                 let pending = self.pending_writes.front().unwrap();
                 let account = pending.account;
                 let confirmation_height_info = self
@@ -136,7 +134,7 @@ impl ConfirmationHeightBounded {
                             // Undo any blocks about to be cemented from this account for this pending write.
                             cemented_blocks
                                 .truncate(cemented_blocks.len() - num_blocks_iterated as usize);
-                            *error = true;
+                            error = true;
                             break;
                         }
 
@@ -209,7 +207,6 @@ impl ConfirmationHeightBounded {
                             }
 
                             cemented_batch_timer = Instant::now();
-                            new_timer = cemented_batch_timer;
                         }
 
                         // Get the next block in the chain until we have reached the final desired one
@@ -270,7 +267,31 @@ impl ConfirmationHeightBounded {
             ));
         }
 
-        (new_timer, new_scoped_write_guard)
+        // Scope guard could have been released earlier (0 cemented_blocks would indicate that)
+        if scoped_write_guard.is_owned() && !cemented_blocks.is_empty() {
+            scoped_write_guard.release();
+            (self.notify_observers_callback)(&cemented_blocks);
+        }
+
+        // Bail if there was an error. This indicates that there was a fatal issue with the ledger
+        // (the blocks probably got rolled back when they shouldn't have).
+        assert!(!error);
+
+        if time_spent_cementing as u64 > MAXIMUM_BATCH_WRITE_TIME {
+            // Reduce (unless we have hit a floor)
+            self.batch_write_size.store(
+                max(
+                    MINIMUM_BATCH_WRITE_SIZE,
+                    self.batch_write_size.load(Ordering::SeqCst) - amount_to_change,
+                ),
+                Ordering::SeqCst,
+            );
+        }
+
+        debug_assert!(self.pending_writes.is_empty());
+        debug_assert!(self.pending_writes_size.load(Ordering::Relaxed) == 0);
+
+        new_scoped_write_guard
     }
 }
 

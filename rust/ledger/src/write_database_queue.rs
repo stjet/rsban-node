@@ -29,6 +29,10 @@ impl WriteGuard {
         }
     }
 
+    pub fn is_owned(&self) -> bool {
+        self.guard_finish_callback.is_some()
+    }
+
     pub fn null() -> Self {
         Self {
             guard_finish_callback: None,

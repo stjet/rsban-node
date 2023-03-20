@@ -73,29 +73,17 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     cemented_blocks: *mut BlockVecHandle,
     write_guard: *mut WriteGuardHandle,
     amount_to_change: u64,
-    num_blocks_confirmed: u64,
-    start_height: u64,
-    new_cemented_frontier_bytes: *mut u8,
-    account: *const u8,
     error: *mut bool,
 ) -> *mut WriteGuardHandle {
-    let mut new_cemented_frontier = BlockHash::from_ptr(new_cemented_frontier_bytes);
-
     let (new_timer, write_guard) = (*handle).0.cement_blocks(
         (*timer).0,
         (*txn).as_write_txn(),
         &mut (*cemented_blocks).0,
         &mut (*write_guard).0,
         amount_to_change,
-        num_blocks_confirmed,
-        start_height,
-        &mut new_cemented_frontier,
-        &Account::from_ptr(account),
         &mut *error,
     );
     (*timer).0 = new_timer;
-
-    copy_hash_bytes(new_cemented_frontier, new_cemented_frontier_bytes);
 
     match write_guard {
         Some(guard) => Box::into_raw(Box::new(WriteGuardHandle(guard))),

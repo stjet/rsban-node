@@ -486,66 +486,31 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 		while (!error && !pending_writes.empty ())
 		{
 			auto pending = pending_writes.front ();
-			auto const & account = pending.account;
 
 			nano::confirmation_height_info confirmation_height_info;
 			ledger.store.confirmation_height ().get (*transaction, pending.account, confirmation_height_info);
 
-			// Some blocks need to be cemented at least
-			if (pending.top_height > confirmation_height_info.height ())
+			//------------------------------
+			// todo: move code into this function:
+			auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
+			handle,
+			cemented_batch_timer.handle,
+			transaction->get_rust_handle (),
+			cemented_blocks.handle,
+			scoped_write_guard_a.handle,
+			amount_to_change,
+			&error);
+
+			if (error)
 			{
-				// The highest hash which will be cemented
-				nano::block_hash new_cemented_frontier;
-				uint64_t num_blocks_confirmed = 0;
-				uint64_t start_height = 0;
-				if (pending.bottom_height > confirmation_height_info.height ())
-				{
-					new_cemented_frontier = pending.bottom_hash;
-					// If we are higher than the cemented frontier, we should be exactly 1 block above
-					debug_assert (pending.bottom_height == confirmation_height_info.height () + 1);
-					num_blocks_confirmed = pending.top_height - pending.bottom_height + 1;
-					start_height = pending.bottom_height;
-				}
-				else
-				{
-					auto block = ledger.store.block ().get (*transaction, confirmation_height_info.frontier ());
-					new_cemented_frontier = block->sideband ().successor ();
-					num_blocks_confirmed = pending.top_height - confirmation_height_info.height ();
-					start_height = confirmation_height_info.height () + 1;
-				}
-
-				//------------------------------
-				// todo: move code into this function:
-				auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
-				handle,
-				cemented_batch_timer.handle,
-				transaction->get_rust_handle (),
-				cemented_blocks.handle,
-				scoped_write_guard_a.handle,
-				amount_to_change,
-				num_blocks_confirmed,
-				start_height,
-				new_cemented_frontier.bytes.data (),
-				account.bytes.data (),
-				&error);
-
-				if (error)
-				{
-					break;
-				}
-
-				if (write_guard_handle != nullptr)
-				{
-					scoped_write_guard_a = nano::write_guard{ write_guard_handle };
-				}
-				//------------------------------
-
-				if (error)
-				{
-					// There was an error writing a block, do not process any more
-					break;
-				}
+				break;
 			}
+
+			if (write_guard_handle != nullptr)
+			{
+				scoped_write_guard_a = nano::write_guard{ write_guard_handle };
+			}
+			//------------------------------
 
 			auto it = accounts_confirmed_info.find (pending.account);
 			if (it != accounts_confirmed_info.cend () && it->second.confirmed_height == pending.top_height)

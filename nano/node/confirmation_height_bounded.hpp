@@ -109,6 +109,28 @@ private:
 			}
 			return it->second;
 		}
+
+		size_t size () const
+		{
+			return internal_map.size ();
+		}
+
+		void insert (nano::account const & account, confirmed_info const & info)
+		{
+			internal_map.insert_or_assign (account, info);
+		}
+
+		void erase (nano::account const & account)
+		{
+			internal_map.erase (account);
+		}
+
+		void clear ()
+		{
+			internal_map.clear ();
+		}
+
+	private:
 		std::unordered_map<account, confirmed_info> internal_map{};
 	};
 

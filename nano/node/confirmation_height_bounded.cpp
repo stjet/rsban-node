@@ -281,7 +281,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 			auto finished_iterating = current == original_block->hash ();
 			auto non_awaiting_processing = awaiting_processing_size_callback () == 0;
 			auto should_output = finished_iterating && (non_awaiting_processing || min_time_exceeded);
-			auto force_write = pending_writes.size () >= pending_writes_max_size || accounts_confirmed_info.internal_map.size () >= pending_writes_max_size;
+			auto force_write = pending_writes.size () >= pending_writes_max_size || accounts_confirmed_info.size () >= pending_writes_max_size;
 
 			if ((max_batch_write_size_reached || should_output || force_write) && !pending_writes.empty ())
 			{
@@ -407,11 +407,11 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 			auto found_info{ accounts_confirmed_info.find (preparation_data_a.account) };
 			if (found_info)
 			{
-				accounts_confirmed_info.internal_map.insert_or_assign (preparation_data_a.account, confirmed_info_l);
+				accounts_confirmed_info.insert (preparation_data_a.account, confirmed_info_l);
 			}
 			else
 			{
-				accounts_confirmed_info.internal_map.emplace (preparation_data_a.account, confirmed_info_l);
+				accounts_confirmed_info.insert (preparation_data_a.account, confirmed_info_l);
 				++accounts_confirmed_info_size;
 			}
 
@@ -433,16 +433,16 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 	auto & receive_details = preparation_data_a.receive_details;
 	if (receive_details)
 	{
-		auto receive_confirmed_info_it = accounts_confirmed_info.internal_map.find (receive_details->account);
-		if (receive_confirmed_info_it != accounts_confirmed_info.internal_map.cend ())
+		auto found_info{ accounts_confirmed_info.find (receive_details->account) };
+		if (found_info)
 		{
-			auto & receive_confirmed_info = receive_confirmed_info_it->second;
-			receive_confirmed_info.confirmed_height = receive_details->height;
-			receive_confirmed_info.iterated_frontier = receive_details->hash;
+			nano::confirmation_height_bounded::confirmed_info receive_confirmed_info{ receive_details->height, receive_details->hash };
+			accounts_confirmed_info.insert (receive_details->account, receive_confirmed_info);
 		}
 		else
 		{
-			accounts_confirmed_info.internal_map.emplace (std::piecewise_construct, std::forward_as_tuple (receive_details->account), std::forward_as_tuple (receive_details->height, receive_details->hash));
+			nano::confirmation_height_bounded::confirmed_info receive_confirmed_info{ receive_details->height, receive_details->hash };
+			accounts_confirmed_info.insert (receive_details->account, receive_confirmed_info);
 			++accounts_confirmed_info_size;
 		}
 
@@ -510,10 +510,10 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 			}
 			//------------------------------
 
-			auto it = accounts_confirmed_info.internal_map.find (pending.account);
-			if (it != accounts_confirmed_info.internal_map.cend () && it->second.confirmed_height == pending.top_height)
+			auto found_info{ accounts_confirmed_info.find (pending.account) };
+			if (found_info && found_info->confirmed_height == pending.top_height)
 			{
-				accounts_confirmed_info.internal_map.erase (pending.account);
+				accounts_confirmed_info.erase (pending.account);
 				--accounts_confirmed_info_size;
 			}
 			pending_writes.pop_front ();
@@ -555,7 +555,7 @@ bool nano::confirmation_height_bounded::pending_empty () const
 
 void nano::confirmation_height_bounded::clear_process_vars ()
 {
-	accounts_confirmed_info.internal_map.clear ();
+	accounts_confirmed_info.clear ();
 	accounts_confirmed_info_size = 0;
 }
 
@@ -615,7 +615,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", confirmation_height_bounded.pending_writes_size, sizeof (nano::confirmation_height_bounded::write_details) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", confirmation_height_bounded.accounts_confirmed_info_size, sizeof (decltype (confirmation_height_bounded.accounts_confirmed_info.internal_map)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", confirmation_height_bounded.accounts_confirmed_info_size, sizeof (nano::account) + sizeof (nano::confirmation_height_bounded::confirmed_info) }));
 	return composite;
 }
 

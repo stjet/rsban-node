@@ -236,6 +236,24 @@ pub struct ConfirmedInfoDto {
     pub iterated_frontier: [u8; 32],
 }
 
+impl From<&ConfirmedInfo> for ConfirmedInfoDto {
+    fn from(value: &ConfirmedInfo) -> Self {
+        Self {
+            confirmed_height: value.confirmed_height,
+            iterated_frontier: value.iterated_frontier.as_bytes().clone(),
+        }
+    }
+}
+
+impl From<&ConfirmedInfoDto> for ConfirmedInfo {
+    fn from(value: &ConfirmedInfoDto) -> Self {
+        Self {
+            confirmed_height: value.confirmed_height,
+            iterated_frontier: BlockHash::from_bytes(value.iterated_frontier),
+        }
+    }
+}
+
 pub struct AccountsConfirmedInfoHandle(pub HashMap<Account, ConfirmedInfo>);
 
 #[no_mangle]
@@ -248,4 +266,52 @@ pub unsafe extern "C" fn rsn_accounts_confirmed_info_destroy(
     handle: *mut AccountsConfirmedInfoHandle,
 ) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_accounts_confirmed_info_find(
+    handle: *mut AccountsConfirmedInfoHandle,
+    account: *const u8,
+    result: *mut ConfirmedInfoDto,
+) -> bool {
+    match (*handle).0.get(&Account::from_ptr(account)) {
+        Some(info) => {
+            *result = info.into();
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_accounts_confirmed_info_size(
+    handle: *mut AccountsConfirmedInfoHandle,
+) -> usize {
+    (*handle).0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_accounts_confirmed_info_insert(
+    handle: *mut AccountsConfirmedInfoHandle,
+    account: *const u8,
+    info: *const ConfirmedInfoDto,
+) {
+    (*handle)
+        .0
+        .insert(Account::from_ptr(account), (&*info).into());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_accounts_confirmed_info_erase(
+    handle: *mut AccountsConfirmedInfoHandle,
+    account: *const u8,
+) {
+    (*handle).0.remove(&Account::from_ptr(account));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_accounts_confirmed_info_clear(
+    handle: *mut AccountsConfirmedInfoHandle,
+) {
+    (*handle).0.clear();
 }

@@ -100,38 +100,55 @@ private:
 	class accounts_confirmed_info_map
 	{
 	public:
+		accounts_confirmed_info_map () :
+			handle{ rsnano::rsn_accounts_confirmed_info_create () }
+		{
+		}
+		accounts_confirmed_info_map (accounts_confirmed_info_map const &) = delete;
+		~accounts_confirmed_info_map ()
+		{
+			rsnano::rsn_accounts_confirmed_info_destroy (handle);
+		}
+
 		std::optional<confirmed_info> find (nano::account const & account)
 		{
-			auto it{ internal_map.find (account) };
-			if (it == internal_map.end ())
+			rsnano::ConfirmedInfoDto result;
+			if (rsnano::rsn_accounts_confirmed_info_find (handle, account.bytes.data (), &result))
+			{
+				nano::block_hash hash;
+				std::copy (std::begin (result.iterated_frontier), std::end (result.iterated_frontier), std::begin (hash.bytes));
+				return confirmed_info{ result.confirmed_height, hash };
+			}
+			else
 			{
 				return std::nullopt;
 			}
-			return it->second;
 		}
 
 		size_t size () const
 		{
-			return internal_map.size ();
+			return rsnano::rsn_accounts_confirmed_info_size (handle);
 		}
 
 		void insert (nano::account const & account, confirmed_info const & info)
 		{
-			internal_map.insert_or_assign (account, info);
+			rsnano::ConfirmedInfoDto info_dto;
+			info_dto.confirmed_height = info.confirmed_height;
+			std::copy (std::begin (info.iterated_frontier.bytes), std::end (info.iterated_frontier.bytes), std::begin (info_dto.iterated_frontier));
+			rsnano::rsn_accounts_confirmed_info_insert (handle, account.bytes.data (), &info_dto);
 		}
 
 		void erase (nano::account const & account)
 		{
-			internal_map.erase (account);
+			rsnano::rsn_accounts_confirmed_info_erase (handle, account.bytes.data ());
 		}
 
 		void clear ()
 		{
-			internal_map.clear ();
+			rsnano::rsn_accounts_confirmed_info_clear (handle);
 		}
 
-	private:
-		std::unordered_map<account, confirmed_info> internal_map{};
+		rsnano::AccountsConfirmedInfoHandle * handle;
 	};
 
 	/** The maximum number of blocks to be read in while iterating over a long account chain */

@@ -479,44 +479,22 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 	auto const minimum_batch_write_size = 16384u;
 	rsnano::RsNanoTimer cemented_batch_timer;
 	auto error = false;
+	//------------------------------
+	// todo: move code into this function:
+	auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
+	handle,
+	cemented_batch_timer.handle,
+	cemented_blocks.handle,
+	scoped_write_guard_a.handle,
+	amount_to_change,
+	&error);
+
+	if (write_guard_handle != nullptr)
 	{
-		// This only writes to the confirmation_height table and is the only place to do so in a single process
-		auto transaction (ledger.store.tx_begin_write ({}, { nano::tables::confirmation_height }));
-		cemented_batch_timer.restart ();
-		// Cement all pending entries, each entry is specific to an account and contains the least amount
-		// of blocks to retain consistent cementing across all account chains to genesis.
-		while (!error && !pending_writes.empty ())
-		{
-			auto pending = pending_writes.front ();
-
-			//------------------------------
-			// todo: move code into this function:
-			auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
-			handle,
-			cemented_batch_timer.handle,
-			transaction->get_rust_handle (),
-			cemented_blocks.handle,
-			scoped_write_guard_a.handle,
-			amount_to_change,
-			&error);
-
-			if (error)
-			{
-				break;
-			}
-
-			if (write_guard_handle != nullptr)
-			{
-				scoped_write_guard_a = nano::write_guard{ write_guard_handle };
-			}
-			//------------------------------
-		}
+		scoped_write_guard_a = nano::write_guard{ write_guard_handle };
 	}
+	//------------------------------
 	auto time_spent_cementing = cemented_batch_timer.elapsed_ms ();
-	if (logging.timing_logging () && time_spent_cementing > 50)
-	{
-		logger->always_log (boost::str (boost::format ("Cemented %1% blocks in %2% ms (bounded processor)") % cemented_blocks.size () % time_spent_cementing));
-	}
 
 	// Scope guard could have been released earlier (0 cemented_blocks would indicate that)
 	if (scoped_write_guard_a.is_owned () && !cemented_blocks.empty ())

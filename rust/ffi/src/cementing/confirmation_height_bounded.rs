@@ -16,9 +16,7 @@ use rsnano_node::{
 use crate::{
     copy_hash_bytes,
     core::BlockVecHandle,
-    ledger::datastore::{
-        LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle,
-    },
+    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle, WriteGuardHandle},
     utils::{ContextWrapper, LoggerHandle, LoggerMT, TimerHandle},
     LoggingDto, VoidPointerCallback,
 };
@@ -75,7 +73,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_destroy(
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
     handle: *mut ConfirmationHeightBoundedHandle,
     timer: *mut TimerHandle,
-    txn: *mut TransactionHandle,
     cemented_blocks: *mut BlockVecHandle,
     write_guard: *mut WriteGuardHandle,
     amount_to_change: u64,
@@ -83,7 +80,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
 ) -> *mut WriteGuardHandle {
     let (new_timer, write_guard) = (*handle).0.cement_blocks(
         (*timer).0,
-        (*txn).as_write_txn(),
         &mut (*cemented_blocks).0,
         &mut (*write_guard).0,
         amount_to_change,

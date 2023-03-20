@@ -1,8 +1,8 @@
 use std::{
     cmp::max,
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU64, AtomicUsize, Ordering},
         Arc, RwLock,
     },
     time::Instant,
@@ -30,6 +30,9 @@ pub struct ConfirmationHeightBounded {
     logger: Arc<dyn Logger>,
     logging: Logging,
     ledger: Arc<Ledger>,
+    pub accounts_info_confirmed: HashMap<Account, ConfirmedInfo>,
+    pub accounts_info_confirmed_size: AtomicUsize,
+    pub pending_writes_size: AtomicUsize,
 }
 
 const MAXIMUM_BATCH_WRITE_TIME: u64 = 250; // milliseconds
@@ -54,11 +57,14 @@ impl ConfirmationHeightBounded {
             logger,
             logging,
             ledger,
+            accounts_info_confirmed: HashMap::new(),
+            accounts_info_confirmed_size: AtomicUsize::new(0),
+            pending_writes_size: AtomicUsize::new(0),
         }
     }
 
     pub fn cement_blocks(
-        &self,
+        &mut self,
         cemented_batch_timer: Instant,
         txn: &mut dyn WriteTransaction,
         cemented_blocks: &mut Vec<Arc<RwLock<BlockEnum>>>,
@@ -228,6 +234,16 @@ impl ConfirmationHeightBounded {
                 );
             }
         }
+
+        if let Some(found_info) = self.accounts_info_confirmed.get(&pending.account) {
+            if found_info.confirmed_height == pending.top_height {
+                self.accounts_info_confirmed.remove(&pending.account);
+                self.accounts_info_confirmed_size
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+        }
+        self.pending_writes.pop_front();
+        self.pending_writes_size.fetch_sub(1, Ordering::Relaxed);
 
         (new_timer, new_scoped_write_guard)
     }

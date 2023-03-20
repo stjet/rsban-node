@@ -1,4 +1,7 @@
-use std::{collections::HashMap, ffi::c_void, sync::Arc};
+use std::{
+    ffi::c_void,
+    sync::{atomic::Ordering, Arc},
+};
 
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockHash};
@@ -92,6 +95,85 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_cement_blocks(
         Some(guard) => Box::into_raw(Box::new(WriteGuardHandle(guard))),
         None => std::ptr::null_mut(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info_size(
+    handle: *mut ConfirmationHeightBoundedHandle,
+) -> usize {
+    (*handle)
+        .0
+        .accounts_info_confirmed_size
+        .load(Ordering::Relaxed)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info_size_inc(
+    handle: *mut ConfirmationHeightBoundedHandle,
+) {
+    (*handle)
+        .0
+        .accounts_info_confirmed_size
+        .fetch_add(1, Ordering::Relaxed);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info_size_dec(
+    handle: *mut ConfirmationHeightBoundedHandle,
+) {
+    (*handle)
+        .0
+        .accounts_info_confirmed_size
+        .fetch_sub(1, Ordering::Relaxed);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info_size_store(
+    handle: *mut ConfirmationHeightBoundedHandle,
+    value: usize,
+) {
+    (*handle)
+        .0
+        .accounts_info_confirmed_size
+        .store(value, Ordering::Relaxed);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size(
+    handle: *mut ConfirmationHeightBoundedHandle,
+) -> usize {
+    (*handle).0.pending_writes_size.load(Ordering::Relaxed)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size_inc(
+    handle: *mut ConfirmationHeightBoundedHandle,
+) {
+    (*handle)
+        .0
+        .pending_writes_size
+        .fetch_add(1, Ordering::Relaxed);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size_dec(
+    handle: *mut ConfirmationHeightBoundedHandle,
+) {
+    (*handle)
+        .0
+        .pending_writes_size
+        .fetch_sub(1, Ordering::Relaxed);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size_store(
+    handle: *mut ConfirmationHeightBoundedHandle,
+    value: usize,
+) {
+    (*handle)
+        .0
+        .pending_writes_size
+        .store(value, Ordering::Relaxed);
 }
 
 // ----------------------------------
@@ -254,27 +336,17 @@ impl From<&ConfirmedInfoDto> for ConfirmedInfo {
     }
 }
 
-pub struct AccountsConfirmedInfoHandle(pub HashMap<Account, ConfirmedInfo>);
-
-#[no_mangle]
-pub extern "C" fn rsn_accounts_confirmed_info_create() -> *mut AccountsConfirmedInfoHandle {
-    Box::into_raw(Box::new(AccountsConfirmedInfoHandle(HashMap::new())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_accounts_confirmed_info_destroy(
-    handle: *mut AccountsConfirmedInfoHandle,
-) {
-    drop(Box::from_raw(handle))
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_accounts_confirmed_info_find(
-    handle: *mut AccountsConfirmedInfoHandle,
+    handle: *mut ConfirmationHeightBoundedHandle,
     account: *const u8,
     result: *mut ConfirmedInfoDto,
 ) -> bool {
-    match (*handle).0.get(&Account::from_ptr(account)) {
+    match (*handle)
+        .0
+        .accounts_info_confirmed
+        .get(&Account::from_ptr(account))
+    {
         Some(info) => {
             *result = info.into();
             true
@@ -285,33 +357,37 @@ pub unsafe extern "C" fn rsn_accounts_confirmed_info_find(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_accounts_confirmed_info_size(
-    handle: *mut AccountsConfirmedInfoHandle,
+    handle: *mut ConfirmationHeightBoundedHandle,
 ) -> usize {
-    (*handle).0.len()
+    (*handle).0.accounts_info_confirmed.len()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_accounts_confirmed_info_insert(
-    handle: *mut AccountsConfirmedInfoHandle,
+    handle: *mut ConfirmationHeightBoundedHandle,
     account: *const u8,
     info: *const ConfirmedInfoDto,
 ) {
     (*handle)
         .0
+        .accounts_info_confirmed
         .insert(Account::from_ptr(account), (&*info).into());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_accounts_confirmed_info_erase(
-    handle: *mut AccountsConfirmedInfoHandle,
+    handle: *mut ConfirmationHeightBoundedHandle,
     account: *const u8,
 ) {
-    (*handle).0.remove(&Account::from_ptr(account));
+    (*handle)
+        .0
+        .accounts_info_confirmed
+        .remove(&Account::from_ptr(account));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_accounts_confirmed_info_clear(
-    handle: *mut AccountsConfirmedInfoHandle,
+    handle: *mut ConfirmationHeightBoundedHandle,
 ) {
-    (*handle).0.clear();
+    (*handle).0.accounts_info_confirmed.clear();
 }

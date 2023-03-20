@@ -100,14 +100,9 @@ private:
 	class accounts_confirmed_info_map
 	{
 	public:
-		accounts_confirmed_info_map () :
-			handle{ rsnano::rsn_accounts_confirmed_info_create () }
+		accounts_confirmed_info_map (rsnano::ConfirmationHeightBoundedHandle * handle_a) :
+			handle{ handle_a }
 		{
-		}
-		accounts_confirmed_info_map (accounts_confirmed_info_map const &) = delete;
-		~accounts_confirmed_info_map ()
-		{
-			rsnano::rsn_accounts_confirmed_info_destroy (handle);
 		}
 
 		std::optional<confirmed_info> find (nano::account const & account)
@@ -148,7 +143,7 @@ private:
 			rsnano::rsn_accounts_confirmed_info_clear (handle);
 		}
 
-		rsnano::AccountsConfirmedInfoHandle * handle;
+		rsnano::ConfirmationHeightBoundedHandle * handle;
 	};
 
 	/** The maximum number of blocks to be read in while iterating over a long account chain */
@@ -165,11 +160,9 @@ private:
 	// upon in any way (does not synchronize with any other data).
 	// This allows the load and stores to use relaxed atomic memory ordering.
 	pending_writes_queue pending_writes;
-	nano::relaxed_atomic_integral<uint64_t> pending_writes_size{ 0 };
 	uint32_t const pending_writes_max_size{ max_items };
 	/* Holds confirmation height/cemented frontier in memory for accounts while iterating */
-	accounts_confirmed_info_map accounts_confirmed_info{};
-	nano::relaxed_atomic_integral<uint64_t> accounts_confirmed_info_size{ 0 };
+	accounts_confirmed_info_map accounts_confirmed_info;
 
 	class receive_chain_details final
 	{

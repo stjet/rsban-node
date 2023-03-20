@@ -87,6 +87,7 @@ nano::ledger & ledger_a)
 
 nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, std::atomic<bool> & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
 	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a, logger_a, logging_a, ledger_a) },
+	accounts_confirmed_info{ handle },
 	pending_writes{ handle },
 	ledger (ledger_a),
 	write_database_queue (write_database_queue_a),
@@ -412,7 +413,7 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 			else
 			{
 				accounts_confirmed_info.insert (preparation_data_a.account, confirmed_info_l);
-				++accounts_confirmed_info_size;
+				rsnano::rsn_confirmation_height_bounded_accounts_confirmed_info_size_inc (handle);
 			}
 
 			preparation_data_a.checkpoints.truncate_after (preparation_data_a.top_most_non_receive_block_hash);
@@ -425,7 +426,7 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 				preparation_data_a.top_most_non_receive_block_hash
 			};
 			pending_writes.push_back (details);
-			++pending_writes_size;
+			rsnano::rsn_confirmation_height_bounded_pending_writes_size_inc (handle);
 		}
 	}
 
@@ -443,7 +444,7 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 		{
 			nano::confirmation_height_bounded::confirmed_info receive_confirmed_info{ receive_details->height, receive_details->hash };
 			accounts_confirmed_info.insert (receive_details->account, receive_confirmed_info);
-			++accounts_confirmed_info_size;
+			rsnano::rsn_confirmation_height_bounded_accounts_confirmed_info_size_inc (handle);
 		}
 
 		if (receive_details->next.is_initialized ())
@@ -463,7 +464,7 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 			receive_details->hash
 		};
 		pending_writes.push_back (details);
-		++pending_writes_size;
+		rsnano::rsn_confirmation_height_bounded_pending_writes_size_inc (handle);
 	}
 }
 
@@ -509,15 +510,6 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 				scoped_write_guard_a = nano::write_guard{ write_guard_handle };
 			}
 			//------------------------------
-
-			auto found_info{ accounts_confirmed_info.find (pending.account) };
-			if (found_info && found_info->confirmed_height == pending.top_height)
-			{
-				accounts_confirmed_info.erase (pending.account);
-				--accounts_confirmed_info_size;
-			}
-			pending_writes.pop_front ();
-			--pending_writes_size;
 		}
 	}
 	auto time_spent_cementing = cemented_batch_timer.elapsed_ms ();
@@ -544,7 +536,7 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 	}
 
 	debug_assert (pending_writes.empty ());
-	debug_assert (pending_writes_size == 0);
+	debug_assert (rsnano::rsn_confirmation_height_bounded_pending_writes_size (handle) == 0);
 	timer.restart ();
 }
 
@@ -556,7 +548,7 @@ bool nano::confirmation_height_bounded::pending_empty () const
 void nano::confirmation_height_bounded::clear_process_vars ()
 {
 	accounts_confirmed_info.clear ();
-	accounts_confirmed_info_size = 0;
+	rsnano::rsn_confirmation_height_bounded_accounts_confirmed_info_size_store (handle, 0);
 }
 
 nano::confirmation_height_bounded::receive_chain_details::receive_chain_details (nano::account const & account_a, uint64_t height_a, nano::block_hash const & hash_a, nano::block_hash const & top_level_a, boost::optional<nano::block_hash> next_a, uint64_t bottom_height_a, nano::block_hash const & bottom_most_a) :
@@ -614,8 +606,8 @@ nano::confirmation_height_bounded::confirmed_info::confirmed_info (uint64_t conf
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_bounded & confirmation_height_bounded, std::string const & name_a)
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", confirmation_height_bounded.pending_writes_size, sizeof (nano::confirmation_height_bounded::write_details) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", confirmation_height_bounded.accounts_confirmed_info_size, sizeof (nano::account) + sizeof (nano::confirmation_height_bounded::confirmed_info) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", rsnano::rsn_confirmation_height_bounded_pending_writes_size (confirmation_height_bounded.handle), sizeof (nano::confirmation_height_bounded::write_details) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", rsnano::rsn_confirmation_height_bounded_accounts_confirmed_info_size (confirmation_height_bounded.handle), sizeof (nano::account) + sizeof (nano::confirmation_height_bounded::confirmed_info) }));
 	return composite;
 }
 

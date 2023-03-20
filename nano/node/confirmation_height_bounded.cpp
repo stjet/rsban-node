@@ -521,56 +521,50 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 				uint64_t total_blocks_cemented = 0;
 				auto block = ledger.store.block ().get (*transaction, new_cemented_frontier);
 
-				// Cementing starts from the bottom of the chain and works upwards. This is because chains can have effectively
-				// an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
-				for (auto num_blocks_iterated = 0; num_blocks_confirmed - num_blocks_iterated != 0; ++num_blocks_iterated)
+				//------------------------------
+				// todo: move code into this function:
+				rsnano::BlockHandle * new_block_handle = nullptr;
+				bool has_new_block = false;
+
+				auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
+				handle,
+				cemented_batch_timer.handle,
+				transaction->get_rust_handle (),
+				cemented_blocks.handle,
+				scoped_write_guard_a.handle,
+				amount_to_change,
+				num_blocks_confirmed,
+				&total_blocks_cemented,
+				start_height,
+				new_cemented_frontier.bytes.data (),
+				account.bytes.data (),
+				block->get_handle (),
+				&new_block_handle,
+				&has_new_block,
+				&error);
+
+				if (error)
 				{
-					//------------------------------
-					// todo: move code into this function:
-					rsnano::BlockHandle * new_block_handle = nullptr;
-					bool has_new_block = false;
-
-					auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
-					handle,
-					cemented_batch_timer.handle,
-					transaction->get_rust_handle (),
-					cemented_blocks.handle,
-					scoped_write_guard_a.handle,
-					amount_to_change,
-					num_blocks_confirmed,
-					num_blocks_iterated,
-					&total_blocks_cemented,
-					start_height,
-					new_cemented_frontier.bytes.data (),
-					account.bytes.data (),
-					block->get_handle (),
-					&new_block_handle,
-					&has_new_block,
-					&error);
-
-					if (error)
-					{
-						break;
-					}
-
-					if (has_new_block)
-					{
-						if (new_block_handle != nullptr)
-						{
-							block = nano::block_handle_to_block (new_block_handle);
-						}
-						else
-						{
-							block = nullptr;
-						}
-					}
-
-					if (write_guard_handle != nullptr)
-					{
-						scoped_write_guard_a = nano::write_guard{ write_guard_handle };
-					}
-					//------------------------------
+					break;
 				}
+
+				if (has_new_block)
+				{
+					if (new_block_handle != nullptr)
+					{
+						block = nano::block_handle_to_block (new_block_handle);
+					}
+					else
+					{
+						block = nullptr;
+					}
+				}
+
+				if (write_guard_handle != nullptr)
+				{
+					scoped_write_guard_a = nano::write_guard{ write_guard_handle };
+				}
+				//------------------------------
 
 				if (error)
 				{

@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace nano
 {
@@ -96,6 +97,21 @@ private:
 		rsnano::ConfirmationHeightBoundedHandle * handle;
 	};
 
+	class accounts_confirmed_info_map
+	{
+	public:
+		std::optional<confirmed_info> find (nano::account const & account)
+		{
+			auto it{ internal_map.find (account) };
+			if (it == internal_map.end ())
+			{
+				return std::nullopt;
+			}
+			return it->second;
+		}
+		std::unordered_map<account, confirmed_info> internal_map{};
+	};
+
 	/** The maximum number of blocks to be read in while iterating over a long account chain */
 	uint64_t const batch_read_size = 65536;
 
@@ -113,7 +129,7 @@ private:
 	nano::relaxed_atomic_integral<uint64_t> pending_writes_size{ 0 };
 	uint32_t const pending_writes_max_size{ max_items };
 	/* Holds confirmation height/cemented frontier in memory for accounts while iterating */
-	std::unordered_map<account, confirmed_info> accounts_confirmed_info;
+	accounts_confirmed_info_map accounts_confirmed_info{};
 	nano::relaxed_atomic_integral<uint64_t> accounts_confirmed_info_size{ 0 };
 
 	class receive_chain_details final
@@ -136,7 +152,6 @@ private:
 		nano::block_hash const & top_most_non_receive_block_hash;
 		bool already_cemented;
 		nano::hash_circular_buffer & checkpoints;
-		decltype (accounts_confirmed_info.begin ()) account_it;
 		nano::confirmation_height_info const & confirmation_height_info;
 		nano::account const & account;
 		uint64_t bottom_height;

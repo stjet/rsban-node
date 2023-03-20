@@ -17,6 +17,11 @@ use crate::config::Logging;
 
 pub type NotifyObserversCallback = Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)>;
 
+pub struct ConfirmedInfo {
+    pub confirmed_height: u64,
+    pub iterated_frontier: BlockHash,
+}
+
 pub struct ConfirmationHeightBounded {
     write_database_queue: Arc<WriteDatabaseQueue>,
     pub pending_writes: VecDeque<WriteDetails>,

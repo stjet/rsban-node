@@ -10,7 +10,7 @@ mod implicit_receive_cemented_mapping;
 mod unconfirmed_receive_and_sources_collector;
 
 pub use confirmation_height_bounded::{
-    truncate_after, ConfirmationHeightBounded, NotifyObserversCallback, WriteDetails,
+    truncate_after, ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback, WriteDetails,
 };
 pub use confirmation_height_unbounded::ConfirmationHeightUnbounded;
 pub use confirmed_iterated_pairs::ConfirmedIteratedPair;

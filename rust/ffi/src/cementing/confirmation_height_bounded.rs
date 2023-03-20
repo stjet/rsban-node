@@ -1,9 +1,12 @@
-use std::{ffi::c_void, sync::Arc};
+use std::{collections::HashMap, ffi::c_void, sync::Arc};
 
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockHash};
 use rsnano_node::{
-    cementing::{truncate_after, ConfirmationHeightBounded, NotifyObserversCallback, WriteDetails},
+    cementing::{
+        truncate_after, ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback,
+        WriteDetails,
+    },
     config::Logging,
 };
 
@@ -222,4 +225,27 @@ pub unsafe extern "C" fn rsn_hash_circular_buffer_truncate_after(
     hash: *const u8,
 ) {
     truncate_after(&mut (*handle).0, &BlockHash::from_ptr(hash));
+}
+
+// ----------------------------------
+// AccountsConfirmedInfo:
+
+#[repr(C)]
+pub struct ConfirmedInfoDto {
+    pub confirmed_height: u64,
+    pub iterated_frontier: [u8; 32],
+}
+
+pub struct AccountsConfirmedInfoHandle(pub HashMap<Account, ConfirmedInfo>);
+
+#[no_mangle]
+pub extern "C" fn rsn_accounts_confirmed_info_create() -> *mut AccountsConfirmedInfoHandle {
+    Box::into_raw(Box::new(AccountsConfirmedInfoHandle(HashMap::new())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_accounts_confirmed_info_destroy(
+    handle: *mut AccountsConfirmedInfoHandle,
+) {
+    drop(Box::from_raw(handle))
 }

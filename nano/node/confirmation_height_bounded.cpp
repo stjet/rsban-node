@@ -200,10 +200,10 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 
 		// Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
 		nano::confirmation_height_info confirmation_height_info;
-		auto account_it = accounts_confirmed_info.find (account);
-		if (account_it != accounts_confirmed_info.cend ())
+		auto found_info = accounts_confirmed_info.find (account);
+		if (found_info)
 		{
-			confirmation_height_info = nano::confirmation_height_info (account_it->second.confirmed_height, account_it->second.iterated_frontier);
+			confirmation_height_info = nano::confirmation_height_info (found_info->confirmed_height, found_info->iterated_frontier);
 		}
 		else
 		{
@@ -263,7 +263,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 		// Need to also handle the case where we are hitting receives where the sends below should be confirmed
 		if (!hit_receive || (receive_source_pairs.size () == 1 && top_most_non_receive_block_hash != current))
 		{
-			preparation_data preparation_data{ *transaction, top_most_non_receive_block_hash, already_cemented, checkpoints, account_it, confirmation_height_info, account, block_height, current, receive_details, next_in_receive_chain };
+			preparation_data preparation_data{ *transaction, top_most_non_receive_block_hash, already_cemented, checkpoints, confirmation_height_info, account, block_height, current, receive_details, next_in_receive_chain };
 			prepare_iterated_blocks_for_cementing (preparation_data);
 
 			// If used the top level, don't pop off the receive source pair because it wasn't used
@@ -281,7 +281,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 			auto finished_iterating = current == original_block->hash ();
 			auto non_awaiting_processing = awaiting_processing_size_callback () == 0;
 			auto should_output = finished_iterating && (non_awaiting_processing || min_time_exceeded);
-			auto force_write = pending_writes.size () >= pending_writes_max_size || accounts_confirmed_info.size () >= pending_writes_max_size;
+			auto force_write = pending_writes.size () >= pending_writes_max_size || accounts_confirmed_info.internal_map.size () >= pending_writes_max_size;
 
 			if ((max_batch_write_size_reached || should_output || force_write) && !pending_writes.empty ())
 			{
@@ -404,13 +404,14 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 		if (block_height > preparation_data_a.confirmation_height_info.height ())
 		{
 			confirmed_info confirmed_info_l{ block_height, preparation_data_a.top_most_non_receive_block_hash };
-			if (preparation_data_a.account_it != accounts_confirmed_info.cend ())
+			auto found_info{ accounts_confirmed_info.find (preparation_data_a.account) };
+			if (found_info)
 			{
-				preparation_data_a.account_it->second = confirmed_info_l;
+				accounts_confirmed_info.internal_map.insert_or_assign (preparation_data_a.account, confirmed_info_l);
 			}
 			else
 			{
-				accounts_confirmed_info.emplace (preparation_data_a.account, confirmed_info_l);
+				accounts_confirmed_info.internal_map.emplace (preparation_data_a.account, confirmed_info_l);
 				++accounts_confirmed_info_size;
 			}
 
@@ -432,8 +433,8 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 	auto & receive_details = preparation_data_a.receive_details;
 	if (receive_details)
 	{
-		auto receive_confirmed_info_it = accounts_confirmed_info.find (receive_details->account);
-		if (receive_confirmed_info_it != accounts_confirmed_info.cend ())
+		auto receive_confirmed_info_it = accounts_confirmed_info.internal_map.find (receive_details->account);
+		if (receive_confirmed_info_it != accounts_confirmed_info.internal_map.cend ())
 		{
 			auto & receive_confirmed_info = receive_confirmed_info_it->second;
 			receive_confirmed_info.confirmed_height = receive_details->height;
@@ -441,7 +442,7 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 		}
 		else
 		{
-			accounts_confirmed_info.emplace (std::piecewise_construct, std::forward_as_tuple (receive_details->account), std::forward_as_tuple (receive_details->height, receive_details->hash));
+			accounts_confirmed_info.internal_map.emplace (std::piecewise_construct, std::forward_as_tuple (receive_details->account), std::forward_as_tuple (receive_details->height, receive_details->hash));
 			++accounts_confirmed_info_size;
 		}
 
@@ -487,9 +488,6 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 		{
 			auto pending = pending_writes.front ();
 
-			nano::confirmation_height_info confirmation_height_info;
-			ledger.store.confirmation_height ().get (*transaction, pending.account, confirmation_height_info);
-
 			//------------------------------
 			// todo: move code into this function:
 			auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
@@ -512,10 +510,10 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 			}
 			//------------------------------
 
-			auto it = accounts_confirmed_info.find (pending.account);
-			if (it != accounts_confirmed_info.cend () && it->second.confirmed_height == pending.top_height)
+			auto it = accounts_confirmed_info.internal_map.find (pending.account);
+			if (it != accounts_confirmed_info.internal_map.cend () && it->second.confirmed_height == pending.top_height)
 			{
-				accounts_confirmed_info.erase (pending.account);
+				accounts_confirmed_info.internal_map.erase (pending.account);
 				--accounts_confirmed_info_size;
 			}
 			pending_writes.pop_front ();
@@ -557,7 +555,7 @@ bool nano::confirmation_height_bounded::pending_empty () const
 
 void nano::confirmation_height_bounded::clear_process_vars ()
 {
-	accounts_confirmed_info.clear ();
+	accounts_confirmed_info.internal_map.clear ();
 	accounts_confirmed_info_size = 0;
 }
 
@@ -617,7 +615,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", confirmation_height_bounded.pending_writes_size, sizeof (nano::confirmation_height_bounded::write_details) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", confirmation_height_bounded.accounts_confirmed_info_size, sizeof (decltype (confirmation_height_bounded.accounts_confirmed_info)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", confirmation_height_bounded.accounts_confirmed_info_size, sizeof (decltype (confirmation_height_bounded.accounts_confirmed_info.internal_map)::value_type) }));
 	return composite;
 }
 

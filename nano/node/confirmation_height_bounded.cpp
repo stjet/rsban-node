@@ -488,10 +488,6 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 			auto pending = pending_writes.front ();
 			auto const & account = pending.account;
 
-			auto write_confirmation_height = [&account, &ledger = ledger, &transaction] (uint64_t num_blocks_cemented, uint64_t confirmation_height, nano::block_hash const & confirmed_frontier) {
-				ledger.write_confirmation_height (*transaction, account, num_blocks_cemented, confirmation_height, confirmed_frontier);
-			};
-
 			nano::confirmation_height_info confirmation_height_info;
 			ledger.store.confirmation_height ().get (*transaction, pending.account, confirmation_height_info);
 
@@ -518,14 +514,8 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 					start_height = confirmation_height_info.height () + 1;
 				}
 
-				uint64_t total_blocks_cemented = 0;
-				auto block = ledger.store.block ().get (*transaction, new_cemented_frontier);
-
 				//------------------------------
 				// todo: move code into this function:
-				rsnano::BlockHandle * new_block_handle = nullptr;
-				bool has_new_block = false;
-
 				auto write_guard_handle = rsnano::rsn_confirmation_height_bounded_cement_blocks (
 				handle,
 				cemented_batch_timer.handle,
@@ -534,30 +524,14 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 				scoped_write_guard_a.handle,
 				amount_to_change,
 				num_blocks_confirmed,
-				&total_blocks_cemented,
 				start_height,
 				new_cemented_frontier.bytes.data (),
 				account.bytes.data (),
-				block->get_handle (),
-				&new_block_handle,
-				&has_new_block,
 				&error);
 
 				if (error)
 				{
 					break;
-				}
-
-				if (has_new_block)
-				{
-					if (new_block_handle != nullptr)
-					{
-						block = nano::block_handle_to_block (new_block_handle);
-					}
-					else
-					{
-						block = nullptr;
-					}
 				}
 
 				if (write_guard_handle != nullptr)
@@ -570,12 +544,6 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 				{
 					// There was an error writing a block, do not process any more
 					break;
-				}
-
-				auto num_blocks_cemented = num_blocks_confirmed - total_blocks_cemented;
-				if (num_blocks_cemented > 0)
-				{
-					write_confirmation_height (num_blocks_cemented, pending.top_height, new_cemented_frontier);
 				}
 			}
 

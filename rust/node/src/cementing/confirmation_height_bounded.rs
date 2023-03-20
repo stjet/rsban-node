@@ -60,16 +60,21 @@ impl ConfirmationHeightBounded {
         scoped_write_guard: &mut WriteGuard,
         amount_to_change: u64,
         num_blocks_confirmed: u64,
-        total_blocks_cemented: &mut u64,
         start_height: u64,
         new_cemented_frontier: &mut BlockHash,
         account: &Account,
-        block: &mut Option<Arc<RwLock<BlockEnum>>>,
         error: &mut bool,
-    ) -> (Instant, Option<WriteGuard>, bool) {
+    ) -> (Instant, Option<WriteGuard>) {
         let mut new_scoped_write_guard = None;
         let mut new_timer = cemented_batch_timer;
-        let mut block_changed = false;
+
+        let mut total_blocks_cemented = 0;
+        let mut block = self
+            .ledger
+            .store
+            .block()
+            .get(txn.txn(), new_cemented_frontier)
+            .map(|b| Arc::new(RwLock::new(b))); // todo remove RwLock???
 
         // Cementing starts from the bottom of the chain and works upwards. This is because chains can have effectively
         // an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
@@ -99,14 +104,14 @@ impl ConfirmationHeightBounded {
             {
                 let time_spent_cementing = cemented_batch_timer.elapsed().as_millis() as u64;
 
-                let num_blocks_cemented = num_blocks_iterated - *total_blocks_cemented + 1;
-                *total_blocks_cemented += num_blocks_cemented;
+                let num_blocks_cemented = num_blocks_iterated - total_blocks_cemented + 1;
+                total_blocks_cemented += num_blocks_cemented;
 
                 self.ledger.write_confirmation_height(
                     txn,
                     account,
                     num_blocks_cemented,
-                    start_height + *total_blocks_cemented - 1,
+                    start_height + total_blocks_cemented - 1,
                     new_cemented_frontier,
                 );
 
@@ -162,13 +167,12 @@ impl ConfirmationHeightBounded {
                     .sideband()
                     .unwrap()
                     .successor;
-                *block = self
+                block = self
                     .ledger
                     .store
                     .block()
                     .get(txn.txn(), new_cemented_frontier)
                     .map(|b| Arc::new(RwLock::new(b)));
-                block_changed = true;
             } else {
                 // Confirm it is indeed the last one
                 debug_assert!(
@@ -177,7 +181,19 @@ impl ConfirmationHeightBounded {
             }
         }
 
-        (new_timer, new_scoped_write_guard, block_changed)
+        let num_blocks_cemented = num_blocks_confirmed - total_blocks_cemented;
+        if num_blocks_cemented > 0 {
+            let pending = self.pending_writes.front().unwrap(); //todo use pending variable once it's ported
+            self.ledger.write_confirmation_height(
+                txn,
+                account,
+                num_blocks_cemented,
+                pending.top_height,
+                new_cemented_frontier,
+            );
+        }
+
+        (new_timer, new_scoped_write_guard)
     }
 }
 

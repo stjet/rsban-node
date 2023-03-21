@@ -55,9 +55,38 @@ private:
 	class top_and_next_hash final
 	{
 	public:
+		top_and_next_hash () = default;
+		top_and_next_hash (nano::block_hash top, boost::optional<nano::block_hash> next, uint64_t next_height) :
+			top{ top },
+			next{ next },
+			next_height{ next_height }
+		{
+		}
+		top_and_next_hash (rsnano::TopAndNextHashDto const & dto)
+		{
+			top = nano::block_hash::from_bytes (dto.top);
+			if (dto.has_next)
+			{
+				next = nano::block_hash::from_bytes (dto.next);
+			}
+			next_height = dto.next_height;
+		}
 		nano::block_hash top;
 		boost::optional<nano::block_hash> next;
 		uint64_t next_height;
+
+		rsnano::TopAndNextHashDto to_dto () const
+		{
+			rsnano::TopAndNextHashDto dto;
+			std::copy (std::begin (top.bytes), std::end (top.bytes), std::begin (dto.top));
+			dto.has_next = next.has_value ();
+			if (next)
+			{
+				std::copy (std::begin (next->bytes), std::end (next->bytes), std::begin (dto.next));
+			}
+			dto.next_height = next_height;
+			return dto;
+		}
 	};
 
 	class confirmed_info

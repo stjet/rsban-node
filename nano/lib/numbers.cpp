@@ -836,6 +836,13 @@ bool nano::public_key::operator!= (std::nullptr_t) const
 	return !(*this == nullptr);
 }
 
+nano::block_hash nano::block_hash::from_bytes (const uint8_t * value)
+{
+	nano::block_hash hash;
+	std::copy (value, value + 32, std::begin (hash.bytes));
+	return hash;
+}
+
 nano::block_hash::operator nano::link const & () const
 {
 	return reinterpret_cast<nano::link const &> (*this);

@@ -8,7 +8,7 @@ use rsnano_core::{Account, BlockHash};
 use rsnano_node::{
     cementing::{
         truncate_after, ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback,
-        ReceiveChainDetails, WriteDetails,
+        ReceiveChainDetails, TopAndNextHash, WriteDetails,
     },
     config::Logging,
 };
@@ -165,10 +165,26 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size_sto
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_prepare_iterated_blocks_for_cementing(
     handle: *mut ConfirmationHeightBoundedHandle,
     details: *const ReceiveChainDetailsDto,
+    checkpoints: *mut HashCircularBufferHandle,
+    has_next_in_receive_chain: *mut bool,
+    next_in_receive_chain: *mut TopAndNextHashDto,
 ) {
-    (*handle)
-        .0
-        .prepare_iterated_blocks_for_cementing(&(&*details).into())
+    let mut next = if *has_next_in_receive_chain {
+        Some((&*next_in_receive_chain).into())
+    } else {
+        None
+    };
+
+    (*handle).0.prepare_iterated_blocks_for_cementing(
+        &(&*details).into(),
+        &mut (*checkpoints).0,
+        &mut next,
+    );
+
+    *has_next_in_receive_chain = next.is_some();
+    if let Some(next) = &next {
+        *next_in_receive_chain = next.into();
+    }
 }
 
 // ----------------------------------
@@ -392,14 +408,14 @@ pub unsafe extern "C" fn rsn_accounts_confirmed_info_clear(
 
 #[repr(C)]
 pub struct ReceiveChainDetailsDto {
-    account: [u8; 32],
-    height: u64,
-    hash: [u8; 32],
-    top_level: [u8; 32],
-    next: [u8; 32],
-    has_next: bool,
-    bottom_height: u64,
-    bottom_most: [u8; 32],
+    pub account: [u8; 32],
+    pub height: u64,
+    pub hash: [u8; 32],
+    pub top_level: [u8; 32],
+    pub next: [u8; 32],
+    pub has_next: bool,
+    pub bottom_height: u64,
+    pub bottom_most: [u8; 32],
 }
 
 impl From<&ReceiveChainDetailsDto> for ReceiveChainDetails {
@@ -416,6 +432,39 @@ impl From<&ReceiveChainDetailsDto> for ReceiveChainDetails {
             },
             bottom_height: value.bottom_height,
             bottom_most: BlockHash::from_bytes(value.bottom_most),
+        }
+    }
+}
+
+#[repr(C)]
+pub struct TopAndNextHashDto {
+    pub top: [u8; 32],
+    pub has_next: bool,
+    pub next: [u8; 32],
+    pub next_height: u64,
+}
+
+impl From<&TopAndNextHash> for TopAndNextHashDto {
+    fn from(value: &TopAndNextHash) -> Self {
+        Self {
+            top: value.top.as_bytes().clone(),
+            has_next: value.next.is_some(),
+            next: value.next.unwrap_or_default().as_bytes().clone(),
+            next_height: value.next_height,
+        }
+    }
+}
+
+impl From<&TopAndNextHashDto> for TopAndNextHash {
+    fn from(value: &TopAndNextHashDto) -> Self {
+        Self {
+            top: BlockHash::from_bytes(value.top),
+            next: if value.has_next {
+                Some(BlockHash::from_bytes(value.next))
+            } else {
+                None
+            },
+            next_height: value.next_height,
         }
     }
 }

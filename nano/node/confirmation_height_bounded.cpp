@@ -451,15 +451,33 @@ boost::optional<nano::confirmation_height_bounded::top_and_next_hash> nano::conf
 
 		if (receive_details->next.is_initialized ())
 		{
-			next_in_receive_chain = top_and_next_hash{ receive_details->top_level, receive_details->next, receive_details->height + 1 };
+			next_in_receive_chain = nano::confirmation_height_bounded::top_and_next_hash{ receive_details->top_level, receive_details->next, receive_details->height + 1 };
 		}
 		else
 		{
 			preparation_data_a.checkpoints.truncate_after (receive_details->hash);
 		}
 
+		// Call into Rust...
+
 		auto details_dto{ receive_details->to_dto () };
-		rsnano::rsn_confirmation_height_bounded_prepare_iterated_blocks_for_cementing (handle, &details_dto);
+		bool has_next_dto = next_in_receive_chain.has_value ();
+		rsnano::TopAndNextHashDto next_dto;
+		if (next_in_receive_chain)
+		{
+			next_dto = next_in_receive_chain->to_dto ();
+		}
+
+		rsnano::rsn_confirmation_height_bounded_prepare_iterated_blocks_for_cementing (handle, &details_dto, preparation_data_a.checkpoints.handle, &has_next_dto, &next_dto);
+
+		if (has_next_dto)
+		{
+			next_in_receive_chain = nano::confirmation_height_bounded::top_and_next_hash{ next_dto };
+		}
+		else
+		{
+			next_in_receive_chain = boost::none;
+		}
 	}
 	return next_in_receive_chain;
 }

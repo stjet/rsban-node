@@ -294,7 +294,12 @@ impl ConfirmationHeightBounded {
         new_scoped_write_guard
     }
 
-    pub fn prepare_iterated_blocks_for_cementing(&mut self, details: &ReceiveChainDetails) {
+    pub fn prepare_iterated_blocks_for_cementing(
+        &mut self,
+        details: &ReceiveChainDetails,
+        checkpoints: &mut BoundedVecDeque<BlockHash>,
+        next_in_receive_chain: &mut Option<TopAndNextHash>,
+    ) {
         let write_details = WriteDetails {
             account: details.account,
             bottom_height: details.bottom_height,
@@ -325,6 +330,12 @@ pub struct ReceiveChainDetails {
     pub next: Option<BlockHash>,
     pub bottom_height: u64,
     pub bottom_most: BlockHash,
+}
+
+pub struct TopAndNextHash {
+    pub top: BlockHash,
+    pub next: Option<BlockHash>,
+    pub next_height: u64,
 }
 
 pub fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {

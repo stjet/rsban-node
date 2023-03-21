@@ -117,6 +117,7 @@ class block_hash final : public uint256_union
 {
 public:
 	using uint256_union::uint256_union;
+	static block_hash from_bytes (const uint8_t *);
 	operator nano::link const & () const;
 	operator nano::root const & () const;
 	operator nano::hash_or_account const & () const;

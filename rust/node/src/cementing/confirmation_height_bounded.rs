@@ -9,8 +9,9 @@ use std::{
 };
 
 use bounded_vec_deque::BoundedVecDeque;
-use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash};
+use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, ConfirmationHeightInfo};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
+use rsnano_store_traits::Transaction;
 
 use crate::config::Logging;
 
@@ -294,12 +295,59 @@ impl ConfirmationHeightBounded {
         new_scoped_write_guard
     }
 
+    // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
+    // the non-receive blocks which have been iterated for an account, and the associated receive block.
     pub fn prepare_iterated_blocks_for_cementing(
         &mut self,
         receive_details: &Option<ReceiveChainDetails>,
         checkpoints: &mut BoundedVecDeque<BlockHash>,
         next_in_receive_chain: &mut Option<TopAndNextHash>,
+        already_cemented: bool,
+        txn: &dyn Transaction,
+        top_most_non_receive_block_hash: &BlockHash,
+        confirmation_height_info: &ConfirmationHeightInfo,
+        account: &Account,
+        bottom_height: u64,
+        bottom_most: &BlockHash,
     ) {
+        if !already_cemented {
+            // Add the non-receive blocks iterated for this account
+            let block_height = self
+                .ledger
+                .store
+                .block()
+                .account_height(txn, top_most_non_receive_block_hash);
+            if block_height > confirmation_height_info.height {
+                let confirmed_info_l = ConfirmedInfo {
+                    confirmed_height: block_height,
+                    iterated_frontier: *top_most_non_receive_block_hash,
+                };
+
+                let found_info = self.accounts_confirmed_info.get(account);
+                if found_info.is_some() {
+                    self.accounts_confirmed_info
+                        .insert(*account, confirmed_info_l);
+                } else {
+                    self.accounts_confirmed_info
+                        .insert(*account, confirmed_info_l);
+                    self.accounts_confirmed_info_size
+                        .fetch_add(1, Ordering::Relaxed);
+                }
+
+                truncate_after(checkpoints, top_most_non_receive_block_hash);
+
+                let details = WriteDetails {
+                    account: *account,
+                    bottom_height: bottom_height,
+                    bottom_hash: *bottom_most,
+                    top_height: block_height,
+                    top_hash: *top_most_non_receive_block_hash,
+                };
+                self.pending_writes.push_back(details);
+                self.pending_writes_size.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+
         // Add the receive block and all non-receive blocks above that one
         if let Some(receive_details) = receive_details {
             match self

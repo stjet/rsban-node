@@ -16,9 +16,11 @@ use rsnano_node::{
 use crate::{
     copy_hash_bytes,
     core::BlockVecHandle,
-    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle, WriteGuardHandle},
+    ledger::datastore::{
+        LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle,
+    },
     utils::{ContextWrapper, LoggerHandle, LoggerMT},
-    LoggingDto, VoidPointerCallback,
+    ConfirmationHeightInfoDto, LoggingDto, VoidPointerCallback,
 };
 
 use super::confirmation_height_unbounded::AtomicU64Handle;
@@ -169,6 +171,13 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_prepare_iterated_blocks
     checkpoints: *mut HashCircularBufferHandle,
     has_next_in_receive_chain: *mut bool,
     next_in_receive_chain: *mut TopAndNextHashDto,
+    already_cemented: bool,
+    txn: *mut TransactionHandle,
+    top_most_non_receive_block_hash: *const u8,
+    conf_height_info: *const ConfirmationHeightInfoDto,
+    account: *const u8,
+    bottom_height: u64,
+    bottom_most: *const u8,
 ) {
     let mut next = if *has_next_in_receive_chain {
         Some((&*next_in_receive_chain).into())
@@ -182,9 +191,21 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_prepare_iterated_blocks
         None
     };
 
-    (*handle)
-        .0
-        .prepare_iterated_blocks_for_cementing(&details, &mut (*checkpoints).0, &mut next);
+    let txn = (*txn).as_txn();
+    let conf_height_info = (&*conf_height_info).into();
+
+    (*handle).0.prepare_iterated_blocks_for_cementing(
+        &details,
+        &mut (*checkpoints).0,
+        &mut next,
+        already_cemented,
+        txn,
+        &BlockHash::from_ptr(top_most_non_receive_block_hash),
+        &conf_height_info,
+        &Account::from_ptr(account),
+        bottom_height,
+        &BlockHash::from_ptr(bottom_most),
+    );
 
     *has_next_in_receive_chain = next.is_some();
     if let Some(next) = &next {

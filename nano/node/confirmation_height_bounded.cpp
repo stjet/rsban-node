@@ -432,52 +432,29 @@ boost::optional<nano::confirmation_height_bounded::top_and_next_hash> nano::conf
 		}
 	}
 
-	// Add the receive block and all non-receive blocks above that one
+	// Call into Rust...
+	rsnano::ReceiveChainDetailsDto details_dto;
 	auto & receive_details = preparation_data_a.receive_details;
 	if (receive_details)
 	{
-		auto found_info{ accounts_confirmed_info.find (receive_details->account) };
-		if (found_info)
-		{
-			nano::confirmation_height_bounded::confirmed_info receive_confirmed_info{ receive_details->height, receive_details->hash };
-			accounts_confirmed_info.insert (receive_details->account, receive_confirmed_info);
-		}
-		else
-		{
-			nano::confirmation_height_bounded::confirmed_info receive_confirmed_info{ receive_details->height, receive_details->hash };
-			accounts_confirmed_info.insert (receive_details->account, receive_confirmed_info);
-			rsnano::rsn_confirmation_height_bounded_accounts_confirmed_info_size_inc (handle);
-		}
+		details_dto = receive_details->to_dto ();
+	};
+	bool has_next_dto = next_in_receive_chain.has_value ();
+	rsnano::TopAndNextHashDto next_dto;
+	if (next_in_receive_chain)
+	{
+		next_dto = next_in_receive_chain->to_dto ();
+	}
 
-		if (receive_details->next.is_initialized ())
-		{
-			next_in_receive_chain = nano::confirmation_height_bounded::top_and_next_hash{ receive_details->top_level, receive_details->next, receive_details->height + 1 };
-		}
-		else
-		{
-			preparation_data_a.checkpoints.truncate_after (receive_details->hash);
-		}
+	rsnano::rsn_confirmation_height_bounded_prepare_iterated_blocks_for_cementing (handle, receive_details.is_initialized (), &details_dto, preparation_data_a.checkpoints.handle, &has_next_dto, &next_dto);
 
-		// Call into Rust...
-
-		auto details_dto{ receive_details->to_dto () };
-		bool has_next_dto = next_in_receive_chain.has_value ();
-		rsnano::TopAndNextHashDto next_dto;
-		if (next_in_receive_chain)
-		{
-			next_dto = next_in_receive_chain->to_dto ();
-		}
-
-		rsnano::rsn_confirmation_height_bounded_prepare_iterated_blocks_for_cementing (handle, &details_dto, preparation_data_a.checkpoints.handle, &has_next_dto, &next_dto);
-
-		if (has_next_dto)
-		{
-			next_in_receive_chain = nano::confirmation_height_bounded::top_and_next_hash{ next_dto };
-		}
-		else
-		{
-			next_in_receive_chain = boost::none;
-		}
+	if (has_next_dto)
+	{
+		next_in_receive_chain = nano::confirmation_height_bounded::top_and_next_hash{ next_dto };
+	}
+	else
+	{
+		next_in_receive_chain = boost::none;
 	}
 	return next_in_receive_chain;
 }

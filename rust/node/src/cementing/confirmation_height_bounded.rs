@@ -29,8 +29,8 @@ pub struct ConfirmationHeightBounded {
     logger: Arc<dyn Logger>,
     logging: Logging,
     ledger: Arc<Ledger>,
-    pub accounts_info_confirmed: HashMap<Account, ConfirmedInfo>,
-    pub accounts_info_confirmed_size: AtomicUsize,
+    pub accounts_confirmed_info: HashMap<Account, ConfirmedInfo>,
+    pub accounts_confirmed_info_size: AtomicUsize,
     pub pending_writes_size: AtomicUsize,
 }
 
@@ -56,8 +56,8 @@ impl ConfirmationHeightBounded {
             logger,
             logging,
             ledger,
-            accounts_info_confirmed: HashMap::new(),
-            accounts_info_confirmed_size: AtomicUsize::new(0),
+            accounts_confirmed_info: HashMap::new(),
+            accounts_confirmed_info_size: AtomicUsize::new(0),
             pending_writes_size: AtomicUsize::new(0),
         }
     }
@@ -246,10 +246,10 @@ impl ConfirmationHeightBounded {
                     }
                 }
 
-                if let Some(found_info) = self.accounts_info_confirmed.get(&pending.account) {
+                if let Some(found_info) = self.accounts_confirmed_info.get(&pending.account) {
                     if found_info.confirmed_height == pending.top_height {
-                        self.accounts_info_confirmed.remove(&pending.account);
-                        self.accounts_info_confirmed_size
+                        self.accounts_confirmed_info.remove(&pending.account);
+                        self.accounts_confirmed_info_size
                             .fetch_add(1, Ordering::Relaxed);
                     }
                 }
@@ -296,19 +296,52 @@ impl ConfirmationHeightBounded {
 
     pub fn prepare_iterated_blocks_for_cementing(
         &mut self,
-        details: &ReceiveChainDetails,
+        receive_details: &Option<ReceiveChainDetails>,
         checkpoints: &mut BoundedVecDeque<BlockHash>,
         next_in_receive_chain: &mut Option<TopAndNextHash>,
     ) {
-        let write_details = WriteDetails {
-            account: details.account,
-            bottom_height: details.bottom_height,
-            bottom_hash: details.bottom_most,
-            top_height: details.height,
-            top_hash: details.hash,
-        };
-        self.pending_writes.push_back(write_details);
-        self.pending_writes_size.fetch_add(1, Ordering::Relaxed);
+        // Add the receive block and all non-receive blocks above that one
+        if let Some(receive_details) = receive_details {
+            match self
+                .accounts_confirmed_info
+                .get_mut(&receive_details.account)
+            {
+                Some(found_info) => {
+                    found_info.confirmed_height = receive_details.height;
+                    found_info.iterated_frontier = receive_details.hash;
+                }
+                None => {
+                    let receive_confirmed_info = ConfirmedInfo {
+                        confirmed_height: receive_details.height,
+                        iterated_frontier: receive_details.hash,
+                    };
+                    self.accounts_confirmed_info
+                        .insert(receive_details.account, receive_confirmed_info);
+                    self.accounts_confirmed_info_size
+                        .fetch_add(1, Ordering::Relaxed);
+                }
+            }
+
+            if receive_details.next.is_some() {
+                *next_in_receive_chain = Some(TopAndNextHash {
+                    top: receive_details.top_level,
+                    next: receive_details.next,
+                    next_height: receive_details.height + 1,
+                });
+            } else {
+                truncate_after(checkpoints, &receive_details.hash);
+            }
+
+            let write_details = WriteDetails {
+                account: receive_details.account,
+                bottom_height: receive_details.bottom_height,
+                bottom_hash: receive_details.bottom_most,
+                top_height: receive_details.height,
+                top_hash: receive_details.hash,
+            };
+            self.pending_writes.push_back(write_details);
+            self.pending_writes_size.fetch_add(1, Ordering::Relaxed);
+        }
     }
 }
 

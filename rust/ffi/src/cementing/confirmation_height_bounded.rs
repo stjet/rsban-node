@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info
 ) -> usize {
     (*handle)
         .0
-        .accounts_info_confirmed_size
+        .accounts_confirmed_info_size
         .load(Ordering::Relaxed)
 }
 
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info
 ) {
     (*handle)
         .0
-        .accounts_info_confirmed_size
+        .accounts_confirmed_info_size
         .fetch_add(1, Ordering::Relaxed);
 }
 
@@ -108,7 +108,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info
 ) {
     (*handle)
         .0
-        .accounts_info_confirmed_size
+        .accounts_confirmed_info_size
         .fetch_sub(1, Ordering::Relaxed);
 }
 
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info
 ) {
     (*handle)
         .0
-        .accounts_info_confirmed_size
+        .accounts_confirmed_info_size
         .store(value, Ordering::Relaxed);
 }
 
@@ -164,6 +164,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size_sto
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_prepare_iterated_blocks_for_cementing(
     handle: *mut ConfirmationHeightBoundedHandle,
+    has_details: bool,
     details: *const ReceiveChainDetailsDto,
     checkpoints: *mut HashCircularBufferHandle,
     has_next_in_receive_chain: *mut bool,
@@ -175,11 +176,15 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_prepare_iterated_blocks
         None
     };
 
-    (*handle).0.prepare_iterated_blocks_for_cementing(
-        &(&*details).into(),
-        &mut (*checkpoints).0,
-        &mut next,
-    );
+    let details = if has_details {
+        Some((&*details).into())
+    } else {
+        None
+    };
+
+    (*handle)
+        .0
+        .prepare_iterated_blocks_for_cementing(&details, &mut (*checkpoints).0, &mut next);
 
     *has_next_in_receive_chain = next.is_some();
     if let Some(next) = &next {
@@ -355,7 +360,7 @@ pub unsafe extern "C" fn rsn_accounts_confirmed_info_find(
 ) -> bool {
     match (*handle)
         .0
-        .accounts_info_confirmed
+        .accounts_confirmed_info
         .get(&Account::from_ptr(account))
     {
         Some(info) => {
@@ -370,7 +375,7 @@ pub unsafe extern "C" fn rsn_accounts_confirmed_info_find(
 pub unsafe extern "C" fn rsn_accounts_confirmed_info_size(
     handle: *mut ConfirmationHeightBoundedHandle,
 ) -> usize {
-    (*handle).0.accounts_info_confirmed.len()
+    (*handle).0.accounts_confirmed_info.len()
 }
 
 #[no_mangle]
@@ -381,7 +386,7 @@ pub unsafe extern "C" fn rsn_accounts_confirmed_info_insert(
 ) {
     (*handle)
         .0
-        .accounts_info_confirmed
+        .accounts_confirmed_info
         .insert(Account::from_ptr(account), (&*info).into());
 }
 
@@ -392,7 +397,7 @@ pub unsafe extern "C" fn rsn_accounts_confirmed_info_erase(
 ) {
     (*handle)
         .0
-        .accounts_info_confirmed
+        .accounts_confirmed_info
         .remove(&Account::from_ptr(account));
 }
 
@@ -400,7 +405,7 @@ pub unsafe extern "C" fn rsn_accounts_confirmed_info_erase(
 pub unsafe extern "C" fn rsn_accounts_confirmed_info_clear(
     handle: *mut ConfirmationHeightBoundedHandle,
 ) {
-    (*handle).0.accounts_info_confirmed.clear();
+    (*handle).0.accounts_confirmed_info.clear();
 }
 
 // ----------------------------------

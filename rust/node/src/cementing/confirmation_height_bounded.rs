@@ -293,6 +293,18 @@ impl ConfirmationHeightBounded {
 
         new_scoped_write_guard
     }
+
+    pub fn prepare_iterated_blocks_for_cementing(&mut self, details: &ReceiveChainDetails) {
+        let write_details = WriteDetails {
+            account: details.account,
+            bottom_height: details.bottom_height,
+            bottom_hash: details.bottom_most,
+            top_height: details.height,
+            top_hash: details.hash,
+        };
+        self.pending_writes.push_back(write_details);
+        self.pending_writes_size.fetch_add(1, Ordering::Relaxed);
+    }
 }
 
 pub struct WriteDetails {
@@ -303,6 +315,16 @@ pub struct WriteDetails {
     // Desired cemented frontier
     pub top_height: u64,
     pub top_hash: BlockHash,
+}
+
+pub struct ReceiveChainDetails {
+    pub account: Account,
+    pub height: u64,
+    pub hash: BlockHash,
+    pub top_level: BlockHash,
+    pub next: Option<BlockHash>,
+    pub bottom_height: u64,
+    pub bottom_most: BlockHash,
 }
 
 pub fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {

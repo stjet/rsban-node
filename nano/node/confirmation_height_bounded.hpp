@@ -175,6 +175,8 @@ private:
 		boost::optional<nano::block_hash> next;
 		uint64_t bottom_height;
 		nano::block_hash bottom_most;
+
+		rsnano::ReceiveChainDetailsDto to_dto () const;
 	};
 
 	class preparation_data final
@@ -189,7 +191,7 @@ private:
 		uint64_t bottom_height;
 		nano::block_hash const & bottom_most;
 		boost::optional<receive_chain_details> & receive_details;
-		boost::optional<top_and_next_hash> & next_in_receive_chain;
+		boost::optional<top_and_next_hash> next_in_receive_chain;
 	};
 
 	class receive_source_pair final
@@ -205,7 +207,7 @@ private:
 
 	top_and_next_hash get_next_block (boost::optional<top_and_next_hash> const &, nano::hash_circular_buffer const &, boost::circular_buffer_space_optimized<receive_source_pair> const & receive_source_pairs, boost::optional<receive_chain_details> &, nano::block const & original_block);
 	nano::block_hash get_least_unconfirmed_hash_from_top_level (nano::transaction const &, nano::block_hash const &, nano::account const &, nano::confirmation_height_info const &, uint64_t &);
-	void prepare_iterated_blocks_for_cementing (preparation_data &);
+	boost::optional<top_and_next_hash> prepare_iterated_blocks_for_cementing (preparation_data &);
 
 	bool iterate (
 	nano::read_transaction &,

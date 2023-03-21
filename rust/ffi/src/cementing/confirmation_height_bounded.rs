@@ -8,7 +8,7 @@ use rsnano_core::{Account, BlockHash};
 use rsnano_node::{
     cementing::{
         truncate_after, ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback,
-        WriteDetails,
+        ReceiveChainDetails, WriteDetails,
     },
     config::Logging,
 };
@@ -159,6 +159,16 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size_sto
         .0
         .pending_writes_size
         .store(value, Ordering::Relaxed);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_prepare_iterated_blocks_for_cementing(
+    handle: *mut ConfirmationHeightBoundedHandle,
+    details: *const ReceiveChainDetailsDto,
+) {
+    (*handle)
+        .0
+        .prepare_iterated_blocks_for_cementing(&(&*details).into())
 }
 
 // ----------------------------------
@@ -375,4 +385,37 @@ pub unsafe extern "C" fn rsn_accounts_confirmed_info_clear(
     handle: *mut ConfirmationHeightBoundedHandle,
 ) {
     (*handle).0.accounts_info_confirmed.clear();
+}
+
+// ----------------------------------
+// ReceiveChainDetails:
+
+#[repr(C)]
+pub struct ReceiveChainDetailsDto {
+    account: [u8; 32],
+    height: u64,
+    hash: [u8; 32],
+    top_level: [u8; 32],
+    next: [u8; 32],
+    has_next: bool,
+    bottom_height: u64,
+    bottom_most: [u8; 32],
+}
+
+impl From<&ReceiveChainDetailsDto> for ReceiveChainDetails {
+    fn from(value: &ReceiveChainDetailsDto) -> Self {
+        Self {
+            account: Account::from_bytes(value.account),
+            height: value.height,
+            hash: BlockHash::from_bytes(value.hash),
+            top_level: BlockHash::from_bytes(value.top_level),
+            next: if value.has_next {
+                Some(BlockHash::from_bytes(value.next))
+            } else {
+                None
+            },
+            bottom_height: value.bottom_height,
+            bottom_most: BlockHash::from_bytes(value.bottom_most),
+        }
+    }
 }

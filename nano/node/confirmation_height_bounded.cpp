@@ -14,6 +14,7 @@
 
 #include <iterator>
 #include <numeric>
+#include <optional>
 
 nano::hash_circular_buffer::hash_circular_buffer (size_t max_items) :
 	handle{ rsnano::rsn_hash_circular_buffer_create (max_items) }
@@ -265,7 +266,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 		if (!hit_receive || (receive_source_pairs.size () == 1 && top_most_non_receive_block_hash != current))
 		{
 			preparation_data preparation_data{ *transaction, top_most_non_receive_block_hash, already_cemented, checkpoints, confirmation_height_info, account, block_height, current, receive_details, next_in_receive_chain };
-			prepare_iterated_blocks_for_cementing (preparation_data);
+			next_in_receive_chain = prepare_iterated_blocks_for_cementing (preparation_data);
 
 			// If used the top level, don't pop off the receive source pair because it wasn't used
 			if (!is_set && !receive_source_pairs.empty ())
@@ -396,8 +397,9 @@ nano::account const & account_a)
 
 // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
 // the non-receive blocks which have been iterated for an account, and the associated receive block.
-void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (preparation_data & preparation_data_a)
+boost::optional<nano::confirmation_height_bounded::top_and_next_hash> nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (preparation_data & preparation_data_a)
 {
+	boost::optional<top_and_next_hash> next_in_receive_chain = preparation_data_a.next_in_receive_chain;
 	if (!preparation_data_a.already_cemented)
 	{
 		// Add the non-receive blocks iterated for this account
@@ -449,23 +451,17 @@ void nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (p
 
 		if (receive_details->next.is_initialized ())
 		{
-			preparation_data_a.next_in_receive_chain = top_and_next_hash{ receive_details->top_level, receive_details->next, receive_details->height + 1 };
+			next_in_receive_chain = top_and_next_hash{ receive_details->top_level, receive_details->next, receive_details->height + 1 };
 		}
 		else
 		{
 			preparation_data_a.checkpoints.truncate_after (receive_details->hash);
 		}
 
-		nano::confirmation_height_bounded::write_details details{
-			receive_details->account,
-			receive_details->bottom_height,
-			receive_details->bottom_most,
-			receive_details->height,
-			receive_details->hash
-		};
-		pending_writes.push_back (details);
-		rsnano::rsn_confirmation_height_bounded_pending_writes_size_inc (handle);
+		auto details_dto{ receive_details->to_dto () };
+		rsnano::rsn_confirmation_height_bounded_prepare_iterated_blocks_for_cementing (handle, &details_dto);
 	}
+	return next_in_receive_chain;
 }
 
 void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scoped_write_guard_a)
@@ -587,4 +583,21 @@ void nano::confirmation_height_bounded::pending_writes_queue::pop_front ()
 uint64_t nano::confirmation_height_bounded::pending_writes_queue::total_pending_write_block_count () const
 {
 	return rsnano::rsn_pending_writes_queue_total_pending_write_block_count (handle);
+}
+
+rsnano::ReceiveChainDetailsDto nano::confirmation_height_bounded::receive_chain_details::to_dto () const
+{
+	rsnano::ReceiveChainDetailsDto dto;
+	std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (dto.account));
+	dto.height = height;
+	std::copy (std::begin (hash.bytes), std::end (hash.bytes), std::begin (dto.hash));
+	std::copy (std::begin (top_level.bytes), std::end (top_level.bytes), std::begin (dto.top_level));
+	dto.has_next = next.has_value ();
+	if (next)
+	{
+		std::copy (std::begin (next->bytes), std::end (next->bytes), std::begin (dto.next));
+	}
+	dto.bottom_height = bottom_height;
+	std::copy (std::begin (bottom_most.bytes), std::end (bottom_most.bytes), std::begin (dto.bottom_most));
+	return dto;
 }

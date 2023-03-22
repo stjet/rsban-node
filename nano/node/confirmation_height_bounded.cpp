@@ -361,14 +361,16 @@ nano::account const & account_a)
 		{
 			hit_receive = true;
 			reached_target = true;
-			auto const & sideband (block->sideband ());
-			auto next = !sideband.successor ().is_zero () && sideband.successor () != top_level_hash_a ? boost::optional<nano::block_hash> (sideband.successor ()) : boost::none;
-			receive_source_pairs_a.push_back ({ receive_chain_details{ account_a, sideband.height (), hash, top_level_hash_a, next, bottom_height_a, bottom_hash_a }, source });
-			// Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
-			if (receive_source_pairs_a.size () % max_items == 0)
-			{
-				checkpoints_a.push_back (top_level_hash_a);
-			}
+			rsnano::rsn_confirmation_height_bounded_iterate (
+			handle,
+			receive_source_pairs_a.handle,
+			checkpoints_a.handle,
+			top_level_hash_a.bytes.data (),
+			account_a.bytes.data (),
+			block->get_handle (),
+			hash.bytes.data (),
+			bottom_height_a,
+			bottom_hash_a.bytes.data ());
 		}
 		else
 		{

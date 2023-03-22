@@ -40,6 +40,9 @@ const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: u64 =
     MAXIMUM_BATCH_WRITE_TIME - (MAXIMUM_BATCH_WRITE_TIME / 5);
 const MINIMUM_BATCH_WRITE_SIZE: u64 = 16384;
 
+/** The maximum number of various containers to keep the memory bounded */
+const MAX_ITEMS: usize = 131072;
+
 impl ConfirmationHeightBounded {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
@@ -389,6 +392,45 @@ impl ConfirmationHeightBounded {
             };
             self.pending_writes.push_back(write_details);
             self.pending_writes_size.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    pub fn iterate(
+        &self,
+        receive_source_pairs: &mut BoundedVecDeque<ReceiveSourcePair>,
+        checkpoints: &mut BoundedVecDeque<BlockHash>,
+        top_level_hash: BlockHash,
+        account: Account,
+        block: &Arc<RwLock<BlockEnum>>,
+        hash: BlockHash,
+        bottom_height: u64,
+        bottom_hash: BlockHash,
+    ) {
+        let block_lock = block.read().unwrap();
+        let source = block_lock.source_or_link();
+        //----------------------------------------
+        let sideband = block_lock.sideband().unwrap();
+        let next = if !sideband.successor.is_zero() && sideband.successor != top_level_hash {
+            Some(sideband.successor)
+        } else {
+            None
+        };
+        receive_source_pairs.push_back(ReceiveSourcePair {
+            receive_details: ReceiveChainDetails {
+                account,
+                height: sideband.height,
+                hash,
+                top_level: top_level_hash,
+                next,
+                bottom_height,
+                bottom_most: bottom_hash,
+            },
+            source_hash: source,
+        });
+
+        // Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
+        if receive_source_pairs.len() % MAX_ITEMS == 0 {
+            checkpoints.push_back(top_level_hash);
         }
     }
 }

@@ -15,7 +15,7 @@ use rsnano_node::{
 
 use crate::{
     copy_hash_bytes,
-    core::BlockVecHandle,
+    core::{BlockHandle, BlockVecHandle},
     ledger::datastore::{
         LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle,
     },
@@ -160,6 +160,30 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_prepare_iterated_blocks
     if let Some(next) = &next {
         *next_in_receive_chain = next.into();
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_iterate(
+    handle: *mut ConfirmationHeightBoundedHandle,
+    receive_source_pairs: *mut ReceiveSourcePairCircularBufferHandle,
+    checkpoints: *mut HashCircularBufferHandle,
+    top_level_hash: *const u8,
+    account: *const u8,
+    block: *const BlockHandle,
+    hash: *const u8,
+    bottom_height: u64,
+    bottom_hash: *const u8,
+) {
+    (*handle).0.iterate(
+        &mut (*receive_source_pairs).0,
+        &mut (*checkpoints).0,
+        BlockHash::from_ptr(top_level_hash),
+        Account::from_ptr(account),
+        &(*block).block,
+        BlockHash::from_ptr(hash),
+        bottom_height,
+        BlockHash::from_ptr(bottom_hash),
+    );
 }
 
 // ----------------------------------
